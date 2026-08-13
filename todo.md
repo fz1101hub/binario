@@ -49,8 +49,8 @@
 - [x] Definire backlog prioritario per ricerca, monitoraggi, avvisi, stazioni, dettaglio corsa, recenti e sincronizzazione.
 - [x] Implementare il primo blocco funzionale ad alto valore emerso dalla matrice.
 - [x] Verificare e consegnare incremento funzionale con test, lint e APK.
-- [ ] Inventariare sorgenti, documentazione e file da escludere per il backup GitHub privato.
-- [ ] Preparare `.gitignore`, commit iniziale e istruzioni di riproducibilità del repository.
-- [ ] Creare il repository GitHub privato e pubblicare il backup iniziale.
-- [ ] Verificare remoto, visibilità privata e contenuti pubblicati.
+- [x] Inventariare sorgenti, documentazione e file da escludere per il backup GitHub privato.
+- [x] Preparare `.gitignore`, commit iniziale e istruzioni di riproducibilità del repository.
+- [x] Creare il repository GitHub privato e pubblicare il backup iniziale.
+- [x] Verificare remoto, visibilità privata e contenuti pubblicati.
 - [x] Verificare test, lint e APK della nuova architettura app-widget; resta la prova fisica di navigazione e accessibilità.
