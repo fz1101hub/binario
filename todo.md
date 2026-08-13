@@ -60,5 +60,5 @@
 - [x] Definire un contratto Binario condiviso per tratte, monitoraggi, snapshot e qualità del dato.
 - [x] Aggiungere nell’app principale un pannello Impostazioni per smartwatch, comandi vocali e stato integrazioni.
 - [x] Allineare Voice Bridge e companion smartwatch al contratto condiviso senza trasferire segreti al client.
-- [ ] Verificare e pubblicare l’esperienza unificata con aggiornamento del repository privato.
+- [x] Verificare e pubblicare l’esperienza unificata con aggiornamento del repository privato.
 - [x] Verificare test, lint e APK della nuova architettura app-widget; resta la prova fisica di navigazione e accessibilità.
