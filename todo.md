@@ -69,5 +69,5 @@
 - [x] Definire modello locale, consenso e messaggi accessibili per data/ora, preferiti stazione, posizione e dettatura.
 - [x] Sostituire i controlli data e ora del pianificatore con selettori Android accessibili e persistenti nella ricerca corrente.
 - [x] Aggiungere stazioni preferite locali e ordinamento delle stazioni più vicine dopo consenso di localizzazione puntuale.
-- [ ] Aggiungere dettatura dei campi partenza, arrivo, stazione e numero treno tramite riconoscimento vocale di sistema.
+- [x] Aggiungere dettatura dei campi partenza, arrivo, stazione e numero treno tramite riconoscimento vocale di sistema.
 - [ ] Verificare, documentare e pubblicare l’incremento del pianificatore con un commit e push Git dedicati.

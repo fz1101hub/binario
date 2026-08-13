@@ -1,6 +1,7 @@
 package it.binario.app
 
 import android.Manifest
+import android.app.Activity
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.location.Location
@@ -8,6 +9,7 @@ import android.location.LocationManager
 import android.net.Uri
 import android.os.Bundle
 import android.os.Build
+import android.speech.RecognizerIntent
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
 import androidx.activity.ComponentActivity
@@ -39,6 +41,7 @@ import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LightMode
+import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Route
@@ -369,7 +372,43 @@ private fun PlannerScreen(
     var travelTime by rememberSaveable { mutableStateOf(LocalTime.now().withSecond(0).withNano(0).toString()) }
     var showDatePicker by rememberSaveable { mutableStateOf(false) }
     var showTimePicker by rememberSaveable { mutableStateOf(false) }
+    var speechMessage by rememberSaveable { mutableStateOf<String?>(null) }
     val context = LocalContext.current
+    val voiceLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        val spoken = if (result.resultCode == Activity.RESULT_OK) {
+            result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()
+        } else null
+        if (spoken.isNullOrBlank()) {
+            speechMessage = "Nessun testo ricevuto dalla dettatura. Puoi riprovare o compilare i campi manualmente."
+        } else {
+            val dictated = PlannerVoiceParser.parse(spoken, viewModel.stations)
+            dictated.origin?.let { originText = it.name }
+            dictated.destination?.let { destinationText = it.name }
+            dictated.station?.let { stationText = it.name }
+            dictated.trainNumber?.let(viewModel::updateTrainNumberQuery)
+            dictated.date?.let { travelDate = it.toString() }
+            dictated.time?.let { travelTime = it.toString() }
+            mode = when {
+                dictated.origin != null && dictated.destination != null -> SearchMode.ROUTE
+                dictated.trainNumber != null -> SearchMode.TRAIN
+                dictated.station != null -> SearchMode.STATION
+                else -> mode
+            }
+            speechMessage = if (dictated.origin != null || dictated.destination != null || dictated.station != null || dictated.trainNumber != null || dictated.date != null || dictated.time != null) {
+                "Dati di viaggio aggiornati dalla dettatura. Verifica i campi prima di cercare."
+            } else "Non ho riconosciuto una stazione, un numero treno, una data o un’ora. Puoi riprovare usando ad esempio: da Roma Termini a Torino Porta Nuova domani alle 18."
+        }
+    }
+    fun startVoiceInput() {
+        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE, "it-IT")
+            putExtra(RecognizerIntent.EXTRA_PROMPT, "Dì la tratta, la stazione, il treno, la data o l’ora")
+        }
+        if (intent.resolveActivity(context.packageManager) == null) {
+            speechMessage = "Il riconoscitore vocale di sistema non è disponibile su questo dispositivo."
+        } else voiceLauncher.launch(intent)
+    }
     if (showDatePicker) {
         val selected = PlannerDateTime.dateOrToday(travelDate)
         LaunchedEffect(selected) {
@@ -401,6 +440,15 @@ private fun PlannerScreen(
             Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 Text("Pianifica viaggio", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                 Text("Cerca le prossime soluzioni per tratta, giorno e orario.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                OutlinedButton(
+                    onClick = ::startVoiceInput,
+                    modifier = Modifier.fillMaxWidth().semantics { contentDescription = "Detta i dati del viaggio. Puoi indicare tratta, stazione, numero treno, oggi, domani e ora." }
+                ) {
+                    Icon(Icons.Default.Mic, contentDescription = null)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Detta viaggio")
+                }
+                speechMessage?.let { message -> Text(message, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     items(SearchMode.entries) { item -> FilterChip(selected = mode == item, onClick = { mode = item }, label = { Text(item.label) }) }
                 }
