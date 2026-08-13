@@ -1,13 +1,20 @@
 package it.binario.app
 
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.location.Location
+import android.location.LocationManager
 import android.net.Uri
 import android.os.Bundle
+import android.os.Build
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -79,6 +86,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import it.binario.app.data.Direction
 import it.binario.app.data.Freshness
@@ -90,6 +98,7 @@ import it.binario.app.data.TrainService
 import it.binario.app.data.accessibleUpdateTime
 import java.time.LocalDate
 import java.time.LocalTime
+import java.util.Locale
 
 private enum class Screen { PLANNER, TRAINS, STATIONS, MORE, RESULTS, DETAIL }
 private enum class SearchMode(val label: String) { ROUTE("Tratta"), TRAIN("N. treno"), STATION("Stazione") }
@@ -248,7 +257,7 @@ private fun BinarioApp(
                 openRoutes = { screen = Screen.MORE },
                 openSearch = { screen = Screen.PLANNER }
             )
-            Screen.STATIONS -> StationBoardScreen(Modifier.padding(padding), viewModel::searchStations)
+            Screen.STATIONS -> StationBoardScreen(Modifier.padding(padding), viewModel)
             Screen.MORE -> RoutesScreen(
                 modifier = Modifier.padding(padding),
                 viewModel = viewModel,
@@ -530,15 +539,121 @@ private fun RouteResultsScreen(modifier: Modifier, viewModel: TrainViewModel, op
 }
 
 @Composable
-private fun StationBoardScreen(modifier: Modifier, searchStations: (String) -> List<Station>) {
+private fun StationBoardScreen(modifier: Modifier, viewModel: TrainViewModel) {
     var stationText by rememberSaveable { mutableStateOf("") }
+    var locationMessage by rememberSaveable { mutableStateOf<String?>(null) }
+    val context = LocalContext.current
+    fun locateNearbyStations() {
+        requestNearbyStationLocation(context) { location ->
+            if (location == null) {
+                locationMessage = "Posizione non disponibile. Attiva la localizzazione del dispositivo e riprova."
+            } else {
+                viewModel.updateNearbyStations(location.latitude, location.longitude)
+                locationMessage = "Stazioni ordinate dalla posizione appena richiesta. La posizione non è stata salvata."
+            }
+        }
+    }
+    val locationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) locateNearbyStations()
+        else locationMessage = "Permesso posizione non concesso. Puoi continuare a cercare manualmente le stazioni."
+    }
+    val selectedStation = viewModel.stationFromName(stationText)
     LazyColumn(modifier = modifier.fillMaxSize()) {
         item {
             Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text("Tabellone stazione", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                StationField("Stazione", stationText, { stationText = it }, searchStations(stationText), { stationText = it.name })
+                StationField("Stazione", stationText, { stationText = it }, viewModel.searchStations(stationText), { stationText = it.name })
+                selectedStation?.let { station ->
+                    StationPreferenceRow(
+                        station = station,
+                        favourite = viewModel.isStationFavourite(station),
+                        onSelect = { stationText = station.name },
+                        onToggleFavourite = { viewModel.toggleStationFavourite(station) }
+                    )
+                }
+                OutlinedButton(
+                    onClick = {
+                        if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) locateNearbyStations()
+                        else locationPermission.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
+                    },
+                    modifier = Modifier.fillMaxWidth().semantics { contentDescription = "Trova le stazioni vicine. La posizione viene usata una sola volta e non viene salvata." }
+                ) {
+                    Icon(Icons.Default.Route, contentDescription = null)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Trova stazioni vicine")
+                }
+                locationMessage?.let { message ->
+                    Text(message, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                if (viewModel.favouriteStations.isNotEmpty()) {
+                    Text("Stazioni preferite", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    viewModel.favouriteStations.forEach { station ->
+                        StationPreferenceRow(
+                            station = station,
+                            favourite = true,
+                            onSelect = { stationText = station.name },
+                            onToggleFavourite = { viewModel.toggleStationFavourite(station) }
+                        )
+                    }
+                }
+                if (viewModel.nearbyStations.isNotEmpty()) {
+                    Text("Stazioni più vicine", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    viewModel.nearbyStations.forEach { nearby ->
+                        StationPreferenceRow(
+                            station = nearby.station,
+                            favourite = viewModel.isStationFavourite(nearby.station),
+                            distanceLabel = String.format(Locale.ITALIAN, "%.1f km", nearby.distanceKm),
+                            onSelect = { stationText = nearby.station.name },
+                            onToggleFavourite = { viewModel.toggleStationFavourite(nearby.station) }
+                        )
+                    }
+                }
                 SearchInfoState("Dati non disponibili in tempo reale", "Il tabellone sarà mostrato qui solo quando Binario dispone di una fonte ferroviaria autorizzata. Nel frattempo puoi pianificare una tratta o cercare un numero treno.")
             }
+        }
+    }
+}
+
+private fun requestNearbyStationLocation(context: android.content.Context, onResult: (Location?) -> Unit) {
+    val locationManager = context.getSystemService(LocationManager::class.java) ?: run {
+        onResult(null)
+        return
+    }
+    val fallback = {
+        onResult(runCatching {
+            locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)
+                ?: locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER)
+        }.getOrNull())
+    }
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+        runCatching {
+            locationManager.getCurrentLocation(LocationManager.NETWORK_PROVIDER, null, ContextCompat.getMainExecutor(context)) { location ->
+                if (location != null) onResult(location) else fallback()
+            }
+        }.onFailure { fallback() }
+    } else fallback()
+}
+
+@Composable
+private fun StationPreferenceRow(
+    station: Station,
+    favourite: Boolean,
+    onSelect: () -> Unit,
+    onToggleFavourite: () -> Unit,
+    distanceLabel: String? = null
+) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        TextButton(onClick = onSelect, modifier = Modifier.weight(1f)) {
+            Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.Start) {
+                Text(station.name, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(listOfNotNull(station.city, distanceLabel).joinToString(" · "), style = MaterialTheme.typography.bodySmall)
+            }
+        }
+        IconButton(onClick = onToggleFavourite) {
+            Icon(
+                imageVector = if (favourite) Icons.Default.Star else Icons.Default.StarBorder,
+                contentDescription = if (favourite) "Rimuovi ${station.name} dalle stazioni preferite" else "Aggiungi ${station.name} alle stazioni preferite"
+            )
         }
     }
 }

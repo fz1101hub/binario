@@ -44,6 +44,7 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
     private val routeStore = RouteStore(application)
     private val cache = RouteSnapshotCache(application)
     private val integrationStore = IntegrationSettingsStore(application)
+    private val stationPreferences = StationPreferences(application)
     private val dataSource: TrainDataSource = RailDataRepository()
 
     val stations = listOf(
@@ -74,6 +75,11 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
         Station("palermo-centrale", "Palermo Centrale", "Palermo", "Sicilia"),
         Station("cagliari", "Cagliari", "Cagliari", "Sardegna")
     )
+
+    var favouriteStations by mutableStateOf(stationPreferences.favourites(stations))
+        private set
+    var nearbyStations by mutableStateOf<List<NearbyStation>>(emptyList())
+        private set
 
     var savedRoutes by mutableStateOf(pinnedFirst(routeStore.routes(stations)))
         private set
@@ -109,6 +115,18 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun stationFromName(name: String): Station? = stations.firstOrNull { it.name.equals(name.trim(), ignoreCase = true) }
+
+    fun isStationFavourite(station: Station): Boolean = stationPreferences.isFavourite(station)
+
+    fun toggleStationFavourite(station: Station) {
+        stationPreferences.toggle(station)
+        favouriteStations = stationPreferences.favourites(stations)
+    }
+
+    /** Riceve una posizione puntuale dalla UI; non viene mai persistita. */
+    fun updateNearbyStations(latitude: Double, longitude: Double) {
+        nearbyStations = StationCoordinates.nearby(stations, latitude, longitude).take(8)
+    }
 
     fun activateRoute(route: SavedRoute) {
         activeRoute = route
