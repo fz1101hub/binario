@@ -1,0 +1,19 @@
+<resources>
+    <string name="app_name">Binario</string>
+    <string name="widget_description">Mostra le prossime corse della tua tratta Binario.</string>
+    <string name="widget_empty_title">Configura una tratta in Binario</string>
+    <string name="widget_empty_subtitle">Apri l’app, salva una tratta e scegli i dati da mostrare.</string>
+    <string name="widget_refresh">Aggiorna corse</string>
+    <string name="widget_previous_page">Mostra le cinque corse precedenti</string>
+    <string name="widget_next_page">Mostra le cinque corse successive</string>
+    <string name="widget_switch_direction">Cambia direzione della tratta</string>
+    <string name="widget_open_app">Apri Binario</string>
+    <string name="widget_previous_symbol">‹</string>
+    <string name="widget_next_symbol">›</string>
+    <string name="widget_default_direction">Andata</string>
+    <string name="widget_refresh_label">Aggiorna</string>
+    <string name="widget_column_time">ORA</string>
+    <string name="widget_column_destination_train">DESTINAZIONE / TRENO</string>
+    <string name="widget_column_platform">BIN.</string>
+    <string name="widget_column_status">STATO</string>
+</resources>

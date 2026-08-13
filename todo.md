@@ -1,0 +1,56 @@
+# Binario Android e smartwatch TODO
+
+- [x] Aggiungere un contratto dati minimo e quality-first condiviso tra telefono e Wear OS.
+- [x] Creare il modulo Wear OS con schermata rapida, dettaglio corse, refresh dal telefono e accessibilità completa.
+- [x] Aggiungere Tile e complication Wear OS con cache locale e stato non-live esplicito.
+- [x] Pubblicare snapshot dal telefono via Data Layer e gestire richiesta refresh senza registrare dati personali nei log.
+- [x] Preparare il progetto nativo watchOS con SwiftUI, WidgetKit, App Intents e Watch Connectivity.
+- [x] Documentare funzioni, privacy, accessibilità e limiti per Apple Watch e Wear OS.
+- [x] Aggiungere test di dominio per snapshot smartwatch e verificare la compilazione Android.
+- [x] Preparare la consegna Binario smartwatch con sorgenti, artefatti e roadmap.
+- [x] Diagnosticare con benchmark e flussi reali le criticità UX/UI della build Android installata.
+- [x] Riprogettare la home attorno a tratta attiva, prossime partenze, ritardi e azioni frequenti.
+- [x] Ricostruire ricerca, salvataggio tratte, lista corse e dettaglio in una navigazione coerente e mobile-first.
+- [x] Definire un design system ferroviario originale con gerarchia, stati live/non-live, tipografia e componenti accessibili.
+- [ ] Verificare il redesign su schermi compatti, font 200%, TalkBack, dark mode e stati vuoti/errore.
+- [x] Compilare e consegnare una release UX/UI con artefatti di verifica.
+- [x] Riesaminare il benchmark per il flusso home ricerca-first delle app ferroviarie.
+- [x] Ricostruire la home con ricerca treno/tratta come primo elemento, scorciatoie e risultati contestuali.
+- [x] Spostare tratta attiva, partenze rapide e funzioni personali dopo la ricerca, senza eliminarle.
+- [ ] Verificare e consegnare una build ricerca-first sul dispositivo.
+- [ ] Riprodurre e diagnosticare il crash bloccante segnalato nella build Binario v0.7.1.
+- [ ] Correggere la causa del crash e aggiungere test o guardie contro la regressione.
+- [ ] Compilare e consegnare una build stabile prima di ulteriori modifiche UX/UI.
+- [ ] Sostituire l’inizializzazione di avvio della home ricerca-first con uno stato semplice e verificabile su Android installato.
+- [x] Sostituire tutti i dati demo Roma–Napoli con una tratta coerente Roma–Torino.
+- [x] Rimuovere preferenza, ordinamento e testo relativi alla priorità Regionale Lazio.
+- [x] Applicare una palette ferroviaria originale, più vicina al sobrio contrasto di Orario Treni e On The Rails.
+- [x] Verificare contrasto, dark mode, test, lint e APK dopo l’aggiornamento cromatico e dei dati demo.
+- [x] Analizzare e tradurre in decisioni originali il selettore tema di On The Rails, la palette di Trenord e i flussi TrainPal.
+- [x] Aggiungere selettore tema Chiaro/Scuro/Sistema persistente e accessibile.
+- [x] Riorganizzare home e risultati con gerarchia di ricerca, tratta e azioni rapide ispirata ai pattern di TrainPal.
+- [x] Sostituire palette e componenti con un design system ferroviario originale ispirato ai contrasti di Trenord.
+- [ ] Verificare tema, dark mode, font grandi, TalkBack, test, lint e APK della revisione finale.
+- [x] Riesaminare il benchmark Orario Treni e On The Rails per la home operativa e la disposizione delle funzioni.
+- [x] Ricostruire la home con accesso rapido a cerca treno, cerca tratta, partenze e tabellone stazione.
+- [x] Mostrare tratte monitorate e partenze della tratta attiva come pannelli operativi, con refresh e cambio direzione contestuali.
+- [ ] Verificare e consegnare la home operativa senza alterare tema e palette v0.8.
+- [x] Verificare test, lint e packaging della home operativa v0.8.1 senza alterare tema e palette.
+- [x] Estrarre i pattern operativi di home e widget dai benchmark Orario Treni e On The Rails senza riprodurne UI o asset.
+- [x] Sostituire la home a card con un tabellone Binario: intestazione tratta, direzione/refresh, colonne corse e azioni di ricerca.
+- [x] Ridisegnare il widget con la stessa gerarchia tabellone, cinque corse per pagina, pagina/direzione/refresh e stato dati leggibile.
+- [x] Verificare accessibilità statica, AppWidget, test, lint e APK della revisione coordinata app-widget.
+- [x] Tradurre le schermate allegate in requisiti per un pianificatore Binario originale, senza riprodurre marchi o asset.
+- [x] Rendere la home una ricerca viaggio: partenza, arrivo, inversione, andata/ritorno, data, ora, filtri e CTA primaria.
+- [x] Mostrare recenti e preferite sotto al pianificatore; spostare il tabellone delle corse nei risultati e nella sezione Treni.
+- [x] Mantenere il widget come tabellone paginato delle prossime cinque corse, separato dalla home pianificatore.
+- [ ] Verificare navigazione, accessibilità, test, lint e APK della nuova architettura app-widget.
+- [x] Consolidare tutte le funzioni benchmark in una matrice con stato: presente, parziale, mancante, bloccata da fonte dati.
+- [x] Definire backlog prioritario per ricerca, monitoraggi, avvisi, stazioni, dettaglio corsa, recenti e sincronizzazione.
+- [x] Implementare il primo blocco funzionale ad alto valore emerso dalla matrice.
+- [x] Verificare e consegnare incremento funzionale con test, lint e APK.
+- [ ] Inventariare sorgenti, documentazione e file da escludere per il backup GitHub privato.
+- [ ] Preparare `.gitignore`, commit iniziale e istruzioni di riproducibilità del repository.
+- [ ] Creare il repository GitHub privato e pubblicare il backup iniziale.
+- [ ] Verificare remoto, visibilità privata e contenuti pubblicati.
+- [x] Verificare test, lint e APK della nuova architettura app-widget; resta la prova fisica di navigazione e accessibilità.
