@@ -70,4 +70,4 @@
 - [x] Sostituire i controlli data e ora del pianificatore con selettori Android accessibili e persistenti nella ricerca corrente.
 - [x] Aggiungere stazioni preferite locali e ordinamento delle stazioni più vicine dopo consenso di localizzazione puntuale.
 - [x] Aggiungere dettatura dei campi partenza, arrivo, stazione e numero treno tramite riconoscimento vocale di sistema.
-- [ ] Verificare, documentare e pubblicare l’incremento del pianificatore con un commit e push Git dedicati.
+- [x] Verificare, documentare e pubblicare l’incremento del pianificatore con un commit e push Git dedicati.
