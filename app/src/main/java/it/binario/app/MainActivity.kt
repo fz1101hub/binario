@@ -842,6 +842,14 @@ private fun RoutesScreen(modifier: Modifier, viewModel: TrainViewModel, openRout
                 }
             }
         }
+        item {
+            IntegrationsPanel(
+                settings = viewModel.integrationSettings,
+                onWearSharingChanged = viewModel::setWearSnapshotSharing,
+                onVoiceProfileChanged = viewModel::setVoiceProfileSyncRequested,
+                onAppleWatchSetupChanged = viewModel::setAppleWatchSetupRequested
+            )
+        }
         if (viewModel.monitoredServices.isNotEmpty()) {
             item {
                 Column(Modifier.padding(horizontal = 20.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -873,6 +881,58 @@ private fun RoutesScreen(modifier: Modifier, viewModel: TrainViewModel, openRout
                 canRemove = viewModel.savedRoutes.size > 1
             )
         }
+    }
+}
+
+@Composable
+private fun IntegrationsPanel(
+    settings: IntegrationSettings,
+    onWearSharingChanged: (Boolean) -> Unit,
+    onVoiceProfileChanged: (Boolean) -> Unit,
+    onAppleWatchSetupChanged: (Boolean) -> Unit
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 4.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        shape = RoundedCornerShape(20.dp)
+    ) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text("Integrazioni Binario", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Text("Tratte, monitoraggi e qualità del dato sono controllati dall’app. Credenziali e token non vengono memorizzati qui.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            IntegrationChoice(
+                title = "Smartwatch Android",
+                detail = if (settings.wearSnapshotSharingEnabled) "Snapshot della tratta attiva al companion Wear OS" else "Sincronizzazione snapshot disattivata",
+                selected = settings.wearSnapshotSharingEnabled,
+                onClick = { onWearSharingChanged(!settings.wearSnapshotSharingEnabled) }
+            )
+            IntegrationChoice(
+                title = "Comandi vocali e Alexa",
+                detail = if (settings.voiceProfileSyncRequested) "Profilo pronto da collegare al Voice Bridge" else "Profilo vocale non condiviso; nessun account collegato",
+                selected = settings.voiceProfileSyncRequested,
+                onClick = { onVoiceProfileChanged(!settings.voiceProfileSyncRequested) }
+            )
+            IntegrationChoice(
+                title = "Apple Watch",
+                detail = if (settings.appleWatchSetupRequested) "Preferenza pronta per il companion watchOS" else "Companion iOS da completare; nessun dato condiviso",
+                selected = settings.appleWatchSetupRequested,
+                onClick = { onAppleWatchSetupChanged(!settings.appleWatchSetupRequested) }
+            )
+            Text("Le risposte personali richiedono un account Alexa effettivamente collegato. Senza feed autorizzato: dati non disponibili in tempo reale.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+@Composable
+private fun IntegrationChoice(title: String, detail: String, selected: Boolean, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth().semantics { contentDescription = "$title. $detail" },
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Text(detail, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        FilterChip(selected = selected, onClick = onClick, label = { Text(if (selected) "Attivo" else "Non attivo") })
     }
 }
 

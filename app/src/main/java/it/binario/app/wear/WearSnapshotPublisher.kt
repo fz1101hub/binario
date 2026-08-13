@@ -10,7 +10,10 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
-/** Sends only the active route and two services, never credentials, tickets, location or voice transcripts. */
+/**
+ * Superficie derivata del profilo gestito dall’app principale: invia soltanto
+ * tratta attiva e due corse, mai credenziali, biglietti, posizione o trascrizioni.
+ */
 object WearSnapshotPublisher {
     const val SNAPSHOT_PATH = "/binario/wear/snapshot"
     const val REFRESH_REQUEST_PATH = "/binario/wear/request-refresh"

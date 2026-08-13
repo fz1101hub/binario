@@ -43,6 +43,7 @@ data class ServiceMonitor(val number: String, val label: String)
 class TrainViewModel(application: Application) : AndroidViewModel(application) {
     private val routeStore = RouteStore(application)
     private val cache = RouteSnapshotCache(application)
+    private val integrationStore = IntegrationSettingsStore(application)
     private val dataSource: TrainDataSource = RailDataRepository()
 
     val stations = listOf(
@@ -95,6 +96,8 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
     var operatorFilter by mutableStateOf<RailOperator?>(null)
         private set
     var trainNumberQuery by mutableStateOf("")
+        private set
+    var integrationSettings by mutableStateOf(integrationStore.read())
         private set
 
     init {
@@ -243,14 +246,18 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
                         ?: 0
                     WidgetStateStore.saveSnapshot(getApplication(), result.snapshot, page)
                     RouteWidgetProvider.refreshAll(getApplication())
-                    WearSnapshotPublisher.publish(getApplication(), result.snapshot)
+                    if (integrationSettings.wearSnapshotSharingEnabled) {
+                        WearSnapshotPublisher.publish(getApplication(), result.snapshot)
+                    }
                     refreshState = RefreshState.SUCCESS
                     refreshMessage = result.snapshot.notice
                 }
                 is DataResult.Failure -> {
                     WidgetStateStore.markUnavailable(getApplication())
                     RouteWidgetProvider.refreshAll(getApplication())
-                    WearSnapshotPublisher.publishUnavailable(getApplication(), routeAtRequest.displayName(directionAtRequest), currentProviderLabel())
+                    if (integrationSettings.wearSnapshotSharingEnabled) {
+                        WearSnapshotPublisher.publishUnavailable(getApplication(), routeAtRequest.displayName(directionAtRequest), currentProviderLabel())
+                    }
                     refreshState = RefreshState.ERROR
                     refreshMessage = result.message
                 }
@@ -294,6 +301,33 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
     fun removeServiceMonitoring(number: String) {
         monitoredServices = routeStore.removeServiceMonitor(number)
     }
+
+    fun setWearSnapshotSharing(enabled: Boolean) {
+        integrationSettings = integrationSettings.copy(wearSnapshotSharingEnabled = enabled)
+        integrationStore.save(integrationSettings)
+        if (enabled) snapshot?.let { latest ->
+            viewModelScope.launch { WearSnapshotPublisher.publish(getApplication(), latest) }
+        }
+    }
+
+    fun setVoiceProfileSyncRequested(enabled: Boolean) {
+        integrationSettings = integrationSettings.copy(voiceProfileSyncRequested = enabled)
+        integrationStore.save(integrationSettings)
+    }
+
+    fun setAppleWatchSetupRequested(enabled: Boolean) {
+        integrationSettings = integrationSettings.copy(appleWatchSetupRequested = enabled)
+        integrationStore.save(integrationSettings)
+    }
+
+    fun unifiedProfile(): UnifiedBinarioProfile = UnifiedBinarioProfile(
+        activeRouteId = activeRoute.id,
+        direction = direction,
+        monitoredTrainNumbers = monitoredServices.map { it.number },
+        wearSnapshotSharingEnabled = integrationSettings.wearSnapshotSharingEnabled,
+        voiceProfileSyncRequested = integrationSettings.voiceProfileSyncRequested,
+        appleWatchSetupRequested = integrationSettings.appleWatchSetupRequested
+    )
 
     fun currentProviderLabel(): String = snapshot?.providerName ?: cache.lastProvider()
 

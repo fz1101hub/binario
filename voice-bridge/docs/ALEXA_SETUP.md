@@ -1,5 +1,9 @@
 # Binario — predisposizione Alexa Custom Skill
 
+## Posizione nel prodotto Binario
+
+Alexa non è un prodotto separato: è una superficie del profilo Binario gestito dall’app Android. L’utente abilita nell’app **Altro → Integrazioni → Comandi vocali e Alexa** la preferenza di collegamento; solo dopo un’autenticazione effettiva nel Voice Bridge tratte e monitoraggi potranno essere sincronizzati. L’interruttore Android non crea né conserva credenziali Alexa e non equivale a un account collegato.
+
 ## Stato della presente build
 
 Il bridge è pronto, ma intenzionalmente **non attivo** finché non sono configurati `ALEXA_SKILL_ID`, `ALEXA_OAUTH_CLIENT_ID`, `ALEXA_OAUTH_CLIENT_SECRET` e `VOICE_TOKEN_PEPPER`. In questo stato `POST /api/alexa/webhook` restituisce `503 alexa_not_configured`; non accetta richieste parziali o non firmate.

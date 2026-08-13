@@ -18,7 +18,7 @@
 | Refresh | Aggiorna manualmente l’elenco e conserva lo stato di freschezza del dato. |
 | Widget Android | Mostra 5 corse per pagina; le frecce cambiano pagina, il comando centrale cambia direzione, `Aggiorna` pianifica un refresh sicuro. |
 | Wear OS | Companion Android 11+/API 30+ con tratta attiva, massimo due corse, stato quality/freshness, refresh delegato al telefono, Tile e complication testuale. |
-| Apple Watch | Sorgenti watchOS nativi in `apple-watch/`: SwiftUI, Watch Connectivity, WidgetKit/Smart Stack, App Intents, Siri e Shortcuts. Richiedono Xcode su macOS per generazione, firma e test. |
+| Apple Watch | Il progetto watchOS va rigenerato dal contratto condiviso; nel worktree corrente è presente solo la sua configurazione di progetto. |
 | Accessibilità | Tema chiaro/scuro, palette ad alto contrasto, font scalabile, testo esplicito degli stati, target ampi e semantica TalkBack. |
 | Tema personale | Selettore persistente Sistema/Chiaro/Scuro nella barra superiore; la scelta resta locale al dispositivo. |
 | Privacy | Nessun account, advertising, tracking o geolocalizzazione. Tratte e cache restano locali. |
@@ -58,6 +58,10 @@ flowchart LR
 ```
 
 Il dominio dati è deliberatamente separato da Compose e dagli API Android. In futuro può essere estratto in un core Kotlin Multiplatform, mentre app Android/widget, Wear OS e l’app iOS/watchOS restano integrazioni native. Il Data Layer Wear OS trasporta solo un cache snapshot ridotto; non è una fonte live né un canale per credenziali o dati personali estesi.
+
+## Esperienza unificata e integrazioni
+
+L’app Android è il centro delle preferenze per widget, smartwatch Android, Apple Watch e comandi vocali. Da **Altro → Integrazioni** si controlla quali superfici possono ricevere lo snapshot della tratta attiva e si vede lo stato del collegamento. Token Alexa, segreti OAuth e credenziali non vengono mai memorizzati nel client. Wear OS è un companion cache-first controllato dall’app; il Voice Bridge è un profilo remoto opzionale da collegare in modo autenticato. Il progetto watchOS deve essere rigenerato dal contratto condiviso prima di dichiarare Apple Watch disponibile.
 
 ## Provider live: regole vincolanti
 
