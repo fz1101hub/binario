@@ -21,6 +21,20 @@ Impostare `sdk.dir` nel file locale `local.properties`, che resta escluso da Git
 
 L’APK debug dell’app è prodotto in `app/build/outputs/apk/debug/app-debug.apk`; l’APK Wear OS in `wear/build/outputs/apk/debug/wear-debug.apk`.
 
+## Voice Bridge Alexa e App Actions
+
+La cartella `voice-bridge/` contiene il backend separato per Alexa Custom Skill, dashboard protetta, OAuth 2.0 authorization-code, tratte personali e documentazione App Actions Android. Per la verifica locale:
+
+```bash
+cd voice-bridge
+pnpm install --frozen-lockfile
+pnpm test
+pnpm check
+pnpm build
+```
+
+Il bridge è deliberatamente inattivo finché non saranno impostati nel servizio di deployment i segreti `ALEXA_SKILL_ID`, `ALEXA_OAUTH_CLIENT_ID`, `ALEXA_OAUTH_CLIENT_SECRET` e `VOICE_TOKEN_PEPPER`. Questi valori non devono essere inseriti nel repository. Senza configurazione Alexa il webhook rifiuta la richiesta; senza una fonte ferroviaria autorizzata la risposta vocale resta **“dati non disponibili in tempo reale”**.
+
 ## Apple Watch
 
 La cartella `apple-watch/` contiene un progetto sorgente SwiftUI/watchOS dichiarato con XcodeGen. Aprirlo su macOS con Xcode/XcodeGen, configurare team e bundle identifier, quindi eseguire la build su simulatore e dispositivo. Il repository non include profili di provisioning, certificati o chiavi Apple.

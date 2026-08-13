@@ -53,4 +53,7 @@
 - [x] Preparare `.gitignore`, commit iniziale e istruzioni di riproducibilità del repository.
 - [x] Creare il repository GitHub privato e pubblicare il backup iniziale.
 - [x] Verificare remoto, visibilità privata e contenuti pubblicati.
+- [x] Inventariare i sorgenti Alexa Voice Bridge e le esclusioni necessarie prima dell’importazione.
+- [x] Importare il Voice Bridge nel repository Binario con istruzioni per configurazione inattiva e build locale.
+- [x] Controllare segreti, pubblicare il commit Voice Bridge e verificare il remoto privato.
 - [x] Verificare test, lint e APK della nuova architettura app-widget; resta la prova fisica di navigazione e accessibilità.
