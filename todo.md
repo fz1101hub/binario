@@ -66,7 +66,7 @@
 - [x] Definire il contratto di sincronizzazione autenticata e versionata per tratte, direzione e monitoraggi personali.
 - [x] Preparare Android al collegamento esplicito con Voice Bridge senza inserire segreti nel client.
 - [x] Verificare e consegnare l’incremento Apple Watch e profilo remoto Binario.
-- [ ] Definire modello locale, consenso e messaggi accessibili per data/ora, preferiti stazione, posizione e dettatura.
+- [x] Definire modello locale, consenso e messaggi accessibili per data/ora, preferiti stazione, posizione e dettatura.
 - [ ] Sostituire i controlli data e ora del pianificatore con selettori Android accessibili e persistenti nella ricerca corrente.
 - [ ] Aggiungere stazioni preferite locali e ordinamento delle stazioni più vicine dopo consenso di localizzazione puntuale.
 - [ ] Aggiungere dettatura dei campi partenza, arrivo, stazione e numero treno tramite riconoscimento vocale di sistema.
