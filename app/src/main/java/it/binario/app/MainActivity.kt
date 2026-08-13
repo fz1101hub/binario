@@ -3,6 +3,8 @@ package it.binario.app
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.app.DatePickerDialog
+import android.app.TimePickerDialog
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -68,6 +70,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -85,6 +88,8 @@ import it.binario.app.data.ServiceStatus
 import it.binario.app.data.Station
 import it.binario.app.data.TrainService
 import it.binario.app.data.accessibleUpdateTime
+import java.time.LocalDate
+import java.time.LocalTime
 
 private enum class Screen { PLANNER, TRAINS, STATIONS, MORE, RESULTS, DETAIL }
 private enum class SearchMode(val label: String) { ROUTE("Tratta"), TRAIN("N. treno"), STATION("Stazione") }
@@ -351,8 +356,35 @@ private fun PlannerScreen(
     var showFilters by rememberSaveable { mutableStateOf(false) }
     var mode by rememberSaveable { mutableStateOf(SearchMode.ROUTE) }
     var stationText by rememberSaveable { mutableStateOf("") }
-    var travelDay by rememberSaveable { mutableStateOf("Oggi") }
-    var travelTime by rememberSaveable { mutableStateOf("Adesso") }
+    var travelDate by rememberSaveable { mutableStateOf(LocalDate.now().toString()) }
+    var travelTime by rememberSaveable { mutableStateOf(LocalTime.now().withSecond(0).withNano(0).toString()) }
+    var showDatePicker by rememberSaveable { mutableStateOf(false) }
+    var showTimePicker by rememberSaveable { mutableStateOf(false) }
+    val context = LocalContext.current
+    if (showDatePicker) {
+        val selected = PlannerDateTime.dateOrToday(travelDate)
+        LaunchedEffect(selected) {
+            DatePickerDialog(context, { _, year, month, day ->
+                travelDate = LocalDate.of(year, month + 1, day).toString()
+                showDatePicker = false
+            }, selected.year, selected.monthValue - 1, selected.dayOfMonth).apply {
+                setOnDismissListener { showDatePicker = false }
+                show()
+            }
+        }
+    }
+    if (showTimePicker) {
+        val selected = PlannerDateTime.timeOrNow(travelTime)
+        LaunchedEffect(selected) {
+            TimePickerDialog(context, { _, hour, minute ->
+                travelTime = LocalTime.of(hour, minute).toString()
+                showTimePicker = false
+            }, selected.hour, selected.minute, true).apply {
+                setOnDismissListener { showTimePicker = false }
+                show()
+            }
+        }
+    }
     val origin = viewModel.stationFromName(originText)
     val destination = viewModel.stationFromName(destinationText)
     LazyColumn(modifier = modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(0.dp)) {
@@ -381,11 +413,17 @@ private fun PlannerScreen(
                             FilterChip(selected = returnJourney, onClick = { returnJourney = true }, label = { Text("Andata e ritorno") })
                         }
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                            OutlinedButton(onClick = { travelDay = if (travelDay == "Oggi") "Domani" else "Oggi" }, modifier = Modifier.weight(1f)) {
-                                Column(horizontalAlignment = Alignment.Start) { Text("DATA", style = MaterialTheme.typography.labelSmall); Text(travelDay, fontWeight = FontWeight.Bold) }
+                            OutlinedButton(
+                                onClick = { showDatePicker = true },
+                                modifier = Modifier.weight(1f).semantics { contentDescription = "Seleziona data. Valore attuale ${PlannerDateTime.dateLabel(travelDate)}" }
+                            ) {
+                                Column(horizontalAlignment = Alignment.Start) { Text("DATA", style = MaterialTheme.typography.labelSmall); Text(PlannerDateTime.dateLabel(travelDate), fontWeight = FontWeight.Bold) }
                             }
-                            OutlinedButton(onClick = { travelTime = when (travelTime) { "Adesso" -> "18:00"; "18:00" -> "20:00"; else -> "Adesso" } }, modifier = Modifier.weight(1f)) {
-                                Column(horizontalAlignment = Alignment.Start) { Text("ORA", style = MaterialTheme.typography.labelSmall); Text(travelTime, fontWeight = FontWeight.Bold) }
+                            OutlinedButton(
+                                onClick = { showTimePicker = true },
+                                modifier = Modifier.weight(1f).semantics { contentDescription = "Seleziona ora. Valore attuale ${PlannerDateTime.timeLabel(travelTime)}" }
+                            ) {
+                                Column(horizontalAlignment = Alignment.Start) { Text("ORA", style = MaterialTheme.typography.labelSmall); Text(PlannerDateTime.timeLabel(travelTime), fontWeight = FontWeight.Bold) }
                             }
                         }
                         FilterChip(
