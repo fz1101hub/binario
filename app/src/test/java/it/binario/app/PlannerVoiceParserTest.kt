@@ -32,4 +32,17 @@ class PlannerVoiceParserTest {
         assertEquals(termini, result.station)
         assertEquals(null, result.destination)
     }
+
+    @Test
+    fun `parses return journey and named date`() {
+        val result = PlannerVoiceParser.parse(
+            "Da Roma Termini a Torino Porta Nuova andata e ritorno il 18 agosto alle 8",
+            listOf(termini, torino),
+            LocalDate.of(2026, 8, 13)
+        )
+
+        assertEquals(true, result.returnJourney)
+        assertEquals(LocalDate.of(2026, 8, 18), result.date)
+        assertEquals(LocalTime.of(8, 0), result.time)
+    }
 }

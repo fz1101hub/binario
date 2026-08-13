@@ -388,13 +388,14 @@ private fun PlannerScreen(
             dictated.trainNumber?.let(viewModel::updateTrainNumberQuery)
             dictated.date?.let { travelDate = it.toString() }
             dictated.time?.let { travelTime = it.toString() }
+            dictated.returnJourney?.let { returnJourney = it }
             mode = when {
                 dictated.origin != null && dictated.destination != null -> SearchMode.ROUTE
                 dictated.trainNumber != null -> SearchMode.TRAIN
                 dictated.station != null -> SearchMode.STATION
                 else -> mode
             }
-            speechMessage = if (dictated.origin != null || dictated.destination != null || dictated.station != null || dictated.trainNumber != null || dictated.date != null || dictated.time != null) {
+            speechMessage = if (dictated.origin != null || dictated.destination != null || dictated.station != null || dictated.trainNumber != null || dictated.date != null || dictated.time != null || dictated.returnJourney != null) {
                 "Dati di viaggio aggiornati dalla dettatura. Verifica i campi prima di cercare."
             } else "Non ho riconosciuto una stazione, un numero treno, una data o un’ora. Puoi riprovare usando ad esempio: da Roma Termini a Torino Porta Nuova domani alle 18."
         }
@@ -663,6 +664,10 @@ private fun StationBoardScreen(modifier: Modifier, viewModel: TrainViewModel) {
 }
 
 private fun requestNearbyStationLocation(context: android.content.Context, onResult: (Location?) -> Unit) {
+    if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+        onResult(null)
+        return
+    }
     val locationManager = context.getSystemService(LocationManager::class.java) ?: run {
         onResult(null)
         return
