@@ -315,6 +315,17 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
         integrationStore.save(integrationSettings)
     }
 
+    fun voiceProfileSyncReadiness(): VoiceProfileSyncReadiness = when {
+        !integrationSettings.voiceProfileSyncRequested -> VoiceProfileSyncReadiness.DISABLED
+        else -> VoiceProfileSyncReadiness.ACCOUNT_LINK_REQUIRED
+    }
+
+    /** Prepara il body contrattuale, ma non esegue rete né conserva un token. */
+    fun preparedVoiceProfileRequest(expectedRevision: Int? = null): VoiceBridgeProfileRequest? {
+        if (voiceProfileSyncReadiness() != VoiceProfileSyncReadiness.READY_FOR_AUTHENTICATED_SYNC) return null
+        return unifiedProfile().toVoiceBridgeProfileRequest(expectedRevision)
+    }
+
     fun setAppleWatchSetupRequested(enabled: Boolean) {
         integrationSettings = integrationSettings.copy(appleWatchSetupRequested = enabled)
         integrationStore.save(integrationSettings)

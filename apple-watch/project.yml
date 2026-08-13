@@ -16,6 +16,13 @@ targets:
         INFOPLIST_KEY_CFBundleDisplayName: Binario
     entitlements:
       path: BinarioWatch/BinarioWatch.entitlements
+  BinarioWatchTests:
+    type: bundle.unit-test
+    platform: watchOS
+    deploymentTarget: "10.0"
+    sources: [BinarioWatchTests, Shared]
+    dependencies:
+      - target: BinarioWatch
   BinarioWatchWidgets:
     type: app-extension
     platform: watchOS

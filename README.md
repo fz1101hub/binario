@@ -18,7 +18,7 @@
 | Refresh | Aggiorna manualmente l’elenco e conserva lo stato di freschezza del dato. |
 | Widget Android | Mostra 5 corse per pagina; le frecce cambiano pagina, il comando centrale cambia direzione, `Aggiorna` pianifica un refresh sicuro. |
 | Wear OS | Companion Android 11+/API 30+ con tratta attiva, massimo due corse, stato quality/freshness, refresh delegato al telefono, Tile e complication testuale. |
-| Apple Watch | Il progetto watchOS va rigenerato dal contratto condiviso; nel worktree corrente è presente solo la sua configurazione di progetto. |
+| Apple Watch | Companion nativo watchOS 10 ricostruito in `apple-watch/`: SwiftUI, cache-first, Widget/complication, App Intent e Watch Connectivity per una futura app iOS Binario. Richiede Xcode su macOS per generazione, firma e test. |
 | Accessibilità | Tema chiaro/scuro, palette ad alto contrasto, font scalabile, testo esplicito degli stati, target ampi e semantica TalkBack. |
 | Tema personale | Selettore persistente Sistema/Chiaro/Scuro nella barra superiore; la scelta resta locale al dispositivo. |
 | Privacy | Nessun account, advertising, tracking o geolocalizzazione. Tratte e cache restano locali. |
@@ -61,7 +61,7 @@ Il dominio dati è deliberatamente separato da Compose e dagli API Android. In f
 
 ## Esperienza unificata e integrazioni
 
-L’app Android è il centro delle preferenze per widget, smartwatch Android, Apple Watch e comandi vocali. Da **Altro → Integrazioni** si controlla quali superfici possono ricevere lo snapshot della tratta attiva e si vede lo stato del collegamento. Token Alexa, segreti OAuth e credenziali non vengono mai memorizzati nel client. Wear OS è un companion cache-first controllato dall’app; il Voice Bridge è un profilo remoto opzionale da collegare in modo autenticato. Il progetto watchOS deve essere rigenerato dal contratto condiviso prima di dichiarare Apple Watch disponibile.
+L’app Android è il centro delle preferenze per widget, smartwatch Android, Apple Watch e comandi vocali. Da **Altro → Integrazioni** si controlla quali superfici possono ricevere lo snapshot della tratta attiva e si vede lo stato del collegamento. Token Alexa, segreti OAuth e credenziali non vengono mai memorizzati nel client. Wear OS e Apple Watch sono companion cache-first; il Voice Bridge offre un profilo remoto opzionale, protetto e versionato. Android non invia ancora il profilo: il collegamento richiederà una sessione utente esplicita prima di abilitare qualsiasi rete.
 
 ## Provider live: regole vincolanti
 

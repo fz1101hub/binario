@@ -16,4 +16,7 @@
     <string name="widget_column_destination_train">DESTINAZIONE / TRENO</string>
     <string name="widget_column_platform">BIN.</string>
     <string name="widget_column_status">STATO</string>
+    <string name="shortcut_active_route">Tratta attiva</string>
+    <string name="shortcut_next_departures">Prossime corse</string>
+    <string name="shortcut_train_search">Ricerca treno</string>
 </resources>

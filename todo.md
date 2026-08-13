@@ -62,3 +62,7 @@
 - [x] Allineare Voice Bridge e companion smartwatch al contratto condiviso senza trasferire segreti al client.
 - [x] Verificare e pubblicare l’esperienza unificata con aggiornamento del repository privato.
 - [x] Verificare test, lint e APK della nuova architettura app-widget; resta la prova fisica di navigazione e accessibilità.
+- [x] Ricostruire il companion watchOS nativo dal contratto Binario condiviso con schermata rapida, complicazione e snapshot cache-first.
+- [x] Definire il contratto di sincronizzazione autenticata e versionata per tratte, direzione e monitoraggi personali.
+- [x] Preparare Android al collegamento esplicito con Voice Bridge senza inserire segreti nel client.
+- [ ] Verificare e consegnare l’incremento Apple Watch e profilo remoto Binario.

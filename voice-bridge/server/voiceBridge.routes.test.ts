@@ -3,10 +3,12 @@ import { describe, expect, it, vi } from "vitest";
 const dbMocks = vi.hoisted(() => ({
   createPersonalRoute: vi.fn(),
   getAlexaLinkStatus: vi.fn(),
+  getRemoteProfile: vi.fn(),
   listPersonalRoutes: vi.fn(),
   removePersonalRoute: vi.fn(),
   revokeAllVoiceCredentialsForUser: vi.fn(),
   setPersonalRoutePinned: vi.fn(),
+  upsertRemoteProfile: vi.fn(),
 }));
 
 vi.mock("./db", () => dbMocks);

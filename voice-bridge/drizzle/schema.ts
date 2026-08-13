@@ -48,6 +48,33 @@ export const railwayRoutes = mysqlTable(
 );
 
 /**
+ * Small, versioned personal state shared only after an explicit authenticated
+ * connection. It deliberately excludes live snapshots, travel history, tokens,
+ * location, tickets, audio and any credential material.
+ */
+export const binarioProfiles = mysqlTable(
+  "binario_profiles",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+    schemaVersion: int("schemaVersion").notNull().default(1),
+    activeRouteId: varchar("activeRouteId", { length: 120 }).notNull(),
+    direction: mysqlEnum("direction", ["OUTBOUND", "RETURN"]).notNull(),
+    monitoredTrainNumbersJson: text("monitoredTrainNumbersJson").notNull(),
+    wearSnapshotSharingEnabled: boolean("wearSnapshotSharingEnabled").notNull().default(true),
+    voiceProfileSyncRequested: boolean("voiceProfileSyncRequested").notNull().default(false),
+    appleWatchSetupRequested: boolean("appleWatchSetupRequested").notNull().default(false),
+    revision: int("revision").notNull().default(1),
+    lastMutationId: varchar("lastMutationId", { length: 36 }).notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => ({
+    userUnique: uniqueIndex("binario_profiles_user_unique").on(table.userId),
+  })
+);
+
+/**
  * Link metadata is kept separate from OAuth artefacts. The Alexa user value is
  * represented only by a one-way HMAC digest and is never written to logs.
  */
@@ -106,4 +133,5 @@ export const oauthRefreshTokens = mysqlTable(
 );
 
 export type RailwayRoute = typeof railwayRoutes.$inferSelect;
+export type BinarioProfile = typeof binarioProfiles.$inferSelect;
 export type AlexaAccountLink = typeof alexaAccountLinks.$inferSelect;

@@ -4,6 +4,7 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { createPersonalRoute, getAlexaLinkStatus, listPersonalRoutes, removePersonalRoute, revokeAllVoiceCredentialsForUser, setPersonalRoutePinned } from "./db";
+import { createProfileRouter } from "./profile/router";
 import { isAlexaConfigured } from "./voice/config";
 
 const routeInput = z.object({
@@ -42,6 +43,7 @@ export const appRouter = router({
         return { success: true } as const;
       }),
   }),
+  profile: createProfileRouter(),
   voice: router({
     status: protectedProcedure.query(async ({ ctx }) => {
       const link = await getAlexaLinkStatus(ctx.user.id);

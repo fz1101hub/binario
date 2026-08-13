@@ -1,5 +1,7 @@
 package it.binario.app
 
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -86,18 +88,32 @@ import it.binario.app.data.accessibleUpdateTime
 
 private enum class Screen { PLANNER, TRAINS, STATIONS, MORE, RESULTS, DETAIL }
 private enum class SearchMode(val label: String) { ROUTE("Tratta"), TRAIN("N. treno"), STATION("Stazione") }
+private sealed interface BinarioDeepLink {
+    data object ActiveRoute : BinarioDeepLink
+    data object NextDepartures : BinarioDeepLink
+    data class TrainSearch(val number: String) : BinarioDeepLink
+}
 
 class MainActivity : ComponentActivity() {
+    private var deepLink by mutableStateOf<BinarioDeepLink?>(null)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        deepLink = parseBinarioDeepLink(intent)
         enableEdgeToEdge()
         setContent {
             val themeSettings = remember { ThemeSettings(applicationContext) }
             BinarioTheme(themeSettings.mode) {
                 val viewModel: TrainViewModel = viewModel()
-                BinarioApp(viewModel, themeSettings.mode, themeSettings::selectMode)
+                BinarioApp(viewModel, themeSettings.mode, themeSettings::selectMode, deepLink)
             }
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        deepLink = parseBinarioDeepLink(intent)
     }
 }
 
@@ -106,11 +122,22 @@ class MainActivity : ComponentActivity() {
 private fun BinarioApp(
     viewModel: TrainViewModel,
     themeMode: AppThemeMode,
-    onThemeModeChange: (AppThemeMode) -> Unit
+    onThemeModeChange: (AppThemeMode) -> Unit,
+    deepLink: BinarioDeepLink?
 ) {
     var screen by rememberSaveable { mutableStateOf(Screen.PLANNER) }
     var detailReturnScreen by rememberSaveable { mutableStateOf(Screen.RESULTS) }
     var showThemePicker by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(deepLink) {
+        when (deepLink) {
+            BinarioDeepLink.ActiveRoute, BinarioDeepLink.NextDepartures -> screen = Screen.TRAINS
+            is BinarioDeepLink.TrainSearch -> {
+                viewModel.updateTrainNumberQuery(deepLink.number)
+                screen = Screen.RESULTS
+            }
+            null -> Unit
+        }
+    }
     val title = when (screen) {
         Screen.PLANNER -> "Cerca e consulta"
         Screen.TRAINS -> "Treni"
@@ -845,6 +872,7 @@ private fun RoutesScreen(modifier: Modifier, viewModel: TrainViewModel, openRout
         item {
             IntegrationsPanel(
                 settings = viewModel.integrationSettings,
+                voiceReadiness = viewModel.voiceProfileSyncReadiness(),
                 onWearSharingChanged = viewModel::setWearSnapshotSharing,
                 onVoiceProfileChanged = viewModel::setVoiceProfileSyncRequested,
                 onAppleWatchSetupChanged = viewModel::setAppleWatchSetupRequested
@@ -887,6 +915,7 @@ private fun RoutesScreen(modifier: Modifier, viewModel: TrainViewModel, openRout
 @Composable
 private fun IntegrationsPanel(
     settings: IntegrationSettings,
+    voiceReadiness: VoiceProfileSyncReadiness,
     onWearSharingChanged: (Boolean) -> Unit,
     onVoiceProfileChanged: (Boolean) -> Unit,
     onAppleWatchSetupChanged: (Boolean) -> Unit
@@ -907,7 +936,11 @@ private fun IntegrationsPanel(
             )
             IntegrationChoice(
                 title = "Comandi vocali e Alexa",
-                detail = if (settings.voiceProfileSyncRequested) "Profilo pronto da collegare al Voice Bridge" else "Profilo vocale non condiviso; nessun account collegato",
+                detail = when (voiceReadiness) {
+                    VoiceProfileSyncReadiness.DISABLED -> "Profilo vocale non condiviso; nessun account collegato"
+                    VoiceProfileSyncReadiness.ACCOUNT_LINK_REQUIRED -> "Collegamento account Voice Bridge richiesto; nessun dato inviato"
+                    VoiceProfileSyncReadiness.READY_FOR_AUTHENTICATED_SYNC -> "Profilo pronto per sincronizzazione autenticata"
+                },
                 selected = settings.voiceProfileSyncRequested,
                 onClick = { onVoiceProfileChanged(!settings.voiceProfileSyncRequested) }
             )
@@ -933,6 +966,24 @@ private fun IntegrationChoice(title: String, detail: String, selected: Boolean, 
             Text(detail, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         FilterChip(selected = selected, onClick = onClick, label = { Text(if (selected) "Attivo" else "Non attivo") })
+    }
+}
+
+private fun parseBinarioDeepLink(intent: Intent?): BinarioDeepLink? {
+    if (intent?.action != Intent.ACTION_VIEW) return null
+    val uri: Uri = intent.data ?: return null
+    if (uri.scheme != "binario") return null
+    return when {
+        uri.host == "route" && uri.pathSegments == listOf("active") -> BinarioDeepLink.ActiveRoute
+        uri.host == "departures" && uri.pathSegments == listOf("next") -> BinarioDeepLink.NextDepartures
+        uri.host == "train" && uri.pathSegments == listOf("search") -> {
+            val number = uri.getQueryParameter("number")
+                ?.filter { it.isLetterOrDigit() }
+                ?.take(12)
+                ?.takeIf { it.isNotBlank() }
+            number?.let(BinarioDeepLink::TrainSearch)
+        }
+        else -> null
     }
 }
 

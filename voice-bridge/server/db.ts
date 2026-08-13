@@ -2,6 +2,7 @@ import { and, desc, eq, gt, isNull } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   alexaAccountLinks,
+  binarioProfiles,
   InsertUser,
   oauthAuthorizationCodes,
   oauthRefreshTokens,
@@ -10,6 +11,8 @@ import {
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 import { normalizePersonalRouteDraft, type PersonalRouteDraft } from "./routes/contract";
+import { toRemoteProfileDto, type RemoteProfileDraft } from "./profile/contract";
+import { synchronizeRemoteProfile, type RemoteProfileStore } from "./profile/service";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -128,6 +131,39 @@ export async function removePersonalRoute(userId: number, routeId: number) {
   const db = await getDb();
   if (!db) throw new Error("Archivio personale non disponibile");
   await db.delete(railwayRoutes).where(and(eq(railwayRoutes.id, routeId), eq(railwayRoutes.userId, userId)));
+}
+
+export async function getRemoteProfile(userId: number) {
+  const record = await getStoredRemoteProfile(userId);
+  return record ? toRemoteProfileDto(record) : null;
+}
+
+async function getStoredRemoteProfile(userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Archivio profilo non disponibile");
+  const rows = await db.select().from(binarioProfiles).where(eq(binarioProfiles.userId, userId)).limit(1);
+  return rows[0] ?? null;
+}
+
+export async function upsertRemoteProfile(userId: number, input: RemoteProfileDraft) {
+  const db = await getDb();
+  if (!db) throw new Error("Archivio profilo non disponibile");
+  const store: RemoteProfileStore = {
+    load: async id => {
+      const rows = await db.select().from(binarioProfiles).where(eq(binarioProfiles.userId, id)).limit(1);
+      return rows[0] ?? null;
+    },
+    insert: async (id, revision, values) => {
+      await db.insert(binarioProfiles).values({ userId: id, revision, ...values });
+    },
+    compareAndSet: async (id, expectedRevision, nextRevision, values) => {
+      const update = await db.update(binarioProfiles)
+        .set({ ...values, revision: nextRevision })
+        .where(and(eq(binarioProfiles.userId, id), eq(binarioProfiles.revision, expectedRevision)));
+      return Number(update[0].affectedRows) === 1;
+    },
+  };
+  return synchronizeRemoteProfile(store, userId, input);
 }
 
 export async function getAlexaLinkStatus(userId: number) {
