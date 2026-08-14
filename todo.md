@@ -71,7 +71,7 @@
 - [x] Aggiungere stazioni preferite locali e ordinamento delle stazioni più vicine dopo consenso di localizzazione puntuale.
 - [x] Aggiungere dettatura dei campi partenza, arrivo, stazione e numero treno tramite riconoscimento vocale di sistema.
 - [x] Verificare, documentare e pubblicare l’incremento del pianificatore con un commit e push Git dedicati.
-- [ ] Mappare la navigazione attuale e definire stati accessibili per dettatura contestuale, filtro cambi e impostazioni.
+- [x] Mappare la navigazione attuale e definire stati accessibili per dettatura contestuale, filtro cambi e impostazioni.
 - [ ] Spostare il microfono nelle schede di ricerca viaggio, treno e stazione, con messaggi coerenti per ciascun contesto.
 - [ ] Aggiungere filtro viaggio diretto o numero massimo di cambi, dichiarando il comportamento per il catalogo non live.
 - [ ] Unificare le aree Treni e Stazioni in una sola destinazione operativa con sezioni chiare.
