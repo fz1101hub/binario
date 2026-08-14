@@ -46,6 +46,7 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
     private val integrationStore = IntegrationSettingsStore(application)
     private val stationPreferences = StationPreferences(application)
     private val commuterAlertStore = CommuterAlertStore(application)
+    private val personalTravelStore = PersonalTravelStore(application)
     private val dataSource: TrainDataSource = RailDataRepository()
 
     val stations = listOf(
@@ -110,6 +111,12 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
         private set
     var commuterAlerts by mutableStateOf(commuterAlertStore.alerts())
         private set
+    var stationMonitors by mutableStateOf(personalTravelStore.stationMonitors(stations))
+        private set
+    var activeTrip by mutableStateOf(personalTravelStore.activeTrip())
+        private set
+    var widgetSurface by mutableStateOf(personalTravelStore.widgetSurface())
+        private set
 
     init {
         refresh()
@@ -131,6 +138,16 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
     /** Riceve una posizione puntuale dalla UI; non viene mai persistita. */
     fun updateNearbyStations(latitude: Double, longitude: Double) {
         nearbyStations = StationCoordinates.nearby(stations, latitude, longitude).take(8)
+    }
+
+    fun isStationMonitored(station: Station): Boolean = stationMonitors.any { it.stationId == station.id }
+
+    fun toggleStationMonitor(station: Station, mode: StationMonitorMode = StationMonitorMode.BOTH) {
+        stationMonitors = personalTravelStore.toggleStationMonitor(station, mode, stations)
+    }
+
+    fun removeStationMonitor(stationId: String) {
+        stationMonitors = personalTravelStore.removeStationMonitor(stationId, stations)
     }
 
     fun activateRoute(route: SavedRoute) {
@@ -346,6 +363,25 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
     fun removeCommuterAlert(alert: CommuterAlert) {
         CommuterAlertScheduler.cancel(getApplication(), alert.id)
         commuterAlerts = commuterAlertStore.remove(alert.id)
+    }
+
+    fun startActiveTrip(service: TrainService) {
+        activeTrip = personalTravelStore.startTrip(service)
+    }
+
+    fun advanceActiveTrip() {
+        activeTrip = personalTravelStore.advanceTrip()
+    }
+
+    fun endActiveTrip() {
+        personalTravelStore.endTrip()
+        activeTrip = null
+    }
+
+    fun selectWidgetSurface(surface: WidgetSurface) {
+        widgetSurface = surface
+        personalTravelStore.saveWidgetSurface(surface)
+        RouteWidgetProvider.refreshAll(getApplication())
     }
 
     fun setWearSnapshotSharing(enabled: Boolean) {

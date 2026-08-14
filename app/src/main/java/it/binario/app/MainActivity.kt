@@ -321,6 +321,10 @@ private fun BinarioApp(
                     onToggleMonitoring = { viewModel.toggleServiceMonitoring(service) },
                     onScheduleStopAlarm = scheduleStopAlarm,
                     alarmFeedback = stopAlarmFeedback,
+                    activeTrip = viewModel.activeTrip,
+                    onStartActiveTrip = { viewModel.startActiveTrip(service) },
+                    onAdvanceActiveTrip = viewModel::advanceActiveTrip,
+                    onEndActiveTrip = viewModel::endActiveTrip,
                     onShare = {
                         val content = TrainShareFormatter.create(
                             service = service,
@@ -731,6 +735,7 @@ private fun RouteResultsScreen(modifier: Modifier, viewModel: TrainViewModel, op
 private fun StationBoardScreen(modifier: Modifier, viewModel: TrainViewModel) {
     var stationText by rememberSaveable { mutableStateOf("") }
     var locationMessage by rememberSaveable { mutableStateOf<String?>(null) }
+    var monitorMode by rememberSaveable { mutableStateOf(StationMonitorMode.BOTH.name) }
     val context = LocalContext.current
     fun locateNearbyStations() {
         requestNearbyStationLocation(context) { location ->
@@ -759,6 +764,18 @@ private fun StationBoardScreen(modifier: Modifier, viewModel: TrainViewModel) {
                         onSelect = { stationText = station.name },
                         onToggleFavourite = { viewModel.toggleStationFavourite(station) }
                     )
+                    Text("Monitoraggio locale", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        items(StationMonitorMode.entries) { mode ->
+                            FilterChip(selected = monitorMode == mode.name, onClick = { monitorMode = mode.name }, label = { Text(mode.label) })
+                        }
+                    }
+                    OutlinedButton(
+                        onClick = { viewModel.toggleStationMonitor(station, StationMonitorMode.valueOf(monitorMode)) },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(if (viewModel.isStationMonitored(station)) "Rimuovi monitoraggio stazione" else "Monitora questa stazione")
+                    }
                 }
                 OutlinedButton(
                     onClick = {
@@ -1305,6 +1322,17 @@ private fun SettingsScreen(
                 onRemove = viewModel::removeCommuterAlert
             )
         }
+        item {
+            PersonalTravelPanel(
+                activeTrip = viewModel.activeTrip,
+                stationMonitors = viewModel.stationMonitors,
+                widgetSurface = viewModel.widgetSurface,
+                onAdvanceTrip = viewModel::advanceActiveTrip,
+                onEndTrip = viewModel::endActiveTrip,
+                onRemoveStationMonitor = viewModel::removeStationMonitor,
+                onSelectWidgetSurface = viewModel::selectWidgetSurface
+            )
+        }
         item { SettingsSectionTitle("Integrazioni") }
         item {
             IntegrationsPanel(
@@ -1441,6 +1469,45 @@ private fun CommuterAlertSheet(
             FilterChip(selected = quietHours, onClick = { quietHours = !quietHours }, label = { Text("Fascia silenziosa 22:00–07:00") })
             Button(onClick = { onSave(station.trim(), time, lead, AlertRepeat.valueOf(repeat), quietHours) }, enabled = station.isNotBlank(), modifier = Modifier.fillMaxWidth()) { Text("Salva avviso") }
         }
+    }
+}
+
+@Composable
+private fun PersonalTravelPanel(
+    activeTrip: ActiveTrip?,
+    stationMonitors: List<StationMonitor>,
+    widgetSurface: WidgetSurface,
+    onAdvanceTrip: () -> Unit,
+    onEndTrip: () -> Unit,
+    onRemoveStationMonitor: (String) -> Unit,
+    onSelectWidgetSurface: (WidgetSurface) -> Unit
+) {
+    Column(Modifier.padding(horizontal = 20.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text("Viaggio e monitoraggi", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        activeTrip?.let { trip ->
+            Text("Viaggio attivo · Treno ${trip.trainNumber}", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+            Text(trip.nextStop?.let { "Prossima fermata: ${it.station}, prevista ${it.expected}${it.platform?.let { platform -> ", binario $platform" }.orEmpty()}" } ?: "Viaggio completato", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(onClick = onAdvanceTrip, enabled = !trip.isComplete) { Text("Fermata raggiunta") }
+                TextButton(onClick = onEndTrip) { Text("Termina") }
+            }
+        } ?: Text("Nessun viaggio attivo. Apri il dettaglio di un treno per iniziarne il monitoraggio personale.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        if (stationMonitors.isNotEmpty()) {
+            Text("Stazioni monitorate", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+            stationMonitors.forEach { monitor ->
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text(monitor.accessibleSummary, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodySmall)
+                    IconButton(onClick = { onRemoveStationMonitor(monitor.stationId) }) { Icon(Icons.Default.DeleteOutline, contentDescription = "Rimuovi monitoraggio ${monitor.stationName}") }
+                }
+            }
+        }
+        Text("Superficie widget", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            items(WidgetSurface.entries) { surface ->
+                FilterChip(selected = widgetSurface == surface, onClick = { onSelectWidgetSurface(surface) }, label = { Text(surface.label) })
+            }
+        }
+        Text("Le superfici Viaggio attivo e Stazione monitorata riportano lo stato personale; senza provider autorizzato non mostrano un tabellone live.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
@@ -1608,6 +1675,10 @@ private fun ServiceDetailScreen(
     onToggleMonitoring: () -> Unit,
     onScheduleStopAlarm: (TrainService, TrainStop) -> Unit,
     alarmFeedback: String?,
+    activeTrip: ActiveTrip?,
+    onStartActiveTrip: () -> Unit,
+    onAdvanceActiveTrip: () -> Unit,
+    onEndActiveTrip: () -> Unit,
     onShare: () -> Unit
 ) {
     val dataLabel = if (isDemonstration) "Catalogo dimostrativo locale — non live" else freshness?.accessibleLabel ?: "dati non disponibili in tempo reale"
@@ -1644,6 +1715,26 @@ private fun ServiceDetailScreen(
                         Icon(if (isMonitored) Icons.Default.Star else Icons.Default.StarBorder, contentDescription = if (isMonitored) "Rimuovi monitoraggio treno" else "Monitora questo treno")
                     }
                     IconButton(onClick = onRefresh) { Icon(Icons.Default.Refresh, contentDescription = "Aggiorna dettaglio della corsa") }
+                }
+            }
+        }
+        item {
+            Surface(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 4.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant,
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    val isThisTrip = activeTrip?.trainNumber == service.number
+                    Text(if (isThisTrip) "Viaggio attivo" else "Segui questo viaggio", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                    Text(if (isThisTrip) activeTrip?.nextStop?.let { "Prossima fermata: ${it.station} alle ${it.expected}" } ?: "Viaggio completato" else "Conserva localmente la prossima fermata e avanzala manualmente.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        if (!isThisTrip) Button(onClick = onStartActiveTrip) { Text("Inizia viaggio") }
+                        else {
+                            OutlinedButton(onClick = onAdvanceActiveTrip, enabled = activeTrip?.isComplete == false) { Text("Fermata raggiunta") }
+                            TextButton(onClick = onEndActiveTrip) { Text("Termina") }
+                        }
+                    }
                 }
             }
         }

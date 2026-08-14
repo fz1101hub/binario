@@ -17,7 +17,9 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import it.binario.app.MainActivity
+import it.binario.app.PersonalTravelStore
 import it.binario.app.R
+import it.binario.app.WidgetSurface
 import it.binario.app.data.DataResult
 import it.binario.app.data.Direction
 import it.binario.app.data.Freshness
@@ -97,6 +99,12 @@ class RouteWidgetProvider : AppWidgetProvider() {
                 return
             }
 
+            val selectedSurface = PersonalTravelStore(context).widgetSurface()
+            if (selectedSurface != WidgetSurface.ACTIVE_ROUTE) {
+                renderPersonalSurface(context, manager, widgetId, views, selectedSurface)
+                return
+            }
+
             val pageSize = 5
             val maxPage = (state.services.size - 1).coerceAtLeast(0) / pageSize
             val page = state.page.coerceIn(0, maxPage)
@@ -136,6 +144,59 @@ class RouteWidgetProvider : AppWidgetProvider() {
             views.setOnClickPendingIntent(R.id.widget_direction, actionIntent(context, ACTION_SWITCH_DIRECTION, widgetId))
             views.setOnClickPendingIntent(R.id.widget_refresh, actionIntent(context, ACTION_REFRESH, widgetId))
             views.setOnClickPendingIntent(R.id.widget_root, openAppIntent(context, widgetId))
+            manager.updateAppWidget(widgetId, views)
+        }
+
+        private fun renderPersonalSurface(
+            context: Context,
+            manager: AppWidgetManager,
+            widgetId: Int,
+            views: RemoteViews,
+            surface: WidgetSurface
+        ) {
+            val personal = PersonalTravelStore(context)
+            rowIds.forEach { id -> views.setViewVisibility(id, View.GONE) }
+            views.setViewVisibility(R.id.widget_column_header, View.VISIBLE)
+            when (surface) {
+                WidgetSurface.ACTIVE_TRIP -> {
+                    val trip = personal.activeTrip()
+                    val stop = trip?.nextStop
+                    views.setTextViewText(R.id.widget_route, "VIAGGIO ATTIVO")
+                    if (stop == null) {
+                        views.setTextViewText(R.id.widget_meta, "NESSUNA PROSSIMA FERMATA · STATO LOCALE")
+                    } else {
+                        views.setTextViewText(R.id.widget_meta, "TRENO ${trip.trainNumber} · STATO LOCALE")
+                        views.setViewVisibility(rowIds[0], View.VISIBLE)
+                        views.setTextViewText(timeIds[0], stop.expected)
+                        views.setTextViewText(destinationIds[0], stop.station)
+                        views.setTextViewText(trainIds[0], "PROSSIMA FERMATA")
+                        views.setTextViewText(platformIds[0], stop.platform?.let { "BIN $it" } ?: "—")
+                        views.setTextViewText(statusIds[0], "LOCALE")
+                        views.setContentDescription(rowIds[0], "Viaggio attivo. Prossima fermata ${stop.station}, prevista ${stop.expected}.")
+                    }
+                    views.setTextViewText(R.id.widget_direction, "VIAGGIO")
+                }
+                WidgetSurface.STATION_MONITOR -> {
+                    val monitor = personal.stationMonitors(emptyList()).firstOrNull()
+                    views.setTextViewText(R.id.widget_route, "STAZIONE MONITORATA")
+                    views.setTextViewText(R.id.widget_meta, monitor?.let { "${it.stationName.uppercase()} · ${it.mode.label.uppercase()}" } ?: "NESSUNA STAZIONE SALVATA")
+                    views.setViewVisibility(rowIds[0], View.VISIBLE)
+                    views.setTextViewText(timeIds[0], "—")
+                    views.setTextViewText(destinationIds[0], monitor?.stationName ?: "Aggiungi una stazione")
+                    views.setTextViewText(trainIds[0], "DATI NON LIVE")
+                    views.setTextViewText(platformIds[0], "—")
+                    views.setTextViewText(statusIds[0], "INFO")
+                    views.setContentDescription(rowIds[0], "Monitoraggio stazione. Dati non disponibili in tempo reale.")
+                    views.setTextViewText(R.id.widget_direction, "STAZIONE")
+                }
+                WidgetSurface.ACTIVE_ROUTE -> Unit
+            }
+            views.setTextViewText(R.id.widget_refresh, "Apri")
+            views.setOnClickPendingIntent(R.id.widget_root, openAppIntent(context, widgetId))
+            views.setOnClickPendingIntent(R.id.widget_refresh, openAppIntent(context, widgetId))
+            views.setOnClickPendingIntent(R.id.widget_direction, openAppIntent(context, widgetId))
+            views.setOnClickPendingIntent(R.id.widget_previous_page, openAppIntent(context, widgetId))
+            views.setOnClickPendingIntent(R.id.widget_next_page, openAppIntent(context, widgetId))
             manager.updateAppWidget(widgetId, views)
         }
 
