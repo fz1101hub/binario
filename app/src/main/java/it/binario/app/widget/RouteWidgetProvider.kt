@@ -7,6 +7,7 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.util.Base64
+import android.util.TypedValue
 import android.view.View
 import android.widget.RemoteViews
 import androidx.core.content.ContextCompat
@@ -37,6 +38,10 @@ import kotlinx.coroutines.withContext
 class RouteWidgetProvider : AppWidgetProvider() {
     override fun onUpdate(context: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray) {
         appWidgetIds.forEach { render(context, appWidgetManager, it) }
+    }
+
+    override fun onAppWidgetOptionsChanged(context: Context, appWidgetManager: AppWidgetManager, appWidgetId: Int, newOptions: android.os.Bundle) {
+        render(context, appWidgetManager, appWidgetId)
     }
 
     override fun onReceive(context: Context, intent: Intent) {
@@ -114,7 +119,9 @@ class RouteWidgetProvider : AppWidgetProvider() {
                 return
             }
 
-            val pageSize = 5
+            val mode = layoutMode(manager, widgetId)
+            applyDensity(views, mode)
+            val pageSize = mode.visibleRows
             val maxPage = (state.services.size - 1).coerceAtLeast(0) / pageSize
             val page = state.page.coerceIn(0, maxPage)
             if (page != state.page) WidgetStateStore.setPage(context, page)
@@ -125,7 +132,7 @@ class RouteWidgetProvider : AppWidgetProvider() {
                 R.id.widget_meta,
                 "${state.freshness.accessibleLabel.uppercase()} · PAG ${page + 1}/${maxPage + 1} · ${accessibleUpdateTime(state.retrievedAt)}"
             )
-            views.setViewVisibility(R.id.widget_column_header, View.VISIBLE)
+            views.setViewVisibility(R.id.widget_column_header, if (mode.showColumnHeader) View.VISIBLE else View.GONE)
             views.setContentDescription(
                 R.id.widget_route,
                 "Apri Binario. ${state.routeLabel}. ${state.freshness.accessibleLabel}. ${accessibleUpdateTime(state.retrievedAt)}"
@@ -154,6 +161,20 @@ class RouteWidgetProvider : AppWidgetProvider() {
             views.setOnClickPendingIntent(R.id.widget_refresh, actionIntent(context, ACTION_REFRESH, widgetId))
             views.setOnClickPendingIntent(R.id.widget_root, openAppIntent(context, widgetId))
             manager.updateAppWidget(widgetId, views)
+        }
+
+        private fun layoutMode(manager: AppWidgetManager, widgetId: Int): WidgetLayoutMode {
+            val options = manager.getAppWidgetOptions(widgetId)
+            return WidgetLayoutMode.fromSize(
+                options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 300),
+                options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 250)
+            )
+        }
+
+        private fun applyDensity(views: RemoteViews, mode: WidgetLayoutMode) {
+            views.setTextViewTextSize(R.id.widget_route, TypedValue.COMPLEX_UNIT_SP, mode.routeTextSizeSp)
+            timeIds.forEach { views.setTextViewTextSize(it, TypedValue.COMPLEX_UNIT_SP, mode.rowTextSizeSp) }
+            destinationIds.forEach { views.setTextViewTextSize(it, TypedValue.COMPLEX_UNIT_SP, mode.rowTextSizeSp) }
         }
 
         private fun renderConfigurationRequired(context: Context, manager: AppWidgetManager, widgetId: Int, views: RemoteViews) {
