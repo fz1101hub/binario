@@ -77,3 +77,9 @@
 - [x] Unificare le aree Treni e Stazioni in una sola destinazione operativa con sezioni chiare.
 - [x] Riorganizzare Altro come pagina Impostazioni con sezioni tematiche e accessi alle integrazioni esistenti.
 - [x] Verificare, documentare e pubblicare la riorganizzazione con commit e push Git dedicati.
+- [ ] Definire il comportamento locale, privacy e accessibilità per widget-tabellone, sveglia alla fermata e condivisione dei dettagli treno.
+- [ ] Ridisegnare il widget con gerarchia da tabellone ferroviario originale, mantenendo cinque corse per pagina, refresh e cambio direzione.
+- [ ] Aggiungere una sveglia locale configurabile per una fermata, con notifiche e comportamento esplicito in assenza di dati live.
+- [ ] Aggiungere condivisione testo tramite foglio nativo Android e contratto di contenuto riutilizzabile dal futuro companion iOS.
+- [ ] Rendere le sezioni Treni e Stazioni della schermata Consulta due schede più squadrate e immediatamente riconoscibili.
+- [ ] Verificare, documentare e pubblicare l’incremento widget, sveglia, condivisione e UI Consulta con commit e push Git dedicati.
