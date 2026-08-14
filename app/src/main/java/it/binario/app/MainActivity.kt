@@ -406,19 +406,22 @@ private fun OperationsScreen(
     openSearch: () -> Unit
 ) {
     Column(modifier = modifier.fillMaxSize()) {
-        LazyRow(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 20.dp, vertical = 10.dp)
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            items(OperationsSection.entries) { section ->
-                FilterChip(
-                    selected = selectedSection == section,
-                    onClick = { onSectionSelected(section) },
-                    label = { Text(section.label) },
-                    modifier = Modifier.semantics { contentDescription = "Apri sezione ${section.label}" }
-                )
-            }
+            OperationsSectionCard(
+                modifier = Modifier.weight(1f),
+                section = OperationsSection.TRAINS,
+                selected = selectedSection == OperationsSection.TRAINS,
+                onClick = { onSectionSelected(OperationsSection.TRAINS) }
+            )
+            OperationsSectionCard(
+                modifier = Modifier.weight(1f),
+                section = OperationsSection.STATIONS,
+                selected = selectedSection == OperationsSection.STATIONS,
+                onClick = { onSectionSelected(OperationsSection.STATIONS) }
+            )
         }
         when (selectedSection) {
             OperationsSection.TRAINS -> TodayScreen(
@@ -429,6 +432,32 @@ private fun OperationsScreen(
                 openSearch = openSearch
             )
             OperationsSection.STATIONS -> StationBoardScreen(Modifier.weight(1f), viewModel)
+        }
+    }
+}
+
+@Composable
+private fun OperationsSectionCard(
+    modifier: Modifier,
+    section: OperationsSection,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    val subtitle = if (section == OperationsSection.TRAINS) "Tabellone tratta" else "Arrivi e partenze"
+    val icon = if (section == OperationsSection.TRAINS) Icons.Default.Train else Icons.Default.Route
+    Surface(
+        modifier = modifier
+            .clickable(role = Role.Button, onClick = onClick)
+            .semantics { contentDescription = "${section.label}. $subtitle${if (selected) ". Sezione selezionata" else ""}" },
+        color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+        contentColor = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+        shape = RoundedCornerShape(8.dp),
+        tonalElevation = if (selected) 2.dp else 0.dp
+    ) {
+        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Icon(icon, contentDescription = null)
+            Text(section.label, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Text(subtitle, style = MaterialTheme.typography.labelMedium)
         }
     }
 }

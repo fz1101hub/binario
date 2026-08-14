@@ -81,5 +81,5 @@
 - [x] Ridisegnare il widget con gerarchia da tabellone ferroviario originale, mantenendo cinque corse per pagina, refresh e cambio direzione.
 - [x] Aggiungere una sveglia locale configurabile per una fermata, con notifiche e comportamento esplicito in assenza di dati live.
 - [x] Aggiungere condivisione testo tramite foglio nativo Android e contratto di contenuto riutilizzabile dal futuro companion iOS.
-- [ ] Rendere le sezioni Treni e Stazioni della schermata Consulta due schede più squadrate e immediatamente riconoscibili.
+- [x] Rendere le sezioni Treni e Stazioni della schermata Consulta due schede più squadrate e immediatamente riconoscibili.
 - [ ] Verificare, documentare e pubblicare l’incremento widget, sveglia, condivisione e UI Consulta con commit e push Git dedicati.
