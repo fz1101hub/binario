@@ -96,7 +96,9 @@ class RouteWidgetProvider : AppWidgetProvider() {
 
         private fun render(context: Context, manager: AppWidgetManager, widgetId: Int) {
             val state = WidgetStateStore.read(context)
-            val views = RemoteViews(context.packageName, R.layout.route_widget)
+            val mode = layoutMode(manager, widgetId)
+            val views = RemoteViews(context.packageName, layoutResourceFor(mode))
+            applyDensity(views, mode)
             val configuration = WidgetConfigurationStore(context).read(widgetId)
             if (configuration == null) {
                 renderConfigurationRequired(context, manager, widgetId, views)
@@ -120,8 +122,6 @@ class RouteWidgetProvider : AppWidgetProvider() {
                 return
             }
 
-            val mode = layoutMode(manager, widgetId)
-            applyDensity(views, mode)
             val pageSize = mode.visibleRows
             val maxPage = (state.services.size - 1).coerceAtLeast(0) / pageSize
             val page = state.page.coerceIn(0, maxPage)
@@ -175,6 +175,11 @@ class RouteWidgetProvider : AppWidgetProvider() {
                 options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 300),
                 options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 250)
             )
+        }
+
+        private fun layoutResourceFor(mode: WidgetLayoutMode): Int = when (mode) {
+            WidgetLayoutMode.COMPACT -> R.layout.route_widget_compact
+            WidgetLayoutMode.STANDARD, WidgetLayoutMode.EXPANDED -> R.layout.route_widget
         }
 
         private fun applyDensity(views: RemoteViews, mode: WidgetLayoutMode) {

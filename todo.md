@@ -105,5 +105,5 @@
 - [x] Analizzare il taglio della configurazione e definire una gerarchia responsiva che non nasconda informazioni nel widget.
 - [x] Rendere la schermata di configurazione scrollabile, coerente con il tema persistito dell’app e organizzata verticalmente per tratta, stazione e treno.
 - [x] Aggiungere descrizione e selettore esplicito sotto ciascuna categoria del widget, senza chip orizzontali tagliati.
-- [ ] Riorganizzare il widget ridimensionato in layout leggibili senza clip, preservando tutte le informazioni disponibili con priorità esplicita.
+- [x] Riorganizzare il widget ridimensionato in layout leggibili senza clip, preservando tutte le informazioni disponibili con priorità esplicita.
 - [ ] Verificare, documentare e pubblicare la correzione di configurazione e resize con commit e push Git dedicati.
