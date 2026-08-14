@@ -99,6 +99,7 @@ class RouteWidgetProvider : AppWidgetProvider() {
             val mode = layoutMode(manager, widgetId)
             val views = RemoteViews(context.packageName, layoutResourceFor(mode))
             applyDensity(views, mode)
+            views.setViewVisibility(R.id.widget_actions_container, if (mode == WidgetLayoutMode.COMPACT) View.GONE else View.VISIBLE)
             val configuration = WidgetConfigurationStore(context).read(widgetId)
             if (configuration == null) {
                 renderConfigurationRequired(context, manager, widgetId, views)
@@ -110,11 +111,11 @@ class RouteWidgetProvider : AppWidgetProvider() {
             }
 
             if (configuration.targetType == WidgetTargetType.STATION) {
-                renderStationTarget(context, manager, widgetId, views, configuration)
+                renderStationTarget(context, manager, widgetId, views, configuration, mode)
                 return
             }
             if (configuration.targetType == WidgetTargetType.TRAIN) {
-                renderTrainTarget(context, manager, widgetId, views, configuration, state)
+                renderTrainTarget(context, manager, widgetId, views, configuration, state, mode)
                 return
             }
             if (configuration.targetId != state.route.id) {
@@ -178,10 +179,7 @@ class RouteWidgetProvider : AppWidgetProvider() {
             )
         }
 
-        private fun layoutResourceFor(mode: WidgetLayoutMode): Int = when (mode) {
-            WidgetLayoutMode.COMPACT -> R.layout.route_widget_compact
-            WidgetLayoutMode.STANDARD, WidgetLayoutMode.EXPANDED -> R.layout.route_widget
-        }
+        private fun layoutResourceFor(mode: WidgetLayoutMode): Int = R.layout.route_widget
 
         private fun applyDensity(views: RemoteViews, mode: WidgetLayoutMode) {
             views.setTextViewTextSize(R.id.widget_route, TypedValue.COMPLEX_UNIT_SP, mode.routeTextSizeSp)
@@ -215,10 +213,10 @@ class RouteWidgetProvider : AppWidgetProvider() {
             manager.updateAppWidget(widgetId, views)
         }
 
-        private fun renderStationTarget(context: Context, manager: AppWidgetManager, widgetId: Int, views: RemoteViews, configuration: WidgetDisplayConfiguration) {
+        private fun renderStationTarget(context: Context, manager: AppWidgetManager, widgetId: Int, views: RemoteViews, configuration: WidgetDisplayConfiguration, mode: WidgetLayoutMode) {
             views.setTextViewText(R.id.widget_route, configuration.widgetTitle().uppercase())
             views.setTextViewText(R.id.widget_meta, "STAZIONE SELEZIONATA · DATI NON DISPONIBILI IN TEMPO REALE")
-            views.setViewVisibility(R.id.widget_column_header, View.VISIBLE)
+            views.setViewVisibility(R.id.widget_column_header, if (mode.showColumnHeader) View.VISIBLE else View.GONE)
             rowIds.forEach { views.setViewVisibility(it, View.GONE) }
             views.setViewVisibility(rowIds[0], View.VISIBLE)
             views.setTextViewText(timeIds[0], "—")
@@ -235,7 +233,7 @@ class RouteWidgetProvider : AppWidgetProvider() {
             manager.updateAppWidget(widgetId, views)
         }
 
-        private fun renderTrainTarget(context: Context, manager: AppWidgetManager, widgetId: Int, views: RemoteViews, configuration: WidgetDisplayConfiguration, state: WidgetState) {
+        private fun renderTrainTarget(context: Context, manager: AppWidgetManager, widgetId: Int, views: RemoteViews, configuration: WidgetDisplayConfiguration, state: WidgetState, mode: WidgetLayoutMode) {
             val service = state.services.firstOrNull { it.number.equals(configuration.targetId, ignoreCase = true) }
             if (service == null) {
                 renderNoSnapshot(context, manager, widgetId, views, configuration)
@@ -243,7 +241,7 @@ class RouteWidgetProvider : AppWidgetProvider() {
             }
             views.setTextViewText(R.id.widget_route, configuration.widgetTitle("TRENO ${service.number}").uppercase())
             views.setTextViewText(R.id.widget_meta, "${state.freshness.accessibleLabel.uppercase()} · ${accessibleUpdateTime(state.retrievedAt)}")
-            views.setViewVisibility(R.id.widget_column_header, View.VISIBLE)
+            views.setViewVisibility(R.id.widget_column_header, if (mode.showColumnHeader) View.VISIBLE else View.GONE)
             rowIds.forEach { views.setViewVisibility(it, View.GONE) }
             views.setViewVisibility(rowIds[0], View.VISIBLE)
             views.setTextViewText(timeIds[0], service.expectedDeparture)

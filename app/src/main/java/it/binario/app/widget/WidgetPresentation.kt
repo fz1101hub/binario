@@ -1,7 +1,7 @@
 package it.binario.app.widget
 
 enum class WidgetLayoutMode(val visibleRows: Int, val showColumnHeader: Boolean, val routeTextSizeSp: Float, val rowTextSizeSp: Float) {
-    COMPACT(3, false, 14f, 12f),
+    COMPACT(2, false, 14f, 12f),
     STANDARD(5, true, 16f, 13f),
     EXPANDED(5, true, 18f, 15f);
 
