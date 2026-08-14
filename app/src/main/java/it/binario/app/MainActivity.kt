@@ -98,6 +98,7 @@ import it.binario.app.data.SavedRoute
 import it.binario.app.data.ServiceStatus
 import it.binario.app.data.Station
 import it.binario.app.data.TrainService
+import it.binario.app.data.TrainStop
 import it.binario.app.data.accessibleUpdateTime
 import java.time.LocalDate
 import java.time.LocalTime
@@ -147,6 +148,34 @@ private fun BinarioApp(
     var detailReturnScreen by rememberSaveable { mutableStateOf(Screen.RESULTS) }
     var operationsSectionName by rememberSaveable { mutableStateOf(OperationsSection.TRAINS.name) }
     var showThemePicker by rememberSaveable { mutableStateOf(false) }
+    var pendingStopAlarm by remember { mutableStateOf<StopAlarmPlan?>(null) }
+    var stopAlarmFeedback by rememberSaveable { mutableStateOf<String?>(null) }
+    val context = LocalContext.current
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        val plan = pendingStopAlarm
+        pendingStopAlarm = null
+        if (granted && plan != null) {
+            StopAlarmScheduler.schedule(context, plan)
+            stopAlarmFeedback = "Sveglia impostata per ${plan.station}, cinque minuti prima dell’orario previsto ${plan.expectedTime}."
+        } else {
+            stopAlarmFeedback = "Per ricevere la sveglia alla fermata devi consentire le notifiche di Binario."
+        }
+    }
+    val scheduleStopAlarm: (TrainService, TrainStop) -> Unit = { service, stop ->
+        val plan = StopAlarmPlanner.plan(service, stop)
+        when {
+            stop.completed -> stopAlarmFeedback = "La fermata ${stop.station} risulta già superata."
+            plan == null -> stopAlarmFeedback = "Non posso pianificare la sveglia: l’orario previsto della fermata è già passato o non è disponibile."
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED -> {
+                pendingStopAlarm = plan
+                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
+            else -> {
+                StopAlarmScheduler.schedule(context, plan)
+                stopAlarmFeedback = "Sveglia impostata per ${stop.station}, cinque minuti prima dell’orario previsto ${plan.expectedTime}."
+            }
+        }
+    }
     LaunchedEffect(deepLink) {
         when (deepLink) {
             BinarioDeepLink.ActiveRoute, BinarioDeepLink.NextDepartures -> {
@@ -288,7 +317,9 @@ private fun BinarioApp(
                     isDemonstration = viewModel.isDemonstrationData(),
                     onRefresh = viewModel::refresh,
                     isMonitored = viewModel.isMonitoring(service),
-                    onToggleMonitoring = { viewModel.toggleServiceMonitoring(service) }
+                    onToggleMonitoring = { viewModel.toggleServiceMonitoring(service) },
+                    onScheduleStopAlarm = scheduleStopAlarm,
+                    alarmFeedback = stopAlarmFeedback
                 )
             }
         }
@@ -1418,7 +1449,9 @@ private fun ServiceDetailScreen(
     isDemonstration: Boolean,
     onRefresh: () -> Unit,
     isMonitored: Boolean,
-    onToggleMonitoring: () -> Unit
+    onToggleMonitoring: () -> Unit,
+    onScheduleStopAlarm: (TrainService, TrainStop) -> Unit,
+    alarmFeedback: String?
 ) {
     val dataLabel = if (isDemonstration) "Catalogo dimostrativo locale — non live" else freshness?.accessibleLabel ?: "dati non disponibili in tempo reale"
     LazyColumn(modifier = modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(0.dp)) {
@@ -1454,13 +1487,49 @@ private fun ServiceDetailScreen(
                 }
             }
         }
-        items(service.stops, key = { "${service.id}-${it.station}" }) { stop -> StopTimelineRow(stop.station, stop.expected, stop.scheduled, stop.delayMinutes, stop.platform, stop.completed) }
+        alarmFeedback?.let { feedback ->
+            item {
+                Text(
+                    feedback,
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+        item {
+            Text(
+                "La sveglia è locale e si basa sull’orario mostrato. Per variazioni operative fai sempre riferimento a monitor e annunci ufficiali.",
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        items(service.stops, key = { "${service.id}-${it.station}" }) { stop ->
+            StopTimelineRow(
+                station = stop.station,
+                expected = stop.expected,
+                scheduled = stop.scheduled,
+                delay = stop.delayMinutes,
+                platform = stop.platform,
+                completed = stop.completed,
+                onSetAlarm = { onScheduleStopAlarm(service, stop) }
+            )
+        }
         item { Spacer(Modifier.height(24.dp)) }
     }
 }
 
 @Composable
-private fun StopTimelineRow(station: String, expected: String, scheduled: String, delay: Int, platform: String?, completed: Boolean) {
+private fun StopTimelineRow(
+    station: String,
+    expected: String,
+    scheduled: String,
+    delay: Int,
+    platform: String?,
+    completed: Boolean,
+    onSetAlarm: () -> Unit
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -1479,6 +1548,11 @@ private fun StopTimelineRow(station: String, expected: String, scheduled: String
             Text(expected, style = MaterialTheme.typography.titleMedium, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
             if (expected != scheduled) Text("prev. $scheduled", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             if (delay > 0) Text("+$delay min", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.tertiary, fontWeight = FontWeight.Bold)
+            if (!completed) {
+                TextButton(onClick = onSetAlarm, contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)) {
+                    Text("Sveglia")
+                }
+            }
         }
     }
 }
