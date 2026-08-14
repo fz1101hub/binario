@@ -1,7 +1,7 @@
 # Binario — revisione benchmark e gap v0.14.0
 
 **Data:** 14 agosto 2026  
-**Perimetro:** Orario Treni, On The Rails, ReteBK, Trenìt!, InfoTreni, Treninoo, Trainline, Trenitalia, TrenScan, Omio, Italo, Trenord e Île-de-France Mobilités.
+**Perimetro:** Orario Treni, On The Rails, ReteBK, Trenìt!, InfoTreni, Treninoo, Trainline, Trenitalia, TrenScan, Omio, Italo, Trenord, Île-de-France Mobilités e Treniamo.it.
 
 ## Esito sintetico
 
@@ -11,6 +11,7 @@ Binario ha ormai coperto il nucleo di consultazione personale emerso dal benchma
 |---|---|---|---|
 | Orario Treni, ReteBK, Trenìt!, Treninoo, InfoTreni | ricerca, dettaglio, fermate, binari, widget e preferiti | In gran parte presente | Il vantaggio residuo dipende soprattutto dalla qualità del dato live. |
 | On The Rails | allarmi configurabili, ricorrenze pendolari, geofencing, widget specializzati, storico puntualità | Parziale | Gli allarmi locali sono presenti ma fissi; ricorrenze, configurazione e geofence mancano. [1] |
+| Treniamo.it | mappa treno stimata, stato treno, partenze/arrivi, statistiche puntualità e notizie traffico | Parziale / bloccato | Rafforza la priorità di storico, infomobilità e visualizzazione del percorso; non adottare la sua fonte, dichiarata non ufficiale. [5] |
 | Trenitalia, Trenord, Italo | ricerca salvata, notifiche personali, spostamento viaggio, biglietteria e programmi proprietari | Parziale / fuori perimetro | Salvataggio ricerche e suggerimenti di ripianificazione sono adottabili; biglietteria e loyalty richiedono accordi e non sono priorità. [2] [3] |
 | Trainline, Omio, Île-de-France Mobilités | multimodalità, titoli digitali, profilo di mobilità e preferenze accessibilità | Selettivo | Preferenze accessibilità e memoria personale sono adottabili; pagamenti e titoli digitali non lo sono senza un ecosistema contrattuale. [4] |
 
@@ -36,6 +37,8 @@ Le voci precedentemente indicate come parziali per data/ora, modalità Treno/Sta
 
 > **Decisione di prodotto:** non simulare ritardi, perturbazioni, binari o arrivi in stazione. Le funzionalità che dipendono da tali segnali devono restare esplicitamente non-live finché un provider è documentato e autorizzato.
 
+Treniamo.it conferma inoltre il vincolo: il servizio dichiara esplicitamente l’uso di fonti non ufficiali, precisione non garantita e una posizione treno stimata per interpolazione tra fermate. Binario può adottare il pattern di prodotto — mappa del percorso, statistiche e notizie — solo dietro dati autorizzati e con la relativa qualità/freshness esposta all’utente. [5]
+
 ## Roadmap proposta
 
 | Ordine | Incremento | Obiettivo misurabile |
@@ -55,3 +58,5 @@ Le voci precedentemente indicate come parziali per data/ora, modalità Treno/Sta
 [3] [App Trenord — pagina ufficiale](https://www.trenord.it/biglietti/dove-acquistare/app-trenord/)
 
 [4] [Île-de-France Mobilités — applicazione ufficiale](https://www.iledefrance-mobilites.fr/application)
+
+[5] [Treniamo.it — treni in tempo reale e note legali](https://treniamo.it/it) · [stato treno](https://treniamo.it/it/treno) · [disclaimer](https://treniamo.it/it/legal)
