@@ -102,3 +102,8 @@
 - [x] Rendere il widget ridimensionabile con layout compatto, standard ed espanso e aggiornamento su resize.
 - [x] Evidenziare in giallo ritardi, variazioni o soppressioni presenti nello snapshot, con semantica TalkBack e nessuna simulazione live.
 - [x] Verificare, documentare e pubblicare il widget configurabile con commit e push Git dedicati.
+- [ ] Analizzare il taglio della configurazione e definire una gerarchia responsiva che non nasconda informazioni nel widget.
+- [ ] Rendere la schermata di configurazione scrollabile, coerente con il tema persistito dell’app e organizzata verticalmente per tratta, stazione e treno.
+- [ ] Aggiungere descrizione e selettore esplicito sotto ciascuna categoria del widget, senza chip orizzontali tagliati.
+- [ ] Riorganizzare il widget ridimensionato in layout leggibili senza clip, preservando tutte le informazioni disponibili con priorità esplicita.
+- [ ] Verificare, documentare e pubblicare la correzione di configurazione e resize con commit e push Git dedicati.
