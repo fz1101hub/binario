@@ -51,6 +51,7 @@ dependencies {
     implementation("androidx.activity:activity-compose:1.10.0")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
     implementation("androidx.work:work-runtime-ktx:2.10.0")
+    implementation("org.jsoup:jsoup:1.18.3")
     implementation("com.google.android.gms:play-services-wearable:20.0.1")
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-tooling-preview")

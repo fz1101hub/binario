@@ -133,7 +133,7 @@ object KnownProviders {
                 ratePolicy = realtimeRatePolicy,
                 schemaVersion = 1
             ),
-            enabled = false,
+            enabled = true,
             priorityByCapability = mapOf(
                 ProviderCapability.TRAIN_RUN_REALTIME to 30,
                 ProviderCapability.STATION_BOARD to 30
@@ -149,7 +149,7 @@ object KnownProviders {
                 ratePolicy = realtimeRatePolicy,
                 schemaVersion = 1
             ),
-            enabled = false,
+            enabled = true,
             priorityByCapability = mapOf(ProviderCapability.STATION_BOARD to 20)
         ),
         ProviderPolicy(

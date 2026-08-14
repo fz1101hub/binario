@@ -68,12 +68,16 @@ La build richiede Android SDK API 36 e un JDK 21 completo. Il ramo conserva l’
 
 ## Aggiornamento fonti — 14 agosto 2026
 
-Il ramo include ora `RailSourceCatalog` con 31 fonti censite e classificate. Il parser `GtfsArchiveInspector`, il provider locale `GtfsStationCatalogProvider` e `GtfsArtifactDownloader` sono pronti per data pack GTFS statici; i test bloccano HTTP cleartext, gateway, best-effort e fonti senza URL stabilizzato. Otto endpoint open — ARST, Trentino, Alto Adige, HŽPP, SNCF statico, SNCF GTFS-RT Trip Updates/Alerts e ÖBB — hanno superato un controllo HTTP read-only. Nessun feed viene scaricato in automatico e nessuna fonte realtime best-effort è attiva.
+Il ramo include ora `RailSourceCatalog` con 31 fonti censite e classificate. Il parser `GtfsArchiveInspector`, il provider locale `GtfsStationCatalogProvider` e `GtfsArtifactDownloader` sono pronti per data pack GTFS statici; i test bloccano HTTP cleartext, gateway, best-effort e fonti senza URL stabilizzato. Otto endpoint open — ARST, Trentino, Alto Adige, HŽPP, SNCF statico, SNCF GTFS-RT Trip Updates/Alerts e ÖBB — hanno superato un controllo HTTP read-only.
+
+Sono ora attive nella composition root le due fonti live usate dalle app ferroviarie analizzate: `ViaggiaTrenoStationAdapter` per il tabellone Trenitalia della stazione di origine e `RfiStationBoardAdapter` come fallback live per tabelloni di stazione. Entrambe espongono provider, timestamp e freschezza alla UI e al widget; cache, timeout e fallback sono coperti da test. Lo smoke test del 14 agosto 2026 ha ottenuto HTTP 200 con 67 corse ViaggiaTreno e 40 partenze RFI per Roma Termini. Italo e Trenord restano catalogati, non attivati: non esistono ancora parser stabili e testati per le rispettive pagine dinamiche.
 
 ## Documenti correlati
 
 - `docs/data-sources/SOURCE_POLICY.md`
 - `docs/data-sources/SOURCE_COVERAGE_AND_TESTS.md`
+- `docs/data-sources/LIVE_PROVIDER_PROTOCOLS.md`
+- `docs/data-sources/live_source_probe_2026-08-14.tsv`
 - `docs/data-sources/open_source_probe_2026-08-14.tsv`
 - `docs/architecture/GTFS_SOURCE_ADAPTERS.md`
 - `docs/architecture/DATA_LAYER_MIGRATION.md`

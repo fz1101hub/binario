@@ -37,7 +37,8 @@ class ProviderRegistryTest {
         assertTrue(registry.policy(SourceId("sncf-gtfs-rt-trip-updates")) != null)
         assertTrue(registry.policy(SourceId("viaggiatreno")) != null)
         assertFalse(registry.isEnabled(SourceId("arst-gtfs")))
-        assertFalse(registry.isEnabled(SourceId("viaggiatreno")))
+        assertTrue(registry.isEnabled(SourceId("viaggiatreno")))
+        assertTrue(registry.isEnabled(SourceId("rfi-station-board")))
     }
 
     @Test(expected = IllegalArgumentException::class)

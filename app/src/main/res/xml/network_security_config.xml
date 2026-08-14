@@ -5,4 +5,8 @@
             <certificates src="system" />
         </trust-anchors>
     </base-config>
+    <!-- ViaggiaTreno mobile mantiene endpoint pubblici che reindirizzano a HTTP. -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">www.viaggiatreno.it</domain>
+    </domain-config>
 </network-security-config>

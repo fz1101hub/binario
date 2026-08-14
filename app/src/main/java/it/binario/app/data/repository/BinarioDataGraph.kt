@@ -1,7 +1,10 @@
 package it.binario.app.data.repository
 
+import it.binario.app.data.DemoTrainDataSource
 import it.binario.app.data.RailDataRepository
 import it.binario.app.data.TrainDataSource
+import it.binario.app.data.live.RfiStationBoardAdapter
+import it.binario.app.data.live.ViaggiaTrenoStationAdapter
 import it.binario.app.data.provider.KnownProviders
 import it.binario.app.data.provider.ProviderRegistry
 
@@ -14,7 +17,13 @@ object BinarioDataGraph {
     private val defaultRegistry: ProviderRegistry by lazy { KnownProviders.defaultRegistry() }
     private val defaultRouteDataSource: TrainDataSource by lazy {
         LegacyTrainDataSourceFacade(
-            legacySource = RailDataRepository(),
+            legacySource = RailDataRepository(
+                authorisedSources = listOf(
+                    ViaggiaTrenoStationAdapter(),
+                    RfiStationBoardAdapter()
+                ),
+                fallback = DemoTrainDataSource()
+            ),
             providerRegistry = defaultRegistry
         )
     }
