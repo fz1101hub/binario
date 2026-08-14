@@ -22,6 +22,7 @@ import it.binario.app.PersonalTravelStore
 import it.binario.app.R
 import it.binario.app.WidgetSurface
 import it.binario.app.data.DataResult
+import it.binario.app.data.DataConfidence
 import it.binario.app.data.Direction
 import it.binario.app.data.Freshness
 import it.binario.app.data.RailDataRepository
@@ -147,9 +148,14 @@ class RouteWidgetProvider : AppWidgetProvider() {
                     views.setTextViewText(destinationIds[index], service.destination)
                     views.setTextViewText(trainIds[index], "${service.operator.shortLabel} · ${service.category} ${service.number}")
                     views.setTextViewText(platformIds[index], service.platform?.let { "BIN $it" } ?: "—")
-                    views.setTextViewText(statusIds[index], service.statusLabel)
+                    views.setTextViewText(statusIds[index], WidgetChangeHighlight.displayStatus(service, state.confidence))
                     views.setContentDescription(id, service.accessibleLabel)
                     views.setTextColor(statusIds[index], statusColor(context, service.status))
+                    views.setInt(
+                        id,
+                        "setBackgroundResource",
+                        if (WidgetChangeHighlight.shouldHighlight(service.status, state.confidence, state.freshness)) R.drawable.widget_row_variation else R.drawable.widget_row_background
+                    )
                     views.setOnClickPendingIntent(id, openAppIntent(context, widgetId))
                 }
             }
@@ -238,8 +244,13 @@ class RouteWidgetProvider : AppWidgetProvider() {
             views.setTextViewText(destinationIds[0], service.destination)
             views.setTextViewText(trainIds[0], "${service.operator.shortLabel} · ${service.category} ${service.number}")
             views.setTextViewText(platformIds[0], service.platform?.let { "BIN $it" } ?: "—")
-            views.setTextViewText(statusIds[0], service.statusLabel)
+            views.setTextViewText(statusIds[0], WidgetChangeHighlight.displayStatus(service, state.confidence))
             views.setTextColor(statusIds[0], statusColor(context, service.status))
+            views.setInt(
+                rowIds[0],
+                "setBackgroundResource",
+                if (WidgetChangeHighlight.shouldHighlight(service.status, state.confidence, state.freshness)) R.drawable.widget_row_variation else R.drawable.widget_row_background
+            )
             views.setContentDescription(rowIds[0], service.accessibleLabel)
             views.setTextViewText(R.id.widget_direction, "Modifica")
             views.setTextViewText(R.id.widget_refresh, "↻")
@@ -389,6 +400,7 @@ data class WidgetState(
     val direction: Direction,
     val services: List<WidgetService>,
     val freshness: Freshness,
+    val confidence: DataConfidence,
     val retrievedAt: Long,
     val page: Int
 ) {
@@ -401,6 +413,7 @@ object WidgetStateStore {
     private const val KEY_DIRECTION = "direction"
     private const val KEY_LINES = "lines"
     private const val KEY_FRESHNESS = "freshness"
+    private const val KEY_CONFIDENCE = "confidence"
     private const val KEY_RETRIEVED = "retrieved"
     private const val KEY_PAGE = "page"
 
@@ -423,6 +436,7 @@ object WidgetStateStore {
             putString(KEY_DIRECTION, snapshot.direction.name)
             putString(KEY_LINES, lines)
             putString(KEY_FRESHNESS, snapshot.freshness.name)
+            putString(KEY_CONFIDENCE, snapshot.confidence.name)
             putLong(KEY_RETRIEVED, snapshot.retrievedAtEpochMillis)
             putInt(KEY_PAGE, page)
         }
@@ -436,8 +450,11 @@ object WidgetStateStore {
         val freshness = runCatching {
             Freshness.valueOf(prefs(context).getString(KEY_FRESHNESS, Freshness.UNAVAILABLE.name) ?: Freshness.UNAVAILABLE.name)
         }.getOrDefault(Freshness.UNAVAILABLE)
+        val confidence = runCatching {
+            DataConfidence.valueOf(prefs(context).getString(KEY_CONFIDENCE, DataConfidence.DEMONSTRATION.name) ?: DataConfidence.DEMONSTRATION.name)
+        }.getOrDefault(DataConfidence.DEMONSTRATION)
         val lines = prefs(context).getString(KEY_LINES, "").orEmpty().split(";").mapNotNull(::decodeService)
-        return WidgetState(route, direction, lines, freshness, prefs(context).getLong(KEY_RETRIEVED, 0L), prefs(context).getInt(KEY_PAGE, 0))
+        return WidgetState(route, direction, lines, freshness, confidence, prefs(context).getLong(KEY_RETRIEVED, 0L), prefs(context).getInt(KEY_PAGE, 0))
     }
 
     fun changePage(context: Context, delta: Int) {
