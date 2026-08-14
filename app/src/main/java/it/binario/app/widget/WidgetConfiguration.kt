@@ -13,8 +13,11 @@ enum class WidgetTargetType(val label: String) {
 data class WidgetDisplayConfiguration(
     val targetType: WidgetTargetType,
     val targetId: String,
-    val targetLabel: String
+    val targetLabel: String,
+    val displayName: String = ""
 )
+
+fun WidgetDisplayConfiguration.widgetTitle(fallback: String = targetLabel): String = displayName.trim().ifBlank { fallback }
 
 class WidgetConfigurationStore(context: Context) {
     private val preferences = context.getSharedPreferences("binario_widget_configuration_v1", Context.MODE_PRIVATE)
@@ -29,11 +32,15 @@ class WidgetConfigurationStore(context: Context) {
         preferences.edit { remove("widget_$widgetId") }
     }
 
-    private fun encode(value: WidgetDisplayConfiguration): String = listOf(value.targetType.name, value.targetId, value.targetLabel)
+    private fun encode(value: WidgetDisplayConfiguration): String = listOf(value.targetType.name, value.targetId, value.targetLabel, value.displayName)
         .joinToString("|") { Base64.encodeToString(it.toByteArray(Charsets.UTF_8), Base64.NO_WRAP) }
 
     private fun decode(value: String): WidgetDisplayConfiguration? = runCatching {
         val parts = value.split("|").map { String(Base64.decode(it, Base64.NO_WRAP), Charsets.UTF_8) }
-        if (parts.size != 3) null else WidgetDisplayConfiguration(WidgetTargetType.valueOf(parts[0]), parts[1], parts[2])
+        when (parts.size) {
+            3 -> WidgetDisplayConfiguration(WidgetTargetType.valueOf(parts[0]), parts[1], parts[2])
+            4 -> WidgetDisplayConfiguration(WidgetTargetType.valueOf(parts[0]), parts[1], parts[2], parts[3])
+            else -> null
+        }
     }.getOrNull()
 }

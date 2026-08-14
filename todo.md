@@ -113,6 +113,6 @@
 - [x] Verificare e pubblicare la correzione definitiva di tema, inset e caricamento widget con commit e push Git dedicati.
 - [x] Isolare i riferimenti del formato piccolo ancora incompatibili e definire il modello del nome locale per istanza widget.
 - [x] Correggere contrasto dell’intestazione in dark mode e centrare la composizione della configurazione.
-- [ ] Aggiungere campo opzionale per il nome del widget e visualizzarlo al posto dell’etichetta della tratta.
+- [x] Aggiungere campo opzionale per il nome del widget e visualizzarlo al posto dell’etichetta della tratta.
 - [ ] Rendere affidabile il formato widget più piccolo, eliminando le azioni RemoteViews non essenziali in quella variante.
 - [ ] Verificare, documentare e pubblicare contrasto, nome e stabilità del widget con commit e push Git dedicati.

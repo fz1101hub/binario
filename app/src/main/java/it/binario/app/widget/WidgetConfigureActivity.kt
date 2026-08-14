@@ -19,6 +19,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -66,9 +67,11 @@ class WidgetConfigureActivity : ComponentActivity() {
                     WindowCompat.getInsetsController(window, view).isAppearanceLightNavigationBars = foregroundIsLight.not()
                 }
 
-                var targetType by remember { mutableStateOf(WidgetTargetType.ROUTE) }
-                var selectedId by remember { mutableStateOf(model.activeRoute.id) }
-                var selectedLabel by remember { mutableStateOf(model.activeRoute.name) }
+                val existingConfiguration = remember { WidgetConfigurationStore(this@WidgetConfigureActivity).read(widgetId) }
+                var targetType by remember { mutableStateOf(existingConfiguration?.targetType ?: WidgetTargetType.ROUTE) }
+                var selectedId by remember { mutableStateOf(existingConfiguration?.targetId ?: model.activeRoute.id) }
+                var selectedLabel by remember { mutableStateOf(existingConfiguration?.targetLabel ?: model.activeRoute.name) }
+                var displayName by remember { mutableStateOf(existingConfiguration?.displayName.orEmpty()) }
 
                 Surface(
                     modifier = Modifier.fillMaxSize(),
@@ -86,6 +89,16 @@ class WidgetConfigureActivity : ComponentActivity() {
                                 "La scelta vale solo per questo widget. Puoi modificarla in seguito dalla testata.",
                                 modifier = Modifier.padding(top = 4.dp),
                                 style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+                        item {
+                            OutlinedTextField(
+                                value = displayName,
+                                onValueChange = { if (it.length <= 42) displayName = it },
+                                modifier = Modifier.fillMaxWidth(),
+                                label = { Text("Nome del widget (facoltativo)") },
+                                supportingText = { Text("Sostituisce il nome della tratta nella testata e resta locale a questa istanza.") },
+                                singleLine = true
                             )
                         }
                         item {
@@ -161,7 +174,7 @@ class WidgetConfigureActivity : ComponentActivity() {
                         item {
                             Button(
                                 onClick = {
-                                    WidgetConfigurationStore(this@WidgetConfigureActivity).save(widgetId, WidgetDisplayConfiguration(targetType, selectedId, selectedLabel))
+                                    WidgetConfigurationStore(this@WidgetConfigureActivity).save(widgetId, WidgetDisplayConfiguration(targetType, selectedId, selectedLabel, displayName.trim()))
                                     RouteWidgetProvider.refreshAll(this@WidgetConfigureActivity)
                                     setResult(RESULT_OK, Intent().putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId))
                                     finish()

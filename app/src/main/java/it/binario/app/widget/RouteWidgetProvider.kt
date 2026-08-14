@@ -128,7 +128,8 @@ class RouteWidgetProvider : AppWidgetProvider() {
             if (page != state.page) WidgetStateStore.setPage(context, page)
             val services = state.services.drop(page * pageSize).take(pageSize)
 
-            views.setTextViewText(R.id.widget_route, state.routeLabel)
+            val title = configuration.widgetTitle(state.routeLabel)
+            views.setTextViewText(R.id.widget_route, title)
             views.setTextViewText(
                 R.id.widget_meta,
                 "${state.freshness.accessibleLabel.uppercase()} · PAG ${page + 1}/${maxPage + 1} · ${accessibleUpdateTime(state.retrievedAt)}"
@@ -136,7 +137,7 @@ class RouteWidgetProvider : AppWidgetProvider() {
             views.setViewVisibility(R.id.widget_column_header, if (mode.showColumnHeader) View.VISIBLE else View.GONE)
             views.setContentDescription(
                 R.id.widget_route,
-                "Apri Binario. ${state.routeLabel}. ${state.freshness.accessibleLabel}. ${accessibleUpdateTime(state.retrievedAt)}"
+                "Apri Binario. $title. ${state.freshness.accessibleLabel}. ${accessibleUpdateTime(state.retrievedAt)}"
             )
             rowIds.forEachIndexed { index, id ->
                 val service = services.getOrNull(index)
@@ -202,7 +203,7 @@ class RouteWidgetProvider : AppWidgetProvider() {
         }
 
         private fun renderNoSnapshot(context: Context, manager: AppWidgetManager, widgetId: Int, views: RemoteViews, configuration: WidgetDisplayConfiguration) {
-            views.setTextViewText(R.id.widget_route, configuration.targetLabel.uppercase())
+            views.setTextViewText(R.id.widget_route, configuration.widgetTitle().uppercase())
             views.setTextViewText(R.id.widget_meta, "${configuration.targetType.label.uppercase()} · DATI NON DISPONIBILI IN TEMPO REALE")
             rowIds.forEach { views.setViewVisibility(it, View.GONE) }
             views.setViewVisibility(R.id.widget_column_header, View.GONE)
@@ -215,7 +216,7 @@ class RouteWidgetProvider : AppWidgetProvider() {
         }
 
         private fun renderStationTarget(context: Context, manager: AppWidgetManager, widgetId: Int, views: RemoteViews, configuration: WidgetDisplayConfiguration) {
-            views.setTextViewText(R.id.widget_route, configuration.targetLabel.uppercase())
+            views.setTextViewText(R.id.widget_route, configuration.widgetTitle().uppercase())
             views.setTextViewText(R.id.widget_meta, "STAZIONE SELEZIONATA · DATI NON DISPONIBILI IN TEMPO REALE")
             views.setViewVisibility(R.id.widget_column_header, View.VISIBLE)
             rowIds.forEach { views.setViewVisibility(it, View.GONE) }
@@ -240,7 +241,7 @@ class RouteWidgetProvider : AppWidgetProvider() {
                 renderNoSnapshot(context, manager, widgetId, views, configuration)
                 return
             }
-            views.setTextViewText(R.id.widget_route, "TRENO ${service.number}")
+            views.setTextViewText(R.id.widget_route, configuration.widgetTitle("TRENO ${service.number}").uppercase())
             views.setTextViewText(R.id.widget_meta, "${state.freshness.accessibleLabel.uppercase()} · ${accessibleUpdateTime(state.retrievedAt)}")
             views.setViewVisibility(R.id.widget_column_header, View.VISIBLE)
             rowIds.forEach { views.setViewVisibility(it, View.GONE) }
