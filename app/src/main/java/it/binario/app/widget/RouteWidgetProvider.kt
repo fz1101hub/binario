@@ -71,6 +71,7 @@ class RouteWidgetProvider : AppWidgetProvider() {
         )
         private val timeIds = intArrayOf(R.id.widget_time_0, R.id.widget_time_1, R.id.widget_time_2, R.id.widget_time_3, R.id.widget_time_4)
         private val destinationIds = intArrayOf(R.id.widget_destination_0, R.id.widget_destination_1, R.id.widget_destination_2, R.id.widget_destination_3, R.id.widget_destination_4)
+        private val trainIds = intArrayOf(R.id.widget_train_0, R.id.widget_train_1, R.id.widget_train_2, R.id.widget_train_3, R.id.widget_train_4)
         private val platformIds = intArrayOf(R.id.widget_platform_0, R.id.widget_platform_1, R.id.widget_platform_2, R.id.widget_platform_3, R.id.widget_platform_4)
         private val statusIds = intArrayOf(R.id.widget_status_0, R.id.widget_status_1, R.id.widget_status_2, R.id.widget_status_3, R.id.widget_status_4)
 
@@ -105,7 +106,7 @@ class RouteWidgetProvider : AppWidgetProvider() {
             views.setTextViewText(R.id.widget_route, state.routeLabel)
             views.setTextViewText(
                 R.id.widget_meta,
-                "${state.freshness.accessibleLabel} · ${accessibleUpdateTime(state.retrievedAt)} · pagina ${page + 1} di ${maxPage + 1}"
+                "${state.freshness.accessibleLabel.uppercase()} · PAG ${page + 1}/${maxPage + 1} · ${accessibleUpdateTime(state.retrievedAt)}"
             )
             views.setViewVisibility(R.id.widget_column_header, View.VISIBLE)
             views.setContentDescription(
@@ -119,16 +120,17 @@ class RouteWidgetProvider : AppWidgetProvider() {
                 } else {
                     views.setViewVisibility(id, View.VISIBLE)
                     views.setTextViewText(timeIds[index], service.expectedDeparture)
-                    views.setTextViewText(destinationIds[index], "${service.destination}\n${service.operator.shortLabel} · ${service.category} ${service.number}")
-                    views.setTextViewText(platformIds[index], service.platform?.let { "Bin. $it" } ?: "—")
+                    views.setTextViewText(destinationIds[index], service.destination)
+                    views.setTextViewText(trainIds[index], "${service.operator.shortLabel} · ${service.category} ${service.number}")
+                    views.setTextViewText(platformIds[index], service.platform?.let { "BIN $it" } ?: "—")
                     views.setTextViewText(statusIds[index], service.statusLabel)
                     views.setContentDescription(id, service.accessibleLabel)
                     views.setTextColor(statusIds[index], statusColor(context, service.status))
                     views.setOnClickPendingIntent(id, openAppIntent(context, widgetId))
                 }
             }
-            views.setTextViewText(R.id.widget_direction, "${state.direction.label} ↔")
-            views.setTextViewText(R.id.widget_refresh, "Aggiorna")
+            views.setTextViewText(R.id.widget_direction, state.direction.label.uppercase())
+            views.setTextViewText(R.id.widget_refresh, "↻")
             views.setOnClickPendingIntent(R.id.widget_previous_page, actionIntent(context, ACTION_PREVIOUS_PAGE, widgetId))
             views.setOnClickPendingIntent(R.id.widget_next_page, actionIntent(context, ACTION_NEXT_PAGE, widgetId))
             views.setOnClickPendingIntent(R.id.widget_direction, actionIntent(context, ACTION_SWITCH_DIRECTION, widgetId))
@@ -200,9 +202,9 @@ data class WidgetService(
     val platform: String?
 ) {
     val statusLabel: String get() = when (status) {
-        ServiceStatus.ON_TIME -> "In orario"
-        ServiceStatus.DELAYED -> "+$delayMinutes min"
-        ServiceStatus.CANCELLED -> "Soppresso"
+        ServiceStatus.ON_TIME -> "OK"
+        ServiceStatus.DELAYED -> "+$delayMinutes"
+        ServiceStatus.CANCELLED -> "SOPP."
     }
     val accessibleLabel: String
         get() = "Operatore ${operator.accessibleLabel}. $category $number verso $destination. Partenza prevista $expectedDeparture. $statusLabel. ${platform?.let { "Binario $it" } ?: "Binario non disponibile"}."
