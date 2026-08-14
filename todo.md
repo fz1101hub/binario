@@ -107,7 +107,7 @@
 - [x] Aggiungere descrizione e selettore esplicito sotto ciascuna categoria del widget, senza chip orizzontali tagliati.
 - [x] Riorganizzare il widget ridimensionato in layout leggibili senza clip, preservando tutte le informazioni disponibili con priorità esplicita.
 - [x] Verificare, documentare e pubblicare la correzione di configurazione e resize con commit e push Git dedicati.
-- [ ] Isolare e correggere i riferimenti RemoteViews non validi nel layout compatto che impediscono il caricamento del widget.
+- [x] Isolare e correggere i riferimenti RemoteViews non validi nel layout compatto che impediscono il caricamento del widget.
 - [x] Applicare inset sicuri per barra di stato e navigation bar nella configurazione widget.
 - [x] Applicare il tema persistito alla superficie completa della configurazione, non solo ai componenti Material.
 - [ ] Verificare e pubblicare la correzione definitiva di tema, inset e caricamento widget con commit e push Git dedicati.
