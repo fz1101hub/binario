@@ -83,6 +83,10 @@
 - [x] Aggiungere condivisione testo tramite foglio nativo Android e contratto di contenuto riutilizzabile dal futuro companion iOS.
 - [x] Rendere le sezioni Treni e Stazioni della schermata Consulta due schede più squadrate e immediatamente riconoscibili.
 - [x] Verificare, documentare e pubblicare l’incremento widget, sveglia, condivisione e UI Consulta con commit e push Git dedicati.
-- [ ] Raccogliere e riallineare la matrice dei benchmark con lo stato reale di Binario v0.14.0.
-- [ ] Classificare ogni gap residuo per valore utente, accessibilità, privacy e dipendenza da dati live autorizzati.
-- [ ] Pubblicare una roadmap prioritaria con funzioni adottabili subito, funzioni bloccate dalla fonte dati e miglioramenti differiti.
+- [x] Raccogliere e riallineare la matrice dei benchmark con lo stato reale di Binario v0.14.0.
+- [x] Classificare ogni gap residuo per valore utente, accessibilità, privacy e dipendenza da dati live autorizzati.
+- [x] Pubblicare una roadmap prioritaria con funzioni adottabili subito, funzioni bloccate dalla fonte dati e miglioramenti differiti.
+- [ ] v0.15: aggiungere avvisi pendolare locali configurabili, ricorrenze, quiet hours e riepilogo.
+- [ ] v0.16: aggiungere monitoraggio stazione salvato, viaggio attivo e superfici widget configurabili.
+- [ ] v0.17: aggiungere esportazione/importazione locale e preferenze di mobilità/accessibilità.
+- [ ] v1.0: integrare un provider ferroviario documentato e autorizzato con freshness, provenienza e TTL.
