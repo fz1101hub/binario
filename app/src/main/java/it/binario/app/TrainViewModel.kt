@@ -101,6 +101,8 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
         private set
     var operatorFilter by mutableStateOf<RailOperator?>(null)
         private set
+    var journeyChangeFilter by mutableStateOf(JourneyChangeFilter.ANY)
+        private set
     var trainNumberQuery by mutableStateOf("")
         private set
     var integrationSettings by mutableStateOf(integrationStore.read())
@@ -154,7 +156,7 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
         routeStore.saveDirection(direction)
         recentRoutes = routeStore.recordRecent(origin, destination, stations)
         selectedService = null
-        clearSearchFilters()
+        trainNumberQuery = ""
         refresh()
         return true
     }
@@ -189,12 +191,17 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
         operatorFilter = operator
     }
 
+    fun selectJourneyChangeFilter(filter: JourneyChangeFilter) {
+        journeyChangeFilter = filter
+    }
+
     fun updateTrainNumberQuery(query: String) {
         trainNumberQuery = query.filter { it.isLetterOrDigit() || it.isWhitespace() }.take(12)
     }
 
     fun clearSearchFilters() {
         operatorFilter = null
+        journeyChangeFilter = JourneyChangeFilter.ANY
         trainNumberQuery = ""
     }
 
@@ -295,7 +302,8 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
         val query = trainNumberQuery.trim()
         val filtered = snapshot?.services.orEmpty().filter { service ->
             (operatorFilter == null || service.operator == operatorFilter) &&
-                (query.isBlank() || service.number.contains(query, ignoreCase = true))
+                (query.isBlank() || service.number.contains(query, ignoreCase = true)) &&
+                journeyChangeFilter.accepts(service.transferCount)
         }
         return orderServicesForDisplay(filtered)
     }

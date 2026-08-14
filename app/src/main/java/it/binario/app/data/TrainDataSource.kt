@@ -92,12 +92,13 @@ data class TrainService(
     val platform: String?,
     val delayMinutes: Int,
     val status: ServiceStatus,
-    val stops: List<TrainStop>
+    val stops: List<TrainStop>,
+    val transferCount: Int = 0
 ) {
     val category: String get() = trainCategory.accessibleLabel
     val operatorAndCategory: String get() = "${operator.shortLabel} · ${trainCategory.accessibleLabel}"
     val accessibleSummary: String
-        get() = "Operatore ${operator.accessibleLabel}. ${trainCategory.accessibleLabel} $number da $origin a $destination. Partenza prevista $expectedDeparture. ${status.accessibleLabel}${if (delayMinutes > 0) ", $delayMinutes minuti di ritardo" else ""}. ${platform?.let { "Binario $it" } ?: "Binario non disponibile"}."
+        get() = "Operatore ${operator.accessibleLabel}. ${trainCategory.accessibleLabel} $number da $origin a $destination. Partenza prevista $expectedDeparture. ${if (transferCount == 0) "Viaggio diretto" else "$transferCount ${if (transferCount == 1) "cambio" else "cambi"}"}. ${status.accessibleLabel}${if (delayMinutes > 0) ", $delayMinutes minuti di ritardo" else ""}. ${platform?.let { "Binario $it" } ?: "Binario non disponibile"}."
 }
 
 data class RouteSnapshot(
@@ -224,7 +225,12 @@ class DemoTrainDataSource : TrainDataSource {
                 platform = if (status == ServiceStatus.CANCELLED) null else ((index % 12) + 1).toString(),
                 delayMinutes = seed.delay,
                 status = status,
-                stops = buildStops(origin, destination, scheduled, seed.delay, index, status)
+                stops = buildStops(origin, destination, scheduled, seed.delay, index, status),
+                transferCount = when (index % 4) {
+                    0, 1 -> 0
+                    2 -> 1
+                    else -> 2
+                }
             )
         }
         return DataResult.Success(

@@ -373,8 +373,10 @@ private fun PlannerScreen(
     var showDatePicker by rememberSaveable { mutableStateOf(false) }
     var showTimePicker by rememberSaveable { mutableStateOf(false) }
     var speechMessage by rememberSaveable { mutableStateOf<String?>(null) }
+    var voiceTargetName by rememberSaveable { mutableStateOf(SearchMode.ROUTE.name) }
     val context = LocalContext.current
     val voiceLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        val voiceTarget = SearchMode.valueOf(voiceTargetName)
         val spoken = if (result.resultCode == Activity.RESULT_OK) {
             result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()
         } else null
@@ -382,29 +384,42 @@ private fun PlannerScreen(
             speechMessage = "Nessun testo ricevuto dalla dettatura. Puoi riprovare o compilare i campi manualmente."
         } else {
             val dictated = PlannerVoiceParser.parse(spoken, viewModel.stations)
-            dictated.origin?.let { originText = it.name }
-            dictated.destination?.let { destinationText = it.name }
-            dictated.station?.let { stationText = it.name }
-            dictated.trainNumber?.let(viewModel::updateTrainNumberQuery)
-            dictated.date?.let { travelDate = it.toString() }
-            dictated.time?.let { travelTime = it.toString() }
-            dictated.returnJourney?.let { returnJourney = it }
-            mode = when {
-                dictated.origin != null && dictated.destination != null -> SearchMode.ROUTE
-                dictated.trainNumber != null -> SearchMode.TRAIN
-                dictated.station != null -> SearchMode.STATION
-                else -> mode
+            val updated = when (voiceTarget) {
+                SearchMode.ROUTE -> {
+                    dictated.origin?.let { originText = it.name }
+                    dictated.destination?.let { destinationText = it.name }
+                    dictated.date?.let { travelDate = it.toString() }
+                    dictated.time?.let { travelTime = it.toString() }
+                    dictated.returnJourney?.let { returnJourney = it }
+                    dictated.origin != null || dictated.destination != null || dictated.date != null || dictated.time != null || dictated.returnJourney != null
+                }
+                SearchMode.TRAIN -> {
+                    dictated.trainNumber?.let(viewModel::updateTrainNumberQuery)
+                    dictated.trainNumber != null
+                }
+                SearchMode.STATION -> {
+                    (dictated.station ?: dictated.origin)?.let { stationText = it.name }
+                    dictated.station != null || dictated.origin != null
+                }
             }
-            speechMessage = if (dictated.origin != null || dictated.destination != null || dictated.station != null || dictated.trainNumber != null || dictated.date != null || dictated.time != null || dictated.returnJourney != null) {
-                "Dati di viaggio aggiornati dalla dettatura. Verifica i campi prima di cercare."
-            } else "Non ho riconosciuto una stazione, un numero treno, una data o un’ora. Puoi riprovare usando ad esempio: da Roma Termini a Torino Porta Nuova domani alle 18."
+            speechMessage = if (updated) "Dati aggiornati dalla dettatura. Verifica i campi prima di cercare."
+            else when (voiceTarget) {
+                SearchMode.ROUTE -> "Non ho riconosciuto una tratta, data, ora o opzione di ritorno. Prova: da Roma Termini a Torino Porta Nuova domani alle 18."
+                SearchMode.TRAIN -> "Non ho riconosciuto un numero treno. Prova: treno 9512."
+                SearchMode.STATION -> "Non ho riconosciuto una stazione. Prova: stazione Roma Termini."
+            }
         }
     }
-    fun startVoiceInput() {
+    fun startVoiceInput(target: SearchMode) {
+        voiceTargetName = target.name
         val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
             putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
             putExtra(RecognizerIntent.EXTRA_LANGUAGE, "it-IT")
-            putExtra(RecognizerIntent.EXTRA_PROMPT, "Dì la tratta, la stazione, il treno, la data o l’ora")
+            putExtra(RecognizerIntent.EXTRA_PROMPT, when (target) {
+                SearchMode.ROUTE -> "Dì partenza, arrivo, data, ora o andata e ritorno"
+                SearchMode.TRAIN -> "Dì il numero del treno"
+                SearchMode.STATION -> "Dì il nome della stazione"
+            })
         }
         if (intent.resolveActivity(context.packageManager) == null) {
             speechMessage = "Il riconoscitore vocale di sistema non è disponibile su questo dispositivo."
@@ -441,15 +456,6 @@ private fun PlannerScreen(
             Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 Text("Pianifica viaggio", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                 Text("Cerca le prossime soluzioni per tratta, giorno e orario.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                OutlinedButton(
-                    onClick = ::startVoiceInput,
-                    modifier = Modifier.fillMaxWidth().semantics { contentDescription = "Detta i dati del viaggio. Puoi indicare tratta, stazione, numero treno, oggi, domani e ora." }
-                ) {
-                    Icon(Icons.Default.Mic, contentDescription = null)
-                    Spacer(Modifier.width(8.dp))
-                    Text("Detta viaggio")
-                }
-                speechMessage?.let { message -> Text(message, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     items(SearchMode.entries) { item -> FilterChip(selected = mode == item, onClick = { mode = item }, label = { Text(item.label) }) }
                 }
@@ -457,6 +463,8 @@ private fun PlannerScreen(
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         when (mode) {
                         SearchMode.ROUTE -> {
+                        VoiceInputButton(onClick = { startVoiceInput(SearchMode.ROUTE) }, label = "Detta tratta")
+                        speechMessage?.let { message -> Text(message, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                         Text("STAZIONE PARTENZA", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
                         StationField("Partenza", originText, { originText = it }, viewModel.searchStations(originText), { originText = it.name })
                         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
@@ -490,7 +498,11 @@ private fun PlannerScreen(
                             label = { Text(if (showFilters) "Filtri aperti" else "Filtri · Tutti i treni") },
                             leadingIcon = { Icon(Icons.Default.Info, contentDescription = null, modifier = Modifier.size(18.dp)) }
                         )
-                        if (showFilters) OperatorFilterBar(viewModel.operatorFilter, viewModel::selectOperatorFilter)
+                        if (showFilters) {
+                            JourneyChangeFilterBar(viewModel.journeyChangeFilter, viewModel::selectJourneyChangeFilter)
+                            OperatorFilterBar(viewModel.operatorFilter, viewModel::selectOperatorFilter)
+                            Text("I cambi sono indicativi nel catalogo dimostrativo locale; i dati reali richiedono una fonte ferroviaria autorizzata.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
                         Button(
                             onClick = { if (origin != null && destination != null && origin != destination && viewModel.searchRoute(origin, destination)) showResults() },
                             enabled = origin != null && destination != null && origin != destination,
@@ -502,6 +514,8 @@ private fun PlannerScreen(
                         }
                         }
                         SearchMode.TRAIN -> {
+                            VoiceInputButton(onClick = { startVoiceInput(SearchMode.TRAIN) }, label = "Detta numero treno")
+                            speechMessage?.let { message -> Text(message, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                             Text("STATO DI UN TRENO", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
                             OutlinedTextField(
                                 value = viewModel.trainNumberQuery,
@@ -519,6 +533,8 @@ private fun PlannerScreen(
                             }
                         }
                         SearchMode.STATION -> {
+                            VoiceInputButton(onClick = { startVoiceInput(SearchMode.STATION) }, label = "Detta stazione")
+                            speechMessage?.let { message -> Text(message, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                             Text("TABELLONE STAZIONE", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
                             StationField("Stazione", stationText, { stationText = it }, viewModel.searchStations(stationText), { stationText = it.name })
                             Button(onClick = openStations, enabled = viewModel.stationFromName(stationText) != null, modifier = Modifier.fillMaxWidth()) {
@@ -1054,6 +1070,35 @@ private fun OperatorFilterBar(selected: RailOperator?, onSelected: (RailOperator
         items(RailOperator.entries) { operator ->
             FilterChip(selected = selected == operator, onClick = { onSelected(operator) }, label = { Text(operator.shortLabel) })
         }
+    }
+}
+
+@Composable
+private fun JourneyChangeFilterBar(selected: JourneyChangeFilter, onSelected: (JourneyChangeFilter) -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text("CAMBI", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            items(JourneyChangeFilter.entries) { filter ->
+                FilterChip(
+                    selected = selected == filter,
+                    onClick = { onSelected(filter) },
+                    label = { Text(filter.label) },
+                    modifier = Modifier.semantics { contentDescription = filter.accessibleLabel }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun VoiceInputButton(onClick: () -> Unit, label: String) {
+    OutlinedButton(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth().semantics { contentDescription = "$label tramite riconoscitore vocale di sistema" }
+    ) {
+        Icon(Icons.Default.Mic, contentDescription = null)
+        Spacer(Modifier.width(8.dp))
+        Text(label)
     }
 }
 
