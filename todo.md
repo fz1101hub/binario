@@ -110,4 +110,4 @@
 - [x] Isolare e correggere i riferimenti RemoteViews non validi nel layout compatto che impediscono il caricamento del widget.
 - [x] Applicare inset sicuri per barra di stato e navigation bar nella configurazione widget.
 - [x] Applicare il tema persistito alla superficie completa della configurazione, non solo ai componenti Material.
-- [ ] Verificare e pubblicare la correzione definitiva di tema, inset e caricamento widget con commit e push Git dedicati.
+- [x] Verificare e pubblicare la correzione definitiva di tema, inset e caricamento widget con commit e push Git dedicati.
