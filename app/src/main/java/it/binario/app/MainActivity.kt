@@ -1254,7 +1254,24 @@ private fun SettingsScreen(
     var showAlertComposer by rememberSaveable { mutableStateOf(false) }
     var pendingAlert by remember { mutableStateOf<CommuterAlert?>(null) }
     var alertFeedback by rememberSaveable { mutableStateOf<String?>(null) }
+    var backupFeedback by rememberSaveable { mutableStateOf<String?>(null) }
     val context = LocalContext.current
+    val createBackupDocument = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument(LocalDataBackupCodec.MIME_TYPE)) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        backupFeedback = runCatching {
+            context.contentResolver.openOutputStream(uri)?.bufferedWriter()?.use { it.write(viewModel.exportLocalBackup()) }
+                ?: error("Impossibile aprire il file scelto.")
+            "Backup locale esportato. Conservalo in un luogo protetto."
+        }.getOrElse { "Esportazione non riuscita: ${it.message ?: "errore file"}" }
+    }
+    val openBackupDocument = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        backupFeedback = runCatching {
+            val raw = context.contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
+                ?: error("Impossibile leggere il file scelto.")
+            viewModel.importLocalBackup(raw)
+        }.getOrElse { "Importazione non riuscita: ${it.message ?: "errore file"}" }
+    }
     val notificationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         val alert = pendingAlert
         pendingAlert = null
@@ -1331,6 +1348,19 @@ private fun SettingsScreen(
                 onEndTrip = viewModel::endActiveTrip,
                 onRemoveStationMonitor = viewModel::removeStationMonitor,
                 onSelectWidgetSurface = viewModel::selectWidgetSurface
+            )
+        }
+        item {
+            MobilityPreferencesPanel(
+                value = viewModel.mobilityPreferences,
+                onChange = viewModel::updateMobilityPreferences
+            )
+        }
+        item {
+            LocalBackupPanel(
+                feedback = backupFeedback,
+                onExport = { createBackupDocument.launch("binario-backup.json") },
+                onImport = { openBackupDocument.launch(arrayOf(LocalDataBackupCodec.MIME_TYPE, "text/plain")) }
             )
         }
         item { SettingsSectionTitle("Integrazioni") }
@@ -1508,6 +1538,39 @@ private fun PersonalTravelPanel(
             }
         }
         Text("Le superfici Viaggio attivo e Stazione monitorata riportano lo stato personale; senza provider autorizzato non mostrano un tabellone live.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+@Composable
+private fun MobilityPreferencesPanel(value: MobilityPreferences, onChange: (MobilityPreferences) -> Unit) {
+    Column(Modifier.padding(horizontal = 20.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text("Mobilità e accessibilità", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        Text("Queste preferenze restano sul dispositivo e guideranno i filtri quando sarà disponibile una fonte autorizzata.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text("Cambi preferiti", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            item { FilterChip(selected = value.maxChanges == null, onClick = { onChange(value.copy(maxChanges = null)) }, label = { Text("Qualsiasi") }) }
+            items(listOf(0, 1, 2)) { changes -> FilterChip(selected = value.maxChanges == changes, onClick = { onChange(value.copy(maxChanges = changes)) }, label = { Text(if (changes == 0) "Diretto" else "Max $changes") }) }
+        }
+        Text("Margine di interscambio", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            items(listOf(5, 10, 15, 20)) { minutes -> FilterChip(selected = value.transferMarginMinutes == minutes, onClick = { onChange(value.copy(transferMarginMinutes = minutes)) }, label = { Text("$minutes min") }) }
+        }
+        FilterChip(selected = value.stepFreePreferred, onClick = { onChange(value.copy(stepFreePreferred = !value.stepFreePreferred)) }, label = { Text("Priorità percorsi senza barriere") })
+        FilterChip(selected = value.compactTimetablePreferred, onClick = { onChange(value.copy(compactTimetablePreferred = !value.compactTimetablePreferred)) }, label = { Text("Preferisco tabelloni compatti") })
+        Text(value.accessibleSummary, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+@Composable
+private fun LocalBackupPanel(feedback: String?, onExport: () -> Unit, onImport: () -> Unit) {
+    Column(Modifier.padding(horizontal = 20.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text("Backup locale", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        Text("Esporta o importa tratte, preferiti, monitoraggi, avvisi e preferenze con un file JSON scelto da te. Non viene usato alcun cloud automatico.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(onClick = onExport, modifier = Modifier.weight(1f)) { Text("Esporta") }
+            Button(onClick = onImport, modifier = Modifier.weight(1f)) { Text("Importa") }
+        }
+        feedback?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
     }
 }
 

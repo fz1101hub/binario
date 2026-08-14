@@ -14,10 +14,16 @@ class StationPreferences(context: Context) {
 
     fun isFavourite(station: Station): Boolean = station.id in preferences.getStringSet(KEY_FAVOURITES, emptySet()).orEmpty()
 
+    fun favouriteIds(): Set<String> = preferences.getStringSet(KEY_FAVOURITES, emptySet()).orEmpty().toSet()
+
     fun toggle(station: Station) {
         val updated = preferences.getStringSet(KEY_FAVOURITES, emptySet()).orEmpty().toMutableSet()
         if (!updated.add(station.id)) updated.remove(station.id)
         preferences.edit { putStringSet(KEY_FAVOURITES, updated) }
+    }
+
+    fun replaceFavourites(ids: Set<String>) {
+        preferences.edit { putStringSet(KEY_FAVOURITES, ids) }
     }
 
     private companion object {

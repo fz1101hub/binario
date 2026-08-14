@@ -47,6 +47,7 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
     private val stationPreferences = StationPreferences(application)
     private val commuterAlertStore = CommuterAlertStore(application)
     private val personalTravelStore = PersonalTravelStore(application)
+    private val mobilityPreferencesStore = MobilityPreferencesStore(application)
     private val dataSource: TrainDataSource = RailDataRepository()
 
     val stations = listOf(
@@ -117,6 +118,8 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
         private set
     var widgetSurface by mutableStateOf(personalTravelStore.widgetSurface())
         private set
+    var mobilityPreferences by mutableStateOf(mobilityPreferencesStore.read())
+        private set
 
     init {
         refresh()
@@ -148,6 +151,10 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun removeStationMonitor(stationId: String) {
         stationMonitors = personalTravelStore.removeStationMonitor(stationId, stations)
+    }
+
+    fun replaceStationMonitors(monitors: List<StationMonitor>) {
+        stationMonitors = personalTravelStore.replaceStationMonitors(monitors, stations)
     }
 
     fun activateRoute(route: SavedRoute) {
@@ -348,6 +355,10 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
         monitoredServices = routeStore.removeServiceMonitor(number)
     }
 
+    fun replaceServiceMonitors(monitors: List<ServiceMonitor>) {
+        monitoredServices = routeStore.replaceServiceMonitors(monitors)
+    }
+
     fun createCommuterAlert(
         stationName: String,
         time: String,
@@ -382,6 +393,42 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
         widgetSurface = surface
         personalTravelStore.saveWidgetSurface(surface)
         RouteWidgetProvider.refreshAll(getApplication())
+    }
+
+    fun updateMobilityPreferences(value: MobilityPreferences) {
+        mobilityPreferences = value
+        mobilityPreferencesStore.save(value)
+    }
+
+    fun exportLocalBackup(): String = LocalDataBackupCodec.encode(
+        LocalDataBackup(
+            routes = savedRoutes,
+            favouriteStationIds = stationPreferences.favouriteIds(),
+            monitoredServices = monitoredServices,
+            stationMonitors = stationMonitors,
+            commuterAlerts = commuterAlerts,
+            mobilityPreferences = mobilityPreferences,
+            widgetSurface = widgetSurface
+        )
+    )
+
+    fun importLocalBackup(raw: String): String = when (val result = LocalDataBackupCodec.decode(raw, stations)) {
+        is LocalBackupResult.Failure -> result.message
+        is LocalBackupResult.Success -> {
+            val backup = result.backup
+            savedRoutes = pinnedFirst(routeStore.replaceRoutes(backup.routes))
+            activeRoute = savedRoutes.first()
+            routeStore.saveActiveRoute(activeRoute.id)
+            stationPreferences.replaceFavourites(backup.favouriteStationIds)
+            favouriteStations = stationPreferences.favourites(stations)
+            replaceServiceMonitors(backup.monitoredServices)
+            replaceStationMonitors(backup.stationMonitors)
+            commuterAlerts = commuterAlertStore.replace(backup.commuterAlerts)
+            updateMobilityPreferences(backup.mobilityPreferences)
+            selectWidgetSurface(backup.widgetSurface)
+            refresh()
+            "Backup importato localmente: ${savedRoutes.size} tratte, ${stationMonitors.size} stazioni monitorate e ${commuterAlerts.size} avvisi."
+        }
     }
 
     fun setWearSnapshotSharing(enabled: Boolean) {
@@ -462,6 +509,12 @@ private class RouteStore(context: Context) {
         preferences.edit { putString(KEY_ROUTES, routes.joinToString(";") { encodeRoute(it) }) }
     }
 
+    fun replaceRoutes(routes: List<SavedRoute>): List<SavedRoute> {
+        val normalized = routes.distinctBy { it.id }.take(32)
+        saveRoutes(normalized)
+        return normalized
+    }
+
     fun saveActiveRoute(id: String) {
         preferences.edit { putString(KEY_ACTIVE_ROUTE, id) }
     }
@@ -509,6 +562,12 @@ private class RouteStore(context: Context) {
 
     fun removeServiceMonitor(number: String): List<ServiceMonitor> {
         val updated = monitoredServices().filterNot { it.number.equals(number, ignoreCase = true) }
+        preferences.edit { putString(KEY_MONITORED_SERVICES, updated.joinToString(";") { "${encode(it.number)},${encode(it.label)}" }) }
+        return updated
+    }
+
+    fun replaceServiceMonitors(monitors: List<ServiceMonitor>): List<ServiceMonitor> {
+        val updated = monitors.distinctBy { it.number.uppercase() }.take(12)
         preferences.edit { putString(KEY_MONITORED_SERVICES, updated.joinToString(";") { "${encode(it.number)},${encode(it.label)}" }) }
         return updated
     }

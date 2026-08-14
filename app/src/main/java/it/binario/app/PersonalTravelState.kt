@@ -60,6 +60,12 @@ class PersonalTravelStore(context: Context) {
         return updated
     }
 
+    fun replaceStationMonitors(monitors: List<StationMonitor>, stations: List<Station>): List<StationMonitor> {
+        val normalized = monitors.filter { monitor -> stations.any { it.id == monitor.stationId } }.distinctBy { it.stationId }.take(12)
+        persistMonitors(normalized)
+        return normalized
+    }
+
     fun activeTrip(): ActiveTrip? = prefs.getString(KEY_ACTIVE_TRIP, null)?.let(::decodeTrip)
 
     fun startTrip(service: TrainService): ActiveTrip {

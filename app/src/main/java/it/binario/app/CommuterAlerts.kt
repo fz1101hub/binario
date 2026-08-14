@@ -90,6 +90,12 @@ class CommuterAlertStore(context: Context) {
         return updated
     }
 
+    fun replace(alerts: List<CommuterAlert>): List<CommuterAlert> {
+        val normalized = alerts.distinctBy { it.id }.take(24)
+        persist(normalized)
+        return normalized
+    }
+
     fun find(id: String): CommuterAlert? = alerts().firstOrNull { it.id == id }
 
     fun newAlert(routeLabel: String, stationName: String, time: String, leadMinutes: Int, repeat: AlertRepeat, quietHoursEnabled: Boolean) =
