@@ -72,7 +72,7 @@ Il ramo include ora `RailSourceCatalog` con 31 fonti censite e classificate. Il 
 
 Sono ora attive nella composition root le due fonti live usate dalle app ferroviarie analizzate: `ViaggiaTrenoStationAdapter` per il tabellone Trenitalia della stazione di origine e `RfiStationBoardAdapter` come fallback live per tabelloni di stazione. Entrambe espongono provider, timestamp e freschezza alla UI e al widget; cache, timeout e fallback sono coperti da test. Lo smoke test del 14 agosto 2026 ha ottenuto HTTP 200 con 67 corse ViaggiaTreno e 40 partenze RFI per Roma Termini.
 
-Il test completo ha elaborato tutte le 31 fonti catalogate. Quattro data pack GTFS validati sono inclusi nell’APK: AMT Genova–Casella, Cotral/ASTRAL Ferro, HŽPP e SNCF. `EmbeddedGtfsPackLoader` li carica in modo lazy e verificabile dagli asset; manifest e SHA-256 sono in `app/src/main/assets/gtfs/`. L’APK debug con asset inclusi è stato compilato con successo il 14 agosto 2026 (circa 33 MB). Italo e Trenord restano catalogati, non attivati: le rispettive pagine dinamiche non dispongono ancora di parser Android stabile e testato.
+Il test completo ha elaborato tutte le 31 fonti catalogate. L’import massimo successivo include ora nove data pack GTFS validati: AMT Genova–Casella, ARST Sardegna, Cotral/ASTRAL Ferro, EAV Campania, HŽPP, Lombardia/Trenord, SNCF, Toscana/TFT e Trentino Trasporti extraurbano. `EmbeddedGtfsPackLoader` li carica in modo lazy e verificabile dagli asset; manifest e SHA-256 sono in `app/src/main/assets/gtfs/`. I feed multimodali devono essere filtrati per `route_type=2`; TFT richiede una normalizzazione esplicita, perché le sue due tratte ferroviarie sono codificate dal titolare con `route_type=3`. Alto Adige, Svizzera e ÖBB restano import offline per dimensione o timeout; Italo e Trenord restano catalogati, non attivati: le rispettive pagine dinamiche non dispongono ancora di parser Android stabile e testato.
 
 ## Documenti correlati
 
@@ -82,6 +82,8 @@ Il test completo ha elaborato tutte le 31 fonti catalogate. Quattro data pack GT
 - `docs/data-sources/FULL_SOURCE_TEST_REPORT.md`
 - `docs/data-sources/consolidated_source_test_2026-08-14.csv`
 - `docs/data-sources/GTFS_IMPORT_RESULTS.md`
+- `docs/data-sources/MAXIMIZED_IMPORT_REPORT.md`
+- `docs/data-sources/ALTERNATE_IMPORT_PATHS.md`
 - `docs/data-sources/live_source_probe_2026-08-14.tsv`
 - `docs/data-sources/open_source_probe_2026-08-14.tsv`
 - `docs/architecture/GTFS_SOURCE_ADAPTERS.md`

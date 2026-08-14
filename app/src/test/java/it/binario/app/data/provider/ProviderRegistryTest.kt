@@ -36,7 +36,7 @@ class ProviderRegistryTest {
         assertTrue(registry.policy(SourceId("arst-gtfs")) != null)
         assertTrue(registry.policy(SourceId("sncf-gtfs-rt-trip-updates")) != null)
         assertTrue(registry.policy(SourceId("viaggiatreno")) != null)
-        assertFalse(registry.isEnabled(SourceId("arst-gtfs")))
+        assertTrue(registry.isEnabled(SourceId("arst-gtfs")))
         assertTrue(registry.isEnabled(SourceId("viaggiatreno")))
         assertTrue(registry.isEnabled(SourceId("rfi-station-board")))
         assertTrue(registry.isEnabled(SourceId("sncf-gtfs")))

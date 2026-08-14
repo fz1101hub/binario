@@ -18,9 +18,14 @@ data class EmbeddedGtfsPack(
 object EmbeddedGtfsPacks {
     val all = listOf(
         EmbeddedGtfsPack(SourceId("amt-genova-casella-gtfs"), "gtfs/amt-genova-casella-gtfs.zip"),
+        EmbeddedGtfsPack(SourceId("arst-gtfs"), "gtfs/arst-gtfs.zip"),
         EmbeddedGtfsPack(SourceId("cotral-ferro-gtfs"), "gtfs/cotral-ferro-gtfs.zip"),
+        EmbeddedGtfsPack(SourceId("eav-gtfs"), "gtfs/eav-gtfs.zip"),
         EmbeddedGtfsPack(SourceId("hzpp-gtfs"), "gtfs/hzpp-gtfs.zip"),
-        EmbeddedGtfsPack(SourceId("sncf-gtfs"), "gtfs/sncf-gtfs.zip")
+        EmbeddedGtfsPack(SourceId("lombardia-trenord-gtfs"), "gtfs/lombardia-trenord-gtfs.zip"),
+        EmbeddedGtfsPack(SourceId("sncf-gtfs"), "gtfs/sncf-gtfs.zip"),
+        EmbeddedGtfsPack(SourceId("toscana-tft-gtfs"), "gtfs/toscana-tft-gtfs.zip"),
+        EmbeddedGtfsPack(SourceId("trentino-gtfs"), "gtfs/trentino-extraurban-gtfs.zip")
     )
 
     val sourceIds: Set<SourceId> = all.mapTo(linkedSetOf()) { it.sourceId }

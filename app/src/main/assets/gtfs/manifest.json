@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "generatedAt": "2026-08-14",
   "purpose": "Offline GTFS data packs validated in Binario source test",
   "packs": [
@@ -13,6 +13,15 @@
       "notes": "Imported offline because the upstream URL is HTTP."
     },
     {
+      "sourceId": "arst-gtfs",
+      "asset": "gtfs/arst-gtfs.zip",
+      "sourceUrl": "https://arstspa.info/arst-cagliari-it.zip",
+      "accessMode": "OPEN_DIRECT",
+      "attribution": "ARST S.p.A.",
+      "sha256": "4dafa94ae8e9fa6971bb3b84b088c8f191df9c689af5d817b66f9bfd9d0d05fa",
+      "notes": "Multimodal feed with four route_type=2 rail routes; only rail-relevant records must be surfaced."
+    },
+    {
       "sourceId": "cotral-ferro-gtfs",
       "asset": "gtfs/cotral-ferro-gtfs.zip",
       "sourceUrl": "http://travel.mob.cotralspa.it:7777/GTFS/GTFS_FERRO.zip",
@@ -20,6 +29,15 @@
       "attribution": "Cotral / ASTRAL",
       "sha256": "6db6f042d721395aaaf95c5cd835848890371f96e9635996790cf8e7165ba9de",
       "notes": "Imported offline because the upstream URL is HTTP."
+    },
+    {
+      "sourceId": "eav-gtfs",
+      "asset": "gtfs/eav-gtfs.zip",
+      "sourceUrl": "https://www.wimob.it/cfile/download.php?file=google-transit.zip",
+      "accessMode": "OPEN_DIRECT",
+      "attribution": "Ente Autonomo Volturno S.r.l.",
+      "sha256": "355e2d128bd36677e22ff5c35a02b18e33795edb34421decc0f5c945c8a0a59f",
+      "notes": "GTFS publicized by the EAV open-data page. The imported version contains 16 route_type=2 railway routes; filter the multimodal feed before display."
     },
     {
       "sourceId": "hzpp-gtfs",
@@ -31,6 +49,15 @@
       "notes": "Static timetable pack; coverage in Italy must be filtered by stop and service date."
     },
     {
+      "sourceId": "lombardia-trenord-gtfs",
+      "asset": "gtfs/lombardia-trenord-gtfs.zip",
+      "sourceUrl": "https://www.dati.lombardia.it/download/3z4k-mxz9/application/zip",
+      "accessMode": "OPEN_DIRECT",
+      "attribution": "Regione Lombardia / Trenord",
+      "sha256": "b4296f145b42ccb35c26085470ff4b3fd5dffe533251c0aab312312a73820ad6",
+      "notes": "Regional railway GTFS; 60 route_type=2 routes in the imported version."
+    },
+    {
       "sourceId": "sncf-gtfs",
       "asset": "gtfs/sncf-gtfs.zip",
       "sourceUrl": "https://eu.ftp.opendatasoft.com/sncf/plandata/Export_OpenData_SNCF_GTFS_NewTripId.zip",
@@ -38,6 +65,24 @@
       "attribution": "SNCF Open Data",
       "sha256": "f770f784493ab2a78f68762eaeab3ce989ce65c5c339895720ced1cf2de87a48",
       "notes": "Static timetable pack; filter to services with Italian legs before showing to users."
+    },
+    {
+      "sourceId": "toscana-tft-gtfs",
+      "asset": "gtfs/toscana-tft-gtfs.zip",
+      "sourceUrl": "https://dati.toscana.it/dataset/8bb8f8fe-fe7d-41d0-90dc-49f2456180d1/resource/59aeacbc-99ee-410b-ac1e-622b5574a666/download/tft.gtfs",
+      "accessMode": "OPEN_DIRECT",
+      "attribution": "Regione Toscana / T.F.T. S.p.A.",
+      "sha256": "e52d6a9acb85ec675779c008af569e2a8e26babf1d1943ce4cbb32fb9d75d6a3",
+      "notes": "Arezzo–Stia and Arezzo–Sinalunga. The source labels both routes type 3 despite railway route names; surface only after route-type normalization review."
+    },
+    {
+      "sourceId": "trentino-gtfs",
+      "asset": "gtfs/trentino-extraurban-gtfs.zip",
+      "sourceUrl": "https://www.trentinotrasporti.it/opendata/google_transit_extraurbano_tte.zip",
+      "accessMode": "OPEN_DIRECT",
+      "attribution": "Trentino Trasporti",
+      "sha256": "8a170883e466b9a36bc915e09b0e3946b7bd8feac0bb90dae9afc8b718e1cde0",
+      "notes": "Multimodal extraurban feed; expose only route R35, Ferrovia Trento–Malè–Mezzana, when filtering railway data."
     }
   ]
 }
