@@ -23,9 +23,9 @@ import it.binario.app.WidgetSurface
 import it.binario.app.data.DataResult
 import it.binario.app.data.Direction
 import it.binario.app.data.Freshness
-import it.binario.app.data.RailDataRepository
 import it.binario.app.data.RailOperator
 import it.binario.app.data.RouteSnapshot
+import it.binario.app.data.repository.BinarioDataGraph
 import it.binario.app.data.SavedRoute
 import it.binario.app.data.ServiceStatus
 import it.binario.app.data.Station
@@ -230,7 +230,7 @@ class RouteWidgetProvider : AppWidgetProvider() {
 class WidgetRefreshWorker(appContext: Context, params: WorkerParameters) : CoroutineWorker(appContext, params) {
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
         val previous = WidgetStateStore.read(applicationContext) ?: return@withContext Result.success()
-        when (val result = RailDataRepository().loadRoute(previous.route, previous.direction)) {
+        when (val result = BinarioDataGraph.routeDataSource().loadRoute(previous.route, previous.direction)) {
             is DataResult.Success -> {
                 WidgetStateStore.saveSnapshot(applicationContext, result.snapshot, previous.page)
                 RouteWidgetProvider.refreshAll(applicationContext)

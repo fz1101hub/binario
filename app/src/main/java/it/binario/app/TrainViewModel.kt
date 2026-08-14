@@ -12,13 +12,13 @@ import androidx.lifecycle.viewModelScope
 import it.binario.app.data.DataConfidence
 import it.binario.app.data.DataResult
 import it.binario.app.data.Direction
-import it.binario.app.data.RailDataRepository
 import it.binario.app.data.RailOperator
 import it.binario.app.data.RouteSnapshot
 import it.binario.app.data.RouteSnapshotCache
 import it.binario.app.data.SavedRoute
 import it.binario.app.data.Station
 import it.binario.app.data.TrainDataSource
+import it.binario.app.data.repository.BinarioDataGraph
 import it.binario.app.data.TrainService
 import it.binario.app.data.orderServicesForDisplay
 import it.binario.app.widget.RouteWidgetProvider
@@ -48,7 +48,7 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
     private val commuterAlertStore = CommuterAlertStore(application)
     private val personalTravelStore = PersonalTravelStore(application)
     private val mobilityPreferencesStore = MobilityPreferencesStore(application)
-    private val dataSource: TrainDataSource = RailDataRepository()
+    private val dataSource: TrainDataSource = BinarioDataGraph.routeDataSource()
 
     val stations = listOf(
         Station("roma-termini", "Roma Termini", "Roma", "Lazio"),
