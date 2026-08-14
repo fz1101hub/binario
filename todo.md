@@ -90,3 +90,4 @@
 - [ ] v0.16: aggiungere monitoraggio stazione salvato, viaggio attivo e superfici widget configurabili.
 - [ ] v0.17: aggiungere esportazione/importazione locale e preferenze di mobilità/accessibilità.
 - [ ] v1.0: integrare un provider ferroviario documentato e autorizzato con freshness, provenienza e TTL.
+- [ ] Verificare se Treniamo.it è incluso nei benchmark e, se assente, analizzarne funzioni e impatto sulla roadmap Binario.
