@@ -97,3 +97,8 @@
 - [x] Aggiungere esportazione/importazione JSON locale validata e preferenze di mobilità/accessibilità persistenti.
 - [x] Predisporre il confine adapter per un provider live documentato e autorizzato, senza endpoint o credenziali nel client.
 - [x] Verificare, documentare e pubblicare l’incremento unificato con commit e push Git dedicati.
+- [ ] Definire configurazione per istanza widget, regole non-live e linguaggio visivo originale ad alta leggibilità.
+- [ ] Aggiungere scelta per-widget tra tratta, stazione specifica e treno specifico, senza configurazioni globali ambigue.
+- [ ] Rendere il widget ridimensionabile con layout compatto, standard ed espanso e aggiornamento su resize.
+- [ ] Evidenziare in giallo ritardi, variazioni o soppressioni presenti nello snapshot, con semantica TalkBack e nessuna simulazione live.
+- [ ] Verificare, documentare e pubblicare il widget configurabile con commit e push Git dedicati.
