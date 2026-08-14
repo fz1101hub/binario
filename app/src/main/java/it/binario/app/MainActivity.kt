@@ -103,7 +103,8 @@ import java.time.LocalDate
 import java.time.LocalTime
 import java.util.Locale
 
-private enum class Screen { PLANNER, TRAINS, STATIONS, MORE, RESULTS, DETAIL }
+private enum class Screen { PLANNER, OPERATIONS, MORE, RESULTS, DETAIL }
+private enum class OperationsSection(val label: String) { TRAINS("Treni"), STATIONS("Stazioni") }
 private enum class SearchMode(val label: String) { ROUTE("Tratta"), TRAIN("N. treno"), STATION("Stazione") }
 private sealed interface BinarioDeepLink {
     data object ActiveRoute : BinarioDeepLink
@@ -144,10 +145,14 @@ private fun BinarioApp(
 ) {
     var screen by rememberSaveable { mutableStateOf(Screen.PLANNER) }
     var detailReturnScreen by rememberSaveable { mutableStateOf(Screen.RESULTS) }
+    var operationsSectionName by rememberSaveable { mutableStateOf(OperationsSection.TRAINS.name) }
     var showThemePicker by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(deepLink) {
         when (deepLink) {
-            BinarioDeepLink.ActiveRoute, BinarioDeepLink.NextDepartures -> screen = Screen.TRAINS
+            BinarioDeepLink.ActiveRoute, BinarioDeepLink.NextDepartures -> {
+                operationsSectionName = OperationsSection.TRAINS.name
+                screen = Screen.OPERATIONS
+            }
             is BinarioDeepLink.TrainSearch -> {
                 viewModel.updateTrainNumberQuery(deepLink.number)
                 screen = Screen.RESULTS
@@ -157,16 +162,14 @@ private fun BinarioApp(
     }
     val title = when (screen) {
         Screen.PLANNER -> "Cerca e consulta"
-        Screen.TRAINS -> "Treni"
-        Screen.STATIONS -> "Stazioni"
+        Screen.OPERATIONS -> "Consulta"
         Screen.MORE -> "Altro"
         Screen.RESULTS -> "Soluzioni"
         Screen.DETAIL -> "Dettaglio corsa"
     }
     val subtitle = when (screen) {
         Screen.PLANNER -> "Pianifica il prossimo viaggio"
-        Screen.TRAINS -> "Tabellone della tratta attiva"
-        Screen.STATIONS -> "Arrivi e partenze"
+        Screen.OPERATIONS -> "Treni e stazioni"
         Screen.MORE -> "Tratte e impostazioni"
         Screen.RESULTS -> "Corse disponibili"
         Screen.DETAIL -> "Stato e fermate"
@@ -204,7 +207,7 @@ private fun BinarioApp(
                     IconButton(onClick = { showThemePicker = true }) {
                         Icon(Icons.Default.Palette, contentDescription = "Scegli tema. Tema attuale ${themeMode.label}")
                     }
-                    if (screen == Screen.TRAINS || screen == Screen.RESULTS || screen == Screen.DETAIL) {
+                    if (screen == Screen.OPERATIONS || screen == Screen.RESULTS || screen == Screen.DETAIL) {
                         IconButton(onClick = viewModel::refresh) {
                             Icon(Icons.Default.Refresh, contentDescription = "Aggiorna le informazioni ferroviarie")
                         }
@@ -223,16 +226,10 @@ private fun BinarioApp(
                         label = { Text("Cerca") }
                     )
                     NavigationBarItem(
-                        selected = screen == Screen.TRAINS,
-                        onClick = { screen = Screen.TRAINS },
+                        selected = screen == Screen.OPERATIONS,
+                        onClick = { screen = Screen.OPERATIONS },
                         icon = { Icon(Icons.Default.Train, contentDescription = null) },
-                        label = { Text("Treni") }
-                    )
-                    NavigationBarItem(
-                        selected = screen == Screen.STATIONS,
-                        onClick = { screen = Screen.STATIONS },
-                        icon = { Icon(Icons.Default.Route, contentDescription = null) },
-                        label = { Text("Stazioni") }
+                        label = { Text("Consulta") }
                     )
                     NavigationBarItem(
                         selected = screen == Screen.MORE,
@@ -251,20 +248,28 @@ private fun BinarioApp(
                 viewModel = viewModel,
                 showResults = { screen = Screen.RESULTS },
                 openMore = { screen = Screen.MORE },
-                openStations = { screen = Screen.STATIONS }
+                openStations = {
+                    operationsSectionName = OperationsSection.STATIONS.name
+                    screen = Screen.OPERATIONS
+                }
             )
-            Screen.TRAINS -> TodayScreen(
+            Screen.OPERATIONS -> OperationsScreen(
                 modifier = Modifier.padding(padding),
                 viewModel = viewModel,
-                openDetails = { service -> detailReturnScreen = Screen.TRAINS; viewModel.openService(service); screen = Screen.DETAIL },
+                selectedSection = OperationsSection.valueOf(operationsSectionName),
+                onSectionSelected = { operationsSectionName = it.name },
+                openDetails = { service -> detailReturnScreen = Screen.OPERATIONS; viewModel.openService(service); screen = Screen.DETAIL },
                 openRoutes = { screen = Screen.MORE },
                 openSearch = { screen = Screen.PLANNER }
             )
-            Screen.STATIONS -> StationBoardScreen(Modifier.padding(padding), viewModel)
             Screen.MORE -> RoutesScreen(
                 modifier = Modifier.padding(padding),
                 viewModel = viewModel,
-                openRoute = { viewModel.activateRoute(it); screen = Screen.TRAINS }
+                openRoute = {
+                    viewModel.activateRoute(it)
+                    operationsSectionName = OperationsSection.TRAINS.name
+                    screen = Screen.OPERATIONS
+                }
             )
             Screen.RESULTS -> RouteResultsScreen(
                 modifier = Modifier.padding(padding),
@@ -334,6 +339,44 @@ private fun TodayScreen(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(20.dp)
             )
+        }
+    }
+}
+
+@Composable
+private fun OperationsScreen(
+    modifier: Modifier,
+    viewModel: TrainViewModel,
+    selectedSection: OperationsSection,
+    onSectionSelected: (OperationsSection) -> Unit,
+    openDetails: (TrainService) -> Unit,
+    openRoutes: () -> Unit,
+    openSearch: () -> Unit
+) {
+    Column(modifier = modifier.fillMaxSize()) {
+        LazyRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 20.dp, vertical = 10.dp)
+        ) {
+            items(OperationsSection.entries) { section ->
+                FilterChip(
+                    selected = selectedSection == section,
+                    onClick = { onSectionSelected(section) },
+                    label = { Text(section.label) },
+                    modifier = Modifier.semantics { contentDescription = "Apri sezione ${section.label}" }
+                )
+            }
+        }
+        when (selectedSection) {
+            OperationsSection.TRAINS -> TodayScreen(
+                modifier = Modifier.weight(1f),
+                viewModel = viewModel,
+                openDetails = openDetails,
+                openRoutes = openRoutes,
+                openSearch = openSearch
+            )
+            OperationsSection.STATIONS -> StationBoardScreen(Modifier.weight(1f), viewModel)
         }
     }
 }

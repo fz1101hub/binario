@@ -74,6 +74,6 @@
 - [x] Mappare la navigazione attuale e definire stati accessibili per dettatura contestuale, filtro cambi e impostazioni.
 - [x] Spostare il microfono nelle schede di ricerca viaggio, treno e stazione, con messaggi coerenti per ciascun contesto.
 - [x] Aggiungere filtro viaggio diretto o numero massimo di cambi, dichiarando il comportamento per il catalogo non live.
-- [ ] Unificare le aree Treni e Stazioni in una sola destinazione operativa con sezioni chiare.
+- [x] Unificare le aree Treni e Stazioni in una sola destinazione operativa con sezioni chiare.
 - [ ] Riorganizzare Altro come pagina Impostazioni con sezioni tematiche e accessi alle integrazioni esistenti.
 - [ ] Verificare, documentare e pubblicare la riorganizzazione con commit e push Git dedicati.
