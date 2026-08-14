@@ -1,6 +1,7 @@
 package it.binario.app.data.provider
 
 import it.binario.app.data.core.SourceId
+import it.binario.app.data.gtfs.EmbeddedGtfsPacks
 import it.binario.app.data.sources.RailSourceCatalog
 import java.time.Duration
 
@@ -91,7 +92,7 @@ object KnownProviders {
                 ratePolicy = staticRatePolicy,
                 schemaVersion = 1
             ),
-            enabled = false,
+            enabled = true,
             priorityByCapability = mapOf(ProviderCapability.TRAIN_RUN_STATIC to 10)
         ),
         ProviderPolicy(
@@ -197,7 +198,7 @@ object KnownProviders {
                         ) realtimeRatePolicy else staticRatePolicy,
                         schemaVersion = 1
                     ),
-                    enabled = false,
+                    enabled = source.id in EmbeddedGtfsPacks.sourceIds,
                     priorityByCapability = source.capabilities.associateWith { 100 }
                 )
             }

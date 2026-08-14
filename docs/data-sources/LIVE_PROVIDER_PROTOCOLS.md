@@ -36,3 +36,9 @@ Ogni adapter live deve usare un User-Agent identificativo, timeout breve, al mas
 Il comando `python3 tools/verify_live_sources.py` ha eseguito una richiesta read-only per ogni fonte abilitata nella composition root. **ViaggiaTreno** ha restituito HTTP 200 e 67 righe di tabellone per Roma Termini; **RFI** ha restituito HTTP 200 e 40 partenze per la stessa stazione. Il dettaglio è versionato in `docs/data-sources/live_source_probe_2026-08-14.tsv`.
 
 La composition root usa ora l’ordine seguente: `ViaggiaTrenoStationAdapter` come sorgente primaria, `RfiStationBoardAdapter` come fallback live e `DemoTrainDataSource` soltanto come fallback locale etichettato. I test unitari coprono sia i due parser sia la degradazione ViaggiaTreno → RFI.
+
+## Italo in Viaggio — verifica tabellone browser
+
+Il 14 agosto 2026 la pagina pubblica `https://italoinviaggio.italotreno.com/it/stazione/roma-termini` ha renderizzato una tabella HTML con colonne **N. TRENO**, **Destinazione**, **Orario**, **Orario effettivo**, **Stato del treno**, **Binario** e **Informazioni**. Le prime righe hanno mostrato, per esempio, i treni Italo 8922 verso Venezia S. Lucia e 8913 verso Reggio di Calabria Centrale; i valori effettivi, stato e binario erano presenti, con `N/A` quando il binario non era disponibile.
+
+Un adapter Italo può quindi usare le celle `table tbody tr > td` e l’ordine dichiarato dall’intestazione, evitando classi Tailwind o endpoint interni. Resta comunque separato dal percorso di produzione finché non dispone di fixture e test unitari dedicati.

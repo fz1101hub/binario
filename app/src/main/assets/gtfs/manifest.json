@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-08-14",
+  "purpose": "Offline GTFS data packs validated in Binario source test",
+  "packs": [
+    {
+      "sourceId": "amt-genova-casella-gtfs",
+      "asset": "gtfs/amt-genova-casella-gtfs.zip",
+      "sourceUrl": "http://opendatagoogletransit.comune.genova.it/downloads/google_transit.zip",
+      "accessMode": "GATEWAY_ONLY",
+      "attribution": "Comune di Genova / AMT",
+      "sha256": "7b4fe263933d78644c43cae382d6f287f45c8cf83c30d12026184bf814346f4e",
+      "notes": "Imported offline because the upstream URL is HTTP."
+    },
+    {
+      "sourceId": "cotral-ferro-gtfs",
+      "asset": "gtfs/cotral-ferro-gtfs.zip",
+      "sourceUrl": "http://travel.mob.cotralspa.it:7777/GTFS/GTFS_FERRO.zip",
+      "accessMode": "GATEWAY_ONLY",
+      "attribution": "Cotral / ASTRAL",
+      "sha256": "6db6f042d721395aaaf95c5cd835848890371f96e9635996790cf8e7165ba9de",
+      "notes": "Imported offline because the upstream URL is HTTP."
+    },
+    {
+      "sourceId": "hzpp-gtfs",
+      "asset": "gtfs/hzpp-gtfs.zip",
+      "sourceUrl": "https://www.hzpp.hr/GTFS_files.zip",
+      "accessMode": "OPEN_DIRECT",
+      "attribution": "HŽ Putnički prijevoz",
+      "sha256": "3bb0f841675ffedb6ade217f14e55ef3886dd09e8da73c39012f07e7f978ad55",
+      "notes": "Static timetable pack; coverage in Italy must be filtered by stop and service date."
+    },
+    {
+      "sourceId": "sncf-gtfs",
+      "asset": "gtfs/sncf-gtfs.zip",
+      "sourceUrl": "https://eu.ftp.opendatasoft.com/sncf/plandata/Export_OpenData_SNCF_GTFS_NewTripId.zip",
+      "accessMode": "OPEN_DIRECT",
+      "attribution": "SNCF Open Data",
+      "sha256": "f770f784493ab2a78f68762eaeab3ce989ce65c5c339895720ced1cf2de87a48",
+      "notes": "Static timetable pack; filter to services with Italian legs before showing to users."
+    }
+  ]
+}

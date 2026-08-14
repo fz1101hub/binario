@@ -70,13 +70,18 @@ La build richiede Android SDK API 36 e un JDK 21 completo. Il ramo conserva l’
 
 Il ramo include ora `RailSourceCatalog` con 31 fonti censite e classificate. Il parser `GtfsArchiveInspector`, il provider locale `GtfsStationCatalogProvider` e `GtfsArtifactDownloader` sono pronti per data pack GTFS statici; i test bloccano HTTP cleartext, gateway, best-effort e fonti senza URL stabilizzato. Otto endpoint open — ARST, Trentino, Alto Adige, HŽPP, SNCF statico, SNCF GTFS-RT Trip Updates/Alerts e ÖBB — hanno superato un controllo HTTP read-only.
 
-Sono ora attive nella composition root le due fonti live usate dalle app ferroviarie analizzate: `ViaggiaTrenoStationAdapter` per il tabellone Trenitalia della stazione di origine e `RfiStationBoardAdapter` come fallback live per tabelloni di stazione. Entrambe espongono provider, timestamp e freschezza alla UI e al widget; cache, timeout e fallback sono coperti da test. Lo smoke test del 14 agosto 2026 ha ottenuto HTTP 200 con 67 corse ViaggiaTreno e 40 partenze RFI per Roma Termini. Italo e Trenord restano catalogati, non attivati: non esistono ancora parser stabili e testati per le rispettive pagine dinamiche.
+Sono ora attive nella composition root le due fonti live usate dalle app ferroviarie analizzate: `ViaggiaTrenoStationAdapter` per il tabellone Trenitalia della stazione di origine e `RfiStationBoardAdapter` come fallback live per tabelloni di stazione. Entrambe espongono provider, timestamp e freschezza alla UI e al widget; cache, timeout e fallback sono coperti da test. Lo smoke test del 14 agosto 2026 ha ottenuto HTTP 200 con 67 corse ViaggiaTreno e 40 partenze RFI per Roma Termini.
+
+Il test completo ha elaborato tutte le 31 fonti catalogate. Quattro data pack GTFS validati sono inclusi nell’APK: AMT Genova–Casella, Cotral/ASTRAL Ferro, HŽPP e SNCF. `EmbeddedGtfsPackLoader` li carica in modo lazy e verificabile dagli asset; manifest e SHA-256 sono in `app/src/main/assets/gtfs/`. L’APK debug con asset inclusi è stato compilato con successo il 14 agosto 2026 (circa 33 MB). Italo e Trenord restano catalogati, non attivati: le rispettive pagine dinamiche non dispongono ancora di parser Android stabile e testato.
 
 ## Documenti correlati
 
 - `docs/data-sources/SOURCE_POLICY.md`
 - `docs/data-sources/SOURCE_COVERAGE_AND_TESTS.md`
 - `docs/data-sources/LIVE_PROVIDER_PROTOCOLS.md`
+- `docs/data-sources/FULL_SOURCE_TEST_REPORT.md`
+- `docs/data-sources/consolidated_source_test_2026-08-14.csv`
+- `docs/data-sources/GTFS_IMPORT_RESULTS.md`
 - `docs/data-sources/live_source_probe_2026-08-14.tsv`
 - `docs/data-sources/open_source_probe_2026-08-14.tsv`
 - `docs/architecture/GTFS_SOURCE_ADAPTERS.md`
