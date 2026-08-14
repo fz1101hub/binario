@@ -66,8 +66,16 @@ La successiva tranche potrà aggiungere SNCF e Open Data Svizzera. ViaggiaTreno,
 
 La build richiede Android SDK API 36 e un JDK 21 completo. Il ramo conserva l’APK/debug e il companion Wear come superfici da verificare separatamente. Se il packaging del companion Wear fallisce per risorse mancanti nella baseline, non mascherare il problema: annotarlo in una issue distinta, perché non deriva dalle fondamenta dati.
 
+## Aggiornamento fonti — 14 agosto 2026
+
+Il ramo include ora `RailSourceCatalog` con 31 fonti censite e classificate. Il parser `GtfsArchiveInspector`, il provider locale `GtfsStationCatalogProvider` e `GtfsArtifactDownloader` sono pronti per data pack GTFS statici; i test bloccano HTTP cleartext, gateway, best-effort e fonti senza URL stabilizzato. Otto endpoint open — ARST, Trentino, Alto Adige, HŽPP, SNCF statico, SNCF GTFS-RT Trip Updates/Alerts e ÖBB — hanno superato un controllo HTTP read-only. Nessun feed viene scaricato in automatico e nessuna fonte realtime best-effort è attiva.
+
 ## Documenti correlati
 
 - `docs/data-sources/SOURCE_POLICY.md`
+- `docs/data-sources/SOURCE_COVERAGE_AND_TESTS.md`
+- `docs/data-sources/open_source_probe_2026-08-14.tsv`
+- `docs/architecture/GTFS_SOURCE_ADAPTERS.md`
 - `docs/architecture/DATA_LAYER_MIGRATION.md`
+- `tools/verify_open_sources.py`
 - `SPECIFICA_LIVELLO_DATI_BINARIO.md` e documenti allegati nella conversazione che ha svolto la ricerca fonti.

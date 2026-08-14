@@ -31,6 +31,7 @@ enum class AccessMode {
     OPEN_DIRECT,
     PUBLIC_BEST_EFFORT,
     GATEWAY_ONLY,
+    AGREEMENT_REQUIRED,
     DISABLED
 }
 

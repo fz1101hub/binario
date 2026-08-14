@@ -29,6 +29,17 @@ class ProviderRegistryTest {
         assertFalse(registry.isEnabled(SourceId("disabled")))
     }
 
+    @Test
+    fun `il registry predefinito include le fonti catalogate senza abilitarle`() {
+        val registry = KnownProviders.defaultRegistry()
+
+        assertTrue(registry.policy(SourceId("arst-gtfs")) != null)
+        assertTrue(registry.policy(SourceId("sncf-gtfs-rt-trip-updates")) != null)
+        assertTrue(registry.policy(SourceId("viaggiatreno")) != null)
+        assertFalse(registry.isEnabled(SourceId("arst-gtfs")))
+        assertFalse(registry.isEnabled(SourceId("viaggiatreno")))
+    }
+
     @Test(expected = IllegalArgumentException::class)
     fun `rifiuta source id duplicati`() {
         ProviderRegistry(

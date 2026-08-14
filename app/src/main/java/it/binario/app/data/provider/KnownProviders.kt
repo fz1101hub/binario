@@ -1,6 +1,7 @@
 package it.binario.app.data.provider
 
 import it.binario.app.data.core.SourceId
+import it.binario.app.data.sources.RailSourceCatalog
 import java.time.Duration
 
 object KnownProviderIds {
@@ -169,5 +170,38 @@ object KnownProviders {
         )
     )
 
-    fun defaultRegistry(): ProviderRegistry = ProviderRegistry(policies)
+    /**
+     * Le definizioni aggiuntive provengono dal catalogo nazionale e non sono
+     * abilitate automaticamente. Questo rende visibili e testabili tutte le
+     * fonti censite senza trasformarle in traffico runtime non controllato.
+     */
+    private fun catalogPolicies(): List<ProviderPolicy> {
+        val configuredIds = policies.map { it.descriptor.id }.toSet()
+        return RailSourceCatalog.all
+            .filter { it.id !in configuredIds }
+            .map { source ->
+                ProviderPolicy(
+                    descriptor = ProviderDescriptor(
+                        id = source.id,
+                        displayName = source.displayName,
+                        capabilities = source.capabilities,
+                        coverage = CoverageDescriptor(
+                            countryCodes = source.countryCodes,
+                            description = source.coverage
+                        ),
+                        accessMode = source.accessMode,
+                        ratePolicy = if (
+                            ProviderCapability.TRAIN_RUN_REALTIME in source.capabilities ||
+                            ProviderCapability.STATION_BOARD in source.capabilities ||
+                            ProviderCapability.SERVICE_ALERTS in source.capabilities
+                        ) realtimeRatePolicy else staticRatePolicy,
+                        schemaVersion = 1
+                    ),
+                    enabled = false,
+                    priorityByCapability = source.capabilities.associateWith { 100 }
+                )
+            }
+    }
+
+    fun defaultRegistry(): ProviderRegistry = ProviderRegistry(policies + catalogPolicies())
 }
