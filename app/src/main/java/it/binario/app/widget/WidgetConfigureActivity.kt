@@ -5,32 +5,32 @@ import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -65,25 +65,25 @@ class WidgetConfigureActivity : ComponentActivity() {
                     WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = foregroundIsLight.not()
                     WindowCompat.getInsetsController(window, view).isAppearanceLightNavigationBars = foregroundIsLight.not()
                 }
+
                 var targetType by remember { mutableStateOf(WidgetTargetType.ROUTE) }
                 var selectedId by remember { mutableStateOf(model.activeRoute.id) }
                 var selectedLabel by remember { mutableStateOf(model.activeRoute.name) }
 
-                Column(
-                    Modifier
-                        .fillMaxSize()
-                        .background(background)
-                        .safeDrawingPadding()
-                        .padding(horizontal = 16.dp, vertical = 12.dp)
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = background,
+                    contentColor = MaterialTheme.colorScheme.onBackground
                 ) {
                     LazyColumn(
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.fillMaxSize().safeDrawingPadding(),
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 20.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         item {
                             Text("Configura widget", style = MaterialTheme.typography.headlineSmall)
                             Text(
-                                "La scelta vale solo per questo widget. Puoi modificarla in seguito dal pulsante Modifica nella testata.",
+                                "La scelta vale solo per questo widget. Puoi modificarla in seguito dalla testata.",
                                 modifier = Modifier.padding(top = 4.dp),
                                 style = MaterialTheme.typography.bodyMedium
                             )
@@ -145,30 +145,35 @@ class WidgetConfigureActivity : ComponentActivity() {
                                 }
                             }
                         }
+                        item {
+                            Card(
+                                modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+                            ) {
+                                Text(
+                                    "Scelto: ${targetType.label} — $selectedLabel",
+                                    modifier = Modifier.padding(12.dp),
+                                    style = MaterialTheme.typography.titleSmall,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            }
+                        }
+                        item {
+                            Button(
+                                onClick = {
+                                    WidgetConfigurationStore(this@WidgetConfigureActivity).save(widgetId, WidgetDisplayConfiguration(targetType, selectedId, selectedLabel))
+                                    RouteWidgetProvider.refreshAll(this@WidgetConfigureActivity)
+                                    setResult(RESULT_OK, Intent().putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId))
+                                    finish()
+                                },
+                                enabled = selectedId.isNotBlank(),
+                                modifier = Modifier.fillMaxWidth()
+                            ) { Text("Salva widget") }
+                        }
+                        item {
+                            OutlinedButton(onClick = { finish() }, modifier = Modifier.fillMaxWidth()) { Text("Annulla") }
+                        }
                     }
-
-                    Card(
-                        modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
-                    ) {
-                        Text(
-                            "Scelto: ${targetType.label} — $selectedLabel",
-                            modifier = Modifier.padding(12.dp),
-                            style = MaterialTheme.typography.titleSmall,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
-                    }
-                    Button(
-                        onClick = {
-                            WidgetConfigurationStore(this@WidgetConfigureActivity).save(widgetId, WidgetDisplayConfiguration(targetType, selectedId, selectedLabel))
-                            RouteWidgetProvider.refreshAll(this@WidgetConfigureActivity)
-                            setResult(RESULT_OK, Intent().putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId))
-                            finish()
-                        },
-                        enabled = selectedId.isNotBlank(),
-                        modifier = Modifier.fillMaxWidth().padding(top = 12.dp)
-                    ) { Text("Salva widget") }
-                    OutlinedButton(onClick = { finish() }, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) { Text("Annulla") }
                 }
             }
         }
@@ -194,11 +199,7 @@ private fun WidgetTargetCard(type: WidgetTargetType, selected: Boolean, descript
 
 @androidx.compose.runtime.Composable
 private fun WidgetChoiceButton(label: String, selected: Boolean, onClick: () -> Unit) {
-    OutlinedButton(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
-        enabled = true
-    ) {
+    OutlinedButton(onClick = onClick, modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) {
         Text(if (selected) "Selezionato · $label" else label, modifier = Modifier.fillMaxWidth())
     }
 }
