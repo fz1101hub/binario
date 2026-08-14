@@ -61,5 +61,9 @@
         <receiver
             android:name=".StopAlarmReceiver"
             android:exported="false" />
+
+        <receiver
+            android:name=".CommuterAlertReceiver"
+            android:exported="false" />
     </application>
 </manifest>

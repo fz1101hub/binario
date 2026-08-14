@@ -1234,8 +1234,42 @@ private fun SettingsScreen(
     openRoute: (SavedRoute) -> Unit
 ) {
     var showComposer by rememberSaveable { mutableStateOf(false) }
+    var showAlertComposer by rememberSaveable { mutableStateOf(false) }
+    var pendingAlert by remember { mutableStateOf<CommuterAlert?>(null) }
+    var alertFeedback by rememberSaveable { mutableStateOf<String?>(null) }
+    val context = LocalContext.current
+    val notificationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        val alert = pendingAlert
+        pendingAlert = null
+        if (granted && alert != null) {
+            CommuterAlertScheduler.schedule(context, alert)
+            alertFeedback = "Avviso salvato e pianificato sul dispositivo."
+        } else {
+            alertFeedback = "Avviso salvato. Per riceverlo, consenti le notifiche di Binario nelle impostazioni Android."
+        }
+    }
     if (showComposer) {
         RouteComposerSheet(viewModel = viewModel, onDismiss = { showComposer = false })
+    }
+    if (showAlertComposer) {
+        CommuterAlertSheet(
+            routeLabel = viewModel.currentRouteLabel(),
+            defaultStation = viewModel.activeRoute.destination(viewModel.direction).name,
+            onDismiss = { showAlertComposer = false },
+            onSave = { station, time, lead, repeat, quietHours ->
+                val alert = viewModel.createCommuterAlert(station, time, lead, repeat, quietHours)
+                showAlertComposer = false
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                    ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+                ) {
+                    pendingAlert = alert
+                    notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+                } else {
+                    CommuterAlertScheduler.schedule(context, alert)
+                    alertFeedback = "Avviso salvato e pianificato sul dispositivo."
+                }
+            }
+        )
     }
     LazyColumn(modifier = modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(0.dp)) {
         item {
@@ -1262,6 +1296,14 @@ private fun SettingsScreen(
                     Text("Aggiungi una tratta")
                 }
             }
+        }
+        item {
+            CommuterAlertsPanel(
+                alerts = viewModel.commuterAlerts,
+                feedback = alertFeedback,
+                onAdd = { showAlertComposer = true },
+                onRemove = viewModel::removeCommuterAlert
+            )
         }
         item { SettingsSectionTitle("Integrazioni") }
         item {
@@ -1334,6 +1376,71 @@ private fun SettingsActionRow(title: String, detail: String, onClick: () -> Unit
             Text(detail, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Icon(Icons.Default.Palette, contentDescription = null)
+    }
+}
+
+@Composable
+private fun CommuterAlertsPanel(
+    alerts: List<CommuterAlert>,
+    feedback: String?,
+    onAdd: () -> Unit,
+    onRemove: (CommuterAlert) -> Unit
+) {
+    Column(Modifier.padding(horizontal = 20.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text("Avvisi pendolare", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        Text("Promemoria locali con anticipo, ricorrenza e fascia silenziosa. Non si aggiornano con i ritardi senza una fonte autorizzata.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Button(onClick = onAdd, modifier = Modifier.fillMaxWidth()) { Text("Crea avviso pendolare") }
+        feedback?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        alerts.forEach { alert ->
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(alert.stationName, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                    Text(alert.accessibleSummary, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                IconButton(onClick = { onRemove(alert) }) { Icon(Icons.Default.DeleteOutline, contentDescription = "Elimina avviso per ${alert.stationName}") }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun CommuterAlertSheet(
+    routeLabel: String,
+    defaultStation: String,
+    onDismiss: () -> Unit,
+    onSave: (String, String, Int, AlertRepeat, Boolean) -> Unit
+) {
+    var station by rememberSaveable { mutableStateOf(defaultStation) }
+    var time by rememberSaveable { mutableStateOf("08:00") }
+    var lead by rememberSaveable { mutableStateOf(15) }
+    var repeat by rememberSaveable { mutableStateOf(AlertRepeat.WEEKDAYS.name) }
+    var quietHours by rememberSaveable { mutableStateOf(false) }
+    val context = LocalContext.current
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(Modifier.padding(horizontal = 20.dp).padding(bottom = 32.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text("Avviso pendolare", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+            Text(routeLabel, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            OutlinedTextField(value = station, onValueChange = { station = it }, modifier = Modifier.fillMaxWidth(), singleLine = true, label = { Text("Fermata") })
+            OutlinedButton(onClick = {
+                val parsed = runCatching { LocalTime.parse(time) }.getOrDefault(LocalTime.of(8, 0))
+                TimePickerDialog(context, { _, hour, minute -> time = "%02d:%02d".format(hour, minute) }, parsed.hour, parsed.minute, true).show()
+            }, modifier = Modifier.fillMaxWidth()) { Text("Orario: $time") }
+            Text("Anticipo", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(listOf(5, 10, 15, 30, 60)) { minutes ->
+                    FilterChip(selected = lead == minutes, onClick = { lead = minutes }, label = { Text("$minutes min") })
+                }
+            }
+            Text("Ripetizione", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(AlertRepeat.entries) { option ->
+                    FilterChip(selected = repeat == option.name, onClick = { repeat = option.name }, label = { Text(option.label) })
+                }
+            }
+            FilterChip(selected = quietHours, onClick = { quietHours = !quietHours }, label = { Text("Fascia silenziosa 22:00–07:00") })
+            Button(onClick = { onSave(station.trim(), time, lead, AlertRepeat.valueOf(repeat), quietHours) }, enabled = station.isNotBlank(), modifier = Modifier.fillMaxWidth()) { Text("Salva avviso") }
+        }
     }
 }
 

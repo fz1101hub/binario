@@ -45,6 +45,7 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
     private val cache = RouteSnapshotCache(application)
     private val integrationStore = IntegrationSettingsStore(application)
     private val stationPreferences = StationPreferences(application)
+    private val commuterAlertStore = CommuterAlertStore(application)
     private val dataSource: TrainDataSource = RailDataRepository()
 
     val stations = listOf(
@@ -106,6 +107,8 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
     var trainNumberQuery by mutableStateOf("")
         private set
     var integrationSettings by mutableStateOf(integrationStore.read())
+        private set
+    var commuterAlerts by mutableStateOf(commuterAlertStore.alerts())
         private set
 
     init {
@@ -326,6 +329,23 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun removeServiceMonitoring(number: String) {
         monitoredServices = routeStore.removeServiceMonitor(number)
+    }
+
+    fun createCommuterAlert(
+        stationName: String,
+        time: String,
+        leadMinutes: Int,
+        repeat: AlertRepeat,
+        quietHoursEnabled: Boolean
+    ): CommuterAlert {
+        val alert = commuterAlertStore.newAlert(currentRouteLabel(), stationName, time, leadMinutes, repeat, quietHoursEnabled)
+        commuterAlerts = commuterAlertStore.save(alert)
+        return alert
+    }
+
+    fun removeCommuterAlert(alert: CommuterAlert) {
+        CommuterAlertScheduler.cancel(getApplication(), alert.id)
+        commuterAlerts = commuterAlertStore.remove(alert.id)
     }
 
     fun setWearSnapshotSharing(enabled: Boolean) {

@@ -92,7 +92,7 @@
 - [ ] v1.0: integrare un provider ferroviario documentato e autorizzato con freshness, provenienza e TTL.
 - [x] Verificare se Treniamo.it è incluso nei benchmark e, se assente, analizzarne funzioni e impatto sulla roadmap Binario.
 - [x] Definire modelli, consenso e limiti per avvisi pendolare, monitoraggi stazione, viaggio attivo, portabilità e preferenze di mobilità.
-- [ ] Aggiungere avvisi locali configurabili con anticipo, ricorrenze, quiet hours, annullamento e riepilogo accessibile.
+- [x] Aggiungere avvisi locali configurabili con anticipo, ricorrenze, quiet hours, annullamento e riepilogo accessibile.
 - [ ] Aggiungere monitoraggi stazione locali, viaggio attivo/prossima fermata e superfici widget configurabili senza dichiarare dati live.
 - [ ] Aggiungere esportazione/importazione JSON locale validata e preferenze di mobilità/accessibilità persistenti.
 - [ ] Predisporre il confine adapter per un provider live documentato e autorizzato, senza endpoint o credenziali nel client.
