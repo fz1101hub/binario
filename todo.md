@@ -76,4 +76,4 @@
 - [x] Aggiungere filtro viaggio diretto o numero massimo di cambi, dichiarando il comportamento per il catalogo non live.
 - [x] Unificare le aree Treni e Stazioni in una sola destinazione operativa con sezioni chiare.
 - [x] Riorganizzare Altro come pagina Impostazioni con sezioni tematiche e accessi alle integrazioni esistenti.
-- [ ] Verificare, documentare e pubblicare la riorganizzazione con commit e push Git dedicati.
+- [x] Verificare, documentare e pubblicare la riorganizzazione con commit e push Git dedicati.

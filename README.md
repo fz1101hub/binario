@@ -2,7 +2,7 @@
 
 **Binario** è un’app Android originale per seguire le proprie tratte ferroviarie in tutta Italia. La home è un pianificatore di viaggio con modalità **Viaggio**, **Treno** e **Stazione**, partenza, arrivo, inversione, opzione andata/ritorno, data e ora selezionabili, filtri, ricerche recenti e preferite. Le soluzioni e il tabellone della tratta attiva sono superfici successive nella sezione Treni; il widget home resta un tabellone di **cinque corse per pagina**. È possibile salvare tratte e monitorare localmente un numero treno; alert reali restano disabilitati senza fonte autorizzata. L’app espone operatore, categoria, orari, ritardi, binari e fermate. La tratta dimostrativa iniziale è **Roma Termini – Torino Porta Nuova** e le corse sono ordinate in modo neutrale per orario previsto.
 
-> **Stato dei dati:** la versione 0.12.0 include un catalogo dimostrativo locale multi-operatore. L’interfaccia, la cache, l’app e il widget sono funzionanti, ma gli orari e i ritardi non sono ancora live. L’app lo dichiara esplicitamente con l’etichetta **“catalogo dimostrativo locale — non live”**. Per uso ferroviario reale, configurare un provider documentato e autorizzato dietro `TrainDataSource` o un gateway personale.
+> **Stato dei dati:** la versione 0.13.0 include un catalogo dimostrativo locale multi-operatore. L’interfaccia, la cache, l’app e il widget sono funzionanti, ma gli orari e i ritardi non sono ancora live. L’app lo dichiara esplicitamente con l’etichetta **“catalogo dimostrativo locale — non live”**. Per uso ferroviario reale, configurare un provider documentato e autorizzato dietro `TrainDataSource` o un gateway personale.
 
 ## Funzionalità
 
@@ -20,6 +20,9 @@
 | Stazioni personali | Le stazioni possono essere aggiunte o rimosse dai preferiti in locale, senza account o sincronizzazione. |
 | Stazioni vicine | Su azione esplicita e consenso a `ACCESS_COARSE_LOCATION`, ordina il catalogo locale per distanza in linea d’aria. La posizione non viene salvata né usata in background. |
 | Dettatura viaggio | Avvia il riconoscitore vocale di sistema per compilare tratta, stazione, treno, data, ora e andata/ritorno; Binario non richiede il permesso microfono e interpreta solo il testo restituito. |
+| Filtro cambi | Nella ricerca tratta permette di scegliere qualsiasi viaggio, diretto, massimo uno o massimo due cambi; il catalogo locale li presenta soltanto come dati dimostrativi. |
+| Consulta | Riunisce tabellone Treni e Stazioni in una sola destinazione, con sezioni interne accessibili. |
+| Impostazioni | Raccoglie tema, tratte personali, monitoraggi, integrazioni e informative privacy. |
 | Widget Android | Mostra 5 corse per pagina; le frecce cambiano pagina, il comando centrale cambia direzione, `Aggiorna` pianifica un refresh sicuro. |
 | Wear OS | Companion Android 11+/API 30+ con tratta attiva, massimo due corse, stato quality/freshness, refresh delegato al telefono, Tile e complication testuale. |
 | Apple Watch | Companion nativo watchOS 10 ricostruito in `apple-watch/`: SwiftUI, cache-first, Widget/complication, App Intent e Watch Connectivity per una futura app iOS Binario. Richiede Xcode su macOS per generazione, firma e test. |
