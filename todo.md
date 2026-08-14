@@ -96,4 +96,4 @@
 - [x] Aggiungere monitoraggi stazione locali, viaggio attivo/prossima fermata e superfici widget configurabili senza dichiarare dati live.
 - [x] Aggiungere esportazione/importazione JSON locale validata e preferenze di mobilità/accessibilità persistenti.
 - [x] Predisporre il confine adapter per un provider live documentato e autorizzato, senza endpoint o credenziali nel client.
-- [ ] Verificare, documentare e pubblicare l’incremento unificato con commit e push Git dedicati.
+- [x] Verificare, documentare e pubblicare l’incremento unificato con commit e push Git dedicati.

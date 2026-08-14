@@ -5,7 +5,7 @@
 
 ## Esito sintetico
 
-Binario ha ormai coperto il nucleo di consultazione personale emerso dal benchmark: pianificatore tratta/treno/stazione, data e ora, filtri operatore e cambi, recenti, tratte fissate, monitoraggio treno locale, fermate, widget paginato, stazioni preferite e vicine, dettatura, tema, sveglia locale, condivisione, Wear OS, base watchOS e preferenze privacy-first. Non è però ancora al livello delle app più mature in tre aree: **personalizzazione degli avvisi**, **memoria personale portabile** e **informazione operativa basata su dati live autorizzati**.
+Con la v0.15.0 Binario copre anche il nucleo personale avanzato emerso dal benchmark: avvisi pendolare configurabili e ricorrenti, monitoraggio stazione locale, viaggio attivo, superfici widget personali, memoria portabile e preferenze di mobilità/accessibilità. Il gap residuo prioritario è esclusivamente l’**informazione operativa basata su dati live autorizzati**.
 
 | Famiglia benchmark | Pattern verificato | Stato Binario v0.14.0 | Lettura utile |
 |---|---|---|---|
@@ -19,13 +19,13 @@ Binario ha ormai coperto il nucleo di consultazione personale emerso dal benchma
 
 | Priorità | Funzione non ancora completa | Valore per l’uso personale | Dipendenza | Decisione |
 |---|---|---|---|---|
-| P0 | **Sveglia configurabile**: anticipo 1–60 minuti, suono/vibrazione, annullamento e riepilogo | Alta, soprattutto per viaggi lunghi e pendolari | Nessuna fonte live per la versione iniziale | Adottare subito; aggiornamento dinamico del ritardo solo con provider autorizzato. |
-| P0 | **Sveglie ricorrenti per tratta**: giorni della settimana, fascia oraria e eccezioni | Alta | Nessuna per la pianificazione locale | Adottare subito. |
-| P0 | **Monitoraggio stazione salvato**: preferiti, arrivi/partenze, filtro partenza/arrivo e scorciatoia widget | Alta | Struttura locale subito; contenuto reale richiede provider | Adottare la struttura e dichiarare lo stato non-live. |
-| P1 | **Stato di viaggio personale**: viaggio attivo, prossima fermata, azioni “scendi qui” e riprendi ricerca | Alta | Nessuna per stato locale; live per aggiornamenti automatici | Adottare subito in forma locale. |
-| P1 | **Esportazione/importazione locale** di tratte, preferiti, monitoraggi e impostazioni | Media-alta | Nessuna, con scelta file esplicita | Adottare subito, preferibilmente con file JSON validato e senza cloud implicito. |
-| P1 | **Widget configurabili** per una stazione o un treno monitorato | Alta | Snapshot locale subito; live per dato utile | Adottare dopo il monitoraggio stazione. |
-| P1 | **Preferenze di accessibilità del viaggio**: riduzione cambi, margine interscambio, percorsi senza barriere e carattere ad alta densità | Alta | Persistenza locale subito; algoritmo e dati stazione per risultati reali | Adottare modello preferenze e UI; filtraggio reale dopo provider. |
+| Implementato v0.15 | **Sveglia configurabile**: anticipo 5–60 minuti, annullamento, riepilogo e quiet hours | Alta | Locale | Aggiornamento dinamico del ritardo solo con provider autorizzato. |
+| Implementato v0.15 | **Sveglie ricorrenti per tratta**: una volta, feriali o ogni giorno | Alta | Locale | Eccezioni legate al servizio reale solo con provider. |
+| Implementato v0.15 | **Monitoraggio stazione salvato** e superficie widget | Alta | Struttura locale | Arrivi/partenze reali restano bloccati dal provider. |
+| Implementato v0.15 | **Stato di viaggio personale**: viaggio attivo e prossima fermata avanzata manualmente | Alta | Locale | Aggiornamento automatico solo con provider. |
+| Implementato v0.15 | **Esportazione/importazione locale** di tratte, preferiti, monitoraggi e impostazioni | Media-alta | File scelto dall’utente | JSON versionato e validato, nessun cloud implicito. |
+| Implementato v0.15 | **Widget configurabili** per tratta, viaggio o stazione | Alta | Snapshot locale | Le superfici personali dichiarano lo stato non-live. |
+| Implementato v0.15 | **Preferenze di accessibilità del viaggio**: cambi, margine, senza barriere e tabellone compatto | Alta | Locale | I filtri su accessibilità reale richiedono dati stazione affidabili. |
 | P2 | **Storico puntualità e affidabilità** per treno/tratta | Media | Serie storica autorizzata e conservazione dati | Rimandare al provider autorizzato. |
 | P2 | **Infomobilità, scioperi, lavori, binari variati, ripianificazione** | Alta | Feed operativo autorizzato, tempi di aggiornamento e responsabilità informativa | Bloccato fino a fonte autorizzata. |
 | P2 | **Geofence alla fermata** | Media | Posizione continua o in background, consenso più invasivo e test batteria | Opzionale; non prioritario rispetto alla sveglia configurabile. |
@@ -43,11 +43,9 @@ Treniamo.it conferma inoltre il vincolo: il servizio dichiara esplicitamente l�
 
 | Ordine | Incremento | Obiettivo misurabile |
 |---|---|---|
-| 1 | v0.15 — Avvisi pendolare | Anticipo configurabile, ricorrenze, annullamento, quiet hours e pagina riepilogo avvisi locali. |
-| 2 | v0.16 — Stazioni e viaggio attivo | Monitoraggio stazione salvato, stato viaggio locale, prossima fermata e widget configurabile per superficie. |
-| 3 | v0.17 — Portabilità e accessibilità | Esporta/importa dati personali, preferenze di mobilità/accessibilità e reset privacy controllato. |
-| 4 | v1.0 — Provider autorizzato | Adapter con provenienza, freshness, TTL e gestione errore per dati Trenitalia/regionale autorizzati. |
-| 5 | Dopo v1.0 | Avvisi di circolazione, storico affidabilità, ripianificazione e geofence opzionale. |
+| 1 | v0.15 — Incremento personale unificato | Implementato: avvisi, stazioni, viaggio attivo, widget, portabilità e accessibilità. |
+| 2 | v1.0 — Provider autorizzato | Adapter con provenienza, freshness, TTL e gestione errore per dati Trenitalia/regionale autorizzati. |
+| 3 | Dopo v1.0 | Avvisi di circolazione, storico affidabilità, ripianificazione e geofence opzionale. |
 
 ## Riferimenti
 
