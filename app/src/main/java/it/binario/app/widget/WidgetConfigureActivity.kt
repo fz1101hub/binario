@@ -5,12 +5,14 @@ import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
@@ -24,11 +26,16 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import androidx.core.view.WindowCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import it.binario.app.BinarioTheme
 import it.binario.app.ThemeSettings
@@ -49,11 +56,26 @@ class WidgetConfigureActivity : ComponentActivity() {
             val themeSettings = remember { ThemeSettings(applicationContext) }
             BinarioTheme(themeSettings.mode) {
                 val model: TrainViewModel = viewModel()
+                val view = LocalView.current
+                val background = MaterialTheme.colorScheme.background
+                val foregroundIsLight = MaterialTheme.colorScheme.onBackground.luminance() > 0.5f
+                SideEffect {
+                    window.statusBarColor = background.toArgb()
+                    window.navigationBarColor = background.toArgb()
+                    WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = foregroundIsLight.not()
+                    WindowCompat.getInsetsController(window, view).isAppearanceLightNavigationBars = foregroundIsLight.not()
+                }
                 var targetType by remember { mutableStateOf(WidgetTargetType.ROUTE) }
                 var selectedId by remember { mutableStateOf(model.activeRoute.id) }
                 var selectedLabel by remember { mutableStateOf(model.activeRoute.name) }
 
-                Column(Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 12.dp)) {
+                Column(
+                    Modifier
+                        .fillMaxSize()
+                        .background(background)
+                        .safeDrawingPadding()
+                        .padding(horizontal = 16.dp, vertical = 12.dp)
+                ) {
                     LazyColumn(
                         modifier = Modifier.weight(1f),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
