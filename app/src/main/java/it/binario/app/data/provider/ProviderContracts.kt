@@ -12,6 +12,7 @@ import it.binario.app.data.core.StationBoard
 import it.binario.app.data.core.StationId
 import it.binario.app.data.core.TrainRun
 import it.binario.app.data.core.TrainRunId
+import it.binario.app.data.core.VehiclePosition
 import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
@@ -192,4 +193,8 @@ interface StationBoardProvider : RailProvider {
 
 interface AlertProvider : RailProvider {
     suspend fun getAlerts(request: AlertRequest): ProviderResult<List<ServiceAlert>>
+}
+
+interface VehiclePositionProvider : RailProvider {
+    suspend fun getVehiclePositions(): ProviderResult<List<VehiclePosition>>
 }

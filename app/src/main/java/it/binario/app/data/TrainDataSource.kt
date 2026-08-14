@@ -46,6 +46,8 @@ enum class Freshness(val accessibleLabel: String) {
 
 enum class DataConfidence(val accessibleLabel: String) {
     OPERATOR_PRIMARY("Fonte primaria dell’operatore"),
+    INFRASTRUCTURE_PRIMARY("Fonte primaria del gestore dell’infrastruttura"),
+    OPEN_DATA("Open data ufficiale"),
     LICENSED_AGGREGATE("Fonte aggregata autorizzata"),
     STATIC_ONLY("Orario programmato"),
     CACHED("Ultimo snapshot in cache"),
@@ -111,6 +113,9 @@ data class RouteSnapshot(
     val freshness: Freshness,
     val sourceObservedAtEpochMillis: Long = retrievedAtEpochMillis,
     val confidence: DataConfidence = DataConfidence.DEMONSTRATION,
+    val qualityScore: Int? = null,
+    val qualityBand: DataQualityBand = DataQualityBand.UNKNOWN,
+    val qualityWarnings: Set<SnapshotWarning> = emptySet(),
     val notice: String? = null
 ) {
     val routeLabel: String get() = route.displayName(direction)
@@ -164,16 +169,41 @@ class TrenitaliaViaggiaTrenoAdapter(
  */
 class RailDataRepository(
     private val authorisedSources: List<TrainDataSource> = emptyList(),
-    private val fallback: TrainDataSource = DemoTrainDataSource()
+    private val fallback: TrainDataSource = DemoTrainDataSource(),
+    private val clock: () -> Long = System::currentTimeMillis
 ) : TrainDataSource {
     override suspend fun loadRoute(route: SavedRoute, direction: Direction): DataResult {
+        val candidates = mutableListOf<RouteSnapshot>()
         authorisedSources.forEach { source ->
             when (val result = source.loadRoute(route, direction)) {
-                is DataResult.Success -> return result
+                is DataResult.Success -> {
+                    val enriched = withQuality(result.snapshot)
+                    candidates += enriched
+                    if (enriched.qualityBand == DataQualityBand.VERIFIED) {
+                        return DataResult.Success(enriched)
+                    }
+                }
                 is DataResult.Failure -> Unit
             }
         }
-        return fallback.loadRoute(route, direction)
+        candidates.maxWithOrNull(
+            compareBy<RouteSnapshot> { it.qualityScore ?: Int.MIN_VALUE }
+                .thenBy { it.sourceObservedAtEpochMillis }
+        )?.let { return DataResult.Success(it) }
+
+        return when (val result = fallback.loadRoute(route, direction)) {
+            is DataResult.Success -> DataResult.Success(withQuality(result.snapshot))
+            is DataResult.Failure -> result
+        }
+    }
+
+    private fun withQuality(snapshot: RouteSnapshot): RouteSnapshot {
+        val quality = SnapshotQualityAssessor.assess(snapshot, clock())
+        return snapshot.copy(
+            qualityScore = quality.score,
+            qualityBand = quality.band,
+            qualityWarnings = quality.warnings
+        )
     }
 }
 

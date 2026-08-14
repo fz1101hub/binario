@@ -128,7 +128,7 @@ class RfiStationBoardAdapter(
                 expiresAtEpochMillis = now + cacheTtlMillis,
                 freshness = Freshness.FRESH,
                 sourceObservedAtEpochMillis = now,
-                confidence = DataConfidence.OPERATOR_PRIMARY,
+                confidence = DataConfidence.INFRASTRUCTURE_PRIMARY,
                 notice = if (isFiltered) {
                     "Dati live RFI: partenze da ${origin.name} verso ${destination.name}."
                 } else {

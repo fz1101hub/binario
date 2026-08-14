@@ -74,6 +74,8 @@ Sono ora attive nella composition root le due fonti live usate dalle app ferrovi
 
 Il test completo ha elaborato tutte le 31 fonti catalogate. L’import massimo successivo include ora nove data pack GTFS validati: AMT Genova–Casella, ARST Sardegna, Cotral/ASTRAL Ferro, EAV Campania, HŽPP, Lombardia/Trenord, SNCF, Toscana/TFT e Trentino Trasporti extraurbano. `EmbeddedGtfsPackLoader` li carica in modo lazy e verificabile dagli asset; manifest e SHA-256 sono in `app/src/main/assets/gtfs/`. I feed multimodali devono essere filtrati per `route_type=2`; TFT richiede una normalizzazione esplicita, perché le sue due tratte ferroviarie sono codificate dal titolare con `route_type=3`. Alto Adige, Svizzera e ÖBB restano import offline per dimensione o timeout; Italo e Trenord restano catalogati, non attivati: le rispettive pagine dinamiche non dispongono ancora di parser Android stabile e testato.
 
+La baseline di qualità aggiunge `SnapshotQualityAssessor`, `SnapshotReconciler` e metadati di punteggio/fascia/warning in `RouteSnapshot`. Il repository live valuta la qualità delle fonti, non soltanto il loro ordine. Sono inoltre operativi `RfiInfomobilityRssAdapter` per alert RFI e `StaRealtimeAdapter` per Service Alerts e Vehicle Positions GTFS-Realtime di Open Data Hub/STA. Entrambi sono presenti nella composition root, con cache, rate limit, test fixture e smoke test. La UI mostra ora fascia e punteggio di qualità insieme alla provenienza.
+
 ## Documenti correlati
 
 - `docs/data-sources/SOURCE_POLICY.md`
@@ -84,6 +86,10 @@ Il test completo ha elaborato tutte le 31 fonti catalogate. L’import massimo s
 - `docs/data-sources/GTFS_IMPORT_RESULTS.md`
 - `docs/data-sources/MAXIMIZED_IMPORT_REPORT.md`
 - `docs/data-sources/ALTERNATE_IMPORT_PATHS.md`
+- `docs/data-sources/DATA_QUALITY_MODEL.md`
+- `docs/data-sources/PREMIUM_OFFICIAL_SOURCES.md`
+- `docs/data-sources/DATA_QUALITY_SLA.md`
+- `docs/data-sources/DATA_QUALITY_VERIFICATION.md`
 - `docs/data-sources/live_source_probe_2026-08-14.tsv`
 - `docs/data-sources/open_source_probe_2026-08-14.tsv`
 - `docs/architecture/GTFS_SOURCE_ADAPTERS.md`

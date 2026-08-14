@@ -14,6 +14,8 @@ object KnownProviderIds {
     val OEBB_STATIC = SourceId("oebb-gtfs")
     val VIAGGIATRENO = SourceId("viaggiatreno")
     val RFI_STATION_BOARD = SourceId("rfi-station-board")
+    val RFI_INFOMOBILITY_RSS = SourceId("rfi-infomobility-rss")
+    val STA_REALTIME = SourceId("alto-adige-sta-realtime")
     val ITALO_STATUS = SourceId("italo-status")
     val DEMO_LOCAL = SourceId("demo-local")
 }
@@ -152,6 +154,36 @@ object KnownProviders {
             ),
             enabled = true,
             priorityByCapability = mapOf(ProviderCapability.STATION_BOARD to 20)
+        ),
+        ProviderPolicy(
+            descriptor = ProviderDescriptor(
+                id = KnownProviderIds.RFI_INFOMOBILITY_RSS,
+                displayName = "RFI — Infomobilità RSS",
+                capabilities = setOf(ProviderCapability.SERVICE_ALERTS),
+                coverage = CoverageDescriptor(countryCodes = setOf("IT"), description = "Avvisi nazionali e regionali RFI"),
+                accessMode = AccessMode.OPEN_DIRECT,
+                ratePolicy = RatePolicy(Duration.ofMinutes(5), defaultTimeToLive = Duration.ofMinutes(10), supportsConditionalRequests = true),
+                schemaVersion = 1
+            ),
+            enabled = true,
+            priorityByCapability = mapOf(ProviderCapability.SERVICE_ALERTS to 5)
+        ),
+        ProviderPolicy(
+            descriptor = ProviderDescriptor(
+                id = KnownProviderIds.STA_REALTIME,
+                displayName = "Open Data Hub Alto Adige — GTFS-Realtime",
+                capabilities = setOf(ProviderCapability.TRAIN_RUN_REALTIME, ProviderCapability.SERVICE_ALERTS, ProviderCapability.VEHICLE_POSITIONS),
+                coverage = CoverageDescriptor(countryCodes = setOf("IT", "AT"), description = "Servizi STA altoatesini e transfrontalieri presenti nel feed"),
+                accessMode = AccessMode.OPEN_DIRECT,
+                ratePolicy = RatePolicy(Duration.ofSeconds(30), defaultTimeToLive = Duration.ofSeconds(90)),
+                schemaVersion = 1
+            ),
+            enabled = true,
+            priorityByCapability = mapOf(
+                ProviderCapability.TRAIN_RUN_REALTIME to 15,
+                ProviderCapability.SERVICE_ALERTS to 15,
+                ProviderCapability.VEHICLE_POSITIONS to 15
+            )
         ),
         ProviderPolicy(
             descriptor = ProviderDescriptor(

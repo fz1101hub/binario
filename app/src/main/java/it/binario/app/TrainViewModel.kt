@@ -471,7 +471,10 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun currentProviderLabel(): String = snapshot?.providerName ?: cache.lastProvider()
 
-    fun currentConfidenceLabel(): String = snapshot?.confidence?.accessibleLabel ?: cache.lastConfidence()
+    fun currentConfidenceLabel(): String = snapshot?.let { latest ->
+        val quality = latest.qualityScore?.let { score -> "${latest.qualityBand.accessibleLabel} · $score/100" }
+        listOfNotNull(quality, latest.confidence.accessibleLabel).joinToString(" · ")
+    } ?: cache.lastConfidence()
 
     fun isDemonstrationData(): Boolean = snapshot?.confidence == DataConfidence.DEMONSTRATION
 

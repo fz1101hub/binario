@@ -3,10 +3,14 @@ package it.binario.app.data.repository
 import it.binario.app.data.DemoTrainDataSource
 import it.binario.app.data.RailDataRepository
 import it.binario.app.data.TrainDataSource
+import it.binario.app.data.live.RfiInfomobilityRssAdapter
 import it.binario.app.data.live.RfiStationBoardAdapter
+import it.binario.app.data.live.StaRealtimeAdapter
 import it.binario.app.data.live.ViaggiaTrenoStationAdapter
+import it.binario.app.data.provider.AlertProvider
 import it.binario.app.data.provider.KnownProviders
 import it.binario.app.data.provider.ProviderRegistry
+import it.binario.app.data.provider.VehiclePositionProvider
 
 /**
  * Punto di composizione unico del livello dati. Nessuna UI, worker o companion
@@ -15,6 +19,12 @@ import it.binario.app.data.provider.ProviderRegistry
  */
 object BinarioDataGraph {
     private val defaultRegistry: ProviderRegistry by lazy { KnownProviders.defaultRegistry() }
+    private val officialAlertProviders: List<AlertProvider> by lazy {
+        listOf(RfiInfomobilityRssAdapter(), StaRealtimeAdapter())
+    }
+    private val officialVehiclePositionProviders: List<VehiclePositionProvider> by lazy {
+        listOf(StaRealtimeAdapter())
+    }
     private val defaultRouteDataSource: TrainDataSource by lazy {
         LegacyTrainDataSourceFacade(
             legacySource = RailDataRepository(
@@ -31,6 +41,10 @@ object BinarioDataGraph {
     fun routeDataSource(): TrainDataSource = defaultRouteDataSource
 
     fun providerRegistry(): ProviderRegistry = defaultRegistry
+
+    fun alertProviders(): List<AlertProvider> = officialAlertProviders
+
+    fun vehiclePositionProviders(): List<VehiclePositionProvider> = officialVehiclePositionProviders
 }
 
 /**
