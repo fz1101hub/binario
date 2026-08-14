@@ -20,3 +20,5 @@ Gli avvisi ricorrenti sono pianificati dal sistema Android sul dispositivo. L’
 ## Confine dati live
 
 L’adapter ferroviario è un’interfaccia senza credenziali e senza endpoint preconfigurato. Finché un operatore non concede un canale documentato, ogni superficie deve mostrare il testo **“dati non disponibili in tempo reale”** e non presentare dati dimostrativi come operativi.
+
+Il client contiene inoltre un guardrail di readiness: il canale Trenitalia è inizialmente **non configurato**, non consente richieste di rete e non conserva credenziali. Un eventuale gateway sarà solo server-side, dopo autorizzazione documentata e con provenienza, freshness e TTL esposti in ogni snapshot.
