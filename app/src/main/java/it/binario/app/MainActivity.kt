@@ -46,6 +46,7 @@ import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Route
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material.icons.filled.SwapHoriz
@@ -319,7 +320,26 @@ private fun BinarioApp(
                     isMonitored = viewModel.isMonitoring(service),
                     onToggleMonitoring = { viewModel.toggleServiceMonitoring(service) },
                     onScheduleStopAlarm = scheduleStopAlarm,
-                    alarmFeedback = stopAlarmFeedback
+                    alarmFeedback = stopAlarmFeedback,
+                    onShare = {
+                        val content = TrainShareFormatter.create(
+                            service = service,
+                            provider = viewModel.currentProviderLabel(),
+                            confidence = viewModel.currentConfidenceLabel(),
+                            freshness = viewModel.snapshot?.freshness,
+                            refreshedAt = viewModel.lastRefreshEpochMillis(),
+                            isDemonstration = viewModel.isDemonstrationData()
+                        )
+                        context.startActivity(
+                            Intent.createChooser(
+                                Intent(Intent.ACTION_SEND)
+                                    .setType("text/plain")
+                                    .putExtra(Intent.EXTRA_TITLE, content.title)
+                                    .putExtra(Intent.EXTRA_TEXT, content.text),
+                                "Condividi dettagli treno"
+                            )
+                        )
+                    }
                 )
             }
         }
@@ -1451,7 +1471,8 @@ private fun ServiceDetailScreen(
     isMonitored: Boolean,
     onToggleMonitoring: () -> Unit,
     onScheduleStopAlarm: (TrainService, TrainStop) -> Unit,
-    alarmFeedback: String?
+    alarmFeedback: String?,
+    onShare: () -> Unit
 ) {
     val dataLabel = if (isDemonstration) "Catalogo dimostrativo locale — non live" else freshness?.accessibleLabel ?: "dati non disponibili in tempo reale"
     LazyColumn(modifier = modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(0.dp)) {
@@ -1480,6 +1501,9 @@ private fun ServiceDetailScreen(
                     Text(accessibleUpdateTime(refreshedAt), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 Row {
+                    IconButton(onClick = onShare) {
+                        Icon(Icons.Default.Share, contentDescription = "Condividi dettagli del treno con le app di sistema")
+                    }
                     IconButton(onClick = onToggleMonitoring) {
                         Icon(if (isMonitored) Icons.Default.Star else Icons.Default.StarBorder, contentDescription = if (isMonitored) "Rimuovi monitoraggio treno" else "Monitora questo treno")
                     }
