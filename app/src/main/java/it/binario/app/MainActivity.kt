@@ -103,7 +103,7 @@ import java.time.LocalDate
 import java.time.LocalTime
 import java.util.Locale
 
-private enum class Screen { PLANNER, OPERATIONS, MORE, RESULTS, DETAIL }
+private enum class Screen { PLANNER, OPERATIONS, SETTINGS, RESULTS, DETAIL }
 private enum class OperationsSection(val label: String) { TRAINS("Treni"), STATIONS("Stazioni") }
 private enum class SearchMode(val label: String) { ROUTE("Tratta"), TRAIN("N. treno"), STATION("Stazione") }
 private sealed interface BinarioDeepLink {
@@ -163,14 +163,14 @@ private fun BinarioApp(
     val title = when (screen) {
         Screen.PLANNER -> "Cerca e consulta"
         Screen.OPERATIONS -> "Consulta"
-        Screen.MORE -> "Altro"
+        Screen.SETTINGS -> "Impostazioni"
         Screen.RESULTS -> "Soluzioni"
         Screen.DETAIL -> "Dettaglio corsa"
     }
     val subtitle = when (screen) {
         Screen.PLANNER -> "Pianifica il prossimo viaggio"
         Screen.OPERATIONS -> "Treni e stazioni"
-        Screen.MORE -> "Tratte e impostazioni"
+        Screen.SETTINGS -> "Preferenze e dati personali"
         Screen.RESULTS -> "Corse disponibili"
         Screen.DETAIL -> "Stato e fermate"
     }
@@ -232,10 +232,10 @@ private fun BinarioApp(
                         label = { Text("Consulta") }
                     )
                     NavigationBarItem(
-                        selected = screen == Screen.MORE,
-                        onClick = { screen = Screen.MORE },
+                        selected = screen == Screen.SETTINGS,
+                        onClick = { screen = Screen.SETTINGS },
                         icon = { Icon(Icons.Default.Info, contentDescription = null) },
-                        label = { Text("Altro") }
+                        label = { Text("Impostazioni") }
                     )
                 }
             }
@@ -247,7 +247,7 @@ private fun BinarioApp(
                 modifier = Modifier.padding(padding),
                 viewModel = viewModel,
                 showResults = { screen = Screen.RESULTS },
-                openMore = { screen = Screen.MORE },
+                openMore = { screen = Screen.SETTINGS },
                 openStations = {
                     operationsSectionName = OperationsSection.STATIONS.name
                     screen = Screen.OPERATIONS
@@ -259,12 +259,13 @@ private fun BinarioApp(
                 selectedSection = OperationsSection.valueOf(operationsSectionName),
                 onSectionSelected = { operationsSectionName = it.name },
                 openDetails = { service -> detailReturnScreen = Screen.OPERATIONS; viewModel.openService(service); screen = Screen.DETAIL },
-                openRoutes = { screen = Screen.MORE },
+                openRoutes = { screen = Screen.SETTINGS },
                 openSearch = { screen = Screen.PLANNER }
             )
-            Screen.MORE -> RoutesScreen(
+            Screen.SETTINGS -> SettingsScreen(
                 modifier = Modifier.padding(padding),
                 viewModel = viewModel,
+                onThemeClick = { showThemePicker = true },
                 openRoute = {
                     viewModel.activateRoute(it)
                     operationsSectionName = OperationsSection.TRAINS.name
@@ -1146,7 +1147,12 @@ private fun VoiceInputButton(onClick: () -> Unit, label: String) {
 }
 
 @Composable
-private fun RoutesScreen(modifier: Modifier, viewModel: TrainViewModel, openRoute: (SavedRoute) -> Unit) {
+private fun SettingsScreen(
+    modifier: Modifier,
+    viewModel: TrainViewModel,
+    onThemeClick: () -> Unit,
+    openRoute: (SavedRoute) -> Unit
+) {
     var showComposer by rememberSaveable { mutableStateOf(false) }
     if (showComposer) {
         RouteComposerSheet(viewModel = viewModel, onDismiss = { showComposer = false })
@@ -1154,8 +1160,22 @@ private fun RoutesScreen(modifier: Modifier, viewModel: TrainViewModel, openRout
     LazyColumn(modifier = modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(0.dp)) {
         item {
             Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text("Le mie tratte", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                Text("Tocca una tratta per renderla attiva. Le fissate restano in alto e si sincronizzano con il widget.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("Impostazioni", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                Text("Gestisci preferenze, viaggi personali e integrazioni di Binario.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        item {
+            SettingsSectionTitle("Aspetto")
+            SettingsActionRow(
+                title = "Tema dell’app",
+                detail = "Sistema, chiaro o scuro",
+                onClick = onThemeClick
+            )
+        }
+        item {
+            Column(Modifier.padding(horizontal = 20.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text("Viaggi personali", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text("Le tratte fissate restano disponibili anche nel widget. Tocca una tratta per renderla attiva.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Button(onClick = { showComposer = true }, modifier = Modifier.fillMaxWidth()) {
                     Icon(Icons.Default.Add, contentDescription = null)
                     Spacer(Modifier.width(8.dp))
@@ -1163,6 +1183,7 @@ private fun RoutesScreen(modifier: Modifier, viewModel: TrainViewModel, openRout
                 }
             }
         }
+        item { SettingsSectionTitle("Integrazioni") }
         item {
             IntegrationsPanel(
                 settings = viewModel.integrationSettings,
@@ -1193,6 +1214,12 @@ private fun RoutesScreen(modifier: Modifier, viewModel: TrainViewModel, openRout
                 HorizontalDivider(modifier = Modifier.padding(start = 20.dp), color = MaterialTheme.colorScheme.outlineVariant)
             }
         }
+        item {
+            Column(Modifier.padding(horizontal = 20.dp, vertical = 14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text("Privacy e dati", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text("Binario non usa tracker né annunci. Backup Android escluso; la posizione è richiesta solo per trovare stazioni vicine e non viene conservata. Senza una fonte autorizzata: dati non disponibili in tempo reale.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
         items(viewModel.savedRoutes, key = { it.id }) { route ->
             RouteListRow(
                 route = route,
@@ -1203,6 +1230,30 @@ private fun RoutesScreen(modifier: Modifier, viewModel: TrainViewModel, openRout
                 canRemove = viewModel.savedRoutes.size > 1
             )
         }
+    }
+}
+
+@Composable
+private fun SettingsSectionTitle(title: String) {
+    Text(
+        text = title,
+        style = MaterialTheme.typography.titleMedium,
+        fontWeight = FontWeight.Bold,
+        modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp)
+    )
+}
+
+@Composable
+private fun SettingsActionRow(title: String, detail: String, onClick: () -> Unit) {
+    TextButton(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp).semantics { contentDescription = "$title. $detail" }
+    ) {
+        Column(Modifier.weight(1f), horizontalAlignment = Alignment.Start) {
+            Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Text(detail, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        Icon(Icons.Default.Palette, contentDescription = null)
     }
 }
 
