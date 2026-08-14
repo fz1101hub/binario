@@ -42,6 +42,10 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name=".widget.WidgetConfigureActivity"
+            android:exported="false" />
+
         <receiver
             android:name=".widget.RouteWidgetProvider"
             android:exported="false"

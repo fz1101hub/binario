@@ -59,6 +59,11 @@ class RouteWidgetProvider : AppWidgetProvider() {
         }
     }
 
+    override fun onDeleted(context: Context, appWidgetIds: IntArray) {
+        val store = WidgetConfigurationStore(context)
+        appWidgetIds.forEach(store::remove)
+    }
+
     companion object {
         const val ACTION_REFRESH = "it.binario.app.widget.REFRESH"
         const val ACTION_NEXT_PAGE = "it.binario.app.widget.NEXT_PAGE"
@@ -86,22 +91,26 @@ class RouteWidgetProvider : AppWidgetProvider() {
         private fun render(context: Context, manager: AppWidgetManager, widgetId: Int) {
             val state = WidgetStateStore.read(context)
             val views = RemoteViews(context.packageName, R.layout.route_widget)
+            val configuration = WidgetConfigurationStore(context).read(widgetId)
+            if (configuration == null) {
+                renderConfigurationRequired(context, manager, widgetId, views)
+                return
+            }
             if (state == null) {
-                views.setTextViewText(R.id.widget_route, context.getString(R.string.widget_empty_title))
-                views.setTextViewText(R.id.widget_meta, context.getString(R.string.widget_empty_subtitle))
-                rowIds.forEach { id -> views.setViewVisibility(id, View.GONE) }
-                views.setViewVisibility(R.id.widget_column_header, View.GONE)
-                views.setTextViewText(R.id.widget_direction, "Configura")
-                views.setTextViewText(R.id.widget_refresh, "Apri")
-                views.setOnClickPendingIntent(R.id.widget_root, openAppIntent(context, widgetId))
-                views.setOnClickPendingIntent(R.id.widget_refresh, openAppIntent(context, widgetId))
-                manager.updateAppWidget(widgetId, views)
+                renderNoSnapshot(context, manager, widgetId, views, configuration)
                 return
             }
 
-            val selectedSurface = PersonalTravelStore(context).widgetSurface()
-            if (selectedSurface != WidgetSurface.ACTIVE_ROUTE) {
-                renderPersonalSurface(context, manager, widgetId, views, selectedSurface)
+            if (configuration.targetType == WidgetTargetType.STATION) {
+                renderStationTarget(context, manager, widgetId, views, configuration)
+                return
+            }
+            if (configuration.targetType == WidgetTargetType.TRAIN) {
+                renderTrainTarget(context, manager, widgetId, views, configuration, state)
+                return
+            }
+            if (configuration.targetId != state.route.id) {
+                renderNoSnapshot(context, manager, widgetId, views, configuration)
                 return
             }
 
@@ -142,6 +151,78 @@ class RouteWidgetProvider : AppWidgetProvider() {
             views.setOnClickPendingIntent(R.id.widget_previous_page, actionIntent(context, ACTION_PREVIOUS_PAGE, widgetId))
             views.setOnClickPendingIntent(R.id.widget_next_page, actionIntent(context, ACTION_NEXT_PAGE, widgetId))
             views.setOnClickPendingIntent(R.id.widget_direction, actionIntent(context, ACTION_SWITCH_DIRECTION, widgetId))
+            views.setOnClickPendingIntent(R.id.widget_refresh, actionIntent(context, ACTION_REFRESH, widgetId))
+            views.setOnClickPendingIntent(R.id.widget_root, openAppIntent(context, widgetId))
+            manager.updateAppWidget(widgetId, views)
+        }
+
+        private fun renderConfigurationRequired(context: Context, manager: AppWidgetManager, widgetId: Int, views: RemoteViews) {
+            views.setTextViewText(R.id.widget_route, "CONFIGURA BINARIO")
+            views.setTextViewText(R.id.widget_meta, "SCEGLI TRATTA, STAZIONE O TRENO")
+            rowIds.forEach { views.setViewVisibility(it, View.GONE) }
+            views.setViewVisibility(R.id.widget_column_header, View.GONE)
+            views.setTextViewText(R.id.widget_direction, "Configura")
+            views.setTextViewText(R.id.widget_refresh, "Apri")
+            views.setOnClickPendingIntent(R.id.widget_root, configureIntent(context, widgetId))
+            views.setOnClickPendingIntent(R.id.widget_direction, configureIntent(context, widgetId))
+            views.setOnClickPendingIntent(R.id.widget_refresh, openAppIntent(context, widgetId))
+            manager.updateAppWidget(widgetId, views)
+        }
+
+        private fun renderNoSnapshot(context: Context, manager: AppWidgetManager, widgetId: Int, views: RemoteViews, configuration: WidgetDisplayConfiguration) {
+            views.setTextViewText(R.id.widget_route, configuration.targetLabel.uppercase())
+            views.setTextViewText(R.id.widget_meta, "${configuration.targetType.label.uppercase()} · DATI NON DISPONIBILI IN TEMPO REALE")
+            rowIds.forEach { views.setViewVisibility(it, View.GONE) }
+            views.setViewVisibility(R.id.widget_column_header, View.GONE)
+            views.setTextViewText(R.id.widget_direction, "Modifica")
+            views.setTextViewText(R.id.widget_refresh, "Apri")
+            views.setOnClickPendingIntent(R.id.widget_root, openAppIntent(context, widgetId))
+            views.setOnClickPendingIntent(R.id.widget_direction, configureIntent(context, widgetId))
+            views.setOnClickPendingIntent(R.id.widget_refresh, openAppIntent(context, widgetId))
+            manager.updateAppWidget(widgetId, views)
+        }
+
+        private fun renderStationTarget(context: Context, manager: AppWidgetManager, widgetId: Int, views: RemoteViews, configuration: WidgetDisplayConfiguration) {
+            views.setTextViewText(R.id.widget_route, configuration.targetLabel.uppercase())
+            views.setTextViewText(R.id.widget_meta, "STAZIONE SELEZIONATA · DATI NON DISPONIBILI IN TEMPO REALE")
+            views.setViewVisibility(R.id.widget_column_header, View.VISIBLE)
+            rowIds.forEach { views.setViewVisibility(it, View.GONE) }
+            views.setViewVisibility(rowIds[0], View.VISIBLE)
+            views.setTextViewText(timeIds[0], "—")
+            views.setTextViewText(destinationIds[0], configuration.targetLabel)
+            views.setTextViewText(trainIds[0], "MONITORAGGIO STAZIONE")
+            views.setTextViewText(platformIds[0], "—")
+            views.setTextViewText(statusIds[0], "NON LIVE")
+            views.setContentDescription(rowIds[0], "Stazione ${configuration.targetLabel}. Dati non disponibili in tempo reale.")
+            views.setTextViewText(R.id.widget_direction, "Modifica")
+            views.setTextViewText(R.id.widget_refresh, "Apri")
+            views.setOnClickPendingIntent(R.id.widget_direction, configureIntent(context, widgetId))
+            views.setOnClickPendingIntent(R.id.widget_refresh, openAppIntent(context, widgetId))
+            views.setOnClickPendingIntent(R.id.widget_root, openAppIntent(context, widgetId))
+            manager.updateAppWidget(widgetId, views)
+        }
+
+        private fun renderTrainTarget(context: Context, manager: AppWidgetManager, widgetId: Int, views: RemoteViews, configuration: WidgetDisplayConfiguration, state: WidgetState) {
+            val service = state.services.firstOrNull { it.number.equals(configuration.targetId, ignoreCase = true) }
+            if (service == null) {
+                renderNoSnapshot(context, manager, widgetId, views, configuration)
+                return
+            }
+            views.setTextViewText(R.id.widget_route, "TRENO ${service.number}")
+            views.setTextViewText(R.id.widget_meta, "${state.freshness.accessibleLabel.uppercase()} · ${accessibleUpdateTime(state.retrievedAt)}")
+            views.setViewVisibility(R.id.widget_column_header, View.VISIBLE)
+            rowIds.forEach { views.setViewVisibility(it, View.GONE) }
+            views.setViewVisibility(rowIds[0], View.VISIBLE)
+            views.setTextViewText(timeIds[0], service.expectedDeparture)
+            views.setTextViewText(destinationIds[0], service.destination)
+            views.setTextViewText(trainIds[0], "${service.operator.shortLabel} · ${service.category} ${service.number}")
+            views.setTextViewText(platformIds[0], service.platform?.let { "BIN $it" } ?: "—")
+            views.setTextViewText(statusIds[0], service.statusLabel)
+            views.setTextColor(statusIds[0], statusColor(context, service.status))
+            views.setContentDescription(rowIds[0], service.accessibleLabel)
+            views.setTextViewText(R.id.widget_direction, "Modifica")
+            views.setTextViewText(R.id.widget_refresh, "↻")
+            views.setOnClickPendingIntent(R.id.widget_direction, configureIntent(context, widgetId))
             views.setOnClickPendingIntent(R.id.widget_refresh, actionIntent(context, ACTION_REFRESH, widgetId))
             views.setOnClickPendingIntent(R.id.widget_root, openAppIntent(context, widgetId))
             manager.updateAppWidget(widgetId, views)
@@ -217,6 +298,17 @@ class RouteWidgetProvider : AppWidgetProvider() {
                 putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId)
             }
             return PendingIntent.getActivity(context, widgetId, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        }
+
+        private fun configureIntent(context: Context, widgetId: Int): PendingIntent {
+            val intent = Intent(context, WidgetConfigureActivity::class.java)
+                .putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId)
+            return PendingIntent.getActivity(
+                context,
+                "configure-$widgetId".hashCode(),
+                intent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
         }
 
         private fun statusColor(context: Context, status: ServiceStatus): Int = when (status) {
