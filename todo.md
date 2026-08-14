@@ -111,3 +111,8 @@
 - [x] Applicare inset sicuri per barra di stato e navigation bar nella configurazione widget.
 - [x] Applicare il tema persistito alla superficie completa della configurazione, non solo ai componenti Material.
 - [x] Verificare e pubblicare la correzione definitiva di tema, inset e caricamento widget con commit e push Git dedicati.
+- [ ] Isolare i riferimenti del formato piccolo ancora incompatibili e definire il modello del nome locale per istanza widget.
+- [ ] Correggere contrasto dell’intestazione in dark mode e centrare la composizione della configurazione.
+- [ ] Aggiungere campo opzionale per il nome del widget e visualizzarlo al posto dell’etichetta della tratta.
+- [ ] Rendere affidabile il formato widget più piccolo, eliminando le azioni RemoteViews non essenziali in quella variante.
+- [ ] Verificare, documentare e pubblicare contrasto, nome e stabilità del widget con commit e push Git dedicati.
