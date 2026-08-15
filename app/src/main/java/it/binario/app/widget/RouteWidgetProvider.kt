@@ -23,6 +23,7 @@ import it.binario.app.R
 import it.binario.app.WidgetSurface
 import it.binario.app.data.DataResult
 import it.binario.app.data.DataConfidence
+import it.binario.app.data.DataQualityBand
 import it.binario.app.data.Direction
 import it.binario.app.data.Freshness
 import it.binario.app.data.RailOperator
@@ -30,6 +31,7 @@ import it.binario.app.data.RouteSnapshot
 import it.binario.app.data.repository.BinarioDataGraph
 import it.binario.app.data.SavedRoute
 import it.binario.app.data.ServiceStatus
+import it.binario.app.data.SnapshotWarning
 import it.binario.app.data.Station
 import it.binario.app.data.TrainService
 import it.binario.app.data.accessibleUpdateTime
@@ -131,14 +133,11 @@ class RouteWidgetProvider : AppWidgetProvider() {
 
             val title = configuration.widgetTitle(state.routeLabel)
             views.setTextViewText(R.id.widget_route, title)
-            views.setTextViewText(
-                R.id.widget_meta,
-                "${state.freshness.accessibleLabel.uppercase()} · PAG ${page + 1}/${maxPage + 1} · ${accessibleUpdateTime(state.retrievedAt)}"
-            )
+            views.setTextViewText(R.id.widget_meta, state.compactMeta("PAG ${page + 1}/${maxPage + 1}"))
             views.setViewVisibility(R.id.widget_column_header, if (mode.showColumnHeader) View.VISIBLE else View.GONE)
             views.setContentDescription(
                 R.id.widget_route,
-                "Apri Binario. $title. ${state.freshness.accessibleLabel}. ${accessibleUpdateTime(state.retrievedAt)}"
+                "Apri Binario. $title. ${state.accessibleDataSummary()}. ${accessibleUpdateTime(state.retrievedAt)}"
             )
             rowIds.forEachIndexed { index, id ->
                 val service = services.getOrNull(index)
@@ -240,7 +239,7 @@ class RouteWidgetProvider : AppWidgetProvider() {
                 return
             }
             views.setTextViewText(R.id.widget_route, configuration.widgetTitle("TRENO ${service.number}").uppercase())
-            views.setTextViewText(R.id.widget_meta, "${state.freshness.accessibleLabel.uppercase()} · ${accessibleUpdateTime(state.retrievedAt)}")
+            views.setTextViewText(R.id.widget_meta, state.compactMeta())
             views.setViewVisibility(R.id.widget_column_header, if (mode.showColumnHeader) View.VISIBLE else View.GONE)
             rowIds.forEach { views.setViewVisibility(it, View.GONE) }
             views.setViewVisibility(rowIds[0], View.VISIBLE)
@@ -405,10 +404,56 @@ data class WidgetState(
     val services: List<WidgetService>,
     val freshness: Freshness,
     val confidence: DataConfidence,
+    val providerName: String,
+    val qualityScore: Int?,
+    val qualityBand: DataQualityBand,
+    val qualityWarnings: Set<SnapshotWarning>,
     val retrievedAt: Long,
     val page: Int
 ) {
     val routeLabel: String get() = route.displayName(direction)
+
+    fun compactMeta(pageLabel: String? = null): String = listOfNotNull(
+        providerName.ifBlank { null },
+        confidence.widgetLabel(),
+        qualityScore?.let { "Q$it" },
+        freshness.widgetLabel(),
+        qualityWarnings.firstOrNull()?.widgetLabel(),
+        pageLabel
+    ).joinToString(" · ")
+
+    fun accessibleDataSummary(): String = buildString {
+        append("Provider $providerName. ${freshness.accessibleLabel}. ${confidence.accessibleLabel}. ${qualityBand.accessibleLabel}")
+        qualityScore?.let { append(", punteggio qualità $it su 100") }
+        if (qualityWarnings.isNotEmpty()) append(". Avvisi: ${qualityWarnings.joinToString { it.accessibleLabel }}")
+    }
+}
+
+private fun DataConfidence.widgetLabel(): String = when (this) {
+    DataConfidence.OPERATOR_PRIMARY -> "OPERATORE"
+    DataConfidence.INFRASTRUCTURE_PRIMARY -> "INFRASTRUTTURA"
+    DataConfidence.OPEN_DATA -> "OPEN DATA"
+    DataConfidence.LICENSED_AGGREGATE -> "AGGREGATO"
+    DataConfidence.STATIC_ONLY -> "PROGRAMMATO"
+    DataConfidence.CACHED -> "CACHE"
+    DataConfidence.DEMONSTRATION -> "DEMO"
+}
+
+private fun Freshness.widgetLabel(): String = when (this) {
+    Freshness.FRESH -> "AGGIORNATO"
+    Freshness.AGING -> "IN AGGIORNAMENTO"
+    Freshness.STALE -> "ULTIMO DATO"
+    Freshness.UNAVAILABLE -> "LIVE NON DISPONIBILE"
+}
+
+private fun SnapshotWarning.widgetLabel(): String = when (this) {
+    SnapshotWarning.SOURCE_CONFLICT -> "CONFLITTO FONTI"
+    SnapshotWarning.PARTIAL_ROUTE_MATCH -> "TRATTA PARZIALE"
+    SnapshotWarning.STALE_SOURCE -> "FONTE NON RECENTE"
+    SnapshotWarning.STATIC_ONLY -> "SOLO PROGRAMMATO"
+    SnapshotWarning.DEMONSTRATION -> "DEMO"
+    SnapshotWarning.INCOMPLETE_SERVICE -> "CORSA INCOMPLETA"
+    SnapshotWarning.IDENTITY_AMBIGUOUS -> "IDENTITÀ DA VERIFICARE"
 }
 
 object WidgetStateStore {
@@ -418,6 +463,10 @@ object WidgetStateStore {
     private const val KEY_LINES = "lines"
     private const val KEY_FRESHNESS = "freshness"
     private const val KEY_CONFIDENCE = "confidence"
+    private const val KEY_PROVIDER = "provider"
+    private const val KEY_QUALITY_SCORE = "quality_score"
+    private const val KEY_QUALITY_BAND = "quality_band"
+    private const val KEY_QUALITY_WARNINGS = "quality_warnings"
     private const val KEY_RETRIEVED = "retrieved"
     private const val KEY_PAGE = "page"
 
@@ -441,6 +490,10 @@ object WidgetStateStore {
             putString(KEY_LINES, lines)
             putString(KEY_FRESHNESS, snapshot.freshness.name)
             putString(KEY_CONFIDENCE, snapshot.confidence.name)
+            putString(KEY_PROVIDER, snapshot.providerName)
+            snapshot.qualityScore?.let { putInt(KEY_QUALITY_SCORE, it) } ?: remove(KEY_QUALITY_SCORE)
+            putString(KEY_QUALITY_BAND, snapshot.qualityBand.name)
+            putString(KEY_QUALITY_WARNINGS, snapshot.qualityWarnings.joinToString("|") { it.name })
             putLong(KEY_RETRIEVED, snapshot.retrievedAtEpochMillis)
             putInt(KEY_PAGE, page)
         }
@@ -457,8 +510,27 @@ object WidgetStateStore {
         val confidence = runCatching {
             DataConfidence.valueOf(prefs(context).getString(KEY_CONFIDENCE, DataConfidence.DEMONSTRATION.name) ?: DataConfidence.DEMONSTRATION.name)
         }.getOrDefault(DataConfidence.DEMONSTRATION)
+        val qualityBand = runCatching {
+            DataQualityBand.valueOf(prefs(context).getString(KEY_QUALITY_BAND, DataQualityBand.UNKNOWN.name) ?: DataQualityBand.UNKNOWN.name)
+        }.getOrDefault(DataQualityBand.UNKNOWN)
+        val warnings = prefs(context).getString(KEY_QUALITY_WARNINGS, "").orEmpty()
+            .split("|")
+            .mapNotNull { encoded -> runCatching { SnapshotWarning.valueOf(encoded) }.getOrNull() }
+            .toSet()
         val lines = prefs(context).getString(KEY_LINES, "").orEmpty().split(";").mapNotNull(::decodeService)
-        return WidgetState(route, direction, lines, freshness, confidence, prefs(context).getLong(KEY_RETRIEVED, 0L), prefs(context).getInt(KEY_PAGE, 0))
+        return WidgetState(
+            route = route,
+            direction = direction,
+            services = lines,
+            freshness = freshness,
+            confidence = confidence,
+            providerName = prefs(context).getString(KEY_PROVIDER, "Provider non disponibile").orEmpty(),
+            qualityScore = if (prefs(context).contains(KEY_QUALITY_SCORE)) prefs(context).getInt(KEY_QUALITY_SCORE, 0) else null,
+            qualityBand = qualityBand,
+            qualityWarnings = warnings,
+            retrievedAt = prefs(context).getLong(KEY_RETRIEVED, 0L),
+            page = prefs(context).getInt(KEY_PAGE, 0)
+        )
     }
 
     fun changePage(context: Context, delta: Int) {
