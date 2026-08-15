@@ -107,7 +107,7 @@
 - [x] Tracciare la composition root, il repository e il ViewModel per individuare dove il catalogo dimostrativo viene ancora selezionato.
 - [x] Correggere la selezione runtime fra provider live, fallback GTFS e demo, senza presentare fallimenti come realtime.
 - [x] Esporre nell’app e nel widget la causa del fallback e l’azione di refresh/riprova appropriata.
-- [ ] Verificare con test e APK il passaggio dal dato dimostrativo allo snapshot provider o GTFS reale.
+- [x] Verificare con test e APK il passaggio dal dato dimostrativo allo snapshot provider o GTFS reale.
 - [x] Definire configurazione per istanza widget, regole non-live e linguaggio visivo originale ad alta leggibilità.
 - [x] Aggiungere scelta per-widget tra tratta, stazione specifica e treno specifico, senza configurazioni globali ambigue.
 - [x] Rendere il widget ridimensionabile con layout compatto, standard ed espanso e aggiornamento su resize.
