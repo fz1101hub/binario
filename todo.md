@@ -104,6 +104,10 @@
 - [x] Leggere integralmente la chat di riferimento sulle fonti e classificare decisioni, evidenze, limiti e istruzioni storiche.
 - [x] Confrontare le conclusioni della discussione con contratti, licenze, provider e policy del branch canonico.
 - [x] Consolidare in un documento di governance le fonti approvate, i fallback, i divieti e i prerequisiti di attivazione.
+- [ ] Tracciare la composition root, il repository e il ViewModel per individuare dove il catalogo dimostrativo viene ancora selezionato.
+- [ ] Correggere la selezione runtime fra provider live, fallback GTFS e demo, senza presentare fallimenti come realtime.
+- [ ] Esporre nell’app e nel widget la causa del fallback e l’azione di refresh/riprova appropriata.
+- [ ] Verificare con test e APK il passaggio dal dato dimostrativo allo snapshot provider o GTFS reale.
 - [x] Definire configurazione per istanza widget, regole non-live e linguaggio visivo originale ad alta leggibilità.
 - [x] Aggiungere scelta per-widget tra tratta, stazione specifica e treno specifico, senza configurazioni globali ambigue.
 - [x] Rendere il widget ridimensionabile con layout compatto, standard ed espanso e aggiornamento su resize.
