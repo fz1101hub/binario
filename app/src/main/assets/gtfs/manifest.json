@@ -9,8 +9,8 @@
       "sourceUrl": "https://gtfs.api.opendatahub.com/v1/dataset/sta-time-tables/raw",
       "accessMode": "OPEN_DIRECT",
       "attribution": "Open Data Hub Alto Adige / STA — CC0",
-      "sha256": "15521822c78e67c498326933bfef93a929d94553f28020e4fa6157fc04347ba6",
-      "notes": "Filtered offline to standard and extended railway route types. Includes 161 rail routes, 3,791 trips and 277 referenced stops from the official STA feed."
+      "sha256": "af4ed31afa5ecc8f5507dd3a2acc21f58b3de7b8a6629595972ba21d3c46da7f",
+      "notes": "Refreshed from the official STA raw endpoint on 2026-08-15 and filtered offline to standard and extended railway route types. Includes 161 rail routes, 3,791 trips and 277 referenced stops. The current realtime sample contained only non-rail entities, so no rail trip match was expected in that snapshot."
     },
     {
       "sourceId": "amt-genova-casella-gtfs",

@@ -2,6 +2,7 @@
 """Verifica read-only del raccordo STA GTFS-Realtime -> GTFS statico embedded."""
 from __future__ import annotations
 
+import argparse
 import csv
 import io
 import json
@@ -11,7 +12,7 @@ import zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-PACK = ROOT / "app/src/main/assets/gtfs/alto-adige-sta-gtfs.zip"
+DEFAULT_PACK = ROOT / "app/src/main/assets/gtfs/alto-adige-sta-gtfs.zip"
 URL = "https://gtfs.api.opendatahub.com/v1/realtime/sta-time-tables/trip-updates"
 
 
@@ -21,11 +22,14 @@ def read_csv(zf: zipfile.ZipFile, suffix: str):
 
 
 def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--pack", type=Path, default=DEFAULT_PACK)
+    args = parser.parse_args()
     request = urllib.request.Request(URL, headers={"Accept": "application/json", "User-Agent": "Binario-quality-check/1.0"})
     with urllib.request.urlopen(request, timeout=30) as response:
         payload = json.loads(response.read().decode("utf-8"))
         status = response.status
-    with zipfile.ZipFile(PACK) as zf:
+    with zipfile.ZipFile(args.pack) as zf:
         trip_ids = {row["trip_id"] for row in read_csv(zf, "trips.txt") if row.get("trip_id")}
         stop_times = read_csv(zf, "stop_times.txt")
     static_pairs = {(row.get("trip_id"), row.get("stop_id"), row.get("stop_sequence")) for row in stop_times}
@@ -41,6 +45,7 @@ def main() -> int:
     stop_matches = sum(1 for trip_id, stop_id, sequence, _ in updates if (trip_id, stop_id, sequence) in static_pairs)
     actual_events = sum(1 for _, _, _, stop in updates if any(k in (stop.get("arrival") or {}) for k in ("time",)) or any(k in (stop.get("departure") or {}) for k in ("time",)))
     print("metric,value")
+    print(f"pack,{args.pack}")
     print(f"http_status,{status}")
     print(f"feed_entities,{len(payload.get('entity', []))}")
     print(f"stop_updates,{len(updates)}")

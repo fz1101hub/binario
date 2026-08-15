@@ -1,7 +1,8 @@
 metric,value
+pack,/home/ubuntu/binario_repo/app/src/main/assets/gtfs/alto-adige-sta-gtfs.zip
 http_status,200
-feed_entities,2
-stop_updates,87
+feed_entities,5
+stop_updates,123
 trip_id_matches,0
 trip_stop_matches,0
 updates_with_provider_time,0

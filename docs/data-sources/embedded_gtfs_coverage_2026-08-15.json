@@ -1,9 +1,5 @@
-[
-  {
-    "source_id": "alto-adige-sta-gtfs",
-    "asset": "gtfs/alto-adige-sta-gtfs.zip",
-    "bytes": 576428,
-    "sha256_valid": true,
+{"packs": 12, "failures": 0, "output": "/home/ubuntu/binario_repo/docs/data-sources/embedded_gtfs_coverage_2026-08-15.json"}
+alid": true,
     "required_files_valid": true,
     "rail_routes": 161,
     "error": null
