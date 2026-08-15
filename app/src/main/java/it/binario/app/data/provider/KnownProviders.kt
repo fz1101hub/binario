@@ -188,14 +188,14 @@ object KnownProviders {
         ProviderPolicy(
             descriptor = ProviderDescriptor(
                 id = KnownProviderIds.ITALO_STATUS,
-                displayName = "Italo in Viaggio — best effort",
+                displayName = "Italo in Viaggio — tabellone pubblico",
                 capabilities = setOf(ProviderCapability.TRAIN_RUN_REALTIME, ProviderCapability.STATION_BOARD),
                 coverage = CoverageDescriptor(countryCodes = setOf("IT"), description = "Stato e tabelloni dei servizi Italo"),
                 accessMode = AccessMode.PUBLIC_BEST_EFFORT,
                 ratePolicy = realtimeRatePolicy,
                 schemaVersion = 1
             ),
-            enabled = false,
+            enabled = true,
             priorityByCapability = mapOf(
                 ProviderCapability.TRAIN_RUN_REALTIME to 20,
                 ProviderCapability.STATION_BOARD to 20

@@ -72,9 +72,11 @@ Il ramo include ora `RailSourceCatalog` con 31 fonti censite e classificate. Il 
 
 Sono ora attive nella composition root le due fonti live usate dalle app ferroviarie analizzate: `ViaggiaTrenoStationAdapter` per il tabellone Trenitalia della stazione di origine e `RfiStationBoardAdapter` come fallback live per tabelloni di stazione. Entrambe espongono provider, timestamp e freschezza alla UI e al widget; cache, timeout e fallback sono coperti da test. Lo smoke test del 14 agosto 2026 ha ottenuto HTTP 200 con 67 corse ViaggiaTreno e 40 partenze RFI per Roma Termini.
 
-Il test completo ha elaborato tutte le 31 fonti catalogate. L’import massimo successivo include ora nove data pack GTFS validati: AMT Genova–Casella, ARST Sardegna, Cotral/ASTRAL Ferro, EAV Campania, HŽPP, Lombardia/Trenord, SNCF, Toscana/TFT e Trentino Trasporti extraurbano. `EmbeddedGtfsPackLoader` li carica in modo lazy e verificabile dagli asset; manifest e SHA-256 sono in `app/src/main/assets/gtfs/`. I feed multimodali devono essere filtrati per `route_type=2`; TFT richiede una normalizzazione esplicita, perché le sue due tratte ferroviarie sono codificate dal titolare con `route_type=3`. Alto Adige, Svizzera e ÖBB restano import offline per dimensione o timeout; Italo e Trenord restano catalogati, non attivati: le rispettive pagine dinamiche non dispongono ancora di parser Android stabile e testato.
+Il test completo ha elaborato tutte le 31 fonti catalogate. L’import massimo successivo include ora nove data pack GTFS validati: AMT Genova–Casella, ARST Sardegna, Cotral/ASTRAL Ferro, EAV Campania, HŽPP, Lombardia/Trenord, SNCF, Toscana/TFT e Trentino Trasporti extraurbano. `EmbeddedGtfsPackLoader` li carica in modo lazy e verificabile dagli asset; manifest e SHA-256 sono in `app/src/main/assets/gtfs/`. I feed multimodali devono essere filtrati per `route_type=2`; TFT richiede una normalizzazione esplicita, perché le sue due tratte ferroviarie sono codificate dal titolare con `route_type=3`. Alto Adige, Svizzera e ÖBB restano import offline per dimensione o timeout; Trenord resta catalogata e non attivata, poiché la sua pagina dinamica non dispone ancora di parser Android stabile e testato.
 
 La baseline di qualità aggiunge `SnapshotQualityAssessor`, `SnapshotReconciler` e metadati di punteggio/fascia/warning in `RouteSnapshot`. Il repository live valuta la qualità delle fonti, non soltanto il loro ordine. Sono inoltre operativi `RfiInfomobilityRssAdapter` per alert RFI e `StaRealtimeAdapter` per Service Alerts e Vehicle Positions GTFS-Realtime di Open Data Hub/STA. Entrambi sono presenti nella composition root, con cache, rate limit, test fixture e smoke test. La UI mostra ora fascia e punteggio di qualità insieme alla provenienza.
+
+È ora operativo anche `ItaloPublicStationAdapter`, anteposto ai fallback ViaggiaTreno e RFI per le stazioni Italo mappate: Roma Termini, Roma Tiburtina, Napoli Centrale, Firenze Santa Maria Novella, Milano Centrale, Torino Porta Nuova e Venezia Santa Lucia. Usa esclusivamente il tabellone HTML pubblico `Italo in Viaggio`, cache di 60 secondi e un parser best-effort. Nessuna API BIG o credenziale è usata. Quando la pagina non mostra corse o non è configurata per una stazione, l’adapter fallisce in modo esplicito e il repository prosegue con ViaggiaTreno/RFI. Dettagli e verifiche: `ITALO_PUBLIC_BOARD_DISCOVERY.md`, `ITALO_STATION_MAPPING.md`, `ITALO_PROVIDER_VERIFICATION.md` e il CSV dello smoke test.
 
 ## Documenti correlati
 
@@ -90,6 +92,10 @@ La baseline di qualità aggiunge `SnapshotQualityAssessor`, `SnapshotReconciler`
 - `docs/data-sources/PREMIUM_OFFICIAL_SOURCES.md`
 - `docs/data-sources/DATA_QUALITY_SLA.md`
 - `docs/data-sources/DATA_QUALITY_VERIFICATION.md`
+- `docs/data-sources/ITALO_PUBLIC_BOARD_DISCOVERY.md`
+- `docs/data-sources/ITALO_STATION_MAPPING.md`
+- `docs/data-sources/ITALO_PROVIDER_VERIFICATION.md`
+- `docs/data-sources/italo_public_board_probe_2026-08-15.csv`
 - `docs/data-sources/live_source_probe_2026-08-14.tsv`
 - `docs/data-sources/open_source_probe_2026-08-14.tsv`
 - `docs/architecture/GTFS_SOURCE_ADAPTERS.md`

@@ -3,6 +3,7 @@ package it.binario.app.data.repository
 import it.binario.app.data.DemoTrainDataSource
 import it.binario.app.data.RailDataRepository
 import it.binario.app.data.TrainDataSource
+import it.binario.app.data.live.ItaloPublicStationAdapter
 import it.binario.app.data.live.RfiInfomobilityRssAdapter
 import it.binario.app.data.live.RfiStationBoardAdapter
 import it.binario.app.data.live.StaRealtimeAdapter
@@ -29,6 +30,7 @@ object BinarioDataGraph {
         LegacyTrainDataSourceFacade(
             legacySource = RailDataRepository(
                 authorisedSources = listOf(
+                    ItaloPublicStationAdapter(),
                     ViaggiaTrenoStationAdapter(),
                     RfiStationBoardAdapter()
                 ),
