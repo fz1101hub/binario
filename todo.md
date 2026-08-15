@@ -98,6 +98,6 @@
 - [x] Predisporre il confine adapter per un provider live documentato e autorizzato, senza endpoint o credenziali nel client.
 - [x] Verificare, documentare e pubblicare l’incremento unificato con commit e push Git dedicati.
 - [x] Confermare il commit canonico `0e0867ad` e leggere l’handoff, la copertura GTFS, la verifica realtime e i gap di accesso.
-- [ ] Verificare che app, widget e worker usino esclusivamente `BinarioDataGraph` e mantengano provider, freshness, confidenza, qualità e warning.
+- [x] Verificare che app, widget e worker usino esclusivamente `BinarioDataGraph` e mantengano provider, freshness, confidenza, qualità e warning.
 - [ ] Esporre nel widget provenienza, freshness, confidenza e warning senza trasformare il fallback GTFS in dati operativi realtime.
 - [ ] Eseguire test unitari, verifica dei data pack GTFS, build APK e lint dopo il riallineamento alla baseline dati.
