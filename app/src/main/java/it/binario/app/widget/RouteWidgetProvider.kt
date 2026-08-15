@@ -454,6 +454,7 @@ private fun SnapshotWarning.widgetLabel(): String = when (this) {
     SnapshotWarning.DEMONSTRATION -> "DEMO"
     SnapshotWarning.INCOMPLETE_SERVICE -> "CORSA INCOMPLETA"
     SnapshotWarning.IDENTITY_AMBIGUOUS -> "IDENTITÀ DA VERIFICARE"
+    SnapshotWarning.DELAY_DIVERGENCE -> "RITARDI DIVERGENTI"
 }
 
 object WidgetStateStore {

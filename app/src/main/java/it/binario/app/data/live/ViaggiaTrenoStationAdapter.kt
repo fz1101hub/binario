@@ -149,6 +149,7 @@ class ViaggiaTrenoStationAdapter(
                 expectedDeparture = expected,
                 platform = platform,
                 delayMinutes = delay,
+                officialDelayMinutes = delay,
                 status = status,
                 stops = listOf(
                     TrainStop(origin, scheduled, expected, platform, delay, completed = false),

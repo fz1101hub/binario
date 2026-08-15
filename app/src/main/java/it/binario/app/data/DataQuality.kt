@@ -1,5 +1,6 @@
 package it.binario.app.data
 
+import it.binario.app.data.core.DelayConsistency
 import kotlin.math.max
 
 enum class DataQualityBand(val accessibleLabel: String) {
@@ -17,7 +18,8 @@ enum class SnapshotWarning(val accessibleLabel: String) {
     STATIC_ONLY("Sono disponibili solo orari programmati"),
     DEMONSTRATION("Sono visualizzati dati dimostrativi"),
     INCOMPLETE_SERVICE("Corsa incompleta"),
-    IDENTITY_AMBIGUOUS("Identità della corsa da verificare")
+    IDENTITY_AMBIGUOUS("Identità della corsa da verificare"),
+    DELAY_DIVERGENCE("Il ritardo ufficiale differisce dall'ultima rilevazione")
 }
 
 data class SnapshotQuality(
@@ -132,6 +134,10 @@ object SnapshotQualityAssessor {
     ): Int {
         val notice = snapshot.notice.orEmpty()
         return when {
+            snapshot.services.any { it.delayConsistency == DelayConsistency.DIVERGENT } -> {
+                warnings += SnapshotWarning.DELAY_DIVERGENCE
+                7
+            }
             notice.contains("conflitto", ignoreCase = true) -> {
                 warnings += SnapshotWarning.SOURCE_CONFLICT
                 4

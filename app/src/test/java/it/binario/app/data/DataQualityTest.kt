@@ -1,5 +1,6 @@
 package it.binario.app.data
 
+import it.binario.app.data.core.DelayConsistency
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -32,6 +33,17 @@ class DataQualityTest {
 
         assertEquals(DataQualityBand.NOT_PUBLISHABLE, quality.band)
         assertTrue(SnapshotWarning.DEMONSTRATION in quality.warnings)
+    }
+
+    @Test
+    fun `segnala divergenza tra ritardo ufficiale e rilevazione senza eliminare la corsa`() {
+        val base = snapshot(DataConfidence.OPERATOR_PRIMARY, Freshness.FRESH, observedAt = now - 30_000L)
+        val divergent = base.copy(services = base.services.map { it.copy(delayConsistency = DelayConsistency.DIVERGENT) })
+
+        val quality = SnapshotQualityAssessor.assess(divergent, now)
+
+        assertTrue(SnapshotWarning.DELAY_DIVERGENCE in quality.warnings)
+        assertTrue(quality.score < 100)
     }
 
     @Test

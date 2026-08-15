@@ -2,6 +2,8 @@ package it.binario.app.data
 
 import android.content.Context
 import androidx.core.content.edit
+import it.binario.app.data.core.DelayConsistency
+import it.binario.app.data.core.OperationalDetection
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -95,12 +97,25 @@ data class TrainService(
     val delayMinutes: Int,
     val status: ServiceStatus,
     val stops: List<TrainStop>,
-    val transferCount: Int = 0
+    val transferCount: Int = 0,
+    /** Ritardo pubblicato direttamente dal provider; non è sostituito dal calcolo sulla rilevazione. */
+    val officialDelayMinutes: Int? = delayMinutes,
+    /** Ultimo evento operativo confermato, se il provider espone località, orario teorico e reale. */
+    val lastOperationalDetection: OperationalDetection? = null,
+    /** Ritardo calcolato sull'ultimo evento operativo; nullo se l'evento non è confrontabile. */
+    val detectionDelayMinutes: Int? = null,
+    val delayConsistency: DelayConsistency = DelayConsistency.NOT_COMPARABLE
 ) {
     val category: String get() = trainCategory.accessibleLabel
     val operatorAndCategory: String get() = "${operator.shortLabel} · ${trainCategory.accessibleLabel}"
     val accessibleSummary: String
-        get() = "Operatore ${operator.accessibleLabel}. ${trainCategory.accessibleLabel} $number da $origin a $destination. Partenza prevista $expectedDeparture. ${if (transferCount == 0) "Viaggio diretto" else "$transferCount ${if (transferCount == 1) "cambio" else "cambi"}"}. ${status.accessibleLabel}${if (delayMinutes > 0) ", $delayMinutes minuti di ritardo" else ""}. ${platform?.let { "Binario $it" } ?: "Binario non disponibile"}."
+        get() {
+            val official = officialDelayMinutes?.takeIf { it != 0 }?.let { " Ritardo ufficiale $it minuti." }.orEmpty()
+            val detection = detectionDelayMinutes?.let { value ->
+                lastOperationalDetection?.let { " Ritardo all'ultima rilevazione di ${it.locationLabel}: $value minuti." }
+            }.orEmpty()
+            return "Operatore ${operator.accessibleLabel}. ${trainCategory.accessibleLabel} $number da $origin a $destination. Partenza prevista $expectedDeparture. ${if (transferCount == 0) "Viaggio diretto" else "$transferCount ${if (transferCount == 1) "cambio" else "cambi"}"}. ${status.accessibleLabel}$official$detection ${platform?.let { "Binario $it" } ?: "Binario non disponibile"}."
+        }
 }
 
 data class RouteSnapshot(
