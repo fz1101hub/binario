@@ -49,17 +49,18 @@ class RouteWidgetProvider : AppWidgetProvider() {
 
     override fun onReceive(context: Context, intent: Intent) {
         super.onReceive(context, intent)
+        val widgetId = intent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, AppWidgetManager.INVALID_APPWIDGET_ID)
         when (intent.action) {
             ACTION_NEXT_PAGE -> {
-                WidgetStateStore.changePage(context, 1)
+                if (widgetId != AppWidgetManager.INVALID_APPWIDGET_ID) WidgetStateStore.changePage(context, widgetId, 1)
                 refreshAll(context)
             }
             ACTION_PREVIOUS_PAGE -> {
-                WidgetStateStore.changePage(context, -1)
+                if (widgetId != AppWidgetManager.INVALID_APPWIDGET_ID) WidgetStateStore.changePage(context, widgetId, -1)
                 refreshAll(context)
             }
             ACTION_SWITCH_DIRECTION -> {
-                WidgetStateStore.switchDirection(context)
+                if (widgetId != AppWidgetManager.INVALID_APPWIDGET_ID) WidgetStateStore.switchDirection(context, widgetId)
                 refreshAll(context)
                 WidgetRefreshWorker.enqueue(context)
             }
@@ -69,7 +70,10 @@ class RouteWidgetProvider : AppWidgetProvider() {
 
     override fun onDeleted(context: Context, appWidgetIds: IntArray) {
         val store = WidgetConfigurationStore(context)
-        appWidgetIds.forEach(store::remove)
+        appWidgetIds.forEach { widgetId ->
+            store.remove(widgetId)
+            WidgetStateStore.clear(context, widgetId)
+        }
     }
 
     companion object {
@@ -96,8 +100,24 @@ class RouteWidgetProvider : AppWidgetProvider() {
             manager.getAppWidgetIds(component).forEach { render(context, manager, it) }
         }
 
+        fun saveSnapshotForMatchingRoutes(context: Context, snapshot: RouteSnapshot) {
+            WidgetConfigurationStore(context).all().forEach { (widgetId, configuration) ->
+                if (configuration.matchesRoute(snapshot.route)) {
+                    val page = WidgetStateStore.read(context, widgetId)?.page ?: 0
+                    WidgetStateStore.saveSnapshot(context, widgetId, snapshot, page)
+                }
+            }
+        }
+
+        fun markMatchingRoutesUnavailable(context: Context, message: String) {
+            WidgetConfigurationStore(context).all().forEach { (widgetId, configuration) ->
+                if (configuration.targetType == WidgetTargetType.ROUTE) {
+                    WidgetStateStore.markUnavailable(context, widgetId, message)
+                }
+            }
+        }
+
         private fun render(context: Context, manager: AppWidgetManager, widgetId: Int) {
-            val state = WidgetStateStore.read(context)
             val mode = layoutMode(manager, widgetId)
             val views = RemoteViews(context.packageName, layoutResourceFor(mode))
             applyDensity(views, mode)
@@ -107,6 +127,7 @@ class RouteWidgetProvider : AppWidgetProvider() {
                 renderConfigurationRequired(context, manager, widgetId, views)
                 return
             }
+            val state = WidgetStateStore.read(context, widgetId)
             if (state == null) {
                 renderNoSnapshot(context, manager, widgetId, views, configuration)
                 return
@@ -120,7 +141,7 @@ class RouteWidgetProvider : AppWidgetProvider() {
                 renderTrainTarget(context, manager, widgetId, views, configuration, state, mode)
                 return
             }
-            if (configuration.targetId != state.route.id) {
+            if (!configuration.matchesRoute(state.route)) {
                 renderNoSnapshot(context, manager, widgetId, views, configuration)
                 return
             }
@@ -128,7 +149,7 @@ class RouteWidgetProvider : AppWidgetProvider() {
             val pageSize = mode.visibleRows
             val maxPage = (state.services.size - 1).coerceAtLeast(0) / pageSize
             val page = state.page.coerceIn(0, maxPage)
-            if (page != state.page) WidgetStateStore.setPage(context, page)
+            if (page != state.page) WidgetStateStore.setPage(context, widgetId, page)
             val services = state.services.drop(page * pageSize).take(pageSize)
 
             val title = configuration.widgetTitle(state.routeLabel)
@@ -201,7 +222,7 @@ class RouteWidgetProvider : AppWidgetProvider() {
 
         private fun renderNoSnapshot(context: Context, manager: AppWidgetManager, widgetId: Int, views: RemoteViews, configuration: WidgetDisplayConfiguration) {
             views.setTextViewText(R.id.widget_route, configuration.widgetTitle().uppercase())
-            val failure = WidgetStateStore.lastFailure(context)
+            val failure = WidgetStateStore.lastFailure(context, widgetId)
             views.setTextViewText(
                 R.id.widget_meta,
                 failure?.takeIf { it.isNotBlank() }
@@ -365,19 +386,23 @@ class RouteWidgetProvider : AppWidgetProvider() {
 
 class WidgetRefreshWorker(appContext: Context, params: WorkerParameters) : CoroutineWorker(appContext, params) {
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
-        val previous = WidgetStateStore.read(applicationContext) ?: return@withContext Result.success()
-        when (val result = BinarioDataGraph.routeDataSource(applicationContext).loadRoute(previous.route, previous.direction)) {
-            is DataResult.Success -> {
-                WidgetStateStore.saveSnapshot(applicationContext, result.snapshot, previous.page)
-                RouteWidgetProvider.refreshAll(applicationContext)
-                Result.success()
-            }
-            is DataResult.Failure -> {
-                WidgetStateStore.markUnavailable(applicationContext, result.message)
-                RouteWidgetProvider.refreshAll(applicationContext)
-                Result.retry()
+        val routeWidgets = WidgetConfigurationStore(applicationContext).all()
+            .mapNotNull { (widgetId, configuration) -> configuration.routeTarget()?.let { widgetId to it } }
+        if (routeWidgets.isEmpty()) return@withContext Result.success()
+        var failed = false
+        routeWidgets.forEach { (widgetId, route) ->
+            val previous = WidgetStateStore.read(applicationContext, widgetId)
+            val direction = previous?.direction ?: Direction.OUTBOUND
+            when (val result = BinarioDataGraph.routeDataSource(applicationContext).loadRoute(route, direction)) {
+                is DataResult.Success -> WidgetStateStore.saveSnapshot(applicationContext, widgetId, result.snapshot, previous?.page ?: 0)
+                is DataResult.Failure -> {
+                    failed = true
+                    WidgetStateStore.markUnavailable(applicationContext, widgetId, result.message)
+                }
             }
         }
+        RouteWidgetProvider.refreshAll(applicationContext)
+        if (failed) Result.retry() else Result.success()
     }
 
     companion object {
@@ -481,7 +506,7 @@ object WidgetStateStore {
     private const val KEY_PAGE = "page"
     private const val KEY_FAILURE = "last_failure"
 
-    fun saveSnapshot(context: Context, snapshot: RouteSnapshot, page: Int = 0) {
+    fun saveSnapshot(context: Context, widgetId: Int, snapshot: RouteSnapshot, page: Int = 0) {
         val orderedServices = snapshot.services.sortedWith(compareBy<TrainService> { it.expectedDeparture }.thenBy { it.number })
         val lines = orderedServices.map { service ->
             listOf(
@@ -496,95 +521,96 @@ object WidgetStateStore {
             ).joinToString(",") { encode(it) }
         }.joinToString(";")
         prefs(context).edit {
-            putString(KEY_ROUTE, encodeRoute(snapshot.route))
-            putString(KEY_DIRECTION, snapshot.direction.name)
-            putString(KEY_LINES, lines)
-            putString(KEY_FRESHNESS, snapshot.freshness.name)
-            putString(KEY_CONFIDENCE, snapshot.confidence.name)
-            putString(KEY_PROVIDER, snapshot.providerName)
-            snapshot.qualityScore?.let { putInt(KEY_QUALITY_SCORE, it) } ?: remove(KEY_QUALITY_SCORE)
-            putString(KEY_QUALITY_BAND, snapshot.qualityBand.name)
-            putString(KEY_QUALITY_WARNINGS, snapshot.qualityWarnings.joinToString("|") { it.name })
-            putLong(KEY_RETRIEVED, snapshot.retrievedAtEpochMillis)
-            putInt(KEY_PAGE, page)
-            remove(KEY_FAILURE)
+            putString(key(widgetId, KEY_ROUTE), encodeRoute(snapshot.route))
+            putString(key(widgetId, KEY_DIRECTION), snapshot.direction.name)
+            putString(key(widgetId, KEY_LINES), lines)
+            putString(key(widgetId, KEY_FRESHNESS), snapshot.freshness.name)
+            putString(key(widgetId, KEY_CONFIDENCE), snapshot.confidence.name)
+            putString(key(widgetId, KEY_PROVIDER), snapshot.providerName)
+            snapshot.qualityScore?.let { putInt(key(widgetId, KEY_QUALITY_SCORE), it) } ?: remove(key(widgetId, KEY_QUALITY_SCORE))
+            putString(key(widgetId, KEY_QUALITY_BAND), snapshot.qualityBand.name)
+            putString(key(widgetId, KEY_QUALITY_WARNINGS), snapshot.qualityWarnings.joinToString("|") { it.name })
+            putLong(key(widgetId, KEY_RETRIEVED), snapshot.retrievedAtEpochMillis)
+            putInt(key(widgetId, KEY_PAGE), page)
+            remove(key(widgetId, KEY_FAILURE))
         }
     }
 
-    fun read(context: Context): WidgetState? {
-        val route = prefs(context).getString(KEY_ROUTE, null)?.let(::decodeRoute) ?: return null
+    fun read(context: Context, widgetId: Int): WidgetState? {
+        val route = prefs(context).getString(key(widgetId, KEY_ROUTE), null)?.let(::decodeRoute) ?: return null
         val direction = runCatching {
-            Direction.valueOf(prefs(context).getString(KEY_DIRECTION, Direction.OUTBOUND.name) ?: Direction.OUTBOUND.name)
+            Direction.valueOf(prefs(context).getString(key(widgetId, KEY_DIRECTION), Direction.OUTBOUND.name) ?: Direction.OUTBOUND.name)
         }.getOrDefault(Direction.OUTBOUND)
         val freshness = runCatching {
-            Freshness.valueOf(prefs(context).getString(KEY_FRESHNESS, Freshness.UNAVAILABLE.name) ?: Freshness.UNAVAILABLE.name)
+            Freshness.valueOf(prefs(context).getString(key(widgetId, KEY_FRESHNESS), Freshness.UNAVAILABLE.name) ?: Freshness.UNAVAILABLE.name)
         }.getOrDefault(Freshness.UNAVAILABLE)
         val confidence = runCatching {
-            DataConfidence.valueOf(prefs(context).getString(KEY_CONFIDENCE, DataConfidence.DEMONSTRATION.name) ?: DataConfidence.DEMONSTRATION.name)
+            DataConfidence.valueOf(prefs(context).getString(key(widgetId, KEY_CONFIDENCE), DataConfidence.DEMONSTRATION.name) ?: DataConfidence.DEMONSTRATION.name)
         }.getOrDefault(DataConfidence.DEMONSTRATION)
         if (shouldDiscardLegacyDemo(confidence)) {
-            clear(context)
+            clear(context, widgetId)
             return null
         }
         val qualityBand = runCatching {
-            DataQualityBand.valueOf(prefs(context).getString(KEY_QUALITY_BAND, DataQualityBand.UNKNOWN.name) ?: DataQualityBand.UNKNOWN.name)
+            DataQualityBand.valueOf(prefs(context).getString(key(widgetId, KEY_QUALITY_BAND), DataQualityBand.UNKNOWN.name) ?: DataQualityBand.UNKNOWN.name)
         }.getOrDefault(DataQualityBand.UNKNOWN)
-        val warnings = prefs(context).getString(KEY_QUALITY_WARNINGS, "").orEmpty()
+        val warnings = prefs(context).getString(key(widgetId, KEY_QUALITY_WARNINGS), "").orEmpty()
             .split("|")
             .mapNotNull { encoded -> runCatching { SnapshotWarning.valueOf(encoded) }.getOrNull() }
             .toSet()
-        val lines = prefs(context).getString(KEY_LINES, "").orEmpty().split(";").mapNotNull(::decodeService)
+        val lines = prefs(context).getString(key(widgetId, KEY_LINES), "").orEmpty().split(";").mapNotNull(::decodeService)
         return WidgetState(
             route = route,
             direction = direction,
             services = lines,
             freshness = freshness,
             confidence = confidence,
-            providerName = prefs(context).getString(KEY_PROVIDER, "Provider non disponibile").orEmpty(),
-            qualityScore = if (prefs(context).contains(KEY_QUALITY_SCORE)) prefs(context).getInt(KEY_QUALITY_SCORE, 0) else null,
+            providerName = prefs(context).getString(key(widgetId, KEY_PROVIDER), "Provider non disponibile").orEmpty(),
+            qualityScore = if (prefs(context).contains(key(widgetId, KEY_QUALITY_SCORE))) prefs(context).getInt(key(widgetId, KEY_QUALITY_SCORE), 0) else null,
             qualityBand = qualityBand,
             qualityWarnings = warnings,
-            retrievedAt = prefs(context).getLong(KEY_RETRIEVED, 0L),
-            page = prefs(context).getInt(KEY_PAGE, 0)
+            retrievedAt = prefs(context).getLong(key(widgetId, KEY_RETRIEVED), 0L),
+            page = prefs(context).getInt(key(widgetId, KEY_PAGE), 0)
         )
     }
 
-    fun changePage(context: Context, delta: Int) {
-        val state = read(context) ?: return
+    fun changePage(context: Context, widgetId: Int, delta: Int) {
+        val state = read(context, widgetId) ?: return
         val maxPage = (state.services.size - 1).coerceAtLeast(0) / 5
-        setPage(context, (state.page + delta).coerceIn(0, maxPage))
+        setPage(context, widgetId, (state.page + delta).coerceIn(0, maxPage))
     }
 
-    fun setPage(context: Context, page: Int) {
-        prefs(context).edit { putInt(KEY_PAGE, page.coerceAtLeast(0)) }
+    fun setPage(context: Context, widgetId: Int, page: Int) {
+        prefs(context).edit { putInt(key(widgetId, KEY_PAGE), page.coerceAtLeast(0)) }
     }
 
-    fun switchDirection(context: Context) {
-        val state = read(context) ?: return
+    fun switchDirection(context: Context, widgetId: Int) {
+        val state = read(context, widgetId) ?: return
         val next = if (state.direction == Direction.OUTBOUND) Direction.RETURN else Direction.OUTBOUND
         prefs(context).edit {
-            putString(KEY_DIRECTION, next.name)
-            putInt(KEY_PAGE, 0)
+            putString(key(widgetId, KEY_DIRECTION), next.name)
+            putInt(key(widgetId, KEY_PAGE), 0)
         }
     }
 
-    fun markUnavailable(context: Context, message: String? = null) {
+    fun markUnavailable(context: Context, widgetId: Int, message: String? = null) {
         prefs(context).edit {
-            putString(KEY_FRESHNESS, Freshness.UNAVAILABLE.name)
-            message?.takeIf { it.isNotBlank() }?.let { putString(KEY_FAILURE, it) }
+            putString(key(widgetId, KEY_FRESHNESS), Freshness.UNAVAILABLE.name)
+            message?.takeIf { it.isNotBlank() }?.let { putString(key(widgetId, KEY_FAILURE), it) }
         }
     }
 
-    fun lastFailure(context: Context): String? = prefs(context).getString(KEY_FAILURE, null)
+    fun lastFailure(context: Context, widgetId: Int): String? = prefs(context).getString(key(widgetId, KEY_FAILURE), null)
 
     internal fun shouldDiscardLegacyDemo(confidence: DataConfidence): Boolean =
         confidence == DataConfidence.DEMONSTRATION
 
-    private fun clear(context: Context) {
-        prefs(context).edit { clear() }
+    fun clear(context: Context, widgetId: Int) {
+        prefs(context).edit { listOf(KEY_ROUTE, KEY_DIRECTION, KEY_LINES, KEY_FRESHNESS, KEY_CONFIDENCE, KEY_PROVIDER, KEY_QUALITY_SCORE, KEY_QUALITY_BAND, KEY_QUALITY_WARNINGS, KEY_RETRIEVED, KEY_PAGE, KEY_FAILURE).forEach { remove(key(widgetId, it)) } }
     }
 
     private fun prefs(context: Context) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+    private fun key(widgetId: Int, suffix: String): String = "widget_${widgetId}_$suffix"
 
     private fun encodeRoute(route: SavedRoute): String = listOf(
         route.id,

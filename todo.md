@@ -132,3 +132,8 @@
 - [x] Aggiungere campo opzionale per il nome del widget e visualizzarlo al posto dell’etichetta della tratta.
 - [x] Rendere affidabile il formato widget più piccolo, eliminando le azioni RemoteViews non essenziali in quella variante.
 - [x] Verificare, documentare e pubblicare contrasto, nome e stabilità del widget con commit e push Git dedicati.
+- [x] Individuare e rimuovere tutte le preimpostazioni di test, seed e percorsi dimostrativi ancora esposti nell’app Android.
+- [x] Rendere ricerche, tratte, stazioni e treni utilizzabili con input libero anche quando non sono salvati localmente.
+- [x] Rendere la configurazione di ciascun widget disponibile per qualunque tratta, stazione o numero treno inserito dall’utente.
+- [x] Aggiungere test di regressione per input non salvati, widget non preconfigurati e indisponibilità esplicita senza dati fittizi.
+- [x] Verificare, documentare e pubblicare la rimozione delle preimpostazioni con commit e push Git dedicati.

@@ -497,8 +497,8 @@ private fun PlannerScreen(
     openMore: () -> Unit,
     openStations: () -> Unit
 ) {
-    var originText by rememberSaveable { mutableStateOf(viewModel.activeRoute.outwardOrigin.name) }
-    var destinationText by rememberSaveable { mutableStateOf(viewModel.activeRoute.outwardDestination.name) }
+    var originText by rememberSaveable { mutableStateOf(viewModel.plannerOriginText()) }
+    var destinationText by rememberSaveable { mutableStateOf(viewModel.plannerDestinationText()) }
     var returnJourney by rememberSaveable { mutableStateOf(false) }
     var showFilters by rememberSaveable { mutableStateOf(false) }
     var mode by rememberSaveable { mutableStateOf(SearchMode.ROUTE) }
@@ -636,7 +636,7 @@ private fun PlannerScreen(
                         if (showFilters) {
                             JourneyChangeFilterBar(viewModel.journeyChangeFilter, viewModel::selectJourneyChangeFilter)
                             OperatorFilterBar(viewModel.operatorFilter, viewModel::selectOperatorFilter)
-                            Text("I cambi sono indicativi nel catalogo dimostrativo locale; i dati reali richiedono una fonte ferroviaria autorizzata.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("Il filtro viene applicato solo quando la fonte restituisce informazioni sui cambi; Binario non li stima.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         Button(
                             onClick = { if (origin != null && destination != null && origin != destination && viewModel.searchRoute(origin, destination)) showResults() },
@@ -1092,8 +1092,8 @@ private fun SearchScreen(
     initialMode: SearchMode
 ) {
     var mode by rememberSaveable { mutableStateOf(initialMode) }
-    var originText by rememberSaveable { mutableStateOf(viewModel.activeRoute.outwardOrigin.name) }
-    var destinationText by rememberSaveable { mutableStateOf(viewModel.activeRoute.outwardDestination.name) }
+    var originText by rememberSaveable { mutableStateOf(viewModel.plannerOriginText()) }
+    var destinationText by rememberSaveable { mutableStateOf(viewModel.plannerDestinationText()) }
     var stationText by rememberSaveable { mutableStateOf("") }
     val origin = viewModel.stationFromName(originText)
     val destination = viewModel.stationFromName(destinationText)
@@ -1697,8 +1697,8 @@ private fun RouteListRow(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun RouteComposerSheet(viewModel: TrainViewModel, onDismiss: () -> Unit) {
-    var originText by rememberSaveable { mutableStateOf(viewModel.activeRoute.outwardOrigin.name) }
-    var destinationText by rememberSaveable { mutableStateOf(viewModel.activeRoute.outwardDestination.name) }
+    var originText by rememberSaveable { mutableStateOf("") }
+    var destinationText by rememberSaveable { mutableStateOf("") }
     var routeName by rememberSaveable { mutableStateOf("") }
     val origin = viewModel.stationFromName(originText)
     val destination = viewModel.stationFromName(destinationText)

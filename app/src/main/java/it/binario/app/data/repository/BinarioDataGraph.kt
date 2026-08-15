@@ -1,7 +1,6 @@
 package it.binario.app.data.repository
 
 import android.content.Context
-import it.binario.app.data.DemoTrainDataSource
 import it.binario.app.data.RailDataRepository
 import it.binario.app.data.TrainDataSource
 import it.binario.app.data.gtfs.EmbeddedGtfsRouteAdapter

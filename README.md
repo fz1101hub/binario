@@ -2,13 +2,13 @@
 
 **Binario** è un’app Android originale per seguire le proprie tratte ferroviarie in tutta Italia. La home è un pianificatore di viaggio con modalità **Viaggio**, **Treno** e **Stazione**, partenza, arrivo, inversione, opzione andata/ritorno, data e ora selezionabili, filtri, ricerche recenti e preferite. Le soluzioni e il tabellone della tratta attiva sono superfici successive nella sezione Consulta; il widget home è un tabellone ridimensionabile, configurabile per istanza. È possibile salvare tratte e monitorare localmente un numero treno. L’app espone operatore, categoria, orari, ritardi, binari e fermate soltanto quando la fonte e la qualità dello snapshot lo consentono.
 
-> **Stato dei dati:** la versione 0.17.2 privilegia canali realtime autorizzati e identificati, quindi usa orari GTFS ufficiali embedded solo come fallback programmato. Gli snapshot espongono provider, confidenza, freshness, punteggio qualità e warning. Se il realtime manca, non è identificabile con certezza o scade, l’app dichiara **“orario programmato”** o **“dati live non disponibili”** e non inventa ritardi, binari, soppressioni o posizioni.
+> **Stato dei dati:** la versione 0.18.0 privilegia canali realtime autorizzati e identificati, quindi usa orari GTFS ufficiali embedded solo come fallback programmato. Gli snapshot espongono provider, confidenza, freshness, punteggio qualità e warning. Se il realtime manca, non è identificabile con certezza o scade, l’app dichiara **“orario programmato”** o **“dati live non disponibili”** e non inventa ritardi, binari, soppressioni o posizioni.
 
 ## Funzionalità
 
 | Area | Comportamento |
 |---|---|
-| Tratte personali | Crea, salva, seleziona, fissa e rimuove tratte origine–destinazione; le tratte fissate rimangono locali e precedono le altre. |
+| Tratte e ricerca | L’app si apre senza una tratta preimpostata. Cerca una qualunque coppia origine–destinazione senza salvarla; salvataggi, recenti e fissate sono scorciatoie locali facoltative. |
 | Partenze rapide | Mostra le due corse più utili della tratta attiva, con operatore, categoria, orario previsto, stato e binario; un tocco apre il dettaglio. |
 | Andata/ritorno | Alterna la direzione con un comando esplicito nell’app e nel widget. |
 | Corse nell’app | Mostra l’intero elenco delle prossime corse della direzione selezionata con operatore e categoria. |
@@ -20,13 +20,13 @@
 | Refresh | Aggiorna manualmente l’elenco e conserva lo stato di freschezza del dato. |
 | Data e ora | Il pianificatore apre selettori nativi Android per data e ora; le scelte restano nello stato della ricerca corrente. |
 | Stazioni personali | Le stazioni possono essere aggiunte o rimosse dai preferiti in locale, senza account o sincronizzazione. |
-| Ricerca stazioni | Mantiene le stazioni iniziali per l’avvio rapido e completa i suggerimenti in background con i `stops.txt` dei data pack GTFS attivi; normalizza accenti, spazi e punteggiatura. Una stazione digitata ma non ancora indicizzata può essere cercata nelle fonti abilitate e viene salvata localmente solo dopo il suo utilizzo. |
+| Ricerca stazioni | Parte senza un catalogo stazioni preimpostato e completa i suggerimenti in background con i `stops.txt` dei data pack GTFS attivi; normalizza accenti, spazi e punteggiatura. Una stazione digitata ma non ancora indicizzata può essere cercata nelle fonti abilitate e viene salvata localmente solo dopo il suo utilizzo. |
 | Stazioni vicine | Su azione esplicita e consenso a `ACCESS_COARSE_LOCATION`, ordina il catalogo locale per distanza in linea d’aria. La posizione non viene salvata né usata in background. |
 | Dettatura viaggio | Avvia il riconoscitore vocale di sistema per compilare tratta, stazione, treno, data, ora e andata/ritorno; Binario non richiede il permesso microfono e interpreta solo il testo restituito. |
-| Filtro cambi | Nella ricerca tratta permette di scegliere qualsiasi viaggio, diretto, massimo uno o massimo due cambi; il catalogo locale li presenta soltanto come dati dimostrativi. |
+| Filtro cambi | Nella ricerca tratta permette di scegliere qualsiasi viaggio, diretto, massimo uno o massimo due cambi; viene applicato solo se la fonte restituisce il dato, senza stime locali. |
 | Consulta | Riunisce tabellone Treni e Stazioni in una sola destinazione, con due schede squadrate, descrittive e accessibili. |
 | Impostazioni | Raccoglie tema, tratte personali, monitoraggi, integrazioni e informative privacy. |
-| Widget Android | Tabellone originale ad alto contrasto, configurabile per ogni istanza come tratta, stazione o treno e con nome locale facoltativo. Risponde al resize con densità compatta, standard ed espansa; il formato compatto mostra due righe complete sul layout stabile, il formato standard conserva 5 corse per pagina. Espone provider, confidenza, quality score, freshness e warning; il giallo segnala solo variazioni di snapshot operativi qualificabili, mai del fallback GTFS programmato. |
+| Widget Android | Tabellone originale ad alto contrasto, configurabile per istanza come qualunque tratta digitata, stazione o numero treno, con nome locale facoltativo. Non richiede una tratta o un monitoraggio salvato nell’app: ogni istanza conserva target, snapshot, direzione, pagina ed errore separatamente. Risponde al resize con densità compatta, standard ed espansa; il formato compatto mostra due righe complete sul layout stabile, il formato standard conserva 5 corse per pagina. Espone provider, confidenza, quality score, freshness e warning; il giallo segnala solo variazioni di snapshot operativi qualificabili, mai del fallback GTFS programmato. |
 | Wear OS | Companion Android 11+/API 30+ con tratta attiva, massimo due corse, stato quality/freshness, refresh delegato al telefono, Tile e complication testuale. |
 | Apple Watch | Companion nativo watchOS 10 ricostruito in `apple-watch/`: SwiftUI, cache-first, Widget/complication, App Intent e Watch Connectivity per una futura app iOS Binario. Richiede Xcode su macOS per generazione, firma e test. |
 | Accessibilità | Tema chiaro/scuro, palette ad alto contrasto, font scalabile, testo esplicito degli stati, target ampi e semantica TalkBack. |
