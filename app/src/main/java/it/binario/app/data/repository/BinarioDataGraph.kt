@@ -6,6 +6,7 @@ import it.binario.app.data.RailDataRepository
 import it.binario.app.data.TrainDataSource
 import it.binario.app.data.gtfs.EmbeddedGtfsRouteAdapter
 import it.binario.app.data.gtfs.EmbeddedGtfsRealtimeScheduleResolver
+import it.binario.app.data.gtfs.EmbeddedGtfsStationSearchIndex
 import it.binario.app.data.live.ItaloPublicStationAdapter
 import it.binario.app.data.live.RfiInfomobilityRssAdapter
 import it.binario.app.data.live.SncfGtfsRealtimeAdapter
@@ -14,6 +15,7 @@ import it.binario.app.data.live.StaRealtimeAdapter
 import it.binario.app.data.live.ViaggiaTrenoStationAdapter
 import it.binario.app.data.provider.AlertProvider
 import it.binario.app.data.provider.KnownProviders
+import it.binario.app.data.provider.ProviderCapability
 import it.binario.app.data.provider.ProviderRegistry
 import it.binario.app.data.provider.VehiclePositionProvider
 import it.binario.app.data.provider.TripUpdateProvider
@@ -36,6 +38,7 @@ object BinarioDataGraph {
     }
     private val routeSourcesByPackage = mutableMapOf<String, TrainDataSource>()
     private val realtimeResolversByPackage = mutableMapOf<String, EmbeddedGtfsRealtimeScheduleResolver>()
+    private val stationIndexesByPackage = mutableMapOf<String, EmbeddedGtfsStationSearchIndex>()
 
     fun routeDataSource(context: Context): TrainDataSource = synchronized(routeSourcesByPackage) {
         val applicationContext = context.applicationContext
@@ -55,6 +58,18 @@ object BinarioDataGraph {
     }
 
     fun providerRegistry(): ProviderRegistry = defaultRegistry
+
+    fun stationSearchIndex(context: Context): EmbeddedGtfsStationSearchIndex = synchronized(stationIndexesByPackage) {
+        val applicationContext = context.applicationContext
+        stationIndexesByPackage.getOrPut(applicationContext.packageName) {
+            val activeCatalogSources = defaultRegistry.activeFor(ProviderCapability.STATION_CATALOG)
+                .mapTo(linkedSetOf()) { it.descriptor.id }
+            EmbeddedGtfsStationSearchIndex(
+                openAsset = { assetPath -> applicationContext.assets.open(assetPath) },
+                activeSourceIds = activeCatalogSources
+            )
+        }
+    }
 
     fun alertProviders(): List<AlertProvider> = officialAlertProviders
 

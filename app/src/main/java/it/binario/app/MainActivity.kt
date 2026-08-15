@@ -1727,10 +1727,15 @@ private fun RouteComposerSheet(viewModel: TrainViewModel, onDismiss: () -> Unit)
 private fun StationField(label: String, value: String, onValueChange: (String) -> Unit, matches: List<Station>, onSelect: (Station) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         OutlinedTextField(value = value, onValueChange = onValueChange, modifier = Modifier.fillMaxWidth(), singleLine = true, label = { Text(label) }, leadingIcon = { Icon(Icons.Default.Train, contentDescription = null) })
-        if (matches.isNotEmpty() && matches.none { it.name.equals(value, ignoreCase = true) }) {
+        if (matches.isNotEmpty() && (matches.none { it.name.equals(value, ignoreCase = true) } || matches.any { it.id.startsWith("manual:") })) {
             matches.take(4).forEach { station ->
                 TextButton(onClick = { onSelect(station) }, modifier = Modifier.fillMaxWidth()) {
-                    Text("${station.name} · ${station.city}${station.region?.let { " · $it" }.orEmpty()}", modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    val label = if (station.id.startsWith("manual:")) {
+                        "Cerca “${station.name}” nelle fonti disponibili"
+                    } else {
+                        "${station.name} · ${station.city}${station.region?.let { " · $it" }.orEmpty()}"
+                    }
+                    Text(label, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
         }

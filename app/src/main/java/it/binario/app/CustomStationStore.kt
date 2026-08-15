@@ -1,0 +1,58 @@
+package it.binario.app
+
+import android.content.Context
+import android.util.Base64
+import androidx.core.content.edit
+import it.binario.app.data.Station
+import it.binario.app.data.gtfs.EmbeddedGtfsStationSearchIndex
+
+/** Conserva soltanto le stazioni reali scelte dall’utente fuori dal catalogo iniziale. */
+class CustomStationStore(context: Context) {
+    private val preferences = context.getSharedPreferences("binario_custom_stations_v1", Context.MODE_PRIVATE)
+
+    fun stations(): List<Station> = preferences.getString(KEY_STATIONS, "")
+        .orEmpty()
+        .split(";")
+        .mapNotNull(::decode)
+
+    fun remember(station: Station): List<Station> {
+        val updated = (listOf(station) + stations())
+            .distinctBy { it.id }
+            .take(MAX_STATIONS)
+        preferences.edit { putString(KEY_STATIONS, updated.joinToString(";") { encode(it) }) }
+        return updated
+    }
+
+    private fun encode(station: Station): String = listOf(station.id, station.name, station.city, station.region.orEmpty())
+        .joinToString(",") { Base64.encodeToString(it.toByteArray(Charsets.UTF_8), Base64.NO_WRAP) }
+
+    private fun decode(value: String): Station? = runCatching {
+        val parts = value.split(",")
+        if (parts.size != 4) return@runCatching null
+        Station(
+            id = decodePart(parts[0]),
+            name = decodePart(parts[1]),
+            city = decodePart(parts[2]),
+            region = decodePart(parts[3]).ifBlank { null }
+        )
+    }.getOrNull()
+
+    private fun decodePart(value: String): String = String(Base64.decode(value, Base64.NO_WRAP), Charsets.UTF_8)
+
+    private companion object {
+        const val KEY_STATIONS = "stations"
+        const val MAX_STATIONS = 96
+    }
+}
+
+internal fun stationFromFreeText(value: String): Station? {
+    val name = value.trim().replace(Regex("\\s+"), " ")
+    val normalized = EmbeddedGtfsStationSearchIndex.normalize(name)
+    if (normalized.length < 2) return null
+    return Station(
+        id = "manual:${normalized.replace(' ', '-')}",
+        name = name,
+        city = name,
+        region = "Ricerca libera"
+    )
+}

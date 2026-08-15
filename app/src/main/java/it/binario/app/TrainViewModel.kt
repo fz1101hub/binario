@@ -20,11 +20,14 @@ import it.binario.app.data.Station
 import it.binario.app.data.TrainDataSource
 import it.binario.app.data.repository.BinarioDataGraph
 import it.binario.app.data.TrainService
+import it.binario.app.data.gtfs.EmbeddedGtfsStationSearchIndex
 import it.binario.app.data.orderServicesForDisplay
 import it.binario.app.widget.RouteWidgetProvider
 import it.binario.app.widget.WidgetStateStore
 import it.binario.app.wear.WearSnapshotPublisher
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.util.UUID
 
 enum class RefreshState(val accessibleLabel: String) {
@@ -48,9 +51,11 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
     private val commuterAlertStore = CommuterAlertStore(application)
     private val personalTravelStore = PersonalTravelStore(application)
     private val mobilityPreferencesStore = MobilityPreferencesStore(application)
+    private val customStationStore = CustomStationStore(application)
     private val dataSource: TrainDataSource = BinarioDataGraph.routeDataSource(application)
+    private val stationSearchIndex = BinarioDataGraph.stationSearchIndex(application)
 
-    val stations = listOf(
+    private val seedStations = listOf(
         Station("roma-termini", "Roma Termini", "Roma", "Lazio"),
         Station("roma-tiburtina", "Roma Tiburtina", "Roma", "Lazio"),
         Station("roma-ostiense", "Roma Ostiense", "Roma", "Lazio"),
@@ -78,6 +83,10 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
         Station("palermo-centrale", "Palermo Centrale", "Palermo", "Sicilia"),
         Station("cagliari", "Cagliari", "Cagliari", "Sardegna")
     )
+
+    var stations by mutableStateOf(seedStations + customStationStore.stations())
+        private set
+    private val requestedStationQueries = mutableSetOf<String>()
 
     var favouriteStations by mutableStateOf(stationPreferences.favourites(stations))
         private set
@@ -125,16 +134,39 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
         refresh()
     }
 
-    fun searchStations(query: String): List<Station> = if (query.isBlank()) emptyList() else {
-        stations.filter { "${it.name} ${it.city} ${it.region.orEmpty()}".contains(query.trim(), ignoreCase = true) }.take(6)
+    fun searchStations(query: String): List<Station> {
+        val normalized = EmbeddedGtfsStationSearchIndex.normalize(query)
+        if (normalized.length < 2) return emptyList()
+        val localMatches = stations.asSequence()
+            .filter { stationMatches(it, normalized) }
+            .take(8)
+            .toList()
+        val manual = stationFromFreeText(query)
+        val matches = (localMatches + listOfNotNull(manual).filterNot { candidate -> localMatches.any { it.id == candidate.id } }).take(8)
+        if (localMatches.size < 6 && requestedStationQueries.add(normalized)) {
+            viewModelScope.launch(Dispatchers.Default) {
+                val imported = stationSearchIndex.search(query)
+                if (imported.isNotEmpty()) withContext(Dispatchers.Main) {
+                    val knownIds = stations.mapTo(hashSetOf()) { it.id }
+                    val additions = imported.filter { knownIds.add(it.id) }
+                    if (additions.isNotEmpty()) stations = stations + additions
+                }
+            }
+        }
+        return matches
     }
 
-    fun stationFromName(name: String): Station? = stations.firstOrNull { it.name.equals(name.trim(), ignoreCase = true) }
+    fun stationFromName(name: String): Station? {
+        val normalized = EmbeddedGtfsStationSearchIndex.normalize(name)
+        return stations.firstOrNull { EmbeddedGtfsStationSearchIndex.normalize(it.name) == normalized }
+            ?: stationFromFreeText(name)
+    }
 
     fun isStationFavourite(station: Station): Boolean = stationPreferences.isFavourite(station)
 
     fun toggleStationFavourite(station: Station) {
-        stationPreferences.toggle(station)
+        val remembered = rememberStation(station)
+        stationPreferences.toggle(remembered)
         favouriteStations = stationPreferences.favourites(stations)
     }
 
@@ -146,7 +178,8 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
     fun isStationMonitored(station: Station): Boolean = stationMonitors.any { it.stationId == station.id }
 
     fun toggleStationMonitor(station: Station, mode: StationMonitorMode = StationMonitorMode.BOTH) {
-        stationMonitors = personalTravelStore.toggleStationMonitor(station, mode, stations)
+        val remembered = rememberStation(station)
+        stationMonitors = personalTravelStore.toggleStationMonitor(remembered, mode, stations)
     }
 
     fun removeStationMonitor(stationId: String) {
@@ -165,23 +198,25 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun searchRoute(origin: Station, destination: Station): Boolean {
-        if (origin == destination) {
+        val rememberedOrigin = rememberStation(origin)
+        val rememberedDestination = rememberStation(destination)
+        if (rememberedOrigin == rememberedDestination) {
             refreshMessage = "Scegli due stazioni diverse per la tratta."
             refreshState = RefreshState.ERROR
             return false
         }
         val storedRoute = savedRoutes.firstOrNull {
-            it.outwardOrigin.id == origin.id && it.outwardDestination.id == destination.id
+            it.outwardOrigin.id == rememberedOrigin.id && it.outwardDestination.id == rememberedDestination.id
         }
         activeRoute = storedRoute ?: SavedRoute(
-            id = "search-${origin.id}-${destination.id}",
-            name = "${origin.city} – ${destination.city}",
-            outwardOrigin = origin,
-            outwardDestination = destination
+            id = "search-${rememberedOrigin.id}-${rememberedDestination.id}",
+            name = "${rememberedOrigin.city} – ${rememberedDestination.city}",
+            outwardOrigin = rememberedOrigin,
+            outwardDestination = rememberedDestination
         )
         direction = Direction.OUTBOUND
         routeStore.saveDirection(direction)
-        recentRoutes = routeStore.recordRecent(origin, destination, stations)
+        recentRoutes = routeStore.recordRecent(rememberedOrigin, rememberedDestination, stations)
         selectedService = null
         trainNumberQuery = ""
         refresh()
@@ -233,17 +268,19 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun createRoute(origin: Station, destination: Station, customName: String? = null): Boolean {
-        if (origin == destination) {
+        val rememberedOrigin = rememberStation(origin)
+        val rememberedDestination = rememberStation(destination)
+        if (rememberedOrigin == rememberedDestination) {
             refreshMessage = "Scegli due stazioni diverse per la tratta."
             refreshState = RefreshState.ERROR
             return false
         }
-        val defaultName = "${origin.city} – ${destination.city}"
+        val defaultName = "${rememberedOrigin.city} – ${rememberedDestination.city}"
         val route = SavedRoute(
             id = UUID.randomUUID().toString(),
             name = customName?.trim()?.takeIf { it.isNotBlank() } ?: defaultName,
-            outwardOrigin = origin,
-            outwardDestination = destination
+            outwardOrigin = rememberedOrigin,
+            outwardDestination = rememberedDestination
         )
         savedRoutes = pinnedFirst(listOf(route) + savedRoutes.filterNot { it.outwardOrigin == origin && it.outwardDestination == destination })
         routeStore.saveRoutes(savedRoutes)
@@ -479,6 +516,22 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
     fun isDemonstrationData(): Boolean = snapshot?.confidence == DataConfidence.DEMONSTRATION
 
     fun lastRefreshEpochMillis(): Long = snapshot?.retrievedAtEpochMillis ?: cache.lastRefreshEpochMillis()
+
+    private fun stationMatches(station: Station, normalizedQuery: String): Boolean {
+        val candidate = EmbeddedGtfsStationSearchIndex.normalize("${station.name} ${station.city} ${station.region.orEmpty()}")
+        return candidate.contains(normalizedQuery) || normalizedQuery.split(' ').all { token -> candidate.contains(token) }
+    }
+
+    private fun rememberStation(station: Station): Station {
+        val existing = stations.firstOrNull { it.id == station.id } ?: station
+        if (seedStations.none { it.id == existing.id }) {
+            val saved = customStationStore.remember(existing)
+            val knownIds = stations.mapTo(hashSetOf()) { it.id }
+            val additions = saved.filter { knownIds.add(it.id) }
+            if (additions.isNotEmpty()) stations = stations + additions
+        }
+        return existing
+    }
 }
 
 private fun pinnedFirst(routes: List<SavedRoute>): List<SavedRoute> =
