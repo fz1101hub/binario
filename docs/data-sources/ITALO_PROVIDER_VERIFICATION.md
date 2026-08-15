@@ -22,3 +22,7 @@ Il tabellone è una pagina pubblica dinamica e non un’API documentata. Per que
 ## Riferimento
 
 [1]: https://italoinviaggio.italotreno.com/it/stazione/roma-termini "Italo in Viaggio — Roma Termini"
+
+## Rilevazione operativa / boa
+
+La verifica del 15 agosto 2026 non ha trovato nel tracker pubblico Italo un campo documentabile di ultima boa, ultima rilevazione operativa o posizione GPS. Il provider `ItaloPublicStationAdapter` resta quindi limitato ai dati effettivamente presenti nel tabellone pubblico: stato, ritardo, binario e soppressione quando esposti. Non deve derivare un’ultima rilevazione dalle fermate programmate né mappare il campo `lastTakeoverLocation` del canale mobile LeFrecce/Trenitalia come dato Italo.
