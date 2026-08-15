@@ -1,8 +1,8 @@
 # Binario — app, widget e companion smartwatch
 
-**Binario** è un’app Android originale per seguire le proprie tratte ferroviarie in tutta Italia. La home è un pianificatore di viaggio con modalità **Viaggio**, **Treno** e **Stazione**, partenza, arrivo, inversione, opzione andata/ritorno, data e ora selezionabili, filtri, ricerche recenti e preferite. Le soluzioni e il tabellone della tratta attiva sono superfici successive nella sezione Consulta; il widget home è un tabellone ridimensionabile, configurabile per istanza. È possibile salvare tratte e monitorare localmente un numero treno; alert reali restano disabilitati senza fonte autorizzata. L’app espone operatore, categoria, orari, ritardi, binari e fermate. La tratta dimostrativa iniziale è **Roma Termini – Torino Porta Nuova** e le corse sono ordinate in modo neutrale per orario previsto.
+**Binario** è un’app Android originale per seguire le proprie tratte ferroviarie in tutta Italia. La home è un pianificatore di viaggio con modalità **Viaggio**, **Treno** e **Stazione**, partenza, arrivo, inversione, opzione andata/ritorno, data e ora selezionabili, filtri, ricerche recenti e preferite. Le soluzioni e il tabellone della tratta attiva sono superfici successive nella sezione Consulta; il widget home è un tabellone ridimensionabile, configurabile per istanza. È possibile salvare tratte e monitorare localmente un numero treno. L’app espone operatore, categoria, orari, ritardi, binari e fermate soltanto quando la fonte e la qualità dello snapshot lo consentono.
 
-> **Stato dei dati:** la versione 0.16.3 include un catalogo dimostrativo locale multi-operatore. L’interfaccia, la cache, l’app e il widget sono funzionanti, ma gli orari e i ritardi non sono ancora live. L’app lo dichiara esplicitamente con l’etichetta **“catalogo dimostrativo locale — non live”**. Per uso ferroviario reale, configurare un provider documentato e autorizzato dietro `TrainDataSource` o un gateway personale.
+> **Stato dei dati:** la versione 0.17.0 privilegia canali realtime autorizzati e identificati, quindi usa orari GTFS ufficiali embedded solo come fallback programmato. Gli snapshot espongono provider, confidenza, freshness, punteggio qualità e warning. Se il realtime manca, non è identificabile con certezza o scade, l’app dichiara **“orario programmato”** o **“dati live non disponibili”** e non inventa ritardi, binari, soppressioni o posizioni.
 
 ## Funzionalità
 
@@ -25,7 +25,7 @@
 | Filtro cambi | Nella ricerca tratta permette di scegliere qualsiasi viaggio, diretto, massimo uno o massimo due cambi; il catalogo locale li presenta soltanto come dati dimostrativi. |
 | Consulta | Riunisce tabellone Treni e Stazioni in una sola destinazione, con due schede squadrate, descrittive e accessibili. |
 | Impostazioni | Raccoglie tema, tratte personali, monitoraggi, integrazioni e informative privacy. |
-| Widget Android | Tabellone originale ad alto contrasto, configurabile per ogni istanza come tratta, stazione o treno e con nome locale facoltativo. Risponde al resize con densità compatta, standard ed espansa; il formato compatto mostra due righe complete sul layout stabile, il formato standard conserva 5 corse per pagina. Le frecce cambiano pagina, il comando centrale cambia direzione o apre la modifica e `↻` pianifica un refresh sicuro. Il giallo segnala variazioni soltanto da snapshot non dimostrativi. |
+| Widget Android | Tabellone originale ad alto contrasto, configurabile per ogni istanza come tratta, stazione o treno e con nome locale facoltativo. Risponde al resize con densità compatta, standard ed espansa; il formato compatto mostra due righe complete sul layout stabile, il formato standard conserva 5 corse per pagina. Espone provider, confidenza, quality score, freshness e warning; il giallo segnala solo variazioni di snapshot operativi qualificabili, mai del fallback GTFS programmato. |
 | Wear OS | Companion Android 11+/API 30+ con tratta attiva, massimo due corse, stato quality/freshness, refresh delegato al telefono, Tile e complication testuale. |
 | Apple Watch | Companion nativo watchOS 10 ricostruito in `apple-watch/`: SwiftUI, cache-first, Widget/complication, App Intent e Watch Connectivity per una futura app iOS Binario. Richiede Xcode su macOS per generazione, firma e test. |
 | Accessibilità | Tema chiaro/scuro, palette ad alto contrasto, font scalabile, testo esplicito degli stati, target ampi e semantica TalkBack. |
@@ -72,9 +72,11 @@ Il dominio dati è deliberatamente separato da Compose e dagli API Android. In f
 
 L’app Android è il centro delle preferenze per widget, smartwatch Android, Apple Watch e comandi vocali. Da **Impostazioni → Integrazioni** si controlla quali superfici possono ricevere lo snapshot della tratta attiva e si vede lo stato del collegamento. Token Alexa, segreti OAuth e credenziali non vengono mai memorizzati nel client. Wear OS e Apple Watch sono companion cache-first; il Voice Bridge offre un profilo remoto opzionale, protetto e versionato. Android non invia ancora il profilo: il collegamento richiederà una sessione utente esplicita prima di abilitare qualsiasi rete.
 
-## Provider live: regole vincolanti
+## Fonti realtime e fallback programmato
 
-Il catalogo `DemoTrainDataSource` va sostituito, non ampliato con endpoint non documentati. Il repository può delegare a `TrenitaliaViaggiaTrenoAdapter` soltanto tramite un gateway autorizzato; l’adapter non effettua richieste di rete senza tale canale. Un provider live deve rispettare questi requisiti:
+`BinarioDataGraph` è l’unico punto di composizione usato da app, widget e worker. Integra tabelloni best-effort Italo, ViaggiaTreno e RFI, avvisi RSS RFI, alert/posizioni STA Alto Adige, alert e Trip Updates SNCF GTFS-Realtime, più dodici data pack GTFS verificati. Le fonti protette Svizzera GTFS-RT e Trenord E015 restano inattive finché un gateway HTTPS custodisce token o autorizzazioni fuori dall’APK. Il dettaglio è in [DATA_LAYER_HANDOFF.md](docs/handoffs/DATA_LAYER_HANDOFF.md), [FULL_COVERAGE_EVIDENCE.md](docs/data-sources/FULL_COVERAGE_EVIDENCE.md) e [REALTIME_ACCESS_GAPS.md](docs/data-sources/REALTIME_ACCESS_GAPS.md).
+
+Un nuovo provider deve rispettare questi requisiti:
 
 1. Essere documentato e autorizzato per lo scenario d’uso.
 2. Non inserire chiavi o credenziali nell’APK; usare un backend personale quando servono segreti.
@@ -90,6 +92,6 @@ La build applica traffico HTTPS obbligatorio, cleartext disabilitato, trust stor
 
 ## Limiti attuali e prossimo passo
 
-Il prodotto non include ancora provider live, avvisi di ritardo attivabili dall’utente, alert di discesa, tabelloni stazione o raccolta diagnostica. Il prossimo passo dati-dipendente è il modello `SavedMonitoring` per treni e stazioni, seguito da tabelloni e alert soltanto su feed autorizzati. I companion al polso sono informativi: non includono ticketing NFC, pagamento, posizione continua, account obbligatori o tracking.
+Le coperture realtime sono best-effort e dipendono da fonte, identità della corsa, freshness e completezza; il matching definitivo dei Trip Updates SNCF alla UI richiede una relazione verificata fra trip ID realtime e GTFS statico. Svizzera GTFS-RT richiede token gateway e Trenord realtime richiede E015. I companion al polso restano informativi e non includono ticketing NFC, pagamento, posizione continua, account obbligatori o tracking.
 
 Nessun codice, asset, marchio, testo, credenziale, endpoint o contratto delle app analizzate come riferimento è stato riutilizzato in Binario.
