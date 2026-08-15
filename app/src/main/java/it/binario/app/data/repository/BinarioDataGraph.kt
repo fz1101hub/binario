@@ -5,6 +5,7 @@ import it.binario.app.data.DemoTrainDataSource
 import it.binario.app.data.RailDataRepository
 import it.binario.app.data.TrainDataSource
 import it.binario.app.data.gtfs.EmbeddedGtfsRouteAdapter
+import it.binario.app.data.gtfs.EmbeddedGtfsRealtimeScheduleResolver
 import it.binario.app.data.live.ItaloPublicStationAdapter
 import it.binario.app.data.live.RfiInfomobilityRssAdapter
 import it.binario.app.data.live.SncfGtfsRealtimeAdapter
@@ -15,6 +16,7 @@ import it.binario.app.data.provider.AlertProvider
 import it.binario.app.data.provider.KnownProviders
 import it.binario.app.data.provider.ProviderRegistry
 import it.binario.app.data.provider.VehiclePositionProvider
+import it.binario.app.data.provider.TripUpdateProvider
 
 /**
  * Punto di composizione unico del livello dati. Nessuna UI, worker o companion
@@ -29,7 +31,11 @@ object BinarioDataGraph {
     private val officialVehiclePositionProviders: List<VehiclePositionProvider> by lazy {
         listOf(StaRealtimeAdapter())
     }
+    private val officialTripUpdateProviders: List<TripUpdateProvider> by lazy {
+        listOf(StaRealtimeAdapter(), SncfGtfsRealtimeAdapter())
+    }
     private val routeSourcesByPackage = mutableMapOf<String, TrainDataSource>()
+    private val realtimeResolversByPackage = mutableMapOf<String, EmbeddedGtfsRealtimeScheduleResolver>()
 
     fun routeDataSource(context: Context): TrainDataSource = synchronized(routeSourcesByPackage) {
         val applicationContext = context.applicationContext
@@ -53,6 +59,18 @@ object BinarioDataGraph {
     fun alertProviders(): List<AlertProvider> = officialAlertProviders
 
     fun vehiclePositionProviders(): List<VehiclePositionProvider> = officialVehiclePositionProviders
+
+    fun tripUpdateProviders(): List<TripUpdateProvider> = officialTripUpdateProviders
+
+    fun realtimeScheduleResolver(context: Context): EmbeddedGtfsRealtimeScheduleResolver = synchronized(realtimeResolversByPackage) {
+        val applicationContext = context.applicationContext
+        realtimeResolversByPackage.getOrPut(applicationContext.packageName) {
+            EmbeddedGtfsRealtimeScheduleResolver(openAsset = { assetPath: String -> applicationContext.assets.open(assetPath) })
+        }
+    }
+
+    fun realtimeEnrichmentService(context: Context): RealtimeEnrichmentService =
+        RealtimeEnrichmentService(officialTripUpdateProviders, realtimeScheduleResolver(context))
 }
 
 /**

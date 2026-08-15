@@ -9,6 +9,8 @@ import it.binario.app.data.core.PositionKind
 import it.binario.app.data.core.ServiceAlert
 import it.binario.app.data.core.SourceId
 import it.binario.app.data.core.SourceRef
+import it.binario.app.data.core.SourcedValue
+import it.binario.app.data.core.RealtimeStopUpdate
 import it.binario.app.data.core.StationId
 import it.binario.app.data.core.TrainRunId
 import it.binario.app.data.core.VehiclePosition
@@ -24,6 +26,7 @@ import it.binario.app.data.provider.ProviderResponseMeta
 import it.binario.app.data.provider.ProviderResult
 import it.binario.app.data.provider.RatePolicy
 import it.binario.app.data.provider.VehiclePositionProvider
+import it.binario.app.data.provider.TripUpdateProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
@@ -35,6 +38,7 @@ import java.security.MessageDigest
 import java.time.Clock
 import java.time.Duration
 import java.time.Instant
+import java.time.ZoneId
 
 fun interface StaRealtimeFetcher {
     suspend fun fetch(feed: StaRealtimeFeed): String
@@ -70,7 +74,7 @@ class StaRealtimeAdapter(
     private val fetcher: StaRealtimeFetcher = HttpStaRealtimeFetcher(),
     private val clock: Clock = Clock.systemUTC(),
     private val cacheTtl: Duration = Duration.ofSeconds(90)
-) : AlertProvider, VehiclePositionProvider {
+) : AlertProvider, VehiclePositionProvider, TripUpdateProvider {
     override val descriptor = ProviderDescriptor(
         id = SOURCE_ID,
         displayName = "Open Data Hub Alto Adige — GTFS-Realtime",
@@ -83,6 +87,7 @@ class StaRealtimeAdapter(
 
     private var alertCache: CachedAlerts? = null
     private var positionCache: CachedPositions? = null
+    private var tripUpdateCache: CachedTripUpdates? = null
 
     override suspend fun getAlerts(request: AlertRequest): ProviderResult<List<ServiceAlert>> {
         val now = clock.instant()
@@ -100,6 +105,25 @@ class StaRealtimeAdapter(
             ProviderResult.Failure(ProviderError(ProviderErrorKind.NETWORK, "Realtime Alto Adige non raggiungibile.", error::class.java.name))
         } catch (error: Exception) {
             ProviderResult.Failure(ProviderError(ProviderErrorKind.PARSE_ERROR, "Realtime Alto Adige non leggibile.", error::class.java.name))
+        }
+    }
+
+    override suspend fun getTripUpdates(): ProviderResult<List<RealtimeStopUpdate>> {
+        val now = clock.instant()
+        tripUpdateCache?.takeIf { now.isBefore(it.expiresAt) }?.let { cached ->
+            return ProviderResult.Success(cached.updates, meta(now, cached.observedAt, cached.expiresAt, fromCache = true))
+        }
+        return try {
+            val json = fetcher.fetch(StaRealtimeFeed.TRIP_UPDATES)
+            val observed = observedAt(json, now)
+            val updates = parseTripUpdates(json, observed)
+            val expiresAt = now.plus(cacheTtl)
+            tripUpdateCache = CachedTripUpdates(updates, observed, expiresAt)
+            ProviderResult.Success(updates, meta(now, observed, expiresAt, fingerprint(json)))
+        } catch (error: IOException) {
+            ProviderResult.Failure(ProviderError(ProviderErrorKind.NETWORK, "Trip Updates Alto Adige non raggiungibili.", error::class.java.name))
+        } catch (error: Exception) {
+            ProviderResult.Failure(ProviderError(ProviderErrorKind.PARSE_ERROR, "Trip Updates Alto Adige non leggibili.", error::class.java.name))
         }
     }
 
@@ -149,6 +173,39 @@ class StaRealtimeAdapter(
         }
     }
 
+    internal fun parseTripUpdates(json: String, fallbackObservedAt: Instant): List<RealtimeStopUpdate> {
+        val root = JSONObject(json)
+        val observed = observedAt(root, fallbackObservedAt)
+        return root.arrayOrEmpty("entity").mapObjects { entity ->
+            val update = entity.optJSONObject("trip_update") ?: return@mapObjects null
+            val tripId = update.optJSONObject("trip")?.optString("trip_id").orEmpty()
+            if (tripId.isBlank()) return@mapObjects null
+            val nativeEntity = entity.optString("id", tripId)
+            val source = sourceRef(nativeEntity, observed)
+            update.arrayOrEmpty("stop_time_update").mapObjects { stop ->
+                val stopId = stop.optString("stop_id").takeIf(String::isNotBlank)
+                val sequence = stop.optInt("stop_sequence", -1).takeIf { it >= 0 }
+                if (stopId == null && sequence == null) return@mapObjects null
+                val departure = stop.optJSONObject("departure")
+                val arrival = stop.optJSONObject("arrival")
+                val event = departure ?: arrival
+                val delay = event?.optLong("delay", Long.MIN_VALUE)?.takeIf { it != Long.MIN_VALUE }
+                val epoch = event?.optLong("time", 0L)?.takeIf { it > 0 }
+                val valueSource = source.copy(nativeId = "$nativeEntity:${stopId ?: sequence}")
+                RealtimeStopUpdate(
+                    runId = TrainRunId("sta:$tripId"),
+                    sourceTripId = tripId,
+                    sourceStopId = stopId,
+                    stopSequence = sequence,
+                    predictedAt = epoch?.let { itInstant -> SourcedValue(itInstant.let(Instant::ofEpochSecond).atZone(ZoneId.of("Europe/Rome")), valueSource) },
+                    officialDelay = delay?.let { SourcedValue(Duration.ofSeconds(it), valueSource) },
+                    observedAt = observed,
+                    source = source
+                )
+            }
+        }.flatten()
+    }
+
     internal fun parsePositions(json: String, fallbackObservedAt: Instant): List<VehiclePosition> {
         val root = JSONObject(json)
         return root.arrayOrEmpty("entity").mapObjects { entity ->
@@ -194,6 +251,7 @@ class StaRealtimeAdapter(
 
     private data class CachedAlerts(val alerts: List<ServiceAlert>, val observedAt: Instant, val expiresAt: Instant)
     private data class CachedPositions(val positions: List<VehiclePosition>, val observedAt: Instant, val expiresAt: Instant)
+    private data class CachedTripUpdates(val updates: List<RealtimeStopUpdate>, val observedAt: Instant, val expiresAt: Instant)
 
     companion object {
         val SOURCE_ID = SourceId("alto-adige-sta-realtime")

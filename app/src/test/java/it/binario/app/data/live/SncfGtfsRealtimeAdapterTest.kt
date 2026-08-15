@@ -38,7 +38,7 @@ class SncfGtfsRealtimeAdapterTest {
     }
 
     @Test
-    fun `restituisce il feed trip updates senza forzare matching non verificato`() = runBlocking {
+    fun `normalizza trip updates senza forzare un evento effettivo`() = runBlocking {
         val adapter = SncfGtfsRealtimeAdapter(
             fetcher = SncfRealtimeFetcher { tripUpdatesFeed().toByteArray() },
             clock = Clock.fixed(Instant.parse("2026-08-15T08:00:00Z"), ZoneOffset.UTC)
@@ -47,7 +47,13 @@ class SncfGtfsRealtimeAdapterTest {
         val result = adapter.getTripUpdates()
 
         assertTrue(result is ProviderResult.Success)
-        assertEquals("trip-42", (result as ProviderResult.Success).value.entityList.single().tripUpdate.trip.tripId)
+        val updates = (result as ProviderResult.Success).value
+        assertEquals(1, updates.size)
+        assertEquals("trip-42", updates.single().sourceTripId)
+        assertEquals("FRPMO", updates.single().sourceStopId)
+        assertEquals(180L, updates.single().officialDelay?.value?.seconds)
+        assertTrue(updates.single().predictedAt != null)
+        assertEquals(null, updates.single().actualAt)
     }
 
     private fun alertsFeed(): GtfsRealtime.FeedMessage = GtfsRealtime.FeedMessage.newBuilder()
@@ -65,7 +71,14 @@ class SncfGtfsRealtimeAdapterTest {
         .setHeader(GtfsRealtime.FeedHeader.newBuilder().setGtfsRealtimeVersion("2.0").setTimestamp(1_786_147_200L))
         .addEntity(
             GtfsRealtime.FeedEntity.newBuilder().setId("tu-1").setTripUpdate(
-                GtfsRealtime.TripUpdate.newBuilder().setTrip(GtfsRealtime.TripDescriptor.newBuilder().setTripId("trip-42"))
+                GtfsRealtime.TripUpdate.newBuilder()
+                    .setTrip(GtfsRealtime.TripDescriptor.newBuilder().setTripId("trip-42"))
+                    .addStopTimeUpdate(
+                        GtfsRealtime.TripUpdate.StopTimeUpdate.newBuilder()
+                            .setStopId("FRPMO")
+                            .setStopSequence(3)
+                            .setDeparture(GtfsRealtime.TripUpdate.StopTimeEvent.newBuilder().setDelay(180).setTime(1_786_147_380L))
+                    )
             )
         ).build()
 

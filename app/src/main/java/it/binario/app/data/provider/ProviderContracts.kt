@@ -12,6 +12,7 @@ import it.binario.app.data.core.StationBoard
 import it.binario.app.data.core.StationId
 import it.binario.app.data.core.TrainRun
 import it.binario.app.data.core.TrainRunId
+import it.binario.app.data.core.RealtimeStopUpdate
 import it.binario.app.data.core.VehiclePosition
 import java.time.Duration
 import java.time.Instant
@@ -197,4 +198,9 @@ interface AlertProvider : RailProvider {
 
 interface VehiclePositionProvider : RailProvider {
     suspend fun getVehiclePositions(): ProviderResult<List<VehiclePosition>>
+}
+
+/** Aggiornamenti realtime per fermata, normalizzati senza confondere previsioni e passaggi effettivi. */
+interface TripUpdateProvider : RailProvider {
+    suspend fun getTripUpdates(): ProviderResult<List<RealtimeStopUpdate>>
 }

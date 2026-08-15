@@ -21,6 +21,23 @@ class OfficialQualityAdaptersTest {
     }
 
     @Test
+    fun `il parser STA normalizza Trip Updates senza inventare un evento effettivo`() {
+        val adapter = StaRealtimeAdapter()
+        val updates = adapter.parseTripUpdates(
+            """{"header":{"timestamp":1786724040},"entity":[{"id":"tu1","trip_update":{"trip":{"trip_id":"run-1"},"stop_time_update":[{"stop_id":"it:22021:1","stop_sequence":3,"departure":{"delay":120,"time":1786724160}}]}}]}""",
+            Instant.parse("2026-08-14T10:00:00Z")
+        )
+
+        assertEquals(1, updates.size)
+        assertEquals("sta:run-1", updates.single().runId.value)
+        assertEquals("it:22021:1", updates.single().sourceStopId)
+        assertEquals(3, updates.single().stopSequence)
+        assertEquals(120L, updates.single().officialDelay?.value?.seconds)
+        assertTrue(updates.single().predictedAt != null)
+        assertEquals(null, updates.single().actualAt)
+    }
+
+    @Test
     fun `il parser STA conserva alert e posizioni GTFS realtime`() {
         val adapter = StaRealtimeAdapter()
         val alerts = adapter.parseAlerts(

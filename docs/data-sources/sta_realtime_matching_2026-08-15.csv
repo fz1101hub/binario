@@ -1,0 +1,8 @@
+metric,value
+http_status,200
+feed_entities,2
+stop_updates,87
+trip_id_matches,0
+trip_stop_matches,0
+updates_with_provider_time,0
+note,provider time is preserved as predicted unless its semantics explicitly confirm an actual event
