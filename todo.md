@@ -101,7 +101,7 @@
 - [x] Verificare che app, widget e worker usino esclusivamente `BinarioDataGraph` e mantengano provider, freshness, confidenza, qualità e warning.
 - [x] Esporre nel widget provenienza, freshness, confidenza e warning senza trasformare il fallback GTFS in dati operativi realtime.
 - [x] Eseguire test unitari, verifica dei data pack GTFS, build APK e lint dopo il riallineamento alla baseline dati.
-- [ ] Leggere integralmente la chat di riferimento sulle fonti e classificare decisioni, evidenze, limiti e istruzioni storiche.
+- [x] Leggere integralmente la chat di riferimento sulle fonti e classificare decisioni, evidenze, limiti e istruzioni storiche.
 - [ ] Confrontare le conclusioni della discussione con contratti, licenze, provider e policy del branch canonico.
 - [ ] Consolidare in un documento di governance le fonti approvate, i fallback, i divieti e i prerequisiti di attivazione.
 - [x] Definire configurazione per istanza widget, regole non-live e linguaggio visivo originale ad alta leggibilità.
