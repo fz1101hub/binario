@@ -110,8 +110,8 @@
 - [x] Verificare con test e APK il passaggio dal dato dimostrativo allo snapshot provider o GTFS reale.
 - [x] Tracciare cataloghi stazione, normalizzazione, ViewModel e adapter per individuare il vincolo alle sole stazioni di test.
 - [x] Integrare un indice stazioni dai data pack GTFS e ricerca normalizzata oltre il catalogo hardcoded.
-- [ ] Collegare le ricerche tratta e stazione agli orari GTFS/provider disponibili con fallback esplicito.
-- [ ] Aggiungere test per stazioni fuori catalogo di test, ricerca per alias e assenza dati sicura.
+- [x] Collegare le ricerche tratta e stazione agli orari GTFS/provider disponibili con fallback esplicito.
+- [x] Aggiungere test per stazioni fuori catalogo di test, ricerca per alias e assenza dati sicura.
 - [ ] Verificare, documentare e pubblicare la correzione della copertura ricerca con commit e push Git dedicati.
 - [x] Definire configurazione per istanza widget, regole non-live e linguaggio visivo originale ad alta leggibilità.
 - [x] Aggiungere scelta per-widget tra tratta, stazione specifica e treno specifico, senza configurazioni globali ambigue.

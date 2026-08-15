@@ -59,21 +59,25 @@ class EmbeddedGtfsStationSearchIndex(
                             val nameIndex = header.indexOf("stop_name")
                             val locationTypeIndex = header.indexOf("location_type")
                             if (idIndex >= 0 && nameIndex >= 0) {
-                                for (line in reader.lineSequence()) {
-                                    if (matches.size >= remaining || line.length > MAX_CSV_LINE_LENGTH) continue
-                                val values = csvLine(line)
-                                val nativeId = values.getOrNull(idIndex)?.trim().orEmpty()
-                                val name = values.getOrNull(nameIndex)?.trim().orEmpty()
-                                val locationType = values.getOrNull(locationTypeIndex)?.trim().orEmpty()
-                                    if (nativeId.isBlank() || name.isBlank() || (locationType.isNotBlank() && locationType !in setOf("0", "1"))) continue
-                                if (matchesQuery(name, normalizedQuery)) {
-                                    matches += Station(
-                                        id = "gtfs:${pack.sourceId.value}:$nativeId",
-                                        name = name,
-                                        city = cityLabel(name),
-                                        region = sourceName
-                                    )
-                                }
+                                var line = reader.readLine()
+                                while (line != null && matches.size < remaining) {
+                                    if (line.length > MAX_CSV_LINE_LENGTH) {
+                                        line = reader.readLine()
+                                        continue
+                                    }
+                                    val values = csvLine(line)
+                                    val nativeId = values.getOrNull(idIndex)?.trim().orEmpty()
+                                    val name = values.getOrNull(nameIndex)?.trim().orEmpty()
+                                    val locationType = values.getOrNull(locationTypeIndex)?.trim().orEmpty()
+                                    if (nativeId.isNotBlank() && name.isNotBlank() && (locationType.isBlank() || locationType in setOf("0", "1")) && matchesQuery(name, normalizedQuery)) {
+                                        matches += Station(
+                                            id = "gtfs:${pack.sourceId.value}:$nativeId",
+                                            name = name,
+                                            city = cityLabel(name),
+                                            region = sourceName
+                                        )
+                                    }
+                                    line = reader.readLine()
                                 }
                             }
                         }
