@@ -20,6 +20,7 @@ import it.binario.app.data.Station
 import it.binario.app.data.TrainDataSource
 import it.binario.app.data.repository.BinarioDataGraph
 import it.binario.app.data.TrainService
+import it.binario.app.data.catalog.EmbeddedNationalRailStationCatalog
 import it.binario.app.data.gtfs.EmbeddedGtfsStationSearchIndex
 import it.binario.app.data.orderServicesForDisplay
 import it.binario.app.widget.RouteWidgetProvider
@@ -54,6 +55,9 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
     private val customStationStore = CustomStationStore(application)
     private val dataSource: TrainDataSource = BinarioDataGraph.routeDataSource(application)
     private val stationSearchIndex = BinarioDataGraph.stationSearchIndex(application)
+    private val nationalStationCatalog = EmbeddedNationalRailStationCatalog(
+        openAsset = { assetPath -> application.assets.open(assetPath) }
+    )
 
     var stations by mutableStateOf(customStationStore.stations())
         private set
@@ -102,7 +106,23 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
         private set
 
     init {
+        loadNationalStationCatalog()
         if (hasActiveRoute) refresh()
+    }
+
+    private fun loadNationalStationCatalog() {
+        viewModelScope.launch(Dispatchers.Default) {
+            val imported = nationalStationCatalog.load()
+            if (imported.isNotEmpty()) withContext(Dispatchers.Main) {
+                val knownIds = stations.mapTo(hashSetOf()) { it.id }
+                val additions = imported.filter { knownIds.add(it.id) }
+                if (additions.isNotEmpty()) {
+                    stations = stations + additions
+                    favouriteStations = stationPreferences.favourites(stations)
+                    stationMonitors = personalTravelStore.stationMonitors(stations)
+                }
+            }
+        }
     }
 
     val hasActiveRoute: Boolean get() = activeRoute.id != UNCONFIGURED_ROUTE_ID

@@ -1411,6 +1411,7 @@ private fun SettingsScreen(
             Column(Modifier.padding(horizontal = 20.dp, vertical = 14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text("Privacy e dati", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 Text("Binario non usa tracker né annunci. Backup Android escluso; la posizione è richiesta solo per trovare stazioni vicine e non viene conservata. Senza una fonte autorizzata: dati non disponibili in tempo reale.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("Autocompletamento nazionale: © OpenStreetMap contributors, ODbL 1.0. Il catalogo geografico suggerisce nomi di stazioni ma non conferma servizio, orario, binario, ritardo o circolazione.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
         items(viewModel.savedRoutes, key = { it.id }) { route ->

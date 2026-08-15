@@ -137,3 +137,7 @@
 - [x] Rendere la configurazione di ciascun widget disponibile per qualunque tratta, stazione o numero treno inserito dall’utente.
 - [x] Aggiungere test di regressione per input non salvati, widget non preconfigurati e indisponibilità esplicita senza dati fittizi.
 - [x] Verificare, documentare e pubblicare la rimozione delle preimpostazioni con commit e push Git dedicati.
+- [x] Valutare cataloghi pubblici o autorizzati di stazioni ferroviarie italiane, con verifica esplicita di licenza, copertura e aggiornamento.
+- [x] Integrare un catalogo nazionale verificabile nell’autocompletamento senza sostituire la catena realtime/GTFS né introdurre dati fittizi.
+- [x] Aggiungere manifest della fonte, fixture e test per Roma/Lazio e stazioni fuori dai data pack esistenti.
+- [x] Verificare, documentare e pubblicare l’ampliamento dell’autocompletamento con commit e push Git dedicati.

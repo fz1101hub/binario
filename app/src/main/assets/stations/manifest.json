@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "catalogs": [
+    {
+      "id": "osm-it-rail-station-discovery-2026-08-15",
+      "assetPath": "stations/osm_it_rail_stations.json.gz",
+      "kind": "geographic-rail-station-discovery-catalog",
+      "countryCode": "IT",
+      "sourceUrl": "https://www.openstreetmap.org/copyright",
+      "queryDefinition": "railway=station OR railway=halt; Italy administrative area; exclude disused, abandoned and freight-only tagged elements",
+      "queriedAt": "2026-08-15T20:45:00Z",
+      "license": "ODbL-1.0",
+      "licenseUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "attribution": "© OpenStreetMap contributors",
+      "stationCount": 3749,
+      "sha256": "42e680201b4e6b8b937bd872276743a49935ea106c0363cf3fc10370db0e845a",
+      "operationalData": false,
+      "notes": "Catalogo geografico per autocompletamento; non abilita ricerca orari, stato treno, binari, ritardi, soppressioni o realtime."
+    }
+  ]
+}
