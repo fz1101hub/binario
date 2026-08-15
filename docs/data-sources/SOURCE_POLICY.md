@@ -10,7 +10,7 @@ Questa policy determina quali fonti possono entrare in Binario e con quali salva
 |---|---|---|---|
 | **Open diretto** | Licenza o condizioni di riuso esplicite; adapter e data pack sottoposti a contract test | GTFS regionali approvati, Open Data Svizzera, SNCF Open Data, ÖBB GTFS | Può essere abilitato dopo verifica della singola distribuzione |
 | **Gateway** | Token, protezione dei segreti, caching condivisa o regole di accesso richiedono un canale server personale | GTFS-RT Svizzera con token, eventuali fonti con API key gratuita | Non attivo direttamente nell’APK distribuito |
-| **Best effort pubblico** | Interfaccia o endpoint raggiungibile, ma non API open documentata e stabile | ViaggiaTreno, RFI tabelloni, Italo in Viaggio | Disabilitato di default; feature flag, cache, rate policy e spegnimento immediato |
+| **Best effort pubblico** | Interfaccia o endpoint raggiungibile, ma non API open documentata e stabile | ViaggiaTreno, RFI tabelloni, Italo in Viaggio | Abilitabile solo nel registry con cache, rate policy, circuit breaker e spegnimento immediato; non è una garanzia di servizio |
 | **Accordo necessario** | Dati richiesti per copertura completa ma nessun feed aperto strutturato verificato | NTV ufficiale, realtime regionale e reti isolate senza feed | Non implementare come dipendenza finché manca canale autorizzato |
 | **Esclusa** | Provenienza non primaria, segreti di terzi, scraping di app, asset o licenza non chiara | API/chiavi Treniamo, asset/dataset On The Rails, credenziali di app ufficiali | Mai integrare |
 
@@ -30,6 +30,8 @@ Questa policy determina quali fonti possono entrare in Binario e con quali salva
 Ogni adapter deve dichiarare `SourceId`, licenza/access class, capability, coverage, rate policy, TTL, timeout e comportamento in caso di errore. Nessuna fonte è chiamata a ogni render UI: il repository applica request coalescing, cache, stale-while-revalidate, retry limitato e circuit breaker.
 
 Un provider best-effort non genera mai promesse implicite di disponibilità. Se diventa indisponibile, l’app conserva l’ultimo snapshot con timestamp e mostra uno stato di fonte non aggiornata o non disponibile. Non sostituisce una risposta fallita con un ritardo inventato.
+
+Alla baseline corrente ViaggiaTreno, RFI Monitor e Italo in Viaggio sono presenti come adapter `PUBLIC_BEST_EFFORT` abilitati nel `ProviderRegistry`, ciascuno con limiti, cache e fallback. Questa abilitazione non ne modifica la classe di accesso: il connettore deve poter essere sospeso immediatamente se la salute, le condizioni o il comportamento della fonte non restano compatibili con questa policy. Trenord realtime rimane fuori dal registry attivo fino a un canale E015 autorizzato.
 
 ## Attribuzione e presentazione
 

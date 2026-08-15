@@ -12,9 +12,11 @@ Le pagine mobili pubbliche rispondono a POST read-only verso `/vt_pax_internet/m
 
 L’endpoint reindirizza a HTTP. Il client mantiene il cleartext disabilitato per default e, se il dominio verrà autorizzato, l’eccezione dovrà essere limitata esclusivamente a `www.viaggiatreno.it`; nessun altro dominio potrà usare HTTP.
 
-## Italo e Trenord — fonti registrate, adapter in seconda tranche
+## Italo e Trenord — stati distinti
 
-Le pagine pubbliche di Italo in Viaggio e Trenord Tempo Reale hanno risposto HTTP 200. I dati sono però resi da interfacce dinamiche e non è stato individuato un endpoint JSON pubblico stabile. Non vengono inventati endpoint né riusate API/app/token proprietari. I rispettivi adapter restano separati e attivabili soltanto con parser HTML testati contro fixture.
+Le pagine pubbliche di Italo in Viaggio e Trenord Tempo Reale hanno risposto HTTP 200. I dati sono però resi da interfacce dinamiche e non è stato individuato un endpoint JSON pubblico stabile. Non vengono inventati endpoint né riusate API/app/token proprietari.
+
+Il parser del tabellone pubblico Italo è ora attivo come `PUBLIC_BEST_EFFORT` nelle sole stazioni mappate e continua a richiedere fixture, timeout, cache e fallback. Trenord realtime non è attivo: il GTFS Lombardia copre l’orario programmato e il canale realtime strutturato richiede E015/adesione.
 
 ## SNCF GTFS-RT
 

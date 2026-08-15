@@ -47,3 +47,7 @@ La lettura completa conferma quattro regole che prevalgono sulle proposte interm
 ## Decisione operativa
 
 La baseline `feature/data-foundations` resta coerente con le conclusioni finali della chat. Il suo commit originario `0e0867ad` ha portato al massimo grado attivabile senza token o API private; gli aggiornamenti successivi del branch ne estendono la UI senza ridurre i guardrail. Nuove fonti devono aggiungere adapter, fixture, test, manifest/licenza, timeout, cache, rate limit e comportamento di fallback prima dell’abilitazione.
+
+## Verifica contro il codice corrente
+
+La revisione del `ProviderRegistry` ha confermato che ViaggiaTreno, RFI Monitor e Italo in Viaggio sono effettivamente `PUBLIC_BEST_EFFORT` abilitati, mentre Swiss GTFS-RT e Trenord realtime restano disabilitati. Questa è una correzione importante rispetto a documenti storici che descrivevano tutti i canali best-effort come solo catalogati: l’abilitazione runtime non trasforma i canali in API open e non elimina i requisiti di cache, rate policy, circuit breaker, provenienza e spegnimento immediato.

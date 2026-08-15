@@ -36,7 +36,7 @@ Il repository privilegia le snapshot realtime in base a fonte, freschezza e comp
 |---|---|---|
 | Trenord realtime | Nessun feed realtime pubblico strutturato verificato; canale E015 da valutare con accesso dedicato | GTFS Lombardia/Trenord, RFI e ViaggiaTreno nelle stazioni interoperabili |
 | Svizzera GTFS-RT | Token gratuito/access code obbligatorio; non può essere incluso nell’APK | GTFS svizzero offline, RFI sulle stazioni italiane |
-| SNCF GTFS-RT | Feed protobuf disponibile ma decoder runtime non ancora connesso alla UI legacy | GTFS SNCF offline e RFI sulle stazioni italiane |
+| SNCF GTFS-RT | Service Alerts e Trip Updates sono disponibili al livello dati; l’associazione di un Trip Update alla UI richiede ancora matching verificato | GTFS SNCF offline e RFI sulle stazioni italiane |
 | ÖBB realtime | Non risulta un feed realtime pubblico equivalente al GTFS statico | GTFS ÖBB offline e RFI sul tratto italiano |
 | Operatori locali senza feed | Il titolare pubblica solo HTML/PDF o richiede accordo | Orari ufficiali statici quando importabili; nessun realtime simulato |
 
