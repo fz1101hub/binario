@@ -1,8 +1,8 @@
 # Binario — app, widget e companion smartwatch
 
-**Binario** è un’app Android originale per seguire le proprie tratte ferroviarie in tutta Italia. La home è un pianificatore di viaggio con modalità **Viaggio**, **Treno** e **Stazione**, partenza, arrivo, inversione, opzione andata/ritorno, data e ora selezionabili, filtri, ricerche recenti e preferite. Le soluzioni e il tabellone della tratta attiva sono superfici successive nella sezione Treni; il widget home resta un tabellone di **cinque corse per pagina**. È possibile salvare tratte e monitorare localmente un numero treno; alert reali restano disabilitati senza fonte autorizzata. L’app espone operatore, categoria, orari, ritardi, binari e fermate. La tratta dimostrativa iniziale è **Roma Termini – Torino Porta Nuova** e le corse sono ordinate in modo neutrale per orario previsto.
+**Binario** è un’app Android originale per seguire le proprie tratte ferroviarie in tutta Italia. La home è un pianificatore di viaggio con modalità **Viaggio**, **Treno** e **Stazione**, partenza, arrivo, inversione, opzione andata/ritorno, data e ora selezionabili, filtri, ricerche recenti e preferite. Le soluzioni e il tabellone della tratta attiva sono superfici successive nella sezione Consulta; il widget home è un tabellone ridimensionabile, configurabile per istanza. È possibile salvare tratte e monitorare localmente un numero treno; alert reali restano disabilitati senza fonte autorizzata. L’app espone operatore, categoria, orari, ritardi, binari e fermate. La tratta dimostrativa iniziale è **Roma Termini – Torino Porta Nuova** e le corse sono ordinate in modo neutrale per orario previsto.
 
-> **Stato dei dati:** la versione 0.14.0 include un catalogo dimostrativo locale multi-operatore. L’interfaccia, la cache, l’app e il widget sono funzionanti, ma gli orari e i ritardi non sono ancora live. L’app lo dichiara esplicitamente con l’etichetta **“catalogo dimostrativo locale — non live”**. Per uso ferroviario reale, configurare un provider documentato e autorizzato dietro `TrainDataSource` o un gateway personale.
+> **Stato dei dati:** la versione 0.16.3 include un catalogo dimostrativo locale multi-operatore. L’interfaccia, la cache, l’app e il widget sono funzionanti, ma gli orari e i ritardi non sono ancora live. L’app lo dichiara esplicitamente con l’etichetta **“catalogo dimostrativo locale — non live”**. Per uso ferroviario reale, configurare un provider documentato e autorizzato dietro `TrainDataSource` o un gateway personale.
 
 ## Funzionalità
 
@@ -25,7 +25,7 @@
 | Filtro cambi | Nella ricerca tratta permette di scegliere qualsiasi viaggio, diretto, massimo uno o massimo due cambi; il catalogo locale li presenta soltanto come dati dimostrativi. |
 | Consulta | Riunisce tabellone Treni e Stazioni in una sola destinazione, con due schede squadrate, descrittive e accessibili. |
 | Impostazioni | Raccoglie tema, tratte personali, monitoraggi, integrazioni e informative privacy. |
-| Widget Android | Tabellone ad alto contrasto con 5 corse per pagina; ora, destinazione, servizio, binario e stato sono separati. Le frecce cambiano pagina, il comando centrale cambia direzione e `↻` pianifica un refresh sicuro. |
+| Widget Android | Tabellone originale ad alto contrasto, configurabile per ogni istanza come tratta, stazione o treno e con nome locale facoltativo. Risponde al resize con densità compatta, standard ed espansa; il formato compatto mostra due righe complete sul layout stabile, il formato standard conserva 5 corse per pagina. Le frecce cambiano pagina, il comando centrale cambia direzione o apre la modifica e `↻` pianifica un refresh sicuro. Il giallo segnala variazioni soltanto da snapshot non dimostrativi. |
 | Wear OS | Companion Android 11+/API 30+ con tratta attiva, massimo due corse, stato quality/freshness, refresh delegato al telefono, Tile e complication testuale. |
 | Apple Watch | Companion nativo watchOS 10 ricostruito in `apple-watch/`: SwiftUI, cache-first, Widget/complication, App Intent e Watch Connectivity per una futura app iOS Binario. Richiede Xcode su macOS per generazione, firma e test. |
 | Accessibilità | Tema chiaro/scuro, palette ad alto contrasto, font scalabile, testo esplicito degli stati, target ampi e semantica TalkBack. |
@@ -41,7 +41,7 @@ app/build/outputs/apk/debug/app-debug.apk
 wear/build/outputs/apk/debug/wear-debug.apk
 ```
 
-Richiede **Android 8.0 o successivo** (`minSdk 26`). Per installare il file su un dispositivo personale, Android può chiedere di autorizzare l’installazione dall’origine utilizzata. Aggiungi il widget dalla schermata home: l’app salva una tratta predefinita e la sincronizza dopo il primo refresh.
+Richiede **Android 8.0 o successivo** (`minSdk 26`). Per installare il file su un dispositivo personale, Android può chiedere di autorizzare l’installazione dall’origine utilizzata. Aggiungi il widget dalla schermata home e scegli, per quella singola istanza, **tratta**, **stazione** oppure **treno**; il contenuto può essere modificato dalla testata del widget.
 
 ## Sviluppo e build
 

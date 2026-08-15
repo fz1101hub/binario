@@ -101,3 +101,22 @@
 - [x] Verificare che app, widget e worker usino esclusivamente `BinarioDataGraph` e mantengano provider, freshness, confidenza, qualità e warning.
 - [ ] Esporre nel widget provenienza, freshness, confidenza e warning senza trasformare il fallback GTFS in dati operativi realtime.
 - [ ] Eseguire test unitari, verifica dei data pack GTFS, build APK e lint dopo il riallineamento alla baseline dati.
+- [x] Definire configurazione per istanza widget, regole non-live e linguaggio visivo originale ad alta leggibilità.
+- [x] Aggiungere scelta per-widget tra tratta, stazione specifica e treno specifico, senza configurazioni globali ambigue.
+- [x] Rendere il widget ridimensionabile con layout compatto, standard ed espanso e aggiornamento su resize.
+- [x] Evidenziare in giallo ritardi, variazioni o soppressioni presenti nello snapshot, con semantica TalkBack e nessuna simulazione live.
+- [x] Verificare, documentare e pubblicare il widget configurabile con commit e push Git dedicati.
+- [x] Analizzare il taglio della configurazione e definire una gerarchia responsiva che non nasconda informazioni nel widget.
+- [x] Rendere la schermata di configurazione scrollabile, coerente con il tema persistito dell’app e organizzata verticalmente per tratta, stazione e treno.
+- [x] Aggiungere descrizione e selettore esplicito sotto ciascuna categoria del widget, senza chip orizzontali tagliati.
+- [x] Riorganizzare il widget ridimensionato in layout leggibili senza clip, preservando tutte le informazioni disponibili con priorità esplicita.
+- [x] Verificare, documentare e pubblicare la correzione di configurazione e resize con commit e push Git dedicati.
+- [x] Isolare e correggere i riferimenti RemoteViews non validi nel layout compatto che impediscono il caricamento del widget.
+- [x] Applicare inset sicuri per barra di stato e navigation bar nella configurazione widget.
+- [x] Applicare il tema persistito alla superficie completa della configurazione, non solo ai componenti Material.
+- [x] Verificare e pubblicare la correzione definitiva di tema, inset e caricamento widget con commit e push Git dedicati.
+- [x] Isolare i riferimenti del formato piccolo ancora incompatibili e definire il modello del nome locale per istanza widget.
+- [x] Correggere contrasto dell’intestazione in dark mode e centrare la composizione della configurazione.
+- [x] Aggiungere campo opzionale per il nome del widget e visualizzarlo al posto dell’etichetta della tratta.
+- [x] Rendere affidabile il formato widget più piccolo, eliminando le azioni RemoteViews non essenziali in quella variante.
+- [x] Verificare, documentare e pubblicare contrasto, nome e stabilità del widget con commit e push Git dedicati.
