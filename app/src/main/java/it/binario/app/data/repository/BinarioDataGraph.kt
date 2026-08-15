@@ -7,6 +7,7 @@ import it.binario.app.data.TrainDataSource
 import it.binario.app.data.gtfs.EmbeddedGtfsRouteAdapter
 import it.binario.app.data.live.ItaloPublicStationAdapter
 import it.binario.app.data.live.RfiInfomobilityRssAdapter
+import it.binario.app.data.live.SncfGtfsRealtimeAdapter
 import it.binario.app.data.live.RfiStationBoardAdapter
 import it.binario.app.data.live.StaRealtimeAdapter
 import it.binario.app.data.live.ViaggiaTrenoStationAdapter
@@ -23,7 +24,7 @@ import it.binario.app.data.provider.VehiclePositionProvider
 object BinarioDataGraph {
     private val defaultRegistry: ProviderRegistry by lazy { KnownProviders.defaultRegistry() }
     private val officialAlertProviders: List<AlertProvider> by lazy {
-        listOf(RfiInfomobilityRssAdapter(), StaRealtimeAdapter())
+        listOf(RfiInfomobilityRssAdapter(), StaRealtimeAdapter(), SncfGtfsRealtimeAdapter())
     }
     private val officialVehiclePositionProviders: List<VehiclePositionProvider> by lazy {
         listOf(StaRealtimeAdapter())

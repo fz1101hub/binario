@@ -43,6 +43,7 @@ class ProviderRegistryTest {
         assertTrue(registry.isEnabled(SourceId("rfi-infomobility-rss")))
         assertTrue(registry.isEnabled(SourceId("alto-adige-sta-realtime")))
         assertTrue(registry.isEnabled(SourceId("sncf-gtfs")))
+        assertTrue(registry.isEnabled(SourceId("sncf-gtfs-rt")))
         assertTrue(registry.isEnabled(SourceId("ch-otd-gtfs")))
         assertTrue(registry.isEnabled(SourceId("oebb-gtfs")))
         assertTrue(registry.isEnabled(SourceId("alto-adige-sta-gtfs")))

@@ -53,6 +53,7 @@ dependencies {
     implementation("androidx.work:work-runtime-ktx:2.10.0")
     implementation("org.jsoup:jsoup:1.18.3")
     implementation("org.json:json:20240303")
+    implementation("com.google.transit:gtfs-realtime-bindings:0.0.4")
     implementation("com.google.android.gms:play-services-wearable:20.0.1")
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-tooling-preview")

@@ -107,7 +107,7 @@ object KnownProviders {
                 ratePolicy = realtimeRatePolicy,
                 schemaVersion = 1
             ),
-            enabled = false,
+            enabled = true,
             priorityByCapability = mapOf(
                 ProviderCapability.TRAIN_RUN_REALTIME to 10,
                 ProviderCapability.SERVICE_ALERTS to 10

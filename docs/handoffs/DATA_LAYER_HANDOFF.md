@@ -71,3 +71,19 @@ La build richiede Android SDK API 36 e JDK 21. La verifica più recente ha super
 - `docs/data-sources/OEBB_GTFS_ACCESS.md`
 - `docs/architecture/GTFS_SOURCE_ADAPTERS.md`
 - `docs/architecture/DATA_LAYER_MIGRATION.md`
+
+## Aggiornamento realtime — 15 agosto 2026
+
+Il ramo include `SncfGtfsRealtimeAdapter`, che decodifica i feed protobuf ufficiali SNCF per `Service Alerts` e rende disponibili anche i `Trip Updates` al livello dati. Il feed alert è collegato alla composition root insieme a RFI e STA; il matching dei trip update alla UI legacy sarà attivato soltanto dopo la risoluzione verificata tra identificativi GTFS statici e realtime. Nessun ritardo viene quindi associato a una corsa con identità ambigua.
+
+La verifica read-only ha ottenuto HTTP 200 per gli endpoint SNCF, con payload protobuf validi per Trip Updates e Service Alerts. La baseline ha superato 63 test unitari e il packaging dell’APK debug. Consultare `docs/data-sources/REALTIME_COVERAGE_VERIFICATION.md`, `REALTIME_ACCESS_GAPS.md` e `sncf_realtime_probe_2026-08-15.tsv`.
+
+Il realtime svizzero richiede un token gratuito da custodire in gateway; il realtime Trenord richiede adesione/autorizzazione E015. ÖBB e Italo non espongono un feed realtime machine-readable pubblico verificato ulteriore rispetto ai canali già attivati. Non sostituire tali limiti con scraping di endpoint interni, token di terzi o posizioni stimate presentate come reali.
+
+## Verifica aggiornata
+
+```bash
+./gradlew :app:testDebugUnitTest :app:assembleDebug
+```
+
+L’APK risultante ha circa 72 MB e conserva dodici data pack GTFS embedded con SHA-256 verificabili.
