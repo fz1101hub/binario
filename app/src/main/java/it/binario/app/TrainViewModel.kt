@@ -48,7 +48,7 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
     private val commuterAlertStore = CommuterAlertStore(application)
     private val personalTravelStore = PersonalTravelStore(application)
     private val mobilityPreferencesStore = MobilityPreferencesStore(application)
-    private val dataSource: TrainDataSource = BinarioDataGraph.routeDataSource()
+    private val dataSource: TrainDataSource = BinarioDataGraph.routeDataSource(application)
 
     val stations = listOf(
         Station("roma-termini", "Roma Termini", "Roma", "Lazio"),

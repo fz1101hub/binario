@@ -25,8 +25,11 @@ class EmbeddedGtfsPackLoaderTest {
 
     @Test
     fun `tutti i data pack embedded appartengono al catalogo`() {
-        assertEquals(9, EmbeddedGtfsPacks.all.size)
-        assertEquals(9, EmbeddedGtfsPacks.all.map { it.sourceId }.distinct().size)
+        assertEquals(12, EmbeddedGtfsPacks.all.size)
+        assertEquals(12, EmbeddedGtfsPacks.all.map { it.sourceId }.distinct().size)
+        assertTrue(EmbeddedGtfsPacks.sourceIds.contains(SourceId("alto-adige-sta-gtfs")))
+        assertTrue(EmbeddedGtfsPacks.sourceIds.contains(SourceId("ch-otd-gtfs")))
+        assertTrue(EmbeddedGtfsPacks.sourceIds.contains(SourceId("oebb-gtfs")))
     }
 
     private fun validGtfs(): ByteArray {

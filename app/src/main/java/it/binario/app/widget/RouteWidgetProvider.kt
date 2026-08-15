@@ -230,7 +230,7 @@ class RouteWidgetProvider : AppWidgetProvider() {
 class WidgetRefreshWorker(appContext: Context, params: WorkerParameters) : CoroutineWorker(appContext, params) {
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
         val previous = WidgetStateStore.read(applicationContext) ?: return@withContext Result.success()
-        when (val result = BinarioDataGraph.routeDataSource().loadRoute(previous.route, previous.direction)) {
+        when (val result = BinarioDataGraph.routeDataSource(applicationContext).loadRoute(previous.route, previous.direction)) {
             is DataResult.Success -> {
                 WidgetStateStore.saveSnapshot(applicationContext, result.snapshot, previous.page)
                 RouteWidgetProvider.refreshAll(applicationContext)

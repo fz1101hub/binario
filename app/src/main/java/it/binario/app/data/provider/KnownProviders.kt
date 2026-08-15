@@ -61,7 +61,7 @@ object KnownProviders {
                 ratePolicy = staticRatePolicy,
                 schemaVersion = 1
             ),
-            enabled = false,
+            enabled = true,
             priorityByCapability = mapOf(
                 ProviderCapability.STATION_CATALOG to 10,
                 ProviderCapability.JOURNEY_SEARCH to 10,
@@ -123,7 +123,7 @@ object KnownProviders {
                 ratePolicy = staticRatePolicy,
                 schemaVersion = 1
             ),
-            enabled = false,
+            enabled = true,
             priorityByCapability = mapOf(ProviderCapability.TRAIN_RUN_STATIC to 30)
         ),
         ProviderPolicy(

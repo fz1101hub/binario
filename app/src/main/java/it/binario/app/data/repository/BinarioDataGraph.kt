@@ -1,8 +1,10 @@
 package it.binario.app.data.repository
 
+import android.content.Context
 import it.binario.app.data.DemoTrainDataSource
 import it.binario.app.data.RailDataRepository
 import it.binario.app.data.TrainDataSource
+import it.binario.app.data.gtfs.EmbeddedGtfsRouteAdapter
 import it.binario.app.data.live.ItaloPublicStationAdapter
 import it.binario.app.data.live.RfiInfomobilityRssAdapter
 import it.binario.app.data.live.RfiStationBoardAdapter
@@ -26,21 +28,24 @@ object BinarioDataGraph {
     private val officialVehiclePositionProviders: List<VehiclePositionProvider> by lazy {
         listOf(StaRealtimeAdapter())
     }
-    private val defaultRouteDataSource: TrainDataSource by lazy {
-        LegacyTrainDataSourceFacade(
-            legacySource = RailDataRepository(
-                authorisedSources = listOf(
-                    ItaloPublicStationAdapter(),
-                    ViaggiaTrenoStationAdapter(),
-                    RfiStationBoardAdapter()
-                ),
-                fallback = DemoTrainDataSource()
-            ),
-            providerRegistry = defaultRegistry
-        )
-    }
+    private val routeSourcesByPackage = mutableMapOf<String, TrainDataSource>()
 
-    fun routeDataSource(): TrainDataSource = defaultRouteDataSource
+    fun routeDataSource(context: Context): TrainDataSource = synchronized(routeSourcesByPackage) {
+        val applicationContext = context.applicationContext
+        routeSourcesByPackage.getOrPut(applicationContext.packageName) {
+            LegacyTrainDataSourceFacade(
+                legacySource = RailDataRepository(
+                    authorisedSources = listOf(
+                        ItaloPublicStationAdapter(),
+                        ViaggiaTrenoStationAdapter(),
+                        RfiStationBoardAdapter()
+                    ),
+                    fallback = EmbeddedGtfsRouteAdapter(openAsset = { assetPath -> applicationContext.assets.open(assetPath) })
+                ),
+                providerRegistry = defaultRegistry
+            )
+        }
+    }
 
     fun providerRegistry(): ProviderRegistry = defaultRegistry
 

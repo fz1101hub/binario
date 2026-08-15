@@ -240,12 +240,13 @@ object RailSourceCatalog {
             formats = setOf(SourceFormat.GTFS_ZIP),
             capabilities = staticCapabilities,
             accessMode = AccessMode.OPEN_DIRECT,
-            readiness = SourceReadiness.LANDING_PAGE_ONLY,
+            readiness = SourceReadiness.READY_FOR_GTFS_PACK,
             countryCodes = setOf("CH", "IT"),
             coverage = "SBB, TILO, BLS, RhB e servizi transfrontalieri inclusi nella distribuzione nazionale.",
             landingPage = uri("https://data.opentransportdata.swiss/dataset/timetable-2026-gtfs2020"),
+            downloadOrProbeUri = uri("https://data.opentransportdata.swiss/dataset/3d2c18f9-9ef1-463f-a249-5c67604efd74/resource/32c2dfb4-8953-45b5-b271-211a2fa3aa18/download/gtfs_fp2026_2025-08-14.zip"),
             attribution = "opentransportdata.swiss",
-            notes = "Data file open con condizioni di attribuzione/aggiornamento; acquisire artefatto e manifest nel gateway o data pack."
+            notes = "Data pack ferroviario filtrato e verificato incluso nell’APK; aggiornare con manifest e attribuzione a ogni release."
         ),
         RailSourceDefinition(
             id = SourceId("ch-otd-gtfs-rt"),
@@ -268,13 +269,13 @@ object RailSourceCatalog {
             formats = setOf(SourceFormat.GTFS_ZIP),
             capabilities = staticCapabilities,
             accessMode = AccessMode.OPEN_DIRECT,
-            readiness = SourceReadiness.IMPORT_VIA_GATEWAY,
+            readiness = SourceReadiness.READY_FOR_GTFS_PACK,
             countryCodes = setOf("AT", "IT"),
             coverage = "Railjet, EuroCity e Nightjet presenti nel feed e relative fermate italiane da filtrare.",
             landingPage = uri("https://data.oebb.at/de/datensaetze~soll-fahrplan-gtfs~"),
             downloadOrProbeUri = uri("https://static.web.oebb.at/open-data/soll-fahrplan-gtfs/GTFS_Fahrplan_2026.zip"),
             attribution = "ÖBB Personenverkehr AG — CC BY 4.0",
-            notes = "ZIP HTTPS verificato ma voluminoso; import offline/gateway con accettazione delle condizioni del portale."
+            notes = "Data pack ferroviario filtrato e verificato incluso nell’APK dopo accettazione autorizzata delle condizioni del portale; aggiornare annualmente."
         ),
         RailSourceDefinition(
             id = SourceId("viaggiatreno"),
