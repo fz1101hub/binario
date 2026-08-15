@@ -184,7 +184,7 @@ class TrenitaliaViaggiaTrenoAdapter(
  */
 class RailDataRepository(
     private val authorisedSources: List<TrainDataSource> = emptyList(),
-    private val fallback: TrainDataSource = DemoTrainDataSource(),
+    private val fallback: TrainDataSource = UnavailableTrainDataSource(),
     private val clock: () -> Long = System::currentTimeMillis
 ) : TrainDataSource {
     override suspend fun loadRoute(route: SavedRoute, direction: Direction): DataResult {
@@ -220,6 +220,18 @@ class RailDataRepository(
             qualityWarnings = quality.warnings
         )
     }
+}
+
+/**
+ * Fallback di produzione: non crea corse artificiali quando nessuna fonte live
+ * o GTFS programmata restituisce una tratta utilizzabile.
+ */
+class UnavailableTrainDataSource : TrainDataSource {
+    override suspend fun loadRoute(route: SavedRoute, direction: Direction): DataResult =
+        DataResult.Failure(
+            "Nessuna fonte realtime o GTFS programmata ha restituito una corsa per questa tratta. " +
+                "Riprova più tardi o verifica i monitor ufficiali."
+        )
 }
 
 /** Local-only national multi-operator fixture used until an authorised source is configured. */

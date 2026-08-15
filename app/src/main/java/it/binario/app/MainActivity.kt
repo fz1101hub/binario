@@ -373,7 +373,14 @@ private fun TodayScreen(
                 DepartureListRow(service, isNext = service.id == firstService.id, onOpen = { openDetails(service) })
             }
         } else {
-            item { TodayEmptyState(viewModel.refreshState, onRefresh = viewModel::refresh, onRoutes = openRoutes) }
+            item {
+                TodayEmptyState(
+                    state = viewModel.refreshState,
+                    message = viewModel.refreshMessage,
+                    onRefresh = viewModel::refresh,
+                    onRoutes = openRoutes
+                )
+            }
         }
         if (viewModel.savedRoutes.size > 1) {
             item { MonitoredRoutesStrip(viewModel.savedRoutes, viewModel.activeRoute.id, viewModel::activateRoute, openRoutes) }
@@ -977,6 +984,9 @@ private fun DataStatusLine(
         Column(Modifier.weight(1f)) {
             Text(label, style = MaterialTheme.typography.labelLarge, color = color, fontWeight = FontWeight.Bold)
             Text(if (refreshedAt > 0L) "$provider · ${accessibleUpdateTime(refreshedAt)}" else provider, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            message?.takeIf { it.isNotBlank() }?.let {
+                Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
         }
     }
     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
@@ -1059,10 +1069,13 @@ private fun DepartureListRow(service: TrainService, isNext: Boolean = false, onO
 }
 
 @Composable
-private fun TodayEmptyState(state: RefreshState, onRefresh: () -> Unit, onRoutes: () -> Unit) {
+private fun TodayEmptyState(state: RefreshState, message: String?, onRefresh: () -> Unit, onRoutes: () -> Unit) {
     Column(Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(12.dp), horizontalAlignment = Alignment.Start) {
         Text(if (state == RefreshState.LOADING) "Cerco le partenze…" else "Nessuna partenza da mostrare", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
         Text("Aggiorna la tratta attiva oppure scegli una tratta salvata diversa. I dati non disponibili non vengono sostituiti con orari stimati.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        message?.takeIf { it.isNotBlank() }?.let {
+            Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Button(onClick = onRefresh) { Text("Aggiorna") }
             OutlinedButton(onClick = onRoutes) { Text("Cambia tratta") }

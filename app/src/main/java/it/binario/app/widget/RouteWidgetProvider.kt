@@ -201,11 +201,20 @@ class RouteWidgetProvider : AppWidgetProvider() {
 
         private fun renderNoSnapshot(context: Context, manager: AppWidgetManager, widgetId: Int, views: RemoteViews, configuration: WidgetDisplayConfiguration) {
             views.setTextViewText(R.id.widget_route, configuration.widgetTitle().uppercase())
-            views.setTextViewText(R.id.widget_meta, "${configuration.targetType.label.uppercase()} · DATI NON DISPONIBILI IN TEMPO REALE")
+            val failure = WidgetStateStore.lastFailure(context)
+            views.setTextViewText(
+                R.id.widget_meta,
+                failure?.takeIf { it.isNotBlank() }
+                    ?: "${configuration.targetType.label.uppercase()} · DATI NON DISPONIBILI IN TEMPO REALE"
+            )
             rowIds.forEach { views.setViewVisibility(it, View.GONE) }
             views.setViewVisibility(R.id.widget_column_header, View.GONE)
             views.setTextViewText(R.id.widget_direction, "Modifica")
             views.setTextViewText(R.id.widget_refresh, "Apri")
+            views.setContentDescription(
+                R.id.widget_root,
+                "${configuration.widgetTitle()}. Dati non disponibili in tempo reale. ${failure.orEmpty()}"
+            )
             views.setOnClickPendingIntent(R.id.widget_root, openAppIntent(context, widgetId))
             views.setOnClickPendingIntent(R.id.widget_direction, configureIntent(context, widgetId))
             views.setOnClickPendingIntent(R.id.widget_refresh, openAppIntent(context, widgetId))
@@ -364,7 +373,7 @@ class WidgetRefreshWorker(appContext: Context, params: WorkerParameters) : Corou
                 Result.success()
             }
             is DataResult.Failure -> {
-                WidgetStateStore.markUnavailable(applicationContext)
+                WidgetStateStore.markUnavailable(applicationContext, result.message)
                 RouteWidgetProvider.refreshAll(applicationContext)
                 Result.retry()
             }
@@ -470,6 +479,7 @@ object WidgetStateStore {
     private const val KEY_QUALITY_WARNINGS = "quality_warnings"
     private const val KEY_RETRIEVED = "retrieved"
     private const val KEY_PAGE = "page"
+    private const val KEY_FAILURE = "last_failure"
 
     fun saveSnapshot(context: Context, snapshot: RouteSnapshot, page: Int = 0) {
         val orderedServices = snapshot.services.sortedWith(compareBy<TrainService> { it.expectedDeparture }.thenBy { it.number })
@@ -497,6 +507,7 @@ object WidgetStateStore {
             putString(KEY_QUALITY_WARNINGS, snapshot.qualityWarnings.joinToString("|") { it.name })
             putLong(KEY_RETRIEVED, snapshot.retrievedAtEpochMillis)
             putInt(KEY_PAGE, page)
+            remove(KEY_FAILURE)
         }
     }
 
@@ -511,6 +522,10 @@ object WidgetStateStore {
         val confidence = runCatching {
             DataConfidence.valueOf(prefs(context).getString(KEY_CONFIDENCE, DataConfidence.DEMONSTRATION.name) ?: DataConfidence.DEMONSTRATION.name)
         }.getOrDefault(DataConfidence.DEMONSTRATION)
+        if (shouldDiscardLegacyDemo(confidence)) {
+            clear(context)
+            return null
+        }
         val qualityBand = runCatching {
             DataQualityBand.valueOf(prefs(context).getString(KEY_QUALITY_BAND, DataQualityBand.UNKNOWN.name) ?: DataQualityBand.UNKNOWN.name)
         }.getOrDefault(DataQualityBand.UNKNOWN)
@@ -553,8 +568,20 @@ object WidgetStateStore {
         }
     }
 
-    fun markUnavailable(context: Context) {
-        prefs(context).edit { putString(KEY_FRESHNESS, Freshness.UNAVAILABLE.name) }
+    fun markUnavailable(context: Context, message: String? = null) {
+        prefs(context).edit {
+            putString(KEY_FRESHNESS, Freshness.UNAVAILABLE.name)
+            message?.takeIf { it.isNotBlank() }?.let { putString(KEY_FAILURE, it) }
+        }
+    }
+
+    fun lastFailure(context: Context): String? = prefs(context).getString(KEY_FAILURE, null)
+
+    internal fun shouldDiscardLegacyDemo(confidence: DataConfidence): Boolean =
+        confidence == DataConfidence.DEMONSTRATION
+
+    private fun clear(context: Context) {
+        prefs(context).edit { clear() }
     }
 
     private fun prefs(context: Context) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)

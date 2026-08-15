@@ -76,7 +76,7 @@ object BinarioDataGraph {
 /**
  * Ponte temporaneo verso la UI v0.x. Le future query canoniche vivranno nel
  * repository multi-provider; fino alla migrazione delle schermate questa
- * facade conserva il contratto `TrainDataSource` e l'etichettatura demo.
+ * facade conserva il contratto `TrainDataSource` senza introdurre dati dimostrativi.
  */
 class LegacyTrainDataSourceFacade(
     private val legacySource: TrainDataSource,
