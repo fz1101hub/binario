@@ -146,3 +146,6 @@
 - [x] Collegare in modo sicuro i codici Trenitalia del catalogo alle richieste degli adapter compatibili, con fallback esplicito per codici assenti o non verificati.
 - [x] Rimuovere il precedente catalogo geografico e aggiungere test di regressione su ricerca, widget e riconciliazione codici.
 - [x] Verificare, documentare e pubblicare il catalogo unico con commit e push Git dedicati.
+- [x] Ispezionare in sicurezza il pacchetto XAPK Moovit per manifest, permessi, componenti e asset descrittivi.
+- [x] Confrontare funzioni, flussi UX/accessibilità e categorie dati osservabili con Binario, senza riutilizzare codice o dati proprietari.
+- [x] Documentare raccomandazioni prioritarie, limiti di riuso e possibili fonti autorizzate da valutare separatamente.
