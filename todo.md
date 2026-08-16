@@ -149,3 +149,8 @@
 - [x] Ispezionare in sicurezza il pacchetto XAPK Moovit per manifest, permessi, componenti e asset descrittivi.
 - [x] Confrontare funzioni, flussi UX/accessibilità e categorie dati osservabili con Binario, senza riutilizzare codice o dati proprietari.
 - [x] Documentare raccomandazioni prioritarie, limiti di riuso e possibili fonti autorizzate da valutare separatamente.
+- [x] Tracciare e correggere i suggerimenti non mostrati sotto i campi partenza e arrivo del pianificatore.
+- [x] Rendere ogni suggerimento una scelta immediata e selezionabile, con stato separato per partenza e arrivo.
+- [x] Correggere ricerca, scambio e direzione per impedire l’inversione della tratta richiesta nei risultati e nei widget.
+- [x] Aggiungere test di regressione per suggerimenti, selezione stazione e ordine della tratta.
+- [x] Verificare, documentare e pubblicare la correzione del pianificatore con commit e push Git dedicati.

@@ -44,6 +44,12 @@ data class RecentRoute(val origin: Station, val destination: Station) {
     val label: String get() = "${origin.name} → ${destination.name}"
 }
 
+enum class StationCatalogStatus {
+    LOADING,
+    READY,
+    UNAVAILABLE
+}
+
 data class ServiceMonitor(val number: String, val label: String)
 
 class TrainViewModel(application: Application) : AndroidViewModel(application) {
@@ -61,6 +67,8 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
     )
 
     var stations by mutableStateOf(customStationStore.stations())
+        private set
+    var stationCatalogStatus by mutableStateOf(StationCatalogStatus.LOADING)
         private set
 
     var favouriteStations by mutableStateOf(stationPreferences.favourites(stations))
@@ -113,7 +121,11 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
     private fun loadCuratedStationCatalog() {
         viewModelScope.launch(Dispatchers.Default) {
             val imported = curatedStationCatalog.load()
-            if (imported.isNotEmpty()) withContext(Dispatchers.Main) {
+            withContext(Dispatchers.Main) {
+                if (imported.isEmpty()) {
+                    stationCatalogStatus = StationCatalogStatus.UNAVAILABLE
+                    return@withContext
+                }
                 val legacyCustom = customStationStore.stations()
                 val migratedCustom = legacyCustom.map { station ->
                     imported.firstOrNull { candidate ->
@@ -128,6 +140,7 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
                 activeRoute = routeStore.activeRoute(savedRoutes).let(::canonicalRoute)
                 favouriteStations = stationPreferences.favourites(stations)
                 stationMonitors = personalTravelStore.stationMonitors(stations)
+                stationCatalogStatus = StationCatalogStatus.READY
             }
         }
     }
@@ -149,13 +162,12 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun searchStations(query: String): List<Station> {
         val normalized = EmbeddedGtfsStationSearchIndex.normalize(query)
-        if (normalized.length < 2) return emptyList()
+        if (normalized.length < 2 || stationCatalogStatus != StationCatalogStatus.READY) return emptyList()
         val localMatches = stations.asSequence()
             .filter { stationMatches(it, normalized) }
             .take(8)
             .toList()
-        val manual = stationFromFreeText(query)
-        return (localMatches + listOfNotNull(manual).filterNot { candidate -> localMatches.any { it.id == candidate.id } }).take(8)
+        return if (localMatches.isNotEmpty()) localMatches else listOfNotNull(stationFromFreeText(query))
     }
 
     fun stationFromName(name: String): Station? {
@@ -202,9 +214,9 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun searchRoute(origin: Station, destination: Station): Boolean {
-        val rememberedOrigin = rememberStation(origin)
-        val rememberedDestination = rememberStation(destination)
-        if (rememberedOrigin == rememberedDestination) {
+        val rememberedOrigin = rememberStation(canonicalStation(origin))
+        val rememberedDestination = rememberStation(canonicalStation(destination))
+        if (rememberedOrigin.id == rememberedDestination.id) {
             refreshMessage = "Scegli due stazioni diverse per la tratta."
             refreshState = RefreshState.ERROR
             return false
@@ -213,7 +225,7 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
             it.outwardOrigin.id == rememberedOrigin.id && it.outwardDestination.id == rememberedDestination.id
         }
         activeRoute = storedRoute ?: SavedRoute(
-            id = "search-${rememberedOrigin.id}-${rememberedDestination.id}",
+            id = searchedRouteId(rememberedOrigin, rememberedDestination),
             name = "${rememberedOrigin.city} – ${rememberedDestination.city}",
             outwardOrigin = rememberedOrigin,
             outwardDestination = rememberedDestination
@@ -688,6 +700,8 @@ private class RouteStore(context: Context) {
 }
 
 internal fun recentRouteKey(origin: Station, destination: Station): String = "${origin.id}|${destination.id}"
+
+internal fun searchedRouteId(origin: Station, destination: Station): String = "search-${origin.id}-${destination.id}"
 
 internal const val UNCONFIGURED_ROUTE_ID = "unconfigured-route"
 

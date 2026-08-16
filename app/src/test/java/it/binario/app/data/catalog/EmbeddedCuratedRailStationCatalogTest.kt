@@ -39,6 +39,22 @@ class EmbeddedCuratedRailStationCatalogTest {
     }
 
     @Test
+    fun `catalog returns Appiano Proba Petronia when typing its curated alias`() {
+        val assets = File("src/main/assets")
+        val catalog = EmbeddedCuratedRailStationCatalog(
+            openAsset = { assetPath -> File(assets, assetPath).inputStream() }
+        )
+
+        val appiano = catalog.load().first { station ->
+            station.name == "Appiano Proba Petronia" && station.aliases.any { it == "APPIANO" }
+        }
+
+        assertEquals("curated:S08328", appiano.id)
+        assertEquals("S08328", appiano.railwayCode)
+        assertTrue(appiano.matchesPublishedName("Appiano"))
+    }
+
+    @Test
     fun `catalog excludes ambiguous Trenitalia location identities`() {
         val assets = File("src/main/assets")
         val catalog = EmbeddedCuratedRailStationCatalog(
