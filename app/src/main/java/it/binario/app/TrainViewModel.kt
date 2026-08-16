@@ -45,12 +45,6 @@ data class RecentRoute(val origin: Station, val destination: Station) {
     val label: String get() = "${origin.name} → ${destination.name}"
 }
 
-enum class StationCatalogStatus {
-    LOADING,
-    READY,
-    UNAVAILABLE
-}
-
 data class ServiceMonitor(val number: String, val label: String)
 
 class TrainViewModel(application: Application) : AndroidViewModel(application) {
@@ -68,8 +62,6 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
     )
 
     var stations by mutableStateOf(customStationStore.stations())
-        private set
-    var stationCatalogStatus by mutableStateOf(StationCatalogStatus.LOADING)
         private set
 
     var favouriteStations by mutableStateOf(stationPreferences.favourites(stations))
@@ -128,7 +120,6 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
                 .getOrDefault(emptyList())
             withContext(Dispatchers.Main) {
                 if (imported.isEmpty()) {
-                    stationCatalogStatus = StationCatalogStatus.UNAVAILABLE
                     return@withContext
                 }
                 val legacyCustom = customStationStore.stations()
@@ -145,7 +136,6 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
                 activeRoute = routeStore.activeRoute(savedRoutes).let(::canonicalRoute)
                 favouriteStations = stationPreferences.favourites(stations)
                 stationMonitors = personalTravelStore.stationMonitors(stations)
-                stationCatalogStatus = StationCatalogStatus.READY
             }
         }
     }
@@ -167,7 +157,7 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun searchStations(query: String): List<Station> {
         val normalized = EmbeddedGtfsStationSearchIndex.normalize(query)
-        if (normalized.length < 2 || stationCatalogStatus != StationCatalogStatus.READY) return emptyList()
+        if (normalized.length < 2) return emptyList()
         val localMatches = stations.asSequence()
             .filter { stationMatches(it, normalized) }
             .take(8)

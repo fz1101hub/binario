@@ -158,3 +158,7 @@
 - [x] Correggere il caricamento del catalogo curato e rendere l’errore interno diagnosticabile senza esporre dettagli tecnici all’utente.
 - [x] Aggiungere un test di integrazione che apra l’asset dal pacchetto APK effettivamente generato e verifichi Appiano e Roma Ostiense.
 - [ ] Verificare su APK installabile l’autocompletamento prima di dichiarare corretta la release, poi documentare e aggiornare Git.
+- [x] Isolare la regressione che rende non reattivi i pulsanti e i campi dell’APK v0.20.2.
+- [x] Ripristinare l’interazione senza eseguire lavoro pesante sul thread principale durante la composizione.
+- [ ] Aggiungere controlli di regressione sullo stato di caricamento e sull’interazione dei campi del pianificatore.
+- [ ] Verificare su un flusso interattivo disponibile prima di consegnare una nuova APK e aggiornare Git.

@@ -499,8 +499,6 @@ private fun PlannerScreen(
 ) {
     var originText by rememberSaveable { mutableStateOf(viewModel.plannerOriginText()) }
     var destinationText by rememberSaveable { mutableStateOf(viewModel.plannerDestinationText()) }
-    var selectedOrigin by remember { mutableStateOf<Station?>(null) }
-    var selectedDestination by remember { mutableStateOf<Station?>(null) }
     var returnJourney by rememberSaveable { mutableStateOf(false) }
     var showFilters by rememberSaveable { mutableStateOf(false) }
     var mode by rememberSaveable { mutableStateOf(SearchMode.ROUTE) }
@@ -523,8 +521,8 @@ private fun PlannerScreen(
             val dictated = PlannerVoiceParser.parse(spoken, viewModel.stations)
             val updated = when (voiceTarget) {
                 SearchMode.ROUTE -> {
-                    dictated.origin?.let { station -> originText = station.name; selectedOrigin = station }
-                    dictated.destination?.let { station -> destinationText = station.name; selectedDestination = station }
+                    dictated.origin?.let { originText = it.name }
+                    dictated.destination?.let { destinationText = it.name }
                     dictated.date?.let { travelDate = it.toString() }
                     dictated.time?.let { travelTime = it.toString() }
                     dictated.returnJourney?.let { returnJourney = it }
@@ -586,14 +584,8 @@ private fun PlannerScreen(
             }
         }
     }
-    LaunchedEffect(viewModel.stationCatalogStatus) {
-        if (viewModel.stationCatalogStatus == StationCatalogStatus.READY) {
-            selectedOrigin = viewModel.stationFromName(originText)
-            selectedDestination = viewModel.stationFromName(destinationText)
-        }
-    }
-    val origin = selectedOrigin?.takeIf { it.name == originText } ?: viewModel.stationFromName(originText)
-    val destination = selectedDestination?.takeIf { it.name == destinationText } ?: viewModel.stationFromName(destinationText)
+    val origin = viewModel.stationFromName(originText)
+    val destination = viewModel.stationFromName(destinationText)
     LazyColumn(modifier = modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(0.dp)) {
         item {
             Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
@@ -609,35 +601,14 @@ private fun PlannerScreen(
                         VoiceInputButton(onClick = { startVoiceInput(SearchMode.ROUTE) }, label = "Detta tratta")
                         speechMessage?.let { message -> Text(message, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                         Text("STAZIONE PARTENZA", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
-                        StationField(
-                            label = "Partenza",
-                            value = originText,
-                            onValueChange = { originText = it; selectedOrigin = null },
-                            matches = viewModel.searchStations(originText),
-                            catalogStatus = viewModel.stationCatalogStatus,
-                            onSelect = { station -> originText = station.name; selectedOrigin = station }
-                        )
+                        StationField("Partenza", originText, { originText = it }, viewModel.searchStations(originText), { originText = it.name })
                         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                             Text("STAZIONE ARRIVO", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                            IconButton(onClick = {
-                                val oldText = originText
-                                val oldSelection = selectedOrigin
-                                originText = destinationText
-                                selectedOrigin = selectedDestination
-                                destinationText = oldText
-                                selectedDestination = oldSelection
-                            }) {
+                            IconButton(onClick = { val old = originText; originText = destinationText; destinationText = old }) {
                                 Icon(Icons.Default.SwapHoriz, contentDescription = "Inverti partenza e arrivo")
                             }
                         }
-                        StationField(
-                            label = "Arrivo",
-                            value = destinationText,
-                            onValueChange = { destinationText = it; selectedDestination = null },
-                            matches = viewModel.searchStations(destinationText),
-                            catalogStatus = viewModel.stationCatalogStatus,
-                            onSelect = { station -> destinationText = station.name; selectedDestination = station }
-                        )
+                        StationField("Arrivo", destinationText, { destinationText = it }, viewModel.searchStations(destinationText), { destinationText = it.name })
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                             FilterChip(selected = !returnJourney, onClick = { returnJourney = false }, label = { Text("Sola andata") })
                             FilterChip(selected = returnJourney, onClick = { returnJourney = true }, label = { Text("Andata e ritorno") })
@@ -1759,55 +1730,24 @@ private fun StationField(
     value: String,
     onValueChange: (String) -> Unit,
     matches: List<Station>,
-    onSelect: (Station) -> Unit,
-    catalogStatus: StationCatalogStatus = StationCatalogStatus.READY
+    onSelect: (Station) -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         OutlinedTextField(value = value, onValueChange = onValueChange, modifier = Modifier.fillMaxWidth(), singleLine = true, label = { Text(label) }, leadingIcon = { Icon(Icons.Default.Train, contentDescription = null) })
-        when {
-            value.trim().length >= 2 && catalogStatus == StationCatalogStatus.LOADING -> {
-                Text("Caricamento elenco stazioni…", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            value.trim().length >= 2 && catalogStatus == StationCatalogStatus.UNAVAILABLE -> {
-                Text("Elenco stazioni non disponibile. Puoi comunque completare il nome e cercare nelle fonti abilitate.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
-            }
-            else -> {
-                val alreadySelected = matches.size == 1 &&
-                    !matches.first().id.startsWith("manual:") &&
-                    matches.first().name.equals(value.trim(), ignoreCase = true)
-                if (matches.isNotEmpty() && !alreadySelected) {
-                    Surface(
-                        color = MaterialTheme.colorScheme.surfaceVariant,
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Column {
-                            matches.take(5).forEach { station ->
-                                TextButton(
-                                    onClick = { onSelect(station) },
-                                    modifier = Modifier.fillMaxWidth().semantics {
-                                        contentDescription = if (station.id.startsWith("manual:")) {
-                                            "Cerca ${station.name} nelle fonti disponibili"
-                                        } else {
-                                            "Seleziona stazione ${station.name}"
-                                        }
-                                    }
-                                ) {
-                                    val stationLabel = if (station.id.startsWith("manual:")) {
-                                        "Cerca “${station.name}” nelle fonti disponibili"
-                                    } else {
-                                        buildString {
-                                            append(station.name)
-                                            station.railwayCode?.let { append(" · ").append(it) }
-                                        }
-                                    }
-                                    Icon(Icons.Default.Train, contentDescription = null, modifier = Modifier.size(20.dp))
-                                    Spacer(Modifier.width(10.dp))
-                                    Text(stationLabel, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                }
-                            }
+        if (matches.isNotEmpty() && (matches.none { it.name.equals(value, ignoreCase = true) } || matches.any { it.id.startsWith("manual:") })) {
+            matches.take(5).forEach { station ->
+                TextButton(onClick = { onSelect(station) }, modifier = Modifier.fillMaxWidth()) {
+                    val stationLabel = if (station.id.startsWith("manual:")) {
+                        "Cerca “${station.name}” nelle fonti disponibili"
+                    } else {
+                        buildString {
+                            append(station.name)
+                            station.railwayCode?.let { append(" · ").append(it) }
                         }
                     }
+                    Icon(Icons.Default.Train, contentDescription = null, modifier = Modifier.size(20.dp))
+                    Spacer(Modifier.width(10.dp))
+                    Text(stationLabel, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
         }

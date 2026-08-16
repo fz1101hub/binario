@@ -12,8 +12,8 @@ android {
         applicationId = "it.binario.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 33
-        versionName = "0.20.2"
+        versionCode = 34
+        versionName = "0.20.3"
     }
 
     buildFeatures {
