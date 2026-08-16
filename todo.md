@@ -154,3 +154,7 @@
 - [x] Correggere ricerca, scambio e direzione per impedire l’inversione della tratta richiesta nei risultati e nei widget.
 - [x] Aggiungere test di regressione per suggerimenti, selezione stazione e ordine della tratta.
 - [x] Verificare, documentare e pubblicare la correzione del pianificatore con commit e push Git dedicati.
+- [x] Riprodurre nell’APK il fallimento “Elenco stazioni non disponibile” osservato sul dispositivo.
+- [x] Correggere il caricamento del catalogo curato e rendere l’errore interno diagnosticabile senza esporre dettagli tecnici all’utente.
+- [x] Aggiungere un test di integrazione che apra l’asset dal pacchetto APK effettivamente generato e verifichi Appiano e Roma Ostiense.
+- [ ] Verificare su APK installabile l’autocompletamento prima di dichiarare corretta la release, poi documentare e aggiornare Git.

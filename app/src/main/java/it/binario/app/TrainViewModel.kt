@@ -1,6 +1,7 @@
 package it.binario.app
 
 import android.app.Application
+import android.util.Log
 import android.content.Context
 import android.util.Base64
 import androidx.compose.runtime.getValue
@@ -120,7 +121,11 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun loadCuratedStationCatalog() {
         viewModelScope.launch(Dispatchers.Default) {
-            val imported = curatedStationCatalog.load()
+            val imported = runCatching { curatedStationCatalog.load() }
+                .onFailure { error ->
+                    Log.e("BinarioCatalog", "Impossibile caricare il catalogo stazioni curato", error)
+                }
+                .getOrDefault(emptyList())
             withContext(Dispatchers.Main) {
                 if (imported.isEmpty()) {
                     stationCatalogStatus = StationCatalogStatus.UNAVAILABLE

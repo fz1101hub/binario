@@ -105,9 +105,12 @@ def main() -> None:
     }
     encoded = json.dumps(payload, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    with args.output.open("wb") as raw_output:
-        with gzip.GzipFile(fileobj=raw_output, mode="wb", compresslevel=9, mtime=0) as stream:
-            stream.write(encoded)
+    if args.output.suffix == ".gz":
+        with args.output.open("wb") as raw_output:
+            with gzip.GzipFile(fileobj=raw_output, mode="wb", compresslevel=9, mtime=0) as stream:
+                stream.write(encoded)
+    else:
+        args.output.write_bytes(encoded)
     print(
         json.dumps(
             {

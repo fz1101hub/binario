@@ -4,7 +4,6 @@ import it.binario.app.data.Station
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.InputStream
-import java.util.zip.GZIPInputStream
 
 /**
  * Catalogo canonico offline fornito e curato dall’utente.
@@ -16,14 +15,14 @@ class EmbeddedCuratedRailStationCatalog(
     private val openAsset: (String) -> InputStream,
     private val assetPath: String = ASSET_PATH
 ) {
-    fun load(): List<Station> = runCatching {
-        GZIPInputStream(openAsset(assetPath)).bufferedReader(Charsets.UTF_8).use { reader ->
+    fun load(): List<Station> {
+        return openAsset(assetPath).bufferedReader(Charsets.UTF_8).use { reader ->
             val root = JSONObject(reader.readText())
             require(root.optString("kind") == "curated-rail-station-catalog")
             require(!root.optBoolean("operationalData", true))
             stationsFrom(root.optJSONArray("stations") ?: JSONArray())
         }
-    }.getOrDefault(emptyList())
+    }
 
     private fun stationsFrom(values: JSONArray): List<Station> {
         val unique = linkedMapOf<String, Station>()
@@ -59,7 +58,7 @@ class EmbeddedCuratedRailStationCatalog(
         if (has(name) && !isNull(name)) optDouble(name).takeIf { it.isFinite() } else null
 
     companion object {
-        const val ASSET_PATH = "stations/curated_it_rail_stations.json.gz"
+        const val ASSET_PATH = "stations/curated_it_rail_stations.json"
         const val SOURCE_LABEL = "Catalogo stazioni curato"
         private const val MAX_STATIONS = 10_000
     }
