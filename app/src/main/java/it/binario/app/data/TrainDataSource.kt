@@ -7,6 +7,7 @@ import it.binario.app.data.core.OperationalDetection
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 enum class Direction(val label: String) {
     OUTBOUND("Andata"),
@@ -60,8 +61,42 @@ data class Station(
     val id: String,
     val name: String,
     val city: String,
-    val region: String? = null
+    val region: String? = null,
+    /** Codice ferroviario curato; identificativo stabile della stazione, quando disponibile. */
+    val railwayCode: String? = null,
+    /** Identificativo Trenitalia usabile solo quando la mappatura del catalogo è univoca. */
+    val trenitaliaLocationId: String? = null,
+    val aliases: List<String> = emptyList(),
+    val latitude: Double? = null,
+    val longitude: Double? = null
 )
+
+/** Nomi e codici da usare per ricerca e riconciliazione, non per inferire dati operativi. */
+fun Station.searchableValues(): List<String> = buildList {
+    add(name)
+    add(city)
+    addAll(aliases)
+    railwayCode?.let(::add)
+    trenitaliaLocationId?.let(::add)
+}
+
+fun Station.matchesPublishedName(publishedName: String): Boolean {
+    val actual = normalizeStationIdentity(publishedName)
+    return searchableValues().any { expected ->
+        val normalizedExpected = normalizeStationIdentity(expected)
+        normalizedExpected.isNotBlank() &&
+            (actual == normalizedExpected || actual.contains(normalizedExpected) || normalizedExpected.contains(actual))
+    }
+}
+
+fun Station.liveIdentityKey(): String = trenitaliaLocationId?.let { "trenitalia:$it" }
+    ?: railwayCode?.let { "railway:$it" }
+    ?: id
+
+private fun normalizeStationIdentity(value: String): String = value
+    .uppercase(Locale.ROOT)
+    .replace("S. ", "SAN ")
+    .replace(Regex("[^A-Z0-9]"), "")
 
 data class SavedRoute(
     val id: String,

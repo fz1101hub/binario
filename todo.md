@@ -141,3 +141,8 @@
 - [x] Integrare un catalogo nazionale verificabile nell’autocompletamento senza sostituire la catena realtime/GTFS né introdurre dati fittizi.
 - [x] Aggiungere manifest della fonte, fixture e test per Roma/Lazio e stazioni fuori dai data pack esistenti.
 - [x] Verificare, documentare e pubblicare l’ampliamento dell’autocompletamento con commit e push Git dedicati.
+- [x] Ispezionare il database curato fornito dall’utente e verificare schema, copertura, identificativi e codici Trenitalia.
+- [x] Rendere il database curato il catalogo canonico unico per ricerca, tratte, preferiti, widget e stazioni vicine.
+- [x] Collegare in modo sicuro i codici Trenitalia del catalogo alle richieste degli adapter compatibili, con fallback esplicito per codici assenti o non verificati.
+- [x] Rimuovere il precedente catalogo geografico e aggiungere test di regressione su ricerca, widget e riconciliazione codici.
+- [x] Verificare, documentare e pubblicare il catalogo unico con commit e push Git dedicati.

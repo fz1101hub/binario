@@ -2,20 +2,19 @@
   "schemaVersion": 1,
   "catalogs": [
     {
-      "id": "osm-it-rail-station-discovery-2026-08-15",
-      "assetPath": "stations/osm_it_rail_stations.json.gz",
-      "kind": "geographic-rail-station-discovery-catalog",
-      "countryCode": "IT",
-      "sourceUrl": "https://www.openstreetmap.org/copyright",
-      "queryDefinition": "railway=station OR railway=halt; Italy administrative area; exclude disused, abandoned and freight-only tagged elements",
-      "queriedAt": "2026-08-15T20:45:00Z",
-      "license": "ODbL-1.0",
-      "licenseUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
-      "attribution": "© OpenStreetMap contributors",
-      "stationCount": 3749,
-      "sha256": "42e680201b4e6b8b937bd872276743a49935ea106c0363cf3fc10370db0e845a",
+      "id": "stazioni-ferroviarie-curato-v4",
+      "assetPath": "stations/curated_it_rail_stations.json.gz",
+      "kind": "curated-rail-station-catalog",
+      "source": "Database curato fornito dall’utente",
+      "sourceDatabaseSha256": "2db59242ec45816a73a37c4748dc400dafaba762b6df3105673f63a44c882efe",
+      "sourceCreatedAtUtc": "2026-08-16T01:21:36.343197+00:00",
+      "stationCount": 5239,
+      "railwayCodes": 3430,
+      "uniqueTrenitaliaLocationIds": 3086,
+      "ambiguousTrenitaliaLocationIdsExcluded": 40,
+      "assetSha256": "1aa20f47ac0b8bb5ae9307bfbf9e4ad067ae77151c0b30814cc87f53f8775293",
       "operationalData": false,
-      "notes": "Catalogo geografico per autocompletamento; non abilita ricerca orari, stato treno, binari, ritardi, soppressioni o realtime."
+      "notes": "Catalogo canonico unico per ricerca, tratte, preferiti, widget, stazioni vicine e riconciliazione di identità. I codici Trenitalia ambigui sono esclusi dal mapping automatico; l’asset non abilita né determina dati live."
     }
   ]
 }

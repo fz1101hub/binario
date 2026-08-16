@@ -23,18 +23,41 @@ class CustomStationStore(context: Context) {
         return updated
     }
 
-    private fun encode(station: Station): String = listOf(station.id, station.name, station.city, station.region.orEmpty())
+    private fun encode(station: Station): String = listOf(
+        station.id,
+        station.name,
+        station.city,
+        station.region.orEmpty(),
+        station.railwayCode.orEmpty(),
+        station.trenitaliaLocationId.orEmpty(),
+        station.aliases.joinToString(ALIAS_SEPARATOR),
+        station.latitude?.toString().orEmpty(),
+        station.longitude?.toString().orEmpty()
+    )
         .joinToString(",") { Base64.encodeToString(it.toByteArray(Charsets.UTF_8), Base64.NO_WRAP) }
 
     private fun decode(value: String): Station? = runCatching {
         val parts = value.split(",")
-        if (parts.size != 4) return@runCatching null
-        Station(
-            id = decodePart(parts[0]),
-            name = decodePart(parts[1]),
-            city = decodePart(parts[2]),
-            region = decodePart(parts[3]).ifBlank { null }
-        )
+        when (parts.size) {
+            4 -> Station(
+                id = decodePart(parts[0]),
+                name = decodePart(parts[1]),
+                city = decodePart(parts[2]),
+                region = decodePart(parts[3]).ifBlank { null }
+            )
+            9 -> Station(
+                id = decodePart(parts[0]),
+                name = decodePart(parts[1]),
+                city = decodePart(parts[2]),
+                region = decodePart(parts[3]).ifBlank { null },
+                railwayCode = decodePart(parts[4]).ifBlank { null },
+                trenitaliaLocationId = decodePart(parts[5]).ifBlank { null },
+                aliases = decodePart(parts[6]).split(ALIAS_SEPARATOR).filter(String::isNotBlank),
+                latitude = decodePart(parts[7]).toDoubleOrNull(),
+                longitude = decodePart(parts[8]).toDoubleOrNull()
+            )
+            else -> null
+        }
     }.getOrNull()
 
     private fun decodePart(value: String): String = String(Base64.decode(value, Base64.NO_WRAP), Charsets.UTF_8)
@@ -42,6 +65,7 @@ class CustomStationStore(context: Context) {
     private companion object {
         const val KEY_STATIONS = "stations"
         const val MAX_STATIONS = 96
+        const val ALIAS_SEPARATOR = "\u001F"
     }
 }
 

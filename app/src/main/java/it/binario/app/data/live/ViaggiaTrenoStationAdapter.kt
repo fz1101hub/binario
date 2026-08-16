@@ -13,6 +13,8 @@ import it.binario.app.data.TrainDataSource
 import it.binario.app.data.TrainService
 import it.binario.app.data.TrainStop
 import it.binario.app.data.formatTime
+import it.binario.app.data.liveIdentityKey
+import it.binario.app.data.matchesPublishedName
 import it.binario.app.data.timeToMinutes
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
@@ -72,7 +74,10 @@ class ViaggiaTrenoStationAdapter(
     override suspend fun loadRoute(route: SavedRoute, direction: Direction): DataResult {
         val origin = route.origin(direction)
         val destination = route.destination(direction)
-        val key = "${origin.id}:${direction.name}"
+        // Il form pubblico ViaggiaTreno accetta il nome (non il location id, verificato
+        // con probe controllato). L'identità cache resta però il codice canonico quando
+        // è disponibile, così omonimi e rinomini non condividono snapshot per errore.
+        val key = "${origin.liveIdentityKey()}:${direction.name}"
         val now = clock.millis()
         mutex.withLock {
             cache[key]?.takeIf { now < it.expiresAtEpochMillis }?.let { return DataResult.Success(it.snapshot) }
@@ -84,7 +89,7 @@ class ViaggiaTrenoStationAdapter(
             if (services.isEmpty()) {
                 return DataResult.Failure("ViaggiaTreno non mostra partenze utilizzabili da ${origin.name} in questo momento.")
             }
-            val exactMatches = services.filter { stationMatches(it.destination, destination.name) }
+            val exactMatches = services.filter { destination.matchesPublishedName(it.destination) }
             val selected = if (exactMatches.isNotEmpty()) exactMatches else services
             val snapshot = RouteSnapshot(
                 route = route,

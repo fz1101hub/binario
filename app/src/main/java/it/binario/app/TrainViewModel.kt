@@ -18,9 +18,11 @@ import it.binario.app.data.RouteSnapshotCache
 import it.binario.app.data.SavedRoute
 import it.binario.app.data.Station
 import it.binario.app.data.TrainDataSource
+import it.binario.app.data.matchesPublishedName
+import it.binario.app.data.searchableValues
 import it.binario.app.data.repository.BinarioDataGraph
 import it.binario.app.data.TrainService
-import it.binario.app.data.catalog.EmbeddedNationalRailStationCatalog
+import it.binario.app.data.catalog.EmbeddedCuratedRailStationCatalog
 import it.binario.app.data.gtfs.EmbeddedGtfsStationSearchIndex
 import it.binario.app.data.orderServicesForDisplay
 import it.binario.app.widget.RouteWidgetProvider
@@ -54,14 +56,12 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
     private val mobilityPreferencesStore = MobilityPreferencesStore(application)
     private val customStationStore = CustomStationStore(application)
     private val dataSource: TrainDataSource = BinarioDataGraph.routeDataSource(application)
-    private val stationSearchIndex = BinarioDataGraph.stationSearchIndex(application)
-    private val nationalStationCatalog = EmbeddedNationalRailStationCatalog(
+    private val curatedStationCatalog = EmbeddedCuratedRailStationCatalog(
         openAsset = { assetPath -> application.assets.open(assetPath) }
     )
 
     var stations by mutableStateOf(customStationStore.stations())
         private set
-    private val requestedStationQueries = mutableSetOf<String>()
 
     var favouriteStations by mutableStateOf(stationPreferences.favourites(stations))
         private set
@@ -106,24 +106,40 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
         private set
 
     init {
-        loadNationalStationCatalog()
+        loadCuratedStationCatalog()
         if (hasActiveRoute) refresh()
     }
 
-    private fun loadNationalStationCatalog() {
+    private fun loadCuratedStationCatalog() {
         viewModelScope.launch(Dispatchers.Default) {
-            val imported = nationalStationCatalog.load()
+            val imported = curatedStationCatalog.load()
             if (imported.isNotEmpty()) withContext(Dispatchers.Main) {
-                val knownIds = stations.mapTo(hashSetOf()) { it.id }
-                val additions = imported.filter { knownIds.add(it.id) }
-                if (additions.isNotEmpty()) {
-                    stations = stations + additions
-                    favouriteStations = stationPreferences.favourites(stations)
-                    stationMonitors = personalTravelStore.stationMonitors(stations)
+                val legacyCustom = customStationStore.stations()
+                val migratedCustom = legacyCustom.map { station ->
+                    imported.firstOrNull { candidate ->
+                        candidate.id == station.id || candidate.matchesPublishedName(station.name)
+                    } ?: station
                 }
+                stations = imported + migratedCustom.filterNot { custom -> imported.any { it.id == custom.id } }
+                savedRoutes = pinnedFirst(routeStore.routes(stations).map(::canonicalRoute))
+                recentRoutes = routeStore.recentRoutes(stations).map { recent ->
+                    RecentRoute(canonicalStation(recent.origin), canonicalStation(recent.destination))
+                }
+                activeRoute = routeStore.activeRoute(savedRoutes).let(::canonicalRoute)
+                favouriteStations = stationPreferences.favourites(stations)
+                stationMonitors = personalTravelStore.stationMonitors(stations)
             }
         }
     }
+
+    private fun canonicalRoute(route: SavedRoute): SavedRoute = route.copy(
+        outwardOrigin = canonicalStation(route.outwardOrigin),
+        outwardDestination = canonicalStation(route.outwardDestination)
+    )
+
+    private fun canonicalStation(station: Station): Station = stations.firstOrNull { candidate ->
+        candidate.id == station.id || candidate.matchesPublishedName(station.name)
+    } ?: station
 
     val hasActiveRoute: Boolean get() = activeRoute.id != UNCONFIGURED_ROUTE_ID
 
@@ -139,23 +155,14 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
             .take(8)
             .toList()
         val manual = stationFromFreeText(query)
-        val matches = (localMatches + listOfNotNull(manual).filterNot { candidate -> localMatches.any { it.id == candidate.id } }).take(8)
-        if (localMatches.size < 6 && requestedStationQueries.add(normalized)) {
-            viewModelScope.launch(Dispatchers.Default) {
-                val imported = stationSearchIndex.search(query)
-                if (imported.isNotEmpty()) withContext(Dispatchers.Main) {
-                    val knownIds = stations.mapTo(hashSetOf()) { it.id }
-                    val additions = imported.filter { knownIds.add(it.id) }
-                    if (additions.isNotEmpty()) stations = stations + additions
-                }
-            }
-        }
-        return matches
+        return (localMatches + listOfNotNull(manual).filterNot { candidate -> localMatches.any { it.id == candidate.id } }).take(8)
     }
 
     fun stationFromName(name: String): Station? {
         val normalized = EmbeddedGtfsStationSearchIndex.normalize(name)
-        return stations.firstOrNull { EmbeddedGtfsStationSearchIndex.normalize(it.name) == normalized }
+        return stations.firstOrNull { station ->
+            station.searchableValues().any { EmbeddedGtfsStationSearchIndex.normalize(it) == normalized }
+        }
             ?: stationFromFreeText(name)
     }
 
@@ -509,8 +516,10 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
     fun lastRefreshEpochMillis(): Long = snapshot?.retrievedAtEpochMillis ?: cache.lastRefreshEpochMillis()
 
     private fun stationMatches(station: Station, normalizedQuery: String): Boolean {
-        val candidate = EmbeddedGtfsStationSearchIndex.normalize("${station.name} ${station.city} ${station.region.orEmpty()}")
-        return candidate.contains(normalizedQuery) || normalizedQuery.split(' ').all { token -> candidate.contains(token) }
+        return station.searchableValues().any { value ->
+            val candidate = EmbeddedGtfsStationSearchIndex.normalize(value)
+            candidate.contains(normalizedQuery) || normalizedQuery.split(' ').all { token -> candidate.contains(token) }
+        }
     }
 
     private fun rememberStation(station: Station): Station {

@@ -8,14 +8,14 @@ import org.junit.Test
 class StationProximityTest {
     @Test
     fun `orders catalog stations by distance from current point`() {
-        val termini = Station("roma-termini", "Roma Termini", "Roma")
-        val tiburtina = Station("roma-tiburtina", "Roma Tiburtina", "Roma")
-        val torino = Station("torino-pn", "Torino Porta Nuova", "Torino")
+        val termini = Station("curated:S08409", "Roma Termini", "Roma", latitude = 41.9008, longitude = 12.5016)
+        val tiburtina = Station("curated:S08217", "Roma Tiburtina", "Roma", latitude = 41.9100, longitude = 12.5307)
+        val torino = Station("curated:S00200", "Torino Porta Nuova", "Torino", latitude = 45.0620, longitude = 7.6785)
 
         val nearby = StationCoordinates.nearby(listOf(torino, tiburtina, termini), 41.9008, 12.5016)
 
-        assertEquals("roma-termini", nearby.first().station.id)
+        assertEquals("curated:S08409", nearby.first().station.id)
         assertTrue(nearby.first().distanceKm < 0.01)
-        assertEquals("torino-pn", nearby.last().station.id)
+        assertEquals("curated:S00200", nearby.last().station.id)
     }
 }

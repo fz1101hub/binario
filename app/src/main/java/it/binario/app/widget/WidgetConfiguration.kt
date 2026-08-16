@@ -57,20 +57,14 @@ class WidgetConfigurationStore(context: Context) {
 
     private fun key(widgetId: Int): String = "widget_$widgetId"
 
-    private fun encode(value: WidgetDisplayConfiguration): String = listOf(
-        value.targetType.name,
-        value.targetId,
-        value.targetLabel,
-        value.displayName,
-        value.routeOrigin?.id.orEmpty(),
-        value.routeOrigin?.name.orEmpty(),
-        value.routeOrigin?.city.orEmpty(),
-        value.routeOrigin?.region.orEmpty(),
-        value.routeDestination?.id.orEmpty(),
-        value.routeDestination?.name.orEmpty(),
-        value.routeDestination?.city.orEmpty(),
-        value.routeDestination?.region.orEmpty()
-    ).joinToString("|") { Base64.encodeToString(it.toByteArray(Charsets.UTF_8), Base64.NO_WRAP) }
+    private fun encode(value: WidgetDisplayConfiguration): String = (
+        listOf(
+            value.targetType.name,
+            value.targetId,
+            value.targetLabel,
+            value.displayName
+        ) + encodeStation(value.routeOrigin) + encodeStation(value.routeDestination)
+        ).joinToString("|") { Base64.encodeToString(it.toByteArray(Charsets.UTF_8), Base64.NO_WRAP) }
 
     private fun decode(value: String): WidgetDisplayConfiguration? = runCatching {
         val parts = value.split("|").map { String(Base64.decode(it, Base64.NO_WRAP), Charsets.UTF_8) }
@@ -85,10 +79,51 @@ class WidgetConfigurationStore(context: Context) {
                 routeOrigin = stationOrNull(parts[4], parts[5], parts[6], parts[7]),
                 routeDestination = stationOrNull(parts[8], parts[9], parts[10], parts[11])
             )
+            22 -> WidgetDisplayConfiguration(
+                targetType = WidgetTargetType.valueOf(parts[0]),
+                targetId = parts[1],
+                targetLabel = parts[2],
+                displayName = parts[3],
+                routeOrigin = stationOrNull(parts.subList(4, 13)),
+                routeDestination = stationOrNull(parts.subList(13, 22))
+            )
             else -> null
         }
     }.getOrNull()
 
     private fun stationOrNull(id: String, name: String, city: String, region: String): Station? =
         if (id.isBlank() || name.isBlank()) null else Station(id, name, city, region.ifBlank { null })
+
+    private fun encodeStation(station: Station?): List<String> = listOf(
+        station?.id.orEmpty(),
+        station?.name.orEmpty(),
+        station?.city.orEmpty(),
+        station?.region.orEmpty(),
+        station?.railwayCode.orEmpty(),
+        station?.trenitaliaLocationId.orEmpty(),
+        station?.aliases?.joinToString(ALIAS_SEPARATOR).orEmpty(),
+        station?.latitude?.toString().orEmpty(),
+        station?.longitude?.toString().orEmpty()
+    )
+
+    private fun stationOrNull(parts: List<String>): Station? {
+        val id = parts[0]
+        val name = parts[1]
+        if (id.isBlank() || name.isBlank()) return null
+        return Station(
+            id = id,
+            name = name,
+            city = parts[2],
+            region = parts[3].ifBlank { null },
+            railwayCode = parts[4].ifBlank { null },
+            trenitaliaLocationId = parts[5].ifBlank { null },
+            aliases = parts[6].split(ALIAS_SEPARATOR).filter(String::isNotBlank),
+            latitude = parts[7].toDoubleOrNull(),
+            longitude = parts[8].toDoubleOrNull()
+        )
+    }
+
+    private companion object {
+        const val ALIAS_SEPARATOR = "\u001F"
+    }
 }
