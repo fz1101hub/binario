@@ -1,17 +1,12 @@
 package it.binario.app.data.repository
 
 import android.content.Context
+import it.binario.app.data.LocalOnlyRailDataPolicy
 import it.binario.app.data.RailDataRepository
 import it.binario.app.data.TrainDataSource
 import it.binario.app.data.gtfs.EmbeddedGtfsRouteAdapter
 import it.binario.app.data.gtfs.EmbeddedGtfsRealtimeScheduleResolver
 import it.binario.app.data.gtfs.EmbeddedGtfsStationSearchIndex
-import it.binario.app.data.live.ItaloPublicStationAdapter
-import it.binario.app.data.live.RfiInfomobilityRssAdapter
-import it.binario.app.data.live.SncfGtfsRealtimeAdapter
-import it.binario.app.data.live.RfiStationBoardAdapter
-import it.binario.app.data.live.StaRealtimeAdapter
-import it.binario.app.data.live.ViaggiaTrenoStationAdapter
 import it.binario.app.data.provider.AlertProvider
 import it.binario.app.data.provider.KnownProviders
 import it.binario.app.data.provider.ProviderCapability
@@ -26,15 +21,7 @@ import it.binario.app.data.provider.TripUpdateProvider
  */
 object BinarioDataGraph {
     private val defaultRegistry: ProviderRegistry by lazy { KnownProviders.defaultRegistry() }
-    private val officialAlertProviders: List<AlertProvider> by lazy {
-        listOf(RfiInfomobilityRssAdapter(), StaRealtimeAdapter(), SncfGtfsRealtimeAdapter())
-    }
-    private val officialVehiclePositionProviders: List<VehiclePositionProvider> by lazy {
-        listOf(StaRealtimeAdapter())
-    }
-    private val officialTripUpdateProviders: List<TripUpdateProvider> by lazy {
-        listOf(StaRealtimeAdapter(), SncfGtfsRealtimeAdapter())
-    }
+    private val localOnlyPolicy = LocalOnlyRailDataPolicy
     private val routeSourcesByPackage = mutableMapOf<String, TrainDataSource>()
     private val realtimeResolversByPackage = mutableMapOf<String, EmbeddedGtfsRealtimeScheduleResolver>()
     private val stationIndexesByPackage = mutableMapOf<String, EmbeddedGtfsStationSearchIndex>()
@@ -44,11 +31,7 @@ object BinarioDataGraph {
         routeSourcesByPackage.getOrPut(applicationContext.packageName) {
             LegacyTrainDataSourceFacade(
                 legacySource = RailDataRepository(
-                    authorisedSources = listOf(
-                        ItaloPublicStationAdapter(),
-                        ViaggiaTrenoStationAdapter(),
-                        RfiStationBoardAdapter()
-                    ),
+                    authorisedSources = localOnlyPolicy.routeSources(),
                     fallback = EmbeddedGtfsRouteAdapter(openAsset = { assetPath -> applicationContext.assets.open(assetPath) })
                 ),
                 providerRegistry = defaultRegistry
@@ -70,11 +53,11 @@ object BinarioDataGraph {
         }
     }
 
-    fun alertProviders(): List<AlertProvider> = officialAlertProviders
+    fun alertProviders(): List<AlertProvider> = localOnlyPolicy.alertProviders()
 
-    fun vehiclePositionProviders(): List<VehiclePositionProvider> = officialVehiclePositionProviders
+    fun vehiclePositionProviders(): List<VehiclePositionProvider> = localOnlyPolicy.vehiclePositionProviders()
 
-    fun tripUpdateProviders(): List<TripUpdateProvider> = officialTripUpdateProviders
+    fun tripUpdateProviders(): List<TripUpdateProvider> = localOnlyPolicy.tripUpdateProviders()
 
     fun realtimeScheduleResolver(context: Context): EmbeddedGtfsRealtimeScheduleResolver = synchronized(realtimeResolversByPackage) {
         val applicationContext = context.applicationContext
@@ -84,7 +67,7 @@ object BinarioDataGraph {
     }
 
     fun realtimeEnrichmentService(context: Context): RealtimeEnrichmentService =
-        RealtimeEnrichmentService(officialTripUpdateProviders, realtimeScheduleResolver(context))
+        RealtimeEnrichmentService(tripUpdateProviders(), realtimeScheduleResolver(context))
 }
 
 /**

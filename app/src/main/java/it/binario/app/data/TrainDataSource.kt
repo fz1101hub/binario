@@ -103,7 +103,9 @@ data class SavedRoute(
     val name: String,
     val outwardOrigin: Station,
     val outwardDestination: Station,
-    val isPinned: Boolean = false
+    val isPinned: Boolean = false,
+    /** Local-only rank inside the pinned or regular group. Null preserves legacy alphabetical order. */
+    val manualOrder: Int? = null
 ) {
     fun origin(direction: Direction): Station = if (direction == Direction.OUTBOUND) outwardOrigin else outwardDestination
     fun destination(direction: Direction): Station = if (direction == Direction.OUTBOUND) outwardDestination else outwardOrigin

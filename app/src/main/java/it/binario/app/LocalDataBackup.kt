@@ -1,6 +1,7 @@
 package it.binario.app
 
 import it.binario.app.data.SavedRoute
+import it.binario.app.data.SavedRouteOrdering
 import it.binario.app.data.Station
 import org.json.JSONArray
 import org.json.JSONObject
@@ -22,13 +23,13 @@ sealed interface LocalBackupResult {
 
 object LocalDataBackupCodec {
     const val MIME_TYPE = "application/json"
-    private const val VERSION = 1
+    private const val VERSION = 2
 
     fun encode(backup: LocalDataBackup): String = JSONObject().apply {
         put("schemaVersion", VERSION)
         put("kind", "binario-local-backup")
         put("routes", JSONArray().apply { backup.routes.forEach { route -> put(JSONObject().apply {
-            put("id", route.id); put("name", route.name); put("originId", route.outwardOrigin.id); put("destinationId", route.outwardDestination.id); put("pinned", route.isPinned)
+            put("id", route.id); put("name", route.name); put("originId", route.outwardOrigin.id); put("destinationId", route.outwardDestination.id); put("pinned", route.isPinned); route.manualOrder?.takeIf { it in 0 until SavedRouteOrdering.MAX_ROUTES }?.let { put("manualOrder", it) }
         }) } })
         put("favouriteStationIds", JSONArray(backup.favouriteStationIds.sorted()))
         put("monitoredServices", JSONArray().apply { backup.monitoredServices.forEach { monitor -> put(JSONObject().apply { put("number", monitor.number); put("label", monitor.label) }) } })
@@ -43,12 +44,19 @@ object LocalDataBackupCodec {
     fun decode(raw: String, stations: List<Station>): LocalBackupResult = runCatching {
         val root = JSONObject(raw)
         require(root.optString("kind") == "binario-local-backup") { "Il file non è un backup Binario." }
-        require(root.optInt("schemaVersion", -1) == VERSION) { "Versione backup non supportata." }
+        require(root.optInt("schemaVersion", -1) in 1..VERSION) { "Versione backup non supportata." }
         val routes = root.optJSONArray("routes").orEmpty().mapNotNull { item ->
             val objectValue = item as? JSONObject ?: return@mapNotNull null
             val origin = stations.firstOrNull { it.id == objectValue.optString("originId") } ?: return@mapNotNull null
             val destination = stations.firstOrNull { it.id == objectValue.optString("destinationId") } ?: return@mapNotNull null
-            SavedRoute(objectValue.optString("id"), objectValue.optString("name"), origin, destination, objectValue.optBoolean("pinned"))
+            SavedRoute(
+                objectValue.optString("id"),
+                objectValue.optString("name"),
+                origin,
+                destination,
+                objectValue.optBoolean("pinned"),
+                objectValue.optInt("manualOrder", -1).takeIf { it in 0 until SavedRouteOrdering.MAX_ROUTES }
+            )
         }.filter { it.id.isNotBlank() && it.name.isNotBlank() && it.outwardOrigin != it.outwardDestination }.distinctBy { it.id }.take(32)
         require(routes.isNotEmpty()) { "Il backup non contiene tratte valide." }
         val favouriteIds = root.optJSONArray("favouriteStationIds").orEmpty().mapNotNull { it as? String }.filter { id -> stations.any { it.id == id } }.toSet()

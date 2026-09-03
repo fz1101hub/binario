@@ -17,6 +17,7 @@ import it.binario.app.data.RailOperator
 import it.binario.app.data.RouteSnapshot
 import it.binario.app.data.RouteSnapshotCache
 import it.binario.app.data.SavedRoute
+import it.binario.app.data.SavedRouteOrdering
 import it.binario.app.data.Station
 import it.binario.app.data.TrainDataSource
 import it.binario.app.data.matchesPublishedName
@@ -303,6 +304,16 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
         activeRoute = savedRoutes.firstOrNull { it.id == activeRoute.id } ?: unconfiguredRoute()
     }
 
+    fun canMoveRoute(route: SavedRoute, delta: Int): Boolean =
+        SavedRouteOrdering.canMove(savedRoutes, route.id, delta)
+
+    fun moveRoute(route: SavedRoute, delta: Int) {
+        val updated = SavedRouteOrdering.move(savedRoutes, route.id, delta)
+        if (updated == savedRoutes) return
+        savedRoutes = updated
+        routeStore.saveRoutes(savedRoutes)
+    }
+
     fun removeRoute(route: SavedRoute) {
         savedRoutes = savedRoutes.filterNot { it.id == route.id }
         routeStore.saveRoutes(savedRoutes)
@@ -539,8 +550,7 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
     }
 }
 
-private fun pinnedFirst(routes: List<SavedRoute>): List<SavedRoute> =
-    routes.sortedWith(compareByDescending<SavedRoute> { it.isPinned }.thenBy { it.name.lowercase() })
+private fun pinnedFirst(routes: List<SavedRoute>): List<SavedRoute> = SavedRouteOrdering.ordered(routes)
 
 private class RouteStore(context: Context) {
     private val preferences = context.getSharedPreferences("binario_routes_v3", Context.MODE_PRIVATE)
@@ -567,7 +577,7 @@ private class RouteStore(context: Context) {
     }
 
     fun replaceRoutes(routes: List<SavedRoute>): List<SavedRoute> {
-        val normalized = routes.distinctBy { it.id }.take(32)
+        val normalized = SavedRouteOrdering.ordered(routes)
         saveRoutes(normalized)
         return normalized
     }
@@ -638,16 +648,18 @@ private class RouteStore(context: Context) {
         route.name,
         route.outwardOrigin.id,
         route.outwardDestination.id,
-        if (route.isPinned) "1" else "0"
+        if (route.isPinned) "1" else "0",
+        route.manualOrder?.takeIf { it in 0 until SavedRouteOrdering.MAX_ROUTES }?.toString().orEmpty()
     ).joinToString(",") { encode(it) }
 
     private fun decodeRoute(value: String, stations: List<Station>): SavedRoute? {
         val parts = value.split(",")
-        if (parts.size !in 4..5) return null
+        if (parts.size !in 4..6) return null
         val origin = stations.firstOrNull { it.id == decode(parts[2]) } ?: legacyStation(decode(parts[2])) ?: return null
         val destination = stations.firstOrNull { it.id == decode(parts[3]) } ?: legacyStation(decode(parts[3])) ?: return null
         val isPinned = parts.getOrNull(4)?.let { decode(it) == "1" } ?: false
-        return SavedRoute(decode(parts[0]), decode(parts[1]), origin, destination, isPinned)
+        val manualOrder = parts.getOrNull(5)?.let(::decode)?.toIntOrNull()?.takeIf { it in 0 until SavedRouteOrdering.MAX_ROUTES }
+        return SavedRoute(decode(parts[0]), decode(parts[1]), origin, destination, isPinned, manualOrder)
     }
 
     /** Solo migrazione di preferenze personali: non alimenta il catalogo della UI. */

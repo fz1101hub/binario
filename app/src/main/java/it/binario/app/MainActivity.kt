@@ -36,6 +36,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowDownward
+import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.BrightnessAuto
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.DeleteOutline
@@ -1420,6 +1422,9 @@ private fun SettingsScreen(
                 isActive = route.id == viewModel.activeRoute.id,
                 onOpen = { openRoute(route) },
                 onPin = { viewModel.toggleRoutePin(route) },
+                onMove = { delta -> viewModel.moveRoute(route, delta) },
+                canMoveUp = viewModel.canMoveRoute(route, -1),
+                canMoveDown = viewModel.canMoveRoute(route, 1),
                 onRemove = { viewModel.removeRoute(route) },
                 canRemove = viewModel.savedRoutes.size > 1
             )
@@ -1669,6 +1674,9 @@ private fun RouteListRow(
     isActive: Boolean,
     onOpen: () -> Unit,
     onPin: () -> Unit,
+    onMove: (Int) -> Unit,
+    canMoveUp: Boolean,
+    canMoveDown: Boolean,
     onRemove: () -> Unit,
     canRemove: Boolean
 ) {
@@ -1683,6 +1691,12 @@ private fun RouteListRow(
                 Text(route.displayName(Direction.OUTBOUND), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
             Column(horizontalAlignment = Alignment.End) {
+                IconButton(onClick = { onMove(-1) }, enabled = canMoveUp) {
+                    Icon(Icons.Default.ArrowUpward, contentDescription = "Sposta ${route.name} su")
+                }
+                IconButton(onClick = { onMove(1) }, enabled = canMoveDown) {
+                    Icon(Icons.Default.ArrowDownward, contentDescription = "Sposta ${route.name} giù")
+                }
                 IconButton(onClick = onPin) {
                     Icon(if (route.isPinned) Icons.Default.Star else Icons.Default.StarBorder, contentDescription = if (route.isPinned) "Rimuovi fissaggio" else "Fissa tratta")
                 }
