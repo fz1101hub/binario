@@ -65,7 +65,7 @@ class StationBoardRealtimeReconcilerTest {
     private val clock = Clock.fixed(Instant.parse("2026-09-04T10:00:00Z"), ZoneOffset.UTC)
 
     @Test
-    fun \`arricchisce la corsa GTFS con ritardo binario e stato RFI\`() = runBlocking {
+    fun `arricchisce la corsa GTFS con ritardo binario e stato RFI`() = runBlocking {
         val source = SourceId("rfi-station-board")
         val provider = FakeBoardProvider(
             source,
@@ -93,7 +93,7 @@ class StationBoardRealtimeReconcilerTest {
     }
 
     @Test
-    fun \`non applica un tabellone a un numero treno diverso\`() = runBlocking {
+    fun `non applica un tabellone a un numero treno diverso`() = runBlocking {
         val source = SourceId("rfi-station-board")
         val provider = FakeBoardProvider(
             source,
@@ -118,7 +118,7 @@ class StationBoardRealtimeReconcilerTest {
     }
 
     @Test
-    fun \`RFI mantiene priorita e un conflitto realtime viene segnalato\`() = runBlocking {
+    fun `RFI mantiene priorita e un conflitto realtime viene segnalato`() = runBlocking {
         val rfi = SourceId("rfi-station-board")
         val trenitalia = SourceId("viaggiatreno")
         val providers = listOf(
@@ -137,7 +137,7 @@ class StationBoardRealtimeReconcilerTest {
     }
 
     @Test
-    fun \`il wrapper non interroga realtime per una data futura\`() = runBlocking {
+    fun `il wrapper non interroga realtime per una data futura`() = runBlocking {
         var boardCalls = 0
         val provider = object : StationBoardProvider {
             override val descriptor = descriptor(SourceId("rfi-station-board"), "RFI")
@@ -217,7 +217,7 @@ class StationBoardRealtimeReconcilerTest {
             fetchedAt = clock.instant(),
             expiresAt = clock.instant().plusSeconds(60),
             confidence = if (source.value == "rfi-station-board") Confidence.INFRASTRUCTURE_PRIMARY else Confidence.OPERATOR_PRIMARY,
-            traceId = "\${source.value}:\$number"
+            traceId = "${source.value}:\$number"
         )
         return StationBoard(
             stationId = StationId("roma-termini"),
@@ -226,7 +226,7 @@ class StationBoardRealtimeReconcilerTest {
             to = query.requestedAt.atZone(zone).plusHours(8).toInstant(),
             entries = listOf(
                 StationBoardEntry(
-                    runId = TrainRunId("\${source.value}:\$number"),
+                    runId = TrainRunId("${source.value}:\$number"),
                     scheduledTime = scheduled,
                     expectedTime = SourcedValue(expected, ref),
                     destinationOrOrigin = StationId("published:napolicentrale"),
