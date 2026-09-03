@@ -1,5 +1,10 @@
 package it.binario.app.data
 
+import it.binario.app.BuildConfig
+import it.binario.app.data.live.ItaloPublicStationAdapter
+import it.binario.app.data.live.RfiStationBoardAdapter
+import it.binario.app.data.live.ViaggiaTrenoStationAdapter
+
 import it.binario.app.data.live.RfiInfomobilityRssAdapter
 import it.binario.app.data.live.SncfGtfsRealtimeAdapter
 import it.binario.app.data.live.StaRealtimeAdapter
@@ -10,7 +15,12 @@ import org.junit.Test
 class LocalOnlyRailDataPolicyTest {
     @Test
     fun `production policy keeps route planning local but exposes authorised open realtime providers`() {
-        assertTrue(LocalOnlyRailDataPolicy.routeSources().isEmpty())
+        val routeSourceNames = LocalOnlyRailDataPolicy.routeSources().map { it::class.simpleName }.toSet()
+        if (BuildConfig.PERSONAL_REALTIME_SOURCES) {
+            assertEquals(setOf("RfiStationBoardAdapter", "ItaloPublicStationAdapter", "ViaggiaTrenoStationAdapter"), routeSourceNames)
+        } else {
+            assertTrue(routeSourceNames.isEmpty())
+        }
 
         val alerts = LocalOnlyRailDataPolicy.alertProviders()
         assertEquals(
