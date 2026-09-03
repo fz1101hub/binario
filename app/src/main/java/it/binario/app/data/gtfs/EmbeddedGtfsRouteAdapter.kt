@@ -4,6 +4,7 @@ import it.binario.app.data.DataConfidence
 import it.binario.app.data.DataResult
 import it.binario.app.data.Direction
 import it.binario.app.data.Freshness
+import it.binario.app.data.JourneyQuery
 import it.binario.app.data.RailOperator
 import it.binario.app.data.RouteSnapshot
 import it.binario.app.data.SavedRoute
@@ -18,6 +19,11 @@ import java.io.BufferedReader
 import java.io.InputStream
 import java.io.InputStreamReader
 import java.text.Normalizer
+import java.time.DayOfWeek
+import java.time.LocalDate
+import java.time.LocalDateTime
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.util.LinkedHashMap
 import java.util.zip.ZipInputStream
 
@@ -35,15 +41,20 @@ class EmbeddedGtfsRouteAdapter(
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<SourceId, StaticGtfsIndex>?): Boolean = size > 3
     }
 
-    override suspend fun loadRoute(route: SavedRoute, direction: Direction): DataResult {
+    override suspend fun loadRoute(route: SavedRoute, direction: Direction): DataResult =
+        loadRoute(route, direction, JourneyQuery.now())
+
+    override suspend fun loadRoute(route: SavedRoute, direction: Direction, query: JourneyQuery): DataResult {
         val origin = route.origin(direction).name
         val destination = route.destination(direction).name
         packs.forEach { pack ->
             val source = RailSourceCatalog.byId(pack.sourceId) ?: return@forEach
-            val index = synchronized(cache) {
-                cache[pack.sourceId] ?: parse(openAsset(pack.assetPath)).also { cache[pack.sourceId] = it }
+            val index = cache[pack.sourceId] ?: withContext(Dispatchers.IO) {
+                parse(openAsset(pack.assetPath))
+            }.also { parsed ->
+                synchronized(cache) { cache[pack.sourceId] = parsed }
             }
-            val services = index.services(origin, destination, source.id.value).take(24)
+            val services = index.services(origin, destination, source.id.value, query).take(24)
             if (services.isNotEmpty()) {
                 val now = clock()
                 return DataResult.Success(
@@ -82,7 +93,9 @@ class EmbeddedGtfsRouteAdapter(
             stops = tables["stops.txt"].orEmpty().associate { it["stop_id"].orEmpty() to it["stop_name"].orEmpty() },
             routes = tables["routes.txt"].orEmpty().associateBy { it["route_id"].orEmpty() },
             trips = tables["trips.txt"].orEmpty(),
-            stopTimes = tables["stop_times.txt"].orEmpty().groupBy { it["trip_id"].orEmpty() }
+            stopTimes = tables["stop_times.txt"].orEmpty().groupBy { it["trip_id"].orEmpty() },
+            calendars = tables["calendar.txt"].orEmpty().associateBy { it["service_id"].orEmpty() },
+            calendarDates = tables["calendar_dates.txt"].orEmpty().groupBy { it["service_id"].orEmpty() }
         )
     }
 
@@ -122,12 +135,16 @@ class EmbeddedGtfsRouteAdapter(
         val stops: Map<String, String>,
         val routes: Map<String, Map<String, String>>,
         val trips: List<Map<String, String>>,
-        val stopTimes: Map<String, List<Map<String, String>>>
+        val stopTimes: Map<String, List<Map<String, String>>>,
+        val calendars: Map<String, Map<String, String>>,
+        val calendarDates: Map<String, List<Map<String, String>>>
     ) {
-        fun services(origin: String, destination: String, sourceId: String): List<TrainService> {
+        fun services(origin: String, destination: String, sourceId: String, query: JourneyQuery): List<TrainService> {
             val wantedOrigin = normalize(origin)
             val wantedDestination = normalize(destination)
             return trips.asSequence().mapNotNull { trip ->
+                val serviceId = trip["service_id"].orEmpty()
+                if (!serviceRunsOn(serviceId, query.serviceDate)) return@mapNotNull null
                 val times = stopTimes[trip["trip_id"]].orEmpty()
                     .sortedBy { it["stop_sequence"]?.toIntOrNull() ?: Int.MAX_VALUE }
                 val originIndex = times.indexOfFirst { normalize(stops[it["stop_id"]].orEmpty()) == wantedOrigin }
@@ -137,7 +154,11 @@ class EmbeddedGtfsRouteAdapter(
                 if (originIndex < 0 || destinationIndex < 0) return@mapNotNull null
                 val route = routes[trip["route_id"]].orEmpty()
                 val segment = times.subList(originIndex, destinationIndex + 1)
-                val departure = hhmm(segment.first()["departure_time"] ?: segment.first()["arrival_time"] ?: return@mapNotNull null)
+                val rawDeparture = segment.first()["departure_time"] ?: segment.first()["arrival_time"] ?: return@mapNotNull null
+                val departureMinutes = serviceMinutes(rawDeparture) ?: return@mapNotNull null
+                val scheduledDateTime = query.serviceDate.atStartOfDay().plusMinutes(departureMinutes.toLong())
+                if (scheduledDateTime.isBefore(query.requestedAt)) return@mapNotNull null
+                val departure = hhmm(rawDeparture)
                 val number = trip["trip_short_name"]?.takeIf { it.isNotBlank() } ?: trip["trip_id"].orEmpty()
                 TrainService(
                     id = "$sourceId:${trip["trip_id"]}",
@@ -151,17 +172,57 @@ class EmbeddedGtfsRouteAdapter(
                     platform = null,
                     delayMinutes = 0,
                     status = ServiceStatus.ON_TIME,
+                    operationalStatusVerified = false,
+                    scheduledDepartureDateTime = scheduledDateTime,
                     stops = segment.map { stop ->
                         val scheduled = hhmm(stop["departure_time"] ?: stop["arrival_time"].orEmpty())
                         TrainStop(stops[stop["stop_id"]].orEmpty(), scheduled, scheduled, null, 0, false)
                     }
                 )
-            }.toList()
+            }.sortedWith(compareBy<TrainService> { it.scheduledDepartureDateTime }.thenBy { it.number }).toList()
+        }
+
+        private fun serviceRunsOn(serviceId: String, date: LocalDate): Boolean {
+            val exception = calendarDates[serviceId]
+                .orEmpty()
+                .lastOrNull { parseGtfsDate(it["date"].orEmpty()) == date }
+                ?.get("exception_type")
+            if (exception == "1") return true
+            if (exception == "2") return false
+
+            val calendar = calendars[serviceId] ?: return false
+            val start = parseGtfsDate(calendar["start_date"].orEmpty()) ?: return false
+            val end = parseGtfsDate(calendar["end_date"].orEmpty()) ?: return false
+            if (date < start || date > end) return false
+
+            val field = when (date.dayOfWeek) {
+                DayOfWeek.MONDAY -> "monday"
+                DayOfWeek.TUESDAY -> "tuesday"
+                DayOfWeek.WEDNESDAY -> "wednesday"
+                DayOfWeek.THURSDAY -> "thursday"
+                DayOfWeek.FRIDAY -> "friday"
+                DayOfWeek.SATURDAY -> "saturday"
+                DayOfWeek.SUNDAY -> "sunday"
+            }
+            return calendar[field] == "1"
+        }
+
+        private fun parseGtfsDate(value: String): LocalDate? =
+            if (value.matches(Regex("\\d{8}"))) runCatching {
+                LocalDate.of(value.substring(0, 4).toInt(), value.substring(4, 6).toInt(), value.substring(6, 8).toInt())
+            }.getOrNull() else null
+
+        private fun serviceMinutes(value: String): Int? {
+            val parts = value.split(':')
+            val hours = parts.getOrNull(0)?.toIntOrNull() ?: return null
+            val minutes = parts.getOrNull(1)?.toIntOrNull() ?: return null
+            if (hours < 0 || minutes !in 0..59) return null
+            return hours * 60 + minutes
         }
 
         private fun hhmm(value: String): String {
             val parts = value.split(':')
-            val hours = parts.firstOrNull()?.toIntOrNull()?.rem(24) ?: 0
+            val hours = parts.firstOrNull()?.toIntOrNull()?.mod(24) ?: 0
             val minutes = parts.getOrNull(1)?.toIntOrNull() ?: 0
             return "%02d:%02d".format(hours, minutes)
         }
@@ -179,7 +240,7 @@ class EmbeddedGtfsRouteAdapter(
     }
 
     private companion object {
-        val requiredTables = setOf("stops.txt", "routes.txt", "trips.txt", "stop_times.txt")
+        val requiredTables = setOf("stops.txt", "routes.txt", "trips.txt", "stop_times.txt", "calendar.txt", "calendar_dates.txt")
         fun normalize(value: String): String = Normalizer.normalize(value, Normalizer.Form.NFD)
             .replace("\\p{M}".toRegex(), "")
             .lowercase()
