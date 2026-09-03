@@ -1,5 +1,7 @@
 package it.binario.app.data.provider
 
+import it.binario.app.BuildConfig
+
 import it.binario.app.data.core.SourceId
 import it.binario.app.data.gtfs.EmbeddedGtfsPacks
 import it.binario.app.data.sources.RailSourceCatalog
@@ -136,7 +138,7 @@ object KnownProviders {
                 ratePolicy = realtimeRatePolicy,
                 schemaVersion = 1
             ),
-            enabled = false,
+            enabled = BuildConfig.PERSONAL_REALTIME_SOURCES,
             priorityByCapability = mapOf(
                 ProviderCapability.TRAIN_RUN_REALTIME to 30,
                 ProviderCapability.STATION_BOARD to 30
@@ -152,7 +154,7 @@ object KnownProviders {
                 ratePolicy = realtimeRatePolicy,
                 schemaVersion = 1
             ),
-            enabled = false,
+            enabled = BuildConfig.PERSONAL_REALTIME_SOURCES,
             priorityByCapability = mapOf(ProviderCapability.STATION_BOARD to 20)
         ),
         ProviderPolicy(
@@ -195,7 +197,7 @@ object KnownProviders {
                 ratePolicy = realtimeRatePolicy,
                 schemaVersion = 1
             ),
-            enabled = false,
+            enabled = BuildConfig.PERSONAL_REALTIME_SOURCES,
             priorityByCapability = mapOf(
                 ProviderCapability.TRAIN_RUN_REALTIME to 20,
                 ProviderCapability.STATION_BOARD to 20
