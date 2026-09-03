@@ -11,5 +11,5 @@
 - [x] Implementare soltanto i miglioramenti locali realmente assenti e non dipendenti dal redesign: priorità personale della tratta, ordinamento esplicito e denominazione ferroviaria limitata con migrazione retrocompatibile.
 - [x] Estendere test unitari e di persistenza per ogni metadato personale, migrazione, limite e comportamento fail-closed introdotto.
 - [x] Eseguire test Android/Wear, build di debug e verifica delle modifiche prima del commit isolato.
-- [ ] Aggiornare la documentazione del benchmark e creare un commit Git ristretto alle funzionalità effettivamente completate.
+- [x] Aggiornare la documentazione del benchmark e creare un commit Git ristretto alle funzionalità effettivamente completate.
 - [ ] Applicare densità visiva, preferenza del formato orario e microcopy soltanto dopo la scelta esplicita del mockup da parte dell’utente.
