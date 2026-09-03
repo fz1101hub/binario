@@ -154,6 +154,7 @@ data class TrainRunRequest(
 
 data class StationBoardRequest(
     val stationId: StationId,
+    val stationName: String? = null,
     val from: Instant,
     val to: Instant,
     val kind: it.binario.app.data.core.BoardKind
