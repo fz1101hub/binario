@@ -171,7 +171,7 @@ class RouteWidgetProvider : AppWidgetProvider() {
                     views.setTextViewText(trainIds[index], "${service.operator.shortLabel} · ${service.category} ${service.number}")
                     views.setTextViewText(platformIds[index], service.platform?.let { "BIN $it" } ?: "—")
                     views.setTextViewText(statusIds[index], WidgetChangeHighlight.displayStatus(service, state.confidence))
-                    views.setContentDescription(id, service.accessibleLabel)
+                    views.setContentDescription(id, service.accessibleLabel(state.confidence))
                     views.setTextColor(statusIds[index], statusColor(context, service.status))
                     views.setInt(
                         id,
@@ -428,8 +428,10 @@ data class WidgetService(
         ServiceStatus.DELAYED -> "+$delayMinutes"
         ServiceStatus.CANCELLED -> "SOPP."
     }
-    val accessibleLabel: String
-        get() = "Operatore ${operator.accessibleLabel}. $category $number verso $destination. Partenza prevista $expectedDeparture. $statusLabel. ${platform?.let { "Binario $it" } ?: "Binario non disponibile"}."
+    fun accessibleLabel(confidence: DataConfidence): String {
+        val operational = if (confidence == DataConfidence.STATIC_ONLY) "Orario programmato; stato operativo non verificato" else statusLabel
+        return "Operatore ${operator.accessibleLabel}. $category $number verso $destination. Partenza prevista $expectedDeparture. $operational. ${platform?.let { "Binario $it" } ?: "Binario non disponibile"}."
+    }
 }
 
 data class WidgetState(
