@@ -13,6 +13,7 @@ import it.binario.app.data.provider.ProviderCapability
 import it.binario.app.data.provider.ProviderRegistry
 import it.binario.app.data.provider.VehiclePositionProvider
 import it.binario.app.data.provider.TripUpdateProvider
+import it.binario.app.data.provider.StationBoardProvider
 
 /**
  * Punto di composizione unico del livello dati. Nessuna UI, worker o companion
@@ -29,10 +30,14 @@ object BinarioDataGraph {
     fun routeDataSource(context: Context): TrainDataSource = synchronized(routeSourcesByPackage) {
         val applicationContext = context.applicationContext
         routeSourcesByPackage.getOrPut(applicationContext.packageName) {
+            val plannedSource = RailDataRepository(
+                authorisedSources = localOnlyPolicy.routeSources(),
+                fallback = EmbeddedGtfsRouteAdapter(openAsset = { assetPath -> applicationContext.assets.open(assetPath) })
+            )
             LegacyTrainDataSourceFacade(
-                legacySource = RailDataRepository(
-                    authorisedSources = localOnlyPolicy.routeSources(),
-                    fallback = EmbeddedGtfsRouteAdapter(openAsset = { assetPath -> applicationContext.assets.open(assetPath) })
+                legacySource = StationBoardEnrichedTrainDataSource(
+                    plannedSource = plannedSource,
+                    boardProviders = localOnlyPolicy.stationBoardProviders()
                 ),
                 providerRegistry = defaultRegistry
             )
@@ -52,6 +57,8 @@ object BinarioDataGraph {
             )
         }
     }
+
+    fun stationBoardProviders(): List<StationBoardProvider> = localOnlyPolicy.stationBoardProviders()
 
     fun alertProviders(): List<AlertProvider> = localOnlyPolicy.alertProviders()
 
