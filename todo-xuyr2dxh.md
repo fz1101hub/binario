@@ -13,3 +13,10 @@
 - [x] Eseguire test Android/Wear, build di debug e verifica delle modifiche prima del commit isolato.
 - [x] Aggiornare la documentazione del benchmark e creare un commit Git ristretto alle funzionalità effettivamente completate.
 - [ ] Applicare densità visiva, preferenza del formato orario e microcopy soltanto dopo la scelta esplicita del mockup da parte dell’utente.
+- [x] Cercare in tutti i riferimenti Git disponibili la precedente implementazione della richiesta vocale Wear e documentare le capacità realmente recuperabili.
+- [ ] Implementare o completare il flusso Wear “Parla a Binario”: avvio microfono dal polso, interpretazione limitata a domande ferroviarie e risposta accessibile basata su snapshot locale o fonte autorizzata.
+- [ ] Verificare i percorsi di indisponibilità: una richiesta su ritardi, binario o soppressione non può produrre un dato live senza provider autorizzato.
+- [ ] Eseguire test/build Android e Wear, aggiornare il protocollo manuale e creare un commit Git isolato per il companion vocale.
+- [x] Censire commit, rami, tag, worktree e artefatti delle sessioni precedenti per stabilire quali sviluppi companion sono realmente recuperabili.
+- [x] Produrre un registro di recupero che distingua codice consolidato su Git, artefatti compilati senza sorgente e capacità citate ma non ricostruibili.
+- [ ] Consolidare il baseline recuperabile nel repository Binario prima di estendere ulteriormente il companion vocale Wear.
