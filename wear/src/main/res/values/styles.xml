@@ -1,0 +1,3 @@
+<resources>
+    <style name="Theme.BinarioWear" parent="android:style/Theme.DeviceDefault.NoActionBar" />
+</resources>
