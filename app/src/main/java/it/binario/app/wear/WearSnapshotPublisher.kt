@@ -37,7 +37,7 @@ object WearSnapshotPublisher {
                     dataMap.putString("service${index}Category", service.trainCategory.accessibleLabel)
                     dataMap.putString("service${index}Destination", service.destination)
                     dataMap.putString("service${index}Expected", service.expectedDeparture)
-                    dataMap.putString("service${index}Status", service.status.accessibleLabel)
+                    dataMap.putString("service${index}Status", if (snapshot.confidence == it.binario.app.data.DataConfidence.STATIC_ONLY) "Programmato" else service.status.accessibleLabel)
                     dataMap.putInt("service${index}Delay", service.delayMinutes)
                     dataMap.putString("service${index}Platform", service.platform.orEmpty())
                 }
