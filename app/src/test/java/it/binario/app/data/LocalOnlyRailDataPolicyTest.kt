@@ -15,11 +15,13 @@ import org.junit.Test
 class LocalOnlyRailDataPolicyTest {
     @Test
     fun `production policy keeps route planning local but exposes authorised open realtime providers`() {
-        val routeSourceNames = LocalOnlyRailDataPolicy.routeSources().map { it::class.simpleName }.toSet()
+        assertTrue(LocalOnlyRailDataPolicy.routeSources().isEmpty())
+
+        val boardProviderNames = LocalOnlyRailDataPolicy.stationBoardProviders().map { it::class.simpleName }.toSet()
         if (BuildConfig.PERSONAL_REALTIME_SOURCES) {
-            assertEquals(setOf("RfiStationBoardAdapter", "ItaloPublicStationAdapter", "ViaggiaTrenoStationAdapter"), routeSourceNames)
+            assertEquals(setOf("RfiStationBoardAdapter", "ItaloPublicStationAdapter", "ViaggiaTrenoStationAdapter"), boardProviderNames)
         } else {
-            assertTrue(routeSourceNames.isEmpty())
+            assertTrue(boardProviderNames.isEmpty())
         }
 
         val alerts = LocalOnlyRailDataPolicy.alertProviders()
