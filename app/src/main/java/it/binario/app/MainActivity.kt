@@ -641,7 +641,18 @@ private fun PlannerScreen(
                             Text("Il filtro viene applicato solo quando la fonte restituisce informazioni sui cambi; Binario non li stima.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         Button(
-                            onClick = { if (origin != null && destination != null && origin != destination && viewModel.searchRoute(origin, destination)) showResults() },
+                            onClick = {
+                                val selectedDate = runCatching { LocalDate.parse(travelDate) }.getOrNull()
+                                val selectedTime = runCatching { LocalTime.parse(travelTime) }.getOrNull()
+                                if (
+                                    origin != null &&
+                                    destination != null &&
+                                    origin != destination &&
+                                    selectedDate != null &&
+                                    selectedTime != null &&
+                                    viewModel.searchRoute(origin, destination, selectedDate, selectedTime)
+                                ) showResults()
+                            },
                             enabled = origin != null && destination != null && origin != destination,
                             modifier = Modifier.fillMaxWidth()
                         ) {
