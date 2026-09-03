@@ -1027,7 +1027,7 @@ private fun NextDepartureHero(service: TrainService, onOpen: () -> Unit) {
                         Text("programmata ${service.scheduledDeparture}", style = MaterialTheme.typography.bodySmall)
                     }
                 }
-                ServiceStatusBadge(service.status, service.delayMinutes)
+                ServiceStatusBadge(service)
             }
             Text(service.destination, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
             Text("${service.operator.shortLabel} · ${service.category} ${service.number}", style = MaterialTheme.typography.bodyMedium)
@@ -1064,7 +1064,8 @@ private fun DepartureListRow(service: TrainService, isNext: Boolean = false, onO
     ) {
         Column(Modifier.width(68.dp)) {
             Text(service.expectedDeparture, style = MaterialTheme.typography.titleLarge, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
-            if (service.delayMinutes > 0) Text("+${service.delayMinutes} min", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.tertiary, fontWeight = FontWeight.Bold)
+            if (!service.operationalStatusVerified) Text("programmato", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            else if (service.delayMinutes > 0) Text("+${service.delayMinutes} min", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.tertiary, fontWeight = FontWeight.Bold)
             else Text("in orario", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.secondary)
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -1075,7 +1076,7 @@ private fun DepartureListRow(service: TrainService, isNext: Boolean = false, onO
             Text(service.platform?.let { "Bin. $it" } ?: "—", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
         }
         Column(horizontalAlignment = Alignment.End, modifier = Modifier.width(50.dp)) {
-            Text(compactStatusLabel(service.status, service.delayMinutes), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+            Text(compactStatusLabel(service), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
         }
     }
     HorizontalDivider(modifier = Modifier.padding(start = 20.dp), color = MaterialTheme.colorScheme.outlineVariant)
@@ -1812,7 +1813,7 @@ private fun ServiceDetailScreen(
                             Text(service.expectedDeparture, style = MaterialTheme.typography.displaySmall, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
                             Text("Programmata ${service.scheduledDeparture}", style = MaterialTheme.typography.bodySmall)
                         }
-                        ServiceStatusBadge(service.status, service.delayMinutes)
+                        ServiceStatusBadge(service)
                     }
                     Text(service.platform?.let { "Binario $it" } ?: "Binario da confermare", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 }
@@ -1882,6 +1883,7 @@ private fun ServiceDetailScreen(
                 delay = stop.delayMinutes,
                 platform = stop.platform,
                 completed = stop.completed,
+                operationalStatusVerified = service.operationalStatusVerified,
                 onSetAlarm = { onScheduleStopAlarm(service, stop) }
             )
         }
@@ -1897,13 +1899,14 @@ private fun StopTimelineRow(
     delay: Int,
     platform: String?,
     completed: Boolean,
+    operationalStatusVerified: Boolean,
     onSetAlarm: () -> Unit
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp, vertical = 10.dp)
-            .semantics { contentDescription = "$station. Previsto $expected. Programmato $scheduled. ${if (delay > 0) "$delay minuti di ritardo" else "In orario"}. ${platform?.let { "Binario $it" } ?: "Binario non disponibile"}." },
+            .semantics { contentDescription = "$station. Previsto $expected. Programmato $scheduled. ${if (!operationalStatusVerified) "Stato operativo non verificato" else if (delay > 0) "$delay minuti di ritardo" else "In orario"}. ${platform?.let { "Binario $it" } ?: "Binario non disponibile"}." },
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(28.dp)) {
@@ -1927,10 +1930,12 @@ private fun StopTimelineRow(
 }
 
 @Composable
-private fun ServiceStatusBadge(status: ServiceStatus, delay: Int) {
-    val (container, foreground, text) = when (status) {
+private fun ServiceStatusBadge(service: TrainService) {
+    val (container, foreground, text) = if (!service.operationalStatusVerified) {
+        Triple(MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.colorScheme.onSurfaceVariant, "Programmato")
+    } else when (service.status) {
         ServiceStatus.ON_TIME -> Triple(MaterialTheme.colorScheme.secondary, MaterialTheme.colorScheme.onSecondary, "In orario")
-        ServiceStatus.DELAYED -> Triple(MaterialTheme.colorScheme.tertiary, MaterialTheme.colorScheme.onTertiary, "+$delay min")
+        ServiceStatus.DELAYED -> Triple(MaterialTheme.colorScheme.tertiary, MaterialTheme.colorScheme.onTertiary, "+${service.delayMinutes} min")
         ServiceStatus.CANCELLED -> Triple(MaterialTheme.colorScheme.error, MaterialTheme.colorScheme.onError, "Soppresso")
     }
     Surface(color = container, contentColor = foreground, shape = RoundedCornerShape(999.dp)) {
@@ -1938,8 +1943,11 @@ private fun ServiceStatusBadge(status: ServiceStatus, delay: Int) {
     }
 }
 
-private fun compactStatusLabel(status: ServiceStatus, delay: Int): String = when (status) {
-    ServiceStatus.ON_TIME -> "In orario"
-    ServiceStatus.DELAYED -> "+$delay min"
-    ServiceStatus.CANCELLED -> "Soppresso"
+private fun compactStatusLabel(service: TrainService): String {
+    if (!service.operationalStatusVerified) return "Programm."
+    return when (service.status) {
+        ServiceStatus.ON_TIME -> "In orario"
+        ServiceStatus.DELAYED -> "+${service.delayMinutes} min"
+        ServiceStatus.CANCELLED -> "Soppresso"
+    }
 }
