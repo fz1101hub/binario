@@ -2,6 +2,7 @@ package it.binario.app.data
 
 import it.binario.app.data.provider.AlertProvider
 import it.binario.app.data.provider.TripUpdateProvider
+import it.binario.app.data.provider.StationBoardProvider
 import it.binario.app.data.provider.VehiclePositionProvider
 import it.binario.app.BuildConfig
 import it.binario.app.data.live.ItaloPublicStationAdapter
@@ -16,7 +17,10 @@ import it.binario.app.data.live.ViaggiaTrenoStationAdapter
  * the execution path until a documented provider is expressly authorised.
  */
 object LocalOnlyRailDataPolicy {
-    fun routeSources(): List<TrainDataSource> =
+    /** Journey planning is always sourced separately from station-board realtime. */
+    fun routeSources(): List<TrainDataSource> = emptyList()
+
+    fun stationBoardProviders(): List<StationBoardProvider> =
         if (BuildConfig.PERSONAL_REALTIME_SOURCES) {
             listOf(
                 RfiStationBoardAdapter(),
