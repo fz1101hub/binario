@@ -4,6 +4,7 @@ import it.binario.app.data.DataConfidence
 import it.binario.app.data.DataResult
 import it.binario.app.data.Direction
 import it.binario.app.data.Freshness
+import it.binario.app.data.JourneyQuery
 import it.binario.app.data.RailOperator
 import it.binario.app.data.RouteSnapshot
 import it.binario.app.data.SavedRoute
@@ -98,12 +99,18 @@ class RfiStationBoardAdapter(
     private val mutex = Mutex()
     private val cache = mutableMapOf<String, CachedSnapshot>()
 
-    override suspend fun loadRoute(route: SavedRoute, direction: Direction): DataResult {
+    override suspend fun loadRoute(route: SavedRoute, direction: Direction): DataResult =
+        loadRoute(route, direction, JourneyQuery.now())
+
+    override suspend fun loadRoute(route: SavedRoute, direction: Direction, query: JourneyQuery): DataResult {
+        if (query.serviceDate != clock.instant().atZone(clock.zone).toLocalDate()) {
+            return DataResult.Failure("Il monitor RFI espone stato operativo corrente: la fonte live viene usata solo per la data odierna.")
+        }
         val origin = route.origin(direction)
         val destination = route.destination(direction)
         val placeId = RfiStationIds.placeId(origin.id)
             ?: return DataResult.Failure("Il tabellone RFI non è ancora configurato per ${origin.name}.")
-        val key = "${origin.id}:${direction.name}"
+        val key = "${origin.id}:${destination.id}:${direction.name}"
         val now = clock.millis()
         mutex.withLock {
             cache[key]?.takeIf { now < it.expiresAtEpochMillis }?.let { return DataResult.Success(it.snapshot) }
@@ -117,23 +124,20 @@ class RfiStationBoardAdapter(
                 return DataResult.Failure("RFI non mostra partenze utilizzabili da ${origin.name} in questo momento.")
             }
             val exactMatches = services.filter { stationMatches(it.destination, destination.name) }
-            val selected = if (exactMatches.isNotEmpty()) exactMatches else services
-            val isFiltered = exactMatches.isNotEmpty()
+            if (exactMatches.isEmpty()) {
+                return DataResult.Failure("RFI non mostra una partenza diretta da ${origin.name} verso ${destination.name} nel tabellone corrente.")
+            }
             val snapshot = RouteSnapshot(
                 route = route,
                 direction = direction,
-                services = selected,
+                services = exactMatches,
                 providerName = "RFI — Monitor Arrivi/Partenze live",
                 retrievedAtEpochMillis = now,
                 expiresAtEpochMillis = now + cacheTtlMillis,
                 freshness = Freshness.FRESH,
                 sourceObservedAtEpochMillis = now,
                 confidence = DataConfidence.INFRASTRUCTURE_PRIMARY,
-                notice = if (isFiltered) {
-                    "Dati live RFI: partenze da ${origin.name} verso ${destination.name}."
-                } else {
-                    "Dati live RFI: tabellone partenze da ${origin.name}; nessuna corrispondenza diretta per ${destination.name} nel monitor corrente."
-                }
+                notice = "Dati live RFI: partenze da ${origin.name} verso ${destination.name}."
             )
             mutex.withLock { cache[key] = CachedSnapshot(snapshot, now + cacheTtlMillis) }
             DataResult.Success(snapshot)
