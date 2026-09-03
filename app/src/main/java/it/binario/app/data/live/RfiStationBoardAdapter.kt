@@ -134,10 +134,10 @@ class RfiStationBoardAdapter(
         val stationName = request.stationName?.takeIf(String::isNotBlank) ?: request.stationId.value
         val fetchedAt = clock.instant()
         return try {
-            val url = "https://iechub.rfi.it/ArriviPartenze/ArrivalsDepartures/Monitor?placeId=\$placeId&arrivals=False"
+            val url = "https://iechub.rfi.it/ArriviPartenze/ArrivalsDepartures/Monitor?placeId=$placeId&arrivals=False"
             val html = fetcher.fetch(url)
             val syntheticRoute = SavedRoute(
-                id = "station-board:\${request.stationId.value}",
+                id = "station-board:${request.stationId.value}",
                 name = stationName,
                 outwardOrigin = Station(request.stationId.value, stationName, stationName),
                 outwardDestination = Station("station-board-target", "Destinazione", "")
