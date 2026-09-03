@@ -5,6 +5,9 @@ import androidx.core.content.edit
 import it.binario.app.data.core.DelayConsistency
 import it.binario.app.data.core.OperationalDetection
 import java.time.Instant
+import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.LocalTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -141,7 +144,11 @@ data class TrainService(
     val lastOperationalDetection: OperationalDetection? = null,
     /** Ritardo calcolato sull'ultimo evento operativo; nullo se l'evento non è confrontabile. */
     val detectionDelayMinutes: Int? = null,
-    val delayConsistency: DelayConsistency = DelayConsistency.NOT_COMPARABLE
+    val delayConsistency: DelayConsistency = DelayConsistency.NOT_COMPARABLE,
+    /** False for schedule-only data: ON_TIME must never be presented as an observed operational state. */
+    val operationalStatusVerified: Boolean = true,
+    /** Date/time of the scheduled departure when the source query provides a service date. */
+    val scheduledDepartureDateTime: LocalDateTime? = null
 ) {
     val category: String get() = trainCategory.accessibleLabel
     val operatorAndCategory: String get() = "${operator.shortLabel} · ${trainCategory.accessibleLabel}"
@@ -151,7 +158,8 @@ data class TrainService(
             val detection = detectionDelayMinutes?.let { value ->
                 lastOperationalDetection?.let { " Ritardo all'ultima rilevazione di ${it.locationLabel}: $value minuti." }
             }.orEmpty()
-            return "Operatore ${operator.accessibleLabel}. ${trainCategory.accessibleLabel} $number da $origin a $destination. Partenza prevista $expectedDeparture. ${if (transferCount == 0) "Viaggio diretto" else "$transferCount ${if (transferCount == 1) "cambio" else "cambi"}"}. ${status.accessibleLabel}$official$detection ${platform?.let { "Binario $it" } ?: "Binario non disponibile"}."
+            val operational = if (operationalStatusVerified) status.accessibleLabel else "Stato operativo non verificato"
+            return "Operatore ${operator.accessibleLabel}. ${trainCategory.accessibleLabel} $number da $origin a $destination. Partenza prevista $expectedDeparture. ${if (transferCount == 0) "Viaggio diretto" else "$transferCount ${if (transferCount == 1) "cambio" else "cambi"}"}. $operational$official$detection ${platform?.let { "Binario $it" } ?: "Binario non disponibile"}."
         }
 }
 
@@ -180,20 +188,45 @@ sealed interface DataResult {
 }
 
 /** Single neutral display-order rule shared by lists, widget and smartwatch. */
-fun orderServicesForDisplay(services: List<TrainService>): List<TrainService> =
-    services.sortedWith(
+fun orderServicesForDisplay(services: List<TrainService>): List<TrainService> {
+    if (services.isNotEmpty() && services.all { it.scheduledDepartureDateTime != null }) {
+        return services.sortedWith(
+            compareBy<TrainService> { it.scheduledDepartureDateTime }
+                .thenBy { it.number }
+        )
+    }
+    return services.sortedWith(
         compareBy<TrainService> {
             runCatching { timeToMinutes(it.expectedDeparture) }.getOrDefault(Int.MAX_VALUE)
         }.thenBy { it.number }
     )
+}
 
 /**
  * Contract-only boundary. Production implementations must use a documented,
  * authorized provider or a personal backend. The Android client never embeds
  * credentials and never calls undocumented operator endpoints directly.
  */
+data class JourneyQuery(
+    val serviceDate: LocalDate,
+    val departureTime: LocalTime
+) {
+    val requestedAt: LocalDateTime get() = LocalDateTime.of(serviceDate, departureTime)
+
+    companion object {
+        fun now(): JourneyQuery {
+            val now = LocalDateTime.now()
+            return JourneyQuery(now.toLocalDate(), now.toLocalTime().withSecond(0).withNano(0))
+        }
+    }
+}
+
 interface TrainDataSource {
     suspend fun loadRoute(route: SavedRoute, direction: Direction): DataResult
+
+    /** Query-aware overload. Legacy/live adapters can ignore the schedule query until migrated. */
+    suspend fun loadRoute(route: SavedRoute, direction: Direction, query: JourneyQuery): DataResult =
+        loadRoute(route, direction)
 }
 
 /** A future authorised server-side gateway for Trenitalia operational data. */
@@ -224,10 +257,13 @@ class RailDataRepository(
     private val fallback: TrainDataSource = UnavailableTrainDataSource(),
     private val clock: () -> Long = System::currentTimeMillis
 ) : TrainDataSource {
-    override suspend fun loadRoute(route: SavedRoute, direction: Direction): DataResult {
+    override suspend fun loadRoute(route: SavedRoute, direction: Direction): DataResult =
+        loadRoute(route, direction, JourneyQuery.now())
+
+    override suspend fun loadRoute(route: SavedRoute, direction: Direction, query: JourneyQuery): DataResult {
         val candidates = mutableListOf<RouteSnapshot>()
         authorisedSources.forEach { source ->
-            when (val result = source.loadRoute(route, direction)) {
+            when (val result = source.loadRoute(route, direction, query)) {
                 is DataResult.Success -> {
                     val enriched = withQuality(result.snapshot)
                     candidates += enriched
@@ -243,7 +279,7 @@ class RailDataRepository(
                 .thenBy { it.sourceObservedAtEpochMillis }
         )?.let { return DataResult.Success(it) }
 
-        return when (val result = fallback.loadRoute(route, direction)) {
+        return when (val result = fallback.loadRoute(route, direction, query)) {
             is DataResult.Success -> DataResult.Success(withQuality(result.snapshot))
             is DataResult.Failure -> result
         }
