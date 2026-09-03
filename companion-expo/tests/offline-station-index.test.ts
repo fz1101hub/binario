@@ -3,7 +3,7 @@ import { findCanonicalOfflineStationByCode, findNearbyOfflineStations, offlineSt
 
 describe("indice stazioni offline", () => {
   it("espone il catalogo canonico versionato e con checksum", () => {
-    expect(offlineStationCatalog.version).toBe("stazioni-canoniche-v2");
+    expect(offlineStationCatalog.version).toBe("curated-it-rail-stations-v4");
     expect(offlineStationCatalog.checksumSha256).toHaveLength(64);
     expect(offlineStationCatalog.stationCount).toBe(offlineStationCatalog.stations.length);
     expect(offlineStationCatalog.stationCount).toBeGreaterThan(3_000);

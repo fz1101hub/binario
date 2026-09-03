@@ -1,5 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { createExplicitRecurringLocalRouteDrafts, createLocalPlannedRoute, isLocalPlannedRoute, setLocalJourneyChecklistItem, setLocalPlannedRouteCompleted, sortLocalPlannedRoutes, type ExplicitLocalJourneyRecurrence, type LocalJourneyChecklistItem, type LocalPlannedRoute, type LocalRouteDraft } from "@/lib/local-route-contract";
+import { createExplicitRecurringLocalRouteDrafts, createLocalPlannedRoute, isLocalPlannedRoute, setLocalJourneyChecklistItem, setLocalPlannedRouteCompleted, setLocalPlannedRouteLabel, setLocalPlannedRoutePinned, sortLocalPlannedRoutes, type ExplicitLocalJourneyRecurrence, type LocalJourneyChecklistItem, type LocalPlannedRoute, type LocalRouteDraft } from "@/lib/local-route-contract";
 import type { CompanionPlannedRoute } from "@/lib/planned-route-reminder";
 import type { ManualRouteTransferRoute } from "@/lib/manual-route-transfer-contract";
 
@@ -46,6 +46,32 @@ export async function setLocalPlannedRouteCompletion(routeId: number, completed:
   const routes = await loadLocalPlannedRoutes();
   if (!routes.some(route => route.id === routeId)) return false;
   await save(routes.map(route => route.id === routeId ? setLocalPlannedRouteCompleted(route, completed, now) : route));
+  return true;
+}
+
+/** Etichetta libera ma circoscritta alla tratta locale: non entra in export, sync o provider. */
+export async function setLocalPlannedRouteCustomLabel(routeId: number, label: string | null) {
+  const routes = await loadLocalPlannedRoutes();
+  if (!routes.some(route => route.id === routeId)) return false;
+  await save(routes.map(route => route.id === routeId ? setLocalPlannedRouteLabel(route, label) : route));
+  return true;
+}
+
+export async function setLocalPlannedRoutePriority(routeId: number, pinned: boolean) {
+  const routes = await loadLocalPlannedRoutes();
+  if (!routes.some(route => route.id === routeId)) return false;
+  await save(routes.map(route => route.id === routeId ? setLocalPlannedRoutePinned(route, pinned) : route));
+  return true;
+}
+
+/** Il riordino esplicito agisce sul solo archivio locale e non modifica orari ferroviari o promemoria. */
+export async function moveLocalPlannedRoute(routeId: number, direction: "up" | "down") {
+  const ordered = sortLocalPlannedRoutes(await loadLocalPlannedRoutes());
+  const index = ordered.findIndex(route => route.id === routeId);
+  const target = index + (direction === "up" ? -1 : 1);
+  if (index < 0 || target < 0 || target >= ordered.length) return false;
+  [ordered[index], ordered[target]] = [ordered[target], ordered[index]];
+  await save(ordered.map((route, manualOrder) => ({ ...route, manualOrder })));
   return true;
 }
 

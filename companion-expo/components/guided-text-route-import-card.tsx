@@ -1,12 +1,12 @@
 import { maxGuidedTextImportCharacters, parseGuidedTextLocalRouteImports, type GuidedTextLocalRouteDraft } from "@/lib/local-journey-itineraries";
 import { acknowledgeNativeAction } from "@/lib/native-feedback";
 import { useCompanionTheme } from "@/lib/theme";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
 function draftKey(draft: GuidedTextLocalRouteDraft) { return `${draft.origin.toLocaleLowerCase("it")}|${draft.destination.toLocaleLowerCase("it")}|${draft.travelDate}|${draft.travelTime}`; }
 
-export function GuidedTextRouteImportCard({ existingKeys, onConfirmImport }: { existingKeys: readonly string[]; onConfirmImport: (drafts: GuidedTextLocalRouteDraft[]) => Promise<number> }) {
+export function GuidedTextRouteImportCard({ existingKeys, onConfirmImport, receivedText, onReceivedTextAccepted }: { existingKeys: readonly string[]; onConfirmImport: (drafts: GuidedTextLocalRouteDraft[]) => Promise<number>; receivedText?: string | null; onReceivedTextAccepted?: () => void }) {
   const { colors } = useCompanionTheme();
   const [rawText, setRawText] = useState("");
   const [drafts, setDrafts] = useState<GuidedTextLocalRouteDraft[]>([]);
@@ -14,6 +14,13 @@ export function GuidedTextRouteImportCard({ existingKeys, onConfirmImport }: { e
   const [reviewed, setReviewed] = useState(false);
   const [message, setMessage] = useState("");
   const existing = useMemo(() => new Set(existingKeys), [existingKeys]);
+  useEffect(() => {
+    if (!receivedText?.trim()) return;
+    setRawText(receivedText.slice(0, maxGuidedTextImportCharacters));
+    setDrafts([]); setSelectedKeys([]); setReviewed(false);
+    setMessage("Testo condiviso ricevuto. Crea l’anteprima e rivedi i dati: Binario non importa automaticamente.");
+    onReceivedTextAccepted?.();
+  }, [onReceivedTextAccepted, receivedText]);
 
   function createPreview() {
     const candidates = parseGuidedTextLocalRouteImports(rawText).filter(draft => !existing.has(draftKey(draft)));
@@ -33,7 +40,7 @@ export function GuidedTextRouteImportCard({ existingKeys, onConfirmImport }: { e
 
   return <View style={[styles.card, { backgroundColor: colors.background, borderColor: colors.border }]}>
     <Text accessibilityRole="header" style={[styles.heading, { color: colors.foreground }]}>Importa da testo</Text>
-    <Text style={[styles.copy, { color: colors.muted }]}>Incolla una o più tratte dal menu modifica della tastiera. Se un’altra app offre Condividi, copia prima il testo e incollalo qui: Binario non legge messaggi, appunti o link da solo.</Text>
+    <Text style={[styles.copy, { color: colors.muted }]}>Incolla una o più tratte oppure usa Condividi testo verso Binario. Il testo viene solo proposto qui: Binario non importa automaticamente e non legge messaggi, appunti o link da solo.</Text>
     <TextInput accessibilityLabel="Testo delle tratte da importare" accessibilityHint="Una riga per tratta. Devi poi controllare l’anteprima prima di importare." value={rawText} onChangeText={value => { setRawText(value.slice(0, maxGuidedTextImportCharacters)); setDrafts([]); setSelectedKeys([]); setReviewed(false); }} placeholder={"Roma Termini → Bologna Centrale · 12/09/2026 alle 08:30\nBologna Centrale → Milano Centrale · 12/09/2026 alle 11:05"} placeholderTextColor={colors.muted} multiline maxLength={maxGuidedTextImportCharacters} textAlignVertical="top" style={[styles.input, { color: colors.foreground, borderColor: colors.border }]} />
     <Text style={[styles.hint, { color: colors.muted }]}>Ogni riga richiede origine, destinazione, data `GG/MM/AAAA` o `AAAA-MM-GG` e ora `HH:MM`. Il testo resta qui finché lo cancelli o completi l’importazione.</Text>
     <Pressable disabled={!rawText.trim()} accessibilityRole="button" accessibilityState={{ disabled: !rawText.trim() }} accessibilityLabel="Crea anteprima delle tratte nel testo" onPress={createPreview} style={({ pressed }) => [styles.action, { borderColor: colors.primary, backgroundColor: colors.primary, opacity: !rawText.trim() ? 0.5 : pressed ? 0.72 : 1 }]}><Text style={styles.actionText}>Crea anteprima</Text></Pressable>

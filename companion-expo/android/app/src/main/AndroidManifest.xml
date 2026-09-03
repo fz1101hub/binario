@@ -23,6 +23,7 @@
       <intent-filter>
         <action android:name="com.google.android.gms.wearable.MESSAGE_RECEIVED"/>
         <data android:scheme="wear" android:host="*" android:pathPrefix="/binario/companion/voice-request/v1"/>
+        <data android:scheme="wear" android:host="*" android:pathPrefix="/binario/companion/open-checklist/v1"/>
       </intent-filter>
     </service>
     <activity android:name=".MainActivity" android:configChanges="keyboard|keyboardHidden|orientation|screenSize|screenLayout|uiMode" android:launchMode="singleTask" android:windowSoftInputMode="adjustResize" android:theme="@style/Theme.App.SplashScreen" android:exported="true" android:screenOrientation="portrait">

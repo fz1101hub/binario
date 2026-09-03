@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyLocalJourneyChecklistPreset, createLocalPlannedRoute, createReplannedLocalRouteDraft, createReturnLocalRouteDraft, filterLocalJourneyAgenda, getLocalJourneyPreparationPreset, localCountdownLabel, remainingLocalJourneyChecklistItems, selectNextLocalPlannedRoute, setLocalJourneyChecklistItem, sortLocalPlannedRoutes } from "../lib/local-route-contract";
+import { applyLocalJourneyChecklistPreset, createLocalPlannedRoute, createReplannedLocalRouteDraft, createReturnLocalRouteDraft, displayLocalPlannedRouteName, filterLocalJourneyAgenda, getLocalJourneyPreparationPreset, isLocalPlannedRoute, localCountdownLabel, remainingLocalJourneyChecklistItems, selectNextLocalPlannedRoute, setLocalJourneyChecklistItem, setLocalPlannedRouteLabel, sortLocalPlannedRoutes } from "../lib/local-route-contract";
 import { createLocalScheduledSnapshot, evaluateSnapshot } from "../lib/companion-snapshot";
 
 describe("pianificazione locale Binario", () => {
@@ -54,5 +54,14 @@ describe("pianificazione locale Binario", () => {
     expect(replanned).toMatchObject({ origin: "Roma", destination: "Milano", travelDate: "", travelTime: "", plannedReminderMinutes: 30 });
     expect(replanned.checklist.every(item => !item.completed)).toBe(true);
     expect(createReturnLocalRouteDraft(route)).toMatchObject({ origin: "Milano", destination: "Roma", originStationCode: "S002", destinationStationCode: "S001", travelDate: "", travelTime: "" });
+  });
+
+  it("mantiene le tratte preesistenti valide e ordina prima priorità ed ordine manuale", () => {
+    const first = createLocalPlannedRoute({ origin: "Roma", destination: "Milano", travelDate: "2030-06-01", travelTime: "10:00", plannedReminderMinutes: 15 }, 1, 1)!;
+    const second = { ...createLocalPlannedRoute({ origin: "Roma", destination: "Napoli", travelDate: "2030-05-01", travelTime: "08:00", plannedReminderMinutes: 15 }, 2, 1)!, pinned: true, manualOrder: 4 };
+    const third = { ...createLocalPlannedRoute({ origin: "Roma", destination: "Bologna", travelDate: "2030-04-01", travelTime: "09:00", plannedReminderMinutes: 15 }, 3, 1)!, manualOrder: 1 };
+    expect(isLocalPlannedRoute({ ...first, customLabel: undefined, pinned: undefined, manualOrder: undefined })).toBe(true);
+    expect(sortLocalPlannedRoutes([first, third, second]).map(route => route.id)).toEqual([2, 3, 1]);
+    expect(displayLocalPlannedRouteName(setLocalPlannedRouteLabel(first, "Pendolare Ostiense"))).toBe("Pendolare Ostiense");
   });
 });

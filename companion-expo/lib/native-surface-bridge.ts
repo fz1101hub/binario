@@ -1,0 +1,4 @@
+import { NativeModules } from "react-native";
+import type { CompanionSnapshot } from "@/lib/companion-snapshot";
+import type { LocalPlannedRoute } from "@/lib/local-route-contract";
+export function syncNativeCompanionSurfaces(snapshot: CompanionSnapshot, route: LocalPlannedRoute | null) { const bridge = NativeModules.BinarioCompanionSurfaces as { update?: (payload: unknown) => Promise<void> | void } | undefined; const payload = { subject: snapshot.subject, dataNature: snapshot.provenance.dataNature, expiresAtUtcMs: snapshot.provenance.expiresAtUtcMs, route: route ? { id: route.id, name: route.name, travelDate: route.travelDate, travelTime: route.travelTime, plannedReminderMinutes: route.plannedReminderMinutes } : null }; try { void bridge?.update?.(payload); } catch { /* Il companion resta utilizzabile senza superfici native. */ } }

@@ -1,0 +1,5 @@
+import type { LocalPlannedRoute } from "@/lib/local-route-contract";
+import { formatLocalJourneySchedule } from "@/lib/local-date-time";
+import { localCountdownLabel, selectNextLocalPlannedRoute } from "@/lib/local-route-contract";
+export type CompanionHubSurface = { id: "widget" | "watch" | "alexa"; title: string; description: string; status: string };
+export function buildCompanionHub(routes: LocalPlannedRoute[]) { const next = selectNextLocalPlannedRoute(routes); return { surfaces: [{ id: "widget", title: "Widget", description: "Sintesi della prossima tratta pianificata.", status: "Programmato localmente · non realtime" }, { id: "watch", title: "Wear OS", description: "Riceve una sintesi locale dal telefono associato.", status: "Programmato localmente · non realtime" }, { id: "alexa", title: "Alexa", description: "Bridge vocale separato e facoltativo.", status: "Non configurato nel companion" }] satisfies CompanionHubSurface[], nextJourney: next ? { name: next.name, schedule: formatLocalJourneySchedule(next.travelDate, next.travelTime), countdown: localCountdownLabel(next) } : null }; }

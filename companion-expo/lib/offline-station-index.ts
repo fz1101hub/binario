@@ -1,4 +1,4 @@
-import dataset from "@/assets/data/stazioni-canoniche-v2.json";
+import rawDataset from "@/assets/data/stazioni-canoniche-v2.json";
 
 export type OfflineStation = { id: string; name: string; code: string; aliases: string[]; latitude?: number | null; longitude?: number | null };
 type OfflineStationDataset = { schemaVersion: number; sourceVersion: string; checksumSha256: string; stationCount: number; stations: OfflineStation[] };
@@ -13,7 +13,8 @@ function isValidDataset(value: unknown): value is OfflineStationDataset {
   return candidate.schemaVersion === 1 && typeof candidate.sourceVersion === "string" && /^[a-f0-9]{64}$/.test(candidate.checksumSha256 ?? "") && Array.isArray(candidate.stations) && candidate.stationCount === candidate.stations.length && candidate.stations.every(station => Boolean(station?.id && station.name && station.code && Array.isArray(station.aliases)));
 }
 
-const catalog = isValidDataset(dataset) ? dataset : { schemaVersion: 1, sourceVersion: "invalid", checksumSha256: "", stationCount: 0, stations: [] };
+const dataset: unknown = rawDataset;
+const catalog: OfflineStationDataset = isValidDataset(dataset) ? dataset : { schemaVersion: 1, sourceVersion: "invalid", checksumSha256: "", stationCount: 0, stations: [] };
 
 export const offlineStationCatalog = Object.freeze({ version: catalog.sourceVersion, checksumSha256: catalog.checksumSha256, stationCount: catalog.stationCount, stations: Object.freeze(catalog.stations) });
 

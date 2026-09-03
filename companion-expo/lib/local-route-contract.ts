@@ -39,6 +39,10 @@ export type LocalPlannedRoute = CompanionPlannedRoute & {
   originStationCode: string | null;
   destinationStationCode: string | null;
   checklist?: LocalJourneyChecklistItem[];
+  /** Metadati personali locali: non sono inviati a provider ferroviari, export o sync. */
+  customLabel?: string | null;
+  pinned?: boolean;
+  manualOrder?: number | null;
 };
 
 export type ControlledLocalRouteDraft = Omit<LocalRouteDraft, "travelDate" | "travelTime" | "checklist"> & {
@@ -79,15 +83,26 @@ export function createLocalPlannedRoute(draft: LocalRouteDraft, id: number, now 
   const reminder = draft.plannedReminderMinutes === undefined ? 15 : draft.plannedReminderMinutes;
   const validReminder = reminder === null || (Number.isInteger(reminder) && reminder >= 0 && reminder <= 1_440);
   if (!Number.isSafeInteger(id) || id < 1 || origin.length < 2 || destination.length < 2 || origin === destination || !isDate(draft.travelDate) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(draft.travelTime) || !validReminder || (originStationCode !== null && originStationCode.length < 1) || (destinationStationCode !== null && destinationStationCode.length < 1)) return null;
-  return { id, name: `${origin} → ${destination}`, origin, originStationCode, destination, destinationStationCode, travelDate: draft.travelDate, travelTime: draft.travelTime, plannedReminderMinutes: reminder, checklist: normalizeChecklist(draft.checklist), source: "device", createdAtUtcMs: now, completedAtUtcMs: null };
+  return { id, name: `${origin} → ${destination}`, origin, originStationCode, destination, destinationStationCode, travelDate: draft.travelDate, travelTime: draft.travelTime, plannedReminderMinutes: reminder, checklist: normalizeChecklist(draft.checklist), source: "device", createdAtUtcMs: now, completedAtUtcMs: null, customLabel: null, pinned: false, manualOrder: null };
 }
 
 export function isLocalPlannedRoute(value: unknown): value is LocalPlannedRoute {
   if (!value || typeof value !== "object") return false;
   const candidate = value as Partial<LocalPlannedRoute>;
   const completion = candidate.completedAtUtcMs;
-  return candidate.source === "device" && typeof candidate.createdAtUtcMs === "number" && (completion === undefined || completion === null || (Number.isSafeInteger(completion) && completion >= 0)) && createLocalPlannedRoute({ origin: candidate.origin ?? "", originStationCode: candidate.originStationCode ?? null, destination: candidate.destination ?? "", destinationStationCode: candidate.destinationStationCode ?? null, travelDate: candidate.travelDate ?? "", travelTime: candidate.travelTime ?? "", plannedReminderMinutes: candidate.plannedReminderMinutes ?? null, checklist: candidate.checklist }, candidate.id ?? 0, candidate.createdAtUtcMs) !== null;
+  const label = candidate.customLabel;
+  const order = candidate.manualOrder;
+  return candidate.source === "device" && typeof candidate.createdAtUtcMs === "number" && (completion === undefined || completion === null || (Number.isSafeInteger(completion) && completion >= 0)) && (label === undefined || label === null || (typeof label === "string" && text(label, 80).length > 0 && label.length <= 80)) && (candidate.pinned === undefined || typeof candidate.pinned === "boolean") && (order === undefined || order === null || (Number.isSafeInteger(order) && order >= 0 && order < 10_000)) && createLocalPlannedRoute({ origin: candidate.origin ?? "", originStationCode: candidate.originStationCode ?? null, destination: candidate.destination ?? "", destinationStationCode: candidate.destinationStationCode ?? null, travelDate: candidate.travelDate ?? "", travelTime: candidate.travelTime ?? "", plannedReminderMinutes: candidate.plannedReminderMinutes ?? null, checklist: candidate.checklist }, candidate.id ?? 0, candidate.createdAtUtcMs) !== null;
 }
+
+export function displayLocalPlannedRouteName(route: Pick<LocalPlannedRoute, "name" | "customLabel">) { return route.customLabel?.trim() || route.name; }
+
+export function setLocalPlannedRouteLabel(route: LocalPlannedRoute, customLabel: string | null): LocalPlannedRoute {
+  const normalized = customLabel === null ? null : text(customLabel, 80);
+  return { ...route, customLabel: normalized || null };
+}
+
+export function setLocalPlannedRoutePinned(route: LocalPlannedRoute, pinned: boolean): LocalPlannedRoute { return { ...route, pinned }; }
 
 export function remainingLocalJourneyChecklistItems(route: Pick<LocalPlannedRoute, "checklist">) {
   return normalizeChecklist(route.checklist).filter(item => !item.completed).length;
@@ -164,7 +179,8 @@ export function createReturnLocalRouteDraft(route: Pick<LocalPlannedRoute, "orig
 }
 
 export function sortLocalPlannedRoutes(routes: LocalPlannedRoute[]) {
-  return [...routes].sort((left, right) => `${left.travelDate}T${left.travelTime}`.localeCompare(`${right.travelDate}T${right.travelTime}`) || right.createdAtUtcMs - left.createdAtUtcMs);
+  const order = (route: LocalPlannedRoute) => Number.isSafeInteger(route.manualOrder) && (route.manualOrder ?? -1) >= 0 ? route.manualOrder as number : Number.MAX_SAFE_INTEGER;
+  return [...routes].sort((left, right) => Number(Boolean(right.pinned)) - Number(Boolean(left.pinned)) || order(left) - order(right) || `${left.travelDate}T${left.travelTime}`.localeCompare(`${right.travelDate}T${right.travelTime}`) || right.createdAtUtcMs - left.createdAtUtcMs);
 }
 
 export function localRouteScheduledAtUtcMs(route: Pick<LocalPlannedRoute, "travelDate" | "travelTime">): number | null {

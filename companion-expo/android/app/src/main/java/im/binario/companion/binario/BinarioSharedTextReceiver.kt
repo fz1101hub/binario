@@ -30,8 +30,9 @@ object BinarioSharedTextStore {
     if (intent?.action != Intent.ACTION_SEND || intent.type != "text/plain") return
     val text = normalize(intent.getCharSequenceExtra(Intent.EXTRA_TEXT)?.toString()) ?: return
     context.getSharedPreferences(preferences, Context.MODE_PRIVATE).edit().putString(keyText, text).apply()
-    val current = reactContext?.takeIf { it.hasActiveCatalystInstance() } ?: return
+    val current = reactContext?.takeIf { it.hasActiveReactInstance() } ?: return
     current.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java).emit(eventName, text)
+    context.getSharedPreferences(preferences, Context.MODE_PRIVATE).edit().remove(keyText).apply()
   }
 
   fun consume(context: Context): String? {
@@ -50,6 +51,7 @@ class BinarioSharedTextReceiverModule(private val context: ReactApplicationConte
   @ReactMethod fun removeListeners(count: Int) = Unit
 }
 
+@Suppress("DEPRECATION")
 class BinarioSharedTextReceiverPackage : ReactPackage {
   override fun createNativeModules(reactContext: ReactApplicationContext): List<NativeModule> = listOf(BinarioSharedTextReceiverModule(reactContext))
   override fun createViewManagers(reactContext: ReactApplicationContext): List<ViewManager<*, *>> = emptyList()

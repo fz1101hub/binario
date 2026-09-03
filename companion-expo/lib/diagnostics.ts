@@ -1,0 +1,1 @@
+export function createNativeDiagnosticReport(input: { platform: "android" | "ios" | "web" | "other"; appVersion: string | null }) { return { schemaVersion: 1, generatedAtUtc: new Date().toISOString(), platform: input.platform, appVersion: input.appVersion, localFirst: true, data: "Nessun percorso, token, posizione, audio o dato ferroviario incluso" }; }

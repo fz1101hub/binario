@@ -41,15 +41,15 @@
 - [x] Individuare nei file locali le evidenze della linea v0.1.1 e separarli dai file già esistenti della versione precedente.
 - [x] Caricare nel ramo laterale soltanto i file locali attribuiti alla v0.1.1, con inventario e hash verificabili.
 - [x] Preservare nel ramo laterale l’APK release v0.1.1 locale e il relativo SHA-256, separandolo dai sorgenti e senza rigenerarlo.
-- [ ] Inventariare import, alias, configurazioni Expo e struttura Android della baseline locale v0.1.1 senza modificare il progetto.
-- [ ] Identificare esattamente ogni file sorgente, dipendenza npm e configurazione mancante che impedisce a v0.1.1 di superare typecheck, export e build Android.
+- [x] Inventariare import, alias, configurazioni Expo e struttura Android della baseline locale v0.1.1 senza modificare il progetto.
+- [x] Identificare esattamente ogni file sorgente, dipendenza npm e configurazione mancante che impedisce a v0.1.1 di superare typecheck, export e build Android.
 - [ ] Eseguire soltanto controlli diagnostici non distruttivi e consegnare il comando di recupero/compilazione più breve verificabile.
 - [x] Inventariare il plugin locale Android/Wear, le sue risorse generate e le dipendenze necessarie per rigenerare widget e companion smartwatch dalla v0.1.1.
 - [x] Inventariare separatamente il codice Alexa/Voice Bridge del progetto web e distinguere sorgente versionata da configurazione o pubblicazione esterna.
 - [ ] Produrre un registro tecnico che attesti per smartwatch e Alexa: recuperato, rigenerabile, mancante o esterno non verificato.
 - [x] Inventariare e preservare nel ramo laterale i file locali del Voice Bridge/Alexa separati dalla cartella companion Expo.
 - [x] Verificare con hash che plugin smartwatch, sorgenti Android generate e artefatto APK v0.1.1 presenti localmente siano tutti inclusi nel ramo laterale.
-- [ ] Versionare e inviare il recupero completo delle superfici locali v0.1.1 senza introdurre correzioni o sviluppo ulteriore.
+- [x] Versionare e inviare il recupero completo delle superfici locali v0.1.1 senza introdurre correzioni o sviluppo ulteriore.
 - [x] Censire tutte le versioni Binario disponibili e catalogarle per piattaforma, provenienza, tipo di sorgente e artefatto.
 - [x] Copiare nel ramo laterale ogni sorgente, configurazione, test, documento e build disponibile in una directory isolata per versione.
 - [x] Calcolare e salvare un manifest di integrità per ciascuna versione recuperata senza rigenerare né alterare gli artefatti.
@@ -59,5 +59,14 @@
 - [x] Censire per questa chat il perimetro completo di web, Android/iOS, widget, Wear OS, Apple Watch e Voice Bridge/Alexa, con sorgenti e build disponibili.
 - [x] Preservare nel ramo laterale ogni superficie in una directory separata, includendo configurazioni, test, documentazione e artefatti associati.
 - [ ] Verificare e registrare per ogni piattaforma le dipendenze mancanti, i comandi di build e lo stato effettivo di recuperabilità.
+- [x] Confrontare per capacità la baseline Expo v0.1.1 con la versione nativa precedente su Git, senza copiare o sostituire blocchi di codice.
+- [x] Selezionare esclusivamente le capacità Git migliori che siano compatibili con Expo, local-first, privacy-first e con il vincolo sulle fonti ferroviarie.
+- [x] Ripristinare prima le dipendenze e i moduli mancanti della baseline Expo, con test mirati e senza modificare flussi già recuperati.
+- [x] Integrare nel contratto Expo il catalogo stazioni offline curato della versione Git, adattandone esplicitamente lo schema e verificandone impronta, dimensione e ricerca senza rete.
+- [x] Integrare nella baseline Expo soltanto le capacità selezionate, una per volta, con test, build e commit isolato.
+- [x] Usare esclusivamente la versione Git originale v0.20.3 come confronto tecnico della baseline Expo, mantenendo Expo come destinazione e senza fusioni automatiche.
+- [x] Aggiungere test diretti per snapshot, parser dettatura, template, trasferimento manuale e preferenze recuperati prima del commit dell’incremento Expo.
+- [x] Aggiungere alle tratte locali priorità personale, ordinamento manuale ed etichetta ferroviaria facoltativa con migrazione retrocompatibile, controlli UI minimi e test dedicati.
+- [x] Archiviare in LFS le build release Android e Wear generate dalla baseline Expo ripristinata, con checksum distinti dall’APK v0.1.1 originario.
 - [x] Copiare il progetto web/Voice Bridge locale nel ramo laterale sotto una superficie dedicata, preservando codice, lockfile, test, migrazioni e documentazione ma escludendo output rigenerabili e metadati Git.
 - [x] Copiare in superfici separate le sorgenti native Android, Wear OS e Apple Watch disponibili localmente, escludendo build, cache, dipendenze e metadati Git ma mantenendo il relativo riferimento di versione.
