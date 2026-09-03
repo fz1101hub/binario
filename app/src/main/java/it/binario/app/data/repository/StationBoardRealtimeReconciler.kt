@@ -174,14 +174,14 @@ class StationBoardRealtimeReconciler(
 
         val noticeParts = mutableListOf<String>()
         snapshot.notice?.takeIf(String::isNotBlank)?.let(noticeParts::add)
-        noticeParts += "Realtime riconciliato con \${providerLabels.joinToString(", ")}."
+        noticeParts += "Realtime riconciliato con ${providerLabels.joinToString(", ")}."
         if (conflict) {
             noticeParts += "Alcune fonti realtime divergono; Binario usa la priorità configurata e segnala il conflitto."
         }
 
         return snapshot.copy(
             services = enrichedServices,
-            providerName = "\${snapshot.providerName} + realtime",
+            providerName = "${snapshot.providerName} + realtime",
             sourceObservedAtEpochMillis = newestObservedAt ?: snapshot.sourceObservedAtEpochMillis,
             expiresAtEpochMillis = minOf(snapshot.expiresAtEpochMillis, earliestExpiry ?: snapshot.expiresAtEpochMillis),
             freshness = Freshness.FRESH,
