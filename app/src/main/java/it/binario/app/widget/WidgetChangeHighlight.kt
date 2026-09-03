@@ -17,7 +17,7 @@ object WidgetChangeHighlight {
 
     fun displayStatus(service: WidgetService, confidence: DataConfidence): String = when {
         confidence == DataConfidence.DEMONSTRATION && service.status != ServiceStatus.ON_TIME -> "DEMO"
-        confidence == DataConfidence.STATIC_ONLY && service.status != ServiceStatus.ON_TIME -> "PROGRAM."
+        confidence == DataConfidence.STATIC_ONLY -> "PROGRAM."
         else -> service.statusLabel
     }
 }
