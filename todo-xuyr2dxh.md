@@ -29,7 +29,7 @@
 - [ ] Pubblicare un registro unico di recupero che attesti per ogni superficie: completo, parziale, solo artefatto o assente.
 - [x] Etichettare nel registro ogni capacità come “sessione recente”, “Git storico”, “artefatto” o “non recuperata”, senza attribuire capacità di una linea all’altra.
 - [ ] Mantenere Expo recuperato e Git storico su rami separati; integrare solo modifiche puntuali dopo confronto di contratto, test e build.
-- [ ] Sospendere ogni ulteriore confronto con versioni storiche su Git finché non sono esauriti gli artefatti delle sessioni recenti di Binario.
+- [x] Sospendere ogni ulteriore confronto con versioni storiche su Git finché non sono esauriti gli artefatti delle sessioni recenti di Binario.
 - [ ] Inventariare solo file, archivi, APK e consegne prodotti nelle sessioni recenti collegate alla conversazione.
 - [ ] Recuperare dalla cronologia di sessione le sorgenti companion recenti ancora disponibili e confrontarle con la snapshot Expo appena salvata.
 - [ ] Integrare nella baseline Expo solo i file recenti recuperati, poi creare e verificare un commit separato sul ramo di recupero.
@@ -37,7 +37,7 @@
 - [ ] Caricare nel ramo laterale di recupero la linea recente come struttura autonoma, senza sovrascrivere il companion Expo già salvato o la versione Git precedente.
 - [ ] Solo dopo il recupero completo, confrontare le due linee e selezionare con matrice tecnica le singole capacità precedenti che migliorano la nostra versione recente.
 - [ ] Integrare nella nostra linea recente esclusivamente le capacità selezionate con test e build pertinenti.
-- [ ] Censire soltanto le cartelle locali del progetto Binario e le copie di recupero già create, senza ulteriori richieste a archivi di sessione o versioni esterne.
-- [ ] Individuare nei file locali le evidenze della linea v0.1.1 e separarli dai file già esistenti della versione precedente.
-- [ ] Caricare nel ramo laterale soltanto i file locali attribuiti alla v0.1.1, con inventario e hash verificabili.
-- [ ] Preservare nel ramo laterale l’APK release v0.1.1 locale e il relativo SHA-256, separandolo dai sorgenti e senza rigenerarlo.
+- [x] Censire soltanto le cartelle locali del progetto Binario e le copie di recupero già create, senza ulteriori richieste a archivi di sessione o versioni esterne.
+- [x] Individuare nei file locali le evidenze della linea v0.1.1 e separarli dai file già esistenti della versione precedente.
+- [x] Caricare nel ramo laterale soltanto i file locali attribuiti alla v0.1.1, con inventario e hash verificabili.
+- [x] Preservare nel ramo laterale l’APK release v0.1.1 locale e il relativo SHA-256, separandolo dai sorgenti e senza rigenerarlo.
