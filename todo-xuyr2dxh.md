@@ -23,3 +23,9 @@
 - [x] Congelare la cartella companion Expo di sessione con inventario, hash e archivio di sicurezza prima di qualunque confronto o correzione.
 - [x] Creare nel repository Binario un ramo di recupero separato contenente la baseline Expo di sessione, senza sovrascrivere il ramo Android/Wear storico o il ramo benchmark.
 - [ ] Valutare il Git storico solo dopo il salvataggio, importando nella baseline Expo esclusivamente capacità migliori con contratto e test compatibili.
+- [x] Censire per web, Expo Android/iOS, Wear OS, Apple Watch e Skill Alexa le sorgenti, i commit/checkpoint e gli artefatti effettivamente versionati.
+- [x] Verificare separatamente se esiste sorgente Apple Watch/WatchConnectivity e distinguere codice, configurazione esterna e artefatti di build.
+- [x] Verificare il bridge Alexa su Git senza dichiarare deploy, account collegati o Skill pubblicata in assenza di evidenze.
+- [ ] Pubblicare un registro unico di recupero che attesti per ogni superficie: completo, parziale, solo artefatto o assente.
+- [x] Etichettare nel registro ogni capacità come “sessione recente”, “Git storico”, “artefatto” o “non recuperata”, senza attribuire capacità di una linea all’altra.
+- [ ] Mantenere Expo recuperato e Git storico su rami separati; integrare solo modifiche puntuali dopo confronto di contratto, test e build.
