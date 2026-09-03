@@ -1,0 +1,118 @@
+# Binario Android e smartwatch TODO
+
+- [x] Aggiungere un contratto dati minimo e quality-first condiviso tra telefono e Wear OS.
+- [x] Creare il modulo Wear OS con schermata rapida, dettaglio corse, refresh dal telefono e accessibilità completa.
+- [x] Aggiungere Tile e complication Wear OS con cache locale e stato non-live esplicito.
+- [x] Pubblicare snapshot dal telefono via Data Layer e gestire richiesta refresh senza registrare dati personali nei log.
+- [x] Preparare il progetto nativo watchOS con SwiftUI, WidgetKit, App Intents e Watch Connectivity.
+- [x] Documentare funzioni, privacy, accessibilità e limiti per Apple Watch e Wear OS.
+- [x] Aggiungere test di dominio per snapshot smartwatch e verificare la compilazione Android.
+- [x] Preparare la consegna Binario smartwatch con sorgenti, artefatti e roadmap.
+- [x] Diagnosticare con benchmark e flussi reali le criticità UX/UI della build Android installata.
+- [x] Riprogettare la home attorno a tratta attiva, prossime partenze, ritardi e azioni frequenti.
+- [x] Ricostruire ricerca, salvataggio tratte, lista corse e dettaglio in una navigazione coerente e mobile-first.
+- [x] Definire un design system ferroviario originale con gerarchia, stati live/non-live, tipografia e componenti accessibili.
+- [ ] Verificare il redesign su schermi compatti, font 200%, TalkBack, dark mode e stati vuoti/errore.
+- [x] Compilare e consegnare una release UX/UI con artefatti di verifica.
+- [x] Riesaminare il benchmark per il flusso home ricerca-first delle app ferroviarie.
+- [x] Ricostruire la home con ricerca treno/tratta come primo elemento, scorciatoie e risultati contestuali.
+- [x] Spostare tratta attiva, partenze rapide e funzioni personali dopo la ricerca, senza eliminarle.
+- [ ] Verificare e consegnare una build ricerca-first sul dispositivo.
+- [ ] Riprodurre e diagnosticare il crash bloccante segnalato nella build Binario v0.7.1.
+- [ ] Correggere la causa del crash e aggiungere test o guardie contro la regressione.
+- [ ] Compilare e consegnare una build stabile prima di ulteriori modifiche UX/UI.
+- [ ] Sostituire l’inizializzazione di avvio della home ricerca-first con uno stato semplice e verificabile su Android installato.
+- [x] Sostituire tutti i dati demo Roma–Napoli con una tratta coerente Roma–Torino.
+- [x] Rimuovere preferenza, ordinamento e testo relativi alla priorità Regionale Lazio.
+- [x] Applicare una palette ferroviaria originale, più vicina al sobrio contrasto di Orario Treni e On The Rails.
+- [x] Verificare contrasto, dark mode, test, lint e APK dopo l’aggiornamento cromatico e dei dati demo.
+- [x] Analizzare e tradurre in decisioni originali il selettore tema di On The Rails, la palette di Trenord e i flussi TrainPal.
+- [x] Aggiungere selettore tema Chiaro/Scuro/Sistema persistente e accessibile.
+- [x] Riorganizzare home e risultati con gerarchia di ricerca, tratta e azioni rapide ispirata ai pattern di TrainPal.
+- [x] Sostituire palette e componenti con un design system ferroviario originale ispirato ai contrasti di Trenord.
+- [ ] Verificare tema, dark mode, font grandi, TalkBack, test, lint e APK della revisione finale.
+- [x] Riesaminare il benchmark Orario Treni e On The Rails per la home operativa e la disposizione delle funzioni.
+- [x] Ricostruire la home con accesso rapido a cerca treno, cerca tratta, partenze e tabellone stazione.
+- [x] Mostrare tratte monitorate e partenze della tratta attiva come pannelli operativi, con refresh e cambio direzione contestuali.
+- [ ] Verificare e consegnare la home operativa senza alterare tema e palette v0.8.
+- [x] Verificare test, lint e packaging della home operativa v0.8.1 senza alterare tema e palette.
+- [x] Estrarre i pattern operativi di home e widget dai benchmark Orario Treni e On The Rails senza riprodurne UI o asset.
+- [x] Sostituire la home a card con un tabellone Binario: intestazione tratta, direzione/refresh, colonne corse e azioni di ricerca.
+- [x] Ridisegnare il widget con la stessa gerarchia tabellone, cinque corse per pagina, pagina/direzione/refresh e stato dati leggibile.
+- [x] Verificare accessibilità statica, AppWidget, test, lint e APK della revisione coordinata app-widget.
+- [x] Tradurre le schermate allegate in requisiti per un pianificatore Binario originale, senza riprodurre marchi o asset.
+- [x] Rendere la home una ricerca viaggio: partenza, arrivo, inversione, andata/ritorno, data, ora, filtri e CTA primaria.
+- [x] Mostrare recenti e preferite sotto al pianificatore; spostare il tabellone delle corse nei risultati e nella sezione Treni.
+- [x] Mantenere il widget come tabellone paginato delle prossime cinque corse, separato dalla home pianificatore.
+- [ ] Verificare navigazione, accessibilità, test, lint e APK della nuova architettura app-widget.
+- [x] Consolidare tutte le funzioni benchmark in una matrice con stato: presente, parziale, mancante, bloccata da fonte dati.
+- [x] Definire backlog prioritario per ricerca, monitoraggi, avvisi, stazioni, dettaglio corsa, recenti e sincronizzazione.
+- [x] Implementare il primo blocco funzionale ad alto valore emerso dalla matrice.
+- [x] Verificare e consegnare incremento funzionale con test, lint e APK.
+- [x] Inventariare sorgenti, documentazione e file da escludere per il backup GitHub privato.
+- [x] Preparare `.gitignore`, commit iniziale e istruzioni di riproducibilità del repository.
+- [x] Creare il repository GitHub privato e pubblicare il backup iniziale.
+- [x] Verificare remoto, visibilità privata e contenuti pubblicati.
+- [x] Inventariare i sorgenti Alexa Voice Bridge e le esclusioni necessarie prima dell’importazione.
+- [x] Importare il Voice Bridge nel repository Binario con istruzioni per configurazione inattiva e build locale.
+- [x] Controllare segreti, pubblicare il commit Voice Bridge e verificare il remoto privato.
+- [x] Mappare preferenze, tratte, monitoraggi e snapshot oggi separati tra app, widget, Wear OS, watchOS e Voice Bridge.
+- [x] Definire un contratto Binario condiviso per tratte, monitoraggi, snapshot e qualità del dato.
+- [x] Aggiungere nell’app principale un pannello Impostazioni per smartwatch, comandi vocali e stato integrazioni.
+- [x] Allineare Voice Bridge e companion smartwatch al contratto condiviso senza trasferire segreti al client.
+- [x] Verificare e pubblicare l’esperienza unificata con aggiornamento del repository privato.
+- [x] Verificare test, lint e APK della nuova architettura app-widget; resta la prova fisica di navigazione e accessibilità.
+- [x] Ricostruire il companion watchOS nativo dal contratto Binario condiviso con schermata rapida, complicazione e snapshot cache-first.
+- [x] Definire il contratto di sincronizzazione autenticata e versionata per tratte, direzione e monitoraggi personali.
+- [x] Preparare Android al collegamento esplicito con Voice Bridge senza inserire segreti nel client.
+- [x] Verificare e consegnare l’incremento Apple Watch e profilo remoto Binario.
+- [x] Definire modello locale, consenso e messaggi accessibili per data/ora, preferiti stazione, posizione e dettatura.
+- [x] Sostituire i controlli data e ora del pianificatore con selettori Android accessibili e persistenti nella ricerca corrente.
+- [x] Aggiungere stazioni preferite locali e ordinamento delle stazioni più vicine dopo consenso di localizzazione puntuale.
+- [x] Aggiungere dettatura dei campi partenza, arrivo, stazione e numero treno tramite riconoscimento vocale di sistema.
+- [x] Verificare, documentare e pubblicare l’incremento del pianificatore con un commit e push Git dedicati.
+- [x] Mappare la navigazione attuale e definire stati accessibili per dettatura contestuale, filtro cambi e impostazioni.
+- [x] Spostare il microfono nelle schede di ricerca viaggio, treno e stazione, con messaggi coerenti per ciascun contesto.
+- [x] Aggiungere filtro viaggio diretto o numero massimo di cambi, dichiarando il comportamento per il catalogo non live.
+- [x] Unificare le aree Treni e Stazioni in una sola destinazione operativa con sezioni chiare.
+- [x] Riorganizzare Altro come pagina Impostazioni con sezioni tematiche e accessi alle integrazioni esistenti.
+- [x] Verificare, documentare e pubblicare la riorganizzazione con commit e push Git dedicati.
+- [x] Definire il comportamento locale, privacy e accessibilità per widget-tabellone, sveglia alla fermata e condivisione dei dettagli treno.
+- [x] Ridisegnare il widget con gerarchia da tabellone ferroviario originale, mantenendo cinque corse per pagina, refresh e cambio direzione.
+- [x] Aggiungere una sveglia locale configurabile per una fermata, con notifiche e comportamento esplicito in assenza di dati live.
+- [x] Aggiungere condivisione testo tramite foglio nativo Android e contratto di contenuto riutilizzabile dal futuro companion iOS.
+- [x] Rendere le sezioni Treni e Stazioni della schermata Consulta due schede più squadrate e immediatamente riconoscibili.
+- [x] Verificare, documentare e pubblicare l’incremento widget, sveglia, condivisione e UI Consulta con commit e push Git dedicati.
+- [x] Raccogliere e riallineare la matrice dei benchmark con lo stato reale di Binario v0.14.0.
+- [x] Classificare ogni gap residuo per valore utente, accessibilità, privacy e dipendenza da dati live autorizzati.
+- [x] Pubblicare una roadmap prioritaria con funzioni adottabili subito, funzioni bloccate dalla fonte dati e miglioramenti differiti.
+- [ ] v0.15: aggiungere avvisi pendolare locali configurabili, ricorrenze, quiet hours e riepilogo.
+- [ ] v0.16: aggiungere monitoraggio stazione salvato, viaggio attivo e superfici widget configurabili.
+- [ ] v0.17: aggiungere esportazione/importazione locale e preferenze di mobilità/accessibilità.
+- [ ] v1.0: integrare un provider ferroviario documentato e autorizzato con freshness, provenienza e TTL.
+- [x] Verificare se Treniamo.it è incluso nei benchmark e, se assente, analizzarne funzioni e impatto sulla roadmap Binario.
+- [x] Definire modelli, consenso e limiti per avvisi pendolare, monitoraggi stazione, viaggio attivo, portabilità e preferenze di mobilità.
+- [x] Aggiungere avvisi locali configurabili con anticipo, ricorrenze, quiet hours, annullamento e riepilogo accessibile.
+- [x] Aggiungere monitoraggi stazione locali, viaggio attivo/prossima fermata e superfici widget configurabili senza dichiarare dati live.
+- [x] Aggiungere esportazione/importazione JSON locale validata e preferenze di mobilità/accessibilità persistenti.
+- [x] Predisporre il confine adapter per un provider live documentato e autorizzato, senza endpoint o credenziali nel client.
+- [x] Verificare, documentare e pubblicare l’incremento unificato con commit e push Git dedicati.
+- [x] Definire configurazione per istanza widget, regole non-live e linguaggio visivo originale ad alta leggibilità.
+- [x] Aggiungere scelta per-widget tra tratta, stazione specifica e treno specifico, senza configurazioni globali ambigue.
+- [x] Rendere il widget ridimensionabile con layout compatto, standard ed espanso e aggiornamento su resize.
+- [x] Evidenziare in giallo ritardi, variazioni o soppressioni presenti nello snapshot, con semantica TalkBack e nessuna simulazione live.
+- [x] Verificare, documentare e pubblicare il widget configurabile con commit e push Git dedicati.
+- [x] Analizzare il taglio della configurazione e definire una gerarchia responsiva che non nasconda informazioni nel widget.
+- [x] Rendere la schermata di configurazione scrollabile, coerente con il tema persistito dell’app e organizzata verticalmente per tratta, stazione e treno.
+- [x] Aggiungere descrizione e selettore esplicito sotto ciascuna categoria del widget, senza chip orizzontali tagliati.
+- [x] Riorganizzare il widget ridimensionato in layout leggibili senza clip, preservando tutte le informazioni disponibili con priorità esplicita.
+- [x] Verificare, documentare e pubblicare la correzione di configurazione e resize con commit e push Git dedicati.
+- [x] Isolare e correggere i riferimenti RemoteViews non validi nel layout compatto che impediscono il caricamento del widget.
+- [x] Applicare inset sicuri per barra di stato e navigation bar nella configurazione widget.
+- [x] Applicare il tema persistito alla superficie completa della configurazione, non solo ai componenti Material.
+- [x] Verificare e pubblicare la correzione definitiva di tema, inset e caricamento widget con commit e push Git dedicati.
+- [x] Isolare i riferimenti del formato piccolo ancora incompatibili e definire il modello del nome locale per istanza widget.
+- [x] Correggere contrasto dell’intestazione in dark mode e centrare la composizione della configurazione.
+- [x] Aggiungere campo opzionale per il nome del widget e visualizzarlo al posto dell’etichetta della tratta.
+- [x] Rendere affidabile il formato widget più piccolo, eliminando le azioni RemoteViews non essenziali in quella variante.
+- [x] Verificare, documentare e pubblicare contrasto, nome e stabilità del widget con commit e push Git dedicati.

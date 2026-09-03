@@ -1,0 +1,246 @@
+# Project TODO
+
+- [x] Verificare il contenuto reale del progetto, la baseline Git e l’eventuale disallineamento con le versioni di Binario Treni.
+- [x] Individuare le superfici UI esistenti e confrontarle con il layout di riferimento A7wgn2uY9sZNsGcfh3dMU3.
+- [x] Confrontare esplicitamente il progetto aperto con i riferimenti Binario Treni `10955e35` e `bd67cfa`, documentando se il repository corrente è allineato o separato.
+- [x] Documentare il confronto tra UI attuale e layout di riferimento A7wgn2uY9sZNsGcfh3dMU3, indicando elementi da preservare e differenze da correggere.
+- [x] Conservare il catalogo stazioni canonico, la distinzione fra dati programmati e realtime e i messaggi di indisponibilità espliciti.
+- [x] Integrare il catalogo stazioni canonico nell’autocompletamento e salvare gli identificativi della stazione selezionata insieme alla tratta personale.
+- [x] Integrare il miglior pattern disponibile dal benchmarking delle app analizzate senza copiare codice, dati, asset o API private.
+- [x] Trasformare la home in una superficie ferroviaria con pianificazione tratta, inversione Partenza/Arrivo, monitoraggi persistiti e stato realtime esplicito.
+- [x] Definire e implementare il primo incremento funzionale con protezione dalle regressioni.
+- [x] Aggiungere o aggiornare test Vitest per il primo incremento.
+- [x] Correggere l’inclusione del test di semantica ferroviaria nella suite Vitest standard.
+- [x] Verificare il risultato nell’anteprima e salvare un checkpoint del progetto.
+- [x] Salvare un checkpoint successivo all’integrazione dell’autocompletamento, della migrazione e dei nuovi test.
+- [x] Verificare nel flusso autenticato il caricamento del catalogo, la selezione dall’autocompletamento, lo scambio Partenza/Arrivo e il salvataggio con i codici stazione.
+- [x] Estendere il test di integrazione tRPC autenticato per verificare che i codici stazione selezionati vengano inoltrati al servizio delle tratte personali.
+- [x] Salvare un nuovo checkpoint dopo l’integrazione del catalogo reale, dell’autocompletamento, della migrazione `originStationCode`/`destinationStationCode` e dei test aggiornati.
+- [x] Eseguire una verifica autenticata end-to-end della home: caricamento catalogo, selezione di una stazione dall’autocompletamento, scambio Partenza/Arrivo e creazione tratta con codici stazione persistiti; documentarne l’esito.
+- [x] Riorganizzare la home affinché ricerca, pianificazione, stazioni, viaggi e avvisi dell’app Binario siano il nucleo dell’esperienza.
+- [x] Declassare Alexa e smartwatch a sezioni companion, mantenendoli collegati ai monitoraggi dell’app ma fuori dal percorso primario.
+- [x] Aggiornare copy, struttura e documentazione per rendere esplicita la distinzione tra app principale e superfici companion.
+- [x] Aggiungere nella home una sezione primaria per gli avvisi ferroviari e gli stati di servizio, distinta dai companion e coerente con i dati disponibili.
+- [x] Rendere esplicita la superficie Stazioni nella home, con accesso al tabellone di stazione o a stazioni recenti/salvate oltre ai campi di ricerca.
+- [x] Rieseguire test, verifica visiva e checkpoint dopo l’aggiunta delle superfici Stazioni e Avvisi.
+- [x] Implementare un accesso reale al tabellone stazione dalla superficie Stazioni, mantenendo esplicita l’assenza di dati live finché non esiste una fonte autorizzata.
+- [x] Aggiungere un test del percorso del tabellone per mantenere il nome e il codice stazione nel passaggio dalla home al dettaglio.
+- [x] Salvare un checkpoint conclusivo dopo l’accesso al tabellone e la verifica finale della home.
+- [x] Correggere il recupero di nome e codice della stazione nel tabellone, emerso assente nella verifica visuale della rotta con query.
+- [x] Aggiungere un test integrato del passaggio Home–Tabellone che verifichi la generazione della URL e il recupero di nome e codice nel dettaglio.
+- [x] Salvare un checkpoint dopo il test integrato del tabellone e la verifica visiva finale.
+- [x] Aggiungere un test renderizzato del dettaglio Tabellone che verifichi nome e codice della stazione dopo il passaggio dalla URL generata dalla home.
+- [x] Salvare un checkpoint finale dopo il test renderizzato e le ultime verifiche di layout.
+- [x] Correggere l’import React richiesto dal rendering statico del test del tabellone e rieseguire la suite completa.
+- [x] Eseguire con sessione autenticata la selezione dal catalogo, lo scambio Partenza/Arrivo, il salvataggio di una tratta e la verifica dei codici stazione persistiti. *(Sostituito su richiesta dell’utente da test automatici e prove nell’anteprima, senza usare un account personale.)*
+- [x] Documentare l’esito della verifica autenticata e salvare il checkpoint conclusivo del riallineamento dell’app principale. *(Sostituito da `docs/VERIFICA_RIALLINEAMENTO.md` e dal checkpoint conclusivo senza accesso utente.)*
+- [x] Sostituire la verifica manuale su account con evidenze automatiche e visive, senza richiedere credenziali o dati personali dell’utente.
+- [x] Rinominare titolo pubblico e denominazione del progetto da Binario Voice Bridge a Binario.
+- [x] Rimuovere o riformulare i riferimenti residui a Voice Bridge, lasciando Alexa e smartwatch come companion dell’app.
+- [x] Verificare il rinominamento e salvare un checkpoint dedicato.
+- [x] Integrare la dettatura vocale nei campi Partenza, Arrivo e ricerca stazione dell’app Binario.
+- [x] Richiedere il consenso al microfono solo su azione dell’utente e mantenere testo trascritto modificabile prima dell’uso.
+- [x] Gestire browser non supportato, permesso negato e trascrizione senza corrispondenze nel catalogo.
+- [x] Aggiungere test e verifica visiva della dettatura vocale senza coinvolgere Alexa.
+- [x] Documentare la dettatura vocale come funzione primaria dell’app e i relativi limiti privacy, consenso e trascrizione temporanea.
+- [x] Estrarre e testare le regole client della dettatura per stati microfono, formati supportati e testo trascritto rivedibile.
+- [x] Correggere la documentazione della dettatura per descrivere con precisione la ritenzione dell’audio temporaneo e l’assenza di salvataggio nel profilo.
+- [x] Rieseguire test e verifica visuale prima del checkpoint della dettatura.
+- [x] Aggiungere test di interazione client per i controlli di dettatura e l’applicazione del testo nel campo stazione modificabile.
+- [x] Correggere l’inclusione dei test UI `.tsx` nella suite Vitest standard e verificarne l’esecuzione.
+- [x] Correggere gli import React dei test UI TSX della dettatura e rieseguire la suite completa.
+- [x] Correggere gli import React dei componenti UI della dettatura per il rendering DOM della suite Vitest.
+- [x] Estendere i test UI della dettatura a avvio/arresto registrazione, permesso negato, errore e registrazione oltre il limite.
+- [x] Correggere la tipizzazione del test UI per la registrazione oltre il limite e rieseguire la suite completa.
+- [x] Salvare un checkpoint della dettatura nativa dopo i test UI completi e la verifica dell’anteprima.
+- [x] Aggiungere una dettatura guidata dell’intera tratta, distinta dai microfoni dei singoli campi.
+- [x] Interpretare Partenza, Arrivo, data e orario dal testo trascritto senza completare dati non pronunciati.
+- [x] Risolvere automaticamente le stazioni riconosciute contro il catalogo canonico, richiedendo revisione in caso di ambiguità o assenza di corrispondenza.
+- [x] Mostrare una revisione vocale modificabile prima di applicare i dati alla pianificazione.
+- [x] Estendere privacy, gestione errori e test di unità/UI della dettatura completa.
+- [x] Verificare in anteprima e salvare un checkpoint della dettatura completa.
+- [x] Correggere il parsing di data testuale e minuti pronunciati emerso nel test della dettatura completa.
+- [x] Correggere e completare i test della dettatura guidata dopo l’integrazione UI, includendo data pronunciata, matching e applicazione dei valori.
+- [x] Correggere il mock `trpc.dictation.transcribe` nei test renderizzati Home e l’aspettativa della data pronunciata nel test della dettatura guidata.
+- [x] Salvare un checkpoint intermedio della dettatura guidata dopo i test e la verifica visiva.
+- [x] Coprire catalogo non disponibile, stazioni ambigue/non risolte e blocco dell’applicazione fino alla revisione completa nella dettatura guidata.
+- [x] Documentare privacy e retention della dettatura guidata, chiarendo che riusa le garanzie dei microfoni dei singoli campi.
+- [x] Verificare e salvare un checkpoint della dettatura guidata completa sulla baseline con test verdi.
+- [x] Eseguire un audit completo delle funzionalità implementate nelle versioni precedenti di Binario rispetto alla codebase attuale.
+- [x] Documentare le funzionalità mantenute, parziali, assenti o da non reimportare, con priorità di ripristino.
+- [x] Ripristinare come priorità la dark mode e il controllo utente del tema, senza compromettere il layout ferroviario principale.
+- [x] Riattivare la persistenza del tema e aggiungere un controllo accessibile chiaro/scuro nella shell Binario.
+- [x] Adeguare home, tabellone e autocompletamento al tema scuro senza rendere il monitoraggio o gli stati dati meno leggibili.
+- [x] Aggiungere test e verifica visuale per tema chiaro/scuro e preferenza utente.
+- [x] Consolidare le funzioni storiche in categorie: recuperabili nella web app, da realizzare nelle app native separate, condizionate a fonti autorizzate e da non reimportare.
+- [x] Ricercare e documentare requisiti aggiornati WCAG/European Accessibility Act, GDPR, AI Act e Cyber Resilience Act applicabili al prodotto.
+- [x] Ripristinare tutte le funzioni utili direttamente implementabili e sicure nella web app, senza simulare dati ferroviari o usare fonti non autorizzate.
+- [x] Preparare una roadmap separata e tracciabile per widget, smartwatch, app Android/iOS, offline GTFS e funzioni dipendenti da repository nativi.
+- [x] Eseguire un audit di qualità su architettura, ridondanze, dimensione payload, chiamate API, sicurezza, dipendenze e test.
+- [x] Applicare i miglioramenti di conformità e qualità non bloccati da autorizzazioni esterne.
+- [x] Scrivere un audit professionale con gap, evidenze, priorità, decisioni di non reimportazione e piano di remediation.
+- [x] Verificare il prodotto, la suite e le interfacce chiara/scura prima del checkpoint conclusivo.
+- [x] Salvare un checkpoint intermedio del recupero della dark mode e del controllo tema accessibile.
+- [x] Verificare e, se necessario, correggere autocomplete e suggerimenti in dark mode, inclusi stati focus e selezione.
+- [x] Aggiungere un test UI di persistenza tema dopo remount e coprire la resa coerente di Home e Tabellone in tema chiaro/scuro.
+- [x] Aggiungere test renderizzati distinti per Home e Tabellone che confermino superfici, stati e gerarchia in tema chiaro e scuro.
+- [x] Eseguire una verifica visuale esplicita della home e del tabellone in dark mode prima del checkpoint del tema.
+- [x] Correggere l’ambiente dei test renderizzati per ResizeObserver e isolamento della preferenza tema tra casi chiaro/scuro.
+- [x] Correggere l’asserzione semantica del test Home per il titolo della card, mantenendo la verifica di contenuto e tema.
+- [x] Correggere il contrasto del badge realtime nel tema scuro, emerso insufficiente nella verifica visuale.
+- [x] Salvare un nuovo checkpoint dopo dark mode, toggle tema, test UI, autocomplete scuro e correzione del badge realtime.
+- [x] Verificare nel checkpoint della dark mode che `defaultTheme` resti chiaro con `switchable` attivo e che controlli e test siano verdi.
+- [x] Verificare i matcher DOM corretti della dettatura guidata e riportare verde compilazione e suite completa.
+- [x] Gestire esplicitamente le stazioni ambigue nella dettatura guidata mostrando candidati selezionabili prima dell’applicazione.
+- [x] Aggiungere un test UI per la selezione del candidato in presenza di più stazioni plausibili.
+- [x] Salvare e verificare il checkpoint della dettatura guidata completa dopo la gestione dell’ambiguità.
+- [x] Aggiungere stazioni preferite per utente con nome, codice canonico e ordine di utilizzo senza duplicati.
+- [x] Registrare stazioni recenti solo dopo apertura reale del tabellone o selezione esplicita, con limite e privacy per utente.
+- [x] Esporre preferiti e recenti nella home e collegarli al tabellone senza creare dati fittizi.
+- [x] Aggiungere migrazione, procedure protette e test di isolamento per preferiti e recenti.
+- [x] Rafforzare la validazione server dell’audio di dettatura e coprire input base64 non valido o oltre soglia.
+- [x] Rendere esplicita nella UI la trascrizione automatica, la revisione umana e l’assenza di decisioni automatizzate sul viaggio.
+- [x] Formalizzare fonti autorizzate, schemi di provenienza e percorso di attivazione per pianificazione, tabelloni e avvisi senza integrare endpoint non autorizzati.
+- [x] Scrivere la roadmap separata delle superfici native (Android/iOS, widget e smartwatch) e l’inventario di dipendenze/aggiornamenti di sicurezza.
+- [x] Correggere il controllo di dimensione base64 della dettatura prima della regex, evitando overflow del test e lavoro inutile su payload troppo grandi.
+- [x] Correggere il mock delle procedure `stations` nei test renderizzati della Home e rieseguire la suite.
+- [x] Applicare un limite reale e testato ai recenti per utente, eliminando le aperture più vecchie non preferite oltre la soglia definita.
+- [x] Aggiungere copy UI esplicito su trascrizione automatica, revisione umana obbligatoria e assenza di decisioni automatizzate sul viaggio, con test renderizzato.
+- [x] Salvare e verificare un checkpoint dopo dettatura ambigua, preferiti/recenti e hardening dell’audio.
+- [x] Correggere la posizione dell’asserzione UI sulla trasparenza AI prima della chiusura della revisione vocale.
+- [x] Salvare il checkpoint effettivo della dettatura ambigua, dei preferiti/recenti e dell’hardening audio, quindi confermare la suite verde sulla nuova versione.
+- [x] Ridurre il bundle iniziale caricando il tabellone stazione solo quando la relativa rotta è aperta e verificarne build e navigazione.
+- [x] Recuperare la funzione Stazioni vicine con geolocalizzazione attivata solo dall’utente, calcolo locale sul catalogo e nessuna persistenza/invio della posizione.
+- [x] Aggiungere test della prossimità e gestione di permesso negato, coordinate non disponibili e catalogo senza coordinate.
+- [x] Estrarre il pannello Stazioni vicine dalla Home e aggiungere test UI per consenso, geolocalizzazione negata e catalogo privo di coordinate.
+- [x] Correggere il matcher DOM del test Stazioni vicine e riportare verde la compilazione della suite UI.
+- [x] Correggere la pulizia DOM tra i casi del test Stazioni vicine e rieseguire la suite completa.
+- [x] Salvare data e ora di riferimento nelle tratte personali, validarle lato server e mostrarle nei viaggi senza attribuire loro natura realtime.
+- [x] Generare e applicare una migrazione non distruttiva per il contesto di pianificazione, con test di compatibilità per tratte precedenti.
+- [x] Correggere l’avviso di configurazione pnpm spostando override e patch nel workspace supportato, quindi verificare installazione, test, build e audit.
+- [x] Correggere il workspace pnpm senza package root emerso durante la verifica dell’installazione.
+- [x] Salvare il checkpoint conclusivo del recupero, dell’audit compliance e delle remediation qualità già verificate.
+- [x] Salvare il checkpoint effettivo dopo le ultime modifiche di qualità e compliance e allegare il nuovo identificativo versione.
+- [x] Verificare nel checkpoint finale rimozione plugin JSX, chunk vendor/tabellone lazy, test UI Stazioni vicine, colonna DB `travelDate` e documentazione aggiornata.
+- [x] Risolvere i warning e i gap di qualità non bloccati: peer dependency del plugin JSX/Vite e ulteriore riduzione del bundle iniziale con verifica build pulita.
+- [x] Aggiungere un test UI del pannello Stazioni vicine per catalogo senza coordinate e stato di indisponibilità mostrato all’utente.
+- [x] Verificare con evidenza reale di database che `travelDate` e `travelTime` esistano entrambe in `railway_routes` e che create/list persistano e restituiscano entrambi i campi.
+- [x] Documentare con evidenza leggibile perché `travelDate` era già presente nello schema applicato e perché la migrazione `0005` ha aggiunto soltanto `travelTime`.
+- [x] Applicare la parte `travelDate` della migrazione `0005` e verificare le due colonne del contesto pianificato nel database reale.
+- [x] Ridurre ulteriormente il chunk principale separando dipendenze vendor cacheabili, quindi verificare build, test e caricamento della home.
+- [x] Rimuovere componenti template non referenziati e le dipendenze deprecate Recharts/Streamdown, quindi verificare tipi, test, build e audit.
+- [x] Aggiungere una verifica automatizzata del round-trip create/list delle tratte con `travelDate` e `travelTime`, mantenendo il database reale privo di dati di prova.
+- [x] Correggere la nota storica: la lettura precedente di `0005` era parziale, la migrazione contiene entrambi i campi e `travelDate` è stato applicato al database reale successivamente.
+- [x] Definire nel contratto condiviso gli stati dati, timestamp, provenienza, TTL e regole fail-closed comuni ad app web, widget e smartwatch.
+- [x] Implementare una retention applicativa verificabile per l’audio temporaneo della dettatura, senza salvare contenuti vocali nel profilo.
+- [x] Generare SBOM e documentare una security policy senza inventare un security contact non ancora fornito.
+- [x] Inizializzare una codebase mobile nativa separata per i companion Binario, con branding e contratti coerenti.
+- [x] Implementare widget e smartwatch come visualizzazioni companion dei monitoraggi Binario, con indicatore obbligatorio di freschezza e nessun dato live inventato.
+- [x] Testare l’isolamento tra core app e companion, l’invalidazione dati e i fallback offline/non aggiornato.
+- [x] Estendere il contratto companion ad Alexa, imponendo gli stessi stati fonte/timestamp/freschezza/affidabilità di widget e smartwatch.
+- [x] Verificare che Alexa non mantenga o presenti un proprio stato ferroviario separato rispetto al nucleo dati Binario.
+- [x] Esporre uno snapshot companion protetto e versionato dal backend Binario, unico punto dati per widget, smartwatch, Alexa e notifiche.
+- [x] Testare che lo snapshot del backend sia inaccessibile senza autenticazione e resti fail-closed in assenza di fonte ferroviaria autorizzata.
+- [x] Collegare il fallback Alexa al contratto companion condiviso e aggiungere una prova di equivalenza con lo stato `unavailable`.
+- [x] Correggere la prova del fallback Alexa per confrontare la semantica comune ignorando la punteggiatura necessaria alla sola UI.
+- [x] Creare la codebase mobile Binario Companion separata dall’app web e dal backend, con interfacce native per widget e smartwatch.
+- [x] Estendere il contratto condiviso a notifiche e avvisi per app, widget, smartwatch e Alexa con stessa policy di provenienza, freshness, affidabilità e fail-closed.
+- [x] Definire la soppressione o la segnalazione esplicita degli avvisi quando fonte, timestamp, TTL o affidabilità non soddisfano il contratto Binario.
+- [x] Generare un SBOM CycloneDX delle dipendenze di produzione e documentare come rigenerarlo a ogni rilascio.
+- [x] Creare una security policy che espliciti il canale da configurare senza pubblicare un recapito non gestito o fittizio.
+- [x] Aggiornare la documentazione privacy della dettatura con la cancellazione del buffer in memoria e il limite della retention storage sottostante.
+- [x] Correggere il buffer del generatore SBOM per gestire l’albero produzione completo senza errore e rigenerare l’artefatto CycloneDX.
+- [x] Correggere il generatore SBOM affinché includa le dipendenze produzione dirette e transitive denominate come chiavi dall’albero pnpm.
+- [x] Salvare il checkpoint del nucleo web companion e degli artefatti compliance appena verificati.
+- [x] Implementare il pairing monouso autenticato per il companion nativo, con token revocabile e senza esporre la sessione web.
+- [x] Esporre lo snapshot companion allo stesso contratto tramite token di dispositivo con scope minimo e test fail-closed.
+- [x] Aggiungere la gestione web dei dispositivi companion autorizzati e la revoca esplicita del relativo token.
+- [x] Preservare l’endpoint web autenticato `companion.snapshot` mentre il companion nativo usa il percorso dedicato a token dispositivo.
+- [x] Aggiornare i mock tRPC dei test UI della Home per coprire la gestione dispositivi companion.
+- [x] Correggere l’import React della card companion per il rendering della suite UI.
+- [x] Aggiungere ciclo di vita personale delle tratte: archiviazione, ripristino e contesto di promemoria pianificato esplicitamente non realtime.
+- [x] Aggiungere un centro privacy con esportazione minimizzata e cancellazione controllata dei dati personali Binario.
+- [x] Rafforzare accessibilità dei flussi viaggio e companion con stati di errore, conferme e annunci non intrusivi verificabili.
+- [x] Verificare la navigazione al tabellone: il percorso canonico `/stazioni?name=…&code=…` è registrato; la 404 osservata in anteprima derivava da un URL di test non canonico.
+- [x] Aggiungere preferenze personali minimizzate per tratte, compresi profilo d’uso, anticipo e nota accessibilità cancellabile.
+- [x] Creare una vista dettaglio tratta con modifica, duplicazione, inversione, archiviazione e ripristino, senza esporre dati realtime.
+- [x] Consentire import/export JSON validato e condivisione privata di tratte, escludendo token, audio, coordinate e dati di servizio.
+- [x] Aggiungere modalità contrasto elevato e riduzione movimento persistenti alle superfici web.
+- [x] Creare pagina trasparenza fonti e governance provider con stato manutenzione/kill switch sempre fail-closed.
+- [x] Aggiungere gestione sicurezza del pairing: tentativi limitati, revoca globale e stato dispositivo chiaro.
+- [x] Introdurre diagnostica tecnica locale/opt-in minimizzata, priva di PII, credenziali, audio o coordinate.
+- [x] Documentare controllo offline e comportamento fail-closed del core senza cache realtime o provider paralleli.
+- [x] Aggiungere tag personali, ordinamento, ricerca e rilevamento duplicati per tratte, senza inferire abitudini o posizione.
+- [x] Aggiungere guida in-app sui significati di programmato, realtime verificato, scaduto e non disponibile.
+- [x] Aggiungere deep link rigorosamente validati verso tratte e tabelloni, senza serializzare dati privati nell’URL.
+- [x] Aggiungere validazione/versionamento del catalogo stazioni e preparare contratti di test per futuri adapter provider.
+- [x] Preparare checklist di rilascio e recovery per portabilità JSON senza introdurre backup automatici o retention aggiuntiva.
+- [x] Aggiungere checklist personale pre-partenza cancellabile sulle tratte, senza stato ferroviario, posizione o automazioni di rete.
+- [x] Rendere esplicito nel prodotto web il modello local-first: account Binario solo opzionale per futura sincronizzazione, mai necessario all’uso ordinario.
+- [x] Predisporre un contratto di rinvio sicuro ai venditori ufficiali, inattivo finché fonte, licenza e URL ufficiale non siano verificati.
+- [x] Riesaminare e completare il percorso audio/dettatura Binario, con consenso, revisione, minimizzazione e fallback chiari.
+- [x] Condurre un audit tecnico e di compliance avanzato su core, app Android/Wear, privacy, accessibilità, sicurezza, resilienza, distribuzione e governance provider.
+- [x] Applicare le remediation tecniche immediatamente verificabili emerse dall’audit e documentare i requisiti che dipendono da decisioni, fornitori o hardware esterni.
+- [x] Definire una richiesta vocale rapida smartwatch che transiti dal canale di sistema watch→telefono e riusi soltanto il contratto Binario, senza provider realtime autonomo sul watch.
+- [x] Riesaminare Alexa come companion dello stesso snapshot, chiarendo ciò che è pronto nel backend e la configurazione esterna ancora necessaria per attivare la skill.
+- [x] Documentare la distinzione tra risposta diretta del watch dal payload locale e inoltro trasparente al telefono, senza promettere realtime quando la fonte è inattiva.
+- [x] Formalizzare la policy dei comandi vocali realtime del watch: risposta solo da snapshot corrente autorizzato con timestamp/TTL/confidence validi, altrimenti indisponibilità esplicita.
+- [x] Consolidare il contratto comune per avvisi pertinenti sulle tratte salvate, separando promemoria locali da eventi ferroviari realtime autorizzati.
+- [x] Verificare e documentare Alexa come superficie companion senza fonte dati propria, con attivazione esterna e fallback fail-closed fino a configurazione valida.
+- [x] Condurre un audit esperto trasversale di prodotto, UX, qualità software, dati ferroviari, privacy, sicurezza, accessibilità, companion, distribuzione e operatività, con roadmap prioritaria verificabile.
+- [x] Creare un checkpoint di sviluppo dedicato prima di ogni incremento a rischio e mantenere la baseline recuperabile.
+- [x] Consentire l’importazione esplicita delle tratte locali del browser dopo accesso facoltativo, con anteprima, deduplicazione e conferma dell’utente.
+- [x] Riorganizzare la Home per il percorso principale di viaggio e sostituire la pagina non trovata generica con una pagina Binario in italiano accessibile.
+- [x] Estendere il Privacy Center con una mappa leggibile di dati locali, cloud opzionale, companion e dettatura senza promesse di cancellazione storage non attestata.
+- [x] Aggiungere workflow di qualità riproducibili per typecheck, test, build, audit e SBOM, senza introdurre segreti o pubblicazioni automatiche.
+- [x] Documentare e mantenere inattivi provider ferroviari, rinvii venditori e Alexa finché non esistano autorizzazioni, console e test reali.
+- [x] Correggere il parsing CSV multilinea del catalogo stazioni e allineare il conteggio effettivo tra web e indice mobile offline.
+- [x] Eseguire una gap analysis di accessibilità rispetto a WCAG 2.2 AA, EN 301 549 e requisiti applicabili dell’European Accessibility Act, senza dichiarare conformità non verificata.
+- [x] Definire e applicare le remediation accessibilità realizzabili nel codice, con test automatici e protocollo di verifica manuale su tecnologie assistive reali.
+- [x] Aggiungere skip link, landmarks verificabili e test tastiera/focus per le route web principali.
+- [x] Integrare controlli automatici a11y nelle UI web come rete di sicurezza, senza sostituirli al test umano.
+- [ ] Verificare e correggere web/mobile a zoom 200–400%, font scale/Dynamic Type, contrasto degli stati e reflow su tablet.
+- [ ] Rendere gli stati della richiesta vocale Wear annunciabili dalle tecnologie assistive e verificare target touch, contrasto e TTS su watch reale.
+- [ ] Completare test assistivi su NVDA/Firefox, VoiceOver/Safari, TalkBack/Android e utenti con disabilità, registrando difetti e retest.
+- [ ] Pubblicare una dichiarazione di accessibilità e un canale di feedback solo dopo aver definito un contatto reale, un processo di triage e il perimetro legale applicabile.
+- [ ] Raccogliere un primo ciclo di evidenze TalkBack su Android reale con APK interno, senza trasformarlo in una dichiarazione di conformità EAA.
+- [x] Uniformare associazione campo–istruzione–errore, annunci live e focus sul primo errore in planner, dettatura, autocomplete e azioni dinamiche web.
+- [x] Verificare e rendere accessibili per tastiera/screen reader le liste di tratte, filtri, riordino, menu, toast, dialoghi e stati vuoti nel percorso principale; le tecnologie assistive reali restano nel protocollo di collaudo.
+- [x] Rafforzare reflow, target touch, contrasto e focus in temi chiaro/scuro/alto contrasto, incluse azioni disabled, badge e stati hover/focus.
+- [x] Applicare sistematicamente riduzione movimento e annunci non invasivi agli aggiornamenti dinamici e alle transizioni web.
+- [x] Aggiungere una modalità semplificata Binario con istruzioni brevi, prevenzione errori e controllo utente della densità informativa.
+- [x] Consolidare la baseline e mappare le attività funzionali ancora aperte nelle checklist web e companion, senza riprendere integrazioni esterne bloccate.
+- [x] Aggiungere un’agenda locale delle tratte con viste giorno/settimana e filtri per imminenti, archiviate e promemoria attivi.
+- [x] Consentire la duplicazione ricorrente esplicita di una tratta, con selezione di giorni/orari e senza esecuzioni o notifiche nascoste.
+- [x] Generare condivisioni testuali minimizzate ed export/import esplicito di eventi ICS, escludendo note private, token, audio e dati realtime non disponibili.
+- [x] Estendere il widget nativo con prossima tratta, countdown programmato, promemoria e accesso alla richiesta vocale, tutti dichiarati non realtime.
+- [x] Aggiungere modelli personali riutilizzabili di checklist viaggio, compresi pendolare, weekend, bici e accessibilità, senza profilazione.
+- [x] Calcolare archivio e statistiche esclusivamente locali su tratte, destinazioni e promemoria, senza telemetria né inferenze di comportamento.
+- [x] Aggiungere ricerca rapida e scorciatoie accessibili per creare/aprire tratte, cercare stazioni e avviare la dettatura sulle superfici supportate.
+- [x] Aggiungere preferenze locali di viaggio accessibile per margine di anticipo, testo molto grande e checklist dedicate, sempre reversibili e cancellabili.
+- [x] Progettare e implementare una sincronizzazione Binario esplicita e opt-in, con selezione dei dati, anteprima, conflitti leggibili, revoca e nessun trasferimento predefinito.
+- [x] Ricognire le ulteriori funzionalità locali e companion implementabili senza provider ferroviari, hardware o console esterne, definendole come incrementi verificabili.
+- [x] Esporre nell’area web dei dispositivi il consenso syncEnabled, con stato leggibile e disattivazione senza revocare il token companion.
+- [x] Aggiungere una gestione guidata delle copie locali nel Privacy Center web, con descrizione degli archivi e cancellazione esplicita solo del browser corrente.
+- [x] Salvare una baseline verificata prima degli interventi di resilienza, prestazioni, sicurezza e test UI.
+- [x] Rendere il catalogo stazioni web resiliente a errore transitorio, versione inattesa e dati non verificabili, con retry limitato e fallback esplicito.
+- [x] Ridurre il costo di caricamento e la concentrazione della Home senza cambiare flussi, aggiungendo misure verificabili del bundle.
+- [x] Isolare e restringere il body parsing della dettatura web, con limiti coerenti prima della decodifica e test di rifiuto sicuro.
+- [x] Aggiungere template viaggio locali riutilizzabili con origine, destinazione, orario e preferenze, senza clonazioni automatiche o sincronizzazione implicita.
+- [x] Aggiungere una ricerca locale unificata delle tratte salvate, accessibile e senza interrogazioni ferroviarie o di rete.
+- [x] Portare nel campo Partenza web un’azione consensuale per proporre la stazione vicina, con scelta manuale e nessuna persistenza della posizione.
+- [x] Aggiungere stazioni preferite e suggerimenti contestuali nel planner web, locali e cancellabili senza ranking remoto.
+- [x] Aggiungere checklist personali riutilizzabili e un riepilogo locale “pronto per partire”, senza dedurre spostamenti o dati realtime.
+- [x] Creare un archivio Binario esportabile/importabile con anteprima e deduplicazione, per trasferimenti manuali senza account o server.
+- [x] Localizzare testi e formati data/ora web senza modificare i timestamp o introdurre traduzioni incomplete.
+- [x] Aggiungere pianificazione controllata di andata e ritorno, con stazioni invertite e data/ora sempre da confermare manualmente.
+- [x] Aggiungere ripianificazione controllata della singola tratta, copiando solo dati ferroviari riutilizzabili e richiedendo una nuova data e ora.
+- [x] Applicare il margine di anticipo accessibile alle proposte di promemoria locali, sempre modificabile e disattivabile.
+- [x] Rendere l’archivio viaggi più leggibile con filtri locali per mese, tratta e tag, senza cronologia automatica o telemetria.
+- [x] Estendere l’importazione calendario ICS a più eventi con anteprima, selezione individuale e deduplicazione locale.
+- [x] Aggiungere itinerari ferroviari locali a tappe, con tratte ordinate e dati sempre modificabili senza calcolo o promessa di coincidenze realtime.
+- [x] Aggiungere una modalità cambio leggibile per il prossimo segmento dell’itinerario, con margine scelto, checklist pertinente e disclosure programmata/non realtime.
+- [x] Aggiungere importazione guidata da testo condiviso o incollato, con estrazione locale limitata, revisione obbligatoria, anteprima e nessun salvataggio automatico.
+- [ ] Selezionare con evidenza di licenza o autorizzazione la prima fonte ferroviaria, definendo copertura, dati esposti, attribuzione, TTL/fallback e nessun uso di scraping o API private.
+- [x] Verificare canali ufficiali, termini d’uso, licenze e percorso autorizzativo di Viaggiatreno e RFI prima di integrare qualsiasi dato di stato ferroviario. *(Le note legali escludono il riuso senza consenso scritto; nessun endpoint è stato integrato.)*
+- [x] Ricostruire dalle sole evidenze pubbliche le fonti dichiarate dalle principali app ferroviarie italiane, separando licenze/accordi espliciti da fonti non dichiarate o non riusabili.

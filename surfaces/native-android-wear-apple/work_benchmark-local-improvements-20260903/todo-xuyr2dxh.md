@@ -1,0 +1,22 @@
+# Project TODO — miglioramenti benchmark locali
+
+- [x] Recuperare in una worktree isolata la base Git del companion e verificare stato e diff puliti.
+- [x] Ripristinare le risorse Wear assenti ma referenziate dal manifest, quindi riportare verde la baseline Android/Wear prima degli incrementi funzionali.
+- [x] Ricostruire i moduli Wear versionati solo in parte — snapshot locale, receiver Data Layer, Tile e complication — mantenendo refresh delegato al telefono e senza nuove fonti dati.
+- [x] Inventariare le capacità effettive del ramo v0.20.3 rispetto al benchmark, includendo persistenza, widget, Wear e componenti Apple.
+- [x] Confrontare i flussi utili sperimentati nella precedente versione Binario su Git con il benchmark esterno, ricavandone requisiti senza importare o copiare codice.
+- [x] Separare e documentare le proposte già presenti, implementabili solo in locale, subordinate alla scelta UI e bloccate da provider, hardware o governance.
+- [x] Verificare i percorsi di rete esistenti e mantenere esclusi provider non autorizzati, scraping, endpoint privati e stati realtime non dimostrabili.
+- [x] Rimuovere dall’esecuzione della base Git storica gli adapter ViaggiaTreno/RFI/Italo non autorizzati, lasciando esclusivamente il fallback locale programmato e l’indisponibilità esplicita.
+- [x] Implementare soltanto i miglioramenti locali realmente assenti e non dipendenti dal redesign: priorità personale della tratta, ordinamento esplicito e denominazione ferroviaria limitata con migrazione retrocompatibile.
+- [x] Estendere test unitari e di persistenza per ogni metadato personale, migrazione, limite e comportamento fail-closed introdotto.
+- [x] Eseguire test Android/Wear, build di debug e verifica delle modifiche prima del commit isolato.
+- [x] Aggiornare la documentazione del benchmark e creare un commit Git ristretto alle funzionalità effettivamente completate.
+- [ ] Applicare densità visiva, preferenza del formato orario e microcopy soltanto dopo la scelta esplicita del mockup da parte dell’utente.
+- [x] Cercare in tutti i riferimenti Git disponibili la precedente implementazione della richiesta vocale Wear e documentare le capacità realmente recuperabili.
+- [ ] Implementare o completare il flusso Wear “Parla a Binario”: avvio microfono dal polso, interpretazione limitata a domande ferroviarie e risposta accessibile basata su snapshot locale o fonte autorizzata.
+- [ ] Verificare i percorsi di indisponibilità: una richiesta su ritardi, binario o soppressione non può produrre un dato live senza provider autorizzato.
+- [ ] Eseguire test/build Android e Wear, aggiornare il protocollo manuale e creare un commit Git isolato per il companion vocale.
+- [x] Censire commit, rami, tag, worktree e artefatti delle sessioni precedenti per stabilire quali sviluppi companion sono realmente recuperabili.
+- [x] Produrre un registro di recupero che distingua codice consolidato su Git, artefatti compilati senza sorgente e capacità citate ma non ricostruibili.
+- [ ] Consolidare il baseline recuperabile nel repository Binario prima di estendere ulteriormente il companion vocale Wear.

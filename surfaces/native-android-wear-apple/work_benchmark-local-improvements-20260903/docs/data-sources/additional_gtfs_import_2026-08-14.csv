@@ -1,0 +1,9 @@
+source_id,outcome,http_status,bytes,detail,artifact
+arst-gtfs,PASS,200,20000592,agency=1;stops=3554;routes=322;trips=6471,/home/ubuntu/binario_gtfs_imports_extended/arst-gtfs.zip
+lombardia-trenord-gtfs,PASS,200,1660043,agency=1;stops=566;routes=63;trips=8470,/home/ubuntu/binario_gtfs_imports_extended/lombardia-trenord-gtfs.zip
+oebb-gtfs-2025,FAIL,000,0,"0      0      0 --:--:--  0:00:13 --:--:--     0
+  0     0    0     0    0     0      0      0 --:--:--  0:00:14 --:--:--     0
+  0     0    0     0    0     0      0      0 --:--:--  0:00:15 --:--:--     0
+curl: (28) SSL connection timeout",
+toscana-tft-gtfs,PASS,200,19150,agency=1;stops=25;routes=2;trips=116,/home/ubuntu/binario_gtfs_imports_extended/toscana-tft-gtfs.zip
+trentino-urban-gtfs,PASS,200,800645,agency=1;stops=1073;routes=41;trips=2437,/home/ubuntu/binario_gtfs_imports_extended/trentino-urban-gtfs.zip

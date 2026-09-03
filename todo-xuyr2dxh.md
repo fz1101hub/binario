@@ -56,3 +56,8 @@
 - [ ] Documentare esplicitamente completezza, dipendenze mancanti e divieti di fusione automatica tra le versioni preservate.
 - [x] Preparare Git LFS nel solo ramo laterale per archivi di consegna superiori al limite GitHub, mantenendo Git ordinario per sorgenti, test e documenti.
 - [ ] Recuperare ogni archivio disponibile in una directory isolata per versione, con manifest SHA-256 e inventario del contenuto.
+- [ ] Censire per questa chat il perimetro completo di web, Android/iOS, widget, Wear OS, Apple Watch e Voice Bridge/Alexa, con sorgenti e build disponibili.
+- [ ] Preservare nel ramo laterale ogni superficie in una directory separata, includendo configurazioni, test, documentazione e artefatti associati.
+- [ ] Verificare e registrare per ogni piattaforma le dipendenze mancanti, i comandi di build e lo stato effettivo di recuperabilità.
+- [ ] Copiare il progetto web/Voice Bridge locale nel ramo laterale sotto una superficie dedicata, preservando codice, lockfile, test, migrazioni e documentazione ma escludendo output rigenerabili e metadati Git.
+- [ ] Copiare in superfici separate le sorgenti native Android, Wear OS e Apple Watch disponibili localmente, escludendo build, cache, dipendenze e metadati Git ma mantenendo il relativo riferimento di versione.

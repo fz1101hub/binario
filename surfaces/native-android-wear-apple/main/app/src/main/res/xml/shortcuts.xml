@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="active-route"
+        android:shortcutShortLabel="@string/shortcut_active_route">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:data="binario://route/active" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="next-departures"
+        android:shortcutShortLabel="@string/shortcut_next_departures">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:data="binario://departures/next" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="train-search"
+        android:shortcutShortLabel="@string/shortcut_train_search">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:data="binario://train/search" />
+    </shortcut>
+</shortcuts>

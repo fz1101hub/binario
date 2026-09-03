@@ -1,0 +1,34 @@
+# Project TODO
+
+- [x] Definire schema dati per tratte personali, associazioni Alexa e token OAuth locali.
+- [x] Creare API protette per creare, elencare e rimuovere tratte personali.
+- [x] Implementare verifica rigorosa delle richieste webhook Alexa e risposta Speechlet JSON.
+- [x] Implementare gli intent Alexa per prossimi treni, stato treno e tratte personali con account linking obbligatorio per dati personali.
+- [x] Restituire esattamente “dati non disponibili in tempo reale” quando manca una fonte ferroviaria live autorizzata.
+- [x] Costruire la dashboard protetta per tratte e stato dell’integrazione vocale.
+- [x] Predisporre percorso OAuth 2.0 authorization code grant e documentare le configurazioni richieste nella console Alexa.
+- [x] Mantenere webhook e account linking Alexa in modalità non attiva finché non sono disponibili ALEXA_SKILL_ID, ALEXA_OAUTH_CLIENT_ID, ALEXA_OAUTH_CLIENT_SECRET e VOICE_TOKEN_PEPPER.
+- [x] Documentare deep link e shortcuts.xml per App Actions Android.
+- [x] Aggiungere test unitari per autorizzazione, tratte e risposte vocali.
+- [x] Eseguire migrazione database, test, controllo tipi e verifica visiva della dashboard.
+- [x] Preparare documentazione operativa, checklist privacy e consegna della release.
+- [x] Aggiungere test backend per le procedure protette `routes.*` e `voice.unlink`, inclusi accesso negato senza autenticazione e mutazioni riuscite/fallite.
+- [x] Aggiungere test per i flussi OAuth Alexa (`/api/alexa/oauth/authorize`, `/api/alexa/oauth/token`) e per il comportamento fail-closed del webhook con skill non configurata.
+- [x] Preparare un rapporto finale con checklist privacy e sicurezza, esiti test/migrazione e istruzioni post-credenziali Alexa.
+- [x] Salvare checkpoint della release predisposta e allegare gli artefatti di consegna.
+- [x] Consegnare all’utente il checkpoint finale del bridge vocale predisposto.
+- [x] Estendere i test backend a `routes.list/create/setPinned/remove` e `voice.unlink`, includendo accesso negato e percorsi di errore.
+- [x] Aggiungere test endpoint-level per authorize, token OAuth e webhook fail-closed senza configurazione Alexa.
+- [x] Verificare il rapporto di release sul filesystem prima del checkpoint finale.
+- [x] Aggiungere test per `routes.create` non autenticato e per gli errori di `routes.setPinned`, `routes.remove` e `voice.unlink`.
+- [x] Rieseguire la suite completa e aggiornare il rapporto finale con la copertura estesa.
+- [x] Verificare il rapporto finale salvato con i risultati definitivi di 18 test prima del checkpoint.
+- [x] Allineare la documentazione del Voice Bridge al profilo Binario condiviso con Android e companion, senza introdurre segreti nel client.
+- [x] Implementare endpoint autenticati e versionati per leggere e aggiornare il profilo Binario remoto, senza dati ferroviari live o segreti client.
+- [x] Aggiungere test di autorizzazione, validazione e idempotenza per il contratto profilo remoto.
+- [x] Verificare e salvare il checkpoint Voice Bridge dell’incremento di sincronizzazione.
+- [x] Mappare il record del profilo remoto verso un DTO pubblico, senza JSON interno o identificativi di mutazione.
+- [x] Verificare il replay idempotente e la forma del DTO nelle risposte delle procedure profilo.
+- [x] Eseguire due salvataggi consecutivi della stessa mutazione attraverso `profile.upsert`, verificando revisione invariata al replay.
+- [x] Verificare con le procedure protette la risposta DTO priva dei campi interni dell’archivio.
+- [x] Eseguire l’integrazione tRPC del profilo con servizio e storage reali in memoria, verificando replay idempotente e DTO pubblico.

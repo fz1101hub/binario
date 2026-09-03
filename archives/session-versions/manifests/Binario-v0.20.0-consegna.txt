@@ -1,0 +1,14 @@
+consegna_binario_v020/
+consegna_binario_v020/Binario-v0.20.0-debug.apk
+consegna_binario_v020/CHANGELOG.md
+consegna_binario_v020/CURATED_STATION_CATALOG.md
+consegna_binario_v020/README.md
+consegna_binario_v020/RELEASE.txt
+consegna_binario_v020/SHA256SUMS.txt
+consegna_binario_v020/STATION_CATALOG_MANIFEST.json
+consegna_binario_v020/VERIFICA-v0.20.0.md
+consegna_binario_v020/curated_it_rail_stations.json.gz
+consegna_binario_v020/sorgenti/
+consegna_binario_v020/sorgenti/build_curated_station_catalog.py
+consegna_binario_v020/sorgenti/catalog/
+consegna_binario_v020/sorgenti/catalog/EmbeddedCuratedRailStationCatalog.kt

@@ -1,0 +1,11 @@
+<resources>
+    <color name="widget_surface">#004B3A</color>
+    <color name="widget_on_surface">#F5FBF5</color>
+    <color name="widget_on_surface_muted">#C5D9CF</color>
+    <color name="widget_accent">#4FE0AE</color>
+    <color name="widget_warning">#FFB870</color>
+    <color name="widget_error">#FFB4AB</color>
+    <color name="widget_divider">#4E796A</color>
+    <color name="widget_header">#C5D9CF</color>
+    <color name="widget_header_text">#003527</color>
+</resources>

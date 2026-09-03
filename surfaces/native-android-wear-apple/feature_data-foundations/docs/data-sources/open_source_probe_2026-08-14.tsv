@@ -1,0 +1,9 @@
+source_id	status	content_type	content_length	last_modified	result	detail
+arst-gtfs	200	application/zip	20000592	Wed, 05 Aug 2026 08:46:47 GMT	PASS	
+trentino-gtfs	200	application/zip	7436478	Wed, 01 Jul 2026 11:31:35 GMT	PASS	
+alto-adige-sta-gtfs	200	application/zip	135747423		PASS	
+hzpp-gtfs	200	application/zip	2778927	Fri, 14 Aug 2026 00:01:40 GMT	PASS	
+sncf-gtfs	200	application/zip	4767257	Thu, 13 Aug 2026 19:01:26 GMT	PASS	
+sncf-gtfs-rt-trip-updates	200	application/x-protobuf	784386		PASS	
+sncf-gtfs-rt-alerts	200	application/x-protobuf	990040		PASS	
+oebb-gtfs	200	application/zip	173582700	Fri, 12 Dec 2025 09:02:01 GMT	PASS	
