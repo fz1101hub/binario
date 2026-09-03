@@ -262,6 +262,9 @@ data class StationBoardEntry(
     val scheduledTime: ZonedDateTime,
     val expectedTime: SourcedValue<ZonedDateTime>? = null,
     val destinationOrOrigin: StationId,
+    val destinationOrOriginLabel: String? = null,
+    val publicNumber: String? = null,
+    val operatorId: OperatorId? = null,
     val platform: SourcedValue<String>? = null,
     val status: SourcedValue<RunStatus>? = null
 )
