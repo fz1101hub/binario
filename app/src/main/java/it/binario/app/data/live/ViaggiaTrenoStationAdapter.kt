@@ -17,6 +17,20 @@ import it.binario.app.data.formatTime
 import it.binario.app.data.liveIdentityKey
 import it.binario.app.data.matchesPublishedName
 import it.binario.app.data.timeToMinutes
+import it.binario.app.data.core.BoardKind
+import it.binario.app.data.core.Confidence
+import it.binario.app.data.core.SourceId
+import it.binario.app.data.provider.AccessMode
+import it.binario.app.data.provider.CoverageDescriptor
+import it.binario.app.data.provider.ProviderCapability
+import it.binario.app.data.provider.ProviderDescriptor
+import it.binario.app.data.provider.ProviderError
+import it.binario.app.data.provider.ProviderErrorKind
+import it.binario.app.data.provider.ProviderResponseMeta
+import it.binario.app.data.provider.ProviderResult
+import it.binario.app.data.provider.RatePolicy
+import it.binario.app.data.provider.StationBoardProvider
+import it.binario.app.data.provider.StationBoardRequest
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -28,6 +42,7 @@ import java.net.URL
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.time.Clock
+import java.time.Duration
 import java.util.Locale
 
 fun interface ViaggiaTrenoStationFetcher {
@@ -68,9 +83,62 @@ class ViaggiaTrenoStationAdapter(
     private val fetcher: ViaggiaTrenoStationFetcher = HttpViaggiaTrenoStationFetcher(),
     private val clock: Clock = Clock.systemDefaultZone(),
     private val cacheTtlMillis: Long = 60_000L
-) : TrainDataSource {
+) : TrainDataSource, StationBoardProvider {
+    override val descriptor = ProviderDescriptor(
+        id = SourceId("viaggiatreno"),
+        displayName = "Trenitalia — ViaggiaTreno",
+        capabilities = setOf(ProviderCapability.STATION_BOARD),
+        coverage = CoverageDescriptor(countryCodes = setOf("IT"), description = "Tabelloni pubblici ViaggiaTreno"),
+        accessMode = AccessMode.PUBLIC_BEST_EFFORT,
+        ratePolicy = RatePolicy(Duration.ofSeconds(30), defaultTimeToLive = Duration.ofMillis(cacheTtlMillis)),
+        schemaVersion = 1
+    )
+
     private val mutex = Mutex()
     private val cache = mutableMapOf<String, CachedSnapshot>()
+
+    override suspend fun getStationBoard(request: StationBoardRequest): ProviderResult<it.binario.app.data.core.StationBoard> {
+        if (request.kind != BoardKind.DEPARTURES) {
+            return ProviderResult.Failure(ProviderError(ProviderErrorKind.NOT_SUPPORTED, "ViaggiaTreno: sono supportate solo le partenze."))
+        }
+        val stationName = request.stationName?.takeIf(String::isNotBlank)
+            ?: return ProviderResult.Failure(ProviderError(ProviderErrorKind.INVALID_REQUEST, "ViaggiaTreno richiede il nome della stazione."))
+        val fetchedAt = clock.instant()
+        return try {
+            val html = fetcher.fetch(stationName)
+            val syntheticRoute = SavedRoute(
+                id = "station-board:\${request.stationId.value}",
+                name = stationName,
+                outwardOrigin = Station(request.stationId.value, stationName, stationName),
+                outwardDestination = Station("station-board-target", "Destinazione", "")
+            )
+            val services = parseStationBoard(html, stationName, syntheticRoute, Direction.OUTBOUND)
+            val board = LegacyStationBoardInterop.build(
+                sourceId = descriptor.id,
+                confidence = Confidence.OPERATOR_PRIMARY,
+                stationId = request.stationId,
+                kind = request.kind,
+                from = request.from,
+                to = request.to,
+                services = services,
+                fetchedAt = fetchedAt,
+                ttl = descriptor.ratePolicy.defaultTimeToLive
+            )
+            ProviderResult.Success(
+                board,
+                ProviderResponseMeta(
+                    providerId = descriptor.id,
+                    fetchedAt = fetchedAt,
+                    observedAt = fetchedAt,
+                    expiresAt = fetchedAt.plus(descriptor.ratePolicy.defaultTimeToLive)
+                )
+            )
+        } catch (error: IOException) {
+            ProviderResult.Failure(ProviderError(ProviderErrorKind.NETWORK, "ViaggiaTreno non è raggiungibile.", error::class.java.name))
+        } catch (error: Exception) {
+            ProviderResult.Failure(ProviderError(ProviderErrorKind.PARSE_ERROR, "ViaggiaTreno non è leggibile.", error::class.java.name))
+        }
+    }
 
     override suspend fun loadRoute(route: SavedRoute, direction: Direction): DataResult {
         val now = clock.instant().atZone(clock.zone)
