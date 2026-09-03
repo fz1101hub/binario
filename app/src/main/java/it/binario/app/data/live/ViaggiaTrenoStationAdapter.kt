@@ -107,7 +107,7 @@ class ViaggiaTrenoStationAdapter(
         return try {
             val html = fetcher.fetch(stationName)
             val syntheticRoute = SavedRoute(
-                id = "station-board:\${request.stationId.value}",
+                id = "station-board:${request.stationId.value}",
                 name = stationName,
                 outwardOrigin = Station(request.stationId.value, stationName, stationName),
                 outwardDestination = Station("station-board-target", "Destinazione", "")
