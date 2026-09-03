@@ -148,7 +148,11 @@ data class TrainService(
     /** False for schedule-only data: ON_TIME must never be presented as an observed operational state. */
     val operationalStatusVerified: Boolean = true,
     /** Date/time of the scheduled departure when the source query provides a service date. */
-    val scheduledDepartureDateTime: LocalDateTime? = null
+    val scheduledDepartureDateTime: LocalDateTime? = null,
+    /** Canonical source ids that contributed verified operational fields. */
+    val operationalSourceIds: Set<String> = emptySet(),
+    /** Most recent observation time among the operational sources used for this service. */
+    val operationalObservedAtEpochMillis: Long? = null
 ) {
     val category: String get() = trainCategory.accessibleLabel
     val operatorAndCategory: String get() = "${operator.shortLabel} · ${trainCategory.accessibleLabel}"
