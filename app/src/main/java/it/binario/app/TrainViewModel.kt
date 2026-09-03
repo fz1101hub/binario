@@ -13,6 +13,7 @@ import androidx.lifecycle.viewModelScope
 import it.binario.app.data.DataConfidence
 import it.binario.app.data.DataResult
 import it.binario.app.data.Direction
+import it.binario.app.data.JourneyQuery
 import it.binario.app.data.RailOperator
 import it.binario.app.data.RouteSnapshot
 import it.binario.app.data.RouteSnapshotCache
@@ -34,6 +35,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.util.UUID
+import java.time.LocalDate
+import java.time.LocalTime
 
 enum class RefreshState(val accessibleLabel: String) {
     IDLE("Pronta"),
@@ -106,6 +109,8 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
         private set
     var mobilityPreferences by mutableStateOf(mobilityPreferencesStore.read())
         private set
+
+    private var journeyQuery: JourneyQuery = JourneyQuery.now()
 
     init {
         loadCuratedStationCatalog()
@@ -209,7 +214,12 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
         refresh()
     }
 
-    fun searchRoute(origin: Station, destination: Station): Boolean {
+    fun searchRoute(
+        origin: Station,
+        destination: Station,
+        serviceDate: LocalDate = LocalDate.now(),
+        departureTime: LocalTime = LocalTime.now().withSecond(0).withNano(0)
+    ): Boolean {
         val rememberedOrigin = rememberStation(canonicalStation(origin))
         val rememberedDestination = rememberStation(canonicalStation(destination))
         if (rememberedOrigin.id == rememberedDestination.id) {
@@ -227,6 +237,7 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
             outwardDestination = rememberedDestination
         )
         direction = Direction.OUTBOUND
+        journeyQuery = JourneyQuery(serviceDate, departureTime)
         routeStore.saveDirection(direction)
         recentRoutes = routeStore.recordRecent(rememberedOrigin, rememberedDestination, stations)
         selectedService = null
@@ -341,7 +352,8 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
         val routeAtRequest = activeRoute
         val directionAtRequest = direction
         viewModelScope.launch {
-            when (val result = dataSource.loadRoute(routeAtRequest, directionAtRequest)) {
+            val queryAtRequest = journeyQuery
+            when (val result = dataSource.loadRoute(routeAtRequest, directionAtRequest, queryAtRequest)) {
                 is DataResult.Success -> {
                     snapshot = result.snapshot
                     cache.save(result.snapshot)
