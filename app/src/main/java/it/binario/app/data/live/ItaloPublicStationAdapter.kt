@@ -15,6 +15,20 @@ import it.binario.app.data.TrainService
 import it.binario.app.data.TrainStop
 import it.binario.app.data.formatTime
 import it.binario.app.data.timeToMinutes
+import it.binario.app.data.core.BoardKind
+import it.binario.app.data.core.Confidence
+import it.binario.app.data.core.SourceId
+import it.binario.app.data.provider.AccessMode
+import it.binario.app.data.provider.CoverageDescriptor
+import it.binario.app.data.provider.ProviderCapability
+import it.binario.app.data.provider.ProviderDescriptor
+import it.binario.app.data.provider.ProviderError
+import it.binario.app.data.provider.ProviderErrorKind
+import it.binario.app.data.provider.ProviderResponseMeta
+import it.binario.app.data.provider.ProviderResult
+import it.binario.app.data.provider.RatePolicy
+import it.binario.app.data.provider.StationBoardProvider
+import it.binario.app.data.provider.StationBoardRequest
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -25,6 +39,7 @@ import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
 import java.time.Clock
+import java.time.Duration
 import java.util.Locale
 
 fun interface ItaloPublicStationFetcher {
@@ -59,9 +74,63 @@ class ItaloPublicStationAdapter(
     private val fetcher: ItaloPublicStationFetcher = HttpItaloPublicStationFetcher(),
     private val clock: Clock = Clock.systemDefaultZone(),
     private val cacheTtlMillis: Long = 60_000L
-) : TrainDataSource {
+) : TrainDataSource, StationBoardProvider {
+    override val descriptor = ProviderDescriptor(
+        id = SourceId("italo-status"),
+        displayName = "Italo in Viaggio",
+        capabilities = setOf(ProviderCapability.STATION_BOARD),
+        coverage = CoverageDescriptor(countryCodes = setOf("IT"), description = "Tabelloni pubblici delle stazioni Italo configurate"),
+        accessMode = AccessMode.PUBLIC_BEST_EFFORT,
+        ratePolicy = RatePolicy(Duration.ofSeconds(30), defaultTimeToLive = Duration.ofMillis(cacheTtlMillis)),
+        schemaVersion = 1
+    )
+
     private val mutex = Mutex()
     private val cache = mutableMapOf<String, CachedSnapshot>()
+
+    override suspend fun getStationBoard(request: StationBoardRequest): ProviderResult<it.binario.app.data.core.StationBoard> {
+        if (request.kind != BoardKind.DEPARTURES) {
+            return ProviderResult.Failure(ProviderError(ProviderErrorKind.NOT_SUPPORTED, "Italo: sono supportate solo le partenze."))
+        }
+        val slug = ItaloStationSlugs.slug(request.stationId.value)
+            ?: return ProviderResult.Failure(ProviderError(ProviderErrorKind.NOT_SUPPORTED, "Stazione Italo non configurata."))
+        val stationName = request.stationName?.takeIf(String::isNotBlank) ?: request.stationId.value
+        val fetchedAt = clock.instant()
+        return try {
+            val html = fetcher.fetch(slug)
+            val syntheticRoute = SavedRoute(
+                id = "station-board:\${request.stationId.value}",
+                name = stationName,
+                outwardOrigin = Station(request.stationId.value, stationName, stationName),
+                outwardDestination = Station("station-board-target", "Destinazione", "")
+            )
+            val services = parseStationBoard(html, stationName, syntheticRoute, Direction.OUTBOUND)
+            val board = LegacyStationBoardInterop.build(
+                sourceId = descriptor.id,
+                confidence = Confidence.OPERATOR_PRIMARY,
+                stationId = request.stationId,
+                kind = request.kind,
+                from = request.from,
+                to = request.to,
+                services = services,
+                fetchedAt = fetchedAt,
+                ttl = descriptor.ratePolicy.defaultTimeToLive
+            )
+            ProviderResult.Success(
+                board,
+                ProviderResponseMeta(
+                    providerId = descriptor.id,
+                    fetchedAt = fetchedAt,
+                    observedAt = fetchedAt,
+                    expiresAt = fetchedAt.plus(descriptor.ratePolicy.defaultTimeToLive)
+                )
+            )
+        } catch (error: IOException) {
+            ProviderResult.Failure(ProviderError(ProviderErrorKind.NETWORK, "Italo in Viaggio non è raggiungibile.", error::class.java.name))
+        } catch (error: Exception) {
+            ProviderResult.Failure(ProviderError(ProviderErrorKind.PARSE_ERROR, "Italo in Viaggio non è leggibile.", error::class.java.name))
+        }
+    }
 
     override suspend fun loadRoute(route: SavedRoute, direction: Direction): DataResult {
         val now = clock.instant().atZone(clock.zone)
