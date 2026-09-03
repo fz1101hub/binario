@@ -41,3 +41,18 @@
 - [x] Individuare nei file locali le evidenze della linea v0.1.1 e separarli dai file già esistenti della versione precedente.
 - [x] Caricare nel ramo laterale soltanto i file locali attribuiti alla v0.1.1, con inventario e hash verificabili.
 - [x] Preservare nel ramo laterale l’APK release v0.1.1 locale e il relativo SHA-256, separandolo dai sorgenti e senza rigenerarlo.
+- [ ] Inventariare import, alias, configurazioni Expo e struttura Android della baseline locale v0.1.1 senza modificare il progetto.
+- [ ] Identificare esattamente ogni file sorgente, dipendenza npm e configurazione mancante che impedisce a v0.1.1 di superare typecheck, export e build Android.
+- [ ] Eseguire soltanto controlli diagnostici non distruttivi e consegnare il comando di recupero/compilazione più breve verificabile.
+- [ ] Inventariare il plugin locale Android/Wear, le sue risorse generate e le dipendenze necessarie per rigenerare widget e companion smartwatch dalla v0.1.1.
+- [ ] Inventariare separatamente il codice Alexa/Voice Bridge del progetto web e distinguere sorgente versionata da configurazione o pubblicazione esterna.
+- [ ] Produrre un registro tecnico che attesti per smartwatch e Alexa: recuperato, rigenerabile, mancante o esterno non verificato.
+- [ ] Inventariare e preservare nel ramo laterale i file locali del Voice Bridge/Alexa separati dalla cartella companion Expo.
+- [ ] Verificare con hash che plugin smartwatch, sorgenti Android generate e artefatto APK v0.1.1 presenti localmente siano tutti inclusi nel ramo laterale.
+- [ ] Versionare e inviare il recupero completo delle superfici locali v0.1.1 senza introdurre correzioni o sviluppo ulteriore.
+- [x] Censire tutte le versioni Binario disponibili e catalogarle per piattaforma, provenienza, tipo di sorgente e artefatto.
+- [ ] Copiare nel ramo laterale ogni sorgente, configurazione, test, documento e build disponibile in una directory isolata per versione.
+- [ ] Calcolare e salvare un manifest di integrità per ciascuna versione recuperata senza rigenerare né alterare gli artefatti.
+- [ ] Documentare esplicitamente completezza, dipendenze mancanti e divieti di fusione automatica tra le versioni preservate.
+- [x] Preparare Git LFS nel solo ramo laterale per archivi di consegna superiori al limite GitHub, mantenendo Git ordinario per sorgenti, test e documenti.
+- [ ] Recuperare ogni archivio disponibile in una directory isolata per versione, con manifest SHA-256 e inventario del contenuto.
