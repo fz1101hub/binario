@@ -19,4 +19,7 @@
 - [ ] Eseguire test/build Android e Wear, aggiornare il protocollo manuale e creare un commit Git isolato per il companion vocale.
 - [x] Censire commit, rami, tag, worktree e artefatti delle sessioni precedenti per stabilire quali sviluppi companion sono realmente recuperabili.
 - [x] Produrre un registro di recupero che distingua codice consolidato su Git, artefatti compilati senza sorgente e capacità citate ma non ricostruibili.
-- [ ] Consolidare il baseline recuperabile nel repository Binario prima di estendere ulteriormente il companion vocale Wear.
+- [x] Consolidare il baseline recuperabile nel repository Binario prima di estendere ulteriormente il companion vocale Wear.
+- [x] Congelare la cartella companion Expo di sessione con inventario, hash e archivio di sicurezza prima di qualunque confronto o correzione.
+- [x] Creare nel repository Binario un ramo di recupero separato contenente la baseline Expo di sessione, senza sovrascrivere il ramo Android/Wear storico o il ramo benchmark.
+- [ ] Valutare il Git storico solo dopo il salvataggio, importando nella baseline Expo esclusivamente capacità migliori con contratto e test compatibili.
