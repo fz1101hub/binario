@@ -50,14 +50,14 @@ internal object LegacyStationBoardInterop {
                 fetchedAt = fetchedAt,
                 expiresAt = fetchedAt.plus(ttl),
                 confidence = confidence,
-                traceId = "\${sourceId.value}:\${service.id}"
+                traceId = "${sourceId.value}:${service.id}"
             )
             val expected = resolveExpectedDateTime(service.expectedDeparture, scheduled, zone)
             StationBoardEntry(
-                runId = TrainRunId("\${sourceId.value}:\${service.number}:\${scheduled.toLocalDate()}"),
+                runId = TrainRunId("${sourceId.value}:${service.number}:${scheduled.toLocalDate()}"),
                 scheduledTime = scheduled,
                 expectedTime = expected?.let { SourcedValue(it, source) },
-                destinationOrOrigin = StationId("published:\${normalizeStation(service.destination)}"),
+                destinationOrOrigin = StationId("published:${normalizeStation(service.destination)}"),
                 destinationOrOriginLabel = service.destination,
                 publicNumber = service.number,
                 operatorId = operatorId(service.operator),
@@ -72,7 +72,7 @@ internal object LegacyStationBoardInterop {
             fetchedAt = fetchedAt,
             expiresAt = fetchedAt.plus(ttl),
             confidence = confidence,
-            traceId = "\${sourceId.value}:board:\${stationId.value}:\${fetchedAt.toEpochMilli()}"
+            traceId = "${sourceId.value}:board:${stationId.value}:${fetchedAt.toEpochMilli()}"
         )
         return StationBoard(
             stationId = stationId,
