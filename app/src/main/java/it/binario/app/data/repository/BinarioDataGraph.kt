@@ -83,4 +83,10 @@ class LegacyTrainDataSourceFacade(
         route: it.binario.app.data.SavedRoute,
         direction: it.binario.app.data.Direction
     ): it.binario.app.data.DataResult = legacySource.loadRoute(route, direction)
+
+    override suspend fun loadRoute(
+        route: it.binario.app.data.SavedRoute,
+        direction: it.binario.app.data.Direction,
+        query: it.binario.app.data.JourneyQuery
+    ): it.binario.app.data.DataResult = legacySource.loadRoute(route, direction, query)
 }
