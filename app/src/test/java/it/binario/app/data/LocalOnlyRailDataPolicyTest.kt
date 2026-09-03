@@ -1,14 +1,35 @@
 package it.binario.app.data
 
+import it.binario.app.data.live.RfiInfomobilityRssAdapter
+import it.binario.app.data.live.SncfGtfsRealtimeAdapter
+import it.binario.app.data.live.StaRealtimeAdapter
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class LocalOnlyRailDataPolicyTest {
     @Test
-    fun `local production policy exposes no direct network provider`() {
+    fun `production policy keeps route planning local but exposes authorised open realtime providers`() {
         assertTrue(LocalOnlyRailDataPolicy.routeSources().isEmpty())
-        assertTrue(LocalOnlyRailDataPolicy.alertProviders().isEmpty())
-        assertTrue(LocalOnlyRailDataPolicy.vehiclePositionProviders().isEmpty())
-        assertTrue(LocalOnlyRailDataPolicy.tripUpdateProviders().isEmpty())
+
+        val alerts = LocalOnlyRailDataPolicy.alertProviders()
+        assertEquals(
+            setOf(
+                RfiInfomobilityRssAdapter.SOURCE_ID,
+                StaRealtimeAdapter.SOURCE_ID,
+                SncfGtfsRealtimeAdapter.SOURCE_ID
+            ),
+            alerts.map { it.descriptor.id }.toSet()
+        )
+
+        assertEquals(
+            setOf(StaRealtimeAdapter.SOURCE_ID),
+            LocalOnlyRailDataPolicy.vehiclePositionProviders().map { it.descriptor.id }.toSet()
+        )
+
+        assertEquals(
+            setOf(StaRealtimeAdapter.SOURCE_ID, SncfGtfsRealtimeAdapter.SOURCE_ID),
+            LocalOnlyRailDataPolicy.tripUpdateProviders().map { it.descriptor.id }.toSet()
+        )
     }
 }
