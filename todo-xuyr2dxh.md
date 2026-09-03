@@ -70,7 +70,10 @@
 - [x] Archiviare in LFS le build release Android e Wear generate dalla baseline Expo ripristinata, con checksum distinti dall’APK v0.1.1 originario.
 - [x] Confermare che le capacità residue della versione Git non siano trasferibili senza duplicazioni, provider non autorizzati o sviluppo nativo specifico.
 - [x] Sintetizzare benchmark e riferimenti già forniti in un brief UI/UX originale per Binario, senza applicare modifiche al codice.
-- [ ] Generare mockup originali di Home chiara, tabellone chiaro e dettaglio scuro per la scelta dell’utente.
+- [x] Generare mockup originali di Home chiara, tabellone chiaro e dettaglio scuro per la scelta dell’utente.
 - [ ] Non applicare densità, formato orario, microcopy o restyling alla UI Expo prima della scelta esplicita del mockup.
+- [x] Rileggere le sintesi complete di matrici, analisi delle app ferroviarie e benchmark UX già recuperati prima di produrre nuove proposte.
+- [x] Definire almeno due direzioni UI/UX Binario con struttura, ritmo e metafora visiva chiaramente differenti dai riferimenti e tra loro.
+- [ ] Generare nuove proposte visuali separate, senza riusare la composizione “Segnale di banchina” e senza modificare la UI Expo fino alla scelta.
 - [x] Copiare il progetto web/Voice Bridge locale nel ramo laterale sotto una superficie dedicata, preservando codice, lockfile, test, migrazioni e documentazione ma escludendo output rigenerabili e metadati Git.
 - [x] Copiare in superfici separate le sorgenti native Android, Wear OS e Apple Watch disponibili localmente, escludendo build, cache, dipendenze e metadati Git ma mantenendo il relativo riferimento di versione.

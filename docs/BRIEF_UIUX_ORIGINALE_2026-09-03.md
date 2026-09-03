@@ -23,3 +23,7 @@ La navigazione non deve diventare una copia degli esempi: le sezioni restano que
 ## Confini prima dell’approvazione
 
 Questo documento è un brief per mockup. Non autorizza modifiche a densità, formato orario, microcopy, navigazione, colori o layout della baseline Expo. Il restyling inizierà soltanto dopo una scelta esplicita dell’utente su mockup originali.
+
+## Verifica della proposta Home
+
+La Home proposta conserva una gerarchia corta: tratta dominante, stazioni rapide e tre moduli operativi. Il linguaggio visivo differisce dalla composizione dei riferimenti osservati attraverso un unico pannello-asimmetrico della tratta, una traccia essenziale e righe senza card ripetitive. La proposta non è però un testo definitivo: il badge **“In orario”** suggerisce un controllo ferroviario che Binario non possiede senza fonte autorizzata e deve diventare **“Programmato”** oppure **“Piano personale”** prima di qualsiasi uso nell’app.
