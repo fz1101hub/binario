@@ -63,8 +63,10 @@ class ItaloPublicStationAdapter(
     private val mutex = Mutex()
     private val cache = mutableMapOf<String, CachedSnapshot>()
 
-    override suspend fun loadRoute(route: SavedRoute, direction: Direction): DataResult =
-        loadRoute(route, direction, JourneyQuery.now())
+    override suspend fun loadRoute(route: SavedRoute, direction: Direction): DataResult {
+        val now = clock.instant().atZone(clock.zone)
+        return loadRoute(route, direction, JourneyQuery(now.toLocalDate(), now.toLocalTime().withSecond(0).withNano(0)))
+    }
 
     override suspend fun loadRoute(route: SavedRoute, direction: Direction, query: JourneyQuery): DataResult {
         if (query.serviceDate != clock.instant().atZone(clock.zone).toLocalDate()) {
