@@ -176,7 +176,7 @@ class RouteWidgetProvider : AppWidgetProvider() {
                     views.setInt(
                         id,
                         "setBackgroundResource",
-                        if (WidgetChangeHighlight.shouldHighlight(service.status, state.confidence, state.freshness)) R.drawable.widget_row_variation else R.drawable.widget_row_background
+                        if (WidgetChangeHighlight.shouldHighlight(service.status, state.confidence, state.freshness, service.operationalStatusVerified)) R.drawable.widget_row_variation else R.drawable.widget_row_background
                     )
                     views.setOnClickPendingIntent(id, openAppIntent(context, widgetId))
                 }
@@ -284,7 +284,7 @@ class RouteWidgetProvider : AppWidgetProvider() {
                 "setBackgroundResource",
                 if (WidgetChangeHighlight.shouldHighlight(service.status, state.confidence, state.freshness)) R.drawable.widget_row_variation else R.drawable.widget_row_background
             )
-            views.setContentDescription(rowIds[0], service.accessibleLabel)
+            views.setContentDescription(rowIds[0], service.accessibleLabel(state.confidence))
             views.setTextViewText(R.id.widget_direction, "Modifica")
             views.setTextViewText(R.id.widget_refresh, "↻")
             views.setOnClickPendingIntent(R.id.widget_direction, configureIntent(context, widgetId))
@@ -421,7 +421,8 @@ data class WidgetService(
     val expectedDeparture: String,
     val status: ServiceStatus,
     val delayMinutes: Int,
-    val platform: String?
+    val platform: String?,
+    val operationalStatusVerified: Boolean
 ) {
     val statusLabel: String get() = when (status) {
         ServiceStatus.ON_TIME -> "OK"
@@ -429,7 +430,7 @@ data class WidgetService(
         ServiceStatus.CANCELLED -> "SOPP."
     }
     fun accessibleLabel(confidence: DataConfidence): String {
-        val operational = if (confidence == DataConfidence.STATIC_ONLY) "Orario programmato; stato operativo non verificato" else statusLabel
+        val operational = if (!operationalStatusVerified) "Orario programmato; stato operativo non verificato" else statusLabel
         return "Operatore ${operator.accessibleLabel}. $category $number verso $destination. Partenza prevista $expectedDeparture. $operational. ${platform?.let { "Binario $it" } ?: "Binario non disponibile"}."
     }
 }
@@ -519,7 +520,8 @@ object WidgetStateStore {
                 service.expectedDeparture,
                 service.status.name,
                 service.delayMinutes.toString(),
-                service.platform.orEmpty()
+                service.platform.orEmpty(),
+                service.operationalStatusVerified.toString()
             ).joinToString(",") { encode(it) }
         }.joinToString(";")
         prefs(context).edit {
@@ -560,7 +562,7 @@ object WidgetStateStore {
             .split("|")
             .mapNotNull { encoded -> runCatching { SnapshotWarning.valueOf(encoded) }.getOrNull() }
             .toSet()
-        val lines = prefs(context).getString(key(widgetId, KEY_LINES), "").orEmpty().split(";").mapNotNull(::decodeService)
+        val lines = prefs(context).getString(key(widgetId, KEY_LINES), "").orEmpty().split(";").mapNotNull { decodeService(it, confidence) }
         return WidgetState(
             route = route,
             direction = direction,
@@ -636,9 +638,9 @@ object WidgetStateStore {
         )
     }
 
-    private fun decodeService(value: String): WidgetService? {
+    private fun decodeService(value: String, confidence: DataConfidence): WidgetService? {
         val parts = value.split(",").map(::decode)
-        if (parts.size != 8) return null
+        if (parts.size !in setOf(8, 9)) return null
         return runCatching {
             WidgetService(
                 number = parts[0],
@@ -648,7 +650,9 @@ object WidgetStateStore {
                 expectedDeparture = parts[4],
                 status = ServiceStatus.valueOf(parts[5]),
                 delayMinutes = parts[6].toInt(),
-                platform = parts[7].ifBlank { null }
+                platform = parts[7].ifBlank { null },
+                operationalStatusVerified = parts.getOrNull(8)?.toBooleanStrictOrNull()
+                    ?: (confidence !in setOf(DataConfidence.STATIC_ONLY, DataConfidence.DEMONSTRATION))
             )
         }.getOrNull()
     }
