@@ -9,6 +9,7 @@ import it.binario.app.data.RailOperator
 import it.binario.app.data.RouteSnapshot
 import it.binario.app.data.SavedRoute
 import it.binario.app.data.ServiceStatus
+import it.binario.app.data.Station
 import it.binario.app.data.TrainCategory
 import it.binario.app.data.TrainDataSource
 import it.binario.app.data.TrainService
