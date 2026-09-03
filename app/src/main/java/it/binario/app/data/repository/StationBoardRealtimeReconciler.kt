@@ -1,0 +1,267 @@
+package it.binario.app.data.repository
+
+import it.binario.app.data.DataResult
+import it.binario.app.data.Direction
+import it.binario.app.data.Freshness
+import it.binario.app.data.JourneyQuery
+import it.binario.app.data.RouteSnapshot
+import it.binario.app.data.SavedRoute
+import it.binario.app.data.ServiceStatus
+import it.binario.app.data.SnapshotWarning
+import it.binario.app.data.Station
+import it.binario.app.data.TrainDataSource
+import it.binario.app.data.TrainService
+import it.binario.app.data.TrainStop
+import it.binario.app.data.matchesPublishedName
+import it.binario.app.data.core.BoardKind
+import it.binario.app.data.core.RunStatus
+import it.binario.app.data.core.StationBoard
+import it.binario.app.data.core.StationBoardEntry
+import it.binario.app.data.core.StationId
+import it.binario.app.data.provider.ProviderResult
+import it.binario.app.data.provider.StationBoardProvider
+import it.binario.app.data.provider.StationBoardRequest
+import java.time.Clock
+import java.time.Duration
+import java.time.LocalDateTime
+import java.time.ZoneId
+import java.time.ZonedDateTime
+import java.util.Locale
+import kotlin.math.abs
+
+/**
+ * Keeps journey planning static/deterministic and applies realtime only after a
+ * planned service can be matched by public number, destination and schedule.
+ */
+class StationBoardEnrichedTrainDataSource(
+    private val plannedSource: TrainDataSource,
+    private val boardProviders: List<StationBoardProvider>,
+    private val clock: Clock = Clock.systemDefaultZone(),
+    private val zone: ZoneId = ZoneId.of("Europe/Rome")
+) : TrainDataSource {
+    override suspend fun loadRoute(route: SavedRoute, direction: Direction): DataResult =
+        loadRoute(route, direction, JourneyQuery.now())
+
+    override suspend fun loadRoute(route: SavedRoute, direction: Direction, query: JourneyQuery): DataResult {
+        val planned = plannedSource.loadRoute(route, direction, query)
+        if (planned !is DataResult.Success) return planned
+
+        val today = clock.instant().atZone(clock.zone).toLocalDate()
+        if (query.serviceDate != today || boardProviders.isEmpty()) return planned
+
+        val snapshot = StationBoardRealtimeReconciler(
+            providers = boardProviders,
+            clock = clock,
+            zone = zone
+        ).enrich(planned.snapshot, query)
+        return DataResult.Success(snapshot)
+    }
+}
+
+class StationBoardRealtimeReconciler(
+    private val providers: List<StationBoardProvider>,
+    private val clock: Clock = Clock.systemDefaultZone(),
+    private val zone: ZoneId = ZoneId.of("Europe/Rome"),
+    private val scheduleTolerance: Duration = Duration.ofMinutes(20),
+    private val conflictTolerance: Duration = Duration.ofMinutes(5)
+) {
+    suspend fun enrich(snapshot: RouteSnapshot, query: JourneyQuery): RouteSnapshot {
+        if (snapshot.services.isEmpty()) return snapshot
+
+        val origin = snapshot.route.origin(snapshot.direction)
+        val destination = snapshot.route.destination(snapshot.direction)
+        val requested = query.requestedAt.atZone(zone)
+        val request = StationBoardRequest(
+            stationId = StationId(origin.id),
+            stationName = origin.name,
+            from = requested.minusMinutes(30).toInstant(),
+            to = requested.plusHours(8).toInstant(),
+            kind = BoardKind.DEPARTURES
+        )
+
+        val boards = providers.mapNotNull { provider ->
+            when (val result = provider.getStationBoard(request)) {
+                is ProviderResult.Success -> ProviderBoard(provider.descriptor.displayName, result.value)
+                is ProviderResult.Partial -> ProviderBoard(provider.descriptor.displayName, result.value)
+                is ProviderResult.Failure,
+                is ProviderResult.NotModified -> null
+            }
+        }
+        if (boards.isEmpty()) return snapshot
+
+        var conflict = false
+        val usedProviders = linkedSetOf<String>()
+        var newestObservedAt: Long? = null
+        var earliestExpiry: Long? = null
+
+        val enrichedServices = snapshot.services.map { service ->
+            val matches = boards.mapNotNull { providerBoard ->
+                bestMatch(service, destination, providerBoard.board)?.let { entry ->
+                    MatchedEntry(providerBoard.providerName, entry)
+                }
+            }
+            if (matches.isEmpty()) return@map service
+
+            if (hasConflict(matches)) conflict = true
+
+            val expectedMatch = matches.firstOrNull { it.entry.expectedTime != null }
+            val statusMatch = matches.firstOrNull { it.entry.status != null }
+            val platformMatch = matches.firstOrNull { it.entry.platform != null }
+            val selectedSources = listOfNotNull(expectedMatch, statusMatch, platformMatch)
+                .mapNotNull { selected ->
+                    selected.entry.expectedTime?.source?.takeIf { selected === expectedMatch }
+                        ?: selected.entry.status?.source?.takeIf { selected === statusMatch }
+                        ?: selected.entry.platform?.source?.takeIf { selected === platformMatch }
+                }
+                .distinctBy { it.sourceId }
+
+            selectedSources.forEach { source ->
+                usedProviders += source.sourceId.value
+                val observed = (source.observedAt ?: source.fetchedAt).toEpochMilli()
+                newestObservedAt = maxOf(newestObservedAt ?: observed, observed)
+                source.expiresAt?.toEpochMilli()?.let { expiry ->
+                    earliestExpiry = minOf(earliestExpiry ?: expiry, expiry)
+                }
+            }
+
+            val scheduled = scheduledDateTime(service, query)
+            val expected = expectedMatch?.entry?.expectedTime?.value
+            val expectedDeparture = expected?.let(::displayTime) ?: service.expectedDeparture
+            val delayMinutes = if (expected != null && scheduled != null) {
+                Duration.between(scheduled, expected).toMinutes().toInt()
+            } else {
+                service.delayMinutes
+            }.coerceAtLeast(0)
+
+            val liveStatus = statusMatch?.entry?.status?.value?.toLegacyStatus()
+                ?: if (expected != null) {
+                    if (delayMinutes > 0) ServiceStatus.DELAYED else ServiceStatus.ON_TIME
+                } else null
+
+            val platform = platformMatch?.entry?.platform?.value ?: service.platform
+            val verified = liveStatus != null || expected != null
+            val originStop = service.stops.firstOrNull()
+            val updatedStops = if (originStop != null) {
+                listOf(
+                    originStop.copy(
+                        expected = expectedDeparture,
+                        platform = platform,
+                        delayMinutes = delayMinutes
+                    )
+                ) + service.stops.drop(1)
+            } else {
+                service.stops
+            }
+
+            service.copy(
+                expectedDeparture = expectedDeparture,
+                platform = platform,
+                delayMinutes = delayMinutes,
+                officialDelayMinutes = if (verified) delayMinutes else service.officialDelayMinutes,
+                status = liveStatus ?: service.status,
+                stops = updatedStops,
+                operationalStatusVerified = verified,
+                operationalSourceIds = selectedSources.mapTo(linkedSetOf()) { it.sourceId.value },
+                operationalObservedAtEpochMillis = selectedSources.maxOfOrNull { (it.observedAt ?: it.fetchedAt).toEpochMilli() }
+            )
+        }
+
+        if (usedProviders.isEmpty()) return snapshot
+
+        val providerLabels = boards.filter { board ->
+            board.board.snapshot.contributingSources.any { it.sourceId.value in usedProviders }
+        }.map { it.providerName }.distinct()
+
+        val noticeParts = mutableListOf<String>()
+        snapshot.notice?.takeIf(String::isNotBlank)?.let(noticeParts::add)
+        noticeParts += "Realtime riconciliato con \${providerLabels.joinToString(", ")}."
+        if (conflict) {
+            noticeParts += "Alcune fonti realtime divergono; Binario usa la priorità configurata e segnala il conflitto."
+        }
+
+        return snapshot.copy(
+            services = enrichedServices,
+            providerName = "\${snapshot.providerName} + realtime",
+            sourceObservedAtEpochMillis = newestObservedAt ?: snapshot.sourceObservedAtEpochMillis,
+            expiresAtEpochMillis = minOf(snapshot.expiresAtEpochMillis, earliestExpiry ?: snapshot.expiresAtEpochMillis),
+            freshness = Freshness.FRESH,
+            qualityWarnings = if (conflict) snapshot.qualityWarnings + SnapshotWarning.SOURCE_CONFLICT else snapshot.qualityWarnings,
+            notice = noticeParts.joinToString(" ")
+        )
+    }
+
+    private fun bestMatch(
+        service: TrainService,
+        destination: Station,
+        board: StationBoard
+    ): StationBoardEntry? {
+        val scheduled = service.scheduledDepartureDateTime?.atZone(zone)
+        return board.entries.asSequence()
+            .filter { entry ->
+                normalizeTrainNumber(entry.publicNumber.orEmpty()) == normalizeTrainNumber(service.number)
+            }
+            .filter { entry ->
+                val label = entry.destinationOrOriginLabel ?: entry.destinationOrOrigin.value
+                destination.matchesPublishedName(label)
+            }
+            .map { entry ->
+                val delta = scheduled?.let {
+                    abs(Duration.between(it, entry.scheduledTime).toMinutes())
+                } ?: 0L
+                entry to delta
+            }
+            .filter { (_, delta) -> delta <= scheduleTolerance.toMinutes() }
+            .minByOrNull { (_, delta) -> delta }
+            ?.first
+    }
+
+    private fun hasConflict(matches: List<MatchedEntry>): Boolean {
+        val statuses = matches.mapNotNull { it.entry.status?.value }.toSet()
+        if (statuses.size > 1) return true
+
+        val expected = matches.mapNotNull { it.entry.expectedTime?.value }
+        if (expected.size < 2) return false
+        val earliest = expected.minOf { it.toInstant() }
+        val latest = expected.maxOf { it.toInstant() }
+        return Duration.between(earliest, latest) > conflictTolerance
+    }
+
+    private fun scheduledDateTime(service: TrainService, query: JourneyQuery): ZonedDateTime? =
+        service.scheduledDepartureDateTime?.atZone(zone)
+            ?: parseLegacyTime(service.scheduledDeparture, query.requestedAt)?.atZone(zone)
+
+    private fun parseLegacyTime(value: String, requestedAt: LocalDateTime): LocalDateTime? {
+        val parts = value.split(':')
+        val hour = parts.getOrNull(0)?.toIntOrNull() ?: return null
+        val minute = parts.getOrNull(1)?.toIntOrNull() ?: return null
+        if (hour !in 0..23 || minute !in 0..59) return null
+        var candidate = requestedAt.toLocalDate().atTime(hour, minute)
+        if (candidate.isBefore(requestedAt.minusHours(12))) candidate = candidate.plusDays(1)
+        return candidate
+    }
+
+    private fun displayTime(value: ZonedDateTime): String =
+        "%02d:%02d".format(value.hour, value.minute)
+
+    private fun normalizeTrainNumber(value: String): String = value
+        .uppercase(Locale.ROOT)
+        .replace(Regex("[^A-Z0-9]"), "")
+
+    private fun RunStatus.toLegacyStatus(): ServiceStatus? = when (this) {
+        RunStatus.ON_TIME -> ServiceStatus.ON_TIME
+        RunStatus.DELAYED -> ServiceStatus.DELAYED
+        RunStatus.CANCELLED,
+        RunStatus.PARTIALLY_CANCELLED -> ServiceStatus.CANCELLED
+        else -> null
+    }
+
+    private data class ProviderBoard(
+        val providerName: String,
+        val board: StationBoard
+    )
+
+    private data class MatchedEntry(
+        val providerName: String,
+        val entry: StationBoardEntry
+    )
+}
