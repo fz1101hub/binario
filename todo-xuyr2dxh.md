@@ -26,7 +26,7 @@
 - [x] Censire per web, Expo Android/iOS, Wear OS, Apple Watch e Skill Alexa le sorgenti, i commit/checkpoint e gli artefatti effettivamente versionati.
 - [x] Verificare separatamente se esiste sorgente Apple Watch/WatchConnectivity e distinguere codice, configurazione esterna e artefatti di build.
 - [x] Verificare il bridge Alexa su Git senza dichiarare deploy, account collegati o Skill pubblicata in assenza di evidenze.
-- [ ] Pubblicare un registro unico di recupero che attesti per ogni superficie: completo, parziale, solo artefatto o assente.
+- [x] Pubblicare un registro unico di recupero che attesti per ogni superficie: completo, parziale, solo artefatto o assente.
 - [x] Etichettare nel registro ogni capacità come “sessione recente”, “Git storico”, “artefatto” o “non recuperata”, senza attribuire capacità di una linea all’altra.
 - [ ] Mantenere Expo recuperato e Git storico su rami separati; integrare solo modifiche puntuali dopo confronto di contratto, test e build.
 - [x] Sospendere ogni ulteriore confronto con versioni storiche su Git finché non sono esauriti gli artefatti delle sessioni recenti di Binario.
@@ -44,20 +44,20 @@
 - [ ] Inventariare import, alias, configurazioni Expo e struttura Android della baseline locale v0.1.1 senza modificare il progetto.
 - [ ] Identificare esattamente ogni file sorgente, dipendenza npm e configurazione mancante che impedisce a v0.1.1 di superare typecheck, export e build Android.
 - [ ] Eseguire soltanto controlli diagnostici non distruttivi e consegnare il comando di recupero/compilazione più breve verificabile.
-- [ ] Inventariare il plugin locale Android/Wear, le sue risorse generate e le dipendenze necessarie per rigenerare widget e companion smartwatch dalla v0.1.1.
-- [ ] Inventariare separatamente il codice Alexa/Voice Bridge del progetto web e distinguere sorgente versionata da configurazione o pubblicazione esterna.
+- [x] Inventariare il plugin locale Android/Wear, le sue risorse generate e le dipendenze necessarie per rigenerare widget e companion smartwatch dalla v0.1.1.
+- [x] Inventariare separatamente il codice Alexa/Voice Bridge del progetto web e distinguere sorgente versionata da configurazione o pubblicazione esterna.
 - [ ] Produrre un registro tecnico che attesti per smartwatch e Alexa: recuperato, rigenerabile, mancante o esterno non verificato.
-- [ ] Inventariare e preservare nel ramo laterale i file locali del Voice Bridge/Alexa separati dalla cartella companion Expo.
-- [ ] Verificare con hash che plugin smartwatch, sorgenti Android generate e artefatto APK v0.1.1 presenti localmente siano tutti inclusi nel ramo laterale.
+- [x] Inventariare e preservare nel ramo laterale i file locali del Voice Bridge/Alexa separati dalla cartella companion Expo.
+- [x] Verificare con hash che plugin smartwatch, sorgenti Android generate e artefatto APK v0.1.1 presenti localmente siano tutti inclusi nel ramo laterale.
 - [ ] Versionare e inviare il recupero completo delle superfici locali v0.1.1 senza introdurre correzioni o sviluppo ulteriore.
 - [x] Censire tutte le versioni Binario disponibili e catalogarle per piattaforma, provenienza, tipo di sorgente e artefatto.
-- [ ] Copiare nel ramo laterale ogni sorgente, configurazione, test, documento e build disponibile in una directory isolata per versione.
-- [ ] Calcolare e salvare un manifest di integrità per ciascuna versione recuperata senza rigenerare né alterare gli artefatti.
-- [ ] Documentare esplicitamente completezza, dipendenze mancanti e divieti di fusione automatica tra le versioni preservate.
+- [x] Copiare nel ramo laterale ogni sorgente, configurazione, test, documento e build disponibile in una directory isolata per versione.
+- [x] Calcolare e salvare un manifest di integrità per ciascuna versione recuperata senza rigenerare né alterare gli artefatti.
+- [x] Documentare esplicitamente completezza, dipendenze mancanti e divieti di fusione automatica tra le versioni preservate.
 - [x] Preparare Git LFS nel solo ramo laterale per archivi di consegna superiori al limite GitHub, mantenendo Git ordinario per sorgenti, test e documenti.
-- [ ] Recuperare ogni archivio disponibile in una directory isolata per versione, con manifest SHA-256 e inventario del contenuto.
-- [ ] Censire per questa chat il perimetro completo di web, Android/iOS, widget, Wear OS, Apple Watch e Voice Bridge/Alexa, con sorgenti e build disponibili.
-- [ ] Preservare nel ramo laterale ogni superficie in una directory separata, includendo configurazioni, test, documentazione e artefatti associati.
+- [x] Recuperare ogni archivio disponibile in una directory isolata per versione, con manifest SHA-256 e inventario del contenuto.
+- [x] Censire per questa chat il perimetro completo di web, Android/iOS, widget, Wear OS, Apple Watch e Voice Bridge/Alexa, con sorgenti e build disponibili.
+- [x] Preservare nel ramo laterale ogni superficie in una directory separata, includendo configurazioni, test, documentazione e artefatti associati.
 - [ ] Verificare e registrare per ogni piattaforma le dipendenze mancanti, i comandi di build e lo stato effettivo di recuperabilità.
-- [ ] Copiare il progetto web/Voice Bridge locale nel ramo laterale sotto una superficie dedicata, preservando codice, lockfile, test, migrazioni e documentazione ma escludendo output rigenerabili e metadati Git.
-- [ ] Copiare in superfici separate le sorgenti native Android, Wear OS e Apple Watch disponibili localmente, escludendo build, cache, dipendenze e metadati Git ma mantenendo il relativo riferimento di versione.
+- [x] Copiare il progetto web/Voice Bridge locale nel ramo laterale sotto una superficie dedicata, preservando codice, lockfile, test, migrazioni e documentazione ma escludendo output rigenerabili e metadati Git.
+- [x] Copiare in superfici separate le sorgenti native Android, Wear OS e Apple Watch disponibili localmente, escludendo build, cache, dipendenze e metadati Git ma mantenendo il relativo riferimento di versione.
