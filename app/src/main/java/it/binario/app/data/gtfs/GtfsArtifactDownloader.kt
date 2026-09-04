@@ -10,6 +10,11 @@ import java.net.HttpURLConnection
 
 class GtfsDownloadException(message: String) : IllegalStateException(message)
 
+/** Boundary for GTFS artifact acquisition; production HTTP and tests share the same policy contract. */
+fun interface GtfsArtifactSource {
+    fun open(source: RailSourceDefinition, allowBestEffortFallback: Boolean): GtfsDownloadSession
+}
+
 /**
  * Acquisisce un singolo data pack GTFS esplicitamente richiesto dal chiamante.
  * Non esegue refresh automatici, non segue fonti HTTP in chiaro e non gestisce
@@ -23,13 +28,13 @@ class GtfsArtifactDownloader(
     private val connectTimeoutMillis: Int = 15_000,
     private val readTimeoutMillis: Int = 45_000,
     private val maxContentLengthBytes: Long = 256L * 1024L * 1024L
-) {
+) : GtfsArtifactSource {
     init {
         require(connectTimeoutMillis > 0 && readTimeoutMillis > 0)
         require(maxContentLengthBytes > 0)
     }
 
-    fun open(source: RailSourceDefinition, allowBestEffortFallback: Boolean = false): GtfsDownloadSession {
+    override fun open(source: RailSourceDefinition, allowBestEffortFallback: Boolean): GtfsDownloadSession {
         validate(source, allowBestEffortFallback)
         val url = source.downloadOrProbeUri!!.toURL()
         val connection = (url.openConnection() as? HttpURLConnection)
@@ -80,10 +85,10 @@ class GtfsArtifactDownloader(
 
 class GtfsDownloadSession internal constructor(
     val input: InputStream,
-    private val connection: HttpURLConnection
+    private val connection: HttpURLConnection? = null
 ) : Closeable {
     override fun close() {
         input.close()
-        connection.disconnect()
+        connection?.disconnect()
     }
 }
