@@ -473,7 +473,9 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
                     returnRefreshMessage = result.snapshot.notice
                 }
                 is DataResult.Failure -> {
-                    returnSnapshot = null
+                    // Keep the last successful return snapshot, matching the outbound
+                    // refresh policy. A transient failure must not erase previously
+                    // valid data; UI state/message make the failed refresh explicit.
                     retainAvailableOperatorFilter()
                     returnRefreshState = RefreshState.ERROR
                     returnRefreshMessage = result.message
