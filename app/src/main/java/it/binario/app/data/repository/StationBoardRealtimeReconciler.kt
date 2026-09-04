@@ -10,6 +10,7 @@ import it.binario.app.data.SavedRoute
 import it.binario.app.data.ServiceStatus
 import it.binario.app.data.SnapshotWarning
 import it.binario.app.data.Station
+import it.binario.app.data.StopRouteChange
 import it.binario.app.data.TrainDataSource
 import it.binario.app.data.TrainService
 import it.binario.app.data.TrainStop
@@ -138,13 +139,13 @@ class StationBoardRealtimeReconciler(
             val expectedMatch = matches.firstOrNull { it.entry.expectedTime != null }
             val statusMatch = matches.firstOrNull { it.entry.status != null }
             val platformMatch = matches.firstOrNull { it.entry.platform != null }
-            val selectedSources = listOfNotNull(expectedMatch, statusMatch, platformMatch)
-                .mapNotNull { selected ->
-                    selected.entry.expectedTime?.source?.takeIf { selected === expectedMatch }
-                        ?: selected.entry.status?.source?.takeIf { selected === statusMatch }
-                        ?: selected.entry.platform?.source?.takeIf { selected === platformMatch }
-                }
-                .distinctBy { it.sourceId }
+            val routeChangeMatch = matches.firstOrNull { it.entry.routeChange != null }
+            val selectedSources = listOfNotNull(
+                expectedMatch?.entry?.expectedTime?.source,
+                statusMatch?.entry?.status?.source,
+                platformMatch?.entry?.platform?.source,
+                routeChangeMatch?.entry?.routeChange?.source
+            ).distinctBy { it.sourceId }
 
             selectedSources.forEach { source ->
                 usedProviders += source.sourceId.value
@@ -171,8 +172,9 @@ class StationBoardRealtimeReconciler(
 
             val platform = platformMatch?.entry?.platform?.value ?: service.platform
             val verified = liveStatus != null || expected != null
+            val routeChange = routeChangeMatch?.entry?.routeChange?.value ?: service.routeChange
             val originStop = service.stops.firstOrNull()
-            val updatedStops = if (originStop != null) {
+            val timingUpdatedStops = if (originStop != null) {
                 listOf(
                     originStop.copy(
                         expected = expectedDeparture,
@@ -183,6 +185,7 @@ class StationBoardRealtimeReconciler(
             } else {
                 service.stops
             }
+            val updatedStops = applyRouteChange(timingUpdatedStops, routeChange)
 
             service.copy(
                 expectedDeparture = expectedDeparture,
@@ -192,8 +195,14 @@ class StationBoardRealtimeReconciler(
                 status = liveStatus ?: service.status,
                 stops = updatedStops,
                 operationalStatusVerified = verified,
-                operationalSourceIds = selectedSources.mapTo(linkedSetOf()) { it.sourceId.value },
-                operationalObservedAtEpochMillis = selectedSources.maxOfOrNull { (it.observedAt ?: it.fetchedAt).toEpochMilli() }
+                operationalSourceIds = selectedSources
+                    .filter { it !== routeChangeMatch?.entry?.routeChange?.source }
+                    .mapTo(linkedSetOf()) { it.sourceId.value },
+                operationalObservedAtEpochMillis = selectedSources.maxOfOrNull { (it.observedAt ?: it.fetchedAt).toEpochMilli() },
+                routeChange = routeChange,
+                routeChangeSourceIds = routeChangeMatch?.entry?.routeChange?.source
+                    ?.let { setOf(it.sourceId.value) }
+                    ?: service.routeChangeSourceIds
             )
         }
 
@@ -222,6 +231,30 @@ class StationBoardRealtimeReconciler(
             notice = noticeParts.joinToString(" ")
         )
     }
+
+    private fun applyRouteChange(
+        stops: List<TrainStop>,
+        routeChange: it.binario.app.data.core.OperationalRouteChange?
+    ): List<TrainStop> {
+        if (routeChange == null || !routeChange.structured) return stops
+        val skipped = routeChange.skippedStopLabels.map(::normalizeStationLabel).toSet()
+        val added = routeChange.addedStopLabels.map(::normalizeStationLabel).toSet()
+        return stops.map { stop ->
+            val normalized = normalizeStationLabel(stop.station)
+            stop.copy(
+                routeChange = when {
+                    normalized in skipped -> StopRouteChange.SKIPPED
+                    normalized in added -> StopRouteChange.ADDED
+                    else -> stop.routeChange
+                }
+            )
+        }
+    }
+
+    private fun normalizeStationLabel(value: String): String = value
+        .uppercase(Locale.ROOT)
+        .replace("S. ", "SAN ")
+        .replace(Regex("[^A-Z0-9]"), "")
 
     private fun bestMatch(
         service: TrainService,
@@ -256,6 +289,9 @@ class StationBoardRealtimeReconciler(
     private fun hasConflict(matches: List<MatchedEntry>): Boolean {
         val statuses = matches.mapNotNull { it.entry.status?.value }.toSet()
         if (statuses.size > 1) return true
+
+        val routeChanges = matches.mapNotNull { it.entry.routeChange?.value }
+        if (routeChanges.map { it.kind to it.summary }.toSet().size > 1) return true
 
         val expected = matches.mapNotNull { it.entry.expectedTime?.value }
         if (expected.size < 2) return false
