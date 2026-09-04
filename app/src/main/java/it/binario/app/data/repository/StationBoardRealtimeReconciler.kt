@@ -61,9 +61,6 @@ class StationBoardEnrichedTrainDataSource(
             return DataResult.Success(snapshot)
         }
 
-        // Personal-use transitional fallback: if no static timetable covers the
-        // route, reuse only board adapters that still expose the legacy route
-        // bridge. Those adapters require an exact direct destination match.
         if (query.serviceDate == today) {
             boardProviders.forEach { provider ->
                 val legacy = provider as? TrainDataSource ?: return@forEach
@@ -346,6 +343,16 @@ class StationBoardRealtimeReconciler(
         RailOperator.TRENITALIA_AV -> "trenitalia"
         RailOperator.ITALO -> "italo"
         RailOperator.TRENORD -> "trenord"
+        RailOperator.SBB -> "sbb"
+        RailOperator.TILO -> "tilo"
+        RailOperator.BLS -> "bls"
+        RailOperator.RHB -> "rhb"
+        RailOperator.FART_SSIF -> "fart-ssif"
+        RailOperator.SNCF -> "sncf"
+        RailOperator.OEBB -> "oebb"
+        RailOperator.DB -> "db"
+        RailOperator.WESTBAHN -> "westbahn"
+        RailOperator.EUROPEAN_SLEEPER -> "european-sleeper"
         RailOperator.OTHER -> null
     }
 
