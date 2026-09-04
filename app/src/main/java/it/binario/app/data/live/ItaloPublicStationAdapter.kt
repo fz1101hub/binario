@@ -225,6 +225,7 @@ class ItaloPublicStationAdapter(
                 .find(text)?.groupValues?.getOrNull(1).orEmpty()
         }.takeIf(String::isNotBlank)
         val expected = if (status == ServiceStatus.CANCELLED) scheduled else addDelay(scheduled, delay)
+        val routeChange = OperationalRouteChangeDetector.detect(text)
         return TrainService(
             id = "italo:${route.id}:${direction.name}:$number:$scheduled",
             number = number,
@@ -243,7 +244,8 @@ class ItaloPublicStationAdapter(
                 TrainStop(destination, "—", "—", null, delay, completed = false)
             ),
             transferCount = 0,
-            operationalStatusVerified = operationalVerified
+            operationalStatusVerified = operationalVerified,
+            routeChange = routeChange
         )
     }
 
