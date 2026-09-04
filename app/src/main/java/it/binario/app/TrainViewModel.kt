@@ -111,6 +111,8 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
         private set
 
     private var journeyQuery: JourneyQuery = JourneyQuery.now()
+    /** Monotonic token: only the newest refresh may mutate UI/cache/surfaces. */
+    private var refreshRequestId: Long = 0L
 
     init {
         loadCuratedStationCatalog()
@@ -333,6 +335,7 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
             if (hasActiveRoute) routeStore.saveActiveRoute(activeRoute.id) else routeStore.clearActiveRoute()
             selectedService = null
             if (hasActiveRoute) refresh() else {
+                refreshRequestId += 1
                 snapshot = null
                 refreshState = RefreshState.IDLE
                 refreshMessage = "Inserisci una tratta per iniziare la consultazione."
@@ -342,6 +345,7 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun refresh() {
         if (!hasActiveRoute) {
+            refreshRequestId += 1
             snapshot = null
             refreshState = RefreshState.ERROR
             refreshMessage = "Inserisci partenza e arrivo per consultare una tratta."
@@ -351,9 +355,12 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
         refreshMessage = null
         val routeAtRequest = activeRoute
         val directionAtRequest = direction
+        val queryAtRequest = journeyQuery
+        val requestId = ++refreshRequestId
         viewModelScope.launch {
-            val queryAtRequest = journeyQuery
-            when (val result = dataSource.loadRoute(routeAtRequest, directionAtRequest, queryAtRequest)) {
+            val result = dataSource.loadRoute(routeAtRequest, directionAtRequest, queryAtRequest)
+            if (requestId != refreshRequestId) return@launch
+            when (result) {
                 is DataResult.Success -> {
                     snapshot = result.snapshot
                     cache.save(result.snapshot)
@@ -488,6 +495,7 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
             updateMobilityPreferences(backup.mobilityPreferences)
             selectWidgetSurface(backup.widgetSurface)
             if (hasActiveRoute) refresh() else {
+                refreshRequestId += 1
                 snapshot = null
                 refreshState = RefreshState.IDLE
                 refreshMessage = "Backup importato senza una tratta salvata. Inseriscine una quando vuoi."
