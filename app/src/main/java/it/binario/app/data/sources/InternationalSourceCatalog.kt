@@ -6,10 +6,9 @@ import it.binario.app.data.provider.ProviderCapability
 import java.net.URI
 
 /**
- * Fonti internazionali individuate nel censimento 2026 che non sono ancora
- * necessariamente importabili come asset embedded. Tenerle separate dal
- * catalogo attivo evita di confondere "fonte interessante" con "copertura
- * disponibile nell'app".
+ * Fonti internazionali individuate nel censimento 2026. La readiness distingue
+ * ciò che è attivabile, ciò che richiede credenziali e ciò che può essere usato
+ * soltanto come fallback di copertura.
  */
 object InternationalSourceCatalog {
     private fun uri(value: String): URI = URI.create(value)
@@ -30,28 +29,81 @@ object InternationalSourceCatalog {
             accessMode = AccessMode.AGREEMENT_REQUIRED,
             readiness = SourceReadiness.AGREEMENT_REQUIRED,
             countryCodes = setOf("DE", "AT", "CH", "IT"),
-            coverage = "Dataset nazionale tedesco routing-capable con trasporto pubblico e lunga percorrenza; utile come complemento per DB–ÖBB EuroCity/Nightjet quando le fermate italiane sono presenti.",
+            coverage = "Dataset nazionale tedesco con lunga percorrenza; complemento DB–ÖBB quando include le fermate della relazione richiesta.",
             landingPage = uri("https://www.opendata-oepnv.de/ht/de/organisation/delfi/startseite?tx_vrrkit_view%5Bdataset_name%5D=deutschlandweite-sollfahrplandaten-gtfs&tx_vrrkit_view%5Baction%5D=details&tx_vrrkit_view%5Bcontroller%5D=View"),
-            attribution = "DELFI — Creative Commons Attribution",
-            notes = "Fonte ufficiale e aggiornata normalmente ogni lunedì. Il download ufficiale richiede registrazione: non usare mirror community come asset di produzione."
+            attribution = "DELFI — CC BY 4.0",
+            notes = "Fonte ufficiale aggiornata regolarmente; download ufficiale dietro registrazione. Preferire questa al mirror community."
+        ),
+        RailSourceDefinition(
+            id = SourceId("delfi-gtfs-community"),
+            displayName = "DELFI — GTFS community mirror",
+            operatorOrAuthority = "DELFI / public-transport.earth mirror",
+            formats = setOf(SourceFormat.GTFS_ZIP),
+            capabilities = staticCapabilities,
+            accessMode = AccessMode.PUBLIC_BEST_EFFORT,
+            readiness = SourceReadiness.BEST_EFFORT_FALLBACK,
+            countryCodes = setOf("DE", "AT", "CH", "IT"),
+            coverage = "Mirror community del GTFS nazionale tedesco; usarlo solo quando la fonte ufficiale non è acquisibile e la tratta resterebbe scoperta.",
+            landingPage = uri("https://github.com/public-transport/european-transport-feeds"),
+            downloadOrProbeUri = uri("https://scraped.data.public-transport.earth/de/gtfs.zip"),
+            attribution = "DELFI / opendata-oepnv.de — mirror public-transport.earth",
+            notes = "Nessuno SLA ufficiale e copertura non garantita al 100%; fallback esplicito, mai preferito a ÖBB/SBB/SNCF/DELFI ufficiale per la stessa corsa."
         ),
         RailSourceDefinition(
             id = SourceId("db-timetables"),
             displayName = "Deutsche Bahn — Timetables API",
             operatorOrAuthority = "Deutsche Bahn AG",
             formats = setOf(SourceFormat.OPERATOR_GATEWAY),
-            capabilities = setOf(
-                ProviderCapability.TRAIN_RUN_STATIC,
-                ProviderCapability.TRAIN_RUN_REALTIME,
-                ProviderCapability.STATION_BOARD
-            ),
+            capabilities = setOf(ProviderCapability.TRAIN_RUN_STATIC, ProviderCapability.TRAIN_RUN_REALTIME, ProviderCapability.STATION_BOARD),
             accessMode = AccessMode.AGREEMENT_REQUIRED,
             readiness = SourceReadiness.AGREEMENT_REQUIRED,
             countryCodes = setOf("DE", "AT", "CH", "IT"),
-            coverage = "Sollfahrplan e scostamenti per stazioni/corse DB; complemento per servizi DB–ÖBB internazionali quando l'API espone la stazione/corsa italiana.",
+            coverage = "Sollfahrplan e variazioni per stazioni DB; utile per treni internazionali visibili sul tratto tedesco.",
             landingPage = uri("https://developers.deutschebahn.com/db-api-marketplace/apis/product/timetables"),
             attribution = "Deutsche Bahn AG — CC BY 4.0",
-            notes = "Richiede account/API Marketplace. Limite free documentato 60 chiamate/minuto. Le credenziali devono vivere in gateway/secret storage, mai nell'APK."
+            notes = "Free plan 60 chiamate/minuto; richiede DB-Client-Id e DB-Api-Key. Adapter canonico già implementato, credenziali fuori APK."
+        ),
+        RailSourceDefinition(
+            id = SourceId("db-ris-boards"),
+            displayName = "Deutsche Bahn — RIS::Boards",
+            operatorOrAuthority = "DB InfraGO / DB Reisendeninformation",
+            formats = setOf(SourceFormat.OPERATOR_GATEWAY),
+            capabilities = setOf(ProviderCapability.STATION_BOARD, ProviderCapability.TRAIN_RUN_REALTIME),
+            accessMode = AccessMode.AGREEMENT_REQUIRED,
+            readiness = SourceReadiness.AGREEMENT_REQUIRED,
+            countryCodes = setOf("DE"),
+            coverage = "Tabelloni su rete DB InfraGO con tempi previsionali, binari, via, fermate saltate/aggiunte e sostitutivi.",
+            landingPage = uri("https://developers.deutschebahn.com/db-api-marketplace/apis/product/ris-boards-netz"),
+            attribution = "DB InfraGO / Deutsche Bahn",
+            notes = "Fonte DB preferita per station-board operativo quando accessibile; richiede approvazione/piano RIS e credenziali DB."
+        ),
+        RailSourceDefinition(
+            id = SourceId("db-ris-journeys"),
+            displayName = "Deutsche Bahn — RIS::Journeys",
+            operatorOrAuthority = "DB InfraGO / DB Reisendeninformation",
+            formats = setOf(SourceFormat.OPERATOR_GATEWAY),
+            capabilities = setOf(ProviderCapability.TRAIN_RUN_STATIC, ProviderCapability.TRAIN_RUN_REALTIME),
+            accessMode = AccessMode.AGREEMENT_REQUIRED,
+            readiness = SourceReadiness.AGREEMENT_REQUIRED,
+            countryCodes = setOf("DE", "AT", "CH", "IT"),
+            coverage = "Percorso corsa e relativi eventi per i treni esposti dalla RIS-API; particolarmente utile per itinerari internazionali e variazioni di percorso.",
+            landingPage = uri("https://developer-docs.deutschebahn.com/doku/apis/ris-journeys-10582266"),
+            attribution = "DB Reisendeninformation / Deutsche Bahn",
+            notes = "Preferibile a Timetables per ricostruire il percorso operativo completo quando l'accesso RIS è disponibile."
+        ),
+        RailSourceDefinition(
+            id = SourceId("db-ris-disruptions"),
+            displayName = "Deutsche Bahn — RIS::Disruptions",
+            operatorOrAuthority = "DB Reisendeninformation",
+            formats = setOf(SourceFormat.OPERATOR_GATEWAY),
+            capabilities = setOf(ProviderCapability.SERVICE_ALERTS, ProviderCapability.TRAIN_RUN_REALTIME),
+            accessMode = AccessMode.AGREEMENT_REQUIRED,
+            readiness = SourceReadiness.AGREEMENT_REQUIRED,
+            countryCodes = setOf("DE", "AT", "CH", "IT"),
+            coverage = "Perturbazioni con correlazione a corse, fermate e aree interessate.",
+            landingPage = uri("https://developer-docs.deutschebahn.com/doku/apis/ris-disruptions-10686904"),
+            attribution = "DB Reisendeninformation / Deutsche Bahn",
+            notes = "Fonte preferita DB per disruption strutturate quando autorizzata."
         ),
         RailSourceDefinition(
             id = SourceId("european-sleeper-gtfs"),
@@ -60,13 +112,13 @@ object InternationalSourceCatalog {
             formats = setOf(SourceFormat.GTFS_ZIP),
             capabilities = staticCapabilities,
             accessMode = AccessMode.PUBLIC_BEST_EFFORT,
-            readiness = SourceReadiness.MONITOR_ONLY,
+            readiness = SourceReadiness.BEST_EFFORT_FALLBACK,
             countryCodes = setOf("BE", "NL", "DE", "CH", "IT"),
-            coverage = "Bruxelles–Colonia–Zurigo–Como–Milano dal 9 settembre 2026, solo dopo verifica diretta delle fermate italiane nel feed.",
+            coverage = "Bruxelles–Colonia–Zurigo–Lugano–Como–Milano dal 9 settembre 2026; solo se il feed contiene effettivamente le fermate richieste.",
             landingPage = uri("https://www.europeansleeper.eu/milan"),
             downloadOrProbeUri = uri("https://jbb.ghsq.de/gtfs/eu-es.gtfs.zip"),
-            attribution = "European Sleeper / feed community JBB",
-            notes = "Il servizio Milano è ufficiale, ma il feed indicato non è pubblicato sul sito dell'operatore e la licenza non è stata verificata come fonte primaria. Monitorare; non distribuire come pack finché provenienza/licenza e fermate italiane non sono confermate."
+            attribution = "European Sleeper / JBB community feed",
+            notes = "Fallback esplicito: servizio Milano ufficiale, feed community. Non deve scalzare RFI o GTFS ufficiali."
         ),
         RailSourceDefinition(
             id = SourceId("european-sleeper-gtfs-rt"),
@@ -75,67 +127,25 @@ object InternationalSourceCatalog {
             formats = setOf(SourceFormat.GTFS_REALTIME_PROTOBUF),
             capabilities = setOf(ProviderCapability.TRAIN_RUN_REALTIME),
             accessMode = AccessMode.PUBLIC_BEST_EFFORT,
-            readiness = SourceReadiness.MONITOR_ONLY,
+            readiness = SourceReadiness.BEST_EFFORT_FALLBACK,
             countryCodes = setOf("BE", "NL", "DE", "CH", "IT"),
-            coverage = "Trip Updates European Sleeper; abilitazione solo dopo verifica della nuova relazione Milano e della stabilità del feed.",
+            coverage = "Trip Updates European Sleeper; fallback dal 9 settembre 2026 per corse non coperte da fonti operative migliori.",
             landingPage = uri("https://www.europeansleeper.eu/timetable"),
             downloadOrProbeUri = uri("https://jbb.ghsq.de/gtfs/european-sleeper/TripUpdates"),
-            attribution = "European Sleeper / feed community JBB",
-            notes = "Monitor-only: il servizio Bruxelles–Milano parte il 9 settembre 2026; non assumere che il realtime contenga già il tratto italiano prima della verifica post-lancio."
+            attribution = "European Sleeper / JBB community feed",
+            notes = "Bassa priorità; matching contro GTFS statico e nessuna sostituzione di RFI/operator feed se presenti."
         ),
-        monitoredOperator(
-            id = "westbahn-monitor",
-            name = "WESTbahn",
-            countries = setOf("AT", "IT"),
-            landing = "https://westbahn.at/",
-            note = "Tenere sotto osservazione eventuali servizi diretti verso l'Italia; nessun feed ufficiale italiano verificato in questa tranche."
-        ),
-        monitoredOperator(
-            id = "regiojet-monitor",
-            name = "RegioJet",
-            countries = setOf("CZ", "AT", "IT"),
-            landing = "https://regiojet.com/",
-            note = "Monitorare servizi internazionali 2026; non attivare senza feed ufficiale/licenziato con fermate italiane."
-        ),
-        monitoredOperator(
-            id = "cd-monitor",
-            name = "České dráhy (ČD)",
-            countries = setOf("CZ", "AT", "IT"),
-            landing = "https://www.cd.cz/en/",
-            note = "Monitorare collegamenti internazionali; nessun feed italiano verificato."
-        ),
-        monitoredOperator(
-            id = "mav-start-monitor",
-            name = "MÁV-START",
-            countries = setOf("HU", "AT", "SI", "IT"),
-            landing = "https://www.mavcsoport.hu/en",
-            note = "Monitorare eventuali servizi diretti/stagionali con fermate italiane; usare RFI sul tratto italiano quando tracciati."
-        ),
-        monitoredOperator(
-            id = "snalltaget-monitor",
-            name = "Snälltåget",
-            countries = setOf("SE", "DE", "AT", "IT"),
-            landing = "https://www.snalltaget.se/en",
-            note = "Servizi stagionali variabili: nessuna copertura italiana strutturata va presunta."
-        ),
-        monitoredOperator(
-            id = "urlaubs-express-monitor",
-            name = "Urlaubs-Express",
-            countries = setOf("DE", "AT", "IT"),
-            landing = "https://urlaubs-express.de/?lang=en",
-            note = "Servizi charter/stagionali soggetti a cancellazione o variazione; monitor-only."
-        )
+        monitoredOperator("westbahn-monitor", "WESTbahn", setOf("AT", "IT"), "https://westbahn.at/", "Monitorare eventuali servizi diretti verso l'Italia; nessun feed italiano verificato."),
+        monitoredOperator("regiojet-monitor", "RegioJet", setOf("CZ", "AT", "IT"), "https://regiojet.com/", "Monitorare servizi internazionali 2026; non attivare senza feed con fermate italiane."),
+        monitoredOperator("cd-monitor", "České dráhy (ČD)", setOf("CZ", "AT", "IT"), "https://www.cd.cz/en/", "Monitorare collegamenti internazionali; nessun feed italiano verificato."),
+        monitoredOperator("mav-start-monitor", "MÁV-START", setOf("HU", "AT", "SI", "IT"), "https://www.mavcsoport.hu/en", "Monitorare servizi diretti/stagionali; RFI resta la fonte operativa sul tratto italiano quando disponibile."),
+        monitoredOperator("snalltaget-monitor", "Snälltåget", setOf("SE", "DE", "AT", "IT"), "https://www.snalltaget.se/en", "Servizi stagionali variabili; nessuna copertura italiana strutturata va presunta."),
+        monitoredOperator("urlaubs-express-monitor", "Urlaubs-Express", setOf("DE", "AT", "IT"), "https://urlaubs-express.de/?lang=en", "Servizi charter/stagionali soggetti a cancellazione o variazione; monitor-only.")
     )
 
     fun byId(id: SourceId): RailSourceDefinition? = all.firstOrNull { it.id == id }
 
-    private fun monitoredOperator(
-        id: String,
-        name: String,
-        countries: Set<String>,
-        landing: String,
-        note: String
-    ) = RailSourceDefinition(
+    private fun monitoredOperator(id: String, name: String, countries: Set<String>, landing: String, note: String) = RailSourceDefinition(
         id = SourceId(id),
         displayName = "$name — monitor",
         operatorOrAuthority = name,
