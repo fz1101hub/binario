@@ -13,8 +13,12 @@ class LocalOnlyRailDataPolicyTest {
     @Test
     fun `policy separates primary planning coverage fallback and realtime boards`() {
         assertEquals(
-            listOf("RfiProgrammedTimetableAdapter", "RemoteGtfsFallbackDataSource"),
+            listOf("RfiProgrammedTimetableAdapter"),
             LocalOnlyRailDataPolicy.routeSources().mapNotNull { it::class.simpleName }
+        )
+        assertEquals(
+            listOf("RemoteGtfsFallbackDataSource"),
+            LocalOnlyRailDataPolicy.coverageRouteFallbacks().mapNotNull { it::class.simpleName }
         )
 
         val boardProviderNames = LocalOnlyRailDataPolicy.stationBoardProviders().map { it::class.simpleName }.toSet()
