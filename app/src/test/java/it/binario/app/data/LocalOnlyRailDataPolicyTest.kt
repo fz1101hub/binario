@@ -1,7 +1,6 @@
 package it.binario.app.data
 
 import it.binario.app.BuildConfig
-import it.binario.app.data.live.EuropeanSleeperGtfsRealtimeAdapter
 import it.binario.app.data.live.RfiInfomobilityRssAdapter
 import it.binario.app.data.live.SncfGtfsRealtimeAdapter
 import it.binario.app.data.live.StaRealtimeAdapter
@@ -13,7 +12,7 @@ class LocalOnlyRailDataPolicyTest {
     @Test
     fun `policy separates primary planning coverage fallback and realtime boards`() {
         assertEquals(
-            listOf("RfiProgrammedTimetableAdapter"),
+            listOf("RfiProgrammedTimetableAdapter", "RfiSupplementalHubTimetableAdapter"),
             LocalOnlyRailDataPolicy.routeSources().mapNotNull { it::class.simpleName }
         )
         assertEquals(
@@ -47,9 +46,8 @@ class LocalOnlyRailDataPolicyTest {
             setOf(StaRealtimeAdapter.SOURCE_ID, SncfGtfsRealtimeAdapter.SOURCE_ID),
             LocalOnlyRailDataPolicy.tripUpdateProviders().map { it.descriptor.id }.toSet()
         )
-        assertEquals(
-            setOf(EuropeanSleeperGtfsRealtimeAdapter.SOURCE_ID),
-            LocalOnlyRailDataPolicy.coverageTripUpdateProviders().map { it.descriptor.id }.toSet()
-        )
+        // Coverage realtime is owned by the route fallback that produced the
+        // same static GTFS route; it must never be exposed as a global provider.
+        assertTrue(LocalOnlyRailDataPolicy.coverageTripUpdateProviders().isEmpty())
     }
 }
