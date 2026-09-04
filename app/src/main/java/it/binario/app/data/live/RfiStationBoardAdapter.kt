@@ -36,7 +36,6 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import org.jsoup.Jsoup
-import org.jsoup.nodes.Element
 import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
@@ -57,7 +56,7 @@ internal class HttpRfiMonitorFetcher : RfiMonitorFetcher {
         connection.readTimeout = 20_000
         connection.instanceFollowRedirects = true
         connection.setRequestProperty("Accept", "text/html,application/xhtml+xml")
-        connection.setRequestProperty("User-Agent", "Binario/0.15 (personal rail information client)")
+        connection.setRequestProperty("User-Agent", "Binario/0.20 (personal rail information client)")
         try {
             val status = connection.responseCode
             if (status !in 200..299) throw IOException("RFI ha risposto HTTP $status")
@@ -69,12 +68,14 @@ internal class HttpRfiMonitorFetcher : RfiMonitorFetcher {
 }
 
 /**
- * Mappa degli identificativi pubblici RFI per le stazioni già offerte dalla UI.
- * Le stazioni non incluse non attivano richieste speculative: la UI restituisce
- * un errore chiaro fino a quando l'identificativo è verificato e aggiunto qui.
+ * Mappa degli identificativi pubblici del monitor RFI.
+ *
+ * L'ID interno di Binario non è stabile tra cataloghi importati (per esempio
+ * le stazioni curate usano `curated:*`), quindi il resolver considera anche
+ * nome canonico e alias. Non vengono mai effettuate richieste speculative.
  */
 internal object RfiStationIds {
-    private val byBinarioId = mapOf(
+    private val byLegacyId = mapOf(
         "roma-termini" to 2416,
         "roma-tiburtina" to 2385,
         "roma-ostiense" to 2379,
@@ -100,7 +101,44 @@ internal object RfiStationIds {
         "cagliari" to 787
     )
 
-    fun placeId(stationId: String): Int? = byBinarioId[stationId]
+    private val byName = mapOf(
+        key("Roma Termini") to 2416,
+        key("Roma Tiburtina") to 2385,
+        key("Roma Ostiense") to 2379,
+        key("Roma Trastevere") to 2387,
+        key("Roma San Pietro") to 2383,
+        key("Roma S. Pietro") to 2383,
+        key("Roma Tuscolana") to 2388,
+        key("Fiumicino Aeroporto") to 1327,
+        key("Ciampino") to 1106,
+        key("Civitavecchia") to 1123,
+        key("Frascati") to 1370,
+        key("Velletri") to 3006,
+        key("Orte") to 1959,
+        key("Latina") to 1539,
+        key("Frosinone") to 1377,
+        key("Cassino") to 955,
+        key("Napoli Centrale") to 1888,
+        key("Bologna Centrale") to 683,
+        key("Milano Centrale") to 1728,
+        key("Genova Piazza Principe") to 257,
+        key("Genova P. Principe") to 257,
+        key("Torino Porta Nuova") to 2876,
+        key("Bari Centrale") to 595,
+        key("Palermo Centrale") to 2018,
+        key("Cagliari") to 787
+    )
+
+    fun placeId(stationId: String, stationName: String? = null): Int? =
+        byLegacyId[stationId] ?: stationName?.let { byName[key(it)] }
+
+    fun placeId(station: Station): Int? = byLegacyId[station.id]
+        ?: (listOf(station.name) + station.aliases).firstNotNullOfOrNull { byName[key(it)] }
+
+    private fun key(value: String): String = value
+        .uppercase(Locale.ROOT)
+        .replace("S. ", "SAN ")
+        .replace(Regex("[^A-Z0-9]"), "")
 }
 
 /**
@@ -130,9 +168,9 @@ class RfiStationBoardAdapter(
         if (request.kind != BoardKind.DEPARTURES) {
             return ProviderResult.Failure(ProviderError(ProviderErrorKind.NOT_SUPPORTED, "RFI: sono supportate solo le partenze."))
         }
-        val placeId = RfiStationIds.placeId(request.stationId.value)
-            ?: return ProviderResult.Failure(ProviderError(ProviderErrorKind.NOT_SUPPORTED, "Stazione RFI non configurata."))
         val stationName = request.stationName?.takeIf(String::isNotBlank) ?: request.stationId.value
+        val placeId = RfiStationIds.placeId(request.stationId.value, stationName)
+            ?: return ProviderResult.Failure(ProviderError(ProviderErrorKind.NOT_SUPPORTED, "Stazione RFI non configurata."))
         val fetchedAt = clock.instant()
         return try {
             val url = "https://iechub.rfi.it/ArriviPartenze/ArrivalsDepartures/Monitor?placeId=$placeId&arrivals=False"
@@ -182,7 +220,7 @@ class RfiStationBoardAdapter(
         }
         val origin = route.origin(direction)
         val destination = route.destination(direction)
-        val placeId = RfiStationIds.placeId(origin.id)
+        val placeId = RfiStationIds.placeId(origin)
             ?: return DataResult.Failure("Il tabellone RFI non è ancora configurato per ${origin.name}.")
         val key = "${origin.id}:${destination.id}:${direction.name}"
         val now = clock.millis()
