@@ -66,6 +66,8 @@ internal object RfiProgrammedStationIds {
         "torino-pn" to 2672,
         "torino-ps" to 25350269,
         "venezia-sl" to 2796,
+        "verona-pn" to 2812,
+        "genova-pp" to 248,
         "salerno" to 2434
     )
 
@@ -184,7 +186,7 @@ class RfiProgrammedTimetableAdapter(
                 if (rows.isEmpty()) return@forEach
                 val headerRow = rows.firstOrNull { row -> row.select("th").isNotEmpty() }
                     ?: rows.firstOrNull { row -> row.text().contains("Fermate successive", ignoreCase = true) }
-                val headers = headerRow?.select("th,td")?.map { normalizeHeader(it.text()) }.orEmpty()
+                val headers = headerRow?.select("th,td")?.map { normalizeHeader(elementText(it)) }.orEmpty()
                 val indexes = HeaderIndexes.from(headers)
                 rows.forEach { row -> parseRow(row, indexes, origin, route, direction)?.let(::add) }
             }
@@ -207,28 +209,29 @@ class RfiProgrammedTimetableAdapter(
             index?.let(cells::getOrNull) ?: row.selectFirst(selectors)
 
         val trainCell = cell(indexes.train, "[id*=Treno],[class*=treno],[headers*=treno]")
-            ?: cells.firstOrNull { Regex("\\b\\d{2,5}\\b").containsMatchIn(it.text()) }
+            ?: cells.firstOrNull { Regex("\\b\\d{2,5}\\b").containsMatchIn(elementText(it)) }
             ?: return null
-        val trainText = compactText(trainCell.text())
+        val trainText = elementText(trainCell)
         val number = Regex("\\b(\\d{2,5})\\b").find(trainText)?.groupValues?.getOrNull(1) ?: return null
 
         val timeCell = cell(indexes.time, "[id*=Orario],[class*=orario],[headers*=orario]")
-        val scheduled = normalizeTime(timeCell?.text().orEmpty())
-            .ifBlank { row.select("td").map { normalizeTime(it.text()) }.firstOrNull { it.isNotBlank() }.orEmpty() }
+        val scheduled = normalizeTime(elementText(timeCell))
+            .ifBlank { cells.map { normalizeTime(elementText(it)) }.firstOrNull { it.isNotBlank() }.orEmpty() }
         if (scheduled.isBlank()) return null
 
         val destinationCell = cell(indexes.destination, "[id*=Destin],[class*=destin],[headers*=destin]")
-        val destinationText = compactText(destinationCell?.text().orEmpty())
+        val destinationText = elementText(destinationCell)
         val destination = destinationText.substringBefore("(").trim().ifBlank { "Destinazione non indicata" }
 
         val stopsCell = cell(indexes.stops, "[id*=Fermate],[class*=fermate],[headers*=fermate]")
-        val successiveStops = parseStops(stopsCell?.text().orEmpty())
+        val successiveStops = parseStops(elementText(stopsCell))
         val finalDestination = successiveStops.lastOrNull()?.station?.ifBlank { null }
             ?: destination.takeIf { it != "Destinazione non indicata" }
             ?: return null
 
-        val periodicity = normalizeHeader(cell(indexes.periodicity, "[id*=Period],[class*=period],[headers*=period]")?.text().orEmpty())
-        val categoryText = trainText + " " + compactText(row.select("td").firstOrNull()?.text().orEmpty())
+        val periodicity = normalizeHeader(elementText(cell(indexes.periodicity, "[id*=Period],[class*=period],[headers*=period]")))
+        val carrier = elementText(cell(indexes.carrier, "[id*=Impresa],[class*=impresa],[headers*=impresa]"))
+        val categoryText = "$trainText $carrier"
         val operator = operatorFrom(categoryText)
         val category = categoryFrom(categoryText, operator)
 
@@ -340,6 +343,14 @@ class RfiProgrammedTimetableAdapter(
         }
     }
 
+    private fun elementText(element: Element?): String {
+        if (element == null) return ""
+        val imageLabels = element.select("img[alt]").mapNotNull { image ->
+            image.attr("alt").takeIf { it.isNotBlank() }
+        }
+        return compactText((imageLabels + element.text()).joinToString(" "))
+    }
+
     private fun compactText(value: String): String = value
         .replace('\u00a0', ' ')
         .replace(Regex("\\s+"), " ")
@@ -392,7 +403,7 @@ class RfiProgrammedTimetableAdapter(
         val train: Int?,
         val destination: Int?,
         val stops: Int?,
-        val platform: Int?,
+        val carrier: Int?,
         val periodicity: Int?
     ) {
         companion object {
@@ -402,9 +413,9 @@ class RfiProgrammedTimetableAdapter(
                 return HeaderIndexes(
                     time = index("ORARIO", "ORA"),
                     train = index("TRENO"),
-                    destination = index("DESTINAZIONE", "LOCALITA DI ARRIVO", "LOCALITÀ DI ARRIVO"),
+                    destination = index("DESTINAZIONE", "STAZIONE DI ARRIVO", "LOCALITA DI ARRIVO", "LOCALITÀ DI ARRIVO"),
                     stops = index("FERMATE SUCCESSIVE"),
-                    platform = index("BINARIO PROGRAMMATO"),
+                    carrier = index("IMPRESA DI TRASPORTO", "IMPRESA"),
                     periodicity = index("PERIODICITA", "PERIODICITÀ")
                 )
             }
