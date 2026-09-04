@@ -648,16 +648,24 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
         appleWatchSetupRequested = integrationSettings.appleWatchSetupRequested
     )
 
-    fun currentProviderLabel(): String = snapshot?.providerName ?: cache.lastProvider()
+    private fun displaySnapshot(): RouteSnapshot? {
+        val selected = selectedService
+        if (selected != null && returnSnapshot?.services.orEmpty().any { it === selected }) {
+            return returnSnapshot
+        }
+        return snapshot
+    }
 
-    fun currentConfidenceLabel(): String = snapshot?.let { latest ->
+    fun currentProviderLabel(): String = displaySnapshot()?.providerName ?: cache.lastProvider()
+
+    fun currentConfidenceLabel(): String = displaySnapshot()?.let { latest ->
         val quality = latest.qualityScore?.let { score -> "${latest.qualityBand.accessibleLabel} · $score/100" }
         listOfNotNull(quality, latest.confidence.accessibleLabel).joinToString(" · ")
     } ?: cache.lastConfidence()
 
-    fun isDemonstrationData(): Boolean = snapshot?.confidence == DataConfidence.DEMONSTRATION
+    fun isDemonstrationData(): Boolean = displaySnapshot()?.confidence == DataConfidence.DEMONSTRATION
 
-    fun lastRefreshEpochMillis(): Long = snapshot?.retrievedAtEpochMillis ?: cache.lastRefreshEpochMillis()
+    fun lastRefreshEpochMillis(): Long = displaySnapshot()?.retrievedAtEpochMillis ?: cache.lastRefreshEpochMillis()
 
     private fun stationMatches(station: Station, normalizedQuery: String): Boolean {
         return station.searchableValues().any { value ->
