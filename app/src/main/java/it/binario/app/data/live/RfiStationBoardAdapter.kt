@@ -277,7 +277,8 @@ class RfiStationBoardAdapter(
                 ),
                 transferCount = 0,
                 operationalStatusVerified = operationalVerified,
-                routeChange = routeChange
+                routeChange = routeChange,
+                routeChangeSourceIds = if (routeChange != null) setOf(descriptor.id.value) else emptySet()
             )
         }
     }
