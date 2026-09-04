@@ -780,7 +780,12 @@ private fun PlannerScreen(
                         SearchMode.TRAIN -> {
                             VoiceInputButton(onClick = { startVoiceInput(SearchMode.TRAIN) }, label = "Detta numero treno")
                             speechMessage?.let { message -> Text(message, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-                            Text("STATO DI UN TRENO", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                            Text("FILTRO NUMERO TRENO NELLA TRATTA", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                            Text(
+                                "Questa ricerca filtra i treni della tratta attiva. La ricerca nazionale per solo numero richiede un provider TrainRun dedicato e non viene simulata.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                             OutlinedTextField(
                                 value = viewModel.trainNumberQuery,
                                 onValueChange = viewModel::updateTrainNumberQuery,
@@ -790,10 +795,17 @@ private fun PlannerScreen(
                                 placeholder = { Text("Es. 9310") },
                                 leadingIcon = { Icon(Icons.Default.Train, contentDescription = null) }
                             )
-                            Button(onClick = { showResults() }, enabled = viewModel.trainNumberQuery.isNotBlank(), modifier = Modifier.fillMaxWidth()) {
+                            if (!viewModel.hasActiveRoute) {
+                                Text("Scegli prima una tratta da consultare.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+                            }
+                            Button(
+                                onClick = { viewModel.refresh(); showResults() },
+                                enabled = viewModel.trainNumberQuery.isNotBlank() && viewModel.hasActiveRoute,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
                                 Icon(Icons.Default.Search, contentDescription = null)
                                 Spacer(Modifier.width(8.dp))
-                                Text("Cerca treno")
+                                Text("Filtra treno nella tratta")
                             }
                         }
                         SearchMode.STATION -> {
