@@ -233,6 +233,7 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
         activeRoute = route
         routeStore.saveActiveRoute(route.id)
         selectedService = null
+        selectedServiceDirection = null
         snapshot = null
         operatorFilter = null
         refresh()
@@ -266,6 +267,7 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
         routeStore.saveDirection(direction)
         recentRoutes = routeStore.recordRecent(rememberedOrigin, rememberedDestination, stations)
         selectedService = null
+        selectedServiceDirection = null
         snapshot = null
         operatorFilter = null
         trainNumberQuery = ""
@@ -298,6 +300,7 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
         direction = if (direction == Direction.OUTBOUND) Direction.RETURN else Direction.OUTBOUND
         routeStore.saveDirection(direction)
         selectedService = null
+        selectedServiceDirection = null
         snapshot = null
         operatorFilter = null
         refresh()
@@ -357,6 +360,7 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
         direction = Direction.OUTBOUND
         routeStore.saveDirection(direction)
         selectedService = null
+        selectedServiceDirection = null
         snapshot = null
         operatorFilter = null
         refresh()
@@ -390,6 +394,7 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
             activeRoute = savedRoutes.firstOrNull() ?: unconfiguredRoute()
             if (hasActiveRoute) routeStore.saveActiveRoute(activeRoute.id) else routeStore.clearActiveRoute()
             selectedService = null
+            selectedServiceDirection = null
             snapshot = null
             operatorFilter = null
             if (hasActiveRoute) refresh() else {
