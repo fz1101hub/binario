@@ -14,7 +14,6 @@ import it.binario.app.data.DataConfidence
 import it.binario.app.data.DataResult
 import it.binario.app.data.Direction
 import it.binario.app.data.JourneyQuery
-import it.binario.app.data.RailOperator
 import it.binario.app.data.RouteSnapshot
 import it.binario.app.data.RouteSnapshotCache
 import it.binario.app.data.SavedRoute
@@ -91,7 +90,7 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
         private set
     var selectedService by mutableStateOf<TrainService?>(null)
         private set
-    var operatorFilter by mutableStateOf<RailOperator?>(null)
+    var operatorFilter by mutableStateOf<String?>(null)
         private set
     var journeyChangeFilter by mutableStateOf(JourneyChangeFilter.ANY)
         private set
@@ -221,6 +220,7 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
         activeRoute = route
         routeStore.saveActiveRoute(route.id)
         selectedService = null
+        operatorFilter = null
         refresh()
     }
 
@@ -251,6 +251,7 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
         routeStore.saveDirection(direction)
         recentRoutes = routeStore.recordRecent(rememberedOrigin, rememberedDestination, stations)
         selectedService = null
+        operatorFilter = null
         trainNumberQuery = ""
         refresh()
         return true
@@ -260,6 +261,7 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
         direction = if (direction == Direction.OUTBOUND) Direction.RETURN else Direction.OUTBOUND
         routeStore.saveDirection(direction)
         selectedService = null
+        operatorFilter = null
         refresh()
     }
 
@@ -272,9 +274,15 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
         if (newDirection != direction) switchDirection()
     }
 
-    fun selectOperatorFilter(operator: RailOperator?) {
+    fun selectOperatorFilter(operator: String?) {
         operatorFilter = operator
     }
+
+    fun operatorFilterOptions(): List<String> = snapshot?.services.orEmpty()
+        .map { it.displayOperator.trim() }
+        .filter { it.isNotBlank() }
+        .distinctBy { it.lowercase() }
+        .sortedWith(String.CASE_INSENSITIVE_ORDER)
 
     fun selectJourneyChangeFilter(filter: JourneyChangeFilter) {
         journeyChangeFilter = filter
@@ -404,7 +412,7 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
     fun currentServices(): List<TrainService> {
         val query = trainNumberQuery.trim()
         val filtered = snapshot?.services.orEmpty().filter { service ->
-            (operatorFilter == null || service.operator == operatorFilter) &&
+            (operatorFilter == null || service.displayOperator.equals(operatorFilter, ignoreCase = true)) &&
                 (query.isBlank() || service.number.contains(query, ignoreCase = true)) &&
                 journeyChangeFilter.accepts(service.transferCount)
         }
