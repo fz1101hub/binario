@@ -24,6 +24,16 @@ enum class RailOperator(val accessibleLabel: String, val shortLabel: String) {
     TRENITALIA_AV("Trenitalia Frecce", "Frecce"),
     ITALO("Italo", "Italo"),
     TRENORD("Trenord", "Trenord"),
+    SBB("SBB CFF FFS", "SBB"),
+    TILO("TILO", "TILO"),
+    BLS("BLS", "BLS"),
+    RHB("Ferrovia Retica", "RhB"),
+    FART_SSIF("FART / SSIF Vigezzina-Centovalli", "FART/SSIF"),
+    SNCF("SNCF Voyageurs", "SNCF"),
+    OEBB("ÖBB", "ÖBB"),
+    DB("Deutsche Bahn", "DB"),
+    WESTBAHN("WESTbahn", "WESTbahn"),
+    EUROPEAN_SLEEPER("European Sleeper", "European Sleeper"),
     OTHER("Altro operatore", "Altro")
 }
 
