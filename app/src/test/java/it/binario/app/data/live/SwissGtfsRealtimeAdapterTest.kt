@@ -76,7 +76,7 @@ class SwissGtfsRealtimeAdapterTest {
         val alerts = adapter.parseAlerts(feed, observed)
 
         assertEquals(1, alerts.size)
-        assertEquals("Linea interrotta", alerts.single().title.text)
+        assertEquals("Linea interrotta", alerts.single().title.value)
         assertTrue(alerts.single().affectedOperators.any { it.value == "TILO" })
     }
 
