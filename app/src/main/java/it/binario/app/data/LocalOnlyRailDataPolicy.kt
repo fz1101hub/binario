@@ -18,9 +18,9 @@ import it.binario.app.data.provider.VehiclePositionProvider
 /**
  * Runtime source policy.
  *
- * Quality rule: official/primary planning sources and coverage fallbacks live in
- * different tiers. A best-effort source is never consulted before all official
- * local/programmed alternatives have failed for the requested route.
+ * Quality rule: official/primary sources and coverage fallbacks live in
+ * different tiers. A best-effort source is never queried before all official
+ * alternatives have failed for the requested route/context.
  */
 object LocalOnlyRailDataPolicy {
     /** Official programmed sources only. */
@@ -54,10 +54,21 @@ object LocalOnlyRailDataPolicy {
         StaRealtimeAdapter()
     )
 
+    /**
+     * Only realtime feeds that can currently be reconciled against a trusted
+     * static schedule are queried globally.
+     */
     fun tripUpdateProviders(): List<TripUpdateProvider> = listOf(
         StaRealtimeAdapter(),
-        SncfGtfsRealtimeAdapter(),
-        // Low-priority coverage fallback. Before 2026-09-09 the provider returns no updates.
+        SncfGtfsRealtimeAdapter()
+    )
+
+    /**
+     * Coverage realtime is kept separate until the matching route is backed by
+     * the corresponding fallback static GTFS. This avoids network calls whose
+     * updates would otherwise be discarded by the strict same-feed resolver.
+     */
+    fun coverageTripUpdateProviders(): List<TripUpdateProvider> = listOf(
         EuropeanSleeperGtfsRealtimeAdapter()
     )
 }
