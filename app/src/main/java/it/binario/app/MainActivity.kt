@@ -509,8 +509,12 @@ private fun PlannerScreen(
     var stationText by rememberSaveable { mutableStateOf("") }
     var travelDate by rememberSaveable { mutableStateOf(LocalDate.now().toString()) }
     var travelTime by rememberSaveable { mutableStateOf(LocalTime.now().withSecond(0).withNano(0).toString()) }
+    var returnDate by rememberSaveable { mutableStateOf(LocalDate.now().plusDays(1).toString()) }
+    var returnTime by rememberSaveable { mutableStateOf(LocalTime.now().withSecond(0).withNano(0).toString()) }
     var showDatePicker by rememberSaveable { mutableStateOf(false) }
     var showTimePicker by rememberSaveable { mutableStateOf(false) }
+    var showReturnDatePicker by rememberSaveable { mutableStateOf(false) }
+    var showReturnTimePicker by rememberSaveable { mutableStateOf(false) }
     var speechMessage by rememberSaveable { mutableStateOf<String?>(null) }
     var voiceTargetName by rememberSaveable { mutableStateOf(SearchMode.ROUTE.name) }
     val context = LocalContext.current
@@ -529,7 +533,19 @@ private fun PlannerScreen(
                     dictated.destination?.let { destinationText = it.name }
                     dictated.date?.let { travelDate = it.toString() }
                     dictated.time?.let { travelTime = it.toString() }
-                    dictated.returnJourney?.let { returnJourney = it }
+                    dictated.returnJourney?.let { requestedReturn ->
+                        returnJourney = requestedReturn
+                        if (requestedReturn) {
+                            val outboundDate = PlannerDateTime.dateOrToday(travelDate)
+                            val outboundTime = PlannerDateTime.timeOrNow(travelTime)
+                            val currentReturnDate = PlannerDateTime.dateOrToday(returnDate)
+                            val currentReturnTime = PlannerDateTime.timeOrNow(returnTime)
+                            if (!PlannerDateTime.isReturnAfterDeparture(outboundDate, outboundTime, currentReturnDate, currentReturnTime)) {
+                                returnDate = outboundDate.plusDays(1).toString()
+                                returnTime = outboundTime.toString()
+                            }
+                        }
+                    }
                     dictated.origin != null || dictated.destination != null || dictated.date != null || dictated.time != null || dictated.returnJourney != null
                 }
                 SearchMode.TRAIN -> {
@@ -588,8 +604,48 @@ private fun PlannerScreen(
             }
         }
     }
+    if (showReturnDatePicker) {
+        val selected = PlannerDateTime.dateOrToday(returnDate)
+        LaunchedEffect(selected) {
+            DatePickerDialog(context, { _, year, month, day ->
+                returnDate = LocalDate.of(year, month + 1, day).toString()
+                showReturnDatePicker = false
+            }, selected.year, selected.monthValue - 1, selected.dayOfMonth).apply {
+                setOnDismissListener { showReturnDatePicker = false }
+                show()
+            }
+        }
+    }
+    if (showReturnTimePicker) {
+        val selected = PlannerDateTime.timeOrNow(returnTime)
+        LaunchedEffect(selected) {
+            TimePickerDialog(context, { _, hour, minute ->
+                returnTime = LocalTime.of(hour, minute).toString()
+                showReturnTimePicker = false
+            }, selected.hour, selected.minute, true).apply {
+                setOnDismissListener { showReturnTimePicker = false }
+                show()
+            }
+        }
+    }
     val origin = viewModel.stationFromName(originText)
     val destination = viewModel.stationFromName(destinationText)
+    val selectedDepartureDate = runCatching { LocalDate.parse(travelDate) }.getOrNull()
+    val selectedDepartureTime = runCatching { LocalTime.parse(travelTime) }.getOrNull()
+    val selectedReturnDate = runCatching { LocalDate.parse(returnDate) }.getOrNull()
+    val selectedReturnTime = runCatching { LocalTime.parse(returnTime) }.getOrNull()
+    val roundTripChronologyValid = !returnJourney || (
+        selectedDepartureDate != null &&
+            selectedDepartureTime != null &&
+            selectedReturnDate != null &&
+            selectedReturnTime != null &&
+            PlannerDateTime.isReturnAfterDeparture(
+                selectedDepartureDate,
+                selectedDepartureTime,
+                selectedReturnDate,
+                selectedReturnTime
+            )
+        )
     LazyColumn(modifier = modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(0.dp)) {
         item {
             Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
