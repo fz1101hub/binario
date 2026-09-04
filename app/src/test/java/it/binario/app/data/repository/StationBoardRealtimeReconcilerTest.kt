@@ -11,6 +11,7 @@ import it.binario.app.data.SavedRoute
 import it.binario.app.data.ServiceStatus
 import it.binario.app.data.SnapshotWarning
 import it.binario.app.data.Station
+import it.binario.app.data.StopRouteChange
 import it.binario.app.data.TrainCategory
 import it.binario.app.data.TrainDataSource
 import it.binario.app.data.TrainService
@@ -20,6 +21,8 @@ import it.binario.app.data.core.Completeness
 import it.binario.app.data.core.Confidence
 import it.binario.app.data.core.Freshness as CoreFreshness
 import it.binario.app.data.core.OperatorId
+import it.binario.app.data.core.OperationalRouteChange
+import it.binario.app.data.core.RouteChangeKind
 import it.binario.app.data.core.RunStatus
 import it.binario.app.data.core.SnapshotMeta
 import it.binario.app.data.core.SourceId
@@ -139,6 +142,47 @@ class StationBoardRealtimeReconcilerTest {
 
         assertTrue(snapshot.services.single().operationalStatusVerified)
         assertEquals("12:38", snapshot.services.single().expectedDeparture)
+    }
+
+    @Test
+    fun `applica una variazione di percorso realtime alla corsa GTFS`() = runBlocking {
+        val source = SourceId("rfi-station-board")
+        val change = OperationalRouteChange(
+            kind = RouteChangeKind.SKIPPED_STOPS,
+            summary = "Per guasto alla linea il treno non effettua fermata a Formia-Gaeta",
+            skippedStopLabels = listOf("Formia-Gaeta")
+        )
+        val provider = FakeBoardProvider(
+            source,
+            "RFI",
+            board(
+                source = source,
+                number = "9401",
+                scheduled = zdt(12, 30),
+                expected = zdt(12, 35),
+                platform = "7",
+                status = RunStatus.DELAYED,
+                routeChange = change
+            )
+        )
+        val planned = plannedSnapshot().copy(
+            services = plannedSnapshot().services.map { service ->
+                service.copy(
+                    stops = listOf(
+                        TrainStop("Roma Termini", "12:30", "12:30", null, 0, false),
+                        TrainStop("Formia-Gaeta", "13:15", "13:15", null, 0, false),
+                        TrainStop("Napoli Centrale", "13:40", "13:40", null, 0, false)
+                    )
+                )
+            }
+        )
+
+        val snapshot = StationBoardRealtimeReconciler(listOf(provider), clock, zone).enrich(planned, query)
+        val service = snapshot.services.single()
+
+        assertEquals(RouteChangeKind.SKIPPED_STOPS, service.routeChange?.kind)
+        assertEquals(setOf("rfi-station-board"), service.routeChangeSourceIds)
+        assertEquals(StopRouteChange.SKIPPED, service.stops.first { it.station == "Formia-Gaeta" }.routeChange)
     }
 
     @Test
@@ -269,7 +313,8 @@ class StationBoardRealtimeReconcilerTest {
         expected: ZonedDateTime,
         platform: String,
         status: RunStatus,
-        destinationLabel: String = "Napoli Centrale"
+        destinationLabel: String = "Napoli Centrale",
+        routeChange: OperationalRouteChange? = null
     ): StationBoard {
         val ref = SourceRef(
             sourceId = source,
@@ -295,7 +340,8 @@ class StationBoardRealtimeReconcilerTest {
                     publicNumber = number,
                     operatorId = OperatorId("trenitalia"),
                     platform = SourcedValue(platform, ref),
-                    status = SourcedValue(status, ref)
+                    status = SourcedValue(status, ref),
+                    routeChange = routeChange?.let { SourcedValue(it, ref) }
                 )
             ),
             snapshot = SnapshotMeta(
