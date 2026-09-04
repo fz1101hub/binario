@@ -139,15 +139,16 @@ class StationBoardRealtimeReconciler(
             val expectedMatch = matches.firstOrNull { it.entry.expectedTime != null }
             val statusMatch = matches.firstOrNull { it.entry.status != null }
             val platformMatch = matches.firstOrNull { it.entry.platform != null }
-            val routeChangeMatch = matches.firstOrNull { it.entry.routeChange != null }
+            val routeChangeMatches = matches.filter { it.entry.routeChange != null }
+            val routeChangeMatch = routeChangeMatches.firstOrNull()
             val operationalSources = listOfNotNull(
                 expectedMatch?.entry?.expectedTime?.source,
                 statusMatch?.entry?.status?.source,
                 platformMatch?.entry?.platform?.source
             ).distinctBy { it.sourceId }
-            val selectedSources = (
-                operationalSources + listOfNotNull(routeChangeMatch?.entry?.routeChange?.source)
-            ).distinctBy { it.sourceId }
+            val routeChangeSources = routeChangeMatches.mapNotNull { it.entry.routeChange?.source }
+                .distinctBy { it.sourceId }
+            val selectedSources = (operationalSources + routeChangeSources).distinctBy { it.sourceId }
 
             selectedSources.forEach { source ->
                 usedProviders += source.sourceId.value
@@ -200,9 +201,11 @@ class StationBoardRealtimeReconciler(
                 operationalSourceIds = operationalSources.mapTo(linkedSetOf()) { it.sourceId.value },
                 operationalObservedAtEpochMillis = selectedSources.maxOfOrNull { (it.observedAt ?: it.fetchedAt).toEpochMilli() },
                 routeChange = routeChange,
-                routeChangeSourceIds = routeChangeMatch?.entry?.routeChange?.source
-                    ?.let { setOf(it.sourceId.value) }
-                    ?: service.routeChangeSourceIds
+                routeChangeSourceIds = if (routeChangeSources.isNotEmpty()) {
+                    routeChangeSources.mapTo(linkedSetOf()) { it.sourceId.value }
+                } else {
+                    service.routeChangeSourceIds
+                }
             )
         }
 
@@ -291,7 +294,16 @@ class StationBoardRealtimeReconciler(
         if (statuses.size > 1) return true
 
         val routeChanges = matches.mapNotNull { it.entry.routeChange?.value }
-        if (routeChanges.map { it.kind to it.summary }.toSet().size > 1) return true
+        val routeFingerprints = routeChanges.map {
+            listOf(
+                it.kind.name,
+                it.skippedStopLabels.sorted().joinToString("|"),
+                it.addedStopLabels.sorted().joinToString("|"),
+                it.viaStopLabels.sorted().joinToString("|"),
+                it.replacementDestinationLabel.orEmpty()
+            ).joinToString("::")
+        }.toSet()
+        if (routeFingerprints.size > 1) return true
 
         val expected = matches.mapNotNull { it.entry.expectedTime?.value }
         if (expected.size < 2) return false
