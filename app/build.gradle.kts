@@ -15,10 +15,10 @@ android {
         versionCode = 34
         versionName = "0.20.3"
 
-        // Personal builds may opt into public best-effort operator pages.
-        // Set -PBINARIO_PERSONAL_REALTIME_SOURCES=false before any wider distribution.
+        // Public/operator best-effort pages are an explicit personal-build opt-in.
+        // Enable only with -PBINARIO_PERSONAL_REALTIME_SOURCES=true.
         val personalRealtimeSources = providers.gradleProperty("BINARIO_PERSONAL_REALTIME_SOURCES")
-            .orElse("true")
+            .orElse("false")
             .get()
         buildConfigField("boolean", "PERSONAL_REALTIME_SOURCES", personalRealtimeSources)
     }
