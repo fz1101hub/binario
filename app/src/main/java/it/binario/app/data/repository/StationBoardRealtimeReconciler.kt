@@ -212,11 +212,13 @@ class StationBoardRealtimeReconciler(
 
         return snapshot.copy(
             services = enrichedServices,
-            providerName = "${snapshot.providerName} + realtime",
+            providerName = "${snapshot.providerName} + ${providerLabels.joinToString(" / ")}",
             sourceObservedAtEpochMillis = newestObservedAt ?: snapshot.sourceObservedAtEpochMillis,
             expiresAtEpochMillis = minOf(snapshot.expiresAtEpochMillis, earliestExpiry ?: snapshot.expiresAtEpochMillis),
             freshness = Freshness.FRESH,
-            qualityWarnings = if (conflict) snapshot.qualityWarnings + SnapshotWarning.SOURCE_CONFLICT else snapshot.qualityWarnings,
+            qualityWarnings = (snapshot.qualityWarnings - SnapshotWarning.STATIC_ONLY).let { warnings ->
+                if (conflict) warnings + SnapshotWarning.SOURCE_CONFLICT else warnings
+            },
             notice = noticeParts.joinToString(" ")
         )
     }
