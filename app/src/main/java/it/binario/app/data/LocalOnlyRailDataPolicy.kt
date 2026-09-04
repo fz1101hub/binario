@@ -5,6 +5,7 @@ import it.binario.app.data.provider.TripUpdateProvider
 import it.binario.app.data.provider.StationBoardProvider
 import it.binario.app.data.provider.VehiclePositionProvider
 import it.binario.app.BuildConfig
+import it.binario.app.data.live.EuropeanSleeperGtfsRealtimeAdapter
 import it.binario.app.data.live.ItaloPublicStationAdapter
 import it.binario.app.data.live.RfiInfomobilityRssAdapter
 import it.binario.app.data.live.RfiStationBoardAdapter
@@ -46,6 +47,8 @@ object LocalOnlyRailDataPolicy {
 
     fun tripUpdateProviders(): List<TripUpdateProvider> = listOf(
         StaRealtimeAdapter(),
-        SncfGtfsRealtimeAdapter()
+        SncfGtfsRealtimeAdapter(),
+        // Low-priority coverage fallback. Before 2026-09-09 the provider returns no updates.
+        EuropeanSleeperGtfsRealtimeAdapter()
     )
 }
