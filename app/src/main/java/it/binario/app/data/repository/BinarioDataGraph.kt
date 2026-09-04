@@ -8,6 +8,9 @@ import it.binario.app.data.gtfs.EmbeddedGtfsRealtimeScheduleResolver
 import it.binario.app.data.gtfs.EmbeddedGtfsRouteAdapter
 import it.binario.app.data.gtfs.EmbeddedGtfsStationSearchIndex
 import it.binario.app.data.provider.AlertProvider
+import it.binario.app.data.provider.AuthorizedExternalProviderFactory
+import it.binario.app.data.provider.AuthorizedExternalProviders
+import it.binario.app.data.provider.ExternalRailCredentials
 import it.binario.app.data.provider.KnownProviders
 import it.binario.app.data.provider.ProviderCapability
 import it.binario.app.data.provider.ProviderRegistry
@@ -19,6 +22,10 @@ import it.binario.app.data.provider.VehiclePositionProvider
  * Punto di composizione unico del livello dati. Nessuna UI, worker o companion
  * deve istanziare direttamente repository o provider: questa classe rende la
  * configurazione coerente e sostituibile nei test.
+ *
+ * Le credenziali esterne non vengono mai memorizzate dal graph: i provider
+ * Swiss/DB autorizzati vengono creati soltanto a partire da valori runtime
+ * esplicitamente consegnati dal chiamante (secure store/backend personale).
  */
 object BinarioDataGraph {
     private val defaultRegistry: ProviderRegistry by lazy { KnownProviders.defaultRegistry() }
@@ -72,6 +79,22 @@ object BinarioDataGraph {
 
     fun tripUpdateProviders(): List<TripUpdateProvider> = localOnlyPolicy.tripUpdateProviders()
 
+    /**
+     * Costruisce provider con credenziali soltanto per la durata del riferimento
+     * restituito. Il graph non li cachea e non conserva le credenziali.
+     */
+    fun authorizedExternalProviders(credentials: ExternalRailCredentials): AuthorizedExternalProviders =
+        AuthorizedExternalProviderFactory.create(credentials)
+
+    fun stationBoardProviders(credentials: ExternalRailCredentials): List<StationBoardProvider> =
+        stationBoardProviders() + authorizedExternalProviders(credentials).stationBoards
+
+    fun alertProviders(credentials: ExternalRailCredentials): List<AlertProvider> =
+        alertProviders() + authorizedExternalProviders(credentials).alerts
+
+    fun tripUpdateProviders(credentials: ExternalRailCredentials): List<TripUpdateProvider> =
+        tripUpdateProviders() + authorizedExternalProviders(credentials).tripUpdates
+
     fun realtimeScheduleResolver(context: Context): EmbeddedGtfsRealtimeScheduleResolver = synchronized(realtimeResolversByPackage) {
         val applicationContext = context.applicationContext
         realtimeResolversByPackage.getOrPut(applicationContext.packageName) {
@@ -81,6 +104,18 @@ object BinarioDataGraph {
 
     fun realtimeEnrichmentService(context: Context): RealtimeEnrichmentService =
         RealtimeEnrichmentService(tripUpdateProviders(), realtimeScheduleResolver(context))
+
+    /**
+     * Versione autorizzata: Swiss GTFS-RT viene riconciliato contro il GTFS
+     * svizzero embedded; nessun token viene copiato nel resolver o persistito.
+     */
+    fun realtimeEnrichmentService(
+        context: Context,
+        credentials: ExternalRailCredentials
+    ): RealtimeEnrichmentService = RealtimeEnrichmentService(
+        tripUpdateProviders(credentials),
+        realtimeScheduleResolver(context)
+    )
 }
 
 /**
