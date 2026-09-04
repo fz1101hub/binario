@@ -257,6 +257,7 @@ class RfiStationBoardAdapter(
             val category = row.selectFirst("#RCategoria img")?.attr("alt").orEmpty()
             val info = row.selectFirst(".testoinfoaggiuntive")?.text()?.normalizeSpace().orEmpty()
             val expected = if (status == ServiceStatus.CANCELLED) scheduled else addDelay(scheduled, delay)
+            val routeChange = OperationalRouteChangeDetector.detect(info)
             TrainService(
                 id = "rfi:${route.id}:${direction.name}:$number:$scheduled",
                 number = number,
@@ -275,7 +276,8 @@ class RfiStationBoardAdapter(
                     TrainStop(destination, "—", "—", null, delay, completed = false)
                 ),
                 transferCount = 0,
-                operationalStatusVerified = operationalVerified
+                operationalStatusVerified = operationalVerified,
+                routeChange = routeChange
             )
         }
     }
