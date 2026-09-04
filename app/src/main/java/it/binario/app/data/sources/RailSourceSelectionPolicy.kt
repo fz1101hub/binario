@@ -82,7 +82,7 @@ object RailSourceSelectionPolicy {
 
     fun score(category: RailInformationCategory, sourceId: SourceId, operatorHint: String? = null): Int {
         val base = preferences.firstOrNull { it.category == category && it.sourceId == sourceId }?.score ?: 50
-        return base + operatorAffinity(sourceId, operatorHint)
+        return base + operatorAffinity(category, sourceId, operatorHint)
     }
 
     fun isCoverageFallback(sourceId: SourceId): Boolean = sourceId.value in setOf(
@@ -93,20 +93,38 @@ object RailSourceSelectionPolicy {
 
     /**
      * Favorisce il feed dell'operatore quando due dataset descrivono la stessa
-     * corsa: es. ÖBB batte DELFI per un treno ÖBB, Svizzera batte feed generici
-     * per SBB/TILO/BLS/RhB/FART/SSIF, SNCF batte aggregati per SNCF.
+     * corsa. L'affinità è volutamente category-aware: per il binario italiano
+     * RFI resta primario, mentre per stato corsa e variazioni l'operatore può
+     * superare un generico evento infrastrutturale quando parla della propria corsa.
      */
-    private fun operatorAffinity(sourceId: SourceId, operatorHint: String?): Int {
+    private fun operatorAffinity(
+        category: RailInformationCategory,
+        sourceId: SourceId,
+        operatorHint: String?
+    ): Int {
         val op = normalize(operatorHint.orEmpty())
         if (op.isBlank()) return 0
         return when (sourceId.value) {
-            "ch-otd-gtfs" -> if (op.containsAny("sbb", "tilo", "bls", "rhb", "rhatischebahn", "fart", "ssif")) 20 else 0
+            "ch-otd-gtfs", "ch-otd-gtfs-rt" ->
+                if (op.containsAny("sbb", "tilo", "bls", "rhb", "rhatischebahn", "rhaetischebahn", "fart", "ssif")) 20 else 0
             "oebb-gtfs" -> if (op.containsAny("oebb", "obb", "osterreichischebundesbahnen")) 20 else 0
-            "sncf-gtfs" -> if (op.contains("sncf")) 20 else 0
+            "sncf-gtfs", "sncf-gtfs-rt" -> if (op.contains("sncf")) 20 else 0
             "lombardia-trenord-gtfs" -> if (op.contains("trenord")) 20 else 0
-            "delfi-gtfs", "delfi-gtfs-community" -> if (op.containsAny("db", "deutschebahn", "dbfernverkehr")) 20 else 0
+            "delfi-gtfs", "delfi-gtfs-community", "db-timetables", "db-ris-boards", "db-ris-journeys", "db-ris-disruptions" ->
+                if (op.containsAny("db", "deutschebahn", "dbfernverkehr")) 20 else 0
+            "italo-status" -> if (op.contains("italo")) operatorRealtimeAffinity(category) else 0
+            "viaggiatreno" -> if (op.containsAny("trenitalia", "frecce", "regionale")) operatorRealtimeAffinity(category) else 0
             else -> 0
         }
+    }
+
+    /** Platform/station board remains infrastructure-led; status/path may prefer the operator. */
+    private fun operatorRealtimeAffinity(category: RailInformationCategory): Int = when (category) {
+        RailInformationCategory.TRAIN_REALTIME -> 20
+        RailInformationCategory.ROUTE_VARIATIONS -> 20
+        RailInformationCategory.SERVICE_ALERTS -> 10
+        RailInformationCategory.STATION_BOARD -> 10
+        RailInformationCategory.PLANNED_ITINERARY -> 0
     }
 
     private fun pref(id: String, category: RailInformationCategory, score: Int, reason: String) =
