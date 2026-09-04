@@ -1250,7 +1250,7 @@ private fun OperatorFilterBar(
         contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 20.dp)
     ) {
         item { FilterChip(selected = selected == null, onClick = { onSelected(null) }, label = { Text("Tutti") }) }
-        items(operators, key = { it.lowercase() }) { operator ->
+        items(operators, key = { it.lowercase(Locale.ROOT) }) { operator ->
             FilterChip(
                 selected = selected?.equals(operator, ignoreCase = true) == true,
                 onClick = { onSelected(operator) },
