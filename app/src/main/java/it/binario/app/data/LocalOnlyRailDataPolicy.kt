@@ -1,9 +1,5 @@
 package it.binario.app.data
 
-import it.binario.app.data.provider.AlertProvider
-import it.binario.app.data.provider.TripUpdateProvider
-import it.binario.app.data.provider.StationBoardProvider
-import it.binario.app.data.provider.VehiclePositionProvider
 import it.binario.app.BuildConfig
 import it.binario.app.data.gtfs.RemoteGtfsFallbackDataSource
 import it.binario.app.data.live.EuropeanSleeperGtfsRealtimeAdapter
@@ -14,19 +10,26 @@ import it.binario.app.data.live.SncfGtfsRealtimeAdapter
 import it.binario.app.data.live.StaRealtimeAdapter
 import it.binario.app.data.live.ViaggiaTrenoStationAdapter
 import it.binario.app.data.planned.RfiProgrammedTimetableAdapter
+import it.binario.app.data.provider.AlertProvider
+import it.binario.app.data.provider.StationBoardProvider
+import it.binario.app.data.provider.TripUpdateProvider
+import it.binario.app.data.provider.VehiclePositionProvider
 
 /**
  * Runtime source policy.
- * Planned journey sources are kept separate from operational station boards.
+ *
+ * Quality rule: official/primary planning sources and coverage fallbacks live in
+ * different tiers. A best-effort source is never consulted before all official
+ * local/programmed alternatives have failed for the requested route.
  */
 object LocalOnlyRailDataPolicy {
-    /**
-     * Ordering matters: RFI programmed is primary. The remote European Sleeper
-     * GTFS is a coverage fallback and is only reached when the primary source
-     * cannot satisfy the route/date query.
-     */
+    /** Official programmed sources only. */
     fun routeSources(): List<TrainDataSource> = listOf(
-        RfiProgrammedTimetableAdapter(),
+        RfiProgrammedTimetableAdapter()
+    )
+
+    /** Last-resort route coverage. These sources must never outrank official GTFS/RFI data. */
+    fun coverageRouteFallbacks(): List<TrainDataSource> = listOf(
         RemoteGtfsFallbackDataSource.europeanSleeper()
     )
 
