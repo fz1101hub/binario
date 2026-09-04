@@ -10,8 +10,9 @@ import java.time.Instant
  * rete: l’aggiornamento avviene solo sostituendo asset, manifest e impronte
  * in una nuova release verificata.
  *
- * Un asset può restare nel repository per audit/storico senza essere presente
- * in questa lista: solo i pack qui elencati sono considerati copertura attiva.
+ * La copertura segue il principio best-available: una fonte meno completa può
+ * restare attiva in un territorio se è l'unica disponibile, mentre le fonti
+ * migliori prevalgono dove descrivono la stessa corsa.
  */
 data class EmbeddedGtfsPack(
     val sourceId: SourceId,
@@ -26,6 +27,7 @@ object EmbeddedGtfsPacks {
         EmbeddedGtfsPack(SourceId("ch-otd-gtfs"), "gtfs/ch-otd-gtfs.zip"),
         EmbeddedGtfsPack(SourceId("cotral-ferro-gtfs"), "gtfs/cotral-ferro-gtfs.zip"),
         EmbeddedGtfsPack(SourceId("eav-gtfs"), "gtfs/eav-gtfs.zip"),
+        EmbeddedGtfsPack(SourceId("hzpp-gtfs"), "gtfs/hzpp-gtfs.zip"),
         EmbeddedGtfsPack(SourceId("lombardia-trenord-gtfs"), "gtfs/lombardia-trenord-gtfs.zip"),
         EmbeddedGtfsPack(SourceId("oebb-gtfs"), "gtfs/oebb-gtfs.zip"),
         EmbeddedGtfsPack(SourceId("sncf-gtfs"), "gtfs/sncf-gtfs.zip"),
