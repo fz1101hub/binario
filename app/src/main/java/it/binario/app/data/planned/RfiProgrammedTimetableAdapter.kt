@@ -57,7 +57,7 @@ internal class HttpRfiProgrammedTimetableFetcher : RfiProgrammedTimetableFetcher
 }
 
 internal object RfiProgrammedStationIds {
-    private val byBinarioId = mapOf(
+    private val byLegacyId = mapOf(
         "roma-termini" to 2247,
         "roma-tiburtina" to 2217,
         "roma-ostiense" to 2211,
@@ -74,7 +74,33 @@ internal object RfiProgrammedStationIds {
         "salerno" to 2434
     )
 
-    fun timetableId(stationId: String): Int? = byBinarioId[stationId]
+    private val byName = mapOf(
+        key("Roma Termini") to 2247,
+        key("Roma Tiburtina") to 2217,
+        key("Roma Ostiense") to 2211,
+        key("Milano Centrale") to 1603,
+        key("Napoli Centrale") to 1757,
+        key("Bologna Centrale") to 635,
+        key("Firenze S.M.N.") to 1325,
+        key("Firenze Santa Maria Novella") to 1325,
+        key("Torino Porta Nuova") to 2672,
+        key("Torino Porta Susa") to 25350269,
+        key("Venezia Santa Lucia") to 2796,
+        key("Venezia S. Lucia") to 2796,
+        key("Verona Porta Nuova") to 2812,
+        key("Genova Piazza Principe") to 248,
+        key("Genova P. Principe") to 248,
+        key("Bari Centrale") to 550,
+        key("Salerno") to 2434
+    )
+
+    fun timetableId(station: Station): Int? = byLegacyId[station.id]
+        ?: (listOf(station.name) + station.aliases).firstNotNullOfOrNull { byName[key(it)] }
+
+    private fun key(value: String): String = value
+        .uppercase(Locale.ROOT)
+        .replace("S. ", "SAN ")
+        .replace(Regex("[^A-Z0-9]"), "")
 }
 
 /**
@@ -97,7 +123,7 @@ class RfiProgrammedTimetableAdapter(
     override suspend fun loadRoute(route: SavedRoute, direction: Direction, query: JourneyQuery): DataResult {
         val origin = route.origin(direction)
         val destination = route.destination(direction)
-        val stationId = RfiProgrammedStationIds.timetableId(origin.id)
+        val stationId = RfiProgrammedStationIds.timetableId(origin)
             ?: return DataResult.Failure("Il quadro orario programmato RFI non è ancora mappato per ${origin.name}.")
 
         val key = "${origin.id}:${query.serviceDate}"
