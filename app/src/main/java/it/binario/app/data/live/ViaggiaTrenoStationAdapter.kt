@@ -211,8 +211,12 @@ class ViaggiaTrenoStationAdapter(
 
             val delay = Regex("\\britardo\\s+(\\d{1,3})\\s+minuti", RegexOption.IGNORE_CASE)
                 .find(content)?.groupValues?.getOrNull(1)?.toIntOrNull() ?: 0
+            val cancelled = content.contains("soppress", ignoreCase = true) || content.contains("cancell", ignoreCase = true)
+            val explicitOnTime = content.contains("in orario", ignoreCase = true) ||
+                content.contains("regolare", ignoreCase = true)
+            val operationalVerified = cancelled || delay > 0 || explicitOnTime
             val status = when {
-                content.contains("soppress", ignoreCase = true) || content.contains("cancell", ignoreCase = true) -> ServiceStatus.CANCELLED
+                cancelled -> ServiceStatus.CANCELLED
                 delay > 0 -> ServiceStatus.DELAYED
                 else -> ServiceStatus.ON_TIME
             }
@@ -236,7 +240,8 @@ class ViaggiaTrenoStationAdapter(
                     TrainStop(origin, scheduled, expected, platform, delay, completed = false),
                     TrainStop(destination, "—", "—", null, delay, completed = false)
                 ),
-                transferCount = 0
+                transferCount = 0,
+                operationalStatusVerified = operationalVerified
             )
         }
     }
