@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.core.content.edit
 import it.binario.app.data.core.DelayConsistency
 import it.binario.app.data.core.OperationalDetection
+import it.binario.app.data.core.OperationalRouteChange
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -115,13 +116,20 @@ data class SavedRoute(
     fun displayName(direction: Direction): String = "${origin(direction).name} → ${destination(direction).name}"
 }
 
+enum class StopRouteChange {
+    NONE,
+    ADDED,
+    SKIPPED
+}
+
 data class TrainStop(
     val station: String,
     val scheduled: String,
     val expected: String,
     val platform: String?,
     val delayMinutes: Int,
-    val completed: Boolean
+    val completed: Boolean,
+    val routeChange: StopRouteChange = StopRouteChange.NONE
 )
 
 data class TrainService(
@@ -152,7 +160,10 @@ data class TrainService(
     /** Canonical source ids that contributed verified operational fields. */
     val operationalSourceIds: Set<String> = emptySet(),
     /** Most recent observation time among the operational sources used for this service. */
-    val operationalObservedAtEpochMillis: Long? = null
+    val operationalObservedAtEpochMillis: Long? = null,
+    /** Operational path change that may override the static GTFS path. */
+    val routeChange: OperationalRouteChange? = null,
+    val routeChangeSourceIds: Set<String> = emptySet()
 ) {
     val category: String get() = trainCategory.accessibleLabel
     val operatorAndCategory: String get() = "${operator.shortLabel} · ${trainCategory.accessibleLabel}"
@@ -163,7 +174,8 @@ data class TrainService(
                 lastOperationalDetection?.let { " Ritardo all'ultima rilevazione di ${it.locationLabel}: $value minuti." }
             }.orEmpty()
             val operational = if (operationalStatusVerified) status.accessibleLabel else "Stato operativo non verificato"
-            return "Operatore ${operator.accessibleLabel}. ${trainCategory.accessibleLabel} $number da $origin a $destination. Partenza prevista $expectedDeparture. ${if (transferCount == 0) "Viaggio diretto" else "$transferCount ${if (transferCount == 1) "cambio" else "cambi"}"}. $operational$official$detection ${platform?.let { "Binario $it" } ?: "Binario non disponibile"}."
+            val routeVariation = routeChange?.let { " Variazione di percorso: ${it.summary}." }.orEmpty()
+            return "Operatore ${operator.accessibleLabel}. ${trainCategory.accessibleLabel} $number da $origin a $destination. Partenza prevista $expectedDeparture. ${if (transferCount == 0) "Viaggio diretto" else "$transferCount ${if (transferCount == 1) "cambio" else "cambi"}"}. $operational$routeVariation$official$detection ${platform?.let { "Binario $it" } ?: "Binario non disponibile"}."
         }
 }
 
