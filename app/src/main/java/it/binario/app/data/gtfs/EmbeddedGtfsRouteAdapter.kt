@@ -21,25 +21,30 @@ import java.io.InputStreamReader
 import java.text.Normalizer
 import java.time.DayOfWeek
 import java.time.LocalDate
-import java.time.LocalDateTime
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.util.LinkedHashMap
+import java.util.Locale
 import java.util.zip.ZipInputStream
 
 /**
  * Fallback offline per orari programmati. Legge soltanto i data pack GTFS già
- * verificati e inclusi nell’APK: non effettua download, non richiede token e
+ * verificati e inclusi nell'APK: non effettua download, non richiede token e
  * non attribuisce ritardi o binari non presenti nel feed statico.
+ *
+ * Una tratta può essere pubblicata da più dataset (es. Trenord + Svizzera,
+ * STA + ÖBB, SNCF + altri feed transfrontalieri). Per questo i risultati dei
+ * pack compatibili vengono uniti invece di fermarsi alla prima corrispondenza.
  */
 class EmbeddedGtfsRouteAdapter(
     private val openAsset: (String) -> InputStream,
     private val packs: List<EmbeddedGtfsPack> = EmbeddedGtfsPacks.all,
     private val clock: () -> Long = System::currentTimeMillis
 ) : TrainDataSource {
-    private val cache = object : LinkedHashMap<SourceId, StaticGtfsIndex>(3, 0.75f, true) {
-        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<SourceId, StaticGtfsIndex>?): Boolean = size > 3
+    private val indexCache = object : LinkedHashMap<SourceId, StaticGtfsIndex>(5, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<SourceId, StaticGtfsIndex>?): Boolean = size > 5
     }
+    private val stopPresenceCache = mutableMapOf<SourceId, Set<String>>()
 
     override suspend fun loadRoute(route: SavedRoute, direction: Direction): DataResult =
         loadRoute(route, direction, JourneyQuery.now())
@@ -47,33 +52,115 @@ class EmbeddedGtfsRouteAdapter(
     override suspend fun loadRoute(route: SavedRoute, direction: Direction, query: JourneyQuery): DataResult {
         val origin = route.origin(direction).name
         val destination = route.destination(direction).name
-        packs.forEach { pack ->
-            val source = RailSourceCatalog.byId(pack.sourceId) ?: return@forEach
-            val index = cache[pack.sourceId] ?: withContext(Dispatchers.IO) {
-                parse(openAsset(pack.assetPath))
-            }.also { parsed ->
-                synchronized(cache) { cache[pack.sourceId] = parsed }
-            }
-            val services = index.services(origin, destination, source.id.value, query).take(24)
-            if (services.isNotEmpty()) {
-                val now = clock()
-                return DataResult.Success(
-                    RouteSnapshot(
-                        route = route,
-                        direction = direction,
-                        services = services,
-                        providerName = "${source.displayName} · orario programmato",
-                        retrievedAtEpochMillis = now,
-                        sourceObservedAtEpochMillis = now,
-                        expiresAtEpochMillis = now + 12 * 60 * 60 * 1000,
-                        freshness = Freshness.AGING,
-                        confidence = DataConfidence.STATIC_ONLY,
-                        notice = "Orario programmato da ${source.displayName}. Ritardi, binari e soppressioni richiedono una fonte realtime."
-                    )
-                )
+        val wantedOrigin = normalize(origin)
+        val wantedDestination = normalize(destination)
+
+        val explicitSourceIds = listOf(route.origin(direction).id, route.destination(direction).id)
+            .mapNotNull(::sourceIdFromGtfsStationId)
+            .distinct()
+            .takeIf { ids -> ids.size == 1 }
+            ?.toSet()
+
+        val candidatePacks = withContext(Dispatchers.IO) {
+            packs.filter { pack ->
+                if (explicitSourceIds != null) {
+                    pack.sourceId in explicitSourceIds
+                } else {
+                    val stops = stopNames(pack)
+                    wantedOrigin in stops && wantedDestination in stops
+                }
             }
         }
-        return DataResult.Failure("Nessuna corsa programmata trovata nei data pack GTFS disponibili per questa tratta.")
+
+        if (candidatePacks.isEmpty()) {
+            return DataResult.Failure("Nessun data pack GTFS contiene entrambe le stazioni richieste.")
+        }
+
+        val collected = mutableListOf<SourcedService>()
+        for (pack in candidatePacks) {
+            val source = RailSourceCatalog.byId(pack.sourceId) ?: continue
+            val index = synchronized(indexCache) { indexCache[pack.sourceId] } ?: withContext(Dispatchers.IO) {
+                parse(openAsset(pack.assetPath))
+            }.also { parsed ->
+                synchronized(indexCache) { indexCache[pack.sourceId] = parsed }
+            }
+            index.services(origin, destination, source.id.value, query).forEach { service ->
+                collected += SourcedService(source.displayName, pack.sourceId, service)
+            }
+        }
+
+        if (collected.isEmpty()) {
+            return DataResult.Failure("Nessuna corsa programmata trovata nei data pack GTFS compatibili per data e orario selezionati.")
+        }
+
+        val services = collected
+            .sortedWith(compareBy<SourcedService> { it.service.scheduledDepartureDateTime }.thenBy { it.service.number })
+            .distinctBy { item -> serviceIdentity(item.service) }
+            .take(24)
+
+        val now = clock()
+        val sourceNames = services.map { it.sourceName }.distinct()
+        return DataResult.Success(
+            RouteSnapshot(
+                route = route,
+                direction = direction,
+                services = services.map { it.service },
+                providerName = sourceNames.joinToString(" + ") { "$it · orario programmato" },
+                retrievedAtEpochMillis = now,
+                sourceObservedAtEpochMillis = now,
+                expiresAtEpochMillis = now + 12 * 60 * 60 * 1000,
+                freshness = Freshness.AGING,
+                confidence = DataConfidence.STATIC_ONLY,
+                notice = if (sourceNames.size > 1) {
+                    "Orario programmato unificato da ${sourceNames.joinToString()}. Ritardi, binari e soppressioni richiedono fonti realtime."
+                } else {
+                    "Orario programmato da ${sourceNames.first()}. Ritardi, binari e soppressioni richiedono una fonte realtime."
+                }
+            )
+        )
+    }
+
+    private fun serviceIdentity(service: TrainService): String = listOf(
+        service.number,
+        service.scheduledDepartureDateTime.toString(),
+        normalize(service.origin),
+        normalize(service.destination)
+    ).joinToString("|")
+
+    private fun sourceIdFromGtfsStationId(stationId: String): SourceId? {
+        if (!stationId.startsWith("gtfs:")) return null
+        val source = stationId.removePrefix("gtfs:").substringBefore(':').takeIf(String::isNotBlank) ?: return null
+        return SourceId(source)
+    }
+
+    private fun stopNames(pack: EmbeddedGtfsPack): Set<String> {
+        synchronized(stopPresenceCache) { stopPresenceCache[pack.sourceId] }?.let { return it }
+        val names = linkedSetOf<String>()
+        openAsset(pack.assetPath).use { input ->
+            ZipInputStream(input).use { zip ->
+                var entry = zip.nextEntry
+                while (entry != null) {
+                    if (entry.name.substringAfterLast('/') == "stops.txt") {
+                        val reader = BufferedReader(InputStreamReader(zip, Charsets.UTF_8))
+                        val header = reader.readLine()?.let(::csvLine).orEmpty()
+                        val nameIndex = header.indexOf("stop_name")
+                        if (nameIndex >= 0) {
+                            var line = reader.readLine()
+                            while (line != null) {
+                                if (line.length <= MAX_CSV_LINE_LENGTH) {
+                                    csvLine(line).getOrNull(nameIndex)?.takeIf(String::isNotBlank)?.let { names += normalize(it) }
+                                }
+                                line = reader.readLine()
+                            }
+                        }
+                        break
+                    }
+                    zip.closeEntry()
+                    entry = zip.nextEntry
+                }
+            }
+        }
+        return names.toSet().also { synchronized(stopPresenceCache) { stopPresenceCache[pack.sourceId] = it } }
     }
 
     private fun parse(stream: InputStream): StaticGtfsIndex {
@@ -103,7 +190,7 @@ class EmbeddedGtfsRouteAdapter(
         val header = reader.readLine()?.let(::csvLine).orEmpty()
         if (header.isEmpty()) return emptyList()
         return generateSequence { reader.readLine() }
-            .filter { it.isNotBlank() }
+            .filter { it.isNotBlank() && it.length <= MAX_CSV_LINE_LENGTH }
             .map { row -> header.zip(csvLine(row)).toMap() }
             .toList()
     }
@@ -130,6 +217,12 @@ class EmbeddedGtfsRouteAdapter(
         values += current.toString()
         return values
     }
+
+    private data class SourcedService(
+        val sourceName: String,
+        val sourceId: SourceId,
+        val service: TrainService
+    )
 
     private data class StaticGtfsIndex(
         val stops: Map<String, String>,
@@ -224,12 +317,11 @@ class EmbeddedGtfsRouteAdapter(
             val parts = value.split(':')
             val hours = parts.firstOrNull()?.toIntOrNull()?.mod(24) ?: 0
             val minutes = parts.getOrNull(1)?.toIntOrNull() ?: 0
-            return "%02d:%02d".format(hours, minutes)
+            return "%02d:%02d".format(Locale.ROOT, hours, minutes)
         }
 
         private fun operator(sourceId: String): RailOperator = when (sourceId) {
             "lombardia-trenord-gtfs" -> RailOperator.TRENORD
-            "oebb-gtfs", "ch-otd-gtfs", "alto-adige-sta-gtfs" -> RailOperator.OTHER
             else -> RailOperator.OTHER
         }
 
@@ -240,10 +332,11 @@ class EmbeddedGtfsRouteAdapter(
     }
 
     private companion object {
+        const val MAX_CSV_LINE_LENGTH = 32_768
         val requiredTables = setOf("stops.txt", "routes.txt", "trips.txt", "stop_times.txt", "calendar.txt", "calendar_dates.txt")
         fun normalize(value: String): String = Normalizer.normalize(value, Normalizer.Form.NFD)
             .replace("\\p{M}".toRegex(), "")
-            .lowercase()
+            .lowercase(Locale.ROOT)
             .replace("[^a-z0-9]".toRegex(), "")
     }
 }
