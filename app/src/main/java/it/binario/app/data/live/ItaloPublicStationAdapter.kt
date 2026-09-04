@@ -212,8 +212,11 @@ class ItaloPublicStationAdapter(
         if (number.isBlank() || destination.isBlank() || scheduled.isBlank()) return null
         val delay = Regex("\\britardo\\s*(?:di)?\\s*(\\d{1,3})\\s*(?:minuti|min)?", RegexOption.IGNORE_CASE)
             .find(text)?.groupValues?.getOrNull(1)?.toIntOrNull() ?: 0
+        val cancelled = Regex("soppress|cancell", RegexOption.IGNORE_CASE).containsMatchIn(text)
+        val explicitOnTime = Regex("\\b(?:in orario|regolare|puntuale)\\b", RegexOption.IGNORE_CASE).containsMatchIn(text)
+        val operationalVerified = cancelled || delay > 0 || explicitOnTime
         val status = when {
-            Regex("soppress|cancell", RegexOption.IGNORE_CASE).containsMatchIn(text) -> ServiceStatus.CANCELLED
+            cancelled -> ServiceStatus.CANCELLED
             delay > 0 -> ServiceStatus.DELAYED
             else -> ServiceStatus.ON_TIME
         }
@@ -239,7 +242,8 @@ class ItaloPublicStationAdapter(
                 TrainStop(origin, scheduled, expected, platform, delay, completed = false),
                 TrainStop(destination, "—", "—", null, delay, completed = false)
             ),
-            transferCount = 0
+            transferCount = 0,
+            operationalStatusVerified = operationalVerified
         )
     }
 
