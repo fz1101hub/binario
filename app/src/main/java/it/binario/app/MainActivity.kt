@@ -1997,6 +1997,9 @@ private fun RouteChangeBanner(
                     if (routeChange.addedStopLabels.isNotEmpty()) {
                         append(". Fermate aggiunte: ").append(routeChange.addedStopLabels.joinToString(", "))
                     }
+                    if (routeChange.viaStopLabels.isNotEmpty()) {
+                        append(". Nuovo instradamento via: ").append(routeChange.viaStopLabels.joinToString(", "))
+                    }
                     routeChange.replacementDestinationLabel?.let {
                         append(". Nuovo capolinea: ").append(it)
                     }
@@ -2020,6 +2023,9 @@ private fun RouteChangeBanner(
                 }
                 if (routeChange.addedStopLabels.isNotEmpty()) {
                     Text("Aggiunte: ${routeChange.addedStopLabels.joinToString(", ")}", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
+                }
+                if (routeChange.viaStopLabels.isNotEmpty()) {
+                    Text("Via: ${routeChange.viaStopLabels.joinToString(", ")}", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
                 }
                 routeChange.replacementDestinationLabel?.let {
                     Text("Nuovo capolinea: $it", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
