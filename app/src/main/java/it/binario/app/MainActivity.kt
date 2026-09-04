@@ -671,20 +671,57 @@ private fun PlannerScreen(
                         StationField("Arrivo", destinationText, { destinationText = it }, viewModel.searchStations(destinationText), { destinationText = it.name })
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                             FilterChip(selected = !returnJourney, onClick = { returnJourney = false }, label = { Text("Sola andata") })
-                            FilterChip(selected = returnJourney, onClick = { returnJourney = true }, label = { Text("Andata e ritorno") })
+                            FilterChip(
+                                selected = returnJourney,
+                                onClick = {
+                                    returnJourney = true
+                                    val outboundDate = PlannerDateTime.dateOrToday(travelDate)
+                                    val outboundTime = PlannerDateTime.timeOrNow(travelTime)
+                                    val currentReturnDate = PlannerDateTime.dateOrToday(returnDate)
+                                    val currentReturnTime = PlannerDateTime.timeOrNow(returnTime)
+                                    if (!PlannerDateTime.isReturnAfterDeparture(outboundDate, outboundTime, currentReturnDate, currentReturnTime)) {
+                                        returnDate = outboundDate.plusDays(1).toString()
+                                        returnTime = outboundTime.toString()
+                                    }
+                                },
+                                label = { Text("Andata e ritorno") }
+                            )
                         }
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                             OutlinedButton(
                                 onClick = { showDatePicker = true },
-                                modifier = Modifier.weight(1f).semantics { contentDescription = "Seleziona data. Valore attuale ${PlannerDateTime.dateLabel(travelDate)}" }
+                                modifier = Modifier.weight(1f).semantics { contentDescription = "Seleziona data andata. Valore attuale ${PlannerDateTime.dateLabel(travelDate)}" }
                             ) {
-                                Column(horizontalAlignment = Alignment.Start) { Text("DATA", style = MaterialTheme.typography.labelSmall); Text(PlannerDateTime.dateLabel(travelDate), fontWeight = FontWeight.Bold) }
+                                Column(horizontalAlignment = Alignment.Start) { Text("ANDATA · DATA", style = MaterialTheme.typography.labelSmall); Text(PlannerDateTime.dateLabel(travelDate), fontWeight = FontWeight.Bold) }
                             }
                             OutlinedButton(
                                 onClick = { showTimePicker = true },
-                                modifier = Modifier.weight(1f).semantics { contentDescription = "Seleziona ora. Valore attuale ${PlannerDateTime.timeLabel(travelTime)}" }
+                                modifier = Modifier.weight(1f).semantics { contentDescription = "Seleziona ora andata. Valore attuale ${PlannerDateTime.timeLabel(travelTime)}" }
                             ) {
-                                Column(horizontalAlignment = Alignment.Start) { Text("ORA", style = MaterialTheme.typography.labelSmall); Text(PlannerDateTime.timeLabel(travelTime), fontWeight = FontWeight.Bold) }
+                                Column(horizontalAlignment = Alignment.Start) { Text("ANDATA · ORA", style = MaterialTheme.typography.labelSmall); Text(PlannerDateTime.timeLabel(travelTime), fontWeight = FontWeight.Bold) }
+                            }
+                        }
+                        if (returnJourney) {
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                                OutlinedButton(
+                                    onClick = { showReturnDatePicker = true },
+                                    modifier = Modifier.weight(1f).semantics { contentDescription = "Seleziona data ritorno. Valore attuale ${PlannerDateTime.dateLabel(returnDate)}" }
+                                ) {
+                                    Column(horizontalAlignment = Alignment.Start) { Text("RITORNO · DATA", style = MaterialTheme.typography.labelSmall); Text(PlannerDateTime.dateLabel(returnDate), fontWeight = FontWeight.Bold) }
+                                }
+                                OutlinedButton(
+                                    onClick = { showReturnTimePicker = true },
+                                    modifier = Modifier.weight(1f).semantics { contentDescription = "Seleziona ora ritorno. Valore attuale ${PlannerDateTime.timeLabel(returnTime)}" }
+                                ) {
+                                    Column(horizontalAlignment = Alignment.Start) { Text("RITORNO · ORA", style = MaterialTheme.typography.labelSmall); Text(PlannerDateTime.timeLabel(returnTime), fontWeight = FontWeight.Bold) }
+                                }
+                            }
+                            if (!roundTripChronologyValid) {
+                                Text(
+                                    "Il ritorno deve essere successivo alla partenza dell’andata.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.error
+                                )
                             }
                         }
                         FilterChip(
@@ -700,23 +737,44 @@ private fun PlannerScreen(
                         }
                         Button(
                             onClick = {
-                                val selectedDate = runCatching { LocalDate.parse(travelDate) }.getOrNull()
-                                val selectedTime = runCatching { LocalTime.parse(travelTime) }.getOrNull()
-                                if (
+                                val searched = if (
                                     origin != null &&
                                     destination != null &&
                                     origin != destination &&
-                                    selectedDate != null &&
-                                    selectedTime != null &&
-                                    viewModel.searchRoute(origin, destination, selectedDate, selectedTime)
-                                ) showResults()
+                                    selectedDepartureDate != null &&
+                                    selectedDepartureTime != null
+                                ) {
+                                    if (
+                                        returnJourney &&
+                                        selectedReturnDate != null &&
+                                        selectedReturnTime != null &&
+                                        roundTripChronologyValid
+                                    ) {
+                                        viewModel.searchRoundTrip(
+                                            origin,
+                                            destination,
+                                            selectedDepartureDate,
+                                            selectedDepartureTime,
+                                            selectedReturnDate,
+                                            selectedReturnTime
+                                        )
+                                    } else if (!returnJourney) {
+                                        viewModel.searchRoute(origin, destination, selectedDepartureDate, selectedDepartureTime)
+                                    } else false
+                                } else false
+                                if (searched) showResults()
                             },
-                            enabled = origin != null && destination != null && origin != destination,
+                            enabled = origin != null &&
+                                destination != null &&
+                                origin != destination &&
+                                selectedDepartureDate != null &&
+                                selectedDepartureTime != null &&
+                                roundTripChronologyValid,
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Icon(Icons.Default.Search, contentDescription = null)
                             Spacer(Modifier.width(8.dp))
-                            Text("Cerca soluzioni")
+                            Text(if (returnJourney) "Cerca andata e ritorno" else "Cerca soluzioni")
                         }
                         }
                         SearchMode.TRAIN -> {
