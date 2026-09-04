@@ -15,6 +15,7 @@ class OperationalRouteChangeDetectorTest {
 
         assertEquals(RouteChangeKind.DIVERTED, change?.kind)
         assertTrue(change?.summary.orEmpty().contains("Caserta"))
+        assertEquals(listOf("Caserta"), change?.viaStopLabels)
         assertTrue(change?.structured == false)
     }
 
@@ -25,6 +26,18 @@ class OperationalRouteChangeDetectorTest {
         )
 
         assertEquals(RouteChangeKind.SHORT_TURN, change?.kind)
+        assertEquals("Firenze S.M.N", change?.replacementDestinationLabel)
+    }
+
+    @Test
+    fun `estrae una fermata saltata solo quando e nominata`() {
+        val change = OperationalRouteChangeDetector.detect(
+            "Per guasto il treno non effettua fermata a Formia-Gaeta"
+        )
+
+        assertEquals(RouteChangeKind.SKIPPED_STOPS, change?.kind)
+        assertEquals(listOf("Formia-Gaeta"), change?.skippedStopLabels)
+        assertTrue(change?.structured == true)
     }
 
     @Test
