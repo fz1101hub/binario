@@ -21,11 +21,11 @@ import java.io.InputStreamReader
 import java.text.Normalizer
 import java.time.DayOfWeek
 import java.time.LocalDate
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import java.util.LinkedHashMap
 import java.util.Locale
 import java.util.zip.ZipInputStream
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /**
  * Fallback offline per orari programmati. Legge soltanto i data pack GTFS già
@@ -35,6 +35,8 @@ import java.util.zip.ZipInputStream
  * Una tratta può essere pubblicata da più dataset (es. Trenord + Svizzera,
  * STA + ÖBB, SNCF + altri feed transfrontalieri). Per questo i risultati dei
  * pack compatibili vengono uniti invece di fermarsi alla prima corrispondenza.
+ * agency.txt viene mantenuto per attribuire la corsa all'operatore effettivo,
+ * senza confondere il proprietario del data pack con l'impresa ferroviaria.
  */
 class EmbeddedGtfsRouteAdapter(
     private val openAsset: (String) -> InputStream,
@@ -94,9 +96,14 @@ class EmbeddedGtfsRouteAdapter(
         }
 
         val services = collected
-            .sortedWith(compareBy<SourcedService> { it.service.scheduledDepartureDateTime }.thenBy { it.service.number })
+            .sortedWith(
+                compareBy<SourcedService> { it.service.scheduledDepartureDateTime }
+                    .thenByDescending { sourcePreference(it.sourceId, it.service.operatorDisplayName) }
+                    .thenBy { it.service.number }
+            )
             .distinctBy { item -> serviceIdentity(item.service) }
             .take(24)
+            .sortedWith(compareBy<SourcedService> { it.service.scheduledDepartureDateTime }.thenBy { it.service.number })
 
         val now = clock()
         val sourceNames = services.map { it.sourceName }.distinct()
@@ -112,7 +119,7 @@ class EmbeddedGtfsRouteAdapter(
                 freshness = Freshness.AGING,
                 confidence = DataConfidence.STATIC_ONLY,
                 notice = if (sourceNames.size > 1) {
-                    "Orario programmato unificato da ${sourceNames.joinToString()}. Ritardi, binari e soppressioni richiedono fonti realtime."
+                    "Orario programmato unificato da ${sourceNames.joinToString()}. I duplicati sono riconciliati privilegiando la fonte ufficiale più vicina all'operatore. Ritardi, binari e soppressioni richiedono fonti realtime."
                 } else {
                     "Orario programmato da ${sourceNames.first()}. Ritardi, binari e soppressioni richiedono una fonte realtime."
                 }
@@ -121,11 +128,30 @@ class EmbeddedGtfsRouteAdapter(
     }
 
     private fun serviceIdentity(service: TrainService): String = listOf(
-        service.number,
+        normalizeTrainNumber(service.number),
         service.scheduledDepartureDateTime.toString(),
         normalize(service.origin),
         normalize(service.destination)
     ).joinToString("|")
+
+    private fun sourcePreference(sourceId: SourceId, operatorName: String?): Int {
+        val operator = normalize(operatorName.orEmpty())
+        return when (sourceId.value) {
+            "ch-otd-gtfs" -> if (operator.matchesAny("sbb", "tilo", "bls", "rhb", "rhatischebahn", "fart", "ssif")) 120 else 90
+            "oebb-gtfs" -> if (operator.matchesAny("obb", "oebb", "osterreichischebundesbahnen")) 120 else 90
+            "sncf-gtfs" -> if (operator.contains("sncf")) 120 else 95
+            "lombardia-trenord-gtfs" -> if (operator.contains("trenord")) 120 else 100
+            "alto-adige-sta-gtfs" -> if (operator.matchesAny("sad", "sta", "sudtirol", "suedtirol")) 115 else 85
+            "delfi-gtfs" -> if (operator.matchesAny("db", "deutschebahn", "dbfernverkehr")) 120 else 80
+            else -> 70
+        }
+    }
+
+    private fun String.matchesAny(vararg candidates: String): Boolean = candidates.any(::contains)
+
+    private fun normalizeTrainNumber(value: String): String = value
+        .uppercase(Locale.ROOT)
+        .replace(Regex("[^A-Z0-9]"), "")
 
     private fun sourceIdFromGtfsStationId(stationId: String): SourceId? {
         if (!stationId.startsWith("gtfs:")) return null
@@ -176,8 +202,16 @@ class EmbeddedGtfsRouteAdapter(
                 entry = zip.nextEntry
             }
         }
+        val agencies = tables["agency.txt"].orEmpty()
+            .mapNotNull { row ->
+                val id = row["agency_id"].orEmpty().trim()
+                val name = row["agency_name"].orEmpty().trim()
+                name.takeIf(String::isNotBlank)?.let { id to it }
+            }
+            .toMap()
         return StaticGtfsIndex(
             stops = tables["stops.txt"].orEmpty().associate { it["stop_id"].orEmpty() to it["stop_name"].orEmpty() },
+            agencies = agencies,
             routes = tables["routes.txt"].orEmpty().associateBy { it["route_id"].orEmpty() },
             trips = tables["trips.txt"].orEmpty(),
             stopTimes = tables["stop_times.txt"].orEmpty().groupBy { it["trip_id"].orEmpty() },
@@ -226,6 +260,7 @@ class EmbeddedGtfsRouteAdapter(
 
     private data class StaticGtfsIndex(
         val stops: Map<String, String>,
+        val agencies: Map<String, String>,
         val routes: Map<String, Map<String, String>>,
         val trips: List<Map<String, String>>,
         val stopTimes: Map<String, List<Map<String, String>>>,
@@ -253,11 +288,13 @@ class EmbeddedGtfsRouteAdapter(
                 if (scheduledDateTime.isBefore(query.requestedAt)) return@mapNotNull null
                 val departure = hhmm(rawDeparture)
                 val number = trip["trip_short_name"]?.takeIf { it.isNotBlank() } ?: trip["trip_id"].orEmpty()
+                val agencyName = agencyName(route)
                 TrainService(
                     id = "$sourceId:${trip["trip_id"]}",
                     number = number,
-                    operator = operator(sourceId),
-                    trainCategory = category(route["route_type"]),
+                    operator = legacyOperator(sourceId, agencyName, route),
+                    operatorDisplayName = canonicalAgencyLabel(agencyName, sourceId),
+                    trainCategory = category(route["route_type"], route, agencyName),
                     origin = stops[segment.first()["stop_id"]].orEmpty(),
                     destination = stops[segment.last()["stop_id"]].orEmpty(),
                     scheduledDeparture = departure,
@@ -274,6 +311,67 @@ class EmbeddedGtfsRouteAdapter(
                 )
             }.sortedWith(compareBy<TrainService> { it.scheduledDepartureDateTime }.thenBy { it.number }).toList()
         }
+
+        private fun agencyName(route: Map<String, String>): String? {
+            val agencyId = route["agency_id"].orEmpty().trim()
+            return agencies[agencyId]
+                ?: agencies.takeIf { it.size == 1 }?.values?.singleOrNull()
+        }
+
+        private fun canonicalAgencyLabel(value: String?, sourceId: String): String? {
+            val raw = value?.trim().orEmpty()
+            if (raw.isBlank()) {
+                return when (sourceId) {
+                    "lombardia-trenord-gtfs" -> "Trenord"
+                    "oebb-gtfs" -> "ÖBB"
+                    "sncf-gtfs" -> "SNCF Voyageurs"
+                    else -> null
+                }
+            }
+            val normalized = normalize(raw)
+            return when {
+                normalized.contains("tilo") -> "TILO"
+                normalized.contains("schweizerischebundesbahnen") || Regex("(^|[^a-z])sbb([^a-z]|$)").containsMatchIn(raw.lowercase(Locale.ROOT)) -> "SBB"
+                normalized.contains("bls") -> "BLS"
+                normalized.contains("rhatischebahn") || normalized.contains("rhaetischebahn") || normalized == "rhb" -> "RhB"
+                normalized.contains("ferrovieautolineeregionaliticinesi") || normalized == "fart" -> "FART"
+                normalized.contains("societasubalpinadiimpreseferroviarie") || normalized == "ssif" -> "SSIF"
+                normalized.contains("osterreichischebundesbahnen") || normalized.contains("oebb") || normalized == "obb" -> "ÖBB"
+                normalized.contains("dbfernverkehr") || normalized.contains("deutschebahn") -> "DB"
+                normalized.contains("sncf") -> "SNCF Voyageurs"
+                normalized.contains("europeansleeper") -> "European Sleeper"
+                normalized.contains("trenord") -> "Trenord"
+                normalized.contains("trenitalia") -> "Trenitalia"
+                normalized.contains("ntv") || normalized.contains("italotreno") -> "Italo"
+                else -> raw
+            }
+        }
+
+        private fun legacyOperator(sourceId: String, agencyName: String?, route: Map<String, String>): RailOperator {
+            val identity = normalize(listOfNotNull(agencyName, route["route_short_name"], route["route_long_name"]).joinToString(" "))
+            return when {
+                identity.contains("trenord") || sourceId == "lombardia-trenord-gtfs" -> RailOperator.TRENORD
+                identity.contains("italo") || identity.contains("ntv") -> RailOperator.ITALO
+                identity.contains("frecc") -> RailOperator.TRENITALIA_AV
+                identity.contains("intercity") || identity.contains("trenitalia") -> RailOperator.TRENITALIA_LONG_DISTANCE
+                else -> RailOperator.OTHER
+            }
+        }
+
+        private fun category(routeType: String?, route: Map<String, String>, agencyName: String?): TrainCategory {
+            val identity = normalize(listOfNotNull(route["route_short_name"], route["route_long_name"], agencyName).joinToString(" "))
+            return when {
+                identity.contains("italo") -> TrainCategory.AV_ITALO
+                identity.contains("frecc") -> TrainCategory.FRECCE
+                identity.contains("intercity") || Regex("(^|[^a-z])icn?([^a-z]|$)").containsMatchIn(identity) -> TrainCategory.INTERCITY
+                identity.contains("regionaleveloce") -> TrainCategory.REGIONALE_VELOCE
+                sourceIdLooksTrenord(identity) -> TrainCategory.TRENORD_REGIO
+                routeType in RAIL_ROUTE_TYPES -> TrainCategory.REGIONALE
+                else -> TrainCategory.OTHER
+            }
+        }
+
+        private fun sourceIdLooksTrenord(identity: String): Boolean = identity.contains("trenord")
 
         private fun serviceRunsOn(serviceId: String, date: LocalDate): Boolean {
             val exception = calendarDates[serviceId]
@@ -319,21 +417,12 @@ class EmbeddedGtfsRouteAdapter(
             val minutes = parts.getOrNull(1)?.toIntOrNull() ?: 0
             return "%02d:%02d".format(Locale.ROOT, hours, minutes)
         }
-
-        private fun operator(sourceId: String): RailOperator = when (sourceId) {
-            "lombardia-trenord-gtfs" -> RailOperator.TRENORD
-            else -> RailOperator.OTHER
-        }
-
-        private fun category(routeType: String?): TrainCategory = when (routeType) {
-            "2", "100", "101", "102", "103", "104", "105", "106", "107", "108", "109" -> TrainCategory.REGIONALE
-            else -> TrainCategory.OTHER
-        }
     }
 
     private companion object {
         const val MAX_CSV_LINE_LENGTH = 32_768
-        val requiredTables = setOf("stops.txt", "routes.txt", "trips.txt", "stop_times.txt", "calendar.txt", "calendar_dates.txt")
+        val RAIL_ROUTE_TYPES = setOf("2", "100", "101", "102", "103", "104", "105", "106", "107", "108", "109")
+        val requiredTables = setOf("agency.txt", "stops.txt", "routes.txt", "trips.txt", "stop_times.txt", "calendar.txt", "calendar_dates.txt")
         fun normalize(value: String): String = Normalizer.normalize(value, Normalizer.Form.NFD)
             .replace("\\p{M}".toRegex(), "")
             .lowercase(Locale.ROOT)
