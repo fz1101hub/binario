@@ -118,6 +118,30 @@ class StationBoardRealtimeReconcilerTest {
     }
 
     @Test
+    fun `accetta il capolinea del tabellone diverso dalla fermata richiesta`() = runBlocking {
+        val source = SourceId("rfi-station-board")
+        val provider = FakeBoardProvider(
+            source,
+            "RFI",
+            board(
+                source = source,
+                number = "9401",
+                scheduled = zdt(12, 30),
+                expected = zdt(12, 38),
+                platform = "6",
+                status = RunStatus.DELAYED,
+                destinationLabel = "Milano Centrale"
+            )
+        )
+
+        val snapshot = StationBoardRealtimeReconciler(listOf(provider), clock, zone)
+            .enrich(plannedSnapshot(), query)
+
+        assertTrue(snapshot.services.single().operationalStatusVerified)
+        assertEquals("12:38", snapshot.services.single().expectedDeparture)
+    }
+
+    @Test
     fun `RFI mantiene priorita e un conflitto realtime viene segnalato`() = runBlocking {
         val rfi = SourceId("rfi-station-board")
         val trenitalia = SourceId("viaggiatreno")
@@ -208,7 +232,8 @@ class StationBoardRealtimeReconcilerTest {
         scheduled: ZonedDateTime,
         expected: ZonedDateTime,
         platform: String,
-        status: RunStatus
+        status: RunStatus,
+        destinationLabel: String = "Napoli Centrale"
     ): StationBoard {
         val ref = SourceRef(
             sourceId = source,
@@ -230,7 +255,7 @@ class StationBoardRealtimeReconcilerTest {
                     scheduledTime = scheduled,
                     expectedTime = SourcedValue(expected, ref),
                     destinationOrOrigin = StationId("published:napolicentrale"),
-                    destinationOrOriginLabel = "Napoli Centrale",
+                    destinationOrOriginLabel = destinationLabel,
                     publicNumber = number,
                     operatorId = OperatorId("trenitalia"),
                     platform = SourcedValue(platform, ref),
