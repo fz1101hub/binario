@@ -31,19 +31,19 @@ internal object OperationalRouteChangeDetector {
     )
 
     private val viaCapture = Regex(
-        "\\b(?:deviat[oa]|instradat[oa])\\s+via\\s+([A-Za-zÀ-ÿ0-9 .'-]{2,60}?)(?=\\s+(?:per|con|a causa|dalle|dalla|e poi)\\b|[.;,]|$)",
+        "\\b(?:deviat[oa]|instradat[oa])\\s+via\\s+([A-Za-zÀ-ÿ0-9 .'-]{2,60}?)(?=\\s+(?:per|con|a causa|dalle|dalla|e poi)\\b|[;,]|$)",
         RegexOption.IGNORE_CASE
     )
     private val shortTurnCapture = Regex(
-        "\\b(?:limitato a|termina la corsa a|termine corsa a)\\s+([A-Za-zÀ-ÿ0-9 .'-]{2,60}?)(?=\\s+(?:per|a causa|dalle|dalla|e non)\\b|[.;,]|$)",
+        "\\b(?:limitato a|termina la corsa a|termine corsa a)\\s+([A-Za-zÀ-ÿ0-9 .'-]{2,60}?)(?=\\s+(?:per|a causa|dalle|dalla|e non)\\b|[;,]|$)",
         RegexOption.IGNORE_CASE
     )
     private val skippedCapture = Regex(
-        "\\b(?:non effettua fermata a|non ferma a|salta(?:ta)? la fermata di?)\\s+([A-Za-zÀ-ÿ0-9 .'-]{2,60}?)(?=\\s+(?:per|a causa|dalle|dalla|e)\\b|[.;,]|$)",
+        "\\b(?:non effettua fermata a|non ferma a|salta(?:ta)? la fermata di?)\\s+([A-Za-zÀ-ÿ0-9 .'-]{2,60}?)(?=\\s+(?:per|a causa|dalle|dalla|e)\\b|[;,]|$)",
         RegexOption.IGNORE_CASE
     )
     private val addedCapture = Regex(
-        "\\b(?:ferma anche a|fermata aggiuntiva a|effettua fermata anche a)\\s+([A-Za-zÀ-ÿ0-9 .'-]{2,60}?)(?=\\s+(?:per|a causa|dalle|dalla|e)\\b|[.;,]|$)",
+        "\\b(?:ferma anche a|fermata aggiuntiva a|effettua fermata anche a)\\s+([A-Za-zÀ-ÿ0-9 .'-]{2,60}?)(?=\\s+(?:per|a causa|dalle|dalla|e)\\b|[;,]|$)",
         RegexOption.IGNORE_CASE
     )
 
