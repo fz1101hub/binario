@@ -5,6 +5,7 @@ import it.binario.app.data.provider.TripUpdateProvider
 import it.binario.app.data.provider.StationBoardProvider
 import it.binario.app.data.provider.VehiclePositionProvider
 import it.binario.app.BuildConfig
+import it.binario.app.data.gtfs.RemoteGtfsFallbackDataSource
 import it.binario.app.data.live.EuropeanSleeperGtfsRealtimeAdapter
 import it.binario.app.data.live.ItaloPublicStationAdapter
 import it.binario.app.data.live.RfiInfomobilityRssAdapter
@@ -19,9 +20,14 @@ import it.binario.app.data.planned.RfiProgrammedTimetableAdapter
  * Planned journey sources are kept separate from operational station boards.
  */
 object LocalOnlyRailDataPolicy {
-    /** Official programmed sources may plan a journey; live boards never do. */
+    /**
+     * Ordering matters: RFI programmed is primary. The remote European Sleeper
+     * GTFS is a coverage fallback and is only reached when the primary source
+     * cannot satisfy the route/date query.
+     */
     fun routeSources(): List<TrainDataSource> = listOf(
-        RfiProgrammedTimetableAdapter()
+        RfiProgrammedTimetableAdapter(),
+        RemoteGtfsFallbackDataSource.europeanSleeper()
     )
 
     fun stationBoardProviders(): List<StationBoardProvider> =
