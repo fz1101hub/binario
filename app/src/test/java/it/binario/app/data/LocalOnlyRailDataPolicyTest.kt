@@ -1,6 +1,7 @@
 package it.binario.app.data
 
 import it.binario.app.BuildConfig
+import it.binario.app.data.live.EuropeanSleeperGtfsRealtimeAdapter
 import it.binario.app.data.live.RfiInfomobilityRssAdapter
 import it.binario.app.data.live.SncfGtfsRealtimeAdapter
 import it.binario.app.data.live.StaRealtimeAdapter
@@ -40,7 +41,11 @@ class LocalOnlyRailDataPolicyTest {
         )
 
         assertEquals(
-            setOf(StaRealtimeAdapter.SOURCE_ID, SncfGtfsRealtimeAdapter.SOURCE_ID),
+            setOf(
+                StaRealtimeAdapter.SOURCE_ID,
+                SncfGtfsRealtimeAdapter.SOURCE_ID,
+                EuropeanSleeperGtfsRealtimeAdapter.SOURCE_ID
+            ),
             LocalOnlyRailDataPolicy.tripUpdateProviders().map { it.descriptor.id }.toSet()
         )
     }
