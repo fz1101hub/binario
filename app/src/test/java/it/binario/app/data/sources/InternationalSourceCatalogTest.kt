@@ -20,13 +20,17 @@ class InternationalSourceCatalogTest {
     }
 
     @Test
-    fun `European Sleeper resta monitor only finche il feed Milano non e verificato`() {
+    fun `European Sleeper e fallback esplicito non fonte primaria`() {
         val static = InternationalSourceCatalog.byId(SourceId("european-sleeper-gtfs"))
         val realtime = InternationalSourceCatalog.byId(SourceId("european-sleeper-gtfs-rt"))
 
-        assertEquals(SourceReadiness.MONITOR_ONLY, static?.readiness)
-        assertEquals(SourceReadiness.MONITOR_ONLY, realtime?.readiness)
+        assertEquals(SourceReadiness.BEST_EFFORT_FALLBACK, static?.readiness)
+        assertEquals(SourceReadiness.BEST_EFFORT_FALLBACK, realtime?.readiness)
         assertTrue(static?.countryCodes?.contains("IT") == true)
+        assertTrue(
+            RailSourceSelectionPolicy.score(RailInformationCategory.PLANNED_ITINERARY, SourceId("european-sleeper-gtfs")) <
+                RailSourceSelectionPolicy.score(RailInformationCategory.PLANNED_ITINERARY, SourceId("rfi-programmed"))
+        )
     }
 
     @Test
