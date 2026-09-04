@@ -133,6 +133,7 @@ data class OperationalRouteChange(
     val summary: String,
     val skippedStopLabels: List<String> = emptyList(),
     val addedStopLabels: List<String> = emptyList(),
+    val viaStopLabels: List<String> = emptyList(),
     val replacementDestinationLabel: String? = null,
     val structured: Boolean = skippedStopLabels.isNotEmpty() || addedStopLabels.isNotEmpty() || replacementDestinationLabel != null
 ) {
