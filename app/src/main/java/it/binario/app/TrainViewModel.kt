@@ -115,8 +115,10 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
     private var refreshRequestId: Long = 0L
 
     init {
+        // The curated catalog is local and authoritative for station identity.
+        // Bootstrap refresh starts only after this load has had a chance to canonicalize
+        // the saved route, avoiding an initial request against stale/legacy station data.
         loadCuratedStationCatalog()
-        if (hasActiveRoute) refresh()
     }
 
     private fun loadCuratedStationCatalog() {
@@ -127,23 +129,29 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
                 }
                 .getOrDefault(emptyList())
             withContext(Dispatchers.Main) {
-                if (imported.isEmpty()) {
-                    return@withContext
+                if (imported.isNotEmpty()) {
+                    val legacyCustom = customStationStore.stations()
+                    val migratedCustom = legacyCustom.map { station ->
+                        imported.firstOrNull { candidate ->
+                            candidate.id == station.id || candidate.matchesPublishedName(station.name)
+                        } ?: station
+                    }
+                    stations = imported + migratedCustom.filterNot { custom -> imported.any { it.id == custom.id } }
+                    savedRoutes = pinnedFirst(routeStore.routes(stations).map(::canonicalRoute))
+                    recentRoutes = routeStore.recentRoutes(stations).map { recent ->
+                        RecentRoute(canonicalStation(recent.origin), canonicalStation(recent.destination))
+                    }
+                    // Canonicalize the route that is current *now*. Re-reading RouteStore here
+                    // could overwrite an ad-hoc route selected while the catalog was loading.
+                    activeRoute = savedRoutes.firstOrNull { it.id == activeRoute.id }
+                        ?: canonicalRoute(activeRoute)
+                    favouriteStations = stationPreferences.favourites(stations)
+                    stationMonitors = personalTravelStore.stationMonitors(stations)
                 }
-                val legacyCustom = customStationStore.stations()
-                val migratedCustom = legacyCustom.map { station ->
-                    imported.firstOrNull { candidate ->
-                        candidate.id == station.id || candidate.matchesPublishedName(station.name)
-                    } ?: station
-                }
-                stations = imported + migratedCustom.filterNot { custom -> imported.any { it.id == custom.id } }
-                savedRoutes = pinnedFirst(routeStore.routes(stations).map(::canonicalRoute))
-                recentRoutes = routeStore.recentRoutes(stations).map { recent ->
-                    RecentRoute(canonicalStation(recent.origin), canonicalStation(recent.destination))
-                }
-                activeRoute = routeStore.activeRoute(savedRoutes).let(::canonicalRoute)
-                favouriteStations = stationPreferences.favourites(stations)
-                stationMonitors = personalTravelStore.stationMonitors(stations)
+
+                // If no user-driven refresh started while the catalog was loading, perform
+                // the one bootstrap refresh now (also when the catalog load failed/was empty).
+                if (refreshRequestId == 0L && hasActiveRoute) refresh()
             }
         }
     }
