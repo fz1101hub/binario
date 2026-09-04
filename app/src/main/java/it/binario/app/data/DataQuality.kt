@@ -16,6 +16,7 @@ enum class SnapshotWarning(val accessibleLabel: String) {
     PARTIAL_ROUTE_MATCH("Nessuna corrispondenza diretta di destinazione"),
     STALE_SOURCE("Aggiornamento non recente"),
     STATIC_ONLY("Sono disponibili solo orari programmati"),
+    COVERAGE_FALLBACK("Fonte di copertura fallback: verificare con una fonte primaria quando disponibile"),
     DEMONSTRATION("Sono visualizzati dati dimostrativi"),
     INCOMPLETE_SERVICE("Corsa incompleta"),
     IDENTITY_AMBIGUOUS("Identità della corsa da verificare"),
@@ -37,11 +38,16 @@ data class SnapshotQuality(
  * Valutazione locale, spiegabile e priva di euristiche di rete. Non modifica
  * campi ferroviari: decide solo quanto un risultato possa essere privilegiato
  * o mostrato come aggiornamento operativo.
+ *
+ * La qualità strutturale non può promuovere una fonte di copertura best-effort
+ * allo stesso livello di una fonte primaria: i fallback restano pubblicabili,
+ * ma sono sempre marcati e limitati alla banda LIMITED.
  */
 object SnapshotQualityAssessor {
     fun assess(snapshot: RouteSnapshot, nowEpochMillis: Long = System.currentTimeMillis()): SnapshotQuality {
         val warnings = linkedSetOf<SnapshotWarning>()
         var score = authorityScore(snapshot.confidence)
+        score += sourcePreferenceAdjustment(snapshot)
         score += freshnessScore(snapshot, nowEpochMillis, warnings)
         score += completenessScore(snapshot, warnings)
         score += consistencyScore(snapshot, warnings)
@@ -50,11 +56,15 @@ object SnapshotQualityAssessor {
             warnings += SnapshotWarning.PARTIAL_ROUTE_MATCH
             score -= 12
         }
+
+        val coverageFallback = SnapshotSourceAuthority.isCoverageFallback(snapshot)
+        if (coverageFallback) warnings += SnapshotWarning.COVERAGE_FALLBACK
+
         val bounded = score.coerceIn(0, 100)
-        val publishableScore = if (snapshot.confidence == DataConfidence.DEMONSTRATION) {
-            bounded.coerceAtMost(39)
-        } else {
-            bounded
+        val publishableScore = when {
+            snapshot.confidence == DataConfidence.DEMONSTRATION -> bounded.coerceAtMost(39)
+            coverageFallback -> bounded.coerceAtMost(64)
+            else -> bounded
         }
         return SnapshotQuality(
             score = publishableScore,
@@ -68,6 +78,12 @@ object SnapshotQualityAssessor {
             assessedAtEpochMillis = nowEpochMillis
         )
     }
+
+    /** Small tie-breaker: source authority refines, but never replaces, the data-quality signals. */
+    private fun sourcePreferenceAdjustment(snapshot: RouteSnapshot): Int =
+        SnapshotSourceAuthority.plannedAuthorityScore(snapshot)
+            ?.let { score -> ((score - 100) / 10).coerceIn(-5, 5) }
+            ?: 0
 
     private fun authorityScore(confidence: DataConfidence): Int = when (confidence) {
         DataConfidence.OPERATOR_PRIMARY -> 30
