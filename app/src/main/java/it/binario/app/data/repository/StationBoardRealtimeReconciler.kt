@@ -48,17 +48,40 @@ class StationBoardEnrichedTrainDataSource(
 
     override suspend fun loadRoute(route: SavedRoute, direction: Direction, query: JourneyQuery): DataResult {
         val planned = plannedSource.loadRoute(route, direction, query)
-        if (planned !is DataResult.Success) return planned
-
         val today = clock.instant().atZone(clock.zone).toLocalDate()
-        if (query.serviceDate != today || boardProviders.isEmpty()) return planned
 
-        val snapshot = StationBoardRealtimeReconciler(
-            providers = boardProviders,
-            clock = clock,
-            zone = zone
-        ).enrich(planned.snapshot, query)
-        return DataResult.Success(snapshot)
+        if (planned is DataResult.Success) {
+            if (query.serviceDate != today || boardProviders.isEmpty()) return planned
+            val snapshot = StationBoardRealtimeReconciler(
+                providers = boardProviders,
+                clock = clock,
+                zone = zone
+            ).enrich(planned.snapshot, query)
+            return DataResult.Success(snapshot)
+        }
+
+        // Personal-use transitional fallback: if no static timetable covers the
+        // route, reuse only board adapters that still expose the legacy route
+        // bridge. Those adapters require an exact direct destination match.
+        if (query.serviceDate == today) {
+            boardProviders.forEach { provider ->
+                val legacy = provider as? TrainDataSource ?: return@forEach
+                when (val live = legacy.loadRoute(route, direction, query)) {
+                    is DataResult.Success -> {
+                        return DataResult.Success(
+                            live.snapshot.copy(
+                                notice = listOfNotNull(
+                                    "Fallback realtime diretto: nessun GTFS embedded copre questa tratta.",
+                                    live.snapshot.notice
+                                ).joinToString(" ")
+                            )
+                        )
+                    }
+                    is DataResult.Failure -> Unit
+                }
+            }
+        }
+        return planned
     }
 }
 
