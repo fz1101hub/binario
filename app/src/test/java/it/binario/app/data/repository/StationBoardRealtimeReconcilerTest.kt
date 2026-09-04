@@ -186,7 +186,7 @@ class StationBoardRealtimeReconcilerTest {
     }
 
     @Test
-    fun `RFI mantiene priorita e un conflitto realtime viene segnalato`() = runBlocking {
+    fun `sceglie operatore per stato e RFI per binario e segnala conflitto`() = runBlocking {
         val rfi = SourceId("rfi-station-board")
         val trenitalia = SourceId("viaggiatreno")
         val providers = listOf(
@@ -198,14 +198,14 @@ class StationBoardRealtimeReconcilerTest {
             .enrich(plannedSnapshot(), query)
 
         val service = snapshot.services.single()
-        assertEquals("12:35", service.expectedDeparture)
+        assertEquals("12:48", service.expectedDeparture)
         assertEquals("7", service.platform)
-        assertEquals(setOf("rfi-station-board"), service.operationalSourceIds)
+        assertEquals(setOf("viaggiatreno", "rfi-station-board"), service.operationalSourceIds)
         assertTrue(SnapshotWarning.SOURCE_CONFLICT in snapshot.qualityWarnings)
     }
 
     @Test
-    fun `usa il fallback diretto solo quando manca il piano GTFS`() = runBlocking {
+    fun `usa il fallback diretto solo quando manca il piano programmato`() = runBlocking {
         val liveSnapshot = plannedSnapshot().copy(
             providerName = "RFI live",
             confidence = DataConfidence.INFRASTRUCTURE_PRIMARY,
@@ -226,14 +226,14 @@ class StationBoardRealtimeReconcilerTest {
             override suspend fun loadRoute(route: SavedRoute, direction: Direction, query: JourneyQuery): DataResult =
                 DataResult.Success(liveSnapshot)
         }
-        val missingGtfs = object : TrainDataSource {
+        val missingPlanned = object : TrainDataSource {
             override suspend fun loadRoute(route: SavedRoute, direction: Direction): DataResult =
-                DataResult.Failure("no gtfs")
+                DataResult.Failure("no planned itinerary")
             override suspend fun loadRoute(route: SavedRoute, direction: Direction, query: JourneyQuery): DataResult =
-                DataResult.Failure("no gtfs")
+                DataResult.Failure("no planned itinerary")
         }
 
-        val result = StationBoardEnrichedTrainDataSource(missingGtfs, listOf(provider), clock, zone)
+        val result = StationBoardEnrichedTrainDataSource(missingPlanned, listOf(provider), clock, zone)
             .loadRoute(route, Direction.OUTBOUND, query)
 
         assertTrue(result is DataResult.Success)
@@ -283,6 +283,7 @@ class StationBoardRealtimeReconcilerTest {
                 id = "gtfs:T1",
                 number = "9401",
                 operator = RailOperator.TRENITALIA_AV,
+                operatorDisplayName = "Trenitalia",
                 trainCategory = TrainCategory.FRECCE,
                 origin = "Roma Termini",
                 destination = "Napoli Centrale",
