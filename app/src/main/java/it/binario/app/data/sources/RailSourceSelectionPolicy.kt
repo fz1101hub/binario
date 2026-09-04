@@ -45,7 +45,8 @@ object RailSourceSelectionPolicy {
         pref("european-sleeper-gtfs", RailInformationCategory.PLANNED_ITINERARY, 60, "Feed community best-effort; ammesso come fallback dopo l'avvio ufficiale del servizio Milano."),
 
         pref("db-ris-journeys", RailInformationCategory.TRAIN_REALTIME, 148, "RIS::Journeys ufficiale DB: percorso corsa completo e informazioni operative strutturate."),
-        pref("sncf-gtfs-rt-trip-updates", RailInformationCategory.TRAIN_REALTIME, 145, "GTFS-RT ufficiale SNCF Trip Updates."),
+        pref("sncf-gtfs-rt", RailInformationCategory.TRAIN_REALTIME, 145, "Provider runtime SNCF GTFS-RT; usa Trip Updates per lo stato corsa."),
+        pref("sncf-gtfs-rt-trip-updates", RailInformationCategory.TRAIN_REALTIME, 145, "Endpoint canonico GTFS-RT ufficiale SNCF Trip Updates."),
         pref("ch-otd-gtfs-rt", RailInformationCategory.TRAIN_REALTIME, 145, "GTFS-RT ufficiale svizzero coordinato con GTFS statico; richiede API key."),
         pref("db-ris-boards", RailInformationCategory.TRAIN_REALTIME, 143, "RIS::Boards ufficiale DB: tempi previsionali, binari e fermate modificate."),
         pref("db-timetables", RailInformationCategory.TRAIN_REALTIME, 135, "Timetables API DB: Sollfahrplan e scostamenti, semplice fallback autorizzato."),
@@ -61,7 +62,8 @@ object RailSourceSelectionPolicy {
         pref("viaggiatreno", RailInformationCategory.STATION_BOARD, 128, "Fonte operatore complementare per Trenitalia."),
 
         pref("db-ris-disruptions", RailInformationCategory.SERVICE_ALERTS, 148, "RIS::Disruptions ufficiale DB per perturbazioni e corse/fermate interessate."),
-        pref("sncf-gtfs-rt-alerts", RailInformationCategory.SERVICE_ALERTS, 145, "GTFS-RT Service Alerts ufficiale SNCF."),
+        pref("sncf-gtfs-rt", RailInformationCategory.SERVICE_ALERTS, 145, "Provider runtime SNCF GTFS-RT; usa Service Alerts per gli avvisi."),
+        pref("sncf-gtfs-rt-alerts", RailInformationCategory.SERVICE_ALERTS, 145, "Endpoint canonico GTFS-RT Service Alerts ufficiale SNCF."),
         pref("ch-otd-gtfs-rt", RailInformationCategory.SERVICE_ALERTS, 145, "GTFS-RT Service Alerts ufficiale svizzero."),
         pref("rfi-infomobility-rss", RailInformationCategory.SERVICE_ALERTS, 138, "RSS ufficiale RFI per perturbazioni della rete italiana."),
         pref("italo-status", RailInformationCategory.SERVICE_ALERTS, 112, "Avvisi operatore Italo come complemento."),
@@ -70,6 +72,7 @@ object RailSourceSelectionPolicy {
         pref("db-ris-journeys", RailInformationCategory.ROUTE_VARIATIONS, 150, "RIS::Journeys ufficiale DB: percorso corsa operativo completo."),
         pref("db-ris-boards", RailInformationCategory.ROUTE_VARIATIONS, 148, "RIS::Boards ufficiale DB: via, fermate saltate/aggiunte e servizi sostitutivi."),
         pref("ch-otd-gtfs-rt", RailInformationCategory.ROUTE_VARIATIONS, 145, "Trip Updates/Service Alerts strutturati per fermate modificate e corse svizzere."),
+        pref("sncf-gtfs-rt", RailInformationCategory.ROUTE_VARIATIONS, 145, "Provider runtime SNCF GTFS-RT per variazioni e cancellazioni."),
         pref("sncf-gtfs-rt-trip-updates", RailInformationCategory.ROUTE_VARIATIONS, 145, "GTFS-RT Trip Updates strutturato per variazioni/cancellazioni SNCF."),
         pref("sncf-gtfs-rt-alerts", RailInformationCategory.ROUTE_VARIATIONS, 142, "Service Alerts SNCF come complemento per deviazioni e interruzioni."),
         pref("db-ris-disruptions", RailInformationCategory.ROUTE_VARIATIONS, 142, "RIS::Disruptions correla perturbazioni a corse e fermate."),
@@ -93,12 +96,6 @@ object RailSourceSelectionPolicy {
         "delfi-gtfs-community"
     )
 
-    /**
-     * Favorisce il feed dell'operatore quando due dataset descrivono la stessa
-     * corsa. L'affinità è volutamente category-aware: per il binario italiano
-     * RFI resta primario, mentre per stato corsa e variazioni l'operatore può
-     * superare un generico evento infrastrutturale quando parla della propria corsa.
-     */
     private fun operatorAffinity(
         category: RailInformationCategory,
         sourceId: SourceId,
@@ -110,7 +107,7 @@ object RailSourceSelectionPolicy {
             "ch-otd-gtfs", "ch-otd-gtfs-rt" ->
                 if (op.containsAny("sbb", "tilo", "bls", "rhb", "rhatischebahn", "rhaetischebahn", "fart", "ssif")) 20 else 0
             "oebb-gtfs" -> if (op.containsAny("oebb", "obb", "osterreichischebundesbahnen")) 20 else 0
-            "sncf-gtfs", "sncf-gtfs-rt-trip-updates", "sncf-gtfs-rt-alerts" -> if (op.contains("sncf")) 20 else 0
+            "sncf-gtfs", "sncf-gtfs-rt", "sncf-gtfs-rt-trip-updates", "sncf-gtfs-rt-alerts" -> if (op.contains("sncf")) 20 else 0
             "lombardia-trenord-gtfs" -> if (op.contains("trenord")) 20 else 0
             "delfi-gtfs", "delfi-gtfs-community", "db-timetables", "db-ris-boards", "db-ris-journeys", "db-ris-disruptions" ->
                 if (op.containsAny("db", "deutschebahn", "dbfernverkehr")) 20 else 0
@@ -120,7 +117,6 @@ object RailSourceSelectionPolicy {
         }
     }
 
-    /** Platform/station board remains infrastructure-led; status/path may prefer the operator. */
     private fun operatorRealtimeAffinity(category: RailInformationCategory): Int = when (category) {
         RailInformationCategory.TRAIN_REALTIME -> 20
         RailInformationCategory.ROUTE_VARIATIONS -> 20
