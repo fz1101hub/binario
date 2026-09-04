@@ -34,7 +34,10 @@ class GtfsArtifactDownloader(
         require(maxContentLengthBytes > 0)
     }
 
-    override fun open(source: RailSourceDefinition, allowBestEffortFallback: Boolean): GtfsDownloadSession {
+    override fun open(
+        source: RailSourceDefinition,
+        allowBestEffortFallback: Boolean = false
+    ): GtfsDownloadSession {
         validate(source, allowBestEffortFallback)
         val url = source.downloadOrProbeUri!!.toURL()
         val connection = (url.openConnection() as? HttpURLConnection)
