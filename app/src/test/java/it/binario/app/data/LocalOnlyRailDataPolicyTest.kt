@@ -5,17 +5,16 @@ import it.binario.app.data.live.EuropeanSleeperGtfsRealtimeAdapter
 import it.binario.app.data.live.RfiInfomobilityRssAdapter
 import it.binario.app.data.live.SncfGtfsRealtimeAdapter
 import it.binario.app.data.live.StaRealtimeAdapter
-import it.binario.app.data.planned.RfiProgrammedTimetableAdapter
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class LocalOnlyRailDataPolicyTest {
     @Test
-    fun `policy separates official planning from personal realtime boards`() {
+    fun `policy separates primary planning coverage fallback and realtime boards`() {
         assertEquals(
-            setOf(RfiProgrammedTimetableAdapter::class.simpleName),
-            LocalOnlyRailDataPolicy.routeSources().map { it::class.simpleName }.toSet()
+            listOf("RfiProgrammedTimetableAdapter", "RemoteGtfsFallbackDataSource"),
+            LocalOnlyRailDataPolicy.routeSources().mapNotNull { it::class.simpleName }
         )
 
         val boardProviderNames = LocalOnlyRailDataPolicy.stationBoardProviders().map { it::class.simpleName }.toSet()
