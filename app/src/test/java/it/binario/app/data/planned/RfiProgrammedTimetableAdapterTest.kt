@@ -115,9 +115,8 @@ class RfiProgrammedTimetableAdapterTest {
 
     @Test
     fun `periodicita feriale viene rispettata`() = runBlocking {
-        val weekdayFixture = fixture().replace("Giornaliero</td>\n          </tr>", "Lun-Ven</td>\n          </tr>", ignoreCase = false)
         val adapter = RfiProgrammedTimetableAdapter(
-            fetcher = RfiProgrammedTimetableFetcher { weekdayFixture },
+            fetcher = RfiProgrammedTimetableFetcher { fixture(periodicity = "Lun-Ven") },
             clock = clock
         )
 
@@ -142,24 +141,31 @@ class RfiProgrammedTimetableAdapterTest {
         outwardDestination = destination
     )
 
-    private fun fixture(): String = """
+    private fun fixture(periodicity: String = "Giornaliero"): String = """
         <html><body>
           <div>ORARIO PROGRAMMATO 14 Giugno 2026 - 12 Dicembre 2026</div>
           <table>
             <tr>
-              <th>Orario</th><th>Treno</th><th>Destinazione</th>
-              <th>Fermate successive (orario di arrivo)</th>
-              <th>Binario programmato</th><th>Periodicità</th>
+              <th>Orario di partenza</th><th>Tipo e n. di treno</th><th>Stazione di arrivo</th>
+              <th>Binario programmato</th><th>Classi e servizi a bordo</th><th>Impresa di trasporto</th>
+              <th>Fermate precedenti (orario di partenza)</th>
+              <th>Fermate successive (orario di arrivo)</th><th>Periodicità e avvertenze</th>
             </tr>
             <tr>
-              <td>08.20</td><td>Frecciarossa 9611</td><td>Milano Centrale (11.40)</td>
+              <td>08.20</td>
+              <td><img alt="Treno Frecciarossa Alta Velocità"/>9611</td>
+              <td><img alt="Stazione accessibile"/>Milano Centrale (11.40)</td>
+              <td>8</td><td></td><td>TI</td><td></td>
               <td>Roma Tiburtina (08.27) Firenze S.M.N. (09.46) Bologna Centrale (10.23) Milano Centrale (11.40)</td>
-              <td>8</td><td>Giornaliero</td>
+              <td>$periodicity</td>
             </tr>
             <tr>
-              <td>09.30</td><td>Italo 9923</td><td>Torino Porta Nuova (14.50)</td>
+              <td>09.30</td>
+              <td><img alt="Treno Italo Alta Velocità"/>9923</td>
+              <td>Torino Porta Nuova (14.50)</td>
+              <td>10</td><td></td><td>NTV</td><td></td>
               <td>Firenze S.M.N. (10.55) Bologna Centrale (11.33) Milano Centrale (12.45) Torino Porta Susa (14.40) Torino Porta Nuova (14.50)</td>
-              <td>10</td><td>Giornaliero</td>
+              <td>$periodicity</td>
             </tr>
           </table>
         </body></html>
