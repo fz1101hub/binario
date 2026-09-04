@@ -1,6 +1,6 @@
 package it.binario.wear.tile
 
-import androidx.concurrent.futures.ResolvableFuture
+import androidx.concurrent.futures.CallbackToFutureAdapter
 import androidx.wear.protolayout.ColorBuilders
 import androidx.wear.protolayout.DimensionBuilders
 import androidx.wear.protolayout.LayoutElementBuilders
@@ -51,7 +51,11 @@ class BinarioTileService : TileService() {
             )
             .build()
 
-    private fun <T> immediate(value: T): ListenableFuture<T> = ResolvableFuture.create<T>().apply { set(value) }
+    private fun <T> immediate(value: T): ListenableFuture<T> =
+        CallbackToFutureAdapter.getFuture { completer ->
+            completer.set(value)
+            "BinarioTileService.immediate"
+        }
 
     private companion object {
         const val RESOURCES_VERSION = "binario-wear-local-v1"
