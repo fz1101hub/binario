@@ -1831,6 +1831,14 @@ private fun ServiceDetailScreen(
                 }
             }
         }
+        service.routeChange?.let { routeChange ->
+            item {
+                RouteChangeBanner(
+                    routeChange = routeChange,
+                    sourceIds = service.routeChangeSourceIds
+                )
+            }
+        }
         item {
             Row(Modifier.fillMaxWidth().padding(20.dp), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
@@ -1896,6 +1904,7 @@ private fun ServiceDetailScreen(
                 platform = stop.platform,
                 completed = stop.completed,
                 operationalStatusVerified = service.operationalStatusVerified,
+                routeChange = stop.routeChange,
                 onSetAlarm = { onScheduleStopAlarm(service, stop) }
             )
         }
@@ -1912,6 +1921,7 @@ private fun StopTimelineRow(
     platform: String?,
     completed: Boolean,
     operationalStatusVerified: Boolean,
+    routeChange: StopRouteChange,
     onSetAlarm: () -> Unit
 ) {
     Row(
