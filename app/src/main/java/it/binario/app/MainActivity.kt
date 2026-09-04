@@ -100,9 +100,12 @@ import it.binario.app.data.RailOperator
 import it.binario.app.data.SavedRoute
 import it.binario.app.data.ServiceStatus
 import it.binario.app.data.Station
+import it.binario.app.data.StopRouteChange
 import it.binario.app.data.TrainService
 import it.binario.app.data.TrainStop
 import it.binario.app.data.accessibleUpdateTime
+import it.binario.app.data.core.OperationalRouteChange
+import it.binario.app.data.core.RouteChangeKind
 import java.time.LocalDate
 import java.time.LocalTime
 import java.util.Locale
@@ -1071,6 +1074,15 @@ private fun DepartureListRow(service: TrainService, isNext: Boolean = false, onO
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(service.destination, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text("${service.operator.shortLabel} · ${service.category} ${service.number}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            service.routeChange?.let {
+                Text(
+                    routeChangeLabel(it),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = routeChangeAccent(it),
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1
+                )
+            }
         }
         Column(horizontalAlignment = Alignment.End, modifier = Modifier.width(50.dp)) {
             Text(service.platform?.let { "Bin. $it" } ?: "—", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
