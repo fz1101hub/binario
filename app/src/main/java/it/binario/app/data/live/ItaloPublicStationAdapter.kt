@@ -56,7 +56,7 @@ internal class HttpItaloPublicStationFetcher : ItaloPublicStationFetcher {
         connection.readTimeout = 20_000
         connection.instanceFollowRedirects = true
         connection.setRequestProperty("Accept", "text/html,application/xhtml+xml")
-        connection.setRequestProperty("User-Agent", "Binario/0.15 (personal rail information client)")
+        connection.setRequestProperty("User-Agent", "Binario/0.20 (personal rail information client)")
         try {
             if (connection.responseCode !in 200..299) throw IOException("Italo in Viaggio ha risposto HTTP ${connection.responseCode}")
             connection.inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() }
@@ -68,7 +68,7 @@ internal class HttpItaloPublicStationFetcher : ItaloPublicStationFetcher {
 
 /**
  * Tabellone pubblico Italo in Viaggio. Non utilizza area personale, vendita,
- * token BIG né endpoint delle app ufficiali. L’HTML dinamico è best-effort:
+ * token BIG né endpoint delle app ufficiali. L'HTML dinamico è best-effort:
  * un risultato vuoto lascia che il repository prosegua con altri provider.
  */
 class ItaloPublicStationAdapter(
@@ -93,9 +93,9 @@ class ItaloPublicStationAdapter(
         if (request.kind != BoardKind.DEPARTURES) {
             return ProviderResult.Failure(ProviderError(ProviderErrorKind.NOT_SUPPORTED, "Italo: sono supportate solo le partenze."))
         }
-        val slug = ItaloStationSlugs.slug(request.stationId.value)
-            ?: return ProviderResult.Failure(ProviderError(ProviderErrorKind.NOT_SUPPORTED, "Stazione Italo non configurata."))
         val stationName = request.stationName?.takeIf(String::isNotBlank) ?: request.stationId.value
+        val slug = ItaloStationSlugs.slug(request.stationId.value, stationName)
+            ?: return ProviderResult.Failure(ProviderError(ProviderErrorKind.NOT_SUPPORTED, "Stazione Italo non configurata."))
         val fetchedAt = clock.instant()
         return try {
             val html = fetcher.fetch(slug)
@@ -144,7 +144,7 @@ class ItaloPublicStationAdapter(
         }
         val origin = route.origin(direction)
         val destination = route.destination(direction)
-        val slug = ItaloStationSlugs.slug(origin.id)
+        val slug = ItaloStationSlugs.slug(origin)
             ?: return DataResult.Failure("Italo in Viaggio non è ancora configurato per ${origin.name}.")
         val now = clock.millis()
         val key = "${origin.id}:${destination.id}:${direction.name}"
@@ -264,7 +264,7 @@ class ItaloPublicStationAdapter(
 }
 
 internal object ItaloStationSlugs {
-    private val values = mapOf(
+    private val byLegacyId = mapOf(
         "roma-termini" to "roma-termini",
         "roma-tiburtina" to "roma-tiburtina",
         "napoli-centrale" to "napoli-centrale",
@@ -273,7 +273,29 @@ internal object ItaloStationSlugs {
         "torino-pn" to "torino-porta-nuova",
         "venezia-sl" to "venezia-santa-lucia"
     )
-    fun slug(stationId: String): String? = values[stationId]
+
+    private val byName = mapOf(
+        key("Roma Termini") to "roma-termini",
+        key("Roma Tiburtina") to "roma-tiburtina",
+        key("Napoli Centrale") to "napoli-centrale",
+        key("Firenze S.M.N.") to "firenze-santa-maria-novella",
+        key("Firenze Santa Maria Novella") to "firenze-santa-maria-novella",
+        key("Milano Centrale") to "milano-centrale",
+        key("Torino Porta Nuova") to "torino-porta-nuova",
+        key("Venezia Santa Lucia") to "venezia-santa-lucia",
+        key("Venezia S. Lucia") to "venezia-santa-lucia"
+    )
+
+    fun slug(stationId: String, stationName: String? = null): String? =
+        byLegacyId[stationId] ?: stationName?.let { byName[key(it)] }
+
+    fun slug(station: Station): String? = byLegacyId[station.id]
+        ?: (listOf(station.name) + station.aliases).firstNotNullOfOrNull { byName[key(it)] }
+
+    private fun key(value: String): String = value
+        .uppercase(Locale.ROOT)
+        .replace("S. ", "SAN ")
+        .replace(Regex("[^A-Z0-9]"), "")
 }
 
 private fun String.compactItalo(): String = replace(Regex("\\s+"), " ").trim()
