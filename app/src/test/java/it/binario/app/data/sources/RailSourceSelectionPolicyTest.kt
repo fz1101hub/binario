@@ -46,21 +46,25 @@ class RailSourceSelectionPolicyTest {
     }
 
     @Test
-    fun `SNCF realtime usa gli id canonici distinti per trip updates e alerts`() {
-        assertTrue(
-            RailSourceSelectionPolicy.score(
-                RailInformationCategory.TRAIN_REALTIME,
-                SourceId("sncf-gtfs-rt-trip-updates"),
-                "SNCF Voyageurs"
-            ) >= 145
-        )
-        assertTrue(
-            RailSourceSelectionPolicy.score(
-                RailInformationCategory.SERVICE_ALERTS,
-                SourceId("sncf-gtfs-rt-alerts"),
-                "SNCF Voyageurs"
-            ) >= 145
-        )
+    fun `SNCF realtime usa ranking ufficiale sia per provider runtime sia per endpoint canonici`() {
+        listOf("sncf-gtfs-rt", "sncf-gtfs-rt-trip-updates").forEach { id ->
+            assertTrue(
+                RailSourceSelectionPolicy.score(
+                    RailInformationCategory.TRAIN_REALTIME,
+                    SourceId(id),
+                    "SNCF Voyageurs"
+                ) >= 145
+            )
+        }
+        listOf("sncf-gtfs-rt", "sncf-gtfs-rt-alerts").forEach { id ->
+            assertTrue(
+                RailSourceSelectionPolicy.score(
+                    RailInformationCategory.SERVICE_ALERTS,
+                    SourceId(id),
+                    "SNCF Voyageurs"
+                ) >= 145
+            )
+        }
     }
 
     @Test
