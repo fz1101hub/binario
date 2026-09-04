@@ -1,11 +1,8 @@
 name: Android CI
 
 on:
-  push:
-    branches:
-      - "audit/**"
-      - "recovery/**"
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
