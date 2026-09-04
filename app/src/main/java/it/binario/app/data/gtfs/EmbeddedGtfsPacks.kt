@@ -9,6 +9,9 @@ import java.time.Instant
  * Data pack statici validati e inclusi nell’APK. L’app non li aggiorna dalla
  * rete: l’aggiornamento avviene solo sostituendo asset, manifest e impronte
  * in una nuova release verificata.
+ *
+ * Un asset può restare nel repository per audit/storico senza essere presente
+ * in questa lista: solo i pack qui elencati sono considerati copertura attiva.
  */
 data class EmbeddedGtfsPack(
     val sourceId: SourceId,
@@ -23,7 +26,6 @@ object EmbeddedGtfsPacks {
         EmbeddedGtfsPack(SourceId("ch-otd-gtfs"), "gtfs/ch-otd-gtfs.zip"),
         EmbeddedGtfsPack(SourceId("cotral-ferro-gtfs"), "gtfs/cotral-ferro-gtfs.zip"),
         EmbeddedGtfsPack(SourceId("eav-gtfs"), "gtfs/eav-gtfs.zip"),
-        EmbeddedGtfsPack(SourceId("hzpp-gtfs"), "gtfs/hzpp-gtfs.zip"),
         EmbeddedGtfsPack(SourceId("lombardia-trenord-gtfs"), "gtfs/lombardia-trenord-gtfs.zip"),
         EmbeddedGtfsPack(SourceId("oebb-gtfs"), "gtfs/oebb-gtfs.zip"),
         EmbeddedGtfsPack(SourceId("sncf-gtfs"), "gtfs/sncf-gtfs.zip"),
