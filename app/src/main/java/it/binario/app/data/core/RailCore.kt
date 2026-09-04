@@ -119,6 +119,28 @@ enum class ServiceKind {
     UNKNOWN
 }
 
+enum class RouteChangeKind {
+    DIVERTED,
+    SKIPPED_STOPS,
+    ADDED_STOPS,
+    SHORT_TURN,
+    REPLACEMENT_SERVICE,
+    OTHER
+}
+
+data class OperationalRouteChange(
+    val kind: RouteChangeKind,
+    val summary: String,
+    val skippedStopLabels: List<String> = emptyList(),
+    val addedStopLabels: List<String> = emptyList(),
+    val replacementDestinationLabel: String? = null,
+    val structured: Boolean = skippedStopLabels.isNotEmpty() || addedStopLabels.isNotEmpty() || replacementDestinationLabel != null
+) {
+    init {
+        require(summary.isNotBlank()) { "La descrizione della variazione di percorso è obbligatoria" }
+    }
+}
+
 enum class RunStatus {
     SCHEDULED,
     ON_TIME,
@@ -266,7 +288,8 @@ data class StationBoardEntry(
     val publicNumber: String? = null,
     val operatorId: OperatorId? = null,
     val platform: SourcedValue<String>? = null,
-    val status: SourcedValue<RunStatus>? = null
+    val status: SourcedValue<RunStatus>? = null,
+    val routeChange: SourcedValue<OperationalRouteChange>? = null
 )
 
 data class StationBoard(
