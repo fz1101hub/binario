@@ -108,7 +108,8 @@ class EuropeanSleeperGtfsRealtimeAdapter(
                 observedAt = observedAt,
                 fetchedAt = clock.instant(),
                 expiresAt = clock.instant().plus(ttl),
-                confidence = Confidence.LICENSED_AGGREGATE,
+                // Community mirror: usable coverage, but deliberately below verified open/operator data.
+                confidence = Confidence.DERIVED,
                 traceId = "es:$tripId"
             )
             trip.stopTimeUpdateList.mapNotNull { stop ->
