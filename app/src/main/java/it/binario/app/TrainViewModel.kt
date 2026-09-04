@@ -646,7 +646,7 @@ private class RouteStore(context: Context) {
         val current = monitoredServices()
         val exists = current.any { it.number.equals(service.number, ignoreCase = true) }
         val updated = if (exists) current.filterNot { it.number.equals(service.number, ignoreCase = true) }
-        else (listOf(ServiceMonitor(service.number, "${service.operator.shortLabel} · ${service.destination}")) + current).take(12)
+        else (listOf(ServiceMonitor(service.number, "${service.displayOperator} · ${service.destination}")) + current).take(12)
         preferences.edit { putString(KEY_MONITORED_SERVICES, updated.joinToString(";") { "${encode(it.number)},${encode(it.label)}" }) }
         return updated
     }
