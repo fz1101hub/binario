@@ -59,6 +59,8 @@ internal class HttpRfiProgrammedTimetableFetcher : RfiProgrammedTimetableFetcher
 internal object RfiProgrammedStationIds {
     private val byBinarioId = mapOf(
         "roma-termini" to 2247,
+        "roma-tiburtina" to 2217,
+        "roma-ostiense" to 2211,
         "milano-centrale" to 1603,
         "napoli-centrale" to 1757,
         "bologna-centrale" to 635,
@@ -68,6 +70,7 @@ internal object RfiProgrammedStationIds {
         "venezia-sl" to 2796,
         "verona-pn" to 2812,
         "genova-pp" to 248,
+        "bari-centrale" to 550,
         "salerno" to 2434
     )
 
@@ -322,7 +325,7 @@ class RfiProgrammedTimetableAdapter(
     private fun operatorFrom(value: String): RailOperator {
         val all = value.uppercase(Locale.ROOT)
         return when {
-            "ITALO" in all || "NTV" in all -> RailOperator.ITALO
+            "ITALO" in all || "NTV" in all || Regex("\\bITA\\b").containsMatchIn(all) -> RailOperator.ITALO
             "TRENORD" in all -> RailOperator.TRENORD
             "FRECC" in all -> RailOperator.TRENITALIA_AV
             "INTERCITY" in all || Regex("\\bICN?\\b").containsMatchIn(all) -> RailOperator.TRENITALIA_LONG_DISTANCE
@@ -346,7 +349,11 @@ class RfiProgrammedTimetableAdapter(
     private fun elementText(element: Element?): String {
         if (element == null) return ""
         val imageLabels = element.select("img[alt]").mapNotNull { image ->
-            image.attr("alt").takeIf { it.isNotBlank() }
+            image.attr("alt").takeIf { alt ->
+                alt.isNotBlank() &&
+                    !alt.startsWith("Stazione", ignoreCase = true) &&
+                    !alt.contains("accessibil", ignoreCase = true)
+            }
         }
         return compactText((imageLabels + element.text()).joinToString(" "))
     }
