@@ -96,7 +96,6 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import it.binario.app.data.Direction
 import it.binario.app.data.Freshness
-import it.binario.app.data.RailOperator
 import it.binario.app.data.SavedRoute
 import it.binario.app.data.ServiceStatus
 import it.binario.app.data.Station
@@ -640,7 +639,7 @@ private fun PlannerScreen(
                         )
                         if (showFilters) {
                             JourneyChangeFilterBar(viewModel.journeyChangeFilter, viewModel::selectJourneyChangeFilter)
-                            OperatorFilterBar(viewModel.operatorFilter, viewModel::selectOperatorFilter)
+                            OperatorFilterBar(viewModel.operatorFilter, viewModel.operatorFilterOptions(), viewModel::selectOperatorFilter)
                             Text("Il filtro viene applicato solo quando la fonte restituisce informazioni sui cambi; Binario non li stima.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         Button(
@@ -1207,7 +1206,7 @@ private fun SearchScreen(
                 }
             }
         }
-        if (mode == SearchMode.TRAIN) item { OperatorFilterBar(viewModel.operatorFilter, viewModel::selectOperatorFilter) }
+        if (mode == SearchMode.TRAIN) item { OperatorFilterBar(viewModel.operatorFilter, viewModel.operatorFilterOptions(), viewModel::selectOperatorFilter) }
         item {
             ListHeading(
                 title = when (mode) {
@@ -1240,15 +1239,23 @@ private fun SearchInfoState(title: String, message: String, openRoutes: (() -> U
 }
 
 @Composable
-private fun OperatorFilterBar(selected: RailOperator?, onSelected: (RailOperator?) -> Unit) {
+private fun OperatorFilterBar(
+    selected: String?,
+    operators: List<String>,
+    onSelected: (String?) -> Unit
+) {
     LazyRow(
         modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 20.dp)
     ) {
         item { FilterChip(selected = selected == null, onClick = { onSelected(null) }, label = { Text("Tutti") }) }
-        items(RailOperator.entries) { operator ->
-            FilterChip(selected = selected == operator, onClick = { onSelected(operator) }, label = { Text(operator.shortLabel) })
+        items(operators, key = { it.lowercase() }) { operator ->
+            FilterChip(
+                selected = selected?.equals(operator, ignoreCase = true) == true,
+                onClick = { onSelected(operator) },
+                label = { Text(operator) }
+            )
         }
     }
 }
