@@ -1,6 +1,7 @@
 package it.binario.app.data.sources
 
 import it.binario.app.data.core.SourceId
+import it.binario.app.data.provider.ProviderCapability
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -33,14 +34,33 @@ class RailSourceSelectionPolicyTest {
     }
 
     @Test
-    fun `European Sleeper resta fallback esplicito e non fonte primaria`() {
-        val europeanSleeper = RailSourceInventory.byId(SourceId("european-sleeper-gtfs"))
+    fun `European Sleeper resta solo nel tier fallback`() {
+        val id = SourceId("european-sleeper-gtfs")
+        val europeanSleeper = RailSourceInventory.byId(id)
         assertEquals(SourceReadiness.BEST_EFFORT_FALLBACK, europeanSleeper?.readiness)
 
-        val primaryIds = RailSourceCatalog.activeCandidates(it.binario.app.data.provider.ProviderCapability.JOURNEY_SEARCH)
-            .filterNot { it.readiness == SourceReadiness.BEST_EFFORT_FALLBACK }
-            .map { it.id }
-        assertTrue(SourceId("european-sleeper-gtfs") !in primaryIds)
+        val primaryIds = RailSourceInventory.primaryCandidates(ProviderCapability.JOURNEY_SEARCH).map { it.id }
+        val fallbackIds = RailSourceInventory.fallbackCandidates(ProviderCapability.JOURNEY_SEARCH).map { it.id }
+        assertTrue(id !in primaryIds)
+        assertTrue(id in fallbackIds)
+    }
+
+    @Test
+    fun `SNCF realtime usa gli id canonici distinti per trip updates e alerts`() {
+        assertTrue(
+            RailSourceSelectionPolicy.score(
+                RailInformationCategory.TRAIN_REALTIME,
+                SourceId("sncf-gtfs-rt-trip-updates"),
+                "SNCF Voyageurs"
+            ) >= 145
+        )
+        assertTrue(
+            RailSourceSelectionPolicy.score(
+                RailInformationCategory.SERVICE_ALERTS,
+                SourceId("sncf-gtfs-rt-alerts"),
+                "SNCF Voyageurs"
+            ) >= 145
+        )
     }
 
     @Test
