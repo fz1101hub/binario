@@ -145,6 +145,16 @@ internal object LegacyStationBoardInterop {
         RailOperator.TRENITALIA_AV -> OperatorId("trenitalia")
         RailOperator.ITALO -> OperatorId("italo")
         RailOperator.TRENORD -> OperatorId("trenord")
+        RailOperator.SBB -> OperatorId("sbb")
+        RailOperator.TILO -> OperatorId("tilo")
+        RailOperator.BLS -> OperatorId("bls")
+        RailOperator.RHB -> OperatorId("rhb")
+        RailOperator.FART_SSIF -> OperatorId("fart-ssif")
+        RailOperator.SNCF -> OperatorId("sncf")
+        RailOperator.OEBB -> OperatorId("oebb")
+        RailOperator.DB -> OperatorId("db")
+        RailOperator.WESTBAHN -> OperatorId("westbahn")
+        RailOperator.EUROPEAN_SLEEPER -> OperatorId("european-sleeper")
         RailOperator.OTHER -> OperatorId("other")
     }
 
