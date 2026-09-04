@@ -161,6 +161,42 @@ class StationBoardRealtimeReconcilerTest {
     }
 
     @Test
+    fun `usa il fallback diretto solo quando manca il piano GTFS`() = runBlocking {
+        val liveSnapshot = plannedSnapshot().copy(
+            providerName = "RFI live",
+            confidence = DataConfidence.INFRASTRUCTURE_PRIMARY,
+            services = plannedSnapshot().services.map { it.copy(operationalStatusVerified = true) }
+        )
+        val provider = object : StationBoardProvider, TrainDataSource {
+            override val descriptor = descriptor(SourceId("rfi-station-board"), "RFI")
+
+            override suspend fun getStationBoard(request: StationBoardRequest): ProviderResult<StationBoard> =
+                ProviderResult.Success(
+                    board(SourceId("rfi-station-board"), "9401", zdt(12, 30), zdt(12, 35), "7", RunStatus.DELAYED),
+                    ProviderResponseMeta(SourceId("rfi-station-board"), clock.instant())
+                )
+
+            override suspend fun loadRoute(route: SavedRoute, direction: Direction): DataResult =
+                DataResult.Success(liveSnapshot)
+
+            override suspend fun loadRoute(route: SavedRoute, direction: Direction, query: JourneyQuery): DataResult =
+                DataResult.Success(liveSnapshot)
+        }
+        val missingGtfs = object : TrainDataSource {
+            override suspend fun loadRoute(route: SavedRoute, direction: Direction): DataResult =
+                DataResult.Failure("no gtfs")
+            override suspend fun loadRoute(route: SavedRoute, direction: Direction, query: JourneyQuery): DataResult =
+                DataResult.Failure("no gtfs")
+        }
+
+        val result = StationBoardEnrichedTrainDataSource(missingGtfs, listOf(provider), clock, zone)
+            .loadRoute(route, Direction.OUTBOUND, query)
+
+        assertTrue(result is DataResult.Success)
+        assertTrue((result as DataResult.Success).snapshot.notice.orEmpty().contains("Fallback realtime diretto"))
+    }
+
+    @Test
     fun `il wrapper non interroga realtime per una data futura`() = runBlocking {
         var boardCalls = 0
         val provider = object : StationBoardProvider {
