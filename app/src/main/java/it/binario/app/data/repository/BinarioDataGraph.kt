@@ -4,16 +4,16 @@ import android.content.Context
 import it.binario.app.data.LocalOnlyRailDataPolicy
 import it.binario.app.data.RailDataRepository
 import it.binario.app.data.TrainDataSource
-import it.binario.app.data.gtfs.EmbeddedGtfsRouteAdapter
 import it.binario.app.data.gtfs.EmbeddedGtfsRealtimeScheduleResolver
+import it.binario.app.data.gtfs.EmbeddedGtfsRouteAdapter
 import it.binario.app.data.gtfs.EmbeddedGtfsStationSearchIndex
 import it.binario.app.data.provider.AlertProvider
 import it.binario.app.data.provider.KnownProviders
 import it.binario.app.data.provider.ProviderCapability
 import it.binario.app.data.provider.ProviderRegistry
-import it.binario.app.data.provider.VehiclePositionProvider
-import it.binario.app.data.provider.TripUpdateProvider
 import it.binario.app.data.provider.StationBoardProvider
+import it.binario.app.data.provider.TripUpdateProvider
+import it.binario.app.data.provider.VehiclePositionProvider
 
 /**
  * Punto di composizione unico del livello dati. Nessuna UI, worker o companion
@@ -30,9 +30,15 @@ object BinarioDataGraph {
     fun routeDataSource(context: Context): TrainDataSource = synchronized(routeSourcesByPackage) {
         val applicationContext = context.applicationContext
         routeSourcesByPackage.getOrPut(applicationContext.packageName) {
-            val plannedSource = RailDataRepository(
+            val officialPlannedSource = RailDataRepository(
                 authorisedSources = localOnlyPolicy.routeSources(),
+                // Embedded official/open-data GTFS belongs to the primary tier,
+                // not to the best-effort coverage tier.
                 fallback = EmbeddedGtfsRouteAdapter(openAsset = { assetPath -> applicationContext.assets.open(assetPath) })
+            )
+            val plannedSource = QualityTieredTrainDataSource(
+                primary = officialPlannedSource,
+                coverageFallbacks = localOnlyPolicy.coverageRouteFallbacks()
             )
             LegacyTrainDataSourceFacade(
                 legacySource = StationBoardEnrichedTrainDataSource(
