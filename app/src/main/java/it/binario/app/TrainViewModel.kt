@@ -34,6 +34,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.util.UUID
+import java.util.Locale
 import java.time.LocalDate
 import java.time.LocalTime
 
@@ -278,11 +279,7 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
         operatorFilter = operator
     }
 
-    fun operatorFilterOptions(): List<String> = snapshot?.services.orEmpty()
-        .map { it.displayOperator.trim() }
-        .filter { it.isNotBlank() }
-        .distinctBy { it.lowercase() }
-        .sortedWith(String.CASE_INSENSITIVE_ORDER)
+    fun operatorFilterOptions(): List<String> = publishedOperatorNames(snapshot?.services.orEmpty())
 
     fun selectJourneyChangeFilter(filter: JourneyChangeFilter) {
         journeyChangeFilter = filter
@@ -320,6 +317,7 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
         direction = Direction.OUTBOUND
         routeStore.saveDirection(direction)
         selectedService = null
+        operatorFilter = null
         refresh()
         return true
     }
@@ -350,6 +348,7 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
             activeRoute = savedRoutes.firstOrNull() ?: unconfiguredRoute()
             if (hasActiveRoute) routeStore.saveActiveRoute(activeRoute.id) else routeStore.clearActiveRoute()
             selectedService = null
+            operatorFilter = null
             if (hasActiveRoute) refresh() else {
                 refreshRequestId += 1
                 snapshot = null
@@ -379,6 +378,11 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
             when (result) {
                 is DataResult.Success -> {
                     snapshot = result.snapshot
+                    operatorFilter = operatorFilter?.takeIf { selected ->
+                        result.snapshot.services.any { service ->
+                            service.displayOperator.equals(selected, ignoreCase = true)
+                        }
+                    }
                     cache.save(result.snapshot)
                     RouteWidgetProvider.saveSnapshotForMatchingRoutes(getApplication(), result.snapshot)
                     RouteWidgetProvider.refreshAll(getApplication())
@@ -502,6 +506,7 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
             val backup = result.backup
             savedRoutes = pinnedFirst(routeStore.replaceRoutes(backup.routes))
             activeRoute = savedRoutes.firstOrNull() ?: unconfiguredRoute()
+            operatorFilter = null
             if (hasActiveRoute) routeStore.saveActiveRoute(activeRoute.id) else routeStore.clearActiveRoute()
             stationPreferences.replaceFavourites(backup.favouriteStationIds)
             favouriteStations = stationPreferences.favourites(stations)
@@ -585,6 +590,14 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
         return saved.firstOrNull { it.id == existing.id } ?: existing
     }
 }
+
+internal fun publishedOperatorNames(services: List<TrainService>): List<String> =
+    services.asSequence()
+        .map { it.displayOperator.trim() }
+        .filter { it.isNotBlank() }
+        .distinctBy { it.lowercase(Locale.ROOT) }
+        .sortedWith(String.CASE_INSENSITIVE_ORDER)
+        .toList()
 
 private fun pinnedFirst(routes: List<SavedRoute>): List<SavedRoute> = SavedRouteOrdering.ordered(routes)
 
