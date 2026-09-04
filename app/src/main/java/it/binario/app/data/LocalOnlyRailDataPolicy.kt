@@ -11,14 +11,17 @@ import it.binario.app.data.live.RfiStationBoardAdapter
 import it.binario.app.data.live.SncfGtfsRealtimeAdapter
 import it.binario.app.data.live.StaRealtimeAdapter
 import it.binario.app.data.live.ViaggiaTrenoStationAdapter
+import it.binario.app.data.planned.RfiProgrammedTimetableAdapter
 
 /**
- * Production policy for the local-first build. Network adapters remain outside
- * the execution path until a documented provider is expressly authorised.
+ * Runtime source policy.
+ * Planned journey sources are kept separate from operational station boards.
  */
 object LocalOnlyRailDataPolicy {
-    /** Journey planning is always sourced separately from station-board realtime. */
-    fun routeSources(): List<TrainDataSource> = emptyList()
+    /** Official programmed sources may plan a journey; live boards never do. */
+    fun routeSources(): List<TrainDataSource> = listOf(
+        RfiProgrammedTimetableAdapter()
+    )
 
     fun stationBoardProviders(): List<StationBoardProvider> =
         if (BuildConfig.PERSONAL_REALTIME_SOURCES) {
@@ -30,6 +33,7 @@ object LocalOnlyRailDataPolicy {
         } else {
             emptyList()
         }
+
     fun alertProviders(): List<AlertProvider> = listOf(
         RfiInfomobilityRssAdapter(),
         StaRealtimeAdapter(),
