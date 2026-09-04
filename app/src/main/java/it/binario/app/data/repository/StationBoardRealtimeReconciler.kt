@@ -140,11 +140,13 @@ class StationBoardRealtimeReconciler(
             val statusMatch = matches.firstOrNull { it.entry.status != null }
             val platformMatch = matches.firstOrNull { it.entry.platform != null }
             val routeChangeMatch = matches.firstOrNull { it.entry.routeChange != null }
-            val selectedSources = listOfNotNull(
+            val operationalSources = listOfNotNull(
                 expectedMatch?.entry?.expectedTime?.source,
                 statusMatch?.entry?.status?.source,
-                platformMatch?.entry?.platform?.source,
-                routeChangeMatch?.entry?.routeChange?.source
+                platformMatch?.entry?.platform?.source
+            ).distinctBy { it.sourceId }
+            val selectedSources = (
+                operationalSources + listOfNotNull(routeChangeMatch?.entry?.routeChange?.source)
             ).distinctBy { it.sourceId }
 
             selectedSources.forEach { source ->
@@ -195,9 +197,7 @@ class StationBoardRealtimeReconciler(
                 status = liveStatus ?: service.status,
                 stops = updatedStops,
                 operationalStatusVerified = verified,
-                operationalSourceIds = selectedSources
-                    .filter { it !== routeChangeMatch?.entry?.routeChange?.source }
-                    .mapTo(linkedSetOf()) { it.sourceId.value },
+                operationalSourceIds = operationalSources.mapTo(linkedSetOf()) { it.sourceId.value },
                 operationalObservedAtEpochMillis = selectedSources.maxOfOrNull { (it.observedAt ?: it.fetchedAt).toEpochMilli() },
                 routeChange = routeChange,
                 routeChangeSourceIds = routeChangeMatch?.entry?.routeChange?.source
