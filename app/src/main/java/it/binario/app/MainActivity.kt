@@ -1348,6 +1348,12 @@ private fun SearchScreen(
                             }
                         }
                         SearchMode.TRAIN -> {
+                            Text("FILTRO NUMERO TRENO NELLA TRATTA", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                            Text(
+                                "Filtra i treni della tratta attiva. La ricerca nazionale per solo numero richiede un provider TrainRun dedicato e non viene simulata.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                             OutlinedTextField(
                                 value = viewModel.trainNumberQuery,
                                 onValueChange = viewModel::updateTrainNumberQuery,
@@ -1358,7 +1364,16 @@ private fun SearchScreen(
                                 leadingIcon = { Icon(Icons.Default.Train, contentDescription = null) },
                                 trailingIcon = if (viewModel.trainNumberQuery.isNotBlank()) ({ IconButton(onClick = viewModel::clearSearchFilters) { Icon(Icons.Default.DeleteOutline, contentDescription = "Cancella ricerca e filtri") } }) else null
                             )
-                            Button(onClick = viewModel::refresh, modifier = Modifier.fillMaxWidth(), enabled = viewModel.trainNumberQuery.isNotBlank()) { Text("Cerca treno") }
+                            if (!viewModel.hasActiveRoute) {
+                                Text("Scegli prima una tratta da consultare.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+                            }
+                            Button(
+                                onClick = viewModel::refresh,
+                                modifier = Modifier.fillMaxWidth(),
+                                enabled = viewModel.trainNumberQuery.isNotBlank() && viewModel.hasActiveRoute
+                            ) {
+                                Text("Filtra treno nella tratta")
+                            }
                         }
                         SearchMode.STATION -> {
                             StationField("Stazione", stationText, { stationText = it }, viewModel.searchStations(stationText), { stationText = it.name })
