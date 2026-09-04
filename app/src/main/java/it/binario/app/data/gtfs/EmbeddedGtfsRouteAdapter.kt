@@ -14,7 +14,9 @@ import it.binario.app.data.TrainDataSource
 import it.binario.app.data.TrainService
 import it.binario.app.data.TrainStop
 import it.binario.app.data.core.SourceId
+import it.binario.app.data.sources.RailInformationCategory
 import it.binario.app.data.sources.RailSourceCatalog
+import it.binario.app.data.sources.RailSourceSelectionPolicy
 import java.io.BufferedReader
 import java.io.InputStream
 import java.io.InputStreamReader
@@ -52,16 +54,24 @@ class EmbeddedGtfsRouteAdapter(
         loadRoute(route, direction, JourneyQuery.now())
 
     override suspend fun loadRoute(route: SavedRoute, direction: Direction, query: JourneyQuery): DataResult {
-        val origin = route.origin(direction).name
-        val destination = route.destination(direction).name
+        val originStation = route.origin(direction)
+        val destinationStation = route.destination(direction)
+        val origin = originStation.name
+        val destination = destinationStation.name
         val wantedOrigin = normalize(origin)
         val wantedDestination = normalize(destination)
 
-        val explicitSourceIds = listOf(route.origin(direction).id, route.destination(direction).id)
-            .mapNotNull(::sourceIdFromGtfsStationId)
-            .distinct()
-            .takeIf { ids -> ids.size == 1 }
-            ?.toSet()
+        val originSourceId = sourceIdFromGtfsStationId(originStation.id)
+        val destinationSourceId = sourceIdFromGtfsStationId(destinationStation.id)
+        val explicitSourceIds = if (
+            originSourceId != null &&
+            destinationSourceId != null &&
+            originSourceId == destinationSourceId
+        ) {
+            setOf(originSourceId)
+        } else {
+            null
+        }
 
         val candidatePacks = withContext(Dispatchers.IO) {
             packs.filter { pack ->
@@ -134,20 +144,12 @@ class EmbeddedGtfsRouteAdapter(
         normalize(service.destination)
     ).joinToString("|")
 
-    private fun sourcePreference(sourceId: SourceId, operatorName: String?): Int {
-        val operator = normalize(operatorName.orEmpty())
-        return when (sourceId.value) {
-            "ch-otd-gtfs" -> if (operator.matchesAny("sbb", "tilo", "bls", "rhb", "rhatischebahn", "fart", "ssif")) 120 else 90
-            "oebb-gtfs" -> if (operator.matchesAny("obb", "oebb", "osterreichischebundesbahnen")) 120 else 90
-            "sncf-gtfs" -> if (operator.contains("sncf")) 120 else 95
-            "lombardia-trenord-gtfs" -> if (operator.contains("trenord")) 120 else 100
-            "alto-adige-sta-gtfs" -> if (operator.matchesAny("sad", "sta", "sudtirol", "suedtirol")) 115 else 85
-            "delfi-gtfs" -> if (operator.matchesAny("db", "deutschebahn", "dbfernverkehr")) 120 else 80
-            else -> 70
-        }
-    }
-
-    private fun String.matchesAny(vararg candidates: String): Boolean = candidates.any(::contains)
+    private fun sourcePreference(sourceId: SourceId, operatorName: String?): Int =
+        RailSourceSelectionPolicy.score(
+            RailInformationCategory.PLANNED_ITINERARY,
+            sourceId,
+            operatorName
+        )
 
     private fun normalizeTrainNumber(value: String): String = value
         .uppercase(Locale.ROOT)
