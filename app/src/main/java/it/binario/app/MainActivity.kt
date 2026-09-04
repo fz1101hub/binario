@@ -864,17 +864,70 @@ private fun PlannerScreen(
 @Composable
 private fun RouteResultsScreen(modifier: Modifier, viewModel: TrainViewModel, openDetails: (TrainService) -> Unit) {
     val services = viewModel.currentServices()
+    val returnServices = viewModel.currentReturnServices()
+    val roundTrip = viewModel.hasReturnJourney
+    val primaryDirection = viewModel.direction
+
     LazyColumn(modifier = modifier.fillMaxSize()) {
         item {
             Column(Modifier.padding(horizontal = 20.dp, vertical = 14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(viewModel.activeRoute.displayName(viewModel.direction), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                Text("${services.size} soluzioni disponibili", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(viewModel.activeRoute.displayName(primaryDirection), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                Text(
+                    if (roundTrip) "${services.size} andata · ${returnServices.size} ritorno"
+                    else "${services.size} soluzioni disponibili",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+        item {
+            Column(Modifier.padding(horizontal = 20.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(if (roundTrip) "ANDATA" else primaryDirection.label.uppercase(Locale.ITALIAN), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+                Text(viewModel.activeRoute.displayName(primaryDirection), style = MaterialTheme.typography.bodyMedium)
+                Text(
+                    listOfNotNull(viewModel.refreshState.accessibleLabel, viewModel.refreshMessage).joinToString(" · "),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
             BoardColumnHeader()
         }
-        if (services.isEmpty()) item { SearchInfoState("Nessuna soluzione", "Modifica la ricerca o scegli una tratta differente.") }
-        else items(services, key = { it.id }) { service ->
-            DepartureListRow(service, isNext = service == services.first(), onOpen = { openDetails(service) })
+        when {
+            viewModel.refreshState == RefreshState.LOADING && viewModel.snapshot == null ->
+                item { SearchInfoState("Caricamento andata", "Sto cercando le soluzioni programmate e le eventuali informazioni operative disponibili.") }
+            viewModel.refreshState == RefreshState.ERROR && viewModel.snapshot == null ->
+                item { SearchInfoState("Andata non disponibile", viewModel.refreshMessage ?: "La fonte non ha restituito questa tratta.") }
+            services.isEmpty() ->
+                item { SearchInfoState("Nessuna soluzione di andata", "Modifica la ricerca o scegli una tratta differente.") }
+            else -> items(services, key = { "out-${it.id}" }) { service ->
+                DepartureListRow(service, isNext = service == services.first(), onOpen = { openDetails(service) })
+            }
+        }
+
+        if (roundTrip) {
+            item {
+                Column(Modifier.padding(horizontal = 20.dp, vertical = 14.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text("RITORNO", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+                    Text(viewModel.activeRoute.displayName(Direction.RETURN), style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        listOfNotNull(viewModel.returnRefreshState.accessibleLabel, viewModel.returnRefreshMessage).joinToString(" · "),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                BoardColumnHeader()
+            }
+            when {
+                viewModel.returnRefreshState == RefreshState.LOADING && viewModel.returnSnapshot == null ->
+                    item { SearchInfoState("Caricamento ritorno", "Sto cercando le soluzioni di ritorno con la data e l’ora selezionate.") }
+                viewModel.returnRefreshState == RefreshState.ERROR && viewModel.returnSnapshot == null ->
+                    item { SearchInfoState("Ritorno non disponibile", viewModel.returnRefreshMessage ?: "La fonte non ha restituito il ritorno richiesto.") }
+                returnServices.isEmpty() ->
+                    item { SearchInfoState("Nessuna soluzione di ritorno", "Modifica data o ora del ritorno e riprova.") }
+                else -> items(returnServices, key = { "ret-${it.id}" }) { service ->
+                    DepartureListRow(service, isNext = service == returnServices.first(), onOpen = { openDetails(service) })
+                }
+            }
         }
     }
 }
