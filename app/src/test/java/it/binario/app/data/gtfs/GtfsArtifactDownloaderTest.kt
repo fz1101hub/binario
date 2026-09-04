@@ -18,6 +18,10 @@ class GtfsArtifactDownloaderTest {
 
     @Test(expected = GtfsDownloadException::class)
     fun `rifiuta una fonte gtfs senza url artefatto stabilizzato`() {
-        downloader.open(RailSourceCatalog.byId(it.binario.app.data.core.SourceId("eav-gtfs"))!!)
+        val sourceWithoutArtifact = RailSourceCatalog
+            .byId(it.binario.app.data.core.SourceId("eav-gtfs"))!!
+            .copy(downloadOrProbeUri = null)
+
+        downloader.open(sourceWithoutArtifact)
     }
 }
