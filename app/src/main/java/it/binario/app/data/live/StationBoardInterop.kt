@@ -66,7 +66,8 @@ internal object LegacyStationBoardInterop {
                 publicNumber = service.number,
                 operatorId = operatorId(service.operator),
                 platform = service.platform?.let { SourcedValue(it, source) },
-                status = if (service.operationalStatusVerified) SourcedValue(runStatus(service.status), source) else null
+                status = if (service.operationalStatusVerified) SourcedValue(runStatus(service.status), source) else null,
+                routeChange = service.routeChange?.let { SourcedValue(it, source) }
             )
         }
 
