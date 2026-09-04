@@ -52,7 +52,11 @@ internal object LegacyStationBoardInterop {
                 confidence = confidence,
                 traceId = "${sourceId.value}:${service.id}"
             )
-            val expected = resolveExpectedDateTime(service.expectedDeparture, scheduled, zone)
+            val expected = if (service.operationalStatusVerified) {
+                resolveExpectedDateTime(service.expectedDeparture, scheduled, zone)
+            } else {
+                null
+            }
             StationBoardEntry(
                 runId = TrainRunId("${sourceId.value}:${service.number}:${scheduled.toLocalDate()}"),
                 scheduledTime = scheduled,
@@ -62,7 +66,7 @@ internal object LegacyStationBoardInterop {
                 publicNumber = service.number,
                 operatorId = operatorId(service.operator),
                 platform = service.platform?.let { SourcedValue(it, source) },
-                status = SourcedValue(runStatus(service.status), source)
+                status = if (service.operationalStatusVerified) SourcedValue(runStatus(service.status), source) else null
             )
         }
 
