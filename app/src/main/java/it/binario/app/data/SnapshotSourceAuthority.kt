@@ -20,24 +20,22 @@ object SnapshotSourceAuthority {
     )
 
     fun isCoverageFallback(snapshot: RouteSnapshot): Boolean =
-        candidateSourceIds(snapshot).any(RailSourceSelectionPolicy::isCoverageFallback) ||
+        sourceServices(snapshot).any { (sourceId, _) -> RailSourceSelectionPolicy.isCoverageFallback(sourceId) } ||
             snapshot.providerName.contains("fallback best-effort", ignoreCase = true)
 
-    fun plannedAuthorityScore(snapshot: RouteSnapshot): Int? = candidateSourceIds(snapshot)
-        .map { sourceId ->
+    fun plannedAuthorityScore(snapshot: RouteSnapshot): Int? = sourceServices(snapshot)
+        .maxOfOrNull { (sourceId, service) ->
             RailSourceSelectionPolicy.score(
                 RailInformationCategory.PLANNED_ITINERARY,
                 sourceId,
-                snapshot.services.firstOrNull()?.operatorDisplayName
+                service.operatorDisplayName ?: service.operator.accessibleLabel
             )
         }
-        .maxOrNull()
 
-    private fun candidateSourceIds(snapshot: RouteSnapshot): Set<SourceId> = buildSet {
-        snapshot.services.forEach { service ->
+    private fun sourceServices(snapshot: RouteSnapshot): List<Pair<SourceId, TrainService>> =
+        snapshot.services.mapNotNull { service ->
             service.id.substringBefore(':')
                 .takeIf(String::isNotBlank)
-                ?.let { raw -> add(sourceAliases[raw] ?: SourceId(raw)) }
+                ?.let { raw -> (sourceAliases[raw] ?: SourceId(raw)) to service }
         }
-    }
 }
