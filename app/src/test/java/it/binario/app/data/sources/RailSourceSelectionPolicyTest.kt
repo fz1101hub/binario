@@ -33,9 +33,14 @@ class RailSourceSelectionPolicyTest {
     }
 
     @Test
-    fun `una fonte monitor only resta inventariata ma non viene confusa con una fonte pronta`() {
+    fun `European Sleeper resta fallback esplicito e non fonte primaria`() {
         val europeanSleeper = RailSourceInventory.byId(SourceId("european-sleeper-gtfs"))
-        assertEquals(SourceReadiness.MONITOR_ONLY, europeanSleeper?.readiness)
+        assertEquals(SourceReadiness.BEST_EFFORT_FALLBACK, europeanSleeper?.readiness)
+
+        val primaryIds = RailSourceCatalog.activeCandidates(it.binario.app.data.provider.ProviderCapability.JOURNEY_SEARCH)
+            .filterNot { it.readiness == SourceReadiness.BEST_EFFORT_FALLBACK }
+            .map { it.id }
+        assertTrue(SourceId("european-sleeper-gtfs") !in primaryIds)
     }
 
     @Test
