@@ -217,7 +217,7 @@ class StationBoardRealtimeReconcilerTest {
             fetchedAt = clock.instant(),
             expiresAt = clock.instant().plusSeconds(60),
             confidence = if (source.value == "rfi-station-board") Confidence.INFRASTRUCTURE_PRIMARY else Confidence.OPERATOR_PRIMARY,
-            traceId = "${source.value}:\$number"
+            traceId = "${source.value}:$number"
         )
         return StationBoard(
             stationId = StationId("roma-termini"),
@@ -226,7 +226,7 @@ class StationBoardRealtimeReconcilerTest {
             to = query.requestedAt.atZone(zone).plusHours(8).toInstant(),
             entries = listOf(
                 StationBoardEntry(
-                    runId = TrainRunId("${source.value}:\$number"),
+                    runId = TrainRunId("${source.value}:$number"),
                     scheduledTime = scheduled,
                     expectedTime = SourcedValue(expected, ref),
                     destinationOrOrigin = StationId("published:napolicentrale"),
