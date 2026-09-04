@@ -41,7 +41,7 @@ import java.util.Locale
 class RemoteGtfsFallbackDataSource(
     private val source: RailSourceDefinition,
     private val parserSourceId: SourceId,
-    private val downloader: GtfsArtifactDownloader = GtfsArtifactDownloader(),
+    private val downloader: GtfsArtifactSource = GtfsArtifactDownloader(),
     private val clock: Clock = Clock.systemUTC(),
     private val notBefore: LocalDate? = null,
     private val cacheTtl: Duration = Duration.ofHours(6),
