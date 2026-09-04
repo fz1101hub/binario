@@ -4,6 +4,7 @@ import it.binario.app.data.DataResult
 import it.binario.app.data.Direction
 import it.binario.app.data.Freshness
 import it.binario.app.data.JourneyQuery
+import it.binario.app.data.RailOperator
 import it.binario.app.data.RouteSnapshot
 import it.binario.app.data.SavedRoute
 import it.binario.app.data.ServiceStatus
@@ -21,6 +22,9 @@ import it.binario.app.data.core.StationId
 import it.binario.app.data.provider.ProviderResult
 import it.binario.app.data.provider.StationBoardProvider
 import it.binario.app.data.provider.StationBoardRequest
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import java.time.Clock
 import java.time.Duration
 import java.time.LocalDateTime
@@ -79,13 +83,17 @@ class StationBoardRealtimeReconciler(
             kind = BoardKind.DEPARTURES
         )
 
-        val boards = providers.mapNotNull { provider ->
-            when (val result = provider.getStationBoard(request)) {
-                is ProviderResult.Success -> ProviderBoard(provider.descriptor.displayName, result.value)
-                is ProviderResult.Partial -> ProviderBoard(provider.descriptor.displayName, result.value)
-                is ProviderResult.Failure,
-                is ProviderResult.NotModified -> null
-            }
+        val boards = coroutineScope {
+            providers.map { provider ->
+                async {
+                    when (val result = provider.getStationBoard(request)) {
+                        is ProviderResult.Success -> ProviderBoard(provider.descriptor.displayName, result.value)
+                        is ProviderResult.Partial -> ProviderBoard(provider.descriptor.displayName, result.value)
+                        is ProviderResult.Failure,
+                        is ProviderResult.NotModified -> null
+                    }
+                }
+            }.awaitAll().filterNotNull()
         }
         if (boards.isEmpty()) return snapshot
 
@@ -196,23 +204,28 @@ class StationBoardRealtimeReconciler(
         board: StationBoard
     ): StationBoardEntry? {
         val scheduled = service.scheduledDepartureDateTime?.atZone(zone)
+        val expectedOperator = operatorId(service.operator)
         return board.entries.asSequence()
             .filter { entry ->
                 normalizeTrainNumber(entry.publicNumber.orEmpty()) == normalizeTrainNumber(service.number)
             }
             .filter { entry ->
-                val label = entry.destinationOrOriginLabel ?: entry.destinationOrOrigin.value
-                destination.matchesPublishedName(label)
+                expectedOperator == null || entry.operatorId == null || entry.operatorId.value == expectedOperator
             }
             .map { entry ->
                 val delta = scheduled?.let {
                     abs(Duration.between(it, entry.scheduledTime).toMinutes())
                 } ?: 0L
-                entry to delta
+                val label = entry.destinationOrOriginLabel ?: entry.destinationOrOrigin.value
+                val destinationPenalty = if (destination.matchesPublishedName(label)) 0 else 1
+                MatchCandidate(entry, delta, destinationPenalty)
             }
-            .filter { (_, delta) -> delta <= scheduleTolerance.toMinutes() }
-            .minByOrNull { (_, delta) -> delta }
-            ?.first
+            .filter { candidate -> candidate.scheduleDeltaMinutes <= scheduleTolerance.toMinutes() }
+            .minWithOrNull(
+                compareBy<MatchCandidate> { it.scheduleDeltaMinutes }
+                    .thenBy { it.destinationPenalty }
+            )
+            ?.entry
     }
 
     private fun hasConflict(matches: List<MatchedEntry>): Boolean {
@@ -250,9 +263,17 @@ class StationBoardRealtimeReconciler(
     private fun RunStatus.toLegacyStatus(): ServiceStatus? = when (this) {
         RunStatus.ON_TIME -> ServiceStatus.ON_TIME
         RunStatus.DELAYED -> ServiceStatus.DELAYED
-        RunStatus.CANCELLED,
-        RunStatus.PARTIALLY_CANCELLED -> ServiceStatus.CANCELLED
+        RunStatus.CANCELLED -> ServiceStatus.CANCELLED
         else -> null
+    }
+
+    private fun operatorId(operator: RailOperator): String? = when (operator) {
+        RailOperator.TRENITALIA_REGIONALE,
+        RailOperator.TRENITALIA_LONG_DISTANCE,
+        RailOperator.TRENITALIA_AV -> "trenitalia"
+        RailOperator.ITALO -> "italo"
+        RailOperator.TRENORD -> "trenord"
+        RailOperator.OTHER -> null
     }
 
     private data class ProviderBoard(
@@ -263,5 +284,11 @@ class StationBoardRealtimeReconciler(
     private data class MatchedEntry(
         val providerName: String,
         val entry: StationBoardEntry
+    )
+
+    private data class MatchCandidate(
+        val entry: StationBoardEntry,
+        val scheduleDeltaMinutes: Long,
+        val destinationPenalty: Int
     )
 }
