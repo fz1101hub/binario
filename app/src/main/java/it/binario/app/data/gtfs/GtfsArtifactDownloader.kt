@@ -34,9 +34,12 @@ class GtfsArtifactDownloader(
         require(maxContentLengthBytes > 0)
     }
 
+    /** Backward-compatible strict download: best-effort sources require explicit opt-in. */
+    fun open(source: RailSourceDefinition): GtfsDownloadSession = open(source, false)
+
     override fun open(
         source: RailSourceDefinition,
-        allowBestEffortFallback: Boolean = false
+        allowBestEffortFallback: Boolean
     ): GtfsDownloadSession {
         validate(source, allowBestEffortFallback)
         val url = source.downloadOrProbeUri!!.toURL()
