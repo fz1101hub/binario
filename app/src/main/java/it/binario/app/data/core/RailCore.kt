@@ -134,9 +134,11 @@ data class OperationalRouteChange(
     val skippedStopLabels: List<String> = emptyList(),
     val addedStopLabels: List<String> = emptyList(),
     val viaStopLabels: List<String> = emptyList(),
-    val replacementDestinationLabel: String? = null,
-    val structured: Boolean = skippedStopLabels.isNotEmpty() || addedStopLabels.isNotEmpty() || replacementDestinationLabel != null
+    val replacementDestinationLabel: String? = null
 ) {
+    val structured: Boolean
+        get() = skippedStopLabels.isNotEmpty() || addedStopLabels.isNotEmpty() || replacementDestinationLabel != null
+
     init {
         require(summary.isNotBlank()) { "La descrizione della variazione di percorso è obbligatoria" }
     }
