@@ -240,8 +240,13 @@ class RfiStationBoardAdapter(
             val delayText = row.selectFirst("#RRitardo")?.text().orEmpty()
             val delay = parseDelay(delayLabel.ifBlank { delayText })
             val statusText = row.text().uppercase(Locale.ROOT)
+            val cancelled = statusText.contains("SOPPRESS") || statusText.contains("CANCELL")
+            val explicitOnTime = listOf(delayLabel, delayText, statusText).any {
+                it.contains("NESSUNO", ignoreCase = true) || it.contains("IN ORARIO", ignoreCase = true)
+            }
+            val operationalVerified = cancelled || delay > 0 || explicitOnTime
             val status = when {
-                statusText.contains("SOPPRESS") || statusText.contains("CANCELL") -> ServiceStatus.CANCELLED
+                cancelled -> ServiceStatus.CANCELLED
                 delay > 0 -> ServiceStatus.DELAYED
                 else -> ServiceStatus.ON_TIME
             }
@@ -269,7 +274,8 @@ class RfiStationBoardAdapter(
                     TrainStop(origin, scheduled, expected, platform, delay, completed = false),
                     TrainStop(destination, "—", "—", null, delay, completed = false)
                 ),
-                transferCount = 0
+                transferCount = 0,
+                operationalStatusVerified = operationalVerified
             )
         }
     }
