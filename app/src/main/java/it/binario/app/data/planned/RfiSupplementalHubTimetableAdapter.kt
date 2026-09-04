@@ -1,0 +1,158 @@
+package it.binario.app.data.planned
+
+import it.binario.app.data.DataConfidence
+import it.binario.app.data.DataResult
+import it.binario.app.data.Direction
+import it.binario.app.data.Freshness
+import it.binario.app.data.JourneyQuery
+import it.binario.app.data.RouteSnapshot
+import it.binario.app.data.SavedRoute
+import it.binario.app.data.Station
+import it.binario.app.data.TrainDataSource
+import it.binario.app.data.matchesPublishedName
+import java.time.Clock
+import java.time.DayOfWeek
+import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.LocalTime
+import java.util.Locale
+
+/**
+ * Estensione conservativa del quadro orario RFI per hub il cui Id PRM è stato
+ * verificato separatamente. Riusa integralmente il parser del datasource RFI
+ * principale: qui vivono soltanto mapping e orchestrazione aggiuntiva.
+ */
+class RfiSupplementalHubTimetableAdapter(
+    private val fetcher: RfiProgrammedTimetableFetcher = HttpRfiProgrammedTimetableFetcher(),
+    private val clock: Clock = Clock.systemDefaultZone()
+) : TrainDataSource {
+    private val parser = RfiProgrammedTimetableAdapter(
+        fetcher = RfiProgrammedTimetableFetcher { "" },
+        clock = clock
+    )
+
+    override suspend fun loadRoute(route: SavedRoute, direction: Direction): DataResult {
+        val now = clock.instant().atZone(clock.zone)
+        return loadRoute(
+            route,
+            direction,
+            JourneyQuery(now.toLocalDate(), now.toLocalTime().withSecond(0).withNano(0))
+        )
+    }
+
+    override suspend fun loadRoute(route: SavedRoute, direction: Direction, query: JourneyQuery): DataResult {
+        val origin = route.origin(direction)
+        val destination = route.destination(direction)
+        val timetableId = SupplementalRfiProgrammedStationIds.timetableId(origin)
+            ?: return DataResult.Failure("Nessun hub RFI supplementare mappato per ${origin.name}.")
+        val url = "https://prm.rfi.it/qo_prm/QO_Partenze_SiPMR.aspx?Id=$timetableId&lin=it&dalle=00.00&alle=23.59&ora=00.00"
+        val html = runCatching { fetcher.fetch(url) }.getOrElse {
+            return DataResult.Failure("Il quadro orario RFI supplementare non è raggiungibile: ${it.message.orEmpty()}.")
+        }
+        val parsed = runCatching { parser.parseTimetable(html, origin, route, direction) }.getOrElse {
+            return DataResult.Failure("Il quadro orario RFI supplementare non è leggibile: ${it.message.orEmpty()}.")
+        }
+
+        parsed.validity?.let { validity ->
+            if (query.serviceDate !in validity.start..validity.end) {
+                return DataResult.Failure(
+                    "Il quadro orario RFI disponibile è valido dal ${validity.start} al ${validity.end}, non per ${query.serviceDate}."
+                )
+            }
+        }
+
+        val requestedMinutes = query.departureTime.hour * 60 + query.departureTime.minute
+        val services = parsed.services.asSequence()
+            .filter { runsOnDate(it.periodicity, query.serviceDate) }
+            .filter { timeMinutes(it.service.scheduledDeparture) >= requestedMinutes }
+            .filter { parsedService ->
+                parsedService.service.stops.drop(1).any { destination.matchesPublishedName(it.station) } ||
+                    destination.matchesPublishedName(parsedService.service.destination)
+            }
+            .map { parsedService ->
+                val targetIndex = parsedService.service.stops.indexOfFirst { destination.matchesPublishedName(it.station) }
+                parsedService.service.copy(
+                    stops = if (targetIndex >= 1) parsedService.service.stops.take(targetIndex + 1) else parsedService.service.stops,
+                    scheduledDepartureDateTime = LocalDateTime.of(
+                        query.serviceDate,
+                        parseTime(parsedService.service.scheduledDeparture) ?: query.departureTime
+                    )
+                )
+            }
+            .sortedBy { it.scheduledDepartureDateTime }
+            .take(24)
+            .toList()
+
+        if (services.isEmpty()) {
+            return DataResult.Failure(
+                "RFI non mostra corse programmate dirette da ${origin.name} verso ${destination.name} dopo ${query.departureTime}."
+            )
+        }
+
+        val now = clock.millis()
+        return DataResult.Success(
+            RouteSnapshot(
+                route = route,
+                direction = direction,
+                services = services,
+                providerName = "RFI — Quadro orario programmato",
+                retrievedAtEpochMillis = now,
+                expiresAtEpochMillis = now + CACHE_TTL_MILLIS,
+                freshness = Freshness.AGING,
+                sourceObservedAtEpochMillis = now,
+                confidence = DataConfidence.INFRASTRUCTURE_PRIMARY,
+                notice = "Orario programmato ufficiale RFI; hub supplementare verificato, con stato operativo riconciliato separatamente."
+            )
+        )
+    }
+
+    private fun runsOnDate(periodicity: String, date: LocalDate): Boolean {
+        val value = periodicity.uppercase(Locale.ROOT).replace(Regex("\\s+"), " ").trim()
+        if (value.isBlank()) return true
+        if (listOf("GIORNALIERO", "TUTTI I GIORNI", "QUOTIDIANO").any(value::contains)) return true
+        val day = date.dayOfWeek
+        if ("LUN-VEN" in value || "LUN VEN" in value || "FERIALE" in value) return day.value in 1..5
+        if ("SAB" in value && day == DayOfWeek.SATURDAY) return true
+        if (("DOM" in value || "FEST" in value) && day == DayOfWeek.SUNDAY) return true
+        val tokens = mapOf(
+            DayOfWeek.MONDAY to listOf("LUN", "LU"),
+            DayOfWeek.TUESDAY to listOf("MAR", "MA"),
+            DayOfWeek.WEDNESDAY to listOf("MER", "ME"),
+            DayOfWeek.THURSDAY to listOf("GIO", "GI"),
+            DayOfWeek.FRIDAY to listOf("VEN", "VE"),
+            DayOfWeek.SATURDAY to listOf("SAB", "SA"),
+            DayOfWeek.SUNDAY to listOf("DOM", "DO")
+        )
+        val hasDayToken = tokens.values.flatten().any { Regex("\\b$it\\b").containsMatchIn(value) }
+        return if (hasDayToken) tokens.getValue(day).any { Regex("\\b$it\\b").containsMatchIn(value) } else true
+    }
+
+    private fun parseTime(value: String): LocalTime? = runCatching {
+        val parts = value.split(':')
+        LocalTime.of(parts[0].toInt(), parts[1].toInt())
+    }.getOrNull()
+
+    private fun timeMinutes(value: String): Int = parseTime(value)?.let { it.hour * 60 + it.minute } ?: Int.MAX_VALUE
+
+    private companion object {
+        const val CACHE_TTL_MILLIS = 6L * 60L * 60L * 1000L
+    }
+}
+
+internal object SupplementalRfiProgrammedStationIds {
+    private val byName = mapOf(
+        key("Reggio Calabria Centrale") to 116,
+        key("Ancona") to 408,
+        key("Palermo Centrale") to 1878,
+        key("Catania Centrale") to 959,
+        key("Lecce") to 1436
+    )
+
+    fun timetableId(station: Station): Int? =
+        (listOf(station.name) + station.aliases).firstNotNullOfOrNull { byName[key(it)] }
+
+    private fun key(value: String): String = value
+        .uppercase(Locale.ROOT)
+        .replace("S. ", "SAN ")
+        .replace(Regex("[^A-Z0-9]"), "")
+}
