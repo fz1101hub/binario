@@ -146,6 +146,8 @@ data class TrainService(
     val status: ServiceStatus,
     val stops: List<TrainStop>,
     val transferCount: Int = 0,
+    /** Nome pubblicato da agency.txt o dalla fonte operativa. Mantiene l'identità reale anche per operatori non modellati nell'enum legacy. */
+    val operatorDisplayName: String? = null,
     /** Ritardo pubblicato direttamente dal provider; non è sostituito dal calcolo sulla rilevazione. */
     val officialDelayMinutes: Int? = delayMinutes,
     /** Ultimo evento operativo confermato, se il provider espone località, orario teorico e reale. */
@@ -166,7 +168,9 @@ data class TrainService(
     val routeChangeSourceIds: Set<String> = emptySet()
 ) {
     val category: String get() = trainCategory.accessibleLabel
-    val operatorAndCategory: String get() = "${operator.shortLabel} · ${trainCategory.accessibleLabel}"
+    val displayOperator: String get() = operatorDisplayName?.takeIf(String::isNotBlank) ?: operator.shortLabel
+    val accessibleOperator: String get() = operatorDisplayName?.takeIf(String::isNotBlank) ?: operator.accessibleLabel
+    val operatorAndCategory: String get() = "$displayOperator · ${trainCategory.accessibleLabel}"
     val accessibleSummary: String
         get() {
             val official = officialDelayMinutes?.takeIf { it != 0 }?.let { " Ritardo ufficiale $it minuti." }.orEmpty()
@@ -175,7 +179,7 @@ data class TrainService(
             }.orEmpty()
             val operational = if (operationalStatusVerified) status.accessibleLabel else "Stato operativo non verificato"
             val routeVariation = routeChange?.let { " Variazione di percorso: ${it.summary}." }.orEmpty()
-            return "Operatore ${operator.accessibleLabel}. ${trainCategory.accessibleLabel} $number da $origin a $destination. Partenza prevista $expectedDeparture. ${if (transferCount == 0) "Viaggio diretto" else "$transferCount ${if (transferCount == 1) "cambio" else "cambi"}"}. $operational$routeVariation$official$detection ${platform?.let { "Binario $it" } ?: "Binario non disponibile"}."
+            return "Operatore $accessibleOperator. ${trainCategory.accessibleLabel} $number da $origin a $destination. Partenza prevista $expectedDeparture. ${if (transferCount == 0) "Viaggio diretto" else "$transferCount ${if (transferCount == 1) "cambio" else "cambi"}"}. $operational$routeVariation$official$detection ${platform?.let { "Binario $it" } ?: "Binario non disponibile"}."
         }
 }
 
