@@ -16,7 +16,6 @@ enum class SnapshotWarning(val accessibleLabel: String) {
     PARTIAL_ROUTE_MATCH("Nessuna corrispondenza diretta di destinazione"),
     STALE_SOURCE("Aggiornamento non recente"),
     STATIC_ONLY("Sono disponibili solo orari programmati"),
-    COVERAGE_FALLBACK("Fonte di copertura fallback: verificare con una fonte primaria quando disponibile"),
     DEMONSTRATION("Sono visualizzati dati dimostrativi"),
     INCOMPLETE_SERVICE("Corsa incompleta"),
     IDENTITY_AMBIGUOUS("Identità della corsa da verificare"),
@@ -41,7 +40,9 @@ data class SnapshotQuality(
  *
  * La qualità strutturale non può promuovere una fonte di copertura best-effort
  * allo stesso livello di una fonte primaria: i fallback restano pubblicabili,
- * ma sono sempre marcati e limitati alla banda LIMITED.
+ * ma sono sempre limitati alla banda LIMITED. La loro natura resta esposta dal
+ * provider/notice dello snapshot, evitando di moltiplicare warning globali che
+ * tutte le superfici dovrebbero conoscere.
  */
 object SnapshotQualityAssessor {
     fun assess(snapshot: RouteSnapshot, nowEpochMillis: Long = System.currentTimeMillis()): SnapshotQuality {
@@ -58,8 +59,6 @@ object SnapshotQualityAssessor {
         }
 
         val coverageFallback = SnapshotSourceAuthority.isCoverageFallback(snapshot)
-        if (coverageFallback) warnings += SnapshotWarning.COVERAGE_FALLBACK
-
         val bounded = score.coerceIn(0, 100)
         val publishableScore = when {
             snapshot.confidence == DataConfidence.DEMONSTRATION -> bounded.coerceAtMost(39)
