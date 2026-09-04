@@ -56,10 +56,6 @@ internal class HttpRfiProgrammedTimetableFetcher : RfiProgrammedTimetableFetcher
     }
 }
 
-/**
- * Identificativi del servizio ufficiale RFI "Quadri orario on line".
- * Sono distinti dai placeId usati dal monitor realtime RFI.
- */
 internal object RfiProgrammedStationIds {
     private val byBinarioId = mapOf(
         "roma-termini" to 2247,
@@ -77,11 +73,8 @@ internal object RfiProgrammedStationIds {
 }
 
 /**
- * Fonte nazionale di pianificazione basata sui Quadri Orario RFI.
- *
- * RFI pubblica qui l'orario programmato stazione per stazione, inclusi treni
- * di più imprese ferroviarie e le fermate successive. Questa fonte è quindi
- * una baseline di itinerario, mai uno stato operativo realtime.
+ * National planned journey source backed by RFI's official station timetable.
+ * This is schedule data only: operational state is reconciled separately.
  */
 class RfiProgrammedTimetableAdapter(
     private val fetcher: RfiProgrammedTimetableFetcher = HttpRfiProgrammedTimetableFetcher(),
@@ -191,12 +184,9 @@ class RfiProgrammedTimetableAdapter(
                 if (rows.isEmpty()) return@forEach
                 val headerRow = rows.firstOrNull { row -> row.select("th").isNotEmpty() }
                     ?: rows.firstOrNull { row -> row.text().contains("Fermate successive", ignoreCase = true) }
-                val headers = headerRow?.select("th,td")?.map { normalize(it.text()) }.orEmpty()
+                val headers = headerRow?.select("th,td")?.map { normalizeHeader(it.text()) }.orEmpty()
                 val indexes = HeaderIndexes.from(headers)
-
-                rows.forEach { row ->
-                    parseRow(row, indexes, origin, route, direction)?.let(::add)
-                }
+                rows.forEach { row -> parseRow(row, indexes, origin, route, direction)?.let(::add) }
             }
         }.distinctBy { "${it.service.number}:${it.service.scheduledDeparture}:${it.service.destination}" }
 
@@ -219,7 +209,7 @@ class RfiProgrammedTimetableAdapter(
         val trainCell = cell(indexes.train, "[id*=Treno],[class*=treno],[headers*=treno]")
             ?: cells.firstOrNull { Regex("\\b\\d{2,5}\\b").containsMatchIn(it.text()) }
             ?: return null
-        val trainText = normalize(trainCell.text())
+        val trainText = compactText(trainCell.text())
         val number = Regex("\\b(\\d{2,5})\\b").find(trainText)?.groupValues?.getOrNull(1) ?: return null
 
         val timeCell = cell(indexes.time, "[id*=Orario],[class*=orario],[headers*=orario]")
@@ -228,7 +218,7 @@ class RfiProgrammedTimetableAdapter(
         if (scheduled.isBlank()) return null
 
         val destinationCell = cell(indexes.destination, "[id*=Destin],[class*=destin],[headers*=destin]")
-        val destinationText = normalize(destinationCell?.text().orEmpty())
+        val destinationText = compactText(destinationCell?.text().orEmpty())
         val destination = destinationText.substringBefore("(").trim().ifBlank { "Destinazione non indicata" }
 
         val stopsCell = cell(indexes.stops, "[id*=Fermate],[class*=fermate],[headers*=fermate]")
@@ -237,8 +227,8 @@ class RfiProgrammedTimetableAdapter(
             ?: destination.takeIf { it != "Destinazione non indicata" }
             ?: return null
 
-        val periodicity = normalize(cell(indexes.periodicity, "[id*=Period],[class*=period],[headers*=period]")?.text().orEmpty())
-        val categoryText = trainText + " " + normalize(row.select("td").firstOrNull()?.text().orEmpty())
+        val periodicity = normalizeHeader(cell(indexes.periodicity, "[id*=Period],[class*=period],[headers*=period]")?.text().orEmpty())
+        val categoryText = trainText + " " + compactText(row.select("td").firstOrNull()?.text().orEmpty())
         val operator = operatorFrom(categoryText)
         val category = categoryFrom(categoryText, operator)
 
@@ -276,9 +266,9 @@ class RfiProgrammedTimetableAdapter(
     }
 
     private fun parseStops(value: String): List<ProgrammedStop> {
-        val normalized = value.replace('\u00a0', ' ').replace(Regex("\\s+"), " ").trim()
+        val normalized = compactText(value)
         if (normalized.isBlank()) return emptyList()
-        val regex = Regex("([A-Za-zÀ-ÿ0-9 .'/’-]{2,80}?)\\s*\\((\\d{1,2}[.:]\\d{2})\\)")
+        val regex = Regex("([A-Za-zÀ-ÿ0-9 .'/’–-]{2,80}?)\\s*\\((\\d{1,2}[.:]\\d{2})\\)")
         return regex.findAll(normalized).mapNotNull { match ->
             val station = match.groupValues[1]
                 .substringAfterLast(";")
@@ -304,12 +294,12 @@ class RfiProgrammedTimetableAdapter(
     }
 
     private fun runsOnDate(periodicity: String, date: LocalDate): Boolean {
-        val value = normalize(periodicity)
+        val value = normalizeHeader(periodicity)
         if (value.isBlank()) return true
         if (listOf("GIORNALIERO", "TUTTI I GIORNI", "QUOTIDIANO").any(value::contains)) return true
         val day = date.dayOfWeek
         if ("LUN-VEN" in value || "LUN VEN" in value || "FERIALE" in value) {
-            return day in DayOfWeek.MONDAY..DayOfWeek.FRIDAY
+            return day.value in DayOfWeek.MONDAY.value..DayOfWeek.FRIDAY.value
         }
         if ("SAB" in value && day == DayOfWeek.SATURDAY) return true
         if (("DOM" in value || "FEST" in value) && day == DayOfWeek.SUNDAY) return true
@@ -350,11 +340,12 @@ class RfiProgrammedTimetableAdapter(
         }
     }
 
-    private fun normalize(value: String): String = value
+    private fun compactText(value: String): String = value
         .replace('\u00a0', ' ')
         .replace(Regex("\\s+"), " ")
         .trim()
-        .uppercase(Locale.ROOT)
+
+    private fun normalizeHeader(value: String): String = compactText(value).uppercase(Locale.ROOT)
 
     private fun normalizeTime(value: String): String = Regex("\\b([01]?\\d|2[0-3])[.:][0-5]\\d\\b")
         .find(value)?.value?.replace('.', ':')?.padStart(5, '0').orEmpty()
