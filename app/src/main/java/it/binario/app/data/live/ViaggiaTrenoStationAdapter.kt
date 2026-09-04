@@ -223,6 +223,7 @@ class ViaggiaTrenoStationAdapter(
             val platform = Regex("\\bBinario\\s+Reale:\\s*(\\d+)", RegexOption.IGNORE_CASE)
                 .find(content)?.groupValues?.getOrNull(1)
             val expected = if (status == ServiceStatus.CANCELLED) scheduled else addDelay(scheduled, delay)
+            val routeChange = OperationalRouteChangeDetector.detect(content)
             TrainService(
                 id = "viaggiatreno:${route.id}:${direction.name}:$number:$scheduled",
                 number = number,
@@ -241,7 +242,8 @@ class ViaggiaTrenoStationAdapter(
                     TrainStop(destination, "—", "—", null, delay, completed = false)
                 ),
                 transferCount = 0,
-                operationalStatusVerified = operationalVerified
+                operationalStatusVerified = operationalVerified,
+                routeChange = routeChange
             )
         }
     }
