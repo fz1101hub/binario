@@ -17,12 +17,15 @@ import it.binario.app.data.TrainStop
 import it.binario.app.data.matchesPublishedName
 import it.binario.app.data.core.BoardKind
 import it.binario.app.data.core.RunStatus
+import it.binario.app.data.core.SourceRef
 import it.binario.app.data.core.StationBoard
 import it.binario.app.data.core.StationBoardEntry
 import it.binario.app.data.core.StationId
 import it.binario.app.data.provider.ProviderResult
 import it.binario.app.data.provider.StationBoardProvider
 import it.binario.app.data.provider.StationBoardRequest
+import it.binario.app.data.sources.RailInformationCategory
+import it.binario.app.data.sources.RailSourceSelectionPolicy
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -69,7 +72,7 @@ class StationBoardEnrichedTrainDataSource(
                         return DataResult.Success(
                             live.snapshot.copy(
                                 notice = listOfNotNull(
-                                    "Fallback realtime diretto: nessun GTFS embedded copre questa tratta.",
+                                    "Fallback realtime diretto: nessun itinerario programmato disponibile per questa tratta.",
                                     live.snapshot.notice
                                 ).joinToString(" ")
                             )
@@ -133,11 +136,34 @@ class StationBoardRealtimeReconciler(
 
             if (hasConflict(matches)) conflict = true
 
-            val expectedMatch = matches.firstOrNull { it.entry.expectedTime != null }
-            val statusMatch = matches.firstOrNull { it.entry.status != null }
-            val platformMatch = matches.firstOrNull { it.entry.platform != null }
+            // Choose each operational field with the source hierarchy for that
+            // information category, never by provider-list order.
+            val expectedMatch = bestSourcedMatch(
+                matches = matches,
+                category = RailInformationCategory.TRAIN_REALTIME,
+                operatorHint = service.accessibleOperator,
+                source = { it.entry.expectedTime?.source }
+            )
+            val statusMatch = bestSourcedMatch(
+                matches = matches,
+                category = RailInformationCategory.TRAIN_REALTIME,
+                operatorHint = service.accessibleOperator,
+                source = { it.entry.status?.source }
+            )
+            val platformMatch = bestSourcedMatch(
+                matches = matches,
+                category = RailInformationCategory.STATION_BOARD,
+                operatorHint = service.accessibleOperator,
+                source = { it.entry.platform?.source }
+            )
             val routeChangeMatches = matches.filter { it.entry.routeChange != null }
-            val routeChangeMatch = routeChangeMatches.firstOrNull()
+            val routeChangeMatch = bestSourcedMatch(
+                matches = routeChangeMatches,
+                category = RailInformationCategory.ROUTE_VARIATIONS,
+                operatorHint = service.accessibleOperator,
+                source = { it.entry.routeChange?.source }
+            )
+
             val operationalSources = listOfNotNull(
                 expectedMatch?.entry?.expectedTime?.source,
                 statusMatch?.entry?.status?.source,
@@ -216,7 +242,7 @@ class StationBoardRealtimeReconciler(
         snapshot.notice?.takeIf(String::isNotBlank)?.let(noticeParts::add)
         noticeParts += "Realtime riconciliato con ${providerLabels.joinToString(", ")}."
         if (conflict) {
-            noticeParts += "Alcune fonti realtime divergono; Binario usa la priorità configurata e segnala il conflitto."
+            noticeParts += "Alcune fonti realtime divergono; Binario seleziona ogni campo con la gerarchia della relativa categoria e conserva il conflitto."
         }
 
         return snapshot.copy(
@@ -231,6 +257,20 @@ class StationBoardRealtimeReconciler(
             notice = noticeParts.joinToString(" ")
         )
     }
+
+    private fun bestSourcedMatch(
+        matches: List<MatchedEntry>,
+        category: RailInformationCategory,
+        operatorHint: String?,
+        source: (MatchedEntry) -> SourceRef?
+    ): MatchedEntry? = matches
+        .mapNotNull { match -> source(match)?.let { ref -> match to ref } }
+        .maxWithOrNull(
+            compareBy<Pair<MatchedEntry, SourceRef>> { (_, ref) ->
+                RailSourceSelectionPolicy.score(category, ref.sourceId, operatorHint)
+            }.thenBy { (_, ref) -> (ref.observedAt ?: ref.fetchedAt).toEpochMilli() }
+        )
+        ?.first
 
     private fun applyRouteChange(
         stops: List<TrainStop>,
