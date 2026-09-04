@@ -1968,6 +1968,87 @@ private fun StopTimelineRow(
     }
 }
 
+
+@Composable
+private fun RouteChangeBanner(
+    routeChange: OperationalRouteChange,
+    sourceIds: Set<String>
+) {
+    val severe = routeChange.kind in setOf(
+        RouteChangeKind.SKIPPED_STOPS,
+        RouteChangeKind.SHORT_TURN,
+        RouteChangeKind.REPLACEMENT_SERVICE
+    )
+    val container = if (severe) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.tertiaryContainer
+    val foreground = if (severe) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onTertiaryContainer
+    val sourceLabel = sourceIds.takeIf { it.isNotEmpty() }?.joinToString(", ")
+
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 10.dp)
+            .semantics {
+                contentDescription = buildString {
+                    append(routeChangeLabel(routeChange)).append(". ")
+                    append(routeChange.summary)
+                    if (routeChange.skippedStopLabels.isNotEmpty()) {
+                        append(". Fermate saltate: ").append(routeChange.skippedStopLabels.joinToString(", "))
+                    }
+                    if (routeChange.addedStopLabels.isNotEmpty()) {
+                        append(". Fermate aggiunte: ").append(routeChange.addedStopLabels.joinToString(", "))
+                    }
+                    routeChange.replacementDestinationLabel?.let {
+                        append(". Nuovo capolinea: ").append(it)
+                    }
+                }
+            },
+        color = container,
+        contentColor = foreground,
+        shape = RoundedCornerShape(14.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.Top
+        ) {
+            Icon(Icons.Default.Route, contentDescription = null, modifier = Modifier.size(24.dp))
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                Text(routeChangeLabel(routeChange), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                Text(routeChange.summary, style = MaterialTheme.typography.bodyMedium)
+                if (routeChange.skippedStopLabels.isNotEmpty()) {
+                    Text("Saltate: ${routeChange.skippedStopLabels.joinToString(", ")}", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
+                }
+                if (routeChange.addedStopLabels.isNotEmpty()) {
+                    Text("Aggiunte: ${routeChange.addedStopLabels.joinToString(", ")}", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
+                }
+                routeChange.replacementDestinationLabel?.let {
+                    Text("Nuovo capolinea: $it", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
+                }
+                sourceLabel?.let {
+                    Text("Fonte: $it", style = MaterialTheme.typography.labelSmall)
+                }
+            }
+        }
+    }
+}
+
+private fun routeChangeLabel(routeChange: OperationalRouteChange): String = when (routeChange.kind) {
+    RouteChangeKind.DIVERTED -> "PERCORSO MODIFICATO"
+    RouteChangeKind.SKIPPED_STOPS -> "FERMATE MODIFICATE"
+    RouteChangeKind.ADDED_STOPS -> "FERMATE AGGIUNTE"
+    RouteChangeKind.SHORT_TURN -> "CORSA LIMITATA"
+    RouteChangeKind.REPLACEMENT_SERVICE -> "SERVIZIO SOSTITUTIVO"
+    RouteChangeKind.OTHER -> "VARIAZIONE DI PERCORSO"
+}
+
+@Composable
+private fun routeChangeAccent(routeChange: OperationalRouteChange) =
+    if (routeChange.kind in setOf(RouteChangeKind.SKIPPED_STOPS, RouteChangeKind.SHORT_TURN, RouteChangeKind.REPLACEMENT_SERVICE)) {
+        MaterialTheme.colorScheme.error
+    } else {
+        MaterialTheme.colorScheme.tertiary
+    }
+
 @Composable
 private fun ServiceStatusBadge(service: TrainService) {
     val (container, foreground, text) = if (!service.operationalStatusVerified) {
