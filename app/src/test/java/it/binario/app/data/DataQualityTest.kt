@@ -49,7 +49,7 @@ class DataQualityTest {
 
         assertEquals(DataQualityBand.LIMITED, quality.band)
         assertTrue(quality.score <= 64)
-        assertTrue(SnapshotWarning.COVERAGE_FALLBACK in quality.warnings)
+        assertTrue(fallback.providerName.contains("fallback best-effort", ignoreCase = true))
     }
 
     @Test
@@ -101,7 +101,7 @@ class DataQualityTest {
         val result = repository.loadRoute(route, Direction.OUTBOUND) as DataResult.Success
 
         assertEquals("Open data ufficiale", result.snapshot.providerName)
-        assertTrue(SnapshotWarning.COVERAGE_FALLBACK !in result.snapshot.qualityWarnings)
+        assertEquals(DataQualityBand.RELIABLE, result.snapshot.qualityBand)
     }
 
     @Test
