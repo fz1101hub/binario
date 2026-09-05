@@ -27,6 +27,11 @@ class LocalOnlyRailDataPolicyTest {
             assertTrue(boardProviderNames.isEmpty())
         }
 
+        val displayBoards = LocalOnlyRailDataPolicy.stationBoardDisplayProviders()
+            .mapNotNull { it::class.simpleName }
+        assertEquals("RfiProgrammedStationBoardAdapter", displayBoards.first())
+        assertEquals(1 + boardProviderNames.size, displayBoards.size)
+
         val alerts = LocalOnlyRailDataPolicy.alertProviders()
         assertEquals(
             setOf(
