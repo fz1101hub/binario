@@ -84,7 +84,11 @@ class StationBoardAggregateService(
             }.awaitAll()
         }
 
-        val boards = attempts.filterIsInstance<ProviderAttempt.Board>()
+        val returnedBoards = attempts.filterIsInstance<ProviderAttempt.Board>()
+        val invalidBoards = returnedBoards.filter { attempt ->
+            attempt.board.stationId != request.stationId || attempt.board.kind != request.kind
+        }
+        val boards = returnedBoards - invalidBoards.toSet()
         if (boards.isEmpty()) {
             val details = attempts.filterIsInstance<ProviderAttempt.Failure>()
                 .map { attempt ->
@@ -97,7 +101,11 @@ class StationBoardAggregateService(
                 .take(2)
                 .joinToString(" ")
             return StationBoardAggregateResult.Unavailable(
-                details.ifBlank { "Le fonti tabellone non hanno restituito dati utilizzabili." }
+                if (invalidBoards.isNotEmpty()) {
+                    "Le fonti tabellone hanno restituito dati con identità stazione o tipo di tabellone incoerenti; il risultato è stato scartato."
+                } else {
+                    details.ifBlank { "Le fonti tabellone non hanno restituito dati utilizzabili." }
+                }
             )
         }
 
@@ -116,6 +124,7 @@ class StationBoardAggregateService(
 
         val warnings = buildSet {
             boards.flatMapTo(this) { it.warnings }
+            if (invalidBoards.isNotEmpty()) add(ProviderWarning.IDENTITY_AMBIGUOUS)
             if (sourceConflict) add(ProviderWarning.SOURCE_CONFLICT)
         }
 
