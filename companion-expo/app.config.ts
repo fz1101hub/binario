@@ -26,7 +26,16 @@ const config: ExpoConfig = {
     binarioDataContract: "companion-snapshot-v1",
   },
   ios: { supportsTablet: true, bundleIdentifier: "im.binario.companion" },
-  android: { package: "im.binario.companion", versionCode: 3, permissions: ["POST_NOTIFICATIONS"] },
+  android: {
+    package: "im.binario.companion",
+    versionCode: 3,
+    permissions: ["POST_NOTIFICATIONS"],
+    blockedPermissions: [
+      "android.permission.READ_EXTERNAL_STORAGE",
+      "android.permission.WRITE_EXTERNAL_STORAGE",
+    ],
+    allowBackup: false,
+  },
   experiments: { typedRoutes: true },
 };
 
