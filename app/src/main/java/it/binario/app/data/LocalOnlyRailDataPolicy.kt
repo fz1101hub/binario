@@ -8,6 +8,7 @@ import it.binario.app.data.live.RfiStationBoardAdapter
 import it.binario.app.data.live.SncfGtfsRealtimeAdapter
 import it.binario.app.data.live.StaRealtimeAdapter
 import it.binario.app.data.live.ViaggiaTrenoStationAdapter
+import it.binario.app.data.planned.RfiProgrammedStationBoardAdapter
 import it.binario.app.data.planned.RfiProgrammedTimetableAdapter
 import it.binario.app.data.planned.RfiSupplementalHubTimetableAdapter
 import it.binario.app.data.provider.AlertProvider
@@ -36,6 +37,7 @@ object LocalOnlyRailDataPolicy {
         RemoteGtfsFallbackDataSource.europeanSleeper()
     )
 
+    /** Realtime/operational boards used to enrich planned route snapshots. */
     fun stationBoardProviders(): List<StationBoardProvider> =
         if (BuildConfig.PERSONAL_REALTIME_SOURCES) {
             listOf(
@@ -46,6 +48,13 @@ object LocalOnlyRailDataPolicy {
         } else {
             emptyList()
         }
+
+    /**
+     * User-facing station board: always starts from the official RFI programmed
+     * departure board and overlays explicitly enabled operational providers.
+     */
+    fun stationBoardDisplayProviders(): List<StationBoardProvider> =
+        listOf(RfiProgrammedStationBoardAdapter()) + stationBoardProviders()
 
     fun alertProviders(): List<AlertProvider> = listOf(
         RfiInfomobilityRssAdapter(),
