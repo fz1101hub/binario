@@ -312,6 +312,24 @@ object RailSourceCatalog {
             notes = "Nessuna API open documentata; risposta 503 durante la verifica. Solo gateway prudente/feature flag futuro."
         ),
         RailSourceDefinition(
+            id = SourceId("rfi-programmed"),
+            displayName = "RFI — Quadri orario programmati",
+            operatorOrAuthority = "Rete Ferroviaria Italiana",
+            formats = setOf(SourceFormat.HTML_OR_PDF),
+            capabilities = setOf(
+                ProviderCapability.JOURNEY_SEARCH,
+                ProviderCapability.TRAIN_RUN_STATIC,
+                ProviderCapability.STATION_BOARD
+            ),
+            accessMode = AccessMode.OPEN_DIRECT,
+            readiness = SourceReadiness.READY_FOR_PROTOCOL_TEST,
+            countryCodes = setOf("IT"),
+            coverage = "Orario programmato ufficiale stazione per stazione per gli hub con Id PRM verificato.",
+            landingPage = uri("https://www.rfi.it/it/stazioni/pagine-stazioni/servizi-di-qualita/informazioni-al-pubblico/quadri-orario-on-line.html"),
+            attribution = "Rete Ferroviaria Italiana",
+            notes = "Fonte ufficiale di orario programmato, equivalente ai quadri murali. Non attribuisce ritardo, stato operativo o binario reale; gli Id stazione vengono aggiunti solo dopo verifica."
+        ),
+        RailSourceDefinition(
             id = SourceId("rfi-station-board"),
             displayName = "RFI — Monitor Arrivi/Partenze",
             operatorOrAuthority = "Rete Ferroviaria Italiana",
