@@ -15,6 +15,7 @@ object KnownProviderIds {
     val SNCF_REALTIME = SourceId("sncf-gtfs-rt")
     val OEBB_STATIC = SourceId("oebb-gtfs")
     val VIAGGIATRENO = SourceId("viaggiatreno")
+    val RFI_PROGRAMMED = SourceId("rfi-programmed")
     val RFI_STATION_BOARD = SourceId("rfi-station-board")
     val RFI_INFOMOBILITY_RSS = SourceId("rfi-infomobility-rss")
     val STA_REALTIME = SourceId("alto-adige-sta-realtime")
@@ -142,6 +143,30 @@ object KnownProviders {
             priorityByCapability = mapOf(
                 ProviderCapability.TRAIN_RUN_REALTIME to 30,
                 ProviderCapability.STATION_BOARD to 30
+            )
+        ),
+        ProviderPolicy(
+            descriptor = ProviderDescriptor(
+                id = KnownProviderIds.RFI_PROGRAMMED,
+                displayName = "RFI — Quadri orario programmati",
+                capabilities = setOf(
+                    ProviderCapability.JOURNEY_SEARCH,
+                    ProviderCapability.TRAIN_RUN_STATIC,
+                    ProviderCapability.STATION_BOARD
+                ),
+                coverage = CoverageDescriptor(
+                    countryCodes = setOf("IT"),
+                    description = "Orario programmato ufficiale per gli hub RFI con Id PRM verificato"
+                ),
+                accessMode = AccessMode.OPEN_DIRECT,
+                ratePolicy = staticRatePolicy,
+                schemaVersion = 1
+            ),
+            enabled = true,
+            priorityByCapability = mapOf(
+                ProviderCapability.JOURNEY_SEARCH to 5,
+                ProviderCapability.TRAIN_RUN_STATIC to 5,
+                ProviderCapability.STATION_BOARD to 5
             )
         ),
         ProviderPolicy(
