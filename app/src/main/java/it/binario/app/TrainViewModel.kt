@@ -248,8 +248,12 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
         kind: BoardKind = stationBoardKind
     ) {
         val canonical = canonicalStation(station)
+        val sameBoardContext = stationBoard?.let { current ->
+            current.station.id == canonical.id && current.kind == kind
+        } == true
         stationBoardStation = canonical
         stationBoardKind = kind
+        if (!sameBoardContext) stationBoard = null
         stationBoardRefreshState = RefreshState.LOADING
         stationBoardMessage = null
         val requestId = ++stationBoardRequestId
