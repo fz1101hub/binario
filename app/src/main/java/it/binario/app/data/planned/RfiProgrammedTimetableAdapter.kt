@@ -325,7 +325,7 @@ class RfiProgrammedTimetableAdapter(
         }.getOrNull()
     }
 
-    private fun runsOnDate(periodicity: String, date: LocalDate): Boolean {
+    internal fun runsOnDate(periodicity: String, date: LocalDate): Boolean {
         val value = normalizeHeader(periodicity)
         if (value.isBlank()) return true
         if (listOf("GIORNALIERO", "TUTTI I GIORNI", "QUOTIDIANO").any(value::contains)) return true
