@@ -968,7 +968,9 @@ private fun StationBoardScreen(modifier: Modifier, viewModel: TrainViewModel) {
     }
 
     val selectedStation = viewModel.stationFromName(stationText)
-    val board = viewModel.stationBoard
+    val board = viewModel.stationBoard?.takeIf { current ->
+        selectedStation != null && current.station.id == selectedStation.id
+    }
 
     LazyColumn(
         modifier = modifier.fillMaxSize(),
