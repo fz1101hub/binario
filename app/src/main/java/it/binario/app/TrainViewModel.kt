@@ -244,10 +244,11 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun loadStationBoard(
-        station: Station = stationBoardStation ?: return,
+        station: Station? = stationBoardStation,
         kind: BoardKind = stationBoardKind
     ) {
-        val canonical = canonicalStation(station)
+        val requestedStation = station ?: return
+        val canonical = canonicalStation(requestedStation)
         val sameBoardContext = stationBoard?.let { current ->
             current.station.id == canonical.id && current.kind == kind
         } == true
