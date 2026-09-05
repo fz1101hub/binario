@@ -260,12 +260,11 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
                     if (requestId != stationBoardRequestId) return@launch
                     stationBoard = result.board
                     stationBoardRefreshState = RefreshState.SUCCESS
-                    stationBoardMessage = buildList {
-                        result.board.providerNames.joinToString(" · ")
-                            .takeIf(String::isNotBlank)
-                            ?.let(::add)
-                        result.board.warnings.mapNotNullTo(this) { it.stationBoardWarningLabel() }
-                    }.distinct().joinToString(" · ").takeIf(String::isNotBlank)
+                    stationBoardMessage = result.board.warnings
+                        .mapNotNull { it.stationBoardWarningLabel() }
+                        .distinct()
+                        .joinToString(" · ")
+                        .takeIf(String::isNotBlank)
                 }
                 is StationBoardAggregateResult.Unavailable -> {
                     if (requestId != stationBoardRequestId) return@launch
