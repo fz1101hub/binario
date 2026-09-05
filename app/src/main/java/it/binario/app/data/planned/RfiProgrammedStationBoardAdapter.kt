@@ -33,6 +33,7 @@ import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
 import java.time.ZonedDateTime
+import java.util.Locale
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -112,7 +113,7 @@ class RfiProgrammedStationBoardAdapter(
             .takeWhile { date -> !date.isAfter(end.toLocalDate()) }
             .toList()
 
-        val parsed = when (val loaded = timetable(station, timetableId, start.toLocalDate())) {
+        val parsed = when (val loaded = timetable(station, timetableId)) {
             is TimetableLoad.Success -> loaded.value
             is TimetableLoad.Failure -> {
                 return ProviderResult.Failure(
@@ -197,16 +198,14 @@ class RfiProgrammedStationBoardAdapter(
 
     private suspend fun timetable(
         station: Station,
-        timetableId: Int,
-        serviceDate: LocalDate
+        timetableId: Int
     ): TimetableLoad {
-        val key = "${station.id}:$serviceDate"
+        val key = station.id
         val now = clock.instant()
-        mutex.withLock {
-            cache[key]?.takeIf { now.isBefore(it.expiresAt) }?.let {
-                return TimetableLoad.Success(it.value)
-            }
+        val cached = mutex.withLock {
+            cache[key]?.takeIf { now.isBefore(it.expiresAt) }?.value
         }
+        if (cached != null) return TimetableLoad.Success(cached)
 
         val url = "https://prm.rfi.it/qo_prm/QO_Partenze_SiPMR.aspx?Id=$timetableId&lin=it&dalle=00.00&alle=23.59&ora=00.00"
         val html = try {
@@ -253,7 +252,7 @@ class RfiProgrammedStationBoardAdapter(
     }.getOrNull()
 
     private fun normalizeId(value: String): String = value
-        .lowercase()
+        .lowercase(Locale.ROOT)
         .replace(Regex("[^a-z0-9]+"), "-")
         .trim('-')
         .ifBlank { "unknown" }
