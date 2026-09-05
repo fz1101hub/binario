@@ -73,6 +73,9 @@ object BinarioDataGraph {
 
     fun stationBoardProviders(): List<StationBoardProvider> = localOnlyPolicy.stationBoardProviders()
 
+    fun stationBoardDisplayProviders(): List<StationBoardProvider> =
+        localOnlyPolicy.stationBoardDisplayProviders()
+
     fun alertProviders(): List<AlertProvider> = localOnlyPolicy.alertProviders()
 
     fun vehiclePositionProviders(): List<VehiclePositionProvider> = localOnlyPolicy.vehiclePositionProviders()
@@ -88,6 +91,9 @@ object BinarioDataGraph {
 
     fun stationBoardProviders(credentials: ExternalRailCredentials): List<StationBoardProvider> =
         stationBoardProviders() + authorizedExternalProviders(credentials).stationBoards
+
+    fun stationBoardDisplayProviders(credentials: ExternalRailCredentials): List<StationBoardProvider> =
+        stationBoardDisplayProviders() + authorizedExternalProviders(credentials).stationBoards
 
     fun alertProviders(credentials: ExternalRailCredentials): List<AlertProvider> =
         alertProviders() + authorizedExternalProviders(credentials).alerts
