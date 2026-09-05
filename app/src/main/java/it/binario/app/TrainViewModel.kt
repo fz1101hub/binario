@@ -28,6 +28,7 @@ import it.binario.app.data.repository.StationBoardAggregateResult
 import it.binario.app.data.repository.StationBoardAggregateService
 import it.binario.app.data.TrainService
 import it.binario.app.data.core.BoardKind
+import it.binario.app.data.provider.ProviderWarning
 import it.binario.app.data.catalog.EmbeddedCuratedRailStationCatalog
 import it.binario.app.data.gtfs.EmbeddedGtfsStationSearchIndex
 import it.binario.app.data.orderServicesForDisplay
@@ -259,13 +260,12 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
                     if (requestId != stationBoardRequestId) return@launch
                     stationBoard = result.board
                     stationBoardRefreshState = RefreshState.SUCCESS
-                    stationBoardMessage = buildString {
-                        append(result.board.providerNames.joinToString(" · "))
-                        if (result.board.warnings.isNotEmpty()) {
-                            if (isNotEmpty()) append(" · ")
-                            append("Fonti in conflitto: selezione per autorità del singolo campo.")
-                        }
-                    }.takeIf(String::isNotBlank)
+                    stationBoardMessage = buildList {
+                        result.board.providerNames.joinToString(" · ")
+                            .takeIf(String::isNotBlank)
+                            ?.let(::add)
+                        result.board.warnings.mapNotNullTo(this) { it.stationBoardWarningLabel() }
+                    }.distinct().joinToString(" · ").takeIf(String::isNotBlank)
                 }
                 is StationBoardAggregateResult.Unavailable -> {
                     if (requestId != stationBoardRequestId) return@launch
@@ -790,6 +790,15 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
         if (additions.isNotEmpty()) stations = stations + additions
         return saved.firstOrNull { it.id == existing.id } ?: existing
     }
+}
+
+private fun ProviderWarning.stationBoardWarningLabel(): String? = when (this) {
+    ProviderWarning.SOURCE_CONFLICT -> "Fonti in conflitto: selezione per autorità del singolo campo."
+    ProviderWarning.REALTIME_UNAVAILABLE -> "Realtime parzialmente non disponibile."
+    ProviderWarning.STALE_SOURCE -> "Una fonte ha restituito dati non recenti."
+    ProviderWarning.IDENTITY_AMBIGUOUS -> "Identità di una corsa o stazione non univoca."
+    ProviderWarning.REPLACEMENT_SERVICE -> "Presente un servizio sostitutivo."
+    ProviderWarning.INCOMPLETE_COVERAGE -> "Copertura del tabellone parziale."
 }
 
 internal fun publishedOperatorNames(services: List<TrainService>): List<String> =
