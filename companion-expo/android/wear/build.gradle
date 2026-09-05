@@ -24,8 +24,7 @@ android {
       signingConfig signingConfigs.debug
     }
     release {
-      // Artefatto installabile per test: non usare questa chiave per una release pubblica.
-      signingConfig signingConfigs.debug
+      // Production signing is supplied only by the release environment.
     }
   }
 }
