@@ -48,6 +48,14 @@ jobs:
       - name: Verify managed Expo config
         run: pnpm run verify:managed-config
 
+      - name: Regenerate Android native project
+        env:
+          CI: "1"
+        run: pnpm exec expo prebuild --platform android --no-install
+
+      - name: Require idempotent native generation
+        run: git diff --exit-code -- android
+
       - name: Verify release security inputs
         run: pnpm run verify:release-inputs
 
