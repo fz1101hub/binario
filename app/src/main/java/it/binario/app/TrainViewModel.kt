@@ -23,7 +23,11 @@ import it.binario.app.data.TrainDataSource
 import it.binario.app.data.matchesPublishedName
 import it.binario.app.data.searchableValues
 import it.binario.app.data.repository.BinarioDataGraph
+import it.binario.app.data.repository.StationBoardAggregate
+import it.binario.app.data.repository.StationBoardAggregateResult
+import it.binario.app.data.repository.StationBoardAggregateService
 import it.binario.app.data.TrainService
+import it.binario.app.data.core.BoardKind
 import it.binario.app.data.catalog.EmbeddedCuratedRailStationCatalog
 import it.binario.app.data.gtfs.EmbeddedGtfsStationSearchIndex
 import it.binario.app.data.orderServicesForDisplay
@@ -61,6 +65,7 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
     private val mobilityPreferencesStore = MobilityPreferencesStore(application)
     private val customStationStore = CustomStationStore(application)
     private val dataSource: TrainDataSource = BinarioDataGraph.routeDataSource(application)
+    private val stationBoardService = StationBoardAggregateService(BinarioDataGraph.stationBoardProviders())
     private val curatedStationCatalog = EmbeddedCuratedRailStationCatalog(
         openAsset = { assetPath -> application.assets.open(assetPath) }
     )
@@ -71,6 +76,17 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
     var favouriteStations by mutableStateOf(stationPreferences.favourites(stations))
         private set
     var nearbyStations by mutableStateOf<List<NearbyStation>>(emptyList())
+        private set
+
+    var stationBoardStation by mutableStateOf<Station?>(null)
+        private set
+    var stationBoardKind by mutableStateOf(BoardKind.DEPARTURES)
+        private set
+    var stationBoard by mutableStateOf<StationBoardAggregate?>(null)
+        private set
+    var stationBoardRefreshState by mutableStateOf(RefreshState.IDLE)
+        private set
+    var stationBoardMessage by mutableStateOf<String?>(null)
         private set
 
     var savedRoutes by mutableStateOf(pinnedFirst(routeStore.routes(stations)))
@@ -123,6 +139,8 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
     private var refreshRequestId: Long = 0L
     /** Separate token: a stale return response can never overwrite a newer round-trip search. */
     private var returnRefreshRequestId: Long = 0L
+    /** Independent station-board token; changing station/kind invalidates older responses. */
+    private var stationBoardRequestId: Long = 0L
 
     init {
         // The curated catalog is local and authoritative for station identity.
@@ -177,6 +195,7 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
 
     val hasActiveRoute: Boolean get() = activeRoute.id != UNCONFIGURED_ROUTE_ID
     val hasReturnJourney: Boolean get() = returnJourneyQuery != null
+    val hasStationBoardProviders: Boolean get() = stationBoardService.hasProviders
 
     fun plannerOriginText(): String = activeRoute.takeIf { hasActiveRoute }?.outwardOrigin?.name.orEmpty()
 
@@ -211,6 +230,56 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
     /** Riceve una posizione puntuale dalla UI; non viene mai persistita. */
     fun updateNearbyStations(latitude: Double, longitude: Double) {
         nearbyStations = StationCoordinates.nearby(stations, latitude, longitude).take(8)
+    }
+
+    fun selectStationBoardStation(station: Station) {
+        val canonical = canonicalStation(station)
+        if (stationBoardStation?.id == canonical.id) return
+        stationBoardRequestId += 1
+        stationBoardStation = canonical
+        stationBoard = null
+        stationBoardRefreshState = RefreshState.IDLE
+        stationBoardMessage = null
+    }
+
+    fun loadStationBoard(
+        station: Station = stationBoardStation ?: return,
+        kind: BoardKind = stationBoardKind
+    ) {
+        val canonical = canonicalStation(station)
+        stationBoardStation = canonical
+        stationBoardKind = kind
+        stationBoardRefreshState = RefreshState.LOADING
+        stationBoardMessage = null
+        val requestId = ++stationBoardRequestId
+
+        viewModelScope.launch {
+            when (val result = stationBoardService.load(canonical, kind)) {
+                is StationBoardAggregateResult.Success -> {
+                    if (requestId != stationBoardRequestId) return@launch
+                    stationBoard = result.board
+                    stationBoardRefreshState = RefreshState.SUCCESS
+                    stationBoardMessage = buildString {
+                        append(result.board.providerNames.joinToString(" · "))
+                        if (result.board.warnings.isNotEmpty()) {
+                            if (isNotEmpty()) append(" · ")
+                            append("Fonti in conflitto: selezione per autorità del singolo campo.")
+                        }
+                    }.takeIf(String::isNotBlank)
+                }
+                is StationBoardAggregateResult.Unavailable -> {
+                    if (requestId != stationBoardRequestId) return@launch
+                    stationBoard = null
+                    stationBoardRefreshState = RefreshState.ERROR
+                    stationBoardMessage = result.message
+                }
+            }
+        }
+    }
+
+    fun openStationBoard(station: Station, kind: BoardKind = BoardKind.DEPARTURES) {
+        selectStationBoardStation(station)
+        loadStationBoard(station, kind)
     }
 
     fun isStationMonitored(station: Station): Boolean = stationMonitors.any { it.stationId == station.id }
