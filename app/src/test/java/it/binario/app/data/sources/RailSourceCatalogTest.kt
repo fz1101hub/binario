@@ -34,6 +34,7 @@ class RailSourceCatalogTest {
         val lombardia = requireNotNull(RailSourceCatalog.byId(SourceId("lombardia-trenord-gtfs")))
         val toscana = requireNotNull(RailSourceCatalog.byId(SourceId("toscana-trenitalia-gtfs")))
         val tft = requireNotNull(RailSourceCatalog.byId(SourceId("toscana-tft-gtfs")))
+        val rfiProgrammed = requireNotNull(RailSourceCatalog.byId(SourceId("rfi-programmed")))
         val rfiRss = requireNotNull(RailSourceCatalog.byId(SourceId("rfi-infomobility-rss")))
         val gtt = requireNotNull(RailSourceCatalog.byId(SourceId("gtt-gtfs")))
 
@@ -41,6 +42,8 @@ class RailSourceCatalogTest {
         assertEquals(SourceReadiness.READY_FOR_GTFS_PACK, lombardia.readiness)
         assertEquals(SourceReadiness.READY_FOR_GTFS_PACK, toscana.readiness)
         assertEquals(SourceReadiness.READY_FOR_GTFS_PACK, tft.readiness)
+        assertEquals(SourceReadiness.READY_FOR_PROTOCOL_TEST, rfiProgrammed.readiness)
+        assertTrue(ProviderCapability.STATION_BOARD in rfiProgrammed.capabilities)
         assertEquals(SourceReadiness.READY_FOR_PROTOCOL_TEST, rfiRss.readiness)
         assertEquals(SourceReadiness.AGREEMENT_REQUIRED, gtt.readiness)
 
