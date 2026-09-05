@@ -66,7 +66,7 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
     private val mobilityPreferencesStore = MobilityPreferencesStore(application)
     private val customStationStore = CustomStationStore(application)
     private val dataSource: TrainDataSource = BinarioDataGraph.routeDataSource(application)
-    private val stationBoardService = StationBoardAggregateService(BinarioDataGraph.stationBoardProviders())
+    private val stationBoardService = StationBoardAggregateService(BinarioDataGraph.stationBoardDisplayProviders())
     private val curatedStationCatalog = EmbeddedCuratedRailStationCatalog(
         openAsset = { assetPath -> application.assets.open(assetPath) }
     )
