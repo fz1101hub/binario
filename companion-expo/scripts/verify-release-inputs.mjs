@@ -34,6 +34,14 @@ if (!releaseBlock) {
   fail("release build must never use signingConfigs.debug.");
 }
 
+const wearGradle = read("android/wear/build.gradle");
+const wearReleaseBlock = block(wearGradle, "release {");
+if (!wearReleaseBlock) {
+  fail("Wear release buildType is missing.");
+} else if (/signingConfig\s+signingConfigs\.debug/.test(wearReleaseBlock)) {
+  fail("Wear release build must never use signingConfigs.debug.");
+}
+
 const mainManifest = read("android/app/src/main/AndroidManifest.xml");
 for (const permission of [
   "android.permission.READ_EXTERNAL_STORAGE",
@@ -54,6 +62,14 @@ if (!/android:usesCleartextTraffic="false"/.test(mainManifest)) {
 const debugManifest = read("android/app/src/debug/AndroidManifest.xml");
 if (!/android:usesCleartextTraffic="true"/.test(debugManifest)) {
   fail("debug cleartext override is expected to remain isolated in the debug manifest.");
+}
+
+const wearManifest = read("android/wear/src/main/AndroidManifest.xml");
+if (!/android:allowBackup="false"/.test(wearManifest)) {
+  fail("Wear production manifest must disable Android backup.");
+}
+if (!/android:usesCleartextTraffic="false"/.test(wearManifest)) {
+  fail("Wear production manifest must disable cleartext traffic.");
 }
 
 const bridge = read("android/app/src/main/java/im/binario/companion/binario/BinarioWidgetBridge.kt");
