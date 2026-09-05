@@ -2,8 +2,6 @@ package it.binario.app.data.repository
 
 import it.binario.app.data.Station
 import it.binario.app.data.core.BoardKind
-import it.binario.app.data.core.OperatorId
-import it.binario.app.data.core.SourceId
 import it.binario.app.data.core.SourceRef
 import it.binario.app.data.core.StationBoard
 import it.binario.app.data.core.StationBoardEntry
@@ -18,8 +16,6 @@ import it.binario.app.data.sources.RailSourceSelectionPolicy
 import java.time.Clock
 import java.time.Duration
 import java.time.Instant
-import java.time.ZoneId
-import java.time.ZonedDateTime
 import java.util.Locale
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -36,7 +32,6 @@ import kotlinx.coroutines.coroutineScope
 class StationBoardAggregateService(
     private val providers: List<StationBoardProvider>,
     private val clock: Clock = Clock.systemUTC(),
-    private val zone: ZoneId = ZoneId.of("Europe/Rome"),
     private val window: Duration = Duration.ofHours(6),
     private val identityTolerance: Duration = Duration.ofMinutes(5),
     private val conflictTolerance: Duration = Duration.ofMinutes(5)
@@ -92,7 +87,11 @@ class StationBoardAggregateService(
         val boards = attempts.filterIsInstance<ProviderAttempt.Board>()
         if (boards.isEmpty()) {
             val details = attempts.filterIsInstance<ProviderAttempt.Failure>()
-                .map { it.message.trim() }
+                .map { attempt ->
+                    listOf(attempt.providerName, attempt.message.trim())
+                        .filter { it.isNotBlank() }
+                        .joinToString(": ")
+                }
                 .filter { it.isNotBlank() }
                 .distinct()
                 .take(2)
