@@ -42,6 +42,7 @@ class ProviderRegistryTest {
         assertEquals(BuildConfig.PERSONAL_REALTIME_SOURCES, registry.isEnabled(SourceId("viaggiatreno")))
         assertEquals(BuildConfig.PERSONAL_REALTIME_SOURCES, registry.isEnabled(SourceId("rfi-station-board")))
         assertEquals(BuildConfig.PERSONAL_REALTIME_SOURCES, registry.isEnabled(SourceId("italo-status")))
+        assertTrue(registry.isEnabled(SourceId("rfi-programmed")))
         assertTrue(registry.isEnabled(SourceId("rfi-infomobility-rss")))
         assertTrue(registry.isEnabled(SourceId("alto-adige-sta-realtime")))
         assertTrue(registry.isEnabled(SourceId("sncf-gtfs")))
