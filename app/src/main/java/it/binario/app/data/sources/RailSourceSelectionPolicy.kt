@@ -56,6 +56,7 @@ object RailSourceSelectionPolicy {
         pref("european-sleeper-gtfs-rt", RailInformationCategory.TRAIN_REALTIME, 60, "Fallback community a bassa priorità; non deve sostituire RFI o un feed ufficiale."),
 
         pref("rfi-station-board", RailInformationCategory.STATION_BOARD, 150, "Fonte infrastrutturale primaria per arrivi/partenze e binari sulle stazioni RFI."),
+        pref("rfi-programmed", RailInformationCategory.STATION_BOARD, 142, "Quadro orario programmato ufficiale RFI: baseline di stazione, senza attribuire stato o binario realtime."),
         pref("db-ris-boards", RailInformationCategory.STATION_BOARD, 148, "RIS::Boards ufficiale DB per tabelloni con previsione, binario, fermate saltate/aggiunte e sostitutivi."),
         pref("db-timetables", RailInformationCategory.STATION_BOARD, 135, "Timetables API DB per stazioni servite nel perimetro disponibile."),
         pref("italo-status", RailInformationCategory.STATION_BOARD, 128, "Fonte operatore complementare per Italo."),
