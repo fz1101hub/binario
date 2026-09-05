@@ -103,10 +103,15 @@ import it.binario.app.data.StopRouteChange
 import it.binario.app.data.TrainService
 import it.binario.app.data.TrainStop
 import it.binario.app.data.accessibleUpdateTime
+import it.binario.app.data.core.BoardKind
 import it.binario.app.data.core.OperationalRouteChange
+import it.binario.app.data.core.RunStatus
+import it.binario.app.data.core.StationBoardEntry
 import it.binario.app.data.core.RouteChangeKind
 import java.time.LocalDate
 import java.time.LocalTime
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 private enum class Screen { PLANNER, OPERATIONS, SETTINGS, RESULTS, DETAIL }
@@ -282,7 +287,8 @@ private fun BinarioApp(
                 viewModel = viewModel,
                 showResults = { screen = Screen.RESULTS },
                 openMore = { screen = Screen.SETTINGS },
-                openStations = {
+                openStations = { station ->
+                    station?.let(viewModel::openStationBoard)
                     operationsSectionName = OperationsSection.STATIONS.name
                     screen = Screen.OPERATIONS
                 }
@@ -499,7 +505,7 @@ private fun PlannerScreen(
     viewModel: TrainViewModel,
     showResults: () -> Unit,
     openMore: () -> Unit,
-    openStations: () -> Unit
+    openStations: (Station?) -> Unit
 ) {
     var originText by rememberSaveable { mutableStateOf(viewModel.plannerOriginText()) }
     var destinationText by rememberSaveable { mutableStateOf(viewModel.plannerDestinationText()) }
@@ -813,7 +819,11 @@ private fun PlannerScreen(
                             speechMessage?.let { message -> Text(message, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                             Text("TABELLONE STAZIONE", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
                             StationField("Stazione", stationText, { stationText = it }, viewModel.searchStations(stationText), { stationText = it.name })
-                            Button(onClick = openStations, enabled = viewModel.stationFromName(stationText) != null, modifier = Modifier.fillMaxWidth()) {
+                            Button(
+                                onClick = { openStations(viewModel.stationFromName(stationText)) },
+                                enabled = viewModel.stationFromName(stationText) != null,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
                                 Icon(Icons.Default.Route, contentDescription = null)
                                 Spacer(Modifier.width(8.dp))
                                 Text("Apri tabellone")
@@ -934,10 +944,13 @@ private fun RouteResultsScreen(modifier: Modifier, viewModel: TrainViewModel, op
 
 @Composable
 private fun StationBoardScreen(modifier: Modifier, viewModel: TrainViewModel) {
-    var stationText by rememberSaveable { mutableStateOf("") }
+    var stationText by rememberSaveable(viewModel.stationBoardStation?.id) {
+        mutableStateOf(viewModel.stationBoardStation?.name.orEmpty())
+    }
     var locationMessage by rememberSaveable { mutableStateOf<String?>(null) }
     var monitorMode by rememberSaveable { mutableStateOf(StationMonitorMode.BOTH.name) }
     val context = LocalContext.current
+
     fun locateNearbyStations() {
         requestNearbyStationLocation(context) { location ->
             if (location == null) {
@@ -948,27 +961,74 @@ private fun StationBoardScreen(modifier: Modifier, viewModel: TrainViewModel) {
             }
         }
     }
+
     val locationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         if (granted) locateNearbyStations()
         else locationMessage = "Permesso posizione non concesso. Puoi continuare a cercare manualmente le stazioni."
     }
+
     val selectedStation = viewModel.stationFromName(stationText)
-    LazyColumn(modifier = modifier.fillMaxSize()) {
+    val board = viewModel.stationBoard
+
+    LazyColumn(
+        modifier = modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(0.dp)
+    ) {
         item {
             Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text("Tabellone stazione", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                StationField("Stazione", stationText, { stationText = it }, viewModel.searchStations(stationText), { stationText = it.name })
+                StationField(
+                    "Stazione",
+                    stationText,
+                    { stationText = it },
+                    viewModel.searchStations(stationText),
+                    {
+                        stationText = it.name
+                        viewModel.selectStationBoardStation(it)
+                    }
+                )
+
                 selectedStation?.let { station ->
                     StationPreferenceRow(
                         station = station,
                         favourite = viewModel.isStationFavourite(station),
-                        onSelect = { stationText = station.name },
+                        onSelect = {
+                            stationText = station.name
+                            viewModel.selectStationBoardStation(station)
+                        },
                         onToggleFavourite = { viewModel.toggleStationFavourite(station) }
                     )
+
+                    Text("TABELLONE", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        items(BoardKind.entries) { kind ->
+                            FilterChip(
+                                selected = viewModel.stationBoardKind == kind,
+                                onClick = { viewModel.loadStationBoard(station, kind) },
+                                enabled = viewModel.hasStationBoardProviders,
+                                label = { Text(if (kind == BoardKind.DEPARTURES) "Partenze" else "Arrivi") }
+                            )
+                        }
+                    }
+                    Button(
+                        onClick = { viewModel.loadStationBoard(station, viewModel.stationBoardKind) },
+                        enabled = viewModel.hasStationBoardProviders &&
+                            viewModel.stationBoardRefreshState != RefreshState.LOADING,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Default.Refresh, contentDescription = null)
+                        Spacer(Modifier.width(8.dp))
+                        Text(if (board == null) "Carica tabellone" else "Aggiorna tabellone")
+                    }
+
                     Text("Monitoraggio locale", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         items(StationMonitorMode.entries) { mode ->
-                            FilterChip(selected = monitorMode == mode.name, onClick = { monitorMode = mode.name }, label = { Text(mode.label) })
+                            FilterChip(
+                                selected = monitorMode == mode.name,
+                                onClick = { monitorMode = mode.name },
+                                label = { Text(mode.label) }
+                            )
                         }
                     }
                     OutlinedButton(
@@ -978,48 +1038,225 @@ private fun StationBoardScreen(modifier: Modifier, viewModel: TrainViewModel) {
                         Text(if (viewModel.isStationMonitored(station)) "Rimuovi monitoraggio stazione" else "Monitora questa stazione")
                     }
                 }
+
                 OutlinedButton(
                     onClick = {
                         if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) locateNearbyStations()
                         else locationPermission.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
                     },
-                    modifier = Modifier.fillMaxWidth().semantics { contentDescription = "Trova le stazioni vicine. La posizione viene usata una sola volta e non viene salvata." }
+                    modifier = Modifier.fillMaxWidth().semantics {
+                        contentDescription = "Trova le stazioni vicine. La posizione viene usata una sola volta e non viene salvata."
+                    }
                 ) {
                     Icon(Icons.Default.Route, contentDescription = null)
                     Spacer(Modifier.width(8.dp))
                     Text("Trova stazioni vicine")
                 }
+
                 locationMessage?.let { message ->
                     Text(message, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                if (viewModel.favouriteStations.isNotEmpty()) {
-                    Text("Stazioni preferite", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    viewModel.favouriteStations.forEach { station ->
-                        StationPreferenceRow(
-                            station = station,
-                            favourite = true,
-                            onSelect = { stationText = station.name },
-                            onToggleFavourite = { viewModel.toggleStationFavourite(station) }
+            }
+        }
+
+        if (!viewModel.hasStationBoardProviders) {
+            item {
+                SearchInfoState(
+                    "Tabellone live non attivo",
+                    "Questa build non abilita automaticamente fonti tabellone best-effort. Attivale esplicitamente in una build personale oppure usa un provider autorizzato; Binario non genera partenze artificiali."
+                )
+            }
+        } else {
+            when {
+                viewModel.stationBoardRefreshState == RefreshState.LOADING && board == null -> item {
+                    SearchInfoState("Caricamento tabellone", "Sto interrogando le fonti abilitate e riconciliando le informazioni per singolo campo.")
+                }
+                viewModel.stationBoardRefreshState == RefreshState.ERROR && board == null -> item {
+                    SearchInfoState(
+                        "Tabellone non disponibile",
+                        viewModel.stationBoardMessage ?: "Le fonti abilitate non hanno restituito dati utilizzabili."
+                    )
+                }
+                board != null && board.entries.isEmpty() -> item {
+                    SearchInfoState(
+                        "Nessun movimento nella finestra",
+                        viewModel.stationBoardMessage ?: "Le fonti abilitate non hanno restituito partenze o arrivi nella finestra richiesta."
+                    )
+                }
+                board != null -> {
+                    item {
+                        Column(
+                            Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Text(
+                                if (board.kind == BoardKind.DEPARTURES) "PARTENZE" else "ARRIVI",
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                board.providerNames.joinToString(" · "),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            viewModel.stationBoardMessage?.let { message ->
+                                Text(
+                                    message,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                    items(
+                        board.entries.take(60),
+                        key = { entry ->
+                            listOf(
+                                entry.runId.value,
+                                entry.scheduledTime.toInstant().toEpochMilli().toString(),
+                                entry.destinationOrOrigin.value
+                            ).joinToString("|")
+                        }
+                    ) { entry ->
+                        StationBoardEntryRow(entry, board.kind)
+                        HorizontalDivider(
+                            modifier = Modifier.padding(start = 20.dp),
+                            color = MaterialTheme.colorScheme.outlineVariant
                         )
                     }
                 }
-                if (viewModel.nearbyStations.isNotEmpty()) {
-                    Text("Stazioni più vicine", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    viewModel.nearbyStations.forEach { nearby ->
-                        StationPreferenceRow(
-                            station = nearby.station,
-                            favourite = viewModel.isStationFavourite(nearby.station),
-                            distanceLabel = String.format(Locale.ITALIAN, "%.1f km", nearby.distanceKm),
-                            onSelect = { stationText = nearby.station.name },
-                            onToggleFavourite = { viewModel.toggleStationFavourite(nearby.station) }
-                        )
-                    }
-                }
-                SearchInfoState("Dati non disponibili in tempo reale", "Il tabellone sarà mostrato qui solo quando Binario dispone di una fonte ferroviaria autorizzata. Nel frattempo puoi pianificare una tratta o cercare un numero treno.")
+            }
+        }
+
+        if (viewModel.favouriteStations.isNotEmpty()) {
+            item {
+                Text(
+                    "Stazioni preferite",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp)
+                )
+            }
+            items(viewModel.favouriteStations, key = { "fav-${it.id}" }) { station ->
+                StationPreferenceRow(
+                    station = station,
+                    favourite = true,
+                    onSelect = {
+                        stationText = station.name
+                        viewModel.selectStationBoardStation(station)
+                    },
+                    onToggleFavourite = { viewModel.toggleStationFavourite(station) }
+                )
+            }
+        }
+
+        if (viewModel.nearbyStations.isNotEmpty()) {
+            item {
+                Text(
+                    "Stazioni più vicine",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp)
+                )
+            }
+            items(viewModel.nearbyStations, key = { "near-${it.station.id}" }) { nearby ->
+                StationPreferenceRow(
+                    station = nearby.station,
+                    favourite = viewModel.isStationFavourite(nearby.station),
+                    distanceLabel = String.format(Locale.ITALIAN, "%.1f km", nearby.distanceKm),
+                    onSelect = {
+                        stationText = nearby.station.name
+                        viewModel.selectStationBoardStation(nearby.station)
+                    },
+                    onToggleFavourite = { viewModel.toggleStationFavourite(nearby.station) }
+                )
             }
         }
     }
 }
+
+@Composable
+private fun StationBoardEntryRow(entry: StationBoardEntry, kind: BoardKind) {
+    val scheduled = entry.scheduledTime.withZoneSameInstant(BOARD_ZONE)
+    val expected = entry.expectedTime?.value?.withZoneSameInstant(BOARD_ZONE)
+    val effective = expected ?: scheduled
+    val delayedMinutes = expected?.let {
+        java.time.Duration.between(scheduled, it).toMinutes().coerceAtLeast(0)
+    } ?: 0L
+    val endpoint = entry.destinationOrOriginLabel?.takeIf(String::isNotBlank)
+        ?: entry.destinationOrOrigin.value
+    val platform = entry.platform?.value?.takeIf(String::isNotBlank)
+
+    Row(
+        Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.Top,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Column(horizontalAlignment = Alignment.Start) {
+            Text(effective.format(BOARD_TIME_FORMATTER), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            if (expected != null && expected.toInstant() != scheduled.toInstant()) {
+                Text(
+                    "prog. ${scheduled.format(BOARD_TIME_FORMATTER)}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(
+                if (kind == BoardKind.DEPARTURES) "Per $endpoint" else "Da $endpoint",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                listOfNotNull(
+                    entry.publicNumber?.takeIf(String::isNotBlank)?.let { "Treno $it" },
+                    entry.operatorId?.value?.takeIf(String::isNotBlank),
+                    entry.status?.value?.stationBoardLabel()
+                ).joinToString(" · "),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            if (delayedMinutes > 0) {
+                Text("+$delayedMinutes min", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.error)
+            }
+            entry.routeChange?.value?.let { change ->
+                Text(
+                    "Variazione: ${change.summary}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
+        }
+        platform?.let {
+            Surface(
+                shape = RoundedCornerShape(10.dp),
+                color = MaterialTheme.colorScheme.secondaryContainer,
+                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+            ) {
+                Text("Bin. $it", modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp), fontWeight = FontWeight.Bold)
+            }
+        }
+    }
+}
+
+private fun RunStatus.stationBoardLabel(): String = when (this) {
+    RunStatus.SCHEDULED -> "Programmato"
+    RunStatus.ON_TIME -> "In orario"
+    RunStatus.DELAYED -> "In ritardo"
+    RunStatus.CANCELLED -> "Soppresso"
+    RunStatus.PARTIALLY_CANCELLED -> "Parzialmente soppresso"
+    RunStatus.DIVERTED -> "Deviato"
+    RunStatus.ADDED -> "Corsa aggiunta"
+    RunStatus.REPLACED_BY_BUS -> "Sostituito da bus"
+    RunStatus.COMPLETED -> "Completato"
+    RunStatus.UNKNOWN -> "Stato non disponibile"
+}
+
+private val BOARD_ZONE: ZoneId = ZoneId.of("Europe/Rome")
+private val BOARD_TIME_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm", Locale.ITALIAN)
 
 private fun requestNearbyStationLocation(context: android.content.Context, onResult: (Location?) -> Unit) {
     if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
