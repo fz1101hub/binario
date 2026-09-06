@@ -8,8 +8,10 @@ const path = require("node:path");
  * The companion watch surface is intentionally non-standalone: realtime and
  * voice hand-off depend on the paired phone. This hardening pass also keeps
  * dynamically registered app-local receivers non-exported on every supported
- * Android release. Keeping both invariants in a config plugin makes Expo
- * prebuild deterministic instead of patching generated Android output by hand.
+ * Android release and relies on the Android Gradle Plugin's standard debug
+ * signing instead of a repository-local keystore. Keeping these invariants in
+ * a config plugin makes Expo prebuild deterministic instead of patching
+ * generated Android output by hand.
  */
 module.exports = function withBinarioWearManifest(config) {
   return withDangerousMod(config, ["android", async (next) => {
@@ -37,6 +39,33 @@ module.exports = function withBinarioWearManifest(config) {
       manifest = manifest.replace(applicationTag, `$1\n${metadata}`);
     }
     fs.writeFileSync(manifestPath, manifest);
+
+    const buildGradlePath = path.join(wearRoot, "build.gradle");
+    if (!fs.existsSync(buildGradlePath)) {
+      throw new Error("Binario Wear build.gradle was not generated before signing hardening.");
+    }
+
+    let buildGradle = fs.readFileSync(buildGradlePath, "utf8");
+    const generatedSigning = `  signingConfigs {\n    debug {\n      storeFile rootProject.file("app/debug.keystore")\n      storePassword "android"\n      keyAlias "androiddebugkey"\n      keyPassword "android"\n    }\n  }\n`;
+    const generatedDebugBuildType = `    debug {\n      signingConfig signingConfigs.debug\n    }\n`;
+    const signingComment = "  // Use AGP's standard debug signing; CI must not depend on a repository-local keystore.\n";
+
+    if (buildGradle.includes(generatedSigning)) {
+      buildGradle = buildGradle.replace(generatedSigning, signingComment);
+    } else if (buildGradle.includes('rootProject.file("app/debug.keystore")')) {
+      throw new Error("Binario Wear debug signing no longer matches the expected generated Gradle block.");
+    }
+
+    if (buildGradle.includes(generatedDebugBuildType)) {
+      buildGradle = buildGradle.replace(generatedDebugBuildType, "");
+    } else if (buildGradle.includes("signingConfig signingConfigs.debug")) {
+      throw new Error("Binario Wear debug build type signing no longer matches the expected generated Gradle block.");
+    }
+
+    if (buildGradle.includes('rootProject.file("app/debug.keystore")') || buildGradle.includes("signingConfig signingConfigs.debug")) {
+      throw new Error("Binario Wear still depends on a repository-local debug keystore after hardening.");
+    }
+    fs.writeFileSync(buildGradlePath, buildGradle);
 
     const voiceActivityPath = path.join(
       wearRoot,
