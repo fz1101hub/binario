@@ -11,18 +11,8 @@ android {
     versionCode 1
     versionName "0.1.0"
   }
-  signingConfigs {
-    debug {
-      storeFile rootProject.file("app/debug.keystore")
-      storePassword "android"
-      keyAlias "androiddebugkey"
-      keyPassword "android"
-    }
-  }
+  // Use AGP's standard debug signing; CI must not depend on a repository-local keystore.
   buildTypes {
-    debug {
-      signingConfig signingConfigs.debug
-    }
     release {
       // Production signing is supplied only by the release environment.
     }
