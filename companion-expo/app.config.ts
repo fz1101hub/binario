@@ -19,6 +19,7 @@ const config: ExpoConfig = {
     "@react-native-community/datetimepicker",
     ["expo-location", { locationWhenInUsePermission: "Binario usa la posizione solo quando scegli di cercare la stazione più vicina." }],
     "./plugins/with-binario-android-widget.cjs",
+    "./plugins/with-binario-wear-manifest.cjs",
     "./plugins/with-binario-ios-local-surfaces.cjs",
   ],
   extra: {
