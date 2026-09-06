@@ -13,6 +13,7 @@ import androidx.lifecycle.viewModelScope
 import it.binario.app.data.DataConfidence
 import it.binario.app.data.DataResult
 import it.binario.app.data.Direction
+import it.binario.app.data.Freshness
 import it.binario.app.data.JourneyQuery
 import it.binario.app.data.RouteSnapshot
 import it.binario.app.data.RouteSnapshotCache
@@ -115,6 +116,7 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
     var selectedService by mutableStateOf<TrainService?>(null)
         private set
     private var selectedServiceDirection: Direction? = null
+    private var selectedServiceSnapshot: RouteSnapshot? = null
     var operatorFilter by mutableStateOf<String?>(null)
         private set
     var journeyChangeFilter by mutableStateOf(JourneyChangeFilter.ANY)
@@ -305,8 +307,7 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
         clearReturnJourneyState()
         activeRoute = route
         routeStore.saveActiveRoute(route.id)
-        selectedService = null
-        selectedServiceDirection = null
+        clearSelectedService()
         snapshot = null
         operatorFilter = null
         refresh()
@@ -339,8 +340,7 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
         journeyQuery = JourneyQuery(serviceDate, departureTime)
         routeStore.saveDirection(direction)
         recentRoutes = routeStore.recordRecent(rememberedOrigin, rememberedDestination, stations)
-        selectedService = null
-        selectedServiceDirection = null
+        clearSelectedService()
         snapshot = null
         operatorFilter = null
         trainNumberQuery = ""
@@ -372,8 +372,7 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
         clearReturnJourneyState()
         direction = if (direction == Direction.OUTBOUND) Direction.RETURN else Direction.OUTBOUND
         routeStore.saveDirection(direction)
-        selectedService = null
-        selectedServiceDirection = null
+        clearSelectedService()
         snapshot = null
         operatorFilter = null
         refresh()
@@ -432,8 +431,7 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
         routeStore.saveActiveRoute(route.id)
         direction = Direction.OUTBOUND
         routeStore.saveDirection(direction)
-        selectedService = null
-        selectedServiceDirection = null
+        clearSelectedService()
         snapshot = null
         operatorFilter = null
         refresh()
@@ -466,8 +464,7 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
             clearReturnJourneyState()
             activeRoute = savedRoutes.firstOrNull() ?: unconfiguredRoute()
             if (hasActiveRoute) routeStore.saveActiveRoute(activeRoute.id) else routeStore.clearActiveRoute()
-            selectedService = null
-            selectedServiceDirection = null
+            clearSelectedService()
             snapshot = null
             operatorFilter = null
             if (hasActiveRoute) refresh() else {
@@ -514,7 +511,11 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
                     RouteWidgetProvider.markMatchingRoutesUnavailable(getApplication(), result.message)
                     RouteWidgetProvider.refreshAll(getApplication())
                     if (integrationSettings.wearSnapshotSharingEnabled) {
-                        WearSnapshotPublisher.publishUnavailable(getApplication(), routeAtRequest.displayName(directionAtRequest), currentProviderLabel())
+                        WearSnapshotPublisher.publishUnavailable(
+                            getApplication(),
+                            routeAtRequest.displayName(directionAtRequest),
+                            snapshot?.providerName ?: cache.lastProvider()
+                        )
                     }
                     refreshState = RefreshState.ERROR
                     refreshMessage = result.message
@@ -522,6 +523,14 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
         if (returnJourneyQuery != null) refreshReturn()
+    }
+
+    fun refreshSelectedService() {
+        if (selectedServiceDirection == Direction.RETURN && returnJourneyQuery != null) {
+            refreshReturn()
+        } else {
+            refresh()
+        }
     }
 
     private fun refreshReturn() {
@@ -559,14 +568,17 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun clearReturnJourneyState() {
         returnRefreshRequestId += 1
-        if (selectedServiceDirection == Direction.RETURN) {
-            selectedService = null
-            selectedServiceDirection = null
-        }
+        if (selectedServiceDirection == Direction.RETURN) clearSelectedService()
         returnJourneyQuery = null
         returnSnapshot = null
         returnRefreshState = RefreshState.IDLE
         returnRefreshMessage = null
+    }
+
+    private fun clearSelectedService() {
+        selectedService = null
+        selectedServiceDirection = null
+        selectedServiceSnapshot = null
     }
 
     private fun retainAvailableOperatorFilter() {
@@ -580,28 +592,24 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
     private fun reconcileSelectedService(updated: RouteSnapshot, updatedDirection: Direction) {
         val selected = selectedService ?: return
         if (selectedServiceDirection != updatedDirection) return
-        selectedService = updated.services.firstOrNull { it.id == selected.id }
-            ?: updated.services.firstOrNull {
-                it.number.equals(selected.number, ignoreCase = true) &&
-                    it.scheduledDeparture == selected.scheduledDeparture &&
-                    it.origin == selected.origin &&
-                    it.destination == selected.destination
-            }
-            ?: selected
+        findRefreshedService(selected, updated.services)?.let { refreshed ->
+            selectedService = refreshed
+            selectedServiceSnapshot = updated
+        }
     }
 
-    fun openService(service: TrainService) {
-        selectedServiceDirection = if (returnSnapshot?.services.orEmpty().any { it === service }) {
-            Direction.RETURN
-        } else {
-            direction
-        }
+    fun openService(service: TrainService, serviceDirection: Direction = direction) {
+        selectedServiceDirection = serviceDirection
         selectedService = service
+        selectedServiceSnapshot = if (serviceDirection == Direction.RETURN && returnJourneyQuery != null) {
+            returnSnapshot
+        } else {
+            snapshot
+        }
     }
 
     fun closeService() {
-        selectedService = null
-        selectedServiceDirection = null
+        clearSelectedService()
     }
 
     fun currentServices(): List<TrainService> = filteredServices(snapshot)
@@ -702,8 +710,7 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
             val backup = result.backup
             savedRoutes = pinnedFirst(routeStore.replaceRoutes(backup.routes))
             activeRoute = savedRoutes.firstOrNull() ?: unconfiguredRoute()
-            selectedService = null
-            selectedServiceDirection = null
+            clearSelectedService()
             snapshot = null
             operatorFilter = null
             if (hasActiveRoute) routeStore.saveActiveRoute(activeRoute.id) else routeStore.clearActiveRoute()
@@ -762,11 +769,7 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
         appleWatchSetupRequested = integrationSettings.appleWatchSetupRequested
     )
 
-    private fun displaySnapshot(): RouteSnapshot? = when (selectedServiceDirection) {
-        Direction.RETURN -> returnSnapshot
-        Direction.OUTBOUND -> snapshot
-        null -> snapshot
-    }
+    private fun displaySnapshot(): RouteSnapshot? = selectedServiceSnapshot ?: snapshot
 
     fun currentProviderLabel(): String = displaySnapshot()?.providerName ?: cache.lastProvider()
 
@@ -774,6 +777,8 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
         val quality = latest.qualityScore?.let { score -> "${latest.qualityBand.accessibleLabel} · $score/100" }
         listOfNotNull(quality, latest.confidence.accessibleLabel).joinToString(" · ")
     } ?: cache.lastConfidence()
+
+    fun currentFreshness(): Freshness? = displaySnapshot()?.freshness
 
     fun isDemonstrationData(): Boolean = displaySnapshot()?.confidence == DataConfidence.DEMONSTRATION
 
@@ -812,6 +817,15 @@ internal fun publishedOperatorNames(services: List<TrainService>): List<String> 
         .distinctBy { it.lowercase(Locale.ROOT) }
         .sortedWith(String.CASE_INSENSITIVE_ORDER)
         .toList()
+
+internal fun findRefreshedService(selected: TrainService, services: List<TrainService>): TrainService? =
+    services.firstOrNull { it.id == selected.id }
+        ?: services.firstOrNull {
+            it.number.equals(selected.number, ignoreCase = true) &&
+                it.scheduledDeparture == selected.scheduledDeparture &&
+                it.origin == selected.origin &&
+                it.destination == selected.destination
+        }
 
 private fun pinnedFirst(routes: List<SavedRoute>): List<SavedRoute> = SavedRouteOrdering.ordered(routes)
 
