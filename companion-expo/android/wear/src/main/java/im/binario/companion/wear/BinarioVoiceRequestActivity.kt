@@ -5,7 +5,6 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -15,6 +14,7 @@ import android.view.Gravity
 import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
+import androidx.core.content.ContextCompat
 import com.google.android.gms.wearable.Wearable
 import java.util.Locale
 
@@ -39,7 +39,7 @@ class BinarioVoiceRequestActivity : Activity() {
     super.onCreate(savedInstanceState)
     tts = TextToSpeech(this) { status -> if (status == TextToSpeech.SUCCESS) tts?.language = Locale.ITALIAN }
     val filter = IntentFilter(replyAction)
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) registerReceiver(replyReceiver, filter, Context.RECEIVER_NOT_EXPORTED) else @Suppress("DEPRECATION") registerReceiver(replyReceiver, filter)
+    ContextCompat.registerReceiver(this, replyReceiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
     launchSystemVoiceInput()
   }
   private fun launchSystemVoiceInput() {
