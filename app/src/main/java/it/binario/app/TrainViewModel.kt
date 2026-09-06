@@ -101,8 +101,14 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
         private set
     var direction by mutableStateOf(routeStore.direction())
         private set
-    var snapshot by mutableStateOf<RouteSnapshot?>(null)
-        private set
+    private var primarySnapshot by mutableStateOf<RouteSnapshot?>(null)
+    /**
+     * Snapshot visible to the UI. While a service detail is open this is pinned to the
+     * snapshot that produced that service, so freshness/provenance cannot drift to the
+     * other leg of a round trip after an unrelated refresh.
+     */
+    val snapshot: RouteSnapshot?
+        get() = selectedServiceSnapshot ?: primarySnapshot
     var returnSnapshot by mutableStateOf<RouteSnapshot?>(null)
         private set
     var refreshState by mutableStateOf(RefreshState.IDLE)
@@ -308,7 +314,7 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
         activeRoute = route
         routeStore.saveActiveRoute(route.id)
         clearSelectedService()
-        snapshot = null
+        primarySnapshot = null
         operatorFilter = null
         refresh()
     }
@@ -341,7 +347,7 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
         routeStore.saveDirection(direction)
         recentRoutes = routeStore.recordRecent(rememberedOrigin, rememberedDestination, stations)
         clearSelectedService()
-        snapshot = null
+        primarySnapshot = null
         operatorFilter = null
         trainNumberQuery = ""
         refresh()
@@ -373,7 +379,7 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
         direction = if (direction == Direction.OUTBOUND) Direction.RETURN else Direction.OUTBOUND
         routeStore.saveDirection(direction)
         clearSelectedService()
-        snapshot = null
+        primarySnapshot = null
         operatorFilter = null
         refresh()
     }
@@ -392,7 +398,7 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun operatorFilterOptions(): List<String> = publishedOperatorNames(
-        snapshot?.services.orEmpty() + returnSnapshot?.services.orEmpty()
+        primarySnapshot?.services.orEmpty() + returnSnapshot?.services.orEmpty()
     )
 
     fun selectJourneyChangeFilter(filter: JourneyChangeFilter) {
@@ -432,7 +438,7 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
         direction = Direction.OUTBOUND
         routeStore.saveDirection(direction)
         clearSelectedService()
-        snapshot = null
+        primarySnapshot = null
         operatorFilter = null
         refresh()
         return true
@@ -465,11 +471,11 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
             activeRoute = savedRoutes.firstOrNull() ?: unconfiguredRoute()
             if (hasActiveRoute) routeStore.saveActiveRoute(activeRoute.id) else routeStore.clearActiveRoute()
             clearSelectedService()
-            snapshot = null
+            primarySnapshot = null
             operatorFilter = null
             if (hasActiveRoute) refresh() else {
                 refreshRequestId += 1
-                snapshot = null
+                primarySnapshot = null
                 refreshState = RefreshState.IDLE
                 refreshMessage = "Inserisci una tratta per iniziare la consultazione."
             }
@@ -477,9 +483,16 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun refresh() {
+        // A detail opened from the independent return leg must not refresh the primary leg
+        // or emit its cache/widget/Wear side effects. Results/operations have no selected
+        // return service, so their normal refresh still updates both legs when applicable.
+        if (selectedServiceDirection == Direction.RETURN && returnJourneyQuery != null) {
+            refreshReturn()
+            return
+        }
         if (!hasActiveRoute) {
             refreshRequestId += 1
-            snapshot = null
+            primarySnapshot = null
             refreshState = RefreshState.ERROR
             refreshMessage = "Inserisci partenza e arrivo per consultare una tratta."
             return
@@ -495,7 +508,7 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
             if (requestId != refreshRequestId) return@launch
             when (result) {
                 is DataResult.Success -> {
-                    snapshot = result.snapshot
+                    primarySnapshot = result.snapshot
                     reconcileSelectedService(result.snapshot, directionAtRequest)
                     retainAvailableOperatorFilter()
                     cache.save(result.snapshot)
@@ -514,7 +527,7 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
                         WearSnapshotPublisher.publishUnavailable(
                             getApplication(),
                             routeAtRequest.displayName(directionAtRequest),
-                            snapshot?.providerName ?: cache.lastProvider()
+                            primarySnapshot?.providerName ?: cache.lastProvider()
                         )
                     }
                     refreshState = RefreshState.ERROR
@@ -555,7 +568,7 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
                     returnRefreshMessage = result.snapshot.notice
                 }
                 is DataResult.Failure -> {
-                    // Keep the last successful return snapshot, matching the outbound
+                    // Keep the last successful return snapshot, matching the primary-leg
                     // refresh policy. A transient failure must not erase previously
                     // valid data; UI state/message make the failed refresh explicit.
                     retainAvailableOperatorFilter()
@@ -583,7 +596,7 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun retainAvailableOperatorFilter() {
         operatorFilter = operatorFilter?.takeIf { selected ->
-            (snapshot?.services.orEmpty() + returnSnapshot?.services.orEmpty()).any { service ->
+            (primarySnapshot?.services.orEmpty() + returnSnapshot?.services.orEmpty()).any { service ->
                 service.displayOperator.equals(selected, ignoreCase = true)
             }
         }
@@ -598,13 +611,26 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun openService(service: TrainService, serviceDirection: Direction = direction) {
-        selectedServiceDirection = serviceDirection
+    fun openService(service: TrainService, serviceDirection: Direction? = null) {
+        val belongsToReturn = returnSnapshot?.services.orEmpty().any { candidate ->
+            candidate === service || candidate.id == service.id
+        }
+        val belongsToPrimary = primarySnapshot?.services.orEmpty().any { candidate ->
+            candidate === service || candidate.id == service.id
+        }
+        val resolvedDirection = serviceDirection ?: if (
+            returnJourneyQuery != null && belongsToReturn && !belongsToPrimary
+        ) {
+            Direction.RETURN
+        } else {
+            direction
+        }
+        selectedServiceDirection = resolvedDirection
         selectedService = service
-        selectedServiceSnapshot = if (serviceDirection == Direction.RETURN && returnJourneyQuery != null) {
+        selectedServiceSnapshot = if (resolvedDirection == Direction.RETURN && returnJourneyQuery != null) {
             returnSnapshot
         } else {
-            snapshot
+            primarySnapshot
         }
     }
 
@@ -612,7 +638,7 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
         clearSelectedService()
     }
 
-    fun currentServices(): List<TrainService> = filteredServices(snapshot)
+    fun currentServices(): List<TrainService> = filteredServices(primarySnapshot)
 
     fun currentReturnServices(): List<TrainService> = filteredServices(returnSnapshot)
 
@@ -627,10 +653,10 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun homeServices(): List<TrainService> =
-        orderServicesForDisplay(snapshot?.services.orEmpty())
+        orderServicesForDisplay(primarySnapshot?.services.orEmpty())
 
     fun quickServices(): List<TrainService> =
-        orderServicesForDisplay(snapshot?.services.orEmpty()).take(2)
+        orderServicesForDisplay(primarySnapshot?.services.orEmpty()).take(2)
 
     fun currentRouteLabel(): String = activeRoute.displayName(direction)
 
@@ -711,7 +737,7 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
             savedRoutes = pinnedFirst(routeStore.replaceRoutes(backup.routes))
             activeRoute = savedRoutes.firstOrNull() ?: unconfiguredRoute()
             clearSelectedService()
-            snapshot = null
+            primarySnapshot = null
             operatorFilter = null
             if (hasActiveRoute) routeStore.saveActiveRoute(activeRoute.id) else routeStore.clearActiveRoute()
             stationPreferences.replaceFavourites(backup.favouriteStationIds)
@@ -723,7 +749,7 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
             selectWidgetSurface(backup.widgetSurface)
             if (hasActiveRoute) refresh() else {
                 refreshRequestId += 1
-                snapshot = null
+                primarySnapshot = null
                 refreshState = RefreshState.IDLE
                 refreshMessage = "Backup importato senza una tratta salvata. Inseriscine una quando vuoi."
             }
@@ -734,7 +760,7 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
     fun setWearSnapshotSharing(enabled: Boolean) {
         integrationSettings = integrationSettings.copy(wearSnapshotSharingEnabled = enabled)
         integrationStore.save(integrationSettings)
-        if (enabled) snapshot?.let { latest ->
+        if (enabled) primarySnapshot?.let { latest ->
             viewModelScope.launch { WearSnapshotPublisher.publish(getApplication(), latest) }
         }
     }
@@ -769,7 +795,7 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
         appleWatchSetupRequested = integrationSettings.appleWatchSetupRequested
     )
 
-    private fun displaySnapshot(): RouteSnapshot? = selectedServiceSnapshot ?: snapshot
+    private fun displaySnapshot(): RouteSnapshot? = selectedServiceSnapshot ?: primarySnapshot
 
     fun currentProviderLabel(): String = displaySnapshot()?.providerName ?: cache.lastProvider()
 
