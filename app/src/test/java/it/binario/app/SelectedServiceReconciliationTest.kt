@@ -41,7 +41,7 @@ class SelectedServiceReconciliationTest {
     ) = TrainService(
         id = id,
         number = number,
-        operator = RailOperator.TRENITALIA,
+        operator = RailOperator.TRENITALIA_LONG_DISTANCE,
         trainCategory = TrainCategory.OTHER,
         origin = "Roma Termini",
         destination = "Milano Centrale",
