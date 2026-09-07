@@ -4,26 +4,43 @@ import it.binario.app.data.DataConfidence
 import it.binario.app.data.DataResult
 import it.binario.app.data.Direction
 import it.binario.app.data.Freshness
+import it.binario.app.data.JourneyQuery
 import it.binario.app.data.RailOperator
 import it.binario.app.data.RouteSnapshot
 import it.binario.app.data.SavedRoute
 import it.binario.app.data.ServiceStatus
+import it.binario.app.data.Station
 import it.binario.app.data.TrainCategory
 import it.binario.app.data.TrainDataSource
 import it.binario.app.data.TrainService
 import it.binario.app.data.TrainStop
 import it.binario.app.data.formatTime
 import it.binario.app.data.timeToMinutes
+import it.binario.app.data.core.BoardKind
+import it.binario.app.data.core.Confidence
+import it.binario.app.data.core.SourceId
+import it.binario.app.data.core.StationId
+import it.binario.app.data.provider.AccessMode
+import it.binario.app.data.provider.CoverageDescriptor
+import it.binario.app.data.provider.ProviderCapability
+import it.binario.app.data.provider.ProviderDescriptor
+import it.binario.app.data.provider.ProviderError
+import it.binario.app.data.provider.ProviderErrorKind
+import it.binario.app.data.provider.ProviderResponseMeta
+import it.binario.app.data.provider.ProviderResult
+import it.binario.app.data.provider.RatePolicy
+import it.binario.app.data.provider.StationBoardProvider
+import it.binario.app.data.provider.StationBoardRequest
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import org.jsoup.Jsoup
-import org.jsoup.nodes.Element
 import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
 import java.time.Clock
+import java.time.Duration
 import java.util.Locale
 
 fun interface RfiMonitorFetcher {
@@ -39,7 +56,7 @@ internal class HttpRfiMonitorFetcher : RfiMonitorFetcher {
         connection.readTimeout = 20_000
         connection.instanceFollowRedirects = true
         connection.setRequestProperty("Accept", "text/html,application/xhtml+xml")
-        connection.setRequestProperty("User-Agent", "Binario/0.15 (personal rail information client)")
+        connection.setRequestProperty("User-Agent", "Binario/0.20 (personal rail information client)")
         try {
             val status = connection.responseCode
             if (status !in 200..299) throw IOException("RFI ha risposto HTTP $status")
@@ -51,12 +68,14 @@ internal class HttpRfiMonitorFetcher : RfiMonitorFetcher {
 }
 
 /**
- * Mappa degli identificativi pubblici RFI per le stazioni già offerte dalla UI.
- * Le stazioni non incluse non attivano richieste speculative: la UI restituisce
- * un errore chiaro fino a quando l'identificativo è verificato e aggiunto qui.
+ * Mappa degli identificativi pubblici del monitor RFI.
+ *
+ * L'ID interno di Binario non è stabile tra cataloghi importati (per esempio
+ * le stazioni curate usano `curated:*`), quindi il resolver considera anche
+ * nome canonico e alias. Non vengono mai effettuate richieste speculative.
  */
 internal object RfiStationIds {
-    private val byBinarioId = mapOf(
+    private val byLegacyId = mapOf(
         "roma-termini" to 2416,
         "roma-tiburtina" to 2385,
         "roma-ostiense" to 2379,
@@ -82,7 +101,44 @@ internal object RfiStationIds {
         "cagliari" to 787
     )
 
-    fun placeId(stationId: String): Int? = byBinarioId[stationId]
+    private val byName = mapOf(
+        key("Roma Termini") to 2416,
+        key("Roma Tiburtina") to 2385,
+        key("Roma Ostiense") to 2379,
+        key("Roma Trastevere") to 2387,
+        key("Roma San Pietro") to 2383,
+        key("Roma S. Pietro") to 2383,
+        key("Roma Tuscolana") to 2388,
+        key("Fiumicino Aeroporto") to 1327,
+        key("Ciampino") to 1106,
+        key("Civitavecchia") to 1123,
+        key("Frascati") to 1370,
+        key("Velletri") to 3006,
+        key("Orte") to 1959,
+        key("Latina") to 1539,
+        key("Frosinone") to 1377,
+        key("Cassino") to 955,
+        key("Napoli Centrale") to 1888,
+        key("Bologna Centrale") to 683,
+        key("Milano Centrale") to 1728,
+        key("Genova Piazza Principe") to 257,
+        key("Genova P. Principe") to 257,
+        key("Torino Porta Nuova") to 2876,
+        key("Bari Centrale") to 595,
+        key("Palermo Centrale") to 2018,
+        key("Cagliari") to 787
+    )
+
+    fun placeId(stationId: String, stationName: String? = null): Int? =
+        byLegacyId[stationId] ?: stationName?.let { byName[key(it)] }
+
+    fun placeId(station: Station): Int? = byLegacyId[station.id]
+        ?: (listOf(station.name) + station.aliases).firstNotNullOfOrNull { byName[key(it)] }
+
+    private fun key(value: String): String = value
+        .uppercase(Locale.ROOT)
+        .replace("S. ", "SAN ")
+        .replace(Regex("[^A-Z0-9]"), "")
 }
 
 /**
@@ -94,16 +150,79 @@ class RfiStationBoardAdapter(
     private val fetcher: RfiMonitorFetcher = HttpRfiMonitorFetcher(),
     private val clock: Clock = Clock.systemDefaultZone(),
     private val cacheTtlMillis: Long = 45_000L
-) : TrainDataSource {
+) : TrainDataSource, StationBoardProvider {
+    override val descriptor = ProviderDescriptor(
+        id = SourceId("rfi-station-board"),
+        displayName = "RFI — Monitor Arrivi/Partenze",
+        capabilities = setOf(ProviderCapability.STATION_BOARD),
+        coverage = CoverageDescriptor(countryCodes = setOf("IT"), description = "Tabelloni partenze delle stazioni RFI configurate"),
+        accessMode = AccessMode.PUBLIC_BEST_EFFORT,
+        ratePolicy = RatePolicy(Duration.ofSeconds(20), defaultTimeToLive = Duration.ofMillis(cacheTtlMillis)),
+        schemaVersion = 1
+    )
+
     private val mutex = Mutex()
     private val cache = mutableMapOf<String, CachedSnapshot>()
 
+    override suspend fun getStationBoard(request: StationBoardRequest): ProviderResult<it.binario.app.data.core.StationBoard> {
+        if (request.kind != BoardKind.DEPARTURES) {
+            return ProviderResult.Failure(ProviderError(ProviderErrorKind.NOT_SUPPORTED, "RFI: sono supportate solo le partenze."))
+        }
+        val stationName = request.stationName?.takeIf(String::isNotBlank) ?: request.stationId.value
+        val placeId = RfiStationIds.placeId(request.stationId.value, stationName)
+            ?: return ProviderResult.Failure(ProviderError(ProviderErrorKind.NOT_SUPPORTED, "Stazione RFI non configurata."))
+        val fetchedAt = clock.instant()
+        return try {
+            val url = "https://iechub.rfi.it/ArriviPartenze/ArrivalsDepartures/Monitor?placeId=$placeId&arrivals=False"
+            val html = fetcher.fetch(url)
+            val syntheticRoute = SavedRoute(
+                id = "station-board:${request.stationId.value}",
+                name = stationName,
+                outwardOrigin = Station(request.stationId.value, stationName, stationName),
+                outwardDestination = Station("station-board-target", "Destinazione", "")
+            )
+            val services = parseDepartures(html, stationName, "", syntheticRoute, Direction.OUTBOUND)
+            val board = LegacyStationBoardInterop.build(
+                sourceId = descriptor.id,
+                confidence = Confidence.INFRASTRUCTURE_PRIMARY,
+                stationId = request.stationId,
+                kind = request.kind,
+                from = request.from,
+                to = request.to,
+                services = services,
+                fetchedAt = fetchedAt,
+                ttl = descriptor.ratePolicy.defaultTimeToLive
+            )
+            ProviderResult.Success(
+                board,
+                ProviderResponseMeta(
+                    providerId = descriptor.id,
+                    fetchedAt = fetchedAt,
+                    observedAt = fetchedAt,
+                    expiresAt = fetchedAt.plus(descriptor.ratePolicy.defaultTimeToLive)
+                )
+            )
+        } catch (error: IOException) {
+            ProviderResult.Failure(ProviderError(ProviderErrorKind.NETWORK, "Il tabellone RFI non è raggiungibile.", error::class.java.name))
+        } catch (error: Exception) {
+            ProviderResult.Failure(ProviderError(ProviderErrorKind.PARSE_ERROR, "Il tabellone RFI non è leggibile.", error::class.java.name))
+        }
+    }
+
     override suspend fun loadRoute(route: SavedRoute, direction: Direction): DataResult {
+        val now = clock.instant().atZone(clock.zone)
+        return loadRoute(route, direction, JourneyQuery(now.toLocalDate(), now.toLocalTime().withSecond(0).withNano(0)))
+    }
+
+    override suspend fun loadRoute(route: SavedRoute, direction: Direction, query: JourneyQuery): DataResult {
+        if (query.serviceDate != clock.instant().atZone(clock.zone).toLocalDate()) {
+            return DataResult.Failure("Il monitor RFI espone stato operativo corrente: la fonte live viene usata solo per la data odierna.")
+        }
         val origin = route.origin(direction)
         val destination = route.destination(direction)
-        val placeId = RfiStationIds.placeId(origin.id)
+        val placeId = RfiStationIds.placeId(origin)
             ?: return DataResult.Failure("Il tabellone RFI non è ancora configurato per ${origin.name}.")
-        val key = "${origin.id}:${direction.name}"
+        val key = "${origin.id}:${destination.id}:${direction.name}"
         val now = clock.millis()
         mutex.withLock {
             cache[key]?.takeIf { now < it.expiresAtEpochMillis }?.let { return DataResult.Success(it.snapshot) }
@@ -117,23 +236,20 @@ class RfiStationBoardAdapter(
                 return DataResult.Failure("RFI non mostra partenze utilizzabili da ${origin.name} in questo momento.")
             }
             val exactMatches = services.filter { stationMatches(it.destination, destination.name) }
-            val selected = if (exactMatches.isNotEmpty()) exactMatches else services
-            val isFiltered = exactMatches.isNotEmpty()
+            if (exactMatches.isEmpty()) {
+                return DataResult.Failure("RFI non mostra una partenza diretta da ${origin.name} verso ${destination.name} nel tabellone corrente.")
+            }
             val snapshot = RouteSnapshot(
                 route = route,
                 direction = direction,
-                services = selected,
+                services = exactMatches,
                 providerName = "RFI — Monitor Arrivi/Partenze live",
                 retrievedAtEpochMillis = now,
                 expiresAtEpochMillis = now + cacheTtlMillis,
                 freshness = Freshness.FRESH,
                 sourceObservedAtEpochMillis = now,
                 confidence = DataConfidence.INFRASTRUCTURE_PRIMARY,
-                notice = if (isFiltered) {
-                    "Dati live RFI: partenze da ${origin.name} verso ${destination.name}."
-                } else {
-                    "Dati live RFI: tabellone partenze da ${origin.name}; nessuna corrispondenza diretta per ${destination.name} nel monitor corrente."
-                }
+                notice = "Dati live RFI: partenze da ${origin.name} verso ${destination.name}."
             )
             mutex.withLock { cache[key] = CachedSnapshot(snapshot, now + cacheTtlMillis) }
             DataResult.Success(snapshot)
@@ -162,8 +278,13 @@ class RfiStationBoardAdapter(
             val delayText = row.selectFirst("#RRitardo")?.text().orEmpty()
             val delay = parseDelay(delayLabel.ifBlank { delayText })
             val statusText = row.text().uppercase(Locale.ROOT)
+            val cancelled = statusText.contains("SOPPRESS") || statusText.contains("CANCELL")
+            val explicitOnTime = listOf(delayLabel, delayText, statusText).any {
+                it.contains("NESSUNO", ignoreCase = true) || it.contains("IN ORARIO", ignoreCase = true)
+            }
+            val operationalVerified = cancelled || delay > 0 || explicitOnTime
             val status = when {
-                statusText.contains("SOPPRESS") || statusText.contains("CANCELL") -> ServiceStatus.CANCELLED
+                cancelled -> ServiceStatus.CANCELLED
                 delay > 0 -> ServiceStatus.DELAYED
                 else -> ServiceStatus.ON_TIME
             }
@@ -174,6 +295,7 @@ class RfiStationBoardAdapter(
             val category = row.selectFirst("#RCategoria img")?.attr("alt").orEmpty()
             val info = row.selectFirst(".testoinfoaggiuntive")?.text()?.normalizeSpace().orEmpty()
             val expected = if (status == ServiceStatus.CANCELLED) scheduled else addDelay(scheduled, delay)
+            val routeChange = OperationalRouteChangeDetector.detect(info)
             TrainService(
                 id = "rfi:${route.id}:${direction.name}:$number:$scheduled",
                 number = number,
@@ -191,7 +313,10 @@ class RfiStationBoardAdapter(
                     TrainStop(origin, scheduled, expected, platform, delay, completed = false),
                     TrainStop(destination, "—", "—", null, delay, completed = false)
                 ),
-                transferCount = 0
+                transferCount = 0,
+                operationalStatusVerified = operationalVerified,
+                routeChange = routeChange,
+                routeChangeSourceIds = if (routeChange != null) setOf(descriptor.id.value) else emptySet()
             )
         }
     }

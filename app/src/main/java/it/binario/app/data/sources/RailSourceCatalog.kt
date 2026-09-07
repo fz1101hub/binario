@@ -8,6 +8,7 @@ import java.net.URI
 enum class SourceFormat {
     GTFS_ZIP,
     GTFS_REALTIME_PROTOBUF,
+    RSS_XML,
     NETEX,
     SIRI,
     HTML_OR_PDF,
@@ -16,6 +17,8 @@ enum class SourceFormat {
 
 enum class SourceReadiness {
     READY_FOR_GTFS_PACK,
+    /** Fonte non primaria ma ammessa per colmare una tratta altrimenti scoperta. */
+    BEST_EFFORT_FALLBACK,
     READY_FOR_PROTOCOL_TEST,
     IMPORT_VIA_GATEWAY,
     LANDING_PAGE_ONLY,
@@ -137,13 +140,13 @@ object RailSourceCatalog {
             formats = setOf(SourceFormat.GTFS_ZIP),
             capabilities = staticCapabilities,
             accessMode = AccessMode.OPEN_DIRECT,
-            readiness = SourceReadiness.LANDING_PAGE_ONLY,
+            readiness = SourceReadiness.READY_FOR_GTFS_PACK,
             countryCodes = setOf("IT"),
             coverage = "Trenord, Malpensa Express e reti Ferrovienord incluse nella distribuzione pubblicata.",
             landingPage = uri("https://www.dati.lombardia.it/Mobilit-e-trasporti/Orario-Ferroviario-Regionale-Gtfs/3z4k-mxz9"),
-            downloadOrProbeUri = uri("https://www.dati.lombardia.it/api/views/3z4k-mxz9"),
-            attribution = "Regione Lombardia",
-            notes = "Metadato Socrata HTTPS verificato; prima dell'abilitazione acquisire il resource URL/versione e la licenza dal catalogo."
+            downloadOrProbeUri = uri("https://www.dati.lombardia.it/download/3z4k-mxz9/application/zip"),
+            attribution = "Regione Lombardia / Trenord",
+            notes = "GTFS ferroviario regionale già validato e incluso tra i data pack Binario; mantenere manifest, hash e licenza allineati alla versione distribuita."
         ),
         RailSourceDefinition(
             id = SourceId("eav-gtfs"),
@@ -152,12 +155,28 @@ object RailSourceCatalog {
             formats = setOf(SourceFormat.GTFS_ZIP),
             capabilities = staticCapabilities,
             accessMode = AccessMode.OPEN_DIRECT,
-            readiness = SourceReadiness.LANDING_PAGE_ONLY,
+            readiness = SourceReadiness.READY_FOR_GTFS_PACK,
             countryCodes = setOf("IT"),
             coverage = "Vesuviane, Flegree e linee ferroviarie EAV incluse nella distribuzione corrente.",
             landingPage = uri("https://www.eavsrl.it/open-data/"),
-            attribution = "EAV S.r.l.",
-            notes = "Pagina open data HTTPS verificata; stabilizzare l'URL del file e il manifest prima dell'import automatico."
+            downloadOrProbeUri = uri("https://www.wimob.it/cfile/download.php?file=google-transit.zip"),
+            attribution = "EAV S.r.l. — Italia Open Data Licence",
+            notes = "La pagina open data EAV indica il GTFS ferro/gomma aggiornato con cadenza mensile e licenza aperta; filtrare le sole componenti ferroviarie in import."
+        ),
+        RailSourceDefinition(
+            id = SourceId("toscana-trenitalia-gtfs"),
+            displayName = "Regione Toscana / Trenitalia — GTFS regionale",
+            operatorOrAuthority = "Regione Toscana / Trenitalia S.p.A.",
+            formats = setOf(SourceFormat.GTFS_ZIP),
+            capabilities = staticCapabilities,
+            accessMode = AccessMode.OPEN_DIRECT,
+            readiness = SourceReadiness.READY_FOR_GTFS_PACK,
+            countryCodes = setOf("IT"),
+            coverage = "Servizi ferroviari regionali Trenitalia pubblicati dalla Regione Toscana.",
+            landingPage = uri("https://dati.toscana.it/dataset/rt-oraritb"),
+            downloadOrProbeUri = uri("https://dati.toscana.it/dataset/8bb8f8fe-fe7d-41d0-90dc-49f2456180d1/resource/4f85393b-357d-443d-8378-65de4198505f/download/trenitalia.gtfs"),
+            attribution = "Regione Toscana / Trenitalia — Creative Commons Attribution",
+            notes = "Fonte ufficiale regionale in GTFS. Importare come data pack versionato e applicare calendar/calendar_dates prima di pubblicare le corse."
         ),
         RailSourceDefinition(
             id = SourceId("toscana-tft-gtfs"),
@@ -166,12 +185,13 @@ object RailSourceCatalog {
             formats = setOf(SourceFormat.GTFS_ZIP),
             capabilities = staticCapabilities,
             accessMode = AccessMode.OPEN_DIRECT,
-            readiness = SourceReadiness.LANDING_PAGE_ONLY,
+            readiness = SourceReadiness.READY_FOR_GTFS_PACK,
             countryCodes = setOf("IT"),
-            coverage = "Arezzo–Stia e Arezzo–Sinalunga, soggetto a verifica di aggiornamento del feed.",
+            coverage = "Arezzo–Stia e Arezzo–Sinalunga.",
             landingPage = uri("https://dati.toscana.it/dataset/rt-oraritb"),
-            attribution = "Regione Toscana",
-            notes = "Non attivare fino a controllo di freschezza e copertura ferroviaria della versione disponibile."
+            downloadOrProbeUri = uri("https://dati.toscana.it/dataset/8bb8f8fe-fe7d-41d0-90dc-49f2456180d1/resource/59aeacbc-99ee-410b-ac1e-622b5574a666/download/tft.gtfs"),
+            attribution = "Regione Toscana / Trasporto Ferroviario Toscano — Creative Commons Attribution",
+            notes = "GTFS ufficiale regionale; il pack resta ferroviario anche quando route_type richiede normalizzazione specifica della fonte."
         ),
         RailSourceDefinition(
             id = SourceId("hzpp-gtfs"),
@@ -181,8 +201,8 @@ object RailSourceCatalog {
             capabilities = staticCapabilities,
             accessMode = AccessMode.OPEN_DIRECT,
             readiness = SourceReadiness.READY_FOR_GTFS_PACK,
-            countryCodes = setOf("HR", "IT"),
-            coverage = "Rete croata; verificare per data di servizio l'eventuale estensione verso Villa Opicina/Rijeka.",
+            countryCodes = setOf("HR"),
+            coverage = "Rete croata; il data pack verificato non contiene fermate italiane. Eventuali future estensioni verso l'Italia vanno ri-verificate prima di dichiarare copertura IT.",
             landingPage = uri("https://www.hzpp.hr/en/timetable"),
             downloadOrProbeUri = uri("https://www.hzpp.hr/GTFS_files.zip"),
             attribution = "HŽ Putnički prijevoz",
@@ -292,6 +312,24 @@ object RailSourceCatalog {
             notes = "Nessuna API open documentata; risposta 503 durante la verifica. Solo gateway prudente/feature flag futuro."
         ),
         RailSourceDefinition(
+            id = SourceId("rfi-programmed"),
+            displayName = "RFI — Quadri orario programmati",
+            operatorOrAuthority = "Rete Ferroviaria Italiana",
+            formats = setOf(SourceFormat.HTML_OR_PDF),
+            capabilities = setOf(
+                ProviderCapability.JOURNEY_SEARCH,
+                ProviderCapability.TRAIN_RUN_STATIC,
+                ProviderCapability.STATION_BOARD
+            ),
+            accessMode = AccessMode.OPEN_DIRECT,
+            readiness = SourceReadiness.READY_FOR_PROTOCOL_TEST,
+            countryCodes = setOf("IT"),
+            coverage = "Orario programmato ufficiale stazione per stazione per gli hub con Id PRM verificato.",
+            landingPage = uri("https://www.rfi.it/it/stazioni/pagine-stazioni/servizi-di-qualita/informazioni-al-pubblico/quadri-orario-on-line.html"),
+            attribution = "Rete Ferroviaria Italiana",
+            notes = "Fonte ufficiale di orario programmato, equivalente ai quadri murali. Non attribuisce ritardo, stato operativo o binario reale; gli Id stazione vengono aggiunti solo dopo verifica."
+        ),
+        RailSourceDefinition(
             id = SourceId("rfi-station-board"),
             displayName = "RFI — Monitor Arrivi/Partenze",
             operatorOrAuthority = "Rete Ferroviaria Italiana",
@@ -304,6 +342,21 @@ object RailSourceCatalog {
             landingPage = uri("https://www.rfi.it/it/stazioni/pagine-stazioni/servizi-di-qualita/informazioni-al-pubblico/monitor-arrivi-partenze-live.html"),
             attribution = "RFI",
             notes = "Pagina informativa HTTPS verificata; non trattare il monitor come API garantita."
+        ),
+        RailSourceDefinition(
+            id = SourceId("rfi-infomobility-rss"),
+            displayName = "RFI — Infomobilità RSS",
+            operatorOrAuthority = "Rete Ferroviaria Italiana",
+            formats = setOf(SourceFormat.RSS_XML),
+            capabilities = setOf(ProviderCapability.SERVICE_ALERTS),
+            accessMode = AccessMode.OPEN_DIRECT,
+            readiness = SourceReadiness.READY_FOR_PROTOCOL_TEST,
+            countryCodes = setOf("IT"),
+            coverage = "Aggiornamenti nazionali di circolazione pubblicati dalla Sala Operativa Nazionale RFI.",
+            landingPage = uri("https://www.rfi.it/it/news-e-media/feed---rss.html"),
+            downloadOrProbeUri = uri("https://www.rfi.it/content/rfi/it/news-e-media/infomobilita.rss.updates.xml"),
+            attribution = "Rete Ferroviaria Italiana",
+            notes = "Feed RSS ufficiale e pubblico; usarlo per avvisi di rete con TTL e provenienza, non come stato puntuale del singolo treno."
         ),
         RailSourceDefinition(
             id = SourceId("rfi-infomobility"),
@@ -346,6 +399,21 @@ object RailSourceCatalog {
             landingPage = uri("https://www.trenord.it/linee-e-orari/circolazione/tempo-reale/"),
             attribution = "Trenord",
             notes = "Pagina HTTPS verificata; realtime strutturato da valutare tramite canale autorizzato/E015."
+        ),
+        RailSourceDefinition(
+            id = SourceId("gtt-gtfs"),
+            displayName = "GTT Torino — GTFS",
+            operatorOrAuthority = "Gruppo Torinese Trasporti S.p.A.",
+            formats = setOf(SourceFormat.GTFS_ZIP),
+            capabilities = staticCapabilities,
+            accessMode = AccessMode.AGREEMENT_REQUIRED,
+            readiness = SourceReadiness.AGREEMENT_REQUIRED,
+            countryCodes = setOf("IT"),
+            coverage = "Feed multimodale GTT che include anche l'agenzia ferroviaria; verificare i servizi ferroviari effettivamente attivi prima dell'import.",
+            landingPage = uri("https://www.gtt.to.it/gtt_gtfs_license.html"),
+            downloadOrProbeUri = uri("https://www.gtt.to.it/open_data/gtt_gtfs.zip"),
+            attribution = "GTT S.p.A.",
+            notes = "Il feed è pubblico ma la licenza ufficiale corrente limita l'uso non commerciale; non abilitarlo in produzione senza autorizzazione compatibile con la distribuzione di Binario."
         ),
         RailSourceDefinition(
             id = SourceId("sz-passenger"),
@@ -507,6 +575,7 @@ object RailSourceCatalog {
 
     fun testableNow(): List<RailSourceDefinition> = all.filter {
         it.readiness == SourceReadiness.READY_FOR_GTFS_PACK ||
+            it.readiness == SourceReadiness.BEST_EFFORT_FALLBACK ||
             it.readiness == SourceReadiness.READY_FOR_PROTOCOL_TEST ||
             it.readiness == SourceReadiness.IMPORT_VIA_GATEWAY
     }
@@ -518,5 +587,4 @@ object RailSourceCatalog {
             SourceReadiness.BEST_EFFORT_DISABLED
         )
     }
-
 }

@@ -1,5 +1,7 @@
 package it.binario.app.data.gtfs
 
+import it.binario.app.data.core.SourceId
+import it.binario.app.data.sources.InternationalSourceCatalog
 import it.binario.app.data.sources.RailSourceCatalog
 import org.junit.Test
 
@@ -8,16 +10,26 @@ class GtfsArtifactDownloaderTest {
 
     @Test(expected = GtfsDownloadException::class)
     fun `rifiuta una fonte gtfs disponibile soltanto via gateway http`() {
-        downloader.open(RailSourceCatalog.byId(it.binario.app.data.core.SourceId("amt-genova-casella-gtfs"))!!)
+        downloader.open(RailSourceCatalog.byId(SourceId("amt-genova-casella-gtfs"))!!)
     }
 
     @Test(expected = GtfsDownloadException::class)
     fun `rifiuta una fonte realtime best effort`() {
-        downloader.open(RailSourceCatalog.byId(it.binario.app.data.core.SourceId("viaggiatreno"))!!)
+        downloader.open(RailSourceCatalog.byId(SourceId("viaggiatreno"))!!)
     }
 
     @Test(expected = GtfsDownloadException::class)
     fun `rifiuta una fonte gtfs senza url artefatto stabilizzato`() {
-        downloader.open(RailSourceCatalog.byId(it.binario.app.data.core.SourceId("eav-gtfs"))!!)
+        val sourceWithoutArtifact = RailSourceCatalog
+            .byId(SourceId("eav-gtfs"))!!
+            .copy(downloadOrProbeUri = null)
+
+        downloader.open(sourceWithoutArtifact)
+    }
+
+    @Test(expected = GtfsDownloadException::class)
+    fun `fallback community richiede opt in esplicito`() {
+        val europeanSleeper = InternationalSourceCatalog.byId(SourceId("european-sleeper-gtfs"))!!
+        downloader.open(europeanSleeper)
     }
 }

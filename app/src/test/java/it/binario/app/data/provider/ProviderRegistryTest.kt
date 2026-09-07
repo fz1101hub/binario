@@ -1,5 +1,7 @@
 package it.binario.app.data.provider
 
+import it.binario.app.BuildConfig
+
 import it.binario.app.data.core.SourceId
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -37,9 +39,10 @@ class ProviderRegistryTest {
         assertTrue(registry.policy(SourceId("sncf-gtfs-rt-trip-updates")) != null)
         assertTrue(registry.policy(SourceId("viaggiatreno")) != null)
         assertTrue(registry.isEnabled(SourceId("arst-gtfs")))
-        assertTrue(registry.isEnabled(SourceId("viaggiatreno")))
-        assertTrue(registry.isEnabled(SourceId("rfi-station-board")))
-        assertTrue(registry.isEnabled(SourceId("italo-status")))
+        assertEquals(BuildConfig.PERSONAL_REALTIME_SOURCES, registry.isEnabled(SourceId("viaggiatreno")))
+        assertEquals(BuildConfig.PERSONAL_REALTIME_SOURCES, registry.isEnabled(SourceId("rfi-station-board")))
+        assertEquals(BuildConfig.PERSONAL_REALTIME_SOURCES, registry.isEnabled(SourceId("italo-status")))
+        assertTrue(registry.isEnabled(SourceId("rfi-programmed")))
         assertTrue(registry.isEnabled(SourceId("rfi-infomobility-rss")))
         assertTrue(registry.isEnabled(SourceId("alto-adige-sta-realtime")))
         assertTrue(registry.isEnabled(SourceId("sncf-gtfs")))

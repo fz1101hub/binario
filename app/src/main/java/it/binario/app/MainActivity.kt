@@ -96,15 +96,22 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import it.binario.app.data.Direction
 import it.binario.app.data.Freshness
-import it.binario.app.data.RailOperator
 import it.binario.app.data.SavedRoute
 import it.binario.app.data.ServiceStatus
 import it.binario.app.data.Station
+import it.binario.app.data.StopRouteChange
 import it.binario.app.data.TrainService
 import it.binario.app.data.TrainStop
 import it.binario.app.data.accessibleUpdateTime
+import it.binario.app.data.core.BoardKind
+import it.binario.app.data.core.OperationalRouteChange
+import it.binario.app.data.core.RunStatus
+import it.binario.app.data.core.StationBoardEntry
+import it.binario.app.data.core.RouteChangeKind
 import java.time.LocalDate
 import java.time.LocalTime
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 private enum class Screen { PLANNER, OPERATIONS, SETTINGS, RESULTS, DETAIL }
@@ -280,7 +287,8 @@ private fun BinarioApp(
                 viewModel = viewModel,
                 showResults = { screen = Screen.RESULTS },
                 openMore = { screen = Screen.SETTINGS },
-                openStations = {
+                openStations = { station ->
+                    station?.let(viewModel::openStationBoard)
                     operationsSectionName = OperationsSection.STATIONS.name
                     screen = Screen.OPERATIONS
                 }
@@ -497,7 +505,7 @@ private fun PlannerScreen(
     viewModel: TrainViewModel,
     showResults: () -> Unit,
     openMore: () -> Unit,
-    openStations: () -> Unit
+    openStations: (Station?) -> Unit
 ) {
     var originText by rememberSaveable { mutableStateOf(viewModel.plannerOriginText()) }
     var destinationText by rememberSaveable { mutableStateOf(viewModel.plannerDestinationText()) }
@@ -507,8 +515,12 @@ private fun PlannerScreen(
     var stationText by rememberSaveable { mutableStateOf("") }
     var travelDate by rememberSaveable { mutableStateOf(LocalDate.now().toString()) }
     var travelTime by rememberSaveable { mutableStateOf(LocalTime.now().withSecond(0).withNano(0).toString()) }
+    var returnDate by rememberSaveable { mutableStateOf(LocalDate.now().plusDays(1).toString()) }
+    var returnTime by rememberSaveable { mutableStateOf(LocalTime.now().withSecond(0).withNano(0).toString()) }
     var showDatePicker by rememberSaveable { mutableStateOf(false) }
     var showTimePicker by rememberSaveable { mutableStateOf(false) }
+    var showReturnDatePicker by rememberSaveable { mutableStateOf(false) }
+    var showReturnTimePicker by rememberSaveable { mutableStateOf(false) }
     var speechMessage by rememberSaveable { mutableStateOf<String?>(null) }
     var voiceTargetName by rememberSaveable { mutableStateOf(SearchMode.ROUTE.name) }
     val context = LocalContext.current
@@ -527,7 +539,19 @@ private fun PlannerScreen(
                     dictated.destination?.let { destinationText = it.name }
                     dictated.date?.let { travelDate = it.toString() }
                     dictated.time?.let { travelTime = it.toString() }
-                    dictated.returnJourney?.let { returnJourney = it }
+                    dictated.returnJourney?.let { requestedReturn ->
+                        returnJourney = requestedReturn
+                        if (requestedReturn) {
+                            val outboundDate = PlannerDateTime.dateOrToday(travelDate)
+                            val outboundTime = PlannerDateTime.timeOrNow(travelTime)
+                            val currentReturnDate = PlannerDateTime.dateOrToday(returnDate)
+                            val currentReturnTime = PlannerDateTime.timeOrNow(returnTime)
+                            if (!PlannerDateTime.isReturnAfterDeparture(outboundDate, outboundTime, currentReturnDate, currentReturnTime)) {
+                                returnDate = outboundDate.plusDays(1).toString()
+                                returnTime = outboundTime.toString()
+                            }
+                        }
+                    }
                     dictated.origin != null || dictated.destination != null || dictated.date != null || dictated.time != null || dictated.returnJourney != null
                 }
                 SearchMode.TRAIN -> {
@@ -586,8 +610,48 @@ private fun PlannerScreen(
             }
         }
     }
+    if (showReturnDatePicker) {
+        val selected = PlannerDateTime.dateOrToday(returnDate)
+        LaunchedEffect(selected) {
+            DatePickerDialog(context, { _, year, month, day ->
+                returnDate = LocalDate.of(year, month + 1, day).toString()
+                showReturnDatePicker = false
+            }, selected.year, selected.monthValue - 1, selected.dayOfMonth).apply {
+                setOnDismissListener { showReturnDatePicker = false }
+                show()
+            }
+        }
+    }
+    if (showReturnTimePicker) {
+        val selected = PlannerDateTime.timeOrNow(returnTime)
+        LaunchedEffect(selected) {
+            TimePickerDialog(context, { _, hour, minute ->
+                returnTime = LocalTime.of(hour, minute).toString()
+                showReturnTimePicker = false
+            }, selected.hour, selected.minute, true).apply {
+                setOnDismissListener { showReturnTimePicker = false }
+                show()
+            }
+        }
+    }
     val origin = viewModel.stationFromName(originText)
     val destination = viewModel.stationFromName(destinationText)
+    val selectedDepartureDate = runCatching { LocalDate.parse(travelDate) }.getOrNull()
+    val selectedDepartureTime = runCatching { LocalTime.parse(travelTime) }.getOrNull()
+    val selectedReturnDate = runCatching { LocalDate.parse(returnDate) }.getOrNull()
+    val selectedReturnTime = runCatching { LocalTime.parse(returnTime) }.getOrNull()
+    val roundTripChronologyValid = !returnJourney || (
+        selectedDepartureDate != null &&
+            selectedDepartureTime != null &&
+            selectedReturnDate != null &&
+            selectedReturnTime != null &&
+            PlannerDateTime.isReturnAfterDeparture(
+                selectedDepartureDate,
+                selectedDepartureTime,
+                selectedReturnDate,
+                selectedReturnTime
+            )
+        )
     LazyColumn(modifier = modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(0.dp)) {
         item {
             Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
@@ -613,20 +677,57 @@ private fun PlannerScreen(
                         StationField("Arrivo", destinationText, { destinationText = it }, viewModel.searchStations(destinationText), { destinationText = it.name })
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                             FilterChip(selected = !returnJourney, onClick = { returnJourney = false }, label = { Text("Sola andata") })
-                            FilterChip(selected = returnJourney, onClick = { returnJourney = true }, label = { Text("Andata e ritorno") })
+                            FilterChip(
+                                selected = returnJourney,
+                                onClick = {
+                                    returnJourney = true
+                                    val outboundDate = PlannerDateTime.dateOrToday(travelDate)
+                                    val outboundTime = PlannerDateTime.timeOrNow(travelTime)
+                                    val currentReturnDate = PlannerDateTime.dateOrToday(returnDate)
+                                    val currentReturnTime = PlannerDateTime.timeOrNow(returnTime)
+                                    if (!PlannerDateTime.isReturnAfterDeparture(outboundDate, outboundTime, currentReturnDate, currentReturnTime)) {
+                                        returnDate = outboundDate.plusDays(1).toString()
+                                        returnTime = outboundTime.toString()
+                                    }
+                                },
+                                label = { Text("Andata e ritorno") }
+                            )
                         }
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                             OutlinedButton(
                                 onClick = { showDatePicker = true },
-                                modifier = Modifier.weight(1f).semantics { contentDescription = "Seleziona data. Valore attuale ${PlannerDateTime.dateLabel(travelDate)}" }
+                                modifier = Modifier.weight(1f).semantics { contentDescription = "Seleziona data andata. Valore attuale ${PlannerDateTime.dateLabel(travelDate)}" }
                             ) {
-                                Column(horizontalAlignment = Alignment.Start) { Text("DATA", style = MaterialTheme.typography.labelSmall); Text(PlannerDateTime.dateLabel(travelDate), fontWeight = FontWeight.Bold) }
+                                Column(horizontalAlignment = Alignment.Start) { Text("ANDATA · DATA", style = MaterialTheme.typography.labelSmall); Text(PlannerDateTime.dateLabel(travelDate), fontWeight = FontWeight.Bold) }
                             }
                             OutlinedButton(
                                 onClick = { showTimePicker = true },
-                                modifier = Modifier.weight(1f).semantics { contentDescription = "Seleziona ora. Valore attuale ${PlannerDateTime.timeLabel(travelTime)}" }
+                                modifier = Modifier.weight(1f).semantics { contentDescription = "Seleziona ora andata. Valore attuale ${PlannerDateTime.timeLabel(travelTime)}" }
                             ) {
-                                Column(horizontalAlignment = Alignment.Start) { Text("ORA", style = MaterialTheme.typography.labelSmall); Text(PlannerDateTime.timeLabel(travelTime), fontWeight = FontWeight.Bold) }
+                                Column(horizontalAlignment = Alignment.Start) { Text("ANDATA · ORA", style = MaterialTheme.typography.labelSmall); Text(PlannerDateTime.timeLabel(travelTime), fontWeight = FontWeight.Bold) }
+                            }
+                        }
+                        if (returnJourney) {
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                                OutlinedButton(
+                                    onClick = { showReturnDatePicker = true },
+                                    modifier = Modifier.weight(1f).semantics { contentDescription = "Seleziona data ritorno. Valore attuale ${PlannerDateTime.dateLabel(returnDate)}" }
+                                ) {
+                                    Column(horizontalAlignment = Alignment.Start) { Text("RITORNO · DATA", style = MaterialTheme.typography.labelSmall); Text(PlannerDateTime.dateLabel(returnDate), fontWeight = FontWeight.Bold) }
+                                }
+                                OutlinedButton(
+                                    onClick = { showReturnTimePicker = true },
+                                    modifier = Modifier.weight(1f).semantics { contentDescription = "Seleziona ora ritorno. Valore attuale ${PlannerDateTime.timeLabel(returnTime)}" }
+                                ) {
+                                    Column(horizontalAlignment = Alignment.Start) { Text("RITORNO · ORA", style = MaterialTheme.typography.labelSmall); Text(PlannerDateTime.timeLabel(returnTime), fontWeight = FontWeight.Bold) }
+                                }
+                            }
+                            if (!roundTripChronologyValid) {
+                                Text(
+                                    "Il ritorno deve essere successivo alla partenza dell’andata.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.error
+                                )
                             }
                         }
                         FilterChip(
@@ -637,23 +738,60 @@ private fun PlannerScreen(
                         )
                         if (showFilters) {
                             JourneyChangeFilterBar(viewModel.journeyChangeFilter, viewModel::selectJourneyChangeFilter)
-                            OperatorFilterBar(viewModel.operatorFilter, viewModel::selectOperatorFilter)
+                            OperatorFilterBar(viewModel.operatorFilter, viewModel.operatorFilterOptions(), viewModel::selectOperatorFilter)
                             Text("Il filtro viene applicato solo quando la fonte restituisce informazioni sui cambi; Binario non li stima.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         Button(
-                            onClick = { if (origin != null && destination != null && origin != destination && viewModel.searchRoute(origin, destination)) showResults() },
-                            enabled = origin != null && destination != null && origin != destination,
+                            onClick = {
+                                val searched = if (
+                                    origin != null &&
+                                    destination != null &&
+                                    origin != destination &&
+                                    selectedDepartureDate != null &&
+                                    selectedDepartureTime != null
+                                ) {
+                                    if (
+                                        returnJourney &&
+                                        selectedReturnDate != null &&
+                                        selectedReturnTime != null &&
+                                        roundTripChronologyValid
+                                    ) {
+                                        viewModel.searchRoundTrip(
+                                            origin,
+                                            destination,
+                                            selectedDepartureDate,
+                                            selectedDepartureTime,
+                                            selectedReturnDate,
+                                            selectedReturnTime
+                                        )
+                                    } else if (!returnJourney) {
+                                        viewModel.searchRoute(origin, destination, selectedDepartureDate, selectedDepartureTime)
+                                    } else false
+                                } else false
+                                if (searched) showResults()
+                            },
+                            enabled = origin != null &&
+                                destination != null &&
+                                origin != destination &&
+                                selectedDepartureDate != null &&
+                                selectedDepartureTime != null &&
+                                roundTripChronologyValid,
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Icon(Icons.Default.Search, contentDescription = null)
                             Spacer(Modifier.width(8.dp))
-                            Text("Cerca soluzioni")
+                            Text(if (returnJourney) "Cerca andata e ritorno" else "Cerca soluzioni")
                         }
                         }
                         SearchMode.TRAIN -> {
                             VoiceInputButton(onClick = { startVoiceInput(SearchMode.TRAIN) }, label = "Detta numero treno")
                             speechMessage?.let { message -> Text(message, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-                            Text("STATO DI UN TRENO", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                            Text("FILTRO NUMERO TRENO NELLA TRATTA", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                            Text(
+                                "Questa ricerca filtra i treni della tratta attiva. La ricerca nazionale per solo numero richiede un provider TrainRun dedicato e non viene simulata.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                             OutlinedTextField(
                                 value = viewModel.trainNumberQuery,
                                 onValueChange = viewModel::updateTrainNumberQuery,
@@ -663,10 +801,17 @@ private fun PlannerScreen(
                                 placeholder = { Text("Es. 9310") },
                                 leadingIcon = { Icon(Icons.Default.Train, contentDescription = null) }
                             )
-                            Button(onClick = { showResults() }, enabled = viewModel.trainNumberQuery.isNotBlank(), modifier = Modifier.fillMaxWidth()) {
+                            if (!viewModel.hasActiveRoute) {
+                                Text("Scegli prima una tratta da consultare.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+                            }
+                            Button(
+                                onClick = { viewModel.refresh(); showResults() },
+                                enabled = viewModel.trainNumberQuery.isNotBlank() && viewModel.hasActiveRoute,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
                                 Icon(Icons.Default.Search, contentDescription = null)
                                 Spacer(Modifier.width(8.dp))
-                                Text("Cerca treno")
+                                Text("Filtra treno nella tratta")
                             }
                         }
                         SearchMode.STATION -> {
@@ -674,7 +819,11 @@ private fun PlannerScreen(
                             speechMessage?.let { message -> Text(message, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                             Text("TABELLONE STAZIONE", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
                             StationField("Stazione", stationText, { stationText = it }, viewModel.searchStations(stationText), { stationText = it.name })
-                            Button(onClick = openStations, enabled = viewModel.stationFromName(stationText) != null, modifier = Modifier.fillMaxWidth()) {
+                            Button(
+                                onClick = { openStations(viewModel.stationFromName(stationText)) },
+                                enabled = viewModel.stationFromName(stationText) != null,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
                                 Icon(Icons.Default.Route, contentDescription = null)
                                 Spacer(Modifier.width(8.dp))
                                 Text("Apri tabellone")
@@ -725,27 +874,83 @@ private fun PlannerScreen(
 @Composable
 private fun RouteResultsScreen(modifier: Modifier, viewModel: TrainViewModel, openDetails: (TrainService) -> Unit) {
     val services = viewModel.currentServices()
+    val returnServices = viewModel.currentReturnServices()
+    val roundTrip = viewModel.hasReturnJourney
+    val primaryDirection = viewModel.direction
+
     LazyColumn(modifier = modifier.fillMaxSize()) {
         item {
             Column(Modifier.padding(horizontal = 20.dp, vertical = 14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(viewModel.activeRoute.displayName(viewModel.direction), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                Text("${services.size} soluzioni disponibili", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(viewModel.activeRoute.displayName(primaryDirection), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                Text(
+                    if (roundTrip) "${services.size} andata · ${returnServices.size} ritorno"
+                    else "${services.size} soluzioni disponibili",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+        item {
+            Column(Modifier.padding(horizontal = 20.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(if (roundTrip) "ANDATA" else primaryDirection.label.uppercase(Locale.ITALIAN), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+                Text(viewModel.activeRoute.displayName(primaryDirection), style = MaterialTheme.typography.bodyMedium)
+                Text(
+                    listOfNotNull(viewModel.refreshState.accessibleLabel, viewModel.refreshMessage).joinToString(" · "),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
             BoardColumnHeader()
         }
-        if (services.isEmpty()) item { SearchInfoState("Nessuna soluzione", "Modifica la ricerca o scegli una tratta differente.") }
-        else items(services, key = { it.id }) { service ->
-            DepartureListRow(service, isNext = service == services.first(), onOpen = { openDetails(service) })
+        when {
+            viewModel.refreshState == RefreshState.LOADING && viewModel.snapshot == null ->
+                item { SearchInfoState("Caricamento andata", "Sto cercando le soluzioni programmate e le eventuali informazioni operative disponibili.") }
+            viewModel.refreshState == RefreshState.ERROR && viewModel.snapshot == null ->
+                item { SearchInfoState("Andata non disponibile", viewModel.refreshMessage ?: "La fonte non ha restituito questa tratta.") }
+            services.isEmpty() ->
+                item { SearchInfoState("Nessuna soluzione di andata", "Modifica la ricerca o scegli una tratta differente.") }
+            else -> items(services, key = { "out-${it.id}" }) { service ->
+                DepartureListRow(service, isNext = service == services.first(), onOpen = { openDetails(service) })
+            }
+        }
+
+        if (roundTrip) {
+            item {
+                Column(Modifier.padding(horizontal = 20.dp, vertical = 14.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text("RITORNO", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+                    Text(viewModel.activeRoute.displayName(Direction.RETURN), style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        listOfNotNull(viewModel.returnRefreshState.accessibleLabel, viewModel.returnRefreshMessage).joinToString(" · "),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                BoardColumnHeader()
+            }
+            when {
+                viewModel.returnRefreshState == RefreshState.LOADING && viewModel.returnSnapshot == null ->
+                    item { SearchInfoState("Caricamento ritorno", "Sto cercando le soluzioni di ritorno con la data e l’ora selezionate.") }
+                viewModel.returnRefreshState == RefreshState.ERROR && viewModel.returnSnapshot == null ->
+                    item { SearchInfoState("Ritorno non disponibile", viewModel.returnRefreshMessage ?: "La fonte non ha restituito il ritorno richiesto.") }
+                returnServices.isEmpty() ->
+                    item { SearchInfoState("Nessuna soluzione di ritorno", "Modifica data o ora del ritorno e riprova.") }
+                else -> items(returnServices, key = { "ret-${it.id}" }) { service ->
+                    DepartureListRow(service, isNext = service == returnServices.first(), onOpen = { openDetails(service) })
+                }
+            }
         }
     }
 }
 
 @Composable
 private fun StationBoardScreen(modifier: Modifier, viewModel: TrainViewModel) {
-    var stationText by rememberSaveable { mutableStateOf("") }
+    var stationText by rememberSaveable(viewModel.stationBoardStation?.id) {
+        mutableStateOf(viewModel.stationBoardStation?.name.orEmpty())
+    }
     var locationMessage by rememberSaveable { mutableStateOf<String?>(null) }
     var monitorMode by rememberSaveable { mutableStateOf(StationMonitorMode.BOTH.name) }
     val context = LocalContext.current
+
     fun locateNearbyStations() {
         requestNearbyStationLocation(context) { location ->
             if (location == null) {
@@ -756,27 +961,78 @@ private fun StationBoardScreen(modifier: Modifier, viewModel: TrainViewModel) {
             }
         }
     }
+
     val locationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         if (granted) locateNearbyStations()
         else locationMessage = "Permesso posizione non concesso. Puoi continuare a cercare manualmente le stazioni."
     }
+
     val selectedStation = viewModel.stationFromName(stationText)
-    LazyColumn(modifier = modifier.fillMaxSize()) {
+    val board = viewModel.stationBoard?.takeIf { current ->
+        selectedStation != null &&
+            current.station.id == selectedStation.id &&
+            current.kind == viewModel.stationBoardKind
+    }
+
+    LazyColumn(
+        modifier = modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(0.dp)
+    ) {
         item {
             Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text("Tabellone stazione", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                StationField("Stazione", stationText, { stationText = it }, viewModel.searchStations(stationText), { stationText = it.name })
+                StationField(
+                    "Stazione",
+                    stationText,
+                    { stationText = it },
+                    viewModel.searchStations(stationText),
+                    {
+                        stationText = it.name
+                        viewModel.selectStationBoardStation(it)
+                    }
+                )
+
                 selectedStation?.let { station ->
                     StationPreferenceRow(
                         station = station,
                         favourite = viewModel.isStationFavourite(station),
-                        onSelect = { stationText = station.name },
+                        onSelect = {
+                            stationText = station.name
+                            viewModel.selectStationBoardStation(station)
+                        },
                         onToggleFavourite = { viewModel.toggleStationFavourite(station) }
                     )
+
+                    Text("TABELLONE", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        items(BoardKind.entries) { kind ->
+                            FilterChip(
+                                selected = viewModel.stationBoardKind == kind,
+                                onClick = { viewModel.loadStationBoard(station, kind) },
+                                enabled = viewModel.hasStationBoardProviders,
+                                label = { Text(if (kind == BoardKind.DEPARTURES) "Partenze" else "Arrivi") }
+                            )
+                        }
+                    }
+                    Button(
+                        onClick = { viewModel.loadStationBoard(station, viewModel.stationBoardKind) },
+                        enabled = viewModel.hasStationBoardProviders &&
+                            viewModel.stationBoardRefreshState != RefreshState.LOADING,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Default.Refresh, contentDescription = null)
+                        Spacer(Modifier.width(8.dp))
+                        Text(if (board == null) "Carica tabellone" else "Aggiorna tabellone")
+                    }
+
                     Text("Monitoraggio locale", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         items(StationMonitorMode.entries) { mode ->
-                            FilterChip(selected = monitorMode == mode.name, onClick = { monitorMode = mode.name }, label = { Text(mode.label) })
+                            FilterChip(
+                                selected = monitorMode == mode.name,
+                                onClick = { monitorMode = mode.name },
+                                label = { Text(mode.label) }
+                            )
                         }
                     }
                     OutlinedButton(
@@ -786,48 +1042,225 @@ private fun StationBoardScreen(modifier: Modifier, viewModel: TrainViewModel) {
                         Text(if (viewModel.isStationMonitored(station)) "Rimuovi monitoraggio stazione" else "Monitora questa stazione")
                     }
                 }
+
                 OutlinedButton(
                     onClick = {
                         if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) locateNearbyStations()
                         else locationPermission.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
                     },
-                    modifier = Modifier.fillMaxWidth().semantics { contentDescription = "Trova le stazioni vicine. La posizione viene usata una sola volta e non viene salvata." }
+                    modifier = Modifier.fillMaxWidth().semantics {
+                        contentDescription = "Trova le stazioni vicine. La posizione viene usata una sola volta e non viene salvata."
+                    }
                 ) {
                     Icon(Icons.Default.Route, contentDescription = null)
                     Spacer(Modifier.width(8.dp))
                     Text("Trova stazioni vicine")
                 }
+
                 locationMessage?.let { message ->
                     Text(message, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                if (viewModel.favouriteStations.isNotEmpty()) {
-                    Text("Stazioni preferite", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    viewModel.favouriteStations.forEach { station ->
-                        StationPreferenceRow(
-                            station = station,
-                            favourite = true,
-                            onSelect = { stationText = station.name },
-                            onToggleFavourite = { viewModel.toggleStationFavourite(station) }
+            }
+        }
+
+        if (!viewModel.hasStationBoardProviders) {
+            item {
+                SearchInfoState(
+                    "Tabellone live non attivo",
+                    "Questa build non abilita automaticamente fonti tabellone best-effort. Attivale esplicitamente in una build personale oppure usa un provider autorizzato; Binario non genera partenze artificiali."
+                )
+            }
+        } else {
+            when {
+                viewModel.stationBoardRefreshState == RefreshState.LOADING && board == null -> item {
+                    SearchInfoState("Caricamento tabellone", "Sto interrogando le fonti abilitate e riconciliando le informazioni per singolo campo.")
+                }
+                viewModel.stationBoardRefreshState == RefreshState.ERROR && board == null -> item {
+                    SearchInfoState(
+                        "Tabellone non disponibile",
+                        viewModel.stationBoardMessage ?: "Le fonti abilitate non hanno restituito dati utilizzabili."
+                    )
+                }
+                board != null && board.entries.isEmpty() -> item {
+                    SearchInfoState(
+                        "Nessun movimento nella finestra",
+                        viewModel.stationBoardMessage ?: "Le fonti abilitate non hanno restituito partenze o arrivi nella finestra richiesta."
+                    )
+                }
+                board != null -> {
+                    item {
+                        Column(
+                            Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Text(
+                                if (board.kind == BoardKind.DEPARTURES) "PARTENZE" else "ARRIVI",
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                board.providerNames.joinToString(" · "),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            viewModel.stationBoardMessage?.let { message ->
+                                Text(
+                                    message,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                    items(
+                        board.entries.take(60),
+                        key = { entry ->
+                            listOf(
+                                entry.runId.value,
+                                entry.scheduledTime.toInstant().toEpochMilli().toString(),
+                                entry.destinationOrOrigin.value
+                            ).joinToString("|")
+                        }
+                    ) { entry ->
+                        StationBoardEntryRow(entry, board.kind)
+                        HorizontalDivider(
+                            modifier = Modifier.padding(start = 20.dp),
+                            color = MaterialTheme.colorScheme.outlineVariant
                         )
                     }
                 }
-                if (viewModel.nearbyStations.isNotEmpty()) {
-                    Text("Stazioni più vicine", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    viewModel.nearbyStations.forEach { nearby ->
-                        StationPreferenceRow(
-                            station = nearby.station,
-                            favourite = viewModel.isStationFavourite(nearby.station),
-                            distanceLabel = String.format(Locale.ITALIAN, "%.1f km", nearby.distanceKm),
-                            onSelect = { stationText = nearby.station.name },
-                            onToggleFavourite = { viewModel.toggleStationFavourite(nearby.station) }
-                        )
-                    }
-                }
-                SearchInfoState("Dati non disponibili in tempo reale", "Il tabellone sarà mostrato qui solo quando Binario dispone di una fonte ferroviaria autorizzata. Nel frattempo puoi pianificare una tratta o cercare un numero treno.")
+            }
+        }
+
+        if (viewModel.favouriteStations.isNotEmpty()) {
+            item {
+                Text(
+                    "Stazioni preferite",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp)
+                )
+            }
+            items(viewModel.favouriteStations, key = { "fav-${it.id}" }) { station ->
+                StationPreferenceRow(
+                    station = station,
+                    favourite = true,
+                    onSelect = {
+                        stationText = station.name
+                        viewModel.selectStationBoardStation(station)
+                    },
+                    onToggleFavourite = { viewModel.toggleStationFavourite(station) }
+                )
+            }
+        }
+
+        if (viewModel.nearbyStations.isNotEmpty()) {
+            item {
+                Text(
+                    "Stazioni più vicine",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp)
+                )
+            }
+            items(viewModel.nearbyStations, key = { "near-${it.station.id}" }) { nearby ->
+                StationPreferenceRow(
+                    station = nearby.station,
+                    favourite = viewModel.isStationFavourite(nearby.station),
+                    distanceLabel = String.format(Locale.ITALIAN, "%.1f km", nearby.distanceKm),
+                    onSelect = {
+                        stationText = nearby.station.name
+                        viewModel.selectStationBoardStation(nearby.station)
+                    },
+                    onToggleFavourite = { viewModel.toggleStationFavourite(nearby.station) }
+                )
             }
         }
     }
 }
+
+@Composable
+private fun StationBoardEntryRow(entry: StationBoardEntry, kind: BoardKind) {
+    val scheduled = entry.scheduledTime.withZoneSameInstant(BOARD_ZONE)
+    val expected = entry.expectedTime?.value?.withZoneSameInstant(BOARD_ZONE)
+    val effective = expected ?: scheduled
+    val delayedMinutes = expected?.let {
+        java.time.Duration.between(scheduled, it).toMinutes().coerceAtLeast(0)
+    } ?: 0L
+    val endpoint = entry.destinationOrOriginLabel?.takeIf(String::isNotBlank)
+        ?: entry.destinationOrOrigin.value
+    val platform = entry.platform?.value?.takeIf(String::isNotBlank)
+
+    Row(
+        Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.Top,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Column(horizontalAlignment = Alignment.Start) {
+            Text(effective.format(BOARD_TIME_FORMATTER), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            if (expected != null && expected.toInstant() != scheduled.toInstant()) {
+                Text(
+                    "prog. ${scheduled.format(BOARD_TIME_FORMATTER)}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(
+                if (kind == BoardKind.DEPARTURES) "Per $endpoint" else "Da $endpoint",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                listOfNotNull(
+                    entry.publicNumber?.takeIf(String::isNotBlank)?.let { "Treno $it" },
+                    entry.operatorId?.value?.takeIf(String::isNotBlank),
+                    entry.status?.value?.stationBoardLabel()
+                ).joinToString(" · "),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            if (delayedMinutes > 0) {
+                Text("+$delayedMinutes min", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.error)
+            }
+            entry.routeChange?.value?.let { change ->
+                Text(
+                    "Variazione: ${change.summary}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
+        }
+        platform?.let {
+            Surface(
+                shape = RoundedCornerShape(10.dp),
+                color = MaterialTheme.colorScheme.secondaryContainer,
+                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+            ) {
+                Text("Bin. $it", modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp), fontWeight = FontWeight.Bold)
+            }
+        }
+    }
+}
+
+private fun RunStatus.stationBoardLabel(): String = when (this) {
+    RunStatus.SCHEDULED -> "Programmato"
+    RunStatus.ON_TIME -> "In orario"
+    RunStatus.DELAYED -> "In ritardo"
+    RunStatus.CANCELLED -> "Soppresso"
+    RunStatus.PARTIALLY_CANCELLED -> "Parzialmente soppresso"
+    RunStatus.DIVERTED -> "Deviato"
+    RunStatus.ADDED -> "Corsa aggiunta"
+    RunStatus.REPLACED_BY_BUS -> "Sostituito da bus"
+    RunStatus.COMPLETED -> "Completato"
+    RunStatus.UNKNOWN -> "Stato non disponibile"
+}
+
+private val BOARD_ZONE: ZoneId = ZoneId.of("Europe/Rome")
+private val BOARD_TIME_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm", Locale.ITALIAN)
 
 private fun requestNearbyStationLocation(context: android.content.Context, onResult: (Location?) -> Unit) {
     if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
@@ -1016,10 +1449,10 @@ private fun NextDepartureHero(service: TrainService, onOpen: () -> Unit) {
                         Text("programmata ${service.scheduledDeparture}", style = MaterialTheme.typography.bodySmall)
                     }
                 }
-                ServiceStatusBadge(service.status, service.delayMinutes)
+                ServiceStatusBadge(service)
             }
             Text(service.destination, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            Text("${service.operator.shortLabel} · ${service.category} ${service.number}", style = MaterialTheme.typography.bodyMedium)
+            Text("${service.displayOperator} · ${service.category} ${service.number}", style = MaterialTheme.typography.bodyMedium)
             HorizontalDivider(color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.18f))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(service.platform?.let { "Binario $it" } ?: "Binario da confermare", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
@@ -1053,18 +1486,28 @@ private fun DepartureListRow(service: TrainService, isNext: Boolean = false, onO
     ) {
         Column(Modifier.width(68.dp)) {
             Text(service.expectedDeparture, style = MaterialTheme.typography.titleLarge, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
-            if (service.delayMinutes > 0) Text("+${service.delayMinutes} min", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.tertiary, fontWeight = FontWeight.Bold)
+            if (!service.operationalStatusVerified) Text("programmato", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            else if (service.delayMinutes > 0) Text("+${service.delayMinutes} min", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.tertiary, fontWeight = FontWeight.Bold)
             else Text("in orario", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.secondary)
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(service.destination, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text("${service.operator.shortLabel} · ${service.category} ${service.number}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text("${service.displayOperator} · ${service.category} ${service.number}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            service.routeChange?.let {
+                Text(
+                    routeChangeLabel(it),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = routeChangeAccent(it),
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1
+                )
+            }
         }
         Column(horizontalAlignment = Alignment.End, modifier = Modifier.width(50.dp)) {
             Text(service.platform?.let { "Bin. $it" } ?: "—", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
         }
         Column(horizontalAlignment = Alignment.End, modifier = Modifier.width(50.dp)) {
-            Text(compactStatusLabel(service.status, service.delayMinutes), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+            Text(compactStatusLabel(service), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
         }
     }
     HorizontalDivider(modifier = Modifier.padding(start = 20.dp), color = MaterialTheme.colorScheme.outlineVariant)
@@ -1146,6 +1589,12 @@ private fun SearchScreen(
                             }
                         }
                         SearchMode.TRAIN -> {
+                            Text("FILTRO NUMERO TRENO NELLA TRATTA", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                            Text(
+                                "Filtra i treni della tratta attiva. La ricerca nazionale per solo numero richiede un provider TrainRun dedicato e non viene simulata.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                             OutlinedTextField(
                                 value = viewModel.trainNumberQuery,
                                 onValueChange = viewModel::updateTrainNumberQuery,
@@ -1156,7 +1605,16 @@ private fun SearchScreen(
                                 leadingIcon = { Icon(Icons.Default.Train, contentDescription = null) },
                                 trailingIcon = if (viewModel.trainNumberQuery.isNotBlank()) ({ IconButton(onClick = viewModel::clearSearchFilters) { Icon(Icons.Default.DeleteOutline, contentDescription = "Cancella ricerca e filtri") } }) else null
                             )
-                            Button(onClick = viewModel::refresh, modifier = Modifier.fillMaxWidth(), enabled = viewModel.trainNumberQuery.isNotBlank()) { Text("Cerca treno") }
+                            if (!viewModel.hasActiveRoute) {
+                                Text("Scegli prima una tratta da consultare.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+                            }
+                            Button(
+                                onClick = viewModel::refresh,
+                                modifier = Modifier.fillMaxWidth(),
+                                enabled = viewModel.trainNumberQuery.isNotBlank() && viewModel.hasActiveRoute
+                            ) {
+                                Text("Filtra treno nella tratta")
+                            }
                         }
                         SearchMode.STATION -> {
                             StationField("Stazione", stationText, { stationText = it }, viewModel.searchStations(stationText), { stationText = it.name })
@@ -1183,7 +1641,7 @@ private fun SearchScreen(
                 }
             }
         }
-        if (mode == SearchMode.TRAIN) item { OperatorFilterBar(viewModel.operatorFilter, viewModel::selectOperatorFilter) }
+        if (mode == SearchMode.TRAIN) item { OperatorFilterBar(viewModel.operatorFilter, viewModel.operatorFilterOptions(), viewModel::selectOperatorFilter) }
         item {
             ListHeading(
                 title = when (mode) {
@@ -1216,15 +1674,23 @@ private fun SearchInfoState(title: String, message: String, openRoutes: (() -> U
 }
 
 @Composable
-private fun OperatorFilterBar(selected: RailOperator?, onSelected: (RailOperator?) -> Unit) {
+private fun OperatorFilterBar(
+    selected: String?,
+    operators: List<String>,
+    onSelected: (String?) -> Unit
+) {
     LazyRow(
         modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 20.dp)
     ) {
         item { FilterChip(selected = selected == null, onClick = { onSelected(null) }, label = { Text("Tutti") }) }
-        items(RailOperator.entries) { operator ->
-            FilterChip(selected = selected == operator, onClick = { onSelected(operator) }, label = { Text(operator.shortLabel) })
+        items(operators, key = { it.lowercase(Locale.ROOT) }) { operator ->
+            FilterChip(
+                selected = selected?.equals(operator, ignoreCase = true) == true,
+                onClick = { onSelected(operator) },
+                label = { Text(operator) }
+            )
         }
     }
 }
@@ -1793,7 +2259,7 @@ private fun ServiceDetailScreen(
         item {
             Surface(color = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary, shape = RoundedCornerShape(bottomStart = 28.dp, bottomEnd = 28.dp), modifier = Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("${service.operator.shortLabel} · ${service.category}", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+                    Text("${service.displayOperator} · ${service.category}", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
                     Text("${service.number} · ${service.origin} → ${service.destination}", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
@@ -1801,10 +2267,18 @@ private fun ServiceDetailScreen(
                             Text(service.expectedDeparture, style = MaterialTheme.typography.displaySmall, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
                             Text("Programmata ${service.scheduledDeparture}", style = MaterialTheme.typography.bodySmall)
                         }
-                        ServiceStatusBadge(service.status, service.delayMinutes)
+                        ServiceStatusBadge(service)
                     }
                     Text(service.platform?.let { "Binario $it" } ?: "Binario da confermare", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 }
+            }
+        }
+        service.routeChange?.let { routeChange ->
+            item {
+                RouteChangeBanner(
+                    routeChange = routeChange,
+                    sourceIds = service.routeChangeSourceIds
+                )
             }
         }
         item {
@@ -1871,6 +2345,8 @@ private fun ServiceDetailScreen(
                 delay = stop.delayMinutes,
                 platform = stop.platform,
                 completed = stop.completed,
+                operationalStatusVerified = service.operationalStatusVerified,
+                routeChange = stop.routeChange,
                 onSetAlarm = { onScheduleStopAlarm(service, stop) }
             )
         }
@@ -1886,20 +2362,39 @@ private fun StopTimelineRow(
     delay: Int,
     platform: String?,
     completed: Boolean,
+    operationalStatusVerified: Boolean,
+    routeChange: StopRouteChange,
     onSetAlarm: () -> Unit
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp, vertical = 10.dp)
-            .semantics { contentDescription = "$station. Previsto $expected. Programmato $scheduled. ${if (delay > 0) "$delay minuti di ritardo" else "In orario"}. ${platform?.let { "Binario $it" } ?: "Binario non disponibile"}." },
+            .semantics {
+                val changeLabel = when (routeChange) {
+                    StopRouteChange.NONE -> ""
+                    StopRouteChange.ADDED -> " Fermata aggiunta al percorso operativo."
+                    StopRouteChange.SKIPPED -> " Fermata saltata nel percorso operativo."
+                }
+                contentDescription = "$station.$changeLabel Previsto $expected. Programmato $scheduled. ${if (!operationalStatusVerified) "Stato operativo non verificato" else if (delay > 0) "$delay minuti di ritardo" else "In orario"}. ${platform?.let { "Binario $it" } ?: "Binario non disponibile"}."
+            },
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(28.dp)) {
             Surface(modifier = Modifier.size(14.dp), shape = RoundedCornerShape(99.dp), color = if (completed) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline) {}
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(station, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Text(
+                station,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = if (routeChange == StopRouteChange.SKIPPED) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
+            )
+            when (routeChange) {
+                StopRouteChange.SKIPPED -> Text("FERMATA SALTATA", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
+                StopRouteChange.ADDED -> Text("FERMATA AGGIUNTA", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.tertiary, fontWeight = FontWeight.Bold)
+                StopRouteChange.NONE -> Unit
+            }
             Text(platform?.let { "Binario $it" } ?: "Binario da confermare", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Column(horizontalAlignment = Alignment.End) {
@@ -1915,11 +2410,100 @@ private fun StopTimelineRow(
     }
 }
 
+
 @Composable
-private fun ServiceStatusBadge(status: ServiceStatus, delay: Int) {
-    val (container, foreground, text) = when (status) {
+private fun RouteChangeBanner(
+    routeChange: OperationalRouteChange,
+    sourceIds: Set<String>
+) {
+    val severe = routeChange.kind in setOf(
+        RouteChangeKind.SKIPPED_STOPS,
+        RouteChangeKind.SHORT_TURN,
+        RouteChangeKind.REPLACEMENT_SERVICE
+    )
+    val container = if (severe) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.tertiaryContainer
+    val foreground = if (severe) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onTertiaryContainer
+    val sourceLabel = sourceIds.takeIf { it.isNotEmpty() }?.joinToString(", ")
+
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 10.dp)
+            .semantics {
+                contentDescription = buildString {
+                    append(routeChangeLabel(routeChange)).append(". ")
+                    append(routeChange.summary)
+                    if (routeChange.skippedStopLabels.isNotEmpty()) {
+                        append(". Fermate saltate: ").append(routeChange.skippedStopLabels.joinToString(", "))
+                    }
+                    if (routeChange.addedStopLabels.isNotEmpty()) {
+                        append(". Fermate aggiunte: ").append(routeChange.addedStopLabels.joinToString(", "))
+                    }
+                    if (routeChange.viaStopLabels.isNotEmpty()) {
+                        append(". Nuovo instradamento via: ").append(routeChange.viaStopLabels.joinToString(", "))
+                    }
+                    routeChange.replacementDestinationLabel?.let {
+                        append(". Nuovo capolinea: ").append(it)
+                    }
+                }
+            },
+        color = container,
+        contentColor = foreground,
+        shape = RoundedCornerShape(14.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.Top
+        ) {
+            Icon(Icons.Default.Route, contentDescription = null, modifier = Modifier.size(24.dp))
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                Text(routeChangeLabel(routeChange), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                Text(routeChange.summary, style = MaterialTheme.typography.bodyMedium)
+                if (routeChange.skippedStopLabels.isNotEmpty()) {
+                    Text("Saltate: ${routeChange.skippedStopLabels.joinToString(", ")}", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
+                }
+                if (routeChange.addedStopLabels.isNotEmpty()) {
+                    Text("Aggiunte: ${routeChange.addedStopLabels.joinToString(", ")}", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
+                }
+                if (routeChange.viaStopLabels.isNotEmpty()) {
+                    Text("Via: ${routeChange.viaStopLabels.joinToString(", ")}", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
+                }
+                routeChange.replacementDestinationLabel?.let {
+                    Text("Nuovo capolinea: $it", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
+                }
+                sourceLabel?.let {
+                    Text("Fonte: $it", style = MaterialTheme.typography.labelSmall)
+                }
+            }
+        }
+    }
+}
+
+private fun routeChangeLabel(routeChange: OperationalRouteChange): String = when (routeChange.kind) {
+    RouteChangeKind.DIVERTED -> "PERCORSO MODIFICATO"
+    RouteChangeKind.SKIPPED_STOPS -> "FERMATE MODIFICATE"
+    RouteChangeKind.ADDED_STOPS -> "FERMATE AGGIUNTE"
+    RouteChangeKind.SHORT_TURN -> "CORSA LIMITATA"
+    RouteChangeKind.REPLACEMENT_SERVICE -> "SERVIZIO SOSTITUTIVO"
+    RouteChangeKind.OTHER -> "VARIAZIONE DI PERCORSO"
+}
+
+@Composable
+private fun routeChangeAccent(routeChange: OperationalRouteChange) =
+    if (routeChange.kind in setOf(RouteChangeKind.SKIPPED_STOPS, RouteChangeKind.SHORT_TURN, RouteChangeKind.REPLACEMENT_SERVICE)) {
+        MaterialTheme.colorScheme.error
+    } else {
+        MaterialTheme.colorScheme.tertiary
+    }
+
+@Composable
+private fun ServiceStatusBadge(service: TrainService) {
+    val (container, foreground, text) = if (!service.operationalStatusVerified) {
+        Triple(MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.colorScheme.onSurfaceVariant, "Programmato")
+    } else when (service.status) {
         ServiceStatus.ON_TIME -> Triple(MaterialTheme.colorScheme.secondary, MaterialTheme.colorScheme.onSecondary, "In orario")
-        ServiceStatus.DELAYED -> Triple(MaterialTheme.colorScheme.tertiary, MaterialTheme.colorScheme.onTertiary, "+$delay min")
+        ServiceStatus.DELAYED -> Triple(MaterialTheme.colorScheme.tertiary, MaterialTheme.colorScheme.onTertiary, "+${service.delayMinutes} min")
         ServiceStatus.CANCELLED -> Triple(MaterialTheme.colorScheme.error, MaterialTheme.colorScheme.onError, "Soppresso")
     }
     Surface(color = container, contentColor = foreground, shape = RoundedCornerShape(999.dp)) {
@@ -1927,8 +2511,11 @@ private fun ServiceStatusBadge(status: ServiceStatus, delay: Int) {
     }
 }
 
-private fun compactStatusLabel(status: ServiceStatus, delay: Int): String = when (status) {
-    ServiceStatus.ON_TIME -> "In orario"
-    ServiceStatus.DELAYED -> "+$delay min"
-    ServiceStatus.CANCELLED -> "Soppresso"
+private fun compactStatusLabel(service: TrainService): String {
+    if (!service.operationalStatusVerified) return "Programm."
+    return when (service.status) {
+        ServiceStatus.ON_TIME -> "In orario"
+        ServiceStatus.DELAYED -> "+${service.delayMinutes} min"
+        ServiceStatus.CANCELLED -> "Soppresso"
+    }
 }

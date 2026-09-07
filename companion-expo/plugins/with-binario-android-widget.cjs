@@ -5,6 +5,33 @@ const path = require("node:path");
 const packageName = "im.binario.companion.binario";
 const receiverName = `${packageName}.BinarioStatusWidgetReceiver`;
 
+function removeDebugReleaseSigning(contents) {
+  const marker = "release {";
+  const start = contents.indexOf(marker);
+  if (start < 0) return contents;
+  const braceStart = contents.indexOf("{", start);
+  let depth = 0;
+  let end = -1;
+  for (let index = braceStart; index < contents.length; index += 1) {
+    if (contents[index] === "{") depth += 1;
+    if (contents[index] === "}") {
+      depth -= 1;
+      if (depth === 0) {
+        end = index;
+        break;
+      }
+    }
+  }
+  if (end < 0) return contents;
+  const releaseBlock = contents.slice(braceStart + 1, end)
+    .replace(/^\s*signingConfig\s+signingConfigs\.debug\s*$/m, "")
+    .replace(
+      /^\s*\/\/\s*Caution! In production, you need to generate your own keystore file\.\s*\n\s*\/\/\s*see https:\/\/reactnative\.dev\/docs\/signed-apk-android\.\s*$/m,
+      "            // Production signing is supplied only by the release/EAS environment."
+    );
+  return contents.slice(0, braceStart + 1) + releaseBlock + contents.slice(end);
+}
+
 const widgetStoreKt = `package ${packageName}
 
 import android.content.Context
@@ -300,12 +327,25 @@ function withBinarioAndroidWidget(config) {
     if (!next.modResults.contents.includes("androidx.glance:glance-appwidget")) {
       next.modResults.contents = next.modResults.contents.replace("dependencies {", `dependencies {\n${lines.join("\n")}`);
     }
+    next.modResults.contents = removeDebugReleaseSigning(next.modResults.contents);
     return next;
   });
 
   config = withAndroidManifest(config, (next) => {
-    const application = next.modResults.manifest.application?.[0];
+    const manifest = next.modResults.manifest;
+    const application = manifest.application?.[0];
     if (!application) throw new Error("Android manifest senza application");
+    const blockedProductionPermissions = new Set([
+      "android.permission.READ_EXTERNAL_STORAGE",
+      "android.permission.WRITE_EXTERNAL_STORAGE",
+      "android.permission.SYSTEM_ALERT_WINDOW",
+    ]);
+    manifest["uses-permission"] = (manifest["uses-permission"] ?? []).filter(
+      (permission) => !blockedProductionPermissions.has(permission.$?.["android:name"]),
+    );
+    application.$ = application.$ ?? {};
+    application.$["android:allowBackup"] = "false";
+    application.$["android:usesCleartextTraffic"] = "false";
     application.receiver = application.receiver ?? [];
     application.service = application.service ?? [];
     application["meta-data"] = application["meta-data"] ?? [];
@@ -412,8 +452,7 @@ android {
       signingConfig signingConfigs.debug
     }
     release {
-      // Artefatto installabile per test: non usare questa chiave per una release pubblica.
-      signingConfig signingConfigs.debug
+      // Production signing is supplied only by the release environment.
     }
   }
 }
@@ -430,7 +469,7 @@ dependencies {
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
   <uses-feature android:name="android.hardware.type.watch" />
   <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
-  <application android:label="@string/app_name" android:theme="@android:style/Theme.DeviceDefault">
+  <application android:label="@string/app_name" android:allowBackup="false" android:usesCleartextTraffic="false" android:theme="@android:style/Theme.DeviceDefault">
     <service android:name=".BinarioTileService" android:exported="true" android:label="@string/tile_name" android:permission="com.google.android.wearable.permission.BIND_TILE_PROVIDER">
       <intent-filter><action android:name="androidx.wear.tiles.action.BIND_TILE_PROVIDER" /></intent-filter>
     </service>

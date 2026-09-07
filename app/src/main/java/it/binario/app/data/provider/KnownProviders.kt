@@ -1,5 +1,7 @@
 package it.binario.app.data.provider
 
+import it.binario.app.BuildConfig
+
 import it.binario.app.data.core.SourceId
 import it.binario.app.data.gtfs.EmbeddedGtfsPacks
 import it.binario.app.data.sources.RailSourceCatalog
@@ -13,6 +15,7 @@ object KnownProviderIds {
     val SNCF_REALTIME = SourceId("sncf-gtfs-rt")
     val OEBB_STATIC = SourceId("oebb-gtfs")
     val VIAGGIATRENO = SourceId("viaggiatreno")
+    val RFI_PROGRAMMED = SourceId("rfi-programmed")
     val RFI_STATION_BOARD = SourceId("rfi-station-board")
     val RFI_INFOMOBILITY_RSS = SourceId("rfi-infomobility-rss")
     val STA_REALTIME = SourceId("alto-adige-sta-realtime")
@@ -136,10 +139,34 @@ object KnownProviders {
                 ratePolicy = realtimeRatePolicy,
                 schemaVersion = 1
             ),
-            enabled = true,
+            enabled = BuildConfig.PERSONAL_REALTIME_SOURCES,
             priorityByCapability = mapOf(
                 ProviderCapability.TRAIN_RUN_REALTIME to 30,
                 ProviderCapability.STATION_BOARD to 30
+            )
+        ),
+        ProviderPolicy(
+            descriptor = ProviderDescriptor(
+                id = KnownProviderIds.RFI_PROGRAMMED,
+                displayName = "RFI — Quadri orario programmati",
+                capabilities = setOf(
+                    ProviderCapability.JOURNEY_SEARCH,
+                    ProviderCapability.TRAIN_RUN_STATIC,
+                    ProviderCapability.STATION_BOARD
+                ),
+                coverage = CoverageDescriptor(
+                    countryCodes = setOf("IT"),
+                    description = "Orario programmato ufficiale per gli hub RFI con Id PRM verificato"
+                ),
+                accessMode = AccessMode.OPEN_DIRECT,
+                ratePolicy = staticRatePolicy,
+                schemaVersion = 1
+            ),
+            enabled = true,
+            priorityByCapability = mapOf(
+                ProviderCapability.JOURNEY_SEARCH to 5,
+                ProviderCapability.TRAIN_RUN_STATIC to 5,
+                ProviderCapability.STATION_BOARD to 5
             )
         ),
         ProviderPolicy(
@@ -152,7 +179,7 @@ object KnownProviders {
                 ratePolicy = realtimeRatePolicy,
                 schemaVersion = 1
             ),
-            enabled = true,
+            enabled = BuildConfig.PERSONAL_REALTIME_SOURCES,
             priorityByCapability = mapOf(ProviderCapability.STATION_BOARD to 20)
         ),
         ProviderPolicy(
@@ -195,7 +222,7 @@ object KnownProviders {
                 ratePolicy = realtimeRatePolicy,
                 schemaVersion = 1
             ),
-            enabled = true,
+            enabled = BuildConfig.PERSONAL_REALTIME_SOURCES,
             priorityByCapability = mapOf(
                 ProviderCapability.TRAIN_RUN_REALTIME to 20,
                 ProviderCapability.STATION_BOARD to 20

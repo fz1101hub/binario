@@ -4,6 +4,12 @@ import it.binario.app.data.Direction
 import it.binario.app.data.SavedRoute
 import it.binario.app.data.ServiceStatus
 import it.binario.app.data.Station
+import it.binario.app.data.core.BoardKind
+import it.binario.app.data.core.RunStatus
+import it.binario.app.data.core.RouteChangeKind
+import it.binario.app.data.core.StationId
+import it.binario.app.data.provider.ProviderResult
+import it.binario.app.data.provider.StationBoardRequest
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -39,6 +45,56 @@ class RfiStationBoardAdapterTest {
         assertEquals("7", snapshot.services.single().platform)
         assertEquals(12, snapshot.services.single().delayMinutes)
         assertEquals(ServiceStatus.DELAYED, snapshot.services.single().status)
+    }
+
+    @Test
+    fun `espone il tabellone RFI nel contratto canonico`() = runBlocking {
+        val adapter = RfiStationBoardAdapter(
+            fetcher = RfiMonitorFetcher { htmlFixture() },
+            clock = Clock.fixed(Instant.parse("2026-08-14T12:00:00Z"), ZoneOffset.UTC)
+        )
+
+        val result = adapter.getStationBoard(
+            StationBoardRequest(
+                stationId = StationId("roma-termini"),
+                stationName = "Roma Termini",
+                from = Instant.parse("2026-08-14T07:00:00Z"),
+                to = Instant.parse("2026-08-14T13:00:00Z"),
+                kind = BoardKind.DEPARTURES
+            )
+        )
+
+        assertTrue(result is ProviderResult.Success)
+        val entry = (result as ProviderResult.Success).value.entries.first { it.publicNumber == "9401" }
+        assertEquals("Napoli Centrale", entry.destinationOrOriginLabel)
+        assertEquals("7", entry.platform?.value)
+        assertEquals(RunStatus.DELAYED, entry.status?.value)
+    }
+
+    @Test
+    fun `propaga una deviazione RFI al modello realtime`() = runBlocking {
+        val divertedHtml = htmlFixture().replace(
+            "Regolare instradamento",
+            "Treno deviato via Caserta per guasto alla linea"
+        )
+        val adapter = RfiStationBoardAdapter(
+            fetcher = RfiMonitorFetcher { divertedHtml },
+            clock = Clock.fixed(Instant.parse("2026-08-14T12:00:00Z"), ZoneOffset.UTC)
+        )
+
+        val result = adapter.getStationBoard(
+            StationBoardRequest(
+                stationId = StationId("roma-termini"),
+                stationName = "Roma Termini",
+                from = Instant.parse("2026-08-14T07:00:00Z"),
+                to = Instant.parse("2026-08-14T13:00:00Z"),
+                kind = BoardKind.DEPARTURES
+            )
+        )
+
+        val entry = (result as ProviderResult.Success).value.entries.first { it.publicNumber == "9401" }
+        assertEquals(RouteChangeKind.DIVERTED, entry.routeChange?.value?.kind)
+        assertEquals(listOf("Caserta"), entry.routeChange?.value?.viaStopLabels)
     }
 
     @Test

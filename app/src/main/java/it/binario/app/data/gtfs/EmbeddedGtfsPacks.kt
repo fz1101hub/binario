@@ -9,6 +9,10 @@ import java.time.Instant
  * Data pack statici validati e inclusi nell’APK. L’app non li aggiorna dalla
  * rete: l’aggiornamento avviene solo sostituendo asset, manifest e impronte
  * in una nuova release verificata.
+ *
+ * La copertura segue il principio best-available: una fonte meno completa può
+ * restare attiva in un territorio se è l'unica disponibile, mentre le fonti
+ * migliori prevalgono dove descrivono la stessa corsa.
  */
 data class EmbeddedGtfsPack(
     val sourceId: SourceId,

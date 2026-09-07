@@ -37,9 +37,10 @@ object WearSnapshotPublisher {
                     dataMap.putString("service${index}Category", service.trainCategory.accessibleLabel)
                     dataMap.putString("service${index}Destination", service.destination)
                     dataMap.putString("service${index}Expected", service.expectedDeparture)
-                    dataMap.putString("service${index}Status", service.status.accessibleLabel)
+                    dataMap.putString("service${index}Status", if (service.operationalStatusVerified) service.status.accessibleLabel else "Programmato")
                     dataMap.putInt("service${index}Delay", service.delayMinutes)
                     dataMap.putString("service${index}Platform", service.platform.orEmpty())
+                    dataMap.putBoolean("service${index}OperationalVerified", service.operationalStatusVerified)
                 }
             }.asPutDataRequest()
             Wearable.getDataClient(context).putDataItem(request).awaitTask()

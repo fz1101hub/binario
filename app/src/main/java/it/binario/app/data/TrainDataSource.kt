@@ -4,7 +4,11 @@ import android.content.Context
 import androidx.core.content.edit
 import it.binario.app.data.core.DelayConsistency
 import it.binario.app.data.core.OperationalDetection
+import it.binario.app.data.core.OperationalRouteChange
 import java.time.Instant
+import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.LocalTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -20,6 +24,16 @@ enum class RailOperator(val accessibleLabel: String, val shortLabel: String) {
     TRENITALIA_AV("Trenitalia Frecce", "Frecce"),
     ITALO("Italo", "Italo"),
     TRENORD("Trenord", "Trenord"),
+    SBB("SBB CFF FFS", "SBB"),
+    TILO("TILO", "TILO"),
+    BLS("BLS", "BLS"),
+    RHB("Ferrovia Retica", "RhB"),
+    FART_SSIF("FART / SSIF Vigezzina-Centovalli", "FART/SSIF"),
+    SNCF("SNCF Voyageurs", "SNCF"),
+    OEBB("ÖBB", "ÖBB"),
+    DB("Deutsche Bahn", "DB"),
+    WESTBAHN("WESTbahn", "WESTbahn"),
+    EUROPEAN_SLEEPER("European Sleeper", "European Sleeper"),
     OTHER("Altro operatore", "Altro")
 }
 
@@ -112,13 +126,20 @@ data class SavedRoute(
     fun displayName(direction: Direction): String = "${origin(direction).name} → ${destination(direction).name}"
 }
 
+enum class StopRouteChange {
+    NONE,
+    ADDED,
+    SKIPPED
+}
+
 data class TrainStop(
     val station: String,
     val scheduled: String,
     val expected: String,
     val platform: String?,
     val delayMinutes: Int,
-    val completed: Boolean
+    val completed: Boolean,
+    val routeChange: StopRouteChange = StopRouteChange.NONE
 )
 
 data class TrainService(
@@ -135,23 +156,40 @@ data class TrainService(
     val status: ServiceStatus,
     val stops: List<TrainStop>,
     val transferCount: Int = 0,
+    /** Nome pubblicato da agency.txt o dalla fonte operativa. Mantiene l'identità reale anche per operatori non modellati nell'enum legacy. */
+    val operatorDisplayName: String? = null,
     /** Ritardo pubblicato direttamente dal provider; non è sostituito dal calcolo sulla rilevazione. */
     val officialDelayMinutes: Int? = delayMinutes,
     /** Ultimo evento operativo confermato, se il provider espone località, orario teorico e reale. */
     val lastOperationalDetection: OperationalDetection? = null,
     /** Ritardo calcolato sull'ultimo evento operativo; nullo se l'evento non è confrontabile. */
     val detectionDelayMinutes: Int? = null,
-    val delayConsistency: DelayConsistency = DelayConsistency.NOT_COMPARABLE
+    val delayConsistency: DelayConsistency = DelayConsistency.NOT_COMPARABLE,
+    /** False for schedule-only data: ON_TIME must never be presented as an observed operational state. */
+    val operationalStatusVerified: Boolean = true,
+    /** Date/time of the scheduled departure when the source query provides a service date. */
+    val scheduledDepartureDateTime: LocalDateTime? = null,
+    /** Canonical source ids that contributed verified operational fields. */
+    val operationalSourceIds: Set<String> = emptySet(),
+    /** Most recent observation time among the operational sources used for this service. */
+    val operationalObservedAtEpochMillis: Long? = null,
+    /** Operational path change that may override the static GTFS path. */
+    val routeChange: OperationalRouteChange? = null,
+    val routeChangeSourceIds: Set<String> = emptySet()
 ) {
     val category: String get() = trainCategory.accessibleLabel
-    val operatorAndCategory: String get() = "${operator.shortLabel} · ${trainCategory.accessibleLabel}"
+    val displayOperator: String get() = operatorDisplayName?.takeIf(String::isNotBlank) ?: operator.shortLabel
+    val accessibleOperator: String get() = operatorDisplayName?.takeIf(String::isNotBlank) ?: operator.accessibleLabel
+    val operatorAndCategory: String get() = "$displayOperator · ${trainCategory.accessibleLabel}"
     val accessibleSummary: String
         get() {
             val official = officialDelayMinutes?.takeIf { it != 0 }?.let { " Ritardo ufficiale $it minuti." }.orEmpty()
             val detection = detectionDelayMinutes?.let { value ->
                 lastOperationalDetection?.let { " Ritardo all'ultima rilevazione di ${it.locationLabel}: $value minuti." }
             }.orEmpty()
-            return "Operatore ${operator.accessibleLabel}. ${trainCategory.accessibleLabel} $number da $origin a $destination. Partenza prevista $expectedDeparture. ${if (transferCount == 0) "Viaggio diretto" else "$transferCount ${if (transferCount == 1) "cambio" else "cambi"}"}. ${status.accessibleLabel}$official$detection ${platform?.let { "Binario $it" } ?: "Binario non disponibile"}."
+            val operational = if (operationalStatusVerified) status.accessibleLabel else "Stato operativo non verificato"
+            val routeVariation = routeChange?.let { " Variazione di percorso: ${it.summary}." }.orEmpty()
+            return "Operatore $accessibleOperator. ${trainCategory.accessibleLabel} $number da $origin a $destination. Partenza prevista $expectedDeparture. ${if (transferCount == 0) "Viaggio diretto" else "$transferCount ${if (transferCount == 1) "cambio" else "cambi"}"}. $operational$routeVariation$official$detection ${platform?.let { "Binario $it" } ?: "Binario non disponibile"}."
         }
 }
 
@@ -180,20 +218,45 @@ sealed interface DataResult {
 }
 
 /** Single neutral display-order rule shared by lists, widget and smartwatch. */
-fun orderServicesForDisplay(services: List<TrainService>): List<TrainService> =
-    services.sortedWith(
+fun orderServicesForDisplay(services: List<TrainService>): List<TrainService> {
+    if (services.isNotEmpty() && services.all { it.scheduledDepartureDateTime != null }) {
+        return services.sortedWith(
+            compareBy<TrainService> { it.scheduledDepartureDateTime }
+                .thenBy { it.number }
+        )
+    }
+    return services.sortedWith(
         compareBy<TrainService> {
             runCatching { timeToMinutes(it.expectedDeparture) }.getOrDefault(Int.MAX_VALUE)
         }.thenBy { it.number }
     )
+}
 
 /**
  * Contract-only boundary. Production implementations must use a documented,
  * authorized provider or a personal backend. The Android client never embeds
  * credentials and never calls undocumented operator endpoints directly.
  */
+data class JourneyQuery(
+    val serviceDate: LocalDate,
+    val departureTime: LocalTime
+) {
+    val requestedAt: LocalDateTime get() = LocalDateTime.of(serviceDate, departureTime)
+
+    companion object {
+        fun now(): JourneyQuery {
+            val now = LocalDateTime.now()
+            return JourneyQuery(now.toLocalDate(), now.toLocalTime().withSecond(0).withNano(0))
+        }
+    }
+}
+
 interface TrainDataSource {
     suspend fun loadRoute(route: SavedRoute, direction: Direction): DataResult
+
+    /** Query-aware overload. Legacy/live adapters can ignore the schedule query until migrated. */
+    suspend fun loadRoute(route: SavedRoute, direction: Direction, query: JourneyQuery): DataResult =
+        loadRoute(route, direction)
 }
 
 /** A future authorised server-side gateway for Trenitalia operational data. */
@@ -224,10 +287,13 @@ class RailDataRepository(
     private val fallback: TrainDataSource = UnavailableTrainDataSource(),
     private val clock: () -> Long = System::currentTimeMillis
 ) : TrainDataSource {
-    override suspend fun loadRoute(route: SavedRoute, direction: Direction): DataResult {
+    override suspend fun loadRoute(route: SavedRoute, direction: Direction): DataResult =
+        loadRoute(route, direction, JourneyQuery.now())
+
+    override suspend fun loadRoute(route: SavedRoute, direction: Direction, query: JourneyQuery): DataResult {
         val candidates = mutableListOf<RouteSnapshot>()
         authorisedSources.forEach { source ->
-            when (val result = source.loadRoute(route, direction)) {
+            when (val result = source.loadRoute(route, direction, query)) {
                 is DataResult.Success -> {
                     val enriched = withQuality(result.snapshot)
                     candidates += enriched
@@ -243,7 +309,7 @@ class RailDataRepository(
                 .thenBy { it.sourceObservedAtEpochMillis }
         )?.let { return DataResult.Success(it) }
 
-        return when (val result = fallback.loadRoute(route, direction)) {
+        return when (val result = fallback.loadRoute(route, direction, query)) {
             is DataResult.Success -> DataResult.Success(withQuality(result.snapshot))
             is DataResult.Failure -> result
         }

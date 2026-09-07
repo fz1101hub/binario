@@ -36,6 +36,23 @@ class DataQualityTest {
     }
 
     @Test
+    fun `un coverage fallback resta pubblicabile ma non puo diventare affidabile o verificato`() {
+        val fallback = snapshot(
+            confidence = DataConfidence.STATIC_ONLY,
+            freshness = Freshness.FRESH,
+            observedAt = now - 10_000L,
+            providerName = "European Sleeper GTFS · fallback best-effort",
+            serviceId = "european-sleeper:trip-1"
+        )
+
+        val quality = SnapshotQualityAssessor.assess(fallback, now)
+
+        assertEquals(DataQualityBand.LIMITED, quality.band)
+        assertTrue(quality.score <= 64)
+        assertTrue(fallback.providerName.contains("fallback best-effort", ignoreCase = true))
+    }
+
+    @Test
     fun `segnala divergenza tra ritardo ufficiale e rilevazione senza eliminare la corsa`() {
         val base = snapshot(DataConfidence.OPERATOR_PRIMARY, Freshness.FRESH, observedAt = now - 30_000L)
         val divergent = base.copy(services = base.services.map { it.copy(delayConsistency = DelayConsistency.DIVERGENT) })
@@ -61,6 +78,33 @@ class DataQualityTest {
     }
 
     @Test
+    fun `una fonte ufficiale batte un coverage fallback anche se il fallback e piu fresco`() = runBlocking {
+        val official = snapshot(
+            DataConfidence.OPEN_DATA,
+            Freshness.AGING,
+            observedAt = now - 2 * 60_000L,
+            providerName = "Open data ufficiale"
+        )
+        val fallback = snapshot(
+            DataConfidence.STATIC_ONLY,
+            Freshness.FRESH,
+            observedAt = now - 5_000L,
+            providerName = "European Sleeper · fallback best-effort",
+            serviceId = "european-sleeper:trip-1"
+        )
+        val repository = RailDataRepository(
+            authorisedSources = listOf(source(DataResult.Success(fallback)), source(DataResult.Success(official))),
+            fallback = source(DataResult.Failure("fallback repository non atteso")),
+            clock = { now }
+        )
+
+        val result = repository.loadRoute(route, Direction.OUTBOUND) as DataResult.Success
+
+        assertEquals("Open data ufficiale", result.snapshot.providerName)
+        assertEquals(DataQualityBand.RELIABLE, result.snapshot.qualityBand)
+    }
+
+    @Test
     fun `il repository usa il fallback quando nessuna fonte live risponde`() = runBlocking {
         val repository = RailDataRepository(
             authorisedSources = listOf(source(DataResult.Failure("rete"))),
@@ -80,13 +124,15 @@ class DataQualityTest {
     private fun snapshot(
         confidence: DataConfidence,
         freshness: Freshness,
-        observedAt: Long
+        observedAt: Long,
+        providerName: String = "test",
+        serviceId: String = "service"
     ): RouteSnapshot = RouteSnapshot(
         route = route,
         direction = Direction.OUTBOUND,
         services = listOf(
             TrainService(
-                id = "service",
+                id = serviceId,
                 number = "123",
                 operator = RailOperator.TRENITALIA_REGIONALE,
                 trainCategory = TrainCategory.REGIONALE,
@@ -100,7 +146,7 @@ class DataQualityTest {
                 stops = emptyList()
             )
         ),
-        providerName = "test",
+        providerName = providerName,
         retrievedAtEpochMillis = observedAt,
         expiresAtEpochMillis = observedAt + 60_000L,
         freshness = freshness,
