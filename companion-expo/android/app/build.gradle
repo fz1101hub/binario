@@ -97,18 +97,8 @@ android {
 
         buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
     }
-    signingConfigs {
-        debug {
-            storeFile file('debug.keystore')
-            storePassword 'android'
-            keyAlias 'androiddebugkey'
-            keyPassword 'android'
-        }
-    }
+    // Use AGP's standard debug signing; CI must not depend on a repository-local keystore.
     buildTypes {
-        debug {
-            signingConfig signingConfigs.debug
-        }
         release {
             // Never sign release artifacts with the repository debug keystore.
             // Production signing is intentionally supplied by the release/EAS environment.
@@ -169,10 +159,8 @@ dependencies {
     }
 
     if (isWebpEnabled) {
-        // For webp support
         implementation("com.facebook.fresco:webpsupport:${expoLibs.versions.fresco.get()}")
         if (isWebpAnimatedEnabled) {
-            // Animated webp support
             implementation("com.facebook.fresco:animated-webp:${expoLibs.versions.fresco.get()}")
         }
     }
