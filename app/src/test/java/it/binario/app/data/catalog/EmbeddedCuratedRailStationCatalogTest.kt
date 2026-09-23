@@ -66,4 +66,25 @@ class EmbeddedCuratedRailStationCatalogTest {
         assertEquals(5239, stations.size)
         assertTrue(stations.all { it.id.startsWith("curated:") })
     }
+
+    @Test
+    fun `catalog satisfies identity alias and coordinate quality gates`() {
+        val assets = File("src/main/assets")
+        val stations = EmbeddedCuratedRailStationCatalog(
+            openAsset = { assetPath -> File(assets, assetPath).inputStream() }
+        ).load()
+
+        assertEquals(stations.size, stations.map { it.id }.toSet().size)
+        val railwayCodes = stations.mapNotNull { it.railwayCode }
+        assertEquals(railwayCodes.size, railwayCodes.toSet().size)
+        val trenitaliaLocationIds = stations.mapNotNull { it.trenitaliaLocationId }
+        assertEquals(trenitaliaLocationIds.size, trenitaliaLocationIds.toSet().size)
+        assertTrue(stations.flatMap { it.aliases }.all { it.isNotBlank() })
+        assertTrue(stations.all { station ->
+            val latitude = station.latitude
+            val longitude = station.longitude
+            (latitude == null && longitude == null) ||
+                (latitude != null && longitude != null && latitude in -90.0..90.0 && longitude in -180.0..180.0)
+        })
+    }
 }

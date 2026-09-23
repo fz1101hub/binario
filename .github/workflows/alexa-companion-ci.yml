@@ -1,0 +1,59 @@
+name: Alexa Companion CI
+
+on:
+  pull_request:
+    paths:
+      - "alexa-companion/**"
+      - ".github/workflows/alexa-companion-ci.yml"
+  push:
+    branches:
+      - main
+      - "stabilization/**"
+    paths:
+      - "alexa-companion/**"
+      - ".github/workflows/alexa-companion-ci.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: alexa-companion-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  alexa-companion:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: alexa-companion
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10
+          run_install: false
+
+      - name: Node 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: pnpm
+          cache-dependency-path: alexa-companion/pnpm-lock.yaml
+
+      - name: Install frozen dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: TypeScript
+        run: pnpm run check
+
+      - name: Unit tests
+        run: pnpm test
+
+      - name: Production build and bundle verification
+        run: pnpm run build

@@ -2,7 +2,7 @@
 
 Il companion watchOS è stato ricostruito come progetto nativo watchOS 10 con SwiftUI, WidgetKit, App Intents, cache locale e App Group. Mostra al massimo due corse, provider, qualità, freshness e l’avvertenza non-live; non mostra biglietti, posizione, token o storico.
 
-> Apple Watch si abbina a iPhone, non a uno smartphone Android. Per questo l’app Android non può inviare uno snapshot direttamente tramite Watch Connectivity. L’architettura Binario prevede due canali leciti e dichiarati: una futura app iOS Binario che usa Watch Connectivity, oppure il profilo Voice Bridge autenticato che consente alla superficie watchOS di recuperare soltanto il profilo personale autorizzato.
+> Apple Watch si abbina a iPhone, non a uno smartphone Android. Per questo l’app Android non può inviare uno snapshot direttamente tramite Watch Connectivity. L’architettura Binario prevede una futura app iOS Binario che usa Watch Connectivity oppure un servizio di sincronizzazione companion dedicato e derivato dallo stesso contratto dell’app principale. Il companion Alexa non è un canale dati per watchOS.
 
 ## Generazione e verifica su macOS
 
