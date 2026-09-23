@@ -166,6 +166,40 @@ class EmbeddedGtfsRouteAdapterTest {
         )
     }
 
+    @Test
+    fun `segnala la validita del pack quando la data richiesta supera lastServiceDate`() = runBlocking {
+        val expiredPack = EmbeddedGtfsPack(SourceId("lombardia-trenord-gtfs"), "gtfs/test.zip", LocalDate.of(2026, 12, 31))
+        val bytes = feed()
+        val adapter = EmbeddedGtfsRouteAdapter(
+            openAsset = { ByteArrayInputStream(bytes) },
+            packs = listOf(expiredPack),
+            clock = { 1_000L }
+        )
+
+        val result = adapter.loadRoute(
+            route,
+            Direction.OUTBOUND,
+            JourneyQuery(LocalDate.of(2027, 1, 4), LocalTime.of(8, 0))
+        )
+
+        assertTrue(result is DataResult.Failure)
+        val message = (result as DataResult.Failure).message
+        assertTrue(message, message.contains("2026-12-31"))
+        assertTrue(message, message.contains("aggiorna l'app"))
+    }
+
+    @Test
+    fun `senza lastServiceDate mantiene il messaggio generico di assenza corse`() = runBlocking {
+        val result = adapter(feed()).loadRoute(
+            route,
+            Direction.OUTBOUND,
+            JourneyQuery(LocalDate.of(2027, 1, 4), LocalTime.of(8, 0))
+        )
+
+        assertTrue(result is DataResult.Failure)
+        assertFalse((result as DataResult.Failure).message.contains("aggiorna l'app"))
+    }
+
     private fun adapter(bytes: ByteArray) = EmbeddedGtfsRouteAdapter(
         openAsset = { ByteArrayInputStream(bytes) },
         packs = listOf(pack),

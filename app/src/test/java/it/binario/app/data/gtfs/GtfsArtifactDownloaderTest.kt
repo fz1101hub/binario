@@ -3,6 +3,11 @@ package it.binario.app.data.gtfs
 import it.binario.app.data.core.SourceId
 import it.binario.app.data.sources.InternationalSourceCatalog
 import it.binario.app.data.sources.RailSourceCatalog
+import java.io.ByteArrayInputStream
+import java.io.InputStream
+import java.net.HttpURLConnection
+import java.net.URL
+import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class GtfsArtifactDownloaderTest {
@@ -31,5 +36,50 @@ class GtfsArtifactDownloaderTest {
     fun `fallback community richiede opt in esplicito`() {
         val europeanSleeper = InternationalSourceCatalog.byId(SourceId("european-sleeper-gtfs"))!!
         downloader.open(europeanSleeper)
+    }
+
+    @Test(expected = GtfsDownloadException::class)
+    fun `interrompe il download quando i byte letti superano il limite senza content length`() {
+        val bounded = downloaderWithFakeConnection(body = ByteArray(LIMIT.toInt() + 1), contentLength = -1L)
+
+        bounded.open(eavGtfs).use { session -> session.input.readBytes() }
+    }
+
+    @Test(expected = GtfsDownloadException::class)
+    fun `interrompe il download quando content length mente sulla dimensione reale`() {
+        val bounded = downloaderWithFakeConnection(body = ByteArray(LIMIT.toInt() + 1), contentLength = 1L)
+
+        bounded.open(eavGtfs).use { session -> session.input.readBytes() }
+    }
+
+    @Test
+    fun `accetta un download che rientra esattamente nel limite`() {
+        val bounded = downloaderWithFakeConnection(body = ByteArray(LIMIT.toInt()), contentLength = -1L)
+
+        val bytes = bounded.open(eavGtfs).use { session -> session.input.readBytes() }
+
+        assertEquals(LIMIT.toInt(), bytes.size)
+    }
+
+    private val eavGtfs = RailSourceCatalog.byId(SourceId("eav-gtfs"))!!
+
+    private fun downloaderWithFakeConnection(body: ByteArray, contentLength: Long) = GtfsArtifactDownloader(
+        maxContentLengthBytes = LIMIT,
+        connectionFactory = { url -> fakeConnection(url, body, contentLength) }
+    )
+
+    private fun fakeConnection(url: URL, body: ByteArray, contentLength: Long): HttpURLConnection =
+        object : HttpURLConnection(url) {
+            override fun connect() = Unit
+            override fun disconnect() = Unit
+            override fun usingProxy(): Boolean = false
+            override fun getResponseCode(): Int = 200
+            override fun getContentLengthLong(): Long = contentLength
+            override fun getContentType(): String = "application/zip"
+            override fun getInputStream(): InputStream = ByteArrayInputStream(body)
+        }
+
+    private companion object {
+        const val LIMIT = 16L
     }
 }

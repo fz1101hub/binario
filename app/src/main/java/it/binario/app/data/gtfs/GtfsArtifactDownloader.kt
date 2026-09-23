@@ -7,6 +7,8 @@ import it.binario.app.data.sources.SourceReadiness
 import java.io.Closeable
 import java.io.InputStream
 import java.net.HttpURLConnection
+import java.net.URL
+import java.net.URLConnection
 
 class GtfsDownloadException(message: String) : IllegalStateException(message)
 
@@ -27,7 +29,8 @@ fun interface GtfsArtifactSource {
 class GtfsArtifactDownloader(
     private val connectTimeoutMillis: Int = 15_000,
     private val readTimeoutMillis: Int = 45_000,
-    private val maxContentLengthBytes: Long = 256L * 1024L * 1024L
+    private val maxContentLengthBytes: Long = 256L * 1024L * 1024L,
+    private val connectionFactory: (URL) -> URLConnection = { url -> url.openConnection() }
 ) : GtfsArtifactSource {
     init {
         require(connectTimeoutMillis > 0 && readTimeoutMillis > 0)
@@ -43,7 +46,7 @@ class GtfsArtifactDownloader(
     ): GtfsDownloadSession {
         validate(source, allowBestEffortFallback)
         val url = source.downloadOrProbeUri!!.toURL()
-        val connection = (url.openConnection() as? HttpURLConnection)
+        val connection = (connectionFactory(url) as? HttpURLConnection)
             ?: throw GtfsDownloadException("La fonte non usa HTTP(S)")
         connection.instanceFollowRedirects = true
         connection.connectTimeout = connectTimeoutMillis
@@ -67,7 +70,7 @@ class GtfsArtifactDownloader(
             connection.disconnect()
             throw GtfsDownloadException("Il server non ha restituito un archivio GTFS ZIP")
         }
-        return GtfsDownloadSession(connection.inputStream, connection)
+        return GtfsDownloadSession(BoundedGtfsInputStream(connection.inputStream, maxContentLengthBytes), connection)
     }
 
     private fun validate(source: RailSourceDefinition, allowBestEffortFallback: Boolean) {
@@ -96,5 +99,37 @@ class GtfsDownloadSession internal constructor(
     override fun close() {
         input.close()
         connection?.disconnect()
+    }
+}
+
+/**
+ * Applica il limite di dimensione ai byte effettivamente letti: un Content-Length
+ * assente (-1) o mendace non deve permettere di superare maxContentLengthBytes.
+ */
+internal class BoundedGtfsInputStream(
+    private val upstream: InputStream,
+    private val maxBytes: Long
+) : InputStream() {
+    private var consumed = 0L
+
+    override fun read(): Int {
+        val result = upstream.read()
+        if (result >= 0) register(1)
+        return result
+    }
+
+    override fun read(buffer: ByteArray, offset: Int, length: Int): Int {
+        val result = upstream.read(buffer, offset, length)
+        if (result > 0) register(result.toLong())
+        return result
+    }
+
+    override fun available(): Int = upstream.available()
+
+    override fun close() = upstream.close()
+
+    private fun register(bytes: Long) {
+        consumed += bytes
+        if (consumed > maxBytes) throw GtfsDownloadException("Il data pack supera il limite configurato durante il download")
     }
 }
