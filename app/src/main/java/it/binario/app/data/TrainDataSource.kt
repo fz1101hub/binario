@@ -5,6 +5,7 @@ import androidx.core.content.edit
 import it.binario.app.data.core.DelayConsistency
 import it.binario.app.data.core.OperationalDetection
 import it.binario.app.data.core.OperationalRouteChange
+import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -244,8 +245,9 @@ data class JourneyQuery(
     val requestedAt: LocalDateTime get() = LocalDateTime.of(serviceDate, departureTime)
 
     companion object {
-        fun now(): JourneyQuery {
-            val now = LocalDateTime.now(RailTime.defaultZone)
+        /** The quick-search default is always a railway-local time, never the phone system zone. */
+        fun now(clock: Clock = Clock.systemUTC()): JourneyQuery {
+            val now = clock.instant().atZone(RailTime.defaultZone)
             return JourneyQuery(now.toLocalDate(), now.toLocalTime().withSecond(0).withNano(0))
         }
     }

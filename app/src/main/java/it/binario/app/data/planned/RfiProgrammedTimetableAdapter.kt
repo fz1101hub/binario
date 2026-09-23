@@ -16,6 +16,7 @@ import it.binario.app.data.TrainDataSource
 import it.binario.app.data.TrainService
 import it.binario.app.data.TrainStop
 import it.binario.app.data.matchesPublishedName
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -111,7 +112,10 @@ internal object RfiProgrammedStationIds {
 class RfiProgrammedTimetableAdapter(
     private val fetcher: RfiProgrammedTimetableFetcher = HttpRfiProgrammedTimetableFetcher(),
     private val clock: Clock = Clock.system(RailTime.defaultZone),
-    private val cacheTtlMillis: Long = 6L * 60L * 60L * 1000L
+    private val cacheTtlMillis: Long = 6L * 60L * 60L * 1000L,
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+    private val parsingDispatcher: CoroutineDispatcher = Dispatchers.Default,
+    private val onParsing: (() -> Unit)? = null
 ) : TrainDataSource {
     private val mutex = Mutex()
     private val cache = mutableMapOf<String, CachedTimetable>()
@@ -134,13 +138,16 @@ class RfiProgrammedTimetableAdapter(
         } ?: run {
             val url = "https://prm.rfi.it/qo_prm/QO_Partenze_SiPMR.aspx?Id=$stationId&lin=it&dalle=00.00&alle=23.59&ora=00.00"
             val html = try {
-                fetcher.fetch(url)
+                withContext(ioDispatcher) { fetcher.fetch(url) }
             } catch (error: IOException) {
                 return DataResult.Failure("Il quadro orario programmato RFI non è raggiungibile: ${error.message ?: "errore di rete"}.")
             } catch (error: Exception) {
                 return DataResult.Failure("Il quadro orario programmato RFI non è leggibile: ${error.message ?: "errore di parsing"}.")
             }
-            val timetable = parseTimetable(html, origin, route, direction)
+            val timetable = withContext(parsingDispatcher) {
+                onParsing?.invoke()
+                parseTimetable(html, origin, route, direction)
+            }
             mutex.withLock { cache[key] = CachedTimetable(timetable, now + cacheTtlMillis) }
             timetable
         }
@@ -153,32 +160,35 @@ class RfiProgrammedTimetableAdapter(
             }
         }
 
-        val requestedMinutes = query.departureTime.hour * 60 + query.departureTime.minute
-        val services = parsed.services.asSequence()
-            .filter { service -> runsOnDate(service.periodicity, query.serviceDate) }
-            .filter { service -> timeMinutes(service.service.scheduledDeparture) >= requestedMinutes }
-            .filter { service ->
-                service.service.stops.drop(1).any { destination.matchesPublishedName(it.station) } ||
-                    destination.matchesPublishedName(service.service.destination)
-            }
-            .map { parsedService ->
-                val targetIndex = parsedService.service.stops.indexOfFirst { destination.matchesPublishedName(it.station) }
-                val relevantStops = if (targetIndex >= 1) {
-                    parsedService.service.stops.take(targetIndex + 1)
-                } else {
-                    parsedService.service.stops
+        val services = withContext(parsingDispatcher) {
+            onParsing?.invoke()
+            val requestedMinutes = query.departureTime.hour * 60 + query.departureTime.minute
+            parsed.services.asSequence()
+                .filter { service -> runsOnDate(service.periodicity, query.serviceDate) }
+                .filter { service -> timeMinutes(service.service.scheduledDeparture) >= requestedMinutes }
+                .filter { service ->
+                    service.service.stops.drop(1).any { destination.matchesPublishedName(it.station) } ||
+                        destination.matchesPublishedName(service.service.destination)
                 }
-                parsedService.service.copy(
-                    stops = relevantStops,
-                    scheduledDepartureDateTime = LocalDateTime.of(
-                        query.serviceDate,
-                        parseTime(parsedService.service.scheduledDeparture) ?: query.departureTime
+                .map { parsedService ->
+                    val targetIndex = parsedService.service.stops.indexOfFirst { destination.matchesPublishedName(it.station) }
+                    val relevantStops = if (targetIndex >= 1) {
+                        parsedService.service.stops.take(targetIndex + 1)
+                    } else {
+                        parsedService.service.stops
+                    }
+                    parsedService.service.copy(
+                        stops = relevantStops,
+                        scheduledDepartureDateTime = LocalDateTime.of(
+                            query.serviceDate,
+                            parseTime(parsedService.service.scheduledDeparture) ?: query.departureTime
+                        )
                     )
-                )
-            }
-            .sortedBy { it.scheduledDepartureDateTime }
-            .take(24)
-            .toList()
+                }
+                .sortedBy { it.scheduledDepartureDateTime }
+                .take(24)
+                .toList()
+        }
 
         if (services.isEmpty()) {
             return DataResult.Failure(

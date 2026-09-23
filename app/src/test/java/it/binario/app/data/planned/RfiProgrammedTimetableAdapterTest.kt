@@ -8,6 +8,7 @@ import it.binario.app.data.RailOperator
 import it.binario.app.data.SavedRoute
 import it.binario.app.data.Station
 import it.binario.app.data.TrainCategory
+import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -18,6 +19,7 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneOffset
+import java.util.concurrent.Executors
 
 class RfiProgrammedTimetableAdapterTest {
     private val clock = Clock.fixed(Instant.parse("2026-09-04T06:00:00Z"), ZoneOffset.UTC)
@@ -179,6 +181,39 @@ class RfiProgrammedTimetableAdapterTest {
         )
 
         assertTrue(ferragosto is DataResult.Success)
+    }
+
+    @Test
+    fun `fetch usa I O e parsing usa dispatcher CPU configurato`() = runBlocking {
+        val ioDispatcher = Executors.newSingleThreadExecutor { runnable -> Thread(runnable, "rfi-test-io") }.asCoroutineDispatcher()
+        val cpuDispatcher = Executors.newSingleThreadExecutor { runnable -> Thread(runnable, "rfi-test-cpu") }.asCoroutineDispatcher()
+        var fetchThread: String? = null
+        var parsingThread: String? = null
+        val adapter = RfiProgrammedTimetableAdapter(
+            fetcher = RfiProgrammedTimetableFetcher {
+                fetchThread = Thread.currentThread().name
+                fixture()
+            },
+            clock = clock,
+            ioDispatcher = ioDispatcher,
+            parsingDispatcher = cpuDispatcher,
+            onParsing = { parsingThread = Thread.currentThread().name }
+        )
+
+        try {
+            val result = adapter.loadRoute(
+                route(roma, milano),
+                Direction.OUTBOUND,
+                JourneyQuery(LocalDate.of(2026, 9, 4), LocalTime.of(8, 0))
+            )
+
+            assertTrue(result is DataResult.Success)
+            assertTrue(fetchThread.orEmpty().startsWith("rfi-test-io"))
+            assertTrue(parsingThread.orEmpty().startsWith("rfi-test-cpu"))
+        } finally {
+            ioDispatcher.close()
+            cpuDispatcher.close()
+        }
     }
 
     private fun adapter() = RfiProgrammedTimetableAdapter(

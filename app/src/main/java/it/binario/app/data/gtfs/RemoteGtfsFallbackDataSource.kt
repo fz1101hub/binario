@@ -26,7 +26,10 @@ import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
 /**
@@ -48,24 +51,23 @@ class RemoteGtfsFallbackDataSource(
     private val notBefore: LocalDate? = null,
     private val cacheTtl: Duration = Duration.ofHours(6),
     private val realtimeProvider: TripUpdateProvider? = null,
-    private val realtimeZone: ZoneId = ZoneId.of("Europe/Rome")
+    private val realtimeZone: ZoneId = ZoneId.of("Europe/Rome"),
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+    private val parsingDispatcher: CoroutineDispatcher = Dispatchers.Default,
+    private val onParsing: (() -> Unit)? = null
 ) : TrainDataSource {
     @Volatile private var cached: CachedFeed? = null
+    private val feedMutex = Mutex()
 
     override suspend fun loadRoute(route: SavedRoute, direction: Direction): DataResult =
         loadRoute(route, direction, JourneyQuery.now())
 
     override suspend fun loadRoute(route: SavedRoute, direction: Direction, query: JourneyQuery): DataResult {
         notBefore?.let { if (query.serviceDate < it) return DataResult.Failure("La fonte fallback non è ancora valida per la data selezionata.") }
-        val bytes = runCatching { feedBytes() }.getOrElse {
+        val feed = runCatching { cachedFeed() }.getOrElse {
             return DataResult.Failure("La fonte GTFS fallback ${source.displayName} non è disponibile: ${it.message.orEmpty()}")
         }
-        val adapter = EmbeddedGtfsRouteAdapter(
-            openAsset = { ByteArrayInputStream(bytes) },
-            packs = listOf(EmbeddedGtfsPack(parserSourceId, "remote/${source.id.value}.zip")),
-            clock = { clock.millis() }
-        )
-        return when (val result = adapter.loadRoute(route, direction, query)) {
+        return when (val result = feed.adapter.loadRoute(route, direction, query)) {
             is DataResult.Success -> {
                 val planned = result.snapshot.copy(
                     providerName = "${source.displayName} · fallback best-effort",
@@ -74,7 +76,7 @@ class RemoteGtfsFallbackDataSource(
                         result.snapshot.notice
                     ).joinToString(" ")
                 )
-                DataResult.Success(enrichWithSameFeedRealtime(planned, bytes, query))
+                DataResult.Success(enrichWithSameFeedRealtime(planned, feed.bytes, query))
             }
             is DataResult.Failure -> result
         }
@@ -98,7 +100,7 @@ class RemoteGtfsFallbackDataSource(
             packs = listOf(EmbeddedGtfsPack(parserSourceId, "remote/${source.id.value}.zip")),
             cacheLimit = 1
         )
-        val enriched = withContext(Dispatchers.Default) {
+        val enriched = withContext(parsingDispatcher) {
             updates.mapNotNull { update ->
                 val scheduled = resolver.resolve(parserSourceId, update, query.serviceDate, realtimeZone) ?: return@mapNotNull null
                 RealtimeOperationalEnricher.enrich(update, scheduled)
@@ -169,14 +171,27 @@ class RemoteGtfsFallbackDataSource(
         )
     }
 
-    private suspend fun feedBytes(): ByteArray {
-        val now = clock.instant()
-        cached?.takeIf { now.isBefore(it.expiresAt) }?.let { return it.bytes }
-        val bytes = withContext(Dispatchers.IO) {
-            downloader.open(source, allowBestEffortFallback = true).use { session -> session.input.readBytes() }
+    private suspend fun cachedFeed(): CachedFeed {
+        cached?.takeIf { clock.instant().isBefore(it.expiresAt) }?.let { return it }
+        return feedMutex.withLock {
+            cached?.takeIf { clock.instant().isBefore(it.expiresAt) }?.let { return@withLock it }
+            val bytes = withContext(ioDispatcher) {
+                downloader.open(source, allowBestEffortFallback = true).use { session -> session.input.readBytes() }
+            }
+            require(bytes.isNotEmpty()) { "Archivio GTFS vuoto" }
+            CachedFeed(
+                bytes = bytes,
+                adapter = EmbeddedGtfsRouteAdapter(
+                    openAsset = { ByteArrayInputStream(bytes) },
+                    packs = listOf(EmbeddedGtfsPack(parserSourceId, "remote/${source.id.value}.zip")),
+                    clock = { clock.millis() },
+                    ioDispatcher = ioDispatcher,
+                    parsingDispatcher = parsingDispatcher,
+                    onParsing = onParsing
+                ),
+                expiresAt = clock.instant().plus(cacheTtl)
+            ).also { cached = it }
         }
-        require(bytes.isNotEmpty()) { "Archivio GTFS vuoto" }
-        return bytes.also { cached = CachedFeed(it, now.plus(cacheTtl)) }
     }
 
     private fun normalizeStation(value: String): String = Normalizer.normalize(value, Normalizer.Form.NFD)
@@ -184,7 +199,11 @@ class RemoteGtfsFallbackDataSource(
         .uppercase(Locale.ROOT)
         .replace(Regex("[^A-Z0-9]"), "")
 
-    private data class CachedFeed(val bytes: ByteArray, val expiresAt: java.time.Instant)
+    private data class CachedFeed(
+        val bytes: ByteArray,
+        val adapter: EmbeddedGtfsRouteAdapter,
+        val expiresAt: java.time.Instant
+    )
 
     companion object {
         private val HH_MM = DateTimeFormatter.ofPattern("HH:mm")

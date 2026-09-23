@@ -17,12 +17,16 @@ import it.binario.app.data.core.SourceId
 import it.binario.app.data.sources.RailInformationCategory
 import it.binario.app.data.sources.RailSourceCatalog
 import it.binario.app.data.sources.RailSourceSelectionPolicy
+import java.io.ByteArrayInputStream
 import java.io.InputStream
 import java.text.Normalizer
 import java.time.LocalDate
 import java.util.LinkedHashMap
 import java.util.Locale
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
 /**
@@ -39,7 +43,10 @@ import kotlinx.coroutines.withContext
 class EmbeddedGtfsRouteAdapter(
     private val openAsset: (String) -> InputStream,
     private val packs: List<EmbeddedGtfsPack> = EmbeddedGtfsPacks.all,
-    private val clock: () -> Long = System::currentTimeMillis
+    private val clock: () -> Long = System::currentTimeMillis,
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+    private val parsingDispatcher: CoroutineDispatcher = Dispatchers.Default,
+    private val onParsing: (() -> Unit)? = null
 ) : TrainDataSource {
     /** Due indici compatti al massimo: un pack AMT completo resta sicuro anche su heap piccoli. */
     private val indexCache = object : LinkedHashMap<SourceId, StaticGtfsIndex>(2, 0.75f, true) {
@@ -48,6 +55,8 @@ class EmbeddedGtfsRouteAdapter(
     private val stopPresenceCache = object : LinkedHashMap<SourceId, Set<String>>(5, 0.75f, true) {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<SourceId, Set<String>>?): Boolean = size > 5
     }
+    private val indexMutex = Mutex()
+    private val stopPresenceMutex = Mutex()
 
     /** Diagnostica interna usata dal test di regressione a heap limitato. */
     internal fun compactIndexStats(): List<GtfsCompactIndexStats> = synchronized(indexCache) {
@@ -77,16 +86,18 @@ class EmbeddedGtfsRouteAdapter(
             null
         }
 
-        val candidatePacks = withContext(Dispatchers.IO) {
-            packs.filter { pack ->
-                if (explicitSourceIds != null) {
-                    pack.sourceId in explicitSourceIds
-                } else {
+        val candidatePacks = withContext(parsingDispatcher) {
+            buildList {
+                for (pack in packs) {
+                    if (explicitSourceIds != null) {
+                        if (pack.sourceId in explicitSourceIds) add(pack)
+                        continue
+                    }
                     try {
                         val stops = stopNames(pack)
-                        wantedOrigin in stops && wantedDestination in stops
+                        if (wantedOrigin in stops && wantedDestination in stops) add(pack)
                     } catch (_: GtfsCompactIndexLimitException) {
-                        false
+                        // An oversized/malformed pack cannot be a candidate.
                     }
                 }
             }
@@ -96,16 +107,19 @@ class EmbeddedGtfsRouteAdapter(
             return DataResult.Failure("Nessun data pack GTFS contiene entrambe le stazioni richieste.")
         }
 
-        val collected = mutableListOf<SourcedService>()
-        for (pack in candidatePacks) {
-            val source = RailSourceCatalog.byId(pack.sourceId) ?: continue
-            val index = try {
-                withContext(Dispatchers.IO) { indexFor(pack) }
-            } catch (_: GtfsCompactIndexLimitException) {
-                continue
-            }
-            index.services(origin, destination, source.id.value, query).forEach { service ->
-                collected += SourcedService(source.displayName, pack.sourceId, service)
+        val collected = withContext(parsingDispatcher) {
+            buildList {
+                for (pack in candidatePacks) {
+                    val source = RailSourceCatalog.byId(pack.sourceId) ?: continue
+                    val index = try {
+                        indexFor(pack)
+                    } catch (_: GtfsCompactIndexLimitException) {
+                        continue
+                    }
+                    index.services(origin, destination, source.id.value, query).forEach { service ->
+                        add(SourcedService(source.displayName, pack.sourceId, service))
+                    }
+                }
             }
         }
 
@@ -121,15 +135,17 @@ class EmbeddedGtfsRouteAdapter(
             return DataResult.Failure("Nessuna corsa programmata trovata nei data pack GTFS compatibili per data e orario selezionati.")
         }
 
-        val services = collected
-            .sortedWith(
-                compareBy<SourcedService> { it.service.scheduledDepartureDateTime }
-                    .thenByDescending { sourcePreference(it.sourceId, it.service.operatorDisplayName) }
-                    .thenBy { it.service.number }
-            )
-            .distinctBy { item -> serviceIdentity(item.service) }
-            .take(24)
-            .sortedWith(compareBy<SourcedService> { it.service.scheduledDepartureDateTime }.thenBy { it.service.number })
+        val services = withContext(parsingDispatcher) {
+            collected
+                .sortedWith(
+                    compareBy<SourcedService> { it.service.scheduledDepartureDateTime }
+                        .thenByDescending { sourcePreference(it.sourceId, it.service.operatorDisplayName) }
+                        .thenBy { it.service.number }
+                )
+                .distinctBy { item -> serviceIdentity(item.service) }
+                .take(24)
+                .sortedWith(compareBy<SourcedService> { it.service.scheduledDepartureDateTime }.thenBy { it.service.number })
+        }
 
         val now = clock()
         val sourceNames = services.map { it.sourceName }.distinct()
@@ -147,10 +163,42 @@ class EmbeddedGtfsRouteAdapter(
                 notice = if (sourceNames.size > 1) {
                     "Orario programmato unificato da ${sourceNames.joinToString()}. I duplicati sono riconciliati privilegiando la fonte ufficiale più vicina all'operatore. Ritardi, binari e soppressioni richiedono fonti realtime."
                 } else {
-                    "Orario programmato da ${sourceNames.first()}. Ritardi, binari e soppressioni richiedono una fonte realtime."
+                    "Orario programmato da ${sourceNames.first()}. Ritardi, binari e soppressioni richiedono fonti realtime."
                 }
             )
         )
+    }
+
+    private suspend fun stopNames(pack: EmbeddedGtfsPack): Set<String> {
+        synchronized(stopPresenceCache) { stopPresenceCache[pack.sourceId] }?.let { return it }
+        return stopPresenceMutex.withLock {
+            synchronized(stopPresenceCache) { stopPresenceCache[pack.sourceId] } ?: run {
+                val bytes = assetBytes(pack.assetPath)
+                val names = withContext(parsingDispatcher) {
+                    onParsing?.invoke()
+                    scanStopNames(ByteArrayInputStream(bytes))
+                }
+                synchronized(stopPresenceCache) { stopPresenceCache[pack.sourceId] ?: names.also { stopPresenceCache[pack.sourceId] = it } }
+            }
+        }
+    }
+
+    private suspend fun assetBytes(path: String): ByteArray = withContext(ioDispatcher) {
+        openAsset(path).use(InputStream::readBytes)
+    }
+
+    private suspend fun indexFor(pack: EmbeddedGtfsPack): StaticGtfsIndex {
+        synchronized(indexCache) { indexCache[pack.sourceId] }?.let { return it }
+        return indexMutex.withLock {
+            synchronized(indexCache) { indexCache[pack.sourceId] } ?: run {
+                val bytes = assetBytes(pack.assetPath)
+                val parsed = withContext(parsingDispatcher) {
+                    onParsing?.invoke()
+                    parse { ByteArrayInputStream(bytes) }
+                }
+                synchronized(indexCache) { indexCache[pack.sourceId] ?: parsed.also { indexCache[pack.sourceId] = it } }
+            }
+        }
     }
 
     private fun serviceIdentity(service: TrainService): String = listOf(
@@ -175,12 +223,6 @@ class EmbeddedGtfsRouteAdapter(
         if (!stationId.startsWith("gtfs:")) return null
         val source = stationId.removePrefix("gtfs:").substringBefore(':').takeIf(String::isNotBlank) ?: return null
         return SourceId(source)
-    }
-
-    private fun stopNames(pack: EmbeddedGtfsPack): Set<String> = synchronized(stopPresenceCache) {
-        stopPresenceCache[pack.sourceId] ?: scanStopNames(openAsset(pack.assetPath)).also { names ->
-            stopPresenceCache[pack.sourceId] = names
-        }
     }
 
     private fun scanStopNames(stream: InputStream): Set<String> {
@@ -220,13 +262,6 @@ class EmbeddedGtfsRouteAdapter(
         }
         return index
     }
-
-    private fun indexFor(pack: EmbeddedGtfsPack): StaticGtfsIndex = synchronized(indexCache) {
-        indexCache[pack.sourceId] ?: parse { openAsset(pack.assetPath) }.also { parsed ->
-            indexCache[pack.sourceId] = parsed
-        }
-    }
-
 
     private data class SourcedService(
         val sourceName: String,
