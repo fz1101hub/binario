@@ -72,7 +72,13 @@ def read_checksum_file(path: Path, failures: list[str]) -> dict[str, str]:
     return entries
 
 
-def verify_gtfs(today: date, minimum_valid_days: int, failures: list[str]) -> dict[str, int]:
+def verify_gtfs(
+    today: date,
+    minimum_valid_days: int,
+    failures: list[str],
+    *,
+    enforce_freshness: bool = True,
+) -> dict[str, int]:
     manifest_path = GTFS_ROOT / "manifest.json"
     manifest = load_json(manifest_path, failures)
     if not isinstance(manifest, dict) or not isinstance(manifest.get("packs"), list):
@@ -126,11 +132,12 @@ def verify_gtfs(today: date, minimum_valid_days: int, failures: list[str]) -> di
             failures.append(f"GTFS pack {source_id} has no ISO-8601 lastServiceDate")
         elif last_service_date < cutoff:
             expiring_or_expired += 1
-            relation = "expired" if last_service_date < today else "expires before the required freshness window"
-            failures.append(
-                f"GTFS pack {source_id} {relation}: lastServiceDate {last_service_date.isoformat()}, "
-                f"required through {cutoff.isoformat()}"
-            )
+            if enforce_freshness:
+                relation = "expired" if last_service_date < today else "expires before the required freshness window"
+                failures.append(
+                    f"GTFS pack {source_id} {relation}: lastServiceDate {last_service_date.isoformat()}, "
+                    f"required through {cutoff.isoformat()}"
+                )
 
     actual_files = {path.name for path in GTFS_ROOT.glob("*.zip")}
     if actual_files != expected_files:
@@ -212,13 +219,29 @@ def main() -> int:
         default=14,
         help="Minimum remaining calendar days required for every GTFS pack (default: 14).",
     )
+    parser.add_argument(
+        "--integrity-only",
+        action="store_true",
+        help="Validate files, manifests, hashes and dates without failing for stale data. Release gates must omit this flag.",
+    )
     args = parser.parse_args()
     if args.min_valid_days < 0:
         parser.error("--min-valid-days must be non-negative")
 
     failures: list[str] = []
-    summary = {"today": args.today.isoformat(), "min_valid_days": args.min_valid_days}
-    summary.update(verify_gtfs(args.today, args.min_valid_days, failures))
+    summary = {
+        "today": args.today.isoformat(),
+        "min_valid_days": args.min_valid_days,
+        "freshness_enforced": not args.integrity_only,
+    }
+    summary.update(
+        verify_gtfs(
+            args.today,
+            args.min_valid_days,
+            failures,
+            enforce_freshness=not args.integrity_only,
+        )
+    )
     summary.update(verify_stations(failures))
     summary["failures"] = len(failures)
     print(json.dumps(summary, ensure_ascii=False, sort_keys=True))
