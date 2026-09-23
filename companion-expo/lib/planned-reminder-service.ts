@@ -4,8 +4,11 @@ import {
   isLocalPlannedRoute,
   type LocalPlannedRoute,
 } from "@/lib/local-route-contract";
+import { loadLocalPlannedRoutes } from "@/lib/local-routes";
 
 const legacyStorageKey = "binario.planned-route-reminders.v1";
+const legacyMigrationNoticeKey = "binario.planned-route-reminders.v1-migration-notice";
+const legacyMigrationNoticeAcknowledgedKey = "binario.planned-route-reminders.v1-migration-notice-acknowledged";
 const notificationTitle = "Binario · tratta pianificata";
 let reminderMutationQueue: Promise<void> = Promise.resolve();
 
@@ -31,46 +34,26 @@ function routeIdFromRequest(request: Notifications.NotificationRequest) {
     : null;
 }
 
-function legacyIdentifiers(raw: string): Set<string> {
+function legacyRouteIdsByIdentifier(raw: string): Map<string, number> {
   try {
     const value: unknown = JSON.parse(raw);
-    if (!value || typeof value !== "object" || Array.isArray(value))
-      return new Set();
-    return new Set(
-      Object.values(value).filter(
-        (identifier): identifier is string =>
-          typeof identifier === "string" && identifier.trim() !== "",
-      ),
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
+      return new Map();
+    }
+    return new Map(
+      Object.entries(value).flatMap(([routeId, identifier]) => {
+        const parsedRouteId = Number(routeId);
+        return typeof identifier === "string" &&
+          identifier.trim() !== "" &&
+          Number.isSafeInteger(parsedRouteId) &&
+          parsedRouteId > 0
+          ? [[identifier, parsedRouteId]]
+          : [];
+      }),
     );
   } catch {
-    return new Set();
+    return new Map();
   }
-}
-
-/**
- * Version 1 kept native identifiers in AsyncStorage. Migrate once by reconciling
- * both that record and Binario notification metadata, then use the native
- * scheduler as the sole source of truth.
- */
-async function migrateLegacyState(): Promise<Set<number>> {
-  const raw = await AsyncStorage.getItem(legacyStorageKey);
-  const storedIdentifiers =
-    raw === null ? new Set<string>() : legacyIdentifiers(raw);
-  const migratedRouteIds = new Set<number>();
-  const scheduled = await Notifications.getAllScheduledNotificationsAsync();
-  for (const request of scheduled) {
-    const routeId = routeIdFromRequest(request);
-    const isLegacyBinarioReminder =
-      storedIdentifiers.has(request.identifier) ||
-      (routeId !== null &&
-        request.content.title === notificationTitle &&
-        request.identifier !== reminderIdentifier(routeId));
-    if (!isLegacyBinarioReminder) continue;
-    await Notifications.cancelScheduledNotificationAsync(request.identifier);
-    if (routeId !== null) migratedRouteIds.add(routeId);
-  }
-  if (raw !== null) await AsyncStorage.removeItem(legacyStorageKey);
-  return migratedRouteIds;
 }
 
 function localDepartureEpoch(route: LocalPlannedRoute): number | null {
@@ -99,9 +82,102 @@ function localDepartureEpoch(route: LocalPlannedRoute): number | null {
     departure.getDate() !== expected.day ||
     departure.getHours() !== expected.hour ||
     departure.getMinutes() !== expected.minute
-  )
+  ) {
     return null;
+  }
   return departure.getTime();
+}
+
+function reminderFireAt(route: LocalPlannedRoute): number | null {
+  const departureAt = localDepartureEpoch(route);
+  if (departureAt === null || route.plannedReminderMinutes === null) return null;
+  const fireAt = departureAt - route.plannedReminderMinutes * 60_000;
+  return Number.isFinite(fireAt) ? fireAt : null;
+}
+
+function reminderRequest(route: LocalPlannedRoute, fireAt: number) {
+  return {
+    identifier: reminderIdentifier(route.id),
+    content: {
+      title: notificationTitle,
+      body: `${route.origin} → ${route.destination} alle ${route.travelTime}. Avviso locale approssimativo, non realtime.`,
+      data: { routeId: route.id },
+    },
+    trigger: {
+      type: Notifications.SchedulableTriggerInputTypes.DATE,
+      date: new Date(fireAt),
+    },
+  } as const;
+}
+
+async function recordPreservedLegacyWarning(count: number) {
+  if (count === 0) return;
+  if (await AsyncStorage.getItem(legacyMigrationNoticeAcknowledgedKey)) return;
+  const state = count === 1
+    ? "promemoria precedente è stato mantenuto"
+    : "promemoria precedenti sono stati mantenuti";
+  await AsyncStorage.setItem(
+    legacyMigrationNoticeKey,
+    `${count} ${state} perché non è più possibile ${count === 1 ? "collegarlo" : "collegarli"} in sicurezza a una tratta futura salvata. Controlla le notifiche di sistema.`,
+  );
+  await AsyncStorage.setItem(legacyMigrationNoticeAcknowledgedKey, "1");
+}
+
+/**
+ * V1 stored random native identifiers. A legacy notification is removed only after
+ * the matching saved future route has been recreated under its canonical identifier.
+ * Unknown, expired, or otherwise orphaned requests stay scheduled and are surfaced.
+ */
+async function migrateLegacyState(): Promise<void> {
+  const raw = await AsyncStorage.getItem(legacyStorageKey);
+  const storedRouteIds = raw === null
+    ? new Map<string, number>()
+    : legacyRouteIdsByIdentifier(raw);
+  const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+  const legacyRequests = scheduled.filter((request) => {
+    const routeId = routeIdFromRequest(request) ?? storedRouteIds.get(request.identifier);
+    return storedRouteIds.has(request.identifier) ||
+      (routeId !== undefined &&
+        request.content.title === notificationTitle &&
+        request.identifier !== reminderIdentifier(routeId));
+  });
+  if (legacyRequests.length === 0) {
+    if (raw !== null) await AsyncStorage.removeItem(legacyStorageKey);
+    return;
+  }
+
+  const routesById = new Map(
+    (await loadLocalPlannedRoutes()).map((route) => [route.id, route]),
+  );
+  const canonicalIdentifiers = new Set(scheduled.map((request) => request.identifier));
+  const preserved = new Set<string>();
+
+  for (const request of legacyRequests) {
+    const routeId = routeIdFromRequest(request) ?? storedRouteIds.get(request.identifier);
+    if (routeId === undefined) {
+      preserved.add(request.identifier);
+      continue;
+    }
+    const canonicalIdentifier = reminderIdentifier(routeId);
+    if (canonicalIdentifiers.has(canonicalIdentifier)) {
+      await Notifications.cancelScheduledNotificationAsync(request.identifier);
+      continue;
+    }
+    const route = routesById.get(routeId);
+    const fireAt = route ? reminderFireAt(route) : null;
+    if (!route || fireAt === null || fireAt <= Date.now()) {
+      preserved.add(request.identifier);
+      continue;
+    }
+    await Notifications.scheduleNotificationAsync(reminderRequest(route, fireAt));
+    canonicalIdentifiers.add(canonicalIdentifier);
+    await Notifications.cancelScheduledNotificationAsync(request.identifier);
+  }
+
+  if (raw !== null && ![...storedRouteIds.keys()].some((identifier) => preserved.has(identifier))) {
+    await AsyncStorage.removeItem(legacyStorageKey);
+  }
+  await recordPreservedLegacyWarning(preserved.size);
 }
 
 async function scheduledRouteIds(): Promise<Set<number>> {
@@ -121,10 +197,19 @@ export function listScheduledRouteIds() {
   });
 }
 
+/** Returns and clears the one-time explanation for legacy reminders retained safely. */
+export function consumeLegacyReminderMigrationNotice() {
+  return serializeMutation(async () => {
+    const notice = await AsyncStorage.getItem(legacyMigrationNoticeKey);
+    if (notice !== null) await AsyncStorage.removeItem(legacyMigrationNoticeKey);
+    return notice;
+  });
+}
+
 export function cancelPlannedRouteReminder(routeId: number) {
   return serializeMutation(async () => {
     if (!Number.isSafeInteger(routeId) || routeId <= 0) return false;
-    const migrated = await migrateLegacyState();
+    await migrateLegacyState();
     const identifiers = (
       await Notifications.getAllScheduledNotificationsAsync()
     )
@@ -141,7 +226,7 @@ export function cancelPlannedRouteReminder(routeId: number) {
     for (const identifier of identifiers) {
       await Notifications.cancelScheduledNotificationAsync(identifier);
     }
-    return migrated.has(routeId) || hadScheduledReminder;
+    return hadScheduledReminder;
   });
 }
 
@@ -154,12 +239,8 @@ export async function schedulePlannedRouteReminder(
   } catch {
     return "invalid";
   }
-  const departureAt = validRoute ? localDepartureEpoch(route) : null;
-  if (departureAt === null || route.plannedReminderMinutes === null) {
-    return "invalid";
-  }
-  const fireAt = departureAt - route.plannedReminderMinutes * 60_000;
-  if (!Number.isFinite(fireAt) || fireAt <= Date.now()) return "invalid";
+  const fireAt = validRoute ? reminderFireAt(route) : null;
+  if (fireAt === null || fireAt <= Date.now()) return "invalid";
 
   return serializeMutation(async () => {
     await migrateLegacyState();
@@ -170,18 +251,7 @@ export async function schedulePlannedRouteReminder(
     if (!permission.granted) return "permission-denied" as const;
     if (fireAt <= Date.now()) return "invalid" as const;
 
-    await Notifications.scheduleNotificationAsync({
-      identifier: reminderIdentifier(route.id),
-      content: {
-        title: notificationTitle,
-        body: `${route.origin} → ${route.destination} alle ${route.travelTime}. Orario programmato: non realtime.`,
-        data: { routeId: route.id },
-      },
-      trigger: {
-        type: Notifications.SchedulableTriggerInputTypes.DATE,
-        date: new Date(fireAt),
-      },
-    });
+    await Notifications.scheduleNotificationAsync(reminderRequest(route, fireAt));
     return "scheduled" as const;
   });
 }

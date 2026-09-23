@@ -2,11 +2,20 @@ name: Companion CI
 
 on:
   pull_request:
+    paths:
+      - "companion-expo/**"
+      - "contracts/wear-snapshot/**"
+      - "tools/verify_gradle_dependency_metadata.py"
+      - ".github/workflows/companion-ci.yml"
   push:
     branches:
       - main
-      - "stabilization/**"
       - "integration/**"
+    paths:
+      - "companion-expo/**"
+      - "contracts/wear-snapshot/**"
+      - "tools/verify_gradle_dependency_metadata.py"
+      - ".github/workflows/companion-ci.yml"
   workflow_dispatch:
 
 concurrency:
@@ -58,6 +67,9 @@ jobs:
       - name: Unit tests
         run: pnpm test
 
+      - name: Verify privacy disclosures
+        run: python3 ../tools/verify_privacy_policy.py
+
       - name: Verify managed Expo config
         run: pnpm run verify:managed-config
 
@@ -86,4 +98,8 @@ jobs:
 
       - name: Android companion and Wear lint/build
         working-directory: companion-expo/android
-        run: ./gradlew --no-daemon --dependency-verification=strict :app:lintDebug :wear:lintDebug :app:assembleDebug :wear:assembleDebug
+        run: >-
+          ./gradlew --no-daemon --dependency-verification=strict
+          :app:testDebugUnitTest :wear:testDebugUnitTest
+          :app:lintDebug :wear:lintDebug
+          :app:assembleDebug :wear:assembleDebug

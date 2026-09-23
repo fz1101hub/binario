@@ -9,7 +9,12 @@ const state = vi.hoisted(() => ({
 
 const storageMocks = vi.hoisted(() => ({
   getItem: vi.fn(),
+  setItem: vi.fn(),
   removeItem: vi.fn(),
+}));
+
+const routeMocks = vi.hoisted(() => ({
+  loadLocalPlannedRoutes: vi.fn(),
 }));
 
 const notificationMocks = vi.hoisted(() => ({
@@ -29,8 +34,11 @@ vi.mock("expo-notifications", () => ({
   ...notificationMocks,
 }));
 
+vi.mock("../lib/local-routes", () => routeMocks);
+
 import {
   cancelPlannedRouteReminder,
+  consumeLegacyReminderMigrationNotice,
   listScheduledRouteIds,
   schedulePlannedRouteReminder,
 } from "../lib/planned-reminder-service";
@@ -65,6 +73,9 @@ beforeEach(() => {
   storageMocks.getItem.mockImplementation(
     async (key: string) => state.storage.get(key) ?? null,
   );
+  storageMocks.setItem.mockImplementation(async (key: string, value: string) => {
+    state.storage.set(key, value);
+  });
   storageMocks.removeItem.mockImplementation(async (key: string) => {
     state.storage.delete(key);
   });
@@ -90,6 +101,7 @@ beforeEach(() => {
       state.scheduled.delete(identifier);
     },
   );
+  routeMocks.loadLocalPlannedRoutes.mockResolvedValue([route, secondRoute]);
 });
 
 afterEach(() => {
@@ -161,7 +173,7 @@ describe("planned reminder native reconciliation", () => {
     expect(state.storage.has(storageKey)).toBe(true);
   });
 
-  it("quarantines a malformed legacy map by reconciling Binario metadata", async () => {
+  it("recreates a legacy reminder under its canonical id before deleting the old one", async () => {
     state.storage.set(storageKey, JSON.stringify({ 42: 123 }));
     state.scheduled.set("legacy-notification", {
       identifier: "legacy-notification",
@@ -172,9 +184,35 @@ describe("planned reminder native reconciliation", () => {
       trigger: null,
     });
 
-    expect(await listScheduledRouteIds()).toEqual([]);
+    expect(await listScheduledRouteIds()).toEqual([42]);
     expect(state.storage.has(storageKey)).toBe(false);
-    expect(state.scheduled.size).toBe(0);
+    expect([...state.scheduled.keys()]).toEqual(["binario_planned_route_42"]);
+    expect(
+      notificationMocks.scheduleNotificationAsync.mock.invocationCallOrder[0] ?? 0,
+    ).toBeLessThan(
+      notificationMocks.cancelScheduledNotificationAsync.mock
+        .invocationCallOrder[0] ?? Number.MAX_SAFE_INTEGER,
+    );
+  });
+
+  it("keeps an orphan legacy reminder and exposes a one-time warning", async () => {
+    routeMocks.loadLocalPlannedRoutes.mockResolvedValue([]);
+    state.storage.set(storageKey, JSON.stringify({ 99: "legacy-orphan" }));
+    state.scheduled.set("legacy-orphan", {
+      identifier: "legacy-orphan",
+      content: {
+        title: "Binario · tratta pianificata",
+        data: { routeId: 99 },
+      },
+      trigger: null,
+    });
+
+    expect(await listScheduledRouteIds()).toEqual([99]);
+    expect(state.scheduled.has("legacy-orphan")).toBe(true);
+    expect(await consumeLegacyReminderMigrationNotice()).toMatch(
+      /mantenuto.*notifiche di sistema/i,
+    );
+    expect(await consumeLegacyReminderMigrationNotice()).toBeNull();
   });
 
   it("removes a random legacy identifier even when the storage marker is missing", async () => {
@@ -282,9 +320,9 @@ describe("planned reminder native reconciliation", () => {
 
     await expect(listScheduledRouteIds()).rejects.toThrow("remove failed");
     expect(state.storage.has(storageKey)).toBe(true);
-    expect(state.scheduled.size).toBe(0);
+    expect([...state.scheduled.keys()]).toEqual(["binario_planned_route_42"]);
 
-    expect(await listScheduledRouteIds()).toEqual([]);
+    expect(await listScheduledRouteIds()).toEqual([42]);
     expect(state.storage.has(storageKey)).toBe(false);
   });
 });

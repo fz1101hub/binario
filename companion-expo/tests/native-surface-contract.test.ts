@@ -27,6 +27,22 @@ function kotlinModuleNames() {
 }
 
 describe("contratti delle superfici native Binario", () => {
+  it("genera telefono e Wear con lo stesso applicationId e la stessa firma release", () => {
+    const appGradle = source("android/app/build.gradle");
+    const wearGradle = source("android/wear/build.gradle");
+    expect(appGradle).toContain("applicationId 'im.binario.companion'");
+    expect(wearGradle).toContain('applicationId "im.binario.companion"');
+    expect(appGradle).toContain("if (binarioReleaseSigningConfigured) signingConfig signingConfigs.release");
+    expect(wearGradle).toContain("if (binarioReleaseSigningConfigured) signingConfig signingConfigs.release");
+    expect(wearGradle).not.toContain('applicationId "im.binario.companion.wear"');
+  });
+
+  it("non ricattura il testo condiviso durante la sola ricreazione Activity", () => {
+    const mainActivity = source("android/app/src/main/java/im/binario/companion/MainActivity.kt");
+    expect(mainActivity).toContain("if (savedInstanceState == null) BinarioSharedTextStore.capture(this, intent)");
+    expect(mainActivity).toContain("override fun onNewIntent(intent: Intent)");
+  });
+
   it("genera il lock SHA-256 Gradle in ogni prebuild Android", () => {
     const metadata = source("native/android/verification-metadata.xml");
     expect(widgetPlugin).toContain('"native", "android", "verification-metadata.xml"');

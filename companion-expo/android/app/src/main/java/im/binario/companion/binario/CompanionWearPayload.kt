@@ -79,8 +79,8 @@ object CompanionWearPayloadV1 {
     val confidence = normalized(raw["confidence"], 64)?.takeIf(confidenceValues::contains) ?: return null
     val direction = normalized(raw["direction"], 16)?.takeIf(directionValues::contains) ?: return null
     val sourceLabel = normalized(raw["provenanceSourceLabel"], 96) ?: return null
-    val routeId = normalized(raw["routeId"], 64, allowEmpty = true) ?: return null
-    val routeLabel = normalized(raw["routeLabel"], 96, allowEmpty = true) ?: return null
+    val routeId = normalized(raw["routeId"], 64) ?: return null
+    val routeLabel = normalized(raw["routeLabel"], 96) ?: return null
     val notice = normalized(raw["notice"], 180, allowEmpty = true) ?: return null
     if ((operational == "UNAVAILABLE" || dataNature == "UNAVAILABLE") && (serviceCount != 0 || dataNature != "UNAVAILABLE")) return null
     val canonical = linkedMapOf<String, Any>(
@@ -125,8 +125,8 @@ object CompanionWearPayloadV1 {
     "operationalState" to "UNAVAILABLE",
     "freshness" to "UNAVAILABLE",
     "confidence" to "LOCAL_PLANNED",
-    "routeId" to "",
-    "routeLabel" to "",
+    "routeId" to "unavailable",
+    "routeLabel" to "Nessuna tratta attiva",
     "direction" to "UNKNOWN",
     "notice" to "Dati non disponibili nel Companion: apri l’app principale per aggiornare la pianificazione locale.",
     "serviceCount" to 0,

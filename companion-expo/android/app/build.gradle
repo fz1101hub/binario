@@ -1,3 +1,14 @@
+def binarioReleaseSigningProperties = [
+  BINARIO_RELEASE_STORE_FILE: providers.gradleProperty("BINARIO_RELEASE_STORE_FILE").orElse(providers.environmentVariable("BINARIO_RELEASE_STORE_FILE")),
+  BINARIO_RELEASE_STORE_PASSWORD: providers.gradleProperty("BINARIO_RELEASE_STORE_PASSWORD").orElse(providers.environmentVariable("BINARIO_RELEASE_STORE_PASSWORD")),
+  BINARIO_RELEASE_KEY_ALIAS: providers.gradleProperty("BINARIO_RELEASE_KEY_ALIAS").orElse(providers.environmentVariable("BINARIO_RELEASE_KEY_ALIAS")),
+  BINARIO_RELEASE_KEY_PASSWORD: providers.gradleProperty("BINARIO_RELEASE_KEY_PASSWORD").orElse(providers.environmentVariable("BINARIO_RELEASE_KEY_PASSWORD")),
+]
+def binarioReleaseSigningConfigured = binarioReleaseSigningProperties.values().every { it.isPresent() }
+if (binarioReleaseSigningProperties.values().any { it.isPresent() } && !binarioReleaseSigningConfigured) {
+  logger.warn("Release signing is enabled only when every BINARIO_RELEASE_* value is supplied; building unsigned.")
+}
+
 apply plugin: "com.android.application"
 apply plugin: "org.jetbrains.kotlin.android"
 apply plugin: "com.facebook.react"
@@ -82,6 +93,16 @@ def enableMinifyInReleaseBuilds = (findProperty('android.enableMinifyInReleaseBu
 def jscFlavor = 'io.github.react-native-community:jsc-android:2026004.+'
 
 android {
+  signingConfigs {
+    if (binarioReleaseSigningConfigured) {
+      release {
+        storeFile rootProject.file(binarioReleaseSigningProperties.BINARIO_RELEASE_STORE_FILE.get())
+        storePassword binarioReleaseSigningProperties.BINARIO_RELEASE_STORE_PASSWORD.get()
+        keyAlias binarioReleaseSigningProperties.BINARIO_RELEASE_KEY_ALIAS.get()
+        keyPassword binarioReleaseSigningProperties.BINARIO_RELEASE_KEY_PASSWORD.get()
+      }
+    }
+  }
     ndkVersion rootProject.ext.ndkVersion
 
     buildToolsVersion rootProject.ext.buildToolsVersion
@@ -103,6 +124,7 @@ buildTypes {
 
         }
         release {            // Production signing is supplied only by the release/EAS environment.
+            if (binarioReleaseSigningConfigured) signingConfig signingConfigs.release
             def enableShrinkResources = findProperty('android.enableShrinkResourcesInReleaseBuilds') ?: 'false'
             shrinkResources enableShrinkResources.toBoolean()
             minifyEnabled enableMinifyInReleaseBuilds

@@ -2,8 +2,51 @@ const { withAndroidManifest, withAppBuildGradle, withDangerousMod } = require("@
 const fs = require("node:fs");
 const path = require("node:path");
 
-const packageName = "im.binario.companion.binario";
+const phoneApplicationId = "im.binario.companion";
+const packageName = `${phoneApplicationId}.binario`;
 const receiverName = `${packageName}.BinarioStatusWidgetReceiver`;
+
+const sharedReleaseSigningGradle = `def binarioReleaseSigningProperties = [
+  BINARIO_RELEASE_STORE_FILE: providers.gradleProperty("BINARIO_RELEASE_STORE_FILE").orElse(providers.environmentVariable("BINARIO_RELEASE_STORE_FILE")),
+  BINARIO_RELEASE_STORE_PASSWORD: providers.gradleProperty("BINARIO_RELEASE_STORE_PASSWORD").orElse(providers.environmentVariable("BINARIO_RELEASE_STORE_PASSWORD")),
+  BINARIO_RELEASE_KEY_ALIAS: providers.gradleProperty("BINARIO_RELEASE_KEY_ALIAS").orElse(providers.environmentVariable("BINARIO_RELEASE_KEY_ALIAS")),
+  BINARIO_RELEASE_KEY_PASSWORD: providers.gradleProperty("BINARIO_RELEASE_KEY_PASSWORD").orElse(providers.environmentVariable("BINARIO_RELEASE_KEY_PASSWORD")),
+]
+def binarioReleaseSigningConfigured = binarioReleaseSigningProperties.values().every { it.isPresent() }
+if (binarioReleaseSigningProperties.values().any { it.isPresent() } && !binarioReleaseSigningConfigured) {
+  logger.warn("Release signing is enabled only when every BINARIO_RELEASE_* value is supplied; building unsigned.")
+}`;
+
+const sharedReleaseSigningBlock = `  signingConfigs {
+    if (binarioReleaseSigningConfigured) {
+      release {
+        storeFile rootProject.file(binarioReleaseSigningProperties.BINARIO_RELEASE_STORE_FILE.get())
+        storePassword binarioReleaseSigningProperties.BINARIO_RELEASE_STORE_PASSWORD.get()
+        keyAlias binarioReleaseSigningProperties.BINARIO_RELEASE_KEY_ALIAS.get()
+        keyPassword binarioReleaseSigningProperties.BINARIO_RELEASE_KEY_PASSWORD.get()
+      }
+    }
+  }`;
+
+function addSharedReleaseSigning(contents) {
+  if (!contents.includes("def binarioReleaseSigningProperties")) {
+    contents = `${sharedReleaseSigningGradle}\n\n${contents}`;
+  }
+  if (contents.includes("binarioReleaseSigningConfigured) signingConfig signingConfigs.release")) return contents;
+  const androidStart = contents.indexOf("android {");
+  const buildTypesStart = contents.indexOf("buildTypes {", androidStart);
+  const releaseStart = contents.indexOf("release {", buildTypesStart);
+  if (androidStart < 0 || buildTypesStart < 0 || releaseStart < 0) {
+    throw new Error("Binario Companion Gradle no longer has the expected Android release block.");
+  }
+  if (!contents.slice(androidStart, buildTypesStart).includes("signingConfigs {")) {
+    contents = contents.slice(0, androidStart + "android {".length) + `\n${sharedReleaseSigningBlock}` + contents.slice(androidStart + "android {".length);
+  }
+  const currentBuildTypesStart = contents.indexOf("buildTypes {", androidStart);
+  const currentReleaseStart = contents.indexOf("release {", currentBuildTypesStart);
+  const lineEnd = contents.indexOf("\n", currentReleaseStart);
+  return contents.slice(0, lineEnd) + "\n            if (binarioReleaseSigningConfigured) signingConfig signingConfigs.release" + contents.slice(lineEnd);
+}
 
 function removeDebugReleaseSigning(contents) {
   const marker = "release {";
@@ -333,8 +376,8 @@ object CompanionWearPayloadV1 {
     val confidence = normalized(raw["confidence"], 64)?.takeIf(confidenceValues::contains) ?: return null
     val direction = normalized(raw["direction"], 16)?.takeIf(directionValues::contains) ?: return null
     val sourceLabel = normalized(raw["provenanceSourceLabel"], 96) ?: return null
-    val routeId = normalized(raw["routeId"], 64, allowEmpty = true) ?: return null
-    val routeLabel = normalized(raw["routeLabel"], 96, allowEmpty = true) ?: return null
+    val routeId = normalized(raw["routeId"], 64) ?: return null
+    val routeLabel = normalized(raw["routeLabel"], 96) ?: return null
     val notice = normalized(raw["notice"], 180, allowEmpty = true) ?: return null
     if ((operational == "UNAVAILABLE" || dataNature == "UNAVAILABLE") && (serviceCount != 0 || dataNature != "UNAVAILABLE")) return null
     val canonical = linkedMapOf<String, Any>(
@@ -379,8 +422,8 @@ object CompanionWearPayloadV1 {
     "operationalState" to "UNAVAILABLE",
     "freshness" to "UNAVAILABLE",
     "confidence" to "LOCAL_PLANNED",
-    "routeId" to "",
-    "routeLabel" to "",
+    "routeId" to "unavailable",
+    "routeLabel" to "Nessuna tratta attiva",
     "direction" to "UNKNOWN",
     "notice" to "Dati non disponibili nel Companion: apri l’app principale per aggiornare la pianificazione locale.",
     "serviceCount" to 0,
@@ -490,7 +533,7 @@ function withBinarioAndroidWidget(config) {
     ];
     const missing = lines.filter((line) => !next.modResults.contents.includes(line));
     if (missing.length > 0) next.modResults.contents = next.modResults.contents.replace("dependencies {", `dependencies {\n${missing.join("\n")}`);
-    next.modResults.contents = removeDebugReleaseSigning(next.modResults.contents);
+    next.modResults.contents = addSharedReleaseSigning(removeDebugReleaseSigning(next.modResults.contents));
     return next;
   });
 
@@ -503,6 +546,8 @@ function withBinarioAndroidWidget(config) {
       "android.permission.READ_EXTERNAL_STORAGE",
       "android.permission.WRITE_EXTERNAL_STORAGE",
       "android.permission.SYSTEM_ALERT_WINDOW",
+      "android.permission.SCHEDULE_EXACT_ALARM",
+      "android.permission.USE_EXACT_ALARM",
     ]);
     manifest["uses-permission"] = (manifest["uses-permission"] ?? []).filter(
       (permission) => !blockedProductionPermissions.has(permission.$?.["android:name"]),
@@ -593,7 +638,7 @@ function withBinarioAndroidWidget(config) {
     let mainActivityKt = fs.readFileSync(mainActivityPath, "utf8");
     if (!mainActivityKt.includes("BinarioSharedTextStore.capture")) {
       mainActivityKt = mainActivityKt.replace("import android.os.Build", `import android.content.Intent\nimport ${packageName}.BinarioSharedTextStore\n\nimport android.os.Build`);
-      mainActivityKt = mainActivityKt.replace("    super.onCreate(null)", "    super.onCreate(null)\n    BinarioSharedTextStore.capture(this, intent)");
+      mainActivityKt = mainActivityKt.replace("    super.onCreate(null)", "    super.onCreate(null)\n    if (savedInstanceState == null) BinarioSharedTextStore.capture(this, intent)");
       mainActivityKt = mainActivityKt.replace("\n  /**\n   * Returns the name", "\n  override fun onNewIntent(intent: Intent) {\n    super.onNewIntent(intent)\n    setIntent(intent)\n    BinarioSharedTextStore.capture(this, intent)\n  }\n\n  /**\n   * Returns the name");
       fs.writeFileSync(mainActivityPath, mainActivityKt);
     }
@@ -604,23 +649,28 @@ function withBinarioAndroidWidget(config) {
     fs.mkdirSync(wearSource, { recursive: true });
     fs.mkdirSync(wearTestSource, { recursive: true });
     fs.mkdirSync(path.join(wearRoot, "src", "main", "res", "values"), { recursive: true });
-    fs.writeFileSync(path.join(wearRoot, "build.gradle"), `apply plugin: "com.android.application"
+    fs.writeFileSync(path.join(wearRoot, "build.gradle"), `${sharedReleaseSigningGradle}
+
+apply plugin: "com.android.application"
 apply plugin: "org.jetbrains.kotlin.android"
 
 android {
+${sharedReleaseSigningBlock}
   namespace "im.binario.companion.wear"
   compileSdk rootProject.ext.compileSdkVersion
   defaultConfig {
-    applicationId "im.binario.companion.wear"
+    // Data Layer peers must share package id and release signing identity.
+    applicationId "${phoneApplicationId}"
     minSdkVersion 30
     targetSdkVersion rootProject.ext.targetSdkVersion
-    versionCode 1
-    versionName "0.1.0"
+    versionCode 4
+    versionName "0.1.1"
   }
   buildTypes {
     debug {}
     release {
       // Production signing is supplied only by the release environment.
+      if (binarioReleaseSigningConfigured) signingConfig signingConfigs.release
     }
   }
 }
@@ -770,8 +820,8 @@ object BinarioWearSnapshotV1 {
     if (enumOrUnknown(raw["confidence"], confidenceValues) == null) return null
     val direction = enumOrUnknown(raw["direction"], directionValues) ?: return null
     val source = normalized(raw["provenanceSourceLabel"], 96) ?: return null
-    val routeId = normalized(raw["routeId"], 64, allowEmpty = true) ?: return null
-    val routeLabel = normalized(raw["routeLabel"], 96, allowEmpty = true) ?: return null
+    val routeId = normalized(raw["routeId"], 64) ?: return null
+    val routeLabel = normalized(raw["routeLabel"], 96) ?: return null
     val notice = normalized(raw["notice"], 180, allowEmpty = true) ?: return null
     // Keep these named checks: provenance remains compulsory even though the Tile only renders a safe summary.
     if (producer.isBlank() || source.isBlank() || routeId.length > 64 || (operational == "UNAVAILABLE" || dataNature == "UNAVAILABLE") && (serviceCount != 0 || dataNature != "UNAVAILABLE")) return null
@@ -873,7 +923,7 @@ class BinarioTileService : TileService() {
         ).setClickable(
           ModifiersBuilders.Clickable.Builder().setId("binario-voice-request").setOnClick(
             ActionBuilders.LaunchAction.Builder().setAndroidActivity(
-              ActionBuilders.AndroidActivity.Builder().setPackageName("im.binario.companion.wear").setClassName(BinarioVoiceRequestActivity::class.java.name).build()
+              ActionBuilders.AndroidActivity.Builder().setPackageName("${phoneApplicationId}").setClassName(BinarioVoiceRequestActivity::class.java.name).build()
             ).build()
           ).build()
         ).build())
@@ -885,7 +935,7 @@ class BinarioTileService : TileService() {
         ).setClickable(
           ModifiersBuilders.Clickable.Builder().setId("binario-open-checklist").setOnClick(
             ActionBuilders.LaunchAction.Builder().setAndroidActivity(
-              ActionBuilders.AndroidActivity.Builder().setPackageName("im.binario.companion.wear").setClassName(BinarioChecklistRequestActivity::class.java.name).build()
+              ActionBuilders.AndroidActivity.Builder().setPackageName("${phoneApplicationId}").setClassName(BinarioChecklistRequestActivity::class.java.name).build()
             ).build()
           ).build()
         ).build())

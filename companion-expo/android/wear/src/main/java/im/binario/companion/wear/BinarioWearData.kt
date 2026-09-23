@@ -111,8 +111,8 @@ object BinarioWearSnapshotV1 {
     if (enumOrUnknown(raw["confidence"], confidenceValues) == null) return null
     val direction = enumOrUnknown(raw["direction"], directionValues) ?: return null
     val source = normalized(raw["provenanceSourceLabel"], 96) ?: return null
-    val routeId = normalized(raw["routeId"], 64, allowEmpty = true) ?: return null
-    val routeLabel = normalized(raw["routeLabel"], 96, allowEmpty = true) ?: return null
+    val routeId = normalized(raw["routeId"], 64) ?: return null
+    val routeLabel = normalized(raw["routeLabel"], 96) ?: return null
     val notice = normalized(raw["notice"], 180, allowEmpty = true) ?: return null
     // Keep these named checks: provenance remains compulsory even though the Tile only renders a safe summary.
     if (producer.isBlank() || source.isBlank() || routeId.length > 64 || (operational == "UNAVAILABLE" || dataNature == "UNAVAILABLE") && (serviceCount != 0 || dataNature != "UNAVAILABLE")) return null

@@ -9,7 +9,7 @@ function normalize(value: unknown): LocalFavoriteStation | null {
   if (!value || typeof value !== "object") return null;
   const item = value as Partial<LocalFavoriteStation>;
   const code = typeof item.code === "string" ? item.code.trim().slice(0, 64) : "";
-  const name = typeof item.name === "string" ? item.name.trim().replace(/\s+/g, " ").slice(0, 96) : "";
+  const name = typeof item.name === "string" ? item.name.trim().replace(/\s+/g, " ").slice(0, 96).trim() : "";
   return code && name && Number.isSafeInteger(item.createdAtUtcMs) && (item.createdAtUtcMs ?? 0) >= 0 ? { code, name, createdAtUtcMs: item.createdAtUtcMs! } : null;
 }
 

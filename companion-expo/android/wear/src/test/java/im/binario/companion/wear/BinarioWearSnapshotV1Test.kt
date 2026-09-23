@@ -45,4 +45,9 @@ class BinarioWearSnapshotV1Test {
     assertNotNull(decoded)
     assertEquals("UNKNOWN", decoded?.operationalState)
   }
+
+  @Test fun `rejects empty route identity`() {
+    assertNull(BinarioWearSnapshotV1.decode(golden() + ("routeId" to ""), now))
+    assertNull(BinarioWearSnapshotV1.decode(golden() + ("routeLabel" to ""), now))
+  }
 }

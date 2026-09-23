@@ -20,7 +20,7 @@ class MainActivity : ReactActivity() {
     // This is required for expo-splash-screen.
     setTheme(R.style.AppTheme);
     super.onCreate(null)
-    BinarioSharedTextStore.capture(this, intent)
+    if (savedInstanceState == null) BinarioSharedTextStore.capture(this, intent)
   }
 
   override fun onNewIntent(intent: Intent) {

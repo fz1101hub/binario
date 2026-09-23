@@ -45,9 +45,10 @@ describe("contratto Companion Expo → Wear v1", () => {
     expect(isValidCompanionWearPayloadV1({ ...payload, provenanceProducer: 1 }, now)).toBe(false);
   });
 
-  it("consente solo i campi che il contratto dichiara esplicitamente vuoti", () => {
+  it("richiede identità tratta non vuota e consente solo la notice vuota", () => {
     const payload = fixtureAtNow();
-    expect(isValidCompanionWearPayloadV1({ ...payload, routeId: "", routeLabel: "", notice: "" }, now)).toBe(true);
+    expect(isValidCompanionWearPayloadV1({ ...payload, routeId: "", routeLabel: "" }, now)).toBe(false);
+    expect(isValidCompanionWearPayloadV1({ ...payload, notice: "" }, now)).toBe(true);
     expect(isValidCompanionWearPayloadV1({ ...payload, provenanceSourceLabel: "" }, now)).toBe(false);
   });
 });

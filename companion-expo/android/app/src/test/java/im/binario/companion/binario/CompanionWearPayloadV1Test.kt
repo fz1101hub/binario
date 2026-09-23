@@ -43,4 +43,11 @@ class CompanionWearPayloadV1Test {
     assertNull(CompanionWearPayloadV1.decode(golden() + ("serviceCount" to Long.MAX_VALUE), now))
     assertNull(CompanionWearPayloadV1.decode(golden() + ("provenanceObservedAtEpochMillis" to 9_007_199_254_740_992L), now))
   }
+
+  @Test fun `rejects empty route identity and emits canonical unavailable identity`() {
+    assertNull(CompanionWearPayloadV1.decode(golden() + ("routeId" to ""), now))
+    assertNull(CompanionWearPayloadV1.decode(golden() + ("routeLabel" to ""), now))
+    assertEquals("unavailable", CompanionWearPayloadV1.unavailable(now)["routeId"])
+    assertEquals("Nessuna tratta attiva", CompanionWearPayloadV1.unavailable(now)["routeLabel"])
+  }
 }

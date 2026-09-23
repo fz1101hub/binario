@@ -4,7 +4,7 @@ import type { LocalJourneyChecklistItem } from "@/lib/local-route-contract";
 export type LocalJourneyTemplate = { id: string; label: string; origin: string; originStationCode: string; destination: string; destinationStationCode: string; travelTime: string; plannedReminderMinutes: number | null; checklist: LocalJourneyChecklistItem[] };
 const storageKey = "binario.local-journey-templates.v1";
 const maxTemplates = 12;
-const normalize = (value: string, max: number) => value.trim().replace(/\s+/g, " ").slice(0, max);
+const normalize = (value: string, max: number) => value.trim().replace(/\s+/g, " ").slice(0, max).trim();
 
 export function createLocalJourneyTemplate(value: LocalJourneyTemplate): LocalJourneyTemplate | null {
   const template = { ...value, id: normalize(value.id, 100), label: normalize(value.label, 80), origin: normalize(value.origin, 96), destination: normalize(value.destination, 96), originStationCode: normalize(value.originStationCode, 64), destinationStationCode: normalize(value.destinationStationCode, 64) };

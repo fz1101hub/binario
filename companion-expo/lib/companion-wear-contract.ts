@@ -58,7 +58,7 @@ const localNotice = "Orario programmato locale: non è un aggiornamento realtime
 const unavailableNotice = "Dati non disponibili nel Companion: apri l’app principale per aggiornare la pianificazione locale.";
 
 function normalize(value: string, maxCharacters: number): string {
-  return value.trim().replace(/\s+/g, " ").slice(0, maxCharacters);
+  return value.trim().replace(/\s+/g, " ").slice(0, maxCharacters).trim();
 }
 
 function isNormalizedBounded(value: unknown, maxCharacters: number, allowEmpty = false): value is string {
@@ -98,7 +98,7 @@ export function isValidCompanionWearPayloadV1(value: unknown, now = Date.now()):
   if (payload.schemaVersion !== companionWearSchemaVersion || !isInteger(payload.generatedAtEpochMillis) || !isInteger(payload.expiresAtEpochMillis) || !isInteger(payload.ttlMillis) || !isInteger(payload.provenanceObservedAtEpochMillis)) return false;
   if (payload.ttlMillis <= 0 || payload.ttlMillis > companionWearMaxTtlMillis || payload.expiresAtEpochMillis - payload.generatedAtEpochMillis !== payload.ttlMillis || payload.expiresAtEpochMillis <= now || payload.generatedAtEpochMillis > now + companionWearFutureSkewMillis) return false;
   if (!isOneOf(payload.provenanceProducer, producerValues) || !isOneOf(payload.provenanceDataNature, dataNatureValues) || !isOneOf(payload.operationalState, operationalStateValues) || !isOneOf(payload.freshness, freshnessValues) || !isOneOf(payload.confidence, confidenceValues) || !isOneOf(payload.direction, directionValues)) return false;
-  if (!isNormalizedBounded(payload.provenanceSourceLabel, 96) || !isNormalizedBounded(payload.routeId, 64, true) || !isNormalizedBounded(payload.routeLabel, 96, true) || !isNormalizedBounded(payload.notice, 180, true)) return false;
+  if (!isNormalizedBounded(payload.provenanceSourceLabel, 96) || !isNormalizedBounded(payload.routeId, 64) || !isNormalizedBounded(payload.routeLabel, 96) || !isNormalizedBounded(payload.notice, 180, true)) return false;
   if ((payload.operationalState === "UNAVAILABLE" || payload.provenanceDataNature === "UNAVAILABLE") && (serviceCount !== 0 || payload.provenanceDataNature !== "UNAVAILABLE")) return false;
   for (let index = 0; index < serviceCount; index += 1) {
     if (!isNormalizedBounded(payload[`service${index}Number`], 24) || !isNormalizedBounded(payload[`service${index}Operator`], 64) || !isNormalizedBounded(payload[`service${index}Category`], 64) || !isNormalizedBounded(payload[`service${index}Destination`], 96) || !isNormalizedBounded(payload[`service${index}Scheduled`], 16) || !isNormalizedBounded(payload[`service${index}Expected`], 16) || !isNormalizedBounded(payload[`service${index}Status`], 64) || !isNormalizedBounded(payload[`service${index}Platform`], 16, true) || !isInteger(payload[`service${index}DelayMinutes`]) || (payload[`service${index}DelayMinutes`] as number) < -720 || (payload[`service${index}DelayMinutes`] as number) > 1_440) return false;
@@ -119,8 +119,8 @@ function unavailablePayload(now: number): CompanionWearPayloadV1 {
     operationalState: "UNAVAILABLE",
     freshness: "UNAVAILABLE",
     confidence: "LOCAL_PLANNED",
-    routeId: "",
-    routeLabel: "",
+    routeId: "unavailable",
+    routeLabel: "Nessuna tratta attiva",
     direction: "UNKNOWN",
     notice: unavailableNotice,
     serviceCount: 0,

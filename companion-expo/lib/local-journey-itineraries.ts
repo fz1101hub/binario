@@ -23,7 +23,7 @@ export type GuidedTextLocalRouteDraft = {
   plannedReminderMinutes: null;
 };
 
-function cleanText(value: string, maxLength: number) { return value.trim().replace(/\s+/g, " ").slice(0, maxLength); }
+function cleanText(value: string, maxLength: number) { return value.trim().replace(/\s+/g, " ").slice(0, maxLength).trim(); }
 
 function validDate(value: string) {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
