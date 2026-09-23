@@ -4,6 +4,27 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
+val releaseSigningPropertyNames = listOf(
+    "BINARIO_RELEASE_STORE_FILE",
+    "BINARIO_RELEASE_STORE_PASSWORD",
+    "BINARIO_RELEASE_KEY_ALIAS",
+    "BINARIO_RELEASE_KEY_PASSWORD",
+)
+val releaseSigningProperties = releaseSigningPropertyNames.associateWith { propertyName ->
+    providers.gradleProperty(propertyName)
+        .orElse(providers.environmentVariable(propertyName))
+}
+val releaseSigningConfigured = releaseSigningProperties.values.all { it.isPresent }
+if (releaseSigningProperties.values.any { it.isPresent } && !releaseSigningConfigured) {
+    logger.warn("Release signing is only enabled when all BINARIO_RELEASE_* properties are set; building unsigned.")
+}
+
+val binarioVersionCode = providers.gradleProperty("BINARIO_VERSION_CODE")
+    .orElse(providers.gradleProperty("BINARIO_APP_VERSION_CODE"))
+    .get()
+    .toInt()
+val binarioVersionName = providers.gradleProperty("BINARIO_VERSION_NAME").get()
+
 android {
     namespace = "it.binario.app"
     compileSdk = 36
@@ -12,8 +33,8 @@ android {
         applicationId = "it.binario.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 34
-        versionName = "0.20.3"
+        versionCode = binarioVersionCode
+        versionName = binarioVersionName
 
         // Public/operator best-effort pages are an explicit personal-build opt-in.
         // Enable only with -PBINARIO_PERSONAL_REALTIME_SOURCES=true.
@@ -35,6 +56,31 @@ android {
 
     kotlinOptions {
         jvmTarget = "17"
+    }
+
+    signingConfigs {
+        if (releaseSigningConfigured) {
+            create("release") {
+                storeFile = rootProject.file(releaseSigningProperties.getValue("BINARIO_RELEASE_STORE_FILE").get())
+                storePassword = releaseSigningProperties.getValue("BINARIO_RELEASE_STORE_PASSWORD").get()
+                keyAlias = releaseSigningProperties.getValue("BINARIO_RELEASE_KEY_ALIAS").get()
+                keyPassword = releaseSigningProperties.getValue("BINARIO_RELEASE_KEY_PASSWORD").get()
+            }
+        }
+    }
+
+    buildTypes {
+        getByName("release") {
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
+            if (releaseSigningConfigured) {
+                signingConfig = signingConfigs.getByName("release")
+            }
+        }
     }
 
     packaging {
@@ -59,8 +105,6 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
     implementation("androidx.work:work-runtime-ktx:2.10.0")
     implementation("org.jsoup:jsoup:1.18.3")
-    // Runtime JSON parsing for LocalDataBackup, the STA realtime adapter, and the embedded station catalog.
-    implementation("org.json:json:20240303")
     implementation("org.mobilitydata:gtfs-realtime-bindings:0.0.8")
     implementation("com.google.android.gms:play-services-wearable:20.0.1")
     implementation("androidx.compose.ui:ui")
@@ -69,4 +113,6 @@ dependencies {
     implementation("androidx.compose.material:material-icons-extended")
     debugImplementation("androidx.compose.ui:ui-tooling")
     testImplementation("junit:junit:4.13.2")
+    // Android supplies org.json at runtime; this artifact is only the JVM unit-test implementation.
+    testImplementation("org.json:json:20240303")
 }

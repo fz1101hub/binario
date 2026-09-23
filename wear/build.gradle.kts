@@ -4,6 +4,27 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
+val releaseSigningPropertyNames = listOf(
+    "BINARIO_RELEASE_STORE_FILE",
+    "BINARIO_RELEASE_STORE_PASSWORD",
+    "BINARIO_RELEASE_KEY_ALIAS",
+    "BINARIO_RELEASE_KEY_PASSWORD",
+)
+val releaseSigningProperties = releaseSigningPropertyNames.associateWith { propertyName ->
+    providers.gradleProperty(propertyName)
+        .orElse(providers.environmentVariable(propertyName))
+}
+val releaseSigningConfigured = releaseSigningProperties.values.all { it.isPresent }
+if (releaseSigningProperties.values.any { it.isPresent } && !releaseSigningConfigured) {
+    logger.warn("Release signing is only enabled when all BINARIO_RELEASE_* properties are set; building unsigned.")
+}
+
+val binarioVersionCode = providers.gradleProperty("BINARIO_VERSION_CODE")
+    .orElse(providers.gradleProperty("BINARIO_WEAR_VERSION_CODE"))
+    .get()
+    .toInt()
+val binarioVersionName = providers.gradleProperty("BINARIO_VERSION_NAME").get()
+
 android {
     namespace = "it.binario.wear"
     compileSdk = 36
@@ -11,12 +32,35 @@ android {
         applicationId = "it.binario.app.wear"
         minSdk = 30
         targetSdk = 36
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = binarioVersionCode
+        versionName = binarioVersionName
     }
     buildFeatures { compose = true }
     compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
     kotlinOptions { jvmTarget = "17" }
+    signingConfigs {
+        if (releaseSigningConfigured) {
+            create("release") {
+                storeFile = rootProject.file(releaseSigningProperties.getValue("BINARIO_RELEASE_STORE_FILE").get())
+                storePassword = releaseSigningProperties.getValue("BINARIO_RELEASE_STORE_PASSWORD").get()
+                keyAlias = releaseSigningProperties.getValue("BINARIO_RELEASE_KEY_ALIAS").get()
+                keyPassword = releaseSigningProperties.getValue("BINARIO_RELEASE_KEY_PASSWORD").get()
+            }
+        }
+    }
+    buildTypes {
+        getByName("release") {
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
+            if (releaseSigningConfigured) {
+                signingConfig = signingConfigs.getByName("release")
+            }
+        }
+    }
 }
 
 dependencies {
