@@ -215,7 +215,9 @@ def _check_apple_paths(path: Path, workflow: Mapping[str, Any], problems: list[s
         "tools/install_xcodegen.py",
         "tools/verify_ci_pinning.py",
         "tests/test_install_xcodegen.py",
+        "tests/test_verify_apple_watch_project.py",
         "tests/test_verify_ci_pinning.py",
+        "tests/test_requirements_ci.py",
         "requirements-ci.txt",
         ".github/ci-inputs-lock.json",
     }
@@ -231,6 +233,65 @@ def _check_apple_paths(path: Path, workflow: Mapping[str, Any], problems: list[s
             problems.append(
                 f"{path.name}: {event_name}.paths non copre la catena XcodeGen: {sorted(missing)}"
             )
+
+
+def _check_linux_trigger_budget(path: Path, workflow: Mapping[str, Any], problems: list[str]) -> None:
+    if path.name not in {
+        "alexa-companion-ci.yml",
+        "android-ci.yml",
+        "companion-ci.yml",
+        "gtfs-assets-ci.yml",
+    }:
+        return
+    triggers = _mapping(workflow.get("on")) or {}
+    pull_request = _mapping(triggers.get("pull_request")) or {}
+    push = _mapping(triggers.get("push")) or {}
+    pull_paths = pull_request.get("paths")
+    push_paths = push.get("paths")
+    branches = push.get("branches")
+    if not isinstance(pull_paths, list) or not pull_paths:
+        problems.append(f"{path.name}: pull_request deve avere filtri paths non vuoti")
+    if not isinstance(push_paths, list) or not push_paths:
+        problems.append(f"{path.name}: push deve avere filtri paths non vuoti")
+    if branches != ["main", "integration/**"]:
+        problems.append(f"{path.name}: push branches deve limitarsi a main e integration/**")
+    required_paths = {
+        "android-ci.yml": {"app/**", "wear/**", "contracts/wear-snapshot/**"},
+        "companion-ci.yml": {"companion-expo/**", "contracts/wear-snapshot/**"},
+    }.get(path.name, set())
+    for event_name, paths in (("pull_request", pull_paths), ("push", push_paths)):
+        actual = {value for value in paths if isinstance(value, str)} if isinstance(paths, list) else set()
+        missing = required_paths - actual
+        if missing:
+            problems.append(f"{path.name}: {event_name}.paths non copre input condivisi: {sorted(missing)}")
+
+    if path.name == "companion-ci.yml":
+        jobs = _mapping(workflow.get("jobs")) or {}
+        companion = _mapping(jobs.get("companion")) or {}
+        steps = companion.get("steps")
+        commands = ""
+        if isinstance(steps, list):
+            commands = "\n".join(
+                _commands(step.get("run"))
+                for raw_step in steps
+                for step in [_mapping(raw_step)] if step
+            )
+        if "python3 ../tools/verify_privacy_policy.py" not in commands:
+            problems.append(f"{path.name}: gate privacy Companion assente")
+
+    if path.name == "alexa-companion-ci.yml":
+        jobs = _mapping(workflow.get("jobs")) or {}
+        alexa = _mapping(jobs.get("alexa-companion")) or {}
+        steps = alexa.get("steps")
+        commands = ""
+        if isinstance(steps, list):
+            commands = "\n".join(
+                _commands(step.get("run"))
+                for raw_step in steps
+                for step in [_mapping(raw_step)] if step
+            )
+        if "pnpm run db:generate" not in commands or "git status --porcelain --untracked-files=all -- drizzle" not in commands:
+            problems.append(f"{path.name}: gate drift Drizzle fail-closed assente")
 
 
 def _check_apple_toolchain(
@@ -321,6 +382,10 @@ def _check_apple_toolchain(
         problems.append(f"{path.name}: selezione Xcode versionata assente")
     if '"Xcode $XCODE_VERSION"' not in select_xcode or '"Build version $XCODE_BUILD"' not in select_xcode:
         problems.append(f"{path.name}: verifica versione/build Xcode assente")
+
+    trust_chain = runs.get("Verify CI trust chain", "")
+    if "tests/test_verify_apple_watch_project.py" not in trust_chain:
+        problems.append(f"{path.name}: test statico progetto Apple assente dal rail macOS")
 
     install = runs.get("Install XcodeGen", "")
     expected_install_lines = [
@@ -428,6 +493,7 @@ def workflow_problems(
                         problems=problems,
                     )
 
+    _check_linux_trigger_budget(path, root or {}, problems)
     if path.name == "apple-watch-ci.yml":
         _check_apple_paths(path, root or {}, problems)
         _check_apple_toolchain(path, jobs, lock, problems)

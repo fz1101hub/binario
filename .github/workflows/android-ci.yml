@@ -2,11 +2,50 @@ name: Android CI
 
 on:
   pull_request:
+    paths:
+      - "app/**"
+      - "wear/**"
+      - "contracts/wear-snapshot/**"
+      - "gradle/**"
+      - "gradlew"
+      - "gradlew.bat"
+      - "build.gradle.kts"
+      - "settings.gradle.kts"
+      - "gradle.properties"
+      - "PRIVACY.md"
+      - "README.md"
+      - "CHANGELOG.md"
+      - "docs/PIANO_STABILIZZAZIONE_v0.20.4.md"
+      - "tools/verify_android_app_bundles.py"
+      - "tools/verify_android_release_config.py"
+      - "tools/verify_embedded_assets.py"
+      - "tools/verify_gradle_dependency_metadata.py"
+      - "tools/verify_privacy_policy.py"
+      - ".github/workflows/android-ci.yml"
   push:
     branches:
       - main
-      - "stabilization/**"
       - "integration/**"
+    paths:
+      - "app/**"
+      - "wear/**"
+      - "contracts/wear-snapshot/**"
+      - "gradle/**"
+      - "gradlew"
+      - "gradlew.bat"
+      - "build.gradle.kts"
+      - "settings.gradle.kts"
+      - "gradle.properties"
+      - "PRIVACY.md"
+      - "README.md"
+      - "CHANGELOG.md"
+      - "docs/PIANO_STABILIZZAZIONE_v0.20.4.md"
+      - "tools/verify_android_app_bundles.py"
+      - "tools/verify_android_release_config.py"
+      - "tools/verify_embedded_assets.py"
+      - "tools/verify_gradle_dependency_metadata.py"
+      - "tools/verify_privacy_policy.py"
+      - ".github/workflows/android-ci.yml"
   workflow_dispatch:
 
 concurrency:
@@ -50,6 +89,9 @@ jobs:
 
       - name: Gate embedded GTFS freshness for at least 30 days
         run: python3 tools/verify_embedded_assets.py --min-valid-days 30
+
+      - name: Verify privacy-policy disclosures
+        run: python3 tools/verify_privacy_policy.py
 
       - name: Verify release-engineering configuration
         run: |

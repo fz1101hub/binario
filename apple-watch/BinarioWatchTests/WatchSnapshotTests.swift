@@ -60,6 +60,20 @@ final class WatchSnapshotTests: XCTestCase {
         XCTAssertNil(BinarioWatchSnapshot.decodeContract(try fixtureData(), nowEpochMillis: 1_893_485_700_001))
     }
 
+    func testRefreshReloadsTheBinarioWidgetOnlyAfterReadingCache() {
+        var events: [String] = []
+
+        RefreshBinarioAction.requestTimelineReload(
+            loadSnapshot: {
+                events.append("load")
+                return .unavailable
+            },
+            reloadTimeline: { kind in events.append("reload:\(kind)") }
+        )
+
+        XCTAssertEqual(events, ["load", "reload:\(BinarioWatchWidgetConfiguration.kind)"])
+    }
+
     private func fixtureData() throws -> Data {
         let url = try XCTUnwrap(Bundle(for: Self.self).url(forResource: "ios-to-apple-watch-v1", withExtension: "json"))
         return try Data(contentsOf: url)

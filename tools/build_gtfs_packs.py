@@ -6,9 +6,16 @@ fetches GTFS.  A build consumes a registered manifest and complete ZIP inputs,
 filters every pack to the rail services Binario can present, and atomically
 publishes ZIPs plus ``manifest.json`` and ``SHA256SUMS``.
 
+``packs[].sha256`` and ``SHA256SUMS`` remain distribution-integrity hashes of
+the complete ZIP bytes.  Because DEFLATE implementations can legitimately
+produce different bytes, each embedded ``binario_filter_manifest.json`` also
+attests the SHA-256 of every uncompressed data member.  Those canonical member
+digests prove content identity across byte-different ZIP rebuilds.  The filter
+manifest itself is excluded from that map because it carries the map.
+
 Examples::
 
-    # Rebuild deterministically from already acquired archives.
+    # Rebuild content-identically from already acquired archives.
     python3 tools/build_gtfs_packs.py \
       --input-dir app/src/main/assets/gtfs \
       --output-dir /tmp/binario-gtfs \
@@ -64,7 +71,26 @@ MAX_CSV_FIELD_UTF8_BYTES = 16 * 1024
 MAX_CSV_PHYSICAL_LINE_UTF8_BYTES = 256 * 1024
 MAX_RETAINED_BUILD_CELLS = 6_000_000
 MAX_RETAINED_BUILD_UTF8_BYTES = 128 * 1024 * 1024
-TOOL_VERSION = 1
+TOOL_VERSION = 2
+RELEASE_MANIFEST_VERSION = 4
+FILTER_MANIFEST_MEMBER = "binario_filter_manifest.json"
+MEMBER_DIGEST_FIELD = "memberSha256"
+
+# This is emitted in the release manifest, rather than a global document, so
+# the checked-in artifact explains the distinct distribution/content claims.
+RELEASE_INTEGRITY = {
+    "zipSha256": {
+        "field": "packs[].sha256 and SHA256SUMS",
+        "scope": "complete ZIP byte stream (distribution integrity)",
+    },
+    "contentSha256": {
+        "field": f"{FILTER_MANIFEST_MEMBER}.{MEMBER_DIGEST_FIELD}",
+        "scope": (
+            "uncompressed non-manifest ZIP members; identical maps prove content identity "
+            "when DEFLATE produces different ZIP bytes"
+        ),
+    },
+}
 
 # GTFS extended route types 100..199 are railway service types.  This is kept
 # explicit rather than inferred from names so a feed refresh cannot accidentally
@@ -140,6 +166,7 @@ class FilterResult:
     last_service_date: date
     filter_metadata: dict[str, Any]
     source_archive_sha256: str
+    content_sha256: str
 
 
 def sha256_file(path: Path) -> str:
@@ -148,6 +175,84 @@ def sha256_file(path: Path) -> str:
         for block in iter(lambda: source.read(1024 * 1024), b""):
             digest.update(block)
     return digest.hexdigest()
+
+
+class Utf8DigestSink:
+    """Minimal text sink used to hash the exact canonical CSV serialization."""
+
+    def __init__(self) -> None:
+        self._digest = hashlib.sha256()
+
+    def write(self, value: str) -> int:
+        encoded = value.encode("utf-8")
+        self._digest.update(encoded)
+        return len(value)
+
+    def hexdigest(self) -> str:
+        return self._digest.hexdigest()
+
+
+def write_canonical_csv(target: Any, table: CsvTable) -> None:
+    """Emit the canonical CSV bytes used both for ZIP output and its digest."""
+    writer = csv.DictWriter(target, fieldnames=table.header, extrasaction="ignore", lineterminator="\n")
+    writer.writeheader()
+    for row in table.rows:
+        writer.writerow({field: row.get(field, "") for field in table.header})
+
+
+def canonical_csv_sha256(table: CsvTable) -> str:
+    sink = Utf8DigestSink()
+    write_canonical_csv(sink, table)
+    return sink.hexdigest()
+
+
+def sha256_archive_member(archive: zipfile.ZipFile, entry: zipfile.ZipInfo) -> str:
+    """Hash decompressed member bytes after archive limits have been checked."""
+    digest = hashlib.sha256()
+    with archive.open(entry) as source:
+        for block in iter(lambda: source.read(1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def canonical_member_digests(archive: zipfile.ZipFile, manifest_entry: str) -> dict[str, str]:
+    """Return canonical content hashes for every payload member except its attestation."""
+    files = [entry for entry in archive.infolist() if not entry.is_dir()]
+    names = [entry.filename for entry in files]
+    if len(names) != len(set(names)):
+        raise BuildError("archivio GTFS con member duplicati")
+    if manifest_entry not in names:
+        raise BuildError("archivio GTFS senza manifest filtro da escludere dai digest")
+    return {
+        entry.filename: sha256_archive_member(archive, entry)
+        for entry in sorted(files, key=lambda candidate: candidate.filename)
+        if entry.filename != manifest_entry
+    }
+
+
+def declared_member_digests(metadata: Mapping[str, Any], source_id: str) -> dict[str, str]:
+    """Validate the canonical-digest contract before comparing archive content."""
+    declared = metadata.get(MEMBER_DIGEST_FIELD)
+    if not isinstance(declared, dict) or not declared:
+        raise BuildError(f"{source_id}: digest canonici member mancanti")
+    normalized: dict[str, str] = {}
+    for name, digest in declared.items():
+        if not isinstance(name, str) or not name or name == FILTER_MANIFEST_MEMBER:
+            raise BuildError(f"{source_id}: nome member nel digest non valido: {name!r}")
+        if (
+            not isinstance(digest, str)
+            or len(digest) != 64
+            or any(character not in "0123456789abcdef" for character in digest)
+        ):
+            raise BuildError(f"{source_id}: SHA-256 canonico non valido per {name}")
+        normalized[name] = digest
+    return normalized
+
+
+def canonical_content_sha256(member_digests: Mapping[str, str]) -> str:
+    """Hash the sorted member-digest map so the release manifest can attest content."""
+    canonical = json.dumps(dict(member_digests), sort_keys=True, separators=(",", ":"), ensure_ascii=True)
+    return hashlib.sha256(canonical.encode("ascii")).hexdigest()
 
 
 def safe_asset_name(asset: str) -> str:
@@ -397,8 +502,9 @@ def original_archive_sha256(archive: zipfile.ZipFile, source_id: str, fallback: 
     The usual release invocation has a distinct raw input directory.  The
     convenient default also permits rebuilding from the embedded assets
     themselves; in that case this function keeps the original source digest so
-    the second run produces byte-identical output instead of treating the first
-    filtered ZIP as a new upstream download.
+    a byte-different DEFLATE rebuild still has stable upstream provenance rather
+    than treating the first filtered ZIP as a new upstream download.  Canonical
+    member hashes, not compressed ZIP bytes, prove that content identity.
     """
     entry = find_entry(archive, "binario_filter_manifest.json")
     if entry is None:
@@ -586,13 +692,22 @@ def filter_archive(source: Path, destination: Path, source_id: str) -> FilterRes
         "policy": policy,
         "counts": counts,
         "lastServiceDate": coverage_end.isoformat(),
+        MEMBER_DIGEST_FIELD: {name: canonical_csv_sha256(table) for name, table in sorted(tables.items())},
     }
     write_deterministic_zip(destination, tables, metadata)
-    return FilterResult(source_id, coverage_end, metadata, source_hash)
+    return FilterResult(
+        source_id,
+        coverage_end,
+        metadata,
+        source_hash,
+        canonical_content_sha256(metadata[MEMBER_DIGEST_FIELD]),
+    )
 
 
 def write_zip_entry(archive: zipfile.ZipFile, name: str, data: bytes) -> None:
-    # Fixed timestamp, permissions and insertion order make ZIP bytes stable.
+    # Fixed metadata and insertion order minimize local ZIP variation. DEFLATE
+    # bytes may nevertheless differ between zlib implementations; member
+    # digests are the cross-environment reproducibility contract.
     info = zipfile.ZipInfo(name, date_time=(1980, 1, 1, 0, 0, 0))
     info.compress_type = zipfile.ZIP_DEFLATED
     info.create_system = 3
@@ -607,10 +722,7 @@ def write_csv_entry(archive: zipfile.ZipFile, name: str, table: CsvTable) -> Non
     info.external_attr = 0o100644 << 16
     with archive.open(info, "w", force_zip64=True) as raw:
         text = io.TextIOWrapper(raw, encoding="utf-8", newline="", write_through=True)
-        writer = csv.DictWriter(text, fieldnames=table.header, extrasaction="ignore", lineterminator="\n")
-        writer.writeheader()
-        for row in table.rows:
-            writer.writerow({field: row.get(field, "") for field in table.header})
+        write_canonical_csv(text, table)
         text.detach()
 
 
@@ -641,14 +753,16 @@ def manifest_for_build(source_manifest: Mapping[str, Any], results: Mapping[str,
         pack["lastServiceDate"] = result.last_service_date.isoformat()
         pack["filter"] = result.filter_metadata["policy"]
         pack["sourceArchiveSha256"] = result.source_archive_sha256
+        pack["contentSha256"] = result.content_sha256
         pack["asset"] = f"gtfs/{name}"
         packs.append(pack)
     return {
-        "schemaVersion": 3,
+        "schemaVersion": RELEASE_MANIFEST_VERSION,
         "generatedAt": generated_at,
         "purpose": source_manifest.get("purpose", "Offline GTFS packs for Binario"),
         "refreshCadence": "every-timetable-change",
         "filteringVersion": TOOL_VERSION,
+        "integrity": RELEASE_INTEGRITY,
         "packs": packs,
     }
 
@@ -795,19 +909,28 @@ def service_end_from_asset(path: Path, source_id: str) -> date:
     return last_service_date(calendar, calendar_dates, source_id)
 
 
-def verify_filter_from_asset(path: Path, source_id: str) -> None:
-    """Require a release ZIP to prove it was made by this rail filter."""
+def verify_filter_from_asset(path: Path, source_id: str) -> str:
+    """Require a release ZIP to prove filter policy and canonical content identity."""
     with zipfile.ZipFile(path) as archive:
         validate_archive_limits(archive)
-        entry = find_entry(archive, "binario_filter_manifest.json")
+        entry = find_entry(archive, FILTER_MANIFEST_MEMBER)
         if entry is None:
-            raise BuildError(f"{source_id}: asset non filtrato (binario_filter_manifest.json mancante)")
+            raise BuildError(f"{source_id}: asset non filtrato ({FILTER_MANIFEST_MEMBER} mancante)")
         try:
             metadata = json.loads(archive.read(entry).decode("utf-8"))
         except (UnicodeDecodeError, json.JSONDecodeError) as error:
             raise BuildError(f"{source_id}: metadati filtro non validi") from error
         if metadata.get("filterVersion") != TOOL_VERSION or metadata.get("sourceId") != source_id:
             raise BuildError(f"{source_id}: metadati filtro non corrispondenti alla pipeline")
+        declared_digests = declared_member_digests(metadata, source_id)
+        actual_digests = canonical_member_digests(archive, entry)
+        if declared_digests != actual_digests:
+            mismatched = sorted(
+                name
+                for name in set(declared_digests) | set(actual_digests)
+                if declared_digests.get(name) != actual_digests.get(name)
+            )
+            raise BuildError(f"{source_id}: digest canonici member incoerenti: {', '.join(mismatched[:3])}")
         routes = read_table(archive, "routes.txt", required=True)
         assert routes is not None
         selected, policy = selected_routes(source_id, routes)
@@ -823,6 +946,7 @@ def verify_filter_from_asset(path: Path, source_id: str) -> None:
             assert table is not None
             if expected_counts.get(count_key) != len(table.rows):
                 raise BuildError(f"{source_id}: conteggio {count_key} incoerente")
+        return canonical_content_sha256(declared_digests)
 
 
 def verify_assets(
@@ -864,9 +988,15 @@ def verify_assets(
             problems.append(str(error))
             continue
         try:
-            verify_filter_from_asset(path, source_id)
+            actual_content_hash = verify_filter_from_asset(path, source_id)
         except BuildError as error:
             problems.append(str(error))
+        else:
+            declared_content_hash = pack.get("contentSha256")
+            if declared_content_hash != actual_content_hash:
+                problems.append(
+                    f"digest contenuto incoerente per {name}: {declared_content_hash} != {actual_content_hash}"
+                )
         if declared_end != actual_end:
             problems.append(f"lastServiceDate incoerente per {name}: {declared_end} != {actual_end}")
         if as_of is not None and min_valid_days is not None:

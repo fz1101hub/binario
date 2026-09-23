@@ -29,11 +29,63 @@ class VerifyCiPinningTest(unittest.TestCase):
 
     def test_apple_paths_must_cover_xcodegen_trust_chain(self) -> None:
         workflow_path = ROOT / ".github/workflows/apple-watch-ci.yml"
-        text = workflow_path.read_text(encoding="utf-8").replace(
-            '      - "tools/install_xcodegen.py"\n', "", 1
+        original = workflow_path.read_text(encoding="utf-8")
+        for required in (
+            '      - "tools/install_xcodegen.py"\n',
+            '      - "tests/test_verify_apple_watch_project.py"\n',
+        ):
+            with self.subTest(required=required):
+                problems = policy.workflow_problems(
+                    workflow_path,
+                    original.replace(required, "", 1),
+                    LOCK,
+                )
+                self.assertTrue(any("paths non copre la catena XcodeGen" in problem for problem in problems))
+
+    def test_expensive_linux_workflows_require_path_filters_and_bounded_branches(self) -> None:
+        workflow_path = ROOT / ".github/workflows/companion-ci.yml"
+        original = workflow_path.read_text(encoding="utf-8")
+        without_pull_paths = original.replace(
+            '  pull_request:\n    paths:\n      - "companion-expo/**"\n      - "contracts/wear-snapshot/**"\n      - "tools/verify_gradle_dependency_metadata.py"\n      - ".github/workflows/companion-ci.yml"\n',
+            "  pull_request:\n",
+            1,
         )
-        problems = policy.workflow_problems(workflow_path, text, LOCK)
-        self.assertTrue(any("paths non copre la catena XcodeGen" in problem for problem in problems))
+        problems = policy.workflow_problems(workflow_path, without_pull_paths, LOCK)
+        self.assertTrue(any("pull_request deve avere filtri paths" in problem for problem in problems))
+
+        with_stabilization = original.replace(
+            '      - "integration/**"\n',
+            '      - "stabilization/**"\n      - "integration/**"\n',
+            1,
+        )
+        problems = policy.workflow_problems(workflow_path, with_stabilization, LOCK)
+        self.assertTrue(any("push branches" in problem for problem in problems))
+
+        without_privacy = original.replace(
+            "      - name: Verify privacy disclosures\n        run: python3 ../tools/verify_privacy_policy.py\n",
+            "",
+            1,
+        )
+        problems = policy.workflow_problems(workflow_path, without_privacy, LOCK)
+        self.assertTrue(any("gate privacy Companion assente" in problem for problem in problems))
+
+        android_path = ROOT / ".github/workflows/android-ci.yml"
+        android_without_contract = android_path.read_text(encoding="utf-8").replace(
+            '      - "contracts/wear-snapshot/**"\n',
+            "",
+            1,
+        )
+        problems = policy.workflow_problems(android_path, android_without_contract, LOCK)
+        self.assertTrue(any("paths non copre input condivisi" in problem for problem in problems))
+
+        alexa_path = ROOT / ".github/workflows/alexa-companion-ci.yml"
+        alexa_without_drift_gate = alexa_path.read_text(encoding="utf-8").replace(
+            "          pnpm run db:generate\n",
+            "",
+            1,
+        )
+        problems = policy.workflow_problems(alexa_path, alexa_without_drift_gate, LOCK)
+        self.assertTrue(any("gate drift Drizzle" in problem for problem in problems))
 
     def test_apple_rejects_bash_env_and_run_step_mutations(self) -> None:
         workflow_path = ROOT / ".github/workflows/apple-watch-ci.yml"

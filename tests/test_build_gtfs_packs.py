@@ -65,6 +65,14 @@ def write_manifest(directory: Path, *, last_service_date: str = "2027-01-15") ->
     (directory / "manifest.json").write_text(json.dumps(payload), encoding="utf-8")
 
 
+def rewrite_zip_with_different_deflate_bytes(source: Path, destination: Path) -> None:
+    """Model a rebuild whose compressor differs while every member is unchanged."""
+    with zipfile.ZipFile(source) as original, zipfile.ZipFile(destination, "w", compression=zipfile.ZIP_STORED) as rebuilt:
+        for entry in original.infolist():
+            if not entry.is_dir():
+                rebuilt.writestr(entry.filename, original.read(entry.filename))
+
+
 def publish_worker(staging: str, target: str, start: multiprocessing.synchronize.Event, results: multiprocessing.queues.Queue) -> None:
     start.wait()
     try:
@@ -144,6 +152,10 @@ class BuildGtfsPacksTest(unittest.TestCase):
             self.assertEqual(["rail-trip"], [row["trip_id"] for row in frequencies.rows])
             filter_manifest = json.loads(archive.read("binario_filter_manifest.json"))
             self.assertEqual("explicit-route-ids", filter_manifest["policy"]["kind"])
+            self.assertEqual(
+                builder.canonical_member_digests(archive, "binario_filter_manifest.json"),
+                filter_manifest["memberSha256"],
+            )
 
     def test_build_is_deterministic_and_publishes_complete_metadata(self) -> None:
         input_dir = self.make_input()
@@ -163,7 +175,73 @@ class BuildGtfsPacksTest(unittest.TestCase):
             f"{zip_hash}  amt-genova-casella-gtfs.zip\n",
             (output_one / "SHA256SUMS").read_text(encoding="utf-8"),
         )
+        self.assertEqual(4, manifest["schemaVersion"])
+        self.assertEqual("complete ZIP byte stream (distribution integrity)", manifest["integrity"]["zipSha256"]["scope"])
         builder.verify_assets(output_one, as_of=date(2026, 1, 1), min_valid_days=30)
+
+    def test_byte_different_rebuild_has_identical_canonical_content_digests(self) -> None:
+        input_dir = self.make_input()
+        output_dir = self.temp / "output"
+        builder.build_packs(input_dir, output_dir, generated_at="2026-01-01")
+        name = "amt-genova-casella-gtfs.zip"
+        original = output_dir / name
+        alternate = self.temp / "alternate.zip"
+        rewrite_zip_with_different_deflate_bytes(original, alternate)
+
+        self.assertNotEqual(original.read_bytes(), alternate.read_bytes())
+        with zipfile.ZipFile(original) as first, zipfile.ZipFile(alternate) as second:
+            first_metadata = json.loads(first.read("binario_filter_manifest.json"))
+            second_metadata = json.loads(second.read("binario_filter_manifest.json"))
+            self.assertEqual(first_metadata["memberSha256"], second_metadata["memberSha256"])
+            self.assertEqual(
+                builder.canonical_member_digests(first, "binario_filter_manifest.json"),
+                builder.canonical_member_digests(second, "binario_filter_manifest.json"),
+            )
+
+        original_content_hash = builder.canonical_content_sha256(first_metadata["memberSha256"])
+        self.assertEqual(original_content_hash, builder.canonical_content_sha256(second_metadata["memberSha256"]))
+        self.assertNotEqual(builder.sha256_file(original), builder.sha256_file(alternate))
+
+        # ZIP SHA-256 remains a distribution-integrity promise: release it with
+        # the alternate container hash, while retaining the content attestation.
+        alternate_hash = builder.sha256_file(alternate)
+        original.replace(self.temp / "original.zip")
+        alternate.replace(original)
+        manifest_path = output_dir / "manifest.json"
+        release_manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        release_manifest["packs"][0]["sha256"] = alternate_hash
+        self.assertEqual(original_content_hash, release_manifest["packs"][0]["contentSha256"])
+        manifest_path.write_text(json.dumps(release_manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        (output_dir / "SHA256SUMS").write_text(f"{alternate_hash}  {name}\n", encoding="utf-8")
+
+        builder.verify_assets(output_dir, as_of=date(2026, 1, 1), min_valid_days=30)
+
+    def test_verification_rejects_table_changed_after_distribution_hash_is_released(self) -> None:
+        input_dir = self.make_input()
+        output_dir = self.temp / "output"
+        builder.build_packs(input_dir, output_dir, generated_at="2026-01-01")
+        name = "amt-genova-casella-gtfs.zip"
+        original = output_dir / name
+        changed = self.temp / "changed.zip"
+        with zipfile.ZipFile(original) as source, zipfile.ZipFile(changed, "w", compression=zipfile.ZIP_STORED) as target:
+            for entry in source.infolist():
+                if entry.is_dir():
+                    continue
+                payload = source.read(entry.filename)
+                if entry.filename == "routes.txt":
+                    payload = payload.replace(b"FGC-164", b"FGC-165")
+                target.writestr(entry.filename, payload)
+        changed.replace(original)
+
+        changed_hash = builder.sha256_file(original)
+        release_manifest_path = output_dir / "manifest.json"
+        release_manifest = json.loads(release_manifest_path.read_text(encoding="utf-8"))
+        release_manifest["packs"][0]["sha256"] = changed_hash
+        release_manifest_path.write_text(json.dumps(release_manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        (output_dir / "SHA256SUMS").write_text(f"{changed_hash}  {name}\n", encoding="utf-8")
+
+        with self.assertRaisesRegex(builder.BuildError, "digest canonici member incoerenti: routes.txt"):
+            builder.verify_assets(output_dir, as_of=date(2026, 1, 1), min_valid_days=30)
 
     def test_verification_rejects_tampered_hash_and_near_expiry_pack(self) -> None:
         input_dir = self.make_input()

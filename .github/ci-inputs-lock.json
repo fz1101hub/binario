@@ -87,7 +87,7 @@
   "appleWatchRunSteps": [
     {
       "name": "Verify CI trust chain",
-      "sha256": "83215421108ee7dfca7be643dcdbe7383cad5d810cc9d8998e2af3efa4e84ea9"
+      "sha256": "f86f4fa1d2dcfbd7130710c290946a7451fb747465aa2be6402b1590490dc5d4"
     },
     {
       "name": "Select pinned Xcode",

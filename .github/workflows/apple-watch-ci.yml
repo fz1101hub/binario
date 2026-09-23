@@ -8,14 +8,15 @@ on:
       - "tools/install_xcodegen.py"
       - "tools/verify_ci_pinning.py"
       - "tests/test_install_xcodegen.py"
+      - "tests/test_verify_apple_watch_project.py"
       - "tests/test_verify_ci_pinning.py"
+      - "tests/test_requirements_ci.py"
       - "requirements-ci.txt"
       - ".github/ci-inputs-lock.json"
       - ".github/workflows/apple-watch-ci.yml"
   push:
     branches:
       - main
-      - "stabilization/**"
       - "integration/**"
     paths:
       - "apple-watch/**"
@@ -23,10 +24,13 @@ on:
       - "tools/install_xcodegen.py"
       - "tools/verify_ci_pinning.py"
       - "tests/test_install_xcodegen.py"
+      - "tests/test_verify_apple_watch_project.py"
       - "tests/test_verify_ci_pinning.py"
+      - "tests/test_requirements_ci.py"
       - "requirements-ci.txt"
       - ".github/ci-inputs-lock.json"
       - ".github/workflows/apple-watch-ci.yml"
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -54,7 +58,7 @@ jobs:
       - name: Verify CI trust chain
         run: |
           python3 -m pip install --require-hashes -r requirements-ci.txt
-          python3 -m unittest -v tests/test_install_xcodegen.py tests/test_verify_ci_pinning.py
+          python3 -m unittest -v tests/test_install_xcodegen.py tests/test_verify_apple_watch_project.py tests/test_verify_ci_pinning.py tests/test_requirements_ci.py
           python3 tools/verify_ci_pinning.py
       - name: Select pinned Xcode
         run: |

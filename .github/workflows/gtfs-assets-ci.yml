@@ -2,11 +2,26 @@ name: GTFS Asset Integrity
 
 on:
   pull_request:
+    paths:
+      - "app/src/main/assets/**"
+      - "gradle/verification-metadata.xml"
+      - "requirements-ci.txt"
+      - "tools/**"
+      - "tests/**"
+      - ".github/ci-inputs-lock.json"
+      - ".github/workflows/**"
   push:
     branches:
       - main
-      - "stabilization/**"
       - "integration/**"
+    paths:
+      - "app/src/main/assets/**"
+      - "gradle/verification-metadata.xml"
+      - "requirements-ci.txt"
+      - "tools/**"
+      - "tests/**"
+      - ".github/ci-inputs-lock.json"
+      - ".github/workflows/**"
   workflow_dispatch:
 
 concurrency:
@@ -40,6 +55,9 @@ jobs:
           tests/test_verify_gradle_dependency_metadata.py
           tests/test_install_xcodegen.py
           tests/test_verify_ci_pinning.py
+          tests/test_requirements_ci.py
+          tests/test_verify_embedded_assets.py
+          tests/test_verify_privacy_policy.py
 
       - name: Verify immutable CI inputs
         run: |
