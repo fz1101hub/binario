@@ -49,6 +49,36 @@ class VerifyAndroidAppBundlesTest(unittest.TestCase):
         self.assertTrue(any("obbligatori assenti" in problem for problem in problems))
         self.assertTrue(any("DEX base assente" in problem for problem in problems))
 
+    def test_rejects_jar_signature_in_unsigned_bundle(self) -> None:
+        self.write_bundle(
+            {
+                "BundleConfig.pb": b"config",
+                "base/manifest/AndroidManifest.xml": b"manifest",
+                "base/dex/classes.dex": b"dex\n035\x00",
+                "META-INF/BINARIO.SF": b"signature metadata",
+                "META-INF/BINARIO.RSA": b"signature block",
+            }
+        )
+        problems = POLICY.verify_bundle(self.path)
+        self.assertEqual(2, sum("firma JAR inattesa" in problem for problem in problems))
+
+    def test_reproducibility_requires_identical_bytes(self) -> None:
+        reference = Path(self.temp.name) / "reference.aab"
+        self.write_bundle(
+            {
+                "BundleConfig.pb": b"config",
+                "base/manifest/AndroidManifest.xml": b"manifest",
+                "base/dex/classes.dex": b"dex\n035\x00",
+            }
+        )
+        reference.write_bytes(self.path.read_bytes())
+        self.assertEqual([], POLICY.verify_reproducible(self.path, reference))
+
+        with reference.open("ab") as stream:
+            stream.write(b"different")
+        problems = POLICY.verify_reproducible(self.path, reference)
+        self.assertTrue(any("non byte-riproducibile" in problem for problem in problems))
+
     def test_rejects_traversal_and_duplicate_members(self) -> None:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", UserWarning)

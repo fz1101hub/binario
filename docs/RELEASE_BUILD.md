@@ -22,6 +22,25 @@ Google Play richiede Android App Bundle (AAB) per le nuove app. Un bundle è un 
 
 Il modulo Wear usa lo stesso package dell'app telefono, dichiara `android.hardware.type.watch` e `standalone=false`, ma conserva un proprio `versionCode`. Google indica che l'app Wear viene caricata e aggiornata separatamente e raccomanda codici versione indipendenti tra form factor.[3] La scelta del track Play, la firma e l'upload restano azioni proprietarie esterne a questo gate.
 
+## Prova di riproducibilità degli AAB
+
+Prima della firma, due build complete devono produrre artifact byte-identici. Entrambe le esecuzioni devono usare `--rerun-tasks`: confrontare una full rebuild con un output incrementale precedente non prova la riproducibilità della stessa procedura. Il verifier rifiuta anche firme JAR inattese, così il confronto riguarda gli artifact unsigned prodotti dal codice revisionato.
+
+```sh
+./gradlew --no-daemon --rerun-tasks --dependency-verification=strict \
+  :app:bundleRelease :wear:bundleRelease
+cp app/build/outputs/bundle/release/app-release.aab /tmp/binario-app-reference.aab
+cp wear/build/outputs/bundle/release/wear-release.aab /tmp/binario-wear-reference.aab
+
+./gradlew --no-daemon --rerun-tasks --dependency-verification=strict \
+  :app:bundleRelease :wear:bundleRelease
+python3 tools/verify_android_app_bundles.py \
+  --reference-phone /tmp/binario-app-reference.aab \
+  --reference-wear /tmp/binario-wear-reference.aab
+```
+
+Sull'HEAD `93e592d` le due full rebuild locali sono risultate byte-identiche. Il telefono produce 18.490.402 byte con SHA-256 `1f75617758585baf1e6d212730ab2a8ae4e58e93c797040d6ea1b3db17bdd09a`; Wear produce 3.894.315 byte con SHA-256 `0a4d2fcba02914a33f79fade8d1467d9f0d34c82175a0120964f09ef18fbff9a`.
+
 ## Verifica delle dipendenze Gradle
 
 `gradle/verification-metadata.xml` fissa con SHA-256 gli artifact, i metadati Maven e i plugin risolti dall'intero gate Android/Wear. Gradle abilita automaticamente la dependency verification quando trova questo file; la CI passa inoltre `--dependency-verification=strict` in modo esplicito.[1] `tools/verify_gradle_dependency_metadata.py` rifiuta checksum assenti o duplicati, algoritmi deboli, trust bypass e una copertura troncata. Il lock corrente comprende 599 componenti e 1.041 artifact.

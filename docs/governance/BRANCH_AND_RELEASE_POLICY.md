@@ -22,7 +22,7 @@ I workflow verificano i branch di lavoro tramite `pull_request` con filtri per p
 | Integrità asset Android | Android | I pacchetti GTFS, `manifest.json`, `SHA256SUMS` e il catalogo stazioni concordano per nomi, hash, struttura e conteggi. |
 | Freschezza asset GTFS | Android | Ogni `lastServiceDate` è almeno 30 giorni oltre la data del gate. Il workflow esegue questo controllo senza `--integrity-only`, separatamente dal controllo di integrità. Un feed scaduto o troppo vicino alla scadenza richiede refresh, rigenerazione degli hash e revisione prima della release. |
 | Test, lint e build Android | Android | I test unitari debug, lint debug e assemble debug completano senza errori. |
-| Android App Bundle | Android/Wear | `bundleRelease` produce due AAB separati; il verifier controlla struttura, manifest, DEX, CRC, percorsi, limiti e SHA-256 prima di qualsiasi firma o upload. |
+| Android App Bundle | Android/Wear | `bundleRelease` produce due AAB separati; il verifier controlla struttura, manifest, DEX, CRC, percorsi, limiti, assenza di firma e SHA-256. Prima della firma, due full rebuild con `--rerun-tasks` devono essere byte-identiche. |
 | Companion managed | Companion Expo | Dipendenze congelate, TypeScript, test e verifiche di configurazione/release completano senza errori. |
 | Prebuild companion | Companion Expo | `expo prebuild --platform android --clean --no-install` non modifica `android/`; una seconda esecuzione pulita produce lo stesso albero tracciato. |
 

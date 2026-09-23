@@ -17,6 +17,7 @@ MAX_BUNDLE_BYTES = 200 * 1024 * 1024
 MAX_MEMBERS = 100_000
 MAX_UNCOMPRESSED_BYTES = 1024 * 1024 * 1024
 REQUIRED_FILES = {"BundleConfig.pb", "base/manifest/AndroidManifest.xml"}
+SIGNATURE_SUFFIXES = (".RSA", ".DSA", ".EC", ".SF")
 
 
 def sha256_file(path: Path) -> str:
@@ -53,6 +54,9 @@ def verify_bundle(path: Path) -> list[str]:
                 if name in names:
                     problems.append(f"membro ZIP duplicato: {name}")
                 names.add(name)
+                upper_name = name.upper()
+                if upper_name.startswith("META-INF/") and upper_name.endswith(SIGNATURE_SUFFIXES):
+                    problems.append(f"firma JAR inattesa nel bundle unsigned: {name}")
                 if member.flag_bits & 0x1:
                     problems.append(f"membro ZIP cifrato non ammesso: {name}")
                 total_uncompressed += member.file_size
@@ -74,23 +78,45 @@ def verify_bundle(path: Path) -> list[str]:
     return problems
 
 
+def verify_reproducible(path: Path, reference: Path) -> list[str]:
+    try:
+        current_digest = sha256_file(path)
+        reference_digest = sha256_file(reference)
+    except OSError as error:
+        return [f"confronto riproducibilità non leggibile: {error}"]
+    if current_digest != reference_digest:
+        return [
+            "build non byte-riproducibile: "
+            f"sha256:{current_digest} != riferimento sha256:{reference_digest}"
+        ]
+    return []
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--phone", type=Path, default=DEFAULT_BUNDLES["phone"])
     parser.add_argument("--wear", type=Path, default=DEFAULT_BUNDLES["wear"])
+    parser.add_argument("--reference-phone", type=Path)
+    parser.add_argument("--reference-wear", type=Path)
     args = parser.parse_args(argv)
     failed = False
-    for label, path in (("phone", args.phone), ("wear", args.wear)):
+    for label, path, reference in (
+        ("phone", args.phone, args.reference_phone),
+        ("wear", args.wear, args.reference_wear),
+    ):
         problems = verify_bundle(path)
+        if reference is not None:
+            problems.extend(verify_reproducible(path, reference))
         if problems:
             failed = True
             for problem in problems:
                 print(f"Android App Bundle ({label}): FAIL: {problem}", file=sys.stderr)
         else:
-            print(
-                f"Android App Bundle ({label}): PASS "
-                f"({path.stat().st_size} bytes, sha256:{sha256_file(path)})."
-            )
+            details = []
+            if reference is not None:
+                details.append("byte-riproducibile")
+            details.extend((f"{path.stat().st_size} bytes", f"sha256:{sha256_file(path)}"))
+            print(f"Android App Bundle ({label}): PASS ({', '.join(details)}).")
     return 1 if failed else 0
 
 
