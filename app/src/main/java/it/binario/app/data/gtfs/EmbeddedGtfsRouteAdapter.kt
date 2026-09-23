@@ -17,16 +17,11 @@ import it.binario.app.data.core.SourceId
 import it.binario.app.data.sources.RailInformationCategory
 import it.binario.app.data.sources.RailSourceCatalog
 import it.binario.app.data.sources.RailSourceSelectionPolicy
-import java.io.BufferedReader
 import java.io.InputStream
-import java.io.InputStreamReader
 import java.text.Normalizer
-import java.time.DayOfWeek
 import java.time.LocalDate
-import java.time.LocalDateTime
 import java.util.LinkedHashMap
 import java.util.Locale
-import java.util.zip.ZipInputStream
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -46,10 +41,18 @@ class EmbeddedGtfsRouteAdapter(
     private val packs: List<EmbeddedGtfsPack> = EmbeddedGtfsPacks.all,
     private val clock: () -> Long = System::currentTimeMillis
 ) : TrainDataSource {
-    private val indexCache = object : LinkedHashMap<SourceId, StaticGtfsIndex>(5, 0.75f, true) {
-        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<SourceId, StaticGtfsIndex>?): Boolean = size > 5
+    /** Due indici compatti al massimo: un pack AMT completo resta sicuro anche su heap piccoli. */
+    private val indexCache = object : LinkedHashMap<SourceId, StaticGtfsIndex>(2, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<SourceId, StaticGtfsIndex>?): Boolean = size > 2
     }
-    private val stopPresenceCache = mutableMapOf<SourceId, Set<String>>()
+    private val stopPresenceCache = object : LinkedHashMap<SourceId, Set<String>>(5, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<SourceId, Set<String>>?): Boolean = size > 5
+    }
+
+    /** Diagnostica interna usata dal test di regressione a heap limitato. */
+    internal fun compactIndexStats(): List<GtfsCompactIndexStats> = synchronized(indexCache) {
+        indexCache.values.map(StaticGtfsIndex::stats)
+    }
 
     override suspend fun loadRoute(route: SavedRoute, direction: Direction): DataResult =
         loadRoute(route, direction, JourneyQuery.now())
@@ -79,8 +82,12 @@ class EmbeddedGtfsRouteAdapter(
                 if (explicitSourceIds != null) {
                     pack.sourceId in explicitSourceIds
                 } else {
-                    val stops = stopNames(pack)
-                    wantedOrigin in stops && wantedDestination in stops
+                    try {
+                        val stops = stopNames(pack)
+                        wantedOrigin in stops && wantedDestination in stops
+                    } catch (_: GtfsCompactIndexLimitException) {
+                        false
+                    }
                 }
             }
         }
@@ -92,10 +99,10 @@ class EmbeddedGtfsRouteAdapter(
         val collected = mutableListOf<SourcedService>()
         for (pack in candidatePacks) {
             val source = RailSourceCatalog.byId(pack.sourceId) ?: continue
-            val index = synchronized(indexCache) { indexCache[pack.sourceId] } ?: withContext(Dispatchers.IO) {
-                parse(openAsset(pack.assetPath))
-            }.also { parsed ->
-                synchronized(indexCache) { indexCache[pack.sourceId] = parsed }
+            val index = try {
+                withContext(Dispatchers.IO) { indexFor(pack) }
+            } catch (_: GtfsCompactIndexLimitException) {
+                continue
             }
             index.services(origin, destination, source.id.value, query).forEach { service ->
                 collected += SourcedService(source.displayName, pack.sourceId, service)
@@ -170,98 +177,56 @@ class EmbeddedGtfsRouteAdapter(
         return SourceId(source)
     }
 
-    private fun stopNames(pack: EmbeddedGtfsPack): Set<String> {
-        synchronized(stopPresenceCache) { stopPresenceCache[pack.sourceId] }?.let { return it }
+    private fun stopNames(pack: EmbeddedGtfsPack): Set<String> = synchronized(stopPresenceCache) {
+        stopPresenceCache[pack.sourceId] ?: scanStopNames(openAsset(pack.assetPath)).also { names ->
+            stopPresenceCache[pack.sourceId] = names
+        }
+    }
+
+    private fun scanStopNames(stream: InputStream): Set<String> {
         val names = linkedSetOf<String>()
-        openAsset(pack.assetPath).use { input ->
-            ZipInputStream(input).use { zip ->
-                var entry = zip.nextEntry
-                while (entry != null) {
-                    if (entry.name.substringAfterLast('/') == "stops.txt") {
-                        val reader = BufferedReader(InputStreamReader(zip, Charsets.UTF_8))
-                        val header = reader.readLine()?.let(::csvLine).orEmpty()
-                        val nameIndex = header.indexOf("stop_name")
-                        if (nameIndex >= 0) {
-                            var line = reader.readLine()
-                            while (line != null) {
-                                if (line.length <= MAX_CSV_LINE_LENGTH) {
-                                    csvLine(line).getOrNull(nameIndex)?.takeIf(String::isNotBlank)?.let { names += normalize(it) }
-                                }
-                                line = reader.readLine()
-                            }
-                        }
-                        break
-                    }
-                    zip.closeEntry()
-                    entry = zip.nextEntry
+        BoundedGtfsZipScanner(compactIndexLimits).scan(stream, setOf("stops.txt")) { _, rows ->
+            val nameIndex = rows.header.indexOf("stop_name")
+            if (nameIndex >= 0) {
+                rows.forEachRow(compactIndexLimits.maxStops) { row ->
+                    row.getOrNull(nameIndex)?.takeIf(String::isNotBlank)?.let { names += normalize(it) }
                 }
             }
         }
-        return names.toSet().also { synchronized(stopPresenceCache) { stopPresenceCache[pack.sourceId] = it } }
+        return names
     }
 
-    private fun parse(stream: InputStream): StaticGtfsIndex {
-        val tables = mutableMapOf<String, List<Map<String, String>>>()
-        ZipInputStream(stream).use { zip ->
-            var entry = zip.nextEntry
-            while (entry != null) {
-                val name = entry.name.substringAfterLast('/')
-                if (name in requiredTables) {
-                    tables[name] = parseCsv(BufferedReader(InputStreamReader(zip, Charsets.UTF_8)))
-                }
-                zip.closeEntry()
-                entry = zip.nextEntry
+    /**
+     * Costruisce un indice a colonne. Non esiste alcun passaggio che trasformi
+     * una tabella GTFS in List<Map<String, String>>: ogni riga viene consumata
+     * subito e le sole colonne necessarie alla tratta sono mantenute in array.
+     */
+    private fun parse(openStream: () -> InputStream): StaticGtfsIndex {
+        val index = StaticGtfsIndex(compactIndexLimits)
+        BoundedGtfsZipScanner(compactIndexLimits).scan(openStream(), compactIndexTables - "stop_times.txt") { table, rows ->
+            when (table) {
+                "agency.txt" -> index.readAgencies(rows)
+                "stops.txt" -> index.readStops(rows)
+                "routes.txt" -> index.readRoutes(rows)
+                "trips.txt" -> index.readTrips(rows)
+                "calendar.txt" -> index.readCalendars(rows)
+                "calendar_dates.txt" -> index.readCalendarDates(rows)
             }
         }
-        val agencies = tables["agency.txt"].orEmpty()
-            .mapNotNull { row ->
-                val id = row["agency_id"].orEmpty().trim()
-                val name = row["agency_name"].orEmpty().trim()
-                name.takeIf(String::isNotBlank)?.let { id to it }
-            }
-            .toMap()
-        return StaticGtfsIndex(
-            stops = tables["stops.txt"].orEmpty().associate { it["stop_id"].orEmpty() to it["stop_name"].orEmpty() },
-            agencies = agencies,
-            routes = tables["routes.txt"].orEmpty().associateBy { it["route_id"].orEmpty() },
-            trips = tables["trips.txt"].orEmpty(),
-            stopTimes = tables["stop_times.txt"].orEmpty().groupBy { it["trip_id"].orEmpty() },
-            calendars = tables["calendar.txt"].orEmpty().associateBy { it["service_id"].orEmpty() },
-            calendarDates = tables["calendar_dates.txt"].orEmpty().groupBy { it["service_id"].orEmpty() }
-        )
-    }
-
-    private fun parseCsv(reader: BufferedReader): List<Map<String, String>> {
-        val header = reader.readLine()?.let(::csvLine).orEmpty()
-        if (header.isEmpty()) return emptyList()
-        return generateSequence { reader.readLine() }
-            .filter { it.isNotBlank() && it.length <= MAX_CSV_LINE_LENGTH }
-            .map { row -> header.zip(csvLine(row)).toMap() }
-            .toList()
-    }
-
-    private fun csvLine(line: String): List<String> {
-        val values = mutableListOf<String>()
-        val current = StringBuilder()
-        var quoted = false
-        var index = 0
-        while (index < line.length) {
-            when (val character = line[index]) {
-                '"' -> if (quoted && line.getOrNull(index + 1) == '"') {
-                    current.append('"')
-                    index += 1
-                } else quoted = !quoted
-                ',' -> if (quoted) current.append(character) else {
-                    values += current.toString()
-                    current.clear()
-                }
-                else -> current.append(character)
-            }
-            index += 1
+        // Seconda passata: trips è ormai completo anche quando stop_times è la
+        // prima entry (come nel pack AMT), quindi non indicizziamo trip ignoti.
+        BoundedGtfsZipScanner(compactIndexLimits).scan(openStream(), setOf("stop_times.txt")) { _, rows ->
+            index.readStopTimes(rows)
         }
-        values += current.toString()
-        return values
+        return index
     }
+
+    private fun indexFor(pack: EmbeddedGtfsPack): StaticGtfsIndex = synchronized(indexCache) {
+        indexCache[pack.sourceId] ?: parse { openAsset(pack.assetPath) }.also { parsed ->
+            indexCache[pack.sourceId] = parsed
+        }
+    }
+
 
     private data class SourcedService(
         val sourceName: String,
@@ -269,88 +234,259 @@ class EmbeddedGtfsRouteAdapter(
         val service: TrainService
     )
 
-    private data class StaticGtfsIndex(
-        val stops: Map<String, String>,
-        val agencies: Map<String, String>,
-        val routes: Map<String, Map<String, String>>,
-        val trips: List<Map<String, String>>,
-        val stopTimes: Map<String, List<Map<String, String>>>,
-        val calendars: Map<String, Map<String, String>>,
-        val calendarDates: Map<String, List<Map<String, String>>>
-    ) {
+    internal data class GtfsCompactIndexStats(
+        val stopTimeRowsRead: Int,
+        val indexedStopTimeRows: Int,
+        val stopTimeColumnBytes: Long,
+        val stops: Int,
+        val trips: Int
+    )
+
+    private class StaticGtfsIndex(private val limits: GtfsCompactIndexLimits) {
+        private val stops = CompactStops(limits.maxStops)
+        private val agencies = HashMap<String, String>()
+        private val routes = HashMap<String, CompactRoute>()
+        private val trips = CompactTrips(limits.maxTrips)
+        private val stopTimes = CompactStopTimes(limits.maxStopTimeRows)
+        private val calendars = HashMap<String, CompactCalendar>()
+        private val calendarDates = HashMap<String, CompactCalendarExceptions>()
+
+        fun readAgencies(rows: GtfsCsvRows) {
+            val idIndex = rows.header.indexOf("agency_id")
+            val nameIndex = rows.header.indexOf("agency_name")
+            rows.forEachRow(limits.maxAgencies) { row ->
+                val id = row.gtfsRawValue(idIndex).trim()
+                val name = row.gtfsRawValue(nameIndex).trim()
+                if (name.isNotBlank()) agencies[id] = name
+            }
+        }
+
+        fun readStops(rows: GtfsCsvRows) {
+            val idIndex = rows.header.indexOf("stop_id")
+            val nameIndex = rows.header.indexOf("stop_name")
+            rows.forEachRow(limits.maxStops) { row ->
+                stops.put(row.gtfsRawValue(idIndex), row.gtfsRawValue(nameIndex))
+            }
+        }
+
+        fun readRoutes(rows: GtfsCsvRows) {
+            val idIndex = rows.header.indexOf("route_id")
+            val agencyIndex = rows.header.indexOf("agency_id")
+            val shortNameIndex = rows.header.indexOf("route_short_name")
+            val longNameIndex = rows.header.indexOf("route_long_name")
+            val typeIndex = rows.header.indexOf("route_type")
+            rows.forEachRow(limits.maxRoutes) { row ->
+                routes[row.gtfsRawValue(idIndex)] = CompactRoute(
+                    agencyId = row.gtfsRawValue(agencyIndex),
+                    shortName = row.gtfsRawValue(shortNameIndex),
+                    longName = row.gtfsRawValue(longNameIndex),
+                    type = row.getOrNull(typeIndex)
+                )
+            }
+        }
+
+        fun readTrips(rows: GtfsCsvRows) {
+            val routeIndex = rows.header.indexOf("route_id")
+            val serviceIndex = rows.header.indexOf("service_id")
+            val tripIndex = rows.header.indexOf("trip_id")
+            val shortNameIndex = rows.header.indexOf("trip_short_name")
+            rows.forEachRow(limits.maxTrips) { row ->
+                val tripId = row.gtfsRawValue(tripIndex)
+                trips.configure(
+                    tripId = tripId,
+                    routeId = row.gtfsRawValue(routeIndex),
+                    serviceId = row.gtfsRawValue(serviceIndex),
+                    shortName = row.getOrNull(shortNameIndex)
+                )
+            }
+        }
+
+        fun readStopTimes(rows: GtfsCsvRows) {
+            val tripIndex = rows.header.indexOf("trip_id")
+            val arrivalIndex = rows.header.indexOf("arrival_time")
+            val departureIndex = rows.header.indexOf("departure_time")
+            val stopIndex = rows.header.indexOf("stop_id")
+            val sequenceIndex = rows.header.indexOf("stop_sequence")
+            val rowsRead = rows.forEachRow(limits.maxStopTimeRows) { row ->
+                val trip = trips.indexIfDeclared(row.gtfsRawValue(tripIndex)) ?: return@forEachRow
+                val entry = stopTimes.append(
+                    trip = trip,
+                    stop = stops.indexFor(row.gtfsRawValue(stopIndex)),
+                    sequence = row.getOrNull(sequenceIndex)?.toIntOrNull() ?: Int.MAX_VALUE,
+                    arrival = gtfsTimeToMinutes(row.getOrNull(arrivalIndex)),
+                    departure = gtfsTimeToMinutes(row.getOrNull(departureIndex)),
+                    previousForTrip = trips.head(trip)
+                )
+                trips.setHead(trip, entry)
+            }
+            stopTimes.recordRowsRead(rowsRead)
+        }
+
+        fun readCalendars(rows: GtfsCsvRows) {
+            val serviceIndex = rows.header.indexOf("service_id")
+            val startIndex = rows.header.indexOf("start_date")
+            val endIndex = rows.header.indexOf("end_date")
+            val weekdayIndexes = listOf(
+                rows.header.indexOf("monday"), rows.header.indexOf("tuesday"), rows.header.indexOf("wednesday"),
+                rows.header.indexOf("thursday"), rows.header.indexOf("friday"), rows.header.indexOf("saturday"),
+                rows.header.indexOf("sunday")
+            )
+            rows.forEachRow(limits.maxCalendars) { row ->
+                var activeDays = 0
+                weekdayIndexes.forEachIndexed { day, index ->
+                    if (row.getOrNull(index) == "1") activeDays = activeDays or (1 shl day)
+                }
+                calendars[row.gtfsRawValue(serviceIndex)] = CompactCalendar(
+                    startDate = gtfsDateToInt(row.gtfsRawValue(startIndex)),
+                    endDate = gtfsDateToInt(row.gtfsRawValue(endIndex)),
+                    activeDays = activeDays
+                )
+            }
+        }
+
+        fun readCalendarDates(rows: GtfsCsvRows) {
+            val serviceIndex = rows.header.indexOf("service_id")
+            val dateIndex = rows.header.indexOf("date")
+            val exceptionIndex = rows.header.indexOf("exception_type")
+            rows.forEachRow(limits.maxCalendarDateRows) { row ->
+                val date = gtfsDateToInt(row.gtfsRawValue(dateIndex))
+                if (date != null) {
+                    calendarDates.getOrPut(row.gtfsRawValue(serviceIndex)) { CompactCalendarExceptions() }
+                        .add(date, row.gtfsRawValue(exceptionIndex))
+                }
+            }
+        }
+
         fun services(origin: String, destination: String, sourceId: String, query: JourneyQuery): List<TrainService> {
             val wantedOrigin = normalize(origin)
             val wantedDestination = normalize(destination)
-            // GTFS uses service dates, not civil dates: a 25:10 departure on a
-            // Friday service is Saturday 01:10. Two preceding days cover feeds
-            // such as ÖBB that encode long overnight continuations beyond 48:00.
-            val serviceDates = listOf(query.serviceDate, query.serviceDate.minusDays(1), query.serviceDate.minusDays(2))
-            return trips.asSequence().flatMap { trip ->
-                serviceDates.asSequence().mapNotNull { serviceDate ->
-                    serviceForTrip(
-                        trip = trip,
-                        serviceDate = serviceDate,
-                        sourceId = sourceId,
-                        wantedOrigin = wantedOrigin,
-                        wantedDestination = wantedDestination,
-                        requestedAt = query.requestedAt
-                    )
+            val selected = ArrayList<TrainService>()
+            // GTFS usa date di servizio: venerdì 25:10 è sabato 01:10. Due
+            // giorni precedenti coprono anche continuazioni oltre 48:00.
+            val serviceDates = listOf(
+                query.serviceDate,
+                query.serviceDate.minusDays(1),
+                query.serviceDate.minusDays(2)
+            )
+            serviceDates.forEach { serviceDate ->
+                trips.forEachDeclared { tripIndex, trip ->
+                    if (!serviceRunsOn(trip.serviceId, serviceDate)) return@forEachDeclared
+                    val segment = findSegment(tripIndex, wantedOrigin, wantedDestination) ?: return@forEachDeclared
+                    val departureMinutes = stopTimes.preferredDeparture(segment.originEntry)
+                    if (departureMinutes < 0) return@forEachDeclared
+                    val scheduledDateTime = serviceDate.atStartOfDay().plusMinutes(departureMinutes.toLong())
+                    if (scheduledDateTime.isBefore(query.requestedAt)) return@forEachDeclared
+                    if (selected.size >= limits.maxServicesPerPack && isAfterCurrentWorst(scheduledDateTime, trip, selected)) {
+                        return@forEachDeclared
+                    }
+                    offerBounded(selected, buildService(segment, trip, sourceId, scheduledDateTime), limits.maxServicesPerPack)
                 }
-            }.sortedWith(compareBy<TrainService> { it.scheduledDepartureDateTime }.thenBy { it.number }).toList()
+            }
+            return selected.sortedWith(compareBy<TrainService> { it.scheduledDepartureDateTime }.thenBy { it.number })
         }
 
-        private fun serviceForTrip(
-            trip: Map<String, String>,
-            serviceDate: LocalDate,
+        private fun isAfterCurrentWorst(
+            scheduledDateTime: java.time.LocalDateTime,
+            trip: CompactTrip,
+            selected: List<TrainService>
+        ): Boolean {
+            val worst = selected.maxWithOrNull(
+                compareBy<TrainService> { it.scheduledDepartureDateTime ?: java.time.LocalDateTime.MAX }.thenBy { it.number }
+            ) ?: return false
+            val number = trip.shortName?.takeIf(String::isNotBlank) ?: trip.id
+            return compareValuesBy(
+                TrainServiceSortKey(scheduledDateTime, number),
+                TrainServiceSortKey(worst.scheduledDepartureDateTime ?: java.time.LocalDateTime.MAX, worst.number),
+                TrainServiceSortKey::scheduledDateTime,
+                TrainServiceSortKey::number
+            ) > 0
+        }
+
+        private fun offerBounded(selected: MutableList<TrainService>, candidate: TrainService, maximum: Int) {
+            selected += candidate
+            if (selected.size > maximum) {
+                val worst = selected.indices.maxWithOrNull(
+                    compareBy<Int> { selected[it].scheduledDepartureDateTime ?: java.time.LocalDateTime.MAX }.thenBy { selected[it].number }
+                ) ?: return
+                selected.removeAt(worst)
+            }
+        }
+
+        private fun findSegment(tripIndex: Int, wantedOrigin: String, wantedDestination: String): CompactSegment? {
+            var origin = -1
+            var entry = trips.head(tripIndex)
+            while (entry >= 0) {
+                if (stops.normalizedName(stopTimes.stop(entry)) == wantedOrigin && (origin < 0 || stopTimes.comesBefore(entry, origin))) {
+                    origin = entry
+                }
+                entry = stopTimes.next(entry)
+            }
+            if (origin < 0) return null
+
+            var destination = -1
+            entry = trips.head(tripIndex)
+            while (entry >= 0) {
+                if (
+                    stops.normalizedName(stopTimes.stop(entry)) == wantedDestination &&
+                    stopTimes.comesBefore(origin, entry) &&
+                    (destination < 0 || stopTimes.comesBefore(entry, destination))
+                ) {
+                    destination = entry
+                }
+                entry = stopTimes.next(entry)
+            }
+            return destination.takeIf { it >= 0 }?.let { CompactSegment(origin, it, tripIndex) }
+        }
+
+        private fun buildService(
+            segment: CompactSegment,
+            trip: CompactTrip,
             sourceId: String,
-            wantedOrigin: String,
-            wantedDestination: String,
-            requestedAt: LocalDateTime
-        ): TrainService? {
-            val serviceId = trip["service_id"].orEmpty()
-            if (!serviceRunsOn(serviceId, serviceDate)) return null
-            val times = stopTimes[trip["trip_id"]].orEmpty()
-                .sortedBy { it["stop_sequence"]?.toIntOrNull() ?: Int.MAX_VALUE }
-            val originIndex = times.indexOfFirst { normalize(stops[it["stop_id"]].orEmpty()) == wantedOrigin }
-            val destinationIndex = times.indices.firstOrNull { candidateIndex ->
-                candidateIndex > originIndex && normalize(stops[times[candidateIndex]["stop_id"]].orEmpty()) == wantedDestination
-            } ?: -1
-            if (originIndex < 0 || destinationIndex < 0) return null
-            val route = routes[trip["route_id"]].orEmpty()
-            val segment = times.subList(originIndex, destinationIndex + 1)
-            val rawDeparture = segment.first()["departure_time"] ?: segment.first()["arrival_time"] ?: return null
-            val departureMinutes = serviceMinutes(rawDeparture) ?: return null
-            val scheduledDateTime = serviceDate.atStartOfDay().plusMinutes(departureMinutes.toLong())
-            if (scheduledDateTime.isBefore(requestedAt)) return null
-            val departure = hhmm(rawDeparture)
-            val number = trip["trip_short_name"]?.takeIf { it.isNotBlank() } ?: trip["trip_id"].orEmpty()
+            scheduledDateTime: java.time.LocalDateTime
+        ): TrainService {
+            val route = routes[trip.routeId]
+            val departureMinutes = stopTimes.preferredDeparture(segment.originEntry)
+            val segmentEntries = segmentEntries(segment)
             val agencyName = agencyName(route)
+            val number = trip.shortName?.takeIf(String::isNotBlank) ?: trip.id
             return TrainService(
-                id = "$sourceId:${trip["trip_id"]}",
+                id = "$sourceId:${trip.id}",
                 number = number,
                 operator = legacyOperator(sourceId, agencyName, route),
                 operatorDisplayName = canonicalAgencyLabel(agencyName, sourceId),
-                trainCategory = category(route["route_type"], route, agencyName),
-                origin = stops[segment.first()["stop_id"]].orEmpty(),
-                destination = stops[segment.last()["stop_id"]].orEmpty(),
-                scheduledDeparture = departure,
-                expectedDeparture = departure,
+                trainCategory = category(route?.type, route, agencyName),
+                origin = stops.name(stopTimes.stop(segment.originEntry)),
+                destination = stops.name(stopTimes.stop(segment.destinationEntry)),
+                scheduledDeparture = hhmm(departureMinutes),
+                expectedDeparture = hhmm(departureMinutes),
                 platform = null,
                 delayMinutes = 0,
                 status = ServiceStatus.ON_TIME,
                 operationalStatusVerified = false,
                 scheduledDepartureDateTime = scheduledDateTime,
-                stops = segment.map { stop ->
-                    val scheduled = hhmm(stop["departure_time"] ?: stop["arrival_time"].orEmpty())
-                    TrainStop(stops[stop["stop_id"]].orEmpty(), scheduled, scheduled, null, 0, false)
+                stops = segmentEntries.map { entry ->
+                    val scheduled = hhmm(stopTimes.preferredDeparture(entry))
+                    TrainStop(stops.name(stopTimes.stop(entry)), scheduled, scheduled, null, 0, false)
                 }
             )
         }
 
-        private fun agencyName(route: Map<String, String>): String? {
-            val agencyId = route["agency_id"].orEmpty().trim()
-            return agencies[agencyId]
-                ?: agencies.takeIf { it.size == 1 }?.values?.singleOrNull()
+        private fun segmentEntries(segment: CompactSegment): List<Int> {
+            val entries = ArrayList<Int>()
+            var entry = trips.head(segment.tripIndex)
+            while (entry >= 0) {
+                if (!stopTimes.comesBefore(entry, segment.originEntry) && !stopTimes.comesBefore(segment.destinationEntry, entry)) {
+                    entries += entry
+                }
+                entry = stopTimes.next(entry)
+            }
+            entries.sortWith(compareBy<Int> { stopTimes.sequence(it) }.thenBy { stopTimes.ordinal(it) })
+            return entries
+        }
+
+        private fun agencyName(route: CompactRoute?): String? {
+            val agencyId = route?.agencyId.orEmpty().trim()
+            return agencies[agencyId] ?: agencies.takeIf { it.size == 1 }?.values?.singleOrNull()
         }
 
         private fun canonicalAgencyLabel(value: String?, sourceId: String): String? {
@@ -382,8 +518,8 @@ class EmbeddedGtfsRouteAdapter(
             }
         }
 
-        private fun legacyOperator(sourceId: String, agencyName: String?, route: Map<String, String>): RailOperator {
-            val identity = normalize(listOfNotNull(agencyName, route["route_short_name"], route["route_long_name"]).joinToString(" "))
+        private fun legacyOperator(sourceId: String, agencyName: String?, route: CompactRoute?): RailOperator {
+            val identity = normalize(listOfNotNull(agencyName, route?.shortName, route?.longName).joinToString(" "))
             return when {
                 identity.contains("trenord") || sourceId == "lombardia-trenord-gtfs" -> RailOperator.TRENORD
                 identity.contains("italo") || identity.contains("ntv") -> RailOperator.ITALO
@@ -393,74 +529,218 @@ class EmbeddedGtfsRouteAdapter(
             }
         }
 
-        private fun category(routeType: String?, route: Map<String, String>, agencyName: String?): TrainCategory {
-            val identity = normalize(listOfNotNull(route["route_short_name"], route["route_long_name"], agencyName).joinToString(" "))
+        private fun category(routeType: String?, route: CompactRoute?, agencyName: String?): TrainCategory {
+            val identity = normalize(listOfNotNull(route?.shortName, route?.longName, agencyName).joinToString(" "))
             return when {
                 identity.contains("italo") -> TrainCategory.AV_ITALO
                 identity.contains("frecc") -> TrainCategory.FRECCE
                 identity.contains("intercity") || Regex("(^|[^a-z])icn?([^a-z]|$)").containsMatchIn(identity) -> TrainCategory.INTERCITY
                 identity.contains("regionaleveloce") -> TrainCategory.REGIONALE_VELOCE
-                sourceIdLooksTrenord(identity) -> TrainCategory.TRENORD_REGIO
+                identity.contains("trenord") -> TrainCategory.TRENORD_REGIO
                 routeType in RAIL_ROUTE_TYPES -> TrainCategory.REGIONALE
                 else -> TrainCategory.OTHER
             }
         }
 
-        private fun sourceIdLooksTrenord(identity: String): Boolean = identity.contains("trenord")
-
         private fun serviceRunsOn(serviceId: String, date: LocalDate): Boolean {
-            val exception = calendarDates[serviceId]
-                .orEmpty()
-                .lastOrNull { parseGtfsDate(it["date"].orEmpty()) == date }
-                ?.get("exception_type")
-            if (exception == "1") return true
-            if (exception == "2") return false
-
-            val calendar = calendars[serviceId] ?: return false
-            val start = parseGtfsDate(calendar["start_date"].orEmpty()) ?: return false
-            val end = parseGtfsDate(calendar["end_date"].orEmpty()) ?: return false
-            if (date < start || date > end) return false
-
-            val field = when (date.dayOfWeek) {
-                DayOfWeek.MONDAY -> "monday"
-                DayOfWeek.TUESDAY -> "tuesday"
-                DayOfWeek.WEDNESDAY -> "wednesday"
-                DayOfWeek.THURSDAY -> "thursday"
-                DayOfWeek.FRIDAY -> "friday"
-                DayOfWeek.SATURDAY -> "saturday"
-                DayOfWeek.SUNDAY -> "sunday"
+            when (calendarDates[serviceId]?.exception(date.toGtfsInt())) {
+                "1" -> return true
+                "2" -> return false
             }
-            return calendar[field] == "1"
+            val calendar = calendars[serviceId] ?: return false
+            val encodedDate = date.toGtfsInt()
+            val startDate = calendar.startDate ?: return false
+            val endDate = calendar.endDate ?: return false
+            if (encodedDate !in startDate..endDate) return false
+            return calendar.activeDays and (1 shl date.dayOfWeek.ordinal) != 0
         }
 
-        private fun parseGtfsDate(value: String): LocalDate? =
-            if (value.matches(Regex("\\d{8}"))) runCatching {
-                LocalDate.of(value.substring(0, 4).toInt(), value.substring(4, 6).toInt(), value.substring(6, 8).toInt())
-            }.getOrNull() else null
+        fun stats(): GtfsCompactIndexStats = GtfsCompactIndexStats(
+            stopTimeRowsRead = stopTimes.rowsRead(),
+            indexedStopTimeRows = stopTimes.size(),
+            stopTimeColumnBytes = stopTimes.compactColumnBytes(),
+            stops = stops.size(),
+            trips = trips.size()
+        )
 
-        private fun serviceMinutes(value: String): Int? {
-            val parts = value.split(':')
-            val hours = parts.getOrNull(0)?.toIntOrNull() ?: return null
-            val minutes = parts.getOrNull(1)?.toIntOrNull() ?: return null
-            if (hours < 0 || minutes !in 0..59) return null
-            return hours * 60 + minutes
+        private data class CompactRoute(val agencyId: String, val shortName: String, val longName: String, val type: String?)
+        private data class CompactCalendar(val startDate: Int?, val endDate: Int?, val activeDays: Int)
+        private data class CompactSegment(val originEntry: Int, val destinationEntry: Int, val tripIndex: Int)
+        private data class TrainServiceSortKey(val scheduledDateTime: java.time.LocalDateTime, val number: String)
+
+        private class CompactStops(private val maximum: Int) {
+            private val indexById = HashMap<String, Int>()
+            private val names = ArrayList<String>()
+            private val normalizedNames = ArrayList<String>()
+
+            fun put(id: String, name: String) {
+                val existing = indexById[id]
+                if (existing != null) {
+                    names[existing] = name
+                    normalizedNames[existing] = normalize(name)
+                    return
+                }
+                if (names.size >= maximum) throw GtfsCompactIndexLimitException("stops.txt supera il limite di stazioni")
+                indexById[id] = names.size
+                names += name
+                normalizedNames += normalize(name)
+            }
+
+            /**
+             * Alcuni pack pongono stop_times.txt prima di stops.txt. Creiamo
+             * quindi uno slot senza etichetta e lo completiamo quando la entry
+             * delle fermate viene letta, senza trattenere stop_id per riga.
+             */
+            fun indexFor(id: String): Int = indexById[id] ?: run {
+                put(id, "")
+                indexById.getValue(id)
+            }
+            fun name(index: Int): String = names.getOrNull(index).orEmpty()
+            fun normalizedName(index: Int): String = normalizedNames.getOrNull(index).orEmpty()
+            fun size(): Int = names.size
         }
 
-        private fun hhmm(value: String): String {
-            val parts = value.split(':')
-            val hours = parts.firstOrNull()?.toIntOrNull()?.mod(24) ?: 0
-            val minutes = parts.getOrNull(1)?.toIntOrNull() ?: 0
-            return "%02d:%02d".format(Locale.ROOT, hours, minutes)
+        private class CompactTrips(private val maximum: Int) {
+            private val indexById = HashMap<String, Int>()
+            private val items = ArrayList<CompactTrip>()
+            private var heads = IntArray(1) { -1 }
+
+            fun indexFor(id: String): Int = indexById[id] ?: add(id)
+
+            fun indexIfDeclared(id: String): Int? = indexById[id]?.takeIf { items[it].declared }
+
+            fun configure(tripId: String, routeId: String, serviceId: String, shortName: String?) {
+                val trip = items[indexFor(tripId)]
+                trip.routeId = routeId
+                trip.serviceId = serviceId
+                trip.shortName = shortName
+                trip.declared = true
+            }
+
+            fun head(index: Int): Int = heads[index]
+            fun setHead(index: Int, entry: Int) { heads[index] = entry }
+
+            fun forEachDeclared(block: (Int, CompactTrip) -> Unit) {
+                items.forEachIndexed { index, trip -> if (trip.declared) block(index, trip) }
+            }
+
+            fun size(): Int = items.size
+
+            private fun add(id: String): Int {
+                if (items.size >= maximum) throw GtfsCompactIndexLimitException("trips.txt supera il limite di corse")
+                val index = items.size
+                indexById[id] = index
+                items += CompactTrip(id)
+                if (index >= heads.size) heads = heads.copyOf((heads.size * 2).coerceAtLeast(index + 1)).also { it.fill(-1, index, it.size) }
+                return index
+            }
+        }
+
+        private class CompactTrip(val id: String) {
+            var routeId: String = ""
+            var serviceId: String = ""
+            var shortName: String? = null
+            var declared: Boolean = false
+        }
+
+        private class CompactStopTimes(private val maximum: Int) {
+            private var trips = IntArray(1024)
+            private var stops = IntArray(1024)
+            private var sequences = IntArray(1024)
+            private var arrivals = IntArray(1024)
+            private var departures = IntArray(1024)
+            private var next = IntArray(1024)
+            private var count = 0
+            private var sourceRowsRead = 0
+
+            fun append(trip: Int, stop: Int, sequence: Int, arrival: Int, departure: Int, previousForTrip: Int): Int {
+                if (count >= maximum) throw GtfsCompactIndexLimitException("stop_times.txt supera il limite di righe")
+                ensureCapacity(count + 1)
+                trips[count] = trip
+                stops[count] = stop
+                sequences[count] = sequence
+                arrivals[count] = arrival
+                departures[count] = departure
+                next[count] = previousForTrip
+                return count++
+            }
+
+            fun stop(index: Int): Int = stops[index]
+            fun sequence(index: Int): Int = sequences[index]
+            fun next(index: Int): Int = next[index]
+            fun ordinal(index: Int): Int = index
+            fun comesBefore(first: Int, second: Int): Boolean =
+                sequence(first) < sequence(second) || (sequence(first) == sequence(second) && ordinal(first) < ordinal(second))
+
+            fun preferredDeparture(index: Int): Int = departures[index].takeUnless { it == MISSING_TIME } ?: arrivals[index]
+            fun recordRowsRead(value: Int) { sourceRowsRead = value }
+            fun rowsRead(): Int = sourceRowsRead
+            fun size(): Int = count
+            fun compactColumnBytes(): Long = count.toLong() * Int.SIZE_BYTES * 6L
+
+            private fun ensureCapacity(required: Int) {
+                if (required <= trips.size) return
+                val capacity = (trips.size * 2).coerceAtLeast(required).coerceAtMost(maximum)
+                trips = trips.copyOf(capacity)
+                stops = stops.copyOf(capacity)
+                sequences = sequences.copyOf(capacity)
+                arrivals = arrivals.copyOf(capacity)
+                departures = departures.copyOf(capacity)
+                next = next.copyOf(capacity)
+            }
+        }
+
+        private class CompactCalendarExceptions {
+            private var dates = IntArray(8)
+            private var types = arrayOfNulls<String>(8)
+            private var count = 0
+
+            fun add(date: Int, type: String) {
+                if (count == dates.size) {
+                    dates = dates.copyOf(dates.size * 2)
+                    types = types.copyOf(types.size * 2)
+                }
+                dates[count] = date
+                types[count] = type
+                count += 1
+            }
+
+            fun exception(date: Int): String? {
+                for (index in count - 1 downTo 0) if (dates[index] == date) return types[index]
+                return null
+            }
         }
     }
 
     private companion object {
-        const val MAX_CSV_LINE_LENGTH = 32_768
-        val RAIL_ROUTE_TYPES = setOf("2", "100", "101", "102", "103", "104", "105", "106", "107", "108", "109")
-        val requiredTables = setOf("agency.txt", "stops.txt", "routes.txt", "trips.txt", "stop_times.txt", "calendar.txt", "calendar_dates.txt")
+        private const val MISSING_TIME = Int.MIN_VALUE
+        private const val INVALID_TIME = Int.MIN_VALUE + 1
+        private val RAIL_ROUTE_TYPES = setOf("2", "100", "101", "102", "103", "104", "105", "106", "107", "108", "109")
+        private val compactIndexTables = setOf("agency.txt", "stops.txt", "routes.txt", "trips.txt", "stop_times.txt", "calendar.txt", "calendar_dates.txt")
+        private val compactIndexLimits = GtfsCompactIndexLimits()
+
         fun normalize(value: String): String = Normalizer.normalize(value, Normalizer.Form.NFD)
             .replace("\\p{M}".toRegex(), "")
             .lowercase(Locale.ROOT)
             .replace("[^a-z0-9]".toRegex(), "")
+
+        fun gtfsTimeToMinutes(value: String?): Int {
+            if (value == null) return MISSING_TIME
+            val parts = value.split(':')
+            val hours = parts.getOrNull(0)?.toIntOrNull() ?: return INVALID_TIME
+            val minutes = parts.getOrNull(1)?.toIntOrNull() ?: return INVALID_TIME
+            return if (hours < 0 || minutes !in 0..59) INVALID_TIME else hours * 60 + minutes
+        }
+
+        fun hhmm(minutes: Int): String {
+            if (minutes < 0) return "00:00"
+            return "%02d:%02d".format(Locale.ROOT, (minutes / 60) % 24, minutes % 60)
+        }
+
+        fun gtfsDateToInt(value: String): Int? =
+            value.takeIf { it.matches(Regex("\\d{8}")) }?.toIntOrNull()
+
+        fun LocalDate.toGtfsInt(): Int = year * 10_000 + monthValue * 100 + dayOfMonth
     }
+
 }
