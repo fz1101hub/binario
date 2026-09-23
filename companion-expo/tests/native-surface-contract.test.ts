@@ -3,8 +3,9 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { createLocalScheduledSnapshot, createUnavailableSnapshot } from "@/lib/companion-snapshot";
 import { createLocalPlannedRoute } from "@/lib/local-route-contract";
-import { binarioWidgetBridgeModuleName } from "@/lib/native-module-names";
+import { binarioSharedTextReceivedEventName, binarioSharedTextReceiverModuleName, binarioWidgetBridgeModuleName } from "@/lib/native-module-names";
 import { buildNativeSurfacePayload } from "@/lib/native-surface-contract";
+import { maxIncomingSharedTextCharacters } from "@/lib/shared-text-contract";
 
 const source = (relativePath: string) => readFileSync(path.resolve(process.cwd(), relativePath), "utf8");
 const widgetPlugin = source("plugins/with-binario-android-widget.cjs");
@@ -112,6 +113,20 @@ describe("contratti delle superfici native Binario", () => {
     expect(agenda).toContain("useIncomingSharedText");
     expect(importCard).toContain("receivedText");
     expect(importCard).toContain("non importa automaticamente");
+  });
+
+  it("consegna il testo condiviso tramite il modulo BinarioSharedTextReceiver, anche ad app già aperta", () => {
+    const provider = source("lib/incoming-shared-text.tsx");
+    expect([...kotlinModuleNames()].sort()).toEqual([binarioSharedTextReceiverModuleName, binarioWidgetBridgeModuleName].sort());
+    expect(widgetPlugin).toContain(`eventName = "${binarioSharedTextReceivedEventName}"`);
+    expect(Number(widgetPlugin.match(/maxCharacters = ([\d_]+)/)?.[1]?.replace(/_/g, ""))).toBe(maxIncomingSharedTextCharacters);
+    expect(kotlinFunctionBody("capture")).toContain("emit(eventName");
+    expect(kotlinFunctionBody("capture")).not.toContain("remove(keyText)");
+    expect(kotlinFunctionBody("consume")).toContain("remove(keyText)");
+    expect(provider).toContain("NativeModules[binarioSharedTextReceiverModuleName]");
+    expect(provider).toContain("DeviceEventEmitter.addListener(eventName, handler)");
+    expect(provider).toContain("subscribeIncomingSharedText(");
+    expect(provider).not.toContain("BinarioSharedTextStore");
   });
 
   it("espone ricorrenze e completamento Agenda come azioni locali esplicite", () => {

@@ -249,7 +249,10 @@ import com.facebook.react.ReactPackage
 import com.facebook.react.modules.core.DeviceEventManagerModule
 import com.facebook.react.uimanager.ViewManager
 
-/** Riceve solo testo scelto nel menu Condividi; non accetta file, URL da risolvere o MIME generici. */
+/**
+ * Riceve solo testo scelto nel menu Condividi; non accetta file, URL da risolvere o MIME generici.
+ * Il testo resta nelle preferenze finché JS non chiama consume(): l'evento emesso ad app attiva è solo un segnale.
+ */
 object BinarioSharedTextStore {
   private const val preferences = "binario_pending_shared_text_v1"
   private const val keyText = "text"
@@ -270,7 +273,6 @@ object BinarioSharedTextStore {
     context.getSharedPreferences(preferences, Context.MODE_PRIVATE).edit().putString(keyText, text).apply()
     val current = reactContext?.takeIf { it.hasActiveReactInstance() } ?: return
     current.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java).emit(eventName, text)
-    context.getSharedPreferences(preferences, Context.MODE_PRIVATE).edit().remove(keyText).apply()
   }
 
   fun consume(context: Context): String? {
