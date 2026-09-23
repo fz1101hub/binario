@@ -44,6 +44,7 @@ if (!wearReleaseBlock) {
 
 const mainManifest = read("android/app/src/main/AndroidManifest.xml");
 for (const permission of [
+  "android.permission.ACCESS_FINE_LOCATION",
   "android.permission.READ_EXTERNAL_STORAGE",
   "android.permission.WRITE_EXTERNAL_STORAGE",
   "android.permission.SYSTEM_ALERT_WINDOW",
