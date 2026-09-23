@@ -19,7 +19,7 @@ Il gate è verde soltanto se non esistono advisory high o critical.
 | `GHSA-w3rx-r6r6-pgpr` | `image-size@1.2.1` via Expo/Metro | Nessuna versione corretta dichiarata dal registro audit. Il parser è usato dalla toolchain di build solo su asset PNG versionati o generati dal repository. |
 | `GHSA-5p2g-fcmc-qvqq` | `image-size@1.2.1` via Expo/Metro | Stessa dipendenza e stesso confine; i formati vulnerabili ICNS, JXL e HEIF non sono input dell'app né della pipeline di branding. |
 
-L'allowlist è **chiusa per ID, modulo, versione `1.2.1`, percorso transitivo Expo/Metro e assenza di versione corretta**. Se compare un advisory diverso, se uno dei due advisory ottiene una versione corretta o se cambiano modulo, versione o percorso coinvolti, la CI fallisce. Vitest, Vite e PostCSS sono stati aggiornati alle linee corrette; pnpm è fissato alla versione 10.34.5. `expo-system-ui` è installato esplicitamente per rendere completa e priva di warning la configurazione `userInterfaceStyle`.
+L'allowlist è **chiusa per ID, modulo, versione `1.2.1`, unico percorso transitivo Expo/Metro e assenza di versione corretta**. Undici test dedicati coprono entrambi gli ID ammessi e le variazioni di advisory, modulo, disponibilità patch, versione, percorso e cardinalità dei finding. Se uno di questi confini cambia, la CI fallisce. Vitest, Vite e PostCSS sono stati aggiornati alle linee corrette; pnpm è fissato alla versione 10.34.5. `expo-system-ui` è installato esplicitamente per rendere completa e priva di warning la configurazione `userInterfaceStyle`.
 
 ## Criteri di rimozione dell'eccezione
 
@@ -28,3 +28,5 @@ L'eccezione `image-size` va rimossa al primo aggiornamento Expo/Metro compatibil
 ## Monitoraggio continuo
 
 Gli alert Dependabot sono attivi sul repository. `.github/dependabot.yml` controlla ogni settimana i due workspace pnpm mantenuti, Gradle e GitHub Actions. Gli aggiornamenti minor e patch sono raggruppati per ridurre il rumore; gli aggiornamenti major restano separati, così una migrazione di piattaforma come Expo o React Native non viene confusa con una patch ordinaria. Non è configurato alcun auto-merge: ogni proposta deve superare i gate del componente interessato ed essere revisionata prima dell'integrazione.
+
+Al momento dell'attivazione, GitHub ha segnalato sul **default branch** 155 alert aperti: 4 critical, 59 high, 81 moderate e 11 low. Questo numero descrive `main` prima dell'integrazione della PR 26 e non costituisce un risultato di scansione del relativo head. La baseline va quindi ricampionata nel [cruscotto Dependabot](https://github.com/fz1101hub/binario/security/dependabot) dopo la promozione controllata dell'integrazione; fino ad allora non viene dichiarata azzerata.

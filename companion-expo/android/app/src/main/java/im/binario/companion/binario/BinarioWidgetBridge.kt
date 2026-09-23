@@ -71,6 +71,7 @@ class BinarioWidgetBridgeModule(private val context: ReactApplicationContext) : 
   override fun invalidate() { scope.cancel() }
 }
 
+@Suppress("DEPRECATION", "OVERRIDE_DEPRECATION")
 class BinarioWidgetPackage : ReactPackage {
   override fun createNativeModules(reactContext: ReactApplicationContext): List<NativeModule> = listOf(BinarioWidgetBridgeModule(reactContext))
   override fun createViewManagers(reactContext: ReactApplicationContext): List<ViewManager<*, *>> = emptyList()

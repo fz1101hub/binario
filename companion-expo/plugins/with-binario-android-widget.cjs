@@ -228,6 +228,7 @@ class BinarioWidgetBridgeModule(private val context: ReactApplicationContext) : 
   override fun invalidate() { scope.cancel() }
 }
 
+@Suppress("DEPRECATION", "OVERRIDE_DEPRECATION")
 class BinarioWidgetPackage : ReactPackage {
   override fun createNativeModules(reactContext: ReactApplicationContext): List<NativeModule> = listOf(BinarioWidgetBridgeModule(reactContext))
   override fun createViewManagers(reactContext: ReactApplicationContext): List<ViewManager<*, *>> = emptyList()
@@ -451,7 +452,7 @@ class BinarioSharedTextReceiverModule(private val context: ReactApplicationConte
   @ReactMethod fun removeListeners(count: Int) = Unit
 }
 
-@Suppress("DEPRECATION")
+@Suppress("DEPRECATION", "OVERRIDE_DEPRECATION")
 class BinarioSharedTextReceiverPackage : ReactPackage {
   override fun createNativeModules(reactContext: ReactApplicationContext): List<NativeModule> = listOf(BinarioSharedTextReceiverModule(reactContext))
   override fun createViewManagers(reactContext: ReactApplicationContext): List<ViewManager<*, *>> = emptyList()
