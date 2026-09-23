@@ -449,6 +449,32 @@
     <string name="stop_alarm_notification_text">Treno %1$s verso %2$s. Orario previsto %3$s.</string>
     <string name="stop_alarm_notification_big_text">Treno %1$s verso %2$s: la fermata %3$s è prevista alle %4$s. Controlla sempre monitor e annunci ufficiali.</string>
 
+    <!-- Enum labels displayed by Compose surfaces. -->
+    <string name="refresh_idle">Pronta</string>
+    <string name="refresh_loading">Aggiornamento in corso</string>
+    <string name="refresh_success">Dati aggiornati</string>
+    <string name="refresh_error">Aggiornamento non riuscito</string>
+    <string name="freshness_fresh">Dati aggiornati</string>
+    <string name="freshness_aging">Dati in aggiornamento</string>
+    <string name="freshness_stale">Ultimo dato disponibile</string>
+    <string name="freshness_unavailable">Dati live non disponibili</string>
+    <string name="service_status_on_time">In orario</string>
+    <string name="service_status_delayed">In ritardo</string>
+    <string name="station_monitor_departures">Partenze</string>
+    <string name="station_monitor_arrivals">Arrivi</string>
+    <string name="station_monitor_both">Arrivi e partenze</string>
+    <string name="journey_change_any">Qualsiasi</string>
+    <string name="journey_change_any_accessible">Qualsiasi numero di cambi</string>
+    <string name="journey_change_direct">Diretto</string>
+    <string name="journey_change_direct_accessible">Solo viaggi diretti, senza cambi</string>
+    <string name="journey_change_one">Max 1 cambio</string>
+    <string name="journey_change_one_accessible">Viaggi con al massimo un cambio</string>
+    <string name="journey_change_two">Max 2 cambi</string>
+    <string name="journey_change_two_accessible">Viaggi con al massimo due cambi</string>
+    <string name="alert_repeat_once">Una volta</string>
+    <string name="alert_repeat_weekdays">Lun–ven</string>
+    <string name="alert_repeat_daily">Ogni giorno</string>
+
     <!-- Local commuter alerts. -->
     <string name="commuter_alerts_title">Avvisi pendolare</string>
     <string name="commuter_alerts_description">Promemoria locali con anticipo, ricorrenza e fascia silenziosa. Non si aggiornano con i ritardi senza una fonte autorizzata.</string>

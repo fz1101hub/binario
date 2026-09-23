@@ -1186,10 +1186,10 @@ private fun RouteResultsScreen(modifier: Modifier, viewModel: TrainViewModel, op
         }
         item {
             Column(Modifier.padding(horizontal = 20.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(if (roundTrip) stringResource(R.string.planner_outbound) else primaryDirection.label.uppercase(Locale.ITALIAN), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+                Text(if (roundTrip) stringResource(R.string.planner_outbound) else primaryDirection.localizedLabel().uppercase(Locale.ITALIAN), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
                 Text(viewModel.activeRoute.displayName(primaryDirection), style = MaterialTheme.typography.bodyMedium)
                 Text(
-                    listOfNotNull(viewModel.refreshState.accessibleLabel, viewModel.refreshMessage).joinToString(" · "),
+                    listOfNotNull(viewModel.refreshState.localizedLabel(), viewModel.refreshMessage).joinToString(" · "),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -1214,7 +1214,7 @@ private fun RouteResultsScreen(modifier: Modifier, viewModel: TrainViewModel, op
                     Text(stringResource(R.string.planner_return), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
                     Text(viewModel.activeRoute.displayName(Direction.RETURN), style = MaterialTheme.typography.bodyMedium)
                     Text(
-                        listOfNotNull(viewModel.returnRefreshState.accessibleLabel, viewModel.returnRefreshMessage).joinToString(" · "),
+                        listOfNotNull(viewModel.returnRefreshState.localizedLabel(), viewModel.returnRefreshMessage).joinToString(" · "),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -1327,7 +1327,7 @@ private fun StationBoardScreen(modifier: Modifier, viewModel: TrainViewModel) {
                             FilterChip(
                                 selected = monitorMode == mode.name,
                                 onClick = { monitorMode = mode.name },
-                                label = { Text(mode.label) }
+                                label = { Text(mode.localizedLabel()) }
                             )
                         }
                     }
@@ -1677,7 +1677,7 @@ private fun BoardRouteHeader(
                     Text(stringResource(R.string.board_route_direction, route.name, directionLabel), style = MaterialTheme.typography.bodySmall)
                 }
                 IconButton(onClick = onRefresh) {
-                    Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.accessibility_refresh_departures, refreshState.accessibleLabel))
+                    Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.accessibility_refresh_departures, refreshState.localizedLabel()))
                 }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -1745,7 +1745,7 @@ private fun DataStatusLine(
     val label = when {
         isDemonstration -> stringResource(R.string.data_status_demo)
         freshness == Freshness.UNAVAILABLE || freshness == null -> stringResource(R.string.data_status_unavailable)
-        else -> stringResource(R.string.data_status_live, freshness.accessibleLabel)
+        else -> stringResource(R.string.data_status_live, freshness.localizedLabel())
     }
     val color = when {
         isDemonstration -> MaterialTheme.colorScheme.tertiary
@@ -1796,7 +1796,7 @@ private fun ListHeading(title: String, subtitle: String) {
 @Composable
 private fun DepartureListRow(service: TrainService, isNext: Boolean = false, onOpen: () -> Unit) {
     val serviceState = if (service.operationalStatusVerified) {
-        stringResource(R.string.service_state_live, service.status.accessibleLabel)
+        stringResource(R.string.service_state_live, service.status.localizedLabel())
     } else {
         stringResource(R.string.service_state_scheduled)
     }
@@ -1897,11 +1897,12 @@ private fun JourneyChangeFilterBar(selected: JourneyChangeFilter, onSelected: (J
         Text(stringResource(R.string.journey_changes_uppercase), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
         LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             items(JourneyChangeFilter.entries) { filter ->
+                val accessibilityLabel = filter.localizedAccessibleLabel()
                 FilterChip(
                     selected = selected == filter,
                     onClick = { onSelected(filter) },
-                    label = { Text(filter.label) },
-                    modifier = Modifier.semantics { contentDescription = filter.accessibleLabel }
+                    label = { Text(filter.localizedLabel()) },
+                    modifier = Modifier.semantics { contentDescription = accessibilityLabel }
                 )
             }
         }
@@ -2190,7 +2191,7 @@ private fun CommuterAlertSheet(
             Text(stringResource(R.string.commuter_alert_repeat), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(AlertRepeat.entries) { option ->
-                    FilterChip(selected = repeat == option.name, onClick = { repeat = option.name }, label = { Text(option.label) })
+                    FilterChip(selected = repeat == option.name, onClick = { repeat = option.name }, label = { Text(option.localizedLabel()) })
                 }
             }
             FilterChip(selected = quietHours, onClick = { quietHours = !quietHours }, label = { Text(stringResource(R.string.commuter_alert_quiet_hours)) })
@@ -2466,7 +2467,7 @@ private fun ServiceDetailScreen(
     onEndActiveTrip: () -> Unit,
     onShare: () -> Unit
 ) {
-    val dataLabel = if (isDemonstration) stringResource(R.string.data_status_demo) else freshness?.accessibleLabel ?: stringResource(R.string.data_status_unavailable)
+    val dataLabel = if (isDemonstration) stringResource(R.string.data_status_demo) else freshness?.localizedLabel() ?: stringResource(R.string.data_status_unavailable)
     LazyColumn(modifier = modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(0.dp)) {
         item {
             Surface(color = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary, shape = RoundedCornerShape(bottomStart = 28.dp, bottomEnd = 28.dp), modifier = Modifier.fillMaxWidth()) {
@@ -2752,4 +2753,63 @@ private fun compactStatusLabel(service: TrainService): String {
         ServiceStatus.DELAYED -> stringResource(R.string.delay_minutes, service.delayMinutes)
         ServiceStatus.CANCELLED -> stringResource(R.string.service_status_cancelled)
     }
+}
+
+@Composable
+private fun Direction.localizedLabel(): String = when (this) {
+    Direction.OUTBOUND -> stringResource(R.string.direction_outbound)
+    Direction.RETURN -> stringResource(R.string.direction_return)
+}
+
+@Composable
+private fun RefreshState.localizedLabel(): String = when (this) {
+    RefreshState.IDLE -> stringResource(R.string.refresh_idle)
+    RefreshState.LOADING -> stringResource(R.string.refresh_loading)
+    RefreshState.SUCCESS -> stringResource(R.string.refresh_success)
+    RefreshState.ERROR -> stringResource(R.string.refresh_error)
+}
+
+@Composable
+private fun Freshness.localizedLabel(): String = when (this) {
+    Freshness.FRESH -> stringResource(R.string.freshness_fresh)
+    Freshness.AGING -> stringResource(R.string.freshness_aging)
+    Freshness.STALE -> stringResource(R.string.freshness_stale)
+    Freshness.UNAVAILABLE -> stringResource(R.string.freshness_unavailable)
+}
+
+@Composable
+private fun ServiceStatus.localizedLabel(): String = when (this) {
+    ServiceStatus.ON_TIME -> stringResource(R.string.service_status_on_time)
+    ServiceStatus.DELAYED -> stringResource(R.string.service_status_delayed)
+    ServiceStatus.CANCELLED -> stringResource(R.string.service_status_cancelled)
+}
+
+@Composable
+private fun StationMonitorMode.localizedLabel(): String = when (this) {
+    StationMonitorMode.DEPARTURES -> stringResource(R.string.station_monitor_departures)
+    StationMonitorMode.ARRIVALS -> stringResource(R.string.station_monitor_arrivals)
+    StationMonitorMode.BOTH -> stringResource(R.string.station_monitor_both)
+}
+
+@Composable
+private fun JourneyChangeFilter.localizedLabel(): String = when (this) {
+    JourneyChangeFilter.ANY -> stringResource(R.string.journey_change_any)
+    JourneyChangeFilter.DIRECT -> stringResource(R.string.journey_change_direct)
+    JourneyChangeFilter.UP_TO_ONE -> stringResource(R.string.journey_change_one)
+    JourneyChangeFilter.UP_TO_TWO -> stringResource(R.string.journey_change_two)
+}
+
+@Composable
+private fun JourneyChangeFilter.localizedAccessibleLabel(): String = when (this) {
+    JourneyChangeFilter.ANY -> stringResource(R.string.journey_change_any_accessible)
+    JourneyChangeFilter.DIRECT -> stringResource(R.string.journey_change_direct_accessible)
+    JourneyChangeFilter.UP_TO_ONE -> stringResource(R.string.journey_change_one_accessible)
+    JourneyChangeFilter.UP_TO_TWO -> stringResource(R.string.journey_change_two_accessible)
+}
+
+@Composable
+private fun AlertRepeat.localizedLabel(): String = when (this) {
+    AlertRepeat.ONCE -> stringResource(R.string.alert_repeat_once)
+    AlertRepeat.WEEKDAYS -> stringResource(R.string.alert_repeat_weekdays)
+    AlertRepeat.DAILY -> stringResource(R.string.alert_repeat_daily)
 }
