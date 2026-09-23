@@ -9,5 +9,5 @@
     "resolveJsonModule": true,
     "types": ["vitest/globals"]
   },
-  "include": ["app", "components", "lib", "scripts", "app.config.ts", "vitest.config.ts"]
+  "include": ["app", "components", "lib", "scripts", "tests", "app.config.ts", "vitest.config.ts"]
 }

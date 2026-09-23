@@ -5,6 +5,7 @@ import { fetchCompanionPlannedRoutes, getCompanionSyncStatus, isCompanionSyncCon
 import { clearLocalPlannedRoutes, importSelectedManualPlannedRoutes, importSelectedRemotePlannedRoutes, loadLocalPlannedRoutes } from "@/lib/local-routes";
 import { pickLocalJourneyTransfer, shareLocalJourneyTransfer } from "@/lib/manual-route-transfer";
 import { previewManualRouteTransfer, type ManualRouteTransferPreview } from "@/lib/manual-route-transfer-contract";
+import { clearLocalJourneyItineraries } from "@/lib/local-itineraries";
 import { clearLocalJourneyArchive } from "@/lib/local-journey-privacy";
 import { loadLocalJourneyTimingPreferences, localJourneyReminderOptions, saveLocalJourneyTimingPreferences, type LocalJourneyReminderPreference } from "@/lib/local-journey-timing";
 import { cancelPlannedRouteReminder, listScheduledRouteIds } from "@/lib/planned-reminder-service";
@@ -12,7 +13,7 @@ import { prepareNativePullPreview, prepareNativePushPreview, selectedNativePushR
 import type { LocalPlannedRoute } from "@/lib/local-route-contract";
 import type { CompanionPlannedRoute } from "@/lib/planned-route-reminder";
 import Constants from "expo-constants";
-import { router, type Href } from "expo-router";
+import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import { Alert, Platform, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from "react-native";
 
@@ -101,13 +102,13 @@ export default function SettingsScreen() {
   }
 
   async function clearLocalJourneyData() {
-    const result = await clearLocalJourneyArchive({ listScheduledRouteIds, cancelReminder: cancelPlannedRouteReminder, clearRoutes: clearLocalPlannedRoutes });
+    const result = await clearLocalJourneyArchive({ listScheduledRouteIds, cancelReminder: cancelPlannedRouteReminder, clearRoutes: clearLocalPlannedRoutes, clearItineraries: clearLocalJourneyItineraries });
     setPullPreview([]); setPushPreview([]); setSelectedPull([]); setSelectedPush([]);
-    setStatus(`Archivio locale cancellato. ${result.clearedReminders} ${result.clearedReminders === 1 ? "promemoria annullato" : "promemoria annullati"}. Account, consenso sincronizzazione e preferenze di accessibilità non sono stati modificati.`);
+    setStatus(`Archivio locale cancellato: tratte e itinerari rimossi dal telefono, ${result.clearedReminders} ${result.clearedReminders === 1 ? "promemoria annullato" : "promemoria annullati"}. Account, consenso sincronizzazione e preferenze di accessibilità non sono stati modificati.`);
   }
 
   function confirmClearLocalJourneyData() {
-    Alert.alert("Cancellare l’archivio locale?", "Saranno eliminate solo le tratte e i promemoria di questo telefono. L’account Binario, l’eventuale sincronizzazione e le preferenze di accessibilità restano invariati.", [{ text: "Annulla", style: "cancel" }, { text: "Cancella solo locale", style: "destructive", onPress: () => void clearLocalJourneyData() }]);
+    Alert.alert("Cancellare l’archivio locale?", "Saranno eliminati solo tratte, itinerari e promemoria di questo telefono. L’account Binario, l’eventuale sincronizzazione e le preferenze di accessibilità restano invariati.", [{ text: "Annulla", style: "cancel" }, { text: "Cancella solo locale", style: "destructive", onPress: () => void clearLocalJourneyData() }]);
   }
 
   async function exportManualTransfer() {
@@ -172,7 +173,7 @@ export default function SettingsScreen() {
       <Pressable accessibilityRole="button" accessibilityLabel="Esporta l’archivio locale Binario con la condivisione di sistema" accessibilityHint="Crea un file soltanto su tua richiesta; nessun backup automatico" onPress={() => void exportManualTransfer()} style={({ pressed }) => [styles.accessibilityAction, { borderColor: colors.border, opacity: pressed ? 0.72 : 1 }]}><Text style={{ color: colors.foreground, fontWeight: "800" }}>Esporta archivio</Text><Text style={{ color: colors.muted }}>Manuale</Text></Pressable>
       <Pressable accessibilityRole="button" accessibilityLabel="Scegli un archivio Binario da importare" accessibilityHint="Mostra un’anteprima prima di aggiungere qualunque tratta" onPress={() => void inspectManualTransfer()} style={({ pressed }) => [styles.accessibilityAction, { borderColor: colors.border, opacity: pressed ? 0.72 : 1 }]}><Text style={{ color: colors.foreground, fontWeight: "800" }}>Importa archivio</Text><Text style={{ color: colors.muted }}>Con anteprima</Text></Pressable>
       {manualTransferPreview.length ? <View style={[styles.preview, { borderColor: colors.border }]}><Text style={[styles.heading, { color: colors.foreground }]}>Anteprima archivio</Text>{manualTransferPreview.map(candidate => <Pressable key={candidate.key} disabled={candidate.state !== "new"} accessibilityRole="checkbox" accessibilityState={{ checked: selectedManualTransfer.includes(candidate.key), disabled: candidate.state !== "new" }} accessibilityLabel={`${candidate.route.origin} verso ${candidate.route.destination}. ${candidate.state === "new" ? "Pronta da aggiungere" : "Già presente e non duplicata"}`} onPress={() => toggle(candidate.key, selectedManualTransfer, setSelectedManualTransfer)} style={[styles.choice, { borderColor: colors.border, opacity: candidate.state === "new" ? 1 : 0.65 }]}><Text style={{ color: colors.foreground }}>{selectedManualTransfer.includes(candidate.key) ? "✓ " : "○ "}{candidate.route.origin} → {candidate.route.destination}</Text><Text style={{ color: colors.muted }}>{candidate.state === "new" ? "Pronta da aggiungere" : "Già presente: non viene duplicata"}</Text></Pressable>)}<Pressable disabled={selectedManualTransfer.length === 0} accessibilityRole="button" accessibilityState={{ disabled: selectedManualTransfer.length === 0 }} accessibilityLabel="Aggiungi sul telefono le tratte selezionate dall’archivio" onPress={() => void importManualTransfer()} style={({ pressed }) => [styles.accessibilityAction, { borderColor: colors.border, opacity: selectedManualTransfer.length === 0 ? 0.5 : pressed ? 0.72 : 1 }]}><Text style={{ color: colors.foreground, fontWeight: "800" }}>Aggiungi sul telefono</Text><Text style={{ color: colors.muted }}>{selectedManualTransfer.length} selezionate</Text></Pressable></View> : null}
-      <Pressable accessibilityRole="button" accessibilityLabel="Apri guida agli stati Binario" accessibilityHint="Spiega il significato di programmato, realtime, scaduto e non disponibile" onPress={() => router.push("/guide" as Href)} style={({ pressed }) => [styles.accessibilityAction, { borderColor: colors.border, opacity: pressed ? 0.72 : 1 }]}><Text style={{ color: colors.foreground, fontWeight: "800" }}>Come leggere i dati</Text><Text style={{ color: colors.muted }}>Guida</Text></Pressable>
+      <Pressable accessibilityRole="button" accessibilityLabel="Apri guida agli stati Binario" accessibilityHint="Spiega il significato di programmato, realtime, scaduto e non disponibile" onPress={() => router.push("/guide")} style={({ pressed }) => [styles.accessibilityAction, { borderColor: colors.border, opacity: pressed ? 0.72 : 1 }]}><Text style={{ color: colors.foreground, fontWeight: "800" }}>Come leggere i dati</Text><Text style={{ color: colors.muted }}>Guida</Text></Pressable>
       <Pressable accessibilityRole="button" accessibilityLabel="Prepara diagnostica tecnica" accessibilityHint="Apre la condivisione di un report senza dati personali o ferroviari" onPress={() => void shareDiagnostic()} style={({ pressed }) => [styles.accessibilityAction, { borderColor: colors.border, opacity: pressed ? 0.72 : 1 }]}><Text style={{ color: colors.foreground, fontWeight: "800" }}>Prepara diagnostica tecnica</Text><Text style={{ color: colors.muted }}>Solo su richiesta</Text></Pressable>
       <Pressable accessibilityRole="button" accessibilityLabel="Cancella tratte e promemoria locali da questo telefono" accessibilityHint="Chiederà conferma e non modificherà account, sincronizzazione o preferenze di accessibilità" onPress={confirmClearLocalJourneyData} style={({ pressed }) => [styles.accessibilityAction, { borderColor: colors.danger, opacity: pressed ? 0.72 : 1 }]}><Text style={{ color: colors.danger, fontWeight: "800" }}>Cancella archivio locale</Text><Text style={{ color: colors.muted }}>Solo telefono</Text></Pressable>
     </View>

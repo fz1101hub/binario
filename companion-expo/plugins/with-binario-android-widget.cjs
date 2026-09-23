@@ -249,7 +249,10 @@ import com.facebook.react.ReactPackage
 import com.facebook.react.modules.core.DeviceEventManagerModule
 import com.facebook.react.uimanager.ViewManager
 
-/** Riceve solo testo scelto nel menu Condividi; non accetta file, URL da risolvere o MIME generici. */
+/**
+ * Riceve solo testo scelto nel menu Condividi; non accetta file, URL da risolvere o MIME generici.
+ * Il testo resta nelle preferenze finché JS non chiama consume(): l'evento emesso ad app attiva è solo un segnale.
+ */
 object BinarioSharedTextStore {
   private const val preferences = "binario_pending_shared_text_v1"
   private const val keyText = "text"
@@ -270,7 +273,6 @@ object BinarioSharedTextStore {
     context.getSharedPreferences(preferences, Context.MODE_PRIVATE).edit().putString(keyText, text).apply()
     val current = reactContext?.takeIf { it.hasActiveReactInstance() } ?: return
     current.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java).emit(eventName, text)
-    context.getSharedPreferences(preferences, Context.MODE_PRIVATE).edit().remove(keyText).apply()
   }
 
   fun consume(context: Context): String? {
@@ -308,7 +310,7 @@ const widgetXml = `<?xml version="1.0" encoding="utf-8"?>
 const shortcutsXml = `<?xml version="1.0" encoding="utf-8"?>
 <shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
   <shortcut android:shortcutId="plan" android:enabled="true" android:icon="@mipmap/ic_launcher" android:shortcutShortLabel="@string/binario_shortcut_plan_short" android:shortcutLongLabel="@string/binario_shortcut_plan_long">
-    <intent android:action="android.intent.action.VIEW" android:targetPackage="im.binario.companion" android:targetClass="im.binario.companion.MainActivity" android:data="binario-companion://plan" />
+    <intent android:action="android.intent.action.VIEW" android:targetPackage="im.binario.companion" android:targetClass="im.binario.companion.MainActivity" android:data="binario-companion://" />
   </shortcut>
   <shortcut android:shortcutId="alerts" android:enabled="true" android:icon="@mipmap/ic_launcher" android:shortcutShortLabel="@string/binario_shortcut_alerts_short" android:shortcutLongLabel="@string/binario_shortcut_alerts_long">
     <intent android:action="android.intent.action.VIEW" android:targetPackage="im.binario.companion" android:targetClass="im.binario.companion.MainActivity" android:data="binario-companion://alerts" />

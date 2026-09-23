@@ -6,13 +6,16 @@ import { useIncomingSharedText } from "@/lib/incoming-shared-text";
 import { cancelPlannedRouteReminder, listScheduledRouteIds, schedulePlannedRouteReminder } from "@/lib/planned-reminder-service";
 import { addExplicitRecurringLocalPlannedRoutes, addLocalPlannedRoute, loadLocalPlannedRoutes, removeLocalPlannedRoute, setLocalPlannedRouteChecklistItem, setLocalPlannedRouteCompletion, type LocalPlannedRoute } from "@/lib/local-routes";
 import { pickLocalJourneyIcs, shareLocalJourneyIcs, type CalendarRouteDraft } from "@/lib/local-calendar";
+import { reconcileLocalJourneyItineraries } from "@/lib/local-itineraries";
+import { deleteLocalPlannedRoute } from "@/lib/local-journey-privacy";
 import { acknowledgeNativeAction, confirmNativeAction } from "@/lib/native-feedback";
 import { createReplannedLocalRouteDraft, createReturnLocalRouteDraft, filterLocalJourneyAgenda, getLocalJourneyPreparationPreset, localJourneyChecklistLabels, localJourneyChecklistPresets, localJourneyWeekdays, maxExplicitLocalJourneyOccurrences, remainingLocalJourneyChecklistItems, type ControlledLocalRouteDraft, type LocalAgendaFilter, type LocalJourneyChecklistPreset, type LocalJourneyWeekday } from "@/lib/local-route-contract";
 import { useCompanionTheme } from "@/lib/theme";
 import { deleteRoutePrompt, reminderFeedbackPoliteness } from "@/lib/reminder-accessibility";
 import { formatLocalJourneyDate, formatLocalJourneySchedule, formatLocalJourneyTime, fromLocalDateAndTime, toLocalIsoDate, toLocalTime } from "@/lib/local-date-time";
 import type { GuidedTextLocalRouteDraft } from "@/lib/local-journey-itineraries";
-import { useEffect, useMemo, useState } from "react";
+import { useFocusEffect } from "expo-router";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { AccessibilityInfo, Alert, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import DateTimePicker, { type DateTimePickerEvent } from "@react-native-community/datetimepicker";
 
@@ -38,7 +41,7 @@ export default function AlertsScreen() {
   const [recurrenceWeekdays, setRecurrenceWeekdays] = useState<LocalJourneyWeekday[]>([]);
   const [recurrenceOccurrences, setRecurrenceOccurrences] = useState(4);
   async function refresh() { setLoading(true); const [nextRoutes, nextScheduled] = await Promise.all([loadLocalPlannedRoutes(), listScheduledRouteIds()]); setRoutes(nextRoutes); setScheduledIds(nextScheduled); setLoading(false); }
-  useEffect(() => { void refresh(); }, []);
+  useFocusEffect(useCallback(() => { void refresh(); }, []));
   useEffect(() => { if (message && Platform.OS !== "web") AccessibilityInfo.announceForAccessibility(message); }, [message]);
   async function toggle(route: LocalPlannedRoute) {
     if (scheduledIds.includes(route.id)) { await cancelPlannedRouteReminder(route.id); setScheduledIds(current => current.filter(id => id !== route.id)); setMessage("Promemoria programmato annullato."); acknowledgeNativeAction(); return; }
@@ -49,7 +52,7 @@ export default function AlertsScreen() {
   }
   function confirmDelete(route: LocalPlannedRoute) {
     const prompt = deleteRoutePrompt(route.name);
-    Alert.alert(prompt.title, prompt.message, [{ text: prompt.cancel, style: "cancel" }, { text: prompt.confirm, style: "destructive", onPress: () => void removeLocalPlannedRoute(route.id).then(() => { setMessage("Tratta locale eliminata."); return refresh(); }) }]);
+    Alert.alert(prompt.title, prompt.message, [{ text: prompt.cancel, style: "cancel" }, { text: prompt.confirm, style: "destructive", onPress: () => void deleteLocalPlannedRoute({ routeId: route.id, cancelReminder: cancelPlannedRouteReminder, removeRoute: removeLocalPlannedRoute, listRemainingRouteIds: async () => (await loadLocalPlannedRoutes()).map(item => item.id), reconcileItineraries: reconcileLocalJourneyItineraries }).then(result => { setScheduledIds(current => current.filter(id => id !== route.id)); setMessage(result.cancelledReminder ? "Tratta locale eliminata e promemoria programmato annullato." : "Tratta locale eliminata."); return refresh(); }) }]);
   }
   async function toggleChecklist(route: LocalPlannedRoute, itemId: keyof typeof localJourneyChecklistLabels, completed: boolean) {
     if (await setLocalPlannedRouteChecklistItem(route.id, itemId, completed)) {

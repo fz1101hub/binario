@@ -3,7 +3,7 @@ import { AccessibilityInfo, Platform, Pressable, ScrollView, StyleSheet, Text, V
 import { ScreenContainer } from "@/components/screen-container";
 import { SnapshotCard } from "@/components/snapshot-card";
 import { LocalPlanCard } from "@/components/local-plan-card";
-import { msUntilSnapshotExpiry } from "@/lib/network-status";
+import { clampTimerDelay, msUntilSnapshotExpiry } from "@/lib/network-status";
 import { syncNativeCompanionSurfaces } from "@/lib/native-surface-bridge";
 import { createLocalScheduledSnapshot, createUnavailableSnapshot, type CompanionSnapshot } from "@/lib/companion-snapshot";
 import { loadLocalPlannedRoutes } from "@/lib/local-routes";
@@ -23,6 +23,7 @@ export default function BinarioHome() {
   const [localRoutes, setLocalRoutes] = useState<LocalPlannedRoute[]>([]);
   const [planningDraft, setPlanningDraft] = useState<HomePlanningDraft | null>(null);
   const [feedback, setFeedback] = useState("");
+  const [expiryCheck, setExpiryCheck] = useState(0);
 
   const loadLocalPlan = useCallback(async () => {
     const plans = await loadLocalPlannedRoutes();
@@ -44,11 +45,13 @@ export default function BinarioHome() {
   useEffect(() => {
     if (snapshot.provenance.dataNature === "unavailable" || !snapshot.provenance.expiresAtUtcMs) return;
     const timer = setTimeout(() => {
+      // Un ritardo tagliato da clampTimerDelay scatta prima della scadenza: in tal caso si riprogramma soltanto.
+      if (msUntilSnapshotExpiry(snapshot.provenance) > 0) { setExpiryCheck(value => value + 1); return; }
       setSnapshot(createUnavailableSnapshot(snapshot.subject));
       setFeedback("La tratta pianificata è scaduta e non viene più mostrata su telefono, widget o smartwatch.");
-    }, msUntilSnapshotExpiry(snapshot.provenance) + 50);
+    }, clampTimerDelay(msUntilSnapshotExpiry(snapshot.provenance) + 50));
     return () => clearTimeout(timer);
-  }, [snapshot]);
+  }, [expiryCheck, snapshot]);
 
   const sourceText = snapshot.provenance.dataNature === "scheduled" ? "Fonte: pianificazione locale del dispositivo" : "Fonte: nessun dato ferroviario disponibile";
   const guidance = getCompanionGuidance(simpleMode);
