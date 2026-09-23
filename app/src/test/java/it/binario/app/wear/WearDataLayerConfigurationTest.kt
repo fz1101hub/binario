@@ -33,6 +33,22 @@ class WearDataLayerConfigurationTest {
     }
 
     @Test
+    fun `watch manifest protects local data and declares launcher and tile metadata`() {
+        val manifest = File(repositoryRoot, "wear/src/main/AndroidManifest.xml").readText()
+        val extractionRules = File(repositoryRoot, "wear/src/main/res/xml/data_extraction_rules.xml").readText()
+
+        assertTrue(manifest.contains("android:dataExtractionRules=\"@xml/data_extraction_rules\""))
+        assertTrue(manifest.contains("android:fullBackupContent=\"@xml/backup_rules\""))
+        assertTrue(manifest.contains("android:taskAffinity=\"it.binario.app.wear.task.main\""))
+        assertTrue(manifest.contains("androidx.wear.tiles.PREVIEW"))
+        assertTrue(manifest.contains("android:resource=\"@drawable/tile_preview\""))
+        assertTrue(extractionRules.contains("<device-transfer>"))
+        assertTrue(extractionRules.contains("domain=\"sharedpref\" path=\".\""))
+        assertTrue(File(repositoryRoot, "wear/src/main/res/drawable/tile_preview.xml").isFile)
+        assertTrue(File(repositoryRoot, "wear/src/main/res/drawable-round/tile_preview.xml").isFile)
+    }
+
+    @Test
     fun `phone refresh listener is path scoped`() {
         val manifest = File(repositoryRoot, "app/src/main/AndroidManifest.xml").readText()
 
