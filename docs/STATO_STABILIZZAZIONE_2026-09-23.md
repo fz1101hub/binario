@@ -51,7 +51,7 @@ I gate locali del codice sono verdi. Restano fuori dalla conclusione tecnica la 
 
 ## Limiti della consegna corrente
 
-GitHub Actions ha restituito diversi fallimenti di startup con **zero step eseguiti**. Questi risultati non rappresentano test rossi del codice; per questo il ramo combinato è stato validato localmente. Dopo un reset dell'ambiente, la credenziale GitHub della sessione è risultata non valida: il branch finale viene quindi anche salvato come bundle Git portabile finché il push non torna disponibile.
+GitHub Actions ha restituito cinque fallimenti di startup con **zero step eseguiti**. Questi risultati non rappresentano test rossi del codice; per questo il ramo combinato è stato validato localmente. Il branch finale è pubblicato e la PR 26 è aperta e mergeable. Il bundle Git portabile resta disponibile come copia verificata della consegna.
 
 Le scelte proprietarie elencate sopra non bloccano ulteriore sviluppo interno, ma impediscono di dichiarare una release pubblica completa. In particolare, una build unsigned non sostituisce una release firmata e una fixture smartwatch non sostituisce una prova su hardware reale.
 
