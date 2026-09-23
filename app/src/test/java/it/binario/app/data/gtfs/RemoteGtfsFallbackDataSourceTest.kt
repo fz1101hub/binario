@@ -34,6 +34,7 @@ import java.util.zip.ZipOutputStream
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -84,6 +85,33 @@ class RemoteGtfsFallbackDataSourceTest {
         assertFalse(service.operationalStatusVerified)
         assertTrue(service.operationalSourceIds.isEmpty())
         assertFalse(snapshot.providerName.contains("Realtime test"))
+    }
+
+    @Test
+    fun `feed download runs off the calling thread`() = runBlocking {
+        val callerThread = Thread.currentThread()
+        var downloadThread: Thread? = null
+        val adapter = RemoteGtfsFallbackDataSource(
+            source = source,
+            parserSourceId = SourceId("european-sleeper"),
+            downloader = GtfsArtifactSource { _, _ ->
+                downloadThread = Thread.currentThread()
+                GtfsDownloadSession(ByteArrayInputStream(gtfs()))
+            },
+            clock = clock,
+            realtimeZone = ZoneId.of("Europe/Brussels")
+        )
+
+        val result = adapter.loadRoute(
+            route,
+            Direction.OUTBOUND,
+            JourneyQuery(LocalDate.of(2026, 9, 10), LocalTime.of(8, 0))
+        )
+
+        assertTrue(result is DataResult.Success)
+        val recorded = requireNotNull(downloadThread) { "download non eseguito" }
+        assertNotSame(callerThread, recorded)
+        assertTrue(recorded.name, recorded.name.startsWith("DefaultDispatcher-worker"))
     }
 
     private fun adapter(provider: TripUpdateProvider) = RemoteGtfsFallbackDataSource(

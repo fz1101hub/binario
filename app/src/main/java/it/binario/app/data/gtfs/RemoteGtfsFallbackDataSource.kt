@@ -26,6 +26,8 @@ import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /**
  * Remote GTFS is deliberately a last-resort path. It is used for a source
@@ -96,9 +98,11 @@ class RemoteGtfsFallbackDataSource(
             packs = listOf(EmbeddedGtfsPack(parserSourceId, "remote/${source.id.value}.zip")),
             cacheLimit = 1
         )
-        val enriched = updates.mapNotNull { update ->
-            val scheduled = resolver.resolve(parserSourceId, update, query.serviceDate, realtimeZone) ?: return@mapNotNull null
-            RealtimeOperationalEnricher.enrich(update, scheduled)
+        val enriched = withContext(Dispatchers.Default) {
+            updates.mapNotNull { update ->
+                val scheduled = resolver.resolve(parserSourceId, update, query.serviceDate, realtimeZone) ?: return@mapNotNull null
+                RealtimeOperationalEnricher.enrich(update, scheduled)
+            }
         }
         if (enriched.isEmpty()) return snapshot
 
@@ -165,10 +169,12 @@ class RemoteGtfsFallbackDataSource(
         )
     }
 
-    private fun feedBytes(): ByteArray {
+    private suspend fun feedBytes(): ByteArray {
         val now = clock.instant()
         cached?.takeIf { now.isBefore(it.expiresAt) }?.let { return it.bytes }
-        val bytes = downloader.open(source, allowBestEffortFallback = true).use { session -> session.input.readBytes() }
+        val bytes = withContext(Dispatchers.IO) {
+            downloader.open(source, allowBestEffortFallback = true).use { session -> session.input.readBytes() }
+        }
         require(bytes.isNotEmpty()) { "Archivio GTFS vuoto" }
         return bytes.also { cached = CachedFeed(it, now.plus(cacheTtl)) }
     }
