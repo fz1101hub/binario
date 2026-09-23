@@ -12,13 +12,13 @@ Le feature e le correzioni vivono in branch brevi e descrittivi. Il branch di un
 
 ## Workflow CI obbligatori
 
-I workflow Android e Companion vengono eseguiti per ogni `pull_request` e per ogni `push` su `main` e `stabilization/**`. Questo secondo trigger protegge anche l'ultimo commit effettivamente presente in un ramo principale o di stabilizzazione.
+I workflow Android e Companion vengono eseguiti per ogni `pull_request` e per ogni `push` su `main`, `stabilization/**` e `integration/**`. Questo secondo trigger protegge anche l'ultimo commit effettivamente presente in un ramo principale, di stabilizzazione o di integrazione.
 
 | Gate | Ambito | Criterio di superamento |
 | --- | --- | --- |
 | Validazione Gradle Wrapper | Repository | Tutti i wrapper Gradle tracciati superano `gradle/actions/wrapper-validation`; file eseguibili e JAR non validi bloccano la build. |
 | Integrità asset Android | Android | I pacchetti GTFS, `manifest.json`, `SHA256SUMS` e il catalogo stazioni concordano per nomi, hash, struttura e conteggi. |
-| Freschezza asset GTFS | Android | Ogni `lastServiceDate` è almeno 14 giorni oltre la data del gate. Un feed scaduto o troppo vicino alla scadenza richiede refresh, rigenerazione degli hash e revisione prima della release. |
+| Freschezza asset GTFS | Android | Ogni `lastServiceDate` è almeno 30 giorni oltre la data del gate. Il workflow esegue questo controllo senza `--integrity-only`, separatamente dal controllo di integrità. Un feed scaduto o troppo vicino alla scadenza richiede refresh, rigenerazione degli hash e revisione prima della release. |
 | Test, lint e build Android | Android | I test unitari debug, lint debug e assemble debug completano senza errori. |
 | Companion managed | Companion Expo | Dipendenze congelate, TypeScript, test e verifiche di configurazione/release completano senza errori. |
 | Prebuild companion | Companion Expo | `expo prebuild --platform android --clean --no-install` non modifica `android/`; una seconda esecuzione pulita produce lo stesso albero tracciato. |
@@ -29,7 +29,7 @@ I workflow usano azioni con versione esplicita. Ogni aggiornamento di un'azione 
 
 1. Aprire o aggiornare `stabilization/<versione>` dalla revisione approvata di `main`; limitare le modifiche a correzioni di release, gate e documentazione direttamente necessaria.
 2. Per ogni modifica, aprire una pull request verso la linea di stabilizzazione corretta e attendere i gate CI applicabili. Eseguire localmente i comandi dei gate coinvolti prima della revisione.
-3. Prima del tag, verificare gli asset embedded con `python3 tools/verify_embedded_assets.py --min-valid-days 14`. Se un pacchetto GTFS è scaduto o entra nella finestra di 14 giorni, aggiornare l'asset, il manifest e `SHA256SUMS` nella stessa pull request oppure escluderlo in modo sicuro dalla release.
+3. Prima del tag, verificare gli asset embedded con `python3 tools/verify_embedded_assets.py --min-valid-days 30`. Se un pacchetto GTFS è scaduto o entra nella finestra di 30 giorni, aggiornare l'asset, il manifest e `SHA256SUMS` nella stessa pull request oppure escluderlo in modo sicuro dalla release.
 4. Registrare esito, vincoli residui e prove nel changelog e nella documentazione di stabilizzazione della versione. Il tag viene creato soltanto dalla revisione approvata della linea di stabilizzazione, dopo l'esito verde dei gate richiesti.
 5. Dopo la release, riportare su `main` soltanto correzioni e documentazione che devono restare nella linea di sviluppo, tramite pull request separata e revisionata.
 
@@ -40,8 +40,9 @@ I report storici alla radice non vengono spostati automaticamente. I manifest di
 ## Verifiche locali
 
 ```bash
-# Asset Android: integrità, struttura e finestra di validità dei GTFS.
-python3 tools/verify_embedded_assets.py --min-valid-days 14
+# Asset Android: prima integrità e struttura, poi freshness release a 30 giorni.
+python3 tools/verify_embedded_assets.py --integrity-only
+python3 tools/verify_embedded_assets.py --min-valid-days 30
 
 # Android principale (richiede JDK 17 e Android SDK configurato).
 ./gradlew --no-daemon testDebugUnitTest lintDebug assembleDebug

@@ -59,7 +59,7 @@ Il companion Wear OS non interroga da sé fonti ferroviarie: mostra la cache ric
 
 Il watch salva lo snapshot nella propria `SharedPreferences` per app, Tile e complication. Quando l'utente disattiva la condivisione, il telefono richiede la cancellazione del Data Item; alla ricezione dell'evento di cancellazione il watch elimina la cache locale e aggiorna Tile e complication in stato non disponibile. Se l'orologio è offline, la propagazione dipende dalla consegna successiva del Data Layer; la cancellazione dei dati dell'app Wear o la disinstallazione rimuovono direttamente la copia locale.
 
-Il manifest Wear dichiara il permesso Internet, ma il codice del modulo Wear corrente non avvia richieste ferroviarie: il refresh è delegato al telefono. La comunicazione con il watch dipende dall'infrastruttura Google Play Services e dalle impostazioni dell'account/dispositivo associato.
+Il manifest Wear **non** dichiara il permesso `INTERNET` e il codice del modulo Wear corrente non avvia richieste ferroviarie: il refresh è delegato al telefono. La comunicazione con il watch dipende dall'infrastruttura Google Play Services e dalle impostazioni dell'account/dispositivo associato.
 
 ## Companion Expo
 

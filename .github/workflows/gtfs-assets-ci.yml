@@ -6,6 +6,7 @@ on:
     branches:
       - main
       - "stabilization/**"
+      - "integration/**"
   workflow_dispatch:
 
 concurrency:
@@ -31,9 +32,8 @@ jobs:
       - name: Offline pipeline tests
         run: python3 -m unittest -v tests/test_build_gtfs_packs.py
 
-      - name: Verify asset digests, filters and declared coverage
+      - name: Verify GTFS asset integrity
         run: python3 tools/build_gtfs_packs.py --check --integrity-only
 
-      # Release candidates must additionally run the command without
-      # --integrity-only. It intentionally remains red while even one embedded
-      # timetable does not cover the full 30-day release window.
+      - name: Gate GTFS freshness for at least 30 days
+        run: python3 tools/build_gtfs_packs.py --check --min-valid-days 30

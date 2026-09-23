@@ -20,8 +20,8 @@ ViaggiaTreno, RFI e Italo sono canali best-effort per tabelloni; RFI RSS è atti
 
 ## Riferimenti
 
-[1] [Handoff del livello dati](docs/handoffs/DATA_LAYER_HANDOFF.md)
+[1] [Handoff del livello dati](../../handoffs/DATA_LAYER_HANDOFF.md)
 
-[2] [Evidenza della copertura completa](docs/data-sources/FULL_COVERAGE_EVIDENCE.md)
+[2] [Evidenza della copertura completa](../../data-sources/FULL_COVERAGE_EVIDENCE.md)
 
-[3] [Verifica realtime e gap di accesso](docs/data-sources/REALTIME_COVERAGE_VERIFICATION.md)
+[3] [Verifica realtime e gap di accesso](../../data-sources/REALTIME_COVERAGE_VERIFICATION.md)
