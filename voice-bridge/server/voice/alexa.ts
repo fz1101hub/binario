@@ -14,6 +14,24 @@ import { liveDataUnavailableSpeech } from "./speech";
 
 const ACCOUNT_LINK_REQUIRED = "Per usare le informazioni personali, collega prima il tuo account Binario nell'app Alexa.";
 const UNSUPPORTED_SPEECH = "Non ho capito la richiesta. Puoi chiedere i prossimi treni, lo stato di un treno oppure le tue tratte.";
+const HELP_SPEECH = "Con Binario puoi chiedere i prossimi treni di una tratta salvata, lo stato di un treno oppure l'elenco delle tue tratte. Cosa vuoi sapere?";
+const GOODBYE_SPEECH = "A presto.";
+
+/** Intent names the skill handles; the interaction model in skill-package/ must declare all of them. */
+export const HANDLED_INTENTS = [
+  "NextTrainsIntent",
+  "TrainStatusIntent",
+  "MyRoutesIntent",
+  "AMAZON.HelpIntent",
+  "AMAZON.StopIntent",
+  "AMAZON.CancelIntent",
+  "AMAZON.NavigateHomeIntent",
+  "AMAZON.FallbackIntent",
+] as const;
+
+function isIntent(input: HandlerInput, ...names: string[]) {
+  return getRequestType(input.requestEnvelope) === "IntentRequest" && names.includes(getIntentName(input.requestEnvelope));
+}
 
 function getAlexaUserIdentifier(input: HandlerInput) {
   return input.requestEnvelope.session?.user?.userId ?? input.requestEnvelope.context.System.user.userId;
@@ -96,6 +114,24 @@ const myRoutesHandler: RequestHandler = {
   },
 };
 
+const helpHandler: RequestHandler = {
+  canHandle: input => isIntent(input, "AMAZON.HelpIntent"),
+  handle: input => input.responseBuilder.speak(HELP_SPEECH).reprompt(HELP_SPEECH).withShouldEndSession(false).getResponse(),
+};
+
+// Stop, Cancel and NavigateHome must close the session: certification rejects
+// a skill that keeps listening after the user asked it to stop.
+const stopHandler: RequestHandler = {
+  canHandle: input => isIntent(input, "AMAZON.StopIntent", "AMAZON.CancelIntent", "AMAZON.NavigateHomeIntent"),
+  handle: input => input.responseBuilder.speak(GOODBYE_SPEECH).withShouldEndSession(true).getResponse(),
+};
+
+const sessionEndedHandler: RequestHandler = {
+  canHandle: input => getRequestType(input.requestEnvelope) === "SessionEndedRequest",
+  // No speech may be returned for a SessionEndedRequest.
+  handle: input => input.responseBuilder.getResponse(),
+};
+
 const fallbackHandler: RequestHandler = {
   canHandle: input => getRequestType(input.requestEnvelope) === "IntentRequest",
   handle: input => input.responseBuilder.speak(UNSUPPORTED_SPEECH).reprompt(UNSUPPORTED_SPEECH).withShouldEndSession(false).getResponse(),
@@ -106,10 +142,10 @@ const errorHandler = {
   handle: (input: HandlerInput) => input.responseBuilder.speak("Si è verificato un problema. Riprova più tardi.").withShouldEndSession(true).getResponse(),
 };
 
-function createAlexaSkill() {
+export function createAlexaSkill() {
   return SkillBuilders.custom()
     .withSkillId(ENV.alexaSkillId)
-    .addRequestHandlers(launchHandler, nextTrainsHandler, trainStatusHandler, myRoutesHandler, fallbackHandler)
+    .addRequestHandlers(launchHandler, helpHandler, stopHandler, sessionEndedHandler, nextTrainsHandler, trainStatusHandler, myRoutesHandler, fallbackHandler)
     .addErrorHandlers(errorHandler)
     .create();
 }

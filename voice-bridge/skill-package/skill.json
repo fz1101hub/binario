@@ -1,0 +1,55 @@
+{
+  "manifest": {
+    "manifestVersion": "1.0",
+    "publishingInformation": {
+      "locales": {
+        "it-IT": {
+          "name": "Binario",
+          "summary": "Le tue tratte ferroviarie salvate in Binario, a voce.",
+          "description": "Binario legge le tratte che hai salvato nell'app e ti dice quando i dati in tempo reale non sono disponibili. Non inventa mai ritardi, binari o soppressioni.",
+          "examplePhrases": [
+            "Alexa, apri binario",
+            "Alexa, chiedi a binario le mie tratte",
+            "Alexa, chiedi a binario i prossimi treni"
+          ],
+          "keywords": [
+            "treni",
+            "tratte",
+            "pendolari"
+          ],
+          "smallIconUri": "https://REPLACE_WITH_HTTPS_HOST/alexa/icon-108.png",
+          "largeIconUri": "https://REPLACE_WITH_HTTPS_HOST/alexa/icon-512.png"
+        }
+      },
+      "isAvailableWorldwide": false,
+      "distributionCountries": [
+        "IT"
+      ],
+      "testingInstructions": "Collegare un account Binario dalla dashboard, poi chiedere 'le mie tratte'. Senza collegamento la skill risponde con la card di account linking.",
+      "category": "PUBLIC_TRANSPORTATION"
+    },
+    "apis": {
+      "custom": {
+        "endpoint": {
+          "uri": "https://REPLACE_WITH_HTTPS_HOST/api/alexa/webhook",
+          "sslCertificateType": "Trusted"
+        },
+        "interfaces": []
+      }
+    },
+    "permissions": [],
+    "privacyAndCompliance": {
+      "allowsPurchases": false,
+      "usesPersonalInfo": true,
+      "isChildDirected": false,
+      "isExportCompliant": true,
+      "containsAds": false,
+      "locales": {
+        "it-IT": {
+          "privacyPolicyUrl": "https://REPLACE_WITH_HTTPS_HOST/privacy",
+          "termsOfUseUrl": "https://REPLACE_WITH_HTTPS_HOST/terms"
+        }
+      }
+    }
+  }
+}
