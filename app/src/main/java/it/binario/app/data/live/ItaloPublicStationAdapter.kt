@@ -5,6 +5,7 @@ import it.binario.app.data.DataResult
 import it.binario.app.data.Direction
 import it.binario.app.data.Freshness
 import it.binario.app.data.JourneyQuery
+import it.binario.app.data.RailTime
 import it.binario.app.data.RailOperator
 import it.binario.app.data.RouteSnapshot
 import it.binario.app.data.SavedRoute
@@ -73,7 +74,7 @@ internal class HttpItaloPublicStationFetcher : ItaloPublicStationFetcher {
  */
 class ItaloPublicStationAdapter(
     private val fetcher: ItaloPublicStationFetcher = HttpItaloPublicStationFetcher(),
-    private val clock: Clock = Clock.systemDefaultZone(),
+    private val clock: Clock = Clock.system(RailTime.defaultZone),
     private val cacheTtlMillis: Long = 60_000L
 ) : TrainDataSource, StationBoardProvider {
     override val descriptor = ProviderDescriptor(
@@ -212,7 +213,7 @@ class ItaloPublicStationAdapter(
         if (number.isBlank() || destination.isBlank() || scheduled.isBlank()) return null
         val delay = Regex("\\britardo\\s*(?:di)?\\s*(\\d{1,3})\\s*(?:minuti|min)?", RegexOption.IGNORE_CASE)
             .find(text)?.groupValues?.getOrNull(1)?.toIntOrNull() ?: 0
-        val cancelled = Regex("soppress|cancell", RegexOption.IGNORE_CASE).containsMatchIn(text)
+        val cancelled = text.hasExplicitCancellationStatus()
         val explicitOnTime = Regex("\\b(?:in orario|regolare|puntuale)\\b", RegexOption.IGNORE_CASE).containsMatchIn(text)
         val operationalVerified = cancelled || delay > 0 || explicitOnTime
         val status = when {

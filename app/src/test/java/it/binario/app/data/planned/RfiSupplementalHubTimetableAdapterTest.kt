@@ -61,6 +61,51 @@ class RfiSupplementalHubTimetableAdapterTest {
         assertEquals(0, calls)
     }
 
+    @Test
+    fun `same route reuses the supplemental timetable inside its TTL`() = runBlocking {
+        var calls = 0
+        val adapter = RfiSupplementalHubTimetableAdapter(
+            fetcher = RfiProgrammedTimetableFetcher { calls += 1; fixture() },
+            clock = clock
+        )
+        val origin = Station("curated:reggio", "Reggio Calabria Centrale", "Reggio Calabria")
+        val destination = Station("curated:roma", "Roma Termini", "Roma")
+        val route = SavedRoute("rc-roma", "Reggio–Roma", origin, destination)
+
+        repeat(2) {
+            assertTrue(
+                adapter.loadRoute(
+                    route,
+                    Direction.OUTBOUND,
+                    JourneyQuery(LocalDate.of(2026, 9, 4), LocalTime.of(7, 0))
+                ) is DataResult.Success
+            )
+        }
+
+        assertEquals(1, calls)
+    }
+
+    @Test
+    fun `reverse direction explains that only departures from the mapped hub are available`() = runBlocking {
+        var calls = 0
+        val adapter = RfiSupplementalHubTimetableAdapter(
+            fetcher = RfiProgrammedTimetableFetcher { calls += 1; fixture() },
+            clock = clock
+        )
+        val origin = Station("curated:roma", "Roma Termini", "Roma")
+        val destination = Station("curated:reggio", "Reggio Calabria Centrale", "Reggio Calabria")
+
+        val result = adapter.loadRoute(
+            SavedRoute("roma-rc", "Roma–Reggio", origin, destination),
+            Direction.OUTBOUND,
+            JourneyQuery(LocalDate.of(2026, 9, 4), LocalTime.of(7, 0))
+        )
+
+        assertTrue(result is DataResult.Failure)
+        assertTrue((result as DataResult.Failure).message.contains("partenze dall’hub Reggio Calabria Centrale"))
+        assertEquals(0, calls)
+    }
+
     private fun fixture(): String = """
         <html><body>
           <div>ORARIO PROGRAMMATO 14 Giugno 2026 - 12 Dicembre 2026</div>

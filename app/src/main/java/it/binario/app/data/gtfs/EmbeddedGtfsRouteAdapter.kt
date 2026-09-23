@@ -23,6 +23,7 @@ import java.io.InputStreamReader
 import java.text.Normalizer
 import java.time.DayOfWeek
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.util.LinkedHashMap
 import java.util.Locale
 import java.util.zip.ZipInputStream
@@ -280,46 +281,70 @@ class EmbeddedGtfsRouteAdapter(
         fun services(origin: String, destination: String, sourceId: String, query: JourneyQuery): List<TrainService> {
             val wantedOrigin = normalize(origin)
             val wantedDestination = normalize(destination)
-            return trips.asSequence().mapNotNull { trip ->
-                val serviceId = trip["service_id"].orEmpty()
-                if (!serviceRunsOn(serviceId, query.serviceDate)) return@mapNotNull null
-                val times = stopTimes[trip["trip_id"]].orEmpty()
-                    .sortedBy { it["stop_sequence"]?.toIntOrNull() ?: Int.MAX_VALUE }
-                val originIndex = times.indexOfFirst { normalize(stops[it["stop_id"]].orEmpty()) == wantedOrigin }
-                val destinationIndex = times.indices.firstOrNull { candidateIndex ->
-                    candidateIndex > originIndex && normalize(stops[times[candidateIndex]["stop_id"]].orEmpty()) == wantedDestination
-                } ?: -1
-                if (originIndex < 0 || destinationIndex < 0) return@mapNotNull null
-                val route = routes[trip["route_id"]].orEmpty()
-                val segment = times.subList(originIndex, destinationIndex + 1)
-                val rawDeparture = segment.first()["departure_time"] ?: segment.first()["arrival_time"] ?: return@mapNotNull null
-                val departureMinutes = serviceMinutes(rawDeparture) ?: return@mapNotNull null
-                val scheduledDateTime = query.serviceDate.atStartOfDay().plusMinutes(departureMinutes.toLong())
-                if (scheduledDateTime.isBefore(query.requestedAt)) return@mapNotNull null
-                val departure = hhmm(rawDeparture)
-                val number = trip["trip_short_name"]?.takeIf { it.isNotBlank() } ?: trip["trip_id"].orEmpty()
-                val agencyName = agencyName(route)
-                TrainService(
-                    id = "$sourceId:${trip["trip_id"]}",
-                    number = number,
-                    operator = legacyOperator(sourceId, agencyName, route),
-                    operatorDisplayName = canonicalAgencyLabel(agencyName, sourceId),
-                    trainCategory = category(route["route_type"], route, agencyName),
-                    origin = stops[segment.first()["stop_id"]].orEmpty(),
-                    destination = stops[segment.last()["stop_id"]].orEmpty(),
-                    scheduledDeparture = departure,
-                    expectedDeparture = departure,
-                    platform = null,
-                    delayMinutes = 0,
-                    status = ServiceStatus.ON_TIME,
-                    operationalStatusVerified = false,
-                    scheduledDepartureDateTime = scheduledDateTime,
-                    stops = segment.map { stop ->
-                        val scheduled = hhmm(stop["departure_time"] ?: stop["arrival_time"].orEmpty())
-                        TrainStop(stops[stop["stop_id"]].orEmpty(), scheduled, scheduled, null, 0, false)
-                    }
-                )
+            // GTFS uses service dates, not civil dates: a 25:10 departure on a
+            // Friday service is Saturday 01:10. Two preceding days cover feeds
+            // such as ÖBB that encode long overnight continuations beyond 48:00.
+            val serviceDates = listOf(query.serviceDate, query.serviceDate.minusDays(1), query.serviceDate.minusDays(2))
+            return trips.asSequence().flatMap { trip ->
+                serviceDates.asSequence().mapNotNull { serviceDate ->
+                    serviceForTrip(
+                        trip = trip,
+                        serviceDate = serviceDate,
+                        sourceId = sourceId,
+                        wantedOrigin = wantedOrigin,
+                        wantedDestination = wantedDestination,
+                        requestedAt = query.requestedAt
+                    )
+                }
             }.sortedWith(compareBy<TrainService> { it.scheduledDepartureDateTime }.thenBy { it.number }).toList()
+        }
+
+        private fun serviceForTrip(
+            trip: Map<String, String>,
+            serviceDate: LocalDate,
+            sourceId: String,
+            wantedOrigin: String,
+            wantedDestination: String,
+            requestedAt: LocalDateTime
+        ): TrainService? {
+            val serviceId = trip["service_id"].orEmpty()
+            if (!serviceRunsOn(serviceId, serviceDate)) return null
+            val times = stopTimes[trip["trip_id"]].orEmpty()
+                .sortedBy { it["stop_sequence"]?.toIntOrNull() ?: Int.MAX_VALUE }
+            val originIndex = times.indexOfFirst { normalize(stops[it["stop_id"]].orEmpty()) == wantedOrigin }
+            val destinationIndex = times.indices.firstOrNull { candidateIndex ->
+                candidateIndex > originIndex && normalize(stops[times[candidateIndex]["stop_id"]].orEmpty()) == wantedDestination
+            } ?: -1
+            if (originIndex < 0 || destinationIndex < 0) return null
+            val route = routes[trip["route_id"]].orEmpty()
+            val segment = times.subList(originIndex, destinationIndex + 1)
+            val rawDeparture = segment.first()["departure_time"] ?: segment.first()["arrival_time"] ?: return null
+            val departureMinutes = serviceMinutes(rawDeparture) ?: return null
+            val scheduledDateTime = serviceDate.atStartOfDay().plusMinutes(departureMinutes.toLong())
+            if (scheduledDateTime.isBefore(requestedAt)) return null
+            val departure = hhmm(rawDeparture)
+            val number = trip["trip_short_name"]?.takeIf { it.isNotBlank() } ?: trip["trip_id"].orEmpty()
+            val agencyName = agencyName(route)
+            return TrainService(
+                id = "$sourceId:${trip["trip_id"]}",
+                number = number,
+                operator = legacyOperator(sourceId, agencyName, route),
+                operatorDisplayName = canonicalAgencyLabel(agencyName, sourceId),
+                trainCategory = category(route["route_type"], route, agencyName),
+                origin = stops[segment.first()["stop_id"]].orEmpty(),
+                destination = stops[segment.last()["stop_id"]].orEmpty(),
+                scheduledDeparture = departure,
+                expectedDeparture = departure,
+                platform = null,
+                delayMinutes = 0,
+                status = ServiceStatus.ON_TIME,
+                operationalStatusVerified = false,
+                scheduledDepartureDateTime = scheduledDateTime,
+                stops = segment.map { stop ->
+                    val scheduled = hhmm(stop["departure_time"] ?: stop["arrival_time"].orEmpty())
+                    TrainStop(stops[stop["stop_id"]].orEmpty(), scheduled, scheduled, null, 0, false)
+                }
+            )
         }
 
         private fun agencyName(route: Map<String, String>): String? {

@@ -5,6 +5,7 @@ import kotlin.math.max
 
 enum class DataQualityBand(val accessibleLabel: String) {
     VERIFIED("Dato verificato"),
+    OFFICIAL_SCHEDULED("Orario programmato ufficiale"),
     RELIABLE("Dato affidabile"),
     LIMITED("Dato con copertura limitata"),
     NOT_PUBLISHABLE("Dato non pubblicabile"),
@@ -59,6 +60,7 @@ object SnapshotQualityAssessor {
         }
 
         val coverageFallback = SnapshotSourceAuthority.isCoverageFallback(snapshot)
+        val officialScheduleOnly = !coverageFallback && snapshot.isOfficialScheduleOnly()
         val bounded = score.coerceIn(0, 100)
         val publishableScore = when {
             snapshot.confidence == DataConfidence.DEMONSTRATION -> bounded.coerceAtMost(39)
@@ -72,11 +74,19 @@ object SnapshotQualityAssessor {
                 publishableScore >= 65 -> DataQualityBand.RELIABLE
                 publishableScore >= 40 -> DataQualityBand.LIMITED
                 else -> DataQualityBand.NOT_PUBLISHABLE
+            }.let { calculated ->
+                if (officialScheduleOnly) DataQualityBand.OFFICIAL_SCHEDULED else calculated
             },
             warnings = warnings,
             assessedAtEpochMillis = nowEpochMillis
         )
     }
+
+    /** A high source score validates the timetable source, not live circulation. */
+    private fun RouteSnapshot.isOfficialScheduleOnly(): Boolean =
+        services.isNotEmpty() &&
+            services.none { it.operationalStatusVerified } &&
+            (confidence == DataConfidence.STATIC_ONLY || providerName.contains("programmato", ignoreCase = true))
 
     /** Small tie-breaker: source authority refines, but never replaces, the data-quality signals. */
     private fun sourcePreferenceAdjustment(snapshot: RouteSnapshot): Int =

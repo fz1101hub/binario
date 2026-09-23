@@ -13,6 +13,7 @@ import it.binario.app.data.provider.AuthorizedExternalProviders
 import it.binario.app.data.provider.ExternalRailCredentials
 import it.binario.app.data.provider.KnownProviders
 import it.binario.app.data.provider.ProviderCapability
+import it.binario.app.data.provider.RailProvider
 import it.binario.app.data.provider.ProviderRegistry
 import it.binario.app.data.provider.StationBoardProvider
 import it.binario.app.data.provider.TripUpdateProvider
@@ -50,7 +51,7 @@ object BinarioDataGraph {
             LegacyTrainDataSourceFacade(
                 legacySource = StationBoardEnrichedTrainDataSource(
                     plannedSource = plannedSource,
-                    boardProviders = localOnlyPolicy.stationBoardProviders()
+                    boardProviders = stationBoardProviders()
                 ),
                 providerRegistry = defaultRegistry
             )
@@ -71,16 +72,22 @@ object BinarioDataGraph {
         }
     }
 
-    fun stationBoardProviders(): List<StationBoardProvider> = localOnlyPolicy.stationBoardProviders()
+    fun stationBoardProviders(): List<StationBoardProvider> = activeProviders(
+        localOnlyPolicy.stationBoardProviders(),
+        ProviderCapability.STATION_BOARD
+    )
 
     fun stationBoardDisplayProviders(): List<StationBoardProvider> =
-        localOnlyPolicy.stationBoardDisplayProviders()
+        activeProviders(localOnlyPolicy.stationBoardDisplayProviders(), ProviderCapability.STATION_BOARD)
 
-    fun alertProviders(): List<AlertProvider> = localOnlyPolicy.alertProviders()
+    fun alertProviders(): List<AlertProvider> =
+        activeProviders(localOnlyPolicy.alertProviders(), ProviderCapability.SERVICE_ALERTS)
 
-    fun vehiclePositionProviders(): List<VehiclePositionProvider> = localOnlyPolicy.vehiclePositionProviders()
+    fun vehiclePositionProviders(): List<VehiclePositionProvider> =
+        activeProviders(localOnlyPolicy.vehiclePositionProviders(), ProviderCapability.VEHICLE_POSITIONS)
 
-    fun tripUpdateProviders(): List<TripUpdateProvider> = localOnlyPolicy.tripUpdateProviders()
+    fun tripUpdateProviders(): List<TripUpdateProvider> =
+        activeProviders(localOnlyPolicy.tripUpdateProviders(), ProviderCapability.TRAIN_RUN_REALTIME)
 
     /**
      * Costruisce provider con credenziali soltanto per la durata del riferimento
@@ -122,6 +129,18 @@ object BinarioDataGraph {
         tripUpdateProviders(credentials),
         realtimeScheduleResolver(context)
     )
+
+    private fun <T : RailProvider> activeProviders(
+        candidates: List<T>,
+        capability: ProviderCapability
+    ): List<T> {
+        val priorityById = defaultRegistry.activeFor(capability)
+            .mapIndexed { index, policy -> policy.descriptor.id to index }
+            .toMap()
+        return candidates
+            .filter { it.descriptor.id in priorityById }
+            .sortedBy { priorityById.getValue(it.descriptor.id) }
+    }
 }
 
 /**

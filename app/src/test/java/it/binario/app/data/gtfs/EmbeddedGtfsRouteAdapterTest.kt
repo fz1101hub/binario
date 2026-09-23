@@ -154,6 +154,26 @@ class EmbeddedGtfsRouteAdapterTest {
     }
 
     @Test
+    fun `dopo mezzanotte include la corsa del giorno di servizio precedente`() = runBlocking {
+        val nightStopTimes =
+            "trip_id,arrival_time,departure_time,stop_id,stop_sequence\n" +
+                "T1,25:10:00,25:10:00,MI,1\n" +
+                "T1,25:27:00,25:28:00,MO,2\n" +
+                "T1,25:50:00,25:50:00,CO,3\n"
+
+        val result = adapter(feed(stopTimes = nightStopTimes)).loadRoute(
+            route,
+            Direction.OUTBOUND,
+            JourneyQuery(LocalDate.of(2026, 9, 5), LocalTime.of(0, 30))
+        )
+
+        assertTrue(result is DataResult.Success)
+        val service = (result as DataResult.Success).snapshot.services.single()
+        assertEquals("01:10", service.scheduledDeparture)
+        assertEquals(LocalDateTime.of(2026, 9, 5, 1, 10), service.scheduledDepartureDateTime)
+    }
+
+    @Test
     fun `non inventa corse quando la tratta non esiste`() = runBlocking {
         val missing = route.copy(outwardDestination = Station("bergamo", "Bergamo", "Bergamo"))
 

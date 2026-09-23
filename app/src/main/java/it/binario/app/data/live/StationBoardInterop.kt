@@ -139,7 +139,7 @@ internal object LegacyStationBoardInterop {
         ServiceStatus.CANCELLED -> RunStatus.CANCELLED
     }
 
-    private fun operatorId(operator: RailOperator): OperatorId = when (operator) {
+    private fun operatorId(operator: RailOperator): OperatorId? = when (operator) {
         RailOperator.TRENITALIA_REGIONALE,
         RailOperator.TRENITALIA_LONG_DISTANCE,
         RailOperator.TRENITALIA_AV -> OperatorId("trenitalia")
@@ -155,7 +155,7 @@ internal object LegacyStationBoardInterop {
         RailOperator.DB -> OperatorId("db")
         RailOperator.WESTBAHN -> OperatorId("westbahn")
         RailOperator.EUROPEAN_SLEEPER -> OperatorId("european-sleeper")
-        RailOperator.OTHER -> OperatorId("other")
+        RailOperator.OTHER -> null
     }
 
     private fun normalizeStation(value: String): String = value

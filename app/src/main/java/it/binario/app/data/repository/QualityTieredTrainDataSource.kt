@@ -54,9 +54,10 @@ class QualityTieredTrainDataSource(
 
     private fun qualityRank(band: DataQualityBand): Int = when (band) {
         DataQualityBand.VERIFIED -> 4
-        DataQualityBand.RELIABLE -> 3
-        DataQualityBand.LIMITED -> 2
-        DataQualityBand.NOT_PUBLISHABLE -> 1
+        DataQualityBand.OFFICIAL_SCHEDULED -> 3
+        DataQualityBand.RELIABLE -> 2
+        DataQualityBand.LIMITED -> 1
+        DataQualityBand.NOT_PUBLISHABLE,
         DataQualityBand.UNKNOWN -> 0
     }
 }

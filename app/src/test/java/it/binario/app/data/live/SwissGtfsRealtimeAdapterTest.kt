@@ -6,6 +6,8 @@ import it.binario.app.data.provider.ProviderResult
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneOffset
+import java.io.ByteArrayOutputStream
+import java.util.zip.GZIPOutputStream
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -48,6 +50,31 @@ class SwissGtfsRealtimeAdapterTest {
         assertEquals(1, updates.size)
         assertEquals("trip-1", updates.single().sourceTripId)
         assertEquals(180L, updates.single().officialDelay?.value?.seconds)
+    }
+
+    @Test
+    fun `accetta stop sequence zero solo quando e esplicitamente presente`() {
+        fun feed(stop: GtfsRealtime.TripUpdate.StopTimeUpdate.Builder) =
+            GtfsRealtime.FeedMessage.newBuilder()
+                .setHeader(GtfsRealtime.FeedHeader.newBuilder().setGtfsRealtimeVersion("2.0"))
+                .addEntity(
+                    GtfsRealtime.FeedEntity.newBuilder()
+                        .setId("entity-zero")
+                        .setTripUpdate(
+                            GtfsRealtime.TripUpdate.newBuilder()
+                                .setTrip(GtfsRealtime.TripDescriptor.newBuilder().setTripId("trip-zero"))
+                                .addStopTimeUpdate(stop)
+                        )
+                )
+                .build()
+        val adapter = SwissGtfsRealtimeAdapter(fetcher = SwissRealtimeFetcher { byteArrayOf() }, clock = clock)
+
+        assertTrue(adapter.parseTripUpdates(feed(GtfsRealtime.TripUpdate.StopTimeUpdate.newBuilder()), observed).isEmpty())
+        val explicitZero = adapter.parseTripUpdates(
+            feed(GtfsRealtime.TripUpdate.StopTimeUpdate.newBuilder().setStopSequence(0)),
+            observed
+        )
+        assertEquals(0, explicitZero.single().stopSequence)
     }
 
     @Test
@@ -97,6 +124,22 @@ class SwissGtfsRealtimeAdapterTest {
         assertTrue(first is ProviderResult.Success)
         assertTrue(second is ProviderResult.Success)
         assertEquals(1, calls)
+    }
+
+    @Test
+    fun `accetta un feed trip updates compresso gzip`() = runBlocking {
+        val feed = GtfsRealtime.FeedMessage.newBuilder()
+            .setHeader(
+                GtfsRealtime.FeedHeader.newBuilder()
+                    .setGtfsRealtimeVersion("2.0")
+                    .setTimestamp(observed.epochSecond)
+            )
+            .build()
+        val output = ByteArrayOutputStream()
+        GZIPOutputStream(output).use { it.write(feed.toByteArray()) }
+        val adapter = SwissGtfsRealtimeAdapter(fetcher = SwissRealtimeFetcher { output.toByteArray() }, clock = clock)
+
+        assertTrue(adapter.getTripUpdates() is ProviderResult.Success)
     }
 
     @Test

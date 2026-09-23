@@ -26,6 +26,7 @@ import it.binario.app.data.provider.ProviderResult
 import it.binario.app.data.provider.RatePolicy
 import it.binario.app.data.provider.TripUpdateProvider
 import java.io.IOException
+import java.io.ByteArrayInputStream
 import java.net.HttpURLConnection
 import java.net.URL
 import java.security.MessageDigest
@@ -33,6 +34,7 @@ import java.time.Clock
 import java.time.Duration
 import java.time.Instant
 import java.time.ZoneId
+import java.util.zip.GZIPInputStream
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -110,7 +112,7 @@ class SwissGtfsRealtimeAdapter(
             return ProviderResult.Success(cache.items, meta(now, cache.observedAt, cache.expiresAt, true, cache.fingerprint))
         }
         return try {
-            val payload = fetcher.fetch(SwissRealtimeFeed.TRIP_UPDATES)
+            val payload = decodeContentEncoding(fetcher.fetch(SwissRealtimeFeed.TRIP_UPDATES))
             val feed = GtfsRealtime.FeedMessage.parseFrom(payload)
             val observed = feed.header.timestamp.takeIf { it > 0 }?.let(Instant::ofEpochSecond) ?: now
             val items = parseTripUpdates(feed, observed)
@@ -131,7 +133,7 @@ class SwissGtfsRealtimeAdapter(
             return ProviderResult.Success(filter(cache.items, request), meta(now, cache.observedAt, cache.expiresAt, true, cache.fingerprint))
         }
         return try {
-            val payload = fetcher.fetch(SwissRealtimeFeed.SERVICE_ALERTS)
+            val payload = decodeContentEncoding(fetcher.fetch(SwissRealtimeFeed.SERVICE_ALERTS))
             val feed = GtfsRealtime.FeedMessage.parseFrom(payload)
             val observed = feed.header.timestamp.takeIf { it > 0 }?.let(Instant::ofEpochSecond) ?: now
             val items = parseAlerts(feed, observed)
@@ -157,7 +159,7 @@ class SwissGtfsRealtimeAdapter(
         val source = sourceRef(entityId, observedAt)
         update.stopTimeUpdateList.mapNotNull { stop ->
             val stopId = stop.stopId.takeIf(String::isNotBlank)
-            val sequence = stop.stopSequence.takeIf { it > 0 }
+            val sequence = stop.stopSequence.takeIf { stop.hasStopSequence() }
             if (stopId == null && sequence == null) return@mapNotNull null
             val event = when {
                 stop.hasDeparture() -> stop.departure
@@ -246,6 +248,14 @@ class SwissGtfsRealtimeAdapter(
         .digest(payload)
         .joinToString("") { "%02x".format(it) }
 
+    /** Fetchers expose raw bytes; recognize gzip magic because test and gateway transports may hide HTTP headers. */
+    private fun decodeContentEncoding(payload: ByteArray): ByteArray =
+        if (payload.size >= 2 && payload[0] == GZIP_MAGIC_1 && payload[1] == GZIP_MAGIC_2) {
+            GZIPInputStream(ByteArrayInputStream(payload)).use { it.readBytes() }
+        } else {
+            payload
+        }
+
     private data class CachedTrips(
         val items: List<RealtimeStopUpdate>,
         val observedAt: Instant,
@@ -262,5 +272,7 @@ class SwissGtfsRealtimeAdapter(
 
     companion object {
         val SOURCE_ID = SourceId("ch-otd-gtfs-rt")
+        private const val GZIP_MAGIC_1: Byte = 0x1f
+        private const val GZIP_MAGIC_2: Byte = 0x8b.toByte()
     }
 }

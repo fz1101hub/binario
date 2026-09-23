@@ -10,11 +10,13 @@ import it.binario.app.data.live.SwissGtfsRealtimeAdapter
  * resources/BuildConfig fields. A caller may provide them from a personal
  * backend or secure runtime store; Binario never persists them here.
  */
-data class ExternalRailCredentials(
+class ExternalRailCredentials(
     val swissApiKey: String? = null,
     val dbClientId: String? = null,
     val dbApiKey: String? = null
-)
+) {
+    override fun toString(): String = "ExternalRailCredentials(<redacted>)"
+}
 
 data class AuthorizedExternalProviders(
     val tripUpdates: List<TripUpdateProvider> = emptyList(),
