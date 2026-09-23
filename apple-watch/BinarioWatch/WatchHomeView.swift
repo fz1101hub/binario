@@ -62,7 +62,7 @@ struct WatchHomeView: View {
         case .fresh: return .green
         case .aging: return .yellow
         case .stale: return .orange
-        case .unavailable: return .red
+        case .unavailable, .unknown: return .red
         }
     }
 
