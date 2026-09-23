@@ -211,15 +211,15 @@ object CommuterAlertScheduler {
         }
         val manager = context.getSystemService(NotificationManager::class.java)
         manager.createNotificationChannel(
-            NotificationChannel(CHANNEL_ID, "Avvisi pendolare Binario", NotificationManager.IMPORTANCE_HIGH).apply {
-                description = "Promemoria locali ricorrenti configurati dall’utente."
+            NotificationChannel(CHANNEL_ID, context.getString(R.string.commuter_alert_channel_name), NotificationManager.IMPORTANCE_HIGH).apply {
+                description = context.getString(R.string.commuter_alert_channel_description)
             }
         )
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_binario)
-            .setContentTitle("Promemoria: ${alert.stationName}")
-            .setContentText("${alert.routeLabel}. Fermata prevista alle ${alert.time}.")
-            .setStyle(NotificationCompat.BigTextStyle().bigText("${alert.routeLabel}: la fermata ${alert.stationName} è prevista alle ${alert.time}. L’avviso è locale e non segue i ritardi senza una fonte autorizzata."))
+            .setContentTitle(context.getString(R.string.commuter_alert_notification_title, alert.stationName))
+            .setContentText(context.getString(R.string.commuter_alert_notification_text, alert.routeLabel, alert.time))
+            .setStyle(NotificationCompat.BigTextStyle().bigText(context.getString(R.string.commuter_alert_notification_big_text, alert.routeLabel, alert.stationName, alert.time)))
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
             .setContentIntent(contentIntent(context, alert.id))

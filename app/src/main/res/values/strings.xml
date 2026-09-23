@@ -408,6 +408,47 @@
     <string name="service_status_cancelled">Soppresso</string>
     <string name="service_status_scheduled_compact">Programm.</string>
 
+    <!-- Widget configuration and theme picker. -->
+    <string name="widget_configure_title">Configura widget</string>
+    <string name="widget_configure_description">Ogni istanza è indipendente: inserisci una tratta senza prima salvarla nell’app. Il widget mostra solo dati che la fonte restituisce e non promette aggiornamenti in tempo reale.</string>
+    <string name="widget_display_name_label">Nome del widget (facoltativo)</string>
+    <string name="widget_display_name_description">Sostituisce il nome della ricerca nella testata e resta locale a questa istanza.</string>
+    <string name="widget_route_description">Cerca una tratta digitando liberamente partenza e arrivo. Mostra le prossime corse, con paginazione, direzione e refresh.</string>
+    <string name="widget_route_input_title">Inserisci la tratta</string>
+    <string name="widget_saved_routes_optional">Tratte salvate (facoltative)</string>
+    <string name="widget_selected_summary">Scelto: %1$s — %2$s</string>
+    <string name="widget_route_missing">Tratta da inserire</string>
+    <string name="widget_save">Salva widget</string>
+    <string name="action_cancel">Annulla</string>
+    <string name="widget_origin">Partenza</string>
+    <string name="widget_destination">Arrivo</string>
+    <string name="widget_validation_missing_stations">Inserisci partenza e arrivo: puoi scegliere un suggerimento oppure cercare il nome digitato nelle fonti disponibili.</string>
+    <string name="widget_validation_same_station">Partenza e arrivo devono essere stazioni diverse.</string>
+    <string name="widget_accessibility_target">%1$s. %2$s</string>
+    <string name="widget_selected_option">Selezionato · %1$s</string>
+    <string name="widget_target_route">Tratta</string>
+
+    <string name="theme_picker_title">Aspetto dell’app</string>
+    <string name="theme_picker_description">Scegli un tema. La preferenza resta solo su questo dispositivo.</string>
+    <string name="theme_system_label">Sistema</string>
+    <string name="theme_light_label">Chiaro</string>
+    <string name="theme_dark_label">Scuro</string>
+    <string name="theme_system_description">Segue l’impostazione del telefono</string>
+    <string name="theme_light_description">Superfici chiare e leggibili</string>
+    <string name="theme_dark_description">Superfici scure per bassa luminosità</string>
+
+    <!-- Local notification channels and content. -->
+    <string name="commuter_alert_channel_name">Avvisi pendolare Binario</string>
+    <string name="commuter_alert_channel_description">Promemoria locali ricorrenti configurati dall’utente.</string>
+    <string name="commuter_alert_notification_title">Promemoria: %1$s</string>
+    <string name="commuter_alert_notification_text">%1$s. Fermata prevista alle %2$s.</string>
+    <string name="commuter_alert_notification_big_text">%1$s: la fermata %2$s è prevista alle %3$s. L’avviso è locale e non segue i ritardi senza una fonte autorizzata.</string>
+    <string name="stop_alarm_channel_name">Sveglie fermata Binario</string>
+    <string name="stop_alarm_channel_description">Avvisi locali per le fermate ferroviarie impostate nell’app.</string>
+    <string name="stop_alarm_notification_title">Fermata in arrivo: %1$s</string>
+    <string name="stop_alarm_notification_text">Treno %1$s verso %2$s. Orario previsto %3$s.</string>
+    <string name="stop_alarm_notification_big_text">Treno %1$s verso %2$s: la fermata %3$s è prevista alle %4$s. Controlla sempre monitor e annunci ufficiali.</string>
+
     <!-- Local commuter alerts. -->
     <string name="commuter_alerts_title">Avvisi pendolare</string>
     <string name="commuter_alerts_description">Promemoria locali con anticipo, ricorrenza e fascia silenziosa. Non si aggiornano con i ritardi senza una fonte autorizzata.</string>

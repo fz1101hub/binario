@@ -417,7 +417,7 @@ private fun BinarioApp(
                 },
                 actions = {
                     IconButton(onClick = { showThemePicker = true }) {
-                        Icon(Icons.Default.Palette, contentDescription = stringResource(R.string.action_choose_theme, themeMode.label))
+                        Icon(Icons.Default.Palette, contentDescription = stringResource(R.string.action_choose_theme, themeMode.localizedLabel()))
                     }
                     if (screen == Screen.OPERATIONS || screen == Screen.RESULTS || screen == Screen.DETAIL) {
                         IconButton(onClick = viewModel::refresh) {

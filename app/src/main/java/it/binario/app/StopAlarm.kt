@@ -99,15 +99,15 @@ object StopAlarmScheduler {
         manager.createNotificationChannel(
             NotificationChannel(
                 CHANNEL_ID,
-                "Sveglie fermata Binario",
+                context.getString(R.string.stop_alarm_channel_name),
                 NotificationManager.IMPORTANCE_HIGH
-            ).apply { description = "Avvisi locali per le fermate ferroviarie impostate nell’app." }
+            ).apply { description = context.getString(R.string.stop_alarm_channel_description) }
         )
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_binario)
-            .setContentTitle("Fermata in arrivo: $station")
-            .setContentText("Treno $train verso $destination. Orario previsto $expected.")
-            .setStyle(NotificationCompat.BigTextStyle().bigText("Treno $train verso $destination: la fermata $station è prevista alle $expected. Controlla sempre monitor e annunci ufficiali."))
+            .setContentTitle(context.getString(R.string.stop_alarm_notification_title, station))
+            .setContentText(context.getString(R.string.stop_alarm_notification_text, train, destination, expected))
+            .setStyle(NotificationCompat.BigTextStyle().bigText(context.getString(R.string.stop_alarm_notification_big_text, train, destination, station, expected)))
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
             .setContentIntent(contentIntent(context, train, station, expected))

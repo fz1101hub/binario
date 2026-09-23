@@ -82,16 +82,20 @@ class WidgetConfigureActivity : ComponentActivity() {
                 var validationMessage by remember { mutableStateOf<String?>(null) }
                 val routeOrigin = model.stationFromName(routeOriginText)
                 val routeDestination = model.stationFromName(routeDestinationText)
+                val validationMissingStations = stringResource(R.string.widget_validation_missing_stations)
+                val validationSameStation = stringResource(R.string.widget_validation_same_station)
+                val routeTargetLabel = stringResource(R.string.widget_target_route)
+                val routeMissingLabel = stringResource(R.string.widget_route_missing)
 
                 fun saveConfiguration() {
                     val configuration = when (targetType) {
                         WidgetTargetType.ROUTE -> when {
                             routeOrigin == null || routeDestination == null -> {
-                                validationMessage = "Inserisci partenza e arrivo: puoi scegliere un suggerimento oppure cercare il nome digitato nelle fonti disponibili."
+                                validationMessage = validationMissingStations
                                 null
                             }
                             routeOrigin.id == routeDestination.id -> {
-                                validationMessage = "Partenza e arrivo devono essere stazioni diverse."
+                                validationMessage = validationSameStation
                                 null
                             }
                             else -> WidgetDisplayConfiguration(
@@ -124,9 +128,9 @@ class WidgetConfigureActivity : ComponentActivity() {
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         item {
-                            Text("Configura widget", style = MaterialTheme.typography.headlineSmall)
+                            Text(stringResource(R.string.widget_configure_title), style = MaterialTheme.typography.headlineSmall)
                             Text(
-                                "Ogni istanza è indipendente: inserisci una tratta senza prima salvarla nell’app. Il widget mostra solo dati che la fonte restituisce e non promette aggiornamenti in tempo reale.",
+                                stringResource(R.string.widget_configure_description),
                                 modifier = Modifier.padding(top = 4.dp),
                                 style = MaterialTheme.typography.bodyMedium
                             )
@@ -136,24 +140,24 @@ class WidgetConfigureActivity : ComponentActivity() {
                                 value = displayName,
                                 onValueChange = { if (it.length <= 42) displayName = it },
                                 modifier = Modifier.fillMaxWidth(),
-                                label = { Text("Nome del widget (facoltativo)") },
-                                supportingText = { Text("Sostituisce il nome della ricerca nella testata e resta locale a questa istanza.") },
+                                label = { Text(stringResource(R.string.widget_display_name_label)) },
+                                supportingText = { Text(stringResource(R.string.widget_display_name_description)) },
                                 singleLine = true
                             )
                         }
                         item {
                             WidgetTargetCard(
-                                type = WidgetTargetType.ROUTE,
+                                title = routeTargetLabel,
                                 selected = targetType == WidgetTargetType.ROUTE,
-                                description = "Cerca una tratta digitando liberamente partenza e arrivo. Mostra le prossime corse, con paginazione, direzione e refresh.",
+                                description = stringResource(R.string.widget_route_description),
                                 onSelect = { targetType = WidgetTargetType.ROUTE; validationMessage = null }
                             )
                             if (targetType == WidgetTargetType.ROUTE) {
-                                Text("Inserisci la tratta", style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 10.dp, start = 4.dp))
-                                WidgetStationField("Partenza", routeOriginText, { routeOriginText = it }, model, "widget-origin")
-                                WidgetStationField("Arrivo", routeDestinationText, { routeDestinationText = it }, model, "widget-destination")
+                                Text(stringResource(R.string.widget_route_input_title), style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 10.dp, start = 4.dp))
+                                WidgetStationField(stringResource(R.string.widget_origin), routeOriginText, { routeOriginText = it }, model, "widget-origin")
+                                WidgetStationField(stringResource(R.string.widget_destination), routeDestinationText, { routeDestinationText = it }, model, "widget-destination")
                                 if (model.savedRoutes.isNotEmpty()) {
-                                    Text("Tratte salvate (facoltative)", style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(top = 6.dp, start = 4.dp))
+                                    Text(stringResource(R.string.widget_saved_routes_optional), style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(top = 6.dp, start = 4.dp))
                                     model.savedRoutes.take(4).forEach { route ->
                                         WidgetChoiceButton(route.displayName(it.binario.app.data.Direction.OUTBOUND), false) {
                                             routeOriginText = route.outwardOrigin.name
@@ -169,16 +173,16 @@ class WidgetConfigureActivity : ComponentActivity() {
                         item {
                             Card(modifier = Modifier.fillMaxWidth().padding(top = 4.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
                                 val selectedLabel = when (targetType) {
-                                    WidgetTargetType.ROUTE -> listOf(routeOriginText, routeDestinationText).filter { it.isNotBlank() }.joinToString(" → ").ifBlank { "Tratta da inserire" }
+                                    WidgetTargetType.ROUTE -> listOf(routeOriginText, routeDestinationText).filter { it.isNotBlank() }.joinToString(" → ").ifBlank { routeMissingLabel }
                                 }
-                                Text("Scelto: ${targetType.label} — $selectedLabel", modifier = Modifier.padding(12.dp), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                                Text(stringResource(R.string.widget_selected_summary, routeTargetLabel, selectedLabel), modifier = Modifier.padding(12.dp), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onPrimaryContainer)
                             }
                         }
                         item {
-                            Button(onClick = ::saveConfiguration, modifier = Modifier.fillMaxWidth()) { Text("Salva widget") }
+                            Button(onClick = ::saveConfiguration, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.widget_save)) }
                         }
                         item {
-                            OutlinedButton(onClick = { finish() }, modifier = Modifier.fillMaxWidth()) { Text("Annulla") }
+                            OutlinedButton(onClick = { finish() }, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.action_cancel)) }
                         }
                     }
                 }
@@ -220,16 +224,17 @@ private fun WidgetStationField(
 }
 
 @androidx.compose.runtime.Composable
-private fun WidgetTargetCard(type: WidgetTargetType, selected: Boolean, description: String, onSelect: () -> Unit) {
+private fun WidgetTargetCard(title: String, selected: Boolean, description: String, onSelect: () -> Unit) {
+    val accessibilityLabel = stringResource(R.string.widget_accessibility_target, title, description)
     Card(
         onClick = onSelect,
-        modifier = Modifier.fillMaxWidth().semantics { contentDescription = "${type.label}. $description" },
+        modifier = Modifier.fillMaxWidth().semantics { contentDescription = accessibilityLabel },
         colors = CardDefaults.cardColors(containerColor = if (selected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceVariant)
     ) {
         Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             RadioButton(selected = selected, onClick = onSelect)
             Column {
-                Text(type.label, style = MaterialTheme.typography.titleMedium)
+                Text(title, style = MaterialTheme.typography.titleMedium)
                 Text(description, style = MaterialTheme.typography.bodySmall)
             }
         }
@@ -239,6 +244,6 @@ private fun WidgetTargetCard(type: WidgetTargetType, selected: Boolean, descript
 @androidx.compose.runtime.Composable
 private fun WidgetChoiceButton(label: String, selected: Boolean, onClick: () -> Unit) {
     OutlinedButton(onClick = onClick, modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) {
-        Text(if (selected) "Selezionato · $label" else label, modifier = Modifier.fillMaxWidth())
+        Text(if (selected) stringResource(R.string.widget_selected_option, label) else label, modifier = Modifier.fillMaxWidth())
     }
 }
