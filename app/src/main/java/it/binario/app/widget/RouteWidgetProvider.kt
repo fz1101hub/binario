@@ -200,7 +200,7 @@ class RouteWidgetProvider : AppWidgetProvider() {
                 }
             }
             views.setTextViewText(R.id.widget_direction, state.direction.label.uppercase())
-            views.setTextViewText(R.id.widget_refresh, "↻")
+            views.setTextViewText(R.id.widget_refresh, context.getString(R.string.widget_refresh_symbol))
             views.setOnClickPendingIntent(R.id.widget_previous_page, actionIntent(context, ACTION_PREVIOUS_PAGE, widgetId))
             views.setOnClickPendingIntent(R.id.widget_next_page, actionIntent(context, ACTION_NEXT_PAGE, widgetId))
             views.setOnClickPendingIntent(R.id.widget_direction, actionIntent(context, ACTION_SWITCH_DIRECTION, widgetId))

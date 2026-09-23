@@ -78,6 +78,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -257,7 +258,7 @@ private fun BinarioApp(
     var detailReturnScreen by rememberSaveable { mutableStateOf(Screen.RESULTS) }
     var operationsSectionName by rememberSaveable { mutableStateOf(OperationsSection.TRAINS.name) }
     var plannerSearchModeName by rememberSaveable { mutableStateOf(SearchMode.ROUTE.name) }
-    var plannerSearchRequestId by rememberSaveable { mutableStateOf(0) }
+    var plannerSearchRequestId by rememberSaveable { mutableIntStateOf(0) }
     var showThemePicker by rememberSaveable { mutableStateOf(false) }
     var pendingStopAlarm by rememberSaveable(stateSaver = stopAlarmPlanSaver) {
         mutableStateOf<StopAlarmPlan?>(null)
@@ -1150,14 +1151,22 @@ private fun RouteResultsScreen(modifier: Modifier, viewModel: TrainViewModel, op
     val returnServices = viewModel.currentReturnServices()
     val roundTrip = viewModel.hasReturnJourney
     val primaryDirection = viewModel.direction
+    val resultSummary = if (roundTrip) {
+        stringResource(
+            R.string.planner_round_trip_results,
+            pluralStringResource(R.plurals.planner_outbound_result_count, services.size, services.size),
+            pluralStringResource(R.plurals.planner_return_result_count, returnServices.size, returnServices.size)
+        )
+    } else {
+        pluralStringResource(R.plurals.search_results_count, services.size, services.size)
+    }
 
     LazyColumn(modifier = modifier.fillMaxSize()) {
         item {
             Column(Modifier.padding(horizontal = 20.dp, vertical = 14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(viewModel.activeRoute.displayName(primaryDirection), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                 Text(
-                    if (roundTrip) stringResource(R.string.planner_round_trip_results, services.size, returnServices.size)
-                    else pluralStringResource(R.plurals.search_results_count, services.size, services.size),
+                    resultSummary,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -2320,33 +2329,37 @@ private fun CommuterAlertSheet(
 ) {
     var station by rememberSaveable { mutableStateOf(defaultStation) }
     var time by rememberSaveable { mutableStateOf("08:00") }
-    var lead by rememberSaveable { mutableStateOf(15) }
+    var lead by rememberSaveable { mutableIntStateOf(15) }
     var repeat by rememberSaveable { mutableStateOf(AlertRepeat.WEEKDAYS.name) }
     var quietHours by rememberSaveable { mutableStateOf(false) }
     val context = LocalContext.current
     ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(Modifier.padding(horizontal = 20.dp).padding(bottom = 32.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text("Avviso pendolare", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+            Text(stringResource(R.string.commuter_alert_sheet_title), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
             Text(routeLabel, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            OutlinedTextField(value = station, onValueChange = { station = it }, modifier = Modifier.fillMaxWidth(), singleLine = true, label = { Text("Fermata") })
+            OutlinedTextField(value = station, onValueChange = { station = it }, modifier = Modifier.fillMaxWidth(), singleLine = true, label = { Text(stringResource(R.string.commuter_alert_station)) })
             OutlinedButton(onClick = {
                 val parsed = runCatching { LocalTime.parse(time) }.getOrDefault(LocalTime.of(8, 0))
                 TimePickerDialog(context, { _, hour, minute -> time = "%02d:%02d".format(hour, minute) }, parsed.hour, parsed.minute, true).show()
-            }, modifier = Modifier.fillMaxWidth()) { Text("Orario: $time") }
-            Text("Anticipo", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+            }, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.commuter_alert_time, time)) }
+            Text(stringResource(R.string.commuter_alert_lead), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(listOf(5, 10, 15, 30, 60)) { minutes ->
-                    FilterChip(selected = lead == minutes, onClick = { lead = minutes }, label = { Text("$minutes min") })
+                    FilterChip(
+                        selected = lead == minutes,
+                        onClick = { lead = minutes },
+                        label = { Text(pluralStringResource(R.plurals.minutes_short, minutes, minutes)) }
+                    )
                 }
             }
-            Text("Ripetizione", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+            Text(stringResource(R.string.commuter_alert_repeat), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(AlertRepeat.entries) { option ->
                     FilterChip(selected = repeat == option.name, onClick = { repeat = option.name }, label = { Text(option.label) })
                 }
             }
-            FilterChip(selected = quietHours, onClick = { quietHours = !quietHours }, label = { Text("Fascia silenziosa 22:00–07:00") })
-            Button(onClick = { onSave(station.trim(), time, lead, AlertRepeat.valueOf(repeat), quietHours) }, enabled = station.isNotBlank(), modifier = Modifier.fillMaxWidth()) { Text("Salva avviso") }
+            FilterChip(selected = quietHours, onClick = { quietHours = !quietHours }, label = { Text(stringResource(R.string.commuter_alert_quiet_hours)) })
+            Button(onClick = { onSave(station.trim(), time, lead, AlertRepeat.valueOf(repeat), quietHours) }, enabled = station.isNotBlank(), modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.commuter_alert_save)) }
         }
     }
 }

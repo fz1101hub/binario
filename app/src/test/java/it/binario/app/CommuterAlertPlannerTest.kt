@@ -1,6 +1,7 @@
 package it.binario.app
 
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.DayOfWeek
@@ -35,5 +36,13 @@ class CommuterAlertPlannerTest {
         val alert = CommuterAlert("id", "Casa – lavoro", "Roma Termini", "22:20", 15, AlertRepeat.ONCE, true)
 
         assertTrue(CommuterAlertPlanner.nextTriggerResult(alert, now, zone) is CommuterAlertTriggerResult.QuietHours)
+    }
+
+    @Test
+    fun `restore receiver accepts only system restore actions`() {
+        assertTrue(CommuterAlertScheduler.acceptsRestoreAction("android.intent.action.BOOT_COMPLETED"))
+        assertTrue(CommuterAlertScheduler.acceptsRestoreAction("android.intent.action.MY_PACKAGE_REPLACED"))
+        assertFalse(CommuterAlertScheduler.acceptsRestoreAction(null))
+        assertFalse(CommuterAlertScheduler.acceptsRestoreAction("it.binario.app.SPOOFED_RESTORE"))
     }
 }

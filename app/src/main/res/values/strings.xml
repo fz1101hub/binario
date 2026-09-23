@@ -1,8 +1,6 @@
 <resources>
     <string name="app_name">Binario</string>
     <string name="widget_description">Mostra le prossime corse della tua tratta Binario.</string>
-    <string name="widget_empty_title">Configura una tratta in Binario</string>
-    <string name="widget_empty_subtitle">Apri l’app, salva una tratta e scegli i dati da mostrare.</string>
     <string name="widget_refresh">Aggiorna corse</string>
     <string name="widget_previous_page">Mostra le cinque corse precedenti</string>
     <string name="widget_next_page">Mostra le cinque corse successive</string>
@@ -12,7 +10,6 @@
     <string name="widget_next_symbol">›</string>
     <string name="widget_refresh_symbol">↻</string>
     <string name="widget_default_direction">Andata</string>
-    <string name="widget_refresh_label">Aggiorna</string>
     <string name="widget_column_time">ORA</string>
     <string name="widget_column_destination_train">DESTINAZIONE / TRENO</string>
     <string name="widget_column_platform">BIN.</string>
@@ -158,7 +155,15 @@
     <string name="action_manage">Gestisci</string>
     <string name="accessibility_repeat_search">Ripeti ricerca %1$s</string>
     <string name="accessibility_use_route">Usa tratta %1$s</string>
-    <string name="planner_round_trip_results">%1$d andata · %2$d ritorno</string>
+    <string name="planner_round_trip_results">%1$s · %2$s</string>
+    <plurals name="planner_outbound_result_count">
+        <item quantity="one">%d andata</item>
+        <item quantity="other">%d andate</item>
+    </plurals>
+    <plurals name="planner_return_result_count">
+        <item quantity="one">%d ritorno</item>
+        <item quantity="other">%d ritorni</item>
+    </plurals>
     <string name="planner_outbound">ANDATA</string>
     <string name="planner_return">RITORNO</string>
     <string name="search_outbound_loading_title">Caricamento andata</string>

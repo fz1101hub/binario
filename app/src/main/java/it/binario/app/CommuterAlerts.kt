@@ -159,6 +159,9 @@ object CommuterAlertScheduler {
     private const val EXTRA_ID = "alert_id"
     private const val CHANNEL_ID = "binario_commuter_alerts"
 
+    internal fun acceptsRestoreAction(action: String?): Boolean =
+        action == Intent.ACTION_BOOT_COMPLETED || action == Intent.ACTION_MY_PACKAGE_REPLACED
+
     fun schedule(context: Context, alert: CommuterAlert): CommuterAlertScheduleResult {
         val triggerResult = CommuterAlertPlanner.nextTriggerResult(alert)
         val trigger = (triggerResult as? CommuterAlertTriggerResult.TriggerAt)?.epochMillis
@@ -207,13 +210,11 @@ object CommuterAlertScheduler {
             return
         }
         val manager = context.getSystemService(NotificationManager::class.java)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            manager.createNotificationChannel(
-                NotificationChannel(CHANNEL_ID, "Avvisi pendolare Binario", NotificationManager.IMPORTANCE_HIGH).apply {
-                    description = "Promemoria locali ricorrenti configurati dall’utente."
-                }
-            )
-        }
+        manager.createNotificationChannel(
+            NotificationChannel(CHANNEL_ID, "Avvisi pendolare Binario", NotificationManager.IMPORTANCE_HIGH).apply {
+                description = "Promemoria locali ricorrenti configurati dall’utente."
+            }
+        )
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_binario)
             .setContentTitle("Promemoria: ${alert.stationName}")
@@ -255,6 +256,7 @@ class CommuterAlertReceiver : BroadcastReceiver() {
 /** Reinstates persisted reminders after reboot or an app update, when Android has cleared alarms. */
 class CommuterAlertRestoreReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
+        if (!CommuterAlertScheduler.acceptsRestoreAction(intent.action)) return
         CommuterAlertScheduler.rescheduleAll(context)
     }
 }

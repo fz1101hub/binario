@@ -96,15 +96,13 @@ object StopAlarmScheduler {
             ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
         ) return
         val manager = context.getSystemService(NotificationManager::class.java)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            manager.createNotificationChannel(
-                NotificationChannel(
-                    CHANNEL_ID,
-                    "Sveglie fermata Binario",
-                    NotificationManager.IMPORTANCE_HIGH
-                ).apply { description = "Avvisi locali per le fermate ferroviarie impostate nell’app." }
-            )
-        }
+        manager.createNotificationChannel(
+            NotificationChannel(
+                CHANNEL_ID,
+                "Sveglie fermata Binario",
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply { description = "Avvisi locali per le fermate ferroviarie impostate nell’app." }
+        )
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_binario)
             .setContentTitle("Fermata in arrivo: $station")
