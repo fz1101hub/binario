@@ -6,6 +6,7 @@ on:
     branches:
       - main
       - "stabilization/**"
+      - "integration/**"
   workflow_dispatch:
 
 concurrency:
@@ -42,9 +43,8 @@ jobs:
       - name: Verify embedded asset integrity
         run: python3 tools/verify_embedded_assets.py --integrity-only
 
-      # Release candidates must additionally run without --integrity-only.
-      # That command intentionally remains red until every embedded timetable
-      # covers the full release freshness window.
+      - name: Gate embedded GTFS freshness for at least 30 days
+        run: python3 tools/verify_embedded_assets.py --min-valid-days 30
 
       - name: Verify release-engineering configuration
         run: python3 tools/verify_android_release_config.py
