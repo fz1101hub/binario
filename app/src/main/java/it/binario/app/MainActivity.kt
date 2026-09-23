@@ -84,9 +84,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -115,8 +118,23 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 private enum class Screen { PLANNER, OPERATIONS, SETTINGS, RESULTS, DETAIL }
-private enum class OperationsSection(val label: String) { TRAINS("Treni"), STATIONS("Stazioni") }
-private enum class SearchMode(val label: String) { ROUTE("Tratta"), TRAIN("N. treno"), STATION("Stazione") }
+internal enum class OperationsSection { TRAINS, STATIONS }
+private enum class SearchMode { ROUTE, TRAIN, STATION }
+
+@Composable
+private fun OperationsSection.localizedLabel(): String = stringResource(
+    if (this == OperationsSection.TRAINS) R.string.operations_section_trains
+    else R.string.operations_section_stations
+)
+
+@Composable
+private fun SearchMode.localizedLabel(): String = stringResource(
+    when (this) {
+        SearchMode.ROUTE -> R.string.search_mode_route
+        SearchMode.TRAIN -> R.string.search_mode_train
+        SearchMode.STATION -> R.string.search_mode_station
+    }
+)
 
 class MainActivity : ComponentActivity() {
     private val deepLinkDispatcher = DeepLinkRequestDispatcher()
@@ -231,20 +249,24 @@ private fun BinarioApp(
         }
     }
     BackHandler(enabled = screen == Screen.DETAIL || screen == Screen.RESULTS, onBack = navigateBack)
-    val title = when (screen) {
-        Screen.PLANNER -> "Cerca e consulta"
-        Screen.OPERATIONS -> "Consulta"
-        Screen.SETTINGS -> "Impostazioni"
-        Screen.RESULTS -> "Soluzioni"
-        Screen.DETAIL -> "Dettaglio corsa"
-    }
-    val subtitle = when (screen) {
-        Screen.PLANNER -> "Pianifica il prossimo viaggio"
-        Screen.OPERATIONS -> "Treni e stazioni"
-        Screen.SETTINGS -> "Preferenze e dati personali"
-        Screen.RESULTS -> "Corse disponibili"
-        Screen.DETAIL -> "Stato e fermate"
-    }
+    val title = stringResource(
+        when (screen) {
+            Screen.PLANNER -> R.string.screen_title_planner
+            Screen.OPERATIONS -> R.string.screen_title_operations
+            Screen.SETTINGS -> R.string.screen_title_settings
+            Screen.RESULTS -> R.string.screen_title_results
+            Screen.DETAIL -> R.string.screen_title_detail
+        }
+    )
+    val subtitle = stringResource(
+        when (screen) {
+            Screen.PLANNER -> R.string.screen_subtitle_planner
+            Screen.OPERATIONS -> R.string.screen_subtitle_operations
+            Screen.SETTINGS -> R.string.screen_subtitle_settings
+            Screen.RESULTS -> R.string.screen_subtitle_results
+            Screen.DETAIL -> R.string.screen_subtitle_detail
+        }
+    )
 
     if (showThemePicker) {
         ThemePickerSheet(currentMode = themeMode, onModeSelected = {
@@ -258,24 +280,24 @@ private fun BinarioApp(
             CenterAlignedTopAppBar(
                 title = {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(if (screen == Screen.PLANNER) "BINARIO" else title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, letterSpacing = if (screen == Screen.PLANNER) 1.sp else 0.sp)
+                        Text(if (screen == Screen.PLANNER) stringResource(R.string.app_brand) else title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, letterSpacing = if (screen == Screen.PLANNER) 1.sp else 0.sp)
                         if (screen != Screen.DETAIL) Text(subtitle, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 },
                 navigationIcon = {
                     if (screen == Screen.DETAIL || screen == Screen.RESULTS) {
                         IconButton(onClick = navigateBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Torna indietro")
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
                         }
                     }
                 },
                 actions = {
                     IconButton(onClick = { showThemePicker = true }) {
-                        Icon(Icons.Default.Palette, contentDescription = "Scegli tema. Tema attuale ${themeMode.label}")
+                        Icon(Icons.Default.Palette, contentDescription = stringResource(R.string.action_choose_theme, themeMode.label))
                     }
                     if (screen == Screen.OPERATIONS || screen == Screen.RESULTS || screen == Screen.DETAIL) {
                         IconButton(onClick = viewModel::refresh) {
-                            Icon(Icons.Default.Refresh, contentDescription = "Aggiorna le informazioni ferroviarie")
+                            Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.action_refresh_rail_information))
                         }
                     }
                 },
@@ -289,19 +311,19 @@ private fun BinarioApp(
                         selected = screen == Screen.PLANNER,
                         onClick = { screen = Screen.PLANNER },
                         icon = { Icon(Icons.Default.Search, contentDescription = null) },
-                        label = { Text("Cerca") }
+                        label = { Text(stringResource(R.string.nav_search)) }
                     )
                     NavigationBarItem(
                         selected = screen == Screen.OPERATIONS,
                         onClick = { screen = Screen.OPERATIONS },
                         icon = { Icon(Icons.Default.Train, contentDescription = null) },
-                        label = { Text("Consulta") }
+                        label = { Text(stringResource(R.string.nav_operations)) }
                     )
                     NavigationBarItem(
                         selected = screen == Screen.SETTINGS,
                         onClick = { screen = Screen.SETTINGS },
                         icon = { Icon(Icons.Default.Info, contentDescription = null) },
-                        label = { Text("Impostazioni") }
+                        label = { Text(stringResource(R.string.nav_settings)) }
                     )
                 }
             }
@@ -493,18 +515,25 @@ private fun OperationsScreen(
 }
 
 @Composable
-private fun OperationsSectionCard(
+internal fun OperationsSectionCard(
     modifier: Modifier,
     section: OperationsSection,
     selected: Boolean,
     onClick: () -> Unit
 ) {
-    val subtitle = if (section == OperationsSection.TRAINS) "Tabellone tratta" else "Arrivi e partenze"
+    val label = section.localizedLabel()
+    val subtitle = stringResource(
+        if (section == OperationsSection.TRAINS) R.string.operations_section_trains_subtitle
+        else R.string.operations_section_stations_subtitle
+    )
+    val selectionState = stringResource(
+        if (selected) R.string.accessibility_section_selected else R.string.accessibility_section_not_selected
+    )
     val icon = if (section == OperationsSection.TRAINS) Icons.Default.Train else Icons.Default.Route
     Surface(
         modifier = modifier
             .clickable(role = Role.Button, onClick = onClick)
-            .semantics { contentDescription = "${section.label}. $subtitle${if (selected) ". Sezione selezionata" else ""}" },
+            .semantics { stateDescription = selectionState },
         color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
         contentColor = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
         shape = RoundedCornerShape(8.dp),
@@ -512,7 +541,7 @@ private fun OperationsSectionCard(
     ) {
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Icon(icon, contentDescription = null)
-            Text(section.label, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Text(label, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             Text(subtitle, style = MaterialTheme.typography.labelMedium)
         }
     }
@@ -525,10 +554,10 @@ private fun BoardCommandBar(onOpenSearch: () -> Unit) {
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp, vertical = 10.dp)
     ) {
-        item { AssistChip(onClick = onOpenSearch, label = { Text("Nuova ricerca") }, leadingIcon = {
+        item { AssistChip(onClick = onOpenSearch, label = { Text(stringResource(R.string.action_new_search)) }, leadingIcon = {
                 Icon(Icons.Default.Train, contentDescription = null)
             }) }
-        item { AssistChip(onClick = onOpenSearch, label = { Text("Pianifica tratta") }, leadingIcon = {
+        item { AssistChip(onClick = onOpenSearch, label = { Text(stringResource(R.string.action_plan_route)) }, leadingIcon = {
                 Icon(Icons.Default.Search, contentDescription = null)
             }) }
     }
@@ -693,10 +722,10 @@ private fun PlannerScreen(
     LazyColumn(modifier = modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(0.dp)) {
         item {
             Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                Text("Pianifica viaggio", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                Text("Cerca le prossime soluzioni per tratta, giorno e orario.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(stringResource(R.string.planner_title), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.planner_description), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(SearchMode.entries) { item -> FilterChip(selected = mode == item, onClick = { mode = item }, label = { Text(item.label) }) }
+                    items(SearchMode.entries) { item -> FilterChip(selected = mode == item, onClick = { mode = item }, label = { Text(item.localizedLabel()) }) }
                 }
                 Surface(color = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(20.dp), tonalElevation = 1.dp, shadowElevation = 1.dp, modifier = Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -1218,7 +1247,7 @@ private fun StationBoardScreen(modifier: Modifier, viewModel: TrainViewModel) {
 }
 
 @Composable
-private fun StationBoardEntryRow(entry: StationBoardEntry, kind: BoardKind) {
+internal fun StationBoardEntryRow(entry: StationBoardEntry, kind: BoardKind) {
     val scheduled = entry.scheduledTime.withZoneSameInstant(BOARD_ZONE)
     val expected = entry.expectedTime?.value?.withZoneSameInstant(BOARD_ZONE)
     val effective = expected ?: scheduled
@@ -1228,9 +1257,34 @@ private fun StationBoardEntryRow(entry: StationBoardEntry, kind: BoardKind) {
     val endpoint = entry.destinationOrOriginLabel?.takeIf(String::isNotBlank)
         ?: entry.destinationOrOrigin.value
     val platform = entry.platform?.value?.takeIf(String::isNotBlank)
+    val directionLabel = stringResource(
+        if (kind == BoardKind.DEPARTURES) R.string.station_board_departure_to
+        else R.string.station_board_arrival_from,
+        endpoint
+    )
+    val scheduledLabel = stringResource(
+        R.string.station_board_scheduled_time,
+        scheduled.format(BOARD_TIME_FORMATTER)
+    )
+    val statusLabel = stationBoardStatusAnnouncement(entry)
+    val platformLabel = platform?.let {
+        stringResource(R.string.station_board_platform_accessible, it)
+    } ?: stringResource(R.string.station_board_platform_unavailable)
+    val trainLabel = entry.publicNumber?.takeIf(String::isNotBlank)?.let { "Treno $it" }.orEmpty()
+    val accessibilityDescription = stringResource(
+        R.string.station_board_entry_accessibility,
+        directionLabel,
+        scheduledLabel,
+        statusLabel,
+        platformLabel,
+        trainLabel
+    )
 
     Row(
-        Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
+        Modifier
+            .fillMaxWidth()
+            .clearAndSetSemantics { contentDescription = accessibilityDescription }
+            .padding(horizontal = 20.dp, vertical = 12.dp),
         verticalAlignment = Alignment.Top,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
@@ -1238,7 +1292,7 @@ private fun StationBoardEntryRow(entry: StationBoardEntry, kind: BoardKind) {
             Text(effective.format(BOARD_TIME_FORMATTER), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             if (expected != null && expected.toInstant() != scheduled.toInstant()) {
                 Text(
-                    "prog. ${scheduled.format(BOARD_TIME_FORMATTER)}",
+                    stringResource(R.string.station_board_scheduled_time_short, scheduled.format(BOARD_TIME_FORMATTER)),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -1246,7 +1300,7 @@ private fun StationBoardEntryRow(entry: StationBoardEntry, kind: BoardKind) {
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(
-                if (kind == BoardKind.DEPARTURES) "Per $endpoint" else "Da $endpoint",
+                directionLabel,
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,
@@ -1278,9 +1332,24 @@ private fun StationBoardEntryRow(entry: StationBoardEntry, kind: BoardKind) {
                 color = MaterialTheme.colorScheme.secondaryContainer,
                 contentColor = MaterialTheme.colorScheme.onSecondaryContainer
             ) {
-                Text("Bin. $it", modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp), fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.station_board_platform, it), modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp), fontWeight = FontWeight.Bold)
             }
         }
+    }
+}
+
+@Composable
+private fun stationBoardStatusAnnouncement(entry: StationBoardEntry): String {
+    val runStatus = entry.status?.value
+    return when {
+        entry.expectedTime != null -> stringResource(
+            R.string.station_board_status_live_prediction,
+            entry.expectedTime.value.withZoneSameInstant(BOARD_ZONE).format(BOARD_TIME_FORMATTER)
+        )
+        runStatus != null && runStatus != RunStatus.SCHEDULED && runStatus != RunStatus.UNKNOWN ->
+            stringResource(R.string.station_board_status_live, runStatus.stationBoardLabel())
+        runStatus == RunStatus.UNKNOWN -> stringResource(R.string.station_board_status_unavailable)
+        else -> stringResource(R.string.station_board_status_planned)
     }
 }
 
@@ -1436,20 +1505,30 @@ private fun DataStatusLine(
     message: String?
 ) {
     val label = when {
-        isDemonstration -> "Catalogo dimostrativo locale — non live"
-        freshness == Freshness.UNAVAILABLE || freshness == null -> "dati non disponibili in tempo reale"
-        else -> freshness.accessibleLabel
+        isDemonstration -> stringResource(R.string.data_status_demo)
+        freshness == Freshness.UNAVAILABLE || freshness == null -> stringResource(R.string.data_status_unavailable)
+        else -> stringResource(R.string.data_status_live, freshness.accessibleLabel)
     }
     val color = when {
         isDemonstration -> MaterialTheme.colorScheme.tertiary
         freshness == Freshness.UNAVAILABLE || freshness == null -> MaterialTheme.colorScheme.error
         else -> MaterialTheme.colorScheme.secondary
     }
+    val statusContentDescription = stringResource(
+        R.string.accessibility_data_status,
+        label,
+        provider,
+        confidence,
+        accessibleUpdateTime(refreshedAt),
+        message?.takeIf(String::isNotBlank)?.let { " $it" }.orEmpty()
+    )
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp, vertical = 14.dp)
-            .semantics { contentDescription = "$label. Fonte $provider. Qualità $confidence. ${accessibleUpdateTime(refreshedAt)}. ${message.orEmpty()}" },
+            .clearAndSetSemantics {
+                contentDescription = statusContentDescription
+            },
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(Icons.Default.Info, contentDescription = null, tint = color, modifier = Modifier.size(18.dp))
@@ -1513,11 +1592,23 @@ private fun ListHeading(title: String, subtitle: String) {
 
 @Composable
 private fun DepartureListRow(service: TrainService, isNext: Boolean = false, onOpen: () -> Unit) {
+    val serviceState = if (service.operationalStatusVerified) {
+        stringResource(R.string.service_state_live, service.status.accessibleLabel)
+    } else {
+        stringResource(R.string.service_state_scheduled)
+    }
+    val serviceContentDescription = stringResource(
+        R.string.accessibility_open_service,
+        service.accessibleSummary,
+        serviceState
+    )
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .background(if (isNext) MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.48f) else MaterialTheme.colorScheme.background)
-            .semantics { contentDescription = "Apri dettaglio. ${service.accessibleSummary}" }
+            .clearAndSetSemantics {
+                contentDescription = serviceContentDescription
+            }
             .clickable(role = Role.Button, onClick = onOpen)
             .padding(horizontal = 20.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -1592,7 +1683,7 @@ private fun SearchScreen(
                 Text("Cerca una tratta, un numero treno o una stazione.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     items(SearchMode.entries) { item ->
-                        FilterChip(selected = mode == item, onClick = { mode = item }, label = { Text(item.label) })
+                        FilterChip(selected = mode == item, onClick = { mode = item }, label = { Text(item.localizedLabel()) })
                     }
                 }
                 Surface(
