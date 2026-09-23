@@ -11,7 +11,7 @@ Binario è prima di tutto un'applicazione per smartphone. Wear OS, Apple Watch, 
 Nel repository erano presenti due alberi sovrapposti:
 
 - `voice-bridge/`, oggetto dell'audit e già avanzato con hardening OAuth, revoca, migrazioni e test;
-- `surfaces/web-voice-bridge/`, snapshot storico di un progetto WebDev più ampio, comprendente funzioni web, companion, dettatura e nove migrazioni aggiuntive non specifiche della skill Alexa.
+- `surfaces/web-voice-bridge/`, allora presente come snapshot storico di un progetto WebDev più ampio, comprendente funzioni web, companion, dettatura e nove migrazioni aggiuntive non specifiche della skill Alexa.
 
 La sovrapposizione rendeva ambiguo quale progetto fosse il prodotto principale e dove dovessero atterrare le correzioni Alexa.
 
@@ -27,7 +27,7 @@ La sovrapposizione rendeva ambiguo quale progetto fosse il prodotto principale e
 1. **`app/` è la sorgente canonica e il prodotto principale Binario per smartphone.** Possiede il dominio ferroviario, le preferenze dell'utente e l'esperienza completa.
 2. **`alexa-companion/` è il companion canonico della skill Alexa.** Nasce dalla rinomina di `voice-bridge/` e contiene endpoint Alexa, account linking, revoca, profilo vocale minimo, test e una dashboard tecnica di collegamento. Non è l'app principale né una seconda app ferroviaria.
 3. **`wear/` e `apple-watch/` restano companion dello stesso livello architetturale.** Ogni companion espone soltanto una vista ridotta e coerente del dato principale.
-4. **`surfaces/web-voice-bridge/` resta uno snapshot storico non distribuibile e non canonico.** Non riceve nuovi fix. Il suo contenuto viene eventualmente recuperato per funzione e tramite PR dedicate; non viene fuso in blocco.
+4. **Il vecchio `surfaces/` è uno snapshot storico non distribuibile e non canonico.** È preservato integralmente nel branch `archive/surfaces-20260923`, commit `37a408d662374aa1c8f9765b20c9f2fd90e5b81f`, e non è più presente nella linea attiva. Il suo contenuto può essere recuperato soltanto per funzione e tramite PR dedicate; non viene fuso in blocco.
 5. Un eventuale deployment WebDev futuro deve essere costruito dal contenuto canonico di `alexa-companion/`, oppure da una sua derivazione tracciata. Il vecchio progetto WebDev non deve essere aggiornato indipendentemente.
 
 ## Proprietà e sincronizzazione dei dati
