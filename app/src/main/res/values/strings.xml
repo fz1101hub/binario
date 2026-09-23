@@ -166,6 +166,8 @@
     </plurals>
     <string name="planner_outbound">ANDATA</string>
     <string name="planner_return">RITORNO</string>
+    <string name="direction_outbound">Andata</string>
+    <string name="direction_return">Ritorno</string>
     <string name="search_outbound_loading_title">Caricamento andata</string>
     <string name="search_outbound_loading_message">Sto cercando le soluzioni programmate e le eventuali informazioni operative disponibili.</string>
     <string name="search_outbound_unavailable_title">Andata non disponibile</string>
@@ -202,6 +204,22 @@
     <string name="station_board_departures_uppercase">PARTENZE</string>
     <string name="station_board_arrivals_uppercase">ARRIVI</string>
     <string name="station_suggestion_free_text">Cerca “%1$s” nelle fonti disponibili</string>
+    <string name="station_board_train_number">Treno %1$s</string>
+    <string name="station_board_route_change">Variazione: %1$s</string>
+    <string name="run_status_scheduled">Programmato</string>
+    <string name="run_status_on_time">In orario</string>
+    <string name="run_status_delayed">In ritardo</string>
+    <string name="run_status_cancelled">Soppresso</string>
+    <string name="run_status_partially_cancelled">Parzialmente soppresso</string>
+    <string name="run_status_diverted">Deviato</string>
+    <string name="run_status_added">Corsa aggiunta</string>
+    <string name="run_status_bus_replacement">Sostituito da bus</string>
+    <string name="run_status_completed">Completato</string>
+    <string name="run_status_unknown">Stato non disponibile</string>
+    <string name="accessibility_add_favourite_station">Aggiungi %1$s alle stazioni preferite</string>
+    <string name="accessibility_remove_favourite_station">Rimuovi %1$s dalle stazioni preferite</string>
+    <string name="today_empty_loading">Cerco le partenze…</string>
+    <string name="today_empty_title">Nessuna partenza da mostrare</string>
 
     <!-- Settings, privacy and integrations. -->
     <string name="settings_title">Impostazioni</string>
@@ -271,6 +289,124 @@
     <string name="integration_alexa_note">Le risposte personali richiedono un account Alexa effettivamente collegato. Senza feed autorizzato: dati non disponibili in tempo reale.</string>
     <string name="state_active">Attivo</string>
     <string name="state_inactive">Non attivo</string>
+
+    <!-- Board, routes and service detail. -->
+    <string name="delay_minutes">+%1$d min</string>
+    <string name="board_header_title">PARTENZE · %1$s</string>
+    <string name="board_route_direction">%1$s · %2$s</string>
+    <string name="accessibility_refresh_departures">Aggiorna partenze. Stato: %1$s</string>
+    <string name="action_direction">Direzione</string>
+    <string name="action_change_route">Cambia tratta</string>
+    <string name="board_column_time">ORA</string>
+    <string name="board_column_service">DESTINAZIONE / TRENO</string>
+    <string name="board_column_platform">BIN.</string>
+    <string name="board_column_status">STATO</string>
+    <string name="monitored_routes_title">Tratte monitorate</string>
+    <string name="service_scheduled_lowercase">programmato</string>
+    <string name="service_on_time_lowercase">in orario</string>
+    <string name="today_empty_description">Aggiorna la tratta attiva oppure scegli una tratta salvata diversa. I dati non disponibili non vengono sostituiti con orari stimati.</string>
+    <string name="action_refresh">Aggiorna</string>
+    <string name="action_open_routes">Apri le mie tratte</string>
+    <string name="filter_all">Tutti</string>
+    <string name="journey_changes_uppercase">CAMBI</string>
+    <string name="accessibility_system_voice_input">%1$s tramite riconoscitore vocale di sistema</string>
+    <string name="accessibility_title_detail">%1$s. %2$s</string>
+
+    <string name="route_pinned">Tratta fissata</string>
+    <string name="accessibility_move_route_up">Sposta %1$s su</string>
+    <string name="accessibility_move_route_down">Sposta %1$s giù</string>
+    <string name="accessibility_delete_route">Elimina tratta %1$s</string>
+    <string name="accessibility_unpin_route">Rimuovi fissaggio</string>
+    <string name="accessibility_pin_route">Fissa tratta</string>
+    <string name="route_composer_title">Nuova tratta</string>
+    <string name="route_composer_description">Scegli origine e destinazione. La tratta rimane solo sul dispositivo.</string>
+    <string name="route_swap_stations">Scambia stazioni</string>
+    <string name="route_name_optional">Nome personale facoltativo</string>
+    <string name="route_name_example">Es. Casa – lavoro</string>
+    <string name="route_save_and_activate">Salva e attiva tratta</string>
+
+    <string name="service_operator_category">%1$s · %2$s</string>
+    <string name="service_operator_category_number">%1$s · %2$s %3$s</string>
+    <string name="service_number_route">%1$s · %2$s → %3$s</string>
+    <string name="service_expected_departure">Partenza prevista</string>
+    <string name="service_scheduled_departure">Programmata %1$s</string>
+    <string name="service_stops_title">Fermate</string>
+    <string name="service_data_summary">%1$s · %2$s · %3$s</string>
+    <string name="accessibility_share_service">Condividi dettagli del treno con le app di sistema</string>
+    <string name="accessibility_refresh_service">Aggiorna dettaglio della corsa</string>
+    <string name="accessibility_monitor_service">Monitora questo treno</string>
+    <string name="accessibility_stop_monitoring_service">Rimuovi monitoraggio treno</string>
+    <string name="active_trip_title">Viaggio attivo</string>
+    <string name="follow_trip_title">Segui questo viaggio</string>
+    <string name="follow_trip_description">Conserva localmente la prossima fermata e avanzala manualmente.</string>
+    <string name="action_start_trip">Inizia viaggio</string>
+    <string name="stop_alarm_notice">La sveglia è locale e si basa sull’orario mostrato. Per variazioni operative fai sempre riferimento a monitor e annunci ufficiali.</string>
+
+    <string name="stop_change_added_accessibility">Fermata aggiunta al percorso operativo.</string>
+    <string name="stop_change_skipped_accessibility">Fermata saltata nel percorso operativo.</string>
+    <string name="operational_status_unverified">Stato operativo non verificato</string>
+    <plurals name="operational_delay_minutes">
+        <item quantity="one">%d minuto di ritardo</item>
+        <item quantity="other">%d minuti di ritardo</item>
+    </plurals>
+    <string name="operational_on_time">In orario</string>
+    <string name="platform_label">Binario %1$s</string>
+    <string name="platform_unavailable">Binario non disponibile</string>
+    <string name="platform_to_confirm">Binario da confermare</string>
+    <string name="accessibility_stop_timeline">%1$s. %2$sPrevisto %3$s. Programmato %4$s. %5$s. %6$s.</string>
+    <string name="stop_skipped_uppercase">FERMATA SALTATA</string>
+    <string name="stop_added_uppercase">FERMATA AGGIUNTA</string>
+    <string name="scheduled_time_short">prev. %1$s</string>
+    <string name="action_stop_alarm">Sveglia</string>
+    <string name="route_change_skipped">Saltate: %1$s</string>
+    <string name="route_change_added">Aggiunte: %1$s</string>
+    <string name="route_change_via">Via: %1$s</string>
+    <string name="route_change_destination">Nuovo capolinea: %1$s</string>
+    <string name="route_change_source">Fonte: %1$s</string>
+    <string name="route_change_label_diverted">PERCORSO MODIFICATO</string>
+    <string name="route_change_label_skipped">FERMATE MODIFICATE</string>
+    <string name="route_change_label_added">FERMATE AGGIUNTE</string>
+    <string name="route_change_label_short_turn">CORSA LIMITATA</string>
+    <string name="route_change_label_replacement">SERVIZIO SOSTITUTIVO</string>
+    <string name="route_change_label_other">VARIAZIONE DI PERCORSO</string>
+    <string name="route_change_accessibility_skipped">Fermate saltate: %1$s</string>
+    <string name="route_change_accessibility_added">Fermate aggiunte: %1$s</string>
+    <string name="route_change_accessibility_via">Nuovo instradamento via: %1$s</string>
+    <string name="planned_journey_export_success">Esportazione completata.</string>
+    <string name="planned_journey_export_failure">Esportazione non riuscita: %1$s</string>
+    <string name="planned_journey_import_failure">Importazione non riuscita: %1$s</string>
+    <plurals name="planned_journey_import_too_large">
+        <item quantity="one">Il file supera il limite di importazione di %d byte</item>
+        <item quantity="other">Il file supera il limite di importazione di %d byte</item>
+    </plurals>
+    <string name="stop_alarm_permission_required">Per ricevere la sveglia alla fermata devi consentire le notifiche di Binario.</string>
+    <string name="stop_alarm_completed">La fermata %1$s risulta già superata.</string>
+    <string name="stop_alarm_unavailable">Non posso pianificare la sveglia: l’orario previsto della fermata è già passato o non è disponibile.</string>
+    <string name="stop_alarm_exact">Sveglia impostata per %1$s, cinque minuti prima dell’orario previsto %2$s.</string>
+    <string name="stop_alarm_inexact">Sveglia impostata per %1$s, ma Android può consegnarla in ritardo perché gli allarmi esatti non sono consentiti.</string>
+    <string name="commuter_alert_scheduled">Avviso salvato e pianificato sul dispositivo.</string>
+    <string name="commuter_alert_scheduled_inexact">Avviso salvato e pianificato in modalità approssimata: Android può consegnarlo in ritardo perché gli allarmi esatti non sono consentiti.</string>
+    <string name="commuter_alert_quiet_hours_feedback">Avviso salvato ma non pianificato: l’anticipo cade nella fascia silenziosa 22:00–07:00.</string>
+    <string name="commuter_alert_invalid_time_feedback">Avviso salvato ma non pianificato: l’orario non è valido.</string>
+    <string name="commuter_alert_disabled_feedback">Avviso salvato ma disattivato.</string>
+    <string name="commuter_alert_no_trigger_feedback">Avviso salvato ma non pianificato: non esiste una prossima occorrenza.</string>
+    <string name="share_train_chooser">Condividi dettagli treno</string>
+    <string name="official_information_notice">Per variazioni operative in stazione, fai sempre riferimento a monitor e annunci ufficiali.</string>
+    <string name="voice_no_text">Nessun testo ricevuto dalla dettatura. Puoi riprovare o compilare i campi manualmente.</string>
+    <string name="voice_prompt_route">Dì partenza, arrivo, data, ora o andata e ritorno</string>
+    <string name="voice_prompt_train">Dì il numero del treno</string>
+    <string name="voice_prompt_station">Dì il nome della stazione</string>
+    <string name="voice_unavailable">Il riconoscitore vocale di sistema non è disponibile su questo dispositivo.</string>
+    <string name="location_unavailable">Posizione non disponibile. Attiva la localizzazione del dispositivo e riprova.</string>
+    <string name="location_sorted_not_saved">Stazioni ordinate dalla posizione appena richiesta. La posizione non è stata salvata.</string>
+    <string name="location_permission_denied">Permesso posizione non concesso. Puoi continuare a cercare manualmente le stazioni.</string>
+    <string name="distance_kilometers">%1$.1f km</string>
+    <string name="provider_updated_at">%1$s · %2$s</string>
+    <string name="accessibility_optional_message"> %1$s</string>
+    <string name="platform_short">Bin. %1$s</string>
+    <string name="service_status_scheduled_badge">Programmato</string>
+    <string name="service_status_cancelled">Soppresso</string>
+    <string name="service_status_scheduled_compact">Programm.</string>
 
     <!-- Local commuter alerts. -->
     <string name="commuter_alerts_title">Avvisi pendolare</string>

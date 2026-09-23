@@ -272,6 +272,7 @@ private fun BinarioApp(
         )
     }
     var plannedJourneyExport by remember { mutableStateOf<PlannedJourneyExport?>(null) }
+    val resources = LocalResources.current
     val plannedJourneyExportLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("application/octet-stream")
     ) { uri ->
@@ -280,26 +281,35 @@ private fun BinarioApp(
         if (uri != null && export != null) {
             runCatching {
                 context.contentResolver.openOutputStream(uri)?.bufferedWriter()?.use { it.write(export.content) }
-                    ?: error("Impossibile aprire il file scelto")
+                    ?: error(resources.getString(R.string.backup_open_output_error))
             }.onSuccess {
-                plannedJourneyViewModel.note("Esportazione completata.")
+                plannedJourneyViewModel.note(resources.getString(R.string.planned_journey_export_success))
             }.onFailure { error ->
-                plannedJourneyViewModel.note("Esportazione non riuscita: ${error.message ?: "errore file"}")
+                plannedJourneyViewModel.note(resources.getString(R.string.planned_journey_export_failure, error.message ?: resources.getString(R.string.backup_file_error)))
             }
         }
     }
     val plannedJourneyImportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) {
             runCatching {
-                context.contentResolver.openInputStream(uri)?.use(::readBoundedPlannedJourneyDocument)
-                    ?: error("Impossibile leggere il file scelto")
+                context.contentResolver.openInputStream(uri)?.use {
+                    readBoundedPlannedJourneyDocument(
+                        input = it,
+                        tooLargeMessage = maxOf(
+                            PlannedJourneyTransferContract.MAX_BYTES,
+                            PlannedJourneyIcsContract.MAX_BYTES
+                        ).let { limit ->
+                            resources.getQuantityString(R.plurals.planned_journey_import_too_large, limit, limit)
+                        }
+                    )
+                } ?: error(resources.getString(R.string.backup_read_input_error))
             }.onSuccess { content ->
                 plannedJourneyViewModel.previewImport(
                     content = content,
                     isIcs = content.trimStart().startsWith("BEGIN:VCALENDAR")
                 )
             }.onFailure { error ->
-                plannedJourneyViewModel.note("Importazione non riuscita: ${error.message ?: "errore file"}")
+                plannedJourneyViewModel.note(resources.getString(R.string.planned_journey_import_failure, error.message ?: resources.getString(R.string.backup_file_error)))
             }
         }
     }
@@ -307,22 +317,22 @@ private fun BinarioApp(
         val plan = pendingStopAlarm
         pendingStopAlarm = null
         if (granted && plan != null) {
-            stopAlarmFeedback = stopAlarmScheduleFeedback(StopAlarmScheduler.schedule(context, plan), plan)
+            stopAlarmFeedback = stopAlarmScheduleFeedback(resources, StopAlarmScheduler.schedule(context, plan), plan)
         } else {
-            stopAlarmFeedback = "Per ricevere la sveglia alla fermata devi consentire le notifiche di Binario."
+            stopAlarmFeedback = resources.getString(R.string.stop_alarm_permission_required)
         }
     }
     val scheduleStopAlarm: (TrainService, TrainStop) -> Unit = { service, stop ->
         val plan = StopAlarmPlanner.plan(service, stop)
         when {
-            stop.completed -> stopAlarmFeedback = "La fermata ${stop.station} risulta già superata."
-            plan == null -> stopAlarmFeedback = "Non posso pianificare la sveglia: l’orario previsto della fermata è già passato o non è disponibile."
+            stop.completed -> stopAlarmFeedback = resources.getString(R.string.stop_alarm_completed, stop.station)
+            plan == null -> stopAlarmFeedback = resources.getString(R.string.stop_alarm_unavailable)
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED -> {
                 pendingStopAlarm = plan
                 notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
             }
             else -> {
-                stopAlarmFeedback = stopAlarmScheduleFeedback(StopAlarmScheduler.schedule(context, plan), plan)
+                stopAlarmFeedback = stopAlarmScheduleFeedback(resources, StopAlarmScheduler.schedule(context, plan), plan)
             }
         }
     }
@@ -545,7 +555,7 @@ private fun BinarioApp(
                                     .setType("text/plain")
                                     .putExtra(Intent.EXTRA_TITLE, content.title)
                                     .putExtra(Intent.EXTRA_TEXT, content.text),
-                                "Condividi dettagli treno"
+                                resources.getString(R.string.share_train_chooser)
                             )
                         )
                     }
@@ -557,40 +567,40 @@ private fun BinarioApp(
 
 private data class PlannedJourneyExport(val suggestedName: String, val content: String)
 
-private fun readBoundedPlannedJourneyDocument(input: java.io.InputStream): String {
+private fun readBoundedPlannedJourneyDocument(input: java.io.InputStream, tooLargeMessage: String): String {
     val limit = maxOf(PlannedJourneyTransferContract.MAX_BYTES, PlannedJourneyIcsContract.MAX_BYTES)
     val output = java.io.ByteArrayOutputStream()
     val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
     while (true) {
         val read = input.read(buffer)
         if (read <= 0) break
-        require(output.size() + read <= limit) { "Il file supera il limite di importazione di $limit byte" }
+        require(output.size() + read <= limit) { tooLargeMessage }
         output.write(buffer, 0, read)
     }
     return output.toString(Charsets.UTF_8.name())
 }
 
-private fun stopAlarmScheduleFeedback(result: DeviceAlarmScheduleResult, plan: StopAlarmPlan): String =
+private fun stopAlarmScheduleFeedback(resources: android.content.res.Resources, result: DeviceAlarmScheduleResult, plan: StopAlarmPlan): String =
     if (result.isExact) {
-        "Sveglia impostata per ${plan.station}, cinque minuti prima dell’orario previsto ${plan.expectedTime}."
+        resources.getString(R.string.stop_alarm_exact, plan.station, plan.expectedTime)
     } else {
-        "Sveglia impostata per ${plan.station}, ma Android può consegnarla in ritardo perché gli allarmi esatti non sono consentiti."
+        resources.getString(R.string.stop_alarm_inexact, plan.station)
     }
 
-private fun commuterAlertScheduleFeedback(result: CommuterAlertScheduleResult): String = when (result) {
+private fun commuterAlertScheduleFeedback(resources: android.content.res.Resources, result: CommuterAlertScheduleResult): String = when (result) {
     is CommuterAlertScheduleResult.Scheduled -> if (result.isExact) {
-        "Avviso salvato e pianificato sul dispositivo."
+        resources.getString(R.string.commuter_alert_scheduled)
     } else {
-        "Avviso salvato e pianificato in modalità approssimata: Android può consegnarlo in ritardo perché gli allarmi esatti non sono consentiti."
+        resources.getString(R.string.commuter_alert_scheduled_inexact)
     }
     CommuterAlertScheduleResult.QuietHours ->
-        "Avviso salvato ma non pianificato: l’anticipo cade nella fascia silenziosa 22:00–07:00."
+        resources.getString(R.string.commuter_alert_quiet_hours_feedback)
     CommuterAlertScheduleResult.InvalidTime ->
-        "Avviso salvato ma non pianificato: l’orario non è valido."
+        resources.getString(R.string.commuter_alert_invalid_time_feedback)
     CommuterAlertScheduleResult.Disabled ->
-        "Avviso salvato ma disattivato."
+        resources.getString(R.string.commuter_alert_disabled_feedback)
     CommuterAlertScheduleResult.NoUpcomingTrigger ->
-        "Avviso salvato ma non pianificato: non esiste una prossima occorrenza."
+        resources.getString(R.string.commuter_alert_no_trigger_feedback)
 }
 
 @Composable
@@ -640,7 +650,7 @@ private fun TodayScreen(
         }
         item {
             Text(
-                text = "Per variazioni operative in stazione, fai sempre riferimento a monitor e annunci ufficiali.",
+                text = stringResource(R.string.official_information_notice),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(20.dp)
@@ -766,6 +776,7 @@ private fun PlannerScreen(
     var speechMessage by rememberSaveable { mutableStateOf<String?>(null) }
     var voiceTargetName by rememberSaveable { mutableStateOf(SearchMode.ROUTE.name) }
     val context = LocalContext.current
+    val resources = LocalResources.current
     LaunchedEffect(modeRequestId) { mode = initialMode }
     val voiceLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         val voiceTarget = SearchMode.valueOf(voiceTargetName)
@@ -773,7 +784,7 @@ private fun PlannerScreen(
             result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()
         } else null
         if (spoken.isNullOrBlank()) {
-            speechMessage = "Nessun testo ricevuto dalla dettatura. Puoi riprovare o compilare i campi manualmente."
+            speechMessage = resources.getString(R.string.voice_no_text)
         } else {
             val dictationTarget = when (voiceTarget) {
                 SearchMode.ROUTE -> DictationTarget.ROUTE
@@ -818,13 +829,13 @@ private fun PlannerScreen(
             putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
             putExtra(RecognizerIntent.EXTRA_LANGUAGE, "it-IT")
             putExtra(RecognizerIntent.EXTRA_PROMPT, when (target) {
-                SearchMode.ROUTE -> "Dì partenza, arrivo, data, ora o andata e ritorno"
-                SearchMode.TRAIN -> "Dì il numero del treno"
-                SearchMode.STATION -> "Dì il nome della stazione"
+                SearchMode.ROUTE -> resources.getString(R.string.voice_prompt_route)
+                SearchMode.TRAIN -> resources.getString(R.string.voice_prompt_train)
+                SearchMode.STATION -> resources.getString(R.string.voice_prompt_station)
             })
         }
         if (intent.resolveActivity(context.packageManager) == null) {
-            speechMessage = "Il riconoscitore vocale di sistema non è disponibile su questo dispositivo."
+            speechMessage = resources.getString(R.string.voice_unavailable)
         } else voiceLauncher.launch(intent)
     }
     if (showDatePicker) {
@@ -1233,21 +1244,22 @@ private fun StationBoardScreen(modifier: Modifier, viewModel: TrainViewModel) {
     var locationMessage by rememberSaveable { mutableStateOf<String?>(null) }
     var monitorMode by rememberSaveable { mutableStateOf(StationMonitorMode.BOTH.name) }
     val context = LocalContext.current
+    val resources = LocalResources.current
 
     fun locateNearbyStations() {
         requestNearbyStationLocation(context) { location ->
             if (location == null) {
-                locationMessage = "Posizione non disponibile. Attiva la localizzazione del dispositivo e riprova."
+                locationMessage = resources.getString(R.string.location_unavailable)
             } else {
                 viewModel.updateNearbyStations(location.latitude, location.longitude)
-                locationMessage = "Stazioni ordinate dalla posizione appena richiesta. La posizione non è stata salvata."
+                locationMessage = resources.getString(R.string.location_sorted_not_saved)
             }
         }
     }
 
     val locationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         if (granted) locateNearbyStations()
-        else locationMessage = "Permesso posizione non concesso. Puoi continuare a cercare manualmente le stazioni."
+        else locationMessage = resources.getString(R.string.location_permission_denied)
     }
 
     val selectedStation = viewModel.stationFromName(stationText)
@@ -1452,7 +1464,7 @@ private fun StationBoardScreen(modifier: Modifier, viewModel: TrainViewModel) {
                 StationPreferenceRow(
                     station = nearby.station,
                     favourite = viewModel.isStationFavourite(nearby.station),
-                    distanceLabel = String.format(Locale.ITALIAN, "%.1f km", nearby.distanceKm),
+                    distanceLabel = stringResource(R.string.distance_kilometers, nearby.distanceKm),
                     onSelect = {
                         stationText = nearby.station.name
                         viewModel.selectStationBoardStation(nearby.station)
@@ -1488,7 +1500,9 @@ internal fun StationBoardEntryRow(entry: StationBoardEntry, kind: BoardKind) {
     val platformLabel = platform?.let {
         stringResource(R.string.station_board_platform_accessible, it)
     } ?: stringResource(R.string.station_board_platform_unavailable)
-    val trainLabel = entry.publicNumber?.takeIf(String::isNotBlank)?.let { "Treno $it" }.orEmpty()
+    val trainLabel = entry.publicNumber?.takeIf(String::isNotBlank)
+        ?.let { stringResource(R.string.station_board_train_number, it) }
+        .orEmpty()
     val accessibilityDescription = stringResource(
         R.string.station_board_entry_accessibility,
         directionLabel,
@@ -1526,7 +1540,7 @@ internal fun StationBoardEntryRow(entry: StationBoardEntry, kind: BoardKind) {
             )
             Text(
                 listOfNotNull(
-                    entry.publicNumber?.takeIf(String::isNotBlank)?.let { "Treno $it" },
+                    entry.publicNumber?.takeIf(String::isNotBlank)?.let { stringResource(R.string.station_board_train_number, it) },
                     entry.operatorId?.value?.takeIf(String::isNotBlank),
                     entry.status?.value?.stationBoardLabel()
                 ).joinToString(" · "),
@@ -1534,11 +1548,11 @@ internal fun StationBoardEntryRow(entry: StationBoardEntry, kind: BoardKind) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             if (delayedMinutes > 0) {
-                Text("+$delayedMinutes min", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.error)
+                Text(stringResource(R.string.delay_minutes, delayedMinutes), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.error)
             }
             entry.routeChange?.value?.let { change ->
                 Text(
-                    "Variazione: ${change.summary}",
+                    stringResource(R.string.station_board_route_change, change.summary),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.error
                 )
@@ -1571,17 +1585,18 @@ private fun stationBoardStatusAnnouncement(entry: StationBoardEntry): String {
     }
 }
 
+@Composable
 private fun RunStatus.stationBoardLabel(): String = when (this) {
-    RunStatus.SCHEDULED -> "Programmato"
-    RunStatus.ON_TIME -> "In orario"
-    RunStatus.DELAYED -> "In ritardo"
-    RunStatus.CANCELLED -> "Soppresso"
-    RunStatus.PARTIALLY_CANCELLED -> "Parzialmente soppresso"
-    RunStatus.DIVERTED -> "Deviato"
-    RunStatus.ADDED -> "Corsa aggiunta"
-    RunStatus.REPLACED_BY_BUS -> "Sostituito da bus"
-    RunStatus.COMPLETED -> "Completato"
-    RunStatus.UNKNOWN -> "Stato non disponibile"
+    RunStatus.SCHEDULED -> stringResource(R.string.run_status_scheduled)
+    RunStatus.ON_TIME -> stringResource(R.string.run_status_on_time)
+    RunStatus.DELAYED -> stringResource(R.string.run_status_delayed)
+    RunStatus.CANCELLED -> stringResource(R.string.run_status_cancelled)
+    RunStatus.PARTIALLY_CANCELLED -> stringResource(R.string.run_status_partially_cancelled)
+    RunStatus.DIVERTED -> stringResource(R.string.run_status_diverted)
+    RunStatus.ADDED -> stringResource(R.string.run_status_added)
+    RunStatus.REPLACED_BY_BUS -> stringResource(R.string.run_status_bus_replacement)
+    RunStatus.COMPLETED -> stringResource(R.string.run_status_completed)
+    RunStatus.UNKNOWN -> stringResource(R.string.run_status_unknown)
 }
 
 private val BOARD_ZONE: ZoneId = ZoneId.of("Europe/Rome")
@@ -1629,7 +1644,10 @@ private fun StationPreferenceRow(
         IconButton(onClick = onToggleFavourite) {
             Icon(
                 imageVector = if (favourite) Icons.Default.Star else Icons.Default.StarBorder,
-                contentDescription = if (favourite) "Rimuovi ${station.name} dalle stazioni preferite" else "Aggiungi ${station.name} alle stazioni preferite"
+                contentDescription = stringResource(
+                    if (favourite) R.string.accessibility_remove_favourite_station else R.string.accessibility_add_favourite_station,
+                    station.name
+                )
             )
         }
     }
@@ -1652,21 +1670,23 @@ private fun BoardRouteHeader(
         Column(Modifier.padding(horizontal = 20.dp, vertical = 14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text("PARTENZE · ${if (direction == Direction.OUTBOUND) "ANDATA" else "RITORNO"}", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                    val directionUppercase = stringResource(if (direction == Direction.OUTBOUND) R.string.planner_outbound else R.string.planner_return)
+                    val directionLabel = stringResource(if (direction == Direction.OUTBOUND) R.string.direction_outbound else R.string.direction_return)
+                    Text(stringResource(R.string.board_header_title, directionUppercase), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
                     Text(route.displayName(direction), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                    Text("${route.name} · ${if (direction == Direction.OUTBOUND) "Andata" else "Ritorno"}", style = MaterialTheme.typography.bodySmall)
+                    Text(stringResource(R.string.board_route_direction, route.name, directionLabel), style = MaterialTheme.typography.bodySmall)
                 }
                 IconButton(onClick = onRefresh) {
-                    Icon(Icons.Default.Refresh, contentDescription = "Aggiorna partenze. Stato: ${refreshState.accessibleLabel}")
+                    Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.accessibility_refresh_departures, refreshState.accessibleLabel))
                 }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 FilledTonalButton(onClick = onSwitchDirection) {
                     Icon(Icons.Default.SwapHoriz, contentDescription = null)
                     Spacer(Modifier.width(6.dp))
-                    Text("Direzione")
+                    Text(stringResource(R.string.action_direction))
                 }
-                TextButton(onClick = onRoutes) { Text("Cambia tratta", color = MaterialTheme.colorScheme.onPrimary) }
+                TextButton(onClick = onRoutes) { Text(stringResource(R.string.action_change_route), color = MaterialTheme.colorScheme.onPrimary) }
             }
         }
     }
@@ -1678,10 +1698,10 @@ private fun BoardColumnHeader() {
         modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceVariant).padding(horizontal = 20.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text("ORA", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, modifier = Modifier.width(68.dp))
-        Text("DESTINAZIONE / TRENO", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-        Text("BIN.", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, modifier = Modifier.width(42.dp), textAlign = androidx.compose.ui.text.style.TextAlign.End)
-        Text("STATO", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, modifier = Modifier.width(50.dp), textAlign = androidx.compose.ui.text.style.TextAlign.End)
+        Text(stringResource(R.string.board_column_time), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, modifier = Modifier.width(68.dp))
+        Text(stringResource(R.string.board_column_service), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+        Text(stringResource(R.string.board_column_platform), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, modifier = Modifier.width(42.dp), textAlign = androidx.compose.ui.text.style.TextAlign.End)
+        Text(stringResource(R.string.board_column_status), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, modifier = Modifier.width(50.dp), textAlign = androidx.compose.ui.text.style.TextAlign.End)
     }
 }
 
@@ -1694,8 +1714,8 @@ private fun MonitoredRoutesStrip(
 ) {
     Column(Modifier.padding(top = 14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text("Tratte monitorate", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-            TextButton(onClick = onManage) { Text("Gestisci") }
+            Text(stringResource(R.string.monitored_routes_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+            TextButton(onClick = onManage) { Text(stringResource(R.string.action_manage)) }
         }
         LazyRow(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -1738,7 +1758,7 @@ private fun DataStatusLine(
         provider,
         confidence,
         accessibleUpdateTime(refreshedAt),
-        message?.takeIf(String::isNotBlank)?.let { " $it" }.orEmpty()
+        message?.takeIf(String::isNotBlank)?.let { stringResource(R.string.accessibility_optional_message, it) }.orEmpty()
     )
     Row(
         modifier = Modifier
@@ -1753,7 +1773,7 @@ private fun DataStatusLine(
         Spacer(Modifier.width(8.dp))
         Column(Modifier.weight(1f)) {
             Text(label, style = MaterialTheme.typography.labelLarge, color = color, fontWeight = FontWeight.Bold)
-            Text(if (refreshedAt > 0L) "$provider · ${accessibleUpdateTime(refreshedAt)}" else provider, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(if (refreshedAt > 0L) stringResource(R.string.provider_updated_at, provider, accessibleUpdateTime(refreshedAt)) else provider, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
             message?.takeIf { it.isNotBlank() }?.let {
                 Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
@@ -1798,13 +1818,13 @@ private fun DepartureListRow(service: TrainService, isNext: Boolean = false, onO
     ) {
         Column(Modifier.width(68.dp)) {
             Text(service.expectedDeparture, style = MaterialTheme.typography.titleLarge, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
-            if (!service.operationalStatusVerified) Text("programmato", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            else if (service.delayMinutes > 0) Text("+${service.delayMinutes} min", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.tertiary, fontWeight = FontWeight.Bold)
-            else Text("in orario", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.secondary)
+            if (!service.operationalStatusVerified) Text(stringResource(R.string.service_scheduled_lowercase), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            else if (service.delayMinutes > 0) Text(stringResource(R.string.delay_minutes, service.delayMinutes), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.tertiary, fontWeight = FontWeight.Bold)
+            else Text(stringResource(R.string.service_on_time_lowercase), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.secondary)
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(service.destination, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text("${service.displayOperator} · ${service.category} ${service.number}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(stringResource(R.string.service_operator_category_number, service.displayOperator, service.category, service.number), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
             service.routeChange?.let {
                 Text(
                     routeChangeLabel(it),
@@ -1816,7 +1836,7 @@ private fun DepartureListRow(service: TrainService, isNext: Boolean = false, onO
             }
         }
         Column(horizontalAlignment = Alignment.End, modifier = Modifier.width(50.dp)) {
-            Text(service.platform?.let { "Bin. $it" } ?: "—", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+            Text(service.platform?.let { stringResource(R.string.platform_short, it) } ?: "—", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
         }
         Column(horizontalAlignment = Alignment.End, modifier = Modifier.width(50.dp)) {
             Text(compactStatusLabel(service), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
@@ -1828,14 +1848,14 @@ private fun DepartureListRow(service: TrainService, isNext: Boolean = false, onO
 @Composable
 private fun TodayEmptyState(state: RefreshState, message: String?, onRefresh: () -> Unit, onRoutes: () -> Unit) {
     Column(Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(12.dp), horizontalAlignment = Alignment.Start) {
-        Text(if (state == RefreshState.LOADING) "Cerco le partenze…" else "Nessuna partenza da mostrare", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-        Text("Aggiorna la tratta attiva oppure scegli una tratta salvata diversa. I dati non disponibili non vengono sostituiti con orari stimati.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(stringResource(if (state == RefreshState.LOADING) R.string.today_empty_loading else R.string.today_empty_title), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+        Text(stringResource(R.string.today_empty_description), color = MaterialTheme.colorScheme.onSurfaceVariant)
         message?.takeIf { it.isNotBlank() }?.let {
             Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(onClick = onRefresh) { Text("Aggiorna") }
-            OutlinedButton(onClick = onRoutes) { Text("Cambia tratta") }
+            Button(onClick = onRefresh) { Text(stringResource(R.string.action_refresh)) }
+            OutlinedButton(onClick = onRoutes) { Text(stringResource(R.string.action_change_route)) }
         }
     }
 }
@@ -1845,7 +1865,7 @@ private fun SearchInfoState(title: String, message: String, openRoutes: (() -> U
     Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         Text(message, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        openRoutes?.let { OutlinedButton(onClick = it) { Text("Apri le mie tratte") } }
+        openRoutes?.let { OutlinedButton(onClick = it) { Text(stringResource(R.string.action_open_routes)) } }
     }
 }
 
@@ -1860,7 +1880,7 @@ private fun OperatorFilterBar(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 20.dp)
     ) {
-        item { FilterChip(selected = selected == null, onClick = { onSelected(null) }, label = { Text("Tutti") }) }
+        item { FilterChip(selected = selected == null, onClick = { onSelected(null) }, label = { Text(stringResource(R.string.filter_all)) }) }
         items(operators, key = { it.lowercase(Locale.ROOT) }) { operator ->
             FilterChip(
                 selected = selected?.equals(operator, ignoreCase = true) == true,
@@ -1874,7 +1894,7 @@ private fun OperatorFilterBar(
 @Composable
 private fun JourneyChangeFilterBar(selected: JourneyChangeFilter, onSelected: (JourneyChangeFilter) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text("CAMBI", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+        Text(stringResource(R.string.journey_changes_uppercase), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
         LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             items(JourneyChangeFilter.entries) { filter ->
                 FilterChip(
@@ -1890,9 +1910,10 @@ private fun JourneyChangeFilterBar(selected: JourneyChangeFilter, onSelected: (J
 
 @Composable
 private fun VoiceInputButton(onClick: () -> Unit, label: String) {
+    val accessibilityLabel = stringResource(R.string.accessibility_system_voice_input, label)
     OutlinedButton(
         onClick = onClick,
-        modifier = Modifier.fillMaxWidth().semantics { contentDescription = "$label tramite riconoscitore vocale di sistema" }
+        modifier = Modifier.fillMaxWidth().semantics { contentDescription = accessibilityLabel }
     ) {
         Icon(Icons.Default.Mic, contentDescription = null)
         Spacer(Modifier.width(8.dp))
@@ -1945,7 +1966,7 @@ private fun SettingsScreen(
         val alert = pendingAlert
         pendingAlert = null
         if (granted && alert != null) {
-            alertFeedback = commuterAlertScheduleFeedback(CommuterAlertScheduler.schedule(context, alert))
+            alertFeedback = commuterAlertScheduleFeedback(resources, CommuterAlertScheduler.schedule(context, alert))
         } else {
             alertFeedback = resources.getString(R.string.notification_permission_required)
         }
@@ -1967,7 +1988,7 @@ private fun SettingsScreen(
                     pendingAlert = alert
                     notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
                 } else {
-                    alertFeedback = commuterAlertScheduleFeedback(CommuterAlertScheduler.schedule(context, alert))
+                    alertFeedback = commuterAlertScheduleFeedback(resources, CommuterAlertScheduler.schedule(context, alert))
                 }
             }
         )
@@ -2096,9 +2117,10 @@ private fun SettingsSectionTitle(title: String) {
 
 @Composable
 private fun SettingsActionRow(title: String, detail: String, onClick: () -> Unit) {
+    val accessibilityLabel = stringResource(R.string.accessibility_title_detail, title, detail)
     TextButton(
         onClick = onClick,
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp).semantics { contentDescription = "$title. $detail" }
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp).semantics { contentDescription = accessibilityLabel }
     ) {
         Column(Modifier.weight(1f), horizontalAlignment = Alignment.Start) {
             Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
@@ -2290,8 +2312,9 @@ private fun IntegrationsPanel(
 
 @Composable
 private fun IntegrationChoice(title: String, detail: String, selected: Boolean, onClick: () -> Unit) {
+    val accessibilityLabel = stringResource(R.string.accessibility_title_detail, title, detail)
     Row(
-        modifier = Modifier.fillMaxWidth().semantics { contentDescription = "$title. $detail" },
+        modifier = Modifier.fillMaxWidth().semantics { contentDescription = accessibilityLabel },
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -2330,21 +2353,21 @@ private fun RouteListRow(
         Row(Modifier.padding(horizontal = 20.dp, vertical = 16.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 Text(route.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                if (route.isPinned) Text("Tratta fissata", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                if (route.isPinned) Text(stringResource(R.string.route_pinned), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
                 Text(route.displayName(Direction.OUTBOUND), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
             Column(horizontalAlignment = Alignment.End) {
                 IconButton(onClick = { onMove(-1) }, enabled = canMoveUp) {
-                    Icon(Icons.Default.ArrowUpward, contentDescription = "Sposta ${route.name} su")
+                    Icon(Icons.Default.ArrowUpward, contentDescription = stringResource(R.string.accessibility_move_route_up, route.name))
                 }
                 IconButton(onClick = { onMove(1) }, enabled = canMoveDown) {
-                    Icon(Icons.Default.ArrowDownward, contentDescription = "Sposta ${route.name} giù")
+                    Icon(Icons.Default.ArrowDownward, contentDescription = stringResource(R.string.accessibility_move_route_down, route.name))
                 }
                 IconButton(onClick = onPin) {
-                    Icon(if (route.isPinned) Icons.Default.Star else Icons.Default.StarBorder, contentDescription = if (route.isPinned) "Rimuovi fissaggio" else "Fissa tratta")
+                    Icon(if (route.isPinned) Icons.Default.Star else Icons.Default.StarBorder, contentDescription = stringResource(if (route.isPinned) R.string.accessibility_unpin_route else R.string.accessibility_pin_route))
                 }
                 IconButton(onClick = onRemove, enabled = canRemove) {
-                    Icon(Icons.Default.DeleteOutline, contentDescription = "Elimina tratta ${route.name}")
+                    Icon(Icons.Default.DeleteOutline, contentDescription = stringResource(R.string.accessibility_delete_route, route.name))
                 }
             }
         }
@@ -2362,8 +2385,8 @@ private fun RouteComposerSheet(viewModel: TrainViewModel, onDismiss: () -> Unit)
     val destination = viewModel.stationFromName(destinationText)
     ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(Modifier.padding(horizontal = 20.dp).padding(bottom = 32.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text("Nuova tratta", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-            Text("Scegli origine e destinazione. La tratta rimane solo sul dispositivo.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(stringResource(R.string.route_composer_title), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+            Text(stringResource(R.string.route_composer_description), color = MaterialTheme.colorScheme.onSurfaceVariant)
             StationField(
                             label = stringResource(R.string.planner_origin),
                             value = originText,
@@ -2374,7 +2397,7 @@ private fun RouteComposerSheet(viewModel: TrainViewModel, onDismiss: () -> Unit)
             TextButton(onClick = { val current = originText; originText = destinationText; destinationText = current }) {
                 Icon(Icons.Default.SwapHoriz, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
-                Text("Scambia stazioni")
+                Text(stringResource(R.string.route_swap_stations))
             }
             StationField(
                             label = stringResource(R.string.planner_destination),
@@ -2383,12 +2406,12 @@ private fun RouteComposerSheet(viewModel: TrainViewModel, onDismiss: () -> Unit)
                             matches = viewModel.stationSuggestions("route-composer-destination"),
                             onSelect = { destinationText = it.name; viewModel.clearStationSuggestions("route-composer-destination") }
                         )
-            OutlinedTextField(value = routeName, onValueChange = { routeName = it }, modifier = Modifier.fillMaxWidth(), singleLine = true, label = { Text("Nome personale facoltativo") }, placeholder = { Text("Es. Casa – lavoro") })
+            OutlinedTextField(value = routeName, onValueChange = { routeName = it }, modifier = Modifier.fillMaxWidth(), singleLine = true, label = { Text(stringResource(R.string.route_name_optional)) }, placeholder = { Text(stringResource(R.string.route_name_example)) })
             Button(
                 onClick = { if (viewModel.createRoute(origin!!, destination!!, routeName)) onDismiss() },
                 enabled = origin != null && destination != null && origin != destination,
                 modifier = Modifier.fillMaxWidth()
-            ) { Text("Salva e attiva tratta") }
+            ) { Text(stringResource(R.string.route_save_and_activate)) }
         }
     }
 }
@@ -2443,22 +2466,22 @@ private fun ServiceDetailScreen(
     onEndActiveTrip: () -> Unit,
     onShare: () -> Unit
 ) {
-    val dataLabel = if (isDemonstration) "Catalogo dimostrativo locale — non live" else freshness?.accessibleLabel ?: "dati non disponibili in tempo reale"
+    val dataLabel = if (isDemonstration) stringResource(R.string.data_status_demo) else freshness?.accessibleLabel ?: stringResource(R.string.data_status_unavailable)
     LazyColumn(modifier = modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(0.dp)) {
         item {
             Surface(color = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary, shape = RoundedCornerShape(bottomStart = 28.dp, bottomEnd = 28.dp), modifier = Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("${service.displayOperator} · ${service.category}", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
-                    Text("${service.number} · ${service.origin} → ${service.destination}", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    Text(stringResource(R.string.service_operator_category, service.displayOperator, service.category), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+                    Text(stringResource(R.string.service_number_route, service.number, service.origin, service.destination), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
-                            Text("Partenza prevista", style = MaterialTheme.typography.labelMedium)
+                            Text(stringResource(R.string.service_expected_departure), style = MaterialTheme.typography.labelMedium)
                             Text(service.expectedDeparture, style = MaterialTheme.typography.displaySmall, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
-                            Text("Programmata ${service.scheduledDeparture}", style = MaterialTheme.typography.bodySmall)
+                            Text(stringResource(R.string.service_scheduled_departure, service.scheduledDeparture), style = MaterialTheme.typography.bodySmall)
                         }
                         ServiceStatusBadge(service)
                     }
-                    Text(service.platform?.let { "Binario $it" } ?: "Binario da confermare", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text(service.platform?.let { stringResource(R.string.platform_label, it) } ?: stringResource(R.string.platform_to_confirm), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -2473,18 +2496,18 @@ private fun ServiceDetailScreen(
         item {
             Row(Modifier.fillMaxWidth().padding(20.dp), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text("Fermate", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                    Text("$dataLabel · $provider · $confidence", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    Text(stringResource(R.string.service_stops_title), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                    Text(stringResource(R.string.service_data_summary, dataLabel, provider, confidence), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
                     Text(accessibleUpdateTime(refreshedAt), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 Row {
                     IconButton(onClick = onShare) {
-                        Icon(Icons.Default.Share, contentDescription = "Condividi dettagli del treno con le app di sistema")
+                        Icon(Icons.Default.Share, contentDescription = stringResource(R.string.accessibility_share_service))
                     }
                     IconButton(onClick = onToggleMonitoring) {
-                        Icon(if (isMonitored) Icons.Default.Star else Icons.Default.StarBorder, contentDescription = if (isMonitored) "Rimuovi monitoraggio treno" else "Monitora questo treno")
+                        Icon(if (isMonitored) Icons.Default.Star else Icons.Default.StarBorder, contentDescription = stringResource(if (isMonitored) R.string.accessibility_stop_monitoring_service else R.string.accessibility_monitor_service))
                     }
-                    IconButton(onClick = onRefresh) { Icon(Icons.Default.Refresh, contentDescription = "Aggiorna dettaglio della corsa") }
+                    IconButton(onClick = onRefresh) { Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.accessibility_refresh_service)) }
                 }
             }
         }
@@ -2496,13 +2519,19 @@ private fun ServiceDetailScreen(
             ) {
                 Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     val isThisTrip = activeTrip?.trainNumber == service.number
-                    Text(if (isThisTrip) "Viaggio attivo" else "Segui questo viaggio", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-                    Text(if (isThisTrip) activeTrip?.nextStop?.let { "Prossima fermata: ${it.station} alle ${it.expected}" } ?: "Viaggio completato" else "Conserva localmente la prossima fermata e avanzala manualmente.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(stringResource(if (isThisTrip) R.string.active_trip_title else R.string.follow_trip_title), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                    val tripDescription = if (isThisTrip) {
+                        activeTrip?.nextStop?.let { stringResource(R.string.personal_travel_next_stop, it.station, it.expected) }
+                            ?: stringResource(R.string.personal_travel_completed)
+                    } else {
+                        stringResource(R.string.follow_trip_description)
+                    }
+                    Text(tripDescription, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        if (!isThisTrip) Button(onClick = onStartActiveTrip) { Text("Inizia viaggio") }
+                        if (!isThisTrip) Button(onClick = onStartActiveTrip) { Text(stringResource(R.string.action_start_trip)) }
                         else {
-                            OutlinedButton(onClick = onAdvanceActiveTrip, enabled = activeTrip?.isComplete == false) { Text("Fermata raggiunta") }
-                            TextButton(onClick = onEndActiveTrip) { Text("Termina") }
+                            OutlinedButton(onClick = onAdvanceActiveTrip, enabled = activeTrip?.isComplete == false) { Text(stringResource(R.string.action_stop_reached)) }
+                            TextButton(onClick = onEndActiveTrip) { Text(stringResource(R.string.action_end)) }
                         }
                     }
                 }
@@ -2520,7 +2549,7 @@ private fun ServiceDetailScreen(
         }
         item {
             Text(
-                "La sveglia è locale e si basa sull’orario mostrato. Per variazioni operative fai sempre riferimento a monitor e annunci ufficiali.",
+                stringResource(R.string.stop_alarm_notice),
                 modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -2555,18 +2584,32 @@ private fun StopTimelineRow(
     routeChange: StopRouteChange,
     onSetAlarm: () -> Unit
 ) {
+    val changeLabel = when (routeChange) {
+        StopRouteChange.NONE -> ""
+        StopRouteChange.ADDED -> stringResource(R.string.stop_change_added_accessibility) + " "
+        StopRouteChange.SKIPPED -> stringResource(R.string.stop_change_skipped_accessibility) + " "
+    }
+    val operationalLabel = when {
+        !operationalStatusVerified -> stringResource(R.string.operational_status_unverified)
+        delay > 0 -> pluralStringResource(R.plurals.operational_delay_minutes, delay, delay)
+        else -> stringResource(R.string.operational_on_time)
+    }
+    val platformLabel = platform?.let { stringResource(R.string.platform_label, it) }
+        ?: stringResource(R.string.platform_unavailable)
+    val accessibilityLabel = stringResource(
+        R.string.accessibility_stop_timeline,
+        station,
+        changeLabel,
+        expected,
+        scheduled,
+        operationalLabel,
+        platformLabel
+    )
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp, vertical = 10.dp)
-            .semantics {
-                val changeLabel = when (routeChange) {
-                    StopRouteChange.NONE -> ""
-                    StopRouteChange.ADDED -> " Fermata aggiunta al percorso operativo."
-                    StopRouteChange.SKIPPED -> " Fermata saltata nel percorso operativo."
-                }
-                contentDescription = "$station.$changeLabel Previsto $expected. Programmato $scheduled. ${if (!operationalStatusVerified) "Stato operativo non verificato" else if (delay > 0) "$delay minuti di ritardo" else "In orario"}. ${platform?.let { "Binario $it" } ?: "Binario non disponibile"}."
-            },
+            .semantics { contentDescription = accessibilityLabel },
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(28.dp)) {
@@ -2580,19 +2623,19 @@ private fun StopTimelineRow(
                 color = if (routeChange == StopRouteChange.SKIPPED) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
             )
             when (routeChange) {
-                StopRouteChange.SKIPPED -> Text("FERMATA SALTATA", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
-                StopRouteChange.ADDED -> Text("FERMATA AGGIUNTA", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.tertiary, fontWeight = FontWeight.Bold)
+                StopRouteChange.SKIPPED -> Text(stringResource(R.string.stop_skipped_uppercase), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
+                StopRouteChange.ADDED -> Text(stringResource(R.string.stop_added_uppercase), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.tertiary, fontWeight = FontWeight.Bold)
                 StopRouteChange.NONE -> Unit
             }
-            Text(platform?.let { "Binario $it" } ?: "Binario da confermare", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(platform?.let { stringResource(R.string.platform_label, it) } ?: stringResource(R.string.platform_to_confirm), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Column(horizontalAlignment = Alignment.End) {
             Text(expected, style = MaterialTheme.typography.titleMedium, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
-            if (expected != scheduled) Text("prev. $scheduled", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            if (delay > 0) Text("+$delay min", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.tertiary, fontWeight = FontWeight.Bold)
+            if (expected != scheduled) Text(stringResource(R.string.scheduled_time_short, scheduled), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (delay > 0) Text(stringResource(R.string.delay_minutes, delay), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.tertiary, fontWeight = FontWeight.Bold)
             if (!completed) {
                 TextButton(onClick = onSetAlarm, contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)) {
-                    Text("Sveglia")
+                    Text(stringResource(R.string.action_stop_alarm))
                 }
             }
         }
@@ -2613,29 +2656,29 @@ private fun RouteChangeBanner(
     val container = if (severe) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.tertiaryContainer
     val foreground = if (severe) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onTertiaryContainer
     val sourceLabel = sourceIds.takeIf { it.isNotEmpty() }?.joinToString(", ")
+    val routeChangeTitle = routeChangeLabel(routeChange)
+    val skippedDescription = routeChange.skippedStopLabels.takeIf { it.isNotEmpty() }
+        ?.let { stringResource(R.string.route_change_accessibility_skipped, it.joinToString(", ")) }
+    val addedDescription = routeChange.addedStopLabels.takeIf { it.isNotEmpty() }
+        ?.let { stringResource(R.string.route_change_accessibility_added, it.joinToString(", ")) }
+    val viaDescription = routeChange.viaStopLabels.takeIf { it.isNotEmpty() }
+        ?.let { stringResource(R.string.route_change_accessibility_via, it.joinToString(", ")) }
+    val destinationDescription = routeChange.replacementDestinationLabel
+        ?.let { stringResource(R.string.route_change_destination, it) }
+    val accessibilityLabel = listOfNotNull(
+        routeChangeTitle,
+        routeChange.summary,
+        skippedDescription,
+        addedDescription,
+        viaDescription,
+        destinationDescription
+    ).joinToString(". ")
 
     Surface(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp, vertical = 10.dp)
-            .semantics {
-                contentDescription = buildString {
-                    append(routeChangeLabel(routeChange)).append(". ")
-                    append(routeChange.summary)
-                    if (routeChange.skippedStopLabels.isNotEmpty()) {
-                        append(". Fermate saltate: ").append(routeChange.skippedStopLabels.joinToString(", "))
-                    }
-                    if (routeChange.addedStopLabels.isNotEmpty()) {
-                        append(". Fermate aggiunte: ").append(routeChange.addedStopLabels.joinToString(", "))
-                    }
-                    if (routeChange.viaStopLabels.isNotEmpty()) {
-                        append(". Nuovo instradamento via: ").append(routeChange.viaStopLabels.joinToString(", "))
-                    }
-                    routeChange.replacementDestinationLabel?.let {
-                        append(". Nuovo capolinea: ").append(it)
-                    }
-                }
-            },
+            .semantics { contentDescription = accessibilityLabel },
         color = container,
         contentColor = foreground,
         shape = RoundedCornerShape(14.dp)
@@ -2647,35 +2690,36 @@ private fun RouteChangeBanner(
         ) {
             Icon(Icons.Default.Route, contentDescription = null, modifier = Modifier.size(24.dp))
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                Text(routeChangeLabel(routeChange), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                Text(routeChangeTitle, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                 Text(routeChange.summary, style = MaterialTheme.typography.bodyMedium)
                 if (routeChange.skippedStopLabels.isNotEmpty()) {
-                    Text("Saltate: ${routeChange.skippedStopLabels.joinToString(", ")}", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
+                    Text(stringResource(R.string.route_change_skipped, routeChange.skippedStopLabels.joinToString(", ")), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
                 }
                 if (routeChange.addedStopLabels.isNotEmpty()) {
-                    Text("Aggiunte: ${routeChange.addedStopLabels.joinToString(", ")}", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
+                    Text(stringResource(R.string.route_change_added, routeChange.addedStopLabels.joinToString(", ")), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
                 }
                 if (routeChange.viaStopLabels.isNotEmpty()) {
-                    Text("Via: ${routeChange.viaStopLabels.joinToString(", ")}", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
+                    Text(stringResource(R.string.route_change_via, routeChange.viaStopLabels.joinToString(", ")), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
                 }
                 routeChange.replacementDestinationLabel?.let {
-                    Text("Nuovo capolinea: $it", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
+                    Text(stringResource(R.string.route_change_destination, it), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
                 }
                 sourceLabel?.let {
-                    Text("Fonte: $it", style = MaterialTheme.typography.labelSmall)
+                    Text(stringResource(R.string.route_change_source, it), style = MaterialTheme.typography.labelSmall)
                 }
             }
         }
     }
 }
 
+@Composable
 private fun routeChangeLabel(routeChange: OperationalRouteChange): String = when (routeChange.kind) {
-    RouteChangeKind.DIVERTED -> "PERCORSO MODIFICATO"
-    RouteChangeKind.SKIPPED_STOPS -> "FERMATE MODIFICATE"
-    RouteChangeKind.ADDED_STOPS -> "FERMATE AGGIUNTE"
-    RouteChangeKind.SHORT_TURN -> "CORSA LIMITATA"
-    RouteChangeKind.REPLACEMENT_SERVICE -> "SERVIZIO SOSTITUTIVO"
-    RouteChangeKind.OTHER -> "VARIAZIONE DI PERCORSO"
+    RouteChangeKind.DIVERTED -> stringResource(R.string.route_change_label_diverted)
+    RouteChangeKind.SKIPPED_STOPS -> stringResource(R.string.route_change_label_skipped)
+    RouteChangeKind.ADDED_STOPS -> stringResource(R.string.route_change_label_added)
+    RouteChangeKind.SHORT_TURN -> stringResource(R.string.route_change_label_short_turn)
+    RouteChangeKind.REPLACEMENT_SERVICE -> stringResource(R.string.route_change_label_replacement)
+    RouteChangeKind.OTHER -> stringResource(R.string.route_change_label_other)
 }
 
 @Composable
@@ -2689,22 +2733,23 @@ private fun routeChangeAccent(routeChange: OperationalRouteChange) =
 @Composable
 private fun ServiceStatusBadge(service: TrainService) {
     val (container, foreground, text) = if (!service.operationalStatusVerified) {
-        Triple(MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.colorScheme.onSurfaceVariant, "Programmato")
+        Triple(MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.colorScheme.onSurfaceVariant, stringResource(R.string.service_status_scheduled_badge))
     } else when (service.status) {
-        ServiceStatus.ON_TIME -> Triple(MaterialTheme.colorScheme.secondary, MaterialTheme.colorScheme.onSecondary, "In orario")
-        ServiceStatus.DELAYED -> Triple(MaterialTheme.colorScheme.tertiary, MaterialTheme.colorScheme.onTertiary, "+${service.delayMinutes} min")
-        ServiceStatus.CANCELLED -> Triple(MaterialTheme.colorScheme.error, MaterialTheme.colorScheme.onError, "Soppresso")
+        ServiceStatus.ON_TIME -> Triple(MaterialTheme.colorScheme.secondary, MaterialTheme.colorScheme.onSecondary, stringResource(R.string.operational_on_time))
+        ServiceStatus.DELAYED -> Triple(MaterialTheme.colorScheme.tertiary, MaterialTheme.colorScheme.onTertiary, stringResource(R.string.delay_minutes, service.delayMinutes))
+        ServiceStatus.CANCELLED -> Triple(MaterialTheme.colorScheme.error, MaterialTheme.colorScheme.onError, stringResource(R.string.service_status_cancelled))
     }
     Surface(color = container, contentColor = foreground, shape = RoundedCornerShape(999.dp)) {
         Text(text, modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
     }
 }
 
+@Composable
 private fun compactStatusLabel(service: TrainService): String {
-    if (!service.operationalStatusVerified) return "Programm."
+    if (!service.operationalStatusVerified) return stringResource(R.string.service_status_scheduled_compact)
     return when (service.status) {
-        ServiceStatus.ON_TIME -> "In orario"
-        ServiceStatus.DELAYED -> "+${service.delayMinutes} min"
-        ServiceStatus.CANCELLED -> "Soppresso"
+        ServiceStatus.ON_TIME -> stringResource(R.string.operational_on_time)
+        ServiceStatus.DELAYED -> stringResource(R.string.delay_minutes, service.delayMinutes)
+        ServiceStatus.CANCELLED -> stringResource(R.string.service_status_cancelled)
     }
 }
