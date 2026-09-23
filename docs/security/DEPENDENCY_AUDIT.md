@@ -33,9 +33,11 @@ Al momento dell'attivazione, GitHub ha segnalato sul **default branch** 155 aler
 
 ## Dipendenze Gradle verificate
 
-Il progetto Android/Wear usa `gradle/verification-metadata.xml` in modalità strict. Il file contiene un solo SHA-256 per ciascuno dei 1.041 artifact appartenenti a 599 componenti, inclusi plugin Android/Kotlin, metadata Maven e dipendenze transitive. Non sono presenti algoritmi deboli, `trusted-artifacts`, chiavi ignorate o altre aperture. Gradle verifica automaticamente il grafo quando trova il metadata; il workflow Android richiede inoltre esplicitamente `--dependency-verification=strict`.[1]
+Il progetto Android/Wear usa `gradle/verification-metadata.xml` in modalità strict. Il file contiene un solo SHA-256 per ciascuno dei 1.041 artifact appartenenti a 599 componenti, inclusi plugin Android/Kotlin, metadata Maven e dipendenze transitive. Il Companion usa un secondo lock sorgente in `companion-expo/native/android/verification-metadata.xml`: copre 2.043 artifact di 1.127 componenti, inclusi React Native, Expo, plugin Gradle e Wear. Il plugin Expo lo copia byte per byte in `android/gradle/verification-metadata.xml` durante ogni prebuild pulito; il verifier release richiede che le due copie coincidano.
 
-`tools/verify_gradle_dependency_metadata.py` controlla struttura, copertura minima, componenti critici e assenza di bypass. Cinque regressioni negative provano la disattivazione del metadata, l'aggiunta di trust globale, checksum mancanti o malformati e componenti duplicati. Ogni aggiornamento proposto da Dependabot deve rigenerare il metadata con il gate completo e sottoporre a review il relativo diff.
+Non sono presenti algoritmi deboli, `trusted-artifacts`, chiavi ignorate o altre aperture. Gradle verifica automaticamente il grafo quando trova il metadata; entrambi i workflow nativi richiedono inoltre esplicitamente `--dependency-verification=strict`.[1]
+
+`tools/verify_gradle_dependency_metadata.py` controlla struttura, copertura minima, componenti critici e assenza di bypass per entrambi i profili. Sei test coprono i due lock e provano la disattivazione del metadata, l'aggiunta di trust globale, checksum mancanti o malformati e componenti duplicati. Ogni aggiornamento proposto da Dependabot deve rigenerare il metadata interessato con il gate completo e sottoporre a review il relativo diff.
 
 ## Input CI immutabili
 

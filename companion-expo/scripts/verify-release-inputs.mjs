@@ -42,6 +42,18 @@ if (!wearReleaseBlock) {
   fail("Wear release build must never use signingConfigs.debug.");
 }
 
+const gradleVerificationSource = read("native/android/verification-metadata.xml");
+const gradleVerificationGenerated = read("android/gradle/verification-metadata.xml");
+if (gradleVerificationGenerated !== gradleVerificationSource) {
+  fail("generated Gradle verification metadata must match the reviewed source lock.");
+}
+if (!gradleVerificationSource.includes("<verify-metadata>true</verify-metadata>")) {
+  fail("Gradle dependency metadata verification must remain enabled.");
+}
+if (gradleVerificationSource.includes("<trusted-artifacts>")) {
+  fail("Gradle dependency verification must not trust artifact patterns.");
+}
+
 const mainManifest = read("android/app/src/main/AndroidManifest.xml");
 for (const permission of [
   "android.permission.ACCESS_FINE_LOCATION",

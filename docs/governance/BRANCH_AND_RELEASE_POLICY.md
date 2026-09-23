@@ -18,7 +18,7 @@ I workflow Android e Companion vengono eseguiti per ogni `pull_request` e per og
 | --- | --- | --- |
 | Validazione Gradle Wrapper | Repository | Tutti i wrapper Gradle tracciati superano `gradle/actions/wrapper-validation`; file eseguibili e JAR non validi bloccano la build. |
 | Input CI revisionati | Repository | GitHub Actions a SHA completo, immagini OCI a digest, runtime patch-pinned, runner in allowlist versionata e download XcodeGen con SHA-256; `tools/verify_ci_pinning.py` blocca riferimenti o trigger mobili/incompleti. |
-| Dipendenze Gradle verificate | Android/Wear | `gradle/verification-metadata.xml` contiene un SHA-256 revisionato per ogni artifact e metadata risolto; il verifier statico e Gradle in modalità strict bloccano assenze, alterazioni e trust bypass. |
+| Dipendenze Gradle verificate | Android/Wear e Companion | I lock root e Companion contengono un SHA-256 revisionato per ogni artifact e metadata risolto; il prebuild copia il lock Companion sorgente senza modificarlo, mentre verifier statici e Gradle strict bloccano assenze, alterazioni e trust bypass. |
 | Integrità asset Android | Android | I pacchetti GTFS, `manifest.json`, `SHA256SUMS` e il catalogo stazioni concordano per nomi, hash, struttura e conteggi. |
 | Freschezza asset GTFS | Android | Ogni `lastServiceDate` è almeno 30 giorni oltre la data del gate. Il workflow esegue questo controllo senza `--integrity-only`, separatamente dal controllo di integrità. Un feed scaduto o troppo vicino alla scadenza richiede refresh, rigenerazione degli hash e revisione prima della release. |
 | Test, lint e build Android | Android | I test unitari debug, lint debug e assemble debug completano senza errori. |
@@ -47,6 +47,7 @@ python3 tools/verify_embedded_assets.py --integrity-only
 python3 tools/verify_embedded_assets.py --min-valid-days 30
 python3 tools/verify_ci_pinning.py
 python3 tools/verify_gradle_dependency_metadata.py
+python3 tools/verify_gradle_dependency_metadata.py --profile companion
 
 # Android principale (richiede JDK 17 e Android SDK configurato).
 ./gradlew --no-daemon --dependency-verification=strict testDebugUnitTest lintDebug assembleDebug

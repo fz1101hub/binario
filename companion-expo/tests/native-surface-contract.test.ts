@@ -27,6 +27,15 @@ function kotlinModuleNames() {
 }
 
 describe("contratti delle superfici native Binario", () => {
+  it("genera il lock SHA-256 Gradle in ogni prebuild Android", () => {
+    const metadata = source("native/android/verification-metadata.xml");
+    expect(widgetPlugin).toContain('"native", "android", "verification-metadata.xml"');
+    expect(widgetPlugin).toContain('"gradle", "verification-metadata.xml"');
+    expect(widgetPlugin).toContain("fs.copyFileSync(verificationMetadataSource, verificationMetadataTarget)");
+    expect(metadata).toContain("<verify-metadata>true</verify-metadata>");
+    expect(metadata).not.toContain("<trusted-artifacts>");
+  });
+
   it("mantiene controlli tema e dichiara indisponibile la sincronizzazione remota", () => {
     const settings = source("app/(tabs)/settings.tsx");
     expect(settings).toContain('accessibilityRole="switch"');

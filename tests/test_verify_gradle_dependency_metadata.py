@@ -35,6 +35,17 @@ class VerifyGradleDependencyMetadataTest(unittest.TestCase):
     def test_repository_metadata_is_strict_and_complete(self) -> None:
         self.assertEqual([], POLICY.verify_metadata())
 
+    def test_companion_metadata_is_strict_and_complete(self) -> None:
+        self.assertEqual(
+            [],
+            POLICY.verify_metadata(
+                POLICY.COMPANION_METADATA,
+                min_components=1_000,
+                min_artifacts=1_800,
+                required_components=POLICY.COMPANION_REQUIRED_COMPONENTS,
+            ),
+        )
+
     def test_rejects_disabled_metadata_verification(self) -> None:
         problems = self.verify_mutation(
             "<verify-metadata>true</verify-metadata>",

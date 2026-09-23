@@ -41,6 +41,11 @@ jobs:
           cache: pnpm
           cache-dependency-path: companion-expo/pnpm-lock.yaml
 
+      - name: Python 3.12.10
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12.10"
+
       - name: Install frozen dependencies
         run: pnpm install --frozen-lockfile
 
@@ -72,11 +77,13 @@ jobs:
           test -z "$(git status --porcelain -- android)"
 
       - name: Verify release security inputs
-        run: pnpm run verify:release-inputs
+        run: |
+          pnpm run verify:release-inputs
+          python3 ../tools/verify_gradle_dependency_metadata.py --profile companion
 
       - name: Enable Android wrapper
         run: chmod +x android/gradlew
 
       - name: Android companion and Wear lint/build
         working-directory: companion-expo/android
-        run: ./gradlew --no-daemon :app:lintDebug :wear:lintDebug :app:assembleDebug :wear:assembleDebug
+        run: ./gradlew --no-daemon --dependency-verification=strict :app:lintDebug :wear:lintDebug :app:assembleDebug :wear:assembleDebug

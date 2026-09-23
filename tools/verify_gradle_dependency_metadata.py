@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""Validate the fail-closed Gradle dependency-verification checksum lock."""
+"""Validate fail-closed Gradle dependency-verification checksum locks."""
 from __future__ import annotations
 
+import argparse
 import re
 import sys
 import xml.etree.ElementTree as ET
@@ -9,6 +10,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_METADATA = ROOT / "gradle" / "verification-metadata.xml"
+COMPANION_METADATA = ROOT / "companion-expo" / "native" / "android" / "verification-metadata.xml"
 NAMESPACE = "https://schema.gradle.org/dependency-verification"
 NS = {"v": NAMESPACE}
 HEX_64 = re.compile(r"^[0-9a-f]{64}$")
@@ -21,9 +23,26 @@ REQUIRED_COMPONENTS = {
     ("org.jsoup", "jsoup", "1.18.3"),
     ("org.mobilitydata", "gtfs-realtime-bindings", "0.0.8"),
 }
+COMPANION_REQUIRED_COMPONENTS = {
+    ("com.android.tools.build", "gradle", "8.11.0"),
+    ("org.jetbrains.kotlin", "kotlin-gradle-plugin", "2.1.20"),
+    ("com.facebook.react", "react-android", "0.81.5"),
+    ("com.google.android.gms", "play-services-wearable", "20.0.1"),
+    ("androidx.wear.tiles", "tiles", "1.6.2"),
+}
+PROFILES = {
+    "root": (DEFAULT_METADATA, MIN_COMPONENTS, MIN_ARTIFACTS, REQUIRED_COMPONENTS),
+    "companion": (COMPANION_METADATA, 1_000, 1_800, COMPANION_REQUIRED_COMPONENTS),
+}
 
 
-def verify_metadata(path: Path = DEFAULT_METADATA) -> list[str]:
+def verify_metadata(
+    path: Path = DEFAULT_METADATA,
+    *,
+    min_components: int = MIN_COMPONENTS,
+    min_artifacts: int = MIN_ARTIFACTS,
+    required_components: set[tuple[str, str, str]] = REQUIRED_COMPONENTS,
+) -> list[str]:
     problems: list[str] = []
     try:
         root = ET.parse(path).getroot()
@@ -51,10 +70,10 @@ def verify_metadata(path: Path = DEFAULT_METADATA) -> list[str]:
 
     components = root.findall(".//v:component", NS)
     artifacts = root.findall(".//v:artifact", NS)
-    if len(components) < MIN_COMPONENTS:
-        problems.append(f"copertura componenti sospettamente bassa: {len(components)} < {MIN_COMPONENTS}")
-    if len(artifacts) < MIN_ARTIFACTS:
-        problems.append(f"copertura artifact sospettamente bassa: {len(artifacts)} < {MIN_ARTIFACTS}")
+    if len(components) < min_components:
+        problems.append(f"copertura componenti sospettamente bassa: {len(components)} < {min_components}")
+    if len(artifacts) < min_artifacts:
+        problems.append(f"copertura artifact sospettamente bassa: {len(artifacts)} < {min_artifacts}")
 
     coordinates: set[tuple[str, str, str]] = set()
     artifact_keys: set[tuple[str, str, str, str]] = set()
@@ -79,21 +98,32 @@ def verify_metadata(path: Path = DEFAULT_METADATA) -> list[str]:
             if not HEX_64.fullmatch(value):
                 problems.append(f"sha256 non valido: {artifact_key}")
 
-    missing_required = REQUIRED_COMPONENTS - coordinates
+    missing_required = required_components - coordinates
     if missing_required:
         problems.append(f"componenti critici assenti: {sorted(missing_required)}")
     return problems
 
 
-def main() -> int:
-    problems = verify_metadata()
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--profile", choices=sorted(PROFILES), default="root")
+    parser.add_argument("--path", type=Path)
+    args = parser.parse_args(argv)
+    default_path, min_components, min_artifacts, required_components = PROFILES[args.profile]
+    path = args.path or default_path
+    problems = verify_metadata(
+        path,
+        min_components=min_components,
+        min_artifacts=min_artifacts,
+        required_components=required_components,
+    )
     if problems:
         for problem in problems:
-            print(f"Gradle dependency verification: FAIL: {problem}", file=sys.stderr)
+            print(f"Gradle dependency verification ({args.profile}): FAIL: {problem}", file=sys.stderr)
         return 1
-    root = ET.parse(DEFAULT_METADATA).getroot()
+    root = ET.parse(path).getroot()
     print(
-        "Gradle dependency verification: PASS "
+        f"Gradle dependency verification ({args.profile}): PASS "
         f"({len(root.findall('.//v:component', NS))} components, "
         f"{len(root.findall('.//v:artifact', NS))} artifacts, SHA-256 strict)."
     )

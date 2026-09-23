@@ -546,6 +546,11 @@ function withBinarioAndroidWidget(config) {
 
   return withDangerousMod(config, ["android", async (next) => {
     const appRoot = path.join(next.modRequest.platformProjectRoot, "app");
+    const verificationMetadataSource = path.join(__dirname, "..", "native", "android", "verification-metadata.xml");
+    const verificationMetadataTarget = path.join(next.modRequest.platformProjectRoot, "gradle", "verification-metadata.xml");
+    if (!fs.existsSync(verificationMetadataSource)) throw new Error("Companion Gradle verification metadata is missing");
+    fs.mkdirSync(path.dirname(verificationMetadataTarget), { recursive: true });
+    fs.copyFileSync(verificationMetadataSource, verificationMetadataTarget);
     const kotlinRoot = path.join(appRoot, "src", "main", "java", ...packageName.split("."));
     const testKotlinRoot = path.join(appRoot, "src", "test", "java", ...packageName.split("."));
     const xmlRoot = path.join(appRoot, "src", "main", "res", "xml");
