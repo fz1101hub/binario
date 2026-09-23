@@ -31,7 +31,7 @@ jobs:
       - name: pnpm
         uses: pnpm/action-setup@v6
         with:
-          version: 10
+          version: 10.34.5
           run_install: false
 
       - name: Node 22
@@ -43,6 +43,9 @@ jobs:
 
       - name: Install frozen dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Audit high and critical vulnerabilities
+        run: pnpm run verify:dependency-audit
 
       - name: TypeScript
         run: pnpm run check

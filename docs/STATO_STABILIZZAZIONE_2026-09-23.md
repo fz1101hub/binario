@@ -35,7 +35,7 @@ I gate locali del codice sono verdi. Restano fuori dalla conclusione tecnica la 
 | Alexa Companion | **Verde:** TypeScript, 64 test ordinari e 2 test di migrazione su MariaDB reale; build di produzione e smoke test fail-closed/`healthz`. |
 | Companion Expo TypeScript | **Verde:** typecheck, 60 test in 13 file, branding, managed config e release inputs. Due `expo prebuild --clean` consecutivi hanno prodotto output identico, inclusi i test Kotlin golden. |
 | Companion Expo nativo | **Verde:** 3 test app e 3 test Wear; lint e assemble debug di app e Wear generati; 452 task nel gate nativo completo del contratto. Gli avvisi residui provengono principalmente dalle dipendenze Expo/React Native deprecate, non da errori di compilazione. |
-| Privacy e supply chain | **Verde:** verificatore privacy, integrità asset e policy lockfile. |
+| Privacy e supply chain | **Verde con eccezione documentata:** verificatore privacy, integrità asset e policy lockfile; gli alert Dependabot sono attivi sul repository. Alexa non contiene advisory high/critical correggibili dopo l’aggiornamento delle dipendenze e la rimozione di 303 pacchetti template. Companion Expo non contiene advisory high/critical correggibili; il gate consente soltanto due advisory `image-size` senza versione corretta disponibile, transitivi di Expo/Metro e limitati agli asset PNG versionati o generati dal progetto.[12] |
 | Apple Watch | Il rail macOS isolato ha compilato e testato il contratto; manca intenzionalmente un produttore iOS reale e quindi non esiste una prova end-to-end iPhone–Watch. |
 
 ## Decisioni lasciate in sospeso
@@ -68,3 +68,4 @@ Le scelte proprietarie elencate sopra non bloccano ulteriore sviluppo interno, m
 [9]: https://github.com/fz1101hub/binario/pull/9 "PR 9 — Companion sync visibility"
 [10]: https://github.com/fz1101hub/binario/pull/24 "PR 24 — Archive and remove historical surfaces"
 [11]: https://github.com/fz1101hub/binario/pull/23 "PR 23 — Repository documentation hygiene"
+[12]: security/DEPENDENCY_AUDIT.md "Policy di audit delle dipendenze JavaScript"
