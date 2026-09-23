@@ -546,13 +546,19 @@ function withBinarioAndroidWidget(config) {
   return withDangerousMod(config, ["android", async (next) => {
     const appRoot = path.join(next.modRequest.platformProjectRoot, "app");
     const kotlinRoot = path.join(appRoot, "src", "main", "java", ...packageName.split("."));
+    const testKotlinRoot = path.join(appRoot, "src", "test", "java", ...packageName.split("."));
     const xmlRoot = path.join(appRoot, "src", "main", "res", "xml");
     fs.mkdirSync(kotlinRoot, { recursive: true });
+    fs.mkdirSync(testKotlinRoot, { recursive: true });
     fs.mkdirSync(xmlRoot, { recursive: true });
     fs.writeFileSync(path.join(kotlinRoot, "BinarioWidgetStore.kt"), widgetStoreKt);
     fs.writeFileSync(path.join(kotlinRoot, "BinarioStatusWidget.kt"), widgetKt);
     fs.writeFileSync(path.join(kotlinRoot, "BinarioWidgetBridge.kt"), bridgeKt);
     fs.writeFileSync(path.join(kotlinRoot, "CompanionWearPayload.kt"), companionWearPayloadKt);
+    fs.writeFileSync(
+      path.join(testKotlinRoot, "CompanionWearPayloadV1Test.kt"),
+      fs.readFileSync(path.join(__dirname, "templates", "CompanionWearPayloadV1Test.kt"), "utf8"),
+    );
     fs.writeFileSync(path.join(kotlinRoot, "BinarioSharedTextReceiver.kt"), sharedTextReceiverKt);
     fs.writeFileSync(path.join(xmlRoot, "binario_status_widget_info.xml"), widgetXml);
     fs.writeFileSync(path.join(xmlRoot, "binario_shortcuts.xml"), shortcutsXml);
@@ -588,7 +594,9 @@ function withBinarioAndroidWidget(config) {
 
     const wearRoot = path.join(next.modRequest.platformProjectRoot, "wear");
     const wearSource = path.join(wearRoot, "src", "main", "java", "im", "binario", "companion", "wear");
+    const wearTestSource = path.join(wearRoot, "src", "test", "java", "im", "binario", "companion", "wear");
     fs.mkdirSync(wearSource, { recursive: true });
+    fs.mkdirSync(wearTestSource, { recursive: true });
     fs.mkdirSync(path.join(wearRoot, "src", "main", "res", "values"), { recursive: true });
     fs.writeFileSync(path.join(wearRoot, "build.gradle"), `apply plugin: "com.android.application"
 apply plugin: "org.jetbrains.kotlin.android"
@@ -822,6 +830,10 @@ class BinarioWearDataService : WearableListenerService() {
   }
 }
 `);
+    fs.writeFileSync(
+      path.join(wearTestSource, "BinarioWearSnapshotV1Test.kt"),
+      fs.readFileSync(path.join(__dirname, "templates", "BinarioWearSnapshotV1Test.kt"), "utf8"),
+    );
     fs.writeFileSync(path.join(wearSource, "BinarioTileService.kt"), `package im.binario.companion.wear
 
 import androidx.wear.protolayout.ActionBuilders
