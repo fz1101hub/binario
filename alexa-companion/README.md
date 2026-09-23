@@ -23,7 +23,7 @@ Wear OS e Apple Watch sono companion separati. Le loro preferenze locali non fan
 
 ## Stato
 
-Il servizio dispone di hardening per build di produzione, cookie di sessione `HttpOnly`, consenso OAuth, allowlist dei redirect, CSRF, revoca effettiva, migrazioni versionate, limiti di richiesta e health check. La skill resta non pubblicabile finché non sono completati configurazione Amazon, test end-to-end, privacy policy e collegamento dati autenticato con l'app principale.
+Il servizio dispone di hardening per build di produzione, cookie di sessione `HttpOnly`, consenso OAuth, allowlist dei redirect, CSRF, revoca effettiva, migrazioni versionate, limiti di richiesta e health check. Il boot di produzione richiede endpoint OAuth HTTPS validi, incluso `VITE_OAUTH_PORTAL_URL` usato dalla dashboard. Alexa richiede una modalità esplicita: `ALEXA_ENABLED=false` senza valori Alexa oppure `ALEXA_ENABLED=true` con configurazione completa; il boot di produzione rifiuta stati intermedi. La skill resta non pubblicabile finché non sono completati configurazione Amazon, test end-to-end, privacy policy e collegamento dati autenticato con l'app principale.
 
 ## Sviluppo
 
@@ -35,6 +35,14 @@ pnpm run build
 ```
 
 Il comando di build verifica anche che il bundle di produzione non contenga runtime o token di anteprima Manus.
+
+La suite standard non richiede un database locale. La verifica reale delle migrazioni, eseguita dal workflow CI con MariaDB, è opt-in anche in locale:
+
+```bash
+RUN_DB_MIGRATION_TESTS=1 DATABASE_URL=... pnpm run test:db-migrations
+```
+
+Il test crea database effimeri, verifica una catena da database vuoto e un upgrade da `0001` a `0002`, poi li elimina.
 
 ## Documentazione
 

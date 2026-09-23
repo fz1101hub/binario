@@ -5,10 +5,21 @@ import { createOpaqueSecret, secureStringEquals } from "./crypto";
 export const CONSENT_COOKIE = "alexa_consent";
 export const CONSENT_COOKIE_PATH = "/api/alexa/oauth";
 export const CONSENT_TTL_MS = 10 * 60 * 1000;
+// This is deliberately separate from the CSRF nonce. It keeps a *validated*
+// Amazon authorization request across an interactive dashboard login. The
+// __Host- prefix prevents a sibling subdomain from tossing a cookie with the
+// same name; callers must therefore use Secure, Path=/ and no Domain.
+export const AUTHORIZATION_REQUEST_COOKIE =
+  "__Host-alexa_authorization_request";
+export const AUTHORIZATION_REQUEST_COOKIE_PATH = "/";
+export const AUTHORIZATION_REQUEST_TTL_MS = 10 * 60 * 1000;
 
 function consentKey() {
-  if (!ENV.voiceTokenPepper) throw new Error("Integrazione Alexa non configurata");
-  return Buffer.from(hkdfSync("sha256", ENV.voiceTokenPepper, "", "binario-alexa-consent", 32));
+  if (!ENV.voiceTokenPepper)
+    throw new Error("Integrazione Alexa non configurata");
+  return Buffer.from(
+    hkdfSync("sha256", ENV.voiceTokenPepper, "", "binario-alexa-consent", 32)
+  );
 }
 
 export function createConsentNonce() {
@@ -18,22 +29,115 @@ export function createConsentNonce() {
 // The form token binds the cookie nonce to the authenticated user, so a nonce
 // planted by another origin cannot be replayed on behalf of someone else.
 export function consentToken(nonce: string, userId: number) {
-  return createHmac("sha256", consentKey()).update(`${userId}:${nonce}`).digest("hex");
+  return createHmac("sha256", consentKey())
+    .update(`${userId}:${nonce}`)
+    .digest("hex");
 }
 
-export function verifyConsentToken(nonce: string | undefined, userId: number, token: unknown) {
+export function verifyConsentToken(
+  nonce: string | undefined,
+  userId: number,
+  token: unknown
+) {
   if (!nonce || typeof token !== "string" || !token) return false;
   return secureStringEquals(consentToken(nonce, userId), token);
+}
+
+export type StoredAuthorizationRequest = {
+  clientId: string;
+  redirectUri: string;
+  state: string;
+  scope: string;
+};
+
+type SignedAuthorizationRequest = StoredAuthorizationRequest & {
+  expiresAt: number;
+  version: 1;
+};
+
+function authorizationRequestSignature(encodedPayload: string) {
+  return createHmac("sha256", consentKey())
+    .update(`binario-alexa-authorization:${encodedPayload}`)
+    .digest("base64url");
+}
+
+/**
+ * The request is public OAuth metadata, but it must be tamper-evident: the
+ * callback resumes only the exact client, redirect URI and state that passed
+ * the allowlist before dashboard login began.
+ */
+export function signAuthorizationRequest(
+  request: StoredAuthorizationRequest,
+  now = Date.now()
+) {
+  const payload: SignedAuthorizationRequest = {
+    ...request,
+    version: 1,
+    expiresAt: now + AUTHORIZATION_REQUEST_TTL_MS,
+  };
+  const encodedPayload = Buffer.from(JSON.stringify(payload)).toString(
+    "base64url"
+  );
+  return `${encodedPayload}.${authorizationRequestSignature(encodedPayload)}`;
+}
+
+/** Returns only a signed, unexpired request. Semantic OAuth validation happens again on resume. */
+export function readAuthorizationRequest(
+  value: string | undefined,
+  now = Date.now()
+): StoredAuthorizationRequest | null {
+  if (!value) return null;
+  const [encodedPayload, signature, ...rest] = value.split(".");
+  if (
+    !encodedPayload ||
+    !signature ||
+    rest.length ||
+    !secureStringEquals(
+      authorizationRequestSignature(encodedPayload),
+      signature
+    )
+  )
+    return null;
+
+  try {
+    const payload = JSON.parse(
+      Buffer.from(encodedPayload, "base64url").toString("utf8")
+    ) as Partial<SignedAuthorizationRequest>;
+    if (
+      payload.version !== 1 ||
+      typeof payload.expiresAt !== "number" ||
+      !Number.isSafeInteger(payload.expiresAt) ||
+      payload.expiresAt <= now ||
+      typeof payload.clientId !== "string" ||
+      typeof payload.redirectUri !== "string" ||
+      typeof payload.state !== "string" ||
+      typeof payload.scope !== "string"
+    )
+      return null;
+    return {
+      clientId: payload.clientId,
+      redirectUri: payload.redirectUri,
+      state: payload.state,
+      scope: payload.scope,
+    };
+  } catch {
+    return null;
+  }
 }
 
 export function escapeHtml(value: string) {
   return value.replace(/[&<>"']/g, character => {
     switch (character) {
-      case "&": return "&amp;";
-      case "<": return "&lt;";
-      case ">": return "&gt;";
-      case '"': return "&quot;";
-      default: return "&#39;";
+      case "&":
+        return "&amp;";
+      case "<":
+        return "&lt;";
+      case ">":
+        return "&gt;";
+      case '"':
+        return "&quot;";
+      default:
+        return "&#39;";
     }
   });
 }
@@ -48,8 +152,11 @@ export type ConsentPageInput = {
 };
 
 export function renderConsentPage(input: ConsentPageInput) {
-  const hidden = (name: string, value: string) => `<input type="hidden" name="${name}" value="${escapeHtml(value)}">`;
-  const who = input.userName ? ` come <strong>${escapeHtml(input.userName)}</strong>` : "";
+  const hidden = (name: string, value: string) =>
+    `<input type="hidden" name="${name}" value="${escapeHtml(value)}">`;
+  const who = input.userName
+    ? ` come <strong>${escapeHtml(input.userName)}</strong>`
+    : "";
   return `<!doctype html>
 <html lang="it">
 <head>
