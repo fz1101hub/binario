@@ -79,6 +79,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -113,10 +115,59 @@ import java.time.LocalTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 private enum class Screen { PLANNER, OPERATIONS, SETTINGS, RESULTS, DETAIL }
 private enum class OperationsSection(val label: String) { TRAINS("Treni"), STATIONS("Stazioni") }
 private enum class SearchMode(val label: String) { ROUTE("Tratta"), TRAIN("N. treno"), STATION("Stazione") }
+
+private val stopAlarmPlanSaver = listSaver<StopAlarmPlan?, Any>(
+    save = { plan ->
+        if (plan == null) emptyList()
+        else listOf(plan.trainNumber, plan.destination, plan.station, plan.expectedTime, plan.triggerAtEpochMillis)
+    },
+    restore = { values ->
+        if (values.isEmpty()) null
+        else StopAlarmPlan(
+            trainNumber = values[0] as String,
+            destination = values[1] as String,
+            station = values[2] as String,
+            expectedTime = values[3] as String,
+            triggerAtEpochMillis = values[4] as Long
+        )
+    }
+)
+
+private val commuterAlertSaver = listSaver<CommuterAlert?, Any>(
+    save = { alert ->
+        if (alert == null) emptyList()
+        else listOf(
+            alert.id,
+            alert.routeLabel,
+            alert.stationName,
+            alert.time,
+            alert.leadMinutes,
+            alert.repeat.name,
+            alert.quietHoursEnabled,
+            alert.enabled
+        )
+    },
+    restore = { values ->
+        if (values.isEmpty()) null
+        else CommuterAlert(
+            id = values[0] as String,
+            routeLabel = values[1] as String,
+            stationName = values[2] as String,
+            time = values[3] as String,
+            leadMinutes = values[4] as Int,
+            repeat = AlertRepeat.valueOf(values[5] as String),
+            quietHoursEnabled = values[6] as Boolean,
+            enabled = values[7] as Boolean
+        )
+    }
+)
 
 class MainActivity : ComponentActivity() {
     private val deepLinkDispatcher = DeepLinkRequestDispatcher()
@@ -127,6 +178,7 @@ class MainActivity : ComponentActivity() {
         // An Activity recreated from saved state must restore its UI, not replay the
         // launch Intent and navigate away from the screen the user was using.
         if (savedInstanceState == null) receiveDeepLinkIntent(intent)
+        CommuterAlertScheduler.rescheduleAll(applicationContext)
         enableEdgeToEdge()
         setContent {
             val themeSettings = remember { ThemeSettings(applicationContext) }
@@ -173,15 +225,16 @@ private fun BinarioApp(
     var plannerSearchModeName by rememberSaveable { mutableStateOf(SearchMode.ROUTE.name) }
     var plannerSearchRequestId by rememberSaveable { mutableStateOf(0) }
     var showThemePicker by rememberSaveable { mutableStateOf(false) }
-    var pendingStopAlarm by remember { mutableStateOf<StopAlarmPlan?>(null) }
+    var pendingStopAlarm by rememberSaveable(stateSaver = stopAlarmPlanSaver) {
+        mutableStateOf<StopAlarmPlan?>(null)
+    }
     var stopAlarmFeedback by rememberSaveable { mutableStateOf<String?>(null) }
     val context = LocalContext.current
     val notificationPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         val plan = pendingStopAlarm
         pendingStopAlarm = null
         if (granted && plan != null) {
-            StopAlarmScheduler.schedule(context, plan)
-            stopAlarmFeedback = "Sveglia impostata per ${plan.station}, cinque minuti prima dell’orario previsto ${plan.expectedTime}."
+            stopAlarmFeedback = stopAlarmScheduleFeedback(StopAlarmScheduler.schedule(context, plan), plan)
         } else {
             stopAlarmFeedback = "Per ricevere la sveglia alla fermata devi consentire le notifiche di Binario."
         }
@@ -196,8 +249,7 @@ private fun BinarioApp(
                 notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
             }
             else -> {
-                StopAlarmScheduler.schedule(context, plan)
-                stopAlarmFeedback = "Sveglia impostata per ${stop.station}, cinque minuti prima dell’orario previsto ${plan.expectedTime}."
+                stopAlarmFeedback = stopAlarmScheduleFeedback(StopAlarmScheduler.schedule(context, plan), plan)
             }
         }
     }
@@ -393,6 +445,29 @@ private fun BinarioApp(
             }
         }
     }
+}
+
+private fun stopAlarmScheduleFeedback(result: DeviceAlarmScheduleResult, plan: StopAlarmPlan): String =
+    if (result.isExact) {
+        "Sveglia impostata per ${plan.station}, cinque minuti prima dell’orario previsto ${plan.expectedTime}."
+    } else {
+        "Sveglia impostata per ${plan.station}, ma Android può consegnarla in ritardo perché gli allarmi esatti non sono consentiti."
+    }
+
+private fun commuterAlertScheduleFeedback(result: CommuterAlertScheduleResult): String = when (result) {
+    is CommuterAlertScheduleResult.Scheduled -> if (result.isExact) {
+        "Avviso salvato e pianificato sul dispositivo."
+    } else {
+        "Avviso salvato e pianificato in modalità approssimata: Android può consegnarlo in ritardo perché gli allarmi esatti non sono consentiti."
+    }
+    CommuterAlertScheduleResult.QuietHours ->
+        "Avviso salvato ma non pianificato: l’anticipo cade nella fascia silenziosa 22:00–07:00."
+    CommuterAlertScheduleResult.InvalidTime ->
+        "Avviso salvato ma non pianificato: l’orario non è valido."
+    CommuterAlertScheduleResult.Disabled ->
+        "Avviso salvato ma disattivato."
+    CommuterAlertScheduleResult.NoUpcomingTrigger ->
+        "Avviso salvato ma non pianificato: non esiste una prossima occorrenza."
 }
 
 @Composable
@@ -1771,10 +1846,13 @@ private fun SettingsScreen(
 ) {
     var showComposer by rememberSaveable { mutableStateOf(false) }
     var showAlertComposer by rememberSaveable { mutableStateOf(false) }
-    var pendingAlert by remember { mutableStateOf<CommuterAlert?>(null) }
+    var pendingAlert by rememberSaveable(stateSaver = commuterAlertSaver) {
+        mutableStateOf<CommuterAlert?>(null)
+    }
     var alertFeedback by rememberSaveable { mutableStateOf<String?>(null) }
     var backupFeedback by rememberSaveable { mutableStateOf<String?>(null) }
     val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
     val createBackupDocument = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument(LocalDataBackupCodec.MIME_TYPE)) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
         backupFeedback = runCatching {
@@ -1785,18 +1863,25 @@ private fun SettingsScreen(
     }
     val openBackupDocument = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
-        backupFeedback = runCatching {
-            val raw = context.contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
-                ?: error("Impossibile leggere il file scelto.")
-            viewModel.importLocalBackup(raw)
-        }.getOrElse { "Importazione non riuscita: ${it.message ?: "errore file"}" }
+        coroutineScope.launch {
+            backupFeedback = runCatching {
+                val raw = withContext(Dispatchers.IO) {
+                    context.contentResolver.openInputStream(uri)?.let(LocalDataBackupCodec::readBoundedUtf8)
+                        ?: error("Impossibile leggere il file scelto.")
+                }
+                val stationCatalog = viewModel.stations
+                val decoded = withContext(Dispatchers.Default) {
+                    LocalDataBackupCodec.decode(raw, stationCatalog)
+                }
+                viewModel.importLocalBackup(decoded)
+            }.getOrElse { "Importazione non riuscita: ${it.message ?: "errore file"}" }
+        }
     }
     val notificationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         val alert = pendingAlert
         pendingAlert = null
         if (granted && alert != null) {
-            CommuterAlertScheduler.schedule(context, alert)
-            alertFeedback = "Avviso salvato e pianificato sul dispositivo."
+            alertFeedback = commuterAlertScheduleFeedback(CommuterAlertScheduler.schedule(context, alert))
         } else {
             alertFeedback = "Avviso salvato. Per riceverlo, consenti le notifiche di Binario nelle impostazioni Android."
         }
@@ -1818,8 +1903,7 @@ private fun SettingsScreen(
                     pendingAlert = alert
                     notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
                 } else {
-                    CommuterAlertScheduler.schedule(context, alert)
-                    alertFeedback = "Avviso salvato e pianificato sul dispositivo."
+                    alertFeedback = commuterAlertScheduleFeedback(CommuterAlertScheduler.schedule(context, alert))
                 }
             }
         )
