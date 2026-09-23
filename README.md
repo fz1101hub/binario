@@ -75,7 +75,7 @@ L’app Android è il centro delle preferenze per widget, smartwatch Android, Ap
 
 ## Fonti realtime e fallback programmato
 
-`BinarioDataGraph` è l’unico punto di composizione usato da app, widget e worker. Integra tabelloni best-effort Italo, ViaggiaTreno e RFI, avvisi RSS RFI, alert/posizioni STA Alto Adige, alert e Trip Updates SNCF GTFS-Realtime, più dodici data pack GTFS verificati. Tutte le superfici usano il catalogo offline curato `stazioni_ferroviarie_curato_v4` per identità, alias, coordinate e codici stazione; esso non può generare orari o stati di circolazione. Le fonti protette Svizzera GTFS-RT e Trenord E015 restano inattive finché un gateway HTTPS custodisce token o autorizzazioni fuori dall’APK. Il dettaglio è in [DATA_LAYER_HANDOFF.md](docs/handoffs/DATA_LAYER_HANDOFF.md), [CURATED_STATION_CATALOG.md](docs/data-sources/CURATED_STATION_CATALOG.md), [FULL_COVERAGE_EVIDENCE.md](docs/data-sources/FULL_COVERAGE_EVIDENCE.md) e [REALTIME_ACCESS_GAPS.md](docs/data-sources/REALTIME_ACCESS_GAPS.md).
+`BinarioDataGraph` è l’unico punto di composizione usato da app, widget e worker. Nella build distribuita le corse provengono dai quadri orario programmati RFI (19 stazioni hub mappate) e da dodici data pack GTFS embedded; nessuna fonte realtime è attiva. I tabelloni best-effort Italo, ViaggiaTreno e RFI sono compilati soltanto con `./gradlew -PBINARIO_PERSONAL_REALTIME_SOURCES=true` (build personale, non distribuibile). Gli adapter per avvisi RSS RFI, alert/posizioni STA Alto Adige e Trip Updates SNCF GTFS-Realtime esistono nel data layer ma non sono ancora collegati a nessuna superficie. I data pack embedded hanno una validità temporale (`lastServiceDate` nel manifest) e vanno rigenerati a ogni cambio orario: oltre quella data l’app mostra un avviso invece di corse. Tutte le superfici usano il catalogo offline curato `stazioni_ferroviarie_curato_v4` per identità, alias, coordinate e codici stazione; esso non può generare orari o stati di circolazione. Le fonti protette Svizzera GTFS-RT e Trenord E015 restano inattive finché un gateway HTTPS custodisce token o autorizzazioni fuori dall’APK. Il dettaglio è in [DATA_LAYER_HANDOFF.md](docs/handoffs/DATA_LAYER_HANDOFF.md), [CURATED_STATION_CATALOG.md](docs/data-sources/CURATED_STATION_CATALOG.md), [FULL_COVERAGE_EVIDENCE.md](docs/data-sources/FULL_COVERAGE_EVIDENCE.md) e [REALTIME_ACCESS_GAPS.md](docs/data-sources/REALTIME_ACCESS_GAPS.md).
 
 Un nuovo provider deve rispettare questi requisiti:
 
@@ -85,11 +85,9 @@ Un nuovo provider deve rispettare questi requisiti:
 4. Applicare limiti di richiesta e cache per evitare refresh inutili.
 5. Conservare la differenza tra orario programmato, previsto, ritardo, binario non disponibile e soppressione.
 
-## Conformità per design
+## Conformità e stato di verifica
 
-Il progetto contiene `BUILD_SPEC.md`, `SECURITY.md`, `AI_FEATURE_GATE.md` e `verification_summary.md`. Questi documenti fissano controlli per accessibilità, privacy, gestione vulnerabilità, AI gate, supply chain, release e futura distribuzione Google Play/App Store.
-
-La build applica traffico HTTPS obbligatorio, cleartext disabilitato, trust store di sistema, backup/trasferimento esclusi, componenti non esportati e PendingIntent immutabili. I dettagli verificati sono riportati in `verification_summary.md`.
+La build applica traffico HTTPS obbligatorio, cleartext disabilitato, trust store di sistema, backup/trasferimento esclusi, componenti non esportati e PendingIntent immutabili. Lo stato verificato del codice, i problemi aperti e il piano di risanamento sono documentati in [docs/audit-independent-2026-09-23.md](docs/audit-independent-2026-09-23.md), nel relativo [addendum](docs/audit-independent-2026-09-23-addendum.md) e in [docs/PIANO_STABILIZZAZIONE_v0.20.4.md](docs/PIANO_STABILIZZAZIONE_v0.20.4.md). Le funzioni Wear OS, Apple Watch, sincronizzazione companion e comandi vocali sono da considerare sperimentali finché i relativi gate del piano non risultano superati.
 
 ## Limiti attuali e prossimo passo
 
