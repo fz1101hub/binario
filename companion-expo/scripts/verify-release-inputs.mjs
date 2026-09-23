@@ -27,6 +27,42 @@ function block(source, marker) {
 }
 
 const gradle = read("android/app/build.gradle");
+const wearGradle = read("android/wear/build.gradle");
+const releaseIdentity = JSON.parse(read("native/android/release-identity.json"));
+const releaseIdentityKeys = [
+  "applicationId",
+  "phoneVersionCode",
+  "schemaVersion",
+  "versionName",
+  "wearVersionCode",
+];
+if (
+  JSON.stringify(Object.keys(releaseIdentity).sort()) !== JSON.stringify(releaseIdentityKeys) ||
+  releaseIdentity.schemaVersion !== 1 ||
+  releaseIdentity.applicationId !== "im.binario.companion" ||
+  !/^\d+\.\d+\.\d+$/.test(releaseIdentity.versionName) ||
+  !Number.isInteger(releaseIdentity.phoneVersionCode) ||
+  !Number.isInteger(releaseIdentity.wearVersionCode) ||
+  releaseIdentity.phoneVersionCode <= 0 ||
+  releaseIdentity.wearVersionCode <= releaseIdentity.phoneVersionCode
+) {
+  fail("canonical Android release identity is invalid.");
+}
+for (const [label, source, versionCode] of [
+  ["phone", gradle, releaseIdentity.phoneVersionCode],
+  ["Wear", wearGradle, releaseIdentity.wearVersionCode],
+]) {
+  const applicationId = source.match(/applicationId\s+["']([^"']+)["']/)?.[1];
+  if (applicationId !== releaseIdentity.applicationId) {
+    fail(`${label} applicationId does not match the canonical release identity.`);
+  }
+  if (!source.includes(`versionCode ${versionCode}`)) {
+    fail(`${label} versionCode does not match the canonical release identity.`);
+  }
+  if (!source.includes(`versionName "${releaseIdentity.versionName}"`)) {
+    fail(`${label} versionName does not match the canonical release identity.`);
+  }
+}
 const releaseBlock = block(gradle, "release {");
 if (!releaseBlock) {
   fail("Android release buildType is missing.");
@@ -34,7 +70,6 @@ if (!releaseBlock) {
   fail("release build must never use signingConfigs.debug.");
 }
 
-const wearGradle = read("android/wear/build.gradle");
 const wearReleaseBlock = block(wearGradle, "release {");
 if (!wearReleaseBlock) {
   fail("Wear release buildType is missing.");
@@ -52,6 +87,13 @@ if (!gradleVerificationSource.includes("<verify-metadata>true</verify-metadata>"
 }
 if (gradleVerificationSource.includes("<trusted-artifacts>")) {
   fail("Gradle dependency verification must not trust artifact patterns.");
+}
+const gradleProperties = read("android/gradle.properties");
+if (!gradleProperties.includes("org.gradle.parallel=false")) {
+  fail("Gradle parallel project execution must remain disabled for deterministic release packaging.");
+}
+if (!gradleProperties.includes("org.gradle.workers.max=1")) {
+  fail("Gradle release packaging must remain single-worker for deterministic App Bundle order.");
 }
 
 const mainManifest = read("android/app/src/main/AndroidManifest.xml");

@@ -22,6 +22,22 @@ Google Play richiede Android App Bundle (AAB) per le nuove app. Un bundle è un 
 
 Il modulo Wear usa lo stesso package dell'app telefono, dichiara `android.hardware.type.watch` e `standalone=false`, ma conserva un proprio `versionCode`. Google indica che l'app Wear viene caricata e aggiornata separatamente e raccomanda codici versione indipendenti tra form factor.[3] La scelta del track Play, la firma e l'upload restano azioni proprietarie esterne a questo gate.
 
+### AAB del Companion separato
+
+`companion-expo/` non sostituisce l'app smartphone principale. Mantiene una propria identità release in `native/android/release-identity.json`: telefono e Wear Companion condividono `im.binario.companion` e `versionName`, ma usano `versionCode` distinti. Il prebuild applica questa identità sia alla configurazione Expo sia al modulo Wear generato. Il workflow Companion produce i due AAB unsigned e verifica il loro manifest compilato con un profilo dedicato:
+
+```sh
+cd companion-expo
+CI=1 pnpm exec expo prebuild --platform android --clean --no-install
+cd android
+./gradlew --no-daemon --dependency-verification=strict \
+  :app:bundleRelease :wear:bundleRelease
+cd ../..
+python3 tools/verify_android_app_bundles.py --profile companion
+```
+
+Il gate blocca una divergenza fra il file canonico, il progetto generato e gli AAB effettivi. Il prebuild fissa inoltre `org.gradle.parallel=false` e `org.gradle.workers.max=1`: senza questa serializzazione, il contenuto dell'AAB telefono era identico ma l'ordine dei member ZIP poteva cambiare. Con il packaging single-worker, due full rebuild hanno prodotto AAB byte-identici: 50.988.125 byte e SHA-256 `29ee0716464decf69cae7961c50f8e4b141a5079a58cd5149cb6f271a84104e0` per il telefono Companion; 4.309.499 byte e SHA-256 `ec5bb00303abf9b234d0c23696697807179efc35b95589673ade26df3edad305` per Wear Companion. Firma e distribuzione restano separate da quelle dell'app principale.
+
 ## Prova di riproducibilità degli AAB
 
 Prima della firma, due build complete devono produrre artifact byte-identici. Entrambe le esecuzioni devono usare `--rerun-tasks`: confrontare una full rebuild con un output incrementale precedente non prova la riproducibilità della stessa procedura. Il verifier rifiuta anche firme JAR inattese, così il confronto riguarda gli artifact unsigned prodotti dal codice revisionato.

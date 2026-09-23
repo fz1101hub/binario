@@ -260,7 +260,12 @@ def _check_linux_trigger_budget(path: Path, workflow: Mapping[str, Any], problem
         problems.append(f"{path.name}: push branches deve limitarsi a main per non duplicare pull_request")
     required_paths = {
         "android-ci.yml": {"app/**", "wear/**", "contracts/wear-snapshot/**"},
-        "companion-ci.yml": {"companion-expo/**", "contracts/wear-snapshot/**"},
+        "companion-ci.yml": {
+            "companion-expo/**",
+            "contracts/wear-snapshot/**",
+            "tools/verify_android_app_bundles.py",
+            "tests/test_verify_android_app_bundles.py",
+        },
     }.get(path.name, set())
     for event_name, paths in (("pull_request", pull_paths), ("push", push_paths)):
         actual = {value for value in paths if isinstance(value, str)} if isinstance(paths, list) else set()
@@ -281,6 +286,12 @@ def _check_linux_trigger_budget(path: Path, workflow: Mapping[str, Any], problem
             )
         if "python3 ../tools/verify_privacy_policy.py" not in commands:
             problems.append(f"{path.name}: gate privacy Companion assente")
+        if (
+            ":app:bundleRelease" not in commands
+            or ":wear:bundleRelease" not in commands
+            or "python3 ../tools/verify_android_app_bundles.py --profile companion" not in commands
+        ):
+            problems.append(f"{path.name}: gate App Bundle Companion assente")
 
     if path.name == "alexa-companion-ci.yml":
         jobs = _mapping(workflow.get("jobs")) or {}

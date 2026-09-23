@@ -5,6 +5,8 @@ on:
     paths:
       - "companion-expo/**"
       - "contracts/wear-snapshot/**"
+      - "tools/verify_android_app_bundles.py"
+      - "tests/test_verify_android_app_bundles.py"
       - "tools/verify_gradle_dependency_metadata.py"
       - ".github/workflows/companion-ci.yml"
   push:
@@ -13,6 +15,8 @@ on:
     paths:
       - "companion-expo/**"
       - "contracts/wear-snapshot/**"
+      - "tools/verify_android_app_bundles.py"
+      - "tests/test_verify_android_app_bundles.py"
       - "tools/verify_gradle_dependency_metadata.py"
       - ".github/workflows/companion-ci.yml"
   workflow_dispatch:
@@ -102,3 +106,7 @@ jobs:
           :app:testDebugUnitTest :wear:testDebugUnitTest
           :app:lintDebug :wear:lintDebug
           :app:assembleDebug :wear:assembleDebug
+          :app:bundleRelease :wear:bundleRelease
+
+      - name: Verify unsigned Companion App Bundles
+        run: python3 ../tools/verify_android_app_bundles.py --profile companion

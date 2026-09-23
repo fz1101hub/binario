@@ -9,6 +9,13 @@ import { maxIncomingSharedTextCharacters } from "@/lib/shared-text-contract";
 
 const source = (relativePath: string) => readFileSync(path.resolve(process.cwd(), relativePath), "utf8");
 const widgetPlugin = source("plugins/with-binario-android-widget.cjs");
+const releaseIdentity = JSON.parse(source("native/android/release-identity.json")) as {
+  schemaVersion: number;
+  applicationId: string;
+  versionName: string;
+  phoneVersionCode: number;
+  wearVersionCode: number;
+};
 
 /** Corpo della prima funzione Kotlin con quel nome nel template (le funzioni del template chiudono con `  }` a due spazi). */
 function kotlinFunctionBody(name: string) {
@@ -30,8 +37,14 @@ describe("contratti delle superfici native Binario", () => {
   it("genera telefono e Wear con lo stesso applicationId e la stessa firma release", () => {
     const appGradle = source("android/app/build.gradle");
     const wearGradle = source("android/wear/build.gradle");
-    expect(appGradle).toContain("applicationId 'im.binario.companion'");
-    expect(wearGradle).toContain('applicationId "im.binario.companion"');
+    expect(releaseIdentity.schemaVersion).toBe(1);
+    expect(widgetPlugin).toContain('require("../native/android/release-identity.json")');
+    expect(appGradle).toContain(`applicationId '${releaseIdentity.applicationId}'`);
+    expect(wearGradle).toContain(`applicationId "${releaseIdentity.applicationId}"`);
+    expect(appGradle).toContain(`versionCode ${releaseIdentity.phoneVersionCode}`);
+    expect(wearGradle).toContain(`versionCode ${releaseIdentity.wearVersionCode}`);
+    expect(appGradle).toContain(`versionName "${releaseIdentity.versionName}"`);
+    expect(wearGradle).toContain(`versionName "${releaseIdentity.versionName}"`);
     expect(appGradle).toContain("if (binarioReleaseSigningConfigured) signingConfig signingConfigs.release");
     expect(wearGradle).toContain("if (binarioReleaseSigningConfigured) signingConfig signingConfigs.release");
     expect(wearGradle).not.toContain('applicationId "im.binario.companion.wear"');
@@ -50,6 +63,13 @@ describe("contratti delle superfici native Binario", () => {
     expect(widgetPlugin).toContain("fs.copyFileSync(verificationMetadataSource, verificationMetadataTarget)");
     expect(metadata).toContain("<verify-metadata>true</verify-metadata>");
     expect(metadata).not.toContain("<trusted-artifacts>");
+  });
+  it("serializza il packaging Gradle per un ordine AAB deterministico", () => {
+    const gradleProperties = source("android/gradle.properties");
+    expect(gradleProperties).toContain("org.gradle.parallel=false");
+    expect(gradleProperties).toContain("org.gradle.workers.max=1");
+    expect(widgetPlugin).toContain('setGradleProperty(gradleProperties, "org.gradle.parallel", "false")');
+    expect(widgetPlugin).toContain('setGradleProperty(gradleProperties, "org.gradle.workers.max", "1")');
   });
 
   it("mantiene controlli tema e dichiara indisponibile la sincronizzazione remota", () => {

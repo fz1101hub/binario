@@ -2,7 +2,19 @@ const { withAndroidManifest, withAppBuildGradle, withDangerousMod } = require("@
 const fs = require("node:fs");
 const path = require("node:path");
 
-const phoneApplicationId = "im.binario.companion";
+const releaseIdentity = require("../native/android/release-identity.json");
+if (
+  releaseIdentity.schemaVersion !== 1 ||
+  releaseIdentity.applicationId !== "im.binario.companion" ||
+  !/^\d+\.\d+\.\d+$/.test(releaseIdentity.versionName) ||
+  !Number.isInteger(releaseIdentity.phoneVersionCode) ||
+  !Number.isInteger(releaseIdentity.wearVersionCode) ||
+  releaseIdentity.phoneVersionCode <= 0 ||
+  releaseIdentity.wearVersionCode <= releaseIdentity.phoneVersionCode
+) {
+  throw new Error("Binario Companion release identity is invalid.");
+}
+const phoneApplicationId = releaseIdentity.applicationId;
 const packageName = `${phoneApplicationId}.binario`;
 const receiverName = `${packageName}.BinarioStatusWidgetReceiver`;
 
@@ -46,6 +58,14 @@ function addSharedReleaseSigning(contents) {
   const currentReleaseStart = contents.indexOf("release {", currentBuildTypesStart);
   const lineEnd = contents.indexOf("\n", currentReleaseStart);
   return contents.slice(0, lineEnd) + "\n            if (binarioReleaseSigningConfigured) signingConfig signingConfigs.release" + contents.slice(lineEnd);
+}
+
+function setGradleProperty(contents, name, value) {
+  const matcher = new RegExp(`^${name.replaceAll(".", "\\.")}\\s*=.*$`, "gm");
+  const matches = contents.match(matcher) ?? [];
+  if (matches.length > 1) throw new Error(`Duplicate Gradle property: ${name}`);
+  if (matches.length === 1) return contents.replace(matcher, `${name}=${value}`);
+  return `${contents.trimEnd()}\n${name}=${value}\n`;
 }
 
 function removeDebugReleaseSigning(contents) {
@@ -663,8 +683,8 @@ ${sharedReleaseSigningBlock}
     applicationId "${phoneApplicationId}"
     minSdkVersion 30
     targetSdkVersion rootProject.ext.targetSdkVersion
-    versionCode 4
-    versionName "0.1.1"
+    versionCode ${releaseIdentity.wearVersionCode}
+    versionName "${releaseIdentity.versionName}"
   }
   buildTypes {
     debug {}
@@ -1084,6 +1104,11 @@ class BinarioVoiceRequestActivity : Activity() {
     const settingsPath = path.join(next.modRequest.platformProjectRoot, "settings.gradle");
     let settings = fs.readFileSync(settingsPath, "utf8");
     if (!settings.includes("include ':wear'")) { settings += "\ninclude ':wear'\n"; fs.writeFileSync(settingsPath, settings); }
+    const gradlePropertiesPath = path.join(next.modRequest.platformProjectRoot, "gradle.properties");
+    let gradleProperties = fs.readFileSync(gradlePropertiesPath, "utf8");
+    gradleProperties = setGradleProperty(gradleProperties, "org.gradle.parallel", "false");
+    gradleProperties = setGradleProperty(gradleProperties, "org.gradle.workers.max", "1");
+    fs.writeFileSync(gradlePropertiesPath, gradleProperties);
     return next;
   }]);
 }

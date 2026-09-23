@@ -96,6 +96,24 @@ class VerifyAndroidAppBundlesTest(unittest.TestCase):
         self.assertEqual([], POLICY.verify_bundle(self.path, expected))
         self.assertEqual(64, len(POLICY.sha256_file(self.path)))
 
+    def test_companion_profile_uses_separate_canonical_identity(self) -> None:
+        expected = POLICY.expected_manifests("companion")
+        self.assertEqual(
+            {
+                "phone": {
+                    "package": "im.binario.companion",
+                    "versionCode": "3",
+                    "versionName": "0.1.1",
+                },
+                "wear": {
+                    "package": "im.binario.companion",
+                    "versionCode": "4",
+                    "versionName": "0.1.1",
+                },
+            },
+            expected,
+        )
+
     def test_rejects_manifest_identity_mismatch(self) -> None:
         self.write_bundle(self.valid_entries(manifest_proto("example.invalid", "99", "9.9.9")))
         expected = {

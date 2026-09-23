@@ -46,7 +46,7 @@ class VerifyCiPinningTest(unittest.TestCase):
         workflow_path = ROOT / ".github/workflows/companion-ci.yml"
         original = workflow_path.read_text(encoding="utf-8")
         without_pull_paths = original.replace(
-            '  pull_request:\n    paths:\n      - "companion-expo/**"\n      - "contracts/wear-snapshot/**"\n      - "tools/verify_gradle_dependency_metadata.py"\n      - ".github/workflows/companion-ci.yml"\n',
+            '  pull_request:\n    paths:\n      - "companion-expo/**"\n      - "contracts/wear-snapshot/**"\n      - "tools/verify_android_app_bundles.py"\n      - "tests/test_verify_android_app_bundles.py"\n      - "tools/verify_gradle_dependency_metadata.py"\n      - ".github/workflows/companion-ci.yml"\n',
             "  pull_request:\n",
             1,
         )
@@ -68,6 +68,14 @@ class VerifyCiPinningTest(unittest.TestCase):
         )
         problems = policy.workflow_problems(workflow_path, without_privacy, LOCK)
         self.assertTrue(any("gate privacy Companion assente" in problem for problem in problems))
+
+        without_bundle_gate = original.replace(
+            "          :app:bundleRelease :wear:bundleRelease\n",
+            "",
+            1,
+        )
+        problems = policy.workflow_problems(workflow_path, without_bundle_gate, LOCK)
+        self.assertTrue(any("gate App Bundle Companion assente" in problem for problem in problems))
 
         android_path = ROOT / ".github/workflows/android-ci.yml"
         android_without_contract = android_path.read_text(encoding="utf-8").replace(

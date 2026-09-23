@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import json
+import re
 import sys
 import zlib
 import zipfile
@@ -12,8 +14,14 @@ from typing import Mapping
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_BUNDLES = {
-    "phone": ROOT / "app" / "build" / "outputs" / "bundle" / "release" / "app-release.aab",
-    "wear": ROOT / "wear" / "build" / "outputs" / "bundle" / "release" / "wear-release.aab",
+    "root": {
+        "phone": ROOT / "app" / "build" / "outputs" / "bundle" / "release" / "app-release.aab",
+        "wear": ROOT / "wear" / "build" / "outputs" / "bundle" / "release" / "wear-release.aab",
+    },
+    "companion": {
+        "phone": ROOT / "companion-expo" / "android" / "app" / "build" / "outputs" / "bundle" / "release" / "app-release.aab",
+        "wear": ROOT / "companion-expo" / "android" / "wear" / "build" / "outputs" / "bundle" / "release" / "wear-release.aab",
+    },
 }
 MANIFEST_PATH = "base/manifest/AndroidManifest.xml"
 MAX_BUNDLE_BYTES = 200 * 1024 * 1024
@@ -163,7 +171,47 @@ def parse_manifest_attributes(data: bytes) -> dict[str, str]:
     return attributes
 
 
-def expected_manifests() -> dict[str, dict[str, str]]:
+def expected_manifests(profile: str = "root") -> dict[str, dict[str, str]]:
+    if profile == "companion":
+        identity = json.loads(
+            (ROOT / "companion-expo" / "native" / "android" / "release-identity.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        if (
+            not isinstance(identity, dict)
+            or set(identity) != {
+                "schemaVersion",
+                "applicationId",
+                "versionName",
+                "phoneVersionCode",
+                "wearVersionCode",
+            }
+            or identity.get("schemaVersion") != 1
+            or not isinstance(identity.get("applicationId"), str)
+            or not isinstance(identity.get("versionName"), str)
+            or type(identity.get("phoneVersionCode")) is not int
+            or type(identity.get("wearVersionCode")) is not int
+            or identity["applicationId"] != "im.binario.companion"
+            or not re.fullmatch(r"\d+\.\d+\.\d+", identity["versionName"])
+            or identity["phoneVersionCode"] <= 0
+            or identity["wearVersionCode"] <= identity["phoneVersionCode"]
+        ):
+            raise ValueError("identità release Companion non valida")
+        return {
+            "phone": {
+                "package": identity["applicationId"],
+                "versionCode": str(identity["phoneVersionCode"]),
+                "versionName": identity["versionName"],
+            },
+            "wear": {
+                "package": identity["applicationId"],
+                "versionCode": str(identity["wearVersionCode"]),
+                "versionName": identity["versionName"],
+            },
+        }
+    if profile != "root":
+        raise ValueError(f"profilo AAB non supportato: {profile}")
     properties: dict[str, str] = {}
     for line in (ROOT / "gradle.properties").read_text(encoding="utf-8").splitlines():
         if "=" not in line or line.lstrip().startswith("#"):
@@ -274,21 +322,22 @@ def verify_reproducible(path: Path, reference: Path) -> list[str]:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--phone", type=Path, default=DEFAULT_BUNDLES["phone"])
-    parser.add_argument("--wear", type=Path, default=DEFAULT_BUNDLES["wear"])
+    parser.add_argument("--profile", choices=sorted(DEFAULT_BUNDLES), default="root")
+    parser.add_argument("--phone", type=Path)
+    parser.add_argument("--wear", type=Path)
     parser.add_argument("--reference-phone", type=Path)
     parser.add_argument("--reference-wear", type=Path)
     args = parser.parse_args(argv)
     try:
-        manifests = expected_manifests()
-    except (KeyError, OSError) as error:
+        manifests = expected_manifests(args.profile)
+    except (json.JSONDecodeError, KeyError, OSError, ValueError) as error:
         print(f"Android App Bundle: FAIL: configurazione versione non leggibile: {error}", file=sys.stderr)
         return 1
 
     failed = False
     for label, path, reference in (
-        ("phone", args.phone, args.reference_phone),
-        ("wear", args.wear, args.reference_wear),
+        ("phone", args.phone or DEFAULT_BUNDLES[args.profile]["phone"], args.reference_phone),
+        ("wear", args.wear or DEFAULT_BUNDLES[args.profile]["wear"], args.reference_wear),
     ):
         problems = verify_bundle(path, manifests[label])
         if reference is not None:

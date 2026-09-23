@@ -44,10 +44,10 @@ La controrevisione successiva ha individuato e chiuso quattro lacune introdotte 
 | Alexa | TypeScript e suite ordinaria | **74 test verdi** |
 | Alexa / MariaDB 11.4 | Fresh 0000→0012, adozione 0000→0011, adozione 0000→0003, revoca OAuth | **4 test reali verdi** |
 | Alexa supply chain | `pnpm audit --audit-level high`, build Vite/esbuild, verifica bundle | **0 high/critical; build verde** |
-| Companion TypeScript | Typecheck, branding, suite, managed config, release inputs | **89 test in 15 file; tutti verdi** |
-| Companion nativo | Test JVM app/Wear, lint e assemble con checksum Gradle strict | **Verde** |
+| Companion TypeScript | Typecheck, branding, suite, managed config, release inputs | **90 test in 15 file; tutti verdi** |
+| Companion nativo | Test JVM app/Wear, lint, build e doppio prebuild con checksum Gradle strict | **Verde; prebuild identico e due full rebuild AAB telefono/Wear byte-identiche con packaging single-worker** |
 | Android/Wear root | 304 test app, 10 test Wear, lint debug, release minificate e `lintVitalRelease` | **Verde; 204 task nel gate completo** |
-| GTFS/release engineering | Suite Python, check 30 giorni, digest contenuto, privacy, CI pinning e confronto AAB unsigned | **62 test verdi; 10/10 pack validi; manifest AAB coerenti e parser fail-closed; due full rebuild telefono/Wear byte-identiche** |
+| GTFS/release engineering | Suite Python, check 30 giorni, digest contenuto, privacy, CI pinning e confronto AAB unsigned | **63 test verdi; 10/10 pack validi; profili AAB principale e Companion coerenti e parser fail-closed; due full rebuild dell’app primaria/Wear root byte-identiche** |
 | Apple Watch | Test progetto, requisiti macOS e verifier CI | **4 test progetto e 23 test mirati verdi** |
 | Repository | `git diff --check`, prebuild generato e lock Gradle | **Verde** |
 
