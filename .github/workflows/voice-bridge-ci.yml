@@ -1,0 +1,59 @@
+name: Voice Bridge CI
+
+on:
+  pull_request:
+    paths:
+      - "voice-bridge/**"
+      - ".github/workflows/voice-bridge-ci.yml"
+  push:
+    branches:
+      - main
+      - "stabilization/**"
+    paths:
+      - "voice-bridge/**"
+      - ".github/workflows/voice-bridge-ci.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: voice-bridge-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  voice-bridge:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: voice-bridge
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10
+          run_install: false
+
+      - name: Node 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: pnpm
+          cache-dependency-path: voice-bridge/pnpm-lock.yaml
+
+      - name: Install frozen dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: TypeScript
+        run: pnpm run check
+
+      - name: Unit tests
+        run: pnpm test
+
+      - name: Production build and bundle verification
+        run: pnpm run build
