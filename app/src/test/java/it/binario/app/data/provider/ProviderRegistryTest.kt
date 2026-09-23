@@ -51,8 +51,10 @@ class ProviderRegistryTest {
         assertTrue(registry.isEnabled(SourceId("oebb-gtfs")))
         assertTrue(registry.isEnabled(SourceId("alto-adige-sta-gtfs")))
         assertTrue(registry.isEnabled(SourceId("hzpp-gtfs")))
-        assertTrue(registry.isEnabled(SourceId("amt-genova-casella-gtfs")))
-        assertTrue(registry.isEnabled(SourceId("cotral-ferro-gtfs")))
+        assertTrue(registry.policy(SourceId("amt-genova-casella-gtfs")) != null)
+        assertTrue(registry.policy(SourceId("cotral-ferro-gtfs")) != null)
+        assertFalse(registry.isEnabled(SourceId("amt-genova-casella-gtfs")))
+        assertFalse(registry.isEnabled(SourceId("cotral-ferro-gtfs")))
     }
 
     @Test(expected = IllegalArgumentException::class)
