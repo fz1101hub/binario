@@ -27,14 +27,17 @@
     <string name="screen_title_settings">Impostazioni</string>
     <string name="screen_title_results">Soluzioni</string>
     <string name="screen_title_detail">Dettaglio corsa</string>
+    <string name="screen_title_agenda">Agenda</string>
     <string name="screen_subtitle_planner">Pianifica il prossimo viaggio</string>
     <string name="screen_subtitle_operations">Treni e stazioni</string>
     <string name="screen_subtitle_settings">Preferenze e dati personali</string>
     <string name="screen_subtitle_results">Corse disponibili</string>
     <string name="screen_subtitle_detail">Stato e fermate</string>
+    <string name="screen_subtitle_agenda">Viaggi pianificati sul dispositivo</string>
     <string name="nav_search">Cerca</string>
     <string name="nav_operations">Consulta</string>
     <string name="nav_settings">Impostazioni</string>
+    <string name="nav_agenda">Agenda</string>
     <string name="action_back">Torna indietro</string>
     <string name="action_choose_theme">Scegli tema. Tema attuale %1$s</string>
     <string name="action_refresh_rail_information">Aggiorna le informazioni ferroviarie</string>
@@ -51,6 +54,48 @@
     <string name="accessibility_section_not_selected">Non selezionata</string>
     <string name="action_new_search">Nuova ricerca</string>
     <string name="action_plan_route">Pianifica tratta</string>
+
+    <!-- Local-only planned journeys. These records never alter SavedRoute or live rail data. -->
+    <string name="planned_journey_description">Crea un promemoria di viaggio personale e consulta le sue occorrenze.</string>
+    <string name="planned_journey_local_only">Salvato solo su questo dispositivo. Nessuna sincronizzazione o notifica automatica.</string>
+    <string name="planned_journey_add">Nuovo viaggio</string>
+    <string name="planned_journey_edit">Modifica viaggio</string>
+    <string name="planned_journey_import">Importa</string>
+    <string name="planned_journey_export_json">Esporta JSON</string>
+    <string name="planned_journey_export_ics">Esporta ICS</string>
+    <string name="planned_journey_empty">Non ci sono occorrenze per questo filtro. Crea un viaggio pianificato per iniziare.</string>
+    <string name="planned_journey_filter_upcoming">Prossimi</string>
+    <string name="planned_journey_filter_reminders">Promemoria</string>
+    <string name="planned_journey_filter_archived">Archiviati</string>
+    <string name="planned_journey_filter_all">Tutti</string>
+    <string name="planned_journey_label">Etichetta facoltativa</string>
+    <string name="planned_journey_origin">Partenza</string>
+    <string name="planned_journey_destination">Arrivo</string>
+    <string name="planned_journey_route">%1$s → %2$s</string>
+    <string name="planned_journey_date">Data</string>
+    <string name="planned_journey_date_hint">Formato AAAA-MM-GG</string>
+    <string name="planned_journey_time">Ora</string>
+    <string name="planned_journey_reminder">Promemoria prima della partenza</string>
+    <plurals name="planned_journey_reminder_value">
+        <item quantity="one">Promemoria %1$d minuto prima</item>
+        <item quantity="other">Promemoria %1$d minuti prima</item>
+    </plurals>
+    <string name="planned_journey_none">Nessuno</string>
+    <string name="planned_journey_checklist">Checklist</string>
+    <string name="planned_journey_checklist_hint">Una voce per riga. Non inserire dati sensibili.</string>
+    <string name="planned_journey_checklist_item">Checklist: %1$s</string>
+    <string name="planned_journey_save">Salva</string>
+    <string name="planned_journey_cancel">Annulla</string>
+    <string name="planned_journey_complete">Completa</string>
+    <string name="planned_journey_archive">Archivia</string>
+    <string name="planned_journey_json_preview_title">Anteprima importazione JSON</string>
+    <string name="planned_journey_json_preview_body">Nuovi: %1$d. Duplicati ignorati: %2$d. Conflitti di ID: %3$d.</string>
+    <string name="planned_journey_ics_preview_title">Anteprima calendario ICS</string>
+    <string name="planned_journey_ics_preview_body">Eventi corrispondenti: %1$d. Conflitti: %2$d. Eventi non presenti nell’agenda: %3$d. Un file ICS è solo una verifica: per ripristinare viaggi modificabili usa JSON.</string>
+    <string name="planned_journey_import_error_title">Importazione non disponibile</string>
+    <string name="planned_journey_keep_existing">Mantieni esistenti</string>
+    <string name="planned_journey_replace_existing">Sostituisci conflitti</string>
+    <string name="planned_journey_close">Chiudi</string>
 
     <!-- Data provenance and operational-state announcements. -->
     <string name="data_status_demo">Catalogo dimostrativo locale, non live</string>
