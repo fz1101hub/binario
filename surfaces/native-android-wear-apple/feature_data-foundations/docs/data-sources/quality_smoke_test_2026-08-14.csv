@@ -1,7 +1,0 @@
-source_id,outcome,http_status,latency_ms,detail,checked_at_utc
-rfi_infomobility_rss,PASS,200,7438,items=60,2026-08-14T16:26:54.304875+00:00
-sta_trip_updates,PASS,200,116284,entities=230;header_timestamp=1786724794,2026-08-14T16:28:50.598958+00:00
-sta_vehicle_positions,PASS,200,16925,entities=302;header_timestamp=1786724910,2026-08-14T16:29:07.525759+00:00
-sta_service_alerts,PASS,200,19954,entities=30;header_timestamp=1786724940,2026-08-14T16:29:27.480985+00:00
-rfi_station_board,PASS,200,7026,bytes=329198,2026-08-14T16:29:34.506942+00:00
-viaggiatreno_station_board,PASS,200,6251,bytes=107026,2026-08-14T16:29:40.758571+00:00
