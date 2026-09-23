@@ -20,6 +20,7 @@ class WidgetStateMetadataTest {
         )
         val state = WidgetState(
             route = route,
+            snapshotDirection = Direction.OUTBOUND,
             direction = Direction.OUTBOUND,
             services = emptyList(),
             freshness = Freshness.AGING,
@@ -29,7 +30,7 @@ class WidgetStateMetadataTest {
             qualityBand = DataQualityBand.RELIABLE,
             qualityWarnings = setOf(SnapshotWarning.SOURCE_CONFLICT),
             retrievedAt = 1L,
-            page = 0
+            rowOffset = 0
         )
 
         val meta = state.compactMeta("PAG 1/1")

@@ -1,5 +1,8 @@
 package it.binario.app
 
+import it.binario.app.data.Direction
+import it.binario.app.data.SavedRoute
+import it.binario.app.data.Station
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -101,6 +104,24 @@ class BinarioDeepLinkTest {
         dispatcher.receive(BinarioDeepLinkParser.viewAction, "binario://route/active")
 
         assertNull(dispatcher.receive(BinarioDeepLinkParser.viewAction, "https://route/active"))
+        assertNull(dispatcher.pending())
+    }
+
+    @Test
+    fun `widget route uses the same consumable request lifecycle`() {
+        val dispatcher = DeepLinkRequestDispatcher()
+        val route = SavedRoute(
+            id = "widget-route",
+            name = "Casa",
+            outwardOrigin = Station("roma", "Roma Termini", "Roma"),
+            outwardDestination = Station("tivoli", "Tivoli", "Tivoli")
+        )
+
+        val request = dispatcher.receive(BinarioDeepLink.WidgetRoute(route, Direction.RETURN))
+
+        assertEquals(BinarioDeepLink.WidgetRoute(route, Direction.RETURN), request.deepLink)
+        assertEquals(request, dispatcher.pending())
+        assertTrue(dispatcher.consume(request.id))
         assertNull(dispatcher.pending())
     }
 }
