@@ -7,7 +7,6 @@ import androidx.core.content.edit
 import com.google.android.gms.wearable.PutDataMapRequest
 import com.google.android.gms.wearable.Wearable
 import it.binario.app.data.RouteSnapshot
-import it.binario.app.data.orderServicesForDisplay
 import kotlinx.coroutines.suspendCancellableCoroutine
 import org.json.JSONObject
 import kotlin.coroutines.resume
@@ -25,19 +24,24 @@ object WearSnapshotPublisher {
     private const val KEY_LAST_PAYLOAD = "last_payload"
 
     suspend fun publish(context: Context, snapshot: RouteSnapshot) {
-        publishPayload(context, WearSnapshotPayload.from(snapshot))
+        val generatedAt = System.currentTimeMillis()
+        val payload = runCatching { AndroidWearSnapshotContract.operational(snapshot, generatedAt) }
+            .getOrElse { AndroidWearSnapshotContract.unavailable(snapshot.routeLabel, snapshot.providerName, generatedAt) }
+        publishPayload(context, payload)
     }
 
     suspend fun publishUnavailable(context: Context, routeLabel: String, provider: String) {
         publishPayload(
             context,
-            WearSnapshotPayload.unavailable(routeLabel, provider, System.currentTimeMillis())
+            AndroidWearSnapshotContract.unavailable(routeLabel, provider, System.currentTimeMillis())
         )
     }
 
-    /** Reissues the locally retained bounded payload after an accepted Wear request. */
+    /** Reissues the locally retained bounded payload only while its explicit TTL is still valid. */
     suspend fun republishLastSnapshot(context: Context): Boolean {
         val payload = readLastPayload(context) ?: return false
+        val expiresAt = (payload["expiresAtEpochMillis"] as? Number)?.toLong() ?: return false
+        if (expiresAt <= System.currentTimeMillis()) return false
         return runWearSafely { putPayload(context, payload) }
     }
 
@@ -53,7 +57,7 @@ object WearSnapshotPublisher {
         }
     }
 
-    private suspend fun publishPayload(context: Context, payload: Map<String, Any?>) {
+    private suspend fun publishPayload(context: Context, payload: Map<String, Any>) {
         runWearSafely { putPayload(context, payload) }
         context.applicationContext.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE).edit {
             putString(KEY_LAST_PAYLOAD, JSONObject(payload).toString())
@@ -67,11 +71,9 @@ object WearSnapshotPublisher {
                     is String -> dataMap.putString(key, value)
                     is Int -> dataMap.putInt(key, value)
                     is Long -> dataMap.putLong(key, value)
-                    else -> error("Unsupported Wear payload value for $key")
+                    else -> error("Unsupported Wear contract value for $key")
                 }
             }
-            // Makes an explicit reissue visible even when business data is unchanged.
-            dataMap.putLong("publishedAt", System.currentTimeMillis())
         }.asPutDataRequest()
         Wearable.getDataClient(context).putDataItem(request).awaitTask()
     }
@@ -89,43 +91,6 @@ object WearSnapshotPublisher {
     } catch (_: Exception) {
         Log.w(TAG, "Sincronizzazione smartwatch non disponibile")
         false
-    }
-
-    internal object WearSnapshotPayload {
-        private const val VERSION = 1L
-        private const val MAX_SERVICES = 2
-
-        fun from(snapshot: RouteSnapshot): Map<String, Any?> = buildMap {
-            put("version", VERSION)
-            put("routeLabel", snapshot.routeLabel)
-            put("provider", snapshot.providerName)
-            put("freshness", snapshot.freshness.name)
-            put("confidence", snapshot.confidence.name)
-            put("retrievedAt", snapshot.retrievedAtEpochMillis)
-            put("notice", snapshot.notice.orEmpty())
-            val services = orderServicesForDisplay(snapshot.services).take(MAX_SERVICES)
-            put("serviceCount", services.size)
-            services.forEachIndexed { index, service ->
-                put("service${index}Number", service.number)
-                put("service${index}Operator", service.operator.accessibleLabel)
-                put("service${index}Category", service.trainCategory.accessibleLabel)
-                put("service${index}Destination", service.destination)
-                put("service${index}Expected", service.expectedDeparture)
-                put("service${index}Status", if (service.operationalStatusVerified) service.status.accessibleLabel else "Programmato")
-                put("service${index}Platform", service.platform.orEmpty())
-            }
-        }
-
-        fun unavailable(routeLabel: String, provider: String, retrievedAtEpochMillis: Long): Map<String, Any?> = mapOf(
-            "version" to VERSION,
-            "routeLabel" to routeLabel,
-            "provider" to provider,
-            "freshness" to "UNAVAILABLE",
-            "confidence" to "CACHED",
-            "retrievedAt" to retrievedAtEpochMillis,
-            "notice" to "dati non disponibili in tempo reale",
-            "serviceCount" to 0
-        )
     }
 }
 

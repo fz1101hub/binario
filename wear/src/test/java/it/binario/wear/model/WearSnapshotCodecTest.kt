@@ -1,38 +1,79 @@
 package it.binario.wear.model
 
+import org.json.JSONObject
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class WearSnapshotCodecTest {
-    @Test
-    fun `valid scheduled payload preserves only the bounded snapshot fields`() {
-        val payload = mapOf<String, Any?>(
-            "version" to 1L,
-            "routeLabel" to "Casa – lavoro",
-            "provider" to "GTFS locale",
-            "freshness" to "AGING",
-            "confidence" to "STATIC_ONLY",
-            "retrievedAt" to 100L,
-            "serviceCount" to 3L,
-            "service0Number" to "R 101",
-            "service0Destination" to "Roma Termini",
-            "service0Expected" to "08:15",
-            "service0Status" to "In orario",
-            "service1Number" to "R 102",
-            "service1Destination" to "Roma Ostiense"
-        )
+    private val now = 1_893_484_800_000L
 
-        val snapshot = WearSnapshotCodec.decode(payload)
-        assertEquals("Orario programmato", snapshot?.dataStatusLabel)
-        assertEquals(2, snapshot?.services?.size)
-        assertTrue(snapshot?.services?.first()?.accessibleLabel?.contains("Treno R 101") == true)
+    @Test
+    fun `le tre fixture golden v1 sono decodificabili`() {
+        val android = WearSnapshotCodec.decode(fixture("android-to-wear-v1.json"), now)
+        val companion = WearSnapshotCodec.decode(fixture("companion-to-wear-v1.json"), now)
+        val ios = WearSnapshotCodec.decode(fixture("ios-to-apple-watch-v1.json"), now)
+
+        assertEquals(2, android?.services?.size)
+        assertEquals(WearOperationalState.OPERATIONAL, android?.operationalState)
+        assertEquals(WearProvenanceProducer.COMPANION, companion?.provenance?.producer)
+        assertEquals(WearOperationalState.PROGRAMMED, companion?.operationalState)
+        assertEquals(WearProvenanceProducer.IOS_APP, ios?.provenance?.producer)
     }
 
     @Test
-    fun `unknown version or missing identity is rejected without replacing cache`() {
-        assertNull(WearSnapshotCodec.decode(mapOf("version" to 2L)))
-        assertNull(WearSnapshotCodec.decode(mapOf("version" to 1L, "routeLabel" to "Casa", "provider" to "GTFS", "freshness" to "AGING", "confidence" to "STATIC_ONLY")))
+    fun `versione futura campo extra ttl incoerente e snapshot scaduto sono rifiutati`() {
+        val valid = fixture("android-to-wear-v1.json")
+        assertNull(WearSnapshotCodec.decode(valid + ("schemaVersion" to 2L), now))
+        assertNull(WearSnapshotCodec.decode(valid + ("unexpected" to "value"), now))
+        assertNull(WearSnapshotCodec.decode(valid + ("ttlMillis" to 1L), now))
+        assertNull(WearSnapshotCodec.decode(valid, 1_893_485_700_001L))
+    }
+
+    @Test
+    fun `enum futuro diventa unknown senza attribuire stato operativo`() {
+        val valid = fixture("companion-to-wear-v1.json")
+        val decoded = WearSnapshotCodec.decode(
+            valid + mapOf(
+                "provenanceProducer" to "FUTURE_PRODUCER",
+                "provenanceDataNature" to "FUTURE_NATURE",
+                "operationalState" to "FUTURE_STATE",
+                "freshness" to "FUTURE_FRESHNESS",
+                "confidence" to "FUTURE_CONFIDENCE",
+                "direction" to "FUTURE_DIRECTION"
+            ),
+            now
+        )
+
+        assertNotNull(decoded)
+        assertEquals(WearProvenanceProducer.UNKNOWN, decoded?.provenance?.producer)
+        assertEquals(WearDataNature.UNKNOWN, decoded?.provenance?.dataNature)
+        assertEquals(WearOperationalState.UNKNOWN, decoded?.operationalState)
+        assertEquals(WearFreshness.UNKNOWN, decoded?.freshness)
+        assertEquals(WearConfidence.UNKNOWN, decoded?.confidence)
+        assertEquals(WearDirection.UNKNOWN, decoded?.direction)
+    }
+
+    @Test
+    fun `payload oltre budget non sostituisce la cache`() {
+        val oversized = fixture("android-to-wear-v1.json") + ("notice" to "x".repeat(WearSnapshotCodec.MAX_PAYLOAD_BYTES))
+        assertNull(WearSnapshotCodec.decode(oversized, now))
+    }
+
+    @Test
+    fun `round trip mantiene lo snapshot e le label accessibili`() {
+        val decoded = requireNotNull(WearSnapshotCodec.decode(fixture("android-to-wear-v1.json"), now))
+        val roundTrip = WearSnapshotCodec.decode(WearSnapshotCodec.encode(decoded), now)
+
+        assertEquals(decoded, roundTrip)
+        assertTrue(roundTrip?.services?.first()?.accessibleLabel?.contains("Treno FR 9505") == true)
+    }
+
+    private fun fixture(name: String): Map<String, Any?> {
+        val text = requireNotNull(javaClass.classLoader?.getResourceAsStream(name)).bufferedReader().use { it.readText() }
+        val json = JSONObject(text)
+        return json.keys().asSequence().associateWith { key -> json.get(key) }
     }
 }

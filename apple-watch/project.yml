@@ -14,13 +14,19 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: it.binario.watch
         INFOPLIST_KEY_CFBundleDisplayName: Binario
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_WKWatchOnly: YES
     entitlements:
       path: BinarioWatch/BinarioWatch.entitlements
   BinarioWatchTests:
     type: bundle.unit-test
     platform: watchOS
     deploymentTarget: "10.0"
-    sources: [BinarioWatchTests, Shared]
+    sources:
+      - path: BinarioWatchTests
+      - path: Shared
+      - path: ../contracts/wear-snapshot/v1/ios-to-apple-watch-v1.json
+        buildPhase: resources
     dependencies:
       - target: BinarioWatch
   BinarioWatchWidgets:
