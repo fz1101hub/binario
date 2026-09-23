@@ -46,5 +46,14 @@ jobs:
       # That command intentionally remains red until every embedded timetable
       # covers the full release freshness window.
 
-      - name: Unit tests, lint and debug build
-        run: ./gradlew --no-daemon testDebugUnitTest lintDebug assembleDebug
+      - name: Verify release-engineering configuration
+        run: python3 tools/verify_android_release_config.py
+
+      - name: Unit tests, lint, debug and unsigned release builds
+        run: >-
+          ./gradlew --no-daemon
+          :app:testDebugUnitTest :wear:testDebugUnitTest
+          :app:lintDebug :wear:lintDebug
+          :app:assembleDebug :wear:assembleDebug
+          :app:assembleRelease :wear:assembleRelease
+          :app:lintVitalRelease :wear:lintVitalRelease
