@@ -15,11 +15,13 @@ data class IntegrationSettings(
 class IntegrationSettingsStore(context: Context) {
     private val preferences = context.getSharedPreferences("binario_integrations_v1", Context.MODE_PRIVATE)
 
-    fun read(): IntegrationSettings = IntegrationSettings(
-        wearSnapshotSharingEnabled = preferences.getBoolean(KEY_WEAR_SHARING, true),
-        voiceProfileSyncRequested = preferences.getBoolean(KEY_VOICE_PROFILE, false),
-        appleWatchSetupRequested = preferences.getBoolean(KEY_APPLE_WATCH, false)
-    )
+    fun read(): IntegrationSettings = runCatching {
+        IntegrationSettings(
+            wearSnapshotSharingEnabled = preferences.getBoolean(KEY_WEAR_SHARING, true),
+            voiceProfileSyncRequested = preferences.getBoolean(KEY_VOICE_PROFILE, false),
+            appleWatchSetupRequested = preferences.getBoolean(KEY_APPLE_WATCH, false)
+        )
+    }.getOrDefault(IntegrationSettings())
 
     fun save(settings: IntegrationSettings) {
         preferences.edit {

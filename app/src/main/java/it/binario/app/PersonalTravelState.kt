@@ -1,7 +1,6 @@
 package it.binario.app
 
 import android.content.Context
-import android.util.Base64
 import androidx.core.content.edit
 import it.binario.app.data.Station
 import it.binario.app.data.TrainService
@@ -118,8 +117,9 @@ class PersonalTravelStore(context: Context) {
         )
     }.getOrNull()
 
-    private fun enc(value: String): String = Base64.encodeToString(value.toByteArray(Charsets.UTF_8), Base64.NO_WRAP)
-    private fun dec(value: String): String = String(Base64.decode(value, Base64.NO_WRAP), Charsets.UTF_8)
+    private fun enc(value: String): String = PreferenceValueCodec.encode(value)
+    private fun dec(value: String): String = PreferenceValueCodec.decode(value)
+        ?: throw IllegalArgumentException("Valore preferenza Base64 non valido")
 
     private companion object {
         const val KEY_STATION_MONITORS = "station_monitors"

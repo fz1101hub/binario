@@ -3,7 +3,6 @@ package it.binario.app
 import android.app.Application
 import android.util.Log
 import android.content.Context
-import android.util.Base64
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -20,9 +19,9 @@ import it.binario.app.data.RouteSnapshotCache
 import it.binario.app.data.SavedRoute
 import it.binario.app.data.SavedRouteOrdering
 import it.binario.app.data.Station
+import it.binario.app.data.StationAutocompleteEngine
 import it.binario.app.data.TrainDataSource
 import it.binario.app.data.matchesPublishedName
-import it.binario.app.data.searchableValues
 import it.binario.app.data.repository.BinarioDataGraph
 import it.binario.app.data.repository.StationBoardAggregate
 import it.binario.app.data.repository.StationBoardAggregateResult
@@ -31,7 +30,6 @@ import it.binario.app.data.TrainService
 import it.binario.app.data.core.BoardKind
 import it.binario.app.data.provider.ProviderWarning
 import it.binario.app.data.catalog.EmbeddedCuratedRailStationCatalog
-import it.binario.app.data.gtfs.EmbeddedGtfsStationSearchIndex
 import it.binario.app.data.orderServicesForDisplay
 import it.binario.app.widget.RouteWidgetProvider
 import it.binario.app.widget.WidgetStateStore
@@ -74,6 +72,11 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
 
     var stations by mutableStateOf(customStationStore.stations())
         private set
+    private var stationAutocomplete by mutableStateOf(StationAutocompleteEngine(stations))
+
+    /** Immutable, pre-normalized index consumed by the lightweight autocomplete UI. */
+    val stationAutocompleteEngine: StationAutocompleteEngine
+        get() = stationAutocomplete
 
     var favouriteStations by mutableStateOf(stationPreferences.favourites(stations))
         private set
@@ -142,6 +145,12 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
     var mobilityPreferences by mutableStateOf(mobilityPreferencesStore.read())
         private set
 
+    private var primaryServicePresentation by mutableStateOf(ServicePresentation.empty())
+    private var returnServicePresentation by mutableStateOf(ServicePresentation.empty())
+    private var visiblePrimaryServices by mutableStateOf<List<TrainService>>(emptyList())
+    private var visibleReturnServices by mutableStateOf<List<TrainService>>(emptyList())
+    private var availableOperatorNames by mutableStateOf<List<String>>(emptyList())
+
     private var journeyQuery: JourneyQuery = JourneyQuery.now()
     private var returnJourneyQuery: JourneyQuery? = null
     /** Monotonic token: only the newest current-direction refresh may mutate UI/cache/surfaces. */
@@ -174,6 +183,7 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
                         } ?: station
                     }
                     stations = imported + migratedCustom.filterNot { custom -> imported.any { it.id == custom.id } }
+                    stationAutocomplete = StationAutocompleteEngine(stations)
                     savedRoutes = pinnedFirst(routeStore.routes(stations).map(::canonicalRoute))
                     recentRoutes = routeStore.recentRoutes(stations).map { recent ->
                         RecentRoute(canonicalStation(recent.origin), canonicalStation(recent.destination))
@@ -210,22 +220,12 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun plannerDestinationText(): String = activeRoute.takeIf { hasActiveRoute }?.outwardDestination?.name.orEmpty()
 
-    fun searchStations(query: String): List<Station> {
-        val normalized = EmbeddedGtfsStationSearchIndex.normalize(query)
-        if (normalized.length < 2) return emptyList()
-        val localMatches = stations.asSequence()
-            .filter { stationMatches(it, normalized) }
-            .take(8)
-            .toList()
-        return if (localMatches.isNotEmpty()) localMatches else listOfNotNull(stationFromFreeText(query))
-    }
+    /** Compatibility facade; callers that do not need app state can use [StationAutocompleteEngine] directly. */
+    fun searchStations(query: String): List<Station> = stationAutocomplete.suggest(query)
+        .ifEmpty { listOfNotNull(stationFromFreeText(query)) }
 
     fun stationFromName(name: String): Station? {
-        val normalized = EmbeddedGtfsStationSearchIndex.normalize(name)
-        return stations.firstOrNull { station ->
-            station.searchableValues().any { EmbeddedGtfsStationSearchIndex.normalize(it) == normalized }
-        }
-            ?: stationFromFreeText(name)
+        return stationAutocomplete.findExact(name) ?: stationFromFreeText(name)
     }
 
     fun isStationFavourite(station: Station): Boolean = stationPreferences.isFavourite(station)
@@ -315,6 +315,7 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
         routeStore.saveActiveRoute(route.id)
         clearSelectedService()
         primarySnapshot = null
+        rebuildServicePresentations()
         operatorFilter = null
         refresh()
     }
@@ -348,6 +349,7 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
         recentRoutes = routeStore.recordRecent(rememberedOrigin, rememberedDestination, stations)
         clearSelectedService()
         primarySnapshot = null
+        rebuildServicePresentations()
         operatorFilter = null
         trainNumberQuery = ""
         refresh()
@@ -380,6 +382,7 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
         routeStore.saveDirection(direction)
         clearSelectedService()
         primarySnapshot = null
+        rebuildServicePresentations()
         operatorFilter = null
         refresh()
     }
@@ -395,24 +398,26 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun selectOperatorFilter(operator: String?) {
         operatorFilter = operator
+        refreshVisibleServices()
     }
 
-    fun operatorFilterOptions(): List<String> = publishedOperatorNames(
-        primarySnapshot?.services.orEmpty() + returnSnapshot?.services.orEmpty()
-    )
+    fun operatorFilterOptions(): List<String> = availableOperatorNames
 
     fun selectJourneyChangeFilter(filter: JourneyChangeFilter) {
         journeyChangeFilter = filter
+        refreshVisibleServices()
     }
 
     fun updateTrainNumberQuery(query: String) {
         trainNumberQuery = query.filter { it.isLetterOrDigit() || it.isWhitespace() }.take(12)
+        refreshVisibleServices()
     }
 
     fun clearSearchFilters() {
         operatorFilter = null
         journeyChangeFilter = JourneyChangeFilter.ANY
         trainNumberQuery = ""
+        refreshVisibleServices()
     }
 
     fun createRoute(origin: Station, destination: Station, customName: String? = null): Boolean {
@@ -439,6 +444,7 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
         routeStore.saveDirection(direction)
         clearSelectedService()
         primarySnapshot = null
+        rebuildServicePresentations()
         operatorFilter = null
         refresh()
         return true
@@ -472,10 +478,12 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
             if (hasActiveRoute) routeStore.saveActiveRoute(activeRoute.id) else routeStore.clearActiveRoute()
             clearSelectedService()
             primarySnapshot = null
+            rebuildServicePresentations()
             operatorFilter = null
             if (hasActiveRoute) refresh() else {
                 refreshRequestId += 1
                 primarySnapshot = null
+                rebuildServicePresentations()
                 refreshState = RefreshState.IDLE
                 refreshMessage = "Inserisci una tratta per iniziare la consultazione."
             }
@@ -493,6 +501,7 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
         if (!hasActiveRoute) {
             refreshRequestId += 1
             primarySnapshot = null
+            rebuildServicePresentations()
             refreshState = RefreshState.ERROR
             refreshMessage = "Inserisci partenza e arrivo per consultare una tratta."
             return
@@ -509,6 +518,7 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
             when (result) {
                 is DataResult.Success -> {
                     primarySnapshot = result.snapshot
+                    rebuildServicePresentations()
                     reconcileSelectedService(result.snapshot, directionAtRequest)
                     retainAvailableOperatorFilter()
                     cache.save(result.snapshot)
@@ -562,6 +572,7 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
             when (result) {
                 is DataResult.Success -> {
                     returnSnapshot = result.snapshot
+                    rebuildServicePresentations()
                     reconcileSelectedService(result.snapshot, Direction.RETURN)
                     retainAvailableOperatorFilter()
                     returnRefreshState = RefreshState.SUCCESS
@@ -584,6 +595,7 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
         if (selectedServiceDirection == Direction.RETURN) clearSelectedService()
         returnJourneyQuery = null
         returnSnapshot = null
+        rebuildServicePresentations()
         returnRefreshState = RefreshState.IDLE
         returnRefreshMessage = null
     }
@@ -596,10 +608,9 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun retainAvailableOperatorFilter() {
         operatorFilter = operatorFilter?.takeIf { selected ->
-            (primarySnapshot?.services.orEmpty() + returnSnapshot?.services.orEmpty()).any { service ->
-                service.displayOperator.equals(selected, ignoreCase = true)
-            }
+            availableOperatorNames.any { it.equals(selected, ignoreCase = true) }
         }
+        refreshVisibleServices()
     }
 
     private fun reconcileSelectedService(updated: RouteSnapshot, updatedDirection: Direction) {
@@ -638,25 +649,35 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
         clearSelectedService()
     }
 
-    fun currentServices(): List<TrainService> = filteredServices(primarySnapshot)
+    fun currentServices(): List<TrainService> = visiblePrimaryServices
 
-    fun currentReturnServices(): List<TrainService> = filteredServices(returnSnapshot)
+    fun currentReturnServices(): List<TrainService> = visibleReturnServices
 
-    private fun filteredServices(source: RouteSnapshot?): List<TrainService> {
-        val query = trainNumberQuery.trim()
-        val filtered = source?.services.orEmpty().filter { service ->
-            (operatorFilter == null || service.displayOperator.equals(operatorFilter, ignoreCase = true)) &&
-                (query.isBlank() || service.number.contains(query, ignoreCase = true)) &&
-                journeyChangeFilter.accepts(service.transferCount)
-        }
-        return orderServicesForDisplay(filtered)
+    fun homeServices(): List<TrainService> = primaryServicePresentation.ordered
+
+    fun quickServices(): List<TrainService> = primaryServicePresentation.ordered.take(2)
+
+    private fun rebuildServicePresentations() {
+        primaryServicePresentation = ServicePresentation.fromServices(primarySnapshot?.services.orEmpty())
+        returnServicePresentation = ServicePresentation.fromServices(returnSnapshot?.services.orEmpty())
+        availableOperatorNames = publishedOperatorNames(
+            primaryServicePresentation.ordered + returnServicePresentation.ordered
+        )
+        refreshVisibleServices()
     }
 
-    fun homeServices(): List<TrainService> =
-        orderServicesForDisplay(primarySnapshot?.services.orEmpty())
-
-    fun quickServices(): List<TrainService> =
-        orderServicesForDisplay(primarySnapshot?.services.orEmpty()).take(2)
+    private fun refreshVisibleServices() {
+        visiblePrimaryServices = primaryServicePresentation.filtered(
+            operator = operatorFilter,
+            numberQuery = trainNumberQuery,
+            journeyChangeFilter = journeyChangeFilter
+        )
+        visibleReturnServices = returnServicePresentation.filtered(
+            operator = operatorFilter,
+            numberQuery = trainNumberQuery,
+            journeyChangeFilter = journeyChangeFilter
+        )
+    }
 
     fun currentRouteLabel(): String = activeRoute.displayName(direction)
 
@@ -810,19 +831,15 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun lastRefreshEpochMillis(): Long = displaySnapshot()?.retrievedAtEpochMillis ?: cache.lastRefreshEpochMillis()
 
-    private fun stationMatches(station: Station, normalizedQuery: String): Boolean {
-        return station.searchableValues().any { value ->
-            val candidate = EmbeddedGtfsStationSearchIndex.normalize(value)
-            candidate.contains(normalizedQuery) || normalizedQuery.split(' ').all { token -> candidate.contains(token) }
-        }
-    }
-
     private fun rememberStation(station: Station): Station {
         val existing = stations.firstOrNull { it.id == station.id } ?: station
         val saved = customStationStore.remember(existing)
         val knownIds = stations.mapTo(hashSetOf()) { it.id }
         val additions = saved.filter { knownIds.add(it.id) }
-        if (additions.isNotEmpty()) stations = stations + additions
+        if (additions.isNotEmpty()) {
+            stations = stations + additions
+            stationAutocomplete = StationAutocompleteEngine(stations)
+        }
         return saved.firstOrNull { it.id == existing.id } ?: existing
     }
 }
@@ -852,6 +869,34 @@ internal fun findRefreshedService(selected: TrainService, services: List<TrainSe
                 it.origin == selected.origin &&
                 it.destination == selected.destination
         }
+
+/**
+ * Snapshot immutabile già ordinato. Filtri e UI leggono questa struttura invece
+ * di ordinare l'elenco di corse a ogni ricomposizione.
+ */
+private class ServicePresentation private constructor(
+    val ordered: List<TrainService>
+) {
+    companion object {
+        fun empty(): ServicePresentation = ServicePresentation(emptyList())
+
+        fun fromServices(services: List<TrainService>): ServicePresentation =
+            ServicePresentation(orderServicesForDisplay(services))
+    }
+
+    fun filtered(
+        operator: String?,
+        numberQuery: String,
+        journeyChangeFilter: JourneyChangeFilter
+    ): List<TrainService> {
+        val query = numberQuery.trim()
+        return ordered.filter { service ->
+            (operator == null || service.displayOperator.equals(operator, ignoreCase = true)) &&
+                (query.isBlank() || service.number.contains(query, ignoreCase = true)) &&
+                journeyChangeFilter.accepts(service.transferCount)
+        }
+    }
+}
 
 private fun pinnedFirst(routes: List<SavedRoute>): List<SavedRoute> = SavedRouteOrdering.ordered(routes)
 
@@ -956,20 +1001,24 @@ private class RouteStore(context: Context) {
     ).joinToString(",") { encode(it) }
 
     private fun decodeRoute(value: String, stations: List<Station>): SavedRoute? {
-        val parts = value.split(",")
-        if (parts.size !in 4..6) return null
-        val origin = stations.firstOrNull { it.id == decode(parts[2]) } ?: legacyStation(decode(parts[2])) ?: return null
-        val destination = stations.firstOrNull { it.id == decode(parts[3]) } ?: legacyStation(decode(parts[3])) ?: return null
-        val isPinned = parts.getOrNull(4)?.let { decode(it) == "1" } ?: false
-        val manualOrder = parts.getOrNull(5)?.let(::decode)?.toIntOrNull()?.takeIf { it in 0 until SavedRouteOrdering.MAX_ROUTES }
-        return SavedRoute(decode(parts[0]), decode(parts[1]), origin, destination, isPinned, manualOrder)
+        return runCatching {
+            val parts = value.split(",")
+            require(parts.size in 4..6)
+            val decoded = parts.map(::decode)
+            val origin = stations.firstOrNull { it.id == decoded[2] } ?: legacyStation(decoded[2]) ?: return null
+            val destination = stations.firstOrNull { it.id == decoded[3] } ?: legacyStation(decoded[3]) ?: return null
+            val isPinned = decoded.getOrNull(4) == "1"
+            val manualOrder = decoded.getOrNull(5)?.toIntOrNull()?.takeIf { it in 0 until SavedRouteOrdering.MAX_ROUTES }
+            SavedRoute(decoded[0], decoded[1], origin, destination, isPinned, manualOrder)
+        }.getOrNull()
     }
 
     /** Solo migrazione di preferenze personali: non alimenta il catalogo della UI. */
     private fun legacyStation(id: String): Station? = legacyStations[id]
 
-    private fun encode(value: String): String = Base64.encodeToString(value.toByteArray(Charsets.UTF_8), Base64.NO_WRAP)
-    private fun decode(value: String): String = String(Base64.decode(value, Base64.NO_WRAP), Charsets.UTF_8)
+    private fun encode(value: String): String = PreferenceValueCodec.encode(value)
+    private fun decode(value: String): String = PreferenceValueCodec.decode(value)
+        ?: throw IllegalArgumentException("Valore preferenza Base64 non valido")
 
     private companion object {
         const val KEY_ROUTES = "routes"

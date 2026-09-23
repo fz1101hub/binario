@@ -1,13 +1,12 @@
 package it.binario.app.data.gtfs
 
 import it.binario.app.data.Station
+import it.binario.app.data.StationSearchNormalizer
 import it.binario.app.data.core.SourceId
 import it.binario.app.data.sources.RailSourceCatalog
 import java.io.BufferedReader
 import java.io.InputStream
 import java.io.InputStreamReader
-import java.text.Normalizer
-import java.util.Locale
 import java.util.zip.ZipInputStream
 
 /**
@@ -130,10 +129,6 @@ class EmbeddedGtfsStationSearchIndex(
     companion object {
         private const val MAX_CSV_LINE_LENGTH = 32_768
 
-        fun normalize(value: String): String = Normalizer.normalize(value, Normalizer.Form.NFD)
-            .replace("\\p{M}".toRegex(), "")
-            .lowercase(Locale.ROOT)
-            .replace("[^a-z0-9]+".toRegex(), " ")
-            .trim()
+        fun normalize(value: String): String = StationSearchNormalizer.normalize(value)
     }
 }
