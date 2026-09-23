@@ -164,7 +164,7 @@ Le PR 0–5 sono parallelizzabili per area; il merge rispetta l'ordine quando un
 
 | Voce | Stato | Riferimento |
 |---|---|---|
-| Tag baseline | creato in locale, push rifiutato (403: credenziali senza permesso sui tag) | `audit-baseline-2026-09-23` su `0b8f3c9` |
+| Tag baseline | creato in locale; il push dalla sessione è rifiutato (credenziali limitate ai branch, riprovato due volte). Da pushare dal PC del proprietario: `git fetch origin && git tag -a audit-baseline-2026-09-23 0b8f3c98487d24171053f318a86e538618218edb -m "Baseline audit 2026-09-23" && git push origin audit-baseline-2026-09-23` | `audit-baseline-2026-09-23` su `0b8f3c9` |
 | Branch `stabilization/v0.20.4` | creato e pushato | da `0a39754` |
 | Piano aggiornato | questo documento | `fab23c9` |
 | PR-SEC-1 (runtime Manus, Bearer, CSP, verificatore build) | **fatto**, verificato in locale (tsc, 26 test, build, smoke header) | `68f2bd5` |
@@ -177,6 +177,94 @@ Le PR 0–5 sono parallelizzabili per area; il merge rispetta l'ordine quando un
 | PR-REL-0 — `buildTypes.release`, firma, R8, CI release | da fare; richiede CI funzionante per la validazione | §9 |
 | PR-DATA-1 (IO/Default, download bounded, `SHA256SUMS`, integrità asset, `lastServiceDate` + avviso) | **fatto** (merge `d4423bc`); compilazione e test Gradle **non ancora validati** (nessun SDK locale, CI bloccata) | `8efede4`…`2c5aaf5` |
 | PR-DATA-0 (pack scaduti) | in attesa dei feed aggiornati dalle sorgenti (bloccate dal proxy di questo ambiente) | §4.1 |
-| PR-COMP-1/2 | in corso (agente in worktree) | §6 |
+| PR-COMP-1/2 | in lavorazione in un worktree separato (branch `fix/companion-p1b`); merge sospeso fino al via libera | §6 |
 | **Blocco CI** | Android CI #194 e Voice Bridge CI #1 su `d4423bc` falliti in 4–6 s senza eseguire alcuno step e senza log: GitHub non ha avviato i job (tipico di minuti Actions esauriti o limite di spesa per repository privato). Da sbloccare nelle impostazioni GitHub (Billing → Actions) prima di validare le PR Kotlin | run `35808311311`, `35808301236` |
 | Sorgente canonica del web | in attesa di decisione | §1.5 |
+| Correzioni successive | **sospese** su richiesta del proprietario fino al completamento del piano; riprendono dall'ordine di §10 (prossime: merge PR-COMP-1/2, PR-WEAR-1, PR-REL-0 Gradle) | §10 |
+
+## 14. Matrice di tracciabilità finding → PR → gate
+
+Identificativi dal rapporto `docs/audit-independent-2026-09-23.md` (V, C, F, D, IG) e dall'addendum (A, B, C-addendum). Stato al commit di questo documento.
+
+| Finding | PR | Gate | Stato |
+|---|---|---|---|
+| V1 runtime Manus / Bearer / frame | PR-SEC-1 | G1 | fatto (`68f2bd5`) |
+| V2 authorize senza consenso/CSRF | PR-SEC-2 | G1 | fatto (`f591719`) |
+| V3 redirect_uri senza allowlist | PR-SEC-2 | G1 | fatto |
+| V4 (ritirato) | — | — | nessuna azione |
+| V5 unlink non opponibile ai token / auto-de-revoca | PR-SEC-2 | G1 | fatto |
+| V6 collisione upsert `alexaUserHash` | PR-SEC-2 | G1 | fatto |
+| V7 download GTFS non limitato | PR-DATA-1 | G2 | fatto (`49e35f3`), validazione Gradle in attesa CI |
+| V8 hardening (algorithms, appId, sessioni, env, body, rate limit, proxy) | PR-SEC-2 | G1 | fatto; rimozione `storageProxy` → PR-VB-OPS (da fare) |
+| C1 OOM pack AMT | PR-DATA-0 + PR-DATA-2 | G2 | da fare (repack in attesa feed; indice compatto) |
+| C2 rete sul Main nel fallback ES | PR-DATA-1 | G2 | fatto (`8efede4`), validazione CI in attesa |
+| C3/C4 crash latenti watch (TYPE_DELETED, chiave LazyColumn) | PR-WEAR-1 | G4 | da fare |
+| C5 parsing CPU sul Main | PR-DATA-1 (resolver ES) + PR-DATA-2 (loadRoute) | G2 | parziale |
+| C6 reminder superstite alla delete | PR-COMP-2 | G5 | in lavorazione |
+| C7 itinerari superstiti al clear | PR-COMP-2 | G5 | in lavorazione |
+| F1 mismatch applicationId/firma Wear (root e companion) | PR-WEAR-1 | G4 | da fare (decisione §5) |
+| F2 handler refresh telefono assente | PR-WEAR-2 | G4 | da fare |
+| F3 `<data>` mancante nel listener root | PR-WEAR-1 | G4 | da fare |
+| F4 bridge JS↔Kotlin companion | PR-COMP-1 | G5 | in lavorazione |
+| F5 shared-text mai consegnato | PR-COMP-1 | G5 | in lavorazione |
+| F6 superficie widget mai renderizzata | PR-ANDROID-UX | G3 | da fare |
+| F7 README/realtime non veritieri, adapter morti | PR-REL-0 (README fatto `8c6d6f5`) + PR-DATA-3 (adapter: cablare o rimuovere) | G3 | parziale |
+| F8 Apple Watch senza produttore, project.yml | PR-APPLE | G3 | decisione (§8) |
+| F9 falso "Cancello" | PR-DATA-3 | G2 | da fare |
+| Minori: gzip svizzero, stopSequence | PR-DATA-3 | G2 | da fare |
+| Minori: shortcut `/plan`, `/guide`, sync stub, Agenda stale, timer, checksum companion | PR-COMP-2 | G5 | in lavorazione |
+| Minori: BackHandler, launchMode | PR-ANDROID-UX | G3 | da fare |
+| Prestazioni: indice stazioni, 12 ZIP per tasto | PR-ANDROID-UX | — | da fare |
+| Prestazioni: shapes ARST/AMT nell'APK | PR-DATA-0 | G2 | da fare |
+| Teorici: gtfs-realtime-bindings 0.0.4 | §9 | — | da fare |
+| Teorici: `openService` senza direzione esplicita, cache `var` adapter | PR-ANDROID-UX / PR-DATA-3 | — | da fare |
+| D-5 migrazione 0002 orfana | PR-DB-1 | G1 | fatto (`0439be5`) |
+| Debito: MainActivity/TrainViewModel, stringhe, contratti snapshot | §9 / §5.3 | — | P2 |
+| IG-1 `surfaces/` e albero web canonico | §1.5 + PR-CI-GOV | G6 | decisione |
+| IG-2 `main` stale, tag assenti | PR-CI-GOV | G6 | tag baseline in locale; resto da fare |
+| IG-3 `SHA256SUMS` stale, nessuna verifica | PR-DATA-1 | G2 | fatto (`58982c2`, `2c5aaf5`) |
+| IG-4 CI: trigger push, wrapper validation, prebuild clean | PR-VB-OPS (push su VB fatto `d0bca14`) + PR-CI-GOV | G6 | parziale |
+| IG-5 md in radice, todo di sessione, `org.json` | PR-CI-GOV | — | da fare |
+| IG-6 placeholder analytics, residui template | PR-SEC-1 | G1 | fatto |
+| IG-7 DataItem non cancellato, `INTERNET` su wear | PR-WEAR-1 | G4 | da fare |
+| A1 pack GTFS scaduti | PR-DATA-1 (avviso + `lastServiceDate`, `1e7dc56`) + PR-DATA-0 (feed) | G2 | parziale: feed in attesa |
+| A2 corse notturne giorno precedente | PR-DATA-3 | G2 | da fare |
+| A3 FERIALE/festività | PR-DATA-3 | G2 | da fare |
+| A4 pipeline pack non riproducibile, 9/12 non filtrati | PR-DATA-0 | G2 | da fare |
+| A5 banda "verificato" per solo-programmato | PR-DATA-3 | G3 | da fare |
+| A6 fuso orario dispositivo | PR-DATA-3 | — | da fare |
+| A7 policy descriptor inattivi, supplemental senza cache | PR-DATA-3 | — | da fare |
+| A8 hub RFI solo origine | PR-DATA-3 | — | da fare |
+| A9 `ExternalRailCredentials.toString` | PR-DATA-3 | — | da fare |
+| B1–B5 Back, deep link, process death, shortcut, tap widget | PR-ANDROID-UX | G3 | da fare |
+| B6 target widget Stazione/Treno mai alimentati | PR-ANDROID-UX | G3 | da fare |
+| B7–B10 widget (errori globali, direzione, refresh, VM in configurazione) | PR-ANDROID-UX | G3 | da fare |
+| B11 allarmi (boot, mezzanotte, fascia silenziosa, permesso, import, ONCE, contentIntent) | PR-ANDROID-UX | G3 | da fare |
+| B12 backup (limite, `alert.time`, ultima tratta, decode senza runCatching) | PR-ANDROID-UX | — | da fare |
+| B13 ricerca stazioni in composizione | PR-ANDROID-UX | — | da fare |
+| B14–B15 font scale, stringhe hardcoded | §9 | — | P2 |
+| C1-add. `buildTypes.release` assente | PR-REL-0 | G6 | da fare (richiede CI) |
+| C2-add. `LICENSE` assente | PR-REL-0 | G6 | decisione |
+| C3-add. README non veritiero | PR-REL-0 | G3 | fatto; privacy policy URL da fare |
+| C4-add. icona/splash/label companion | PR-BRAND | G5 | da fare |
+| C5-add. skill Alexa non certificabile | PR-ALEXA-MODEL | G6 | fatto (`abb84ee`); icone e URL nel manifest da valorizzare |
+| C6-add. Voice Bridge non operabile fuori da Manus | PR-SEC-2 + PR-VB-OPS | G6 | fatto (porta, `/healthz`, env, CI, `.env.example`); dipendenza dal portale OAuth Manus: decisione |
+| C7-add. Wear `standalone=false` vs policy Play | PR-WEAR-1 | G4 | decisione |
+| C8-add. `ACCESS_FINE_LOCATION` companion | PR-BRAND | G5 | da fare |
+| C9-add. informativa privacy in-app | PR-ANDROID-UX | G3 | da fare |
+| C10-add. PR #1 aperta, `template.json`, `VERIFICA_RELEASE.md` | PR-CI-GOV | — | da fare |
+
+## 15. Decisioni aperte (bloccano le PR indicate)
+
+| Decisione | Blocca | Opzioni |
+|---|---|---|
+| Licenza del repository | PR-REL-0, Release A | MIT (come dichiara `voice-bridge/package.json`) o altra |
+| Albero canonico del web (`voice-bridge/` vs `surfaces/web-voice-bridge`/WebDev) | riporto delle PR-SEC/DB sull'albero definitivo, PR-CI-GOV | scegliere; le correzioni fatte sono su `voice-bridge/` e riportabili (stessi file) |
+| Distribuzione Wear (Play track vs sideload) e `standalone` | PR-WEAR-1 | verificare la policy Play corrente prima di toccare i manifest |
+| Coppia Wear canonica (`app`+`wear` vs companion) | PR-WEAR-1/2, PR-COMP-1 | consigliata `app`+`wear`; companion Wear sperimentale |
+| Apple Watch: congelare o completare | PR-APPLE, G3 | congelare come prototipo finché non esiste l'app iOS |
+| Adapter realtime non cablati (RSS RFI, STA, SNCF-RT, enrichment) | PR-DATA-3, README | cablare a una superficie o rimuovere |
+| Backup senza tratte | PR-ANDROID-UX | accettare (codec) o mantenere il rifiuto e togliere il ramo morto |
+| Portale OAuth Manus per il login dashboard | Release B su host non-Manus | mantenere (solo hosting Manus) o sostituire il provider |
+| Sblocco GitHub Actions (minuti/limite di spesa) | validazione di ogni PR Kotlin | impostazioni GitHub → Billing → Actions |
+| Feed GTFS aggiornati (Cotral, Trentino, TFT, AMT) | PR-DATA-0, G2 | download dalle sorgenti in `manifest.json` dal PC del proprietario |
