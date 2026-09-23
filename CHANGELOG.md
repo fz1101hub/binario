@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.20.4 — in stabilizzazione
+
+È stata aggiunta [l'informativa privacy verificabile](PRIVACY.md) per app Android, Wear OS, Companion Expo e Alexa Companion. Il documento distingue dati locali, feed ferroviari esterni e nomi stazione trasmessi, posizione effimera, notifiche, backup manuali, dettatura di sistema, account linking Alexa, revoca, conservazione e cancellazione. Registra inoltre i limiti attuali: la copia già presente su Wear non viene ancora cancellata dal toggle di condivisione, il pairing/sync del Companion Expo è uno stub senza trasferimento remoto e il repository non indica ancora titolare, recapito o URL pubblico dell'informativa. Questi ultimi elementi restano bloccanti prima di una distribuzione pubblica; non è stato inventato un URL.
+
 ## 0.20.3 — 16 agosto 2026
 
 Rimosso il percorso UI introdotto in v0.20.1 che conservava una seconda selezione di stazione e avvolgeva i suggerimenti in una superficie aggiuntiva. Poiché il dispositivo ha segnalato comandi non reattivi, il pianificatore è stato ripristinato al flusso diretto e leggero: campo testuale, elenco di pulsanti selezionabili e scambio dei soli valori della tratta. Restano il catalogo JSON effettivamente incluso nell’APK e la correzione del suo caricamento.
