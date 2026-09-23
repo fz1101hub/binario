@@ -29,8 +29,16 @@ import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
 import java.time.ZoneOffset
+import java.util.concurrent.atomic.AtomicInteger
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -112,6 +120,53 @@ class RemoteGtfsFallbackDataSourceTest {
         val recorded = requireNotNull(downloadThread) { "download non eseguito" }
         assertNotSame(callerThread, recorded)
         assertTrue(recorded.name, recorded.name.startsWith("DefaultDispatcher-worker"))
+    }
+
+    @Test
+    fun `concurrent requests share one download and one bounded adapter parse during TTL`() = runTest {
+        val downloads = AtomicInteger()
+        val parses = AtomicInteger()
+        val scheduler = testScheduler
+        val ioDispatcher = StandardTestDispatcher(scheduler, "gtfs-test-io")
+        val parsingDispatcher = StandardTestDispatcher(scheduler, "gtfs-test-cpu")
+        val downloadStarted = CompletableDeferred<Unit>()
+        val releaseDownload = CompletableDeferred<Unit>()
+        val adapter = RemoteGtfsFallbackDataSource(
+            source = source,
+            parserSourceId = SourceId("european-sleeper"),
+            downloader = GtfsArtifactSource { _, _ ->
+                downloads.incrementAndGet()
+                downloadStarted.complete(Unit)
+                releaseDownload.await()
+                GtfsDownloadSession(ByteArrayInputStream(gtfs()))
+            },
+            clock = clock,
+            ioDispatcher = ioDispatcher,
+            parsingDispatcher = parsingDispatcher,
+            onParsing = parses::incrementAndGet
+        )
+        val query = JourneyQuery(LocalDate.of(2026, 9, 10), LocalTime.of(8, 0))
+
+        val results = coroutineScope {
+            val first = async { adapter.loadRoute(route, Direction.OUTBOUND, query) }
+            scheduler.runCurrent()
+            assertTrue(downloadStarted.isCompleted)
+            assertEquals(1, downloads.get())
+            val followers = List(5) { async { adapter.loadRoute(route, Direction.OUTBOUND, query) } }
+            scheduler.runCurrent()
+            releaseDownload.complete(Unit)
+            scheduler.advanceUntilIdle()
+            listOf(first) + followers
+        }.awaitAll()
+
+        assertTrue(results.all { it is DataResult.Success })
+        assertEquals(1, downloads.get())
+        assertEquals(2, parses.get()) // presenza fermate + indice compatto, una sola volta ciascuno.
+
+        val cached = adapter.loadRoute(route, Direction.OUTBOUND, query)
+        assertTrue(cached is DataResult.Success)
+        assertEquals(1, downloads.get())
+        assertEquals(2, parses.get())
     }
 
     private fun adapter(provider: TripUpdateProvider) = RemoteGtfsFallbackDataSource(

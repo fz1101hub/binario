@@ -14,7 +14,7 @@ class GtfsDownloadException(message: String) : IllegalStateException(message)
 
 /** Boundary for GTFS artifact acquisition; production HTTP and tests share the same policy contract. */
 fun interface GtfsArtifactSource {
-    fun open(source: RailSourceDefinition, allowBestEffortFallback: Boolean): GtfsDownloadSession
+    suspend fun open(source: RailSourceDefinition, allowBestEffortFallback: Boolean): GtfsDownloadSession
 }
 
 /**
@@ -38,9 +38,14 @@ class GtfsArtifactDownloader(
     }
 
     /** Backward-compatible strict download: best-effort sources require explicit opt-in. */
-    fun open(source: RailSourceDefinition): GtfsDownloadSession = open(source, false)
+    fun open(source: RailSourceDefinition): GtfsDownloadSession = openBlocking(source, false)
 
-    override fun open(
+    override suspend fun open(
+        source: RailSourceDefinition,
+        allowBestEffortFallback: Boolean
+    ): GtfsDownloadSession = openBlocking(source, allowBestEffortFallback)
+
+    private fun openBlocking(
         source: RailSourceDefinition,
         allowBestEffortFallback: Boolean
     ): GtfsDownloadSession {

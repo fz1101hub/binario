@@ -7,6 +7,7 @@ import it.binario.app.data.JourneyQuery
 import it.binario.app.data.SavedRoute
 import it.binario.app.data.Station
 import it.binario.app.data.core.SourceId
+import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -17,6 +18,7 @@ import java.io.ByteArrayOutputStream
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
+import java.util.concurrent.Executors
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 
@@ -218,6 +220,41 @@ class EmbeddedGtfsRouteAdapterTest {
 
         assertTrue(result is DataResult.Failure)
         assertFalse((result as DataResult.Failure).message.contains("aggiorna l'app"))
+    }
+
+    @Test
+    fun `lettura asset usa I O e scansione GTFS usa dispatcher CPU configurato`() = runBlocking {
+        val ioDispatcher = Executors.newSingleThreadExecutor { runnable -> Thread(runnable, "gtfs-test-io") }.asCoroutineDispatcher()
+        val cpuDispatcher = Executors.newSingleThreadExecutor { runnable -> Thread(runnable, "gtfs-test-cpu") }.asCoroutineDispatcher()
+        var openThread: String? = null
+        var parsingThread: String? = null
+        val bytes = feed()
+        val adapter = EmbeddedGtfsRouteAdapter(
+            openAsset = {
+                openThread = Thread.currentThread().name
+                ByteArrayInputStream(bytes)
+            },
+            packs = listOf(pack),
+            clock = { 1_000L },
+            ioDispatcher = ioDispatcher,
+            parsingDispatcher = cpuDispatcher,
+            onParsing = { parsingThread = Thread.currentThread().name }
+        )
+
+        try {
+            val result = adapter.loadRoute(
+                route,
+                Direction.OUTBOUND,
+                JourneyQuery(LocalDate.of(2026, 9, 4), LocalTime.of(8, 0))
+            )
+
+            assertTrue(result is DataResult.Success)
+            assertTrue(openThread.orEmpty().startsWith("gtfs-test-io"))
+            assertTrue(parsingThread.orEmpty().startsWith("gtfs-test-cpu"))
+        } finally {
+            ioDispatcher.close()
+            cpuDispatcher.close()
+        }
     }
 
     private fun adapter(bytes: ByteArray) = EmbeddedGtfsRouteAdapter(
