@@ -14,7 +14,8 @@ import { useCompanionTheme } from "@/lib/theme";
 import { deleteRoutePrompt, reminderFeedbackPoliteness } from "@/lib/reminder-accessibility";
 import { formatLocalJourneyDate, formatLocalJourneySchedule, formatLocalJourneyTime, fromLocalDateAndTime, toLocalIsoDate, toLocalTime } from "@/lib/local-date-time";
 import type { GuidedTextLocalRouteDraft } from "@/lib/local-journey-itineraries";
-import { useEffect, useMemo, useState } from "react";
+import { useFocusEffect } from "expo-router";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { AccessibilityInfo, Alert, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import DateTimePicker, { type DateTimePickerEvent } from "@react-native-community/datetimepicker";
 
@@ -40,7 +41,7 @@ export default function AlertsScreen() {
   const [recurrenceWeekdays, setRecurrenceWeekdays] = useState<LocalJourneyWeekday[]>([]);
   const [recurrenceOccurrences, setRecurrenceOccurrences] = useState(4);
   async function refresh() { setLoading(true); const [nextRoutes, nextScheduled] = await Promise.all([loadLocalPlannedRoutes(), listScheduledRouteIds()]); setRoutes(nextRoutes); setScheduledIds(nextScheduled); setLoading(false); }
-  useEffect(() => { void refresh(); }, []);
+  useFocusEffect(useCallback(() => { void refresh(); }, []));
   useEffect(() => { if (message && Platform.OS !== "web") AccessibilityInfo.announceForAccessibility(message); }, [message]);
   async function toggle(route: LocalPlannedRoute) {
     if (scheduledIds.includes(route.id)) { await cancelPlannedRouteReminder(route.id); setScheduledIds(current => current.filter(id => id !== route.id)); setMessage("Promemoria programmato annullato."); acknowledgeNativeAction(); return; }
