@@ -12,7 +12,7 @@ class LocalDataBackupCodecTest {
     fun `backup round trip keeps a valid personal route and preferences`() {
         val roma = Station("roma", "Roma Termini", "Roma")
         val torino = Station("torino", "Torino Porta Nuova", "Torino")
-        val backup = LocalDataBackup(listOf(SavedRoute("route", "Casa – lavoro", roma, torino, manualOrder = 3)), setOf("roma"), emptyList(), emptyList(), emptyList(), MobilityPreferences(maxChanges = 1, stepFreePreferred = true), WidgetSurface.ACTIVE_ROUTE)
+        val backup = LocalDataBackup(listOf(SavedRoute("route", "Casa – lavoro", roma, torino, manualOrder = 3)), setOf("roma"), emptyList(), emptyList(), emptyList(), MobilityPreferences(maxChanges = 1, stepFreePreferred = true))
         val result = LocalDataBackupCodec.decode(LocalDataBackupCodec.encode(backup), listOf(roma, torino))
         assertTrue(result is LocalBackupResult.Success)
         assertEquals(3, (result as LocalBackupResult.Success).backup.routes.single().manualOrder)

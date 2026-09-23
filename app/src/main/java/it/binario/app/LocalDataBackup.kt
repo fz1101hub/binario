@@ -15,8 +15,7 @@ data class LocalDataBackup(
     val monitoredServices: List<ServiceMonitor>,
     val stationMonitors: List<StationMonitor>,
     val commuterAlerts: List<CommuterAlert>,
-    val mobilityPreferences: MobilityPreferences,
-    val widgetSurface: WidgetSurface
+    val mobilityPreferences: MobilityPreferences
 )
 
 sealed interface LocalBackupResult {
@@ -42,7 +41,6 @@ object LocalDataBackupCodec {
             put("id", alert.id); put("routeLabel", alert.routeLabel); put("stationName", alert.stationName); put("time", alert.time); put("leadMinutes", alert.leadMinutes); put("repeat", alert.repeat.name); put("quietHoursEnabled", alert.quietHoursEnabled); put("enabled", alert.enabled)
         }) } })
         put("mobility", JSONObject().apply { put("maxChanges", backup.mobilityPreferences.maxChanges); put("transferMarginMinutes", backup.mobilityPreferences.transferMarginMinutes); put("stepFreePreferred", backup.mobilityPreferences.stepFreePreferred); put("compactTimetablePreferred", backup.mobilityPreferences.compactTimetablePreferred) })
-        put("widgetSurface", backup.widgetSurface.name)
     }.toString(2)
 
     /** Reads UTF-8 input with a hard limit before JSON parsing to bound memory use. */
@@ -101,8 +99,7 @@ object LocalDataBackupCodec {
             }.getOrNull()
         } }.filterNotNull().filter { it.id.isNotBlank() && it.stationName.isNotBlank() }.distinctBy { it.id }.take(24)
         val mobility = root.optJSONObject("mobility")?.let { value -> MobilityPreferences(value.optInt("maxChanges", -1).takeIf { it >= 0 }, value.optInt("transferMarginMinutes", 10).coerceIn(0, 45), value.optBoolean("stepFreePreferred"), value.optBoolean("compactTimetablePreferred")) } ?: MobilityPreferences()
-        val surface = runCatching { WidgetSurface.valueOf(root.optString("widgetSurface", WidgetSurface.ACTIVE_ROUTE.name)) }.getOrDefault(WidgetSurface.ACTIVE_ROUTE)
-        LocalDataBackup(routes, favouriteIds, services, stationMonitors, alerts, mobility, surface)
+        LocalDataBackup(routes, favouriteIds, services, stationMonitors, alerts, mobility)
     }.fold({ LocalBackupResult.Success(it) }, { LocalBackupResult.Failure(it.message ?: "Backup non leggibile.") })
 
     private fun isReservedRouteId(id: String): Boolean =
