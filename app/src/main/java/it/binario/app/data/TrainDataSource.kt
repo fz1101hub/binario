@@ -245,7 +245,7 @@ data class JourneyQuery(
 
     companion object {
         fun now(): JourneyQuery {
-            val now = LocalDateTime.now()
+            val now = LocalDateTime.now(RailTime.defaultZone)
             return JourneyQuery(now.toLocalDate(), now.toLocalTime().withSecond(0).withNano(0))
         }
     }
@@ -365,6 +365,6 @@ fun timeToMinutes(value: String): Int {
 
 fun accessibleUpdateTime(epochMillis: Long): String {
     if (epochMillis <= 0L) return "mai aggiornato"
-    val formatter = DateTimeFormatter.ofPattern("HH:mm").withZone(ZoneId.systemDefault())
+    val formatter = DateTimeFormatter.ofPattern("HH:mm").withZone(RailTime.defaultZone)
     return "aggiornato alle ${formatter.format(Instant.ofEpochMilli(epochMillis))}"
 }

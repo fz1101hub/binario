@@ -5,6 +5,7 @@ import it.binario.app.data.DataResult
 import it.binario.app.data.Direction
 import it.binario.app.data.Freshness
 import it.binario.app.data.JourneyQuery
+import it.binario.app.data.RailTime
 import it.binario.app.data.RailOperator
 import it.binario.app.data.RouteSnapshot
 import it.binario.app.data.SavedRoute
@@ -109,7 +110,7 @@ internal object RfiProgrammedStationIds {
  */
 class RfiProgrammedTimetableAdapter(
     private val fetcher: RfiProgrammedTimetableFetcher = HttpRfiProgrammedTimetableFetcher(),
-    private val clock: Clock = Clock.systemDefaultZone(),
+    private val clock: Clock = Clock.system(RailTime.defaultZone),
     private val cacheTtlMillis: Long = 6L * 60L * 60L * 1000L
 ) : TrainDataSource {
     private val mutex = Mutex()
@@ -330,11 +331,13 @@ class RfiProgrammedTimetableAdapter(
         if (value.isBlank()) return true
         if (listOf("GIORNALIERO", "TUTTI I GIORNI", "QUOTIDIANO").any(value::contains)) return true
         val day = date.dayOfWeek
-        if ("LUN-VEN" in value || "LUN VEN" in value || "FERIALE" in value) {
+        if ("LUN-VEN" in value || "LUN VEN" in value) {
             return day.value in DayOfWeek.MONDAY.value..DayOfWeek.FRIDAY.value
         }
+        if ("FERIALE" in value) return day != DayOfWeek.SUNDAY && !ItalianRailServiceCalendar.isHoliday(date)
         if ("SAB" in value && day == DayOfWeek.SATURDAY) return true
-        if (("DOM" in value || "FEST" in value) && day == DayOfWeek.SUNDAY) return true
+        if ("DOM" in value && day == DayOfWeek.SUNDAY) return true
+        if ("FEST" in value && (day == DayOfWeek.SUNDAY || ItalianRailServiceCalendar.isHoliday(date))) return true
         val tokens = mapOf(
             DayOfWeek.MONDAY to listOf("LUN", "LU"),
             DayOfWeek.TUESDAY to listOf("MAR", "MA"),

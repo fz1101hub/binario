@@ -53,6 +53,22 @@ class DataQualityTest {
     }
 
     @Test
+    fun `un orario ufficiale senza stato operativo usa una banda programmata distinta`() {
+        val scheduled = snapshot(
+            confidence = DataConfidence.STATIC_ONLY,
+            freshness = Freshness.FRESH,
+            observedAt = now - 10_000L,
+            providerName = "Regione Lombardia · orario programmato",
+            operationalStatusVerified = false
+        )
+
+        val quality = SnapshotQualityAssessor.assess(scheduled, now)
+
+        assertEquals(DataQualityBand.OFFICIAL_SCHEDULED, quality.band)
+        assertTrue(quality.band != DataQualityBand.VERIFIED)
+    }
+
+    @Test
     fun `segnala divergenza tra ritardo ufficiale e rilevazione senza eliminare la corsa`() {
         val base = snapshot(DataConfidence.OPERATOR_PRIMARY, Freshness.FRESH, observedAt = now - 30_000L)
         val divergent = base.copy(services = base.services.map { it.copy(delayConsistency = DelayConsistency.DIVERGENT) })
@@ -126,7 +142,8 @@ class DataQualityTest {
         freshness: Freshness,
         observedAt: Long,
         providerName: String = "test",
-        serviceId: String = "service"
+        serviceId: String = "service",
+        operationalStatusVerified: Boolean = true
     ): RouteSnapshot = RouteSnapshot(
         route = route,
         direction = Direction.OUTBOUND,
@@ -143,7 +160,8 @@ class DataQualityTest {
                 platform = "1",
                 delayMinutes = 0,
                 status = ServiceStatus.ON_TIME,
-                stops = emptyList()
+                stops = emptyList(),
+                operationalStatusVerified = operationalStatusVerified
             )
         ),
         providerName = providerName,

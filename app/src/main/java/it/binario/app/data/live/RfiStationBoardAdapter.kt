@@ -5,6 +5,7 @@ import it.binario.app.data.DataResult
 import it.binario.app.data.Direction
 import it.binario.app.data.Freshness
 import it.binario.app.data.JourneyQuery
+import it.binario.app.data.RailTime
 import it.binario.app.data.RailOperator
 import it.binario.app.data.RouteSnapshot
 import it.binario.app.data.SavedRoute
@@ -148,7 +149,7 @@ internal object RfiStationIds {
  */
 class RfiStationBoardAdapter(
     private val fetcher: RfiMonitorFetcher = HttpRfiMonitorFetcher(),
-    private val clock: Clock = Clock.systemDefaultZone(),
+    private val clock: Clock = Clock.system(RailTime.defaultZone),
     private val cacheTtlMillis: Long = 45_000L
 ) : TrainDataSource, StationBoardProvider {
     override val descriptor = ProviderDescriptor(
@@ -277,8 +278,8 @@ class RfiStationBoardAdapter(
             val delayLabel = row.selectFirst("#RRitardo")?.attr("aria-label").orEmpty()
             val delayText = row.selectFirst("#RRitardo")?.text().orEmpty()
             val delay = parseDelay(delayLabel.ifBlank { delayText })
-            val statusText = row.text().uppercase(Locale.ROOT)
-            val cancelled = statusText.contains("SOPPRESS") || statusText.contains("CANCELL")
+            val statusText = row.text()
+            val cancelled = statusText.hasExplicitCancellationStatus()
             val explicitOnTime = listOf(delayLabel, delayText, statusText).any {
                 it.contains("NESSUNO", ignoreCase = true) || it.contains("IN ORARIO", ignoreCase = true)
             }

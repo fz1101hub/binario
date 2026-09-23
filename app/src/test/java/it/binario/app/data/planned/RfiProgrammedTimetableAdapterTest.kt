@@ -129,6 +129,38 @@ class RfiProgrammedTimetableAdapterTest {
         assertTrue(saturday is DataResult.Failure)
     }
 
+    @Test
+    fun `feriale esclude una festivita nazionale che cade di sabato`() = runBlocking {
+        val adapter = RfiProgrammedTimetableAdapter(
+            fetcher = RfiProgrammedTimetableFetcher { fixture(periodicity = "Feriale") },
+            clock = clock
+        )
+
+        val ferragosto = adapter.loadRoute(
+            route(roma, milano),
+            Direction.OUTBOUND,
+            JourneyQuery(LocalDate.of(2026, 8, 15), LocalTime.of(8, 0))
+        )
+
+        assertTrue(ferragosto is DataResult.Failure)
+    }
+
+    @Test
+    fun `festivo include una festivita nazionale che cade di sabato`() = runBlocking {
+        val adapter = RfiProgrammedTimetableAdapter(
+            fetcher = RfiProgrammedTimetableFetcher { fixture(periodicity = "Festivo") },
+            clock = clock
+        )
+
+        val ferragosto = adapter.loadRoute(
+            route(roma, milano),
+            Direction.OUTBOUND,
+            JourneyQuery(LocalDate.of(2026, 8, 15), LocalTime.of(8, 0))
+        )
+
+        assertTrue(ferragosto is DataResult.Success)
+    }
+
     private fun adapter() = RfiProgrammedTimetableAdapter(
         fetcher = RfiProgrammedTimetableFetcher { fixture() },
         clock = clock

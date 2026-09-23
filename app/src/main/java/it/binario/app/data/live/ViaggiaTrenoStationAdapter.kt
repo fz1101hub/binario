@@ -5,6 +5,7 @@ import it.binario.app.data.DataResult
 import it.binario.app.data.Direction
 import it.binario.app.data.Freshness
 import it.binario.app.data.JourneyQuery
+import it.binario.app.data.RailTime
 import it.binario.app.data.RailOperator
 import it.binario.app.data.RouteSnapshot
 import it.binario.app.data.SavedRoute
@@ -82,7 +83,7 @@ internal class HttpViaggiaTrenoStationFetcher : ViaggiaTrenoStationFetcher {
  */
 class ViaggiaTrenoStationAdapter(
     private val fetcher: ViaggiaTrenoStationFetcher = HttpViaggiaTrenoStationFetcher(),
-    private val clock: Clock = Clock.systemDefaultZone(),
+    private val clock: Clock = Clock.system(RailTime.defaultZone),
     private val cacheTtlMillis: Long = 60_000L
 ) : TrainDataSource, StationBoardProvider {
     override val descriptor = ProviderDescriptor(
@@ -211,7 +212,7 @@ class ViaggiaTrenoStationAdapter(
 
             val delay = Regex("\\britardo\\s+(\\d{1,3})\\s+minuti", RegexOption.IGNORE_CASE)
                 .find(content)?.groupValues?.getOrNull(1)?.toIntOrNull() ?: 0
-            val cancelled = content.contains("soppress", ignoreCase = true) || content.contains("cancell", ignoreCase = true)
+            val cancelled = content.hasExplicitCancellationStatus()
             val explicitOnTime = content.contains("in orario", ignoreCase = true) ||
                 content.contains("regolare", ignoreCase = true)
             val operationalVerified = cancelled || delay > 0 || explicitOnTime

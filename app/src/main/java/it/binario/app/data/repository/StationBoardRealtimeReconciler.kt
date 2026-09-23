@@ -4,6 +4,7 @@ import it.binario.app.data.DataResult
 import it.binario.app.data.Direction
 import it.binario.app.data.Freshness
 import it.binario.app.data.JourneyQuery
+import it.binario.app.data.RailTime
 import it.binario.app.data.RailOperator
 import it.binario.app.data.RouteSnapshot
 import it.binario.app.data.SavedRoute
@@ -44,8 +45,8 @@ import kotlin.math.abs
 class StationBoardEnrichedTrainDataSource(
     private val plannedSource: TrainDataSource,
     private val boardProviders: List<StationBoardProvider>,
-    private val clock: Clock = Clock.systemDefaultZone(),
-    private val zone: ZoneId = ZoneId.of("Europe/Rome")
+    private val clock: Clock = Clock.system(RailTime.defaultZone),
+    private val zone: ZoneId = RailTime.defaultZone
 ) : TrainDataSource {
     override suspend fun loadRoute(route: SavedRoute, direction: Direction): DataResult =
         loadRoute(route, direction, JourneyQuery.now())
@@ -88,8 +89,8 @@ class StationBoardEnrichedTrainDataSource(
 
 class StationBoardRealtimeReconciler(
     private val providers: List<StationBoardProvider>,
-    private val clock: Clock = Clock.systemDefaultZone(),
-    private val zone: ZoneId = ZoneId.of("Europe/Rome"),
+    private val clock: Clock = Clock.system(RailTime.defaultZone),
+    private val zone: ZoneId = RailTime.defaultZone,
     private val scheduleTolerance: Duration = Duration.ofMinutes(20),
     private val conflictTolerance: Duration = Duration.ofMinutes(5)
 ) {

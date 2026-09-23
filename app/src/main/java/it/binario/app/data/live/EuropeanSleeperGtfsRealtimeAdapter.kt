@@ -114,7 +114,7 @@ class EuropeanSleeperGtfsRealtimeAdapter(
             )
             trip.stopTimeUpdateList.mapNotNull { stop ->
                 val stopId = stop.stopId.takeIf(String::isNotBlank)
-                val sequence = stop.stopSequence.takeIf { it > 0 }
+                val sequence = stop.stopSequence.takeIf { stop.hasStopSequence() }
                 if (stopId == null && sequence == null) return@mapNotNull null
                 val event = when {
                     stop.hasDeparture() -> stop.departure

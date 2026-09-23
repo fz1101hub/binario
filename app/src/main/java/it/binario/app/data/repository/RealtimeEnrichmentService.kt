@@ -53,7 +53,9 @@ class RealtimeEnrichmentService(
     ) {
         val staticSourceId = staticFeedFor(providerId) ?: return
         updates.forEach { update ->
-            val scheduled = scheduleResolver.resolve(staticSourceId, update, serviceDate, zone) ?: return@forEach
+            val scheduled = listOf(serviceDate, serviceDate.minusDays(1), serviceDate.minusDays(2))
+                .firstNotNullOfOrNull { candidate -> scheduleResolver.resolve(staticSourceId, update, candidate, zone) }
+                ?: return@forEach
             RealtimeOperationalEnricher.enrich(update, scheduled)?.let(destination::add)
         }
     }

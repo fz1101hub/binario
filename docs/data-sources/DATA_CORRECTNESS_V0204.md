@@ -1,0 +1,11 @@
+# Correttezza temporale e operativa v0.20.4
+
+Questa tranche separa la **data civile** dalla **data di servizio GTFS**, fissa i clock ferroviari italiani su `Europe/Rome` e impedisce che un orario ufficiale solo programmato venga presentato come stato live verificato.
+
+Per le corse GTFS notturne, una ricerca dopo mezzanotte valuta anche i due giorni di servizio precedenti. Un orario `25:10` del venerdì viene quindi esposto come sabato alle `01:10`, senza duplicare corse già trascorse. Lo stesso criterio è usato quando gli aggiornamenti realtime vengono riconciliati con il pack statico.
+
+Le periodicità RFI distinguono `LUN-VEN`, `FERIALE`, `DOM` e `FESTIVO`. `FERIALE` include il sabato ma esclude domeniche e festività nazionali; `FESTIVO` include domeniche, festività fisse, Pasqua e lunedì dell’Angelo.
+
+I parser realtime riconoscono come cancellazione soltanto espressioni operative esplicite e non sottostringhe di nomi geografici come **Cancello Arnone**. I payload GTFS-RT svizzeri possono essere compressi gzip. `stop_sequence=0` viene conservato quando il campo protobuf è presente, ma il valore predefinito zero di un campo assente non viene trasformato in dato reale.
+
+Infine, un operatore non classificato resta `null` nel contratto station-board invece di assumere l’identità fittizia `other`, e `ExternalRailCredentials.toString()` è sempre redatto.
