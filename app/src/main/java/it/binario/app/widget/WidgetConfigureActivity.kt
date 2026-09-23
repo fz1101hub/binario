@@ -76,14 +76,10 @@ class WidgetConfigureActivity : ComponentActivity() {
                 var targetType by remember { mutableStateOf(existing?.targetType ?: WidgetTargetType.ROUTE) }
                 var routeOriginText by remember { mutableStateOf(existing?.routeOrigin?.name.orEmpty()) }
                 var routeDestinationText by remember { mutableStateOf(existing?.routeDestination?.name.orEmpty()) }
-                var stationText by remember { mutableStateOf(existing?.takeIf { it.targetType == WidgetTargetType.STATION }?.targetLabel.orEmpty()) }
-                var trainText by remember { mutableStateOf(existing?.takeIf { it.targetType == WidgetTargetType.TRAIN }?.targetId.orEmpty()) }
                 var displayName by remember { mutableStateOf(existing?.displayName.orEmpty()) }
                 var validationMessage by remember { mutableStateOf<String?>(null) }
                 val routeOrigin = model.stationFromName(routeOriginText)
                 val routeDestination = model.stationFromName(routeDestinationText)
-                val station = model.stationFromName(stationText)
-                val trainNumber = trainText.filter { it.isLetterOrDigit() || it.isWhitespace() }.trim().take(12)
 
                 fun saveConfiguration() {
                     val configuration = when (targetType) {
@@ -105,22 +101,14 @@ class WidgetConfigureActivity : ComponentActivity() {
                                 routeDestination = routeDestination
                             )
                         }
-                        WidgetTargetType.STATION -> station?.let {
-                            WidgetDisplayConfiguration(WidgetTargetType.STATION, it.id, it.name, displayName.trim())
-                        } ?: run {
-                            validationMessage = "Inserisci il nome della stazione da monitorare."
-                            null
-                        }
-                        WidgetTargetType.TRAIN -> if (trainNumber.length >= 2) {
-                            WidgetDisplayConfiguration(WidgetTargetType.TRAIN, trainNumber, "Treno $trainNumber", displayName.trim())
-                        } else {
-                            validationMessage = "Inserisci un numero treno di almeno due caratteri."
-                            null
-                        }
                     }
                     configuration?.let {
+                        // Uno stato/snapshot di una configurazione precedente non deve mai
+                        // comparire per la nuova tratta o direzione dell'istanza.
+                        WidgetStateStore.clear(this@WidgetConfigureActivity, widgetId)
                         WidgetConfigurationStore(this@WidgetConfigureActivity).save(widgetId, it)
                         RouteWidgetProvider.refreshAll(this@WidgetConfigureActivity)
+                        WidgetRefreshWorker.ensurePeriodicRefresh(this@WidgetConfigureActivity)
                         WidgetRefreshWorker.enqueue(this@WidgetConfigureActivity)
                         setResult(RESULT_OK, Intent().putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId))
                         finish()
@@ -136,7 +124,7 @@ class WidgetConfigureActivity : ComponentActivity() {
                         item {
                             Text("Configura widget", style = MaterialTheme.typography.headlineSmall)
                             Text(
-                                "Ogni istanza è indipendente: inserisci qualsiasi tratta, stazione o numero treno. Non devi prima salvarlo nell’app.",
+                                "Ogni istanza è indipendente: inserisci una tratta senza prima salvarla nell’app. Il widget mostra solo dati che la fonte restituisce e non promette aggiornamenti in tempo reale.",
                                 modifier = Modifier.padding(top = 4.dp),
                                 style = MaterialTheme.typography.bodyMedium
                             )
@@ -173,38 +161,6 @@ class WidgetConfigureActivity : ComponentActivity() {
                                 }
                             }
                         }
-                        item {
-                            WidgetTargetCard(
-                                type = WidgetTargetType.STATION,
-                                selected = targetType == WidgetTargetType.STATION,
-                                description = "Monitora la stazione che inserisci. Il widget dichiara sempre quando i dati live non sono disponibili.",
-                                onSelect = { targetType = WidgetTargetType.STATION; validationMessage = null }
-                            )
-                            if (targetType == WidgetTargetType.STATION) {
-                                Text("Inserisci la stazione", style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 10.dp, start = 4.dp))
-                                WidgetStationField("Stazione", stationText, { stationText = it }, model)
-                            }
-                        }
-                        item {
-                            WidgetTargetCard(
-                                type = WidgetTargetType.TRAIN,
-                                selected = targetType == WidgetTargetType.TRAIN,
-                                description = "Monitora il numero treno inserito. Variazioni e dettagli sono mostrati solo se una fonte qualificata restituisce lo snapshot.",
-                                onSelect = { targetType = WidgetTargetType.TRAIN; validationMessage = null }
-                            )
-                            if (targetType == WidgetTargetType.TRAIN) {
-                                Text("Inserisci il numero treno", style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 10.dp, start = 4.dp))
-                                OutlinedTextField(
-                                    value = trainText,
-                                    onValueChange = { trainText = it.filter { character -> character.isLetterOrDigit() || character.isWhitespace() }.take(12) },
-                                    modifier = Modifier.fillMaxWidth(),
-                                    label = { Text("Numero treno") },
-                                    placeholder = { Text("Es. 9512") },
-                                    supportingText = { Text("Non è necessario aprire o salvare una tratta prima della configurazione.") },
-                                    singleLine = true
-                                )
-                            }
-                        }
                         validationMessage?.let { message ->
                             item { Text(message, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
                         }
@@ -212,8 +168,6 @@ class WidgetConfigureActivity : ComponentActivity() {
                             Card(modifier = Modifier.fillMaxWidth().padding(top = 4.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
                                 val selectedLabel = when (targetType) {
                                     WidgetTargetType.ROUTE -> listOf(routeOriginText, routeDestinationText).filter { it.isNotBlank() }.joinToString(" → ").ifBlank { "Tratta da inserire" }
-                                    WidgetTargetType.STATION -> stationText.ifBlank { "Stazione da inserire" }
-                                    WidgetTargetType.TRAIN -> trainNumber.ifBlank { "Treno da inserire" }
                                 }
                                 Text("Scelto: ${targetType.label} — $selectedLabel", modifier = Modifier.padding(12.dp), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onPrimaryContainer)
                             }

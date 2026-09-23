@@ -108,6 +108,8 @@ import it.binario.app.data.core.OperationalRouteChange
 import it.binario.app.data.core.RunStatus
 import it.binario.app.data.core.StationBoardEntry
 import it.binario.app.data.core.RouteChangeKind
+import it.binario.app.widget.WidgetConfigurationStore
+import it.binario.app.widget.WidgetStateStore
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
@@ -150,7 +152,12 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun receiveDeepLinkIntent(intent: Intent?) {
-        deepLinkRequest = deepLinkDispatcher.receive(intent?.action, intent?.dataString)
+        val widgetDeepLink = parseWidgetDeepLink(intent, applicationContext)
+        deepLinkRequest = if (widgetDeepLink != null) {
+            deepLinkDispatcher.receive(widgetDeepLink)
+        } else {
+            deepLinkDispatcher.receive(intent?.action, intent?.dataString)
+        }
     }
 
     private fun consumeDeepLink(requestId: Long) {
@@ -213,6 +220,11 @@ private fun BinarioApp(
                 plannerSearchModeName = SearchMode.TRAIN.name
                 plannerSearchRequestId += 1
                 screen = Screen.PLANNER
+            }
+            is BinarioDeepLink.WidgetRoute -> {
+                viewModel.activateRoute(deepLink.route, deepLink.direction)
+                operationsSectionName = OperationsSection.TRAINS.name
+                screen = Screen.OPERATIONS
             }
         }
         // Clear the event only after applying it. Subsequent recompositions and
@@ -1862,11 +1874,9 @@ private fun SettingsScreen(
             PersonalTravelPanel(
                 activeTrip = viewModel.activeTrip,
                 stationMonitors = viewModel.stationMonitors,
-                widgetSurface = viewModel.widgetSurface,
                 onAdvanceTrip = viewModel::advanceActiveTrip,
                 onEndTrip = viewModel::endActiveTrip,
-                onRemoveStationMonitor = viewModel::removeStationMonitor,
-                onSelectWidgetSurface = viewModel::selectWidgetSurface
+                onRemoveStationMonitor = viewModel::removeStationMonitor
             )
         }
         item {
@@ -2031,11 +2041,9 @@ private fun CommuterAlertSheet(
 private fun PersonalTravelPanel(
     activeTrip: ActiveTrip?,
     stationMonitors: List<StationMonitor>,
-    widgetSurface: WidgetSurface,
     onAdvanceTrip: () -> Unit,
     onEndTrip: () -> Unit,
-    onRemoveStationMonitor: (String) -> Unit,
-    onSelectWidgetSurface: (WidgetSurface) -> Unit
+    onRemoveStationMonitor: (String) -> Unit
 ) {
     Column(Modifier.padding(horizontal = 20.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text("Viaggio e monitoraggi", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
@@ -2056,13 +2064,6 @@ private fun PersonalTravelPanel(
                 }
             }
         }
-        Text("Superficie widget", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(WidgetSurface.entries) { surface ->
-                FilterChip(selected = widgetSurface == surface, onClick = { onSelectWidgetSurface(surface) }, label = { Text(surface.label) })
-            }
-        }
-        Text("Le superfici Viaggio attivo e Stazione monitorata riportano lo stato personale; senza provider autorizzato non mostrano un tabellone live.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
@@ -2154,6 +2155,15 @@ private fun IntegrationChoice(title: String, detail: String, selected: Boolean, 
         }
         FilterChip(selected = selected, onClick = onClick, label = { Text(if (selected) "Attivo" else "Non attivo") })
     }
+}
+
+private fun parseWidgetDeepLink(intent: Intent?, context: android.content.Context): BinarioDeepLink.WidgetRoute? {
+    val widgetId = intent?.getIntExtra(android.appwidget.AppWidgetManager.EXTRA_APPWIDGET_ID, android.appwidget.AppWidgetManager.INVALID_APPWIDGET_ID)
+        ?: android.appwidget.AppWidgetManager.INVALID_APPWIDGET_ID
+    if (widgetId == android.appwidget.AppWidgetManager.INVALID_APPWIDGET_ID) return null
+    val route = WidgetConfigurationStore(context).read(widgetId)?.routeTarget() ?: return null
+    val direction = WidgetStateStore.displayedDirection(context, widgetId) ?: Direction.OUTBOUND
+    return BinarioDeepLink.WidgetRoute(route, direction)
 }
 
 @Composable

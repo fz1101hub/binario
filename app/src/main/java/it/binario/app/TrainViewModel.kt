@@ -140,8 +140,6 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
         private set
     var activeTrip by mutableStateOf(personalTravelStore.activeTrip())
         private set
-    var widgetSurface by mutableStateOf(personalTravelStore.widgetSurface())
-        private set
     var mobilityPreferences by mutableStateOf(mobilityPreferencesStore.read())
         private set
 
@@ -309,10 +307,12 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
         stationMonitors = personalTravelStore.replaceStationMonitors(monitors, stations)
     }
 
-    fun activateRoute(route: SavedRoute) {
+    fun activateRoute(route: SavedRoute, selectedDirection: Direction = direction) {
         clearReturnJourneyState()
         activeRoute = route
         routeStore.saveActiveRoute(route.id)
+        direction = selectedDirection
+        routeStore.saveDirection(selectedDirection)
         clearSelectedService()
         primarySnapshot = null
         rebuildServicePresentations()
@@ -531,7 +531,7 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
                     refreshMessage = result.snapshot.notice
                 }
                 is DataResult.Failure -> {
-                    RouteWidgetProvider.markMatchingRoutesUnavailable(getApplication(), result.message)
+                    RouteWidgetProvider.markMatchingRouteDirectionUnavailable(getApplication(), routeAtRequest, directionAtRequest, result.message)
                     RouteWidgetProvider.refreshAll(getApplication())
                     if (integrationSettings.wearSnapshotSharingEnabled) {
                         WearSnapshotPublisher.publishUnavailable(
@@ -727,12 +727,6 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
         activeTrip = null
     }
 
-    fun selectWidgetSurface(surface: WidgetSurface) {
-        widgetSurface = surface
-        personalTravelStore.saveWidgetSurface(surface)
-        RouteWidgetProvider.refreshAll(getApplication())
-    }
-
     fun updateMobilityPreferences(value: MobilityPreferences) {
         mobilityPreferences = value
         mobilityPreferencesStore.save(value)
@@ -745,8 +739,7 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
             monitoredServices = monitoredServices,
             stationMonitors = stationMonitors,
             commuterAlerts = commuterAlerts,
-            mobilityPreferences = mobilityPreferences,
-            widgetSurface = widgetSurface
+            mobilityPreferences = mobilityPreferences
         )
     )
 
@@ -767,7 +760,6 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
             replaceStationMonitors(backup.stationMonitors)
             commuterAlerts = commuterAlertStore.replace(backup.commuterAlerts)
             updateMobilityPreferences(backup.mobilityPreferences)
-            selectWidgetSurface(backup.widgetSurface)
             if (hasActiveRoute) refresh() else {
                 refreshRequestId += 1
                 primarySnapshot = null

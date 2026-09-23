@@ -12,8 +12,7 @@ data class LocalDataBackup(
     val monitoredServices: List<ServiceMonitor>,
     val stationMonitors: List<StationMonitor>,
     val commuterAlerts: List<CommuterAlert>,
-    val mobilityPreferences: MobilityPreferences,
-    val widgetSurface: WidgetSurface
+    val mobilityPreferences: MobilityPreferences
 )
 
 sealed interface LocalBackupResult {
@@ -38,7 +37,6 @@ object LocalDataBackupCodec {
             put("id", alert.id); put("routeLabel", alert.routeLabel); put("stationName", alert.stationName); put("time", alert.time); put("leadMinutes", alert.leadMinutes); put("repeat", alert.repeat.name); put("quietHoursEnabled", alert.quietHoursEnabled); put("enabled", alert.enabled)
         }) } })
         put("mobility", JSONObject().apply { put("maxChanges", backup.mobilityPreferences.maxChanges); put("transferMarginMinutes", backup.mobilityPreferences.transferMarginMinutes); put("stepFreePreferred", backup.mobilityPreferences.stepFreePreferred); put("compactTimetablePreferred", backup.mobilityPreferences.compactTimetablePreferred) })
-        put("widgetSurface", backup.widgetSurface.name)
     }.toString(2)
 
     fun decode(raw: String, stations: List<Station>): LocalBackupResult = runCatching {
@@ -69,8 +67,7 @@ object LocalDataBackupCodec {
             runCatching { CommuterAlert(value.optString("id"), value.optString("routeLabel"), value.optString("stationName"), value.optString("time"), value.optInt("leadMinutes", 15).coerceIn(1, 60), AlertRepeat.valueOf(value.optString("repeat")), value.optBoolean("quietHoursEnabled"), value.optBoolean("enabled", true)) }.getOrNull()
         } }.filterNotNull().filter { it.id.isNotBlank() && it.stationName.isNotBlank() }.distinctBy { it.id }.take(24)
         val mobility = root.optJSONObject("mobility")?.let { value -> MobilityPreferences(value.optInt("maxChanges", -1).takeIf { it >= 0 }, value.optInt("transferMarginMinutes", 10).coerceIn(0, 45), value.optBoolean("stepFreePreferred"), value.optBoolean("compactTimetablePreferred")) } ?: MobilityPreferences()
-        val surface = runCatching { WidgetSurface.valueOf(root.optString("widgetSurface", WidgetSurface.ACTIVE_ROUTE.name)) }.getOrDefault(WidgetSurface.ACTIVE_ROUTE)
-        LocalDataBackup(routes, favouriteIds, services, stationMonitors, alerts, mobility, surface)
+        LocalDataBackup(routes, favouriteIds, services, stationMonitors, alerts, mobility)
     }.fold({ LocalBackupResult.Success(it) }, { LocalBackupResult.Failure(it.message ?: "Backup non leggibile.") })
 
     private fun JSONArray?.orEmpty(): List<Any?> = this?.let { array -> List(array.length()) { index -> array.opt(index) } } ?: emptyList()
