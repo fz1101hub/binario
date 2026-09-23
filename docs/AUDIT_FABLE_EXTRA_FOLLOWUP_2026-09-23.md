@@ -47,7 +47,7 @@ La controrevisione successiva ha individuato e chiuso quattro lacune introdotte 
 | Companion TypeScript | Typecheck, branding, suite, managed config, release inputs | **89 test in 15 file; tutti verdi** |
 | Companion nativo | Test JVM app/Wear, lint e assemble con checksum Gradle strict | **Verde** |
 | Android/Wear root | 304 test app, 10 test Wear, lint debug, release minificate e `lintVitalRelease` | **Verde; 204 task nel gate completo** |
-| GTFS/release engineering | Suite Python, check 30 giorni, digest contenuto, privacy, CI pinning e confronto AAB unsigned | **59 test verdi; 10/10 pack validi; due full rebuild telefono/Wear byte-identiche** |
+| GTFS/release engineering | Suite Python, check 30 giorni, digest contenuto, privacy, CI pinning e confronto AAB unsigned | **62 test verdi; 10/10 pack validi; manifest AAB coerenti e parser fail-closed; due full rebuild telefono/Wear byte-identiche** |
 | Apple Watch | Test progetto, requisiti macOS e verifier CI | **4 test progetto e 23 test mirati verdi** |
 | Repository | `git diff --check`, prebuild generato e lock Gradle | **Verde** |
 
