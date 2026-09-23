@@ -19,4 +19,57 @@
     <string name="shortcut_active_route">Tratta attiva</string>
     <string name="shortcut_next_departures">Prossime corse</string>
     <string name="shortcut_train_search">Ricerca treno</string>
+
+    <!-- Main app shell and primary journey planner. -->
+    <string name="app_brand">BINARIO</string>
+    <string name="screen_title_planner">Cerca e consulta</string>
+    <string name="screen_title_operations">Consulta</string>
+    <string name="screen_title_settings">Impostazioni</string>
+    <string name="screen_title_results">Soluzioni</string>
+    <string name="screen_title_detail">Dettaglio corsa</string>
+    <string name="screen_subtitle_planner">Pianifica il prossimo viaggio</string>
+    <string name="screen_subtitle_operations">Treni e stazioni</string>
+    <string name="screen_subtitle_settings">Preferenze e dati personali</string>
+    <string name="screen_subtitle_results">Corse disponibili</string>
+    <string name="screen_subtitle_detail">Stato e fermate</string>
+    <string name="nav_search">Cerca</string>
+    <string name="nav_operations">Consulta</string>
+    <string name="nav_settings">Impostazioni</string>
+    <string name="action_back">Torna indietro</string>
+    <string name="action_choose_theme">Scegli tema. Tema attuale %1$s</string>
+    <string name="action_refresh_rail_information">Aggiorna le informazioni ferroviarie</string>
+    <string name="planner_title">Pianifica viaggio</string>
+    <string name="planner_description">Cerca le prossime soluzioni per tratta, giorno e orario.</string>
+    <string name="search_mode_route">Tratta</string>
+    <string name="search_mode_train">N. treno</string>
+    <string name="search_mode_station">Stazione</string>
+    <string name="operations_section_trains">Treni</string>
+    <string name="operations_section_stations">Stazioni</string>
+    <string name="operations_section_trains_subtitle">Tabellone tratta</string>
+    <string name="operations_section_stations_subtitle">Arrivi e partenze</string>
+    <string name="accessibility_section_selected">Selezionata</string>
+    <string name="accessibility_section_not_selected">Non selezionata</string>
+    <string name="action_new_search">Nuova ricerca</string>
+    <string name="action_plan_route">Pianifica tratta</string>
+
+    <!-- Data provenance and operational-state announcements. -->
+    <string name="data_status_demo">Catalogo dimostrativo locale, non live</string>
+    <string name="data_status_live">Dati live: %1$s</string>
+    <string name="data_status_unavailable">Dati live non disponibili</string>
+    <string name="accessibility_data_status">Stato dei dati: %1$s. Fonte %2$s. Qualità %3$s. %4$s%5$s</string>
+    <string name="accessibility_open_service">Apri dettaglio. %1$s. %2$s</string>
+    <string name="service_state_scheduled">Orario programmato; stato live non disponibile</string>
+    <string name="service_state_live">Stato live: %1$s</string>
+    <string name="station_board_departure_to">Per %1$s</string>
+    <string name="station_board_arrival_from">Da %1$s</string>
+    <string name="station_board_scheduled_time">Orario programmato %1$s</string>
+    <string name="station_board_scheduled_time_short">prog. %1$s</string>
+    <string name="station_board_status_planned">Orario programmato; stato live non disponibile</string>
+    <string name="station_board_status_live">Stato live: %1$s</string>
+    <string name="station_board_status_live_prediction">Aggiornamento live: orario previsto %1$s</string>
+    <string name="station_board_status_unavailable">Stato live non disponibile</string>
+    <string name="station_board_platform">Bin. %1$s</string>
+    <string name="station_board_platform_accessible">Binario %1$s</string>
+    <string name="station_board_platform_unavailable">Binario non disponibile</string>
+    <string name="station_board_entry_accessibility">%1$s. %2$s. %3$s. %4$s. %5$s.</string>
 </resources>
