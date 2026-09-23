@@ -12,3 +12,16 @@ export async function clearLocalJourneyArchive(dependencies: LocalJourneyArchive
   await dependencies.clearItineraries?.();
   return { clearedReminders: scheduledIds.length };
 }
+
+export type LocalPlannedRouteDeletionDependencies = {
+  routeId: number;
+  cancelReminder: (routeId: number) => Promise<boolean>;
+  removeRoute: (routeId: number) => Promise<boolean>;
+};
+
+/** Annulla sempre il promemoria prima di rimuovere la tratta: nessuna notifica deve sopravvivere alla tratta che la motiva. */
+export async function deleteLocalPlannedRoute({ routeId, cancelReminder, removeRoute }: LocalPlannedRouteDeletionDependencies) {
+  const cancelledReminder = await cancelReminder(routeId);
+  const removed = await removeRoute(routeId);
+  return { removed, cancelledReminder };
+}

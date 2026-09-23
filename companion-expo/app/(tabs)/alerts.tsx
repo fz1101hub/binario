@@ -6,6 +6,7 @@ import { useIncomingSharedText } from "@/lib/incoming-shared-text";
 import { cancelPlannedRouteReminder, listScheduledRouteIds, schedulePlannedRouteReminder } from "@/lib/planned-reminder-service";
 import { addExplicitRecurringLocalPlannedRoutes, addLocalPlannedRoute, loadLocalPlannedRoutes, removeLocalPlannedRoute, setLocalPlannedRouteChecklistItem, setLocalPlannedRouteCompletion, type LocalPlannedRoute } from "@/lib/local-routes";
 import { pickLocalJourneyIcs, shareLocalJourneyIcs, type CalendarRouteDraft } from "@/lib/local-calendar";
+import { deleteLocalPlannedRoute } from "@/lib/local-journey-privacy";
 import { acknowledgeNativeAction, confirmNativeAction } from "@/lib/native-feedback";
 import { createReplannedLocalRouteDraft, createReturnLocalRouteDraft, filterLocalJourneyAgenda, getLocalJourneyPreparationPreset, localJourneyChecklistLabels, localJourneyChecklistPresets, localJourneyWeekdays, maxExplicitLocalJourneyOccurrences, remainingLocalJourneyChecklistItems, type ControlledLocalRouteDraft, type LocalAgendaFilter, type LocalJourneyChecklistPreset, type LocalJourneyWeekday } from "@/lib/local-route-contract";
 import { useCompanionTheme } from "@/lib/theme";
@@ -49,7 +50,7 @@ export default function AlertsScreen() {
   }
   function confirmDelete(route: LocalPlannedRoute) {
     const prompt = deleteRoutePrompt(route.name);
-    Alert.alert(prompt.title, prompt.message, [{ text: prompt.cancel, style: "cancel" }, { text: prompt.confirm, style: "destructive", onPress: () => void removeLocalPlannedRoute(route.id).then(() => { setMessage("Tratta locale eliminata."); return refresh(); }) }]);
+    Alert.alert(prompt.title, prompt.message, [{ text: prompt.cancel, style: "cancel" }, { text: prompt.confirm, style: "destructive", onPress: () => void deleteLocalPlannedRoute({ routeId: route.id, cancelReminder: cancelPlannedRouteReminder, removeRoute: removeLocalPlannedRoute }).then(result => { setScheduledIds(current => current.filter(id => id !== route.id)); setMessage(result.cancelledReminder ? "Tratta locale eliminata e promemoria programmato annullato." : "Tratta locale eliminata."); return refresh(); }) }]);
   }
   async function toggleChecklist(route: LocalPlannedRoute, itemId: keyof typeof localJourneyChecklistLabels, completed: boolean) {
     if (await setLocalPlannedRouteChecklistItem(route.id, itemId, completed)) {
