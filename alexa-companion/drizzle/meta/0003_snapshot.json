@@ -1,8 +1,8 @@
 {
   "version": "5",
   "dialect": "mysql",
-  "id": "c9088a51-e5aa-4da1-b233-f3cffe15ae93",
-  "prevId": "25ca0c1e-f10d-4a99-b2cb-364804accb72",
+  "id": "b2b3092b-347b-447d-bac4-84d74c094ee3",
+  "prevId": "da7acaf6-2165-44c9-aefc-c07cc8de897a",
   "tables": {
     "alexa_account_links": {
       "name": "alexa_account_links",
@@ -27,14 +27,6 @@
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
-        },
-        "credentialVersion": {
-          "name": "credentialVersion",
-          "type": "int",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": 1
         },
         "linkedAt": {
           "name": "linkedAt",
@@ -299,13 +291,6 @@
           "notNull": false,
           "autoincrement": false
         },
-        "revokedAt": {
-          "name": "revokedAt",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
         "createdAt": {
           "name": "createdAt",
           "type": "timestamp",
@@ -479,11 +464,25 @@
           "notNull": true,
           "autoincrement": false
         },
+        "originStationCode": {
+          "name": "originStationCode",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
         "destination": {
           "name": "destination",
           "type": "varchar(120)",
           "primaryKey": false,
           "notNull": true,
+          "autoincrement": false
+        },
+        "destinationStationCode": {
+          "name": "destinationStationCode",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": false,
           "autoincrement": false
         },
         "name": {

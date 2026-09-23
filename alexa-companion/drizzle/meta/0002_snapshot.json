@@ -1,7 +1,7 @@
 {
   "version": "5",
   "dialect": "mysql",
-  "id": "25ca0c1e-f10d-4a99-b2cb-364804accb72",
+  "id": "da7acaf6-2165-44c9-aefc-c07cc8de897a",
   "prevId": "f31e1c22-e6c0-41b6-aa8e-5805dad31b46",
   "tables": {
     "alexa_account_links": {

@@ -2,6 +2,8 @@ import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { createConnection, type ConnectionOptions } from "mysql2/promise";
+import { drizzle } from "drizzle-orm/mysql2";
+import { migrate } from "drizzle-orm/mysql2/migrator";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
   createAuthorizationCode,
@@ -18,7 +20,16 @@ const migrationTags = [
   "0000_flimsy_raza",
   "0001_shallow_shadow_king",
   "0002_sweet_rachel_grey",
-  "0003_light_tattoo",
+  "0003_rich_jimmy_woo",
+  "0004_clean_argent",
+  "0005_abandoned_kate_bishop",
+  "0006_unusual_husk",
+  "0007_next_bloodstrike",
+  "0008_white_sandman",
+  "0009_fancy_thunderbolts",
+  "0010_military_sentinels",
+  "0011_volatile_risque",
+  "0012_alexa_credential_revocation_adoption",
 ] as const;
 
 function connectionOptionsFromDatabaseUrl(value: string): ConnectionOptions {
@@ -67,6 +78,7 @@ describeDatabase("migrazioni MariaDB reali", () => {
   let rootOptions: ConnectionOptions;
   let emptyDatabase: string;
   let upgradeDatabase: string;
+  let shortLineageDatabase: string;
   let oauthDatabase: string;
   let originalDatabaseUrl: string;
 
@@ -79,9 +91,11 @@ describeDatabase("migrazioni MariaDB reali", () => {
     admin = await createConnection(rootOptions);
     emptyDatabase = `binario_migration_empty_${randomUUID().replaceAll("-", "")}`;
     upgradeDatabase = `binario_migration_upgrade_${randomUUID().replaceAll("-", "")}`;
+    shortLineageDatabase = `binario_migration_short_${randomUUID().replaceAll("-", "")}`;
     oauthDatabase = `binario_oauth_revocation_${randomUUID().replaceAll("-", "")}`;
     await admin.query(`CREATE DATABASE \`${emptyDatabase}\``);
     await admin.query(`CREATE DATABASE \`${upgradeDatabase}\``);
+    await admin.query(`CREATE DATABASE \`${shortLineageDatabase}\``);
     await admin.query(`CREATE DATABASE \`${oauthDatabase}\``);
   });
 
@@ -89,24 +103,28 @@ describeDatabase("migrazioni MariaDB reali", () => {
     if (!admin) return;
     await admin.query(`DROP DATABASE IF EXISTS \`${emptyDatabase}\``);
     await admin.query(`DROP DATABASE IF EXISTS \`${upgradeDatabase}\``);
+    await admin.query(`DROP DATABASE IF EXISTS \`${shortLineageDatabase}\``);
     await admin.query(`DROP DATABASE IF EXISTS \`${oauthDatabase}\``);
     await admin.end();
     process.env.DATABASE_URL = originalDatabaseUrl;
   });
 
-  it("applica 0000→0003 a un database vuoto", async () => {
+  it("applica 0000→0012 a un database vuoto", async () => {
     const connection = await createConnection({
       ...rootOptions,
       database: emptyDatabase,
     });
     try {
-      await applyMigrations(connection, 0, 3);
+      await applyMigrations(connection, 0, 12);
       expect(await tableNames(connection)).toEqual([
         "alexa_account_links",
         "binario_profiles",
+        "companion_devices",
+        "companion_pairing_codes",
         "oauth_authorization_codes",
         "oauth_refresh_tokens",
         "railway_routes",
+        "station_preferences",
         "users",
       ]);
       const [columns] = await connection.query<Array<{ Field: string }>>(
@@ -122,18 +140,23 @@ describeDatabase("migrazioni MariaDB reali", () => {
     }
   });
 
-  it("aggiorna un database 0002 a 0003 senza rieseguire la storia", async () => {
+  it("adotta un database storico 0000→0011 applicando soltanto 0012", async () => {
     const connection = await createConnection({
       ...rootOptions,
       database: upgradeDatabase,
     });
     try {
-      await applyMigrations(connection, 0, 2);
-      expect(await tableNames(connection)).toContain("binario_profiles");
-      const [indexes] = await connection.query<Array<{ Key_name: string }>>(
-        "SHOW INDEX FROM binario_profiles WHERE Key_name = 'binario_profiles_user_unique'"
+      await applyMigrations(connection, 0, 11);
+      const [historicalUser] = await connection.query(
+        "INSERT INTO users (`openId`, `lastSignedIn`) VALUES ('historical-user', CURRENT_TIMESTAMP)"
       );
-      expect(indexes).toHaveLength(1);
+      const historicalUserId = Number(
+        (historicalUser as { insertId: number }).insertId
+      );
+      await connection.query(
+        "INSERT INTO station_preferences (`userId`, `stationCode`, `stationName`) VALUES (?, '8308409', 'Roma Termini')",
+        [historicalUserId]
+      );
       const [before] = await connection.query<Array<{ Field: string }>>(
         "SHOW COLUMNS FROM oauth_authorization_codes WHERE Field = 'revokedAt'"
       );
@@ -142,7 +165,13 @@ describeDatabase("migrazioni MariaDB reali", () => {
         "SHOW COLUMNS FROM alexa_account_links WHERE Field = 'credentialVersion'"
       );
       expect(linkBefore).toHaveLength(0);
-      await applyMigrations(connection, 3, 3);
+      await connection.query(
+        "CREATE TABLE `__drizzle_migrations` (`id` serial PRIMARY KEY, `hash` text NOT NULL, `created_at` bigint)"
+      );
+      await connection.query(
+        "INSERT INTO `__drizzle_migrations` (`hash`, `created_at`) VALUES ('historical-webdev-0011', 1788377861523)"
+      );
+      await migrate(drizzle(connection), { migrationsFolder: drizzleDir });
       const [after] = await connection.query<Array<{ Field: string }>>(
         "SHOW COLUMNS FROM oauth_authorization_codes WHERE Field = 'revokedAt'"
       );
@@ -151,6 +180,76 @@ describeDatabase("migrazioni MariaDB reali", () => {
         "SHOW COLUMNS FROM alexa_account_links WHERE Field = 'credentialVersion'"
       );
       expect(linkAfter).toHaveLength(1);
+      const [preserved] = await connection.query<Array<{ stationName: string }>>(
+        "SELECT stationName FROM station_preferences WHERE userId = ?",
+        [historicalUserId]
+      );
+      expect(preserved).toEqual([{ stationName: "Roma Termini" }]);
+      const [applied] = await connection.query<Array<{ createdAt: string }>>(
+        "SELECT CAST(created_at AS CHAR) AS createdAt FROM __drizzle_migrations ORDER BY created_at"
+      );
+      expect(applied.map(row => row.createdAt)).toEqual([
+        "1788377861523",
+        "1790192049966",
+      ]);
+    } finally {
+      await connection.end();
+    }
+  });
+
+  it("adotta anche la breve catena Alexa 0000→0003 già distribuita", async () => {
+    const connection = await createConnection({
+      ...rootOptions,
+      database: shortLineageDatabase,
+    });
+    try {
+      await applyMigrations(connection, 0, 2);
+      await connection.query(
+        "ALTER TABLE `alexa_account_links` ADD `credentialVersion` int DEFAULT 1 NOT NULL"
+      );
+      await connection.query(
+        "ALTER TABLE `oauth_authorization_codes` ADD `revokedAt` timestamp NULL"
+      );
+      const [insert] = await connection.query(
+        "INSERT INTO users (`openId`, `lastSignedIn`) VALUES ('short-lineage-user', CURRENT_TIMESTAMP)"
+      );
+      const userId = Number((insert as { insertId: number }).insertId);
+      await connection.query(
+        "INSERT INTO railway_routes (`userId`, `origin`, `destination`, `name`) VALUES (?, 'Roma', 'Milano', 'Preservata')",
+        [userId]
+      );
+      await connection.query(
+        "CREATE TABLE `__drizzle_migrations` (`id` serial PRIMARY KEY, `hash` text NOT NULL, `created_at` bigint)"
+      );
+      await connection.query(
+        "INSERT INTO `__drizzle_migrations` (`hash`, `created_at`) VALUES ('short-alexa-0003', 1790180520608)"
+      );
+
+      await migrate(drizzle(connection), { migrationsFolder: drizzleDir });
+
+      expect(await tableNames(connection)).toEqual(
+        expect.arrayContaining([
+          "companion_devices",
+          "companion_pairing_codes",
+          "station_preferences",
+        ])
+      );
+      const [route] = await connection.query<Array<{ name: string }>>(
+        "SELECT name FROM railway_routes WHERE userId = ?",
+        [userId]
+      );
+      expect(route).toEqual([{ name: "Preservata" }]);
+      const [columns] = await connection.query<Array<{ Field: string }>>(
+        "SHOW COLUMNS FROM railway_routes"
+      );
+      expect(columns.map(column => column.Field)).toEqual(
+        expect.arrayContaining([
+          "originStationCode",
+          "archivedAt",
+          "travelProfile",
+          "preDepartureChecklistJson",
+        ])
+      );
     } finally {
       await connection.end();
     }
@@ -162,7 +261,7 @@ describeDatabase("migrazioni MariaDB reali", () => {
       database: oauthDatabase,
     });
     try {
-      await applyMigrations(connection, 0, 3);
+      await applyMigrations(connection, 0, 12);
       const [insert] = await connection.query(
         "INSERT INTO users (`openId`, `lastSignedIn`) VALUES (?, CURRENT_TIMESTAMP)",
         ["oauth-revocation-user"]

@@ -7,6 +7,7 @@ import { SignJWT, jwtVerify } from "jose";
 import type { User } from "../../drizzle/schema";
 import * as db from "../db";
 import { ENV } from "./env";
+import { safeErrorDetails } from "./safeError";
 import type {
   ExchangeTokenRequest,
   ExchangeTokenResponse,
@@ -301,7 +302,10 @@ class SDKServer {
         });
         user = await db.getUserByOpenId(userInfo.openId);
       } catch (error) {
-        console.error("[Auth] Failed to sync user from OAuth:", error);
+        console.error(
+          "[Auth] Failed to sync user from OAuth:",
+          safeErrorDetails(error)
+        );
         throw ForbiddenError("Failed to sync user info");
       }
     }

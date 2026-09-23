@@ -2,9 +2,9 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
-// drizzle-kit applies only the migrations listed in meta/_journal.json: a SQL
-// file without a journal entry (the 0002 orphan found by the audit) is never
-// applied on a fresh database. This test keeps the three artefacts in sync.
+// Drizzle applies only migrations listed in meta/_journal.json. The canonical
+// lineage preserves the historical WebDev chain 0000-0011 byte-for-byte, then
+// adopts the Alexa revocation columns additively in 0012.
 const drizzleDir = path.resolve(import.meta.dirname, "..", "drizzle");
 const journal = JSON.parse(
   readFileSync(path.join(drizzleDir, "meta", "_journal.json"), "utf8")
@@ -68,16 +68,30 @@ describe("catena delle migrazioni drizzle", () => {
     expect(sql).toContain("binario_profiles_user_unique");
   });
 
-  it("la migrazione OAuth aggiunge revoca code e generazione credenziale", () => {
+  it("il bridge 0012 adotta revoca code e generazione credenziale senza drop", () => {
     const sql = readFileSync(
-      path.join(drizzleDir, "0003_light_tattoo.sql"),
+      path.join(drizzleDir, "0012_alexa_credential_revocation_adoption.sql"),
       "utf8"
     );
     expect(sql).toContain(
-      "ALTER TABLE `alexa_account_links` ADD `credentialVersion` int DEFAULT 1 NOT NULL"
+      "ALTER TABLE `alexa_account_links` ADD COLUMN IF NOT EXISTS `credentialVersion`"
     );
     expect(sql).toContain(
-      "ALTER TABLE `oauth_authorization_codes` ADD `revokedAt` timestamp"
+      "ALTER TABLE `oauth_authorization_codes` ADD COLUMN IF NOT EXISTS `revokedAt`"
     );
+    const executableSql = sql.replace(/^--.*$/gm, "");
+    expect(executableSql).not.toMatch(/(?:^|;\s*)\s*(DROP|DELETE|TRUNCATE)\b/im);
+  });
+
+  it("mantiene i timestamp storici che Drizzle usa per riconoscere il database WebDev", () => {
+    expect(journal.entries).toHaveLength(13);
+    expect(journal.entries[2]).toMatchObject({
+      tag: "0002_sweet_rachel_grey",
+    });
+    const journalWithTimes = JSON.parse(
+      readFileSync(path.join(drizzleDir, "meta", "_journal.json"), "utf8")
+    ) as { entries: Array<{ tag: string; when: number }> };
+    expect(journalWithTimes.entries[2]?.when).toBe(1786648567821);
+    expect(journalWithTimes.entries[11]?.when).toBe(1788377861523);
   });
 });

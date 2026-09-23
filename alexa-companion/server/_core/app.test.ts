@@ -83,11 +83,44 @@ describe("applicazione HTTP", () => {
     expect(notification.status).toBe(404);
   });
 
+  it.each(["auth.logout", "voice.unlink"])(
+    "rifiuta form cross-site prima della mutation %s",
+    async procedure => {
+      const baseUrl = await start();
+      const response = await fetch(`${baseUrl}/api/trpc/${procedure}`, {
+        method: "POST",
+        headers: {
+          "content-type": "multipart/form-data; boundary=csrf",
+          origin: "https://attacker.invalid",
+          "sec-fetch-site": "cross-site",
+        },
+        body: "--csrf--\r\n",
+      });
+
+      expect(response.status).toBe(415);
+      expect(await response.json()).toEqual({
+        error: "json_same_origin_required",
+      });
+    }
+  );
+
+  it("lascia raggiungere tRPC alle richieste JSON non formabili", async () => {
+    const baseUrl = await start();
+    const response = await fetch(`${baseUrl}/api/trpc/auth.logout`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: "{}",
+    });
+
+    expect(response.status).not.toBe(415);
+  });
+
   it("interpreta TRUST_PROXY con un default prudente", () => {
     expect(trustProxySetting("", true)).toBe(1);
     expect(trustProxySetting("", false)).toBe(false);
     expect(trustProxySetting("2", true)).toBe(2);
     expect(trustProxySetting("false", true)).toBe(false);
     expect(trustProxySetting("loopback", true)).toBe("loopback");
+    expect(() => trustProxySetting("true", true)).toThrow(/unsafe/);
   });
 });

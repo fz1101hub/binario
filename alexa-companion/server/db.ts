@@ -273,25 +273,27 @@ export async function recordAlexaVerification(
   // hash from anyone else first, so the unique index cannot make the upsert
   // resurrect a different user's (possibly revoked) row. A revocation is only
   // lifted by exchangeAuthorizationCode, never by a routine verification.
-  await db
-    .update(alexaAccountLinks)
-    .set({
-      alexaUserHash: null,
-      revokedAt: now,
-      credentialVersion: sql`${alexaAccountLinks.credentialVersion} + 1`,
-    })
-    .where(
-      and(
-        eq(alexaAccountLinks.alexaUserHash, alexaUserHash),
-        ne(alexaAccountLinks.userId, userId)
-      )
-    );
-  await db
-    .insert(alexaAccountLinks)
-    .values({ userId, alexaUserHash, linkedAt: now, lastVerifiedAt: now })
-    .onDuplicateKeyUpdate({
-      set: { alexaUserHash, lastVerifiedAt: now },
-    });
+  await db.transaction(async tx => {
+    await tx
+      .update(alexaAccountLinks)
+      .set({
+        alexaUserHash: null,
+        revokedAt: now,
+        credentialVersion: sql`${alexaAccountLinks.credentialVersion} + 1`,
+      })
+      .where(
+        and(
+          eq(alexaAccountLinks.alexaUserHash, alexaUserHash),
+          ne(alexaAccountLinks.userId, userId)
+        )
+      );
+    await tx
+      .insert(alexaAccountLinks)
+      .values({ userId, alexaUserHash, linkedAt: now, lastVerifiedAt: now })
+      .onDuplicateKeyUpdate({
+        set: { alexaUserHash, lastVerifiedAt: now },
+      });
+  });
 }
 
 export async function createAuthorizationCode(input: {

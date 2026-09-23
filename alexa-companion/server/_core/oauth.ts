@@ -9,6 +9,7 @@ import type { Express, Request, Response } from "express";
 import * as db from "../db";
 import { getSessionCookieOptions } from "./cookies";
 import { ENV } from "./env";
+import { safeErrorDetails } from "./safeError";
 import { sdk } from "./sdk";
 import {
   AUTHORIZATION_REQUEST_COOKIE,
@@ -103,7 +104,7 @@ export function registerOAuthRoutes(app: Express) {
     res.clearCookie(OAUTH_STATE_COOKIE, {
       path: "/",
       secure: true,
-      sameSite: "none",
+      sameSite: "lax",
     });
     const alexaAuthorization = resumedAlexaAuthorization(req);
     // Consume the preserved request even if upstream OAuth fails afterwards.
@@ -148,7 +149,7 @@ export function registerOAuthRoutes(app: Express) {
       }
       res.redirect(302, "/");
     } catch (error) {
-      console.error("[OAuth] Callback failed", error);
+      console.error("[OAuth] Callback failed", safeErrorDetails(error));
       res.status(500).json({ error: "OAuth callback failed" });
     }
   });
