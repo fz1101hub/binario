@@ -1,7 +1,6 @@
 package it.binario.app
 
 import android.content.Context
-import android.util.Base64
 import androidx.core.content.edit
 import it.binario.app.data.Station
 import it.binario.app.data.gtfs.EmbeddedGtfsStationSearchIndex
@@ -34,7 +33,7 @@ class CustomStationStore(context: Context) {
         station.latitude?.toString().orEmpty(),
         station.longitude?.toString().orEmpty()
     )
-        .joinToString(",") { Base64.encodeToString(it.toByteArray(Charsets.UTF_8), Base64.NO_WRAP) }
+        .joinToString(",", transform = PreferenceValueCodec::encode)
 
     private fun decode(value: String): Station? = runCatching {
         val parts = value.split(",")
@@ -60,7 +59,8 @@ class CustomStationStore(context: Context) {
         }
     }.getOrNull()
 
-    private fun decodePart(value: String): String = String(Base64.decode(value, Base64.NO_WRAP), Charsets.UTF_8)
+    private fun decodePart(value: String): String = PreferenceValueCodec.decode(value)
+        ?: throw IllegalArgumentException("Valore preferenza Base64 non valido")
 
     private companion object {
         const val KEY_STATIONS = "stations"
