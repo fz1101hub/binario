@@ -13,7 +13,7 @@ import it.binario.wear.sync.WearSnapshotStore
 /** Watch-face surface for the same local snapshot rendered by the Wear app and Tile. */
 class BinarioComplicationService : SuspendingComplicationDataSourceService() {
     override suspend fun onComplicationRequest(request: ComplicationRequest): ComplicationData? {
-        val snapshot = WearSnapshotStore.snapshot(this).value ?: return NoDataComplicationData()
+        val snapshot = WearSnapshotStore.current(this) ?: return NoDataComplicationData()
         val content = PlainComplicationText.Builder(snapshot.complicationLabel).build()
         return when (request.complicationType) {
             ComplicationType.SHORT_TEXT -> ShortTextComplicationData.Builder(content, content).build()
