@@ -1,6 +1,7 @@
 package it.binario.app
 
 import android.app.Application
+import android.util.Log
 import android.content.Context
 import android.util.Base64
 import androidx.compose.runtime.getValue
@@ -12,19 +13,25 @@ import androidx.lifecycle.viewModelScope
 import it.binario.app.data.DataConfidence
 import it.binario.app.data.DataResult
 import it.binario.app.data.Direction
-import it.binario.app.data.RailDataRepository
 import it.binario.app.data.RailOperator
 import it.binario.app.data.RouteSnapshot
 import it.binario.app.data.RouteSnapshotCache
 import it.binario.app.data.SavedRoute
 import it.binario.app.data.Station
 import it.binario.app.data.TrainDataSource
+import it.binario.app.data.matchesPublishedName
+import it.binario.app.data.searchableValues
+import it.binario.app.data.repository.BinarioDataGraph
 import it.binario.app.data.TrainService
+import it.binario.app.data.catalog.EmbeddedCuratedRailStationCatalog
+import it.binario.app.data.gtfs.EmbeddedGtfsStationSearchIndex
 import it.binario.app.data.orderServicesForDisplay
 import it.binario.app.widget.RouteWidgetProvider
 import it.binario.app.widget.WidgetStateStore
 import it.binario.app.wear.WearSnapshotPublisher
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.util.UUID
 
 enum class RefreshState(val accessibleLabel: String) {
@@ -48,36 +55,14 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
     private val commuterAlertStore = CommuterAlertStore(application)
     private val personalTravelStore = PersonalTravelStore(application)
     private val mobilityPreferencesStore = MobilityPreferencesStore(application)
-    private val dataSource: TrainDataSource = RailDataRepository()
-
-    val stations = listOf(
-        Station("roma-termini", "Roma Termini", "Roma", "Lazio"),
-        Station("roma-tiburtina", "Roma Tiburtina", "Roma", "Lazio"),
-        Station("roma-ostiense", "Roma Ostiense", "Roma", "Lazio"),
-        Station("roma-trastevere", "Roma Trastevere", "Roma", "Lazio"),
-        Station("roma-san-pietro", "Roma San Pietro", "Roma", "Lazio"),
-        Station("roma-tuscolana", "Roma Tuscolana", "Roma", "Lazio"),
-        Station("fiumicino-aeroporto", "Fiumicino Aeroporto", "Fiumicino", "Lazio"),
-        Station("ciampino", "Ciampino", "Ciampino", "Lazio"),
-        Station("civitavecchia", "Civitavecchia", "Civitavecchia", "Lazio"),
-        Station("frascati", "Frascati", "Frascati", "Lazio"),
-        Station("velletri", "Velletri", "Velletri", "Lazio"),
-        Station("viterbo-pf", "Viterbo Porta Fiorentina", "Viterbo", "Lazio"),
-        Station("orte", "Orte", "Orte", "Lazio"),
-        Station("latina", "Latina", "Latina", "Lazio"),
-        Station("frosinone", "Frosinone", "Frosinone", "Lazio"),
-        Station("cassino", "Cassino", "Lazio", "Lazio"),
-        Station("napoli-centrale", "Napoli Centrale", "Napoli", "Campania"),
-        Station("firenze-smn", "Firenze Santa Maria Novella", "Firenze", "Toscana"),
-        Station("bologna-centrale", "Bologna Centrale", "Bologna", "Emilia-Romagna"),
-        Station("milano-centrale", "Milano Centrale", "Milano", "Lombardia"),
-        Station("venezia-sl", "Venezia Santa Lucia", "Venezia", "Veneto"),
-        Station("genova-pp", "Genova Piazza Principe", "Genova", "Liguria"),
-        Station("torino-pn", "Torino Porta Nuova", "Torino", "Piemonte"),
-        Station("bari-centrale", "Bari Centrale", "Bari", "Puglia"),
-        Station("palermo-centrale", "Palermo Centrale", "Palermo", "Sicilia"),
-        Station("cagliari", "Cagliari", "Cagliari", "Sardegna")
+    private val customStationStore = CustomStationStore(application)
+    private val dataSource: TrainDataSource = BinarioDataGraph.routeDataSource(application)
+    private val curatedStationCatalog = EmbeddedCuratedRailStationCatalog(
+        openAsset = { assetPath -> application.assets.open(assetPath) }
     )
+
+    var stations by mutableStateOf(customStationStore.stations())
+        private set
 
     var favouriteStations by mutableStateOf(stationPreferences.favourites(stations))
         private set
@@ -90,9 +75,9 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
         private set
     var monitoredServices by mutableStateOf(routeStore.monitoredServices())
         private set
-    var activeRoute by mutableStateOf(routeStore.activeRoute(stations, savedRoutes))
+    var activeRoute by mutableStateOf(routeStore.activeRoute(savedRoutes))
         private set
-    var direction by mutableStateOf(WidgetStateStore.read(application)?.direction ?: routeStore.direction())
+    var direction by mutableStateOf(routeStore.direction())
         private set
     var snapshot by mutableStateOf<RouteSnapshot?>(null)
         private set
@@ -122,19 +107,77 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
         private set
 
     init {
-        refresh()
+        loadCuratedStationCatalog()
+        if (hasActiveRoute) refresh()
     }
 
-    fun searchStations(query: String): List<Station> = if (query.isBlank()) emptyList() else {
-        stations.filter { "${it.name} ${it.city} ${it.region.orEmpty()}".contains(query.trim(), ignoreCase = true) }.take(6)
+    private fun loadCuratedStationCatalog() {
+        viewModelScope.launch(Dispatchers.Default) {
+            val imported = runCatching { curatedStationCatalog.load() }
+                .onFailure { error ->
+                    Log.e("BinarioCatalog", "Impossibile caricare il catalogo stazioni curato", error)
+                }
+                .getOrDefault(emptyList())
+            withContext(Dispatchers.Main) {
+                if (imported.isEmpty()) {
+                    return@withContext
+                }
+                val legacyCustom = customStationStore.stations()
+                val migratedCustom = legacyCustom.map { station ->
+                    imported.firstOrNull { candidate ->
+                        candidate.id == station.id || candidate.matchesPublishedName(station.name)
+                    } ?: station
+                }
+                stations = imported + migratedCustom.filterNot { custom -> imported.any { it.id == custom.id } }
+                savedRoutes = pinnedFirst(routeStore.routes(stations).map(::canonicalRoute))
+                recentRoutes = routeStore.recentRoutes(stations).map { recent ->
+                    RecentRoute(canonicalStation(recent.origin), canonicalStation(recent.destination))
+                }
+                activeRoute = routeStore.activeRoute(savedRoutes).let(::canonicalRoute)
+                favouriteStations = stationPreferences.favourites(stations)
+                stationMonitors = personalTravelStore.stationMonitors(stations)
+            }
+        }
     }
 
-    fun stationFromName(name: String): Station? = stations.firstOrNull { it.name.equals(name.trim(), ignoreCase = true) }
+    private fun canonicalRoute(route: SavedRoute): SavedRoute = route.copy(
+        outwardOrigin = canonicalStation(route.outwardOrigin),
+        outwardDestination = canonicalStation(route.outwardDestination)
+    )
+
+    private fun canonicalStation(station: Station): Station = stations.firstOrNull { candidate ->
+        candidate.id == station.id || candidate.matchesPublishedName(station.name)
+    } ?: station
+
+    val hasActiveRoute: Boolean get() = activeRoute.id != UNCONFIGURED_ROUTE_ID
+
+    fun plannerOriginText(): String = activeRoute.takeIf { hasActiveRoute }?.outwardOrigin?.name.orEmpty()
+
+    fun plannerDestinationText(): String = activeRoute.takeIf { hasActiveRoute }?.outwardDestination?.name.orEmpty()
+
+    fun searchStations(query: String): List<Station> {
+        val normalized = EmbeddedGtfsStationSearchIndex.normalize(query)
+        if (normalized.length < 2) return emptyList()
+        val localMatches = stations.asSequence()
+            .filter { stationMatches(it, normalized) }
+            .take(8)
+            .toList()
+        return if (localMatches.isNotEmpty()) localMatches else listOfNotNull(stationFromFreeText(query))
+    }
+
+    fun stationFromName(name: String): Station? {
+        val normalized = EmbeddedGtfsStationSearchIndex.normalize(name)
+        return stations.firstOrNull { station ->
+            station.searchableValues().any { EmbeddedGtfsStationSearchIndex.normalize(it) == normalized }
+        }
+            ?: stationFromFreeText(name)
+    }
 
     fun isStationFavourite(station: Station): Boolean = stationPreferences.isFavourite(station)
 
     fun toggleStationFavourite(station: Station) {
-        stationPreferences.toggle(station)
+        val remembered = rememberStation(station)
+        stationPreferences.toggle(remembered)
         favouriteStations = stationPreferences.favourites(stations)
     }
 
@@ -146,7 +189,8 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
     fun isStationMonitored(station: Station): Boolean = stationMonitors.any { it.stationId == station.id }
 
     fun toggleStationMonitor(station: Station, mode: StationMonitorMode = StationMonitorMode.BOTH) {
-        stationMonitors = personalTravelStore.toggleStationMonitor(station, mode, stations)
+        val remembered = rememberStation(station)
+        stationMonitors = personalTravelStore.toggleStationMonitor(remembered, mode, stations)
     }
 
     fun removeStationMonitor(stationId: String) {
@@ -165,23 +209,25 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun searchRoute(origin: Station, destination: Station): Boolean {
-        if (origin == destination) {
+        val rememberedOrigin = rememberStation(canonicalStation(origin))
+        val rememberedDestination = rememberStation(canonicalStation(destination))
+        if (rememberedOrigin.id == rememberedDestination.id) {
             refreshMessage = "Scegli due stazioni diverse per la tratta."
             refreshState = RefreshState.ERROR
             return false
         }
         val storedRoute = savedRoutes.firstOrNull {
-            it.outwardOrigin.id == origin.id && it.outwardDestination.id == destination.id
+            it.outwardOrigin.id == rememberedOrigin.id && it.outwardDestination.id == rememberedDestination.id
         }
         activeRoute = storedRoute ?: SavedRoute(
-            id = "search-${origin.id}-${destination.id}",
-            name = "${origin.city} – ${destination.city}",
-            outwardOrigin = origin,
-            outwardDestination = destination
+            id = searchedRouteId(rememberedOrigin, rememberedDestination),
+            name = "${rememberedOrigin.city} – ${rememberedDestination.city}",
+            outwardOrigin = rememberedOrigin,
+            outwardDestination = rememberedDestination
         )
         direction = Direction.OUTBOUND
         routeStore.saveDirection(direction)
-        recentRoutes = routeStore.recordRecent(origin, destination, stations)
+        recentRoutes = routeStore.recordRecent(rememberedOrigin, rememberedDestination, stations)
         selectedService = null
         trainNumberQuery = ""
         refresh()
@@ -196,18 +242,8 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun reconcileWidgetState() {
-        val widgetState = WidgetStateStore.read(getApplication()) ?: return
-        val matchingRoute = savedRoutes.firstOrNull { it.id == widgetState.route.id } ?: return
-        val routeChanged = activeRoute.id != matchingRoute.id
-        val directionChanged = direction != widgetState.direction
-        if (routeChanged || directionChanged) {
-            activeRoute = matchingRoute
-            direction = widgetState.direction
-            routeStore.saveActiveRoute(matchingRoute.id)
-            routeStore.saveDirection(direction)
-            selectedService = null
-            refresh()
-        }
+        // Ogni widget conserva ora il proprio target e la propria direzione.
+        // Non modifica più la tratta attiva dell’app.
     }
 
     fun chooseDirection(newDirection: Direction) {
@@ -233,17 +269,19 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun createRoute(origin: Station, destination: Station, customName: String? = null): Boolean {
-        if (origin == destination) {
+        val rememberedOrigin = rememberStation(origin)
+        val rememberedDestination = rememberStation(destination)
+        if (rememberedOrigin == rememberedDestination) {
             refreshMessage = "Scegli due stazioni diverse per la tratta."
             refreshState = RefreshState.ERROR
             return false
         }
-        val defaultName = "${origin.city} – ${destination.city}"
+        val defaultName = "${rememberedOrigin.city} – ${rememberedDestination.city}"
         val route = SavedRoute(
             id = UUID.randomUUID().toString(),
             name = customName?.trim()?.takeIf { it.isNotBlank() } ?: defaultName,
-            outwardOrigin = origin,
-            outwardDestination = destination
+            outwardOrigin = rememberedOrigin,
+            outwardDestination = rememberedDestination
         )
         savedRoutes = pinnedFirst(listOf(route) + savedRoutes.filterNot { it.outwardOrigin == origin && it.outwardDestination == destination })
         routeStore.saveRoutes(savedRoutes)
@@ -262,26 +300,31 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
         }
         savedRoutes = pinnedFirst(updated)
         routeStore.saveRoutes(savedRoutes)
-        activeRoute = savedRoutes.firstOrNull { it.id == activeRoute.id } ?: savedRoutes.first()
+        activeRoute = savedRoutes.firstOrNull { it.id == activeRoute.id } ?: unconfiguredRoute()
     }
 
     fun removeRoute(route: SavedRoute) {
-        if (savedRoutes.size <= 1) {
-            refreshMessage = "Conserva almeno una tratta oppure creane prima una nuova."
-            refreshState = RefreshState.ERROR
-            return
-        }
         savedRoutes = savedRoutes.filterNot { it.id == route.id }
         routeStore.saveRoutes(savedRoutes)
         if (activeRoute.id == route.id) {
-            activeRoute = savedRoutes.first()
-            routeStore.saveActiveRoute(activeRoute.id)
+            activeRoute = savedRoutes.firstOrNull() ?: unconfiguredRoute()
+            if (hasActiveRoute) routeStore.saveActiveRoute(activeRoute.id) else routeStore.clearActiveRoute()
             selectedService = null
-            refresh()
+            if (hasActiveRoute) refresh() else {
+                snapshot = null
+                refreshState = RefreshState.IDLE
+                refreshMessage = "Inserisci una tratta per iniziare la consultazione."
+            }
         }
     }
 
     fun refresh() {
+        if (!hasActiveRoute) {
+            snapshot = null
+            refreshState = RefreshState.ERROR
+            refreshMessage = "Inserisci partenza e arrivo per consultare una tratta."
+            return
+        }
         refreshState = RefreshState.LOADING
         refreshMessage = null
         val routeAtRequest = activeRoute
@@ -291,12 +334,7 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
                 is DataResult.Success -> {
                     snapshot = result.snapshot
                     cache.save(result.snapshot)
-                    val previousWidget = WidgetStateStore.read(getApplication())
-                    val page = previousWidget
-                        ?.takeIf { it.route.id == result.snapshot.route.id && it.direction == result.snapshot.direction }
-                        ?.page
-                        ?: 0
-                    WidgetStateStore.saveSnapshot(getApplication(), result.snapshot, page)
+                    RouteWidgetProvider.saveSnapshotForMatchingRoutes(getApplication(), result.snapshot)
                     RouteWidgetProvider.refreshAll(getApplication())
                     if (integrationSettings.wearSnapshotSharingEnabled) {
                         WearSnapshotPublisher.publish(getApplication(), result.snapshot)
@@ -305,7 +343,7 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
                     refreshMessage = result.snapshot.notice
                 }
                 is DataResult.Failure -> {
-                    WidgetStateStore.markUnavailable(getApplication())
+                    RouteWidgetProvider.markMatchingRoutesUnavailable(getApplication(), result.message)
                     RouteWidgetProvider.refreshAll(getApplication())
                     if (integrationSettings.wearSnapshotSharingEnabled) {
                         WearSnapshotPublisher.publishUnavailable(getApplication(), routeAtRequest.displayName(directionAtRequest), currentProviderLabel())
@@ -417,8 +455,8 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
         is LocalBackupResult.Success -> {
             val backup = result.backup
             savedRoutes = pinnedFirst(routeStore.replaceRoutes(backup.routes))
-            activeRoute = savedRoutes.first()
-            routeStore.saveActiveRoute(activeRoute.id)
+            activeRoute = savedRoutes.firstOrNull() ?: unconfiguredRoute()
+            if (hasActiveRoute) routeStore.saveActiveRoute(activeRoute.id) else routeStore.clearActiveRoute()
             stationPreferences.replaceFavourites(backup.favouriteStationIds)
             favouriteStations = stationPreferences.favourites(stations)
             replaceServiceMonitors(backup.monitoredServices)
@@ -426,7 +464,11 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
             commuterAlerts = commuterAlertStore.replace(backup.commuterAlerts)
             updateMobilityPreferences(backup.mobilityPreferences)
             selectWidgetSurface(backup.widgetSurface)
-            refresh()
+            if (hasActiveRoute) refresh() else {
+                snapshot = null
+                refreshState = RefreshState.IDLE
+                refreshMessage = "Backup importato senza una tratta salvata. Inseriscine una quando vuoi."
+            }
             "Backup importato localmente: ${savedRoutes.size} tratte, ${stationMonitors.size} stazioni monitorate e ${commuterAlerts.size} avvisi."
         }
     }
@@ -471,11 +513,30 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun currentProviderLabel(): String = snapshot?.providerName ?: cache.lastProvider()
 
-    fun currentConfidenceLabel(): String = snapshot?.confidence?.accessibleLabel ?: cache.lastConfidence()
+    fun currentConfidenceLabel(): String = snapshot?.let { latest ->
+        val quality = latest.qualityScore?.let { score -> "${latest.qualityBand.accessibleLabel} · $score/100" }
+        listOfNotNull(quality, latest.confidence.accessibleLabel).joinToString(" · ")
+    } ?: cache.lastConfidence()
 
     fun isDemonstrationData(): Boolean = snapshot?.confidence == DataConfidence.DEMONSTRATION
 
     fun lastRefreshEpochMillis(): Long = snapshot?.retrievedAtEpochMillis ?: cache.lastRefreshEpochMillis()
+
+    private fun stationMatches(station: Station, normalizedQuery: String): Boolean {
+        return station.searchableValues().any { value ->
+            val candidate = EmbeddedGtfsStationSearchIndex.normalize(value)
+            candidate.contains(normalizedQuery) || normalizedQuery.split(' ').all { token -> candidate.contains(token) }
+        }
+    }
+
+    private fun rememberStation(station: Station): Station {
+        val existing = stations.firstOrNull { it.id == station.id } ?: station
+        val saved = customStationStore.remember(existing)
+        val knownIds = stations.mapTo(hashSetOf()) { it.id }
+        val additions = saved.filter { knownIds.add(it.id) }
+        if (additions.isNotEmpty()) stations = stations + additions
+        return saved.firstOrNull { it.id == existing.id } ?: existing
+    }
 }
 
 private fun pinnedFirst(routes: List<SavedRoute>): List<SavedRoute> =
@@ -489,16 +550,12 @@ private class RouteStore(context: Context) {
             ?.split(";")
             ?.mapNotNull { decodeRoute(it, stations) }
             .orEmpty()
-        return if (stored.isNotEmpty()) {
-            stored.map { route ->
-                if (route.id == "default-roma-napoli") defaultRoute(stations) else route
-            }
-        } else listOf(defaultRoute(stations))
+        return stored.filterNot { route -> route.id.startsWith("default-") }
     }
 
-    fun activeRoute(stations: List<Station>, routes: List<SavedRoute>): SavedRoute {
+    fun activeRoute(routes: List<SavedRoute>): SavedRoute {
         val activeId = preferences.getString(KEY_ACTIVE_ROUTE, null)
-        return routes.firstOrNull { it.id == activeId } ?: routes.firstOrNull() ?: defaultRoute(stations)
+        return routes.firstOrNull { it.id == activeId } ?: routes.firstOrNull() ?: unconfiguredRoute()
     }
 
     fun direction(): Direction = runCatching {
@@ -517,6 +574,10 @@ private class RouteStore(context: Context) {
 
     fun saveActiveRoute(id: String) {
         preferences.edit { putString(KEY_ACTIVE_ROUTE, id) }
+    }
+
+    fun clearActiveRoute() {
+        preferences.edit { remove(KEY_ACTIVE_ROUTE) }
     }
 
     fun saveDirection(direction: Direction) {
@@ -572,12 +633,6 @@ private class RouteStore(context: Context) {
         return updated
     }
 
-    private fun defaultRoute(stations: List<Station>): SavedRoute {
-        val origin = stations.first { it.id == "roma-termini" }
-        val destination = stations.first { it.id == "torino-pn" }
-        return SavedRoute("default-roma-torino", "Roma – Torino", origin, destination)
-    }
-
     private fun encodeRoute(route: SavedRoute): String = listOf(
         route.id,
         route.name,
@@ -589,11 +644,14 @@ private class RouteStore(context: Context) {
     private fun decodeRoute(value: String, stations: List<Station>): SavedRoute? {
         val parts = value.split(",")
         if (parts.size !in 4..5) return null
-        val origin = stations.firstOrNull { it.id == decode(parts[2]) } ?: return null
-        val destination = stations.firstOrNull { it.id == decode(parts[3]) } ?: return null
+        val origin = stations.firstOrNull { it.id == decode(parts[2]) } ?: legacyStation(decode(parts[2])) ?: return null
+        val destination = stations.firstOrNull { it.id == decode(parts[3]) } ?: legacyStation(decode(parts[3])) ?: return null
         val isPinned = parts.getOrNull(4)?.let { decode(it) == "1" } ?: false
         return SavedRoute(decode(parts[0]), decode(parts[1]), origin, destination, isPinned)
     }
+
+    /** Solo migrazione di preferenze personali: non alimenta il catalogo della UI. */
+    private fun legacyStation(id: String): Station? = legacyStations[id]
 
     private fun encode(value: String): String = Base64.encodeToString(value.toByteArray(Charsets.UTF_8), Base64.NO_WRAP)
     private fun decode(value: String): String = String(Base64.decode(value, Base64.NO_WRAP), Charsets.UTF_8)
@@ -604,7 +662,47 @@ private class RouteStore(context: Context) {
         const val KEY_DIRECTION = "direction"
         const val KEY_RECENT = "recent"
         const val KEY_MONITORED_SERVICES = "monitored_services"
+
+        val legacyStations = listOf(
+            Station("roma-termini", "Roma Termini", "Roma", "Lazio"),
+            Station("roma-tiburtina", "Roma Tiburtina", "Roma", "Lazio"),
+            Station("roma-ostiense", "Roma Ostiense", "Roma", "Lazio"),
+            Station("roma-trastevere", "Roma Trastevere", "Roma", "Lazio"),
+            Station("roma-san-pietro", "Roma San Pietro", "Roma", "Lazio"),
+            Station("roma-tuscolana", "Roma Tuscolana", "Roma", "Lazio"),
+            Station("fiumicino-aeroporto", "Fiumicino Aeroporto", "Fiumicino", "Lazio"),
+            Station("ciampino", "Ciampino", "Ciampino", "Lazio"),
+            Station("civitavecchia", "Civitavecchia", "Civitavecchia", "Lazio"),
+            Station("frascati", "Frascati", "Frascati", "Lazio"),
+            Station("velletri", "Velletri", "Velletri", "Lazio"),
+            Station("viterbo-pf", "Viterbo Porta Fiorentina", "Viterbo", "Lazio"),
+            Station("orte", "Orte", "Orte", "Lazio"),
+            Station("latina", "Latina", "Latina", "Lazio"),
+            Station("frosinone", "Frosinone", "Frosinone", "Lazio"),
+            Station("cassino", "Cassino", "Cassino", "Lazio"),
+            Station("napoli-centrale", "Napoli Centrale", "Napoli", "Campania"),
+            Station("firenze-smn", "Firenze Santa Maria Novella", "Firenze", "Toscana"),
+            Station("bologna-centrale", "Bologna Centrale", "Bologna", "Emilia-Romagna"),
+            Station("milano-centrale", "Milano Centrale", "Milano", "Lombardia"),
+            Station("venezia-sl", "Venezia Santa Lucia", "Venezia", "Veneto"),
+            Station("genova-pp", "Genova Piazza Principe", "Genova", "Liguria"),
+            Station("torino-pn", "Torino Porta Nuova", "Torino", "Piemonte"),
+            Station("bari-centrale", "Bari Centrale", "Bari", "Puglia"),
+            Station("palermo-centrale", "Palermo Centrale", "Palermo", "Sicilia"),
+            Station("cagliari", "Cagliari", "Cagliari", "Sardegna")
+        ).associateBy { it.id }
     }
 }
 
 internal fun recentRouteKey(origin: Station, destination: Station): String = "${origin.id}|${destination.id}"
+
+internal fun searchedRouteId(origin: Station, destination: Station): String = "search-${origin.id}-${destination.id}"
+
+internal const val UNCONFIGURED_ROUTE_ID = "unconfigured-route"
+
+internal fun unconfiguredRoute(): SavedRoute = SavedRoute(
+    id = UNCONFIGURED_ROUTE_ID,
+    name = "Nessuna tratta selezionata",
+    outwardOrigin = Station("unconfigured-origin", "Partenza da scegliere", ""),
+    outwardDestination = Station("unconfigured-destination", "Arrivo da scegliere", "")
+)

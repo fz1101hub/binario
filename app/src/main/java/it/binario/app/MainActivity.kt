@@ -373,7 +373,14 @@ private fun TodayScreen(
                 DepartureListRow(service, isNext = service.id == firstService.id, onOpen = { openDetails(service) })
             }
         } else {
-            item { TodayEmptyState(viewModel.refreshState, onRefresh = viewModel::refresh, onRoutes = openRoutes) }
+            item {
+                TodayEmptyState(
+                    state = viewModel.refreshState,
+                    message = viewModel.refreshMessage,
+                    onRefresh = viewModel::refresh,
+                    onRoutes = openRoutes
+                )
+            }
         }
         if (viewModel.savedRoutes.size > 1) {
             item { MonitoredRoutesStrip(viewModel.savedRoutes, viewModel.activeRoute.id, viewModel::activateRoute, openRoutes) }
@@ -490,8 +497,8 @@ private fun PlannerScreen(
     openMore: () -> Unit,
     openStations: () -> Unit
 ) {
-    var originText by rememberSaveable { mutableStateOf(viewModel.activeRoute.outwardOrigin.name) }
-    var destinationText by rememberSaveable { mutableStateOf(viewModel.activeRoute.outwardDestination.name) }
+    var originText by rememberSaveable { mutableStateOf(viewModel.plannerOriginText()) }
+    var destinationText by rememberSaveable { mutableStateOf(viewModel.plannerDestinationText()) }
     var returnJourney by rememberSaveable { mutableStateOf(false) }
     var showFilters by rememberSaveable { mutableStateOf(false) }
     var mode by rememberSaveable { mutableStateOf(SearchMode.ROUTE) }
@@ -629,7 +636,7 @@ private fun PlannerScreen(
                         if (showFilters) {
                             JourneyChangeFilterBar(viewModel.journeyChangeFilter, viewModel::selectJourneyChangeFilter)
                             OperatorFilterBar(viewModel.operatorFilter, viewModel::selectOperatorFilter)
-                            Text("I cambi sono indicativi nel catalogo dimostrativo locale; i dati reali richiedono una fonte ferroviaria autorizzata.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("Il filtro viene applicato solo quando la fonte restituisce informazioni sui cambi; Binario non li stima.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         Button(
                             onClick = { if (origin != null && destination != null && origin != destination && viewModel.searchRoute(origin, destination)) showResults() },
@@ -977,6 +984,9 @@ private fun DataStatusLine(
         Column(Modifier.weight(1f)) {
             Text(label, style = MaterialTheme.typography.labelLarge, color = color, fontWeight = FontWeight.Bold)
             Text(if (refreshedAt > 0L) "$provider · ${accessibleUpdateTime(refreshedAt)}" else provider, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            message?.takeIf { it.isNotBlank() }?.let {
+                Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
         }
     }
     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
@@ -1059,10 +1069,13 @@ private fun DepartureListRow(service: TrainService, isNext: Boolean = false, onO
 }
 
 @Composable
-private fun TodayEmptyState(state: RefreshState, onRefresh: () -> Unit, onRoutes: () -> Unit) {
+private fun TodayEmptyState(state: RefreshState, message: String?, onRefresh: () -> Unit, onRoutes: () -> Unit) {
     Column(Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(12.dp), horizontalAlignment = Alignment.Start) {
         Text(if (state == RefreshState.LOADING) "Cerco le partenze…" else "Nessuna partenza da mostrare", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
         Text("Aggiorna la tratta attiva oppure scegli una tratta salvata diversa. I dati non disponibili non vengono sostituiti con orari stimati.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        message?.takeIf { it.isNotBlank() }?.let {
+            Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Button(onClick = onRefresh) { Text("Aggiorna") }
             OutlinedButton(onClick = onRoutes) { Text("Cambia tratta") }
@@ -1079,8 +1092,8 @@ private fun SearchScreen(
     initialMode: SearchMode
 ) {
     var mode by rememberSaveable { mutableStateOf(initialMode) }
-    var originText by rememberSaveable { mutableStateOf(viewModel.activeRoute.outwardOrigin.name) }
-    var destinationText by rememberSaveable { mutableStateOf(viewModel.activeRoute.outwardDestination.name) }
+    var originText by rememberSaveable { mutableStateOf(viewModel.plannerOriginText()) }
+    var destinationText by rememberSaveable { mutableStateOf(viewModel.plannerDestinationText()) }
     var stationText by rememberSaveable { mutableStateOf("") }
     val origin = viewModel.stationFromName(originText)
     val destination = viewModel.stationFromName(destinationText)
@@ -1398,6 +1411,7 @@ private fun SettingsScreen(
             Column(Modifier.padding(horizontal = 20.dp, vertical = 14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text("Privacy e dati", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 Text("Binario non usa tracker né annunci. Backup Android escluso; la posizione è richiesta solo per trovare stazioni vicine e non viene conservata. Senza una fonte autorizzata: dati non disponibili in tempo reale.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("Autocompletamento nazionale: © OpenStreetMap contributors, ODbL 1.0. Il catalogo geografico suggerisce nomi di stazioni ma non conferma servizio, orario, binario, ritardo o circolazione.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
         items(viewModel.savedRoutes, key = { it.id }) { route ->
@@ -1684,8 +1698,8 @@ private fun RouteListRow(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun RouteComposerSheet(viewModel: TrainViewModel, onDismiss: () -> Unit) {
-    var originText by rememberSaveable { mutableStateOf(viewModel.activeRoute.outwardOrigin.name) }
-    var destinationText by rememberSaveable { mutableStateOf(viewModel.activeRoute.outwardDestination.name) }
+    var originText by rememberSaveable { mutableStateOf("") }
+    var destinationText by rememberSaveable { mutableStateOf("") }
     var routeName by rememberSaveable { mutableStateOf("") }
     val origin = viewModel.stationFromName(originText)
     val destination = viewModel.stationFromName(destinationText)
@@ -1711,13 +1725,29 @@ private fun RouteComposerSheet(viewModel: TrainViewModel, onDismiss: () -> Unit)
 }
 
 @Composable
-private fun StationField(label: String, value: String, onValueChange: (String) -> Unit, matches: List<Station>, onSelect: (Station) -> Unit) {
+private fun StationField(
+    label: String,
+    value: String,
+    onValueChange: (String) -> Unit,
+    matches: List<Station>,
+    onSelect: (Station) -> Unit
+) {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         OutlinedTextField(value = value, onValueChange = onValueChange, modifier = Modifier.fillMaxWidth(), singleLine = true, label = { Text(label) }, leadingIcon = { Icon(Icons.Default.Train, contentDescription = null) })
-        if (matches.isNotEmpty() && matches.none { it.name.equals(value, ignoreCase = true) }) {
-            matches.take(4).forEach { station ->
+        if (matches.isNotEmpty() && (matches.none { it.name.equals(value, ignoreCase = true) } || matches.any { it.id.startsWith("manual:") })) {
+            matches.take(5).forEach { station ->
                 TextButton(onClick = { onSelect(station) }, modifier = Modifier.fillMaxWidth()) {
-                    Text("${station.name} · ${station.city}${station.region?.let { " · $it" }.orEmpty()}", modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    val stationLabel = if (station.id.startsWith("manual:")) {
+                        "Cerca “${station.name}” nelle fonti disponibili"
+                    } else {
+                        buildString {
+                            append(station.name)
+                            station.railwayCode?.let { append(" · ").append(it) }
+                        }
+                    }
+                    Icon(Icons.Default.Train, contentDescription = null, modifier = Modifier.size(20.dp))
+                    Spacer(Modifier.width(10.dp))
+                    Text(stationLabel, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
         }

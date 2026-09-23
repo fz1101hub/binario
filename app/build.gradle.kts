@@ -12,8 +12,8 @@ android {
         applicationId = "it.binario.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 25
-        versionName = "0.16.3"
+        versionCode = 34
+        versionName = "0.20.3"
     }
 
     buildFeatures {
@@ -51,6 +51,9 @@ dependencies {
     implementation("androidx.activity:activity-compose:1.10.0")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
     implementation("androidx.work:work-runtime-ktx:2.10.0")
+    implementation("org.jsoup:jsoup:1.18.3")
+    implementation("org.json:json:20240303")
+    implementation("com.google.transit:gtfs-realtime-bindings:0.0.4")
     implementation("com.google.android.gms:play-services-wearable:20.0.1")
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-tooling-preview")
@@ -58,5 +61,4 @@ dependencies {
     implementation("androidx.compose.material:material-icons-extended")
     debugImplementation("androidx.compose.ui:ui-tooling")
     testImplementation("junit:junit:4.13.2")
-    testImplementation("org.json:json:20240303")
 }

@@ -41,6 +41,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import it.binario.app.BinarioTheme
 import it.binario.app.ThemeSettings
 import it.binario.app.TrainViewModel
+import it.binario.app.data.Station
 
 class WidgetConfigureActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -67,17 +68,62 @@ class WidgetConfigureActivity : ComponentActivity() {
                     WindowCompat.getInsetsController(window, view).isAppearanceLightNavigationBars = foregroundIsLight.not()
                 }
 
-                val existingConfiguration = remember { WidgetConfigurationStore(this@WidgetConfigureActivity).read(widgetId) }
-                var targetType by remember { mutableStateOf(existingConfiguration?.targetType ?: WidgetTargetType.ROUTE) }
-                var selectedId by remember { mutableStateOf(existingConfiguration?.targetId ?: model.activeRoute.id) }
-                var selectedLabel by remember { mutableStateOf(existingConfiguration?.targetLabel ?: model.activeRoute.name) }
-                var displayName by remember { mutableStateOf(existingConfiguration?.displayName.orEmpty()) }
+                val existing = remember { WidgetConfigurationStore(this@WidgetConfigureActivity).read(widgetId) }
+                var targetType by remember { mutableStateOf(existing?.targetType ?: WidgetTargetType.ROUTE) }
+                var routeOriginText by remember { mutableStateOf(existing?.routeOrigin?.name.orEmpty()) }
+                var routeDestinationText by remember { mutableStateOf(existing?.routeDestination?.name.orEmpty()) }
+                var stationText by remember { mutableStateOf(existing?.takeIf { it.targetType == WidgetTargetType.STATION }?.targetLabel.orEmpty()) }
+                var trainText by remember { mutableStateOf(existing?.takeIf { it.targetType == WidgetTargetType.TRAIN }?.targetId.orEmpty()) }
+                var displayName by remember { mutableStateOf(existing?.displayName.orEmpty()) }
+                var validationMessage by remember { mutableStateOf<String?>(null) }
+                val routeOrigin = model.stationFromName(routeOriginText)
+                val routeDestination = model.stationFromName(routeDestinationText)
+                val station = model.stationFromName(stationText)
+                val trainNumber = trainText.filter { it.isLetterOrDigit() || it.isWhitespace() }.trim().take(12)
 
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = background,
-                    contentColor = MaterialTheme.colorScheme.onBackground
-                ) {
+                fun saveConfiguration() {
+                    val configuration = when (targetType) {
+                        WidgetTargetType.ROUTE -> when {
+                            routeOrigin == null || routeDestination == null -> {
+                                validationMessage = "Inserisci partenza e arrivo: puoi scegliere un suggerimento oppure cercare il nome digitato nelle fonti disponibili."
+                                null
+                            }
+                            routeOrigin.id == routeDestination.id -> {
+                                validationMessage = "Partenza e arrivo devono essere stazioni diverse."
+                                null
+                            }
+                            else -> WidgetDisplayConfiguration(
+                                targetType = WidgetTargetType.ROUTE,
+                                targetId = "route:${routeOrigin.id}:${routeDestination.id}",
+                                targetLabel = "${routeOrigin.name} → ${routeDestination.name}",
+                                displayName = displayName.trim(),
+                                routeOrigin = routeOrigin,
+                                routeDestination = routeDestination
+                            )
+                        }
+                        WidgetTargetType.STATION -> station?.let {
+                            WidgetDisplayConfiguration(WidgetTargetType.STATION, it.id, it.name, displayName.trim())
+                        } ?: run {
+                            validationMessage = "Inserisci il nome della stazione da monitorare."
+                            null
+                        }
+                        WidgetTargetType.TRAIN -> if (trainNumber.length >= 2) {
+                            WidgetDisplayConfiguration(WidgetTargetType.TRAIN, trainNumber, "Treno $trainNumber", displayName.trim())
+                        } else {
+                            validationMessage = "Inserisci un numero treno di almeno due caratteri."
+                            null
+                        }
+                    }
+                    configuration?.let {
+                        WidgetConfigurationStore(this@WidgetConfigureActivity).save(widgetId, it)
+                        RouteWidgetProvider.refreshAll(this@WidgetConfigureActivity)
+                        WidgetRefreshWorker.enqueue(this@WidgetConfigureActivity)
+                        setResult(RESULT_OK, Intent().putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId))
+                        finish()
+                    }
+                }
+
+                Surface(modifier = Modifier.fillMaxSize(), color = background, contentColor = MaterialTheme.colorScheme.onBackground) {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize().safeDrawingPadding(),
                         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 20.dp),
@@ -86,7 +132,7 @@ class WidgetConfigureActivity : ComponentActivity() {
                         item {
                             Text("Configura widget", style = MaterialTheme.typography.headlineSmall)
                             Text(
-                                "La scelta vale solo per questo widget. Puoi modificarla in seguito dalla testata.",
+                                "Ogni istanza è indipendente: inserisci qualsiasi tratta, stazione o numero treno. Non devi prima salvarlo nell’app.",
                                 modifier = Modifier.padding(top = 4.dp),
                                 style = MaterialTheme.typography.bodyMedium
                             )
@@ -97,7 +143,7 @@ class WidgetConfigureActivity : ComponentActivity() {
                                 onValueChange = { if (it.length <= 42) displayName = it },
                                 modifier = Modifier.fillMaxWidth(),
                                 label = { Text("Nome del widget (facoltativo)") },
-                                supportingText = { Text("Sostituisce il nome della tratta nella testata e resta locale a questa istanza.") },
+                                supportingText = { Text("Sostituisce il nome della ricerca nella testata e resta locale a questa istanza.") },
                                 singleLine = true
                             )
                         }
@@ -105,17 +151,21 @@ class WidgetConfigureActivity : ComponentActivity() {
                             WidgetTargetCard(
                                 type = WidgetTargetType.ROUTE,
                                 selected = targetType == WidgetTargetType.ROUTE,
-                                description = "Mostra le prossime corse della tratta scelta, con paginazione, direzione e refresh.",
-                                onSelect = {
-                                    targetType = WidgetTargetType.ROUTE
-                                    selectedId = model.activeRoute.id
-                                    selectedLabel = model.activeRoute.name
-                                }
+                                description = "Cerca una tratta digitando liberamente partenza e arrivo. Mostra le prossime corse, con paginazione, direzione e refresh.",
+                                onSelect = { targetType = WidgetTargetType.ROUTE; validationMessage = null }
                             )
                             if (targetType == WidgetTargetType.ROUTE) {
-                                Text("Scegli la tratta", style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 10.dp, start = 4.dp))
-                                model.savedRoutes.forEach { route ->
-                                    WidgetChoiceButton(route.name, route.id == selectedId) { selectedId = route.id; selectedLabel = route.name }
+                                Text("Inserisci la tratta", style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 10.dp, start = 4.dp))
+                                WidgetStationField("Partenza", routeOriginText, { routeOriginText = it }, model)
+                                WidgetStationField("Arrivo", routeDestinationText, { routeDestinationText = it }, model)
+                                if (model.savedRoutes.isNotEmpty()) {
+                                    Text("Tratte salvate (facoltative)", style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(top = 6.dp, start = 4.dp))
+                                    model.savedRoutes.take(4).forEach { route ->
+                                        WidgetChoiceButton(route.displayName(it.binario.app.data.Direction.OUTBOUND), false) {
+                                            routeOriginText = route.outwardOrigin.name
+                                            routeDestinationText = route.outwardDestination.name
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -123,65 +173,49 @@ class WidgetConfigureActivity : ComponentActivity() {
                             WidgetTargetCard(
                                 type = WidgetTargetType.STATION,
                                 selected = targetType == WidgetTargetType.STATION,
-                                description = "Mostra una stazione monitorata. Le partenze reali richiederanno un provider autorizzato.",
-                                onSelect = {
-                                    targetType = WidgetTargetType.STATION
-                                    model.stations.firstOrNull()?.let { selectedId = it.id; selectedLabel = it.name }
-                                }
+                                description = "Monitora la stazione che inserisci. Il widget dichiara sempre quando i dati live non sono disponibili.",
+                                onSelect = { targetType = WidgetTargetType.STATION; validationMessage = null }
                             )
                             if (targetType == WidgetTargetType.STATION) {
-                                Text("Scegli la stazione", style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 10.dp, start = 4.dp))
-                                model.stations.forEach { station ->
-                                    WidgetChoiceButton(station.name, station.id == selectedId) { selectedId = station.id; selectedLabel = station.name }
-                                }
+                                Text("Inserisci la stazione", style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 10.dp, start = 4.dp))
+                                WidgetStationField("Stazione", stationText, { stationText = it }, model)
                             }
                         }
                         item {
                             WidgetTargetCard(
                                 type = WidgetTargetType.TRAIN,
                                 selected = targetType == WidgetTargetType.TRAIN,
-                                description = "Mostra il treno selezionato nello snapshot locale. Stato e variazioni reali richiedono un provider autorizzato.",
-                                onSelect = {
-                                    targetType = WidgetTargetType.TRAIN
-                                    trainChoices(model).firstOrNull()?.let { choice -> selectedId = choice.first; selectedLabel = choice.second }
-                                }
+                                description = "Monitora il numero treno inserito. Variazioni e dettagli sono mostrati solo se una fonte qualificata restituisce lo snapshot.",
+                                onSelect = { targetType = WidgetTargetType.TRAIN; validationMessage = null }
                             )
                             if (targetType == WidgetTargetType.TRAIN) {
-                                Text("Scegli il treno", style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 10.dp, start = 4.dp))
-                                val choices = trainChoices(model)
-                                if (choices.isEmpty()) {
-                                    Text("Nessun treno è ancora disponibile nello snapshot locale. Apri una tratta e aggiorna prima di configurare questa superficie.", style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(horizontal = 4.dp, vertical = 8.dp))
-                                } else {
-                                    choices.forEach { choice ->
-                                        WidgetChoiceButton("${choice.first} · ${choice.second}", choice.first == selectedId) { selectedId = choice.first; selectedLabel = choice.second }
-                                    }
-                                }
-                            }
-                        }
-                        item {
-                            Card(
-                                modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
-                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
-                            ) {
-                                Text(
-                                    "Scelto: ${targetType.label} — $selectedLabel",
-                                    modifier = Modifier.padding(12.dp),
-                                    style = MaterialTheme.typography.titleSmall,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                Text("Inserisci il numero treno", style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 10.dp, start = 4.dp))
+                                OutlinedTextField(
+                                    value = trainText,
+                                    onValueChange = { trainText = it.filter { character -> character.isLetterOrDigit() || character.isWhitespace() }.take(12) },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    label = { Text("Numero treno") },
+                                    placeholder = { Text("Es. 9512") },
+                                    supportingText = { Text("Non è necessario aprire o salvare una tratta prima della configurazione.") },
+                                    singleLine = true
                                 )
                             }
                         }
+                        validationMessage?.let { message ->
+                            item { Text(message, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+                        }
                         item {
-                            Button(
-                                onClick = {
-                                    WidgetConfigurationStore(this@WidgetConfigureActivity).save(widgetId, WidgetDisplayConfiguration(targetType, selectedId, selectedLabel, displayName.trim()))
-                                    RouteWidgetProvider.refreshAll(this@WidgetConfigureActivity)
-                                    setResult(RESULT_OK, Intent().putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId))
-                                    finish()
-                                },
-                                enabled = selectedId.isNotBlank(),
-                                modifier = Modifier.fillMaxWidth()
-                            ) { Text("Salva widget") }
+                            Card(modifier = Modifier.fillMaxWidth().padding(top = 4.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
+                                val selectedLabel = when (targetType) {
+                                    WidgetTargetType.ROUTE -> listOf(routeOriginText, routeDestinationText).filter { it.isNotBlank() }.joinToString(" → ").ifBlank { "Tratta da inserire" }
+                                    WidgetTargetType.STATION -> stationText.ifBlank { "Stazione da inserire" }
+                                    WidgetTargetType.TRAIN -> trainNumber.ifBlank { "Treno da inserire" }
+                                }
+                                Text("Scelto: ${targetType.label} — $selectedLabel", modifier = Modifier.padding(12.dp), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                            }
+                        }
+                        item {
+                            Button(onClick = ::saveConfiguration, modifier = Modifier.fillMaxWidth()) { Text("Salva widget") }
                         }
                         item {
                             OutlinedButton(onClick = { finish() }, modifier = Modifier.fillMaxWidth()) { Text("Annulla") }
@@ -189,6 +223,20 @@ class WidgetConfigureActivity : ComponentActivity() {
                     }
                 }
             }
+        }
+    }
+}
+
+@androidx.compose.runtime.Composable
+private fun WidgetStationField(label: String, value: String, onValueChange: (String) -> Unit, model: TrainViewModel) {
+    val matches = model.searchStations(value)
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        OutlinedTextField(value = value, onValueChange = onValueChange, modifier = Modifier.fillMaxWidth(), label = { Text(label) }, singleLine = true)
+        matches.take(4).forEach { station ->
+            WidgetChoiceButton(
+                if (station.id.startsWith("manual:")) "Cerca “${station.name}” nelle fonti disponibili" else station.name,
+                false
+            ) { onValueChange(station.name) }
         }
     }
 }
@@ -216,8 +264,3 @@ private fun WidgetChoiceButton(label: String, selected: Boolean, onClick: () -> 
         Text(if (selected) "Selezionato · $label" else label, modifier = Modifier.fillMaxWidth())
     }
 }
-
-private fun trainChoices(model: TrainViewModel): List<Pair<String, String>> =
-    (model.monitoredServices.map { it.number to it.label } +
-        model.snapshot?.services.orEmpty().map { it.number to "${it.operator.shortLabel} · ${it.destination}" })
-        .distinctBy { it.first }

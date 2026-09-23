@@ -97,6 +97,22 @@
 - [x] Aggiungere esportazione/importazione JSON locale validata e preferenze di mobilità/accessibilità persistenti.
 - [x] Predisporre il confine adapter per un provider live documentato e autorizzato, senza endpoint o credenziali nel client.
 - [x] Verificare, documentare e pubblicare l’incremento unificato con commit e push Git dedicati.
+- [x] Confermare il commit canonico `0e0867ad` e leggere l’handoff, la copertura GTFS, la verifica realtime e i gap di accesso.
+- [x] Verificare che app, widget e worker usino esclusivamente `BinarioDataGraph` e mantengano provider, freshness, confidenza, qualità e warning.
+- [x] Esporre nel widget provenienza, freshness, confidenza e warning senza trasformare il fallback GTFS in dati operativi realtime.
+- [x] Eseguire test unitari, verifica dei data pack GTFS, build APK e lint dopo il riallineamento alla baseline dati.
+- [x] Leggere integralmente la chat di riferimento sulle fonti e classificare decisioni, evidenze, limiti e istruzioni storiche.
+- [x] Confrontare le conclusioni della discussione con contratti, licenze, provider e policy del branch canonico.
+- [x] Consolidare in un documento di governance le fonti approvate, i fallback, i divieti e i prerequisiti di attivazione.
+- [x] Tracciare la composition root, il repository e il ViewModel per individuare dove il catalogo dimostrativo viene ancora selezionato.
+- [x] Correggere la selezione runtime fra provider live, fallback GTFS e demo, senza presentare fallimenti come realtime.
+- [x] Esporre nell’app e nel widget la causa del fallback e l’azione di refresh/riprova appropriata.
+- [x] Verificare con test e APK il passaggio dal dato dimostrativo allo snapshot provider o GTFS reale.
+- [x] Tracciare cataloghi stazione, normalizzazione, ViewModel e adapter per individuare il vincolo alle sole stazioni di test.
+- [x] Integrare un indice stazioni dai data pack GTFS e ricerca normalizzata oltre il catalogo hardcoded.
+- [x] Collegare le ricerche tratta e stazione agli orari GTFS/provider disponibili con fallback esplicito.
+- [x] Aggiungere test per stazioni fuori catalogo di test, ricerca per alias e assenza dati sicura.
+- [x] Verificare, documentare e pubblicare la correzione della copertura ricerca con commit e push Git dedicati.
 - [x] Definire configurazione per istanza widget, regole non-live e linguaggio visivo originale ad alta leggibilità.
 - [x] Aggiungere scelta per-widget tra tratta, stazione specifica e treno specifico, senza configurazioni globali ambigue.
 - [x] Rendere il widget ridimensionabile con layout compatto, standard ed espanso e aggiornamento su resize.
@@ -116,3 +132,33 @@
 - [x] Aggiungere campo opzionale per il nome del widget e visualizzarlo al posto dell’etichetta della tratta.
 - [x] Rendere affidabile il formato widget più piccolo, eliminando le azioni RemoteViews non essenziali in quella variante.
 - [x] Verificare, documentare e pubblicare contrasto, nome e stabilità del widget con commit e push Git dedicati.
+- [x] Individuare e rimuovere tutte le preimpostazioni di test, seed e percorsi dimostrativi ancora esposti nell’app Android.
+- [x] Rendere ricerche, tratte, stazioni e treni utilizzabili con input libero anche quando non sono salvati localmente.
+- [x] Rendere la configurazione di ciascun widget disponibile per qualunque tratta, stazione o numero treno inserito dall’utente.
+- [x] Aggiungere test di regressione per input non salvati, widget non preconfigurati e indisponibilità esplicita senza dati fittizi.
+- [x] Verificare, documentare e pubblicare la rimozione delle preimpostazioni con commit e push Git dedicati.
+- [x] Valutare cataloghi pubblici o autorizzati di stazioni ferroviarie italiane, con verifica esplicita di licenza, copertura e aggiornamento.
+- [x] Integrare un catalogo nazionale verificabile nell’autocompletamento senza sostituire la catena realtime/GTFS né introdurre dati fittizi.
+- [x] Aggiungere manifest della fonte, fixture e test per Roma/Lazio e stazioni fuori dai data pack esistenti.
+- [x] Verificare, documentare e pubblicare l’ampliamento dell’autocompletamento con commit e push Git dedicati.
+- [x] Ispezionare il database curato fornito dall’utente e verificare schema, copertura, identificativi e codici Trenitalia.
+- [x] Rendere il database curato il catalogo canonico unico per ricerca, tratte, preferiti, widget e stazioni vicine.
+- [x] Collegare in modo sicuro i codici Trenitalia del catalogo alle richieste degli adapter compatibili, con fallback esplicito per codici assenti o non verificati.
+- [x] Rimuovere il precedente catalogo geografico e aggiungere test di regressione su ricerca, widget e riconciliazione codici.
+- [x] Verificare, documentare e pubblicare il catalogo unico con commit e push Git dedicati.
+- [x] Ispezionare in sicurezza il pacchetto XAPK Moovit per manifest, permessi, componenti e asset descrittivi.
+- [x] Confrontare funzioni, flussi UX/accessibilità e categorie dati osservabili con Binario, senza riutilizzare codice o dati proprietari.
+- [x] Documentare raccomandazioni prioritarie, limiti di riuso e possibili fonti autorizzate da valutare separatamente.
+- [x] Tracciare e correggere i suggerimenti non mostrati sotto i campi partenza e arrivo del pianificatore.
+- [x] Rendere ogni suggerimento una scelta immediata e selezionabile, con stato separato per partenza e arrivo.
+- [x] Correggere ricerca, scambio e direzione per impedire l’inversione della tratta richiesta nei risultati e nei widget.
+- [x] Aggiungere test di regressione per suggerimenti, selezione stazione e ordine della tratta.
+- [x] Verificare, documentare e pubblicare la correzione del pianificatore con commit e push Git dedicati.
+- [x] Riprodurre nell’APK il fallimento “Elenco stazioni non disponibile” osservato sul dispositivo.
+- [x] Correggere il caricamento del catalogo curato e rendere l’errore interno diagnosticabile senza esporre dettagli tecnici all’utente.
+- [x] Aggiungere un test di integrazione che apra l’asset dal pacchetto APK effettivamente generato e verifichi Appiano e Roma Ostiense.
+- [ ] Verificare su APK installabile l’autocompletamento prima di dichiarare corretta la release, poi documentare e aggiornare Git.
+- [x] Isolare la regressione che rende non reattivi i pulsanti e i campi dell’APK v0.20.2.
+- [x] Ripristinare l’interazione senza eseguire lavoro pesante sul thread principale durante la composizione.
+- [ ] Aggiungere controlli di regressione sullo stato di caricamento e sull’interazione dei campi del pianificatore.
+- [ ] Verificare su un flusso interattivo disponibile prima di consegnare una nuova APK e aggiornare Git.
