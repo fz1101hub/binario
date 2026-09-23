@@ -1,0 +1,174 @@
+# Piano di stabilizzazione Binario v0.20.4 — versione aggiornata
+
+**Base**: *Piano completo di stabilizzazione di Binario* (Manus AI, 23/09/2026, 263 righe), integrato con l'addendum dell'audit indipendente (`docs/audit-independent-2026-09-23-addendum.md`, commit `0a39754`).
+**Baseline del codice**: `0b8f3c98487d24171053f318a86e538618218edb` (tag locale `audit-baseline-2026-09-23`).
+**Branch di lavoro**: `stabilization/v0.20.4`, creato da `0a39754` (stesso codice di `0b8f3c9` + rapporti di audit).
+
+Le sezioni marcate **[NUOVO]** o **[MODIFICATO]** differiscono dal piano originale; il resto lo conferma. Le priorità delle quattro High (V1, V2, C1-OOM, C2-main-thread) sono invariate.
+
+## Sintesi esecutiva
+
+Binario non richiede una riscrittura. Quattro aree bloccano una release completa — sicurezza del Voice Bridge, affidabilità del data layer GTFS, comunicazione telefono–Wear OS, contratti del Companion Expo — a cui l'audit finale aggiunge tre prerequisiti trasversali che il piano originale non copriva: **validità temporale dei dati embedded** (tre pack GTFS già scaduti), **release engineering nativo** (nessun `buildTypes`, nessuna firma, nessuna licenza) e **operabilità di Voice Bridge/Alexa fuori dall'ambiente di sviluppo**.
+
+Due traguardi:
+1. **Release A — stabilizzazione Android**: data layer sicuro, pack validi, build firmata e minificata, funzioni non operative corrette o nascoste e documentate.
+2. **Release B — integrazioni**: Voice Bridge, Alexa, Wear OS e Companion Expo, solo dopo test end-to-end e gate G1–G6.
+
+Nessuna nuova funzione finché i gate P0 non sono verdi.
+
+## 1. Baseline e strategia Git **[MODIFICATO]**
+
+1. Tag annotato `audit-baseline-2026-09-23` su `0b8f3c9` (creato; il push del tag richiede credenziali con permesso sui tag).
+2. Branch `stabilization/v0.20.4` da `0a39754` (fatto).
+3. Solo correzioni, test, CI e documentazione; nessuna nuova feature.
+4. Un commit (o PR) per finding o gruppo coeso; niente commit-monolite.
+5. **[NUOVO] Decisione preliminare sulle sorgenti canoniche del web**: `voice-bridge/` in-repo è fermo a 3 migrazioni, lo snapshot `surfaces/web-voice-bridge` (sorgente WebDev esterna) ne ha 12 più `server/companion`, dettatura e decine di test. Prima di PR-SEC-1 va deciso quale albero è canonico e dove atterrano le correzioni; in mancanza di decisione, le PR-SEC/DB si applicano a `voice-bridge/` (perimetro dichiarato dell'audit) e vanno riportate sull'altro albero se questo diventa canonico.
+6. **[NUOVO] `LICENSE`** nel primo commit del branch (scelta della licenza: decisione del proprietario; `voice-bridge/package.json` dichiara MIT).
+7. PR iniziale verso `audit/official-rail-sources-20260904` (diff = solo correzioni post-audit); la CI gira su `pull_request` — in alternativa `workflow_dispatch` sul branch.
+8. Dopo i gate, integrazione in `main` (`main` è antenato del ramo di audit: merge senza conflitti). PR #2 ritargettata a `main` o sostituita; **[NUOVO] PR #1** (`feature/data-foundations`, aperta dal 14/08) chiusa o ritargettata.
+9. Proteggere `main`, richiedere CI verde, taggare le release.
+
+## 2. Gate di rilascio **[MODIFICATO]**
+
+| Gate | Condizione minima | Blocca |
+|---|---|---|
+| **G1 — Sicurezza web** | V1, V2, V3 chiusi; revoca Alexa effettiva (V5/V6); migrazioni riproducibili su DB vuoto e in upgrade | Qualunque deploy di Voice Bridge/Alexa |
+| **G2 — Affidabilità dati** | Nessuna rete sul Main; AMT non satura l'heap; download bounded; checksum e manifest coerenti; **[NUOVO] nessun pack embedded scaduto alla data di release, avviso in-app oltre la validità, check CI sulle scadenze** | Release Android |
+| **G3 — Verità delle feature** | Funzioni non operative corrette oppure nascoste e documentate. **[NUOVO] Elenco vincolante**: target widget "Stazione"/"Treno" (mai alimentati), impostazione "Superficie widget", shortcut "Ricerca treno", toggle Wear (default-ON) e Apple Watch nelle Impostazioni, sezione Sincronizzazione del companion, README (quattro file citati inesistenti, claim realtime della build di default), label/icona placeholder del companion | Pubblicazione con promesse Wear, widget, sync o Apple Watch |
+| **G4 — Wear end-to-end** | Package e firma coerenti; filtri `<data>` e handler presenti; **[NUOVO] posture di distribuzione decisa (Play track Wear vs sideload) e `standalone` coerente con la policy corrente**; prova telefono↔watch superata | Release Wear OS |
+| **G5 — Companion e privacy** | Bridge nativi funzionanti; delete e clear cancellano davvero dati e reminder; **[NUOVO] icona/splash/label propri** | Release Companion Expo |
+| **G6 — Delivery** | CI su PR e push; `main` corrente; sorgenti canoniche definite; **[NUOVO] build release firmata, minificata e riproducibile; `LICENSE`; CI dedicata e `.env.example` del Voice Bridge; skill Alexa con modello versionato** | Release pubblica completa |
+
+## 3. Fase P0-A — Voice Bridge e Alexa
+
+### 3.1 Runtime Manus fuori dalla produzione (V1)
+Rimuovere `vitePluginManusRuntime()` e `jsxLocPlugin()` dalla build di produzione (o `apply: "serve"`); eliminare il fallback `sessionStorage["manus-cookie"]` → `Authorization: Bearer`; sessione solo via cookie sicuro `HttpOnly`. CSP `frame-ancestors 'none'` + `X-Frame-Options: DENY` da middleware centralizzato.
+**Accettazione**: `dist/index.html` non contiene `manus-runtime`, `setCookie`, `manus-cookie`, `__MANUS_HOST_DEV__` né il debug collector (oggi `__MANUS_HOST_DEV__` compare due volte); una pagina esterna non può incorporare la dashboard.
+
+### 3.2 OAuth Alexa (V2, V3)
+GET authorize → schermata di consenso autenticata; solo un POST con token CSRF crea il code e completa il redirect. Allowlist esatta dei callback Amazon; conservare la richiesta originale durante il login e rivalidare `client_id`, `redirect_uri`, `scope`, `state`.
+**Accettazione**: GET autenticato non crea code; redirect non in allowlist → 400; POST senza CSRF rifiutato; flusso valido completa il linking.
+
+### 3.3 Unlink e re-link effettivi (V5, V6)
+`getLinkedUser` rifiuta link con `revokedAt`; `recordAlexaVerification` non azzera la revoca; revoca opponibile ai token in circolazione (check DB per richiesta o token brevi + generation counter). Re-link con lo stesso `alexaUserHash` gestito esplicitamente, niente upsert ambiguo su due UNIQUE.
+**Accettazione**: dopo `unlink` un access token precedente non legge dati né ripristina il collegamento.
+
+### 3.4 Migrazioni, hardening e operabilità **[MODIFICATO]**
+Rigenerare la migrazione `0002` con snapshot e journal; testare DB vuoto e upgrade da `0001`; separare `db:generate` da `db:migrate` (mai `generate` al deploy). Rate limiting su OAuth/Alexa/tRPC, body limit ≤ 1 MB, validazione env all'avvio (zod), `errorFormatter` che maschera gli errori interni, sessioni brevi con rotazione, verifica `appId`, `algorithms: ["HS256"]` sui token vocali, chiavi separate (HKDF).
+**[NUOVO]**: porta rigida in produzione (niente `findAvailablePort`, exit ≠ 0 su EADDRINUSE); `GET /healthz`; `.env.example` con le 12 variabili; CI dedicata (`tsc`, `vitest`, `vite build` + asserzione sull'HTML); redazione del log mysql in `db.ts:86`; rimozione o sostituzione documentata della dipendenza dal portale OAuth Manus (`VITE_OAUTH_PORTAL_URL`/`OAUTH_SERVER_URL`) per host non-Manus; pulizia dei residui template (`template.json`, Umami placeholder, `__manus__/`).
+**Gate G1**.
+
+## 4. Fase P0-B — Data layer GTFS
+
+### 4.1 Mitigazione immediata dell'OOM e dei pack scaduti **[MODIFICATO]**
+Rigenerare il pack AMT filtrato alla sola Genova–Casella (licenza permettendo), aggiornando `manifest.json` e `SHA256SUMS` nello stesso commit; altrimenti escluderlo temporaneamente. **[NUOVO]**: sostituire subito i pack scaduti (Cotral 06/09, Trentino 09/09, Toscana TFT 14/09) con i feed dell'orario in vigore e rigenerare AMT prima del 02/10; registrare `lastServiceDate` nel manifest.
+**Accettazione**: nessun input utente attiva il parsing di 1,35 M righe in mappe di stringhe; nessun pack scaduto alla data di release.
+
+### 4.2 Indice compatto
+Sostituire `List<Map<String,String>>` con un preindice binario offline o un parser streaming a più passate; limiti espliciti su memoria, righe, dimensione decompressa e indici in cache. Test con feed sintetico realistico e heap 256 MB.
+
+### 4.3 Dispatcher e download
+Rete e stream su `Dispatchers.IO`; scansione/ordinamento/normalizzazione/parsing su `Dispatchers.Default`, di proprietà del data source. Lettura bounded sui byte realmente ricevuti anche senza `Content-Length`; hash atteso quando disponibile; cache dell'indice.
+**Accettazione**: zero rete sul Main; risposte chunked oltre il limite interrotte; richieste concorrenti non duplicano download/parsing.
+
+### 4.4 Correttezza dei dati **[MODIFICATO]**
+Prima di abilitare le sorgenti realtime: falso "cancellato" (Cancello); gzip svizzero; `stop_sequence=0`; corse oltre le 24:00 valutando il giorno di servizio precedente (−1, −2 per ÖBB); "FERIALE" con sabato e calendario festività; caso residuo `OperatorId("other")` nel percorso opt-in. **[NUOVO]**: fuso orario `Europe/Rome` iniettato (pianificazione, RFI, allarmi); etichetta "programmato ufficiale" distinta da "verificato operativamente" (oggi uno snapshot solo-programmato è "Dato verificato · 90/100"); `withQuality` anche sul fallback live diretto; `ExternalRailCredentials.toString()` redatto. Ogni correzione con fixture di regressione.
+
+### 4.5 Integrità e riproducibilità degli asset **[MODIFICATO]**
+Test/task CI che confronta `manifest.json`, `SHA256SUMS`, `EmbeddedGtfsPacks.all` e gli hash reali; correggere l'hash stale STA. **[NUOVO]**: pipeline riproducibile `tools/build_gtfs_packs.py` che scarica, filtra **tutti** i pack (oggi solo 3 su 12 sono filtrati), copia negli asset e rigenera manifest + `SHA256SUMS` + `lastServiceDate`; `requirements.txt` (`bs4` oggi non dichiarato); check CI che fallisce se un pack è scaduto o scade entro 30 giorni; cadenza di refresh dichiarata (ogni cambio orario).
+**Gate G2**.
+
+## 5. Fase P1-A — Wear OS **[MODIFICATO]**
+
+Coppia canonica: `app/` + `wear/`; il Wear del Companion resta sperimentale. **[NUOVO] Prima di PR-WEAR-1**: decidere la distribuzione (Play track Wear o sideload) e verificare `standalone=false` contro la policy Play corrente; documentarlo.
+
+### 5.1 Coppia nativa
+Stesso `applicationId` e stessa firma; stesso listing Play con form factor Wear e `versionCode` distinti; check automatico degli ID. Filtro `<data android:scheme="wear" android:host="*" android:pathPrefix="/binario/wear/snapshot"/>` sul listener. Listener telefono per `/binario/wear/request-refresh` con dedup e rate limit, poi ripubblicazione. Rimuovere `android:permission="com.google.android.gms.wearable.BIND_LISTENER"` dal manifest root dopo prova su device (protezione effettiva: validazione UID di Play Services + package/firma). Solo `TYPE_CHANGED`, chiavi UI univoche, cancellazione del DataItem alla disattivazione dello sharing; **[NUOVO]** rimuovere `INTERNET` dal modulo wear; sharing Wear **off di default** finché G4 non è verde.
+
+### 5.2 Companion Expo e relativo Wear
+Se resta: coppia con package e firma coerenti, altrimenti fuori dalla release. Bridge JS/Kotlin su `BinarioWidgetBridge` con `{widget, watch}`; shared-text su `BinarioSharedTextReceiver` con cold start ed evento a caldo con ack prima della cancellazione. Activity Wear non esportate se non richiesto. Test su funzioni e manifest generati. **[NUOVO]**: icona/adaptive-icon/splash propri (oggi placeholder Expo byte-identici al template) e label distinta da "Binario"; bloccare `ACCESS_FINE_LOCATION`.
+
+### 5.3 Contratto condiviso
+Documento di contratto versionato e fixture golden per Android→Wear, Companion→Wear, iOS→Apple Watch (enum con caso `unknown`, TTL, provenienza, stato operativo, compatibilità).
+**Gate G4**.
+
+## 6. Fase P1-B — Companion Expo e privacy locale
+Cancellare il reminder prima di rimuovere la tratta; `clearItineraries` obbligatorio in `clearLocalJourneyArchive`; riconciliare gli itinerari dopo le eliminazioni. Agenda con `useFocusEffect`; route `/guide` e `binario-companion://plan` create o rimosse (+ `+not-found.tsx`); sezione Sincronizzazione nascosta finché il client non è reale. CI: `expo prebuild --clean --platform android --no-install` in workspace sacrificabile + `git status --porcelain -- android`. Clamp del timer di scadenza (>24,8 giorni); checksum del catalogo calcolato davvero.
+**Gate G5**.
+
+## 7. Fase P1-C — App Android
+
+### 7.1 Navigazione e lifecycle **[MODIFICATO]**
+`BackHandler` (o Navigation Compose); deep link one-shot; `singleTop`/`singleTask` con `onNewIntent` raggiungibile; id del dettaglio in `SavedStateHandle` o ritorno sicuro dopo process death. **[NUOVO]**: shortcut "Ricerca treno" senza numero mappata a `SearchMode.TRAIN` (oggi no-op); tap sul widget che legge `EXTRA_APPWIDGET_ID` e attiva la tratta di quell'istanza; `pendingStopAlarm`/`pendingAlert` salvabili (oggi persi ruotando durante il dialogo permessi).
+
+### 7.2 Widget **[MODIFICATO]**
+Collegare `widgetSurface()` a `renderPersonalSurface` o rimuovere l'impostazione; paginazione con offset in righe; errori e snapshot limitati alla tratta **e direzione** corrispondenti; refresh con `PeriodicWorkRequest` (≥15 min), `NetworkType.CONNECTED` e backoff. **[NUOVO]**: implementare i percorsi di fetch per i target "Stazione"/"Treno" o rimuoverli dalla configurazione; `WidgetStateStore.clear` alla riconfigurazione; freshness calcolata dall'età dello snapshot al render (non quella salvata); orario di aggiornamento nella meta visibile.
+
+### 7.3 Allarmi e backup **[MODIFICATO]**
+Fermate dopo mezzanotte; ricostruzione degli allarmi dopo reboot (`RECEIVE_BOOT_COMPLETED` + `MY_PACKAGE_REPLACED`), all'avvio e dopo import; allarmi esatti solo con `canScheduleExactAlarms()` e degrado esplicito (o wording "circa"). **[NUOVO]**: fascia silenziosa che oggi rende un avviso mai pianificabile mentre la UI dice "pianificato" → `schedule` restituisce l'esito e la UI lo mostra; ripianificazione anche quando POST_NOTIFICATIONS manca al fire; avvisi ONCE disabilitati dopo il fire; `contentIntent` sulle notifiche. Backup: limite ~1 MB e parse fuori dal Main, `LocalTime.parse` su `alert.time`, id riservati rifiutati, ultima tratta rimovibile; decidere se accettare i backup senza tratte (oggi rifiutati; il ramo del ViewModel è irraggiungibile).
+
+### 7.4 Prestazioni, accessibilità, manutenzione **[MODIFICATO]**
+Pre-normalizzare l'indice stazioni (regex hoisted, valori normalizzati al caricamento), suggerimenti memoizzati fuori dalla composizione o su `Dispatchers.Default`; autocomplete estratto dal `TrainViewModel` completo per la configurazione widget; eliminare `EmbeddedGtfsStationSearchIndex.search` se resta morto. Test font-scale e semantiche; stringhe a risorse; decode delle preferenze corrotte in `runCatching`; codec su `java.util.Base64` per testabilità JVM; rimuovere solo il codice dimostrato irraggiungibile (`NextDepartureHero`, `SearchScreen`, `route_widget_compact.xml`, stringhe `widget_empty_*`/`widget_column_*` — **non** `ListHeading` e `reconcileWidgetState`, che hanno chiamanti). **[NUOVO]**: informativa privacy allineata (Wear default-ON, invio nomi stazione a host terzi, notifiche) e `PRIVACY.md` con URL.
+**Accettazione**: test di navigazione, process death, widget, allarmi (incluso `nextTrigger` su avviso abilitato), backup e accessibilità verdi.
+
+## 8. Fase P1-D — Apple Watch
+Congelare come prototipo documentato oppure completare con app iOS produttrice e pipeline macOS (XcodeGen, WidgetKit incorporata, plist, `Shared` fuori dai sources del test, TTL sugli snapshot, intent di refresh con effetto reale).
+**Accettazione**: `xcodegen`, `xcodebuild test`, ricezione iPhone→Watch, scadenza corretta.
+
+## 9. Fase P2 — Repository, CI, release engineering, architettura **[MODIFICATO]**
+Inventario del lavoro esclusivo in `surfaces/web-voice-bridge`, integrazione di ciò che diventa canonico, archiviazione come tag/bundle, poi rimozione di `surfaces/`. CI su `push`, validazione wrapper Gradle, test checksum e scadenze, prebuild pulito. **[NUOVO]**: `buildTypes.release` in `app/` e `wear/` con R8, `shrinkResources`, `proguard-rules.pro` (keep per protobuf/gtfs-realtime-bindings, jsoup, Wear) e firma da segreti CI; `assembleRelease` + `lintVitalRelease` in CI; `versionCode`/`versionName` da un'unica sorgente; aggiornamento `gtfs-realtime-bindings` (0.0.4 → 0.0.8+); `org.json` come `testImplementation`; icona nativa adaptive. Documenti storici in `docs/releases/` e `docs/verifiche/`. Dopo: version catalog, `MainActivity` per feature, `TrainViewModel` con dipendenze iniettate e `UiState`.
+
+## 10. Ordine delle pull request **[MODIFICATO]**
+
+0. **PR-REL-0 [NUOVO]**: `LICENSE`; `buildTypes.release` (R8/shrink/proguard, firma da env); README veritiero (file inesistenti, claim realtime, flag opt-in); `assembleRelease`/`lintVitalRelease` in CI. Indipendente da tutto, va subito.
+1. **PR-SEC-1**: runtime Manus, fallback Bearer, CSP/X-Frame-Options, asserzione sull'HTML.
+2. **PR-SEC-2**: consenso OAuth, allowlist, revoca/re-link, rate limiting, `errorFormatter`, env validation, porta rigida, `/healthz`, `.env.example`.
+3. **PR-DB-1**: migrazione 0002, test DB vuoto/upgrade, separazione generate/migrate.
+4. **PR-DATA-1**: `Dispatchers.IO`/`Default`, download bounded, `SHA256SUMS`, test di coerenza asset, `lastServiceDate` + avviso.
+5. **PR-DATA-0 [NUOVO]**: sostituzione dei pack scaduti e rigenerazione AMT filtrato; check CI sulle scadenze; `build_gtfs_packs.py`.
+6. **PR-DATA-2**: indice compatto e test heap 256 MB.
+7. **PR-DATA-3**: Cancello, gzip, sequence, mezzanotte, FERIALE, fuso orario, etichette qualità.
+8. **PR-WEAR-1**: decisione prodotto e distribuzione, package/firma, filtro URI, rimozione del permission gate errato, `INTERNET`, sharing off di default.
+9. **PR-WEAR-2**: refresh telefono, lifecycle DataItem, test end-to-end.
+10. **PR-COMP-1**: bridge nativi e shared-text.
+11. **PR-COMP-2**: reminder, cancellazione archivio, Agenda, route, timer, checksum.
+12. **PR-BRAND [NUOVO]**: icona/splash/label del companion, `ACCESS_FINE_LOCATION`.
+13. **PR-ANDROID-UX**: navigazione, shortcut, widget (target Stazione/Treno inclusi), allarmi (fascia silenziosa, boot, import), backup, ricerca stazioni, privacy notice.
+14. **PR-VB-OPS [NUOVO]** e **PR-ALEXA-MODEL [NUOVO]**: CI e deploy riproducibile del Voice Bridge; skill Alexa con handler built-in (Stop/Cancel/Help/Fallback/SessionEnded) e `skill-package/` versionato. Prerequisiti della Release B.
+15. **PR-CI-GOV**: CI su push, wrapper validation, prebuild clean, pulizia `surfaces`, riallineamento di `main`, chiusura PR #1/#2.
+16. **PR-APPLE**: solo se Apple Watch entra nel perimetro.
+
+Le PR 0–5 sono parallelizzabili per area; il merge rispetta l'ordine quando una modifica dipende dai contratti della precedente.
+
+## 11. Strategia di rilascio **[MODIFICATO]**
+
+**Release A — Stabilizzazione Android**: pubblicabile con G2 verde più PR-REL-0 e la parte Android di G3. Deve avere: pack non scaduti, build firmata e minificata, Wear sharing off di default (o modulo escluso), target widget Stazione/Treno e impostazione superficie nascosti o funzionanti, shortcut corretta, README e informativa privacy allineati, nessuna promessa di realtime o sincronizzazione non raggiungibile.
+
+**Release B — Integrazioni**: richiede G1–G6, test end-to-end Wear, migrazione DB provata, bridge Companion funzionanti, skill Alexa certificabile, Voice Bridge avviabile con la sola documentazione del repo, documentazione coerente con le feature abilitate.
+
+## 12. Definition of Done **[MODIFICATO]**
+
+- nessun finding High aperto;
+- nessuna rete o parsing pesante sul Main thread;
+- il feed più grande passa con heap limitato;
+- **nessun pack embedded scaduto; avviso in-app oltre la validità; check CI sulle scadenze**;
+- Voice Bridge production senza runtime di sviluppo, avviabile fuori da Manus con `.env.example` e CI propria;
+- unlink Alexa revoca immediatamente l'accesso; skill con modello versionato e handler built-in;
+- telefono e Wear comunicano in entrambe le direzioni (o Wear dichiarato sperimentale e off);
+- widget, condivisione testo e cancellazione dati rispettano quanto mostrato all'utente;
+- ogni feature non implementata è rimossa o dichiarata sperimentale;
+- **build release firmata, minificata e riproducibile; `LICENSE` presente**;
+- CI su pull request e push; `main` rappresenta il prodotto ed è protetto; ogni release è taggata.
+
+## 13. Stato di avanzamento
+
+| Voce | Stato | Riferimento |
+|---|---|---|
+| Tag baseline | creato in locale, push rifiutato (403) | `audit-baseline-2026-09-23` |
+| Branch `stabilization/v0.20.4` | creato e pushato | da `0a39754` |
+| Piano aggiornato | questo documento | — |
+| PR-DATA-1 | in corso | — |
+| PR-SEC-1 | in corso | — |
+| Pack scaduti (PR-DATA-0) | in attesa dei feed aggiornati dalle sorgenti (bloccate dal proxy di questo ambiente) | §4.1 |
+| `LICENSE` | in attesa della scelta della licenza | §1.6 |
+| Sorgente canonica del web | in attesa di decisione | §1.5 |
