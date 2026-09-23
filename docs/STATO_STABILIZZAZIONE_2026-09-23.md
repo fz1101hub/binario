@@ -15,14 +15,14 @@ I gate locali del codice sono verdi. Restano fuori dalla conclusione tecnica la 
 
 | Area | Risultato |
 |---|---|
-| Alexa Companion | Runtime e superfici WebDev generiche rimossi; OAuth con consenso e CSRF; allowlist dei redirect; revoca opponibile; migrazioni testate; handler built-in; health check; rate limit; CI e build verificabile. Il servizio resta separato dall'app e dagli smartwatch.[1] |
-| Dati ferroviari | Download bounded, dispatcher corretti, indice GTFS compatto, regressione a heap limitato, semantica del giorno di servizio, festività, gzip, `stop_sequence=0`, operatori sconosciuti e policy provider applicate. La pipeline conserva 10 pack con copertura valida; AMT e Cotral restano catalogati ma disabilitati finché non esiste un feed affidabile.[2] [3] |
-| Wear OS | Package telefonico e Wear coerenti per il Data Layer, sharing disattivato per default, refresh limitato, cancellazione del Data Item e della cache, chiavi UI univoche, manifest e policy `standalone=false` documentati.[4] |
-| Contratto smartwatch | Schema v1 chiuso e bounded, TTL e provenienza espliciti, fixture golden Android–Wear, Companion–Wear e iOS–Apple Watch, decoder fail-closed e fallback `unknown`.[5] |
-| Android UX | Deep link one-shot, lifecycle e Back corretti, shortcut, widget per istanza, refresh e freshness, allarmi ripristinabili, fascia silenziosa, permessi preservati alla rotazione, backup bounded, autocomplete preindicizzato e preferenze robuste.[6] |
+| Alexa Companion | Runtime e superfici WebDev generiche rimossi; OAuth con consenso e CSRF; allowlist dei redirect; richiesta `authorize` conservata e rivalidata attraverso il login; revoca opponibile; migrazioni provate su MariaDB vuoto e in upgrade; handler built-in; health check; limiter dedicato al webhook; configurazione fail-closed all'avvio. Il servizio resta separato dall'app e dagli smartwatch.[1] |
+| Dati ferroviari | Download bounded e single-flight, dispatcher IO/CPU espliciti, indice GTFS compatto, regressione a heap limitato, fuso ferroviario coerente, semantica del giorno di servizio, festività, gzip, `stop_sequence=0`, operatori sconosciuti e policy provider applicate. La CI impone ora integrità e almeno 30 giorni di validità; AMT e Cotral restano catalogati ma disabilitati finché non esiste un feed affidabile.[2] [3] |
+| Wear OS | Package telefonico e Wear coerenti per il Data Layer, sharing disattivato per default, refresh limitato, cancellazione del Data Item e della cache, invalidazione runtime al TTL, chiavi UI univoche, manifest e policy `standalone=false` documentati.[4] |
+| Contratto smartwatch | Schema v1 chiuso e bounded, TTL e provenienza espliciti, fixture golden Android–Wear, Companion–Wear e iOS–Apple Watch, decoder fail-closed e fallback `unknown`. Il canale Companion→Wear trasporta e valida ora il contratto effettivo, e il prebuild rigenera anche i test Kotlin golden.[5] |
+| Android UX | Deep link one-shot, lifecycle e Back corretti, shortcut, widget per istanza, refresh e freshness, allarmi ripristinabili, fascia silenziosa, permessi preservati alla rotazione, backup bounded, autocomplete calcolato fuori dalla composizione e preferenze robuste.[6] |
 | Accessibilità e voce | Stringhe a risorsa e semantiche migliorate; la dettatura distingue esiti confermati, ambigui e irrisolti e applica automaticamente soltanto stazioni confermate.[7] |
-| PlannedJourney | Dominio personale offline distinto da `SavedRoute`; itinerari multi-tratta, agenda, reminder, checklist, ricorrenze finite, lifecycle, deduplica, import/export JSON con preview conflitti e calendario ICS bounded.[8] |
-| Companion Expo | Bridge nativi, shared text, reminder e archivio locale corretti; sincronizzazione remota nascosta; branding e permessi verificati; prebuild Android riproducibile.[9] |
+| PlannedJourney | Dominio personale offline distinto da `SavedRoute`; persistenza locale versionata e bounded; schermata Agenda raggiungibile; itinerari multi-tratta, reminder, checklist, ricorrenze finite, lifecycle, deduplica, import/export JSON con preview conflitti e calendario ICS bounded.[8] |
+| Companion Expo | Bridge nativi, shared text, reminder e archivio locale corretti; sincronizzazione remota nascosta; semantiche accessibili; branding e permessi verificati; prebuild Android riproducibile comprensivo dei test nativi.[9] |
 | Repository | Documenti storici spostati fuori dalla radice; todo di sessione rimossi; snapshot `surfaces/` preservato nel branch archivio e rimosso dalla linea attiva.[10] [11] |
 
 ## Evidenze di verifica
@@ -31,10 +31,10 @@ I gate locali del codice sono verdi. Restano fuori dalla conclusione tecnica la 
 |---|---|
 | Asset e freshness GTFS | **Verde:** 10 pack, nessun pack scaduto o in scadenza nel periodo minimo; manifest, checksum e registro runtime coerenti. |
 | Regressione memoria GTFS | **Verde:** feed sintetico da 1,35 milioni di righe eseguito con heap JVM massimo di 256 MiB. |
-| Android e Wear | **Verde:** 269 test app e 5 test Wear senza failure; lint debug, assemble debug, assemble release minificata e `lintVitalRelease`; 204 task Gradle nel gate combinato. La release è unsigned perché non sono state fornite credenziali di firma. |
-| Alexa Companion | **Verde:** TypeScript, 57 test in 18 file e build di produzione con verifica dell'assenza dei residui runtime. |
-| Companion Expo TypeScript | **Verde:** typecheck, 53 test in 11 file, branding, managed config, release inputs e due `expo prebuild --clean` consecutivi senza diff. |
-| Companion Expo nativo | **Verde:** lint e assemble debug di app e Wear generati; 442 task Gradle eseguiti. Il primo build pulito ha installato NDK e CMake e ha richiesto circa 1 ora e 46 minuti. Gli avvisi residui provengono principalmente dalle dipendenze Expo/React Native deprecate, non da errori di compilazione. |
+| Android e Wear | **Verde:** 277 test app e 9 test Wear senza failure; compilazione dei test UI; lint debug, assemble debug, assemble release minificata e `lintVitalRelease`; 194 task nel gate release finale. La release è unsigned perché non sono state fornite credenziali di firma. |
+| Alexa Companion | **Verde:** TypeScript, 64 test ordinari e 2 test di migrazione su MariaDB reale; build di produzione e smoke test fail-closed/`healthz`. |
+| Companion Expo TypeScript | **Verde:** typecheck, 60 test in 13 file, branding, managed config e release inputs. Due `expo prebuild --clean` consecutivi hanno prodotto output identico, inclusi i test Kotlin golden. |
+| Companion Expo nativo | **Verde:** 3 test app e 3 test Wear; lint e assemble debug di app e Wear generati; 452 task nel gate nativo completo del contratto. Gli avvisi residui provengono principalmente dalle dipendenze Expo/React Native deprecate, non da errori di compilazione. |
 | Privacy e supply chain | **Verde:** verificatore privacy, integrità asset e policy lockfile. |
 | Apple Watch | Il rail macOS isolato ha compilato e testato il contratto; manca intenzionalmente un produttore iOS reale e quindi non esiste una prova end-to-end iPhone–Watch. |
 
@@ -51,7 +51,7 @@ I gate locali del codice sono verdi. Restano fuori dalla conclusione tecnica la 
 
 ## Limiti della consegna corrente
 
-GitHub Actions ha restituito cinque fallimenti di startup con **zero step eseguiti**. Questi risultati non rappresentano test rossi del codice; per questo il ramo combinato è stato validato localmente. Il branch finale è pubblicato e la PR 26 è aperta e mergeable. Il bundle Git portabile resta disponibile come copia verificata della consegna.
+GitHub Actions ha restituito fallimenti di startup sia per l'evento `push` sia per `pull_request`, sempre con **zero step eseguiti**. Questi risultati non rappresentano test rossi del codice; per questo il ramo combinato è stato validato localmente. I workflow coprono ora anche i push su `integration/**`, ma la prova remota resta subordinata allo sblocco dei runner. Il branch finale è pubblicato e la PR 26 è aperta e mergeable. Il bundle Git portabile resta disponibile come copia verificata della consegna.
 
 Le scelte proprietarie elencate sopra non bloccano ulteriore sviluppo interno, ma impediscono di dichiarare una release pubblica completa. In particolare, una build unsigned non sostituisce una release firmata e una fixture smartwatch non sostituisce una prova su hardware reale.
 
