@@ -28,6 +28,7 @@ try {
 const android = config.android ?? {};
 const blocked = new Set(android.blockedPermissions ?? []);
 const requiredBlocked = [
+  "android.permission.ACCESS_FINE_LOCATION",
   "android.permission.READ_EXTERNAL_STORAGE",
   "android.permission.WRITE_EXTERNAL_STORAGE",
 ];
@@ -40,6 +41,9 @@ for (const permission of requiredBlocked) {
 }
 
 const explicitPermissions = new Set(android.permissions ?? []);
+if (!explicitPermissions.has("ACCESS_COARSE_LOCATION")) {
+  fail("ACCESS_COARSE_LOCATION must remain explicit for the on-demand nearest-station lookup.");
+}
 if (!explicitPermissions.has("POST_NOTIFICATIONS")) {
   fail("POST_NOTIFICATIONS must remain an explicit Android permission.");
 }
@@ -48,8 +52,8 @@ const plugins = config.plugins ?? [];
 const hasLocation = plugins.some((plugin) =>
   Array.isArray(plugin) ? plugin[0] === "expo-location" : plugin === "expo-location",
 );
-if (!hasLocation) {
-  fail("expo-location must remain explicitly configured with its user-facing rationale.");
+if (hasLocation) {
+  fail("expo-location must not be explicitly configured: the companion only needs approximate location and blocks fine location.");
 }
 
 if (!process.exitCode) {

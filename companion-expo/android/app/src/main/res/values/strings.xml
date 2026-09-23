@@ -1,5 +1,5 @@
 <resources>
-  <string name="app_name">Binario</string>
+  <string name="app_name">Binario Companion</string>
   <string name="binario_widget_label">Stato Binario</string>
   <string name="binario_widget_description">Stato ferroviario verificato di Binario</string>
   <string name="binario_shortcut_plan_short">Pianifica</string>
@@ -7,4 +7,6 @@
   <string name="binario_shortcut_alerts_short">Promemoria</string>
   <string name="binario_shortcut_alerts_long">Apri promemoria locali</string>
   <string name="binario_share_text_label">Importa testo in Binario</string>
+  <string name="expo_splash_screen_resize_mode" translatable="false">contain</string>
+  <string name="expo_splash_screen_status_bar_translucent" translatable="false">false</string>
 </resources>

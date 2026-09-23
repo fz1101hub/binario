@@ -338,6 +338,7 @@ function withBinarioAndroidWidget(config) {
     const application = manifest.application?.[0];
     if (!application) throw new Error("Android manifest senza application");
     const blockedProductionPermissions = new Set([
+      "android.permission.ACCESS_FINE_LOCATION",
       "android.permission.READ_EXTERNAL_STORAGE",
       "android.permission.WRITE_EXTERNAL_STORAGE",
       "android.permission.SYSTEM_ALERT_WINDOW",
@@ -396,7 +397,7 @@ function withBinarioAndroidWidget(config) {
     fs.writeFileSync(path.join(xmlRoot, "binario_shortcuts.xml"), shortcutsXml);
 
     const stringsPath = path.join(appRoot, "src", "main", "res", "values", "strings.xml");
-    let strings = fs.readFileSync(stringsPath, "utf8").replace("<string name=\"app_name\">Binario Companion</string>", "<string name=\"app_name\">Binario</string>");
+    let strings = fs.readFileSync(stringsPath, "utf8").replace("<string name=\"app_name\">Binario</string>", "<string name=\"app_name\">Binario Companion</string>");
     if (!strings.includes("binario_widget_label")) strings = strings.replace("</resources>", "  <string name=\"binario_widget_label\">Stato Binario</string>\n  <string name=\"binario_widget_description\">Stato ferroviario verificato di Binario</string>\n</resources>");
     if (!strings.includes("binario_shortcut_plan_short")) strings = strings.replace("</resources>", "  <string name=\"binario_shortcut_plan_short\">Pianifica</string>\n  <string name=\"binario_shortcut_plan_long\">Pianifica una tratta locale</string>\n  <string name=\"binario_shortcut_alerts_short\">Promemoria</string>\n  <string name=\"binario_shortcut_alerts_long\">Apri promemoria locali</string>\n</resources>");
     if (!strings.includes("binario_share_text_label")) strings = strings.replace("</resources>", "  <string name=\"binario_share_text_label\">Importa testo in Binario</string>\n</resources>");

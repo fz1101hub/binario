@@ -9,8 +9,11 @@
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
-    "check": "tsc --noEmit",
-    "test": "vitest run",
+    "generate:brand-assets": "python3 scripts/generate-binario-brand-assets.py",
+    "check": "tsc --noEmit && pnpm verify:branding",
+    "test": "vitest run && pnpm verify:branding",
+    "prebuild": "pnpm generate:brand-assets && expo prebuild --platform android",
+    "verify:branding": "node scripts/verify-branding.mjs",
     "verify:managed-config": "node scripts/verify-managed-config.mjs",
     "verify:release-inputs": "node scripts/verify-release-inputs.mjs"
   },
