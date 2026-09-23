@@ -29,7 +29,8 @@ android {
     namespace = "it.binario.wear"
     compileSdk = 36
     defaultConfig {
-        applicationId = "it.binario.app.wear"
+        // Phone and watch must share package name and signing identity for the Wear Data Layer.
+        applicationId = "it.binario.app"
         minSdk = 30
         targetSdk = 36
         versionCode = binarioVersionCode

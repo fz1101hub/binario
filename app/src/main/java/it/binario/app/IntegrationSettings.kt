@@ -7,7 +7,7 @@ import androidx.core.content.edit
  * Preferenze di superficie, non credenziali. I segreti Alexa restano nel backend.
  */
 data class IntegrationSettings(
-    val wearSnapshotSharingEnabled: Boolean = true,
+    val wearSnapshotSharingEnabled: Boolean = false,
     val voiceProfileSyncRequested: Boolean = false,
     val appleWatchSetupRequested: Boolean = false
 )
@@ -17,7 +17,7 @@ class IntegrationSettingsStore(context: Context) {
 
     fun read(): IntegrationSettings = runCatching {
         IntegrationSettings(
-            wearSnapshotSharingEnabled = preferences.getBoolean(KEY_WEAR_SHARING, true),
+            wearSnapshotSharingEnabled = preferences.getBoolean(KEY_WEAR_SHARING, false),
             voiceProfileSyncRequested = preferences.getBoolean(KEY_VOICE_PROFILE, false),
             appleWatchSetupRequested = preferences.getBoolean(KEY_APPLE_WATCH, false)
         )

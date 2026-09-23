@@ -28,6 +28,16 @@ object WearSnapshotStore {
         WearSnapshotCodec.decode(payload)?.let { snapshot -> update(context.applicationContext, snapshot) }
     }
 
+    fun clear(context: Context) {
+        val applicationContext = context.applicationContext
+        applicationContext.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE).edit {
+            remove(KEY_SNAPSHOT)
+        }
+        synchronized(states) {
+            states.getOrPut(applicationContext.packageName) { MutableStateFlow(null) }.value = null
+        }
+    }
+
     private fun update(context: Context, snapshot: WearSnapshot) {
         context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE).edit {
             putString(KEY_SNAPSHOT, JSONObject(WearSnapshotCodec.encode(snapshot)).toString())
