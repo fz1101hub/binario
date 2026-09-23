@@ -88,6 +88,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -1914,14 +1915,15 @@ private fun SettingsScreen(
     var alertFeedback by rememberSaveable { mutableStateOf<String?>(null) }
     var backupFeedback by rememberSaveable { mutableStateOf<String?>(null) }
     val context = LocalContext.current
+    val resources = LocalResources.current
     val coroutineScope = rememberCoroutineScope()
     val createBackupDocument = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument(LocalDataBackupCodec.MIME_TYPE)) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
         backupFeedback = runCatching {
             context.contentResolver.openOutputStream(uri)?.bufferedWriter()?.use { it.write(viewModel.exportLocalBackup()) }
-                ?: error("Impossibile aprire il file scelto.")
-            "Backup locale esportato. Conservalo in un luogo protetto."
-        }.getOrElse { "Esportazione non riuscita: ${it.message ?: "errore file"}" }
+                ?: error(resources.getString(R.string.backup_open_output_error))
+            resources.getString(R.string.backup_export_success)
+        }.getOrElse { resources.getString(R.string.backup_export_failure, it.message ?: resources.getString(R.string.backup_file_error)) }
     }
     val openBackupDocument = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
@@ -1929,14 +1931,14 @@ private fun SettingsScreen(
             backupFeedback = runCatching {
                 val raw = withContext(Dispatchers.IO) {
                     context.contentResolver.openInputStream(uri)?.let(LocalDataBackupCodec::readBoundedUtf8)
-                        ?: error("Impossibile leggere il file scelto.")
+                        ?: error(resources.getString(R.string.backup_read_input_error))
                 }
                 val stationCatalog = viewModel.stations
                 val decoded = withContext(Dispatchers.Default) {
                     LocalDataBackupCodec.decode(raw, stationCatalog)
                 }
                 viewModel.importLocalBackup(decoded)
-            }.getOrElse { "Importazione non riuscita: ${it.message ?: "errore file"}" }
+            }.getOrElse { resources.getString(R.string.backup_import_failure, it.message ?: resources.getString(R.string.backup_file_error)) }
         }
     }
     val notificationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -1945,7 +1947,7 @@ private fun SettingsScreen(
         if (granted && alert != null) {
             alertFeedback = commuterAlertScheduleFeedback(CommuterAlertScheduler.schedule(context, alert))
         } else {
-            alertFeedback = "Avviso salvato. Per riceverlo, consenti le notifiche di Binario nelle impostazioni Android."
+            alertFeedback = resources.getString(R.string.notification_permission_required)
         }
     }
     if (showComposer) {
@@ -1973,26 +1975,26 @@ private fun SettingsScreen(
     LazyColumn(modifier = modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(0.dp)) {
         item {
             Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text("Impostazioni", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                Text("Gestisci preferenze, viaggi personali e integrazioni di Binario.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(stringResource(R.string.settings_title), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.settings_description), color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
         item {
-            SettingsSectionTitle("Aspetto")
+            SettingsSectionTitle(stringResource(R.string.settings_appearance))
             SettingsActionRow(
-                title = "Tema dell’app",
-                detail = "Sistema, chiaro o scuro",
+                title = stringResource(R.string.settings_theme_title),
+                detail = stringResource(R.string.settings_theme_description),
                 onClick = onThemeClick
             )
         }
         item {
             Column(Modifier.padding(horizontal = 20.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text("Viaggi personali", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                Text("Le tratte fissate restano disponibili anche nel widget. Tocca una tratta per renderla attiva.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(stringResource(R.string.settings_personal_journeys), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.settings_personal_journeys_description), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Button(onClick = { showComposer = true }, modifier = Modifier.fillMaxWidth()) {
                     Icon(Icons.Default.Add, contentDescription = null)
                     Spacer(Modifier.width(8.dp))
-                    Text("Aggiungi una tratta")
+                    Text(stringResource(R.string.settings_add_route))
                 }
             }
         }
@@ -2026,7 +2028,7 @@ private fun SettingsScreen(
                 onImport = { openBackupDocument.launch(arrayOf(LocalDataBackupCodec.MIME_TYPE, "text/plain")) }
             )
         }
-        item { SettingsSectionTitle("Integrazioni") }
+        item { SettingsSectionTitle(stringResource(R.string.settings_integrations)) }
         item {
             IntegrationsPanel(
                 settings = viewModel.integrationSettings,
@@ -2039,19 +2041,19 @@ private fun SettingsScreen(
         if (viewModel.monitoredServices.isNotEmpty()) {
             item {
                 Column(Modifier.padding(horizontal = 20.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text("Treni monitorati", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    Text("Gli avvisi in tempo reale saranno disponibili solo con una fonte autorizzata.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(stringResource(R.string.settings_monitored_trains), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text(stringResource(R.string.settings_monitored_trains_description), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
             items(viewModel.monitoredServices, key = { it.number }) { monitor ->
                 Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Default.Train, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                     Column(Modifier.weight(1f).padding(start = 12.dp)) {
-                        Text("Treno ${monitor.number}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        Text(stringResource(R.string.train_number_label, monitor.number), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                         Text(monitor.label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     IconButton(onClick = { viewModel.removeServiceMonitoring(monitor.number) }) {
-                        Icon(Icons.Default.DeleteOutline, contentDescription = "Rimuovi monitoraggio treno ${monitor.number}")
+                        Icon(Icons.Default.DeleteOutline, contentDescription = stringResource(R.string.accessibility_remove_train_monitoring, monitor.number))
                     }
                 }
                 HorizontalDivider(modifier = Modifier.padding(start = 20.dp), color = MaterialTheme.colorScheme.outlineVariant)
@@ -2059,11 +2061,11 @@ private fun SettingsScreen(
         }
         item {
             Column(Modifier.padding(horizontal = 20.dp, vertical = 14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text("Privacy e dati", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                Text("Tratte, preferiti, monitoraggi, avvisi e widget restano nel dispositivo. Backup e trasferimento Android sono esclusi; il file JSON viene esportato solo se lo scegli. La posizione serve solo a ordinare le stazioni vicine e non viene conservata né inviata alle fonti ferroviarie.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text("Le notifiche sono promemoria locali. La dettatura usa il riconoscitore di sistema: Binario non registra audio e usa solo il testo restituito. Le ricerche RFI inviano alla fonte l’identificativo pubblico della stazione di partenza; le fonti personali opzionali possono ricevere un identificativo o il nome della stazione. Senza una fonte autorizzata: dati non disponibili in tempo reale.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text("Se attivi lo smartwatch, riceve una sintesi della tratta e fino a due corse; disattivare la condivisione ferma nuovi invii ma non cancella la cache già sul watch. L’informativa completa è PRIVACY.md nel repository. Prima di una distribuzione pubblica manca un URL verificato e un recapito privacy: non esiste ancora un link pubblico nell’app.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text("Autocompletamento nazionale: © OpenStreetMap contributors, ODbL 1.0. Il catalogo geografico suggerisce nomi di stazioni ma non conferma servizio, orario, binario, ritardo o circolazione.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(stringResource(R.string.settings_privacy_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.settings_privacy_local_data), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(stringResource(R.string.settings_privacy_notifications_voice), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(stringResource(R.string.settings_privacy_wear), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(stringResource(R.string.settings_privacy_osm), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
         items(viewModel.savedRoutes, key = { it.id }) { route ->
@@ -2184,21 +2186,26 @@ private fun PersonalTravelPanel(
     onRemoveStationMonitor: (String) -> Unit
 ) {
     Column(Modifier.padding(horizontal = 20.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("Viaggio e monitoraggi", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        Text(stringResource(R.string.personal_travel_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         activeTrip?.let { trip ->
-            Text("Viaggio attivo · Treno ${trip.trainNumber}", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-            Text(trip.nextStop?.let { "Prossima fermata: ${it.station}, prevista ${it.expected}${it.platform?.let { platform -> ", binario $platform" }.orEmpty()}" } ?: "Viaggio completato", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(stringResource(R.string.personal_travel_active, trip.trainNumber), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+            val nextStopLabel = trip.nextStop?.let { stop ->
+                stop.platform?.let { platform ->
+                    stringResource(R.string.personal_travel_next_stop_platform, stop.station, stop.expected, platform)
+                } ?: stringResource(R.string.personal_travel_next_stop, stop.station, stop.expected)
+            } ?: stringResource(R.string.personal_travel_completed)
+            Text(nextStopLabel, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(onClick = onAdvanceTrip, enabled = !trip.isComplete) { Text("Fermata raggiunta") }
-                TextButton(onClick = onEndTrip) { Text("Termina") }
+                OutlinedButton(onClick = onAdvanceTrip, enabled = !trip.isComplete) { Text(stringResource(R.string.action_stop_reached)) }
+                TextButton(onClick = onEndTrip) { Text(stringResource(R.string.action_end)) }
             }
-        } ?: Text("Nessun viaggio attivo. Apri il dettaglio di un treno per iniziarne il monitoraggio personale.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        } ?: Text(stringResource(R.string.personal_travel_none), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         if (stationMonitors.isNotEmpty()) {
-            Text("Stazioni monitorate", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+            Text(stringResource(R.string.personal_travel_monitored_stations), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
             stationMonitors.forEach { monitor ->
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Text(monitor.accessibleSummary, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodySmall)
-                    IconButton(onClick = { onRemoveStationMonitor(monitor.stationId) }) { Icon(Icons.Default.DeleteOutline, contentDescription = "Rimuovi monitoraggio ${monitor.stationName}") }
+                    IconButton(onClick = { onRemoveStationMonitor(monitor.stationId) }) { Icon(Icons.Default.DeleteOutline, contentDescription = stringResource(R.string.accessibility_remove_station_monitoring, monitor.stationName)) }
                 }
             }
         }
@@ -2208,19 +2215,19 @@ private fun PersonalTravelPanel(
 @Composable
 private fun MobilityPreferencesPanel(value: MobilityPreferences, onChange: (MobilityPreferences) -> Unit) {
     Column(Modifier.padding(horizontal = 20.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("Mobilità e accessibilità", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-        Text("Queste preferenze restano sul dispositivo e guideranno i filtri quando sarà disponibile una fonte autorizzata.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text("Cambi preferiti", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+        Text(stringResource(R.string.mobility_preferences_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        Text(stringResource(R.string.mobility_preferences_description), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(stringResource(R.string.mobility_changes_title), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
         LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            item { FilterChip(selected = value.maxChanges == null, onClick = { onChange(value.copy(maxChanges = null)) }, label = { Text("Qualsiasi") }) }
-            items(listOf(0, 1, 2)) { changes -> FilterChip(selected = value.maxChanges == changes, onClick = { onChange(value.copy(maxChanges = changes)) }, label = { Text(if (changes == 0) "Diretto" else "Max $changes") }) }
+            item { FilterChip(selected = value.maxChanges == null, onClick = { onChange(value.copy(maxChanges = null)) }, label = { Text(stringResource(R.string.mobility_changes_any)) }) }
+            items(listOf(0, 1, 2)) { changes -> FilterChip(selected = value.maxChanges == changes, onClick = { onChange(value.copy(maxChanges = changes)) }, label = { Text(if (changes == 0) stringResource(R.string.mobility_changes_direct) else stringResource(R.string.mobility_changes_max, changes)) }) }
         }
-        Text("Margine di interscambio", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+        Text(stringResource(R.string.mobility_transfer_margin), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
         LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(listOf(5, 10, 15, 20)) { minutes -> FilterChip(selected = value.transferMarginMinutes == minutes, onClick = { onChange(value.copy(transferMarginMinutes = minutes)) }, label = { Text("$minutes min") }) }
+            items(listOf(5, 10, 15, 20)) { minutes -> FilterChip(selected = value.transferMarginMinutes == minutes, onClick = { onChange(value.copy(transferMarginMinutes = minutes)) }, label = { Text(pluralStringResource(R.plurals.minutes_short, minutes, minutes)) }) }
         }
-        FilterChip(selected = value.stepFreePreferred, onClick = { onChange(value.copy(stepFreePreferred = !value.stepFreePreferred)) }, label = { Text("Priorità percorsi senza barriere") })
-        FilterChip(selected = value.compactTimetablePreferred, onClick = { onChange(value.copy(compactTimetablePreferred = !value.compactTimetablePreferred)) }, label = { Text("Preferisco tabelloni compatti") })
+        FilterChip(selected = value.stepFreePreferred, onClick = { onChange(value.copy(stepFreePreferred = !value.stepFreePreferred)) }, label = { Text(stringResource(R.string.mobility_step_free)) })
+        FilterChip(selected = value.compactTimetablePreferred, onClick = { onChange(value.copy(compactTimetablePreferred = !value.compactTimetablePreferred)) }, label = { Text(stringResource(R.string.mobility_compact_timetable)) })
         Text(value.accessibleSummary, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
@@ -2228,11 +2235,11 @@ private fun MobilityPreferencesPanel(value: MobilityPreferences, onChange: (Mobi
 @Composable
 private fun LocalBackupPanel(feedback: String?, onExport: () -> Unit, onImport: () -> Unit) {
     Column(Modifier.padding(horizontal = 20.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("Backup locale", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-        Text("Esporta o importa tratte, preferiti, monitoraggi, avvisi e preferenze con un file JSON scelto da te. Non viene usato alcun cloud automatico.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(stringResource(R.string.local_backup_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        Text(stringResource(R.string.local_backup_description), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedButton(onClick = onExport, modifier = Modifier.weight(1f)) { Text("Esporta") }
-            Button(onClick = onImport, modifier = Modifier.weight(1f)) { Text("Importa") }
+            OutlinedButton(onClick = onExport, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.action_export)) }
+            Button(onClick = onImport, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.action_import)) }
         }
         feedback?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
     }
@@ -2252,31 +2259,31 @@ private fun IntegrationsPanel(
         shape = RoundedCornerShape(20.dp)
     ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text("Integrazioni Binario", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-            Text("Tratte, monitoraggi e qualità del dato sono controllati dall’app. Credenziali e token non vengono memorizzati qui.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(stringResource(R.string.integrations_title), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Text(stringResource(R.string.integrations_description), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             IntegrationChoice(
-                title = "Smartwatch Android",
-                detail = if (settings.wearSnapshotSharingEnabled) "Snapshot della tratta attiva al companion Wear OS" else "Sincronizzazione snapshot disattivata",
+                title = stringResource(R.string.integration_wear_title),
+                detail = if (settings.wearSnapshotSharingEnabled) stringResource(R.string.integration_wear_enabled) else stringResource(R.string.integration_wear_disabled),
                 selected = settings.wearSnapshotSharingEnabled,
                 onClick = { onWearSharingChanged(!settings.wearSnapshotSharingEnabled) }
             )
             IntegrationChoice(
-                title = "Comandi vocali e Alexa",
+                title = stringResource(R.string.integration_voice_title),
                 detail = when (voiceReadiness) {
-                    VoiceProfileSyncReadiness.DISABLED -> "Profilo vocale non condiviso; nessun account collegato"
-                    VoiceProfileSyncReadiness.ACCOUNT_LINK_REQUIRED -> "Collegamento account Alexa Companion richiesto; nessun dato inviato"
-                    VoiceProfileSyncReadiness.READY_FOR_AUTHENTICATED_SYNC -> "Profilo pronto per sincronizzazione autenticata"
+                    VoiceProfileSyncReadiness.DISABLED -> stringResource(R.string.integration_voice_disabled)
+                    VoiceProfileSyncReadiness.ACCOUNT_LINK_REQUIRED -> stringResource(R.string.integration_voice_link_required)
+                    VoiceProfileSyncReadiness.READY_FOR_AUTHENTICATED_SYNC -> stringResource(R.string.integration_voice_ready)
                 },
                 selected = settings.voiceProfileSyncRequested,
                 onClick = { onVoiceProfileChanged(!settings.voiceProfileSyncRequested) }
             )
             IntegrationChoice(
-                title = "Apple Watch",
-                detail = if (settings.appleWatchSetupRequested) "Preferenza pronta per il companion watchOS" else "Companion iOS da completare; nessun dato condiviso",
+                title = stringResource(R.string.integration_apple_watch_title),
+                detail = if (settings.appleWatchSetupRequested) stringResource(R.string.integration_apple_watch_enabled) else stringResource(R.string.integration_apple_watch_disabled),
                 selected = settings.appleWatchSetupRequested,
                 onClick = { onAppleWatchSetupChanged(!settings.appleWatchSetupRequested) }
             )
-            Text("Le risposte personali richiedono un account Alexa effettivamente collegato. Senza feed autorizzato: dati non disponibili in tempo reale.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(stringResource(R.string.integration_alexa_note), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
@@ -2291,7 +2298,7 @@ private fun IntegrationChoice(title: String, detail: String, selected: Boolean, 
             Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             Text(detail, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        FilterChip(selected = selected, onClick = onClick, label = { Text(if (selected) "Attivo" else "Non attivo") })
+        FilterChip(selected = selected, onClick = onClick, label = { Text(if (selected) stringResource(R.string.state_active) else stringResource(R.string.state_inactive)) })
     }
 }
 

@@ -49,6 +49,14 @@ class WearDataLayerConfigurationTest {
     }
 
     @Test
+    fun `privacy copy describes fail closed watch revocation`() {
+        val strings = File(repositoryRoot, "app/src/main/res/values/strings.xml").readText()
+
+        assertTrue(strings.contains("Disattivare la condivisione elimina il DataItem e la cache locale del watch"))
+        assertFalse(strings.contains("non cancella la cache già sul watch"))
+    }
+
+    @Test
     fun `phone refresh listener is path scoped`() {
         val manifest = File(repositoryRoot, "app/src/main/AndroidManifest.xml").readText()
 

@@ -203,6 +203,75 @@
     <string name="station_board_arrivals_uppercase">ARRIVI</string>
     <string name="station_suggestion_free_text">Cerca “%1$s” nelle fonti disponibili</string>
 
+    <!-- Settings, privacy and integrations. -->
+    <string name="settings_title">Impostazioni</string>
+    <string name="settings_description">Gestisci preferenze, viaggi personali e integrazioni di Binario.</string>
+    <string name="settings_appearance">Aspetto</string>
+    <string name="settings_theme_title">Tema dell’app</string>
+    <string name="settings_theme_description">Sistema, chiaro o scuro</string>
+    <string name="settings_personal_journeys">Viaggi personali</string>
+    <string name="settings_personal_journeys_description">Le tratte fissate restano disponibili anche nel widget. Tocca una tratta per renderla attiva.</string>
+    <string name="settings_add_route">Aggiungi una tratta</string>
+    <string name="settings_integrations">Integrazioni</string>
+    <string name="settings_monitored_trains">Treni monitorati</string>
+    <string name="settings_monitored_trains_description">Gli avvisi in tempo reale saranno disponibili solo con una fonte autorizzata.</string>
+    <string name="train_number_label">Treno %1$s</string>
+    <string name="accessibility_remove_train_monitoring">Rimuovi monitoraggio treno %1$s</string>
+    <string name="settings_privacy_title">Privacy e dati</string>
+    <string name="settings_privacy_local_data">Tratte, preferiti, monitoraggi, avvisi e widget restano nel dispositivo. Backup e trasferimento Android sono esclusi; il file JSON viene esportato solo se lo scegli. La posizione serve solo a ordinare le stazioni vicine e non viene conservata né inviata alle fonti ferroviarie.</string>
+    <string name="settings_privacy_notifications_voice">Le notifiche sono promemoria locali. La dettatura usa il riconoscitore di sistema: Binario non registra audio e usa solo il testo restituito. Le ricerche RFI inviano alla fonte l’identificativo pubblico della stazione di partenza; le fonti personali opzionali possono ricevere un identificativo o il nome della stazione. Senza una fonte autorizzata: dati non disponibili in tempo reale.</string>
+    <string name="settings_privacy_wear">Se attivi lo smartwatch, riceve una sintesi della tratta e fino a due corse. Disattivare la condivisione elimina il DataItem e la cache locale del watch alla ricezione della revoca. L’informativa completa è PRIVACY.md nel repository. Prima di una distribuzione pubblica manca un URL verificato e un recapito privacy: non esiste ancora un link pubblico nell’app.</string>
+    <string name="settings_privacy_osm">Autocompletamento nazionale: © OpenStreetMap contributors, ODbL 1.0. Il catalogo geografico suggerisce nomi di stazioni ma non conferma servizio, orario, binario, ritardo o circolazione.</string>
+    <string name="notification_permission_required">Avviso salvato. Per riceverlo, consenti le notifiche di Binario nelle impostazioni Android.</string>
+    <string name="backup_open_output_error">Impossibile aprire il file scelto.</string>
+    <string name="backup_read_input_error">Impossibile leggere il file scelto.</string>
+    <string name="backup_file_error">errore file</string>
+    <string name="backup_export_success">Backup locale esportato. Conservalo in un luogo protetto.</string>
+    <string name="backup_export_failure">Esportazione non riuscita: %1$s</string>
+    <string name="backup_import_failure">Importazione non riuscita: %1$s</string>
+
+    <string name="personal_travel_title">Viaggio e monitoraggi</string>
+    <string name="personal_travel_active">Viaggio attivo · Treno %1$s</string>
+    <string name="personal_travel_next_stop">Prossima fermata: %1$s, prevista %2$s</string>
+    <string name="personal_travel_next_stop_platform">Prossima fermata: %1$s, prevista %2$s, binario %3$s</string>
+    <string name="personal_travel_completed">Viaggio completato</string>
+    <string name="personal_travel_none">Nessun viaggio attivo. Apri il dettaglio di un treno per iniziarne il monitoraggio personale.</string>
+    <string name="personal_travel_monitored_stations">Stazioni monitorate</string>
+    <string name="action_stop_reached">Fermata raggiunta</string>
+    <string name="action_end">Termina</string>
+    <string name="accessibility_remove_station_monitoring">Rimuovi monitoraggio %1$s</string>
+
+    <string name="mobility_preferences_title">Mobilità e accessibilità</string>
+    <string name="mobility_preferences_description">Queste preferenze restano sul dispositivo e guideranno i filtri quando sarà disponibile una fonte autorizzata.</string>
+    <string name="mobility_changes_title">Cambi preferiti</string>
+    <string name="mobility_changes_any">Qualsiasi</string>
+    <string name="mobility_changes_direct">Diretto</string>
+    <string name="mobility_changes_max">Max %1$d</string>
+    <string name="mobility_transfer_margin">Margine di interscambio</string>
+    <string name="mobility_step_free">Priorità percorsi senza barriere</string>
+    <string name="mobility_compact_timetable">Preferisco tabelloni compatti</string>
+
+    <string name="local_backup_title">Backup locale</string>
+    <string name="local_backup_description">Esporta o importa tratte, preferiti, monitoraggi, avvisi e preferenze con un file JSON scelto da te. Non viene usato alcun cloud automatico.</string>
+    <string name="action_export">Esporta</string>
+    <string name="action_import">Importa</string>
+
+    <string name="integrations_title">Integrazioni Binario</string>
+    <string name="integrations_description">Tratte, monitoraggi e qualità del dato sono controllati dall’app. Credenziali e token non vengono memorizzati qui.</string>
+    <string name="integration_wear_title">Smartwatch Android</string>
+    <string name="integration_wear_enabled">Snapshot della tratta attiva al companion Wear OS</string>
+    <string name="integration_wear_disabled">Sincronizzazione snapshot disattivata</string>
+    <string name="integration_voice_title">Comandi vocali e Alexa</string>
+    <string name="integration_voice_disabled">Profilo vocale non condiviso; nessun account collegato</string>
+    <string name="integration_voice_link_required">Collegamento account Alexa Companion richiesto; nessun dato inviato</string>
+    <string name="integration_voice_ready">Profilo pronto per sincronizzazione autenticata</string>
+    <string name="integration_apple_watch_title">Apple Watch</string>
+    <string name="integration_apple_watch_enabled">Preferenza pronta per il companion watchOS</string>
+    <string name="integration_apple_watch_disabled">Companion iOS da completare; nessun dato condiviso</string>
+    <string name="integration_alexa_note">Le risposte personali richiedono un account Alexa effettivamente collegato. Senza feed autorizzato: dati non disponibili in tempo reale.</string>
+    <string name="state_active">Attivo</string>
+    <string name="state_inactive">Non attivo</string>
+
     <!-- Local commuter alerts. -->
     <string name="commuter_alerts_title">Avvisi pendolare</string>
     <string name="commuter_alerts_description">Promemoria locali con anticipo, ricorrenza e fascia silenziosa. Non si aggiornano con i ritardi senza una fonte autorizzata.</string>
