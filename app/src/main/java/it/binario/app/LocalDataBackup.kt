@@ -5,6 +5,9 @@ import it.binario.app.data.SavedRouteOrdering
 import it.binario.app.data.Station
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.ByteArrayOutputStream
+import java.io.InputStream
+import java.time.LocalTime
 
 data class LocalDataBackup(
     val routes: List<SavedRoute>,
@@ -23,6 +26,7 @@ sealed interface LocalBackupResult {
 
 object LocalDataBackupCodec {
     const val MIME_TYPE = "application/json"
+    const val MAX_BYTES = 1024 * 1024
     private const val VERSION = 2
 
     fun encode(backup: LocalDataBackup): String = JSONObject().apply {
@@ -41,12 +45,31 @@ object LocalDataBackupCodec {
         put("widgetSurface", backup.widgetSurface.name)
     }.toString(2)
 
+    /** Reads UTF-8 input with a hard limit before JSON parsing to bound memory use. */
+    fun readBoundedUtf8(input: InputStream): String {
+        val output = ByteArrayOutputStream()
+        val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+        var total = 0
+        input.use { stream ->
+            while (true) {
+                val count = stream.read(buffer)
+                if (count < 0) break
+                total += count
+                require(total <= MAX_BYTES) { "Il backup supera il limite di 1 MiB." }
+                output.write(buffer, 0, count)
+            }
+        }
+        return String(output.toByteArray(), Charsets.UTF_8)
+    }
+
     fun decode(raw: String, stations: List<Station>): LocalBackupResult = runCatching {
+        require(raw.toByteArray(Charsets.UTF_8).size <= MAX_BYTES) { "Il backup supera il limite di 1 MiB." }
         val root = JSONObject(raw)
         require(root.optString("kind") == "binario-local-backup") { "Il file non è un backup Binario." }
         require(root.optInt("schemaVersion", -1) in 1..VERSION) { "Versione backup non supportata." }
         val routes = root.optJSONArray("routes").orEmpty().mapNotNull { item ->
             val objectValue = item as? JSONObject ?: return@mapNotNull null
+            require(!isReservedRouteId(objectValue.optString("id"))) { "Il backup contiene un identificativo di tratta riservato." }
             val origin = stations.firstOrNull { it.id == objectValue.optString("originId") } ?: return@mapNotNull null
             val destination = stations.firstOrNull { it.id == objectValue.optString("destinationId") } ?: return@mapNotNull null
             SavedRoute(
@@ -57,7 +80,13 @@ object LocalDataBackupCodec {
                 objectValue.optBoolean("pinned"),
                 objectValue.optInt("manualOrder", -1).takeIf { it in 0 until SavedRouteOrdering.MAX_ROUTES }
             )
-        }.filter { it.id.isNotBlank() && it.name.isNotBlank() && it.outwardOrigin != it.outwardDestination }.distinctBy { it.id }.take(32)
+        }.filter {
+            it.id.isNotBlank() &&
+                it.name.isNotBlank() &&
+                it.outwardOrigin != it.outwardDestination
+        }.distinctBy { it.id }.take(32)
+        // Schema v1/v2 has always required at least one valid personal route. Keep rejecting
+        // route-less files rather than silently applying a partial backup with ambiguous intent.
         require(routes.isNotEmpty()) { "Il backup non contiene tratte valide." }
         val favouriteIds = root.optJSONArray("favouriteStationIds").orEmpty().mapNotNull { it as? String }.filter { id -> stations.any { it.id == id } }.toSet()
         val services = root.optJSONArray("monitoredServices").orEmpty().mapNotNull { item -> (item as? JSONObject)?.let { ServiceMonitor(it.optString("number"), it.optString("label")) } }.filter { it.number.isNotBlank() }.distinctBy { it.number }.take(12)
@@ -66,12 +95,18 @@ object LocalDataBackupCodec {
             runCatching { StationMonitor(station.id, station.name, StationMonitorMode.valueOf(value.optString("mode"))) }.getOrNull()
         } }.filterNotNull().distinctBy { it.stationId }.take(12)
         val alerts = root.optJSONArray("commuterAlerts").orEmpty().mapNotNull { item -> (item as? JSONObject)?.let { value ->
-            runCatching { CommuterAlert(value.optString("id"), value.optString("routeLabel"), value.optString("stationName"), value.optString("time"), value.optInt("leadMinutes", 15).coerceIn(1, 60), AlertRepeat.valueOf(value.optString("repeat")), value.optBoolean("quietHoursEnabled"), value.optBoolean("enabled", true)) }.getOrNull()
+            runCatching {
+                val time = LocalTime.parse(value.optString("time")).toString()
+                CommuterAlert(value.optString("id"), value.optString("routeLabel"), value.optString("stationName"), time, value.optInt("leadMinutes", 15).coerceIn(1, 60), AlertRepeat.valueOf(value.optString("repeat")), value.optBoolean("quietHoursEnabled"), value.optBoolean("enabled", true))
+            }.getOrNull()
         } }.filterNotNull().filter { it.id.isNotBlank() && it.stationName.isNotBlank() }.distinctBy { it.id }.take(24)
         val mobility = root.optJSONObject("mobility")?.let { value -> MobilityPreferences(value.optInt("maxChanges", -1).takeIf { it >= 0 }, value.optInt("transferMarginMinutes", 10).coerceIn(0, 45), value.optBoolean("stepFreePreferred"), value.optBoolean("compactTimetablePreferred")) } ?: MobilityPreferences()
         val surface = runCatching { WidgetSurface.valueOf(root.optString("widgetSurface", WidgetSurface.ACTIVE_ROUTE.name)) }.getOrDefault(WidgetSurface.ACTIVE_ROUTE)
         LocalDataBackup(routes, favouriteIds, services, stationMonitors, alerts, mobility, surface)
     }.fold({ LocalBackupResult.Success(it) }, { LocalBackupResult.Failure(it.message ?: "Backup non leggibile.") })
+
+    private fun isReservedRouteId(id: String): Boolean =
+        id == UNCONFIGURED_ROUTE_ID || id.startsWith("search-")
 
     private fun JSONArray?.orEmpty(): List<Any?> = this?.let { array -> List(array.length()) { index -> array.opt(index) } } ?: emptyList()
 }

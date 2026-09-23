@@ -4,7 +4,9 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.DayOfWeek
+import java.time.LocalDateTime
 import java.time.LocalTime
+import java.time.ZoneId
 
 class CommuterAlertPlannerTest {
     @Test
@@ -24,5 +26,14 @@ class CommuterAlertPlannerTest {
     fun `weekday repeat only includes working days`() {
         assertTrue(DayOfWeek.MONDAY in AlertRepeat.WEEKDAYS.days)
         assertTrue(DayOfWeek.SUNDAY !in AlertRepeat.WEEKDAYS.days)
+    }
+
+    @Test
+    fun `quiet hours return an explicit unscheduled outcome`() {
+        val zone = ZoneId.of("Europe/Rome")
+        val now = LocalDateTime.of(2024, 1, 2, 20, 0).atZone(zone).toInstant().toEpochMilli()
+        val alert = CommuterAlert("id", "Casa – lavoro", "Roma Termini", "22:20", 15, AlertRepeat.ONCE, true)
+
+        assertTrue(CommuterAlertPlanner.nextTriggerResult(alert, now, zone) is CommuterAlertTriggerResult.QuietHours)
     }
 }
