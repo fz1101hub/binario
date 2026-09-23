@@ -35,6 +35,7 @@ android {
         targetSdk = 36
         versionCode = binarioVersionCode
         versionName = binarioVersionName
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         // Public/operator best-effort pages are an explicit personal-build opt-in.
         // Enable only with -PBINARIO_PERSONAL_REALTIME_SOURCES=true.
@@ -119,6 +120,10 @@ dependencies {
     testImplementation("junit:junit:4.13.2")
     // Android supplies org.json at runtime; this artifact is only the JVM unit-test implementation.
     testImplementation("org.json:json:20240303")
+    androidTestImplementation(platform("androidx.compose:compose-bom:2026.06.01"))
+    androidTestImplementation("androidx.compose.ui:ui-test-junit4")
+    androidTestImplementation("androidx.test.ext:junit:1.2.1")
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
 }
 
 // Reproduction profile for the large embedded-GTFS regression. The property
