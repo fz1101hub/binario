@@ -113,6 +113,22 @@ class PlannedJourneyDomainTest {
     }
 
     @Test
+    fun `recurrence must include the weekday of its first departure`() {
+        val invalid = journey(
+            id = "missing-root-weekday",
+            segments = listOf(segment("out", rome, bologna, "2026-09-07", "08:00")),
+            recurrence = PlannedJourneyRecurrence(
+                weekdays = listOf(DayOfWeek.TUESDAY),
+                startsOn = LocalDate.of(2026, 9, 7),
+                occurrenceLimit = 2
+            )
+        )
+
+        assertTrue(PlannedJourneyValidator.validate(invalid).any { it.code == PlannedJourneyValidationCode.INVALID_RECURRENCE })
+        assertTrue(PlannedJourneyOccurrences.forJourney(invalid).isEmpty())
+    }
+
+    @Test
     fun `recurrence generation is bounded by both weekday and date range`() {
         val recurrence = PlannedJourneyRecurrence(
             weekdays = listOf(DayOfWeek.MONDAY, DayOfWeek.WEDNESDAY),
@@ -146,6 +162,50 @@ class PlannedJourneyDomainTest {
         assertEquals(listOf("2026-09-07", "2026-09-14"), occurrences.map { it.occurrenceDate.toString() })
         assertEquals("2026-09-15", occurrences[1].itinerary.segments[1].departure.date.toString())
         assertTrue(occurrences[1].isGeneratedOccurrence)
+    }
+
+    @Test
+    fun `recurrence crossing a daylight saving gap is rejected before agenda expansion`() {
+        val invalid = journey(
+            id = "recurring-dst-gap",
+            segments = listOf(segment("out", rome, bologna, "2026-03-22", "02:30")),
+            recurrence = PlannedJourneyRecurrence(
+                weekdays = listOf(DayOfWeek.SUNDAY),
+                startsOn = LocalDate.of(2026, 3, 22),
+                occurrenceLimit = 2
+            )
+        )
+
+        assertTrue(PlannedJourneyValidator.validate(invalid).any { it.code == PlannedJourneyValidationCode.INVALID_RECURRENCE })
+        assertTrue(PlannedJourneyOccurrences.forJourney(invalid).isEmpty())
+    }
+
+    @Test
+    fun `recurrence generation terminates safely at LocalDate max`() {
+        val max = LocalDate.MAX
+        val recurrence = PlannedJourneyRecurrence(
+            weekdays = listOf(max.dayOfWeek),
+            startsOn = max,
+            occurrenceLimit = 12
+        )
+
+        assertEquals(listOf(max), PlannedJourneyOccurrences.dates(recurrence))
+
+        val root = max.minusDays(7)
+        val overflow = journey(
+            id = "recurrence-overflow",
+            segments = listOf(
+                PlannedJourneySegment("out", rome, bologna, PlannedJourneyDateTime(root, LocalTime.NOON, zone)),
+                PlannedJourneySegment("onward", bologna, milan, PlannedJourneyDateTime(max, LocalTime.NOON, zone))
+            ),
+            recurrence = PlannedJourneyRecurrence(
+                weekdays = listOf(root.dayOfWeek),
+                startsOn = root,
+                occurrenceLimit = 2
+            )
+        )
+        assertTrue(PlannedJourneyValidator.validate(overflow).any { it.code == PlannedJourneyValidationCode.INVALID_RECURRENCE })
+        assertTrue(PlannedJourneyOccurrences.forJourney(overflow).isEmpty())
     }
 
     @Test
@@ -234,9 +294,18 @@ class PlannedJourneyDomainTest {
                 initial.itinerary.segments.map { it.copy(departure = it.departure.copy(timeZone = ZoneId.of("UTC"))) }
             )
         )
+        val recurring = initial.copy(
+            id = "four",
+            recurrence = PlannedJourneyRecurrence(
+                weekdays = listOf(DayOfWeek.THURSDAY),
+                startsOn = initial.itinerary.segments.first().departure.date,
+                occurrenceLimit = 2
+            )
+        )
 
-        assertEquals(listOf("one", "three"), PlannedJourneyDeduplication.deduplicate(listOf(initial, displayVariant, otherZone)).map { it.id })
+        assertEquals(listOf("one", "three", "four"), PlannedJourneyDeduplication.deduplicate(listOf(initial, displayVariant, otherZone, recurring)).map { it.id })
         assertTrue(PlannedJourneyValidator.validate(PlannedJourneyPersistenceSnapshot(journeys = listOf(initial, displayVariant))).any { it.code == PlannedJourneyValidationCode.DUPLICATE_JOURNEY })
+        assertFalse(PlannedJourneyValidator.validate(PlannedJourneyPersistenceSnapshot(journeys = listOf(initial, recurring))).any { it.code == PlannedJourneyValidationCode.DUPLICATE_JOURNEY })
     }
 
     @Test
@@ -264,7 +333,7 @@ class PlannedJourneyDomainTest {
         val original = journey(
             id = "original",
             segments = listOf(
-                segment("out", rome, bologna, "2026-09-10", "08:00"),
+                segment("x".repeat(120), rome, bologna, "2026-09-10", "08:00"),
                 segment("onward", bologna, milan, "2026-09-10", "10:00")
             ),
             reminder = PlannedJourneyReminder(PlannedJourneyReminderMinutes.TEN),
@@ -284,7 +353,8 @@ class PlannedJourneyDomainTest {
         assertEquals(listOf(milan, bologna), returned.itinerary.segments.map { it.origin })
         assertEquals(listOf(bologna, rome), returned.itinerary.segments.map { it.destination })
         assertTrue(returned.itinerary.segments.all { it.departure == null })
-        assertTrue(returned.itinerary.segments.all { it.id.startsWith("return-") })
+        assertEquals(listOf("return-1", "return-2"), returned.itinerary.segments.map { it.id })
+        assertFalse(PlannedJourneyValidator.validate(returned).any { it.code == PlannedJourneyValidationCode.INVALID_SEGMENT_ID })
     }
 
     private fun assertValid(result: PlannedJourneyValidationResult<PlannedJourney>): PlannedJourney = when (result) {

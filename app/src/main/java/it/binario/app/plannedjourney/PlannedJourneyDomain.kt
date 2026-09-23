@@ -227,7 +227,10 @@ object PlannedJourneyValidator {
     fun validate(draft: PlannedJourneyDraft): List<PlannedJourneyValidationIssue> = buildList {
         validateIdentity(draft.id, draft.label, this)
         validateDraftItinerary(draft.itinerary, this)
-        validateRecurrence(draft.recurrence, draft.itinerary.segments.firstOrNull()?.departure?.date, this)
+        val scheduledSegments = draft.itinerary.segments.mapNotNull { segment ->
+            segment.departure?.let { departure -> PlannedJourneySegment(segment.id, segment.origin, segment.destination, departure) }
+        }
+        validateRecurrence(draft.recurrence, scheduledSegments, this)
         validateChecklist(draft.checklist, this)
     }
 
@@ -237,7 +240,7 @@ object PlannedJourneyValidator {
         }
         validateIdentity(journey.id, journey.label, this)
         validateItinerary(journey.itinerary, this)
-        validateRecurrence(journey.recurrence, journey.itinerary.segments.firstOrNull()?.departure?.date, this)
+        validateRecurrence(journey.recurrence, journey.itinerary.segments, this)
         validateChecklist(journey.checklist, this)
         validateState(journey, this)
     }
@@ -333,19 +336,48 @@ object PlannedJourneyValidator {
 
     private fun validateRecurrence(
         recurrence: PlannedJourneyRecurrence?,
-        firstDepartureDate: LocalDate?,
+        segments: List<PlannedJourneySegment>,
         issues: MutableList<PlannedJourneyValidationIssue>
     ) {
         recurrence ?: return
-        if (recurrence.schemaVersion != PlannedJourneyPersistenceSchema.VERSION ||
-            recurrence.weekdays.isEmpty() || recurrence.weekdays.size > 7 || recurrence.weekdays.distinct().size != recurrence.weekdays.size ||
-            recurrence.occurrenceLimit !in 1..PlannedJourneyPersistenceSchema.MAX_RECURRENCE_OCCURRENCES ||
-            (recurrence.endsOn != null && recurrence.endsOn.isBefore(recurrence.startsOn))
-        ) {
-            issues += issue(PlannedJourneyValidationCode.INVALID_RECURRENCE, "recurrence", "Recurrence must have unique weekdays, a valid bound, and at most ${PlannedJourneyPersistenceSchema.MAX_RECURRENCE_OCCURRENCES} occurrences")
+        val firstDepartureDate = segments.firstOrNull()?.departure?.date
+        val structurallyValid = recurrence.schemaVersion == PlannedJourneyPersistenceSchema.VERSION &&
+            recurrence.weekdays.isNotEmpty() && recurrence.weekdays.size <= 7 &&
+            recurrence.weekdays.distinct().size == recurrence.weekdays.size &&
+            recurrence.startsOn.dayOfWeek in recurrence.weekdays &&
+            recurrence.occurrenceLimit in 1..PlannedJourneyPersistenceSchema.MAX_RECURRENCE_OCCURRENCES &&
+            (recurrence.endsOn == null || !recurrence.endsOn.isBefore(recurrence.startsOn))
+        if (!structurallyValid) {
+            issues += issue(PlannedJourneyValidationCode.INVALID_RECURRENCE, "recurrence", "Recurrence must include its start weekday, have unique weekdays, a valid bound, and at most ${PlannedJourneyPersistenceSchema.MAX_RECURRENCE_OCCURRENCES} occurrences")
         }
         if (firstDepartureDate != null && recurrence.startsOn != firstDepartureDate) {
             issues += issue(PlannedJourneyValidationCode.RECURRENCE_START_MISMATCH, "recurrence.startsOn", "Recurrence must start on the first segment's scheduled local date")
+        }
+        if (structurallyValid && firstDepartureDate == recurrence.startsOn && segments.isNotEmpty() &&
+            !allOccurrencesAreRepresentable(recurrence, segments)
+        ) {
+            issues += issue(
+                PlannedJourneyValidationCode.INVALID_RECURRENCE,
+                "recurrence",
+                "Every generated occurrence must have valid, in-range, chronological local times"
+            )
+        }
+    }
+
+    private fun allOccurrencesAreRepresentable(
+        recurrence: PlannedJourneyRecurrence,
+        segments: List<PlannedJourneySegment>
+    ): Boolean {
+        val rootDate = segments.first().departure.date
+        return PlannedJourneyOccurrences.dates(recurrence).all { occurrenceDate ->
+            val dayOffset = ChronoUnit.DAYS.between(rootDate, occurrenceDate)
+            val shifted = segments.map { segment ->
+                runCatching { segment.departure.shiftDays(dayOffset) }.getOrNull()
+            }
+            shifted.none { it == null } && shifted.filterNotNull().all { it.isValidLocalTime() } &&
+                shifted.filterNotNull().zipWithNext().all { (previous, next) ->
+                    next.scheduledAt().toInstant().isAfter(previous.scheduledAt().toInstant())
+                }
         }
     }
 
@@ -409,25 +441,31 @@ object PlannedJourneyOccurrences {
         var cursor = recurrence.startsOn
         while (result.size < recurrence.occurrenceLimit && (recurrence.endsOn == null || !cursor.isAfter(recurrence.endsOn))) {
             if (cursor.dayOfWeek in enabledDays) result += cursor
-            cursor = cursor.plusDays(1)
+            if (result.size >= recurrence.occurrenceLimit || cursor == recurrence.endsOn || cursor == LocalDate.MAX) break
+            cursor = runCatching { cursor.plusDays(1) }.getOrNull() ?: break
         }
         return result
     }
 
     fun forJourney(journey: PlannedJourney): List<PlannedJourneyOccurrence> {
+        if (PlannedJourneyValidator.validate(journey).isNotEmpty()) return emptyList()
         val firstSegment = journey.itinerary.segments.firstOrNull() ?: return emptyList()
         val rootDate = firstSegment.departure.date
         val occurrenceDates = journey.recurrence?.let(::dates) ?: listOf(rootDate)
-        return occurrenceDates.map { occurrenceDate ->
+        return occurrenceDates.mapNotNull { occurrenceDate ->
             val days = ChronoUnit.DAYS.between(rootDate, occurrenceDate)
-            val scheduledItinerary = PlannedJourneyItinerary(journey.itinerary.segments.map { segment ->
-                segment.copy(departure = segment.departure.shiftDays(days))
-            })
+            val shiftedSegments = journey.itinerary.segments.map { segment ->
+                runCatching { segment.copy(departure = segment.departure.shiftDays(days)) }.getOrNull()
+            }
+            if (shiftedSegments.any { it == null }) return@mapNotNull null
+            val scheduledItinerary = PlannedJourneyItinerary(shiftedSegments.filterNotNull())
+            val scheduledAt = runCatching { scheduledItinerary.segments.first().departure.scheduledAt().toInstant() }
+                .getOrNull() ?: return@mapNotNull null
             PlannedJourneyOccurrence(
                 sourceJourneyId = journey.id,
                 occurrenceDate = occurrenceDate,
                 itinerary = scheduledItinerary,
-                scheduledAt = scheduledItinerary.segments.first().departure.scheduledAt().toInstant(),
+                scheduledAt = scheduledAt,
                 isGeneratedOccurrence = journey.recurrence != null && occurrenceDate != rootDate
             )
         }
@@ -485,14 +523,26 @@ object PlannedJourneyAgenda {
 
 /** Canonical itinerary/schedule deduplication, preserving the first journey supplied. */
 object PlannedJourneyDeduplication {
-    fun fingerprint(journey: PlannedJourney): String = journey.itinerary.segments.joinToString("|") { segment ->
-        listOf(
-            segment.origin.normalizedId(),
-            segment.destination.normalizedId(),
-            segment.departure.date.toString(),
-            segment.departure.time.toString(),
-            segment.departure.timeZone.id
-        ).joinToString("~")
+    fun fingerprint(journey: PlannedJourney): String {
+        val itinerary = journey.itinerary.segments.joinToString("|") { segment ->
+            listOf(
+                segment.origin.normalizedId(),
+                segment.destination.normalizedId(),
+                segment.departure.date.toString(),
+                segment.departure.time.toString(),
+                segment.departure.timeZone.id
+            ).joinToString("~")
+        }
+        val recurrence = journey.recurrence?.let { value ->
+            listOf(
+                value.schemaVersion.toString(),
+                value.weekdays.sortedBy { it.value }.joinToString(",") { it.name },
+                value.startsOn.toString(),
+                value.endsOn?.toString().orEmpty(),
+                value.occurrenceLimit.toString()
+            ).joinToString("~")
+        } ?: "once"
+        return "$itinerary#recurrence:$recurrence"
     }
 
     fun deduplicate(journeys: Iterable<PlannedJourney>): List<PlannedJourney> {
@@ -547,8 +597,8 @@ object PlannedJourneyDrafts {
     fun returnFrom(journey: PlannedJourney, newJourneyId: String, createdAt: Instant): PlannedJourneyDraft = PlannedJourneyDraft(
         id = newJourneyId,
         label = "",
-        itinerary = PlannedJourneyItineraryDraft(journey.itinerary.segments.asReversed().map { segment ->
-            PlannedJourneySegmentDraft("return-${segment.id}", segment.destination, segment.origin)
+        itinerary = PlannedJourneyItineraryDraft(journey.itinerary.segments.asReversed().mapIndexed { index, segment ->
+            PlannedJourneySegmentDraft("return-${index + 1}", segment.destination, segment.origin)
         }),
         createdAt = createdAt
     )
