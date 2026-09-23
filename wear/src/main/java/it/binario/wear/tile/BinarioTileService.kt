@@ -16,7 +16,7 @@ import it.binario.wear.sync.WearSnapshotStore
 /** Glanceable local cache; it never initiates a railway-network request. */
 class BinarioTileService : TileService() {
     override fun onTileRequest(requestParams: RequestBuilders.TileRequest): ListenableFuture<TileBuilders.Tile> {
-        val snapshot = WearSnapshotStore.snapshot(this).value
+        val snapshot = WearSnapshotStore.current(this)
         return immediate(
             TileBuilders.Tile.Builder()
                 .setResourcesVersion(RESOURCES_VERSION)
