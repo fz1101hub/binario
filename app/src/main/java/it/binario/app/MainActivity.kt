@@ -6,13 +6,13 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.location.Location
 import android.location.LocationManager
-import android.net.Uri
 import android.os.Bundle
 import android.os.Build
 import android.speech.RecognizerIntent
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -117,24 +117,28 @@ import java.util.Locale
 private enum class Screen { PLANNER, OPERATIONS, SETTINGS, RESULTS, DETAIL }
 private enum class OperationsSection(val label: String) { TRAINS("Treni"), STATIONS("Stazioni") }
 private enum class SearchMode(val label: String) { ROUTE("Tratta"), TRAIN("N. treno"), STATION("Stazione") }
-private sealed interface BinarioDeepLink {
-    data object ActiveRoute : BinarioDeepLink
-    data object NextDepartures : BinarioDeepLink
-    data class TrainSearch(val number: String) : BinarioDeepLink
-}
 
 class MainActivity : ComponentActivity() {
-    private var deepLink by mutableStateOf<BinarioDeepLink?>(null)
+    private val deepLinkDispatcher = DeepLinkRequestDispatcher()
+    private var deepLinkRequest by mutableStateOf<DeepLinkRequest?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        deepLink = parseBinarioDeepLink(intent)
+        // An Activity recreated from saved state must restore its UI, not replay the
+        // launch Intent and navigate away from the screen the user was using.
+        if (savedInstanceState == null) receiveDeepLinkIntent(intent)
         enableEdgeToEdge()
         setContent {
             val themeSettings = remember { ThemeSettings(applicationContext) }
             BinarioTheme(themeSettings.mode) {
                 val viewModel: TrainViewModel = viewModel()
-                BinarioApp(viewModel, themeSettings.mode, themeSettings::selectMode, deepLink)
+                BinarioApp(
+                    viewModel = viewModel,
+                    themeMode = themeSettings.mode,
+                    onThemeModeChange = themeSettings::selectMode,
+                    deepLinkRequest = deepLinkRequest,
+                    onDeepLinkConsumed = ::consumeDeepLink
+                )
             }
         }
     }
@@ -142,7 +146,15 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        deepLink = parseBinarioDeepLink(intent)
+        receiveDeepLinkIntent(intent)
+    }
+
+    private fun receiveDeepLinkIntent(intent: Intent?) {
+        deepLinkRequest = deepLinkDispatcher.receive(intent?.action, intent?.dataString)
+    }
+
+    private fun consumeDeepLink(requestId: Long) {
+        if (deepLinkDispatcher.consume(requestId)) deepLinkRequest = null
     }
 }
 
@@ -152,11 +164,14 @@ private fun BinarioApp(
     viewModel: TrainViewModel,
     themeMode: AppThemeMode,
     onThemeModeChange: (AppThemeMode) -> Unit,
-    deepLink: BinarioDeepLink?
+    deepLinkRequest: DeepLinkRequest?,
+    onDeepLinkConsumed: (Long) -> Unit
 ) {
     var screen by rememberSaveable { mutableStateOf(Screen.PLANNER) }
     var detailReturnScreen by rememberSaveable { mutableStateOf(Screen.RESULTS) }
     var operationsSectionName by rememberSaveable { mutableStateOf(OperationsSection.TRAINS.name) }
+    var plannerSearchModeName by rememberSaveable { mutableStateOf(SearchMode.ROUTE.name) }
+    var plannerSearchRequestId by rememberSaveable { mutableStateOf(0) }
     var showThemePicker by rememberSaveable { mutableStateOf(false) }
     var pendingStopAlarm by remember { mutableStateOf<StopAlarmPlan?>(null) }
     var stopAlarmFeedback by rememberSaveable { mutableStateOf<String?>(null) }
@@ -186,19 +201,36 @@ private fun BinarioApp(
             }
         }
     }
-    LaunchedEffect(deepLink) {
-        when (deepLink) {
+    LaunchedEffect(deepLinkRequest?.id) {
+        val request = deepLinkRequest ?: return@LaunchedEffect
+        when (val deepLink = request.deepLink) {
             BinarioDeepLink.ActiveRoute, BinarioDeepLink.NextDepartures -> {
                 operationsSectionName = OperationsSection.TRAINS.name
                 screen = Screen.OPERATIONS
             }
             is BinarioDeepLink.TrainSearch -> {
-                viewModel.updateTrainNumberQuery(deepLink.number)
-                screen = Screen.RESULTS
+                viewModel.updateTrainNumberQuery(deepLink.number.orEmpty())
+                plannerSearchModeName = SearchMode.TRAIN.name
+                plannerSearchRequestId += 1
+                screen = Screen.PLANNER
             }
-            null -> Unit
+        }
+        // Clear the event only after applying it. Subsequent recompositions and
+        // lifecycle restores therefore cannot replay the same external navigation.
+        onDeepLinkConsumed(request.id)
+    }
+    val plannerSearchMode = SearchMode.valueOf(plannerSearchModeName)
+    val navigateBack = {
+        when (screen) {
+            Screen.DETAIL -> {
+                viewModel.closeService()
+                screen = detailReturnScreen
+            }
+            Screen.RESULTS -> screen = Screen.PLANNER
+            else -> Unit
         }
     }
+    BackHandler(enabled = screen == Screen.DETAIL || screen == Screen.RESULTS, onBack = navigateBack)
     val title = when (screen) {
         Screen.PLANNER -> "Cerca e consulta"
         Screen.OPERATIONS -> "Consulta"
@@ -232,12 +264,7 @@ private fun BinarioApp(
                 },
                 navigationIcon = {
                     if (screen == Screen.DETAIL || screen == Screen.RESULTS) {
-                        IconButton(onClick = {
-                            if (screen == Screen.DETAIL) {
-                                viewModel.closeService()
-                                screen = detailReturnScreen
-                            } else screen = Screen.PLANNER
-                        }) {
+                        IconButton(onClick = navigateBack) {
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Torna indietro")
                         }
                     }
@@ -285,6 +312,8 @@ private fun BinarioApp(
             Screen.PLANNER -> PlannerScreen(
                 modifier = Modifier.padding(padding),
                 viewModel = viewModel,
+                initialMode = plannerSearchMode,
+                modeRequestId = plannerSearchRequestId,
                 showResults = { screen = Screen.RESULTS },
                 openMore = { screen = Screen.SETTINGS },
                 openStations = { station ->
@@ -317,8 +346,14 @@ private fun BinarioApp(
                 viewModel = viewModel,
                 openDetails = { service -> detailReturnScreen = Screen.RESULTS; viewModel.openService(service); screen = Screen.DETAIL }
             )
-            Screen.DETAIL -> viewModel.selectedService?.let { service ->
-                ServiceDetailScreen(
+            Screen.DETAIL -> {
+                val service = viewModel.selectedService
+                if (service == null) {
+                    // The selected service is intentionally in-memory. After process
+                    // death, a restored DETAIL screen returns to its saved parent
+                    // instead of showing an empty screen or recreating stale data.
+                    LaunchedEffect(detailReturnScreen) { screen = detailReturnScreen }
+                } else ServiceDetailScreen(
                     modifier = Modifier.padding(padding),
                     service = service,
                     provider = viewModel.currentProviderLabel(),
@@ -503,6 +538,8 @@ private fun BoardCommandBar(onOpenSearch: () -> Unit) {
 private fun PlannerScreen(
     modifier: Modifier,
     viewModel: TrainViewModel,
+    initialMode: SearchMode,
+    modeRequestId: Int,
     showResults: () -> Unit,
     openMore: () -> Unit,
     openStations: (Station?) -> Unit
@@ -511,7 +548,7 @@ private fun PlannerScreen(
     var destinationText by rememberSaveable { mutableStateOf(viewModel.plannerDestinationText()) }
     var returnJourney by rememberSaveable { mutableStateOf(false) }
     var showFilters by rememberSaveable { mutableStateOf(false) }
-    var mode by rememberSaveable { mutableStateOf(SearchMode.ROUTE) }
+    var mode by rememberSaveable { mutableStateOf(initialMode) }
     var stationText by rememberSaveable { mutableStateOf("") }
     var travelDate by rememberSaveable { mutableStateOf(LocalDate.now().toString()) }
     var travelTime by rememberSaveable { mutableStateOf(LocalTime.now().withSecond(0).withNano(0).toString()) }
@@ -524,6 +561,7 @@ private fun PlannerScreen(
     var speechMessage by rememberSaveable { mutableStateOf<String?>(null) }
     var voiceTargetName by rememberSaveable { mutableStateOf(SearchMode.ROUTE.name) }
     val context = LocalContext.current
+    LaunchedEffect(modeRequestId) { mode = initialMode }
     val voiceLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         val voiceTarget = SearchMode.valueOf(voiceTargetName)
         val spoken = if (result.resultCode == Activity.RESULT_OK) {
@@ -2115,24 +2153,6 @@ private fun IntegrationChoice(title: String, detail: String, selected: Boolean, 
             Text(detail, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         FilterChip(selected = selected, onClick = onClick, label = { Text(if (selected) "Attivo" else "Non attivo") })
-    }
-}
-
-private fun parseBinarioDeepLink(intent: Intent?): BinarioDeepLink? {
-    if (intent?.action != Intent.ACTION_VIEW) return null
-    val uri: Uri = intent.data ?: return null
-    if (uri.scheme != "binario") return null
-    return when {
-        uri.host == "route" && uri.pathSegments == listOf("active") -> BinarioDeepLink.ActiveRoute
-        uri.host == "departures" && uri.pathSegments == listOf("next") -> BinarioDeepLink.NextDepartures
-        uri.host == "train" && uri.pathSegments == listOf("search") -> {
-            val number = uri.getQueryParameter("number")
-                ?.filter { it.isLetterOrDigit() }
-                ?.take(12)
-                ?.takeIf { it.isNotBlank() }
-            number?.let(BinarioDeepLink::TrainSearch)
-        }
-        else -> null
     }
 }
 
