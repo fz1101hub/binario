@@ -39,6 +39,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.BrightnessAuto
+import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Info
@@ -113,6 +114,13 @@ import it.binario.app.data.core.OperationalRouteChange
 import it.binario.app.data.core.RunStatus
 import it.binario.app.data.core.StationBoardEntry
 import it.binario.app.data.core.RouteChangeKind
+import it.binario.app.plannedjourney.PlannedJourneyAgendaScreen
+import it.binario.app.plannedjourney.PlannedJourneyIcsContract
+import it.binario.app.plannedjourney.PlannedJourneyRepository
+import it.binario.app.plannedjourney.PlannedJourneyStation
+import it.binario.app.plannedjourney.PlannedJourneyTransferContract
+import it.binario.app.plannedjourney.PlannedJourneyViewModel
+import it.binario.app.plannedjourney.SharedPreferencesPlannedJourneyStorage
 import it.binario.app.widget.WidgetConfigurationStore
 import it.binario.app.widget.WidgetStateStore
 import java.time.LocalDate
@@ -124,7 +132,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-private enum class Screen { PLANNER, OPERATIONS, SETTINGS, RESULTS, DETAIL }
+private enum class Screen { PLANNER, OPERATIONS, AGENDA, SETTINGS, RESULTS, DETAIL }
 internal enum class OperationsSection { TRAINS, STATIONS }
 private enum class SearchMode { ROUTE, TRAIN, STATION }
 
@@ -255,6 +263,43 @@ private fun BinarioApp(
     }
     var stopAlarmFeedback by rememberSaveable { mutableStateOf<String?>(null) }
     val context = LocalContext.current
+    val plannedJourneyViewModel = remember {
+        PlannedJourneyViewModel(
+            PlannedJourneyRepository(SharedPreferencesPlannedJourneyStorage(context.applicationContext))
+        )
+    }
+    var plannedJourneyExport by remember { mutableStateOf<PlannedJourneyExport?>(null) }
+    val plannedJourneyExportLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/octet-stream")
+    ) { uri ->
+        val export = plannedJourneyExport
+        plannedJourneyExport = null
+        if (uri != null && export != null) {
+            runCatching {
+                context.contentResolver.openOutputStream(uri)?.bufferedWriter()?.use { it.write(export.content) }
+                    ?: error("Impossibile aprire il file scelto")
+            }.onSuccess {
+                plannedJourneyViewModel.note("Esportazione completata.")
+            }.onFailure { error ->
+                plannedJourneyViewModel.note("Esportazione non riuscita: ${error.message ?: "errore file"}")
+            }
+        }
+    }
+    val plannedJourneyImportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) {
+            runCatching {
+                context.contentResolver.openInputStream(uri)?.use(::readBoundedPlannedJourneyDocument)
+                    ?: error("Impossibile leggere il file scelto")
+            }.onSuccess { content ->
+                plannedJourneyViewModel.previewImport(
+                    content = content,
+                    isIcs = content.trimStart().startsWith("BEGIN:VCALENDAR")
+                )
+            }.onFailure { error ->
+                plannedJourneyViewModel.note("Importazione non riuscita: ${error.message ?: "errore file"}")
+            }
+        }
+    }
     val notificationPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         val plan = pendingStopAlarm
         pendingStopAlarm = null
@@ -317,6 +362,7 @@ private fun BinarioApp(
         when (screen) {
             Screen.PLANNER -> R.string.screen_title_planner
             Screen.OPERATIONS -> R.string.screen_title_operations
+            Screen.AGENDA -> R.string.screen_title_agenda
             Screen.SETTINGS -> R.string.screen_title_settings
             Screen.RESULTS -> R.string.screen_title_results
             Screen.DETAIL -> R.string.screen_title_detail
@@ -326,6 +372,7 @@ private fun BinarioApp(
         when (screen) {
             Screen.PLANNER -> R.string.screen_subtitle_planner
             Screen.OPERATIONS -> R.string.screen_subtitle_operations
+            Screen.AGENDA -> R.string.screen_subtitle_agenda
             Screen.SETTINGS -> R.string.screen_subtitle_settings
             Screen.RESULTS -> R.string.screen_subtitle_results
             Screen.DETAIL -> R.string.screen_subtitle_detail
@@ -384,6 +431,12 @@ private fun BinarioApp(
                         label = { Text(stringResource(R.string.nav_operations)) }
                     )
                     NavigationBarItem(
+                        selected = screen == Screen.AGENDA,
+                        onClick = { screen = Screen.AGENDA },
+                        icon = { Icon(Icons.Default.CalendarMonth, contentDescription = null) },
+                        label = { Text(stringResource(R.string.nav_agenda)) }
+                    )
+                    NavigationBarItem(
                         selected = screen == Screen.SETTINGS,
                         onClick = { screen = Screen.SETTINGS },
                         icon = { Icon(Icons.Default.Info, contentDescription = null) },
@@ -416,6 +469,24 @@ private fun BinarioApp(
                 openDetails = { service -> detailReturnScreen = Screen.OPERATIONS; viewModel.openService(service); screen = Screen.DETAIL },
                 openRoutes = { screen = Screen.SETTINGS },
                 openSearch = { screen = Screen.PLANNER }
+            )
+            Screen.AGENDA -> PlannedJourneyAgendaScreen(
+                modifier = Modifier.padding(padding),
+                viewModel = plannedJourneyViewModel,
+                stations = viewModel.stations.map { station ->
+                    PlannedJourneyStation(station.id, station.name, station.railwayCode)
+                },
+                onExportJson = { content ->
+                    plannedJourneyExport = PlannedJourneyExport("binario-viaggi-pianificati.json", content)
+                    plannedJourneyExportLauncher.launch("binario-viaggi-pianificati.json")
+                },
+                onExportIcs = { content ->
+                    plannedJourneyExport = PlannedJourneyExport("binario-agenda.ics", content)
+                    plannedJourneyExportLauncher.launch("binario-agenda.ics")
+                },
+                onImportRequested = {
+                    plannedJourneyImportLauncher.launch(arrayOf("application/json", "text/calendar", "text/plain"))
+                }
             )
             Screen.SETTINGS -> SettingsScreen(
                 modifier = Modifier.padding(padding),
@@ -479,6 +550,21 @@ private fun BinarioApp(
             }
         }
     }
+}
+
+private data class PlannedJourneyExport(val suggestedName: String, val content: String)
+
+private fun readBoundedPlannedJourneyDocument(input: java.io.InputStream): String {
+    val limit = maxOf(PlannedJourneyTransferContract.MAX_BYTES, PlannedJourneyIcsContract.MAX_BYTES)
+    val output = java.io.ByteArrayOutputStream()
+    val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+    while (true) {
+        val read = input.read(buffer)
+        if (read <= 0) break
+        require(output.size() + read <= limit) { "Il file supera il limite di importazione di $limit byte" }
+        output.write(buffer, 0, read)
+    }
+    return output.toString(Charsets.UTF_8.name())
 }
 
 private fun stopAlarmScheduleFeedback(result: DeviceAlarmScheduleResult, plan: StopAlarmPlan): String =
