@@ -11,11 +11,8 @@ android {
     versionCode 1
     versionName "0.1.0"
   }
-  // Use AGP's standard debug signing; CI must not depend on a repository-local keystore.
-buildTypes {
-    debug {
-
-    }
+  buildTypes {
+    debug {}
     release {
       // Production signing is supplied only by the release environment.
     }
@@ -28,4 +25,5 @@ dependencies {
   implementation("androidx.activity:activity-ktx:1.10.1")
   implementation("com.google.android.gms:play-services-wearable:20.0.1")
   implementation("com.google.guava:guava:33.5.0-android")
+  testImplementation("junit:junit:4.13.2")
 }
