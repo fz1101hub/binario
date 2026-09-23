@@ -110,9 +110,9 @@
     </LinearLayout>
 
     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="6dp" android:orientation="horizontal">
-        <TextView android:id="@+id/widget_previous_page" style="@style/Binario.Widget.Action" android:contentDescription="Pagina precedente" android:text="‹" />
-        <TextView android:id="@+id/widget_direction" style="@style/Binario.Widget.Action" android:layout_width="0dp" android:layout_weight="1" android:contentDescription="Cambia direzione o modifica widget" android:text="ANDATA" />
-        <TextView android:id="@+id/widget_next_page" style="@style/Binario.Widget.Action" android:contentDescription="Pagina successiva" android:text="›" />
-        <TextView android:id="@+id/widget_refresh" style="@style/Binario.Widget.Action" android:contentDescription="Aggiorna" android:text="↻" />
+        <TextView android:id="@+id/widget_previous_page" style="@style/Binario.Widget.Action" android:contentDescription="@string/widget_previous_page" android:text="@string/widget_previous_symbol" />
+        <TextView android:id="@+id/widget_direction" style="@style/Binario.Widget.Action" android:layout_width="0dp" android:layout_weight="1" android:contentDescription="@string/widget_switch_direction" android:text="@string/widget_default_direction" />
+        <TextView android:id="@+id/widget_next_page" style="@style/Binario.Widget.Action" android:contentDescription="@string/widget_next_page" android:text="@string/widget_next_symbol" />
+        <TextView android:id="@+id/widget_refresh" style="@style/Binario.Widget.Action" android:contentDescription="@string/widget_refresh" android:text="@string/widget_refresh_label" />
     </LinearLayout>
 </LinearLayout>

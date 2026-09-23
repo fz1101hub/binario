@@ -10,6 +10,7 @@
     <string name="widget_open_app">Apri Binario</string>
     <string name="widget_previous_symbol">‹</string>
     <string name="widget_next_symbol">›</string>
+    <string name="widget_refresh_symbol">↻</string>
     <string name="widget_default_direction">Andata</string>
     <string name="widget_refresh_label">Aggiorna</string>
     <string name="widget_column_time">ORA</string>
@@ -117,4 +118,119 @@
     <string name="station_board_platform_accessible">Binario %1$s</string>
     <string name="station_board_platform_unavailable">Binario non disponibile</string>
     <string name="station_board_entry_accessibility">%1$s. %2$s. %3$s. %4$s. %5$s.</string>
+
+    <!-- Search and station board. -->
+    <string name="planner_voice_route">Detta tratta</string>
+    <string name="planner_departure_station">STAZIONE PARTENZA</string>
+    <string name="planner_arrival_station">STAZIONE ARRIVO</string>
+    <string name="planner_origin">Partenza</string>
+    <string name="planner_destination">Arrivo</string>
+    <string name="action_swap_origin_destination">Inverti partenza e arrivo</string>
+    <string name="planner_one_way">Sola andata</string>
+    <string name="planner_round_trip">Andata e ritorno</string>
+    <string name="planner_outbound_date">ANDATA · DATA</string>
+    <string name="planner_outbound_time">ANDATA · ORA</string>
+    <string name="planner_return_date">RITORNO · DATA</string>
+    <string name="planner_return_time">RITORNO · ORA</string>
+    <string name="accessibility_select_outbound_date">Seleziona data andata. Valore attuale %1$s</string>
+    <string name="accessibility_select_outbound_time">Seleziona ora andata. Valore attuale %1$s</string>
+    <string name="accessibility_select_return_date">Seleziona data ritorno. Valore attuale %1$s</string>
+    <string name="accessibility_select_return_time">Seleziona ora ritorno. Valore attuale %1$s</string>
+    <string name="planner_return_after_outbound">Il ritorno deve essere successivo alla partenza dell’andata.</string>
+    <string name="planner_filters_open">Filtri aperti</string>
+    <string name="planner_filters_all_trains">Filtri · Tutti i treni</string>
+    <string name="planner_filter_disclosure">Il filtro viene applicato solo quando la fonte restituisce informazioni sui cambi; Binario non li stima.</string>
+    <string name="planner_search_round_trip">Cerca andata e ritorno</string>
+    <string name="planner_search_solutions">Cerca soluzioni</string>
+    <string name="planner_voice_train">Detta numero treno</string>
+    <string name="planner_train_filter_title">FILTRO NUMERO TRENO NELLA TRATTA</string>
+    <string name="planner_train_filter_description">Questa ricerca filtra i treni della tratta attiva. La ricerca nazionale per solo numero richiede un provider TrainRun dedicato e non viene simulata.</string>
+    <string name="planner_train_number">Numero treno</string>
+    <string name="planner_train_number_example">Es. 9310</string>
+    <string name="planner_choose_route_first">Scegli prima una tratta da consultare.</string>
+    <string name="planner_filter_train">Filtra treno nella tratta</string>
+    <string name="planner_voice_station">Detta stazione</string>
+    <string name="planner_station_board_title">TABELLONE STAZIONE</string>
+    <string name="station_label">Stazione</string>
+    <string name="planner_open_station_board">Apri tabellone</string>
+    <string name="planner_recent_and_favourite">Recenti e preferite</string>
+    <string name="planner_recent_search">Ricerca recente</string>
+    <string name="action_manage">Gestisci</string>
+    <string name="accessibility_repeat_search">Ripeti ricerca %1$s</string>
+    <string name="accessibility_use_route">Usa tratta %1$s</string>
+    <string name="planner_round_trip_results">%1$d andata · %2$d ritorno</string>
+    <string name="planner_outbound">ANDATA</string>
+    <string name="planner_return">RITORNO</string>
+    <string name="search_outbound_loading_title">Caricamento andata</string>
+    <string name="search_outbound_loading_message">Sto cercando le soluzioni programmate e le eventuali informazioni operative disponibili.</string>
+    <string name="search_outbound_unavailable_title">Andata non disponibile</string>
+    <string name="search_outbound_unavailable_message">La fonte non ha restituito questa tratta.</string>
+    <string name="search_outbound_empty_title">Nessuna soluzione di andata</string>
+    <string name="search_outbound_empty_message">Modifica la ricerca o scegli una tratta differente.</string>
+    <string name="search_return_loading_title">Caricamento ritorno</string>
+    <string name="search_return_loading_message">Sto cercando le soluzioni di ritorno con la data e l’ora selezionate.</string>
+    <string name="search_return_unavailable_title">Ritorno non disponibile</string>
+    <string name="search_return_unavailable_message">La fonte non ha restituito il ritorno richiesto.</string>
+    <string name="search_return_empty_title">Nessuna soluzione di ritorno</string>
+    <string name="search_return_empty_message">Modifica data o ora del ritorno e riprova.</string>
+    <string name="station_board_title">Tabellone stazione</string>
+    <string name="station_board_section">TABELLONE</string>
+    <string name="station_board_departures">Partenze</string>
+    <string name="station_board_arrivals">Arrivi</string>
+    <string name="station_board_load">Carica tabellone</string>
+    <string name="station_board_refresh">Aggiorna tabellone</string>
+    <string name="station_board_live_disabled_title">Tabellone live non attivo</string>
+    <string name="station_board_live_disabled_message">Questa build non abilita automaticamente fonti tabellone best-effort. Attivale esplicitamente in una build personale oppure usa un provider autorizzato; Binario non genera partenze artificiali.</string>
+    <string name="station_board_loading_title">Caricamento tabellone</string>
+    <string name="station_board_loading_message">Sto interrogando le fonti abilitate e riconciliando le informazioni per singolo campo.</string>
+    <string name="station_board_unavailable_title">Tabellone non disponibile</string>
+    <string name="station_board_unavailable_message">Le fonti abilitate non hanno restituito dati utilizzabili.</string>
+    <string name="station_board_empty_title">Nessun movimento nella finestra</string>
+    <string name="station_board_empty_message">Le fonti abilitate non hanno restituito partenze o arrivi nella finestra richiesta.</string>
+    <string name="station_board_favourites">Stazioni preferite</string>
+    <string name="station_board_nearby">Stazioni più vicine</string>
+    <string name="station_board_local_monitoring">Monitoraggio locale</string>
+    <string name="station_board_start_monitoring">Monitora questa stazione</string>
+    <string name="station_board_stop_monitoring">Rimuovi monitoraggio stazione</string>
+    <string name="station_board_find_nearby">Trova stazioni vicine</string>
+    <string name="accessibility_find_nearby_stations">Trova le stazioni vicine. La posizione viene usata una sola volta e non viene salvata.</string>
+    <string name="station_board_departures_uppercase">PARTENZE</string>
+    <string name="station_board_arrivals_uppercase">ARRIVI</string>
+    <string name="station_suggestion_free_text">Cerca “%1$s” nelle fonti disponibili</string>
+
+    <!-- Local commuter alerts. -->
+    <string name="commuter_alerts_title">Avvisi pendolare</string>
+    <string name="commuter_alerts_description">Promemoria locali con anticipo, ricorrenza e fascia silenziosa. Non si aggiornano con i ritardi senza una fonte autorizzata.</string>
+    <string name="commuter_alerts_create">Crea avviso pendolare</string>
+    <string name="accessibility_remove_commuter_alert">Elimina avviso per %1$s</string>
+    <string name="commuter_alert_sheet_title">Avviso pendolare</string>
+    <string name="commuter_alert_station">Fermata</string>
+    <string name="commuter_alert_time">Orario: %1$s</string>
+    <string name="commuter_alert_lead">Anticipo</string>
+    <string name="commuter_alert_repeat">Ripetizione</string>
+    <string name="commuter_alert_quiet_hours">Fascia silenziosa 22:00–07:00</string>
+    <string name="commuter_alert_save">Salva avviso</string>
+
+    <!-- App widget. -->
+    <string name="widget_page_label">PAG %1$d/%2$d</string>
+    <string name="widget_route_accessibility">Apri Binario. %1$s. %2$s. %3$s</string>
+    <string name="widget_platform_short">BIN %1$s</string>
+    <string name="widget_configuration_title">CONFIGURA BINARIO</string>
+    <string name="widget_configuration_subtitle">SCEGLI UNA TRATTA</string>
+    <string name="widget_configuration_action">Configura</string>
+    <string name="widget_open_action">Apri</string>
+    <string name="widget_unavailable_meta">%1$s · DATI NON DISPONIBILI</string>
+    <string name="widget_unavailable_accessibility">%1$s. Dati non disponibili. %2$s</string>
+    <string name="widget_never_updated">MAI AGG.</string>
+    <string name="widget_updated_at">AGG. %1$s</string>
+    <string name="widget_default_provider">Provider non disponibile</string>
+
+    <plurals name="search_results_count">
+        <item quantity="one">%d risultato</item>
+        <item quantity="other">%d risultati</item>
+    </plurals>
+    <plurals name="minutes_short">
+        <item quantity="one">%d min</item>
+        <item quantity="other">%d min</item>
+    </plurals>
 </resources>

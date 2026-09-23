@@ -35,12 +35,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import it.binario.app.BinarioTheme
+import it.binario.app.R
 import it.binario.app.ThemeSettings
 import it.binario.app.TrainViewModel
 import it.binario.app.data.Station
@@ -148,8 +150,8 @@ class WidgetConfigureActivity : ComponentActivity() {
                             )
                             if (targetType == WidgetTargetType.ROUTE) {
                                 Text("Inserisci la tratta", style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 10.dp, start = 4.dp))
-                                WidgetStationField("Partenza", routeOriginText, { routeOriginText = it }, model)
-                                WidgetStationField("Arrivo", routeDestinationText, { routeDestinationText = it }, model)
+                                WidgetStationField("Partenza", routeOriginText, { routeOriginText = it }, model, "widget-origin")
+                                WidgetStationField("Arrivo", routeDestinationText, { routeDestinationText = it }, model, "widget-destination")
                                 if (model.savedRoutes.isNotEmpty()) {
                                     Text("Tratte salvate (facoltative)", style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(top = 6.dp, start = 4.dp))
                                     model.savedRoutes.take(4).forEach { route ->
@@ -186,15 +188,33 @@ class WidgetConfigureActivity : ComponentActivity() {
 }
 
 @androidx.compose.runtime.Composable
-private fun WidgetStationField(label: String, value: String, onValueChange: (String) -> Unit, model: TrainViewModel) {
-    val matches = model.searchStations(value)
+private fun WidgetStationField(
+    label: String,
+    value: String,
+    onValueChange: (String) -> Unit,
+    model: TrainViewModel,
+    fieldKey: String
+) {
+    val matches = model.stationSuggestions(fieldKey)
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        OutlinedTextField(value = value, onValueChange = onValueChange, modifier = Modifier.fillMaxWidth(), label = { Text(label) }, singleLine = true)
+        OutlinedTextField(
+            value = value,
+            onValueChange = { query ->
+                onValueChange(query)
+                model.updateStationSuggestions(fieldKey, query)
+            },
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text(label) },
+            singleLine = true
+        )
         matches.take(4).forEach { station ->
             WidgetChoiceButton(
-                if (station.id.startsWith("manual:")) "Cerca “${station.name}” nelle fonti disponibili" else station.name,
+                if (station.id.startsWith("manual:")) stringResource(R.string.station_suggestion_free_text, station.name) else station.name,
                 false
-            ) { onValueChange(station.name) }
+            ) {
+                onValueChange(station.name)
+                model.clearStationSuggestions(fieldKey)
+            }
         }
     }
 }

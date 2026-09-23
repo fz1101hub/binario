@@ -87,6 +87,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -902,19 +903,31 @@ private fun PlannerScreen(
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         when (mode) {
                         SearchMode.ROUTE -> {
-                        VoiceInputButton(onClick = { startVoiceInput(SearchMode.ROUTE) }, label = "Detta tratta")
+                        VoiceInputButton(onClick = { startVoiceInput(SearchMode.ROUTE) }, label = stringResource(R.string.planner_voice_route))
                         speechMessage?.let { message -> Text(message, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-                        Text("STAZIONE PARTENZA", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
-                        StationField("Partenza", originText, { originText = it }, viewModel.searchStations(originText), { originText = it.name })
+                        Text(stringResource(R.string.planner_departure_station), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                        StationField(
+                            label = stringResource(R.string.planner_origin),
+                            value = originText,
+                            onValueChange = { originText = it; viewModel.updateStationSuggestions("planner-origin", it) },
+                            matches = viewModel.stationSuggestions("planner-origin"),
+                            onSelect = { originText = it.name; viewModel.clearStationSuggestions("planner-origin") }
+                        )
                         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                            Text("STAZIONE ARRIVO", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                            Text(stringResource(R.string.planner_arrival_station), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
                             IconButton(onClick = { val old = originText; originText = destinationText; destinationText = old }) {
-                                Icon(Icons.Default.SwapHoriz, contentDescription = "Inverti partenza e arrivo")
+                                Icon(Icons.Default.SwapHoriz, contentDescription = stringResource(R.string.action_swap_origin_destination))
                             }
                         }
-                        StationField("Arrivo", destinationText, { destinationText = it }, viewModel.searchStations(destinationText), { destinationText = it.name })
+                        StationField(
+                            label = stringResource(R.string.planner_destination),
+                            value = destinationText,
+                            onValueChange = { destinationText = it; viewModel.updateStationSuggestions("planner-destination", it) },
+                            matches = viewModel.stationSuggestions("planner-destination"),
+                            onSelect = { destinationText = it.name; viewModel.clearStationSuggestions("planner-destination") }
+                        )
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                            FilterChip(selected = !returnJourney, onClick = { returnJourney = false }, label = { Text("Sola andata") })
+                            FilterChip(selected = !returnJourney, onClick = { returnJourney = false }, label = { Text(stringResource(R.string.planner_one_way)) })
                             FilterChip(
                                 selected = returnJourney,
                                 onClick = {
@@ -928,41 +941,57 @@ private fun PlannerScreen(
                                         returnTime = outboundTime.toString()
                                     }
                                 },
-                                label = { Text("Andata e ritorno") }
+                                label = { Text(stringResource(R.string.planner_round_trip)) }
                             )
                         }
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                            val outboundDateDescription = stringResource(
+                                R.string.accessibility_select_outbound_date,
+                                PlannerDateTime.dateLabel(travelDate)
+                            )
+                            val outboundTimeDescription = stringResource(
+                                R.string.accessibility_select_outbound_time,
+                                PlannerDateTime.timeLabel(travelTime)
+                            )
                             OutlinedButton(
                                 onClick = { showDatePicker = true },
-                                modifier = Modifier.weight(1f).semantics { contentDescription = "Seleziona data andata. Valore attuale ${PlannerDateTime.dateLabel(travelDate)}" }
+                                modifier = Modifier.weight(1f).semantics { contentDescription = outboundDateDescription }
                             ) {
-                                Column(horizontalAlignment = Alignment.Start) { Text("ANDATA · DATA", style = MaterialTheme.typography.labelSmall); Text(PlannerDateTime.dateLabel(travelDate), fontWeight = FontWeight.Bold) }
+                                Column(horizontalAlignment = Alignment.Start) { Text(stringResource(R.string.planner_outbound_date), style = MaterialTheme.typography.labelSmall); Text(PlannerDateTime.dateLabel(travelDate), fontWeight = FontWeight.Bold) }
                             }
                             OutlinedButton(
                                 onClick = { showTimePicker = true },
-                                modifier = Modifier.weight(1f).semantics { contentDescription = "Seleziona ora andata. Valore attuale ${PlannerDateTime.timeLabel(travelTime)}" }
+                                modifier = Modifier.weight(1f).semantics { contentDescription = outboundTimeDescription }
                             ) {
-                                Column(horizontalAlignment = Alignment.Start) { Text("ANDATA · ORA", style = MaterialTheme.typography.labelSmall); Text(PlannerDateTime.timeLabel(travelTime), fontWeight = FontWeight.Bold) }
+                                Column(horizontalAlignment = Alignment.Start) { Text(stringResource(R.string.planner_outbound_time), style = MaterialTheme.typography.labelSmall); Text(PlannerDateTime.timeLabel(travelTime), fontWeight = FontWeight.Bold) }
                             }
                         }
                         if (returnJourney) {
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                                val returnDateDescription = stringResource(
+                                    R.string.accessibility_select_return_date,
+                                    PlannerDateTime.dateLabel(returnDate)
+                                )
+                                val returnTimeDescription = stringResource(
+                                    R.string.accessibility_select_return_time,
+                                    PlannerDateTime.timeLabel(returnTime)
+                                )
                                 OutlinedButton(
                                     onClick = { showReturnDatePicker = true },
-                                    modifier = Modifier.weight(1f).semantics { contentDescription = "Seleziona data ritorno. Valore attuale ${PlannerDateTime.dateLabel(returnDate)}" }
+                                    modifier = Modifier.weight(1f).semantics { contentDescription = returnDateDescription }
                                 ) {
-                                    Column(horizontalAlignment = Alignment.Start) { Text("RITORNO · DATA", style = MaterialTheme.typography.labelSmall); Text(PlannerDateTime.dateLabel(returnDate), fontWeight = FontWeight.Bold) }
+                                    Column(horizontalAlignment = Alignment.Start) { Text(stringResource(R.string.planner_return_date), style = MaterialTheme.typography.labelSmall); Text(PlannerDateTime.dateLabel(returnDate), fontWeight = FontWeight.Bold) }
                                 }
                                 OutlinedButton(
                                     onClick = { showReturnTimePicker = true },
-                                    modifier = Modifier.weight(1f).semantics { contentDescription = "Seleziona ora ritorno. Valore attuale ${PlannerDateTime.timeLabel(returnTime)}" }
+                                    modifier = Modifier.weight(1f).semantics { contentDescription = returnTimeDescription }
                                 ) {
-                                    Column(horizontalAlignment = Alignment.Start) { Text("RITORNO · ORA", style = MaterialTheme.typography.labelSmall); Text(PlannerDateTime.timeLabel(returnTime), fontWeight = FontWeight.Bold) }
+                                    Column(horizontalAlignment = Alignment.Start) { Text(stringResource(R.string.planner_return_time), style = MaterialTheme.typography.labelSmall); Text(PlannerDateTime.timeLabel(returnTime), fontWeight = FontWeight.Bold) }
                                 }
                             }
                             if (!roundTripChronologyValid) {
                                 Text(
-                                    "Il ritorno deve essere successivo alla partenza dell’andata.",
+                                    stringResource(R.string.planner_return_after_outbound),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.error
                                 )
@@ -971,13 +1000,13 @@ private fun PlannerScreen(
                         FilterChip(
                             selected = showFilters,
                             onClick = { showFilters = !showFilters },
-                            label = { Text(if (showFilters) "Filtri aperti" else "Filtri · Tutti i treni") },
+                            label = { Text(stringResource(if (showFilters) R.string.planner_filters_open else R.string.planner_filters_all_trains)) },
                             leadingIcon = { Icon(Icons.Default.Info, contentDescription = null, modifier = Modifier.size(18.dp)) }
                         )
                         if (showFilters) {
                             JourneyChangeFilterBar(viewModel.journeyChangeFilter, viewModel::selectJourneyChangeFilter)
                             OperatorFilterBar(viewModel.operatorFilter, viewModel.operatorFilterOptions(), viewModel::selectOperatorFilter)
-                            Text("Il filtro viene applicato solo quando la fonte restituisce informazioni sui cambi; Binario non li stima.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(stringResource(R.string.planner_filter_disclosure), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         Button(
                             onClick = {
@@ -1018,15 +1047,15 @@ private fun PlannerScreen(
                         ) {
                             Icon(Icons.Default.Search, contentDescription = null)
                             Spacer(Modifier.width(8.dp))
-                            Text(if (returnJourney) "Cerca andata e ritorno" else "Cerca soluzioni")
+                            Text(stringResource(if (returnJourney) R.string.planner_search_round_trip else R.string.planner_search_solutions))
                         }
                         }
                         SearchMode.TRAIN -> {
-                            VoiceInputButton(onClick = { startVoiceInput(SearchMode.TRAIN) }, label = "Detta numero treno")
+                            VoiceInputButton(onClick = { startVoiceInput(SearchMode.TRAIN) }, label = stringResource(R.string.planner_voice_train))
                             speechMessage?.let { message -> Text(message, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-                            Text("FILTRO NUMERO TRENO NELLA TRATTA", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                            Text(stringResource(R.string.planner_train_filter_title), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
                             Text(
-                                "Questa ricerca filtra i treni della tratta attiva. La ricerca nazionale per solo numero richiede un provider TrainRun dedicato e non viene simulata.",
+                                stringResource(R.string.planner_train_filter_description),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -1035,12 +1064,12 @@ private fun PlannerScreen(
                                 onValueChange = viewModel::updateTrainNumberQuery,
                                 modifier = Modifier.fillMaxWidth(),
                                 singleLine = true,
-                                label = { Text("Numero treno") },
-                                placeholder = { Text("Es. 9310") },
+                                label = { Text(stringResource(R.string.planner_train_number)) },
+                                placeholder = { Text(stringResource(R.string.planner_train_number_example)) },
                                 leadingIcon = { Icon(Icons.Default.Train, contentDescription = null) }
                             )
                             if (!viewModel.hasActiveRoute) {
-                                Text("Scegli prima una tratta da consultare.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+                                Text(stringResource(R.string.planner_choose_route_first), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
                             }
                             Button(
                                 onClick = { viewModel.refresh(); showResults() },
@@ -1049,14 +1078,20 @@ private fun PlannerScreen(
                             ) {
                                 Icon(Icons.Default.Search, contentDescription = null)
                                 Spacer(Modifier.width(8.dp))
-                                Text("Filtra treno nella tratta")
+                                Text(stringResource(R.string.planner_filter_train))
                             }
                         }
                         SearchMode.STATION -> {
-                            VoiceInputButton(onClick = { startVoiceInput(SearchMode.STATION) }, label = "Detta stazione")
+                            VoiceInputButton(onClick = { startVoiceInput(SearchMode.STATION) }, label = stringResource(R.string.planner_voice_station))
                             speechMessage?.let { message -> Text(message, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-                            Text("TABELLONE STAZIONE", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
-                            StationField("Stazione", stationText, { stationText = it }, viewModel.searchStations(stationText), { stationText = it.name })
+                            Text(stringResource(R.string.planner_station_board_title), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                            StationField(
+                                label = stringResource(R.string.station_label),
+                                value = stationText,
+                                onValueChange = { stationText = it; viewModel.updateStationSuggestions("planner-station", it) },
+                                matches = viewModel.stationSuggestions("planner-station"),
+                                onSelect = { stationText = it.name; viewModel.clearStationSuggestions("planner-station") }
+                            )
                             Button(
                                 onClick = { openStations(viewModel.stationFromName(stationText)) },
                                 enabled = viewModel.stationFromName(stationText) != null,
@@ -1064,7 +1099,7 @@ private fun PlannerScreen(
                             ) {
                                 Icon(Icons.Default.Route, contentDescription = null)
                                 Spacer(Modifier.width(8.dp))
-                                Text("Apri tabellone")
+                                Text(stringResource(R.string.planner_open_station_board))
                             }
                         }
                         }
@@ -1074,8 +1109,8 @@ private fun PlannerScreen(
         }
         item {
             Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text("Recenti e preferite", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                TextButton(onClick = openMore) { Text("Gestisci") }
+                Text(stringResource(R.string.planner_recent_and_favourite), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                TextButton(onClick = openMore) { Text(stringResource(R.string.action_manage)) }
             }
         }
         items(viewModel.recentRoutes.take(4), key = { "recent-${it.origin.id}-${it.destination.id}" }) { recent ->
@@ -1086,9 +1121,9 @@ private fun PlannerScreen(
                 Icon(Icons.Default.Route, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                 Column(Modifier.weight(1f).padding(start = 12.dp)) {
                     Text(recent.label, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text("Ricerca recente", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(stringResource(R.string.planner_recent_search), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                Icon(Icons.Default.Search, contentDescription = "Ripeti ricerca ${recent.label}")
+                Icon(Icons.Default.Search, contentDescription = stringResource(R.string.accessibility_repeat_search, recent.label))
             }
             HorizontalDivider(modifier = Modifier.padding(start = 56.dp), color = MaterialTheme.colorScheme.outlineVariant)
         }
@@ -1102,7 +1137,7 @@ private fun PlannerScreen(
                     Text(route.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                     Text(route.displayName(Direction.OUTBOUND), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
-                Icon(Icons.Default.Search, contentDescription = "Usa tratta ${route.name}")
+                Icon(Icons.Default.Search, contentDescription = stringResource(R.string.accessibility_use_route, route.name))
             }
             HorizontalDivider(modifier = Modifier.padding(start = 56.dp), color = MaterialTheme.colorScheme.outlineVariant)
         }
@@ -1121,8 +1156,8 @@ private fun RouteResultsScreen(modifier: Modifier, viewModel: TrainViewModel, op
             Column(Modifier.padding(horizontal = 20.dp, vertical = 14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(viewModel.activeRoute.displayName(primaryDirection), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                 Text(
-                    if (roundTrip) "${services.size} andata · ${returnServices.size} ritorno"
-                    else "${services.size} soluzioni disponibili",
+                    if (roundTrip) stringResource(R.string.planner_round_trip_results, services.size, returnServices.size)
+                    else pluralStringResource(R.plurals.search_results_count, services.size, services.size),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -1130,7 +1165,7 @@ private fun RouteResultsScreen(modifier: Modifier, viewModel: TrainViewModel, op
         }
         item {
             Column(Modifier.padding(horizontal = 20.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(if (roundTrip) "ANDATA" else primaryDirection.label.uppercase(Locale.ITALIAN), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+                Text(if (roundTrip) stringResource(R.string.planner_outbound) else primaryDirection.label.uppercase(Locale.ITALIAN), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
                 Text(viewModel.activeRoute.displayName(primaryDirection), style = MaterialTheme.typography.bodyMedium)
                 Text(
                     listOfNotNull(viewModel.refreshState.accessibleLabel, viewModel.refreshMessage).joinToString(" · "),
@@ -1142,11 +1177,11 @@ private fun RouteResultsScreen(modifier: Modifier, viewModel: TrainViewModel, op
         }
         when {
             viewModel.refreshState == RefreshState.LOADING && viewModel.snapshot == null ->
-                item { SearchInfoState("Caricamento andata", "Sto cercando le soluzioni programmate e le eventuali informazioni operative disponibili.") }
+                item { SearchInfoState(stringResource(R.string.search_outbound_loading_title), stringResource(R.string.search_outbound_loading_message)) }
             viewModel.refreshState == RefreshState.ERROR && viewModel.snapshot == null ->
-                item { SearchInfoState("Andata non disponibile", viewModel.refreshMessage ?: "La fonte non ha restituito questa tratta.") }
+                item { SearchInfoState(stringResource(R.string.search_outbound_unavailable_title), viewModel.refreshMessage ?: stringResource(R.string.search_outbound_unavailable_message)) }
             services.isEmpty() ->
-                item { SearchInfoState("Nessuna soluzione di andata", "Modifica la ricerca o scegli una tratta differente.") }
+                item { SearchInfoState(stringResource(R.string.search_outbound_empty_title), stringResource(R.string.search_outbound_empty_message)) }
             else -> items(services, key = { "out-${it.id}" }) { service ->
                 DepartureListRow(service, isNext = service == services.first(), onOpen = { openDetails(service) })
             }
@@ -1155,7 +1190,7 @@ private fun RouteResultsScreen(modifier: Modifier, viewModel: TrainViewModel, op
         if (roundTrip) {
             item {
                 Column(Modifier.padding(horizontal = 20.dp, vertical = 14.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text("RITORNO", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+                    Text(stringResource(R.string.planner_return), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
                     Text(viewModel.activeRoute.displayName(Direction.RETURN), style = MaterialTheme.typography.bodyMedium)
                     Text(
                         listOfNotNull(viewModel.returnRefreshState.accessibleLabel, viewModel.returnRefreshMessage).joinToString(" · "),
@@ -1167,11 +1202,11 @@ private fun RouteResultsScreen(modifier: Modifier, viewModel: TrainViewModel, op
             }
             when {
                 viewModel.returnRefreshState == RefreshState.LOADING && viewModel.returnSnapshot == null ->
-                    item { SearchInfoState("Caricamento ritorno", "Sto cercando le soluzioni di ritorno con la data e l’ora selezionate.") }
+                    item { SearchInfoState(stringResource(R.string.search_return_loading_title), stringResource(R.string.search_return_loading_message)) }
                 viewModel.returnRefreshState == RefreshState.ERROR && viewModel.returnSnapshot == null ->
-                    item { SearchInfoState("Ritorno non disponibile", viewModel.returnRefreshMessage ?: "La fonte non ha restituito il ritorno richiesto.") }
+                    item { SearchInfoState(stringResource(R.string.search_return_unavailable_title), viewModel.returnRefreshMessage ?: stringResource(R.string.search_return_unavailable_message)) }
                 returnServices.isEmpty() ->
-                    item { SearchInfoState("Nessuna soluzione di ritorno", "Modifica data o ora del ritorno e riprova.") }
+                    item { SearchInfoState(stringResource(R.string.search_return_empty_title), stringResource(R.string.search_return_empty_message)) }
                 else -> items(returnServices, key = { "ret-${it.id}" }) { service ->
                     DepartureListRow(service, isNext = service == returnServices.first(), onOpen = { openDetails(service) })
                 }
@@ -1218,14 +1253,15 @@ private fun StationBoardScreen(modifier: Modifier, viewModel: TrainViewModel) {
     ) {
         item {
             Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("Tabellone stazione", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.station_board_title), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                 StationField(
-                    "Stazione",
-                    stationText,
-                    { stationText = it },
-                    viewModel.searchStations(stationText),
-                    {
+                    label = stringResource(R.string.station_label),
+                    value = stationText,
+                    onValueChange = { stationText = it; viewModel.updateStationSuggestions("station-board", it) },
+                    matches = viewModel.stationSuggestions("station-board"),
+                    onSelect = {
                         stationText = it.name
+                        viewModel.clearStationSuggestions("station-board")
                         viewModel.selectStationBoardStation(it)
                     }
                 )
@@ -1241,14 +1277,14 @@ private fun StationBoardScreen(modifier: Modifier, viewModel: TrainViewModel) {
                         onToggleFavourite = { viewModel.toggleStationFavourite(station) }
                     )
 
-                    Text("TABELLONE", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                    Text(stringResource(R.string.station_board_section), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         items(BoardKind.entries) { kind ->
                             FilterChip(
                                 selected = viewModel.stationBoardKind == kind,
                                 onClick = { viewModel.loadStationBoard(station, kind) },
                                 enabled = viewModel.hasStationBoardProviders,
-                                label = { Text(if (kind == BoardKind.DEPARTURES) "Partenze" else "Arrivi") }
+                                label = { Text(stringResource(if (kind == BoardKind.DEPARTURES) R.string.station_board_departures else R.string.station_board_arrivals)) }
                             )
                         }
                     }
@@ -1260,10 +1296,10 @@ private fun StationBoardScreen(modifier: Modifier, viewModel: TrainViewModel) {
                     ) {
                         Icon(Icons.Default.Refresh, contentDescription = null)
                         Spacer(Modifier.width(8.dp))
-                        Text(if (board == null) "Carica tabellone" else "Aggiorna tabellone")
+                        Text(stringResource(if (board == null) R.string.station_board_load else R.string.station_board_refresh))
                     }
 
-                    Text("Monitoraggio locale", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                    Text(stringResource(R.string.station_board_local_monitoring), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         items(StationMonitorMode.entries) { mode ->
                             FilterChip(
@@ -1277,22 +1313,23 @@ private fun StationBoardScreen(modifier: Modifier, viewModel: TrainViewModel) {
                         onClick = { viewModel.toggleStationMonitor(station, StationMonitorMode.valueOf(monitorMode)) },
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text(if (viewModel.isStationMonitored(station)) "Rimuovi monitoraggio stazione" else "Monitora questa stazione")
+                        Text(stringResource(if (viewModel.isStationMonitored(station)) R.string.station_board_stop_monitoring else R.string.station_board_start_monitoring))
                     }
                 }
 
+                val findNearbyStationsDescription = stringResource(R.string.accessibility_find_nearby_stations)
                 OutlinedButton(
                     onClick = {
                         if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) locateNearbyStations()
                         else locationPermission.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
                     },
                     modifier = Modifier.fillMaxWidth().semantics {
-                        contentDescription = "Trova le stazioni vicine. La posizione viene usata una sola volta e non viene salvata."
+                        contentDescription = findNearbyStationsDescription
                     }
                 ) {
                     Icon(Icons.Default.Route, contentDescription = null)
                     Spacer(Modifier.width(8.dp))
-                    Text("Trova stazioni vicine")
+                    Text(stringResource(R.string.station_board_find_nearby))
                 }
 
                 locationMessage?.let { message ->
@@ -1304,25 +1341,25 @@ private fun StationBoardScreen(modifier: Modifier, viewModel: TrainViewModel) {
         if (!viewModel.hasStationBoardProviders) {
             item {
                 SearchInfoState(
-                    "Tabellone live non attivo",
-                    "Questa build non abilita automaticamente fonti tabellone best-effort. Attivale esplicitamente in una build personale oppure usa un provider autorizzato; Binario non genera partenze artificiali."
+                    stringResource(R.string.station_board_live_disabled_title),
+                    stringResource(R.string.station_board_live_disabled_message)
                 )
             }
         } else {
             when {
                 viewModel.stationBoardRefreshState == RefreshState.LOADING && board == null -> item {
-                    SearchInfoState("Caricamento tabellone", "Sto interrogando le fonti abilitate e riconciliando le informazioni per singolo campo.")
+                    SearchInfoState(stringResource(R.string.station_board_loading_title), stringResource(R.string.station_board_loading_message))
                 }
                 viewModel.stationBoardRefreshState == RefreshState.ERROR && board == null -> item {
                     SearchInfoState(
-                        "Tabellone non disponibile",
-                        viewModel.stationBoardMessage ?: "Le fonti abilitate non hanno restituito dati utilizzabili."
+                        stringResource(R.string.station_board_unavailable_title),
+                        viewModel.stationBoardMessage ?: stringResource(R.string.station_board_unavailable_message)
                     )
                 }
                 board != null && board.entries.isEmpty() -> item {
                     SearchInfoState(
-                        "Nessun movimento nella finestra",
-                        viewModel.stationBoardMessage ?: "Le fonti abilitate non hanno restituito partenze o arrivi nella finestra richiesta."
+                        stringResource(R.string.station_board_empty_title),
+                        viewModel.stationBoardMessage ?: stringResource(R.string.station_board_empty_message)
                     )
                 }
                 board != null -> {
@@ -1332,7 +1369,7 @@ private fun StationBoardScreen(modifier: Modifier, viewModel: TrainViewModel) {
                             verticalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
                             Text(
-                                if (board.kind == BoardKind.DEPARTURES) "PARTENZE" else "ARRIVI",
+                                stringResource(if (board.kind == BoardKind.DEPARTURES) R.string.station_board_departures_uppercase else R.string.station_board_arrivals_uppercase),
                                 style = MaterialTheme.typography.labelLarge,
                                 fontWeight = FontWeight.Bold
                             )
@@ -1373,7 +1410,7 @@ private fun StationBoardScreen(modifier: Modifier, viewModel: TrainViewModel) {
         if (viewModel.favouriteStations.isNotEmpty()) {
             item {
                 Text(
-                    "Stazioni preferite",
+                    stringResource(R.string.station_board_favourites),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp)
@@ -1395,7 +1432,7 @@ private fun StationBoardScreen(modifier: Modifier, viewModel: TrainViewModel) {
         if (viewModel.nearbyStations.isNotEmpty()) {
             item {
                 Text(
-                    "Stazioni più vicine",
+                    stringResource(R.string.station_board_nearby),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp)
@@ -1868,7 +1905,13 @@ private fun SearchScreen(
                         when (mode) {
                         SearchMode.ROUTE -> {
                             Text("Pianifica una tratta", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                            StationField("Partenza", originText, { originText = it }, viewModel.searchStations(originText), { originText = it.name })
+                            StationField(
+                            label = stringResource(R.string.planner_origin),
+                            value = originText,
+                            onValueChange = { originText = it; viewModel.updateStationSuggestions("quick-search-origin", it) },
+                            matches = viewModel.stationSuggestions("quick-search-origin"),
+                            onSelect = { originText = it.name; viewModel.clearStationSuggestions("quick-search-origin") }
+                        )
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 IconButton(
                                     onClick = { val current = originText; originText = destinationText; destinationText = current },
@@ -1877,7 +1920,13 @@ private fun SearchScreen(
                                 Spacer(Modifier.width(10.dp))
                                 Text("Prossime corse · oggi", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
-                            StationField("Arrivo", destinationText, { destinationText = it }, viewModel.searchStations(destinationText), { destinationText = it.name })
+                            StationField(
+                            label = stringResource(R.string.planner_destination),
+                            value = destinationText,
+                            onValueChange = { destinationText = it; viewModel.updateStationSuggestions("quick-search-destination", it) },
+                            matches = viewModel.stationSuggestions("quick-search-destination"),
+                            onSelect = { destinationText = it.name; viewModel.clearStationSuggestions("quick-search-destination") }
+                        )
                             Button(
                                 onClick = { if (viewModel.searchRoute(origin!!, destination!!)) viewModel.clearSearchFilters() },
                                 enabled = origin != null && destination != null && origin != destination,
@@ -1889,7 +1938,7 @@ private fun SearchScreen(
                             }
                         }
                         SearchMode.TRAIN -> {
-                            Text("FILTRO NUMERO TRENO NELLA TRATTA", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                            Text(stringResource(R.string.planner_train_filter_title), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
                             Text(
                                 "Filtra i treni della tratta attiva. La ricerca nazionale per solo numero richiede un provider TrainRun dedicato e non viene simulata.",
                                 style = MaterialTheme.typography.bodySmall,
@@ -1900,24 +1949,30 @@ private fun SearchScreen(
                                 onValueChange = viewModel::updateTrainNumberQuery,
                                 modifier = Modifier.fillMaxWidth(),
                                 singleLine = true,
-                                label = { Text("Numero treno") },
+                                label = { Text(stringResource(R.string.planner_train_number)) },
                                 placeholder = { Text("Es. 12534") },
                                 leadingIcon = { Icon(Icons.Default.Train, contentDescription = null) },
                                 trailingIcon = if (viewModel.trainNumberQuery.isNotBlank()) ({ IconButton(onClick = viewModel::clearSearchFilters) { Icon(Icons.Default.DeleteOutline, contentDescription = "Cancella ricerca e filtri") } }) else null
                             )
                             if (!viewModel.hasActiveRoute) {
-                                Text("Scegli prima una tratta da consultare.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+                                Text(stringResource(R.string.planner_choose_route_first), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
                             }
                             Button(
                                 onClick = viewModel::refresh,
                                 modifier = Modifier.fillMaxWidth(),
                                 enabled = viewModel.trainNumberQuery.isNotBlank() && viewModel.hasActiveRoute
                             ) {
-                                Text("Filtra treno nella tratta")
+                                Text(stringResource(R.string.planner_filter_train))
                             }
                         }
                         SearchMode.STATION -> {
-                            StationField("Stazione", stationText, { stationText = it }, viewModel.searchStations(stationText), { stationText = it.name })
+                            StationField(
+                                label = "Stazione",
+                                value = stationText,
+                                onValueChange = { stationText = it; viewModel.updateStationSuggestions("quick-search-station", it) },
+                                matches = viewModel.stationSuggestions("quick-search-station"),
+                                onSelect = { stationText = it.name; viewModel.clearStationSuggestions("quick-search-station") }
+                            )
                             Text("Il tabellone stazione verrà mostrato qui quando sarà disponibile una fonte autorizzata. Per ora puoi cercare una tratta o un numero treno.", style = MaterialTheme.typography.bodySmall)
                         }
                     }
@@ -2239,9 +2294,9 @@ private fun CommuterAlertsPanel(
     onRemove: (CommuterAlert) -> Unit
 ) {
     Column(Modifier.padding(horizontal = 20.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("Avvisi pendolare", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-        Text("Promemoria locali con anticipo, ricorrenza e fascia silenziosa. Non si aggiornano con i ritardi senza una fonte autorizzata.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Button(onClick = onAdd, modifier = Modifier.fillMaxWidth()) { Text("Crea avviso pendolare") }
+        Text(stringResource(R.string.commuter_alerts_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        Text(stringResource(R.string.commuter_alerts_description), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Button(onClick = onAdd, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.commuter_alerts_create)) }
         feedback?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
         alerts.forEach { alert ->
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -2249,7 +2304,7 @@ private fun CommuterAlertsPanel(
                     Text(alert.stationName, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                     Text(alert.accessibleSummary, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                IconButton(onClick = { onRemove(alert) }) { Icon(Icons.Default.DeleteOutline, contentDescription = "Elimina avviso per ${alert.stationName}") }
+                IconButton(onClick = { onRemove(alert) }) { Icon(Icons.Default.DeleteOutline, contentDescription = stringResource(R.string.accessibility_remove_commuter_alert, alert.stationName)) }
             }
         }
     }
@@ -2478,13 +2533,25 @@ private fun RouteComposerSheet(viewModel: TrainViewModel, onDismiss: () -> Unit)
         Column(Modifier.padding(horizontal = 20.dp).padding(bottom = 32.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text("Nuova tratta", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
             Text("Scegli origine e destinazione. La tratta rimane solo sul dispositivo.", color = MaterialTheme.colorScheme.onSurfaceVariant)
-            StationField("Partenza", originText, { originText = it }, viewModel.searchStations(originText), { originText = it.name })
+            StationField(
+                            label = stringResource(R.string.planner_origin),
+                            value = originText,
+                            onValueChange = { originText = it; viewModel.updateStationSuggestions("route-composer-origin", it) },
+                            matches = viewModel.stationSuggestions("route-composer-origin"),
+                            onSelect = { originText = it.name; viewModel.clearStationSuggestions("route-composer-origin") }
+                        )
             TextButton(onClick = { val current = originText; originText = destinationText; destinationText = current }) {
                 Icon(Icons.Default.SwapHoriz, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
                 Text("Scambia stazioni")
             }
-            StationField("Arrivo", destinationText, { destinationText = it }, viewModel.searchStations(destinationText), { destinationText = it.name })
+            StationField(
+                            label = stringResource(R.string.planner_destination),
+                            value = destinationText,
+                            onValueChange = { destinationText = it; viewModel.updateStationSuggestions("route-composer-destination", it) },
+                            matches = viewModel.stationSuggestions("route-composer-destination"),
+                            onSelect = { destinationText = it.name; viewModel.clearStationSuggestions("route-composer-destination") }
+                        )
             OutlinedTextField(value = routeName, onValueChange = { routeName = it }, modifier = Modifier.fillMaxWidth(), singleLine = true, label = { Text("Nome personale facoltativo") }, placeholder = { Text("Es. Casa – lavoro") })
             Button(
                 onClick = { if (viewModel.createRoute(origin!!, destination!!, routeName)) onDismiss() },
@@ -2509,7 +2576,7 @@ private fun StationField(
             matches.take(5).forEach { station ->
                 TextButton(onClick = { onSelect(station) }, modifier = Modifier.fillMaxWidth()) {
                     val stationLabel = if (station.id.startsWith("manual:")) {
-                        "Cerca “${station.name}” nelle fonti disponibili"
+                        stringResource(R.string.station_suggestion_free_text, station.name)
                     } else {
                         buildString {
                             append(station.name)
