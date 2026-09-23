@@ -45,3 +45,15 @@ python3 tools/build_gtfs_packs.py --refresh --source-id toscana-tft-gtfs \
 ```
 
 Le sorgenti `GATEWAY_ONLY`, inclusi **AMT Genova–Casella** e **Cotral Ferro**, non vengono scaricate da endpoint non verificabili. Al 23 settembre 2026, Transitland conferma un feed AMT aggiornato fino al 6 novembre 2026, ma l'origine pubblicata è solo HTTP e il mirror HTTPS richiede credenziali; l'URL Cotral usa invece un certificato valido per `*.cotralspa.it` ma non per il nome a tre livelli `travel.mob.cotralspa.it`, quindi fallisce la verifica TLS. Servono un gateway HTTPS approvato o un nuovo endpoint ufficiale con certificato valido e un archivio GTFS completo. Il filtro AMT è volutamente stretto: mantiene solo l'identificatore revisionato `FGC-164` (Manin–Casella); non usa un matching fuzzy sul nome e fallisce se la route cambia identificatore, imponendo una nuova revisione.
+
+## Sorgenti temporaneamente escluse dalla release
+
+Dal 23 settembre 2026, `amt-genova-casella-gtfs` e `cotral-ferro-gtfs` non fanno parte degli asset embedded: il primo non garantiva i 30 giorni minimi di copertura e il secondo era già scaduto. Lasciare dati vecchi nell'APK avrebbe violato il gate G2; l'esclusione riduce la copertura ma mantiene veritiera la qualità dichiarata.
+
+La voce di catalogo e la provenienza storica restano documentate per facilitarne il ripristino. La reintroduzione richiede, nello stesso commit:
+
+1. un archivio completo acquisito da HTTPS valido o gateway approvato;
+2. filtro ferroviario revisionato e testato;
+3. `lastServiceDate` con almeno 30 giorni residui alla data prevista di release;
+4. rigenerazione atomica di ZIP, `manifest.json`, `SHA256SUMS` e `EmbeddedGtfsPacks.all`;
+5. esito verde sia del controllo integrità sia del gate freshness.
