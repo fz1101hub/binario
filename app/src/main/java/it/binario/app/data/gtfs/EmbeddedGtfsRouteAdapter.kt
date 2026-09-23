@@ -102,6 +102,14 @@ class EmbeddedGtfsRouteAdapter(
         }
 
         if (collected.isEmpty()) {
+            val expiredPacks = candidatePacks.filter { pack -> pack.lastServiceDate?.isBefore(query.serviceDate) == true }
+            if (expiredPacks.isNotEmpty()) {
+                val validity = expiredPacks.joinToString(" e ") { pack ->
+                    val label = RailSourceCatalog.byId(pack.sourceId)?.displayName ?: pack.sourceId.value
+                    "$label sono validi fino al ${pack.lastServiceDate}"
+                }
+                return DataResult.Failure("Gli orari inclusi per $validity: aggiorna l'app per orari più recenti.")
+            }
             return DataResult.Failure("Nessuna corsa programmata trovata nei data pack GTFS compatibili per data e orario selezionati.")
         }
 

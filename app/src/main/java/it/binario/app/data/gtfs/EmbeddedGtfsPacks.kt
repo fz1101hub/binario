@@ -4,6 +4,7 @@ import it.binario.app.data.core.SourceId
 import it.binario.app.data.sources.RailSourceCatalog
 import java.io.InputStream
 import java.time.Instant
+import java.time.LocalDate
 
 /**
  * Data pack statici validati e inclusi nell’APK. L’app non li aggiorna dalla
@@ -16,23 +17,29 @@ import java.time.Instant
  */
 data class EmbeddedGtfsPack(
     val sourceId: SourceId,
-    val assetPath: String
+    val assetPath: String,
+    /**
+     * Ultimo giorno di servizio coperto dal pack: massimo fra end_date di
+     * calendar.txt e le date con exception_type=1 di calendar_dates.txt.
+     * Deve coincidere con lastServiceDate nel manifest; null se sconosciuto.
+     */
+    val lastServiceDate: LocalDate? = null
 )
 
 object EmbeddedGtfsPacks {
     val all = listOf(
-        EmbeddedGtfsPack(SourceId("alto-adige-sta-gtfs"), "gtfs/alto-adige-sta-gtfs.zip"),
-        EmbeddedGtfsPack(SourceId("amt-genova-casella-gtfs"), "gtfs/amt-genova-casella-gtfs.zip"),
-        EmbeddedGtfsPack(SourceId("arst-gtfs"), "gtfs/arst-gtfs.zip"),
-        EmbeddedGtfsPack(SourceId("ch-otd-gtfs"), "gtfs/ch-otd-gtfs.zip"),
-        EmbeddedGtfsPack(SourceId("cotral-ferro-gtfs"), "gtfs/cotral-ferro-gtfs.zip"),
-        EmbeddedGtfsPack(SourceId("eav-gtfs"), "gtfs/eav-gtfs.zip"),
-        EmbeddedGtfsPack(SourceId("hzpp-gtfs"), "gtfs/hzpp-gtfs.zip"),
-        EmbeddedGtfsPack(SourceId("lombardia-trenord-gtfs"), "gtfs/lombardia-trenord-gtfs.zip"),
-        EmbeddedGtfsPack(SourceId("oebb-gtfs"), "gtfs/oebb-gtfs.zip"),
-        EmbeddedGtfsPack(SourceId("sncf-gtfs"), "gtfs/sncf-gtfs.zip"),
-        EmbeddedGtfsPack(SourceId("toscana-tft-gtfs"), "gtfs/toscana-tft-gtfs.zip"),
-        EmbeddedGtfsPack(SourceId("trentino-gtfs"), "gtfs/trentino-extraurban-gtfs.zip")
+        EmbeddedGtfsPack(SourceId("alto-adige-sta-gtfs"), "gtfs/alto-adige-sta-gtfs.zip", LocalDate.of(2026, 12, 12)),
+        EmbeddedGtfsPack(SourceId("amt-genova-casella-gtfs"), "gtfs/amt-genova-casella-gtfs.zip", LocalDate.of(2026, 10, 2)),
+        EmbeddedGtfsPack(SourceId("arst-gtfs"), "gtfs/arst-gtfs.zip", LocalDate.of(2026, 12, 31)),
+        EmbeddedGtfsPack(SourceId("ch-otd-gtfs"), "gtfs/ch-otd-gtfs.zip", LocalDate.of(2026, 12, 12)),
+        EmbeddedGtfsPack(SourceId("cotral-ferro-gtfs"), "gtfs/cotral-ferro-gtfs.zip", LocalDate.of(2026, 9, 6)),
+        EmbeddedGtfsPack(SourceId("eav-gtfs"), "gtfs/eav-gtfs.zip", LocalDate.of(2027, 5, 13)),
+        EmbeddedGtfsPack(SourceId("hzpp-gtfs"), "gtfs/hzpp-gtfs.zip", LocalDate.of(2026, 12, 13)),
+        EmbeddedGtfsPack(SourceId("lombardia-trenord-gtfs"), "gtfs/lombardia-trenord-gtfs.zip", LocalDate.of(2026, 12, 12)),
+        EmbeddedGtfsPack(SourceId("oebb-gtfs"), "gtfs/oebb-gtfs.zip", LocalDate.of(2026, 12, 12)),
+        EmbeddedGtfsPack(SourceId("sncf-gtfs"), "gtfs/sncf-gtfs.zip", LocalDate.of(2027, 1, 31)),
+        EmbeddedGtfsPack(SourceId("toscana-tft-gtfs"), "gtfs/toscana-tft-gtfs.zip", LocalDate.of(2026, 9, 14)),
+        EmbeddedGtfsPack(SourceId("trentino-gtfs"), "gtfs/trentino-extraurban-gtfs.zip", LocalDate.of(2026, 9, 9))
     )
 
     val sourceIds: Set<SourceId> = all.mapTo(linkedSetOf()) { it.sourceId }
