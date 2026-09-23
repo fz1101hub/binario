@@ -27,13 +27,28 @@ function kotlinModuleNames() {
 }
 
 describe("contratti delle superfici native Binario", () => {
-  it("mantiene controlli tema e sincronizzazione espliciti nelle impostazioni", () => {
+  it("mantiene controlli tema e dichiara indisponibile la sincronizzazione remota", () => {
     const settings = source("app/(tabs)/settings.tsx");
     expect(settings).toContain('accessibilityRole="switch"');
-    expect(settings).toContain("Autorizza sincronizzazione per questo dispositivo");
-    expect(settings).toContain("Nessuna tratta è stata inviata");
-    expect(settings).toContain("Revoca il collegamento di questo dispositivo alla sincronizzazione");
+    expect(settings).toContain("Sincronizzazione remota");
+    expect(settings).toContain("Non disponibile in questa build: il servizio remoto non è ancora attivo.");
+    expect(settings).toContain("Nessun account può essere collegato e nessuna tratta può essere inviata o ricevuta.");
+    expect(settings).not.toContain("Autorizza sincronizzazione per questo dispositivo");
+    expect(settings).not.toContain("Collega dispositivo");
+    expect(settings).not.toContain("Controlla collegamento");
+    expect(settings).not.toContain("Copia sul telefono");
+    expect(settings).not.toContain("Copia nell’area personale");
+    expect(settings).not.toContain("fetchCompanionPlannedRoutes");
+    expect(settings).not.toContain("pushCompanionPlannedRoutes");
     expect(settings).toContain("Cancella tratte e promemoria locali da questo telefono");
+  });
+
+  it("non espone nell’hub una route operativa di sincronizzazione remota", () => {
+    const companion = source("app/(tabs)/companion.tsx");
+    expect(companion).not.toContain("Sincronizzazione facoltativa");
+    expect(companion).not.toContain('icon: "sync"');
+    expect(companion).toContain("Pianifica una tratta");
+    expect(companion).toContain("Gestisci promemoria");
   });
 
   it("espone stato companion e indisponibilità senza trasformarli in realtime", () => {

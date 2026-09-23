@@ -10,7 +10,6 @@ import { useCompanionTheme } from "@/lib/theme";
 const actions: Array<{ icon: keyof typeof MaterialIcons.glyphMap; label: string; description: string; destination: Href }> = [
   { icon: "add-circle-outline", label: "Pianifica una tratta", description: "Apre la schermata locale per aggiungere una partenza e un arrivo.", destination: "/(tabs)" },
   { icon: "notifications-none", label: "Gestisci promemoria", description: "Rivedi o elimina promemoria locali, sempre non realtime.", destination: "/(tabs)/alerts" },
-  { icon: "sync", label: "Sincronizzazione facoltativa", description: "Apri consenso, anteprima e revoca. Nessuna copia avviene automaticamente.", destination: "/(tabs)/settings" },
 ];
 
 export default function CompanionScreen() {
