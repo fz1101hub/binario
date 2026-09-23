@@ -1,5 +1,7 @@
 # Piano di stabilizzazione Binario v0.20.4 — versione aggiornata
 
+> **Stato del documento:** baseline di pianificazione conservata per tracciabilità. Le tabelle operative più avanti descrivono lo stato al momento della stesura e non sono un registro corrente. Per avanzamento effettivo, gate eseguiti e sole decisioni residue fare riferimento a [`STATO_STABILIZZAZIONE_2026-09-23.md`](STATO_STABILIZZAZIONE_2026-09-23.md) e alla PR di integrazione [#26](https://github.com/fz1101hub/binario/pull/26).
+
 **Base**: *Piano completo di stabilizzazione di Binario* (Manus AI, 23/09/2026, 263 righe), integrato con l'addendum dell'audit indipendente (`docs/audit-independent-2026-09-23-addendum.md`, commit `0a39754`).
 **Baseline del codice**: `0b8f3c98487d24171053f318a86e538618218edb` (tag locale `audit-baseline-2026-09-23`).
 **Branch di lavoro**: `stabilization/v0.20.4`, creato da `0a39754` (stesso codice di `0b8f3c9` + rapporti di audit).
