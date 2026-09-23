@@ -1,5 +1,7 @@
 # Binario — registro di provenienza delle superfici
 
+> **Documento storico.** La decisione corrente è in `docs/architecture/ADR-0001-APP-PRINCIPALE-E-COMPANION-ALEXA.md`: `app/` è il prodotto principale, `alexa-companion/` è il companion Alexa canonico e il vecchio progetto WebDev resta uno snapshot non canonico da triagiare.
+
 ## Regola di lettura
 
 Questo registro separa la linea locale **Binario v0.1.1** dalle versioni che erano già presenti nel repository privato `fz1101hub/binario`. Non è lecito attribuire a una linea capacità trovate nell’altra né fonderle senza un confronto tecnico puntuale.

@@ -8,11 +8,11 @@ Le sezioni marcate **[NUOVO]** o **[MODIFICATO]** differiscono dal piano origina
 
 ## Sintesi esecutiva
 
-Binario non richiede una riscrittura. Quattro aree bloccano una release completa — sicurezza del Voice Bridge, affidabilità del data layer GTFS, comunicazione telefono–Wear OS, contratti del Companion Expo — a cui l'audit finale aggiunge tre prerequisiti trasversali che il piano originale non copriva: **validità temporale dei dati embedded** (tre pack GTFS già scaduti), **release engineering nativo** (nessun `buildTypes`, nessuna firma, nessuna licenza) e **operabilità di Voice Bridge/Alexa fuori dall'ambiente di sviluppo**.
+Binario non richiede una riscrittura. Quattro aree bloccano una release completa — sicurezza del companion Alexa, affidabilità del data layer GTFS, comunicazione telefono–Wear OS, contratti del Companion Expo — a cui l'audit finale aggiunge tre prerequisiti trasversali che il piano originale non copriva: **validità temporale dei dati embedded** (tre pack GTFS già scaduti), **release engineering nativo** (nessun `buildTypes`, nessuna firma, nessuna licenza) e **operabilità del companion Alexa fuori dall'ambiente di sviluppo**.
 
 Due traguardi:
 1. **Release A — stabilizzazione Android**: data layer sicuro, pack validi, build firmata e minificata, funzioni non operative corrette o nascoste e documentate.
-2. **Release B — integrazioni**: Voice Bridge, Alexa, Wear OS e Companion Expo, solo dopo test end-to-end e gate G1–G6.
+2. **Release B — integrazioni**: Alexa Companion, Wear OS e Companion Expo, solo dopo test end-to-end e gate G1–G6.
 
 Nessuna nuova funzione finché i gate P0 non sono verdi.
 
@@ -22,8 +22,8 @@ Nessuna nuova funzione finché i gate P0 non sono verdi.
 2. Branch `stabilization/v0.20.4` da `0a39754` (fatto).
 3. Solo correzioni, test, CI e documentazione; nessuna nuova feature.
 4. Un commit (o PR) per finding o gruppo coeso; niente commit-monolite.
-5. **[NUOVO] Decisione preliminare sulle sorgenti canoniche del web**: `voice-bridge/` in-repo è fermo a 3 migrazioni, lo snapshot `surfaces/web-voice-bridge` (sorgente WebDev esterna) ne ha 12 più `server/companion`, dettatura e decine di test. Prima di PR-SEC-1 va deciso quale albero è canonico e dove atterrano le correzioni; in mancanza di decisione, le PR-SEC/DB si applicano a `voice-bridge/` (perimetro dichiarato dell'audit) e vanno riportate sull'altro albero se questo diventa canonico.
-6. **[NUOVO] `LICENSE`** nel primo commit del branch (scelta della licenza: decisione del proprietario; `voice-bridge/package.json` dichiara MIT).
+5. **[DECISO] Gerarchia e sorgenti canoniche**: `app/` è il prodotto principale per smartphone; `alexa-companion/` è la sorgente canonica della skill Alexa e deriva dall'albero hardenizzato `voice-bridge/`; `surfaces/web-voice-bridge` resta uno snapshot storico non distribuibile. Le funzioni non-Alexa dello snapshot vengono triagiate e portate per capacità nel target corretto, mai fuse in blocco. Decisione completa in `docs/architecture/ADR-0001-APP-PRINCIPALE-E-COMPANION-ALEXA.md`.
+6. **[NUOVO] `LICENSE`** nel primo commit del branch (scelta della licenza: decisione del proprietario; `alexa-companion/package.json` dichiara MIT).
 7. PR iniziale verso `audit/official-rail-sources-20260904` (diff = solo correzioni post-audit); la CI gira su `pull_request` — in alternativa `workflow_dispatch` sul branch.
 8. Dopo i gate, integrazione in `main` (`main` è antenato del ramo di audit: merge senza conflitti). PR #2 ritargettata a `main` o sostituita; **[NUOVO] PR #1** (`feature/data-foundations`, aperta dal 14/08) chiusa o ritargettata.
 9. Proteggere `main`, richiedere CI verde, taggare le release.
@@ -32,14 +32,14 @@ Nessuna nuova funzione finché i gate P0 non sono verdi.
 
 | Gate | Condizione minima | Blocca |
 |---|---|---|
-| **G1 — Sicurezza web** | V1, V2, V3 chiusi; revoca Alexa effettiva (V5/V6); migrazioni riproducibili su DB vuoto e in upgrade | Qualunque deploy di Voice Bridge/Alexa |
+| **G1 — Sicurezza Alexa Companion** | V1, V2, V3 chiusi; revoca Alexa effettiva (V5/V6); migrazioni riproducibili su DB vuoto e in upgrade | Qualunque deploy del companion Alexa |
 | **G2 — Affidabilità dati** | Nessuna rete sul Main; AMT non satura l'heap; download bounded; checksum e manifest coerenti; **[NUOVO] nessun pack embedded scaduto alla data di release, avviso in-app oltre la validità, check CI sulle scadenze** | Release Android |
 | **G3 — Verità delle feature** | Funzioni non operative corrette oppure nascoste e documentate. **[NUOVO] Elenco vincolante**: target widget "Stazione"/"Treno" (mai alimentati), impostazione "Superficie widget", shortcut "Ricerca treno", toggle Wear (default-ON) e Apple Watch nelle Impostazioni, sezione Sincronizzazione del companion, README (quattro file citati inesistenti, claim realtime della build di default), label/icona placeholder del companion | Pubblicazione con promesse Wear, widget, sync o Apple Watch |
-| **G4 — Wear end-to-end** | Package e firma coerenti; filtri `<data>` e handler presenti; **[NUOVO] posture di distribuzione decisa (Play track Wear vs sideload) e `standalone` coerente con la policy corrente**; prova telefono↔watch superata | Release Wear OS |
+| **G4 — Wear end-to-end** | Package e firma coerenti; filtri `<data>` e handler presenti; postura di distribuzione decisa (Play track Wear vs sideload), comportamento non-standalone documentato; prova telefono↔watch superata | Release Wear OS |
 | **G5 — Companion e privacy** | Bridge nativi funzionanti; delete e clear cancellano davvero dati e reminder; **[NUOVO] icona/splash/label propri** | Release Companion Expo |
-| **G6 — Delivery** | CI su PR e push; `main` corrente; sorgenti canoniche definite; **[NUOVO] build release firmata, minificata e riproducibile; `LICENSE`; CI dedicata e `.env.example` del Voice Bridge; skill Alexa con modello versionato** | Release pubblica completa |
+| **G6 — Delivery** | CI su PR e push; `main` corrente; sorgenti canoniche definite; **[NUOVO] build release firmata, minificata e riproducibile; `LICENSE`; CI dedicata e `.env.example` di Alexa Companion; skill Alexa con modello versionato** | Release pubblica completa |
 
-## 3. Fase P0-A — Voice Bridge e Alexa
+## 3. Fase P0-A — Alexa Companion
 
 ### 3.1 Runtime Manus fuori dalla produzione (V1)
 Rimuovere `vitePluginManusRuntime()` e `jsxLocPlugin()` dalla build di produzione (o `apply: "serve"`); eliminare il fallback `sessionStorage["manus-cookie"]` → `Authorization: Bearer`; sessione solo via cookie sicuro `HttpOnly`. CSP `frame-ancestors 'none'` + `X-Frame-Options: DENY` da middleware centralizzato.
@@ -55,7 +55,7 @@ GET authorize → schermata di consenso autenticata; solo un POST con token CSRF
 
 ### 3.4 Migrazioni, hardening e operabilità **[MODIFICATO]**
 Rigenerare la migrazione `0002` con snapshot e journal; testare DB vuoto e upgrade da `0001`; separare `db:generate` da `db:migrate` (mai `generate` al deploy). Rate limiting su OAuth/Alexa/tRPC, body limit ≤ 1 MB, validazione env all'avvio (zod), `errorFormatter` che maschera gli errori interni, sessioni brevi con rotazione, verifica `appId`, `algorithms: ["HS256"]` sui token vocali, chiavi separate (HKDF).
-**[NUOVO]**: porta rigida in produzione (niente `findAvailablePort`, exit ≠ 0 su EADDRINUSE); `GET /healthz`; `.env.example` con le 12 variabili; CI dedicata (`tsc`, `vitest`, `vite build` + asserzione sull'HTML); redazione del log mysql in `db.ts:86`; rimozione o sostituzione documentata della dipendenza dal portale OAuth Manus (`VITE_OAUTH_PORTAL_URL`/`OAUTH_SERVER_URL`) per host non-Manus; pulizia dei residui template (`template.json`, Umami placeholder, `__manus__/`).
+**[NUOVO]**: porta rigida in produzione (niente `findAvailablePort`, exit ≠ 0 su EADDRINUSE); `GET /healthz`; `.env.example` con le 12 variabili; CI dedicata (`tsc`, `vitest`, `vite build` + asserzione sull'HTML); redazione del log mysql in `db.ts:86`; rimozione o sostituzione documentata della dipendenza dal portale OAuth Manus (`VITE_OAUTH_PORTAL_URL`/`OAUTH_SERVER_URL`) per host non-Manus; pulizia dei residui template (`template.json`, Umami placeholder, `__manus__/`). La dashboard resta una superficie tecnica per account linking e revoca, non l'app principale.
 **Gate G1**.
 
 ## 4. Fase P0-B — Data layer GTFS
@@ -80,7 +80,7 @@ Test/task CI che confronta `manifest.json`, `SHA256SUMS`, `EmbeddedGtfsPacks.all
 
 ## 5. Fase P1-A — Wear OS **[MODIFICATO]**
 
-Coppia canonica: `app/` + `wear/`; il Wear del Companion resta sperimentale. **[NUOVO] Prima di PR-WEAR-1**: decidere la distribuzione (Play track Wear o sideload) e verificare `standalone=false` contro la policy Play corrente; documentarlo.
+Coppia canonica: `app/` + `wear/`; il Wear del Companion resta sperimentale. Prima di PR-WEAR-1 decidere la distribuzione (Play track Wear o sideload). `standalone=false` è coerente con un'app Wear dipendente dal telefono; va documentato il comportamento quando l'app smartphone non è installata.
 
 ### 5.1 Coppia nativa
 Stesso `applicationId` e stessa firma; stesso listing Play con form factor Wear e `versionCode` distinti; check automatico degli ID. Filtro `<data android:scheme="wear" android:host="*" android:pathPrefix="/binario/wear/snapshot"/>` sul listener. Listener telefono per `/binario/wear/request-refresh` con dedup e rate limit, poi ripubblicazione. Rimuovere `android:permission="com.google.android.gms.wearable.BIND_LISTENER"` dal manifest root dopo prova su device (protezione effettiva: validazione UID di Play Services + package/firma). Solo `TYPE_CHANGED`, chiavi UI univoche, cancellazione del DataItem alla disattivazione dello sharing; **[NUOVO]** rimuovere `INTERNET` dal modulo wear; sharing Wear **off di default** finché G4 non è verde.
@@ -116,7 +116,17 @@ Congelare come prototipo documentato oppure completare con app iOS produttrice e
 **Accettazione**: `xcodegen`, `xcodebuild test`, ricezione iPhone→Watch, scadenza corretta.
 
 ## 9. Fase P2 — Repository, CI, release engineering, architettura **[MODIFICATO]**
-Inventario del lavoro esclusivo in `surfaces/web-voice-bridge`, integrazione di ciò che diventa canonico, archiviazione come tag/bundle, poi rimozione di `surfaces/`. CI su `push`, validazione wrapper Gradle, test checksum e scadenze, prebuild pulito. **[NUOVO]**: `buildTypes.release` in `app/` e `wear/` con R8, `shrinkResources`, `proguard-rules.pro` (keep per protobuf/gtfs-realtime-bindings, jsoup, Wear) e firma da segreti CI; `assembleRelease` + `lintVitalRelease` in CI; `versionCode`/`versionName` da un'unica sorgente; aggiornamento `gtfs-realtime-bindings` (0.0.4 → 0.0.8+); `org.json` come `testImplementation`; icona nativa adaptive. Documenti storici in `docs/releases/` e `docs/verifiche/`. Dopo: version catalog, `MainActivity` per feature, `TrainViewModel` con dipendenze iniettate e `UiState`.
+Inventario del lavoro esclusivo in `surfaces/web-voice-bridge`, porting selettivo delle capacità non-Alexa nel target corretto (`app/`, `companion-expo/` o un backend companion dedicato), archiviazione come tag/bundle, poi rimozione di `surfaces/`. Nessun merge in blocco in `alexa-companion/`. CI su `push`, validazione wrapper Gradle, test checksum e scadenze, prebuild pulito. **[NUOVO]**: `buildTypes.release` in `app/` e `wear/` con R8, `shrinkResources`, `proguard-rules.pro` (keep per protobuf/gtfs-realtime-bindings, jsoup, Wear) e firma da segreti CI; `assembleRelease` + `lintVitalRelease` in CI; `versionCode`/`versionName` da un'unica sorgente; aggiornamento `gtfs-realtime-bindings` (0.0.4 → 0.0.8+); `org.json` come `testImplementation`; icona nativa adaptive. Documenti storici in `docs/releases/` e `docs/verifiche/`. Dopo: version catalog, `MainActivity` per feature, `TrainViewModel` con dipendenze iniettate e `UiState`.
+
+### 9.1 Porting selettivo dallo snapshot WebDev **[NUOVO]**
+
+Il triage completo è in `docs/architecture/TRIAGE_FUNZIONI_WEBDEV_NON_ALEXA_2026-09-23.md`. Dopo i gate P0:
+
+1. **PR-APP-PLANNING**: dominio Kotlin `PlannedJourney` distinto da `SavedRoute`, agenda, itinerari multi-tratta, reminder/checklist, ricorrenze esplicite e test; successivamente import/export JSON e ICS con preview, limiti e deduplica.
+2. **PR-ANDROID-VOICE-REVIEW**: portare dal prototipo web gli esiti `confirmed`/`needs-review`/`unresolved` e i candidati di stazione, mantenendo il riconoscitore di sistema Android e senza upload audio.
+3. **PR-DATA-CATALOG-QA**: gate di build per unicità ID/codici, coordinate, alias, conteggio/checksum e tie-break deterministico nella prossimità.
+4. **PR-COMPANION-SYNC** — solo dopo decisione prodotto: creare `services/companion-sync/` con pairing, token hash, revoca, consenso per device, privacy export/delete e route-sync limitato; `app/` usa Keystore e operazioni pull/push esplicite. Non usare Alexa o il Data Layer Wear come backend universale.
+5. **PR-SURFACES-ARCHIVE**: archiviare lo snapshot dopo aver marcato ogni capacità come portata, rifiutata o preservata; soltanto allora rimuovere `surfaces/`.
 
 ## 10. Ordine delle pull request **[MODIFICATO]**
 
@@ -134,9 +144,12 @@ Inventario del lavoro esclusivo in `surfaces/web-voice-bridge`, integrazione di 
 11. **PR-COMP-2**: reminder, cancellazione archivio, Agenda, route, timer, checksum.
 12. **PR-BRAND [NUOVO]**: icona/splash/label del companion, `ACCESS_FINE_LOCATION`.
 13. **PR-ANDROID-UX**: navigazione, shortcut, widget (target Stazione/Treno inclusi), allarmi (fascia silenziosa, boot, import), backup, ricerca stazioni, privacy notice.
-14. **PR-VB-OPS [NUOVO]** e **PR-ALEXA-MODEL [NUOVO]**: CI e deploy riproducibile del Voice Bridge; skill Alexa con handler built-in (Stop/Cancel/Help/Fallback/SessionEnded) e `skill-package/` versionato. Prerequisiti della Release B.
-15. **PR-CI-GOV**: CI su push, wrapper validation, prebuild clean, pulizia `surfaces`, riallineamento di `main`, chiusura PR #1/#2.
-16. **PR-APPLE**: solo se Apple Watch entra nel perimetro.
+14. **PR-ALEXA-OPS** (già PR-VB-OPS) e **PR-ALEXA-MODEL**: CI e deploy riproducibile di `alexa-companion/`; skill Alexa con handler built-in (Stop/Cancel/Help/Fallback/SessionEnded) e `skill-package/` versionato. Prerequisiti della Release B.
+15. **PR-DATA-CATALOG-QA** e **PR-ANDROID-VOICE-REVIEW**: porting a basso rischio delle migliorie WebDev nel prodotto principale, dopo P0.
+16. **PR-APP-PLANNING**: nuovo dominio personale offline, agenda e portabilità, dopo la stabilizzazione.
+17. **PR-COMPANION-SYNC**: solo se la sincronizzazione multi-device viene approvata come funzione di prodotto.
+18. **PR-CI-GOV / PR-SURFACES-ARCHIVE**: CI su push, wrapper validation, prebuild clean, archivio e pulizia `surfaces`, riallineamento di `main`, chiusura PR #1/#2.
+19. **PR-APPLE**: solo se Apple Watch entra nel perimetro.
 
 Le PR 0–5 sono parallelizzabili per area; il merge rispetta l'ordine quando una modifica dipende dai contratti della precedente.
 
@@ -144,7 +157,7 @@ Le PR 0–5 sono parallelizzabili per area; il merge rispetta l'ordine quando un
 
 **Release A — Stabilizzazione Android**: pubblicabile con G2 verde più PR-REL-0 e la parte Android di G3. Deve avere: pack non scaduti, build firmata e minificata, Wear sharing off di default (o modulo escluso), target widget Stazione/Treno e impostazione superficie nascosti o funzionanti, shortcut corretta, README e informativa privacy allineati, nessuna promessa di realtime o sincronizzazione non raggiungibile.
 
-**Release B — Integrazioni**: richiede G1–G6, test end-to-end Wear, migrazione DB provata, bridge Companion funzionanti, skill Alexa certificabile, Voice Bridge avviabile con la sola documentazione del repo, documentazione coerente con le feature abilitate.
+**Release B — Integrazioni**: richiede G1–G6, test end-to-end Wear, migrazione DB provata, bridge Companion funzionanti, skill Alexa certificabile, Alexa Companion avviabile con la sola documentazione del repo e sincronizzazione verificata con l'app principale.
 
 ## 12. Definition of Done **[MODIFICATO]**
 
@@ -152,7 +165,7 @@ Le PR 0–5 sono parallelizzabili per area; il merge rispetta l'ordine quando un
 - nessuna rete o parsing pesante sul Main thread;
 - il feed più grande passa con heap limitato;
 - **nessun pack embedded scaduto; avviso in-app oltre la validità; check CI sulle scadenze**;
-- Voice Bridge production senza runtime di sviluppo, avviabile fuori da Manus con `.env.example` e CI propria;
+- Alexa Companion production senza runtime di sviluppo, avviabile fuori da Manus con `.env.example` e CI propria;
 - unlink Alexa revoca immediatamente l'accesso; skill con modello versionato e handler built-in;
 - telefono e Wear comunicano in entrambe le direzioni (o Wear dichiarato sperimentale e off);
 - widget, condivisione testo e cancellazione dati rispettano quanto mostrato all'utente;
@@ -170,8 +183,9 @@ Le PR 0–5 sono parallelizzabili per area; il merge rispetta l'ordine quando un
 | PR-SEC-1 (runtime Manus, Bearer, CSP, verificatore build) | **fatto**, verificato in locale (tsc, 26 test, build, smoke header) | `68f2bd5` |
 | PR-DB-1 (migrazione 0002, journal, script separati, test catena) | **fatto**, SQL rigenerato identico all'orfano | `0439be5` |
 | PR-SEC-2 (consenso+CSRF, allowlist, revoca, re-link, hardening server, `.env.example`) | **fatto**, 49 test verdi, smoke `/healthz` + rate limit | `f591719` |
-| PR-VB-OPS (workflow CI Voice Bridge) | **fatto**; Voice Bridge CI #2 **verde** su `98f54bc` | `d0bca14` |
+| PR-ALEXA-OPS (già PR-VB-OPS; workflow CI companion Alexa) | **fatto**; esecuzione precedente, ancora denominata Voice Bridge CI #2, **verde** su `98f54bc` | `d0bca14` |
 | PR-ALEXA-MODEL (handler built-in, `skill-package/`) | **fatto**, 7 test | `abb84ee` |
+| Separazione Alexa / pulizia template | **fatto nel branch architetturale**: rinomina `alexa-companion/`, contratto senza flag smartwatch, moduli template senza consumer e dipendenze AWS rimossi; 56 test e build verdi | ADR-0001 |
 | PR-REL-0 — README veritiero | **fatto** | `8c6d6f5` |
 | PR-REL-0 — `LICENSE` | in attesa della scelta della licenza | §1.6 |
 | PR-REL-0 — `buildTypes.release`, firma, R8, CI release | da fare; richiede CI funzionante per la validazione | §9 |
@@ -179,8 +193,10 @@ Le PR 0–5 sono parallelizzabili per area; il merge rispetta l'ordine quando un
 | PR-DATA-0 (pack scaduti) | in attesa dei feed aggiornati dalle sorgenti (bloccate dal proxy di questo ambiente) | §4.1 |
 | PR-COMP-1/2 (bridge nativi, shared-text, reminder, itinerari, Agenda, route, timer, checksum) | **fatto e integrato** (merge `903754d`); verificato in locale (tsc con `tests/`, 52 test, config e release-inputs, prebuild idempotente); Companion CI in esecuzione | `e51cd4f`…`9701515` |
 | CI GitHub Actions | sbloccata dal proprietario il 23/09; run #194/#1 falliti senza step erano dovuti al blocco dell'account | run `35809228873`, `35809230083` |
-| Sorgente canonica del web | in attesa di decisione | §1.5 |
-| Correzioni successive | **sospese** su richiesta del proprietario; alla ripresa si parte da PR-WEAR-1 e dalla parte Gradle di PR-REL-0, secondo l'ordine di §10 | §10 |
+| Gerarchia prodotto e sorgente Alexa | **deciso**: `app/` principale, `alexa-companion/` companion canonico, snapshot WebDev storico | ADR-0001 |
+| Triage funzioni WebDev non-Alexa | **completato**: capacità assegnate a `app/`, `companion-expo/`, futuro `services/companion-sync/` oppure archivio | `TRIAGE_FUNZIONI_WEBDEV_NON_ALEXA_2026-09-23.md` |
+| PR-DATA-CATALOG-QA | **avviata**: input finiti, coordinate invalide, tie-break italiano, unicità ID/codici e range coordinate; test Gradle in attesa di SDK/CI | `StationProximity*`, `EmbeddedCuratedRailStationCatalogTest` |
+| Correzioni successive | riprese limitatamente alla separazione architetturale e ai porting a basso rischio; il resto segue l'ordine di §10 | §10 |
 
 ## 14. Matrice di tracciabilità finding → PR → gate
 
@@ -195,7 +211,7 @@ Identificativi dal rapporto `docs/audit-independent-2026-09-23.md` (V, C, F, D, 
 | V5 unlink non opponibile ai token / auto-de-revoca | PR-SEC-2 | G1 | fatto |
 | V6 collisione upsert `alexaUserHash` | PR-SEC-2 | G1 | fatto |
 | V7 download GTFS non limitato | PR-DATA-1 | G2 | fatto (`49e35f3`), validato da Android CI #195 |
-| V8 hardening (algorithms, appId, sessioni, env, body, rate limit, proxy) | PR-SEC-2 | G1 | fatto; rimozione `storageProxy` → PR-VB-OPS (da fare) |
+| V8 hardening (algorithms, appId, sessioni, env, body, rate limit, proxy) | PR-SEC-2 | G1 | fatto; rimozione `storageProxy` → PR-ALEXA-OPS (da fare) |
 | C1 OOM pack AMT | PR-DATA-0 + PR-DATA-2 | G2 | da fare (repack in attesa feed; indice compatto) |
 | C2 rete sul Main nel fallback ES | PR-DATA-1 | G2 | fatto (`8efede4`), validato da Android CI #195 |
 | C3/C4 crash latenti watch (TYPE_DELETED, chiave LazyColumn) | PR-WEAR-1 | G4 | da fare |
@@ -220,10 +236,10 @@ Identificativi dal rapporto `docs/audit-independent-2026-09-23.md` (V, C, F, D, 
 | Teorici: `openService` senza direzione esplicita, cache `var` adapter | PR-ANDROID-UX / PR-DATA-3 | — | da fare |
 | D-5 migrazione 0002 orfana | PR-DB-1 | G1 | fatto (`0439be5`) |
 | Debito: MainActivity/TrainViewModel, stringhe, contratti snapshot | §9 / §5.3 | — | P2 (test contrattuali companion ora reali: `e51cd4f`) |
-| IG-1 `surfaces/` e albero web canonico | §1.5 + PR-CI-GOV | G6 | decisione |
+| IG-1 `surfaces/` e albero web canonico | ADR-0001 + PR-CI-GOV | G6 | decisione chiusa; triage e archiviazione da fare |
 | IG-2 `main` stale, tag assenti | PR-CI-GOV | G6 | tag baseline in locale; resto da fare |
 | IG-3 `SHA256SUMS` stale, nessuna verifica | PR-DATA-1 | G2 | fatto (`58982c2`, `2c5aaf5`) |
-| IG-4 CI: trigger push, wrapper validation, prebuild clean | PR-VB-OPS (push su VB fatto `d0bca14`) + PR-CI-GOV | G6 | parziale |
+| IG-4 CI: trigger push, wrapper validation, prebuild clean | PR-ALEXA-OPS (workflow companion fatto `d0bca14`) + PR-CI-GOV | G6 | parziale |
 | IG-5 md in radice, todo di sessione, `org.json` | PR-CI-GOV | — | da fare |
 | IG-6 placeholder analytics, residui template | PR-SEC-1 | G1 | fatto |
 | IG-7 DataItem non cancellato, `INTERNET` su wear | PR-WEAR-1 | G4 | da fare |
@@ -248,8 +264,8 @@ Identificativi dal rapporto `docs/audit-independent-2026-09-23.md` (V, C, F, D, 
 | C3-add. README non veritiero | PR-REL-0 | G3 | fatto; privacy policy URL da fare |
 | C4-add. icona/splash/label companion | PR-BRAND | G5 | da fare |
 | C5-add. skill Alexa non certificabile | PR-ALEXA-MODEL | G6 | fatto (`abb84ee`); icone e URL nel manifest da valorizzare |
-| C6-add. Voice Bridge non operabile fuori da Manus | PR-SEC-2 + PR-VB-OPS | G6 | fatto (porta, `/healthz`, env, CI, `.env.example`); dipendenza dal portale OAuth Manus: decisione |
-| C7-add. Wear `standalone=false` vs policy Play | PR-WEAR-1 | G4 | decisione |
+| C6-add. Alexa Companion non operabile fuori da Manus | PR-SEC-2 + PR-ALEXA-OPS | G6 | fatto (porta, `/healthz`, env, CI, `.env.example`); dipendenza dal portale OAuth Manus: decisione |
+| C7-add. Wear `standalone=false` vs policy Play | PR-WEAR-1 | G4 | chiarito: ammesso per companion dipendente; distribuzione ancora da decidere |
 | C8-add. `ACCESS_FINE_LOCATION` companion | PR-BRAND | G5 | da fare |
 | C9-add. informativa privacy in-app | PR-ANDROID-UX | G3 | da fare |
 | C10-add. PR #1 aperta, `template.json`, `VERIFICA_RELEASE.md` | PR-CI-GOV | — | da fare |
@@ -258,9 +274,8 @@ Identificativi dal rapporto `docs/audit-independent-2026-09-23.md` (V, C, F, D, 
 
 | Decisione | Blocca | Opzioni |
 |---|---|---|
-| Licenza del repository | PR-REL-0, Release A | MIT (come dichiara `voice-bridge/package.json`) o altra |
-| Albero canonico del web (`voice-bridge/` vs `surfaces/web-voice-bridge`/WebDev) | riporto delle PR-SEC/DB sull'albero definitivo, PR-CI-GOV | scegliere; le correzioni fatte sono su `voice-bridge/` e riportabili (stessi file) |
-| Distribuzione Wear (Play track vs sideload) e `standalone` | PR-WEAR-1 | verificare la policy Play corrente prima di toccare i manifest |
+| Licenza del repository | PR-REL-0, Release A | MIT (come dichiara `alexa-companion/package.json`) o altra |
+| Distribuzione Wear (Play track vs sideload) | PR-WEAR-1 | `standalone=false` è ammesso per un companion dipendente; scegliere il canale e documentare l'assenza dell'app telefono |
 | Coppia Wear canonica (`app`+`wear` vs companion) | PR-WEAR-1/2, PR-COMP-1 | consigliata `app`+`wear`; companion Wear sperimentale |
 | Apple Watch: congelare o completare | PR-APPLE, G3 | congelare come prototipo finché non esiste l'app iOS |
 | Adapter realtime non cablati (RSS RFI, STA, SNCF-RT, enrichment) | PR-DATA-3, README | cablare a una superficie o rimuovere |

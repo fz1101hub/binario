@@ -2085,7 +2085,7 @@ private fun IntegrationsPanel(
                 title = "Comandi vocali e Alexa",
                 detail = when (voiceReadiness) {
                     VoiceProfileSyncReadiness.DISABLED -> "Profilo vocale non condiviso; nessun account collegato"
-                    VoiceProfileSyncReadiness.ACCOUNT_LINK_REQUIRED -> "Collegamento account Voice Bridge richiesto; nessun dato inviato"
+                    VoiceProfileSyncReadiness.ACCOUNT_LINK_REQUIRED -> "Collegamento account Alexa Companion richiesto; nessun dato inviato"
                     VoiceProfileSyncReadiness.READY_FOR_AUTHENTICATED_SYNC -> "Profilo pronto per sincronizzazione autenticata"
                 },
                 selected = settings.voiceProfileSyncRequested,

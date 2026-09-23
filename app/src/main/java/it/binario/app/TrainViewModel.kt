@@ -776,9 +776,9 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     /** Prepara il body contrattuale, ma non esegue rete né conserva un token. */
-    fun preparedVoiceProfileRequest(expectedRevision: Int? = null): VoiceBridgeProfileRequest? {
+    fun preparedVoiceProfileRequest(expectedRevision: Int? = null): AlexaCompanionProfileRequest? {
         if (voiceProfileSyncReadiness() != VoiceProfileSyncReadiness.READY_FOR_AUTHENTICATED_SYNC) return null
-        return unifiedProfile().toVoiceBridgeProfileRequest(expectedRevision)
+        return unifiedProfile().toAlexaCompanionProfileRequest(expectedRevision)
     }
 
     fun setAppleWatchSetupRequested(enabled: Boolean) {
