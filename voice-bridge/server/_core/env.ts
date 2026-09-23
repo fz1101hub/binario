@@ -1,3 +1,5 @@
+const list = (value: string | undefined) => (value ?? "").split(",").map(item => item.trim()).filter(Boolean);
+
 export const ENV = {
   appId: process.env.VITE_APP_ID ?? "",
   cookieSecret: process.env.JWT_SECRET ?? "",
@@ -10,5 +12,8 @@ export const ENV = {
   alexaSkillId: process.env.ALEXA_SKILL_ID ?? "",
   alexaOAuthClientId: process.env.ALEXA_OAUTH_CLIENT_ID ?? "",
   alexaOAuthClientSecret: process.env.ALEXA_OAUTH_CLIENT_SECRET ?? "",
+  // Exact Amazon callback URIs allowed for the Alexa account-linking flow.
+  alexaOAuthRedirectUris: list(process.env.ALEXA_OAUTH_REDIRECT_URIS),
   voiceTokenPepper: process.env.VOICE_TOKEN_PEPPER ?? "",
+  trustProxy: process.env.TRUST_PROXY ?? "",
 };

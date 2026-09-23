@@ -1,16 +1,9 @@
 import "dotenv/config";
-import express from "express";
 import { createServer } from "http";
 import net from "net";
-import { createExpressMiddleware } from "@trpc/server/adapters/express";
-import { registerOAuthRoutes } from "./oauth";
-import { registerStorageProxy } from "./storageProxy";
-import { appRouter } from "../routers";
-import { createContext } from "./context";
-import { serveStatic, setupVite } from "./vite";
-import { registerAlexaRoutes } from "../voice/alexa";
-import { registerAndroidDeepLinks } from "../voice/deepLinks";
-import { securityHeaders } from "./securityHeaders";
+import { createApp } from "./app";
+import { ENV } from "./env";
+import { assertRuntimeEnvironment } from "./envCheck";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -32,43 +25,28 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 }
 
 async function startServer() {
-  const app = express();
-  const server = createServer(app);
-  app.use(securityHeaders());
-  // Alexa needs the untouched signed body, so its own verifier is registered
-  // before the generic JSON parser used by tRPC and the dashboard.
-  registerAlexaRoutes(app);
-  registerAndroidDeepLinks(app);
-  // Configure body parser with larger size limit for file uploads
-  app.use(express.json({ limit: "50mb" }));
-  app.use(express.urlencoded({ limit: "50mb", extended: true }));
-  registerStorageProxy(app);
-  registerOAuthRoutes(app);
-  // tRPC API
-  app.use(
-    "/api/trpc",
-    createExpressMiddleware({
-      router: appRouter,
-      createContext,
-    })
-  );
-  // development mode uses Vite, production mode uses static files
-  if (process.env.NODE_ENV === "development") {
-    await setupVite(app, server);
-  } else {
-    serveStatic(app);
-  }
-
+  assertRuntimeEnvironment();
   const preferredPort = parseInt(process.env.PORT || "3000");
-  const port = await findAvailablePort(preferredPort);
-
+  // In production the port is a contract with the reverse proxy: a process
+  // that silently moves elsewhere is unreachable, not resilient.
+  const port = ENV.isProduction ? preferredPort : await findAvailablePort(preferredPort);
   if (port !== preferredPort) {
     console.log(`Port ${preferredPort} is busy, using port ${port} instead`);
   }
 
+  const server = createServer();
+  const app = await createApp({ server });
+  server.on("request", app);
+  server.on("error", error => {
+    console.error("[Server] Unable to start:", error);
+    process.exit(1);
+  });
   server.listen(port, () => {
     console.log(`Server running on http://localhost:${port}/`);
   });
 }
 
-startServer().catch(console.error);
+startServer().catch(error => {
+  console.error(error);
+  process.exit(1);
+});

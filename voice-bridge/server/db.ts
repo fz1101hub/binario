@@ -1,4 +1,4 @@
-import { and, desc, eq, gt, isNull } from "drizzle-orm";
+import { and, desc, eq, gt, isNull, ne } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   alexaAccountLinks,
@@ -83,7 +83,7 @@ export async function upsertUser(user: InsertUser): Promise<void> {
       set: updateSet,
     });
   } catch (error) {
-    console.error("[Database] Failed to upsert user:", error);
+    console.error("[Database] Failed to upsert user:", error instanceof Error ? error.message : String(error));
     throw error;
   }
 }
@@ -177,8 +177,26 @@ export async function recordAlexaVerification(userId: number, alexaUserHash: str
   const db = await getDb();
   if (!db) throw new Error("Archivio collegamenti vocali non disponibile");
   const now = new Date();
+  // The same Alexa account may be re-linked by another Binario user: detach the
+  // hash from anyone else first, so the unique index cannot make the upsert
+  // resurrect a different user's (possibly revoked) row. A revocation is only
+  // lifted by restoreAlexaLink, never by a routine verification.
+  await db
+    .update(alexaAccountLinks)
+    .set({ alexaUserHash: null, revokedAt: now })
+    .where(and(eq(alexaAccountLinks.alexaUserHash, alexaUserHash), ne(alexaAccountLinks.userId, userId)));
   await db.insert(alexaAccountLinks).values({ userId, alexaUserHash, linkedAt: now, lastVerifiedAt: now }).onDuplicateKeyUpdate({
-    set: { alexaUserHash, lastVerifiedAt: now, revokedAt: null },
+    set: { alexaUserHash, lastVerifiedAt: now },
+  });
+}
+
+/** Called only when a fresh authorization code is exchanged: the user consented again. */
+export async function restoreAlexaLink(userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Archivio collegamenti vocali non disponibile");
+  const now = new Date();
+  await db.insert(alexaAccountLinks).values({ userId, linkedAt: now, lastVerifiedAt: now }).onDuplicateKeyUpdate({
+    set: { linkedAt: now, lastVerifiedAt: now, revokedAt: null },
   });
 }
 

@@ -10,7 +10,8 @@ export function isAlexaConfigured(): boolean {
     ENV.alexaSkillId &&
       ENV.alexaOAuthClientId &&
       ENV.alexaOAuthClientSecret &&
-      ENV.voiceTokenPepper
+      ENV.voiceTokenPepper &&
+      ENV.alexaOAuthRedirectUris.length > 0
   );
 }
 

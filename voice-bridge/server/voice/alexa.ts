@@ -1,9 +1,12 @@
 import express, { type Express, type Request, type Response } from "express";
+import { parse as parseCookieHeader } from "cookie";
 import { ExpressAdapter } from "ask-sdk-express-adapter";
 import { getAccountLinkingAccessToken, getIntentName, getRequestType, SkillBuilders, type HandlerInput, type RequestHandler } from "ask-sdk-core";
-import { createAuthorizationCode, createRefreshToken, getActiveRefreshToken, listPersonalRoutes, recordAlexaVerification, revokeRefreshToken, consumeAuthorizationCode } from "../db";
+import { createAuthorizationCode, createRefreshToken, getActiveRefreshToken, getAlexaLinkStatus, listPersonalRoutes, recordAlexaVerification, restoreAlexaLink, revokeRefreshToken, consumeAuthorizationCode } from "../db";
 import { ENV } from "../_core/env";
+import { isSecureRequest } from "../_core/cookies";
 import { createOpaqueSecret, hashVoiceSecret, issueVoiceAccessToken, secureStringEquals, verifyVoiceAccessToken } from "./crypto";
+import { CONSENT_COOKIE, CONSENT_COOKIE_PATH, CONSENT_TTL_MS, consentToken, createConsentNonce, renderConsentPage, verifyConsentToken } from "./consent";
 import { isAlexaConfigured } from "./config";
 import { needsAccountLink } from "./guards";
 import { parseOAuthAuthorizationParameters } from "./oauthContract";
@@ -16,14 +19,21 @@ function getAlexaUserIdentifier(input: HandlerInput) {
   return input.requestEnvelope.session?.user?.userId ?? input.requestEnvelope.context.System.user.userId;
 }
 
-async function getLinkedUser(input: HandlerInput) {
-  const token = getAccountLinkingAccessToken(input.requestEnvelope);
-  if (needsAccountLink(token)) return null;
-  const userId = await verifyVoiceAccessToken(token);
+/** Resolves the Binario user behind an Alexa request; null when the link is missing or revoked. */
+export async function resolveLinkedUser(accessToken: string | undefined, alexaUserId: string | undefined) {
+  if (needsAccountLink(accessToken)) return null;
+  const userId = await verifyVoiceAccessToken(accessToken as string);
   if (!userId) return null;
-  const alexaUserId = getAlexaUserIdentifier(input);
+  // An access token outlives an unlink by up to an hour: the stored link is
+  // the source of truth, and a routine verification must never lift a revocation.
+  const link = await getAlexaLinkStatus(userId);
+  if (link?.revokedAt) return null;
   if (alexaUserId) await recordAlexaVerification(userId, hashVoiceSecret(alexaUserId));
   return userId;
+}
+
+async function getLinkedUser(input: HandlerInput) {
+  return resolveLinkedUser(getAccountLinkingAccessToken(input.requestEnvelope), getAlexaUserIdentifier(input));
 }
 
 function linkRequiredResponse(input: HandlerInput) {
@@ -108,10 +118,22 @@ function oauthError(res: Response, status: number, error: string) {
   return res.status(status).json({ error });
 }
 
-function parseAuthorizationRequest(req: Request) {
-  const parsed = parseOAuthAuthorizationParameters(req.query, ENV.alexaOAuthClientId);
+function parseAuthorizationRequest(source: Record<string, unknown>) {
+  const parsed = parseOAuthAuthorizationParameters(source, ENV.alexaOAuthClientId, ENV.alexaOAuthRedirectUris);
   return parsed ? { clientId: parsed.clientId, redirectUri: parsed.redirectUri, state: parsed.state, scope: parsed.scope } : null;
 }
+
+function redirectWithParameters(res: Response, redirectUri: string, parameters: Record<string, string>) {
+  const url = new URL(redirectUri);
+  for (const [name, value] of Object.entries(parameters)) url.searchParams.set(name, value);
+  return res.redirect(302, url.toString());
+}
+
+function consentCookieOptions(req: Request) {
+  return { httpOnly: true, path: CONSENT_COOKIE_PATH, sameSite: "lax" as const, secure: isSecureRequest(req) };
+}
+
+const LOGIN_REQUIRED = "Accedi prima alla dashboard Binario e ripeti il collegamento Alexa.";
 
 async function requireBinarioUser(req: Request) {
   const { sdk } = await import("../_core/sdk");
@@ -135,12 +157,34 @@ async function issueTokenPair(userId: number, clientId: string) {
 }
 
 export function registerAlexaRoutes(app: Express) {
+  // GET only shows an authenticated consent page: the code is created by the
+  // CSRF-protected POST below, so a cross-site navigation cannot link a
+  // victim's Binario account to someone else's Alexa.
   app.get("/api/alexa/oauth/authorize", async (req, res) => {
     if (!isAlexaConfigured()) return oauthError(res, 503, "alexa_not_configured");
-    const request = parseAuthorizationRequest(req);
+    const request = parseAuthorizationRequest(req.query as Record<string, unknown>);
     if (!request) return oauthError(res, 400, "invalid_request");
     const user = await requireBinarioUser(req);
-    if (!user) return res.status(401).type("text/plain").send("Accedi prima alla dashboard Binario e ripeti il collegamento Alexa.");
+    if (!user) return res.status(401).type("text/plain").send(LOGIN_REQUIRED);
+
+    const nonce = createConsentNonce();
+    res.cookie(CONSENT_COOKIE, nonce, { ...consentCookieOptions(req), maxAge: CONSENT_TTL_MS });
+    res.setHeader("Cache-Control", "no-store");
+    return res.status(200).type("html").send(renderConsentPage({ userName: user.name ?? "", ...request, token: consentToken(nonce, user.id) }));
+  });
+
+  app.post("/api/alexa/oauth/authorize", express.urlencoded({ extended: false }), async (req, res) => {
+    if (!isAlexaConfigured()) return oauthError(res, 503, "alexa_not_configured");
+    const body = (req.body ?? {}) as Record<string, unknown>;
+    const request = parseAuthorizationRequest(body);
+    if (!request) return oauthError(res, 400, "invalid_request");
+    const user = await requireBinarioUser(req);
+    if (!user) return res.status(401).type("text/plain").send(LOGIN_REQUIRED);
+
+    const nonce = parseCookieHeader(req.headers.cookie ?? "")[CONSENT_COOKIE];
+    res.clearCookie(CONSENT_COOKIE, consentCookieOptions(req));
+    if (!verifyConsentToken(nonce, user.id, body.csrf_token)) return oauthError(res, 403, "invalid_csrf_token");
+    if (body.decision !== "allow") return redirectWithParameters(res, request.redirectUri, { error: "access_denied", state: request.state });
 
     const rawCode = createOpaqueSecret();
     await createAuthorizationCode({
@@ -151,10 +195,7 @@ export function registerAlexaRoutes(app: Express) {
       scope: request.scope,
       expiresAt: new Date(Date.now() + 5 * 60 * 1000),
     });
-    const redirect = new URL(request.redirectUri);
-    redirect.searchParams.set("code", rawCode);
-    redirect.searchParams.set("state", request.state);
-    return res.redirect(302, redirect.toString());
+    return redirectWithParameters(res, request.redirectUri, { code: rawCode, state: request.state });
   });
 
   app.post("/api/alexa/oauth/token", express.urlencoded({ extended: false }), express.json({ strict: true }), async (req, res) => {
@@ -168,6 +209,7 @@ export function registerAlexaRoutes(app: Express) {
       const redirectUri = typeof req.body.redirect_uri === "string" ? req.body.redirect_uri : "";
       const record = code && redirectUri ? await consumeAuthorizationCode(hashVoiceSecret(code), clientId, redirectUri) : null;
       if (!record) return oauthError(res, 400, "invalid_grant");
+      await restoreAlexaLink(record.userId);
       return res.json(await issueTokenPair(record.userId, clientId));
     }
 

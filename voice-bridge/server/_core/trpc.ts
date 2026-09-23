@@ -3,8 +3,20 @@ import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import type { TrpcContext } from "./context";
 
+export const INTERNAL_ERROR_MESSAGE = "Errore interno del servizio. Riprova più tardi.";
+
+// Database drivers put connection strings, table names and SQL fragments in
+// their error messages: those stay in the server log and never reach a client.
+export function maskInternalError<T extends { message: string }>(shape: T, code: string): T {
+  return code === "INTERNAL_SERVER_ERROR" ? { ...shape, message: INTERNAL_ERROR_MESSAGE } : shape;
+}
+
 const t = initTRPC.context<TrpcContext>().create({
   transformer: superjson,
+  errorFormatter({ shape, error }) {
+    if (error.code === "INTERNAL_SERVER_ERROR") console.error("[tRPC] internal error:", error.cause?.message ?? error.message);
+    return maskInternalError(shape, error.code);
+  },
 });
 
 export const router = t.router;

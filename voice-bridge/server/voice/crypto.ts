@@ -1,13 +1,16 @@
-import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
+import { createHmac, hkdfSync, randomBytes, timingSafeEqual } from "node:crypto";
 import { jwtVerify, SignJWT } from "jose";
 import { ENV } from "../_core/env";
 
 const encoder = new TextEncoder();
 const issuer = "binario-voice-bridge";
 
+// The pepper keeps hashing the stored code/refresh digests directly (the
+// digests already persisted depend on it); the JWT key is derived so that the
+// signing key and the hashing key are never the same bytes.
 function signingKey() {
   if (!ENV.voiceTokenPepper) throw new Error("Integrazione Alexa non configurata");
-  return encoder.encode(ENV.voiceTokenPepper);
+  return new Uint8Array(hkdfSync("sha256", encoder.encode(ENV.voiceTokenPepper), new Uint8Array(0), "binario-voice-access-token", 32));
 }
 
 export function createOpaqueSecret() {
@@ -39,6 +42,7 @@ export async function issueVoiceAccessToken(userId: number) {
 export async function verifyVoiceAccessToken(token: string): Promise<number | null> {
   try {
     const { payload } = await jwtVerify(token, signingKey(), {
+      algorithms: ["HS256"],
       issuer,
       audience: ENV.alexaOAuthClientId,
     });

@@ -1,4 +1,4 @@
-import { AXIOS_TIMEOUT_MS, COOKIE_NAME, ONE_YEAR_MS, decodeOAuthState } from "@shared/const";
+import { AXIOS_TIMEOUT_MS, COOKIE_NAME, SESSION_TTL_MS, decodeOAuthState } from "@shared/const";
 import { ForbiddenError } from "@shared/_core/errors";
 import axios, { type AxiosInstance } from "axios";
 import { parse as parseCookieHeader } from "cookie";
@@ -182,7 +182,7 @@ class SDKServer {
     options: { expiresInMs?: number } = {}
   ): Promise<string> {
     const issuedAt = Date.now();
-    const expiresInMs = options.expiresInMs ?? ONE_YEAR_MS;
+    const expiresInMs = options.expiresInMs ?? SESSION_TTL_MS;
     const expirationSeconds = Math.floor((issuedAt + expiresInMs) / 1000);
     const secretKey = this.getSessionSecret();
 
@@ -217,6 +217,13 @@ class SDKServer {
         !isNonEmptyString(name)
       ) {
         console.warn("[Auth] Session payload missing required fields");
+        return null;
+      }
+
+      // Several apps may share one signing secret: a session minted for another
+      // app is not a session for this one.
+      if (appId !== ENV.appId) {
+        console.warn("[Auth] Session issued for another app");
         return null;
       }
 
@@ -256,19 +263,11 @@ class SDKServer {
   }
 
   async authenticateRequest(req: Request): Promise<AuthenticatedUser> {
-    // 1. Prefer the session cookie (regular OAuth login).
+    // The session lives only in the HttpOnly cookie: a token readable by
+    // scripts (headers, storage) would widen what an XSS or a framing page
+    // can do with it.
     const cookies = this.parseCookies(req.headers.cookie);
-    let sessionToken = cookies.get(COOKIE_NAME);
-
-    // 2. Fallback to the Authorization header (Preview auto-login via
-    //    sessionStorage), used when the browser blocks iframe cookies such as
-    //    Safari ITP, private browsing, or iOS/Android WebView.
-    if (!sessionToken) {
-      const authHeader = req.headers.authorization;
-      if (typeof authHeader === "string" && authHeader.startsWith("Bearer ")) {
-        sessionToken = authHeader.slice(7);
-      }
-    }
+    const sessionToken = cookies.get(COOKIE_NAME);
 
     const session = await this.verifySession(sessionToken);
 
