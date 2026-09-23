@@ -10,6 +10,7 @@ import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { registerAlexaRoutes } from "../voice/alexa";
 import { registerAndroidDeepLinks } from "../voice/deepLinks";
+import { securityHeaders } from "./securityHeaders";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -33,6 +34,7 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 async function startServer() {
   const app = express();
   const server = createServer(app);
+  app.use(securityHeaders());
   // Alexa needs the untouched signed body, so its own verifier is registered
   // before the generic JSON parser used by tRPC and the dashboard.
   registerAlexaRoutes(app);
