@@ -80,6 +80,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -121,6 +122,52 @@ import kotlinx.coroutines.withContext
 private enum class Screen { PLANNER, OPERATIONS, SETTINGS, RESULTS, DETAIL }
 private enum class OperationsSection(val label: String) { TRAINS("Treni"), STATIONS("Stazioni") }
 private enum class SearchMode(val label: String) { ROUTE("Tratta"), TRAIN("N. treno"), STATION("Stazione") }
+
+private val stopAlarmPlanSaver = listSaver<StopAlarmPlan?, Any>(
+    save = { plan ->
+        if (plan == null) emptyList()
+        else listOf(plan.trainNumber, plan.destination, plan.station, plan.expectedTime, plan.triggerAtEpochMillis)
+    },
+    restore = { values ->
+        if (values.isEmpty()) null
+        else StopAlarmPlan(
+            trainNumber = values[0] as String,
+            destination = values[1] as String,
+            station = values[2] as String,
+            expectedTime = values[3] as String,
+            triggerAtEpochMillis = values[4] as Long
+        )
+    }
+)
+
+private val commuterAlertSaver = listSaver<CommuterAlert?, Any>(
+    save = { alert ->
+        if (alert == null) emptyList()
+        else listOf(
+            alert.id,
+            alert.routeLabel,
+            alert.stationName,
+            alert.time,
+            alert.leadMinutes,
+            alert.repeat.name,
+            alert.quietHoursEnabled,
+            alert.enabled
+        )
+    },
+    restore = { values ->
+        if (values.isEmpty()) null
+        else CommuterAlert(
+            id = values[0] as String,
+            routeLabel = values[1] as String,
+            stationName = values[2] as String,
+            time = values[3] as String,
+            leadMinutes = values[4] as Int,
+            repeat = AlertRepeat.valueOf(values[5] as String),
+            quietHoursEnabled = values[6] as Boolean,
+            enabled = values[7] as Boolean
+        )
+    }
+)
 
 class MainActivity : ComponentActivity() {
     private val deepLinkDispatcher = DeepLinkRequestDispatcher()
@@ -178,7 +225,9 @@ private fun BinarioApp(
     var plannerSearchModeName by rememberSaveable { mutableStateOf(SearchMode.ROUTE.name) }
     var plannerSearchRequestId by rememberSaveable { mutableStateOf(0) }
     var showThemePicker by rememberSaveable { mutableStateOf(false) }
-    var pendingStopAlarm by remember { mutableStateOf<StopAlarmPlan?>(null) }
+    var pendingStopAlarm by rememberSaveable(stateSaver = stopAlarmPlanSaver) {
+        mutableStateOf<StopAlarmPlan?>(null)
+    }
     var stopAlarmFeedback by rememberSaveable { mutableStateOf<String?>(null) }
     val context = LocalContext.current
     val notificationPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -1797,7 +1846,9 @@ private fun SettingsScreen(
 ) {
     var showComposer by rememberSaveable { mutableStateOf(false) }
     var showAlertComposer by rememberSaveable { mutableStateOf(false) }
-    var pendingAlert by remember { mutableStateOf<CommuterAlert?>(null) }
+    var pendingAlert by rememberSaveable(stateSaver = commuterAlertSaver) {
+        mutableStateOf<CommuterAlert?>(null)
+    }
     var alertFeedback by rememberSaveable { mutableStateOf<String?>(null) }
     var backupFeedback by rememberSaveable { mutableStateOf<String?>(null) }
     val context = LocalContext.current
