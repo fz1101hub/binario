@@ -125,7 +125,7 @@ class RfiProgrammedTimetableAdapter(
         val origin = route.origin(direction)
         val destination = route.destination(direction)
         val stationId = RfiProgrammedStationIds.timetableId(origin)
-            ?: return DataResult.Failure("Il quadro orario programmato RFI non è ancora mappato per ${origin.name}.")
+            ?: return DataResult.Failure(unmappedDirectionMessage(origin, destination))
 
         val key = "${origin.id}:${query.serviceDate}"
         val now = clock.millis()
@@ -403,6 +403,13 @@ class RfiProgrammedTimetableAdapter(
     }.getOrNull()
 
     private fun timeMinutes(value: String): Int = parseTime(value)?.let { it.hour * 60 + it.minute } ?: Int.MAX_VALUE
+
+    private fun unmappedDirectionMessage(origin: Station, destination: Station): String =
+        if (RfiProgrammedStationIds.timetableId(destination) != null) {
+            "Il quadro RFI copre le partenze dall’hub ${destination.name}, non la direzione che parte da ${origin.name}."
+        } else {
+            "Il quadro orario programmato RFI non è ancora mappato per ${origin.name}."
+        }
 
     private fun italianMonth(value: String): Month? = when (value.trim().lowercase(Locale.ITALIAN).take(3)) {
         "gen" -> Month.JANUARY

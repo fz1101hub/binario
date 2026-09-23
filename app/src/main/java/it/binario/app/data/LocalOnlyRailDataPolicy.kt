@@ -24,26 +24,37 @@ import it.binario.app.data.provider.VehiclePositionProvider
  * alternatives have failed for the requested route/context.
  */
 object LocalOnlyRailDataPolicy {
+    private val rfiProgrammed by lazy { RfiProgrammedTimetableAdapter() }
+    private val rfiSupplemental by lazy { RfiSupplementalHubTimetableAdapter() }
+    private val europeanSleeperFallback by lazy { RemoteGtfsFallbackDataSource.europeanSleeper() }
+    private val rfiProgrammedBoard by lazy { RfiProgrammedStationBoardAdapter() }
+    private val rfiStationBoard by lazy { RfiStationBoardAdapter() }
+    private val italoStationBoard by lazy { ItaloPublicStationAdapter() }
+    private val viaggiaTrenoBoard by lazy { ViaggiaTrenoStationAdapter() }
+    private val rfiAlerts by lazy { RfiInfomobilityRssAdapter() }
+    private val staRealtime by lazy { StaRealtimeAdapter() }
+    private val sncfRealtime by lazy { SncfGtfsRealtimeAdapter() }
+
     /** Official programmed sources only. */
     fun routeSources(): List<TrainDataSource> = listOf(
-        RfiProgrammedTimetableAdapter(),
-        RfiSupplementalHubTimetableAdapter()
+        rfiProgrammed,
+        rfiSupplemental
     )
 
     /** Last-resort route coverage. These sources must never outrank official GTFS/RFI data. */
     fun coverageRouteFallbacks(): List<TrainDataSource> = listOf(
         // European Sleeper owns its realtime reconciliation internally and only
         // after this exact fallback static feed produced the requested route.
-        RemoteGtfsFallbackDataSource.europeanSleeper()
+        europeanSleeperFallback
     )
 
     /** Realtime/operational boards used to enrich planned route snapshots. */
     fun stationBoardProviders(): List<StationBoardProvider> =
         if (BuildConfig.PERSONAL_REALTIME_SOURCES) {
             listOf(
-                RfiStationBoardAdapter(),
-                ItaloPublicStationAdapter(),
-                ViaggiaTrenoStationAdapter()
+                rfiStationBoard,
+                italoStationBoard,
+                viaggiaTrenoBoard
             )
         } else {
             emptyList()
@@ -54,16 +65,16 @@ object LocalOnlyRailDataPolicy {
      * departure board and overlays explicitly enabled operational providers.
      */
     fun stationBoardDisplayProviders(): List<StationBoardProvider> =
-        listOf(RfiProgrammedStationBoardAdapter()) + stationBoardProviders()
+        listOf(rfiProgrammedBoard) + stationBoardProviders()
 
     fun alertProviders(): List<AlertProvider> = listOf(
-        RfiInfomobilityRssAdapter(),
-        StaRealtimeAdapter(),
-        SncfGtfsRealtimeAdapter()
+        rfiAlerts,
+        staRealtime,
+        sncfRealtime
     )
 
     fun vehiclePositionProviders(): List<VehiclePositionProvider> = listOf(
-        StaRealtimeAdapter()
+        staRealtime
     )
 
     /**
@@ -71,8 +82,8 @@ object LocalOnlyRailDataPolicy {
      * static schedule are queried globally.
      */
     fun tripUpdateProviders(): List<TripUpdateProvider> = listOf(
-        StaRealtimeAdapter(),
-        SncfGtfsRealtimeAdapter()
+        staRealtime,
+        sncfRealtime
     )
 
     /**

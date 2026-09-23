@@ -114,6 +114,26 @@ class RfiProgrammedTimetableAdapterTest {
     }
 
     @Test
+    fun `destinazione hub mappata spiega il limite del quadro partenze`() = runBlocking {
+        var calls = 0
+        val adapter = RfiProgrammedTimetableAdapter(
+            fetcher = RfiProgrammedTimetableFetcher { calls += 1; fixture() },
+            clock = clock
+        )
+        val unknown = Station("stazione-ignota", "Stazione ignota", "Italia")
+
+        val result = adapter.loadRoute(
+            route(unknown, milano),
+            Direction.OUTBOUND,
+            JourneyQuery(LocalDate.of(2026, 9, 4), LocalTime.of(8, 0))
+        )
+
+        assertTrue(result is DataResult.Failure)
+        assertTrue((result as DataResult.Failure).message.contains("partenze dall’hub Milano Centrale"))
+        assertEquals(0, calls)
+    }
+
+    @Test
     fun `periodicita feriale viene rispettata`() = runBlocking {
         val adapter = RfiProgrammedTimetableAdapter(
             fetcher = RfiProgrammedTimetableFetcher { fixture(periodicity = "Lun-Ven") },

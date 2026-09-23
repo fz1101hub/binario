@@ -11,6 +11,8 @@ import it.binario.app.data.SavedRoute
 import it.binario.app.data.Station
 import it.binario.app.data.TrainDataSource
 import it.binario.app.data.matchesPublishedName
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.time.Clock
 import java.time.DayOfWeek
 import java.time.LocalDate
@@ -25,12 +27,15 @@ import java.util.Locale
  */
 class RfiSupplementalHubTimetableAdapter(
     private val fetcher: RfiProgrammedTimetableFetcher = HttpRfiProgrammedTimetableFetcher(),
-    private val clock: Clock = Clock.system(RailTime.defaultZone)
+    private val clock: Clock = Clock.system(RailTime.defaultZone),
+    private val cacheTtlMillis: Long = CACHE_TTL_MILLIS
 ) : TrainDataSource {
     private val parser = RfiProgrammedTimetableAdapter(
         fetcher = RfiProgrammedTimetableFetcher { "" },
         clock = clock
     )
+    private val mutex = Mutex()
+    private val cache = mutableMapOf<String, CachedTimetable>()
 
     override suspend fun loadRoute(route: SavedRoute, direction: Direction): DataResult {
         val now = clock.instant().atZone(clock.zone)
@@ -45,13 +50,21 @@ class RfiSupplementalHubTimetableAdapter(
         val origin = route.origin(direction)
         val destination = route.destination(direction)
         val timetableId = SupplementalRfiProgrammedStationIds.timetableId(origin)
-            ?: return DataResult.Failure("Nessun hub RFI supplementare mappato per ${origin.name}.")
-        val url = "https://prm.rfi.it/qo_prm/QO_Partenze_SiPMR.aspx?Id=$timetableId&lin=it&dalle=00.00&alle=23.59&ora=00.00"
-        val html = runCatching { fetcher.fetch(url) }.getOrElse {
-            return DataResult.Failure("Il quadro orario RFI supplementare non è raggiungibile: ${it.message.orEmpty()}.")
-        }
-        val parsed = runCatching { parser.parseTimetable(html, origin, route, direction) }.getOrElse {
-            return DataResult.Failure("Il quadro orario RFI supplementare non è leggibile: ${it.message.orEmpty()}.")
+            ?: return DataResult.Failure(unmappedDirectionMessage(origin, destination))
+        val now = clock.millis()
+        val cacheKey = "${route.id}:${direction.name}:$timetableId"
+        val parsed = mutex.withLock {
+            cache[cacheKey]?.takeIf { now < it.expiresAtEpochMillis }?.timetable
+        } ?: run {
+            val url = "https://prm.rfi.it/qo_prm/QO_Partenze_SiPMR.aspx?Id=$timetableId&lin=it&dalle=00.00&alle=23.59&ora=00.00"
+            val html = runCatching { fetcher.fetch(url) }.getOrElse {
+                return DataResult.Failure("Il quadro orario RFI supplementare non è raggiungibile: ${it.message.orEmpty()}.")
+            }
+            val timetable = runCatching { parser.parseTimetable(html, origin, route, direction) }.getOrElse {
+                return DataResult.Failure("Il quadro orario RFI supplementare non è leggibile: ${it.message.orEmpty()}.")
+            }
+            mutex.withLock { cache[cacheKey] = CachedTimetable(timetable, now + cacheTtlMillis) }
+            timetable
         }
 
         parsed.validity?.let { validity ->
@@ -90,7 +103,6 @@ class RfiSupplementalHubTimetableAdapter(
             )
         }
 
-        val now = clock.millis()
         return DataResult.Success(
             RouteSnapshot(
                 route = route,
@@ -136,6 +148,18 @@ class RfiSupplementalHubTimetableAdapter(
     }.getOrNull()
 
     private fun timeMinutes(value: String): Int = parseTime(value)?.let { it.hour * 60 + it.minute } ?: Int.MAX_VALUE
+
+    private fun unmappedDirectionMessage(origin: Station, destination: Station): String =
+        if (SupplementalRfiProgrammedStationIds.timetableId(destination) != null) {
+            "Il quadro RFI supplementare copre le partenze dall’hub ${destination.name}, non la direzione che parte da ${origin.name}."
+        } else {
+            "Nessun hub RFI supplementare mappato per ${origin.name}."
+        }
+
+    private data class CachedTimetable(
+        val timetable: RfiProgrammedTimetableAdapter.ParsedTimetable,
+        val expiresAtEpochMillis: Long
+    )
 
     private companion object {
         const val CACHE_TTL_MILLIS = 6L * 60L * 60L * 1000L

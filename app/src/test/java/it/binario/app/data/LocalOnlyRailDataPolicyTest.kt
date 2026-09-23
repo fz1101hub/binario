@@ -4,7 +4,10 @@ import it.binario.app.BuildConfig
 import it.binario.app.data.live.RfiInfomobilityRssAdapter
 import it.binario.app.data.live.SncfGtfsRealtimeAdapter
 import it.binario.app.data.live.StaRealtimeAdapter
+import it.binario.app.data.provider.ProviderCapability
+import it.binario.app.data.repository.BinarioDataGraph
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -54,5 +57,29 @@ class LocalOnlyRailDataPolicyTest {
         // Coverage realtime is owned by the route fallback that produced the
         // same static GTFS route; it must never be exposed as a global provider.
         assertTrue(LocalOnlyRailDataPolicy.coverageTripUpdateProviders().isEmpty())
+    }
+
+    @Test
+    fun `provider con cache sono riusati tra capability e chiamate`() {
+        val firstRoutes = LocalOnlyRailDataPolicy.routeSources()
+        val secondRoutes = LocalOnlyRailDataPolicy.routeSources()
+        assertSame(firstRoutes[0], secondRoutes[0])
+        assertSame(firstRoutes[1], secondRoutes[1])
+
+        val staAlert = LocalOnlyRailDataPolicy.alertProviders().single { it.descriptor.id == StaRealtimeAdapter.SOURCE_ID }
+        val staTripUpdate = LocalOnlyRailDataPolicy.tripUpdateProviders().single { it.descriptor.id == StaRealtimeAdapter.SOURCE_ID }
+        val staVehicle = LocalOnlyRailDataPolicy.vehiclePositionProviders().single()
+        assertSame(staAlert, staTripUpdate)
+        assertSame(staAlert, staVehicle)
+    }
+
+    @Test
+    fun `liste runtime seguono provider attivi e priorita del registry`() {
+        val registryOrder = BinarioDataGraph.providerRegistry()
+            .activeFor(ProviderCapability.SERVICE_ALERTS)
+            .map { it.descriptor.id }
+        val runtimeIds = BinarioDataGraph.alertProviders().map { it.descriptor.id }
+
+        assertEquals(registryOrder.filter { it in runtimeIds }, runtimeIds)
     }
 }

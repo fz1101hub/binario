@@ -1,35 +1,11 @@
 package it.binario.app.data.provider
 
 import it.binario.app.data.core.SourceId
-import java.time.Duration
-
-data class RetryPolicy(
-    val maxAttempts: Int = 2,
-    val initialBackoff: Duration = Duration.ofMillis(500),
-    val maxBackoff: Duration = Duration.ofSeconds(5)
-) {
-    init {
-        require(maxAttempts in 0..3) { "I tentativi devono essere compresi tra 0 e 3" }
-        require(!initialBackoff.isNegative && !maxBackoff.isNegative) { "Il backoff non può essere negativo" }
-    }
-}
-
-data class CircuitBreakerPolicy(
-    val failuresBeforeOpen: Int = 5,
-    val openDuration: Duration = Duration.ofMinutes(2)
-) {
-    init {
-        require(failuresBeforeOpen > 0) { "La soglia del circuito deve essere positiva" }
-        require(!openDuration.isNegative && !openDuration.isZero) { "La durata del circuito deve essere positiva" }
-    }
-}
 
 data class ProviderPolicy(
     val descriptor: ProviderDescriptor,
     val enabled: Boolean,
-    val priorityByCapability: Map<ProviderCapability, Int> = emptyMap(),
-    val retry: RetryPolicy = RetryPolicy(),
-    val circuitBreaker: CircuitBreakerPolicy = CircuitBreakerPolicy()
+    val priorityByCapability: Map<ProviderCapability, Int> = emptyMap()
 ) {
     init {
         require(priorityByCapability.values.all { it >= 0 }) { "Le priorità non possono essere negative" }
