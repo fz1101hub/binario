@@ -1,0 +1,39 @@
+name: GTFS Asset Integrity
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - "stabilization/**"
+  workflow_dispatch:
+
+concurrency:
+  group: gtfs-assets-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  gtfs-assets:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Python 3
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Offline pipeline tests
+        run: python3 -m unittest -v tests/test_build_gtfs_packs.py
+
+      - name: Verify asset digests, filters and declared coverage
+        run: python3 tools/build_gtfs_packs.py --check --integrity-only
+
+      # Release candidates must additionally run the command without
+      # --integrity-only. It intentionally remains red while even one embedded
+      # timetable does not cover the full 30-day release window.

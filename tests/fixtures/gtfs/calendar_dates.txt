@@ -1,0 +1,3 @@
+service_id,date,exception_type
+RAIL,20270115,1
+BUS,20280101,1

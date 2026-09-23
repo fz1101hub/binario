@@ -1,0 +1,3 @@
+route_id,agency_id,route_short_name,route_long_name,route_type
+FGC-164,AMT,FGC,Manin - Casella,2
+BUS-1,AMT,1,Urban bus,3
