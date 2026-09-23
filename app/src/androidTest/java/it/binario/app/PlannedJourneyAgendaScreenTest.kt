@@ -2,7 +2,6 @@ package it.binario.app
 
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.test.assertExists
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -78,11 +77,11 @@ class PlannedJourneyAgendaScreenTest {
             }
         }
 
-        composeRule.onNodeWithText("Riunione Milano").assertExists()
-        composeRule.onNodeWithText("Salvato solo su questo dispositivo. Nessuna sincronizzazione o notifica automatica.").assertExists()
-        composeRule.onNodeWithContentDescription("Checklist: Prepara il biglietto").assertExists()
-        composeRule.onNodeWithText("Esporta JSON").assertExists()
-        composeRule.onNodeWithText("Esporta ICS").assertExists()
+        composeRule.onNodeWithText("Riunione Milano").fetchSemanticsNode()
+        composeRule.onNodeWithText("Salvato solo su questo dispositivo. Nessuna sincronizzazione o notifica automatica.").fetchSemanticsNode()
+        composeRule.onNodeWithContentDescription("Checklist: Prepara il biglietto").fetchSemanticsNode()
+        composeRule.onNodeWithText("Esporta JSON").fetchSemanticsNode()
+        composeRule.onNodeWithText("Esporta ICS").fetchSemanticsNode()
     }
 
     private class MemoryStorage : PlannedJourneyStorage {
