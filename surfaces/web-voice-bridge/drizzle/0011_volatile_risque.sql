@@ -1,1 +1,0 @@
-ALTER TABLE `companion_devices` ADD `syncEnabled` boolean DEFAULT false NOT NULL;

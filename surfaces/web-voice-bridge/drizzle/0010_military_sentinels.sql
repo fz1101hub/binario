@@ -1,1 +1,0 @@
-ALTER TABLE `railway_routes` ADD `preDepartureChecklistJson` varchar(2000) DEFAULT '[]' NOT NULL;
