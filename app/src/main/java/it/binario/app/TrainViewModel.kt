@@ -750,7 +750,11 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
         )
     )
 
-    fun importLocalBackup(raw: String): String = when (val result = LocalDataBackupCodec.decode(raw, stations)) {
+    fun decodeLocalBackup(raw: String): LocalBackupResult = LocalDataBackupCodec.decode(raw, stations)
+
+    fun importLocalBackup(raw: String): String = importLocalBackup(decodeLocalBackup(raw))
+
+    fun importLocalBackup(result: LocalBackupResult): String = when (result) {
         is LocalBackupResult.Failure -> result.message
         is LocalBackupResult.Success -> {
             clearReturnJourneyState()
@@ -766,6 +770,7 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
             replaceServiceMonitors(backup.monitoredServices)
             replaceStationMonitors(backup.stationMonitors)
             commuterAlerts = commuterAlertStore.replace(backup.commuterAlerts)
+            CommuterAlertScheduler.rescheduleAll(getApplication())
             updateMobilityPreferences(backup.mobilityPreferences)
             selectWidgetSurface(backup.widgetSurface)
             if (hasActiveRoute) refresh() else {
