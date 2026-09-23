@@ -93,6 +93,10 @@ android {
         checkDependencies = true
         disable += "GradleDependency"
     }
+
+    sourceSets {
+        getByName("test").resources.srcDir(rootProject.file("contracts/wear-snapshot/v1"))
+    }
 }
 
 dependencies {

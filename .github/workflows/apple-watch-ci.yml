@@ -1,0 +1,65 @@
+name: Apple Watch CI
+
+on:
+  pull_request:
+    paths:
+      - "apple-watch/**"
+      - "contracts/wear-snapshot/**"
+      - ".github/workflows/apple-watch-ci.yml"
+  push:
+    branches:
+      - main
+      - "stabilization/**"
+    paths:
+      - "apple-watch/**"
+      - "contracts/wear-snapshot/**"
+      - ".github/workflows/apple-watch-ci.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: apple-watch-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  watchos:
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate Xcode project
+        working-directory: apple-watch
+        run: xcodegen generate
+      - name: Select an available watchOS simulator
+        id: simulator
+        run: |
+          xcrun simctl list devices available -j > "$RUNNER_TEMP/simulators.json"
+          cat > "$RUNNER_TEMP/select_watch.py" <<'PY'
+          import json
+          import os
+
+          with open(os.environ["RUNNER_TEMP"] + "/simulators.json", encoding="utf-8") as source:
+              devices = json.load(source)["devices"]
+          for runtime, candidates in devices.items():
+              if "watchOS" not in runtime:
+                  continue
+              for device in candidates:
+                  if device.get("isAvailable"):
+                      with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+                          output.write(f"udid={device['udid']}\n")
+                      raise SystemExit(0)
+          raise SystemExit("Nessun simulatore watchOS disponibile")
+          PY
+          python3 "$RUNNER_TEMP/select_watch.py"
+      - name: Build and test Apple Watch
+        working-directory: apple-watch
+        run: |
+          xcodebuild \
+            -project BinarioWatch.xcodeproj \
+            -scheme BinarioWatch \
+            -destination "id=${{ steps.simulator.outputs.udid }}" \
+            CODE_SIGNING_ALLOWED=NO \
+            test

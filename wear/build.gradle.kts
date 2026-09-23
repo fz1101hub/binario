@@ -62,6 +62,10 @@ android {
             }
         }
     }
+
+    sourceSets {
+        getByName("test").resources.srcDir(rootProject.file("contracts/wear-snapshot/v1"))
+    }
 }
 
 dependencies {
@@ -79,4 +83,5 @@ dependencies {
     implementation("androidx.concurrent:concurrent-futures:1.2.0")
     debugImplementation("androidx.compose.ui:ui-tooling")
     testImplementation("junit:junit:4.13.2")
+    testImplementation("org.json:json:20240303")
 }

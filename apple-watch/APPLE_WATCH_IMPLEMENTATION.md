@@ -4,6 +4,8 @@ Il companion watchOS è stato ricostruito come progetto nativo watchOS 10 con Sw
 
 > Apple Watch si abbina a iPhone, non a uno smartphone Android. Per questo l’app Android non può inviare uno snapshot direttamente tramite Watch Connectivity. L’architettura Binario prevede una futura app iOS Binario che usa Watch Connectivity oppure un servizio di sincronizzazione companion dedicato e derivato dallo stesso contratto dell’app principale. Il companion Alexa non è un canale dati per watchOS.
 
+Finché il repository non contiene un target iOS companion, il progetto generato dichiara `WKWatchOnly = YES` per consentire build e test indipendenti. Quando verrà introdotta l’app iOS, questa chiave dovrà essere sostituita dal relativo `WKCompanionAppBundleIdentifier` e il trasporto `WCSession` dovrà superare una prova end-to-end.
+
 ## Generazione e verifica su macOS
 
 1. Installare Xcode e XcodeGen.
