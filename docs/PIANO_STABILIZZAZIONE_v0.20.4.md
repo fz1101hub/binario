@@ -164,11 +164,19 @@ Le PR 0–5 sono parallelizzabili per area; il merge rispetta l'ordine quando un
 
 | Voce | Stato | Riferimento |
 |---|---|---|
-| Tag baseline | creato in locale, push rifiutato (403) | `audit-baseline-2026-09-23` |
+| Tag baseline | creato in locale, push rifiutato (403: credenziali senza permesso sui tag) | `audit-baseline-2026-09-23` su `0b8f3c9` |
 | Branch `stabilization/v0.20.4` | creato e pushato | da `0a39754` |
-| Piano aggiornato | questo documento | — |
-| PR-DATA-1 | in corso | — |
-| PR-SEC-1 | in corso | — |
-| Pack scaduti (PR-DATA-0) | in attesa dei feed aggiornati dalle sorgenti (bloccate dal proxy di questo ambiente) | §4.1 |
-| `LICENSE` | in attesa della scelta della licenza | §1.6 |
+| Piano aggiornato | questo documento | `fab23c9` |
+| PR-SEC-1 (runtime Manus, Bearer, CSP, verificatore build) | **fatto**, verificato in locale (tsc, 26 test, build, smoke header) | `68f2bd5` |
+| PR-DB-1 (migrazione 0002, journal, script separati, test catena) | **fatto**, SQL rigenerato identico all'orfano | `0439be5` |
+| PR-SEC-2 (consenso+CSRF, allowlist, revoca, re-link, hardening server, `.env.example`) | **fatto**, 49 test verdi, smoke `/healthz` + rate limit | `f591719` |
+| PR-VB-OPS (workflow CI Voice Bridge) | **fatto**; prima esecuzione non avviata da GitHub (vedi blocco CI) | `d0bca14` |
+| PR-ALEXA-MODEL (handler built-in, `skill-package/`) | **fatto**, 7 test | `abb84ee` |
+| PR-REL-0 — README veritiero | **fatto** | `8c6d6f5` |
+| PR-REL-0 — `LICENSE` | in attesa della scelta della licenza | §1.6 |
+| PR-REL-0 — `buildTypes.release`, firma, R8, CI release | da fare; richiede CI funzionante per la validazione | §9 |
+| PR-DATA-1 (IO/Default, download bounded, `SHA256SUMS`, integrità asset, `lastServiceDate` + avviso) | **fatto** (merge `d4423bc`); compilazione e test Gradle **non ancora validati** (nessun SDK locale, CI bloccata) | `8efede4`…`2c5aaf5` |
+| PR-DATA-0 (pack scaduti) | in attesa dei feed aggiornati dalle sorgenti (bloccate dal proxy di questo ambiente) | §4.1 |
+| PR-COMP-1/2 | in corso (agente in worktree) | §6 |
+| **Blocco CI** | Android CI #194 e Voice Bridge CI #1 su `d4423bc` falliti in 4–6 s senza eseguire alcuno step e senza log: GitHub non ha avviato i job (tipico di minuti Actions esauriti o limite di spesa per repository privato). Da sbloccare nelle impostazioni GitHub (Billing → Actions) prima di validare le PR Kotlin | run `35808311311`, `35808301236` |
 | Sorgente canonica del web | in attesa di decisione | §1.5 |
