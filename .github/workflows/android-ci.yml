@@ -37,6 +37,11 @@ jobs:
           java-version: "17.0.20+101"
           cache: gradle
 
+      - name: Python 3.12.10
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12.10"
+
       - name: Enable Gradle wrapper
         run: chmod +x gradlew
 
@@ -47,11 +52,13 @@ jobs:
         run: python3 tools/verify_embedded_assets.py --min-valid-days 30
 
       - name: Verify release-engineering configuration
-        run: python3 tools/verify_android_release_config.py
+        run: |
+          python3 tools/verify_android_release_config.py
+          python3 tools/verify_gradle_dependency_metadata.py
 
       - name: Unit tests, lint, debug and unsigned release builds
         run: >-
-          ./gradlew --no-daemon
+          ./gradlew --no-daemon --dependency-verification=strict
           :app:testDebugUnitTest :wear:testDebugUnitTest
           :app:lintDebug :wear:lintDebug
           :app:assembleDebug :wear:assembleDebug

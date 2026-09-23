@@ -10,8 +10,15 @@ La build release non richiede né cerca chiavi nel repository. In assenza della 
 
 ```sh
 ./gradlew --no-daemon :app:assembleRelease :wear:assembleRelease \
-  :app:lintVitalRelease :wear:lintVitalRelease
+  :app:lintVitalRelease :wear:lintVitalRelease \
+  --dependency-verification=strict
 ```
+
+## Verifica delle dipendenze Gradle
+
+`gradle/verification-metadata.xml` fissa con SHA-256 gli artifact, i metadati Maven e i plugin risolti dall'intero gate Android/Wear. Gradle abilita automaticamente la dependency verification quando trova questo file; la CI passa inoltre `--dependency-verification=strict` in modo esplicito.[1] `tools/verify_gradle_dependency_metadata.py` rifiuta checksum assenti o duplicati, algoritmi deboli, trust bypass e una copertura troncata. Il lock corrente comprende 599 componenti e 1.041 artifact.
+
+Un aggiornamento Gradle o di una dipendenza deve rigenerare il metadata usando `--write-verification-metadata sha256` insieme a tutte le task CI. Il diff dei checksum va revisionato nella stessa pull request. Non si deve aggiungere un artifact a `trusted-artifacts` né disabilitare `verify-metadata` per far passare una build.
 
 ## Firma locale o CI
 
@@ -27,3 +34,7 @@ BINARIO_RELEASE_KEY_PASSWORD=...
 Le stesse chiavi possono essere esposte al processo Gradle come variabili d'ambiente con gli stessi nomi. Se manca anche una sola proprietà, Gradle emette un avviso e continua deliberatamente con una build unsigned: non esiste alcun fallback a file, password o segreti versionati. Il keystore e i relativi file sensibili restano esclusi da Git.
 
 Non sono configurati segreti nel workflow: un ambiente di distribuzione può iniettare le quattro variabili senza modificare il codice o la CI.
+
+## Riferimenti
+
+[1]: https://docs.gradle.org/8.14.3/userguide/dependency_verification.html "Gradle 8.14.3 — Verifying dependencies"

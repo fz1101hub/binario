@@ -36,11 +36,14 @@ jobs:
         run: >-
           python3 -m unittest -v
           tests/test_build_gtfs_packs.py
+          tests/test_verify_gradle_dependency_metadata.py
           tests/test_install_xcodegen.py
           tests/test_verify_ci_pinning.py
 
       - name: Verify immutable CI inputs
-        run: python3 tools/verify_ci_pinning.py
+        run: |
+          python3 tools/verify_ci_pinning.py
+          python3 tools/verify_gradle_dependency_metadata.py
 
       - name: Verify GTFS asset integrity
         run: python3 tools/build_gtfs_packs.py --check --integrity-only

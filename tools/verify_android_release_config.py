@@ -48,7 +48,14 @@ def main() -> int:
     )
     require("wear/proguard-rules.pro", "com.google.android.gms.wearable")
     require(
+        "gradle/verification-metadata.xml",
+        "<verify-metadata>true</verify-metadata>",
+        '<sha256 value="',
+    )
+    require(
         ".github/workflows/android-ci.yml",
+        "tools/verify_gradle_dependency_metadata.py",
+        "--dependency-verification=strict",
         ":app:assembleRelease",
         ":wear:assembleRelease",
         ":app:lintVitalRelease",

@@ -38,19 +38,20 @@ Una prima passata separata sull'HEAD integrato ha individuato sette lacune resid
 | Parser RFI supplementare sul dispatcher chiamante | Fetch su `Dispatchers.IO`, parsing e filtro su `Dispatchers.Default`, entrambi iniettabili; `CancellationException` viene propagata in entrambi gli adapter. |
 | Redirect/policy/memoria/pubblicazione GTFS permissivi | Handler per ogni hop, URL finale HTTPS e `OPEN_DIRECT`; quote central directory, espansione, member e righe; record fisico bounded prima di `csv.DictReader`, campi extra vietati, massimo 32 colonne e 16 KiB per campo; budget aggregati di righe, celle e 128 MiB UTF-8 retained; scrittura ZIP streaming; lock sull'intera transazione build/publish e base merge-aware anche con input/output separati. |
 | CI basata su riferimenti mobili o gate testuale | Actions a SHA, MariaDB a digest OCI, runtime patch-pinned inclusi pnpm, runner allowlistati, Xcode/XcodeGen fissati; tutti gli step shell Apple hanno hash nel lock v2, mentre env/defaults/shell aggiuntivi sono vietati; Apple Watch si attiva su ogni modifica della trust chain XcodeGen. |
+| Grafo Gradle risolto senza checksum | Dependency verification strict con 1.041 artifact di 599 componenti, un SHA-256 per artifact e metadata; nessuna trust exception. Verifier dedicato e cinque regressioni negative proteggono il lock.[14] |
 
 ## Evidenze di verifica
 
 | Gate | Esito |
 |---|---|
 | Asset e freshness GTFS | **Verde:** 10 pack, nessun pack scaduto o in scadenza nel periodo minimo; manifest, checksum e registro runtime coerenti. |
-| Pipeline GTFS e policy CI | **Verde:** 33 test Python, inclusi download/redirect, quote ZIP/CSV, budget memoria pre-parser, build parziali concorrenti con directory separate, installer XcodeGen e lock CI semantico. |
+| Pipeline GTFS e policy CI | **Verde:** 38 test Python, inclusi download/redirect, quote ZIP/CSV, budget memoria pre-parser, build parziali concorrenti con directory separate, installer XcodeGen, lock CI semantico e dependency verification Gradle. |
 | Regressione memoria GTFS | **Verde:** feed sintetico da 1,35 milioni di righe eseguito con heap JVM massimo di 256 MiB. |
 | Android e Wear | **Verde:** 296 test app e 9 test Wear senza failure; compilazione dei test UI; lint debug a **zero issue** per entrambi i moduli, assemble debug, assemble release minificata e `lintVitalRelease`; 204 task nel gate release finale. La release è unsigned perché non sono state fornite credenziali di firma. |
 | Alexa Companion | **Verde:** TypeScript, 69 test ordinari e 3 test su MariaDB reale (migrazione fresh, upgrade, revoca generazionale e race OAuth); audit high/critical, build di produzione e smoke test fail-closed/`healthz`. |
 | Companion Expo TypeScript | **Verde:** typecheck, 85 test in 15 file, inclusi 11 casi fail-closed per la policy audit, 13 casi reminder e presentazione foreground; branding, managed config e release inputs. Due `expo prebuild --clean` consecutivi producono output identico, inclusi i test Kotlin golden. |
 | Companion Expo nativo | **Verde:** 3 test app e 3 test Wear; doppio prebuild pulito con hash identico `0d9af4090e8055be7e3b3aad7c5c3cb7d2a48420cd8c25d87720560cba65863b`, lint e assemble debug di app e Wear generati; 452 task nell'ultimo gate nativo. Gli avvisi residui provengono dalle dipendenze Expo/React Native deprecate, non da errori di compilazione. |
-| Privacy e supply chain | **Verde con eccezione documentata:** verificatore privacy, integrità asset e policy lockfile; gli alert Dependabot sono attivi sul repository. Alexa non contiene advisory high/critical correggibili dopo l’aggiornamento delle dipendenze e la rimozione di 303 pacchetti template. Companion Expo non contiene advisory high/critical correggibili; il gate consente soltanto due advisory `image-size` senza versione corretta disponibile, transitivi di Expo/Metro e limitati agli asset PNG versionati o generati dal progetto. GitHub Actions sono fissate a commit SHA, MariaDB a digest OCI, i runner a versioni esplicite e XcodeGen 2.46.0 a checksum; il parser YAML semantico impone la corrispondenza con il lock di input revisionato.[12] |
+| Privacy e supply chain | **Verde con eccezione documentata:** verificatore privacy, integrità asset e policy lockfile; gli alert Dependabot sono attivi sul repository. Alexa non contiene advisory high/critical correggibili dopo l’aggiornamento delle dipendenze e la rimozione di 303 pacchetti template. Companion Expo non contiene advisory high/critical correggibili; il gate consente soltanto due advisory `image-size` senza versione corretta disponibile, transitivi di Expo/Metro e limitati agli asset PNG versionati o generati dal progetto. GitHub Actions sono fissate a commit SHA, MariaDB a digest OCI, XcodeGen 2.46.0 a checksum e il grafo Gradle a 1.041 SHA-256; i verifier semantici impongono la corrispondenza con i lock revisionati.[12] [14] |
 | Apple Watch | Il rail macOS isolato ha compilato e testato il contratto; manca intenzionalmente un produttore iOS reale e quindi non esiste una prova end-to-end iPhone–Watch. |
 
 ## Decisioni lasciate in sospeso
@@ -66,7 +67,7 @@ Una prima passata separata sull'HEAD integrato ha individuato sette lacune resid
 
 ## Limiti della consegna corrente
 
-GitHub Actions ha restituito fallimenti di startup sia per l'evento `push` sia per `pull_request`, sempre con **zero step eseguiti**. Questi risultati non rappresentano test rossi del codice; per questo il ramo combinato è stato validato localmente. I workflow coprono ora anche i push su `integration/**`, ma la prova remota resta subordinata allo sblocco dei runner. Il branch finale è pubblicato e la PR 26 è aperta e mergeable. Il bundle Git portabile resta disponibile come copia verificata della consegna.
+GitHub Actions ha restituito fallimenti di startup sia per l'evento `push` sia per `pull_request`, sempre con **zero step eseguiti**. La diagnosi API mostra `runner_id=0`, `runner_name` vuoto, Actions abilitate e policy repository `allowed_actions=all`: nessun runner viene assegnato e non esiste un log di job. Questi risultati non rappresentano test rossi del codice; per questo il ramo combinato è stato validato localmente. I workflow coprono ora anche i push su `integration/**`, ma la prova remota resta subordinata allo sblocco dei runner. Il branch finale è pubblicato e la PR 26 è aperta e mergeable. Il bundle Git portabile resta disponibile come copia verificata della consegna.
 
 Le scelte proprietarie elencate sopra non bloccano ulteriore sviluppo interno, ma impediscono di dichiarare una release pubblica completa. In particolare, una build unsigned non sostituisce una release firmata e una fixture smartwatch non sostituisce una prova su hardware reale.
 
@@ -85,3 +86,4 @@ Le scelte proprietarie elencate sopra non bloccano ulteriore sviluppo interno, m
 [11]: https://github.com/fz1101hub/binario/pull/23 "PR 23 — Repository documentation hygiene"
 [12]: security/DEPENDENCY_AUDIT.md "Policy di audit delle dipendenze e degli input CI"
 [13]: https://developers.google.com/android/reference/com/google/android/gms/wearable/DataClient "Google Play services DataClient — URI wear://*/path"
+[14]: https://docs.gradle.org/8.14.3/userguide/dependency_verification.html "Gradle 8.14.3 — Verifying dependencies"
