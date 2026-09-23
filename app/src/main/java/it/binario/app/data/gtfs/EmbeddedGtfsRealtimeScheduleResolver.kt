@@ -2,14 +2,11 @@ package it.binario.app.data.gtfs
 
 import it.binario.app.data.core.RealtimeStopUpdate
 import it.binario.app.data.core.SourceId
-import java.io.BufferedReader
 import java.io.InputStream
-import java.io.InputStreamReader
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.util.LinkedHashMap
-import java.util.zip.ZipInputStream
 
 /** Orario statico risolto per la medesima corsa e fermata di un Trip Update. */
 data class ResolvedScheduledStop(
@@ -24,11 +21,18 @@ data class ResolvedScheduledStop(
 /**
  * Risolve identificativi GTFS realtime contro i data pack embedded.
  * Non tenta confronti fuzzy fra fonti: trip_id e stop_id/sequence devono appartenere al medesimo feed statico.
+ *
+ * L'indice non conserva stop_times.txt: mantiene i nomi delle fermate e una LRU
+ * di sole corse realtime effettivamente richieste. Una cache miss scansiona
+ * streaming stop_times.txt, trattenendo soltanto le righe con il trip_id
+ * richiesto. Questo evita che un Trip Update possa materializzare tutto il
+ * feed AMT in oggetti Kotlin.
  */
 class EmbeddedGtfsRealtimeScheduleResolver(
     private val openAsset: (String) -> InputStream,
     private val packs: List<EmbeddedGtfsPack> = EmbeddedGtfsPacks.all,
-    private val cacheLimit: Int = 3
+    private val cacheLimit: Int = 3,
+    private val limits: GtfsCompactIndexLimits = GtfsCompactIndexLimits()
 ) {
     private val cache = object : LinkedHashMap<SourceId, RealtimeScheduleIndex>(cacheLimit, 0.75f, true) {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<SourceId, RealtimeScheduleIndex>?): Boolean = size > cacheLimit
@@ -41,17 +45,27 @@ class EmbeddedGtfsRealtimeScheduleResolver(
         zone: ZoneId
     ): ResolvedScheduledStop? {
         val pack = packs.firstOrNull { it.sourceId == staticSourceId } ?: return null
-        val index = synchronized(cache) {
-            cache[staticSourceId] ?: parse(openAsset(pack.assetPath)).also { cache[staticSourceId] = it }
+        val index = try {
+            synchronized(cache) {
+                cache[staticSourceId] ?: RealtimeScheduleIndex(readStopNames(openAsset(pack.assetPath))).also {
+                    cache[staticSourceId] = it
+                }
+            }
+        } catch (_: GtfsCompactIndexLimitException) {
+            return null
         }
-        val candidates = index.stopTimes[update.sourceTripId].orEmpty()
+        val candidates = try {
+            index.scheduleFor(update.sourceTripId) { tripId -> readTripSchedule(openAsset(pack.assetPath), tripId) }
+        } catch (_: GtfsCompactIndexLimitException) {
+            return null
+        }
         val match = candidates.firstOrNull { row ->
             val idMatches = update.sourceStopId != null && row.stopId == update.sourceStopId
             val sequenceMatches = update.stopSequence != null && row.sequence == update.stopSequence
             idMatches && (update.stopSequence == null || sequenceMatches) ||
                 (update.sourceStopId == null && sequenceMatches)
         } ?: return null
-        val name = index.stopNames[match.stopId]?.takeIf(String::isNotBlank) ?: match.stopId
+        val name = index.stopName(match.stopId).takeIf(String::isNotBlank) ?: match.stopId
         return ResolvedScheduledStop(
             sourceId = staticSourceId,
             sourceTripId = update.sourceTripId,
@@ -62,64 +76,42 @@ class EmbeddedGtfsRealtimeScheduleResolver(
         )
     }
 
-    private fun parse(stream: InputStream): RealtimeScheduleIndex {
-        val tables = mutableMapOf<String, List<Map<String, String>>>()
-        ZipInputStream(stream).use { zip ->
-            var entry = zip.nextEntry
-            while (entry != null) {
-                val name = entry.name.substringAfterLast('/')
-                if (name in setOf("stops.txt", "stop_times.txt")) {
-                    tables[name] = parseCsv(BufferedReader(InputStreamReader(zip, Charsets.UTF_8)))
-                }
-                zip.closeEntry()
-                entry = zip.nextEntry
+    private fun readStopNames(stream: InputStream): CompactStopNames {
+        val names = CompactStopNames(limits.maxStops)
+        BoundedGtfsZipScanner(limits).scan(stream, setOf("stops.txt")) { _, rows ->
+            val idIndex = rows.header.indexOf("stop_id")
+            val nameIndex = rows.header.indexOf("stop_name")
+            rows.forEachRow(limits.maxStops) { row ->
+                names.put(row.gtfsRawValue(idIndex), row.gtfsRawValue(nameIndex))
             }
         }
-        val names = tables["stops.txt"].orEmpty().associate { it["stop_id"].orEmpty() to it["stop_name"].orEmpty() }
-        val times = tables["stop_times.txt"].orEmpty().mapNotNull { row ->
-            val tripId = row["trip_id"].orEmpty()
-            val stopId = row["stop_id"].orEmpty()
-            val sequence = row["stop_sequence"]?.toIntOrNull()
-            if (tripId.isBlank() || stopId.isBlank() || sequence == null) null else RealtimeStopTime(
-                stopId = stopId,
-                sequence = sequence,
-                arrivalTime = row["arrival_time"].orEmpty(),
-                departureTime = row["departure_time"].orEmpty()
-            ) to tripId
-        }.groupBy({ it.second }, { it.first }).mapValues { (_, value) -> value.sortedBy(RealtimeStopTime::sequence) }
-        return RealtimeScheduleIndex(names, times)
+        return names
     }
 
-    private fun parseCsv(reader: BufferedReader): List<Map<String, String>> {
-        val header = reader.readLine()?.let(::csvLine).orEmpty()
-        if (header.isEmpty()) return emptyList()
-        return generateSequence { reader.readLine() }
-            .filter(String::isNotBlank)
-            .map { header.zip(csvLine(it)).toMap() }
-            .toList()
-    }
-
-    private fun csvLine(line: String): List<String> {
-        val values = mutableListOf<String>()
-        val current = StringBuilder()
-        var quoted = false
-        var index = 0
-        while (index < line.length) {
-            when (val character = line[index]) {
-                '"' -> if (quoted && line.getOrNull(index + 1) == '"') {
-                    current.append('"')
-                    index += 1
-                } else quoted = !quoted
-                ',' -> if (quoted) current.append(character) else {
-                    values += current.toString()
-                    current.clear()
+    private fun readTripSchedule(stream: InputStream, wantedTripId: String): List<RealtimeStopTime> {
+        val matches = ArrayList<RealtimeStopTime>()
+        BoundedGtfsZipScanner(limits).scan(stream, setOf("stop_times.txt")) { _, rows ->
+            val tripIndex = rows.header.indexOf("trip_id")
+            val arrivalIndex = rows.header.indexOf("arrival_time")
+            val departureIndex = rows.header.indexOf("departure_time")
+            val stopIndex = rows.header.indexOf("stop_id")
+            val sequenceIndex = rows.header.indexOf("stop_sequence")
+            rows.forEachRow(limits.maxStopTimeRows) { row ->
+                if (row.gtfsRawValue(tripIndex) == wantedTripId) {
+                    val stopId = row.gtfsRawValue(stopIndex)
+                    val sequence = row.getOrNull(sequenceIndex)?.toIntOrNull()
+                    if (stopId.isNotBlank() && sequence != null) {
+                        matches += RealtimeStopTime(
+                            stopId = stopId,
+                            sequence = sequence,
+                            arrivalTime = row.gtfsRawValue(arrivalIndex),
+                            departureTime = row.gtfsRawValue(departureIndex)
+                        )
+                    }
                 }
-                else -> current.append(character)
             }
-            index += 1
         }
-        values += current.toString()
-        return values
+        return matches.sortedBy(RealtimeStopTime::sequence)
     }
 
     private fun scheduledDateTime(date: LocalDate, value: String, zone: ZoneId): ZonedDateTime {
@@ -131,9 +123,30 @@ class EmbeddedGtfsRealtimeScheduleResolver(
         return date.plusDays((totalHours / 24).toLong()).atTime(totalHours % 24, minutes, seconds).atZone(zone)
     }
 
-    private data class RealtimeScheduleIndex(
-        val stopNames: Map<String, String>,
-        val stopTimes: Map<String, List<RealtimeStopTime>>
-    )
+    private class RealtimeScheduleIndex(private val stopNames: CompactStopNames) {
+        private val tripCache = object : LinkedHashMap<String, List<RealtimeStopTime>>(64, 0.75f, true) {
+            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, List<RealtimeStopTime>>?): Boolean = size > 64
+        }
+
+        fun stopName(stopId: String): String = stopNames.name(stopId)
+
+        fun scheduleFor(tripId: String, loader: (String) -> List<RealtimeStopTime>): List<RealtimeStopTime> = synchronized(tripCache) {
+            tripCache[tripId] ?: loader(tripId).also { tripCache[tripId] = it }
+        }
+    }
+
+    private class CompactStopNames(private val maximum: Int) {
+        private val values = HashMap<String, String>()
+
+        fun put(id: String, name: String) {
+            if (id !in values && values.size >= maximum) {
+                throw GtfsCompactIndexLimitException("stops.txt supera il limite di stazioni")
+            }
+            values[id] = name
+        }
+
+        fun name(id: String): String = values[id].orEmpty()
+    }
+
     private data class RealtimeStopTime(val stopId: String, val sequence: Int, val arrivalTime: String, val departureTime: String)
 }
