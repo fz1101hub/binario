@@ -53,12 +53,12 @@ class VerifyCiPinningTest(unittest.TestCase):
         problems = policy.workflow_problems(workflow_path, without_pull_paths, LOCK)
         self.assertTrue(any("pull_request deve avere filtri paths" in problem for problem in problems))
 
-        with_stabilization = original.replace(
-            '      - "integration/**"\n',
-            '      - "stabilization/**"\n      - "integration/**"\n',
+        with_integration_push = original.replace(
+            "  push:\n    branches:\n      - main\n    paths:\n",
+            '  push:\n    branches:\n      - main\n      - "integration/**"\n    paths:\n',
             1,
         )
-        problems = policy.workflow_problems(workflow_path, with_stabilization, LOCK)
+        problems = policy.workflow_problems(workflow_path, with_integration_push, LOCK)
         self.assertTrue(any("push branches" in problem for problem in problems))
 
         without_privacy = original.replace(

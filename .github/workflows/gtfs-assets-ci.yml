@@ -13,7 +13,6 @@ on:
   push:
     branches:
       - main
-      - "integration/**"
     paths:
       - "app/src/main/assets/**"
       - "gradle/verification-metadata.xml"

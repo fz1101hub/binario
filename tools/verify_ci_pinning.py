@@ -233,6 +233,9 @@ def _check_apple_paths(path: Path, workflow: Mapping[str, Any], problems: list[s
             problems.append(
                 f"{path.name}: {event_name}.paths non copre la catena XcodeGen: {sorted(missing)}"
             )
+    apple_push = _mapping(triggers.get("push")) or {}
+    if apple_push.get("branches") != ["main"]:
+        problems.append(f"{path.name}: push branches deve limitarsi a main")
 
 
 def _check_linux_trigger_budget(path: Path, workflow: Mapping[str, Any], problems: list[str]) -> None:
@@ -253,8 +256,8 @@ def _check_linux_trigger_budget(path: Path, workflow: Mapping[str, Any], problem
         problems.append(f"{path.name}: pull_request deve avere filtri paths non vuoti")
     if not isinstance(push_paths, list) or not push_paths:
         problems.append(f"{path.name}: push deve avere filtri paths non vuoti")
-    if branches != ["main", "integration/**"]:
-        problems.append(f"{path.name}: push branches deve limitarsi a main e integration/**")
+    if branches != ["main"]:
+        problems.append(f"{path.name}: push branches deve limitarsi a main per non duplicare pull_request")
     required_paths = {
         "android-ci.yml": {"app/**", "wear/**", "contracts/wear-snapshot/**"},
         "companion-ci.yml": {"companion-expo/**", "contracts/wear-snapshot/**"},

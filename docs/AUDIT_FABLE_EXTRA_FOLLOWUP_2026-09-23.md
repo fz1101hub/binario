@@ -31,7 +31,7 @@ Nessun finding confermato ha modificato la gerarchia del prodotto: **l'app Andro
 | N-G2 — hash PyYAML mancante su macOS arm64 | **Chiuso** | `requirements-ci.txt` contiene wheel hashate e binary-only per Linux e macOS arm64; il test dedicato è nel rail Apple. |
 | N-G3 — ZIP GTFS non byte-riproducibili | **Chiuso semanticamente** | Lo schema manifest 4 separa hash del container e digest canonico dei member CSV. Un repack byte-diverso ma semanticamente identico è accettato; una modifica ai dati è rifiutata. |
 | N-W1 — progetto Apple Watch incompleto | **Chiuso staticamente** | XcodeGen definisce scheme testabile, app watch-only, widget embedded e extension point WidgetKit; quattro test statici sono ora obbligatori nel rail macOS. Il build macOS finale resta da rieseguire dopo il ripristino dei minuti Actions. |
-| N-CI — raffica di workflow e minuti Actions esauriti | **Mitigato; blocco esterno aperto** | Workflow path-filtered, push limitati a `main`/`integration/**`, concurrency cancellation e dispatch manuale. I run zero-step non sono test rossi; serve ripristinare quota/minuti e rieseguire i cinque rail sullo SHA finale. |
+| N-CI — raffica di workflow e minuti Actions esauriti | **Mitigato; blocco esterno aperto** | Le PR path-filtered validano i branch di lavoro; il trigger `push` resta solo su `main`, eliminando il doppio run push+PR. Concurrency cancellation e dispatch manuale restano attivi. I run zero-step non sono test rossi; serve ripristinare quota/minuti e rieseguire i cinque rail sullo SHA finale. |
 
 ## Chiusure aggiuntive della controrevisione
 

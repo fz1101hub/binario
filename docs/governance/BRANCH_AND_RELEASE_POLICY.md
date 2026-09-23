@@ -12,7 +12,7 @@ Le feature e le correzioni vivono in branch brevi e descrittivi. Il branch di un
 
 ## Workflow CI obbligatori
 
-I workflow vengono eseguiti sulle `pull_request` e sui `push` a `main` o `integration/**` soltanto quando cambiano file del rispettivo perimetro. I filtri includono anche contratti e strumenti condivisi consumati dal rail: per esempio, una modifica a `contracts/wear-snapshot/**` attiva sia Android/Wear sia Companion e Apple Watch. I branch `stabilization/**` sono verificati dalla pull request che vi confluisce; non ricevono un secondo push run ridondante. `workflow_dispatch` resta disponibile per un rerun esplicito dopo il ripristino dell'infrastruttura GitHub Actions.
+I workflow verificano i branch di lavoro tramite `pull_request` con filtri per percorso. Il trigger `push` resta soltanto su `main`, così un aggiornamento della PR non avvia due run equivalenti. I filtri includono anche contratti e strumenti condivisi consumati dal rail: per esempio, una modifica a `contracts/wear-snapshot/**` attiva sia Android/Wear sia Companion e Apple Watch. `workflow_dispatch` resta disponibile per un rerun esplicito dopo il ripristino dell'infrastruttura GitHub Actions.
 
 | Gate | Ambito | Criterio di superamento |
 | --- | --- | --- |
