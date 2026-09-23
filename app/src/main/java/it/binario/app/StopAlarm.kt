@@ -13,6 +13,7 @@ import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
+import it.binario.app.data.RailTime
 import it.binario.app.data.TrainService
 import it.binario.app.data.TrainStop
 import java.time.Instant
@@ -40,7 +41,7 @@ object StopAlarmPlanner {
         station: String,
         expectedTime: String,
         nowEpochMillis: Long = System.currentTimeMillis(),
-        zoneId: ZoneId = ZoneId.systemDefault()
+        zoneId: ZoneId = RailTime.defaultZone
     ): StopAlarmPlan? {
         val time = runCatching { LocalTime.parse(expectedTime, timeFormatter) }.getOrNull() ?: return null
         val now = Instant.ofEpochMilli(nowEpochMillis).atZone(zoneId)

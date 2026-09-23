@@ -57,6 +57,14 @@ class WearSnapshotCodecTest {
     }
 
     @Test
+    fun `decoder accepts a normalized notice at the truncation boundary`() {
+        val expectedNotice = "x".repeat(179)
+        val decoded = WearSnapshotCodec.decode(fixture("android-to-wear-v1.json") + ("notice" to expectedNotice), now)
+
+        assertEquals(expectedNotice, decoded?.notice)
+    }
+
+    @Test
     fun `payload oltre budget non sostituisce la cache`() {
         val oversized = fixture("android-to-wear-v1.json") + ("notice" to "x".repeat(WearSnapshotCodec.MAX_PAYLOAD_BYTES))
         assertNull(WearSnapshotCodec.decode(oversized, now))

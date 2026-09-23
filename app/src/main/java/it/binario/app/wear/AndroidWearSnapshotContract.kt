@@ -68,5 +68,5 @@ internal object AndroidWearSnapshotContract {
     )
 
     private fun required(value: String, limit: Int): String = optional(value, limit).ifBlank { "Non disponibile" }
-    private fun optional(value: String, limit: Int): String = value.replace(Regex("\\s+"), " ").trim().take(limit)
+    private fun optional(value: String, limit: Int): String = value.replace(Regex("\\s+"), " ").trim().take(limit).trim()
 }

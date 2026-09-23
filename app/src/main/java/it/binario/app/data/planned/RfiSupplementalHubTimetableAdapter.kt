@@ -16,7 +16,6 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.time.Clock
-import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
@@ -106,7 +105,7 @@ class RfiSupplementalHubTimetableAdapter(
         val services = withContext(parsingDispatcher) {
             val requestedMinutes = query.departureTime.hour * 60 + query.departureTime.minute
             parsed.services.asSequence()
-                .filter { runsOnDate(it.periodicity, query.serviceDate) }
+                .filter { ItalianRailServiceCalendar.runsOnDate(it.periodicity, query.serviceDate) }
                 .filter { timeMinutes(it.service.scheduledDeparture) >= requestedMinutes }
                 .filter { parsedService ->
                     parsedService.service.stops.drop(1).any { destination.matchesPublishedName(it.station) } ||
@@ -149,28 +148,6 @@ class RfiSupplementalHubTimetableAdapter(
         )
     }
 
-    private fun runsOnDate(periodicity: String, date: LocalDate): Boolean {
-        val value = periodicity.uppercase(Locale.ROOT).replace(Regex("\\s+"), " ").trim()
-        if (value.isBlank()) return true
-        if (listOf("GIORNALIERO", "TUTTI I GIORNI", "QUOTIDIANO").any(value::contains)) return true
-        val day = date.dayOfWeek
-        if ("LUN-VEN" in value || "LUN VEN" in value) return day.value in 1..5
-        if ("FERIALE" in value) return day != DayOfWeek.SUNDAY && !ItalianRailServiceCalendar.isHoliday(date)
-        if ("SAB" in value && day == DayOfWeek.SATURDAY) return true
-        if ("DOM" in value && day == DayOfWeek.SUNDAY) return true
-        if ("FEST" in value && (day == DayOfWeek.SUNDAY || ItalianRailServiceCalendar.isHoliday(date))) return true
-        val tokens = mapOf(
-            DayOfWeek.MONDAY to listOf("LUN", "LU"),
-            DayOfWeek.TUESDAY to listOf("MAR", "MA"),
-            DayOfWeek.WEDNESDAY to listOf("MER", "ME"),
-            DayOfWeek.THURSDAY to listOf("GIO", "GI"),
-            DayOfWeek.FRIDAY to listOf("VEN", "VE"),
-            DayOfWeek.SATURDAY to listOf("SAB", "SA"),
-            DayOfWeek.SUNDAY to listOf("DOM", "DO")
-        )
-        val hasDayToken = tokens.values.flatten().any { Regex("\\b$it\\b").containsMatchIn(value) }
-        return if (hasDayToken) tokens.getValue(day).any { Regex("\\b$it\\b").containsMatchIn(value) } else true
-    }
 
     private fun parseTime(value: String): LocalTime? = runCatching {
         val parts = value.split(':')

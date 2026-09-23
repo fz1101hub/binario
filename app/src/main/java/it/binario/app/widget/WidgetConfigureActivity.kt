@@ -1,5 +1,6 @@
 package it.binario.app.widget
 
+import android.app.Application
 import android.appwidget.AppWidgetManager
 import android.content.Intent
 import android.graphics.Color
@@ -40,12 +41,24 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import it.binario.app.BinarioTheme
 import it.binario.app.R
 import it.binario.app.ThemeSettings
 import it.binario.app.TrainViewModel
 import it.binario.app.data.Station
+
+private class WidgetConfiguratorViewModelFactory(
+    private val application: Application
+) : ViewModelProvider.Factory {
+    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+        require(modelClass.isAssignableFrom(TrainViewModel::class.java))
+        @Suppress("UNCHECKED_CAST")
+        return TrainViewModel(application, enableStartupEffects = false) as T
+    }
+}
 
 class WidgetConfigureActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -65,7 +78,9 @@ class WidgetConfigureActivity : ComponentActivity() {
         setContent {
             val themeSettings = remember { ThemeSettings(applicationContext) }
             BinarioTheme(themeSettings.mode) {
-                val model: TrainViewModel = viewModel()
+                val model: TrainViewModel = viewModel(factory = remember {
+                    WidgetConfiguratorViewModelFactory(this@WidgetConfigureActivity.application)
+                })
                 val view = LocalView.current
                 val background = MaterialTheme.colorScheme.background
                 val foregroundIsLight = MaterialTheme.colorScheme.onBackground.luminance() > 0.5f

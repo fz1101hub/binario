@@ -16,6 +16,7 @@ import it.binario.app.data.Freshness
 import it.binario.app.data.JourneyQuery
 import it.binario.app.data.RouteSnapshot
 import it.binario.app.data.RouteSnapshotCache
+import it.binario.app.data.RailTime
 import it.binario.app.data.SavedRoute
 import it.binario.app.data.SavedRouteOrdering
 import it.binario.app.data.Station
@@ -57,7 +58,11 @@ data class RecentRoute(val origin: Station, val destination: Station) {
 
 data class ServiceMonitor(val number: String, val label: String)
 
-class TrainViewModel(application: Application) : AndroidViewModel(application) {
+class TrainViewModel(
+    application: Application,
+    /** Widget configuration needs local catalog/search only, never startup refresh or Wear publication. */
+    private val enableStartupEffects: Boolean = true
+) : AndroidViewModel(application) {
     private companion object {
         const val STATION_SUGGESTION_DEBOUNCE_MILLIS = 180L
     }
@@ -161,16 +166,18 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
     private var stationBoardRequestId: Long = 0L
 
     init {
-        if (!integrationSettings.wearSnapshotSharingEnabled) {
-            WearSnapshotPublisher.persistRevocationIntent(getApplication())
-        }
-        viewModelScope.launch {
-            if (integrationSettings.wearSnapshotSharingEnabled) {
-                if (WearSnapshotPublisher.enable(getApplication()) && !integrationSettings.wearSnapshotSharingEnabled) {
+        if (enableStartupEffects) {
+            if (!integrationSettings.wearSnapshotSharingEnabled) {
+                WearSnapshotPublisher.persistRevocationIntent(getApplication())
+            }
+            viewModelScope.launch {
+                if (integrationSettings.wearSnapshotSharingEnabled) {
+                    if (WearSnapshotPublisher.enable(getApplication()) && !integrationSettings.wearSnapshotSharingEnabled) {
+                        WearSnapshotPublisher.clear(getApplication())
+                    }
+                } else {
                     WearSnapshotPublisher.clear(getApplication())
                 }
-            } else {
-                WearSnapshotPublisher.clear(getApplication())
             }
         }
         // The curated catalog is local and authoritative for station identity.
@@ -210,7 +217,7 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
 
                 // If no user-driven refresh started while the catalog was loading, perform
                 // the one bootstrap refresh now (also when the catalog load failed/was empty).
-                if (refreshRequestId == 0L && hasActiveRoute) refresh()
+                if (enableStartupEffects && refreshRequestId == 0L && hasActiveRoute) refresh()
             }
         }
     }
@@ -372,8 +379,8 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
     fun searchRoute(
         origin: Station,
         destination: Station,
-        serviceDate: LocalDate = LocalDate.now(),
-        departureTime: LocalTime = LocalTime.now().withSecond(0).withNano(0)
+        serviceDate: LocalDate = LocalDate.now(RailTime.defaultZone),
+        departureTime: LocalTime = LocalTime.now(RailTime.defaultZone).withSecond(0).withNano(0)
     ): Boolean {
         val rememberedOrigin = rememberStation(canonicalStation(origin))
         val rememberedDestination = rememberStation(canonicalStation(destination))

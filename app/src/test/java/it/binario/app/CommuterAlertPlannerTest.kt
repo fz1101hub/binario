@@ -39,6 +39,17 @@ class CommuterAlertPlannerTest {
     }
 
     @Test
+    fun `implicit alert scheduling uses the Italian railway zone`() {
+        val now = LocalDateTime.of(2026, 1, 1, 1, 0).atZone(ZoneId.of("Europe/Rome")).toInstant().toEpochMilli()
+        val alert = CommuterAlert("id", "Casa – lavoro", "Roma Termini", "01:30", 5, AlertRepeat.ONCE, false)
+
+        assertTrue(
+            CommuterAlertPlanner.nextTrigger(alert, now) ==
+                LocalDateTime.of(2026, 1, 1, 1, 25).atZone(ZoneId.of("Europe/Rome")).toInstant().toEpochMilli()
+        )
+    }
+
+    @Test
     fun `restore receiver accepts only system restore actions`() {
         assertTrue(CommuterAlertScheduler.acceptsRestoreAction("android.intent.action.BOOT_COMPLETED"))
         assertTrue(CommuterAlertScheduler.acceptsRestoreAction("android.intent.action.MY_PACKAGE_REPLACED"))

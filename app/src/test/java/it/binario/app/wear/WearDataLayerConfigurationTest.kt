@@ -79,6 +79,23 @@ class WearDataLayerConfigurationTest {
     }
 
     @Test
+    fun `snapshot publication is urgent before its short TTL expires`() {
+        val publisher = File(repositoryRoot, "app/src/main/java/it/binario/app/wear/WearSnapshotPublisher.kt").readText()
+
+        assertTrue(publisher.contains("asPutDataRequest().setUrgent()"))
+    }
+
+    @Test
+    fun `widget configurator suppresses live model startup effects`() {
+        val configurator = File(repositoryRoot, "app/src/main/java/it/binario/app/widget/WidgetConfigureActivity.kt").readText()
+        val viewModel = File(repositoryRoot, "app/src/main/java/it/binario/app/TrainViewModel.kt").readText()
+
+        assertTrue(configurator.contains("TrainViewModel(application, enableStartupEffects = false)"))
+        assertTrue(viewModel.contains("if (enableStartupEffects)"))
+        assertTrue(viewModel.contains("if (enableStartupEffects && refreshRequestId == 0L && hasActiveRoute) refresh()"))
+    }
+
+    @Test
     fun `phone refresh listener is path scoped`() {
         val manifest = File(repositoryRoot, "app/src/main/AndroidManifest.xml").readText()
 

@@ -13,6 +13,7 @@ import it.binario.app.data.TrainService
 import java.time.LocalDateTime
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Test
 
 class AndroidWearSnapshotContractTest {
@@ -45,6 +46,33 @@ class AndroidWearSnapshotContractTest {
         val expected = fixture("android-to-wear-v1.json").normalisedNumbers()
 
         assertEquals(expected, actual)
+    }
+
+    @Test
+    fun `encoder trims whitespace introduced by notice truncation`() {
+        val generatedAt = 1_893_484_800_000L
+        val snapshot = RouteSnapshot(
+            route = SavedRoute(
+                id = "roma-napoli",
+                name = "Roma–Napoli",
+                outwardOrigin = Station("roma", "Roma Termini", "Roma"),
+                outwardDestination = Station("napoli", "Napoli Centrale", "Napoli")
+            ),
+            direction = Direction.OUTBOUND,
+            services = emptyList(),
+            providerName = "RFI",
+            retrievedAtEpochMillis = generatedAt,
+            sourceObservedAtEpochMillis = generatedAt,
+            expiresAtEpochMillis = generatedAt + 60_000L,
+            freshness = Freshness.AGING,
+            confidence = DataConfidence.INFRASTRUCTURE_PRIMARY,
+            notice = "x".repeat(179) + " parole oltre il limite"
+        )
+
+        val notice = AndroidWearSnapshotContract.operational(snapshot, generatedAt).getValue("notice") as String
+
+        assertEquals(179, notice.length)
+        assertFalse(notice.endsWith(" "))
     }
 
     private fun service(

@@ -1,5 +1,6 @@
 package it.binario.app
 
+import it.binario.app.data.RailTime
 import it.binario.app.data.Station
 import it.binario.app.data.searchableValues
 import java.text.Normalizer
@@ -76,7 +77,7 @@ internal object PlannerVoiceParser {
      * Compatibilità per i chiamanti esistenti: restituisce soltanto stazioni
      * risolte in modo univoco. I nuovi flussi UI devono usare [review].
      */
-    fun parse(spoken: String, stations: List<Station>, today: LocalDate = LocalDate.now()): DictatedPlannerInput =
+    fun parse(spoken: String, stations: List<Station>, today: LocalDate = LocalDate.now(RailTime.defaultZone)): DictatedPlannerInput =
         analyze(spoken, stations, today).input
 
     /**
@@ -87,7 +88,7 @@ internal object PlannerVoiceParser {
         spoken: String,
         stations: List<Station>,
         target: DictationTarget,
-        today: LocalDate = LocalDate.now()
+        today: LocalDate = LocalDate.now(RailTime.defaultZone)
     ): PlannerVoiceReview {
         val analysis = analyze(spoken, stations, today)
         val groups = when (target) {

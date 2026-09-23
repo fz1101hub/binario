@@ -272,6 +272,22 @@ class RfiProgrammedTimetableAdapterTest {
     }
 
     @Test
+    fun `festivo is fail closed on Tuesday and includes Easter Monday`() {
+        val adapter = adapter()
+
+        assertFalse(adapter.runsOnDate("Festivo", LocalDate.of(2026, 4, 7)))
+        assertTrue(adapter.runsOnDate("Festivo", LocalDate.of(2026, 4, 6)))
+    }
+
+    @Test
+    fun `feriale includes an ordinary Tuesday and excludes Easter Monday`() {
+        val adapter = adapter()
+
+        assertTrue(adapter.runsOnDate("Feriale", LocalDate.of(2026, 4, 7)))
+        assertFalse(adapter.runsOnDate("Feriale", LocalDate.of(2026, 4, 6)))
+    }
+
+    @Test
     fun `fetch usa I O e parsing usa dispatcher CPU configurato`() = runBlocking {
         val ioDispatcher = Executors.newSingleThreadExecutor { runnable -> Thread(runnable, "rfi-test-io") }.asCoroutineDispatcher()
         val cpuDispatcher = Executors.newSingleThreadExecutor { runnable -> Thread(runnable, "rfi-test-cpu") }.asCoroutineDispatcher()

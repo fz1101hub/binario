@@ -38,4 +38,16 @@ class StopAlarmPlannerTest {
             plan?.triggerAtEpochMillis
         )
     }
+
+    @Test
+    fun `implicit stop alarm uses the Italian railway zone`() {
+        val now = LocalDateTime.of(2026, 1, 1, 1, 0).atZone(zone).toInstant().toEpochMilli()
+
+        val plan = StopAlarmPlanner.plan("4132", "Torino", "Firenze", "01:30", now)
+
+        assertEquals(
+            LocalDateTime.of(2026, 1, 1, 1, 25).atZone(zone).toInstant().toEpochMilli(),
+            plan?.triggerAtEpochMillis
+        )
+    }
 }

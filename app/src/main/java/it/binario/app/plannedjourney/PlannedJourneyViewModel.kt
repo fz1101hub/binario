@@ -4,6 +4,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
+import it.binario.app.data.RailTime
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
@@ -15,7 +16,7 @@ data class PlannedJourneyEditorState(
     val label: String = "",
     val originQuery: String = "",
     val destinationQuery: String = "",
-    val date: String = LocalDate.now().toString(),
+    val date: String = LocalDate.now(RailTime.defaultZone).toString(),
     val time: String = "09:00",
     val reminderMinutes: PlannedJourneyReminderMinutes? = null,
     val checklistText: String = "",
@@ -35,7 +36,7 @@ sealed interface PlannedJourneyImportState {
 class PlannedJourneyViewModel(
     private val repository: PlannedJourneyRepository,
     private val now: () -> Instant = Instant::now,
-    private val zone: ZoneId = ZoneId.systemDefault(),
+    private val zone: ZoneId = RailTime.defaultZone,
     private val newId: () -> String = { UUID.randomUUID().toString() }
 ) : ViewModel() {
     var snapshot by mutableStateOf(repository.read().snapshot)

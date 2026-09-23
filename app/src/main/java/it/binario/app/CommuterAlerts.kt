@@ -15,6 +15,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.edit
+import it.binario.app.data.RailTime
 import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
@@ -64,13 +65,13 @@ object CommuterAlertPlanner {
     fun nextTrigger(
         alert: CommuterAlert,
         nowEpochMillis: Long = System.currentTimeMillis(),
-        zone: ZoneId = ZoneId.systemDefault()
+        zone: ZoneId = RailTime.defaultZone
     ): Long? = (nextTriggerResult(alert, nowEpochMillis, zone) as? CommuterAlertTriggerResult.TriggerAt)?.epochMillis
 
     fun nextTriggerResult(
         alert: CommuterAlert,
         nowEpochMillis: Long = System.currentTimeMillis(),
-        zone: ZoneId = ZoneId.systemDefault()
+        zone: ZoneId = RailTime.defaultZone
     ): CommuterAlertTriggerResult {
         if (!alert.enabled) return CommuterAlertTriggerResult.Disabled
         val time = runCatching { LocalTime.parse(alert.time) }.getOrNull()

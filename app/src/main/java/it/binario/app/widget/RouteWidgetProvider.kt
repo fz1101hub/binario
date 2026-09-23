@@ -30,6 +30,7 @@ import it.binario.app.data.DataQualityBand
 import it.binario.app.data.Direction
 import it.binario.app.data.Freshness
 import it.binario.app.data.RailOperator
+import it.binario.app.data.RailTime
 import it.binario.app.data.RouteSnapshot
 import it.binario.app.data.repository.BinarioDataGraph
 import it.binario.app.data.SavedRoute
@@ -41,7 +42,6 @@ import it.binario.app.data.accessibleUpdateTime
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.time.Instant
-import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.concurrent.TimeUnit
 
@@ -305,7 +305,7 @@ class RouteWidgetProvider : AppWidgetProvider() {
         } else {
             context.getString(
                 R.string.widget_updated_at,
-                DateTimeFormatter.ofPattern("HH:mm").withZone(ZoneId.systemDefault()).format(Instant.ofEpochMilli(retrievedAt))
+                DateTimeFormatter.ofPattern("HH:mm").withZone(RailTime.defaultZone).format(Instant.ofEpochMilli(retrievedAt))
             )
         }
     }

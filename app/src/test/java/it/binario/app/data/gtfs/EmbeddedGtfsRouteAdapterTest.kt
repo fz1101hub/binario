@@ -223,6 +223,28 @@ class EmbeddedGtfsRouteAdapterTest {
     }
 
     @Test
+    fun `cache stop presence retains all ten configured packs`() = runBlocking {
+        val packs = EmbeddedGtfsPacks.all
+        val bytes = feed()
+        var assetOpenCount = 0
+        val adapter = EmbeddedGtfsRouteAdapter(
+            openAsset = { assetOpenCount += 1; ByteArrayInputStream(bytes) },
+            packs = packs,
+            clock = { 1_000L }
+        )
+        val query = JourneyQuery(LocalDate.of(2026, 9, 4), LocalTime.of(8, 0))
+
+        adapter.loadRoute(route, Direction.OUTBOUND, query)
+        adapter.loadRoute(route, Direction.OUTBOUND, query)
+
+        assertEquals(10, packs.size)
+        assertEquals(packs.size, adapter.stopPresenceCacheSizeForTest())
+        // Each pass reparses all packs through the intentionally two-entry full-index LRU;
+        // the second pass must not additionally reopen every zip just to rediscover stops.
+        assertEquals(packs.size * 3, assetOpenCount)
+    }
+
+    @Test
     fun `lettura asset usa I O e scansione GTFS usa dispatcher CPU configurato`() = runBlocking {
         val ioDispatcher = Executors.newSingleThreadExecutor { runnable -> Thread(runnable, "gtfs-test-io") }.asCoroutineDispatcher()
         val cpuDispatcher = Executors.newSingleThreadExecutor { runnable -> Thread(runnable, "gtfs-test-cpu") }.asCoroutineDispatcher()

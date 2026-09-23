@@ -52,8 +52,12 @@ class EmbeddedGtfsRouteAdapter(
     private val indexCache = object : LinkedHashMap<SourceId, StaticGtfsIndex>(2, 0.75f, true) {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<SourceId, StaticGtfsIndex>?): Boolean = size > 2
     }
-    private val stopPresenceCache = object : LinkedHashMap<SourceId, Set<String>>(5, 0.75f, true) {
-        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<SourceId, Set<String>>?): Boolean = size > 5
+    // Candidate discovery touches every pack when a route has no explicit source id. Keep one
+    // compact stop-name set per configured pack so the access-order LRU cannot churn on 10 packs.
+    private val stopPresenceCacheCapacity = packs.size.coerceAtLeast(1)
+    private val stopPresenceCache = object : LinkedHashMap<SourceId, Set<String>>(stopPresenceCacheCapacity, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<SourceId, Set<String>>?): Boolean =
+            size > stopPresenceCacheCapacity
     }
     private val indexMutex = Mutex()
     private val stopPresenceMutex = Mutex()
@@ -62,6 +66,9 @@ class EmbeddedGtfsRouteAdapter(
     internal fun compactIndexStats(): List<GtfsCompactIndexStats> = synchronized(indexCache) {
         indexCache.values.map(StaticGtfsIndex::stats)
     }
+
+    /** Diagnostica interna: la ricerca senza source id deve poter ricordare ogni pack configurato. */
+    internal fun stopPresenceCacheSizeForTest(): Int = synchronized(stopPresenceCache) { stopPresenceCache.size }
 
     override suspend fun loadRoute(route: SavedRoute, direction: Direction): DataResult =
         loadRoute(route, direction, JourneyQuery.now())

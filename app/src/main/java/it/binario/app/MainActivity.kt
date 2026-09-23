@@ -100,6 +100,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import it.binario.app.data.RailTime
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -765,10 +766,10 @@ private fun PlannerScreen(
     var showFilters by rememberSaveable { mutableStateOf(false) }
     var mode by rememberSaveable { mutableStateOf(initialMode) }
     var stationText by rememberSaveable { mutableStateOf("") }
-    var travelDate by rememberSaveable { mutableStateOf(LocalDate.now().toString()) }
-    var travelTime by rememberSaveable { mutableStateOf(LocalTime.now().withSecond(0).withNano(0).toString()) }
-    var returnDate by rememberSaveable { mutableStateOf(LocalDate.now().plusDays(1).toString()) }
-    var returnTime by rememberSaveable { mutableStateOf(LocalTime.now().withSecond(0).withNano(0).toString()) }
+    var travelDate by rememberSaveable { mutableStateOf(LocalDate.now(RailTime.defaultZone).toString()) }
+    var travelTime by rememberSaveable { mutableStateOf(LocalTime.now(RailTime.defaultZone).withSecond(0).withNano(0).toString()) }
+    var returnDate by rememberSaveable { mutableStateOf(LocalDate.now(RailTime.defaultZone).plusDays(1).toString()) }
+    var returnTime by rememberSaveable { mutableStateOf(LocalTime.now(RailTime.defaultZone).withSecond(0).withNano(0).toString()) }
     var showDatePicker by rememberSaveable { mutableStateOf(false) }
     var showTimePicker by rememberSaveable { mutableStateOf(false) }
     var showReturnDatePicker by rememberSaveable { mutableStateOf(false) }

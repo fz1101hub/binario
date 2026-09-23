@@ -28,7 +28,6 @@ import java.io.InputStream
 import java.net.HttpURLConnection
 import java.net.URL
 import java.time.Clock
-import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
@@ -385,30 +384,8 @@ class RfiProgrammedTimetableAdapter(
         }.getOrNull()
     }
 
-    internal fun runsOnDate(periodicity: String, date: LocalDate): Boolean {
-        val value = normalizeHeader(periodicity)
-        if (value.isBlank()) return true
-        if (listOf("GIORNALIERO", "TUTTI I GIORNI", "QUOTIDIANO").any(value::contains)) return true
-        val day = date.dayOfWeek
-        if ("LUN-VEN" in value || "LUN VEN" in value) {
-            return day.value in DayOfWeek.MONDAY.value..DayOfWeek.FRIDAY.value
-        }
-        if ("FERIALE" in value) return day != DayOfWeek.SUNDAY && !ItalianRailServiceCalendar.isHoliday(date)
-        if ("SAB" in value && day == DayOfWeek.SATURDAY) return true
-        if ("DOM" in value && day == DayOfWeek.SUNDAY) return true
-        if ("FEST" in value && (day == DayOfWeek.SUNDAY || ItalianRailServiceCalendar.isHoliday(date))) return true
-        val tokens = mapOf(
-            DayOfWeek.MONDAY to listOf("LUN", "LU"),
-            DayOfWeek.TUESDAY to listOf("MAR", "MA"),
-            DayOfWeek.WEDNESDAY to listOf("MER", "ME"),
-            DayOfWeek.THURSDAY to listOf("GIO", "GI"),
-            DayOfWeek.FRIDAY to listOf("VEN", "VE"),
-            DayOfWeek.SATURDAY to listOf("SAB", "SA"),
-            DayOfWeek.SUNDAY to listOf("DOM", "DO")
-        )
-        val hasAnyDayToken = tokens.values.flatten().any { token -> Regex("\\b$token\\b").containsMatchIn(value) }
-        return if (hasAnyDayToken) tokens.getValue(day).any { token -> Regex("\\b$token\\b").containsMatchIn(value) } else true
-    }
+    internal fun runsOnDate(periodicity: String, date: LocalDate): Boolean =
+        ItalianRailServiceCalendar.runsOnDate(periodicity, date)
 
     private fun operatorFrom(value: String): RailOperator {
         val all = value.uppercase(Locale.ROOT)

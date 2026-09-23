@@ -142,7 +142,7 @@ object WearSnapshotPublisher {
                     else -> error("Unsupported Wear contract value for $key")
                 }
             }
-        }.asPutDataRequest()
+        }.asPutDataRequest().setUrgent()
         Wearable.getDataClient(context).putDataItem(request).awaitTask()
     }
 

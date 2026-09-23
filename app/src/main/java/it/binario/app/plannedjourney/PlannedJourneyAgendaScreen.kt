@@ -49,7 +49,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import it.binario.app.R
-import java.time.ZoneId
+import it.binario.app.data.RailTime
 import java.time.format.DateTimeFormatter
 
 @Composable
@@ -314,7 +314,7 @@ private fun PlannedJourneyEditorDialog(
                         value = editor.time,
                         onValueChange = { value -> onChange { it.copy(time = value) } },
                         label = { Text(stringResource(R.string.planned_journey_time)) },
-                        supportingText = { Text(ZoneId.systemDefault().id) },
+                        supportingText = { Text(RailTime.defaultZone.id) },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true
                     )
