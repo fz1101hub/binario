@@ -13,7 +13,7 @@ Il companion gestisce:
 - dashboard tecnica per collegamento, revoca e diagnostica;
 - modello di interazione Alexa conservato in `skill-package/`.
 
-Non è una seconda app Binario, non sostituisce l'app smartphone e non mantiene una fonte ferroviaria indipendente.
+Non è una seconda app Binario, non sostituisce l'app smartphone e non mantiene una fonte ferroviaria indipendente. Non espone proxy di storage, upload, notifiche generiche al proprietario o pagine showcase del template WebDev.
 
 ## Fonte dei dati
 

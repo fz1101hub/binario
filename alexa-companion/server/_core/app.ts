@@ -3,7 +3,6 @@ import type { Server } from "node:http";
 import { rateLimit } from "express-rate-limit";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerOAuthRoutes } from "./oauth";
-import { registerStorageProxy } from "./storageProxy";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
@@ -49,7 +48,6 @@ export async function createApp(options: { server?: Server; serveClient?: boolea
   registerAndroidDeepLinks(app);
   app.use(express.json({ limit: BODY_LIMIT }));
   app.use(express.urlencoded({ limit: BODY_LIMIT, extended: true }));
-  registerStorageProxy(app);
   registerOAuthRoutes(app);
   app.use(
     "/api/trpc",

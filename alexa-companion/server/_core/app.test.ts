@@ -38,6 +38,19 @@ describe("applicazione HTTP", () => {
     expect(lastStatus).toBe(429);
   });
 
+  it("non espone proxy storage o notifiche di scaffolding", async () => {
+    const baseUrl = await start();
+    const storage = await fetch(`${baseUrl}/manus-storage/private-key`);
+    const notification = await fetch(`${baseUrl}/api/trpc/system.notifyOwner`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ json: { title: "x", content: "y" } }),
+    });
+
+    expect(storage.status).toBe(404);
+    expect(notification.status).toBe(404);
+  });
+
   it("interpreta TRUST_PROXY con un default prudente", () => {
     expect(trustProxySetting("", true)).toBe(1);
     expect(trustProxySetting("", false)).toBe(false);
