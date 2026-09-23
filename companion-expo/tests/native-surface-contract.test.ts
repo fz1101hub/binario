@@ -1,8 +1,29 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
+import { createLocalScheduledSnapshot, createUnavailableSnapshot } from "@/lib/companion-snapshot";
+import { createLocalPlannedRoute } from "@/lib/local-route-contract";
+import { binarioWidgetBridgeModuleName } from "@/lib/native-module-names";
+import { buildNativeSurfacePayload } from "@/lib/native-surface-contract";
 
 const source = (relativePath: string) => readFileSync(path.resolve(process.cwd(), relativePath), "utf8");
+const widgetPlugin = source("plugins/with-binario-android-widget.cjs");
+
+/** Corpo della prima funzione Kotlin con quel nome nel template (le funzioni del template chiudono con `  }` a due spazi). */
+function kotlinFunctionBody(name: string) {
+  const start = widgetPlugin.indexOf(`fun ${name}(`);
+  expect(start, `funzione Kotlin ${name} assente dal template`).toBeGreaterThanOrEqual(0);
+  return widgetPlugin.slice(start, widgetPlugin.indexOf("\n  }\n", start));
+}
+
+/** Estrae ogni lettura `ricevitore.getX("chiave")` dal corpo Kotlin, così un rinomina lato Kotlin fa fallire il contratto. */
+function kotlinReads(body: string) {
+  return Array.from(body.matchAll(/\b(\w+)\??\.(getString|getDouble|getInt|getBoolean|getMap)\("(\w+)"\)/g), match => ({ receiver: match[1]!, accessor: match[2]!, key: match[3]! }));
+}
+
+function kotlinModuleNames() {
+  return Array.from(widgetPlugin.matchAll(/override fun getName\(\) = "([^"]+)"/g), match => match[1]!);
+}
 
 describe("contratti delle superfici native Binario", () => {
   it("mantiene controlli tema e sincronizzazione espliciti nelle impostazioni", () => {
@@ -103,5 +124,51 @@ describe("contratti delle superfici native Binario", () => {
     expect(routes).toContain("setLocalPlannedRouteCompletion");
     expect(contract).toContain("maxExplicitLocalJourneyOccurrences");
     expect(contract).toContain("non l’esito o la circolazione effettiva del treno");
+  });
+});
+
+describe("contratto JS ↔ Kotlin di BinarioWidgetBridge", () => {
+  const route = createLocalPlannedRoute({ origin: "Roma Termini", destination: "Napoli Centrale", travelDate: "2030-01-02", travelTime: "09:30", plannedReminderMinutes: 15 }, 4, 1)!;
+  const now = new Date("2030-01-02T08:00:00").getTime();
+  const usable = buildNativeSurfacePayload(createLocalScheduledSnapshot(route, now - 1), route, now);
+  const unavailable = buildNativeSurfacePayload(createUnavailableSnapshot({ kind: "route", id: "none", label: "Nessuna tratta attiva" }), null, now);
+
+  it("chiama il modulo con il nome dichiarato da getName() nel template Kotlin", () => {
+    expect(kotlinModuleNames()).toContain(binarioWidgetBridgeModuleName);
+    expect(source("lib/native-surface-bridge.ts")).toContain("NativeModules[binarioWidgetBridgeModuleName]");
+    expect(source("lib/native-surface-bridge.ts")).not.toContain("BinarioCompanionSurfaces");
+  });
+
+  it("invia esattamente i campi letti da update() e syncWearPayload(), con il tipo atteso", () => {
+    const maps: Record<string, unknown> = { payload: usable, widget: usable.widget, planned: usable.widget.plannedJourney, watch: usable.watch };
+    const reads = [
+      ...kotlinReads(kotlinFunctionBody("update")).map(read => ({ ...read, map: read.receiver })),
+      ...kotlinReads(kotlinFunctionBody("syncWearPayload")).map(read => ({ ...read, map: "watch" })),
+    ];
+    expect(reads.length).toBeGreaterThan(0);
+    for (const read of reads) {
+      const label = `${read.map}.${read.key} (${read.accessor})`;
+      expect(maps, `ricevitore Kotlin ${read.receiver} non mappato nel payload`).toHaveProperty(read.map);
+      const map = maps[read.map] as Record<string, unknown>;
+      expect(map, label).toHaveProperty(read.key);
+      const value = map[read.key];
+      if (read.accessor === "getString") expect(typeof value, label).toBe("string");
+      if (read.accessor === "getDouble" || read.accessor === "getInt") expect(Number.isFinite(value), label).toBe(true);
+      if (read.accessor === "getBoolean") expect(typeof value, label).toBe("boolean");
+      if (read.accessor === "getMap") expect(value !== null && typeof value === "object", label).toBe(true);
+    }
+    for (const [name, map] of Object.entries(maps)) {
+      expect(Object.keys(map as object).sort(), `chiavi inviate in ${name}`).toEqual([...new Set(reads.filter(read => read.map === name).map(read => read.key))].sort());
+    }
+  });
+
+  it("resta fail-closed senza tratta futura, con snapshot non disponibile o scaduto", () => {
+    expect(unavailable.widget).toEqual({ title: "Binario", subtitle: "Dati non disponibili in tempo reale.", status: "unavailable", updatedAtUtcMs: null, expiresAtUtcMs: null, plannedJourney: null });
+    expect(unavailable.watch).toEqual({ title: "Binario", status: "Dati non disponibili in tempo reale.", canComplicate: false, plannedChecklistRemaining: 0, updatedAtUtcMs: null, expiresAtUtcMs: null });
+    expect(buildNativeSurfacePayload(createUnavailableSnapshot({ kind: "route", id: "4", label: route.name }), route, now)).toEqual(unavailable);
+    expect(buildNativeSurfacePayload(createLocalScheduledSnapshot(route, now), route, new Date("2030-01-02T09:30:00").getTime())).toEqual(unavailable);
+    expect(usable.widget).toMatchObject({ title: route.name, status: "available", updatedAtUtcMs: now - 1, expiresAtUtcMs: new Date("2030-01-02T09:30:00").getTime(), plannedJourney: { title: route.name, scheduledAtUtcMs: new Date("2030-01-02T09:30:00").getTime(), reminderMinutes: 15 } });
+    expect(usable.watch).toMatchObject({ title: route.name, canComplicate: true, plannedChecklistRemaining: 3, updatedAtUtcMs: now - 1 });
+    expect(usable.watch.status).toContain("non realtime");
   });
 });
