@@ -35,6 +35,7 @@ jobs:
       - name: Offline pipeline tests
         run: >-
           python3 -m unittest -v
+          tests/test_verify_android_app_bundles.py
           tests/test_build_gtfs_packs.py
           tests/test_verify_gradle_dependency_metadata.py
           tests/test_install_xcodegen.py

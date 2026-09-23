@@ -22,6 +22,7 @@ I workflow Android e Companion vengono eseguiti per ogni `pull_request` e per og
 | Integrità asset Android | Android | I pacchetti GTFS, `manifest.json`, `SHA256SUMS` e il catalogo stazioni concordano per nomi, hash, struttura e conteggi. |
 | Freschezza asset GTFS | Android | Ogni `lastServiceDate` è almeno 30 giorni oltre la data del gate. Il workflow esegue questo controllo senza `--integrity-only`, separatamente dal controllo di integrità. Un feed scaduto o troppo vicino alla scadenza richiede refresh, rigenerazione degli hash e revisione prima della release. |
 | Test, lint e build Android | Android | I test unitari debug, lint debug e assemble debug completano senza errori. |
+| Android App Bundle | Android/Wear | `bundleRelease` produce due AAB separati; il verifier controlla struttura, manifest, DEX, CRC, percorsi, limiti e SHA-256 prima di qualsiasi firma o upload. |
 | Companion managed | Companion Expo | Dipendenze congelate, TypeScript, test e verifiche di configurazione/release completano senza errori. |
 | Prebuild companion | Companion Expo | `expo prebuild --platform android --clean --no-install` non modifica `android/`; una seconda esecuzione pulita produce lo stesso albero tracciato. |
 
@@ -50,7 +51,8 @@ python3 tools/verify_gradle_dependency_metadata.py
 python3 tools/verify_gradle_dependency_metadata.py --profile companion
 
 # Android principale (richiede JDK 17 e Android SDK configurato).
-./gradlew --no-daemon --dependency-verification=strict testDebugUnitTest lintDebug assembleDebug
+./gradlew --no-daemon --dependency-verification=strict testDebugUnitTest lintDebug assembleDebug bundleRelease
+python3 tools/verify_android_app_bundles.py
 
 # Companion Expo.
 cd companion-expo

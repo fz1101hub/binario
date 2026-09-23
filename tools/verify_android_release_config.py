@@ -55,9 +55,12 @@ def main() -> int:
     require(
         ".github/workflows/android-ci.yml",
         "tools/verify_gradle_dependency_metadata.py",
+        "tools/verify_android_app_bundles.py",
         "--dependency-verification=strict",
         ":app:assembleRelease",
         ":wear:assembleRelease",
+        ":app:bundleRelease",
+        ":wear:bundleRelease",
         ":app:lintVitalRelease",
         ":wear:lintVitalRelease",
     )

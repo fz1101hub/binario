@@ -10,9 +10,17 @@ La build release non richiede né cerca chiavi nel repository. In assenza della 
 
 ```sh
 ./gradlew --no-daemon :app:assembleRelease :wear:assembleRelease \
+  :app:bundleRelease :wear:bundleRelease \
   :app:lintVitalRelease :wear:lintVitalRelease \
   --dependency-verification=strict
+python3 tools/verify_android_app_bundles.py
 ```
+
+## Artifact per Google Play
+
+Google Play richiede Android App Bundle (AAB) per le nuove app. Un bundle è un formato di pubblicazione dal quale Play genera APK ottimizzati; non sostituisce un APK installabile direttamente.[2] Il gate produce `app-release.aab` e `wear-release.aab` separati, poi verifica ZIP, manifest base, DEX, CRC, percorsi, duplicati, limiti dimensionali e SHA-256. Gli artifact restano unsigned finché non vengono fornite le credenziali di firma.
+
+Il modulo Wear usa lo stesso package dell'app telefono, dichiara `android.hardware.type.watch` e `standalone=false`, ma conserva un proprio `versionCode`. Google indica che l'app Wear viene caricata e aggiornata separatamente e raccomanda codici versione indipendenti tra form factor.[3] La scelta del track Play, la firma e l'upload restano azioni proprietarie esterne a questo gate.
 
 ## Verifica delle dipendenze Gradle
 
@@ -38,3 +46,5 @@ Non sono configurati segreti nel workflow: un ambiente di distribuzione può ini
 ## Riferimenti
 
 [1]: https://docs.gradle.org/8.14.3/userguide/dependency_verification.html "Gradle 8.14.3 — Verifying dependencies"
+[2]: https://developer.android.com/guide/app-bundle "Android Developers — About Android App Bundles"
+[3]: https://developer.android.com/training/wearables/packaging "Android Developers — Package and distribute Wear OS apps"

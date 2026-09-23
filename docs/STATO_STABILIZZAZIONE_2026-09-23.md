@@ -39,15 +39,16 @@ Una prima passata separata sull'HEAD integrato ha individuato sette lacune resid
 | Redirect/policy/memoria/pubblicazione GTFS permissivi | Handler per ogni hop, URL finale HTTPS e `OPEN_DIRECT`; quote central directory, espansione, member e righe; record fisico bounded prima di `csv.DictReader`, campi extra vietati, massimo 32 colonne e 16 KiB per campo; budget aggregati di righe, celle e 128 MiB UTF-8 retained; scrittura ZIP streaming; lock sull'intera transazione build/publish e base merge-aware anche con input/output separati. |
 | CI basata su riferimenti mobili o gate testuale | Actions a SHA, MariaDB a digest OCI, runtime patch-pinned inclusi pnpm, runner allowlistati, Xcode/XcodeGen fissati; tutti gli step shell Apple hanno hash nel lock v2, mentre env/defaults/shell aggiuntivi sono vietati; Apple Watch si attiva su ogni modifica della trust chain XcodeGen. |
 | Grafi Gradle risolti senza checksum | Dependency verification strict sul root Android/Wear (1.041 artifact, 599 componenti) e sul Companion generato (2.043 artifact, 1.127 componenti), con un SHA-256 per artifact e metadata e nessuna trust exception. Il plugin Expo copia byte per byte il lock sorgente in ogni prebuild.[14] |
+| Gate release limitato agli APK | `bundleRelease` produce AAB separati per telefono e Wear. Il verifier fail-closed controlla ZIP, manifest base, DEX, CRC, percorsi, duplicati, limiti e SHA-256 prima di firma o upload.[15] [16] |
 
 ## Evidenze di verifica
 
 | Gate | Esito |
 |---|---|
 | Asset e freshness GTFS | **Verde:** 10 pack, nessun pack scaduto o in scadenza nel periodo minimo; manifest, checksum e registro runtime coerenti. |
-| Pipeline GTFS e policy CI | **Verde:** 39 test Python, inclusi download/redirect, quote ZIP/CSV, budget memoria pre-parser, build parziali concorrenti con directory separate, installer XcodeGen, lock CI semantico e i due profili dependency verification Gradle. |
+| Pipeline GTFS e policy CI | **Verde:** 44 test Python, inclusi download/redirect, quote ZIP/CSV, budget memoria pre-parser, build parziali concorrenti con directory separate, installer XcodeGen, lock CI semantico, due profili Gradle e struttura App Bundle bounded. |
 | Regressione memoria GTFS | **Verde:** feed sintetico da 1,35 milioni di righe eseguito con heap JVM massimo di 256 MiB. |
-| Android e Wear | **Verde:** 296 test app e 9 test Wear senza failure; compilazione dei test UI; lint debug a **zero issue** per entrambi i moduli, assemble debug, assemble release minificata e `lintVitalRelease`; 204 task nel gate release finale. La release è unsigned perché non sono state fornite credenziali di firma. |
+| Android e Wear | **Verde:** 296 test app e 9 test Wear senza failure; compilazione dei test UI; lint debug a **zero issue** per entrambi i moduli, assemble debug, assemble release minificata e `lintVitalRelease`; 204 task nel gate release completo. `bundleRelease` strict ha prodotto e verificato AAB unsigned da 17.960.295 byte (telefono) e 3.892.205 byte (Wear) in 98 task. La firma resta esclusa perché non sono state fornite credenziali. |
 | Alexa Companion | **Verde:** TypeScript, 69 test ordinari e 3 test su MariaDB reale (migrazione fresh, upgrade, revoca generazionale e race OAuth); audit high/critical, build di produzione e smoke test fail-closed/`healthz`. |
 | Companion Expo TypeScript | **Verde:** typecheck, 86 test in 15 file, inclusi 11 casi fail-closed per la policy audit, 13 casi reminder, presentazione foreground e lock Gradle generato; branding, managed config e release inputs. Due `expo prebuild --clean` consecutivi producono output identico, inclusi test Kotlin e metadata checksum. |
 | Companion Expo nativo | **Verde:** 3 test app e 3 test Wear; doppio prebuild pulito con hash identico `4c5818bb7edc816b6aa9da8dfeec947bc12b5030e07c2345ec85cc55f36f6ecb`, lint e assemble debug di app e Wear generati in modalità Gradle strict; 452 task nell'ultimo gate nativo. Gli avvisi residui provengono dalle dipendenze Expo/React Native deprecate, non da errori di compilazione. |
@@ -59,7 +60,7 @@ Una prima passata separata sull'HEAD integrato ha individuato sette lacune resid
 | Decisione | Stato tecnico | Azione proprietaria necessaria |
 |---|---|---|
 | Licenza | `LICENSE` non viene inventata. Alexa dichiara MIT, ma ciò non autorizza ad applicarla all'intero repository. | Scegliere MIT o un'altra licenza. |
-| Firma release Android/Wear | R8, shrinking e build release sono verificati; il materiale di firma non deve entrare nel repository. | Configurare i quattro segreti `BINARIO_RELEASE_*` in un ambiente di release. |
+| Firma release Android/Wear | R8, shrinking, APK e AAB release sono verificati; il materiale di firma non deve entrare nel repository. | Configurare i quattro segreti `BINARIO_RELEASE_*` in un ambiente di release. |
 | Distribuzione Wear | Il prodotto è coerente come companion non standalone e usa lo stesso application ID del telefono. | Scegliere track Wear in Google Play o distribuzione di collaudo e svolgere la prova telefono–watch. |
 | OAuth dashboard Alexa | Il codice è operabile, ma il portale OAuth dipende dalla scelta di hosting. | Confermare hosting Manus oppure configurare un provider OAuth sostitutivo. |
 | Apple Watch | Il prototipo è watch-only, bounded e testabile, ma non dispone di app iOS produttrice. | Congelarlo fuori dalla release oppure autorizzare lo sviluppo dell'app iOS. |
@@ -87,3 +88,5 @@ Le scelte proprietarie elencate sopra non bloccano ulteriore sviluppo interno, m
 [12]: security/DEPENDENCY_AUDIT.md "Policy di audit delle dipendenze e degli input CI"
 [13]: https://developers.google.com/android/reference/com/google/android/gms/wearable/DataClient "Google Play services DataClient — URI wear://*/path"
 [14]: https://docs.gradle.org/8.14.3/userguide/dependency_verification.html "Gradle 8.14.3 — Verifying dependencies"
+[15]: https://developer.android.com/guide/app-bundle "Android Developers — About Android App Bundles"
+[16]: https://developer.android.com/training/wearables/packaging "Android Developers — Package and distribute Wear OS apps"
