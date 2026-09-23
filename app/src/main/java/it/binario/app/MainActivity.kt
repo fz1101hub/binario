@@ -686,8 +686,14 @@ private fun PlannerScreen(
         if (spoken.isNullOrBlank()) {
             speechMessage = "Nessun testo ricevuto dalla dettatura. Puoi riprovare o compilare i campi manualmente."
         } else {
-            val dictated = PlannerVoiceParser.parse(spoken, viewModel.stations)
-            val updated = when (voiceTarget) {
+            val dictationTarget = when (voiceTarget) {
+                SearchMode.ROUTE -> DictationTarget.ROUTE
+                SearchMode.TRAIN -> DictationTarget.TRAIN
+                SearchMode.STATION -> DictationTarget.STATION
+            }
+            val review = PlannerVoiceParser.review(spoken, viewModel.stations, dictationTarget)
+            val dictated = review.input
+            if (review.status == DictationReviewStatus.CONFIRMED) when (voiceTarget) {
                 SearchMode.ROUTE -> {
                     dictated.origin?.let { originText = it.name }
                     dictated.destination?.let { destinationText = it.name }
@@ -706,23 +712,15 @@ private fun PlannerScreen(
                             }
                         }
                     }
-                    dictated.origin != null || dictated.destination != null || dictated.date != null || dictated.time != null || dictated.returnJourney != null
                 }
                 SearchMode.TRAIN -> {
                     dictated.trainNumber?.let(viewModel::updateTrainNumberQuery)
-                    dictated.trainNumber != null
                 }
                 SearchMode.STATION -> {
                     (dictated.station ?: dictated.origin)?.let { stationText = it.name }
-                    dictated.station != null || dictated.origin != null
                 }
             }
-            speechMessage = if (updated) "Dati aggiornati dalla dettatura. Verifica i campi prima di cercare."
-            else when (voiceTarget) {
-                SearchMode.ROUTE -> "Non ho riconosciuto una tratta, data, ora o opzione di ritorno. Prova: da Roma Termini a Torino Porta Nuova domani alle 18."
-                SearchMode.TRAIN -> "Non ho riconosciuto un numero treno. Prova: treno 9512."
-                SearchMode.STATION -> "Non ho riconosciuto una stazione. Prova: stazione Roma Termini."
-            }
+            speechMessage = review.feedbackMessage(dictationTarget)
         }
     }
     fun startVoiceInput(target: SearchMode) {
