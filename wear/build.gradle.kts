@@ -63,6 +63,12 @@ android {
         }
     }
 
+    lint {
+        abortOnError = true
+        warningsAsErrors = true
+        checkReleaseBuilds = true
+    }
+
     sourceSets {
         getByName("test").resources.srcDir(rootProject.file("contracts/wear-snapshot/v1"))
     }

@@ -90,6 +90,7 @@ android {
 
     lint {
         abortOnError = true
+        warningsAsErrors = true
         checkReleaseBuilds = true
         checkDependencies = true
         disable += "GradleDependency"
