@@ -169,11 +169,10 @@ describe("contratto JS ↔ Kotlin di BinarioWidgetBridge", () => {
     expect(source("lib/native-surface-bridge.ts")).not.toContain("BinarioCompanionSurfaces");
   });
 
-  it("invia esattamente i campi letti da update() e syncWearPayload(), con il tipo atteso", () => {
-    const maps: Record<string, unknown> = { payload: usable, widget: usable.widget, planned: usable.widget.plannedJourney, watch: usable.watch };
+  it("invia al bridge solo widget e snapshot Wear v1, validato prima della DataMap", () => {
+    const maps: Record<string, unknown> = { payload: usable, widget: usable.widget, planned: usable.widget.plannedJourney };
     const reads = [
       ...kotlinReads(kotlinFunctionBody("update")).map(read => ({ ...read, map: read.receiver })),
-      ...kotlinReads(kotlinFunctionBody("syncWearPayload")).map(read => ({ ...read, map: "watch" })),
     ];
     expect(reads.length).toBeGreaterThan(0);
     for (const read of reads) {
@@ -190,15 +189,30 @@ describe("contratto JS ↔ Kotlin di BinarioWidgetBridge", () => {
     for (const [name, map] of Object.entries(maps)) {
       expect(Object.keys(map as object).sort(), `chiavi inviate in ${name}`).toEqual([...new Set(reads.filter(read => read.map === name).map(read => read.key))].sort());
     }
+    const bridge = kotlinFunctionBody("syncWearPayload");
+    expect(bridge).toContain("CompanionWearPayloadV1.decode");
+    expect(bridge).toContain("CompanionWearPayloadV1.put");
+    expect(bridge).toContain('PutDataMapRequest.create("/binario/companion/watch-payload/v1")');
+    expect(Object.keys(usable.watch).sort()).toEqual([
+      "confidence", "direction", "expiresAtEpochMillis", "freshness", "generatedAtEpochMillis", "notice",
+      "operationalState", "provenanceDataNature", "provenanceObservedAtEpochMillis", "provenanceProducer",
+      "provenanceSourceLabel", "routeId", "routeLabel", "schemaVersion", "serviceCount", "ttlMillis",
+    ]);
   });
 
   it("resta fail-closed senza tratta futura, con snapshot non disponibile o scaduto", () => {
     expect(unavailable.widget).toEqual({ title: "Binario", subtitle: "Dati non disponibili in tempo reale.", status: "unavailable", updatedAtUtcMs: null, expiresAtUtcMs: null, plannedJourney: null });
-    expect(unavailable.watch).toEqual({ title: "Binario", status: "Dati non disponibili in tempo reale.", canComplicate: false, plannedChecklistRemaining: 0, updatedAtUtcMs: null, expiresAtUtcMs: null });
-    expect(buildNativeSurfacePayload(createUnavailableSnapshot({ kind: "route", id: "4", label: route.name }), route, now)).toEqual(unavailable);
-    expect(buildNativeSurfacePayload(createLocalScheduledSnapshot(route, now), route, new Date("2030-01-02T09:30:00").getTime())).toEqual(unavailable);
+    expect(unavailable.watch).toMatchObject({ schemaVersion: 1, provenanceProducer: "COMPANION", provenanceDataNature: "UNAVAILABLE", operationalState: "UNAVAILABLE", freshness: "UNAVAILABLE", serviceCount: 0, direction: "UNKNOWN" });
+    const unavailableSnapshot = buildNativeSurfacePayload(createUnavailableSnapshot({ kind: "route", id: "4", label: route.name }), route, now);
+    const expiredSnapshot = buildNativeSurfacePayload(createLocalScheduledSnapshot(route, now), route, new Date("2030-01-02T09:30:00").getTime());
+    expect(unavailableSnapshot.widget).toEqual(unavailable.widget);
+    expect(expiredSnapshot.widget).toEqual(unavailable.widget);
+    for (const candidate of [unavailableSnapshot.watch, expiredSnapshot.watch]) {
+      expect(candidate).toMatchObject({ schemaVersion: 1, provenanceDataNature: "UNAVAILABLE", operationalState: "UNAVAILABLE", serviceCount: 0 });
+      expect(candidate.expiresAtEpochMillis - candidate.generatedAtEpochMillis).toBe(candidate.ttlMillis);
+    }
     expect(usable.widget).toMatchObject({ title: route.name, status: "available", updatedAtUtcMs: now - 1, expiresAtUtcMs: new Date("2030-01-02T09:30:00").getTime(), plannedJourney: { title: route.name, scheduledAtUtcMs: new Date("2030-01-02T09:30:00").getTime(), reminderMinutes: 15 } });
-    expect(usable.watch).toMatchObject({ title: route.name, canComplicate: true, plannedChecklistRemaining: 3, updatedAtUtcMs: now - 1 });
-    expect(usable.watch.status).toContain("non realtime");
+    expect(usable.watch).toMatchObject({ schemaVersion: 1, routeLabel: route.name, provenanceProducer: "COMPANION", provenanceDataNature: "PROGRAMMED", operationalState: "PROGRAMMED", confidence: "LOCAL_PLANNED", serviceCount: 0, generatedAtEpochMillis: now - 1 });
+    expect(usable.watch.notice).toContain("non è un aggiornamento realtime");
   });
 });
