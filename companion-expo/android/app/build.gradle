@@ -98,10 +98,11 @@ android {
         buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
     }
     // Use AGP's standard debug signing; CI must not depend on a repository-local keystore.
-    buildTypes {
-        release {
-            // Never sign release artifacts with the repository debug keystore.
-            // Production signing is intentionally supplied by the release/EAS environment.
+buildTypes {
+        debug {
+
+        }
+        release {            // Production signing is supplied only by the release/EAS environment.
             def enableShrinkResources = findProperty('android.enableShrinkResourcesInReleaseBuilds') ?: 'false'
             shrinkResources enableShrinkResources.toBoolean()
             minifyEnabled enableMinifyInReleaseBuilds
@@ -159,8 +160,10 @@ dependencies {
     }
 
     if (isWebpEnabled) {
+        // For webp support
         implementation("com.facebook.fresco:webpsupport:${expoLibs.versions.fresco.get()}")
         if (isWebpAnimatedEnabled) {
+            // Animated webp support
             implementation("com.facebook.fresco:animated-webp:${expoLibs.versions.fresco.get()}")
         }
     }

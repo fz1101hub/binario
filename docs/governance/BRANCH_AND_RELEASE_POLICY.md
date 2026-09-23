@@ -1,0 +1,61 @@
+# Politica branch e release
+
+## Scopo
+
+Questa politica definisce il flusso minimo per modifiche che devono poter entrare in una release di **Binario**. Si applica al codice Android principale, al companion Expo, ai workflow GitHub Actions e agli asset dati inclusi nell'APK. Non sostituisce le verifiche funzionali e di sicurezza specifiche della release: rende invece esplicito il percorso con cui tali verifiche diventano requisiti ripetibili.
+
+## Branch protetti e pull request
+
+`main` è il ramo di integrazione ordinaria. Ogni ramo `stabilization/<versione>` è una linea di stabilizzazione della corrispondente release; per esempio, `stabilization/v0.20.4` contiene esclusivamente correzioni, verifiche e documentazione necessarie per quella versione. Le modifiche arrivano su entrambi i rami solo tramite pull request, con una descrizione che indichi lo scopo, i rischi e le verifiche eseguite. Una pull request destinata a una linea di stabilizzazione deve avere come base quella stessa linea e non deve includere cambiamenti non indispensabili alla release.
+
+Le feature e le correzioni vivono in branch brevi e descrittivi. Il branch di una pull request non deve essere riutilizzato per un obiettivo diverso dopo che la revisione è iniziata. I conflitti si risolvono aggiornando il branch della pull request rispetto alla sua base, non modificando o ritargettando pull request non correlate. Il merge resta un atto di revisione esplicito: l'automazione non esegue merge né modifica le destinazioni delle pull request.
+
+## Workflow CI obbligatori
+
+I workflow Android e Companion vengono eseguiti per ogni `pull_request` e per ogni `push` su `main` e `stabilization/**`. Questo secondo trigger protegge anche l'ultimo commit effettivamente presente in un ramo principale o di stabilizzazione.
+
+| Gate | Ambito | Criterio di superamento |
+| --- | --- | --- |
+| Validazione Gradle Wrapper | Repository | Tutti i wrapper Gradle tracciati superano `gradle/actions/wrapper-validation`; file eseguibili e JAR non validi bloccano la build. |
+| Integrità asset Android | Android | I pacchetti GTFS, `manifest.json`, `SHA256SUMS` e il catalogo stazioni concordano per nomi, hash, struttura e conteggi. |
+| Freschezza asset GTFS | Android | Ogni `lastServiceDate` è almeno 14 giorni oltre la data del gate. Un feed scaduto o troppo vicino alla scadenza richiede refresh, rigenerazione degli hash e revisione prima della release. |
+| Test, lint e build Android | Android | I test unitari debug, lint debug e assemble debug completano senza errori. |
+| Companion managed | Companion Expo | Dipendenze congelate, TypeScript, test e verifiche di configurazione/release completano senza errori. |
+| Prebuild companion | Companion Expo | `expo prebuild --platform android --clean --no-install` non modifica `android/`; una seconda esecuzione pulita produce lo stesso albero tracciato. |
+
+I workflow usano azioni con versione esplicita. Ogni aggiornamento di un'azione deve essere trattato come una modifica di dipendenza e rieseguito nella stessa pull request.
+
+## Procedura di release
+
+1. Aprire o aggiornare `stabilization/<versione>` dalla revisione approvata di `main`; limitare le modifiche a correzioni di release, gate e documentazione direttamente necessaria.
+2. Per ogni modifica, aprire una pull request verso la linea di stabilizzazione corretta e attendere i gate CI applicabili. Eseguire localmente i comandi dei gate coinvolti prima della revisione.
+3. Prima del tag, verificare gli asset embedded con `python3 tools/verify_embedded_assets.py --min-valid-days 14`. Se un pacchetto GTFS è scaduto o entra nella finestra di 14 giorni, aggiornare l'asset, il manifest e `SHA256SUMS` nella stessa pull request oppure escluderlo in modo sicuro dalla release.
+4. Registrare esito, vincoli residui e prove nel changelog e nella documentazione di stabilizzazione della versione. Il tag viene creato soltanto dalla revisione approvata della linea di stabilizzazione, dopo l'esito verde dei gate richiesti.
+5. Dopo la release, riportare su `main` soltanto correzioni e documentazione che devono restare nella linea di sviluppo, tramite pull request separata e revisionata.
+
+## Documenti storici
+
+I report storici alla radice non vengono spostati automaticamente. I manifest di consegna sotto `archives/session-versions/manifests/` ne registrano i percorsi originali come contenuto storico. Spostarli senza rigenerare e verificare tali manifest romperebbe la corrispondenza tra una consegna archiviata e il suo inventario. Quando si pianificherà un archivio strutturale, il cambiamento dovrà aggiornare insieme i riferimenti, i manifest interessati e una tabella di reindirizzamento verificata; fino ad allora i percorsi vengono preservati deliberatamente.
+
+## Verifiche locali
+
+```bash
+# Asset Android: integrità, struttura e finestra di validità dei GTFS.
+python3 tools/verify_embedded_assets.py --min-valid-days 14
+
+# Android principale (richiede JDK 17 e Android SDK configurato).
+./gradlew --no-daemon testDebugUnitTest lintDebug assembleDebug
+
+# Companion Expo.
+cd companion-expo
+pnpm install --frozen-lockfile
+pnpm run check
+pnpm test
+pnpm run verify:managed-config
+pnpm exec expo prebuild --platform android --clean --no-install
+git diff --exit-code -- android
+pnpm exec expo prebuild --platform android --clean --no-install
+git diff --exit-code -- android
+```
+
+La verifica asset usa la data corrente per impostazione predefinita. Per riprodurre una verifica storica senza mascherare la release corrente, è possibile passare una data esplicita solo a fini diagnostici, ad esempio `--today 2026-08-15`.

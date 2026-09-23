@@ -2,6 +2,10 @@ name: Companion CI
 
 on:
   pull_request:
+  push:
+    branches:
+      - main
+      - "stabilization/**"
   workflow_dispatch:
 
 concurrency:
@@ -48,13 +52,20 @@ jobs:
       - name: Verify managed Expo config
         run: pnpm run verify:managed-config
 
-      - name: Regenerate Android native project
+      - name: Regenerate Android native project from a clean state
         env:
           CI: "1"
-        run: pnpm exec expo prebuild --platform android --no-install
+        run: pnpm exec expo prebuild --platform android --clean --no-install
 
-      - name: Require idempotent native generation
-        run: git diff --exit-code -- android
+      - name: Require clean prebuild idempotence
+        env:
+          CI: "1"
+        run: |
+          git diff --exit-code -- android
+          test -z "$(git status --porcelain -- android)"
+          pnpm exec expo prebuild --platform android --clean --no-install
+          git diff --exit-code -- android
+          test -z "$(git status --porcelain -- android)"
 
       - name: Verify release security inputs
         run: pnpm run verify:release-inputs

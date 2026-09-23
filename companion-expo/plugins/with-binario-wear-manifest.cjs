@@ -22,21 +22,10 @@ module.exports = function withBinarioWearManifest(config) {
     }
 
     let appBuildGradle = fs.readFileSync(appBuildGradlePath, "utf8");
-    const generatedAppSigning = `    signingConfigs {\n        debug {\n            storeFile file('debug.keystore')\n            storePassword 'android'\n            keyAlias 'androiddebugkey'\n            keyPassword 'android'\n        }\n    }\n`;
-    const generatedAppDebugBuildType = `        debug {\n            signingConfig signingConfigs.debug\n        }\n`;
     const appSigningComment = "    // Use AGP's standard debug signing; CI must not depend on a repository-local keystore.\n";
-
-    if (appBuildGradle.includes(generatedAppSigning)) {
-      appBuildGradle = appBuildGradle.replace(generatedAppSigning, appSigningComment);
-    } else if (appBuildGradle.includes("file('debug.keystore')")) {
-      throw new Error("Binario Companion debug signing no longer matches the expected generated Gradle block.");
-    }
-
-    if (appBuildGradle.includes(generatedAppDebugBuildType)) {
-      appBuildGradle = appBuildGradle.replace(generatedAppDebugBuildType, "");
-    } else if (appBuildGradle.includes("signingConfig signingConfigs.debug")) {
-      throw new Error("Binario Companion debug build type signing no longer matches the expected generated Gradle block.");
-    }
+    const appSigningBlock = /\s*signingConfigs\s*\{\s*debug\s*\{\s*storeFile\s+file\(['\"]debug\.keystore['\"]\)\s*storePassword\s+['\"]android['\"]\s*keyAlias\s+['\"]androiddebugkey['\"]\s*keyPassword\s+['\"]android['\"]\s*\}\s*\}\s*/m;
+    appBuildGradle = appBuildGradle.replace(appSigningBlock, `\n${appSigningComment}`);
+    appBuildGradle = appBuildGradle.replace(/^\s*signingConfig\s+signingConfigs\.debug\s*$/gm, "");
 
     if (appBuildGradle.includes("file('debug.keystore')") || appBuildGradle.includes("signingConfig signingConfigs.debug")) {
       throw new Error("Binario Companion still depends on a repository-local debug keystore after hardening.");
@@ -74,21 +63,10 @@ module.exports = function withBinarioWearManifest(config) {
     }
 
     let buildGradle = fs.readFileSync(buildGradlePath, "utf8");
-    const generatedSigning = `  signingConfigs {\n    debug {\n      storeFile rootProject.file("app/debug.keystore")\n      storePassword "android"\n      keyAlias "androiddebugkey"\n      keyPassword "android"\n    }\n  }\n`;
-    const generatedDebugBuildType = `    debug {\n      signingConfig signingConfigs.debug\n    }\n`;
     const signingComment = "  // Use AGP's standard debug signing; CI must not depend on a repository-local keystore.\n";
-
-    if (buildGradle.includes(generatedSigning)) {
-      buildGradle = buildGradle.replace(generatedSigning, signingComment);
-    } else if (buildGradle.includes('rootProject.file("app/debug.keystore")')) {
-      throw new Error("Binario Wear debug signing no longer matches the expected generated Gradle block.");
-    }
-
-    if (buildGradle.includes(generatedDebugBuildType)) {
-      buildGradle = buildGradle.replace(generatedDebugBuildType, "");
-    } else if (buildGradle.includes("signingConfig signingConfigs.debug")) {
-      throw new Error("Binario Wear debug build type signing no longer matches the expected generated Gradle block.");
-    }
+    const wearSigningBlock = /\s*signingConfigs\s*\{\s*debug\s*\{\s*storeFile\s+rootProject\.file\(['\"]app\/debug\.keystore['\"]\)\s*storePassword\s+['\"]android['\"]\s*keyAlias\s+['\"]androiddebugkey['\"]\s*keyPassword\s+['\"]android['\"]\s*\}\s*\}\s*/m;
+    buildGradle = buildGradle.replace(wearSigningBlock, `\n${signingComment}`);
+    buildGradle = buildGradle.replace(/^\s*signingConfig\s+signingConfigs\.debug\s*$/gm, "");
 
     if (buildGradle.includes('rootProject.file("app/debug.keystore")') || buildGradle.includes("signingConfig signingConfigs.debug")) {
       throw new Error("Binario Wear still depends on a repository-local debug keystore after hardening.");
