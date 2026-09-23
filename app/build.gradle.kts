@@ -105,8 +105,6 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
     implementation("androidx.work:work-runtime-ktx:2.10.0")
     implementation("org.jsoup:jsoup:1.18.3")
-    // Runtime JSON parsing for LocalDataBackup, the STA realtime adapter, and the embedded station catalog.
-    implementation("org.json:json:20240303")
     implementation("org.mobilitydata:gtfs-realtime-bindings:0.0.8")
     implementation("com.google.android.gms:play-services-wearable:20.0.1")
     implementation("androidx.compose.ui:ui")
@@ -115,4 +113,6 @@ dependencies {
     implementation("androidx.compose.material:material-icons-extended")
     debugImplementation("androidx.compose.ui:ui-tooling")
     testImplementation("junit:junit:4.13.2")
+    // Android supplies org.json at runtime; this artifact is only the JVM unit-test implementation.
+    testImplementation("org.json:json:20240303")
 }
