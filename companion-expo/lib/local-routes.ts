@@ -1,6 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { createExplicitRecurringLocalRouteDrafts, createLocalPlannedRoute, isLocalPlannedRoute, setLocalJourneyChecklistItem, setLocalPlannedRouteCompleted, setLocalPlannedRouteLabel, setLocalPlannedRoutePinned, sortLocalPlannedRoutes, type ExplicitLocalJourneyRecurrence, type LocalJourneyChecklistItem, type LocalPlannedRoute, type LocalRouteDraft } from "@/lib/local-route-contract";
-import type { CompanionPlannedRoute } from "@/lib/planned-route-reminder";
 import type { ManualRouteTransferRoute } from "@/lib/manual-route-transfer-contract";
 
 const storageKey = "binario-local-planned-routes-v1";
@@ -49,7 +48,7 @@ export async function setLocalPlannedRouteCompletion(routeId: number, completed:
   return true;
 }
 
-/** Etichetta libera ma circoscritta alla tratta locale: non entra in export, sync o provider. */
+/** Etichetta libera ma circoscritta alla tratta locale: non entra nell’archivio esportato o in un provider. */
 export async function setLocalPlannedRouteCustomLabel(routeId: number, label: string | null) {
   const routes = await loadLocalPlannedRoutes();
   if (!routes.some(route => route.id === routeId)) return false;
@@ -75,7 +74,9 @@ export async function moveLocalPlannedRoute(routeId: number, direction: "up" | "
   return true;
 }
 
-function samePlannedRoute(left: LocalPlannedRoute, right: Pick<CompanionPlannedRoute, "origin" | "originStationCode" | "destination" | "destinationStationCode" | "travelDate" | "travelTime">) {
+type ComparablePlannedRoute = Pick<LocalRouteDraft, "origin" | "originStationCode" | "destination" | "destinationStationCode" | "travelDate" | "travelTime">;
+
+function samePlannedRoute(left: LocalPlannedRoute, right: ComparablePlannedRoute) {
   const station = (code: string | null | undefined, label: string) => code?.trim().toUpperCase() || label.trim().toLocaleLowerCase("it");
   return station(left.originStationCode, left.origin) === station(right.originStationCode, right.origin) && station(left.destinationStationCode, left.destination) === station(right.destinationStationCode, right.destination) && left.travelDate === right.travelDate && left.travelTime === right.travelTime;
 }
@@ -99,24 +100,6 @@ export async function addExplicitRecurringLocalPlannedRoutes(routeId: number, re
   const added = next.length - current.length;
   if (added > 0) await save(next);
   return added;
-}
-
-/** Import additivo richiamato solo dopo selezione nell’anteprima. */
-export async function importSelectedRemotePlannedRoutes(routes: readonly CompanionPlannedRoute[], now = Date.now()): Promise<number> {
-  const current = await loadLocalPlannedRoutes();
-  const next = [...current];
-  let nextId = now;
-  for (const remote of routes) {
-    if (next.some(local => samePlannedRoute(local, remote))) continue;
-    while (next.some(local => local.id === nextId)) nextId += 1;
-    const local = createLocalPlannedRoute({ origin: remote.origin, originStationCode: remote.originStationCode, destination: remote.destination, destinationStationCode: remote.destinationStationCode, travelDate: remote.travelDate, travelTime: remote.travelTime, plannedReminderMinutes: remote.plannedReminderMinutes }, nextId, now);
-    if (!local || next.length >= maxLocalRoutes) continue;
-    next.push(local);
-    nextId += 1;
-  }
-  const imported = next.length - current.length;
-  if (imported > 0) await save(next);
-  return imported;
 }
 
 /** Importazione additiva richiamata solo dopo anteprima e selezione di un archivio Binario scelto dall’utente. */

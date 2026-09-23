@@ -39,7 +39,7 @@ export type LocalPlannedRoute = CompanionPlannedRoute & {
   originStationCode: string | null;
   destinationStationCode: string | null;
   checklist?: LocalJourneyChecklistItem[];
-  /** Metadati personali locali: non sono inviati a provider ferroviari, export o sync. */
+  /** Metadati personali locali: non sono inviati a provider ferroviari né inseriti nell’archivio esportato. */
   customLabel?: string | null;
   pinned?: boolean;
   manualOrder?: number | null;

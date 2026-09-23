@@ -1,7 +1,0 @@
-export type NativeSyncCandidate<T> = { key: string; route: T; state: "new" | "already_present" | "conflict" };
-type Comparable = { origin: string; originStationCode?: string | null; destination: string; destinationStationCode?: string | null; travelDate: string; travelTime: string; plannedReminderMinutes: number | null };
-const key = (route: Comparable) => `${route.originStationCode ?? route.origin}|${route.destinationStationCode ?? route.destination}|${route.travelDate}|${route.travelTime}`;
-function preview<T extends Comparable>(local: readonly Comparable[], candidates: readonly T[]): NativeSyncCandidate<T>[] { const existing = new Map(local.map(route => [key(route), route])); return candidates.map(route => { const match = existing.get(key(route)); return { key: key(route), route, state: !match ? "new" : match.plannedReminderMinutes === route.plannedReminderMinutes ? "already_present" : "conflict" }; }); }
-export function prepareNativePullPreview<T extends Comparable>(local: readonly Comparable[], remote: readonly T[]) { return preview(local, remote); }
-export function prepareNativePushPreview<T extends Comparable>(local: readonly T[], remote: readonly Comparable[]) { return preview(remote, local); }
-export function selectedNativePushRoutes<T>(candidates: readonly NativeSyncCandidate<T>[], selected: ReadonlySet<string>) { return candidates.filter(item => item.state === "new" && selected.has(item.key)).map(item => item.route); }
