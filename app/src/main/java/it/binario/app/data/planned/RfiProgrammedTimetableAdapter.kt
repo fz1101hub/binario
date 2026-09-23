@@ -17,13 +17,14 @@ import it.binario.app.data.TrainService
 import it.binario.app.data.TrainStop
 import it.binario.app.data.matchesPublishedName
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
+import java.io.ByteArrayOutputStream
 import java.io.IOException
+import java.io.InputStream
 import java.net.HttpURLConnection
 import java.net.URL
 import java.time.Clock
@@ -38,6 +39,30 @@ fun interface RfiProgrammedTimetableFetcher {
     suspend fun fetch(url: String): String
 }
 
+internal const val RFI_PROGRAMMED_TIMETABLE_MAX_BYTES = 2 * 1024 * 1024
+
+internal fun readBoundedRfiHtml(
+    input: InputStream,
+    declaredLength: Long?,
+    maxBytes: Int = RFI_PROGRAMMED_TIMETABLE_MAX_BYTES
+): String {
+    require(maxBytes > 0) { "Il limite RFI deve essere positivo" }
+    if (declaredLength != null && declaredLength > maxBytes) {
+        throw IOException("Risposta RFI oltre limite: $declaredLength > $maxBytes byte")
+    }
+    val output = ByteArrayOutputStream(minOf(declaredLength?.toInt() ?: 8_192, maxBytes))
+    val buffer = ByteArray(8_192)
+    var total = 0
+    while (true) {
+        val read = input.read(buffer)
+        if (read < 0) break
+        total += read
+        if (total > maxBytes) throw IOException("Risposta RFI oltre limite streaming: $total > $maxBytes byte")
+        output.write(buffer, 0, read)
+    }
+    return output.toString(Charsets.UTF_8.name())
+}
+
 internal class HttpRfiProgrammedTimetableFetcher : RfiProgrammedTimetableFetcher {
     override suspend fun fetch(url: String): String = withContext(Dispatchers.IO) {
         val connection = (URL(url).openConnection() as? HttpURLConnection)
@@ -45,13 +70,14 @@ internal class HttpRfiProgrammedTimetableFetcher : RfiProgrammedTimetableFetcher
         connection.requestMethod = "GET"
         connection.connectTimeout = 12_000
         connection.readTimeout = 25_000
-        connection.instanceFollowRedirects = true
+        connection.instanceFollowRedirects = false
         connection.setRequestProperty("Accept", "text/html,application/xhtml+xml")
         connection.setRequestProperty("User-Agent", "Binario/0.20 (personal rail timetable client)")
         try {
             val status = connection.responseCode
             if (status !in 200..299) throw IOException("RFI ha risposto HTTP $status")
-            connection.inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() }
+            val declaredLength = connection.contentLengthLong.takeIf { it >= 0L }
+            connection.inputStream.use { readBoundedRfiHtml(it, declaredLength) }
         } finally {
             connection.disconnect()
         }
@@ -113,12 +139,16 @@ class RfiProgrammedTimetableAdapter(
     private val fetcher: RfiProgrammedTimetableFetcher = HttpRfiProgrammedTimetableFetcher(),
     private val clock: Clock = Clock.system(RailTime.defaultZone),
     private val cacheTtlMillis: Long = 6L * 60L * 60L * 1000L,
+    private val cacheMaxEntries: Int = 16,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
     private val parsingDispatcher: CoroutineDispatcher = Dispatchers.Default,
     private val onParsing: (() -> Unit)? = null
 ) : TrainDataSource {
-    private val mutex = Mutex()
-    private val cache = mutableMapOf<String, CachedTimetable>()
+    private val cache = BoundedSingleFlightCache<ParsedTimetable>(
+        maxEntries = cacheMaxEntries,
+        ttlMillis = cacheTtlMillis,
+        clockMillis = clock::millis
+    )
 
     override suspend fun loadRoute(route: SavedRoute, direction: Direction): DataResult {
         val now = clock.instant().atZone(clock.zone)
@@ -131,26 +161,45 @@ class RfiProgrammedTimetableAdapter(
         val stationId = RfiProgrammedStationIds.timetableId(origin)
             ?: return DataResult.Failure(unmappedDirectionMessage(origin, destination))
 
-        val key = "${origin.id}:${query.serviceDate}"
-        val now = clock.millis()
-        val parsed = mutex.withLock {
-            cache[key]?.takeIf { now < it.expiresAtEpochMillis }?.timetable
-        } ?: run {
-            val url = "https://prm.rfi.it/qo_prm/QO_Partenze_SiPMR.aspx?Id=$stationId&lin=it&dalle=00.00&alle=23.59&ora=00.00"
-            val html = try {
-                withContext(ioDispatcher) { fetcher.fetch(url) }
-            } catch (error: IOException) {
-                return DataResult.Failure("Il quadro orario programmato RFI non è raggiungibile: ${error.message ?: "errore di rete"}.")
-            } catch (error: Exception) {
-                return DataResult.Failure("Il quadro orario programmato RFI non è leggibile: ${error.message ?: "errore di parsing"}.")
+        val key = "${route.id}:${direction.name}:$stationId"
+        val cached = try {
+            cache.getOrLoad(key) {
+                val url = "https://prm.rfi.it/qo_prm/QO_Partenze_SiPMR.aspx?Id=$stationId&lin=it&dalle=00.00&alle=23.59&ora=00.00"
+                val html = try {
+                    withContext(ioDispatcher) { fetcher.fetch(url) }
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (error: IOException) {
+                    throw RfiLoadFailure(
+                        "Il quadro orario programmato RFI non è raggiungibile: ${error.message ?: "errore di rete"}.",
+                        error
+                    )
+                } catch (error: Exception) {
+                    throw RfiLoadFailure(
+                        "Il quadro orario programmato RFI non è leggibile: ${error.message ?: "errore di parsing"}.",
+                        error
+                    )
+                }
+                try {
+                    withContext(parsingDispatcher) {
+                        onParsing?.invoke()
+                        parseTimetable(html, origin, route, direction)
+                    }
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (error: Exception) {
+                    throw RfiLoadFailure(
+                        "Il quadro orario programmato RFI non è leggibile: ${error.message ?: "errore di parsing"}.",
+                        error
+                    )
+                }
             }
-            val timetable = withContext(parsingDispatcher) {
-                onParsing?.invoke()
-                parseTimetable(html, origin, route, direction)
-            }
-            mutex.withLock { cache[key] = CachedTimetable(timetable, now + cacheTtlMillis) }
-            timetable
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: RfiLoadFailure) {
+            return DataResult.Failure(error.message.orEmpty())
         }
+        val parsed = cached.value
 
         parsed.validity?.let { validity ->
             if (query.serviceDate !in validity.start..validity.end) {
@@ -202,10 +251,10 @@ class RfiProgrammedTimetableAdapter(
                 direction = direction,
                 services = services,
                 providerName = "RFI — Quadro orario programmato",
-                retrievedAtEpochMillis = now,
-                expiresAtEpochMillis = now + cacheTtlMillis,
+                retrievedAtEpochMillis = cached.fetchedAtEpochMillis,
+                expiresAtEpochMillis = cached.expiresAtEpochMillis,
                 freshness = Freshness.AGING,
-                sourceObservedAtEpochMillis = now,
+                sourceObservedAtEpochMillis = cached.fetchedAtEpochMillis,
                 confidence = DataConfidence.INFRASTRUCTURE_PRIMARY,
                 notice = "Orario programmato ufficiale RFI; ritardi, binari reali e variazioni operative vengono riconciliati separatamente con le fonti realtime."
             )
@@ -448,8 +497,9 @@ class RfiProgrammedTimetableAdapter(
     )
 
     internal data class TimetableValidity(val start: LocalDate, val end: LocalDate)
+    internal suspend fun cachedTimetableCountForTest(): Int = cache.sizeForTest()
     private data class ProgrammedStop(val station: String, val time: String)
-    private data class CachedTimetable(val timetable: ParsedTimetable, val expiresAtEpochMillis: Long)
+    private class RfiLoadFailure(message: String, cause: Throwable) : Exception(message, cause)
 
     private data class HeaderIndexes(
         val time: Int?,

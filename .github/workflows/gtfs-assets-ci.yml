@@ -18,19 +18,29 @@ permissions:
 
 jobs:
   gtfs-assets:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Python 3
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
-          python-version: "3.12"
+          python-version: "3.12.10"
+
+      - name: Install hash-locked CI policy dependencies
+        run: python3 -m pip install --require-hashes -r requirements-ci.txt
 
       - name: Offline pipeline tests
-        run: python3 -m unittest -v tests/test_build_gtfs_packs.py
+        run: >-
+          python3 -m unittest -v
+          tests/test_build_gtfs_packs.py
+          tests/test_install_xcodegen.py
+          tests/test_verify_ci_pinning.py
+
+      - name: Verify immutable CI inputs
+        run: python3 tools/verify_ci_pinning.py
 
       - name: Verify GTFS asset integrity
         run: python3 tools/build_gtfs_packs.py --check --integrity-only

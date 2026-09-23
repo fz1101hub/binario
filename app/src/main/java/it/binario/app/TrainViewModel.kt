@@ -161,6 +161,18 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
     private var stationBoardRequestId: Long = 0L
 
     init {
+        if (!integrationSettings.wearSnapshotSharingEnabled) {
+            WearSnapshotPublisher.persistRevocationIntent(getApplication())
+        }
+        viewModelScope.launch {
+            if (integrationSettings.wearSnapshotSharingEnabled) {
+                if (WearSnapshotPublisher.enable(getApplication()) && !integrationSettings.wearSnapshotSharingEnabled) {
+                    WearSnapshotPublisher.clear(getApplication())
+                }
+            } else {
+                WearSnapshotPublisher.clear(getApplication())
+            }
+        }
         // The curated catalog is local and authoritative for station identity.
         // Bootstrap refresh starts only after this load has had a chance to canonicalize
         // the saved route, avoiding an initial request against stale/legacy station data.
@@ -523,6 +535,7 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
                 rebuildServicePresentations()
                 refreshState = RefreshState.IDLE
                 refreshMessage = "Inserisci una tratta per iniziare la consultazione."
+                revokeWearSnapshot()
             }
         }
     }
@@ -562,7 +575,18 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
                     RouteWidgetProvider.saveSnapshotForMatchingRoutes(getApplication(), result.snapshot)
                     RouteWidgetProvider.refreshAll(getApplication())
                     if (integrationSettings.wearSnapshotSharingEnabled) {
-                        WearSnapshotPublisher.publish(getApplication(), result.snapshot)
+                        if (WearSnapshotPublisher.enable(getApplication())) {
+                            if (
+                                integrationSettings.wearSnapshotSharingEnabled &&
+                                hasActiveRoute &&
+                                requestId == refreshRequestId &&
+                                activeRoute.id == routeAtRequest.id
+                            ) {
+                                WearSnapshotPublisher.publish(getApplication(), result.snapshot)
+                            } else if (!integrationSettings.wearSnapshotSharingEnabled || !hasActiveRoute) {
+                                WearSnapshotPublisher.clear(getApplication())
+                            }
+                        }
                     }
                     refreshState = RefreshState.SUCCESS
                     refreshMessage = result.snapshot.notice
@@ -571,11 +595,22 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
                     RouteWidgetProvider.markMatchingRouteDirectionUnavailable(getApplication(), routeAtRequest, directionAtRequest, result.message)
                     RouteWidgetProvider.refreshAll(getApplication())
                     if (integrationSettings.wearSnapshotSharingEnabled) {
-                        WearSnapshotPublisher.publishUnavailable(
-                            getApplication(),
-                            routeAtRequest.displayName(directionAtRequest),
-                            primarySnapshot?.providerName ?: cache.lastProvider()
-                        )
+                        if (WearSnapshotPublisher.enable(getApplication())) {
+                            if (
+                                integrationSettings.wearSnapshotSharingEnabled &&
+                                hasActiveRoute &&
+                                requestId == refreshRequestId &&
+                                activeRoute.id == routeAtRequest.id
+                            ) {
+                                WearSnapshotPublisher.publishUnavailable(
+                                    getApplication(),
+                                    routeAtRequest.displayName(directionAtRequest),
+                                    primarySnapshot?.providerName ?: cache.lastProvider()
+                                )
+                            } else if (!integrationSettings.wearSnapshotSharingEnabled || !hasActiveRoute) {
+                                WearSnapshotPublisher.clear(getApplication())
+                            }
+                        }
                     }
                     refreshState = RefreshState.ERROR
                     refreshMessage = result.message
@@ -807,19 +842,34 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
                 primarySnapshot = null
                 refreshState = RefreshState.IDLE
                 refreshMessage = "Backup importato senza una tratta salvata. Inseriscine una quando vuoi."
+                revokeWearSnapshot()
             }
             "Backup importato localmente: ${savedRoutes.size} tratte, ${stationMonitors.size} stazioni monitorate e ${commuterAlerts.size} avvisi."
         }
     }
 
     fun setWearSnapshotSharing(enabled: Boolean) {
+        if (!enabled) WearSnapshotPublisher.persistRevocationIntent(getApplication())
         integrationSettings = integrationSettings.copy(wearSnapshotSharingEnabled = enabled)
         integrationStore.save(integrationSettings)
-        if (enabled) primarySnapshot?.let { latest ->
-            viewModelScope.launch { WearSnapshotPublisher.publish(getApplication(), latest) }
+        if (enabled) {
+            viewModelScope.launch {
+                if (WearSnapshotPublisher.enable(getApplication())) {
+                    if (integrationSettings.wearSnapshotSharingEnabled) {
+                        primarySnapshot?.let { WearSnapshotPublisher.publish(getApplication(), it) }
+                    } else {
+                        WearSnapshotPublisher.clear(getApplication())
+                    }
+                }
+            }
         } else {
-            viewModelScope.launch { WearSnapshotPublisher.clear(getApplication()) }
+            revokeWearSnapshot()
         }
+    }
+
+    private fun revokeWearSnapshot() {
+        WearSnapshotPublisher.persistRevocationIntent(getApplication())
+        viewModelScope.launch { WearSnapshotPublisher.clear(getApplication()) }
     }
 
     fun setVoiceProfileSyncRequested(enabled: Boolean) {

@@ -11,8 +11,10 @@ import it.binario.app.data.SavedRoute
 import it.binario.app.data.Station
 import it.binario.app.data.TrainDataSource
 import it.binario.app.data.matchesPublishedName
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.time.Clock
 import java.time.DayOfWeek
 import java.time.LocalDate
@@ -28,14 +30,21 @@ import java.util.Locale
 class RfiSupplementalHubTimetableAdapter(
     private val fetcher: RfiProgrammedTimetableFetcher = HttpRfiProgrammedTimetableFetcher(),
     private val clock: Clock = Clock.system(RailTime.defaultZone),
-    private val cacheTtlMillis: Long = CACHE_TTL_MILLIS
+    private val cacheTtlMillis: Long = CACHE_TTL_MILLIS,
+    private val cacheMaxEntries: Int = 8,
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+    private val parsingDispatcher: CoroutineDispatcher = Dispatchers.Default,
+    private val onParsing: (() -> Unit)? = null
 ) : TrainDataSource {
     private val parser = RfiProgrammedTimetableAdapter(
         fetcher = RfiProgrammedTimetableFetcher { "" },
         clock = clock
     )
-    private val mutex = Mutex()
-    private val cache = mutableMapOf<String, CachedTimetable>()
+    private val cache = BoundedSingleFlightCache<RfiProgrammedTimetableAdapter.ParsedTimetable>(
+        maxEntries = cacheMaxEntries,
+        ttlMillis = cacheTtlMillis,
+        clockMillis = clock::millis
+    )
 
     override suspend fun loadRoute(route: SavedRoute, direction: Direction): DataResult {
         val now = clock.instant().atZone(clock.zone)
@@ -51,21 +60,40 @@ class RfiSupplementalHubTimetableAdapter(
         val destination = route.destination(direction)
         val timetableId = SupplementalRfiProgrammedStationIds.timetableId(origin)
             ?: return DataResult.Failure(unmappedDirectionMessage(origin, destination))
-        val now = clock.millis()
         val cacheKey = "${route.id}:${direction.name}:$timetableId"
-        val parsed = mutex.withLock {
-            cache[cacheKey]?.takeIf { now < it.expiresAtEpochMillis }?.timetable
-        } ?: run {
-            val url = "https://prm.rfi.it/qo_prm/QO_Partenze_SiPMR.aspx?Id=$timetableId&lin=it&dalle=00.00&alle=23.59&ora=00.00"
-            val html = runCatching { fetcher.fetch(url) }.getOrElse {
-                return DataResult.Failure("Il quadro orario RFI supplementare non è raggiungibile: ${it.message.orEmpty()}.")
+        val cached = try {
+            cache.getOrLoad(cacheKey) {
+                val url = "https://prm.rfi.it/qo_prm/QO_Partenze_SiPMR.aspx?Id=$timetableId&lin=it&dalle=00.00&alle=23.59&ora=00.00"
+                val html = try {
+                    withContext(ioDispatcher) { fetcher.fetch(url) }
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (error: Exception) {
+                    throw SupplementalLoadFailure(
+                        "Il quadro orario RFI supplementare non è raggiungibile: ${error.message.orEmpty()}.",
+                        error
+                    )
+                }
+                try {
+                    withContext(parsingDispatcher) {
+                        onParsing?.invoke()
+                        parser.parseTimetable(html, origin, route, direction)
+                    }
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (error: Exception) {
+                    throw SupplementalLoadFailure(
+                        "Il quadro orario RFI supplementare non è leggibile: ${error.message.orEmpty()}.",
+                        error
+                    )
+                }
             }
-            val timetable = runCatching { parser.parseTimetable(html, origin, route, direction) }.getOrElse {
-                return DataResult.Failure("Il quadro orario RFI supplementare non è leggibile: ${it.message.orEmpty()}.")
-            }
-            mutex.withLock { cache[cacheKey] = CachedTimetable(timetable, now + cacheTtlMillis) }
-            timetable
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: SupplementalLoadFailure) {
+            return DataResult.Failure(error.message.orEmpty())
         }
+        val parsed = cached.value
 
         parsed.validity?.let { validity ->
             if (query.serviceDate !in validity.start..validity.end) {
@@ -75,27 +103,29 @@ class RfiSupplementalHubTimetableAdapter(
             }
         }
 
-        val requestedMinutes = query.departureTime.hour * 60 + query.departureTime.minute
-        val services = parsed.services.asSequence()
-            .filter { runsOnDate(it.periodicity, query.serviceDate) }
-            .filter { timeMinutes(it.service.scheduledDeparture) >= requestedMinutes }
-            .filter { parsedService ->
-                parsedService.service.stops.drop(1).any { destination.matchesPublishedName(it.station) } ||
-                    destination.matchesPublishedName(parsedService.service.destination)
-            }
-            .map { parsedService ->
-                val targetIndex = parsedService.service.stops.indexOfFirst { destination.matchesPublishedName(it.station) }
-                parsedService.service.copy(
-                    stops = if (targetIndex >= 1) parsedService.service.stops.take(targetIndex + 1) else parsedService.service.stops,
-                    scheduledDepartureDateTime = LocalDateTime.of(
-                        query.serviceDate,
-                        parseTime(parsedService.service.scheduledDeparture) ?: query.departureTime
+        val services = withContext(parsingDispatcher) {
+            val requestedMinutes = query.departureTime.hour * 60 + query.departureTime.minute
+            parsed.services.asSequence()
+                .filter { runsOnDate(it.periodicity, query.serviceDate) }
+                .filter { timeMinutes(it.service.scheduledDeparture) >= requestedMinutes }
+                .filter { parsedService ->
+                    parsedService.service.stops.drop(1).any { destination.matchesPublishedName(it.station) } ||
+                        destination.matchesPublishedName(parsedService.service.destination)
+                }
+                .map { parsedService ->
+                    val targetIndex = parsedService.service.stops.indexOfFirst { destination.matchesPublishedName(it.station) }
+                    parsedService.service.copy(
+                        stops = if (targetIndex >= 1) parsedService.service.stops.take(targetIndex + 1) else parsedService.service.stops,
+                        scheduledDepartureDateTime = LocalDateTime.of(
+                            query.serviceDate,
+                            parseTime(parsedService.service.scheduledDeparture) ?: query.departureTime
+                        )
                     )
-                )
-            }
-            .sortedBy { it.scheduledDepartureDateTime }
-            .take(24)
-            .toList()
+                }
+                .sortedBy { it.scheduledDepartureDateTime }
+                .take(24)
+                .toList()
+        }
 
         if (services.isEmpty()) {
             return DataResult.Failure(
@@ -109,10 +139,10 @@ class RfiSupplementalHubTimetableAdapter(
                 direction = direction,
                 services = services,
                 providerName = "RFI — Quadro orario programmato",
-                retrievedAtEpochMillis = now,
-                expiresAtEpochMillis = now + CACHE_TTL_MILLIS,
+                retrievedAtEpochMillis = cached.fetchedAtEpochMillis,
+                expiresAtEpochMillis = cached.expiresAtEpochMillis,
                 freshness = Freshness.AGING,
-                sourceObservedAtEpochMillis = now,
+                sourceObservedAtEpochMillis = cached.fetchedAtEpochMillis,
                 confidence = DataConfidence.INFRASTRUCTURE_PRIMARY,
                 notice = "Orario programmato ufficiale RFI; hub supplementare verificato, con stato operativo riconciliato separatamente."
             )
@@ -156,10 +186,9 @@ class RfiSupplementalHubTimetableAdapter(
             "Nessun hub RFI supplementare mappato per ${origin.name}."
         }
 
-    private data class CachedTimetable(
-        val timetable: RfiProgrammedTimetableAdapter.ParsedTimetable,
-        val expiresAtEpochMillis: Long
-    )
+    private class SupplementalLoadFailure(message: String, cause: Throwable) : Exception(message, cause)
+
+    internal suspend fun cachedTimetableCountForTest(): Int = cache.sizeForTest()
 
     private companion object {
         const val CACHE_TTL_MILLIS = 6L * 60L * 60L * 1000L

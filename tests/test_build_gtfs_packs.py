@@ -6,6 +6,7 @@ import hashlib
 import importlib.util
 import io
 import json
+import multiprocessing
 import shutil
 import sys
 import tempfile
@@ -13,6 +14,7 @@ import unittest
 import zipfile
 from datetime import date
 from pathlib import Path
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "tools/build_gtfs_packs.py"
@@ -28,6 +30,18 @@ def write_fixture_zip(target: Path) -> None:
     with zipfile.ZipFile(target, "w", compression=zipfile.ZIP_DEFLATED) as archive:
         for file in sorted(FIXTURE.iterdir()):
             archive.write(file, file.name)
+
+
+def write_fixture_zip_with_agency(target: Path, agency_name: str) -> None:
+    with zipfile.ZipFile(target, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        for file in sorted(FIXTURE.iterdir()):
+            if file.name == "agency.txt":
+                archive.writestr(
+                    "agency.txt",
+                    file.read_text(encoding="utf-8").replace("AMT,AMT,", f"AMT,{agency_name},"),
+                )
+            else:
+                archive.write(file, file.name)
 
 
 def write_manifest(directory: Path, *, last_service_date: str = "2027-01-15") -> None:
@@ -51,16 +65,49 @@ def write_manifest(directory: Path, *, last_service_date: str = "2027-01-15") ->
     (directory / "manifest.json").write_text(json.dumps(payload), encoding="utf-8")
 
 
+def publish_worker(staging: str, target: str, start: multiprocessing.synchronize.Event, results: multiprocessing.queues.Queue) -> None:
+    start.wait()
+    try:
+        builder.atomic_replace_directory(Path(staging), Path(target))
+        results.put("")
+    except BaseException as error:
+        results.put(repr(error))
+
+
+def build_worker(
+    input_directory: str,
+    output_directory: str,
+    source_id: str,
+    override: str,
+    start: multiprocessing.synchronize.Event,
+    results: multiprocessing.queues.Queue,
+) -> None:
+    start.wait()
+    try:
+        builder.build_packs(
+            Path(input_directory),
+            Path(output_directory),
+            input_overrides={source_id: Path(override)},
+        )
+        results.put("")
+    except BaseException as error:
+        results.put(repr(error))
+
+
 class FakeResponse:
-    def __init__(self, payload: bytes, length: str | None = None) -> None:
+    def __init__(self, payload: bytes, length: str | None = None, final_url: str = "https://example.test/feed.zip") -> None:
         self._stream = io.BytesIO(payload)
         self.headers = {} if length is None else {"Content-Length": length}
+        self._final_url = final_url
 
     def read(self, size: int = -1) -> bytes:
         return self._stream.read(size)
 
     def __enter__(self) -> "FakeResponse":
         return self
+
+    def geturl(self) -> str:
+        return self._final_url
 
     def __exit__(self, *_: object) -> None:
         return None
@@ -173,6 +220,249 @@ class BuildGtfsPacksTest(unittest.TestCase):
         with self.assertRaisesRegex(builder.DownloadError, "HTTPS"):
             builder.download_to_file("http://example.test/feed.zip", self.temp / "no.zip", urlopen=forbidden)
         self.assertFalse(called)
+
+    def test_download_refuses_https_downgrade_redirects(self) -> None:
+        destination = self.temp / "downgraded.zip"
+        with self.assertRaisesRegex(builder.DownloadError, "URL finale"):
+            builder.download_to_file(
+                "https://example.test/feed.zip",
+                destination,
+                urlopen=lambda *_args, **_kwargs: FakeResponse(
+                    b"not consumed",
+                    final_url="http://mirror.example.test/feed.zip",
+                ),
+            )
+        self.assertFalse(destination.exists())
+
+        handler = builder.HttpsOnlyRedirectHandler()
+        request = builder.urllib.request.Request("https://example.test/feed.zip")
+        with self.assertRaisesRegex(builder.DownloadError, "redirect"):
+            handler.redirect_request(
+                request,
+                io.BytesIO(),
+                302,
+                "Found",
+                {},
+                "http://mirror.example.test/feed.zip",
+            )
+
+    def test_refresh_accepts_only_explicit_open_direct_sources(self) -> None:
+        for access_mode in ("AGREEMENT_REQUIRED", "PUBLIC_BEST_EFFORT", None, "UNKNOWN"):
+            manifest = {
+                "packs": [
+                    {
+                        "sourceId": "test-source",
+                        "asset": "gtfs/test.zip",
+                        "sourceUrl": "https://example.test/feed.zip",
+                        **({"accessMode": access_mode} if access_mode is not None else {}),
+                    }
+                ]
+            }
+            with self.subTest(access_mode=access_mode):
+                with self.assertRaisesRegex(builder.DownloadError, "non scaricabile direttamente"):
+                    builder.refresh_overrides(manifest, set(), max_download_bytes=1024)
+
+    def test_probe_does_not_contact_non_open_sources_and_contains_bad_urls(self) -> None:
+        opener = mock.Mock()
+        manifest = {
+            "packs": [
+                {
+                    "sourceId": "licensed",
+                    "sourceUrl": "https://licensed.example/feed.zip",
+                    "accessMode": "AGREEMENT_REQUIRED",
+                },
+                {
+                    "sourceId": "malformed",
+                    "sourceUrl": "https://[invalid",
+                    "accessMode": "OPEN_DIRECT",
+                },
+                {
+                    "sourceId": "bad-port",
+                    "sourceUrl": "https://example.test:not-a-port/feed.zip",
+                    "accessMode": "OPEN_DIRECT",
+                },
+            ]
+        }
+        with mock.patch.object(builder.urllib.request, "build_opener", return_value=opener):
+            rows = builder.probe_sources(manifest)
+
+        self.assertEqual(["BLOCKED", "ERROR", "ERROR"], [row["status"] for row in rows])
+        opener.open.assert_not_called()
+
+    def test_archive_limits_reject_high_expansion_member(self) -> None:
+        archive_path = self.temp / "expansion.zip"
+        with zipfile.ZipFile(archive_path, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+            archive.writestr("translations.txt", b"A" * 1_000_000)
+
+        with zipfile.ZipFile(archive_path) as archive:
+            with self.assertRaisesRegex(builder.BuildError, "rapporto di compressione"):
+                builder.validate_archive_limits(archive)
+
+    def test_archive_entry_limit_counts_directory_records(self) -> None:
+        archive_path = self.temp / "directories.zip"
+        with zipfile.ZipFile(archive_path, "w") as archive:
+            for index in range(builder.MAX_ARCHIVE_ENTRIES + 1):
+                archive.writestr(f"directory-{index}/", b"")
+        with zipfile.ZipFile(archive_path) as archive:
+            with self.assertRaisesRegex(builder.BuildError, "troppe entry"):
+                builder.validate_archive_limits(archive)
+
+    def test_csv_rejects_duplicate_headers_and_oversized_fields(self) -> None:
+        archive_path = self.temp / "invalid-csv.zip"
+        with zipfile.ZipFile(archive_path, "w") as archive:
+            archive.writestr("routes.txt", "route_id,route_type,route_type\nBUS,3,2\n")
+            archive.writestr("stops.txt", "stop_id\n" + "A" * 200_000 + "\n")
+        with zipfile.ZipFile(archive_path) as archive:
+            with self.assertRaisesRegex(builder.BuildError, "colonne duplicate"):
+                builder.read_table(archive, "routes.txt", required=True)
+            with self.assertRaisesRegex(builder.BuildError, "ZIP/CSV non valida"):
+                builder.read_table(archive, "stops.txt", required=True)
+
+    def test_build_retention_budget_fails_before_unbounded_materialization(self) -> None:
+        archive_path = self.temp / "retained-budget.zip"
+        with zipfile.ZipFile(archive_path, "w") as archive:
+            archive.writestr("routes.txt", "route_id,route_type\nA,2\nB,2\nC,2\n")
+        with zipfile.ZipFile(archive_path) as archive:
+            with mock.patch.object(builder, "MAX_RETAINED_BUILD_ROWS", 2):
+                with self.assertRaisesRegex(builder.BuildError, "budget righe trattenute"):
+                    builder.read_table(
+                        archive,
+                        "routes.txt",
+                        required=True,
+                        budget=builder.RetentionBudget(),
+                    )
+
+        wide_path = self.temp / "wide-table.zip"
+        header = ",".join(f"column_{index}" for index in range(builder.MAX_CSV_COLUMNS + 1))
+        values = ",".join("x" for _ in range(builder.MAX_CSV_COLUMNS + 1))
+        with zipfile.ZipFile(wide_path, "w") as archive:
+            archive.writestr("routes.txt", f"{header}\n{values}\n")
+        with zipfile.ZipFile(wide_path) as archive:
+            with self.assertRaisesRegex(builder.BuildError, "troppe colonne"):
+                builder.read_table(archive, "routes.txt", required=True)
+
+        bytes_path = self.temp / "retained-bytes.zip"
+        with zipfile.ZipFile(bytes_path, "w") as archive:
+            archive.writestr("routes.txt", "route_id,route_type\nABCDE,2\n")
+        with zipfile.ZipFile(bytes_path) as archive:
+            with mock.patch.object(builder, "MAX_RETAINED_BUILD_UTF8_BYTES", 4):
+                with self.assertRaisesRegex(builder.BuildError, "budget byte UTF-8"):
+                    builder.read_table(
+                        archive,
+                        "routes.txt",
+                        required=True,
+                        budget=builder.RetentionBudget(),
+                    )
+
+        extra_fields_path = self.temp / "extra-fields.zip"
+        with zipfile.ZipFile(extra_fields_path, "w") as archive:
+            archive.writestr("routes.txt", "route_id,route_type\nA,2,extra,extra\n")
+        with zipfile.ZipFile(extra_fields_path) as archive:
+            with self.assertRaisesRegex(builder.BuildError, "campi oltre l'header"):
+                builder.read_table(archive, "routes.txt", required=True)
+
+        long_record_path = self.temp / "long-record.zip"
+        with zipfile.ZipFile(long_record_path, "w") as archive:
+            archive.writestr("routes.txt", "route_id,route_type\n" + ("A" * 64) + ",2\n")
+        with zipfile.ZipFile(long_record_path) as archive:
+            with mock.patch.object(builder, "MAX_CSV_PHYSICAL_LINE_UTF8_BYTES", 32):
+                with self.assertRaisesRegex(builder.BuildError, "riga fisica CSV oltre limite"):
+                    builder.read_table(archive, "routes.txt", required=True)
+
+    def test_cleanup_failure_after_atomic_publish_is_non_fatal(self) -> None:
+        target = self.temp / "published"
+        staging = self.temp / "staging"
+        target.mkdir()
+        staging.mkdir()
+        (target / "version.txt").write_text("old", encoding="utf-8")
+        (staging / "version.txt").write_text("new", encoding="utf-8")
+
+        with mock.patch.object(builder.shutil, "rmtree", side_effect=OSError("busy")):
+            builder.atomic_replace_directory(staging, target)
+
+        self.assertEqual("new", (target / "version.txt").read_text(encoding="utf-8"))
+        self.assertTrue(any(self.temp.glob(".published.previous-*")))
+
+    def test_concurrent_publishers_are_serialized_without_losing_a_release(self) -> None:
+        context = multiprocessing.get_context("fork")
+        target = self.temp / "concurrent-published"
+        target.mkdir()
+        (target / "version.txt").write_text("old", encoding="utf-8")
+        staging_paths = []
+        for version in ("first", "second"):
+            staging = self.temp / f"staging-{version}"
+            staging.mkdir()
+            (staging / "version.txt").write_text(version, encoding="utf-8")
+            staging_paths.append(staging)
+        start = context.Event()
+        results = context.Queue()
+        processes = [
+            context.Process(target=publish_worker, args=(str(staging), str(target), start, results))
+            for staging in staging_paths
+        ]
+        for process in processes:
+            process.start()
+        start.set()
+        for process in processes:
+            process.join(10)
+
+        self.assertEqual(["", ""], sorted(results.get(timeout=1) for _ in processes))
+        self.assertTrue(all(process.exitcode == 0 for process in processes))
+        self.assertIn((target / "version.txt").read_text(encoding="utf-8"), {"first", "second"})
+        self.assertFalse(any(self.temp.glob(".concurrent-published.previous-*")))
+
+    def test_concurrent_partial_builds_preserve_both_updates(self) -> None:
+        context = multiprocessing.get_context("fork")
+        input_directory = self.temp / "raw-input"
+        output_directory = self.temp / "release"
+        input_directory.mkdir()
+        source_a = input_directory / "source-a.zip"
+        source_b = input_directory / "source-b.zip"
+        write_fixture_zip(source_a)
+        write_fixture_zip(source_b)
+        manifest = {
+            "schemaVersion": 2,
+            "generatedAt": "2026-01-01",
+            "purpose": "concurrent fixture",
+            "packs": [
+                {
+                    "sourceId": source_id,
+                    "asset": f"gtfs/{source_id}.zip",
+                    "sourceUrl": f"https://example.test/{source_id}.zip",
+                    "accessMode": "OPEN_DIRECT",
+                    "attribution": "fixture",
+                    "lastServiceDate": "2027-01-15",
+                }
+                for source_id in ("source-a", "source-b")
+            ],
+        }
+        (input_directory / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+        builder.build_packs(input_directory, output_directory)
+
+        override_a = self.temp / "override-a.zip"
+        override_b = self.temp / "override-b.zip"
+        write_fixture_zip_with_agency(override_a, "Agency A")
+        write_fixture_zip_with_agency(override_b, "Agency B")
+        start = context.Event()
+        results = context.Queue()
+        processes = [
+            context.Process(
+                target=build_worker,
+                args=(str(input_directory), str(output_directory), source_id, str(override), start, results),
+            )
+            for source_id, override in (("source-a", override_a), ("source-b", override_b))
+        ]
+        for process in processes:
+            process.start()
+        start.set()
+        for process in processes:
+            process.join(20)
+
+        self.assertEqual(["", ""], sorted(results.get(timeout=1) for _ in processes))
+        final_manifest = json.loads((output_directory / "manifest.json").read_text(encoding="utf-8"))
+        final_hashes = {pack["sourceId"]: pack["sourceArchiveSha256"] for pack in final_manifest["packs"]}
+        self.assertEqual(builder.sha256_file(override_a), final_hashes["source-a"])
+        self.assertEqual(builder.sha256_file(override_b), final_hashes["source-b"])
 
 
 if __name__ == "__main__":

@@ -12,14 +12,19 @@ import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.io.ByteArrayInputStream
+import java.io.IOException
 import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
+import java.time.ZoneId
 import java.time.ZoneOffset
 import java.util.concurrent.Executors
+import kotlinx.coroutines.CancellationException
 
 class RfiProgrammedTimetableAdapterTest {
     private val clock = Clock.fixed(Instant.parse("2026-09-04T06:00:00Z"), ZoneOffset.UTC)
@@ -27,6 +32,17 @@ class RfiProgrammedTimetableAdapterTest {
     private val milano = Station("milano-centrale", "Milano Centrale", "Milano")
     private val firenze = Station("firenze-smn", "Firenze S.M.N.", "Firenze", aliases = listOf("Firenze Santa Maria Novella"))
     private val napoli = Station("napoli-centrale", "Napoli Centrale", "Napoli")
+
+    @Test
+    fun `lettura HTML RFI limita sia Content Length sia byte effettivi`() {
+        assertEquals("1234", readBoundedRfiHtml(ByteArrayInputStream("1234".toByteArray()), 4, maxBytes = 4))
+        assertThrows(IOException::class.java) {
+            readBoundedRfiHtml(ByteArrayInputStream("12345".toByteArray()), 5, maxBytes = 4)
+        }
+        assertThrows(IOException::class.java) {
+            readBoundedRfiHtml(ByteArrayInputStream("12345".toByteArray()), null, maxBytes = 4)
+        }
+    }
 
     @Test
     fun `Roma Milano include Frecciarossa e Italo con fermate programmate`() = runBlocking {
@@ -133,6 +149,78 @@ class RfiProgrammedTimetableAdapterTest {
         assertTrue(result is DataResult.Failure)
         assertTrue((result as DataResult.Failure).message.contains("partenze dall’hub Milano Centrale"))
         assertEquals(0, calls)
+    }
+
+    @Test
+    fun `quadro per la stessa route viene riusato tra date diverse`() = runBlocking {
+        var calls = 0
+        val adapter = RfiProgrammedTimetableAdapter(
+            fetcher = RfiProgrammedTimetableFetcher { calls += 1; fixture() },
+            clock = clock
+        )
+        val savedRoute = route(roma, milano)
+
+        adapter.loadRoute(savedRoute, Direction.OUTBOUND, JourneyQuery(LocalDate.of(2026, 9, 4), LocalTime.of(8, 0)))
+        adapter.loadRoute(savedRoute, Direction.OUTBOUND, JourneyQuery(LocalDate.of(2026, 9, 5), LocalTime.of(8, 0)))
+
+        assertEquals(1, calls)
+    }
+
+    @Test
+    fun `cache dei quadri RFI resta entro il limite configurato`() = runBlocking {
+        val adapter = RfiProgrammedTimetableAdapter(
+            fetcher = RfiProgrammedTimetableFetcher { fixture() },
+            clock = clock,
+            cacheMaxEntries = 2
+        )
+
+        repeat(3) { index ->
+            adapter.loadRoute(
+                route(roma, milano).copy(id = "route-$index"),
+                Direction.OUTBOUND,
+                JourneyQuery(LocalDate.of(2026, 9, 4), LocalTime.of(8, 0))
+            )
+        }
+
+        assertEquals(2, adapter.cachedTimetableCountForTest())
+    }
+
+    @Test
+    fun `cache hit conserva timestamp e scadenza dell acquisizione originale`() = runBlocking {
+        val mutableClock = MutableClock(Instant.parse("2026-09-04T06:00:00Z"), ZoneOffset.UTC)
+        val adapter = RfiProgrammedTimetableAdapter(
+            fetcher = RfiProgrammedTimetableFetcher { fixture() },
+            clock = mutableClock,
+            cacheTtlMillis = 1_000L
+        )
+        val savedRoute = route(roma, milano)
+        val query = JourneyQuery(LocalDate.of(2026, 9, 4), LocalTime.of(8, 0))
+
+        val first = adapter.loadRoute(savedRoute, Direction.OUTBOUND, query) as DataResult.Success
+        mutableClock.advanceMillis(900L)
+        val hit = adapter.loadRoute(savedRoute, Direction.OUTBOUND, query) as DataResult.Success
+
+        assertEquals(first.snapshot.retrievedAtEpochMillis, hit.snapshot.retrievedAtEpochMillis)
+        assertEquals(first.snapshot.sourceObservedAtEpochMillis, hit.snapshot.sourceObservedAtEpochMillis)
+        assertEquals(first.snapshot.expiresAtEpochMillis, hit.snapshot.expiresAtEpochMillis)
+    }
+
+    @Test
+    fun `cancellazione coroutine del fetch RFI viene propagata`() {
+        val adapter = RfiProgrammedTimetableAdapter(
+            fetcher = RfiProgrammedTimetableFetcher { throw CancellationException("cancelled") },
+            clock = clock
+        )
+
+        assertThrows(CancellationException::class.java) {
+            runBlocking {
+                adapter.loadRoute(
+                    route(roma, milano),
+                    Direction.OUTBOUND,
+                    JourneyQuery(LocalDate.of(2026, 9, 4), LocalTime.of(8, 0))
+                )
+            }
+        }
     }
 
     @Test
@@ -257,4 +345,19 @@ class RfiProgrammedTimetableAdapterTest {
           </table>
         </body></html>
     """.trimIndent()
+
+    private class MutableClock(
+        private var current: Instant,
+        private val currentZone: ZoneId
+    ) : Clock() {
+        fun advanceMillis(value: Long) {
+            current = current.plusMillis(value)
+        }
+
+        override fun getZone(): ZoneId = currentZone
+
+        override fun withZone(zone: ZoneId): Clock = MutableClock(current, zone)
+
+        override fun instant(): Instant = current
+    }
 }

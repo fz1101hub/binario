@@ -17,13 +17,14 @@ I workflow Android e Companion vengono eseguiti per ogni `pull_request` e per og
 | Gate | Ambito | Criterio di superamento |
 | --- | --- | --- |
 | Validazione Gradle Wrapper | Repository | Tutti i wrapper Gradle tracciati superano `gradle/actions/wrapper-validation`; file eseguibili e JAR non validi bloccano la build. |
+| Input CI revisionati | Repository | GitHub Actions a SHA completo, immagini OCI a digest, runtime patch-pinned, runner in allowlist versionata e download XcodeGen con SHA-256; `tools/verify_ci_pinning.py` blocca riferimenti o trigger mobili/incompleti. |
 | Integrità asset Android | Android | I pacchetti GTFS, `manifest.json`, `SHA256SUMS` e il catalogo stazioni concordano per nomi, hash, struttura e conteggi. |
 | Freschezza asset GTFS | Android | Ogni `lastServiceDate` è almeno 30 giorni oltre la data del gate. Il workflow esegue questo controllo senza `--integrity-only`, separatamente dal controllo di integrità. Un feed scaduto o troppo vicino alla scadenza richiede refresh, rigenerazione degli hash e revisione prima della release. |
 | Test, lint e build Android | Android | I test unitari debug, lint debug e assemble debug completano senza errori. |
 | Companion managed | Companion Expo | Dipendenze congelate, TypeScript, test e verifiche di configurazione/release completano senza errori. |
 | Prebuild companion | Companion Expo | `expo prebuild --platform android --clean --no-install` non modifica `android/`; una seconda esecuzione pulita produce lo stesso albero tracciato. |
 
-I workflow usano azioni con versione esplicita. Ogni aggiornamento di un'azione deve essere trattato come una modifica di dipendenza e rieseguito nella stessa pull request.
+I workflow fissano ogni GitHub Action a un commit SHA completo, ogni immagine di servizio a un digest OCI, ogni runtime installato a una patch revisionata e i runner a una label versionata allowlistata. Gli strumenti scaricati direttamente, come XcodeGen, hanno versione e SHA-256 verificati; ogni modifica della relativa trust chain attiva anche il rail macOS che esegue il binario. Il commento accanto allo SHA conserva la release leggibile; Dependabot propone gli aggiornamenti, ma non esiste auto-merge. Ogni aggiornamento di questi input è una modifica di dipendenza e deve rieseguire i gate nella stessa pull request. `python3 tools/verify_ci_pinning.py` rende la regola fail-closed.
 
 ## Procedura di release
 
@@ -43,6 +44,7 @@ I report storici alla radice non vengono spostati automaticamente. I manifest di
 # Asset Android: prima integrità e struttura, poi freshness release a 30 giorni.
 python3 tools/verify_embedded_assets.py --integrity-only
 python3 tools/verify_embedded_assets.py --min-valid-days 30
+python3 tools/verify_ci_pinning.py
 
 # Android principale (richiede JDK 17 e Android SDK configurato).
 ./gradlew --no-daemon testDebugUnitTest lintDebug assembleDebug

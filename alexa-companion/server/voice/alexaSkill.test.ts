@@ -17,14 +17,11 @@ vi.hoisted(() => {
 
 vi.mock("../db", () => ({
   createAuthorizationCode: vi.fn(),
-  createRefreshToken: vi.fn(),
-  getActiveRefreshToken: vi.fn(),
+  exchangeAuthorizationCode: vi.fn(),
   getAlexaLinkStatus: vi.fn(),
-  listPersonalRoutes: vi.fn(),
+  listPersonalRoutesForAlexa: vi.fn(),
   recordAlexaVerification: vi.fn(),
-  restoreAlexaLink: vi.fn(),
-  revokeRefreshToken: vi.fn(),
-  consumeAuthorizationCode: vi.fn(),
+  rotateRefreshToken: vi.fn(),
 }));
 
 import { createAlexaSkill, HANDLED_INTENTS } from "./alexa";

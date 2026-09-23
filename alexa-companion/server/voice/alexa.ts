@@ -11,14 +11,11 @@ import {
 } from "ask-sdk-core";
 import {
   createAuthorizationCode,
-  createRefreshToken,
-  getActiveRefreshToken,
+  exchangeAuthorizationCode,
   getAlexaLinkStatus,
-  listPersonalRoutes,
+  listPersonalRoutesForAlexa,
   recordAlexaVerification,
-  restoreAlexaLink,
-  revokeRefreshToken,
-  consumeAuthorizationCode,
+  rotateRefreshToken,
 } from "../db";
 import { ENV } from "../_core/env";
 import { isSecureRequest } from "../_core/cookies";
@@ -87,15 +84,23 @@ export async function resolveLinkedUser(
   alexaUserId: string | undefined
 ) {
   if (needsAccountLink(accessToken)) return null;
-  const userId = await verifyVoiceAccessToken(accessToken as string);
-  if (!userId) return null;
+  const principal = await verifyVoiceAccessToken(accessToken as string);
+  if (!principal) return null;
   // An access token outlives an unlink by up to an hour: the stored link is
   // the source of truth, and a routine verification must never lift a revocation.
-  const link = await getAlexaLinkStatus(userId);
-  if (link?.revokedAt) return null;
+  const link = await getAlexaLinkStatus(principal.userId);
+  if (
+    !link ||
+    link.revokedAt ||
+    link.credentialVersion !== principal.credentialVersion
+  )
+    return null;
   if (alexaUserId)
-    await recordAlexaVerification(userId, hashVoiceSecret(alexaUserId));
-  return userId;
+    await recordAlexaVerification(
+      principal.userId,
+      hashVoiceSecret(alexaUserId)
+    );
+  return principal;
 }
 
 async function getLinkedUser(input: HandlerInput) {
@@ -140,9 +145,12 @@ const nextTrainsHandler: RequestHandler = {
     getRequestType(input.requestEnvelope) === "IntentRequest" &&
     getIntentName(input.requestEnvelope) === "NextTrainsIntent",
   handle: async input => {
-    const userId = await getLinkedUser(input);
-    if (!userId) return linkRequiredResponse(input);
-    const routes = await listPersonalRoutes(userId);
+    const principal = await getLinkedUser(input);
+    if (!principal) return linkRequiredResponse(input);
+    const routes = await listPersonalRoutesForAlexa(
+      principal.userId,
+      principal.credentialVersion
+    );
     const requestedName = intentSlot(
       input,
       "routeName",
@@ -171,8 +179,8 @@ const trainStatusHandler: RequestHandler = {
     getRequestType(input.requestEnvelope) === "IntentRequest" &&
     getIntentName(input.requestEnvelope) === "TrainStatusIntent",
   handle: async input => {
-    const userId = await getLinkedUser(input);
-    if (!userId) return linkRequiredResponse(input);
+    const principal = await getLinkedUser(input);
+    if (!principal) return linkRequiredResponse(input);
     const trainNumber = intentSlot(
       input,
       "trainNumber",
@@ -192,9 +200,12 @@ const myRoutesHandler: RequestHandler = {
     getRequestType(input.requestEnvelope) === "IntentRequest" &&
     getIntentName(input.requestEnvelope) === "MyRoutesIntent",
   handle: async input => {
-    const userId = await getLinkedUser(input);
-    if (!userId) return linkRequiredResponse(input);
-    const routes = await listPersonalRoutes(userId);
+    const principal = await getLinkedUser(input);
+    if (!principal) return linkRequiredResponse(input);
+    const routes = await listPersonalRoutesForAlexa(
+      principal.userId,
+      principal.credentialVersion
+    );
     if (!routes.length)
       return input.responseBuilder
         .speak("Non hai ancora salvato alcuna tratta in Binario.")
@@ -348,15 +359,12 @@ async function requireBinarioUser(req: Request) {
   }
 }
 
-async function issueTokenPair(userId: number, clientId: string) {
-  const accessToken = await issueVoiceAccessToken(userId);
-  const refreshToken = createOpaqueSecret();
-  await createRefreshToken({
-    userId,
-    clientId,
-    tokenHash: hashVoiceSecret(refreshToken),
-    expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-  });
+async function tokenPairResponse(
+  userId: number,
+  credentialVersion: number,
+  refreshToken: string
+) {
+  const accessToken = await issueVoiceAccessToken(userId, credentialVersion);
   return {
     access_token: accessToken,
     token_type: "Bearer",
@@ -473,17 +481,27 @@ export function registerAlexaRoutes(app: Express) {
           typeof req.body.redirect_uri === "string"
             ? req.body.redirect_uri
             : "";
+        const refreshToken = createOpaqueSecret();
         const record =
           code && redirectUri
-            ? await consumeAuthorizationCode(
-                hashVoiceSecret(code),
+            ? await exchangeAuthorizationCode({
+                codeHash: hashVoiceSecret(code),
                 clientId,
-                redirectUri
-              )
+                redirectUri,
+                refreshTokenHash: hashVoiceSecret(refreshToken),
+                refreshTokenExpiresAt: new Date(
+                  Date.now() + 30 * 24 * 60 * 60 * 1000
+                ),
+              })
             : null;
         if (!record) return oauthError(res, 400, "invalid_grant");
-        await restoreAlexaLink(record.userId);
-        return res.json(await issueTokenPair(record.userId, clientId));
+        return res.json(
+          await tokenPairResponse(
+            record.userId,
+            record.credentialVersion,
+            refreshToken
+          )
+        );
       }
 
       if (req.body?.grant_type === "refresh_token") {
@@ -492,12 +510,25 @@ export function registerAlexaRoutes(app: Express) {
             ? req.body.refresh_token
             : "";
         const tokenHash = refreshToken ? hashVoiceSecret(refreshToken) : "";
+        const nextRefreshToken = createOpaqueSecret();
         const record = tokenHash
-          ? await getActiveRefreshToken(tokenHash, clientId)
+          ? await rotateRefreshToken({
+              currentTokenHash: tokenHash,
+              clientId,
+              nextTokenHash: hashVoiceSecret(nextRefreshToken),
+              nextTokenExpiresAt: new Date(
+                Date.now() + 30 * 24 * 60 * 60 * 1000
+              ),
+            })
           : null;
         if (!record) return oauthError(res, 400, "invalid_grant");
-        await revokeRefreshToken(tokenHash);
-        return res.json(await issueTokenPair(record.userId, clientId));
+        return res.json(
+          await tokenPairResponse(
+            record.userId,
+            record.credentialVersion,
+            nextRefreshToken
+          )
+        );
       }
 
       return oauthError(res, 400, "unsupported_grant_type");

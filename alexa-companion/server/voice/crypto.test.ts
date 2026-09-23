@@ -8,19 +8,42 @@ vi.hoisted(() => {
   });
 });
 
-import { hashVoiceSecret, issueVoiceAccessToken, verifyVoiceAccessToken } from "./crypto";
+import {
+  hashVoiceSecret,
+  issueVoiceAccessToken,
+  verifyVoiceAccessToken,
+} from "./crypto";
 
 describe("token vocali", () => {
   it("un token emesso viene verificato e identifica l'utente", async () => {
-    expect(await verifyVoiceAccessToken(await issueVoiceAccessToken(42))).toBe(42);
+    expect(
+      await verifyVoiceAccessToken(await issueVoiceAccessToken(42, 7))
+    ).toEqual({
+      userId: 42,
+      credentialVersion: 7,
+    });
   });
 
   it("rifiuta token firmati con il pepper grezzo o con un altro algoritmo", async () => {
-    const rawPepper = new TextEncoder().encode(process.env.VOICE_TOKEN_PEPPER as string);
-    const claims = { token_use: "binario_alexa" };
-    const withRawPepper = await new SignJWT(claims).setProtectedHeader({ alg: "HS256" }).setIssuer("binario-voice-bridge").setAudience("alexa-client").setSubject("42").setExpirationTime("1h").sign(rawPepper);
+    const rawPepper = new TextEncoder().encode(
+      process.env.VOICE_TOKEN_PEPPER as string
+    );
+    const claims = { token_use: "binario_alexa", credential_version: 7 };
+    const withRawPepper = await new SignJWT(claims)
+      .setProtectedHeader({ alg: "HS256" })
+      .setIssuer("binario-voice-bridge")
+      .setAudience("alexa-client")
+      .setSubject("42")
+      .setExpirationTime("1h")
+      .sign(rawPepper);
     expect(await verifyVoiceAccessToken(withRawPepper)).toBeNull();
-    const hs512 = await new SignJWT(claims).setProtectedHeader({ alg: "HS512" }).setIssuer("binario-voice-bridge").setAudience("alexa-client").setSubject("42").setExpirationTime("1h").sign(rawPepper);
+    const hs512 = await new SignJWT(claims)
+      .setProtectedHeader({ alg: "HS512" })
+      .setIssuer("binario-voice-bridge")
+      .setAudience("alexa-client")
+      .setSubject("42")
+      .setExpirationTime("1h")
+      .sign(rawPepper);
     expect(await verifyVoiceAccessToken(hs512)).toBeNull();
   });
 

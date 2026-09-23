@@ -29,7 +29,9 @@ from __future__ import annotations
 
 import argparse
 import csv
+import fcntl
 import hashlib
+import http.client
 import io
 import json
 import os
@@ -40,6 +42,7 @@ import urllib.parse
 import urllib.request
 import uuid
 import zipfile
+from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import date, timedelta
 from pathlib import Path
@@ -49,6 +52,18 @@ ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_ASSET_DIR = ROOT / "app/src/main/assets/gtfs"
 DEFAULT_MAX_DOWNLOAD_BYTES = 200 * 1024 * 1024
 DOWNLOAD_CHUNK_SIZE = 64 * 1024
+MAX_ARCHIVE_ENTRIES = 128
+MAX_ARCHIVE_UNCOMPRESSED_BYTES = 1024 * 1024 * 1024
+MAX_ARCHIVE_MEMBER_BYTES = 512 * 1024 * 1024
+MAX_COMPRESSION_RATIO = 200
+MAX_TABLE_ROWS = 2_000_000
+MAX_RETAINED_TABLE_ROWS = 750_000
+MAX_RETAINED_BUILD_ROWS = 1_000_000
+MAX_CSV_COLUMNS = 32
+MAX_CSV_FIELD_UTF8_BYTES = 16 * 1024
+MAX_CSV_PHYSICAL_LINE_UTF8_BYTES = 256 * 1024
+MAX_RETAINED_BUILD_CELLS = 6_000_000
+MAX_RETAINED_BUILD_UTF8_BYTES = 128 * 1024 * 1024
 TOOL_VERSION = 1
 
 # GTFS extended route types 100..199 are railway service types.  This is kept
@@ -82,6 +97,35 @@ class BuildError(RuntimeError):
 
 class DownloadError(BuildError):
     """Raised when a registered source cannot be acquired safely."""
+
+
+def require_https_url(url: str, *, context: str) -> None:
+    try:
+        parsed = urllib.parse.urlparse(url)
+        hostname = parsed.hostname
+        parsed.port
+    except ValueError as error:
+        raise DownloadError(f"{context}: URL non valido ({url})") from error
+    if any(ord(character) < 32 for character in url):
+        raise DownloadError(f"{context}: URL con caratteri di controllo")
+    if parsed.scheme.lower() != "https" or not parsed.netloc or not hostname:
+        raise DownloadError(f"{context}: e richiesto HTTPS ({url})")
+
+
+class HttpsOnlyRedirectHandler(urllib.request.HTTPRedirectHandler):
+    """Reject every redirect hop that would leave authenticated HTTPS transport."""
+
+    def redirect_request(
+        self,
+        req: urllib.request.Request,
+        fp: BinaryIO,
+        code: int,
+        msg: str,
+        headers: Mapping[str, str],
+        newurl: str,
+    ) -> urllib.request.Request | None:
+        require_https_url(newurl, context="redirect rifiutato")
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
 
 
 @dataclass(frozen=True)
@@ -155,7 +199,77 @@ def find_entry(archive: zipfile.ZipFile, basename: str) -> str | None:
     return matches[0] if matches else None
 
 
-def read_table(archive: zipfile.ZipFile, basename: str, *, required: bool = False) -> CsvTable | None:
+def validate_archive_limits(archive: zipfile.ZipFile) -> None:
+    entries = archive.infolist()
+    if len(entries) > MAX_ARCHIVE_ENTRIES:
+        raise BuildError(f"archivio GTFS con troppe entry: {len(entries)} > {MAX_ARCHIVE_ENTRIES}")
+    files = [entry for entry in entries if not entry.is_dir()]
+    total = sum(entry.file_size for entry in files)
+    if total > MAX_ARCHIVE_UNCOMPRESSED_BYTES:
+        raise BuildError(
+            f"archivio GTFS decompresso oltre limite: {total} > {MAX_ARCHIVE_UNCOMPRESSED_BYTES} bytes"
+        )
+    for entry in files:
+        if entry.file_size > MAX_ARCHIVE_MEMBER_BYTES:
+            raise BuildError(
+                f"membro GTFS oltre limite: {entry.filename} {entry.file_size} > {MAX_ARCHIVE_MEMBER_BYTES} bytes"
+            )
+        ratio = entry.file_size / max(entry.compress_size, 1)
+        if ratio > MAX_COMPRESSION_RATIO:
+            raise BuildError(
+                f"rapporto di compressione GTFS sospetto: {entry.filename} {ratio:.1f} > {MAX_COMPRESSION_RATIO}"
+            )
+
+
+@dataclass
+class RetentionBudget:
+    retained_rows: int = 0
+    retained_cells: int = 0
+    retained_utf8_bytes: int = 0
+
+    def retain(self, basename: str, row: Mapping[str, str]) -> None:
+        self.retained_rows += 1
+        self.retained_cells += len(row)
+        self.retained_utf8_bytes += sum(len(value.encode("utf-8")) for value in row.values())
+        if self.retained_rows > MAX_RETAINED_BUILD_ROWS:
+            raise BuildError(
+                f"build GTFS oltre budget righe trattenute: {self.retained_rows} > {MAX_RETAINED_BUILD_ROWS}"
+            )
+        if self.retained_cells > MAX_RETAINED_BUILD_CELLS:
+            raise BuildError(
+                f"build GTFS oltre budget celle trattenute: {self.retained_cells} > {MAX_RETAINED_BUILD_CELLS}"
+            )
+        if self.retained_utf8_bytes > MAX_RETAINED_BUILD_UTF8_BYTES:
+            raise BuildError(
+                "build GTFS oltre budget byte UTF-8 trattenuti: "
+                f"{self.retained_utf8_bytes} > {MAX_RETAINED_BUILD_UTF8_BYTES}"
+            )
+
+
+def bounded_csv_lines(text: io.TextIOBase, basename: str) -> Iterable[str]:
+    while True:
+        line = text.readline(MAX_CSV_PHYSICAL_LINE_UTF8_BYTES + 1)
+        if not line:
+            return
+        if len(line) > MAX_CSV_PHYSICAL_LINE_UTF8_BYTES and not line.endswith(("\n", "\r")):
+            raise BuildError(
+                f"riga fisica CSV oltre limite in {basename}: {MAX_CSV_PHYSICAL_LINE_UTF8_BYTES} caratteri"
+            )
+        if len(line.encode("utf-8")) > MAX_CSV_PHYSICAL_LINE_UTF8_BYTES:
+            raise BuildError(
+                f"riga fisica CSV oltre limite UTF-8 in {basename}: {MAX_CSV_PHYSICAL_LINE_UTF8_BYTES} bytes"
+            )
+        yield line
+
+
+def read_table(
+    archive: zipfile.ZipFile,
+    basename: str,
+    *,
+    required: bool = False,
+    predicate: Callable[[Mapping[str, str]], bool] | None = None,
+    budget: RetentionBudget | None = None,
+) -> CsvTable | None:
     entry = find_entry(archive, basename)
     if entry is None:
         if required:
@@ -163,16 +277,48 @@ def read_table(archive: zipfile.ZipFile, basename: str, *, required: bool = Fals
         return None
     try:
         with archive.open(entry) as raw:
-            reader = csv.DictReader(io.TextIOWrapper(raw, encoding="utf-8-sig", newline=""))
+            text = io.TextIOWrapper(raw, encoding="utf-8-sig", newline="")
+            csv.field_size_limit(MAX_CSV_FIELD_UTF8_BYTES)
+            reader = csv.DictReader(bounded_csv_lines(text, basename))
             if reader.fieldnames is None:
                 raise BuildError(f"tabella vuota: {basename}")
             header = tuple(name.strip() for name in reader.fieldnames)
             if not header or any(not name for name in header):
                 raise BuildError(f"header non valido in {basename}")
-            rows = tuple({key: value or "" for key, value in row.items() if key is not None} for row in reader)
+            if len(set(header)) != len(header):
+                raise BuildError(f"header con colonne duplicate in {basename}")
+            if len(header) > MAX_CSV_COLUMNS:
+                raise BuildError(f"troppe colonne in {basename}: {len(header)} > {MAX_CSV_COLUMNS}")
+            rows_list: list[dict[str, str]] = []
+            for index, row in enumerate(reader, 1):
+                if index > MAX_TABLE_ROWS:
+                    raise BuildError(f"tabella oltre limite righe: {basename} > {MAX_TABLE_ROWS}")
+                if None in row:
+                    raise BuildError(f"riga con campi oltre l'header in {basename}")
+                normalized = {key: value or "" for key, value in row.items() if key is not None}
+                oversized_field = next(
+                    (key for key, value in normalized.items() if len(value.encode("utf-8")) > MAX_CSV_FIELD_UTF8_BYTES),
+                    None,
+                )
+                if oversized_field is not None:
+                    raise BuildError(
+                        f"campo oltre limite UTF-8 in {basename}.{oversized_field}: {MAX_CSV_FIELD_UTF8_BYTES} bytes"
+                    )
+                if predicate is not None and not predicate(normalized):
+                    continue
+                if len(rows_list) >= MAX_RETAINED_TABLE_ROWS:
+                    raise BuildError(
+                        f"tabella oltre budget righe trattenute: {basename} > {MAX_RETAINED_TABLE_ROWS}"
+                    )
+                if budget is not None:
+                    budget.retain(basename, normalized)
+                rows_list.append(normalized)
+            rows = tuple(rows_list)
             return CsvTable(header, rows)
     except UnicodeDecodeError as error:
         raise BuildError(f"codifica CSV non valida in {basename}") from error
+    except (csv.Error, zipfile.BadZipFile) as error:
+        raise BuildError(f"tabella ZIP/CSV non valida in {basename}: {error}") from error
 
 
 def require_columns(table: CsvTable, name: str, *columns: str) -> None:
@@ -259,7 +405,7 @@ def original_archive_sha256(archive: zipfile.ZipFile, source_id: str, fallback: 
         return fallback
     try:
         payload = json.loads(archive.read(entry).decode("utf-8"))
-    except (KeyError, UnicodeDecodeError, json.JSONDecodeError) as error:
+    except (KeyError, UnicodeDecodeError, json.JSONDecodeError, zipfile.BadZipFile) as error:
         raise BuildError(f"{source_id}: binario_filter_manifest.json non valido") from error
     value = payload.get("sourceArchiveSha256")
     if payload.get("sourceId") == source_id and isinstance(value, str) and len(value) == 64 and all(
@@ -275,35 +421,61 @@ def filter_archive(source: Path, destination: Path, source_id: str) -> FilterRes
         raise BuildError(f"{source_id}: archivio ZIP GTFS non valido: {source}")
     input_hash = sha256_file(source)
     with zipfile.ZipFile(source) as archive:
+        validate_archive_limits(archive)
         source_hash = original_archive_sha256(archive, source_id, input_hash)
-        agency = read_table(archive, "agency.txt", required=True)
-        stops = read_table(archive, "stops.txt", required=True)
-        routes = read_table(archive, "routes.txt", required=True)
-        trips = read_table(archive, "trips.txt", required=True)
-        stop_times = read_table(archive, "stop_times.txt", required=True)
-        assert agency and stops and routes and trips and stop_times
-        calendar = read_table(archive, "calendar.txt") or empty_calendar()
-        calendar_dates = read_table(archive, "calendar_dates.txt") or empty_calendar_dates()
-
-        require_columns(agency, "agency.txt", "agency_name")
-        require_columns(stops, "stops.txt", "stop_id")
-        require_columns(trips, "trips.txt", "route_id", "trip_id", "service_id")
-        require_columns(stop_times, "stop_times.txt", "trip_id", "stop_id")
-        require_columns(calendar, "calendar.txt", "service_id", "end_date")
-        require_columns(calendar_dates, "calendar_dates.txt", "service_id", "date", "exception_type")
-
+        budget = RetentionBudget()
+        routes = read_table(archive, "routes.txt", required=True, budget=budget)
+        assert routes
         kept_routes, policy = selected_routes(source_id, routes)
         route_ids = {row["route_id"] for row in kept_routes if row.get("route_id")}
-        kept_trips = tuple(row for row in trips.rows if row.get("route_id", "") in route_ids)
+        trips = read_table(
+            archive,
+            "trips.txt",
+            required=True,
+            predicate=lambda row: row.get("route_id", "") in route_ids,
+            budget=budget,
+        )
+        assert trips
+        require_columns(trips, "trips.txt", "route_id", "trip_id", "service_id")
+        kept_trips = trips.rows
         trip_ids = {row["trip_id"] for row in kept_trips if row.get("trip_id")}
         service_ids = {row["service_id"] for row in kept_trips if row.get("service_id")}
         if not trip_ids:
             raise BuildError(f"{source_id}: le route filtrate non hanno trip")
 
-        kept_stop_times = tuple(row for row in stop_times.rows if row.get("trip_id", "") in trip_ids)
+        stop_times = read_table(
+            archive,
+            "stop_times.txt",
+            required=True,
+            predicate=lambda row: row.get("trip_id", "") in trip_ids,
+            budget=budget,
+        )
+        assert stop_times
+        require_columns(stop_times, "stop_times.txt", "trip_id", "stop_id")
+        kept_stop_times = stop_times.rows
         stop_ids = {row["stop_id"] for row in kept_stop_times if row.get("stop_id")}
         if not stop_ids:
             raise BuildError(f"{source_id}: i trip filtrati non hanno stop_times")
+
+        stops = read_table(archive, "stops.txt", required=True, budget=budget)
+        agency = read_table(archive, "agency.txt", required=True, budget=budget)
+        calendar = read_table(
+            archive,
+            "calendar.txt",
+            predicate=lambda row: row.get("service_id", "") in service_ids,
+            budget=budget,
+        ) or empty_calendar()
+        calendar_dates = read_table(
+            archive,
+            "calendar_dates.txt",
+            predicate=lambda row: row.get("service_id", "") in service_ids,
+            budget=budget,
+        ) or empty_calendar_dates()
+        assert agency and stops
+        require_columns(agency, "agency.txt", "agency_name")
+        require_columns(stops, "stops.txt", "stop_id")
+        require_columns(calendar, "calendar.txt", "service_id", "end_date")
+        require_columns(calendar_dates, "calendar_dates.txt", "service_id", "date", "exception_type")
 
         # Retain all parent stations of a referenced platform so stop hierarchy
         # remains valid after filtering.
@@ -352,47 +524,51 @@ def filter_archive(source: Path, destination: Path, source_id: str) -> FilterRes
             "calendar_dates.txt": filtered_calendar_dates,
         }
 
-        frequencies = read_table(archive, "frequencies.txt")
+        frequencies = read_table(
+            archive,
+            "frequencies.txt",
+            predicate=lambda row: row.get("trip_id", "") in trip_ids,
+            budget=budget,
+        )
         if frequencies is not None:
             require_columns(frequencies, "frequencies.txt", "trip_id")
-            tables["frequencies.txt"] = CsvTable(
-                frequencies.header, tuple(row for row in frequencies.rows if row.get("trip_id", "") in trip_ids)
-            )
+            tables["frequencies.txt"] = frequencies
 
-        shapes = read_table(archive, "shapes.txt")
+        shape_ids = {row.get("shape_id", "") for row in kept_trips if row.get("shape_id", "")}
+        shapes = read_table(
+            archive,
+            "shapes.txt",
+            predicate=lambda row: row.get("shape_id", "") in shape_ids,
+            budget=budget,
+        )
         if shapes is not None:
             require_columns(shapes, "shapes.txt", "shape_id")
-            shape_ids = {row.get("shape_id", "") for row in kept_trips if row.get("shape_id", "")}
-            tables["shapes.txt"] = CsvTable(
-                shapes.header, tuple(row for row in shapes.rows if row.get("shape_id", "") in shape_ids)
-            )
+            tables["shapes.txt"] = shapes
 
-        transfers = read_table(archive, "transfers.txt")
+        transfers = read_table(
+            archive,
+            "transfers.txt",
+            predicate=lambda row: row.get("from_stop_id", "") in stop_ids
+            and row.get("to_stop_id", "") in stop_ids,
+            budget=budget,
+        )
         if transfers is not None:
             require_columns(transfers, "transfers.txt", "from_stop_id", "to_stop_id")
-            tables["transfers.txt"] = CsvTable(
-                transfers.header,
-                tuple(
-                    row
-                    for row in transfers.rows
-                    if row.get("from_stop_id", "") in stop_ids and row.get("to_stop_id", "") in stop_ids
-                ),
-            )
+            tables["transfers.txt"] = transfers
 
-        pathways = read_table(archive, "pathways.txt")
+        pathways = read_table(
+            archive,
+            "pathways.txt",
+            predicate=lambda row: row.get("from_stop_id", "") in stop_ids
+            and row.get("to_stop_id", "") in stop_ids,
+            budget=budget,
+        )
         if pathways is not None:
             require_columns(pathways, "pathways.txt", "from_stop_id", "to_stop_id")
-            tables["pathways.txt"] = CsvTable(
-                pathways.header,
-                tuple(
-                    row
-                    for row in pathways.rows
-                    if row.get("from_stop_id", "") in stop_ids and row.get("to_stop_id", "") in stop_ids
-                ),
-            )
+            tables["pathways.txt"] = pathways
 
         for table_name in COPY_METADATA_TABLES:
-            table = read_table(archive, table_name)
+            table = read_table(archive, table_name, budget=budget)
             if table is not None:
                 tables[table_name] = table
 
@@ -415,15 +591,6 @@ def filter_archive(source: Path, destination: Path, source_id: str) -> FilterRes
     return FilterResult(source_id, coverage_end, metadata, source_hash)
 
 
-def csv_bytes(table: CsvTable) -> bytes:
-    stream = io.StringIO(newline="")
-    writer = csv.DictWriter(stream, fieldnames=table.header, extrasaction="ignore", lineterminator="\n")
-    writer.writeheader()
-    for row in table.rows:
-        writer.writerow({field: row.get(field, "") for field in table.header})
-    return stream.getvalue().encode("utf-8")
-
-
 def write_zip_entry(archive: zipfile.ZipFile, name: str, data: bytes) -> None:
     # Fixed timestamp, permissions and insertion order make ZIP bytes stable.
     info = zipfile.ZipInfo(name, date_time=(1980, 1, 1, 0, 0, 0))
@@ -433,11 +600,25 @@ def write_zip_entry(archive: zipfile.ZipFile, name: str, data: bytes) -> None:
     archive.writestr(info, data, compress_type=zipfile.ZIP_DEFLATED, compresslevel=9)
 
 
+def write_csv_entry(archive: zipfile.ZipFile, name: str, table: CsvTable) -> None:
+    info = zipfile.ZipInfo(name, date_time=(1980, 1, 1, 0, 0, 0))
+    info.compress_type = zipfile.ZIP_DEFLATED
+    info.create_system = 3
+    info.external_attr = 0o100644 << 16
+    with archive.open(info, "w", force_zip64=True) as raw:
+        text = io.TextIOWrapper(raw, encoding="utf-8", newline="", write_through=True)
+        writer = csv.DictWriter(text, fieldnames=table.header, extrasaction="ignore", lineterminator="\n")
+        writer.writeheader()
+        for row in table.rows:
+            writer.writerow({field: row.get(field, "") for field in table.header})
+        text.detach()
+
+
 def write_deterministic_zip(destination: Path, tables: Mapping[str, CsvTable], metadata: Mapping[str, Any]) -> None:
     destination.parent.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(destination, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9, strict_timestamps=True) as archive:
         for name in sorted(tables):
-            write_zip_entry(archive, name, csv_bytes(tables[name]))
+            write_csv_entry(archive, name, tables[name])
         write_zip_entry(
             archive,
             "binario_filter_manifest.json",
@@ -484,8 +665,7 @@ def write_sha256sums(path: Path, manifest: Mapping[str, Any], directory: Path) -
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
-def atomic_replace_directory(staging: Path, target: Path) -> None:
-    """Publish a complete asset directory or leave the old directory intact."""
+def _atomic_replace_directory_locked(staging: Path, target: Path) -> None:
     target.parent.mkdir(parents=True, exist_ok=True)
     if not target.exists():
         os.replace(staging, target)
@@ -497,10 +677,31 @@ def atomic_replace_directory(staging: Path, target: Path) -> None:
     except BaseException:
         os.replace(backup, target)
         raise
-    shutil.rmtree(backup)
+    try:
+        shutil.rmtree(backup)
+    except OSError as error:
+        print(f"warning: pubblicazione completata; backup da rimuovere manualmente {backup}: {error}", file=sys.stderr)
 
 
-def build_packs(
+@contextmanager
+def publication_lock(target: Path) -> Iterable[None]:
+    lock_name = hashlib.sha256(str(target.resolve()).encode("utf-8")).hexdigest()
+    lock_path = Path(tempfile.gettempdir()) / f"binario-gtfs-publish-{lock_name}.lock"
+    with lock_path.open("a+b") as lock:
+        fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            fcntl.flock(lock.fileno(), fcntl.LOCK_UN)
+
+
+def atomic_replace_directory(staging: Path, target: Path) -> None:
+    """Serialize publishers, then publish completely or retain the previous release."""
+    with publication_lock(target):
+        _atomic_replace_directory_locked(staging, target)
+
+
+def _build_packs_locked(
     input_dir: Path,
     output_dir: Path,
     *,
@@ -515,6 +716,14 @@ def build_packs(
     if not isinstance(generated_at, str):
         raise BuildError("specificare --generated-at quando il manifest non lo contiene")
     overrides = input_overrides or {}
+    published_assets: dict[str, Path] = {}
+    published_manifest_path = output_dir / "manifest.json"
+    if overrides and output_dir != input_dir and published_manifest_path.is_file():
+        published_manifest = read_manifest(published_manifest_path)
+        published_assets = {
+            pack["sourceId"]: output_dir / safe_asset_name(pack["asset"])
+            for pack in published_manifest["packs"]
+        }
     output_dir.parent.mkdir(parents=True, exist_ok=True)
     staging = Path(tempfile.mkdtemp(prefix=".gtfs-build-", dir=output_dir.parent))
     try:
@@ -522,7 +731,7 @@ def build_packs(
         for pack in source_manifest["packs"]:
             source_id = pack["sourceId"]
             name = safe_asset_name(pack["asset"])
-            source = overrides.get(source_id, input_dir / name)
+            source = overrides.get(source_id) or published_assets.get(source_id) or input_dir / name
             results[source_id] = filter_archive(source, staging / name, source_id)
         output_manifest = manifest_for_build(source_manifest, results, generated_at)
         for pack in output_manifest["packs"]:
@@ -531,11 +740,30 @@ def build_packs(
         write_json(staging / "manifest.json", output_manifest)
         write_sha256sums(staging / "SHA256SUMS", output_manifest, staging)
         verify_assets(staging, as_of=None, min_valid_days=None)
-        atomic_replace_directory(staging, output_dir)
+        _atomic_replace_directory_locked(staging, output_dir)
         return output_manifest
     except BaseException:
         shutil.rmtree(staging, ignore_errors=True)
         raise
+
+
+def build_packs(
+    input_dir: Path,
+    output_dir: Path,
+    *,
+    manifest_path: Path | None = None,
+    generated_at: str | None = None,
+    input_overrides: Mapping[str, Path] | None = None,
+) -> dict[str, Any]:
+    """Serialize the complete base-read/build/publish transaction for ``output_dir``."""
+    with publication_lock(output_dir):
+        return _build_packs_locked(
+            input_dir,
+            output_dir,
+            manifest_path=manifest_path,
+            generated_at=generated_at,
+            input_overrides=input_overrides,
+        )
 
 
 def parse_sha256sums(path: Path) -> dict[str, str]:
@@ -561,6 +789,7 @@ def service_end_from_asset(path: Path, source_id: str) -> date:
     if not zipfile.is_zipfile(path):
         raise BuildError(f"asset non ZIP: {path.name}")
     with zipfile.ZipFile(path) as archive:
+        validate_archive_limits(archive)
         calendar = read_table(archive, "calendar.txt") or empty_calendar()
         calendar_dates = read_table(archive, "calendar_dates.txt") or empty_calendar_dates()
     return last_service_date(calendar, calendar_dates, source_id)
@@ -569,6 +798,7 @@ def service_end_from_asset(path: Path, source_id: str) -> date:
 def verify_filter_from_asset(path: Path, source_id: str) -> None:
     """Require a release ZIP to prove it was made by this rail filter."""
     with zipfile.ZipFile(path) as archive:
+        validate_archive_limits(archive)
         entry = find_entry(archive, "binario_filter_manifest.json")
         if entry is None:
             raise BuildError(f"{source_id}: asset non filtrato (binario_filter_manifest.json mancante)")
@@ -656,14 +886,12 @@ def download_to_file(
     *,
     max_bytes: int = DEFAULT_MAX_DOWNLOAD_BYTES,
     timeout_seconds: int = 45,
-    urlopen: Callable[..., BinaryIO] = urllib.request.urlopen,
+    urlopen: Callable[..., BinaryIO] | None = None,
 ) -> int:
     """Download HTTPS only, enforcing the cap both before and during streaming."""
     if max_bytes <= 0:
         raise ValueError("max_bytes deve essere positivo")
-    parsed = urllib.parse.urlparse(url)
-    if parsed.scheme != "https" or not parsed.netloc:
-        raise DownloadError(f"download rifiutato: e richiesto HTTPS ({url})")
+    require_https_url(url, context="download rifiutato")
     request = urllib.request.Request(
         url,
         headers={"User-Agent": "Binario-GTFS-build/0.20.4 (release tooling; read-only)", "Accept": "application/zip,application/octet-stream"},
@@ -672,7 +900,10 @@ def download_to_file(
     temporary = destination.with_name(f".{destination.name}.{uuid.uuid4().hex}.part")
     written = 0
     try:
-        with urlopen(request, timeout=timeout_seconds) as response:
+        open_url = urlopen or urllib.request.build_opener(HttpsOnlyRedirectHandler()).open
+        with open_url(request, timeout=timeout_seconds) as response:
+            final_url = response.geturl() if hasattr(response, "geturl") else url
+            require_https_url(final_url, context="URL finale rifiutato")
             declared = response.headers.get("Content-Length")
             if declared and declared.isdigit() and int(declared) > max_bytes:
                 raise DownloadError(f"download oltre limite: {declared} > {max_bytes} bytes")
@@ -691,7 +922,7 @@ def download_to_file(
             raise DownloadError("download non e un archivio ZIP")
         os.replace(temporary, destination)
         return written
-    except OSError as error:
+    except (OSError, http.client.HTTPException) as error:
         raise DownloadError(f"download fallito: {error}") from error
     finally:
         temporary.unlink(missing_ok=True)
@@ -715,11 +946,12 @@ def refresh_overrides(
             source_id = pack["sourceId"]
             access_mode = pack.get("accessMode")
             url = pack["sourceUrl"]
-            if access_mode == "GATEWAY_ONLY" or urllib.parse.urlparse(url).scheme != "https":
+            if access_mode != "OPEN_DIRECT":
                 raise DownloadError(
                     f"{source_id}: fonte {access_mode} non scaricabile direttamente; "
-                    "serve un gateway HTTPS approvato e un archivio GTFS completo"
+                    "serve un archivio completo acquisito tramite canale approvato"
                 )
+            require_https_url(url, context=f"{source_id}: download rifiutato")
             target = download_dir / safe_asset_name(pack["asset"])
             download_to_file(url, target, max_bytes=max_download_bytes)
             overrides[source_id] = target
@@ -732,16 +964,22 @@ def refresh_overrides(
 def probe_sources(manifest: Mapping[str, Any], timeout_seconds: int = 20) -> list[dict[str, str]]:
     """Read-only HEAD diagnostics; never treats HTTP sources as refreshable."""
     rows: list[dict[str, str]] = []
+    opener = urllib.request.build_opener(HttpsOnlyRedirectHandler())
     for pack in manifest["packs"]:
         source_id = pack["sourceId"]
         url = pack["sourceUrl"]
-        parsed = urllib.parse.urlparse(url)
-        if pack.get("accessMode") == "GATEWAY_ONLY" or parsed.scheme != "https":
+        if pack.get("accessMode") != "OPEN_DIRECT":
             rows.append({"sourceId": source_id, "status": "BLOCKED", "detail": "requires approved HTTPS gateway", "url": url})
             continue
-        request = urllib.request.Request(url, method="HEAD", headers={"User-Agent": "Binario-GTFS-build/0.20.4 (read-only diagnostic)"})
         try:
-            with urllib.request.urlopen(request, timeout=timeout_seconds) as response:
+            require_https_url(url, context="probe rifiutato")
+            request = urllib.request.Request(
+                url,
+                method="HEAD",
+                headers={"User-Agent": "Binario-GTFS-build/0.20.4 (read-only diagnostic)"},
+            )
+            with opener.open(request, timeout=timeout_seconds) as response:
+                require_https_url(response.geturl(), context="URL finale probe rifiutato")
                 rows.append(
                     {
                         "sourceId": source_id,
@@ -750,7 +988,7 @@ def probe_sources(manifest: Mapping[str, Any], timeout_seconds: int = 20) -> lis
                         "url": url,
                     }
                 )
-        except OSError as error:
+        except (OSError, ValueError, http.client.HTTPException, DownloadError) as error:
             rows.append({"sourceId": source_id, "status": "ERROR", "detail": type(error).__name__, "url": url})
     return rows
 
@@ -827,7 +1065,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 shutil.rmtree(download_dir, ignore_errors=True)
         print(json.dumps({"packs": len(output["packs"]), "outputDir": str(args.output_dir), "generatedAt": output["generatedAt"]}, ensure_ascii=False))
         return 0
-    except BuildError as error:
+    except (BuildError, csv.Error, zipfile.BadZipFile, http.client.HTTPException) as error:
         print(f"ERRORE GTFS: {error}", file=sys.stderr)
         return 1
 

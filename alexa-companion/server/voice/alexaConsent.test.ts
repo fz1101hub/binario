@@ -19,14 +19,11 @@ vi.hoisted(() => {
 
 const dbMocks = vi.hoisted(() => ({
   createAuthorizationCode: vi.fn(),
-  createRefreshToken: vi.fn(),
-  getActiveRefreshToken: vi.fn(),
+  exchangeAuthorizationCode: vi.fn(),
   getAlexaLinkStatus: vi.fn(),
-  listPersonalRoutes: vi.fn(),
+  listPersonalRoutesForAlexa: vi.fn(),
   recordAlexaVerification: vi.fn(),
-  restoreAlexaLink: vi.fn(),
-  revokeRefreshToken: vi.fn(),
-  consumeAuthorizationCode: vi.fn(),
+  rotateRefreshToken: vi.fn(),
 }));
 const sdkMocks = vi.hoisted(() => ({ authenticateRequest: vi.fn() }));
 
@@ -49,8 +46,11 @@ beforeEach(async () => {
   vi.clearAllMocks();
   sdkMocks.authenticateRequest.mockResolvedValue({ id: 7, name: "Test" });
   dbMocks.createAuthorizationCode.mockResolvedValue(undefined);
-  dbMocks.restoreAlexaLink.mockResolvedValue(undefined);
-  dbMocks.createRefreshToken.mockResolvedValue(undefined);
+  dbMocks.getAlexaLinkStatus.mockResolvedValue({
+    userId: 7,
+    credentialVersion: 3,
+    revokedAt: null,
+  });
   dbMocks.recordAlexaVerification.mockResolvedValue(undefined);
   const app = express();
   registerAlexaRoutes(app);
@@ -219,7 +219,10 @@ describe("authorize Alexa con consenso esplicito", () => {
 
 describe("scambio del code e revoca del collegamento", () => {
   it("lo scambio di un code valido ripristina il collegamento e rilascia i token", async () => {
-    dbMocks.consumeAuthorizationCode.mockResolvedValue({ userId: 7 });
+    dbMocks.exchangeAuthorizationCode.mockResolvedValue({
+      userId: 7,
+      credentialVersion: 3,
+    });
     const response = await fetch(`${baseUrl}/api/alexa/oauth/token`, {
       method: "POST",
       headers: { "content-type": "application/x-www-form-urlencoded" },
@@ -234,20 +237,76 @@ describe("scambio del code e revoca del collegamento", () => {
     expect(response.status).toBe(200);
     const body = await response.json();
     expect(body.token_type).toBe("Bearer");
-    expect(dbMocks.restoreAlexaLink).toHaveBeenCalledWith(7);
+    expect(dbMocks.exchangeAuthorizationCode).toHaveBeenCalledWith(
+      expect.objectContaining({
+        clientId: "alexa-client",
+        redirectUri: REDIRECT,
+        codeHash: expect.stringMatching(/^[0-9a-f]{64}$/),
+        refreshTokenHash: expect.stringMatching(/^[0-9a-f]{64}$/),
+      })
+    );
     expect(
       await resolveLinkedUser(body.access_token, "amzn1.ask.account.TEST")
-    ).toBe(7);
+    ).toEqual({ userId: 7, credentialVersion: 3 });
     expect(dbMocks.recordAlexaVerification).toHaveBeenCalledWith(
       7,
       expect.stringMatching(/^[0-9a-f]{64}$/)
     );
   });
 
+  it("un authorization code revocato durante unlink resta invalid_grant", async () => {
+    dbMocks.exchangeAuthorizationCode.mockResolvedValue(null);
+    const response = await fetch(`${baseUrl}/api/alexa/oauth/token`, {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        grant_type: "authorization_code",
+        client_id: "alexa-client",
+        client_secret: "alexa-secret",
+        code: "revoked-code",
+        redirect_uri: REDIRECT,
+      }).toString(),
+    });
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({
+      error: "invalid_grant",
+    });
+  });
+
+  it("la rotazione refresh usa una singola operazione DB atomica", async () => {
+    dbMocks.rotateRefreshToken.mockResolvedValue({
+      userId: 7,
+      credentialVersion: 3,
+    });
+    const response = await fetch(`${baseUrl}/api/alexa/oauth/token`, {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        grant_type: "refresh_token",
+        client_id: "alexa-client",
+        client_secret: "alexa-secret",
+        refresh_token: "old-refresh-token",
+      }).toString(),
+    });
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.refresh_token).not.toBe("old-refresh-token");
+    expect(dbMocks.rotateRefreshToken).toHaveBeenCalledWith(
+      expect.objectContaining({
+        clientId: "alexa-client",
+        currentTokenHash: expect.stringMatching(/^[0-9a-f]{64}$/),
+        nextTokenHash: expect.stringMatching(/^[0-9a-f]{64}$/),
+      })
+    );
+  });
+
   it("dopo l'unlink un access token ancora valido non legge dati né ripristina il collegamento", async () => {
-    const accessToken = await issueVoiceAccessToken(7);
+    const accessToken = await issueVoiceAccessToken(7, 3);
     dbMocks.getAlexaLinkStatus.mockResolvedValue({
       userId: 7,
+      credentialVersion: 4,
       revokedAt: new Date(),
     });
     expect(
@@ -256,12 +315,35 @@ describe("scambio del code e revoca del collegamento", () => {
     expect(dbMocks.recordAlexaVerification).not.toHaveBeenCalled();
   });
 
+  it("un access token valido senza link persistito fallisce chiuso", async () => {
+    const accessToken = await issueVoiceAccessToken(7, 3);
+    dbMocks.getAlexaLinkStatus.mockResolvedValue(null);
+    expect(
+      await resolveLinkedUser(accessToken, "amzn1.ask.account.TEST")
+    ).toBeNull();
+    expect(dbMocks.recordAlexaVerification).not.toHaveBeenCalled();
+  });
+
+  it("un access token di una generazione precedente resta revocato dopo relink", async () => {
+    const accessToken = await issueVoiceAccessToken(7, 3);
+    dbMocks.getAlexaLinkStatus.mockResolvedValue({
+      userId: 7,
+      credentialVersion: 5,
+      revokedAt: null,
+    });
+
+    await expect(
+      resolveLinkedUser(accessToken, "amzn1.ask.account.TEST")
+    ).resolves.toBeNull();
+    expect(dbMocks.recordAlexaVerification).not.toHaveBeenCalled();
+  });
+
   it("un token assente, manomesso o di un altro client non identifica alcun utente", async () => {
     dbMocks.getAlexaLinkStatus.mockResolvedValue(null);
     expect(
       await resolveLinkedUser(undefined, "amzn1.ask.account.TEST")
     ).toBeNull();
-    const accessToken = await issueVoiceAccessToken(7);
+    const accessToken = await issueVoiceAccessToken(7, 3);
     expect(
       await resolveLinkedUser(
         `${accessToken.slice(0, -2)}xx`,

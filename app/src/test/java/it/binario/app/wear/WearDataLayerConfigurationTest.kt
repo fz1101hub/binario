@@ -57,6 +57,28 @@ class WearDataLayerConfigurationTest {
     }
 
     @Test
+    fun `snapshot revocation targets every creator node for the exact data path`() {
+        assertEquals("wear://*/binario/wear/snapshot", WearSnapshotPublisher.SNAPSHOT_DELETE_URI)
+    }
+
+    @Test
+    fun `snapshot revocation is persisted and retried before publishing is enabled`() {
+        val publisher = File(repositoryRoot, "app/src/main/java/it/binario/app/wear/WearSnapshotPublisher.kt").readText()
+        val viewModel = File(repositoryRoot, "app/src/main/java/it/binario/app/TrainViewModel.kt").readText()
+
+        assertTrue(publisher.contains("putBoolean(KEY_REVOCATION_PENDING, true)"))
+        assertTrue(publisher.contains("val intent = operationGate.revokePublications()"))
+        assertTrue(publisher.contains("if (!operationGate.isCurrent(intent)) return@runExclusive false"))
+        assertTrue(publisher.contains("suspendCoroutine { continuation ->"))
+        assertTrue(publisher.contains("if (wasPending && !deleteSnapshot(context)) return@runExclusive false"))
+        assertTrue(publisher.contains("remove(KEY_REVOCATION_PENDING)"))
+        assertTrue(viewModel.contains("WearSnapshotPublisher.persistRevocationIntent(getApplication())"))
+        assertTrue(viewModel.indexOf("if (!enabled) WearSnapshotPublisher.persistRevocationIntent") < viewModel.indexOf("integrationSettings = integrationSettings.copy(wearSnapshotSharingEnabled = enabled)"))
+        assertTrue(viewModel.contains("WearSnapshotPublisher.clear(getApplication())"))
+        assertTrue(viewModel.contains("WearSnapshotPublisher.enable(getApplication())"))
+    }
+
+    @Test
     fun `phone refresh listener is path scoped`() {
         val manifest = File(repositoryRoot, "app/src/main/AndroidManifest.xml").readText()
 
