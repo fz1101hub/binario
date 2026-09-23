@@ -15,6 +15,10 @@ Il ramo Git storico dichiarava nel manifest un’app Wear, un Tile e una complic
 
 Il Tile è volutamente testuale e compatto: i Tile Wear non sono superfici a scorrimento e devono mantenere contenuti brevi e leggibili anche con testo aumentato. La registrazione resta un servizio protetto dal sistema operativo, mentre la complication rispetta il periodo minimo di 300 secondi già dichiarato nel manifest e riceve aggiornamenti solo quando arriva un nuovo snapshot valido. [1] [2]
 
+Telefono e orologio usano entrambi l'application ID `it.binario.app`; i namespace Kotlin restano distinti. Le build destinate a comunicare devono inoltre essere firmate con la stessa identità. Il listener accetta soltanto il path Data Layer dello snapshot, mentre il telefono accetta richieste di refresh solo su `/binario/wear/request-refresh`, con deduplica per nodo e rate limit. La condivisione è disattivata per default; quando viene revocata, il telefono elimina il DataItem e l'orologio cancella cache, Tile e complication alla ricezione di `TYPE_DELETED`.
+
+`com.google.android.wearable.standalone=false` descrive correttamente questa superficie: il prodotto dipende dal telefono e non esegue query ferroviarie autonome. Prima della pubblicazione va documentato il canale distributivo scelto e va verificata sul Play Console l'associazione telefono–Wear; questo documento non sceglie tra track Play e distribuzione di collaudo.
+
 Il ripristino non costituisce una prova su hardware reale né una dichiarazione di conformità assistiva. Restano necessari i test su un Wear OS reale per target touch, lettura TalkBack, Tile Carousel, complication, collegamento al telefono e comportamento in ambient mode.
 
 ## Riferimenti

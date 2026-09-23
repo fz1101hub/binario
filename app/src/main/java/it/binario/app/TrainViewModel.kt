@@ -783,6 +783,8 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
         integrationStore.save(integrationSettings)
         if (enabled) primarySnapshot?.let { latest ->
             viewModelScope.launch { WearSnapshotPublisher.publish(getApplication(), latest) }
+        } else {
+            viewModelScope.launch { WearSnapshotPublisher.clear(getApplication()) }
         }
     }
 
