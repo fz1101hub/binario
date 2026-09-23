@@ -15,10 +15,16 @@ import { ENV } from "./env";
 export const BODY_LIMIT = "1mb";
 export const OAUTH_REQUESTS_PER_MINUTE = 30;
 export const API_REQUESTS_PER_MINUTE = 300;
+// Alexa requests reach the ASK SDK raw-body parser and signature verifier.
+// Bound that work separately from dashboard OAuth and tRPC traffic.
+export const ALEXA_WEBHOOK_REQUESTS_PER_MINUTE = 60;
 
 // Behind a reverse proxy the client address and protocol come from the
 // forwarded headers; TRUST_PROXY overrides the production default of one hop.
-export function trustProxySetting(value: string, isProduction = ENV.isProduction): boolean | number | string {
+export function trustProxySetting(
+  value: string,
+  isProduction = ENV.isProduction
+): boolean | number | string {
   if (!value) return isProduction ? 1 : false;
   if (value === "true") return true;
   if (value === "false") return false;
@@ -27,10 +33,18 @@ export function trustProxySetting(value: string, isProduction = ENV.isProduction
 }
 
 function limiter(limit: number) {
-  return rateLimit({ windowMs: 60_000, limit, standardHeaders: "draft-8", legacyHeaders: false, message: { error: "too_many_requests" } });
+  return rateLimit({
+    windowMs: 60_000,
+    limit,
+    standardHeaders: "draft-8",
+    legacyHeaders: false,
+    message: { error: "too_many_requests" },
+  });
 }
 
-export async function createApp(options: { server?: Server; serveClient?: boolean } = {}): Promise<Express> {
+export async function createApp(
+  options: { server?: Server; serveClient?: boolean } = {}
+): Promise<Express> {
   const app = express();
   app.set("trust proxy", trustProxySetting(ENV.trustProxy));
   app.disable("x-powered-by");
@@ -42,6 +56,7 @@ export async function createApp(options: { server?: Server; serveClient?: boolea
   app.use("/api/alexa/oauth", limiter(OAUTH_REQUESTS_PER_MINUTE));
   app.use("/api/oauth", limiter(OAUTH_REQUESTS_PER_MINUTE));
   app.use("/api/trpc", limiter(API_REQUESTS_PER_MINUTE));
+  app.use("/api/alexa/webhook", limiter(ALEXA_WEBHOOK_REQUESTS_PER_MINUTE));
   // Alexa needs the untouched signed body, so its own verifier is registered
   // before the generic JSON parser used by tRPC and the dashboard.
   registerAlexaRoutes(app);

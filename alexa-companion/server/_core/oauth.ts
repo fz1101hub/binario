@@ -1,13 +1,72 @@
-import { COOKIE_NAME, SESSION_TTL_MS, OAUTH_STATE_COOKIE, decodeOAuthState } from "@shared/const";
+import {
+  COOKIE_NAME,
+  SESSION_TTL_MS,
+  OAUTH_STATE_COOKIE,
+  decodeOAuthState,
+} from "@shared/const";
 import { parse as parseCookieHeader } from "cookie";
 import type { Express, Request, Response } from "express";
 import * as db from "../db";
 import { getSessionCookieOptions } from "./cookies";
+import { ENV } from "./env";
 import { sdk } from "./sdk";
+import {
+  AUTHORIZATION_REQUEST_COOKIE,
+  AUTHORIZATION_REQUEST_COOKIE_PATH,
+  readAuthorizationRequest,
+} from "../voice/consent";
+import { isAlexaConfigured } from "../voice/config";
+import { parseOAuthAuthorizationParameters } from "../voice/oauthContract";
 
 function getQueryParam(req: Request, key: string): string | undefined {
   const value = req.query[key];
   return typeof value === "string" ? value : undefined;
+}
+
+function authorizationRequestCookieOptions() {
+  // AUTHORIZATION_REQUEST_COOKIE is __Host-prefixed, so Secure and Path=/ are
+  // mandatory. Refusing the browser's HTTP cookie is safer than resuming an
+  // Amazon authorization request over an unencrypted callback.
+  return {
+    httpOnly: true,
+    path: AUTHORIZATION_REQUEST_COOKIE_PATH,
+    sameSite: "lax" as const,
+    secure: true,
+  };
+}
+
+function resumedAlexaAuthorization(req: Request) {
+  if (!isAlexaConfigured()) return null;
+  const stored = readAuthorizationRequest(
+    parseCookieHeader(req.headers.cookie ?? "")[AUTHORIZATION_REQUEST_COOKIE]
+  );
+  if (!stored) return null;
+  // Re-run exact client, redirect URI and state validation after identity is
+  // established; a valid signature by itself must never resume an old policy.
+  return parseOAuthAuthorizationParameters(
+    {
+      response_type: "code",
+      client_id: stored.clientId,
+      redirect_uri: stored.redirectUri,
+      state: stored.state,
+      scope: stored.scope,
+    },
+    ENV.alexaOAuthClientId,
+    ENV.alexaOAuthRedirectUris
+  );
+}
+
+function resumeAlexaAuthorizationUrl(
+  request: NonNullable<ReturnType<typeof resumedAlexaAuthorization>>
+) {
+  const parameters = new URLSearchParams({
+    response_type: request.responseType,
+    client_id: request.clientId,
+    redirect_uri: request.redirectUri,
+    state: request.state,
+    scope: request.scope,
+  });
+  return `/api/alexa/oauth/authorize?${parameters.toString()}`;
 }
 
 export function registerOAuthRoutes(app: Express) {
@@ -16,6 +75,12 @@ export function registerOAuthRoutes(app: Express) {
     const state = getQueryParam(req, "state");
 
     if (!code || !state) {
+      // A failed or interrupted dashboard login must never leave a request
+      // available for a later, unrelated callback.
+      res.clearCookie(
+        AUTHORIZATION_REQUEST_COOKIE,
+        authorizationRequestCookieOptions()
+      );
       res.status(400).json({ error: "code and state are required" });
       return;
     }
@@ -24,12 +89,28 @@ export function registerOAuthRoutes(app: Express) {
     // startLogin set in the browser that began this login. An attacker can
     // forge `state`, but cannot plant this cookie in the victim's browser.
     const { nonce } = decodeOAuthState(state);
-    const expectedNonce = parseCookieHeader(req.headers.cookie ?? "")[OAUTH_STATE_COOKIE];
+    const expectedNonce = parseCookieHeader(req.headers.cookie ?? "")[
+      OAUTH_STATE_COOKIE
+    ];
     if (!nonce || nonce !== expectedNonce) {
+      res.clearCookie(
+        AUTHORIZATION_REQUEST_COOKIE,
+        authorizationRequestCookieOptions()
+      );
       res.status(403).json({ error: "invalid oauth state" });
       return;
     }
-    res.clearCookie(OAUTH_STATE_COOKIE, { path: "/", secure: true, sameSite: "none" });
+    res.clearCookie(OAUTH_STATE_COOKIE, {
+      path: "/",
+      secure: true,
+      sameSite: "none",
+    });
+    const alexaAuthorization = resumedAlexaAuthorization(req);
+    // Consume the preserved request even if upstream OAuth fails afterwards.
+    res.clearCookie(
+      AUTHORIZATION_REQUEST_COOKIE,
+      authorizationRequestCookieOptions()
+    );
 
     try {
       const tokenResponse = await sdk.exchangeCodeForToken(code, state);
@@ -54,8 +135,17 @@ export function registerOAuthRoutes(app: Express) {
       });
 
       const cookieOptions = getSessionCookieOptions(req);
-      res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: SESSION_TTL_MS });
+      res.cookie(COOKIE_NAME, sessionToken, {
+        ...cookieOptions,
+        maxAge: SESSION_TTL_MS,
+      });
 
+      if (alexaAuthorization) {
+        return res.redirect(
+          302,
+          resumeAlexaAuthorizationUrl(alexaAuthorization)
+        );
+      }
       res.redirect(302, "/");
     } catch (error) {
       console.error("[OAuth] Callback failed", error);

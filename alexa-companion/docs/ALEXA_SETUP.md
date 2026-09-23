@@ -6,31 +6,33 @@ L’app Android per smartphone è il prodotto principale e la fonte di verità. 
 
 ## Stato della presente build
 
-Il companion è predisposto, ma intenzionalmente **non attivo** finché non sono configurati `ALEXA_SKILL_ID`, `ALEXA_OAUTH_CLIENT_ID`, `ALEXA_OAUTH_CLIENT_SECRET` e `VOICE_TOKEN_PEPPER`. In questo stato `POST /api/alexa/webhook` restituisce `503 alexa_not_configured`; non accetta richieste parziali o non firmate.
+Il companion è predisposto, ma intenzionalmente **non attivo** quando `ALEXA_ENABLED=false` e tutte le variabili Alexa restano vuote. Per attivarlo impostare `ALEXA_ENABLED=true` e configurare insieme `ALEXA_SKILL_ID`, `ALEXA_OAUTH_CLIENT_ID`, `ALEXA_OAUTH_CLIENT_SECRET`, `ALEXA_OAUTH_REDIRECT_URIS` e `VOICE_TOKEN_PEPPER`. Il boot di produzione rifiuta sia una modalità non esplicita sia configurazioni parziali o contraddittorie. In stato disabilitato `POST /api/alexa/webhook` restituisce `503 alexa_not_configured`; non accetta richieste parziali o non firmate.
 
 ## Configurazione da eseguire dopo la creazione dell’account sviluppatore
 
-| Console Alexa | Valore Binario |
-|---|---|
-| Tipo skill | Custom Skill, locale italiano (`it-IT`) |
-| Endpoint HTTPS | `https://{dominio-binario}/api/alexa/webhook` |
-| Account linking | OAuth 2.0, authorization code grant |
+| Console Alexa     | Valore Binario                                        |
+| ----------------- | ----------------------------------------------------- |
+| Tipo skill        | Custom Skill, locale italiano (`it-IT`)               |
+| Endpoint HTTPS    | `https://{dominio-binario}/api/alexa/webhook`         |
+| Account linking   | OAuth 2.0, authorization code grant                   |
 | Authorization URI | `https://{dominio-binario}/api/alexa/oauth/authorize` |
-| Access token URI | `https://{dominio-binario}/api/alexa/oauth/token` |
-| Scope | `routes.read` |
-| Skill ID | Da inserire come `ALEXA_SKILL_ID` nei segreti server |
+| Access token URI  | `https://{dominio-binario}/api/alexa/oauth/token`     |
+| Scope             | `routes.read`                                         |
+| Skill ID          | Da inserire come `ALEXA_SKILL_ID` nei segreti server  |
 
 L’endpoint webhook usa l’ASK SDK ufficiale con verifica firma, catena certificati, timestamp e Skill ID. Amazon richiede HTTPS e la convalida delle richieste per una Custom Skill ospitata come web service.[1] Il certificato della pubblicazione deve essere firmato da una CA attendibile; un certificato autofirmato è ammesso solo nei test.[1]
 
 ## Modello di interazione da creare
 
-| Intent | Esempi di utterance italiane | Slot |
-|---|---|---|
-| `NextTrainsIntent` | “quali sono i prossimi treni”, “prossimi treni per {routeName}” | `routeName` facoltativo |
+| Intent              | Esempi di utterance italiane                                         | Slot                      |
+| ------------------- | -------------------------------------------------------------------- | ------------------------- |
+| `NextTrainsIntent`  | “quali sono i prossimi treni”, “prossimi treni per {routeName}”      | `routeName` facoltativo   |
 | `TrainStatusIntent` | “stato del treno {trainNumber}”, “il treno {trainNumber} è puntuale” | `trainNumber` facoltativo |
-| `MyRoutesIntent` | “le mie tratte”, “elenca le tratte salvate” | nessuno |
+| `MyRoutesIntent`    | “le mie tratte”, “elenca le tratte salvate”                          | nessuno                   |
 
 Tutti gli intent che restituiscono dati personali richiedono un access token valido. Senza account collegato la skill pronuncia le istruzioni di collegamento e restituisce una LinkAccount card. Quando manca una fonte ferroviaria live autorizzata, la skill usa esattamente: **“dati non disponibili in tempo reale”**.
+
+Se Amazon apre l'autorizzazione prima che l'utente abbia una sessione dashboard, il companion conserva **solo** la richiesta già verificata in un cookie firmato `__Host-`, `Secure`, `HttpOnly`, `SameSite=Lax`, con `Path=/` e TTL di dieci minuti. Dopo il callback dashboard la richiesta è verificata di nuovo contro client e callback URI consentiti, quindi viene cancellata e viene mostrata la stessa pagina di consenso CSRF-protetta. Il cookie non contiene credenziali.
 
 ## Privacy, sicurezza e pubblicazione
 

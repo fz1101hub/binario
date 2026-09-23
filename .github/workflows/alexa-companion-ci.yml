@@ -26,6 +26,19 @@ jobs:
   alexa-companion:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    services:
+      mariadb:
+        image: mariadb:11.4
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+          MARIADB_ROOT_HOST: "%"
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
     defaults:
       run:
         working-directory: alexa-companion
@@ -55,6 +68,12 @@ jobs:
 
       - name: Unit tests
         run: pnpm test
+
+      - name: Real MariaDB migration checks
+        env:
+          RUN_DB_MIGRATION_TESTS: "1"
+          DATABASE_URL: mysql://root@127.0.0.1:3306/mysql
+        run: pnpm run test:db-migrations
 
       - name: Production build and bundle verification
         run: pnpm run build
