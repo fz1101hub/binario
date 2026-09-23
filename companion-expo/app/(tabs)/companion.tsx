@@ -4,12 +4,13 @@ import { useCallback, useState } from "react";
 import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
 import { buildCompanionHub, type CompanionHubSurface } from "@/lib/companion-hub";
+import { companionHubActions, companionSurfaceSemantics } from "@/lib/companion-ui-semantics";
 import { loadLocalPlannedRoutes } from "@/lib/local-routes";
 import { useCompanionTheme } from "@/lib/theme";
 
-const actions: Array<{ icon: keyof typeof MaterialIcons.glyphMap; label: string; description: string; destination: Href }> = [
-  { icon: "add-circle-outline", label: "Pianifica una tratta", description: "Apre la schermata locale per aggiungere una partenza e un arrivo.", destination: "/(tabs)" },
-  { icon: "notifications-none", label: "Gestisci promemoria", description: "Rivedi o elimina promemoria locali, sempre non realtime.", destination: "/(tabs)/alerts" },
+const actions: Array<{ id: "planJourney" | "manageReminders"; icon: keyof typeof MaterialIcons.glyphMap; label: string; description: string; destination: Href }> = [
+  { id: "planJourney", icon: "add-circle-outline", label: "Pianifica una tratta", description: "Apre la schermata locale per aggiungere una partenza e un arrivo.", destination: "/(tabs)" },
+  { id: "manageReminders", icon: "notifications-none", label: "Gestisci promemoria", description: "Rivedi o elimina promemoria locali, sempre non realtime.", destination: "/(tabs)/alerts" },
 ];
 
 export default function CompanionScreen() {
@@ -24,7 +25,7 @@ export default function CompanionScreen() {
 
   function SurfaceCard({ surface }: { surface: CompanionHubSurface }) {
     const icon: keyof typeof MaterialIcons.glyphMap = surface.id === "widget" ? "widgets" : surface.id === "watch" ? "watch" : "record-voice-over";
-    return <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+    return <View accessible {...companionSurfaceSemantics(surface.title, surface.status)} style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
       <View style={styles.nextTitle}><MaterialIcons name={icon} size={20} color={colors.primary} /><Text style={[styles.heading, { color: colors.foreground }]}>{surface.title}</Text></View>
       <Text style={[styles.copy, { color: colors.muted }]}>{surface.description}</Text>
       <Text style={[styles.status, { color: colors.foreground }]}>{surface.status}</Text>
@@ -47,11 +48,14 @@ export default function CompanionScreen() {
             <Text style={[styles.nonRealtime, { color: colors.muted }]}>Programmato localmente · non realtime</Text>
           </> : <Text style={[styles.copy, { color: colors.muted }]}>Nessuna tratta futura salvata. Il widget e l’orologio non mostrano dati ferroviari inventati.</Text>}
         </View>
-        <View style={styles.actions}>{actions.map(action => <Pressable key={action.label} accessibilityRole="button" accessibilityLabel={action.label} accessibilityHint={action.description} onPress={() => router.navigate(action.destination)} style={({ pressed }) => [styles.action, { borderColor: colors.border, backgroundColor: colors.surface, opacity: pressed ? 0.72 : 1 }]}>
+        <View style={styles.actions}>{actions.map(action => {
+          const semantics = companionHubActions[action.id];
+          return <Pressable key={action.label} {...semantics} onPress={() => router.navigate(action.destination)} style={({ pressed }) => [styles.action, { borderColor: colors.border, backgroundColor: colors.surface, opacity: pressed ? 0.72 : 1 }]}>
           <MaterialIcons name={action.icon} size={20} color={colors.primary} />
           <View style={styles.actionText}><Text style={[styles.actionLabel, { color: colors.foreground }]}>{action.label}</Text><Text style={[styles.actionDescription, { color: colors.muted }]}>{action.description}</Text></View>
           <MaterialIcons name="chevron-right" size={22} color={colors.muted} />
-        </Pressable>)}</View>
+        </Pressable>;
+        })}</View>
         <Text accessibilityRole="header" style={[styles.sectionTitle, { color: colors.foreground }]}>Stato delle superfici</Text>
       </View>}
       renderItem={({ item }) => <SurfaceCard surface={item} />}

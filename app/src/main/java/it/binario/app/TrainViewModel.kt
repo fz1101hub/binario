@@ -36,6 +36,8 @@ import it.binario.app.widget.WidgetStateStore
 import it.binario.app.wear.WearSnapshotPublisher
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import java.util.UUID
 import java.util.Locale
@@ -56,6 +58,9 @@ data class RecentRoute(val origin: Station, val destination: Station) {
 data class ServiceMonitor(val number: String, val label: String)
 
 class TrainViewModel(application: Application) : AndroidViewModel(application) {
+    private companion object {
+        const val STATION_SUGGESTION_DEBOUNCE_MILLIS = 180L
+    }
     private val routeStore = RouteStore(application)
     private val cache = RouteSnapshotCache(application)
     private val integrationStore = IntegrationSettingsStore(application)
@@ -72,11 +77,8 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
 
     var stations by mutableStateOf(customStationStore.stations())
         private set
-    private var stationAutocomplete by mutableStateOf(StationAutocompleteEngine(stations))
-
-    /** Immutable, pre-normalized index consumed by the lightweight autocomplete UI. */
-    val stationAutocompleteEngine: StationAutocompleteEngine
-        get() = stationAutocomplete
+    @Volatile
+    private var stationAutocomplete = StationAutocompleteEngine(stations)
 
     var favouriteStations by mutableStateOf(stationPreferences.favourites(stations))
         private set
@@ -218,9 +220,44 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun plannerDestinationText(): String = activeRoute.takeIf { hasActiveRoute }?.outwardDestination?.name.orEmpty()
 
-    /** Compatibility facade; callers that do not need app state can use [StationAutocompleteEngine] directly. */
-    fun searchStations(query: String): List<Station> = stationAutocomplete.suggest(query)
-        .ifEmpty { listOfNotNull(stationFromFreeText(query)) }
+    /**
+     * Risultati dell'autocomplete, separati per campo. Compose osserva soltanto questa
+     * mappa: l'indice locale non viene interrogato durante il render.
+     */
+    var stationSuggestionResults by mutableStateOf<Map<String, List<Station>>>(emptyMap())
+        private set
+    private val stationSuggestionJobs = mutableMapOf<String, Job>()
+    private val stationSuggestionRequestIds = mutableMapOf<String, Long>()
+
+    fun stationSuggestions(fieldKey: String): List<Station> = stationSuggestionResults[fieldKey].orEmpty()
+
+    /** Debounce e ricerca locale fuori dal thread/render Compose; un input successivo annulla il precedente. */
+    fun updateStationSuggestions(fieldKey: String, query: String) {
+        stationSuggestionJobs.remove(fieldKey)?.cancel()
+        val requestId = (stationSuggestionRequestIds[fieldKey] ?: 0L) + 1L
+        stationSuggestionRequestIds[fieldKey] = requestId
+        stationSuggestionResults = stationSuggestionResults - fieldKey
+        if (query.trim().length < 2) return
+        val autocomplete = stationAutocomplete
+
+        stationSuggestionJobs[fieldKey] = viewModelScope.launch(Dispatchers.Default) {
+            delay(STATION_SUGGESTION_DEBOUNCE_MILLIS)
+            val suggestions = autocomplete.suggest(query)
+                .ifEmpty { listOfNotNull(stationFromFreeText(query)) }
+            withContext(Dispatchers.Main) {
+                if (stationSuggestionRequestIds[fieldKey] == requestId) {
+                    stationSuggestionResults = stationSuggestionResults + (fieldKey to suggestions)
+                    stationSuggestionJobs.remove(fieldKey)
+                }
+            }
+        }
+    }
+
+    fun clearStationSuggestions(fieldKey: String) {
+        stationSuggestionJobs.remove(fieldKey)?.cancel()
+        stationSuggestionRequestIds[fieldKey] = (stationSuggestionRequestIds[fieldKey] ?: 0L) + 1L
+        stationSuggestionResults = stationSuggestionResults - fieldKey
+    }
 
     fun stationFromName(name: String): Station? {
         return stationAutocomplete.findExact(name) ?: stationFromFreeText(name)

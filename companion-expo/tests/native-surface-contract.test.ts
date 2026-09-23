@@ -54,7 +54,8 @@ describe("contratti delle superfici native Binario", () => {
   it("espone stato companion e indisponibilità senza trasformarli in realtime", () => {
     const companion = source("app/(tabs)/companion.tsx");
     expect(companion).toContain('accessibilityRole="header"');
-    expect(companion).toContain('accessibilityRole="button"');
+    expect(companion).toContain("const semantics = companionHubActions[action.id];");
+    expect(companion).toContain("<Pressable key={action.label} {...semantics}");
     expect(companion).toContain("Programmato localmente · non realtime");
     expect(companion).toContain("non mostrano dati ferroviari inventati");
   });

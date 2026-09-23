@@ -159,15 +159,24 @@ class RouteWidgetProvider : AppWidgetProvider() {
             val services = state.services.drop(rowOffset).take(pageSize)
             val freshness = if (state.freshness == Freshness.UNAVAILABLE) Freshness.UNAVAILABLE
             else WidgetFreshness.fromAge(state.retrievedAt)
-            val pageLabel = "PAG ${WidgetRowPagination.pageNumber(rowOffset, pageSize)}/${WidgetRowPagination.pageCount(state.services.size, pageSize)}"
+            val pageLabel = context.getString(
+                R.string.widget_page_label,
+                WidgetRowPagination.pageNumber(rowOffset, pageSize),
+                WidgetRowPagination.pageCount(state.services.size, pageSize)
+            )
 
             val title = configuration.widgetTitle(state.routeLabel)
             views.setTextViewText(R.id.widget_route, title)
-            views.setTextViewText(R.id.widget_meta, state.compactMeta(pageLabel, freshness, updatedAtLabel(state.retrievedAt)))
+            views.setTextViewText(R.id.widget_meta, state.compactMeta(pageLabel, freshness, updatedAtLabel(context, state.retrievedAt)))
             views.setViewVisibility(R.id.widget_column_header, if (mode.showColumnHeader) View.VISIBLE else View.GONE)
             views.setContentDescription(
                 R.id.widget_route,
-                "Apri Binario. $title. ${state.accessibleDataSummary(freshness)}. ${accessibleUpdateTime(state.retrievedAt)}"
+                context.getString(
+                    R.string.widget_route_accessibility,
+                    title,
+                    state.accessibleDataSummary(freshness),
+                    accessibleUpdateTime(state.retrievedAt)
+                )
             )
             rowIds.forEachIndexed { index, id ->
                 val service = services.getOrNull(index)
@@ -178,7 +187,7 @@ class RouteWidgetProvider : AppWidgetProvider() {
                     views.setTextViewText(timeIds[index], service.expectedDeparture)
                     views.setTextViewText(destinationIds[index], service.destination)
                     views.setTextViewText(trainIds[index], "${service.operator.shortLabel} · ${service.category} ${service.number}")
-                    views.setTextViewText(platformIds[index], service.platform?.let { "BIN $it" } ?: "—")
+                    views.setTextViewText(platformIds[index], service.platform?.let { context.getString(R.string.widget_platform_short, it) } ?: "—")
                     views.setTextViewText(statusIds[index], WidgetChangeHighlight.displayStatus(service, state.confidence))
                     views.setContentDescription(id, service.accessibleLabel(state.confidence))
                     views.setTextColor(statusIds[index], statusColor(context, service.status))
@@ -217,12 +226,12 @@ class RouteWidgetProvider : AppWidgetProvider() {
         }
 
         private fun renderConfigurationRequired(context: Context, manager: AppWidgetManager, widgetId: Int, views: RemoteViews) {
-            views.setTextViewText(R.id.widget_route, "CONFIGURA BINARIO")
-            views.setTextViewText(R.id.widget_meta, "SCEGLI UNA TRATTA")
+            views.setTextViewText(R.id.widget_route, context.getString(R.string.widget_configuration_title))
+            views.setTextViewText(R.id.widget_meta, context.getString(R.string.widget_configuration_subtitle))
             rowIds.forEach { views.setViewVisibility(it, View.GONE) }
             views.setViewVisibility(R.id.widget_column_header, View.GONE)
-            views.setTextViewText(R.id.widget_direction, "Configura")
-            views.setTextViewText(R.id.widget_refresh, "Apri")
+            views.setTextViewText(R.id.widget_direction, context.getString(R.string.widget_configuration_action))
+            views.setTextViewText(R.id.widget_refresh, context.getString(R.string.widget_open_action))
             views.setOnClickPendingIntent(R.id.widget_root, configureIntent(context, widgetId))
             views.setOnClickPendingIntent(R.id.widget_direction, configureIntent(context, widgetId))
             views.setOnClickPendingIntent(R.id.widget_refresh, openAppIntent(context, widgetId))
@@ -235,15 +244,19 @@ class RouteWidgetProvider : AppWidgetProvider() {
             views.setTextViewText(
                 R.id.widget_meta,
                 failure?.takeIf { it.isNotBlank() }
-                    ?: "${configuration.targetType.label.uppercase()} · DATI NON DISPONIBILI"
+                    ?: context.getString(R.string.widget_unavailable_meta, configuration.targetType.label.uppercase())
             )
             rowIds.forEach { views.setViewVisibility(it, View.GONE) }
             views.setViewVisibility(R.id.widget_column_header, View.GONE)
-            views.setTextViewText(R.id.widget_direction, "Modifica")
-            views.setTextViewText(R.id.widget_refresh, "Apri")
+            views.setTextViewText(R.id.widget_direction, context.getString(R.string.widget_configuration_action))
+            views.setTextViewText(R.id.widget_refresh, context.getString(R.string.widget_open_action))
             views.setContentDescription(
                 R.id.widget_root,
-                "${configuration.widgetTitle()}. Dati non disponibili. ${failure.orEmpty()}"
+                context.getString(
+                    R.string.widget_unavailable_accessibility,
+                    configuration.widgetTitle(),
+                    failure.orEmpty()
+                )
             )
             views.setOnClickPendingIntent(R.id.widget_root, openAppIntent(context, widgetId))
             views.setOnClickPendingIntent(R.id.widget_direction, configureIntent(context, widgetId))
@@ -287,10 +300,13 @@ class RouteWidgetProvider : AppWidgetProvider() {
             ServiceStatus.CANCELLED -> ContextCompat.getColor(context, R.color.widget_error)
         }
 
-        private fun updatedAtLabel(retrievedAt: Long): String = if (retrievedAt <= 0L) {
-            "MAI AGG."
+        private fun updatedAtLabel(context: Context, retrievedAt: Long): String = if (retrievedAt <= 0L) {
+            context.getString(R.string.widget_never_updated)
         } else {
-            "AGG. ${DateTimeFormatter.ofPattern("HH:mm").withZone(ZoneId.systemDefault()).format(Instant.ofEpochMilli(retrievedAt))}"
+            context.getString(
+                R.string.widget_updated_at,
+                DateTimeFormatter.ofPattern("HH:mm").withZone(ZoneId.systemDefault()).format(Instant.ofEpochMilli(retrievedAt))
+            )
         }
     }
 }
@@ -512,7 +528,7 @@ object WidgetStateStore {
             services = lines,
             freshness = freshness,
             confidence = confidence,
-            providerName = prefs(context).getString(key(widgetId, KEY_PROVIDER), "Provider non disponibile").orEmpty(),
+            providerName = prefs(context).getString(key(widgetId, KEY_PROVIDER), context.getString(R.string.widget_default_provider)).orEmpty(),
             qualityScore = if (prefs(context).contains(key(widgetId, KEY_QUALITY_SCORE))) prefs(context).getInt(key(widgetId, KEY_QUALITY_SCORE), 0) else null,
             qualityBand = qualityBand,
             qualityWarnings = warnings,
