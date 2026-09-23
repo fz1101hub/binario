@@ -120,3 +120,9 @@ dependencies {
     // Android supplies org.json at runtime; this artifact is only the JVM unit-test implementation.
     testImplementation("org.json:json:20240303")
 }
+
+// Reproduction profile for the large embedded-GTFS regression. The property
+// limits the forked JUnit VM, not only the Gradle daemon.
+tasks.withType<org.gradle.api.tasks.testing.Test>().configureEach {
+    providers.gradleProperty("BINARIO_TEST_MAX_HEAP").orNull?.let { maxHeapSize = it }
+}
