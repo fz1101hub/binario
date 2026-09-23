@@ -5,6 +5,7 @@ import { fetchCompanionPlannedRoutes, getCompanionSyncStatus, isCompanionSyncCon
 import { clearLocalPlannedRoutes, importSelectedManualPlannedRoutes, importSelectedRemotePlannedRoutes, loadLocalPlannedRoutes } from "@/lib/local-routes";
 import { pickLocalJourneyTransfer, shareLocalJourneyTransfer } from "@/lib/manual-route-transfer";
 import { previewManualRouteTransfer, type ManualRouteTransferPreview } from "@/lib/manual-route-transfer-contract";
+import { clearLocalJourneyItineraries } from "@/lib/local-itineraries";
 import { clearLocalJourneyArchive } from "@/lib/local-journey-privacy";
 import { loadLocalJourneyTimingPreferences, localJourneyReminderOptions, saveLocalJourneyTimingPreferences, type LocalJourneyReminderPreference } from "@/lib/local-journey-timing";
 import { cancelPlannedRouteReminder, listScheduledRouteIds } from "@/lib/planned-reminder-service";
@@ -101,13 +102,13 @@ export default function SettingsScreen() {
   }
 
   async function clearLocalJourneyData() {
-    const result = await clearLocalJourneyArchive({ listScheduledRouteIds, cancelReminder: cancelPlannedRouteReminder, clearRoutes: clearLocalPlannedRoutes });
+    const result = await clearLocalJourneyArchive({ listScheduledRouteIds, cancelReminder: cancelPlannedRouteReminder, clearRoutes: clearLocalPlannedRoutes, clearItineraries: clearLocalJourneyItineraries });
     setPullPreview([]); setPushPreview([]); setSelectedPull([]); setSelectedPush([]);
-    setStatus(`Archivio locale cancellato. ${result.clearedReminders} ${result.clearedReminders === 1 ? "promemoria annullato" : "promemoria annullati"}. Account, consenso sincronizzazione e preferenze di accessibilità non sono stati modificati.`);
+    setStatus(`Archivio locale cancellato: tratte e itinerari rimossi dal telefono, ${result.clearedReminders} ${result.clearedReminders === 1 ? "promemoria annullato" : "promemoria annullati"}. Account, consenso sincronizzazione e preferenze di accessibilità non sono stati modificati.`);
   }
 
   function confirmClearLocalJourneyData() {
-    Alert.alert("Cancellare l’archivio locale?", "Saranno eliminate solo le tratte e i promemoria di questo telefono. L’account Binario, l’eventuale sincronizzazione e le preferenze di accessibilità restano invariati.", [{ text: "Annulla", style: "cancel" }, { text: "Cancella solo locale", style: "destructive", onPress: () => void clearLocalJourneyData() }]);
+    Alert.alert("Cancellare l’archivio locale?", "Saranno eliminati solo tratte, itinerari e promemoria di questo telefono. L’account Binario, l’eventuale sincronizzazione e le preferenze di accessibilità restano invariati.", [{ text: "Annulla", style: "cancel" }, { text: "Cancella solo locale", style: "destructive", onPress: () => void clearLocalJourneyData() }]);
   }
 
   async function exportManualTransfer() {
