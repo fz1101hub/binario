@@ -36,7 +36,7 @@ cd ../..
 python3 tools/verify_android_app_bundles.py --profile companion
 ```
 
-Il gate blocca una divergenza fra il file canonico, il progetto generato e gli AAB effettivi. Il prebuild fissa inoltre `org.gradle.parallel=false` e `org.gradle.workers.max=1`: senza questa serializzazione, il contenuto dell'AAB telefono era identico ma l'ordine dei member ZIP poteva cambiare. Con il packaging single-worker, due full rebuild hanno prodotto AAB byte-identici: 50.988.125 byte e SHA-256 `29ee0716464decf69cae7961c50f8e4b141a5079a58cd5149cb6f271a84104e0` per il telefono Companion; 4.309.499 byte e SHA-256 `ec5bb00303abf9b234d0c23696697807179efc35b95589673ade26df3edad305` per Wear Companion. Firma e distribuzione restano separate da quelle dell'app principale.
+Il gate blocca una divergenza fra il file canonico, il progetto generato e gli AAB effettivi. Il prebuild fissa inoltre `org.gradle.parallel=false` e `org.gradle.workers.max=1`: senza questa serializzazione, il contenuto dell'AAB telefono era identico ma l'ordine dei member ZIP poteva cambiare. Con il packaging single-worker, la prova completa precedente aveva prodotto 50.988.125 byte e SHA-256 `29ee0716464decf69cae7961c50f8e4b141a5079a58cd5149cb6f271a84104e0` per il telefono Companion. Dopo la correzione accessibilità Wear, due nuove full rebuild del modulo Wear hanno prodotto un AAB byte-identico da 4.309.214 byte e SHA-256 `3611c8218ca27dcb5868ac558269b979af6a27d8248c9319c376cd359063698a`. Prima della firma finale va comunque rieseguito il gate congiunto sui due artifact dell'esatto SHA candidato. Firma e distribuzione restano separate da quelle dell'app principale.
 
 ## Prova di riproducibilità degli AAB
 
