@@ -30,6 +30,7 @@ const migrationTags = [
   "0010_military_sentinels",
   "0011_volatile_risque",
   "0012_alexa_credential_revocation_adoption",
+  "0013_alexa_refresh_token_family",
 ] as const;
 
 function connectionOptionsFromDatabaseUrl(value: string): ConnectionOptions {
@@ -109,13 +110,13 @@ describeDatabase("migrazioni MariaDB reali", () => {
     process.env.DATABASE_URL = originalDatabaseUrl;
   });
 
-  it("applica 0000→0012 a un database vuoto", async () => {
+  it("applica 0000→0013 a un database vuoto", async () => {
     const connection = await createConnection({
       ...rootOptions,
       database: emptyDatabase,
     });
     try {
-      await applyMigrations(connection, 0, 12);
+      await applyMigrations(connection, 0, 13);
       expect(await tableNames(connection)).toEqual([
         "alexa_account_links",
         "binario_profiles",
@@ -378,6 +379,46 @@ describeDatabase("migrazioni MariaDB reali", () => {
       await expect(
         listPersonalRoutesForAlexa(userId, relinked?.credentialVersion ?? 0)
       ).resolves.toHaveLength(1);
+      await createAuthorizationCode({
+        userId,
+        codeHash: "1".repeat(64),
+        clientId: "alexa-client",
+        redirectUri: "https://layla.amazon.com/api/skill/link/TEST",
+        scope: "routes.read",
+        expiresAt: new Date(Date.now() + 60_000),
+      });
+      await exchangeAuthorizationCode({
+        codeHash: "1".repeat(64),
+        clientId: "alexa-client",
+        redirectUri: "https://layla.amazon.com/api/skill/link/TEST",
+        refreshTokenHash: "2".repeat(64),
+        refreshTokenExpiresAt: new Date(Date.now() + 60_000),
+      });
+      await expect(
+        rotateRefreshToken({
+          currentTokenHash: "2".repeat(64),
+          clientId: "alexa-client",
+          nextTokenHash: "3".repeat(64),
+          nextTokenExpiresAt: new Date(Date.now() + 60_000),
+        })
+      ).resolves.not.toBeNull();
+      await expect(
+        rotateRefreshToken({
+          currentTokenHash: "2".repeat(64),
+          clientId: "alexa-client",
+          nextTokenHash: "4".repeat(64),
+          nextTokenExpiresAt: new Date(Date.now() + 60_000),
+        })
+      ).resolves.toBeNull();
+      await expect(
+        rotateRefreshToken({
+          currentTokenHash: "3".repeat(64),
+          clientId: "alexa-client",
+          nextTokenHash: "5".repeat(64),
+          nextTokenExpiresAt: new Date(Date.now() + 60_000),
+        })
+      ).resolves.toBeNull();
+
       await revokeAllVoiceCredentialsForUser(userId);
 
       await createAuthorizationCode({

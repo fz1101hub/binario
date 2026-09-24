@@ -1,4 +1,5 @@
 import { and, desc, eq, gt, isNull, ne, sql } from "drizzle-orm";
+import { randomUUID } from "node:crypto";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   alexaAccountLinks,
@@ -380,6 +381,7 @@ export async function exchangeAuthorizationCode(input: {
       userId: code.userId,
       clientId: input.clientId,
       tokenHash: input.refreshTokenHash,
+      familyId: randomUUID(),
       expiresAt: input.refreshTokenExpiresAt,
     });
     return { ...code, credentialVersion: link.credentialVersion };
@@ -394,50 +396,50 @@ export async function rotateRefreshToken(input: {
 }) {
   const db = await getDb();
   if (!db) throw new Error("Archivio collegamenti vocali non disponibile");
-  const candidate = await db
-    .select()
-    .from(oauthRefreshTokens)
-    .where(
-      and(
-        eq(oauthRefreshTokens.tokenHash, input.currentTokenHash),
-        eq(oauthRefreshTokens.clientId, input.clientId),
-        isNull(oauthRefreshTokens.revokedAt),
-        gt(oauthRefreshTokens.expiresAt, new Date())
-      )
-    )
-    .limit(1);
-  const initial = candidate[0];
-  if (!initial) return null;
   return db.transaction(async tx => {
     const now = new Date();
+    // Look up even revoked tokens: presenting a consumed member of a rotation
+    // family is reuse evidence and must revoke every still-active descendant.
+    const rows = await tx
+      .select()
+      .from(oauthRefreshTokens)
+      .where(
+        and(
+          eq(oauthRefreshTokens.tokenHash, input.currentTokenHash),
+          eq(oauthRefreshTokens.clientId, input.clientId)
+        )
+      )
+      .limit(1)
+      .for("update");
+    const current = rows[0];
+    if (!current || current.expiresAt <= now) return null;
+
     const links = await tx
       .select()
       .from(alexaAccountLinks)
       .where(
         and(
-          eq(alexaAccountLinks.userId, initial.userId),
+          eq(alexaAccountLinks.userId, current.userId),
           isNull(alexaAccountLinks.revokedAt)
         )
       )
       .limit(1)
       .for("update");
     if (!links[0]) return null;
-    const rows = await tx
-      .select()
-      .from(oauthRefreshTokens)
-      .where(
-        and(
-          eq(oauthRefreshTokens.id, initial.id),
-          eq(oauthRefreshTokens.tokenHash, input.currentTokenHash),
-          eq(oauthRefreshTokens.clientId, input.clientId),
-          isNull(oauthRefreshTokens.revokedAt),
-          gt(oauthRefreshTokens.expiresAt, now)
-        )
-      )
-      .limit(1)
-      .for("update");
-    const current = rows[0];
-    if (!current) return null;
+
+    if (current.revokedAt != null) {
+      await tx
+        .update(oauthRefreshTokens)
+        .set({ revokedAt: now })
+        .where(
+          and(
+            eq(oauthRefreshTokens.familyId, current.familyId),
+            isNull(oauthRefreshTokens.revokedAt)
+          )
+        );
+      return null;
+    }
+
     const update = await tx
       .update(oauthRefreshTokens)
       .set({ revokedAt: now })
@@ -452,6 +454,7 @@ export async function rotateRefreshToken(input: {
       userId: current.userId,
       clientId: input.clientId,
       tokenHash: input.nextTokenHash,
+      familyId: current.familyId,
       expiresAt: input.nextTokenExpiresAt,
     });
     return {

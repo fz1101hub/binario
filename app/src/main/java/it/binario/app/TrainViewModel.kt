@@ -61,7 +61,8 @@ data class ServiceMonitor(val number: String, val label: String)
 class TrainViewModel(
     application: Application,
     /** Widget configuration needs local catalog/search only, never startup refresh or Wear publication. */
-    private val enableStartupEffects: Boolean = true
+    private val enableStartupEffects: Boolean = true,
+    private val routeDataSourceOverride: TrainDataSource? = null
 ) : AndroidViewModel(application) {
     private companion object {
         const val STATION_SUGGESTION_DEBOUNCE_MILLIS = 180L
@@ -74,7 +75,7 @@ class TrainViewModel(
     private val personalTravelStore = PersonalTravelStore(application)
     private val mobilityPreferencesStore = MobilityPreferencesStore(application)
     private val customStationStore = CustomStationStore(application)
-    private val dataSource: TrainDataSource = BinarioDataGraph.routeDataSource(application)
+    private val dataSource: TrainDataSource = routeDataSourceOverride ?: BinarioDataGraph.routeDataSource(application)
     private val stationBoardService = StationBoardAggregateService(BinarioDataGraph.stationBoardDisplayProviders())
     private val curatedStationCatalog = EmbeddedCuratedRailStationCatalog(
         openAsset = { assetPath -> application.assets.open(assetPath) }
@@ -365,6 +366,7 @@ class TrainViewModel(
 
     fun activateRoute(route: SavedRoute, selectedDirection: Direction = direction) {
         clearReturnJourneyState()
+        resetJourneyQuery()
         activeRoute = route
         routeStore.saveActiveRoute(route.id)
         direction = selectedDirection
@@ -434,6 +436,7 @@ class TrainViewModel(
 
     fun switchDirection() {
         clearReturnJourneyState()
+        resetJourneyQuery()
         direction = if (direction == Direction.OUTBOUND) Direction.RETURN else Direction.OUTBOUND
         routeStore.saveDirection(direction)
         clearSelectedService()
@@ -478,6 +481,7 @@ class TrainViewModel(
 
     fun createRoute(origin: Station, destination: Station, customName: String? = null): Boolean {
         clearReturnJourneyState()
+        resetJourneyQuery()
         val rememberedOrigin = rememberStation(origin)
         val rememberedDestination = rememberStation(destination)
         if (rememberedOrigin == rememberedDestination) {
@@ -530,6 +534,7 @@ class TrainViewModel(
         routeStore.saveRoutes(savedRoutes)
         if (activeRoute.id == route.id) {
             clearReturnJourneyState()
+            resetJourneyQuery()
             activeRoute = savedRoutes.firstOrNull() ?: unconfiguredRoute()
             if (hasActiveRoute) routeStore.saveActiveRoute(activeRoute.id) else routeStore.clearActiveRoute()
             clearSelectedService()
@@ -545,6 +550,10 @@ class TrainViewModel(
                 revokeWearSnapshot()
             }
         }
+    }
+
+    private fun resetJourneyQuery() {
+        journeyQuery = JourneyQuery.now()
     }
 
     fun refresh() {
