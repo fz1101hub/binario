@@ -217,6 +217,33 @@ describeDatabase("migrazioni MariaDB reali", () => {
       // reliable lineage to reconstruct, so migration must not let replay of an
       // old revoked grant revoke an unrelated currently-active grant.
       expect(families[1]?.familyId).not.toBe(families[0]?.familyId);
+      await connection.query(
+        "INSERT INTO alexa_account_links (userId, linkedAt, lastVerifiedAt, credentialVersion, revokedAt) VALUES (?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 1, NULL)",
+        [historicalUserId]
+      );
+      const upgradeDatabaseUrl = new URL(originalDatabaseUrl);
+      upgradeDatabaseUrl.pathname = `/${upgradeDatabase}`;
+      process.env.DATABASE_URL = upgradeDatabaseUrl.toString();
+
+      // The migrated revoked grant and active grant intentionally share
+      // user/client but not family. Replaying the old grant must therefore be
+      // rejected without revoking the independent active grant.
+      await expect(
+        rotateRefreshToken({
+          currentTokenHash: "a".repeat(64),
+          clientId: "legacy-client",
+          nextTokenHash: "c".repeat(64),
+          nextTokenExpiresAt: new Date(Date.now() + 60_000),
+        })
+      ).resolves.toBeNull();
+      const [stillActiveLegacy] = await connection.query<
+        Array<{ isRevoked: number }>
+      >(
+        "SELECT revokedAt IS NOT NULL AS isRevoked FROM oauth_refresh_tokens WHERE tokenHash = ?",
+        ["b".repeat(64)]
+      );
+      expect(stillActiveLegacy).toEqual([{ isRevoked: 0 }]);
+
       const [applied] = await connection.query<Array<{ createdAt: string }>>(
         "SELECT CAST(created_at AS CHAR) AS createdAt FROM __drizzle_migrations ORDER BY created_at"
       );
