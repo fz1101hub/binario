@@ -217,6 +217,21 @@ describeDatabase("migrazioni MariaDB reali", () => {
       );
       expect(legacyRows[0]?.familyId).not.toBe(legacyRows[1]?.familyId);
 
+      // Replaying a revoked legacy grant must not invalidate a different
+      // active legacy grant that happened to use the same user/client.
+      const legacyReplay = await rotateRefreshToken({
+        currentTokenHash: "a".repeat(64),
+        clientId: "legacy-client",
+        nextTokenHash: "c".repeat(64),
+        nextTokenExpiresAt: new Date(Date.now() + 60_000),
+      });
+      expect(legacyReplay).toBeNull();
+      const [stillActiveLegacy] = await connection.query<Array<{ revokedAt: Date | null }>>(
+        "SELECT revokedAt FROM oauth_refresh_tokens WHERE tokenHash = ?",
+        ["b".repeat(64)]
+      );
+      expect(stillActiveLegacy[0]?.revokedAt).toBeNull();
+
       const [applied] = await connection.query<Array<{ createdAt: string }>>(
         "SELECT CAST(created_at AS CHAR) AS createdAt FROM __drizzle_migrations ORDER BY created_at"
       );
