@@ -217,6 +217,14 @@ describeDatabase("migrazioni MariaDB reali", () => {
       );
       expect(legacyRows[0]?.familyId).not.toBe(legacyRows[1]?.familyId);
 
+      await connection.query(
+        "INSERT INTO alexa_account_links (userId, linkedAt, lastVerifiedAt, credentialVersion, revokedAt) VALUES (?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 1, NULL)",
+        [historicalUserId]
+      );
+      const upgradeDatabaseUrl = new URL(originalDatabaseUrl);
+      upgradeDatabaseUrl.pathname = `/${upgradeDatabase}`;
+      process.env.DATABASE_URL = upgradeDatabaseUrl.toString();
+
       // Replaying a revoked legacy grant must not invalidate a different
       // active legacy grant that happened to use the same user/client.
       const legacyReplay = await rotateRefreshToken({
