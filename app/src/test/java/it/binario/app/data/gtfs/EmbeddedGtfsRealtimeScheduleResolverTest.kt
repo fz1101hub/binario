@@ -7,7 +7,6 @@ import it.binario.app.data.core.SourceRef
 import it.binario.app.data.core.TrainRunId
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
-import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
