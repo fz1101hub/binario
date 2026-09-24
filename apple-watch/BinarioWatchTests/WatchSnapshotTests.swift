@@ -63,6 +63,32 @@ final class WatchSnapshotTests: XCTestCase {
         XCTAssertNil(BinarioWatchSnapshot.decodeContract(try fixtureData(), nowEpochMillis: 1_893_485_700_001))
     }
 
+    func testApplicationContextAcceptsSnapshotAndClearSignalTakesPrecedence() throws {
+        let data = try fixtureData()
+        let accepted = WatchApplicationContextAction.decode(
+            [WatchApplicationContextAction.snapshotKey: data],
+            nowEpochMillis: fixtureNow
+        )
+        guard case let .accept(snapshot) = accepted else {
+            return XCTFail("Expected accepted snapshot")
+        }
+        XCTAssertEqual(snapshot.services.first?.number, "FR 9505")
+
+        XCTAssertEqual(
+            WatchApplicationContextAction.decode([
+                WatchApplicationContextAction.snapshotKey: data,
+                WatchApplicationContextAction.clearKey: Data(),
+            ], nowEpochMillis: fixtureNow),
+            .clear
+        )
+        XCTAssertEqual(
+            WatchApplicationContextAction.decode([
+                WatchApplicationContextAction.snapshotKey: Data("invalid".utf8),
+            ], nowEpochMillis: fixtureNow),
+            .ignore
+        )
+    }
+
     func testRefreshReloadsTheBinarioWidgetOnlyAfterReadingCache() {
         var events: [String] = []
 

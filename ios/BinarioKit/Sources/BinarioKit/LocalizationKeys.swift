@@ -1,0 +1,29 @@
+public enum BinarioLocalizationKeys {
+    public static let required: Set<String> = [
+        "action.ok", "app.name",
+        "tab.planner", "tab.saved", "tab.settings",
+        "planner.title", "planner.intro.title", "planner.intro.body",
+        "planner.origin", "planner.destination", "planner.departure",
+        "planner.choose_station", "planner.search_station",
+        "planner.swap", "planner.search", "planner.save", "planner.same_station",
+        "planner.selection_required", "planner.route_accessibility",
+        "catalog.loading", "catalog.unavailable.title", "catalog.unavailable.body",
+        "result.title", "result.unavailable.title", "result.unavailable.body",
+        "result.unavailable.disclosure",
+        "saved.title", "saved.empty.title", "saved.empty.body", "saved.local_only",
+        "saved.delete_all", "saved.storage_error", "saved.limit_error",
+        "settings.title", "settings.data.title", "settings.data.catalog",
+        "settings.data.provider", "settings.data.provider_unavailable",
+        "settings.data.catalog_notice", "settings.privacy.title", "settings.privacy.body",
+        "settings.privacy.no_collection", "settings.privacy.local_routes",
+        "settings.privacy.watch", "settings.privacy.watch_sharing",
+        "settings.privacy.watch_sharing_detail", "settings.privacy.watch_status",
+        "settings.about.title", "settings.about.version", "settings.about.version_unavailable",
+        "watch.source.unavailable", "watch.notice.unavailable",
+        "watch.status.disabled", "watch.status.activating", "watch.status.pending",
+        "watch.status.context_updated", "watch.status.cleared",
+        "watch.status.unsupported", "watch.status.failed",
+        "accessibility.station_suggestions", "accessibility.selected_station",
+        "accessibility.swap_route", "accessibility.saved_route", "accessibility.delete_route"
+    ]
+}

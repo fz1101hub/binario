@@ -1,0 +1,108 @@
+name: Binario
+options:
+  bundleIdPrefix: it.binario
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: 6.0
+    MARKETING_VERSION: 0.1.0
+    CURRENT_PROJECT_VERSION: 1
+packages:
+  BinarioKit:
+    path: BinarioKit
+targets:
+  Binario:
+    type: application
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: BinarioApp
+      - path: Resources
+        buildPhase: resources
+      - path: ../app/src/main/assets/stations/curated_it_rail_stations.json
+        buildPhase: resources
+    scheme:
+      testTargets:
+        - BinarioAppTests
+        - BinarioKitTests
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: it.binario.ios
+        PRODUCT_NAME: Binario
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: Binario
+        INFOPLIST_KEY_CFBundleDevelopmentRegion: it
+        INFOPLIST_KEY_CFBundleLocalizations: [it, en, de, fr, es]
+        TARGETED_DEVICE_FAMILY: "1"
+        SUPPORTS_MACCATALYST: NO
+    dependencies:
+      - package: BinarioKit
+      - target: BinarioWatch
+        embed: true
+  BinarioAppTests:
+    type: bundle.unit-test
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: BinarioAppTests
+    dependencies:
+      - target: Binario
+      - package: BinarioKit
+  BinarioKitTests:
+    type: bundle.unit-test
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: BinarioKit/Tests/BinarioKitTests
+      - path: ../contracts/wear-snapshot/v1/ios-to-apple-watch-v1.json
+        buildPhase: resources
+    dependencies:
+      - package: BinarioKit
+  BinarioWatch:
+    type: application
+    platform: watchOS
+    deploymentTarget: "10.0"
+    sources:
+      - path: ../apple-watch/BinarioWatch
+      - path: ../apple-watch/Shared
+    scheme:
+      testTargets:
+        - BinarioWatchTests
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: it.binario.watch
+        INFOPLIST_KEY_CFBundleDisplayName: Binario
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_WKApplication: YES
+        INFOPLIST_KEY_WKWatchOnly: NO
+        INFOPLIST_KEY_WKCompanionAppBundleIdentifier: it.binario.ios
+    entitlements:
+      path: ../apple-watch/BinarioWatch/BinarioWatch.entitlements
+    dependencies:
+      - target: BinarioWatchWidgets
+        embed: true
+  BinarioWatchTests:
+    type: bundle.unit-test
+    platform: watchOS
+    deploymentTarget: "10.0"
+    sources:
+      - path: ../apple-watch/BinarioWatchTests
+      - path: ../contracts/wear-snapshot/v1/ios-to-apple-watch-v1.json
+        buildPhase: resources
+    dependencies:
+      - target: BinarioWatch
+  BinarioWatchWidgets:
+    type: app-extension
+    platform: watchOS
+    deploymentTarget: "10.0"
+    sources:
+      - path: ../apple-watch/BinarioWatchWidgets
+      - path: ../apple-watch/Shared
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: it.binario.watch.widgets
+        INFOPLIST_KEY_CFBundleDisplayName: Binario
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_NSExtension_NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    entitlements:
+      path: ../apple-watch/BinarioWatch/BinarioWatch.entitlements

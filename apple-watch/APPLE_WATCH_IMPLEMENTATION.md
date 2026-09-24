@@ -2,9 +2,9 @@
 
 Il companion watchOS è stato ricostruito come progetto nativo watchOS 10 con SwiftUI, WidgetKit, App Intents, cache locale e App Group. Mostra al massimo due corse, provider, qualità, freshness e l’avvertenza non-live; non mostra biglietti, posizione, token o storico.
 
-> Apple Watch si abbina a iPhone, non a uno smartphone Android. Per questo l’app Android non può inviare uno snapshot direttamente tramite Watch Connectivity. L’architettura Binario prevede una futura app iOS Binario che usa Watch Connectivity oppure un servizio di sincronizzazione companion dedicato e derivato dallo stesso contratto dell’app principale. Il companion Alexa non è un canale dati per watchOS.
+> Apple Watch si abbina a iPhone, non a uno smartphone Android. Per questo l’app Android non può inviare uno snapshot direttamente tramite Watch Connectivity. Il produttore iOS è ora implementato nel progetto integrato `../ios/project.yml`; il companion Alexa non è un canale dati per watchOS.
 
-Finché il repository non contiene un target iOS companion, il progetto generato dichiara esplicitamente `WKApplication = YES` e `WKWatchOnly = YES`: resta quindi un prototipo watch-only, compilabile e testabile in modo indipendente, senza un produttore iOS reale. Quando verrà introdotta l’app iOS, queste impostazioni dovranno essere sostituite dal relativo `WKCompanionAppBundleIdentifier` e il trasporto `WCSession` dovrà superare una prova end-to-end.
+`apple-watch/project.yml` resta intenzionalmente un progetto watch-only indipendente e dichiara `WKApplication = YES` e `WKWatchOnly = YES`. Il progetto integrato `../ios/project.yml` incorpora invece il target Watch nell’app `it.binario.ios`, imposta `WKCompanionAppBundleIdentifier` e disabilita lo stato watch-only. Questa associazione statica non costituisce prova di build, firma o consegna `WCSession`: servono Xcode su macOS e una successiva prova end-to-end su iPhone e Apple Watch abbinati.
 
 ## Generazione e verifica su macOS
 

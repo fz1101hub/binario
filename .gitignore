@@ -33,6 +33,8 @@ consegna_*/
 
 # Output Apple/Xcode locali
 DerivedData/
+**/.build/
+ios/Binario.xcodeproj/
 *.xcuserstate
 xcuserdata/
 

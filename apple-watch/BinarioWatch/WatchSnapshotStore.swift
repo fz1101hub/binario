@@ -26,4 +26,10 @@ final class WatchSnapshotStore: ObservableObject {
             self.snapshot = .unavailable
         }
     }
+
+    func clear() {
+        WatchSnapshotStorage.clear()
+        snapshot = .unavailable
+        WidgetCenter.shared.reloadAllTimelines()
+    }
 }
