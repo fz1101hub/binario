@@ -93,7 +93,7 @@ describe("catena delle migrazioni drizzle", () => {
     expect(sql).toContain("MODIFY COLUMN \`familyId\` varchar(64) NOT NULL");
     expect(sql).toContain("oauth_refresh_tokens_family_idx");
     const executableSql = sql.replace(/^--.*$/gm, "");
-    expect(executableSql).not.toMatch(/(?:^|;\\s*)\\s*(DROP|DELETE|TRUNCATE)\\b/im);
+    expect(executableSql).not.toMatch(/(?:^|;\s*)\s*(DROP|DELETE|TRUNCATE)\b/im);
   });
 
   it("mantiene i timestamp storici che Drizzle usa per riconoscere il database WebDev", () => {
