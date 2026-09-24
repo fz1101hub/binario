@@ -365,6 +365,7 @@ class TrainViewModel(
 
     fun activateRoute(route: SavedRoute, selectedDirection: Direction = direction) {
         clearReturnJourneyState()
+        resetJourneyQuery()
         activeRoute = route
         routeStore.saveActiveRoute(route.id)
         direction = selectedDirection
@@ -434,6 +435,7 @@ class TrainViewModel(
 
     fun switchDirection() {
         clearReturnJourneyState()
+        resetJourneyQuery()
         direction = if (direction == Direction.OUTBOUND) Direction.RETURN else Direction.OUTBOUND
         routeStore.saveDirection(direction)
         clearSelectedService()
@@ -478,6 +480,7 @@ class TrainViewModel(
 
     fun createRoute(origin: Station, destination: Station, customName: String? = null): Boolean {
         clearReturnJourneyState()
+        resetJourneyQuery()
         val rememberedOrigin = rememberStation(origin)
         val rememberedDestination = rememberStation(destination)
         if (rememberedOrigin == rememberedDestination) {
@@ -530,6 +533,7 @@ class TrainViewModel(
         routeStore.saveRoutes(savedRoutes)
         if (activeRoute.id == route.id) {
             clearReturnJourneyState()
+            resetJourneyQuery()
             activeRoute = savedRoutes.firstOrNull() ?: unconfiguredRoute()
             if (hasActiveRoute) routeStore.saveActiveRoute(activeRoute.id) else routeStore.clearActiveRoute()
             clearSelectedService()
@@ -545,6 +549,10 @@ class TrainViewModel(
                 revokeWearSnapshot()
             }
         }
+    }
+
+    private fun resetJourneyQuery() {
+        journeyQuery = JourneyQuery.now()
     }
 
     fun refresh() {
