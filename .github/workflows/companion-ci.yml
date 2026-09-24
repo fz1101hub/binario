@@ -20,6 +20,12 @@ on:
       - "tools/verify_gradle_dependency_metadata.py"
       - ".github/workflows/companion-ci.yml"
   workflow_dispatch:
+    inputs:
+      verify_reproducibility:
+        description: "Esegui due full rebuild e confronta gli AAB unsigned Companion"
+        required: false
+        type: boolean
+        default: false
 
 concurrency:
   group: companion-ci-${{ github.event.pull_request.number || github.ref }}
@@ -31,7 +37,7 @@ permissions:
 jobs:
   companion:
     runs-on: ubuntu-24.04
-    timeout-minutes: 35
+    timeout-minutes: 90
     defaults:
       run:
         working-directory: companion-expo
@@ -110,3 +116,30 @@ jobs:
 
       - name: Verify unsigned Companion App Bundles
         run: python3 ../tools/verify_android_app_bundles.py --profile companion
+
+      - name: First Companion reproducibility rebuild
+        if: ${{ (github.event_name == 'workflow_dispatch' && inputs.verify_reproducibility) || (github.event_name == 'pull_request' && startsWith(github.base_ref, 'stabilization/')) }}
+        working-directory: companion-expo/android
+        run: >-
+          ./gradlew --no-daemon --rerun-tasks --dependency-verification=strict
+          :app:bundleRelease :wear:bundleRelease
+
+      - name: Capture Companion reproducibility references
+        if: ${{ (github.event_name == 'workflow_dispatch' && inputs.verify_reproducibility) || (github.event_name == 'pull_request' && startsWith(github.base_ref, 'stabilization/')) }}
+        run: |
+          cp android/app/build/outputs/bundle/release/app-release.aab "$RUNNER_TEMP/binario-companion-reference.aab"
+          cp android/wear/build/outputs/bundle/release/wear-release.aab "$RUNNER_TEMP/binario-companion-wear-reference.aab"
+
+      - name: Second Companion reproducibility rebuild
+        if: ${{ (github.event_name == 'workflow_dispatch' && inputs.verify_reproducibility) || (github.event_name == 'pull_request' && startsWith(github.base_ref, 'stabilization/')) }}
+        working-directory: companion-expo/android
+        run: >-
+          ./gradlew --no-daemon --rerun-tasks --dependency-verification=strict
+          :app:bundleRelease :wear:bundleRelease
+
+      - name: Verify reproducible Companion App Bundles
+        if: ${{ (github.event_name == 'workflow_dispatch' && inputs.verify_reproducibility) || (github.event_name == 'pull_request' && startsWith(github.base_ref, 'stabilization/')) }}
+        run: >-
+          python3 ../tools/verify_android_app_bundles.py --profile companion
+          --reference-phone "$RUNNER_TEMP/binario-companion-reference.aab"
+          --reference-wear "$RUNNER_TEMP/binario-companion-wear-reference.aab"

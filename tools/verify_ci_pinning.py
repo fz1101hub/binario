@@ -273,23 +273,94 @@ def _check_linux_trigger_budget(path: Path, workflow: Mapping[str, Any], problem
         if missing:
             problems.append(f"{path.name}: {event_name}.paths non copre input condivisi: {sorted(missing)}")
 
+    if path.name in {"android-ci.yml", "companion-ci.yml"}:
+        workflow_dispatch = _mapping(triggers.get("workflow_dispatch")) or {}
+        dispatch_inputs = _mapping(workflow_dispatch.get("inputs")) or {}
+        reproducibility_input = _mapping(dispatch_inputs.get("verify_reproducibility"))
+        if (
+            not reproducibility_input
+            or reproducibility_input.get("type") != "boolean"
+            or reproducibility_input.get("required") is not False
+            or reproducibility_input.get("default") is not False
+        ):
+            problems.append(f"{path.name}: input booleano verify_reproducibility fail-closed assente")
+
+        job_name = "android" if path.name == "android-ci.yml" else "companion"
+        jobs = _mapping(workflow.get("jobs")) or {}
+        job = _mapping(jobs.get(job_name)) or {}
+        minimum_timeout = 60 if path.name == "android-ci.yml" else 90
+        timeout = job.get("timeout-minutes")
+        if not isinstance(timeout, int) or timeout < minimum_timeout:
+            problems.append(f"{path.name}: timeout insufficiente per due full rebuild")
+
+        steps = job.get("steps")
+        step_list = steps if isinstance(steps, list) else []
+        steps_by_name = {
+            step.get("name"): step
+            for raw_step in step_list
+            for step in [_mapping(raw_step)] if step and isinstance(step.get("name"), str)
+        }
+        prefix = "Companion " if path.name == "companion-ci.yml" else ""
+        required_step_names = (
+            f"First {prefix}reproducibility rebuild",
+            f"Capture {prefix}reproducibility references",
+            f"Second {prefix}reproducibility rebuild",
+            f"Verify reproducible {prefix}App Bundles" if prefix else "Verify reproducible Google Play bundles",
+        )
+        expected_condition = "${{ (github.event_name == 'workflow_dispatch' && inputs.verify_reproducibility) || (github.event_name == 'pull_request' && startsWith(github.base_ref, 'stabilization/')) }}"
+        gated_steps: list[Mapping[str, Any]] = []
+        for step_name in required_step_names:
+            step = steps_by_name.get(step_name)
+            if not step:
+                problems.append(f"{path.name}: step manuale di riproducibilità assente: {step_name}")
+                continue
+            gated_steps.append(step)
+            if step.get("if") != expected_condition:
+                problems.append(f"{path.name}: {step_name} non è limitato a PR release o dispatch esplicito")
+            is_rebuild = step_name.startswith("First ") or step_name.startswith("Second ")
+            expected_keys = {"name", "if", "run"}
+            if path.name == "companion-ci.yml" and is_rebuild:
+                expected_keys.add("working-directory")
+                if step.get("working-directory") != "companion-expo/android":
+                    problems.append(f"{path.name}: {step_name} usa una directory inattesa")
+            if set(step) != expected_keys:
+                problems.append(f"{path.name}: {step_name} contiene chiavi non revisionate")
+
+        gated_commands = "\n".join(_commands(step.get("run")) for step in gated_steps)
+        if gated_commands.count("--rerun-tasks") != 2:
+            problems.append(f"{path.name}: servono esattamente due full rebuild con --rerun-tasks")
+        if gated_commands.count(":app:bundleRelease") != 2 or gated_commands.count(":wear:bundleRelease") != 2:
+            problems.append(f"{path.name}: entrambi i rebuild devono produrre telefono e Wear")
+        if "--reference-phone" not in gated_commands or "--reference-wear" not in gated_commands:
+            problems.append(f"{path.name}: confronto AAB con riferimenti assente")
+        if gated_commands.count("$RUNNER_TEMP") < 4:
+            problems.append(f"{path.name}: riferimenti AAB non confinati in RUNNER_TEMP")
+        if path.name == "companion-ci.yml" and "--profile companion" not in gated_commands:
+            problems.append(f"{path.name}: confronto riproducibilità non usa il profilo Companion")
+
     if path.name == "companion-ci.yml":
         jobs = _mapping(workflow.get("jobs")) or {}
         companion = _mapping(jobs.get("companion")) or {}
         steps = companion.get("steps")
-        commands = ""
-        if isinstance(steps, list):
-            commands = "\n".join(
-                _commands(step.get("run"))
-                for raw_step in steps
-                for step in [_mapping(raw_step)] if step
-            )
+        companion_step_list = steps if isinstance(steps, list) else []
+        companion_steps = {
+            step.get("name"): step
+            for raw_step in companion_step_list
+            for step in [_mapping(raw_step)] if step and isinstance(step.get("name"), str)
+        }
+        commands = "\n".join(_commands(step.get("run")) for step in companion_steps.values())
         if "python3 ../tools/verify_privacy_policy.py" not in commands:
             problems.append(f"{path.name}: gate privacy Companion assente")
+        ordinary_build = _commands(
+            (companion_steps.get("Android companion and Wear lint/build") or {}).get("run")
+        )
+        ordinary_verify = _commands(
+            (companion_steps.get("Verify unsigned Companion App Bundles") or {}).get("run")
+        )
         if (
-            ":app:bundleRelease" not in commands
-            or ":wear:bundleRelease" not in commands
-            or "python3 ../tools/verify_android_app_bundles.py --profile companion" not in commands
+            ":app:bundleRelease" not in ordinary_build
+            or ":wear:bundleRelease" not in ordinary_build
+            or "python3 ../tools/verify_android_app_bundles.py --profile companion" not in ordinary_verify
         ):
             problems.append(f"{path.name}: gate App Bundle Companion assente")
 

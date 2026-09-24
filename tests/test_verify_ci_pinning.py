@@ -95,6 +95,42 @@ class VerifyCiPinningTest(unittest.TestCase):
         problems = policy.workflow_problems(alexa_path, alexa_without_drift_gate, LOCK)
         self.assertTrue(any("gate drift Drizzle" in problem for problem in problems))
 
+    def test_reproducibility_gate_is_release_or_manual_and_fail_closed(self) -> None:
+        for workflow_name in ("android-ci.yml", "companion-ci.yml"):
+            workflow_path = ROOT / ".github/workflows" / workflow_name
+            original = workflow_path.read_text(encoding="utf-8")
+
+            with_string_input = original.replace("        type: boolean\n", "        type: string\n", 1)
+            problems = policy.workflow_problems(workflow_path, with_string_input, LOCK)
+            self.assertTrue(
+                any("input booleano verify_reproducibility" in problem for problem in problems),
+                workflow_name,
+            )
+
+            without_dispatch_guard = original.replace(
+                "if: ${{ (github.event_name == 'workflow_dispatch' && inputs.verify_reproducibility) || (github.event_name == 'pull_request' && startsWith(github.base_ref, 'stabilization/')) }}",
+                "if: ${{ always() }}",
+                1,
+            )
+            problems = policy.workflow_problems(workflow_path, without_dispatch_guard, LOCK)
+            self.assertTrue(any("non è limitato a PR release o dispatch esplicito" in problem for problem in problems), workflow_name)
+
+            with_soft_fail = original.replace(
+                "if: ${{ (github.event_name == 'workflow_dispatch' && inputs.verify_reproducibility) || (github.event_name == 'pull_request' && startsWith(github.base_ref, 'stabilization/')) }}",
+                "if: ${{ (github.event_name == 'workflow_dispatch' && inputs.verify_reproducibility) || (github.event_name == 'pull_request' && startsWith(github.base_ref, 'stabilization/')) }}\n        continue-on-error: true",
+                1,
+            )
+            problems = policy.workflow_problems(workflow_path, with_soft_fail, LOCK)
+            self.assertTrue(any("contiene chiavi non revisionate" in problem for problem in problems), workflow_name)
+
+            without_first_rerun = original.replace(" --rerun-tasks", "", 1)
+            problems = policy.workflow_problems(workflow_path, without_first_rerun, LOCK)
+            self.assertTrue(any("esattamente due full rebuild" in problem for problem in problems), workflow_name)
+
+            without_wear_reference = original.replace("--reference-wear", "--reference-watch", 1)
+            problems = policy.workflow_problems(workflow_path, without_wear_reference, LOCK)
+            self.assertTrue(any("confronto AAB con riferimenti assente" in problem for problem in problems), workflow_name)
+
     def test_apple_rejects_bash_env_and_run_step_mutations(self) -> None:
         workflow_path = ROOT / ".github/workflows/apple-watch-ci.yml"
         original = workflow_path.read_text(encoding="utf-8")

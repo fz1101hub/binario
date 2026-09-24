@@ -55,9 +55,32 @@ python3 tools/verify_android_app_bundles.py \
   --reference-wear /tmp/binario-wear-reference.aab
 ```
 
-Sull'HEAD `93e592d` le due full rebuild locali sono risultate byte-identiche. Il telefono produce 18.490.402 byte con SHA-256 `1f75617758585baf1e6d212730ab2a8ae4e58e93c797040d6ea1b3db17bdd09a`; Wear produce 3.894.315 byte con SHA-256 `0a4d2fcba02914a33f79fade8d1467d9f0d34c82175a0120964f09ef18fbff9a`.
+Nella validazione post-audit del 24 settembre 2026, due full rebuild locali da 98 task ciascuna sono risultate byte-identiche. Il telefono produce 18.495.638 byte con SHA-256 `1ed739459f9cdd3065426a5e28f6dda253adb88bccb72a71823c2de188e2569a`; Wear produce 3.894.315 byte con SHA-256 `f319c81cbaace5aa9bee584371e2e1f90df54d844130a14243de59743b107064`.
 
-Questa è una **prova manuale riferita allo SHA indicato**, non una proprietà attualmente esercitata dai workflow ordinari: i rail CI costruiscono e verificano struttura/identità di un solo set di AAB, senza passare `--reference-phone` e `--reference-wear`. Dopo modifiche al codice o alla toolchain, la procedura a due full rebuild va quindi ripetuta sul commit candidato se la riproducibilità byte-per-byte è un criterio di rilascio.
+Questa è una **prova esplicita riferita allo SHA eseguito**, non un costo imposto a ogni pull request. I rail ordinari costruiscono e verificano struttura/identità di un solo set di AAB. Una pull request verso `stabilization/*` attiva invece automaticamente quattro step aggiuntivi: ciascun rail esegue due ulteriori `bundleRelease --rerun-tasks`, conserva il primo set in `RUNNER_TEMP` e passa entrambi i riferimenti al verifier. Lo stesso percorso può essere richiesto manualmente con l'input booleano `verify_reproducibility`, una volta che la versione del workflow che dichiara l'input è disponibile sul default branch GitHub.
+
+| Trigger | Build AAB | Evidenza prodotta |
+|---|---:|---|
+| Pull request ordinaria o push su `main` | 1 set | Struttura, identità, limiti e assenza di firma inattesa |
+| Pull request verso `stabilization/*` | 1 set ordinario + 2 full rebuild | Stessi controlli più confronto byte-per-byte telefono/Wear |
+| Dispatch con `verify_reproducibility=false` | 1 set | Equivalente al rail ordinario |
+| Dispatch con `verify_reproducibility=true` | 1 set ordinario + 2 full rebuild | Equivalente al gate automatico della PR release |
+
+```sh
+gh workflow run android-ci.yml \
+  --repo fz1101hub/binario \
+  --ref integration/stabilization-complete-v0204 \
+  -f verify_reproducibility=true
+
+gh workflow run companion-ci.yml \
+  --repo fz1101hub/binario \
+  --ref integration/stabilization-complete-v0204 \
+  -f verify_reproducibility=true
+```
+
+Una run è evidenza soltanto se GitHub assegna realmente il runner ed espone checkout, step di build, confronto finale e log. Uno stato `failure` senza step non dimostra né riproducibilità né non-riproducibilità.
+
+Il verifier CI controlla che i quattro step restino limitati a una PR `stabilization/*` o a un dispatch esplicito e rifiuta `continue-on-error`, directory inattese, uno dei due rebuild mancante o reference non passati. Il verifier AAB richiede inoltre che i riferimenti telefono e Wear siano forniti come coppia e respinge un bundle usato come proprio riferimento.
 
 ## Verifica delle dipendenze Gradle
 

@@ -183,11 +183,20 @@ class VerifyAndroidAppBundlesTest(unittest.TestCase):
         self.write_bundle(self.valid_entries())
         reference.write_bytes(self.path.read_bytes())
         self.assertEqual([], POLICY.verify_reproducible(self.path, reference))
+        self.assertTrue(POLICY.verify_reproducible(self.path, self.path))
 
         with reference.open("ab") as stream:
             stream.write(b"different")
         problems = POLICY.verify_reproducible(self.path, reference)
         self.assertTrue(any("non byte-riproducibile" in problem for problem in problems))
+
+    def test_reproducibility_references_are_phone_wear_atomic(self) -> None:
+        reference = Path(self.temp.name) / "reference.aab"
+
+        self.assertEqual([], POLICY.verify_reference_pair(None, None))
+        self.assertEqual([], POLICY.verify_reference_pair(reference, reference))
+        self.assertTrue(POLICY.verify_reference_pair(reference, None))
+        self.assertTrue(POLICY.verify_reference_pair(None, reference))
 
     def test_rejects_traversal_and_duplicate_members(self) -> None:
         with warnings.catch_warnings():

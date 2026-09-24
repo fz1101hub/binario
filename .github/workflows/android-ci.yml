@@ -46,6 +46,12 @@ on:
       - "tools/verify_privacy_policy.py"
       - ".github/workflows/android-ci.yml"
   workflow_dispatch:
+    inputs:
+      verify_reproducibility:
+        description: "Esegui due full rebuild e confronta gli AAB unsigned"
+        required: false
+        type: boolean
+        default: false
 
 concurrency:
   group: android-ci-${{ github.event.pull_request.number || github.ref }}
@@ -57,7 +63,7 @@ permissions:
 jobs:
   android:
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 60
 
     steps:
       - name: Checkout
@@ -109,3 +115,28 @@ jobs:
 
       - name: Verify unsigned Google Play bundles
         run: python3 tools/verify_android_app_bundles.py
+
+      - name: First reproducibility rebuild
+        if: ${{ (github.event_name == 'workflow_dispatch' && inputs.verify_reproducibility) || (github.event_name == 'pull_request' && startsWith(github.base_ref, 'stabilization/')) }}
+        run: >-
+          ./gradlew --no-daemon --rerun-tasks --dependency-verification=strict
+          :app:bundleRelease :wear:bundleRelease
+
+      - name: Capture reproducibility references
+        if: ${{ (github.event_name == 'workflow_dispatch' && inputs.verify_reproducibility) || (github.event_name == 'pull_request' && startsWith(github.base_ref, 'stabilization/')) }}
+        run: |
+          cp app/build/outputs/bundle/release/app-release.aab "$RUNNER_TEMP/binario-app-reference.aab"
+          cp wear/build/outputs/bundle/release/wear-release.aab "$RUNNER_TEMP/binario-wear-reference.aab"
+
+      - name: Second reproducibility rebuild
+        if: ${{ (github.event_name == 'workflow_dispatch' && inputs.verify_reproducibility) || (github.event_name == 'pull_request' && startsWith(github.base_ref, 'stabilization/')) }}
+        run: >-
+          ./gradlew --no-daemon --rerun-tasks --dependency-verification=strict
+          :app:bundleRelease :wear:bundleRelease
+
+      - name: Verify reproducible Google Play bundles
+        if: ${{ (github.event_name == 'workflow_dispatch' && inputs.verify_reproducibility) || (github.event_name == 'pull_request' && startsWith(github.base_ref, 'stabilization/')) }}
+        run: >-
+          python3 tools/verify_android_app_bundles.py
+          --reference-phone "$RUNNER_TEMP/binario-app-reference.aab"
+          --reference-wear "$RUNNER_TEMP/binario-wear-reference.aab"

@@ -307,6 +307,8 @@ def verify_bundle(path: Path, expected_manifest: Mapping[str, str] | None = None
 
 
 def verify_reproducible(path: Path, reference: Path) -> list[str]:
+    if path.resolve() == reference.resolve():
+        return ["riferimento di riproducibilità coincidente con il bundle corrente"]
     try:
         current_digest = sha256_file(path)
         reference_digest = sha256_file(reference)
@@ -320,6 +322,12 @@ def verify_reproducible(path: Path, reference: Path) -> list[str]:
     return []
 
 
+def verify_reference_pair(phone: Path | None, wear: Path | None) -> list[str]:
+    if (phone is None) != (wear is None):
+        return ["i riferimenti di riproducibilità telefono e Wear devono essere forniti insieme"]
+    return []
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--profile", choices=sorted(DEFAULT_BUNDLES), default="root")
@@ -328,6 +336,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--reference-phone", type=Path)
     parser.add_argument("--reference-wear", type=Path)
     args = parser.parse_args(argv)
+    reference_problems = verify_reference_pair(args.reference_phone, args.reference_wear)
+    if reference_problems:
+        for problem in reference_problems:
+            print(f"Android App Bundle: FAIL: {problem}", file=sys.stderr)
+        return 1
     try:
         manifests = expected_manifests(args.profile)
     except (json.JSONDecodeError, KeyError, OSError, ValueError) as error:
