@@ -1,4 +1,5 @@
 import DashboardLayout from "@/components/DashboardLayout";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,15 +18,35 @@ export default function Home() {
   const [destination, setDestination] = useState("");
   const [name, setName] = useState("");
   const [isPinned, setIsPinned] = useState(false);
+  const [accountDeleted, setAccountDeleted] = useState(false);
   const createRoute = trpc.routes.create.useMutation({ onSuccess: () => { utils.routes.list.invalidate(); setOrigin(""); setDestination(""); setName(""); setIsPinned(false); } });
   const setPinned = trpc.routes.setPinned.useMutation({ onSuccess: () => utils.routes.list.invalidate() });
   const removeRoute = trpc.routes.remove.useMutation({ onSuccess: () => utils.routes.list.invalidate() });
   const unlink = trpc.voice.unlink.useMutation({ onSuccess: () => voice.refetch() });
+  const deleteAccount = trpc.account.delete.useMutation({
+    onSuccess: () => {
+      utils.auth.me.setData(undefined, null);
+      setAccountDeleted(true);
+    },
+  });
 
   function submitRoute(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!origin.trim() || !destination.trim() || !name.trim()) return;
     createRoute.mutate({ origin, destination, name, isPinned });
+  }
+
+  if (accountDeleted) {
+    return (
+      <DashboardLayout>
+        <Card className="mx-auto mt-12 max-w-xl">
+          <CardHeader>
+            <CardTitle>Account eliminato</CardTitle>
+            <CardDescription>Il profilo Binario Companion, le tratte e le credenziali Alexa associate sono stati cancellati dal database operativo. Una vecchia sessione non può ricreare l’account.</CardDescription>
+          </CardHeader>
+        </Card>
+      </DashboardLayout>
+    );
   }
 
   return (
@@ -82,6 +103,26 @@ export default function Home() {
             </Card>
 
             <Card className="border-slate-200 shadow-sm"><CardHeader className="pb-3"><CardTitle className="text-base">Google Assistant su Android</CardTitle></CardHeader><CardContent><p className="text-sm leading-6 text-muted-foreground">Le App Actions possono aprire Binario sul telefono o su Wear OS. Non sostituiscono una Custom Skill conversazionale su Google Home.</p><a className="mt-3 inline-flex items-center text-sm font-medium text-cyan-800 hover:underline" href="/app/active-route">Prova deep link tratta attiva <ChevronRight className="h-4 w-4" /></a></CardContent></Card>
+
+            <Card className="border-red-200 shadow-sm">
+              <CardHeader className="pb-3"><CardTitle className="text-base text-red-900">Account e dati</CardTitle><CardDescription>Lo scollegamento Alexa revoca soltanto l’accesso vocale. La cancellazione elimina invece il profilo Companion e i dati associati dal database operativo.</CardDescription></CardHeader>
+              <CardContent className="space-y-3">
+                <AlertDialog>
+                  <AlertDialogTrigger asChild><Button variant="destructive" className="w-full"><Trash2 className="mr-2 h-4 w-4" />Elimina account e dati</Button></AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Eliminare definitivamente l’account?</AlertDialogTitle>
+                      <AlertDialogDescription>Verranno eliminate tratte, preferenze, dispositivi Companion e credenziali Alexa dal database operativo. L’operazione non può essere annullata; la retention di eventuali log e backup dipende dalla policy del titolare.</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Annulla</AlertDialogCancel>
+                      <AlertDialogAction className="bg-red-700 text-white hover:bg-red-800" onClick={() => deleteAccount.mutate({ confirmation: "ELIMINA" })}>Elimina definitivamente</AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+                {deleteAccount.error ? <p role="alert" className="text-sm text-red-800">Cancellazione non riuscita. Nessun dato è stato segnalato come eliminato: riprova.</p> : null}
+              </CardContent>
+            </Card>
           </div>
         </div>
       </div>

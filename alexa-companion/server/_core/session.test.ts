@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { SignJWT } from "jose";
+import type { Request } from "express";
+import { COOKIE_NAME } from "../../shared/const";
 
 vi.hoisted(() => {
   Object.assign(process.env, {
@@ -10,6 +12,7 @@ vi.hoisted(() => {
 });
 
 import { sdk } from "./sdk";
+import * as db from "../db";
 import { environmentProblems } from "./envCheck";
 
 describe("sessioni dashboard", () => {
@@ -30,6 +33,48 @@ describe("sessioni dashboard", () => {
       .setExpirationTime("1h")
       .sign(secret);
     expect(await sdk.verifySession(foreign)).toBeNull();
+  });
+
+  it("una sessione precedente all'erasure non ricrea automaticamente l'utente", async () => {
+    const token = await sdk.createSessionToken("deleted-user", { name: "Utente" });
+    const userLookup = vi.spyOn(db, "getUserByOpenId").mockResolvedValueOnce(undefined);
+    const upstreamLookup = vi.spyOn(sdk, "getUserInfoWithJwt");
+    const request = {
+      headers: { cookie: `${COOKIE_NAME}=${token}` },
+    } as Request;
+
+    await expect(sdk.authenticateRequest(request)).rejects.toThrow("User not found");
+    expect(userLookup).toHaveBeenCalledWith("deleted-user");
+    expect(upstreamLookup).not.toHaveBeenCalled();
+    userLookup.mockRestore();
+    upstreamLookup.mockRestore();
+  });
+
+  it("fallisce chiuso se l'account viene eliminato fra lookup e touch sessione", async () => {
+    const token = await sdk.createSessionToken("racing-user", { name: "Utente" });
+    const now = new Date();
+    const userLookup = vi.spyOn(db, "getUserByOpenId").mockResolvedValueOnce({
+      id: 9,
+      openId: "racing-user",
+      email: null,
+      name: "Utente",
+      loginMethod: "manus",
+      role: "user",
+      createdAt: now,
+      updatedAt: now,
+      lastSignedIn: now,
+    });
+    const touch = vi.spyOn(db, "touchExistingUserSession").mockResolvedValueOnce(false);
+    const request = {
+      headers: { cookie: `${COOKIE_NAME}=${token}` },
+    } as Request;
+
+    await expect(sdk.authenticateRequest(request)).rejects.toThrow(
+      "User deleted during authentication"
+    );
+    expect(touch).toHaveBeenCalledWith(9);
+    userLookup.mockRestore();
+    touch.mockRestore();
   });
 
   it("segnala segreti troppo corti e variabili mancanti", () => {

@@ -1,5 +1,6 @@
 import { and, desc, eq, gt, isNull, ne, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
+import { randomUUID } from "node:crypto";
 import {
   alexaAccountLinks,
   binarioProfiles,
@@ -114,6 +115,16 @@ export async function getUserByOpenId(openId: string) {
     .limit(1);
 
   return result.length > 0 ? result[0] : undefined;
+}
+
+export async function touchExistingUserSession(userId: number): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+  const result = await db
+    .update(users)
+    .set({ lastSignedIn: new Date() })
+    .where(eq(users.id, userId));
+  return Number(result[0].affectedRows) === 1;
 }
 
 export async function listPersonalRoutes(userId: number) {
@@ -380,6 +391,7 @@ export async function exchangeAuthorizationCode(input: {
       userId: code.userId,
       clientId: input.clientId,
       tokenHash: input.refreshTokenHash,
+      familyId: randomUUID(),
       expiresAt: input.refreshTokenExpiresAt,
     });
     return { ...code, credentialVersion: link.credentialVersion };
@@ -400,9 +412,7 @@ export async function rotateRefreshToken(input: {
     .where(
       and(
         eq(oauthRefreshTokens.tokenHash, input.currentTokenHash),
-        eq(oauthRefreshTokens.clientId, input.clientId),
-        isNull(oauthRefreshTokens.revokedAt),
-        gt(oauthRefreshTokens.expiresAt, new Date())
+        eq(oauthRefreshTokens.clientId, input.clientId)
       )
     )
     .limit(1);
@@ -429,15 +439,32 @@ export async function rotateRefreshToken(input: {
         and(
           eq(oauthRefreshTokens.id, initial.id),
           eq(oauthRefreshTokens.tokenHash, input.currentTokenHash),
-          eq(oauthRefreshTokens.clientId, input.clientId),
-          isNull(oauthRefreshTokens.revokedAt),
-          gt(oauthRefreshTokens.expiresAt, now)
+          eq(oauthRefreshTokens.clientId, input.clientId)
         )
       )
       .limit(1)
       .for("update");
     const current = rows[0];
     if (!current) return null;
+    if (current.revokedAt) {
+      const familyRevocation = await tx
+        .update(oauthRefreshTokens)
+        .set({ revokedAt: now })
+        .where(
+          and(
+            eq(oauthRefreshTokens.familyId, current.familyId),
+            isNull(oauthRefreshTokens.revokedAt)
+          )
+        );
+      if (Number(familyRevocation[0].affectedRows) > 0) {
+        await tx
+          .update(alexaAccountLinks)
+          .set({ credentialVersion: sql`${alexaAccountLinks.credentialVersion} + 1` })
+          .where(eq(alexaAccountLinks.id, links[0].id));
+      }
+      return null;
+    }
+    if (current.expiresAt <= now) return null;
     const update = await tx
       .update(oauthRefreshTokens)
       .set({ revokedAt: now })
@@ -452,6 +479,7 @@ export async function rotateRefreshToken(input: {
       userId: current.userId,
       clientId: input.clientId,
       tokenHash: input.nextTokenHash,
+      familyId: current.familyId,
       expiresAt: input.nextTokenExpiresAt,
     });
     return {
@@ -492,5 +520,54 @@ export async function revokeAllVoiceCredentialsForUser(userId: number) {
           isNull(oauthRefreshTokens.revokedAt)
         )
       );
+  });
+}
+
+/**
+ * Permanently removes the dashboard account and every child record protected by
+ * foreign-key cascades. Credentials are revoked first in the same transaction
+ * so concurrent readers cannot observe a deleted account as still authorized.
+ */
+export async function deleteUserAccount(userId: number): Promise<boolean> {
+  const db = await getDb();
+  if (!db) throw new Error("Archivio account non disponibile");
+  return db.transaction(async tx => {
+    const existing = await tx
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1)
+      .for("update");
+    if (!existing[0]) return false;
+
+    const now = new Date();
+    await tx
+      .update(oauthAuthorizationCodes)
+      .set({ revokedAt: now })
+      .where(
+        and(
+          eq(oauthAuthorizationCodes.userId, userId),
+          isNull(oauthAuthorizationCodes.revokedAt)
+        )
+      );
+    await tx
+      .update(alexaAccountLinks)
+      .set({
+        revokedAt: now,
+        credentialVersion: sql`${alexaAccountLinks.credentialVersion} + 1`,
+      })
+      .where(eq(alexaAccountLinks.userId, userId));
+    await tx
+      .update(oauthRefreshTokens)
+      .set({ revokedAt: now })
+      .where(
+        and(
+          eq(oauthRefreshTokens.userId, userId),
+          isNull(oauthRefreshTokens.revokedAt)
+        )
+      );
+
+    const deleted = await tx.delete(users).where(eq(users.id, userId));
+    return Number(deleted[0].affectedRows) === 1;
   });
 }

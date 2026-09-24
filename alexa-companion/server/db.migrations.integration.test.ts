@@ -7,11 +7,13 @@ import { migrate } from "drizzle-orm/mysql2/migrator";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
   createAuthorizationCode,
+  deleteUserAccount,
   exchangeAuthorizationCode,
   getDb,
   listPersonalRoutesForAlexa,
   revokeAllVoiceCredentialsForUser,
   rotateRefreshToken,
+  touchExistingUserSession,
 } from "./db";
 
 const runDatabaseMigrationTests = process.env.RUN_DB_MIGRATION_TESTS === "1";
@@ -30,6 +32,7 @@ const migrationTags = [
   "0010_military_sentinels",
   "0011_volatile_risque",
   "0012_alexa_credential_revocation_adoption",
+  "0013_complete_shiva",
 ] as const;
 
 function connectionOptionsFromDatabaseUrl(value: string): ConnectionOptions {
@@ -109,13 +112,13 @@ describeDatabase("migrazioni MariaDB reali", () => {
     process.env.DATABASE_URL = originalDatabaseUrl;
   });
 
-  it("applica 0000→0012 a un database vuoto", async () => {
+  it("applica 0000→0013 a un database vuoto", async () => {
     const connection = await createConnection({
       ...rootOptions,
       database: emptyDatabase,
     });
     try {
-      await applyMigrations(connection, 0, 12);
+      await applyMigrations(connection, 0, 13);
       expect(await tableNames(connection)).toEqual([
         "alexa_account_links",
         "binario_profiles",
@@ -135,12 +138,16 @@ describeDatabase("migrazioni MariaDB reali", () => {
         "SHOW COLUMNS FROM alexa_account_links WHERE Field = 'credentialVersion'"
       );
       expect(linkColumns).toHaveLength(1);
+      const [familyColumns] = await connection.query<Array<{ Field: string }>>(
+        "SHOW COLUMNS FROM oauth_refresh_tokens WHERE Field = 'familyId'"
+      );
+      expect(familyColumns).toHaveLength(1);
     } finally {
       await connection.end();
     }
   });
 
-  it("adotta un database storico 0000→0011 applicando soltanto 0012", async () => {
+  it("adotta un database storico 0000→0011 applicando 0012 e 0013", async () => {
     const connection = await createConnection({
       ...rootOptions,
       database: upgradeDatabase,
@@ -156,6 +163,10 @@ describeDatabase("migrazioni MariaDB reali", () => {
       await connection.query(
         "INSERT INTO station_preferences (`userId`, `stationCode`, `stationName`) VALUES (?, '8308409', 'Roma Termini')",
         [historicalUserId]
+      );
+      await connection.query(
+        "INSERT INTO oauth_refresh_tokens (`userId`, `tokenHash`, `clientId`, `expiresAt`, `revokedAt`) VALUES (?, ?, 'legacy-client', DATE_ADD(CURRENT_TIMESTAMP, INTERVAL 1 DAY), CURRENT_TIMESTAMP), (?, ?, 'legacy-client', DATE_ADD(CURRENT_TIMESTAMP, INTERVAL 1 DAY), NULL)",
+        [historicalUserId, "a".repeat(64), historicalUserId, "b".repeat(64)]
       );
       const [before] = await connection.query<Array<{ Field: string }>>(
         "SHOW COLUMNS FROM oauth_authorization_codes WHERE Field = 'revokedAt'"
@@ -185,12 +196,20 @@ describeDatabase("migrazioni MariaDB reali", () => {
         [historicalUserId]
       );
       expect(preserved).toEqual([{ stationName: "Roma Termini" }]);
+      const [families] = await connection.query<Array<{ familyId: string }>>(
+        "SELECT familyId FROM oauth_refresh_tokens WHERE userId = ? ORDER BY id",
+        [historicalUserId]
+      );
+      expect(families).toHaveLength(2);
+      expect(families[0]?.familyId).toMatch(/^[0-9a-f]{64}$/);
+      expect(families[1]?.familyId).toBe(families[0]?.familyId);
       const [applied] = await connection.query<Array<{ createdAt: string }>>(
         "SELECT CAST(created_at AS CHAR) AS createdAt FROM __drizzle_migrations ORDER BY created_at"
       );
       expect(applied.map(row => row.createdAt)).toEqual([
         "1788377861523",
         "1790192049966",
+        "1790208352672",
       ]);
     } finally {
       await connection.end();
@@ -255,13 +274,13 @@ describeDatabase("migrazioni MariaDB reali", () => {
     }
   });
 
-  it("unlink revoca code pendenti e impedisce la rotazione di refresh token", async () => {
+  it("verifica revoca OAuth, replay family e cancellazione account", async () => {
     const connection = await createConnection({
       ...rootOptions,
       database: oauthDatabase,
     });
     try {
-      await applyMigrations(connection, 0, 12);
+      await applyMigrations(connection, 0, 13);
       const [insert] = await connection.query(
         "INSERT INTO users (`openId`, `lastSignedIn`) VALUES (?, CURRENT_TIMESTAMP)",
         ["oauth-revocation-user"]
@@ -270,6 +289,9 @@ describeDatabase("migrazioni MariaDB reali", () => {
       const databaseUrl = new URL(originalDatabaseUrl);
       databaseUrl.pathname = `/${oauthDatabase}`;
       process.env.DATABASE_URL = databaseUrl.toString();
+
+      await expect(touchExistingUserSession(userId)).resolves.toBe(true);
+      await expect(touchExistingUserSession(userId)).resolves.toBe(true);
 
       await createAuthorizationCode({
         userId,
@@ -378,6 +400,58 @@ describeDatabase("migrazioni MariaDB reali", () => {
       await expect(
         listPersonalRoutesForAlexa(userId, relinked?.credentialVersion ?? 0)
       ).resolves.toHaveLength(1);
+
+      const rotated = await rotateRefreshToken({
+        currentTokenHash: "8".repeat(64),
+        clientId: "alexa-client",
+        nextTokenHash: "4".repeat(64),
+        nextTokenExpiresAt: new Date(Date.now() + 60_000),
+      });
+      expect(rotated).toMatchObject({
+        userId,
+        credentialVersion: relinked?.credentialVersion,
+      });
+      await expect(
+        rotateRefreshToken({
+          currentTokenHash: "8".repeat(64),
+          clientId: "alexa-client",
+          nextTokenHash: "3".repeat(64),
+          nextTokenExpiresAt: new Date(Date.now() + 60_000),
+        })
+      ).resolves.toBeNull();
+      await expect(
+        rotateRefreshToken({
+          currentTokenHash: "4".repeat(64),
+          clientId: "alexa-client",
+          nextTokenHash: "2".repeat(64),
+          nextTokenExpiresAt: new Date(Date.now() + 60_000),
+        })
+      ).resolves.toBeNull();
+      await expect(
+        listPersonalRoutesForAlexa(userId, relinked?.credentialVersion ?? 0)
+      ).resolves.toEqual([]);
+
+      await createAuthorizationCode({
+        userId,
+        codeHash: "1".repeat(64),
+        clientId: "alexa-client",
+        redirectUri: "https://layla.amazon.com/api/skill/link/TEST",
+        scope: "routes.read",
+        expiresAt: new Date(Date.now() + 60_000),
+      });
+      const recovered = await exchangeAuthorizationCode({
+        codeHash: "1".repeat(64),
+        clientId: "alexa-client",
+        redirectUri: "https://layla.amazon.com/api/skill/link/TEST",
+        refreshTokenHash: "2".repeat(64),
+        refreshTokenExpiresAt: new Date(Date.now() + 60_000),
+      });
+      expect(recovered?.credentialVersion).toBeGreaterThan(
+        relinked?.credentialVersion ?? 0
+      );
+      await expect(
+        listPersonalRoutesForAlexa(userId, recovered?.credentialVersion ?? 0)
+      ).resolves.toHaveLength(1);
       await revokeAllVoiceCredentialsForUser(userId);
 
       await createAuthorizationCode({
@@ -408,6 +482,42 @@ describeDatabase("migrazioni MariaDB reali", () => {
         [userId]
       );
       expect(links[0]?.revokedAt).not.toBeNull();
+
+      await connection.query(
+        "INSERT INTO station_preferences (`userId`, `stationName`, `stationCode`, `isFavorite`) VALUES (?, 'Roma Termini', 'RM', TRUE)",
+        [userId]
+      );
+      await connection.query(
+        "INSERT INTO binario_profiles (`userId`, `activeRouteId`, `direction`, `monitoredTrainNumbersJson`, `lastMutationId`) VALUES (?, 'route-erasure', 'OUTBOUND', '[]', '00000000-0000-0000-0000-000000000001')",
+        [userId]
+      );
+      await connection.query(
+        "INSERT INTO companion_devices (`userId`, `deviceName`, `platform`, `tokenHash`, `tokenPrefix`, `expiresAt`) VALUES (?, 'Telefono test', 'android', ?, 'device-prefix', DATE_ADD(CURRENT_TIMESTAMP, INTERVAL 1 DAY))",
+        [userId, "device".repeat(16)]
+      );
+      await connection.query(
+        "INSERT INTO companion_pairing_codes (`userId`, `codeHash`, `deviceName`, `platform`, `expiresAt`) VALUES (?, ?, 'Telefono test', 'android', DATE_ADD(CURRENT_TIMESTAMP, INTERVAL 10 MINUTE))",
+        [userId, "pairing".repeat(16)]
+      );
+
+      await expect(deleteUserAccount(userId)).resolves.toBe(true);
+      for (const table of [
+        "users",
+        "railway_routes",
+        "station_preferences",
+        "binario_profiles",
+        "alexa_account_links",
+        "oauth_authorization_codes",
+        "oauth_refresh_tokens",
+        "companion_devices",
+        "companion_pairing_codes",
+      ]) {
+        const [remaining] = await connection.query<Array<{ count: number }>>(
+          `SELECT COUNT(*) AS count FROM \`${table}\` WHERE ${table === "users" ? "id" : "userId"} = ?`,
+          [userId]
+        );
+        expect(Number(remaining[0]?.count)).toBe(0);
+      }
     } finally {
       const db = await getDb();
       await db?.$client.end();

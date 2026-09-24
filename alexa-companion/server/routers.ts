@@ -2,7 +2,7 @@ import { COOKIE_NAME } from "@shared/const";
 import { z } from "zod";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
-import { createPersonalRoute, getAlexaLinkStatus, listPersonalRoutes, removePersonalRoute, revokeAllVoiceCredentialsForUser, setPersonalRoutePinned } from "./db";
+import { createPersonalRoute, deleteUserAccount, getAlexaLinkStatus, listPersonalRoutes, removePersonalRoute, revokeAllVoiceCredentialsForUser, setPersonalRoutePinned } from "./db";
 import { createProfileRouter } from "./profile/router";
 import { isAlexaConfigured } from "./voice/config";
 
@@ -23,6 +23,16 @@ export const appRouter = router({
         success: true,
       } as const;
     }),
+  }),
+  account: router({
+    delete: protectedProcedure
+      .input(z.object({ confirmation: z.literal("ELIMINA") }))
+      .mutation(async ({ ctx }) => {
+        const deleted = await deleteUserAccount(ctx.user.id);
+        if (!deleted) throw new Error("Account non trovato durante la cancellazione");
+        ctx.res.clearCookie(COOKIE_NAME, getSessionCookieOptions(ctx.req));
+        return { success: true } as const;
+      }),
   }),
   routes: router({
     list: protectedProcedure.query(({ ctx }) => listPersonalRoutes(ctx.user.id)),

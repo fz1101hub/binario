@@ -162,6 +162,7 @@ export const oauthRefreshTokens = mysqlTable(
     id: int("id").autoincrement().primaryKey(),
     userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
     tokenHash: varchar("tokenHash", { length: 128 }).notNull(),
+    familyId: varchar("familyId", { length: 64 }).notNull(),
     clientId: varchar("clientId", { length: 255 }).notNull(),
     expiresAt: timestamp("expiresAt").notNull(),
     revokedAt: timestamp("revokedAt"),
@@ -169,6 +170,7 @@ export const oauthRefreshTokens = mysqlTable(
   },
   table => ({
     tokenHashUnique: uniqueIndex("oauth_refresh_tokens_hash_unique").on(table.tokenHash),
+    familyRevokedIdx: index("oauth_refresh_tokens_family_revoked_idx").on(table.familyId, table.revokedAt),
     userExpiryIdx: index("oauth_refresh_tokens_user_expiry_idx").on(table.userId, table.expiresAt),
   })
 );
