@@ -57,9 +57,11 @@ python3 tools/verify_android_app_bundles.py \
 
 Sull'HEAD `93e592d` le due full rebuild locali sono risultate byte-identiche. Il telefono produce 18.490.402 byte con SHA-256 `1f75617758585baf1e6d212730ab2a8ae4e58e93c797040d6ea1b3db17bdd09a`; Wear produce 3.894.315 byte con SHA-256 `0a4d2fcba02914a33f79fade8d1467d9f0d34c82175a0120964f09ef18fbff9a`.
 
+Questa è una **prova manuale riferita allo SHA indicato**, non una proprietà attualmente esercitata dai workflow ordinari: i rail CI costruiscono e verificano struttura/identità di un solo set di AAB, senza passare `--reference-phone` e `--reference-wear`. Dopo modifiche al codice o alla toolchain, la procedura a due full rebuild va quindi ripetuta sul commit candidato se la riproducibilità byte-per-byte è un criterio di rilascio.
+
 ## Verifica delle dipendenze Gradle
 
-`gradle/verification-metadata.xml` fissa con SHA-256 gli artifact, i metadati Maven e i plugin risolti dall'intero gate Android/Wear. Gradle abilita automaticamente la dependency verification quando trova questo file; la CI passa inoltre `--dependency-verification=strict` in modo esplicito.[1] `tools/verify_gradle_dependency_metadata.py` rifiuta checksum assenti o duplicati, algoritmi deboli, trust bypass e una copertura troncata. Il lock corrente comprende 599 componenti e 1.041 artifact.
+`gradle/verification-metadata.xml` fissa con SHA-256 gli artifact, i metadati Maven e i plugin risolti dall'intero gate Android/Wear. Gradle abilita automaticamente la dependency verification quando trova questo file; la CI passa inoltre `--dependency-verification=strict` in modo esplicito.[1] `tools/verify_gradle_dependency_metadata.py` rifiuta checksum assenti o duplicati, algoritmi deboli, trust bypass e una copertura troncata. Il lock corrente comprende 599 componenti e 1.041 artifact. Lo stesso verifier controlla `distributionUrl` e `distributionSha256Sum` dei wrapper root e Companion contro le versioni revisionate, coprendo anche il bootstrap della distribuzione Gradle prima che entri in funzione la verifica delle dipendenze.
 
 Un aggiornamento Gradle o di una dipendenza deve rigenerare il metadata usando `--write-verification-metadata sha256` insieme a tutte le task CI. Il diff dei checksum va revisionato nella stessa pull request. Non si deve aggiungere un artifact a `trusted-artifacts` né disabilitare `verify-metadata` per far passare una build.
 
