@@ -120,7 +120,13 @@ class EmbeddedGtfsRealtimeScheduleResolver(
         val totalHours = parts[0].toInt()
         val minutes = parts[1].toInt()
         val seconds = parts.getOrElse(2) { "0" }.toInt()
-        return date.plusDays((totalHours / 24).toLong()).atTime(totalHours % 24, minutes, seconds).atZone(zone)
+        val secondsFromServiceStart = totalHours * 3_600L + minutes * 60L + seconds
+        // GTFS Time is an elapsed duration from "noon minus 12h" of the
+        // service day, not a wall-clock LocalDateTime. Anchoring at local noon
+        // and subtracting twelve elapsed hours preserves GTFS semantics across
+        // DST transitions, then the schedule offset is added on the instant line.
+        val serviceStart = date.atTime(12, 0).atZone(zone).toInstant().minusSeconds(12 * 3_600L)
+        return serviceStart.plusSeconds(secondsFromServiceStart).atZone(zone)
     }
 
     private class RealtimeScheduleIndex(private val stopNames: CompactStopNames) {
