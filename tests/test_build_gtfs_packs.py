@@ -396,6 +396,36 @@ class BuildGtfsPacksTest(unittest.TestCase):
             with self.assertRaisesRegex(builder.BuildError, "ZIP/CSV non valida"):
                 builder.read_table(archive, "stops.txt", required=True)
 
+    def test_csv_rejects_multiline_fields_but_keeps_valid_quotes(self) -> None:
+        archive_path = self.temp / "multiline-csv.zip"
+        with zipfile.ZipFile(archive_path, "w") as archive:
+            archive.writestr(
+                "stops.txt",
+                'stop_id,stop_name,location_type\nPARENT,"Genova\nPiazza Manin",1\n',
+            )
+            archive.writestr(
+                "routes.txt",
+                'route_id,route_short_name,route_type\nA,"Regionale, ""Veloce""",2\n',
+            )
+        with zipfile.ZipFile(archive_path) as archive:
+            with self.assertRaisesRegex(builder.BuildError, "campo CSV multilinea"):
+                builder.read_table(archive, "stops.txt", required=True)
+            routes = builder.read_table(archive, "routes.txt", required=True)
+
+        self.assertIsNotNone(routes)
+        assert routes is not None
+        self.assertEqual('Regionale, "Veloce"', routes.rows[0]["route_short_name"])
+
+        crlf_path = self.temp / "multiline-crlf-csv.zip"
+        with zipfile.ZipFile(crlf_path, "w") as archive:
+            archive.writestr(
+                "stops.txt",
+                'stop_id,stop_name,location_type\r\nPARENT,"Genova\r\nPiazza Manin",1\r\n',
+            )
+        with zipfile.ZipFile(crlf_path) as archive:
+            with self.assertRaisesRegex(builder.BuildError, "campo CSV multilinea"):
+                builder.read_table(archive, "stops.txt", required=True)
+
     def test_build_retention_budget_fails_before_unbounded_materialization(self) -> None:
         archive_path = self.temp / "retained-budget.zip"
         with zipfile.ZipFile(archive_path, "w") as archive:

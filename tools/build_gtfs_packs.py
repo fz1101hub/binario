@@ -401,6 +401,14 @@ def read_table(
                 if None in row:
                     raise BuildError(f"riga con campi oltre l'header in {basename}")
                 normalized = {key: value or "" for key, value in row.items() if key is not None}
+                multiline_field = next(
+                    (key for key, value in normalized.items() if "\n" in value or "\r" in value),
+                    None,
+                )
+                if multiline_field is not None:
+                    raise BuildError(
+                        f"campo CSV multilinea non supportato dal runtime in {basename}.{multiline_field}"
+                    )
                 oversized_field = next(
                     (key for key, value in normalized.items() if len(value.encode("utf-8")) > MAX_CSV_FIELD_UTF8_BYTES),
                     None,
