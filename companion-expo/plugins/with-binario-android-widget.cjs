@@ -970,6 +970,7 @@ class BinarioTileService : TileService() {
 import android.app.Activity
 import android.os.Bundle
 import android.view.Gravity
+import android.view.View
 import android.widget.LinearLayout
 import android.widget.TextView
 import com.google.android.gms.wearable.Wearable
@@ -978,14 +979,13 @@ import com.google.android.gms.wearable.Wearable
 class BinarioChecklistRequestActivity : Activity() {
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
-    val message = TextView(this).apply { text = "Apro la checklist sul telefono…"; textSize = 17f; setPadding(24, 24, 24, 24) }
+    val message = TextView(this).apply { text = "Apro la checklist sul telefono…"; textSize = 17f; setPadding(24, 24, 24, 24); accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_POLITE }
     setContentView(LinearLayout(this).apply { gravity = Gravity.CENTER; addView(message) })
     Wearable.getNodeClient(this).connectedNodes.addOnSuccessListener { nodes ->
       if (nodes.isEmpty()) { message.text = "Telefono non raggiungibile."; return@addOnSuccessListener }
       nodes.forEach { node -> Wearable.getMessageClient(this).sendMessage(node.id, "/binario/companion/open-checklist/v1", ByteArray(0)) }
       message.text = "Checklist aperta sul telefono."
-      message.announceForAccessibility(message.text)
-    }.addOnFailureListener { message.text = "Non è possibile aprire il telefono ora."; message.announceForAccessibility(message.text) }
+    }.addOnFailureListener { message.text = "Non è possibile aprire il telefono ora." }
   }
 }
 `);
@@ -1003,6 +1003,7 @@ import android.os.Looper
 import android.speech.RecognizerIntent
 import android.speech.tts.TextToSpeech
 import android.view.Gravity
+import android.view.View
 import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -1016,7 +1017,6 @@ class BinarioVoiceRequestActivity : Activity() {
   private val voicePreferences by lazy { getSharedPreferences("binario_wear_voice_preferences_v1", Context.MODE_PRIVATE) }
   private var waitingForRealtime = false
   private fun touchTargetPx() = (48 * resources.displayMetrics.density).toInt()
-  private fun announceForAccessibility(message: String) { window.decorView.post { window.decorView.announceForAccessibility(message) } }
   private val replyReceiver = object : BroadcastReceiver() {
     override fun onReceive(context: Context?, intent: Intent?) {
       if (intent?.action == replyAction && waitingForRealtime) {
@@ -1071,30 +1071,27 @@ class BinarioVoiceRequestActivity : Activity() {
   }
   private fun showWaiting() {
     setContentView(LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER; setPadding(24, 24, 24, 24)
-      addView(TextView(this@BinarioVoiceRequestActivity).apply { text = "Verifica in corso…"; textSize = 18f; gravity = Gravity.CENTER; contentDescription = text })
+      addView(TextView(this@BinarioVoiceRequestActivity).apply { text = "Verifica in corso…"; textSize = 18f; gravity = Gravity.CENTER; contentDescription = "Verifica in corso. È disponibile il pulsante Annulla."; accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_POLITE })
       addView(Button(this@BinarioVoiceRequestActivity).apply { minHeight = touchTargetPx(); minWidth = touchTargetPx(); text = "Annulla"; contentDescription = "Annulla verifica"; setOnClickListener { waitingForRealtime = false; handler.removeCallbacksAndMessages(null); finish() } })
     })
-    announceForAccessibility("Verifica in corso. È disponibile il pulsante Annulla.")
   }
   private fun showLocalActions() {
     setContentView(LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER; setPadding(24, 24, 24, 24)
-      addView(TextView(this@BinarioVoiceRequestActivity).apply { text = "Nessuna richiesta vocale acquisita."; textSize = 17f; gravity = Gravity.CENTER; contentDescription = text })
+      addView(TextView(this@BinarioVoiceRequestActivity).apply { text = "Nessuna richiesta vocale acquisita."; textSize = 17f; gravity = Gravity.CENTER; contentDescription = "Nessuna richiesta vocale acquisita. Puoi mostrare la prossima tratta o riprovare."; accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_POLITE })
       addView(Button(this@BinarioVoiceRequestActivity).apply { minHeight = touchTargetPx(); minWidth = touchTargetPx(); text = "Mostra prossima tratta"; contentDescription = "Mostra la prossima tratta programmata"; setOnClickListener { showAnswer(answerFromFreshLocalState("prossima tratta")) } })
       addView(Button(this@BinarioVoiceRequestActivity).apply { minHeight = touchTargetPx(); minWidth = touchTargetPx(); text = "Riprova"; contentDescription = "Riprova richiesta vocale"; setOnClickListener { launchSystemVoiceInput() } })
       addView(Button(this@BinarioVoiceRequestActivity).apply { minHeight = touchTargetPx(); minWidth = touchTargetPx(); text = "Chiudi"; contentDescription = "Chiudi richiesta Binario"; setOnClickListener { finish() } })
     })
-    announceForAccessibility("Nessuna richiesta vocale acquisita. Puoi mostrare la prossima tratta o riprovare.")
   }
   private fun showAnswer(answer: String) {
     val speakAnswers = voicePreferences.getBoolean("speak_answers", false)
     setContentView(LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER; setPadding(24, 24, 24, 24)
-      addView(TextView(this@BinarioVoiceRequestActivity).apply { text = answer; textSize = 18f; gravity = Gravity.CENTER; contentDescription = answer })
+      addView(TextView(this@BinarioVoiceRequestActivity).apply { text = answer; textSize = 18f; gravity = Gravity.CENTER; contentDescription = "Risposta Binario. ${'$'}answer"; accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_POLITE })
       addView(Button(this@BinarioVoiceRequestActivity).apply { minHeight = touchTargetPx(); minWidth = touchTargetPx(); text = "Ascolta risposta"; contentDescription = "Ascolta risposta"; setOnClickListener { tts?.speak(answer, TextToSpeech.QUEUE_FLUSH, null, "binario-voice-answer") } })
       addView(Button(this@BinarioVoiceRequestActivity).apply { minHeight = touchTargetPx(); minWidth = touchTargetPx(); text = if (speakAnswers) "Disattiva lettura automatica" else "Attiva lettura automatica"; contentDescription = text; setOnClickListener { voicePreferences.edit().putBoolean("speak_answers", !speakAnswers).apply(); showAnswer(answer) } })
       addView(Button(this@BinarioVoiceRequestActivity).apply { minHeight = touchTargetPx(); minWidth = touchTargetPx(); text = "Riprova"; contentDescription = "Riprova richiesta vocale"; setOnClickListener { waitingForRealtime = false; handler.removeCallbacksAndMessages(null); launchSystemVoiceInput() } })
       addView(Button(this@BinarioVoiceRequestActivity).apply { minHeight = touchTargetPx(); minWidth = touchTargetPx(); text = "Chiudi"; contentDescription = "Chiudi richiesta Binario"; setOnClickListener { finish() } })
     })
-    announceForAccessibility("Risposta Binario. ${'$'}answer")
     if (speakAnswers) tts?.speak(answer, TextToSpeech.QUEUE_FLUSH, null, "binario-voice-answer")
   }
   override fun onDestroy() { unregisterReceiver(replyReceiver); handler.removeCallbacksAndMessages(null); tts?.stop(); tts?.shutdown(); super.onDestroy() }

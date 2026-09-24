@@ -130,6 +130,17 @@ describe("contratti delle superfici native Binario", () => {
     expect(widgetPlugin).toContain("Checklist aperta sul telefono.");
   });
 
+  it("annuncia gli stati Wear con live region senza API deprecate", () => {
+    const checklist = source("android/wear/src/main/java/im/binario/companion/wear/BinarioChecklistRequestActivity.kt");
+    const voice = source("android/wear/src/main/java/im/binario/companion/wear/BinarioVoiceRequestActivity.kt");
+    for (const kotlin of [widgetPlugin, checklist, voice]) {
+      expect(kotlin).not.toContain("announceForAccessibility");
+    }
+    expect(widgetPlugin).toContain("accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_POLITE");
+    expect(checklist).toContain("accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_POLITE");
+    expect(voice.match(/accessibilityLiveRegion = View\.ACCESSIBILITY_LIVE_REGION_POLITE/g)).toHaveLength(3);
+  });
+
   it("limita il planner a preset ferroviari e di viaggio pertinenti", () => {
     const planner = source("components/local-plan-card.tsx");
     const routeContract = source("lib/local-route-contract.ts");
