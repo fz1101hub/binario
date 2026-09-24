@@ -39,6 +39,36 @@ class GtfsArtifactDownloaderTest {
     }
 
     @Test(expected = GtfsDownloadException::class)
+    fun `rifiuta redirect da https a http`() {
+        val bounded = GtfsArtifactDownloader(
+            maxContentLengthBytes = LIMIT,
+            connectionFactory = { url ->
+                fakeRedirectConnection(url, "http://example.invalid/feed.zip")
+            }
+        )
+
+        bounded.open(eavGtfs)
+    }
+
+    @Test
+    fun `segue redirect https mantenendo la policy tls`() {
+        var requests = 0
+        val bounded = GtfsArtifactDownloader(
+            maxContentLengthBytes = LIMIT,
+            connectionFactory = { url ->
+                requests += 1
+                if (requests == 1) fakeRedirectConnection(url, "https://cdn.example.invalid/feed.zip")
+                else fakeConnection(url, ByteArray(LIMIT.toInt()), LIMIT)
+            }
+        )
+
+        val bytes = bounded.open(eavGtfs).use { session -> session.input.readBytes() }
+
+        assertEquals(2, requests)
+        assertEquals(LIMIT.toInt(), bytes.size)
+    }
+
+    @Test(expected = GtfsDownloadException::class)
     fun `interrompe il download quando i byte letti superano il limite senza content length`() {
         val bounded = downloaderWithFakeConnection(body = ByteArray(LIMIT.toInt() + 1), contentLength = -1L)
 
@@ -67,6 +97,15 @@ class GtfsArtifactDownloaderTest {
         maxContentLengthBytes = LIMIT,
         connectionFactory = { url -> fakeConnection(url, body, contentLength) }
     )
+
+    private fun fakeRedirectConnection(url: URL, location: String): HttpURLConnection =
+        object : HttpURLConnection(url) {
+            override fun connect() = Unit
+            override fun disconnect() = Unit
+            override fun usingProxy(): Boolean = false
+            override fun getResponseCode(): Int = HTTP_MOVED_TEMP
+            override fun getHeaderField(name: String?): String? = if (name.equals("Location", ignoreCase = true)) location else null
+        }
 
     private fun fakeConnection(url: URL, body: ByteArray, contentLength: Long): HttpURLConnection =
         object : HttpURLConnection(url) {
