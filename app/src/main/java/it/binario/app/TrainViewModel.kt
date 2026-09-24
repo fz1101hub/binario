@@ -156,7 +156,7 @@ class TrainViewModel(
     private var visibleReturnServices by mutableStateOf<List<TrainService>>(emptyList())
     private var availableOperatorNames by mutableStateOf<List<String>>(emptyList())
 
-    private var journeyQuery: JourneyQuery = JourneyQuery.now()
+    private val journeyQueryState = JourneyQueryState()
     private var returnJourneyQuery: JourneyQuery? = null
     /** Monotonic token: only the newest current-direction refresh may mutate UI/cache/surfaces. */
     private var refreshRequestId: Long = 0L
@@ -365,6 +365,7 @@ class TrainViewModel(
 
     fun activateRoute(route: SavedRoute, selectedDirection: Direction = direction) {
         clearReturnJourneyState()
+        journeyQueryState.resetForRouteActivation()
         activeRoute = route
         routeStore.saveActiveRoute(route.id)
         direction = selectedDirection
@@ -400,7 +401,7 @@ class TrainViewModel(
             outwardDestination = rememberedDestination
         )
         direction = Direction.OUTBOUND
-        journeyQuery = JourneyQuery(serviceDate, departureTime)
+        journeyQueryState.selectPlanned(serviceDate, departureTime)
         routeStore.saveDirection(direction)
         recentRoutes = routeStore.recordRecent(rememberedOrigin, rememberedDestination, stations)
         clearSelectedService()
@@ -434,6 +435,8 @@ class TrainViewModel(
 
     fun switchDirection() {
         clearReturnJourneyState()
+        // È ancora la stessa consultazione: una ricerca pianificata deve poter
+        // mostrare anche la direzione opposta alla data/ora scelta dall'utente.
         direction = if (direction == Direction.OUTBOUND) Direction.RETURN else Direction.OUTBOUND
         routeStore.saveDirection(direction)
         clearSelectedService()
@@ -498,6 +501,7 @@ class TrainViewModel(
         routeStore.saveActiveRoute(route.id)
         direction = Direction.OUTBOUND
         routeStore.saveDirection(direction)
+        journeyQueryState.resetForRouteActivation()
         clearSelectedService()
         primarySnapshot = null
         rebuildServicePresentations()
@@ -530,6 +534,7 @@ class TrainViewModel(
         routeStore.saveRoutes(savedRoutes)
         if (activeRoute.id == route.id) {
             clearReturnJourneyState()
+            journeyQueryState.resetForRouteActivation()
             activeRoute = savedRoutes.firstOrNull() ?: unconfiguredRoute()
             if (hasActiveRoute) routeStore.saveActiveRoute(activeRoute.id) else routeStore.clearActiveRoute()
             clearSelectedService()
@@ -567,7 +572,7 @@ class TrainViewModel(
         refreshMessage = null
         val routeAtRequest = activeRoute
         val directionAtRequest = direction
-        val queryAtRequest = journeyQuery
+        val queryAtRequest = journeyQueryState.value
         val requestId = ++refreshRequestId
         viewModelScope.launch {
             val result = dataSource.loadRoute(routeAtRequest, directionAtRequest, queryAtRequest)

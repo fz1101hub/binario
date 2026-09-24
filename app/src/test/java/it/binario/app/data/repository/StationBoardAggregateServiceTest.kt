@@ -6,7 +6,9 @@ import it.binario.app.data.core.Completeness
 import it.binario.app.data.core.Confidence
 import it.binario.app.data.core.Freshness
 import it.binario.app.data.core.OperatorId
+import it.binario.app.data.core.OperationalRouteChange
 import it.binario.app.data.core.Precision
+import it.binario.app.data.core.RouteChangeKind
 import it.binario.app.data.core.RunStatus
 import it.binario.app.data.core.SnapshotMeta
 import it.binario.app.data.core.SourceId
@@ -111,6 +113,86 @@ class StationBoardAggregateServiceTest {
         ).load(station)
 
         assertEquals(2, (result as StationBoardAggregateResult.Success).board.entries.size)
+    }
+
+    @Test
+    fun `same number time and endpoint never merge across known operators`() = kotlinx.coroutines.runBlocking {
+        val rfiSource = source("rfi-station-board", Confidence.INFRASTRUCTURE_PRIMARY)
+        val italoSource = source("italo-status", Confidence.OPERATOR_PRIMARY)
+        val first = board(rfiSource, 0, "4", RunStatus.DELAYED)
+        val second = board(italoSource, 4, "7", RunStatus.ON_TIME).copy(
+            entries = board(italoSource, 4, "7", RunStatus.ON_TIME).entries.map {
+                it.copy(
+                    runId = TrainRunId("italo-native-other-run"),
+                    scheduledTime = it.scheduledTime.plusMinutes(4),
+                    operatorId = OperatorId("italo")
+                )
+            }
+        )
+        val rfi = first.copy(entries = first.entries.map { it.copy(operatorId = OperatorId("trenitalia")) })
+
+        val result = StationBoardAggregateService(
+            providers = listOf(
+                provider("rfi-station-board", "RFI", rfi),
+                provider("italo-status", "Italo", second)
+            ),
+            clock = Clock.fixed(now, ZoneId.of("UTC"))
+        ).load(station) as StationBoardAggregateResult.Success
+
+        assertEquals(2, result.board.entries.size)
+        assertTrue(ProviderWarning.IDENTITY_AMBIGUOUS in result.board.warnings)
+    }
+
+    @Test
+    fun `same source cannot merge two native run ids inside tolerance`() = kotlinx.coroutines.runBlocking {
+        val source = source("rfi-station-board", Confidence.INFRASTRUCTURE_PRIMARY)
+        val first = board(source, 0, "1", RunStatus.ON_TIME)
+        val second = first.copy(
+            entries = first.entries.map {
+                it.copy(
+                    runId = TrainRunId("rfi-native-second-run"),
+                    scheduledTime = it.scheduledTime.plusMinutes(4),
+                    expectedTime = it.expectedTime?.copy(value = it.expectedTime.value.plusMinutes(4))
+                )
+            }
+        )
+
+        val result = StationBoardAggregateService(
+            providers = listOf(
+                provider("rfi-station-board", "RFI A", first),
+                provider("rfi-station-board", "RFI B", second)
+            ),
+            clock = Clock.fixed(now, ZoneId.of("UTC"))
+        ).load(station) as StationBoardAggregateResult.Success
+
+        assertEquals(2, result.board.entries.size)
+        assertTrue(ProviderWarning.IDENTITY_AMBIGUOUS in result.board.warnings)
+    }
+
+    @Test
+    fun `selected replacement service is exposed as board warning`() = kotlinx.coroutines.runBlocking {
+        val source = source("rfi-station-board", Confidence.INFRASTRUCTURE_PRIMARY)
+        val plain = board(source, 0, "1", RunStatus.REPLACED_BY_BUS)
+        val replacement = plain.copy(
+            entries = plain.entries.map {
+                it.copy(
+                    routeChange = SourcedValue(
+                        OperationalRouteChange(
+                            kind = RouteChangeKind.REPLACEMENT_SERVICE,
+                            summary = "Servizio sostitutivo con autobus"
+                        ),
+                        source
+                    )
+                )
+            }
+        )
+
+        val result = StationBoardAggregateService(
+            providers = listOf(provider("rfi-station-board", "RFI", replacement)),
+            clock = Clock.fixed(now, ZoneId.of("UTC"))
+        ).load(station) as StationBoardAggregateResult.Success
+
+        assertTrue(ProviderWarning.REPLACEMENT_SERVICE in result.board.warnings)
     }
 
     @Test

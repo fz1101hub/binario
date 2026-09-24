@@ -120,7 +120,13 @@ class EmbeddedGtfsRealtimeScheduleResolver(
         val totalHours = parts[0].toInt()
         val minutes = parts[1].toInt()
         val seconds = parts.getOrElse(2) { "0" }.toInt()
-        return date.plusDays((totalHours / 24).toLong()).atTime(totalHours % 24, minutes, seconds).atZone(zone)
+        require(totalHours >= 0 && minutes in 0..59 && seconds in 0..59) { "Orario GTFS non valido" }
+
+        // GTFS Time is elapsed time from "noon minus 12h" of the service day,
+        // not a civil LocalDateTime. The distinction is observable in DST gaps
+        // and overlaps, where atTime(...).atZone(...) would pick wall-clock rules.
+        val serviceDayOrigin = date.atTime(12, 0).atZone(zone).minusHours(12)
+        return serviceDayOrigin.plusSeconds(totalHours * 3_600L + minutes * 60L + seconds)
     }
 
     private class RealtimeScheduleIndex(private val stopNames: CompactStopNames) {
