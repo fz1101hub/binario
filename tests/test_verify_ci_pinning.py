@@ -56,7 +56,9 @@ class VerifyCiPinningTest(unittest.TestCase):
         workflow_path = ROOT / ".github/workflows/apple-watch-ci.yml"
         original = workflow_path.read_text(encoding="utf-8")
         for required in (
+            '      - "ios/**"\n',
             '      - "tools/install_xcodegen.py"\n',
+            '      - "tests/test_verify_ios_project.py"\n',
             '      - "tests/test_verify_apple_watch_project.py"\n',
         ):
             with self.subTest(required=required):
@@ -165,11 +167,20 @@ class VerifyCiPinningTest(unittest.TestCase):
             1,
         )
         problems = policy.workflow_problems(workflow_path, with_bash_env, LOCK)
-        self.assertTrue(any("env watchos" in problem for problem in problems))
+        self.assertTrue(any(":watchos: env" in problem for problem in problems))
 
         mutated_run = original.replace("run: xcodegen generate", "run: true # xcodegen generate", 1)
         problems = policy.workflow_problems(workflow_path, mutated_run, LOCK)
-        self.assertTrue(any("step run Apple" in problem for problem in problems))
+        self.assertTrue(any("contenuto step run diverso" in problem for problem in problems))
+
+        mutated_ios = original.replace(
+            "run: swift test --package-path ios/BinarioKit",
+            "run: echo skipped-ios-tests",
+            1,
+        )
+        problems = policy.workflow_problems(workflow_path, mutated_ios, LOCK)
+        self.assertTrue(any(":ios: contenuto step run diverso" in problem for problem in problems))
+        self.assertTrue(any("test Swift 6 BinarioKit assente" in problem for problem in problems))
 
     def test_flow_style_mutable_inputs_are_rejected(self) -> None:
         text = """
@@ -293,7 +304,7 @@ class VerifyCiPinningTest(unittest.TestCase):
                   curl https://example.invalid/unverified.zip
         """
         problems = policy.workflow_problems(Path("apple-watch-ci.yml"), text, LOCK)
-        self.assertTrue(any("Install XcodeGen diverso" in problem for problem in problems))
+        self.assertTrue(any("install XcodeGen diverso" in problem for problem in problems))
 
     def test_self_hosted_cannot_be_mislabeled_as_github_runner(self) -> None:
         invalid = copy.deepcopy(LOCK)
@@ -320,6 +331,15 @@ class VerifyCiPinningTest(unittest.TestCase):
             path = Path(temporary) / "lock.json"
             path.write_text(json.dumps(invalid), encoding="utf-8")
             with self.assertRaisesRegex(ValueError, "policy trigger push"):
+                policy.load_ci_lock(path)
+
+    def test_lock_requires_reviewed_ios_run_steps(self) -> None:
+        invalid = copy.deepcopy(LOCK)
+        invalid["appleIosRunSteps"][0]["sha256"] = "not-a-sha256"
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "lock.json"
+            path.write_text(json.dumps(invalid), encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "appleIosRunSteps"):
                 policy.load_ci_lock(path)
 
 

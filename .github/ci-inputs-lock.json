@@ -118,5 +118,37 @@
       "sha256": "52d1edead767cda7c939a73d94262dc64d159a96c1c2e67c0d2bbfaf94c3effb",
       "workingDirectory": "apple-watch"
     }
+  ],
+  "appleIosRunSteps": [
+    {
+      "name": "Verify iOS trust chain",
+      "sha256": "4505802dd1df25358557adfe2d94e3661f709aee38d794dca4ba6da2917f256c"
+    },
+    {
+      "name": "Select pinned Xcode for iOS",
+      "sha256": "d5f95c5f4fa5eb95f63251594e6aa11a3a9b63d15fa5bdcca7932bbab96653b1"
+    },
+    {
+      "name": "Install XcodeGen for iOS",
+      "sha256": "8a62acac8c4c7b80743bb4f5b2da39f8c25bbd3016c5afef27f308e727d77ed9"
+    },
+    {
+      "name": "Test BinarioKit with Swift 6",
+      "sha256": "cae777bd117ce7758fbd7f52be90f86a7f377146639aa74c5e19ba3f4ab5889a"
+    },
+    {
+      "name": "Verify and generate integrated iOS project",
+      "sha256": "c14edcbb5daa48dab35429bf181f184e62fbfa965ff8cb19562dfdc32607df52"
+    },
+    {
+      "name": "Select an available iOS simulator",
+      "sha256": "383fc35b3e749b48de3304ddc5c2e789a1231c1c45128a103a6eef486cb19cdb",
+      "id": "ios-simulator"
+    },
+    {
+      "name": "Build and test integrated iPhone and Watch app",
+      "sha256": "f8db8e569f5769c94f394e78138ce03ec2edc44d2580623e4273f38b9a56383e",
+      "workingDirectory": "ios"
+    }
   ]
 }

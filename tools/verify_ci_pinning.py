@@ -123,30 +123,42 @@ def load_ci_lock(path: Path = LOCK_PATH) -> dict[str, Any]:
         != f"https://github.com/yonaskolb/XcodeGen/releases/download/{xcodegen['version']}/xcodegen.zip"
     ):
         raise ValueError("lock XcodeGen non valido")
-    run_steps = data.get("appleWatchRunSteps", [])
-    expected_run_names = {
-        "Verify CI trust chain",
-        "Select pinned Xcode",
-        "Install XcodeGen",
-        "Generate Xcode project",
-        "Select an available watchOS simulator",
-        "Build and test Apple Watch",
+    expected_apple_runs = {
+        "appleWatchRunSteps": {
+            "Verify CI trust chain",
+            "Select pinned Xcode",
+            "Install XcodeGen",
+            "Generate Xcode project",
+            "Select an available watchOS simulator",
+            "Build and test Apple Watch",
+        },
+        "appleIosRunSteps": {
+            "Verify iOS trust chain",
+            "Select pinned Xcode for iOS",
+            "Install XcodeGen for iOS",
+            "Test BinarioKit with Swift 6",
+            "Verify and generate integrated iOS project",
+            "Select an available iOS simulator",
+            "Build and test integrated iPhone and Watch app",
+        },
     }
-    if (
-        not isinstance(run_steps, list)
-        or len(run_steps) != len(expected_run_names)
-        or {entry.get("name") for entry in run_steps if isinstance(entry, Mapping)} != expected_run_names
-        or any(
-            not isinstance(entry, Mapping)
-            or not set(entry) <= {"name", "sha256", "workingDirectory", "id"}
-            or not isinstance(entry.get("sha256"), str)
-            or not HEX_64.fullmatch(entry["sha256"])
-            or ("workingDirectory" in entry and not isinstance(entry["workingDirectory"], str))
-            or ("id" in entry and not isinstance(entry["id"], str))
-            for entry in run_steps
-        )
-    ):
-        raise ValueError("lock step run Apple non valido")
+    for lock_key, expected_run_names in expected_apple_runs.items():
+        run_steps = data.get(lock_key, [])
+        if (
+            not isinstance(run_steps, list)
+            or len(run_steps) != len(expected_run_names)
+            or {entry.get("name") for entry in run_steps if isinstance(entry, Mapping)} != expected_run_names
+            or any(
+                not isinstance(entry, Mapping)
+                or not set(entry) <= {"name", "sha256", "workingDirectory", "id"}
+                or not isinstance(entry.get("sha256"), str)
+                or not HEX_64.fullmatch(entry["sha256"])
+                or ("workingDirectory" in entry and not isinstance(entry["workingDirectory"], str))
+                or ("id" in entry and not isinstance(entry["id"], str))
+                for entry in run_steps
+            )
+        ):
+            raise ValueError(f"lock step run Apple non valido: {lock_key}")
     return data
 
 
@@ -225,9 +237,13 @@ def _check_apple_paths(
     problems: list[str],
 ) -> None:
     required_paths = {
+        "ios/**",
+        "apple-watch/**",
+        "contracts/wear-snapshot/**",
         "tools/install_xcodegen.py",
         "tools/verify_ci_pinning.py",
         "tests/test_install_xcodegen.py",
+        "tests/test_verify_ios_project.py",
         "tests/test_verify_apple_watch_project.py",
         "tests/test_verify_ci_pinning.py",
         "tests/test_requirements_ci.py",
@@ -405,10 +421,6 @@ def _check_apple_toolchain(
     lock: Mapping[str, Any],
     problems: list[str],
 ) -> None:
-    job = _mapping(jobs.get("watchos"))
-    if not job:
-        problems.append(f"{path.name}: job watchos assente")
-        return
     tools = {
         tool.get("name"): tool
         for tool in lock.get("tools", [])
@@ -416,7 +428,6 @@ def _check_apple_toolchain(
     }
     xcode = tools.get("Xcode", {})
     xcodegen = tools.get("XcodeGen", {})
-    env = _mapping(job.get("env")) or {}
     expected_env = {
         "XCODE_VERSION": xcode.get("version"),
         "XCODE_BUILD": xcode.get("build"),
@@ -424,18 +435,6 @@ def _check_apple_toolchain(
         "XCODEGEN_URL": xcodegen.get("url"),
         "XCODEGEN_SHA256": xcodegen.get("sha256"),
     }
-    for key, expected in expected_env.items():
-        if not isinstance(expected, str) or env.get(key) != expected:
-            problems.append(f"{path.name}: {key} non coincide con il lock revisionato")
-    if set(env) != set(expected_env):
-        problems.append(f"{path.name}: env watchos deve contenere soltanto le chiavi revisionate")
-    if set(job) != {"runs-on", "timeout-minutes", "env", "steps"}:
-        problems.append(f"{path.name}: job watchos contiene chiavi non revisionate")
-
-    steps = job.get("steps")
-    if not isinstance(steps, list):
-        problems.append(f"{path.name}: steps watchos non validi")
-        return
     action_references = {
         _action_name(entry["reference"]): entry["reference"]
         for entry in lock.get("githubActions", [])
@@ -449,67 +448,99 @@ def _check_apple_toolchain(
             "with": {"python-version": "3.12.10"},
         },
     ]
-    actual_action_steps = [dict(step) for step in steps if isinstance(step, Mapping) and "uses" in step]
-    if actual_action_steps != expected_action_steps:
-        problems.append(f"{path.name}: gli step action Apple non coincidono con la sequenza revisionata")
+    for job_name, lock_key in (
+        ("watchos", "appleWatchRunSteps"),
+        ("ios", "appleIosRunSteps"),
+    ):
+        job = _mapping(jobs.get(job_name))
+        if not job:
+            problems.append(f"{path.name}: job {job_name} assente")
+            continue
+        env = _mapping(job.get("env")) or {}
+        for key, expected in expected_env.items():
+            if not isinstance(expected, str) or env.get(key) != expected:
+                problems.append(f"{path.name}:{job_name}: {key} non coincide con il lock revisionato")
+        if set(env) != set(expected_env):
+            problems.append(f"{path.name}:{job_name}: env deve contenere soltanto le chiavi revisionate")
+        if set(job) != {"runs-on", "timeout-minutes", "env", "steps"}:
+            problems.append(f"{path.name}:{job_name}: job contiene chiavi non revisionate")
 
-    locked_run_entries = [
-        entry
-        for entry in lock.get("appleWatchRunSteps", [])
-        if isinstance(entry, Mapping)
-    ]
-    actual_run_steps = [step for step in steps if isinstance(step, Mapping) and "run" in step]
-    if len(actual_run_steps) != len(locked_run_entries):
-        problems.append(f"{path.name}: cardinalità step run Apple diversa dal lock revisionato")
-    runs: dict[str, str] = {}
-    for index, (step, locked) in enumerate(zip(actual_run_steps, locked_run_entries)):
-        expected_keys = {"name", "run"}
-        if "workingDirectory" in locked:
-            expected_keys.add("working-directory")
-        if "id" in locked:
-            expected_keys.add("id")
-        if set(step) != expected_keys:
-            problems.append(f"{path.name}: watchos run step {index} contiene chiavi non revisionate")
-        name = step.get("name")
-        command = _commands(step.get("run"))
-        if name != locked.get("name"):
-            problems.append(f"{path.name}: ordine/nome step run Apple diverso dal lock")
-        if step.get("working-directory") != locked.get("workingDirectory"):
-            problems.append(f"{path.name}: working-directory step Apple diversa dal lock")
-        if step.get("id") != locked.get("id"):
-            problems.append(f"{path.name}: id step Apple diverso dal lock")
-        if hashlib.sha256(command.encode("utf-8")).hexdigest() != locked.get("sha256"):
-            problems.append(f"{path.name}: contenuto step run Apple diverso dal lock")
-        if isinstance(name, str):
-            runs[name] = command
-    select_xcode = runs.get("Select pinned Xcode", "")
-    if "/Applications/Xcode_${XCODE_VERSION}.app/Contents/Developer" not in select_xcode:
-        problems.append(f"{path.name}: selezione Xcode versionata assente")
-    if '"Xcode $XCODE_VERSION"' not in select_xcode or '"Build version $XCODE_BUILD"' not in select_xcode:
-        problems.append(f"{path.name}: verifica versione/build Xcode assente")
+        steps = job.get("steps")
+        if not isinstance(steps, list):
+            problems.append(f"{path.name}:{job_name}: steps non validi")
+            continue
+        actual_action_steps = [dict(step) for step in steps if isinstance(step, Mapping) and "uses" in step]
+        if actual_action_steps != expected_action_steps:
+            problems.append(f"{path.name}:{job_name}: step action diversi dalla sequenza revisionata")
 
-    trust_chain = runs.get("Verify CI trust chain", "")
-    if "tests/test_verify_apple_watch_project.py" not in trust_chain:
-        problems.append(f"{path.name}: test statico progetto Apple assente dal rail macOS")
+        locked_run_entries = [entry for entry in lock.get(lock_key, []) if isinstance(entry, Mapping)]
+        actual_run_steps = [step for step in steps if isinstance(step, Mapping) and "run" in step]
+        if len(actual_run_steps) != len(locked_run_entries):
+            problems.append(f"{path.name}:{job_name}: cardinalità step run diversa dal lock revisionato")
+        runs: dict[str, str] = {}
+        for index, (step, locked) in enumerate(zip(actual_run_steps, locked_run_entries)):
+            expected_keys = {"name", "run"}
+            if "workingDirectory" in locked:
+                expected_keys.add("working-directory")
+            if "id" in locked:
+                expected_keys.add("id")
+            if set(step) != expected_keys:
+                problems.append(f"{path.name}:{job_name}: run step {index} contiene chiavi non revisionate")
+            name = step.get("name")
+            command = _commands(step.get("run"))
+            if name != locked.get("name"):
+                problems.append(f"{path.name}:{job_name}: ordine/nome step run diverso dal lock")
+            if step.get("working-directory") != locked.get("workingDirectory"):
+                problems.append(f"{path.name}:{job_name}: working-directory diversa dal lock")
+            if step.get("id") != locked.get("id"):
+                problems.append(f"{path.name}:{job_name}: id step diverso dal lock")
+            if hashlib.sha256(command.encode("utf-8")).hexdigest() != locked.get("sha256"):
+                problems.append(f"{path.name}:{job_name}: contenuto step run diverso dal lock")
+            if isinstance(name, str):
+                runs[name] = command
 
-    install = runs.get("Install XcodeGen", "")
-    expected_install_lines = [
-        'destination="$RUNNER_TEMP/xcodegen-bin/xcodegen"',
-        'python3 "$GITHUB_WORKSPACE/tools/install_xcodegen.py"',
-        '--version "$XCODEGEN_VERSION"',
-        '--url "$XCODEGEN_URL"',
-        '--sha256 "$XCODEGEN_SHA256"',
-        '--destination "$destination"',
-        'echo "$(dirname "$destination")" >> "$GITHUB_PATH"',
-        '"$destination" --version',
-    ]
-    actual_install_lines = [
-        line.strip().removesuffix("\\").rstrip()
-        for line in install.splitlines()
-        if line.strip()
-    ]
-    if actual_install_lines != expected_install_lines:
-        problems.append(f"{path.name}: step Install XcodeGen diverso dal comando revisionato")
+        suffix = " for iOS" if job_name == "ios" else ""
+        select_xcode = runs.get(f"Select pinned Xcode{suffix}", "")
+        if "/Applications/Xcode_${XCODE_VERSION}.app/Contents/Developer" not in select_xcode:
+            problems.append(f"{path.name}:{job_name}: selezione Xcode versionata assente")
+        if '"Xcode $XCODE_VERSION"' not in select_xcode or '"Build version $XCODE_BUILD"' not in select_xcode:
+            problems.append(f"{path.name}:{job_name}: verifica versione/build Xcode assente")
+
+        trust_name = "Verify iOS trust chain" if job_name == "ios" else "Verify CI trust chain"
+        trust_chain = runs.get(trust_name, "")
+        required_test = "tests/test_verify_ios_project.py" if job_name == "ios" else "tests/test_verify_apple_watch_project.py"
+        if required_test not in trust_chain:
+            problems.append(f"{path.name}:{job_name}: test statico progetto Apple assente")
+
+        install_name = "Install XcodeGen for iOS" if job_name == "ios" else "Install XcodeGen"
+        install = runs.get(install_name, "")
+        expected_install_lines = [
+            'destination="$RUNNER_TEMP/xcodegen-bin/xcodegen"',
+            'python3 "$GITHUB_WORKSPACE/tools/install_xcodegen.py"',
+            '--version "$XCODEGEN_VERSION"',
+            '--url "$XCODEGEN_URL"',
+            '--sha256 "$XCODEGEN_SHA256"',
+            '--destination "$destination"',
+            'echo "$(dirname "$destination")" >> "$GITHUB_PATH"',
+            '"$destination" --version',
+        ]
+        actual_install_lines = [
+            line.strip().removesuffix("\\").rstrip()
+            for line in install.splitlines()
+            if line.strip()
+        ]
+        if actual_install_lines != expected_install_lines:
+            problems.append(f"{path.name}:{job_name}: step install XcodeGen diverso dal comando revisionato")
+
+        if job_name == "ios":
+            if "swift test --package-path ios/BinarioKit" not in runs.get("Test BinarioKit with Swift 6", ""):
+                problems.append(f"{path.name}: test Swift 6 BinarioKit assente")
+            generation = runs.get("Verify and generate integrated iOS project", "")
+            if "verify-deterministic-generation.py" not in generation or "xcodegen generate --spec project.yml" not in generation:
+                problems.append(f"{path.name}: generazione iOS deterministica assente")
+            build = runs.get("Build and test integrated iPhone and Watch app", "")
+            if "-project Binario.xcodeproj" not in build or "-scheme Binario" not in build:
+                problems.append(f"{path.name}: build/test iPhone integrato assente")
 
 
 def workflow_problems(
