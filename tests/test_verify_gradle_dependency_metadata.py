@@ -21,7 +21,9 @@ class VerifyGradleDependencyMetadataTest(unittest.TestCase):
     def setUp(self) -> None:
         self.temp = tempfile.TemporaryDirectory(prefix="gradle-metadata-test-")
         self.path = Path(self.temp.name) / "verification-metadata.xml"
+        self.wrapper_path = Path(self.temp.name) / "gradle-wrapper.properties"
         self.original = REAL_METADATA.read_text(encoding="utf-8")
+        self.wrapper_original = POLICY.ROOT_WRAPPER.read_text(encoding="utf-8")
 
     def tearDown(self) -> None:
         self.temp.cleanup()
@@ -34,6 +36,42 @@ class VerifyGradleDependencyMetadataTest(unittest.TestCase):
 
     def test_repository_metadata_is_strict_and_complete(self) -> None:
         self.assertEqual([], POLICY.verify_metadata())
+
+    def test_repository_wrappers_pin_reviewed_distributions(self) -> None:
+        for profile, (path, expected_url, expected_sha256) in POLICY.WRAPPER_EXPECTATIONS.items():
+            with self.subTest(profile=profile):
+                self.assertEqual(
+                    [],
+                    POLICY.verify_wrapper_checksum(
+                        path,
+                        expected_url=expected_url,
+                        expected_sha256=expected_sha256,
+                    ),
+                )
+
+    def test_rejects_missing_wrong_or_duplicate_wrapper_checksum(self) -> None:
+        expected_url = POLICY.WRAPPER_EXPECTATIONS["root"][1]
+        expected_sha256 = POLICY.WRAPPER_EXPECTATIONS["root"][2]
+
+        for name, mutation in {
+            "missing": self.wrapper_original.replace(
+                f"distributionSha256Sum={expected_sha256}\n", ""
+            ),
+            "wrong": self.wrapper_original.replace(expected_sha256, "0" * 64),
+            "duplicate": self.wrapper_original.replace(
+                f"distributionSha256Sum={expected_sha256}\n",
+                f"distributionSha256Sum={expected_sha256}\n"
+                f"distributionSha256Sum={expected_sha256}\n",
+            ),
+        }.items():
+            with self.subTest(name=name):
+                self.wrapper_path.write_text(mutation, encoding="utf-8")
+                problems = POLICY.verify_wrapper_checksum(
+                    self.wrapper_path,
+                    expected_url=expected_url,
+                    expected_sha256=expected_sha256,
+                )
+                self.assertTrue(problems)
 
     def test_companion_metadata_is_strict_and_complete(self) -> None:
         self.assertEqual(

@@ -1109,6 +1109,14 @@ class BinarioVoiceRequestActivity : Activity() {
     gradleProperties = setGradleProperty(gradleProperties, "org.gradle.parallel", "false");
     gradleProperties = setGradleProperty(gradleProperties, "org.gradle.workers.max", "1");
     fs.writeFileSync(gradlePropertiesPath, gradleProperties);
+    const wrapperPropertiesPath = path.join(next.modRequest.platformProjectRoot, "gradle", "wrapper", "gradle-wrapper.properties");
+    let wrapperProperties = fs.readFileSync(wrapperPropertiesPath, "utf8");
+    wrapperProperties = setGradleProperty(
+      wrapperProperties,
+      "distributionSha256Sum",
+      "bd71102213493060956ec229d946beee57158dbd89d0e62b91bca0fa2c5f3531"
+    );
+    fs.writeFileSync(wrapperPropertiesPath, wrapperProperties);
     return next;
   }]);
 }

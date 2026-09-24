@@ -71,6 +71,14 @@ describe("contratti delle superfici native Binario", () => {
     expect(widgetPlugin).toContain('setGradleProperty(gradleProperties, "org.gradle.parallel", "false")');
     expect(widgetPlugin).toContain('setGradleProperty(gradleProperties, "org.gradle.workers.max", "1")');
   });
+  it("fissa il checksum della distribuzione Gradle prima di eseguirla", () => {
+    const wrapperProperties = source("android/gradle/wrapper/gradle-wrapper.properties");
+    const expected =
+      "distributionSha256Sum=bd71102213493060956ec229d946beee57158dbd89d0e62b91bca0fa2c5f3531";
+    expect(wrapperProperties).toContain(expected);
+    expect(widgetPlugin).toContain('"distributionSha256Sum"');
+    expect(widgetPlugin).toContain('"bd71102213493060956ec229d946beee57158dbd89d0e62b91bca0fa2c5f3531"');
+  });
 
   it("mantiene controlli tema e dichiara indisponibile la sincronizzazione remota", () => {
     const settings = source("app/(tabs)/settings.tsx");

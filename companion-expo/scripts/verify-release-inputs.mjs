@@ -95,6 +95,14 @@ if (!gradleProperties.includes("org.gradle.parallel=false")) {
 if (!gradleProperties.includes("org.gradle.workers.max=1")) {
   fail("Gradle release packaging must remain single-worker for deterministic App Bundle order.");
 }
+const wrapperProperties = read("android/gradle/wrapper/gradle-wrapper.properties");
+if (
+  !wrapperProperties.includes(
+    "distributionSha256Sum=bd71102213493060956ec229d946beee57158dbd89d0e62b91bca0fa2c5f3531"
+  )
+) {
+  fail("The Companion Gradle Wrapper distribution must remain pinned to its reviewed SHA-256.");
+}
 
 const mainManifest = read("android/app/src/main/AndroidManifest.xml");
 for (const permission of [
