@@ -30,11 +30,13 @@ class GtfsArtifactDownloader(
     private val connectTimeoutMillis: Int = 15_000,
     private val readTimeoutMillis: Int = 45_000,
     private val maxContentLengthBytes: Long = 256L * 1024L * 1024L,
+    private val maxRedirects: Int = 5,
     private val connectionFactory: (URL) -> URLConnection = { url -> url.openConnection() }
 ) : GtfsArtifactSource {
     init {
         require(connectTimeoutMillis > 0 && readTimeoutMillis > 0)
         require(maxContentLengthBytes > 0)
+        require(maxRedirects >= 0)
     }
 
     /** Backward-compatible strict download: best-effort sources require explicit opt-in. */
@@ -50,16 +52,32 @@ class GtfsArtifactDownloader(
         allowBestEffortFallback: Boolean
     ): GtfsDownloadSession {
         validate(source, allowBestEffortFallback)
-        val url = source.downloadOrProbeUri!!.toURL()
-        val connection = (connectionFactory(url) as? HttpURLConnection)
-            ?: throw GtfsDownloadException("La fonte non usa HTTP(S)")
-        connection.instanceFollowRedirects = true
-        connection.connectTimeout = connectTimeoutMillis
-        connection.readTimeout = readTimeoutMillis
-        connection.requestMethod = "GET"
-        connection.setRequestProperty("Accept", "application/zip, application/octet-stream;q=0.9")
-        connection.setRequestProperty("User-Agent", "Binario/0.20 data-pack importer")
-        connection.connect()
+        var url = source.downloadOrProbeUri!!.toURL()
+        var redirects = 0
+        val connection: HttpURLConnection
+        while (true) {
+            requireHttps(url)
+            val candidate = (connectionFactory(url) as? HttpURLConnection)
+                ?: throw GtfsDownloadException("La fonte non usa HTTP(S)")
+            candidate.instanceFollowRedirects = false
+            candidate.connectTimeout = connectTimeoutMillis
+            candidate.readTimeout = readTimeoutMillis
+            candidate.requestMethod = "GET"
+            candidate.setRequestProperty("Accept", "application/zip, application/octet-stream;q=0.9")
+            candidate.setRequestProperty("User-Agent", "Binario/0.20 data-pack importer")
+            candidate.connect()
+
+            if (candidate.responseCode in REDIRECT_CODES) {
+                val location = candidate.getHeaderField("Location")
+                candidate.disconnect()
+                if (location.isNullOrBlank()) throw GtfsDownloadException("Redirect GTFS senza destinazione")
+                if (redirects++ >= maxRedirects) throw GtfsDownloadException("Troppi redirect durante il download GTFS")
+                url = URL(url, location)
+                continue
+            }
+            connection = candidate
+            break
+        }
 
         if (connection.responseCode !in 200..299) {
             connection.disconnect()
@@ -78,6 +96,12 @@ class GtfsArtifactDownloader(
         return GtfsDownloadSession(BoundedGtfsInputStream(connection.inputStream, maxContentLengthBytes), connection)
     }
 
+    private fun requireHttps(url: URL) {
+        if (!url.protocol.equals("https", ignoreCase = true)) {
+            throw GtfsDownloadException("Binario accetta soltanto data pack GTFS su HTTPS")
+        }
+    }
+
     private fun validate(source: RailSourceDefinition, allowBestEffortFallback: Boolean) {
         if (source.accessMode !in setOf(AccessMode.OPEN_DIRECT, AccessMode.PUBLIC_BEST_EFFORT)) {
             throw GtfsDownloadException("La fonte ${source.id.value} non è abilitata al download diretto")
@@ -94,6 +118,16 @@ class GtfsArtifactDownloader(
         if (uri.scheme != "https") {
             throw GtfsDownloadException("Binario accetta soltanto data pack GTFS su HTTPS")
         }
+    }
+
+    private companion object {
+        val REDIRECT_CODES = setOf(
+            HttpURLConnection.HTTP_MOVED_PERM,
+            HttpURLConnection.HTTP_MOVED_TEMP,
+            HttpURLConnection.HTTP_SEE_OTHER,
+            307,
+            308
+        )
     }
 }
 
