@@ -2,11 +2,56 @@ name: Android CI
 
 on:
   pull_request:
+    paths:
+      - "app/**"
+      - "wear/**"
+      - "contracts/wear-snapshot/**"
+      - "gradle/**"
+      - "gradlew"
+      - "gradlew.bat"
+      - "build.gradle.kts"
+      - "settings.gradle.kts"
+      - "gradle.properties"
+      - "PRIVACY.md"
+      - "README.md"
+      - "CHANGELOG.md"
+      - "docs/PIANO_STABILIZZAZIONE_v0.20.4.md"
+      - "tools/verify_android_app_bundles.py"
+      - "tools/verify_android_release_config.py"
+      - "tools/verify_embedded_assets.py"
+      - "tools/verify_gradle_dependency_metadata.py"
+      - "tools/verify_privacy_policy.py"
+      - ".github/workflows/android-ci.yml"
   push:
     branches:
       - main
-      - "stabilization/**"
+    paths:
+      - "app/**"
+      - "wear/**"
+      - "contracts/wear-snapshot/**"
+      - "gradle/**"
+      - "gradlew"
+      - "gradlew.bat"
+      - "build.gradle.kts"
+      - "settings.gradle.kts"
+      - "gradle.properties"
+      - "PRIVACY.md"
+      - "README.md"
+      - "CHANGELOG.md"
+      - "docs/PIANO_STABILIZZAZIONE_v0.20.4.md"
+      - "tools/verify_android_app_bundles.py"
+      - "tools/verify_android_release_config.py"
+      - "tools/verify_embedded_assets.py"
+      - "tools/verify_gradle_dependency_metadata.py"
+      - "tools/verify_privacy_policy.py"
+      - ".github/workflows/android-ci.yml"
   workflow_dispatch:
+    inputs:
+      verify_reproducibility:
+        description: "Esegui due full rebuild e confronta gli AAB unsigned"
+        required: false
+        type: boolean
+        default: false
 
 concurrency:
   group: android-ci-${{ github.event.pull_request.number || github.ref }}
@@ -17,24 +62,29 @@ permissions:
 
 jobs:
   android:
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Validate Gradle wrappers
-        uses: gradle/actions/wrapper-validation@v4
+        uses: gradle/actions/wrapper-validation@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
         with:
           min-wrapper-count: "2"
 
       - name: Java 17
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
         with:
           distribution: temurin
-          java-version: "17"
+          java-version: "17.0.20+101"
           cache: gradle
+
+      - name: Python 3.12.10
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12.10"
 
       - name: Enable Gradle wrapper
         run: chmod +x gradlew
@@ -42,18 +92,51 @@ jobs:
       - name: Verify embedded asset integrity
         run: python3 tools/verify_embedded_assets.py --integrity-only
 
-      # Release candidates must additionally run without --integrity-only.
-      # That command intentionally remains red until every embedded timetable
-      # covers the full release freshness window.
+      - name: Gate embedded GTFS freshness for at least 30 days
+        run: python3 tools/verify_embedded_assets.py --min-valid-days 30
+
+      - name: Verify privacy-policy disclosures
+        run: python3 tools/verify_privacy_policy.py
 
       - name: Verify release-engineering configuration
-        run: python3 tools/verify_android_release_config.py
+        run: |
+          python3 tools/verify_android_release_config.py
+          python3 tools/verify_gradle_dependency_metadata.py
 
       - name: Unit tests, lint, debug and unsigned release builds
         run: >-
-          ./gradlew --no-daemon
+          ./gradlew --no-daemon --dependency-verification=strict
           :app:testDebugUnitTest :wear:testDebugUnitTest
           :app:lintDebug :wear:lintDebug
           :app:assembleDebug :wear:assembleDebug
           :app:assembleRelease :wear:assembleRelease
+          :app:bundleRelease :wear:bundleRelease
           :app:lintVitalRelease :wear:lintVitalRelease
+
+      - name: Verify unsigned Google Play bundles
+        run: python3 tools/verify_android_app_bundles.py
+
+      - name: First reproducibility rebuild
+        if: ${{ (github.event_name == 'workflow_dispatch' && inputs.verify_reproducibility) || (github.event_name == 'pull_request' && startsWith(github.base_ref, 'stabilization/')) }}
+        run: >-
+          ./gradlew --no-daemon --rerun-tasks --dependency-verification=strict
+          :app:bundleRelease :wear:bundleRelease
+
+      - name: Capture reproducibility references
+        if: ${{ (github.event_name == 'workflow_dispatch' && inputs.verify_reproducibility) || (github.event_name == 'pull_request' && startsWith(github.base_ref, 'stabilization/')) }}
+        run: |
+          cp app/build/outputs/bundle/release/app-release.aab "$RUNNER_TEMP/binario-app-reference.aab"
+          cp wear/build/outputs/bundle/release/wear-release.aab "$RUNNER_TEMP/binario-wear-reference.aab"
+
+      - name: Second reproducibility rebuild
+        if: ${{ (github.event_name == 'workflow_dispatch' && inputs.verify_reproducibility) || (github.event_name == 'pull_request' && startsWith(github.base_ref, 'stabilization/')) }}
+        run: >-
+          ./gradlew --no-daemon --rerun-tasks --dependency-verification=strict
+          :app:bundleRelease :wear:bundleRelease
+
+      - name: Verify reproducible Google Play bundles
+        if: ${{ (github.event_name == 'workflow_dispatch' && inputs.verify_reproducibility) || (github.event_name == 'pull_request' && startsWith(github.base_ref, 'stabilization/')) }}
+        run: >-
+          python3 tools/verify_android_app_bundles.py
+          --reference-phone "$RUNNER_TEMP/binario-app-reference.aab"
+          --reference-wear "$RUNNER_TEMP/binario-wear-reference.aab"

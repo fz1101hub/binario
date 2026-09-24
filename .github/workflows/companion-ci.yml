@@ -2,11 +2,30 @@ name: Companion CI
 
 on:
   pull_request:
+    paths:
+      - "companion-expo/**"
+      - "contracts/wear-snapshot/**"
+      - "tools/verify_android_app_bundles.py"
+      - "tests/test_verify_android_app_bundles.py"
+      - "tools/verify_gradle_dependency_metadata.py"
+      - ".github/workflows/companion-ci.yml"
   push:
     branches:
       - main
-      - "stabilization/**"
+    paths:
+      - "companion-expo/**"
+      - "contracts/wear-snapshot/**"
+      - "tools/verify_android_app_bundles.py"
+      - "tests/test_verify_android_app_bundles.py"
+      - "tools/verify_gradle_dependency_metadata.py"
+      - ".github/workflows/companion-ci.yml"
   workflow_dispatch:
+    inputs:
+      verify_reproducibility:
+        description: "Esegui due full rebuild e confronta gli AAB unsigned Companion"
+        required: false
+        type: boolean
+        default: false
 
 concurrency:
   group: companion-ci-${{ github.event.pull_request.number || github.ref }}
@@ -17,37 +36,48 @@ permissions:
 
 jobs:
   companion:
-    runs-on: ubuntu-latest
-    timeout-minutes: 35
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
     defaults:
       run:
         working-directory: companion-expo
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: pnpm
-        uses: pnpm/action-setup@v6
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
         with:
-          version: 10
+          version: 10.34.5
           run_install: false
 
       - name: Node 22
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
-          node-version: "22"
+          node-version: "22.23.2"
           cache: pnpm
           cache-dependency-path: companion-expo/pnpm-lock.yaml
 
+      - name: Python 3.12.10
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12.10"
+
       - name: Install frozen dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Audit high and critical vulnerabilities
+        run: pnpm run verify:dependency-audit
 
       - name: TypeScript
         run: pnpm run check
 
       - name: Unit tests
         run: pnpm test
+
+      - name: Verify privacy disclosures
+        run: python3 ../tools/verify_privacy_policy.py
 
       - name: Verify managed Expo config
         run: pnpm run verify:managed-config
@@ -68,11 +98,48 @@ jobs:
           test -z "$(git status --porcelain -- android)"
 
       - name: Verify release security inputs
-        run: pnpm run verify:release-inputs
+        run: |
+          pnpm run verify:release-inputs
+          python3 ../tools/verify_gradle_dependency_metadata.py --profile companion
 
       - name: Enable Android wrapper
         run: chmod +x android/gradlew
 
       - name: Android companion and Wear lint/build
         working-directory: companion-expo/android
-        run: ./gradlew --no-daemon :app:lintDebug :wear:lintDebug :app:assembleDebug :wear:assembleDebug
+        run: >-
+          ./gradlew --no-daemon --dependency-verification=strict
+          :app:testDebugUnitTest :wear:testDebugUnitTest
+          :app:lintDebug :wear:lintDebug
+          :app:assembleDebug :wear:assembleDebug
+          :app:bundleRelease :wear:bundleRelease
+
+      - name: Verify unsigned Companion App Bundles
+        run: python3 ../tools/verify_android_app_bundles.py --profile companion
+
+      - name: First Companion reproducibility rebuild
+        if: ${{ (github.event_name == 'workflow_dispatch' && inputs.verify_reproducibility) || (github.event_name == 'pull_request' && startsWith(github.base_ref, 'stabilization/')) }}
+        working-directory: companion-expo/android
+        run: >-
+          ./gradlew --no-daemon --rerun-tasks --dependency-verification=strict
+          :app:bundleRelease :wear:bundleRelease
+
+      - name: Capture Companion reproducibility references
+        if: ${{ (github.event_name == 'workflow_dispatch' && inputs.verify_reproducibility) || (github.event_name == 'pull_request' && startsWith(github.base_ref, 'stabilization/')) }}
+        run: |
+          cp android/app/build/outputs/bundle/release/app-release.aab "$RUNNER_TEMP/binario-companion-reference.aab"
+          cp android/wear/build/outputs/bundle/release/wear-release.aab "$RUNNER_TEMP/binario-companion-wear-reference.aab"
+
+      - name: Second Companion reproducibility rebuild
+        if: ${{ (github.event_name == 'workflow_dispatch' && inputs.verify_reproducibility) || (github.event_name == 'pull_request' && startsWith(github.base_ref, 'stabilization/')) }}
+        working-directory: companion-expo/android
+        run: >-
+          ./gradlew --no-daemon --rerun-tasks --dependency-verification=strict
+          :app:bundleRelease :wear:bundleRelease
+
+      - name: Verify reproducible Companion App Bundles
+        if: ${{ (github.event_name == 'workflow_dispatch' && inputs.verify_reproducibility) || (github.event_name == 'pull_request' && startsWith(github.base_ref, 'stabilization/')) }}
+        run: >-
+          python3 ../tools/verify_android_app_bundles.py --profile companion
+          --reference-phone "$RUNNER_TEMP/binario-companion-reference.aab"
+          --reference-wear "$RUNNER_TEMP/binario-companion-wear-reference.aab"

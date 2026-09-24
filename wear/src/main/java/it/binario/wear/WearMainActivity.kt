@@ -9,10 +9,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
@@ -47,25 +48,35 @@ class WearMainActivity : ComponentActivity() {
 private fun WearHome(snapshot: WearSnapshot?, onRefreshPhone: () -> Unit) {
     if (snapshot == null) {
         Column(Modifier.fillMaxSize().padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text("Binario", style = MaterialTheme.typography.titleMedium)
-            Text("Apri Binario sul telefono per sincronizzare la tratta attiva.", style = MaterialTheme.typography.bodyMedium)
-            Button(onClick = onRefreshPhone, modifier = Modifier.fillMaxWidth()) { Text("Aggiorna telefono") }
+            Text(stringResource(R.string.app_name), style = MaterialTheme.typography.titleMedium)
+            Text(stringResource(R.string.empty_snapshot_message), style = MaterialTheme.typography.bodyMedium)
+            Button(onClick = onRefreshPhone, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.refresh_phone)) }
         }
         return
     }
     LazyColumn(Modifier.fillMaxSize().padding(horizontal = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         item { Text(snapshot.routeLabel, style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 10.dp)) }
-        item { Text(snapshot.dataStatusLabel, style = MaterialTheme.typography.labelMedium, modifier = Modifier.semantics { contentDescription = "Stato dato: ${snapshot.dataStatusLabel}" }) }
-        items(snapshot.services, key = { it.number }) { service ->
+        item {
+            val statusDescription = stringResource(R.string.accessibility_data_status, snapshot.dataStatusLabel)
+            Text(snapshot.dataStatusLabel, style = MaterialTheme.typography.labelMedium, modifier = Modifier.semantics { contentDescription = statusDescription })
+        }
+        itemsIndexed(
+            items = snapshot.services,
+            key = { index, service -> "$index-${service.number}-${service.expectedDeparture}-${service.destination}" }
+        ) { _, service ->
             Card(onClick = {}, modifier = Modifier.fillMaxWidth().semantics { contentDescription = service.accessibleLabel }) {
                 Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text("${service.expectedDeparture} · ${service.number}", style = MaterialTheme.typography.titleSmall)
-                    Text("${service.destination} · ${service.status}", style = MaterialTheme.typography.bodyMedium)
-                    Text("${service.operator} · ${service.category}${service.platform?.let { " · Binario $it" } ?: ""}", style = MaterialTheme.typography.labelSmall)
+                    Text(stringResource(R.string.service_time_number, service.expectedDeparture, service.number), style = MaterialTheme.typography.titleSmall)
+                    Text(stringResource(R.string.service_destination_status, service.destination, service.status), style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        service.platform?.let { stringResource(R.string.service_operator_category_platform, service.operator, service.category, it) }
+                            ?: stringResource(R.string.service_operator_category, service.operator, service.category),
+                        style = MaterialTheme.typography.labelSmall
+                    )
                 }
             }
         }
-        item { Button(onClick = onRefreshPhone, modifier = Modifier.fillMaxWidth()) { Text("Aggiorna sul telefono") } }
+        item { Button(onClick = onRefreshPhone, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.refresh_on_phone)) } }
         if (snapshot.notice.isNotBlank()) item { Text(snapshot.notice, style = MaterialTheme.typography.labelSmall) }
     }
 }

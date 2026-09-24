@@ -20,6 +20,7 @@ ASSET_ROOT = ROOT / "app" / "src" / "main" / "assets"
 GTFS_ROOT = ASSET_ROOT / "gtfs"
 STATION_ROOT = ASSET_ROOT / "stations"
 REQUIRED_GTFS_FILES = {"agency.txt", "stops.txt", "routes.txt", "trips.txt", "stop_times.txt"}
+DEFAULT_MIN_VALID_DAYS = 30
 
 
 def sha256(path: Path) -> str:
@@ -204,7 +205,7 @@ def verify_stations(failures: list[str]) -> dict[str, int]:
     return {"station_catalogs": len(catalogs)}
 
 
-def main() -> int:
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--today",
@@ -216,17 +217,22 @@ def main() -> int:
     parser.add_argument(
         "--min-valid-days",
         type=int,
-        default=14,
-        help="Minimum remaining calendar days required for every GTFS pack (default: 14).",
+        default=DEFAULT_MIN_VALID_DAYS,
+        help=f"Minimum remaining calendar days required for every GTFS pack (default: {DEFAULT_MIN_VALID_DAYS}).",
     )
     parser.add_argument(
         "--integrity-only",
         action="store_true",
         help="Validate files, manifests, hashes and dates without failing for stale data. Release gates must omit this flag.",
     )
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
     if args.min_valid_days < 0:
         parser.error("--min-valid-days must be non-negative")
+    return args
+
+
+def main() -> int:
+    args = parse_args()
 
     failures: list[str] = []
     summary = {

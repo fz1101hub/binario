@@ -1,5 +1,6 @@
 package it.binario.app
 
+import it.binario.app.data.RailTime
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
@@ -12,8 +13,8 @@ internal object PlannerDateTime {
 
     fun dateLabel(value: String): String = runCatching { LocalDate.parse(value).format(dateFormatter) }.getOrDefault("Data da scegliere")
     fun timeLabel(value: String): String = runCatching { LocalTime.parse(value).format(timeFormatter) }.getOrDefault("Ora da scegliere")
-    fun dateOrToday(value: String): LocalDate = runCatching { LocalDate.parse(value) }.getOrDefault(LocalDate.now())
-    fun timeOrNow(value: String): LocalTime = runCatching { LocalTime.parse(value) }.getOrDefault(LocalTime.now())
+    fun dateOrToday(value: String): LocalDate = runCatching { LocalDate.parse(value) }.getOrDefault(LocalDate.now(RailTime.defaultZone))
+    fun timeOrNow(value: String): LocalTime = runCatching { LocalTime.parse(value) }.getOrDefault(LocalTime.now(RailTime.defaultZone))
 
     fun isReturnAfterDeparture(
         departureDate: LocalDate,

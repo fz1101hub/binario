@@ -1,8 +1,8 @@
 # Informativa privacy di Binario
 
-**Stato del documento:** fotografia del comportamento implementato nel ramo `stabilization/v0.20.4`, aggiornata il 23 settembre 2026. Questa informativa distingue espressamente il codice attivo dalle funzioni presenti ma non operative. Non descrive funzionalità future.
+**Stato del documento:** fotografia del comportamento implementato nel ramo di integrazione `integration/stabilization-complete-v0204`, aggiornata il 24 settembre 2026. Questa informativa distingue espressamente il codice attivo dalle funzioni presenti ma non operative. Non descrive funzionalità future.
 
-> **Blocco per una distribuzione pubblica.** Il repository non identifica il titolare del trattamento, un recapito per i diritti privacy né un URL pubblico dell'informativa. Prima di una pubblicazione va completata questa sezione e va collegato un URL pubblico verificato nell'app e nei canali di distribuzione. `PRIVACY.md` è il documento sorgente del progetto, non un sostituto di quel collegamento pubblico.
+> **Blocco per una distribuzione pubblica.** Il repository non identifica il titolare del trattamento, un recapito per i diritti privacy, un URL pubblico dell'informativa né la retention operativa di log e backup dell'hosting. Prima di una pubblicazione vanno completati questi elementi e va collegato un URL pubblico verificato nell'app e nei canali di distribuzione. `PRIVACY.md` è il documento sorgente del progetto, non un sostituto di quel collegamento pubblico.
 
 ## Ambito e superfici interessate
 
@@ -57,9 +57,9 @@ Le singole tratte, stazioni preferite, monitoraggi, viaggio attivo e avvisi poss
 
 Il companion Wear OS non interroga da sé fonti ferroviarie: mostra la cache ricevuta dal telefono. Quando la condivisione Wear è attiva nell'app Android, il telefono invia tramite Google Play Services Data Layer l'etichetta della tratta attiva, provider, confidenza, freschezza, istante di ricezione, avviso e fino a due corse con numero, operatore, categoria, destinazione, orario previsto, stato e binario. Non invia credenziali, biglietti, posizione, audio o trascrizioni.
 
-Il watch salva lo snapshot nella propria `SharedPreferences` per app, Tile e complication. Lo stato può essere presentato come scaduto o non disponibile, ma il codice attuale non contiene una cancellazione del Data Item o della cache dell'orologio quando il toggle di condivisione viene disattivato. Per rimuovere con certezza la copia già presente sul watch, l'utente deve cancellare i dati dell'app Wear o disinstallarla. Questo limite è intenzionalmente dichiarato qui e non va interpretato come una revoca con cancellazione automatica.
+Il watch salva lo snapshot nella propria `SharedPreferences` per app, Tile e complication. Quando l'utente disattiva la condivisione, il telefono richiede la cancellazione del Data Item; alla ricezione dell'evento di cancellazione il watch elimina la cache locale e aggiorna Tile e complication in stato non disponibile. Se l'orologio è offline, la propagazione dipende dalla consegna successiva del Data Layer; la cancellazione dei dati dell'app Wear o la disinstallazione rimuovono direttamente la copia locale.
 
-Il manifest Wear dichiara il permesso Internet, ma il codice del modulo Wear corrente non avvia richieste ferroviarie: il refresh è delegato al telefono. La comunicazione con il watch dipende dall'infrastruttura Google Play Services e dalle impostazioni dell'account/dispositivo associato.
+Il manifest Wear **non** dichiara il permesso `INTERNET` e il codice del modulo Wear corrente non avvia richieste ferroviarie: il refresh è delegato al telefono. La comunicazione con il watch dipende dall'infrastruttura Google Play Services e dalle impostazioni dell'account/dispositivo associato.
 
 ## Companion Expo
 
@@ -85,7 +85,7 @@ Alexa Companion è opzionale e non è necessario per Android, Wear o il Companio
 
 L'accesso alla dashboard crea o aggiorna un record utente con identificativo del provider di login (`openId`), nome, email, metodo di accesso, ruolo e date di accesso. Il backend conserva per la dashboard le tratte personali — origine, destinazione, nome, fissaggio e date — e un profilo minimo con identificativo della tratta attiva, direzione, numeri treno monitorati, revisione e date. Il modello esclude espressamente cronologia dei viaggi, posizione, biglietti, snapshot live, audio e credenziali dell'app dal profilo remoto.
 
-Nel collegamento Alexa, il backend conserva l'identificativo Alexa solo come digest HMAC, con date di collegamento, verifica e revoca. I codici OAuth e refresh token sono salvati soltanto come hash; il database conserva anche client ID, redirect URI, scope e date di creazione, consumo, scadenza o revoca. Il codice di autorizzazione scade dopo cinque minuti; il refresh token scade dopo trenta giorni; il token di accesso vocale ha durata dichiarata di un'ora. Scadenza o revoca impediscono l'uso dell'artefatto, ma il codice attuale non implementa una cancellazione automatica delle righe scadute.
+Nel collegamento Alexa, il backend conserva l'identificativo Alexa solo come digest HMAC, con date di collegamento, verifica e revoca. I codici OAuth e refresh token sono salvati soltanto come hash; il database conserva anche client ID, redirect URI, scope, famiglia di rotazione e date di creazione, consumo, scadenza o revoca. Il codice di autorizzazione scade dopo cinque minuti; il refresh token scade dopo trenta giorni; il token di accesso vocale ha durata dichiarata di un'ora. Il riuso di un refresh token già ruotato revoca i discendenti ancora attivi della stessa famiglia e invalida la generazione delle credenziali vocali. Scadenza o revoca impediscono l'uso dell'artefatto, ma il codice attuale non implementa una cancellazione automatica delle righe scadute.
 
 ### Voce, dati inviati da Alexa e risposte
 
@@ -95,11 +95,11 @@ La skill corrente non recupera dati ferroviari live: per richieste di prossimi t
 
 ### Revoca, cancellazione e conservazione
 
-Nella dashboard la funzione **unlink** imposta `revokedAt` sul collegamento Alexa e sui refresh token attivi. Ogni richiesta della skill verifica lo stato del collegamento nel database, perciò un access token già emesso non deve continuare a leggere le tratte dopo la revoca. La revoca non cancella il record di collegamento, il relativo hash, i token revocati, l'utente, le tratte o il profilo. Un nuovo scambio di autorizzazione con consenso ripristina il collegamento.
+Nella dashboard la funzione **unlink** imposta `revokedAt` sul collegamento Alexa e sui refresh token attivi. Ogni richiesta della skill verifica lo stato del collegamento e la generazione delle credenziali nel database, perciò un access token già emesso non deve continuare a leggere le tratte dopo la revoca. La revoca non cancella il record di collegamento, il relativo hash, i token revocati, l'utente, le tratte o il profilo. Un nuovo scambio di autorizzazione con consenso ripristina il collegamento.
 
-L'utente può eliminare le singole tratte dalla dashboard. Il codice non espone una cancellazione completa dell'account, del profilo o di tutti i record OAuth; le chiavi esterne del database prevedono il `cascade` se un utente viene cancellato direttamente dal database, ma questo non equivale a una funzione disponibile all'utente. In assenza di una politica operativa di eliminazione configurata nel repository, i record backend non rimossi restano nel database configurato dal gestore. La sezione iniziale di questa informativa segnala che il recapito del titolare per richieste di accesso o cancellazione è un blocco ancora aperto.
+L'utente può eliminare le singole tratte oppure usare **Elimina account e dati** nella dashboard, confermando con la parola `ELIMINA`. La cancellazione revoca prima gli artefatti OAuth nella stessa transazione, elimina il record utente e, tramite chiavi esterne `ON DELETE CASCADE`, rimuove tratte, preferenze stazione, profilo, dispositivi e codici di pairing, collegamento Alexa, authorization code e refresh token associati. Il cookie di sessione viene cancellato; un cookie residuo emesso prima dell'erasure non ricrea automaticamente l'utente. Un successivo nuovo login OAuth, se il servizio resta disponibile, può creare un nuovo account vuoto.
 
-La sessione della dashboard è un cookie HTTP-only con durata di trenta giorni. Il logout cancella il cookie nel browser, ma non elimina account o dati nel database. I log e le copie di sicurezza dell'infrastruttura del database o dell'hosting non sono definiti da questo repository; il titolare dovrà indicarne periodo e gestore prima della distribuzione pubblica.
+La sessione della dashboard è un cookie HTTP-only con durata di trenta giorni. Il logout cancella il cookie nel browser, ma non elimina account o dati nel database. La cancellazione account riguarda le righe del database operativo controllate dal codice; i log e le copie di sicurezza dell'infrastruttura del database o dell'hosting non sono definiti da questo repository. Il titolare dovrà indicarne periodo, eventuale ciclo di espurgo e gestore prima della distribuzione pubblica. Il recapito del titolare per richieste di accesso, rettifica o cancellazione resta un blocco aperto.
 
 ## Scelte dell'utente e richieste sui dati
 
@@ -111,6 +111,7 @@ La sessione della dashboard è un cookie HTTP-only con durata di trenta giorni. 
 | Rimuovere dati Companion Expo | Usare **Cancella archivio locale** per tratte, itinerari e promemoria; cancellare dati/disinstallare per le altre preferenze e rimuovere separatamente file o eventi esportati. |
 | Interrompere Wear | Disabilitare la condivisione per nuovi invii; per cancellare la copia già ricevuta, cancellare dati o disinstallare l'app Wear. |
 | Scollegare Alexa | Usare **unlink** nella dashboard; ciò revoca il collegamento e i refresh token, senza cancellare i dati descritti sopra. |
+| Eliminare l'account Alexa Companion | Usare **Elimina account e dati** nella dashboard e confermare con `ELIMINA`; il database operativo elimina l'utente e i record figli, mentre retention di log e backup resta da definire dal titolare. |
 | Richiedere accesso, correzione o cancellazione del backend | **Non è configurato un recapito nel repository.** La pubblicazione pubblica resta bloccata finché il titolare non ne indica uno e definisce la procedura. |
 
 ## Sicurezza e limiti di questa informativa
@@ -123,8 +124,8 @@ Ogni modifica del comportamento implementato richiede il riesame di questa infor
 
 Questa informativa è verificabile nelle implementazioni Android [1], Wear [2], Companion Expo [3] e Alexa Companion [4]. Il piano di stabilizzazione registra i limiti che restano bloccanti per la pubblicazione [5].
 
-[1]: https://github.com/fz1101hub/binario/tree/stabilization/v0.20.4/app/src/main/java/it/binario/app "App Android: dati locali, posizione, backup e fonti"
-[2]: https://github.com/fz1101hub/binario/tree/stabilization/v0.20.4/wear/src/main/java/it/binario/wear "Companion Wear OS: snapshot locale"
-[3]: https://github.com/fz1101hub/binario/tree/stabilization/v0.20.4/companion-expo "Companion Expo: dati locali, promemoria e configurazione"
-[4]: https://github.com/fz1101hub/binario/tree/stabilization/v0.20.4/alexa-companion "Alexa Companion: database, OAuth e skill"
+[1]: https://github.com/fz1101hub/binario/tree/integration/stabilization-complete-v0204/app/src/main/java/it/binario/app "App Android: dati locali, posizione, backup e fonti"
+[2]: https://github.com/fz1101hub/binario/tree/integration/stabilization-complete-v0204/wear/src/main/java/it/binario/wear "Companion Wear OS: snapshot locale"
+[3]: https://github.com/fz1101hub/binario/tree/integration/stabilization-complete-v0204/companion-expo "Companion Expo: dati locali, promemoria e configurazione"
+[4]: https://github.com/fz1101hub/binario/tree/integration/stabilization-complete-v0204/alexa-companion "Alexa Companion: database, OAuth e skill"
 [5]: https://github.com/fz1101hub/binario/blob/stabilization/v0.20.4/docs/PIANO_STABILIZZAZIONE_v0.20.4.md "Piano di stabilizzazione Binario v0.20.4"

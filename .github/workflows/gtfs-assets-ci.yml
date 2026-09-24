@@ -1,0 +1,70 @@
+name: GTFS Asset Integrity
+
+on:
+  pull_request:
+    paths:
+      - "app/src/main/assets/**"
+      - "gradle/verification-metadata.xml"
+      - "requirements-ci.txt"
+      - "tools/**"
+      - "tests/**"
+      - ".github/ci-inputs-lock.json"
+      - ".github/workflows/**"
+  push:
+    branches:
+      - main
+    paths:
+      - "app/src/main/assets/**"
+      - "gradle/verification-metadata.xml"
+      - "requirements-ci.txt"
+      - "tools/**"
+      - "tests/**"
+      - ".github/ci-inputs-lock.json"
+      - ".github/workflows/**"
+  workflow_dispatch:
+
+concurrency:
+  group: gtfs-assets-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  gtfs-assets:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Python 3
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12.10"
+
+      - name: Install hash-locked CI policy dependencies
+        run: python3 -m pip install --require-hashes -r requirements-ci.txt
+
+      - name: Offline pipeline tests
+        run: >-
+          python3 -m unittest -v
+          tests/test_verify_android_app_bundles.py
+          tests/test_build_gtfs_packs.py
+          tests/test_verify_gradle_dependency_metadata.py
+          tests/test_install_xcodegen.py
+          tests/test_verify_ci_pinning.py
+          tests/test_requirements_ci.py
+          tests/test_verify_embedded_assets.py
+          tests/test_verify_privacy_policy.py
+
+      - name: Verify immutable CI inputs
+        run: |
+          python3 tools/verify_ci_pinning.py
+          python3 tools/verify_gradle_dependency_metadata.py
+
+      - name: Verify GTFS asset integrity
+        run: python3 tools/build_gtfs_packs.py --check --integrity-only
+
+      - name: Gate GTFS freshness for at least 30 days
+        run: python3 tools/build_gtfs_packs.py --check --min-valid-days 30

@@ -8,7 +8,7 @@
 | Controllo | Esito | Evidenza |
 |---|---|---|
 | Migrazione database | Superato | Presenti `railway_routes`, `alexa_account_links`, `oauth_authorization_codes` e `oauth_refresh_tokens`. |
-| Test unitari | Superato | 18 file, 56 test; 0 failure, 0 error. Coprono sessione, header, guardie token, profilo e tratte, procedure tRPC, OAuth/consenso/revoca, skill e webhook fail-closed. |
+| Test unitari | Superato | 18 file, 57 test; 0 failure, 0 error. Coprono sessione, header, guardie token, profilo e tratte, procedure tRPC, OAuth/consenso/revoca, skill e webhook fail-closed. |
 | Controllo TypeScript | Superato | `pnpm check` completato senza errori. |
 | Build produzione | Superato | `pnpm build` ha generato client e server bundle. |
 | Perimetro template | Superato | Rimossi i moduli senza consumer `dataApi`, `heartbeat`, `imageGeneration`, `llm`, `map`, `voiceTranscription`, `storage` e le dipendenze AWS inutilizzate. |

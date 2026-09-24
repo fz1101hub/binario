@@ -3,13 +3,12 @@ package it.binario.app.widget
 import android.content.Context
 import android.util.Base64
 import androidx.core.content.edit
+import it.binario.app.data.Direction
 import it.binario.app.data.SavedRoute
 import it.binario.app.data.Station
 
 enum class WidgetTargetType(val label: String) {
-    ROUTE("Tratta"),
-    STATION("Stazione"),
-    TRAIN("Treno")
+    ROUTE("Tratta")
 }
 
 /**
@@ -32,6 +31,10 @@ data class WidgetDisplayConfiguration(
         targetType == WidgetTargetType.ROUTE &&
             routeOrigin?.id == route.outwardOrigin.id &&
             routeDestination?.id == route.outwardDestination.id
+
+    /** Applica snapshot/errori solo alla stessa tratta e alla direzione mostrata dall'istanza. */
+    fun matchesRouteDirection(route: SavedRoute, direction: Direction, displayedDirection: Direction?): Boolean =
+        matchesRoute(route) && (displayedDirection ?: Direction.OUTBOUND) == direction
 }
 
 fun WidgetDisplayConfiguration.widgetTitle(fallback: String = targetLabel): String = displayName.trim().ifBlank { fallback }

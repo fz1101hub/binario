@@ -12,24 +12,28 @@ Le feature e le correzioni vivono in branch brevi e descrittivi. Il branch di un
 
 ## Workflow CI obbligatori
 
-I workflow Android e Companion vengono eseguiti per ogni `pull_request` e per ogni `push` su `main` e `stabilization/**`. Questo secondo trigger protegge anche l'ultimo commit effettivamente presente in un ramo principale o di stabilizzazione.
+I workflow verificano i branch di lavoro tramite `pull_request` con filtri per percorso. Il trigger `push` resta soltanto su `main`, così un aggiornamento della PR non avvia due run equivalenti. I filtri includono anche contratti e strumenti condivisi consumati dal rail: per esempio, una modifica a `contracts/wear-snapshot/**` attiva sia Android/Wear sia Companion e Apple Watch. `workflow_dispatch` resta disponibile per un rerun esplicito dopo il ripristino dell'infrastruttura GitHub Actions.
 
 | Gate | Ambito | Criterio di superamento |
 | --- | --- | --- |
 | Validazione Gradle Wrapper | Repository | Tutti i wrapper Gradle tracciati superano `gradle/actions/wrapper-validation`; file eseguibili e JAR non validi bloccano la build. |
+| Input CI revisionati | Repository | GitHub Actions a SHA completo, immagini OCI a digest, runtime patch-pinned, runner in allowlist versionata e download XcodeGen con SHA-256; `tools/verify_ci_pinning.py` blocca riferimenti o trigger mobili/incompleti. |
+| Dipendenze Gradle verificate | Android/Wear e Companion | I lock root e Companion contengono un SHA-256 revisionato per ogni artifact e metadata risolto; il prebuild copia il lock Companion sorgente senza modificarlo, mentre verifier statici e Gradle strict bloccano assenze, alterazioni e trust bypass. |
 | Integrità asset Android | Android | I pacchetti GTFS, `manifest.json`, `SHA256SUMS` e il catalogo stazioni concordano per nomi, hash, struttura e conteggi. |
-| Freschezza asset GTFS | Android | Ogni `lastServiceDate` è almeno 14 giorni oltre la data del gate. Un feed scaduto o troppo vicino alla scadenza richiede refresh, rigenerazione degli hash e revisione prima della release. |
+| Freschezza asset GTFS | Android | Ogni `lastServiceDate` è almeno 30 giorni oltre la data del gate. Il workflow esegue questo controllo senza `--integrity-only`, separatamente dal controllo di integrità. Un feed scaduto o troppo vicino alla scadenza richiede refresh, rigenerazione degli hash e revisione prima della release. |
 | Test, lint e build Android | Android | I test unitari debug, lint debug e assemble debug completano senza errori. |
+| Android App Bundle | Android/Wear | `bundleRelease` produce due AAB separati; il verifier controlla struttura, DEX, CRC, percorsi, limiti, assenza di firma e SHA-256. Dal manifest protobuf compilato verifica anche package, `versionName` e `versionCode`. Prima della firma, due full rebuild con `--rerun-tasks` devono essere byte-identiche. |
 | Companion managed | Companion Expo | Dipendenze congelate, TypeScript, test e verifiche di configurazione/release completano senza errori. |
 | Prebuild companion | Companion Expo | `expo prebuild --platform android --clean --no-install` non modifica `android/`; una seconda esecuzione pulita produce lo stesso albero tracciato. |
+| Android App Bundle Companion | Companion Expo/Wear | Una release identity separata fissa `im.binario.companion`, `versionName` e i due `versionCode`. Il workflow produce due AAB unsigned e il verifier confronta i rispettivi manifest protobuf con tale identità canonica. Il packaging single-worker deve consentire due full rebuild byte-identiche prima della firma. |
 
-I workflow usano azioni con versione esplicita. Ogni aggiornamento di un'azione deve essere trattato come una modifica di dipendenza e rieseguito nella stessa pull request.
+I workflow fissano ogni GitHub Action a un commit SHA completo, ogni immagine di servizio a un digest OCI, ogni runtime installato a una patch revisionata e i runner a una label versionata allowlistata. Gli strumenti scaricati direttamente, come XcodeGen, hanno versione e SHA-256 verificati; ogni modifica della relativa trust chain attiva anche il rail macOS che esegue il binario. Il commento accanto allo SHA conserva la release leggibile; Dependabot propone gli aggiornamenti, ma non esiste auto-merge. Ogni aggiornamento di questi input è una modifica di dipendenza e deve rieseguire i gate nella stessa pull request. `python3 tools/verify_ci_pinning.py` rende la regola fail-closed.
 
 ## Procedura di release
 
 1. Aprire o aggiornare `stabilization/<versione>` dalla revisione approvata di `main`; limitare le modifiche a correzioni di release, gate e documentazione direttamente necessaria.
 2. Per ogni modifica, aprire una pull request verso la linea di stabilizzazione corretta e attendere i gate CI applicabili. Eseguire localmente i comandi dei gate coinvolti prima della revisione.
-3. Prima del tag, verificare gli asset embedded con `python3 tools/verify_embedded_assets.py --min-valid-days 14`. Se un pacchetto GTFS è scaduto o entra nella finestra di 14 giorni, aggiornare l'asset, il manifest e `SHA256SUMS` nella stessa pull request oppure escluderlo in modo sicuro dalla release.
+3. Prima del tag, verificare gli asset embedded con `python3 tools/verify_embedded_assets.py --min-valid-days 30`. Se un pacchetto GTFS è scaduto o entra nella finestra di 30 giorni, aggiornare l'asset, il manifest e `SHA256SUMS` nella stessa pull request oppure escluderlo in modo sicuro dalla release.
 4. Registrare esito, vincoli residui e prove nel changelog e nella documentazione di stabilizzazione della versione. Il tag viene creato soltanto dalla revisione approvata della linea di stabilizzazione, dopo l'esito verde dei gate richiesti.
 5. Dopo la release, riportare su `main` soltanto correzioni e documentazione che devono restare nella linea di sviluppo, tramite pull request separata e revisionata.
 
@@ -40,11 +44,16 @@ I report storici alla radice non vengono spostati automaticamente. I manifest di
 ## Verifiche locali
 
 ```bash
-# Asset Android: integrità, struttura e finestra di validità dei GTFS.
-python3 tools/verify_embedded_assets.py --min-valid-days 14
+# Asset Android: prima integrità e struttura, poi freshness release a 30 giorni.
+python3 tools/verify_embedded_assets.py --integrity-only
+python3 tools/verify_embedded_assets.py --min-valid-days 30
+python3 tools/verify_ci_pinning.py
+python3 tools/verify_gradle_dependency_metadata.py
+python3 tools/verify_gradle_dependency_metadata.py --profile companion
 
 # Android principale (richiede JDK 17 e Android SDK configurato).
-./gradlew --no-daemon testDebugUnitTest lintDebug assembleDebug
+./gradlew --no-daemon --dependency-verification=strict testDebugUnitTest lintDebug assembleDebug bundleRelease
+python3 tools/verify_android_app_bundles.py
 
 # Companion Expo.
 cd companion-expo

@@ -21,13 +21,13 @@ final class PhoneConnectivity: NSObject, ObservableObject, WCSessionDelegate {
     func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: Error?) {
         guard error == nil,
               let encoded = session.receivedApplicationContext["binario_snapshot_json"] as? Data,
-              let snapshot = try? JSONDecoder().decode(BinarioWatchSnapshot.self, from: encoded) else { return }
+              let snapshot = BinarioWatchSnapshot.decodeContract(encoded) else { return }
         Task { @MainActor in self.store.accept(snapshot: snapshot) }
     }
 
     func session(_ session: WCSession, didReceiveApplicationContext applicationContext: [String: Any]) {
         guard let encoded = applicationContext["binario_snapshot_json"] as? Data,
-              let snapshot = try? JSONDecoder().decode(BinarioWatchSnapshot.self, from: encoded) else { return }
+              let snapshot = BinarioWatchSnapshot.decodeContract(encoded) else { return }
         Task { @MainActor in self.store.accept(snapshot: snapshot) }
     }
 }

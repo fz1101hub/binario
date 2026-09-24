@@ -31,7 +31,7 @@ class EmbeddedCuratedRailStationCatalog(
             val id = value.optString("id").trim()
             val name = value.optString("name").trim()
             if (id.isBlank() || name.isBlank()) continue
-            val aliases = value.optJSONArray("aliases").stringValues()
+            val aliases = value.optJSONArray("aliases")?.stringValues().orEmpty()
             val station = Station(
                 id = "curated:$id",
                 name = name,

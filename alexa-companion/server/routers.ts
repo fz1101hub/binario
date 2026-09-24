@@ -1,9 +1,8 @@
 import { COOKIE_NAME } from "@shared/const";
 import { z } from "zod";
 import { getSessionCookieOptions } from "./_core/cookies";
-import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
-import { createPersonalRoute, getAlexaLinkStatus, listPersonalRoutes, removePersonalRoute, revokeAllVoiceCredentialsForUser, setPersonalRoutePinned } from "./db";
+import { createPersonalRoute, deleteUserAccount, getAlexaLinkStatus, listPersonalRoutes, removePersonalRoute, revokeAllVoiceCredentialsForUser, setPersonalRoutePinned } from "./db";
 import { createProfileRouter } from "./profile/router";
 import { isAlexaConfigured } from "./voice/config";
 
@@ -15,17 +14,25 @@ const routeInput = z.object({
 });
 
 export const appRouter = router({
-    // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
-  system: systemRouter,
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
     logout: publicProcedure.mutation(({ ctx }) => {
       const cookieOptions = getSessionCookieOptions(ctx.req);
-      ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
+      ctx.res.clearCookie(COOKIE_NAME, cookieOptions);
       return {
         success: true,
       } as const;
     }),
+  }),
+  account: router({
+    delete: protectedProcedure
+      .input(z.object({ confirmation: z.literal("ELIMINA") }))
+      .mutation(async ({ ctx }) => {
+        const deleted = await deleteUserAccount(ctx.user.id);
+        if (!deleted) throw new Error("Account non trovato durante la cancellazione");
+        ctx.res.clearCookie(COOKIE_NAME, getSessionCookieOptions(ctx.req));
+        return { success: true } as const;
+      }),
   }),
   routes: router({
     list: protectedProcedure.query(({ ctx }) => listPersonalRoutes(ctx.user.id)),

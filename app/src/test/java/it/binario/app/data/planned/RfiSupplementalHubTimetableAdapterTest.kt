@@ -10,8 +10,12 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneOffset
+import java.util.concurrent.Executors
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -86,6 +90,47 @@ class RfiSupplementalHubTimetableAdapterTest {
     }
 
     @Test
+    fun `supplemental cache remains within its configured bound`() = runBlocking {
+        val adapter = RfiSupplementalHubTimetableAdapter(
+            fetcher = RfiProgrammedTimetableFetcher { fixture() },
+            clock = clock,
+            cacheMaxEntries = 2
+        )
+        val origin = Station("curated:reggio", "Reggio Calabria Centrale", "Reggio Calabria")
+        val destination = Station("curated:roma", "Roma Termini", "Roma")
+
+        repeat(3) { index ->
+            adapter.loadRoute(
+                SavedRoute("rc-roma-$index", "Reggio–Roma", origin, destination),
+                Direction.OUTBOUND,
+                JourneyQuery(LocalDate.of(2026, 9, 4), LocalTime.of(7, 0))
+            )
+        }
+
+        assertEquals(2, adapter.cachedTimetableCountForTest())
+    }
+
+    @Test
+    fun `supplemental fetch cancellation is propagated`() {
+        val adapter = RfiSupplementalHubTimetableAdapter(
+            fetcher = RfiProgrammedTimetableFetcher { throw CancellationException("cancelled") },
+            clock = clock
+        )
+        val origin = Station("curated:reggio", "Reggio Calabria Centrale", "Reggio Calabria")
+        val destination = Station("curated:roma", "Roma Termini", "Roma")
+
+        assertThrows(CancellationException::class.java) {
+            runBlocking {
+                adapter.loadRoute(
+                    SavedRoute("rc-roma", "Reggio–Roma", origin, destination),
+                    Direction.OUTBOUND,
+                    JourneyQuery(LocalDate.of(2026, 9, 4), LocalTime.of(7, 0))
+                )
+            }
+        }
+    }
+
+    @Test
     fun `reverse direction explains that only departures from the mapped hub are available`() = runBlocking {
         var calls = 0
         val adapter = RfiSupplementalHubTimetableAdapter(
@@ -104,6 +149,41 @@ class RfiSupplementalHubTimetableAdapterTest {
         assertTrue(result is DataResult.Failure)
         assertTrue((result as DataResult.Failure).message.contains("partenze dall’hub Reggio Calabria Centrale"))
         assertEquals(0, calls)
+    }
+
+    @Test
+    fun `supplemental fetch and parsing use configured background dispatchers`() = runBlocking {
+        val ioDispatcher = Executors.newSingleThreadExecutor { runnable -> Thread(runnable, "rfi-supplemental-io") }.asCoroutineDispatcher()
+        val cpuDispatcher = Executors.newSingleThreadExecutor { runnable -> Thread(runnable, "rfi-supplemental-cpu") }.asCoroutineDispatcher()
+        var fetchThread: String? = null
+        var parsingThread: String? = null
+        val adapter = RfiSupplementalHubTimetableAdapter(
+            fetcher = RfiProgrammedTimetableFetcher {
+                fetchThread = Thread.currentThread().name
+                fixture()
+            },
+            clock = clock,
+            ioDispatcher = ioDispatcher,
+            parsingDispatcher = cpuDispatcher,
+            onParsing = { parsingThread = Thread.currentThread().name }
+        )
+        val origin = Station("curated:reggio", "Reggio Calabria Centrale", "Reggio Calabria")
+        val destination = Station("curated:roma", "Roma Termini", "Roma")
+
+        try {
+            val result = adapter.loadRoute(
+                SavedRoute("rc-roma", "Reggio–Roma", origin, destination),
+                Direction.OUTBOUND,
+                JourneyQuery(LocalDate.of(2026, 9, 4), LocalTime.of(7, 0))
+            )
+
+            assertTrue(result is DataResult.Success)
+            assertTrue(fetchThread.orEmpty().startsWith("rfi-supplemental-io"))
+            assertTrue(parsingThread.orEmpty().startsWith("rfi-supplemental-cpu"))
+        } finally {
+            ioDispatcher.close()
+            cpuDispatcher.close()
+        }
     }
 
     private fun fixture(): String = """

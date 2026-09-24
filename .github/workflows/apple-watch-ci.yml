@@ -1,0 +1,109 @@
+name: Apple Watch CI
+
+on:
+  pull_request:
+    paths:
+      - "apple-watch/**"
+      - "contracts/wear-snapshot/**"
+      - "tools/install_xcodegen.py"
+      - "tools/verify_ci_pinning.py"
+      - "tests/test_install_xcodegen.py"
+      - "tests/test_verify_apple_watch_project.py"
+      - "tests/test_verify_ci_pinning.py"
+      - "tests/test_requirements_ci.py"
+      - "requirements-ci.txt"
+      - ".github/ci-inputs-lock.json"
+      - ".github/workflows/apple-watch-ci.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "apple-watch/**"
+      - "contracts/wear-snapshot/**"
+      - "tools/install_xcodegen.py"
+      - "tools/verify_ci_pinning.py"
+      - "tests/test_install_xcodegen.py"
+      - "tests/test_verify_apple_watch_project.py"
+      - "tests/test_verify_ci_pinning.py"
+      - "tests/test_requirements_ci.py"
+      - "requirements-ci.txt"
+      - ".github/ci-inputs-lock.json"
+      - ".github/workflows/apple-watch-ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: apple-watch-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  watchos:
+    runs-on: macos-15
+    timeout-minutes: 30
+    env:
+      XCODE_VERSION: "16.4"
+      XCODE_BUILD: "16F6"
+      XCODEGEN_VERSION: "2.46.0"
+      XCODEGEN_URL: "https://github.com/yonaskolb/XcodeGen/releases/download/2.46.0/xcodegen.zip"
+      XCODEGEN_SHA256: "4d9e34b62172d645eed6457cac13fc222569974098ef4ee9c3368bedf0196806"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Python 3.12.10
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12.10"
+      - name: Verify CI trust chain
+        run: |
+          python3 -m pip install --require-hashes -r requirements-ci.txt
+          python3 -m unittest -v tests/test_install_xcodegen.py tests/test_verify_apple_watch_project.py tests/test_verify_ci_pinning.py tests/test_requirements_ci.py
+          python3 tools/verify_ci_pinning.py
+      - name: Select pinned Xcode
+        run: |
+          sudo xcode-select --switch "/Applications/Xcode_${XCODE_VERSION}.app/Contents/Developer"
+          test "$(xcodebuild -version | sed -n '1p')" = "Xcode $XCODE_VERSION"
+          test "$(xcodebuild -version | sed -n '2p')" = "Build version $XCODE_BUILD"
+      - name: Install XcodeGen
+        run: |
+          destination="$RUNNER_TEMP/xcodegen-bin/xcodegen"
+          python3 "$GITHUB_WORKSPACE/tools/install_xcodegen.py" \
+            --version "$XCODEGEN_VERSION" \
+            --url "$XCODEGEN_URL" \
+            --sha256 "$XCODEGEN_SHA256" \
+            --destination "$destination"
+          echo "$(dirname "$destination")" >> "$GITHUB_PATH"
+          "$destination" --version
+      - name: Generate Xcode project
+        working-directory: apple-watch
+        run: xcodegen generate
+      - name: Select an available watchOS simulator
+        id: simulator
+        run: |
+          xcrun simctl list devices available -j > "$RUNNER_TEMP/simulators.json"
+          cat > "$RUNNER_TEMP/select_watch.py" <<'PY'
+          import json
+          import os
+
+          with open(os.environ["RUNNER_TEMP"] + "/simulators.json", encoding="utf-8") as source:
+              devices = json.load(source)["devices"]
+          for runtime, candidates in devices.items():
+              if "watchOS" not in runtime:
+                  continue
+              for device in candidates:
+                  if device.get("isAvailable"):
+                      with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+                          output.write(f"udid={device['udid']}\n")
+                      raise SystemExit(0)
+          raise SystemExit("Nessun simulatore watchOS disponibile")
+          PY
+          python3 "$RUNNER_TEMP/select_watch.py"
+      - name: Build and test Apple Watch
+        working-directory: apple-watch
+        run: |
+          xcodebuild \
+            -project BinarioWatch.xcodeproj \
+            -scheme BinarioWatch \
+            -destination "id=${{ steps.simulator.outputs.udid }}" \
+            CODE_SIGNING_ALLOWED=NO \
+            test

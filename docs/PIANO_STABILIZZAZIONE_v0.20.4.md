@@ -1,5 +1,7 @@
 # Piano di stabilizzazione Binario v0.20.4 — versione aggiornata
 
+> **Stato del documento:** baseline di pianificazione conservata per tracciabilità. Le tabelle operative più avanti descrivono lo stato al momento della stesura e non sono un registro corrente. Per avanzamento effettivo, gate eseguiti e sole decisioni residue fare riferimento a [`STATO_STABILIZZAZIONE_2026-09-23.md`](STATO_STABILIZZAZIONE_2026-09-23.md) e alla PR di integrazione [#26](https://github.com/fz1101hub/binario/pull/26).
+
 **Base**: *Piano completo di stabilizzazione di Binario* (Manus AI, 23/09/2026, 263 righe), integrato con l'addendum dell'audit indipendente (`docs/audit-independent-2026-09-23-addendum.md`, commit `0a39754`).
 **Baseline del codice**: `0b8f3c98487d24171053f318a86e538618218edb` (tag locale `audit-baseline-2026-09-23`).
 **Branch di lavoro**: `stabilization/v0.20.4`, creato da `0a39754` (stesso codice di `0b8f3c9` + rapporti di audit).
@@ -126,7 +128,7 @@ Il triage completo è in `docs/architecture/TRIAGE_FUNZIONI_WEBDEV_NON_ALEXA_202
 2. **PR-ANDROID-VOICE-REVIEW**: portare dal prototipo web gli esiti `confirmed`/`needs-review`/`unresolved` e i candidati di stazione, mantenendo il riconoscitore di sistema Android e senza upload audio.
 3. **PR-DATA-CATALOG-QA**: gate di build per unicità ID/codici, coordinate, alias, conteggio/checksum e tie-break deterministico nella prossimità.
 4. **PR-COMPANION-SYNC** — solo dopo decisione prodotto: creare `services/companion-sync/` con pairing, token hash, revoca, consenso per device, privacy export/delete e route-sync limitato; `app/` usa Keystore e operazioni pull/push esplicite. Non usare Alexa o il Data Layer Wear come backend universale.
-5. **PR-SURFACES-ARCHIVE**: archiviare lo snapshot dopo aver marcato ogni capacità come portata, rifiutata o preservata; soltanto allora rimuovere `surfaces/`.
+5. **PR-SURFACES-ARCHIVE — completata**: capacità marcate come portate, differite, rifiutate o preservate; snapshot salvato in `archive/surfaces-20260923` al commit `37a408d662374aa1c8f9765b20c9f2fd90e5b81f`, poi rimosso dalla linea attiva.
 
 ## 10. Ordine delle pull request **[MODIFICATO]**
 
@@ -193,7 +195,7 @@ Le PR 0–5 sono parallelizzabili per area; il merge rispetta l'ordine quando un
 | PR-DATA-0 (pack scaduti) | in attesa dei feed aggiornati dalle sorgenti (bloccate dal proxy di questo ambiente) | §4.1 |
 | PR-COMP-1/2 (bridge nativi, shared-text, reminder, itinerari, Agenda, route, timer, checksum) | **fatto e integrato** (merge `903754d`); verificato in locale (tsc con `tests/`, 52 test, config e release-inputs, prebuild idempotente); Companion CI in esecuzione | `e51cd4f`…`9701515` |
 | CI GitHub Actions | sbloccata dal proprietario il 23/09; run #194/#1 falliti senza step erano dovuti al blocco dell'account | run `35809228873`, `35809230083` |
-| Gerarchia prodotto e sorgente Alexa | **deciso**: `app/` principale, `alexa-companion/` companion canonico, snapshot WebDev storico | ADR-0001 |
+| Gerarchia prodotto e sorgente Alexa | **deciso**: `app/` principale, `alexa-companion/` companion canonico, snapshot WebDev archiviato e rimosso dalla linea attiva | ADR-0001; `archive/surfaces-20260923` |
 | Triage funzioni WebDev non-Alexa | **completato**: capacità assegnate a `app/`, `companion-expo/`, futuro `services/companion-sync/` oppure archivio | `TRIAGE_FUNZIONI_WEBDEV_NON_ALEXA_2026-09-23.md` |
 | PR-DATA-CATALOG-QA | **avviata**: input finiti, coordinate invalide, tie-break italiano, unicità ID/codici e range coordinate; test Gradle in attesa di SDK/CI | `StationProximity*`, `EmbeddedCuratedRailStationCatalogTest` |
 | Correzioni successive | riprese limitatamente alla separazione architetturale e ai porting a basso rischio; il resto segue l'ordine di §10 | §10 |
@@ -236,7 +238,7 @@ Identificativi dal rapporto `docs/audit-independent-2026-09-23.md` (V, C, F, D, 
 | Teorici: `openService` senza direzione esplicita, cache `var` adapter | PR-ANDROID-UX / PR-DATA-3 | — | da fare |
 | D-5 migrazione 0002 orfana | PR-DB-1 | G1 | fatto (`0439be5`) |
 | Debito: MainActivity/TrainViewModel, stringhe, contratti snapshot | §9 / §5.3 | — | P2 (test contrattuali companion ora reali: `e51cd4f`) |
-| IG-1 `surfaces/` e albero web canonico | ADR-0001 + PR-CI-GOV | G6 | decisione chiusa; triage e archiviazione da fare |
+| IG-1 `surfaces/` e albero web canonico | ADR-0001 + PR-SURFACES-ARCHIVE | G6 | **fatto**: triage completo, archivio remoto al commit `37a408d6`, 1.412 file/120 MB rimossi dalla linea attiva |
 | IG-2 `main` stale, tag assenti | PR-CI-GOV | G6 | tag baseline in locale; resto da fare |
 | IG-3 `SHA256SUMS` stale, nessuna verifica | PR-DATA-1 | G2 | fatto (`58982c2`, `2c5aaf5`) |
 | IG-4 CI: trigger push, wrapper validation, prebuild clean | PR-ALEXA-OPS (workflow companion fatto `d0bca14`) + PR-CI-GOV | G6 | parziale |

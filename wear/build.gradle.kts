@@ -29,7 +29,8 @@ android {
     namespace = "it.binario.wear"
     compileSdk = 36
     defaultConfig {
-        applicationId = "it.binario.app.wear"
+        // Phone and watch must share package name and signing identity for the Wear Data Layer.
+        applicationId = "it.binario.app"
         minSdk = 30
         targetSdk = 36
         versionCode = binarioVersionCode
@@ -61,21 +62,36 @@ android {
             }
         }
     }
+
+    lint {
+        abortOnError = true
+        warningsAsErrors = true
+        checkReleaseBuilds = true
+    }
+
+    sourceSets {
+        getByName("test").resources.srcDir(rootProject.file("contracts/wear-snapshot/v1"))
+    }
 }
 
 dependencies {
+    // Pinned until the project moves to AGP 9.1 and compileSdk 37; newer releases fail AAR metadata checks.
+    //noinspection GradleDependency
     implementation(platform("androidx.compose:compose-bom:2026.06.01"))
+    //noinspection GradleDependency
     implementation("androidx.core:core-ktx:1.15.0")
     implementation("androidx.activity:activity-compose:1.13.0")
+    //noinspection GradleDependency
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")
     implementation("androidx.wear.compose:compose-material3:1.6.2")
     implementation("androidx.wear.compose:compose-foundation:1.6.2")
     implementation("androidx.wear.compose:compose-ui-tooling:1.6.2")
     implementation("androidx.wear.tiles:tiles:1.6.2")
     implementation("androidx.wear.protolayout:protolayout:1.4.2")
-    implementation("androidx.wear.watchface:watchface-complications-data-source-ktx:1.2.1")
+    implementation("androidx.wear.watchface:watchface-complications-data-source-ktx:1.3.0")
     implementation("com.google.android.gms:play-services-wearable:20.0.1")
-    implementation("androidx.concurrent:concurrent-futures:1.2.0")
+    implementation("androidx.concurrent:concurrent-futures:1.3.0")
     debugImplementation("androidx.compose.ui:ui-tooling")
     testImplementation("junit:junit:4.13.2")
+    testImplementation("org.json:json:20240303")
 }

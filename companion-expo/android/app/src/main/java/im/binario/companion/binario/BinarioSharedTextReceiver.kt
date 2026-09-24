@@ -53,7 +53,7 @@ class BinarioSharedTextReceiverModule(private val context: ReactApplicationConte
   @ReactMethod fun removeListeners(count: Int) = Unit
 }
 
-@Suppress("DEPRECATION")
+@Suppress("DEPRECATION", "OVERRIDE_DEPRECATION")
 class BinarioSharedTextReceiverPackage : ReactPackage {
   override fun createNativeModules(reactContext: ReactApplicationContext): List<NativeModule> = listOf(BinarioSharedTextReceiverModule(reactContext))
   override fun createViewManagers(reactContext: ReactApplicationContext): List<ViewManager<*, *>> = emptyList()

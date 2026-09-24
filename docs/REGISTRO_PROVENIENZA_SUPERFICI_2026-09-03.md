@@ -1,6 +1,6 @@
 # Binario — registro di provenienza delle superfici
 
-> **Documento storico.** La decisione corrente è in `docs/architecture/ADR-0001-APP-PRINCIPALE-E-COMPANION-ALEXA.md`: `app/` è il prodotto principale, `alexa-companion/` è il companion Alexa canonico e il vecchio progetto WebDev resta uno snapshot non canonico da triagiare.
+> **Documento storico.** La decisione corrente è in `docs/architecture/ADR-0001-APP-PRINCIPALE-E-COMPANION-ALEXA.md`: `app/` è il prodotto principale, `alexa-companion/` è il companion Alexa canonico e i vecchi snapshot sono stati triagiati, preservati in `archive/surfaces-20260923` al commit `37a408d662374aa1c8f9765b20c9f2fd90e5b81f`, quindi rimossi dalla linea attiva.
 
 ## Regola di lettura
 
@@ -23,4 +23,4 @@ La baseline Expo locale v0.1.1 rimane la linea da preservare. Nessuna versione s
 
 ## Stato attuale
 
-La baseline Expo locale **v0.1.1** risulta **parziale ma preservata su Git**, con tutti i 35 file sorgente/documentazione locali confrontati tramite SHA-256 e l’APK locale versionato. Le linee Android/Wear e Apple Watch del repository esistente sono **sorgenti storiche separate** e non partecipano al recupero. Il Voice Bridge web è **sorgente corrente WebDev**, mentre la disponibilità della Skill Alexa in servizi esterni resta un controllo distinto e non può essere dedotta dal codice.
+La baseline Expo locale **v0.1.1** risulta **parziale ma preservata su Git**, con tutti i 35 file sorgente/documentazione locali confrontati tramite SHA-256 e l'APK locale versionato. Le linee Android/Wear, Apple Watch e WebDev storiche restano consultabili nel branch archivio indicato sopra e non partecipano al runtime corrente. La disponibilità della Skill Alexa in servizi esterni resta un controllo distinto e non può essere dedotta dal codice.

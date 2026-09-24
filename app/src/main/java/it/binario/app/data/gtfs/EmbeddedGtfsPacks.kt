@@ -29,17 +29,15 @@ data class EmbeddedGtfsPack(
 object EmbeddedGtfsPacks {
     val all = listOf(
         EmbeddedGtfsPack(SourceId("alto-adige-sta-gtfs"), "gtfs/alto-adige-sta-gtfs.zip", LocalDate.of(2026, 12, 12)),
-        EmbeddedGtfsPack(SourceId("amt-genova-casella-gtfs"), "gtfs/amt-genova-casella-gtfs.zip", LocalDate.of(2026, 10, 2)),
         EmbeddedGtfsPack(SourceId("arst-gtfs"), "gtfs/arst-gtfs.zip", LocalDate.of(2026, 12, 31)),
         EmbeddedGtfsPack(SourceId("ch-otd-gtfs"), "gtfs/ch-otd-gtfs.zip", LocalDate.of(2026, 12, 12)),
-        EmbeddedGtfsPack(SourceId("cotral-ferro-gtfs"), "gtfs/cotral-ferro-gtfs.zip", LocalDate.of(2026, 9, 6)),
         EmbeddedGtfsPack(SourceId("eav-gtfs"), "gtfs/eav-gtfs.zip", LocalDate.of(2027, 5, 13)),
         EmbeddedGtfsPack(SourceId("hzpp-gtfs"), "gtfs/hzpp-gtfs.zip", LocalDate.of(2026, 12, 13)),
         EmbeddedGtfsPack(SourceId("lombardia-trenord-gtfs"), "gtfs/lombardia-trenord-gtfs.zip", LocalDate.of(2026, 12, 12)),
         EmbeddedGtfsPack(SourceId("oebb-gtfs"), "gtfs/oebb-gtfs.zip", LocalDate.of(2026, 12, 12)),
-        EmbeddedGtfsPack(SourceId("sncf-gtfs"), "gtfs/sncf-gtfs.zip", LocalDate.of(2027, 1, 31)),
-        EmbeddedGtfsPack(SourceId("toscana-tft-gtfs"), "gtfs/toscana-tft-gtfs.zip", LocalDate.of(2026, 9, 14)),
-        EmbeddedGtfsPack(SourceId("trentino-gtfs"), "gtfs/trentino-extraurban-gtfs.zip", LocalDate.of(2026, 9, 9))
+        EmbeddedGtfsPack(SourceId("sncf-gtfs"), "gtfs/sncf-gtfs.zip", LocalDate.of(2026, 12, 12)),
+        EmbeddedGtfsPack(SourceId("toscana-tft-gtfs"), "gtfs/toscana-tft-gtfs.zip", LocalDate.of(2026, 12, 12)),
+        EmbeddedGtfsPack(SourceId("trentino-gtfs"), "gtfs/trentino-extraurban-gtfs.zip", LocalDate.of(2027, 6, 25))
     )
 
     val sourceIds: Set<SourceId> = all.mapTo(linkedSetOf()) { it.sourceId }

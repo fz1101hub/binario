@@ -31,7 +31,7 @@ class BinarioTileService : TileService() {
         ).setClickable(
           ModifiersBuilders.Clickable.Builder().setId("binario-voice-request").setOnClick(
             ActionBuilders.LaunchAction.Builder().setAndroidActivity(
-              ActionBuilders.AndroidActivity.Builder().setPackageName("im.binario.companion.wear").setClassName(BinarioVoiceRequestActivity::class.java.name).build()
+              ActionBuilders.AndroidActivity.Builder().setPackageName("im.binario.companion").setClassName(BinarioVoiceRequestActivity::class.java.name).build()
             ).build()
           ).build()
         ).build())
@@ -43,7 +43,7 @@ class BinarioTileService : TileService() {
         ).setClickable(
           ModifiersBuilders.Clickable.Builder().setId("binario-open-checklist").setOnClick(
             ActionBuilders.LaunchAction.Builder().setAndroidActivity(
-              ActionBuilders.AndroidActivity.Builder().setPackageName("im.binario.companion.wear").setClassName(BinarioChecklistRequestActivity::class.java.name).build()
+              ActionBuilders.AndroidActivity.Builder().setPackageName("im.binario.companion").setClassName(BinarioChecklistRequestActivity::class.java.name).build()
             ).build()
           ).build()
         ).build())

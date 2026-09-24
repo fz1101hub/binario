@@ -59,7 +59,7 @@ export type ExplicitLocalJourneyRecurrence = { weekdays: LocalJourneyWeekday[]; 
 export const maxExplicitLocalJourneyOccurrences = 8;
 
 function text(value: string, max: number) {
-  return value.trim().replace(/\s+/g, " ").slice(0, max);
+  return value.trim().replace(/\s+/g, " ").slice(0, max).trim();
 }
 
 function isDate(value: string) {

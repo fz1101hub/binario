@@ -16,6 +16,7 @@ import it.binario.app.data.Freshness
 import it.binario.app.data.JourneyQuery
 import it.binario.app.data.RouteSnapshot
 import it.binario.app.data.RouteSnapshotCache
+import it.binario.app.data.RailTime
 import it.binario.app.data.SavedRoute
 import it.binario.app.data.SavedRouteOrdering
 import it.binario.app.data.Station
@@ -36,6 +37,8 @@ import it.binario.app.widget.WidgetStateStore
 import it.binario.app.wear.WearSnapshotPublisher
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import java.util.UUID
 import java.util.Locale
@@ -55,7 +58,14 @@ data class RecentRoute(val origin: Station, val destination: Station) {
 
 data class ServiceMonitor(val number: String, val label: String)
 
-class TrainViewModel(application: Application) : AndroidViewModel(application) {
+class TrainViewModel(
+    application: Application,
+    /** Widget configuration needs local catalog/search only, never startup refresh or Wear publication. */
+    private val enableStartupEffects: Boolean = true
+) : AndroidViewModel(application) {
+    private companion object {
+        const val STATION_SUGGESTION_DEBOUNCE_MILLIS = 180L
+    }
     private val routeStore = RouteStore(application)
     private val cache = RouteSnapshotCache(application)
     private val integrationStore = IntegrationSettingsStore(application)
@@ -72,11 +82,8 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
 
     var stations by mutableStateOf(customStationStore.stations())
         private set
-    private var stationAutocomplete by mutableStateOf(StationAutocompleteEngine(stations))
-
-    /** Immutable, pre-normalized index consumed by the lightweight autocomplete UI. */
-    val stationAutocompleteEngine: StationAutocompleteEngine
-        get() = stationAutocomplete
+    @Volatile
+    private var stationAutocomplete = StationAutocompleteEngine(stations)
 
     var favouriteStations by mutableStateOf(stationPreferences.favourites(stations))
         private set
@@ -140,8 +147,6 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
         private set
     var activeTrip by mutableStateOf(personalTravelStore.activeTrip())
         private set
-    var widgetSurface by mutableStateOf(personalTravelStore.widgetSurface())
-        private set
     var mobilityPreferences by mutableStateOf(mobilityPreferencesStore.read())
         private set
 
@@ -151,7 +156,7 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
     private var visibleReturnServices by mutableStateOf<List<TrainService>>(emptyList())
     private var availableOperatorNames by mutableStateOf<List<String>>(emptyList())
 
-    private var journeyQuery: JourneyQuery = JourneyQuery.now()
+    private val journeyQueryState = JourneyQueryState()
     private var returnJourneyQuery: JourneyQuery? = null
     /** Monotonic token: only the newest current-direction refresh may mutate UI/cache/surfaces. */
     private var refreshRequestId: Long = 0L
@@ -161,6 +166,20 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
     private var stationBoardRequestId: Long = 0L
 
     init {
+        if (enableStartupEffects) {
+            if (!integrationSettings.wearSnapshotSharingEnabled) {
+                WearSnapshotPublisher.persistRevocationIntent(getApplication())
+            }
+            viewModelScope.launch {
+                if (integrationSettings.wearSnapshotSharingEnabled) {
+                    if (WearSnapshotPublisher.enable(getApplication()) && !integrationSettings.wearSnapshotSharingEnabled) {
+                        WearSnapshotPublisher.clear(getApplication())
+                    }
+                } else {
+                    WearSnapshotPublisher.clear(getApplication())
+                }
+            }
+        }
         // The curated catalog is local and authoritative for station identity.
         // Bootstrap refresh starts only after this load has had a chance to canonicalize
         // the saved route, avoiding an initial request against stale/legacy station data.
@@ -198,7 +217,7 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
 
                 // If no user-driven refresh started while the catalog was loading, perform
                 // the one bootstrap refresh now (also when the catalog load failed/was empty).
-                if (refreshRequestId == 0L && hasActiveRoute) refresh()
+                if (enableStartupEffects && refreshRequestId == 0L && hasActiveRoute) refresh()
             }
         }
     }
@@ -220,9 +239,44 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun plannerDestinationText(): String = activeRoute.takeIf { hasActiveRoute }?.outwardDestination?.name.orEmpty()
 
-    /** Compatibility facade; callers that do not need app state can use [StationAutocompleteEngine] directly. */
-    fun searchStations(query: String): List<Station> = stationAutocomplete.suggest(query)
-        .ifEmpty { listOfNotNull(stationFromFreeText(query)) }
+    /**
+     * Risultati dell'autocomplete, separati per campo. Compose osserva soltanto questa
+     * mappa: l'indice locale non viene interrogato durante il render.
+     */
+    var stationSuggestionResults by mutableStateOf<Map<String, List<Station>>>(emptyMap())
+        private set
+    private val stationSuggestionJobs = mutableMapOf<String, Job>()
+    private val stationSuggestionRequestIds = mutableMapOf<String, Long>()
+
+    fun stationSuggestions(fieldKey: String): List<Station> = stationSuggestionResults[fieldKey].orEmpty()
+
+    /** Debounce e ricerca locale fuori dal thread/render Compose; un input successivo annulla il precedente. */
+    fun updateStationSuggestions(fieldKey: String, query: String) {
+        stationSuggestionJobs.remove(fieldKey)?.cancel()
+        val requestId = (stationSuggestionRequestIds[fieldKey] ?: 0L) + 1L
+        stationSuggestionRequestIds[fieldKey] = requestId
+        stationSuggestionResults = stationSuggestionResults - fieldKey
+        if (query.trim().length < 2) return
+        val autocomplete = stationAutocomplete
+
+        stationSuggestionJobs[fieldKey] = viewModelScope.launch(Dispatchers.Default) {
+            delay(STATION_SUGGESTION_DEBOUNCE_MILLIS)
+            val suggestions = autocomplete.suggest(query)
+                .ifEmpty { listOfNotNull(stationFromFreeText(query)) }
+            withContext(Dispatchers.Main) {
+                if (stationSuggestionRequestIds[fieldKey] == requestId) {
+                    stationSuggestionResults = stationSuggestionResults + (fieldKey to suggestions)
+                    stationSuggestionJobs.remove(fieldKey)
+                }
+            }
+        }
+    }
+
+    fun clearStationSuggestions(fieldKey: String) {
+        stationSuggestionJobs.remove(fieldKey)?.cancel()
+        stationSuggestionRequestIds[fieldKey] = (stationSuggestionRequestIds[fieldKey] ?: 0L) + 1L
+        stationSuggestionResults = stationSuggestionResults - fieldKey
+    }
 
     fun stationFromName(name: String): Station? {
         return stationAutocomplete.findExact(name) ?: stationFromFreeText(name)
@@ -309,10 +363,13 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
         stationMonitors = personalTravelStore.replaceStationMonitors(monitors, stations)
     }
 
-    fun activateRoute(route: SavedRoute) {
+    fun activateRoute(route: SavedRoute, selectedDirection: Direction = direction) {
         clearReturnJourneyState()
+        journeyQueryState.resetForRouteActivation()
         activeRoute = route
         routeStore.saveActiveRoute(route.id)
+        direction = selectedDirection
+        routeStore.saveDirection(selectedDirection)
         clearSelectedService()
         primarySnapshot = null
         rebuildServicePresentations()
@@ -323,8 +380,8 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
     fun searchRoute(
         origin: Station,
         destination: Station,
-        serviceDate: LocalDate = LocalDate.now(),
-        departureTime: LocalTime = LocalTime.now().withSecond(0).withNano(0)
+        serviceDate: LocalDate = LocalDate.now(RailTime.defaultZone),
+        departureTime: LocalTime = LocalTime.now(RailTime.defaultZone).withSecond(0).withNano(0)
     ): Boolean {
         val rememberedOrigin = rememberStation(canonicalStation(origin))
         val rememberedDestination = rememberStation(canonicalStation(destination))
@@ -344,7 +401,7 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
             outwardDestination = rememberedDestination
         )
         direction = Direction.OUTBOUND
-        journeyQuery = JourneyQuery(serviceDate, departureTime)
+        journeyQueryState.selectPlanned(serviceDate, departureTime)
         routeStore.saveDirection(direction)
         recentRoutes = routeStore.recordRecent(rememberedOrigin, rememberedDestination, stations)
         clearSelectedService()
@@ -378,6 +435,8 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun switchDirection() {
         clearReturnJourneyState()
+        // È ancora la stessa consultazione: una ricerca pianificata deve poter
+        // mostrare anche la direzione opposta alla data/ora scelta dall'utente.
         direction = if (direction == Direction.OUTBOUND) Direction.RETURN else Direction.OUTBOUND
         routeStore.saveDirection(direction)
         clearSelectedService()
@@ -442,6 +501,7 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
         routeStore.saveActiveRoute(route.id)
         direction = Direction.OUTBOUND
         routeStore.saveDirection(direction)
+        journeyQueryState.resetForRouteActivation()
         clearSelectedService()
         primarySnapshot = null
         rebuildServicePresentations()
@@ -474,6 +534,7 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
         routeStore.saveRoutes(savedRoutes)
         if (activeRoute.id == route.id) {
             clearReturnJourneyState()
+            journeyQueryState.resetForRouteActivation()
             activeRoute = savedRoutes.firstOrNull() ?: unconfiguredRoute()
             if (hasActiveRoute) routeStore.saveActiveRoute(activeRoute.id) else routeStore.clearActiveRoute()
             clearSelectedService()
@@ -486,6 +547,7 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
                 rebuildServicePresentations()
                 refreshState = RefreshState.IDLE
                 refreshMessage = "Inserisci una tratta per iniziare la consultazione."
+                revokeWearSnapshot()
             }
         }
     }
@@ -510,7 +572,7 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
         refreshMessage = null
         val routeAtRequest = activeRoute
         val directionAtRequest = direction
-        val queryAtRequest = journeyQuery
+        val queryAtRequest = journeyQueryState.value
         val requestId = ++refreshRequestId
         viewModelScope.launch {
             val result = dataSource.loadRoute(routeAtRequest, directionAtRequest, queryAtRequest)
@@ -525,20 +587,42 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
                     RouteWidgetProvider.saveSnapshotForMatchingRoutes(getApplication(), result.snapshot)
                     RouteWidgetProvider.refreshAll(getApplication())
                     if (integrationSettings.wearSnapshotSharingEnabled) {
-                        WearSnapshotPublisher.publish(getApplication(), result.snapshot)
+                        if (WearSnapshotPublisher.enable(getApplication())) {
+                            if (
+                                integrationSettings.wearSnapshotSharingEnabled &&
+                                hasActiveRoute &&
+                                requestId == refreshRequestId &&
+                                activeRoute.id == routeAtRequest.id
+                            ) {
+                                WearSnapshotPublisher.publish(getApplication(), result.snapshot)
+                            } else if (!integrationSettings.wearSnapshotSharingEnabled || !hasActiveRoute) {
+                                WearSnapshotPublisher.clear(getApplication())
+                            }
+                        }
                     }
                     refreshState = RefreshState.SUCCESS
                     refreshMessage = result.snapshot.notice
                 }
                 is DataResult.Failure -> {
-                    RouteWidgetProvider.markMatchingRoutesUnavailable(getApplication(), result.message)
+                    RouteWidgetProvider.markMatchingRouteDirectionUnavailable(getApplication(), routeAtRequest, directionAtRequest, result.message)
                     RouteWidgetProvider.refreshAll(getApplication())
                     if (integrationSettings.wearSnapshotSharingEnabled) {
-                        WearSnapshotPublisher.publishUnavailable(
-                            getApplication(),
-                            routeAtRequest.displayName(directionAtRequest),
-                            primarySnapshot?.providerName ?: cache.lastProvider()
-                        )
+                        if (WearSnapshotPublisher.enable(getApplication())) {
+                            if (
+                                integrationSettings.wearSnapshotSharingEnabled &&
+                                hasActiveRoute &&
+                                requestId == refreshRequestId &&
+                                activeRoute.id == routeAtRequest.id
+                            ) {
+                                WearSnapshotPublisher.publishUnavailable(
+                                    getApplication(),
+                                    routeAtRequest.displayName(directionAtRequest),
+                                    primarySnapshot?.providerName ?: cache.lastProvider()
+                                )
+                            } else if (!integrationSettings.wearSnapshotSharingEnabled || !hasActiveRoute) {
+                                WearSnapshotPublisher.clear(getApplication())
+                            }
+                        }
                     }
                     refreshState = RefreshState.ERROR
                     refreshMessage = result.message
@@ -727,12 +811,6 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
         activeTrip = null
     }
 
-    fun selectWidgetSurface(surface: WidgetSurface) {
-        widgetSurface = surface
-        personalTravelStore.saveWidgetSurface(surface)
-        RouteWidgetProvider.refreshAll(getApplication())
-    }
-
     fun updateMobilityPreferences(value: MobilityPreferences) {
         mobilityPreferences = value
         mobilityPreferencesStore.save(value)
@@ -745,12 +823,15 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
             monitoredServices = monitoredServices,
             stationMonitors = stationMonitors,
             commuterAlerts = commuterAlerts,
-            mobilityPreferences = mobilityPreferences,
-            widgetSurface = widgetSurface
+            mobilityPreferences = mobilityPreferences
         )
     )
 
-    fun importLocalBackup(raw: String): String = when (val result = LocalDataBackupCodec.decode(raw, stations)) {
+    fun decodeLocalBackup(raw: String): LocalBackupResult = LocalDataBackupCodec.decode(raw, stations)
+
+    fun importLocalBackup(raw: String): String = importLocalBackup(decodeLocalBackup(raw))
+
+    fun importLocalBackup(result: LocalBackupResult): String = when (result) {
         is LocalBackupResult.Failure -> result.message
         is LocalBackupResult.Success -> {
             clearReturnJourneyState()
@@ -766,24 +847,41 @@ class TrainViewModel(application: Application) : AndroidViewModel(application) {
             replaceServiceMonitors(backup.monitoredServices)
             replaceStationMonitors(backup.stationMonitors)
             commuterAlerts = commuterAlertStore.replace(backup.commuterAlerts)
+            CommuterAlertScheduler.rescheduleAll(getApplication())
             updateMobilityPreferences(backup.mobilityPreferences)
-            selectWidgetSurface(backup.widgetSurface)
             if (hasActiveRoute) refresh() else {
                 refreshRequestId += 1
                 primarySnapshot = null
                 refreshState = RefreshState.IDLE
                 refreshMessage = "Backup importato senza una tratta salvata. Inseriscine una quando vuoi."
+                revokeWearSnapshot()
             }
             "Backup importato localmente: ${savedRoutes.size} tratte, ${stationMonitors.size} stazioni monitorate e ${commuterAlerts.size} avvisi."
         }
     }
 
     fun setWearSnapshotSharing(enabled: Boolean) {
+        if (!enabled) WearSnapshotPublisher.persistRevocationIntent(getApplication())
         integrationSettings = integrationSettings.copy(wearSnapshotSharingEnabled = enabled)
         integrationStore.save(integrationSettings)
-        if (enabled) primarySnapshot?.let { latest ->
-            viewModelScope.launch { WearSnapshotPublisher.publish(getApplication(), latest) }
+        if (enabled) {
+            viewModelScope.launch {
+                if (WearSnapshotPublisher.enable(getApplication())) {
+                    if (integrationSettings.wearSnapshotSharingEnabled) {
+                        primarySnapshot?.let { WearSnapshotPublisher.publish(getApplication(), it) }
+                    } else {
+                        WearSnapshotPublisher.clear(getApplication())
+                    }
+                }
+            }
+        } else {
+            revokeWearSnapshot()
         }
+    }
+
+    private fun revokeWearSnapshot() {
+        WearSnapshotPublisher.persistRevocationIntent(getApplication())
+        viewModelScope.launch { WearSnapshotPublisher.clear(getApplication()) }
     }
 
     fun setVoiceProfileSyncRequested(enabled: Boolean) {

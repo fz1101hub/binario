@@ -1,8 +1,0 @@
-{"file": "amt-genova-casella-gtfs.zip", "bytes": 9447675, "agencies": ["AMT Genova"], "route_types": {"1": 1, "2": 1, "3": 149, "6": 10, "7": 3}, "rail_routes": 1}
-{"file": "cotral-ferro-gtfs.zip", "bytes": 90765, "agencies": ["Cotral"], "route_types": {"2": 3}, "rail_routes": 3}
-{"file": "hzpp-gtfs.zip", "bytes": 2778927, "agencies": ["HŽ Putnicki prijevoz"], "route_types": {"2": 136, "3": 5}, "rail_routes": 136}
-{"file": "sncf-gtfs.zip", "bytes": 4767257, "agencies": ["SNCF VOYAGEURS", "SNCF Voyageurs SA", "SNCF Voyageurs EA", "SNCF Voyageurs LO", "TMR SA"], "route_types": {"0": 4, "2": 594, "3": 130}, "rail_routes": 594}
-{"file": "arst-gtfs.zip", "bytes": 20000592, "agencies": ["ARST SpA - Trasporti Regionali Della Sardegna"], "route_types": {"0": 3, "2": 4, "3": 315}, "rail_routes": 4}
-{"file": "lombardia-trenord-gtfs.zip", "bytes": 1660043, "agencies": ["Trenord"], "route_types": {"2": 60, "3": 3}, "rail_routes": 60}
-{"file": "toscana-tft-gtfs.zip", "bytes": 19150, "agencies": ["T.F.T. S.p.A."], "route_types": {"3": 2}, "rail_routes": 0}
-{"file": "trentino-urban-gtfs.zip", "bytes": 800645, "agencies": ["Trentino trasporti S.p.A."], "route_types": {"3": 40, "5": 1}, "rail_routes": 0}

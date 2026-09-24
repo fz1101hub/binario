@@ -22,7 +22,7 @@ struct BinarioTimelineProvider: TimelineProvider {
 }
 
 struct BinarioWatchWidget: Widget {
-    let kind = "BinarioWatchWidget"
+    let kind = BinarioWatchWidgetConfiguration.kind
 
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: BinarioTimelineProvider()) { entry in

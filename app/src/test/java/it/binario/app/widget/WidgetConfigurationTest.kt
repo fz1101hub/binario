@@ -5,6 +5,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import it.binario.app.data.Direction
 import it.binario.app.data.SavedRoute
 import it.binario.app.data.Station
 
@@ -89,5 +90,22 @@ class WidgetConfigurationTest {
         val different = SavedRoute("saved-1", "Altro", origin, Station("manual:spoleto", "Spoleto", "Spoleto", "Ricerca libera"))
 
         assertFalse(configuration.matchesRoute(different))
+    }
+
+    @Test
+    fun `snapshot is accepted only for the displayed route direction`() {
+        val origin = Station("roma", "Roma Termini", "Roma")
+        val destination = Station("napoli", "Napoli Centrale", "Napoli")
+        val configuration = WidgetDisplayConfiguration(
+            WidgetTargetType.ROUTE,
+            "route:${origin.id}:${destination.id}",
+            "${origin.name} → ${destination.name}",
+            routeOrigin = origin,
+            routeDestination = destination
+        )
+        val route = configuration.routeTarget()!!
+
+        assertTrue(configuration.matchesRouteDirection(route, Direction.RETURN, Direction.RETURN))
+        assertFalse(configuration.matchesRouteDirection(route, Direction.OUTBOUND, Direction.RETURN))
     }
 }

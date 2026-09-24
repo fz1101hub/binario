@@ -24,6 +24,18 @@ def main() -> int:
     )
     if "BINARIO_RELEASE_" in properties:
         raise AssertionError("gradle.properties must not contain release-signing inputs")
+    parsed_properties = {
+        key.strip(): value.strip()
+        for line in properties.splitlines()
+        if "=" in line and not line.lstrip().startswith("#")
+        for key, value in [line.split("=", 1)]
+    }
+    app_version_code = int(parsed_properties["BINARIO_APP_VERSION_CODE"])
+    wear_version_code = int(parsed_properties["BINARIO_WEAR_VERSION_CODE"])
+    if not (0 < app_version_code <= 2_100_000_000 and 0 < wear_version_code <= 2_100_000_000):
+        raise AssertionError("phone and Wear versionCode values must be positive Play-compatible integers")
+    if app_version_code == wear_version_code:
+        raise AssertionError("phone and Wear versionCode values must remain distinct")
 
     for module, version_code_property in (
         ("app", "BINARIO_APP_VERSION_CODE"),
@@ -39,6 +51,14 @@ def main() -> int:
             '"proguard-rules.pro"',
         )
 
+    require("app/build.gradle.kts", 'applicationId = "it.binario.app"')
+    require("wear/build.gradle.kts", 'applicationId = "it.binario.app"')
+    require(
+        "wear/src/main/AndroidManifest.xml",
+        'android:name="android.hardware.type.watch" android:required="true"',
+        'android:name="com.google.android.wearable.standalone" android:value="false"',
+    )
+
     require(
         "app/proguard-rules.pro",
         "com.google.transit.realtime",
@@ -48,9 +68,19 @@ def main() -> int:
     )
     require("wear/proguard-rules.pro", "com.google.android.gms.wearable")
     require(
+        "gradle/verification-metadata.xml",
+        "<verify-metadata>true</verify-metadata>",
+        '<sha256 value="',
+    )
+    require(
         ".github/workflows/android-ci.yml",
+        "tools/verify_gradle_dependency_metadata.py",
+        "tools/verify_android_app_bundles.py",
+        "--dependency-verification=strict",
         ":app:assembleRelease",
         ":wear:assembleRelease",
+        ":app:bundleRelease",
+        ":wear:bundleRelease",
         ":app:lintVitalRelease",
         ":wear:lintVitalRelease",
     )
@@ -61,6 +91,6 @@ def main() -> int:
 if __name__ == "__main__":
     try:
         raise SystemExit(main())
-    except (AssertionError, OSError) as error:
+    except (AssertionError, KeyError, OSError, ValueError) as error:
         print(f"Android release configuration: FAIL: {error}", file=sys.stderr)
         raise SystemExit(1)

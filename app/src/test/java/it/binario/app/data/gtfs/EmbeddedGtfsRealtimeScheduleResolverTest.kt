@@ -75,10 +75,44 @@ class EmbeddedGtfsRealtimeScheduleResolverTest {
         assertEquals("01:10", resolved?.scheduledAt?.toLocalTime()?.toString()?.take(5))
     }
 
+    @Test
+    fun `interpreta il gap DST dalla mezzanotte GTFS noon minus twelve hours`() {
+        val resolved = resolveDstStop(LocalDate.of(2026, 3, 29))
+
+        assertNotNull(resolved)
+        assertEquals(Instant.parse("2026-03-29T00:30:00Z"), resolved?.scheduledAt?.toInstant())
+        assertEquals("01:30", resolved?.scheduledAt?.toLocalTime()?.toString()?.take(5))
+    }
+
+    @Test
+    fun `interpreta l'overlap DST dalla mezzanotte GTFS noon minus twelve hours`() {
+        val resolved = resolveDstStop(LocalDate.of(2026, 10, 25))
+
+        assertNotNull(resolved)
+        assertEquals(Instant.parse("2026-10-25T01:30:00Z"), resolved?.scheduledAt?.toInstant())
+        assertEquals("+01:00", resolved?.scheduledAt?.offset?.toString())
+    }
+
+    private fun resolveDstStop(serviceDate: LocalDate): ResolvedScheduledStop? {
+        val resolver = EmbeddedGtfsRealtimeScheduleResolver(
+            openAsset = { ByteArrayInputStream(feed()) },
+            packs = listOf(pack)
+        )
+        val update = RealtimeStopUpdate(
+            runId = TrainRunId("lombardia-trenord-gtfs:D1"),
+            sourceTripId = "D1",
+            sourceStopId = "MI",
+            stopSequence = 1,
+            observedAt = observedAt,
+            source = source
+        )
+        return resolver.resolve(sourceId, update, serviceDate, ZoneId.of("Europe/Rome"))
+    }
+
     private fun feed(): ByteArray {
         val content = mapOf(
             "stops.txt" to "stop_id,stop_name\nMI,Milano Centrale\nMO,Monza\nCO,Como S. Giovanni\n",
-            "stop_times.txt" to "trip_id,arrival_time,departure_time,stop_id,stop_sequence\nT1,08:05:00,08:05:00,MI,1\nT1,08:22:00,08:23:00,MO,2\nT1,08:50:00,08:50:00,CO,3\nN1,25:10:00,25:10:00,CO,1\n"
+            "stop_times.txt" to "trip_id,arrival_time,departure_time,stop_id,stop_sequence\nT1,08:05:00,08:05:00,MI,1\nT1,08:22:00,08:23:00,MO,2\nT1,08:50:00,08:50:00,CO,3\nN1,25:10:00,25:10:00,CO,1\nD1,02:30:00,02:30:00,MI,1\n"
         )
         val output = ByteArrayOutputStream()
         ZipOutputStream(output).use { zip ->

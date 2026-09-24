@@ -13,6 +13,7 @@ import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
+import it.binario.app.data.RailTime
 import it.binario.app.data.TrainService
 import it.binario.app.data.TrainStop
 import java.time.Instant
@@ -40,11 +41,22 @@ object StopAlarmPlanner {
         station: String,
         expectedTime: String,
         nowEpochMillis: Long = System.currentTimeMillis(),
-        zoneId: ZoneId = ZoneId.systemDefault()
+        zoneId: ZoneId = RailTime.defaultZone
     ): StopAlarmPlan? {
         val time = runCatching { LocalTime.parse(expectedTime, timeFormatter) }.getOrNull() ?: return null
         val now = Instant.ofEpochMilli(nowEpochMillis).atZone(zoneId)
-        val expected = LocalDateTime.of(LocalDate.now(zoneId), time).atZone(zoneId).toInstant().toEpochMilli()
+        val todayExpected = LocalDateTime.of(now.toLocalDate(), time).atZone(zoneId).toInstant().toEpochMilli()
+        // Timetables only expose a clock time. A small early-morning time while it is late at
+        // night is therefore the next service day, not an already-passed daytime stop.
+        val expected = if (
+            todayExpected <= nowEpochMillis &&
+            now.toLocalTime() >= LocalTime.of(18, 0) &&
+            time < LocalTime.of(6, 0)
+        ) {
+            LocalDateTime.of(now.toLocalDate().plusDays(1), time).atZone(zoneId).toInstant().toEpochMilli()
+        } else {
+            todayExpected
+        }
         if (expected <= nowEpochMillis) return null
         val trigger = maxOf(nowEpochMillis + 1_000L, expected - LEAD_MINUTES * 60_000L)
         return StopAlarmPlan(trainNumber, destination, station, expectedTime, trigger)
@@ -62,7 +74,7 @@ object StopAlarmScheduler {
     private const val EXTRA_STATION = "station"
     private const val EXTRA_EXPECTED = "expected"
 
-    fun schedule(context: Context, plan: StopAlarmPlan) {
+    fun schedule(context: Context, plan: StopAlarmPlan): DeviceAlarmScheduleResult {
         val intent = Intent(context, StopAlarmReceiver::class.java).apply {
             action = ACTION_STOP_ALARM
             putExtra(EXTRA_TRAIN, plan.trainNumber)
@@ -77,7 +89,7 @@ object StopAlarmScheduler {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         val alarmManager = context.getSystemService(AlarmManager::class.java)
-        alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, plan.triggerAtEpochMillis, pendingIntent)
+        return scheduleWakeupAlarm(context, alarmManager, plan.triggerAtEpochMillis, pendingIntent)
     }
 
     fun notify(context: Context, train: String, destination: String, station: String, expected: String) {
@@ -85,22 +97,21 @@ object StopAlarmScheduler {
             ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
         ) return
         val manager = context.getSystemService(NotificationManager::class.java)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            manager.createNotificationChannel(
-                NotificationChannel(
-                    CHANNEL_ID,
-                    "Sveglie fermata Binario",
-                    NotificationManager.IMPORTANCE_HIGH
-                ).apply { description = "Avvisi locali per le fermate ferroviarie impostate nell’app." }
-            )
-        }
+        manager.createNotificationChannel(
+            NotificationChannel(
+                CHANNEL_ID,
+                context.getString(R.string.stop_alarm_channel_name),
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply { description = context.getString(R.string.stop_alarm_channel_description) }
+        )
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_binario)
-            .setContentTitle("Fermata in arrivo: $station")
-            .setContentText("Treno $train verso $destination. Orario previsto $expected.")
-            .setStyle(NotificationCompat.BigTextStyle().bigText("Treno $train verso $destination: la fermata $station è prevista alle $expected. Controlla sempre monitor e annunci ufficiali."))
+            .setContentTitle(context.getString(R.string.stop_alarm_notification_title, station))
+            .setContentText(context.getString(R.string.stop_alarm_notification_text, train, destination, expected))
+            .setStyle(NotificationCompat.BigTextStyle().bigText(context.getString(R.string.stop_alarm_notification_big_text, train, destination, station, expected)))
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
+            .setContentIntent(contentIntent(context, train, station, expected))
             .build()
         NotificationManagerCompat.from(context).notify("$train-$station-$expected".hashCode(), notification)
     }
@@ -109,6 +120,15 @@ object StopAlarmScheduler {
     internal fun destinationExtra(intent: Intent) = intent.getStringExtra(EXTRA_DESTINATION).orEmpty()
     internal fun stationExtra(intent: Intent) = intent.getStringExtra(EXTRA_STATION).orEmpty()
     internal fun expectedExtra(intent: Intent) = intent.getStringExtra(EXTRA_EXPECTED).orEmpty()
+
+    private fun contentIntent(context: Context, train: String, station: String, expected: String): PendingIntent = PendingIntent.getActivity(
+        context,
+        "$train-$station-$expected".hashCode(),
+        Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+        },
+        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+    )
 }
 
 class StopAlarmReceiver : BroadcastReceiver() {

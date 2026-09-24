@@ -35,6 +35,7 @@ android {
         targetSdk = 36
         versionCode = binarioVersionCode
         versionName = binarioVersionName
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         // Public/operator best-effort pages are an explicit personal-build opt-in.
         // Enable only with -PBINARIO_PERSONAL_REALTIME_SOURCES=true.
@@ -89,9 +90,14 @@ android {
 
     lint {
         abortOnError = true
+        warningsAsErrors = true
         checkReleaseBuilds = true
         checkDependencies = true
         disable += "GradleDependency"
+    }
+
+    sourceSets {
+        getByName("test").resources.srcDir(rootProject.file("contracts/wear-snapshot/v1"))
     }
 }
 
@@ -113,6 +119,17 @@ dependencies {
     implementation("androidx.compose.material:material-icons-extended")
     debugImplementation("androidx.compose.ui:ui-tooling")
     testImplementation("junit:junit:4.13.2")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")
     // Android supplies org.json at runtime; this artifact is only the JVM unit-test implementation.
     testImplementation("org.json:json:20240303")
+    androidTestImplementation(platform("androidx.compose:compose-bom:2026.06.01"))
+    androidTestImplementation("androidx.compose.ui:ui-test-junit4")
+    androidTestImplementation("androidx.test.ext:junit:1.2.1")
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
+}
+
+// Reproduction profile for the large embedded-GTFS regression. The property
+// limits the forked JUnit VM, not only the Gradle daemon.
+tasks.withType<org.gradle.api.tasks.testing.Test>().configureEach {
+    providers.gradleProperty("BINARIO_TEST_MAX_HEAP").orNull?.let { maxHeapSize = it }
 }

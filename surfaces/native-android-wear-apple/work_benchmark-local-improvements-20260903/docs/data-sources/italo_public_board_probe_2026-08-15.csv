@@ -1,8 +1,0 @@
-station_id,slug,outcome,http_status,latency_ms,empty_board,title,checked_at_utc
-roma-termini,roma-termini,PASS,200,3220,true,"Treni Italo, Tabelloni partenze e arrivi stazione Roma Termini - Italo",2026-08-15T00:38:08.138291+00:00
-roma-tiburtina,roma-tiburtina,PASS,200,2634,true,"Treni Italo, Tabelloni partenze e arrivi stazione Roma Tiburtina - Italo",2026-08-15T00:38:10.778878+00:00
-napoli-centrale,napoli-centrale,PASS,200,2677,true,"Treni Italo, Tabelloni partenze e arrivi stazione Napoli Cle - Italo",2026-08-15T00:38:13.462163+00:00
-firenze-smn,firenze-santa-maria-novella,PASS,200,3319,true,"Treni Italo, Tabelloni partenze e arrivi stazione Firenze SMN - Italo",2026-08-15T00:38:16.786635+00:00
-milano-centrale,milano-centrale,PASS,200,3751,true,"Treni Italo, Tabelloni partenze e arrivi stazione Milano - Italo",2026-08-15T00:38:20.542418+00:00
-torino-pn,torino-porta-nuova,PASS,200,2722,true,"Treni Italo, Tabelloni partenze e arrivi stazione Torino PNuova - Italo",2026-08-15T00:38:23.269227+00:00
-venezia-sl,venezia-santa-lucia,PASS,200,2961,true,"Treni Italo, Tabelloni partenze e arrivi stazione Venezia SLucia - Italo",2026-08-15T00:38:26.235036+00:00

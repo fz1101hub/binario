@@ -10,8 +10,83 @@ La build release non richiede né cerca chiavi nel repository. In assenza della 
 
 ```sh
 ./gradlew --no-daemon :app:assembleRelease :wear:assembleRelease \
-  :app:lintVitalRelease :wear:lintVitalRelease
+  :app:bundleRelease :wear:bundleRelease \
+  :app:lintVitalRelease :wear:lintVitalRelease \
+  --dependency-verification=strict
+python3 tools/verify_android_app_bundles.py
 ```
+
+## Artifact per Google Play
+
+Google Play richiede Android App Bundle (AAB) per le nuove app. Un bundle è un formato di pubblicazione dal quale Play genera APK ottimizzati; non sostituisce un APK installabile direttamente.[2] Il gate produce `app-release.aab` e `wear-release.aab` separati, poi verifica ZIP, DEX, CRC, percorsi, duplicati, limiti dimensionali e SHA-256. Il manifest protobuf compilato viene letto direttamente: package, `versionName` e `versionCode` devono coincidere con la configurazione release canonica. Gli artifact restano unsigned finché non vengono fornite le credenziali di firma.
+
+Il modulo Wear usa lo stesso package dell'app telefono, dichiara `android.hardware.type.watch` e `standalone=false`, ma conserva un proprio `versionCode`. Google indica che l'app Wear viene caricata e aggiornata separatamente e raccomanda codici versione indipendenti tra form factor.[3] La scelta del track Play, la firma e l'upload restano azioni proprietarie esterne a questo gate.
+
+### AAB del Companion separato
+
+`companion-expo/` non sostituisce l'app smartphone principale. Mantiene una propria identità release in `native/android/release-identity.json`: telefono e Wear Companion condividono `im.binario.companion` e `versionName`, ma usano `versionCode` distinti. Il prebuild applica questa identità sia alla configurazione Expo sia al modulo Wear generato. Il workflow Companion produce i due AAB unsigned e verifica il loro manifest compilato con un profilo dedicato:
+
+```sh
+cd companion-expo
+CI=1 pnpm exec expo prebuild --platform android --clean --no-install
+cd android
+./gradlew --no-daemon --dependency-verification=strict \
+  :app:bundleRelease :wear:bundleRelease
+cd ../..
+python3 tools/verify_android_app_bundles.py --profile companion
+```
+
+Il gate blocca una divergenza fra il file canonico, il progetto generato e gli AAB effettivi. Il prebuild fissa inoltre `org.gradle.parallel=false` e `org.gradle.workers.max=1`: senza questa serializzazione, il contenuto dell'AAB telefono era identico ma l'ordine dei member ZIP poteva cambiare. Con il packaging single-worker, la prova completa precedente aveva prodotto 50.988.125 byte e SHA-256 `29ee0716464decf69cae7961c50f8e4b141a5079a58cd5149cb6f271a84104e0` per il telefono Companion. Dopo la correzione accessibilità Wear, due nuove full rebuild del modulo Wear hanno prodotto un AAB byte-identico da 4.309.214 byte e SHA-256 `3611c8218ca27dcb5868ac558269b979af6a27d8248c9319c376cd359063698a`. Prima della firma finale va comunque rieseguito il gate congiunto sui due artifact dell'esatto SHA candidato. Firma e distribuzione restano separate da quelle dell'app principale.
+
+## Prova di riproducibilità degli AAB
+
+Prima della firma, due build complete devono produrre artifact byte-identici. Entrambe le esecuzioni devono usare `--rerun-tasks`: confrontare una full rebuild con un output incrementale precedente non prova la riproducibilità della stessa procedura. Il verifier rifiuta anche firme JAR inattese, così il confronto riguarda gli artifact unsigned prodotti dal codice revisionato.
+
+```sh
+./gradlew --no-daemon --rerun-tasks --dependency-verification=strict \
+  :app:bundleRelease :wear:bundleRelease
+cp app/build/outputs/bundle/release/app-release.aab /tmp/binario-app-reference.aab
+cp wear/build/outputs/bundle/release/wear-release.aab /tmp/binario-wear-reference.aab
+
+./gradlew --no-daemon --rerun-tasks --dependency-verification=strict \
+  :app:bundleRelease :wear:bundleRelease
+python3 tools/verify_android_app_bundles.py \
+  --reference-phone /tmp/binario-app-reference.aab \
+  --reference-wear /tmp/binario-wear-reference.aab
+```
+
+Nella validazione post-audit del 24 settembre 2026, due full rebuild locali da 98 task ciascuna sono risultate byte-identiche. Il telefono produce 18.495.638 byte con SHA-256 `1ed739459f9cdd3065426a5e28f6dda253adb88bccb72a71823c2de188e2569a`; Wear produce 3.894.315 byte con SHA-256 `f319c81cbaace5aa9bee584371e2e1f90df54d844130a14243de59743b107064`.
+
+Questa è una **prova esplicita riferita allo SHA eseguito**, non un costo imposto a ogni pull request. I rail ordinari costruiscono e verificano struttura/identità di un solo set di AAB. Una pull request verso `stabilization/*` attiva invece automaticamente quattro step aggiuntivi: ciascun rail esegue due ulteriori `bundleRelease --rerun-tasks`, conserva il primo set in `RUNNER_TEMP` e passa entrambi i riferimenti al verifier. Lo stesso percorso può essere richiesto manualmente con l'input booleano `verify_reproducibility`, una volta che la versione del workflow che dichiara l'input è disponibile sul default branch GitHub.
+
+| Trigger | Build AAB | Evidenza prodotta |
+|---|---:|---|
+| Pull request ordinaria o push su `main` | 1 set | Struttura, identità, limiti e assenza di firma inattesa |
+| Pull request verso `stabilization/*` | 1 set ordinario + 2 full rebuild | Stessi controlli più confronto byte-per-byte telefono/Wear |
+| Dispatch con `verify_reproducibility=false` | 1 set | Equivalente al rail ordinario |
+| Dispatch con `verify_reproducibility=true` | 1 set ordinario + 2 full rebuild | Equivalente al gate automatico della PR release |
+
+```sh
+gh workflow run android-ci.yml \
+  --repo fz1101hub/binario \
+  --ref integration/stabilization-complete-v0204 \
+  -f verify_reproducibility=true
+
+gh workflow run companion-ci.yml \
+  --repo fz1101hub/binario \
+  --ref integration/stabilization-complete-v0204 \
+  -f verify_reproducibility=true
+```
+
+Una run è evidenza soltanto se GitHub assegna realmente il runner ed espone checkout, step di build, confronto finale e log. Uno stato `failure` senza step non dimostra né riproducibilità né non-riproducibilità.
+
+Il verifier CI controlla che i quattro step restino limitati a una PR `stabilization/*` o a un dispatch esplicito e rifiuta `continue-on-error`, directory inattese, uno dei due rebuild mancante o reference non passati. Il verifier AAB richiede inoltre che i riferimenti telefono e Wear siano forniti come coppia e respinge un bundle usato come proprio riferimento.
+
+## Verifica delle dipendenze Gradle
+
+`gradle/verification-metadata.xml` fissa con SHA-256 gli artifact, i metadati Maven e i plugin risolti dall'intero gate Android/Wear. Gradle abilita automaticamente la dependency verification quando trova questo file; la CI passa inoltre `--dependency-verification=strict` in modo esplicito.[1] `tools/verify_gradle_dependency_metadata.py` rifiuta checksum assenti o duplicati, algoritmi deboli, trust bypass e una copertura troncata. Il lock corrente comprende 599 componenti e 1.041 artifact. Lo stesso verifier controlla `distributionUrl` e `distributionSha256Sum` dei wrapper root e Companion contro le versioni revisionate, coprendo anche il bootstrap della distribuzione Gradle prima che entri in funzione la verifica delle dipendenze.
+
+Un aggiornamento Gradle o di una dipendenza deve rigenerare il metadata usando `--write-verification-metadata sha256` insieme a tutte le task CI. Il diff dei checksum va revisionato nella stessa pull request. Non si deve aggiungere un artifact a `trusted-artifacts` né disabilitare `verify-metadata` per far passare una build.
 
 ## Firma locale o CI
 
@@ -27,3 +102,9 @@ BINARIO_RELEASE_KEY_PASSWORD=...
 Le stesse chiavi possono essere esposte al processo Gradle come variabili d'ambiente con gli stessi nomi. Se manca anche una sola proprietà, Gradle emette un avviso e continua deliberatamente con una build unsigned: non esiste alcun fallback a file, password o segreti versionati. Il keystore e i relativi file sensibili restano esclusi da Git.
 
 Non sono configurati segreti nel workflow: un ambiente di distribuzione può iniettare le quattro variabili senza modificare il codice o la CI.
+
+## Riferimenti
+
+[1]: https://docs.gradle.org/8.14.3/userguide/dependency_verification.html "Gradle 8.14.3 — Verifying dependencies"
+[2]: https://developer.android.com/guide/app-bundle "Android Developers — About Android App Bundles"
+[3]: https://developer.android.com/training/wearables/packaging "Android Developers — Package and distribute Wear OS apps"

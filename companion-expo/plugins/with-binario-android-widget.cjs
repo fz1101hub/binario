@@ -2,8 +2,71 @@ const { withAndroidManifest, withAppBuildGradle, withDangerousMod } = require("@
 const fs = require("node:fs");
 const path = require("node:path");
 
-const packageName = "im.binario.companion.binario";
+const releaseIdentity = require("../native/android/release-identity.json");
+if (
+  releaseIdentity.schemaVersion !== 1 ||
+  releaseIdentity.applicationId !== "im.binario.companion" ||
+  !/^\d+\.\d+\.\d+$/.test(releaseIdentity.versionName) ||
+  !Number.isInteger(releaseIdentity.phoneVersionCode) ||
+  !Number.isInteger(releaseIdentity.wearVersionCode) ||
+  releaseIdentity.phoneVersionCode <= 0 ||
+  releaseIdentity.wearVersionCode <= releaseIdentity.phoneVersionCode
+) {
+  throw new Error("Binario Companion release identity is invalid.");
+}
+const phoneApplicationId = releaseIdentity.applicationId;
+const packageName = `${phoneApplicationId}.binario`;
 const receiverName = `${packageName}.BinarioStatusWidgetReceiver`;
+
+const sharedReleaseSigningGradle = `def binarioReleaseSigningProperties = [
+  BINARIO_RELEASE_STORE_FILE: providers.gradleProperty("BINARIO_RELEASE_STORE_FILE").orElse(providers.environmentVariable("BINARIO_RELEASE_STORE_FILE")),
+  BINARIO_RELEASE_STORE_PASSWORD: providers.gradleProperty("BINARIO_RELEASE_STORE_PASSWORD").orElse(providers.environmentVariable("BINARIO_RELEASE_STORE_PASSWORD")),
+  BINARIO_RELEASE_KEY_ALIAS: providers.gradleProperty("BINARIO_RELEASE_KEY_ALIAS").orElse(providers.environmentVariable("BINARIO_RELEASE_KEY_ALIAS")),
+  BINARIO_RELEASE_KEY_PASSWORD: providers.gradleProperty("BINARIO_RELEASE_KEY_PASSWORD").orElse(providers.environmentVariable("BINARIO_RELEASE_KEY_PASSWORD")),
+]
+def binarioReleaseSigningConfigured = binarioReleaseSigningProperties.values().every { it.isPresent() }
+if (binarioReleaseSigningProperties.values().any { it.isPresent() } && !binarioReleaseSigningConfigured) {
+  logger.warn("Release signing is enabled only when every BINARIO_RELEASE_* value is supplied; building unsigned.")
+}`;
+
+const sharedReleaseSigningBlock = `  signingConfigs {
+    if (binarioReleaseSigningConfigured) {
+      release {
+        storeFile rootProject.file(binarioReleaseSigningProperties.BINARIO_RELEASE_STORE_FILE.get())
+        storePassword binarioReleaseSigningProperties.BINARIO_RELEASE_STORE_PASSWORD.get()
+        keyAlias binarioReleaseSigningProperties.BINARIO_RELEASE_KEY_ALIAS.get()
+        keyPassword binarioReleaseSigningProperties.BINARIO_RELEASE_KEY_PASSWORD.get()
+      }
+    }
+  }`;
+
+function addSharedReleaseSigning(contents) {
+  if (!contents.includes("def binarioReleaseSigningProperties")) {
+    contents = `${sharedReleaseSigningGradle}\n\n${contents}`;
+  }
+  if (contents.includes("binarioReleaseSigningConfigured) signingConfig signingConfigs.release")) return contents;
+  const androidStart = contents.indexOf("android {");
+  const buildTypesStart = contents.indexOf("buildTypes {", androidStart);
+  const releaseStart = contents.indexOf("release {", buildTypesStart);
+  if (androidStart < 0 || buildTypesStart < 0 || releaseStart < 0) {
+    throw new Error("Binario Companion Gradle no longer has the expected Android release block.");
+  }
+  if (!contents.slice(androidStart, buildTypesStart).includes("signingConfigs {")) {
+    contents = contents.slice(0, androidStart + "android {".length) + `\n${sharedReleaseSigningBlock}` + contents.slice(androidStart + "android {".length);
+  }
+  const currentBuildTypesStart = contents.indexOf("buildTypes {", androidStart);
+  const currentReleaseStart = contents.indexOf("release {", currentBuildTypesStart);
+  const lineEnd = contents.indexOf("\n", currentReleaseStart);
+  return contents.slice(0, lineEnd) + "\n            if (binarioReleaseSigningConfigured) signingConfig signingConfigs.release" + contents.slice(lineEnd);
+}
+
+function setGradleProperty(contents, name, value) {
+  const matcher = new RegExp(`^${name.replaceAll(".", "\\.")}\\s*=.*$`, "gm");
+  const matches = contents.match(matcher) ?? [];
+  if (matches.length > 1) throw new Error(`Duplicate Gradle property: ${name}`);
+  if (matches.length === 1) return contents.replace(matcher, `${name}=${value}`);
+  return `${contents.trimEnd()}\n${name}=${value}\n`;
+}
 
 function removeDebugReleaseSigning(contents) {
   const marker = "release {";
@@ -155,18 +218,19 @@ class BinarioStatusWidgetReceiver : GlanceAppWidgetReceiver() {
 }
 `;
 
-const bridgeKt = `package ${packageName}
+const bridgeKt = `package im.binario.companion.binario
 
 import android.content.Intent
 import android.net.Uri
+import androidx.glance.appwidget.updateAll
+import com.facebook.react.ReactPackage
+import com.facebook.react.bridge.NativeModule
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
 import com.facebook.react.bridge.ReactMethod
 import com.facebook.react.bridge.ReadableMap
-import com.facebook.react.ReactPackage
-import com.facebook.react.bridge.NativeModule
+import com.facebook.react.bridge.ReadableType
 import com.facebook.react.uimanager.ViewManager
-import androidx.glance.appwidget.updateAll
 import com.google.android.gms.wearable.MessageEvent
 import com.google.android.gms.wearable.PutDataMapRequest
 import com.google.android.gms.wearable.Wearable
@@ -199,20 +263,35 @@ class BinarioWidgetBridgeModule(private val context: ReactApplicationContext) : 
     scope.launch { BinarioStatusWidget().updateAll(context) }
   }
 
+  private fun rawDataMapValues(payload: ReadableMap): Map<String, Any?> {
+    val result = linkedMapOf<String, Any?>()
+    val iterator = payload.keySetIterator()
+    while (iterator.hasNextKey()) {
+      val key = iterator.nextKey()
+      result[key] = when (payload.getType(key)) {
+        ReadableType.String -> payload.getString(key)
+        ReadableType.Number -> payload.getDouble(key)
+        ReadableType.Boolean -> payload.getBoolean(key)
+        ReadableType.Null -> null
+        else -> Unit
+      }
+    }
+    return result
+  }
+
+  /** The Companion only transports a canonical v1 snapshot; bad JS input becomes explicit UNAVAILABLE. */
   private fun syncWearPayload(payload: ReadableMap) {
+    val now = System.currentTimeMillis()
+    val canonical = CompanionWearPayloadV1.decode(rawDataMapValues(payload), now) ?: CompanionWearPayloadV1.unavailable(now)
     val request = PutDataMapRequest.create("/binario/companion/watch-payload/v1")
-    request.dataMap.putString("title", payload.getString("title") ?: "Binario")
-    request.dataMap.putString("status", payload.getString("status") ?: "Dati non disponibili in tempo reale.")
-    request.dataMap.putBoolean("canComplicate", payload.hasKey("canComplicate") && !payload.isNull("canComplicate") && payload.getBoolean("canComplicate"))
-    if (payload.hasKey("plannedChecklistRemaining") && !payload.isNull("plannedChecklistRemaining")) request.dataMap.putInt("plannedChecklistRemaining", payload.getDouble("plannedChecklistRemaining").toInt())
-    if (payload.hasKey("updatedAtUtcMs") && !payload.isNull("updatedAtUtcMs")) request.dataMap.putLong("updatedAtUtcMs", payload.getDouble("updatedAtUtcMs").toLong())
-    if (payload.hasKey("expiresAtUtcMs") && !payload.isNull("expiresAtUtcMs")) request.dataMap.putLong("expiresAtUtcMs", payload.getDouble("expiresAtUtcMs").toLong())
+    CompanionWearPayloadV1.put(request.dataMap, canonical)
     Wearable.getDataClient(context).putDataItem(request.asPutDataRequest().setUrgent())
   }
 
   override fun invalidate() { scope.cancel() }
 }
 
+@Suppress("DEPRECATION", "OVERRIDE_DEPRECATION")
 class BinarioWidgetPackage : ReactPackage {
   override fun createNativeModules(reactContext: ReactApplicationContext): List<NativeModule> = listOf(BinarioWidgetBridgeModule(reactContext))
   override fun createViewManagers(reactContext: ReactApplicationContext): List<ViewManager<*, *>> = emptyList()
@@ -232,6 +311,151 @@ class BinarioWatchVoiceRequestService : WearableListenerService() {
     if (event.path != "/binario/companion/voice-request/v1") return
     val answer = "Dati non disponibili in tempo reale."
     Wearable.getMessageClient(this).sendMessage(event.sourceNodeId, "/binario/companion/voice-response/v1", answer.toByteArray(Charsets.UTF_8))
+  }
+}
+`;
+
+const companionWearPayloadKt = `package im.binario.companion.binario
+
+import com.google.android.gms.wearable.DataMap
+import java.nio.charset.StandardCharsets
+
+/** Producer-side validation for the closed Companion → Wear v1 DataMap contract. */
+object CompanionWearPayloadV1 {
+  const val schemaVersion = 1L
+  const val maxSerializedBytes = 8_192
+  const val maxTtlMillis = 365L * 24L * 60L * 60L * 1_000L
+  const val futureSkewMillis = 60_000L
+
+  private val producerValues = setOf("ANDROID_APP", "COMPANION", "IOS_APP", "UNKNOWN")
+  private val dataNatureValues = setOf("PROGRAMMED", "OPERATIONAL", "UNAVAILABLE", "UNKNOWN")
+  private val operationalStateValues = setOf("PROGRAMMED", "OPERATIONAL", "UNAVAILABLE", "UNKNOWN")
+  private val freshnessValues = setOf("FRESH", "AGING", "STALE", "UNAVAILABLE", "UNKNOWN")
+  private val confidenceValues = setOf("OPERATOR_PRIMARY", "INFRASTRUCTURE_PRIMARY", "OPEN_DATA", "LICENSED_AGGREGATE", "STATIC_ONLY", "CACHED", "LOCAL_PLANNED", "UNKNOWN")
+  private val directionValues = setOf("OUTBOUND", "RETURN", "UNKNOWN")
+  private val baseKeys = listOf(
+    "schemaVersion", "generatedAtEpochMillis", "expiresAtEpochMillis", "ttlMillis",
+    "provenanceProducer", "provenanceDataNature", "provenanceSourceLabel", "provenanceObservedAtEpochMillis",
+    "operationalState", "freshness", "confidence", "routeId", "routeLabel", "direction", "notice", "serviceCount",
+  )
+  private val serviceFields = listOf("Number", "Operator", "Category", "Destination", "Scheduled", "Expected", "Status", "Platform", "DelayMinutes")
+
+  private fun normalized(value: Any?, maximum: Int, allowEmpty: Boolean = false): String? {
+    val string = value as? String ?: return null
+    val normal = string.trim().replace(Regex("\\\\s+"), " ")
+    return string.takeIf { it == normal && it.length <= maximum && (allowEmpty || it.isNotEmpty()) }
+  }
+
+  private fun integer(value: Any?): Long? {
+    val number = value as? Number ?: return null
+    val result = number.toLong()
+    return result.takeIf {
+      number.toDouble().isFinite() && number.toDouble() == result.toDouble() &&
+        result in -9_007_199_254_740_991L..9_007_199_254_740_991L
+    }
+  }
+
+  private fun expectedKeys(serviceCount: Int): Set<String> = buildSet {
+    addAll(baseKeys)
+    repeat(serviceCount) { index -> serviceFields.forEach { field -> add("service\${index}$field") } }
+  }
+
+  private fun jsonString(value: String): String = buildString {
+    append('"')
+    value.forEach { character -> when (character) {
+      '"' -> append("\\\\\\"")
+      '\\\\' -> append("\\\\\\\\")
+      '\\b' -> append("\\\\b")
+      '\\u000C' -> append("\\\\f")
+      '\\n' -> append("\\\\n")
+      '\\r' -> append("\\\\r")
+      '\\t' -> append("\\\\t")
+      else -> if (character.code < 0x20) append("\\\\u%04x".format(character.code)) else append(character)
+    } }
+    append('"')
+  }
+
+  private fun serializedBytes(values: Map<String, Any>): Int = values.toSortedMap().entries.joinToString(prefix = "{", postfix = "}") { (key, value) ->
+    "\${jsonString(key)}:\${if (value is String) jsonString(value) else value}"
+  }.toByteArray(StandardCharsets.UTF_8).size
+
+  /** Returns a canonical map only when every supplied key and value satisfies v1. */
+  fun decode(raw: Map<String, Any?>, now: Long): Map<String, Any>? {
+    val serviceCount = integer(raw["serviceCount"])?.takeIf { it in 0L..2L }?.toInt() ?: return null
+    if (raw.keys != expectedKeys(serviceCount)) return null
+    val schema = integer(raw["schemaVersion"]) ?: return null
+    val generated = integer(raw["generatedAtEpochMillis"]) ?: return null
+    val expires = integer(raw["expiresAtEpochMillis"]) ?: return null
+    val ttl = integer(raw["ttlMillis"]) ?: return null
+    val observed = integer(raw["provenanceObservedAtEpochMillis"]) ?: return null
+    if (schema != schemaVersion || ttl !in 1..maxTtlMillis || expires - generated != ttl || expires <= now || generated > now + futureSkewMillis) return null
+    val producer = normalized(raw["provenanceProducer"], 64)?.takeIf(producerValues::contains) ?: return null
+    val dataNature = normalized(raw["provenanceDataNature"], 64)?.takeIf(dataNatureValues::contains) ?: return null
+    val operational = normalized(raw["operationalState"], 64)?.takeIf(operationalStateValues::contains) ?: return null
+    val freshness = normalized(raw["freshness"], 64)?.takeIf(freshnessValues::contains) ?: return null
+    val confidence = normalized(raw["confidence"], 64)?.takeIf(confidenceValues::contains) ?: return null
+    val direction = normalized(raw["direction"], 16)?.takeIf(directionValues::contains) ?: return null
+    val sourceLabel = normalized(raw["provenanceSourceLabel"], 96) ?: return null
+    val routeId = normalized(raw["routeId"], 64) ?: return null
+    val routeLabel = normalized(raw["routeLabel"], 96) ?: return null
+    val notice = normalized(raw["notice"], 180, allowEmpty = true) ?: return null
+    if ((operational == "UNAVAILABLE" || dataNature == "UNAVAILABLE") && (serviceCount != 0 || dataNature != "UNAVAILABLE")) return null
+    val canonical = linkedMapOf<String, Any>(
+      "schemaVersion" to schema,
+      "generatedAtEpochMillis" to generated,
+      "expiresAtEpochMillis" to expires,
+      "ttlMillis" to ttl,
+      "provenanceProducer" to producer,
+      "provenanceDataNature" to dataNature,
+      "provenanceSourceLabel" to sourceLabel,
+      "provenanceObservedAtEpochMillis" to observed,
+      "operationalState" to operational,
+      "freshness" to freshness,
+      "confidence" to confidence,
+      "routeId" to routeId,
+      "routeLabel" to routeLabel,
+      "direction" to direction,
+      "notice" to notice,
+      "serviceCount" to serviceCount,
+    )
+    repeat(serviceCount) { index ->
+      val prefix = "service$index"
+      listOf("Number" to 24, "Operator" to 64, "Category" to 64, "Destination" to 96, "Scheduled" to 16, "Expected" to 16, "Status" to 64).forEach { (field, maximum) ->
+        canonical["$prefix$field"] = normalized(raw["$prefix$field"], maximum) ?: return null
+      }
+      canonical["\${prefix}Platform"] = normalized(raw["\${prefix}Platform"], 16, allowEmpty = true) ?: return null
+      canonical["\${prefix}DelayMinutes"] = integer(raw["\${prefix}DelayMinutes"])?.takeIf { it in -720..1_440 } ?: return null
+    }
+    return canonical.takeIf { serializedBytes(it) <= maxSerializedBytes }
+  }
+
+  /** A bounded explicit fallback is safer than manufacturing operational information. */
+  fun unavailable(now: Long): Map<String, Any> = linkedMapOf(
+    "schemaVersion" to schemaVersion,
+    "generatedAtEpochMillis" to now,
+    "expiresAtEpochMillis" to now + 15L * 60L * 1_000L,
+    "ttlMillis" to 15L * 60L * 1_000L,
+    "provenanceProducer" to "COMPANION",
+    "provenanceDataNature" to "UNAVAILABLE",
+    "provenanceSourceLabel" to "Companion locale",
+    "provenanceObservedAtEpochMillis" to now,
+    "operationalState" to "UNAVAILABLE",
+    "freshness" to "UNAVAILABLE",
+    "confidence" to "LOCAL_PLANNED",
+    "routeId" to "unavailable",
+    "routeLabel" to "Nessuna tratta attiva",
+    "direction" to "UNKNOWN",
+    "notice" to "Dati non disponibili nel Companion: apri l’app principale per aggiornare la pianificazione locale.",
+    "serviceCount" to 0,
+  )
+
+  fun put(dataMap: DataMap, payload: Map<String, Any>) {
+    payload.forEach { (key, value) -> when (value) {
+      is String -> dataMap.putString(key, value)
+      is Int -> dataMap.putInt(key, value)
+      is Long -> dataMap.putLong(key, value)
+      else -> error("Unexpected canonical v1 DataMap type for $key")
+    } }
   }
 }
 `;
@@ -291,7 +515,7 @@ class BinarioSharedTextReceiverModule(private val context: ReactApplicationConte
   @ReactMethod fun removeListeners(count: Int) = Unit
 }
 
-@Suppress("DEPRECATION")
+@Suppress("DEPRECATION", "OVERRIDE_DEPRECATION")
 class BinarioSharedTextReceiverPackage : ReactPackage {
   override fun createNativeModules(reactContext: ReactApplicationContext): List<NativeModule> = listOf(BinarioSharedTextReceiverModule(reactContext))
   override fun createViewManagers(reactContext: ReactApplicationContext): List<ViewManager<*, *>> = emptyList()
@@ -325,11 +549,11 @@ function withBinarioAndroidWidget(config) {
       '    implementation("androidx.glance:glance:1.2.0")',
       '    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")',
       '    implementation("com.google.android.gms:play-services-wearable:20.0.1")',
+      '    testImplementation("junit:junit:4.13.2")',
     ];
-    if (!next.modResults.contents.includes("androidx.glance:glance-appwidget")) {
-      next.modResults.contents = next.modResults.contents.replace("dependencies {", `dependencies {\n${lines.join("\n")}`);
-    }
-    next.modResults.contents = removeDebugReleaseSigning(next.modResults.contents);
+    const missing = lines.filter((line) => !next.modResults.contents.includes(line));
+    if (missing.length > 0) next.modResults.contents = next.modResults.contents.replace("dependencies {", `dependencies {\n${missing.join("\n")}`);
+    next.modResults.contents = addSharedReleaseSigning(removeDebugReleaseSigning(next.modResults.contents));
     return next;
   });
 
@@ -342,6 +566,8 @@ function withBinarioAndroidWidget(config) {
       "android.permission.READ_EXTERNAL_STORAGE",
       "android.permission.WRITE_EXTERNAL_STORAGE",
       "android.permission.SYSTEM_ALERT_WINDOW",
+      "android.permission.SCHEDULE_EXACT_ALARM",
+      "android.permission.USE_EXACT_ALARM",
     ]);
     manifest["uses-permission"] = (manifest["uses-permission"] ?? []).filter(
       (permission) => !blockedProductionPermissions.has(permission.$?.["android:name"]),
@@ -385,13 +611,25 @@ function withBinarioAndroidWidget(config) {
 
   return withDangerousMod(config, ["android", async (next) => {
     const appRoot = path.join(next.modRequest.platformProjectRoot, "app");
+    const verificationMetadataSource = path.join(__dirname, "..", "native", "android", "verification-metadata.xml");
+    const verificationMetadataTarget = path.join(next.modRequest.platformProjectRoot, "gradle", "verification-metadata.xml");
+    if (!fs.existsSync(verificationMetadataSource)) throw new Error("Companion Gradle verification metadata is missing");
+    fs.mkdirSync(path.dirname(verificationMetadataTarget), { recursive: true });
+    fs.copyFileSync(verificationMetadataSource, verificationMetadataTarget);
     const kotlinRoot = path.join(appRoot, "src", "main", "java", ...packageName.split("."));
+    const testKotlinRoot = path.join(appRoot, "src", "test", "java", ...packageName.split("."));
     const xmlRoot = path.join(appRoot, "src", "main", "res", "xml");
     fs.mkdirSync(kotlinRoot, { recursive: true });
+    fs.mkdirSync(testKotlinRoot, { recursive: true });
     fs.mkdirSync(xmlRoot, { recursive: true });
     fs.writeFileSync(path.join(kotlinRoot, "BinarioWidgetStore.kt"), widgetStoreKt);
     fs.writeFileSync(path.join(kotlinRoot, "BinarioStatusWidget.kt"), widgetKt);
     fs.writeFileSync(path.join(kotlinRoot, "BinarioWidgetBridge.kt"), bridgeKt);
+    fs.writeFileSync(path.join(kotlinRoot, "CompanionWearPayload.kt"), companionWearPayloadKt);
+    fs.writeFileSync(
+      path.join(testKotlinRoot, "CompanionWearPayloadV1Test.kt"),
+      fs.readFileSync(path.join(__dirname, "templates", "CompanionWearPayloadV1Test.kt"), "utf8"),
+    );
     fs.writeFileSync(path.join(kotlinRoot, "BinarioSharedTextReceiver.kt"), sharedTextReceiverKt);
     fs.writeFileSync(path.join(xmlRoot, "binario_status_widget_info.xml"), widgetXml);
     fs.writeFileSync(path.join(xmlRoot, "binario_shortcuts.xml"), shortcutsXml);
@@ -420,42 +658,39 @@ function withBinarioAndroidWidget(config) {
     let mainActivityKt = fs.readFileSync(mainActivityPath, "utf8");
     if (!mainActivityKt.includes("BinarioSharedTextStore.capture")) {
       mainActivityKt = mainActivityKt.replace("import android.os.Build", `import android.content.Intent\nimport ${packageName}.BinarioSharedTextStore\n\nimport android.os.Build`);
-      mainActivityKt = mainActivityKt.replace("    super.onCreate(null)", "    super.onCreate(null)\n    BinarioSharedTextStore.capture(this, intent)");
+      mainActivityKt = mainActivityKt.replace("    super.onCreate(null)", "    super.onCreate(null)\n    if (savedInstanceState == null) BinarioSharedTextStore.capture(this, intent)");
       mainActivityKt = mainActivityKt.replace("\n  /**\n   * Returns the name", "\n  override fun onNewIntent(intent: Intent) {\n    super.onNewIntent(intent)\n    setIntent(intent)\n    BinarioSharedTextStore.capture(this, intent)\n  }\n\n  /**\n   * Returns the name");
       fs.writeFileSync(mainActivityPath, mainActivityKt);
     }
 
     const wearRoot = path.join(next.modRequest.platformProjectRoot, "wear");
     const wearSource = path.join(wearRoot, "src", "main", "java", "im", "binario", "companion", "wear");
+    const wearTestSource = path.join(wearRoot, "src", "test", "java", "im", "binario", "companion", "wear");
     fs.mkdirSync(wearSource, { recursive: true });
+    fs.mkdirSync(wearTestSource, { recursive: true });
     fs.mkdirSync(path.join(wearRoot, "src", "main", "res", "values"), { recursive: true });
-    fs.writeFileSync(path.join(wearRoot, "build.gradle"), `apply plugin: "com.android.application"
+    fs.writeFileSync(path.join(wearRoot, "build.gradle"), `${sharedReleaseSigningGradle}
+
+apply plugin: "com.android.application"
 apply plugin: "org.jetbrains.kotlin.android"
 
 android {
+${sharedReleaseSigningBlock}
   namespace "im.binario.companion.wear"
   compileSdk rootProject.ext.compileSdkVersion
   defaultConfig {
-    applicationId "im.binario.companion.wear"
+    // Data Layer peers must share package id and release signing identity.
+    applicationId "${phoneApplicationId}"
     minSdkVersion 30
     targetSdkVersion rootProject.ext.targetSdkVersion
-    versionCode 1
-    versionName "0.1.0"
-  }
-  signingConfigs {
-    debug {
-      storeFile rootProject.file("app/debug.keystore")
-      storePassword "android"
-      keyAlias "androiddebugkey"
-      keyPassword "android"
-    }
+    versionCode ${releaseIdentity.wearVersionCode}
+    versionName "${releaseIdentity.versionName}"
   }
   buildTypes {
-    debug {
-      signingConfig signingConfigs.debug
-    }
+    debug {}
     release {
       // Production signing is supplied only by the release environment.
+      if (binarioReleaseSigningConfigured) signingConfig signingConfigs.release
     }
   }
 }
@@ -466,6 +701,7 @@ dependencies {
   implementation("androidx.activity:activity-ktx:1.10.1")
   implementation("com.google.android.gms:play-services-wearable:20.0.1")
   implementation("com.google.guava:guava:33.5.0-android")
+  testImplementation("junit:junit:4.13.2")
 }
 `);
     fs.writeFileSync(path.join(wearRoot, "src", "main", "AndroidManifest.xml"), `<?xml version="1.0" encoding="utf-8"?>
@@ -473,6 +709,7 @@ dependencies {
   <uses-feature android:name="android.hardware.type.watch" />
   <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
   <application android:label="@string/app_name" android:allowBackup="false" android:usesCleartextTraffic="false" android:theme="@android:style/Theme.DeviceDefault">
+    <meta-data android:name="com.google.android.wearable.standalone" android:value="false" />
     <service android:name=".BinarioTileService" android:exported="true" android:label="@string/tile_name" android:permission="com.google.android.wearable.permission.BIND_TILE_PROVIDER">
       <intent-filter><action android:name="androidx.wear.tiles.action.BIND_TILE_PROVIDER" /></intent-filter>
     </service>
@@ -495,30 +732,160 @@ dependencies {
 import android.content.Context
 import android.content.Intent
 import com.google.android.gms.wearable.DataEventBuffer
+import com.google.android.gms.wearable.DataMapItem
 import com.google.android.gms.wearable.MessageEvent
-import com.google.android.gms.wearable.Wearable
 import com.google.android.gms.wearable.WearableListenerService
+import java.nio.charset.StandardCharsets
 
-data class BinarioWearState(val title: String, val status: String, val canComplicate: Boolean, val updatedAtUtcMs: Long?, val expiresAtUtcMs: Long?, val plannedChecklistRemaining: Int)
+data class BinarioWearState(
+  val title: String,
+  val status: String,
+  val canComplicate: Boolean,
+  val updatedAtUtcMs: Long?,
+  val expiresAtUtcMs: Long?,
+  val plannedChecklistRemaining: Int,
+)
+
+data class BinarioWearSnapshot(
+  val routeLabel: String,
+  val notice: String,
+  val generatedAtEpochMillis: Long,
+  val expiresAtEpochMillis: Long,
+  val operationalState: String,
+  val freshness: String,
+  val direction: String,
+  val serviceCount: Int,
+)
+
+/**
+ * Decoder for the canonical flat Companion → Wear v1 DataMap. Its schema is closed: a
+ * malformed or expanded map cannot replace the last valid watch cache. Enum values added
+ * by a future producer deliberately degrade to UNKNOWN rather than gaining operational meaning.
+ */
+object BinarioWearSnapshotV1 {
+  const val schemaVersion = 1L
+  const val maxSerializedBytes = 8_192
+  const val maxTtlMillis = 365L * 24L * 60L * 60L * 1_000L
+  const val futureSkewMillis = 60_000L
+
+  private val producerValues = setOf("ANDROID_APP", "COMPANION", "IOS_APP", "UNKNOWN")
+  private val dataNatureValues = setOf("PROGRAMMED", "OPERATIONAL", "UNAVAILABLE", "UNKNOWN")
+  private val operationalStateValues = setOf("PROGRAMMED", "OPERATIONAL", "UNAVAILABLE", "UNKNOWN")
+  private val freshnessValues = setOf("FRESH", "AGING", "STALE", "UNAVAILABLE", "UNKNOWN")
+  private val confidenceValues = setOf("OPERATOR_PRIMARY", "INFRASTRUCTURE_PRIMARY", "OPEN_DATA", "LICENSED_AGGREGATE", "STATIC_ONLY", "CACHED", "LOCAL_PLANNED", "UNKNOWN")
+  private val directionValues = setOf("OUTBOUND", "RETURN", "UNKNOWN")
+  private val baseKeys = listOf(
+    "schemaVersion", "generatedAtEpochMillis", "expiresAtEpochMillis", "ttlMillis",
+    "provenanceProducer", "provenanceDataNature", "provenanceSourceLabel", "provenanceObservedAtEpochMillis",
+    "operationalState", "freshness", "confidence", "routeId", "routeLabel", "direction", "notice", "serviceCount",
+  )
+  private val serviceFields = listOf("Number", "Operator", "Category", "Destination", "Scheduled", "Expected", "Status", "Platform", "DelayMinutes")
+
+  private fun normalized(value: Any?, maximum: Int, allowEmpty: Boolean = false): String? {
+    val string = value as? String ?: return null
+    val normal = string.trim().replace(Regex("\\\\s+"), " ")
+    return string.takeIf { it == normal && it.length <= maximum && (allowEmpty || it.isNotEmpty()) }
+  }
+
+  private fun integer(value: Any?): Long? {
+    val number = value as? Number ?: return null
+    val result = number.toLong()
+    return result.takeIf {
+      number.toDouble().isFinite() && number.toDouble() == result.toDouble() &&
+        result in -9_007_199_254_740_991L..9_007_199_254_740_991L
+    }
+  }
+
+  private fun enumOrUnknown(value: Any?, allowed: Set<String>): String? {
+    val enum = normalized(value, 64) ?: return null
+    return enum.takeIf(allowed::contains) ?: "UNKNOWN"
+  }
+
+  private fun expectedKeys(serviceCount: Int): Set<String> = buildSet {
+    addAll(baseKeys)
+    repeat(serviceCount) { index -> serviceFields.forEach { field -> add("service\${index}$field") } }
+  }
+
+  private fun jsonString(value: String): String = buildString {
+    append('"')
+    value.forEach { character -> when (character) {
+      '"' -> append("\\\\\\"")
+      '\\\\' -> append("\\\\\\\\")
+      '\\b' -> append("\\\\b")
+      '\\u000C' -> append("\\\\f")
+      '\\n' -> append("\\\\n")
+      '\\r' -> append("\\\\r")
+      '\\t' -> append("\\\\t")
+      else -> if (character.code < 0x20) append("\\\\u%04x".format(character.code)) else append(character)
+    } }
+    append('"')
+  }
+
+  private fun serializedBytes(values: Map<String, Any?>): Int = values.toSortedMap().entries.joinToString(prefix = "{", postfix = "}") { (key, value) ->
+    "\${jsonString(key)}:\${if (value is String) jsonString(value) else value}"
+  }.toByteArray(StandardCharsets.UTF_8).size
+
+  fun decode(raw: Map<String, Any?>, now: Long): BinarioWearSnapshot? {
+    val serviceCount = integer(raw["serviceCount"])?.takeIf { it in 0L..2L }?.toInt() ?: return null
+    if (raw.keys != expectedKeys(serviceCount) || serializedBytes(raw) > maxSerializedBytes) return null
+    val schema = integer(raw["schemaVersion"]) ?: return null
+    val generated = integer(raw["generatedAtEpochMillis"]) ?: return null
+    val expires = integer(raw["expiresAtEpochMillis"]) ?: return null
+    val ttl = integer(raw["ttlMillis"]) ?: return null
+    if (schema != schemaVersion || ttl !in 1..maxTtlMillis || expires - generated != ttl || expires <= now || generated > now + futureSkewMillis || integer(raw["provenanceObservedAtEpochMillis"]) == null) return null
+    val producer = enumOrUnknown(raw["provenanceProducer"], producerValues) ?: return null
+    val dataNature = enumOrUnknown(raw["provenanceDataNature"], dataNatureValues) ?: return null
+    val operational = enumOrUnknown(raw["operationalState"], operationalStateValues) ?: return null
+    val freshness = enumOrUnknown(raw["freshness"], freshnessValues) ?: return null
+    if (enumOrUnknown(raw["confidence"], confidenceValues) == null) return null
+    val direction = enumOrUnknown(raw["direction"], directionValues) ?: return null
+    val source = normalized(raw["provenanceSourceLabel"], 96) ?: return null
+    val routeId = normalized(raw["routeId"], 64) ?: return null
+    val routeLabel = normalized(raw["routeLabel"], 96) ?: return null
+    val notice = normalized(raw["notice"], 180, allowEmpty = true) ?: return null
+    // Keep these named checks: provenance remains compulsory even though the Tile only renders a safe summary.
+    if (producer.isBlank() || source.isBlank() || routeId.length > 64 || (operational == "UNAVAILABLE" || dataNature == "UNAVAILABLE") && (serviceCount != 0 || dataNature != "UNAVAILABLE")) return null
+    repeat(serviceCount) { index ->
+      val prefix = "service$index"
+      listOf("Number" to 24, "Operator" to 64, "Category" to 64, "Destination" to 96, "Scheduled" to 16, "Expected" to 16, "Status" to 64).forEach { (field, maximum) ->
+        normalized(raw["$prefix$field"], maximum) ?: return null
+      }
+      if (normalized(raw["\${prefix}Platform"], 16, allowEmpty = true) == null || integer(raw["\${prefix}DelayMinutes"])?.let { it !in -720..1_440 } != false) return null
+    }
+    return BinarioWearSnapshot(routeLabel, notice, generated, expires, operational, freshness, direction, serviceCount)
+  }
+}
 
 object BinarioWearStore {
   private const val prefsName = "binario_wear_payload_v1"
-  fun write(context: Context, state: BinarioWearState) {
-    val fresh = state.canComplicate && state.updatedAtUtcMs != null && state.expiresAtUtcMs != null && state.updatedAtUtcMs <= System.currentTimeMillis() && state.expiresAtUtcMs > System.currentTimeMillis()
+  private const val unavailable = "Dati non disponibili in tempo reale."
+
+  fun write(context: Context, snapshot: BinarioWearSnapshot) {
     context.getSharedPreferences(prefsName, Context.MODE_PRIVATE).edit().apply {
-      putString("title", state.title)
-      putString("status", if (fresh) state.status else "Dati non disponibili in tempo reale.")
-      putBoolean("canComplicate", fresh)
-      if (fresh && state.plannedChecklistRemaining > 0) putInt("plannedChecklistRemaining", state.plannedChecklistRemaining) else remove("plannedChecklistRemaining")
-      if (fresh) { putLong("updatedAtUtcMs", state.updatedAtUtcMs!!); putLong("expiresAtUtcMs", state.expiresAtUtcMs!!) } else { remove("updatedAtUtcMs"); remove("expiresAtUtcMs") }
+      putString("title", snapshot.routeLabel.ifBlank { "Binario" })
+      putString("status", snapshot.notice.ifBlank { unavailable })
+      putLong("generatedAtUtcMs", snapshot.generatedAtEpochMillis)
+      putLong("expiresAtUtcMs", snapshot.expiresAtEpochMillis)
     }.apply()
   }
-  fun read(context: Context): BinarioWearState {
-    val p = context.getSharedPreferences(prefsName, Context.MODE_PRIVATE)
-    val updated = if (p.contains("updatedAtUtcMs")) p.getLong("updatedAtUtcMs", 0L) else null
-    val expires = if (p.contains("expiresAtUtcMs")) p.getLong("expiresAtUtcMs", 0L) else null
-    val fresh = p.getBoolean("canComplicate", false) && updated != null && expires != null && updated <= System.currentTimeMillis() && expires > System.currentTimeMillis()
-    return BinarioWearState(p.getString("title", "Binario") ?: "Binario", if (fresh) p.getString("status", "") ?: "" else "Dati non disponibili in tempo reale.", fresh, if (fresh) updated else null, if (fresh) expires else null, if (fresh) p.getInt("plannedChecklistRemaining", 0).coerceIn(0, 3) else 0)
+
+  fun read(context: Context, now: Long = System.currentTimeMillis()): BinarioWearState {
+    val preferences = context.getSharedPreferences(prefsName, Context.MODE_PRIVATE)
+    val generated = if (preferences.contains("generatedAtUtcMs")) preferences.getLong("generatedAtUtcMs", 0L) else null
+    val expires = if (preferences.contains("expiresAtUtcMs")) preferences.getLong("expiresAtUtcMs", 0L) else null
+    val fresh = generated != null && expires != null && generated <= now + BinarioWearSnapshotV1.futureSkewMillis && expires > now
+    return if (fresh) {
+      BinarioWearState(
+        preferences.getString("title", "Binario") ?: "Binario",
+        preferences.getString("status", unavailable) ?: unavailable,
+        true,
+        generated,
+        expires,
+        0,
+      )
+    } else {
+      BinarioWearState("Binario", unavailable, false, null, null, 0)
+    }
   }
 }
 
@@ -526,10 +893,12 @@ class BinarioWearDataService : WearableListenerService() {
   override fun onDataChanged(events: DataEventBuffer) {
     events.forEach { event ->
       if (event.type != com.google.android.gms.wearable.DataEvent.TYPE_CHANGED || event.dataItem.uri.path != "/binario/companion/watch-payload/v1") return@forEach
-      val map = com.google.android.gms.wearable.DataMapItem.fromDataItem(event.dataItem).dataMap
-      BinarioWearStore.write(this, BinarioWearState(map.getString("title") ?: "Binario", map.getString("status") ?: "Dati non disponibili in tempo reale.", map.getBoolean("canComplicate"), if (map.containsKey("updatedAtUtcMs")) map.getLong("updatedAtUtcMs") else null, if (map.containsKey("expiresAtUtcMs")) map.getLong("expiresAtUtcMs") else null, if (map.containsKey("plannedChecklistRemaining")) map.getInt("plannedChecklistRemaining") else 0))
+      val map = DataMapItem.fromDataItem(event.dataItem).dataMap
+      val raw: Map<String, Any?> = map.keySet().associate { key: String -> key to map.get(key) }
+      BinarioWearSnapshotV1.decode(raw, System.currentTimeMillis())?.let { BinarioWearStore.write(this, it) }
     }
   }
+
   override fun onMessageReceived(event: MessageEvent) {
     if (event.path != "/binario/companion/voice-response/v1") return
     val reply = event.data.toString(Charsets.UTF_8).take(280).ifBlank { "Dati non disponibili in tempo reale." }
@@ -537,6 +906,10 @@ class BinarioWearDataService : WearableListenerService() {
   }
 }
 `);
+    fs.writeFileSync(
+      path.join(wearTestSource, "BinarioWearSnapshotV1Test.kt"),
+      fs.readFileSync(path.join(__dirname, "templates", "BinarioWearSnapshotV1Test.kt"), "utf8"),
+    );
     fs.writeFileSync(path.join(wearSource, "BinarioTileService.kt"), `package im.binario.companion.wear
 
 import androidx.wear.protolayout.ActionBuilders
@@ -570,7 +943,7 @@ class BinarioTileService : TileService() {
         ).setClickable(
           ModifiersBuilders.Clickable.Builder().setId("binario-voice-request").setOnClick(
             ActionBuilders.LaunchAction.Builder().setAndroidActivity(
-              ActionBuilders.AndroidActivity.Builder().setPackageName("im.binario.companion.wear").setClassName(BinarioVoiceRequestActivity::class.java.name).build()
+              ActionBuilders.AndroidActivity.Builder().setPackageName("${phoneApplicationId}").setClassName(BinarioVoiceRequestActivity::class.java.name).build()
             ).build()
           ).build()
         ).build())
@@ -582,7 +955,7 @@ class BinarioTileService : TileService() {
         ).setClickable(
           ModifiersBuilders.Clickable.Builder().setId("binario-open-checklist").setOnClick(
             ActionBuilders.LaunchAction.Builder().setAndroidActivity(
-              ActionBuilders.AndroidActivity.Builder().setPackageName("im.binario.companion.wear").setClassName(BinarioChecklistRequestActivity::class.java.name).build()
+              ActionBuilders.AndroidActivity.Builder().setPackageName("${phoneApplicationId}").setClassName(BinarioChecklistRequestActivity::class.java.name).build()
             ).build()
           ).build()
         ).build())
@@ -597,6 +970,7 @@ class BinarioTileService : TileService() {
 import android.app.Activity
 import android.os.Bundle
 import android.view.Gravity
+import android.view.View
 import android.widget.LinearLayout
 import android.widget.TextView
 import com.google.android.gms.wearable.Wearable
@@ -605,14 +979,13 @@ import com.google.android.gms.wearable.Wearable
 class BinarioChecklistRequestActivity : Activity() {
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
-    val message = TextView(this).apply { text = "Apro la checklist sul telefono…"; textSize = 17f; setPadding(24, 24, 24, 24) }
+    val message = TextView(this).apply { text = "Apro la checklist sul telefono…"; textSize = 17f; setPadding(24, 24, 24, 24); accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_POLITE }
     setContentView(LinearLayout(this).apply { gravity = Gravity.CENTER; addView(message) })
     Wearable.getNodeClient(this).connectedNodes.addOnSuccessListener { nodes ->
       if (nodes.isEmpty()) { message.text = "Telefono non raggiungibile."; return@addOnSuccessListener }
       nodes.forEach { node -> Wearable.getMessageClient(this).sendMessage(node.id, "/binario/companion/open-checklist/v1", ByteArray(0)) }
       message.text = "Checklist aperta sul telefono."
-      message.announceForAccessibility(message.text)
-    }.addOnFailureListener { message.text = "Non è possibile aprire il telefono ora."; message.announceForAccessibility(message.text) }
+    }.addOnFailureListener { message.text = "Non è possibile aprire il telefono ora." }
   }
 }
 `);
@@ -630,6 +1003,7 @@ import android.os.Looper
 import android.speech.RecognizerIntent
 import android.speech.tts.TextToSpeech
 import android.view.Gravity
+import android.view.View
 import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -643,7 +1017,6 @@ class BinarioVoiceRequestActivity : Activity() {
   private val voicePreferences by lazy { getSharedPreferences("binario_wear_voice_preferences_v1", Context.MODE_PRIVATE) }
   private var waitingForRealtime = false
   private fun touchTargetPx() = (48 * resources.displayMetrics.density).toInt()
-  private fun announceForAccessibility(message: String) { window.decorView.post { window.decorView.announceForAccessibility(message) } }
   private val replyReceiver = object : BroadcastReceiver() {
     override fun onReceive(context: Context?, intent: Intent?) {
       if (intent?.action == replyAction && waitingForRealtime) {
@@ -698,30 +1071,27 @@ class BinarioVoiceRequestActivity : Activity() {
   }
   private fun showWaiting() {
     setContentView(LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER; setPadding(24, 24, 24, 24)
-      addView(TextView(this@BinarioVoiceRequestActivity).apply { text = "Verifica in corso…"; textSize = 18f; gravity = Gravity.CENTER; contentDescription = text })
+      addView(TextView(this@BinarioVoiceRequestActivity).apply { text = "Verifica in corso…"; textSize = 18f; gravity = Gravity.CENTER; contentDescription = "Verifica in corso. È disponibile il pulsante Annulla."; accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_POLITE })
       addView(Button(this@BinarioVoiceRequestActivity).apply { minHeight = touchTargetPx(); minWidth = touchTargetPx(); text = "Annulla"; contentDescription = "Annulla verifica"; setOnClickListener { waitingForRealtime = false; handler.removeCallbacksAndMessages(null); finish() } })
     })
-    announceForAccessibility("Verifica in corso. È disponibile il pulsante Annulla.")
   }
   private fun showLocalActions() {
     setContentView(LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER; setPadding(24, 24, 24, 24)
-      addView(TextView(this@BinarioVoiceRequestActivity).apply { text = "Nessuna richiesta vocale acquisita."; textSize = 17f; gravity = Gravity.CENTER; contentDescription = text })
+      addView(TextView(this@BinarioVoiceRequestActivity).apply { text = "Nessuna richiesta vocale acquisita."; textSize = 17f; gravity = Gravity.CENTER; contentDescription = "Nessuna richiesta vocale acquisita. Puoi mostrare la prossima tratta o riprovare."; accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_POLITE })
       addView(Button(this@BinarioVoiceRequestActivity).apply { minHeight = touchTargetPx(); minWidth = touchTargetPx(); text = "Mostra prossima tratta"; contentDescription = "Mostra la prossima tratta programmata"; setOnClickListener { showAnswer(answerFromFreshLocalState("prossima tratta")) } })
       addView(Button(this@BinarioVoiceRequestActivity).apply { minHeight = touchTargetPx(); minWidth = touchTargetPx(); text = "Riprova"; contentDescription = "Riprova richiesta vocale"; setOnClickListener { launchSystemVoiceInput() } })
       addView(Button(this@BinarioVoiceRequestActivity).apply { minHeight = touchTargetPx(); minWidth = touchTargetPx(); text = "Chiudi"; contentDescription = "Chiudi richiesta Binario"; setOnClickListener { finish() } })
     })
-    announceForAccessibility("Nessuna richiesta vocale acquisita. Puoi mostrare la prossima tratta o riprovare.")
   }
   private fun showAnswer(answer: String) {
     val speakAnswers = voicePreferences.getBoolean("speak_answers", false)
     setContentView(LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER; setPadding(24, 24, 24, 24)
-      addView(TextView(this@BinarioVoiceRequestActivity).apply { text = answer; textSize = 18f; gravity = Gravity.CENTER; contentDescription = answer })
+      addView(TextView(this@BinarioVoiceRequestActivity).apply { text = answer; textSize = 18f; gravity = Gravity.CENTER; contentDescription = "Risposta Binario. ${'$'}answer"; accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_POLITE })
       addView(Button(this@BinarioVoiceRequestActivity).apply { minHeight = touchTargetPx(); minWidth = touchTargetPx(); text = "Ascolta risposta"; contentDescription = "Ascolta risposta"; setOnClickListener { tts?.speak(answer, TextToSpeech.QUEUE_FLUSH, null, "binario-voice-answer") } })
       addView(Button(this@BinarioVoiceRequestActivity).apply { minHeight = touchTargetPx(); minWidth = touchTargetPx(); text = if (speakAnswers) "Disattiva lettura automatica" else "Attiva lettura automatica"; contentDescription = text; setOnClickListener { voicePreferences.edit().putBoolean("speak_answers", !speakAnswers).apply(); showAnswer(answer) } })
       addView(Button(this@BinarioVoiceRequestActivity).apply { minHeight = touchTargetPx(); minWidth = touchTargetPx(); text = "Riprova"; contentDescription = "Riprova richiesta vocale"; setOnClickListener { waitingForRealtime = false; handler.removeCallbacksAndMessages(null); launchSystemVoiceInput() } })
       addView(Button(this@BinarioVoiceRequestActivity).apply { minHeight = touchTargetPx(); minWidth = touchTargetPx(); text = "Chiudi"; contentDescription = "Chiudi richiesta Binario"; setOnClickListener { finish() } })
     })
-    announceForAccessibility("Risposta Binario. ${'$'}answer")
     if (speakAnswers) tts?.speak(answer, TextToSpeech.QUEUE_FLUSH, null, "binario-voice-answer")
   }
   override fun onDestroy() { unregisterReceiver(replyReceiver); handler.removeCallbacksAndMessages(null); tts?.stop(); tts?.shutdown(); super.onDestroy() }
@@ -731,6 +1101,19 @@ class BinarioVoiceRequestActivity : Activity() {
     const settingsPath = path.join(next.modRequest.platformProjectRoot, "settings.gradle");
     let settings = fs.readFileSync(settingsPath, "utf8");
     if (!settings.includes("include ':wear'")) { settings += "\ninclude ':wear'\n"; fs.writeFileSync(settingsPath, settings); }
+    const gradlePropertiesPath = path.join(next.modRequest.platformProjectRoot, "gradle.properties");
+    let gradleProperties = fs.readFileSync(gradlePropertiesPath, "utf8");
+    gradleProperties = setGradleProperty(gradleProperties, "org.gradle.parallel", "false");
+    gradleProperties = setGradleProperty(gradleProperties, "org.gradle.workers.max", "1");
+    fs.writeFileSync(gradlePropertiesPath, gradleProperties);
+    const wrapperPropertiesPath = path.join(next.modRequest.platformProjectRoot, "gradle", "wrapper", "gradle-wrapper.properties");
+    let wrapperProperties = fs.readFileSync(wrapperPropertiesPath, "utf8");
+    wrapperProperties = setGradleProperty(
+      wrapperProperties,
+      "distributionSha256Sum",
+      "bd71102213493060956ec229d946beee57158dbd89d0e62b91bca0fa2c5f3531"
+    );
+    fs.writeFileSync(wrapperPropertiesPath, wrapperProperties);
     return next;
   }]);
 }

@@ -2,6 +2,7 @@ package it.binario.app.data.repository
 
 import it.binario.app.data.Station
 import it.binario.app.data.core.BoardKind
+import it.binario.app.data.core.RouteChangeKind
 import it.binario.app.data.core.SourceRef
 import it.binario.app.data.core.StationBoard
 import it.binario.app.data.core.StationBoardEntry
@@ -116,6 +117,7 @@ class StationBoardAggregateService(
         }
 
         val clusters = cluster(candidates)
+        val identityAmbiguous = hasAmbiguousIdentity(candidates)
         var sourceConflict = false
         val entries = clusters.map { group ->
             if (hasConflict(group)) sourceConflict = true
@@ -124,8 +126,11 @@ class StationBoardAggregateService(
 
         val warnings = buildSet {
             boards.flatMapTo(this) { it.warnings }
-            if (invalidBoards.isNotEmpty()) add(ProviderWarning.IDENTITY_AMBIGUOUS)
+            if (invalidBoards.isNotEmpty() || identityAmbiguous) add(ProviderWarning.IDENTITY_AMBIGUOUS)
             if (sourceConflict) add(ProviderWarning.SOURCE_CONFLICT)
+            if (entries.any { it.routeChange?.value?.kind == RouteChangeKind.REPLACEMENT_SERVICE }) {
+                add(ProviderWarning.REPLACEMENT_SERVICE)
+            }
         }
 
         return StationBoardAggregateResult.Success(
@@ -160,14 +165,53 @@ class StationBoardAggregateService(
         ).abs()
 
         if (firstNumber.isNotBlank() && secondNumber.isNotBlank()) {
-            if (firstNumber != secondNumber || timeDelta > identityTolerance) return false
-            return normalize(endpoint(first.entry)) == normalize(endpoint(second.entry))
+            if (!sameNumberTimeAndEndpoint(first, second, firstNumber, secondNumber, timeDelta)) return false
+            if (knownOperatorsDiffer(first, second)) return false
+            if (sameSourceReportsDifferentRun(first, second)) return false
+            return true
         }
 
         return first.entry.runId == second.entry.runId &&
             timeDelta <= identityTolerance &&
             normalize(endpoint(first.entry)) == normalize(endpoint(second.entry))
     }
+
+    private fun sameNumberTimeAndEndpoint(
+        first: EntryCandidate,
+        second: EntryCandidate,
+        firstNumber: String = normalize(first.entry.publicNumber.orEmpty()),
+        secondNumber: String = normalize(second.entry.publicNumber.orEmpty()),
+        timeDelta: Duration = Duration.between(
+            first.entry.scheduledTime.toInstant(),
+            second.entry.scheduledTime.toInstant()
+        ).abs()
+    ): Boolean = firstNumber.isNotBlank() &&
+        secondNumber.isNotBlank() &&
+        firstNumber == secondNumber &&
+        timeDelta <= identityTolerance &&
+        normalize(endpoint(first.entry)) == normalize(endpoint(second.entry))
+
+    private fun knownOperatorsDiffer(first: EntryCandidate, second: EntryCandidate): Boolean {
+        val firstOperator = normalize(first.entry.operatorId?.value.orEmpty())
+        val secondOperator = normalize(second.entry.operatorId?.value.orEmpty())
+        return firstOperator.isNotBlank() && secondOperator.isNotBlank() && firstOperator != secondOperator
+    }
+
+    private fun sameSourceReportsDifferentRun(first: EntryCandidate, second: EntryCandidate): Boolean {
+        val firstSources = first.board.snapshot.contributingSources.mapTo(mutableSetOf()) { it.sourceId }
+        val secondSources = second.board.snapshot.contributingSources.mapTo(mutableSetOf()) { it.sourceId }
+        return first.entry.runId != second.entry.runId && firstSources.any(secondSources::contains)
+    }
+
+    private fun hasAmbiguousIdentity(candidates: List<EntryCandidate>): Boolean =
+        candidates.indices.any { firstIndex ->
+            ((firstIndex + 1) until candidates.size).any { secondIndex ->
+                val first = candidates[firstIndex]
+                val second = candidates[secondIndex]
+                sameNumberTimeAndEndpoint(first, second) &&
+                    (knownOperatorsDiffer(first, second) || sameSourceReportsDifferentRun(first, second))
+            }
+        }
 
     private fun merge(group: List<EntryCandidate>): StationBoardEntry {
         val operatorHint = group.mapNotNull { it.entry.operatorId?.value }.firstOrNull()

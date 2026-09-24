@@ -1,0 +1,116 @@
+{
+  "schemaVersion": 2,
+  "verifiedAt": "2026-09-23",
+  "githubActions": [
+    {
+      "reference": "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+      "release": "v7"
+    },
+    {
+      "reference": "actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961",
+      "release": "v5"
+    },
+    {
+      "reference": "actions/setup-node@820762786026740c76f36085b0efc47a31fe5020",
+      "release": "v7"
+    },
+    {
+      "reference": "actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1",
+      "release": "v6"
+    },
+    {
+      "reference": "gradle/actions/wrapper-validation@ed408507eac070d1f99cc633dbcf757c94c7933a",
+      "release": "v4"
+    },
+    {
+      "reference": "pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86",
+      "release": "v6"
+    }
+  ],
+  "containerImages": [
+    {
+      "reference": "mariadb:11.4@sha256:70cc072b29b4a89ae07abb2d4da2c64678a7f2dfe092751bb51c87d67dc1338b",
+      "registry": "registry-1.docker.io/library/mariadb"
+    }
+  ],
+  "runners": [
+    {
+      "label": "macos-15",
+      "kind": "github-hosted-versioned-label",
+      "immutable": false
+    },
+    {
+      "label": "ubuntu-24.04",
+      "kind": "github-hosted-versioned-label",
+      "immutable": false
+    }
+  ],
+  "runtimes": [
+    {
+      "action": "actions/setup-java",
+      "input": "java-version",
+      "value": "17.0.20+101",
+      "additionalInputs": {
+        "distribution": "temurin"
+      }
+    },
+    {
+      "action": "actions/setup-node",
+      "input": "node-version",
+      "value": "22.23.2"
+    },
+    {
+      "action": "actions/setup-python",
+      "input": "python-version",
+      "value": "3.12.10"
+    },
+    {
+      "action": "pnpm/action-setup",
+      "input": "version",
+      "value": "10.34.5"
+    }
+  ],
+  "tools": [
+    {
+      "name": "Xcode",
+      "version": "16.4",
+      "build": "16F6",
+      "source": "https://github.com/actions/runner-images/blob/main/images/macos/macos-15-Readme.md"
+    },
+    {
+      "name": "XcodeGen",
+      "version": "2.46.0",
+      "url": "https://github.com/yonaskolb/XcodeGen/releases/download/2.46.0/xcodegen.zip",
+      "sha256": "4d9e34b62172d645eed6457cac13fc222569974098ef4ee9c3368bedf0196806"
+    }
+  ],
+  "appleWatchRunSteps": [
+    {
+      "name": "Verify CI trust chain",
+      "sha256": "f86f4fa1d2dcfbd7130710c290946a7451fb747465aa2be6402b1590490dc5d4"
+    },
+    {
+      "name": "Select pinned Xcode",
+      "sha256": "d5f95c5f4fa5eb95f63251594e6aa11a3a9b63d15fa5bdcca7932bbab96653b1"
+    },
+    {
+      "name": "Install XcodeGen",
+      "sha256": "8a62acac8c4c7b80743bb4f5b2da39f8c25bbd3016c5afef27f308e727d77ed9"
+    },
+    {
+      "name": "Generate Xcode project",
+      "sha256": "bdda8fc016233561ae1373260c36558e5d4c306a823ed94687bc0fcd9073ba5c",
+      "workingDirectory": "apple-watch"
+    },
+    {
+      "name": "Select an available watchOS simulator",
+      "sha256": "7c3e358d45781febc7ba025b2f9f1a7115f0011dbcdbeb75876d5522151c6b74",
+      "id": "simulator"
+    },
+    {
+      "name": "Build and test Apple Watch",
+      "sha256": "52d1edead767cda7c939a73d94262dc64d159a96c1c2e67c0d2bbfaf94c3effb",
+      "workingDirectory": "apple-watch"
+    }
+  ]
+}
