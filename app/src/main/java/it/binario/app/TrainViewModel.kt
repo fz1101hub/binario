@@ -61,7 +61,8 @@ data class ServiceMonitor(val number: String, val label: String)
 class TrainViewModel(
     application: Application,
     /** Widget configuration needs local catalog/search only, never startup refresh or Wear publication. */
-    private val enableStartupEffects: Boolean = true
+    private val enableStartupEffects: Boolean = true,
+    private val routeDataSourceOverride: TrainDataSource? = null
 ) : AndroidViewModel(application) {
     private companion object {
         const val STATION_SUGGESTION_DEBOUNCE_MILLIS = 180L
@@ -74,7 +75,7 @@ class TrainViewModel(
     private val personalTravelStore = PersonalTravelStore(application)
     private val mobilityPreferencesStore = MobilityPreferencesStore(application)
     private val customStationStore = CustomStationStore(application)
-    private val dataSource: TrainDataSource = BinarioDataGraph.routeDataSource(application)
+    private val dataSource: TrainDataSource = routeDataSourceOverride ?: BinarioDataGraph.routeDataSource(application)
     private val stationBoardService = StationBoardAggregateService(BinarioDataGraph.stationBoardDisplayProviders())
     private val curatedStationCatalog = EmbeddedCuratedRailStationCatalog(
         openAsset = { assetPath -> application.assets.open(assetPath) }
