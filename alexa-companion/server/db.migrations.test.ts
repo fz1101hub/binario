@@ -89,7 +89,7 @@ describe("catena delle migrazioni drizzle", () => {
       "utf8"
     );
     expect(sql).toContain("ADD `familyId` varchar(64) NULL");
-    expect(sql).toContain("SHA2(CONCAT(`userId`, ':', `clientId`), 256)");
+    expect(sql).toContain("SHA2(CONCAT('legacy:', `id`, ':', `tokenHash`), 256)");
     expect(sql).toContain("MODIFY `familyId` varchar(64) NOT NULL");
     expect(sql).toContain("oauth_refresh_tokens_family_revoked_idx");
     const executableSql = sql.replace(/^--.*$/gm, "");

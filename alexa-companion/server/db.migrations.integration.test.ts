@@ -202,7 +202,36 @@ describeDatabase("migrazioni MariaDB reali", () => {
       );
       expect(families).toHaveLength(2);
       expect(families[0]?.familyId).toMatch(/^[0-9a-f]{64}$/);
-      expect(families[1]?.familyId).toBe(families[0]?.familyId);
+      expect(families[1]?.familyId).toMatch(/^[0-9a-f]{64}$/);
+      // Pre-family rows may belong to different historical grants. There is no
+      // reliable lineage to reconstruct, so migration must not let replay of an
+      // old revoked grant revoke an unrelated currently-active grant.
+      expect(families[1]?.familyId).not.toBe(families[0]?.familyId);
+      // A revoked pre-migration grant must not share lineage with a different
+      // active pre-migration grant for the same user/client.
+      const [legacyRows] = await connection.query<
+        Array<{ tokenHash: string; familyId: string }>
+      >(
+        "SELECT tokenHash, familyId FROM oauth_refresh_tokens WHERE userId = ? ORDER BY id",
+        [historicalUserId]
+      );
+      expect(legacyRows[0]?.familyId).not.toBe(legacyRows[1]?.familyId);
+
+      // Replaying a revoked legacy grant must not invalidate a different
+      // active legacy grant that happened to use the same user/client.
+      const legacyReplay = await rotateRefreshToken({
+        currentTokenHash: "a".repeat(64),
+        clientId: "legacy-client",
+        nextTokenHash: "c".repeat(64),
+        nextTokenExpiresAt: new Date(Date.now() + 60_000),
+      });
+      expect(legacyReplay).toBeNull();
+      const [stillActiveLegacy] = await connection.query<Array<{ revokedAt: Date | null }>>(
+        "SELECT revokedAt FROM oauth_refresh_tokens WHERE tokenHash = ?",
+        ["b".repeat(64)]
+      );
+      expect(stillActiveLegacy[0]?.revokedAt).toBeNull();
+
       const [applied] = await connection.query<Array<{ createdAt: string }>>(
         "SELECT CAST(created_at AS CHAR) AS createdAt FROM __drizzle_migrations ORDER BY created_at"
       );
