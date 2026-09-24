@@ -69,6 +69,21 @@ class GtfsArtifactDownloaderTest {
     }
 
     @Test(expected = GtfsDownloadException::class)
+    fun `interrompe una catena di redirect oltre il limite configurato`() {
+        var requests = 0
+        val bounded = GtfsArtifactDownloader(
+            maxContentLengthBytes = LIMIT,
+            maxRedirects = 1,
+            connectionFactory = { url ->
+                requests += 1
+                fakeRedirectConnection(url, "https://cdn.example.invalid/feed-$requests.zip")
+            }
+        )
+
+        bounded.open(eavGtfs)
+    }
+
+    @Test(expected = GtfsDownloadException::class)
     fun `interrompe il download quando i byte letti superano il limite senza content length`() {
         val bounded = downloaderWithFakeConnection(body = ByteArray(LIMIT.toInt() + 1), contentLength = -1L)
 
