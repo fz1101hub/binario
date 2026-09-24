@@ -7,6 +7,7 @@ import it.binario.app.data.core.SourceRef
 import it.binario.app.data.core.TrainRunId
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
@@ -73,6 +74,53 @@ class EmbeddedGtfsRealtimeScheduleResolverTest {
         assertNotNull(resolved)
         assertEquals(LocalDate.of(2026, 8, 16), resolved?.scheduledAt?.toLocalDate())
         assertEquals("01:10", resolved?.scheduledAt?.toLocalTime()?.toString()?.take(5))
+    }
+
+    @Test
+    fun `GTFS service day mantiene ore trascorse nel passaggio all ora legale`() {
+        val resolver = EmbeddedGtfsRealtimeScheduleResolver(
+            openAsset = { ByteArrayInputStream(feed()) },
+            packs = listOf(pack)
+        )
+        val update = RealtimeStopUpdate(
+            runId = TrainRunId("lombardia-trenord-gtfs:N1"),
+            sourceTripId = "N1",
+            sourceStopId = "CO",
+            stopSequence = 1,
+            observedAt = observedAt,
+            source = source
+        )
+
+        val resolved = resolver.resolve(sourceId, update, LocalDate.of(2026, 3, 29), ZoneId.of("Europe/Rome"))
+
+        assertNotNull(resolved)
+        // 25:10 is 25h10m after the GTFS service-day origin. On the spring
+        // transition day that elapsed instant displays as 02:10 the next day,
+        // rather than the wall-clock 01:10 produced by LocalDateTime.atZone().
+        assertEquals(LocalDate.of(2026, 3, 30), resolved?.scheduledAt?.toLocalDate())
+        assertEquals("02:10", resolved?.scheduledAt?.toLocalTime()?.toString()?.take(5))
+    }
+
+    @Test
+    fun `GTFS service day mantiene ore trascorse nel ritorno all ora solare`() {
+        val resolver = EmbeddedGtfsRealtimeScheduleResolver(
+            openAsset = { ByteArrayInputStream(feed()) },
+            packs = listOf(pack)
+        )
+        val update = RealtimeStopUpdate(
+            runId = TrainRunId("lombardia-trenord-gtfs:N1"),
+            sourceTripId = "N1",
+            sourceStopId = "CO",
+            stopSequence = 1,
+            observedAt = observedAt,
+            source = source
+        )
+
+        val resolved = resolver.resolve(sourceId, update, LocalDate.of(2026, 10, 25), ZoneId.of("Europe/Rome"))
+
+        assertNotNull(resolved)
+        assertEquals(LocalDate.of(2026, 10, 26), resolved?.scheduledAt?.toLocalDate())
+        assertEquals("00:10", resolved?.scheduledAt?.toLocalTime()?.toString()?.take(5))
     }
 
     private fun feed(): ByteArray {
