@@ -202,7 +202,11 @@ describeDatabase("migrazioni MariaDB reali", () => {
       );
       expect(families).toHaveLength(2);
       expect(families[0]?.familyId).toMatch(/^[0-9a-f]{64}$/);
-      expect(families[1]?.familyId).toBe(families[0]?.familyId);
+      expect(families[1]?.familyId).toMatch(/^[0-9a-f]{64}$/);
+      // Pre-family rows may belong to different historical grants. There is no
+      // reliable lineage to reconstruct, so migration must not let replay of an
+      // old revoked grant revoke an unrelated currently-active grant.
+      expect(families[1]?.familyId).not.toBe(families[0]?.familyId);
       const [applied] = await connection.query<Array<{ createdAt: string }>>(
         "SELECT CAST(created_at AS CHAR) AS createdAt FROM __drizzle_migrations ORDER BY created_at"
       );
