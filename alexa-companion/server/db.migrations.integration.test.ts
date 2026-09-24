@@ -207,6 +207,16 @@ describeDatabase("migrazioni MariaDB reali", () => {
       // reliable lineage to reconstruct, so migration must not let replay of an
       // old revoked grant revoke an unrelated currently-active grant.
       expect(families[1]?.familyId).not.toBe(families[0]?.familyId);
+      // A revoked pre-migration grant must not share lineage with a different
+      // active pre-migration grant for the same user/client.
+      const [legacyRows] = await connection.query<
+        Array<{ tokenHash: string; familyId: string }>
+      >(
+        "SELECT tokenHash, familyId FROM oauth_refresh_tokens WHERE userId = ? ORDER BY id",
+        [historicalUserId]
+      );
+      expect(legacyRows[0]?.familyId).not.toBe(legacyRows[1]?.familyId);
+
       const [applied] = await connection.query<Array<{ createdAt: string }>>(
         "SELECT CAST(created_at AS CHAR) AS createdAt FROM __drizzle_migrations ORDER BY created_at"
       );
