@@ -34,6 +34,8 @@ Una prima passata separata sull'HEAD integrato ha individuato sette lacune resid
 
 Un ulteriore audit **GPT** ha riesaminato l'HEAD `991b8ad2` senza assumere valide le conclusioni precedenti e ha chiuso il ledger con **0 P0, 0 P1 e 4 P2**: leakage temporale di `JourneyQuery`, refresh token Alexa senza reuse detection di famiglia, downgrade HTTPS→HTTP attraverso redirect automatico GTFS e conversione service-day/DST GTFS come wall clock civile. Il presunto P2 sulla capacità di import `PlannedJourney` è stato ritirato dopo controverifica: `accepted`, `conflicts` e `duplicates` sono mutuamente esclusivi e la cardinalità finale coincide con il precheck. I quattro P2 reali sono corretti nella tranche corrente con regression test. La gerarchia di prodotto non cambia: l'app smartphone resta principale, Wear OS, Companion Expo, Apple Watch e Alexa restano companion separati.
 
+La Draft PR #27, prodotta separatamente dallo stesso audit a partire da `991b8ad2`, è stata confrontata file per file ma non cherry-pickata. La controverifica ha respinto tre divergenze: i test proposti per `25:10` si aspettavano 02:10 nel cambio primaverile e 00:10 in quello autunnale, mentre il calcolo GTFS `mezzogiorno locale − 12 ore + 25h10` produce 01:10 in entrambi i giorni successivi; il backfill di una famiglia distinta per ogni ID token non collega R0/R1 già esistenti al momento della migrazione; il reset su `switchDirection()` perderebbe indebitamente la data pianificata della stessa tratta. L'integrazione mantiene invece i test discriminanti dentro gap/overlap DST, raggruppa conservativamente i token legacy per utente+client e conserva la query quando cambia soltanto la direzione.[17] [19]
+
 | Finding confermato | Chiusura e regressione |
 |---|---|
 | URI e race di revoca Data Layer | Wildcard documentata `wear://*/binario/wear/snapshot`; generation token anche per enable; `revocation_pending` persistito prima delle coroutine; Task Data Layer terminali prima di rilasciare il gate; ricontrollo request/route dopo ogni sospensione. |
@@ -113,3 +115,4 @@ Le scelte proprietarie elencate sopra non bloccano ulteriore sviluppo interno, m
 [16]: https://developer.android.com/training/wearables/packaging "Android Developers — Package and distribute Wear OS apps"
 [17]: https://gtfs.org/documentation/schedule/reference/ "GTFS Schedule Reference — Time e service day"
 [18]: https://www.rfc-editor.org/rfc/rfc9700.html#section-4.14.2 "RFC 9700 §4.14.2 — Refresh token replay e rotation"
+[19]: https://github.com/fz1101hub/binario/pull/27#issuecomment-5805469762 "Controverifica differenziale della Draft PR 27"
