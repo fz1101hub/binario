@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 
 // Drizzle applies only migrations listed in meta/_journal.json. The canonical
 // lineage preserves the historical WebDev chain 0000-0011 byte-for-byte, then
-// adopts the Alexa revocation columns additively in 0012.
+// adopts Alexa security changes additively in 0012 and 0013.
 const drizzleDir = path.resolve(import.meta.dirname, "..", "drizzle");
 const journal = JSON.parse(
   readFileSync(path.join(drizzleDir, "meta", "_journal.json"), "utf8")
@@ -83,8 +83,21 @@ describe("catena delle migrazioni drizzle", () => {
     expect(executableSql).not.toMatch(/(?:^|;\s*)\s*(DROP|DELETE|TRUNCATE)\b/im);
   });
 
+  it("0013 aggiunge e inizializza la famiglia dei refresh token senza eliminare dati", () => {
+    const sql = readFileSync(
+      path.join(drizzleDir, "0013_alexa_refresh_token_family.sql"),
+      "utf8"
+    );
+    expect(sql).toContain("ADD COLUMN IF NOT EXISTS \`familyId\` varchar(64) NULL");
+    expect(sql).toContain("CONCAT('legacy-', \`id\`)");
+    expect(sql).toContain("MODIFY COLUMN \`familyId\` varchar(64) NOT NULL");
+    expect(sql).toContain("oauth_refresh_tokens_family_idx");
+    const executableSql = sql.replace(/^--.*$/gm, "");
+    expect(executableSql).not.toMatch(/(?:^|;\\s*)\\s*(DROP|DELETE|TRUNCATE)\\b/im);
+  });
+
   it("mantiene i timestamp storici che Drizzle usa per riconoscere il database WebDev", () => {
-    expect(journal.entries).toHaveLength(13);
+    expect(journal.entries).toHaveLength(14);
     expect(journal.entries[2]).toMatchObject({
       tag: "0002_sweet_rachel_grey",
     });
