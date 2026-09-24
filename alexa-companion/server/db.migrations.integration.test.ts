@@ -294,15 +294,52 @@ describeDatabase("migrazioni MariaDB reali", () => {
       database: oauthDatabase,
     });
     try {
-      await applyMigrations(connection, 0, 13);
+      await applyMigrations(connection, 0, 11);
+      const [legacyInsert] = await connection.query(
+        "INSERT INTO users (`openId`, `lastSignedIn`) VALUES (?, CURRENT_TIMESTAMP)",
+        ["legacy-replay-user"]
+      );
+      const legacyUserId = Number(
+        (legacyInsert as { insertId: number }).insertId
+      );
+      const revokedLegacyHash = "ab".repeat(32);
+      const activeLegacyHash = "cd".repeat(32);
+      await connection.query(
+        "INSERT INTO oauth_refresh_tokens (`userId`, `tokenHash`, `clientId`, `expiresAt`, `revokedAt`) VALUES (?, ?, 'legacy-client', DATE_ADD(CURRENT_TIMESTAMP, INTERVAL 1 DAY), CURRENT_TIMESTAMP), (?, ?, 'legacy-client', DATE_ADD(CURRENT_TIMESTAMP, INTERVAL 1 DAY), NULL)",
+        [legacyUserId, revokedLegacyHash, legacyUserId, activeLegacyHash]
+      );
+      await applyMigrations(connection, 12, 13);
+      await connection.query(
+        "INSERT INTO alexa_account_links (userId, linkedAt, lastVerifiedAt, credentialVersion, revokedAt) VALUES (?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 1, NULL)",
+        [legacyUserId]
+      );
+      const databaseUrl = new URL(originalDatabaseUrl);
+      databaseUrl.pathname = `/${oauthDatabase}`;
+      process.env.DATABASE_URL = databaseUrl.toString();
+
+      await expect(
+        rotateRefreshToken({
+          currentTokenHash: revokedLegacyHash,
+          clientId: "legacy-client",
+          nextTokenHash: "ef".repeat(32),
+          nextTokenExpiresAt: new Date(Date.now() + 60_000),
+        })
+      ).resolves.toBeNull();
+      const [legacyAfterReplay] = await connection.query<
+        Array<{ revokedAt: Date | null; credentialVersion: number }>
+      >(
+        "SELECT token.revokedAt, link.credentialVersion FROM oauth_refresh_tokens token JOIN alexa_account_links link ON link.userId = token.userId WHERE token.tokenHash = ?",
+        [activeLegacyHash]
+      );
+      expect(legacyAfterReplay).toHaveLength(1);
+      expect(legacyAfterReplay[0]?.revokedAt).toBeNull();
+      expect(legacyAfterReplay[0]?.credentialVersion).toBe(1);
+
       const [insert] = await connection.query(
         "INSERT INTO users (`openId`, `lastSignedIn`) VALUES (?, CURRENT_TIMESTAMP)",
         ["oauth-revocation-user"]
       );
       const userId = Number((insert as { insertId: number }).insertId);
-      const databaseUrl = new URL(originalDatabaseUrl);
-      databaseUrl.pathname = `/${oauthDatabase}`;
-      process.env.DATABASE_URL = databaseUrl.toString();
 
       await expect(touchExistingUserSession(userId)).resolves.toBe(true);
       await expect(touchExistingUserSession(userId)).resolves.toBe(true);
