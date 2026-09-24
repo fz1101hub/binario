@@ -196,11 +196,21 @@ describeDatabase("migrazioni MariaDB reali", () => {
         [historicalUserId]
       );
       expect(preserved).toEqual([{ stationName: "Roma Termini" }]);
-      const [families] = await connection.query<Array<{ familyId: string }>>(
-        "SELECT familyId FROM oauth_refresh_tokens WHERE userId = ? ORDER BY id",
+      const [families] = await connection.query<
+        Array<{ tokenHash: string; familyId: string; isRevoked: number }>
+      >(
+        "SELECT tokenHash, familyId, revokedAt IS NOT NULL AS isRevoked FROM oauth_refresh_tokens WHERE userId = ? ORDER BY id",
         [historicalUserId]
       );
       expect(families).toHaveLength(2);
+      expect(families[0]).toMatchObject({
+        tokenHash: "a".repeat(64),
+        isRevoked: 1,
+      });
+      expect(families[1]).toMatchObject({
+        tokenHash: "b".repeat(64),
+        isRevoked: 0,
+      });
       expect(families[0]?.familyId).toMatch(/^[0-9a-f]{64}$/);
       expect(families[1]?.familyId).toMatch(/^[0-9a-f]{64}$/);
       // Pre-family rows may belong to different historical grants. There is no
