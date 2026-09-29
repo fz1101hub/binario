@@ -35,6 +35,71 @@ describe("sessioni dashboard", () => {
     expect(await sdk.verifySession(foreign)).toBeNull();
   });
 
+  it("accetta sessioni con display name vuoto o assente", async () => {
+    const emptyName = await sdk.createSessionToken("empty-name-user", { name: "" });
+    expect(await sdk.verifySession(emptyName)).toEqual({
+      openId: "empty-name-user",
+      appId: "binario-app",
+      name: "",
+    });
+
+    const secret = new TextEncoder().encode(process.env.JWT_SECRET as string);
+    const legacyWithoutName = await new SignJWT({
+      openId: "legacy-empty-name-user",
+      appId: "binario-app",
+    })
+      .setProtectedHeader({ alg: "HS256", typ: "JWT" })
+      .setExpirationTime("1h")
+      .sign(secret);
+    expect(await sdk.verifySession(legacyWithoutName)).toEqual({
+      openId: "legacy-empty-name-user",
+      appId: "binario-app",
+      name: "",
+    });
+  });
+
+  it("continua a richiedere openId e appId", async () => {
+    const secret = new TextEncoder().encode(process.env.JWT_SECRET as string);
+    const missingOpenId = await new SignJWT({ appId: "binario-app" })
+      .setProtectedHeader({ alg: "HS256", typ: "JWT" })
+      .setExpirationTime("1h")
+      .sign(secret);
+    const missingAppId = await new SignJWT({ openId: "user-without-app" })
+      .setProtectedHeader({ alg: "HS256", typ: "JWT" })
+      .setExpirationTime("1h")
+      .sign(secret);
+
+    expect(await sdk.verifySession(missingOpenId)).toBeNull();
+    expect(await sdk.verifySession(missingAppId)).toBeNull();
+  });
+
+  it("non trasforma una sessione con display name vuoto in UNAUTHORIZED", async () => {
+    const token = await sdk.createSessionToken("empty-name-user", { name: "" });
+    const now = new Date();
+    const user = {
+      id: 7,
+      openId: "empty-name-user",
+      email: null,
+      name: null,
+      loginMethod: "manus",
+      role: "user" as const,
+      createdAt: now,
+      updatedAt: now,
+      lastSignedIn: now,
+    };
+    const userLookup = vi.spyOn(db, "getUserByOpenId").mockResolvedValueOnce(user);
+    const touch = vi.spyOn(db, "touchExistingUserSession").mockResolvedValueOnce(true);
+    const request = {
+      headers: { cookie: `${COOKIE_NAME}=${token}` },
+    } as Request;
+
+    await expect(sdk.authenticateRequest(request)).resolves.toEqual(user);
+    expect(userLookup).toHaveBeenCalledWith("empty-name-user");
+    expect(touch).toHaveBeenCalledWith(7);
+    userLookup.mockRestore();
+    touch.mockRestore();
+  });
+
   it("una sessione precedente all'erasure non ricrea automaticamente l'utente", async () => {
     const token = await sdk.createSessionToken("deleted-user", { name: "Utente" });
     const userLookup = vi.spyOn(db, "getUserByOpenId").mockResolvedValueOnce(undefined);

@@ -21,7 +21,7 @@ const isNonEmptyString = (value: unknown): value is string =>
 export type SessionPayload = {
   openId: string;
   appId: string;
-  name: string;
+  name?: string;
 };
 
 const EXCHANGE_TOKEN_PATH = `/webdev.v1.WebDevAuthPublicService/ExchangeToken`;
@@ -214,7 +214,7 @@ class SDKServer {
       if (
         !isNonEmptyString(openId) ||
         !isNonEmptyString(appId) ||
-        !isNonEmptyString(name)
+        (name !== undefined && typeof name !== "string")
       ) {
         console.warn("[Auth] Session payload missing required fields");
         return null;
@@ -230,7 +230,9 @@ class SDKServer {
       return {
         openId,
         appId,
-        name,
+        // Legacy sessions may not carry a display name. Normalize that optional
+        // claim so downstream authentication never mistakes it for a bad token.
+        name: name ?? "",
       };
     } catch (error) {
       console.warn("[Auth] Session verification failed", String(error));
