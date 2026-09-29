@@ -1,6 +1,6 @@
 # Informativa privacy di Binario
 
-**Stato del documento:** fotografia del comportamento implementato nel ramo di integrazione `integration/stabilization-complete-v0204`, aggiornata il 24 settembre 2026. Questa informativa distingue espressamente il codice attivo dalle funzioni presenti ma non operative. Non descrive funzionalità future.
+**Stato del documento:** fotografia del comportamento implementato nel ramo di integrazione `integration/stabilization-complete-v0204`, aggiornata il 30 settembre 2026. Questa informativa distingue espressamente il codice attivo dalle funzioni presenti ma non operative. Non descrive funzionalità future.
 
 > **Blocco per una distribuzione pubblica.** Il repository non identifica il titolare del trattamento, un recapito per i diritti privacy, un URL pubblico dell'informativa né la retention operativa di log e backup dell'hosting. Prima di una pubblicazione vanno completati questi elementi e va collegato un URL pubblico verificato nell'app e nei canali di distribuzione. `PRIVACY.md` è il documento sorgente del progetto, non un sostituto di quel collegamento pubblico.
 
@@ -27,11 +27,15 @@ L'app Android salva nelle `SharedPreferences` private dell'app le tratte salvate
 
 Questi dati servono a ripristinare le scelte dell'utente, generare promemoria locali e mostrare app e widget. Non risultano nel codice SDK pubblicitari o analytics configurati. Questa constatazione riguarda il codice di questo repository e non le telemetrie eventualmente applicate dal sistema operativo, dal negozio di app o da servizi terzi.
 
-### Feed ferroviari esterni e nomi di stazione
+### Feed ferroviari esterni, European Sleeper/JBB e nomi di stazione
 
 La build distribuita consulta il quadro orario programmato RFI per le stazioni RFI mappate. La richiesta contiene l'identificativo pubblico RFI della **stazione di partenza**; il filtro della stazione di arrivo viene applicato nell'app sul quadro ricevuto. I data pack GTFS embedded e il catalogo stazioni sono inclusi nell'app e non ricevono la ricerca dell'utente.
 
 La build personale attivata esplicitamente con `BINARIO_PERSONAL_REALTIME_SOURCES=true` può interrogare tabelloni pubblici RFI, Italo in Viaggio e ViaggiaTreno. In quel caso RFI riceve un identificativo pubblico della stazione; Italo riceve nello URL lo slug pubblico della stazione; ViaggiaTreno riceve il **nome della stazione** nel corpo del modulo HTTP. Il nome della destinazione viene usato localmente per filtrare il tabellone ricevuto. Gli adapter di feed GTFS o avvisi pubblici possono scaricare il feed dal rispettivo host senza inserire la tratta dell'utente nella richiesta. Le sorgenti autorizzate, le fonti personali opzionali e quelle non attive sono dettagliate nel README e nel data layer; una fonte non attiva non viene trasformata in un invio di dati.
+
+Per la copertura di **European Sleeper**, il codice dispone di un feed statico GTFS e di Trip Updates GTFS-Realtime dal mirror **European Sleeper/JBB** sull'host `jbb.ghsq.de` (`/gtfs/eu-es.gtfs.zip` e `/gtfs/european-sleeper/TripUpdates`). È una fonte **community best-effort**, non un feed ufficiale dell'operatore. Nel percorso a tier, può essere interrogata solo dopo che il **tier primario fallisce** nel costruire la tratta richiesta; una risposta del tier primario evita la chiamata al fallback e il feed JBB non lo sostituisce. Il risultato resta segnalato come fallback a copertura limitata.
+
+Quando tale fallback viene interrogato, l'implementazione esegue una richiesta HTTPS `GET` diretta al relativo URL JBB e imposta intestazioni `Accept` e `User-Agent` di Binario. I metadati di rete della richiesta sono visibili all'host `jbb.ghsq.de`, inclusi l'indirizzo IP del collegamento, data e ora, risorsa richiesta e intestazioni HTTP standard. JBB può quindi trattarli secondo le proprie condizioni; il repository non definisce tali condizioni né la loro conservazione.
 
 Le richieste sono dirette dal dispositivo al gestore ferroviario o del feed. Il codice Android richiede HTTPS, disabilita il traffico in chiaro e invia un `User-Agent` che identifica Binario e la versione del client; non invia un account Binario, un token di autenticazione, una posizione o una registrazione vocale alle fonti ferroviarie. Il gestore della fonte può comunque vedere i normali metadati di rete della richiesta.
 

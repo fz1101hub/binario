@@ -31,6 +31,14 @@ Ogni adapter deve dichiarare `SourceId`, licenza/access class, capability, cover
 
 Un provider best-effort non genera mai promesse implicite di disponibilità. Se diventa indisponibile, l’app conserva l’ultimo snapshot con timestamp e mostra uno stato di fonte non aggiornata o non disponibile. Non sostituisce una risposta fallita con un ritardo inventato.
 
+### European Sleeper / JBB: fallback di comunità
+
+European Sleeper è catalogata con il mirror **JBB** come fonte **community best-effort** `PUBLIC_BEST_EFFORT` / `BEST_EFFORT_FALLBACK`, non come feed ufficiale dell’operatore. Il client usa l'host `jbb.ghsq.de` per l'archivio statico `https://jbb.ghsq.de/gtfs/eu-es.gtfs.zip` e, per gli aggiornamenti riconciliabili con lo stesso archivio, `https://jbb.ghsq.de/gtfs/european-sleeper/TripUpdates`.
+
+Il gate runtime a tier consulta questo fallback solo dopo che il **tier primario** non riesce a costruire la tratta richiesta: una risposta primaria riuscita evita qualsiasi chiamata JBB. Il fallback non può quindi scalzare RFI, un operatore, un gestore dell’infrastruttura o un data pack ufficiale che abbia prodotto la tratta. Il risultato deve restare marcato come copertura limitata/best-effort e con la relativa provenienza.
+
+Le chiamate JBB sono richieste HTTPS `GET` dirette che impostano `Accept` e un `User-Agent` Binario. L'host `jbb.ghsq.de` può vedere i metadati di rete ordinari della richiesta — inclusi indirizzo IP del collegamento, data e ora, risorsa richiesta e intestazioni HTTP — e li tratta fuori dal controllo di questo repository. Questa descrizione documenta il comportamento del client; non attribuisce a JBB una policy di conservazione o un consenso che il codice non gestisce.
+
 Alla baseline corrente ViaggiaTreno, RFI Monitor e Italo in Viaggio sono presenti come adapter `PUBLIC_BEST_EFFORT` abilitati nel `ProviderRegistry`, ciascuno con limiti, cache e fallback. Questa abilitazione non ne modifica la classe di accesso: il connettore deve poter essere sospeso immediatamente se la salute, le condizioni o il comportamento della fonte non restano compatibili con questa policy. Trenord realtime rimane fuori dal registry attivo fino a un canale E015 autorizzato.
 
 ## Attribuzione e presentazione
