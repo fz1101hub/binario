@@ -1,0 +1,212 @@
+{
+  "schemaVersion": 1,
+  "kind": "binario-local-backup",
+  "routes": [
+    {
+      "id": "legacy-route-1",
+      "name": "Roma Termini – Roma Tiburtina",
+      "originId": "roma-termini",
+      "destinationId": "roma-tiburtina",
+      "pinned": true
+    },
+    {
+      "id": "legacy-route-2",
+      "name": "Roma Ostiense – Roma Trastevere",
+      "originId": "roma-ostiense",
+      "destinationId": "roma-trastevere",
+      "pinned": false
+    },
+    {
+      "id": "legacy-route-3",
+      "name": "Roma San Pietro – Roma Tuscolana",
+      "originId": "roma-san-pietro",
+      "destinationId": "roma-tuscolana",
+      "pinned": false
+    },
+    {
+      "id": "legacy-route-4",
+      "name": "Fiumicino Aeroporto – Ciampino",
+      "originId": "fiumicino-aeroporto",
+      "destinationId": "ciampino",
+      "pinned": false
+    },
+    {
+      "id": "legacy-route-5",
+      "name": "Civitavecchia – Frascati",
+      "originId": "civitavecchia",
+      "destinationId": "frascati",
+      "pinned": false
+    },
+    {
+      "id": "legacy-route-6",
+      "name": "Velletri – Viterbo Porta Fiorentina",
+      "originId": "velletri",
+      "destinationId": "viterbo-pf",
+      "pinned": false
+    },
+    {
+      "id": "legacy-route-7",
+      "name": "Orte – Latina",
+      "originId": "orte",
+      "destinationId": "latina",
+      "pinned": false
+    },
+    {
+      "id": "legacy-route-8",
+      "name": "Frosinone – Cassino",
+      "originId": "frosinone",
+      "destinationId": "cassino",
+      "pinned": false
+    },
+    {
+      "id": "legacy-route-9",
+      "name": "Napoli Centrale – Firenze Santa Maria Novella",
+      "originId": "napoli-centrale",
+      "destinationId": "firenze-smn",
+      "pinned": false
+    },
+    {
+      "id": "legacy-route-10",
+      "name": "Bologna Centrale – Milano Centrale",
+      "originId": "bologna-centrale",
+      "destinationId": "milano-centrale",
+      "pinned": false
+    },
+    {
+      "id": "legacy-route-11",
+      "name": "Venezia Santa Lucia – Genova Piazza Principe",
+      "originId": "venezia-sl",
+      "destinationId": "genova-pp",
+      "pinned": false
+    },
+    {
+      "id": "legacy-route-12",
+      "name": "Torino Porta Nuova – Bari Centrale",
+      "originId": "torino-pn",
+      "destinationId": "bari-centrale",
+      "pinned": false
+    },
+    {
+      "id": "legacy-route-13",
+      "name": "Palermo Centrale – Cagliari",
+      "originId": "palermo-centrale",
+      "destinationId": "cagliari",
+      "pinned": false
+    }
+  ],
+  "favouriteStationIds": [
+    "bari-centrale",
+    "bologna-centrale",
+    "cagliari",
+    "cassino",
+    "ciampino",
+    "civitavecchia",
+    "firenze-smn",
+    "fiumicino-aeroporto",
+    "frascati",
+    "frosinone",
+    "genova-pp",
+    "latina",
+    "milano-centrale",
+    "napoli-centrale",
+    "orte",
+    "palermo-centrale",
+    "roma-ostiense",
+    "roma-san-pietro",
+    "roma-termini",
+    "roma-tiburtina",
+    "roma-trastevere",
+    "roma-tuscolana",
+    "torino-pn",
+    "velletri",
+    "venezia-sl",
+    "viterbo-pf"
+  ],
+  "monitoredServices": [
+    {
+      "number": "FR 9512",
+      "label": "Frecciarossa 9512"
+    }
+  ],
+  "stationMonitors": [
+    {
+      "stationId": "roma-termini",
+      "stationName": "Roma Termini",
+      "mode": "DEPARTURES"
+    },
+    {
+      "stationId": "roma-tiburtina",
+      "stationName": "Roma Tiburtina",
+      "mode": "ARRIVALS"
+    },
+    {
+      "stationId": "roma-ostiense",
+      "stationName": "Roma Ostiense",
+      "mode": "BOTH"
+    },
+    {
+      "stationId": "roma-trastevere",
+      "stationName": "Roma Trastevere",
+      "mode": "DEPARTURES"
+    },
+    {
+      "stationId": "roma-san-pietro",
+      "stationName": "Roma San Pietro",
+      "mode": "ARRIVALS"
+    },
+    {
+      "stationId": "roma-tuscolana",
+      "stationName": "Roma Tuscolana",
+      "mode": "BOTH"
+    },
+    {
+      "stationId": "fiumicino-aeroporto",
+      "stationName": "Fiumicino Aeroporto",
+      "mode": "DEPARTURES"
+    },
+    {
+      "stationId": "ciampino",
+      "stationName": "Ciampino",
+      "mode": "ARRIVALS"
+    },
+    {
+      "stationId": "civitavecchia",
+      "stationName": "Civitavecchia",
+      "mode": "BOTH"
+    },
+    {
+      "stationId": "frascati",
+      "stationName": "Frascati",
+      "mode": "DEPARTURES"
+    },
+    {
+      "stationId": "velletri",
+      "stationName": "Velletri",
+      "mode": "ARRIVALS"
+    },
+    {
+      "stationId": "viterbo-pf",
+      "stationName": "Viterbo Porta Fiorentina",
+      "mode": "BOTH"
+    }
+  ],
+  "commuterAlerts": [
+    {
+      "id": "legacy-alert",
+      "routeLabel": "Roma – Torino",
+      "stationName": "Roma Termini",
+      "time": "08:15",
+      "leadMinutes": 15,
+      "repeat": "WEEKDAYS",
+      "quietHoursEnabled": false,
+      "enabled": true
+    }
+  ],
+  "mobility": {
+    "maxChanges": 2,
+    "transferMarginMinutes": 12,
+    "stepFreePreferred": true,
+    "compactTimetablePreferred": false
+  },
+  "widgetSurface": "STATION_MONITOR"
+}
