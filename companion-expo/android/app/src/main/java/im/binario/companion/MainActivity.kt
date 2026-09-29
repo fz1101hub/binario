@@ -1,6 +1,7 @@
 package im.binario.companion
 
 import android.content.Intent
+import im.binario.companion.binario.BinarioChecklistHandoff
 import im.binario.companion.binario.BinarioSharedTextStore
 
 import android.os.Build
@@ -21,12 +22,14 @@ class MainActivity : ReactActivity() {
     setTheme(R.style.AppTheme);
     super.onCreate(null)
     if (savedInstanceState == null) BinarioSharedTextStore.capture(this, intent)
+    BinarioChecklistHandoff.acknowledgeOpened(this, intent)
   }
 
   override fun onNewIntent(intent: Intent) {
     super.onNewIntent(intent)
     setIntent(intent)
     BinarioSharedTextStore.capture(this, intent)
+    BinarioChecklistHandoff.acknowledgeOpened(this, intent)
   }
 
   /**

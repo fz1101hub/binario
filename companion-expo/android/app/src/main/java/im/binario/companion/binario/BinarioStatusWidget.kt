@@ -20,15 +20,25 @@ import androidx.glance.layout.padding
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
+import androidx.work.CoroutineWorker
+import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.WorkManager
+import androidx.work.WorkerParameters
+import java.util.concurrent.TimeUnit
 
-class BinarioStatusWidget : GlanceAppWidget() {
-  private fun countdownLabel(scheduledAt: Long, now: Long = System.currentTimeMillis()): String {
-    val minutes = kotlin.math.ceil((scheduledAt - now).toDouble() / 60_000).toInt().coerceAtLeast(0)
+internal object BinarioWidgetPresentation {
+  fun countdownLabel(scheduledAt: Long, now: Long = System.currentTimeMillis()): String {
+    if (scheduledAt <= now) return "Dati non disponibili in tempo reale."
+    val minutes = kotlin.math.ceil((scheduledAt - now).toDouble() / 60_000).toLong()
     if (minutes < 60) return "Tra $minutes min"
     val hours = minutes / 60
     val remainder = minutes % 60
-    return if (remainder == 0) "Tra $hours h" else "Tra $hours h $remainder min"
+    return if (remainder == 0L) "Tra $hours h" else "Tra $hours h $remainder min"
   }
+}
+
+class BinarioStatusWidget : GlanceAppWidget() {
   override suspend fun provideGlance(context: Context, id: GlanceId) {
     val state = BinarioWidgetStore.read(context)
     val voiceActivity = ComponentName(context, im.binario.companion.MainActivity::class.java)
@@ -39,7 +49,7 @@ class BinarioStatusWidget : GlanceAppWidget() {
       ) {
         Text(if (state.plannedJourneyTitle != null) "PROSSIMA TRATTA · PROGRAMMATA" else "BINARIO", style = TextStyle(color = ColorProvider(Color(0xFF9EDBFF))))
         Text(state.plannedJourneyTitle ?: state.title, style = TextStyle(color = ColorProvider(Color.White)))
-        Text(if (state.plannedJourneyAtUtcMs != null) countdownLabel(state.plannedJourneyAtUtcMs) else state.subtitle, style = TextStyle(color = ColorProvider(Color(0xFFD5E4F1))))
+        Text(if (state.plannedJourneyAtUtcMs != null) BinarioWidgetPresentation.countdownLabel(state.plannedJourneyAtUtcMs) else state.subtitle, style = TextStyle(color = ColorProvider(Color(0xFFD5E4F1))))
         if (state.plannedJourneyTitle != null) Text("${state.plannedReminderMinutes?.let { "Promemoria $it min · " } ?: ""}Orario programmato, non realtime", style = TextStyle(color = ColorProvider(Color(0xFFD5E4F1))))
         Text("Apri Binario e detta", style = TextStyle(color = ColorProvider(Color(0xFF9EDBFF))), modifier = GlanceModifier.clickable(onClick = actionStartActivity(voiceActivity)))
       }
@@ -47,6 +57,46 @@ class BinarioStatusWidget : GlanceAppWidget() {
   }
 }
 
+class BinarioWidgetRefreshWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
+  override suspend fun doWork(): Result {
+    BinarioStatusWidget().updateAll(applicationContext)
+    return Result.success()
+  }
+
+  companion object {
+    private const val uniqueWorkName = "binario-widget-refresh-v1"
+    private const val refreshMinutes = 15L
+
+    fun schedule(context: Context) {
+      val request = PeriodicWorkRequestBuilder<BinarioWidgetRefreshWorker>(refreshMinutes, TimeUnit.MINUTES).build()
+      WorkManager.getInstance(context.applicationContext).enqueueUniquePeriodicWork(
+        uniqueWorkName,
+        ExistingPeriodicWorkPolicy.KEEP,
+        request,
+      )
+    }
+
+    fun cancel(context: Context) {
+      WorkManager.getInstance(context.applicationContext).cancelUniqueWork(uniqueWorkName)
+    }
+  }
+}
+
 class BinarioStatusWidgetReceiver : GlanceAppWidgetReceiver() {
   override val glanceAppWidget: GlanceAppWidget = BinarioStatusWidget()
+
+  override fun onEnabled(context: Context) {
+    super.onEnabled(context)
+    BinarioWidgetRefreshWorker.schedule(context)
+  }
+
+  override fun onUpdate(context: Context, appWidgetManager: android.appwidget.AppWidgetManager, appWidgetIds: IntArray) {
+    super.onUpdate(context, appWidgetManager, appWidgetIds)
+    BinarioWidgetRefreshWorker.schedule(context)
+  }
+
+  override fun onDisabled(context: Context) {
+    BinarioWidgetRefreshWorker.cancel(context)
+    super.onDisabled(context)
+  }
 }

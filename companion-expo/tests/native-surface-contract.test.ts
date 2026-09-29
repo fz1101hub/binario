@@ -131,6 +131,41 @@ describe("contratti delle superfici native Binario", () => {
     expect(companion).toContain("non mostrano dati ferroviari inventati");
   });
 
+  it("aggiorna il widget Glance in modo periodico bounded senza perdere l'update immediato dalla Home", () => {
+    const widget = source("android/app/src/main/java/im/binario/companion/binario/BinarioStatusWidget.kt");
+    const bridge = source("android/app/src/main/java/im/binario/companion/binario/BinarioWidgetBridge.kt");
+    const gradle = source("android/app/build.gradle");
+    for (const generated of [widgetPlugin, widget]) {
+      expect(generated).toContain("PeriodicWorkRequestBuilder<BinarioWidgetRefreshWorker>(refreshMinutes, TimeUnit.MINUTES)");
+      expect(generated).toContain("private const val refreshMinutes = 15L");
+      expect(generated).toContain("ExistingPeriodicWorkPolicy.KEEP");
+      expect(generated).toContain("enqueueUniquePeriodicWork");
+      expect(generated).toContain("cancelUniqueWork(uniqueWorkName)");
+      expect(generated).toContain("BinarioStatusWidget().updateAll(applicationContext)");
+      expect(generated).toContain("BinarioWidgetRefreshWorker.schedule(context)");
+    }
+    expect(widgetPlugin).toContain('implementation("androidx.work:work-runtime-ktx:2.7.1")');
+    expect(gradle).toContain('implementation("androidx.work:work-runtime-ktx:2.7.1")');
+    expect(bridge).toContain("scope.launch { BinarioStatusWidget().updateAll(context) }");
+  });
+
+  it("ricalcola il countdown e rende indisponibile una tratta al confine di partenza", () => {
+    const store = source("android/app/src/main/java/im/binario/companion/binario/BinarioWidgetStore.kt");
+    const widget = source("android/app/src/main/java/im/binario/companion/binario/BinarioStatusWidget.kt");
+    const test = source("android/app/src/test/java/im/binario/companion/binario/BinarioWidgetStateTest.kt");
+    for (const generated of [widgetPlugin, store]) {
+      expect(generated).toContain("state.plannedJourneyAtUtcMs > now");
+      expect(generated).toContain("return if (fresh && futureJourney) state else unavailable(state.title)");
+    }
+    for (const generated of [widgetPlugin, widget]) {
+      expect(generated).toContain('if (scheduledAt <= now) return "Dati non disponibili in tempo reale."');
+      expect(generated).toContain("kotlin.math.ceil((scheduledAt - now).toDouble() / 60_000).toLong()");
+    }
+    expect(test).toContain("countdownRoundsUpAndRecomputesAgainstCurrentTime");
+    expect(test).toContain("countdownAndStateBecomeUnavailableAtDeparture");
+    expect(widgetPlugin).toContain('path.join(testKotlinRoot, "BinarioWidgetStateTest.kt")');
+  });
+
   it("conserva la provenienza e il riepilogo accessibile dello snapshot", () => {
     const snapshotCard = source("components/snapshot-card.tsx");
     expect(snapshotCard).toContain('accessibilityRole="summary"');
@@ -138,14 +173,47 @@ describe("contratti delle superfici native Binario", () => {
     expect(snapshotCard).toContain("decision.notice");
   });
 
-  it("mantiene checklist sul telefono e un’azione Tile che non ne trasferisce le voci", () => {
+  it("mantiene checklist sul telefono e apre il telefono solo tramite notifica esplicita", () => {
     const alerts = source("app/(tabs)/alerts.tsx");
-    const widgetPlugin = source("plugins/with-binario-android-widget.cjs");
+    const phone = source("android/app/src/main/java/im/binario/companion/binario/BinarioWidgetBridge.kt");
+    const mainActivity = source("android/app/src/main/java/im/binario/companion/MainActivity.kt");
     expect(alerts).toContain('accessibilityRole="checkbox"');
     expect(alerts).toContain("localJourneyChecklistLabels");
     expect(widgetPlugin).toContain("plannedChecklistRemaining");
     expect(widgetPlugin).toContain("/binario/companion/open-checklist/v1");
-    expect(widgetPlugin).toContain("Checklist aperta sul telefono.");
+    for (const kotlin of [widgetPlugin, phone]) {
+      expect(kotlin).toContain("NotificationManager");
+      expect(kotlin).toContain("Intent(context, MainActivity::class.java)");
+      expect(kotlin).toContain("PendingIntent.getActivity");
+      expect(kotlin).toContain("PendingIntent.FLAG_IMMUTABLE");
+      expect(kotlin).toContain("Manifest.permission.POST_NOTIFICATIONS");
+      expect(kotlin).toContain("manager.areNotificationsEnabled()");
+      expect(kotlin).not.toContain("getLaunchIntentForPackage");
+      expect(kotlin).not.toContain(".let(::startActivity)");
+    }
+    expect(mainActivity).toContain("BinarioChecklistHandoff.acknowledgeOpened(this, intent)");
+  });
+
+  it("conferma sul watch solo l’apertura reale della PendingIntent e resta fail-closed", () => {
+    const phone = source("android/app/src/main/java/im/binario/companion/binario/BinarioWidgetBridge.kt");
+    const watch = source("android/wear/src/main/java/im/binario/companion/wear/BinarioChecklistRequestActivity.kt");
+    const listener = source("android/wear/src/main/java/im/binario/companion/wear/BinarioWearData.kt");
+    const manifest = source("android/wear/src/main/AndroidManifest.xml");
+    const acknowledgementPath = "/binario/companion/open-checklist-ack/v1";
+
+    for (const generated of [phone, watch, manifest]) expect(generated).toContain(acknowledgementPath);
+    expect(widgetPlugin.match(new RegExp(acknowledgementPath, "g"))?.length).toBeGreaterThanOrEqual(3);
+    expect(phone).toContain("UUID.fromString(value)");
+    expect(phone).toContain("pending.substringAfter(nodeSeparator, \"\") != nodeId");
+    expect(phone).toContain("Wearable.getMessageClient(context).sendMessage(nodeId, acknowledgementPath");
+    expect(watch).toContain("intent.getStringExtra(acknowledgementExtra) == requestId");
+    expect(watch).toContain('message.text = "Apri la notifica sul telefono per vedere la checklist."');
+    expect(watch).toContain('message.text = "Checklist aperta sul telefono."');
+    expect(watch.indexOf('message.text = "Checklist aperta sul telefono."')).toBeLessThan(watch.indexOf("override fun onCreate"));
+    expect(watch).toContain('failClosed("Nessuna conferma dal telefono. Riprova.")');
+    expect(watch).not.toContain("ByteArray(0)");
+    expect(listener).toContain("BinarioChecklistRequestActivity.acknowledgementPath");
+    expect(listener).toContain("UUID.fromString(requestId)");
   });
 
   it("annuncia gli stati Wear con live region senza API deprecate", () => {

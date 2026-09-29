@@ -7,6 +7,7 @@ import com.google.android.gms.wearable.DataMapItem
 import com.google.android.gms.wearable.MessageEvent
 import com.google.android.gms.wearable.WearableListenerService
 import java.nio.charset.StandardCharsets
+import java.util.UUID
 
 data class BinarioWearState(
   val title: String,
@@ -171,8 +172,17 @@ class BinarioWearDataService : WearableListenerService() {
   }
 
   override fun onMessageReceived(event: MessageEvent) {
-    if (event.path != "/binario/companion/voice-response/v1") return
-    val reply = event.data.toString(Charsets.UTF_8).take(280).ifBlank { "Dati non disponibili in tempo reale." }
-    sendBroadcast(Intent(BinarioVoiceRequestActivity.replyAction).setPackage(packageName).putExtra(BinarioVoiceRequestActivity.replyExtra, reply))
+    when (event.path) {
+      "/binario/companion/voice-response/v1" -> {
+        val reply = event.data.toString(Charsets.UTF_8).take(280).ifBlank { "Dati non disponibili in tempo reale." }
+        sendBroadcast(Intent(BinarioVoiceRequestActivity.replyAction).setPackage(packageName).putExtra(BinarioVoiceRequestActivity.replyExtra, reply))
+      }
+      BinarioChecklistRequestActivity.acknowledgementPath -> {
+        val requestId = event.data.toString(Charsets.UTF_8)
+        if (event.data.size <= 36 && runCatching { UUID.fromString(requestId).toString() }.getOrNull() == requestId) {
+          sendBroadcast(Intent(BinarioChecklistRequestActivity.acknowledgementAction).setPackage(packageName).putExtra(BinarioChecklistRequestActivity.acknowledgementExtra, requestId))
+        }
+      }
+    }
   }
 }

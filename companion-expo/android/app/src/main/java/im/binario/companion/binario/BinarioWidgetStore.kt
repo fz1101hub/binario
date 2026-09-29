@@ -24,16 +24,22 @@ object BinarioWidgetStore {
   private const val keyPlannedAt = "planned_at"
   private const val keyPlannedReminder = "planned_reminder"
 
-  private fun unavailable(title: String = "Binario") = BinarioWidgetState(
+  internal fun unavailable(title: String = "Binario") = BinarioWidgetState(
     title = title,
     subtitle = "Dati non disponibili in tempo reale.",
     status = "unavailable",
   )
 
-  fun write(context: Context, state: BinarioWidgetState, now: Long = System.currentTimeMillis()) {
-    val usable = state.status == "available" && state.updatedAtUtcMs != null &&
+  internal fun accepted(state: BinarioWidgetState, now: Long): BinarioWidgetState {
+    val fresh = state.status == "available" && state.updatedAtUtcMs != null &&
       state.expiresAtUtcMs != null && state.updatedAtUtcMs <= now && state.expiresAtUtcMs > now
-    val accepted = if (usable) state else unavailable(state.title)
+    val futureJourney = !state.plannedJourneyTitle.isNullOrBlank() &&
+      state.plannedJourneyAtUtcMs != null && state.plannedJourneyAtUtcMs > now
+    return if (fresh && futureJourney) state else unavailable(state.title)
+  }
+
+  fun write(context: Context, state: BinarioWidgetState, now: Long = System.currentTimeMillis()) {
+    val accepted = accepted(state, now)
     context.getSharedPreferences(preferenceName, Context.MODE_PRIVATE).edit().apply {
       putString(keyTitle, accepted.title)
       putString(keySubtitle, accepted.subtitle)
@@ -56,12 +62,9 @@ object BinarioWidgetStore {
     val status = prefs.getString(keyStatus, "unavailable") ?: "unavailable"
     val updatedAt = if (prefs.contains(keyUpdated)) prefs.getLong(keyUpdated, 0L) else null
     val expiresAt = if (prefs.contains(keyExpires)) prefs.getLong(keyExpires, 0L) else null
-    val isFresh = status == "available" && updatedAt != null && expiresAt != null && updatedAt <= now && expiresAt > now
-    if (!isFresh) return unavailable(title)
     val plannedTitle = prefs.getString(keyPlannedTitle, null)
     val plannedAt = if (prefs.contains(keyPlannedAt)) prefs.getLong(keyPlannedAt, 0L) else null
-    val plannedUsable = !plannedTitle.isNullOrBlank() && plannedAt != null && plannedAt > now
     val reminder = if (prefs.contains(keyPlannedReminder)) prefs.getInt(keyPlannedReminder, 0) else null
-    return BinarioWidgetState(title, prefs.getString(keySubtitle, "") ?: "", status, updatedAt, expiresAt, if (plannedUsable) plannedTitle else null, if (plannedUsable) plannedAt else null, if (plannedUsable) reminder else null)
+    return accepted(BinarioWidgetState(title, prefs.getString(keySubtitle, "") ?: "", status, updatedAt, expiresAt, plannedTitle, plannedAt, reminder), now)
   }
 }

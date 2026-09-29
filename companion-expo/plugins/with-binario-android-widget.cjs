@@ -121,16 +121,22 @@ object BinarioWidgetStore {
   private const val keyPlannedAt = "planned_at"
   private const val keyPlannedReminder = "planned_reminder"
 
-  private fun unavailable(title: String = "Binario") = BinarioWidgetState(
+  internal fun unavailable(title: String = "Binario") = BinarioWidgetState(
     title = title,
     subtitle = "Dati non disponibili in tempo reale.",
     status = "unavailable",
   )
 
-  fun write(context: Context, state: BinarioWidgetState, now: Long = System.currentTimeMillis()) {
-    val usable = state.status == "available" && state.updatedAtUtcMs != null &&
+  internal fun accepted(state: BinarioWidgetState, now: Long): BinarioWidgetState {
+    val fresh = state.status == "available" && state.updatedAtUtcMs != null &&
       state.expiresAtUtcMs != null && state.updatedAtUtcMs <= now && state.expiresAtUtcMs > now
-    val accepted = if (usable) state else unavailable(state.title)
+    val futureJourney = !state.plannedJourneyTitle.isNullOrBlank() &&
+      state.plannedJourneyAtUtcMs != null && state.plannedJourneyAtUtcMs > now
+    return if (fresh && futureJourney) state else unavailable(state.title)
+  }
+
+  fun write(context: Context, state: BinarioWidgetState, now: Long = System.currentTimeMillis()) {
+    val accepted = accepted(state, now)
     context.getSharedPreferences(preferenceName, Context.MODE_PRIVATE).edit().apply {
       putString(keyTitle, accepted.title)
       putString(keySubtitle, accepted.subtitle)
@@ -153,13 +159,10 @@ object BinarioWidgetStore {
     val status = prefs.getString(keyStatus, "unavailable") ?: "unavailable"
     val updatedAt = if (prefs.contains(keyUpdated)) prefs.getLong(keyUpdated, 0L) else null
     val expiresAt = if (prefs.contains(keyExpires)) prefs.getLong(keyExpires, 0L) else null
-    val isFresh = status == "available" && updatedAt != null && expiresAt != null && updatedAt <= now && expiresAt > now
-    if (!isFresh) return unavailable(title)
     val plannedTitle = prefs.getString(keyPlannedTitle, null)
     val plannedAt = if (prefs.contains(keyPlannedAt)) prefs.getLong(keyPlannedAt, 0L) else null
-    val plannedUsable = !plannedTitle.isNullOrBlank() && plannedAt != null && plannedAt > now
     val reminder = if (prefs.contains(keyPlannedReminder)) prefs.getInt(keyPlannedReminder, 0) else null
-    return BinarioWidgetState(title, prefs.getString(keySubtitle, "") ?: "", status, updatedAt, expiresAt, if (plannedUsable) plannedTitle else null, if (plannedUsable) plannedAt else null, if (plannedUsable) reminder else null)
+    return accepted(BinarioWidgetState(title, prefs.getString(keySubtitle, "") ?: "", status, updatedAt, expiresAt, plannedTitle, plannedAt, reminder), now)
   }
 }
 `;
@@ -186,15 +189,25 @@ import androidx.glance.layout.padding
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
+import androidx.work.CoroutineWorker
+import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.WorkManager
+import androidx.work.WorkerParameters
+import java.util.concurrent.TimeUnit
 
-class BinarioStatusWidget : GlanceAppWidget() {
-  private fun countdownLabel(scheduledAt: Long, now: Long = System.currentTimeMillis()): String {
-    val minutes = kotlin.math.ceil((scheduledAt - now).toDouble() / 60_000).toInt().coerceAtLeast(0)
+internal object BinarioWidgetPresentation {
+  fun countdownLabel(scheduledAt: Long, now: Long = System.currentTimeMillis()): String {
+    if (scheduledAt <= now) return "Dati non disponibili in tempo reale."
+    val minutes = kotlin.math.ceil((scheduledAt - now).toDouble() / 60_000).toLong()
     if (minutes < 60) return "Tra ${'$'}minutes min"
     val hours = minutes / 60
     val remainder = minutes % 60
-    return if (remainder == 0) "Tra ${'$'}hours h" else "Tra ${'$'}hours h ${'$'}remainder min"
+    return if (remainder == 0L) "Tra ${'$'}hours h" else "Tra ${'$'}hours h ${'$'}remainder min"
   }
+}
+
+class BinarioStatusWidget : GlanceAppWidget() {
   override suspend fun provideGlance(context: Context, id: GlanceId) {
     val state = BinarioWidgetStore.read(context)
     val voiceActivity = ComponentName(context, im.binario.companion.MainActivity::class.java)
@@ -205,7 +218,7 @@ class BinarioStatusWidget : GlanceAppWidget() {
       ) {
         Text(if (state.plannedJourneyTitle != null) "PROSSIMA TRATTA · PROGRAMMATA" else "BINARIO", style = TextStyle(color = ColorProvider(Color(0xFF9EDBFF))))
         Text(state.plannedJourneyTitle ?: state.title, style = TextStyle(color = ColorProvider(Color.White)))
-        Text(if (state.plannedJourneyAtUtcMs != null) countdownLabel(state.plannedJourneyAtUtcMs) else state.subtitle, style = TextStyle(color = ColorProvider(Color(0xFFD5E4F1))))
+        Text(if (state.plannedJourneyAtUtcMs != null) BinarioWidgetPresentation.countdownLabel(state.plannedJourneyAtUtcMs) else state.subtitle, style = TextStyle(color = ColorProvider(Color(0xFFD5E4F1))))
         if (state.plannedJourneyTitle != null) Text("${'$'}{state.plannedReminderMinutes?.let { "Promemoria ${'$'}it min · " } ?: ""}Orario programmato, non realtime", style = TextStyle(color = ColorProvider(Color(0xFFD5E4F1))))
         Text("Apri Binario e detta", style = TextStyle(color = ColorProvider(Color(0xFF9EDBFF))), modifier = GlanceModifier.clickable(onClick = actionStartActivity(voiceActivity)))
       }
@@ -213,15 +226,63 @@ class BinarioStatusWidget : GlanceAppWidget() {
   }
 }
 
+class BinarioWidgetRefreshWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
+  override suspend fun doWork(): Result {
+    BinarioStatusWidget().updateAll(applicationContext)
+    return Result.success()
+  }
+
+  companion object {
+    private const val uniqueWorkName = "binario-widget-refresh-v1"
+    private const val refreshMinutes = 15L
+
+    fun schedule(context: Context) {
+      val request = PeriodicWorkRequestBuilder<BinarioWidgetRefreshWorker>(refreshMinutes, TimeUnit.MINUTES).build()
+      WorkManager.getInstance(context.applicationContext).enqueueUniquePeriodicWork(
+        uniqueWorkName,
+        ExistingPeriodicWorkPolicy.KEEP,
+        request,
+      )
+    }
+
+    fun cancel(context: Context) {
+      WorkManager.getInstance(context.applicationContext).cancelUniqueWork(uniqueWorkName)
+    }
+  }
+}
+
 class BinarioStatusWidgetReceiver : GlanceAppWidgetReceiver() {
   override val glanceAppWidget: GlanceAppWidget = BinarioStatusWidget()
+
+  override fun onEnabled(context: Context) {
+    super.onEnabled(context)
+    BinarioWidgetRefreshWorker.schedule(context)
+  }
+
+  override fun onUpdate(context: Context, appWidgetManager: android.appwidget.AppWidgetManager, appWidgetIds: IntArray) {
+    super.onUpdate(context, appWidgetManager, appWidgetIds)
+    BinarioWidgetRefreshWorker.schedule(context)
+  }
+
+  override fun onDisabled(context: Context) {
+    BinarioWidgetRefreshWorker.cancel(context)
+    super.onDisabled(context)
+  }
 }
 `;
 
 const bridgeKt = `package im.binario.companion.binario
 
+import android.Manifest
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import androidx.glance.appwidget.updateAll
 import com.facebook.react.ReactPackage
 import com.facebook.react.bridge.NativeModule
@@ -235,11 +296,14 @@ import com.google.android.gms.wearable.MessageEvent
 import com.google.android.gms.wearable.PutDataMapRequest
 import com.google.android.gms.wearable.Wearable
 import com.google.android.gms.wearable.WearableListenerService
+import im.binario.companion.MainActivity
+import im.binario.companion.R
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import java.util.UUID
 
 class BinarioWidgetBridgeModule(private val context: ReactApplicationContext) : ReactContextBaseJavaModule(context) {
   private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -297,15 +361,99 @@ class BinarioWidgetPackage : ReactPackage {
   override fun createViewManagers(reactContext: ReactApplicationContext): List<ViewManager<*, *>> = emptyList()
 }
 
+object BinarioChecklistHandoff {
+  const val requestPath = "/binario/companion/open-checklist/v1"
+  const val acknowledgementPath = "/binario/companion/open-checklist-ack/v1"
+  private const val notificationChannelId = "binario_checklist_handoff"
+  private const val pendingPreferenceName = "binario_checklist_handoff_v1"
+  private const val pendingLifetimeMillis = 15 * 60 * 1_000L
+  private const val nodeSeparator = '\\n'
+  private const val extraNodeId = "binario_checklist_node_id"
+  private const val extraRequestId = "binario_checklist_request_id"
+
+  private fun requestId(payload: ByteArray): String? {
+    if (payload.isEmpty() || payload.size > 36) return null
+    val value = payload.toString(Charsets.UTF_8)
+    return runCatching { UUID.fromString(value).toString() }.getOrNull()?.takeIf { it == value }
+  }
+
+  private fun safeNodeId(value: String?) = value?.takeIf { node ->
+    node.isNotBlank() && node.length <= 256 && node.none(Char::isISOControl)
+  }
+
+  private fun notificationsAllowed(context: Context, manager: NotificationManager): Boolean =
+    manager.areNotificationsEnabled() &&
+      (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU || context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED)
+
+  private fun createChannel(manager: NotificationManager) {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+      manager.createNotificationChannel(NotificationChannel(notificationChannelId, "Richieste dallo smartwatch", NotificationManager.IMPORTANCE_DEFAULT))
+    }
+  }
+
+  fun postNotification(context: Context, sourceNodeId: String, payload: ByteArray): Boolean {
+    val nodeId = safeNodeId(sourceNodeId) ?: return false
+    val id = requestId(payload) ?: return false
+    val manager = context.getSystemService(NotificationManager::class.java) ?: return false
+    if (!notificationsAllowed(context, manager)) return false
+    createChannel(manager)
+    val now = System.currentTimeMillis()
+    val preferences = context.getSharedPreferences(pendingPreferenceName, Context.MODE_PRIVATE)
+    preferences.all.forEach { (key, raw) ->
+      val createdAt = (raw as? String)?.substringBefore(nodeSeparator)?.toLongOrNull()
+      if (createdAt == null || now - createdAt !in 0..pendingLifetimeMillis) preferences.edit().remove(key).apply()
+    }
+    if (!preferences.edit().putString(id, "$now$nodeSeparator$nodeId").commit()) return false
+    val openChecklist = Intent(context, MainActivity::class.java).apply {
+      action = Intent.ACTION_VIEW
+      data = Uri.parse("binario-companion://alerts")
+      putExtra(extraNodeId, nodeId)
+      putExtra(extraRequestId, id)
+      addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+    }
+    val pendingIntent = PendingIntent.getActivity(context, id.hashCode(), openChecklist, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+    val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) Notification.Builder(context, notificationChannelId) else Notification.Builder(context)
+    val notification = builder
+      .setSmallIcon(R.mipmap.ic_launcher)
+      .setContentTitle("Apri checklist Binario")
+      .setContentText("Tocca per aprire la checklist sul telefono.")
+      .setContentIntent(pendingIntent)
+      .setAutoCancel(true)
+      .setCategory(Notification.CATEGORY_REMINDER)
+      .build()
+    return try {
+      manager.notify(id.hashCode(), notification)
+      true
+    } catch (_: RuntimeException) {
+      preferences.edit().remove(id).apply()
+      false
+    }
+  }
+
+  @Synchronized
+  fun acknowledgeOpened(context: Context, intent: Intent) {
+    if (intent.action != Intent.ACTION_VIEW || intent.data?.toString() != "binario-companion://alerts") return
+    val nodeId = safeNodeId(intent.getStringExtra(extraNodeId)) ?: return
+    val id = requestId(intent.getStringExtra(extraRequestId)?.toByteArray(Charsets.UTF_8) ?: return) ?: return
+    val preferences = context.getSharedPreferences(pendingPreferenceName, Context.MODE_PRIVATE)
+    val pending = preferences.getString(id, null) ?: return
+    val createdAt = pending.substringBefore(nodeSeparator).toLongOrNull() ?: return
+    if (pending.substringAfter(nodeSeparator, "") != nodeId || System.currentTimeMillis() - createdAt !in 0..pendingLifetimeMillis) {
+      preferences.edit().remove(id).apply()
+      return
+    }
+    if (!preferences.edit().remove(id).commit()) return
+    intent.removeExtra(extraNodeId)
+    intent.removeExtra(extraRequestId)
+    Wearable.getMessageClient(context).sendMessage(nodeId, acknowledgementPath, id.toByteArray(Charsets.UTF_8))
+  }
+}
+
 /** Non interpreta né persiste il transcript: senza fonte autorizzata risponde fail-closed. */
 class BinarioWatchVoiceRequestService : WearableListenerService() {
   override fun onMessageReceived(event: MessageEvent) {
-    if (event.path == "/binario/companion/open-checklist/v1") {
-      packageManager.getLaunchIntentForPackage(packageName)?.apply {
-        action = Intent.ACTION_VIEW
-        data = Uri.parse("binario-companion://alerts")
-        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
-      }?.let(::startActivity)
+    if (event.path == BinarioChecklistHandoff.requestPath) {
+      BinarioChecklistHandoff.postNotification(this, event.sourceNodeId, event.data)
       return
     }
     if (event.path != "/binario/companion/voice-request/v1") return
@@ -547,6 +695,7 @@ function withBinarioAndroidWidget(config) {
     const lines = [
       '    implementation("androidx.glance:glance-appwidget:1.2.0")',
       '    implementation("androidx.glance:glance:1.2.0")',
+      '    implementation("androidx.work:work-runtime-ktx:2.7.1")',
       '    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")',
       '    implementation("com.google.android.gms:play-services-wearable:20.0.1")',
       '    testImplementation("junit:junit:4.13.2")',
@@ -632,6 +781,10 @@ function withBinarioAndroidWidget(config) {
       path.join(testKotlinRoot, "CompanionWearPayloadV1Test.kt"),
       fs.readFileSync(path.join(__dirname, "templates", "CompanionWearPayloadV1Test.kt"), "utf8"),
     );
+    fs.writeFileSync(
+      path.join(testKotlinRoot, "BinarioWidgetStateTest.kt"),
+      fs.readFileSync(path.join(__dirname, "templates", "BinarioWidgetStateTest.kt"), "utf8"),
+    );
     fs.writeFileSync(path.join(kotlinRoot, "BinarioSharedTextReceiver.kt"), sharedTextReceiverKt);
     fs.writeFileSync(path.join(xmlRoot, "binario_status_widget_info.xml"), widgetXml);
     fs.writeFileSync(path.join(xmlRoot, "binario_shortcuts.xml"), shortcutsXml);
@@ -662,8 +815,13 @@ function withBinarioAndroidWidget(config) {
       mainActivityKt = mainActivityKt.replace("import android.os.Build", `import android.content.Intent\nimport ${packageName}.BinarioSharedTextStore\n\nimport android.os.Build`);
       mainActivityKt = mainActivityKt.replace("    super.onCreate(null)", "    super.onCreate(null)\n    if (savedInstanceState == null) BinarioSharedTextStore.capture(this, intent)");
       mainActivityKt = mainActivityKt.replace("\n  /**\n   * Returns the name", "\n  override fun onNewIntent(intent: Intent) {\n    super.onNewIntent(intent)\n    setIntent(intent)\n    BinarioSharedTextStore.capture(this, intent)\n  }\n\n  /**\n   * Returns the name");
-      fs.writeFileSync(mainActivityPath, mainActivityKt);
     }
+    if (!mainActivityKt.includes("BinarioChecklistHandoff.acknowledgeOpened")) {
+      mainActivityKt = mainActivityKt.replace("import android.content.Intent\n", `import android.content.Intent\nimport ${packageName}.BinarioChecklistHandoff\n`);
+      mainActivityKt = mainActivityKt.replace("    if (savedInstanceState == null) BinarioSharedTextStore.capture(this, intent)", "    if (savedInstanceState == null) BinarioSharedTextStore.capture(this, intent)\n    BinarioChecklistHandoff.acknowledgeOpened(this, intent)");
+      mainActivityKt = mainActivityKt.replace("    BinarioSharedTextStore.capture(this, intent)\n  }", "    BinarioSharedTextStore.capture(this, intent)\n    BinarioChecklistHandoff.acknowledgeOpened(this, intent)\n  }");
+    }
+    fs.writeFileSync(mainActivityPath, mainActivityKt);
 
     const wearRoot = path.join(next.modRequest.platformProjectRoot, "wear");
     const wearSource = path.join(wearRoot, "src", "main", "java", "im", "binario", "companion", "wear");
@@ -721,6 +879,7 @@ dependencies {
         <action android:name="com.google.android.gms.wearable.MESSAGE_RECEIVED" />
         <data android:scheme="wear" android:host="*" android:pathPrefix="/binario/companion/watch-payload/v1" />
         <data android:scheme="wear" android:host="*" android:pathPrefix="/binario/companion/voice-response/v1" />
+        <data android:scheme="wear" android:host="*" android:pathPrefix="/binario/companion/open-checklist-ack/v1" />
       </intent-filter>
     </service>
     <activity android:name=".BinarioVoiceRequestActivity" android:exported="true" android:label="@string/voice_request_label" />
@@ -738,6 +897,7 @@ import com.google.android.gms.wearable.DataMapItem
 import com.google.android.gms.wearable.MessageEvent
 import com.google.android.gms.wearable.WearableListenerService
 import java.nio.charset.StandardCharsets
+import java.util.UUID
 
 data class BinarioWearState(
   val title: String,
@@ -902,9 +1062,18 @@ class BinarioWearDataService : WearableListenerService() {
   }
 
   override fun onMessageReceived(event: MessageEvent) {
-    if (event.path != "/binario/companion/voice-response/v1") return
-    val reply = event.data.toString(Charsets.UTF_8).take(280).ifBlank { "Dati non disponibili in tempo reale." }
-    sendBroadcast(Intent(BinarioVoiceRequestActivity.replyAction).setPackage(packageName).putExtra(BinarioVoiceRequestActivity.replyExtra, reply))
+    when (event.path) {
+      "/binario/companion/voice-response/v1" -> {
+        val reply = event.data.toString(Charsets.UTF_8).take(280).ifBlank { "Dati non disponibili in tempo reale." }
+        sendBroadcast(Intent(BinarioVoiceRequestActivity.replyAction).setPackage(packageName).putExtra(BinarioVoiceRequestActivity.replyExtra, reply))
+      }
+      BinarioChecklistRequestActivity.acknowledgementPath -> {
+        val requestId = event.data.toString(Charsets.UTF_8)
+        if (event.data.size <= 36 && runCatching { UUID.fromString(requestId).toString() }.getOrNull() == requestId) {
+          sendBroadcast(Intent(BinarioChecklistRequestActivity.acknowledgementAction).setPackage(packageName).putExtra(BinarioChecklistRequestActivity.acknowledgementExtra, requestId))
+        }
+      }
+    }
   }
 }
 `);
@@ -970,24 +1139,71 @@ class BinarioTileService : TileService() {
     fs.writeFileSync(path.join(wearSource, "BinarioChecklistRequestActivity.kt"), `package im.binario.companion.wear
 
 import android.app.Activity
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.view.Gravity
 import android.view.View
 import android.widget.LinearLayout
 import android.widget.TextView
+import androidx.core.content.ContextCompat
 import com.google.android.gms.wearable.Wearable
+import java.util.UUID
 
 /** Il watch inoltra solo la richiesta di aprire l’Agenda; le voci checklist restano sul telefono. */
 class BinarioChecklistRequestActivity : Activity() {
+  private val handler = Handler(Looper.getMainLooper())
+  private lateinit var message: TextView
+  private val requestId = UUID.randomUUID().toString()
+  private var waitingForAcknowledgement = true
+  private val acknowledgementReceiver = object : BroadcastReceiver() {
+    override fun onReceive(context: Context?, intent: Intent?) {
+      if (intent?.action == acknowledgementAction && waitingForAcknowledgement && intent.getStringExtra(acknowledgementExtra) == requestId) {
+        waitingForAcknowledgement = false
+        handler.removeCallbacksAndMessages(null)
+        message.text = "Checklist aperta sul telefono."
+      }
+    }
+  }
+
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
-    val message = TextView(this).apply { text = "Apro la checklist sul telefono…"; textSize = 17f; setPadding(24, 24, 24, 24); accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_POLITE }
+    ContextCompat.registerReceiver(this, acknowledgementReceiver, IntentFilter(acknowledgementAction), ContextCompat.RECEIVER_NOT_EXPORTED)
+    message = TextView(this).apply { text = "Invio la richiesta al telefono…"; textSize = 17f; setPadding(24, 24, 24, 24); accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_POLITE }
     setContentView(LinearLayout(this).apply { gravity = Gravity.CENTER; addView(message) })
     Wearable.getNodeClient(this).connectedNodes.addOnSuccessListener { nodes ->
-      if (nodes.isEmpty()) { message.text = "Telefono non raggiungibile."; return@addOnSuccessListener }
-      nodes.forEach { node -> Wearable.getMessageClient(this).sendMessage(node.id, "/binario/companion/open-checklist/v1", ByteArray(0)) }
-      message.text = "Checklist aperta sul telefono."
-    }.addOnFailureListener { message.text = "Non è possibile aprire il telefono ora." }
+      val node = nodes.firstOrNull()
+      if (node == null) { failClosed("Telefono non raggiungibile."); return@addOnSuccessListener }
+      Wearable.getMessageClient(this).sendMessage(node.id, requestPath, requestId.toByteArray(Charsets.UTF_8))
+        .addOnSuccessListener { if (waitingForAcknowledgement) message.text = "Apri la notifica sul telefono per vedere la checklist." }
+        .addOnFailureListener { failClosed("Non è possibile inviare la richiesta ora.") }
+    }.addOnFailureListener { failClosed("Telefono non raggiungibile.") }
+    handler.postDelayed({ failClosed("Nessuna conferma dal telefono. Riprova.") }, acknowledgementTimeoutMillis)
+  }
+
+  private fun failClosed(copy: String) {
+    if (!waitingForAcknowledgement) return
+    waitingForAcknowledgement = false
+    handler.removeCallbacksAndMessages(null)
+    message.text = copy
+  }
+
+  override fun onDestroy() {
+    unregisterReceiver(acknowledgementReceiver)
+    handler.removeCallbacksAndMessages(null)
+    super.onDestroy()
+  }
+
+  companion object {
+    const val requestPath = "/binario/companion/open-checklist/v1"
+    const val acknowledgementPath = "/binario/companion/open-checklist-ack/v1"
+    const val acknowledgementAction = "im.binario.companion.wear.CHECKLIST_OPENED"
+    const val acknowledgementExtra = "binario_checklist_request_id"
+    const val acknowledgementTimeoutMillis = 30_000L
   }
 }
 `);
