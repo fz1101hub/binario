@@ -10,6 +10,12 @@ function fail(message) {
   process.exitCode = 1;
 }
 
+function hasActivePermission(manifest, permission) {
+  return Array.from(manifest.matchAll(/<uses-permission\b[^>]*\/?\s*>/g), (match) => match[0]).some(
+    (tag) => tag.includes(`android:name="${permission}"`) && !/tools:node="remove"/.test(tag),
+  );
+}
+
 function block(source, marker) {
   const start = source.indexOf(marker);
   if (start < 0) return null;
@@ -111,7 +117,7 @@ for (const permission of [
   "android.permission.WRITE_EXTERNAL_STORAGE",
   "android.permission.SYSTEM_ALERT_WINDOW",
 ]) {
-  if (mainManifest.includes(permission)) {
+  if (hasActivePermission(mainManifest, permission)) {
     fail(`${permission} must not be requested by the production manifest.`);
   }
 }

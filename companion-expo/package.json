@@ -11,9 +11,10 @@
     "web": "expo start --web",
     "generate:brand-assets": "python3 scripts/generate-binario-brand-assets.py",
     "check": "tsc --noEmit && pnpm verify:branding",
-    "test": "vitest run && pnpm verify:branding",
-    "prebuild": "pnpm generate:brand-assets && expo prebuild --platform android",
+    "test": "vitest run && pnpm verify:branding && pnpm verify:android-manifest",
+    "prebuild": "pnpm generate:brand-assets && expo prebuild --platform android && pnpm verify:android-manifest",
     "verify:branding": "node scripts/verify-branding.mjs",
+    "verify:android-manifest": "node scripts/verify-android-manifest.mjs",
     "verify:managed-config": "node scripts/verify-managed-config.mjs",
     "verify:dependency-audit": "node scripts/verify-dependency-audit.mjs",
     "verify:release-inputs": "node scripts/verify-release-inputs.mjs"

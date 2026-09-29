@@ -64,6 +64,24 @@ describe("contratti delle superfici native Binario", () => {
     expect(metadata).toContain("<verify-metadata>true</verify-metadata>");
     expect(metadata).not.toContain("<trusted-artifacts>");
   });
+  it("conserva i marker Expo tools:node=remove per le permission bloccate nel prebuild", () => {
+    const manifest = source("android/app/src/main/AndroidManifest.xml");
+    const packageJson = source("package.json");
+    const blockedPermissions = [
+      "android.permission.ACCESS_FINE_LOCATION",
+      "android.permission.READ_EXTERNAL_STORAGE",
+      "android.permission.WRITE_EXTERNAL_STORAGE",
+      "android.permission.SCHEDULE_EXACT_ALARM",
+      "android.permission.USE_EXACT_ALARM",
+    ];
+
+    expect(widgetPlugin).toContain('permission.$?.["tools:node"] === "remove"');
+    expect(packageJson).toContain('"verify:android-manifest"');
+    expect(packageJson).toContain("expo prebuild --platform android && pnpm verify:android-manifest");
+    for (const permission of blockedPermissions) {
+      expect(manifest).toContain(`<uses-permission android:name="${permission}" tools:node="remove"/>`);
+    }
+  });
   it("serializza il packaging Gradle per un ordine AAB deterministico", () => {
     const gradleProperties = source("android/gradle.properties");
     expect(gradleProperties).toContain("org.gradle.parallel=false");

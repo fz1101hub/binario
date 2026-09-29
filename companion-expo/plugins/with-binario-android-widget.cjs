@@ -570,7 +570,9 @@ function withBinarioAndroidWidget(config) {
       "android.permission.USE_EXACT_ALARM",
     ]);
     manifest["uses-permission"] = (manifest["uses-permission"] ?? []).filter(
-      (permission) => !blockedProductionPermissions.has(permission.$?.["android:name"]),
+      (permission) =>
+        permission.$?.["tools:node"] === "remove" ||
+        !blockedProductionPermissions.has(permission.$?.["android:name"]),
     );
     application.$ = application.$ ?? {};
     application.$["android:allowBackup"] = "false";

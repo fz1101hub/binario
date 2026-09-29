@@ -19,6 +19,12 @@ function assertFile(relativePath) {
   if (!fs.existsSync(path.resolve(relativePath))) fail(`${relativePath} is missing.`);
 }
 
+function hasActivePermission(manifest, permission) {
+  return Array.from(manifest.matchAll(/<uses-permission\b[^>]*\/?\s*>/g), (match) => match[0]).some(
+    (tag) => tag.includes(`android:name="${permission}"`) && !/tools:node="remove"/.test(tag),
+  );
+}
+
 const config = read("app.config.ts");
 const manifest = read("android/app/src/main/AndroidManifest.xml");
 const strings = read("android/app/src/main/res/values/strings.xml");
@@ -71,10 +77,10 @@ if (!/<color name="splashscreen_background">#005A52<\/color>/.test(colors)) {
 if (!/android:label="@string\/app_name"/.test(manifest)) {
   fail("generated Android manifest must use the companion string label.");
 }
-if (manifest.includes("android.permission.ACCESS_FINE_LOCATION")) {
+if (hasActivePermission(manifest, "android.permission.ACCESS_FINE_LOCATION")) {
   fail("generated Android manifest must not request ACCESS_FINE_LOCATION.");
 }
-if (!manifest.includes("android.permission.ACCESS_COARSE_LOCATION")) {
+if (!hasActivePermission(manifest, "android.permission.ACCESS_COARSE_LOCATION")) {
   fail("generated Android manifest must retain ACCESS_COARSE_LOCATION for nearest-station lookup.");
 }
 
