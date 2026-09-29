@@ -57,8 +57,8 @@ fun PlannedJourneyAgendaScreen(
     modifier: Modifier = Modifier,
     viewModel: PlannedJourneyViewModel,
     stations: List<PlannedJourneyStation>,
-    onExportJson: (String) -> Unit,
-    onExportIcs: (String) -> Unit,
+    onExportJson: () -> Unit,
+    onExportIcs: () -> Unit,
     onImportRequested: () -> Unit
 ) {
     val entries = viewModel.agendaEntries()
@@ -116,12 +116,12 @@ fun PlannedJourneyAgendaScreen(
         }
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                OutlinedButton(onClick = { onExportJson(viewModel.exportJson()) }, modifier = Modifier.weight(1f)) {
+                OutlinedButton(onClick = onExportJson, modifier = Modifier.weight(1f)) {
                     Icon(Icons.Default.Download, contentDescription = null)
                     Spacer(Modifier.width(6.dp))
                     Text(stringResource(R.string.planned_journey_export_json))
                 }
-                OutlinedButton(onClick = { onExportIcs(viewModel.exportIcs()) }, modifier = Modifier.weight(1f)) {
+                OutlinedButton(onClick = onExportIcs, modifier = Modifier.weight(1f)) {
                     Icon(Icons.Default.Download, contentDescription = null)
                     Spacer(Modifier.width(6.dp))
                     Text(stringResource(R.string.planned_journey_export_ics))

@@ -1,5 +1,6 @@
 package it.binario.app.plannedjourney
 
+import androidx.lifecycle.SavedStateHandle
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
@@ -98,6 +99,66 @@ class PlannedJourneyRepositoryViewModelTest {
 
         model.applyJsonImport(PlannedJourneyConflictPolicy.REPLACE_EXISTING)
         assertEquals("2026-10-02", model.snapshot.journeys.single().itinerary.segments.single().departure.date.toString())
+    }
+
+    @Test
+    fun `agenda filter and pending export descriptor restore without saving document payload`() {
+        val savedState = SavedStateHandle()
+        val repository = PlannedJourneyRepository(FakeStorage())
+        val first = PlannedJourneyViewModel(
+            repository = repository,
+            savedStateHandle = savedState,
+            now = { createdAt },
+            zone = ZoneId.of("Europe/Rome")
+        )
+        first.selectFilter(PlannedJourneyAgendaFilter.ARCHIVED)
+        first.prepareExport(PlannedJourneyExportFormat.JSON)
+
+        val restoredState = SavedStateHandle(
+            savedState.keys().associateWith { key -> savedState.get<Any>(key) }
+        )
+        val restored = PlannedJourneyViewModel(
+            repository = repository,
+            savedStateHandle = restoredState,
+            now = { createdAt },
+            zone = ZoneId.of("Europe/Rome")
+        )
+
+        assertEquals(PlannedJourneyAgendaFilter.ARCHIVED, restored.filter)
+        assertEquals(PlannedJourneyExportFormat.JSON, restored.pendingExport)
+        assertEquals(
+            setOf(PlannedJourneyViewModel.AGENDA_FILTER_KEY, PlannedJourneyViewModel.PENDING_EXPORT_KEY),
+            restoredState.keys()
+        )
+        assertTrue(restoredState.keys().all { restoredState.get<Any>(it) is String })
+    }
+
+    @Test
+    fun `restored pending export regenerates current repository content at SAF result time`() {
+        val savedState = SavedStateHandle()
+        val storage = FakeStorage()
+        val repository = PlannedJourneyRepository(storage)
+        repository.save(journey("before-request", "2026-10-01", "08:00"))
+        PlannedJourneyViewModel(
+            repository = repository,
+            savedStateHandle = savedState,
+            now = { createdAt }
+        ).prepareExport(PlannedJourneyExportFormat.JSON)
+
+        repository.save(journey("after-request", "2026-10-02", "09:00"))
+        val restored = PlannedJourneyViewModel(
+            repository = repository,
+            savedStateHandle = SavedStateHandle(
+                savedState.keys().associateWith { key -> savedState.get<Any>(key) }
+            ),
+            now = { createdAt }
+        )
+        val format = restored.consumePendingExport()
+        val exported = PlannedJourneyTransfer.decode(restored.export(requireNotNull(format)))
+            as PlannedJourneyTransferDecodeResult.Valid
+
+        assertEquals(listOf("before-request", "after-request"), exported.snapshot.journeys.map { it.id })
+        assertEquals(null, restored.pendingExport)
     }
 
     private fun journey(

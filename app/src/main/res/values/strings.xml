@@ -374,6 +374,7 @@
     <string name="route_change_accessibility_via">Nuovo instradamento via: %1$s</string>
     <string name="planned_journey_export_success">Esportazione completata.</string>
     <string name="planned_journey_export_failure">Esportazione non riuscita: %1$s</string>
+    <string name="planned_journey_export_missing">Esportazione non riuscita: la richiesta in sospeso non è più disponibile. Riprova.</string>
     <string name="planned_journey_import_failure">Importazione non riuscita: %1$s</string>
     <plurals name="planned_journey_import_too_large">
         <item quantity="one">Il file supera il limite di importazione di %d byte</item>

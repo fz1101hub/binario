@@ -119,12 +119,11 @@ import it.binario.app.data.core.RunStatus
 import it.binario.app.data.core.StationBoardEntry
 import it.binario.app.data.core.RouteChangeKind
 import it.binario.app.plannedjourney.PlannedJourneyAgendaScreen
+import it.binario.app.plannedjourney.PlannedJourneyExportFormat
 import it.binario.app.plannedjourney.PlannedJourneyIcsContract
-import it.binario.app.plannedjourney.PlannedJourneyRepository
 import it.binario.app.plannedjourney.PlannedJourneyStation
 import it.binario.app.plannedjourney.PlannedJourneyTransferContract
 import it.binario.app.plannedjourney.PlannedJourneyViewModel
-import it.binario.app.plannedjourney.SharedPreferencesPlannedJourneyStorage
 import it.binario.app.widget.WidgetConfigurationStore
 import it.binario.app.widget.WidgetStateStore
 import java.time.LocalDate
@@ -267,21 +266,22 @@ private fun BinarioApp(
     }
     var stopAlarmFeedback by rememberSaveable { mutableStateOf<String?>(null) }
     val context = LocalContext.current
-    val plannedJourneyViewModel = remember {
-        PlannedJourneyViewModel(
-            PlannedJourneyRepository(SharedPreferencesPlannedJourneyStorage(context.applicationContext))
-        )
-    }
-    var plannedJourneyExport by remember { mutableStateOf<PlannedJourneyExport?>(null) }
+    val plannedJourneyViewModel: PlannedJourneyViewModel = viewModel(
+        factory = PlannedJourneyViewModel.factory(context.applicationContext)
+    )
     val resources = LocalResources.current
     val plannedJourneyExportLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("application/octet-stream")
     ) { uri ->
-        val export = plannedJourneyExport
-        plannedJourneyExport = null
-        if (uri != null && export != null) {
+        val format = plannedJourneyViewModel.consumePendingExport()
+        if (uri != null) {
+            if (format == null) {
+                plannedJourneyViewModel.note(resources.getString(R.string.planned_journey_export_missing))
+                return@rememberLauncherForActivityResult
+            }
             runCatching {
-                context.contentResolver.openOutputStream(uri)?.bufferedWriter()?.use { it.write(export.content) }
+                val content = plannedJourneyViewModel.export(format)
+                context.contentResolver.openOutputStream(uri)?.bufferedWriter()?.use { it.write(content) }
                     ?: error(resources.getString(R.string.backup_open_output_error))
             }.onSuccess {
                 plannedJourneyViewModel.note(resources.getString(R.string.planned_journey_export_success))
@@ -490,13 +490,13 @@ private fun BinarioApp(
                 stations = viewModel.stations.map { station ->
                     PlannedJourneyStation(station.id, station.name, station.railwayCode)
                 },
-                onExportJson = { content ->
-                    plannedJourneyExport = PlannedJourneyExport("binario-viaggi-pianificati.json", content)
-                    plannedJourneyExportLauncher.launch("binario-viaggi-pianificati.json")
+                onExportJson = {
+                    plannedJourneyViewModel.prepareExport(PlannedJourneyExportFormat.JSON)
+                    plannedJourneyExportLauncher.launch(PlannedJourneyExportFormat.JSON.suggestedName)
                 },
-                onExportIcs = { content ->
-                    plannedJourneyExport = PlannedJourneyExport("binario-agenda.ics", content)
-                    plannedJourneyExportLauncher.launch("binario-agenda.ics")
+                onExportIcs = {
+                    plannedJourneyViewModel.prepareExport(PlannedJourneyExportFormat.ICS)
+                    plannedJourneyExportLauncher.launch(PlannedJourneyExportFormat.ICS.suggestedName)
                 },
                 onImportRequested = {
                     plannedJourneyImportLauncher.launch(arrayOf("application/json", "text/calendar", "text/plain"))
@@ -565,8 +565,6 @@ private fun BinarioApp(
         }
     }
 }
-
-private data class PlannedJourneyExport(val suggestedName: String, val content: String)
 
 private fun readBoundedPlannedJourneyDocument(input: java.io.InputStream, tooLargeMessage: String): String {
     val limit = maxOf(PlannedJourneyTransferContract.MAX_BYTES, PlannedJourneyIcsContract.MAX_BYTES)
