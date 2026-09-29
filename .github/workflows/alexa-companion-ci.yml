@@ -85,3 +85,6 @@ jobs:
 
       - name: Production build and bundle verification
         run: pnpm run build
+
+      - name: Production-only install and startup
+        run: pnpm run test:production-install
