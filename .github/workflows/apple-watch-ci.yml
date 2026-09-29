@@ -17,6 +17,7 @@ on:
   push:
     branches:
       - main
+      - "stabilization/**"
     paths:
       - "apple-watch/**"
       - "contracts/wear-snapshot/**"

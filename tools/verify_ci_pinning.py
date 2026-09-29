@@ -43,12 +43,20 @@ def _mapping(value: object) -> Mapping[str, Any] | None:
 
 def load_ci_lock(path: Path = LOCK_PATH) -> dict[str, Any]:
     data = json.loads(path.read_text(encoding="utf-8"))
-    if data.get("schemaVersion") != 2:
+    if data.get("schemaVersion") != 3:
         raise ValueError("schemaVersion lock CI non supportata")
     try:
         date.fromisoformat(data["verifiedAt"])
     except (KeyError, TypeError, ValueError) as error:
         raise ValueError("verifiedAt lock CI assente o non ISO") from error
+
+    trigger_policy = _mapping(data.get("workflowTriggerPolicy"))
+    if (
+        not trigger_policy
+        or set(trigger_policy) != {"pushBranches"}
+        or trigger_policy.get("pushBranches") != ["main", "stabilization/**"]
+    ):
+        raise ValueError("policy trigger push CI non valida")
 
     action_entries = data.get("githubActions", [])
     actions = [entry.get("reference") for entry in action_entries if isinstance(entry, Mapping)]
@@ -210,7 +218,12 @@ def _commands(value: object) -> str:
     return "\n".join(line for line in value.splitlines() if not line.lstrip().startswith("#"))
 
 
-def _check_apple_paths(path: Path, workflow: Mapping[str, Any], problems: list[str]) -> None:
+def _check_apple_paths(
+    path: Path,
+    workflow: Mapping[str, Any],
+    lock: Mapping[str, Any],
+    problems: list[str],
+) -> None:
     required_paths = {
         "tools/install_xcodegen.py",
         "tools/verify_ci_pinning.py",
@@ -234,11 +247,17 @@ def _check_apple_paths(path: Path, workflow: Mapping[str, Any], problems: list[s
                 f"{path.name}: {event_name}.paths non copre la catena XcodeGen: {sorted(missing)}"
             )
     apple_push = _mapping(triggers.get("push")) or {}
-    if apple_push.get("branches") != ["main"]:
-        problems.append(f"{path.name}: push branches deve limitarsi a main")
+    expected_push_branches = lock["workflowTriggerPolicy"]["pushBranches"]
+    if apple_push.get("branches") != expected_push_branches:
+        problems.append(f"{path.name}: push branches deve coincidere con la policy release nel lock")
 
 
-def _check_linux_trigger_budget(path: Path, workflow: Mapping[str, Any], problems: list[str]) -> None:
+def _check_linux_trigger_budget(
+    path: Path,
+    workflow: Mapping[str, Any],
+    lock: Mapping[str, Any],
+    problems: list[str],
+) -> None:
     if path.name not in {
         "alexa-companion-ci.yml",
         "android-ci.yml",
@@ -256,8 +275,9 @@ def _check_linux_trigger_budget(path: Path, workflow: Mapping[str, Any], problem
         problems.append(f"{path.name}: pull_request deve avere filtri paths non vuoti")
     if not isinstance(push_paths, list) or not push_paths:
         problems.append(f"{path.name}: push deve avere filtri paths non vuoti")
-    if branches != ["main"]:
-        problems.append(f"{path.name}: push branches deve limitarsi a main per non duplicare pull_request")
+    expected_push_branches = lock["workflowTriggerPolicy"]["pushBranches"]
+    if branches != expected_push_branches:
+        problems.append(f"{path.name}: push branches deve coincidere con la policy release nel lock")
     required_paths = {
         "android-ci.yml": {"app/**", "wear/**", "contracts/wear-snapshot/**"},
         "companion-ci.yml": {
@@ -578,9 +598,9 @@ def workflow_problems(
                         problems=problems,
                     )
 
-    _check_linux_trigger_budget(path, root or {}, problems)
+    _check_linux_trigger_budget(path, root or {}, lock, problems)
     if path.name == "apple-watch-ci.yml":
-        _check_apple_paths(path, root or {}, problems)
+        _check_apple_paths(path, root or {}, lock, problems)
         _check_apple_toolchain(path, jobs, lock, problems)
     return problems
 
