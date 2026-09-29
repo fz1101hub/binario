@@ -34,6 +34,7 @@ import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -44,6 +45,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotSame
 import org.junit.Assert.assertTrue
+import org.junit.Assert.assertThrows
 import org.junit.Test
 
 class RemoteGtfsFallbackDataSourceTest {
@@ -93,6 +95,47 @@ class RemoteGtfsFallbackDataSourceTest {
         assertFalse(service.operationalStatusVerified)
         assertTrue(service.operationalSourceIds.isEmpty())
         assertFalse(snapshot.providerName.contains("Realtime test"))
+    }
+
+    @Test
+    fun `un orario realtime malformato degrada solo quel singolo update allo snapshot statico`() = runBlocking {
+        val adapter = adapter(
+            realtimeProvider(realtimeUpdate("trip-1"), realtimeUpdate("trip-1", "col", 2)),
+            gtfs(includeMalformedStop = true)
+        )
+
+        val result = adapter.loadRoute(
+            route,
+            Direction.OUTBOUND,
+            JourneyQuery(LocalDate.of(2026, 9, 10), LocalTime.of(8, 0))
+        )
+
+        assertTrue(result is DataResult.Success)
+        val service = (result as DataResult.Success).snapshot.services.single()
+        assertEquals("09:10", service.expectedDeparture)
+        val malformedStop = service.stops.single { it.station == "Köln Hbf" }
+        assertEquals("00:00", malformedStop.expected)
+        assertEquals(0, malformedStop.delayMinutes)
+    }
+
+    @Test
+    fun `la cancellazione realtime non viene degradata a snapshot statico`() {
+        val adapter = adapter(object : TripUpdateProvider {
+            override val descriptor = realtimeDescriptor()
+
+            override suspend fun getTripUpdates(): ProviderResult<List<RealtimeStopUpdate>> =
+                throw CancellationException("cancelled")
+        })
+
+        assertThrows(CancellationException::class.java) {
+            runBlocking {
+                adapter.loadRoute(
+                    route,
+                    Direction.OUTBOUND,
+                    JourneyQuery(LocalDate.of(2026, 9, 10), LocalTime.of(8, 0))
+                )
+            }
+        }
     }
 
     @Test
@@ -169,59 +212,73 @@ class RemoteGtfsFallbackDataSourceTest {
         assertEquals(2, parses.get())
     }
 
-    private fun adapter(provider: TripUpdateProvider) = RemoteGtfsFallbackDataSource(
+    private fun adapter(provider: TripUpdateProvider, feed: ByteArray = gtfs()) = RemoteGtfsFallbackDataSource(
         source = source,
         parserSourceId = SourceId("european-sleeper"),
-        downloader = GtfsArtifactSource { _, _ -> GtfsDownloadSession(ByteArrayInputStream(gtfs())) },
+        downloader = GtfsArtifactSource { _, _ -> GtfsDownloadSession(ByteArrayInputStream(feed)) },
         clock = clock,
         realtimeProvider = provider,
         realtimeZone = ZoneId.of("Europe/Brussels")
     )
 
-    private fun realtimeProvider(tripId: String): TripUpdateProvider = object : TripUpdateProvider {
-        override val descriptor = ProviderDescriptor(
-            id = SourceId("european-sleeper-gtfs-rt"),
-            displayName = "Realtime test",
-            capabilities = setOf(ProviderCapability.TRAIN_RUN_REALTIME),
-            coverage = CoverageDescriptor(description = "test"),
-            accessMode = AccessMode.PUBLIC_BEST_EFFORT,
-            ratePolicy = RatePolicy(Duration.ZERO, defaultTimeToLive = Duration.ofMinutes(1)),
-            schemaVersion = 1
-        )
+    private fun realtimeProvider(vararg tripIds: String): TripUpdateProvider =
+        realtimeProvider(*tripIds.map(::realtimeUpdate).toTypedArray())
+
+    private fun realtimeProvider(vararg updates: RealtimeStopUpdate): TripUpdateProvider = object : TripUpdateProvider {
+        override val descriptor = realtimeDescriptor()
 
         override suspend fun getTripUpdates(): ProviderResult<List<RealtimeStopUpdate>> {
-            val ref = SourceRef(
-                sourceId = descriptor.id,
-                nativeId = tripId,
-                observedAt = now,
-                fetchedAt = now,
-                confidence = Confidence.DERIVED,
-                traceId = "test:$tripId"
-            )
-            val update = RealtimeStopUpdate(
-                runId = TrainRunId("es:$tripId"),
-                sourceTripId = tripId,
-                sourceStopId = "bru",
-                stopSequence = 1,
-                predictedAt = SourcedValue(Instant.parse("2026-09-10T07:10:00Z").atZone(ZoneId.of("Europe/Brussels")), ref),
-                officialDelay = SourcedValue(Duration.ofMinutes(10), ref),
-                observedAt = now,
-                source = ref
-            )
             return ProviderResult.Success(
-                listOf(update),
+                updates.toList(),
                 ProviderResponseMeta(descriptor.id, now, observedAt = now, expiresAt = now.plusSeconds(60))
             )
         }
     }
 
-    private fun gtfs(): ByteArray {
+    private fun realtimeDescriptor() = ProviderDescriptor(
+        id = SourceId("european-sleeper-gtfs-rt"),
+        displayName = "Realtime test",
+        capabilities = setOf(ProviderCapability.TRAIN_RUN_REALTIME),
+        coverage = CoverageDescriptor(description = "test"),
+        accessMode = AccessMode.PUBLIC_BEST_EFFORT,
+        ratePolicy = RatePolicy(Duration.ZERO, defaultTimeToLive = Duration.ofMinutes(1)),
+        schemaVersion = 1
+    )
+
+    private fun realtimeUpdate(tripId: String, stopId: String = "bru", stopSequence: Int = 1): RealtimeStopUpdate {
+        val ref = SourceRef(
+            sourceId = SourceId("european-sleeper-gtfs-rt"),
+            nativeId = tripId,
+            observedAt = now,
+            fetchedAt = now,
+            confidence = Confidence.DERIVED,
+            traceId = "test:$tripId"
+        )
+        return RealtimeStopUpdate(
+            runId = TrainRunId("es:$tripId"),
+            sourceTripId = tripId,
+            sourceStopId = stopId,
+            stopSequence = stopSequence,
+            predictedAt = SourcedValue(Instant.parse("2026-09-10T07:10:00Z").atZone(ZoneId.of("Europe/Brussels")), ref),
+            officialDelay = SourcedValue(Duration.ofMinutes(10), ref),
+            observedAt = now,
+            source = ref
+        )
+    }
+
+    private fun gtfs(includeMalformedStop: Boolean = false): ByteArray {
+        val stop = if (includeMalformedStop) "col,Köln Hbf\n" else ""
+        val stopTimes = if (includeMalformedStop) {
+            "trip-1,09:00:00,09:00:00,bru,1\ntrip-1,12:00:00,nope,col,2\ntrip-1,19:00:00,19:00:00,mil,3\n"
+        } else {
+            "trip-1,09:00:00,09:00:00,bru,1\ntrip-1,19:00:00,19:00:00,mil,2\n"
+        }
         val files = linkedMapOf(
             "agency.txt" to "agency_id,agency_name\nes,European Sleeper\n",
-            "stops.txt" to "stop_id,stop_name\nbru,Bruxelles-Midi\nmil,Milano Centrale\n",
+            "stops.txt" to "stop_id,stop_name\nbru,Bruxelles-Midi\n${stop}mil,Milano Centrale\n",
             "routes.txt" to "route_id,agency_id,route_short_name,route_long_name,route_type\nr1,es,ES,Bruxelles Milano,2\n",
             "trips.txt" to "route_id,service_id,trip_id,trip_short_name\nr1,daily,trip-1,ES123\n",
-            "stop_times.txt" to "trip_id,arrival_time,departure_time,stop_id,stop_sequence\ntrip-1,09:00:00,09:00:00,bru,1\ntrip-1,19:00:00,19:00:00,mil,2\n",
+            "stop_times.txt" to "trip_id,arrival_time,departure_time,stop_id,stop_sequence\n$stopTimes",
             "calendar.txt" to "service_id,monday,tuesday,wednesday,thursday,friday,saturday,sunday,start_date,end_date\ndaily,1,1,1,1,1,1,1,20260901,20261231\n",
             "calendar_dates.txt" to "service_id,date,exception_type\n"
         )
