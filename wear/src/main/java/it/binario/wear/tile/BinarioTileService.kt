@@ -86,7 +86,7 @@ private fun fallbackBinarioTileLayout(snapshot: WearSnapshot?): LayoutElementBui
         .addContent(binarioTileText("Binario", 18f, 0xFFFFFFFF.toInt(), 1))
         .addContent(binarioTileText(snapshot?.routeLabel.orEmpty(), 15f, 0xFFB8F3D7.toInt(), 2))
         .addContent(binarioTileText(details?.let { listOfNotNull(it.expectedDeparture, it.number, it.destination).joinToString(" · ") }.orEmpty(), 14f, 0xFFFFFFFF.toInt(), 2))
-        .addContent(binarioTileText(snapshot?.dataStatusLabel.orEmpty(), 12f, 0xFFB3C8BE.toInt(), 2))
+        .addContent(binarioTileText(snapshot?.notice.orEmpty(), 12f, 0xFFB3C8BE.toInt(), 2))
         .build()
 }
 

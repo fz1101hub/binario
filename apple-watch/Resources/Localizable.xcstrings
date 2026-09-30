@@ -86,7 +86,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@, %@, Zug %@, Ziel %@, erwartet um %@, %@, Bahnsteig %@."
+            "value": "%@, %@, Zug %@, Ziel %@, erwartet um %@, %@, Gleis %@."
           }
         },
         "fr": {
@@ -120,7 +120,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@, %@, Zug %@, Ziel %@, erwartet um %@, Bahnsteig %@."
+            "value": "%@, %@, Zug %@, Ziel %@, erwartet um %@, Gleis %@."
           }
         },
         "fr": {
@@ -656,7 +656,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Bahnsteig"
+            "value": "Gleis"
           }
         },
         "fr": {
@@ -764,7 +764,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Trajet"
+            "value": "Service"
           }
         },
         "es": {
@@ -1234,7 +1234,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Bst. —"
+            "value": "Gl. —"
           }
         },
         "fr": {
@@ -1268,7 +1268,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Bst. %@"
+            "value": "Gl. %@"
           }
         },
         "fr": {
@@ -1376,7 +1376,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Prochains trajets"
+            "value": "Prochains services"
           }
         },
         "es": {
@@ -1512,7 +1512,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Affiche le prochain trajet et l’état des données disponibles."
+            "value": "Affiche le prochain service et l’état des données disponibles."
           }
         },
         "es": {

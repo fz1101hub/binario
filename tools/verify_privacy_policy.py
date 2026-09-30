@@ -58,13 +58,21 @@ REQUIRED_DISCLOSURES: tuple[tuple[str, str, tuple[str, ...]], ...] = (
         ),
     ),
     (
-        "Expo in-app disclosure",
+        "Expo in-app disclosure rendering",
         "companion-expo/app/(tabs)/settings.tsx",
+        (
+            't("settings.privacyDescription")',
+            't("settings.privacyDisclosure")',
+        ),
+    ),
+    (
+        "Expo Italian privacy catalog",
+        "companion-expo/lib/i18n.ts",
         (
             "senza salvarla o inviarla",
             "Binario non registra audio",
-            "non esegue pairing o sincronizzazione remota",
-            "non viene mostrato un link inventato nell’app",
+            "non esegue abbinamento o sincronizzazione remota",
+            "non viene mostrato un link inventato",
         ),
     ),
 )

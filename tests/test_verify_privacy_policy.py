@@ -53,6 +53,28 @@ class VerifyPrivacyPolicyTest(unittest.TestCase):
             errors,
         )
 
+    def test_expo_privacy_disclosure_requires_rendering_and_catalog_copy(self) -> None:
+        render_fragment = 't("settings.privacyDisclosure")'
+        catalog_fragment = "Binario non registra audio"
+
+        def without_expo_disclosure(relative: str) -> str:
+            text = (ROOT / relative).read_text(encoding="utf-8")
+            if relative == "companion-expo/app/(tabs)/settings.tsx":
+                return text.replace(render_fragment, "", 1)
+            if relative == "companion-expo/lib/i18n.ts":
+                return text.replace(catalog_fragment, "", 1)
+            return text
+
+        errors = POLICY.verification_errors(without_expo_disclosure)
+        self.assertIn(
+            f"Expo in-app disclosure rendering: missing {render_fragment!r}",
+            errors,
+        )
+        self.assertIn(
+            f"Expo Italian privacy catalog: missing {catalog_fragment!r}",
+            errors,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

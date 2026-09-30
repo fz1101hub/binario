@@ -2,6 +2,7 @@ package im.binario.companion.binario
 
 import android.content.Context
 import android.content.ComponentName
+import im.binario.companion.R
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.graphics.Color
 import androidx.glance.GlanceId
@@ -55,7 +56,7 @@ class BinarioStatusWidget : GlanceAppWidget() {
         modifier = GlanceModifier.fillMaxSize().background(ColorProvider(Color(0xFF071525))).padding(16.dp),
         verticalAlignment = Alignment.Vertical.CenterVertically,
       ) {
-        Text(if (state.plannedJourneyTitle != null) "PROSSIMA TRATTA · PROGRAMMATA" else "BINARIO", style = TextStyle(color = ColorProvider(Color(0xFF9EDBFF))))
+        Text(if (state.plannedJourneyTitle != null) context.getString(R.string.binario_next_journey) else "BINARIO", style = TextStyle(color = ColorProvider(Color(0xFF9EDBFF))))
         Text(state.plannedJourneyTitle ?: state.title, style = TextStyle(color = ColorProvider(Color.White)))
         Text(if (state.plannedJourneyAtUtcMs != null) countdownLabel(context, state.plannedJourneyAtUtcMs) else state.subtitle, style = TextStyle(color = ColorProvider(Color(0xFFD5E4F1))))
         if (state.plannedJourneyTitle != null) Text("${state.plannedReminderMinutes?.let { context.getString(R.string.binario_reminder, it) } ?: ""}${context.getString(R.string.binario_scheduled_not_realtime)}", style = TextStyle(color = ColorProvider(Color(0xFFD5E4F1))))

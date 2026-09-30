@@ -124,7 +124,7 @@ object BinarioWidgetStore {
 
   internal fun unavailable(title: String = "Binario") = BinarioWidgetState(
     title = title,
-    subtitle = context.getString(R.string.binario_unavailable),
+    subtitle = "Dati non disponibili in tempo reale.",
     status = "unavailable",
   )
 
@@ -405,9 +405,9 @@ object BinarioChecklistHandoff {
     manager.areNotificationsEnabled() &&
       (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU || context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED)
 
-  private fun createChannel(manager: NotificationManager) {
+  private fun createChannel(context: Context, manager: NotificationManager) {
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-      manager.createNotificationChannel(NotificationChannel(notificationChannelId, "Richieste dallo smartwatch", NotificationManager.IMPORTANCE_DEFAULT))
+      manager.createNotificationChannel(NotificationChannel(notificationChannelId, context.getString(R.string.binario_checklist_channel_name), NotificationManager.IMPORTANCE_DEFAULT))
     }
   }
 
@@ -416,7 +416,7 @@ object BinarioChecklistHandoff {
     val id = requestId(payload) ?: return false
     val manager = context.getSystemService(NotificationManager::class.java) ?: return false
     if (!notificationsAllowed(context, manager)) return false
-    createChannel(manager)
+    createChannel(context, manager)
     val now = System.currentTimeMillis()
     val preferences = context.getSharedPreferences(pendingPreferenceName, Context.MODE_PRIVATE)
     preferences.all.forEach { (key, raw) ->
@@ -435,8 +435,8 @@ object BinarioChecklistHandoff {
     val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) Notification.Builder(context, notificationChannelId) else Notification.Builder(context)
     val notification = builder
       .setSmallIcon(R.mipmap.ic_launcher)
-      .setContentTitle("Apri checklist Binario")
-      .setContentText("Tocca per aprire la checklist sul telefono.")
+      .setContentTitle(context.getString(R.string.binario_checklist_notification_title))
+      .setContentText(context.getString(R.string.binario_checklist_notification_text))
       .setContentIntent(pendingIntent)
       .setAutoCancel(true)
       .setCategory(Notification.CATEGORY_REMINDER)
@@ -748,6 +748,9 @@ const localizedNativeStrings = {
     "opening_checklist": "Apro la checklist sul telefono…",
     "phone_unreachable": "Telefono non raggiungibile.",
     "checklist_opened": "Checklist aperta sul telefono.",
+    "checklist_channel_name": "Richieste dallo smartwatch",
+    "checklist_notification_title": "Apri checklist Binario",
+    "checklist_notification_text": "Tocca per aprire la checklist sul telefono.",
     "cannot_open_phone": "Non è possibile aprire il telefono ora.",
     "tile_heading": "Binario. %1$s. %2$s",
     "voice_state": "Apre la richiesta vocale sullo smartwatch",
@@ -802,6 +805,9 @@ const localizedNativeStrings = {
     "opening_checklist": "Opening the checklist on the phone…",
     "phone_unreachable": "Phone unreachable.",
     "checklist_opened": "Checklist opened on phone.",
+    "checklist_channel_name": "Smartwatch requests",
+    "checklist_notification_title": "Open Binario checklist",
+    "checklist_notification_text": "Tap to open the checklist on your phone.",
     "cannot_open_phone": "The phone cannot be opened now.",
     "tile_heading": "Binario. %1$s. %2$s",
     "voice_state": "Opens the voice request on the smartwatch",
@@ -856,6 +862,9 @@ const localizedNativeStrings = {
     "opening_checklist": "Checkliste wird auf dem Telefon geöffnet…",
     "phone_unreachable": "Telefon nicht erreichbar.",
     "checklist_opened": "Checkliste auf dem Telefon geöffnet.",
+    "checklist_channel_name": "Smartwatch-Anfragen",
+    "checklist_notification_title": "Binario-Checkliste öffnen",
+    "checklist_notification_text": "Tippen, um die Checkliste auf dem Telefon zu öffnen.",
     "cannot_open_phone": "Das Telefon kann jetzt nicht geöffnet werden.",
     "tile_heading": "Binario. %1$s. %2$s",
     "voice_state": "Öffnet die Sprachanfrage auf der Smartwatch",
@@ -872,7 +881,7 @@ const localizedNativeStrings = {
     "saved_journey_keywords": "nächste|nächster|meine Fahrt|meine Reise|wann fährt",
     "realtime_keywords": "verspät|gleis|ausfall|warn|echtzeit",
     "companion_source": "Lokale Companion-Planung",
-    "no_active_route": "Keine aktive Fahrt",
+    "no_active_route": "Keine aktive Strecke",
     "companion_unavailable_notice": "Daten im Companion nicht verfügbar: Öffnen Sie die Haupt-App, um die lokale Planung zu aktualisieren."
   },
   "fr": {
@@ -910,6 +919,9 @@ const localizedNativeStrings = {
     "opening_checklist": "Ouverture de la liste sur le téléphone…",
     "phone_unreachable": "Téléphone inaccessible.",
     "checklist_opened": "Liste ouverte sur le téléphone.",
+    "checklist_channel_name": "Demandes de la montre",
+    "checklist_notification_title": "Ouvrir la liste Binario",
+    "checklist_notification_text": "Touchez pour ouvrir la liste sur le téléphone.",
     "cannot_open_phone": "Le téléphone ne peut pas être ouvert maintenant.",
     "tile_heading": "Binario. %1$s. %2$s",
     "voice_state": "Ouvre la demande vocale sur la montre",
@@ -964,6 +976,9 @@ const localizedNativeStrings = {
     "opening_checklist": "Abriendo la lista en el teléfono…",
     "phone_unreachable": "Teléfono inalcanzable.",
     "checklist_opened": "Lista abierta en el teléfono.",
+    "checklist_channel_name": "Solicitudes del reloj",
+    "checklist_notification_title": "Abrir lista de Binario",
+    "checklist_notification_text": "Toca para abrir la lista en el teléfono.",
     "cannot_open_phone": "No se puede abrir el teléfono ahora.",
     "tile_heading": "Binario. %1$s. %2$s",
     "voice_state": "Abre la solicitud de voz en el reloj",
@@ -1484,7 +1499,7 @@ class BinarioChecklistRequestActivity : Activity() {
       if (intent?.action == acknowledgementAction && waitingForAcknowledgement && intent.getStringExtra(acknowledgementExtra) == requestId) {
         waitingForAcknowledgement = false
         handler.removeCallbacksAndMessages(null)
-        message.text = "Checklist aperta sul telefono."
+        message.text = getString(R.string.binario_checklist_opened)
       }
     }
   }

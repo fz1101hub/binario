@@ -26,6 +26,9 @@
   <string name="binario_opening_checklist">Abriendo la lista en el teléfono…</string>
   <string name="binario_phone_unreachable">Teléfono inalcanzable.</string>
   <string name="binario_checklist_opened">Lista abierta en el teléfono.</string>
+  <string name="binario_checklist_channel_name">Solicitudes del reloj</string>
+  <string name="binario_checklist_notification_title">Abrir lista de Binario</string>
+  <string name="binario_checklist_notification_text">Toca para abrir la lista en el teléfono.</string>
   <string name="binario_cannot_open_phone">No se puede abrir el teléfono ahora.</string>
   <string name="binario_tile_heading">Binario. %1$s. %2$s</string>
   <string name="binario_voice_state">Abre la solicitud de voz en el reloj</string>

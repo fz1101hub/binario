@@ -59,15 +59,11 @@ fun PlannedJourneyAgendaScreen(
     modifier: Modifier = Modifier,
     viewModel: PlannedJourneyViewModel,
     stations: List<PlannedJourneyStation>,
-    onExportJson: (String) -> Unit,
-    onExportIcs: (String) -> Unit,
+    onExportJson: () -> Unit,
+    onExportIcs: () -> Unit,
     onImportRequested: () -> Unit
 ) {
     val entries = viewModel.agendaEntries()
-    val icsText = PlannedJourneyIcsText(
-        eventDescription = stringResource(R.string.planned_journey_ics_event_description),
-        reminderDescription = stringResource(R.string.planned_journey_ics_reminder_description)
-    )
     val filters = listOf(
         PlannedJourneyAgendaFilter.UPCOMING,
         PlannedJourneyAgendaFilter.REMINDERS,

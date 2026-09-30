@@ -72,7 +72,7 @@ export function LocalPlanCard({ onSaved, planningDraft, onPlanningDraftApplied }
   }, [onPlanningDraftApplied, planningDraft]);
 
   function applyDictation() {
-    const draft = parseLocalDictation(dictationText);
+    const draft = parseLocalDictation(dictationText, new Date(), locale);
     if (!draft.origin && !draft.destination && !draft.travelDate && !draft.travelTime) {
       setMessage(t("planner.dictationIncomplete"));
       return;

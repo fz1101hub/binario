@@ -30,6 +30,9 @@
   <string name="binario_opening_checklist">Ouverture de la liste sur le téléphone…</string>
   <string name="binario_phone_unreachable">Téléphone inaccessible.</string>
   <string name="binario_checklist_opened">Liste ouverte sur le téléphone.</string>
+  <string name="binario_checklist_channel_name">Demandes de la montre</string>
+  <string name="binario_checklist_notification_title">Ouvrir la liste Binario</string>
+  <string name="binario_checklist_notification_text">Touchez pour ouvrir la liste sur le téléphone.</string>
   <string name="binario_cannot_open_phone">Le téléphone ne peut pas être ouvert maintenant.</string>
   <string name="binario_tile_heading">Binario. %1$s. %2$s</string>
   <string name="binario_voice_state">Ouvre la demande vocale sur la montre</string>

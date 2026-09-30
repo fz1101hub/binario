@@ -454,7 +454,7 @@
         <item quantity="other">Máximo %d transbordos</item>
     </plurals>
     <string name="mobility_summary_step_free">, prioridad para rutas sin barreras</string>
-    <string name="mobility_summary_compact">, horario compacto</string>
+    <string name="mobility_summary_compact">, panel compacto</string>
     <string name="unconfigured_route_name">Ninguna ruta seleccionada</string>
     <string name="unconfigured_route_origin">Elegir salida</string>
     <string name="unconfigured_route_destination">Elegir destino</string>

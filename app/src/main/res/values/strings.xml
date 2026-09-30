@@ -635,7 +635,4 @@
     <string name="share_freshness_unavailable">Dati live non disponibili</string>
     <string name="planned_journey_ics_event_description">Viaggio: %1$s → %2$s, partenza %3$s alle %4$s (%5$s)</string>
     <string name="planned_journey_ics_reminder_description">Promemoria viaggio Binario</string>
-    <string name="planned_journey_export_failure">Esportazione non riuscita: %1$s</string>
-    <string name="planned_journey_export_missing">Esportazione non riuscita: la richiesta in sospeso non è più disponibile. Riprova.</string>
-    <string name="planned_journey_import_failure">Importazione non riuscita: %1$s</string>
 </resources>

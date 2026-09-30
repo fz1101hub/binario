@@ -9,7 +9,7 @@
     <string name="tile_no_synced_route">Aucun trajet synchronisé</string>
     <string name="tile_snapshot_unavailable">Instantané indisponible</string>
     <string name="tile_service_details">%1$s · %2$s · %3$s</string>
-    <string name="status_programmed">Horaires prévus</string>
+    <string name="status_programmed">Horaire programmé</string>
     <string name="status_received_from_phone">État reçu du téléphone</string>
     <string name="status_updating">Mise à jour des données</string>
     <string name="status_local_snapshot">Dernier instantané local</string>

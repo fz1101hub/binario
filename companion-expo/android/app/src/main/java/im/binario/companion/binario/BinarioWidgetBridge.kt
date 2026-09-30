@@ -1,9 +1,15 @@
 package im.binario.companion.binario
 
+import android.Manifest
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
-import im.binario.companion.R
 import androidx.glance.appwidget.updateAll
 import com.facebook.react.ReactPackage
 import com.facebook.react.bridge.NativeModule
@@ -17,11 +23,14 @@ import com.google.android.gms.wearable.MessageEvent
 import com.google.android.gms.wearable.PutDataMapRequest
 import com.google.android.gms.wearable.Wearable
 import com.google.android.gms.wearable.WearableListenerService
+import im.binario.companion.MainActivity
+import im.binario.companion.R
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import java.util.UUID
 
 class BinarioWidgetBridgeModule(private val context: ReactApplicationContext) : ReactContextBaseJavaModule(context) {
   private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -84,15 +93,99 @@ class BinarioWidgetPackage : ReactPackage {
   override fun createViewManagers(reactContext: ReactApplicationContext): List<ViewManager<*, *>> = emptyList()
 }
 
+object BinarioChecklistHandoff {
+  const val requestPath = "/binario/companion/open-checklist/v1"
+  const val acknowledgementPath = "/binario/companion/open-checklist-ack/v1"
+  private const val notificationChannelId = "binario_checklist_handoff"
+  private const val pendingPreferenceName = "binario_checklist_handoff_v1"
+  private const val pendingLifetimeMillis = 15 * 60 * 1_000L
+  private const val nodeSeparator = '\n'
+  private const val extraNodeId = "binario_checklist_node_id"
+  private const val extraRequestId = "binario_checklist_request_id"
+
+  private fun requestId(payload: ByteArray): String? {
+    if (payload.isEmpty() || payload.size > 36) return null
+    val value = payload.toString(Charsets.UTF_8)
+    return runCatching { UUID.fromString(value).toString() }.getOrNull()?.takeIf { it == value }
+  }
+
+  private fun safeNodeId(value: String?) = value?.takeIf { node ->
+    node.isNotBlank() && node.length <= 256 && node.none(Char::isISOControl)
+  }
+
+  private fun notificationsAllowed(context: Context, manager: NotificationManager): Boolean =
+    manager.areNotificationsEnabled() &&
+      (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU || context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED)
+
+  private fun createChannel(context: Context, manager: NotificationManager) {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+      manager.createNotificationChannel(NotificationChannel(notificationChannelId, context.getString(R.string.binario_checklist_channel_name), NotificationManager.IMPORTANCE_DEFAULT))
+    }
+  }
+
+  fun postNotification(context: Context, sourceNodeId: String, payload: ByteArray): Boolean {
+    val nodeId = safeNodeId(sourceNodeId) ?: return false
+    val id = requestId(payload) ?: return false
+    val manager = context.getSystemService(NotificationManager::class.java) ?: return false
+    if (!notificationsAllowed(context, manager)) return false
+    createChannel(context, manager)
+    val now = System.currentTimeMillis()
+    val preferences = context.getSharedPreferences(pendingPreferenceName, Context.MODE_PRIVATE)
+    preferences.all.forEach { (key, raw) ->
+      val createdAt = (raw as? String)?.substringBefore(nodeSeparator)?.toLongOrNull()
+      if (createdAt == null || now - createdAt !in 0..pendingLifetimeMillis) preferences.edit().remove(key).apply()
+    }
+    if (!preferences.edit().putString(id, "$now$nodeSeparator$nodeId").commit()) return false
+    val openChecklist = Intent(context, MainActivity::class.java).apply {
+      action = Intent.ACTION_VIEW
+      data = Uri.parse("binario-companion://alerts")
+      putExtra(extraNodeId, nodeId)
+      putExtra(extraRequestId, id)
+      addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+    }
+    val pendingIntent = PendingIntent.getActivity(context, id.hashCode(), openChecklist, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+    val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) Notification.Builder(context, notificationChannelId) else Notification.Builder(context)
+    val notification = builder
+      .setSmallIcon(R.mipmap.ic_launcher)
+      .setContentTitle(context.getString(R.string.binario_checklist_notification_title))
+      .setContentText(context.getString(R.string.binario_checklist_notification_text))
+      .setContentIntent(pendingIntent)
+      .setAutoCancel(true)
+      .setCategory(Notification.CATEGORY_REMINDER)
+      .build()
+    return try {
+      manager.notify(id.hashCode(), notification)
+      true
+    } catch (_: RuntimeException) {
+      preferences.edit().remove(id).apply()
+      false
+    }
+  }
+
+  @Synchronized
+  fun acknowledgeOpened(context: Context, intent: Intent) {
+    if (intent.action != Intent.ACTION_VIEW || intent.data?.toString() != "binario-companion://alerts") return
+    val nodeId = safeNodeId(intent.getStringExtra(extraNodeId)) ?: return
+    val id = requestId(intent.getStringExtra(extraRequestId)?.toByteArray(Charsets.UTF_8) ?: return) ?: return
+    val preferences = context.getSharedPreferences(pendingPreferenceName, Context.MODE_PRIVATE)
+    val pending = preferences.getString(id, null) ?: return
+    val createdAt = pending.substringBefore(nodeSeparator).toLongOrNull() ?: return
+    if (pending.substringAfter(nodeSeparator, "") != nodeId || System.currentTimeMillis() - createdAt !in 0..pendingLifetimeMillis) {
+      preferences.edit().remove(id).apply()
+      return
+    }
+    if (!preferences.edit().remove(id).commit()) return
+    intent.removeExtra(extraNodeId)
+    intent.removeExtra(extraRequestId)
+    Wearable.getMessageClient(context).sendMessage(nodeId, acknowledgementPath, id.toByteArray(Charsets.UTF_8))
+  }
+}
+
 /** Non interpreta né persiste il transcript: senza fonte autorizzata risponde fail-closed. */
 class BinarioWatchVoiceRequestService : WearableListenerService() {
   override fun onMessageReceived(event: MessageEvent) {
-    if (event.path == "/binario/companion/open-checklist/v1") {
-      packageManager.getLaunchIntentForPackage(packageName)?.apply {
-        action = Intent.ACTION_VIEW
-        data = Uri.parse("binario-companion://alerts")
-        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
-      }?.let(::startActivity)
+    if (event.path == BinarioChecklistHandoff.requestPath) {
+      BinarioChecklistHandoff.postNotification(this, event.sourceNodeId, event.data)
       return
     }
     if (event.path != "/binario/companion/voice-request/v1") return

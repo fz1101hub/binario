@@ -1,6 +1,6 @@
 <resources>
     <string name="app_name">Binario</string>
-    <string name="widget_description">Affiche les prochains trajets de votre itinéraire Binario.</string>
+    <string name="widget_description">Affiche les prochains services de votre itinéraire Binario.</string>
     <string name="widget_refresh">Actualiser les trajets</string>
     <string name="widget_previous_page">Afficher les cinq trajets précédents</string>
     <string name="widget_next_page">Afficher les cinq trajets suivants</string>
@@ -429,7 +429,7 @@
     <string name="data_confidence_demonstration">Données locales de démonstration</string>
     <string name="train_category_regionale">Train régional</string>
     <string name="train_category_regionale_veloce">Train régional rapide</string>
-    <string name="train_category_intercity">Intercités</string>
+    <string name="train_category_intercity">Intercity</string>
     <string name="train_category_frecce">Freccia</string>
     <string name="train_category_italo_high_speed">Italo grande vitesse</string>
     <string name="train_category_trenord_regional">Train régional Trenord</string>
@@ -498,7 +498,7 @@
     <string name="widget_configure_description">Chaque instance est indépendante : saisissez un itinéraire sans l’enregistrer d’abord dans l’application. Le widget affiche uniquement les données renvoyées par la source et ne promet pas de mises à jour en temps réel.</string>
     <string name="widget_display_name_label">Nom du widget (facultatif)</string>
     <string name="widget_display_name_description">Remplace le nom de la recherche dans l’en-tête et reste local à cette instance.</string>
-    <string name="widget_route_description">Recherchez un itinéraire en saisissant librement le départ et l’arrivée. Affiche les prochains trajets, avec pagination, direction et actualisation.</string>
+    <string name="widget_route_description">Recherchez un itinéraire en saisissant librement le départ et l’arrivée. Affiche les prochains services, avec pagination, direction et actualisation.</string>
     <string name="widget_route_input_title">Saisir l’itinéraire</string>
     <string name="widget_saved_routes_optional">Itinéraires enregistrés (facultatifs)</string>
     <string name="widget_selected_summary">Choisi : %1$s — %2$s</string>
@@ -623,7 +623,7 @@
     <string name="share_status_cancelled">Supprimé</string>
     <string name="share_category_regionale">Régional</string>
     <string name="share_category_regionale_veloce">Régional rapide</string>
-    <string name="share_category_intercity">Intercités</string>
+    <string name="share_category_intercity">Intercity</string>
     <string name="share_category_frecce">Freccia</string>
     <string name="share_category_av_italo">Italo grande vitesse</string>
     <string name="share_category_trenord_regio">Train régional Trenord</string>

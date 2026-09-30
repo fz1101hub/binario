@@ -30,6 +30,9 @@
   <string name="binario_opening_checklist">Checkliste wird auf dem Telefon geöffnet…</string>
   <string name="binario_phone_unreachable">Telefon nicht erreichbar.</string>
   <string name="binario_checklist_opened">Checkliste auf dem Telefon geöffnet.</string>
+  <string name="binario_checklist_channel_name">Smartwatch-Anfragen</string>
+  <string name="binario_checklist_notification_title">Binario-Checkliste öffnen</string>
+  <string name="binario_checklist_notification_text">Tippen, um die Checkliste auf dem Telefon zu öffnen.</string>
   <string name="binario_cannot_open_phone">Das Telefon kann jetzt nicht geöffnet werden.</string>
   <string name="binario_tile_heading">Binario. %1$s. %2$s</string>
   <string name="binario_voice_state">Öffnet die Sprachanfrage auf der Smartwatch</string>
@@ -46,7 +49,7 @@
   <string name="binario_saved_journey_keywords">nächste|nächster|meine Fahrt|meine Reise|wann fährt</string>
   <string name="binario_realtime_keywords">verspät|gleis|ausfall|warn|echtzeit</string>
   <string name="binario_companion_source">Lokale Companion-Planung</string>
-  <string name="binario_no_active_route">Keine aktive Fahrt</string>
+  <string name="binario_no_active_route">Keine aktive Strecke</string>
   <string name="binario_companion_unavailable_notice">Daten im Companion nicht verfügbar: Öffnen Sie die Haupt-App, um die lokale Planung zu aktualisieren.</string>
 
 </resources>

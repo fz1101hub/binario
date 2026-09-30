@@ -602,8 +602,8 @@
     <string name="share_stop_delay">, +%1$d min</string>
     <string name="share_data">Data: %1$s</string>
     <string name="share_source">Source: %1$s · %2$s</string>
-    <string name="share_updated">Updated: updated at %1$s</string>
-    <string name="share_never_updated">Updated: never updated</string>
+    <string name="share_updated">Updated at %1$s</string>
+    <string name="share_never_updated">Never updated</string>
     <string name="share_scheduled_data">Scheduled timetable; live status unavailable</string>
     <string name="share_live_data">Live data: %1$s</string>
     <string name="share_status_on_time">On time</string>

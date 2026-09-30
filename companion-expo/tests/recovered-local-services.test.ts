@@ -26,8 +26,14 @@ describe("servizi locali recuperati", () => {
   });
 
   it("estrae soltanto una bozza dalla dettatura, sempre revisionabile", () => {
-    expect(parseLocalDictation("Da Roma Ostiense a Roma San Pietro domani alle 9:35", new Date("2030-01-02T12:00:00"))).toEqual({ origin: "Roma Ostiense", destination: "Roma San Pietro", travelDate: "2030-01-03", travelTime: "09:35" });
-    expect(parseLocalDictation("ritardo del treno", new Date("2030-01-02T12:00:00"))).toEqual({ origin: "", destination: "", travelDate: "", travelTime: "" });
+    const now = new Date("2030-01-02T12:00:00");
+    const expected = { origin: "Roma Ostiense", destination: "Roma San Pietro", travelDate: "2030-01-03", travelTime: "09:35" };
+    expect(parseLocalDictation("Da Roma Ostiense a Roma San Pietro domani alle 9:35", now, "it")).toEqual(expected);
+    expect(parseLocalDictation("From Roma Ostiense to Roma San Pietro tomorrow at 9:35", now, "en")).toEqual(expected);
+    expect(parseLocalDictation("Von Roma Ostiense nach Roma San Pietro morgen um 9:35", now, "de")).toEqual(expected);
+    expect(parseLocalDictation("De Roma Ostiense à Roma San Pietro demain à 9:35", now, "fr")).toEqual(expected);
+    expect(parseLocalDictation("De Roma Ostiense a Roma San Pietro mañana a las 9:35", now, "es")).toEqual(expected);
+    expect(parseLocalDictation("ritardo del treno", now)).toEqual({ origin: "", destination: "", travelDate: "", travelTime: "" });
   });
 
   it("salva modelli limitati al dispositivo e rifiuta stazioni non complete", async () => {

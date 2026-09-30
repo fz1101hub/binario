@@ -122,7 +122,9 @@ import it.binario.app.data.core.RunStatus
 import it.binario.app.data.core.StationBoardEntry
 import it.binario.app.data.core.RouteChangeKind
 import it.binario.app.plannedjourney.PlannedJourneyAgendaScreen
+import it.binario.app.plannedjourney.PlannedJourneyExportFormat
 import it.binario.app.plannedjourney.PlannedJourneyIcsContract
+import it.binario.app.plannedjourney.PlannedJourneyIcsText
 import it.binario.app.plannedjourney.PlannedJourneyRepository
 import it.binario.app.plannedjourney.PlannedJourneyStation
 import it.binario.app.plannedjourney.PlannedJourneyTransferContract
@@ -282,7 +284,13 @@ private fun BinarioApp(
         val format = plannedJourneyViewModel.consumePendingExport()
         if (uri != null && format != null) {
             runCatching {
-                val content = plannedJourneyViewModel.export(format, plannedJourneyIcsText(resources))
+                val content = plannedJourneyViewModel.export(
+                    format,
+                    PlannedJourneyIcsText(
+                        eventDescription = resources.getString(R.string.planned_journey_ics_event_description),
+                        reminderDescription = resources.getString(R.string.planned_journey_ics_reminder_description)
+                    )
+                )
                 context.contentResolver.openOutputStream(uri)?.bufferedWriter()?.use { it.write(content) }
                     ?: error(resources.getString(R.string.backup_open_output_error))
             }.onSuccess {

@@ -26,6 +26,9 @@
   <string name="binario_opening_checklist">Opening the checklist on the phone…</string>
   <string name="binario_phone_unreachable">Phone unreachable.</string>
   <string name="binario_checklist_opened">Checklist opened on phone.</string>
+  <string name="binario_checklist_channel_name">Smartwatch requests</string>
+  <string name="binario_checklist_notification_title">Open Binario checklist</string>
+  <string name="binario_checklist_notification_text">Tap to open the checklist on your phone.</string>
   <string name="binario_cannot_open_phone">The phone cannot be opened now.</string>
   <string name="binario_tile_heading">Binario. %1$s. %2$s</string>
   <string name="binario_voice_state">Opens the voice request on the smartwatch</string>
