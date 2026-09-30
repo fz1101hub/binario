@@ -39,9 +39,9 @@ enum BinarioDirection: String, UnknownWireEnum, CaseIterable {
 
     var accessibilityLabel: String {
         switch self {
-        case .outbound: return "Andata"
-        case .return: return "Ritorno"
-        case .unknown: return "Direzione non specificata"
+        case .outbound: return WatchLocalization.text("watch.direction.outbound")
+        case .return: return WatchLocalization.text("watch.direction.return")
+        case .unknown: return WatchLocalization.text("watch.direction.unknown")
         }
     }
 }
@@ -57,10 +57,10 @@ enum BinarioFreshness: String, UnknownWireEnum {
 
     var label: String {
         switch self {
-        case .fresh: return "Dati aggiornati"
-        case .aging: return "Dati in aggiornamento"
-        case .stale: return "Ultimo dato disponibile"
-        case .unavailable, .unknown: return "Dati non disponibili in tempo reale"
+        case .fresh: return WatchLocalization.text("watch.freshness.fresh")
+        case .aging: return WatchLocalization.text("watch.freshness.aging")
+        case .stale: return WatchLocalization.text("watch.freshness.stale")
+        case .unavailable, .unknown: return WatchLocalization.text("watch.freshness.unavailable")
         }
     }
 }
@@ -106,14 +106,14 @@ enum BinarioConfidence: String, UnknownWireEnum {
 
     var label: String {
         switch self {
-        case .operatorPrimary: return "Fonte primaria dell’operatore"
-        case .infrastructurePrimary: return "Fonte primaria dell’infrastruttura"
-        case .openData: return "Open data ufficiale"
-        case .licensedAggregate: return "Fonte aggregata autorizzata"
-        case .staticOnly: return "Orario programmato"
-        case .cached: return "Ultimo snapshot in cache"
-        case .localPlanned: return "Pianificazione locale"
-        case .unknown: return "Qualità non disponibile"
+        case .operatorPrimary: return WatchLocalization.text("watch.confidence.operatorPrimary")
+        case .infrastructurePrimary: return WatchLocalization.text("watch.confidence.infrastructurePrimary")
+        case .openData: return WatchLocalization.text("watch.confidence.openData")
+        case .licensedAggregate: return WatchLocalization.text("watch.confidence.licensedAggregate")
+        case .staticOnly: return WatchLocalization.text("watch.confidence.staticOnly")
+        case .cached: return WatchLocalization.text("watch.confidence.cached")
+        case .localPlanned: return WatchLocalization.text("watch.confidence.localPlanned")
+        case .unknown: return WatchLocalization.text("watch.confidence.unknown")
         }
     }
 }
@@ -132,9 +132,16 @@ struct WatchService: Codable, Equatable, Identifiable {
     var id: String { number + "-" + expectedDeparture }
 
     var accessibilitySummary: String {
-        let delay = delayMinutes > 0 ? ", ritardo di \(delayMinutes) minuti" : ""
-        let platformLabel = platform.map { ", binario \($0)" } ?? ", binario non disponibile"
-        return "\(operatorName), \(category), treno \(number), destinazione \(destination), previsto alle \(expectedDeparture)\(delay)\(platformLabel)."
+        let platformLabel = platform ?? WatchLocalization.text("watch.detail.noValue")
+        if delayMinutes > 0 {
+            let delay = WatchLocalization.text("watch.detail.delay \(delayMinutes)")
+            return WatchLocalization.text(
+                "watch.accessibility.service.withDelay \(operatorName) \(category) \(number) \(destination) \(expectedDeparture) \(delay) \(platformLabel)"
+            )
+        }
+        return WatchLocalization.text(
+            "watch.accessibility.service.withoutDelay \(operatorName) \(category) \(number) \(destination) \(expectedDeparture) \(platformLabel)"
+        )
     }
 }
 
@@ -158,7 +165,29 @@ struct BinarioWatchSnapshot: Codable, Equatable {
     let notice: String?
     let services: [WatchService]
 
+    // These values are part of the cached snapshot payload. Keep them untouched and
+    // localize only their presentation through the display properties below.
+    private static let unavailableProviderName = "Nessun provider"
+    private static let unavailableRouteLabel = "Nessuna tratta attiva"
+    private static let unavailableNotice = "dati non disponibili in tempo reale"
+
     var providerName: String { provenanceSourceLabel }
+    var displayProviderName: String {
+        providerName == Self.unavailableProviderName
+            ? WatchLocalization.text("watch.provider.none")
+            : providerName
+    }
+    var displayRouteLabel: String {
+        routeLabel == Self.unavailableRouteLabel
+            ? WatchLocalization.text("watch.route.none")
+            : routeLabel
+    }
+    var displayNotice: String? {
+        guard let notice else { return nil }
+        return notice == Self.unavailableNotice
+            ? WatchLocalization.text("watch.unavailable.description")
+            : notice
+    }
     var confidenceLabel: String { confidence.label }
     var retrievedAtEpochMillis: Int64 { generatedAtEpochMillis }
     var retrievedAt: Date { Date(timeIntervalSince1970: TimeInterval(generatedAtEpochMillis) / 1_000) }
@@ -339,15 +368,15 @@ struct BinarioWatchSnapshot: Codable, Equatable {
             ttlMillis: 15 * 60 * 1_000,
             provenanceProducer: .unknown,
             provenanceDataNature: .unavailable,
-            provenanceSourceLabel: "Nessun provider",
+            provenanceSourceLabel: unavailableProviderName,
             provenanceObservedAtEpochMillis: generatedAt,
             operationalState: .unavailable,
             freshness: .unavailable,
             confidence: .cached,
             routeId: "unavailable",
-            routeLabel: "Nessuna tratta attiva",
+            routeLabel: unavailableRouteLabel,
             direction: .unknown,
-            notice: "dati non disponibili in tempo reale",
+            notice: unavailableNotice,
             services: []
         )
     }

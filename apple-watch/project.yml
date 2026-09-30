@@ -9,7 +9,7 @@ targets:
     type: application
     platform: watchOS
     deploymentTarget: "10.0"
-    sources: [BinarioWatch, Shared]
+    sources: [BinarioWatch, Shared, Resources]
     scheme:
       testTargets:
         - BinarioWatchTests
@@ -39,7 +39,7 @@ targets:
     type: app-extension
     platform: watchOS
     deploymentTarget: "10.0"
-    sources: [BinarioWatchWidgets, Shared]
+    sources: [BinarioWatchWidgets, Shared, Resources]
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: it.binario.watch.widgets

@@ -12,11 +12,14 @@ final class WatchSnapshotTests: XCTestCase {
         XCTAssertEqual(snapshot.notice, "dati non disponibili in tempo reale")
     }
 
-    func testServiceAccessibilityMentionsTrainAndPlatform() {
+    func testServiceAccessibilityAnnouncesServiceDataIndependentlyOfLocale() {
         let service = WatchService(number: "9512", operatorName: "Trenitalia", category: "Freccia", destination: "Torino Porta Nuova", scheduledDeparture: "08:10", expectedDeparture: "08:18", platform: "7", delayMinutes: 8, status: "In ritardo")
 
-        XCTAssertTrue(service.accessibilitySummary.contains("treno 9512"))
-        XCTAssertTrue(service.accessibilitySummary.contains("binario 7"))
+        XCTAssertTrue(service.accessibilitySummary.contains("Trenitalia"))
+        XCTAssertTrue(service.accessibilitySummary.contains("9512"))
+        XCTAssertTrue(service.accessibilitySummary.contains("Torino Porta Nuova"))
+        XCTAssertTrue(service.accessibilitySummary.contains("08:18"))
+        XCTAssertTrue(service.accessibilitySummary.contains("7"))
     }
 
     func testIOSGoldenFixtureUsesTheSharedV1Contract() throws {
