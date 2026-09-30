@@ -39,7 +39,7 @@
 "settings.privacy.body" = "Binario iOS utiliza una configuración local y mínima.";
 "settings.privacy.no_collection" = "Sin cuenta, analítica, ubicación, micrófono ni acceso a red en segundo plano";
 "settings.privacy.local_routes" = "Las rutas guardadas permanecen en el dispositivo";
-"settings.privacy.watch" = "El Apple Watch recibe solo instantáneas válidas para el contrato mediante Watch Connectivity";
+"settings.privacy.watch" = "El Apple Watch recibe únicamente instantáneas definidas contractualmente mediante Watch Connectivity";
 "settings.about.title" = "Acerca de";
 "settings.about.version" = "Versión";
 "watch.source.unavailable" = "Ningún proveedor de iOS autorizado";
