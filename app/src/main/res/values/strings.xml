@@ -76,6 +76,7 @@
     <string name="planned_journey_reminder">Promemoria prima della partenza</string>
     <plurals name="planned_journey_reminder_value">
         <item quantity="one">Promemoria %1$d minuto prima</item>
+        <item quantity="many">Promemoria %1$d minuti prima</item>
         <item quantity="other">Promemoria %1$d minuti prima</item>
     </plurals>
     <string name="planned_journey_none">Nessuno</string>
@@ -158,10 +159,12 @@
     <string name="planner_round_trip_results">%1$s · %2$s</string>
     <plurals name="planner_outbound_result_count">
         <item quantity="one">%d andata</item>
+        <item quantity="many">%d andate</item>
         <item quantity="other">%d andate</item>
     </plurals>
     <plurals name="planner_return_result_count">
         <item quantity="one">%d ritorno</item>
+        <item quantity="many">%d ritorni</item>
         <item quantity="other">%d ritorni</item>
     </plurals>
     <string name="planner_outbound">ANDATA</string>
@@ -347,6 +350,7 @@
     <string name="operational_status_unverified">Stato operativo non verificato</string>
     <plurals name="operational_delay_minutes">
         <item quantity="one">%d minuto di ritardo</item>
+        <item quantity="many">%d minuti di ritardo</item>
         <item quantity="other">%d minuti di ritardo</item>
     </plurals>
     <string name="operational_on_time">In orario</string>
@@ -373,11 +377,91 @@
     <string name="route_change_accessibility_added">Fermate aggiunte: %1$s</string>
     <string name="route_change_accessibility_via">Nuovo instradamento via: %1$s</string>
     <string name="planned_journey_export_success">Esportazione completata.</string>
-    <string name="planned_journey_export_failure">Esportazione non riuscita: %1$s</string>
-    <string name="planned_journey_export_missing">Esportazione non riuscita: la richiesta in sospeso non è più disponibile. Riprova.</string>
-    <string name="planned_journey_import_failure">Importazione non riuscita: %1$s</string>
+    <string name="planned_journey_editor_invalid">Scegli stazioni del catalogo e inserisci data e orario validi.</string>
+    <string name="planned_journey_save_success">Viaggio pianificato salvato.</string>
+    <string name="planned_journey_complete_success">Occorrenza completata.</string>
+    <string name="planned_journey_archive_success">Viaggio archiviato.</string>
+    <string name="planned_journey_checklist_success">Checklist aggiornata.</string>
+    <string name="planned_journey_import_success">Importazione completata.</string>
+    <string name="planned_journey_import_invalid">Il documento non è un’esportazione Binario valida.</string>
+    <string name="planned_journey_action_rejected">Operazione rifiutata: verifica i dati del viaggio.</string>
+    <string name="planned_journey_stored_unreadable">I viaggi pianificati salvati non sono leggibili e non sono stati caricati.</string>
+    <string name="planned_journey_export_failure_generic">Esportazione non riuscita.</string>
+    <string name="planned_journey_import_failure_generic">Importazione non riuscita.</string>
+    <string name="route_stations_must_differ">Scegli due stazioni diverse per la tratta.</string>
+    <string name="round_trip_return_must_follow_departure">Il ritorno deve essere successivo alla partenza dell’andata.</string>
+    <string name="route_required_to_start">Inserisci una tratta per iniziare la consultazione.</string>
+    <string name="route_origin_destination_required">Inserisci partenza e arrivo per consultare una tratta.</string>
+    <string name="rail_data_unavailable">Dati ferroviari non disponibili per questa richiesta.</string>
+    <string name="station_board_unavailable_generic">Tabellone non disponibile.</string>
+    <string name="station_board_warning_source_conflict">Fonti in conflitto: selezione per autorità del singolo campo.</string>
+    <string name="station_board_warning_realtime_unavailable">Realtime parzialmente non disponibile.</string>
+    <string name="station_board_warning_stale_source">Una fonte ha restituito dati non recenti.</string>
+    <string name="station_board_warning_identity_ambiguous">Identità di una corsa o stazione non univoca.</string>
+    <string name="station_board_warning_replacement_service">Presente un servizio sostitutivo.</string>
+    <string name="station_board_warning_incomplete_coverage">Copertura del tabellone parziale.</string>
+    <string name="backup_imported_without_route">Backup importato senza una tratta salvata. Inseriscine una quando vuoi.</string>
+    <string name="backup_import_success_summary">Backup importato localmente: %1$s, %2$s e %3$s.</string>
+    <plurals name="backup_import_route_count">
+        <item quantity="one">%d tratta</item>
+        <item quantity="many">%d tratte</item>
+        <item quantity="other">%d tratte</item>
+    </plurals>
+    <plurals name="backup_import_station_count">
+        <item quantity="one">%d stazione monitorata</item>
+        <item quantity="many">%d stazioni monitorate</item>
+        <item quantity="other">%d stazioni monitorate</item>
+    </plurals>
+    <plurals name="backup_import_alert_count">
+        <item quantity="one">%d avviso</item>
+        <item quantity="many">%d avvisi</item>
+        <item quantity="other">%d avvisi</item>
+    </plurals>
+    <string name="backup_import_invalid">Il backup selezionato non è valido.</string>
+    <string name="provider_unavailable">Provider non disponibile</string>
+    <string name="data_confidence_unavailable">Confidenza non disponibile</string>
+    <string name="data_confidence_operator_primary">Fonte primaria dell’operatore</string>
+    <string name="data_confidence_infrastructure_primary">Fonte primaria del gestore dell’infrastruttura</string>
+    <string name="data_confidence_open_data">Open data ufficiale</string>
+    <string name="data_confidence_licensed_aggregate">Fonte aggregata autorizzata</string>
+    <string name="data_confidence_static_only">Orario programmato</string>
+    <string name="data_confidence_cached">Ultimo snapshot in cache</string>
+    <string name="data_confidence_demonstration">Dato dimostrativo locale</string>
+    <string name="train_category_regionale">Regionale</string>
+    <string name="train_category_regionale_veloce">Regionale Veloce</string>
+    <string name="train_category_intercity">Intercity</string>
+    <string name="train_category_frecce">Freccia</string>
+    <string name="train_category_italo_high_speed">Italo Alta Velocità</string>
+    <string name="train_category_trenord_regional">Treno Regionale Trenord</string>
+    <string name="train_category_metropolitan">Treno metropolitano</string>
+    <string name="train_category_other">Treno</string>
+    <string name="accessibility_train_service_summary">Operatore %1$s. %2$s %3$s da %4$s a %5$s. Partenza prevista %6$s. %7$s. %8$s. %9$s.</string>
+    <string name="service_transfer_direct">Viaggio diretto</string>
+    <plurals name="service_transfer_count">
+        <item quantity="one">%d cambio</item>
+        <item quantity="many">%d cambi</item>
+        <item quantity="other">%d cambi</item>
+    </plurals>
+    <string name="station_monitor_summary">%1$s, monitoraggio %2$s. Dati non disponibili in tempo reale.</string>
+    <string name="commuter_alert_summary">%1$s, fermata %2$s alle %3$s, avviso %4$s prima, %5$s%6$s%7$s.</string>
+    <string name="commuter_alert_summary_quiet_hours">, fascia silenziosa 22:00–07:00</string>
+    <string name="commuter_alert_summary_disabled">, disattivato</string>
+    <string name="mobility_summary">%1$s, margine di interscambio %2$s%3$s%4$s.</string>
+    <string name="mobility_summary_any_changes">Numero cambi libero</string>
+    <plurals name="mobility_summary_max_changes">
+        <item quantity="one">Massimo %d cambio</item>
+        <item quantity="many">Massimo %d cambi</item>
+        <item quantity="other">Massimo %d cambi</item>
+    </plurals>
+    <string name="mobility_summary_step_free">, priorità percorsi senza barriere</string>
+    <string name="mobility_summary_compact">, tabellone compatto</string>
+    <string name="unconfigured_route_name">Nessuna tratta selezionata</string>
+    <string name="unconfigured_route_origin">Partenza da scegliere</string>
+    <string name="unconfigured_route_destination">Arrivo da scegliere</string>
+    <string name="unconfigured_route_display">%1$s → %2$s</string>
     <plurals name="planned_journey_import_too_large">
         <item quantity="one">Il file supera il limite di importazione di %d byte</item>
+        <item quantity="many">Il file supera il limite di importazione di %d byte</item>
         <item quantity="other">Il file supera il limite di importazione di %d byte</item>
     </plurals>
     <string name="stop_alarm_permission_required">Per ricevere la sveglia alla fermata devi consentire le notifiche di Binario.</string>
@@ -505,10 +589,53 @@
 
     <plurals name="search_results_count">
         <item quantity="one">%d risultato</item>
+        <item quantity="many">%d risultati</item>
         <item quantity="other">%d risultati</item>
     </plurals>
     <plurals name="minutes_short">
         <item quantity="one">%d min</item>
+        <item quantity="many">%d min</item>
         <item quantity="other">%d min</item>
     </plurals>
+
+    <!-- Runtime-localized planner, sharing, and calendar export text. -->
+    <string name="planner_date_unselected">Data da scegliere</string>
+    <string name="planner_time_unselected">Ora da scegliere</string>
+    <string name="share_detail_title">Binario — dettaglio treno</string>
+    <string name="share_train_title">Treno %1$s · %2$s → %3$s</string>
+    <string name="share_operator_category">%1$s · %2$s %3$s</string>
+    <string name="share_route">%1$s → %2$s</string>
+    <string name="share_expected_departure">Partenza prevista: %1$s</string>
+    <string name="share_scheduled_departure">programmata %1$s</string>
+    <string name="share_platform">Binario: %1$s</string>
+    <string name="share_status">Stato: %1$s</string>
+    <string name="share_stop">• %1$s — previsto %2$s%3$s%4$s</string>
+    <string name="share_stop_platform">, binario %1$s</string>
+    <string name="share_stop_delay">, +%1$d min</string>
+    <string name="share_data">Dati: %1$s</string>
+    <string name="share_source">Fonte: %1$s · %2$s</string>
+    <string name="share_updated">Aggiornamento: aggiornato alle %1$s</string>
+    <string name="share_never_updated">Aggiornamento: mai aggiornato</string>
+    <string name="share_scheduled_data">Orario programmato; stato live non disponibile</string>
+    <string name="share_live_data">Dati live: %1$s</string>
+    <string name="share_status_on_time">In orario</string>
+    <string name="share_status_delayed">In ritardo</string>
+    <string name="share_status_cancelled">Soppresso</string>
+    <string name="share_category_regionale">Regionale</string>
+    <string name="share_category_regionale_veloce">Regionale Veloce</string>
+    <string name="share_category_intercity">Intercity</string>
+    <string name="share_category_frecce">Freccia</string>
+    <string name="share_category_av_italo">Italo Alta Velocità</string>
+    <string name="share_category_trenord_regio">Treno Regionale Trenord</string>
+    <string name="share_category_metropolitano">Treno metropolitano</string>
+    <string name="share_category_other">Treno</string>
+    <string name="share_freshness_fresh">Dati aggiornati</string>
+    <string name="share_freshness_aging">Dati in aggiornamento</string>
+    <string name="share_freshness_stale">Ultimo dato disponibile</string>
+    <string name="share_freshness_unavailable">Dati live non disponibili</string>
+    <string name="planned_journey_ics_event_description">Viaggio: %1$s → %2$s, partenza %3$s alle %4$s (%5$s)</string>
+    <string name="planned_journey_ics_reminder_description">Promemoria viaggio Binario</string>
+    <string name="planned_journey_export_failure">Esportazione non riuscita: %1$s</string>
+    <string name="planned_journey_export_missing">Esportazione non riuscita: la richiesta in sospeso non è più disponibile. Riprova.</string>
+    <string name="planned_journey_import_failure">Importazione non riuscita: %1$s</string>
 </resources>

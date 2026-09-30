@@ -1,6 +1,6 @@
 package it.binario.app.plannedjourney
-
 import android.content.Context
+
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -9,6 +9,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import it.binario.app.UiMessage
+import it.binario.app.UiMessageKey
 import it.binario.app.data.RailTime
 import java.time.Instant
 import java.time.LocalDate
@@ -25,7 +27,7 @@ data class PlannedJourneyEditorState(
     val time: String = "09:00",
     val reminderMinutes: PlannedJourneyReminderMinutes? = null,
     val checklistText: String = "",
-    val validationMessage: String? = null
+    val validationMessage: UiMessage? = null
 ) {
     val isEditing: Boolean get() = journeyId != null
 }
@@ -34,15 +36,15 @@ sealed interface PlannedJourneyImportState {
     data object Idle : PlannedJourneyImportState
     data class Json(val preview: PlannedJourneyImportPreview) : PlannedJourneyImportState
     data class Ics(val preview: PlannedJourneyIcsImportPreview) : PlannedJourneyImportState
-    data class Error(val detail: String) : PlannedJourneyImportState
+    data class Error(val message: UiMessage) : PlannedJourneyImportState
 }
 
+/** UI-oriented state holder; all durable writes are delegated to [PlannedJourneyRepository]. */
 enum class PlannedJourneyExportFormat(val suggestedName: String) {
     JSON("binario-viaggi-pianificati.json"),
     ICS("binario-agenda.ics")
 }
 
-/** UI-oriented state holder; all durable writes are delegated to [PlannedJourneyRepository]. */
 class PlannedJourneyViewModel(
     private val repository: PlannedJourneyRepository,
     private val savedStateHandle: SavedStateHandle = SavedStateHandle(),
@@ -51,10 +53,9 @@ class PlannedJourneyViewModel(
     private val newId: () -> String = { UUID.randomUUID().toString() }
 ) : ViewModel() {
     private val initialRead = repository.read()
-
     var snapshot by mutableStateOf(initialRead.snapshot)
         private set
-    var warning by mutableStateOf(initialRead.warning)
+    var warning by mutableStateOf(initialRead.warning?.let { UiMessage(UiMessageKey.PLANNED_JOURNEY_STORED_UNREADABLE) })
         private set
     var filter by mutableStateOf(
         savedStateHandle.get<String>(AGENDA_FILTER_KEY)
@@ -66,7 +67,7 @@ class PlannedJourneyViewModel(
         private set
     var importState by mutableStateOf<PlannedJourneyImportState>(PlannedJourneyImportState.Idle)
         private set
-    var feedback by mutableStateOf<String?>(null)
+    var feedback by mutableStateOf<UiMessage?>(null)
         private set
     var pendingExport by mutableStateOf(
         savedStateHandle.get<String>(PENDING_EXPORT_KEY)
@@ -123,7 +124,7 @@ class PlannedJourneyViewModel(
             PlannedJourneyDateTime(LocalDate.parse(current.date.trim()), LocalTime.parse(current.time.trim()), zone)
         }.getOrNull()
         if (origin == null || destination == null || departure == null) {
-            editor = current.copy(validationMessage = "Scegli stazioni del catalogo e inserisci data e orario validi.")
+            editor = current.copy(validationMessage = UiMessage(UiMessageKey.PLANNED_JOURNEY_EDITOR_INVALID))
             return
         }
         val checklist = current.checklistText.lineSequence()
@@ -149,7 +150,7 @@ class PlannedJourneyViewModel(
                 when (result) {
                     is PlannedJourneyValidationResult.Valid -> result.value
                     is PlannedJourneyValidationResult.Invalid -> {
-                        editor = current.copy(validationMessage = result.issues.first().detail)
+                        editor = current.copy(validationMessage = UiMessage(UiMessageKey.PLANNED_JOURNEY_ACTION_REJECTED))
                         return
                     }
                 }
@@ -164,40 +165,40 @@ class PlannedJourneyViewModel(
                 checklist = checklist
             )
         }
-        persist(repository.save(candidate), "Viaggio pianificato salvato.") { editor = null }
+        persist(repository.save(candidate), UiMessageKey.PLANNED_JOURNEY_SAVE_SUCCESS) { editor = null }
     }
 
     fun complete(entry: PlannedJourneyAgendaEntry) {
         val result = if (entry.journey.recurrence == null) repository.complete(entry.journey.id, now())
         else repository.completeOccurrence(entry.journey.id, entry.occurrence.occurrenceDate)
-        persist(result, "Occorrenza completata.")
+        persist(result, UiMessageKey.PLANNED_JOURNEY_COMPLETE_SUCCESS)
     }
 
     fun archive(journeyId: String) {
-        persist(repository.archive(journeyId, now()), "Viaggio archiviato.")
+        persist(repository.archive(journeyId, now()), UiMessageKey.PLANNED_JOURNEY_ARCHIVE_SUCCESS)
     }
 
     fun toggleChecklist(journeyId: String, item: PlannedJourneyChecklistItem) {
-        persist(repository.updateChecklistItem(journeyId, item.id, !item.completed), "Checklist aggiornata.")
+        persist(repository.updateChecklistItem(journeyId, item.id, !item.completed), UiMessageKey.PLANNED_JOURNEY_CHECKLIST_SUCCESS)
     }
 
     fun previewImport(content: String, isIcs: Boolean) {
         importState = if (isIcs) {
             when (val result = repository.previewIcsImport(content)) {
                 is PlannedJourneyIcsImportResult.Preview -> PlannedJourneyImportState.Ics(result.preview)
-                is PlannedJourneyIcsImportResult.Invalid -> PlannedJourneyImportState.Error(result.detail)
+                is PlannedJourneyIcsImportResult.Invalid -> PlannedJourneyImportState.Error(UiMessage(UiMessageKey.PLANNED_JOURNEY_IMPORT_INVALID))
             }
         } else {
             when (val result = repository.previewJsonImport(content)) {
                 is PlannedJourneyJsonImportResult.Preview -> PlannedJourneyImportState.Json(result.preview)
-                is PlannedJourneyJsonImportResult.Invalid -> PlannedJourneyImportState.Error(result.detail)
+                is PlannedJourneyJsonImportResult.Invalid -> PlannedJourneyImportState.Error(UiMessage(UiMessageKey.PLANNED_JOURNEY_IMPORT_INVALID))
             }
         }
     }
 
     fun applyJsonImport(policy: PlannedJourneyConflictPolicy) {
         val current = importState as? PlannedJourneyImportState.Json ?: return
-        persist(repository.applyJsonPreview(current.preview, policy), "Importazione completata.") { importState = PlannedJourneyImportState.Idle }
+        persist(repository.applyJsonPreview(current.preview, policy), UiMessageKey.PLANNED_JOURNEY_IMPORT_SUCCESS) { importState = PlannedJourneyImportState.Idle }
     }
 
     fun dismissImportPreview() {
@@ -208,40 +209,35 @@ class PlannedJourneyViewModel(
         pendingExport = format
         savedStateHandle[PENDING_EXPORT_KEY] = format.name
     }
-
-    /**
-     * Consumes only the small saved descriptor. Export bytes are deliberately regenerated from the
-     * repository after the SAF result, so no potentially large document enters saved instance state.
-     */
+    /** Consume only the small descriptor; export bytes are regenerated after the SAF result. */
     fun consumePendingExport(): PlannedJourneyExportFormat? {
         val format = pendingExport
         pendingExport = null
         savedStateHandle.remove<String>(PENDING_EXPORT_KEY)
         return format
     }
-
-    fun export(format: PlannedJourneyExportFormat): String = when (format) {
+    fun export(format: PlannedJourneyExportFormat, icsText: PlannedJourneyIcsText = PlannedJourneyIcsText.ITALIAN): String = when (format) {
         PlannedJourneyExportFormat.JSON -> repository.exportJson()
-        PlannedJourneyExportFormat.ICS -> repository.exportIcs(now())
+        PlannedJourneyExportFormat.ICS -> repository.exportIcs(now(), icsText)
     }
 
-    fun note(message: String) {
+    fun note(message: UiMessage) {
         feedback = message
     }
 
     private fun persist(
         result: PlannedJourneyRepositorySaveResult,
-        success: String,
+        success: UiMessageKey,
         afterSuccess: () -> Unit = {}
     ) {
         when (result) {
             is PlannedJourneyRepositorySaveResult.Saved -> {
                 snapshot = result.snapshot
                 warning = null
-                feedback = success
+                feedback = UiMessage(success)
                 afterSuccess()
             }
-            is PlannedJourneyRepositorySaveResult.Rejected -> feedback = result.detail
+            is PlannedJourneyRepositorySaveResult.Rejected -> feedback = UiMessage(UiMessageKey.PLANNED_JOURNEY_ACTION_REJECTED)
         }
     }
 
@@ -250,17 +246,13 @@ class PlannedJourneyViewModel(
         return stations.firstOrNull { it.canonicalId.equals(normalized, ignoreCase = true) }
             ?: stations.firstOrNull { it.displayName.equals(normalized, ignoreCase = true) }
     }
-
     companion object {
         internal const val AGENDA_FILTER_KEY = "plannedJourney.agendaFilter"
         internal const val PENDING_EXPORT_KEY = "plannedJourney.pendingExport"
-
         fun factory(context: Context) = viewModelFactory {
             initializer {
                 PlannedJourneyViewModel(
-                    repository = PlannedJourneyRepository(
-                        SharedPreferencesPlannedJourneyStorage(context.applicationContext)
-                    ),
+                    repository = PlannedJourneyRepository(SharedPreferencesPlannedJourneyStorage(context.applicationContext)),
                     savedStateHandle = createSavedStateHandle()
                 )
             }

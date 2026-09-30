@@ -1,0 +1,26 @@
+<resources>
+    <string name="app_name">Binario</string>
+    <string name="tile_label">Binario: next journey</string>
+    <string name="tile_description">Shows the next journey shared by the Binario app on your phone.</string>
+    <string name="complication_label">Binario</string>
+    <string name="empty_snapshot_message">Open Binario on your phone to synchronize the active journey.</string>
+    <string name="refresh_phone">Refresh phone</string>
+    <string name="refresh_on_phone">Refresh on phone</string>
+    <string name="tile_no_synced_route">No synchronized journey</string>
+    <string name="tile_snapshot_unavailable">Snapshot unavailable</string>
+    <string name="tile_service_details">%1$s · %2$s · %3$s</string>
+    <string name="status_programmed">Scheduled timetable</string>
+    <string name="status_received_from_phone">Status received from phone</string>
+    <string name="status_updating">Updating data</string>
+    <string name="status_local_snapshot">Latest local snapshot</string>
+    <string name="status_live_unavailable">Live data unavailable</string>
+    <string name="accessibility_data_status">Data status: %1$s</string>
+    <string name="accessibility_scheduled_departure">Scheduled departure %1$s</string>
+    <string name="accessibility_expected_departure">Expected departure %1$s</string>
+    <string name="accessibility_train">Train %1$s</string>
+    <string name="accessibility_platform">Platform %1$s</string>
+    <string name="service_time_number">%1$s · %2$s</string>
+    <string name="service_destination_status">%1$s · %2$s</string>
+    <string name="service_operator_category">%1$s · %2$s</string>
+    <string name="service_operator_category_platform">%1$s · %2$s · Platform %3$s</string>
+</resources>

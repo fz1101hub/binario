@@ -11,7 +11,11 @@ class UnconfiguredRouteTest {
         val route = unconfiguredRoute()
 
         assertEquals(UNCONFIGURED_ROUTE_ID, route.id)
-        assertEquals("Nessuna tratta selezionata", route.name)
+        assertEquals("", route.name)
+        assertEquals("unconfigured-origin", route.outwardOrigin.id)
+        assertEquals("", route.outwardOrigin.name)
+        assertEquals("unconfigured-destination", route.outwardDestination.id)
+        assertEquals("", route.outwardDestination.name)
         assertFalse(route.displayName(it.binario.app.data.Direction.OUTBOUND).contains("Roma", ignoreCase = true))
     }
 

@@ -24,6 +24,30 @@ data class PlannedJourneyCalendarEvent(
     val reminderMinutes: Int?
 )
 
+/**
+ * Localized human-readable text for exported calendar descriptions. Calendar
+ * property names, timestamps and metadata intentionally remain language-neutral.
+ */
+data class PlannedJourneyIcsText(
+    val eventDescription: String,
+    val reminderDescription: String
+) {
+    fun describe(segment: PlannedJourneySegment): String = eventDescription.format(
+        segment.origin.displayName,
+        segment.destination.displayName,
+        segment.departure.date,
+        segment.departure.time,
+        segment.departure.timeZone.id
+    )
+
+    companion object {
+        val ITALIAN = PlannedJourneyIcsText(
+            eventDescription = "Viaggio: %s → %s, partenza %s alle %s (%s)",
+            reminderDescription = "Promemoria viaggio Binario"
+        )
+    }
+}
+
 sealed interface PlannedJourneyIcsParseResult {
     data class Valid(val events: List<PlannedJourneyCalendarEvent>) : PlannedJourneyIcsParseResult
     data class Invalid(val detail: String) : PlannedJourneyIcsParseResult
@@ -33,7 +57,11 @@ sealed interface PlannedJourneyIcsParseResult {
 object PlannedJourneyIcs {
     private val utcFormatter = DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss'Z'").withZone(ZoneOffset.UTC)
 
-    fun export(journeys: Iterable<PlannedJourney>, generatedAt: Instant): String {
+    fun export(
+        journeys: Iterable<PlannedJourney>,
+        generatedAt: Instant,
+        text: PlannedJourneyIcsText = PlannedJourneyIcsText.ITALIAN
+    ): String {
         val events = journeys
             .filter { PlannedJourneyValidator.validate(it).isEmpty() }
             .flatMap { journey -> PlannedJourneyOccurrences.forJourney(journey).map { journey to it } }
@@ -45,7 +73,7 @@ object PlannedJourneyIcs {
             add("PRODID:${escapeText(PlannedJourneyIcsContract.productId())}")
             add("CALSCALE:GREGORIAN")
             add("METHOD:PUBLISH")
-            events.forEach { (journey, occurrence) -> addAll(eventLines(journey, occurrence, generatedAt)) }
+            events.forEach { (journey, occurrence) -> addAll(eventLines(journey, occurrence, generatedAt, text)) }
             add("END:VCALENDAR")
         }
         val calendar = logicalLines.flatMap(::foldUtf8Line).joinToString("\r\n", postfix = "\r\n")
@@ -91,14 +119,13 @@ object PlannedJourneyIcs {
     private fun eventLines(
         journey: PlannedJourney,
         occurrence: PlannedJourneyOccurrence,
-        generatedAt: Instant
+        generatedAt: Instant,
+        text: PlannedJourneyIcsText
     ): List<String> {
         val first = occurrence.itinerary.segments.first()
         val last = occurrence.itinerary.segments.last()
         val summary = journey.label.ifBlank { "${first.origin.displayName} → ${last.destination.displayName}" }
-        val description = occurrence.itinerary.segments.joinToString("\n") { segment ->
-            "${segment.origin.displayName} → ${segment.destination.displayName}, ${segment.departure.date} ${segment.departure.time} ${segment.departure.timeZone.id}"
-        }
+        val description = occurrence.itinerary.segments.joinToString(separator = "\n", transform = text::describe)
         return buildList {
             add("BEGIN:VEVENT")
             add("UID:${uid(journey.id, occurrence.occurrenceDate)}")
@@ -112,7 +139,7 @@ object PlannedJourneyIcs {
                 add("BEGIN:VALARM")
                 add("ACTION:DISPLAY")
                 add("TRIGGER:-PT${reminder.minutesBeforeDeparture.minutes}M")
-                add("DESCRIPTION:${escapeText("Promemoria viaggio Binario")}")
+                add("DESCRIPTION:${escapeText(text.reminderDescription)}")
                 add("END:VALARM")
             }
             add("END:VEVENT")
