@@ -10,7 +10,7 @@ struct SettingsView: View {
                     Text("stazioni-ferroviarie-curato-v4")
                 }
                 LabeledContent("settings.data.provider") {
-                    Text("settings.data.provider_unavailable")
+                    Text(providerStatusKey)
                         .multilineTextAlignment(.trailing)
                 }
                 Text("settings.data.catalog_notice")
@@ -46,5 +46,13 @@ struct SettingsView: View {
             }
         }
         .navigationTitle("settings.title")
+    }
+
+    private var providerStatusKey: LocalizedStringKey {
+        switch model.scheduleState {
+        case .loading: "settings.data.provider_loading"
+        case .available: "settings.data.provider_programmed"
+        case .unavailable: "settings.data.provider_unavailable"
+        }
     }
 }

@@ -8,6 +8,7 @@ struct PlannerView: View {
     @State private var departure = Date()
     @State private var validationKey: String?
     @State private var isSearching = false
+    @State private var searchRequestID = 0
 
     var body: some View {
         Form {
@@ -33,6 +34,20 @@ struct PlannerView: View {
                     DatePicker("planner.departure", selection: $departure)
                 }
 
+                if model.scheduleState == .loading {
+                    Section {
+                        HStack {
+                            ProgressView()
+                            Text("schedule.loading")
+                        }
+                    }
+                } else if model.scheduleState == .unavailable {
+                    Section {
+                        Label("schedule.unavailable", systemImage: "exclamationmark.triangle")
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
                 Section {
                     Button(action: swapStations) {
                         Label("planner.swap", systemImage: "arrow.up.arrow.down")
@@ -49,7 +64,9 @@ struct PlannerView: View {
                         }
                     }
                     .buttonStyle(.borderedProminent)
-                    .disabled(origin == nil || destination == nil || isSearching)
+                    .disabled(
+                        origin == nil || destination == nil || isSearching || model.scheduleState != .available
+                    )
 
                     Button(action: save) {
                         Label("planner.save", systemImage: "star")
@@ -61,8 +78,10 @@ struct PlannerView: View {
                     Section { Text(LocalizedStringKey(validationKey)).foregroundStyle(.red) }
                 }
 
-                if model.searchState == .unavailable {
-                    UnavailableResultView()
+                if let snapshot = model.latestSnapshot {
+                    AvailableResultView(snapshot: snapshot)
+                } else if case let .unavailable(reason) = model.searchState {
+                    UnavailableResultView(reason: reason)
                 }
             case .unavailable:
                 ContentUnavailableView(
@@ -73,11 +92,21 @@ struct PlannerView: View {
             }
         }
         .navigationTitle("planner.title")
+        .onChange(of: origin?.id) { _, _ in inputDidChange() }
+        .onChange(of: destination?.id) { _, _ in inputDidChange() }
+        .onChange(of: departure) { _, _ in inputDidChange() }
     }
 
     private func swapStations() {
         (origin, destination) = (destination, origin)
         validationKey = nil
+    }
+
+    private func inputDidChange() {
+        searchRequestID &+= 1
+        validationKey = nil
+        isSearching = false
+        model.invalidateSearchResult()
     }
 
     private func makeQuery() -> JourneyQuery? {
@@ -104,9 +133,12 @@ struct PlannerView: View {
     private func search() {
         guard let query = makeQuery() else { return }
         validationKey = nil
+        searchRequestID &+= 1
+        let requestID = searchRequestID
         isSearching = true
         Task {
             await model.run(query: query)
+            guard requestID == searchRequestID else { return }
             isSearching = false
         }
     }
@@ -118,17 +150,62 @@ struct PlannerView: View {
     }
 }
 
+private struct AvailableResultView: View {
+    let snapshot: JourneySnapshot
+
+    var body: some View {
+        Section("result.title") {
+            ForEach(snapshot.services, id: \.id) { service in
+                VStack(alignment: .leading, spacing: 5) {
+                    HStack(alignment: .firstTextBaseline) {
+                        Text(service.scheduledDeparture)
+                            .font(.headline.monospacedDigit())
+                        Text(service.number)
+                            .font(.headline)
+                        Spacer()
+                        Text(service.category)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    Text(service.destination)
+                    Text(service.operatorName)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .accessibilityElement(children: .combine)
+            }
+
+            Text("\(String(localized: "result.source_label")) \(snapshot.provenance.sourceLabel)")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+            Label("result.programmed.disclosure", systemImage: "clock")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+        }
+    }
+}
+
 private struct UnavailableResultView: View {
+    let reason: JourneyUnavailableReason
+
     var body: some View {
         Section("result.title") {
             ContentUnavailableView(
-                "result.unavailable.title",
-                systemImage: "wifi.slash",
-                description: Text("result.unavailable.body")
+                titleKey,
+                systemImage: reason == .noJourney ? "calendar.badge.exclamationmark" : "exclamationmark.triangle",
+                description: Text(bodyKey)
             )
             Text("result.unavailable.disclosure")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
         }
+    }
+
+    private var titleKey: LocalizedStringKey {
+        reason == .noJourney ? "result.unavailable.title" : "result.provider_error.title"
+    }
+
+    private var bodyKey: LocalizedStringKey {
+        reason == .noJourney ? "result.unavailable.body" : "result.provider_error.body"
     }
 }

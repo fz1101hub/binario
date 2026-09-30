@@ -1,4 +1,5 @@
 import Foundation
+import Combine
 import BinarioKit
 
 @MainActor
@@ -7,6 +8,12 @@ final class AppModel: ObservableObject {
 
     enum SearchState: Equatable {
         case idle
+        case unavailable(JourneyUnavailableReason)
+    }
+
+    enum ScheduleState: Equatable {
+        case loading
+        case available
         case unavailable
     }
 
@@ -15,9 +22,12 @@ final class AppModel: ObservableObject {
     @Published private(set) var watchSharingEnabled: Bool
     @Published fileprivate(set) var watchSyncStatus: WatchSyncStatus
     @Published var searchState: SearchState = .idle
+    @Published private(set) var scheduleState: ScheduleState
+    @Published private(set) var latestSnapshot: JourneySnapshot?
     @Published var persistenceMessageKey: String?
 
-    let repository: any JourneyRepository
+    private(set) var repository: any JourneyRepository
+    private var searchRequestID = 0
     let versionDisplay: String
 
     private let savedRouteStore: SavedRouteStore
@@ -29,6 +39,7 @@ final class AppModel: ObservableObject {
         savedRouteStore: SavedRouteStore,
         watchSharingStore: WatchSharingPreferenceStore,
         repository: any JourneyRepository,
+        scheduleState: ScheduleState = .available,
         watchPublisher: WatchSnapshotPublisher?,
         versionDisplay: String
     ) {
@@ -36,11 +47,14 @@ final class AppModel: ObservableObject {
         self.savedRouteStore = savedRouteStore
         self.watchSharingStore = watchSharingStore
         self.repository = repository
+        self.scheduleState = scheduleState
+        self.latestSnapshot = nil
         self.watchPublisher = watchPublisher
         self.versionDisplay = versionDisplay
         self.savedRoutes = savedRouteStore.load()
-        self.watchSharingEnabled = watchSharingStore.load()
-        self.watchSyncStatus = watchSharingEnabled ? .activating : .disabled
+        let sharingEnabled = watchSharingStore.load()
+        self.watchSharingEnabled = sharingEnabled
+        self.watchSyncStatus = sharingEnabled ? .activating : .disabled
 
         watchPublisher?.statusDidChange = { [weak self] status in
             guard let self else { return }
@@ -68,16 +82,38 @@ final class AppModel: ObservableObject {
             savedRouteStore: SavedRouteStore(),
             watchSharingStore: WatchSharingPreferenceStore(),
             repository: FailClosedJourneyRepository(),
+            scheduleState: .loading,
             watchPublisher: publisher,
             versionDisplay: versionFormatter.displayVersion(bundle: bundle)
         )
 
-        guard let url = bundle.url(forResource: "curated_it_rail_stations", withExtension: "json") else {
+        if let url = bundle.url(forResource: "curated_it_rail_stations", withExtension: "json") {
+            Task {
+                await model.loadCatalog { try Data(contentsOf: url) }
+            }
+        } else {
             model.catalogState = .unavailable
+        }
+        guard
+            let compressedURL = bundle.url(forResource: "binario_gtfs_schedule_v1.sqlite", withExtension: "zlib"),
+            let metadataURL = bundle.url(forResource: "binario_gtfs_schedule_v1.metadata", withExtension: "json"),
+            let applicationSupport = FileManager.default.urls(
+                for: .applicationSupportDirectory,
+                in: .userDomainMask
+            ).first
+        else {
+            model.scheduleState = .unavailable
             return model
         }
+        let cacheDirectory = applicationSupport
+            .appendingPathComponent("Binario", isDirectory: true)
+            .appendingPathComponent("GTFS", isDirectory: true)
         Task {
-            await model.loadCatalog { try Data(contentsOf: url) }
+            await model.loadSchedule(
+                compressedURL: compressedURL,
+                metadataURL: metadataURL,
+                cacheDirectory: cacheDirectory
+            )
         }
         return model
     }
@@ -92,14 +128,50 @@ final class AppModel: ObservableObject {
         return catalog.search(query)
     }
 
+    func loadSchedule(compressedURL: URL, metadataURL: URL, cacheDirectory: URL) async {
+        scheduleState = .loading
+        let installedURL = await Task.detached(priority: .utility) {
+            try? BundledGTFSScheduleInstaller().install(
+                compressedURL: compressedURL,
+                metadataURL: metadataURL,
+                cacheDirectory: cacheDirectory
+            )
+        }.value
+        guard let installedURL else {
+            repository = FailClosedJourneyRepository()
+            scheduleState = .unavailable
+            return
+        }
+        repository = SQLiteGTFSJourneyRepository(databaseURL: installedURL)
+        scheduleState = .available
+    }
+
     func run(query: JourneyQuery) async {
+        searchRequestID &+= 1
+        let requestID = searchRequestID
         let result = await repository.journeys(for: query)
+        guard requestID == searchRequestID else { return }
         switch result {
-        case .available:
+        case let .available(snapshot):
             searchState = .idle
-        case .unavailable:
-            searchState = .unavailable
+            latestSnapshot = snapshot
+            publishAvailableSnapshot(snapshot)
+        case let .unavailable(reason):
+            searchState = .unavailable(reason)
+            latestSnapshot = nil
+            if reason == .noAuthorizedProvider || reason == .providerInvalid {
+                scheduleState = .unavailable
+            }
             publishUnavailableSnapshot(for: query)
+        }
+    }
+
+    func invalidateSearchResult() {
+        searchRequestID &+= 1
+        searchState = .idle
+        latestSnapshot = nil
+        if watchSharingEnabled {
+            revokeWatchSnapshot()
         }
     }
 
@@ -182,6 +254,55 @@ final class AppModel: ObservableObject {
             generatedAtEpochMillis: now,
             sourceLabel: String(localized: "watch.source.unavailable"),
             notice: String(localized: "watch.notice.unavailable")
+        )
+        do {
+            try watchPublisher.publish(snapshot, nowEpochMillis: now)
+        } catch {
+            watchSyncStatus = watchPublisher.status
+        }
+    }
+
+    private func publishAvailableSnapshot(_ journey: JourneySnapshot) {
+        guard watchSharingEnabled, let watchPublisher else { return }
+        let now = Int64(Date().timeIntervalSince1970 * 1_000)
+        let generatedAt = Int64(journey.generatedAt.timeIntervalSince1970 * 1_000)
+        let expiresAt = Int64(journey.expiresAt.timeIntervalSince1970 * 1_000)
+        let snapshot = WearSnapshotV1(
+            generatedAtEpochMillis: generatedAt,
+            expiresAtEpochMillis: expiresAt,
+            ttlMillis: expiresAt - generatedAt,
+            provenanceProducer: journey.provenance.producer,
+            provenanceDataNature: journey.provenance.nature,
+            provenanceSourceLabel: journey.provenance.sourceLabel,
+            provenanceObservedAtEpochMillis: Int64(
+                journey.provenance.observedAt.timeIntervalSince1970 * 1_000
+            ),
+            operationalState: journey.operationalState,
+            freshness: journey.provenance.freshness,
+            confidence: journey.provenance.confidence,
+            routeId: SavedRoute.routeIdentifier(
+                origin: journey.query.origin,
+                destination: journey.query.destination
+            ),
+            routeLabel: WatchRouteLabelFormatter.format(
+                origin: journey.query.origin,
+                destination: journey.query.destination
+            ),
+            direction: journey.query.direction,
+            notice: String(localized: "watch.notice.programmed"),
+            services: journey.services.prefix(WearSnapshotV1.maximumServices).map { service in
+                WearServiceV1(
+                    number: service.number,
+                    operatorName: service.operatorName,
+                    category: service.category,
+                    destination: service.destination,
+                    scheduled: service.scheduledDeparture,
+                    expected: service.expectedDeparture,
+                    status: service.status,
+                    platform: service.platform ?? "",
+                    delayMinutes: service.delayMinutes
+                )
+            }
         )
         do {
             try watchPublisher.publish(snapshot, nowEpochMillis: now)

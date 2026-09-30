@@ -77,6 +77,167 @@ final class BinarioAppTests: XCTestCase {
         XCTAssertEqual(session.contexts, [[WatchSnapshotPublisher.clearContextKey: Data()]])
     }
 
+    func testProgrammedResultIsRenderedInStateAndPublishedToWatchWhenEnabled() async throws {
+        let defaults = try makeDefaults()
+        defer { clear(defaults) }
+        WatchSharingPreferenceStore(defaults: defaults).save(true)
+        let session = FakeAppSession()
+        let publisher = WatchSnapshotPublisher(session: session)
+        let query = try JourneyQuery(
+            origin: StationIdentity(id: "S08409", name: "Roma Termini"),
+            destination: StationIdentity(id: "S01700", name: "Milano Centrale"),
+            departure: Date()
+        )
+        let now = Date()
+        let snapshot = JourneySnapshot(
+            query: query,
+            generatedAt: now,
+            expiresAt: now.addingTimeInterval(3_600),
+            operationalState: .programmed,
+            provenance: DataProvenance(
+                producer: .iosApp,
+                nature: .programmed,
+                sourceLabel: "Official GTFS",
+                observedAt: now.addingTimeInterval(-86_400),
+                freshness: .unknown,
+                confidence: .staticOnly
+            ),
+            services: [TrainService(
+                id: "service-1",
+                number: "FR 1",
+                operatorName: "Trenitalia",
+                category: "Frecciarossa",
+                destination: "Milano Centrale",
+                scheduledDeparture: "10:00",
+                expectedDeparture: "10:00",
+                status: "PROGRAMMED",
+                platform: nil,
+                delayMinutes: 0
+            )]
+        )
+        let model = makeModel(
+            defaults: defaults,
+            publisher: publisher,
+            repository: StubJourneyRepository(result: .available(snapshot))
+        )
+
+        await model.run(query: query)
+        XCTAssertEqual(model.latestSnapshot, snapshot)
+        XCTAssertEqual(model.searchState, .idle)
+        session.completeActivation(.activated)
+
+        let payload = try XCTUnwrap(session.contexts.last?[WatchSnapshotPublisher.contextKey])
+        let object = try XCTUnwrap(JSONSerialization.jsonObject(with: payload) as? [String: Any])
+        XCTAssertEqual(object["provenanceDataNature"] as? String, "PROGRAMMED")
+        XCTAssertEqual(object["operationalState"] as? String, "PROGRAMMED")
+        XCTAssertEqual(object["serviceCount"] as? Int, 1)
+        XCTAssertEqual(object["service0Number"] as? String, "FR 1")
+    }
+
+    func testInputInvalidationClearsPreviouslyPublishedWatchSnapshot() async throws {
+        let defaults = try makeDefaults()
+        defer { clear(defaults) }
+        WatchSharingPreferenceStore(defaults: defaults).save(true)
+        let session = FakeAppSession()
+        let query = try JourneyQuery(
+            origin: StationIdentity(id: "S08409", name: "Roma Termini"),
+            destination: StationIdentity(id: "S01700", name: "Milano Centrale"),
+            departure: Date()
+        )
+        let model = makeModel(
+            defaults: defaults,
+            publisher: WatchSnapshotPublisher(session: session),
+            repository: StubJourneyRepository(result: .available(fixtureSnapshot(query: query, serviceNumber: "FR 1")))
+        )
+        session.completeActivation(.activated)
+        await model.run(query: query)
+        XCTAssertNotNil(session.contexts.last?[WatchSnapshotPublisher.contextKey])
+
+        model.invalidateSearchResult()
+
+        XCTAssertEqual(session.contexts.last, [WatchSnapshotPublisher.clearContextKey: Data()])
+        XCTAssertNil(model.latestSnapshot)
+    }
+
+    func testOlderSearchResponseCannotReplaceNewerResult() async throws {
+        let defaults = try makeDefaults()
+        defer { clear(defaults) }
+        let repository = ControlledJourneyRepository()
+        let model = makeModel(defaults: defaults, publisher: nil, repository: repository)
+        let origin = StationIdentity(id: "S08409", name: "Roma Termini")
+        let olderQuery = try JourneyQuery(
+            origin: origin,
+            destination: StationIdentity(id: "S09218", name: "Napoli Centrale"),
+            departure: Date()
+        )
+        let newerQuery = try JourneyQuery(
+            origin: origin,
+            destination: StationIdentity(id: "S01700", name: "Milano Centrale"),
+            departure: Date()
+        )
+        let olderSnapshot = fixtureSnapshot(query: olderQuery, serviceNumber: "OLD")
+        let newerSnapshot = fixtureSnapshot(query: newerQuery, serviceNumber: "NEW")
+
+        let olderTask = Task { await model.run(query: olderQuery) }
+        await repository.waitUntilPending(queryID: olderQuery.destination.id)
+        let newerTask = Task { await model.run(query: newerQuery) }
+        await repository.waitUntilPending(queryID: newerQuery.destination.id)
+        await repository.complete(queryID: newerQuery.destination.id, with: .available(newerSnapshot))
+        await newerTask.value
+        await repository.complete(queryID: olderQuery.destination.id, with: .available(olderSnapshot))
+        await olderTask.value
+
+        XCTAssertEqual(model.latestSnapshot, newerSnapshot)
+    }
+
+    func testInputInvalidationDiscardsPendingSearchResponse() async throws {
+        let defaults = try makeDefaults()
+        defer { clear(defaults) }
+        let repository = ControlledJourneyRepository()
+        let model = makeModel(defaults: defaults, publisher: nil, repository: repository)
+        let query = try JourneyQuery(
+            origin: StationIdentity(id: "S08409", name: "Roma Termini"),
+            destination: StationIdentity(id: "S01700", name: "Milano Centrale"),
+            departure: Date()
+        )
+        let task = Task { await model.run(query: query) }
+        await repository.waitUntilPending(queryID: query.destination.id)
+
+        model.invalidateSearchResult()
+        await repository.complete(queryID: query.destination.id, with: .available(fixtureSnapshot(query: query, serviceNumber: "STALE")))
+        await task.value
+
+        XCTAssertNil(model.latestSnapshot)
+        XCTAssertEqual(model.searchState, .idle)
+    }
+
+    func testNoJourneyAndInvalidProviderHaveDistinctState() async throws {
+        let defaults = try makeDefaults()
+        defer { clear(defaults) }
+        let query = try JourneyQuery(
+            origin: StationIdentity(id: "S08409", name: "Roma Termini"),
+            destination: StationIdentity(id: "S01700", name: "Milano Centrale"),
+            departure: Date()
+        )
+        let noJourney = makeModel(
+            defaults: defaults,
+            publisher: nil,
+            repository: StubJourneyRepository(result: .unavailable(.noJourney))
+        )
+        await noJourney.run(query: query)
+        XCTAssertEqual(noJourney.searchState, .unavailable(.noJourney))
+        XCTAssertEqual(noJourney.scheduleState, .available)
+
+        let invalidProvider = makeModel(
+            defaults: defaults,
+            publisher: nil,
+            repository: StubJourneyRepository(result: .unavailable(.providerInvalid))
+        )
+        await invalidProvider.run(query: query)
+        XCTAssertEqual(invalidProvider.searchState, .unavailable(.providerInvalid))
+        XCTAssertEqual(invalidProvider.scheduleState, .unavailable)
+    }
+
     func testCatalogStateIsLoadingThenAvailableOrUnavailable() async throws {
         let defaults = try makeDefaults()
         defer { clear(defaults) }
@@ -108,7 +269,10 @@ final class BinarioAppTests: XCTestCase {
             "CFBundleShortVersionString": "1.2.3",
             "CFBundleVersion": "45",
         ]
-        try (info as NSDictionary).write(to: bundleURL.appendingPathComponent("Info.plist"))
+        XCTAssertTrue((info as NSDictionary).write(
+            to: bundleURL.appendingPathComponent("Info.plist"),
+            atomically: true
+        ))
         let bundle = try XCTUnwrap(Bundle(url: bundleURL))
 
         XCTAssertEqual(BundleAppVersionFormatter().displayVersion(bundle: bundle), "1.2.3 (45)")
@@ -116,13 +280,14 @@ final class BinarioAppTests: XCTestCase {
 
     private func makeModel(
         defaults: UserDefaults,
-        publisher: WatchSnapshotPublisher?
+        publisher: WatchSnapshotPublisher?,
+        repository: any JourneyRepository = FailClosedJourneyRepository()
     ) -> AppModel {
         AppModel(
             catalogState: .loading,
             savedRouteStore: SavedRouteStore(defaults: defaults),
             watchSharingStore: WatchSharingPreferenceStore(defaults: defaults),
-            repository: FailClosedJourneyRepository(),
+            repository: repository,
             watchPublisher: publisher,
             versionDisplay: "test"
         )
@@ -136,6 +301,36 @@ final class BinarioAppTests: XCTestCase {
             name: "Roma Termini → Napoli Centrale",
             origin: origin,
             destination: destination
+        )
+    }
+
+    private func fixtureSnapshot(query: JourneyQuery, serviceNumber: String) -> JourneySnapshot {
+        let now = Date()
+        return JourneySnapshot(
+            query: query,
+            generatedAt: now,
+            expiresAt: now.addingTimeInterval(3_600),
+            operationalState: .programmed,
+            provenance: DataProvenance(
+                producer: .iosApp,
+                nature: .programmed,
+                sourceLabel: "Official GTFS",
+                observedAt: now.addingTimeInterval(-86_400),
+                freshness: .unknown,
+                confidence: .staticOnly
+            ),
+            services: [TrainService(
+                id: serviceNumber,
+                number: serviceNumber,
+                operatorName: "Operator",
+                category: "Rail",
+                destination: query.destination.name,
+                scheduledDeparture: "10:00",
+                expectedDeparture: "10:00",
+                status: "PROGRAMMED",
+                platform: nil,
+                delayMinutes: 0
+            )]
         )
     }
 
@@ -188,6 +383,31 @@ final class BinarioAppTests: XCTestCase {
 private struct StubVersionFormatter: AppVersionFormatting {
     let value: String
     func displayVersion(bundle: Bundle) -> String { value }
+}
+
+private struct StubJourneyRepository: JourneyRepository {
+    let result: JourneyResult
+    func journeys(for query: JourneyQuery) async -> JourneyResult { result }
+}
+
+private actor ControlledJourneyRepository: JourneyRepository {
+    private var pending: [String: CheckedContinuation<JourneyResult, Never>] = [:]
+
+    func journeys(for query: JourneyQuery) async -> JourneyResult {
+        await withCheckedContinuation { continuation in
+            pending[query.destination.id] = continuation
+        }
+    }
+
+    func waitUntilPending(queryID: String) async {
+        while pending[queryID] == nil {
+            await Task.yield()
+        }
+    }
+
+    func complete(queryID: String, with result: JourneyResult) {
+        pending.removeValue(forKey: queryID)?.resume(returning: result)
+    }
 }
 
 @MainActor
