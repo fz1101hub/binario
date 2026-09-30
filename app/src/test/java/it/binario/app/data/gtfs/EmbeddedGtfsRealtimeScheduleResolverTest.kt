@@ -7,6 +7,7 @@ import it.binario.app.data.core.SourceRef
 import it.binario.app.data.core.TrainRunId
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Test
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
@@ -93,26 +94,42 @@ class EmbeddedGtfsRealtimeScheduleResolverTest {
         assertEquals("+01:00", resolved?.scheduledAt?.offset?.toString())
     }
 
+    @Test
+    fun `restituisce null per orari GTFS vuoti o malformati`() {
+        val resolver = EmbeddedGtfsRealtimeScheduleResolver(
+            openAsset = { ByteArrayInputStream(feed()) },
+            packs = listOf(pack)
+        )
+
+        listOf("EMPTY", "TEXT", "HOURS", "MINUTES", "SECONDS", "COMPONENTS", "NEGATIVE").forEach { tripId ->
+            assertNull(
+                tripId,
+                resolver.resolve(sourceId, update(tripId), LocalDate.of(2026, 8, 15), ZoneId.of("Europe/Rome"))
+            )
+        }
+    }
+
     private fun resolveDstStop(serviceDate: LocalDate): ResolvedScheduledStop? {
         val resolver = EmbeddedGtfsRealtimeScheduleResolver(
             openAsset = { ByteArrayInputStream(feed()) },
             packs = listOf(pack)
         )
-        val update = RealtimeStopUpdate(
+        return resolver.resolve(sourceId, update("D1"), serviceDate, ZoneId.of("Europe/Rome"))
+    }
+
+    private fun update(tripId: String) = RealtimeStopUpdate(
             runId = TrainRunId("lombardia-trenord-gtfs:D1"),
-            sourceTripId = "D1",
+            sourceTripId = tripId,
             sourceStopId = "MI",
             stopSequence = 1,
             observedAt = observedAt,
             source = source
         )
-        return resolver.resolve(sourceId, update, serviceDate, ZoneId.of("Europe/Rome"))
-    }
 
     private fun feed(): ByteArray {
         val content = mapOf(
             "stops.txt" to "stop_id,stop_name\nMI,Milano Centrale\nMO,Monza\nCO,Como S. Giovanni\n",
-            "stop_times.txt" to "trip_id,arrival_time,departure_time,stop_id,stop_sequence\nT1,08:05:00,08:05:00,MI,1\nT1,08:22:00,08:23:00,MO,2\nT1,08:50:00,08:50:00,CO,3\nN1,25:10:00,25:10:00,CO,1\nD1,02:30:00,02:30:00,MI,1\n"
+            "stop_times.txt" to "trip_id,arrival_time,departure_time,stop_id,stop_sequence\nT1,08:05:00,08:05:00,MI,1\nT1,08:22:00,08:23:00,MO,2\nT1,08:50:00,08:50:00,CO,3\nN1,25:10:00,25:10:00,CO,1\nD1,02:30:00,02:30:00,MI,1\nEMPTY,,,MI,1\nTEXT,nope,nope,MI,1\nHOURS,100:00:00,100:00:00,MI,1\nMINUTES,08:60:00,08:60:00,MI,1\nSECONDS,08:00:60,08:00:60,MI,1\nCOMPONENTS,08:00:00:00,08:00:00:00,MI,1\nNEGATIVE,-1:00:00,-1:00:00,MI,1\n"
         )
         val output = ByteArrayOutputStream()
         ZipOutputStream(output).use { zip ->

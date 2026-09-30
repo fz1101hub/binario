@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fail fast if the privacy-policy inventory or its required release links drift."""
+"""Fail fast if privacy and source-disclosure inventory or release links drift."""
 
 from pathlib import Path
 import sys
@@ -16,12 +16,29 @@ REQUIRED_DISCLOSURES: tuple[tuple[str, str, tuple[str, ...]], ...] = (
             "## Companion Expo",
             "## Alexa Companion",
             "Posizione effimera",
-            "Feed ferroviari esterni e nomi di stazione",
+            "Feed ferroviari esterni, European Sleeper/JBB e nomi di stazione",
             "Backup, conservazione e cancellazione",
             "Revoca, cancellazione e conservazione",
             "riconoscitore vocale di sistema",
             "titolare del trattamento",
             "URL pubblico",
+            "European Sleeper/JBB",
+            "`jbb.ghsq.de`",
+            "community best-effort",
+            "tier primario fallisce",
+            "metadati di rete della richiesta sono visibili",
+        ),
+    ),
+    (
+        "Community fallback data-source policy",
+        "docs/data-sources/SOURCE_POLICY.md",
+        (
+            "European Sleeper / JBB: fallback di comunità",
+            "`jbb.ghsq.de`",
+            "community best-effort",
+            "tier primario",
+            "HTTPS `GET`",
+            "metadati di rete ordinari",
         ),
     ),
     ("README.md", "README.md", ("[PRIVACY.md](PRIVACY.md)",)),

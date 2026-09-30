@@ -72,6 +72,31 @@ function callbackUrl() {
 }
 
 describe("callback dashboard OAuth", () => {
+  it("emette una sessione quando il display name e vuoto", async () => {
+    sdkMocks.getUserInfo.mockResolvedValueOnce({
+      openId: "empty-name-user",
+      name: "",
+    });
+
+    const response = await fetch(callbackUrl(), {
+      redirect: "manual",
+      headers: { cookie: `${OAUTH_STATE_COOKIE}=dashboard-nonce` },
+    });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.get("location")).toBe("/");
+    expect(dbMocks.upsertUser).toHaveBeenCalledWith(
+      expect.objectContaining({ openId: "empty-name-user", name: null })
+    );
+    expect(sdkMocks.createSessionToken).toHaveBeenCalledWith("empty-name-user", {
+      name: "",
+      expiresInMs: 1000 * 60 * 60 * 24 * 30,
+    });
+    expect(response.headers.get("set-cookie")).toContain(
+      "app_session_id=dashboard-session"
+    );
+  });
+
   it("riprende una richiesta Alexa firmata una sola volta e la rivalida", async () => {
     const request = signAuthorizationRequest({
       clientId: "alexa-client",

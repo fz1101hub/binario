@@ -27,6 +27,31 @@ class VerifyCiPinningTest(unittest.TestCase):
     def test_repository_workflows_are_fully_pinned(self) -> None:
         self.assertEqual([], policy.verify_repository())
 
+    def test_release_push_triggers_follow_the_semantic_lock_without_integration(self) -> None:
+        expected = ["main", "stabilization/**"]
+        self.assertEqual(expected, LOCK["workflowTriggerPolicy"]["pushBranches"])
+        for workflow_name in (
+            "alexa-companion-ci.yml",
+            "android-ci.yml",
+            "apple-watch-ci.yml",
+            "companion-ci.yml",
+            "gtfs-assets-ci.yml",
+        ):
+            with self.subTest(workflow_name=workflow_name):
+                workflow_path = ROOT / ".github/workflows" / workflow_name
+                original = workflow_path.read_text(encoding="utf-8")
+                missing_release_push = original.replace('      - "stabilization/**"\n', "", 1)
+                problems = policy.workflow_problems(workflow_path, missing_release_push, LOCK)
+                self.assertTrue(any("push branches" in problem for problem in problems))
+
+                with_integration_push = original.replace(
+                    '      - "stabilization/**"\n',
+                    '      - "stabilization/**"\n      - "integration/**"\n',
+                    1,
+                )
+                problems = policy.workflow_problems(workflow_path, with_integration_push, LOCK)
+                self.assertTrue(any("push branches" in problem for problem in problems))
+
     def test_apple_paths_must_cover_xcodegen_trust_chain(self) -> None:
         workflow_path = ROOT / ".github/workflows/apple-watch-ci.yml"
         original = workflow_path.read_text(encoding="utf-8")
@@ -54,8 +79,8 @@ class VerifyCiPinningTest(unittest.TestCase):
         self.assertTrue(any("pull_request deve avere filtri paths" in problem for problem in problems))
 
         with_integration_push = original.replace(
-            "  push:\n    branches:\n      - main\n    paths:\n",
-            '  push:\n    branches:\n      - main\n      - "integration/**"\n    paths:\n',
+            '      - "stabilization/**"\n',
+            '      - "stabilization/**"\n      - "integration/**"\n',
             1,
         )
         problems = policy.workflow_problems(workflow_path, with_integration_push, LOCK)
@@ -286,6 +311,15 @@ class VerifyCiPinningTest(unittest.TestCase):
             path = Path(temporary) / "lock.json"
             path.write_text(json.dumps(invalid), encoding="utf-8")
             with self.assertRaisesRegex(ValueError, "release GitHub Action"):
+                policy.load_ci_lock(path)
+
+    def test_lock_rejects_push_policy_without_the_release_branch(self) -> None:
+        invalid = copy.deepcopy(LOCK)
+        invalid["workflowTriggerPolicy"]["pushBranches"] = ["main", "integration/**"]
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "lock.json"
+            path.write_text(json.dumps(invalid), encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "policy trigger push"):
                 policy.load_ci_lock(path)
 
 

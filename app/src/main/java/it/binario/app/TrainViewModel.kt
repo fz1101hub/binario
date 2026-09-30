@@ -21,8 +21,8 @@ import it.binario.app.data.SavedRoute
 import it.binario.app.data.SavedRouteOrdering
 import it.binario.app.data.Station
 import it.binario.app.data.StationAutocompleteEngine
+import it.binario.app.data.StationCanonicalizer
 import it.binario.app.data.TrainDataSource
-import it.binario.app.data.matchesPublishedName
 import it.binario.app.data.repository.BinarioDataGraph
 import it.binario.app.data.repository.StationBoardAggregate
 import it.binario.app.data.repository.StationBoardAggregateResult
@@ -84,6 +84,8 @@ class TrainViewModel(
         private set
     @Volatile
     private var stationAutocomplete = StationAutocompleteEngine(stations)
+    @Volatile
+    private var stationCanonicalizer = StationCanonicalizer(stations)
 
     var favouriteStations by mutableStateOf(stationPreferences.favourites(stations))
         private set
@@ -196,13 +198,11 @@ class TrainViewModel(
             withContext(Dispatchers.Main) {
                 if (imported.isNotEmpty()) {
                     val legacyCustom = customStationStore.stations()
-                    val migratedCustom = legacyCustom.map { station ->
-                        imported.firstOrNull { candidate ->
-                            candidate.id == station.id || candidate.matchesPublishedName(station.name)
-                        } ?: station
-                    }
+                    val importedCanonicalizer = StationCanonicalizer(imported)
+                    val migratedCustom = legacyCustom.map(importedCanonicalizer::canonicalize)
                     stations = imported + migratedCustom.filterNot { custom -> imported.any { it.id == custom.id } }
                     stationAutocomplete = StationAutocompleteEngine(stations)
+                    stationCanonicalizer = StationCanonicalizer(stations)
                     savedRoutes = pinnedFirst(routeStore.routes(stations).map(::canonicalRoute))
                     recentRoutes = routeStore.recentRoutes(stations).map { recent ->
                         RecentRoute(canonicalStation(recent.origin), canonicalStation(recent.destination))
@@ -227,9 +227,7 @@ class TrainViewModel(
         outwardDestination = canonicalStation(route.outwardDestination)
     )
 
-    private fun canonicalStation(station: Station): Station = stations.firstOrNull { candidate ->
-        candidate.id == station.id || candidate.matchesPublishedName(station.name)
-    } ?: station
+    private fun canonicalStation(station: Station): Station = stationCanonicalizer.canonicalize(station)
 
     val hasActiveRoute: Boolean get() = activeRoute.id != UNCONFIGURED_ROUTE_ID
     val hasReturnJourney: Boolean get() = returnJourneyQuery != null

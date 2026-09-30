@@ -1,9 +1,14 @@
 package it.binario.app.plannedjourney
 
+import android.content.Context
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.createSavedStateHandle
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
 import it.binario.app.data.RailTime
 import java.time.Instant
 import java.time.LocalDate
@@ -32,24 +37,41 @@ sealed interface PlannedJourneyImportState {
     data class Error(val detail: String) : PlannedJourneyImportState
 }
 
+enum class PlannedJourneyExportFormat(val suggestedName: String) {
+    JSON("binario-viaggi-pianificati.json"),
+    ICS("binario-agenda.ics")
+}
+
 /** UI-oriented state holder; all durable writes are delegated to [PlannedJourneyRepository]. */
 class PlannedJourneyViewModel(
     private val repository: PlannedJourneyRepository,
+    private val savedStateHandle: SavedStateHandle = SavedStateHandle(),
     private val now: () -> Instant = Instant::now,
     private val zone: ZoneId = RailTime.defaultZone,
     private val newId: () -> String = { UUID.randomUUID().toString() }
 ) : ViewModel() {
-    var snapshot by mutableStateOf(repository.read().snapshot)
+    private val initialRead = repository.read()
+
+    var snapshot by mutableStateOf(initialRead.snapshot)
         private set
-    var warning by mutableStateOf(repository.read().warning)
+    var warning by mutableStateOf(initialRead.warning)
         private set
-    var filter by mutableStateOf(PlannedJourneyAgendaFilter.UPCOMING)
+    var filter by mutableStateOf(
+        savedStateHandle.get<String>(AGENDA_FILTER_KEY)
+            ?.let { runCatching { PlannedJourneyAgendaFilter.valueOf(it) }.getOrNull() }
+            ?: PlannedJourneyAgendaFilter.UPCOMING
+    )
         private set
     var editor by mutableStateOf<PlannedJourneyEditorState?>(null)
         private set
     var importState by mutableStateOf<PlannedJourneyImportState>(PlannedJourneyImportState.Idle)
         private set
     var feedback by mutableStateOf<String?>(null)
+        private set
+    var pendingExport by mutableStateOf(
+        savedStateHandle.get<String>(PENDING_EXPORT_KEY)
+            ?.let { runCatching { PlannedJourneyExportFormat.valueOf(it) }.getOrNull() }
+    )
         private set
 
     fun agendaEntries(): List<PlannedJourneyAgendaEntry> = PlannedJourneyAgenda.ordered(
@@ -60,6 +82,7 @@ class PlannedJourneyViewModel(
 
     fun selectFilter(value: PlannedJourneyAgendaFilter) {
         filter = value
+        savedStateHandle[AGENDA_FILTER_KEY] = value.name
     }
 
     fun beginCreate() {
@@ -181,8 +204,26 @@ class PlannedJourneyViewModel(
         importState = PlannedJourneyImportState.Idle
     }
 
-    fun exportJson(): String = repository.exportJson()
-    fun exportIcs(): String = repository.exportIcs(now())
+    fun prepareExport(format: PlannedJourneyExportFormat) {
+        pendingExport = format
+        savedStateHandle[PENDING_EXPORT_KEY] = format.name
+    }
+
+    /**
+     * Consumes only the small saved descriptor. Export bytes are deliberately regenerated from the
+     * repository after the SAF result, so no potentially large document enters saved instance state.
+     */
+    fun consumePendingExport(): PlannedJourneyExportFormat? {
+        val format = pendingExport
+        pendingExport = null
+        savedStateHandle.remove<String>(PENDING_EXPORT_KEY)
+        return format
+    }
+
+    fun export(format: PlannedJourneyExportFormat): String = when (format) {
+        PlannedJourneyExportFormat.JSON -> repository.exportJson()
+        PlannedJourneyExportFormat.ICS -> repository.exportIcs(now())
+    }
 
     fun note(message: String) {
         feedback = message
@@ -208,5 +249,21 @@ class PlannedJourneyViewModel(
         val normalized = query.trim()
         return stations.firstOrNull { it.canonicalId.equals(normalized, ignoreCase = true) }
             ?: stations.firstOrNull { it.displayName.equals(normalized, ignoreCase = true) }
+    }
+
+    companion object {
+        internal const val AGENDA_FILTER_KEY = "plannedJourney.agendaFilter"
+        internal const val PENDING_EXPORT_KEY = "plannedJourney.pendingExport"
+
+        fun factory(context: Context) = viewModelFactory {
+            initializer {
+                PlannedJourneyViewModel(
+                    repository = PlannedJourneyRepository(
+                        SharedPreferencesPlannedJourneyStorage(context.applicationContext)
+                    ),
+                    savedStateHandle = createSavedStateHandle()
+                )
+            }
+        }
     }
 }

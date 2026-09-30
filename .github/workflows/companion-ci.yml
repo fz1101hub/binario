@@ -12,6 +12,7 @@ on:
   push:
     branches:
       - main
+      - "stabilization/**"
     paths:
       - "companion-expo/**"
       - "contracts/wear-snapshot/**"

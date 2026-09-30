@@ -42,7 +42,7 @@ import {
 import { isAlexaConfigured } from "./config";
 import { needsAccountLink } from "./guards";
 import { parseOAuthAuthorizationParameters } from "./oauthContract";
-import { liveDataUnavailableSpeech } from "./speech";
+import { escapeSsmlText, liveDataUnavailableSpeech } from "./speech";
 
 const ACCOUNT_LINK_REQUIRED =
   "Per usare le informazioni personali, collega prima il tuo account Binario nell'app Alexa.";
@@ -168,7 +168,9 @@ const nextTrainsHandler: RequestHandler = {
         .withShouldEndSession(true)
         .getResponse();
     return input.responseBuilder
-      .speak(liveDataUnavailableSpeech(`Per la tratta ${route.name}`))
+      .speak(
+        liveDataUnavailableSpeech(`Per la tratta ${escapeSsmlText(route.name)}`)
+      )
       .withShouldEndSession(true)
       .getResponse();
   },
@@ -187,7 +189,9 @@ const trainStatusHandler: RequestHandler = {
       "train",
       "numeroTreno"
     );
-    const subject = trainNumber ? `Per il treno ${trainNumber}` : undefined;
+    const subject = trainNumber
+      ? `Per il treno ${escapeSsmlText(trainNumber)}`
+      : undefined;
     return input.responseBuilder
       .speak(liveDataUnavailableSpeech(subject))
       .withShouldEndSession(true)
@@ -213,7 +217,7 @@ const myRoutesHandler: RequestHandler = {
         .getResponse();
     const names = routes
       .slice(0, 5)
-      .map(route => route.name)
+      .map(route => escapeSsmlText(route.name))
       .join(", ");
     const suffix =
       routes.length > 5

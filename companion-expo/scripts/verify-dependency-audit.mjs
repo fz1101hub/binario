@@ -1,8 +1,5 @@
 import { spawnSync } from "node:child_process";
-import {
-  isBlockingHighSeverityAdvisory,
-  isTemporarilyAllowedAdvisory,
-} from "./dependency-audit-policy.mjs";
+import { isBlockingHighSeverityAdvisory } from "./dependency-audit-policy.mjs";
 
 const audit = spawnSync("pnpm", ["audit", "--json"], {
   cwd: process.cwd(),
@@ -27,11 +24,5 @@ if (blocking.length > 0) {
   }
   process.exitCode = 1;
 } else {
-  const allowed = advisories.filter(isTemporarilyAllowedAdvisory);
-  for (const advisory of allowed) {
-    console.warn(
-      `[allowlist temporanea] ${advisory.github_advisory_id} ${advisory.module_name}: nessuna versione corretta disponibile; Expo/Metro elabora soltanto asset versionati e generati dal progetto`,
-    );
-  }
-  console.log("verify-dependency-audit: nessun advisory high/critical correggibile.");
+  console.log("verify-dependency-audit: nessun advisory high/critical.");
 }

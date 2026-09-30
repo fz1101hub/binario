@@ -288,6 +288,34 @@ class RfiProgrammedTimetableAdapterTest {
     }
 
     @Test
+    fun `SAB E FEST includes ordinary Saturday Sunday and weekday holiday`() {
+        val adapter = adapter()
+
+        assertTrue(adapter.runsOnDate("SAB E FEST", LocalDate.of(2026, 9, 5)))
+        assertTrue(adapter.runsOnDate("SAB E FEST", LocalDate.of(2026, 9, 6)))
+        assertTrue(adapter.runsOnDate("SAB E FEST", LocalDate.of(2026, 6, 2)))
+    }
+
+    @Test
+    fun `SABATO E FESTIVI includes ordinary Saturday Sunday and weekday holiday`() {
+        val adapter = adapter()
+
+        assertTrue(adapter.runsOnDate("SABATO E FESTIVI", LocalDate.of(2026, 9, 5)))
+        assertTrue(adapter.runsOnDate("SABATO E FESTIVI", LocalDate.of(2026, 9, 6)))
+        assertTrue(adapter.runsOnDate("SABATO E FESTIVI", LocalDate.of(2026, 6, 2)))
+    }
+
+    @Test
+    fun `DOM and DOMENICA include Sunday only`() {
+        val adapter = adapter()
+
+        listOf("DOM", "DOMENICA").forEach { periodicity ->
+            assertTrue(adapter.runsOnDate(periodicity, LocalDate.of(2026, 9, 6)))
+            assertFalse(adapter.runsOnDate(periodicity, LocalDate.of(2026, 9, 5)))
+        }
+    }
+
+    @Test
     fun `fetch usa I O e parsing usa dispatcher CPU configurato`() = runBlocking {
         val ioDispatcher = Executors.newSingleThreadExecutor { runnable -> Thread(runnable, "rfi-test-io") }.asCoroutineDispatcher()
         val cpuDispatcher = Executors.newSingleThreadExecutor { runnable -> Thread(runnable, "rfi-test-cpu") }.asCoroutineDispatcher()

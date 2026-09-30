@@ -5,7 +5,7 @@ import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerOAuthRoutes } from "./oauth";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
-import { serveStatic, setupVite } from "./vite";
+import { serveStatic } from "./static";
 import { registerAlexaRoutes } from "../voice/alexa";
 import { registerAndroidDeepLinks } from "../voice/deepLinks";
 import { securityHeaders } from "./securityHeaders";
@@ -35,7 +35,9 @@ export function trustProxySetting(
   // `true` trusts every peer and lets any client control X-Forwarded-*.
   // Deployments must name a bounded hop count or a proxy-addr preset instead.
   if (value === "true")
-    throw new Error("TRUST_PROXY=true is unsafe; use a hop count or approved preset");
+    throw new Error(
+      "TRUST_PROXY=true is unsafe; use a hop count or approved preset"
+    );
   if (value === "false") return false;
   if (/^(0|[1-9]\d*)$/.test(value)) return Number(value);
   if (TRUST_PROXY_NAMED_PRESETS.has(value)) return value;
@@ -116,6 +118,7 @@ export async function createApp(
   if (options.serveClient !== false) {
     // development mode uses Vite, production mode uses static files
     if (process.env.NODE_ENV === "development" && options.server) {
+      const { setupVite } = await import("./vite");
       await setupVite(app, options.server);
     } else {
       serveStatic(app);

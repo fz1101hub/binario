@@ -25,7 +25,7 @@ internal object ItalianRailServiceCalendar {
         return date == easter || date == easter.plusDays(1)
     }
 
-    /** Shared RFI periodicity matcher. Explicit FESTIVO values never fall through to the unknown-text default. */
+    /** Shared RFI periodicity matcher. Explicit service-day tokens never fall through to the unknown-text default. */
     fun runsOnDate(periodicity: String, date: LocalDate): Boolean {
         val value = periodicity.uppercase(Locale.ROOT).replace(Regex("\\s+"), " ").trim()
         if (value.isBlank()) return true
@@ -35,20 +35,24 @@ internal object ItalianRailServiceCalendar {
             return day.value in DayOfWeek.MONDAY.value..DayOfWeek.FRIDAY.value
         }
         if ("FERIALE" in value) return day != DayOfWeek.SUNDAY && !isHoliday(date)
-        if ("FEST" in value) return day == DayOfWeek.SUNDAY || isHoliday(date)
-        if ("SAB" in value && day == DayOfWeek.SATURDAY) return true
-        if ("DOM" in value && day == DayOfWeek.SUNDAY) return true
         val tokens = mapOf(
             DayOfWeek.MONDAY to listOf("LUN", "LU"),
             DayOfWeek.TUESDAY to listOf("MAR", "MA"),
             DayOfWeek.WEDNESDAY to listOf("MER", "ME"),
             DayOfWeek.THURSDAY to listOf("GIO", "GI"),
             DayOfWeek.FRIDAY to listOf("VEN", "VE"),
-            DayOfWeek.SATURDAY to listOf("SAB", "SA"),
-            DayOfWeek.SUNDAY to listOf("DOM", "DO")
+            DayOfWeek.SATURDAY to listOf("SAB", "SABATO", "SA"),
+            DayOfWeek.SUNDAY to listOf("DOM", "DOMENICA", "DO")
         )
-        val hasAnyDayToken = tokens.values.flatten().any { token -> Regex("\\b$token\\b").containsMatchIn(value) }
-        return if (hasAnyDayToken) tokens.getValue(day).any { token -> Regex("\\b$token\\b").containsMatchIn(value) } else true
+        fun hasToken(token: String) = Regex("\\b$token\\b").containsMatchIn(value)
+
+        val hasAnyDayToken = tokens.values.flatten().any(::hasToken)
+        val hasHolidayToken = Regex("\\bFEST(?:IVO|IVI)?\\b").containsMatchIn(value)
+        if (!hasAnyDayToken && !hasHolidayToken) return true
+
+        val matchesDay = tokens.getValue(day).any(::hasToken)
+        val matchesHoliday = hasHolidayToken && (day == DayOfWeek.SUNDAY || isHoliday(date))
+        return matchesDay || matchesHoliday
     }
 
     /** Meeus/Jones/Butcher Gregorian computus, valid for every supported timetable year. */

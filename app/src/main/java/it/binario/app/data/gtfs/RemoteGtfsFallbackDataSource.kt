@@ -26,6 +26,7 @@ import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
@@ -102,8 +103,15 @@ class RemoteGtfsFallbackDataSource(
         )
         val enriched = withContext(parsingDispatcher) {
             updates.mapNotNull { update ->
-                val scheduled = resolver.resolve(parserSourceId, update, query.serviceDate, realtimeZone) ?: return@mapNotNull null
-                RealtimeOperationalEnricher.enrich(update, scheduled)
+                try {
+                    val scheduled = resolver.resolve(parserSourceId, update, query.serviceDate, realtimeZone)
+                        ?: return@mapNotNull null
+                    RealtimeOperationalEnricher.enrich(update, scheduled)
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (_: Exception) {
+                    null
+                }
             }
         }
         if (enriched.isEmpty()) return snapshot

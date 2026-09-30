@@ -2,5 +2,9 @@ allowBuilds:
   esbuild: true
 
 overrides:
+  image-size: 2.0.3
   postcss: 8.5.23
+  undici: 6.28.1
   vite: 6.4.3
+patchedDependencies:
+  metro@0.83.3: patches/metro@0.83.3.patch

@@ -23,7 +23,7 @@ export type GuidedTextLocalRouteDraft = {
   plannedReminderMinutes: null;
 };
 
-function cleanText(value: string, maxLength: number) { return value.trim().replace(/\s+/g, " ").slice(0, maxLength).trim(); }
+function cleanText(value: unknown, maxLength: number) { return typeof value === "string" ? value.trim().replace(/\s+/g, " ").slice(0, maxLength).trim() : ""; }
 
 function validDate(value: string) {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
@@ -35,6 +35,7 @@ function validDate(value: string) {
 function validTime(value: string) { return /^([01]\d|2[0-3]):[0-5]\d$/.test(value); }
 
 export function normalizeLocalJourneyItineraryDraft(value: LocalJourneyItineraryDraft): LocalJourneyItineraryDraft | null {
+  if (!value || typeof value !== "object" || !Array.isArray(value.routeIds)) return null;
   const routeIds = Array.from(new Set(value.routeIds.filter(id => Number.isSafeInteger(id) && id > 0))).slice(0, maxLocalItinerarySegments);
   const label = cleanText(value.label, 96);
   return routeIds.length >= 2 ? { label: label || "Itinerario ferroviario", routeIds } : null;

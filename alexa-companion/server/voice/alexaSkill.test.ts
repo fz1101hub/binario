@@ -15,7 +15,7 @@ vi.hoisted(() => {
   });
 });
 
-vi.mock("../db", () => ({
+const dbMocks = vi.hoisted(() => ({
   createAuthorizationCode: vi.fn(),
   exchangeAuthorizationCode: vi.fn(),
   getAlexaLinkStatus: vi.fn(),
@@ -23,8 +23,9 @@ vi.mock("../db", () => ({
   recordAlexaVerification: vi.fn(),
   rotateRefreshToken: vi.fn(),
 }));
-
+vi.mock("../db", () => dbMocks);
 import { createAlexaSkill, HANDLED_INTENTS } from "./alexa";
+import { issueVoiceAccessToken } from "./crypto";
 
 type Envelope = Parameters<ReturnType<typeof createAlexaSkill>["invoke"]>[0];
 
@@ -60,6 +61,32 @@ const intent = (name: string) =>
     type: "IntentRequest",
     intent: { name, confirmationStatus: "NONE" },
   });
+
+function outputSsml(response: unknown) {
+  const outputSpeech = (
+    response as { response: { outputSpeech?: { type: string; ssml?: string } } }
+  ).response.outputSpeech;
+  expect(outputSpeech?.type).toBe("SSML");
+  return outputSpeech?.ssml ?? "";
+}
+
+async function linkedIntent(name: string, slots?: Record<string, string>) {
+  const request = envelope({
+    type: "IntentRequest",
+    intent: {
+      name,
+      confirmationStatus: "NONE",
+      slots: Object.fromEntries(
+        Object.entries(slots ?? {}).map(([slotName, value]) => [
+          slotName,
+          { name: slotName, value, confirmationStatus: "NONE" },
+        ])
+      ),
+    },
+  });
+  request.context.System.user.accessToken = await issueVoiceAccessToken(7, 3);
+  return request;
+}
 
 describe("handler built-in della skill", () => {
   it("Stop, Cancel e NavigateHome chiudono la sessione", async () => {
@@ -106,6 +133,55 @@ describe("handler built-in della skill", () => {
       other.context.System.application as { applicationId: string }
     ).applicationId = "amzn1.ask.skill.other";
     await expect(createAlexaSkill().invoke(other)).rejects.toThrow();
+  });
+});
+
+describe("valori dinamici nelle risposte vocali", () => {
+  const unsafeText = `A & B < C > D "virgolette" 'apostrofi' <break time="1s"/>`;
+  const escapedUnsafeText =
+    "A &amp; B &lt; C &gt; D &quot;virgolette&quot; &apos;apostrofi&apos; " +
+    "&lt;break time=&quot;1s&quot;/&gt;";
+
+  it("escapa i nomi delle tratte senza alterare il markup SSML statico", async () => {
+    dbMocks.getAlexaLinkStatus.mockResolvedValue({
+      userId: 7,
+      credentialVersion: 3,
+      revokedAt: null,
+    });
+    dbMocks.recordAlexaVerification.mockResolvedValue(undefined);
+    dbMocks.listPersonalRoutesForAlexa.mockResolvedValue([
+      { name: unsafeText, isPinned: true },
+    ]);
+
+    const nextTrains = await createAlexaSkill().invoke(
+      await linkedIntent("NextTrainsIntent")
+    );
+    const myRoutes = await createAlexaSkill().invoke(
+      await linkedIntent("MyRoutesIntent")
+    );
+
+    for (const response of [nextTrains, myRoutes]) {
+      expect(outputSsml(response)).toContain("<speak>");
+      expect(outputSsml(response)).toContain(escapedUnsafeText);
+      expect(outputSsml(response)).not.toContain(`<break time="1s"/>`);
+    }
+  });
+
+  it("escapa il numero del treno fornito dall'utente", async () => {
+    dbMocks.getAlexaLinkStatus.mockResolvedValue({
+      userId: 7,
+      credentialVersion: 3,
+      revokedAt: null,
+    });
+    dbMocks.recordAlexaVerification.mockResolvedValue(undefined);
+
+    const response = await createAlexaSkill().invoke(
+      await linkedIntent("TrainStatusIntent", { trainNumber: unsafeText })
+    );
+
+    expect(outputSsml(response)).toContain("<speak>");
+    expect(outputSsml(response)).toContain(escapedUnsafeText);
+    expect(outputSsml(response)).not.toContain(`<break time="1s"/>`);
   });
 });
 

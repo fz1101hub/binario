@@ -34,6 +34,25 @@ class VerifyPrivacyPolicyTest(unittest.TestCase):
         errors = POLICY.verification_errors(without_current_wear_disclosure)
         self.assertIn(f"Android in-app disclosure: missing {required_fragment!r}", errors)
 
+    def test_jbb_community_fallback_disclosures_are_checked(self) -> None:
+        privacy_fragment = "tier primario fallisce"
+        source_policy_fragment = "metadati di rete ordinari"
+
+        def without_jbb_disclosures(relative: str) -> str:
+            text = (ROOT / relative).read_text(encoding="utf-8")
+            if relative == "PRIVACY.md":
+                return text.replace(privacy_fragment, "", 1)
+            if relative == "docs/data-sources/SOURCE_POLICY.md":
+                return text.replace(source_policy_fragment, "", 1)
+            return text
+
+        errors = POLICY.verification_errors(without_jbb_disclosures)
+        self.assertIn(f"PRIVACY.md: missing {privacy_fragment!r}", errors)
+        self.assertIn(
+            f"Community fallback data-source policy: missing {source_policy_fragment!r}",
+            errors,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

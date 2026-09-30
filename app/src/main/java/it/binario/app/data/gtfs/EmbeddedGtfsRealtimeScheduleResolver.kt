@@ -66,13 +66,18 @@ class EmbeddedGtfsRealtimeScheduleResolver(
                 (update.sourceStopId == null && sequenceMatches)
         } ?: return null
         val name = index.stopName(match.stopId).takeIf(String::isNotBlank) ?: match.stopId
+        val scheduledAt = scheduledDateTime(
+            serviceDate,
+            match.departureTime.ifBlank { match.arrivalTime },
+            zone
+        ) ?: return null
         return ResolvedScheduledStop(
             sourceId = staticSourceId,
             sourceTripId = update.sourceTripId,
             sourceStopId = match.stopId,
             stopSequence = match.sequence,
             locationLabel = name,
-            scheduledAt = scheduledDateTime(serviceDate, match.departureTime.ifBlank { match.arrivalTime }, zone)
+            scheduledAt = scheduledAt
         )
     }
 
@@ -114,13 +119,13 @@ class EmbeddedGtfsRealtimeScheduleResolver(
         return matches.sortedBy(RealtimeStopTime::sequence)
     }
 
-    private fun scheduledDateTime(date: LocalDate, value: String, zone: ZoneId): ZonedDateTime {
+    private fun scheduledDateTime(date: LocalDate, value: String, zone: ZoneId): ZonedDateTime? {
         val parts = value.split(':')
-        require(parts.size >= 2) { "Orario GTFS non valido" }
-        val totalHours = parts[0].toInt()
-        val minutes = parts[1].toInt()
-        val seconds = parts.getOrElse(2) { "0" }.toInt()
-        require(totalHours >= 0 && minutes in 0..59 && seconds in 0..59) { "Orario GTFS non valido" }
+        if (parts.size !in 2..3) return null
+        val totalHours = parts[0].toIntOrNull() ?: return null
+        val minutes = parts[1].toIntOrNull() ?: return null
+        val seconds = parts.getOrElse(2) { "0" }.toIntOrNull() ?: return null
+        if (totalHours !in 0..99 || minutes !in 0..59 || seconds !in 0..59) return null
 
         // GTFS Time is elapsed time from "noon minus 12h" of the service day,
         // not a civil LocalDateTime. The distinction is observable in DST gaps

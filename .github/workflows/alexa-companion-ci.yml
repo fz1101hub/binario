@@ -8,6 +8,7 @@ on:
   push:
     branches:
       - main
+      - "stabilization/**"
     paths:
       - "alexa-companion/**"
       - ".github/workflows/alexa-companion-ci.yml"
@@ -85,3 +86,6 @@ jobs:
 
       - name: Production build and bundle verification
         run: pnpm run build
+
+      - name: Production-only install and startup
+        run: pnpm run test:production-install

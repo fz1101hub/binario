@@ -93,6 +93,8 @@ android {
         warningsAsErrors = true
         checkReleaseBuilds = true
         checkDependencies = true
+        // The app dependency set is upgraded as a coordinated Android toolchain change;
+        // several currently suggested releases require AGP 9.1 / compileSdk 37.
         disable += "GradleDependency"
     }
 
@@ -121,7 +123,7 @@ dependencies {
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")
     // Android supplies org.json at runtime; this artifact is only the JVM unit-test implementation.
-    testImplementation("org.json:json:20240303")
+    testImplementation("org.json:json:20260814")
     androidTestImplementation(platform("androidx.compose:compose-bom:2026.06.01"))
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
     androidTestImplementation("androidx.test.ext:junit:1.2.1")

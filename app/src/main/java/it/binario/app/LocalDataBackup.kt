@@ -64,12 +64,17 @@ object LocalDataBackupCodec {
         require(raw.toByteArray(Charsets.UTF_8).size <= MAX_BYTES) { "Il backup supera il limite di 1 MiB." }
         val root = JSONObject(raw)
         require(root.optString("kind") == "binario-local-backup") { "Il file non è un backup Binario." }
-        require(root.optInt("schemaVersion", -1) in 1..VERSION) { "Versione backup non supportata." }
+        val schemaVersion = root.optInt("schemaVersion", -1)
+        require(schemaVersion in 1..VERSION) { "Versione backup non supportata." }
+        fun station(stationId: String): Station? {
+            val currentId = LegacyBackupStationIds.currentId(schemaVersion, stationId)
+            return stations.firstOrNull { it.id == currentId }
+        }
         val routes = root.optJSONArray("routes").orEmpty().mapNotNull { item ->
             val objectValue = item as? JSONObject ?: return@mapNotNull null
             require(!isReservedRouteId(objectValue.optString("id"))) { "Il backup contiene un identificativo di tratta riservato." }
-            val origin = stations.firstOrNull { it.id == objectValue.optString("originId") } ?: return@mapNotNull null
-            val destination = stations.firstOrNull { it.id == objectValue.optString("destinationId") } ?: return@mapNotNull null
+            val origin = station(objectValue.optString("originId")) ?: return@mapNotNull null
+            val destination = station(objectValue.optString("destinationId")) ?: return@mapNotNull null
             SavedRoute(
                 objectValue.optString("id"),
                 objectValue.optString("name"),
@@ -86,10 +91,12 @@ object LocalDataBackupCodec {
         // Schema v1/v2 has always required at least one valid personal route. Keep rejecting
         // route-less files rather than silently applying a partial backup with ambiguous intent.
         require(routes.isNotEmpty()) { "Il backup non contiene tratte valide." }
-        val favouriteIds = root.optJSONArray("favouriteStationIds").orEmpty().mapNotNull { it as? String }.filter { id -> stations.any { it.id == id } }.toSet()
+        val favouriteIds = root.optJSONArray("favouriteStationIds").orEmpty()
+            .mapNotNull { (it as? String)?.let(::station)?.id }
+            .toSet()
         val services = root.optJSONArray("monitoredServices").orEmpty().mapNotNull { item -> (item as? JSONObject)?.let { ServiceMonitor(it.optString("number"), it.optString("label")) } }.filter { it.number.isNotBlank() }.distinctBy { it.number }.take(12)
         val stationMonitors = root.optJSONArray("stationMonitors").orEmpty().mapNotNull { item -> (item as? JSONObject)?.let { value ->
-            val station = stations.firstOrNull { it.id == value.optString("stationId") } ?: return@let null
+            val station = station(value.optString("stationId")) ?: return@let null
             runCatching { StationMonitor(station.id, station.name, StationMonitorMode.valueOf(value.optString("mode"))) }.getOrNull()
         } }.filterNotNull().distinctBy { it.stationId }.take(12)
         val alerts = root.optJSONArray("commuterAlerts").orEmpty().mapNotNull { item -> (item as? JSONObject)?.let { value ->
