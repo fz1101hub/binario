@@ -161,6 +161,15 @@ class AppleWatchProjectTests(unittest.TestCase):
         self.assertIn("WidgetCenter.shared.reloadTimelines(ofKind: kind)", source)
         self.assertIn("let kind = BinarioWatchWidgetConfiguration.kind", widget_source)
 
+    def test_refresh_intent_metadata_is_get_only_for_swift6_concurrency(self) -> None:
+        source = (APPLE_WATCH / "BinarioWatch" / "RefreshBinarioIntent.swift").read_text(encoding="utf-8")
+
+        intent_body = source.split("struct RefreshBinarioIntent: AppIntent", 1)[1].split("func perform", 1)[0]
+        self.assertRegex(intent_body, r"static\s+var\s+title\s*:\s*LocalizedStringResource\s*\{")
+        self.assertRegex(intent_body, r"static\s+var\s+description\s*:\s*IntentDescription\s*\{")
+        self.assertNotRegex(intent_body, r"static\s+var\s+title\s*:\s*LocalizedStringResource\s*=")
+        self.assertNotRegex(intent_body, r"static\s+var\s+description(?:\s*:\s*IntentDescription)?\s*=")
+
 
 if __name__ == "__main__":
     unittest.main()

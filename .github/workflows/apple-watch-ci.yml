@@ -3,11 +3,18 @@ name: Apple Watch CI
 on:
   pull_request:
     paths:
+      - "ios/**"
       - "apple-watch/**"
+      - "app/src/main/assets/gtfs/**"
+      - "app/src/main/assets/stations/curated_it_rail_stations.json"
       - "contracts/wear-snapshot/**"
+      - "tools/build_ios_gtfs_schedule.py"
+      - "tools/verify_ios_gtfs_schedule.py"
       - "tools/install_xcodegen.py"
       - "tools/verify_ci_pinning.py"
+      - "tests/test_ios_gtfs_schedule.py"
       - "tests/test_install_xcodegen.py"
+      - "tests/test_verify_ios_project.py"
       - "tests/test_verify_apple_watch_project.py"
       - "tests/test_verify_ci_pinning.py"
       - "tests/test_requirements_ci.py"
@@ -19,11 +26,18 @@ on:
       - main
       - "stabilization/**"
     paths:
+      - "ios/**"
       - "apple-watch/**"
+      - "app/src/main/assets/gtfs/**"
+      - "app/src/main/assets/stations/curated_it_rail_stations.json"
       - "contracts/wear-snapshot/**"
+      - "tools/build_ios_gtfs_schedule.py"
+      - "tools/verify_ios_gtfs_schedule.py"
       - "tools/install_xcodegen.py"
       - "tools/verify_ci_pinning.py"
+      - "tests/test_ios_gtfs_schedule.py"
       - "tests/test_install_xcodegen.py"
+      - "tests/test_verify_ios_project.py"
       - "tests/test_verify_apple_watch_project.py"
       - "tests/test_verify_ci_pinning.py"
       - "tests/test_requirements_ci.py"
@@ -106,5 +120,81 @@ jobs:
             -project BinarioWatch.xcodeproj \
             -scheme BinarioWatch \
             -destination "id=${{ steps.simulator.outputs.udid }}" \
+            CODE_SIGNING_ALLOWED=NO \
+            test
+
+  ios:
+    runs-on: macos-15
+    timeout-minutes: 40
+    env:
+      XCODE_VERSION: "16.4"
+      XCODE_BUILD: "16F6"
+      XCODEGEN_VERSION: "2.46.0"
+      XCODEGEN_URL: "https://github.com/yonaskolb/XcodeGen/releases/download/2.46.0/xcodegen.zip"
+      XCODEGEN_SHA256: "4d9e34b62172d645eed6457cac13fc222569974098ef4ee9c3368bedf0196806"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Python 3.12.10
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12.10"
+      - name: Verify iOS trust chain
+        run: |
+          python3 -m pip install --require-hashes -r requirements-ci.txt
+          python3 -m unittest -v tests/test_install_xcodegen.py tests/test_verify_ios_project.py tests/test_verify_apple_watch_project.py tests/test_verify_ci_pinning.py tests/test_requirements_ci.py tests/test_ios_gtfs_schedule.py
+          python3 tools/build_ios_gtfs_schedule.py
+          python3 tools/verify_ios_gtfs_schedule.py
+          git diff --exit-code -- ios/Resources/binario_gtfs_schedule_v1.metadata.json ios/Resources/binario_gtfs_schedule_v1.sqlite.zlib
+          python3 tools/verify_ci_pinning.py
+      - name: Select pinned Xcode for iOS
+        run: |
+          sudo xcode-select --switch "/Applications/Xcode_${XCODE_VERSION}.app/Contents/Developer"
+          test "$(xcodebuild -version | sed -n '1p')" = "Xcode $XCODE_VERSION"
+          test "$(xcodebuild -version | sed -n '2p')" = "Build version $XCODE_BUILD"
+      - name: Install XcodeGen for iOS
+        run: |
+          destination="$RUNNER_TEMP/xcodegen-bin/xcodegen"
+          python3 "$GITHUB_WORKSPACE/tools/install_xcodegen.py" \
+            --version "$XCODEGEN_VERSION" \
+            --url "$XCODEGEN_URL" \
+            --sha256 "$XCODEGEN_SHA256" \
+            --destination "$destination"
+          echo "$(dirname "$destination")" >> "$GITHUB_PATH"
+          "$destination" --version
+      - name: Test BinarioKit with Swift 6
+        run: swift test --package-path ios/BinarioKit
+      - name: Verify and generate integrated iOS project
+        run: |
+          python3 ios/Scripts/verify-deterministic-generation.py --xcodegen "$(command -v xcodegen)"
+          cd ios
+          xcodegen generate --spec project.yml
+      - name: Select an available iOS simulator
+        id: ios-simulator
+        run: |
+          xcrun simctl list devices available -j > "$RUNNER_TEMP/simulators.json"
+          cat > "$RUNNER_TEMP/select_ios.py" <<'PY'
+          import json
+          import os
+
+          with open(os.environ["RUNNER_TEMP"] + "/simulators.json", encoding="utf-8") as source:
+              devices = json.load(source)["devices"]
+          for runtime, candidates in devices.items():
+              if "iOS" not in runtime:
+                  continue
+              for device in candidates:
+                  if device.get("isAvailable"):
+                      with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+                          output.write(f"udid={device['udid']}\n")
+                      raise SystemExit(0)
+          raise SystemExit("Nessun simulatore iOS disponibile")
+          PY
+          python3 "$RUNNER_TEMP/select_ios.py"
+      - name: Build and test integrated iPhone and Watch app
+        working-directory: ios
+        run: |
+          xcodebuild \
+            -project Binario.xcodeproj \
+            -scheme Binario \
+            -destination "id=${{ steps.ios-simulator.outputs.udid }}" \
             CODE_SIGNING_ALLOWED=NO \
             test

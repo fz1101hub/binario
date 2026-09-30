@@ -19,4 +19,8 @@ enum WatchSnapshotStorage {
         let data = try JSONEncoder().encode(snapshot)
         UserDefaults(suiteName: appGroup)?.set(data, forKey: snapshotKey)
     }
+
+    static func clear() {
+        UserDefaults(suiteName: appGroup)?.removeObject(forKey: snapshotKey)
+    }
 }
