@@ -26,9 +26,14 @@ describe("endpoint Alexa in assenza credenziali", () => {
     expect(webhook.status).toBe(503);
     expect(await webhook.json()).toEqual({ error: "alexa_not_configured" });
 
-    const authorize = await request("/api/alexa/oauth/authorize?response_type=code&client_id=x&redirect_uri=https%3A%2F%2Fexample.test&state=s");
+    const authorize = await request("/api/alexa/oauth/authorize?response_type=code&client_id=x&redirect_uri=https%3A%2F%2Fexample.test&state=s", {
+      headers: { "accept-language": "es-ES" },
+    });
     expect(authorize.status).toBe(503);
-    expect(await authorize.json()).toEqual({ error: "alexa_not_configured" });
+    expect(authorize.headers.get("content-type")).toContain("text/html");
+    expect(await authorize.text()).toContain(
+      "La integración de Alexa no está configurada"
+    );
 
     const token = await request("/api/alexa/oauth/token", { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body: "grant_type=authorization_code&code=x" });
     expect(token.status).toBe(503);

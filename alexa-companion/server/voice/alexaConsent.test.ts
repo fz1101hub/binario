@@ -69,10 +69,13 @@ afterEach(async () => {
 
 const authorizeQuery = `response_type=code&client_id=alexa-client&redirect_uri=${encodeURIComponent(REDIRECT)}&state=opaque-state&scope=routes.read`;
 
-async function openConsentPage() {
+async function openConsentPage(acceptLanguage?: string) {
   const response = await fetch(
     `${baseUrl}/api/alexa/oauth/authorize?${authorizeQuery}`,
-    { redirect: "manual" }
+    {
+      redirect: "manual",
+      headers: acceptLanguage ? { "accept-language": acceptLanguage } : {},
+    }
   );
   const html = await response.text();
   const nonce =
@@ -83,13 +86,18 @@ async function openConsentPage() {
   return { response, html, nonce, token };
 }
 
-function submitConsent(fields: Record<string, string>, cookie?: string) {
+function submitConsent(
+  fields: Record<string, string>,
+  cookie?: string,
+  acceptLanguage?: string
+) {
   return fetch(`${baseUrl}/api/alexa/oauth/authorize`, {
     method: "POST",
     redirect: "manual",
     headers: {
       "content-type": "application/x-www-form-urlencoded",
       ...(cookie ? { cookie } : {}),
+      ...(acceptLanguage ? { "accept-language": acceptLanguage } : {}),
     },
     body: new URLSearchParams({
       response_type: "code",
@@ -130,6 +138,55 @@ describe("authorize Alexa con consenso esplicito", () => {
     expect(dbMocks.createAuthorizationCode).not.toHaveBeenCalled();
   });
 
+  it.each([
+    ["it-IT", "it-IT", "Collega Alexa a Binario"],
+    ["en-US", "en-US", "Link Alexa to Binario"],
+    ["en-GB", "en-GB", "Link Alexa to Binario"],
+    ["de-DE", "de-DE", "Alexa mit Binario verknüpfen"],
+    ["fr-FR", "fr-FR", "Associer Alexa à Binario"],
+    ["es-ES", "es-ES", "Vincular Alexa con Binario"],
+    ["pt-BR, de-DE;q=0.8", "de-DE", "Alexa mit Binario verknüpfen"],
+    ["pt-BR", "it-IT", "Collega Alexa a Binario"],
+  ] as const)(
+    "localizza l'HTML di consenso per %s come %s",
+    async (header, expectedLocale, expectedTitle) => {
+      const { response, html } = await openConsentPage(header);
+      expect(response.status).toBe(200);
+      expect(response.headers.get("content-type")).toContain("text/html");
+      expect(html).toContain(`<html lang="${expectedLocale}">`);
+      expect(html).toContain(`<title>${expectedTitle}</title>`);
+      expect(html).toContain(`>${expectedTitle}</h1>`);
+      expect(html).toContain('name="csrf_token"');
+      expect(html).toContain('name="decision" value="allow"');
+      expect(html).toContain('name="decision" value="deny"');
+    }
+  );
+
+  it("escapa il nome utente senza alterare il markup localizzato", async () => {
+    sdkMocks.authenticateRequest.mockResolvedValueOnce({
+      id: 7,
+      name: '<script>alert("x")</script>',
+    });
+    const { html } = await openConsentPage("en-US");
+    expect(html).toContain("&lt;script&gt;alert(&quot;x&quot;)&lt;/script&gt;");
+    expect(html).not.toContain('<script>alert("x")</script>');
+  });
+
+  it("localizza l'HTML di login richiesto senza emettere code", async () => {
+    sdkMocks.authenticateRequest.mockRejectedValueOnce(new Error("no session"));
+    const response = await submitConsent(
+      { csrf_token: "0".repeat(64), decision: "allow" },
+      undefined,
+      "fr-FR"
+    );
+    const html = await response.text();
+    expect(response.status).toBe(401);
+    expect(response.headers.get("content-type")).toContain("text/html");
+    expect(html).toContain('<html lang="fr-FR">');
+    expect(html).toContain("Connectez-vous d’abord au tableau de bord Binario");
+    expect(dbMocks.createAuthorizationCode).not.toHaveBeenCalled();
+  });
+
   it("rifiuta una callback fuori dall'allowlist e un utente non autenticato", async () => {
     const foreign = await fetch(
       `${baseUrl}/api/alexa/oauth/authorize?response_type=code&client_id=alexa-client&redirect_uri=${encodeURIComponent("https://attacker.example/cb")}&state=s`,
@@ -165,8 +222,11 @@ describe("authorize Alexa con consenso esplicito", () => {
     const withoutCookie = await submitConsent({
       csrf_token: token,
       decision: "allow",
-    });
+    }, undefined, "de-DE");
     expect(withoutCookie.status).toBe(403);
+    expect(await withoutCookie.text()).toContain(
+      "Die Sicherheitsprüfung ist abgelaufen oder ungültig"
+    );
     const wrongToken = await submitConsent(
       { csrf_token: "0".repeat(64), decision: "allow" },
       `${CONSENT_COOKIE}=${nonce}`

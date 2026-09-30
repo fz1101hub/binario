@@ -6,6 +6,11 @@ export const AXIOS_TIMEOUT_MS = 30_000;
 export const UNAUTHED_ERR_MSG = 'Please login (10001)';
 export const NOT_ADMIN_ERR_MSG = 'You do not have required permission (10002)';
 
+// This transport-level confirmation is intentionally locale-independent. The
+// dashboard localizes the visible action but always sends this exact value, so
+// translating UI text can never weaken the destructive-action guard.
+export const ACCOUNT_DELETION_CONFIRMATION = "ELIMINA" as const;
+
 // One-time nonce cookie that binds an OAuth login to the browser that started
 // it. The `__Host-` prefix forces the cookie host-only (Secure, Path=/, no
 // Domain), so a sibling *.manus.space site cannot plant a matching value in a
