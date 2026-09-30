@@ -128,7 +128,9 @@ public struct JourneySnapshot: Codable, Equatable, Sendable {
 }
 
 public enum JourneyUnavailableReason: String, Codable, Equatable, Sendable {
+    case noJourney
     case noAuthorizedProvider
+    case providerInvalid
 }
 
 public enum JourneyResult: Equatable, Sendable {
@@ -140,8 +142,8 @@ public protocol JourneyRepository: Sendable {
     func journeys(for query: JourneyQuery) async -> JourneyResult
 }
 
-/// The first iOS MVP intentionally has no live or static timetable provider.
-/// This repository never synthesizes trains, times, delays, platforms, or status.
+/// Safe fallback used whenever an authorised provider cannot be installed or validated.
+/// It never synthesizes trains, times, delays, platforms, or status.
 public struct FailClosedJourneyRepository: JourneyRepository {
     public init() {}
 

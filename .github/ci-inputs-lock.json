@@ -122,7 +122,7 @@
   "appleIosRunSteps": [
     {
       "name": "Verify iOS trust chain",
-      "sha256": "4505802dd1df25358557adfe2d94e3661f709aee38d794dca4ba6da2917f256c"
+      "sha256": "2abf475004e68bf9c7210ff924e9665e60e9146a53f1d97d5b310f1c4e86e80e"
     },
     {
       "name": "Select pinned Xcode for iOS",
