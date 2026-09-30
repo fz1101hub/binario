@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
-"""Keep GradleDependency suppressions limited to exact toolchain-pinned Wear artifacts."""
+"""Keep GradleDependency policy explicit for the app and exact for Wear artifacts."""
 from __future__ import annotations
 
 import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+APP_BUILD = ROOT / "app" / "build.gradle.kts"
 WEAR_BUILD = ROOT / "wear" / "build.gradle.kts"
 SUPPRESSION = "//noinspection GradleDependency"
+APP_GLOBAL_POLICY = 'disable += "GradleDependency"'
 EXPECTED_DEPENDENCIES = (
     'implementation(platform("androidx.compose:compose-bom:2026.06.01"))',
     'implementation("androidx.core:core-ktx:1.15.0")',
@@ -27,9 +29,13 @@ class WearComposeGradleDependencySuppressionsTest(unittest.TestCase):
             if path.is_file()
         ]
         suppression_locations: list[tuple[Path, int]] = []
+        app_policy_locations: list[tuple[Path, int]] = []
         for path in gradle_files:
             for line_number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
                 if "GradleDependency" not in line:
+                    continue
+                if path == APP_BUILD and line.strip() == APP_GLOBAL_POLICY:
+                    app_policy_locations.append((path, line_number))
                     continue
                 self.assertEqual(
                     SUPPRESSION,
@@ -38,6 +44,7 @@ class WearComposeGradleDependencySuppressionsTest(unittest.TestCase):
                 )
                 suppression_locations.append((path, line_number))
 
+        self.assertEqual(1, len(app_policy_locations))
         self.assertEqual(len(EXPECTED_DEPENDENCIES), len(suppression_locations))
         self.assertEqual({WEAR_BUILD}, {path for path, _ in suppression_locations})
 

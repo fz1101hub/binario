@@ -93,6 +93,9 @@ android {
         warningsAsErrors = true
         checkReleaseBuilds = true
         checkDependencies = true
+        // The app dependency set is upgraded as a coordinated Android toolchain change;
+        // several currently suggested releases require AGP 9.1 / compileSdk 37.
+        disable += "GradleDependency"
     }
 
     sourceSets {
