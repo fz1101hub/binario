@@ -1,5 +1,8 @@
-export function getCompanionGuidance(simpleMode: boolean) {
+import { createTranslator, type CompanionLocale } from "@/lib/i18n";
+
+export function getCompanionGuidance(simpleMode: boolean, locale?: CompanionLocale) {
+  const t = createTranslator(locale);
   return simpleMode
-    ? { intro: "Pianifica una tratta locale e controlla sempre data, ora e promemoria.", scheduledTitle: "Orari pianificati", scheduledBody: "Binario mostra solo il piano salvato sul dispositivo." }
-    : { intro: "Pianifica una tratta, conserva la preparazione sul dispositivo e distingui sempre l’orario programmato dai dati realtime.", scheduledTitle: "Programmazione locale", scheduledBody: "Gli orari mostrati derivano dalle tratte personali salvate. Ritardi, binari e cancellazioni restano non disponibili senza una fonte autorizzata." };
+    ? { intro: t("simple.intro"), scheduledTitle: t("simple.title"), scheduledBody: t("simple.body") }
+    : { intro: t("full.intro"), scheduledTitle: t("full.title"), scheduledBody: t("full.body") };
 }

@@ -130,12 +130,11 @@ object BinarioWearSnapshotV1 {
 
 object BinarioWearStore {
   private const val prefsName = "binario_wear_payload_v1"
-  private const val unavailable = "Dati non disponibili in tempo reale."
 
   fun write(context: Context, snapshot: BinarioWearSnapshot) {
     context.getSharedPreferences(prefsName, Context.MODE_PRIVATE).edit().apply {
       putString("title", snapshot.routeLabel.ifBlank { "Binario" })
-      putString("status", snapshot.notice.ifBlank { unavailable })
+      putString("status", snapshot.notice.ifBlank { context.getString(R.string.binario_unavailable) })
       putLong("generatedAtUtcMs", snapshot.generatedAtEpochMillis)
       putLong("expiresAtUtcMs", snapshot.expiresAtEpochMillis)
     }.apply()
@@ -149,14 +148,14 @@ object BinarioWearStore {
     return if (fresh) {
       BinarioWearState(
         preferences.getString("title", "Binario") ?: "Binario",
-        preferences.getString("status", unavailable) ?: unavailable,
+        preferences.getString("status", context.getString(R.string.binario_unavailable)) ?: context.getString(R.string.binario_unavailable),
         true,
         generated,
         expires,
         0,
       )
     } else {
-      BinarioWearState("Binario", unavailable, false, null, null, 0)
+      BinarioWearState("Binario", context.getString(R.string.binario_unavailable), false, null, null, 0)
     }
   }
 }
@@ -174,7 +173,7 @@ class BinarioWearDataService : WearableListenerService() {
   override fun onMessageReceived(event: MessageEvent) {
     when (event.path) {
       "/binario/companion/voice-response/v1" -> {
-        val reply = event.data.toString(Charsets.UTF_8).take(280).ifBlank { "Dati non disponibili in tempo reale." }
+        val reply = event.data.toString(Charsets.UTF_8).take(280).ifBlank { getString(R.string.binario_unavailable) }
         sendBroadcast(Intent(BinarioVoiceRequestActivity.replyAction).setPackage(packageName).putExtra(BinarioVoiceRequestActivity.replyExtra, reply))
       }
       BinarioChecklistRequestActivity.acknowledgementPath -> {

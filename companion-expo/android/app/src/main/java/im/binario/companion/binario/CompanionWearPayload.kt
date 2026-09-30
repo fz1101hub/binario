@@ -113,22 +113,22 @@ object CompanionWearPayloadV1 {
   }
 
   /** A bounded explicit fallback is safer than manufacturing operational information. */
-  fun unavailable(now: Long): Map<String, Any> = linkedMapOf(
+  fun unavailable(now: Long, sourceLabel: String, routeLabel: String, notice: String): Map<String, Any> = linkedMapOf(
     "schemaVersion" to schemaVersion,
     "generatedAtEpochMillis" to now,
     "expiresAtEpochMillis" to now + 15L * 60L * 1_000L,
     "ttlMillis" to 15L * 60L * 1_000L,
     "provenanceProducer" to "COMPANION",
     "provenanceDataNature" to "UNAVAILABLE",
-    "provenanceSourceLabel" to "Companion locale",
+    "provenanceSourceLabel" to sourceLabel,
     "provenanceObservedAtEpochMillis" to now,
     "operationalState" to "UNAVAILABLE",
     "freshness" to "UNAVAILABLE",
     "confidence" to "LOCAL_PLANNED",
     "routeId" to "unavailable",
-    "routeLabel" to "Nessuna tratta attiva",
+    "routeLabel" to routeLabel,
     "direction" to "UNKNOWN",
-    "notice" to "Dati non disponibili nel Companion: apri l’app principale per aggiornare la pianificazione locale.",
+    "notice" to notice,
     "serviceCount" to 0,
   )
 

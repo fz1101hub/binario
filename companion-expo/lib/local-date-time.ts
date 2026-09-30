@@ -10,6 +10,8 @@ export function fromLocalDateAndTime(dateText: string, timeText = "00:00") {
   return Number.isFinite(result.getTime()) ? result : new Date();
 }
 
+import { deviceCompanionLocale, type CompanionLocale } from "@/lib/i18n";
+
 function deviceLocales() { return typeof Intl !== "undefined" ? Intl.DateTimeFormat().resolvedOptions().locale : "it-IT"; }
 
 export function formatLocalJourneyDate(dateText: string, locales: string | string[] = deviceLocales()) {

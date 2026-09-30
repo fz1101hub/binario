@@ -5,11 +5,12 @@ import {
   type LocalPlannedRoute,
 } from "@/lib/local-route-contract";
 import { loadLocalPlannedRoutes } from "@/lib/local-routes";
+import { createTranslator, deviceCompanionLocale, type CompanionLocale } from "@/lib/i18n";
 
 const legacyStorageKey = "binario.planned-route-reminders.v1";
 const legacyMigrationNoticeKey = "binario.planned-route-reminders.v1-migration-notice";
 const legacyMigrationNoticeAcknowledgedKey = "binario.planned-route-reminders.v1-migration-notice-acknowledged";
-const notificationTitle = "Binario · tratta pianificata";
+const notificationTitles = new Set(["it", "en", "de", "fr", "es"].map(locale => createTranslator(locale as Parameters<typeof createTranslator>[0])("reminder.notificationTitle")));
 let reminderMutationQueue: Promise<void> = Promise.resolve();
 
 function reminderIdentifier(routeId: number) {
@@ -96,11 +97,12 @@ function reminderFireAt(route: LocalPlannedRoute): number | null {
 }
 
 function reminderRequest(route: LocalPlannedRoute, fireAt: number) {
+  const t = createTranslator(deviceCompanionLocale());
   return {
     identifier: reminderIdentifier(route.id),
     content: {
-      title: notificationTitle,
-      body: `${route.origin} → ${route.destination} alle ${route.travelTime}. Avviso locale approssimativo, non realtime.`,
+      title: t("reminder.notificationTitle"),
+      body: t("reminder.notificationBody", { origin: route.origin, destination: route.destination, time: route.travelTime }),
       data: { routeId: route.id },
     },
     trigger: {
@@ -113,13 +115,7 @@ function reminderRequest(route: LocalPlannedRoute, fireAt: number) {
 async function recordPreservedLegacyWarning(count: number) {
   if (count === 0) return;
   if (await AsyncStorage.getItem(legacyMigrationNoticeAcknowledgedKey)) return;
-  const state = count === 1
-    ? "promemoria precedente è stato mantenuto"
-    : "promemoria precedenti sono stati mantenuti";
-  await AsyncStorage.setItem(
-    legacyMigrationNoticeKey,
-    `${count} ${state} perché non è più possibile ${count === 1 ? "collegarlo" : "collegarli"} in sicurezza a una tratta futura salvata. Controlla le notifiche di sistema.`,
-  );
+  await AsyncStorage.setItem(legacyMigrationNoticeKey, String(count));
   await AsyncStorage.setItem(legacyMigrationNoticeAcknowledgedKey, "1");
 }
 
@@ -138,7 +134,7 @@ async function migrateLegacyState(): Promise<void> {
     const routeId = routeIdFromRequest(request) ?? storedRouteIds.get(request.identifier);
     return storedRouteIds.has(request.identifier) ||
       (routeId !== undefined &&
-        request.content.title === notificationTitle &&
+        notificationTitles.has(request.content.title ?? "") &&
         request.identifier !== reminderIdentifier(routeId));
   });
   if (legacyRequests.length === 0) {
@@ -184,7 +180,7 @@ async function scheduledRouteIds(): Promise<Set<number>> {
   const requests = await Notifications.getAllScheduledNotificationsAsync();
   return new Set(
     requests
-      .filter((request) => request.content.title === notificationTitle)
+      .filter((request) => notificationTitles.has(request.content.title ?? ""))
       .map(routeIdFromRequest)
       .filter((routeId): routeId is number => routeId !== null),
   );
@@ -198,11 +194,15 @@ export function listScheduledRouteIds() {
 }
 
 /** Returns and clears the one-time explanation for legacy reminders retained safely. */
-export function consumeLegacyReminderMigrationNotice() {
+export function consumeLegacyReminderMigrationNotice(locale: CompanionLocale = "it") {
   return serializeMutation(async () => {
     const notice = await AsyncStorage.getItem(legacyMigrationNoticeKey);
     if (notice !== null) await AsyncStorage.removeItem(legacyMigrationNoticeKey);
-    return notice;
+    if (notice === null) return null;
+    const count = Number(notice);
+    return Number.isSafeInteger(count) && count > 0
+      ? createTranslator(locale)("reminder.legacyPreserved", { count })
+      : notice;
   });
 }
 
@@ -215,7 +215,7 @@ export function cancelPlannedRouteReminder(routeId: number) {
     )
       .filter(
         (request) =>
-          request.content.title === notificationTitle &&
+          notificationTitles.has(request.content.title ?? "") &&
           routeIdFromRequest(request) === routeId,
       )
       .map((request) => request.identifier);

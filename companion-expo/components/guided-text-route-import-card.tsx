@@ -1,6 +1,7 @@
 import { maxGuidedTextImportCharacters, parseGuidedTextLocalRouteImports, type GuidedTextLocalRouteDraft } from "@/lib/local-journey-itineraries";
 import { acknowledgeNativeAction } from "@/lib/native-feedback";
 import { useCompanionTheme } from "@/lib/theme";
+import { useTranslation } from "@/lib/i18n";
 import { useEffect, useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
@@ -8,6 +9,7 @@ function draftKey(draft: GuidedTextLocalRouteDraft) { return `${draft.origin.toL
 
 export function GuidedTextRouteImportCard({ existingKeys, onConfirmImport, receivedText, onReceivedTextAccepted }: { existingKeys: readonly string[]; onConfirmImport: (drafts: GuidedTextLocalRouteDraft[]) => Promise<number>; receivedText?: string | null; onReceivedTextAccepted?: () => void }) {
   const { colors } = useCompanionTheme();
+  const { t } = useTranslation();
   const [rawText, setRawText] = useState("");
   const [drafts, setDrafts] = useState<GuidedTextLocalRouteDraft[]>([]);
   const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
@@ -18,33 +20,33 @@ export function GuidedTextRouteImportCard({ existingKeys, onConfirmImport, recei
     if (!receivedText?.trim()) return;
     setRawText(receivedText.slice(0, maxGuidedTextImportCharacters));
     setDrafts([]); setSelectedKeys([]); setReviewed(false);
-    setMessage("Testo condiviso ricevuto. Crea l’anteprima e rivedi i dati: Binario non importa automaticamente.");
+    setMessage(t("import.sharedReceived"));
     onReceivedTextAccepted?.();
-  }, [onReceivedTextAccepted, receivedText]);
+  }, [onReceivedTextAccepted, receivedText, t]);
 
   function createPreview() {
     const candidates = parseGuidedTextLocalRouteImports(rawText).filter(draft => !existing.has(draftKey(draft)));
-    if (candidates.length === 0) { setDrafts([]); setSelectedKeys([]); setReviewed(false); setMessage("Nessuna nuova tratta completa trovata. Inserisci origine, destinazione, data e ora: nulla è stato salvato."); return; }
+    if (candidates.length === 0) { setDrafts([]); setSelectedKeys([]); setReviewed(false); setMessage(t("import.noneFound")); return; }
     setDrafts(candidates); setSelectedKeys(candidates.map(draftKey)); setReviewed(false);
-    setMessage(`${candidates.length} ${candidates.length === 1 ? "tratta pronta" : "tratte pronte"} per la revisione. Nulla è stato ancora importato.`);
+    setMessage(t("import.previewReady", { count: candidates.length }));
   }
 
   async function confirm() {
     const selected = drafts.filter(draft => selectedKeys.includes(draftKey(draft)));
-    if (!reviewed || selected.length === 0) { setMessage("Seleziona almeno una tratta e conferma di averla verificata. Nessun dato è stato salvato."); return; }
+    if (!reviewed || selected.length === 0) { setMessage(t("import.confirmNeeded")); return; }
     const imported = await onConfirmImport(selected);
     setRawText(""); setDrafts([]); setSelectedKeys([]); setReviewed(false);
-    setMessage(imported ? `${imported} ${imported === 1 ? "tratta importata" : "tratte importate"} solo sul telefono. Puoi modificare ogni dato nell’Agenda.` : "Nessuna tratta importata: potrebbe essere già presente o non più valida.");
+    setMessage(imported ? t("import.imported", { count: imported }) : t("import.noneImported"));
     if (imported) acknowledgeNativeAction();
   }
 
   return <View style={[styles.card, { backgroundColor: colors.background, borderColor: colors.border }]}>
-    <Text accessibilityRole="header" style={[styles.heading, { color: colors.foreground }]}>Importa da testo</Text>
-    <Text style={[styles.copy, { color: colors.muted }]}>Incolla una o più tratte oppure usa Condividi testo verso Binario. Il testo viene solo proposto qui: Binario non importa automaticamente e non legge messaggi, appunti o link da solo.</Text>
-    <TextInput accessibilityLabel="Testo delle tratte da importare" accessibilityHint="Una riga per tratta. Devi poi controllare l’anteprima prima di importare." value={rawText} onChangeText={value => { setRawText(value.slice(0, maxGuidedTextImportCharacters)); setDrafts([]); setSelectedKeys([]); setReviewed(false); }} placeholder={"Roma Termini → Bologna Centrale · 12/09/2026 alle 08:30\nBologna Centrale → Milano Centrale · 12/09/2026 alle 11:05"} placeholderTextColor={colors.muted} multiline maxLength={maxGuidedTextImportCharacters} textAlignVertical="top" style={[styles.input, { color: colors.foreground, borderColor: colors.border }]} />
-    <Text style={[styles.hint, { color: colors.muted }]}>Ogni riga richiede origine, destinazione, data `GG/MM/AAAA` o `AAAA-MM-GG` e ora `HH:MM`. Il testo resta qui finché lo cancelli o completi l’importazione.</Text>
-    <Pressable disabled={!rawText.trim()} accessibilityRole="button" accessibilityState={{ disabled: !rawText.trim() }} accessibilityLabel="Crea anteprima delle tratte nel testo" onPress={createPreview} style={({ pressed }) => [styles.action, { borderColor: colors.primary, backgroundColor: colors.primary, opacity: !rawText.trim() ? 0.5 : pressed ? 0.72 : 1 }]}><Text style={styles.actionText}>Crea anteprima</Text></Pressable>
-    {drafts.length ? <View style={[styles.preview, { borderColor: colors.border }]}><Text accessibilityRole="header" style={[styles.subheading, { color: colors.foreground }]}>Rivedi prima di aggiungere</Text>{drafts.map(draft => { const key = draftKey(draft); const selected = selectedKeys.includes(key); return <Pressable key={key} accessibilityRole="checkbox" accessibilityState={{ checked: selected }} accessibilityLabel={`${selected ? "Selezionata" : "Non selezionata"}: ${draft.origin} verso ${draft.destination}, ${draft.travelDate}, ${draft.travelTime}`} onPress={() => setSelectedKeys(current => current.includes(key) ? current.filter(item => item !== key) : [...current, key])} style={({ pressed }) => [styles.choice, { borderColor: selected ? colors.primary : colors.border, opacity: pressed ? 0.72 : 1 }]}><Text style={{ color: colors.foreground }}>{selected ? "✓ " : "○ "}{draft.origin} → {draft.destination}</Text><Text style={{ color: colors.muted }}>{draft.travelDate} · {draft.travelTime}</Text></Pressable>; })}<Pressable accessibilityRole="checkbox" accessibilityState={{ checked: reviewed }} accessibilityLabel="Ho verificato stazioni data e ora; i dati sono programmati, non realtime" onPress={() => setReviewed(value => !value)} style={({ pressed }) => [styles.choice, { borderColor: reviewed ? colors.primary : colors.border, opacity: pressed ? 0.72 : 1 }]}><Text style={{ color: colors.foreground }}>{reviewed ? "✓ " : "○ "}Ho verificato stazioni, data e ora: sono dati programmati, non realtime.</Text></Pressable><View style={styles.row}><Pressable disabled={!reviewed || selectedKeys.length === 0} accessibilityRole="button" accessibilityState={{ disabled: !reviewed || selectedKeys.length === 0 }} accessibilityLabel="Importa sul telefono le tratte selezionate" onPress={() => void confirm()} style={({ pressed }) => [styles.action, styles.flex, { borderColor: colors.primary, backgroundColor: colors.primary, opacity: !reviewed || selectedKeys.length === 0 ? 0.5 : pressed ? 0.72 : 1 }]}><Text style={styles.actionText}>Importa selezionate</Text></Pressable><Pressable accessibilityRole="button" accessibilityLabel="Annulla anteprima testo" onPress={() => { setDrafts([]); setSelectedKeys([]); setReviewed(false); setMessage("Anteprima annullata. Nessun dato è stato modificato."); }} style={({ pressed }) => [styles.cancel, styles.flex, { borderColor: colors.border, opacity: pressed ? 0.72 : 1 }]}><Text style={{ color: colors.foreground, fontWeight: "800" }}>Annulla</Text></Pressable></View></View> : null}
+    <Text accessibilityRole="header" style={[styles.heading, { color: colors.foreground }]}>{t("import.title")}</Text>
+    <Text style={[styles.copy, { color: colors.muted }]}>{t("import.description")}</Text>
+    <TextInput accessibilityLabel={t("import.inputA11y")} accessibilityHint={t("import.inputHint")} value={rawText} onChangeText={value => { setRawText(value.slice(0, maxGuidedTextImportCharacters)); setDrafts([]); setSelectedKeys([]); setReviewed(false); }} placeholder={t("import.example")} placeholderTextColor={colors.muted} multiline maxLength={maxGuidedTextImportCharacters} textAlignVertical="top" style={[styles.input, { color: colors.foreground, borderColor: colors.border }]} />
+    <Text style={[styles.hint, { color: colors.muted }]}>{t("import.formatHint")}</Text>
+    <Pressable disabled={!rawText.trim()} accessibilityRole="button" accessibilityState={{ disabled: !rawText.trim() }} accessibilityLabel={t("import.createPreviewA11y")} onPress={createPreview} style={({ pressed }) => [styles.action, { borderColor: colors.primary, backgroundColor: colors.primary, opacity: !rawText.trim() ? 0.5 : pressed ? 0.72 : 1 }]}><Text style={styles.actionText}>{t("import.createPreview")}</Text></Pressable>
+    {drafts.length ? <View style={[styles.preview, { borderColor: colors.border }]}><Text accessibilityRole="header" style={[styles.subheading, { color: colors.foreground }]}>{t("import.review")}</Text>{drafts.map(draft => { const key = draftKey(draft); const selected = selectedKeys.includes(key); return <Pressable key={key} accessibilityRole="checkbox" accessibilityState={{ checked: selected }} accessibilityLabel={t("import.choiceA11y", { selection: selected ? t("common.selected") : t("common.notSelectedFemale"), origin: draft.origin, destination: draft.destination, date: draft.travelDate, time: draft.travelTime })} onPress={() => setSelectedKeys(current => current.includes(key) ? current.filter(item => item !== key) : [...current, key])} style={({ pressed }) => [styles.choice, { borderColor: selected ? colors.primary : colors.border, opacity: pressed ? 0.72 : 1 }]}><Text style={{ color: colors.foreground }}>{selected ? "✓ " : "○ "}{draft.origin} → {draft.destination}</Text><Text style={{ color: colors.muted }}>{draft.travelDate} · {draft.travelTime}</Text></Pressable>; })}<Pressable accessibilityRole="checkbox" accessibilityState={{ checked: reviewed }} accessibilityLabel={t("import.reviewedA11y")} onPress={() => setReviewed(value => !value)} style={({ pressed }) => [styles.choice, { borderColor: reviewed ? colors.primary : colors.border, opacity: pressed ? 0.72 : 1 }]}><Text style={{ color: colors.foreground }}>{reviewed ? "✓ " : "○ "}{t("import.reviewed")}</Text></Pressable><View style={styles.row}><Pressable disabled={!reviewed || selectedKeys.length === 0} accessibilityRole="button" accessibilityState={{ disabled: !reviewed || selectedKeys.length === 0 }} accessibilityLabel={t("import.selectedA11y")} onPress={() => void confirm()} style={({ pressed }) => [styles.action, styles.flex, { borderColor: colors.primary, backgroundColor: colors.primary, opacity: !reviewed || selectedKeys.length === 0 ? 0.5 : pressed ? 0.72 : 1 }]}><Text style={styles.actionText}>{t("import.selected")}</Text></Pressable><Pressable accessibilityRole="button" accessibilityLabel={t("import.cancelA11y")} onPress={() => { setDrafts([]); setSelectedKeys([]); setReviewed(false); setMessage(t("import.cancelled")); }} style={({ pressed }) => [styles.cancel, styles.flex, { borderColor: colors.border, opacity: pressed ? 0.72 : 1 }]}><Text style={{ color: colors.foreground, fontWeight: "800" }}>{t("common.cancel")}</Text></Pressable></View></View> : null}
     {message ? <Text accessibilityLiveRegion="polite" style={[styles.message, { color: colors.muted }]}>{message}</Text> : null}
   </View>;
 }

@@ -27,7 +27,7 @@ class BinarioChecklistRequestActivity : Activity() {
       if (intent?.action == acknowledgementAction && waitingForAcknowledgement && intent.getStringExtra(acknowledgementExtra) == requestId) {
         waitingForAcknowledgement = false
         handler.removeCallbacksAndMessages(null)
-        message.text = "Checklist aperta sul telefono."
+        message.text = getString(R.string.binario_checklist_opened)
       }
     }
   }
@@ -35,16 +35,16 @@ class BinarioChecklistRequestActivity : Activity() {
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
     ContextCompat.registerReceiver(this, acknowledgementReceiver, IntentFilter(acknowledgementAction), ContextCompat.RECEIVER_NOT_EXPORTED)
-    message = TextView(this).apply { text = "Invio la richiesta al telefono…"; textSize = 17f; setPadding(24, 24, 24, 24); accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_POLITE }
+    message = TextView(this).apply { text = getString(R.string.binario_opening_checklist); textSize = 17f; setPadding(24, 24, 24, 24); accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_POLITE }
     setContentView(LinearLayout(this).apply { gravity = Gravity.CENTER; addView(message) })
     Wearable.getNodeClient(this).connectedNodes.addOnSuccessListener { nodes ->
       val node = nodes.firstOrNull()
-      if (node == null) { failClosed("Telefono non raggiungibile."); return@addOnSuccessListener }
+      if (node == null) { failClosed(getString(R.string.binario_phone_unreachable)); return@addOnSuccessListener }
       Wearable.getMessageClient(this).sendMessage(node.id, requestPath, requestId.toByteArray(Charsets.UTF_8))
-        .addOnSuccessListener { if (waitingForAcknowledgement) message.text = "Apri la notifica sul telefono per vedere la checklist." }
-        .addOnFailureListener { failClosed("Non è possibile inviare la richiesta ora.") }
-    }.addOnFailureListener { failClosed("Telefono non raggiungibile.") }
-    handler.postDelayed({ failClosed("Nessuna conferma dal telefono. Riprova.") }, acknowledgementTimeoutMillis)
+        .addOnSuccessListener { if (waitingForAcknowledgement) message.text = getString(R.string.binario_opening_checklist) }
+        .addOnFailureListener { failClosed(getString(R.string.binario_cannot_open_phone)) }
+    }.addOnFailureListener { failClosed(getString(R.string.binario_phone_unreachable)) }
+    handler.postDelayed({ failClosed(getString(R.string.binario_cannot_open_phone)) }, acknowledgementTimeoutMillis)
   }
 
   private fun failClosed(copy: String) {

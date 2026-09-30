@@ -22,12 +22,12 @@ class BinarioTileService : TileService() {
   private fun textFor(state: BinarioWearState): LayoutElementBuilders.Column {
     val column = LayoutElementBuilders.Column.Builder()
       .setModifiers(ModifiersBuilders.Modifiers.Builder().setSemantics(
-        ModifiersBuilders.Semantics.Builder().setContentDescription("Binario. ${state.title}. ${state.status}").setHeading(true).build()
+        ModifiersBuilders.Semantics.Builder().setContentDescription(getString(R.string.binario_tile_heading, state.title, state.status)).setHeading(true).build()
       ).build())
       .addContent(LayoutElementBuilders.Text.Builder().setText("${state.title}\n${state.status}").build())
-      .addContent(LayoutElementBuilders.Text.Builder().setText("Microfono · Parla a Binario")
+      .addContent(LayoutElementBuilders.Text.Builder().setText(getString(R.string.binario_microphone))
         .setModifiers(ModifiersBuilders.Modifiers.Builder().setSemantics(
-          ModifiersBuilders.Semantics.Builder().setContentDescription("Parla a Binario").setStateDescription(TypeBuilders.StringProp.Builder("Apre la richiesta vocale sullo smartwatch").build()).build()
+          ModifiersBuilders.Semantics.Builder().setContentDescription(getString(R.string.voice_request_label)).setStateDescription(TypeBuilders.StringProp.Builder(getString(R.string.binario_voice_state)).build()).build()
         ).setClickable(
           ModifiersBuilders.Clickable.Builder().setId("binario-voice-request").setOnClick(
             ActionBuilders.LaunchAction.Builder().setAndroidActivity(
@@ -37,9 +37,9 @@ class BinarioTileService : TileService() {
         ).build())
         .build())
     if (state.plannedChecklistRemaining > 0) column.addContent(
-      LayoutElementBuilders.Text.Builder().setText("Checklist · ${state.plannedChecklistRemaining} voci sul telefono")
+      LayoutElementBuilders.Text.Builder().setText(getString(R.string.binario_checklist, state.plannedChecklistRemaining))
         .setModifiers(ModifiersBuilders.Modifiers.Builder().setSemantics(
-          ModifiersBuilders.Semantics.Builder().setContentDescription("Apri checklist sul telefono").setStateDescription(TypeBuilders.StringProp.Builder("${state.plannedChecklistRemaining} voci da preparare").build()).build()
+          ModifiersBuilders.Semantics.Builder().setContentDescription(getString(R.string.checklist_request_label)).setStateDescription(TypeBuilders.StringProp.Builder(getString(R.string.binario_checklist_state, state.plannedChecklistRemaining)).build()).build()
         ).setClickable(
           ModifiersBuilders.Clickable.Builder().setId("binario-open-checklist").setOnClick(
             ActionBuilders.LaunchAction.Builder().setAndroidActivity(

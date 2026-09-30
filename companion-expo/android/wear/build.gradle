@@ -46,6 +46,7 @@ dependencies {
   implementation("androidx.wear.tiles:tiles:1.6.2")
   implementation("androidx.wear.protolayout:protolayout:1.4.2")
   implementation("androidx.activity:activity-ktx:1.10.1")
+  implementation("androidx.core:core-ktx:1.15.0")
   implementation("com.google.android.gms:play-services-wearable:20.0.1")
   implementation("com.google.guava:guava:33.5.0-android")
   testImplementation("junit:junit:4.13.2")
