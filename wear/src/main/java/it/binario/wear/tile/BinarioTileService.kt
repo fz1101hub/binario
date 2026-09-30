@@ -10,6 +10,8 @@ import androidx.wear.tiles.RequestBuilders
 import androidx.wear.tiles.TileBuilders
 import androidx.wear.tiles.TileService
 import com.google.common.util.concurrent.ListenableFuture
+import it.binario.wear.R
+import it.binario.wear.dataStatusResId
 import it.binario.wear.model.WearSnapshot
 import it.binario.wear.sync.WearSnapshotStore
 
@@ -21,7 +23,7 @@ class BinarioTileService : TileService() {
             TileBuilders.Tile.Builder()
                 .setResourcesVersion(RESOURCES_VERSION)
                 .setFreshnessIntervalMillis(30L * 60L * 1000L)
-                .setTileTimeline(binarioTileTimeline(snapshot))
+                .setTileTimeline(binarioTileTimeline(snapshot, ::binarioTileLayout))
                 .build()
         )
     }
@@ -45,16 +47,19 @@ class BinarioTileService : TileService() {
  * not running. The unbounded entry is the fallback selected whenever the snapshot entry is no
  * longer valid.
  */
-internal fun binarioTileTimeline(snapshot: WearSnapshot?): TimelineBuilders.Timeline =
+internal fun binarioTileTimeline(
+    snapshot: WearSnapshot?,
+    layout: (WearSnapshot?) -> LayoutElementBuilders.LayoutElement = ::fallbackBinarioTileLayout
+): TimelineBuilders.Timeline =
     TimelineBuilders.Timeline.Builder()
         .addTimelineEntry(
-            TimelineBuilders.TimelineEntry.fromLayoutElement(binarioTileLayout(null))
+            TimelineBuilders.TimelineEntry.fromLayoutElement(layout(null))
         )
         .apply {
             if (snapshot != null) {
                 addTimelineEntry(
                     TimelineBuilders.TimelineEntry.Builder()
-                        .setLayout(LayoutElementBuilders.Layout.fromLayoutElement(binarioTileLayout(snapshot)))
+                        .setLayout(LayoutElementBuilders.Layout.fromLayoutElement(layout(snapshot)))
                         .setValidity(
                             TimelineBuilders.TimeInterval.Builder()
                                 .setEndMillis(snapshot.expiresAtEpochMillis)
@@ -66,13 +71,22 @@ internal fun binarioTileTimeline(snapshot: WearSnapshot?): TimelineBuilders.Time
         }
         .build()
 
-private fun binarioTileLayout(snapshot: WearSnapshot?): LayoutElementBuilders.LayoutElement {
+private fun BinarioTileService.binarioTileLayout(snapshot: WearSnapshot?): LayoutElementBuilders.LayoutElement {
+    val details = snapshot?.services?.firstOrNull()
+    return LayoutElementBuilders.Column.Builder()
+        .addContent(binarioTileText(getString(R.string.app_name), 18f, 0xFFFFFFFF.toInt(), 1))
+        .addContent(binarioTileText(snapshot?.routeLabel ?: getString(R.string.tile_no_synced_route), 15f, 0xFFB8F3D7.toInt(), 2))
+        .addContent(binarioTileText(details?.let { getString(R.string.tile_service_details, it.expectedDeparture, it.number, it.destination) } ?: getString(R.string.empty_snapshot_message), 14f, 0xFFFFFFFF.toInt(), 2))
+        .addContent(binarioTileText(snapshot?.let { getString(it.dataStatusResId()) } ?: getString(R.string.tile_snapshot_unavailable), 12f, 0xFFB3C8BE.toInt(), 2))
+        .build()
+}
+private fun fallbackBinarioTileLayout(snapshot: WearSnapshot?): LayoutElementBuilders.LayoutElement {
     val details = snapshot?.services?.firstOrNull()
     return LayoutElementBuilders.Column.Builder()
         .addContent(binarioTileText("Binario", 18f, 0xFFFFFFFF.toInt(), 1))
-        .addContent(binarioTileText(snapshot?.routeLabel ?: "Nessuna tratta sincronizzata", 15f, 0xFFB8F3D7.toInt(), 2))
-        .addContent(binarioTileText(details?.let { listOfNotNull(it.expectedDeparture, it.number, it.destination).joinToString(" · ") } ?: "Apri Binario sul telefono", 14f, 0xFFFFFFFF.toInt(), 2))
-        .addContent(binarioTileText(snapshot?.dataStatusLabel ?: "Snapshot non disponibile", 12f, 0xFFB3C8BE.toInt(), 2))
+        .addContent(binarioTileText(snapshot?.routeLabel.orEmpty(), 15f, 0xFFB8F3D7.toInt(), 2))
+        .addContent(binarioTileText(details?.let { listOfNotNull(it.expectedDeparture, it.number, it.destination).joinToString(" · ") }.orEmpty(), 14f, 0xFFFFFFFF.toInt(), 2))
+        .addContent(binarioTileText(snapshot?.notice.orEmpty(), 12f, 0xFFB3C8BE.toInt(), 2))
         .build()
 }
 

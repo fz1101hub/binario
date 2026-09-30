@@ -7,9 +7,11 @@ import { loadLocalRecentStations, recordLocalRecentStation, saveLocalRecentStati
 import { findCanonicalOfflineStationByCode, type OfflineStation } from "@/lib/offline-station-index";
 import { acknowledgeNativeAction, confirmNativeAction } from "@/lib/native-feedback";
 import { useCompanionTheme } from "@/lib/theme";
+import { useTranslation } from "@/lib/i18n";
 
 export function LocalStationBoardCard() {
   const { colors } = useCompanionTheme();
+  const { t } = useTranslation();
   const [query, setQuery] = useState("");
   const [station, setStation] = useState<OfflineStation | null>(null);
   const [favorites, setFavorites] = useState<LocalFavoriteStation[]>([]);
@@ -26,7 +28,7 @@ export function LocalStationBoardCard() {
     const nextRecents = recordLocalRecentStation(recents, { code: nextStation.code, name: nextStation.name });
     await saveLocalRecentStations(nextRecents);
     setRecents(nextRecents);
-    setMessage(`${nextStation.name} selezionata. Puoi aprire il tabellone locale.`);
+    setMessage(t("board.selected", { station: nextStation.name }));
     acknowledgeNativeAction();
   }
 
@@ -36,26 +38,26 @@ export function LocalStationBoardCard() {
     await saveLocalFavoriteStations(nextFavorites);
     setFavorites(nextFavorites);
     const isFavorite = nextFavorites.some(item => item.code === station.code);
-    setMessage(isFavorite ? `${station.name} aggiunta alle preferite locali.` : `${station.name} rimossa dalle preferite locali.`);
+    setMessage(isFavorite ? t("board.favoriteAdded", { station: station.name }) : t("board.favoriteRemoved", { station: station.name }));
     acknowledgeNativeAction();
   }
 
   function openBoard() {
     if (!station) return;
     setBoardOpen(true);
-    setMessage(`Tabellone di ${station.name} aperto. I dati live non sono disponibili.`);
+    setMessage(t("board.opened", { station: station.name }));
     confirmNativeAction();
   }
 
   const favorite = Boolean(station && favorites.some(item => item.code === station.code));
 
-  return <View accessible accessibilityLabel="Stazioni e tabellone" style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-    <View style={styles.headingRow}><MaterialIcons name="train" size={21} color={colors.primary} /><View style={styles.headingCopy}><Text accessibilityRole="header" style={[styles.heading, { color: colors.foreground }]}>Apri un tabellone</Text><Text style={[styles.copy, { color: colors.muted }]}>Cerca una stazione nel catalogo nazionale offline. Partenze e arrivi live compariranno solo con una fonte autorizzata.</Text></View></View>
-    <StationAutocompleteInput label="Stazione" value={query} stationCode={station?.code ?? null} description="Scrivi almeno due lettere e seleziona una stazione per preparare il tabellone." onChange={text => { setQuery(text); setStation(null); setBoardOpen(false); }} onSelect={nextStation => { void selectStation(nextStation); }} />
-    {favorites.length ? <View accessible accessibilityLabel="Stazioni preferite locali" style={styles.chipArea}><Text style={[styles.chipLabel, { color: colors.muted }]}>PREFERITE</Text><View style={styles.chips}>{favorites.slice(0, 4).map(item => <Pressable key={item.code} accessibilityRole="button" accessibilityLabel={`Apri il tabellone di ${item.name}`} onPress={() => { const candidate = findCanonicalOfflineStationByCode(item.code); if (candidate) void selectStation(candidate); }} style={({ pressed }) => [styles.chip, { borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}><Text style={{ color: colors.foreground, fontWeight: "800" }}>{item.name}</Text></Pressable>)}</View></View> : null}
-    {recents.length ? <View accessible accessibilityLabel="Stazioni recenti locali" style={styles.chipArea}><Text style={[styles.chipLabel, { color: colors.muted }]}>RECENTI</Text><View style={styles.chips}>{recents.slice(0, 4).map(item => <Pressable key={item.code} accessibilityRole="button" accessibilityLabel={`Riapri il tabellone di ${item.name}`} onPress={() => { const candidate = findCanonicalOfflineStationByCode(item.code); if (candidate) void selectStation(candidate); }} style={({ pressed }) => [styles.chip, { borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}><Text style={{ color: colors.foreground, fontWeight: "800" }}>{item.name}</Text></Pressable>)}</View></View> : null}
-    <View style={styles.actions}><Pressable accessibilityRole="button" accessibilityState={{ disabled: !station }} accessibilityLabel={station ? `Apri il tabellone di ${station.name}` : "Seleziona una stazione per aprire il tabellone"} disabled={!station} onPress={openBoard} style={({ pressed }) => [styles.primaryAction, { backgroundColor: colors.primary, opacity: pressed || !station ? 0.64 : 1 }]}><Text style={styles.primaryText}>Apri tabellone</Text></Pressable>{station ? <Pressable accessibilityRole="button" accessibilityLabel={favorite ? "Rimuovi dalle stazioni preferite" : "Aggiungi alle stazioni preferite"} onPress={() => void toggleFavorite()} style={({ pressed }) => [styles.secondaryAction, { borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}><Text style={{ color: colors.foreground, fontWeight: "800" }}>{favorite ? "Rimuovi preferita" : "Aggiungi preferita"}</Text></Pressable> : null}</View>
-    {boardOpen && station ? <View accessible accessibilityLabel={`Tabellone di ${station.name}`} style={[styles.board, { borderColor: colors.border, backgroundColor: colors.background }]}><View style={styles.headingRow}><MaterialIcons name="departure-board" size={20} color={colors.primary} /><View style={styles.headingCopy}><Text accessibilityRole="header" style={[styles.boardTitle, { color: colors.foreground }]}>{station.name}</Text><Text style={[styles.boardCode, { color: colors.muted }]}>{station.code} · Tabellone locale</Text></View></View><Text style={[styles.boardEmptyTitle, { color: colors.foreground }]}>Nessuna partenza o arrivo live disponibile</Text><Text style={[styles.copy, { color: colors.muted }]}>Questo non significa assenza di ritardi o disservizi: non è collegata una fonte ferroviaria autorizzata. Il codice stazione è pronto per un futuro tabellone verificato.</Text></View> : null}
+  return <View accessible accessibilityLabel={t("board.cardA11y")} style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+    <View style={styles.headingRow}><MaterialIcons name="train" size={21} color={colors.primary} /><View style={styles.headingCopy}><Text accessibilityRole="header" style={[styles.heading, { color: colors.foreground }]}>{t("board.title")}</Text><Text style={[styles.copy, { color: colors.muted }]}>{t("board.description")}</Text></View></View>
+    <StationAutocompleteInput label={t("board.station")} value={query} stationCode={station?.code ?? null} description={t("board.stationDescription")} onChange={text => { setQuery(text); setStation(null); setBoardOpen(false); }} onSelect={nextStation => { void selectStation(nextStation); }} />
+    {favorites.length ? <View accessible accessibilityLabel={t("board.favoritesA11y")} style={styles.chipArea}><Text style={[styles.chipLabel, { color: colors.muted }]}>{t("board.favorites")}</Text><View style={styles.chips}>{favorites.slice(0, 4).map(item => <Pressable key={item.code} accessibilityRole="button" accessibilityLabel={t("board.openFavoriteA11y", { station: item.name })} onPress={() => { const candidate = findCanonicalOfflineStationByCode(item.code); if (candidate) void selectStation(candidate); }} style={({ pressed }) => [styles.chip, { borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}><Text style={{ color: colors.foreground, fontWeight: "800" }}>{item.name}</Text></Pressable>)}</View></View> : null}
+    {recents.length ? <View accessible accessibilityLabel={t("board.recentsA11y")} style={styles.chipArea}><Text style={[styles.chipLabel, { color: colors.muted }]}>{t("board.recents")}</Text><View style={styles.chips}>{recents.slice(0, 4).map(item => <Pressable key={item.code} accessibilityRole="button" accessibilityLabel={t("board.reopenA11y", { station: item.name })} onPress={() => { const candidate = findCanonicalOfflineStationByCode(item.code); if (candidate) void selectStation(candidate); }} style={({ pressed }) => [styles.chip, { borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}><Text style={{ color: colors.foreground, fontWeight: "800" }}>{item.name}</Text></Pressable>)}</View></View> : null}
+    <View style={styles.actions}><Pressable accessibilityRole="button" accessibilityState={{ disabled: !station }} accessibilityLabel={station ? t("board.openA11y", { station: station.name }) : t("board.selectA11y")} disabled={!station} onPress={openBoard} style={({ pressed }) => [styles.primaryAction, { backgroundColor: colors.primary, opacity: pressed || !station ? 0.64 : 1 }]}><Text style={styles.primaryText}>{t("board.open")}</Text></Pressable>{station ? <Pressable accessibilityRole="button" accessibilityLabel={favorite ? t("board.removeFavoriteA11y") : t("board.addFavoriteA11y")} onPress={() => void toggleFavorite()} style={({ pressed }) => [styles.secondaryAction, { borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}><Text style={{ color: colors.foreground, fontWeight: "800" }}>{favorite ? t("board.removeFavorite") : t("board.addFavorite")}</Text></Pressable> : null}</View>
+    {boardOpen && station ? <View accessible accessibilityLabel={t("board.boardA11y", { station: station.name })} style={[styles.board, { borderColor: colors.border, backgroundColor: colors.background }]}><View style={styles.headingRow}><MaterialIcons name="departure-board" size={20} color={colors.primary} /><View style={styles.headingCopy}><Text accessibilityRole="header" style={[styles.boardTitle, { color: colors.foreground }]}>{station.name}</Text><Text style={[styles.boardCode, { color: colors.muted }]}>{station.code} · {t("board.local")}</Text></View></View><Text style={[styles.boardEmptyTitle, { color: colors.foreground }]}>{t("board.noLive")}</Text><Text style={[styles.copy, { color: colors.muted }]}>{t("board.noLiveDescription")}</Text></View> : null}
     {message ? <Text accessibilityLiveRegion="polite" style={[styles.message, { color: colors.muted }]}>{message}</Text> : null}
   </View>;
 }

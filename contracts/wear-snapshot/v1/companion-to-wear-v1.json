@@ -13,6 +13,6 @@
   "routeId": "local-42",
   "routeLabel": "Roma Termini → Napoli Centrale",
   "direction": "OUTBOUND",
-  "notice": "Orario programmato locale: non è un aggiornamento realtime ferroviario.",
+  "notice": "Orario programmato locale: non è un aggiornamento ferroviario in tempo reale.",
   "serviceCount": 0
 }

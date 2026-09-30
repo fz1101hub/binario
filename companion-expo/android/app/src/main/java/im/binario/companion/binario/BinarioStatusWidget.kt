@@ -2,6 +2,7 @@ package im.binario.companion.binario
 
 import android.content.Context
 import android.content.ComponentName
+import im.binario.companion.R
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.graphics.Color
 import androidx.glance.GlanceId
@@ -39,6 +40,14 @@ internal object BinarioWidgetPresentation {
 }
 
 class BinarioStatusWidget : GlanceAppWidget() {
+  private fun countdownLabel(context: Context, scheduledAt: Long, now: Long = System.currentTimeMillis()): String {
+    if (scheduledAt <= now) return context.getString(R.string.binario_unavailable)
+    val minutes = kotlin.math.ceil((scheduledAt - now).toDouble() / 60_000).toInt()
+    if (minutes < 60) return context.getString(R.string.binario_countdown_minutes, minutes)
+    val hours = minutes / 60
+    val remainder = minutes % 60
+    return if (remainder == 0) context.getString(R.string.binario_countdown_hours, hours) else context.getString(R.string.binario_countdown_hours_minutes, hours, remainder)
+  }
   override suspend fun provideGlance(context: Context, id: GlanceId) {
     val state = BinarioWidgetStore.read(context)
     val voiceActivity = ComponentName(context, im.binario.companion.MainActivity::class.java)
@@ -47,11 +56,11 @@ class BinarioStatusWidget : GlanceAppWidget() {
         modifier = GlanceModifier.fillMaxSize().background(ColorProvider(Color(0xFF071525))).padding(16.dp),
         verticalAlignment = Alignment.Vertical.CenterVertically,
       ) {
-        Text(if (state.plannedJourneyTitle != null) "PROSSIMA TRATTA · PROGRAMMATA" else "BINARIO", style = TextStyle(color = ColorProvider(Color(0xFF9EDBFF))))
+        Text(if (state.plannedJourneyTitle != null) context.getString(R.string.binario_next_journey) else "BINARIO", style = TextStyle(color = ColorProvider(Color(0xFF9EDBFF))))
         Text(state.plannedJourneyTitle ?: state.title, style = TextStyle(color = ColorProvider(Color.White)))
-        Text(if (state.plannedJourneyAtUtcMs != null) BinarioWidgetPresentation.countdownLabel(state.plannedJourneyAtUtcMs) else state.subtitle, style = TextStyle(color = ColorProvider(Color(0xFFD5E4F1))))
-        if (state.plannedJourneyTitle != null) Text("${state.plannedReminderMinutes?.let { "Promemoria $it min · " } ?: ""}Orario programmato, non realtime", style = TextStyle(color = ColorProvider(Color(0xFFD5E4F1))))
-        Text("Apri Binario e detta", style = TextStyle(color = ColorProvider(Color(0xFF9EDBFF))), modifier = GlanceModifier.clickable(onClick = actionStartActivity(voiceActivity)))
+        Text(if (state.plannedJourneyAtUtcMs != null) countdownLabel(context, state.plannedJourneyAtUtcMs) else state.subtitle, style = TextStyle(color = ColorProvider(Color(0xFFD5E4F1))))
+        if (state.plannedJourneyTitle != null) Text("${state.plannedReminderMinutes?.let { context.getString(R.string.binario_reminder, it) } ?: ""}${context.getString(R.string.binario_scheduled_not_realtime)}", style = TextStyle(color = ColorProvider(Color(0xFFD5E4F1))))
+        Text(context.getString(R.string.binario_open_binario), style = TextStyle(color = ColorProvider(Color(0xFF9EDBFF))), modifier = GlanceModifier.clickable(onClick = actionStartActivity(voiceActivity)))
       }
     }
   }

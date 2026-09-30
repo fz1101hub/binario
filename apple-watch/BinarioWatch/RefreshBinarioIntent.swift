@@ -12,8 +12,8 @@ enum RefreshBinarioAction {
 }
 
 struct RefreshBinarioIntent: AppIntent {
-    static var title: LocalizedStringResource = "Aggiorna Binario"
-    static var description = IntentDescription("Rileggere lo snapshot ferroviario già disponibile sul dispositivo.")
+    static var title: LocalizedStringResource = "watch.intent.refresh.title"
+    static var description = IntentDescription("watch.intent.refresh.description")
 
     func perform() async throws -> some IntentResult {
         RefreshBinarioAction.requestTimelineReload(

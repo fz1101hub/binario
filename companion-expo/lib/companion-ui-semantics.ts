@@ -1,39 +1,48 @@
 import type { CompanionSnapshot } from "@/lib/companion-snapshot";
+import { createTranslator, type CompanionLocale } from "@/lib/i18n";
 
 /**
  * Etichette pronunciate dalle superfici effettivamente presenti nel Companion.
  * Il contratto non descrive pairing o revoca: non esistono controlli UI per tali
  * funzioni in questa applicazione locale-first.
  */
-export const companionHubActions = {
+export function getCompanionHubActions(locale?: CompanionLocale) {
+  const t = createTranslator(locale);
+  return {
   planJourney: {
     accessibilityRole: "button" as const,
-    accessibilityLabel: "Pianifica una tratta",
-    accessibilityHint: "Apre la schermata locale per aggiungere una partenza e un arrivo.",
+    accessibilityLabel: t("hub.planJourney"),
+    accessibilityHint: t("hub.planJourneyHint"),
   },
   manageReminders: {
     accessibilityRole: "button" as const,
-    accessibilityLabel: "Gestisci promemoria",
-    accessibilityHint: "Rivedi o elimina promemoria locali, sempre non realtime.",
+    accessibilityLabel: t("hub.manageReminders"),
+    accessibilityHint: t("hub.manageRemindersHint"),
   },
-};
+  };
+}
 
-export function railwayStatusSemantics(provenance: Pick<CompanionSnapshot["provenance"], "dataNature">) {
+/** Italian fallback retained for existing callers and deterministic contract checks. */
+export const companionHubActions = getCompanionHubActions("it");
+
+export function railwayStatusSemantics(provenance: Pick<CompanionSnapshot["provenance"], "dataNature">, locale?: CompanionLocale) {
+  const t = createTranslator(locale);
   const unavailable = provenance.dataNature === "unavailable";
   return {
     accessibilityRole: "summary" as const,
     accessibilityLabel: unavailable
-      ? "Stato ferroviario: dati realtime non disponibili. Binario non inventa ritardi, binari, cancellazioni o avvisi."
-      : "Stato ferroviario: orario programmato locale, non realtime.",
+      ? t("semantics.railwayUnavailable")
+      : t("semantics.railwayScheduled"),
   };
 }
 
-export function alertsRailwayStatusSemantics(simpleMode: boolean) {
+export function alertsRailwayStatusSemantics(simpleMode: boolean, locale?: CompanionLocale) {
+  const t = createTranslator(locale);
   return {
     accessibilityRole: "summary" as const,
     accessibilityLabel: simpleMode
-      ? "Stato ferroviario: dati realtime non disponibili."
-      : "Stato ferroviario: nessun avviso realtime disponibile senza una fonte autorizzata.",
+      ? t("semantics.alertsUnavailable")
+      : t("semantics.alertsNoAlerts"),
   };
 }
 

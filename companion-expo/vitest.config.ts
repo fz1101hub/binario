@@ -5,6 +5,14 @@ import { fileURLToPath } from "node:url";
 const dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
-  resolve: { alias: { "@": path.resolve(dirname, ".") } },
+  resolve: {
+    alias: {
+      "expo-localization": path.resolve(
+        dirname,
+        "tests/stubs/expo-localization.ts",
+      ),
+      "@": path.resolve(dirname, "."),
+    },
+  },
   test: { include: ["tests/**/*.test.ts"] },
 });

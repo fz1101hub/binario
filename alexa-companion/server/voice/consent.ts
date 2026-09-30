@@ -1,4 +1,9 @@
 import { createHmac, hkdfSync } from "node:crypto";
+import {
+  formatMessage,
+  messagesForLocale,
+  type SupportedLocale,
+} from "@shared/i18n";
 import { ENV } from "../_core/env";
 import { createOpaqueSecret, secureStringEquals } from "./crypto";
 
@@ -143,6 +148,7 @@ export function escapeHtml(value: string) {
 }
 
 export type ConsentPageInput = {
+  locale: SupportedLocale;
   userName: string;
   clientId: string;
   redirectUri: string;
@@ -151,28 +157,64 @@ export type ConsentPageInput = {
   token: string;
 };
 
-export function renderConsentPage(input: ConsentPageInput) {
-  const hidden = (name: string, value: string) =>
-    `<input type="hidden" name="${name}" value="${escapeHtml(value)}">`;
-  const who = input.userName
-    ? ` come <strong>${escapeHtml(input.userName)}</strong>`
-    : "";
+export type ConsentErrorKind =
+  | "notConfigured"
+  | "invalidRequest"
+  | "invalidCsrf"
+  | "loginRequired";
+
+function pageStyles() {
+  return `<style>
+body{font-family:system-ui,sans-serif;max-width:32rem;margin:3rem auto;padding:0 1rem;line-height:1.5;color:#1b1b1b}
+button,.button{font:inherit;display:inline-block;padding:.75rem 1.25rem;border-radius:.5rem;border:1px solid #1b1b1b;background:#fff;color:#1b1b1b;cursor:pointer;text-decoration:none}
+button.primary{background:#1b1b1b;color:#fff}
+form{display:flex;gap:1rem;margin-top:1.5rem}
+</style>`;
+}
+
+export function renderConsentErrorPage(
+  locale: SupportedLocale,
+  kind: ConsentErrorKind
+) {
+  const messages = messagesForLocale(locale).consent;
   return `<!doctype html>
-<html lang="it">
+<html lang="${locale}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Collega Alexa a Binario</title>
-<style>
-body{font-family:system-ui,sans-serif;max-width:32rem;margin:3rem auto;padding:0 1rem;line-height:1.5;color:#1b1b1b}
-button{font:inherit;padding:.75rem 1.25rem;border-radius:.5rem;border:1px solid #1b1b1b;background:#fff;cursor:pointer}
-button.primary{background:#1b1b1b;color:#fff}
-form{display:flex;gap:1rem;margin-top:1.5rem}
-</style>
+<title>${messages.errorTitle}</title>
+${pageStyles()}
 </head>
 <body>
-<h1>Collega Alexa a Binario</h1>
-<p>Stai per collegare Amazon Alexa al tuo account Binario${who}. Alexa potrà leggere i nomi delle tratte che hai salvato. Nessun dato in tempo reale viene condiviso.</p>
+<h1>${messages.errorTitle}</h1>
+<p>${messages[kind]}</p>
+<a class="button" href="/">${messages.returnDashboard}</a>
+</body>
+</html>
+`;
+}
+
+export function renderConsentPage(input: ConsentPageInput) {
+  const messages = messagesForLocale(input.locale).consent;
+  const hidden = (name: string, value: string) =>
+    `<input type="hidden" name="${name}" value="${escapeHtml(value)}">`;
+  const who = input.userName
+    ? formatMessage(messages.signedInAs, {
+        userName: escapeHtml(input.userName),
+      })
+    : "";
+  const description = formatMessage(messages.description, { signedInAs: who });
+  return `<!doctype html>
+<html lang="${input.locale}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${messages.title}</title>
+${pageStyles()}
+</head>
+<body>
+<h1>${messages.title}</h1>
+<p>${description}</p>
 <form method="post" action="/api/alexa/oauth/authorize">
 ${hidden("response_type", "code")}
 ${hidden("client_id", input.clientId)}
@@ -180,8 +222,8 @@ ${hidden("redirect_uri", input.redirectUri)}
 ${hidden("state", input.state)}
 ${hidden("scope", input.scope)}
 ${hidden("csrf_token", input.token)}
-<button class="primary" type="submit" name="decision" value="allow">Collega</button>
-<button type="submit" name="decision" value="deny">Annulla</button>
+<button class="primary" type="submit" name="decision" value="allow">${messages.allow}</button>
+<button type="submit" name="decision" value="deny">${messages.deny}</button>
 </form>
 </body>
 </html>

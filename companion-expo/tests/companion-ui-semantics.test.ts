@@ -20,7 +20,7 @@ describe("semantica dei controlli Companion", () => {
       accessibilityRole: "button",
       accessibilityLabel: "Gestisci promemoria",
       accessibilityHint:
-        "Rivedi o elimina promemoria locali, sempre non realtime.",
+        "Rivedi o elimina promemoria locali, sempre non in tempo reale.",
     });
   });
 
@@ -36,15 +36,15 @@ describe("semantica dei controlli Companion", () => {
     });
     expect(
       railwayStatusSemantics({ dataNature: "unavailable" }).accessibilityLabel,
-    ).toContain("dati realtime non disponibili");
+    ).toContain("dati in tempo reale non disponibili");
     expect(
       railwayStatusSemantics({ dataNature: "scheduled" }).accessibilityLabel,
-    ).toContain("orario programmato locale, non realtime");
+    ).toContain("orario programmato locale, non in tempo reale");
     expect(alertsRailwayStatusSemantics(true).accessibilityLabel).toBe(
-      "Stato ferroviario: dati realtime non disponibili.",
+      "Stato ferroviario: dati in tempo reale non disponibili.",
     );
     expect(alertsRailwayStatusSemantics(false).accessibilityLabel).toContain(
-      "nessun avviso realtime disponibile",
+      "nessun avviso in tempo reale disponibile",
     );
   });
 

@@ -1,4 +1,4 @@
-import { COOKIE_NAME } from "@shared/const";
+import { ACCOUNT_DELETION_CONFIRMATION, COOKIE_NAME } from "@shared/const";
 import { z } from "zod";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
@@ -26,7 +26,7 @@ export const appRouter = router({
   }),
   account: router({
     delete: protectedProcedure
-      .input(z.object({ confirmation: z.literal("ELIMINA") }))
+      .input(z.object({ confirmation: z.literal(ACCOUNT_DELETION_CONFIRMATION) }))
       .mutation(async ({ ctx }) => {
         const deleted = await deleteUserAccount(ctx.user.id);
         if (!deleted) throw new Error("Account non trovato durante la cancellazione");

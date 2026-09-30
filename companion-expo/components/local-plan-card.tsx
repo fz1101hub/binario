@@ -7,6 +7,7 @@ import { acknowledgeNativeAction, confirmNativeAction } from "@/lib/native-feedb
 import { loadLocalFavoriteStations, saveLocalFavoriteStations, toggleLocalFavoriteStation, type LocalFavoriteStation } from "@/lib/local-favorite-stations";
 import { loadLocalJourneyTimingPreferences } from "@/lib/local-journey-timing";
 import { useCompanionTheme } from "@/lib/theme";
+import { createTranslator, useTranslation } from "@/lib/i18n";
 import { StationAutocompleteInput } from "@/components/station-autocomplete-input";
 import { formatLocalJourneyDate, formatLocalJourneyTime, fromLocalDateAndTime, toLocalIsoDate, toLocalTime } from "@/lib/local-date-time";
 import { useEffect, useRef, useState } from "react";
@@ -16,16 +17,18 @@ import { AccessibilityInfo, Platform, Pressable, StyleSheet, Text, TextInput, Vi
 function todayIso() { return toLocalIsoDate(new Date()); }
 const reminderOptions: ReadonlyArray<number | null> = [null, 0, 10, 15, 30, 60];
 
-function reminderLabel(minutes: number | null) {
-  if (minutes === null) return "Nessuno";
-  if (minutes === 0) return "All’ora";
-  return `${minutes} min`;
+function reminderLabel(minutes: number | null, locale?: Parameters<typeof createTranslator>[0]) {
+  const t = createTranslator(locale);
+  if (minutes === null) return t("plan.reminder.none");
+  if (minutes === 0) return t("plan.reminder.atTime");
+  return t("plan.reminder.minutes", { minutes });
 }
 
 type LocalPlanCardPlanningDraft = { kind: "return" | "replan"; draft: ControlledLocalRouteDraft };
 
 export function LocalPlanCard({ onSaved, planningDraft, onPlanningDraftApplied }: { onSaved: () => void; planningDraft?: LocalPlanCardPlanningDraft | null; onPlanningDraftApplied?: () => void }) {
   const { colors } = useCompanionTheme();
+  const { locale, t } = useTranslation();
   const [origin, setOrigin] = useState("");
   const [originStationCode, setOriginStationCode] = useState<string | null>(null);
   const [destination, setDestination] = useState("");
@@ -64,46 +67,46 @@ export function LocalPlanCard({ onSaved, planningDraft, onPlanningDraftApplied }
     setChecklist(draft.checklist);
     setScheduleConfirmation({ date: true, time: true });
     setFieldError("");
-    setMessage(kind === "return" ? "Ritorno preparato. Scegli una nuova data e ora prima di salvare." : "Tratta ripianificata. Scegli una nuova data e ora prima di salvare.");
+    setMessage(kind === "return" ? t("planner.returnPrepared") : t("planner.replanPrepared"));
     onPlanningDraftApplied?.();
   }, [onPlanningDraftApplied, planningDraft]);
 
   function applyDictation() {
-    const draft = parseLocalDictation(dictationText);
+    const draft = parseLocalDictation(dictationText, new Date(), locale);
     if (!draft.origin && !draft.destination && !draft.travelDate && !draft.travelTime) {
-      setMessage("Non ho riconosciuto una tratta completa. Modifica il testo o compila i campi manualmente.");
+      setMessage(t("planner.dictationIncomplete"));
       return;
     }
     if (draft.origin) { setOrigin(draft.origin); setOriginStationCode(null); }
     if (draft.destination) { setDestination(draft.destination); setDestinationStationCode(null); }
     if (draft.travelDate) setTravelDate(draft.travelDate);
     if (draft.travelTime) setTravelTime(draft.travelTime);
-    setMessage("Bozza applicata. Controlla e modifica ogni campo prima di salvare la tratta.");
+    setMessage(t("planner.dictationApplied"));
   }
 
   async function useNearestOrigin() {
     setLocatingNearby(true);
-    setNearbyStatus("Cerco la stazione più vicina sul dispositivo…");
+    setNearbyStatus(t("planner.nearbySearching"));
     try {
       const result = await requestNearestOfflineStation();
       if (result.state === "ready") {
         setOrigin(result.station.station.name);
         setOriginStationCode(result.station.station.code);
         setFieldError("");
-        setNearbyStatus(`Proposta ${result.station.station.name}, a ${result.station.distanceKm.toFixed(1)} km. Puoi modificarla manualmente.`);
+        setNearbyStatus(t("planner.nearbyReady", { station: result.station.station.name, distance: result.station.distanceKm.toFixed(1) }));
         acknowledgeNativeAction();
         return;
       }
-      setNearbyStatus(result.state === "denied" ? "Permesso posizione non disponibile. Puoi cercare manualmente." : result.state === "empty" ? "Il catalogo offline non ha coordinate utilizzabili vicino a te." : "Non è possibile calcolare la stazione vicina ora. Puoi cercare manualmente.");
+      setNearbyStatus(result.state === "denied" ? t("planner.nearbyDenied") : result.state === "empty" ? t("planner.nearbyEmpty") : t("planner.nearbyUnavailable"));
     } finally { setLocatingNearby(false); }
   }
 
   async function saveTemplate() {
     const template = createLocalJourneyTemplate({ id: `template-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, label: templateLabel || `${origin} → ${destination}`, origin, originStationCode: originStationCode ?? "", destination, destinationStationCode: destinationStationCode ?? "", travelTime, plannedReminderMinutes, checklist: checklist.map(item => ({ ...item, completed: false })) });
-    if (!template) { setMessage("Completa due stazioni selezionate e un orario prima di salvare un modello."); return; }
+    if (!template) { setMessage(t("planner.templateInvalid")); return; }
     const next = await saveLocalJourneyTemplate(template);
     setTemplates(next); setTemplateLabel("");
-    setMessage("Modello salvato solo su questo dispositivo. Scegli sempre la data prima di salvare una tratta.");
+    setMessage(t("planner.templateSaved"));
     confirmNativeAction();
   }
 
@@ -111,17 +114,17 @@ export function LocalPlanCard({ onSaved, planningDraft, onPlanningDraftApplied }
     setOrigin(template.origin); setOriginStationCode(template.originStationCode);
     setDestination(template.destination); setDestinationStationCode(template.destinationStationCode);
     setTravelTime(template.travelTime); setPlannedReminderMinutes(template.plannedReminderMinutes); setChecklist(template.checklist);
-    setFieldError(""); setScheduleConfirmation({ date: false, time: false }); setMessage(`Modello “${template.label}” applicato. Scegli la data e conferma la tratta.`);
+    setFieldError(""); setScheduleConfirmation({ date: false, time: false }); setMessage(t("planner.templateApplied", { label: template.label }));
   }
 
-  async function deleteTemplate(id: string) { const next = await removeLocalJourneyTemplate(id); setTemplates(next); setMessage("Modello locale eliminato."); }
+  async function deleteTemplate(id: string) { const next = await removeLocalJourneyTemplate(id); setTemplates(next); setMessage(t("planner.templateDeleted")); }
 
   async function toggleOriginFavorite() {
     if (!originStationCode || !origin) return;
     const next = toggleLocalFavoriteStation(favoriteStations, { code: originStationCode, name: origin });
     await saveLocalFavoriteStations(next); setFavoriteStations(next);
     const exists = next.some(item => item.code === originStationCode);
-    setMessage(exists ? `${origin} aggiunta alle stazioni preferite locali.` : `${origin} rimossa dalle stazioni preferite locali.`);
+    setMessage(exists ? t("planner.favoriteAdded", { station: origin }) : t("planner.favoriteRemoved", { station: origin }));
     acknowledgeNativeAction();
   }
 
@@ -130,20 +133,20 @@ export function LocalPlanCard({ onSaved, planningDraft, onPlanningDraftApplied }
     setMessage("");
     try {
       if (scheduleConfirmation.date || scheduleConfirmation.time) {
-        setFieldError("Scegli una nuova data e una nuova ora prima di salvare il ritorno o la tratta ripianificata.");
-        setMessage("Completa nuova data e nuova ora: nessun viaggio è stato salvato.");
+        setFieldError(t("planner.newScheduleError"));
+        setMessage(t("planner.newScheduleMessage"));
         return;
       }
       if (!originStationCode || !destinationStationCode) {
-        setFieldError("Seleziona partenza e arrivo dai suggerimenti del catalogo offline prima di salvare.");
-        setMessage("Correggi i campi stazione prima di salvare.");
+        setFieldError(t("planner.stationSelectionError"));
+        setMessage(t("planner.stationFieldsMessage"));
         destinationRef.current?.focus();
         return;
       }
       const route = await addLocalPlannedRoute({ origin, originStationCode, destination, destinationStationCode, travelDate, travelTime, plannedReminderMinutes, checklist });
       if (!route) {
-        setFieldError("Controlla partenza, arrivo, data e ora. Le stazioni devono essere diverse.");
-        setMessage("Correggi i campi della tratta prima di salvare.");
+        setFieldError(t("planner.routeFieldsError"));
+        setMessage(t("planner.routeFieldsMessage"));
         destinationRef.current?.focus();
         return;
       }
@@ -154,7 +157,7 @@ export function LocalPlanCard({ onSaved, planningDraft, onPlanningDraftApplied }
       setTravelTime("");
       setScheduleConfirmation({ date: false, time: false });
       setFieldError("");
-      setMessage("Tratta salvata solo sul dispositivo. È pianificata, non realtime.");
+      setMessage(t("planner.saved"));
       confirmNativeAction();
       onSaved();
     } finally { setSaving(false); }
@@ -170,40 +173,40 @@ export function LocalPlanCard({ onSaved, planningDraft, onPlanningDraftApplied }
   }
 
   return <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-    <Text accessibilityRole="header" style={[styles.heading, { color: colors.foreground }]}>Pianifica sul telefono</Text>
-    <Text style={[styles.copy, { color: colors.muted }]}>Inizia senza account. Inserisci una tratta personale e programma, se vuoi, un promemoria locale.</Text>
-    <View accessible accessibilityLabel="Dittatura locale con tastiera di sistema" style={[styles.dictation, { borderColor: colors.border, backgroundColor: colors.background }]}>
-      <Text accessibilityRole="header" style={[styles.dictationHeading, { color: colors.foreground }]}>Detta una tratta</Text>
-      <Text style={[styles.copy, { color: colors.muted }]}>Se la tastiera offre la dettatura, tocca il suo microfono e pronuncia ad esempio: “Da Roma Termini a Firenze Santa Maria Novella domani alle 09:35”. Binario non apre il microfono, non registra e non invia audio.</Text>
-      <TextInput accessibilityLabel="Testo della dettatura da rivedere" accessibilityHint="Usa il microfono della tastiera di sistema oppure scrivi. Il testo resta modificabile e non viene salvato come audio." value={dictationText} onChangeText={setDictationText} placeholder="Scrivi o detta una tratta completa" placeholderTextColor={colors.muted} multiline maxLength={240} style={[styles.input, styles.dictationInput, { color: colors.foreground, borderColor: colors.border }]} />
-      <Pressable accessibilityRole="button" accessibilityLabel="Interpreta il testo della dettatura" accessibilityHint="Copia soltanto i campi riconosciuti nella tratta; controllali prima del salvataggio" onPress={applyDictation} style={({ pressed }) => [styles.secondaryButton, { borderColor: colors.primary, opacity: pressed ? 0.7 : 1 }]}><Text style={[styles.secondaryButtonText, { color: colors.primary }]}>Interpreta il testo</Text></Pressable>
+      <Text accessibilityRole="header" style={[styles.heading, { color: colors.foreground }]}>{t("hub.planJourney")}</Text>
+    <Text style={[styles.copy, { color: colors.muted }]}>{t("planner.intro")}</Text>
+    <View accessible accessibilityLabel={t("planner.dictationA11y")} style={[styles.dictation, { borderColor: colors.border, backgroundColor: colors.background }]}>
+      <Text accessibilityRole="header" style={[styles.dictationHeading, { color: colors.foreground }]}>{t("planner.dictationTitle")}</Text>
+      <Text style={[styles.copy, { color: colors.muted }]}>{t("planner.dictationDescription")}</Text>
+      <TextInput accessibilityLabel={t("planner.dictationInputA11y")} accessibilityHint={t("planner.dictationInputHint")} value={dictationText} onChangeText={setDictationText} placeholder={t("planner.dictationPlaceholder")} placeholderTextColor={colors.muted} multiline maxLength={240} style={[styles.input, styles.dictationInput, { color: colors.foreground, borderColor: colors.border }]} />
+      <Pressable accessibilityRole="button" accessibilityLabel={t("planner.dictationActionA11y")} accessibilityHint={t("planner.dictationActionHint")} onPress={applyDictation} style={({ pressed }) => [styles.secondaryButton, { borderColor: colors.primary, opacity: pressed ? 0.7 : 1 }]}><Text style={[styles.secondaryButtonText, { color: colors.primary }]}>{t("planner.dictationAction")}</Text></Pressable>
     </View>
-    {favoriteStations.length ? <View accessible accessibilityLabel="Stazioni preferite locali" style={[favoriteStyles.card, { borderColor: colors.border, backgroundColor: colors.background }]}><Text style={[favoriteStyles.heading, { color: colors.foreground }]}>Stazioni preferite</Text><Text style={[favoriteStyles.copy, { color: colors.muted }]}>Tocca una stazione per proporla come partenza. Puoi modificarla.</Text><View style={favoriteStyles.list}>{favoriteStations.map(station => <Pressable key={station.code} accessibilityRole="button" accessibilityLabel={`Usa ${station.name} come partenza`} onPress={() => { setOrigin(station.name); setOriginStationCode(station.code); setFieldError(""); acknowledgeNativeAction(); }} style={({ pressed }) => [favoriteStyles.chip, { borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}><Text style={{ color: colors.foreground, fontWeight: "800" }}>{station.name}</Text></Pressable>)}</View></View> : null}
-    <StationAutocompleteInput label="Partenza" value={origin} stationCode={originStationCode} description="Scrivi almeno due lettere, scegli un suggerimento oppure usa la posizione una sola volta." error={fieldError} onChange={text => { setOrigin(text); setOriginStationCode(null); setFieldError(""); }} onSelect={station => { setOrigin(station.name); setOriginStationCode(station.code); setFieldError(""); }} onUseNearestStation={() => void useNearestOrigin()} locatingNearby={locatingNearby} nearbyStatus={nearbyStatus} />
-    {originStationCode ? <Pressable accessibilityRole="button" accessibilityLabel={favoriteStations.some(item => item.code === originStationCode) ? "Rimuovi la partenza dalle stazioni preferite" : "Aggiungi la partenza alle stazioni preferite"} onPress={() => void toggleOriginFavorite()} style={({ pressed }) => [favoriteStyles.toggle, { borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}><Text style={{ color: colors.foreground, fontWeight: "800" }}>{favoriteStations.some(item => item.code === originStationCode) ? "Rimuovi dai preferiti" : "Aggiungi ai preferiti"}</Text></Pressable> : null}
-    <StationAutocompleteInput inputRef={destinationRef} label="Arrivo" value={destination} stationCode={destinationStationCode} description="Scegli una stazione diversa dalla partenza." error={fieldError} onChange={text => { setDestination(text); setDestinationStationCode(null); setFieldError(""); }} onSelect={station => { setDestination(station.name); setDestinationStationCode(station.code); setFieldError(""); }} />
+    {favoriteStations.length ? <View accessible accessibilityLabel={t("planner.favoritesA11y")} style={[favoriteStyles.card, { borderColor: colors.border, backgroundColor: colors.background }]}><Text style={[favoriteStyles.heading, { color: colors.foreground }]}>{t("planner.favoritesTitle")}</Text><Text style={[favoriteStyles.copy, { color: colors.muted }]}>{t("planner.favoritesDescription")}</Text><View style={favoriteStyles.list}>{favoriteStations.map(station => <Pressable key={station.code} accessibilityRole="button" accessibilityLabel={t("planner.useFavoriteA11y", { station: station.name })} onPress={() => { setOrigin(station.name); setOriginStationCode(station.code); setFieldError(""); acknowledgeNativeAction(); }} style={({ pressed }) => [favoriteStyles.chip, { borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}><Text style={{ color: colors.foreground, fontWeight: "800" }}>{station.name}</Text></Pressable>)}</View></View> : null}
+    <StationAutocompleteInput label={t("planner.origin")} value={origin} stationCode={originStationCode} description={t("planner.originDescription")} error={fieldError} onChange={text => { setOrigin(text); setOriginStationCode(null); setFieldError(""); }} onSelect={station => { setOrigin(station.name); setOriginStationCode(station.code); setFieldError(""); }} onUseNearestStation={() => void useNearestOrigin()} locatingNearby={locatingNearby} nearbyStatus={nearbyStatus} />
+    {originStationCode ? <Pressable accessibilityRole="button" accessibilityLabel={favoriteStations.some(item => item.code === originStationCode) ? t("planner.favoriteRemoveA11y") : t("planner.favoriteAddA11y")} onPress={() => void toggleOriginFavorite()} style={({ pressed }) => [favoriteStyles.toggle, { borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}><Text style={{ color: colors.foreground, fontWeight: "800" }}>{favoriteStations.some(item => item.code === originStationCode) ? t("planner.favoriteRemove") : t("planner.favoriteAdd")}</Text></Pressable> : null}
+    <StationAutocompleteInput inputRef={destinationRef} label={t("planner.destination")} value={destination} stationCode={destinationStationCode} description={t("planner.destinationDescription")} error={fieldError} onChange={text => { setDestination(text); setDestinationStationCode(null); setFieldError(""); }} onSelect={station => { setDestination(station.name); setDestinationStationCode(station.code); setFieldError(""); }} />
     <View style={styles.row}>
-      {Platform.OS === "web" ? <TextInput accessibilityLabel="Data del viaggio nel formato anno mese giorno" value={travelDate} onChangeText={setTravelDate} placeholder="AAAA-MM-GG" placeholderTextColor={colors.muted} style={[styles.input, styles.half, { color: colors.foreground, borderColor: colors.border }]} /> : <Pressable accessibilityRole="button" accessibilityLabel={`Data del viaggio: ${formatLocalJourneyDate(travelDate)}`} accessibilityHint="Apre il selettore data di sistema" onPress={() => setPicker("date")} style={({ pressed }) => [styles.pickerButton, styles.half, { borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}><Text style={[styles.pickerLabel, { color: colors.muted }]}>Data</Text><Text style={[styles.pickerValue, { color: colors.foreground }]}>{formatLocalJourneyDate(travelDate)}</Text></Pressable>}
-      {Platform.OS === "web" ? <TextInput accessibilityLabel="Ora del viaggio nel formato ore minuti" value={travelTime} onChangeText={setTravelTime} placeholder="HH:MM" placeholderTextColor={colors.muted} keyboardType="numbers-and-punctuation" returnKeyType="done" style={[styles.input, styles.half, { color: colors.foreground, borderColor: colors.border }]} /> : <Pressable accessibilityRole="button" accessibilityLabel={`Ora del viaggio: ${travelTime ? formatLocalJourneyTime(travelTime) : "non selezionata"}`} accessibilityHint="Apre il selettore orario di sistema" onPress={() => setPicker("time")} style={({ pressed }) => [styles.pickerButton, styles.half, { borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}><Text style={[styles.pickerLabel, { color: colors.muted }]}>Ora</Text><Text style={[styles.pickerValue, { color: colors.foreground }]}>{travelTime ? formatLocalJourneyTime(travelTime) : "Seleziona"}</Text></Pressable>}
+      {Platform.OS === "web" ? <TextInput accessibilityLabel={t("planner.dateWebA11y")} value={travelDate} onChangeText={setTravelDate} placeholder="AAAA-MM-GG" placeholderTextColor={colors.muted} style={[styles.input, styles.half, { color: colors.foreground, borderColor: colors.border }]} /> : <Pressable accessibilityRole="button" accessibilityLabel={t("planner.dateA11y", { date: formatLocalJourneyDate(travelDate, locale) })} accessibilityHint={t("planner.dateHint")} onPress={() => setPicker("date")} style={({ pressed }) => [styles.pickerButton, styles.half, { borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}><Text style={[styles.pickerLabel, { color: colors.muted }]}>{t("common.date")}</Text><Text style={[styles.pickerValue, { color: colors.foreground }]}>{formatLocalJourneyDate(travelDate, locale)}</Text></Pressable>}
+      {Platform.OS === "web" ? <TextInput accessibilityLabel={t("planner.timeWebA11y")} value={travelTime} onChangeText={setTravelTime} placeholder="HH:MM" placeholderTextColor={colors.muted} keyboardType="numbers-and-punctuation" returnKeyType="done" style={[styles.input, styles.half, { color: colors.foreground, borderColor: colors.border }]} /> : <Pressable accessibilityRole="button" accessibilityLabel={t("planner.timeA11y", { time: travelTime ? formatLocalJourneyTime(travelTime, locale) : t("common.notSelected") })} accessibilityHint={t("planner.timeHint")} onPress={() => setPicker("time")} style={({ pressed }) => [styles.pickerButton, styles.half, { borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}><Text style={[styles.pickerLabel, { color: colors.muted }]}>{t("common.time")}</Text><Text style={[styles.pickerValue, { color: colors.foreground }]}>{travelTime ? formatLocalJourneyTime(travelTime, locale) : t("common.select")}</Text></Pressable>}
     </View>
     {picker ? <DateTimePicker value={fromLocalDateAndTime(travelDate, travelTime)} mode={picker} is24Hour display={Platform.OS === "ios" ? "spinner" : "default"} onChange={onDateTimeChange} /> : null}
     <View style={[templateStyles.card, { borderColor: colors.border, backgroundColor: colors.background }]}> 
-      <Text accessibilityRole="header" style={[templateStyles.heading, { color: colors.foreground }]}>Modelli di viaggio</Text>
-      <Text style={[templateStyles.copy, { color: colors.muted }]}>Salva percorso, orario e promemoria per riutilizzarli. La data resta sempre da scegliere.</Text>
-      <View style={templateStyles.row}><TextInput accessibilityLabel="Nome del modello di viaggio" value={templateLabel} onChangeText={setTemplateLabel} placeholder="Es. Casa lavoro" placeholderTextColor={colors.muted} maxLength={80} style={[styles.input, templateStyles.input, { color: colors.foreground, borderColor: colors.border }]} /><Pressable accessibilityRole="button" accessibilityLabel="Salva il modello viaggio corrente solo sul dispositivo" onPress={() => void saveTemplate()} style={({ pressed }) => [templateStyles.saveButton, { borderColor: colors.primary, opacity: pressed ? 0.7 : 1 }]}><Text style={[templateStyles.saveButtonText, { color: colors.primary }]}>Salva</Text></Pressable></View>
-      {templates.length === 0 ? <Text style={[templateStyles.copy, { color: colors.muted }]}>Completa il planner e salva il primo modello per riutilizzare percorso e orario.</Text> : templates.map(template => <View key={template.id} style={[templateStyles.item, { borderColor: colors.border }]}><View><Text style={[templateStyles.name, { color: colors.foreground }]}>{template.label}</Text><Text style={[templateStyles.copy, { color: colors.muted }]}>{template.origin} → {template.destination} · {template.travelTime}</Text></View><View style={templateStyles.actions}><Pressable accessibilityRole="button" accessibilityLabel={`Applica modello ${template.label}`} onPress={() => applyTemplate(template)} style={({ pressed }) => [templateStyles.action, { borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}><Text style={{ color: colors.foreground, fontWeight: "800" }}>Applica</Text></Pressable><Pressable accessibilityRole="button" accessibilityLabel={`Elimina modello ${template.label}`} onPress={() => void deleteTemplate(template.id)} style={({ pressed }) => [templateStyles.action, { borderColor: colors.danger, opacity: pressed ? 0.7 : 1 }]}><Text style={{ color: colors.danger, fontWeight: "800" }}>Elimina</Text></Pressable></View></View>)}
+      <Text accessibilityRole="header" style={[templateStyles.heading, { color: colors.foreground }]}>{t("planner.templatesTitle")}</Text>
+      <Text style={[templateStyles.copy, { color: colors.muted }]}>{t("planner.templatesDescription")}</Text>
+      <View style={templateStyles.row}><TextInput accessibilityLabel={t("planner.templateNameA11y")} value={templateLabel} onChangeText={setTemplateLabel} placeholder={t("planner.templatePlaceholder")} placeholderTextColor={colors.muted} maxLength={80} style={[styles.input, templateStyles.input, { color: colors.foreground, borderColor: colors.border }]} /><Pressable accessibilityRole="button" accessibilityLabel={t("planner.templateSaveA11y")} onPress={() => void saveTemplate()} style={({ pressed }) => [templateStyles.saveButton, { borderColor: colors.primary, opacity: pressed ? 0.7 : 1 }]}><Text style={[templateStyles.saveButtonText, { color: colors.primary }]}>{t("common.save")}</Text></Pressable></View>
+      {templates.length === 0 ? <Text style={[templateStyles.copy, { color: colors.muted }]}>{t("planner.templatesEmpty")}</Text> : templates.map(template => <View key={template.id} style={[templateStyles.item, { borderColor: colors.border }]}><View><Text style={[templateStyles.name, { color: colors.foreground }]}>{template.label}</Text><Text style={[templateStyles.copy, { color: colors.muted }]}>{template.origin} → {template.destination} · {template.travelTime}</Text></View><View style={templateStyles.actions}><Pressable accessibilityRole="button" accessibilityLabel={t("planner.templateApplyA11y", { label: template.label })} onPress={() => applyTemplate(template)} style={({ pressed }) => [templateStyles.action, { borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}><Text style={{ color: colors.foreground, fontWeight: "800" }}>{t("common.apply")}</Text></Pressable><Pressable accessibilityRole="button" accessibilityLabel={t("planner.templateDeleteA11y", { label: template.label })} onPress={() => void deleteTemplate(template.id)} style={({ pressed }) => [templateStyles.action, { borderColor: colors.danger, opacity: pressed ? 0.7 : 1 }]}><Text style={{ color: colors.danger, fontWeight: "800" }}>{t("common.delete")}</Text></Pressable></View></View>)}
     </View>
-    <View accessible accessibilityLabel="Preparazione ferroviaria e di viaggio" style={[checklistStyles.card, { borderColor: colors.border, backgroundColor: colors.background }]}>
-      <Text accessibilityRole="header" style={[checklistStyles.heading, { color: colors.foreground }]}>Preparazione del viaggio</Text>
-      <Text style={[checklistStyles.copy, { color: colors.muted }]}>Scegli solo ciò che serve a questa tratta. Le voci restano modificabili nell’Agenda e non vengono inviate a widget, watch o sincronizzazione.</Text>
-      <View style={checklistStyles.actions}>{localJourneyChecklistPresets.map(preset => <Pressable key={preset.id} accessibilityRole="button" accessibilityLabel={`Applica preparazione ${preset.label} alla tratta`} onPress={() => { setChecklist(applyLocalJourneyChecklistPreset({ checklist }, preset.id)); setMessage(`Preparazione “${preset.label}” applicata alla tratta. Puoi controllarla nell’Agenda.`); acknowledgeNativeAction(); }} style={({ pressed }) => [checklistStyles.action, { borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}><Text style={{ color: colors.foreground, fontWeight: "800" }}>{preset.label}</Text></Pressable>)}</View>
+    <View accessible accessibilityLabel={t("planner.preparationA11y")} style={[checklistStyles.card, { borderColor: colors.border, backgroundColor: colors.background }]}>
+      <Text accessibilityRole="header" style={[checklistStyles.heading, { color: colors.foreground }]}>{t("planner.preparationTitle")}</Text>
+      <Text style={[checklistStyles.copy, { color: colors.muted }]}>{t("planner.preparationDescription")}</Text>
+      <View style={checklistStyles.actions}>{localJourneyChecklistPresets.map(preset => { const label = t(preset.labelKey); return <Pressable key={preset.id} accessibilityRole="button" accessibilityLabel={t("planner.preparationApplyA11y", { label })} onPress={() => { setChecklist(applyLocalJourneyChecklistPreset({ checklist }, preset.id)); setMessage(t("planner.preparationApplied", { label })); acknowledgeNativeAction(); }} style={({ pressed }) => [checklistStyles.action, { borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}><Text style={{ color: colors.foreground, fontWeight: "800" }}>{label}</Text></Pressable>; })}</View>
     </View>
-    <View accessible accessibilityRole="radiogroup" accessibilityLabel="Promemoria locale" style={[styles.reminder, { borderColor: colors.border }]}>
-      <Text accessibilityRole="header" style={[styles.reminderHeading, { color: colors.foreground }]}>Promemoria locale</Text>
-      <Text style={[styles.reminderCopy, { color: colors.muted }]}>Facoltativo e programmato sul telefono. La scelta iniziale usa il margine locale impostato; puoi cambiarla o disattivarla per questa tratta. Non controlla ritardi, binari o cancellazioni.</Text>
-      <View style={styles.reminderOptions}>{reminderOptions.map(option => <Pressable key={String(option)} accessibilityRole="radio" accessibilityState={{ checked: plannedReminderMinutes === option }} accessibilityLabel={`Promemoria ${reminderLabel(option)}`} onPress={() => setPlannedReminderMinutes(option)} style={({ pressed }) => [styles.reminderOption, { borderColor: plannedReminderMinutes === option ? colors.primary : colors.border, backgroundColor: plannedReminderMinutes === option ? colors.background : colors.surface, opacity: pressed ? 0.7 : 1 }]}><Text style={[styles.reminderOptionText, { color: plannedReminderMinutes === option ? colors.primary : colors.foreground }]}>{reminderLabel(option)}</Text></Pressable>)}</View>
+      <View accessible accessibilityRole="radiogroup" accessibilityLabel={t("hub.manageReminders")} style={[styles.reminder, { borderColor: colors.border }]}>
+      <Text accessibilityRole="header" style={[styles.reminderHeading, { color: colors.foreground }]}>{t("planner.reminderTitle")}</Text>
+      <Text style={[styles.reminderCopy, { color: colors.muted }]}>{t("planner.reminderDescription")}</Text>
+      <View style={styles.reminderOptions}>{reminderOptions.map(option => <Pressable key={String(option)} accessibilityRole="radio" accessibilityState={{ checked: plannedReminderMinutes === option }} accessibilityLabel={t("planner.reminderOptionA11y", { option: reminderLabel(option, locale) })} onPress={() => setPlannedReminderMinutes(option)} style={({ pressed }) => [styles.reminderOption, { borderColor: plannedReminderMinutes === option ? colors.primary : colors.border, backgroundColor: plannedReminderMinutes === option ? colors.background : colors.surface, opacity: pressed ? 0.7 : 1 }]}><Text style={[styles.reminderOptionText, { color: plannedReminderMinutes === option ? colors.primary : colors.foreground }]}>{reminderLabel(option, locale)}</Text></Pressable>)}</View>
     </View>
-    <Pressable accessibilityRole="button" accessibilityState={{ disabled: saving, busy: saving }} accessibilityLabel="Salva tratta pianificata sul dispositivo" accessibilityHint="Non richiede account e non crea dati realtime" disabled={saving} onPress={() => void save()} style={({ pressed }) => [styles.button, { backgroundColor: colors.primary, opacity: pressed || saving ? 0.7 : 1 }]}><Text style={styles.buttonText}>{saving ? "Salvataggio…" : "Salva tratta"}</Text></Pressable>
+    <Pressable accessibilityRole="button" accessibilityState={{ disabled: saving, busy: saving }} accessibilityLabel={t("planner.saveA11y")} accessibilityHint={t("planner.saveHint")} disabled={saving} onPress={() => void save()} style={({ pressed }) => [styles.button, { backgroundColor: colors.primary, opacity: pressed || saving ? 0.7 : 1 }]}><Text style={styles.buttonText}>{saving ? t("planner.saving") : t("planner.saveRoute")}</Text></Pressable>
     {message ? <Text accessibilityRole={fieldError ? "alert" : "text"} accessibilityLiveRegion={fieldError ? "assertive" : "polite"} style={[styles.message, { color: fieldError ? colors.danger : colors.muted }]}>{message}</Text> : null}
   </View>;
 }

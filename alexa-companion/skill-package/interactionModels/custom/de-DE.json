@@ -1,0 +1,18 @@
+{
+  "interactionModel": {
+    "languageModel": {
+      "invocationName": "binario züge",
+      "intents": [
+        { "name": "AMAZON.CancelIntent", "samples": [] },
+        { "name": "AMAZON.HelpIntent", "samples": [] },
+        { "name": "AMAZON.StopIntent", "samples": [] },
+        { "name": "AMAZON.NavigateHomeIntent", "samples": [] },
+        { "name": "AMAZON.FallbackIntent", "samples": [] },
+        { "name": "NextTrainsIntent", "slots": [{ "name": "routeName", "type": "AMAZON.SearchQuery" }], "samples": ["was sind die nächsten züge", "nächste züge", "nächste züge für {routeName}", "wann fährt der nächste zug nach {routeName}"] },
+        { "name": "TrainStatusIntent", "slots": [{ "name": "trainNumber", "type": "AMAZON.NUMBER" }], "samples": ["status von zug {trainNumber}", "ist zug {trainNumber} pünktlich", "wie geht es dem zug {trainNumber}", "verspätung von zug {trainNumber}"] },
+        { "name": "MyRoutesIntent", "slots": [], "samples": ["meine strecken", "liste meine gespeicherten strecken auf", "welche strecken habe ich gespeichert", "gespeicherte strecken"] }
+      ],
+      "types": []
+    }
+  }
+}

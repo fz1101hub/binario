@@ -1,0 +1,26 @@
+<resources>
+    <string name="app_name">Binario</string>
+    <string name="tile_label">Binario: nächste Verbindung</string>
+    <string name="tile_description">Zeigt die nächste Verbindung an, die von der Binario-App auf Ihrem Telefon geteilt wird.</string>
+    <string name="complication_label">Binario</string>
+    <string name="empty_snapshot_message">Öffnen Sie Binario auf Ihrem Telefon, um die aktive Verbindung zu synchronisieren.</string>
+    <string name="refresh_phone">Telefon aktualisieren</string>
+    <string name="refresh_on_phone">Auf dem Telefon aktualisieren</string>
+    <string name="tile_no_synced_route">Keine synchronisierte Verbindung</string>
+    <string name="tile_snapshot_unavailable">Snapshot nicht verfügbar</string>
+    <string name="tile_service_details">%1$s · %2$s · %3$s</string>
+    <string name="status_programmed">Geplanter Fahrplan</string>
+    <string name="status_received_from_phone">Status vom Telefon empfangen</string>
+    <string name="status_updating">Daten werden aktualisiert</string>
+    <string name="status_local_snapshot">Letzter lokaler Snapshot</string>
+    <string name="status_live_unavailable">Live-Daten nicht verfügbar</string>
+    <string name="accessibility_data_status">Datenstatus: %1$s</string>
+    <string name="accessibility_scheduled_departure">Planmäßige Abfahrt %1$s</string>
+    <string name="accessibility_expected_departure">Voraussichtliche Abfahrt %1$s</string>
+    <string name="accessibility_train">Zug %1$s</string>
+    <string name="accessibility_platform">Gleis %1$s</string>
+    <string name="service_time_number">%1$s · %2$s</string>
+    <string name="service_destination_status">%1$s · %2$s</string>
+    <string name="service_operator_category">%1$s · %2$s</string>
+    <string name="service_operator_category_platform">%1$s · %2$s · Gleis %3$s</string>
+</resources>

@@ -1,0 +1,18 @@
+{
+  "interactionModel": {
+    "languageModel": {
+      "invocationName": "binario trains",
+      "intents": [
+        { "name": "AMAZON.CancelIntent", "samples": [] },
+        { "name": "AMAZON.HelpIntent", "samples": [] },
+        { "name": "AMAZON.StopIntent", "samples": [] },
+        { "name": "AMAZON.NavigateHomeIntent", "samples": [] },
+        { "name": "AMAZON.FallbackIntent", "samples": [] },
+        { "name": "NextTrainsIntent", "slots": [{ "name": "routeName", "type": "AMAZON.SearchQuery" }], "samples": ["quels sont les prochains trains", "prochains trains", "prochains trains pour {routeName}", "quand part le prochain train pour {routeName}"] },
+        { "name": "TrainStatusIntent", "slots": [{ "name": "trainNumber", "type": "AMAZON.NUMBER" }], "samples": ["statut du train {trainNumber}", "le train {trainNumber} est il à l'heure", "comment va le train {trainNumber}", "retard du train {trainNumber}"] },
+        { "name": "MyRoutesIntent", "slots": [], "samples": ["mes trajets", "liste mes trajets enregistrés", "quels trajets ai je enregistrés", "trajets enregistrés"] }
+      ],
+      "types": []
+    }
+  }
+}

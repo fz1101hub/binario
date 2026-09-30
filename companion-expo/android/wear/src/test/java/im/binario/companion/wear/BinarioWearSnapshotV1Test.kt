@@ -23,7 +23,7 @@ class BinarioWearSnapshotV1Test {
     "routeId" to "local-42",
     "routeLabel" to "Roma Termini → Napoli Centrale",
     "direction" to "OUTBOUND",
-    "notice" to "Orario programmato locale: non è un aggiornamento realtime ferroviario.",
+    "notice" to "Orario programmato locale: non è un aggiornamento ferroviario in tempo reale.",
     "serviceCount" to 0,
   )
 

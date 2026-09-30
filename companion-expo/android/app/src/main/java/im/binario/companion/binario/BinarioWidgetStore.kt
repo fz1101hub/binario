@@ -1,6 +1,7 @@
 package im.binario.companion.binario
 
 import android.content.Context
+import im.binario.companion.R
 
 data class BinarioWidgetState(
   val title: String,
@@ -38,8 +39,12 @@ object BinarioWidgetStore {
     return if (fresh && futureJourney) state else unavailable(state.title)
   }
 
+  private fun localizedUnavailable(context: Context, title: String = "Binario") = unavailable(title).copy(
+    subtitle = context.getString(R.string.binario_unavailable),
+  )
   fun write(context: Context, state: BinarioWidgetState, now: Long = System.currentTimeMillis()) {
-    val accepted = accepted(state, now)
+    val audited = accepted(state, now)
+    val accepted = if (audited.status == "available") audited else localizedUnavailable(context, state.title)
     context.getSharedPreferences(preferenceName, Context.MODE_PRIVATE).edit().apply {
       putString(keyTitle, accepted.title)
       putString(keySubtitle, accepted.subtitle)
@@ -65,6 +70,7 @@ object BinarioWidgetStore {
     val plannedTitle = prefs.getString(keyPlannedTitle, null)
     val plannedAt = if (prefs.contains(keyPlannedAt)) prefs.getLong(keyPlannedAt, 0L) else null
     val reminder = if (prefs.contains(keyPlannedReminder)) prefs.getInt(keyPlannedReminder, 0) else null
-    return accepted(BinarioWidgetState(title, prefs.getString(keySubtitle, "") ?: "", status, updatedAt, expiresAt, plannedTitle, plannedAt, reminder), now)
+    val audited = accepted(BinarioWidgetState(title, prefs.getString(keySubtitle, "") ?: "", status, updatedAt, expiresAt, plannedTitle, plannedAt, reminder), now)
+    return if (audited.status == "available") audited else localizedUnavailable(context, title)
   }
 }

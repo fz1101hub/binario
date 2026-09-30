@@ -28,8 +28,8 @@ struct BinarioWatchWidget: Widget {
         StaticConfiguration(kind: kind, provider: BinarioTimelineProvider()) { entry in
             BinarioWatchWidgetView(entry: entry)
         }
-        .configurationDisplayName("Binario")
-        .description("Mostra la prossima corsa e lo stato del dato disponibile.")
+        .configurationDisplayName("watch.widget.displayName")
+        .description("watch.widget.description")
         .supportedFamilies([.accessoryCircular, .accessoryRectangular, .accessoryInline])
     }
 }
@@ -45,15 +45,15 @@ private struct BinarioWatchWidgetView: View {
             AccessoryWidgetBackground {
                 VStack(spacing: 0) {
                     Text(next?.expectedDeparture ?? "—").font(.headline)
-                    Text(next?.number ?? "Binario").font(.caption2)
+                    Text(next?.number ?? WatchLocalization.text("watch.widget.compactName")).font(.caption2)
                 }
             }
         case .accessoryInline:
-            Text(next.map { "\($0.expectedDeparture) · \($0.destination)" } ?? "Dati non disponibili")
+            Text(next.map { "\($0.expectedDeparture) · \($0.destination)" } ?? WatchLocalization.text("watch.widget.noData"))
         default:
             VStack(alignment: .leading) {
-                Text(entry.snapshot.routeLabel).lineLimit(1)
-                Text(next.map { "\($0.expectedDeparture)  \($0.destination)" } ?? "Dati non disponibili")
+                Text(entry.snapshot.displayRouteLabel).lineLimit(1)
+                Text(next.map { "\($0.expectedDeparture)  \($0.destination)" } ?? WatchLocalization.text("watch.widget.noData"))
                     .font(.headline)
                     .lineLimit(1)
             }

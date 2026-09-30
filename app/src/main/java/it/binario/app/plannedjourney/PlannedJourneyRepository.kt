@@ -105,7 +105,10 @@ class PlannedJourneyRepository(private val storage: PlannedJourneyStorage) {
 
     fun exportJson(): String = PlannedJourneyTransfer.encode(read().snapshot)
 
-    fun exportIcs(generatedAt: Instant): String = PlannedJourneyIcs.export(read().snapshot.journeys, generatedAt)
+    fun exportIcs(
+        generatedAt: Instant,
+        text: PlannedJourneyIcsText = PlannedJourneyIcsText.ITALIAN
+    ): String = PlannedJourneyIcs.export(read().snapshot.journeys, generatedAt, text)
 
     fun previewJsonImport(encoded: String): PlannedJourneyJsonImportResult = when (val decoded = PlannedJourneyTransfer.decode(encoded)) {
         is PlannedJourneyTransferDecodeResult.Valid -> PlannedJourneyJsonImportResult.Preview(

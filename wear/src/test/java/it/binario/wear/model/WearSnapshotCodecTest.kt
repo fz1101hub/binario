@@ -4,7 +4,6 @@ import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
-import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class WearSnapshotCodecTest {
@@ -76,7 +75,6 @@ class WearSnapshotCodecTest {
         val roundTrip = WearSnapshotCodec.decode(WearSnapshotCodec.encode(decoded), now)
 
         assertEquals(decoded, roundTrip)
-        assertTrue(roundTrip?.services?.first()?.accessibleLabel?.contains("Treno FR 9505") == true)
     }
 
     private fun fixture(name: String): Map<String, Any?> {

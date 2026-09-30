@@ -1,5 +1,6 @@
 import type { CompanionSnapshot } from "@/lib/companion-snapshot";
 import type { LocalPlannedRoute } from "@/lib/local-route-contract";
+import { createTranslator, type CompanionLocale } from "@/lib/i18n";
 
 export const companionWearDataPathV1 = "/binario/companion/watch-payload/v1";
 export const companionWearSchemaVersion = 1;
@@ -54,9 +55,6 @@ export const companionWearBasePayloadKeys = [
 ] as const;
 
 const serviceFields = ["Number", "Operator", "Category", "Destination", "Scheduled", "Expected", "Status", "Platform", "DelayMinutes"] as const;
-const localNotice = "Orario programmato locale: non è un aggiornamento realtime ferroviario.";
-const unavailableNotice = "Dati non disponibili nel Companion: apri l’app principale per aggiornare la pianificazione locale.";
-
 function normalize(value: string, maxCharacters: number): string {
   return value.trim().replace(/\s+/g, " ").slice(0, maxCharacters).trim();
 }
@@ -106,7 +104,8 @@ export function isValidCompanionWearPayloadV1(value: unknown, now = Date.now()):
   return serializedBytes(payload) <= companionWearMaxSerializedBytes;
 }
 
-function unavailablePayload(now: number): CompanionWearPayloadV1 {
+function unavailablePayload(now: number, locale?: CompanionLocale): CompanionWearPayloadV1 {
+  const t = createTranslator(locale);
   return {
     schemaVersion: companionWearSchemaVersion,
     generatedAtEpochMillis: now,
@@ -120,9 +119,9 @@ function unavailablePayload(now: number): CompanionWearPayloadV1 {
     freshness: "UNAVAILABLE",
     confidence: "LOCAL_PLANNED",
     routeId: "unavailable",
-    routeLabel: "Nessuna tratta attiva",
+    routeLabel: t("native.wearUnavailableRoute"),
     direction: "UNKNOWN",
-    notice: unavailableNotice,
+    notice: normalize(t("native.wearUnavailableNotice"), 180),
     serviceCount: 0,
   };
 }
@@ -132,11 +131,12 @@ function unavailablePayload(now: number): CompanionWearPayloadV1 {
  * never inferred live train status, and becomes an explicit bounded UNAVAILABLE snapshot
  * when no valid local plan can be represented under the v1 contract.
  */
-export function buildCompanionWearPayloadV1(snapshot: CompanionSnapshot, route: LocalPlannedRoute | null, now = Date.now()): CompanionWearPayloadV1 {
+export function buildCompanionWearPayloadV1(snapshot: CompanionSnapshot, route: LocalPlannedRoute | null, now = Date.now(), locale?: CompanionLocale): CompanionWearPayloadV1 {
+  const t = createTranslator(locale);
   const generatedAtEpochMillis = snapshot.provenance.capturedAtUtcMs;
   const expiresAtEpochMillis = snapshot.provenance.expiresAtUtcMs;
   const ttlMillis = expiresAtEpochMillis === null ? 0 : expiresAtEpochMillis - generatedAtEpochMillis;
-  if (!route || snapshot.provenance.dataNature !== "scheduled" || expiresAtEpochMillis === null || !Number.isSafeInteger(generatedAtEpochMillis) || !Number.isSafeInteger(expiresAtEpochMillis) || generatedAtEpochMillis > now + companionWearFutureSkewMillis || expiresAtEpochMillis <= now || ttlMillis <= 0 || ttlMillis > companionWearMaxTtlMillis) return unavailablePayload(now);
+  if (!route || snapshot.provenance.dataNature !== "scheduled" || expiresAtEpochMillis === null || !Number.isSafeInteger(generatedAtEpochMillis) || !Number.isSafeInteger(expiresAtEpochMillis) || generatedAtEpochMillis > now + companionWearFutureSkewMillis || expiresAtEpochMillis <= now || ttlMillis <= 0 || ttlMillis > companionWearMaxTtlMillis) return unavailablePayload(now, locale);
   const payload: CompanionWearPayloadV1 = {
     schemaVersion: companionWearSchemaVersion,
     generatedAtEpochMillis,
@@ -144,7 +144,7 @@ export function buildCompanionWearPayloadV1(snapshot: CompanionSnapshot, route: 
     ttlMillis,
     provenanceProducer: "COMPANION",
     provenanceDataNature: "PROGRAMMED",
-    provenanceSourceLabel: "Pianificazione locale del dispositivo",
+    provenanceSourceLabel: t("snapshot.localSource"),
     provenanceObservedAtEpochMillis: generatedAtEpochMillis,
     operationalState: "PROGRAMMED",
     freshness: "FRESH",
@@ -152,8 +152,8 @@ export function buildCompanionWearPayloadV1(snapshot: CompanionSnapshot, route: 
     routeId: normalize(`local-${route.id}`, 64),
     routeLabel: normalize(route.name, 96),
     direction: "OUTBOUND",
-    notice: normalize(snapshot.provenance.notice || localNotice, 180),
+    notice: normalize(t("snapshot.localNotice"), 180),
     serviceCount: 0,
   };
-  return isValidCompanionWearPayloadV1(payload, now) ? payload : unavailablePayload(now);
+  return isValidCompanionWearPayloadV1(payload, now) ? payload : unavailablePayload(now, locale);
 }

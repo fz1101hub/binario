@@ -16,23 +16,6 @@ data class WearSnapshot(
     val services: List<WearService>
 ) {
     val provider: String get() = provenance.sourceLabel
-
-    val dataStatusLabel: String
-        get() = when (operationalState) {
-            WearOperationalState.PROGRAMMED -> "Orario programmato"
-            WearOperationalState.OPERATIONAL -> when (freshness) {
-                WearFreshness.FRESH -> "Stato ricevuto dal telefono"
-                WearFreshness.AGING -> "Dati in aggiornamento"
-                WearFreshness.STALE -> "Ultimo snapshot locale"
-                WearFreshness.UNAVAILABLE, WearFreshness.UNKNOWN -> "Dati live non disponibili"
-            }
-            WearOperationalState.UNAVAILABLE, WearOperationalState.UNKNOWN -> "Dati live non disponibili"
-        }
-
-    val complicationLabel: String
-        get() = services.firstOrNull()?.let { service ->
-            listOf(service.expectedDeparture, service.number).joinToString(" · ").take(32)
-        } ?: dataStatusLabel.take(32)
 }
 
 data class WearProvenance(
@@ -88,19 +71,7 @@ data class WearService(
     val status: String,
     val platform: String?,
     val delayMinutes: Int
-) {
-    val accessibleLabel: String
-        get() = listOfNotNull(
-            "Partenza programmata $scheduledDeparture",
-            "Partenza prevista $expectedDeparture",
-            "Treno $number",
-            destination.takeIf { it.isNotBlank() },
-            operator.takeIf { it.isNotBlank() },
-            category.takeIf { it.isNotBlank() },
-            platform?.let { "Binario $it" },
-            status.takeIf { it.isNotBlank() }
-        ).joinToString(". ")
-}
+)
 
 /**
  * Independent v1 decoder for the phone Data Layer. It accepts only the closed key set defined in

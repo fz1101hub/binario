@@ -45,12 +45,7 @@ import java.util.Locale
 import java.time.LocalDate
 import java.time.LocalTime
 
-enum class RefreshState(val accessibleLabel: String) {
-    IDLE("Pronta"),
-    LOADING("Aggiornamento in corso"),
-    SUCCESS("Dati aggiornati"),
-    ERROR("Aggiornamento non riuscito")
-}
+enum class RefreshState { IDLE, LOADING, SUCCESS, ERROR }
 
 data class RecentRoute(val origin: Station, val destination: Station) {
     val label: String get() = "${origin.name} → ${destination.name}"
@@ -100,7 +95,7 @@ class TrainViewModel(
         private set
     var stationBoardRefreshState by mutableStateOf(RefreshState.IDLE)
         private set
-    var stationBoardMessage by mutableStateOf<String?>(null)
+    var stationBoardMessages by mutableStateOf<List<UiMessage>>(emptyList())
         private set
 
     var savedRoutes by mutableStateOf(pinnedFirst(routeStore.routes(stations)))
@@ -125,11 +120,11 @@ class TrainViewModel(
         private set
     var refreshState by mutableStateOf(RefreshState.IDLE)
         private set
-    var refreshMessage by mutableStateOf<String?>(null)
+    var refreshMessage by mutableStateOf<UiMessage?>(null)
         private set
     var returnRefreshState by mutableStateOf(RefreshState.IDLE)
         private set
-    var returnRefreshMessage by mutableStateOf<String?>(null)
+    var returnRefreshMessage by mutableStateOf<UiMessage?>(null)
         private set
     var selectedService by mutableStateOf<TrainService?>(null)
         private set
@@ -300,7 +295,7 @@ class TrainViewModel(
         stationBoardStation = canonical
         stationBoard = null
         stationBoardRefreshState = RefreshState.IDLE
-        stationBoardMessage = null
+        stationBoardMessages = emptyList()
     }
 
     fun loadStationBoard(
@@ -316,7 +311,7 @@ class TrainViewModel(
         stationBoardKind = kind
         if (!sameBoardContext) stationBoard = null
         stationBoardRefreshState = RefreshState.LOADING
-        stationBoardMessage = null
+        stationBoardMessages = emptyList()
         val requestId = ++stationBoardRequestId
 
         viewModelScope.launch {
@@ -325,17 +320,15 @@ class TrainViewModel(
                     if (requestId != stationBoardRequestId) return@launch
                     stationBoard = result.board
                     stationBoardRefreshState = RefreshState.SUCCESS
-                    stationBoardMessage = result.board.warnings
-                        .mapNotNull { it.stationBoardWarningLabel() }
+                    stationBoardMessages = result.board.warnings
+                        .map { UiMessage(it.stationBoardWarningKey()) }
                         .distinct()
-                        .joinToString(" · ")
-                        .takeIf(String::isNotBlank)
                 }
                 is StationBoardAggregateResult.Unavailable -> {
                     if (requestId != stationBoardRequestId) return@launch
                     stationBoard = null
                     stationBoardRefreshState = RefreshState.ERROR
-                    stationBoardMessage = result.message
+                    stationBoardMessages = listOf(UiMessage(UiMessageKey.STATION_BOARD_UNAVAILABLE))
                 }
             }
         }
@@ -384,7 +377,7 @@ class TrainViewModel(
         val rememberedOrigin = rememberStation(canonicalStation(origin))
         val rememberedDestination = rememberStation(canonicalStation(destination))
         if (rememberedOrigin.id == rememberedDestination.id) {
-            refreshMessage = "Scegli due stazioni diverse per la tratta."
+            refreshMessage = UiMessage(UiMessageKey.ROUTE_STATIONS_MUST_DIFFER)
             refreshState = RefreshState.ERROR
             return false
         }
@@ -420,7 +413,7 @@ class TrainViewModel(
         returnTime: LocalTime
     ): Boolean {
         if (!PlannerDateTime.isReturnAfterDeparture(departureDate, departureTime, returnDate, returnTime)) {
-            refreshMessage = "Il ritorno deve essere successivo alla partenza dell’andata."
+            refreshMessage = UiMessage(UiMessageKey.ROUND_TRIP_RETURN_MUST_FOLLOW_DEPARTURE)
             refreshState = RefreshState.ERROR
             return false
         }
@@ -482,7 +475,7 @@ class TrainViewModel(
         val rememberedOrigin = rememberStation(origin)
         val rememberedDestination = rememberStation(destination)
         if (rememberedOrigin == rememberedDestination) {
-            refreshMessage = "Scegli due stazioni diverse per la tratta."
+            refreshMessage = UiMessage(UiMessageKey.ROUTE_STATIONS_MUST_DIFFER)
             refreshState = RefreshState.ERROR
             return false
         }
@@ -544,7 +537,7 @@ class TrainViewModel(
                 primarySnapshot = null
                 rebuildServicePresentations()
                 refreshState = RefreshState.IDLE
-                refreshMessage = "Inserisci una tratta per iniziare la consultazione."
+                refreshMessage = UiMessage(UiMessageKey.ROUTE_REQUIRED_TO_START)
                 revokeWearSnapshot()
             }
         }
@@ -563,7 +556,7 @@ class TrainViewModel(
             primarySnapshot = null
             rebuildServicePresentations()
             refreshState = RefreshState.ERROR
-            refreshMessage = "Inserisci partenza e arrivo per consultare una tratta."
+            refreshMessage = UiMessage(UiMessageKey.ROUTE_ORIGIN_DESTINATION_REQUIRED)
             return
         }
         refreshState = RefreshState.LOADING
@@ -599,7 +592,7 @@ class TrainViewModel(
                         }
                     }
                     refreshState = RefreshState.SUCCESS
-                    refreshMessage = result.snapshot.notice
+                    refreshMessage = null
                 }
                 is DataResult.Failure -> {
                     RouteWidgetProvider.markMatchingRouteDirectionUnavailable(getApplication(), routeAtRequest, directionAtRequest, result.message)
@@ -623,7 +616,7 @@ class TrainViewModel(
                         }
                     }
                     refreshState = RefreshState.ERROR
-                    refreshMessage = result.message
+                    refreshMessage = UiMessage(UiMessageKey.RAIL_DATA_UNAVAILABLE)
                 }
             }
         }
@@ -658,7 +651,7 @@ class TrainViewModel(
                     reconcileSelectedService(result.snapshot, Direction.RETURN)
                     retainAvailableOperatorFilter()
                     returnRefreshState = RefreshState.SUCCESS
-                    returnRefreshMessage = result.snapshot.notice
+                    returnRefreshMessage = null
                 }
                 is DataResult.Failure -> {
                     // Keep the last successful return snapshot, matching the primary-leg
@@ -666,7 +659,7 @@ class TrainViewModel(
                     // valid data; UI state/message make the failed refresh explicit.
                     retainAvailableOperatorFilter()
                     returnRefreshState = RefreshState.ERROR
-                    returnRefreshMessage = result.message
+                    returnRefreshMessage = UiMessage(UiMessageKey.RAIL_DATA_UNAVAILABLE)
                 }
             }
         }
@@ -827,10 +820,10 @@ class TrainViewModel(
 
     fun decodeLocalBackup(raw: String): LocalBackupResult = LocalDataBackupCodec.decode(raw, stations)
 
-    fun importLocalBackup(raw: String): String = importLocalBackup(decodeLocalBackup(raw))
+    fun importLocalBackup(raw: String): UiMessage = importLocalBackup(decodeLocalBackup(raw))
 
-    fun importLocalBackup(result: LocalBackupResult): String = when (result) {
-        is LocalBackupResult.Failure -> result.message
+    fun importLocalBackup(result: LocalBackupResult): UiMessage = when (result) {
+        is LocalBackupResult.Failure -> UiMessage(UiMessageKey.BACKUP_IMPORT_INVALID)
         is LocalBackupResult.Success -> {
             clearReturnJourneyState()
             val backup = result.backup
@@ -851,10 +844,10 @@ class TrainViewModel(
                 refreshRequestId += 1
                 primarySnapshot = null
                 refreshState = RefreshState.IDLE
-                refreshMessage = "Backup importato senza una tratta salvata. Inseriscine una quando vuoi."
+                refreshMessage = UiMessage(UiMessageKey.BACKUP_IMPORTED_WITHOUT_ROUTE)
                 revokeWearSnapshot()
             }
-            "Backup importato localmente: ${savedRoutes.size} tratte, ${stationMonitors.size} stazioni monitorate e ${commuterAlerts.size} avvisi."
+            UiMessage(UiMessageKey.BACKUP_IMPORT_SUCCESS, savedRoutes.size, stationMonitors.size, commuterAlerts.size)
         }
     }
 
@@ -914,12 +907,13 @@ class TrainViewModel(
 
     private fun displaySnapshot(): RouteSnapshot? = selectedServiceSnapshot ?: primarySnapshot
 
-    fun currentProviderLabel(): String = displaySnapshot()?.providerName ?: cache.lastProvider()
+    fun currentProviderLabel(): String? = displaySnapshot()?.providerName ?: cache.lastProvider().takeIf(String::isNotBlank)
 
-    fun currentConfidenceLabel(): String = displaySnapshot()?.let { latest ->
-        val quality = latest.qualityScore?.let { score -> "${latest.qualityBand.accessibleLabel} · $score/100" }
-        listOfNotNull(quality, latest.confidence.accessibleLabel).joinToString(" · ")
-    } ?: cache.lastConfidence()
+    fun currentConfidence(): DataConfidence? = displaySnapshot()?.confidence
+
+    fun currentQualityBand() = displaySnapshot()?.qualityBand
+
+    fun currentQualityScore(): Int? = displaySnapshot()?.qualityScore
 
     fun currentFreshness(): Freshness? = displaySnapshot()?.freshness
 
@@ -940,13 +934,13 @@ class TrainViewModel(
     }
 }
 
-private fun ProviderWarning.stationBoardWarningLabel(): String? = when (this) {
-    ProviderWarning.SOURCE_CONFLICT -> "Fonti in conflitto: selezione per autorità del singolo campo."
-    ProviderWarning.REALTIME_UNAVAILABLE -> "Realtime parzialmente non disponibile."
-    ProviderWarning.STALE_SOURCE -> "Una fonte ha restituito dati non recenti."
-    ProviderWarning.IDENTITY_AMBIGUOUS -> "Identità di una corsa o stazione non univoca."
-    ProviderWarning.REPLACEMENT_SERVICE -> "Presente un servizio sostitutivo."
-    ProviderWarning.INCOMPLETE_COVERAGE -> "Copertura del tabellone parziale."
+private fun ProviderWarning.stationBoardWarningKey(): UiMessageKey = when (this) {
+    ProviderWarning.SOURCE_CONFLICT -> UiMessageKey.STATION_BOARD_SOURCE_CONFLICT
+    ProviderWarning.REALTIME_UNAVAILABLE -> UiMessageKey.STATION_BOARD_REALTIME_UNAVAILABLE
+    ProviderWarning.STALE_SOURCE -> UiMessageKey.STATION_BOARD_STALE_SOURCE
+    ProviderWarning.IDENTITY_AMBIGUOUS -> UiMessageKey.STATION_BOARD_IDENTITY_AMBIGUOUS
+    ProviderWarning.REPLACEMENT_SERVICE -> UiMessageKey.STATION_BOARD_REPLACEMENT_SERVICE
+    ProviderWarning.INCOMPLETE_COVERAGE -> UiMessageKey.STATION_BOARD_INCOMPLETE_COVERAGE
 }
 
 internal fun publishedOperatorNames(services: List<TrainService>): List<String> =
@@ -1162,7 +1156,7 @@ internal const val UNCONFIGURED_ROUTE_ID = "unconfigured-route"
 
 internal fun unconfiguredRoute(): SavedRoute = SavedRoute(
     id = UNCONFIGURED_ROUTE_ID,
-    name = "Nessuna tratta selezionata",
-    outwardOrigin = Station("unconfigured-origin", "Partenza da scegliere", ""),
-    outwardDestination = Station("unconfigured-destination", "Arrivo da scegliere", "")
+    name = "",
+    outwardOrigin = Station("unconfigured-origin", "", ""),
+    outwardDestination = Station("unconfigured-destination", "", "")
 )

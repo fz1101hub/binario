@@ -41,7 +41,7 @@ class BinarioWidgetBridgeModule(private val context: ReactApplicationContext) : 
     val widget = payload.getMap("widget") ?: return
     val watch = payload.getMap("watch") ?: return
     val title = widget.getString("title") ?: "Binario"
-    val subtitle = widget.getString("subtitle") ?: "Dati non disponibili in tempo reale."
+    val subtitle = widget.getString("subtitle") ?: context.getString(R.string.binario_unavailable)
     val status = widget.getString("status") ?: "unavailable"
     val updatedAt = if (widget.hasKey("updatedAtUtcMs") && !widget.isNull("updatedAtUtcMs")) widget.getDouble("updatedAtUtcMs").toLong() else null
     val expiresAt = if (widget.hasKey("expiresAtUtcMs") && !widget.isNull("expiresAtUtcMs")) widget.getDouble("expiresAtUtcMs").toLong() else null
@@ -73,7 +73,12 @@ class BinarioWidgetBridgeModule(private val context: ReactApplicationContext) : 
   /** The Companion only transports a canonical v1 snapshot; bad JS input becomes explicit UNAVAILABLE. */
   private fun syncWearPayload(payload: ReadableMap) {
     val now = System.currentTimeMillis()
-    val canonical = CompanionWearPayloadV1.decode(rawDataMapValues(payload), now) ?: CompanionWearPayloadV1.unavailable(now)
+    val canonical = CompanionWearPayloadV1.decode(rawDataMapValues(payload), now) ?: CompanionWearPayloadV1.unavailable(
+      now,
+      context.getString(R.string.binario_companion_source),
+      context.getString(R.string.binario_no_active_route),
+      context.getString(R.string.binario_companion_unavailable_notice),
+    )
     val request = PutDataMapRequest.create("/binario/companion/watch-payload/v1")
     CompanionWearPayloadV1.put(request.dataMap, canonical)
     Wearable.getDataClient(context).putDataItem(request.asPutDataRequest().setUrgent())
@@ -112,9 +117,9 @@ object BinarioChecklistHandoff {
     manager.areNotificationsEnabled() &&
       (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU || context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED)
 
-  private fun createChannel(manager: NotificationManager) {
+  private fun createChannel(context: Context, manager: NotificationManager) {
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-      manager.createNotificationChannel(NotificationChannel(notificationChannelId, "Richieste dallo smartwatch", NotificationManager.IMPORTANCE_DEFAULT))
+      manager.createNotificationChannel(NotificationChannel(notificationChannelId, context.getString(R.string.binario_checklist_channel_name), NotificationManager.IMPORTANCE_DEFAULT))
     }
   }
 
@@ -123,7 +128,7 @@ object BinarioChecklistHandoff {
     val id = requestId(payload) ?: return false
     val manager = context.getSystemService(NotificationManager::class.java) ?: return false
     if (!notificationsAllowed(context, manager)) return false
-    createChannel(manager)
+    createChannel(context, manager)
     val now = System.currentTimeMillis()
     val preferences = context.getSharedPreferences(pendingPreferenceName, Context.MODE_PRIVATE)
     preferences.all.forEach { (key, raw) ->
@@ -142,8 +147,8 @@ object BinarioChecklistHandoff {
     val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) Notification.Builder(context, notificationChannelId) else Notification.Builder(context)
     val notification = builder
       .setSmallIcon(R.mipmap.ic_launcher)
-      .setContentTitle("Apri checklist Binario")
-      .setContentText("Tocca per aprire la checklist sul telefono.")
+      .setContentTitle(context.getString(R.string.binario_checklist_notification_title))
+      .setContentText(context.getString(R.string.binario_checklist_notification_text))
       .setContentIntent(pendingIntent)
       .setAutoCancel(true)
       .setCategory(Notification.CATEGORY_REMINDER)
@@ -184,7 +189,7 @@ class BinarioWatchVoiceRequestService : WearableListenerService() {
       return
     }
     if (event.path != "/binario/companion/voice-request/v1") return
-    val answer = "Dati non disponibili in tempo reale."
+    val answer = getString(R.string.binario_unavailable)
     Wearable.getMessageClient(this).sendMessage(event.sourceNodeId, "/binario/companion/voice-response/v1", answer.toByteArray(Charsets.UTF_8))
   }
 }

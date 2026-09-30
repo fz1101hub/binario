@@ -1,4 +1,5 @@
 import type { CompanionPlannedRoute } from "@/lib/planned-route-reminder";
+import { createTranslator, type CompanionLocale, type TranslationKey } from "@/lib/i18n";
 
 export type LocalRouteDraft = {
   origin: string;
@@ -13,23 +14,23 @@ export type LocalRouteDraft = {
 
 export type LocalJourneyChecklistItemId = "time-margin" | "documents" | "belongings" | "connection" | "bike" | "assistance";
 export type LocalJourneyChecklistItem = { id: LocalJourneyChecklistItemId; completed: boolean };
-export const localJourneyChecklistLabels: Record<LocalJourneyChecklistItem["id"], string> = {
-  "time-margin": "Verifica il margine di anticipo",
-  documents: "Prepara titolo di viaggio e documenti",
-  belongings: "Controlla gli effetti personali",
-  connection: "Verifica il tempo per la coincidenza",
-  bike: "Verifica condizioni e preparazione della bici",
-  assistance: "Conferma l’assistenza richiesta in stazione",
+export const localJourneyChecklistTranslationKeys: Record<LocalJourneyChecklistItemId, TranslationKey> = {
+  "time-margin": "checklist.timeMargin",
+  documents: "checklist.documents",
+  belongings: "checklist.belongings",
+  connection: "checklist.connection",
+  bike: "checklist.bike",
+  assistance: "checklist.assistance",
 };
-const checklistIds = Object.keys(localJourneyChecklistLabels) as LocalJourneyChecklistItem["id"][];
+const checklistIds = Object.keys(localJourneyChecklistTranslationKeys) as LocalJourneyChecklistItemId[];
 const defaultChecklistIds: LocalJourneyChecklistItemId[] = ["time-margin", "documents", "belongings"];
 
-export type LocalJourneyChecklistPreset = { id: "pendolare" | "coincidenza" | "bici" | "assistenza"; label: string; itemIds: LocalJourneyChecklistItemId[] };
+export type LocalJourneyChecklistPreset = { id: "pendolare" | "coincidenza" | "bici" | "assistenza"; labelKey: TranslationKey; itemIds: LocalJourneyChecklistItemId[] };
 export const localJourneyChecklistPresets: readonly LocalJourneyChecklistPreset[] = [
-  { id: "pendolare", label: "Pendolare", itemIds: ["time-margin", "documents", "belongings"] },
-  { id: "coincidenza", label: "Coincidenza", itemIds: ["time-margin", "connection", "documents", "belongings"] },
-  { id: "bici", label: "Bici sul treno", itemIds: ["time-margin", "documents", "bike", "belongings"] },
-  { id: "assistenza", label: "Assistenza in stazione", itemIds: ["time-margin", "assistance", "documents", "belongings"] },
+  { id: "pendolare", labelKey: "preset.commuter", itemIds: ["time-margin", "documents", "belongings"] },
+  { id: "coincidenza", labelKey: "preset.connection", itemIds: ["time-margin", "connection", "documents", "belongings"] },
+  { id: "bici", labelKey: "preset.bike", itemIds: ["time-margin", "documents", "bike", "belongings"] },
+  { id: "assistenza", labelKey: "preset.assistance", itemIds: ["time-margin", "assistance", "documents", "belongings"] },
 ];
 
 export type LocalPlannedRoute = CompanionPlannedRoute & {
@@ -52,7 +53,7 @@ export type ControlledLocalRouteDraft = Omit<LocalRouteDraft, "travelDate" | "tr
 };
 
 export const localJourneyWeekdays = [
-  { id: 1, label: "Lun" }, { id: 2, label: "Mar" }, { id: 3, label: "Mer" }, { id: 4, label: "Gio" }, { id: 5, label: "Ven" }, { id: 6, label: "Sab" }, { id: 0, label: "Dom" },
+  { id: 1, labelKey: "weekday.mon" }, { id: 2, labelKey: "weekday.tue" }, { id: 3, labelKey: "weekday.wed" }, { id: 4, labelKey: "weekday.thu" }, { id: 5, labelKey: "weekday.fri" }, { id: 6, labelKey: "weekday.sat" }, { id: 0, labelKey: "weekday.sun" },
 ] as const;
 export type LocalJourneyWeekday = typeof localJourneyWeekdays[number]["id"];
 export type ExplicitLocalJourneyRecurrence = { weekdays: LocalJourneyWeekday[]; occurrences: number };
@@ -194,14 +195,15 @@ export function selectNextLocalPlannedRoute(routes: LocalPlannedRoute[], now = D
   return sortLocalPlannedRoutes(routes).find(route => route.completedAtUtcMs == null && (localRouteScheduledAtUtcMs(route) ?? 0) >= now) ?? null;
 }
 
-export function localCountdownLabel(route: Pick<LocalPlannedRoute, "travelDate" | "travelTime">, now = Date.now()): string | null {
+export function localCountdownLabel(route: Pick<LocalPlannedRoute, "travelDate" | "travelTime">, now = Date.now(), locale?: CompanionLocale): string | null {
+  const t = createTranslator(locale);
   const scheduledAt = localRouteScheduledAtUtcMs(route);
   if (scheduledAt === null || scheduledAt < now) return null;
   const minutes = Math.ceil((scheduledAt - now) / 60_000);
-  if (minutes < 60) return `Tra ${minutes} min`;
+  if (minutes < 60) return t("countdown.minutes", { count: minutes });
   const hours = Math.floor(minutes / 60);
   const remainingMinutes = minutes % 60;
-  return remainingMinutes === 0 ? `Tra ${hours} h` : `Tra ${hours} h ${remainingMinutes} min`;
+  return remainingMinutes === 0 ? t("countdown.hours", { count: hours }) : t("countdown.hoursMinutes", { hours, minutes: remainingMinutes });
 }
 
 export type LocalAgendaFilter = "upcoming" | "week" | "archive";

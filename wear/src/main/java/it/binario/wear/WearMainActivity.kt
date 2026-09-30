@@ -12,6 +12,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -46,6 +47,7 @@ class WearMainActivity : ComponentActivity() {
 
 @androidx.compose.runtime.Composable
 private fun WearHome(snapshot: WearSnapshot?, onRefreshPhone: () -> Unit) {
+    val context = LocalContext.current
     if (snapshot == null) {
         Column(Modifier.fillMaxSize().padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text(stringResource(R.string.app_name), style = MaterialTheme.typography.titleMedium)
@@ -57,14 +59,15 @@ private fun WearHome(snapshot: WearSnapshot?, onRefreshPhone: () -> Unit) {
     LazyColumn(Modifier.fillMaxSize().padding(horizontal = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         item { Text(snapshot.routeLabel, style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 10.dp)) }
         item {
-            val statusDescription = stringResource(R.string.accessibility_data_status, snapshot.dataStatusLabel)
-            Text(snapshot.dataStatusLabel, style = MaterialTheme.typography.labelMedium, modifier = Modifier.semantics { contentDescription = statusDescription })
+            val dataStatus = stringResource(snapshot.dataStatusResId())
+            val statusDescription = stringResource(R.string.accessibility_data_status, dataStatus)
+            Text(dataStatus, style = MaterialTheme.typography.labelMedium, modifier = Modifier.semantics { contentDescription = statusDescription })
         }
         itemsIndexed(
             items = snapshot.services,
             key = { index, service -> "$index-${service.number}-${service.expectedDeparture}-${service.destination}" }
         ) { _, service ->
-            Card(onClick = {}, modifier = Modifier.fillMaxWidth().semantics { contentDescription = service.accessibleLabel }) {
+            Card(onClick = {}, modifier = Modifier.fillMaxWidth().semantics { contentDescription = service.accessibleLabel(context) }) {
                 Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(stringResource(R.string.service_time_number, service.expectedDeparture, service.number), style = MaterialTheme.typography.titleSmall)
                     Text(stringResource(R.string.service_destination_status, service.destination, service.status), style = MaterialTheme.typography.bodyMedium)

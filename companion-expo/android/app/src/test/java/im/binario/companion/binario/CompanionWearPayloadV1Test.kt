@@ -23,7 +23,7 @@ class CompanionWearPayloadV1Test {
     "routeId" to "local-42",
     "routeLabel" to "Roma Termini → Napoli Centrale",
     "direction" to "OUTBOUND",
-    "notice" to "Orario programmato locale: non è un aggiornamento realtime ferroviario.",
+    "notice" to "Orario programmato locale: non è un aggiornamento ferroviario in tempo reale.",
     "serviceCount" to 0,
   )
 
@@ -44,10 +44,12 @@ class CompanionWearPayloadV1Test {
     assertNull(CompanionWearPayloadV1.decode(golden() + ("provenanceObservedAtEpochMillis" to 9_007_199_254_740_992L), now))
   }
 
-  @Test fun `rejects empty route identity and emits canonical unavailable identity`() {
+  @Test fun `rejects empty route identity and emits resource localized unavailable identity`() {
     assertNull(CompanionWearPayloadV1.decode(golden() + ("routeId" to ""), now))
     assertNull(CompanionWearPayloadV1.decode(golden() + ("routeLabel" to ""), now))
-    assertEquals("unavailable", CompanionWearPayloadV1.unavailable(now)["routeId"])
-    assertEquals("Nessuna tratta attiva", CompanionWearPayloadV1.unavailable(now)["routeLabel"])
+    val unavailable = CompanionWearPayloadV1.unavailable(now, "Companion test source", "Test unavailable route", "Test unavailable notice")
+    assertEquals("unavailable", unavailable["routeId"])
+    assertEquals("Test unavailable route", unavailable["routeLabel"])
+    assertEquals("Test unavailable notice", unavailable["notice"])
   }
 }

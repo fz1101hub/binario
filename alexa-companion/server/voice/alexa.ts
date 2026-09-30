@@ -10,6 +10,13 @@ import {
   type RequestHandler,
 } from "ask-sdk-core";
 import {
+  formatMessage,
+  formatPlural,
+  messagesForLocale,
+  resolveLocale,
+  type SupportedLocale,
+} from "@shared/i18n";
+import {
   createAuthorizationCode,
   exchangeAuthorizationCode,
   getAlexaLinkStatus,
@@ -35,6 +42,7 @@ import {
   CONSENT_TTL_MS,
   consentToken,
   createConsentNonce,
+  renderConsentErrorPage,
   renderConsentPage,
   signAuthorizationRequest,
   verifyConsentToken,
@@ -43,14 +51,6 @@ import { isAlexaConfigured } from "./config";
 import { needsAccountLink } from "./guards";
 import { parseOAuthAuthorizationParameters } from "./oauthContract";
 import { escapeSsmlText, liveDataUnavailableSpeech } from "./speech";
-
-const ACCOUNT_LINK_REQUIRED =
-  "Per usare le informazioni personali, collega prima il tuo account Binario nell'app Alexa.";
-const UNSUPPORTED_SPEECH =
-  "Non ho capito la richiesta. Puoi chiedere i prossimi treni, lo stato di un treno oppure le tue tratte.";
-const HELP_SPEECH =
-  "Con Binario puoi chiedere i prossimi treni di una tratta salvata, lo stato di un treno oppure l'elenco delle tue tratte. Cosa vuoi sapere?";
-const GOODBYE_SPEECH = "A presto.";
 
 /** Intent names the skill handles; the interaction model in skill-package/ must declare all of them. */
 export const HANDLED_INTENTS = [
@@ -76,6 +76,15 @@ function getAlexaUserIdentifier(input: HandlerInput) {
     input.requestEnvelope.session?.user?.userId ??
     input.requestEnvelope.context.System.user.userId
   );
+}
+
+/** Alexa supplies request.locale per invocation; unsupported locales safely fall back to Italian. */
+export function getAlexaLocale(input: HandlerInput): SupportedLocale {
+  return resolveLocale(input.requestEnvelope.request.locale);
+}
+
+function voiceMessages(input: HandlerInput) {
+  return messagesForLocale(getAlexaLocale(input)).voice;
 }
 
 /** Resolves the Binario user behind an Alexa request; null when the link is missing or revoked. */
@@ -111,8 +120,9 @@ async function getLinkedUser(input: HandlerInput) {
 }
 
 function linkRequiredResponse(input: HandlerInput) {
+  const messages = voiceMessages(input);
   return input.responseBuilder
-    .speak(ACCOUNT_LINK_REQUIRED)
+    .speak(messages.accountLinkRequired)
     .withLinkAccountCard()
     .withShouldEndSession(true)
     .getResponse();
@@ -130,14 +140,15 @@ function intentSlot(input: HandlerInput, ...names: string[]) {
 
 const launchHandler: RequestHandler = {
   canHandle: input => getRequestType(input.requestEnvelope) === "LaunchRequest",
-  handle: input =>
-    input.responseBuilder
-      .speak(
-        "Benvenuta in Binario. Puoi chiedere i prossimi treni, lo stato di un treno o le tue tratte."
-      )
-      .reprompt(UNSUPPORTED_SPEECH)
+  handle: input => {
+    const messages = voiceMessages(input);
+    return input.responseBuilder
+      .speak(messages.launch)
+      .reprompt(messages.unsupported)
+      .withSimpleCard(messages.cardTitle, messages.launch)
       .withShouldEndSession(false)
-      .getResponse(),
+      .getResponse();
+  },
 };
 
 const nextTrainsHandler: RequestHandler = {
@@ -145,6 +156,8 @@ const nextTrainsHandler: RequestHandler = {
     getRequestType(input.requestEnvelope) === "IntentRequest" &&
     getIntentName(input.requestEnvelope) === "NextTrainsIntent",
   handle: async input => {
+    const locale = getAlexaLocale(input);
+    const messages = messagesForLocale(locale).voice;
     const principal = await getLinkedUser(input);
     if (!principal) return linkRequiredResponse(input);
     const routes = await listPersonalRoutesForAlexa(
@@ -156,21 +169,26 @@ const nextTrainsHandler: RequestHandler = {
       "routeName",
       "route",
       "tratta"
-    )?.toLocaleLowerCase("it-IT");
+    )?.toLocaleLowerCase(locale);
+    const namedRoutes = routes.filter(item => item.name.trim().length > 0);
     const route = requestedName
-      ? routes.find(
-          item => item.name.toLocaleLowerCase("it-IT") === requestedName
+      ? namedRoutes.find(
+          item => item.name.toLocaleLowerCase(locale) === requestedName
         )
-      : (routes.find(item => item.isPinned) ?? routes[0]);
+      : (namedRoutes.find(item => item.isPinned) ?? namedRoutes[0]);
     if (!route)
       return input.responseBuilder
-        .speak("Non hai ancora salvato alcuna tratta in Binario.")
+        .speak(messages.noRoutes)
+        .withSimpleCard(messages.cardTitle, messages.noRoutes)
         .withShouldEndSession(true)
         .getResponse();
+    const speech = liveDataUnavailableSpeech(
+      locale,
+      formatMessage(messages.routeSubject, { routeName: escapeSsmlText(route.name) })
+    );
     return input.responseBuilder
-      .speak(
-        liveDataUnavailableSpeech(`Per la tratta ${escapeSsmlText(route.name)}`)
-      )
+      .speak(speech)
+      .withSimpleCard(messages.cardTitle, speech)
       .withShouldEndSession(true)
       .getResponse();
   },
@@ -181,6 +199,8 @@ const trainStatusHandler: RequestHandler = {
     getRequestType(input.requestEnvelope) === "IntentRequest" &&
     getIntentName(input.requestEnvelope) === "TrainStatusIntent",
   handle: async input => {
+    const locale = getAlexaLocale(input);
+    const messages = messagesForLocale(locale).voice;
     const principal = await getLinkedUser(input);
     if (!principal) return linkRequiredResponse(input);
     const trainNumber = intentSlot(
@@ -190,10 +210,12 @@ const trainStatusHandler: RequestHandler = {
       "numeroTreno"
     );
     const subject = trainNumber
-      ? `Per il treno ${escapeSsmlText(trainNumber)}`
+      ? formatMessage(messages.trainSubject, { trainNumber: escapeSsmlText(trainNumber) })
       : undefined;
+    const speech = liveDataUnavailableSpeech(locale, subject);
     return input.responseBuilder
-      .speak(liveDataUnavailableSpeech(subject))
+      .speak(speech)
+      .withSimpleCard(messages.cardTitle, speech)
       .withShouldEndSession(true)
       .getResponse();
   },
@@ -204,6 +226,8 @@ const myRoutesHandler: RequestHandler = {
     getRequestType(input.requestEnvelope) === "IntentRequest" &&
     getIntentName(input.requestEnvelope) === "MyRoutesIntent",
   handle: async input => {
+    const locale = getAlexaLocale(input);
+    const messages = messagesForLocale(locale).voice;
     const principal = await getLinkedUser(input);
     if (!principal) return linkRequiredResponse(input);
     const routes = await listPersonalRoutesForAlexa(
@@ -212,19 +236,23 @@ const myRoutesHandler: RequestHandler = {
     );
     if (!routes.length)
       return input.responseBuilder
-        .speak("Non hai ancora salvato alcuna tratta in Binario.")
+        .speak(messages.noRoutes)
+        .withSimpleCard(messages.cardTitle, messages.noRoutes)
         .withShouldEndSession(true)
         .getResponse();
     const names = routes
       .slice(0, 5)
       .map(route => escapeSsmlText(route.name))
       .join(", ");
+    const remainingRouteCount = Math.max(routes.length - 5, 0);
     const suffix =
-      routes.length > 5
-        ? ". Ci sono altre tratte nella dashboard Binario."
+      remainingRouteCount > 0
+        ? formatPlural(locale, remainingRouteCount, messages.moreRoutes)
         : ".";
+    const speech = formatMessage(messages.routesSaved, { routes: names, suffix });
     return input.responseBuilder
-      .speak(`Le tue tratte salvate sono: ${names}${suffix}`)
+      .speak(speech)
+      .withSimpleCard(messages.cardTitle, speech)
       .withShouldEndSession(true)
       .getResponse();
   },
@@ -232,12 +260,15 @@ const myRoutesHandler: RequestHandler = {
 
 const helpHandler: RequestHandler = {
   canHandle: input => isIntent(input, "AMAZON.HelpIntent"),
-  handle: input =>
-    input.responseBuilder
-      .speak(HELP_SPEECH)
-      .reprompt(HELP_SPEECH)
+  handle: input => {
+    const messages = voiceMessages(input);
+    return input.responseBuilder
+      .speak(messages.help)
+      .reprompt(messages.help)
+      .withSimpleCard(messages.cardTitle, messages.help)
       .withShouldEndSession(false)
-      .getResponse(),
+      .getResponse();
+  },
 };
 
 // Stop, Cancel and NavigateHome must close the session: certification rejects
@@ -250,11 +281,14 @@ const stopHandler: RequestHandler = {
       "AMAZON.CancelIntent",
       "AMAZON.NavigateHomeIntent"
     ),
-  handle: input =>
-    input.responseBuilder
-      .speak(GOODBYE_SPEECH)
+  handle: input => {
+    const messages = voiceMessages(input);
+    return input.responseBuilder
+      .speak(messages.goodbye)
+      .withSimpleCard(messages.cardTitle, messages.goodbye)
       .withShouldEndSession(true)
-      .getResponse(),
+      .getResponse();
+  },
 };
 
 const sessionEndedHandler: RequestHandler = {
@@ -266,21 +300,27 @@ const sessionEndedHandler: RequestHandler = {
 
 const fallbackHandler: RequestHandler = {
   canHandle: input => getRequestType(input.requestEnvelope) === "IntentRequest",
-  handle: input =>
-    input.responseBuilder
-      .speak(UNSUPPORTED_SPEECH)
-      .reprompt(UNSUPPORTED_SPEECH)
+  handle: input => {
+    const messages = voiceMessages(input);
+    return input.responseBuilder
+      .speak(messages.unsupported)
+      .reprompt(messages.unsupported)
+      .withSimpleCard(messages.cardTitle, messages.unsupported)
       .withShouldEndSession(false)
-      .getResponse(),
+      .getResponse();
+  },
 };
 
 const errorHandler = {
   canHandle: () => true,
-  handle: (input: HandlerInput) =>
-    input.responseBuilder
-      .speak("Si è verificato un problema. Riprova più tardi.")
+  handle: (input: HandlerInput) => {
+    const messages = voiceMessages(input);
+    return input.responseBuilder
+      .speak(messages.error)
+      .withSimpleCard(messages.cardTitle, messages.error)
       .withShouldEndSession(true)
-      .getResponse(),
+      .getResponse();
+  },
 };
 
 export function createAlexaSkill() {
@@ -302,6 +342,17 @@ export function createAlexaSkill() {
 
 function oauthError(res: Response, status: number, error: string) {
   return res.status(status).json({ error });
+}
+
+function oauthHtmlError(
+  req: Request,
+  res: Response,
+  status: number,
+  kind: "notConfigured" | "invalidRequest" | "invalidCsrf"
+) {
+  const locale = resolveLocale(req.get("accept-language"));
+  res.setHeader("Cache-Control", "no-store");
+  return res.status(status).type("html").send(renderConsentErrorPage(locale, kind));
 }
 
 function parseAuthorizationRequest(source: Record<string, unknown>) {
@@ -351,9 +402,6 @@ function authorizationRequestCookieOptions() {
   };
 }
 
-const LOGIN_REQUIRED =
-  "Accedi prima alla dashboard Binario e ripeti il collegamento Alexa.";
-
 async function requireBinarioUser(req: Request) {
   const { sdk } = await import("../_core/sdk");
   try {
@@ -383,11 +431,11 @@ export function registerAlexaRoutes(app: Express) {
   // victim's Binario account to someone else's Alexa.
   app.get("/api/alexa/oauth/authorize", async (req, res) => {
     if (!isAlexaConfigured())
-      return oauthError(res, 503, "alexa_not_configured");
+      return oauthHtmlError(req, res, 503, "notConfigured");
     const request = parseAuthorizationRequest(
       req.query as Record<string, unknown>
     );
-    if (!request) return oauthError(res, 400, "invalid_request");
+    if (!request) return oauthHtmlError(req, res, 400, "invalidRequest");
     const user = await requireBinarioUser(req);
     if (!user) {
       // Amazon can reach this endpoint before an interactive dashboard login.
@@ -415,6 +463,7 @@ export function registerAlexaRoutes(app: Express) {
       .type("html")
       .send(
         renderConsentPage({
+          locale: resolveLocale(req.get("accept-language")),
           userName: user.name ?? "",
           ...request,
           token: consentToken(nonce, user.id),
@@ -432,12 +481,18 @@ export function registerAlexaRoutes(app: Express) {
       const request = parseAuthorizationRequest(body);
       if (!request) return oauthError(res, 400, "invalid_request");
       const user = await requireBinarioUser(req);
-      if (!user) return res.status(401).type("text/plain").send(LOGIN_REQUIRED);
+      if (!user)
+        return res.status(401).type("html").send(
+          renderConsentErrorPage(
+            resolveLocale(req.get("accept-language")),
+            "loginRequired"
+          )
+        );
 
       const nonce = parseCookieHeader(req.headers.cookie ?? "")[CONSENT_COOKIE];
       res.clearCookie(CONSENT_COOKIE, consentCookieOptions(req));
       if (!verifyConsentToken(nonce, user.id, body.csrf_token))
-        return oauthError(res, 403, "invalid_csrf_token");
+        return oauthHtmlError(req, res, 403, "invalidCsrf");
       if (body.decision !== "allow")
         return redirectWithParameters(res, request.redirectUri, {
           error: "access_denied",

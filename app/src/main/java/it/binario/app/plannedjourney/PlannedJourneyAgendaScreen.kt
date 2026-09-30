@@ -49,6 +49,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import it.binario.app.R
+import it.binario.app.UiMessage
+import it.binario.app.localized
 import it.binario.app.data.RailTime
 import java.time.format.DateTimeFormatter
 
@@ -129,10 +131,10 @@ fun PlannedJourneyAgendaScreen(
             }
         }
         viewModel.warning?.let { warning ->
-            item { AgendaMessage(warning, isError = true) }
+            item { AgendaMessage(warning.localized(), isError = true) }
         }
         viewModel.feedback?.let { feedback ->
-            item { AgendaMessage(feedback, isError = false) }
+            item { AgendaMessage(feedback.localized(), isError = false) }
         }
         if (entries.isEmpty()) {
             item {
@@ -341,7 +343,7 @@ private fun PlannedJourneyEditorDialog(
                         minLines = 2
                     )
                 }
-                editor.validationMessage?.let { message -> item { AgendaMessage(message, true) } }
+                editor.validationMessage?.let { message -> item { AgendaMessage(message.localized(), true) } }
             }
         },
         confirmButton = { TextButton(onClick = onSave) { Text(stringResource(R.string.planned_journey_save)) } },
@@ -382,7 +384,7 @@ private fun ImportPreviewDialog(
         is PlannedJourneyImportState.Error -> AlertDialog(
             onDismissRequest = onDismiss,
             title = { Text(stringResource(R.string.planned_journey_import_error_title)) },
-            text = { Text(state.detail) },
+            text = { Text(state.message.localized()) },
             confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.planned_journey_close)) } }
         )
         is PlannedJourneyImportState.Ics -> AlertDialog(
