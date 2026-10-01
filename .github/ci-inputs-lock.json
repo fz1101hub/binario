@@ -115,14 +115,14 @@
     },
     {
       "name": "Build and test Apple Watch",
-      "sha256": "52d1edead767cda7c939a73d94262dc64d159a96c1c2e67c0d2bbfaf94c3effb",
+      "sha256": "07ea2aeb97b74fe7e9af9aa94ed9fd56b1536965a5ab32a177a9ef82b906ac68",
       "workingDirectory": "apple-watch"
     }
   ],
   "appleIosRunSteps": [
     {
       "name": "Verify iOS trust chain",
-      "sha256": "2abf475004e68bf9c7210ff924e9665e60e9146a53f1d97d5b310f1c4e86e80e"
+      "sha256": "1bf66f878dc99d9c97e8310ea886b4e5efd0a7730265c57127618baa59ec1b6c"
     },
     {
       "name": "Select pinned Xcode for iOS",

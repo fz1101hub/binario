@@ -10,6 +10,7 @@ on:
       - "contracts/wear-snapshot/**"
       - "tools/build_ios_gtfs_schedule.py"
       - "tools/verify_ios_gtfs_schedule.py"
+      - "tools/verify_ios_gtfs_rebuild.py"
       - "tools/install_xcodegen.py"
       - "tools/verify_ci_pinning.py"
       - "tests/test_ios_gtfs_schedule.py"
@@ -33,6 +34,7 @@ on:
       - "contracts/wear-snapshot/**"
       - "tools/build_ios_gtfs_schedule.py"
       - "tools/verify_ios_gtfs_schedule.py"
+      - "tools/verify_ios_gtfs_rebuild.py"
       - "tools/install_xcodegen.py"
       - "tools/verify_ci_pinning.py"
       - "tests/test_ios_gtfs_schedule.py"
@@ -121,6 +123,12 @@ jobs:
             -scheme BinarioWatch \
             -destination "id=${{ steps.simulator.outputs.udid }}" \
             CODE_SIGNING_ALLOWED=NO \
+            build
+          xcodebuild \
+            -project BinarioWatch.xcodeproj \
+            -scheme BinarioWatch \
+            -destination "id=${{ steps.simulator.outputs.udid }}" \
+            CODE_SIGNING_ALLOWED=NO \
             test
 
   ios:
@@ -142,9 +150,12 @@ jobs:
         run: |
           python3 -m pip install --require-hashes -r requirements-ci.txt
           python3 -m unittest -v tests/test_install_xcodegen.py tests/test_verify_ios_project.py tests/test_verify_apple_watch_project.py tests/test_verify_ci_pinning.py tests/test_requirements_ci.py tests/test_ios_gtfs_schedule.py
-          python3 tools/build_ios_gtfs_schedule.py
           python3 tools/verify_ios_gtfs_schedule.py
-          git diff --exit-code -- ios/Resources/binario_gtfs_schedule_v1.metadata.json ios/Resources/binario_gtfs_schedule_v1.sqlite.zlib
+          rebuild_zlib="ios/Resources/.ci-rebuild.sqlite.zlib"
+          rebuild_metadata="ios/Resources/.ci-rebuild.metadata.json"
+          trap 'rm -f "$rebuild_zlib" "$rebuild_metadata"' EXIT
+          python3 tools/build_ios_gtfs_schedule.py --output "$rebuild_zlib" --metadata "$rebuild_metadata"
+          python3 tools/verify_ios_gtfs_rebuild.py --rebuild "$rebuild_zlib" --rebuild-metadata "$rebuild_metadata"
           python3 tools/verify_ci_pinning.py
       - name: Select pinned Xcode for iOS
         run: |
