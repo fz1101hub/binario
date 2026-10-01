@@ -110,6 +110,7 @@ class VerifyGradleDependencyMetadataTest(unittest.TestCase):
             ("com.google.guava", "guava-parent", "33.3.1-jre", "guava-parent-33.3.1-jre.pom"): "55441db27e8869dfefe053059bdf478bdc7e95585642bf391f0023345fd56287",
             ("org.junit", "junit-bom", "5.10.2", "junit-bom-5.10.2.module"): "de23b114b3e4119a8fe6eb17bed5a3852816698bace67071579d6d927ebb080a",
             ("org.junit", "junit-bom", "5.13.1", "junit-bom-5.13.1.module"): "33c07ab9724790a6e5859ba07d69117ac530439724545a81c4179e3272c75de8",
+            ("org.junit", "junit-bom", "5.9.3", "junit-bom-5.9.3.module"): "b401fd25901e582a524aa5343c4b39e28bc56e24961c1069bf2b4bbfcee46b93",
         }
         for (group, name, version, artifact), digest in expected.items():
             with self.subTest(artifact=artifact):
