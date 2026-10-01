@@ -209,6 +209,10 @@ jobs:
           phone_udid="$(sed -n 's/^udid=//p' "$GITHUB_OUTPUT")"
           test -n "$watch_udid" && test -n "$phone_udid"
           xcrun simctl pair "$watch_udid" "$phone_udid"
+          xcrun simctl boot "$phone_udid"
+          xcrun simctl boot "$watch_udid"
+          xcrun simctl bootstatus "$phone_udid" -b
+          xcrun simctl bootstatus "$watch_udid" -b
       - name: Build and test integrated iPhone and Watch app
         working-directory: ios
         run: |
