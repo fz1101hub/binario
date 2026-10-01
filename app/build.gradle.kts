@@ -96,6 +96,10 @@ android {
         // The app dependency set is upgraded as a coordinated Android toolchain change;
         // several currently suggested releases require AGP 9.1 / compileSdk 37.
         disable += "GradleDependency"
+        // Newer remote lint flags targetSdk 36 as old while this pinned AGP/SDK
+        // toolchain is on API 36. Revisit with a tested API 37 migration; do not
+        // silently change the target or disable other security/correctness checks.
+        disable += "OldTargetApi"
     }
 
     sourceSets {
