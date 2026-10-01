@@ -78,6 +78,11 @@ class IOSProjectTests(unittest.TestCase):
                 self.assertNotIn("ONLY_ACTIVE_ARCH", settings["base"])
                 self.assertNotIn("release", settings["configs"])
 
+    def test_watch_sharing_binding_uses_explicit_actor_isolated_setter_closure(self) -> None:
+        settings = (IOS / "BinarioApp/SettingsView.swift").read_text(encoding="utf-8")
+        self.assertIn("set: { enabled in model.setWatchSharingEnabled(enabled) }", settings)
+        self.assertNotIn("set: model.setWatchSharingEnabled", settings)
+
     def test_generated_targets_explicitly_support_phone_and_watch_simulators(self) -> None:
         platforms = {
             "Binario": ("iOS", "iphoneos", "iphoneos iphonesimulator"),

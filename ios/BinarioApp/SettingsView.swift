@@ -27,7 +27,7 @@ struct SettingsView: View {
                     "settings.privacy.watch_sharing",
                     isOn: Binding(
                         get: { model.watchSharingEnabled },
-                        set: model.setWatchSharingEnabled
+                        set: { enabled in model.setWatchSharingEnabled(enabled) }
                     )
                 )
                 Text("settings.privacy.watch_sharing_detail")
