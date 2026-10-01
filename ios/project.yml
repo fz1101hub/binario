@@ -54,6 +54,7 @@ targets:
       - package: BinarioKit
     settings:
       base:
+        PRODUCT_NAME: BinarioAppTests
         SDKROOT: iphoneos
         SUPPORTED_PLATFORMS: "iphoneos iphonesimulator"
   BinarioKitTests:
@@ -68,6 +69,7 @@ targets:
       - package: BinarioKit
     settings:
       base:
+        PRODUCT_NAME: BinarioKitTests
         SDKROOT: iphoneos
         SUPPORTED_PLATFORMS: "iphoneos iphonesimulator"
   BinarioWatch:

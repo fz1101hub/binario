@@ -64,6 +64,12 @@ class IOSProjectTests(unittest.TestCase):
         self.assertEqual("1", settings["TARGETED_DEVICE_FAMILY"])
         self.assertEqual(sorted(LANGUAGES), sorted(settings["INFOPLIST_KEY_CFBundleLocalizations"]))
 
+    def test_iphone_test_bundles_have_unique_nonempty_product_names(self) -> None:
+        names = [self.targets[target]["settings"]["base"]["PRODUCT_NAME"]
+                 for target in ("BinarioAppTests", "BinarioKitTests")]
+        self.assertEqual(["BinarioAppTests", "BinarioKitTests"], names)
+        self.assertEqual(len(names), len(set(names)))
+
     def test_generated_targets_explicitly_support_phone_and_watch_simulators(self) -> None:
         platforms = {
             "Binario": ("iOS", "iphoneos", "iphoneos iphonesimulator"),
