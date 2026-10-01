@@ -217,6 +217,11 @@ jobs:
         working-directory: ios
         run: |
           cat Binario.xcodeproj/xcshareddata/xcschemes/Binario.xcscheme
+          for target in Binario BinarioAppTests BinarioKitTests BinarioWatch; do
+            echo "--- $target platform settings ---"
+            xcodebuild -project Binario.xcodeproj -target "$target" -showBuildSettings \
+              | grep -E '^ *(SDKROOT|SUPPORTED_PLATFORMS|IPHONEOS_DEPLOYMENT_TARGET|WATCHOS_DEPLOYMENT_TARGET|TARGETED_DEVICE_FAMILY|SUPPORTS_MACCATALYST|PRODUCT_TYPE|PRODUCT_NAME) ='
+          done
           xcodebuild -project Binario.xcodeproj -scheme Binario -showdestinations
           xcrun simctl list pairs
           xcodebuild \
