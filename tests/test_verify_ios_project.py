@@ -77,6 +77,9 @@ class IOSProjectTests(unittest.TestCase):
                 self.assertTrue(settings["configs"]["debug"]["ONLY_ACTIVE_ARCH"])
                 self.assertNotIn("ONLY_ACTIVE_ARCH", settings["base"])
                 self.assertNotIn("release", settings["configs"])
+        app_settings = self.targets["Binario"]["settings"]
+        self.assertTrue(app_settings["configs"]["debug"]["ENABLE_TESTABILITY"])
+        self.assertNotIn("ENABLE_TESTABILITY", app_settings["base"])
 
     def test_watch_sharing_binding_uses_explicit_actor_isolated_setter_closure(self) -> None:
         settings = (IOS / "BinarioApp/SettingsView.swift").read_text(encoding="utf-8")

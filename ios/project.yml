@@ -42,6 +42,7 @@ targets:
       configs:
         debug:
           ONLY_ACTIVE_ARCH: YES
+          ENABLE_TESTABILITY: YES
     dependencies:
       - package: BinarioKit
       - target: BinarioWatch
