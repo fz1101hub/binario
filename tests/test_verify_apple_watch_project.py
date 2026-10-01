@@ -27,6 +27,7 @@ class AppleWatchProjectTests(unittest.TestCase):
         settings = application["settings"]["base"]
         self.assertTrue(settings["INFOPLIST_KEY_WKApplication"])
         self.assertTrue(settings["INFOPLIST_KEY_WKWatchOnly"])
+        self.assertEqual({"debug": {"ENABLE_TESTABILITY": True}}, application["settings"]["configs"])
         self.assertNotIn("INFOPLIST_KEY_WKCompanionAppBundleIdentifier", settings)
         self.assertTrue(all(target["platform"] == "watchOS" for target in self.targets.values()))
         self.assertIn(

@@ -129,6 +129,9 @@ final class SQLiteGTFSJourneyRepositoryTests: XCTestCase {
         try compressed.write(to: compressedURL)
         let metadata = installerMetadata(database: database, compressed: compressed)
         try JSONSerialization.data(withJSONObject: metadata, options: [.sortedKeys]).write(to: metadataURL)
+        try FileManager.default.createDirectory(at: cacheURL, withIntermediateDirectories: true)
+        let obsolete = cacheURL.appendingPathComponent("binario-gtfs-obsolete.sqlite")
+        try Data("previous-cache".utf8).write(to: obsolete)
 
         let installer = BundledGTFSScheduleInstaller()
         let installed = try installer.install(
@@ -136,6 +139,8 @@ final class SQLiteGTFSJourneyRepositoryTests: XCTestCase {
             metadataURL: metadataURL,
             cacheDirectory: cacheURL
         )
+        XCTAssertFalse(FileManager.default.fileExists(atPath: obsolete.path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: installed.path))
         XCTAssertEqual(try Data(contentsOf: installed), database)
 
         #if os(iOS) || os(macOS) || os(watchOS) || os(tvOS) || os(visionOS)

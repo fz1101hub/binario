@@ -21,6 +21,9 @@ targets:
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_WKApplication: YES
         INFOPLIST_KEY_WKWatchOnly: YES
+      configs:
+        debug:
+          ENABLE_TESTABILITY: YES
     entitlements:
       path: BinarioWatch/BinarioWatch.entitlements
     dependencies:
