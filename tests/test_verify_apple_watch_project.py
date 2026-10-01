@@ -133,6 +133,13 @@ class AppleWatchProjectTests(unittest.TestCase):
         self.assertIn('systemImage: "train.side.front.car"', home_source)
         self.assertIn('systemImage: "arrow.clockwise"', home_source)
 
+    def test_circular_widget_uses_background_without_an_unsupported_closure(self) -> None:
+        source = (APPLE_WATCH / "BinarioWatchWidgets" / "BinarioWatchWidgets.swift").read_text(encoding="utf-8")
+        circular = source.split("case .accessoryCircular:", 1)[1].split("case .accessoryInline:", 1)[0]
+        self.assertIn("ZStack {", circular)
+        self.assertIn("AccessoryWidgetBackground()", circular)
+        self.assertNotRegex(circular, r"AccessoryWidgetBackground\s*\{")
+
     def test_every_watch_localization_key_exists_in_the_catalog(self) -> None:
         catalog = json.loads((APPLE_WATCH / "Resources" / "Localizable.xcstrings").read_text(encoding="utf-8"))
         catalog_bases = {key.split(" %", 1)[0] for key in catalog["strings"]}

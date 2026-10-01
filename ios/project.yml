@@ -70,7 +70,7 @@ targets:
         - BinarioWatchTests
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: it.binario.watch
+        PRODUCT_BUNDLE_IDENTIFIER: it.binario.ios.watchkitapp
         INFOPLIST_KEY_CFBundleDisplayName: Binario
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_WKApplication: YES
@@ -100,7 +100,7 @@ targets:
       - path: ../apple-watch/Shared
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: it.binario.watch.widgets
+        PRODUCT_BUNDLE_IDENTIFIER: it.binario.ios.watchkitapp.widgets
         INFOPLIST_KEY_CFBundleDisplayName: Binario
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_NSExtension_NSExtensionPointIdentifier: com.apple.widgetkit-extension

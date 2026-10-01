@@ -42,7 +42,8 @@ private struct BinarioWatchWidgetView: View {
         let next = entry.snapshot.services.first
         switch family {
         case .accessoryCircular:
-            AccessoryWidgetBackground {
+            ZStack {
+                AccessoryWidgetBackground()
                 VStack(spacing: 0) {
                     Text(next?.expectedDeparture ?? "—").font(.headline)
                     Text(next?.number ?? WatchLocalization.text("watch.widget.compactName")).font(.caption2)
