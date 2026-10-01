@@ -108,8 +108,11 @@ class VerifyGradleDependencyMetadataTest(unittest.TestCase):
         expected = {
             ("org.jetbrains.kotlinx", "kotlinx-coroutines-bom", "1.8.0", "kotlinx-coroutines-bom-1.8.0.pom"): "1239e9dbe1397cd5971342956b2511bc3ace7b641842e4372a088dcfa8b9ad55",
             ("com.google.guava", "guava-parent", "33.3.1-jre", "guava-parent-33.3.1-jre.pom"): "55441db27e8869dfefe053059bdf478bdc7e95585642bf391f0023345fd56287",
+            ("com.google.guava", "guava-parent", "33.4.8-jre", "guava-parent-33.4.8-jre.pom"): "a03c5199a1be14443df7fd40ba8673b1c6aae04deef6688ce7d573ea489e3a20",
+            ("com.google.guava", "guava-parent", "33.5.0-android", "guava-parent-33.5.0-android.pom"): "bd77cc2dad91912f1a3bffa7bf7e576ecf57992f58f9afa132fd61ef250baadf",
             ("org.junit", "junit-bom", "5.10.2", "junit-bom-5.10.2.module"): "de23b114b3e4119a8fe6eb17bed5a3852816698bace67071579d6d927ebb080a",
             ("org.junit", "junit-bom", "5.13.1", "junit-bom-5.13.1.module"): "33c07ab9724790a6e5859ba07d69117ac530439724545a81c4179e3272c75de8",
+            ("org.junit", "junit-bom", "5.8.2", "junit-bom-5.8.2.pom"): "836069ca9e8ee3c56e48376222da291263f137bd3fd16d84fdd47efcc3f286e2",
             ("org.junit", "junit-bom", "5.9.3", "junit-bom-5.9.3.module"): "b401fd25901e582a524aa5343c4b39e28bc56e24961c1069bf2b4bbfcee46b93",
         }
         for (group, name, version, artifact), digest in expected.items():
