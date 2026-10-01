@@ -4,6 +4,7 @@ from __future__ import annotations
 import importlib.util
 import tempfile
 import unittest
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -36,6 +37,23 @@ class VerifyGradleDependencyMetadataTest(unittest.TestCase):
 
     def test_repository_metadata_is_strict_and_complete(self) -> None:
         self.assertEqual([], POLICY.verify_metadata())
+
+    def test_remotely_resolved_bom_and_parent_metadata_have_reviewed_sha256(self) -> None:
+        root = ET.fromstring(self.original)
+        ns = {"v": "https://schema.gradle.org/dependency-verification"}
+        expected = {
+            ("com.google.guava", "guava-parent", "33.3.1-jre", "guava-parent-33.3.1-jre.pom"): "55441db27e8869dfefe053059bdf478bdc7e95585642bf391f0023345fd56287",
+            ("org.junit", "junit-bom", "5.10.2", "junit-bom-5.10.2.module"): "de23b114b3e4119a8fe6eb17bed5a3852816698bace67071579d6d927ebb080a",
+            ("org.jetbrains.kotlinx", "kotlinx-coroutines-bom", "1.6.4", "kotlinx-coroutines-bom-1.6.4.pom"): "ab2614855fba66aa8a42514dbe3d5a884315ffe1ed63f5932e710a8006245ce1",
+        }
+        for (group, name, version, artifact), digest in expected.items():
+            with self.subTest(artifact=artifact):
+                matches = [item for item in root.findall(".//v:component", ns)
+                           if (item.get("group"), item.get("name"), item.get("version")) == (group, name, version)]
+                self.assertEqual(1, len(matches))
+                artifacts = [item for item in matches[0].findall("v:artifact", ns) if item.get("name") == artifact]
+                self.assertEqual(1, len(artifacts))
+                self.assertEqual(digest, artifacts[0].find("v:sha256", ns).get("value"))
 
     def test_repository_wrappers_pin_reviewed_distributions(self) -> None:
         for profile, (path, expected_url, expected_sha256) in POLICY.WRAPPER_EXPECTATIONS.items():
