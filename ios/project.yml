@@ -39,6 +39,9 @@ targets:
         INFOPLIST_KEY_CFBundleLocalizations: [it, en, de, fr, es]
         TARGETED_DEVICE_FAMILY: "1"
         SUPPORTS_MACCATALYST: NO
+      configs:
+        debug:
+          ONLY_ACTIVE_ARCH: YES
     dependencies:
       - package: BinarioKit
       - target: BinarioWatch
@@ -57,6 +60,9 @@ targets:
         PRODUCT_NAME: BinarioAppTests
         SDKROOT: iphoneos
         SUPPORTED_PLATFORMS: "iphoneos iphonesimulator"
+      configs:
+        debug:
+          ONLY_ACTIVE_ARCH: YES
   BinarioKitTests:
     type: bundle.unit-test
     platform: iOS
@@ -72,6 +78,9 @@ targets:
         PRODUCT_NAME: BinarioKitTests
         SDKROOT: iphoneos
         SUPPORTED_PLATFORMS: "iphoneos iphonesimulator"
+      configs:
+        debug:
+          ONLY_ACTIVE_ARCH: YES
   BinarioWatch:
     type: application
     platform: watchOS

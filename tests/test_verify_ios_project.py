@@ -70,6 +70,14 @@ class IOSProjectTests(unittest.TestCase):
         self.assertEqual(["BinarioAppTests", "BinarioKitTests"], names)
         self.assertEqual(len(names), len(set(names)))
 
+    def test_iphone_debug_targets_match_the_active_simulator_architecture(self) -> None:
+        for name in ("Binario", "BinarioAppTests", "BinarioKitTests"):
+            with self.subTest(target=name):
+                settings = self.targets[name]["settings"]
+                self.assertTrue(settings["configs"]["debug"]["ONLY_ACTIVE_ARCH"])
+                self.assertNotIn("ONLY_ACTIVE_ARCH", settings["base"])
+                self.assertNotIn("release", settings["configs"])
+
     def test_generated_targets_explicitly_support_phone_and_watch_simulators(self) -> None:
         platforms = {
             "Binario": ("iOS", "iphoneos", "iphoneos iphonesimulator"),
