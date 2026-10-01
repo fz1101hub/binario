@@ -102,6 +102,19 @@ class VerifyGradleDependencyMetadataTest(unittest.TestCase):
             ),
         )
 
+    def test_companion_included_build_bom_has_reviewed_checksum(self) -> None:
+        root = ET.parse(POLICY.COMPANION_METADATA).getroot()
+        ns = {"v": "https://schema.gradle.org/dependency-verification"}
+        components = [item for item in root.findall(".//v:component", ns)
+                      if (item.get("group"), item.get("name"), item.get("version")) ==
+                      ("org.jetbrains.kotlinx", "kotlinx-coroutines-bom", "1.8.0")]
+        self.assertEqual(1, len(components))
+        artifacts = [item for item in components[0].findall("v:artifact", ns)
+                     if item.get("name") == "kotlinx-coroutines-bom-1.8.0.pom"]
+        self.assertEqual(1, len(artifacts))
+        self.assertEqual("1239e9dbe1397cd5971342956b2511bc3ace7b641842e4372a088dcfa8b9ad55",
+                         artifacts[0].find("v:sha256", ns).get("value"))
+
     def test_rejects_disabled_metadata_verification(self) -> None:
         problems = self.verify_mutation(
             "<verify-metadata>true</verify-metadata>",
