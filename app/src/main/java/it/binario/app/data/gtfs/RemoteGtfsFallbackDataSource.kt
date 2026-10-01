@@ -117,10 +117,28 @@ class RemoteGtfsFallbackDataSource(
         if (enriched.isEmpty()) return snapshot
 
         val byTrip = enriched.groupBy { it.scheduledStop.sourceTripId }
+        val prefix = "${parserSourceId.value}:"
+        fun runIdentity(service: TrainService): Pair<String, LocalDate>? {
+            if (!service.id.startsWith(prefix)) return null
+            val templateAndDate = service.id.removePrefix(prefix)
+            val serviceDate = runCatching { LocalDate.parse(templateAndDate.substringAfterLast(':', "")) }.getOrNull()
+                ?: return null
+            return templateAndDate.substringBeforeLast(':').takeIf(String::isNotBlank)?.let { it to serviceDate }
+        }
+        val runCounts = snapshot.services.mapNotNull(::runIdentity).groupingBy { it.first }.eachCount()
         val services = snapshot.services.map { service ->
-            val tripId = service.id.removePrefix("${parserSourceId.value}:")
-            if (tripId == service.id) return@map service
-            enrichService(service, byTrip[tripId].orEmpty(), provider.descriptor.id)
+            val (tripId, serviceDate) = runIdentity(service) ?: return@map service
+            // GTFS-RT start_date is not carried by the normalized update. If a
+            // template appears on two service days in this result, attribution
+            // is ambiguous: retain both as programmed static services instead.
+            if (runCounts[tripId] != 1 || serviceDate != query.serviceDate) return@map service
+            val updatesForTrip = byTrip[tripId].orEmpty()
+            val originMatches = updatesForTrip.any { update ->
+                normalizeStation(update.scheduledStop.locationLabel) == normalizeStation(service.origin) &&
+                    update.scheduledStop.scheduledAt.toLocalDateTime() == service.scheduledDepartureDateTime
+            }
+            if (!originMatches) return@map service
+            enrichService(service, updatesForTrip, provider.descriptor.id)
         }
         val used = services.any { provider.descriptor.id.value in it.operationalSourceIds }
         if (!used) return snapshot
