@@ -64,6 +64,23 @@ class IOSProjectTests(unittest.TestCase):
         self.assertEqual("1", settings["TARGETED_DEVICE_FAMILY"])
         self.assertEqual(sorted(LANGUAGES), sorted(settings["INFOPLIST_KEY_CFBundleLocalizations"]))
 
+    def test_generated_targets_explicitly_support_phone_and_watch_simulators(self) -> None:
+        platforms = {
+            "Binario": ("iOS", "iphoneos", "iphoneos iphonesimulator"),
+            "BinarioAppTests": ("iOS", "iphoneos", "iphoneos iphonesimulator"),
+            "BinarioKitTests": ("iOS", "iphoneos", "iphoneos iphonesimulator"),
+            "BinarioWatch": ("watchOS", "watchos", "watchos watchsimulator"),
+            "BinarioWatchTests": ("watchOS", "watchos", "watchos watchsimulator"),
+            "BinarioWatchWidgets": ("watchOS", "watchos", "watchos watchsimulator"),
+        }
+        for name, (platform, sdk, supported) in platforms.items():
+            with self.subTest(target=name):
+                target = self.targets[name]
+                settings = target["settings"]["base"]
+                self.assertEqual(platform, target["platform"])
+                self.assertEqual(sdk, settings["SDKROOT"])
+                self.assertEqual(supported, settings["SUPPORTED_PLATFORMS"])
+
     def test_app_uses_local_package_and_authoritative_catalog_without_copy(self) -> None:
         app = self.targets["Binario"]
         resources = [
