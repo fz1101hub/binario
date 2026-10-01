@@ -7,7 +7,7 @@ import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
 function draftKey(draft: GuidedTextLocalRouteDraft) { return `${draft.origin.toLocaleLowerCase("it")}|${draft.destination.toLocaleLowerCase("it")}|${draft.travelDate}|${draft.travelTime}`; }
 
-export function GuidedTextRouteImportCard({ existingKeys, onConfirmImport, receivedText, onReceivedTextAccepted }: { existingKeys: readonly string[]; onConfirmImport: (drafts: GuidedTextLocalRouteDraft[]) => Promise<number>; receivedText?: string | null; onReceivedTextAccepted?: () => void }) {
+export function GuidedTextRouteImportCard({ existingKeys, onConfirmImport, receivedText, onReceivedTextAccepted }: { existingKeys: readonly string[]; onConfirmImport: (drafts: GuidedTextLocalRouteDraft[]) => Promise<{ imported: number; full: boolean }>; receivedText?: string | null; onReceivedTextAccepted?: () => void }) {
   const { colors } = useCompanionTheme();
   const { t } = useTranslation();
   const [rawText, setRawText] = useState("");
@@ -34,9 +34,9 @@ export function GuidedTextRouteImportCard({ existingKeys, onConfirmImport, recei
   async function confirm() {
     const selected = drafts.filter(draft => selectedKeys.includes(draftKey(draft)));
     if (!reviewed || selected.length === 0) { setMessage(t("import.confirmNeeded")); return; }
-    const imported = await onConfirmImport(selected);
-    setRawText(""); setDrafts([]); setSelectedKeys([]); setReviewed(false);
-    setMessage(imported ? t("import.imported", { count: imported }) : t("import.noneImported"));
+    const { imported, full } = await onConfirmImport(selected);
+    if (!full) { setRawText(""); setDrafts([]); setSelectedKeys([]); setReviewed(false); }
+    setMessage(full ? `${imported ? `${t("import.imported", { count: imported })} ` : ""}${t("common.archiveFull")}` : imported ? t("import.imported", { count: imported }) : t("import.noneImported"));
     if (imported) acknowledgeNativeAction();
   }
 

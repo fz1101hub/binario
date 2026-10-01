@@ -4,7 +4,7 @@ import { GuidedTextRouteImportCard } from "@/components/guided-text-route-import
 import { LocalRoutePriorityCard } from "@/components/local-route-priority-card";
 import { useIncomingSharedText } from "@/lib/incoming-shared-text";
 import { cancelPlannedRouteReminder, consumeLegacyReminderMigrationNotice, listScheduledRouteIds, schedulePlannedRouteReminder } from "@/lib/planned-reminder-service";
-import { addExplicitRecurringLocalPlannedRoutes, addLocalPlannedRoute, loadLocalPlannedRoutes, removeLocalPlannedRoute, setLocalPlannedRouteChecklistItem, setLocalPlannedRouteCompletion, type LocalPlannedRoute } from "@/lib/local-routes";
+import { addExplicitRecurringLocalPlannedRoutes, addLocalPlannedRoute, isLocalRoutesArchiveFull, loadLocalPlannedRoutes, removeLocalPlannedRoute, setLocalPlannedRouteChecklistItem, setLocalPlannedRouteCompletion, type LocalPlannedRoute } from "@/lib/local-routes";
 import { pickLocalJourneyIcs, shareLocalJourneyIcs, type CalendarRouteDraft } from "@/lib/local-calendar";
 import { reconcileLocalJourneyItineraries } from "@/lib/local-itineraries";
 import { deleteLocalPlannedRoute } from "@/lib/local-journey-privacy";
@@ -114,9 +114,10 @@ export default function AlertsScreen() {
     if (chosen.length === 0) { setMessage(t("alerts.icsSelectOne")); return; }
     let imported = 0;
     for (const draft of chosen) if (await addLocalPlannedRoute(draft)) imported += 1;
-    setCalendarImports([]); setCalendarImportSelection([]);
+    const full = imported < chosen.length && await isLocalRoutesArchiveFull();
+    if (!full) { setCalendarImports([]); setCalendarImportSelection([]); }
     await refresh();
-    setMessage(imported ? t("alerts.icsImported", { count: imported }) : t("alerts.icsNoneImported"));
+    setMessage(full ? `${imported ? `${t("alerts.icsImported", { count: imported })} ` : ""}${t("common.archiveFull")}` : imported ? t("alerts.icsImported", { count: imported }) : t("alerts.icsNoneImported"));
     if (imported) confirmNativeAction();
   }
   async function exportCalendar(route: LocalPlannedRoute) {
@@ -127,7 +128,7 @@ export default function AlertsScreen() {
     let imported = 0;
     for (const draft of drafts) if (await addLocalPlannedRoute(draft)) imported += 1;
     if (imported) await refresh();
-    return imported;
+    return { imported, full: imported < drafts.length && await isLocalRoutesArchiveFull() };
   }
   function openRecurrence(route: LocalPlannedRoute) {
     setRecurrenceRoute(route); setRecurrenceWeekdays([]); setRecurrenceOccurrences(4);
@@ -169,7 +170,7 @@ export default function AlertsScreen() {
   async function saveControlledRoute() {
     if (!pendingDraft || !pendingDate || !pendingTime) { setMessage(t("alerts.chooseDateTime")); return; }
     const route = await addLocalPlannedRoute({ ...pendingDraft, travelDate: pendingDate, travelTime: pendingTime });
-    if (!route) { setMessage(t("alerts.duplicateRoute")); return; }
+    if (!route) { setMessage(t(await isLocalRoutesArchiveFull() ? "common.archiveFull" : "alerts.duplicateRoute")); return; }
     setPendingDraft(null); setPendingKind(null); setPendingDate(""); setPendingTime("");
     await refresh(); setMessage(t(pendingKind === "return" ? "alerts.returnSaved" : "alerts.replanSaved")); confirmNativeAction();
   }

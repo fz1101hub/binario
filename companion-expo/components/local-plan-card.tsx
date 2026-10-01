@@ -1,4 +1,4 @@
-import { addLocalPlannedRoute } from "@/lib/local-routes";
+import { addLocalPlannedRoute, isLocalRoutesArchiveFull } from "@/lib/local-routes";
 import { applyLocalJourneyChecklistPreset, localJourneyChecklistPresets, type ControlledLocalRouteDraft, type LocalJourneyChecklistItem } from "@/lib/local-route-contract";
 import { parseLocalDictation } from "@/lib/local-dictation";
 import { requestNearestOfflineStation } from "@/lib/nearby-offline-stations";
@@ -145,6 +145,10 @@ export function LocalPlanCard({ onSaved, planningDraft, onPlanningDraftApplied }
       }
       const route = await addLocalPlannedRoute({ origin, originStationCode, destination, destinationStationCode, travelDate, travelTime, plannedReminderMinutes, checklist });
       if (!route) {
+        if (await isLocalRoutesArchiveFull()) {
+          setMessage(t("common.archiveFull"));
+          return;
+        }
         setFieldError(t("planner.routeFieldsError"));
         setMessage(t("planner.routeFieldsMessage"));
         destinationRef.current?.focus();
