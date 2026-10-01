@@ -109,6 +109,7 @@ class VerifyGradleDependencyMetadataTest(unittest.TestCase):
             ("org.jetbrains.kotlinx", "kotlinx-coroutines-bom", "1.8.0", "kotlinx-coroutines-bom-1.8.0.pom"): "1239e9dbe1397cd5971342956b2511bc3ace7b641842e4372a088dcfa8b9ad55",
             ("com.google.guava", "guava-parent", "33.3.1-jre", "guava-parent-33.3.1-jre.pom"): "55441db27e8869dfefe053059bdf478bdc7e95585642bf391f0023345fd56287",
             ("org.junit", "junit-bom", "5.10.2", "junit-bom-5.10.2.module"): "de23b114b3e4119a8fe6eb17bed5a3852816698bace67071579d6d927ebb080a",
+            ("org.junit", "junit-bom", "5.13.1", "junit-bom-5.13.1.module"): "33c07ab9724790a6e5859ba07d69117ac530439724545a81c4179e3272c75de8",
         }
         for (group, name, version, artifact), digest in expected.items():
             with self.subTest(artifact=artifact):
