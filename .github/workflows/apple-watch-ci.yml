@@ -215,8 +215,7 @@ jobs:
           xcodebuild \
             -project Binario.xcodeproj \
             -target Binario \
-            -sdk iphonesimulator \
-            -configuration Debug \
+            -destination "generic/platform=iOS Simulator" \
             CODE_SIGNING_ALLOWED=NO \
             build
           xcodebuild \
