@@ -43,6 +43,7 @@ targets:
         debug:
           ONLY_ACTIVE_ARCH: YES
           ENABLE_TESTABILITY: YES
+          SWIFT_OPTIMIZATION_LEVEL: -Onone
     dependencies:
       - package: BinarioKit
       - target: BinarioWatch
@@ -61,9 +62,12 @@ targets:
         PRODUCT_NAME: BinarioAppTests
         SDKROOT: iphoneos
         SUPPORTED_PLATFORMS: "iphoneos iphonesimulator"
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Binario.app/Binario"
+        BUNDLE_LOADER: "$(TEST_HOST)"
       configs:
         debug:
           ONLY_ACTIVE_ARCH: YES
+          SWIFT_OPTIMIZATION_LEVEL: -Onone
   BinarioKitTests:
     type: bundle.unit-test
     platform: iOS
@@ -82,6 +86,7 @@ targets:
       configs:
         debug:
           ONLY_ACTIVE_ARCH: YES
+          SWIFT_OPTIMIZATION_LEVEL: -Onone
   BinarioWatch:
     type: application
     platform: watchOS

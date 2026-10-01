@@ -69,6 +69,10 @@ class IOSProjectTests(unittest.TestCase):
                  for target in ("BinarioAppTests", "BinarioKitTests")]
         self.assertEqual(["BinarioAppTests", "BinarioKitTests"], names)
         self.assertEqual(len(names), len(set(names)))
+        hosted = self.targets["BinarioAppTests"]["settings"]["base"]
+        self.assertEqual("$(BUILT_PRODUCTS_DIR)/Binario.app/Binario", hosted["TEST_HOST"])
+        self.assertEqual("$(TEST_HOST)", hosted["BUNDLE_LOADER"])
+        self.assertNotIn("TEST_HOST", self.targets["BinarioKitTests"]["settings"]["base"])
 
     def test_sqlite_and_zlib_pkg_config_only_apply_to_linux_host(self) -> None:
         manifest = (IOS / "BinarioKit/Package.swift").read_text(encoding="utf-8")
@@ -87,7 +91,9 @@ class IOSProjectTests(unittest.TestCase):
             with self.subTest(target=name):
                 settings = self.targets[name]["settings"]
                 self.assertTrue(settings["configs"]["debug"]["ONLY_ACTIVE_ARCH"])
+                self.assertEqual("-Onone", settings["configs"]["debug"]["SWIFT_OPTIMIZATION_LEVEL"])
                 self.assertNotIn("ONLY_ACTIVE_ARCH", settings["base"])
+                self.assertNotIn("SWIFT_OPTIMIZATION_LEVEL", settings["base"])
                 self.assertNotIn("release", settings["configs"])
         app_settings = self.targets["Binario"]["settings"]
         self.assertTrue(app_settings["configs"]["debug"]["ENABLE_TESTABILITY"])
