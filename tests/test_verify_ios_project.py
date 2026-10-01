@@ -83,6 +83,12 @@ class IOSProjectTests(unittest.TestCase):
         self.assertIn("set: { enabled in model.setWatchSharingEnabled(enabled) }", settings)
         self.assertNotIn("set: model.setWatchSharingEnabled", settings)
 
+    def test_watch_connectivity_activation_mapping_has_explicit_returns(self) -> None:
+        adapter = (IOS / "BinarioApp/WCSessionAdapter.swift").read_text(encoding="utf-8")
+        for state in ("notActivated", "inactive", "activated"):
+            self.assertIn(f"case .{state}: return .{state}", adapter)
+        self.assertIn("@unknown default: return .failed", adapter)
+
     def test_generated_targets_explicitly_support_phone_and_watch_simulators(self) -> None:
         platforms = {
             "Binario": ("iOS", "iphoneos", "iphoneos iphonesimulator"),

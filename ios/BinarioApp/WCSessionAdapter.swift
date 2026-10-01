@@ -17,10 +17,10 @@ final class WCSessionAdapter: NSObject, WatchSnapshotSession, WCSessionDelegate 
     var activationState: WatchSessionActivationState {
         guard isSupported else { return .unsupported }
         switch session.activationState {
-        case .notActivated: .notActivated
-        case .inactive: .inactive
-        case .activated: .activated
-        @unknown default: .failed
+        case .notActivated: return .notActivated
+        case .inactive: return .inactive
+        case .activated: return .activated
+        @unknown default: return .failed
         }
     }
 
