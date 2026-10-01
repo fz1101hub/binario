@@ -51,6 +51,16 @@ describe("locale resolution", () => {
   it("uses browser language order when qualities are implicit", () => {
     expect(resolveLocale(["pt-BR", "fr-CA", "de-DE"])).toBe("fr-FR");
   });
+
+  it.each(["constructor", "constructor-foo", "__proto__", "toString", "hasOwnProperty"])(
+    "rejects inherited Object key %s as a locale",
+    candidate => {
+      const locale = resolveLocale(candidate);
+      expect(locale).toBe("it-IT");
+      expect(typeof locale).toBe("string");
+      expect(messagesForLocale(locale).consent.errorTitle).toBeTruthy();
+    }
+  );
 });
 
 describe("typed locale dictionaries", () => {

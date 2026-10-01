@@ -138,6 +138,17 @@ describe("authorize Alexa con consenso esplicito", () => {
     expect(dbMocks.createAuthorizationCode).not.toHaveBeenCalled();
   });
 
+  it("un Accept-Language ereditato non può terminare il processo OAuth", async () => {
+    const invalid = await fetch(`${baseUrl}/api/alexa/oauth/authorize`, {
+      headers: { "accept-language": "constructor" },
+    });
+    expect(invalid.status).toBe(400);
+    expect(await invalid.text()).toContain('<html lang="it-IT">');
+    const valid = await openConsentPage("constructor-foo");
+    expect(valid.response.status).toBe(200);
+    expect(valid.html).toContain('<html lang="it-IT">');
+  });
+
   it.each([
     ["it-IT", "it-IT", "Collega Alexa a Binario"],
     ["en-US", "en-US", "Link Alexa to Binario"],
@@ -252,6 +263,21 @@ describe("authorize Alexa con consenso esplicito", () => {
     );
   });
 
+  it("un guasto DB nel consenso produce server_error senza redirect né code", async () => {
+    const { nonce, token } = await openConsentPage();
+    dbMocks.createAuthorizationCode.mockRejectedValueOnce(new Error("secret database details"));
+    const failed = await submitConsent(
+      { csrf_token: token, decision: "allow" },
+      `${CONSENT_COOKIE}=${nonce}`
+    );
+    expect(failed.status).toBe(500);
+    expect(failed.headers.get("cache-control")).toBe("no-store");
+    const body = await failed.text();
+    expect(body).toContain("server_error");
+    expect(body).not.toContain("secret database details");
+    expect((await openConsentPage()).response.status).toBe(200);
+  });
+
   it("un token di consenso emesso per un altro utente non è riutilizzabile", async () => {
     const { nonce, token } = await openConsentPage();
     sdkMocks.authenticateRequest.mockResolvedValue({ id: 8, name: "Altro" });
@@ -278,6 +304,29 @@ describe("authorize Alexa con consenso esplicito", () => {
 });
 
 describe("scambio del code e revoca del collegamento", () => {
+  it.each([
+    ["authorization_code", "exchangeAuthorizationCode"],
+    ["refresh_token", "rotateRefreshToken"],
+  ] as const)("un guasto %s del DB risponde server_error senza crash", async (grantType, operation) => {
+    dbMocks[operation].mockRejectedValueOnce(new Error("secret database details"));
+    const response = await fetch(`${baseUrl}/api/alexa/oauth/token`, {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        grant_type: grantType,
+        client_id: "alexa-client",
+        client_secret: "alexa-secret",
+        code: "raw-code",
+        redirect_uri: REDIRECT,
+        refresh_token: "old-refresh-token",
+      }).toString(),
+    });
+    expect(response.status).toBe(500);
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(await response.json()).toEqual({ error: "server_error" });
+    expect((await openConsentPage()).response.status).toBe(200);
+  });
+
   it("lo scambio di un code valido ripristina il collegamento e rilascia i token", async () => {
     dbMocks.exchangeAuthorizationCode.mockResolvedValue({
       userId: 7,
