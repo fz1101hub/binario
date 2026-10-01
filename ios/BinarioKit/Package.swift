@@ -3,6 +3,7 @@ import PackageDescription
 
 let package = Package(
     name: "BinarioKit",
+    platforms: [.macOS(.v10_15), .iOS(.v17), .watchOS(.v10)],
     products: [
         .library(name: "BinarioKit", targets: ["BinarioKit"])
     ],

@@ -34,6 +34,11 @@ class AppleWatchProjectTests(unittest.TestCase):
             application["dependencies"],
         )
 
+    def test_watch_targets_have_explicit_nonempty_build_products(self) -> None:
+        for name, target in self.targets.items():
+            with self.subTest(name=name):
+                self.assertEqual(name, target["settings"]["base"]["PRODUCT_NAME"])
+
     def test_widget_has_the_explicit_widgetkit_extension_point(self) -> None:
         widget = self.targets["BinarioWatchWidgets"]
 

@@ -15,6 +15,7 @@ targets:
         - BinarioWatchTests
     settings:
       base:
+        PRODUCT_NAME: BinarioWatch
         PRODUCT_BUNDLE_IDENTIFIER: it.binario.watch
         INFOPLIST_KEY_CFBundleDisplayName: Binario
         GENERATE_INFOPLIST_FILE: YES
@@ -35,6 +36,9 @@ targets:
         buildPhase: resources
     dependencies:
       - target: BinarioWatch
+    settings:
+      base:
+        PRODUCT_NAME: BinarioWatchTests
   BinarioWatchWidgets:
     type: app-extension
     platform: watchOS
@@ -42,6 +46,7 @@ targets:
     sources: [BinarioWatchWidgets, Shared, Resources]
     settings:
       base:
+        PRODUCT_NAME: BinarioWatchWidgets
         PRODUCT_BUNDLE_IDENTIFIER: it.binario.watch.widgets
         INFOPLIST_KEY_CFBundleDisplayName: Binario
         GENERATE_INFOPLIST_FILE: YES
