@@ -70,6 +70,18 @@ class IOSProjectTests(unittest.TestCase):
         self.assertEqual(["BinarioAppTests", "BinarioKitTests"], names)
         self.assertEqual(len(names), len(set(names)))
 
+    def test_sqlite_and_zlib_pkg_config_only_apply_to_linux_host(self) -> None:
+        manifest = (IOS / "BinarioKit/Package.swift").read_text(encoding="utf-8")
+        self.assertIn("#if os(Linux)", manifest)
+        self.assertIn('let sqlitePkgConfig: String? = "sqlite3"', manifest)
+        self.assertIn('let zlibPkgConfig: String? = "zlib"', manifest)
+        self.assertIn("let sqlitePkgConfig: String? = nil", manifest)
+        self.assertIn("let zlibPkgConfig: String? = nil", manifest)
+        self.assertIn("pkgConfig: sqlitePkgConfig", manifest)
+        self.assertIn("pkgConfig: zlibPkgConfig", manifest)
+        self.assertNotIn('pkgConfig: "sqlite3"', manifest)
+        self.assertNotIn('pkgConfig: "zlib"', manifest)
+
     def test_iphone_debug_targets_match_the_active_simulator_architecture(self) -> None:
         for name in ("Binario", "BinarioAppTests", "BinarioKitTests"):
             with self.subTest(target=name):

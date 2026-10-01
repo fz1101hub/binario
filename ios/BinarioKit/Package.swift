@@ -1,6 +1,16 @@
 // swift-tools-version: 6.0
 import PackageDescription
 
+// pkg-config on macOS can prepend Homebrew's macOS-only dylibs to an iOS
+// simulator link. Apple SDKs already provide sqlite3 and zlib for iOS/watchOS.
+#if os(Linux)
+let sqlitePkgConfig: String? = "sqlite3"
+let zlibPkgConfig: String? = "zlib"
+#else
+let sqlitePkgConfig: String? = nil
+let zlibPkgConfig: String? = nil
+#endif
+
 let package = Package(
     name: "BinarioKit",
     platforms: [.macOS(.v10_15), .iOS(.v17), .watchOS(.v10)],
@@ -11,7 +21,7 @@ let package = Package(
         .systemLibrary(
             name: "CSQLite",
             path: "Sources/CSQLite",
-            pkgConfig: "sqlite3",
+            pkgConfig: sqlitePkgConfig,
             providers: [
                 .apt(["libsqlite3-dev"]),
                 .brew(["sqlite3"]),
@@ -20,7 +30,7 @@ let package = Package(
         .systemLibrary(
             name: "CZlib",
             path: "Sources/CZlib",
-            pkgConfig: "zlib",
+            pkgConfig: zlibPkgConfig,
             providers: [
                 .apt(["zlib1g-dev"]),
                 .brew(["zlib"]),
