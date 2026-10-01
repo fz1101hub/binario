@@ -212,12 +212,9 @@ jobs:
       - name: Build and test integrated iPhone and Watch app
         working-directory: ios
         run: |
-          xcodebuild \
-            -project Binario.xcodeproj \
-            -target Binario \
-            -destination "generic/platform=iOS Simulator" \
-            CODE_SIGNING_ALLOWED=NO \
-            build
+          cat Binario.xcodeproj/xcshareddata/xcschemes/Binario.xcscheme
+          xcodebuild -project Binario.xcodeproj -scheme Binario -showdestinations
+          xcrun simctl list pairs
           xcodebuild \
             -project Binario.xcodeproj \
             -scheme Binario \
