@@ -42,6 +42,8 @@ targets:
     settings:
       base:
         PRODUCT_NAME: BinarioWatchTests
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/BinarioWatch.app/BinarioWatch"
+        BUNDLE_LOADER: "$(TEST_HOST)"
   BinarioWatchWidgets:
     type: app-extension
     platform: watchOS

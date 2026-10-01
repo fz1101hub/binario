@@ -50,6 +50,9 @@ class AppleWatchProjectTests(unittest.TestCase):
         )
 
     def test_tests_import_the_application_module_instead_of_compiling_shared_twice(self) -> None:
+        settings = self.targets["BinarioWatchTests"]["settings"]["base"]
+        self.assertEqual("$(BUILT_PRODUCTS_DIR)/BinarioWatch.app/BinarioWatch", settings["TEST_HOST"])
+        self.assertEqual("$(TEST_HOST)", settings["BUNDLE_LOADER"])
         test_sources = self.targets["BinarioWatchTests"]["sources"]
         paths = [source if isinstance(source, str) else source["path"] for source in test_sources]
 

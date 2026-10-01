@@ -189,17 +189,23 @@ jobs:
 
           with open(os.environ["RUNNER_TEMP"] + "/simulators.json", encoding="utf-8") as source:
               devices = json.load(source)["devices"]
+          selected = {}
           for runtime, candidates in devices.items():
-              if "iOS" not in runtime:
+              platform = "phone" if "SimRuntime.iOS-" in runtime else "watch" if "SimRuntime.watchOS-" in runtime else None
+              if platform is None or platform in selected:
                   continue
               for device in candidates:
                   if device.get("isAvailable"):
-                      with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
-                          output.write(f"udid={device['udid']}\n")
-                      raise SystemExit(0)
-          raise SystemExit("Nessun simulatore iOS disponibile")
+                      selected[platform] = device["udid"]
+                      break
+          if set(selected) != {"phone", "watch"}:
+              raise SystemExit("Serve una coppia di simulatori iOS/watchOS disponibili")
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+              output.write(f"udid={selected['phone']}\n")
+              output.write(f"watch_udid={selected['watch']}\n")
           PY
           python3 "$RUNNER_TEMP/select_ios.py"
+          xcrun simctl pair "${{ steps.ios-simulator.outputs.watch_udid }}" "${{ steps.ios-simulator.outputs.udid }}"
       - name: Build and test integrated iPhone and Watch app
         working-directory: ios
         run: |

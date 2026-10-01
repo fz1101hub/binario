@@ -70,6 +70,7 @@ targets:
         - BinarioWatchTests
     settings:
       base:
+        PRODUCT_NAME: BinarioWatch
         PRODUCT_BUNDLE_IDENTIFIER: it.binario.ios.watchkitapp
         INFOPLIST_KEY_CFBundleDisplayName: Binario
         GENERATE_INFOPLIST_FILE: YES
@@ -91,6 +92,11 @@ targets:
         buildPhase: resources
     dependencies:
       - target: BinarioWatch
+    settings:
+      base:
+        PRODUCT_NAME: BinarioWatchTests
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/BinarioWatch.app/BinarioWatch"
+        BUNDLE_LOADER: "$(TEST_HOST)"
   BinarioWatchWidgets:
     type: app-extension
     platform: watchOS
@@ -100,6 +106,7 @@ targets:
       - path: ../apple-watch/Shared
     settings:
       base:
+        PRODUCT_NAME: BinarioWatchWidgets
         PRODUCT_BUNDLE_IDENTIFIER: it.binario.ios.watchkitapp.widgets
         INFOPLIST_KEY_CFBundleDisplayName: Binario
         GENERATE_INFOPLIST_FILE: YES

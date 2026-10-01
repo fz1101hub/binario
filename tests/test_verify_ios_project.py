@@ -103,6 +103,11 @@ class IOSProjectTests(unittest.TestCase):
         self.assertIn({"target": "BinarioWatch", "embed": True}, app_dependencies)
         self.assertEqual("application", watch["type"])
         self.assertEqual("watchOS", watch["platform"])
+        for name in ("BinarioWatch", "BinarioWatchTests", "BinarioWatchWidgets"):
+            self.assertEqual(name, self.targets[name]["settings"]["base"]["PRODUCT_NAME"])
+        watch_test_settings = self.targets["BinarioWatchTests"]["settings"]["base"]
+        self.assertEqual("$(BUILT_PRODUCTS_DIR)/BinarioWatch.app/BinarioWatch", watch_test_settings["TEST_HOST"])
+        self.assertEqual("$(TEST_HOST)", watch_test_settings["BUNDLE_LOADER"])
         self.assertTrue(settings["INFOPLIST_KEY_WKApplication"])
         self.assertFalse(settings["INFOPLIST_KEY_WKWatchOnly"])
         ios_id = self.targets["Binario"]["settings"]["base"]["PRODUCT_BUNDLE_IDENTIFIER"]
