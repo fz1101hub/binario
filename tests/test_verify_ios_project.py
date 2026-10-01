@@ -115,7 +115,10 @@ class IOSProjectTests(unittest.TestCase):
         self.assertEqual(f"{ios_id}.watchkitapp", settings["PRODUCT_BUNDLE_IDENTIFIER"])
         self.assertIn({"target": "BinarioWatchWidgets", "embed": True}, watch["dependencies"])
         self.assertEqual("app-extension", widget["type"])
-        self.assertEqual(f"{ios_id}.watchkitapp.widgets", widget["settings"]["base"]["PRODUCT_BUNDLE_IDENTIFIER"])
+        widget_settings = widget["settings"]["base"]
+        self.assertEqual(f"{ios_id}.watchkitapp.widgets", widget_settings["PRODUCT_BUNDLE_IDENTIFIER"])
+        self.assertFalse(widget_settings["GENERATE_INFOPLIST_FILE"])
+        self.assertEqual("../apple-watch/BinarioWatchWidgets/Info.plist", widget_settings["INFOPLIST_FILE"])
         self.assertEqual("0.1.0", global_settings["MARKETING_VERSION"])
         self.assertEqual(1, global_settings["CURRENT_PROJECT_VERSION"])
 

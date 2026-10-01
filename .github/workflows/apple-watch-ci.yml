@@ -205,7 +205,10 @@ jobs:
               output.write(f"watch_udid={selected['watch']}\n")
           PY
           python3 "$RUNNER_TEMP/select_ios.py"
-          xcrun simctl pair "${{ steps.ios-simulator.outputs.watch_udid }}" "${{ steps.ios-simulator.outputs.udid }}"
+          watch_udid="$(sed -n 's/^watch_udid=//p' "$GITHUB_OUTPUT")"
+          phone_udid="$(sed -n 's/^udid=//p' "$GITHUB_OUTPUT")"
+          test -n "$watch_udid" && test -n "$phone_udid"
+          xcrun simctl pair "$watch_udid" "$phone_udid"
       - name: Build and test integrated iPhone and Watch app
         working-directory: ios
         run: |

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+import plistlib
 import re
 import unittest
 
@@ -44,9 +45,14 @@ class AppleWatchProjectTests(unittest.TestCase):
         widget = self.targets["BinarioWatchWidgets"]
 
         self.assertEqual("app-extension", widget["type"])
+        settings = widget["settings"]["base"]
+        self.assertFalse(settings["GENERATE_INFOPLIST_FILE"])
+        self.assertEqual("BinarioWatchWidgets/Info.plist", settings["INFOPLIST_FILE"])
+        self.assertNotIn("INFOPLIST_KEY_NSExtension_NSExtensionPointIdentifier", settings)
+        plist = plistlib.loads((APPLE_WATCH / settings["INFOPLIST_FILE"]).read_bytes())
         self.assertEqual(
             "com.apple.widgetkit-extension",
-            widget["settings"]["base"]["INFOPLIST_KEY_NSExtension_NSExtensionPointIdentifier"],
+            plist["NSExtension"]["NSExtensionPointIdentifier"],
         )
 
     def test_tests_import_the_application_module_instead_of_compiling_shared_twice(self) -> None:

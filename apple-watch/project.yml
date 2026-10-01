@@ -54,7 +54,7 @@ targets:
         PRODUCT_NAME: BinarioWatchWidgets
         PRODUCT_BUNDLE_IDENTIFIER: it.binario.watch.widgets
         INFOPLIST_KEY_CFBundleDisplayName: Binario
-        GENERATE_INFOPLIST_FILE: YES
-        INFOPLIST_KEY_NSExtension_NSExtensionPointIdentifier: com.apple.widgetkit-extension
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: BinarioWatchWidgets/Info.plist
     entitlements:
       path: BinarioWatch/BinarioWatch.entitlements
