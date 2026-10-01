@@ -28,6 +28,7 @@ def load_module(name: str, path: Path):
 
 builder = load_module("build_ios_gtfs_schedule", ROOT / "tools/build_ios_gtfs_schedule.py")
 verifier = load_module("verify_ios_gtfs_schedule", ROOT / "tools/verify_ios_gtfs_schedule.py")
+rebuild_verifier = load_module("verify_ios_gtfs_rebuild", ROOT / "tools/verify_ios_gtfs_rebuild.py")
 
 def csv_bytes(headers: list[str], rows: list[list[str]]) -> bytes:
     stream = io.StringIO(newline="")
@@ -116,6 +117,42 @@ class IosGtfsScheduleTest(unittest.TestCase):
         output.write_bytes(output.read_bytes() + b"x")
         with self.assertRaises(verifier.VerificationError):
             verifier.verify(output, metadata, max_compressed_bytes=4 * 1024 * 1024, max_database_bytes=16 * 1024 * 1024)
+
+    def test_cross_platform_rebuild_compares_all_rows_and_rejects_semantic_drift(self) -> None:
+        manifest, catalog, output, metadata, _ = self.build()
+        other = self.temp / "other.sqlite.zlib"
+        other_metadata = self.temp / "other.metadata.json"
+        builder.build_database(manifest, catalog, other, other_metadata, max_compressed_bytes=4 * 1024 * 1024)
+        options = {"max_compressed_bytes": 4 * 1024 * 1024, "max_database_bytes": 16 * 1024 * 1024}
+        result = rebuild_verifier.compare_rebuild(output, metadata, other, other_metadata, **options)
+        self.assertEqual(len(verifier.REQUIRED_TABLE_COLUMNS), result["tablesCompared"])
+
+        raw = self.temp / "other.sqlite"
+        raw.write_bytes(zlib.decompress(other.read_bytes()))
+        with sqlite3.connect(raw) as database:
+            database.execute("PRAGMA page_size=8192")
+            database.execute("VACUUM")
+        self.assertNotEqual(hashlib.sha256(zlib.decompress(output.read_bytes())).hexdigest(), hashlib.sha256(raw.read_bytes()).hexdigest())
+        compressed = zlib.compress(raw.read_bytes(), 9)
+        other.write_bytes(compressed)
+        payload = json.loads(other_metadata.read_text(encoding="utf-8"))
+        payload["compression"].update(sha256=hashlib.sha256(compressed).hexdigest(), sizeBytes=len(compressed))
+        payload["database"].update(sha256=hashlib.sha256(raw.read_bytes()).hexdigest(), sizeBytes=raw.stat().st_size)
+        other_metadata.write_text(json.dumps(payload), encoding="utf-8")
+        rebuild_verifier.compare_rebuild(output, metadata, other, other_metadata, **options)
+
+        with sqlite3.connect(raw) as database:
+            database.execute("UPDATE trip SET short_name='UNREVIEWED' WHERE id=1")
+        compressed = zlib.compress(raw.read_bytes(), 9)
+        other.write_bytes(compressed)
+        payload = json.loads(other_metadata.read_text(encoding="utf-8"))
+        payload["compression"]["sha256"] = hashlib.sha256(compressed).hexdigest()
+        payload["compression"]["sizeBytes"] = len(compressed)
+        payload["database"]["sha256"] = hashlib.sha256(raw.read_bytes()).hexdigest()
+        payload["database"]["sizeBytes"] = raw.stat().st_size
+        other_metadata.write_text(json.dumps(payload), encoding="utf-8")
+        with self.assertRaisesRegex(verifier.VerificationError, "table content differs: trip"):
+            rebuild_verifier.compare_rebuild(output, metadata, other, other_metadata, **options)
 
     def test_reviewed_source_policy_is_fingerprinted_and_rejects_manifest_drift(self) -> None:
         manifest, catalog = write_inputs(self.temp)

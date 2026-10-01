@@ -421,7 +421,7 @@ class EmbeddedGtfsRouteAdapter(
                     if (selected.size >= limits.maxServicesPerPack && isAfterCurrentWorst(scheduledDateTime, trip, selected)) {
                         return@forEachDeclared
                     }
-                    offerBounded(selected, buildService(segment, trip, sourceId, scheduledDateTime), limits.maxServicesPerPack)
+                    offerBounded(selected, buildService(segment, trip, sourceId, serviceDate, scheduledDateTime), limits.maxServicesPerPack)
                 }
             }
             return selected.sortedWith(compareBy<TrainService> { it.scheduledDepartureDateTime }.thenBy { it.number })
@@ -484,6 +484,7 @@ class EmbeddedGtfsRouteAdapter(
             segment: CompactSegment,
             trip: CompactTrip,
             sourceId: String,
+            serviceDate: java.time.LocalDate,
             scheduledDateTime: java.time.LocalDateTime
         ): TrainService {
             val route = routes[trip.routeId]
@@ -492,7 +493,7 @@ class EmbeddedGtfsRouteAdapter(
             val agencyName = agencyName(route)
             val number = trip.shortName?.takeIf(String::isNotBlank) ?: trip.id
             return TrainService(
-                id = "$sourceId:${trip.id}",
+                id = "$sourceId:${trip.id}:$serviceDate",
                 number = number,
                 operator = legacyOperator(sourceId, agencyName, route),
                 operatorDisplayName = canonicalAgencyLabel(agencyName, sourceId),

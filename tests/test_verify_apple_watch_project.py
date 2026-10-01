@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+import plistlib
 import re
 import unittest
 
@@ -27,6 +28,11 @@ class AppleWatchProjectTests(unittest.TestCase):
         settings = application["settings"]["base"]
         self.assertTrue(settings["INFOPLIST_KEY_WKApplication"])
         self.assertTrue(settings["INFOPLIST_KEY_WKWatchOnly"])
+        self.assertEqual(1, self.project["settings"]["base"]["CURRENT_PROJECT_VERSION"])
+        self.assertEqual("0.1.0", self.project["settings"]["base"]["MARKETING_VERSION"])
+        self.assertEqual("$(CURRENT_PROJECT_VERSION)", settings["INFOPLIST_KEY_CFBundleVersion"])
+        self.assertEqual("$(MARKETING_VERSION)", settings["INFOPLIST_KEY_CFBundleShortVersionString"])
+        self.assertEqual({"debug": {"ENABLE_TESTABILITY": True}}, application["settings"]["configs"])
         self.assertNotIn("INFOPLIST_KEY_WKCompanionAppBundleIdentifier", settings)
         self.assertTrue(all(target["platform"] == "watchOS" for target in self.targets.values()))
         self.assertIn(
@@ -34,16 +40,29 @@ class AppleWatchProjectTests(unittest.TestCase):
             application["dependencies"],
         )
 
+    def test_watch_targets_have_explicit_nonempty_build_products(self) -> None:
+        for name, target in self.targets.items():
+            with self.subTest(name=name):
+                self.assertEqual(name, target["settings"]["base"]["PRODUCT_NAME"])
+
     def test_widget_has_the_explicit_widgetkit_extension_point(self) -> None:
         widget = self.targets["BinarioWatchWidgets"]
 
         self.assertEqual("app-extension", widget["type"])
+        settings = widget["settings"]["base"]
+        self.assertFalse(settings["GENERATE_INFOPLIST_FILE"])
+        self.assertEqual("BinarioWatchWidgets/Info.plist", settings["INFOPLIST_FILE"])
+        self.assertNotIn("INFOPLIST_KEY_NSExtension_NSExtensionPointIdentifier", settings)
+        plist = plistlib.loads((APPLE_WATCH / settings["INFOPLIST_FILE"]).read_bytes())
         self.assertEqual(
             "com.apple.widgetkit-extension",
-            widget["settings"]["base"]["INFOPLIST_KEY_NSExtension_NSExtensionPointIdentifier"],
+            plist["NSExtension"]["NSExtensionPointIdentifier"],
         )
 
     def test_tests_import_the_application_module_instead_of_compiling_shared_twice(self) -> None:
+        settings = self.targets["BinarioWatchTests"]["settings"]["base"]
+        self.assertEqual("$(BUILT_PRODUCTS_DIR)/BinarioWatch.app/BinarioWatch", settings["TEST_HOST"])
+        self.assertEqual("$(TEST_HOST)", settings["BUNDLE_LOADER"])
         test_sources = self.targets["BinarioWatchTests"]["sources"]
         paths = [source if isinstance(source, str) else source["path"] for source in test_sources]
 
@@ -132,6 +151,13 @@ class AppleWatchProjectTests(unittest.TestCase):
         self.assertIn('navigationTitle("Binario")', home_source)
         self.assertIn('systemImage: "train.side.front.car"', home_source)
         self.assertIn('systemImage: "arrow.clockwise"', home_source)
+
+    def test_circular_widget_uses_background_without_an_unsupported_closure(self) -> None:
+        source = (APPLE_WATCH / "BinarioWatchWidgets" / "BinarioWatchWidgets.swift").read_text(encoding="utf-8")
+        circular = source.split("case .accessoryCircular:", 1)[1].split("case .accessoryInline:", 1)[0]
+        self.assertIn("ZStack {", circular)
+        self.assertIn("AccessoryWidgetBackground()", circular)
+        self.assertNotRegex(circular, r"AccessoryWidgetBackground\s*\{")
 
     def test_every_watch_localization_key_exists_in_the_catalog(self) -> None:
         catalog = json.loads((APPLE_WATCH / "Resources" / "Localizable.xcstrings").read_text(encoding="utf-8"))

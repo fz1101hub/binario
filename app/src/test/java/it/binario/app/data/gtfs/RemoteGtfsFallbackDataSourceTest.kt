@@ -98,6 +98,24 @@ class RemoteGtfsFallbackDataSourceTest {
     }
 
     @Test
+    fun `a trip shared across two service days remains static without a run date`() = runBlocking {
+        val nightFeed = gtfs(stopTimesOverride =
+            "trip-1,25:10:00,25:10:00,bru,1\ntrip-1,35:00:00,35:00:00,mil,2\n")
+        val result = adapter(realtimeProvider("trip-1"), nightFeed).loadRoute(
+            route,
+            Direction.OUTBOUND,
+            JourneyQuery(LocalDate.of(2026, 9, 10), LocalTime.of(0, 30))
+        )
+
+        assertTrue(result is DataResult.Success)
+        val snapshot = (result as DataResult.Success).snapshot
+        assertEquals(2, snapshot.services.size)
+        assertEquals(2, snapshot.services.map { it.id }.toSet().size)
+        assertTrue(snapshot.services.all { !it.operationalStatusVerified && it.operationalSourceIds.isEmpty() })
+        assertFalse(snapshot.providerName.contains("Realtime test"))
+    }
+
+    @Test
     fun `un orario realtime malformato degrada solo quel singolo update allo snapshot statico`() = runBlocking {
         val adapter = adapter(
             realtimeProvider(realtimeUpdate("trip-1"), realtimeUpdate("trip-1", "col", 2)),
@@ -266,7 +284,7 @@ class RemoteGtfsFallbackDataSourceTest {
         )
     }
 
-    private fun gtfs(includeMalformedStop: Boolean = false): ByteArray {
+    private fun gtfs(includeMalformedStop: Boolean = false, stopTimesOverride: String? = null): ByteArray {
         val stop = if (includeMalformedStop) "col,Köln Hbf\n" else ""
         val stopTimes = if (includeMalformedStop) {
             "trip-1,09:00:00,09:00:00,bru,1\ntrip-1,12:00:00,nope,col,2\ntrip-1,19:00:00,19:00:00,mil,3\n"
@@ -278,7 +296,7 @@ class RemoteGtfsFallbackDataSourceTest {
             "stops.txt" to "stop_id,stop_name\nbru,Bruxelles-Midi\n${stop}mil,Milano Centrale\n",
             "routes.txt" to "route_id,agency_id,route_short_name,route_long_name,route_type\nr1,es,ES,Bruxelles Milano,2\n",
             "trips.txt" to "route_id,service_id,trip_id,trip_short_name\nr1,daily,trip-1,ES123\n",
-            "stop_times.txt" to "trip_id,arrival_time,departure_time,stop_id,stop_sequence\n$stopTimes",
+            "stop_times.txt" to "trip_id,arrival_time,departure_time,stop_id,stop_sequence\n${stopTimesOverride ?: stopTimes}",
             "calendar.txt" to "service_id,monday,tuesday,wednesday,thursday,friday,saturday,sunday,start_date,end_date\ndaily,1,1,1,1,1,1,1,20260901,20261231\n",
             "calendar_dates.txt" to "service_id,date,exception_type\n"
         )

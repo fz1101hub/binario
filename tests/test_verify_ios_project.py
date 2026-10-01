@@ -64,6 +64,69 @@ class IOSProjectTests(unittest.TestCase):
         self.assertEqual("1", settings["TARGETED_DEVICE_FAMILY"])
         self.assertEqual(sorted(LANGUAGES), sorted(settings["INFOPLIST_KEY_CFBundleLocalizations"]))
 
+    def test_iphone_test_bundles_have_unique_nonempty_product_names(self) -> None:
+        names = [self.targets[target]["settings"]["base"]["PRODUCT_NAME"]
+                 for target in ("BinarioAppTests", "BinarioKitTests")]
+        self.assertEqual(["BinarioAppTests", "BinarioKitTests"], names)
+        self.assertEqual(len(names), len(set(names)))
+        hosted = self.targets["BinarioAppTests"]["settings"]["base"]
+        self.assertEqual("$(BUILT_PRODUCTS_DIR)/Binario.app/Binario", hosted["TEST_HOST"])
+        self.assertEqual("$(TEST_HOST)", hosted["BUNDLE_LOADER"])
+        self.assertNotIn("TEST_HOST", self.targets["BinarioKitTests"]["settings"]["base"])
+
+    def test_sqlite_and_zlib_pkg_config_only_apply_to_linux_host(self) -> None:
+        manifest = (IOS / "BinarioKit/Package.swift").read_text(encoding="utf-8")
+        self.assertIn("#if os(Linux)", manifest)
+        self.assertIn('let sqlitePkgConfig: String? = "sqlite3"', manifest)
+        self.assertIn('let zlibPkgConfig: String? = "zlib"', manifest)
+        self.assertIn("let sqlitePkgConfig: String? = nil", manifest)
+        self.assertIn("let zlibPkgConfig: String? = nil", manifest)
+        self.assertIn("pkgConfig: sqlitePkgConfig", manifest)
+        self.assertIn("pkgConfig: zlibPkgConfig", manifest)
+        self.assertNotIn('pkgConfig: "sqlite3"', manifest)
+        self.assertNotIn('pkgConfig: "zlib"', manifest)
+
+    def test_iphone_debug_targets_match_the_active_simulator_architecture(self) -> None:
+        for name in ("Binario", "BinarioAppTests", "BinarioKitTests"):
+            with self.subTest(target=name):
+                settings = self.targets[name]["settings"]
+                self.assertTrue(settings["configs"]["debug"]["ONLY_ACTIVE_ARCH"])
+                self.assertEqual("-Onone", settings["configs"]["debug"]["SWIFT_OPTIMIZATION_LEVEL"])
+                self.assertNotIn("ONLY_ACTIVE_ARCH", settings["base"])
+                self.assertNotIn("SWIFT_OPTIMIZATION_LEVEL", settings["base"])
+                self.assertNotIn("release", settings["configs"])
+        app_settings = self.targets["Binario"]["settings"]
+        self.assertTrue(app_settings["configs"]["debug"]["ENABLE_TESTABILITY"])
+        self.assertNotIn("ENABLE_TESTABILITY", app_settings["base"])
+
+    def test_watch_sharing_binding_uses_explicit_actor_isolated_setter_closure(self) -> None:
+        settings = (IOS / "BinarioApp/SettingsView.swift").read_text(encoding="utf-8")
+        self.assertIn("set: { enabled in model.setWatchSharingEnabled(enabled) }", settings)
+        self.assertNotIn("set: model.setWatchSharingEnabled", settings)
+
+    def test_watch_connectivity_activation_mapping_has_explicit_returns(self) -> None:
+        adapter = (IOS / "BinarioApp/WCSessionAdapter.swift").read_text(encoding="utf-8")
+        for state in ("notActivated", "inactive", "activated"):
+            self.assertIn(f"case .{state}: return .{state}", adapter)
+        self.assertIn("@unknown default: return .failed", adapter)
+
+    def test_generated_targets_explicitly_support_phone_and_watch_simulators(self) -> None:
+        platforms = {
+            "Binario": ("iOS", "iphoneos", "iphoneos iphonesimulator"),
+            "BinarioAppTests": ("iOS", "iphoneos", "iphoneos iphonesimulator"),
+            "BinarioKitTests": ("iOS", "iphoneos", "iphoneos iphonesimulator"),
+            "BinarioWatch": ("watchOS", "watchos", "watchos watchsimulator"),
+            "BinarioWatchTests": ("watchOS", "watchos", "watchos watchsimulator"),
+            "BinarioWatchWidgets": ("watchOS", "watchos", "watchos watchsimulator"),
+        }
+        for name, (platform, sdk, supported) in platforms.items():
+            with self.subTest(target=name):
+                target = self.targets[name]
+                settings = target["settings"]["base"]
+                self.assertEqual(platform, target["platform"])
+                self.assertEqual(sdk, settings["SDKROOT"])
+                self.assertEqual(supported, settings["SUPPORTED_PLATFORMS"])
+
     def test_app_uses_local_package_and_authoritative_catalog_without_copy(self) -> None:
         app = self.targets["Binario"]
         resources = [
@@ -103,11 +166,22 @@ class IOSProjectTests(unittest.TestCase):
         self.assertIn({"target": "BinarioWatch", "embed": True}, app_dependencies)
         self.assertEqual("application", watch["type"])
         self.assertEqual("watchOS", watch["platform"])
+        for name in ("BinarioWatch", "BinarioWatchTests", "BinarioWatchWidgets"):
+            self.assertEqual(name, self.targets[name]["settings"]["base"]["PRODUCT_NAME"])
+        watch_test_settings = self.targets["BinarioWatchTests"]["settings"]["base"]
+        self.assertEqual("$(BUILT_PRODUCTS_DIR)/BinarioWatch.app/BinarioWatch", watch_test_settings["TEST_HOST"])
+        self.assertEqual("$(TEST_HOST)", watch_test_settings["BUNDLE_LOADER"])
         self.assertTrue(settings["INFOPLIST_KEY_WKApplication"])
         self.assertFalse(settings["INFOPLIST_KEY_WKWatchOnly"])
-        self.assertEqual("it.binario.ios", settings["INFOPLIST_KEY_WKCompanionAppBundleIdentifier"])
+        ios_id = self.targets["Binario"]["settings"]["base"]["PRODUCT_BUNDLE_IDENTIFIER"]
+        self.assertEqual(ios_id, settings["INFOPLIST_KEY_WKCompanionAppBundleIdentifier"])
+        self.assertEqual(f"{ios_id}.watchkitapp", settings["PRODUCT_BUNDLE_IDENTIFIER"])
         self.assertIn({"target": "BinarioWatchWidgets", "embed": True}, watch["dependencies"])
         self.assertEqual("app-extension", widget["type"])
+        widget_settings = widget["settings"]["base"]
+        self.assertEqual(f"{ios_id}.watchkitapp.widgets", widget_settings["PRODUCT_BUNDLE_IDENTIFIER"])
+        self.assertFalse(widget_settings["GENERATE_INFOPLIST_FILE"])
+        self.assertEqual("../apple-watch/BinarioWatchWidgets/Info.plist", widget_settings["INFOPLIST_FILE"])
         self.assertEqual("0.1.0", global_settings["MARKETING_VERSION"])
         self.assertEqual(1, global_settings["CURRENT_PROJECT_VERSION"])
 

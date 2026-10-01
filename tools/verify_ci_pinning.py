@@ -244,6 +244,7 @@ def _check_apple_paths(
         "contracts/wear-snapshot/**",
         "tools/build_ios_gtfs_schedule.py",
         "tools/verify_ios_gtfs_schedule.py",
+        "tools/verify_ios_gtfs_rebuild.py",
         "tools/install_xcodegen.py",
         "tools/verify_ci_pinning.py",
         "tests/test_ios_gtfs_schedule.py",
@@ -538,6 +539,10 @@ def _check_apple_toolchain(
             problems.append(f"{path.name}:{job_name}: step install XcodeGen diverso dal comando revisionato")
 
         if job_name == "ios":
+            if ("python3 tools/verify_ios_gtfs_schedule.py" not in trust_chain
+                or "python3 tools/verify_ios_gtfs_rebuild.py" not in trust_chain
+                or "git diff --exit-code -- ios/Resources/binario_gtfs_schedule_v1" in trust_chain):
+                problems.append(f"{path.name}: confronto GTFS cross-platform verificato assente")
             if "swift test --package-path ios/BinarioKit" not in runs.get("Test BinarioKit with Swift 6", ""):
                 problems.append(f"{path.name}: test Swift 6 BinarioKit assente")
             generation = runs.get("Verify and generate integrated iOS project", "")

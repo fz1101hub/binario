@@ -27,14 +27,23 @@ targets:
         - BinarioKitTests
     settings:
       base:
+        SDKROOT: iphoneos
+        SUPPORTED_PLATFORMS: "iphoneos iphonesimulator"
         PRODUCT_BUNDLE_IDENTIFIER: it.binario.ios
         PRODUCT_NAME: Binario
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: Binario
+        INFOPLIST_KEY_CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+        INFOPLIST_KEY_CFBundleShortVersionString: "$(MARKETING_VERSION)"
         INFOPLIST_KEY_CFBundleDevelopmentRegion: it
         INFOPLIST_KEY_CFBundleLocalizations: [it, en, de, fr, es]
         TARGETED_DEVICE_FAMILY: "1"
         SUPPORTS_MACCATALYST: NO
+      configs:
+        debug:
+          ONLY_ACTIVE_ARCH: YES
+          ENABLE_TESTABILITY: YES
+          SWIFT_OPTIMIZATION_LEVEL: -Onone
     dependencies:
       - package: BinarioKit
       - target: BinarioWatch
@@ -48,6 +57,17 @@ targets:
     dependencies:
       - target: Binario
       - package: BinarioKit
+    settings:
+      base:
+        PRODUCT_NAME: BinarioAppTests
+        SDKROOT: iphoneos
+        SUPPORTED_PLATFORMS: "iphoneos iphonesimulator"
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Binario.app/Binario"
+        BUNDLE_LOADER: "$(TEST_HOST)"
+      configs:
+        debug:
+          ONLY_ACTIVE_ARCH: YES
+          SWIFT_OPTIMIZATION_LEVEL: -Onone
   BinarioKitTests:
     type: bundle.unit-test
     platform: iOS
@@ -58,6 +78,15 @@ targets:
         buildPhase: resources
     dependencies:
       - package: BinarioKit
+    settings:
+      base:
+        PRODUCT_NAME: BinarioKitTests
+        SDKROOT: iphoneos
+        SUPPORTED_PLATFORMS: "iphoneos iphonesimulator"
+      configs:
+        debug:
+          ONLY_ACTIVE_ARCH: YES
+          SWIFT_OPTIMIZATION_LEVEL: -Onone
   BinarioWatch:
     type: application
     platform: watchOS
@@ -70,10 +99,15 @@ targets:
         - BinarioWatchTests
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: it.binario.watch
+        SDKROOT: watchos
+        SUPPORTED_PLATFORMS: "watchos watchsimulator"
+        PRODUCT_NAME: BinarioWatch
+        PRODUCT_BUNDLE_IDENTIFIER: it.binario.ios.watchkitapp
         INFOPLIST_KEY_CFBundleDisplayName: Binario
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_WKApplication: YES
+        INFOPLIST_KEY_CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+        INFOPLIST_KEY_CFBundleShortVersionString: "$(MARKETING_VERSION)"
         INFOPLIST_KEY_WKWatchOnly: NO
         INFOPLIST_KEY_WKCompanionAppBundleIdentifier: it.binario.ios
     entitlements:
@@ -91,6 +125,13 @@ targets:
         buildPhase: resources
     dependencies:
       - target: BinarioWatch
+    settings:
+      base:
+        SDKROOT: watchos
+        SUPPORTED_PLATFORMS: "watchos watchsimulator"
+        PRODUCT_NAME: BinarioWatchTests
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/BinarioWatch.app/BinarioWatch"
+        BUNDLE_LOADER: "$(TEST_HOST)"
   BinarioWatchWidgets:
     type: app-extension
     platform: watchOS
@@ -100,9 +141,12 @@ targets:
       - path: ../apple-watch/Shared
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: it.binario.watch.widgets
+        SDKROOT: watchos
+        SUPPORTED_PLATFORMS: "watchos watchsimulator"
+        PRODUCT_NAME: BinarioWatchWidgets
+        PRODUCT_BUNDLE_IDENTIFIER: it.binario.ios.watchkitapp.widgets
         INFOPLIST_KEY_CFBundleDisplayName: Binario
-        GENERATE_INFOPLIST_FILE: YES
-        INFOPLIST_KEY_NSExtension_NSExtensionPointIdentifier: com.apple.widgetkit-extension
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: ../apple-watch/BinarioWatchWidgets/Info.plist
     entitlements:
       path: ../apple-watch/BinarioWatch/BinarioWatch.entitlements

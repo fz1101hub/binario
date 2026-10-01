@@ -300,7 +300,8 @@ final class BinarioAppTests: XCTestCase {
             id: SavedRoute.routeIdentifier(origin: origin, destination: destination),
             name: "Roma Termini → Napoli Centrale",
             origin: origin,
-            destination: destination
+            destination: destination,
+            createdAt: Date(timeIntervalSince1970: 1_700_000_000)
         )
     }
 

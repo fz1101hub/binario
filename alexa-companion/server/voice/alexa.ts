@@ -1,4 +1,4 @@
-import express, { type Express, type Request, type Response } from "express";
+import express, { type Express, type NextFunction, type Request, type Response } from "express";
 import { parse as parseCookieHeader } from "cookie";
 import { ExpressAdapter } from "ask-sdk-express-adapter";
 import {
@@ -344,6 +344,13 @@ function oauthError(res: Response, status: number, error: string) {
   return res.status(status).json({ error });
 }
 
+// Express 4 does not forward rejected async route handlers to its error layer.
+function safeOAuthRoute(handler: (req: Request, res: Response) => Promise<unknown>) {
+  return (req: Request, res: Response, next: NextFunction) => {
+    void Promise.resolve().then(() => handler(req, res)).catch(next);
+  };
+}
+
 function oauthHtmlError(
   req: Request,
   res: Response,
@@ -429,7 +436,7 @@ export function registerAlexaRoutes(app: Express) {
   // GET only shows an authenticated consent page: the code is created by the
   // CSRF-protected POST below, so a cross-site navigation cannot link a
   // victim's Binario account to someone else's Alexa.
-  app.get("/api/alexa/oauth/authorize", async (req, res) => {
+  app.get("/api/alexa/oauth/authorize", safeOAuthRoute(async (req, res) => {
     if (!isAlexaConfigured())
       return oauthHtmlError(req, res, 503, "notConfigured");
     const request = parseAuthorizationRequest(
@@ -469,12 +476,12 @@ export function registerAlexaRoutes(app: Express) {
           token: consentToken(nonce, user.id),
         })
       );
-  });
+  }));
 
   app.post(
     "/api/alexa/oauth/authorize",
     express.urlencoded({ extended: false }),
-    async (req, res) => {
+    safeOAuthRoute(async (req, res) => {
       if (!isAlexaConfigured())
         return oauthError(res, 503, "alexa_not_configured");
       const body = (req.body ?? {}) as Record<string, unknown>;
@@ -512,14 +519,14 @@ export function registerAlexaRoutes(app: Express) {
         code: rawCode,
         state: request.state,
       });
-    }
+    })
   );
 
   app.post(
     "/api/alexa/oauth/token",
     express.urlencoded({ extended: false }),
     express.json({ strict: true }),
-    async (req, res) => {
+    safeOAuthRoute(async (req, res) => {
       if (!isAlexaConfigured())
         return oauthError(res, 503, "alexa_not_configured");
       const clientId =
@@ -591,7 +598,7 @@ export function registerAlexaRoutes(app: Express) {
       }
 
       return oauthError(res, 400, "unsupported_grant_type");
-    }
+    })
   );
 
   // The Alexa SDK installs its own raw-text parser and verifies Signature-256,
@@ -605,4 +612,14 @@ export function registerAlexaRoutes(app: Express) {
     },
     ...new ExpressAdapter(createAlexaSkill(), true, true).getRequestHandlers()
   );
+
+  app.use("/api/alexa/oauth", (error: unknown, _req: Request, res: Response, next: NextFunction) => {
+    if (res.headersSent) return next(error);
+    // Keep database errors and tokens out of the response and logs.
+    const status = typeof error === "object" && error !== null && "status" in error &&
+      typeof error.status === "number" && error.status >= 400 && error.status < 500
+      ? error.status : 500;
+    res.setHeader("Cache-Control", "no-store");
+    return oauthError(res, status, status === 500 ? "server_error" : "invalid_request");
+  });
 }

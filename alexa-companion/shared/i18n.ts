@@ -294,10 +294,11 @@ export function resolveLocale(
 ): SupportedLocale {
   for (const candidate of candidates(value)) {
     const normalized = candidate.replaceAll("_", "-").toLowerCase();
-    const exact = exactLocaleMap[normalized];
-    if (exact) return exact;
+    if (Object.hasOwn(exactLocaleMap, normalized))
+      return exactLocaleMap[normalized];
     const language = normalized.split("-", 1)[0] as Language;
-    if (language in languageDefaultLocale) return languageDefaultLocale[language];
+    if (Object.hasOwn(languageDefaultLocale, language))
+      return languageDefaultLocale[language];
   }
   return fallback;
 }

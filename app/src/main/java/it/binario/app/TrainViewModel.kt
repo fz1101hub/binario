@@ -53,7 +53,7 @@ data class RecentRoute(val origin: Station, val destination: Station) {
 
 data class ServiceMonitor(val number: String, val label: String)
 
-class TrainViewModel(
+class TrainViewModel @JvmOverloads constructor(
     application: Application,
     /** Widget configuration needs local catalog/search only, never startup refresh or Wear publication. */
     private val enableStartupEffects: Boolean = true

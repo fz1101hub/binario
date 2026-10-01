@@ -173,7 +173,9 @@ public struct BundledGTFSScheduleInstaller: Sendable {
             includingPropertiesForKeys: nil,
             options: [.skipsHiddenFiles]
         )) ?? []
-        for url in urls where url != keeping
+        // Enumerated Foundation URLs may compare unequal to a constructed URL
+        // for the same path on Darwin; never delete the database just published.
+        for url in urls where url.standardizedFileURL.path != keeping.standardizedFileURL.path
             && url.lastPathComponent.hasPrefix("binario-gtfs-")
             && url.pathExtension == "sqlite" {
             try? FileManager.default.removeItem(at: url)

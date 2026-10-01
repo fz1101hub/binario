@@ -4,6 +4,7 @@ from __future__ import annotations
 import importlib.util
 import tempfile
 import unittest
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -36,6 +37,23 @@ class VerifyGradleDependencyMetadataTest(unittest.TestCase):
 
     def test_repository_metadata_is_strict_and_complete(self) -> None:
         self.assertEqual([], POLICY.verify_metadata())
+
+    def test_remotely_resolved_bom_and_parent_metadata_have_reviewed_sha256(self) -> None:
+        root = ET.fromstring(self.original)
+        ns = {"v": "https://schema.gradle.org/dependency-verification"}
+        expected = {
+            ("com.google.guava", "guava-parent", "33.3.1-jre", "guava-parent-33.3.1-jre.pom"): "55441db27e8869dfefe053059bdf478bdc7e95585642bf391f0023345fd56287",
+            ("org.junit", "junit-bom", "5.10.2", "junit-bom-5.10.2.module"): "de23b114b3e4119a8fe6eb17bed5a3852816698bace67071579d6d927ebb080a",
+            ("org.jetbrains.kotlinx", "kotlinx-coroutines-bom", "1.6.4", "kotlinx-coroutines-bom-1.6.4.pom"): "ab2614855fba66aa8a42514dbe3d5a884315ffe1ed63f5932e710a8006245ce1",
+        }
+        for (group, name, version, artifact), digest in expected.items():
+            with self.subTest(artifact=artifact):
+                matches = [item for item in root.findall(".//v:component", ns)
+                           if (item.get("group"), item.get("name"), item.get("version")) == (group, name, version)]
+                self.assertEqual(1, len(matches))
+                artifacts = [item for item in matches[0].findall("v:artifact", ns) if item.get("name") == artifact]
+                self.assertEqual(1, len(artifacts))
+                self.assertEqual(digest, artifacts[0].find("v:sha256", ns).get("value"))
 
     def test_repository_wrappers_pin_reviewed_distributions(self) -> None:
         for profile, (path, expected_url, expected_sha256) in POLICY.WRAPPER_EXPECTATIONS.items():
@@ -83,6 +101,28 @@ class VerifyGradleDependencyMetadataTest(unittest.TestCase):
                 required_components=POLICY.COMPANION_REQUIRED_COMPONENTS,
             ),
         )
+
+    def test_companion_included_build_metadata_has_reviewed_checksums(self) -> None:
+        root = ET.parse(POLICY.COMPANION_METADATA).getroot()
+        ns = {"v": "https://schema.gradle.org/dependency-verification"}
+        expected = {
+            ("org.jetbrains.kotlinx", "kotlinx-coroutines-bom", "1.8.0", "kotlinx-coroutines-bom-1.8.0.pom"): "1239e9dbe1397cd5971342956b2511bc3ace7b641842e4372a088dcfa8b9ad55",
+            ("com.google.guava", "guava-parent", "33.3.1-jre", "guava-parent-33.3.1-jre.pom"): "55441db27e8869dfefe053059bdf478bdc7e95585642bf391f0023345fd56287",
+            ("com.google.guava", "guava-parent", "33.4.8-jre", "guava-parent-33.4.8-jre.pom"): "a03c5199a1be14443df7fd40ba8673b1c6aae04deef6688ce7d573ea489e3a20",
+            ("com.google.guava", "guava-parent", "33.5.0-android", "guava-parent-33.5.0-android.pom"): "bd77cc2dad91912f1a3bffa7bf7e576ecf57992f58f9afa132fd61ef250baadf",
+            ("org.junit", "junit-bom", "5.10.2", "junit-bom-5.10.2.module"): "de23b114b3e4119a8fe6eb17bed5a3852816698bace67071579d6d927ebb080a",
+            ("org.junit", "junit-bom", "5.13.1", "junit-bom-5.13.1.module"): "33c07ab9724790a6e5859ba07d69117ac530439724545a81c4179e3272c75de8",
+            ("org.junit", "junit-bom", "5.8.2", "junit-bom-5.8.2.pom"): "836069ca9e8ee3c56e48376222da291263f137bd3fd16d84fdd47efcc3f286e2",
+            ("org.junit", "junit-bom", "5.9.3", "junit-bom-5.9.3.module"): "b401fd25901e582a524aa5343c4b39e28bc56e24961c1069bf2b4bbfcee46b93",
+        }
+        for (group, name, version, artifact), digest in expected.items():
+            with self.subTest(artifact=artifact):
+                components = [item for item in root.findall(".//v:component", ns)
+                              if (item.get("group"), item.get("name"), item.get("version")) == (group, name, version)]
+                self.assertEqual(1, len(components))
+                artifacts = [item for item in components[0].findall("v:artifact", ns) if item.get("name") == artifact]
+                self.assertEqual(1, len(artifacts))
+                self.assertEqual(digest, artifacts[0].find("v:sha256", ns).get("value"))
 
     def test_rejects_disabled_metadata_verification(self) -> None:
         problems = self.verify_mutation(
