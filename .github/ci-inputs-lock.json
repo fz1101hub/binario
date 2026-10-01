@@ -147,7 +147,7 @@
     },
     {
       "name": "Build and test integrated iPhone and Watch app",
-      "sha256": "f8db8e569f5769c94f394e78138ce03ec2edc44d2580623e4273f38b9a56383e",
+      "sha256": "26d24d4828c7dbdc01d28827575d4225492d34e877793e13538cdfb0ded1a3ef",
       "workingDirectory": "ios"
     }
   ]

@@ -28,6 +28,10 @@ class AppleWatchProjectTests(unittest.TestCase):
         settings = application["settings"]["base"]
         self.assertTrue(settings["INFOPLIST_KEY_WKApplication"])
         self.assertTrue(settings["INFOPLIST_KEY_WKWatchOnly"])
+        self.assertEqual(1, self.project["settings"]["base"]["CURRENT_PROJECT_VERSION"])
+        self.assertEqual("0.1.0", self.project["settings"]["base"]["MARKETING_VERSION"])
+        self.assertEqual("$(CURRENT_PROJECT_VERSION)", settings["INFOPLIST_KEY_CFBundleVersion"])
+        self.assertEqual("$(MARKETING_VERSION)", settings["INFOPLIST_KEY_CFBundleShortVersionString"])
         self.assertEqual({"debug": {"ENABLE_TESTABILITY": True}}, application["settings"]["configs"])
         self.assertNotIn("INFOPLIST_KEY_WKCompanionAppBundleIdentifier", settings)
         self.assertTrue(all(target["platform"] == "watchOS" for target in self.targets.values()))

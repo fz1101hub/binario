@@ -4,6 +4,8 @@ options:
 settings:
   base:
     SWIFT_VERSION: 5.10
+    MARKETING_VERSION: 0.1.0
+    CURRENT_PROJECT_VERSION: 1
 targets:
   BinarioWatch:
     type: application
@@ -18,6 +20,8 @@ targets:
         PRODUCT_NAME: BinarioWatch
         PRODUCT_BUNDLE_IDENTIFIER: it.binario.watch
         INFOPLIST_KEY_CFBundleDisplayName: Binario
+        INFOPLIST_KEY_CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+        INFOPLIST_KEY_CFBundleShortVersionString: "$(MARKETING_VERSION)"
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_WKApplication: YES
         INFOPLIST_KEY_WKWatchOnly: YES

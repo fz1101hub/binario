@@ -31,6 +31,8 @@ targets:
         PRODUCT_NAME: Binario
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: Binario
+        INFOPLIST_KEY_CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+        INFOPLIST_KEY_CFBundleShortVersionString: "$(MARKETING_VERSION)"
         INFOPLIST_KEY_CFBundleDevelopmentRegion: it
         INFOPLIST_KEY_CFBundleLocalizations: [it, en, de, fr, es]
         TARGETED_DEVICE_FAMILY: "1"
@@ -75,6 +77,8 @@ targets:
         INFOPLIST_KEY_CFBundleDisplayName: Binario
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_WKApplication: YES
+        INFOPLIST_KEY_CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+        INFOPLIST_KEY_CFBundleShortVersionString: "$(MARKETING_VERSION)"
         INFOPLIST_KEY_WKWatchOnly: NO
         INFOPLIST_KEY_WKCompanionAppBundleIdentifier: it.binario.ios
     entitlements:

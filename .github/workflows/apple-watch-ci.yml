@@ -214,6 +214,13 @@ jobs:
         run: |
           xcodebuild \
             -project Binario.xcodeproj \
+            -target Binario \
+            -sdk iphonesimulator \
+            -configuration Debug \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+          xcodebuild \
+            -project Binario.xcodeproj \
             -scheme Binario \
             -destination "id=${{ steps.ios-simulator.outputs.udid }}" \
             CODE_SIGNING_ALLOWED=NO \
