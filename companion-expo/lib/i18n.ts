@@ -2528,12 +2528,12 @@ export function resolveCompanionLocale(input?: string | readonly string[] | null
     if (typeof preference !== "string") continue;
     const normalized = preference.trim().replace(/_/g, "-");
     if (!normalized) continue;
-    try {
-      const language = new Intl.Locale(normalized).language.toLowerCase();
-      if ((supportedLocales as readonly string[]).includes(language)) return language as CompanionLocale;
-    } catch {
-      // Ignore malformed preferences and continue to the next BCP-47 candidate.
-    }
+    // Hermes may omit Intl.Locale. Only the primary language is needed here,
+    // but reject malformed subtags instead of accepting arbitrary prefixes.
+    const match = /^([A-Za-z]{2,8})(?:-[A-Za-z0-9]{1,8})*$/.exec(normalized);
+    if (!match) continue;
+    const language = match[1].toLowerCase();
+    if ((supportedLocales as readonly string[]).includes(language)) return language as CompanionLocale;
   }
   return "it";
 }
