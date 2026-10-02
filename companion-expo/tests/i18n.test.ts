@@ -93,6 +93,22 @@ describe("cataloghi localizzati Companion", () => {
     expect(resolveCompanionLocale(null)).toBe("it");
   });
 
+  it("seleziona tutte le lingue anche su Hermes senza Intl.Locale", () => {
+    const descriptor = Object.getOwnPropertyDescriptor(Intl, "Locale");
+    try {
+      Object.defineProperty(Intl, "Locale", { configurable: true, value: undefined });
+      for (const locale of supportedLocales) {
+        expect(resolveCompanionLocale(`${locale}-IT`), locale).toBe(locale);
+      }
+      expect(resolveCompanionLocale(["en--US", "de-", "pt-BR", "fr-CA"])).toBe("fr");
+      expect(resolveCompanionLocale(["es-%%", "es_MX"])).toBe("es");
+      expect(resolveCompanionLocale(["en--US", "pt-BR"])).toBe("it");
+    } finally {
+      if (descriptor) Object.defineProperty(Intl, "Locale", descriptor);
+      else Reflect.deleteProperty(Intl, "Locale");
+    }
+  });
+
   it("mantiene italiano come fallback deterministico delle API di libreria", () => {
     expect(createTranslator()("hub.planJourney")).toBe(
       translate("it", "hub.planJourney"),
