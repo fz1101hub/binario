@@ -157,6 +157,7 @@ class EmbeddedGtfsRouteAdapter(
                         .thenBy { it.service.number }
                 )
                 .distinctBy { item -> serviceIdentity(item.service) }
+                .let(::withoutCrossPackDuplicates)
                 .take(24)
                 .sortedWith(compareBy<SourcedService> { it.service.scheduledDepartureDateTime }.thenBy { it.service.number })
         }
@@ -221,6 +222,24 @@ class EmbeddedGtfsRouteAdapter(
         normalize(service.origin),
         normalize(service.destination)
     ).joinToString("|")
+
+    /**
+     * Cross-border trains are published by more than one pack under unrelated numbers (Trenord
+     * "S10 - 25107", Swiss OTD "12878") and with different stop spellings, so [serviceIdentity]
+     * cannot pair them. Between the same requested stations, two services from different packs
+     * leaving and arriving at the same minute are the same train: only the first, which the sort
+     * puts on the preferred source, is kept. Services of the same pack are never merged here.
+     */
+    private fun withoutCrossPackDuplicates(items: List<SourcedService>): List<SourcedService> {
+        val firstSourceByTimes = HashMap<String, SourceId>()
+        return items.filter { item ->
+            val service = item.service
+            val departure = service.scheduledDepartureDateTime ?: return@filter true
+            val arrival = service.stops.lastOrNull()?.scheduled ?: return@filter true
+            val source = firstSourceByTimes.getOrPut("$departure|$arrival") { item.sourceId }
+            source == item.sourceId
+        }
+    }
 
     private fun sourcePreference(sourceId: SourceId, operatorName: String?): Int =
         RailSourceSelectionPolicy.score(

@@ -100,6 +100,32 @@ class EmbeddedGtfsRouteAdapterTest {
     }
 
     @Test
+    fun `deduplica il treno transfrontaliero pubblicato con numeri diversi da Trenord e Svizzera`() = runBlocking {
+        val trenordPack = EmbeddedGtfsPack(SourceId("lombardia-trenord-gtfs"), "gtfs/trenord.zip")
+        val swissPack = EmbeddedGtfsPack(SourceId("ch-otd-gtfs"), "gtfs/swiss.zip")
+        val feeds = mapOf(
+            trenordPack.assetPath to feed(tripId = "T1", tripNumber = "S10 - 25107", departure = "08:05:00"),
+            swissPack.assetPath to feed(tripId = "CH1", tripNumber = "12878", departure = "08:05:00")
+        )
+        val adapter = EmbeddedGtfsRouteAdapter(
+            openAsset = { path -> ByteArrayInputStream(requireNotNull(feeds[path])) },
+            packs = listOf(trenordPack, swissPack),
+            clock = { 1_000L }
+        )
+
+        val result = adapter.loadRoute(
+            route,
+            Direction.OUTBOUND,
+            JourneyQuery(LocalDate.of(2026, 9, 4), LocalTime.of(8, 0))
+        )
+
+        assertTrue(result is DataResult.Success)
+        val services = (result as DataResult.Success).snapshot.services
+        assertEquals(1, services.size)
+        assertTrue(services.single().id.startsWith("ch-otd-gtfs:"))
+    }
+
+    @Test
     fun `non restituisce partenze precedenti all ora richiesta`() = runBlocking {
         val result = adapter(feed()).loadRoute(
             route,
