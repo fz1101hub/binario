@@ -42,6 +42,35 @@ class RfiProgrammedStationBoardAdapterTest {
     }
 
     @Test
+    fun `catalogue hubs resolve by railway code even when the display name differs from RFI`() = kotlinx.coroutines.runBlocking {
+        val requestedUrls = mutableListOf<String>()
+        val adapter = RfiProgrammedStationBoardAdapter(
+            fetcher = RfiProgrammedTimetableFetcher { url -> requestedUrls += url; fixture() },
+            clock = clock
+        )
+        listOf(
+            Triple("curated:S06421", "Firenze S. M. Novella", "S06421") to "Id=1325",
+            Triple("curated:S11119", "Bari ( Tutte Le Stazioni )", "S11119") to "Id=550",
+            Triple("curated:S11781", "Reggio Di Calabria Centrale", "S11781") to "Id=116",
+            Triple("curated:S07113", "Ancona ( Tutte Le Stazioni )", "S07113") to "Id=408"
+        ).forEach { (station, expectedId) ->
+            val (id, name, code) = station
+            val result = adapter.getStationBoard(
+                StationBoardRequest(
+                    stationId = StationId(id),
+                    stationName = name,
+                    railwayCode = code,
+                    from = now,
+                    to = now.plusSeconds(3600),
+                    kind = BoardKind.DEPARTURES
+                )
+            )
+            assertTrue("$name: $result", result is ProviderResult.Success)
+            assertTrue("$name -> ${requestedUrls.lastOrNull()}", requestedUrls.last().contains(expectedId))
+        }
+    }
+
+    @Test
     fun `unmapped station does not perform network request`() = kotlinx.coroutines.runBlocking {
         var calls = 0
         val adapter = RfiProgrammedStationBoardAdapter(

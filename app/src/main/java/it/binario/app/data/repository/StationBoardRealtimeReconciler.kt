@@ -103,6 +103,8 @@ class StationBoardRealtimeReconciler(
         val request = StationBoardRequest(
             stationId = StationId(origin.id),
             stationName = origin.name,
+            stationAliases = origin.aliases,
+            railwayCode = origin.railwayCode,
             from = requested.minusMinutes(30).toInstant(),
             to = requested.plusHours(8).toInstant(),
             kind = BoardKind.DEPARTURES

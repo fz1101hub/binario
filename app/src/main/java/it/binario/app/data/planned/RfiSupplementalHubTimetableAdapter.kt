@@ -10,7 +10,7 @@ import it.binario.app.data.RouteSnapshot
 import it.binario.app.data.SavedRoute
 import it.binario.app.data.Station
 import it.binario.app.data.TrainDataSource
-import it.binario.app.data.matchesPublishedName
+import it.binario.app.data.isNamedBy
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -108,11 +108,11 @@ class RfiSupplementalHubTimetableAdapter(
                 .filter { ItalianRailServiceCalendar.runsOnDate(it.periodicity, query.serviceDate) }
                 .filter { timeMinutes(it.service.scheduledDeparture) >= requestedMinutes }
                 .filter { parsedService ->
-                    parsedService.service.stops.drop(1).any { destination.matchesPublishedName(it.station) } ||
-                        destination.matchesPublishedName(parsedService.service.destination)
+                    parsedService.service.stops.drop(1).any { destination.isNamedBy(it.station) } ||
+                        destination.isNamedBy(parsedService.service.destination)
                 }
                 .map { parsedService ->
-                    val targetIndex = parsedService.service.stops.indexOfFirst { destination.matchesPublishedName(it.station) }
+                    val targetIndex = parsedService.service.stops.indexOfFirst { destination.isNamedBy(it.station) }
                     parsedService.service.copy(
                         stops = if (targetIndex >= 1) parsedService.service.stops.take(targetIndex + 1) else parsedService.service.stops,
                         scheduledDepartureDateTime = LocalDateTime.of(
@@ -175,14 +175,25 @@ class RfiSupplementalHubTimetableAdapter(
 internal object SupplementalRfiProgrammedStationIds {
     private val byName = mapOf(
         key("Reggio Calabria Centrale") to 116,
+        key("Reggio di Calabria Centrale") to 116,
         key("Ancona") to 408,
+        key("Ancona (Tutte le stazioni)") to 408,
         key("Palermo Centrale") to 1878,
         key("Catania Centrale") to 959,
         key("Lecce") to 1436
     )
 
+    private val byRailwayCode = mapOf(
+        "S11781" to 116, // Reggio di Calabria Centrale
+        "S07113" to 408, // Ancona
+        "S12002" to 1878, // Palermo Centrale
+        "S12332" to 959, // Catania Centrale
+        "S11145" to 1436 // Lecce
+    )
+
     fun timetableId(station: Station): Int? =
-        (listOf(station.name) + station.aliases).firstNotNullOfOrNull { byName[key(it)] }
+        station.railwayCode?.let(byRailwayCode::get)
+            ?: (listOf(station.name) + station.aliases).firstNotNullOfOrNull { byName[key(it)] }
 
     private fun key(value: String): String = value
         .uppercase(Locale.ROOT)

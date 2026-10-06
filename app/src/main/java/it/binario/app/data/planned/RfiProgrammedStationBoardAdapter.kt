@@ -96,7 +96,9 @@ class RfiProgrammedStationBoardAdapter(
         val station = Station(
             id = request.stationId.value,
             name = stationName,
-            city = stationName
+            city = stationName,
+            railwayCode = request.railwayCode,
+            aliases = request.stationAliases
         )
         val timetableId = RfiProgrammedStationIds.timetableId(station)
             ?: SupplementalRfiProgrammedStationIds.timetableId(station)

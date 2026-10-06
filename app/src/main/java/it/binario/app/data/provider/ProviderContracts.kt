@@ -155,6 +155,9 @@ data class TrainRunRequest(
 data class StationBoardRequest(
     val stationId: StationId,
     val stationName: String? = null,
+    /** Catalogue aliases and railway code, so providers can resolve the same station the user picked. */
+    val stationAliases: List<String> = emptyList(),
+    val railwayCode: String? = null,
     val from: Instant,
     val to: Instant,
     val kind: it.binario.app.data.core.BoardKind

@@ -53,6 +53,8 @@ class StationBoardAggregateService(
         val request = StationBoardRequest(
             stationId = StationId(station.id),
             stationName = station.name,
+            stationAliases = station.aliases,
+            railwayCode = station.railwayCode,
             from = from.minus(Duration.ofMinutes(10)),
             to = from.plus(window),
             kind = kind

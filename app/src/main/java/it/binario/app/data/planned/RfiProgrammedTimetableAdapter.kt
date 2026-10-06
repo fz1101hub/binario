@@ -15,7 +15,7 @@ import it.binario.app.data.TrainCategory
 import it.binario.app.data.TrainDataSource
 import it.binario.app.data.TrainService
 import it.binario.app.data.TrainStop
-import it.binario.app.data.matchesPublishedName
+import it.binario.app.data.isNamedBy
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -121,7 +121,30 @@ internal object RfiProgrammedStationIds {
         key("Salerno") to 2434
     )
 
+    /**
+     * Curated railway codes are the stable key: catalogue names differ from RFI labels
+     * ("Firenze S. M. Novella", "Bari ( Tutte Le Stazioni )") and the board path used to
+     * receive only the display name (Opus audit N-M4).
+     */
+    private val byRailwayCode = mapOf(
+        "S08409" to 2247, // Roma Termini
+        "S08217" to 2217, // Roma Tiburtina
+        "S08406" to 2211, // Roma Ostiense
+        "S01700" to 1603, // Milano Centrale
+        "S09218" to 1757, // Napoli Centrale
+        "S05043" to 635, // Bologna Centrale
+        "S06421" to 1325, // Firenze S. M. Novella
+        "S00219" to 2672, // Torino Porta Nuova
+        "S00035" to 25350269, // Torino Porta Susa
+        "S02593" to 2796, // Venezia S. Lucia
+        "S02430" to 2812, // Verona Porta Nuova
+        "S04700" to 248, // Genova Piazza Principe
+        "S11119" to 550, // Bari Centrale
+        "S09818" to 2434 // Salerno
+    )
+
     fun timetableId(station: Station): Int? = byLegacyId[station.id]
+        ?: station.railwayCode?.let(byRailwayCode::get)
         ?: (listOf(station.name) + station.aliases).firstNotNullOfOrNull { byName[key(it)] }
 
     private fun key(value: String): String = value
@@ -215,11 +238,11 @@ class RfiProgrammedTimetableAdapter(
                 .filter { service -> runsOnDate(service.periodicity, query.serviceDate) }
                 .filter { service -> timeMinutes(service.service.scheduledDeparture) >= requestedMinutes }
                 .filter { service ->
-                    service.service.stops.drop(1).any { destination.matchesPublishedName(it.station) } ||
-                        destination.matchesPublishedName(service.service.destination)
+                    service.service.stops.drop(1).any { destination.isNamedBy(it.station) } ||
+                        destination.isNamedBy(service.service.destination)
                 }
                 .map { parsedService ->
-                    val targetIndex = parsedService.service.stops.indexOfFirst { destination.matchesPublishedName(it.station) }
+                    val targetIndex = parsedService.service.stops.indexOfFirst { destination.isNamedBy(it.station) }
                     val relevantStops = if (targetIndex >= 1) {
                         parsedService.service.stops.take(targetIndex + 1)
                     } else {
@@ -329,7 +352,7 @@ class RfiProgrammedTimetableAdapter(
                 successiveStops.forEach { stop ->
                     add(TrainStop(stop.station, stop.time, stop.time, null, 0, completed = false))
                 }
-            } else if (!origin.matchesPublishedName(finalDestination)) {
+            } else if (!origin.isNamedBy(finalDestination)) {
                 add(TrainStop(finalDestination, "—", "—", null, 0, completed = false))
             }
         }
