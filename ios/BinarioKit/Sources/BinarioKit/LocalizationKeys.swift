@@ -11,6 +11,7 @@ public enum BinarioLocalizationKeys {
         "schedule.loading", "schedule.unavailable",
         "result.title", "result.unavailable.title", "result.unavailable.body",
         "result.unavailable.disclosure", "result.provider_error.title", "result.provider_error.body",
+        "result.expired.title", "result.expired.body",
         "result.source_label", "result.programmed.disclosure",
         "saved.title", "saved.empty.title", "saved.empty.body", "saved.local_only",
         "saved.delete_all", "saved.storage_error", "saved.limit_error",

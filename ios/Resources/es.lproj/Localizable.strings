@@ -23,6 +23,8 @@
 "result.unavailable.body" = "No hay ningún servicio programado disponible para esta ruta y hora en las fuentes incluidas.";
 "result.provider_error.title" = "Horarios no disponibles";
 "result.provider_error.body" = "El índice de horarios no es válido o no se puede leer. Vuelve a intentarlo después de actualizar la app.";
+"result.expired.title" = "Horarios caducados";
+"result.expired.body" = "Los horarios incluidos para esta ruta ya no cubren la fecha elegida: actualiza la app para obtener horarios más recientes.";
 "result.unavailable.disclosure" = "No se crean trenes de demostración: horarios, retrasos, andenes, cancelaciones y estados permanecen ausentes.";
 "result.source_label" = "Fuente:";
 "result.programmed.disclosure" = "Horarios programados estáticos. No son datos en tiempo real.";

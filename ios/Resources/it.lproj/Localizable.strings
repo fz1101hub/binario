@@ -23,6 +23,8 @@
 "result.unavailable.body" = "Nessun servizio programmato è disponibile per questa tratta e questo orario nelle fonti incluse.";
 "result.provider_error.title" = "Orari non disponibili";
 "result.provider_error.body" = "L’indice degli orari non è valido o non può essere letto. Riprova dopo aver aggiornato l’app.";
+"result.expired.title" = "Orari scaduti";
+"result.expired.body" = "Gli orari inclusi per questa tratta non coprono più la data scelta: aggiorna l’app per orari più recenti.";
 "result.unavailable.disclosure" = "Non vengono creati treni dimostrativi: orari, ritardi, binari, soppressioni e stati restano assenti.";
 "result.source_label" = "Fonte:";
 "result.programmed.disclosure" = "Orari programmati statici. Non sono dati in tempo reale.";

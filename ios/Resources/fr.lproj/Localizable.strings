@@ -23,6 +23,8 @@
 "result.unavailable.body" = "Aucun service programmé n’est disponible pour ce trajet et cet horaire dans les sources incluses.";
 "result.provider_error.title" = "Horaires indisponibles";
 "result.provider_error.body" = "L’index des horaires est invalide ou illisible. Réessayez après avoir mis l’app à jour.";
+"result.expired.title" = "Horaires expirés";
+"result.expired.body" = "Les horaires inclus pour ce trajet ne couvrent plus la date choisie : mettez l’app à jour pour des horaires plus récents.";
 "result.unavailable.disclosure" = "Aucun train de démonstration n’est créé : horaires, retards, voies, suppressions et états restent absents.";
 "result.source_label" = "Source :";
 "result.programmed.disclosure" = "Horaires programmés statiques. Il ne s’agit pas de données en temps réel.";

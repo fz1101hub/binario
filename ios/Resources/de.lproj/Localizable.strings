@@ -23,6 +23,8 @@
 "result.unavailable.body" = "Für diese Verbindung und Uhrzeit ist in den enthaltenen Quellen keine planmäßige Fahrt verfügbar.";
 "result.provider_error.title" = "Fahrplan nicht verfügbar";
 "result.provider_error.body" = "Der Fahrplanindex ist ungültig oder kann nicht gelesen werden. Versuchen Sie es nach einem App-Update erneut.";
+"result.expired.title" = "Fahrplan abgelaufen";
+"result.expired.body" = "Die enthaltenen Fahrpläne für diese Verbindung decken das gewählte Datum nicht mehr ab: Aktualisieren Sie die App für neuere Fahrpläne.";
 "result.unavailable.disclosure" = "Es werden keine Demo-Züge erzeugt: Fahrzeiten, Verspätungen, Gleise, Ausfälle und Statusangaben bleiben leer.";
 "result.source_label" = "Quelle:";
 "result.programmed.disclosure" = "Statische Fahrplandaten. Dies sind keine Echtzeitdaten.";

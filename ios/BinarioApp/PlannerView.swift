@@ -192,7 +192,8 @@ private struct UnavailableResultView: View {
         Section("result.title") {
             ContentUnavailableView(
                 titleKey,
-                systemImage: reason == .noJourney ? "calendar.badge.exclamationmark" : "exclamationmark.triangle",
+                systemImage: reason == .providerInvalid || reason == .noAuthorizedProvider
+                    ? "exclamationmark.triangle" : "calendar.badge.exclamationmark",
                 description: Text(bodyKey)
             )
             Text("result.unavailable.disclosure")
@@ -202,10 +203,18 @@ private struct UnavailableResultView: View {
     }
 
     private var titleKey: LocalizedStringKey {
-        reason == .noJourney ? "result.unavailable.title" : "result.provider_error.title"
+        switch reason {
+        case .noJourney: "result.unavailable.title"
+        case .scheduleExpired: "result.expired.title"
+        case .noAuthorizedProvider, .providerInvalid: "result.provider_error.title"
+        }
     }
 
     private var bodyKey: LocalizedStringKey {
-        reason == .noJourney ? "result.unavailable.body" : "result.provider_error.body"
+        switch reason {
+        case .noJourney: "result.unavailable.body"
+        case .scheduleExpired: "result.expired.body"
+        case .noAuthorizedProvider, .providerInvalid: "result.provider_error.body"
+        }
     }
 }

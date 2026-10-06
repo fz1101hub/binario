@@ -129,6 +129,8 @@ public struct JourneySnapshot: Codable, Equatable, Sendable {
 
 public enum JourneyUnavailableReason: String, Codable, Equatable, Sendable {
     case noJourney
+    /// The included timetables that serve the route end before the requested day.
+    case scheduleExpired
     case noAuthorizedProvider
     case providerInvalid
 }

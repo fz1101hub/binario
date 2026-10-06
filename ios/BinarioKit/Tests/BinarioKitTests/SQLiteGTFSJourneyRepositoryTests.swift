@@ -30,6 +30,17 @@ final class SQLiteGTFSJourneyRepositoryTests: XCTestCase {
         XCTAssertEqual(snapshot.services[0].delayMinutes, 0)
     }
 
+    func testDateAfterTheLastServiceDayReportsAnExpiredSchedule() async throws {
+        let fixture = try Fixture()
+        try fixture.insertTrip(id: 1, externalID: "direct", number: "FR 1", originSequence: 1, destinationSequence: 2, seconds: 10 * 3_600)
+
+        let expired = await fixture.repository.journeys(for: try query("2025-01-15 09:00"))
+        let withinValidity = await fixture.repository.journeys(for: try query("2024-04-02 09:00"))
+
+        XCTAssertEqual(expired, .unavailable(.scheduleExpired))
+        XCTAssertEqual(withinValidity, .unavailable(.noJourney))
+    }
+
     func testReverseStopSequenceIsRejected() async throws {
         let fixture = try Fixture()
         try fixture.insertTrip(id: 1, externalID: "reverse", originSequence: 2, destinationSequence: 1, seconds: 10 * 3_600)

@@ -51,6 +51,8 @@ public struct SQLiteGTFSJourneyRepository: JourneyRepository, Sendable {
             return .available(try Self.load(databaseURL: databaseURL, query: query))
         } catch SQLiteGTFSFailure.noRoute {
             return .unavailable(.noJourney)
+        } catch SQLiteGTFSFailure.scheduleExpired {
+            return .unavailable(.scheduleExpired)
         } catch {
             return .unavailable(.providerInvalid)
         }
@@ -99,7 +101,18 @@ public struct SQLiteGTFSJourneyRepository: JourneyRepository, Sendable {
                 guard !result.contains(where: { $0.id == candidate.id }) else { return }
                 result.append(candidate)
             }
-        guard !selected.isEmpty else { throw SQLiteGTFSFailure.noRoute }
+        guard !selected.isEmpty else {
+            if try packsEnded(
+                before: query.departure,
+                originIDs: originIDs,
+                destinationIDs: destinationIDs,
+                timeZone: timeZones.first ?? TimeZone(identifier: "Europe/Rome") ?? .current,
+                database: database
+            ) {
+                throw SQLiteGTFSFailure.scheduleExpired
+            }
+            throw SQLiteGTFSFailure.noRoute
+        }
 
         let sourceLabel = boundedSourceLabel(selected.map(\.attribution).uniqued())
         guard !sourceLabel.isEmpty else { throw SQLiteGTFSFailure.invalidData }
@@ -193,6 +206,34 @@ public struct SQLiteGTFSJourneyRepository: JourneyRepository, Sendable {
             return exactCode.map(\.id)
         }
         return matches.map(\.id)
+    }
+
+    /// True when every pack that holds both stations has its last service day before the
+    /// requested day: the user needs an app update, not a different search.
+    private static func packsEnded(
+        before departure: Date,
+        originIDs: [Int64],
+        destinationIDs: [Int64],
+        timeZone: TimeZone,
+        database: SQLiteDatabase
+    ) throws -> Bool {
+        let originPlaceholders = Array(repeating: "?", count: originIDs.count).joined(separator: ",")
+        let destinationPlaceholders = Array(repeating: "?", count: destinationIDs.count).joined(separator: ",")
+        let statement = try database.statement(
+            """
+            SELECT COALESCE(MAX(p.last_service_date), 0) FROM pack AS p
+            WHERE p.id IN (SELECT pack_id FROM stop WHERE id IN (\(originPlaceholders)))
+              AND p.id IN (SELECT pack_id FROM stop WHERE id IN (\(destinationPlaceholders)))
+            """
+        )
+        var binding: Int32 = 1
+        for id in originIDs { try statement.bind(id, at: binding); binding += 1 }
+        for id in destinationIDs { try statement.bind(id, at: binding); binding += 1 }
+        guard try statement.step() else { return false }
+        let lastServiceDate = statement.int(at: 0)
+        guard lastServiceDate > 0 else { return false }
+        let requestedDay = Int64(encodedDate(departure, calendar: serviceCalendar(timeZone: timeZone)))
+        return lastServiceDate < requestedDay
     }
 
     private static func queryCandidates(
@@ -394,7 +435,7 @@ public struct SQLiteGTFSJourneyRepository: JourneyRepository, Sendable {
 }
 
 private enum SQLiteGTFSFailure: Error {
-    case invalidDatabase, invalidSchema, invalidData, limitExceeded, noRoute
+    case invalidDatabase, invalidSchema, invalidData, limitExceeded, noRoute, scheduleExpired
 }
 
 private final class SQLiteDatabase {

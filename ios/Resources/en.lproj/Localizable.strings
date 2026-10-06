@@ -23,6 +23,8 @@
 "result.unavailable.body" = "No scheduled service is available for this route and time in the included sources.";
 "result.provider_error.title" = "Timetable unavailable";
 "result.provider_error.body" = "The timetable index is invalid or cannot be read. Try again after updating the app.";
+"result.expired.title" = "Timetable expired";
+"result.expired.body" = "The timetables included for this route no longer cover the chosen date: update the app for newer timetables.";
 "result.unavailable.disclosure" = "No demonstration trains are created: schedules, delays, platforms, cancellations, and statuses remain absent.";
 "result.source_label" = "Source:";
 "result.programmed.disclosure" = "Static scheduled times. This is not realtime data.";
