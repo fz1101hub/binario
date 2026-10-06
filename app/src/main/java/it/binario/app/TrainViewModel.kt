@@ -208,6 +208,12 @@ class TrainViewModel @JvmOverloads constructor(
                     // could overwrite an ad-hoc route selected while the catalog was loading.
                     activeRoute = savedRoutes.firstOrNull { it.id == activeRoute.id }
                         ?: canonicalRoute(activeRoute)
+                    // Before the catalogue loads only remembered stations can decode the saved
+                    // routes, so the stored active route may not have resolved at construction.
+                    // Resolve it again unless the user already activated a route meanwhile.
+                    if (!hasActiveRoute && refreshRequestId == 0L) {
+                        activeRoute = routeStore.activeRoute(savedRoutes)
+                    }
                     favouriteStations = stationPreferences.favourites(stations)
                     stationMonitors = personalTravelStore.stationMonitors(stations)
                 }
@@ -817,16 +823,24 @@ class TrainViewModel @JvmOverloads constructor(
         mobilityPreferencesStore.save(value)
     }
 
-    fun exportLocalBackup(): String = LocalDataBackupCodec.encode(
-        LocalDataBackup(
-            routes = savedRoutes,
-            favouriteStationIds = stationPreferences.favouriteIds(),
-            monitoredServices = monitoredServices,
-            stationMonitors = stationMonitors,
-            commuterAlerts = commuterAlerts,
-            mobilityPreferences = mobilityPreferences
+    fun exportLocalBackup(): String {
+        val favouriteIds = stationPreferences.favouriteIds()
+        val monitoredStationIds = stationMonitors.mapTo(hashSetOf()) { it.stationId }
+        return LocalDataBackupCodec.encode(
+            LocalDataBackup(
+                routes = savedRoutes,
+                favouriteStationIds = favouriteIds,
+                monitoredServices = monitoredServices,
+                stationMonitors = stationMonitors,
+                commuterAlerts = commuterAlerts,
+                mobilityPreferences = mobilityPreferences,
+                stations = (
+                    savedRoutes.flatMap { listOf(it.outwardOrigin, it.outwardDestination) } +
+                        stations.filter { it.id in favouriteIds || it.id in monitoredStationIds }
+                    ).distinctBy { it.id }
+            )
         )
-    )
+    }
 
     fun decodeLocalBackup(raw: String): LocalBackupResult = LocalDataBackupCodec.decode(raw, stations)
 
@@ -837,6 +851,7 @@ class TrainViewModel @JvmOverloads constructor(
         is LocalBackupResult.Success -> {
             clearReturnJourneyState()
             val backup = result.backup
+            restoreBackupStations(backup)
             savedRoutes = pinnedFirst(routeStore.replaceRoutes(backup.routes))
             activeRoute = savedRoutes.firstOrNull() ?: unconfiguredRoute()
             clearSelectedService()
@@ -933,14 +948,34 @@ class TrainViewModel @JvmOverloads constructor(
 
     private fun rememberStation(station: Station): Station {
         val existing = stations.firstOrNull { it.id == station.id } ?: station
-        val saved = customStationStore.remember(existing)
+        val saved = customStationStore.remember(existing, retainedStationIds())
+        addKnownStations(saved)
+        return saved.firstOrNull { it.id == existing.id } ?: existing
+    }
+
+    /** Stations only the backup knows must be remembered, or its routes vanish at the next start. */
+    private fun restoreBackupStations(backup: LocalDataBackup) {
+        if (backup.stations.isEmpty()) return
+        val retained = retainedStationIds() +
+            backup.routes.flatMap { listOf(it.outwardOrigin.id, it.outwardDestination.id) } +
+            backup.favouriteStationIds + backup.stationMonitors.map { it.stationId }
+        addKnownStations(customStationStore.rememberAll(backup.stations, retained))
+    }
+
+    private fun addKnownStations(candidates: List<Station>) {
         val knownIds = stations.mapTo(hashSetOf()) { it.id }
-        val additions = saved.filter { knownIds.add(it.id) }
+        val additions = candidates.filter { knownIds.add(it.id) }
         if (additions.isNotEmpty()) {
             stations = stations + additions
             stationAutocomplete = StationAutocompleteEngine(stations)
         }
-        return saved.firstOrNull { it.id == existing.id } ?: existing
+    }
+
+    private fun retainedStationIds(): Set<String> = buildSet {
+        savedRoutes.forEach { add(it.outwardOrigin.id); add(it.outwardDestination.id) }
+        if (hasActiveRoute) { add(activeRoute.outwardOrigin.id); add(activeRoute.outwardDestination.id) }
+        addAll(stationPreferences.favouriteIds())
+        stationMonitors.forEach { add(it.stationId) }
     }
 }
 

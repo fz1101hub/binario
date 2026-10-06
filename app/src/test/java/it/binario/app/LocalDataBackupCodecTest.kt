@@ -27,6 +27,50 @@ class LocalDataBackupCodecTest {
     }
 
     @Test
+    fun `free text stations travel inside the backup with their routes favourites and monitors`() {
+        val roma = Station("roma", "Roma Termini", "Roma")
+        val borgo = stationFromFreeText("Borgo San Dalmazzo")!!
+        val cuneo = stationFromFreeText("Cuneo Gesso")!!
+        val backup = LocalDataBackup(
+            routes = listOf(
+                SavedRoute("free", "Valle", borgo, cuneo),
+                SavedRoute("mixed", "Roma", roma, borgo)
+            ),
+            favouriteStationIds = setOf(cuneo.id),
+            monitoredServices = emptyList(),
+            stationMonitors = listOf(StationMonitor(borgo.id, borgo.name, StationMonitorMode.BOTH)),
+            commuterAlerts = emptyList(),
+            mobilityPreferences = MobilityPreferences(),
+            stations = listOf(borgo, cuneo, roma)
+        )
+
+        // The importing device knows only the catalogue, not the stations typed on the old one.
+        val result = LocalDataBackupCodec.decode(LocalDataBackupCodec.encode(backup), listOf(roma))
+
+        assertTrue(result is LocalBackupResult.Success)
+        val restored = (result as LocalBackupResult.Success).backup
+        assertEquals(listOf("free", "mixed"), restored.routes.map { it.id })
+        assertEquals(borgo, restored.routes.first().outwardOrigin)
+        assertEquals(setOf(cuneo.id), restored.favouriteStationIds)
+        assertEquals(listOf(borgo.id), restored.stationMonitors.map { it.stationId })
+        assertEquals(setOf(borgo.id, cuneo.id), restored.stations.map { it.id }.toSet())
+    }
+
+    @Test
+    fun `catalogue station wins over the record embedded in the backup`() {
+        val roma = Station("roma", "Roma Termini", "Roma", railwayCode = "S08409")
+        val torino = Station("torino", "Torino Porta Nuova", "Torino")
+        val raw = """{"schemaVersion":2,"kind":"binario-local-backup","routes":[{"id":"route","name":"R","originId":"roma","destinationId":"torino","pinned":false}],"stations":[{"id":"roma","name":"Roma vecchia","city":"Roma"},{"id":"torino","name":"Torino Porta Nuova","city":"Torino","latitude":"x"}]}"""
+
+        val result = LocalDataBackupCodec.decode(raw, listOf(roma))
+
+        assertTrue(result is LocalBackupResult.Success)
+        val restored = (result as LocalBackupResult.Success).backup
+        assertEquals(roma, restored.routes.single().outwardOrigin)
+        assertEquals(listOf(torino), restored.stations)
+    }
+
+    @Test
     fun `version one backup remains importable without a manual order`() {
         val roma = Station("roma", "Roma Termini", "Roma")
         val torino = Station("torino", "Torino Porta Nuova", "Torino")

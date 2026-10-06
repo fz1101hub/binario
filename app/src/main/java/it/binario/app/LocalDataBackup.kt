@@ -15,7 +15,13 @@ data class LocalDataBackup(
     val monitoredServices: List<ServiceMonitor>,
     val stationMonitors: List<StationMonitor>,
     val commuterAlerts: List<CommuterAlert>,
-    val mobilityPreferences: MobilityPreferences
+    val mobilityPreferences: MobilityPreferences,
+    /**
+     * Full records of the stations the backup refers to. On export, every station used by a
+     * route, favourite or monitor; on import, those that the current catalogue does not know
+     * (free-text and search-index stations), which the app must remember again.
+     */
+    val stations: List<Station> = emptyList()
 )
 
 sealed interface LocalBackupResult {
@@ -27,6 +33,9 @@ object LocalDataBackupCodec {
     const val MIME_TYPE = "application/json"
     const val MAX_BYTES = 1024 * 1024
     private const val VERSION = 2
+    private const val MAX_STATIONS = 128
+    private const val MAX_STATION_TEXT = 200
+    private const val MAX_STATION_ALIASES = 32
 
     fun encode(backup: LocalDataBackup): String = JSONObject().apply {
         put("schemaVersion", VERSION)
@@ -40,6 +49,8 @@ object LocalDataBackupCodec {
         put("commuterAlerts", JSONArray().apply { backup.commuterAlerts.forEach { alert -> put(JSONObject().apply {
             put("id", alert.id); put("routeLabel", alert.routeLabel); put("stationName", alert.stationName); put("time", alert.time); put("leadMinutes", alert.leadMinutes); put("repeat", alert.repeat.name); put("quietHoursEnabled", alert.quietHoursEnabled); put("enabled", alert.enabled)
         }) } })
+        // Optional since schema 2: older readers ignore it and still resolve catalogue ids.
+        put("stations", JSONArray().apply { backup.stations.distinctBy { it.id }.take(MAX_STATIONS).forEach { station -> put(encodeStation(station)) } })
         put("mobility", JSONObject().apply { put("maxChanges", backup.mobilityPreferences.maxChanges); put("transferMarginMinutes", backup.mobilityPreferences.transferMarginMinutes); put("stepFreePreferred", backup.mobilityPreferences.stepFreePreferred); put("compactTimetablePreferred", backup.mobilityPreferences.compactTimetablePreferred) })
     }.toString(2)
 
@@ -66,9 +77,17 @@ object LocalDataBackupCodec {
         require(root.optString("kind") == "binario-local-backup") { "Il file non è un backup Binario." }
         val schemaVersion = root.optInt("schemaVersion", -1)
         require(schemaVersion in 1..VERSION) { "Versione backup non supportata." }
+        val embeddedStations = root.optJSONArray("stations").orEmpty()
+            .mapNotNull { (it as? JSONObject)?.let(::decodeStation) }
+            .distinctBy { it.id }
+            .take(MAX_STATIONS)
+            .associateBy { it.id }
+        val restoredStations = LinkedHashMap<String, Station>()
         fun station(stationId: String): Station? {
             val currentId = LegacyBackupStationIds.currentId(schemaVersion, stationId)
-            return stations.firstOrNull { it.id == currentId }
+            stations.firstOrNull { it.id == currentId }?.let { return it }
+            // Stations outside the catalogue (free text, search index) only exist in the backup.
+            return embeddedStations[stationId]?.also { restoredStations[it.id] = it }
         }
         val routes = root.optJSONArray("routes").orEmpty().mapNotNull { item ->
             val objectValue = item as? JSONObject ?: return@mapNotNull null
@@ -106,8 +125,43 @@ object LocalDataBackupCodec {
             }.getOrNull()
         } }.filterNotNull().filter { it.id.isNotBlank() && it.stationName.isNotBlank() }.distinctBy { it.id }.take(24)
         val mobility = root.optJSONObject("mobility")?.let { value -> MobilityPreferences(value.optInt("maxChanges", -1).takeIf { it >= 0 }, value.optInt("transferMarginMinutes", 10).coerceIn(0, 45), value.optBoolean("stepFreePreferred"), value.optBoolean("compactTimetablePreferred")) } ?: MobilityPreferences()
-        LocalDataBackup(routes, favouriteIds, services, stationMonitors, alerts, mobility)
+        val usedIds = routes.flatMap { listOf(it.outwardOrigin.id, it.outwardDestination.id) }.toSet() +
+            favouriteIds + stationMonitors.map { it.stationId }
+        LocalDataBackup(routes, favouriteIds, services, stationMonitors, alerts, mobility, restoredStations.values.filter { it.id in usedIds })
     }.fold({ LocalBackupResult.Success(it) }, { LocalBackupResult.Failure(it.message ?: "Backup non leggibile.") })
+
+    private fun encodeStation(station: Station): JSONObject = JSONObject().apply {
+        put("id", station.id)
+        put("name", station.name)
+        put("city", station.city)
+        station.region?.let { put("region", it) }
+        station.railwayCode?.let { put("railwayCode", it) }
+        station.trenitaliaLocationId?.let { put("trenitaliaLocationId", it) }
+        if (station.aliases.isNotEmpty()) put("aliases", JSONArray(station.aliases.take(MAX_STATION_ALIASES)))
+        station.latitude?.let { put("latitude", it) }
+        station.longitude?.let { put("longitude", it) }
+    }
+
+    private fun decodeStation(value: JSONObject): Station? {
+        fun text(key: String): String? = value.optString(key, "").trim().takeIf { it.isNotEmpty() && it.length <= MAX_STATION_TEXT }
+        val id = text("id") ?: return null
+        val name = text("name") ?: return null
+        fun coordinate(key: String, limit: Double): Double? =
+            if (value.has(key)) value.optDouble(key).takeIf { !it.isNaN() && it in -limit..limit } else null
+        return Station(
+            id = id,
+            name = name,
+            city = text("city") ?: name,
+            region = text("region"),
+            railwayCode = text("railwayCode"),
+            trenitaliaLocationId = text("trenitaliaLocationId"),
+            aliases = value.optJSONArray("aliases").orEmpty()
+                .mapNotNull { (it as? String)?.trim()?.takeIf { alias -> alias.isNotEmpty() && alias.length <= MAX_STATION_TEXT } }
+                .take(MAX_STATION_ALIASES),
+            latitude = coordinate("latitude", 90.0),
+            longitude = coordinate("longitude", 180.0)
+        )
+    }
 
     private fun isReservedRouteId(id: String): Boolean =
         id == UNCONFIGURED_ROUTE_ID || id.startsWith("search-")

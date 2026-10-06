@@ -14,10 +14,16 @@ class CustomStationStore(context: Context) {
         .split(";")
         .mapNotNull(::decode)
 
-    fun remember(station: Station): List<Station> {
-        val updated = (listOf(station) + stations())
-            .distinctBy { it.id }
-            .take(MAX_STATIONS)
+    /**
+     * Puts [newStations] first in the recently used list. Stations in [retainedIds] (used by a
+     * saved route, favourite or monitor) are never evicted by the size cap: routes are stored by
+     * station id, and a station missing at the next start would silently drop them.
+     */
+    fun remember(station: Station, retainedIds: Set<String> = emptySet()): List<Station> =
+        rememberAll(listOf(station), retainedIds)
+
+    fun rememberAll(newStations: List<Station>, retainedIds: Set<String> = emptySet()): List<Station> {
+        val updated = boundedRecentStations(newStations + stations(), retainedIds + newStations.map { it.id }, MAX_STATIONS)
         preferences.edit { putString(KEY_STATIONS, updated.joinToString(";") { encode(it) }) }
         return updated
     }
@@ -66,6 +72,17 @@ class CustomStationStore(context: Context) {
         const val KEY_STATIONS = "stations"
         const val MAX_STATIONS = 96
         const val ALIAS_SEPARATOR = "\u001F"
+    }
+}
+
+/**
+ * Most recent first, without duplicates, at most [limit] stations except those in [retainedIds],
+ * which are always kept. The cap applies to the stations nothing else refers to.
+ */
+internal fun boundedRecentStations(stations: List<Station>, retainedIds: Set<String>, limit: Int): List<Station> {
+    var unretained = 0
+    return stations.distinctBy { it.id }.filter { station ->
+        station.id in retainedIds || unretained++ < limit
     }
 }
 
