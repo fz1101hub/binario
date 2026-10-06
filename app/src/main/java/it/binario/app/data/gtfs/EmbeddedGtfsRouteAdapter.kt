@@ -433,10 +433,15 @@ class EmbeddedGtfsRouteAdapter(
             val selected = ArrayList<TrainService>()
             // GTFS usa date di servizio: venerdì 25:10 è sabato 01:10. Due
             // giorni precedenti coprono anche continuazioni oltre 48:00.
+            // The next service day is searched too, bounded to a few hours after the request, so a
+            // late-evening search still finds the first trains after midnight (Opus audit N-M12).
+            val nextServiceDate = query.serviceDate.plusDays(1)
+            val nextDayHorizon = query.requestedAt.plusHours(NEXT_DAY_LOOK_AHEAD_HOURS)
             val serviceDates = listOf(
                 query.serviceDate,
                 query.serviceDate.minusDays(1),
-                query.serviceDate.minusDays(2)
+                query.serviceDate.minusDays(2),
+                nextServiceDate
             )
             serviceDates.forEach { serviceDate ->
                 trips.forEachDeclared { tripIndex, trip ->
@@ -446,6 +451,7 @@ class EmbeddedGtfsRouteAdapter(
                     if (departureMinutes < 0) return@forEachDeclared
                     val scheduledDateTime = serviceDate.atStartOfDay().plusMinutes(departureMinutes.toLong())
                     if (scheduledDateTime.isBefore(query.requestedAt)) return@forEachDeclared
+                    if (serviceDate == nextServiceDate && !scheduledDateTime.isBefore(nextDayHorizon)) return@forEachDeclared
                     if (selected.size >= limits.maxServicesPerPack && isAfterCurrentWorst(scheduledDateTime, trip, selected)) {
                         return@forEachDeclared
                     }
@@ -811,6 +817,7 @@ class EmbeddedGtfsRouteAdapter(
     private companion object {
         private const val MISSING_TIME = Int.MIN_VALUE
         private const val INVALID_TIME = Int.MIN_VALUE + 1
+        private const val NEXT_DAY_LOOK_AHEAD_HOURS = 6L
         private val RAIL_ROUTE_TYPES = setOf("2", "100", "101", "102", "103", "104", "105", "106", "107", "108", "109")
         private val compactIndexTables = setOf("agency.txt", "stops.txt", "routes.txt", "trips.txt", "stop_times.txt", "calendar.txt", "calendar_dates.txt")
         private val compactIndexLimits = GtfsCompactIndexLimits()

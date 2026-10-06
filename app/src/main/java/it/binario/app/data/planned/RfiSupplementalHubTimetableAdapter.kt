@@ -105,8 +105,13 @@ class RfiSupplementalHubTimetableAdapter(
         val services = withContext(parsingDispatcher) {
             val requestedMinutes = query.departureTime.hour * 60 + query.departureTime.minute
             parsed.services.asSequence()
-                .filter { ItalianRailServiceCalendar.runsOnDate(it.periodicity, query.serviceDate) }
-                .filter { timeMinutes(it.service.scheduledDeparture) >= requestedMinutes }
+                .mapNotNull { service ->
+                    ItalianRailServiceCalendar.rfiDepartureDate(
+                        timeMinutes(service.service.scheduledDeparture),
+                        query.serviceDate,
+                        requestedMinutes
+                    )?.takeIf { departureDate -> ItalianRailServiceCalendar.runsOnDate(service.periodicity, departureDate) }?.let { service.copy(departureDate = it) }
+                }
                 .filter { parsedService ->
                     parsedService.service.stops.drop(1).any { destination.isNamedBy(it.station) } ||
                         destination.isNamedBy(parsedService.service.destination)
@@ -116,7 +121,7 @@ class RfiSupplementalHubTimetableAdapter(
                     parsedService.service.copy(
                         stops = if (targetIndex >= 1) parsedService.service.stops.take(targetIndex + 1) else parsedService.service.stops,
                         scheduledDepartureDateTime = LocalDateTime.of(
-                            query.serviceDate,
+                            parsedService.departureDate ?: query.serviceDate,
                             parseTime(parsedService.service.scheduledDeparture) ?: query.departureTime
                         )
                     )

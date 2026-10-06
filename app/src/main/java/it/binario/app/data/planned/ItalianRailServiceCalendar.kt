@@ -152,6 +152,28 @@ internal object ItalianRailServiceCalendar {
         return days
     }
 
+    /**
+     * Departure date of a row in an RFI station timetable, which lists one day 00:00-23:59.
+     * Rows at or after the requested time leave on the requested date; earlier rows are the next
+     * day's early trains and count only within [lookAheadMinutes] after midnight wrap-around, so
+     * a late-evening search still shows the 00:05 "last train home" (Opus audit N-M12).
+     */
+    fun rfiDepartureDate(
+        rowMinutes: Int,
+        serviceDate: LocalDate,
+        requestedMinutes: Int,
+        lookAheadMinutes: Int = NEXT_DAY_LOOK_AHEAD_MINUTES
+    ): LocalDate? {
+        // An unreadable time keeps the previous behaviour: listed on the requested date.
+        if (rowMinutes == Int.MAX_VALUE) return serviceDate
+        if (rowMinutes !in 0 until MINUTES_PER_DAY) return null
+        if (rowMinutes >= requestedMinutes) return serviceDate
+        return serviceDate.plusDays(1).takeIf { rowMinutes + MINUTES_PER_DAY - requestedMinutes <= lookAheadMinutes }
+    }
+
+    const val NEXT_DAY_LOOK_AHEAD_MINUTES = 6 * 60
+    private const val MINUTES_PER_DAY = 24 * 60
+
     /** Meeus/Jones/Butcher Gregorian computus, valid for every supported timetable year. */
     private fun easterSunday(year: Int): LocalDate {
         val a = year % 19

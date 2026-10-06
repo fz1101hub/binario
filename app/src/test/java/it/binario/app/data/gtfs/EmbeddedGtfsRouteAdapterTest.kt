@@ -256,6 +256,28 @@ class EmbeddedGtfsRouteAdapterTest {
     }
 
     @Test
+    fun `una ricerca serale trova i primi treni dopo mezzanotte del giorno successivo`() = runBlocking {
+        val adapter = adapter(
+            feed(
+                stopTimes = "trip_id,arrival_time,departure_time,stop_id,stop_sequence\n" +
+                    "T1,00:02:00,00:02:00,MI,1\n" +
+                    "T1,00:20:00,00:21:00,MO,2\n" +
+                    "T1,00:45:00,00:45:00,CO,3\n"
+            )
+        )
+        // Thursday 23:30: the Friday 00:02 departure is 32 minutes away.
+        val late = adapter.loadRoute(route, Direction.OUTBOUND, JourneyQuery(LocalDate.of(2026, 9, 3), LocalTime.of(23, 30)))
+        assertTrue(late.toString(), late is DataResult.Success)
+        assertEquals(
+            LocalDateTime.of(2026, 9, 4, 0, 2),
+            (late as DataResult.Success).snapshot.services.single().scheduledDepartureDateTime
+        )
+        // Thursday 08:00: Friday 00:02 is beyond the look-ahead and is not offered as "next".
+        val morning = adapter.loadRoute(route, Direction.OUTBOUND, JourneyQuery(LocalDate.of(2026, 9, 3), LocalTime.of(8, 0)))
+        assertTrue(morning is DataResult.Failure)
+    }
+
+    @Test
     fun `non inventa corse quando la tratta non esiste`() = runBlocking {
         val missing = route.copy(outwardDestination = Station("bergamo", "Bergamo", "Bergamo"))
 

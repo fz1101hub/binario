@@ -70,4 +70,16 @@ class ItalianRailServiceCalendarTest {
         // Day tokens ignore holidays: Easter Monday is still a Monday.
         assertEquals(listOf(true, true, true, false, false, false, true, true), week("LU MA ME"))
     }
+
+    @Test
+    fun `late searches include the next day's early RFI rows within the look-ahead`() {
+        val thursday = LocalDate.of(2026, 10, 8)
+        val requested = 23 * 60 + 30
+        assertEquals(thursday, ItalianRailServiceCalendar.rfiDepartureDate(23 * 60 + 45, thursday, requested))
+        assertEquals(thursday.plusDays(1), ItalianRailServiceCalendar.rfiDepartureDate(5, thursday, requested))
+        assertEquals(null, ItalianRailServiceCalendar.rfiDepartureDate(8 * 60, thursday, requested))
+        // A morning search never pulls the next day's early trains.
+        assertEquals(null, ItalianRailServiceCalendar.rfiDepartureDate(5, thursday, 8 * 60))
+        assertEquals(thursday, ItalianRailServiceCalendar.rfiDepartureDate(Int.MAX_VALUE, thursday, requested))
+    }
 }

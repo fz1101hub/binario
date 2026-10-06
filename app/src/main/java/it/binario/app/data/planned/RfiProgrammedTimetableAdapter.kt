@@ -235,8 +235,13 @@ class RfiProgrammedTimetableAdapter(
             onParsing?.invoke()
             val requestedMinutes = query.departureTime.hour * 60 + query.departureTime.minute
             parsed.services.asSequence()
-                .filter { service -> runsOnDate(service.periodicity, query.serviceDate) }
-                .filter { service -> timeMinutes(service.service.scheduledDeparture) >= requestedMinutes }
+                .mapNotNull { service ->
+                    ItalianRailServiceCalendar.rfiDepartureDate(
+                        timeMinutes(service.service.scheduledDeparture),
+                        query.serviceDate,
+                        requestedMinutes
+                    )?.takeIf { departureDate -> runsOnDate(service.periodicity, departureDate) }?.let { service.copy(departureDate = it) }
+                }
                 .filter { service ->
                     service.service.stops.drop(1).any { destination.isNamedBy(it.station) } ||
                         destination.isNamedBy(service.service.destination)
@@ -251,7 +256,7 @@ class RfiProgrammedTimetableAdapter(
                     parsedService.service.copy(
                         stops = relevantStops,
                         scheduledDepartureDateTime = LocalDateTime.of(
-                            query.serviceDate,
+                            parsedService.departureDate ?: query.serviceDate,
                             parseTime(parsedService.service.scheduledDeparture) ?: query.departureTime
                         )
                     )
@@ -493,7 +498,9 @@ class RfiProgrammedTimetableAdapter(
 
     internal data class ParsedService(
         val service: TrainService,
-        val periodicity: String
+        val periodicity: String,
+        /** Set while filtering: the date this row departs for the current query (next day after midnight). */
+        val departureDate: LocalDate? = null
     )
 
     internal data class TimetableValidity(val start: LocalDate, val end: LocalDate)
