@@ -256,6 +256,52 @@ final class BinarioAppTests: XCTestCase {
         XCTAssertEqual(model.catalogState, .unavailable)
     }
 
+    func testOnlySearchesForNowAreCurrentForTheWatch() throws {
+        let now = Date(timeIntervalSince1970: 1_790_000_000)
+        func query(_ offset: TimeInterval) throws -> JourneyQuery {
+            try JourneyQuery(
+                origin: StationIdentity(id: "S08409", name: "Roma Termini"),
+                destination: StationIdentity(id: "S01700", name: "Milano Centrale"),
+                departure: now.addingTimeInterval(offset)
+            )
+        }
+
+        XCTAssertTrue(AppModel.isCurrent(try query(0), now: now))
+        XCTAssertTrue(AppModel.isCurrent(try query(-20 * 60), now: now))
+        XCTAssertFalse(AppModel.isCurrent(try query(2 * 60 * 60), now: now))
+        XCTAssertFalse(AppModel.isCurrent(try query(3 * 24 * 60 * 60), now: now))
+    }
+
+    func testWatchSnapshotExpiresWithTheLastListedTrain() throws {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = try XCTUnwrap(TimeZone(identifier: "Europe/Rome"))
+        let departure = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 10, day: 6, hour: 23, minute: 40)))
+        let query = try JourneyQuery(
+            origin: StationIdentity(id: "S08409", name: "Roma Termini"),
+            destination: StationIdentity(id: "S01700", name: "Milano Centrale"),
+            departure: departure
+        )
+        let fixture = fixtureSnapshot(query: query, serviceNumber: "FR 1")
+        let services = [
+            fixture.services[0].withDeparture("23:50"),
+            fixture.services[0].withDeparture("00:10")
+        ]
+        let journey = JourneySnapshot(
+            query: query,
+            generatedAt: departure,
+            expiresAt: departure.addingTimeInterval(12 * 60 * 60),
+            operationalState: fixture.operationalState,
+            provenance: fixture.provenance,
+            services: services
+        )
+
+        let expiry = AppModel.watchExpiry(for: journey, services: services, now: departure)
+
+        // 00:10 is the next day; the snapshot lasts two minutes past that departure, not 12 hours.
+        let lastDeparture = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 10, day: 7, hour: 0, minute: 10)))
+        XCTAssertEqual(expiry, lastDeparture.addingTimeInterval(2 * 60))
+    }
+
     func testVersionFormatterReadsBundleValuesAndIsInjectable() throws {
         let formatter = StubVersionFormatter(value: "9.8.7 (654)")
         XCTAssertEqual(formatter.displayVersion(bundle: .main), "9.8.7 (654)")
@@ -424,5 +470,22 @@ private final class FakeAppSession: WatchSnapshotSession {
     func completeActivation(_ state: WatchSessionActivationState) {
         activationState = state
         activationHandler?(state)
+    }
+}
+
+private extension TrainService {
+    func withDeparture(_ time: String) -> TrainService {
+        TrainService(
+            id: id + time,
+            number: number,
+            operatorName: operatorName,
+            category: category,
+            destination: destination,
+            scheduledDeparture: time,
+            expectedDeparture: time,
+            status: status,
+            platform: platform,
+            delayMinutes: delayMinutes
+        )
     }
 }

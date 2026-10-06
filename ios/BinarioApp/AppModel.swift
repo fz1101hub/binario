@@ -245,7 +245,7 @@ final class AppModel: ObservableObject {
     }
 
     private func publishUnavailableSnapshot(for query: JourneyQuery) {
-        guard watchSharingEnabled, let watchPublisher else { return }
+        guard watchSharingEnabled, let watchPublisher, Self.isCurrent(query, now: Date()) else { return }
         let now = Int64(Date().timeIntervalSince1970 * 1_000)
         let snapshot = WearSnapshotV1.unavailable(
             routeId: SavedRoute.routeIdentifier(origin: query.origin, destination: query.destination),
@@ -263,10 +263,12 @@ final class AppModel: ObservableObject {
     }
 
     private func publishAvailableSnapshot(_ journey: JourneySnapshot) {
-        guard watchSharingEnabled, let watchPublisher else { return }
-        let now = Int64(Date().timeIntervalSince1970 * 1_000)
+        let nowDate = Date()
+        guard watchSharingEnabled, let watchPublisher, Self.isCurrent(journey.query, now: nowDate) else { return }
+        let now = Int64(nowDate.timeIntervalSince1970 * 1_000)
+        let services = Array(journey.services.prefix(WearSnapshotV1.maximumServices))
         let generatedAt = Int64(journey.generatedAt.timeIntervalSince1970 * 1_000)
-        let expiresAt = Int64(journey.expiresAt.timeIntervalSince1970 * 1_000)
+        let expiresAt = Int64(Self.watchExpiry(for: journey, services: services, now: nowDate).timeIntervalSince1970 * 1_000)
         let snapshot = WearSnapshotV1(
             generatedAtEpochMillis: generatedAt,
             expiresAtEpochMillis: expiresAt,
@@ -290,7 +292,7 @@ final class AppModel: ObservableObject {
             ),
             direction: journey.query.direction,
             notice: String(localized: "watch.notice.programmed"),
-            services: journey.services.prefix(WearSnapshotV1.maximumServices).map { service in
+            services: services.map { service in
                 WearServiceV1(
                     number: service.number,
                     operatorName: service.operatorName,
@@ -309,6 +311,45 @@ final class AppModel: ObservableObject {
         } catch {
             watchSyncStatus = watchPublisher.status
         }
+    }
+
+    /// The Watch presents its snapshot as the next trains of the route, so only a search for
+    /// now is published: a search for another day or time stays on the iPhone. The window
+    /// tolerates a planner opened a while ago with its default time.
+    static func isCurrent(_ query: JourneyQuery, now: Date) -> Bool {
+        let offset = query.departure.timeIntervalSince(now)
+        return offset >= -30 * 60 && offset <= 15 * 60
+    }
+
+    /// The snapshot must not outlive the last train it lists; the repository's 12-hour expiry
+    /// would keep departed trains on the Watch as upcoming ones.
+    static func watchExpiry(for journey: JourneySnapshot, services: [TrainService], now: Date) -> Date {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "Europe/Rome") ?? .current
+        var cursor = journey.query.departure.addingTimeInterval(-60)
+        var lastDeparture: Date?
+        for service in services {
+            guard let departure = nextOccurrence(of: service.expectedDeparture, after: cursor, calendar: calendar) else {
+                return journey.expiresAt
+            }
+            lastDeparture = departure
+            // Two trains at the same minute must resolve to the same day.
+            cursor = departure.addingTimeInterval(-1)
+        }
+        guard let lastDeparture else { return journey.expiresAt }
+        return min(journey.expiresAt, max(now.addingTimeInterval(60), lastDeparture.addingTimeInterval(2 * 60)))
+    }
+
+    private static func nextOccurrence(of time: String, after start: Date, calendar: Calendar) -> Date? {
+        let parts = time.split(separator: ":")
+        guard parts.count == 2,
+              let hour = Int(parts[0]), let minute = Int(parts[1]),
+              (0..<24).contains(hour), (0..<60).contains(minute) else { return nil }
+        return calendar.nextDate(
+            after: start,
+            matching: DateComponents(hour: hour, minute: minute),
+            matchingPolicy: .nextTime
+        )
     }
 }
 
