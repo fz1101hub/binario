@@ -4,6 +4,8 @@ import it.binario.app.data.JourneyQuery
 import java.time.LocalDate
 import java.time.LocalTime
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class JourneyQueryStateTest {
@@ -31,5 +33,27 @@ class JourneyQueryStateTest {
         state.selectPlanned(plannedDate, plannedTime)
 
         assertEquals(JourneyQuery(plannedDate, plannedTime), state.value)
+    }
+
+    @Test
+    fun `current query follows the clock instead of the time the state was created`() {
+        var now = current
+        val state = JourneyQueryState { now }
+
+        now = JourneyQuery(LocalDate.of(2026, 9, 24), LocalTime.of(11, 10))
+
+        assertEquals(now, state.value)
+        assertTrue(state.followsCurrentTime)
+    }
+
+    @Test
+    fun `planned query is not a current query until the route is reactivated`() {
+        val state = JourneyQueryState { current }
+
+        state.selectPlanned(LocalDate.of(2026, 10, 10), LocalTime.of(12, 45))
+        assertFalse(state.followsCurrentTime)
+
+        state.resetForRouteActivation()
+        assertTrue(state.followsCurrentTime)
     }
 }

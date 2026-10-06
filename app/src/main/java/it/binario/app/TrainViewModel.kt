@@ -109,6 +109,8 @@ class TrainViewModel @JvmOverloads constructor(
     var direction by mutableStateOf(routeStore.direction())
         private set
     private var primarySnapshot by mutableStateOf<RouteSnapshot?>(null)
+    /** Whether [primarySnapshot] answers a current query, as opposed to a planned date/time search. */
+    private var primarySnapshotIsCurrent = false
     /**
      * Snapshot visible to the UI. While a service detail is open this is pinned to the
      * snapshot that produced that service, so freshness/provenance cannot drift to the
@@ -564,6 +566,9 @@ class TrainViewModel @JvmOverloads constructor(
         val routeAtRequest = activeRoute
         val directionAtRequest = direction
         val queryAtRequest = journeyQueryState.value
+        // Widgets and Wear present their snapshot as the next trains of the route; a planned
+        // search for another date or time must stay inside the app.
+        val publishesCurrentDepartures = journeyQueryState.followsCurrentTime
         val requestId = ++refreshRequestId
         viewModelScope.launch {
             val result = dataSource.loadRoute(routeAtRequest, directionAtRequest, queryAtRequest)
@@ -571,13 +576,16 @@ class TrainViewModel @JvmOverloads constructor(
             when (result) {
                 is DataResult.Success -> {
                     primarySnapshot = result.snapshot
+                    primarySnapshotIsCurrent = publishesCurrentDepartures
                     rebuildServicePresentations()
                     reconcileSelectedService(result.snapshot, directionAtRequest)
                     retainAvailableOperatorFilter()
                     cache.save(result.snapshot)
-                    RouteWidgetProvider.saveSnapshotForMatchingRoutes(getApplication(), result.snapshot)
-                    RouteWidgetProvider.refreshAll(getApplication())
-                    if (integrationSettings.wearSnapshotSharingEnabled) {
+                    if (publishesCurrentDepartures) {
+                        RouteWidgetProvider.saveSnapshotForMatchingRoutes(getApplication(), result.snapshot)
+                        RouteWidgetProvider.refreshAll(getApplication())
+                    }
+                    if (publishesCurrentDepartures && integrationSettings.wearSnapshotSharingEnabled) {
                         if (WearSnapshotPublisher.enable(getApplication())) {
                             if (
                                 integrationSettings.wearSnapshotSharingEnabled &&
@@ -595,9 +603,11 @@ class TrainViewModel @JvmOverloads constructor(
                     refreshMessage = null
                 }
                 is DataResult.Failure -> {
-                    RouteWidgetProvider.markMatchingRouteDirectionUnavailable(getApplication(), routeAtRequest, directionAtRequest, result.message)
-                    RouteWidgetProvider.refreshAll(getApplication())
-                    if (integrationSettings.wearSnapshotSharingEnabled) {
+                    if (publishesCurrentDepartures) {
+                        RouteWidgetProvider.markMatchingRouteDirectionUnavailable(getApplication(), routeAtRequest, directionAtRequest, result.message)
+                        RouteWidgetProvider.refreshAll(getApplication())
+                    }
+                    if (publishesCurrentDepartures && integrationSettings.wearSnapshotSharingEnabled) {
                         if (WearSnapshotPublisher.enable(getApplication())) {
                             if (
                                 integrationSettings.wearSnapshotSharingEnabled &&
@@ -859,7 +869,7 @@ class TrainViewModel @JvmOverloads constructor(
             viewModelScope.launch {
                 if (WearSnapshotPublisher.enable(getApplication())) {
                     if (integrationSettings.wearSnapshotSharingEnabled) {
-                        primarySnapshot?.let { WearSnapshotPublisher.publish(getApplication(), it) }
+                        primarySnapshot?.takeIf { primarySnapshotIsCurrent }?.let { WearSnapshotPublisher.publish(getApplication(), it) }
                     } else {
                         WearSnapshotPublisher.clear(getApplication())
                     }
