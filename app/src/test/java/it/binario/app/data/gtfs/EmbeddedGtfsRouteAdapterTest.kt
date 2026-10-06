@@ -199,6 +199,63 @@ class EmbeddedGtfsRouteAdapterTest {
     }
 
     @Test
+    fun `trova la stazione nel pack tramite alias quando il nome del catalogo differisce`() = runBlocking {
+        val adapter = adapter(feed())
+        val aliased = SavedRoute(
+            id = "aliased",
+            name = "Milano Como",
+            outwardOrigin = Station("curated:S01700", "Milano C.le (catalogo)", "Milano", aliases = listOf("Milano Centrale")),
+            outwardDestination = Station("curated:S01122", "Como San Giovanni", "Como", aliases = listOf("Como S. Giovanni", "X__"))
+        )
+        // A translated alias that shares no word with the name must not bind a namesake stop.
+        val exonym = SavedRoute(
+            id = "exonym",
+            name = "Chiomonte Como",
+            outwardOrigin = Station("curated:S00001", "Chiomonte", "Chiomonte", aliases = listOf("Milano Centrale")),
+            outwardDestination = Station("curated:S01122", "Como San Giovanni", "Como", aliases = listOf("Como S. Giovanni"))
+        )
+        assertTrue(adapter.loadRoute(exonym, Direction.OUTBOUND, JourneyQuery(LocalDate.of(2026, 9, 4), LocalTime.of(8, 0))) is DataResult.Failure)
+
+        val result = adapter.loadRoute(aliased, Direction.OUTBOUND, JourneyQuery(LocalDate.of(2026, 9, 4), LocalTime.of(8, 0)))
+
+        assertTrue(result.toString(), result is DataResult.Success)
+        assertEquals("2581", (result as DataResult.Success).snapshot.services.single().number)
+    }
+
+    @Test
+    fun `non propone fermate dove pickup o drop off sono vietati`() = runBlocking {
+        val noPickupAtOrigin = adapter(
+            feed(
+                stopTimes = "trip_id,arrival_time,departure_time,stop_id,stop_sequence,pickup_type,drop_off_type\n" +
+                    "T1,08:05:00,08:05:00,MI,1,1,0\n" +
+                    "T1,08:22:00,08:23:00,MO,2,0,0\n" +
+                    "T1,08:50:00,08:50:00,CO,3,0,0\n"
+            )
+        )
+        val noDropOffAtDestination = adapter(
+            feed(
+                stopTimes = "trip_id,arrival_time,departure_time,stop_id,stop_sequence,pickup_type,drop_off_type\n" +
+                    "T1,08:05:00,08:05:00,MI,1,0,0\n" +
+                    "T1,08:22:00,08:23:00,MO,2,0,0\n" +
+                    "T1,08:50:00,08:50:00,CO,3,0,1\n"
+            )
+        )
+        val phoneAgency = adapter(
+            feed(
+                stopTimes = "trip_id,arrival_time,departure_time,stop_id,stop_sequence,pickup_type,drop_off_type\n" +
+                    "T1,08:05:00,08:05:00,MI,1,2,\n" +
+                    "T1,08:22:00,08:23:00,MO,2,,\n" +
+                    "T1,08:50:00,08:50:00,CO,3,,3\n"
+            )
+        )
+        val query = JourneyQuery(LocalDate.of(2026, 9, 4), LocalTime.of(8, 0))
+
+        assertTrue(noPickupAtOrigin.loadRoute(route, Direction.OUTBOUND, query) is DataResult.Failure)
+        assertTrue(noDropOffAtDestination.loadRoute(route, Direction.OUTBOUND, query) is DataResult.Failure)
+        assertTrue(phoneAgency.loadRoute(route, Direction.OUTBOUND, query) is DataResult.Success)
+    }
+
+    @Test
     fun `non inventa corse quando la tratta non esiste`() = runBlocking {
         val missing = route.copy(outwardDestination = Station("bergamo", "Bergamo", "Bergamo"))
 

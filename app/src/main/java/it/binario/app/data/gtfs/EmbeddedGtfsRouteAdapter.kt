@@ -6,9 +6,11 @@ import it.binario.app.data.Direction
 import it.binario.app.data.Freshness
 import it.binario.app.data.JourneyQuery
 import it.binario.app.data.RailOperator
+import it.binario.app.data.RailStopNameMatcher
 import it.binario.app.data.RouteSnapshot
 import it.binario.app.data.SavedRoute
 import it.binario.app.data.ServiceStatus
+import it.binario.app.data.Station
 import it.binario.app.data.TrainCategory
 import it.binario.app.data.TrainDataSource
 import it.binario.app.data.TrainService
@@ -76,10 +78,12 @@ class EmbeddedGtfsRouteAdapter(
     override suspend fun loadRoute(route: SavedRoute, direction: Direction, query: JourneyQuery): DataResult {
         val originStation = route.origin(direction)
         val destinationStation = route.destination(direction)
-        val origin = originStation.name
-        val destination = destinationStation.name
-        val wantedOrigin = normalize(origin)
-        val wantedDestination = normalize(destination)
+        // GTFS stop names are matched against the catalogue name first and then its aliases:
+        // bilingual and operator-specific labels ("Meran/Merano", "Milano Cadorna FN") live
+        // there, and matching the display name alone left served stations unplannable
+        // (Opus audit N-M5).
+        val originNames = gtfsCandidateNames(originStation)
+        val destinationNames = gtfsCandidateNames(destinationStation)
 
         val originSourceId = sourceIdFromGtfsStationId(originStation.id)
         val destinationSourceId = sourceIdFromGtfsStationId(destinationStation.id)
@@ -96,13 +100,15 @@ class EmbeddedGtfsRouteAdapter(
         val candidatePacks = withContext(parsingDispatcher) {
             buildList {
                 for (pack in packs) {
-                    if (explicitSourceIds != null) {
-                        if (pack.sourceId in explicitSourceIds) add(pack)
-                        continue
-                    }
+                    if (explicitSourceIds != null && pack.sourceId !in explicitSourceIds) continue
                     try {
                         val stops = stopNames(pack)
-                        if (wantedOrigin in stops && wantedDestination in stops) add(pack)
+                        val origin = originNames.firstOrNull { normalize(it) in stops }
+                        val destination = destinationNames.firstOrNull { normalize(it) in stops }
+                        when {
+                            origin != null && destination != null -> add(CandidatePack(pack, origin, destination))
+                            explicitSourceIds != null -> add(CandidatePack(pack, originStation.name, destinationStation.name))
+                        }
                     } catch (_: GtfsCompactIndexLimitException) {
                         // An oversized/malformed pack cannot be a candidate.
                     }
@@ -116,14 +122,15 @@ class EmbeddedGtfsRouteAdapter(
 
         val collected = withContext(parsingDispatcher) {
             buildList {
-                for (pack in candidatePacks) {
+                for (candidate in candidatePacks) {
+                    val pack = candidate.pack
                     val source = RailSourceCatalog.byId(pack.sourceId) ?: continue
                     val index = try {
                         indexFor(pack)
                     } catch (_: GtfsCompactIndexLimitException) {
                         continue
                     }
-                    index.services(origin, destination, source.id.value, query).forEach { service ->
+                    index.services(candidate.originStopName, candidate.destinationStopName, source.id.value, query).forEach { service ->
                         add(SourcedService(source.displayName, pack.sourceId, service))
                     }
                 }
@@ -131,7 +138,7 @@ class EmbeddedGtfsRouteAdapter(
         }
 
         if (collected.isEmpty()) {
-            val expiredPacks = candidatePacks.filter { pack -> pack.lastServiceDate?.isBefore(query.serviceDate) == true }
+            val expiredPacks = candidatePacks.map(CandidatePack::pack).filter { pack -> pack.lastServiceDate?.isBefore(query.serviceDate) == true }
             if (expiredPacks.isNotEmpty()) {
                 val validity = expiredPacks.joinToString(" e ") { pack ->
                     val label = RailSourceCatalog.byId(pack.sourceId)?.displayName ?: pack.sourceId.value
@@ -221,6 +228,22 @@ class EmbeddedGtfsRouteAdapter(
             sourceId,
             operatorName
         )
+
+    private data class CandidatePack(val pack: EmbeddedGtfsPack, val originStopName: String, val destinationStopName: String)
+
+    /**
+     * The catalogue name plus the aliases that are other spellings of the same station. Aliases
+     * that share no word with the name are translations ("Bologne", "Mailand", "Chaumont" for
+     * Chiomonte) and would bind a namesake stop abroad in the SNCF or ÖBB packs, so they are not
+     * used; neither are code-like aliases.
+     */
+    private fun gtfsCandidateNames(station: Station): List<String> {
+        val nameWords = RailStopNameMatcher.tokens(station.name).filter { it.length >= 4 }.toSet()
+        return (listOf(station.name) + station.aliases.filter { alias ->
+            !alias.contains('_') && !alias.startsWith("@") && normalize(alias).length >= 3 &&
+                RailStopNameMatcher.tokens(alias).any { it in nameWords }
+        }).distinctBy(::normalize)
+    }
 
     private fun normalizeTrainNumber(value: String): String = value
         .uppercase(Locale.ROOT)
@@ -349,6 +372,8 @@ class EmbeddedGtfsRouteAdapter(
             val departureIndex = rows.header.indexOf("departure_time")
             val stopIndex = rows.header.indexOf("stop_id")
             val sequenceIndex = rows.header.indexOf("stop_sequence")
+            val pickupIndex = rows.header.indexOf("pickup_type")
+            val dropOffIndex = rows.header.indexOf("drop_off_type")
             val rowsRead = rows.forEachRow(limits.maxStopTimeRows) { row ->
                 val trip = trips.indexIfDeclared(row.gtfsRawValue(tripIndex)) ?: return@forEachRow
                 val entry = stopTimes.append(
@@ -357,6 +382,9 @@ class EmbeddedGtfsRouteAdapter(
                     sequence = row.getOrNull(sequenceIndex)?.toIntOrNull() ?: Int.MAX_VALUE,
                     arrival = gtfsTimeToMinutes(row.getOrNull(arrivalIndex)),
                     departure = gtfsTimeToMinutes(row.getOrNull(departureIndex)),
+                    // GTFS 1 = "no pickup" / "no drop off"; 0, 2, 3 and empty still allow it.
+                    noPickup = row.getOrNull(pickupIndex)?.trim() == "1",
+                    noDropOff = row.getOrNull(dropOffIndex)?.trim() == "1",
                     previousForTrip = trips.head(trip)
                 )
                 trips.setHead(trip, entry)
@@ -458,7 +486,11 @@ class EmbeddedGtfsRouteAdapter(
             var origin = -1
             var entry = trips.head(tripIndex)
             while (entry >= 0) {
-                if (stops.normalizedName(stopTimes.stop(entry)) == wantedOrigin && (origin < 0 || stopTimes.comesBefore(entry, origin))) {
+                if (
+                    stops.normalizedName(stopTimes.stop(entry)) == wantedOrigin &&
+                    stopTimes.allowsPickup(entry) &&
+                    (origin < 0 || stopTimes.comesBefore(entry, origin))
+                ) {
                     origin = entry
                 }
                 entry = stopTimes.next(entry)
@@ -470,6 +502,7 @@ class EmbeddedGtfsRouteAdapter(
             while (entry >= 0) {
                 if (
                     stops.normalizedName(stopTimes.stop(entry)) == wantedDestination &&
+                    stopTimes.allowsDropOff(entry) &&
                     stopTimes.comesBefore(origin, entry) &&
                     (destination < 0 || stopTimes.comesBefore(entry, destination))
                 ) {
@@ -693,10 +726,20 @@ class EmbeddedGtfsRouteAdapter(
             private var arrivals = IntArray(1024)
             private var departures = IntArray(1024)
             private var next = IntArray(1024)
+            private var boarding = ByteArray(1024)
             private var count = 0
             private var sourceRowsRead = 0
 
-            fun append(trip: Int, stop: Int, sequence: Int, arrival: Int, departure: Int, previousForTrip: Int): Int {
+            fun append(
+                trip: Int,
+                stop: Int,
+                sequence: Int,
+                arrival: Int,
+                departure: Int,
+                previousForTrip: Int,
+                noPickup: Boolean = false,
+                noDropOff: Boolean = false
+            ): Int {
                 if (count >= maximum) throw GtfsCompactIndexLimitException("stop_times.txt supera il limite di righe")
                 ensureCapacity(count + 1)
                 trips[count] = trip
@@ -705,8 +748,12 @@ class EmbeddedGtfsRouteAdapter(
                 arrivals[count] = arrival
                 departures[count] = departure
                 next[count] = previousForTrip
+                boarding[count] = ((if (noPickup) NO_PICKUP else 0) or (if (noDropOff) NO_DROP_OFF else 0)).toByte()
                 return count++
             }
+
+            fun allowsPickup(index: Int): Boolean = boarding[index].toInt() and NO_PICKUP == 0
+            fun allowsDropOff(index: Int): Boolean = boarding[index].toInt() and NO_DROP_OFF == 0
 
             fun stop(index: Int): Int = stops[index]
             fun sequence(index: Int): Int = sequences[index]
@@ -719,7 +766,7 @@ class EmbeddedGtfsRouteAdapter(
             fun recordRowsRead(value: Int) { sourceRowsRead = value }
             fun rowsRead(): Int = sourceRowsRead
             fun size(): Int = count
-            fun compactColumnBytes(): Long = count.toLong() * Int.SIZE_BYTES * 6L
+            fun compactColumnBytes(): Long = count.toLong() * (Int.SIZE_BYTES * 6L + 1L)
 
             private fun ensureCapacity(required: Int) {
                 if (required <= trips.size) return
@@ -730,6 +777,12 @@ class EmbeddedGtfsRouteAdapter(
                 arrivals = arrivals.copyOf(capacity)
                 departures = departures.copyOf(capacity)
                 next = next.copyOf(capacity)
+                boarding = boarding.copyOf(capacity)
+            }
+
+            private companion object {
+                const val NO_PICKUP = 1
+                const val NO_DROP_OFF = 2
             }
         }
 

@@ -55,7 +55,8 @@ class EmbeddedGtfsCompactIndexStressTest {
             val stats = adapter.compactIndexStats().single()
             assertEquals(1_355_184, stats.stopTimeRowsRead)
             assertEquals(2, stats.indexedStopTimeRows)
-            assertEquals(2L * Int.SIZE_BYTES * 6L, stats.stopTimeColumnBytes)
+            // Six Int columns plus one byte of pickup/drop-off flags per retained row.
+            assertEquals(2L * (Int.SIZE_BYTES * 6L + 1L), stats.stopTimeColumnBytes)
             // Le 1,3M righe sono consumate ma non trattenute: solo le due del trip dichiarato.
             assertTrue("colonne stop_times oltre il budget", stats.stopTimeColumnBytes < 32L * 1024L * 1024L)
         } finally {
