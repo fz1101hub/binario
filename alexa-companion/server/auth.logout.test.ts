@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { appRouter } from "./routers";
-import { COOKIE_NAME } from "../shared/const";
+import { COOKIE_NAME, LEGACY_COOKIE_NAME } from "../shared/const";
 import type { TrpcContext } from "./_core/context";
 
 type CookieCall = {
@@ -42,6 +42,10 @@ function createAuthContext(): { ctx: TrpcContext; clearedCookies: CookieCall[] }
 }
 
 describe("auth.logout", () => {
+  it("uses a host-only __Host- session cookie name", () => {
+    expect(COOKIE_NAME).toBe("__Host-app_session_id");
+  });
+
   it("clears the session cookie and reports success", async () => {
     const { ctx, clearedCookies } = createAuthContext();
     const caller = appRouter.createCaller(ctx);
@@ -49,7 +53,7 @@ describe("auth.logout", () => {
     const result = await caller.auth.logout();
 
     expect(result).toEqual({ success: true });
-    expect(clearedCookies).toHaveLength(1);
+    expect(clearedCookies.map(cookie => cookie.name)).toEqual([COOKIE_NAME, LEGACY_COOKIE_NAME]);
     expect(clearedCookies[0]?.name).toBe(COOKIE_NAME);
     expect(clearedCookies[0]?.options).toMatchObject({
       secure: true,

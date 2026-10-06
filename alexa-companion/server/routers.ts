@@ -1,4 +1,4 @@
-import { ACCOUNT_DELETION_CONFIRMATION, COOKIE_NAME } from "@shared/const";
+import { ACCOUNT_DELETION_CONFIRMATION, COOKIE_NAME, LEGACY_COOKIE_NAME } from "@shared/const";
 import { z } from "zod";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
@@ -19,6 +19,7 @@ export const appRouter = router({
     logout: publicProcedure.mutation(({ ctx }) => {
       const cookieOptions = getSessionCookieOptions(ctx.req);
       ctx.res.clearCookie(COOKIE_NAME, cookieOptions);
+      ctx.res.clearCookie(LEGACY_COOKIE_NAME, cookieOptions);
       return {
         success: true,
       } as const;
@@ -31,6 +32,7 @@ export const appRouter = router({
         const deleted = await deleteUserAccount(ctx.user.id);
         if (!deleted) throw new Error("Account non trovato durante la cancellazione");
         ctx.res.clearCookie(COOKIE_NAME, getSessionCookieOptions(ctx.req));
+        ctx.res.clearCookie(LEGACY_COOKIE_NAME, getSessionCookieOptions(ctx.req));
         return { success: true } as const;
       }),
   }),

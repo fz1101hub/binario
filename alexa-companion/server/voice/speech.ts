@@ -11,9 +11,20 @@ const localeSet = new Set<SupportedLocale>([
   "es-ES",
 ]);
 
+// Characters XML 1.0 forbids even when escaped: C0 controls other than tab,
+// line feed and carriage return, the U+FFFE/U+FFFF non-characters, and
+// unpaired UTF-16 surrogates. Any of them makes Alexa reject the whole SSML.
+const XML_FORBIDDEN_CHARACTERS =
+  /[\u0000-\u0008\u000B\u000C\u000E-\u001F\uFFFE\uFFFF]|[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g;
+
+/** Removes characters that no XML document (and no Alexa card) can carry. */
+export function plainSpeechText(value: string) {
+  return value.replace(XML_FORBIDDEN_CHARACTERS, "");
+}
+
 /** Escapes untrusted text before interpolation into Alexa SSML. */
 export function escapeSsmlText(value: string) {
-  return escapeXmlCharacters(value);
+  return escapeXmlCharacters(plainSpeechText(value));
 }
 
 /**

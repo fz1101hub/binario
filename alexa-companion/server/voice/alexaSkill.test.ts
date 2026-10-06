@@ -219,6 +219,38 @@ describe("Alexa skill handlers", () => {
     }
   );
 
+  it.each(["NextTrainsIntent", "MyRoutesIntent"] as const)(
+    "escapes route names in SSML but keeps the %s card readable",
+    async intentName => {
+      vi.mocked(getAlexaLinkStatus).mockResolvedValue({
+        userId: 7,
+        credentialVersion: 3,
+        revokedAt: null,
+      } as Awaited<ReturnType<typeof getAlexaLinkStatus>>);
+      vi.mocked(listPersonalRoutesForAlexa).mockResolvedValue([
+        {
+          id: 1,
+          name: "Casa & lavoro <sera>\u0007",
+          origin: "Roma",
+          destination: "Tivoli",
+          isPinned: true,
+        },
+      ] as Awaited<ReturnType<typeof listPersonalRoutesForAlexa>>);
+      const accessToken = await issueVoiceAccessToken(7, 3);
+      const response = await createAlexaSkill().invoke(
+        withAccessToken(intent(intentName), accessToken)
+      );
+      const ssml = speechText(response);
+      expect(ssml).toContain("Casa &amp; lavoro &lt;sera&gt;");
+      expect(ssml).not.toContain("\u0007");
+      expect(response.response.card).toMatchObject({
+        type: "Simple",
+        content: expect.stringContaining("Casa & lavoro <sera>"),
+      });
+      expect(JSON.stringify(response.response.card)).not.toContain("&amp;");
+    }
+  );
+
   it("falls back to Italian for an unsupported Alexa request locale", async () => {
     const response = await createAlexaSkill().invoke(
       envelope({ type: "LaunchRequest" }, "pt-BR")

@@ -1,5 +1,6 @@
 import {
   COOKIE_NAME,
+  LEGACY_COOKIE_NAME,
   SESSION_TTL_MS,
   OAUTH_STATE_COOKIE,
   decodeOAuthState,
@@ -136,6 +137,7 @@ export function registerOAuthRoutes(app: Express) {
       });
 
       const cookieOptions = getSessionCookieOptions(req);
+      res.clearCookie(LEGACY_COOKIE_NAME, cookieOptions);
       res.cookie(COOKIE_NAME, sessionToken, {
         ...cookieOptions,
         maxAge: SESSION_TTL_MS,

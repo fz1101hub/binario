@@ -9,12 +9,16 @@ export function isSecureRequest(req: Request) {
 }
 
 export function getSessionCookieOptions(
-  req: Request
+  _req: Request
 ): Pick<CookieOptions, "domain" | "httpOnly" | "path" | "sameSite" | "secure"> {
+  // COOKIE_NAME carries the `__Host-` prefix, which browsers accept only with
+  // Secure, Path=/ and no Domain. Secure is therefore unconditional: TLS ends
+  // at the proxy in production, and browsers treat http://localhost as secure
+  // during development.
   return {
     httpOnly: true,
     path: "/",
     sameSite: "lax",
-    secure: isSecureRequest(req),
+    secure: true,
   };
 }

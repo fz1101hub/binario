@@ -10,6 +10,7 @@ import { registerAlexaRoutes } from "../voice/alexa";
 import { registerAndroidDeepLinks } from "../voice/deepLinks";
 import { securityHeaders } from "./securityHeaders";
 import { ENV } from "./env";
+import { TRPC_MAX_BATCH_SIZE } from "@shared/const";
 
 // No endpoint accepts uploads: a small body limit bounds parser memory.
 export const BODY_LIMIT = "1mb";
@@ -113,6 +114,9 @@ export async function createApp(
     createExpressMiddleware({
       router: appRouter,
       createContext,
+      // The per-IP limiter counts one HTTP request, so an unbounded batch would
+      // let a single request run any number of procedures.
+      maxBatchSize: TRPC_MAX_BATCH_SIZE,
     })
   );
   if (options.serveClient !== false) {

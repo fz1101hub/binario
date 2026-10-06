@@ -10,6 +10,7 @@ import {
   deleteUserAccount,
   exchangeAuthorizationCode,
   getDb,
+  listPersonalRoutes,
   listPersonalRoutesForAlexa,
   revokeAllVoiceCredentialsForUser,
   rotateRefreshToken,
@@ -383,9 +384,18 @@ describeDatabase("migrazioni MariaDB reali", () => {
         "INSERT INTO railway_routes (`userId`, `origin`, `destination`, `name`) VALUES (?, 'Roma', 'Milano', 'Casa — lavoro')",
         [userId]
       );
+      // A route archived in the historical WebDev dashboard must stay hidden
+      // from both the dashboard and Alexa after the lineage is adopted.
+      await connection.query(
+        "INSERT INTO railway_routes (`userId`, `origin`, `destination`, `name`, `isPinned`, `archivedAt`) VALUES (?, 'Roma', 'Napoli', 'Archiviata', 1, CURRENT_TIMESTAMP)",
+        [userId]
+      );
       await expect(
         listPersonalRoutesForAlexa(userId, initialLink?.credentialVersion ?? 0)
-      ).resolves.toHaveLength(1);
+      ).resolves.toEqual([expect.objectContaining({ name: "Casa — lavoro" })]);
+      await expect(listPersonalRoutes(userId)).resolves.toEqual([
+        expect.objectContaining({ name: "Casa — lavoro" }),
+      ]);
 
       await createAuthorizationCode({
         userId,

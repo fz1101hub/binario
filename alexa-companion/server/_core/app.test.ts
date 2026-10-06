@@ -1,6 +1,7 @@
 import type { AddressInfo } from "node:net";
 import type { Server } from "node:http";
 import { afterEach, describe, expect, it } from "vitest";
+import { TRPC_MAX_BATCH_SIZE } from "@shared/const";
 import {
   ALEXA_WEBHOOK_REQUESTS_PER_MINUTE,
   createApp,
@@ -113,6 +114,22 @@ describe("applicazione HTTP", () => {
     });
 
     expect(response.status).not.toBe(415);
+  });
+
+  it("rifiuta un batch tRPC oltre il limite condiviso con il client", async () => {
+    const baseUrl = await start();
+    const procedures = (count: number) => Array.from({ length: count }, () => "auth.me").join(",");
+    const input = (count: number) =>
+      encodeURIComponent(JSON.stringify(Object.fromEntries(Array.from({ length: count }, (_, i) => [i, {}]))));
+    const within = await fetch(
+      `${baseUrl}/api/trpc/${procedures(TRPC_MAX_BATCH_SIZE)}?batch=1&input=${input(TRPC_MAX_BATCH_SIZE)}`
+    );
+    const over = await fetch(
+      `${baseUrl}/api/trpc/${procedures(TRPC_MAX_BATCH_SIZE + 1)}?batch=1&input=${input(TRPC_MAX_BATCH_SIZE + 1)}`
+    );
+
+    expect(within.status).toBe(200);
+    expect(over.status).toBe(400);
   });
 
   it("interpreta TRUST_PROXY con un default prudente", () => {

@@ -133,7 +133,10 @@ export async function listPersonalRoutes(userId: number) {
   return db
     .select()
     .from(railwayRoutes)
-    .where(eq(railwayRoutes.userId, userId))
+    // Routes archived in the historical WebDev dashboard stay archived: the
+    // adopted 0000-0011 lineage keeps `archivedAt`, and showing those rows
+    // again would resurrect choices the user deliberately removed.
+    .where(and(eq(railwayRoutes.userId, userId), isNull(railwayRoutes.archivedAt)))
     .orderBy(desc(railwayRoutes.isPinned), desc(railwayRoutes.updatedAt));
 }
 
@@ -269,7 +272,7 @@ export async function listPersonalRoutesForAlexa(
         eq(alexaAccountLinks.credentialVersion, credentialVersion)
       )
     )
-    .where(eq(railwayRoutes.userId, userId))
+    .where(and(eq(railwayRoutes.userId, userId), isNull(railwayRoutes.archivedAt)))
     .orderBy(desc(railwayRoutes.isPinned), desc(railwayRoutes.updatedAt));
 }
 

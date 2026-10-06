@@ -50,7 +50,7 @@ import {
 import { isAlexaConfigured } from "./config";
 import { needsAccountLink } from "./guards";
 import { parseOAuthAuthorizationParameters } from "./oauthContract";
-import { escapeSsmlText, liveDataUnavailableSpeech } from "./speech";
+import { escapeSsmlText, liveDataUnavailableSpeech, plainSpeechText } from "./speech";
 
 /** Intent names the skill handles; the interaction model in skill-package/ must declare all of them. */
 export const HANDLED_INTENTS = [
@@ -182,13 +182,19 @@ const nextTrainsHandler: RequestHandler = {
         .withSimpleCard(messages.cardTitle, messages.noRoutes)
         .withShouldEndSession(true)
         .getResponse();
+    // SSML needs escaped text; the companion-app card is plain text and must
+    // show the route name as typed, not XML entities.
     const speech = liveDataUnavailableSpeech(
       locale,
       formatMessage(messages.routeSubject, { routeName: escapeSsmlText(route.name) })
     );
+    const card = liveDataUnavailableSpeech(
+      locale,
+      formatMessage(messages.routeSubject, { routeName: plainSpeechText(route.name) })
+    );
     return input.responseBuilder
       .speak(speech)
-      .withSimpleCard(messages.cardTitle, speech)
+      .withSimpleCard(messages.cardTitle, card)
       .withShouldEndSession(true)
       .getResponse();
   },
@@ -212,10 +218,13 @@ const trainStatusHandler: RequestHandler = {
     const subject = trainNumber
       ? formatMessage(messages.trainSubject, { trainNumber: escapeSsmlText(trainNumber) })
       : undefined;
+    const cardSubject = trainNumber
+      ? formatMessage(messages.trainSubject, { trainNumber: plainSpeechText(trainNumber) })
+      : undefined;
     const speech = liveDataUnavailableSpeech(locale, subject);
     return input.responseBuilder
       .speak(speech)
-      .withSimpleCard(messages.cardTitle, speech)
+      .withSimpleCard(messages.cardTitle, liveDataUnavailableSpeech(locale, cardSubject))
       .withShouldEndSession(true)
       .getResponse();
   },
@@ -240,19 +249,23 @@ const myRoutesHandler: RequestHandler = {
         .withSimpleCard(messages.cardTitle, messages.noRoutes)
         .withShouldEndSession(true)
         .getResponse();
-    const names = routes
-      .slice(0, 5)
-      .map(route => escapeSsmlText(route.name))
-      .join(", ");
+    const spoken = routes.slice(0, 5);
     const remainingRouteCount = Math.max(routes.length - 5, 0);
     const suffix =
       remainingRouteCount > 0
         ? formatPlural(locale, remainingRouteCount, messages.moreRoutes)
         : ".";
-    const speech = formatMessage(messages.routesSaved, { routes: names, suffix });
+    const speech = formatMessage(messages.routesSaved, {
+      routes: spoken.map(route => escapeSsmlText(route.name)).join(", "),
+      suffix,
+    });
+    const card = formatMessage(messages.routesSaved, {
+      routes: spoken.map(route => plainSpeechText(route.name)).join(", "),
+      suffix,
+    });
     return input.responseBuilder
       .speak(speech)
-      .withSimpleCard(messages.cardTitle, speech)
+      .withSimpleCard(messages.cardTitle, card)
       .withShouldEndSession(true)
       .getResponse();
   },

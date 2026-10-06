@@ -92,9 +92,14 @@ describe("callback dashboard OAuth", () => {
       name: "",
       expiresInMs: 1000 * 60 * 60 * 24 * 30,
     });
-    expect(response.headers.get("set-cookie")).toContain(
-      "app_session_id=dashboard-session"
+    const setCookie = response.headers.get("set-cookie") ?? "";
+    expect(setCookie).toContain("__Host-app_session_id=dashboard-session");
+    expect(setCookie).toMatch(
+      /__Host-app_session_id=dashboard-session; Max-Age=\d+; Path=\/; Expires=[^;]+; HttpOnly; Secure; SameSite=Lax/
     );
+    expect(setCookie).not.toContain("Domain=");
+    // The pre-prefix cookie is expired so a stale or tossed copy cannot linger.
+    expect(setCookie).toMatch(/(^|,\s*)app_session_id=;/);
   });
 
   it("riprende una richiesta Alexa firmata una sola volta e la rivalida", async () => {
