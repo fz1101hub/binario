@@ -12,18 +12,20 @@ Il gate è verde soltanto se non esistono advisory high o critical.
 
 ## Companion Expo
 
-`companion-expo/` esegue `pnpm run verify:dependency-audit`. Il verificatore rifiuta ogni advisory high o critical eccetto i due seguenti:
+`companion-expo/` esegue `pnpm run verify:dependency-audit`. Il verificatore rifiuta ogni advisory high o critical. Le advisory con una versione corretta pubblicata vengono risolte con override pnpm in `companion-expo/pnpm-workspace.yaml` (oggi: `brace-expansion` per le tre major, `compression` 1.8.2, `image-size` 2.0.3, `postcss`, `source-map-js` 1.2.2, `tinypool` 2.1.2, `undici`, `vite`).
 
-| Advisory | Dipendenza | Motivazione temporanea |
+Restano ammesse soltanto le advisory per cui il registro **non dichiara alcuna versione corretta** e che arrivano esclusivamente dalla toolchain Expo di build o sviluppo, non dal bundle React Native installato sui dispositivi:
+
+| Advisory | Dipendenza e unico percorso | Motivazione temporanea |
 |---|---|---|
-| `GHSA-w3rx-r6r6-pgpr` | `image-size@1.2.1` via Expo/Metro | Nessuna versione corretta dichiarata dal registro audit. Il parser è usato dalla toolchain di build solo su asset PNG versionati o generati dal repository. |
-| `GHSA-5p2g-fcmc-qvqq` | `image-size@1.2.1` via Expo/Metro | Stessa dipendenza e stesso confine; i formati vulnerabili ICNS, JXL e HEIF non sono input dell'app né della pipeline di branding. |
+| `GHSA-86w9-cpqp-85rv` | `node-forge@1.4.0` via `expo>@expo/cli` | Usato dalla CLI Expo per i certificati del dev server; non è incluso nell'app. Nessuna release corretta di `node-forge` esiste (1.4.0 è l'ultima). |
+| `GHSA-vfj7-8cjw-p6xm` | `braces@3.0.3` via `expo>@expo/metro>metro-file-map>micromatch` | Usato da Metro durante il build su glob controllati dal progetto; non è incluso nell'app. Nessuna release corretta di `braces` esiste (3.0.3 è l'ultima). |
 
-L'allowlist è **chiusa per ID, modulo, versione `1.2.1`, unico percorso transitivo Expo/Metro e assenza di versione corretta**. Undici test dedicati coprono entrambi gli ID ammessi e le variazioni di advisory, modulo, disponibilità patch, versione, percorso e cardinalità dei finding. Se uno di questi confini cambia, la CI fallisce. Vitest, Vite e PostCSS sono stati aggiornati alle linee corrette; pnpm è fissato alla versione 10.34.5. `expo-system-ui` è installato esplicitamente per rendere completa e priva di warning la configurazione `userInterfaceStyle`.
+L'eccezione è **chiusa per ID, modulo, versione installata, unico percorso transitivo e assenza di versione corretta** (`scripts/dependency-audit-policy.mjs`). I test di `tests/dependency-audit-policy.test.ts` coprono ciascuna eccezione e le variazioni di ID, modulo, disponibilità della patch, versione, percorso e numero di finding; un altro test blinda l'elenco chiuso e gli override. Se uno di questi confini cambia, la CI fallisce. Il verificatore stampa comunque le eccezioni applicate. pnpm è fissato alla versione 10.34.5.
 
 ## Criteri di rimozione dell'eccezione
 
-L'eccezione `image-size` va rimossa al primo aggiornamento Expo/Metro compatibile che non trascini la versione vulnerabile, oppure quando viene pubblicata una patch compatibile della dipendenza. Prima dell'integrazione sono obbligatori typecheck, test TypeScript, verifica branding, audit, due `expo prebuild --clean` identici e build/lint dei moduli Android generati.
+Ogni eccezione va rimossa appena il registro pubblica una versione corretta compatibile (in quel caso la policy la rende di nuovo bloccante e serve un override), oppure al primo aggiornamento Expo/Metro che non trascini più il pacchetto. Prima dell'integrazione sono obbligatori typecheck, test TypeScript, verifica branding, audit, due `expo prebuild --clean` identici e build/lint dei moduli Android generati.
 
 ## Monitoraggio continuo
 
