@@ -56,6 +56,16 @@ if (hasLocation) {
   fail("expo-location must not be explicitly configured: the companion only needs approximate location and blocks fine location.");
 }
 
+const pluginNames = plugins.map((plugin) => (Array.isArray(plugin) ? plugin[0] : plugin));
+for (const required of ["./plugins/with-binario-wear-manifest.cjs", "./plugins/with-binario-android-widget.cjs"]) {
+  if (!pluginNames.includes(required)) {
+    fail(`${required} must stay registered: it generates the shared release signing config and the Wear hardening.`);
+  }
+}
+if (pluginNames.indexOf("./plugins/with-binario-wear-manifest.cjs") > pluginNames.indexOf("./plugins/with-binario-android-widget.cjs")) {
+  fail("with-binario-wear-manifest.cjs must run before with-binario-android-widget.cjs so the debug keystore block is removed before release signing is inserted.");
+}
+
 if (!process.exitCode) {
   console.log("Managed Expo config is hardened and internally consistent.");
 }

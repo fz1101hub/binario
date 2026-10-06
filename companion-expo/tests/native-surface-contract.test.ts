@@ -50,6 +50,14 @@ describe("contratti delle superfici native Binario", () => {
     expect(appGradle).toContain("if (binarioReleaseSigningConfigured) signingConfig signingConfigs.release");
     expect(wearGradle).toContain("if (binarioReleaseSigningConfigured) signingConfig signingConfigs.release");
     expect(wearGradle).not.toContain('applicationId "im.binario.companion.wear"');
+    // The reference alone is not enough: PR#34 once kept the reference while the
+    // release config itself was no longer generated, so signed builds failed.
+    for (const gradle of [appGradle, wearGradle]) {
+      expect(gradle).toMatch(/signingConfigs\s*\{\s*if \(binarioReleaseSigningConfigured\) \{\s*release \{/);
+      expect(gradle).toContain("binarioReleaseSigningProperties.BINARIO_RELEASE_STORE_FILE.get()");
+      expect(gradle).not.toContain("debug.keystore");
+      expect(gradle).not.toMatch(/signingConfig\s+signingConfigs\.debug/);
+    }
   });
 
   it("non ricattura il testo condiviso durante la sola ricreazione Activity", () => {
