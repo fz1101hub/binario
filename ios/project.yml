@@ -37,6 +37,10 @@ targets:
         INFOPLIST_KEY_CFBundleShortVersionString: "$(MARKETING_VERSION)"
         INFOPLIST_KEY_CFBundleDevelopmentRegion: it
         INFOPLIST_KEY_CFBundleLocalizations: [it, en, de, fr, es]
+        # A launch screen entry keeps the app out of letterboxed compatibility mode, and
+        # App Store Connect rejects builds without a 1024 pt opaque app icon.
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         TARGETED_DEVICE_FAMILY: "1"
         SUPPORTS_MACCATALYST: NO
       configs:
@@ -94,6 +98,9 @@ targets:
     sources:
       - path: ../apple-watch/BinarioWatch
       - path: ../apple-watch/Shared
+      # Watch UI strings: without the catalogue the Watch shows raw keys.
+      - path: ../apple-watch/Resources
+        buildPhase: resources
     scheme:
       testTargets:
         - BinarioWatchTests
@@ -139,6 +146,9 @@ targets:
     sources:
       - path: ../apple-watch/BinarioWatchWidgets
       - path: ../apple-watch/Shared
+      # Watch UI strings: without the catalogue the Watch shows raw keys.
+      - path: ../apple-watch/Resources
+        buildPhase: resources
     settings:
       base:
         SDKROOT: watchos
