@@ -389,6 +389,10 @@
     <string name="route_required_to_start">Gib eine Strecke ein, um die Abfrage zu starten.</string>
     <string name="route_origin_destination_required">Gib Start und Ziel ein, um eine Strecke anzuzeigen.</string>
     <string name="rail_data_unavailable">Für diese Anfrage sind keine Bahndaten verfügbar.</string>
+    <string name="route_not_covered">Die in der App enthaltenen Fahrpläne decken diese Strecke nicht ab.</string>
+    <string name="route_schedule_expired">Die enthaltenen Fahrpläne für diese Strecke gelten bis %1$s: Aktualisiere die App für neuere Fahrpläne.</string>
+    <string name="route_no_service_after">Am %1$s ab %2$s ist kein Zug geplant.</string>
+    <string name="route_coverage_fallback">Fahrplan aus einer inoffiziellen Ergänzungsquelle: Prüfe ihn vor der Fahrt beim Verkehrsunternehmen.</string>
     <string name="station_board_unavailable_generic">Abfahrtstafel nicht verfügbar.</string>
     <string name="station_board_warning_source_conflict">Quellenkonflikt: Jedes Feld wurde nach Quellenautorität ausgewählt.</string>
     <string name="station_board_warning_realtime_unavailable">Echtzeitdaten sind teilweise nicht verfügbar.</string>

@@ -393,6 +393,10 @@
     <string name="route_required_to_start">Inserisci una tratta per iniziare la consultazione.</string>
     <string name="route_origin_destination_required">Inserisci partenza e arrivo per consultare una tratta.</string>
     <string name="rail_data_unavailable">Dati ferroviari non disponibili per questa richiesta.</string>
+    <string name="route_not_covered">Gli orari inclusi nell\'app non coprono questa tratta.</string>
+    <string name="route_schedule_expired">Gli orari inclusi per questa tratta valgono fino al %1$s: aggiorna l\'app per orari più recenti.</string>
+    <string name="route_no_service_after">Nessun treno programmato il %1$s dalle %2$s in poi.</string>
+    <string name="route_coverage_fallback">Orario da una fonte di copertura non ufficiale: verifica con il vettore prima di partire.</string>
     <string name="station_board_unavailable_generic">Tabellone non disponibile.</string>
     <string name="station_board_warning_source_conflict">Fonti in conflitto: selezione per autorità del singolo campo.</string>
     <string name="station_board_warning_realtime_unavailable">Realtime parzialmente non disponibile.</string>

@@ -75,6 +75,7 @@ class RemoteGtfsFallbackDataSourceTest {
         assertTrue(service.operationalStatusVerified)
         assertTrue("european-sleeper-gtfs-rt" in service.operationalSourceIds)
         assertTrue(snapshot.providerName.contains("Realtime test"))
+        assertTrue(snapshot.coverageFallback)
     }
 
     @Test

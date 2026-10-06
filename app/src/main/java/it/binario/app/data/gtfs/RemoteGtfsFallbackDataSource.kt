@@ -75,7 +75,8 @@ class RemoteGtfsFallbackDataSource(
                     notice = listOfNotNull(
                         "Copertura fallback: usata perché le fonti ferroviarie primarie non hanno restituito questa tratta. Verifica l'orario con il vettore prima del viaggio.",
                         result.snapshot.notice
-                    ).joinToString(" ")
+                    ).joinToString(" "),
+                    coverageFallback = true
                 )
                 DataResult.Success(enrichWithSameFeedRealtime(planned, feed.bytes, query))
             }

@@ -1,5 +1,8 @@
 package it.binario.app
 
+import it.binario.app.data.RouteFailureReason
+import it.binario.app.data.RouteSnapshot
+
 /**
  * Resource-independent user-facing event emitted by state holders.
  *
@@ -32,6 +35,10 @@ enum class UiMessageKey(val resourceName: String) {
     ROUTE_REQUIRED_TO_START("route_required_to_start"),
     ROUTE_ORIGIN_DESTINATION_REQUIRED("route_origin_destination_required"),
     RAIL_DATA_UNAVAILABLE("rail_data_unavailable"),
+    ROUTE_NOT_COVERED("route_not_covered"),
+    ROUTE_SCHEDULE_EXPIRED("route_schedule_expired"),
+    ROUTE_NO_SERVICE_AFTER("route_no_service_after"),
+    ROUTE_COVERAGE_FALLBACK("route_coverage_fallback"),
     STATION_BOARD_UNAVAILABLE("station_board_unavailable_generic"),
     STATION_BOARD_SOURCE_CONFLICT("station_board_warning_source_conflict"),
     STATION_BOARD_REALTIME_UNAVAILABLE("station_board_warning_realtime_unavailable"),
@@ -43,3 +50,15 @@ enum class UiMessageKey(val resourceName: String) {
     BACKUP_IMPORT_SUCCESS("backup_import_success_summary"),
     BACKUP_IMPORT_INVALID("backup_import_invalid")
 }
+
+/** The localized explanation of a failed route search; dates and times are formatted on render. */
+internal fun RouteFailureReason.uiMessage(): UiMessage = when (this) {
+    RouteFailureReason.Unavailable -> UiMessage(UiMessageKey.RAIL_DATA_UNAVAILABLE)
+    RouteFailureReason.RouteNotCovered -> UiMessage(UiMessageKey.ROUTE_NOT_COVERED)
+    is RouteFailureReason.ScheduleExpired -> UiMessage(UiMessageKey.ROUTE_SCHEDULE_EXPIRED, validUntil)
+    is RouteFailureReason.NoServiceAfter -> UiMessage(UiMessageKey.ROUTE_NO_SERVICE_AFTER, serviceDate, departureTime)
+}
+
+/** The advisory a successful route search must carry, if any. */
+internal fun RouteSnapshot.advisoryMessage(): UiMessage? =
+    if (coverageFallback) UiMessage(UiMessageKey.ROUTE_COVERAGE_FALLBACK) else null

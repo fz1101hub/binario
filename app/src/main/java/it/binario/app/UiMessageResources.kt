@@ -3,8 +3,14 @@ package it.binario.app
 import android.content.res.Resources
 import androidx.annotation.StringRes
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import java.time.LocalDate
+import java.time.LocalTime
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
+import java.util.Locale
 
 @StringRes
 internal fun UiMessageKey.resourceId(): Int = when (this) {
@@ -25,6 +31,10 @@ internal fun UiMessageKey.resourceId(): Int = when (this) {
     UiMessageKey.ROUTE_REQUIRED_TO_START -> R.string.route_required_to_start
     UiMessageKey.ROUTE_ORIGIN_DESTINATION_REQUIRED -> R.string.route_origin_destination_required
     UiMessageKey.RAIL_DATA_UNAVAILABLE -> R.string.rail_data_unavailable
+    UiMessageKey.ROUTE_NOT_COVERED -> R.string.route_not_covered
+    UiMessageKey.ROUTE_SCHEDULE_EXPIRED -> R.string.route_schedule_expired
+    UiMessageKey.ROUTE_NO_SERVICE_AFTER -> R.string.route_no_service_after
+    UiMessageKey.ROUTE_COVERAGE_FALLBACK -> R.string.route_coverage_fallback
     UiMessageKey.STATION_BOARD_UNAVAILABLE -> R.string.station_board_unavailable_generic
     UiMessageKey.STATION_BOARD_SOURCE_CONFLICT -> R.string.station_board_warning_source_conflict
     UiMessageKey.STATION_BOARD_REALTIME_UNAVAILABLE -> R.string.station_board_warning_realtime_unavailable
@@ -39,7 +49,7 @@ internal fun UiMessageKey.resourceId(): Int = when (this) {
 
 internal fun UiMessage.resolve(resources: Resources): String {
     if (key != UiMessageKey.BACKUP_IMPORT_SUCCESS) {
-        return resources.getString(key.resourceId(), *arguments.toTypedArray())
+        return resources.getString(key.resourceId(), *formattedArguments(resources.configuration.locales[0]))
     }
     val routes = integerArgument(0)
     val stations = integerArgument(1)
@@ -55,7 +65,7 @@ internal fun UiMessage.resolve(resources: Resources): String {
 @Composable
 internal fun UiMessage.localized(): String {
     if (key != UiMessageKey.BACKUP_IMPORT_SUCCESS) {
-        return stringResource(key.resourceId(), *arguments.toTypedArray())
+        return stringResource(key.resourceId(), *formattedArguments(LocalConfiguration.current.locales[0]))
     }
     val routes = integerArgument(0)
     val stations = integerArgument(1)
@@ -67,6 +77,15 @@ internal fun UiMessage.localized(): String {
         pluralStringResource(R.plurals.backup_import_alert_count, alerts, alerts)
     )
 }
+
+/** Dates and times are formatted in the display language, not with their ISO toString(). */
+private fun UiMessage.formattedArguments(locale: Locale): Array<Any> = arguments.map { argument ->
+    when (argument) {
+        is LocalDate -> argument.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(locale))
+        is LocalTime -> argument.format(DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT).withLocale(locale))
+        else -> argument
+    }
+}.toTypedArray()
 
 private fun UiMessage.integerArgument(index: Int): Int =
     (arguments.getOrNull(index) as? Number)?.toInt()

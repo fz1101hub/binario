@@ -389,6 +389,10 @@
     <string name="route_required_to_start">Enter a route to start browsing.</string>
     <string name="route_origin_destination_required">Enter an origin and destination to view a route.</string>
     <string name="rail_data_unavailable">Railway data is unavailable for this request.</string>
+    <string name="route_not_covered">The timetables included in the app do not cover this route.</string>
+    <string name="route_schedule_expired">The timetables included for this route are valid until %1$s: update the app for newer timetables.</string>
+    <string name="route_no_service_after">No scheduled train on %1$s from %2$s onwards.</string>
+    <string name="route_coverage_fallback">Timetable from an unofficial coverage source: check with the operator before you travel.</string>
     <string name="station_board_unavailable_generic">Station board unavailable.</string>
     <string name="station_board_warning_source_conflict">Sources conflict: each field was selected by source authority.</string>
     <string name="station_board_warning_realtime_unavailable">Realtime data is partially unavailable.</string>

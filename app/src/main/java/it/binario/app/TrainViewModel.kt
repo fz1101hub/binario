@@ -606,7 +606,7 @@ class TrainViewModel @JvmOverloads constructor(
                         }
                     }
                     refreshState = RefreshState.SUCCESS
-                    refreshMessage = null
+                    refreshMessage = result.snapshot.advisoryMessage()
                 }
                 is DataResult.Failure -> {
                     if (publishesCurrentDepartures) {
@@ -632,7 +632,7 @@ class TrainViewModel @JvmOverloads constructor(
                         }
                     }
                     refreshState = RefreshState.ERROR
-                    refreshMessage = UiMessage(UiMessageKey.RAIL_DATA_UNAVAILABLE)
+                    refreshMessage = result.reason.uiMessage()
                 }
             }
         }
@@ -667,7 +667,7 @@ class TrainViewModel @JvmOverloads constructor(
                     reconcileSelectedService(result.snapshot, Direction.RETURN)
                     retainAvailableOperatorFilter()
                     returnRefreshState = RefreshState.SUCCESS
-                    returnRefreshMessage = null
+                    returnRefreshMessage = result.snapshot.advisoryMessage()
                 }
                 is DataResult.Failure -> {
                     // Keep the last successful return snapshot, matching the primary-leg
@@ -675,7 +675,7 @@ class TrainViewModel @JvmOverloads constructor(
                     // valid data; UI state/message make the failed refresh explicit.
                     retainAvailableOperatorFilter()
                     returnRefreshState = RefreshState.ERROR
-                    returnRefreshMessage = UiMessage(UiMessageKey.RAIL_DATA_UNAVAILABLE)
+                    returnRefreshMessage = result.reason.uiMessage()
                 }
             }
         }

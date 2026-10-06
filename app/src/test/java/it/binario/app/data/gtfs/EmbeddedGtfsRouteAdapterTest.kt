@@ -4,6 +4,7 @@ import it.binario.app.data.DataConfidence
 import it.binario.app.data.DataResult
 import it.binario.app.data.Direction
 import it.binario.app.data.JourneyQuery
+import it.binario.app.data.RouteFailureReason
 import it.binario.app.data.SavedRoute
 import it.binario.app.data.Station
 import it.binario.app.data.core.SourceId
@@ -240,7 +241,8 @@ class EmbeddedGtfsRouteAdapterTest {
             outwardOrigin = Station("curated:S00001", "Chiomonte", "Chiomonte", aliases = listOf("Milano Centrale")),
             outwardDestination = Station("curated:S01122", "Como San Giovanni", "Como", aliases = listOf("Como S. Giovanni"))
         )
-        assertTrue(adapter.loadRoute(exonym, Direction.OUTBOUND, JourneyQuery(LocalDate.of(2026, 9, 4), LocalTime.of(8, 0))) is DataResult.Failure)
+        val exonymResult = adapter.loadRoute(exonym, Direction.OUTBOUND, JourneyQuery(LocalDate.of(2026, 9, 4), LocalTime.of(8, 0)))
+        assertEquals(RouteFailureReason.RouteNotCovered, (exonymResult as DataResult.Failure).reason)
 
         val result = adapter.loadRoute(aliased, Direction.OUTBOUND, JourneyQuery(LocalDate.of(2026, 9, 4), LocalTime.of(8, 0)))
 
@@ -336,6 +338,7 @@ class EmbeddedGtfsRouteAdapterTest {
         val message = (result as DataResult.Failure).message
         assertTrue(message, message.contains("2026-12-31"))
         assertTrue(message, message.contains("aggiorna l'app"))
+        assertEquals(RouteFailureReason.ScheduleExpired(LocalDate.of(2026, 12, 31)), result.reason)
     }
 
     @Test
@@ -348,6 +351,7 @@ class EmbeddedGtfsRouteAdapterTest {
 
         assertTrue(result is DataResult.Failure)
         assertFalse((result as DataResult.Failure).message.contains("aggiorna l'app"))
+        assertEquals(RouteFailureReason.NoServiceAfter(LocalDate.of(2027, 1, 4), LocalTime.of(8, 0)), result.reason)
     }
 
     @Test

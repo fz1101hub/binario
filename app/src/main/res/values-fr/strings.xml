@@ -393,6 +393,10 @@
     <string name="route_required_to_start">Saisissez un trajet pour commencer la consultation.</string>
     <string name="route_origin_destination_required">Saisissez un départ et une destination pour consulter un trajet.</string>
     <string name="rail_data_unavailable">Les données ferroviaires ne sont pas disponibles pour cette requête.</string>
+    <string name="route_not_covered">Les horaires inclus dans l\'app ne couvrent pas ce trajet.</string>
+    <string name="route_schedule_expired">Les horaires inclus pour ce trajet sont valables jusqu\'au %1$s : mettez l\'app à jour pour des horaires plus récents.</string>
+    <string name="route_no_service_after">Aucun train prévu le %1$s à partir de %2$s.</string>
+    <string name="route_coverage_fallback">Horaire issu d\'une source de couverture non officielle : vérifiez auprès du transporteur avant de partir.</string>
     <string name="station_board_unavailable_generic">Tableau de gare indisponible.</string>
     <string name="station_board_warning_source_conflict">Conflit de sources : chaque champ a été sélectionné selon l’autorité de sa source.</string>
     <string name="station_board_warning_realtime_unavailable">Les données temps réel sont partiellement indisponibles.</string>

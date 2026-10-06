@@ -207,7 +207,9 @@ data class RouteSnapshot(
     val qualityScore: Int? = null,
     val qualityBand: DataQualityBand = DataQualityBand.UNKNOWN,
     val qualityWarnings: Set<SnapshotWarning> = emptySet(),
-    val notice: String? = null
+    val notice: String? = null,
+    /** Built by a best-effort coverage source because no primary source had the route. */
+    val coverageFallback: Boolean = false
 ) {
     val routeLabel: String get() = route.displayName(direction)
     val isExpired: Boolean get() = System.currentTimeMillis() > expiresAtEpochMillis
@@ -215,7 +217,19 @@ data class RouteSnapshot(
 
 sealed interface DataResult {
     data class Success(val snapshot: RouteSnapshot) : DataResult
-    data class Failure(val message: String) : DataResult
+    /** [message] is a diagnostic in Italian; [reason] is what the UI explains, localized. */
+    data class Failure(val message: String, val reason: RouteFailureReason = RouteFailureReason.Unavailable) : DataResult
+}
+
+/** Why no route could be built, when the cause is something the user can act on. */
+sealed interface RouteFailureReason {
+    data object Unavailable : RouteFailureReason
+    /** No timetable the app carries serves both stations. */
+    data object RouteNotCovered : RouteFailureReason
+    /** The timetables that serve the route end before the requested date: the app needs an update. */
+    data class ScheduleExpired(val validUntil: LocalDate) : RouteFailureReason
+    /** The route is covered, but no train runs on that date from that time on. */
+    data class NoServiceAfter(val serviceDate: LocalDate, val departureTime: LocalTime) : RouteFailureReason
 }
 
 /** Single neutral display-order rule shared by lists, widget and smartwatch. */

@@ -7,6 +7,7 @@ import it.binario.app.data.Freshness
 import it.binario.app.data.JourneyQuery
 import it.binario.app.data.RailOperator
 import it.binario.app.data.RailStopNameMatcher
+import it.binario.app.data.RouteFailureReason
 import it.binario.app.data.RouteSnapshot
 import it.binario.app.data.SavedRoute
 import it.binario.app.data.ServiceStatus
@@ -117,7 +118,7 @@ class EmbeddedGtfsRouteAdapter(
         }
 
         if (candidatePacks.isEmpty()) {
-            return DataResult.Failure("Nessun data pack GTFS contiene entrambe le stazioni richieste.")
+            return DataResult.Failure("Nessun data pack GTFS contiene entrambe le stazioni richieste.", RouteFailureReason.RouteNotCovered)
         }
 
         val collected = withContext(parsingDispatcher) {
@@ -144,9 +145,15 @@ class EmbeddedGtfsRouteAdapter(
                     val label = RailSourceCatalog.byId(pack.sourceId)?.displayName ?: pack.sourceId.value
                     "$label sono validi fino al ${pack.lastServiceDate}"
                 }
-                return DataResult.Failure("Gli orari inclusi per $validity: aggiorna l'app per orari più recenti.")
+                return DataResult.Failure(
+                    "Gli orari inclusi per $validity: aggiorna l'app per orari più recenti.",
+                    RouteFailureReason.ScheduleExpired(expiredPacks.mapNotNull { it.lastServiceDate }.max())
+                )
             }
-            return DataResult.Failure("Nessuna corsa programmata trovata nei data pack GTFS compatibili per data e orario selezionati.")
+            return DataResult.Failure(
+                "Nessuna corsa programmata trovata nei data pack GTFS compatibili per data e orario selezionati.",
+                RouteFailureReason.NoServiceAfter(query.serviceDate, query.departureTime)
+            )
         }
 
         val services = withContext(parsingDispatcher) {
