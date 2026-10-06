@@ -13,58 +13,6 @@ import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
-import it.binario.app.data.RailTime
-import it.binario.app.data.TrainService
-import it.binario.app.data.TrainStop
-import java.time.Instant
-import java.time.LocalDate
-import java.time.LocalDateTime
-import java.time.LocalTime
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
-
-data class StopAlarmPlan(
-    val trainNumber: String,
-    val destination: String,
-    val station: String,
-    val expectedTime: String,
-    val triggerAtEpochMillis: Long
-)
-
-object StopAlarmPlanner {
-    private const val LEAD_MINUTES = 5L
-    private val timeFormatter = DateTimeFormatter.ofPattern("H:mm")
-
-    fun plan(
-        trainNumber: String,
-        destination: String,
-        station: String,
-        expectedTime: String,
-        nowEpochMillis: Long = System.currentTimeMillis(),
-        zoneId: ZoneId = RailTime.defaultZone
-    ): StopAlarmPlan? {
-        val time = runCatching { LocalTime.parse(expectedTime, timeFormatter) }.getOrNull() ?: return null
-        val now = Instant.ofEpochMilli(nowEpochMillis).atZone(zoneId)
-        val todayExpected = LocalDateTime.of(now.toLocalDate(), time).atZone(zoneId).toInstant().toEpochMilli()
-        // Timetables only expose a clock time. A small early-morning time while it is late at
-        // night is therefore the next service day, not an already-passed daytime stop.
-        val expected = if (
-            todayExpected <= nowEpochMillis &&
-            now.toLocalTime() >= LocalTime.of(18, 0) &&
-            time < LocalTime.of(6, 0)
-        ) {
-            LocalDateTime.of(now.toLocalDate().plusDays(1), time).atZone(zoneId).toInstant().toEpochMilli()
-        } else {
-            todayExpected
-        }
-        if (expected <= nowEpochMillis) return null
-        val trigger = maxOf(nowEpochMillis + 1_000L, expected - LEAD_MINUTES * 60_000L)
-        return StopAlarmPlan(trainNumber, destination, station, expectedTime, trigger)
-    }
-
-    fun plan(service: TrainService, stop: TrainStop, nowEpochMillis: Long = System.currentTimeMillis()): StopAlarmPlan? =
-        plan(service.number, service.destination, stop.station, stop.expected, nowEpochMillis)
-}
 
 object StopAlarmScheduler {
     const val CHANNEL_ID = "binario_stop_alarm"
