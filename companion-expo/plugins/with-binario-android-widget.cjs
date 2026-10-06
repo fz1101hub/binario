@@ -1227,6 +1227,7 @@ dependencies {
 
 import android.content.Context
 import android.content.Intent
+import androidx.wear.tiles.TileService
 import com.google.android.gms.wearable.DataEventBuffer
 import com.google.android.gms.wearable.DataMapItem
 import com.google.android.gms.wearable.MessageEvent
@@ -1363,7 +1364,14 @@ object BinarioWearStore {
       putLong("generatedAtUtcMs", snapshot.generatedAtEpochMillis)
       putLong("expiresAtUtcMs", snapshot.expiresAtEpochMillis)
     }.apply()
+    // A new payload must reach the Tile now, not at the next system refresh.
+    TileService.getUpdater(context).requestUpdate(BinarioTileService::class.java)
   }
+
+  const val tileFreshnessMillis = 15L * 60L * 1000L
+
+  fun unavailable(context: Context) =
+    BinarioWearState("Binario", context.getString(R.string.binario_unavailable), false, null, null, 0)
 
   fun read(context: Context, now: Long = System.currentTimeMillis()): BinarioWearState {
     val preferences = context.getSharedPreferences(prefsName, Context.MODE_PRIVATE)
@@ -1380,7 +1388,7 @@ object BinarioWearStore {
         0,
       )
     } else {
-      BinarioWearState("Binario", context.getString(R.string.binario_unavailable), false, null, null, 0)
+      unavailable(context)
     }
   }
 }
@@ -1432,9 +1440,26 @@ class BinarioTileService : TileService() {
   override fun onTileRequest(requestParams: RequestBuilders.TileRequest) = Futures.immediateFuture(
     TileBuilders.Tile.Builder()
       .setResourcesVersion("1")
-      .setTileTimeline(TimelineBuilders.Timeline.fromLayoutElement(textFor(BinarioWearStore.read(this))))
+      .setFreshnessIntervalMillis(BinarioWearStore.tileFreshnessMillis)
+      .setTileTimeline(timelineFor(BinarioWearStore.read(this)))
       .build()
   )
+  // The renderer switches to the unavailable layout at expiry by itself, even
+  // when this process (and any in-process timer) is no longer running.
+  private fun timelineFor(state: BinarioWearState): TimelineBuilders.Timeline {
+    val timeline = TimelineBuilders.Timeline.Builder()
+      .addTimelineEntry(TimelineBuilders.TimelineEntry.fromLayoutElement(textFor(BinarioWearStore.unavailable(this))))
+    val expiresAt = state.expiresAtUtcMs
+    if (state.canComplicate && expiresAt != null) {
+      timeline.addTimelineEntry(
+        TimelineBuilders.TimelineEntry.Builder()
+          .setLayout(LayoutElementBuilders.Layout.fromLayoutElement(textFor(state)))
+          .setValidity(TimelineBuilders.TimeInterval.Builder().setEndMillis(expiresAt).build())
+          .build()
+      )
+    }
+    return timeline.build()
+  }
   override fun onTileResourcesRequest(requestParams: RequestBuilders.ResourcesRequest) = Futures.immediateFuture(ResourceBuilders.Resources.Builder().setVersion("1").build())
   private fun textFor(state: BinarioWearState): LayoutElementBuilders.Column {
     val column = LayoutElementBuilders.Column.Builder()

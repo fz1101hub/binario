@@ -141,6 +141,20 @@ describe("contratti delle superfici native Binario", () => {
     expect(companion).toContain('t("hub.intro")');
   });
 
+  it("aggiorna la Tile Wear del Companion a ogni payload e la fa scadere nel renderer", () => {
+    const tile = source("android/wear/src/main/java/im/binario/companion/wear/BinarioTileService.kt");
+    const data = source("android/wear/src/main/java/im/binario/companion/wear/BinarioWearData.kt");
+    for (const generated of [widgetPlugin, tile]) {
+      expect(generated).toContain(".setFreshnessIntervalMillis(BinarioWearStore.tileFreshnessMillis)");
+      expect(generated).toContain(".setValidity(TimelineBuilders.TimeInterval.Builder().setEndMillis(expiresAt).build())");
+      expect(generated).toContain("TimelineBuilders.TimelineEntry.fromLayoutElement(textFor(BinarioWearStore.unavailable(this)))");
+    }
+    for (const generated of [widgetPlugin, data]) {
+      expect(generated).toContain("TileService.getUpdater(context).requestUpdate(BinarioTileService::class.java)");
+    }
+    expect(tile).not.toContain("Timeline.fromLayoutElement(textFor(BinarioWearStore.read(this)))");
+  });
+
   it("aggiorna il widget Glance in modo periodico bounded senza perdere l'update immediato dalla Home", () => {
     const widget = source("android/app/src/main/java/im/binario/companion/binario/BinarioStatusWidget.kt");
     const bridge = source("android/app/src/main/java/im/binario/companion/binario/BinarioWidgetBridge.kt");

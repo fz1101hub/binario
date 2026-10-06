@@ -15,9 +15,26 @@ class BinarioTileService : TileService() {
   override fun onTileRequest(requestParams: RequestBuilders.TileRequest) = Futures.immediateFuture(
     TileBuilders.Tile.Builder()
       .setResourcesVersion("1")
-      .setTileTimeline(TimelineBuilders.Timeline.fromLayoutElement(textFor(BinarioWearStore.read(this))))
+      .setFreshnessIntervalMillis(BinarioWearStore.tileFreshnessMillis)
+      .setTileTimeline(timelineFor(BinarioWearStore.read(this)))
       .build()
   )
+  // The renderer switches to the unavailable layout at expiry by itself, even
+  // when this process (and any in-process timer) is no longer running.
+  private fun timelineFor(state: BinarioWearState): TimelineBuilders.Timeline {
+    val timeline = TimelineBuilders.Timeline.Builder()
+      .addTimelineEntry(TimelineBuilders.TimelineEntry.fromLayoutElement(textFor(BinarioWearStore.unavailable(this))))
+    val expiresAt = state.expiresAtUtcMs
+    if (state.canComplicate && expiresAt != null) {
+      timeline.addTimelineEntry(
+        TimelineBuilders.TimelineEntry.Builder()
+          .setLayout(LayoutElementBuilders.Layout.fromLayoutElement(textFor(state)))
+          .setValidity(TimelineBuilders.TimeInterval.Builder().setEndMillis(expiresAt).build())
+          .build()
+      )
+    }
+    return timeline.build()
+  }
   override fun onTileResourcesRequest(requestParams: RequestBuilders.ResourcesRequest) = Futures.immediateFuture(ResourceBuilders.Resources.Builder().setVersion("1").build())
   private fun textFor(state: BinarioWearState): LayoutElementBuilders.Column {
     val column = LayoutElementBuilders.Column.Builder()

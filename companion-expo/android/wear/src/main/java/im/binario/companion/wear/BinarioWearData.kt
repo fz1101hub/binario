@@ -2,6 +2,7 @@ package im.binario.companion.wear
 
 import android.content.Context
 import android.content.Intent
+import androidx.wear.tiles.TileService
 import com.google.android.gms.wearable.DataEventBuffer
 import com.google.android.gms.wearable.DataMapItem
 import com.google.android.gms.wearable.MessageEvent
@@ -138,7 +139,14 @@ object BinarioWearStore {
       putLong("generatedAtUtcMs", snapshot.generatedAtEpochMillis)
       putLong("expiresAtUtcMs", snapshot.expiresAtEpochMillis)
     }.apply()
+    // A new payload must reach the Tile now, not at the next system refresh.
+    TileService.getUpdater(context).requestUpdate(BinarioTileService::class.java)
   }
+
+  const val tileFreshnessMillis = 15L * 60L * 1000L
+
+  fun unavailable(context: Context) =
+    BinarioWearState("Binario", context.getString(R.string.binario_unavailable), false, null, null, 0)
 
   fun read(context: Context, now: Long = System.currentTimeMillis()): BinarioWearState {
     val preferences = context.getSharedPreferences(prefsName, Context.MODE_PRIVATE)
@@ -155,7 +163,7 @@ object BinarioWearStore {
         0,
       )
     } else {
-      BinarioWearState("Binario", context.getString(R.string.binario_unavailable), false, null, null, 0)
+      unavailable(context)
     }
   }
 }
