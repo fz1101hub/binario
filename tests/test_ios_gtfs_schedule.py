@@ -206,12 +206,37 @@ class IosGtfsScheduleTest(unittest.TestCase):
         with self.assertRaisesRegex(verifier.VerificationError, "non-rail route"):
             verifier.verify_database(raw, metadata, result["inputs"]["fingerprintSha256"])
 
-    def test_duplicate_catalog_name_is_fail_closed(self) -> None:
+    def rebuild_with_catalog(self, edit) -> Path:
         _, catalog, output, metadata, _ = self.build()
         payload = json.loads(catalog.read_text())
-        payload["stations"].append({"id": "S2", "name": "Citta Alta", "aliases": [], "railwayCode": "S2", "trenitaliaLocationId": None, "latitude": 45.0, "longitude": 9.0})
+        edit(payload["stations"])
         catalog.write_text(json.dumps(payload), encoding="utf-8")
-        # No station remains unambiguously matched; output must not be published.
+        output.unlink()
+        metadata.unlink()
+        builder.build_database(self.temp / "gtfs/manifest.json", catalog, output, metadata, max_compressed_bytes=4 * 1024 * 1024)
+        raw = self.temp / "rebuilt.sqlite"
+        raw.write_bytes(zlib.decompress(output.read_bytes()))
+        return raw
+
+    def bound_catalog_ids(self, raw: Path) -> list[str | None]:
+        connection = sqlite3.connect(raw)
+        self.addCleanup(connection.close)
+        return [row[0] for row in connection.execute("SELECT catalog_station_id FROM stop WHERE pack_id=1 ORDER BY external_id")]
+
+    def test_co_located_duplicate_catalog_entries_bind_to_the_preferred_entry(self) -> None:
+        # Two codes for one physical station (RFI and Ferrovienord style): the entry with a
+        # Trenitalia location id wins, so the station is planned instead of dropped.
+        raw = self.rebuild_with_catalog(lambda stations: stations.append(
+            {"id": "S2", "name": "Citta Alta", "aliases": [], "railwayCode": "S2", "trenitaliaLocationId": "830000002", "latitude": 45.001, "longitude": 9.0}
+        ))
+        self.assertEqual(["S2", None], self.bound_catalog_ids(raw))
+
+    def test_homonyms_that_geography_cannot_separate_are_fail_closed(self) -> None:
+        _, catalog, output, metadata, _ = self.build()
+        payload = json.loads(catalog.read_text())
+        payload["stations"].append({"id": "S2", "name": "Citta Alta", "aliases": [], "railwayCode": "S2", "trenitaliaLocationId": None, "latitude": 45.05, "longitude": 9.0})
+        catalog.write_text(json.dumps(payload), encoding="utf-8")
+        # Both are within reach of the stop and 5 km apart: no station is matched, nothing is published.
         output.unlink()
         metadata.unlink()
         manifest = self.temp / "gtfs/manifest.json"
@@ -219,6 +244,36 @@ class IosGtfsScheduleTest(unittest.TestCase):
             builder.build_database(manifest, catalog, output, metadata, max_compressed_bytes=4 * 1024 * 1024)
         self.assertFalse(output.exists())
         self.assertFalse(metadata.exists())
+
+    def test_bilingual_catalog_name_matches_its_leading_part_nearby(self) -> None:
+        def bilingual(stations: list[dict]) -> None:
+            stations[0]["name"] = "Città Alta Oberstadt"
+            stations[0]["aliases"] = []
+        raw = self.rebuild_with_catalog(bilingual)
+        self.assertEqual(["S1", None], self.bound_catalog_ids(raw))
+
+    def test_bilingual_prefix_does_not_capture_a_stop_named_after_another_station(self) -> None:
+        # The stop has its own catalogue entry (without timetable codes): the longer name
+        # nearby is a different station, so nothing is matched.
+        _, catalog, output, metadata, _ = self.build()
+        payload = json.loads(catalog.read_text())
+        payload["stations"][0].update({"name": "Città Alta Oberstadt", "aliases": []})
+        payload["stations"].append({"id": "NC1", "name": "Citta Alta", "aliases": [], "railwayCode": None, "trenitaliaLocationId": None, "latitude": 45.002, "longitude": 9.0})
+        catalog.write_text(json.dumps(payload), encoding="utf-8")
+        output.unlink()
+        metadata.unlink()
+        with self.assertRaises(builder.BuildError):
+            builder.build_database(self.temp / "gtfs/manifest.json", catalog, output, metadata, max_compressed_bytes=4 * 1024 * 1024)
+
+    def test_bilingual_prefix_match_requires_proximity(self) -> None:
+        _, catalog, output, metadata, _ = self.build()
+        payload = json.loads(catalog.read_text())
+        payload["stations"][0].update({"name": "Città Alta Oberstadt", "aliases": [], "latitude": 45.03})
+        catalog.write_text(json.dumps(payload), encoding="utf-8")
+        output.unlink()
+        metadata.unlink()
+        with self.assertRaises(builder.BuildError):
+            builder.build_database(self.temp / "gtfs/manifest.json", catalog, output, metadata, max_compressed_bytes=4 * 1024 * 1024)
 
     def test_rejects_unsafe_zip_member(self) -> None:
         root = self.temp / "unsafe"

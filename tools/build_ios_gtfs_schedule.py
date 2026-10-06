@@ -3,8 +3,11 @@
 
 The builder intentionally uses only the Python standard library. It treats every
 input as untrusted, validates referential integrity before publication, and only
-keeps complete trips which touch an unambiguously name-matched catalog station
-having a railwayCode or trenitaliaLocationId.
+keeps complete trips which touch a catalog station having a railwayCode or
+trenitaliaLocationId, matched by normalized name (or the leading part of a
+bilingual name such as "Merano Meran") and verified by distance. Catalogue
+entries describing one physical station collapse onto a single preferred entry;
+homonyms that geography cannot separate stay unmatched (fail closed).
 """
 from __future__ import annotations
 
@@ -54,6 +57,13 @@ MAX_SERVICE_DAYS = 3660
 MAX_RETAINED_TRIPS = 250_000
 MAX_RETAINED_STOP_TIMES = 750_000
 MAX_PARENT_INHERITANCE_DISTANCE_KM = 10.0
+# Same-name catalogue entries this close are one station (e.g. an RFI and a Ferrovienord
+# code for Varese Nord). The iOS station search hides all but the preferred one with the
+# same rule, see CuratedStationCatalog.isShadowedDuplicate.
+CO_LOCATED_DUPLICATE_KM = 1.0
+# A GTFS name that is only the leading part of a catalogue name ("Merano" for
+# "Merano Meran") must be this close to it.
+MAX_PREFIX_MATCH_DISTANCE_KM = 1.0
 RAIL_ROUTE_TYPES = frozenset({2, *range(100, 200)})
 EXCLUSIVE_RAIL_ROUTE_IDS: Mapping[str, frozenset[str]] = {
     # TFT publishes its two railway lines as route_type=3 (bus).
@@ -170,6 +180,103 @@ class CatalogNameMatch:
     identity: CatalogIdentity
     canonical: bool
 
+def identity_preference(identity: CatalogIdentity) -> tuple[int, int, str]:
+    """Total order among co-located duplicates; mirrored by the iOS station search."""
+    return (
+        0 if identity.trenitalia_location_id else 1,
+        0 if identity.railway_code else 1,
+        identity.station_id,
+    )
+
+class CatalogStationMatcher:
+    """Resolves a GTFS stop to at most one eligible catalogue identity."""
+
+    def __init__(
+        self,
+        by_name: Mapping[str, Sequence[CatalogNameMatch]],
+        canonical: Sequence[tuple[tuple[str, ...], CatalogIdentity]],
+        all_name_positions: Mapping[str, Sequence[tuple[float, float] | None]] = {},
+    ) -> None:
+        self._by_name = by_name
+        self._all_name_positions = all_name_positions
+        self._preferred = self._collapse_co_located(canonical)
+        self._prefix_candidates: dict[str, list[tuple[tuple[str, ...], CatalogIdentity]]] = defaultdict(list)
+        for tokens, identity in canonical:
+            if len(tokens) > 1:
+                self._prefix_candidates[tokens[0]].append((tokens, identity))
+
+    @staticmethod
+    def _collapse_co_located(
+        canonical: Sequence[tuple[tuple[str, ...], CatalogIdentity]],
+    ) -> dict[str, CatalogIdentity]:
+        by_canonical_name: dict[tuple[str, ...], list[CatalogIdentity]] = defaultdict(list)
+        for tokens, identity in canonical:
+            by_canonical_name[tokens].append(identity)
+        better: dict[str, CatalogIdentity] = {}
+        for identities in by_canonical_name.values():
+            for identity in identities:
+                nearby = [
+                    other for other in identities
+                    if distance_kilometres(identity.latitude, identity.longitude, other.latitude, other.longitude)
+                    <= CO_LOCATED_DUPLICATE_KM
+                ]
+                best = min(nearby, key=identity_preference)
+                if best.station_id != identity.station_id:
+                    better[identity.station_id] = best
+        resolved: dict[str, CatalogIdentity] = {}
+        for station_id, target in better.items():
+            # Follow the chain to an entry that nothing better shadows.
+            seen = {station_id}
+            while target.station_id in better and target.station_id not in seen:
+                seen.add(target.station_id)
+                target = better[target.station_id]
+            resolved[station_id] = target
+        return resolved
+
+    def preferred(self, identity: CatalogIdentity) -> CatalogIdentity:
+        return self._preferred.get(identity.station_id, identity)
+
+    @property
+    def unambiguous_name_count(self) -> int:
+        return sum(
+            1 for matches in self._by_name.values()
+            if len({self.preferred(match.identity).station_id for match in matches}) == 1
+        )
+
+    def match(self, row: Mapping[str, str], context: str) -> CatalogIdentity | None:
+        latitude = parse_optional_float(row.get("stop_lat"), f"{context}:lat", -90, 90)
+        longitude = parse_optional_float(row.get("stop_lon"), f"{context}:lon", -180, 180)
+        if latitude is None or longitude is None:
+            return None
+        name = normalize_station_name(row["stop_name"])
+        verified = {
+            self.preferred(match.identity).station_id: self.preferred(match.identity)
+            for match in self._by_name.get(name, ())
+            if distance_kilometres(latitude, longitude, match.identity.latitude, match.identity.longitude)
+            <= (10.0 if match.canonical else 1.0)
+        }
+        if not verified and name and not self._names_another_catalog_station(name, latitude, longitude):
+            tokens = tuple(name.split(" "))
+            verified = {
+                self.preferred(identity).station_id: self.preferred(identity)
+                for candidate_tokens, identity in self._prefix_candidates.get(tokens[0], ())
+                if len(candidate_tokens) > len(tokens)
+                and candidate_tokens[: len(tokens)] == tokens
+                and distance_kilometres(latitude, longitude, identity.latitude, identity.longitude)
+                <= MAX_PREFIX_MATCH_DISTANCE_KM
+            }
+        # Homonyms that geography cannot separate stay unmatched.
+        return next(iter(verified.values())) if len(verified) == 1 else None
+
+    def _names_another_catalog_station(self, name: str, latitude: float, longitude: float) -> bool:
+        """A nearby catalogue entry with exactly this name, even one without timetable codes
+        (the Cumana "Bagnoli" next to RFI "Bagnoli-Agnano Terme"), is that stop's station."""
+        return any(
+            position is None
+            or distance_kilometres(latitude, longitude, position[0], position[1]) <= 10.0
+            for position in self._all_name_positions.get(name, ())
+        )
+
 @dataclass(frozen=True)
 class InputFile:
     path: str
@@ -266,7 +373,7 @@ def read_bounded(path: Path, maximum_bytes: int, context: str) -> bytes:
         raise BuildError(f"{context} exceeds {maximum_bytes} bytes")
     return payload
 
-def load_catalog(path: Path) -> tuple[dict[str, CatalogNameMatch], int]:
+def load_catalog(path: Path) -> tuple[CatalogStationMatcher, int]:
     try:
         payload = json.loads(read_bounded(path, MAX_CATALOG_BYTES, "station catalog"))
     except (UnicodeError, json.JSONDecodeError) as error:
@@ -274,12 +381,15 @@ def load_catalog(path: Path) -> tuple[dict[str, CatalogNameMatch], int]:
     if payload.get("schemaVersion") != 1 or not isinstance(payload.get("stations"), list):
         raise BuildError("station catalog has unsupported schema")
     by_name: dict[str, dict[str, CatalogNameMatch]] = defaultdict(dict)
+    canonical: list[tuple[tuple[str, ...], CatalogIdentity]] = []
+    all_name_positions: dict[str, list[tuple[float, float] | None]] = defaultdict(list)
     eligible = 0
     for index, station in enumerate(payload["stations"]):
         if not isinstance(station, dict):
             raise BuildError(f"catalog station {index} is not an object")
         railway = station.get("railwayCode")
         location = station.get("trenitaliaLocationId")
+        record_name_positions(station, all_name_positions)
         if not railway and not location:
             continue
         station_id = station.get("id")
@@ -296,6 +406,9 @@ def load_catalog(path: Path) -> tuple[dict[str, CatalogNameMatch], int]:
             raise BuildError(f"catalog station {station_id}: invalid coordinates")
         identity = CatalogIdentity(station_id, railway, location, float(latitude), float(longitude))
         eligible += 1
+        canonical_name = normalize_station_name(name)
+        if canonical_name:
+            canonical.append((tuple(canonical_name.split(" ")), identity))
         for candidate_index, candidate in enumerate((name, *aliases)):
             if not isinstance(candidate, str):
                 raise BuildError(f"catalog station {station_id}: non-string alias")
@@ -306,8 +419,24 @@ def load_catalog(path: Path) -> tuple[dict[str, CatalogNameMatch], int]:
                     identity=identity,
                     canonical=candidate_index == 0 or (current is not None and current.canonical),
                 )
-    # Ambiguous normalized names are intentionally excluded (fail closed).
-    return {name: next(iter(values.values())) for name, values in by_name.items() if len(values) == 1}, eligible
+    return CatalogStationMatcher(
+        {name: list(values.values()) for name, values in by_name.items()},
+        canonical,
+        all_name_positions,
+    ), eligible
+
+def record_name_positions(station: Mapping[str, object], positions: dict[str, list[tuple[float, float] | None]]) -> None:
+    latitude = station.get("latitude")
+    longitude = station.get("longitude")
+    position = (
+        (float(latitude), float(longitude))
+        if isinstance(latitude, (int, float)) and isinstance(longitude, (int, float))
+        else None
+    )
+    aliases = station.get("aliases")
+    for candidate in (station.get("name"), *(aliases if isinstance(aliases, list) else ())):
+        if isinstance(candidate, str) and (normalized := normalize_station_name(candidate)):
+            positions[normalized].append(position)
 
 def distance_kilometres(first_latitude: float, first_longitude: float, second_latitude: float, second_longitude: float) -> float:
     earth_radius_km = 6_371.0
@@ -322,15 +451,6 @@ def distance_kilometres(first_latitude: float, first_longitude: float, second_la
         * math.sin(longitude_delta / 2) ** 2
     )
     return 2 * earth_radius_km * math.asin(math.sqrt(haversine))
-
-def geographically_verified_match(row: Mapping[str, str], match: CatalogNameMatch, context: str) -> CatalogIdentity | None:
-    latitude = parse_optional_float(row.get("stop_lat"), f"{context}:lat", -90, 90)
-    longitude = parse_optional_float(row.get("stop_lon"), f"{context}:lon", -180, 180)
-    if latitude is None or longitude is None:
-        return None
-    maximum_distance_km = 10.0 if match.canonical else 1.0
-    distance = distance_kilometres(latitude, longitude, match.identity.latitude, match.identity.longitude)
-    return match.identity if distance <= maximum_distance_km else None
 
 def geographically_verified_parent_identity(
     row: Mapping[str, str],
@@ -595,7 +715,7 @@ def ingest_pack(
     connection: sqlite3.Connection,
     pack_id: int,
     pack: Mapping[str, object],
-    catalog_by_name: Mapping[str, CatalogNameMatch],
+    catalog: CatalogStationMatcher,
     allocator: IdAllocator,
 ) -> dict[str, int]:
     source_id = str(pack["source_id"])
@@ -626,10 +746,9 @@ def ingest_pack(
         stops = unique_rows(archive.rows("stops.txt", ("stop_id", "stop_name")), "stop_id", f"{source_id}:stops.txt")
 
         stop_identity: dict[str, CatalogIdentity] = {}
-        # Direct exact-normalized matching first.
+        # Direct name matching first, verified by distance.
         for stop_id, row in stops.items():
-            match = catalog_by_name.get(normalize_station_name(row["stop_name"]))
-            identity = geographically_verified_match(row, match, f"{source_id}:stop:{stop_id}") if match is not None else None
+            identity = catalog.match(row, f"{source_id}:stop:{stop_id}")
             if identity is not None:
                 stop_identity[stop_id] = identity
         # A platform/boarding area inherits only an unambiguous verified parent identity.
@@ -864,7 +983,7 @@ def build_database(
         catalog_path,
         source_policy_path,
     )
-    catalog_by_name, eligible_catalog_stations = load_catalog(catalog_path)
+    catalog, eligible_catalog_stations = load_catalog(catalog_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     metadata_path.parent.mkdir(parents=True, exist_ok=True)
     if output_path.parent.resolve() != metadata_path.parent.resolve():
@@ -888,7 +1007,7 @@ def build_database(
         per_pack: dict[str, dict[str, int]] = {}
         connection.execute("BEGIN")
         for pack_id, pack in enumerate(packs, start=1):
-            counts = ingest_pack(connection, pack_id, pack, catalog_by_name, allocator)
+            counts = ingest_pack(connection, pack_id, pack, catalog, allocator)
             per_pack[str(pack["source_id"])] = counts
         totals = {table: int(connection.execute(f"SELECT count(*) FROM {table}").fetchone()[0]) for table in SCHEMA_TABLES if table != "metadata"}
         if totals["trip"] == 0 or totals["stop_time"] == 0:
@@ -897,7 +1016,7 @@ def build_database(
             "input_fingerprint_sha256": input_fingerprint,
             "schema_version": str(USER_VERSION),
             "source_generated_at": source_generated_at,
-            "station_match_policy": "eligible-identity+unique-normalized-name-or-parent",
+            "station_match_policy": "eligible-identity+geography-verified-name-or-bilingual-prefix+co-located-duplicates-collapsed-or-parent",
             "row_counts_json": json.dumps(totals, sort_keys=True, separators=(",", ":")),
         }
         connection.executemany("INSERT INTO metadata(key,value) VALUES(?,?)", metadata_rows.items())
@@ -938,10 +1057,10 @@ def build_database(
                 "files": [{"path": item.path, "sizeBytes": item.size, "sha256": item.sha256} for item in input_files],
                 "packCount": len(packs),
                 "eligibleCatalogStationCount": eligible_catalog_stations,
-                "unambiguousNormalizedNameCount": len(catalog_by_name),
+                "unambiguousNormalizedNameCount": catalog.unambiguous_name_count,
             },
             "filter": {
-                "keepsCompleteTripWhen": "at least one stop matches an unambiguous normalized name/alias of a catalog station with railwayCode or trenitaliaLocationId",
+                "keepsCompleteTripWhen": "at least one stop matches, by normalized name/alias or bilingual-name prefix verified by distance, a single catalog station with railwayCode or trenitaliaLocationId after co-located duplicates collapse onto the preferred entry",
                 "parentIdentityInheritance": True,
                 "parentIdentityMaximumChildDistanceKm": MAX_PARENT_INHERITANCE_DISTANCE_KM,
             },

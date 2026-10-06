@@ -46,6 +46,17 @@ final class StationCatalogTests: XCTestCase {
         XCTAssertEqual(catalog.search("S08328").first?.name, "Appiano Proba Petronia")
     }
 
+    func testCoLocatedDuplicateEntriesOfferOnlyTheOneTheTimetableIndexUses() throws {
+        let data = try Data(contentsOf: repositoryRoot
+            .appendingPathComponent("app/src/main/assets/stations/curated_it_rail_stations.json"))
+        let catalog = try CuratedStationCatalog(data: data)
+
+        // N00024 carries a Trenitalia location id; the S01738 entry 15 m away is the same station.
+        let results = catalog.search("Varese Nord").map(\.id)
+        XCTAssertTrue(results.contains("N00024"))
+        XCTAssertFalse(results.contains("S01738"))
+    }
+
     func testOperationalCatalogueFailsClosed() throws {
         let invalid = """
         {"schemaVersion":1,"kind":"curated-rail-station-catalog","source":"x","sourceDatabaseName":"x","sourceDatabaseSha256":"x","stationCount":0,"operationalData":true,"notice":"x","stations":[]}

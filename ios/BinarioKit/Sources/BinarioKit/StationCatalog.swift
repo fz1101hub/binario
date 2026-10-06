@@ -85,8 +85,10 @@ public struct CuratedStationCatalog: Decodable, Equatable, Sendable {
         guard !needle.isEmpty else { return [] }
         let limit = min(max(requestedLimit, 1), 50)
 
-        return stations.compactMap { station -> RankedStation? in
+        var stationsByName: [String: [Station]] = [:]
+        let ranked = stations.compactMap { station -> RankedStation? in
             let name = StationSearchNormalizer.normalize(station.name)
+            stationsByName[name, default: []].append(station)
             var best = Self.matchScore(candidate: name, needle: needle)
 
             for alias in station.aliases {
@@ -110,13 +112,43 @@ public struct CuratedStationCatalog: Decodable, Equatable, Sendable {
             guard let score = best else { return nil }
             return RankedStation(station: station, score: score, normalizedName: name)
         }
-        .sorted {
-            if $0.score != $1.score { return $0.score < $1.score }
-            if $0.normalizedName != $1.normalizedName { return $0.normalizedName < $1.normalizedName }
-            return $0.station.id < $1.station.id
+        return ranked
+            .filter { !Self.isShadowedDuplicate($0.station, among: stationsByName[$0.normalizedName] ?? []) }
+            .sorted {
+                if $0.score != $1.score { return $0.score < $1.score }
+                if $0.normalizedName != $1.normalizedName { return $0.normalizedName < $1.normalizedName }
+                return $0.station.id < $1.station.id
+            }
+            .prefix(limit)
+            .map(\.station)
+    }
+
+    /// Some stations have several catalogue entries (an RFI and a Ferrovienord code for Varese
+    /// Nord). The timetable index binds them all to the preferred entry, so only that one is
+    /// offered: choosing another would find no trains. Mirrors CO_LOCATED_DUPLICATE_KM and
+    /// identity_preference in tools/build_ios_gtfs_schedule.py.
+    static func isShadowedDuplicate(_ station: Station, among sameName: [Station]) -> Bool {
+        guard let latitude = station.latitude, let longitude = station.longitude else { return false }
+        return sameName.contains { other in
+            guard other.id != station.id,
+                  other.railwayCode != nil || other.trenitaliaLocationId != nil,
+                  let otherLatitude = other.latitude, let otherLongitude = other.longitude,
+                  Self.preferenceKey(other) < Self.preferenceKey(station) else { return false }
+            return distanceKilometres(latitude, longitude, otherLatitude, otherLongitude) <= 1.0
         }
-        .prefix(limit)
-        .map(\.station)
+    }
+
+    private static func preferenceKey(_ station: Station) -> (Int, Int, String) {
+        (station.trenitaliaLocationId == nil ? 1 : 0, station.railwayCode == nil ? 1 : 0, station.id)
+    }
+
+    private static func distanceKilometres(_ lat1: Double, _ lon1: Double, _ lat2: Double, _ lon2: Double) -> Double {
+        let radians = Double.pi / 180
+        let latitudeDelta = (lat2 - lat1) * radians
+        let longitudeDelta = (lon2 - lon1) * radians
+        let haversine = sin(latitudeDelta / 2) * sin(latitudeDelta / 2)
+            + cos(lat1 * radians) * cos(lat2 * radians) * sin(longitudeDelta / 2) * sin(longitudeDelta / 2)
+        return 2 * 6_371.0 * asin(min(1, haversine.squareRoot()))
     }
 
     public func validate() throws {
