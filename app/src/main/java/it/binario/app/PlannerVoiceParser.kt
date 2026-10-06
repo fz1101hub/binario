@@ -35,42 +35,76 @@ data class PlannerVoiceReview(
     val canApply: Boolean
 )
 
-internal fun PlannerVoiceReview.feedbackMessage(target: DictationTarget): String = when (status) {
-    DictationReviewStatus.CONFIRMED ->
-        "Dati riconosciuti e applicati. Verifica i campi prima di cercare."
+/** What to tell the user about a dictation, independent of the display language. */
+sealed interface PlannerVoiceFeedback {
+    data object Confirmed : PlannerVoiceFeedback
+    /** Station names the user must choose between, by role; the fields were not changed. */
+    data class Ambiguous(val alternatives: List<Pair<DictatedStationRole, List<String>>>) : PlannerVoiceFeedback
+    data object Incomplete : PlannerVoiceFeedback
+    data class Unresolved(val target: DictationTarget) : PlannerVoiceFeedback
+}
+
+internal fun PlannerVoiceReview.feedback(target: DictationTarget): PlannerVoiceFeedback = when (status) {
+    DictationReviewStatus.CONFIRMED -> PlannerVoiceFeedback.Confirmed
     DictationReviewStatus.NEEDS_REVIEW -> {
         val alternatives = stationCandidates
             .filter { it.candidates.size > 1 }
-            .joinToString("; ") { group ->
-                val role = when (group.role) {
-                    DictatedStationRole.ORIGIN -> "partenza"
-                    DictatedStationRole.DESTINATION -> "arrivo"
-                    DictatedStationRole.STATION -> "stazione"
-                }
-                "$role: ${group.candidates.take(3).joinToString(" oppure ") { it.name }}"
-            }
-        if (alternatives.isNotBlank()) {
-            "Dettatura ambigua ($alternatives). I campi non sono stati modificati: scegli manualmente."
-        } else {
-            "Dettatura incompleta. I campi non sono stati modificati: completa o correggi manualmente."
-        }
+            .map { group -> group.role to group.candidates.take(3).map { it.name } }
+        if (alternatives.isNotEmpty()) PlannerVoiceFeedback.Ambiguous(alternatives) else PlannerVoiceFeedback.Incomplete
     }
-    DictationReviewStatus.UNRESOLVED -> when (target) {
-        DictationTarget.ROUTE -> "Non ho riconosciuto una tratta. Prova: da Roma Termini a Torino Porta Nuova domani alle 18."
-        DictationTarget.TRAIN -> "Non ho riconosciuto un numero treno. Prova: treno 9512."
-        DictationTarget.STATION -> "Non ho riconosciuto una stazione. Prova: stazione Roma Termini."
-    }
+    DictationReviewStatus.UNRESOLVED -> PlannerVoiceFeedback.Unresolved(target)
 }
 
 /** Interpreta localmente il testo già trascritto dal riconoscitore scelto dall’utente. */
 internal object PlannerVoiceParser {
-    private val trainPattern = Regex("(?:treno|numero)\\s*(\\d{1,6})")
-    private val timePattern = Regex("(?:alle|ore)\\s*(\\d{1,2})(?:\\s*(?:e|:|\\.)\\s*(\\d{1,2}))?")
-    private val numericDatePattern = Regex("(?:il\\s*)?(\\d{1,2})\\s*/\\s*(\\d{1,2})(?:\\s*/\\s*(\\d{4}))?")
-    private val namedDatePattern = Regex("(?:il\\s*)?(\\d{1,2})\\s+(gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|agosto|settembre|ottobre|novembre|dicembre)(?:\\s+(\\d{4}))?")
+    // The system recognizer transcribes in the display language, so every app language is
+    // understood: Italian, English, German, French and Spanish.
+    private val trainPattern = Regex(
+        "(?:^|\\s)(?:treno|numero|train|number|no|zug|nummer|nr|tren|frecciarossa|frecciargento|frecciabianca|" +
+            "italo|intercity|eurocity|ic|ec|ice|tgv|railjet|rj)\\s+(\\d{1,6})(?=\\s|$)"
+    )
+    private val bareTrainNumberPattern = Regex("^(\\d{1,6})$")
+    private const val MINUTES = "(\\d{2}|mezza|mezzo|media|demie|un quarto|quarto|cuarto|quart)"
+    private const val MERIDIEM = "(?:\\s*(am|a m|pm|p m))?"
+    private val keywordTimePattern = Regex(
+        "(?:^|\\s)(?:alle|ore|per le|at|around|um|gegen|vers|a las|a la|sobre las|hacia las|a)\\s+(\\d{1,2})" +
+            "(?:\\s*(?:uhr|heures|heure|horas|hours|h|o clock))?(?:\\s*(?:e|y|and|et)?\\s*$MINUTES)?$MERIDIEM(?=\\s|$)"
+    )
+    private val unitTimePattern = Regex("(?:^|\\s)(\\d{1,2})\\s*(?:uhr|heures|heure|h)(?:\\s*$MINUTES)?$MERIDIEM(?=\\s|$)")
+    private val clockTimePattern = Regex("(?<![\\d/])(\\d{1,2})\\s*:\\s*(\\d{2})(?!\\d)")
+    private val numericDatePattern = Regex("(?<![\\d:])(\\d{1,2})\\s*/\\s*(\\d{1,2})(?:\\s*/\\s*(\\d{4}))?(?![\\d:])")
     private val months = mapOf(
         "gennaio" to 1, "febbraio" to 2, "marzo" to 3, "aprile" to 4, "maggio" to 5, "giugno" to 6,
-        "luglio" to 7, "agosto" to 8, "settembre" to 9, "ottobre" to 10, "novembre" to 11, "dicembre" to 12
+        "luglio" to 7, "agosto" to 8, "settembre" to 9, "ottobre" to 10, "novembre" to 11, "dicembre" to 12,
+        "january" to 1, "february" to 2, "march" to 3, "april" to 4, "may" to 5, "june" to 6,
+        "july" to 7, "august" to 8, "september" to 9, "october" to 10, "november" to 11, "december" to 12,
+        "januar" to 1, "februar" to 2, "marz" to 3, "mai" to 5, "juni" to 6, "juli" to 7,
+        "oktober" to 10, "dezember" to 12,
+        "janvier" to 1, "fevrier" to 2, "mars" to 3, "avril" to 4, "juin" to 6, "juillet" to 7,
+        "aout" to 8, "septembre" to 9, "octobre" to 10, "novembre" to 11, "decembre" to 12,
+        "enero" to 1, "febrero" to 2, "abril" to 4, "mayo" to 5, "junio" to 6, "julio" to 7,
+        "septiembre" to 9, "setiembre" to 9, "octubre" to 10, "noviembre" to 11, "diciembre" to 12
+    )
+    private val monthAlternation = months.keys.sortedByDescending { it.length }.joinToString("|")
+    private val dayMonthPattern = Regex(
+        "(?:^|\\s)(\\d{1,2})(?:st|nd|rd|th|er|o)?\\s+(?:de\\s+|of\\s+)?($monthAlternation)(?:\\s+(?:de\\s+)?(\\d{4}))?(?=\\s|$)"
+    )
+    private val monthDayPattern = Regex(
+        "(?:^|\\s)($monthAlternation)\\s+(?:the\\s+)?(\\d{1,2})(?:st|nd|rd|th)?(?:\\s+(\\d{4}))?(?=\\s|$)"
+    )
+    private val dayAfterTomorrowWords = listOf("dopodomani", "day after tomorrow", "ubermorgen", "apres demain", "pasado manana")
+    private val tomorrowWords = listOf("domani", "tomorrow", "morgen", "demain", "manana")
+    private val todayWords = listOf("oggi", "stasera", "stamattina", "today", "tonight", "heute", "aujourd hui", "ce soir", "hoy")
+    // Time-of-day phrases that contain a "tomorrow" word: "heute morgen" is this morning,
+    // "por la mañana" in the morning.
+    private val morningPhrases = Regex("\\b(?:heute morgen|por la manana|de la manana)\\b")
+    private val returnWords = listOf(
+        "andata e ritorno", "andata ritorno", "return trip", "round trip", "return journey", "and back",
+        "hin und zuruck", "hin und ruckfahrt", "hin und retour", "aller retour", "ida y vuelta"
+    )
+    private val oneWayWords = listOf(
+        "sola andata", "solo andata", "one way", "single journey", "einfache fahrt", "nur hinfahrt",
+        "aller simple", "solo ida"
     )
 
     /**
@@ -136,16 +170,13 @@ internal object PlannerVoiceParser {
         val normalized = normalize(spoken)
         val mentions = findStationMentions(normalized, stations)
         val uniqueStations = mentions.map { mention -> mention.candidates.singleOrNull() }
-        val time = timePattern.find(normalized)?.let { result ->
-            val hour = result.groupValues[1].toIntOrNull()
-            val minute = result.groupValues[2].toIntOrNull() ?: 0
-            if (hour != null && hour in 0..23 && minute in 0..59) LocalTime.of(hour, minute) else null
-        }
-        val date = parseDate(normalized, today)
+        val time = parseTime(normalized, spoken.lowercase())
+        val date = parseDate(normalized, spoken.lowercase(), today)
         val trainNumber = trainPattern.find(normalized)?.groupValues?.getOrNull(1)
+            ?: bareTrainNumberPattern.find(normalized)?.groupValues?.getOrNull(1)
         val returnJourney = when {
-            "andata e ritorno" in normalized || "andata ritorno" in normalized -> true
-            "sola andata" in normalized -> false
+            returnWords.any { containsWords(normalized, it) } -> true
+            oneWayWords.any { containsWords(normalized, it) } -> false
             else -> null
         }
         return Analysis(
@@ -195,15 +226,47 @@ internal object PlannerVoiceParser {
             .sortedBy { it.range.first }
     }
 
-    private fun parseDate(normalized: String, today: LocalDate): LocalDate? = when {
-        "domani" in normalized -> today.plusDays(1)
-        "oggi" in normalized -> today
-        else -> namedDatePattern.find(normalized)?.let { match ->
-            parseCalendarDate(match.groupValues[1], months[match.groupValues[2]], match.groupValues[3], today)
-        } ?: numericDatePattern.find(normalized)?.let { match ->
-            parseCalendarDate(match.groupValues[1], match.groupValues[2].toIntOrNull(), match.groupValues[3], today)
+    private fun parseTime(normalized: String, raw: String): LocalTime? {
+        (keywordTimePattern.find(normalized) ?: unitTimePattern.find(normalized))?.let { match ->
+            return clockTime(match.groupValues[1], match.groupValues[2], match.groupValues[3])
+        }
+        return clockTimePattern.find(raw)?.let { match -> clockTime(match.groupValues[1], match.groupValues[2], "") }
+    }
+
+    private fun clockTime(hourText: String, minuteText: String, meridiem: String): LocalTime? {
+        var hour = hourText.toIntOrNull() ?: return null
+        val minute = when (minuteText) {
+            "" -> 0
+            "mezza", "mezzo", "media", "demie" -> 30
+            "un quarto", "quarto", "cuarto", "quart" -> 15
+            else -> minuteText.toIntOrNull() ?: return null
+        }
+        when (meridiem.replace(" ", "")) {
+            "pm" -> if (hour in 1..11) hour += 12 else if (hour != 12) return null
+            "am" -> if (hour == 12) hour = 0 else if (hour !in 1..11) return null
+        }
+        return if (hour in 0..23 && minute in 0..59) LocalTime.of(hour, minute) else null
+    }
+
+    private fun parseDate(normalized: String, raw: String, today: LocalDate): LocalDate? {
+        val relative = normalized.replace(morningPhrases, " ")
+        return when {
+            dayAfterTomorrowWords.any { containsWords(relative, it) } -> today.plusDays(2)
+            tomorrowWords.any { containsWords(relative, it) } -> today.plusDays(1)
+            todayWords.any { containsWords(normalized, it) } -> today
+            else -> dayMonthPattern.find(normalized)?.let { match ->
+                parseCalendarDate(match.groupValues[1], months[match.groupValues[2]], match.groupValues[3], today)
+            } ?: monthDayPattern.find(normalized)?.let { match ->
+                parseCalendarDate(match.groupValues[2], months[match.groupValues[1]], match.groupValues[3], today)
+            } ?: numericDatePattern.find(raw)?.let { match ->
+                parseCalendarDate(match.groupValues[1], match.groupValues[2].toIntOrNull(), match.groupValues[3], today)
+            }
         }
     }
+
+    /** Whole-word match: "oggi" must not fire inside "Poggibonsi", nor "domani" inside "dopodomani". */
+    private fun containsWords(normalized: String, words: String): Boolean =
+        Regex("(?:^|\\s)${Regex.escape(words)}(?=\\s|$)").containsMatchIn(normalized)
 
     private fun parseCalendarDate(dayText: String, month: Int?, yearText: String, today: LocalDate): LocalDate? {
         val day = dayText.toIntOrNull() ?: return null

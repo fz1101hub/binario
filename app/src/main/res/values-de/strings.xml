@@ -476,6 +476,16 @@
     <string name="voice_prompt_train">Sage die Zugnummer</string>
     <string name="voice_prompt_station">Sage den Namen des Bahnhofs</string>
     <string name="voice_unavailable">Die System-Spracherkennung ist auf diesem Gerät nicht verfügbar.</string>
+    <string name="voice_feedback_confirmed">Erkannt und übernommen. Prüfe die Felder vor der Suche.</string>
+    <string name="voice_feedback_ambiguous">Mehrdeutige Spracheingabe (%1$s). Die Felder wurden nicht geändert: Wähle manuell.</string>
+    <string name="voice_feedback_incomplete">Unvollständige Spracheingabe. Die Felder wurden nicht geändert: Ergänze oder korrigiere sie manuell.</string>
+    <string name="voice_feedback_unresolved_route">Keine Strecke erkannt. Versuche: von Roma Termini nach Torino Porta Nuova morgen um 18 Uhr.</string>
+    <string name="voice_feedback_unresolved_train">Keine Zugnummer erkannt. Versuche: Zug 9512.</string>
+    <string name="voice_feedback_unresolved_station">Kein Bahnhof erkannt. Versuche: Bahnhof Roma Termini.</string>
+    <string name="voice_feedback_role_origin">Abfahrt</string>
+    <string name="voice_feedback_role_destination">Ziel</string>
+    <string name="voice_feedback_role_station">Bahnhof</string>
+    <string name="voice_feedback_alternative_separator">" oder "</string>
     <string name="location_unavailable">Standort nicht verfügbar. Aktiviere die Standortbestimmung des Geräts und versuche es erneut.</string>
     <string name="location_sorted_not_saved">Bahnhöfe nach dem gerade abgefragten Standort sortiert. Der Standort wurde nicht gespeichert.</string>
     <string name="location_permission_denied">Standortberechtigung nicht erteilt. Du kannst weiter manuell nach Bahnhöfen suchen.</string>

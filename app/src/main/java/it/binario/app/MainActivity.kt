@@ -883,7 +883,7 @@ private fun PlannerScreen(
                     (dictated.station ?: dictated.origin)?.let { stationText = it.name }
                 }
             }
-            speechMessage = review.feedbackMessage(dictationTarget)
+            speechMessage = review.feedback(dictationTarget).resolve(resources)
         }
     }
     fun startVoiceInput(target: SearchMode) {

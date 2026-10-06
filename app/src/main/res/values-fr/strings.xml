@@ -486,6 +486,16 @@
     <string name="voice_prompt_train">Dites le numéro du train</string>
     <string name="voice_prompt_station">Dites le nom de la gare</string>
     <string name="voice_unavailable">Le reconnaisseur vocal système n’est pas disponible sur cet appareil.</string>
+    <string name="voice_feedback_confirmed">Reconnu et appliqué. Vérifiez les champs avant de rechercher.</string>
+    <string name="voice_feedback_ambiguous">Dictée ambiguë (%1$s). Les champs n\'ont pas été modifiés : choisissez manuellement.</string>
+    <string name="voice_feedback_incomplete">Dictée incomplète. Les champs n\'ont pas été modifiés : complétez-les ou corrigez-les manuellement.</string>
+    <string name="voice_feedback_unresolved_route">Aucun trajet reconnu. Essayez : de Roma Termini à Torino Porta Nuova demain à 18 h.</string>
+    <string name="voice_feedback_unresolved_train">Aucun numéro de train reconnu. Essayez : train 9512.</string>
+    <string name="voice_feedback_unresolved_station">Aucune gare reconnue. Essayez : gare Roma Termini.</string>
+    <string name="voice_feedback_role_origin">départ</string>
+    <string name="voice_feedback_role_destination">arrivée</string>
+    <string name="voice_feedback_role_station">gare</string>
+    <string name="voice_feedback_alternative_separator">" ou "</string>
     <string name="location_unavailable">Position non disponible. Activez la localisation de l’appareil et réessayez.</string>
     <string name="location_sorted_not_saved">Gares classées selon la position qui vient d’être demandée. La position n’a pas été enregistrée.</string>
     <string name="location_permission_denied">Autorisation de localisation non accordée. Vous pouvez continuer à rechercher les gares manuellement.</string>

@@ -80,8 +80,10 @@ class PlannerVoiceParserTest {
         assertFalse(review.canApply)
         assertNull(review.input.station)
         assertEquals(listOf(centrale, portaNuova), review.stationCandidates.single().candidates)
-        assertTrue(review.feedbackMessage(DictationTarget.STATION).contains("Milano Centrale"))
-        assertTrue(review.feedbackMessage(DictationTarget.STATION).contains("Verona Porta Nuova"))
+        assertEquals(
+            PlannerVoiceFeedback.Ambiguous(listOf(DictatedStationRole.STATION to listOf("Milano Centrale", "Verona Porta Nuova"))),
+            review.feedback(DictationTarget.STATION)
+        )
     }
 
     @Test
@@ -110,6 +112,94 @@ class PlannerVoiceParserTest {
 
         assertEquals(DictationReviewStatus.UNRESOLVED, review.status)
         assertFalse(review.canApply)
-        assertTrue(review.feedbackMessage(DictationTarget.TRAIN).contains("9512"))
+        assertEquals(PlannerVoiceFeedback.Unresolved(DictationTarget.TRAIN), review.feedback(DictationTarget.TRAIN))
+    }
+
+    private val today = LocalDate.of(2026, 10, 6)
+
+    @Test
+    fun `understands an English dictation`() {
+        val result = PlannerVoiceParser.parse(
+            "From Roma Termini to Torino Porta Nuova on October 9th at 6:30 pm, return trip, train 9512",
+            listOf(termini, torino),
+            today
+        )
+
+        assertEquals(termini, result.origin)
+        assertEquals(torino, result.destination)
+        assertEquals(LocalDate.of(2026, 10, 9), result.date)
+        assertEquals(LocalTime.of(18, 30), result.time)
+        assertEquals(true, result.returnJourney)
+        assertEquals("9512", result.trainNumber)
+    }
+
+    @Test
+    fun `understands a German dictation`() {
+        val result = PlannerVoiceParser.parse(
+            "Von Roma Termini nach Torino Porta Nuova übermorgen um 7 Uhr 45, Zug 9512, einfache Fahrt",
+            listOf(termini, torino),
+            today
+        )
+
+        assertEquals(termini, result.origin)
+        assertEquals(LocalDate.of(2026, 10, 8), result.date)
+        assertEquals(LocalTime.of(7, 45), result.time)
+        assertEquals("9512", result.trainNumber)
+        assertEquals(false, result.returnJourney)
+    }
+
+    @Test
+    fun `understands a French dictation`() {
+        val result = PlannerVoiceParser.parse(
+            "De Roma Termini à Torino Porta Nuova le 12 octobre à 18 h 15, aller-retour",
+            listOf(termini, torino),
+            today
+        )
+
+        assertEquals(torino, result.destination)
+        assertEquals(LocalDate.of(2026, 10, 12), result.date)
+        assertEquals(LocalTime.of(18, 15), result.time)
+        assertEquals(true, result.returnJourney)
+    }
+
+    @Test
+    fun `understands a Spanish dictation`() {
+        val result = PlannerVoiceParser.parse(
+            "De Roma Termini a Torino Porta Nuova mañana a las 8 y media, ida y vuelta, tren 9512",
+            listOf(termini, torino),
+            today
+        )
+
+        assertEquals(LocalDate.of(2026, 10, 7), result.date)
+        assertEquals(LocalTime.of(8, 30), result.time)
+        assertEquals(true, result.returnJourney)
+        assertEquals("9512", result.trainNumber)
+    }
+
+    @Test
+    fun `relative dates match whole words only`() {
+        val poggibonsi = Station("poggibonsi", "Poggibonsi", "Poggibonsi")
+
+        val fromPoggibonsi = PlannerVoiceParser.parse("Da Poggibonsi a Torino Porta Nuova", listOf(poggibonsi, torino), today)
+        val dayAfterTomorrow = PlannerVoiceParser.parse("Da Roma Termini a Torino Porta Nuova dopodomani", listOf(termini, torino), today)
+
+        assertNull(fromPoggibonsi.date)
+        assertEquals(LocalDate.of(2026, 10, 8), dayAfterTomorrow.date)
+    }
+
+    @Test
+    fun `numeric dates and clock times survive punctuation`() {
+        val result = PlannerVoiceParser.parse("Da Roma Termini a Torino Porta Nuova il 9/10 18:05", listOf(termini, torino), today)
+
+        assertEquals(LocalDate.of(2026, 10, 9), result.date)
+        assertEquals(LocalTime.of(18, 5), result.time)
+    }
+
+    @Test
+    fun `a bare number is a train number`() {
+        val review = PlannerVoiceParser.review("9512", listOf(termini, torino), DictationTarget.TRAIN, today)
+
+        assertEquals(DictationReviewStatus.CONFIRMED, review.status)
+        assertEquals("9512", review.input.trainNumber)
     }
 }

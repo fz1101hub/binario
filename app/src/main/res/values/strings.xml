@@ -486,6 +486,16 @@
     <string name="voice_prompt_train">Dì il numero del treno</string>
     <string name="voice_prompt_station">Dì il nome della stazione</string>
     <string name="voice_unavailable">Il riconoscitore vocale di sistema non è disponibile su questo dispositivo.</string>
+    <string name="voice_feedback_confirmed">Dati riconosciuti e applicati. Verifica i campi prima di cercare.</string>
+    <string name="voice_feedback_ambiguous">Dettatura ambigua (%1$s). I campi non sono stati modificati: scegli manualmente.</string>
+    <string name="voice_feedback_incomplete">Dettatura incompleta. I campi non sono stati modificati: completa o correggi manualmente.</string>
+    <string name="voice_feedback_unresolved_route">Non ho riconosciuto una tratta. Prova: da Roma Termini a Torino Porta Nuova domani alle 18.</string>
+    <string name="voice_feedback_unresolved_train">Non ho riconosciuto un numero treno. Prova: treno 9512.</string>
+    <string name="voice_feedback_unresolved_station">Non ho riconosciuto una stazione. Prova: stazione Roma Termini.</string>
+    <string name="voice_feedback_role_origin">partenza</string>
+    <string name="voice_feedback_role_destination">arrivo</string>
+    <string name="voice_feedback_role_station">stazione</string>
+    <string name="voice_feedback_alternative_separator">" oppure "</string>
     <string name="location_unavailable">Posizione non disponibile. Attiva la localizzazione del dispositivo e riprova.</string>
     <string name="location_sorted_not_saved">Stazioni ordinate dalla posizione appena richiesta. La posizione non è stata salvata.</string>
     <string name="location_permission_denied">Permesso posizione non concesso. Puoi continuare a cercare manualmente le stazioni.</string>

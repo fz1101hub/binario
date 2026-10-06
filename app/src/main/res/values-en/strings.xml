@@ -476,6 +476,16 @@
     <string name="voice_prompt_train">Say the train number</string>
     <string name="voice_prompt_station">Say the station name</string>
     <string name="voice_unavailable">The system voice recogniser is unavailable on this device.</string>
+    <string name="voice_feedback_confirmed">Recognised and applied. Check the fields before searching.</string>
+    <string name="voice_feedback_ambiguous">Ambiguous dictation (%1$s). The fields were not changed: choose manually.</string>
+    <string name="voice_feedback_incomplete">Incomplete dictation. The fields were not changed: complete or correct them manually.</string>
+    <string name="voice_feedback_unresolved_route">No route recognised. Try: from Roma Termini to Torino Porta Nuova tomorrow at 6 pm.</string>
+    <string name="voice_feedback_unresolved_train">No train number recognised. Try: train 9512.</string>
+    <string name="voice_feedback_unresolved_station">No station recognised. Try: Roma Termini station.</string>
+    <string name="voice_feedback_role_origin">origin</string>
+    <string name="voice_feedback_role_destination">destination</string>
+    <string name="voice_feedback_role_station">station</string>
+    <string name="voice_feedback_alternative_separator">" or "</string>
     <string name="location_unavailable">Location unavailable. Enable device location and try again.</string>
     <string name="location_sorted_not_saved">Stations ordered using the requested location. The location was not saved.</string>
     <string name="location_permission_denied">Location permission not granted. You can continue to search for stations manually.</string>
