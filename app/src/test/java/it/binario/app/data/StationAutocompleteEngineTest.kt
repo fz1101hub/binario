@@ -38,4 +38,23 @@ class StationAutocompleteEngineTest {
         assertTrue(engine.suggest("t").isEmpty())
         assertNull(engine.findExact("stazione inesistente"))
     }
+
+    @Test
+    fun `a station's own name wins over an earlier station's alias`() {
+        val malpensa = Station(id = "S01999", name = "Milano Malpensa Aeroporto", city = "Ferno", railwayCode = "S01999", aliases = listOf("Milano Centrale", "Milan"))
+        val centrale = Station(id = "S01700", name = "Milano Centrale", city = "Milano", railwayCode = "S01700", aliases = listOf("Milan"))
+        val engine = StationAutocompleteEngine(listOf(malpensa, centrale))
+
+        assertEquals(centrale, engine.findExact("Milano Centrale"))
+        assertEquals(malpensa, engine.findExact("milano malpensa aeroporto"))
+        // "Milan" names two different stations: resolve to nothing rather than guess.
+        assertNull(engine.findExact("Milan"))
+    }
+
+    @Test
+    fun `same-name catalogue duplicates prefer the curated entry with a railway code`() {
+        val bare = Station(id = "NC000001", name = "Andora", city = "Andora")
+        val curated = Station(id = "S04400", name = "Andora", city = "Andora", railwayCode = "S04400")
+        assertEquals(curated, StationAutocompleteEngine(listOf(bare, curated)).findExact("ANDORA"))
+    }
 }
