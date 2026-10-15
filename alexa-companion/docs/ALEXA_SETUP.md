@@ -20,7 +20,9 @@ Il companion è predisposto, ma intenzionalmente **non attivo** quando `ALEXA_EN
 | Scope             | `routes.read`                                         |
 | Skill ID          | Da inserire come `ALEXA_SKILL_ID` nei segreti server  |
 
-L’endpoint webhook usa l’ASK SDK ufficiale con verifica firma, catena certificati, timestamp e Skill ID. Amazon richiede HTTPS e la convalida delle richieste per una Custom Skill ospitata come web service.[1] Il certificato della pubblicazione deve essere firmato da una CA attendibile; un certificato autofirmato è ammesso solo nei test.[1]
+L’endpoint webhook mantiene l’ASK SDK ufficiale per gli intent. Prima del dispatch, `server/voice/alexaWebhook.ts` verifica il corpo originale con `Signature-256` (RSA-SHA256 tramite Node/OpenSSL), la catena X.509 con PKIjs/WebCrypto e le CA pubbliche incorporate in Node, il SAN esatto `echo-api.amazon.com`, la validità dei certificati, il timestamp entro 150 secondi e lo Skill ID. Sono rifiutati anche timestamp futuri oltre la stessa tolleranza e ID discordanti fra sessione e contesto. Il download ammette soltanto HTTPS da `s3.amazonaws.com/echo.api/`, senza redirect, con timeout e dimensione limitati; la cache è limitata a 64 catene e cinque minuti, senza superare la scadenza dei certificati. Come l’adapter precedente, non viene effettuato un controllo online CRL/OCSP.
+
+L’adapter Express precedente è stato rimosso perché trascinava `node-forge` vulnerabile senza patch disponibile (GHSA-86w9-cpqp-85rv). Nessuna eccezione è stata aggiunta al gate di audit Alexa. I test includono firme e certificati con DigestInfo PKCS#1 alterato, oltre a certificati non attendibili, scaduti e con SAN errato. Amazon richiede HTTPS e la convalida delle richieste per una Custom Skill ospitata come web service.[1] Il certificato della pubblicazione deve essere firmato da una CA attendibile; un certificato autofirmato è ammesso solo nei test.[1]
 
 ## Modello di interazione da creare
 

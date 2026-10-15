@@ -1,6 +1,6 @@
 import express, { type Express, type NextFunction, type Request, type Response } from "express";
 import { parse as parseCookieHeader } from "cookie";
-import { ExpressAdapter } from "ask-sdk-express-adapter";
+import { createAlexaWebhookHandler } from "./alexaWebhook";
 import {
   getAccountLinkingAccessToken,
   getIntentName,
@@ -614,8 +614,7 @@ export function registerAlexaRoutes(app: Express) {
     })
   );
 
-  // The Alexa SDK installs its own raw-text parser and verifies Signature-256,
-  // signing certificate, timestamp and skill id before a handler can run.
+  // Verify the raw signed body before the global JSON parser or skill handlers.
   app.post(
     "/api/alexa/webhook",
     (req, res, next) => {
@@ -623,7 +622,7 @@ export function registerAlexaRoutes(app: Express) {
         return oauthError(res, 503, "alexa_not_configured");
       return next();
     },
-    ...new ExpressAdapter(createAlexaSkill(), true, true).getRequestHandlers()
+    createAlexaWebhookHandler(createAlexaSkill(), ENV.alexaSkillId)
   );
 
   app.use("/api/alexa/oauth", (error: unknown, _req: Request, res: Response, next: NextFunction) => {
