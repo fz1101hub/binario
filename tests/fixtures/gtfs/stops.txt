@@ -1,0 +1,4 @@
+stop_id,stop_name,stop_lat,stop_lon,parent_station
+PARENT,Genova Piazza Manin,44.42,8.94,
+A,Casella,44.53,8.99,PARENT
+B,Bus terminal,44.41,8.95,

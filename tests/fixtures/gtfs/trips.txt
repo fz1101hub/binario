@@ -1,0 +1,3 @@
+route_id,service_id,trip_id,shape_id
+FGC-164,RAIL,rail-trip,rail-shape
+BUS-1,BUS,bus-trip,bus-shape

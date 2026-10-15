@@ -1,0 +1,10 @@
+consegna_binario_v018/
+consegna_binario_v018/Binario-v0.18.0-debug.apk
+consegna_binario_v018/CHANGELOG.md
+consegna_binario_v018/DATA_LAYER_HANDOFF.md
+consegna_binario_v018/README.md
+consegna_binario_v018/SHA256SUMS.txt
+consegna_binario_v018/VERIFICA-v0.18.0.md
+consegna_binario_v018/sorgenti/
+consegna_binario_v018/sorgenti/Binario-v0.18.0-sorgenti.tar.gz
+consegna_binario_v018/todo.md

@@ -1,0 +1,53 @@
+def binarioReleaseSigningProperties = [
+  BINARIO_RELEASE_STORE_FILE: providers.gradleProperty("BINARIO_RELEASE_STORE_FILE").orElse(providers.environmentVariable("BINARIO_RELEASE_STORE_FILE")),
+  BINARIO_RELEASE_STORE_PASSWORD: providers.gradleProperty("BINARIO_RELEASE_STORE_PASSWORD").orElse(providers.environmentVariable("BINARIO_RELEASE_STORE_PASSWORD")),
+  BINARIO_RELEASE_KEY_ALIAS: providers.gradleProperty("BINARIO_RELEASE_KEY_ALIAS").orElse(providers.environmentVariable("BINARIO_RELEASE_KEY_ALIAS")),
+  BINARIO_RELEASE_KEY_PASSWORD: providers.gradleProperty("BINARIO_RELEASE_KEY_PASSWORD").orElse(providers.environmentVariable("BINARIO_RELEASE_KEY_PASSWORD")),
+]
+def binarioReleaseSigningConfigured = binarioReleaseSigningProperties.values().every { it.isPresent() }
+if (binarioReleaseSigningProperties.values().any { it.isPresent() } && !binarioReleaseSigningConfigured) {
+  logger.warn("Release signing is enabled only when every BINARIO_RELEASE_* value is supplied; building unsigned.")
+}
+
+apply plugin: "com.android.application"
+apply plugin: "org.jetbrains.kotlin.android"
+
+android {
+  signingConfigs {
+    if (binarioReleaseSigningConfigured) {
+      release {
+        storeFile rootProject.file(binarioReleaseSigningProperties.BINARIO_RELEASE_STORE_FILE.get())
+        storePassword binarioReleaseSigningProperties.BINARIO_RELEASE_STORE_PASSWORD.get()
+        keyAlias binarioReleaseSigningProperties.BINARIO_RELEASE_KEY_ALIAS.get()
+        keyPassword binarioReleaseSigningProperties.BINARIO_RELEASE_KEY_PASSWORD.get()
+      }
+    }
+  }
+  namespace "im.binario.companion.wear"
+  compileSdk rootProject.ext.compileSdkVersion
+  defaultConfig {
+    // Data Layer peers must share package id and release signing identity.
+    applicationId "im.binario.companion"
+    minSdkVersion 30
+    targetSdkVersion rootProject.ext.targetSdkVersion
+    versionCode 4
+    versionName "0.1.1"
+  }
+  buildTypes {
+    debug {}
+    release {
+      // Production signing is supplied only by the release environment.
+      if (binarioReleaseSigningConfigured) signingConfig signingConfigs.release
+    }
+  }
+}
+
+dependencies {
+  implementation("androidx.wear.tiles:tiles:1.6.2")
+  implementation("androidx.wear.protolayout:protolayout:1.4.2")
+  implementation("androidx.activity:activity-ktx:1.10.1")
+  implementation("androidx.core:core-ktx:1.15.0")
+  implementation("com.google.android.gms:play-services-wearable:20.0.1")
+  implementation("com.google.guava:guava:33.5.0-android")
+  testImplementation("junit:junit:4.13.2")
+}

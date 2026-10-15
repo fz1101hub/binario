@@ -1,0 +1,55 @@
+{
+  "schemaVersion": 1,
+  "sources": [
+    {
+      "accessMode": "OPEN_DIRECT",
+      "sourceId": "alto-adige-sta-gtfs",
+      "sourceUrl": "https://gtfs.api.opendatahub.com/v1/dataset/sta-time-tables/raw"
+    },
+    {
+      "accessMode": "OPEN_DIRECT",
+      "sourceId": "arst-gtfs",
+      "sourceUrl": "https://arstspa.info/arst-cagliari-it.zip"
+    },
+    {
+      "accessMode": "OPEN_DIRECT",
+      "sourceId": "ch-otd-gtfs",
+      "sourceUrl": "https://data.opentransportdata.swiss/dataset/3d2c18f9-9ef1-463f-a249-5c67604efd74/resource/32c2dfb4-8953-45b5-b271-211a2fa3aa18/download/gtfs_fp2026_2025-08-14.zip"
+    },
+    {
+      "accessMode": "OPEN_DIRECT",
+      "sourceId": "eav-gtfs",
+      "sourceUrl": "https://www.wimob.it/cfile/download.php?file=google-transit.zip"
+    },
+    {
+      "accessMode": "OPEN_DIRECT",
+      "sourceId": "hzpp-gtfs",
+      "sourceUrl": "https://www.hzpp.hr/GTFS_files.zip"
+    },
+    {
+      "accessMode": "OPEN_DIRECT",
+      "sourceId": "lombardia-trenord-gtfs",
+      "sourceUrl": "https://www.dati.lombardia.it/download/3z4k-mxz9/application/zip"
+    },
+    {
+      "accessMode": "OPEN_DIRECT",
+      "sourceId": "oebb-gtfs",
+      "sourceUrl": "https://static.web.oebb.at/open-data/soll-fahrplan-gtfs/GTFS_Fahrplan_2026.zip"
+    },
+    {
+      "accessMode": "OPEN_DIRECT",
+      "sourceId": "sncf-gtfs",
+      "sourceUrl": "https://eu.ftp.opendatasoft.com/sncf/plandata/Export_OpenData_SNCF_GTFS_NewTripId.zip"
+    },
+    {
+      "accessMode": "OPEN_DIRECT",
+      "sourceId": "toscana-tft-gtfs",
+      "sourceUrl": "https://dati.toscana.it/dataset/8bb8f8fe-fe7d-41d0-90dc-49f2456180d1/resource/59aeacbc-99ee-410b-ac1e-622b5574a666/download/tft.gtfs"
+    },
+    {
+      "accessMode": "OPEN_DIRECT",
+      "sourceId": "trentino-gtfs",
+      "sourceUrl": "https://www.trentinotrasporti.it/opendata/google_transit_extraurbano_tte.zip"
+    }
+  ]
+}

@@ -1,0 +1,8 @@
+import * as DocumentPicker from "expo-document-picker";
+import * as FileSystem from "expo-file-system/legacy";
+import * as Sharing from "expo-sharing";
+import type { LocalPlannedRoute } from "@/lib/local-route-contract";
+import { parseManualRouteTransfer, type ManualRouteTransferArchive } from "@/lib/manual-route-transfer-contract";
+import { createTranslator, type CompanionLocale } from "@/lib/i18n";
+export async function shareLocalJourneyTransfer(routes: readonly LocalPlannedRoute[], locale?: CompanionLocale) { if (routes.length === 0 || !(await Sharing.isAvailableAsync())) return false; const archive: ManualRouteTransferArchive = { schemaVersion: 1, createdAtUtc: new Date().toISOString(), routes: routes.slice(0, 40).map(({ origin, originStationCode, destination, destinationStationCode, travelDate, travelTime, plannedReminderMinutes, checklist }) => ({ origin, originStationCode, destination, destinationStationCode, travelDate, travelTime, plannedReminderMinutes, checklist: checklist ?? [] })) }; const uri = `${FileSystem.cacheDirectory}binario-tratte.json`; await FileSystem.writeAsStringAsync(uri, JSON.stringify(archive)); await Sharing.shareAsync(uri, { mimeType: "application/json", dialogTitle: createTranslator(locale)("settings.exportDialog") }); return true; }
+export async function pickLocalJourneyTransfer() { const result = await DocumentPicker.getDocumentAsync({ type: ["application/json", "text/plain"], copyToCacheDirectory: true }); if (result.canceled || !result.assets[0]) return null; try { return parseManualRouteTransfer(await FileSystem.readAsStringAsync(result.assets[0].uri)); } catch { return null; } }

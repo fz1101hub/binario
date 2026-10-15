@@ -1,0 +1,11 @@
+# Dipendenze e output rigenerabili: non fanno parte della baseline sorgente.
+node_modules/
+.expo/
+dist/
+dist-android/
+android/.gradle/
+android/build/
+android/app/build/
+ios/build/
+*.apk
+

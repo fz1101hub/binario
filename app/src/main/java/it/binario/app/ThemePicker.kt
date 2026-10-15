@@ -19,6 +19,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
@@ -34,8 +35,8 @@ fun ThemePickerSheet(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp).padding(bottom = 28.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Text("Aspetto dell’app", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-            Text("Scegli un tema. La preferenza resta solo su questo dispositivo.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(stringResource(R.string.theme_picker_title), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+            Text(stringResource(R.string.theme_picker_description), color = MaterialTheme.colorScheme.onSurfaceVariant)
             AppThemeMode.entries.forEach { mode ->
                 FilterChip(
                     selected = currentMode == mode,
@@ -50,12 +51,12 @@ fun ThemePickerSheet(
                             }
                             Icon(icon, contentDescription = null, modifier = Modifier.size(20.dp))
                             Column {
-                                Text(mode.label, fontWeight = FontWeight.Bold)
+                                Text(mode.localizedLabel(), fontWeight = FontWeight.Bold)
                                 Text(
                                     when (mode) {
-                                        AppThemeMode.SYSTEM -> "Segue l’impostazione del telefono"
-                                        AppThemeMode.LIGHT -> "Superfici chiare e leggibili"
-                                        AppThemeMode.DARK -> "Superfici scure per bassa luminosità"
+                                        AppThemeMode.SYSTEM -> stringResource(R.string.theme_system_description)
+                                        AppThemeMode.LIGHT -> stringResource(R.string.theme_light_description)
+                                        AppThemeMode.DARK -> stringResource(R.string.theme_dark_description)
                                     },
                                     style = MaterialTheme.typography.bodySmall
                                 )
@@ -66,4 +67,11 @@ fun ThemePickerSheet(
             }
         }
     }
+}
+
+@Composable
+fun AppThemeMode.localizedLabel(): String = when (this) {
+    AppThemeMode.SYSTEM -> stringResource(R.string.theme_system_label)
+    AppThemeMode.LIGHT -> stringResource(R.string.theme_light_label)
+    AppThemeMode.DARK -> stringResource(R.string.theme_dark_label)
 }

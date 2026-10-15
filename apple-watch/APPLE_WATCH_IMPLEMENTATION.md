@@ -2,7 +2,9 @@
 
 Il companion watchOS è stato ricostruito come progetto nativo watchOS 10 con SwiftUI, WidgetKit, App Intents, cache locale e App Group. Mostra al massimo due corse, provider, qualità, freshness e l’avvertenza non-live; non mostra biglietti, posizione, token o storico.
 
-> Apple Watch si abbina a iPhone, non a uno smartphone Android. Per questo l’app Android non può inviare uno snapshot direttamente tramite Watch Connectivity. L’architettura Binario prevede due canali leciti e dichiarati: una futura app iOS Binario che usa Watch Connectivity, oppure il profilo Voice Bridge autenticato che consente alla superficie watchOS di recuperare soltanto il profilo personale autorizzato.
+> Apple Watch si abbina a iPhone, non a uno smartphone Android. Per questo l’app Android non può inviare uno snapshot direttamente tramite Watch Connectivity. Il produttore iOS è ora implementato nel progetto integrato `../ios/project.yml`; il companion Alexa non è un canale dati per watchOS.
+
+`apple-watch/project.yml` resta intenzionalmente un progetto watch-only indipendente e dichiara `WKApplication = YES` e `WKWatchOnly = YES`. Il progetto integrato `../ios/project.yml` incorpora invece il target Watch nell’app `it.binario.ios`, imposta `WKCompanionAppBundleIdentifier` e disabilita lo stato watch-only. Questa associazione statica non costituisce prova di build, firma o consegna `WCSession`: servono Xcode su macOS e una successiva prova end-to-end su iPhone e Apple Watch abbinati.
 
 ## Generazione e verifica su macOS
 
@@ -11,4 +13,4 @@ Il companion watchOS è stato ricostruito come progetto nativo watchOS 10 con Sw
 3. Nel portale Apple Developer registrare `group.it.binario.watch` e associarlo ai due target.
 4. Aprire `BinarioWatch.xcodeproj`, configurare il team e verificare `BinarioWatchTests` su un simulatore Apple Watch con watchOS 10 o successivo.
 
-L’App Intent rilegge soltanto la cache: non promette un refresh live. Il Widget aggiorna la timeline ogni quindici minuti come risveglio massimo; il contenuto cambia realmente soltanto quando arriva un nuovo snapshot compatibile tramite un canale autorizzato.
+L’App Intent rilegge soltanto la cache e richiede subito il reload della timeline del widget: l’effetto è osservabile anche se il contenuto non è cambiato, ma non promette un refresh live. Il Widget aggiorna inoltre la timeline ogni quindici minuti come risveglio massimo; il contenuto cambia realmente soltanto quando arriva un nuovo snapshot compatibile tramite un canale autorizzato.
