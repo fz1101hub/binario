@@ -52,13 +52,13 @@ on:
       - ".github/workflows/android-ci.yml"
   workflow_dispatch:
     inputs:
-      verify_rfi_route:
-        description: "Verifica Appiano → Roma Ostiense con le fonti reali sull’emulatore"
+      verify_reproducibility:
+        description: "Esegui due full rebuild e confronta gli AAB unsigned"
         required: false
         type: boolean
         default: false
-      verify_reproducibility:
-        description: "Esegui due full rebuild e confronta gli AAB unsigned"
+      verify_rfi_route:
+        description: "Verifica Appiano → Roma Ostiense con le fonti reali sull’emulatore"
         required: false
         type: boolean
         default: false
