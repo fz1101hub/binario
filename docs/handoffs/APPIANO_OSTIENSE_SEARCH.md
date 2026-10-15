@@ -22,6 +22,10 @@ mostra un messaggio localizzato sul servizio degli orari non raggiungibile,
 distinto da tratta non coperta, orari scaduti o corse assenti dopo l'ora scelta.
 Gli errori non vengono memorizzati come quadri vuoti: una nuova ricerca può
 ritentare la richiesta.
+Una data esterna alla validità di un quadro RFI mostra il periodo pubblicato,
+senza confonderlo con un pack incorporato scaduto che richiede un aggiornamento
+dell'app. La cache include entrambe le stazioni: modificare una tratta con lo
+stesso ID non conserva la vecchia fermata di salita.
 
 ## Verifica
 

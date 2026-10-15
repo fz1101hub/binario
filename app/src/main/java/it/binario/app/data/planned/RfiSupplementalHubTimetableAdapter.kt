@@ -102,7 +102,8 @@ class RfiSupplementalHubTimetableAdapter(
         parsed.validity?.let { validity ->
             if (query.serviceDate !in validity.start..validity.end) {
                 return DataResult.Failure(
-                    "Il quadro orario RFI disponibile è valido dal ${validity.start} al ${validity.end}, non per ${query.serviceDate}."
+                    "Il quadro orario RFI disponibile è valido dal ${validity.start} al ${validity.end}, non per ${query.serviceDate}.",
+                    RouteFailureReason.ScheduleOutsideValidity(validity.start, validity.end)
                 )
             }
         }

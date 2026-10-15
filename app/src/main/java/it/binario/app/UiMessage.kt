@@ -39,6 +39,7 @@ enum class UiMessageKey(val resourceName: String) {
     RAIL_NETWORK_UNAVAILABLE("rail_network_unavailable"),
     ROUTE_NOT_COVERED("route_not_covered"),
     ROUTE_SCHEDULE_EXPIRED("route_schedule_expired"),
+    ROUTE_SCHEDULE_OUTSIDE_VALIDITY("route_schedule_outside_validity"),
     ROUTE_NO_SERVICE_AFTER("route_no_service_after"),
     ROUTE_COVERAGE_FALLBACK("route_coverage_fallback"),
     STATION_BOARD_UNAVAILABLE("station_board_unavailable_generic"),
@@ -59,6 +60,7 @@ internal fun RouteFailureReason.uiMessage(): UiMessage = when (this) {
     RouteFailureReason.NetworkUnavailable -> UiMessage(UiMessageKey.RAIL_NETWORK_UNAVAILABLE)
     RouteFailureReason.RouteNotCovered -> UiMessage(UiMessageKey.ROUTE_NOT_COVERED)
     is RouteFailureReason.ScheduleExpired -> UiMessage(UiMessageKey.ROUTE_SCHEDULE_EXPIRED, validUntil)
+    is RouteFailureReason.ScheduleOutsideValidity -> UiMessage(UiMessageKey.ROUTE_SCHEDULE_OUTSIDE_VALIDITY, validFrom, validUntil)
     is RouteFailureReason.NoServiceAfter -> UiMessage(UiMessageKey.ROUTE_NO_SERVICE_AFTER, serviceDate, departureTime)
 }
 

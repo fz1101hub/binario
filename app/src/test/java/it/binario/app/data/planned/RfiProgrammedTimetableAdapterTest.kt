@@ -212,9 +212,11 @@ class RfiProgrammedTimetableAdapterTest {
         val route = route(appiano, ostiense)
         assertTrue(adapter.loadRoute(route, Direction.OUTBOUND,
             JourneyQuery(LocalDate.of(2026, 9, 6), LocalTime.of(8, 0))) is DataResult.Failure)
-        val expired = adapter.loadRoute(route, Direction.OUTBOUND,
-            JourneyQuery(LocalDate.of(2027, 1, 10), LocalTime.of(8, 0))) as DataResult.Failure
-        assertEquals(RouteFailureReason.ScheduleExpired(LocalDate.of(2026, 12, 12)), expired.reason)
+        for (date in listOf(LocalDate.of(2026, 1, 10), LocalDate.of(2027, 1, 10))) {
+            val outside = adapter.loadRoute(route, Direction.OUTBOUND,
+                JourneyQuery(date, LocalTime.of(8, 0))) as DataResult.Failure
+            assertEquals(RouteFailureReason.ScheduleOutsideValidity(LocalDate.of(2026, 6, 14), LocalDate.of(2026, 12, 12)), outside.reason)
+        }
     }
 
     @Test
@@ -268,6 +270,22 @@ class RfiProgrammedTimetableAdapterTest {
         assertEquals(RouteFailureReason.NetworkUnavailable, first.reason)
         assertTrue(adapter.loadRoute(route(appiano, ostiense), Direction.OUTBOUND, query) is DataResult.Success)
         assertEquals(2, calls)
+    }
+
+    @Test
+    fun `cambiare origine mantenendo l'id della tratta non riusa la fermata di salita precedente`() = runBlocking {
+        val adapter = RfiProgrammedTimetableAdapter(
+            fetcher = RfiProgrammedTimetableFetcher { arrivalsFixture() }, clock = clock
+        )
+        val query = JourneyQuery(LocalDate.of(2026, 9, 4), LocalTime.of(8, 0))
+        val original = route(appiano, ostiense)
+        val first = adapter.loadRoute(original, Direction.OUTBOUND, query) as DataResult.Success
+        assertEquals("08:12", first.snapshot.services.single().scheduledDeparture)
+        val changed = original.copy(outwardOrigin = Station("valle-aurelia", "Valle Aurelia", "Roma"))
+        val second = adapter.loadRoute(changed, Direction.OUTBOUND, query) as DataResult.Success
+        assertEquals("08:15", second.snapshot.services.single().scheduledDeparture)
+        assertEquals("Valle Aurelia", second.snapshot.services.single().stops.first().station)
+        assertFalse(second.snapshot.services.single().stops.any { it.station == appiano.name })
     }
 
     @Test

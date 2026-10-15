@@ -229,6 +229,7 @@ sealed interface RouteFailureReason {
     data object RouteNotCovered : RouteFailureReason
     /** The timetables that serve the route end before the requested date: the app needs an update. */
     data class ScheduleExpired(val validUntil: LocalDate) : RouteFailureReason
+    data class ScheduleOutsideValidity(val validFrom: LocalDate, val validUntil: LocalDate) : RouteFailureReason
     /** The route is covered, but no train runs on that date from that time on. */
     data class NoServiceAfter(val serviceDate: LocalDate, val departureTime: LocalTime) : RouteFailureReason
 }
@@ -332,7 +333,10 @@ class RailDataRepository(
             // A local pack that does not cover the route cannot invalidate a more
             // specific result from its official timetable (date/time or network).
             is DataResult.Failure -> if (result.reason == RouteFailureReason.RouteNotCovered) {
-                failures.firstOrNull { it.reason is RouteFailureReason.NoServiceAfter || it.reason is RouteFailureReason.ScheduleExpired }
+                failures.firstOrNull {
+                    it.reason is RouteFailureReason.NoServiceAfter || it.reason is RouteFailureReason.ScheduleExpired ||
+                        it.reason is RouteFailureReason.ScheduleOutsideValidity
+                }
                     ?: failures.firstOrNull { it.reason == RouteFailureReason.NetworkUnavailable }
                     ?: failures.firstOrNull { it.reason == RouteFailureReason.Unavailable }
                     ?: result

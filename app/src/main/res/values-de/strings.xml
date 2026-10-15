@@ -387,6 +387,7 @@
     <string name="route_origin_destination_required">Gib Start und Ziel ein, um eine Strecke anzuzeigen.</string>
     <string name="rail_data_unavailable">Für diese Anfrage sind keine Bahndaten verfügbar.</string>
     <string name="rail_network_unavailable">Der Fahrplandienst ist nicht erreichbar. Prüfe deine Verbindung und versuche es in Kürze erneut.</string>
+    <string name="route_schedule_outside_validity">Dieser Fahrplan gilt nur vom %1$s bis zum %2$s. Wähle ein Datum in diesem Zeitraum.</string>
     <string name="route_not_covered">Die in der App enthaltenen Fahrpläne decken diese Strecke nicht ab.</string>
     <string name="route_schedule_expired">Die enthaltenen Fahrpläne für diese Strecke gelten bis %1$s: Aktualisiere die App für neuere Fahrpläne.</string>
     <string name="route_no_service_after">Am %1$s ab %2$s ist kein Zug geplant.</string>

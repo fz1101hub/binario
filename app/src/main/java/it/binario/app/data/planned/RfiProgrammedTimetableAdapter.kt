@@ -191,7 +191,7 @@ class RfiProgrammedTimetableAdapter(
         val arrivals = arrivalId != null
 
         val board = if (arrivals) "Arrivi" else "Partenze"
-        val key = "${route.id}:${direction.name}:$stationId:$board"
+        val key = "${route.id}:${direction.name}:$stationId:$board:${origin.id}:${destination.id}"
         val cached = try {
             cache.getOrLoad(key) {
                 val url = "https://prm.rfi.it/qo_prm/QO_${board}_SiPMR.aspx?Id=$stationId&lin=it&dalle=00.00&alle=23.59&ora=00.00"
@@ -238,7 +238,7 @@ class RfiProgrammedTimetableAdapter(
             if (query.serviceDate !in validity.start..validity.end) {
                 return DataResult.Failure(
                     "Il quadro orario RFI disponibile è valido dal ${validity.start} al ${validity.end}, non per ${query.serviceDate}.",
-                    RouteFailureReason.ScheduleExpired(validity.end)
+                    RouteFailureReason.ScheduleOutsideValidity(validity.start, validity.end)
                 )
             }
         }

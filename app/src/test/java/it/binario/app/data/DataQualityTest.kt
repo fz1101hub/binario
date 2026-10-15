@@ -140,6 +140,7 @@ class DataQualityTest {
         val reasons = listOf(
             RouteFailureReason.NoServiceAfter(query.serviceDate, query.departureTime),
             RouteFailureReason.ScheduleExpired(query.serviceDate.minusDays(1)),
+            RouteFailureReason.ScheduleOutsideValidity(query.serviceDate, query.serviceDate.plusDays(30)),
             RouteFailureReason.NetworkUnavailable,
             RouteFailureReason.Unavailable
         )
