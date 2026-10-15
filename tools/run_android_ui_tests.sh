@@ -6,6 +6,8 @@ cd "$(dirname "$0")/.."
 : "${RUNNER_TEMP:?Run on an isolated CI runner with a temporary directory}"
 export ANDROID_SDK_ROOT="$ANDROID_HOME"
 export PATH="$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator:$PATH"
+export ANDROID_AVD_HOME="$RUNNER_TEMP/binario-ui-avd"
+mkdir -p "$ANDROID_AVD_HOME"
 test -c /dev/kvm || { echo 'Android UI tests require a Linux runner with KVM.' >&2; exit 1; }
 if [ ! -r /dev/kvm ] || [ ! -w /dev/kvm ]; then
   sudo setfacl -m "u:$(id -un):rw" /dev/kvm
@@ -40,6 +42,7 @@ printf 'no\n' | "$binario_sdk_tools_path/bin/avdmanager" create avd --force \
   --name binario-agenda-ui --package 'system-images;android-35;google_apis;x86_64' --device pixel_2
 
 binario_serial=emulator-5556
+adb start-server
 "$ANDROID_HOME/emulator/emulator" -avd binario-agenda-ui -port 5556 -no-window -no-audio \
   -gpu swiftshader -no-snapshot -no-boot-anim -camera-back none -camera-front none \
   -memory 2048 > "$RUNNER_TEMP/binario-ui-emulator.log" 2>&1 &
@@ -50,10 +53,19 @@ binario_cleanup() {
   timeout 10 adb -s "$binario_serial" emu kill >/dev/null 2>&1 || true
   kill "$binario_emulator_pid" 2>/dev/null || true
   wait "$binario_emulator_pid" 2>/dev/null || true
+  if [ "$binario_result" != 0 ]; then
+    tail -80 "$RUNNER_TEMP/binario-ui-emulator.log" || true
+  fi
   return "$binario_result"
 }
 trap binario_cleanup EXIT
-timeout 120 adb -s "$binario_serial" wait-for-device
+binario_connected=0
+for binario_attempt in {1..60}; do
+  kill -0 "$binario_emulator_pid" || exit 1
+  if adb -s "$binario_serial" get-state 2>/dev/null | rg -qx device; then binario_connected=1; break; fi
+  sleep 2
+done
+test "$binario_connected" = 1 || { echo 'Emulator did not connect to adb.' >&2; exit 1; }
 binario_booted=0
 for binario_attempt in {1..120}; do
   kill -0 "$binario_emulator_pid" || { tail -80 "$RUNNER_TEMP/binario-ui-emulator.log"; exit 1; }
