@@ -55,7 +55,7 @@
 
     <!-- Local-only planned journeys. These records never alter SavedRoute or live rail data. -->
     <string name="planned_journey_description">Erstelle eine persönliche Reiseerinnerung und sieh ihre Vorkommnisse an.</string>
-    <string name="planned_journey_local_only">Nur auf diesem Gerät gespeichert. Keine Synchronisierung oder automatischen Benachrichtigungen.</string>
+    <string name="planned_journey_local_only">Reisen werden nur auf diesem Gerät gespeichert. Keine Synchronisierung.</string>
     <string name="planned_journey_add">Neue Reise</string>
     <string name="planned_journey_edit">Reise bearbeiten</string>
     <string name="planned_journey_import">Importieren</string>
@@ -70,9 +70,6 @@
     <string name="planned_journey_origin">Abfahrt</string>
     <string name="planned_journey_destination">Ankunft</string>
     <string name="planned_journey_route">%1$s → %2$s</string>
-    <string name="planned_journey_date">Datum</string>
-    <string name="planned_journey_date_hint">Format JJJJ-MM-TT</string>
-    <string name="planned_journey_time">Uhrzeit</string>
     <string name="planned_journey_reminder">Erinnerung vor der Abfahrt</string>
     <plurals name="planned_journey_reminder_value">
         <item quantity="one">Erinnerung %1$d Minute vorher</item>
@@ -637,4 +634,21 @@
     <string name="share_freshness_unavailable">Live-Daten nicht verfügbar</string>
     <string name="planned_journey_ics_event_description">Reise: %1$s → %2$s, Abfahrt %3$s um %4$s (%5$s)</string>
     <string name="planned_journey_ics_reminder_description">Binario-Reiseerinnerung</string>
+    <string name="agenda_reminder_enable">Agenda-Benachrichtigungen</string>
+    <string name="agenda_reminder_explanation">Benachrichtigungen für Reisen mit eingestellter Vorlaufzeit aktivieren. Sie bleiben auf diesem Gerät. Android kann die Zustellung verzögern.</string>
+    <string name="agenda_reminder_permission_required">Android blockiert Benachrichtigungen. Aktiviere sie in den App-Einstellungen.</string>
+    <string name="agenda_reminder_settings">Benachrichtigungseinstellungen</string>
+    <string name="agenda_reminder_failed">Einige Erinnerungen konnten nicht aktualisiert werden. Öffne die Agenda erneut.</string>
+    <string name="agenda_reminder_channel">Agenda-Erinnerungen</string>
+    <string name="agenda_reminder_channel_description">Lokale Erinnerungen vor der Abfahrt geplanter Reisen.</string>
+    <string name="agenda_reminder_notification_title">Erinnerung: %1$s</string>
+    <string name="agenda_reminder_notification_text">Planmäßige Abfahrt %1$s · %2$s → %3$s</string>
+    <string name="planned_journey_delete">Reise löschen</string>
+    <string name="planned_journey_delete_confirmation">Diese Reise und ihre Erinnerungen von diesem Gerät löschen?</string>
+    <string name="planned_journey_delete_success">Reise und zugehörige Erinnerungen gelöscht.</string>
+    <string name="agenda_editor_date_value">Datum: %1$s</string>
+    <string name="agenda_editor_time_value">Uhrzeit: %1$s</string>
+    <string name="agenda_editor_first_segment">Du bearbeitest die erste Etappe; die anderen bleiben unverändert.</string>
+    <string name="agenda_editor_station_hint">Nach Name oder Code suchen und einen Bahnhof auswählen.</string>
+    <string name="agenda_editor_select_station">%1$s auswählen, Code %2$s</string>
 </resources>

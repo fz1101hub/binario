@@ -21,6 +21,8 @@ on:
       - "tools/verify_embedded_assets.py"
       - "tools/verify_gradle_dependency_metadata.py"
       - "tools/verify_privacy_policy.py"
+      - "tools/run_android_ui_tests.sh"
+      - ".github/ci-inputs-lock.json"
       - ".github/workflows/android-ci.yml"
   push:
     branches:
@@ -45,6 +47,8 @@ on:
       - "tools/verify_embedded_assets.py"
       - "tools/verify_gradle_dependency_metadata.py"
       - "tools/verify_privacy_policy.py"
+      - "tools/run_android_ui_tests.sh"
+      - ".github/ci-inputs-lock.json"
       - ".github/workflows/android-ci.yml"
   workflow_dispatch:
     inputs:
@@ -104,6 +108,10 @@ jobs:
           python3 tools/verify_android_release_config.py
           python3 tools/verify_gradle_dependency_metadata.py
 
+      - name: Android UI and notification tests on API 35
+        timeout-minutes: 25
+        run: bash tools/run_android_ui_tests.sh
+
       - name: Unit tests, lint, debug and unsigned release builds
         run: >-
           ./gradlew --no-daemon --dependency-verification=strict
@@ -116,6 +124,37 @@ jobs:
 
       - name: Verify unsigned Google Play bundles
         run: python3 tools/verify_android_app_bundles.py
+
+      - name: Prepare installable test APK
+        env:
+          SOURCE_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/binario-test-apk"
+          cp app/build/outputs/apk/debug/app-debug.apk "$RUNNER_TEMP/binario-test-apk/binario-agenda-test.apk"
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$RUNNER_TEMP/binario-test-apk/binario-agenda-test.apk" > "$RUNNER_TEMP/binario-test-apk/signature.txt"
+          printf 'Source commit: %s\nAndroid 8.0 or later. Debug build for manual testing.\n' "$SOURCE_COMMIT" > "$RUNNER_TEMP/binario-test-apk/README.txt"
+          cd "$RUNNER_TEMP/binario-test-apk"
+          sha256sum binario-agenda-test.apk > SHA256SUMS
+
+      - name: Upload test APK
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: binario-agenda-test-apk
+          path: ${{ runner.temp }}/binario-test-apk/
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
+
+      - name: Upload Android UI reports
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: android-ui-test-reports
+          path: |
+            app/build/reports/androidTests/
+            app/build/outputs/androidTest-results/
+            ${{ runner.temp }}/binario-ui-*.log
+          retention-days: 14
 
       - name: First reproducibility rebuild
         if: ${{ (github.event_name == 'workflow_dispatch' && inputs.verify_reproducibility) || (github.event_name == 'pull_request' && startsWith(github.base_ref, 'stabilization/')) }}

@@ -1,4 +1,4 @@
-<resources>
+<resources tools:locale="it" xmlns:tools="http://schemas.android.com/tools">
     <string name="app_name">Binario</string>
     <string name="widget_description">Mostra le prossime corse della tua tratta Binario.</string>
     <string name="widget_refresh">Aggiorna corse</string>
@@ -55,7 +55,7 @@
 
     <!-- Local-only planned journeys. These records never alter SavedRoute or live rail data. -->
     <string name="planned_journey_description">Crea un promemoria di viaggio personale e consulta le sue occorrenze.</string>
-    <string name="planned_journey_local_only">Salvato solo su questo dispositivo. Nessuna sincronizzazione o notifica automatica.</string>
+    <string name="planned_journey_local_only">Viaggi salvati solo su questo dispositivo. Nessuna sincronizzazione.</string>
     <string name="planned_journey_add">Nuovo viaggio</string>
     <string name="planned_journey_edit">Modifica viaggio</string>
     <string name="planned_journey_import">Importa</string>
@@ -70,9 +70,6 @@
     <string name="planned_journey_origin">Partenza</string>
     <string name="planned_journey_destination">Arrivo</string>
     <string name="planned_journey_route">%1$s → %2$s</string>
-    <string name="planned_journey_date">Data</string>
-    <string name="planned_journey_date_hint">Formato AAAA-MM-GG</string>
-    <string name="planned_journey_time">Ora</string>
     <string name="planned_journey_reminder">Promemoria prima della partenza</string>
     <plurals name="planned_journey_reminder_value">
         <item quantity="one">Promemoria %1$d minuto prima</item>
@@ -649,4 +646,21 @@
     <string name="share_freshness_unavailable">Dati live non disponibili</string>
     <string name="planned_journey_ics_event_description">Viaggio: %1$s → %2$s, partenza %3$s alle %4$s (%5$s)</string>
     <string name="planned_journey_ics_reminder_description">Promemoria viaggio Binario</string>
+    <string name="agenda_reminder_enable">Notifiche per l’Agenda</string>
+    <string name="agenda_reminder_explanation">Attiva le notifiche per i viaggi con un anticipo impostato. Restano su questo dispositivo. Android può ritardare la consegna.</string>
+    <string name="agenda_reminder_permission_required">Le notifiche sono bloccate da Android. Abilitale nelle impostazioni dell’app.</string>
+    <string name="agenda_reminder_settings">Impostazioni notifiche</string>
+    <string name="agenda_reminder_failed">Non è stato possibile aggiornare tutti i promemoria. Riapri l’Agenda per riprovare.</string>
+    <string name="agenda_reminder_channel">Promemoria Agenda</string>
+    <string name="agenda_reminder_channel_description">Avvisi locali prima della partenza dei viaggi pianificati.</string>
+    <string name="agenda_reminder_notification_title">Promemoria: %1$s</string>
+    <string name="agenda_reminder_notification_text">Partenza programmata %1$s · %2$s → %3$s</string>
+    <string name="planned_journey_delete">Elimina viaggio</string>
+    <string name="planned_journey_delete_confirmation">Eliminare questo viaggio e i relativi promemoria da questo dispositivo?</string>
+    <string name="planned_journey_delete_success">Viaggio e relativi promemoria eliminati.</string>
+    <string name="agenda_editor_date_value">Data: %1$s</string>
+    <string name="agenda_editor_time_value">Ora: %1$s</string>
+    <string name="agenda_editor_first_segment">Modifichi la prima tratta; le altre restano invariate.</string>
+    <string name="agenda_editor_station_hint">Cerca per nome o codice e scegli una stazione.</string>
+    <string name="agenda_editor_select_station">Seleziona %1$s, codice %2$s</string>
 </resources>
