@@ -62,7 +62,7 @@ trap binario_cleanup EXIT
 binario_connected=0
 for binario_attempt in {1..60}; do
   kill -0 "$binario_emulator_pid" || exit 1
-  if adb -s "$binario_serial" get-state 2>/dev/null | rg -qx device; then binario_connected=1; break; fi
+  if [ "$(adb -s "$binario_serial" get-state 2>/dev/null | tr -d '\r')" = device ]; then binario_connected=1; break; fi
   sleep 2
 done
 test "$binario_connected" = 1 || { echo 'Emulator did not connect to adb.' >&2; exit 1; }
@@ -94,5 +94,5 @@ adb -s "$binario_serial" shell am instrument -w -r \
   -e class it.binario.app.PlannedJourneyReminderPermissionTest \
   it.binario.app.test/androidx.test.runner.AndroidJUnitRunner \
   | tee "$RUNNER_TEMP/binario-ui-permission-denied.log"
-rg -q 'OK \(1 test\)' "$RUNNER_TEMP/binario-ui-permission-denied.log"
-if rg -q 'FAILURES|INSTRUMENTATION_FAILED|Process crashed' "$RUNNER_TEMP/binario-ui-permission-denied.log"; then exit 1; fi
+grep -Fq 'OK (1 test)' "$RUNNER_TEMP/binario-ui-permission-denied.log"
+if grep -Eq 'FAILURES|INSTRUMENTATION_FAILED|Process crashed' "$RUNNER_TEMP/binario-ui-permission-denied.log"; then exit 1; fi
