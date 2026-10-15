@@ -7,6 +7,7 @@ import it.binario.app.data.Freshness
 import it.binario.app.data.JourneyQuery
 import it.binario.app.data.RailTime
 import it.binario.app.data.RouteSnapshot
+import it.binario.app.data.RouteFailureReason
 import it.binario.app.data.SavedRoute
 import it.binario.app.data.Station
 import it.binario.app.data.TrainDataSource
@@ -58,7 +59,7 @@ class RfiSupplementalHubTimetableAdapter(
         val origin = route.origin(direction)
         val destination = route.destination(direction)
         val timetableId = SupplementalRfiProgrammedStationIds.timetableId(origin)
-            ?: return DataResult.Failure(unmappedDirectionMessage(origin, destination))
+            ?: return DataResult.Failure(unmappedDirectionMessage(origin, destination), RouteFailureReason.RouteNotCovered)
         val cacheKey = "${route.id}:${direction.name}:$timetableId"
         val cached = try {
             cache.getOrLoad(cacheKey) {

@@ -308,6 +308,7 @@ class RailDataRepository(
 
     override suspend fun loadRoute(route: SavedRoute, direction: Direction, query: JourneyQuery): DataResult {
         val candidates = mutableListOf<RouteSnapshot>()
+        val failures = mutableListOf<DataResult.Failure>()
         authorisedSources.forEach { source ->
             when (val result = source.loadRoute(route, direction, query)) {
                 is DataResult.Success -> {
@@ -317,7 +318,7 @@ class RailDataRepository(
                         return DataResult.Success(enriched)
                     }
                 }
-                is DataResult.Failure -> Unit
+                is DataResult.Failure -> failures += result
             }
         }
         candidates.maxWithOrNull(
@@ -327,7 +328,13 @@ class RailDataRepository(
 
         return when (val result = fallback.loadRoute(route, direction, query)) {
             is DataResult.Success -> DataResult.Success(withQuality(result.snapshot))
-            is DataResult.Failure -> result
+            // A local pack that does not cover the route cannot invalidate a more
+            // specific result from its official timetable (date/time or network).
+            is DataResult.Failure -> if (result.reason == RouteFailureReason.RouteNotCovered) {
+                failures.firstOrNull { it.reason is RouteFailureReason.NoServiceAfter || it.reason is RouteFailureReason.ScheduleExpired }
+                    ?: failures.firstOrNull { it.reason == RouteFailureReason.Unavailable }
+                    ?: result
+            } else result
         }
     }
 

@@ -133,6 +133,34 @@ class DataQualityTest {
         assertEquals(DataQualityBand.NOT_PUBLISHABLE, result.snapshot.qualityBand)
     }
 
+    @Test
+    fun `pack senza copertura conserva il motivo specifico del quadro ufficiale`() = runBlocking {
+        val query = JourneyQuery(java.time.LocalDate.of(2026, 9, 4), java.time.LocalTime.of(8, 0))
+        val noLocalCoverage = source(DataResult.Failure("GTFS assente", RouteFailureReason.RouteNotCovered))
+        val reasons = listOf(
+            RouteFailureReason.NoServiceAfter(query.serviceDate, query.departureTime),
+            RouteFailureReason.ScheduleExpired(query.serviceDate.minusDays(1)),
+            RouteFailureReason.Unavailable
+        )
+        for (reason in reasons) {
+            val repository = RailDataRepository(
+                authorisedSources = listOf(noLocalCoverage, source(DataResult.Failure("RFI", reason))),
+                fallback = noLocalCoverage
+            )
+            assertEquals(reason, (repository.loadRoute(route, Direction.OUTBOUND, query) as DataResult.Failure).reason)
+        }
+    }
+
+    @Test
+    fun `risultato locale specifico prevale su errore di rete ufficiale`() = runBlocking {
+        val reason = RouteFailureReason.ScheduleExpired(java.time.LocalDate.of(2026, 9, 1))
+        val repository = RailDataRepository(
+            authorisedSources = listOf(source(DataResult.Failure("rete"))),
+            fallback = source(DataResult.Failure("pack scaduto", reason))
+        )
+        assertEquals(reason, (repository.loadRoute(route, Direction.OUTBOUND) as DataResult.Failure).reason)
+    }
+
     private fun source(result: DataResult): TrainDataSource = object : TrainDataSource {
         override suspend fun loadRoute(route: SavedRoute, direction: Direction): DataResult = result
     }

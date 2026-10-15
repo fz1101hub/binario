@@ -8,6 +8,7 @@ import it.binario.app.data.JourneyQuery
 import it.binario.app.data.RailTime
 import it.binario.app.data.RailOperator
 import it.binario.app.data.RouteSnapshot
+import it.binario.app.data.RouteFailureReason
 import it.binario.app.data.SavedRoute
 import it.binario.app.data.ServiceStatus
 import it.binario.app.data.Station
@@ -180,13 +181,20 @@ class RfiProgrammedTimetableAdapter(
     override suspend fun loadRoute(route: SavedRoute, direction: Direction, query: JourneyQuery): DataResult {
         val origin = route.origin(direction)
         val destination = route.destination(direction)
-        val stationId = RfiProgrammedStationIds.timetableId(origin)
-            ?: return DataResult.Failure(unmappedDirectionMessage(origin, destination))
+        val originId = RfiProgrammedStationIds.timetableId(origin)
+        val arrivalId = if (originId == null) {
+            RfiProgrammedStationIds.timetableId(destination)
+                ?: SupplementalRfiProgrammedStationIds.timetableId(destination)
+        } else null
+        val stationId = originId ?: arrivalId
+            ?: return DataResult.Failure(unmappedDirectionMessage(origin, destination), RouteFailureReason.RouteNotCovered)
+        val arrivals = arrivalId != null
 
-        val key = "${route.id}:${direction.name}:$stationId"
+        val board = if (arrivals) "Arrivi" else "Partenze"
+        val key = "${route.id}:${direction.name}:$stationId:$board"
         val cached = try {
             cache.getOrLoad(key) {
-                val url = "https://prm.rfi.it/qo_prm/QO_Partenze_SiPMR.aspx?Id=$stationId&lin=it&dalle=00.00&alle=23.59&ora=00.00"
+                val url = "https://prm.rfi.it/qo_prm/QO_${board}_SiPMR.aspx?Id=$stationId&lin=it&dalle=00.00&alle=23.59&ora=00.00"
                 val html = try {
                     withContext(ioDispatcher) { fetcher.fetch(url) }
                 } catch (error: CancellationException) {
@@ -205,7 +213,7 @@ class RfiProgrammedTimetableAdapter(
                 try {
                     withContext(parsingDispatcher) {
                         onParsing?.invoke()
-                        parseTimetable(html, origin, route, direction)
+                        parseTimetable(html, origin, route, direction, arrivals)
                     }
                 } catch (error: CancellationException) {
                     throw error
@@ -226,7 +234,8 @@ class RfiProgrammedTimetableAdapter(
         parsed.validity?.let { validity ->
             if (query.serviceDate !in validity.start..validity.end) {
                 return DataResult.Failure(
-                    "Il quadro orario RFI disponibile è valido dal ${validity.start} al ${validity.end}, non per ${query.serviceDate}."
+                    "Il quadro orario RFI disponibile è valido dal ${validity.start} al ${validity.end}, non per ${query.serviceDate}.",
+                    RouteFailureReason.ScheduleExpired(validity.end)
                 )
             }
         }
@@ -240,7 +249,11 @@ class RfiProgrammedTimetableAdapter(
                         timeMinutes(service.service.scheduledDeparture),
                         query.serviceDate,
                         requestedMinutes
-                    )?.takeIf { departureDate -> runsOnDate(service.periodicity, departureDate) }?.let { service.copy(departureDate = it) }
+                    )?.takeIf { departureDate ->
+                        val boardDate = departureDate.plusDays(service.boardDayOffset.toLong())
+                        (parsed.validity?.let { boardDate in it.start..it.end } ?: true) &&
+                            runsOnDate(service.periodicity, boardDate)
+                    }?.let { service.copy(departureDate = it) }
                 }
                 .filter { service ->
                     service.service.stops.drop(1).any { destination.isNamedBy(it.station) } ||
@@ -268,7 +281,10 @@ class RfiProgrammedTimetableAdapter(
 
         if (services.isEmpty()) {
             return DataResult.Failure(
-                "RFI non mostra corse programmate dirette da ${origin.name} verso ${destination.name} dopo ${query.departureTime}."
+                "RFI non mostra corse programmate dirette da ${origin.name} verso ${destination.name} dopo ${query.departureTime}.",
+                if (parsed.services.any { row -> row.service.stops.drop(1).any { destination.isNamedBy(it.station) } }) {
+                    RouteFailureReason.NoServiceAfter(query.serviceDate, query.departureTime)
+                } else RouteFailureReason.RouteNotCovered
             )
         }
 
@@ -292,7 +308,8 @@ class RfiProgrammedTimetableAdapter(
         html: String,
         origin: Station,
         route: SavedRoute,
-        direction: Direction
+        direction: Direction,
+        arrivals: Boolean = false
     ): ParsedTimetable {
         val document = Jsoup.parse(html)
         val validity = parseValidity(document.text())
@@ -301,10 +318,18 @@ class RfiProgrammedTimetableAdapter(
                 val rows = table.select("tr")
                 if (rows.isEmpty()) return@forEach
                 val headerRow = rows.firstOrNull { row -> row.select("th").isNotEmpty() }
-                    ?: rows.firstOrNull { row -> row.text().contains("Fermate successive", ignoreCase = true) }
+                    ?: rows.firstOrNull { row ->
+                        row.text().contains(if (arrivals) "Fermate precedenti" else "Fermate successive", ignoreCase = true)
+                    }
                 val headers = headerRow?.select("th,td")?.map { normalizeHeader(elementText(it)) }.orEmpty()
                 val indexes = HeaderIndexes.from(headers)
-                rows.forEach { row -> parseRow(row, indexes, origin, route, direction)?.let(::add) }
+                // Arrival fallback must never interpret a departure board or an error page as arrivals.
+                if (arrivals && (indexes.previousStops == null ||
+                        !headers[indexes.previousStops].contains("ORARIO DI PARTENZA") ||
+                        headers.none { it.startsWith("ORARIO DI ARRIVO") })) {
+                    return@forEach
+                }
+                rows.forEach { row -> parseRow(row, indexes, origin, route, direction, arrivals)?.let(::add) }
             }
         }.distinctBy { "${it.service.number}:${it.service.scheduledDeparture}:${it.service.destination}" }
 
@@ -316,7 +341,8 @@ class RfiProgrammedTimetableAdapter(
         indexes: HeaderIndexes,
         origin: Station,
         route: SavedRoute,
-        direction: Direction
+        direction: Direction,
+        arrivals: Boolean
     ): ParsedService? {
         val cells = row.select("td")
         if (cells.size < 2) return null
@@ -331,9 +357,19 @@ class RfiProgrammedTimetableAdapter(
         val number = Regex("\\b(\\d{2,5})\\b").find(trainText)?.groupValues?.getOrNull(1) ?: return null
 
         val timeCell = cell(indexes.time, "[id*=Orario],[class*=orario],[headers*=orario]")
-        val scheduled = normalizeTime(elementText(timeCell))
-            .ifBlank { cells.map { normalizeTime(elementText(it)) }.firstOrNull { it.isNotBlank() }.orEmpty() }
-        if (scheduled.isBlank()) return null
+        val boardTime = normalizeTime(elementText(timeCell))
+            .ifBlank {
+                if (arrivals) "" else cells.map { normalizeTime(elementText(it)) }.firstOrNull { it.isNotBlank() }.orEmpty()
+            }
+        if (boardTime.isBlank()) return null
+
+        val arrivalStops = if (arrivals) {
+            val previous = parseStops(elementText(cells.getOrNull(indexes.previousStops ?: return null)))
+            val originIndex = previous.indexOfFirst { origin.isNamedBy(it.station) }
+            if (originIndex < 0) return null
+            previous.drop(originIndex) + ProgrammedStop(route.destination(direction).name, boardTime)
+        } else emptyList()
+        val scheduled = arrivalStops.firstOrNull()?.time ?: boardTime
 
         val destinationCell = cell(indexes.destination, "[id*=Destin],[class*=destin],[headers*=destin]")
         val destinationText = elementText(destinationCell)
@@ -341,7 +377,8 @@ class RfiProgrammedTimetableAdapter(
 
         val stopsCell = cell(indexes.stops, "[id*=Fermate],[class*=fermate],[headers*=fermate]")
         val successiveStops = parseStops(elementText(stopsCell))
-        val finalDestination = successiveStops.lastOrNull()?.station?.ifBlank { null }
+        val finalDestination = arrivalStops.lastOrNull()?.station
+            ?: successiveStops.lastOrNull()?.station?.ifBlank { null }
             ?: destination.takeIf { it != "Destinazione non indicata" }
             ?: return null
 
@@ -353,7 +390,11 @@ class RfiProgrammedTimetableAdapter(
 
         val stops = buildList {
             add(TrainStop(origin.name, scheduled, scheduled, null, 0, completed = false))
-            if (successiveStops.isNotEmpty()) {
+            if (arrivals) {
+                arrivalStops.drop(1).forEach { stop ->
+                    add(TrainStop(stop.station, stop.time, stop.time, null, 0, completed = false))
+                }
+            } else if (successiveStops.isNotEmpty()) {
                 successiveStops.forEach { stop ->
                     add(TrainStop(stop.station, stop.time, stop.time, null, 0, completed = false))
                 }
@@ -380,7 +421,8 @@ class RfiProgrammedTimetableAdapter(
                 transferCount = 0,
                 operationalStatusVerified = false
             ),
-            periodicity = periodicity
+            periodicity = periodicity,
+            boardDayOffset = if (arrivals) arrivalStops.zipWithNext().count { (a, b) -> timeMinutes(b.time) < timeMinutes(a.time) } else 0
         )
     }
 
@@ -394,7 +436,7 @@ class RfiProgrammedTimetableAdapter(
                 .substringAfterLast("|")
                 .trim(' ', '-', '–', ',', ';')
             val time = match.groupValues[2].replace('.', ':').padStart(5, '0')
-            station.takeIf { it.isNotBlank() }?.let { ProgrammedStop(it, time) }
+            station.takeIf { it.isNotBlank() && parseTime(time) != null }?.let { ProgrammedStop(it, time) }
         }.toList()
     }
 
@@ -469,11 +511,7 @@ class RfiProgrammedTimetableAdapter(
     private fun timeMinutes(value: String): Int = parseTime(value)?.let { it.hour * 60 + it.minute } ?: Int.MAX_VALUE
 
     private fun unmappedDirectionMessage(origin: Station, destination: Station): String =
-        if (RfiProgrammedStationIds.timetableId(destination) != null) {
-            "Il quadro RFI copre le partenze dall’hub ${destination.name}, non la direzione che parte da ${origin.name}."
-        } else {
-            "Il quadro orario programmato RFI non è ancora mappato per ${origin.name}."
-        }
+        "I quadri orari RFI non sono ancora mappati per ${origin.name} o ${destination.name}."
 
     private fun italianMonth(value: String): Month? = when (value.trim().lowercase(Locale.ITALIAN).take(3)) {
         "gen" -> Month.JANUARY
@@ -500,7 +538,9 @@ class RfiProgrammedTimetableAdapter(
         val service: TrainService,
         val periodicity: String,
         /** Set while filtering: the date this row departs for the current query (next day after midnight). */
-        val departureDate: LocalDate? = null
+        val departureDate: LocalDate? = null,
+        /** Arrival boards use the calendar day at the destination, which can follow departure. */
+        val boardDayOffset: Int = 0
     )
 
     internal data class TimetableValidity(val start: LocalDate, val end: LocalDate)
@@ -513,6 +553,7 @@ class RfiProgrammedTimetableAdapter(
         val train: Int?,
         val destination: Int?,
         val stops: Int?,
+        val previousStops: Int?,
         val carrier: Int?,
         val periodicity: Int?
     ) {
@@ -525,6 +566,7 @@ class RfiProgrammedTimetableAdapter(
                     train = index("TRENO"),
                     destination = index("DESTINAZIONE", "STAZIONE DI ARRIVO", "LOCALITA DI ARRIVO", "LOCALITÀ DI ARRIVO"),
                     stops = index("FERMATE SUCCESSIVE"),
+                    previousStops = index("FERMATE PRECEDENTI"),
                     carrier = index("IMPRESA DI TRASPORTO", "IMPRESA"),
                     periodicity = index("PERIODICITA", "PERIODICITÀ")
                 )
