@@ -25,15 +25,20 @@ curl --fail --location --proto '=https' --proto-redir '=https' --retry 3 --max-t
   "${binario_sdk_lock[0]}" --output "$binario_tools_dir/tools.zip"
 printf '%s  %s\n' "${binario_sdk_lock[1]}" "$binario_tools_dir/tools.zip" | sha256sum --check
 unzip -q "$binario_tools_dir/tools.zip" -d "$binario_tools_dir"
-binario_sdk_manager="$binario_tools_dir/cmdline-tools/bin/sdkmanager"
+# avdmanager discovers packages relative to its own location, ignoring ANDROID_HOME.
+# Install this verified copy inside the SDK without replacing the runner's other tools.
+mkdir -p "$ANDROID_HOME/cmdline-tools"
+binario_sdk_tools_path="$(mktemp -d "$ANDROID_HOME/cmdline-tools/binario-ui-19.XXXXXX")"
+cp -a "$binario_tools_dir/cmdline-tools/." "$binario_sdk_tools_path/"
+binario_sdk_manager="$binario_sdk_tools_path/bin/sdkmanager"
 "$binario_sdk_manager" --sdk_root="$ANDROID_HOME" --licenses < <(yes 2>/dev/null) > "$RUNNER_TEMP/binario-ui-licenses.log" 2>&1
 "$binario_sdk_manager" --sdk_root="$ANDROID_HOME" 'emulator' 'platform-tools' 'build-tools;35.0.0' 'system-images;android-35;google_apis;x86_64'
-printf 'no\n' | "$binario_tools_dir/cmdline-tools/bin/avdmanager" create avd --force \
+printf 'no\n' | "$binario_sdk_tools_path/bin/avdmanager" create avd --force \
   --name binario-agenda-ui --package 'system-images;android-35;google_apis;x86_64' --device pixel_2
 
 binario_serial=emulator-5556
 "$ANDROID_HOME/emulator/emulator" -avd binario-agenda-ui -port 5556 -no-window -no-audio \
-  -gpu swiftshader_indirect -no-snapshot -no-boot-anim -camera-back none -camera-front none \
+  -gpu swiftshader -no-snapshot -no-boot-anim -camera-back none -camera-front none \
   -memory 2048 > "$RUNNER_TEMP/binario-ui-emulator.log" 2>&1 &
 binario_emulator_pid=$!
 trap 'adb -s "$binario_serial" emu kill >/dev/null 2>&1 || true; kill "$binario_emulator_pid" 2>/dev/null || true; wait "$binario_emulator_pid" 2>/dev/null || true' EXIT
