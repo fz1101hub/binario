@@ -4,6 +4,10 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.unit.Density
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -77,9 +81,13 @@ class PlannedJourneyAgendaScreenTest {
             }
         }
 
+        composeRule.onNodeWithTag("plannedJourneyAgenda").performScrollToNode(hasText("Riunione Milano"))
         composeRule.onNodeWithText("Riunione Milano").fetchSemanticsNode()
-        composeRule.onNodeWithText("Salvato solo su questo dispositivo. Nessuna sincronizzazione o notifica automatica.").fetchSemanticsNode()
+        composeRule.onNodeWithTag("plannedJourneyAgenda").performScrollToNode(hasText("Viaggi salvati solo su questo dispositivo. Nessuna sincronizzazione."))
+        composeRule.onNodeWithText("Viaggi salvati solo su questo dispositivo. Nessuna sincronizzazione.").fetchSemanticsNode()
+        composeRule.onNodeWithTag("plannedJourneyAgenda").performScrollToNode(hasContentDescription("Checklist: Prepara il biglietto"))
         composeRule.onNodeWithContentDescription("Checklist: Prepara il biglietto").fetchSemanticsNode()
+        composeRule.onNodeWithTag("plannedJourneyAgenda").performScrollToNode(hasText("Esporta JSON"))
         composeRule.onNodeWithText("Esporta JSON").fetchSemanticsNode()
         composeRule.onNodeWithText("Esporta ICS").fetchSemanticsNode()
     }

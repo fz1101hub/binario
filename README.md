@@ -4,6 +4,9 @@
 
 > **Stato dei dati:** la versione 0.20.0 privilegia canali realtime autorizzati e identificati, quindi usa orari GTFS ufficiali embedded solo come fallback programmato. Gli snapshot espongono provider, confidenza, freshness, punteggio qualità e warning. Se il realtime manca, non è identificabile con certezza o scade, l’app dichiara **“orario programmato”** o **“dati live non disponibili”** e non inventa ritardi, binari, soppressioni o posizioni.
 
+
+L’Agenda offre promemoria locali su attivazione esplicita, scelta guidata di stazioni e data/ora e cancellazione dei viaggi con relativi avvisi. Le notifiche restano sul dispositivo e possono essere ritardate da Android. Il workflow Android verifica anche l’interfaccia su emulatore e produce l’APK di prova nell’artifact `binario-agenda-test-apk`.
+
 ## Funzionalità
 
 | Area | Comportamento |

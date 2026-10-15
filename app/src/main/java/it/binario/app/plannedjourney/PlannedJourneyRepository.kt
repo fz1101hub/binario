@@ -1,8 +1,8 @@
 package it.binario.app.plannedjourney
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.SharedPreferences
-import androidx.core.content.edit
 import java.time.Instant
 
 /**
@@ -16,6 +16,7 @@ interface PlannedJourneyStorage {
 }
 
 class SharedPreferencesPlannedJourneyStorage(context: Context) : PlannedJourneyStorage {
+    private val contextForReminders = context.applicationContext
     private val preferences: SharedPreferences = context.applicationContext.getSharedPreferences(
         "binario_planned_journey_store_v1",
         Context.MODE_PRIVATE
@@ -23,8 +24,13 @@ class SharedPreferencesPlannedJourneyStorage(context: Context) : PlannedJourneyS
 
     override fun read(): String? = preferences.getString(PlannedJourneyPersistenceSchema.STORAGE_KEY, null)
 
+    // KTX edit(commit = true) discards commit's success flag, needed before changing device alarms.
+    @SuppressLint("UseKtx")
     override fun write(value: String) {
-        preferences.edit { putString(PlannedJourneyPersistenceSchema.STORAGE_KEY, value) }
+        synchronized(AndroidPlannedJourneyReminders.gate) {
+            check(preferences.edit().putString(PlannedJourneyPersistenceSchema.STORAGE_KEY, value).commit())
+            AndroidPlannedJourneyReminders.requestRefresh(contextForReminders)
+        }
     }
 }
 
@@ -101,6 +107,12 @@ class PlannedJourneyRepository(private val storage: PlannedJourneyStorage) {
 
     fun archive(journeyId: String, archivedAt: Instant): PlannedJourneyRepositorySaveResult = transform(journeyId) { journey ->
         PlannedJourneyLifecycle.archive(journey, archivedAt)
+    }
+
+    fun remove(journeyId: String): PlannedJourneyRepositorySaveResult {
+        val current = read().snapshot
+        if (current.journeys.none { it.id == journeyId }) return PlannedJourneyRepositorySaveResult.Rejected("Viaggio pianificato non trovato.")
+        return writeValidated(current.copy(journeys = current.journeys.filterNot { it.id == journeyId }))
     }
 
     fun exportJson(): String = PlannedJourneyTransfer.encode(read().snapshot)

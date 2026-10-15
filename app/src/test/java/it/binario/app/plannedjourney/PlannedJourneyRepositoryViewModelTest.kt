@@ -10,6 +10,47 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class PlannedJourneyRepositoryViewModelTest {
+    @Test fun `ambiguous typed station name is rejected until a canonical suggestion is selected`() {
+        val repository = PlannedJourneyRepository(FakeStorage())
+        val model = PlannedJourneyViewModel(repository, now = { createdAt }, newId = { "ambiguous" })
+        val otherRome = rome.copy(canonicalId = "IT:OTHER-ROMA", railwayCode = "OTHER")
+        model.beginCreate()
+        model.changeEditor { it.copy(originQuery = rome.displayName, destinationQuery = milan.displayName,
+            date = "2026-10-01", time = "08:00") }
+        model.saveEditor(listOf(rome, otherRome, milan))
+        assertTrue(model.snapshot.journeys.isEmpty())
+        model.changeEditor { it.copy(originStationId = otherRome.canonicalId) }
+        model.saveEditor(listOf(rome, otherRome, milan))
+        assertEquals(otherRome, model.snapshot.journeys.single().itinerary.segments.single().origin)
+    }
+
+    @Test fun `editing an imported multi leg journey preserves later legs and its original zone`() {
+        val repository = PlannedJourneyRepository(FakeStorage())
+        val initial = journey("multi", "2026-10-01", "08:00")
+        val first = initial.itinerary.segments.single().copy(departure = initial.itinerary.segments.single().departure.copy(timeZone = ZoneId.of("Europe/London")))
+        val second = first.copy(id = "segment-2", origin = milan, destination = rome,
+            departure = first.departure.copy(time = LocalTime.of(12, 0)))
+        val original = initial.copy(itinerary = PlannedJourneyItinerary(listOf(first, second)))
+        repository.save(original)
+        val model = PlannedJourneyViewModel(repository, now = { createdAt })
+        model.beginEdit(original)
+        model.changeEditor { it.copy(label = "Updated", time = "09:00") }
+        model.saveEditor(listOf(rome, milan))
+        val updated = model.snapshot.journeys.single()
+        assertEquals(second, updated.itinerary.segments[1])
+        assertEquals(ZoneId.of("Europe/London"), updated.itinerary.segments.first().departure.timeZone)
+        assertEquals(LocalTime.of(9, 0), updated.itinerary.segments.first().departure.time)
+    }
+    @Test fun `deleting a journey removes it from durable snapshot and survives reload`() {
+        val storage = FakeStorage()
+        val repository = PlannedJourneyRepository(storage)
+        repository.save(journey("removed", "2026-10-01", "08:00"))
+        repository.save(journey("retained", "2026-10-02", "09:00"))
+        val model = PlannedJourneyViewModel(repository)
+        model.remove("removed")
+        assertEquals(listOf("retained"), PlannedJourneyRepository(storage).read().snapshot.journeys.map { it.id })
+        assertEquals(listOf("retained"), model.snapshot.journeys.map { it.id })
+    }
     private val rome = PlannedJourneyStation("IT:ROMA-TERMINI", "Roma Termini", "RMTE")
     private val milan = PlannedJourneyStation("IT:MILANO-CENTRALE", "Milano Centrale", "MICT")
     private val createdAt = Instant.parse("2026-09-01T08:00:00Z")

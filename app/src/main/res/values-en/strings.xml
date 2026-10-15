@@ -55,7 +55,7 @@
 
     <!-- Local-only planned journeys. These records never alter SavedRoute or live rail data. -->
     <string name="planned_journey_description">Create a personal journey reminder and view its occurrences.</string>
-    <string name="planned_journey_local_only">Saved only on this device. No automatic sync or notifications.</string>
+    <string name="planned_journey_local_only">Journeys saved only on this device. No synchronization.</string>
     <string name="planned_journey_add">New journey</string>
     <string name="planned_journey_edit">Edit journey</string>
     <string name="planned_journey_import">Import</string>
@@ -70,9 +70,6 @@
     <string name="planned_journey_origin">Origin</string>
     <string name="planned_journey_destination">Destination</string>
     <string name="planned_journey_route">%1$s → %2$s</string>
-    <string name="planned_journey_date">Date</string>
-    <string name="planned_journey_date_hint">Format YYYY-MM-DD</string>
-    <string name="planned_journey_time">Time</string>
     <string name="planned_journey_reminder">Reminder before departure</string>
     <plurals name="planned_journey_reminder_value">
         <item quantity="one">Reminder %1$d minute before</item>
@@ -637,4 +634,21 @@
     <string name="share_freshness_unavailable">Live data unavailable</string>
     <string name="planned_journey_ics_event_description">Journey: %1$s → %2$s, departure %3$s at %4$s (%5$s)</string>
     <string name="planned_journey_ics_reminder_description">Binario journey reminder</string>
+    <string name="agenda_reminder_enable">Agenda notifications</string>
+    <string name="agenda_reminder_explanation">Enable notifications for journeys with a reminder time. They stay on this device. Android may delay delivery.</string>
+    <string name="agenda_reminder_permission_required">Notifications are blocked by Android. Enable them in the app settings.</string>
+    <string name="agenda_reminder_settings">Notification settings</string>
+    <string name="agenda_reminder_failed">Some reminders could not be updated. Reopen Agenda to retry.</string>
+    <string name="agenda_reminder_channel">Agenda reminders</string>
+    <string name="agenda_reminder_channel_description">Local reminders before planned journeys depart.</string>
+    <string name="agenda_reminder_notification_title">Reminder: %1$s</string>
+    <string name="agenda_reminder_notification_text">Scheduled departure %1$s · %2$s → %3$s</string>
+    <string name="planned_journey_delete">Delete journey</string>
+    <string name="planned_journey_delete_confirmation">Delete this journey and its reminders from this device?</string>
+    <string name="planned_journey_delete_success">Journey and its reminders deleted.</string>
+    <string name="agenda_editor_date_value">Date: %1$s</string>
+    <string name="agenda_editor_time_value">Time: %1$s</string>
+    <string name="agenda_editor_first_segment">You are editing the first leg; other legs stay unchanged.</string>
+    <string name="agenda_editor_station_hint">Search by name or code and select a station.</string>
+    <string name="agenda_editor_select_station">Select %1$s, code %2$s</string>
 </resources>

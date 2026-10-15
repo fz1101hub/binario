@@ -1,5 +1,12 @@
 # Changelog
 
+## In sviluppo — Agenda Android
+
+- Promemoria locali dell’Agenda con consenso separato per dispositivo, cancellazione, ripristino e deduplica; contenuti personali redatti nello schermo bloccato.
+- Selettori nativi di data e ora, ricerca stazioni per nome/codice e scelta canonica per omonimi; modifica senza perdita di tratte o fuso degli itinerari importati.
+- Test UI su emulatore API 35 con notifiche consentite e negate; APK debug firmato e checksum disponibili come artifact CI per le prove su dispositivo.
+
+
 ## 0.20.4 — in stabilizzazione
 
 L’audit indipendente Claude del 29 settembre ha riaperto correttamente lo sviluppo su due High e su un gruppo di finding Medium/Low. La tranche di remediation preserva l’identità canonica delle stazioni Android, migra gli ID backup legacy reali, rende fail-closed gli orari GTFS malformati, conserva lo stato export `PlannedJourney`, assegna una timeline TTL alla Tile Wear, impedisce sovrascritture da archivi Companion corrotti, preserva i marker di rimozione permessi Expo, aggiunge acknowledgement Wear e refresh autonomo del widget, accetta sessioni Alexa prive di display name, elimina Vite dal runtime production ed esegue escaping SSML. Le advisory high/critical correggibili del Companion sono state chiuse con una patch Metro testata; `org.json` è stato aggiornato e le sole dipendenze Android bloccate da AGP 9.1/compileSdk 37 sono ora documentate e protette da allowlist statica. Il rail CI consente inoltre i push `stabilization/*`, mentre i branch `integration/*` restano coperti dalla pull request senza run duplicati. Tutti questi cambi sono sviluppati su un branch separato e non costituiscono merge o release della PR #26.

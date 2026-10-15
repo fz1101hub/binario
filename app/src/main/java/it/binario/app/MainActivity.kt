@@ -238,6 +238,11 @@ class MainActivity : ComponentActivity() {
         receiveDeepLinkIntent(intent)
     }
 
+    override fun onResume() {
+        super.onResume()
+        it.binario.app.plannedjourney.AndroidPlannedJourneyReminders.requestRefresh(applicationContext)
+    }
+
     private fun receiveDeepLinkIntent(intent: Intent?) {
         val widgetDeepLink = parseWidgetDeepLink(intent, applicationContext)
         deepLinkRequest = if (widgetDeepLink != null) {
@@ -350,6 +355,10 @@ private fun BinarioApp(
     LaunchedEffect(deepLinkRequest?.id) {
         val request = deepLinkRequest ?: return@LaunchedEffect
         when (val deepLink = request.deepLink) {
+            BinarioDeepLink.Agenda -> {
+                plannedJourneyViewModel.selectFilter(it.binario.app.plannedjourney.PlannedJourneyAgendaFilter.UPCOMING)
+                screen = Screen.AGENDA
+            }
             BinarioDeepLink.ActiveRoute, BinarioDeepLink.NextDepartures -> {
                 operationsSectionName = OperationsSection.TRAINS.name
                 screen = Screen.OPERATIONS

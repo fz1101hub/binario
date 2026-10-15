@@ -55,7 +55,7 @@
 
     <!-- Local-only planned journeys. These records never alter SavedRoute or live rail data. -->
     <string name="planned_journey_description">Crea un recordatorio de viaje personal y consulta sus ocurrencias.</string>
-    <string name="planned_journey_local_only">Guardado solo en este dispositivo. Sin sincronización ni notificaciones automáticas.</string>
+    <string name="planned_journey_local_only">Viajes guardados solo en este dispositivo. Sin sincronización.</string>
     <string name="planned_journey_add">Nuevo viaje</string>
     <string name="planned_journey_edit">Editar viaje</string>
     <string name="planned_journey_import">Importar</string>
@@ -70,9 +70,6 @@
     <string name="planned_journey_origin">Salida</string>
     <string name="planned_journey_destination">Llegada</string>
     <string name="planned_journey_route">%1$s → %2$s</string>
-    <string name="planned_journey_date">Fecha</string>
-    <string name="planned_journey_date_hint">Formato AAAA-MM-DD</string>
-    <string name="planned_journey_time">Hora</string>
     <string name="planned_journey_reminder">Recordatorio antes de la salida</string>
     <plurals name="planned_journey_reminder_value">
         <item quantity="one">Recordatorio %1$d minuto antes</item>
@@ -649,4 +646,21 @@
     <string name="share_freshness_unavailable">Datos en tiempo real no disponibles</string>
     <string name="planned_journey_ics_event_description">Viaje: %1$s → %2$s, salida %3$s a las %4$s (%5$s)</string>
     <string name="planned_journey_ics_reminder_description">Recordatorio de viaje Binario</string>
+    <string name="agenda_reminder_enable">Notificaciones de la agenda</string>
+    <string name="agenda_reminder_explanation">Activa las notificaciones para viajes con antelación configurada. Permanecen en este dispositivo. Android puede retrasar la entrega.</string>
+    <string name="agenda_reminder_permission_required">Android bloquea las notificaciones. Actívalas en los ajustes de la aplicación.</string>
+    <string name="agenda_reminder_settings">Ajustes de notificaciones</string>
+    <string name="agenda_reminder_failed">No se han podido actualizar algunos recordatorios. Abre de nuevo la agenda para reintentarlo.</string>
+    <string name="agenda_reminder_channel">Recordatorios de la agenda</string>
+    <string name="agenda_reminder_channel_description">Recordatorios locales antes de la salida de los viajes planificados.</string>
+    <string name="agenda_reminder_notification_title">Recordatorio: %1$s</string>
+    <string name="agenda_reminder_notification_text">Salida programada %1$s · %2$s → %3$s</string>
+    <string name="planned_journey_delete">Eliminar viaje</string>
+    <string name="planned_journey_delete_confirmation">¿Eliminar este viaje y sus recordatorios de este dispositivo?</string>
+    <string name="planned_journey_delete_success">Viaje y recordatorios asociados eliminados.</string>
+    <string name="agenda_editor_date_value">Fecha: %1$s</string>
+    <string name="agenda_editor_time_value">Hora: %1$s</string>
+    <string name="agenda_editor_first_segment">Estás editando el primer tramo; los demás no cambian.</string>
+    <string name="agenda_editor_station_hint">Busca por nombre o código y selecciona una estación.</string>
+    <string name="agenda_editor_select_station">Seleccionar %1$s, código %2$s</string>
 </resources>

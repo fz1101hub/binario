@@ -18,6 +18,7 @@ internal fun UiMessageKey.resourceId(): Int = when (this) {
     UiMessageKey.PLANNED_JOURNEY_SAVE_SUCCESS -> R.string.planned_journey_save_success
     UiMessageKey.PLANNED_JOURNEY_COMPLETE_SUCCESS -> R.string.planned_journey_complete_success
     UiMessageKey.PLANNED_JOURNEY_ARCHIVE_SUCCESS -> R.string.planned_journey_archive_success
+    UiMessageKey.PLANNED_JOURNEY_DELETE_SUCCESS -> R.string.planned_journey_delete_success
     UiMessageKey.PLANNED_JOURNEY_CHECKLIST_SUCCESS -> R.string.planned_journey_checklist_success
     UiMessageKey.PLANNED_JOURNEY_IMPORT_SUCCESS -> R.string.planned_journey_import_success
     UiMessageKey.PLANNED_JOURNEY_IMPORT_INVALID -> R.string.planned_journey_import_invalid

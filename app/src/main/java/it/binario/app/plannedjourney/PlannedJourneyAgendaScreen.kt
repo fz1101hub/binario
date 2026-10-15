@@ -2,6 +2,8 @@ package it.binario.app.plannedjourney
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -38,9 +40,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.produceState
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.platform.LocalFocusManager
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -51,10 +60,10 @@ import androidx.compose.ui.unit.dp
 import it.binario.app.R
 import it.binario.app.UiMessage
 import it.binario.app.localized
-import it.binario.app.data.RailTime
 import java.time.format.DateTimeFormatter
 
 @Composable
+@OptIn(ExperimentalLayoutApi::class)
 fun PlannedJourneyAgendaScreen(
     modifier: Modifier = Modifier,
     viewModel: PlannedJourneyViewModel,
@@ -63,6 +72,7 @@ fun PlannedJourneyAgendaScreen(
     onExportIcs: () -> Unit,
     onImportRequested: () -> Unit
 ) {
+    var pendingDelete by rememberSaveable { mutableStateOf<String?>(null) }
     val entries = viewModel.agendaEntries()
     val filters = listOf(
         PlannedJourneyAgendaFilter.UPCOMING,
@@ -71,7 +81,7 @@ fun PlannedJourneyAgendaScreen(
         PlannedJourneyAgendaFilter.ALL
     )
     LazyColumn(
-        modifier = modifier.fillMaxSize().padding(horizontal = 16.dp),
+        modifier = modifier.fillMaxSize().padding(horizontal = 16.dp).testTag("plannedJourneyAgenda"),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         item {
@@ -86,7 +96,7 @@ fun PlannedJourneyAgendaScreen(
             }
         }
         item {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                 filters.forEach { filter ->
                     FilterChip(
                         selected = viewModel.filter == filter,
@@ -96,6 +106,7 @@ fun PlannedJourneyAgendaScreen(
                 }
             }
         }
+        item { PlannedJourneyReminderControls(viewModel) }
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                 Button(
@@ -153,6 +164,7 @@ fun PlannedJourneyAgendaScreen(
                     onEdit = { viewModel.beginEdit(entry.journey) },
                     onComplete = { viewModel.complete(entry) },
                     onArchive = { viewModel.archive(entry.journey.id) },
+                    onDelete = { pendingDelete = entry.journey.id },
                     onToggleChecklist = { item -> viewModel.toggleChecklist(entry.journey.id, item) }
                 )
             }
@@ -173,6 +185,19 @@ fun PlannedJourneyAgendaScreen(
         onApply = viewModel::applyJsonImport,
         onDismiss = viewModel::dismissImportPreview
     )
+    pendingDelete?.let { id ->
+        AlertDialog(
+            onDismissRequest = { pendingDelete = null },
+            title = { Text(stringResource(R.string.planned_journey_delete)) },
+            text = { Text(stringResource(R.string.planned_journey_delete_confirmation)) },
+            confirmButton = { TextButton(onClick = { viewModel.remove(id); pendingDelete = null }) {
+                Text(stringResource(R.string.planned_journey_delete))
+            } },
+            dismissButton = { TextButton(onClick = { pendingDelete = null }) {
+                Text(stringResource(android.R.string.cancel))
+            } }
+        )
+    }
 }
 
 @Composable
@@ -191,6 +216,7 @@ private fun AgendaEntryCard(
     onEdit: () -> Unit,
     onComplete: () -> Unit,
     onArchive: () -> Unit,
+    onDelete: () -> Unit,
     onToggleChecklist: (PlannedJourneyChecklistItem) -> Unit
 ) {
     val first = entry.occurrence.itinerary.segments.first()
@@ -255,11 +281,12 @@ private fun AgendaEntryCard(
                     }
                 }
             }
+            TextButton(onClick = onDelete) { Text(stringResource(R.string.planned_journey_delete)) }
         }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 private fun PlannedJourneyEditorDialog(
     editor: PlannedJourneyEditorState,
@@ -269,17 +296,21 @@ private fun PlannedJourneyEditorDialog(
     onDismiss: () -> Unit
 ) {
     var suggestionsFor by remember { mutableStateOf<String?>(null) }
+    val focus = LocalFocusManager.current
+    val search by produceState<PlannedJourneyStationSearch?>(null, stations) {
+        value = withContext(Dispatchers.Default) { PlannedJourneyStationSearch(stations) }
+    }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(if (editor.isEditing) R.string.planned_journey_edit else R.string.planned_journey_add)) },
         text = {
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            LazyColumn(modifier = Modifier.testTag("plannedJourneyEditor"), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 item {
                     OutlinedTextField(
                         value = editor.label,
                         onValueChange = { value -> onChange { it.copy(label = value) } },
                         label = { Text(stringResource(R.string.planned_journey_label)) },
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth().testTag("plannedJourneyLabel"),
                         singleLine = true
                     )
                 }
@@ -287,43 +318,30 @@ private fun PlannedJourneyEditorDialog(
                     StationField(
                         value = editor.originQuery,
                         label = stringResource(R.string.planned_journey_origin),
-                        suggestions = if (suggestionsFor == "origin") stations else emptyList(),
-                        onValueChange = { value -> onChange { it.copy(originQuery = value) }; suggestionsFor = "origin" },
-                        onSuggestion = { station -> onChange { it.copy(originQuery = station.displayName) }; suggestionsFor = null }
+                        search = search,
+                        showSuggestions = suggestionsFor == "origin",
+                        tag = "plannedJourneyOrigin",
+                        onFocus = { suggestionsFor = "origin" },
+                        onValueChange = { value -> onChange { it.copy(originQuery = value, originStationId = null) }; suggestionsFor = "origin" },
+                        onSuggestion = { station -> onChange { it.copy(originQuery = station.displayName, originStationId = station.canonicalId) }; suggestionsFor = null; focus.clearFocus() }
                     )
                 }
                 item {
                     StationField(
                         value = editor.destinationQuery,
                         label = stringResource(R.string.planned_journey_destination),
-                        suggestions = if (suggestionsFor == "destination") stations else emptyList(),
-                        onValueChange = { value -> onChange { it.copy(destinationQuery = value) }; suggestionsFor = "destination" },
-                        onSuggestion = { station -> onChange { it.copy(destinationQuery = station.displayName) }; suggestionsFor = null }
+                        search = search,
+                        showSuggestions = suggestionsFor == "destination",
+                        tag = "plannedJourneyDestination",
+                        onFocus = { suggestionsFor = "destination" },
+                        onValueChange = { value -> onChange { it.copy(destinationQuery = value, destinationStationId = null) }; suggestionsFor = "destination" },
+                        onSuggestion = { station -> onChange { it.copy(destinationQuery = station.displayName, destinationStationId = station.canonicalId) }; suggestionsFor = null; focus.clearFocus() }
                     )
                 }
-                item {
-                    OutlinedTextField(
-                        value = editor.date,
-                        onValueChange = { value -> onChange { it.copy(date = value) } },
-                        label = { Text(stringResource(R.string.planned_journey_date)) },
-                        supportingText = { Text(stringResource(R.string.planned_journey_date_hint)) },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
-                    )
-                }
-                item {
-                    OutlinedTextField(
-                        value = editor.time,
-                        onValueChange = { value -> onChange { it.copy(time = value) } },
-                        label = { Text(stringResource(R.string.planned_journey_time)) },
-                        supportingText = { Text(RailTime.defaultZone.id) },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
-                    )
-                }
+                item { PlannedJourneyDateTimeFields(editor, onChange) }
                 item {
                     Text(stringResource(R.string.planned_journey_reminder), style = MaterialTheme.typography.labelLarge)
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         listOf(null, PlannedJourneyReminderMinutes.TEN, PlannedJourneyReminderMinutes.THIRTY, PlannedJourneyReminderMinutes.SIXTY).forEach { option ->
                             FilterChip(
                                 selected = editor.reminderMinutes == option,
@@ -346,7 +364,7 @@ private fun PlannedJourneyEditorDialog(
                 editor.validationMessage?.let { message -> item { AgendaMessage(message.localized(), true) } }
             }
         },
-        confirmButton = { TextButton(onClick = onSave) { Text(stringResource(R.string.planned_journey_save)) } },
+        confirmButton = { TextButton(onClick = onSave, modifier = Modifier.testTag("plannedJourneySave")) { Text(stringResource(R.string.planned_journey_save)) } },
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.planned_journey_cancel)) } }
     )
 }
@@ -355,20 +373,30 @@ private fun PlannedJourneyEditorDialog(
 private fun StationField(
     value: String,
     label: String,
-    suggestions: List<PlannedJourneyStation>,
+    search: PlannedJourneyStationSearch?,
+    showSuggestions: Boolean,
+    tag: String,
+    onFocus: () -> Unit,
     onValueChange: (String) -> Unit,
     onSuggestion: (PlannedJourneyStation) -> Unit
 ) {
+    val query = value
+    val suggestions by produceState(emptyList<PlannedJourneyStation>(), query, search, showSuggestions) {
+        this.value = withContext(Dispatchers.Default) {
+            if (showSuggestions) search?.suggestions(query).orEmpty() else emptyList()
+        }
+    }
     Column {
-        OutlinedTextField(value = value, onValueChange = onValueChange, label = { Text(label) }, modifier = Modifier.fillMaxWidth(), singleLine = true)
-        if (value.isNotBlank()) {
-            suggestions.filter { it.displayName.contains(value, true) || it.canonicalId.contains(value, true) }
-                .take(4)
-                .forEach { station ->
-                    TextButton(onClick = { onSuggestion(station) }, modifier = Modifier.fillMaxWidth()) {
-                        Text(station.displayName, modifier = Modifier.fillMaxWidth())
-                    }
-                }
+        OutlinedTextField(value = value, onValueChange = onValueChange, label = { Text(label) },
+            supportingText = { Text(stringResource(R.string.agenda_editor_station_hint)) },
+            modifier = Modifier.fillMaxWidth().testTag(tag).onFocusChanged { if (it.isFocused) onFocus() }, singleLine = true)
+        suggestions.forEach { station ->
+            val code = station.railwayCode ?: station.canonicalId
+            val description = stringResource(R.string.agenda_editor_select_station, station.displayName, code)
+            TextButton(onClick = { onSuggestion(station) }, modifier = Modifier.fillMaxWidth()
+                .testTag("$tag:${station.canonicalId}").semantics { contentDescription = description }) {
+                Text("${station.displayName} · $code", modifier = Modifier.fillMaxWidth())
+            }
         }
     }
 }

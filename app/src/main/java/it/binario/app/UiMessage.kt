@@ -22,6 +22,7 @@ enum class UiMessageKey(val resourceName: String) {
     PLANNED_JOURNEY_SAVE_SUCCESS("planned_journey_save_success"),
     PLANNED_JOURNEY_COMPLETE_SUCCESS("planned_journey_complete_success"),
     PLANNED_JOURNEY_ARCHIVE_SUCCESS("planned_journey_archive_success"),
+    PLANNED_JOURNEY_DELETE_SUCCESS("planned_journey_delete_success"),
     PLANNED_JOURNEY_CHECKLIST_SUCCESS("planned_journey_checklist_success"),
     PLANNED_JOURNEY_IMPORT_SUCCESS("planned_journey_import_success"),
     PLANNED_JOURNEY_IMPORT_INVALID("planned_journey_import_invalid"),
