@@ -87,15 +87,22 @@ class PlannedJourneyReminderEngine(
     private val store: PlannedJourneyReminderStateStore,
     private val device: PlannedJourneyReminderDevice
 ) {
-    fun refresh(snapshot: PlannedJourneyPersistenceSnapshot, allowed: Boolean, now: Instant): PlannedJourneyReminderStatus {
+    fun refresh(
+        snapshot: PlannedJourneyPersistenceSnapshot,
+        allowed: Boolean,
+        now: Instant,
+        alarmsCleared: Boolean = false
+    ): PlannedJourneyReminderStatus {
         val old = store.read()
         val plans = PlannedJourneyReminderPlanner.plans(snapshot)
         val live = plans.filter { it.departure > now }
         // Retain bounded delivery IDs while their journey exists, even across clock rollbacks.
         val delivered = old.delivered.intersect(plans.map { it.key }.toSet())
         // Preserve alarms already queued by Android, including simultaneous/late deliveries.
-        // Never re-arm elapsed triggers: after boot they stay inert instead of being replayed.
-        val queuedDue = old.registered.intersect(live.filter { it.trigger <= now && it.key !in delivered }.map { it.key }.toSet())
+        // Reboot/update removes Android's queue: discard elapsed entries so they cannot reserve
+        // all slots and starve future recurrences. Normal refresh must preserve queued deliveries.
+        val queuedDue = if (alarmsCleared) emptySet() else old.registered.intersect(
+            live.filter { it.trigger <= now && it.key !in delivered }.map { it.key }.toSet())
         val future = if (old.enabled && allowed) live.filter { it.trigger > now && it.key !in delivered }
             .take((MAX_PENDING - queuedDue.size).coerceAtLeast(0)) else emptyList()
         val retained = if (old.enabled && allowed) delivered.intersect(live.map { it.key }.toSet()) + queuedDue + future.map { it.key } else emptySet()

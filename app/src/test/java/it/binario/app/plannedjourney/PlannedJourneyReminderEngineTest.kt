@@ -154,10 +154,30 @@ class PlannedJourneyReminderEngineTest {
         engine.refresh(snapshot, true, now)
         val plan = device.pending.values.single()
         device.pending.clear() // Reboot clears AlarmManager, but retains the durable journal.
-        engine.refresh(snapshot, true, plan.trigger.plusSeconds(1))
+        engine.refresh(snapshot, true, plan.trigger.plusSeconds(1), alarmsCleared = true)
         assertTrue(device.pending.isEmpty())
+        assertTrue(store.state.registered.isEmpty())
+        engine.deliver(plan.key, snapshot, true, plan.departure.minusSeconds(1))
         engine.deliver(plan.key, snapshot, true, plan.departure.plusSeconds(1))
         assertEquals(0, device.posts)
+    }
+
+    @Test fun `reboot after simultaneous triggers leaves room for every next-day recurrence`() {
+        enable()
+        val snapshot = PlannedJourneyPersistenceSnapshot(journeys = (1..40).map { index ->
+            journey(id = "trip-$index", destination = "IT:DEST-$index").copy(recurrence = PlannedJourneyRecurrence(
+                weekdays = DayOfWeek.entries, startsOn = LocalDate.parse("2026-10-15"), occurrenceLimit = 2))
+        })
+        engine.refresh(snapshot, true, now)
+        assertEquals(64, device.pending.size)
+        val rebootTime = device.pending.values.first().trigger.plusSeconds(1)
+        device.pending.clear()
+        engine.refresh(snapshot, true, rebootTime, alarmsCleared = true)
+        assertEquals(40, device.pending.size)
+        assertTrue(device.pending.values.all { it.trigger > rebootTime })
+        device.pending.values.toList().forEach { fire(it, snapshot) }
+        assertEquals(40, device.posts)
+        assertTrue(device.pending.isEmpty())
     }
 
     @Test fun `late Android alarm is useful only before departure and early replay is ignored`() {

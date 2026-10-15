@@ -67,11 +67,11 @@ object AndroidPlannedJourneyReminders {
         )
     }
 
-    private fun refreshNow(context: Context): PlannedJourneyReminderStatus = synchronized(gate) {
+    private fun refreshNow(context: Context, alarmsCleared: Boolean = false): PlannedJourneyReminderStatus = synchronized(gate) {
         val store = StateStore(context)
         runCatching {
             createChannel(context)
-            PlannedJourneyReminderEngine(store, Device(context)).refresh(snapshot(context), allowed(context), Instant.now())
+            PlannedJourneyReminderEngine(store, Device(context)).refresh(snapshot(context), allowed(context), Instant.now(), alarmsCleared)
         }.getOrElse { PlannedJourneyReminderStatus(store.read().enabled, allowed(context), failed = true) }
     }
 
@@ -92,7 +92,8 @@ object AndroidPlannedJourneyReminders {
                         PlannedJourneyReminderEngine(StateStore(app), Device(app))
                             .deliver(key, snapshot(app), allowed(app), Instant.now())
                     } else if (acceptsRestoreAction(intent.action)) {
-                        refreshNow(app)
+                        refreshNow(app, alarmsCleared = intent.action == Intent.ACTION_BOOT_COMPLETED ||
+                            intent.action == Intent.ACTION_MY_PACKAGE_REPLACED)
                     }
                 }
             } catch (_: Exception) {
