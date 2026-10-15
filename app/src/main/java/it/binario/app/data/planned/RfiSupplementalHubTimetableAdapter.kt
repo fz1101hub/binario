@@ -16,6 +16,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.io.IOException
 import java.time.Clock
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -91,7 +92,10 @@ class RfiSupplementalHubTimetableAdapter(
         } catch (error: CancellationException) {
             throw error
         } catch (error: SupplementalLoadFailure) {
-            return DataResult.Failure(error.message.orEmpty())
+            return DataResult.Failure(
+                error.message.orEmpty(),
+                if (error.cause is IOException) RouteFailureReason.NetworkUnavailable else RouteFailureReason.Unavailable
+            )
         }
         val parsed = cached.value
 

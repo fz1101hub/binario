@@ -17,6 +17,11 @@ filtro orario, calendario, validità e passaggio della mezzanotte vengono
 applicati prima di restituire il risultato. I dati restano programmati, con
 stato operativo non verificato, senza ritardi o binari presunti. Il fallback
 locale senza copertura conserva gli errori specifici della fonte ufficiale.
+Un timeout o errore di connessione conserva il motivo `NetworkUnavailable` e
+mostra un messaggio localizzato sul servizio degli orari non raggiungibile,
+distinto da tratta non coperta, orari scaduti o corse assenti dopo l'ora scelta.
+Gli errori non vengono memorizzati come quadri vuoti: una nuova ricerca può
+ritentare la richiesta.
 
 ## Verifica
 

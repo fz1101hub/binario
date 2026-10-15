@@ -386,6 +386,7 @@
     <string name="route_required_to_start">Enter a route to start browsing.</string>
     <string name="route_origin_destination_required">Enter an origin and destination to view a route.</string>
     <string name="rail_data_unavailable">Railway data is unavailable for this request.</string>
+    <string name="rail_network_unavailable">The timetable service cannot be reached. Check your connection and try again shortly.</string>
     <string name="route_not_covered">The timetables included in the app do not cover this route.</string>
     <string name="route_schedule_expired">The timetables included for this route are valid until %1$s: update the app for newer timetables.</string>
     <string name="route_no_service_after">No scheduled train on %1$s from %2$s onwards.</string>

@@ -32,6 +32,7 @@ internal fun UiMessageKey.resourceId(): Int = when (this) {
     UiMessageKey.ROUTE_REQUIRED_TO_START -> R.string.route_required_to_start
     UiMessageKey.ROUTE_ORIGIN_DESTINATION_REQUIRED -> R.string.route_origin_destination_required
     UiMessageKey.RAIL_DATA_UNAVAILABLE -> R.string.rail_data_unavailable
+    UiMessageKey.RAIL_NETWORK_UNAVAILABLE -> R.string.rail_network_unavailable
     UiMessageKey.ROUTE_NOT_COVERED -> R.string.route_not_covered
     UiMessageKey.ROUTE_SCHEDULE_EXPIRED -> R.string.route_schedule_expired
     UiMessageKey.ROUTE_NO_SERVICE_AFTER -> R.string.route_no_service_after

@@ -227,7 +227,10 @@ class RfiProgrammedTimetableAdapter(
         } catch (error: CancellationException) {
             throw error
         } catch (error: RfiLoadFailure) {
-            return DataResult.Failure(error.message.orEmpty())
+            return DataResult.Failure(
+                error.message.orEmpty(),
+                if (error.cause is IOException) RouteFailureReason.NetworkUnavailable else RouteFailureReason.Unavailable
+            )
         }
         val parsed = cached.value
 

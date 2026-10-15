@@ -224,6 +224,7 @@ sealed interface DataResult {
 /** Why no route could be built, when the cause is something the user can act on. */
 sealed interface RouteFailureReason {
     data object Unavailable : RouteFailureReason
+    data object NetworkUnavailable : RouteFailureReason
     /** No timetable the app carries serves both stations. */
     data object RouteNotCovered : RouteFailureReason
     /** The timetables that serve the route end before the requested date: the app needs an update. */
@@ -332,6 +333,7 @@ class RailDataRepository(
             // specific result from its official timetable (date/time or network).
             is DataResult.Failure -> if (result.reason == RouteFailureReason.RouteNotCovered) {
                 failures.firstOrNull { it.reason is RouteFailureReason.NoServiceAfter || it.reason is RouteFailureReason.ScheduleExpired }
+                    ?: failures.firstOrNull { it.reason == RouteFailureReason.NetworkUnavailable }
                     ?: failures.firstOrNull { it.reason == RouteFailureReason.Unavailable }
                     ?: result
             } else result

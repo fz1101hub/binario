@@ -10,6 +10,7 @@ class RouteFailureMessageTest {
     @Test
     fun `actionable route failures keep their own message instead of the generic one`() {
         assertEquals(UiMessage(UiMessageKey.RAIL_DATA_UNAVAILABLE), RouteFailureReason.Unavailable.uiMessage())
+        assertEquals(UiMessage(UiMessageKey.RAIL_NETWORK_UNAVAILABLE), RouteFailureReason.NetworkUnavailable.uiMessage())
         assertEquals(UiMessage(UiMessageKey.ROUTE_NOT_COVERED), RouteFailureReason.RouteNotCovered.uiMessage())
         assertEquals(
             UiMessage(UiMessageKey.ROUTE_SCHEDULE_EXPIRED, LocalDate.of(2026, 12, 13)),

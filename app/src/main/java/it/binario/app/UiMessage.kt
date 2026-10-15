@@ -36,6 +36,7 @@ enum class UiMessageKey(val resourceName: String) {
     ROUTE_REQUIRED_TO_START("route_required_to_start"),
     ROUTE_ORIGIN_DESTINATION_REQUIRED("route_origin_destination_required"),
     RAIL_DATA_UNAVAILABLE("rail_data_unavailable"),
+    RAIL_NETWORK_UNAVAILABLE("rail_network_unavailable"),
     ROUTE_NOT_COVERED("route_not_covered"),
     ROUTE_SCHEDULE_EXPIRED("route_schedule_expired"),
     ROUTE_NO_SERVICE_AFTER("route_no_service_after"),
@@ -55,6 +56,7 @@ enum class UiMessageKey(val resourceName: String) {
 /** The localized explanation of a failed route search; dates and times are formatted on render. */
 internal fun RouteFailureReason.uiMessage(): UiMessage = when (this) {
     RouteFailureReason.Unavailable -> UiMessage(UiMessageKey.RAIL_DATA_UNAVAILABLE)
+    RouteFailureReason.NetworkUnavailable -> UiMessage(UiMessageKey.RAIL_NETWORK_UNAVAILABLE)
     RouteFailureReason.RouteNotCovered -> UiMessage(UiMessageKey.ROUTE_NOT_COVERED)
     is RouteFailureReason.ScheduleExpired -> UiMessage(UiMessageKey.ROUTE_SCHEDULE_EXPIRED, validUntil)
     is RouteFailureReason.NoServiceAfter -> UiMessage(UiMessageKey.ROUTE_NO_SERVICE_AFTER, serviceDate, departureTime)

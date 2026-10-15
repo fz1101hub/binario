@@ -255,6 +255,22 @@ class RfiProgrammedTimetableAdapterTest {
     }
 
     @Test
+    fun `timeout degli arrivi resta distinto da tratta non coperta e un nuovo tentativo puo riuscire`() = runBlocking {
+        var calls = 0
+        val adapter = RfiProgrammedTimetableAdapter(
+            fetcher = RfiProgrammedTimetableFetcher {
+                if (++calls == 1) throw java.net.SocketTimeoutException("timeout")
+                arrivalsFixture()
+            }, clock = clock
+        )
+        val query = JourneyQuery(LocalDate.of(2026, 9, 4), LocalTime.of(8, 0))
+        val first = adapter.loadRoute(route(appiano, ostiense), Direction.OUTBOUND, query) as DataResult.Failure
+        assertEquals(RouteFailureReason.NetworkUnavailable, first.reason)
+        assertTrue(adapter.loadRoute(route(appiano, ostiense), Direction.OUTBOUND, query) is DataResult.Success)
+        assertEquals(2, calls)
+    }
+
+    @Test
     fun `arrivi riconoscono intestazioni in celle td e hub supplementari`() = runBlocking {
         val adapter = RfiProgrammedTimetableAdapter(
             fetcher = RfiProgrammedTimetableFetcher { url ->
