@@ -93,8 +93,18 @@ if [ "${BINARIO_VERIFY_RFI_ROUTE:-false}" = true ]; then
     -e class it.binario.app.RfiJourneyNetworkTest \
     it.binario.app.test/androidx.test.runner.AndroidJUnitRunner \
     | tee "$RUNNER_TEMP/binario-ui-rfi-route.log"
-  grep -Fq 'OK (1 test)' "$RUNNER_TEMP/binario-ui-rfi-route.log"
-  if grep -Eq 'FAILURES|INSTRUMENTATION_FAILED|Process crashed' "$RUNNER_TEMP/binario-ui-rfi-route.log"; then exit 1; fi
+  if ! grep -Fq 'OK (1 test)' "$RUNNER_TEMP/binario-ui-rfi-route.log" ||
+      grep -Eq 'FAILURES|INSTRUMENTATION_FAILED|Process crashed' "$RUNNER_TEMP/binario-ui-rfi-route.log"; then
+    # Keep the actual assertion visible in the check annotations as well as the artifact.
+    python3 - "$RUNNER_TEMP/binario-ui-rfi-route.log" <<'PY'
+import pathlib, sys
+lines = pathlib.Path(sys.argv[1]).read_text(encoding='utf-8', errors='replace').splitlines()
+message = next((line for line in lines if 'AssertionError:' in line), 'Test di rete Appiano → Roma Ostiense fallito: consultare il report Android.')
+message = message[:2000].replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
+print(f'::error title=Ricerca RFI su Android::{message}')
+PY
+    exit 1
+  fi
 fi
 adb -s "$binario_serial" shell am force-stop it.binario.app
 adb -s "$binario_serial" shell pm revoke it.binario.app android.permission.POST_NOTIFICATIONS
