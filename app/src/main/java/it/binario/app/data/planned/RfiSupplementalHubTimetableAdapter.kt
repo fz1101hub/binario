@@ -7,6 +7,7 @@ import it.binario.app.data.Freshness
 import it.binario.app.data.JourneyQuery
 import it.binario.app.data.RailTime
 import it.binario.app.data.RouteSnapshot
+import it.binario.app.data.RouteFailureReason
 import it.binario.app.data.SavedRoute
 import it.binario.app.data.Station
 import it.binario.app.data.TrainDataSource
@@ -15,6 +16,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.io.IOException
 import java.time.Clock
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -58,7 +60,7 @@ class RfiSupplementalHubTimetableAdapter(
         val origin = route.origin(direction)
         val destination = route.destination(direction)
         val timetableId = SupplementalRfiProgrammedStationIds.timetableId(origin)
-            ?: return DataResult.Failure(unmappedDirectionMessage(origin, destination))
+            ?: return DataResult.Failure(unmappedDirectionMessage(origin, destination), RouteFailureReason.RouteNotCovered)
         val cacheKey = "${route.id}:${direction.name}:$timetableId"
         val cached = try {
             cache.getOrLoad(cacheKey) {
@@ -90,14 +92,18 @@ class RfiSupplementalHubTimetableAdapter(
         } catch (error: CancellationException) {
             throw error
         } catch (error: SupplementalLoadFailure) {
-            return DataResult.Failure(error.message.orEmpty())
+            return DataResult.Failure(
+                error.message.orEmpty(),
+                if (error.cause is IOException) RouteFailureReason.NetworkUnavailable else RouteFailureReason.Unavailable
+            )
         }
         val parsed = cached.value
 
         parsed.validity?.let { validity ->
             if (query.serviceDate !in validity.start..validity.end) {
                 return DataResult.Failure(
-                    "Il quadro orario RFI disponibile è valido dal ${validity.start} al ${validity.end}, non per ${query.serviceDate}."
+                    "Il quadro orario RFI disponibile è valido dal ${validity.start} al ${validity.end}, non per ${query.serviceDate}.",
+                    RouteFailureReason.ScheduleOutsideValidity(validity.start, validity.end)
                 )
             }
         }
