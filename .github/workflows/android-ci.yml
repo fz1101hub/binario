@@ -108,6 +108,10 @@ jobs:
           python3 tools/verify_android_release_config.py
           python3 tools/verify_gradle_dependency_metadata.py
 
+      - name: Android UI and notification tests on API 35
+        timeout-minutes: 25
+        run: bash tools/run_android_ui_tests.sh
+
       - name: Unit tests, lint, debug and unsigned release builds
         run: >-
           ./gradlew --no-daemon --dependency-verification=strict
@@ -120,10 +124,6 @@ jobs:
 
       - name: Verify unsigned Google Play bundles
         run: python3 tools/verify_android_app_bundles.py
-
-      - name: Android UI and notification tests on API 35
-        timeout-minutes: 25
-        run: bash tools/run_android_ui_tests.sh
 
       - name: Prepare installable test APK
         env:

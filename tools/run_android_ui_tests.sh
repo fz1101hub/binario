@@ -5,6 +5,7 @@ cd "$(dirname "$0")/.."
 : "${ANDROID_HOME:?Android SDK is required}"
 : "${RUNNER_TEMP:?Run on an isolated CI runner with a temporary directory}"
 export ANDROID_SDK_ROOT="$ANDROID_HOME"
+export PATH="$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator:$PATH"
 test -c /dev/kvm || { echo 'Android UI tests require a Linux runner with KVM.' >&2; exit 1; }
 if [ ! -r /dev/kvm ] || [ ! -w /dev/kvm ]; then
   sudo setfacl -m "u:$(id -un):rw" /dev/kvm
@@ -33,6 +34,8 @@ cp -a "$binario_tools_dir/cmdline-tools/." "$binario_sdk_tools_path/"
 binario_sdk_manager="$binario_sdk_tools_path/bin/sdkmanager"
 "$binario_sdk_manager" --sdk_root="$ANDROID_HOME" --licenses < <(yes 2>/dev/null) > "$RUNNER_TEMP/binario-ui-licenses.log" 2>&1
 "$binario_sdk_manager" --sdk_root="$ANDROID_HOME" 'emulator' 'platform-tools' 'build-tools;35.0.0' 'system-images;android-35;google_apis;x86_64'
+adb version
+"$ANDROID_HOME/emulator/emulator" -accel-check
 printf 'no\n' | "$binario_sdk_tools_path/bin/avdmanager" create avd --force \
   --name binario-agenda-ui --package 'system-images;android-35;google_apis;x86_64' --device pixel_2
 
@@ -41,7 +44,15 @@ binario_serial=emulator-5556
   -gpu swiftshader -no-snapshot -no-boot-anim -camera-back none -camera-front none \
   -memory 2048 > "$RUNNER_TEMP/binario-ui-emulator.log" 2>&1 &
 binario_emulator_pid=$!
-trap 'adb -s "$binario_serial" emu kill >/dev/null 2>&1 || true; kill "$binario_emulator_pid" 2>/dev/null || true; wait "$binario_emulator_pid" 2>/dev/null || true' EXIT
+binario_cleanup() {
+  binario_result=$?
+  timeout 10 adb -s "$binario_serial" logcat -d > "$RUNNER_TEMP/binario-ui-logcat.log" 2>&1 || true
+  timeout 10 adb -s "$binario_serial" emu kill >/dev/null 2>&1 || true
+  kill "$binario_emulator_pid" 2>/dev/null || true
+  wait "$binario_emulator_pid" 2>/dev/null || true
+  return "$binario_result"
+}
+trap binario_cleanup EXIT
 timeout 120 adb -s "$binario_serial" wait-for-device
 binario_booted=0
 for binario_attempt in {1..120}; do
