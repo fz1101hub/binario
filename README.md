@@ -47,7 +47,7 @@ Richiede **Android 8.0 o successivo** (`minSdk 26`). Per installare il file su u
 
 ## Sviluppo e build
 
-La toolchain verificata è OpenJDK 21 per la build, Java 17 come target, Android Gradle Plugin 8.13.0, Gradle 8.14.5 e Android SDK API 36.
+La toolchain verificata è OpenJDK 21 per la build, Java 17 come target, Android Gradle Plugin 8.13.0, Gradle 8.14.6 e Android SDK API 36.
 
 ```bash
 ./gradlew :app:testDebugUnitTest :wear:testDebugUnitTest :app:assembleDebug :wear:assembleDebug
