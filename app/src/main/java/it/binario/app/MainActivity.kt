@@ -2654,7 +2654,7 @@ private fun ServiceDetailScreen(
                 delay = stop.delayMinutes,
                 platform = stop.platform,
                 completed = stop.completed,
-                operationalStatusVerified = service.operationalStatusVerified,
+                operationalStatusVerified = stop.operationalStatusVerified ?: service.operationalStatusVerified,
                 routeChange = stop.routeChange,
                 onSetAlarm = { onScheduleStopAlarm(service, stop) }
             )
@@ -2664,7 +2664,7 @@ private fun ServiceDetailScreen(
 }
 
 @Composable
-private fun StopTimelineRow(
+internal fun StopTimelineRow(
     station: String,
     expected: String,
     scheduled: String,
@@ -2723,7 +2723,11 @@ private fun StopTimelineRow(
         Column(horizontalAlignment = Alignment.End) {
             Text(expected, style = MaterialTheme.typography.titleMedium, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
             if (expected != scheduled) Text(stringResource(R.string.scheduled_time_short, scheduled), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            if (delay > 0) Text(stringResource(R.string.delay_minutes, delay), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.tertiary, fontWeight = FontWeight.Bold)
+            if (!operationalStatusVerified) {
+                Text(stringResource(R.string.operational_status_unverified), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            } else if (delay > 0) {
+                Text(stringResource(R.string.delay_minutes, delay), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.tertiary, fontWeight = FontWeight.Bold)
+            }
             if (!completed) {
                 TextButton(onClick = onSetAlarm, contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)) {
                     Text(stringResource(R.string.action_stop_alarm))

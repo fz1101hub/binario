@@ -52,7 +52,7 @@ internal object LegacyStationBoardInterop {
                 confidence = confidence,
                 traceId = "${sourceId.value}:${service.id}"
             )
-            val expected = if (service.operationalStatusVerified) {
+            val expected = if (service.stops.firstOrNull()?.operationalStatusVerified ?: service.operationalStatusVerified) {
                 resolveExpectedDateTime(service.expectedDeparture, scheduled, zone)
             } else {
                 null

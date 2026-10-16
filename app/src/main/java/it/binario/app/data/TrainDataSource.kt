@@ -140,7 +140,9 @@ data class TrainStop(
     val platform: String?,
     val delayMinutes: Int,
     val completed: Boolean,
-    val routeChange: StopRouteChange = StopRouteChange.NONE
+    val routeChange: StopRouteChange = StopRouteChange.NONE,
+    /** Null inherits legacy service status; partial live sources set this per stop. */
+    val operationalStatusVerified: Boolean? = null
 )
 
 /** Exact native identity retained from the static feed for realtime reconciliation. */
@@ -385,7 +387,7 @@ class RouteSnapshotCache(context: Context) {
 
     fun save(snapshot: RouteSnapshot) {
         preferences.edit {
-            putLong("last_refresh", snapshot.retrievedAtEpochMillis)
+            putLong("last_refresh", snapshot.sourceObservedAtEpochMillis)
             putString("last_provider", snapshot.providerName)
             putString("last_confidence", snapshot.confidence.accessibleLabel)
         }

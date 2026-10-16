@@ -240,7 +240,8 @@ class ViaggiaTrenoRealtimeAdapter(
                 station = if (index == 0) route.origin(direction).name else if (index == segment.lastIndex) route.destination(direction).name else stop.text("stazione") ?: return null,
                 scheduled = time(at), expected = time(actual?.let(Instant::ofEpochMilli) ?: at.plusSeconds(visibleDelay * 60L)),
                 platform = stop.text(if (index == 0) "binarioEffettivoPartenzaDescrizione" else "binarioEffettivoArrivoDescrizione"),
-                delayMinutes = visibleDelay, completed = actual != null
+                delayMinutes = actual?.let { Duration.between(at, Instant.ofEpochMilli(it)).toMinutes().toInt() } ?: visibleDelay,
+                completed = actual != null, operationalStatusVerified = actual != null || (verified && !cancelled)
             )
         }
         val category = run.text("categoria").orEmpty().uppercase(Locale.ROOT)

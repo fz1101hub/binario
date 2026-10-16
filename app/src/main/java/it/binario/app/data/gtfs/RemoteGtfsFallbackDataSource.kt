@@ -194,7 +194,8 @@ class RemoteGtfsFallbackDataSource(
         val delay = update.update.officialDelay?.value?.toMinutes()?.toInt()
         return stop.copy(
             expected = predicted?.format(HH_MM) ?: stop.expected,
-            delayMinutes = delay ?: stop.delayMinutes
+            delayMinutes = delay ?: stop.delayMinutes,
+            operationalStatusVerified = if (predicted != null || delay != null) true else stop.operationalStatusVerified
         )
     }
 

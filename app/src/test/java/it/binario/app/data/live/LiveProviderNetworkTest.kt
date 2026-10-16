@@ -57,6 +57,9 @@ class LiveProviderNetworkTest {
             it.operationalStatusVerified && "rfi-station-board" in it.operationalSourceIds
         })
         println("LIVE_ACCEPTANCE RFI regional journey: matchedLiveDepartures=${services.count { it.operationalStatusVerified }}")
+        println("LIVE_ACCEPTANCE RFI 23263 paired boards: " + (services.singleOrNull { it.number == "23263" }?.let {
+            "departure=${it.scheduledDeparture}, delay=${it.officialDelayMinutes}, arrival=${it.stops.last().scheduled}, arrivalDelay=${it.stops.last().delayMinutes}, arrivalVerified=${it.stops.last().operationalStatusVerified}"
+        } ?: "not matched on both current boards"))
     }
 
     @Test fun rfiPublishedDelayAccuracy() = runBlocking {
@@ -77,7 +80,7 @@ class LiveProviderNetworkTest {
             val delay = Regex("^\\+?(\\d{1,3})\\s*(?:min(?:uti)?|['′])?$", RegexOption.IGNORE_CASE)
                 .matchEntire(visible)?.groupValues?.get(1)?.toIntOrNull()
             val service = services.singleOrNull { it.number == number }
-            if (number == "23263") reportedTrain = "23263 visible=$visible, parsed=${service?.officialDelayMinutes}"
+            if (number == "23263") reportedTrain = "23263 scheduled=${service?.scheduledDeparture}, visible=$visible, aria=${row.selectFirst("#RRitardo")?.attr("aria-label")}, parsed=${service?.officialDelayMinutes}, verified=${service?.operationalStatusVerified}"
             if (delay != null) {
                 compared++
                 if (service == null || service.officialDelayMinutes != delay || !service.operationalStatusVerified) {

@@ -97,6 +97,7 @@ class GtfsRealtimeEnrichedTrainDataSourceTest {
         val result = load(listOf(service()), listOf(provider(sta, listOf(update(sta, 300, stop = "B", sequence = 2)))))
         assertFalse(result.services.single().operationalStatusVerified)
         assertEquals("12:35", result.services.single().stops.last().expected)
+        assertEquals(true, result.services.single().stops.last().operationalStatusVerified)
         assertEquals("12:00", result.services.single().expectedDeparture)
     }
 
@@ -106,6 +107,7 @@ class GtfsRealtimeEnrichedTrainDataSourceTest {
         val result = load(listOf(service()), listOf(provider(sta, listOf(update)))).services.single()
         assertEquals(4, result.delayMinutes)
         assertNull(result.officialDelayMinutes)
+        assertEquals(false, result.stops.last().operationalStatusVerified)
         assertNull(result.lastOperationalDetection)
         assertNull(result.detectionDelayMinutes)
     }

@@ -78,8 +78,8 @@ internal fun parseItaloPublicBoard(json: String, origin: String, route: SavedRou
             scheduledDeparture = scheduled, expectedDeparture = expected, platform = platform,
             delayMinutes = if (verified) delay ?: 0 else 0, officialDelayMinutes = delay.takeIf { verified },
             status = when { verified && cancelled -> ServiceStatus.CANCELLED; verified && (delay ?: 0) > 0 -> ServiceStatus.DELAYED; else -> ServiceStatus.ON_TIME },
-            stops = listOf(TrainStop(origin, scheduled, expected, platform, if (verified) delay ?: 0 else 0, false),
-                TrainStop(destination, "—", "—", null, 0, false)),
+            stops = listOf(TrainStop(origin, scheduled, expected, platform, if (verified) delay ?: 0 else 0, false, operationalStatusVerified = verified && !cancelled),
+                TrainStop(destination, "—", "—", null, 0, false, operationalStatusVerified = false)),
             operationalStatusVerified = verified, operationalSourceIds = if (verified) setOf("italo-status") else emptySet(),
             operationalObservedAtEpochMillis = observed?.toEpochMilli()
         )

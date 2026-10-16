@@ -139,6 +139,8 @@ class StationBoardRealtimeReconcilerTest {
         assertEquals("7", service.platform)
         assertEquals(ServiceStatus.DELAYED, service.status)
         assertTrue(service.operationalStatusVerified)
+        assertEquals(true, service.stops.first().operationalStatusVerified)
+        assertEquals(false, service.stops.last().operationalStatusVerified)
         assertEquals(setOf("rfi-station-board"), service.operationalSourceIds)
         assertTrue(snapshot.providerName.contains("RFI"))
     }

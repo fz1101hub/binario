@@ -44,6 +44,14 @@ class RfiLiveRouteDataSourceTest {
         assertTrue(load(departure, entry(11, 0, 7)) is DataResult.Failure)
     }
 
+    @Test fun `arrivo senza aggiornamento non diventa zero verificato perche la partenza e live`() = runBlocking {
+        val arrival = entry(11, 0, 0).copy(expectedTime = null, status = null)
+        val service = (load(entry(10, 30, 6), arrival) as DataResult.Success).snapshot.services.single()
+        assertTrue(service.operationalStatusVerified)
+        assertEquals(true, service.stops.first().operationalStatusVerified)
+        assertEquals(false, service.stops.last().operationalStatusVerified)
+    }
+
     @Test fun `zero ufficiale e valido ma osservazioni scadute non lo sono`() = runBlocking {
         assertTrue((load(entry(10, 30, 0), entry(11, 0, 0)) as DataResult.Success).snapshot.services.single().operationalStatusVerified)
         val stale = entry(10, 30, 0).let { it.copy(expectedTime = it.expectedTime?.let { value -> value.copy(source = value.source.copy(observedAt = now.minusSeconds(301))) },
@@ -72,6 +80,35 @@ class RfiLiveRouteDataSourceTest {
         val source = RfiLiveRouteDataSource(provider(entry(10, 30, 0), entry(11, 0, 0)), clock)
         repeat(2) { source.loadRoute(route, Direction.OUTBOUND, query) }
         assertEquals(2, calls.get())
+    }
+
+    @Test fun `il refresh dopo trenta secondi non riusa il vecchio zero a causa della latenza rete`() = runBlocking {
+        val ticks = java.util.concurrent.atomic.AtomicLong(now.toEpochMilli())
+        val advancingClock = object : Clock() {
+            override fun getZone(): ZoneId = ZoneOffset.UTC
+            override fun withZone(zone: ZoneId): Clock = this
+            override fun instant(): Instant = Instant.ofEpochMilli(ticks.get())
+        }
+        val base = provider(entry(10, 30, 0), entry(11, 0, 0))
+        val delayed = object : StationBoardProvider by base {
+            override suspend fun getStationBoard(request: StationBoardRequest): ProviderResult<StationBoard> {
+                if (request.kind == BoardKind.DEPARTURES) ticks.addAndGet(3_000)
+                val result = base.getStationBoard(request)
+                if (request.kind == BoardKind.DEPARTURES && ticks.get() >= now.plusSeconds(30).toEpochMilli()) {
+                    result as ProviderResult.Success
+                    return result.copy(value = result.value.copy(entries = result.value.entries.map { entry ->
+                        entry.copy(expectedTime = entry.expectedTime!!.copy(value = entry.scheduledTime.plusMinutes(6)),
+                            status = entry.status!!.copy(value = RunStatus.DELAYED))
+                    }))
+                }
+                return result
+            }
+        }
+        val source = RfiLiveRouteDataSource(delayed, advancingClock)
+        assertEquals(0, (source.loadRoute(route, Direction.OUTBOUND, query) as DataResult.Success).snapshot.services.single().delayMinutes)
+        ticks.set(now.plusSeconds(30).toEpochMilli())
+        assertEquals(6, (source.loadRoute(route, Direction.OUTBOUND, query) as DataResult.Success).snapshot.services.single().delayMinutes)
+        assertEquals(4, calls.get())
     }
 
     private suspend fun load(departure: StationBoardEntry, arrival: StationBoardEntry, duplicateArrival: Boolean = false): DataResult =

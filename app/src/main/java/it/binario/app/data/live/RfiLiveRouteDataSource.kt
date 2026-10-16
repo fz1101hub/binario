@@ -19,7 +19,9 @@ class RfiLiveRouteDataSource(
 ) : RealtimeRouteDataSource {
     override val descriptor get() = provider.descriptor
     private val zone = RailTime.defaultZone
-    private val cache = BoundedSingleFlightCache<ProviderResult<StationBoard>>(64, 30_000, clock::millis)
+    // Keep below the 30-second UI poll: a TTL of 30 seconds starting after
+    // network completion can make every other poll reuse the previous board.
+    private val cache = BoundedSingleFlightCache<ProviderResult<StationBoard>>(64, 20_000, clock::millis)
 
     override suspend fun loadRoute(route: SavedRoute, direction: Direction): DataResult =
         loadRoute(route, direction, JourneyQuery.now(clock))
@@ -78,8 +80,8 @@ class RfiLiveRouteDataSource(
                 scheduledDeparture = scheduled, expectedDeparture = expected, platform = departure.platform?.takeIf { fresh(it.source) }?.value,
                 delayMinutes = delay ?: 0, officialDelayMinutes = delay,
                 status = when { cancelled -> ServiceStatus.CANCELLED; (delay ?: 0) > 0 || status?.value == RunStatus.DELAYED -> ServiceStatus.DELAYED; else -> ServiceStatus.ON_TIME },
-                stops = listOf(TrainStop(origin.name, scheduled, expected, departure.platform?.value, delay ?: 0, false),
-                    TrainStop(destination.name, arrivalScheduled, arrivalExpected, arrival.platform?.value, arrivalDelay, false)),
+                stops = listOf(TrainStop(origin.name, scheduled, expected, departure.platform?.value, delay ?: 0, false, operationalStatusVerified = timing != null),
+                    TrainStop(destination.name, arrivalScheduled, arrivalExpected, arrival.platform?.value, arrivalDelay, false, operationalStatusVerified = arrivalTiming != null)),
                 operationalStatusVerified = verified,
                 scheduledDepartureDateTime = departure.scheduledTime.withZoneSameInstant(zone).toLocalDateTime(),
                 operationalSourceIds = if (verified) sources.map { it.sourceId.value }.toSet() else emptySet(),

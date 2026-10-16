@@ -580,7 +580,7 @@ class EmbeddedGtfsRouteAdapter(
                 ),
                 stops = segmentEntries.map { entry ->
                     val scheduled = hhmm(stopTimes.preferredDeparture(entry))
-                    TrainStop(stops.name(stopTimes.stop(entry)), scheduled, scheduled, null, 0, false)
+                    TrainStop(stops.name(stopTimes.stop(entry)), scheduled, scheduled, null, 0, false, operationalStatusVerified = false)
                 }
             )
         }

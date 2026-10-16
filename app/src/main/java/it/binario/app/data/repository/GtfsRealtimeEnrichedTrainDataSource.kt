@@ -46,8 +46,10 @@ class GtfsRealtimeEnrichedTrainDataSource(
                 if (timed.all { it == null }) return@map service
                 used += timed.filterNotNull()
                 val stops = service.stops.mapIndexed { index, stop ->
-                    val live = timed[index] ?: return@mapIndexed stop
-                    stop.copy(expected = expected(live), delayMinutes = delay(live)!!)
+                    val live = timed[index] ?: return@mapIndexed if (!service.operationalStatusVerified && stop.operationalStatusVerified == null) {
+                        stop.copy(operationalStatusVerified = false)
+                    } else stop
+                    stop.copy(expected = expected(live), delayMinutes = delay(live)!!, operationalStatusVerified = true)
                 }
                 val departure = timed.firstOrNull()
                 val departureDelay = departure?.let(::delay)

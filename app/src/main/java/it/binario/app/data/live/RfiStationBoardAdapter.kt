@@ -56,6 +56,8 @@ internal class HttpRfiMonitorFetcher : RfiMonitorFetcher {
         connection.connectTimeout = 12_000
         connection.readTimeout = 20_000
         connection.instanceFollowRedirects = true
+        connection.useCaches = false
+        connection.setRequestProperty("Cache-Control", "no-cache")
         connection.setRequestProperty("Accept", "text/html,application/xhtml+xml")
         connection.setRequestProperty("User-Agent", "Binario/0.20 (personal rail information client)")
         try {
@@ -288,15 +290,13 @@ class RfiStationBoardAdapter(
 
             val delayLabel = row.selectFirst("#RRitardo")?.attr("aria-label").orEmpty()
             val delayText = row.selectFirst("#RRitardo")?.text().orEmpty()
-            val delay = parseDelay(delayLabel.ifBlank { delayText })
+            // The visible cell is what passengers see. Some boards retain a
+            // generic or older aria-label while replacing the displayed number.
+            val publishedDelay = parseDelay(delayText) ?: parseDelay(delayLabel)
+            val delay = publishedDelay ?: 0
             val statusText = row.text()
             val cancelled = statusText.hasExplicitCancellationStatus()
-            val explicitOnTime = listOf(delayLabel, delayText, statusText).any {
-                it.contains("NESSUNO", ignoreCase = true) || it.contains("IN ORARIO", ignoreCase = true)
-            }
-            val explicitZero = Regex("^(?:RITARDO(?:\\s+DI)?\\s*[:=]?\\s*)?\\+?0\\s*(?:MIN(?:UTI)?\\.?|['′])?$", RegexOption.IGNORE_CASE)
-                .matches(delayLabel.ifBlank { delayText }.trim())
-            val operationalVerified = cancelled || delay > 0 || explicitOnTime || explicitZero
+            val operationalVerified = cancelled || publishedDelay != null
             val status = when {
                 cancelled -> ServiceStatus.CANCELLED
                 delay > 0 -> ServiceStatus.DELAYED
@@ -321,11 +321,11 @@ class RfiStationBoardAdapter(
                 expectedDeparture = expected,
                 platform = platform,
                 delayMinutes = delay,
-                officialDelayMinutes = delay,
+                officialDelayMinutes = publishedDelay,
                 status = status,
                 stops = listOf(
-                    TrainStop(origin, scheduled, expected, platform, delay, completed = false),
-                    TrainStop(destination, "—", "—", null, delay, completed = false)
+                    TrainStop(origin, scheduled, expected, platform, delay, completed = false, operationalStatusVerified = publishedDelay != null && !cancelled),
+                    TrainStop(destination, "—", "—", null, 0, completed = false, operationalStatusVerified = false)
                 ),
                 transferCount = 0,
                 operationalStatusVerified = operationalVerified,
@@ -360,10 +360,11 @@ class RfiStationBoardAdapter(
         }
     }
 
-    private fun parseDelay(value: String): Int {
-        val normalized = value.uppercase(Locale.ROOT)
-        if (normalized.isBlank() || "NESSUNO" in normalized || "IN ORARIO" in normalized) return 0
-        return Regex("(\\d{1,3})").find(normalized)?.groupValues?.getOrNull(1)?.toIntOrNull() ?: 0
+    private fun parseDelay(value: String): Int? {
+        val normalized = value.uppercase(Locale.ROOT).normalizeSpace()
+        if (normalized in setOf("NESSUNO", "IN ORARIO")) return 0
+        return Regex("^(?:RITARDO(?:\\s+DI)?\\s*[:=]?\\s*)?([+-]?\\d{1,3})\\s*(?:MIN(?:UTI)?\\.?|['′])?$")
+            .matchEntire(normalized)?.groupValues?.getOrNull(1)?.toIntOrNull()
     }
 
     private fun addDelay(time: String, delay: Int): String = runCatching {
