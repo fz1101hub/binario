@@ -97,6 +97,6 @@ La build applica traffico HTTPS obbligatorio, cleartext disabilitato, trust stor
 
 ## Limiti attuali e prossimo passo
 
-Le coperture realtime sono best-effort e dipendono da fonte, identità della corsa, freshness e completezza; il matching definitivo dei Trip Updates SNCF alla UI richiede una relazione verificata fra trip ID realtime e GTFS statico. Svizzera GTFS-RT richiede token gateway e Trenord realtime richiede E015. I companion al polso restano informativi e non includono ticketing NFC, pagamento, posizione continua, account obbligatori o tracking.
+Le coperture realtime sono best-effort e dipendono da fonte, identità della corsa, freshness e completezza. STA e SNCF vengono riconciliate con gli identificativi GTFS originali; aggiornamenti senza corrispondenza non diventano ritardi live. Gli archivi di entrambe le fonti sono stati rigenerati il 16 ottobre 2026; provenienza e hash sono in [LIVE_GTFS_REFRESH.json](docs/data-sources/LIVE_GTFS_REFRESH.json). Svizzera GTFS-RT richiede token gateway e Trenord realtime richiede E015. I companion al polso restano informativi e non includono ticketing NFC, pagamento, posizione continua, account obbligatori o tracking.
 
 Nessun codice, asset, marchio, testo, credenziale, endpoint o contratto delle app analizzate come riferimento è stato riutilizzato in Binario.
