@@ -12,8 +12,8 @@ class ItaloPublicJsonTest {
 
     @Test fun `legge il catalogo pubblico oggetto o lista senza confondere codici RFI e Italo`() {
         val stations = parseItaloStationCatalog("""<script>var stationCoding = {"RMT":"Roma Termini","BO2":"Bologna Centrale"}; var stationList=[{"code":"MC_","name":"Milano Centrale"}];</script>""")
-        assertEquals(listOf("RMT", "BO2", "MC_"), stations.map { it.code })
-        assertEquals("bologna-centrale", stations[1].slug)
+        assertEquals(setOf("RMT", "BO2", "MC_"), stations.map { it.code }.toSet())
+        assertEquals("bologna-centrale", stations.single { it.code == "BO2" }.slug)
     }
 
     @Test fun `usa il codice del catalogo ufficiale per qualsiasi stazione pubblicata`() = runBlocking {
@@ -32,6 +32,17 @@ class ItaloPublicJsonTest {
     @Test fun `rifiuta stazioni omonime del catalogo pubblico`() = runBlocking {
         val fetcher = HttpItaloPublicStationFetcher { "var stationCoding={\"AAA\":\"Castello\",\"BBB\":\"Castello\"};" }
         assertNull(fetcher.resolveStationSlug(listOf("Castello")))
+    }
+
+    @Test fun `catalogo spostato in script esterno usa codici curati e verifica la risposta`() = runBlocking {
+        val urls = mutableListOf<String>()
+        val fetcher = HttpItaloPublicStationFetcher { url ->
+            urls += url
+            if (url.endsWith("/it/stazione")) "<script src='/stations.js'></script>" else board("12")
+        }
+        assertEquals("bologna-centrale", fetcher.resolveStationSlug(listOf("Bologna Centrale")))
+        assertTrue(fetcher.fetch("roma-termini").contains("9923"))
+        assertTrue(urls.last().endsWith("CodiceStazione=RMT"))
     }
 
     @Test fun `JSON pubblicato fornisce ritardo binario e ora aggiornata`() {

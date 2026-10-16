@@ -26,6 +26,7 @@ class LiveProviderNetworkTest {
         assertNotNull("RFI official catalogue: Appiano", catalog.placeId(listOf("Appiano")))
         assertNotNull("RFI official catalogue: Bressanone", catalog.placeId(listOf("Bressanone")))
         board(RfiStationBoardAdapter(), "milano-centrale", "Milano Centrale")
+        board(RfiStationBoardAdapter(), "milano-centrale", "Milano Centrale", kind = BoardKind.ARRIVALS)
     }
 
     @Test fun rfiRegionalJourney() = runBlocking {
@@ -34,22 +35,21 @@ class LiveProviderNetworkTest {
             it.binario.app.data.Station("curated:S08328", "Appiano Proba Petronia", "Roma", railwayCode = "S08328", aliases = listOf("APPIANO")),
             it.binario.app.data.Station("curated:S08406", "Roma Ostiense", "Roma", railwayCode = "S08406"))
         val query = it.binario.app.data.JourneyQuery.now(clock)
-        var boardSummary = "not fetched"
+        val boardSummary = java.util.concurrent.ConcurrentHashMap<String, String>()
         val boardProvider = RfiStationBoardAdapter(fetcher = RfiMonitorFetcher { url ->
             val html = HttpRfiMonitorFetcher().fetch(url)
             if (url.contains("/Monitor?")) {
                 val doc = org.jsoup.Jsoup.parse(html)
                 val rows = doc.select("tr[name=treno]")
-                boardSummary = "rows=${rows.size}, sample=" + rows.take(3).map { row ->
+                boardSummary[if (url.endsWith("True")) "arrivals" else "departures"] = "rows=${rows.size}, sample=" + rows.take(3).map { row ->
                     listOf("RTreno", "ROrario", "RRitardo").associateWith { id -> row.selectFirst("#$id")?.let { it.text() + "|" + it.attr("aria-label") } }
                 }
             }
             html
         })
-        val source = it.binario.app.data.repository.StationBoardEnrichedTrainDataSource(
-            it.binario.app.data.planned.RfiProgrammedTimetableAdapter(), listOf(boardProvider))
+        val source = RfiLiveRouteDataSource(boardProvider)
         val result = source.loadRoute(route, it.binario.app.data.Direction.OUTBOUND, query)
-        if (result !is it.binario.app.data.DataResult.Success) fail("RFI regional journey: $result")
+        if (result !is it.binario.app.data.DataResult.Success) fail("RFI regional journey: $result; boards=$boardSummary")
         val services = (result as it.binario.app.data.DataResult.Success).snapshot.services
         assertTrue("RFI regional journey: no verified live departures; programmed=${services.take(3).map { it.number + ":" + it.scheduledDeparture }}; board=$boardSummary", services.any {
             it.operationalStatusVerified && "rfi-station-board" in it.operationalSourceIds
@@ -101,10 +101,10 @@ class LiveProviderNetworkTest {
         assumeTrue("Source not selected: $source", source in requested)
     }
 
-    private suspend fun board(provider: StationBoardProvider, id: String, name: String, code: String? = null, details: () -> String = { "" }) {
+    private suspend fun board(provider: StationBoardProvider, id: String, name: String, code: String? = null, details: () -> String = { "" }, kind: BoardKind = BoardKind.DEPARTURES) {
         val now = clock.instant()
         val result = provider.getStationBoard(StationBoardRequest(StationId(id), name, railwayCode = code,
-            from = now.minusSeconds(3600), to = now.plusSeconds(20 * 3600), kind = BoardKind.DEPARTURES))
+            from = now.minusSeconds(3600), to = now.plusSeconds(20 * 3600), kind = kind))
         if (result !is ProviderResult.Success) fail("${provider.descriptor.id.value}: $result")
         val entries = (result as ProviderResult.Success).value.entries
         assertTrue("${provider.descriptor.id.value}: no parseable departures; ${details()}", entries.isNotEmpty())

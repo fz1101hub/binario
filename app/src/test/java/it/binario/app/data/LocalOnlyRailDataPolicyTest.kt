@@ -26,7 +26,7 @@ class LocalOnlyRailDataPolicyTest {
         val boardProviderNames = LocalOnlyRailDataPolicy.stationBoardProviders().map { it::class.simpleName }.toSet()
         if (BuildConfig.PERSONAL_REALTIME_SOURCES) {
             assertEquals(setOf("RfiStationBoardAdapter", "ItaloPublicStationAdapter", "ViaggiaTrenoRealtimeAdapter"), boardProviderNames)
-            assertSame(LocalOnlyRailDataPolicy.liveRouteSources().single(), LocalOnlyRailDataPolicy.stationBoardProviders().single { it.descriptor.id.value == "viaggiatreno" })
+            assertSame(LocalOnlyRailDataPolicy.liveRouteSources().single { it.descriptor.id.value == "viaggiatreno" }, LocalOnlyRailDataPolicy.stationBoardProviders().single { it.descriptor.id.value == "viaggiatreno" })
         } else {
             assertTrue(boardProviderNames.isEmpty())
             assertTrue(LocalOnlyRailDataPolicy.liveRouteSources().isEmpty())

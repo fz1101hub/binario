@@ -1,0 +1,81 @@
+name: Refresh static counterparts of live feeds
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["fix/live-source-validation"]
+    paths: [".github/workflows/refresh-live-gtfs.yml"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: refresh-live-gtfs-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  refresh:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout reviewed pipeline
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Python 3.12.10
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12.10"
+      - name: Verify existing release assets
+        run: python3 tools/build_gtfs_packs.py --check --min-valid-days 30
+      - name: Refresh only registered HTTPS open-data counterparts
+        run: >-
+          python3 tools/build_gtfs_packs.py --refresh
+          --source-id alto-adige-sta-gtfs --source-id sncf-gtfs
+          --output-dir "$RUNNER_TEMP/binario-refreshed-gtfs"
+          --generated-at "$(date --utc +%F)"
+      - name: Verify refreshed packs
+        run: >-
+          python3 tools/build_gtfs_packs.py --check
+          --input-dir "$RUNNER_TEMP/binario-refreshed-gtfs" --min-valid-days 30
+      - name: Synchronize assets, validity dates and provenance
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          from datetime import datetime, timezone
+          import json, os, re, shutil
+          target = Path('app/src/main/assets/gtfs')
+          old = json.loads((target/'manifest.json').read_text())
+          output = Path(os.environ['RUNNER_TEMP'])/'binario-refreshed-gtfs'
+          new = json.loads((output/'manifest.json').read_text())
+          selected = {'alto-adige-sta-gtfs', 'sncf-gtfs'}
+          evidence = []
+          for pack in new['packs']:
+              if pack['sourceId'] in selected:
+                  previous = next(p for p in old['packs'] if p['sourceId'] == pack['sourceId'])
+                  evidence.append({key:pack[key] for key in ['sourceId','sourceUrl','sourceArchiveSha256','sha256','lastServiceDate']} | {'previousSourceArchiveSha256':previous['sourceArchiveSha256']})
+          shutil.copytree(output, target, dirs_exist_ok=True)
+          kotlin = Path('app/src/main/java/it/binario/app/data/gtfs/EmbeddedGtfsPacks.kt')
+          text = kotlin.read_text()
+          for pack in new['packs']:
+              y,m,d = map(int,pack['lastServiceDate'].split('-'))
+              pattern = r'(EmbeddedGtfsPack\(SourceId\("'+re.escape(pack['sourceId'])+r'"\), "[^"]+", LocalDate\.of\()[0-9, ]+(\)\))'
+              text,count = re.subn(pattern,lambda match:match[1]+f'{y}, {m}, {d}'+match[2],text)
+              assert count == 1, pack['sourceId']
+          kotlin.write_text(text)
+          report = {'checkedAt':datetime.now(timezone.utc).isoformat(),'workflowRun':f"https://github.com/{os.environ['GITHUB_REPOSITORY']}/actions/runs/{os.environ['GITHUB_RUN_ID']}",'sources':evidence}
+          Path('docs/data-sources/LIVE_GTFS_REFRESH.json').write_text(json.dumps(report,indent=2)+'\n')
+          PY
+          python3 tools/verify_embedded_assets.py --min-valid-days 30
+          git diff --check
+      - name: Save reviewable data branch
+        env:
+          DATA_BRANCH: data/refresh-live-gtfs-${{ github.run_id }}
+        run: |
+          git switch -c "$DATA_BRANCH"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add app/src/main/assets/gtfs app/src/main/java/it/binario/app/data/gtfs/EmbeddedGtfsPacks.kt docs/data-sources/LIVE_GTFS_REFRESH.json
+          git commit -m 'Refresh STA and SNCF static feeds with checked source provenance'
+          git push origin "HEAD:refs/heads/$DATA_BRANCH"
+          printf 'Updated data branch: `%s`\n' "$DATA_BRANCH" >> "$GITHUB_STEP_SUMMARY"

@@ -288,6 +288,9 @@ interface TrainDataSource {
         loadRoute(route, direction)
 }
 
+/** A current-day route source whose availability follows the provider registry. */
+interface RealtimeRouteDataSource : TrainDataSource, it.binario.app.data.provider.RailProvider
+
 /** A future authorised server-side gateway for Trenitalia operational data. */
 interface AuthorizedRailGateway {
     suspend fun loadTrenitaliaRoute(route: SavedRoute, direction: Direction): DataResult

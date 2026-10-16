@@ -5,6 +5,7 @@ import it.binario.app.data.gtfs.RemoteGtfsFallbackDataSource
 import it.binario.app.data.live.ItaloPublicStationAdapter
 import it.binario.app.data.live.RfiInfomobilityRssAdapter
 import it.binario.app.data.live.RfiStationBoardAdapter
+import it.binario.app.data.live.RfiLiveRouteDataSource
 import it.binario.app.data.live.SncfGtfsRealtimeAdapter
 import it.binario.app.data.live.StaRealtimeAdapter
 import it.binario.app.data.live.ViaggiaTrenoRealtimeAdapter
@@ -29,6 +30,7 @@ object LocalOnlyRailDataPolicy {
     private val europeanSleeperFallback by lazy { RemoteGtfsFallbackDataSource.europeanSleeper() }
     private val rfiProgrammedBoard by lazy { RfiProgrammedStationBoardAdapter() }
     private val rfiStationBoard by lazy { RfiStationBoardAdapter() }
+    private val rfiLiveRoutes by lazy { RfiLiveRouteDataSource(rfiStationBoard) }
     private val italoStationBoard by lazy { ItaloPublicStationAdapter() }
     private val viaggiaTrenoBoard by lazy { ViaggiaTrenoRealtimeAdapter() }
     private val rfiAlerts by lazy { RfiInfomobilityRssAdapter() }
@@ -42,8 +44,8 @@ object LocalOnlyRailDataPolicy {
     )
 
     /** Current-day operator data is queried before waiting for programmed timetables. */
-    fun liveRouteSources(): List<ViaggiaTrenoRealtimeAdapter> =
-        if (BuildConfig.PERSONAL_REALTIME_SOURCES) listOf(viaggiaTrenoBoard) else emptyList()
+    fun liveRouteSources(): List<RealtimeRouteDataSource> =
+        if (BuildConfig.PERSONAL_REALTIME_SOURCES) listOf(rfiLiveRoutes, viaggiaTrenoBoard) else emptyList()
 
     /** Last-resort route coverage. These sources must never outrank official GTFS/RFI data. */
     fun coverageRouteFallbacks(): List<TrainDataSource> = listOf(

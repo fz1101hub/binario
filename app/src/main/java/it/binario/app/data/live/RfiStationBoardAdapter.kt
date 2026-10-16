@@ -177,16 +177,14 @@ class RfiStationBoardAdapter(
     private val stationCatalog = RfiStationCatalog(fetcher, clock)
 
     override suspend fun getStationBoard(request: StationBoardRequest): ProviderResult<it.binario.app.data.core.StationBoard> {
-        if (request.kind != BoardKind.DEPARTURES) {
-            return ProviderResult.Failure(ProviderError(ProviderErrorKind.NOT_SUPPORTED, "RFI: sono supportate solo le partenze."))
-        }
         val stationName = request.stationName?.takeIf(String::isNotBlank) ?: request.stationId.value
         val placeId = RfiStationIds.placeId(request.stationId.value, stationName)
             ?: stationCatalog.placeId(listOf(stationName) + request.stationAliases)
             ?: return ProviderResult.Failure(ProviderError(ProviderErrorKind.NOT_SUPPORTED, "Stazione assente dal catalogo live RFI disponibile."))
         val fetchedAt = clock.instant()
         return try {
-            val url = "https://iechub.rfi.it/ArriviPartenze/ArrivalsDepartures/Monitor?placeId=$placeId&arrivals=False"
+            val arrivals = if (request.kind == BoardKind.ARRIVALS) "True" else "False"
+            val url = "https://iechub.rfi.it/ArriviPartenze/ArrivalsDepartures/Monitor?placeId=$placeId&arrivals=$arrivals"
             val html = fetcher.fetch(url)
             val syntheticRoute = SavedRoute(
                 id = "station-board:${request.stationId.value}",
@@ -296,7 +294,9 @@ class RfiStationBoardAdapter(
             val explicitOnTime = listOf(delayLabel, delayText, statusText).any {
                 it.contains("NESSUNO", ignoreCase = true) || it.contains("IN ORARIO", ignoreCase = true)
             }
-            val operationalVerified = cancelled || delay > 0 || explicitOnTime
+            val explicitZero = Regex("^(?:RITARDO(?:\\s+DI)?\\s*[:=]?\\s*)?\\+?0\\s*(?:MIN(?:UTI)?\\.?|['′])?$", RegexOption.IGNORE_CASE)
+                .matches(delayLabel.ifBlank { delayText }.trim())
+            val operationalVerified = cancelled || delay > 0 || explicitOnTime || explicitZero
             val status = when {
                 cancelled -> ServiceStatus.CANCELLED
                 delay > 0 -> ServiceStatus.DELAYED

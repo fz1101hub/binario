@@ -8,7 +8,7 @@ import java.time.*
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-internal data class ItaloPublicStation(val code: String, val name: String, val slug: String)
+internal data class ItaloPublicStation(val code: String, val name: String, val slug: String, val aliases: Set<String> = emptySet())
 
 internal fun italoStationKey(value: String): String = Normalizer.normalize(value, Normalizer.Form.NFD)
     .replace(Regex("\\p{M}+"), "").uppercase(Locale.ROOT).replace(Regex("[^A-Z0-9]"), "")
@@ -52,7 +52,10 @@ internal fun parseItaloPublicBoard(json: String, origin: String, route: SavedRou
     val root = JSONObject(json)
     if (root.optBoolean("IsEmpty", false)) return emptyList()
     val publishedStation = root.optString("DescrizioneLocalita")
-    val originNames = (listOf(route.origin(direction).name) + route.origin(direction).aliases).map(::italoStationKey)
+    val requestedNames = (listOf(route.origin(direction).name) + route.origin(direction).aliases).map(::italoStationKey).toSet()
+    val originNames = requestedNames + ItaloPublicStationFallbacks.all.filter { station ->
+        (listOf(station.name) + station.aliases).any { italoStationKey(it) in requestedNames }
+    }.flatMap { (listOf(it.name) + it.aliases).map(::italoStationKey) }
     if (publishedStation.isNotBlank() && italoStationKey(publishedStation) !in originNames) return emptyList()
     val observed = parseItaloObservation(root.optString("LastUpdate"), clock)
     val fresh = observed != null && !observed.isBefore(clock.instant().minusSeconds(300)) && !observed.isAfter(clock.instant().plusSeconds(60))

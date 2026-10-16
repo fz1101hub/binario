@@ -54,7 +54,7 @@ internal class HttpItaloPublicStationFetcher(
     private val download: suspend (String) -> String = ::downloadItaloPublic
 ) : ItaloPublicStationFetcher {
     private val catalogMutex = Mutex()
-    private var catalog = emptyList<ItaloPublicStation>()
+    private var catalog = ItaloPublicStationFallbacks.all
     private var refreshAfter = 0L
     private var failure: IOException? = null
 
@@ -63,8 +63,7 @@ internal class HttpItaloPublicStationFetcher(
         if (now >= refreshAfter) {
             try {
                 val parsed = parseItaloStationCatalog(download("${ItaloPublicStationAdapter.BASE_URL}/it/stazione"))
-                if (parsed.isEmpty()) throw IOException("Catalogo pubblico Italo non leggibile")
-                catalog = parsed
+                catalog = parsed.ifEmpty { ItaloPublicStationFallbacks.all }
                 failure = null
                 refreshAfter = now + 24 * 60 * 60_000L
             } catch (error: IOException) {
@@ -78,11 +77,12 @@ internal class HttpItaloPublicStationFetcher(
 
     override suspend fun resolveStationSlug(names: List<String>): String? {
         val keys = names.map(::italoStationKey).toSet()
-        return stations().filter { italoStationKey(it.name) in keys }.singleOrNull()?.slug
+        return stations().filter { station -> (listOf(station.name) + station.aliases).any { italoStationKey(it) in keys } }.singleOrNull()?.slug
     }
 
     override suspend fun fetch(slug: String): String {
-        val station = stations().filter { it.slug == slug }.singleOrNull()
+        val knownCode = ItaloPublicStationFallbacks.all.singleOrNull { it.slug == slug }?.code
+        val station = stations().filter { it.slug == slug || it.code == knownCode }.singleOrNull()
             ?: throw IOException("Stazione assente dal catalogo pubblico Italo")
         return download("${ItaloPublicStationAdapter.BASE_URL}/api/RicercaStazioneService?CodiceStazione=${station.code}")
     }

@@ -27,6 +27,29 @@ class RfiStationBoardAdapterTest {
     )
 
     @Test
+    fun `supporta arrivi con il parametro pubblico corretto`() = runBlocking {
+        val adapter = RfiStationBoardAdapter(fetcher = RfiMonitorFetcher { url ->
+            assertTrue(url.endsWith("arrivals=True"))
+            htmlFixture()
+        }, clock = Clock.fixed(Instant.parse("2026-08-14T12:00:00Z"), ZoneOffset.UTC))
+        val result = adapter.getStationBoard(StationBoardRequest(StationId("roma-termini"), "Roma Termini",
+            from = Instant.parse("2026-08-14T07:00:00Z"), to = Instant.parse("2026-08-14T13:00:00Z"), kind = BoardKind.ARRIVALS))
+        assertTrue(result is ProviderResult.Success)
+        assertEquals(BoardKind.ARRIVALS, (result as ProviderResult.Success).value.kind)
+    }
+
+    @Test
+    fun `zero esplicito nel campo ritardo e verificato senza confonderlo con campo mancante`() = runBlocking {
+        suspend fun service(html: String) = (RfiStationBoardAdapter(fetcher = RfiMonitorFetcher { html },
+            clock = Clock.fixed(Instant.parse("2026-08-14T12:00:00Z"), ZoneOffset.UTC)).loadRoute(route, Direction.OUTBOUND) as it.binario.app.data.DataResult.Success).snapshot.services.single()
+        val zero = htmlFixture().replace("12 minuti", "0 minuti")
+        assertTrue(service(zero).operationalStatusVerified)
+        assertEquals(0, service(zero).delayMinutes)
+        val missing = org.jsoup.Jsoup.parse(zero).also { it.select("#RRitardo").remove() }.outerHtml()
+        assertTrue(!service(missing).operationalStatusVerified)
+    }
+
+    @Test
     fun `tabellone live risolve una stazione fuori dalla mappa storica dal catalogo ufficiale`() = runBlocking {
         val requests = mutableListOf<String>()
         val adapter = RfiStationBoardAdapter(fetcher = RfiMonitorFetcher { url ->
