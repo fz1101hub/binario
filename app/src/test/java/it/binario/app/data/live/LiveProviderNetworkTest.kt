@@ -77,6 +77,17 @@ class LiveProviderNetworkTest {
         board(ViaggiaTrenoRealtimeAdapter(), "S01700", "Milano Centrale", "S01700")
     }
 
+    @Test fun viaggiatrenoMobileHtml() = runBlocking {
+        selected("viaggiatreno-html")
+        val upstream = HttpViaggiaTrenoStationFetcher()
+        val adapter = ViaggiaTrenoStationAdapter(fetcher = ViaggiaTrenoStationFetcher { name ->
+            try { upstream.fetch(name) } catch (error: java.io.IOException) {
+                throw AssertionError("ViaggiaTreno mobile HTTPS: ${error.message}", error)
+            }
+        })
+        board(adapter, "milano-centrale", "Milano Centrale")
+    }
+
     @Test fun sta() = runBlocking {
         selected("sta")
         tripUpdates(StaRealtimeAdapter(), "alto-adige-sta-gtfs")
@@ -127,7 +138,7 @@ class LiveProviderNetworkTest {
             EmbeddedGtfsRealtimeScheduleResolver({ File(assets, it).inputStream() })
         }
         val dates = listOf(now.atZone(zone).toLocalDate(), now.atZone(zone).toLocalDate().minusDays(1))
-        val candidates = fresh.filter { it.sourceTripId in ids }
+        val candidates = fresh.filter { it.sourceTripId in ids && (it.officialDelay != null || it.predictedAt != null) }
         val matched = candidates.distinctBy { it.sourceTripId }.take(5).any { update ->
             (update.serviceDate?.let(::listOf) ?: dates).any { date ->
                 resolver.resolve(SourceId(staticSource), update, date, zone) != null

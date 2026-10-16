@@ -33,6 +33,7 @@ import it.binario.app.data.provider.ProviderResult
 import it.binario.app.data.provider.RatePolicy
 import it.binario.app.data.provider.StationBoardProvider
 import it.binario.app.data.provider.StationBoardRequest
+import it.binario.app.data.planned.readBoundedRfiHtml
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -60,7 +61,7 @@ internal class HttpViaggiaTrenoStationFetcher : ViaggiaTrenoStationFetcher {
         connection.doOutput = true
         connection.connectTimeout = 12_000
         connection.readTimeout = 20_000
-        connection.instanceFollowRedirects = true
+        connection.instanceFollowRedirects = false
         connection.setRequestProperty("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8")
         connection.setRequestProperty("Accept", "text/html,application/xhtml+xml")
         connection.setRequestProperty("User-Agent", "Binario/0.15 (personal rail information client)")
@@ -68,7 +69,7 @@ internal class HttpViaggiaTrenoStationFetcher : ViaggiaTrenoStationFetcher {
             connection.outputStream.bufferedWriter(Charsets.UTF_8).use { it.write(form) }
             val status = connection.responseCode
             if (status !in 200..299) throw IOException("ViaggiaTreno ha risposto HTTP $status")
-            connection.inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() }
+            connection.inputStream.use { readBoundedRfiHtml(it, connection.contentLengthLong.takeIf { size -> size >= 0 }) }
         } finally {
             connection.disconnect()
         }
