@@ -22,11 +22,12 @@ class LiveProviderNetworkTest {
 
     @Test fun rfi() = runBlocking {
         selected("rfi")
-        val catalog = RfiStationCatalog(HttpRfiMonitorFetcher(), clock)
+        val fetcher = diagnosticRfiFetcher()
+        val catalog = RfiStationCatalog(fetcher, clock)
         assertNotNull("RFI official catalogue: Appiano", catalog.placeId(listOf("Appiano")))
         assertNotNull("RFI official catalogue: Bressanone", catalog.placeId(listOf("Bressanone")))
-        board(RfiStationBoardAdapter(), "milano-centrale", "Milano Centrale")
-        board(RfiStationBoardAdapter(), "milano-centrale", "Milano Centrale", kind = BoardKind.ARRIVALS)
+        board(RfiStationBoardAdapter(fetcher = fetcher), "milano-centrale", "Milano Centrale")
+        board(RfiStationBoardAdapter(fetcher = fetcher), "milano-centrale", "Milano Centrale", kind = BoardKind.ARRIVALS)
     }
 
     @Test fun rfiRegionalJourney() = runBlocking {
@@ -36,8 +37,9 @@ class LiveProviderNetworkTest {
             it.binario.app.data.Station("curated:S08406", "Roma Ostiense", "Roma", railwayCode = "S08406"))
         val query = it.binario.app.data.JourneyQuery.now(clock)
         val boardSummary = java.util.concurrent.ConcurrentHashMap<String, String>()
+        val fetcher = diagnosticRfiFetcher()
         val boardProvider = RfiStationBoardAdapter(fetcher = RfiMonitorFetcher { url ->
-            val html = HttpRfiMonitorFetcher().fetch(url)
+            val html = fetcher.fetch(url)
             if (url.contains("/Monitor?")) {
                 val doc = org.jsoup.Jsoup.parse(html)
                 val rows = doc.select("tr[name=treno]")
@@ -121,6 +123,15 @@ class LiveProviderNetworkTest {
     private fun selected(source: String) {
         val requested = System.getProperty("binario.live.sources", "").orEmpty().split(',').toSet()
         assumeTrue("Source not selected: $source", source in requested)
+    }
+
+    private fun diagnosticRfiFetcher(): RfiMonitorFetcher = RfiMonitorFetcher { url ->
+        try {
+            HttpRfiMonitorFetcher().fetch(url)
+        } catch (error: java.io.IOException) {
+            val endpoint = java.net.URI(url)
+            throw AssertionError("RFI HTTPS ${endpoint.host}${endpoint.path}: ${error::class.java.simpleName}: ${error.message}", error)
+        }
     }
 
     private suspend fun board(provider: StationBoardProvider, id: String, name: String, code: String? = null, details: () -> String = { "" }, kind: BoardKind = BoardKind.DEPARTURES) {

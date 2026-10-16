@@ -68,6 +68,10 @@ jobs:
           PY
           python3 tools/verify_embedded_assets.py --min-valid-days 30
           git diff --check
+      - name: Rebuild the dependent iOS timetable
+        run: |
+          python3 tools/build_ios_gtfs_schedule.py
+          python3 tools/verify_ios_gtfs_schedule.py
       - name: Save reviewable data branch
         env:
           DATA_BRANCH: data/refresh-live-gtfs-${{ github.run_id }}
@@ -75,7 +79,7 @@ jobs:
           git switch -c "$DATA_BRANCH"
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add app/src/main/assets/gtfs app/src/main/java/it/binario/app/data/gtfs/EmbeddedGtfsPacks.kt docs/data-sources/LIVE_GTFS_REFRESH.json
+          git add app/src/main/assets/gtfs app/src/main/java/it/binario/app/data/gtfs/EmbeddedGtfsPacks.kt docs/data-sources/LIVE_GTFS_REFRESH.json ios/Resources/binario_gtfs_schedule_v1.sqlite.zlib ios/Resources/binario_gtfs_schedule_v1.metadata.json
           git commit -m 'Refresh STA and SNCF static feeds with checked source provenance'
           git push origin "HEAD:refs/heads/$DATA_BRANCH"
           printf 'Updated data branch: `%s`\n' "$DATA_BRANCH" >> "$GITHUB_STEP_SUMMARY"
