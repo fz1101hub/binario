@@ -69,7 +69,18 @@ class LiveProviderNetworkTest {
             shape = "keys=${root.keySet()}, LastUpdate=${root.optString("LastUpdate")}, rows=${root.optJSONArray("ListaTreniPartenza")?.length()}"
             json
         })
-        board(adapter, "roma-termini", "Roma Termini", details = { shape })
+        // Overnight a single station can legitimately have no published departures.
+        // Still require a real operational observation from one of the covered hubs.
+        val failures = mutableListOf<String>()
+        for ((slug, name) in listOf("roma-termini" to "Roma Termini", "milano-centrale" to "Milano Centrale", "napoli-centrale" to "Napoli Centrale")) {
+            try {
+                board(adapter, slug, name, details = { shape })
+                return@runBlocking
+            } catch (error: AssertionError) {
+                failures += "$name: ${error.message}"
+            }
+        }
+        fail("Italo: no verified operational board in sampled hubs; ${failures.joinToString("; ")}")
     }
 
     @Test fun viaggiatreno() = runBlocking {

@@ -70,16 +70,24 @@ class GtfsRealtimeEnrichedTrainDataSource(
             if (used.isEmpty()) return@withContext result
             val sources = used.map { it.update.source.sourceId.value }.distinct()
             val allVerified = services.all { it.operationalStatusVerified }
+            val anyVerified = services.any { it.operationalStatusVerified }
+            val sourceLabels = sources.map { when (it) {
+                "alto-adige-sta-realtime" -> "STA Alto Adige"
+                "sncf-gtfs-rt" -> "SNCF"
+                else -> "fonte ferroviaria"
+            } }.distinct()
+            val notice = result.snapshot.notice?.replace("Ritardi, binari e soppressioni richiedono fonti realtime.", "")?.trim()?.takeIf(String::isNotBlank)
             DataResult.Success(result.snapshot.copy(
                 services = services,
-                providerName = result.snapshot.providerName + " + " + sources.joinToString(" / "),
+                providerName = result.snapshot.providerName + " + " + sourceLabels.joinToString(" / "),
                 sourceObservedAtEpochMillis = used.maxOf { it.update.observedAt.toEpochMilli() },
                 expiresAtEpochMillis = minOf(result.snapshot.expiresAtEpochMillis,
                     used.minOf { (it.update.source.expiresAt ?: it.update.observedAt.plusSeconds(300)).toEpochMilli() }),
-                freshness = if (allVerified) Freshness.FRESH else result.snapshot.freshness,
-                confidence = if (allVerified && result.snapshot.confidence == DataConfidence.STATIC_ONLY) DataConfidence.OPEN_DATA else result.snapshot.confidence,
-                qualityWarnings = if (allVerified) result.snapshot.qualityWarnings - SnapshotWarning.STATIC_ONLY else result.snapshot.qualityWarnings,
-                notice = listOfNotNull(result.snapshot.notice, "Ritardi live GTFS riconciliati per corsa, fermata e data: ${sources.joinToString()}.").joinToString(" ")
+                freshness = Freshness.FRESH,
+                confidence = if (anyVerified && result.snapshot.confidence == DataConfidence.STATIC_ONLY) DataConfidence.OPEN_DATA else result.snapshot.confidence,
+                qualityWarnings = if (anyVerified) result.snapshot.qualityWarnings - SnapshotWarning.STATIC_ONLY else result.snapshot.qualityWarnings,
+                notice = listOfNotNull(notice, "Ritardi aggiornati da ${sourceLabels.joinToString()}.",
+                    if (allVerified) null else "Le corse senza aggiornamenti riportano soltanto l'orario programmato.").joinToString(" ")
             ))
         }
     }

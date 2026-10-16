@@ -173,7 +173,7 @@ class LegacyTrainDataSourceFacade(
         val ids = original.services.flatMap { it.operationalSourceIds }.toSet()
         val confidence = if (!original.coverageFallback &&
             original.confidence == it.binario.app.data.DataConfidence.STATIC_ONLY &&
-            original.services.isNotEmpty() && original.services.all { it.operationalStatusVerified } && ids.isNotEmpty()) {
+            original.services.any { it.operationalStatusVerified } && ids.isNotEmpty()) {
             when {
                 ids.any { it in setOf("viaggiatreno", "italo-status") } -> it.binario.app.data.DataConfidence.OPERATOR_PRIMARY
                 "rfi-station-board" in ids -> it.binario.app.data.DataConfidence.INFRASTRUCTURE_PRIMARY

@@ -92,7 +92,7 @@ class RfiLiveRouteDataSource(
             used.minOfOrNull { (it.expiresAt ?: clock.instant().plusSeconds(30)).toEpochMilli() } ?: clock.millis() + 30_000,
             it.binario.app.data.Freshness.FRESH, used.maxOfOrNull { (it.observedAt ?: it.fetchedAt).toEpochMilli() } ?: clock.millis(),
             DataConfidence.INFRASTRUCTURE_PRIMARY,
-            notice = "Stessa corsa identificata per numero, operatore, ordine temporale e presenza nei tabelloni ufficiali di entrambe le stazioni. Sono mostrate le due fermate richieste; nessuna fermata intermedia è ricostruita."))
+            notice = "Ritardi dai tabelloni RFI. Sono mostrate le fermate di partenza e arrivo richieste."))
     }
 
     private fun fresh(source: SourceRef): Boolean {

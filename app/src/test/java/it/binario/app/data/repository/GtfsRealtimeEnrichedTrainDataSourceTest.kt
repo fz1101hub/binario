@@ -45,6 +45,16 @@ class GtfsRealtimeEnrichedTrainDataSourceTest {
         assertFalse(load(listOf(service()), listOf(provider(sta, listOf(unknown)))).services.single().operationalStatusVerified)
     }
 
+    @Test fun `aggiornamenti parziali non sono etichettati come solo orario o come tutti verificati`() = runBlocking {
+        val result = load(listOf(service(), service("sncf-gtfs")), listOf(provider(sta, listOf(update(sta, 300)))))
+        assertTrue(result.services.first().operationalStatusVerified)
+        assertFalse(result.services.last().operationalStatusVerified)
+        assertEquals(DataConfidence.OPEN_DATA, result.confidence)
+        assertEquals(DataQualityBand.RELIABLE, result.qualityBand)
+        assertFalse(SnapshotWarning.STATIC_ONLY in result.qualityWarnings)
+        assertFalse(result.notice.orEmpty().contains("richiedono fonti realtime"))
+    }
+
     @Test fun `scarta osservazioni scadute future e di altro giorno operativo`() = runBlocking {
         val invalid = listOf(
             update(sta, 600).copy(observedAt = now.minusSeconds(301)),
@@ -102,7 +112,8 @@ class GtfsRealtimeEnrichedTrainDataSourceTest {
 
     private suspend fun load(services: List<TrainService>, providers: List<TripUpdateProvider>, requested: JourneyQuery = query): RouteSnapshot {
         val snapshot = RouteSnapshot(route, Direction.OUTBOUND, services, "GTFS", now.toEpochMilli(),
-            now.plusSeconds(3600).toEpochMilli(), it.binario.app.data.Freshness.AGING, confidence = DataConfidence.STATIC_ONLY)
+            now.plusSeconds(3600).toEpochMilli(), it.binario.app.data.Freshness.AGING, confidence = DataConfidence.STATIC_ONLY,
+            notice = "Orario programmato. Ritardi, binari e soppressioni richiedono fonti realtime.")
         val planned = object : TrainDataSource {
             override suspend fun loadRoute(route: SavedRoute, direction: Direction): DataResult = DataResult.Success(snapshot)
         }
