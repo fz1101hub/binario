@@ -95,6 +95,7 @@ class GtfsRealtimeEnrichedTrainDataSourceTest {
             predictedAt = SourcedValue(date.atTime(12, 4).atZone(zone), it.source)) }
         val result = load(listOf(service()), listOf(provider(sta, listOf(update)))).services.single()
         assertEquals(4, result.delayMinutes)
+        assertNull(result.officialDelayMinutes)
         assertNull(result.lastOperationalDetection)
         assertNull(result.detectionDelayMinutes)
     }

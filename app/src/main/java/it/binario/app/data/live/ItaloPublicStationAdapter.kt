@@ -31,6 +31,7 @@ import it.binario.app.data.provider.ProviderResult
 import it.binario.app.data.provider.RatePolicy
 import it.binario.app.data.provider.StationBoardProvider
 import it.binario.app.data.provider.StationBoardRequest
+import it.binario.app.data.planned.readBoundedRfiHtml
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -46,24 +47,61 @@ import java.util.Locale
 
 fun interface ItaloPublicStationFetcher {
     suspend fun fetch(slug: String): String
+    suspend fun resolveStationSlug(names: List<String>): String? = null
 }
 
-internal class HttpItaloPublicStationFetcher : ItaloPublicStationFetcher {
-    override suspend fun fetch(slug: String): String = withContext(Dispatchers.IO) {
-        val connection = URL("${ItaloPublicStationAdapter.BASE_URL}/it/stazione/$slug").openConnection() as? HttpURLConnection
-            ?: throw IOException("Italo in Viaggio non usa una connessione HTTP")
-        connection.requestMethod = "GET"
-        connection.connectTimeout = 12_000
-        connection.readTimeout = 20_000
-        connection.instanceFollowRedirects = true
-        connection.setRequestProperty("Accept", "text/html,application/xhtml+xml")
-        connection.setRequestProperty("User-Agent", "Binario/0.20 (personal rail information client)")
-        try {
-            if (connection.responseCode !in 200..299) throw IOException("Italo in Viaggio ha risposto HTTP ${connection.responseCode}")
-            connection.inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() }
-        } finally {
-            connection.disconnect()
+internal class HttpItaloPublicStationFetcher(
+    private val download: suspend (String) -> String = ::downloadItaloPublic
+) : ItaloPublicStationFetcher {
+    private val catalogMutex = Mutex()
+    private var catalog = emptyList<ItaloPublicStation>()
+    private var refreshAfter = 0L
+    private var failure: IOException? = null
+
+    private suspend fun stations(): List<ItaloPublicStation> = catalogMutex.withLock {
+        val now = System.currentTimeMillis()
+        if (now >= refreshAfter) {
+            try {
+                val parsed = parseItaloStationCatalog(download("${ItaloPublicStationAdapter.BASE_URL}/it/stazione"))
+                if (parsed.isEmpty()) throw IOException("Catalogo pubblico Italo non leggibile")
+                catalog = parsed
+                failure = null
+                refreshAfter = now + 24 * 60 * 60_000L
+            } catch (error: IOException) {
+                failure = error
+                refreshAfter = now + 60_000L
+            }
         }
+        if (catalog.isEmpty()) throw failure ?: IOException("Catalogo pubblico Italo vuoto")
+        catalog
+    }
+
+    override suspend fun resolveStationSlug(names: List<String>): String? {
+        val keys = names.map(::italoStationKey).toSet()
+        return stations().filter { italoStationKey(it.name) in keys }.singleOrNull()?.slug
+    }
+
+    override suspend fun fetch(slug: String): String {
+        val station = stations().filter { it.slug == slug }.singleOrNull()
+            ?: throw IOException("Stazione assente dal catalogo pubblico Italo")
+        return download("${ItaloPublicStationAdapter.BASE_URL}/api/RicercaStazioneService?CodiceStazione=${station.code}")
+    }
+}
+
+private suspend fun downloadItaloPublic(url: String): String = withContext(Dispatchers.IO) {
+    val connection = URL(url).openConnection() as? HttpURLConnection
+        ?: throw IOException("Italo in Viaggio non usa una connessione HTTP")
+    connection.requestMethod = "GET"
+    connection.connectTimeout = 12_000
+    connection.readTimeout = 20_000
+    connection.instanceFollowRedirects = true
+    connection.setRequestProperty("Accept", "application/json,text/html")
+    connection.setRequestProperty("User-Agent", "Binario/0.20 (personal rail information client)")
+    try {
+        if (connection.responseCode !in 200..299) throw IOException("Italo in Viaggio ha risposto HTTP ${connection.responseCode}")
+        connection.inputStream.use { readBoundedRfiHtml(it, connection.contentLengthLong.takeIf { size -> size >= 0 }) }
+    } finally {
+        connection.disconnect()
     }
 }
 
@@ -81,7 +119,7 @@ class ItaloPublicStationAdapter(
         id = SourceId("italo-status"),
         displayName = "Italo in Viaggio",
         capabilities = setOf(ProviderCapability.STATION_BOARD),
-        coverage = CoverageDescriptor(countryCodes = setOf("IT"), description = "Tabelloni pubblici delle stazioni Italo configurate"),
+        coverage = CoverageDescriptor(countryCodes = setOf("IT"), description = "Tabelloni pubblici delle stazioni presenti nel catalogo Italo"),
         accessMode = AccessMode.PUBLIC_BEST_EFFORT,
         ratePolicy = RatePolicy(Duration.ofSeconds(30), defaultTimeToLive = Duration.ofMillis(cacheTtlMillis)),
         schemaVersion = 1
@@ -96,6 +134,7 @@ class ItaloPublicStationAdapter(
         }
         val stationName = request.stationName?.takeIf(String::isNotBlank) ?: request.stationId.value
         val slug = ItaloStationSlugs.slug(request.stationId.value, stationName)
+            ?: try { fetcher.resolveStationSlug(listOf(stationName) + request.stationAliases) } catch (_: IOException) { null }
             ?: return ProviderResult.Failure(ProviderError(ProviderErrorKind.NOT_SUPPORTED, "Stazione Italo non configurata."))
         val fetchedAt = clock.instant()
         return try {
@@ -103,7 +142,7 @@ class ItaloPublicStationAdapter(
             val syntheticRoute = SavedRoute(
                 id = "station-board:${request.stationId.value}",
                 name = stationName,
-                outwardOrigin = Station(request.stationId.value, stationName, stationName),
+                outwardOrigin = Station(request.stationId.value, stationName, stationName, aliases = request.stationAliases),
                 outwardDestination = Station("station-board-target", "Destinazione", "")
             )
             val services = parseStationBoard(html, stationName, syntheticRoute, Direction.OUTBOUND)
@@ -146,6 +185,7 @@ class ItaloPublicStationAdapter(
         val origin = route.origin(direction)
         val destination = route.destination(direction)
         val slug = ItaloStationSlugs.slug(origin)
+            ?: try { fetcher.resolveStationSlug(listOf(origin.name) + origin.aliases) } catch (_: IOException) { null }
             ?: return DataResult.Failure("Italo in Viaggio non è ancora configurato per ${origin.name}.")
         val now = clock.millis()
         val key = "${origin.id}:${destination.id}:${direction.name}"
@@ -189,6 +229,7 @@ class ItaloPublicStationAdapter(
         route: SavedRoute,
         direction: Direction
     ): List<TrainService> {
+        if (html.trimStart().startsWith("{")) return parseItaloPublicBoard(html, origin, route, direction, clock)
         val document = Jsoup.parse(html)
         val candidates = document.select("[data-train-number], [data-train], article, tr, li")
             .filter { element ->

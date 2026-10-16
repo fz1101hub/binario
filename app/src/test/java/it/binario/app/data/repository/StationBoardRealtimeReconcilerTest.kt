@@ -68,6 +68,26 @@ class StationBoardRealtimeReconcilerTest {
     private val clock = Clock.fixed(Instant.parse("2026-09-04T10:00:00Z"), ZoneOffset.UTC)
 
     @Test
+    fun `un binario senza stato non cancella un ritardo live gia verificato`() = runBlocking {
+        val source = SourceId("rfi-station-board")
+        val board = board(source, "9401", zdt(12, 30), zdt(12, 42), "7", RunStatus.DELAYED)
+            .let { it.copy(entries = it.entries.map { entry -> entry.copy(expectedTime = null, status = null) }) }
+        val planned = plannedSnapshot()
+        val live = planned.copy(services = planned.services.map { it.copy(
+            expectedDeparture = "12:42", delayMinutes = 12, officialDelayMinutes = 12,
+            operationalStatusVerified = true, operationalSourceIds = setOf("alto-adige-sta-realtime"),
+            operationalObservedAtEpochMillis = clock.millis()
+        ) })
+        val service = StationBoardRealtimeReconciler(listOf(FakeBoardProvider(source, "RFI", board)), clock, zone)
+            .enrich(live, query).services.single()
+        assertTrue(service.operationalStatusVerified)
+        assertEquals("12:42", service.expectedDeparture)
+        assertEquals(12, service.officialDelayMinutes)
+        assertEquals("7", service.platform)
+        assertTrue("alto-adige-sta-realtime" in service.operationalSourceIds)
+    }
+
+    @Test
     fun `arricchisce la corsa GTFS con ritardo binario e stato RFI`() = runBlocking {
         val source = SourceId("rfi-station-board")
         val provider = FakeBoardProvider(

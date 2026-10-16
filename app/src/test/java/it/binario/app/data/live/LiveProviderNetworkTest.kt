@@ -4,6 +4,8 @@ import it.binario.app.data.core.*
 import it.binario.app.data.gtfs.EmbeddedGtfsRealtimeScheduleResolver
 import it.binario.app.data.gtfs.EmbeddedGtfsPack
 import it.binario.app.data.gtfs.GtfsArtifactDownloader
+import it.binario.app.data.gtfs.BoundedGtfsZipScanner
+import it.binario.app.data.gtfs.GtfsCompactIndexLimits
 import it.binario.app.data.sources.InternationalSourceCatalog
 import it.binario.app.data.provider.*
 import kotlinx.coroutines.runBlocking
@@ -32,12 +34,24 @@ class LiveProviderNetworkTest {
             it.binario.app.data.Station("curated:S08328", "Appiano Proba Petronia", "Roma", railwayCode = "S08328", aliases = listOf("APPIANO")),
             it.binario.app.data.Station("curated:S08406", "Roma Ostiense", "Roma", railwayCode = "S08406"))
         val query = it.binario.app.data.JourneyQuery.now(clock)
+        var boardSummary = "not fetched"
+        val boardProvider = RfiStationBoardAdapter(fetcher = RfiMonitorFetcher { url ->
+            val html = HttpRfiMonitorFetcher().fetch(url)
+            if (url.contains("/Monitor?")) {
+                val doc = org.jsoup.Jsoup.parse(html)
+                val rows = doc.select("tr[name=treno]")
+                boardSummary = "rows=${rows.size}, sample=" + rows.take(3).map { row ->
+                    listOf("RTreno", "ROrario", "RRitardo").associateWith { id -> row.selectFirst("#$id")?.let { it.text() + "|" + it.attr("aria-label") } }
+                }
+            }
+            html
+        })
         val source = it.binario.app.data.repository.StationBoardEnrichedTrainDataSource(
-            it.binario.app.data.planned.RfiProgrammedTimetableAdapter(), listOf(RfiStationBoardAdapter()))
+            it.binario.app.data.planned.RfiProgrammedTimetableAdapter(), listOf(boardProvider))
         val result = source.loadRoute(route, it.binario.app.data.Direction.OUTBOUND, query)
         if (result !is it.binario.app.data.DataResult.Success) fail("RFI regional journey: $result")
         val services = (result as it.binario.app.data.DataResult.Success).snapshot.services
-        assertTrue("RFI regional journey: no verified live departures", services.any {
+        assertTrue("RFI regional journey: no verified live departures; programmed=${services.take(3).map { it.number + ":" + it.scheduledDeparture }}; board=$boardSummary", services.any {
             it.operationalStatusVerified && "rfi-station-board" in it.operationalSourceIds
         })
         println("LIVE_ACCEPTANCE RFI regional journey: matchedLiveDepartures=${services.count { it.operationalStatusVerified }}")
@@ -45,7 +59,17 @@ class LiveProviderNetworkTest {
 
     @Test fun italo() = runBlocking {
         selected("italo")
-        board(ItaloPublicStationAdapter(), "roma-termini", "Roma Termini")
+        var shape = "not fetched"
+        val upstream = HttpItaloPublicStationFetcher()
+        val adapter = ItaloPublicStationAdapter(fetcher = ItaloPublicStationFetcher { slug ->
+            val json = try { upstream.fetch(slug) } catch (error: java.io.IOException) {
+                throw AssertionError("Italo live request: ${error.message}", error)
+            }
+            val root = org.json.JSONObject(json)
+            shape = "keys=${root.keySet()}, LastUpdate=${root.optString("LastUpdate")}, rows=${root.optJSONArray("ListaTreniPartenza")?.length()}"
+            json
+        })
+        board(adapter, "roma-termini", "Roma Termini", details = { shape })
     }
 
     @Test fun viaggiatreno() = runBlocking {
@@ -69,7 +93,7 @@ class LiveProviderNetworkTest {
         val bytes = GtfsArtifactDownloader().open(source, allowBestEffortFallback = true).use { it.input.readBytes() }
         val resolver = EmbeddedGtfsRealtimeScheduleResolver({ java.io.ByteArrayInputStream(bytes) },
             listOf(EmbeddedGtfsPack(SourceId("european-sleeper"), "remote.zip")))
-        tripUpdates(EuropeanSleeperGtfsRealtimeAdapter(), "european-sleeper", resolver)
+        tripUpdates(EuropeanSleeperGtfsRealtimeAdapter(), "european-sleeper", resolver, tripIds(bytes))
     }
 
     private fun selected(source: String) {
@@ -77,36 +101,47 @@ class LiveProviderNetworkTest {
         assumeTrue("Source not selected: $source", source in requested)
     }
 
-    private suspend fun board(provider: StationBoardProvider, id: String, name: String, code: String? = null) {
+    private suspend fun board(provider: StationBoardProvider, id: String, name: String, code: String? = null, details: () -> String = { "" }) {
         val now = clock.instant()
         val result = provider.getStationBoard(StationBoardRequest(StationId(id), name, railwayCode = code,
             from = now.minusSeconds(3600), to = now.plusSeconds(20 * 3600), kind = BoardKind.DEPARTURES))
         if (result !is ProviderResult.Success) fail("${provider.descriptor.id.value}: $result")
         val entries = (result as ProviderResult.Success).value.entries
-        assertTrue("${provider.descriptor.id.value}: no parseable departures", entries.isNotEmpty())
-        assertTrue("${provider.descriptor.id.value}: departures contain no operational observation",
+        assertTrue("${provider.descriptor.id.value}: no parseable departures; ${details()}", entries.isNotEmpty())
+        assertTrue("${provider.descriptor.id.value}: departures contain no operational observation; ${details()}",
             entries.any { it.expectedTime != null || it.status != null })
         println("LIVE_ACCEPTANCE ${provider.descriptor.id.value}: departures=${entries.size}, operational=${entries.count { it.expectedTime != null || it.status != null }}")
     }
 
-    private suspend fun tripUpdates(provider: TripUpdateProvider, staticSource: String, customResolver: EmbeddedGtfsRealtimeScheduleResolver? = null) {
+    private suspend fun tripUpdates(provider: TripUpdateProvider, staticSource: String, customResolver: EmbeddedGtfsRealtimeScheduleResolver? = null, customTripIds: Set<String>? = null) {
         val now = clock.instant()
         val result = provider.getTripUpdates()
         if (result !is ProviderResult.Success) fail("${provider.descriptor.id.value}: $result")
         val updates = (result as ProviderResult.Success).value
         val fresh = updates.filter { !it.observedAt.isBefore(now.minusSeconds(300)) && !it.observedAt.isAfter(now.plusSeconds(60)) }
         assertTrue("${provider.descriptor.id.value}: no fresh updates with published timing", fresh.any { it.officialDelay != null || it.predictedAt != null })
+        var ids = customTripIds.orEmpty()
         val resolver = customResolver ?: run {
             val assets = listOf(File("src/main/assets"), File("app/src/main/assets")).first { it.isDirectory }
+            ids = tripIds(File(assets, "gtfs/$staticSource.zip").readBytes())
             EmbeddedGtfsRealtimeScheduleResolver({ File(assets, it).inputStream() })
         }
         val dates = listOf(now.atZone(zone).toLocalDate(), now.atZone(zone).toLocalDate().minusDays(1))
-        val matched = fresh.distinctBy { it.sourceTripId }.take(5).any { update ->
+        val candidates = fresh.filter { it.sourceTripId in ids }
+        val matched = candidates.distinctBy { it.sourceTripId }.take(5).any { update ->
             (update.serviceDate?.let(::listOf) ?: dates).any { date ->
                 resolver.resolve(SourceId(staticSource), update, date, zone) != null
             }
         }
-        assertTrue("${provider.descriptor.id.value}: live trip/stop IDs do not match sampled embedded GTFS", matched)
+        assertTrue("${provider.descriptor.id.value}: live trip/stop IDs do not match GTFS; fresh=${fresh.size}; matchingTripUpdates=${candidates.size}; liveSample=${fresh.take(2).map { it.sourceTripId + ":" + it.sourceStopId }}; staticSample=${ids.take(2)}", matched)
         println("LIVE_ACCEPTANCE ${provider.descriptor.id.value}: freshUpdates=${fresh.size}, staticIdentityMatch=true")
+    }
+
+    private fun tripIds(bytes: ByteArray): Set<String> = buildSet {
+        val limits = GtfsCompactIndexLimits()
+        BoundedGtfsZipScanner(limits).scan(java.io.ByteArrayInputStream(bytes), setOf("trips.txt")) { _, rows ->
+            val index = rows.header.indexOf("trip_id")
+            rows.forEachRow(limits.maxTrips) { row -> row.getOrNull(index)?.let(::add) }
+        }
     }
 }

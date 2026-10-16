@@ -55,7 +55,9 @@ class GtfsRealtimeEnrichedTrainDataSource(
                     stops = stops,
                     expectedDeparture = departure?.let(::expected) ?: service.expectedDeparture,
                     delayMinutes = departureDelay ?: service.delayMinutes,
-                    officialDelayMinutes = departureDelay ?: service.officialDelayMinutes,
+                    officialDelayMinutes = if (departure != null) {
+                        departure.update.officialDelay?.value?.toMinutes()?.toInt()
+                    } else service.officialDelayMinutes,
                     status = if (departureDelay != null) {
                         if (departureDelay > 0) ServiceStatus.DELAYED else ServiceStatus.ON_TIME
                     } else service.status,
