@@ -50,6 +50,11 @@ class EmbeddedGtfsRouteAdapterTest {
         assertEquals(3, service.stops.size)
         assertFalse(service.operationalStatusVerified)
         assertEquals(LocalDateTime.of(2026, 9, 4, 8, 5), service.scheduledDepartureDateTime)
+        assertEquals("lombardia-trenord-gtfs", service.gtfsIdentity?.sourceId)
+        assertEquals("T1", service.gtfsIdentity?.tripId)
+        assertEquals(LocalDate.of(2026, 9, 4), service.gtfsIdentity?.serviceDate)
+        assertEquals(listOf(1, 2, 3), service.gtfsIdentity?.stops?.map { it.sequence })
+        assertEquals(listOf("MI", "MO", "CO"), service.gtfsIdentity?.stops?.map { it.stopId })
     }
 
     @Test

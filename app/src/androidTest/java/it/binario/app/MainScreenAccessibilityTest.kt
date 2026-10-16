@@ -11,6 +11,7 @@ import it.binario.app.data.core.BoardKind
 import it.binario.app.data.core.StationBoardEntry
 import it.binario.app.data.core.StationId
 import it.binario.app.data.core.TrainRunId
+import it.binario.app.data.StopRouteChange
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import org.junit.Rule
@@ -21,6 +22,19 @@ import org.junit.runner.RunWith
 class MainScreenAccessibilityTest {
     @get:Rule
     val composeRule = createComposeRule()
+
+    @Test
+    fun aStopWithoutLiveTimingIsNotAnnouncedAsOnTime() {
+        composeRule.setContent {
+            BinarioTheme {
+                StopTimelineRow("Roma Ostiense", "14:30", "14:30", 0, null, false,
+                    operationalStatusVerified = false, routeChange = StopRouteChange.NONE, onSetAlarm = {})
+            }
+        }
+        composeRule.onNodeWithText("Stato operativo non verificato").fetchSemanticsNode()
+        composeRule.onNodeWithContentDescription("Roma Ostiense. Previsto 14:30. Programmato 14:30. Stato operativo non verificato. Binario non disponibile.")
+            .fetchSemanticsNode()
+    }
 
     @Test
     fun primaryControlsAndPlannedBoardStateRemainAccessibleAtLargeFontScale() {

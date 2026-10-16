@@ -572,9 +572,15 @@ class EmbeddedGtfsRouteAdapter(
                 status = ServiceStatus.ON_TIME,
                 operationalStatusVerified = false,
                 scheduledDepartureDateTime = scheduledDateTime,
+                gtfsIdentity = it.binario.app.data.GtfsServiceIdentity(
+                    sourceId, trip.id, serviceDate,
+                    segmentEntries.map { entry ->
+                        it.binario.app.data.GtfsStopIdentity(stops.id(stopTimes.stop(entry)), stopTimes.sequence(entry))
+                    }
+                ),
                 stops = segmentEntries.map { entry ->
                     val scheduled = hhmm(stopTimes.preferredDeparture(entry))
-                    TrainStop(stops.name(stopTimes.stop(entry)), scheduled, scheduled, null, 0, false)
+                    TrainStop(stops.name(stopTimes.stop(entry)), scheduled, scheduled, null, 0, false, operationalStatusVerified = false)
                 }
             )
         }
@@ -678,6 +684,7 @@ class EmbeddedGtfsRouteAdapter(
 
         private class CompactStops(private val maximum: Int) {
             private val indexById = HashMap<String, Int>()
+            private val ids = ArrayList<String>()
             private val names = ArrayList<String>()
             private val normalizedNames = ArrayList<String>()
 
@@ -690,6 +697,7 @@ class EmbeddedGtfsRouteAdapter(
                 }
                 if (names.size >= maximum) throw GtfsCompactIndexLimitException("stops.txt supera il limite di stazioni")
                 indexById[id] = names.size
+                ids += id
                 names += name
                 normalizedNames += normalize(name)
             }
@@ -704,6 +712,7 @@ class EmbeddedGtfsRouteAdapter(
                 indexById.getValue(id)
             }
             fun name(index: Int): String = names.getOrNull(index).orEmpty()
+            fun id(index: Int): String = ids[index]
             fun normalizedName(index: Int): String = normalizedNames.getOrNull(index).orEmpty()
             fun size(): Int = names.size
         }

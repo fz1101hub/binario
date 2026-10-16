@@ -609,6 +609,7 @@ class TrainViewModel @JvmOverloads constructor(
                     refreshMessage = result.snapshot.advisoryMessage()
                 }
                 is DataResult.Failure -> {
+                    invalidateSelectedService(directionAtRequest, onlyIfExpired = true)
                     if (publishesCurrentDepartures) {
                         RouteWidgetProvider.markMatchingRouteDirectionUnavailable(getApplication(), routeAtRequest, directionAtRequest, result.message)
                         RouteWidgetProvider.refreshAll(getApplication())
@@ -637,6 +638,17 @@ class TrainViewModel @JvmOverloads constructor(
             }
         }
         if (returnJourneyQuery != null) refreshReturn()
+    }
+
+    /** Called only while a result/detail surface is visible and the activity is started. */
+    fun refreshLiveIfIdle() {
+        if (!hasActiveRoute) return
+        val today = JourneyQuery.now().serviceDate
+        if (selectedServiceDirection == Direction.RETURN && returnJourneyQuery != null) {
+            if (returnRefreshState != RefreshState.LOADING && returnJourneyQuery?.serviceDate == today) refreshReturn()
+        } else if (refreshState != RefreshState.LOADING && returnRefreshState != RefreshState.LOADING && journeyQueryState.value.serviceDate == today) {
+            refresh()
+        }
     }
 
     fun refreshSelectedService() {
@@ -670,6 +682,7 @@ class TrainViewModel @JvmOverloads constructor(
                     returnRefreshMessage = result.snapshot.advisoryMessage()
                 }
                 is DataResult.Failure -> {
+                    invalidateSelectedService(Direction.RETURN, onlyIfExpired = true)
                     // Keep the last successful return snapshot, matching the primary-leg
                     // refresh policy. A transient failure must not erase previously
                     // valid data; UI state/message make the failed refresh explicit.
@@ -710,7 +723,20 @@ class TrainViewModel @JvmOverloads constructor(
         findRefreshedService(selected, updated.services)?.let { refreshed ->
             selectedService = refreshed
             selectedServiceSnapshot = updated
-        }
+        } ?: invalidateSelectedService(updatedDirection)
+    }
+
+    private fun invalidateSelectedService(updatedDirection: Direction, onlyIfExpired: Boolean = false) {
+        if (selectedServiceDirection != updatedDirection) return
+        val previous = selectedServiceSnapshot ?: return
+        if (onlyIfExpired && !previous.isExpired) return
+        val retained = selectedService?.let(::serviceWithoutCurrentObservation) ?: return
+        selectedService = retained
+        selectedServiceSnapshot = previous.copy(
+            services = listOf(retained), freshness = Freshness.STALE,
+            qualityScore = null, qualityBand = it.binario.app.data.DataQualityBand.UNKNOWN,
+            qualityWarnings = previous.qualityWarnings + it.binario.app.data.SnapshotWarning.STALE_SOURCE
+        )
     }
 
     fun openService(service: TrainService, serviceDirection: Direction? = null) {
@@ -944,7 +970,8 @@ class TrainViewModel @JvmOverloads constructor(
 
     fun isDemonstrationData(): Boolean = displaySnapshot()?.confidence == DataConfidence.DEMONSTRATION
 
-    fun lastRefreshEpochMillis(): Long = displaySnapshot()?.retrievedAtEpochMillis ?: cache.lastRefreshEpochMillis()
+    fun lastRefreshEpochMillis(): Long = selectedService?.operationalObservedAtEpochMillis
+        ?: displaySnapshot()?.sourceObservedAtEpochMillis ?: cache.lastRefreshEpochMillis()
 
     private fun rememberStation(station: Station): Station {
         val existing = stations.firstOrNull { it.id == station.id } ?: station
@@ -1004,6 +1031,13 @@ internal fun findRefreshedService(selected: TrainService, services: List<TrainSe
                 it.origin == selected.origin &&
                 it.destination == selected.destination
         }
+
+/** Retain the last known times for context without claiming a current zero-minute delay. */
+internal fun serviceWithoutCurrentObservation(service: TrainService): TrainService = service.copy(
+    operationalStatusVerified = false,
+    officialDelayMinutes = null,
+    stops = service.stops.map { it.copy(operationalStatusVerified = false) }
+)
 
 /**
  * Snapshot immutabile già ordinato. Filtri e UI leggono questa struttura invece

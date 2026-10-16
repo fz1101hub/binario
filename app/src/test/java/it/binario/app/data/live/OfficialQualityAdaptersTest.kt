@@ -8,6 +8,17 @@ import java.time.Instant
 
 class OfficialQualityAdaptersTest {
     @Test
+    fun `STA conserva data e timestamp corsa e ignora NO_DATA e date malformate`() {
+        val json = """{"header":{"timestamp":1786724040},"entity":[{"id":"tu1","trip_update":{"timestamp":1786724000,"trip":{"trip_id":"run-1","start_date":"20260814"},"stop_time_update":[{"stop_id":"A","departure":{"delay":0}},{"stop_id":"B","schedule_relationship":"NO_DATA","departure":{"delay":120}}]}}]}"""
+        val adapter = StaRealtimeAdapter()
+        val updates = adapter.parseTripUpdates(json, Instant.EPOCH)
+        assertEquals(1, updates.size)
+        assertEquals(java.time.LocalDate.of(2026, 8, 14), updates.single().serviceDate)
+        assertEquals(Instant.ofEpochSecond(1786724000), updates.single().observedAt)
+        assertTrue(adapter.parseTripUpdates(json.replace("20260814", "malformed"), Instant.EPOCH).isEmpty())
+    }
+
+    @Test
     fun `il parser RFI RSS crea avvisi con provenienza infrastrutturale`() {
         val adapter = RfiInfomobilityRssAdapter()
         val alerts = adapter.parseUpdates(

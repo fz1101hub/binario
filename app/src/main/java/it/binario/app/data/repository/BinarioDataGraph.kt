@@ -50,8 +50,11 @@ object BinarioDataGraph {
             )
             LegacyTrainDataSourceFacade(
                 legacySource = StationBoardEnrichedTrainDataSource(
-                    plannedSource = plannedSource,
-                    boardProviders = stationBoardProviders()
+                    plannedSource = GtfsRealtimeEnrichedTrainDataSource(
+                        plannedSource, realtimeEnrichmentService(applicationContext)
+                    ),
+                    boardProviders = stationBoardProviders(),
+                    liveRouteSources = localOnlyPolicy.liveRouteSources().filter { defaultRegistry.isEnabled(it.descriptor.id) }
                 ),
                 providerRegistry = defaultRegistry
             )
@@ -150,16 +153,39 @@ object BinarioDataGraph {
  */
 class LegacyTrainDataSourceFacade(
     private val legacySource: TrainDataSource,
-    val providerRegistry: ProviderRegistry
+    val providerRegistry: ProviderRegistry,
+    private val clock: () -> Long = System::currentTimeMillis
 ) : TrainDataSource {
     override suspend fun loadRoute(
         route: it.binario.app.data.SavedRoute,
         direction: it.binario.app.data.Direction
-    ): it.binario.app.data.DataResult = legacySource.loadRoute(route, direction)
+    ): it.binario.app.data.DataResult = assessed(legacySource.loadRoute(route, direction))
 
     override suspend fun loadRoute(
         route: it.binario.app.data.SavedRoute,
         direction: it.binario.app.data.Direction,
         query: it.binario.app.data.JourneyQuery
-    ): it.binario.app.data.DataResult = legacySource.loadRoute(route, direction, query)
+    ): it.binario.app.data.DataResult = assessed(legacySource.loadRoute(route, direction, query))
+
+    private fun assessed(result: it.binario.app.data.DataResult): it.binario.app.data.DataResult {
+        if (result !is it.binario.app.data.DataResult.Success) return result
+        val original = result.snapshot
+        val ids = original.services.flatMap { it.operationalSourceIds }.toSet()
+        val confidence = if (!original.coverageFallback &&
+            original.confidence == it.binario.app.data.DataConfidence.STATIC_ONLY &&
+            original.services.any { it.operationalStatusVerified } && ids.isNotEmpty()) {
+            when {
+                ids.any { it in setOf("viaggiatreno", "italo-status") } -> it.binario.app.data.DataConfidence.OPERATOR_PRIMARY
+                "rfi-station-board" in ids -> it.binario.app.data.DataConfidence.INFRASTRUCTURE_PRIMARY
+                else -> original.confidence
+            }
+        } else original.confidence
+        val snapshot = original.copy(confidence = confidence)
+        val quality = it.binario.app.data.SnapshotQualityAssessor.assess(snapshot, clock())
+        return it.binario.app.data.DataResult.Success(snapshot.copy(
+            qualityScore = quality.score,
+            qualityBand = quality.band,
+            qualityWarnings = (snapshot.qualityWarnings - it.binario.app.data.SnapshotWarning.STATIC_ONLY) + quality.warnings
+        ))
+    }
 }

@@ -68,6 +68,54 @@ class StationBoardRealtimeReconcilerTest {
     private val clock = Clock.fixed(Instant.parse("2026-09-04T10:00:00Z"), ZoneOffset.UTC)
 
     @Test
+    fun `il ritardo non include una differenza fra orario statico e orario pubblicato`() = runBlocking {
+        val id = SourceId("rfi-station-board")
+        val provider = FakeBoardProvider(id, "RFI", board(id, "9401", zdt(12, 35), zdt(12, 41), "7", RunStatus.DELAYED))
+        val service = StationBoardRealtimeReconciler(listOf(provider), clock, zone).enrich(plannedSnapshot(), query).services.single()
+        assertEquals(6, service.delayMinutes)
+        assertEquals("12:35", service.scheduledDeparture)
+        assertEquals("12:41", service.expectedDeparture)
+        assertEquals("12:35", service.stops.first().scheduled)
+    }
+
+    @Test
+    fun `un aggiornamento operatore scaduto non sostituisce il dato RFI recente`() = runBlocking {
+        val rfi = SourceId("rfi-station-board")
+        val vt = SourceId("viaggiatreno")
+        val stale = board(vt, "9401", zdt(12, 30), zdt(12, 30), "8", RunStatus.ON_TIME).let { b ->
+            b.copy(entries = b.entries.map { e ->
+                e.copy(expectedTime = e.expectedTime!!.let { it.copy(source = it.source.copy(observedAt = clock.instant().minusSeconds(301))) },
+                    status = e.status!!.let { it.copy(source = it.source.copy(observedAt = clock.instant().minusSeconds(301))) })
+            })
+        }
+        val providers = listOf(FakeBoardProvider(rfi, "RFI", board(rfi, "9401", zdt(12, 30), zdt(12, 36), "7", RunStatus.DELAYED)),
+            FakeBoardProvider(vt, "VT", stale))
+        val service = StationBoardRealtimeReconciler(providers, clock, zone).enrich(plannedSnapshot(), query).services.single()
+        assertEquals(6, service.delayMinutes)
+        assertEquals(ServiceStatus.DELAYED, service.status)
+    }
+
+    @Test
+    fun `un binario senza stato non cancella un ritardo live gia verificato`() = runBlocking {
+        val source = SourceId("rfi-station-board")
+        val board = board(source, "9401", zdt(12, 30), zdt(12, 42), "7", RunStatus.DELAYED)
+            .let { it.copy(entries = it.entries.map { entry -> entry.copy(expectedTime = null, status = null) }) }
+        val planned = plannedSnapshot()
+        val live = planned.copy(services = planned.services.map { it.copy(
+            expectedDeparture = "12:42", delayMinutes = 12, officialDelayMinutes = 12,
+            operationalStatusVerified = true, operationalSourceIds = setOf("alto-adige-sta-realtime"),
+            operationalObservedAtEpochMillis = clock.millis()
+        ) })
+        val service = StationBoardRealtimeReconciler(listOf(FakeBoardProvider(source, "RFI", board)), clock, zone)
+            .enrich(live, query).services.single()
+        assertTrue(service.operationalStatusVerified)
+        assertEquals("12:42", service.expectedDeparture)
+        assertEquals(12, service.officialDelayMinutes)
+        assertEquals("7", service.platform)
+        assertTrue("alto-adige-sta-realtime" in service.operationalSourceIds)
+    }
+
+    @Test
     fun `arricchisce la corsa GTFS con ritardo binario e stato RFI`() = runBlocking {
         val source = SourceId("rfi-station-board")
         val provider = FakeBoardProvider(
@@ -91,6 +139,8 @@ class StationBoardRealtimeReconcilerTest {
         assertEquals("7", service.platform)
         assertEquals(ServiceStatus.DELAYED, service.status)
         assertTrue(service.operationalStatusVerified)
+        assertEquals(true, service.stops.first().operationalStatusVerified)
+        assertEquals(false, service.stops.last().operationalStatusVerified)
         assertEquals(setOf("rfi-station-board"), service.operationalSourceIds)
         assertTrue(snapshot.providerName.contains("RFI"))
     }
@@ -273,6 +323,59 @@ class StationBoardRealtimeReconcilerTest {
         )
 
         assertEquals(0, boardCalls)
+    }
+
+    @Test
+    fun `la ricerca odierna restituisce il live senza attendere il programmato`() = runBlocking {
+        val calls = mutableListOf<String>()
+        val live = DataResult.Success(plannedSnapshot().copy(providerName = "ViaggiaTreno",
+            services = plannedSnapshot().services.map { it.copy(operationalStatusVerified = true) }))
+        val wrapper = StationBoardEnrichedTrainDataSource(
+            source { calls.add("planned"); error("Il programmato non deve bloccare il live") },
+            emptyList(), clock, zone,
+            listOf(source { calls.add("live"); live })
+        )
+        assertEquals(live, wrapper.loadRoute(route, Direction.OUTBOUND, query))
+        assertEquals(listOf("live"), calls)
+    }
+
+    @Test
+    fun `live indisponibile conserva il fallback programmato senza inventare ritardi`() = runBlocking {
+        val calls = mutableListOf<String>()
+        val planned = DataResult.Success(plannedSnapshot())
+        val wrapper = StationBoardEnrichedTrainDataSource(
+            source { calls.add("planned"); planned }, emptyList(), clock, zone,
+            listOf(source { calls.add("live"); DataResult.Failure("offline") })
+        )
+        val result = wrapper.loadRoute(route, Direction.OUTBOUND, query) as DataResult.Success
+        assertEquals(listOf("live", "planned"), calls)
+        assertFalse(result.snapshot.services.single().operationalStatusVerified)
+    }
+
+    @Test
+    fun `uno zero non verificato della prima fonte non nasconde sei minuti verificati del fallback`() = runBlocking {
+        val unknown = DataResult.Success(plannedSnapshot())
+        val fresh = DataResult.Success(plannedSnapshot().copy(services = plannedSnapshot().services.map {
+            it.copy(delayMinutes = 6, officialDelayMinutes = 6, expectedDeparture = "12:36", operationalStatusVerified = true)
+        }))
+        val wrapper = StationBoardEnrichedTrainDataSource(source { error("Nessun programmato se esiste il live") },
+            emptyList(), clock, zone, listOf(source { unknown }, source { fresh }))
+        assertEquals(fresh, wrapper.loadRoute(route, Direction.OUTBOUND, query))
+    }
+
+    @Test
+    fun `sorgente diretta live non viene chiamata per ricerche future`() = runBlocking {
+        val wrapper = StationBoardEnrichedTrainDataSource(
+            source { DataResult.Success(plannedSnapshot()) }, emptyList(), clock, zone,
+            listOf(source { error("Nessun realtime per date future") })
+        )
+        assertTrue(wrapper.loadRoute(route, Direction.OUTBOUND,
+            query.copy(serviceDate = query.serviceDate.plusDays(1))) is DataResult.Success)
+    }
+
+    private fun source(result: () -> DataResult) = object : TrainDataSource {
+        override suspend fun loadRoute(route: SavedRoute, direction: Direction): DataResult = result()
+        override suspend fun loadRoute(route: SavedRoute, direction: Direction, query: JourneyQuery): DataResult = result()
     }
 
     private fun plannedSnapshot(): RouteSnapshot = RouteSnapshot(

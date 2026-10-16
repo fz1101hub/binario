@@ -392,17 +392,17 @@ class RfiProgrammedTimetableAdapter(
         val category = categoryFrom(categoryText, operator)
 
         val stops = buildList {
-            add(TrainStop(origin.name, scheduled, scheduled, null, 0, completed = false))
+            add(TrainStop(origin.name, scheduled, scheduled, null, 0, completed = false, operationalStatusVerified = false))
             if (arrivals) {
                 arrivalStops.drop(1).forEach { stop ->
-                    add(TrainStop(stop.station, stop.time, stop.time, null, 0, completed = false))
+                    add(TrainStop(stop.station, stop.time, stop.time, null, 0, completed = false, operationalStatusVerified = false))
                 }
             } else if (successiveStops.isNotEmpty()) {
                 successiveStops.forEach { stop ->
-                    add(TrainStop(stop.station, stop.time, stop.time, null, 0, completed = false))
+                    add(TrainStop(stop.station, stop.time, stop.time, null, 0, completed = false, operationalStatusVerified = false))
                 }
             } else if (!origin.isNamedBy(finalDestination)) {
-                add(TrainStop(finalDestination, "—", "—", null, 0, completed = false))
+                add(TrainStop(finalDestination, "—", "—", null, 0, completed = false, operationalStatusVerified = false))
             }
         }
 

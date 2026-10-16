@@ -105,6 +105,9 @@ import it.binario.app.data.RailTime
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 import it.binario.app.data.DataConfidence
 import it.binario.app.data.Direction
 import it.binario.app.data.Freshness
@@ -138,6 +141,7 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -277,6 +281,17 @@ private fun BinarioApp(
     }
     var stopAlarmFeedback by rememberSaveable { mutableStateOf<String?>(null) }
     val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    LaunchedEffect(lifecycleOwner, screen) {
+        if (screen in setOf(Screen.RESULTS, Screen.DETAIL, Screen.OPERATIONS)) {
+            lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                while (true) {
+                    delay(30_000)
+                    viewModel.refreshLiveIfIdle()
+                }
+            }
+        }
+    }
     val locale = LocalConfiguration.current.locales[0]
     val trainShareStrings = trainShareStrings(locale)
     val plannedJourneyViewModel: PlannedJourneyViewModel = viewModel(
@@ -2639,7 +2654,7 @@ private fun ServiceDetailScreen(
                 delay = stop.delayMinutes,
                 platform = stop.platform,
                 completed = stop.completed,
-                operationalStatusVerified = service.operationalStatusVerified,
+                operationalStatusVerified = stop.operationalStatusVerified ?: service.operationalStatusVerified,
                 routeChange = stop.routeChange,
                 onSetAlarm = { onScheduleStopAlarm(service, stop) }
             )
@@ -2649,7 +2664,7 @@ private fun ServiceDetailScreen(
 }
 
 @Composable
-private fun StopTimelineRow(
+internal fun StopTimelineRow(
     station: String,
     expected: String,
     scheduled: String,
@@ -2708,7 +2723,11 @@ private fun StopTimelineRow(
         Column(horizontalAlignment = Alignment.End) {
             Text(expected, style = MaterialTheme.typography.titleMedium, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
             if (expected != scheduled) Text(stringResource(R.string.scheduled_time_short, scheduled), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            if (delay > 0) Text(stringResource(R.string.delay_minutes, delay), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.tertiary, fontWeight = FontWeight.Bold)
+            if (!operationalStatusVerified) {
+                Text(stringResource(R.string.operational_status_unverified), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            } else if (delay > 0) {
+                Text(stringResource(R.string.delay_minutes, delay), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.tertiary, fontWeight = FontWeight.Bold)
+            }
             if (!completed) {
                 TextButton(onClick = onSetAlarm, contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)) {
                     Text(stringResource(R.string.action_stop_alarm))

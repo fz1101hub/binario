@@ -180,9 +180,18 @@ class StaRealtimeAdapter(
             val update = entity.optJSONObject("trip_update") ?: return@mapObjects null
             val tripId = update.optJSONObject("trip")?.optString("trip_id").orEmpty()
             if (tripId.isBlank()) return@mapObjects null
+            val trip = update.getJSONObject("trip")
+            if (trip.optString("schedule_relationship", "SCHEDULED") !in setOf("SCHEDULED", "0")) return@mapObjects null
+            val dateString = trip.optString("start_date")
+            val serviceDate = dateString.takeIf(String::isNotBlank)?.let {
+                runCatching { java.time.LocalDate.parse(it, java.time.format.DateTimeFormatter.BASIC_ISO_DATE) }.getOrNull()
+            }
+            if (dateString.isNotBlank() && serviceDate == null) return@mapObjects null
             val nativeEntity = entity.optString("id", tripId)
-            val source = sourceRef(nativeEntity, observed)
+            val tripObservedAt = update.optLong("timestamp", 0L).takeIf { it > 0 }?.let(Instant::ofEpochSecond) ?: observed
+            val source = sourceRef(nativeEntity, tripObservedAt)
             update.arrayOrEmpty("stop_time_update").mapObjects { stop ->
+                if (stop.optString("schedule_relationship", "SCHEDULED") !in setOf("SCHEDULED", "0")) return@mapObjects null
                 val stopId = stop.optString("stop_id").takeIf(String::isNotBlank)
                 val sequence = stop.optInt("stop_sequence", -1).takeIf { it >= 0 }
                 if (stopId == null && sequence == null) return@mapObjects null
@@ -199,8 +208,9 @@ class StaRealtimeAdapter(
                     stopSequence = sequence,
                     predictedAt = epoch?.let { itInstant -> SourcedValue(itInstant.let(Instant::ofEpochSecond).atZone(ZoneId.of("Europe/Rome")), valueSource) },
                     officialDelay = delay?.let { SourcedValue(Duration.ofSeconds(it), valueSource) },
-                    observedAt = observed,
-                    source = source
+                    observedAt = tripObservedAt,
+                    source = source,
+                    serviceDate = serviceDate
                 )
             }
         }.flatten()

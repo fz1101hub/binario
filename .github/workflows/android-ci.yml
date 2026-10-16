@@ -57,6 +57,11 @@ on:
         required: false
         type: boolean
         default: false
+      verify_live_route:
+        description: "Verifica ViaggiaTreno Appiano → Roma Ostiense con HTTPS reale su Android"
+        required: false
+        type: boolean
+        default: false
       verify_rfi_route:
         description: "Verifica Appiano → Roma Ostiense con le fonti reali sull’emulatore"
         required: false
@@ -116,6 +121,7 @@ jobs:
       - name: Android UI and notification tests on API 35
         timeout-minutes: 25
         env:
+          BINARIO_VERIFY_LIVE_ROUTE: ${{ github.event_name == 'workflow_dispatch' && inputs.verify_live_route || false }}
           BINARIO_VERIFY_RFI_ROUTE: ${{ github.event_name == 'workflow_dispatch' && inputs.verify_rfi_route || false }}
         run: bash tools/run_android_ui_tests.sh
 

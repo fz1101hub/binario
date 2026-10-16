@@ -9,6 +9,10 @@ import it.binario.app.data.provider.ProviderResult
 import it.binario.app.data.provider.TripUpdateProvider
 import java.time.LocalDate
 import java.time.ZoneId
+import it.binario.app.data.GtfsServiceIdentity
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 
 /** Snapshot aggregato dei soli aggiornamenti raccordati al rispettivo orario GTFS. */
 data class RealtimeEnrichmentSnapshot(
@@ -25,6 +29,43 @@ class RealtimeEnrichmentService(
     private val providers: List<TripUpdateProvider>,
     private val scheduleResolver: EmbeddedGtfsRealtimeScheduleResolver
 ) {
+    /** Resolve only trips present in this search, not every trip in a national feed. */
+    suspend fun collectFor(identities: List<GtfsServiceIdentity>, zone: ZoneId): RealtimeEnrichmentSnapshot = coroutineScope {
+        val results = providers.mapNotNull { provider ->
+            val staticId = staticFeedFor(provider.descriptor.id) ?: return@mapNotNull null
+            val wanted = identities.filter { it.sourceId == staticId.value }
+            if (wanted.isEmpty()) return@mapNotNull null
+            async {
+                val stops = mutableListOf<EnrichedRealtimeStop>()
+                val errors = linkedMapOf<SourceId, ProviderError>()
+                val updates = when (val result = provider.getTripUpdates()) {
+                    is ProviderResult.Success -> result.value
+                    is ProviderResult.Partial -> result.value
+                    is ProviderResult.Failure -> {
+                        errors[provider.descriptor.id] = result.error
+                        emptyList()
+                    }
+                    is ProviderResult.NotModified -> emptyList()
+                }
+                val byTrip = wanted.groupBy { it.tripId }
+                updates.forEach { update ->
+                    if (update.source.sourceId != provider.descriptor.id) return@forEach
+                    byTrip[update.sourceTripId].orEmpty().forEach identityLoop@ { identity ->
+                        if (update.serviceDate != null && update.serviceDate != identity.serviceDate) return@identityLoop
+                        if (identity.stops.none { stop ->
+                            (update.sourceStopId == null || update.sourceStopId == stop.stopId) &&
+                                (update.stopSequence == null || update.stopSequence == stop.sequence)
+                        }) return@identityLoop
+                        val scheduled = scheduleResolver.resolve(staticId, update, identity.serviceDate, zone) ?: return@identityLoop
+                        RealtimeOperationalEnricher.enrich(update, scheduled)?.let(stops::add)
+                    }
+                }
+                RealtimeEnrichmentSnapshot(stops, errors)
+            }
+        }.awaitAll()
+        RealtimeEnrichmentSnapshot(results.flatMap { it.stops }, results.flatMap { it.sourceErrors.entries }.associate { it.toPair() })
+    }
+
     suspend fun collect(serviceDate: LocalDate, zone: ZoneId): RealtimeEnrichmentSnapshot {
         val resolved = mutableListOf<EnrichedRealtimeStop>()
         val errors = linkedMapOf<SourceId, ProviderError>()

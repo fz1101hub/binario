@@ -46,13 +46,13 @@ internal object LegacyStationBoardInterop {
             val source = SourceRef(
                 sourceId = sourceId,
                 nativeId = service.id,
-                observedAt = fetchedAt,
+                observedAt = service.operationalObservedAtEpochMillis?.let(Instant::ofEpochMilli) ?: fetchedAt,
                 fetchedAt = fetchedAt,
                 expiresAt = fetchedAt.plus(ttl),
                 confidence = confidence,
                 traceId = "${sourceId.value}:${service.id}"
             )
-            val expected = if (service.operationalStatusVerified) {
+            val expected = if (service.stops.firstOrNull()?.operationalStatusVerified ?: service.operationalStatusVerified) {
                 resolveExpectedDateTime(service.expectedDeparture, scheduled, zone)
             } else {
                 null

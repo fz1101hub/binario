@@ -6,9 +6,9 @@ Binario usa direttamente soltanto feed pubblici verificati. I canali seguenti po
 |---|---|---|---|
 | Open Data Platform Mobility Switzerland GTFS-RT | Ritardi, previsioni, cancellazioni e alert; nessuna posizione veicolo nel feed documentato | Token gratuito/access code | Gateway personale HTTPS; token conservato solo sul server |
 | Trenord E015 | Ritardi effettivi/predetti, cancellazioni e stato direttrici; nessuna posizione o binario garantiti | Adesione e autorizzazione E015/Trenord | Gateway HTTPS dopo accettazione delle condizioni dell’ecosistema E015 |
-| SNCF GTFS-RT | Alert e trip updates | Open direct | Adapter Android già attivo; il matching verso corse UI viene implementato soltanto quando la relazione GTFS statica–trip ID è verificata |
+| SNCF GTFS-RT | Alert e trip updates | Open direct | Ricerca comune già collegata ai Trip Updates tramite trip ID, fermata e data GTFS; aggiornamenti scaduti o senza corrispondenza esclusi |
 | ÖBB | Orari statici ufficiali; nessun GTFS-RT open verificato | Nessun feed realtime pubblico equivalente | Conservare GTFS statico + RFI sulle stazioni italiane; non costruire un gateway di scraping |
-| Italo | Tabellone pubblico | Nessuna API realtime documentata | Adapter best-effort già attivo; nessun token BIG o endpoint interno |
+| Italo | Tabellone pubblico | Servizio JSON del sito passeggeri, senza credenziali | Adapter best-effort su `RicercaStazioneService?CodiceStazione=...`; identità della stazione e freschezza verificate, nessun token BIG |
 
 ## Opzioni per i token protetti
 
