@@ -100,7 +100,7 @@ class ViaggiaTrenoRealtimeAdapter(
     private val cache = BoundedSingleFlightCache<Result<String>>(128, 30_000, clock::millis)
     private val requests = Semaphore(3)
 
-    private suspend fun json(path: String): String = cache.getOrLoad(path) {
+    private suspend fun json(path: String): String = cache.getOrLoad(path, expireFromLoadStart = true) {
         try { Result.success(requests.withPermit { fetcher.fetch(path) }) }
         catch (error: CancellationException) { throw error }
         catch (error: IOException) { Result.failure(error) }

@@ -4,7 +4,7 @@ Aggiornamento: 16 ottobre 2026. Questo documento sostituisce le ipotesi e i sond
 
 ## Percorso comune dell’app
 
-`BinarioDataGraph` collega ricerca, widget e worker alle stesse fonti. Per oggi RFI cerca la stessa corsa nei tabelloni di partenza e arrivo; ViaggiaTreno JSON viene tentato come altra fonte live. Quando serve l’orario programmato, i Trip Updates STA/SNCF arricchiscono le corse GTFS tramite fonte, trip ID, fermata, sequenza e giorno operativo originali. I tabelloni disponibili possono aggiungere dati operativi identificabili. Non sono presenti regole di produzione specifiche per Appiano–Roma Ostiense.
+`BinarioDataGraph` collega ricerca, widget e worker alle stesse fonti. Per oggi ViaggiaTreno JSON è la fonte operatore prioritaria quando fornisce osservazioni verificate; RFI cerca la stessa corsa nei tabelloni di partenza e arrivo come fallback. Una risposta con sole corse non verificate non nasconde la fonte live successiva. Quando serve l’orario programmato, i Trip Updates STA/SNCF arricchiscono le corse GTFS tramite fonte, trip ID, fermata, sequenza e giorno operativo originali. I tabelloni disponibili possono aggiungere dati operativi identificabili. Non sono presenti regole di produzione specifiche per Appiano–Roma Ostiense.
 
 Le fonti pubbliche sono abilitate per default nelle build personali debug e release. Un opt-out esplicito resta possibile con `-PBINARIO_PERSONAL_REALTIME_SOURCES=false`. Feed con credenziali non vengono abilitati senza autorizzazioni. I dettagli del funzionamento non costituiscono una verifica delle condizioni di distribuzione dei singoli servizi.
 
@@ -12,7 +12,7 @@ Le fonti pubbliche sono abilitate per default nelle build personali debug e rele
 
 - Catalogo ufficiale: `https://iechub.rfi.it/ArriviPartenze` (`select#ElencoLocalita`).
 - Tabelloni: `https://iechub.rfi.it/ArriviPartenze/ArrivalsDepartures/Monitor?placeId=<id>&arrivals=True|False`.
-- Dati: numero, operatore, orario, ritardo esplicito, soppressione e binario quando pubblicati. Ritardo vuoto non significa zero verificato.
+- Dati: numero, operatore, orario, ritardo esplicito, soppressione e binario quando pubblicati. Ritardo vuoto non significa zero verificato. Il segnaposto accessibile `"Nessuno"` visto nella cella vuota del 23263 non prova puntualità. Un valore numerico visibile prevale su una diversa etichetta accessibile.
 - Gli ID dei monitor sono distinti da quelli dei quadri orario PRM. Le stazioni aggiuntive vengono risolte dal catalogo; alias ambigui vengono scartati.
 - Le due estremità richieste sono collegate solo con identità della corsa coerente e univoca, tempi plausibili e osservazioni recenti. Non vengono inventate fermate intermedie o un ritardo d’arrivo a partire dal ritardo di partenza.
 
@@ -39,7 +39,11 @@ SNCF ha superato il controllo reale di tempestività e matching GTFS sia nel [ru
 
 ## ViaggiaTreno
 
-Il client JSON usa HTTPS e verifica stazione, numero, origine e giorno. Nei controlli Android reali l’endpoint ha reindirizzato verso HTTP; il client rifiuta il downgrade. Anche la variante mobile HTTPS ha restituito HTTP 301 nel [run 38842497071](https://github.com/fz1101hub/binario/actions/runs/38842497071). Non viene quindi dichiarata una fonte live funzionante in quei controlli. L’adapter mobile legacy non è collegato al percorso runtime. I tabelloni RFI restano utilizzabili indipendentemente dal problema ViaggiaTreno.
+Il JSON pubblico legacy usa `http://www.viaggiatreno.it/infomobilita/resteasy/viaggiatreno/`. Il client inizia da HTTPS e segue l’HTTP solo per la **stessa risorsa richiesta** sull’host esatto `www.viaggiatreno.it`, dopo il reindirizzamento del sito. Host estranei, credenziali nello URL, query aggiuntive, porte diverse e altre risorse vengono rifiutati. La configurazione Android mantiene il traffico in chiaro disabilitato per gli altri host; l’informativa descrive che le richieste ViaggiaTreno di stazione, data e corsa non sono cifrate. Non vengono inviati account o token. Le verifiche TLS delle fonti HTTPS restano attive.
+
+Prima di questa eccezione, il client rifiutava il trasporto della fonte e la ricerca ripiegava su RFI. Nel [controllo reale 38903013231](https://github.com/fz1101hub/binario/actions/runs/38903013231), commit `b39e155`, il tabellone Milano ha fornito 22 partenze, 5 con dati operativi verificabili, e Appiano → Roma Ostiense ha fornito 4 corse verificate. Per il **23263**, alle 14:50 circa (Europe/Rome), il ritardo pubblicato era **4 minuti**, la partenza programmata 15:06 e quella attesa 15:10. La rilevazione utilizzata dalla fonte era delle 14:46. Il test confronta il numero nell’app con il campo `ritardo` del medesimo JSON: non impone il valore 6 segnalato in un momento precedente.
+
+ViaggiaTreno precede ora il fallback RFI per le tratte con codici e identità della corsa verificabili. Le osservazioni devono essere recenti; ritardi mancanti o vecchi non diventano zero. La cache dei dettagli scade 30 secondi dall’inizio della richiesta, così la latenza non prolunga la vita del vecchio valore al successivo aggiornamento. L’adapter mobile HTML legacy non è collegato al runtime.
 
 ## Altri canali e limiti
 

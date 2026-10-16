@@ -31,7 +31,7 @@ internal class BoundedSingleFlightCache<T>(
     private val values = linkedMapOf<String, TimedCacheValue<T>>()
     private val inFlight = mutableMapOf<String, Deferred<TimedCacheValue<T>>>()
 
-    suspend fun getOrLoad(key: String, loader: suspend () -> T): TimedCacheValue<T> {
+    suspend fun getOrLoad(key: String, expireFromLoadStart: Boolean = false, loader: suspend () -> T): TimedCacheValue<T> {
         val lookup = mutex.withLock {
             val now = clockMillis()
             values.entries.removeAll { now >= it.value.expiresAtEpochMillis }
@@ -39,9 +39,10 @@ internal class BoundedSingleFlightCache<T>(
             inFlight[key]?.let { return@withLock Lookup.Pending(it, owner = false) }
             val worker = workerScope.async(start = CoroutineStart.LAZY) {
                 try {
+                    val startedAt = clockMillis()
                     val value = loader()
                     val fetchedAt = clockMillis()
-                    val timed = TimedCacheValue(value, fetchedAt, fetchedAt + ttlMillis)
+                    val timed = TimedCacheValue(value, fetchedAt, (if (expireFromLoadStart) startedAt else fetchedAt) + ttlMillis)
                     mutex.withLock {
                         values[key] = timed
                         while (values.size > maxEntries) values.remove(values.keys.first())

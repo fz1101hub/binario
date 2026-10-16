@@ -13,7 +13,7 @@ on:
         description: "Fonti: rfi,sta,sncf,italo,european-sleeper,viaggiatreno,viaggiatreno-html"
         required: true
         type: string
-        default: "rfi,sta,sncf,italo,european-sleeper"
+        default: "rfi,sta,sncf,italo,european-sleeper,viaggiatreno"
 
 permissions:
   contents: read
@@ -37,7 +37,7 @@ jobs:
           cache: gradle
       - name: Verify selected sources
         env:
-          LIVE_SOURCES: ${{ inputs.sources || 'rfi,sta,sncf,italo,european-sleeper' }}
+          LIVE_SOURCES: ${{ inputs.sources || 'rfi,sta,sncf,italo,european-sleeper,viaggiatreno' }}
         run: |
           python3 - <<'PY'
           import os
@@ -46,7 +46,7 @@ jobs:
           PY
       - name: Functional source checks
         env:
-          LIVE_SOURCES: ${{ inputs.sources || 'rfi,sta,sncf,italo,european-sleeper' }}
+          LIVE_SOURCES: ${{ inputs.sources || 'rfi,sta,sncf,italo,european-sleeper,viaggiatreno' }}
         run: >-
           ./gradlew --no-daemon --max-workers=2 --dependency-verification=strict
           -Pkotlin.compiler.execution.strategy=in-process

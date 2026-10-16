@@ -54,10 +54,14 @@ class StationBoardEnrichedTrainDataSource(
 
     override suspend fun loadRoute(route: SavedRoute, direction: Direction, query: JourneyQuery): DataResult {
         val today = clock.instant().atZone(zone).toLocalDate()
+        var unverifiedLive: DataResult.Success? = null
         if (query.serviceDate == today) {
             for (source in liveRouteSources) {
                 val live = source.loadRoute(route, direction, query)
-                if (live is DataResult.Success) return live
+                if (live is DataResult.Success) {
+                    if (live.snapshot.services.any { it.operationalStatusVerified }) return live
+                    if (unverifiedLive == null) unverifiedLive = live
+                }
             }
         }
         val planned = plannedSource.loadRoute(route, direction, query)
@@ -71,6 +75,10 @@ class StationBoardEnrichedTrainDataSource(
             ).enrich(planned.snapshot, query)
             return DataResult.Success(snapshot)
         }
+
+        // A matched timetable without an operational observation must not mask
+        // the next live source. Retain it only if planning is unavailable too.
+        unverifiedLive?.let { return it }
 
         if (query.serviceDate == today) {
             boardProviders.forEach { provider ->

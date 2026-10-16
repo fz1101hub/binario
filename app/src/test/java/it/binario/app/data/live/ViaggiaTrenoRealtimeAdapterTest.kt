@@ -19,6 +19,27 @@ class ViaggiaTrenoRealtimeAdapterTest {
         Station("curated:S08406", "Roma Ostiense", "Roma", railwayCode = "S08406"))
     private val runDate = query.serviceDate.atStartOfDay(zone).toInstant().toEpochMilli()
 
+    @Test fun `il refresh dopo trenta secondi vede il nuovo ritardo anche con latenza del dettaglio`() = runBlocking {
+        val ticks = java.util.concurrent.atomic.AtomicLong(now.toEpochMilli())
+        var published = 0
+        val advancingClock = object : Clock() {
+            override fun getZone(): ZoneId = zone
+            override fun withZone(zone: ZoneId): Clock = this
+            override fun instant(): Instant = Instant.ofEpochMilli(ticks.get())
+        }
+        val adapter = ViaggiaTrenoRealtimeAdapter(ViaggiaTrenoRealtimeFetcher { path ->
+            if (path.startsWith("andamentoTreno/")) {
+                ticks.addAndGet(3_000)
+                run().put("ritardo", published).put("oraUltimoRilevamento", ticks.get()).toString()
+            } else JSONArray().put(JSONObject().put("numeroTreno", 12345).put("codOrigine", "S08001")
+                .put("dataPartenzaTreno", runDate).put("orarioPartenza", now.plusSeconds(300).toEpochMilli()).put("ritardo", published)).toString()
+        }, advancingClock)
+        assertEquals(0, (adapter.loadRoute(route, Direction.OUTBOUND, query) as DataResult.Success).snapshot.services.single().delayMinutes)
+        ticks.set(now.plusSeconds(30).toEpochMilli())
+        published = 6
+        assertEquals(6, (adapter.loadRoute(route, Direction.OUTBOUND, query) as DataResult.Success).snapshot.services.single().delayMinutes)
+    }
+
     @Test fun `riconosce Ostiense intermedia per codice e mostra il ritardo pubblicato`() = runBlocking {
         val paths = mutableListOf<String>()
         val adapter = adapter(paths)

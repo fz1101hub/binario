@@ -328,7 +328,8 @@ class StationBoardRealtimeReconcilerTest {
     @Test
     fun `la ricerca odierna restituisce il live senza attendere il programmato`() = runBlocking {
         val calls = mutableListOf<String>()
-        val live = DataResult.Success(plannedSnapshot().copy(providerName = "ViaggiaTreno"))
+        val live = DataResult.Success(plannedSnapshot().copy(providerName = "ViaggiaTreno",
+            services = plannedSnapshot().services.map { it.copy(operationalStatusVerified = true) }))
         val wrapper = StationBoardEnrichedTrainDataSource(
             source { calls.add("planned"); error("Il programmato non deve bloccare il live") },
             emptyList(), clock, zone,
@@ -349,6 +350,17 @@ class StationBoardRealtimeReconcilerTest {
         val result = wrapper.loadRoute(route, Direction.OUTBOUND, query) as DataResult.Success
         assertEquals(listOf("live", "planned"), calls)
         assertFalse(result.snapshot.services.single().operationalStatusVerified)
+    }
+
+    @Test
+    fun `uno zero non verificato della prima fonte non nasconde sei minuti verificati del fallback`() = runBlocking {
+        val unknown = DataResult.Success(plannedSnapshot())
+        val fresh = DataResult.Success(plannedSnapshot().copy(services = plannedSnapshot().services.map {
+            it.copy(delayMinutes = 6, officialDelayMinutes = 6, expectedDeparture = "12:36", operationalStatusVerified = true)
+        }))
+        val wrapper = StationBoardEnrichedTrainDataSource(source { error("Nessun programmato se esiste il live") },
+            emptyList(), clock, zone, listOf(source { unknown }, source { fresh }))
+        assertEquals(fresh, wrapper.loadRoute(route, Direction.OUTBOUND, query))
     }
 
     @Test
