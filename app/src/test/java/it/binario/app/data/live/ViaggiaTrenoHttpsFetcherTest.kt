@@ -50,6 +50,17 @@ class ViaggiaTrenoHttpsFetcherTest {
         assertTrue(urls.all { it.protocol == "https" })
     }
 
+    @Test fun `redirect HTTP alla home tenta la stessa API sul solo host HTTPS alternativo`() = runBlocking {
+        val urls = mutableListOf<URL>()
+        val fetcher = HttpViaggiaTrenoRealtimeFetcher { url ->
+            urls.add(url)
+            FakeConnection(url, if (url.host == "www.viaggiatreno.it") 301 else 200, "http://www.viaggiatreno.it/")
+        }
+        assertEquals("[]", fetcher.fetch(path))
+        assertEquals(listOf("www.viaggiatreno.it", "viaggiatreno.it"), urls.map { it.host })
+        assertTrue(urls.all { it.protocol == "https" && it.path.endsWith(path) })
+    }
+
     @Test fun `limita un ciclo di redirect HTTPS e non lo presenta come tabellone vuoto`() = runBlocking {
         var calls = 0
         val fetcher = HttpViaggiaTrenoRealtimeFetcher { url -> calls++; FakeConnection(url, 301, url.toString()) }

@@ -50,13 +50,13 @@ internal class HttpViaggiaTrenoRealtimeFetcher(
                     // known HTTPS origin once instead, preserving its TLS verification.
                     if (target.protocol == "http" && target.host == "www.viaggiatreno.it" &&
                         target.port in setOf(-1, 80) && target.userInfo == null &&
-                        url.host == "www.viaggiatreno.it" && target.file == url.file) {
+                        url.host == "www.viaggiatreno.it") {
                         target = URL("https", "viaggiatreno.it", url.file)
                     }
                     if (target.protocol != "https" || target.host.lowercase(Locale.ROOT) !in setOf("www.viaggiatreno.it", "viaggiatreno.it") ||
                         target.port !in setOf(-1, 443) || target.userInfo != null ||
                         !target.path.startsWith("/infomobilita/resteasy/viaggiatreno/")) {
-                        throw IOException("ViaggiaTreno redirect non consentito: ${target.protocol}://${target.host}${target.path.take(220)}")
+                        throw IOException("ViaggiaTreno redirect non consentito da ${url.host}: ${target.protocol}://${target.host}${target.path.take(220)}")
                     }
                     if (attempt == 3) throw IOException("ViaggiaTreno: troppi reindirizzamenti HTTPS")
                     url = target
