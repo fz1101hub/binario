@@ -59,6 +59,37 @@ class LiveProviderNetworkTest {
         println("LIVE_ACCEPTANCE RFI regional journey: matchedLiveDepartures=${services.count { it.operationalStatusVerified }}")
     }
 
+    @Test fun rfiPublishedDelayAccuracy() = runBlocking {
+        selected("rfi")
+        val fetcher = diagnosticRfiFetcher()
+        val place = RfiStationCatalog(fetcher, clock).placeId(listOf("Appiano"))
+        assertNotNull("RFI accuracy: Appiano not resolved", place)
+        val html = fetcher.fetch("https://iechub.rfi.it/ArriviPartenze/ArrivalsDepartures/Monitor?placeId=$place&arrivals=False")
+        val route = it.binario.app.data.SavedRoute("accuracy", "Appiano", it.binario.app.data.Station("origin", "Appiano", "Roma"),
+            it.binario.app.data.Station("destination", "Roma Ostiense", "Roma"))
+        val services = RfiStationBoardAdapter().parseDepartures(html, "Appiano", "", route, it.binario.app.data.Direction.OUTBOUND)
+        var compared = 0
+        val mismatches = mutableListOf<String>()
+        var reportedTrain = "23263 not present on the current board"
+        org.jsoup.Jsoup.parse(html).select("tr[name=treno]").forEach { row ->
+            val number = row.selectFirst("#RTreno")?.text()?.trim().orEmpty()
+            val visible = row.selectFirst("#RRitardo")?.text()?.trim().orEmpty()
+            val delay = Regex("^\\+?(\\d{1,3})\\s*(?:min(?:uti)?|['′])?$", RegexOption.IGNORE_CASE)
+                .matchEntire(visible)?.groupValues?.get(1)?.toIntOrNull()
+            val service = services.singleOrNull { it.number == number }
+            if (number == "23263") reportedTrain = "23263 visible=$visible, parsed=${service?.officialDelayMinutes}"
+            if (delay != null) {
+                compared++
+                if (service == null || service.officialDelayMinutes != delay || !service.operationalStatusVerified) {
+                    mismatches += "$number: visible=$delay, parsed=${service?.officialDelayMinutes}"
+                }
+            }
+        }
+        println("LIVE_ACCEPTANCE RFI exact published delay: compared=$compared; $reportedTrain; mismatches=${mismatches.take(10)}")
+        assertTrue("RFI accuracy: no numeric published delays to compare", compared > 0)
+        assertTrue("RFI delay mismatch against visible station board: ${mismatches.take(10)}", mismatches.isEmpty())
+    }
+
     @Test fun italo() = runBlocking {
         selected("italo")
         var shape = "not fetched"

@@ -68,6 +68,34 @@ class StationBoardRealtimeReconcilerTest {
     private val clock = Clock.fixed(Instant.parse("2026-09-04T10:00:00Z"), ZoneOffset.UTC)
 
     @Test
+    fun `il ritardo non include una differenza fra orario statico e orario pubblicato`() = runBlocking {
+        val id = SourceId("rfi-station-board")
+        val provider = FakeBoardProvider(id, "RFI", board(id, "9401", zdt(12, 35), zdt(12, 41), "7", RunStatus.DELAYED))
+        val service = StationBoardRealtimeReconciler(listOf(provider), clock, zone).enrich(plannedSnapshot(), query).services.single()
+        assertEquals(6, service.delayMinutes)
+        assertEquals("12:35", service.scheduledDeparture)
+        assertEquals("12:41", service.expectedDeparture)
+        assertEquals("12:35", service.stops.first().scheduled)
+    }
+
+    @Test
+    fun `un aggiornamento operatore scaduto non sostituisce il dato RFI recente`() = runBlocking {
+        val rfi = SourceId("rfi-station-board")
+        val vt = SourceId("viaggiatreno")
+        val stale = board(vt, "9401", zdt(12, 30), zdt(12, 30), "8", RunStatus.ON_TIME).let { b ->
+            b.copy(entries = b.entries.map { e ->
+                e.copy(expectedTime = e.expectedTime!!.let { it.copy(source = it.source.copy(observedAt = clock.instant().minusSeconds(301))) },
+                    status = e.status!!.let { it.copy(source = it.source.copy(observedAt = clock.instant().minusSeconds(301))) })
+            })
+        }
+        val providers = listOf(FakeBoardProvider(rfi, "RFI", board(rfi, "9401", zdt(12, 30), zdt(12, 36), "7", RunStatus.DELAYED)),
+            FakeBoardProvider(vt, "VT", stale))
+        val service = StationBoardRealtimeReconciler(providers, clock, zone).enrich(plannedSnapshot(), query).services.single()
+        assertEquals(6, service.delayMinutes)
+        assertEquals(ServiceStatus.DELAYED, service.status)
+    }
+
+    @Test
     fun `un binario senza stato non cancella un ritardo live gia verificato`() = runBlocking {
         val source = SourceId("rfi-station-board")
         val board = board(source, "9401", zdt(12, 30), zdt(12, 42), "7", RunStatus.DELAYED)

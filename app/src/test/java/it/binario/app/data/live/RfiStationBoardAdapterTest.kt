@@ -27,6 +27,35 @@ class RfiStationBoardAdapterTest {
     )
 
     @Test
+    fun `il numero visibile del 23263 prevale su un aria label ancora a zero`() = runBlocking {
+        val html = htmlFixture().replace("9401", "23263").replace("aria-label=\"12 minuti\">12 minuti", "aria-label=\"Nessuno\">6")
+        val result = RfiStationBoardAdapter(fetcher = RfiMonitorFetcher { html },
+            clock = Clock.fixed(Instant.parse("2026-08-14T12:00:00Z"), ZoneOffset.UTC)).loadRoute(route, Direction.OUTBOUND)
+        val service = (result as it.binario.app.data.DataResult.Success).snapshot.services.single()
+        assertEquals(6, service.officialDelayMinutes)
+        assertEquals("10:06", service.expectedDeparture)
+    }
+
+    @Test
+    fun `un aria label generico non nasconde il ritardo numerico visibile`() {
+        val html = htmlFixture().replace("aria-label=\"12 minuti\"", "aria-label=\"Ritardo\"")
+        val service = RfiStationBoardAdapter().parseDepartures(html, "Roma Termini", "Napoli Centrale", route, Direction.OUTBOUND).first()
+        assertEquals(12, service.officialDelayMinutes)
+        assertTrue(service.operationalStatusVerified)
+    }
+
+    @Test
+    fun `un numero nei messaggi non diventa ritardo e il ritardo mancante resta nullo`() {
+        val html = org.jsoup.Jsoup.parse(htmlFixture()).also { doc ->
+            doc.select("#RRitardo").remove()
+            doc.select(".testoinfoaggiuntive").forEach { it.text("Il prossimo treno fra 10 minuti viaggia in orario") }
+        }.outerHtml()
+        val service = RfiStationBoardAdapter().parseDepartures(html, "Roma Termini", "Napoli Centrale", route, Direction.OUTBOUND).first()
+        assertEquals(null, service.officialDelayMinutes)
+        assertTrue(!service.operationalStatusVerified)
+    }
+
+    @Test
     fun `supporta arrivi con il parametro pubblico corretto`() = runBlocking {
         val adapter = RfiStationBoardAdapter(fetcher = RfiMonitorFetcher { url ->
             assertTrue(url.endsWith("arrivals=True"))
