@@ -389,6 +389,8 @@ def read_table(
             csv.field_size_limit(MAX_CSV_FIELD_UTF8_BYTES)
             reader = csv.DictReader(bounded_csv_lines(text, basename))
             if reader.fieldnames is None:
+                if not required:
+                    return None
                 raise BuildError(f"tabella vuota: {basename}")
             header = tuple(name.strip() for name in reader.fieldnames)
             if not header or any(not name for name in header):

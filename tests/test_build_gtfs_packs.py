@@ -122,6 +122,27 @@ class FakeResponse:
 
 
 class BuildGtfsPacksTest(unittest.TestCase):
+    def test_empty_optional_translation_file_does_not_block_timetable_refresh(self) -> None:
+        source = self.temp / "empty-translations.zip"
+        output = self.temp / "timetable.zip"
+        with zipfile.ZipFile(source, "w") as archive:
+            for file in sorted(FIXTURE.iterdir()):
+                if file.name != "translations.txt":
+                    archive.write(file, file.name)
+            archive.writestr("translations.txt", b"")
+        builder.filter_archive(source, output, "amt-genova-casella-gtfs")
+        with zipfile.ZipFile(output) as archive:
+            self.assertNotIn("translations.txt", archive.namelist())
+            self.assertIn("stop_times.txt", archive.namelist())
+
+    def test_empty_required_table_is_still_rejected(self) -> None:
+        source = self.temp / "empty-routes.zip"
+        with zipfile.ZipFile(source, "w") as archive:
+            archive.writestr("routes.txt", b"")
+        with zipfile.ZipFile(source) as archive:
+            with self.assertRaisesRegex(builder.BuildError, "tabella vuota"):
+                builder.read_table(archive, "routes.txt", required=True)
+
     def test_large_unused_shapes_are_not_opened_and_references_are_removed(self) -> None:
         source = self.temp / "with-shapes.zip"
         output = self.temp / "timetable.zip"
