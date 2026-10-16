@@ -27,3 +27,5 @@ Il primo test Android esterno sul commit 8f35fe0 ha ricevuto HTTP 301 (run 38830
 ## Riferimenti di schema
 
 Gli endpoint ViaggiaTreno sono interfacce pubbliche best-effort, non API open con SLA: `partenze/{codice}/{dataJavascriptCodificata}` e `andamentoTreno/{origine}/{numero}/{giornoMillis}`. Per il contratto dei campi sono stati consultati i client pubblici `matteoredaelli/pyviaggiatreno` e `marcocot/trenitalia-api`; non sono documentazione ufficiale né prova di una risposta attuale. Non usare chiavi di applicazioni terze o dati dimostrativi per superare un errore del servizio.
+
+Il secondo test esterno su 053da3f (run 38831466655) ha identificato un redirect dallo URL HTTPS verso lo stesso URL HTTP. Il client non lo segue: tenta soltanto l’altro host noto viaggiatreno.it in HTTPS, con TLS normale, e rifiuta un successivo downgrade. L’esito reale di questo tentativo deve essere verificato sul nuovo SHA. La ricerca consulta prima il tabellone all’ora selezionata e poi un lookback facoltativo per i treni in ritardo; un errore del lookback non elimina un tabellone corrente valido.

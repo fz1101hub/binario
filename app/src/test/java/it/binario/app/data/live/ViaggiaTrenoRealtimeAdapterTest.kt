@@ -33,6 +33,7 @@ class ViaggiaTrenoRealtimeAdapterTest {
         assertEquals(setOf("viaggiatreno"), train.operationalSourceIds)
         assertEquals(now.minusSeconds(30).toEpochMilli(), train.operationalObservedAtEpochMillis)
         assertTrue(paths.first().startsWith("partenze/S08328/"))
+        assertTrue(java.net.URLDecoder.decode(paths.first(), "UTF-8").contains("10:00:00"))
         assertEquals("andamentoTreno/S08001/12345/$runDate", paths.last())
         assertFalse(paths.any { it.startsWith("http:") })
     }
@@ -94,7 +95,27 @@ class ViaggiaTrenoRealtimeAdapterTest {
         val paths = java.util.Collections.synchronizedList(mutableListOf<String>())
         val adapter = adapter(paths)
         coroutineScope { List(6) { async { adapter.loadRoute(route, Direction.OUTBOUND, query) } }.awaitAll() }
-        assertEquals(2, paths.size)
+        assertEquals(3, paths.size)
+    }
+
+    @Test fun `tabellone richiesto all'ora scelta e lookback facoltativo non cancella il risultato`() = runBlocking {
+        val paths = mutableListOf<String>()
+        val adapter = ViaggiaTrenoRealtimeAdapter(ViaggiaTrenoRealtimeFetcher { path ->
+            paths.add(path)
+            when {
+                path.startsWith("andamentoTreno/") -> run().toString()
+                java.net.URLDecoder.decode(path, "UTF-8").contains("10:00:00") -> JSONArray().put(JSONObject()
+                    .put("numeroTreno", 12345).put("codOrigine", "S08001").put("dataPartenzaTreno", runDate)
+                    .put("orarioPartenza", now.plusSeconds(300).toEpochMilli()).put("ritardo", 6)).toString()
+                else -> throw IOException("lookback offline")
+            }
+        }, clock)
+        assertTrue(adapter.loadRoute(route, Direction.OUTBOUND, query) is DataResult.Success)
+        assertTrue(java.net.URLDecoder.decode(paths.first(), "UTF-8").contains("10:00:00"))
+        val futurePaths = mutableListOf<String>()
+        adapter(futurePaths).loadRoute(route, Direction.OUTBOUND, query.copy(departureTime = LocalTime.of(13, 0)))
+        assertEquals(1, futurePaths.size)
+        assertTrue(java.net.URLDecoder.decode(futurePaths.single(), "UTF-8").contains("13:00:00"))
     }
 
     @Test fun `errore rete mantiene il motivo ed evita richieste continue durante cooldown`() = runBlocking {

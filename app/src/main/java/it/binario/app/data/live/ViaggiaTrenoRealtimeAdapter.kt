@@ -43,8 +43,15 @@ internal class HttpViaggiaTrenoRealtimeFetcher(
                 val status = connection.responseCode
                 if (status in setOf(301, 302, 303, 307, 308)) {
                     val location = connection.getHeaderField("Location") ?: throw IOException("ViaggiaTreno redirect senza destinazione")
-                    val target = try { URL(url, location) } catch (_: java.net.MalformedURLException) {
+                    var target = try { URL(url, location) } catch (_: java.net.MalformedURLException) {
                         throw IOException("ViaggiaTreno redirect non leggibile")
+                    }
+                    // Never follow the observed HTTPS → HTTP redirect. Try the other
+                    // known HTTPS origin once instead, preserving its TLS verification.
+                    if (target.protocol == "http" && target.host == "www.viaggiatreno.it" &&
+                        target.port in setOf(-1, 80) && target.userInfo == null &&
+                        url.host == "www.viaggiatreno.it" && target.file == url.file) {
+                        target = URL("https", "viaggiatreno.it", url.file)
                     }
                     if (target.protocol != "https" || target.host.lowercase(Locale.ROOT) !in setOf("www.viaggiatreno.it", "viaggiatreno.it") ||
                         target.port !in setOf(-1, 443) || target.userInfo != null ||
@@ -109,7 +116,19 @@ class ViaggiaTrenoRealtimeAdapter(
         val fetched = clock.instant()
         return try {
             val requested = query.requestedAt.atZone(zone).toInstant()
-            val rows = departures(originCode, maxOf(requested.minusSeconds(2 * 3600), query.serviceDate.atStartOfDay(zone).toInstant()))
+            // Ask for the selected time first. A source may return a bounded board;
+            // starting two hours earlier must not hide the user's upcoming trains.
+            val boardRows = departures(originCode, requested).toMutableList()
+            if (!requested.isAfter(fetched.plusSeconds(600))) {
+                val earlier = maxOf(requested.minusSeconds(2 * 3600), query.serviceDate.atStartOfDay(zone).toInstant())
+                if (earlier < requested) {
+                    try { boardRows.addAll(departures(originCode, earlier)) }
+                    catch (error: CancellationException) { throw error }
+                    catch (_: IOException) { /* Optional lookback must not erase the current board. */ }
+                    catch (_: org.json.JSONException) { }
+                }
+            }
+            val rows = boardRows.distinctBy { Triple(it.text("codOrigine"), it.text("numeroTreno"), it.millis("dataPartenzaTreno") ?: it.millis("millisDataPartenza")) }
                 .filter { row -> row.millis("orarioPartenza")?.let { it + (row.intOrNull("ritardo") ?: 0).coerceAtLeast(0) * 60_000L >= requested.toEpochMilli() } ?: true }
                 .sortedBy { it.millis("orarioPartenza") ?: Long.MAX_VALUE }
             val services = coroutineScope {
