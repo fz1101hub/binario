@@ -39,21 +39,28 @@ import java.util.Locale
 import kotlin.math.abs
 
 /**
- * Keeps journey planning static/deterministic and applies realtime only after a
- * planned service can be matched by public number, destination and schedule.
+ * Uses identity-checked operator routes for today, then enriches programmed
+ * services by matching their public number, service day and schedule.
  */
 class StationBoardEnrichedTrainDataSource(
     private val plannedSource: TrainDataSource,
     private val boardProviders: List<StationBoardProvider>,
     private val clock: Clock = Clock.system(RailTime.defaultZone),
-    private val zone: ZoneId = RailTime.defaultZone
+    private val zone: ZoneId = RailTime.defaultZone,
+    private val liveRouteSources: List<TrainDataSource> = emptyList()
 ) : TrainDataSource {
     override suspend fun loadRoute(route: SavedRoute, direction: Direction): DataResult =
         loadRoute(route, direction, JourneyQuery.now())
 
     override suspend fun loadRoute(route: SavedRoute, direction: Direction, query: JourneyQuery): DataResult {
+        val today = clock.instant().atZone(zone).toLocalDate()
+        if (query.serviceDate == today) {
+            for (source in liveRouteSources) {
+                val live = source.loadRoute(route, direction, query)
+                if (live is DataResult.Success) return live
+            }
+        }
         val planned = plannedSource.loadRoute(route, direction, query)
-        val today = clock.instant().atZone(clock.zone).toLocalDate()
 
         if (planned is DataResult.Success) {
             if (query.serviceDate != today || boardProviders.isEmpty()) return planned

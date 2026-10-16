@@ -7,7 +7,7 @@ import it.binario.app.data.live.RfiInfomobilityRssAdapter
 import it.binario.app.data.live.RfiStationBoardAdapter
 import it.binario.app.data.live.SncfGtfsRealtimeAdapter
 import it.binario.app.data.live.StaRealtimeAdapter
-import it.binario.app.data.live.ViaggiaTrenoStationAdapter
+import it.binario.app.data.live.ViaggiaTrenoRealtimeAdapter
 import it.binario.app.data.planned.RfiProgrammedStationBoardAdapter
 import it.binario.app.data.planned.RfiProgrammedTimetableAdapter
 import it.binario.app.data.planned.RfiSupplementalHubTimetableAdapter
@@ -19,9 +19,9 @@ import it.binario.app.data.provider.VehiclePositionProvider
 /**
  * Runtime source policy.
  *
- * Quality rule: official/primary sources and coverage fallbacks live in
- * different tiers. A best-effort source is never queried before all official
- * alternatives have failed for the requested route/context.
+ * Current-day operator observations precede static timetables when personal
+ * realtime is enabled. Community coverage fallbacks remain below primary
+ * operator/infrastructure sources and official static data.
  */
 object LocalOnlyRailDataPolicy {
     private val rfiProgrammed by lazy { RfiProgrammedTimetableAdapter() }
@@ -30,7 +30,7 @@ object LocalOnlyRailDataPolicy {
     private val rfiProgrammedBoard by lazy { RfiProgrammedStationBoardAdapter() }
     private val rfiStationBoard by lazy { RfiStationBoardAdapter() }
     private val italoStationBoard by lazy { ItaloPublicStationAdapter() }
-    private val viaggiaTrenoBoard by lazy { ViaggiaTrenoStationAdapter() }
+    private val viaggiaTrenoBoard by lazy { ViaggiaTrenoRealtimeAdapter() }
     private val rfiAlerts by lazy { RfiInfomobilityRssAdapter() }
     private val staRealtime by lazy { StaRealtimeAdapter() }
     private val sncfRealtime by lazy { SncfGtfsRealtimeAdapter() }
@@ -40,6 +40,10 @@ object LocalOnlyRailDataPolicy {
         rfiProgrammed,
         rfiSupplemental
     )
+
+    /** Current-day operator data is queried before waiting for programmed timetables. */
+    fun liveRouteSources(): List<ViaggiaTrenoRealtimeAdapter> =
+        if (BuildConfig.PERSONAL_REALTIME_SOURCES) listOf(viaggiaTrenoBoard) else emptyList()
 
     /** Last-resort route coverage. These sources must never outrank official GTFS/RFI data. */
     fun coverageRouteFallbacks(): List<TrainDataSource> = listOf(

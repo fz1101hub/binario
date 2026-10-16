@@ -37,12 +37,6 @@ android {
         versionName = binarioVersionName
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        // Public/operator best-effort pages are an explicit personal-build opt-in.
-        // Enable only with -PBINARIO_PERSONAL_REALTIME_SOURCES=true.
-        val personalRealtimeSources = providers.gradleProperty("BINARIO_PERSONAL_REALTIME_SOURCES")
-            .orElse("false")
-            .get()
-        buildConfigField("boolean", "PERSONAL_REALTIME_SOURCES", personalRealtimeSources)
     }
 
     buildFeatures {
@@ -71,7 +65,14 @@ android {
     }
 
     buildTypes {
+        getByName("debug") {
+            // Device-test builds are personal builds and must exercise realtime.
+            buildConfigField("boolean", "PERSONAL_REALTIME_SOURCES",
+                providers.gradleProperty("BINARIO_PERSONAL_REALTIME_SOURCES").orElse("true").get())
+        }
         getByName("release") {
+            buildConfigField("boolean", "PERSONAL_REALTIME_SOURCES",
+                providers.gradleProperty("BINARIO_PERSONAL_REALTIME_SOURCES").orElse("false").get())
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(

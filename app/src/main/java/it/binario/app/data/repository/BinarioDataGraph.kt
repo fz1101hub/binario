@@ -51,7 +51,8 @@ object BinarioDataGraph {
             LegacyTrainDataSourceFacade(
                 legacySource = StationBoardEnrichedTrainDataSource(
                     plannedSource = plannedSource,
-                    boardProviders = stationBoardProviders()
+                    boardProviders = stationBoardProviders(),
+                    liveRouteSources = localOnlyPolicy.liveRouteSources().filter { defaultRegistry.isEnabled(it.descriptor.id) }
                 ),
                 providerRegistry = defaultRegistry
             )

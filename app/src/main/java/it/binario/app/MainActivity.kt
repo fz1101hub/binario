@@ -105,6 +105,9 @@ import it.binario.app.data.RailTime
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 import it.binario.app.data.DataConfidence
 import it.binario.app.data.Direction
 import it.binario.app.data.Freshness
@@ -138,6 +141,7 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -277,6 +281,17 @@ private fun BinarioApp(
     }
     var stopAlarmFeedback by rememberSaveable { mutableStateOf<String?>(null) }
     val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    LaunchedEffect(lifecycleOwner, screen) {
+        if (screen in setOf(Screen.RESULTS, Screen.DETAIL, Screen.OPERATIONS)) {
+            lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                while (true) {
+                    delay(30_000)
+                    viewModel.refreshLiveIfIdle()
+                }
+            }
+        }
+    }
     val locale = LocalConfiguration.current.locales[0]
     val trainShareStrings = trainShareStrings(locale)
     val plannedJourneyViewModel: PlannedJourneyViewModel = viewModel(

@@ -46,7 +46,7 @@ internal object LegacyStationBoardInterop {
             val source = SourceRef(
                 sourceId = sourceId,
                 nativeId = service.id,
-                observedAt = fetchedAt,
+                observedAt = service.operationalObservedAtEpochMillis?.let(Instant::ofEpochMilli) ?: fetchedAt,
                 fetchedAt = fetchedAt,
                 expiresAt = fetchedAt.plus(ttl),
                 confidence = confidence,

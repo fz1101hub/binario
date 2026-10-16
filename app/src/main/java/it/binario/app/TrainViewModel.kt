@@ -639,6 +639,17 @@ class TrainViewModel @JvmOverloads constructor(
         if (returnJourneyQuery != null) refreshReturn()
     }
 
+    /** Called only while a result/detail surface is visible and the activity is started. */
+    fun refreshLiveIfIdle() {
+        if (!hasActiveRoute) return
+        val today = JourneyQuery.now().serviceDate
+        if (selectedServiceDirection == Direction.RETURN && returnJourneyQuery != null) {
+            if (returnRefreshState != RefreshState.LOADING && returnJourneyQuery?.serviceDate == today) refreshReturn()
+        } else if (refreshState != RefreshState.LOADING && returnRefreshState != RefreshState.LOADING && journeyQueryState.value.serviceDate == today) {
+            refresh()
+        }
+    }
+
     fun refreshSelectedService() {
         if (selectedServiceDirection == Direction.RETURN && returnJourneyQuery != null) {
             refreshReturn()

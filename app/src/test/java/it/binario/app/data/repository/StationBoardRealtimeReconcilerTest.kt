@@ -275,6 +275,47 @@ class StationBoardRealtimeReconcilerTest {
         assertEquals(0, boardCalls)
     }
 
+    @Test
+    fun `la ricerca odierna restituisce il live senza attendere il programmato`() = runBlocking {
+        val calls = mutableListOf<String>()
+        val live = DataResult.Success(plannedSnapshot().copy(providerName = "ViaggiaTreno"))
+        val wrapper = StationBoardEnrichedTrainDataSource(
+            source { calls.add("planned"); error("Il programmato non deve bloccare il live") },
+            emptyList(), clock, zone,
+            listOf(source { calls.add("live"); live })
+        )
+        assertEquals(live, wrapper.loadRoute(route, Direction.OUTBOUND, query))
+        assertEquals(listOf("live"), calls)
+    }
+
+    @Test
+    fun `live indisponibile conserva il fallback programmato senza inventare ritardi`() = runBlocking {
+        val calls = mutableListOf<String>()
+        val planned = DataResult.Success(plannedSnapshot())
+        val wrapper = StationBoardEnrichedTrainDataSource(
+            source { calls.add("planned"); planned }, emptyList(), clock, zone,
+            listOf(source { calls.add("live"); DataResult.Failure("offline") })
+        )
+        val result = wrapper.loadRoute(route, Direction.OUTBOUND, query) as DataResult.Success
+        assertEquals(listOf("live", "planned"), calls)
+        assertFalse(result.snapshot.services.single().operationalStatusVerified)
+    }
+
+    @Test
+    fun `sorgente diretta live non viene chiamata per ricerche future`() = runBlocking {
+        val wrapper = StationBoardEnrichedTrainDataSource(
+            source { DataResult.Success(plannedSnapshot()) }, emptyList(), clock, zone,
+            listOf(source { error("Nessun realtime per date future") })
+        )
+        assertTrue(wrapper.loadRoute(route, Direction.OUTBOUND,
+            query.copy(serviceDate = query.serviceDate.plusDays(1))) is DataResult.Success)
+    }
+
+    private fun source(result: () -> DataResult) = object : TrainDataSource {
+        override suspend fun loadRoute(route: SavedRoute, direction: Direction): DataResult = result()
+        override suspend fun loadRoute(route: SavedRoute, direction: Direction, query: JourneyQuery): DataResult = result()
+    }
+
     private fun plannedSnapshot(): RouteSnapshot = RouteSnapshot(
         route = route,
         direction = Direction.OUTBOUND,
