@@ -304,7 +304,7 @@ def find_entry(archive: zipfile.ZipFile, basename: str) -> str | None:
     return matches[0] if matches else None
 
 
-def validate_archive_limits(archive: zipfile.ZipFile) -> None:
+def validate_archive_limits(archive: zipfile.ZipFile, *, omit_geometry: bool = False) -> None:
     entries = archive.infolist()
     if len(entries) > MAX_ARCHIVE_ENTRIES:
         raise BuildError(f"archivio GTFS con troppe entry: {len(entries)} > {MAX_ARCHIVE_ENTRIES}")
@@ -315,7 +315,10 @@ def validate_archive_limits(archive: zipfile.ZipFile) -> None:
             f"archivio GTFS decompresso oltre limite: {total} > {MAX_ARCHIVE_UNCOMPRESSED_BYTES} bytes"
         )
     for entry in files:
-        if entry.file_size > MAX_ARCHIVE_MEMBER_BYTES:
+        # Timetable packs never open shapes.txt. Keep the total-size, entry and
+        # compression-ratio guards even for that unused geometry member.
+        ignored_shape = omit_geometry and entry.filename.rsplit("/", 1)[-1] == "shapes.txt"
+        if entry.file_size > MAX_ARCHIVE_MEMBER_BYTES and not ignored_shape:
             raise BuildError(
                 f"membro GTFS oltre limite: {entry.filename} {entry.file_size} > {MAX_ARCHIVE_MEMBER_BYTES} bytes"
             )
@@ -535,7 +538,7 @@ def filter_archive(source: Path, destination: Path, source_id: str) -> FilterRes
         raise BuildError(f"{source_id}: archivio ZIP GTFS non valido: {source}")
     input_hash = sha256_file(source)
     with zipfile.ZipFile(source) as archive:
-        validate_archive_limits(archive)
+        validate_archive_limits(archive, omit_geometry=True)
         source_hash = original_archive_sha256(archive, source_id, input_hash)
         budget = RetentionBudget()
         routes = read_table(archive, "routes.txt", required=True, budget=budget)
@@ -632,7 +635,10 @@ def filter_archive(source: Path, destination: Path, source_id: str) -> FilterRes
             "agency.txt": CsvTable(agency.header, kept_agency),
             "stops.txt": CsvTable(stops.header, kept_stops),
             "routes.txt": CsvTable(routes.header, kept_routes),
-            "trips.txt": CsvTable(trips.header, kept_trips),
+            "trips.txt": CsvTable(
+                tuple(key for key in trips.header if key != "shape_id"),
+                tuple({key: value for key, value in row.items() if key != "shape_id"} for row in kept_trips),
+            ),
             "stop_times.txt": CsvTable(stop_times.header, kept_stop_times),
             "calendar.txt": filtered_calendar,
             "calendar_dates.txt": filtered_calendar_dates,
@@ -648,16 +654,9 @@ def filter_archive(source: Path, destination: Path, source_id: str) -> FilterRes
             require_columns(frequencies, "frequencies.txt", "trip_id")
             tables["frequencies.txt"] = frequencies
 
-        shape_ids = {row.get("shape_id", "") for row in kept_trips if row.get("shape_id", "")}
-        shapes = read_table(
-            archive,
-            "shapes.txt",
-            predicate=lambda row: row.get("shape_id", "") in shape_ids,
-            budget=budget,
-        )
-        if shapes is not None:
-            require_columns(shapes, "shapes.txt", "shape_id")
-            tables["shapes.txt"] = shapes
+        # The app resolves schedules and stop coordinates, not route geometry.
+        # Do not inflate hundreds of MB of shape points just to discard bus
+        # shapes. Remove shape_id references together with the optional table.
 
         transfers = read_table(
             archive,
@@ -700,6 +699,7 @@ def filter_archive(source: Path, destination: Path, source_id: str) -> FilterRes
         "policy": policy,
         "counts": counts,
         "lastServiceDate": coverage_end.isoformat(),
+        "omittedOptionalTables": ["shapes.txt"],
         MEMBER_DIGEST_FIELD: {name: canonical_csv_sha256(table) for name, table in sorted(tables.items())},
     }
     write_deterministic_zip(destination, tables, metadata)
