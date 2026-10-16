@@ -4,7 +4,7 @@ L’APK debug personale abilita `PERSONAL_REALTIME_SOURCES` per impostazione pre
 
 Per oggi il graph consulta prima ViaggiaTreno: partenze per codice stazione, quindi dettagli per origine della corsa, numero e giorno. Appiano S08328 → Ostiense S08406 viene riconosciuta fra le fermate anche quando il capolinea è Tiburtina. Il risultato contiene soltanto gli orari pubblicati delle fermate e le previsioni calcolate dal ritardo pubblicato. Un ritardo è operativo solo con rilevazione recente (massimo cinque minuti, tolleranza futura un minuto) e treno partito, oppure cancellazione esplicita. Mancanze e dati vecchi non diventano zero minuti live. Il fallback programmato resta disponibile; le date future non interrogano il realtime diretto.
 
-Il client usa solo HTTPS, timeout, risposta limitata a 2 MiB, cache/coalescing di trenta secondi, cooldown sugli errori e massimo tre richieste simultanee. Numero massimo di dettagli per ricerca: dodici. I risultati, il dettaglio e la tratta nel pannello operativo vengono aggiornati ogni trenta secondi mentre la relativa schermata è visibile e l’Activity è STARTED. Un refresh automatico non scavalca uno già in corso né cambia data/ora della ricerca.
+Il client usa solo HTTPS, segue al massimo tre redirect fra gli host www.viaggiatreno.it e viaggiatreno.it nel percorso API, rifiuta downgrade HTTP, host estranei, credenziali e porte diverse da 443; usa timeout, risposta limitata a 2 MiB, cache/coalescing di trenta secondi, cooldown sugli errori e massimo tre richieste simultanee. Numero massimo di dettagli per ricerca: dodici. I risultati, il dettaglio e la tratta nel pannello operativo vengono aggiornati ogni trenta secondi mentre la relativa schermata è visibile e l’Activity è STARTED. Un refresh automatico non scavalca uno già in corso né cambia data/ora della ricerca.
 
 ## Verifiche
 
@@ -21,6 +21,8 @@ python3 tools/verify_ci_pinning.py
 ```
 
 La macchina cloud non ha KVM e il proxy corrente nega `www.viaggiatreno.it` e `prm.rfi.it`. Non tentare di aggirarlo, declassare HTTPS o dichiarare superati i test esterni senza evidenza. I domini richiesti sono stati aggiunti alla bozza di configurazione; il salvataggio non cambia automaticamente il runtime. Il test funzionale Android esterno si esegue sul runner CI con KVM; non esporta risposte del servizio come proxy di rete. Consultare gli esiti CI dello SHA e distinguere suite deterministica e verifica esterna.
+
+Il primo test Android esterno sul commit 8f35fe0 ha ricevuto HTTP 301 (run 38830277070): il fetcher iniziale rifiutava ogni redirect. La gestione HTTPS vincolata e i suoi test correggono quel limite; il test esterno deve essere ripetuto sul commit successivo, senza attribuirgli l’esito della suite deterministica.
 
 ## Riferimenti di schema
 

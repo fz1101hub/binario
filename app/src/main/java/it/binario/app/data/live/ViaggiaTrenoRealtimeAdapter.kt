@@ -26,23 +26,45 @@ fun interface ViaggiaTrenoRealtimeFetcher {
     suspend fun fetch(path: String): String
 }
 
-internal class HttpViaggiaTrenoRealtimeFetcher : ViaggiaTrenoRealtimeFetcher {
+internal class HttpViaggiaTrenoRealtimeFetcher(
+    private val openConnection: (URL) -> HttpURLConnection = { it.openConnection() as HttpURLConnection }
+) : ViaggiaTrenoRealtimeFetcher {
     override suspend fun fetch(path: String): String = withContext(Dispatchers.IO) {
         require(path.startsWith("partenze/") || path.startsWith("andamentoTreno/"))
-        val connection = URL("https://www.viaggiatreno.it/infomobilita/resteasy/viaggiatreno/$path")
-            .openConnection() as HttpURLConnection
-        connection.connectTimeout = 8_000
-        connection.readTimeout = 12_000
-        connection.instanceFollowRedirects = false
-        connection.setRequestProperty("Accept", "application/json")
-        connection.setRequestProperty("User-Agent", "Binario/0.20 (personal realtime client)")
-        try {
-            if (connection.responseCode == 204) return@withContext "null"
-            if (connection.responseCode !in 200..299) throw IOException("ViaggiaTreno HTTP ${connection.responseCode}")
-            connection.inputStream.use { readBoundedRfiHtml(it, connection.contentLengthLong.takeIf { n -> n >= 0 }) }
-        } finally {
-            connection.disconnect()
+        var url = URL("https://www.viaggiatreno.it/infomobilita/resteasy/viaggiatreno/$path")
+        repeat(4) { attempt ->
+            val connection = openConnection(url)
+            connection.connectTimeout = 8_000
+            connection.readTimeout = 12_000
+            connection.instanceFollowRedirects = false
+            connection.setRequestProperty("Accept", "application/json")
+            connection.setRequestProperty("User-Agent", "Binario/0.20 (personal realtime client)")
+            try {
+                val status = connection.responseCode
+                if (status in setOf(301, 302, 303, 307, 308)) {
+                    val location = connection.getHeaderField("Location") ?: throw IOException("ViaggiaTreno redirect senza destinazione")
+                    val target = try { URL(url, location) } catch (_: java.net.MalformedURLException) {
+                        throw IOException("ViaggiaTreno redirect non leggibile")
+                    }
+                    if (target.protocol != "https" || target.host.lowercase(Locale.ROOT) !in setOf("www.viaggiatreno.it", "viaggiatreno.it") ||
+                        target.port !in setOf(-1, 443) || target.userInfo != null ||
+                        !target.path.startsWith("/infomobilita/resteasy/viaggiatreno/")) {
+                        throw IOException("ViaggiaTreno redirect non consentito: ${target.protocol}://${target.host}${target.path.take(220)}")
+                    }
+                    if (attempt == 3) throw IOException("ViaggiaTreno: troppi reindirizzamenti HTTPS")
+                    url = target
+                } else {
+                    if (status == 204) return@withContext "null"
+                    if (status !in 200..299) throw IOException("ViaggiaTreno HTTP $status")
+                    return@withContext connection.inputStream.use {
+                        readBoundedRfiHtml(it, connection.contentLengthLong.takeIf { n -> n >= 0 })
+                    }
+                }
+            } finally {
+                connection.disconnect()
+            }
         }
+        throw IOException("ViaggiaTreno: destinazione non raggiunta")
     }
 }
 
