@@ -45,6 +45,16 @@ class RfiStationBoardAdapterTest {
     }
 
     @Test
+    fun `il placeholder Nessuno tra virgolette del tabellone reale non prova zero minuti`() {
+        val html = htmlFixture().replace("aria-label=\"12 minuti\">12 minuti", "aria-label='\"Nessuno\"'>")
+        val service = RfiStationBoardAdapter().parseDepartures(html, "Appiano", "", route, Direction.OUTBOUND).first()
+        assertEquals(null, service.officialDelayMinutes)
+        assertTrue(!service.operationalStatusVerified)
+        val numeric = html.replace("'\"Nessuno\"'", "'\"6\"'")
+        assertEquals(6, RfiStationBoardAdapter().parseDepartures(numeric, "Appiano", "", route, Direction.OUTBOUND).first().officialDelayMinutes)
+    }
+
+    @Test
     fun `un numero nei messaggi non diventa ritardo e il ritardo mancante resta nullo`() {
         val html = org.jsoup.Jsoup.parse(htmlFixture()).also { doc ->
             doc.select("#RRitardo").remove()

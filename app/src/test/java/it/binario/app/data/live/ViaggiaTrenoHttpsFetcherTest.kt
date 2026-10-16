@@ -11,6 +11,18 @@ import org.junit.Test
 class ViaggiaTrenoHttpsFetcherTest {
     private val path = "partenze/S08328/today"
 
+    @Test fun `l'eccezione Android in chiaro riguarda solo l'host pubblico ViaggiaTreno`() {
+        val config = listOf(java.io.File("src/main/res/xml/network_security_config.xml"),
+            java.io.File("app/src/main/res/xml/network_security_config.xml")).first { it.isFile }
+        val doc = javax.xml.parsers.DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(config)
+        assertEquals("false", (doc.getElementsByTagName("base-config").item(0) as org.w3c.dom.Element).getAttribute("cleartextTrafficPermitted"))
+        val domains = doc.getElementsByTagName("domain")
+        assertEquals(1, domains.length)
+        val domain = domains.item(0) as org.w3c.dom.Element
+        assertEquals("www.viaggiatreno.it", domain.textContent.trim())
+        assertEquals("false", domain.getAttribute("includeSubdomains"))
+    }
+
     @Test fun `segue redirect HTTPS della fonte preservando TLS e chiudendo le connessioni`() = runBlocking {
         val opened = mutableListOf<FakeConnection>()
         val fetcher = HttpViaggiaTrenoRealtimeFetcher { url ->
@@ -22,9 +34,13 @@ class ViaggiaTrenoHttpsFetcherTest {
         assertTrue(opened.all { it.closed && !it.instanceFollowRedirects })
     }
 
-    @Test fun `rifiuta downgrade host estranei porte credenziali e percorsi fuori API`() = runBlocking {
+    @Test fun `rifiuta host estranei porte credenziali e percorsi diversi dalla risorsa richiesta`() = runBlocking {
         for (location in listOf(
-            "http://www.viaggiatreno.it/infomobilita/resteasy/viaggiatreno/$path",
+            "http://viaggiatreno.it/infomobilita/resteasy/viaggiatreno/$path",
+            "http://www.viaggiatreno.it:81/infomobilita/resteasy/viaggiatreno/$path",
+            "http://user@www.viaggiatreno.it/infomobilita/resteasy/viaggiatreno/$path",
+            "http://www.viaggiatreno.it/infomobilita/resteasy/viaggiatreno/$path?token=unexpected",
+            "http://www.viaggiatreno.it/infomobilita/resteasy/viaggiatreno/andamentoTreno/other",
             "https://example.org/infomobilita/resteasy/viaggiatreno/$path",
             "https://www.viaggiatreno.it:444/infomobilita/resteasy/viaggiatreno/$path",
             "https://user@www.viaggiatreno.it/infomobilita/resteasy/viaggiatreno/$path",
@@ -33,21 +49,21 @@ class ViaggiaTrenoHttpsFetcherTest {
             val urls = mutableListOf<URL>()
             val fetcher = HttpViaggiaTrenoRealtimeFetcher { url -> urls.add(url); FakeConnection(url, 301, location) }
             try { fetcher.fetch(path); fail("Redirect non sicuro accettato") } catch (_: IOException) { }
-            assertEquals(if (location.startsWith("http://www.viaggiatreno.it/")) 2 else 1, urls.size)
+            assertTrue(urls.size <= 2)
             assertTrue(urls.all { it.protocol == "https" })
         }
     }
 
-    @Test fun `un downgrade di www prova solo l'altro indirizzo HTTPS noto`() = runBlocking {
+    @Test fun `legge l'API HTTP ufficiale solo dopo il redirect alla stessa risorsa`() = runBlocking {
         val urls = mutableListOf<URL>()
         val fetcher = HttpViaggiaTrenoRealtimeFetcher { url ->
             urls.add(url)
-            FakeConnection(url, if (url.host == "www.viaggiatreno.it") 301 else 200,
+            FakeConnection(url, if (url.protocol == "https") 301 else 200,
                 "http://www.viaggiatreno.it/infomobilita/resteasy/viaggiatreno/$path")
         }
         assertEquals("[]", fetcher.fetch(path))
-        assertEquals(listOf("www.viaggiatreno.it", "viaggiatreno.it"), urls.map { it.host })
-        assertTrue(urls.all { it.protocol == "https" })
+        assertEquals(listOf("https", "http"), urls.map { it.protocol })
+        assertTrue(urls.all { it.host == "www.viaggiatreno.it" && it.path.endsWith(path) })
     }
 
     @Test fun `redirect HTTP alla home tenta la stessa API sul solo host HTTPS alternativo`() = runBlocking {

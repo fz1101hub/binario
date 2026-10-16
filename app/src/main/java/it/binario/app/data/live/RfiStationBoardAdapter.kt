@@ -363,8 +363,11 @@ class RfiStationBoardAdapter(
     private fun parseDelay(value: String): Int? {
         val normalized = value.uppercase(Locale.ROOT).normalizeSpace()
         if (normalized in setOf("NESSUNO", "IN ORARIO")) return 0
+        // RFI can expose a quoted "Nessuno" placeholder in an empty cell.
+        // Only an actual numeric value inside quotes is an explicit delay.
+        val numeric = normalized.removeSurrounding("\"").removeSurrounding("'")
         return Regex("^(?:RITARDO(?:\\s+DI)?\\s*[:=]?\\s*)?([+-]?\\d{1,3})\\s*(?:MIN(?:UTI)?\\.?|['′])?$")
-            .matchEntire(normalized)?.groupValues?.getOrNull(1)?.toIntOrNull()
+            .matchEntire(numeric)?.groupValues?.getOrNull(1)?.toIntOrNull()
     }
 
     private fun addDelay(time: String, delay: Int): String = runCatching {

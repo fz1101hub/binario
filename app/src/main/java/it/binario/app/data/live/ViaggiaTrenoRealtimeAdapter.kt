@@ -32,11 +32,14 @@ internal class HttpViaggiaTrenoRealtimeFetcher(
     override suspend fun fetch(path: String): String = withContext(Dispatchers.IO) {
         require(path.startsWith("partenze/") || path.startsWith("andamentoTreno/"))
         var url = URL("https://www.viaggiatreno.it/infomobilita/resteasy/viaggiatreno/$path")
+        val requestedPath = url.path
         repeat(4) { attempt ->
             val connection = openConnection(url)
             connection.connectTimeout = 8_000
             connection.readTimeout = 12_000
             connection.instanceFollowRedirects = false
+            connection.useCaches = false
+            connection.setRequestProperty("Cache-Control", "no-cache")
             connection.setRequestProperty("Accept", "application/json")
             connection.setRequestProperty("User-Agent", "Binario/0.20 (personal realtime client)")
             try {
@@ -46,19 +49,24 @@ internal class HttpViaggiaTrenoRealtimeFetcher(
                     var target = try { URL(url, location) } catch (_: java.net.MalformedURLException) {
                         throw IOException("ViaggiaTreno redirect non leggibile")
                     }
-                    // Never follow the observed HTTPS → HTTP redirect. Try the other
-                    // known HTTPS origin once instead, preserving its TLS verification.
+                    // The public legacy API is served over HTTP. The exception is
+                    // limited to the exact requested resource on its official www host.
+                    val publicLegacyApi = target.protocol == "http" && target.host == "www.viaggiatreno.it" &&
+                        target.port in setOf(-1, 80) && target.userInfo == null && target.path == requestedPath &&
+                        target.query == null && target.ref == null
                     if (target.protocol == "http" && target.host == "www.viaggiatreno.it" &&
                         target.port in setOf(-1, 80) && target.userInfo == null &&
-                        url.host == "www.viaggiatreno.it") {
+                        url.host == "www.viaggiatreno.it" && !publicLegacyApi) {
                         target = URL("https", "viaggiatreno.it", url.file)
                     }
-                    if (target.protocol != "https" || target.host.lowercase(Locale.ROOT) !in setOf("www.viaggiatreno.it", "viaggiatreno.it") ||
-                        target.port !in setOf(-1, 443) || target.userInfo != null ||
-                        !target.path.startsWith("/infomobilita/resteasy/viaggiatreno/")) {
+                    val knownHttps = target.protocol == "https" &&
+                        target.host.lowercase(Locale.ROOT) in setOf("www.viaggiatreno.it", "viaggiatreno.it") &&
+                        target.port in setOf(-1, 443) && target.userInfo == null && target.path == requestedPath &&
+                        target.query == null && target.ref == null
+                    if (!publicLegacyApi && !knownHttps) {
                         throw IOException("ViaggiaTreno redirect non consentito da ${url.host}: ${target.protocol}://${target.host}${target.path.take(220)}")
                     }
-                    if (attempt == 3) throw IOException("ViaggiaTreno: troppi reindirizzamenti HTTPS")
+                    if (attempt == 3) throw IOException("ViaggiaTreno: troppi reindirizzamenti")
                     url = target
                 } else {
                     if (status == 204) return@withContext "null"

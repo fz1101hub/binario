@@ -121,7 +121,32 @@ class LiveProviderNetworkTest {
 
     @Test fun viaggiatreno() = runBlocking {
         selected("viaggiatreno")
-        board(ViaggiaTrenoRealtimeAdapter(), "S01700", "Milano Centrale", "S01700")
+        board(ViaggiaTrenoRealtimeAdapter(diagnosticViaggiaTrenoFetcher()), "S01700", "Milano Centrale", "S01700")
+    }
+
+    @Test fun viaggiatrenoRegionalDelayAccuracy() = runBlocking {
+        selected("viaggiatreno")
+        val upstream = diagnosticViaggiaTrenoFetcher()
+        val details = java.util.concurrent.ConcurrentHashMap<String, org.json.JSONObject>()
+        val adapter = ViaggiaTrenoRealtimeAdapter(ViaggiaTrenoRealtimeFetcher { path ->
+            upstream.fetch(path).also { if (path.startsWith("andamentoTreno/") && it.trim().startsWith("{")) details[path] = org.json.JSONObject(it) }
+        })
+        val route = it.binario.app.data.SavedRoute("vt-regional", "Appiano → Roma Ostiense",
+            it.binario.app.data.Station("curated:S08328", "Appiano Proba Petronia", "Roma", railwayCode = "S08328"),
+            it.binario.app.data.Station("curated:S08406", "Roma Ostiense", "Roma", railwayCode = "S08406"))
+        val result = adapter.loadRoute(route, it.binario.app.data.Direction.OUTBOUND, it.binario.app.data.JourneyQuery.now(clock))
+        if (result !is it.binario.app.data.DataResult.Success) fail("ViaggiaTreno regional: $result")
+        val services = (result as it.binario.app.data.DataResult.Success).snapshot.services
+        val verified = services.filter { it.operationalStatusVerified && it.status != it.binario.app.data.ServiceStatus.CANCELLED }
+        assertTrue("ViaggiaTreno regional: no verified operational train", verified.isNotEmpty())
+        verified.forEach { service ->
+            val id = service.id.split(':')
+            val raw = requireNotNull(details["andamentoTreno/${id[1]}/${id[2]}/${id[3]}"])
+            assertEquals("Published ViaggiaTreno delay differs for ${service.number}", raw.getInt("ritardo"), service.officialDelayMinutes)
+        }
+        println("LIVE_ACCEPTANCE ViaggiaTreno exact regional delay: verified=${verified.size}; " +
+            (services.singleOrNull { it.number == "23263" }?.let { "23263 delay=${it.officialDelayMinutes}, verified=${it.operationalStatusVerified}, expected=${it.expectedDeparture}, observed=${it.operationalObservedAtEpochMillis}" }
+                ?: "23263 not present in current source results"))
     }
 
     @Test fun viaggiatrenoMobileHtml() = runBlocking {
@@ -165,6 +190,14 @@ class LiveProviderNetworkTest {
         } catch (error: java.io.IOException) {
             val endpoint = java.net.URI(url)
             throw AssertionError("RFI HTTPS ${endpoint.host}${endpoint.path}: ${error::class.java.simpleName}: ${error.message}", error)
+        }
+    }
+
+    private fun diagnosticViaggiaTrenoFetcher(): ViaggiaTrenoRealtimeFetcher = ViaggiaTrenoRealtimeFetcher { path ->
+        try {
+            HttpViaggiaTrenoRealtimeFetcher().fetch(path)
+        } catch (error: java.io.IOException) {
+            throw AssertionError("ViaggiaTreno public API: ${error::class.java.simpleName}: ${error.message}", error)
         }
     }
 

@@ -5,4 +5,8 @@
             <certificates src="system" />
         </trust-anchors>
     </base-config>
+    <!-- Official public rail API only; no credentials or user account requests. -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">www.viaggiatreno.it</domain>
+    </domain-config>
 </network-security-config>
