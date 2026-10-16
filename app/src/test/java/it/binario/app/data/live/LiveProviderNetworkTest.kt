@@ -1,6 +1,7 @@
 package it.binario.app.data.live
 
 import it.binario.app.data.core.*
+import it.binario.app.data.ServiceStatus
 import it.binario.app.data.gtfs.EmbeddedGtfsRealtimeScheduleResolver
 import it.binario.app.data.gtfs.EmbeddedGtfsPack
 import it.binario.app.data.gtfs.GtfsArtifactDownloader
@@ -137,7 +138,7 @@ class LiveProviderNetworkTest {
         val result = adapter.loadRoute(route, it.binario.app.data.Direction.OUTBOUND, it.binario.app.data.JourneyQuery.now(clock))
         if (result !is it.binario.app.data.DataResult.Success) fail("ViaggiaTreno regional: $result")
         val services = (result as it.binario.app.data.DataResult.Success).snapshot.services
-        val verified = services.filter { it.operationalStatusVerified && it.status != it.binario.app.data.ServiceStatus.CANCELLED }
+        val verified = services.filter { it.operationalStatusVerified && it.status != ServiceStatus.CANCELLED }
         assertTrue("ViaggiaTreno regional: no verified operational train", verified.isNotEmpty())
         verified.forEach { service ->
             val id = service.id.split(':')
