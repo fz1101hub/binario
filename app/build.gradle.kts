@@ -72,7 +72,7 @@ android {
         }
         getByName("release") {
             buildConfigField("boolean", "PERSONAL_REALTIME_SOURCES",
-                providers.gradleProperty("BINARIO_PERSONAL_REALTIME_SOURCES").orElse("false").get())
+                providers.gradleProperty("BINARIO_PERSONAL_REALTIME_SOURCES").orElse("true").get())
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(
@@ -139,4 +139,7 @@ dependencies {
 // limits the forked JUnit VM, not only the Gradle daemon.
 tasks.withType<org.gradle.api.tasks.testing.Test>().configureEach {
     providers.gradleProperty("BINARIO_TEST_MAX_HEAP").orNull?.let { maxHeapSize = it }
+    val liveSources = providers.gradleProperty("BINARIO_LIVE_SOURCE_ACCEPTANCE").orNull
+    if (liveSources == null) exclude("**/LiveProviderNetworkTest*")
+    else systemProperty("binario.live.sources", liveSources)
 }

@@ -27,6 +27,22 @@ class RfiStationBoardAdapterTest {
     )
 
     @Test
+    fun `tabellone live risolve una stazione fuori dalla mappa storica dal catalogo ufficiale`() = runBlocking {
+        val requests = mutableListOf<String>()
+        val adapter = RfiStationBoardAdapter(fetcher = RfiMonitorFetcher { url ->
+            requests += url
+            if (url == RfiStationCatalog.URL) "<select id='ElencoLocalita'><option value='9876'>Nuova Stazione</option></select>"
+            else htmlFixture()
+        }, clock = Clock.fixed(Instant.parse("2026-08-14T12:00:00Z"), ZoneOffset.UTC))
+        val result = adapter.getStationBoard(StationBoardRequest(StationId("curated:nuova"), "Nuova Stazione",
+            from = Instant.parse("2026-08-14T07:00:00Z"), to = Instant.parse("2026-08-14T13:00:00Z"), kind = BoardKind.DEPARTURES))
+        assertTrue(result is ProviderResult.Success)
+        assertEquals(2, requests.size)
+        assertTrue(requests.last().contains("placeId=9876"))
+        assertEquals(2, (result as ProviderResult.Success).value.entries.size)
+    }
+
+    @Test
     fun `trasforma il tabellone RFI in dati live filtrati sulla destinazione`() = runBlocking {
         val adapter = RfiStationBoardAdapter(
             fetcher = RfiMonitorFetcher { htmlFixture() },
@@ -114,7 +130,10 @@ class RfiStationBoardAdapterTest {
     @Test
     fun `rifiuta stazioni RFI senza identificativo verificato`() = runBlocking {
         val unsupported = route.copy(outwardOrigin = Station("stazione-ignota", "Stazione ignota", "Italia"))
-        val result = RfiStationBoardAdapter(fetcher = RfiMonitorFetcher { error("non deve essere chiamato") })
+        val result = RfiStationBoardAdapter(fetcher = RfiMonitorFetcher { url ->
+            assertEquals(RfiStationCatalog.URL, url)
+            "<select id='ElencoLocalita'><option value='1'>Altra stazione</option></select>"
+        })
             .loadRoute(unsupported, Direction.OUTBOUND)
 
         assertTrue(result is it.binario.app.data.DataResult.Failure)

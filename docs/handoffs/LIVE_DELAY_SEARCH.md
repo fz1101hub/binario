@@ -1,6 +1,6 @@
-# Realtime personale e ricerca Appiano–Ostiense
+# Ritardi live su tutte le tratte coperte dalle fonti
 
-L’APK debug personale abilita `PERSONAL_REALTIME_SOURCES` per impostazione predefinita. La precedente build di test ereditava il valore `false` e non soddisfaceva il caso d’uso dei ritardi. La build release conserva l’attivazione personale esplicita; `-PBINARIO_PERSONAL_REALTIME_SOURCES=false` resta disponibile. Le fonti che richiedono credenziali non sono abilitate né contengono segreti nel client.
+Le build personali debug e release abilitano `PERSONAL_REALTIME_SOURCES` per impostazione predefinita. La precedente build di test ereditava il valore `false` e non soddisfaceva il caso d’uso dei ritardi. `-PBINARIO_PERSONAL_REALTIME_SOURCES=false` resta disponibile. Le fonti che richiedono credenziali non sono abilitate né contengono segreti nel client.
 
 Per oggi il graph consulta prima ViaggiaTreno: partenze per codice stazione, quindi dettagli per origine della corsa, numero e giorno. Appiano S08328 → Ostiense S08406 viene riconosciuta fra le fermate anche quando il capolinea è Tiburtina. Il risultato contiene soltanto gli orari pubblicati delle fermate e le previsioni calcolate dal ritardo pubblicato. Un ritardo è operativo solo con rilevazione recente (massimo cinque minuti, tolleranza futura un minuto) e treno partito, oppure cancellazione esplicita. Mancanze e dati vecchi non diventano zero minuti live. Il fallback programmato resta disponibile; le date future non interrogano il realtime diretto.
 
@@ -31,3 +31,14 @@ Gli endpoint ViaggiaTreno sono interfacce pubbliche best-effort, non API open co
 Il secondo test esterno su 053da3f (run 38831466655) ha identificato un redirect dallo URL HTTPS verso lo stesso URL HTTP. Il client non lo segue: tenta soltanto l’altro host noto viaggiatreno.it in HTTPS, con TLS normale, e rifiuta un successivo downgrade. L’esito reale di questo tentativo deve essere verificato sul nuovo SHA. La ricerca consulta prima il tabellone all’ora selezionata e poi un lookback facoltativo per i treni in ritardo; un errore del lookback non elimina un tabellone corrente valido.
 
 Il tentativo su dbfc24f (run 38832668617) è fallito con redirect alla home HTTP. Il messaggio originale non identificava l’host emittente. La variante successiva tenta l’API originale sull’altro host HTTPS anche in quel caso e include l’host emittente nell’errore, per verificare il limite senza attribuzioni presunte.
+
+
+## Copertura comune dei ritardi
+
+La priorità di prodotto è il ritardo live per tutte le tratte coperte: Appiano–Ostiense è un caso di regressione. Il graph collega ora i Trip Updates STA e SNCF al percorso comune di ricerca, widget e worker. Le corse embedded conservano fonte statica, trip_id, data di servizio e coppie stop_id/sequence; vengono risolti soltanto gli aggiornamenti delle corse richieste. Nessuna associazione fra feed diversi o basata sul solo numero commerciale. Osservazioni scadute, future, di altro giorno, fermate NO_DATA/SKIPPED e corse non SCHEDULED non diventano ritardi verificati. Un update solo in arrivo non verifica la partenza. Le previsioni non diventano eventi effettivi.
+
+Il monitor live RFI non è più limitato ai circa venticinque hub della mappa storica: le altre stazioni vengono risolte dal select ElencoLocalita del catalogo ufficiale HTTPS. Match esatto di nome/alias normalizzato, omonimie rifiutate, cache di un giorno e cooldown sugli errori. Il monitor può arricchire una corsa programmata anche quando la destinazione cercata è intermedia; senza un percorso programmato il fallback diretto resta limitato alla destinazione pubblicata dal monitor. Italo usa le stazioni previste dal suo adapter. European Sleeper/JBB conserva il raccordo interno con il proprio feed statico di fallback. Svizzera GTFS-RT, DB e Trenord E015 richiedono credenziali/autorizzazioni e non vengono dichiarati operativi.
+
+Su 9fbbb01 il test Android ViaggiaTreno 38834056109 ha confermato che anche l’host HTTPS senza www rimanda alla home HTTP. Resta un blocco esterno reale; il client non declassa il trasporto e un build verde non lo risolve.
+
+Il workflow manuale `Live source acceptance` esegue test funzionali separati per fonte. Il parametro sources è una lista esplicita fra rfi,sta,sncf,italo,viaggiatreno. RFI verifica il catalogo generico e il monitor Milano Centrale; Italo il monitor Roma Termini; STA e SNCF richiedono aggiornamenti recenti e almeno un match campionato con il GTFS incluso. Questi test non provano l’intera copertura né la presenza di ritardo per ogni corsa. Sono esclusi dalla suite deterministica e non esportano i payload.

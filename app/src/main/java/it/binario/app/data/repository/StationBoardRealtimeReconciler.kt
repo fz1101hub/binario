@@ -230,9 +230,10 @@ class StationBoardRealtimeReconciler(
                 officialDelayMinutes = if (verified) delayMinutes else service.officialDelayMinutes,
                 status = liveStatus ?: service.status,
                 stops = updatedStops,
-                operationalStatusVerified = verified,
-                operationalSourceIds = operationalSources.mapTo(linkedSetOf()) { it.sourceId.value },
-                operationalObservedAtEpochMillis = selectedSources.maxOfOrNull { (it.observedAt ?: it.fetchedAt).toEpochMilli() },
+                operationalStatusVerified = verified || service.operationalStatusVerified,
+                operationalSourceIds = service.operationalSourceIds + operationalSources.map { it.sourceId.value },
+                operationalObservedAtEpochMillis = (selectedSources.map { (it.observedAt ?: it.fetchedAt).toEpochMilli() } +
+                    listOfNotNull(service.operationalObservedAtEpochMillis)).maxOrNull(),
                 routeChange = routeChange,
                 routeChangeSourceIds = if (routeChangeSources.isNotEmpty()) {
                     routeChangeSources.mapTo(linkedSetOf()) { it.sourceId.value }

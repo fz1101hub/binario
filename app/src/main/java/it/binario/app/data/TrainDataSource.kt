@@ -143,6 +143,16 @@ data class TrainStop(
     val routeChange: StopRouteChange = StopRouteChange.NONE
 )
 
+/** Exact native identity retained from the static feed for realtime reconciliation. */
+data class GtfsServiceIdentity(
+    val sourceId: String,
+    val tripId: String,
+    val serviceDate: LocalDate,
+    val stops: List<GtfsStopIdentity>
+)
+
+data class GtfsStopIdentity(val stopId: String, val sequence: Int)
+
 data class TrainService(
     val id: String,
     val number: String,
@@ -176,7 +186,8 @@ data class TrainService(
     val operationalObservedAtEpochMillis: Long? = null,
     /** Operational path change that may override the static GTFS path. */
     val routeChange: OperationalRouteChange? = null,
-    val routeChangeSourceIds: Set<String> = emptySet()
+    val routeChangeSourceIds: Set<String> = emptySet(),
+    val gtfsIdentity: GtfsServiceIdentity? = null
 ) {
     val category: String get() = trainCategory.accessibleLabel
     val displayOperator: String get() = operatorDisplayName?.takeIf(String::isNotBlank) ?: operator.shortLabel

@@ -128,9 +128,17 @@ class SncfGtfsRealtimeAdapter(
         if (!entity.hasTripUpdate()) return@flatMap emptyList()
         val update = entity.tripUpdate
         val tripId = update.trip.tripId.takeIf(String::isNotBlank) ?: return@flatMap emptyList()
+        if (update.trip.scheduleRelationship != GtfsRealtime.TripDescriptor.ScheduleRelationship.SCHEDULED) return@flatMap emptyList()
+        val dateString = update.trip.startDate
+        val serviceDate = dateString.takeIf(String::isNotBlank)?.let {
+            runCatching { java.time.LocalDate.parse(it, java.time.format.DateTimeFormatter.BASIC_ISO_DATE) }.getOrNull()
+        }
+        if (dateString.isNotBlank() && serviceDate == null) return@flatMap emptyList()
         val nativeEntity = entity.id.takeIf(String::isNotBlank) ?: tripId
-        val source = sourceRef(nativeEntity, observedAt)
+        val tripObservedAt = update.timestamp.takeIf { it > 0 }?.let(Instant::ofEpochSecond) ?: observedAt
+        val source = sourceRef(nativeEntity, tripObservedAt)
         update.stopTimeUpdateList.mapNotNull { stop ->
+            if (stop.scheduleRelationship != GtfsRealtime.TripUpdate.StopTimeUpdate.ScheduleRelationship.SCHEDULED) return@mapNotNull null
             val stopId = stop.stopId.takeIf(String::isNotBlank)
             val sequence = stop.stopSequence.takeIf { stop.hasStopSequence() }
             if (stopId == null && sequence == null) return@mapNotNull null
@@ -149,8 +157,9 @@ class SncfGtfsRealtimeAdapter(
                 stopSequence = sequence,
                 predictedAt = epoch?.let { Instant.ofEpochSecond(it).atZone(ZoneId.of("Europe/Paris")) }?.let { SourcedValue(it, valueSource) },
                 officialDelay = delay?.let { SourcedValue(Duration.ofSeconds(it.toLong()), valueSource) },
-                observedAt = observedAt,
-                source = source
+                observedAt = tripObservedAt,
+                source = source,
+                serviceDate = serviceDate
             )
         }
     }

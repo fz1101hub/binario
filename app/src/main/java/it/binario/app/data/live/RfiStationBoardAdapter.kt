@@ -61,7 +61,17 @@ internal class HttpRfiMonitorFetcher : RfiMonitorFetcher {
         try {
             val status = connection.responseCode
             if (status !in 200..299) throw IOException("RFI ha risposto HTTP $status")
-            connection.inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() }
+            connection.inputStream.use { input ->
+                val output = java.io.ByteArrayOutputStream()
+                val buffer = ByteArray(8192)
+                while (true) {
+                    val count = input.read(buffer)
+                    if (count < 0) break
+                    if (output.size() + count > 2 * 1024 * 1024) throw IOException("Risposta RFI troppo grande")
+                    output.write(buffer, 0, count)
+                }
+                output.toString("UTF-8")
+            }
         } finally {
             connection.disconnect()
         }
@@ -156,7 +166,7 @@ class RfiStationBoardAdapter(
         id = SourceId("rfi-station-board"),
         displayName = "RFI — Monitor Arrivi/Partenze",
         capabilities = setOf(ProviderCapability.STATION_BOARD),
-        coverage = CoverageDescriptor(countryCodes = setOf("IT"), description = "Tabelloni partenze delle stazioni RFI configurate"),
+        coverage = CoverageDescriptor(countryCodes = setOf("IT"), description = "Tabelloni partenze delle stazioni presenti nel catalogo ufficiale RFI"),
         accessMode = AccessMode.PUBLIC_BEST_EFFORT,
         ratePolicy = RatePolicy(Duration.ofSeconds(20), defaultTimeToLive = Duration.ofMillis(cacheTtlMillis)),
         schemaVersion = 1
@@ -164,6 +174,7 @@ class RfiStationBoardAdapter(
 
     private val mutex = Mutex()
     private val cache = mutableMapOf<String, CachedSnapshot>()
+    private val stationCatalog = RfiStationCatalog(fetcher, clock)
 
     override suspend fun getStationBoard(request: StationBoardRequest): ProviderResult<it.binario.app.data.core.StationBoard> {
         if (request.kind != BoardKind.DEPARTURES) {
@@ -171,7 +182,8 @@ class RfiStationBoardAdapter(
         }
         val stationName = request.stationName?.takeIf(String::isNotBlank) ?: request.stationId.value
         val placeId = RfiStationIds.placeId(request.stationId.value, stationName)
-            ?: return ProviderResult.Failure(ProviderError(ProviderErrorKind.NOT_SUPPORTED, "Stazione RFI non configurata."))
+            ?: stationCatalog.placeId(listOf(stationName) + request.stationAliases)
+            ?: return ProviderResult.Failure(ProviderError(ProviderErrorKind.NOT_SUPPORTED, "Stazione assente dal catalogo live RFI disponibile."))
         val fetchedAt = clock.instant()
         return try {
             val url = "https://iechub.rfi.it/ArriviPartenze/ArrivalsDepartures/Monitor?placeId=$placeId&arrivals=False"
@@ -222,7 +234,8 @@ class RfiStationBoardAdapter(
         val origin = route.origin(direction)
         val destination = route.destination(direction)
         val placeId = RfiStationIds.placeId(origin)
-            ?: return DataResult.Failure("Il tabellone RFI non è ancora configurato per ${origin.name}.")
+            ?: stationCatalog.placeId(listOf(origin.name) + origin.aliases)
+            ?: return DataResult.Failure("Il catalogo live RFI disponibile non contiene ${origin.name}.")
         val key = "${origin.id}:${destination.id}:${direction.name}"
         val now = clock.millis()
         mutex.withLock {
