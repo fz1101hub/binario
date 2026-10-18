@@ -21,6 +21,30 @@ class LiveProviderNetworkTest {
     private val clock = Clock.systemUTC()
     private val zone = ZoneId.of("Europe/Rome")
 
+    @Test fun romaTerminiBoardAndCrossBorderIdentity() = runBlocking {
+        selected("viaggiatreno")
+        val upstream = diagnosticViaggiaTrenoFetcher()
+        val adapter = ViaggiaTrenoRealtimeAdapter(upstream, clock)
+        val started = System.nanoTime()
+        board(adapter, "S08409", "Roma Termini", "S08409")
+        println("LIVE_ACCEPTANCE Roma Termini board millis=${(System.nanoTime() - started) / 1_000_000}")
+        val now = clock.instant()
+        val result = adapter.getStationBoard(StationBoardRequest(StationId("S01700"), "Milano Centrale", railwayCode = "S01700",
+            from = now.minusSeconds(600), to = now.plusSeconds(8 * 3600), kind = BoardKind.DEPARTURES))
+        val entries = (result as? ProviderResult.Success)?.value?.entries.orEmpty()
+        println("LIVE_ACCEPTANCE Milano destinations=${entries.map { it.publicNumber + ":" + it.destinationOrOriginLabel }}")
+        val candidates = entries.filter { it.destinationOrOriginLabel?.contains(Regex("Locarno|Lugano|Bellinzona|Mendrisio", RegexOption.IGNORE_CASE)) == true }
+        for (entry in candidates.take(3)) {
+            val native = entry.nativeRunIds[SourceId("viaggiatreno")] ?: continue
+            val (origin, number, date) = native.split(':')
+            val run = org.json.JSONObject(upstream.fetch("andamentoTreno/$origin/$number/$date"))
+            val calls = run.optJSONArray("fermate") ?: continue
+            val stops = (0 until calls.length()).mapNotNull(calls::optJSONObject)
+            println("LIVE_ACCEPTANCE Cross-border $number stops=${stops.map { it.optString("id") + ":" + it.optString("stazione") }}")
+            assertEquals("Mendrisio native identity changed", "S13143", stops.singleOrNull { it.optString("stazione").equals("MENDRISIO", true) }?.optString("id"))
+        }
+    }
+
     @Test fun viaggiatrenoGlobalNumber() = runBlocking {
         selected("viaggiatreno")
         val upstream = diagnosticViaggiaTrenoFetcher()
