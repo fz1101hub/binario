@@ -104,7 +104,6 @@
     <string name="station_board_departure_to">A %1$s</string>
     <string name="station_board_arrival_from">Desde %1$s</string>
     <string name="station_board_scheduled_time">Horario programado: %1$s</string>
-    <string name="station_board_scheduled_time_short">prog. %1$s</string>
     <string name="station_board_status_planned">Horario programado; estado en tiempo real no disponible</string>
     <string name="station_board_status_live">Estado en tiempo real: %1$s</string>
     <string name="station_board_status_live_prediction">Actualización en tiempo real: hora prevista %1$s</string>
@@ -330,7 +329,6 @@
     <string name="service_number_route">%1$s · %2$s → %3$s</string>
     <string name="service_scheduled_departure_label">Salida programada</string>
     <string name="expected_time">Previsto: %1$s</string>
-    <string name="service_expected_departure">Salida prevista</string>
     <string name="service_scheduled_departure">Programada: %1$s</string>
     <string name="service_stops_title">Paradas</string>
     <string name="service_data_summary">%1$s · %2$s · %3$s</string>

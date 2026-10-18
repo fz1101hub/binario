@@ -103,7 +103,6 @@
     <string name="station_board_departure_to">To %1$s</string>
     <string name="station_board_arrival_from">From %1$s</string>
     <string name="station_board_scheduled_time">Scheduled time %1$s</string>
-    <string name="station_board_scheduled_time_short">sched. %1$s</string>
     <string name="station_board_status_planned">Scheduled time; live status unavailable</string>
     <string name="station_board_status_live">Live status: %1$s</string>
     <string name="station_board_status_live_prediction">Live update: expected time %1$s</string>
@@ -327,7 +326,6 @@
     <string name="service_number_route">%1$s · %2$s → %3$s</string>
     <string name="service_scheduled_departure_label">Scheduled departure</string>
     <string name="expected_time">Expected %1$s</string>
-    <string name="service_expected_departure">Expected departure</string>
     <string name="service_scheduled_departure">Scheduled %1$s</string>
     <string name="service_stops_title">Stops</string>
     <string name="service_data_summary">%1$s · %2$s · %3$s</string>
