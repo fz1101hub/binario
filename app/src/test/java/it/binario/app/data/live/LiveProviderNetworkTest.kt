@@ -23,20 +23,30 @@ class LiveProviderNetworkTest {
 
     @Test fun viaggiatrenoGlobalNumber() = runBlocking {
         selected("viaggiatreno")
-        val adapter = ViaggiaTrenoRealtimeAdapter(diagnosticViaggiaTrenoFetcher(), clock)
+        val upstream = diagnosticViaggiaTrenoFetcher()
+        var publishedReferences = false
+        val adapter = ViaggiaTrenoRealtimeAdapter(ViaggiaTrenoRealtimeFetcher { path ->
+            upstream.fetch(path).also { body ->
+                if (path.startsWith("cercaNumero")) {
+                    if (body.contains('|')) publishedReferences = true
+                    println("LIVE_ACCEPTANCE ViaggiaTreno autocomplete $path: ${body.take(1200)}")
+                }
+            }
+        }, clock)
         val date = clock.instant().atZone(zone).toLocalDate()
         val request = StationBoardRequest(StationId("global-number-fixture"), "Milano Centrale", railwayCode = "S01700",
-            from = date.atStartOfDay(zone).toInstant(), to = date.plusDays(1).atStartOfDay(zone).toInstant(), kind = BoardKind.DEPARTURES)
+            from = clock.instant(), to = clock.instant().plusSeconds(6 * 3600), kind = BoardKind.DEPARTURES)
         val board = adapter.getStationBoard(request)
         val entries = when (board) { is ProviderResult.Success -> board.value.entries; is ProviderResult.Partial -> board.value.entries; else -> emptyList() }
-        assertTrue("ViaggiaTreno has no published train number to verify: $board", entries.isNotEmpty())
-        for (entry in entries.take(6)) {
-            val query = it.binario.app.data.repository.TrainNumberQuery(entry.publicNumber.orEmpty(), date)
+        val numbers = (entries.mapNotNull { it.publicNumber } + "23263").distinct()
+        for (number in numbers.take(7)) {
+            val query = it.binario.app.data.repository.TrainNumberQuery(number, date)
             val result = adapter.searchByNumber(query)
             val matches = when (result) { is ProviderResult.Success -> result.value; is ProviderResult.Partial -> result.value; else -> emptyList() }
             println("LIVE_ACCEPTANCE ViaggiaTreno global number ${query.number}: result=${result.javaClass.simpleName}, matches=${matches.map { it.service.origin + ":" + it.service.destination + ":stops=" + it.service.stops.size }}")
             if (matches.any { query.matches(it.service.number) && it.service.stops.size >= 2 }) return@runBlocking
         }
+        assumeTrue("ViaggiaTreno explicitly published no current native train references", publishedReferences)
         fail("ViaggiaTreno direct lookup did not resolve any of the currently published numbers")
     }
 
@@ -57,13 +67,16 @@ class LiveProviderNetworkTest {
         }
         println("LIVE_ACCEPTANCE Italo currently published candidate numbers: $numbers")
         assertTrue("Italo published no candidate number for a direct lookup", numbers.isNotEmpty())
+        var onlyEmptyResponses = true
         for (number in numbers.take(8)) {
             val query = it.binario.app.data.repository.TrainNumberQuery(number, clock.instant().atZone(zone).toLocalDate())
             val result = adapter.searchByNumber(query)
             val matches = (result as? ProviderResult.Success)?.value.orEmpty()
+            if (result !is ProviderResult.Success || matches.isNotEmpty()) onlyEmptyResponses = false
             println("LIVE_ACCEPTANCE Italo global number $number: result=${result.javaClass.simpleName}, matches=${matches.map { it.service.origin + ":" + it.service.destination + ":stops=" + it.service.stops.size }}")
             if (matches.any { query.matches(it.service.number) && it.service.stops.size >= 2 }) return@runBlocking
         }
+        assumeTrue("Italo explicitly returned IsEmpty for every currently published candidate", !onlyEmptyResponses)
         fail("Italo direct lookup did not resolve any currently published number")
     }
 

@@ -73,7 +73,7 @@ class ItaloTrainNumberAdapter(
             val actualText = row.text(if (index == 0) "ActualDepartureTime" else "ActualArrivalDateTime") ?: row.text("ActualArrivalTime")
             val actual = if (reached) dateTime(actualText, day)?.takeIf {
                 // Ignore sentinel/default and future actuals; midnight itself is a valid railway time.
-                it.year >= 2000 && !it.isAfter(fetched.atZone(zone).plusMinutes(1)) && !it.isBefore(scheduled.minusHours(6))
+                it.year >= 2000 && !it.isAfter(fetched.atZone(zone).plusMinutes(1)) && !it.isBefore(scheduled.minusMinutes(15))
             } else null
             TimedStop(name, scheduled, actual, row.text("ActualArrivalPlatform"))
         }

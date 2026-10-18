@@ -43,6 +43,18 @@ class ItaloTrainNumberAdapterTest {
             assertNull(train.officialDelayMinutes)
         }
     }
+    @Test fun `placeholder midnight actuals cannot verify an unstarted daytime train`() {
+        val root = payload().apply { getJSONObject("TrainSchedule").apply {
+            getJSONObject("Distruption").put("RunningState", 0).put("DelayAmount", 0)
+            getJSONObject("StazionePartenza").put("ActualDepartureTime", "00:00")
+            getJSONArray("StazioniFerme").getJSONObject(0).put("ActualArrivalDateTime", "2026-10-16T00:00:00")
+        } }
+        val train = ItaloTrainNumberAdapter(clock = clock).parse(root, query, now)!!
+        assertFalse(train.operationalStatusVerified)
+        assertNull(train.officialDelayMinutes)
+        assertTrue(train.stops.all { it.operationalStatusVerified == false })
+    }
+
     @Test fun `wrong number and date cannot substitute a matching run`() {
         val source = ItaloTrainNumberAdapter(clock = clock)
         assertNull(source.parse(payload(), query.copy(number = "9950"), now))
