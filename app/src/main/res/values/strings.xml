@@ -179,6 +179,9 @@
     <string name="search_return_unavailable_message">La fonte non ha restituito il ritorno richiesto.</string>
     <string name="search_return_empty_title">Nessuna soluzione di ritorno</string>
     <string name="search_return_empty_message">Modifica data o ora del ritorno e riprova.</string>
+    <string name="station_board_run_details_title">Dettagli corsa</string>
+    <string name="station_board_run_details_loading">Caricamento delle fermate aggiornate…</string>
+    <string name="station_board_run_details_unavailable">Le fermate complete non sono disponibili da questa fonte. I dati del tabellone restano consultabili qui.</string>
     <string name="station_board_title">Tabellone stazione</string>
     <string name="station_board_section">TABELLONE</string>
     <string name="station_board_departures">Partenze</string>

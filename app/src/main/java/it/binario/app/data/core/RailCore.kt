@@ -292,7 +292,9 @@ data class StationBoardEntry(
     val operatorId: OperatorId? = null,
     val platform: SourcedValue<String>? = null,
     val status: SourcedValue<RunStatus>? = null,
-    val routeChange: SourcedValue<OperationalRouteChange>? = null
+    val routeChange: SourcedValue<OperationalRouteChange>? = null,
+    /** Exact source identity for opening this run without guessing from a train number. */
+    val nativeRunIds: Map<SourceId, String> = emptyMap()
 )
 
 data class StationBoard(

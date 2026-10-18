@@ -83,6 +83,10 @@ object BinarioDataGraph {
     fun stationBoardDisplayProviders(): List<StationBoardProvider> =
         activeProviders(localOnlyPolicy.stationBoardDisplayProviders(), ProviderCapability.STATION_BOARD)
 
+    fun stationBoardRunDetailService(): StationBoardRunDetailService = StationBoardRunDetailService(
+        activeProviders(localOnlyPolicy.stationBoardRunDetailProviders(), ProviderCapability.TRAIN_RUN_REALTIME)
+    )
+
     fun alertProviders(): List<AlertProvider> =
         activeProviders(localOnlyPolicy.alertProviders(), ProviderCapability.SERVICE_ALERTS)
 

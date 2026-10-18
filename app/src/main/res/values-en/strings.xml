@@ -176,6 +176,9 @@
     <string name="search_return_unavailable_message">The source did not return the requested return journey.</string>
     <string name="search_return_empty_title">No return options</string>
     <string name="search_return_empty_message">Change the return date or time and try again.</string>
+    <string name="station_board_run_details_title">Train details</string>
+    <string name="station_board_run_details_loading">Loading updated stops…</string>
+    <string name="station_board_run_details_unavailable">The complete stop list is unavailable from this source. You can still view the station board information here.</string>
     <string name="station_board_title">Station board</string>
     <string name="station_board_section">BOARD</string>
     <string name="station_board_departures">Departures</string>

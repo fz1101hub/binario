@@ -12,6 +12,7 @@ import it.binario.app.data.live.ViaggiaTrenoRealtimeAdapter
 import it.binario.app.data.planned.RfiProgrammedStationBoardAdapter
 import it.binario.app.data.planned.RfiProgrammedTimetableAdapter
 import it.binario.app.data.planned.RfiSupplementalHubTimetableAdapter
+import it.binario.app.data.repository.StationBoardRunDetailProvider
 import it.binario.app.data.provider.AlertProvider
 import it.binario.app.data.provider.StationBoardProvider
 import it.binario.app.data.provider.TripUpdateProvider
@@ -72,6 +73,9 @@ object LocalOnlyRailDataPolicy {
      */
     fun stationBoardDisplayProviders(): List<StationBoardProvider> =
         listOf(rfiProgrammedBoard) + stationBoardProviders()
+
+    fun stationBoardRunDetailProviders(): List<StationBoardRunDetailProvider> =
+        if (BuildConfig.PERSONAL_REALTIME_SOURCES) listOf(viaggiaTrenoBoard) else emptyList()
 
     fun alertProviders(): List<AlertProvider> = listOf(
         rfiAlerts,

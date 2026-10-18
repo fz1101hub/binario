@@ -19,6 +19,66 @@ class ViaggiaTrenoRealtimeAdapterTest {
         Station("curated:S08406", "Roma Ostiense", "Roma", railwayCode = "S08406"))
     private val runDate = query.serviceDate.atStartOfDay(zone).toInstant().toEpochMilli()
 
+    @Test fun `station board retains the native identity and opens the full run including past stops`() = runBlocking {
+        val adapter = adapter()
+        val request = it.binario.app.data.provider.StationBoardRequest(
+            it.binario.app.data.core.StationId(route.outwardOrigin.id), route.outwardOrigin.name,
+            railwayCode = route.outwardOrigin.railwayCode, from = now, to = now.plusSeconds(3600),
+            kind = it.binario.app.data.core.BoardKind.DEPARTURES)
+        val board = (adapter.getStationBoard(request) as it.binario.app.data.provider.ProviderResult.Success).value
+        val entry = board.entries.single()
+        assertEquals("S08001:12345:$runDate", entry.nativeRunIds[it.binario.app.data.core.SourceId("viaggiatreno")])
+        val details = (adapter.getStationBoardRun(route.outwardOrigin, request.kind, entry) as it.binario.app.data.provider.ProviderResult.Success).value
+        assertEquals(listOf("Viterbo", "APPIANO", "Roma Trastevere", "ROMA OSTIENSE", "Roma Tiburtina"), details.stops.map { it.station })
+        assertEquals(entry.scheduledTime.plusMinutes(6), details.entry.expectedTime?.value)
+        assertEquals(now.minusSeconds(30), details.observedAt)
+    }
+
+    @Test fun `arrival board uses arrival time origin label and arrival detail`() = runBlocking {
+        val adapter = ViaggiaTrenoRealtimeAdapter(ViaggiaTrenoRealtimeFetcher { path ->
+            if (path.startsWith("arrivi/")) JSONArray().put(JSONObject().put("numeroTreno", 12345).put("codOrigine", "S08001")
+                .put("dataPartenzaTreno", runDate).put("orarioArrivo", now.plusSeconds(1800).toEpochMilli())
+                .put("origine", "Viterbo").put("destinazione", "Roma Tiburtina").put("ritardo", 6)
+                .put("ultimoRilev", now.minusSeconds(30).toEpochMilli()).put("binarioEffettivoArrivoDescrizione", "2")).toString()
+            else run().toString()
+        }, clock)
+        val request = it.binario.app.data.provider.StationBoardRequest(
+            it.binario.app.data.core.StationId(route.outwardDestination.id), route.outwardDestination.name,
+            railwayCode = route.outwardDestination.railwayCode, from = now, to = now.plusSeconds(3600),
+            kind = it.binario.app.data.core.BoardKind.ARRIVALS)
+        val entry = (adapter.getStationBoard(request) as it.binario.app.data.provider.ProviderResult.Success).value.entries.single()
+        assertEquals("Viterbo", entry.destinationOrOriginLabel)
+        assertEquals("2", entry.platform?.value)
+        assertEquals("10:30", entry.scheduledTime.toLocalTime().toString())
+        val details = (adapter.getStationBoardRun(route.outwardDestination, request.kind, entry) as it.binario.app.data.provider.ProviderResult.Success).value
+        assertEquals(entry.scheduledTime.plusMinutes(6), details.entry.expectedTime?.value)
+    }
+
+    @Test fun `details cannot substitute a different service date station time or public number`() = runBlocking {
+        val adapter = adapter()
+        val request = it.binario.app.data.provider.StationBoardRequest(it.binario.app.data.core.StationId(route.outwardOrigin.id), route.outwardOrigin.name,
+            railwayCode = route.outwardOrigin.railwayCode, from = now, to = now.plusSeconds(3600), kind = it.binario.app.data.core.BoardKind.DEPARTURES)
+        val entry = (adapter.getStationBoard(request) as it.binario.app.data.provider.ProviderResult.Success).value.entries.single()
+        for (changed in listOf(entry.copy(publicNumber = "99999"), entry.copy(scheduledTime = entry.scheduledTime.plusDays(1)),
+            entry.copy(scheduledTime = entry.scheduledTime.plusMinutes(1)))) {
+            assertTrue(adapter.getStationBoardRun(route.outwardOrigin, request.kind, changed) is it.binario.app.data.provider.ProviderResult.Failure)
+        }
+        assertTrue(adapter.getStationBoardRun(route.outwardDestination, request.kind, entry) is it.binario.app.data.provider.ProviderResult.Failure)
+        assertTrue(adapter(run = run().put("dataPartenzaTreno", runDate - 86_400_000))
+            .getStationBoardRun(route.outwardOrigin, request.kind, entry) is it.binario.app.data.provider.ProviderResult.Failure)
+    }
+
+    @Test fun `missing fresh run observations do not show the cached board prediction as live in details`() = runBlocking {
+        val adapter = adapter(run = run().put("oraUltimoRilevamento", now.minusSeconds(600).toEpochMilli()))
+        val request = it.binario.app.data.provider.StationBoardRequest(it.binario.app.data.core.StationId(route.outwardOrigin.id), route.outwardOrigin.name,
+            railwayCode = route.outwardOrigin.railwayCode, from = now, to = now.plusSeconds(3600), kind = it.binario.app.data.core.BoardKind.DEPARTURES)
+        val entry = (adapter.getStationBoard(request) as it.binario.app.data.provider.ProviderResult.Success).value.entries.single()
+        val details = (adapter.getStationBoardRun(route.outwardOrigin, request.kind, entry) as it.binario.app.data.provider.ProviderResult.Success).value
+        assertNull(details.entry.expectedTime)
+        assertNull(details.entry.status)
+        assertTrue(details.stops.all { it.operationalStatusVerified == false })
+    }
+
     @Test fun `il refresh dopo trenta secondi vede il nuovo ritardo anche con latenza del dettaglio`() = runBlocking {
         val ticks = java.util.concurrent.atomic.AtomicLong(now.toEpochMilli())
         var published = 0

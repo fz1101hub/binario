@@ -18,8 +18,17 @@ import java.time.Clock
 import java.time.Duration
 import java.time.Instant
 import java.util.Locale
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.last
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.coroutineScope
 
 /**
@@ -35,7 +44,9 @@ class StationBoardAggregateService(
     private val clock: Clock = Clock.systemUTC(),
     private val window: Duration = Duration.ofHours(6),
     private val identityTolerance: Duration = Duration.ofMinutes(5),
-    private val conflictTolerance: Duration = Duration.ofMinutes(5)
+    private val conflictTolerance: Duration = Duration.ofMinutes(5),
+    private val providerTimeoutMillis: Long = 12_000L,
+    private val providerDispatcher: CoroutineDispatcher = Dispatchers.IO
 ) {
     val hasProviders: Boolean get() = providers.isNotEmpty()
 
@@ -43,50 +54,65 @@ class StationBoardAggregateService(
         station: Station,
         kind: BoardKind = BoardKind.DEPARTURES,
         from: Instant = clock.instant()
-    ): StationBoardAggregateResult {
+    ): StationBoardAggregateResult = observe(station, kind, from).last()
+
+    /** Publish useful rows immediately; optional/slow sources must not hold the board blank. */
+    fun observe(
+        station: Station,
+        kind: BoardKind = BoardKind.DEPARTURES,
+        from: Instant = clock.instant()
+    ): Flow<StationBoardAggregateResult> = flow {
         if (providers.isEmpty()) {
-            return StationBoardAggregateResult.Unavailable(
-                "Nessuna fonte tabellone autorizzata è attiva in questa build."
-            )
+            emit(StationBoardAggregateResult.Unavailable("Nessuna fonte tabellone autorizzata è attiva in questa build."))
+            return@flow
         }
-
         val request = StationBoardRequest(
-            stationId = StationId(station.id),
-            stationName = station.name,
-            stationAliases = station.aliases,
-            railwayCode = station.railwayCode,
-            from = from.minus(Duration.ofMinutes(10)),
-            to = from.plus(window),
-            kind = kind
+            stationId = StationId(station.id), stationName = station.name,
+            stationAliases = station.aliases, railwayCode = station.railwayCode,
+            from = from.minus(Duration.ofMinutes(10)), to = from.plus(window), kind = kind
         )
-
-        val attempts = coroutineScope {
-            providers.map { provider ->
-                async {
-                    when (val result = provider.getStationBoard(request)) {
-                        is ProviderResult.Success -> ProviderAttempt.Board(
-                            providerName = provider.descriptor.displayName,
-                            board = result.value,
-                            warnings = emptySet()
-                        )
-                        is ProviderResult.Partial -> ProviderAttempt.Board(
-                            providerName = provider.descriptor.displayName,
-                            board = result.value,
-                            warnings = result.warnings
-                        )
-                        is ProviderResult.Failure -> ProviderAttempt.Failure(
-                            providerName = provider.descriptor.displayName,
-                            message = result.error.safeMessage
-                        )
-                        is ProviderResult.NotModified -> ProviderAttempt.Failure(
-                            providerName = provider.descriptor.displayName,
-                            message = "La fonte non ha restituito un nuovo tabellone."
-                        )
-                    }
-                }
-            }.awaitAll()
+        coroutineScope {
+            val completed = Channel<Pair<Int, ProviderAttempt>>(providers.size)
+            providers.forEachIndexed { index, provider ->
+                launch(providerDispatcher) { completed.send(index to query(provider, request)) }
+            }
+            val attempts = arrayOfNulls<ProviderAttempt>(providers.size)
+            repeat(providers.size) { completedCount ->
+                val (index, attempt) = completed.receive()
+                attempts[index] = attempt
+                val result = aggregate(station, request, attempts.filterNotNull())
+                val complete = completedCount == providers.lastIndex
+                if (result is StationBoardAggregateResult.Success) {
+                    emit(result.copy(isComplete = complete))
+                } else if (complete) emit(result)
+            }
         }
+    }.flowOn(providerDispatcher)
 
+    private suspend fun query(provider: StationBoardProvider, request: StationBoardRequest): ProviderAttempt {
+        return try {
+            withTimeout(providerTimeoutMillis) {
+                when (val result = provider.getStationBoard(request)) {
+                    is ProviderResult.Success -> ProviderAttempt.Board(provider.descriptor.displayName, result.value, emptySet())
+                    is ProviderResult.Partial -> ProviderAttempt.Board(provider.descriptor.displayName, result.value, result.warnings)
+                    is ProviderResult.Failure -> ProviderAttempt.Failure(provider.descriptor.displayName, result.error.safeMessage,
+                        unsupported = result.error.kind == it.binario.app.data.provider.ProviderErrorKind.NOT_SUPPORTED)
+                    is ProviderResult.NotModified -> ProviderAttempt.Failure(provider.descriptor.displayName, "La fonte non ha restituito un nuovo tabellone.")
+                }
+            }
+        } catch (_: TimeoutCancellationException) {
+            ProviderAttempt.Failure(provider.descriptor.displayName, "La fonte non ha risposto in tempo.")
+        } catch (error: CancellationException) { throw error }
+        catch (_: Exception) {
+            ProviderAttempt.Failure(provider.descriptor.displayName, "La fonte non è momentaneamente disponibile.")
+        }
+    }
+
+    private fun aggregate(
+        station: Station,
+        request: StationBoardRequest,
+        attempts: List<ProviderAttempt>
+    ): StationBoardAggregateResult {
         val returnedBoards = attempts.filterIsInstance<ProviderAttempt.Board>()
         val invalidBoards = returnedBoards.filter { attempt ->
             attempt.board.stationId != request.stationId || attempt.board.kind != request.kind
@@ -128,6 +154,9 @@ class StationBoardAggregateService(
 
         val warnings = buildSet {
             boards.flatMapTo(this) { it.warnings }
+            if (attempts.filterIsInstance<ProviderAttempt.Failure>().any { !it.unsupported }) {
+                add(ProviderWarning.REALTIME_UNAVAILABLE)
+            }
             if (invalidBoards.isNotEmpty() || identityAmbiguous) add(ProviderWarning.IDENTITY_AMBIGUOUS)
             if (sourceConflict) add(ProviderWarning.SOURCE_CONFLICT)
             if (entries.any { it.routeChange?.value?.kind == RouteChangeKind.REPLACEMENT_SERVICE }) {
@@ -138,7 +167,7 @@ class StationBoardAggregateService(
         return StationBoardAggregateResult.Success(
             StationBoardAggregate(
                 station = station,
-                kind = kind,
+                kind = request.kind,
                 entries = entries,
                 providerNames = boards.map { it.providerName }.distinct(),
                 warnings = warnings,
@@ -264,7 +293,8 @@ class StationBoardAggregateService(
             expectedTime = expected,
             platform = platform,
             status = status,
-            routeChange = routeChange
+            routeChange = routeChange,
+            nativeRunIds = group.flatMap { it.entry.nativeRunIds.entries }.associate { it.key to it.value }
         )
     }
 
@@ -347,10 +377,19 @@ data class StationBoardAggregate(
     val providerNames: List<String>,
     val warnings: Set<ProviderWarning>,
     val fetchedAt: Instant
+) {
+    fun withoutExpiredObservations(now: Instant): StationBoardAggregate = copy(entries = entries.map { it.withoutExpiredObservations(now) })
+}
+
+fun StationBoardEntry.withoutExpiredObservations(now: Instant): StationBoardEntry = copy(
+    expectedTime = expectedTime?.takeIf { it.source.expiresAt?.isAfter(now) != false },
+    platform = platform?.takeIf { it.source.expiresAt?.isAfter(now) != false },
+    status = status?.takeIf { it.source.expiresAt?.isAfter(now) != false },
+    routeChange = routeChange?.takeIf { it.source.expiresAt?.isAfter(now) != false }
 )
 
 sealed interface StationBoardAggregateResult {
-    data class Success(val board: StationBoardAggregate) : StationBoardAggregateResult
+    data class Success(val board: StationBoardAggregate, val isComplete: Boolean = true) : StationBoardAggregateResult
     data class Unavailable(val message: String) : StationBoardAggregateResult
 }
 
@@ -363,7 +402,8 @@ private sealed interface ProviderAttempt {
 
     data class Failure(
         val providerName: String,
-        val message: String
+        val message: String,
+        val unsupported: Boolean = false
     ) : ProviderAttempt
 }
 

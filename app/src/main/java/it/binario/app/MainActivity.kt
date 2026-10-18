@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -40,6 +41,7 @@ import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.BrightnessAuto
 import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Info
@@ -65,6 +67,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -88,6 +91,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.pluralStringResource
@@ -95,6 +99,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontFamily
@@ -119,6 +125,7 @@ import it.binario.app.data.TrainCategory
 import it.binario.app.data.TrainService
 import it.binario.app.data.TrainStop
 import it.binario.app.data.accessibleUpdateTime
+import it.binario.app.data.repository.StationBoardRunDetails
 import it.binario.app.data.core.BoardKind
 import it.binario.app.data.core.OperationalRouteChange
 import it.binario.app.data.core.RunStatus
@@ -282,12 +289,14 @@ private fun BinarioApp(
     var stopAlarmFeedback by rememberSaveable { mutableStateOf<String?>(null) }
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
-    LaunchedEffect(lifecycleOwner, screen) {
+    LaunchedEffect(lifecycleOwner, screen, operationsSectionName) {
         if (screen in setOf(Screen.RESULTS, Screen.DETAIL, Screen.OPERATIONS)) {
             lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 while (true) {
                     delay(30_000)
-                    viewModel.refreshLiveIfIdle()
+                    if (screen == Screen.OPERATIONS && operationsSectionName == OperationsSection.STATIONS.name) {
+                        viewModel.refreshStationBoardIfIdle()
+                    } else viewModel.refreshLiveIfIdle()
                 }
             }
         }
@@ -455,7 +464,11 @@ private fun BinarioApp(
                         Icon(Icons.Default.Palette, contentDescription = stringResource(R.string.action_choose_theme, themeMode.localizedLabel()))
                     }
                     if (screen == Screen.OPERATIONS || screen == Screen.RESULTS || screen == Screen.DETAIL) {
-                        IconButton(onClick = viewModel::refresh) {
+                        IconButton(onClick = {
+                            if (screen == Screen.OPERATIONS && operationsSectionName == OperationsSection.STATIONS.name) {
+                                viewModel.refreshStationBoardIfIdle()
+                            } else viewModel.refresh()
+                        }) {
                             Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.action_refresh_rail_information))
                         }
                     }
@@ -1325,7 +1338,19 @@ private fun RouteResultsScreen(modifier: Modifier, viewModel: TrainViewModel, op
 }
 
 @Composable
-private fun StationBoardScreen(modifier: Modifier, viewModel: TrainViewModel) {
+internal fun StationBoardScreen(modifier: Modifier, viewModel: TrainViewModel) {
+    LaunchedEffect(Unit) { viewModel.refreshStationBoardIfIdle() }
+    viewModel.selectedBoardEntry?.let { selected ->
+        StationBoardRunDetailsSheet(
+            station = viewModel.stationBoardStation?.name.orEmpty(),
+            entry = viewModel.stationBoardRunDetails?.entry ?: selected,
+            kind = viewModel.stationBoardKind,
+            details = viewModel.stationBoardRunDetails,
+            state = viewModel.stationBoardRunRefreshState,
+            onRefresh = viewModel::refreshStationBoardRun,
+            onDismiss = viewModel::closeStationBoardRun
+        )
+    }
     var stationText by rememberSaveable(viewModel.stationBoardStation?.id) {
         mutableStateOf(viewModel.stationBoardStation?.name.orEmpty())
     }
@@ -1350,7 +1375,8 @@ private fun StationBoardScreen(modifier: Modifier, viewModel: TrainViewModel) {
         else locationMessage = resources.getString(R.string.location_permission_denied)
     }
 
-    val selectedStation = viewModel.stationFromName(stationText)
+    val selectedStation = viewModel.stationBoardStation?.takeIf { it.name.equals(stationText.trim(), ignoreCase = true) }
+        ?: viewModel.stationFromName(stationText)
     val board = viewModel.stationBoard?.takeIf { current ->
         selectedStation != null &&
             current.station.id == selectedStation.id &&
@@ -1358,7 +1384,7 @@ private fun StationBoardScreen(modifier: Modifier, viewModel: TrainViewModel) {
     }
 
     LazyColumn(
-        modifier = modifier.fillMaxSize(),
+        modifier = modifier.fillMaxSize().testTag("station-board-list"),
         verticalArrangement = Arrangement.spacedBy(0.dp)
     ) {
         item {
@@ -1409,6 +1435,9 @@ private fun StationBoardScreen(modifier: Modifier, viewModel: TrainViewModel) {
                         Text(stringResource(if (board == null) R.string.station_board_load else R.string.station_board_refresh))
                     }
 
+                    if (viewModel.stationBoardRefreshState == RefreshState.LOADING) {
+                        LinearProgressIndicator(Modifier.fillMaxWidth())
+                    }
                     Text(stringResource(R.string.station_board_local_monitoring), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         items(StationMonitorMode.entries) { mode ->
@@ -1457,7 +1486,7 @@ private fun StationBoardScreen(modifier: Modifier, viewModel: TrainViewModel) {
             }
         } else {
             when {
-                viewModel.stationBoardRefreshState == RefreshState.LOADING && board == null -> item {
+                viewModel.stationBoardRefreshState == RefreshState.LOADING && board?.entries.isNullOrEmpty() -> item {
                     SearchInfoState(stringResource(R.string.station_board_loading_title), stringResource(R.string.station_board_loading_message))
                 }
                 viewModel.stationBoardRefreshState == RefreshState.ERROR && board == null -> item {
@@ -1507,7 +1536,7 @@ private fun StationBoardScreen(modifier: Modifier, viewModel: TrainViewModel) {
                             ).joinToString("|")
                         }
                     ) { entry ->
-                        StationBoardEntryRow(entry, board.kind)
+                        StationBoardEntryRow(entry, board.kind, onOpen = { viewModel.openStationBoardRun(entry) })
                         HorizontalDivider(
                             modifier = Modifier.padding(start = 20.dp),
                             color = MaterialTheme.colorScheme.outlineVariant
@@ -1565,7 +1594,7 @@ private fun StationBoardScreen(modifier: Modifier, viewModel: TrainViewModel) {
 }
 
 @Composable
-internal fun StationBoardEntryRow(entry: StationBoardEntry, kind: BoardKind) {
+internal fun StationBoardEntryRow(entry: StationBoardEntry, kind: BoardKind, onOpen: (() -> Unit)? = null) {
     val scheduled = entry.scheduledTime.withZoneSameInstant(BOARD_ZONE)
     val expected = entry.expectedTime?.value?.withZoneSameInstant(BOARD_ZONE)
     val delayedMinutes = expected?.let {
@@ -1602,7 +1631,14 @@ internal fun StationBoardEntryRow(entry: StationBoardEntry, kind: BoardKind) {
     Row(
         Modifier
             .fillMaxWidth()
-            .clearAndSetSemantics { contentDescription = accessibilityDescription }
+            .then(if (onOpen != null) Modifier.clickable(role = Role.Button, onClick = onOpen) else Modifier)
+            .clearAndSetSemantics {
+                contentDescription = accessibilityDescription
+                if (onOpen != null) {
+                    role = Role.Button
+                    onClick { onOpen(); true }
+                }
+            }
             .padding(horizontal = 20.dp, vertical = 12.dp),
         verticalAlignment = Alignment.Top,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -1653,6 +1689,61 @@ internal fun StationBoardEntryRow(entry: StationBoardEntry, kind: BoardKind) {
             ) {
                 Text(stringResource(R.string.station_board_platform, it), modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp), fontWeight = FontWeight.Bold)
             }
+        }
+        if (onOpen != null) {
+            Icon(Icons.Default.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+internal fun StationBoardRunDetailsSheet(
+    station: String,
+    entry: StationBoardEntry,
+    kind: BoardKind,
+    details: StationBoardRunDetails?,
+    state: RefreshState,
+    onRefresh: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        LazyColumn(Modifier.fillMaxWidth().fillMaxHeight(0.9f).testTag("station-run-details")) {
+            item {
+                Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(stringResource(R.string.station_board_run_details_title), style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                        TextButton(onClick = onDismiss) { Text(stringResource(R.string.planned_journey_close)) }
+                    }
+                    Text(station, style = MaterialTheme.typography.titleMedium)
+                    if (details != null) {
+                        Text("${details.origin} → ${details.destination}", style = MaterialTheme.typography.bodyLarge)
+                        Text(details.observedAt?.let {
+                            stringResource(R.string.provider_updated_at, details.providerName, accessibleUpdateTime(it.toEpochMilli()))
+                        } ?: details.providerName, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+                StationBoardEntryRow(entry, kind)
+                TextButton(onClick = onRefresh, enabled = state != RefreshState.LOADING, modifier = Modifier.padding(horizontal = 12.dp)) {
+                    Text(stringResource(R.string.action_refresh))
+                }
+                if (state == RefreshState.LOADING) {
+                    LinearProgressIndicator(Modifier.fillMaxWidth())
+                    Text(stringResource(R.string.station_board_run_details_loading), modifier = Modifier.padding(20.dp))
+                } else if (details == null) {
+                    Text(stringResource(R.string.station_board_run_details_unavailable), modifier = Modifier.padding(20.dp),
+                        style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            if (details != null) {
+                item { Text(stringResource(R.string.service_stops_title), modifier = Modifier.padding(20.dp), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }
+                items(details.stops) { stop ->
+                    StopTimelineRow(stop.station, stop.expected, stop.scheduled, stop.delayMinutes, stop.platform, stop.completed,
+                        operationalStatusVerified = stop.operationalStatusVerified == true, routeChange = stop.routeChange, onSetAlarm = null)
+                }
+            }
+            item { Spacer(Modifier.height(24.dp)) }
         }
     }
 }
@@ -2677,7 +2768,7 @@ internal fun StopTimelineRow(
     completed: Boolean,
     operationalStatusVerified: Boolean,
     routeChange: StopRouteChange,
-    onSetAlarm: () -> Unit
+    onSetAlarm: (() -> Unit)?
 ) {
     val changeLabel = when (routeChange) {
         StopRouteChange.NONE -> ""
@@ -2734,7 +2825,7 @@ internal fun StopTimelineRow(
             if (operationalStatusVerified && expected != scheduled) {
                 Text(stringResource(R.string.expected_time_short, expected), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            if (!completed) {
+            if (!completed && onSetAlarm != null) {
                 TextButton(onClick = onSetAlarm, contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)) {
                     Text(stringResource(R.string.action_stop_alarm))
                 }

@@ -27,6 +27,10 @@ import it.binario.app.data.repository.BinarioDataGraph
 import it.binario.app.data.repository.StationBoardAggregate
 import it.binario.app.data.repository.StationBoardAggregateResult
 import it.binario.app.data.repository.StationBoardAggregateService
+import it.binario.app.data.repository.StationBoardRunDetailService
+import it.binario.app.data.repository.StationBoardRunDetails
+import it.binario.app.data.repository.withoutExpiredObservations
+import it.binario.app.data.core.StationBoardEntry
 import it.binario.app.data.TrainService
 import it.binario.app.data.core.BoardKind
 import it.binario.app.data.provider.ProviderWarning
@@ -56,7 +60,9 @@ data class ServiceMonitor(val number: String, val label: String)
 class TrainViewModel @JvmOverloads constructor(
     application: Application,
     /** Widget configuration needs local catalog/search only, never startup refresh or Wear publication. */
-    private val enableStartupEffects: Boolean = true
+    private val enableStartupEffects: Boolean = true,
+    private val stationBoardService: StationBoardAggregateService = StationBoardAggregateService(BinarioDataGraph.stationBoardDisplayProviders()),
+    private val stationBoardDetailsService: StationBoardRunDetailService = BinarioDataGraph.stationBoardRunDetailService()
 ) : AndroidViewModel(application) {
     private companion object {
         const val STATION_SUGGESTION_DEBOUNCE_MILLIS = 180L
@@ -70,7 +76,6 @@ class TrainViewModel @JvmOverloads constructor(
     private val mobilityPreferencesStore = MobilityPreferencesStore(application)
     private val customStationStore = CustomStationStore(application)
     private val dataSource: TrainDataSource = BinarioDataGraph.routeDataSource(application)
-    private val stationBoardService = StationBoardAggregateService(BinarioDataGraph.stationBoardDisplayProviders())
     private val curatedStationCatalog = EmbeddedCuratedRailStationCatalog(
         openAsset = { assetPath -> application.assets.open(assetPath) }
     )
@@ -97,6 +102,16 @@ class TrainViewModel @JvmOverloads constructor(
         private set
     var stationBoardMessages by mutableStateOf<List<UiMessage>>(emptyList())
         private set
+
+    var selectedBoardEntry by mutableStateOf<StationBoardEntry?>(null)
+        private set
+    var stationBoardRunDetails by mutableStateOf<StationBoardRunDetails?>(null)
+        private set
+    var stationBoardRunRefreshState by mutableStateOf(RefreshState.IDLE)
+        private set
+    private var stationBoardJob: Job? = null
+    private var stationBoardRunJob: Job? = null
+    private var stationBoardRunRequestId = 0L
 
     var savedRoutes by mutableStateOf(pinnedFirst(routeStore.routes(stations)))
         private set
@@ -298,53 +313,78 @@ class TrainViewModel @JvmOverloads constructor(
 
     fun selectStationBoardStation(station: Station) {
         val canonical = canonicalStation(station)
-        if (stationBoardStation?.id == canonical.id) return
-        stationBoardRequestId += 1
-        stationBoardStation = canonical
-        stationBoard = null
-        stationBoardRefreshState = RefreshState.IDLE
-        stationBoardMessages = emptyList()
+        if (stationBoardStation?.id != canonical.id) loadStationBoard(canonical, stationBoardKind)
     }
 
-    fun loadStationBoard(
-        station: Station? = stationBoardStation,
-        kind: BoardKind = stationBoardKind
-    ) {
-        val requestedStation = station ?: return
-        val canonical = canonicalStation(requestedStation)
-        val sameBoardContext = stationBoard?.let { current ->
-            current.station.id == canonical.id && current.kind == kind
-        } == true
+    fun loadStationBoard(station: Station? = stationBoardStation, kind: BoardKind = stationBoardKind) {
+        val canonical = canonicalStation(station ?: return)
+        val sameContext = stationBoardStation?.id == canonical.id && stationBoardKind == kind
+        if (sameContext && stationBoardJob?.isActive == true) return
+        val requestId = ++stationBoardRequestId
+        stationBoardJob?.cancel()
+        if (!sameContext) {
+            stationBoard = null
+            closeStationBoardRun()
+        }
         stationBoardStation = canonical
         stationBoardKind = kind
-        if (!sameBoardContext) stationBoard = null
         stationBoardRefreshState = RefreshState.LOADING
         stationBoardMessages = emptyList()
-        val requestId = ++stationBoardRequestId
-
-        viewModelScope.launch {
-            when (val result = stationBoardService.load(canonical, kind)) {
-                is StationBoardAggregateResult.Success -> {
-                    if (requestId != stationBoardRequestId) return@launch
-                    stationBoard = result.board
-                    stationBoardRefreshState = RefreshState.SUCCESS
-                    stationBoardMessages = result.board.warnings
-                        .map { UiMessage(it.stationBoardWarningKey()) }
-                        .distinct()
-                }
-                is StationBoardAggregateResult.Unavailable -> {
-                    if (requestId != stationBoardRequestId) return@launch
-                    stationBoard = null
-                    stationBoardRefreshState = RefreshState.ERROR
-                    stationBoardMessages = listOf(UiMessage(UiMessageKey.STATION_BOARD_UNAVAILABLE))
+        stationBoardJob = viewModelScope.launch {
+            stationBoardService.observe(canonical, kind).collect { result ->
+                if (requestId != stationBoardRequestId) return@collect
+                when (result) {
+                    is StationBoardAggregateResult.Success -> {
+                        stationBoard = result.board
+                        stationBoardRefreshState = if (result.isComplete) RefreshState.SUCCESS else RefreshState.LOADING
+                        stationBoardMessages = result.board.warnings.map { UiMessage(it.stationBoardWarningKey()) }.distinct()
+                    }
+                    is StationBoardAggregateResult.Unavailable -> {
+                        // Keep the existing rows during a transient outage, never stale live claims.
+                        stationBoard = stationBoard?.withoutExpiredObservations(java.time.Instant.now())
+                        stationBoardRefreshState = RefreshState.ERROR
+                        stationBoardMessages = listOf(UiMessage(UiMessageKey.STATION_BOARD_UNAVAILABLE))
+                    }
                 }
             }
         }
     }
 
-    fun openStationBoard(station: Station, kind: BoardKind = BoardKind.DEPARTURES) {
-        selectStationBoardStation(station)
-        loadStationBoard(station, kind)
+    fun openStationBoard(station: Station, kind: BoardKind = BoardKind.DEPARTURES) = loadStationBoard(station, kind)
+
+    fun refreshStationBoardIfIdle() {
+        if (stationBoardJob?.isActive != true) loadStationBoard()
+        if (selectedBoardEntry != null && stationBoardRunJob?.isActive != true) refreshStationBoardRun()
+    }
+
+    fun openStationBoardRun(entry: StationBoardEntry) {
+        selectedBoardEntry = entry.withoutExpiredObservations(java.time.Instant.now())
+        refreshStationBoardRun()
+    }
+
+    fun refreshStationBoardRun() {
+        val station = stationBoardStation ?: return
+        val entry = selectedBoardEntry ?: return
+        val kind = stationBoardKind
+        selectedBoardEntry = entry.withoutExpiredObservations(java.time.Instant.now())
+        val requestId = ++stationBoardRunRequestId
+        stationBoardRunJob?.cancel()
+        stationBoardRunDetails = null
+        stationBoardRunRefreshState = RefreshState.LOADING
+        stationBoardRunJob = viewModelScope.launch {
+            val details = stationBoardDetailsService.load(station, kind, entry)
+            if (requestId != stationBoardRunRequestId) return@launch
+            stationBoardRunDetails = details
+            stationBoardRunRefreshState = if (details != null) RefreshState.SUCCESS else RefreshState.ERROR
+        }
+    }
+
+    fun closeStationBoardRun() {
+        ++stationBoardRunRequestId
+        stationBoardRunJob?.cancel()
+        selectedBoardEntry = null
+        stationBoardRunDetails = null
+        stationBoardRunRefreshState = RefreshState.IDLE
     }
 
     fun isStationMonitored(station: Station): Boolean = stationMonitors.any { it.stationId == station.id }

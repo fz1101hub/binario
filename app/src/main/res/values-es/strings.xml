@@ -179,6 +179,9 @@
     <string name="search_return_unavailable_message">La fuente no ha devuelto la vuelta solicitada.</string>
     <string name="search_return_empty_title">No hay opciones de vuelta</string>
     <string name="search_return_empty_message">Modifica la fecha u hora de vuelta y vuelve a intentarlo.</string>
+    <string name="station_board_run_details_title">Detalles del tren</string>
+    <string name="station_board_run_details_loading">Cargando las paradas actualizadas…</string>
+    <string name="station_board_run_details_unavailable">La lista completa de paradas no está disponible en esta fuente. Puedes seguir consultando aquí los datos del panel.</string>
     <string name="station_board_title">Panel de estación</string>
     <string name="station_board_section">PANEL</string>
     <string name="station_board_departures">Salidas</string>

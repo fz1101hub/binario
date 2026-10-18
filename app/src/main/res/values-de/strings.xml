@@ -176,6 +176,9 @@
     <string name="search_return_unavailable_message">Die Quelle hat die angeforderte Rückfahrt nicht zurückgegeben.</string>
     <string name="search_return_empty_title">Keine Verbindung für die Rückfahrt</string>
     <string name="search_return_empty_message">Ändere Datum oder Uhrzeit der Rückfahrt und versuche es erneut.</string>
+    <string name="station_board_run_details_title">Zugdetails</string>
+    <string name="station_board_run_details_loading">Aktualisierte Halte werden geladen…</string>
+    <string name="station_board_run_details_unavailable">Die vollständige Halteliste ist bei dieser Quelle nicht verfügbar. Die Bahnhofsinformationen bleiben hier sichtbar.</string>
     <string name="station_board_title">Abfahrtstafel</string>
     <string name="station_board_section">TAFEL</string>
     <string name="station_board_departures">Abfahrten</string>

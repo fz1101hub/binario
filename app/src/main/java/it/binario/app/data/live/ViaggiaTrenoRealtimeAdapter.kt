@@ -4,6 +4,12 @@ import it.binario.app.data.*
 import it.binario.app.data.core.BoardKind
 import it.binario.app.data.core.Confidence
 import it.binario.app.data.core.SourceId
+import it.binario.app.data.core.SourceRef
+import it.binario.app.data.core.StationBoardEntry
+import it.binario.app.data.core.SourcedValue
+import it.binario.app.data.core.RunStatus
+import it.binario.app.data.repository.StationBoardRunDetailProvider
+import it.binario.app.data.repository.StationBoardRunDetails
 import it.binario.app.data.planned.BoundedSingleFlightCache
 import it.binario.app.data.planned.readBoundedRfiHtml
 import it.binario.app.data.provider.*
@@ -30,7 +36,7 @@ internal class HttpViaggiaTrenoRealtimeFetcher(
     private val openConnection: (URL) -> HttpURLConnection = { it.openConnection() as HttpURLConnection }
 ) : ViaggiaTrenoRealtimeFetcher {
     override suspend fun fetch(path: String): String = withContext(Dispatchers.IO) {
-        require(path.startsWith("partenze/") || path.startsWith("andamentoTreno/"))
+        require(path.startsWith("partenze/") || path.startsWith("arrivi/") || path.startsWith("andamentoTreno/"))
         var url = URL("https://www.viaggiatreno.it/infomobilita/resteasy/viaggiatreno/$path")
         val requestedPath = url.path
         repeat(4) { attempt ->
@@ -87,7 +93,7 @@ internal class HttpViaggiaTrenoRealtimeFetcher(
 class ViaggiaTrenoRealtimeAdapter(
     private val fetcher: ViaggiaTrenoRealtimeFetcher = HttpViaggiaTrenoRealtimeFetcher(),
     private val clock: Clock = Clock.system(RailTime.defaultZone)
-) : RealtimeRouteDataSource, StationBoardProvider {
+) : RealtimeRouteDataSource, StationBoardProvider, StationBoardRunDetailProvider {
     override val descriptor = ProviderDescriptor(
         id = SourceId("viaggiatreno"), displayName = "Trenitalia — ViaggiaTreno realtime",
         capabilities = setOf(ProviderCapability.STATION_BOARD, ProviderCapability.TRAIN_RUN_REALTIME),
@@ -174,12 +180,14 @@ class ViaggiaTrenoRealtimeAdapter(
 
     private suspend fun stationBoard(request: StationBoardRequest): ProviderResult<it.binario.app.data.core.StationBoard> {
         val stationCode = code(request.railwayCode)
-        if (stationCode == null || request.kind != BoardKind.DEPARTURES) return ProviderResult.Failure(
-            ProviderError(ProviderErrorKind.NOT_SUPPORTED, "ViaggiaTreno richiede un codice stazione e un tabellone partenze."))
+        if (stationCode == null) return ProviderResult.Failure(
+            ProviderError(ProviderErrorKind.NOT_SUPPORTED, "ViaggiaTreno richiede un codice stazione."))
         val fetched = clock.instant()
         return try {
-            val services = departures(stationCode, request.from).mapNotNull { row ->
-                val scheduled = row.millis("orarioPartenza")?.let(Instant::ofEpochMilli) ?: return@mapNotNull null
+            val arrival = request.kind == BoardKind.ARRIVALS
+            val rows = movements(stationCode, request.from, request.kind)
+            val services = rows.mapNotNull { row ->
+                val scheduled = row.millis(if (arrival) "orarioArrivo" else "orarioPartenza")?.let(Instant::ofEpochMilli) ?: return@mapNotNull null
                 val number = row.text("numeroTreno") ?: return@mapNotNull null
                 val observed = row.millis("ultimoRilev")?.let(Instant::ofEpochMilli)?.takeIf { recent(it, fetched) }
                 val delay = row.intOrNull("ritardo")
@@ -188,18 +196,29 @@ class ViaggiaTrenoRealtimeAdapter(
                 TrainService(
                     id = "viaggiatreno:$stationCode:$number:${scheduled.toEpochMilli()}", number = number,
                     operator = RailOperator.TRENITALIA_REGIONALE, trainCategory = TrainCategory.OTHER,
-                    origin = request.stationName.orEmpty(), destination = row.text("destinazione").orEmpty(),
+                    origin = request.stationName.orEmpty(), destination = row.text(if (arrival) "origine" else "destinazione").orEmpty(),
                     scheduledDeparture = time(scheduled), expectedDeparture = time(scheduled.plusSeconds(if (verified) (delay ?: 0) * 60L else 0)),
-                    platform = row.text("binarioEffettivoPartenzaDescrizione"), delayMinutes = if (verified) delay ?: 0 else 0,
+                    platform = row.text(if (arrival) "binarioEffettivoArrivoDescrizione" else "binarioEffettivoPartenzaDescrizione"), delayMinutes = if (verified) delay ?: 0 else 0,
                     officialDelayMinutes = if (verified) delay else null,
                     status = if (cancelled) ServiceStatus.CANCELLED else if (verified && (delay ?: 0) > 0) ServiceStatus.DELAYED else ServiceStatus.ON_TIME,
                     stops = emptyList(), operationalStatusVerified = verified, scheduledDepartureDateTime = scheduled.atZone(zone).toLocalDateTime(),
                     operationalObservedAtEpochMillis = if (verified) observed?.toEpochMilli() ?: fetched.toEpochMilli() else null
                 )
             }
+            val identities = rows.mapNotNull { row ->
+                val number = row.text("numeroTreno") ?: return@mapNotNull null
+                val origin = code(row.text("codOrigine")) ?: return@mapNotNull null
+                val date = row.millis("dataPartenzaTreno") ?: row.millis("millisDataPartenza") ?: return@mapNotNull null
+                val scheduled = row.millis(if (arrival) "orarioArrivo" else "orarioPartenza") ?: return@mapNotNull null
+                "$number:$scheduled" to "$origin:$number:$date"
+            }.toMap()
+            val board = LegacyStationBoardInterop.build(descriptor.id, Confidence.OPERATOR_PRIMARY, request.stationId, request.kind,
+                request.from, request.to, services, fetched, Duration.ofSeconds(30))
             ProviderResult.Success(
-                LegacyStationBoardInterop.build(descriptor.id, Confidence.OPERATOR_PRIMARY, request.stationId, request.kind,
-                    request.from, request.to, services, fetched, Duration.ofSeconds(30)),
+                board.copy(entries = board.entries.map { entry ->
+                    entry.copy(nativeRunIds = identities["${entry.publicNumber}:${entry.scheduledTime.toInstant().toEpochMilli()}"]
+                        ?.let { mapOf(descriptor.id to it) }.orEmpty())
+                }),
                 ProviderResponseMeta(descriptor.id, fetched, expiresAt = fetched.plusSeconds(30))
             )
         } catch (error: CancellationException) { throw error }
@@ -207,13 +226,87 @@ class ViaggiaTrenoRealtimeAdapter(
         catch (_: org.json.JSONException) { ProviderResult.Failure(ProviderError(ProviderErrorKind.PARSE_ERROR, "ViaggiaTreno non è leggibile.")) }
     }
 
-    private suspend fun departures(stationCode: String, from: Instant): List<JSONObject> {
+    private suspend fun departures(stationCode: String, from: Instant): List<JSONObject> = movements(stationCode, from, BoardKind.DEPARTURES)
+
+    private suspend fun movements(stationCode: String, from: Instant, kind: BoardKind): List<JSONObject> {
         val local = from.atZone(zone).withSecond(0).withNano(0)
         val date = local.format(DateTimeFormatter.ofPattern("EEE MMM dd yyyy HH:mm:ss 'GMT'xx", Locale.ENGLISH))
-        val body = json("partenze/$stationCode/${URLEncoder.encode(date, "UTF-8").replace("+", "%20")}")
+        val resource = if (kind == BoardKind.ARRIVALS) "arrivi" else "partenze"
+        val body = json("$resource/$stationCode/${URLEncoder.encode(date, "UTF-8").replace("+", "%20")}")
         if (body.trim() == "null") return emptyList()
         val array = JSONArray(body)
         return (0 until minOf(array.length(), 2000)).mapNotNull(array::optJSONObject)
+    }
+
+    override suspend fun getStationBoardRun(station: Station, kind: BoardKind, entry: StationBoardEntry): ProviderResult<StationBoardRunDetails> =
+        withContext(Dispatchers.Default) {
+            fun unavailable() = ProviderResult.Failure(ProviderError(ProviderErrorKind.NOT_FOUND, "Dettagli della corsa non disponibili dalla fonte."))
+            val stationCode = code(station.railwayCode) ?: return@withContext unavailable()
+            if (entry.operatorId?.value?.lowercase(Locale.ROOT)?.let { it !in setOf("trenitalia", "trenord", "tilo") } == true) return@withContext unavailable()
+            try {
+                val native = entry.nativeRunIds[descriptor.id] ?: movements(stationCode, entry.scheduledTime.toInstant().minusSeconds(60), kind)
+                    .singleOrNull { row ->
+                        row.text("numeroTreno") == entry.publicNumber &&
+                            row.millis(if (kind == BoardKind.ARRIVALS) "orarioArrivo" else "orarioPartenza") == entry.scheduledTime.toInstant().toEpochMilli()
+                    }?.let { row ->
+                        val origin = code(row.text("codOrigine")) ?: return@let null
+                        val date = row.millis("dataPartenzaTreno") ?: row.millis("millisDataPartenza") ?: return@let null
+                        "$origin:${row.text("numeroTreno")}:$date"
+                    } ?: return@withContext unavailable()
+                val identity = Regex("(S[0-9]{5}):([0-9]{1,6}):([0-9]{10,16})").matchEntire(native) ?: return@withContext unavailable()
+                val (origin, number, date) = identity.destructured
+                if (number != entry.publicNumber) return@withContext unavailable()
+                val fetched = clock.instant()
+                val run = JSONObject(json("andamentoTreno/$origin/$number/$date"))
+                val details = parseBoardRun(run, origin, number, date.toLong(), stationCode, kind, entry, fetched)
+                    ?: return@withContext unavailable()
+                ProviderResult.Success(details, ProviderResponseMeta(descriptor.id, fetched, details.observedAt, fetched.plusSeconds(30)))
+            } catch (error: CancellationException) { throw error }
+            catch (_: IOException) { unavailable() }
+            catch (_: org.json.JSONException) { unavailable() }
+        }
+
+    internal fun parseBoardRun(run: JSONObject, origin: String, number: String, date: Long, stationCode: String,
+        kind: BoardKind, entry: StationBoardEntry, fetched: Instant): StationBoardRunDetails? {
+        if (run.text("numeroTreno") != number || run.text("idOrigine") != origin ||
+            run.millis("dataPartenzaTreno")?.let { it != date } == true) return null
+        val calls = run.optJSONArray("fermate") ?: return null
+        val rows = (0 until calls.length()).mapNotNull(calls::optJSONObject)
+        val arrival = kind == BoardKind.ARRIVALS
+        val selected = rows.singleOrNull { row ->
+            row.text("id") == stationCode &&
+                (row.millis(if (arrival) "arrivo_teorico" else "partenza_teorica") ?: row.millis("programmata")) == entry.scheduledTime.toInstant().toEpochMilli()
+        } ?: return null
+        val observed = run.millis("oraUltimoRilevamento")?.let(Instant::ofEpochMilli)?.takeIf { recent(it, fetched) }
+        val cancelled = run.intOrNull("provvedimento") == 1 || run.text("tipoTreno") == "ST"
+        val delay = run.intOrNull("ritardo")
+        val verified = observed != null && delay != null && !run.optBoolean("nonPartito", false)
+        val source = SourceRef(sourceId = descriptor.id, nativeId = "$origin:$number:$date", observedAt = observed,
+            fetchedAt = fetched, expiresAt = fetched.plusSeconds(30), confidence = Confidence.OPERATOR_PRIMARY, traceId = "viaggiatreno:detail:$origin:$number:$date")
+        val actual = selected.millis(if (arrival) "arrivoReale" else "partenzaReale")?.let(Instant::ofEpochMilli)
+        val updatedExpected = actual ?: if (verified && !cancelled) entry.scheduledTime.toInstant().plusSeconds(delay!! * 60L) else null
+        val platform = selected.text(if (arrival) "binarioEffettivoArrivoDescrizione" else "binarioEffettivoPartenzaDescrizione")
+        val stops = rows.mapIndexedNotNull { index, row ->
+            val scheduled = (if (index == 0) row.millis("partenza_teorica") else row.millis("arrivo_teorico"))
+                ?: row.millis("programmata") ?: return@mapIndexedNotNull null
+            val actualStop = row.millis(if (index == 0) "partenzaReale" else "arrivoReale")?.let(Instant::ofEpochMilli)
+            val at = Instant.ofEpochMilli(scheduled)
+            val stopVerified = actualStop != null || (verified && !cancelled)
+            TrainStop(station = row.text("stazione") ?: return@mapIndexedNotNull null,
+                scheduled = time(at), expected = time(actualStop ?: at.plusSeconds(if (stopVerified) (delay ?: 0) * 60L else 0)),
+                platform = row.text(if (index == 0) "binarioEffettivoPartenzaDescrizione" else "binarioEffettivoArrivoDescrizione"),
+                delayMinutes = actualStop?.let { Duration.between(at, it).toMinutes().toInt() } ?: if (stopVerified) delay ?: 0 else 0,
+                completed = actualStop != null, operationalStatusVerified = stopVerified,
+                routeChange = if (row.intOrNull("actualFermataType") in setOf(2, 3)) StopRouteChange.SKIPPED else StopRouteChange.NONE)
+        }
+        if (stops.isEmpty()) return null
+        return StationBoardRunDetails(
+            entry.copy(expectedTime = updatedExpected?.let { SourcedValue(it.atZone(zone), source) },
+                platform = platform?.let { SourcedValue(it, source) } ?: entry.platform,
+                status = if (cancelled) SourcedValue(RunStatus.CANCELLED, source) else if (verified || actual != null)
+                    SourcedValue(if (updatedExpected != null && updatedExpected > entry.scheduledTime.toInstant()) RunStatus.DELAYED else RunStatus.ON_TIME, source) else null),
+            stops.first().station, stops.last().station, stops, descriptor.displayName, observed
+        )
     }
 
     internal fun parseRun(run: JSONObject, number: String, runOrigin: String, runDate: Long,

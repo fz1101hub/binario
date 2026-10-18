@@ -179,6 +179,9 @@
     <string name="search_return_unavailable_message">La source n’a pas renvoyé le retour demandé.</string>
     <string name="search_return_empty_title">Aucune solution retour</string>
     <string name="search_return_empty_message">Modifiez la date ou l’heure du retour et réessayez.</string>
+    <string name="station_board_run_details_title">Détails du train</string>
+    <string name="station_board_run_details_loading">Chargement des arrêts actualisés…</string>
+    <string name="station_board_run_details_unavailable">La liste complète des arrêts est indisponible auprès de cette source. Les informations du tableau restent consultables ici.</string>
     <string name="station_board_title">Tableau de la gare</string>
     <string name="station_board_section">TABLEAU</string>
     <string name="station_board_departures">Départs</string>
