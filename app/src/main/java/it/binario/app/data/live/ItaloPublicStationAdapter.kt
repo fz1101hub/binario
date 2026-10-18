@@ -88,7 +88,7 @@ internal class HttpItaloPublicStationFetcher(
     }
 }
 
-private suspend fun downloadItaloPublic(url: String): String = withContext(Dispatchers.IO) {
+internal suspend fun downloadItaloPublic(url: String): String = withContext(Dispatchers.IO) {
     val connection = URL(url).openConnection() as? HttpURLConnection
         ?: throw IOException("Italo in Viaggio non usa una connessione HTTP")
     connection.requestMethod = "GET"

@@ -27,6 +27,9 @@ import it.binario.app.data.repository.BinarioDataGraph
 import it.binario.app.data.repository.StationBoardAggregate
 import it.binario.app.data.repository.StationBoardAggregateResult
 import it.binario.app.data.repository.StationBoardAggregateService
+import it.binario.app.data.repository.TrainNumberSearchService
+import it.binario.app.data.repository.TrainNumberQuery
+import it.binario.app.data.repository.TrainNumberMatch
 import it.binario.app.data.repository.StationBoardRunDetailService
 import it.binario.app.data.repository.StationBoardRunDetails
 import it.binario.app.data.repository.withoutExpiredObservations
@@ -62,7 +65,8 @@ class TrainViewModel @JvmOverloads constructor(
     /** Widget configuration needs local catalog/search only, never startup refresh or Wear publication. */
     private val enableStartupEffects: Boolean = true,
     private val stationBoardService: StationBoardAggregateService = StationBoardAggregateService(BinarioDataGraph.stationBoardDisplayProviders()),
-    private val stationBoardDetailsService: StationBoardRunDetailService = BinarioDataGraph.stationBoardRunDetailService()
+    private val stationBoardDetailsService: StationBoardRunDetailService = BinarioDataGraph.stationBoardRunDetailService(),
+    private val trainNumberSearchService: TrainNumberSearchService = BinarioDataGraph.trainNumberSearchService(application)
 ) : AndroidViewModel(application) {
     private companion object {
         const val STATION_SUGGESTION_DEBOUNCE_MILLIS = 180L
@@ -153,6 +157,17 @@ class TrainViewModel @JvmOverloads constructor(
         private set
     var trainNumberQuery by mutableStateOf("")
         private set
+    var trainNumberMatches by mutableStateOf<List<TrainNumberMatch>>(emptyList())
+        private set
+    var trainNumberSearchState by mutableStateOf(RefreshState.IDLE)
+        private set
+    var trainNumberUnavailableSources by mutableStateOf<Set<String>>(emptySet())
+        private set
+    var trainNumberSearchDate by mutableStateOf(JourneyQuery.now().serviceDate)
+        private set
+    private var trainNumberSearchJob: Job? = null
+    private var trainNumberSearchRequestId = 0L
+    private var selectedGlobalTrainId: String? = null
     var integrationSettings by mutableStateOf(integrationStore.read())
         private set
     var commuterAlerts by mutableStateOf(commuterAlertStore.alerts())
@@ -509,8 +524,63 @@ class TrainViewModel @JvmOverloads constructor(
     }
 
     fun updateTrainNumberQuery(query: String) {
-        trainNumberQuery = query.filter { it.isLetterOrDigit() || it.isWhitespace() }.take(12)
-        refreshVisibleServices()
+        val value = query.filter { it.isLetterOrDigit() || it.isWhitespace() || it == '-' }.take(32)
+        if (value == trainNumberQuery) return
+        trainNumberQuery = value
+        ++trainNumberSearchRequestId
+        trainNumberSearchJob?.cancel()
+        trainNumberMatches = emptyList()
+        trainNumberSearchState = RefreshState.IDLE
+        trainNumberUnavailableSources = emptySet()
+        if (selectedGlobalTrainId != null) clearSelectedService()
+    }
+
+    fun searchTrainNumber(refresh: Boolean = false) {
+        val query = TrainNumberQuery(trainNumberQuery, JourneyQuery.now().serviceDate)
+        if (!query.valid) { trainNumberSearchState = RefreshState.ERROR; return }
+        if (trainNumberSearchJob?.isActive == true && refresh) return
+        val requestId = ++trainNumberSearchRequestId
+        trainNumberSearchJob?.cancel()
+        if (!refresh) {
+            clearSelectedService()
+            trainNumberMatches = emptyList()
+        } else {
+            trainNumberMatches = trainNumberMatches.map { match ->
+                if (!match.snapshot.isExpired) match else {
+                    val service = serviceWithoutCurrentObservation(match.service)
+                    match.copy(service = service, snapshot = match.snapshot.copy(services = listOf(service), freshness = Freshness.STALE))
+                }
+            }
+        }
+        trainNumberSearchDate = query.date
+        trainNumberSearchState = RefreshState.LOADING
+        trainNumberUnavailableSources = emptySet()
+        trainNumberSearchJob = viewModelScope.launch {
+            trainNumberSearchService.search(query).collect { update ->
+                if (requestId != trainNumberSearchRequestId) return@collect
+                trainNumberMatches = update.matches
+                trainNumberUnavailableSources = update.unavailableSources
+                trainNumberSearchState = if (!update.complete) RefreshState.LOADING
+                    else if (update.matches.isEmpty() && update.unavailableSources.isNotEmpty()) RefreshState.ERROR else RefreshState.SUCCESS
+                selectedGlobalTrainId?.let { selectedId ->
+                    update.matches.singleOrNull { it.id == selectedId }?.let { match ->
+                        selectedService = match.service
+                        selectedServiceSnapshot = match.snapshot
+                    } ?: if (update.complete) {
+                        val service = selectedService?.let(::serviceWithoutCurrentObservation)
+                        selectedService = service
+                        selectedServiceSnapshot = selectedServiceSnapshot?.copy(services = listOfNotNull(service), freshness = Freshness.STALE)
+                    } else Unit
+                }
+            }
+        }
+    }
+
+    fun openTrainNumberMatch(match: TrainNumberMatch) {
+        selectedServiceDirection = null
+        selectedGlobalTrainId = match.id
+        selectedService = match.service
+        selectedServiceSnapshot = match.snapshot
     }
 
     fun clearSearchFilters() {
@@ -594,6 +664,7 @@ class TrainViewModel @JvmOverloads constructor(
     }
 
     fun refresh() {
+        if (selectedGlobalTrainId != null) { searchTrainNumber(refresh = true); return }
         // A detail opened from the independent return leg must not refresh the primary leg
         // or emit its cache/widget/Wear side effects. Results/operations have no selected
         // return service, so their normal refresh still updates both legs when applicable.
@@ -684,6 +755,7 @@ class TrainViewModel @JvmOverloads constructor(
 
     /** Called only while a result/detail surface is visible and the activity is started. */
     fun refreshLiveIfIdle() {
+        if (selectedGlobalTrainId != null) { searchTrainNumber(refresh = true); return }
         if (!hasActiveRoute) return
         val today = JourneyQuery.now().serviceDate
         if (selectedServiceDirection == Direction.RETURN && returnJourneyQuery != null) {
@@ -747,6 +819,7 @@ class TrainViewModel @JvmOverloads constructor(
     }
 
     private fun clearSelectedService() {
+        selectedGlobalTrainId = null
         selectedService = null
         selectedServiceDirection = null
         selectedServiceSnapshot = null
@@ -782,6 +855,7 @@ class TrainViewModel @JvmOverloads constructor(
     }
 
     fun openService(service: TrainService, serviceDirection: Direction? = null) {
+        selectedGlobalTrainId = null
         val belongsToReturn = returnSnapshot?.services.orEmpty().any { candidate ->
             candidate === service || candidate.id == service.id
         }
@@ -828,12 +902,12 @@ class TrainViewModel @JvmOverloads constructor(
     private fun refreshVisibleServices() {
         visiblePrimaryServices = primaryServicePresentation.filtered(
             operator = operatorFilter,
-            numberQuery = trainNumberQuery,
+            numberQuery = "",
             journeyChangeFilter = journeyChangeFilter
         )
         visibleReturnServices = returnServicePresentation.filtered(
             operator = operatorFilter,
-            numberQuery = trainNumberQuery,
+            numberQuery = "",
             journeyChangeFilter = journeyChangeFilter
         )
     }

@@ -152,7 +152,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-private enum class Screen { PLANNER, OPERATIONS, AGENDA, SETTINGS, RESULTS, DETAIL }
+private enum class Screen { PLANNER, OPERATIONS, AGENDA, SETTINGS, RESULTS, NUMBER_RESULTS, DETAIL }
 internal enum class OperationsSection { TRAINS, STATIONS }
 private enum class SearchMode { ROUTE, TRAIN, STATION }
 
@@ -290,14 +290,16 @@ private fun BinarioApp(
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     LaunchedEffect(lifecycleOwner, screen, operationsSectionName) {
-        if (screen in setOf(Screen.RESULTS, Screen.DETAIL, Screen.OPERATIONS)) {
+        if (screen in setOf(Screen.RESULTS, Screen.NUMBER_RESULTS, Screen.DETAIL, Screen.OPERATIONS)) {
             lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 if (screen == Screen.OPERATIONS && operationsSectionName == OperationsSection.STATIONS.name) {
                     viewModel.refreshStationBoardIfIdle()
                 }
                 while (true) {
                     delay(30_000)
-                    if (screen == Screen.OPERATIONS && operationsSectionName == OperationsSection.STATIONS.name) {
+                    if (screen == Screen.NUMBER_RESULTS) {
+                        viewModel.searchTrainNumber(refresh = true)
+                    } else if (screen == Screen.OPERATIONS && operationsSectionName == OperationsSection.STATIONS.name) {
                         viewModel.refreshStationBoardIfIdle()
                     } else viewModel.refreshLiveIfIdle()
                 }
@@ -413,11 +415,11 @@ private fun BinarioApp(
                 viewModel.closeService()
                 screen = detailReturnScreen
             }
-            Screen.RESULTS -> screen = Screen.PLANNER
+            Screen.RESULTS, Screen.NUMBER_RESULTS -> screen = Screen.PLANNER
             else -> Unit
         }
     }
-    BackHandler(enabled = screen == Screen.DETAIL || screen == Screen.RESULTS, onBack = navigateBack)
+    BackHandler(enabled = screen == Screen.DETAIL || screen == Screen.RESULTS || screen == Screen.NUMBER_RESULTS, onBack = navigateBack)
     val title = stringResource(
         when (screen) {
             Screen.PLANNER -> R.string.screen_title_planner
@@ -425,6 +427,7 @@ private fun BinarioApp(
             Screen.AGENDA -> R.string.screen_title_agenda
             Screen.SETTINGS -> R.string.screen_title_settings
             Screen.RESULTS -> R.string.screen_title_results
+            Screen.NUMBER_RESULTS -> R.string.train_number_results_title
             Screen.DETAIL -> R.string.screen_title_detail
         }
     )
@@ -435,6 +438,7 @@ private fun BinarioApp(
             Screen.AGENDA -> R.string.screen_subtitle_agenda
             Screen.SETTINGS -> R.string.screen_subtitle_settings
             Screen.RESULTS -> R.string.screen_subtitle_results
+            Screen.NUMBER_RESULTS -> R.string.train_number_results_subtitle
             Screen.DETAIL -> R.string.screen_subtitle_detail
         }
     )
@@ -456,7 +460,7 @@ private fun BinarioApp(
                     }
                 },
                 navigationIcon = {
-                    if (screen == Screen.DETAIL || screen == Screen.RESULTS) {
+                    if (screen == Screen.DETAIL || screen == Screen.RESULTS || screen == Screen.NUMBER_RESULTS) {
                         IconButton(onClick = navigateBack) {
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
                         }
@@ -466,9 +470,10 @@ private fun BinarioApp(
                     IconButton(onClick = { showThemePicker = true }) {
                         Icon(Icons.Default.Palette, contentDescription = stringResource(R.string.action_choose_theme, themeMode.localizedLabel()))
                     }
-                    if (screen == Screen.OPERATIONS || screen == Screen.RESULTS || screen == Screen.DETAIL) {
+                    if (screen == Screen.OPERATIONS || screen == Screen.RESULTS || screen == Screen.NUMBER_RESULTS || screen == Screen.DETAIL) {
                         IconButton(onClick = {
-                            if (screen == Screen.OPERATIONS && operationsSectionName == OperationsSection.STATIONS.name) {
+                            if (screen == Screen.NUMBER_RESULTS) viewModel.searchTrainNumber(refresh = true)
+                            else if (screen == Screen.OPERATIONS && operationsSectionName == OperationsSection.STATIONS.name) {
                                 viewModel.refreshStationBoardIfIdle()
                             } else viewModel.refresh()
                         }) {
@@ -480,7 +485,7 @@ private fun BinarioApp(
             )
         },
         bottomBar = {
-            if (screen != Screen.DETAIL && screen != Screen.RESULTS) {
+            if (screen != Screen.DETAIL && screen != Screen.RESULTS && screen != Screen.NUMBER_RESULTS) {
                 NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
                     NavigationBarItem(
                         selected = screen == Screen.PLANNER,
@@ -518,6 +523,7 @@ private fun BinarioApp(
                 initialMode = plannerSearchMode,
                 modeRequestId = plannerSearchRequestId,
                 showResults = { screen = Screen.RESULTS },
+                showTrainResults = { screen = Screen.NUMBER_RESULTS },
                 openMore = { screen = Screen.SETTINGS },
                 openStations = { station ->
                     station?.let(viewModel::openStationBoard)
@@ -566,6 +572,10 @@ private fun BinarioApp(
                 modifier = Modifier.padding(padding),
                 viewModel = viewModel,
                 openDetails = { service -> detailReturnScreen = Screen.RESULTS; viewModel.openService(service); screen = Screen.DETAIL }
+            )
+            Screen.NUMBER_RESULTS -> TrainNumberResultsScreen(
+                modifier = Modifier.padding(padding), viewModel = viewModel,
+                onOpen = { match -> detailReturnScreen = Screen.NUMBER_RESULTS; viewModel.openTrainNumberMatch(match); screen = Screen.DETAIL }
             )
             Screen.DETAIL -> {
                 val service = viewModel.selectedService
@@ -856,6 +866,7 @@ private fun PlannerScreen(
     initialMode: SearchMode,
     modeRequestId: Int,
     showResults: () -> Unit,
+    showTrainResults: () -> Unit,
     openMore: () -> Unit,
     openStations: (Station?) -> Unit
 ) {
@@ -1169,33 +1180,11 @@ private fun PlannerScreen(
                         SearchMode.TRAIN -> {
                             VoiceInputButton(onClick = { startVoiceInput(SearchMode.TRAIN) }, label = stringResource(R.string.planner_voice_train))
                             speechMessage?.let { message -> Text(message, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-                            Text(stringResource(R.string.planner_train_filter_title), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
-                            Text(
-                                stringResource(R.string.planner_train_filter_description),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            TrainNumberSearchForm(
+                                query = viewModel.trainNumberQuery,
+                                onQueryChange = viewModel::updateTrainNumberQuery,
+                                onSearch = { viewModel.searchTrainNumber(); showTrainResults() }
                             )
-                            OutlinedTextField(
-                                value = viewModel.trainNumberQuery,
-                                onValueChange = viewModel::updateTrainNumberQuery,
-                                modifier = Modifier.fillMaxWidth(),
-                                singleLine = true,
-                                label = { Text(stringResource(R.string.planner_train_number)) },
-                                placeholder = { Text(stringResource(R.string.planner_train_number_example)) },
-                                leadingIcon = { Icon(Icons.Default.Train, contentDescription = null) }
-                            )
-                            if (!viewModel.hasActiveRoute) {
-                                Text(stringResource(R.string.planner_choose_route_first), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
-                            }
-                            Button(
-                                onClick = { viewModel.refresh(); showResults() },
-                                enabled = viewModel.trainNumberQuery.isNotBlank() && viewModel.hasActiveRoute,
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Icon(Icons.Default.Search, contentDescription = null)
-                                Spacer(Modifier.width(8.dp))
-                                Text(stringResource(R.string.planner_filter_train))
-                            }
                         }
                         SearchMode.STATION -> {
                             VoiceInputButton(onClick = { startVoiceInput(SearchMode.STATION) }, label = stringResource(R.string.planner_voice_station))
@@ -1976,7 +1965,7 @@ private fun ListHeading(title: String, subtitle: String) {
 }
 
 @Composable
-private fun DepartureListRow(service: TrainService, isNext: Boolean = false, onOpen: () -> Unit) {
+internal fun DepartureListRow(service: TrainService, isNext: Boolean = false, onOpen: () -> Unit) {
     val serviceState = if (service.operationalStatusVerified) {
         stringResource(R.string.service_state_live, service.status.localizedLabel())
     } else {
@@ -1991,10 +1980,12 @@ private fun DepartureListRow(service: TrainService, isNext: Boolean = false, onO
         modifier = Modifier
             .fillMaxWidth()
             .background(if (isNext) MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.48f) else MaterialTheme.colorScheme.background)
+            .clickable(role = Role.Button, onClick = onOpen)
             .clearAndSetSemantics {
                 contentDescription = serviceContentDescription
+                role = Role.Button
+                onClick { onOpen(); true }
             }
-            .clickable(role = Role.Button, onClick = onOpen)
             .padding(horizontal = 20.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {

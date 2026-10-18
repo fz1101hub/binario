@@ -2,6 +2,7 @@ package it.binario.app.data
 
 import it.binario.app.BuildConfig
 import it.binario.app.data.gtfs.RemoteGtfsFallbackDataSource
+import it.binario.app.data.live.ItaloTrainNumberAdapter
 import it.binario.app.data.live.ItaloPublicStationAdapter
 import it.binario.app.data.live.RfiInfomobilityRssAdapter
 import it.binario.app.data.live.RfiStationBoardAdapter
@@ -12,6 +13,7 @@ import it.binario.app.data.live.ViaggiaTrenoRealtimeAdapter
 import it.binario.app.data.planned.RfiProgrammedStationBoardAdapter
 import it.binario.app.data.planned.RfiProgrammedTimetableAdapter
 import it.binario.app.data.planned.RfiSupplementalHubTimetableAdapter
+import it.binario.app.data.repository.TrainNumberSearchProvider
 import it.binario.app.data.repository.StationBoardRunDetailProvider
 import it.binario.app.data.provider.AlertProvider
 import it.binario.app.data.provider.StationBoardProvider
@@ -33,6 +35,7 @@ object LocalOnlyRailDataPolicy {
     private val rfiStationBoard by lazy { RfiStationBoardAdapter() }
     private val rfiLiveRoutes by lazy { RfiLiveRouteDataSource(rfiStationBoard) }
     private val italoStationBoard by lazy { ItaloPublicStationAdapter() }
+    private val italoNumber by lazy { ItaloTrainNumberAdapter() }
     private val viaggiaTrenoBoard by lazy { ViaggiaTrenoRealtimeAdapter() }
     private val rfiAlerts by lazy { RfiInfomobilityRssAdapter() }
     private val staRealtime by lazy { StaRealtimeAdapter() }
@@ -73,6 +76,9 @@ object LocalOnlyRailDataPolicy {
      */
     fun stationBoardDisplayProviders(): List<StationBoardProvider> =
         listOf(rfiProgrammedBoard) + stationBoardProviders()
+
+    fun trainNumberSearchProviders(): List<TrainNumberSearchProvider> =
+        if (BuildConfig.PERSONAL_REALTIME_SOURCES) listOf(viaggiaTrenoBoard, italoNumber) else emptyList()
 
     fun stationBoardRunDetailProviders(): List<StationBoardRunDetailProvider> =
         if (BuildConfig.PERSONAL_REALTIME_SOURCES) listOf(viaggiaTrenoBoard) else emptyList()

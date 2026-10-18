@@ -5,6 +5,7 @@ import it.binario.app.data.LocalOnlyRailDataPolicy
 import it.binario.app.data.RailDataRepository
 import it.binario.app.data.TrainDataSource
 import it.binario.app.data.gtfs.EmbeddedGtfsRealtimeScheduleResolver
+import it.binario.app.data.gtfs.EmbeddedGtfsPacks
 import it.binario.app.data.gtfs.EmbeddedGtfsRouteAdapter
 import it.binario.app.data.gtfs.EmbeddedGtfsStationSearchIndex
 import it.binario.app.data.provider.AlertProvider
@@ -33,6 +34,7 @@ object BinarioDataGraph {
     private val localOnlyPolicy = LocalOnlyRailDataPolicy
     private val routeSourcesByPackage = mutableMapOf<String, TrainDataSource>()
     private val realtimeResolversByPackage = mutableMapOf<String, EmbeddedGtfsRealtimeScheduleResolver>()
+    private val numberSearchByPackage = mutableMapOf<String, TrainNumberSearchService>()
     private val stationIndexesByPackage = mutableMapOf<String, EmbeddedGtfsStationSearchIndex>()
 
     fun routeDataSource(context: Context): TrainDataSource = synchronized(routeSourcesByPackage) {
@@ -57,6 +59,19 @@ object BinarioDataGraph {
                     liveRouteSources = localOnlyPolicy.liveRouteSources().filter { defaultRegistry.isEnabled(it.descriptor.id) }
                 ),
                 providerRegistry = defaultRegistry
+            )
+        }
+    }
+
+    fun trainNumberSearchService(context: Context): TrainNumberSearchService = synchronized(numberSearchByPackage) {
+        val app = context.applicationContext
+        numberSearchByPackage.getOrPut(app.packageName) {
+            val static = EmbeddedGtfsRouteAdapter(openAsset = { app.assets.open(it) },
+                packs = EmbeddedGtfsPacks.all.filter { defaultRegistry.isEnabled(it.sourceId) })
+            val source = EmbeddedTrainNumberSearchSource(static, GtfsRealtimeEnrichedTrainDataSource(static, realtimeEnrichmentService(app)))
+            TrainNumberSearchService(
+                localOnlyPolicy.trainNumberSearchProviders().filter { defaultRegistry.isEnabled(it.descriptor.id) } +
+                    listOf(source.provider(false), source.provider(true))
             )
         }
     }

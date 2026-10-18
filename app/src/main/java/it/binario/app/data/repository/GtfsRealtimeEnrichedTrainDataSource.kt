@@ -20,7 +20,10 @@ class GtfsRealtimeEnrichedTrainDataSource(
         loadRoute(route, direction, JourneyQuery.now(clock))
 
     override suspend fun loadRoute(route: SavedRoute, direction: Direction, query: JourneyQuery): DataResult {
-        val result = plannedSource.loadRoute(route, direction, query)
+        return enrich(plannedSource.loadRoute(route, direction, query), query)
+    }
+
+    suspend fun enrich(result: DataResult, query: JourneyQuery, useLatestStopForService: Boolean = false): DataResult {
         if (result !is DataResult.Success || query.serviceDate != clock.instant().atZone(zone).toLocalDate()) return result
         val identities = result.snapshot.services.mapNotNull { it.gtfsIdentity }
         if (identities.isEmpty()) return result
@@ -51,11 +54,15 @@ class GtfsRealtimeEnrichedTrainDataSource(
                     } else stop
                     stop.copy(expected = expected(live), delayMinutes = delay(live)!!, operationalStatusVerified = true)
                 }
-                val departure = timed.firstOrNull()
+                val originTiming = timed.firstOrNull()
+                val departure = if (useLatestStopForService) {
+                    timed.filterNotNull().filter { !it.scheduledStop.scheduledAt.toInstant().isAfter(clock.instant()) }
+                        .maxByOrNull { it.scheduledStop.scheduledAt } ?: timed.firstOrNull { it != null }
+                } else originTiming
                 val departureDelay = departure?.let(::delay)
                 service.copy(
                     stops = stops,
-                    expectedDeparture = departure?.let(::expected) ?: service.expectedDeparture,
+                    expectedDeparture = originTiming?.let(::expected) ?: service.expectedDeparture,
                     delayMinutes = departureDelay ?: service.delayMinutes,
                     officialDelayMinutes = if (departure != null) {
                         departure.update.officialDelay?.value?.toMinutes()?.toInt()

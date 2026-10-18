@@ -112,6 +112,20 @@ class GtfsRealtimeEnrichedTrainDataSourceTest {
         assertNull(result.detectionDelayMinutes)
     }
 
+    @Test fun `global lookup can use an intermediate update without moving the origin time`() = runBlocking {
+        val snapshot = RouteSnapshot(route, Direction.OUTBOUND, listOf(service()), "GTFS", now.toEpochMilli(), now.plusSeconds(3600).toEpochMilli(), it.binario.app.data.Freshness.AGING, confidence = DataConfidence.STATIC_ONLY)
+        val planned = object : TrainDataSource { override suspend fun loadRoute(route: SavedRoute, direction: Direction) = DataResult.Success(snapshot) }
+        val resolver = EmbeddedGtfsRealtimeScheduleResolver({ ByteArrayInputStream(feed()) }, listOf(EmbeddedGtfsPack(SourceId("alto-adige-sta-gtfs"), "test")))
+        val enriched = GtfsRealtimeEnrichedTrainDataSource(planned, RealtimeEnrichmentService(listOf(provider(sta, listOf(update(sta, 300, "B", 2)))), resolver), clock, zone)
+        val result = (enriched.enrich(DataResult.Success(snapshot), query, useLatestStopForService = true) as DataResult.Success).snapshot.services.single()
+        assertTrue(result.operationalStatusVerified)
+        assertEquals(5, result.delayMinutes)
+        assertEquals("12:00", result.scheduledDeparture)
+        assertEquals("12:00", result.expectedDeparture)
+        assertEquals(false, result.stops.first().operationalStatusVerified)
+        assertEquals("12:35", result.stops.last().expected)
+    }
+
     private suspend fun load(services: List<TrainService>, providers: List<TripUpdateProvider>, requested: JourneyQuery = query): RouteSnapshot {
         val snapshot = RouteSnapshot(route, Direction.OUTBOUND, services, "GTFS", now.toEpochMilli(),
             now.plusSeconds(3600).toEpochMilli(), it.binario.app.data.Freshness.AGING, confidence = DataConfidence.STATIC_ONLY,

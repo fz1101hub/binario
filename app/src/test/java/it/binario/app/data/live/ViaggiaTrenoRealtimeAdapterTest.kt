@@ -10,6 +10,39 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class ViaggiaTrenoRealtimeAdapterTest {
+    @Test fun `global number lookup finds the full already departed run without any selected route`() = runBlocking {
+        val paths = mutableListOf<String>()
+        val source = ViaggiaTrenoRealtimeAdapter(ViaggiaTrenoRealtimeFetcher { path ->
+            paths += path
+            if (path.startsWith("cercaNumero")) "12345 - Viterbo|12345-S08001-$runDate\n123456 - Other|123456-S09999-$runDate"
+            else run().toString()
+        }, clock)
+        val result = source.searchByNumber(it.binario.app.data.repository.TrainNumberQuery("R 12345", query.serviceDate)) as it.binario.app.data.provider.ProviderResult.Success
+        val service = result.value.single().service
+        assertEquals("Viterbo", service.origin)
+        assertEquals("Roma Tiburtina", service.destination)
+        assertEquals(5, service.stops.size)
+        assertEquals("08:00", service.scheduledDeparture)
+        assertEquals(6, service.officialDelayMinutes)
+        assertTrue(service.operationalStatusVerified)
+        assertEquals(listOf("cercaNumeroTrenoTrenoAutocomplete/12345", "andamentoTreno/S08001/12345/$runDate"), paths)
+    }
+
+    @Test fun `global lookup rejects wrong native identity and keeps missing observations unknown`() = runBlocking {
+        for (payload in listOf(run().put("numeroTreno", 99999), run().put("dataPartenzaTreno", runDate - 86_400_000))) {
+            val source = ViaggiaTrenoRealtimeAdapter(ViaggiaTrenoRealtimeFetcher { path ->
+                if (path.startsWith("cercaNumero")) "12345 - Viterbo|12345-S08001-$runDate" else payload.toString()
+            }, clock)
+            assertTrue((source.searchByNumber(it.binario.app.data.repository.TrainNumberQuery("12345", query.serviceDate)) as it.binario.app.data.provider.ProviderResult.Success).value.isEmpty())
+        }
+        val source = ViaggiaTrenoRealtimeAdapter(ViaggiaTrenoRealtimeFetcher { path ->
+            if (path.startsWith("cercaNumero")) "12345 - Viterbo|12345-S08001-$runDate" else run().put("oraUltimoRilevamento", JSONObject.NULL).toString()
+        }, clock)
+        val service = (source.searchByNumber(it.binario.app.data.repository.TrainNumberQuery("12345", query.serviceDate)) as it.binario.app.data.provider.ProviderResult.Success).value.single().service
+        assertFalse(service.operationalStatusVerified)
+        assertNull(service.officialDelayMinutes)
+    }
+
     private val zone = ZoneId.of("Europe/Rome")
     private val now = Instant.parse("2026-10-16T08:00:00Z")
     private val clock = Clock.fixed(now, zone)

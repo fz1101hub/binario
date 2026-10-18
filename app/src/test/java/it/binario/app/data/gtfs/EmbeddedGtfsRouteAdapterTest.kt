@@ -24,6 +24,36 @@ import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 
 class EmbeddedGtfsRouteAdapterTest {
+    @Test fun `number lookup returns the complete run without a route or departure cutoff`() = runBlocking {
+        val matches = adapter(feed()).searchByNumber(it.binario.app.data.repository.TrainNumberQuery("2581", LocalDate.of(2026, 9, 4)))
+        val train = matches.single().service
+        assertEquals("Milano Centrale", train.origin)
+        assertEquals("Como S. Giovanni", train.destination)
+        assertEquals(3, train.stops.size)
+        assertEquals("08:05", train.scheduledDeparture)
+        assertFalse(train.operationalStatusVerified)
+        assertEquals("T1", train.gtfsIdentity?.tripId)
+        assertTrue(adapter(feed()).searchByNumber(it.binario.app.data.repository.TrainNumberQuery("258", LocalDate.of(2026, 9, 4))).isEmpty())
+    }
+
+    @Test fun `number lookup honours calendar exceptions and overnight service dates`() = runBlocking {
+        val date = LocalDate.of(2026, 9, 5)
+        val removed = adapter(feed(calendarDates = "service_id,date,exception_type\nW,20260904,2\n"))
+        assertTrue(removed.searchByNumber(it.binario.app.data.repository.TrainNumberQuery("2581", date.minusDays(1))).isEmpty())
+        val night = "trip_id,arrival_time,departure_time,stop_id,stop_sequence\nT1,25:10:00,25:10:00,MI,1\nT1,25:27:00,25:28:00,MO,2\nT1,25:50:00,25:50:00,CO,3\n"
+        val service = adapter(feed(stopTimes = night)).searchByNumber(it.binario.app.data.repository.TrainNumberQuery("2581", date)).single().service
+        assertEquals(date.minusDays(1), service.gtfsIdentity?.serviceDate)
+        assertEquals(date.atTime(1, 10), service.scheduledDepartureDateTime)
+    }
+
+    @Test fun `same public number in different feeds preserves distinct native identities`() = runBlocking {
+        val packs = listOf(EmbeddedGtfsPack(SourceId("lombardia-trenord-gtfs"), "a"), EmbeddedGtfsPack(SourceId("ch-otd-gtfs"), "b"))
+        val source = EmbeddedGtfsRouteAdapter(openAsset = { ByteArrayInputStream(feed()) }, packs = packs, clock = { 1_000L })
+        val matches = source.searchByNumber(it.binario.app.data.repository.TrainNumberQuery("2581", LocalDate.of(2026, 9, 4)))
+        assertEquals(2, matches.size)
+        assertEquals(2, matches.map { it.id }.distinct().size)
+    }
+
     private val pack = EmbeddedGtfsPack(SourceId("lombardia-trenord-gtfs"), "gtfs/test.zip")
     private val route = SavedRoute(
         id = "test",

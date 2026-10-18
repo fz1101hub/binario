@@ -17,6 +17,8 @@ import it.binario.app.data.TrainDataSource
 import it.binario.app.data.TrainService
 import it.binario.app.data.TrainStop
 import it.binario.app.data.core.SourceId
+import it.binario.app.data.repository.TrainNumberQuery
+import it.binario.app.data.repository.TrainNumberMatch
 import it.binario.app.data.sources.RailInformationCategory
 import it.binario.app.data.sources.RailSourceCatalog
 import it.binario.app.data.sources.RailSourceSelectionPolicy
@@ -31,6 +33,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.ensureActive
 
 /**
  * Fallback offline per orari programmati. Legge soltanto i data pack GTFS già
@@ -72,6 +75,26 @@ class EmbeddedGtfsRouteAdapter(
 
     /** Diagnostica interna: la ricerca senza source id deve poter ricordare ogni pack configurato. */
     internal fun stopPresenceCacheSizeForTest(): Int = synchronized(stopPresenceCache) { stopPresenceCache.size }
+
+    suspend fun searchByNumber(query: TrainNumberQuery): List<TrainNumberMatch> = withContext(parsingDispatcher) {
+        if (!query.valid) return@withContext emptyList()
+        buildList {
+            for (pack in packs) {
+                kotlinx.coroutines.currentCoroutineContext().ensureActive()
+                if (pack.lastServiceDate?.isBefore(query.date.minusDays(2)) == true) continue
+                val source = RailSourceCatalog.byId(pack.sourceId) ?: continue
+                try {
+                    val bytes = assetBytes(pack.assetPath)
+                    val index = parse({ ByteArrayInputStream(bytes) }, query)
+                    val now = clock()
+                    index.servicesByNumber(pack.sourceId.value, query).forEach { service ->
+                        add(TrainNumberMatch.create(service, source.displayName, DataConfidence.STATIC_ONLY, now, now + 12 * 60 * 60_000))
+                    }
+                } catch (_: GtfsCompactIndexLimitException) { }
+                catch (_: java.io.IOException) { }
+            }
+        }
+    }
 
     override suspend fun loadRoute(route: SavedRoute, direction: Direction): DataResult =
         loadRoute(route, direction, JourneyQuery.now())
@@ -216,7 +239,7 @@ class EmbeddedGtfsRouteAdapter(
                 val bytes = assetBytes(pack.assetPath)
                 val parsed = withContext(parsingDispatcher) {
                     onParsing?.invoke()
-                    parse { ByteArrayInputStream(bytes) }
+                    parse({ ByteArrayInputStream(bytes) })
                 }
                 synchronized(indexCache) { indexCache[pack.sourceId] ?: parsed.also { indexCache[pack.sourceId] = it } }
             }
@@ -299,22 +322,22 @@ class EmbeddedGtfsRouteAdapter(
      * una tabella GTFS in List<Map<String, String>>: ogni riga viene consumata
      * subito e le sole colonne necessarie alla tratta sono mantenute in array.
      */
-    private fun parse(openStream: () -> InputStream): StaticGtfsIndex {
+    private fun parse(openStream: () -> InputStream, numberQuery: TrainNumberQuery? = null): StaticGtfsIndex {
         val index = StaticGtfsIndex(compactIndexLimits)
         BoundedGtfsZipScanner(compactIndexLimits).scan(openStream(), compactIndexTables - "stop_times.txt") { table, rows ->
             when (table) {
                 "agency.txt" -> index.readAgencies(rows)
                 "stops.txt" -> index.readStops(rows)
                 "routes.txt" -> index.readRoutes(rows)
-                "trips.txt" -> index.readTrips(rows)
+                "trips.txt" -> index.readTrips(rows, numberQuery)
                 "calendar.txt" -> index.readCalendars(rows)
                 "calendar_dates.txt" -> index.readCalendarDates(rows)
             }
         }
         // Seconda passata: trips è ormai completo anche quando stop_times è la
         // prima entry (come nel pack AMT), quindi non indicizziamo trip ignoti.
-        BoundedGtfsZipScanner(compactIndexLimits).scan(openStream(), setOf("stop_times.txt")) { _, rows ->
-            index.readStopTimes(rows)
+        if (numberQuery == null || index.hasTrips()) {
+            BoundedGtfsZipScanner(compactIndexLimits).scan(openStream(), setOf("stop_times.txt")) { _, rows -> index.readStopTimes(rows) }
         }
         return index
     }
@@ -376,13 +399,15 @@ class EmbeddedGtfsRouteAdapter(
             }
         }
 
-        fun readTrips(rows: GtfsCsvRows) {
+        fun readTrips(rows: GtfsCsvRows, numberQuery: TrainNumberQuery? = null) {
             val routeIndex = rows.header.indexOf("route_id")
             val serviceIndex = rows.header.indexOf("service_id")
             val tripIndex = rows.header.indexOf("trip_id")
             val shortNameIndex = rows.header.indexOf("trip_short_name")
             rows.forEachRow(limits.maxTrips) { row ->
                 val tripId = row.gtfsRawValue(tripIndex)
+                val publicNumber = row.getOrNull(shortNameIndex)?.takeIf(String::isNotBlank) ?: tripId
+                if (numberQuery != null && !numberQuery.matches(publicNumber)) return@forEachRow
                 trips.configure(
                     tripId = tripId,
                     routeId = row.gtfsRawValue(routeIndex),
@@ -451,6 +476,36 @@ class EmbeddedGtfsRouteAdapter(
                         .add(date, row.gtfsRawValue(exceptionIndex))
                 }
             }
+        }
+
+        fun hasTrips(): Boolean = trips.size() > 0
+
+        fun servicesByNumber(sourceId: String, query: TrainNumberQuery): List<TrainService> {
+            val selected = ArrayList<TrainService>()
+            for (serviceDate in listOf(query.date.minusDays(2), query.date.minusDays(1), query.date)) {
+                trips.forEachDeclared { tripIndex, trip ->
+                    if (!serviceRunsOn(trip.serviceId, serviceDate)) return@forEachDeclared
+                    val type = routes[trip.routeId]?.type?.toIntOrNull() ?: return@forEachDeclared
+                    if (type != 1 && type != 2 && type !in 100..199 && type !in 400..499) return@forEachDeclared
+                    var first = -1
+                    var last = -1
+                    var entry = trips.head(tripIndex)
+                    while (entry >= 0) {
+                        if (stopTimes.preferredDeparture(entry) >= 0) {
+                            if (first < 0 || stopTimes.comesBefore(entry, first)) first = entry
+                            if (last < 0 || stopTimes.comesBefore(last, entry)) last = entry
+                        }
+                        entry = stopTimes.next(entry)
+                    }
+                    if (first < 0 || last < 0 || first == last) return@forEachDeclared
+                    val departure = serviceDate.atStartOfDay().plusMinutes(stopTimes.preferredDeparture(first).toLong())
+                    val arrival = serviceDate.atStartOfDay().plusMinutes(stopTimes.preferredDeparture(last).toLong())
+                    if (departure.toLocalDate() > query.date || arrival.toLocalDate() < query.date) return@forEachDeclared
+                    if (selected.size >= limits.maxServicesPerPack) return@forEachDeclared
+                    selected += buildService(CompactSegment(first, last, tripIndex), trip, sourceId, serviceDate, departure)
+                }
+            }
+            return selected
         }
 
         fun services(origin: String, destination: String, sourceId: String, query: JourneyQuery): List<TrainService> {

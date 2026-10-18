@@ -8,6 +8,9 @@ import it.binario.app.data.core.SourceRef
 import it.binario.app.data.core.StationBoardEntry
 import it.binario.app.data.core.SourcedValue
 import it.binario.app.data.core.RunStatus
+import it.binario.app.data.repository.TrainNumberSearchProvider
+import it.binario.app.data.repository.TrainNumberQuery
+import it.binario.app.data.repository.TrainNumberMatch
 import it.binario.app.data.repository.StationBoardRunDetailProvider
 import it.binario.app.data.repository.StationBoardRunDetails
 import it.binario.app.data.planned.BoundedSingleFlightCache
@@ -36,7 +39,7 @@ internal class HttpViaggiaTrenoRealtimeFetcher(
     private val openConnection: (URL) -> HttpURLConnection = { it.openConnection() as HttpURLConnection }
 ) : ViaggiaTrenoRealtimeFetcher {
     override suspend fun fetch(path: String): String = withContext(Dispatchers.IO) {
-        require(path.startsWith("partenze/") || path.startsWith("arrivi/") || path.startsWith("andamentoTreno/"))
+        require(path.startsWith("partenze/") || path.startsWith("arrivi/") || path.startsWith("andamentoTreno/") || path.startsWith("cercaNumeroTrenoTrenoAutocomplete/"))
         var url = URL("https://www.viaggiatreno.it/infomobilita/resteasy/viaggiatreno/$path")
         val requestedPath = url.path
         repeat(4) { attempt ->
@@ -93,7 +96,7 @@ internal class HttpViaggiaTrenoRealtimeFetcher(
 class ViaggiaTrenoRealtimeAdapter(
     private val fetcher: ViaggiaTrenoRealtimeFetcher = HttpViaggiaTrenoRealtimeFetcher(),
     private val clock: Clock = Clock.system(RailTime.defaultZone)
-) : RealtimeRouteDataSource, StationBoardProvider, StationBoardRunDetailProvider {
+) : RealtimeRouteDataSource, StationBoardProvider, StationBoardRunDetailProvider, TrainNumberSearchProvider {
     override val descriptor = ProviderDescriptor(
         id = SourceId("viaggiatreno"), displayName = "Trenitalia — ViaggiaTreno realtime",
         capabilities = setOf(ProviderCapability.STATION_BOARD, ProviderCapability.TRAIN_RUN_REALTIME),
@@ -236,6 +239,70 @@ class ViaggiaTrenoRealtimeAdapter(
         if (body.trim() == "null") return emptyList()
         val array = JSONArray(body)
         return (0 until minOf(array.length(), 2000)).mapNotNull(array::optJSONObject)
+    }
+
+    override suspend fun searchByNumber(query: TrainNumberQuery): ProviderResult<List<TrainNumberMatch>> = withContext(Dispatchers.Default) {
+        val fetched = clock.instant()
+        val meta = ProviderResponseMeta(descriptor.id, fetched, expiresAt = fetched.plusSeconds(30))
+        val number = query.numeric?.takeIf { it.matches(Regex("[0-9]{1,6}")) }
+            ?: return@withContext ProviderResult.Success(emptyList(), meta)
+        try {
+            val references = json("cercaNumeroTrenoTrenoAutocomplete/$number").lineSequence().take(200)
+                .mapNotNull { line -> Regex("([0-9]{1,6})-(S[0-9]{5})-([0-9]{10,16})")
+                    .matchEntire(line.substringAfter('|', "").trim()) }
+                .filter { query.matches(it.groupValues[1]) }.map { it.groupValues.drop(1) }.distinct().take(24).toList()
+            val failed = java.util.concurrent.atomic.AtomicBoolean(false)
+            val matches = coroutineScope {
+                references.map { (publicNumber, origin, nativeDate) -> async {
+                    val date = nativeDate.toLong()
+                    val serviceDay = Instant.ofEpochMilli(date).atZone(zone).toLocalDate()
+                    if (serviceDay < query.date.minusDays(2) || serviceDay > query.date) return@async null
+                    try {
+                        val run = JSONObject(json("andamentoTreno/$origin/$publicNumber/$date"))
+                        val rows = run.optJSONArray("fermate") ?: return@async null
+                        val first = rows.optJSONObject(0) ?: return@async null
+                        val scheduled = (first.millis("partenza_teorica") ?: first.millis("programmata"))?.let(Instant::ofEpochMilli) ?: return@async null
+                        val last = rows.optJSONObject(rows.length() - 1) ?: return@async null
+                        val end = (last.millis("arrivo_teorico") ?: last.millis("programmata"))?.let(Instant::ofEpochMilli) ?: scheduled
+                        if (scheduled.atZone(zone).toLocalDate() > query.date || end.atZone(zone).toLocalDate() < query.date) return@async null
+                        val firstCode = first.text("id") ?: return@async null
+                        val entry = StationBoardEntry(it.binario.app.data.core.TrainRunId("viaggiatreno:$origin:$publicNumber:$date"),
+                            scheduled.atZone(zone), destinationOrOrigin = it.binario.app.data.core.StationId("viaggiatreno:${last.text("id")}"),
+                            destinationOrOriginLabel = last.text("stazione"), publicNumber = publicNumber,
+                            nativeRunIds = mapOf(descriptor.id to "$origin:$publicNumber:$date"))
+                        val detail = parseBoardRun(run, origin, publicNumber, date, firstCode, BoardKind.DEPARTURES, entry, fetched) ?: return@async null
+                        val observed = run.millis("oraUltimoRilevamento")?.let(Instant::ofEpochMilli)?.takeIf { recent(it, fetched) }
+                        val cancelled = run.intOrNull("provvedimento") == 1 || run.text("tipoTreno") == "ST"
+                        val delay = run.intOrNull("ritardo")
+                        val verified = cancelled || (observed != null && delay != null && !run.optBoolean("nonPartito", false))
+                        val category = run.text("categoria").orEmpty().uppercase(Locale.ROOT)
+                        val brand = run.text("compImpresa")
+                        val service = TrainService(
+                            id = entry.runId.value, number = publicNumber,
+                            operator = if (brand?.contains("trenord", true) == true) RailOperator.TRENORD else if (category.startsWith("IC")) RailOperator.TRENITALIA_LONG_DISTANCE
+                                else if (category.startsWith("F")) RailOperator.TRENITALIA_AV else RailOperator.TRENITALIA_REGIONALE,
+                            trainCategory = if (category.startsWith("IC")) TrainCategory.INTERCITY else if (category.startsWith("F")) TrainCategory.FRECCE else TrainCategory.REGIONALE,
+                            origin = detail.origin, destination = detail.destination, scheduledDeparture = time(scheduled),
+                            expectedDeparture = detail.entry.expectedTime?.value?.toInstant()?.let(::time) ?: time(scheduled),
+                            platform = detail.entry.platform?.value, delayMinutes = if (verified) delay ?: 0 else 0,
+                            officialDelayMinutes = delay.takeIf { verified },
+                            status = if (cancelled) ServiceStatus.CANCELLED else if (verified && (delay ?: 0) > 0) ServiceStatus.DELAYED else ServiceStatus.ON_TIME,
+                            stops = detail.stops, operatorDisplayName = brand, operationalStatusVerified = verified,
+                            scheduledDepartureDateTime = scheduled.atZone(zone).toLocalDateTime(),
+                            operationalSourceIds = if (verified) setOf(descriptor.id.value) else emptySet(),
+                            operationalObservedAtEpochMillis = observed?.toEpochMilli().takeIf { verified }
+                        )
+                        TrainNumberMatch.create(service, descriptor.displayName, DataConfidence.OPERATOR_PRIMARY, fetched.toEpochMilli(), fetched.plusSeconds(30).toEpochMilli())
+                    } catch (error: CancellationException) { throw error }
+                    catch (_: IOException) { failed.set(true); null }
+                    catch (_: org.json.JSONException) { failed.set(true); null }
+                } }.awaitAll().filterNotNull()
+            }
+            if (failed.get()) ProviderResult.Partial(matches, setOf(ProviderWarning.INCOMPLETE_COVERAGE), meta)
+            else ProviderResult.Success(matches, meta)
+        } catch (error: CancellationException) { throw error }
+        catch (_: IOException) { ProviderResult.Failure(ProviderError(ProviderErrorKind.NETWORK, "Ricerca ViaggiaTreno non raggiungibile.")) }
+        catch (_: org.json.JSONException) { ProviderResult.Failure(ProviderError(ProviderErrorKind.PARSE_ERROR, "Risposta ViaggiaTreno non leggibile.")) }
     }
 
     override suspend fun getStationBoardRun(station: Station, kind: BoardKind, entry: StationBoardEntry): ProviderResult<StationBoardRunDetails> =

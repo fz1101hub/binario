@@ -21,6 +21,31 @@ class LiveProviderNetworkTest {
     private val clock = Clock.systemUTC()
     private val zone = ZoneId.of("Europe/Rome")
 
+    @Test fun viaggiatrenoGlobalNumber() = runBlocking {
+        selected("viaggiatreno")
+        val adapter = ViaggiaTrenoRealtimeAdapter(diagnosticViaggiaTrenoFetcher(), clock)
+        val query = it.binario.app.data.repository.TrainNumberQuery("23263", clock.instant().atZone(zone).toLocalDate())
+        val result = adapter.searchByNumber(query)
+        val matches = when (result) { is ProviderResult.Success -> result.value; is ProviderResult.Partial -> result.value; else -> emptyList() }
+        println("LIVE_ACCEPTANCE ViaggiaTreno global number 23263: result=${result.javaClass.simpleName}, matches=${matches.map { it.service.origin + ":" + it.service.destination + ":stops=" + it.service.stops.size }}")
+        assertTrue("ViaggiaTreno direct number lookup returned no complete matching run: $result", matches.any { query.matches(it.service.number) && it.service.stops.size >= 2 })
+    }
+
+    @Test fun italoGlobalNumber() = runBlocking {
+        selected("italo")
+        val adapter = ItaloTrainNumberAdapter(fetch = { url ->
+            val body = downloadItaloPublic(url)
+            val root = org.json.JSONObject(body)
+            println("LIVE_ACCEPTANCE Italo direct number schema: keys=${root.keySet()}, runKeys=${root.optJSONObject("TrainSchedule")?.keySet()}")
+            body
+        }, clock = clock)
+        val query = it.binario.app.data.repository.TrainNumberQuery("9920", clock.instant().atZone(zone).toLocalDate())
+        val result = adapter.searchByNumber(query)
+        val matches = (result as? ProviderResult.Success)?.value.orEmpty()
+        println("LIVE_ACCEPTANCE Italo global number 9920: result=${result.javaClass.simpleName}, matches=${matches.map { it.service.origin + ":" + it.service.destination + ":stops=" + it.service.stops.size }}")
+        assertTrue("Italo direct number lookup returned no complete matching run: $result", matches.any { query.matches(it.service.number) && it.service.stops.size >= 2 })
+    }
+
     @Test fun rfi() = runBlocking {
         selected("rfi")
         val fetcher = diagnosticRfiFetcher()

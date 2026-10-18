@@ -86,7 +86,7 @@ internal fun parseItaloPublicBoard(json: String, origin: String, route: SavedRou
     }
 }
 
-private fun parseItaloObservation(value: String, clock: Clock): Instant? {
+internal fun parseItaloObservation(value: String, clock: Clock): Instant? {
     if (value.isBlank()) return clock.instant() // A current board without a timestamp, as with the RFI monitor.
     runCatching { Instant.parse(value) }.getOrNull()?.let { return it }
     Regex("/Date\\((\\d+)(?:[+-]\\d+)?\\)/").matchEntire(value)?.groupValues?.get(1)?.toLongOrNull()?.let { return Instant.ofEpochMilli(it) }
