@@ -61,14 +61,15 @@ class LiveProviderNetworkTest {
         assertFalse("Current Italo station-to-url JSON is missing", document.select("[data-ntv-name=station-to-url][data-ntv-type=Json]").isEmpty())
         assertTrue("Current Italo catalogue is not being parsed beyond the old fallback", catalogue.size > ItaloPublicStationFallbacks.all.size)
         val fetcher = HttpItaloPublicStationFetcher { url -> if (url.endsWith("/it/stazione")) html else downloadItaloPublic(url) }
-        println("LIVE_ACCEPTANCE Italo label markup: " + document.getAllElements().filter { it.ownText().contains("Genova", true) || it.ownText().contains("Bologna", true) }.take(12).map { it.outerHtml().take(600) })
+        println("LIVE_ACCEPTANCE Italo station-list markup: " + document.select("[data-ntv-name=station-list]").map { it.outerHtml().replace(Regex("\\s+"), " ").take(16000) })
+        println("LIVE_ACCEPTANCE Italo label markup: " + document.getAllElements().filter { it.ownText().contains("Genova", true) || it.ownText().contains("Bologna", true) }.take(12).map { it.outerHtml().replace(Regex("\\s+"), " ").take(600) })
         for (name in listOf("Ancona", "Genova", "Bologna", "Pisa", "Treviso Centrale")) {
             val slug = fetcher.resolveStationSlug(listOf(name)) ?: continue
             val root = org.json.JSONObject(fetcher.fetch(slug))
             println("LIVE_ACCEPTANCE Italo board identity $name: " + root.toString().take(2800))
             if (name == "Genova" || name == "Bologna") {
                 val page = org.jsoup.Jsoup.parse(downloadItaloPublic("${ItaloPublicStationAdapter.BASE_URL}/it/stazione/$slug"))
-                println("LIVE_ACCEPTANCE Italo detail page identity $name: " + page.getAllElements().filter { it.ownText().contains("Principe", true) || it.ownText().contains("Brignole", true) || it.ownText().contains("Bologna", true) || it.hasAttr("data-ntv-name") && it.attr("data-ntv-name").contains("station", true) }.take(18).map { it.outerHtml().take(700) })
+                println("LIVE_ACCEPTANCE Italo detail page identity $name: " + page.getAllElements().filter { it.ownText().contains("Principe", true) || it.ownText().contains("Brignole", true) || it.ownText().contains("Bologna", true) || it.hasAttr("data-ntv-name") && it.attr("data-ntv-name").contains("station", true) }.take(18).map { it.outerHtml().replace(Regex("\\s+"), " ").take(5000) })
             }
         }
         for (names in listOf(listOf("Ancona"), listOf("Genova Piazza Principe", "Genova P.P."), listOf("Genova Brignole"),
