@@ -292,6 +292,9 @@ private fun BinarioApp(
     LaunchedEffect(lifecycleOwner, screen, operationsSectionName) {
         if (screen in setOf(Screen.RESULTS, Screen.DETAIL, Screen.OPERATIONS)) {
             lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                if (screen == Screen.OPERATIONS && operationsSectionName == OperationsSection.STATIONS.name) {
+                    viewModel.refreshStationBoardIfIdle()
+                }
                 while (true) {
                     delay(30_000)
                     if (screen == Screen.OPERATIONS && operationsSectionName == OperationsSection.STATIONS.name) {

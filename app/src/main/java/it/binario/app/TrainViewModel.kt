@@ -325,6 +325,8 @@ class TrainViewModel @JvmOverloads constructor(
         if (!sameContext) {
             stationBoard = null
             closeStationBoardRun()
+        } else {
+            stationBoard = stationBoard?.withoutExpiredObservations(java.time.Instant.now())
         }
         stationBoardStation = canonical
         stationBoardKind = kind
