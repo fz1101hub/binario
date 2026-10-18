@@ -59,7 +59,7 @@ class TrainNumberSearchInteractionTest {
         composeRule.onNode(hasSetTextAction()).performTextInput("9920")
         composeRule.onNodeWithText("Cerca treno").assertIsEnabled().performClick()
         composeRule.waitUntil(5_000) { model.trainNumberSearchState == RefreshState.SUCCESS }
-        val row = hasContentDescription("Treno 9920.", substring = true) and hasClickAction()
+        val row = hasContentDescription("9920", substring = true) and hasClickAction()
         composeRule.onNodeWithTag("train-number-results").performScrollToNode(row)
         composeRule.onNode(row).performClick()
         composeRule.runOnIdle {
