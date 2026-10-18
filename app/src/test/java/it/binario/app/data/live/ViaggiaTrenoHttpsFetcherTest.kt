@@ -84,6 +84,14 @@ class ViaggiaTrenoHttpsFetcherTest {
         assertEquals(4, calls)
     }
 
+    @Test fun `number autocomplete requests text while boards and runs request JSON`() = runBlocking {
+        val opened = mutableListOf<FakeConnection>()
+        val fetcher = HttpViaggiaTrenoRealtimeFetcher { url -> FakeConnection(url, 200, "").also(opened::add) }
+        fetcher.fetch("cercaNumeroTrenoTrenoAutocomplete/23263")
+        fetcher.fetch(path)
+        assertEquals(listOf("text/plain", "application/json"), opened.map { it.getRequestProperty("Accept") })
+    }
+
     private class FakeConnection(url: URL, private val status: Int, private val location: String) : HttpURLConnection(url) {
         var closed = false
         override fun connect() = Unit

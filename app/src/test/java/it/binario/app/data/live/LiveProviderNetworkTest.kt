@@ -24,11 +24,20 @@ class LiveProviderNetworkTest {
     @Test fun viaggiatrenoGlobalNumber() = runBlocking {
         selected("viaggiatreno")
         val adapter = ViaggiaTrenoRealtimeAdapter(diagnosticViaggiaTrenoFetcher(), clock)
-        val query = it.binario.app.data.repository.TrainNumberQuery("23263", clock.instant().atZone(zone).toLocalDate())
-        val result = adapter.searchByNumber(query)
-        val matches = when (result) { is ProviderResult.Success -> result.value; is ProviderResult.Partial -> result.value; else -> emptyList() }
-        println("LIVE_ACCEPTANCE ViaggiaTreno global number 23263: result=${result.javaClass.simpleName}, matches=${matches.map { it.service.origin + ":" + it.service.destination + ":stops=" + it.service.stops.size }}")
-        assertTrue("ViaggiaTreno direct number lookup returned no complete matching run: $result", matches.any { query.matches(it.service.number) && it.service.stops.size >= 2 })
+        val date = clock.instant().atZone(zone).toLocalDate()
+        val request = StationBoardRequest(StationId("global-number-fixture"), "Milano Centrale", railwayCode = "S01700",
+            from = date.atStartOfDay(zone).toInstant(), to = date.plusDays(1).atStartOfDay(zone).toInstant(), kind = BoardKind.DEPARTURES)
+        val board = adapter.getStationBoard(request)
+        val entries = when (board) { is ProviderResult.Success -> board.value.entries; is ProviderResult.Partial -> board.value.entries; else -> emptyList() }
+        assertTrue("ViaggiaTreno has no published train number to verify: $board", entries.isNotEmpty())
+        for (entry in entries.take(6)) {
+            val query = it.binario.app.data.repository.TrainNumberQuery(entry.publicNumber.orEmpty(), date)
+            val result = adapter.searchByNumber(query)
+            val matches = when (result) { is ProviderResult.Success -> result.value; is ProviderResult.Partial -> result.value; else -> emptyList() }
+            println("LIVE_ACCEPTANCE ViaggiaTreno global number ${query.number}: result=${result.javaClass.simpleName}, matches=${matches.map { it.service.origin + ":" + it.service.destination + ":stops=" + it.service.stops.size }}")
+            if (matches.any { query.matches(it.service.number) && it.service.stops.size >= 2 }) return@runBlocking
+        }
+        fail("ViaggiaTreno direct lookup did not resolve any of the currently published numbers")
     }
 
     @Test fun italoGlobalNumber() = runBlocking {
@@ -36,14 +45,26 @@ class LiveProviderNetworkTest {
         val adapter = ItaloTrainNumberAdapter(fetch = { url ->
             val body = downloadItaloPublic(url)
             val root = org.json.JSONObject(body)
-            println("LIVE_ACCEPTANCE Italo direct number schema: keys=${root.keySet()}, runKeys=${root.optJSONObject("TrainSchedule")?.keySet()}")
+            val run = root.optJSONObject("TrainSchedule")
+            println("LIVE_ACCEPTANCE Italo direct number schema: keys=${root.keySet()}, runKeys=${run?.keySet()}, date=${run?.opt("DepartureDate")}, origin=${run?.optJSONObject("StazionePartenza")}, firstReached=${run?.optJSONArray("StazioniFerme")?.optJSONObject(0)}, disruption=${run?.optJSONObject("Distruption")}")
             body
         }, clock = clock)
-        val query = it.binario.app.data.repository.TrainNumberQuery("9920", clock.instant().atZone(zone).toLocalDate())
-        val result = adapter.searchByNumber(query)
-        val matches = (result as? ProviderResult.Success)?.value.orEmpty()
-        println("LIVE_ACCEPTANCE Italo global number 9920: result=${result.javaClass.simpleName}, matches=${matches.map { it.service.origin + ":" + it.service.destination + ":stops=" + it.service.stops.size }}")
-        assertTrue("Italo direct number lookup returned no complete matching run: $result", matches.any { query.matches(it.service.number) && it.service.stops.size >= 2 })
+        val numbers = linkedSetOf<String>()
+        val stationFetcher = HttpItaloPublicStationFetcher()
+        for (slug in listOf("roma-termini", "milano-centrale", "napoli-centrale")) {
+            val rows = org.json.JSONObject(stationFetcher.fetch(slug)).optJSONArray("ListaTreniPartenza") ?: continue
+            for (i in 0 until rows.length()) rows.optJSONObject(i)?.optString("Numero")?.takeIf { it.matches(Regex("[0-9]{3,5}")) }?.let(numbers::add)
+        }
+        println("LIVE_ACCEPTANCE Italo currently published candidate numbers: $numbers")
+        assertTrue("Italo published no candidate number for a direct lookup", numbers.isNotEmpty())
+        for (number in numbers.take(8)) {
+            val query = it.binario.app.data.repository.TrainNumberQuery(number, clock.instant().atZone(zone).toLocalDate())
+            val result = adapter.searchByNumber(query)
+            val matches = (result as? ProviderResult.Success)?.value.orEmpty()
+            println("LIVE_ACCEPTANCE Italo global number $number: result=${result.javaClass.simpleName}, matches=${matches.map { it.service.origin + ":" + it.service.destination + ":stops=" + it.service.stops.size }}")
+            if (matches.any { query.matches(it.service.number) && it.service.stops.size >= 2 }) return@runBlocking
+        }
+        fail("Italo direct lookup did not resolve any currently published number")
     }
 
     @Test fun rfi() = runBlocking {

@@ -49,7 +49,7 @@ internal class HttpViaggiaTrenoRealtimeFetcher(
             connection.instanceFollowRedirects = false
             connection.useCaches = false
             connection.setRequestProperty("Cache-Control", "no-cache")
-            connection.setRequestProperty("Accept", "application/json")
+            connection.setRequestProperty("Accept", if (path.startsWith("cercaNumeroTrenoTrenoAutocomplete/")) "text/plain" else "application/json")
             connection.setRequestProperty("User-Agent", "Binario/0.20 (personal realtime client)")
             try {
                 val status = connection.responseCode
