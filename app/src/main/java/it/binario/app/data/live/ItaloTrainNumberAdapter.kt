@@ -30,7 +30,7 @@ class ItaloTrainNumberAdapter(
             ?: return@withContext ProviderResult.Success(emptyList(), meta)
         if (query.date != fetched.atZone(zone).toLocalDate()) return@withContext ProviderResult.Success(emptyList(), meta)
         try {
-            val body = cache.getOrLoad(number, expireFromLoadStart = true) {
+            val body = cache.getOrLoad(number, expireFromLoadStart = true, cancelWhenUnused = true) {
                 try { Result.success(fetch("${ItaloPublicStationAdapter.BASE_URL}/api/RicercaTrenoService?TrainNumber=$number")) }
                 catch (error: CancellationException) { throw error }
                 catch (error: IOException) { Result.failure(error) }
@@ -48,7 +48,7 @@ class ItaloTrainNumberAdapter(
 
     internal fun parse(root: JSONObject, query: TrainNumberQuery, fetched: Instant): TrainService? {
         val run = root.optJSONObject("TrainSchedule") ?: return null
-        val number = run.text("TrainNumber") ?: run.text("RfiTrainNumber") ?: return null
+        val number = run.text("NumeroTreno") ?: run.text("TrainNumber") ?: run.text("RfiTrainNumber") ?: return null
         if (!query.matches(number)) return null
         val departureDate = dateTime(run.text("DepartureDate"), query.date)?.toLocalDate() ?: query.date
         val calls = buildList {

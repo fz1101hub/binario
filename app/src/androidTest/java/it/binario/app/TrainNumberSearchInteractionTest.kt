@@ -17,6 +17,7 @@ import java.time.*
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.CompletableDeferred
 import org.junit.*
 import org.junit.Assert.*
 import org.junit.runner.RunWith
@@ -90,5 +91,34 @@ class TrainNumberSearchInteractionTest {
         composeRule.runOnIdle { model.updateTrainNumberQuery("222"); model.searchTrainNumber() }
         composeRule.waitUntil(5_000) { model.trainNumberSearchState == RefreshState.SUCCESS }
         composeRule.runOnIdle { assertTrue(cancelled.get()); assertEquals("222", model.trainNumberMatches.single().service.number) }
+    }
+
+    @Test fun refreshKeepsVisibleRunUntilItsSourceRespondsAgain() {
+        val release = CompletableDeferred<Unit>()
+        val emptyCalls = AtomicInteger()
+        val liveCalls = AtomicInteger()
+        val empty = object : TrainNumberSearchProvider {
+            override val descriptor = this@TrainNumberSearchInteractionTest.descriptor.copy(id = SourceId("empty-test"))
+            override suspend fun searchByNumber(query: TrainNumberQuery): ProviderResult<List<TrainNumberMatch>> {
+                emptyCalls.incrementAndGet()
+                return ProviderResult.Success(emptyList(), ProviderResponseMeta(descriptor.id, Instant.now()))
+            }
+        }
+        val live = object : TrainNumberSearchProvider {
+            override val descriptor = this@TrainNumberSearchInteractionTest.descriptor
+            override suspend fun searchByNumber(query: TrainNumberQuery): ProviderResult<List<TrainNumberMatch>> {
+                if (liveCalls.incrementAndGet() > 1) release.await()
+                return ProviderResult.Success(listOf(match(query)), ProviderResponseMeta(descriptor.id, Instant.now()))
+            }
+        }
+        val model = TrainViewModel(application, false, StationBoardAggregateService(emptyList()), StationBoardRunDetailService(emptyList()),
+            TrainNumberSearchService(listOf(empty, live))).also { store.put("number", it) }
+        composeRule.setContent { BinarioTheme { TrainNumberResultsScreen(Modifier, model, model::openTrainNumberMatch) } }
+        composeRule.runOnIdle { model.updateTrainNumberQuery("9920"); model.searchTrainNumber() }
+        composeRule.waitUntil(5_000) { model.trainNumberSearchState == RefreshState.SUCCESS }
+        composeRule.runOnIdle { model.searchTrainNumber(refresh = true) }
+        composeRule.waitUntil(5_000) { emptyCalls.get() == 2 && liveCalls.get() == 2 }
+        composeRule.runOnIdle { assertEquals("9920", model.trainNumberMatches.single().service.number); release.complete(Unit) }
+        composeRule.waitUntil(5_000) { model.trainNumberSearchState == RefreshState.SUCCESS }
     }
 }

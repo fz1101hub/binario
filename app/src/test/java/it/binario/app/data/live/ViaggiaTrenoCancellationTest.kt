@@ -14,6 +14,24 @@ import org.junit.Test
 class ViaggiaTrenoCancellationTest {
     private val path = "andamentoTreno/S08001/12345/1792101600000"
 
+    @Test fun `RFI and Italo deadlines release blocked sockets too`() = runBlocking {
+        for (provider in listOf("rfi", "italo", "rfi-programmed")) {
+            val connection = BlockedConnection()
+            try {
+                try {
+                    withTimeout(3_000) {
+                        if (provider == "rfi-programmed") it.binario.app.data.planned.HttpRfiProgrammedTimetableFetcher(500) { connection }.fetch("https://prm.rfi.it/qo_prm/QO_Partenze_SiPMR.aspx?Id=2247")
+                        else if (provider == "rfi") HttpRfiMonitorFetcher(500) { connection }.fetch("https://iechub.rfi.it/ArriviPartenze/ArrivalsDepartures/Monitor?placeId=2416&arrivals=False")
+                        else downloadItaloPublic("https://italoinviaggio.italotreno.com/api/RicercaTrenoService?TrainNumber=9920", 500) { connection }
+                    }
+                    fail("$provider request deadline expected")
+                } catch (_: SocketTimeoutException) { }
+                assertEquals(0L, connection.entered.count)
+                assertTrue(withContext(Dispatchers.IO) { connection.closed.await(2, TimeUnit.SECONDS) })
+            } finally { connection.disconnect() }
+        }
+    }
+
     @Test fun `caller cancellation closes a socket that ignores thread interruption`() = runBlocking {
         val connection = BlockedConnection()
         try {

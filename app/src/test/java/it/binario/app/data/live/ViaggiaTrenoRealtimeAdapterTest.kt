@@ -10,6 +10,54 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class ViaggiaTrenoRealtimeAdapterTest {
+    @Test fun `number lookup retains completed runs when another native reference stalls`() = runBlocking {
+        val cancelled = CompletableDeferred<Unit>()
+        val source = ViaggiaTrenoRealtimeAdapter(ViaggiaTrenoRealtimeFetcher { path ->
+            when {
+                path.startsWith("cercaNumero") -> "12345 - Viterbo|12345-S08001-$runDate\n12345 - Other|12345-S09999-$runDate"
+                path.contains("S09999") -> try { awaitCancellation() } finally { cancelled.complete(Unit) }
+                else -> run().toString()
+            }
+        }, clock, routeDetailsTimeoutMillis = 500)
+        val result = withTimeout(3_000) { source.searchByNumber(it.binario.app.data.repository.TrainNumberQuery("12345", query.serviceDate)) }
+            as it.binario.app.data.provider.ProviderResult.Partial
+        assertEquals("Viterbo", result.value.single().service.origin)
+        assertEquals(6, result.value.single().service.officialDelayMinutes)
+        withTimeout(2_000) { cancelled.await() }
+    }
+
+    @Test fun `a hub prioritizes scheduled route numbers beyond its first twelve departures`() = runBlocking {
+        val hint = object : TrainDataSource {
+            override suspend fun loadRoute(route: SavedRoute, direction: Direction): DataResult = DataResult.Success(RouteSnapshot(
+                route, direction, listOf(TrainService("hint", "R 12345", RailOperator.OTHER, TrainCategory.OTHER,
+                    route.outwardOrigin.name, route.outwardDestination.name, "10:05", "10:05", null, 0, ServiceStatus.ON_TIME, emptyList())),
+                "Static", now.toEpochMilli(), now.plusSeconds(60).toEpochMilli(), Freshness.AGING))
+        }
+        val numbers = mutableListOf<String>()
+        val source = ViaggiaTrenoRealtimeAdapter(ViaggiaTrenoRealtimeFetcher { path ->
+            if (path.startsWith("partenze")) JSONArray().apply {
+                for (number in (12000..12014).toList() + 12345) put(JSONObject().put("numeroTreno", number).put("codOrigine", "S08001")
+                    .put("dataPartenzaTreno", runDate).put("orarioPartenza", now.plusSeconds(300).toEpochMilli()))
+            }.toString() else {
+                synchronized(numbers) { numbers += path.split('/')[2] }
+                if (path.contains("/12345/")) run().toString() else "{}"
+            }
+        }, clock, routeCandidateSource = hint)
+        val result = source.loadRoute(route, Direction.OUTBOUND, query) as DataResult.Success
+        assertEquals("12345", result.snapshot.services.single().number)
+        assertTrue("Route candidate must be in the bounded detail batch", "12345" in numbers)
+        assertEquals(12, numbers.size)
+    }
+
+    @Test fun `a foreign destination without catalogue code matches one complete published stop name`() {
+        val uncoded = route.copy(outwardDestination = route.outwardDestination.copy(railwayCode = null))
+        assertEquals("Roma Ostiense", adapter().parseRun(run(), "12345", "S08001", runDate, uncoded, Direction.OUTBOUND, query, now)?.destination)
+        val wrong = uncoded.copy(outwardDestination = uncoded.outwardDestination.copy(name = "Ostiense"))
+        assertNull(adapter().parseRun(run(), "12345", "S08001", runDate, wrong, Direction.OUTBOUND, query, now))
+        val duplicated = run().also { it.getJSONArray("fermate").put(it.getJSONArray("fermate").getJSONObject(3)) }
+        assertNull(adapter().parseRun(duplicated, "12345", "S08001", runDate, uncoded, Direction.OUTBOUND, query, now))
+    }
+
     @Test fun `a slow detail cannot discard completed verified runs or hold the whole route search`() = runBlocking {
         val slowStarted = CompletableDeferred<Unit>()
         val slowCancelled = CompletableDeferred<Unit>()

@@ -9,6 +9,12 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class ItaloTrainNumberAdapterTest {
+    @Test fun `current NumeroTreno response field is recognized and checked against the requested number`() {
+        val root = payload().apply { getJSONObject("TrainSchedule").apply { remove("TrainNumber"); put("NumeroTreno", 9920) } }
+        val source = ItaloTrainNumberAdapter(clock = clock)
+        assertEquals("9920", source.parse(root, query, now)?.number)
+        assertNull(source.parse(root, query.copy(number = "9950"), now))
+    }
     private val now = Instant.parse("2026-10-16T08:00:00Z")
     private val clock = Clock.fixed(now, ZoneId.of("Europe/Rome"))
     private val query = TrainNumberQuery("9920", LocalDate.of(2026, 10, 16))

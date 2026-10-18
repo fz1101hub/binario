@@ -24,6 +24,37 @@ import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 
 class EmbeddedGtfsRouteAdapterTest {
+    @Test fun `shipped schedules contain Milano Centrale to Mendrisio for the reported travel day`() = runBlocking {
+        val source = EmbeddedGtfsRouteAdapter(openAsset = { java.io.File("src/main/assets", it).inputStream() },
+            packs = EmbeddedGtfsPacks.all.filter { it.sourceId.value in setOf("lombardia-trenord-gtfs", "ch-otd-gtfs") })
+        val route = SavedRoute("cross-border", "Milano–Mendrisio",
+            Station("curated:S01700", "Milano Centrale", "Milano", railwayCode = "S01700"),
+            Station("curated:NC000977", "Mendrisio", "Mendrisio"))
+        val result = source.loadRoute(route, Direction.OUTBOUND, JourneyQuery(LocalDate.of(2026, 10, 18), LocalTime.of(8, 0)))
+        assertTrue("Cross-border route missing from shipped official schedules: $result", result is DataResult.Success)
+        val services = (result as DataResult.Success).snapshot.services
+        assertTrue(services.isNotEmpty())
+        assertTrue(services.all { it.origin == "Milano Centrale" && it.destination == "Mendrisio" })
+        assertTrue(services.all { !it.operationalStatusVerified })
+    }
+
+    @Test fun `number matches from the first pack are published before reading a later pack`() = runBlocking {
+        val packs = listOf(EmbeddedGtfsPack(SourceId("lombardia-trenord-gtfs"), "a"), EmbeddedGtfsPack(SourceId("ch-otd-gtfs"), "b"))
+        val updates = mutableListOf<List<it.binario.app.data.repository.TrainNumberMatch>>()
+        var reads = 0
+        val source = EmbeddedGtfsRouteAdapter(openAsset = {
+            reads++
+            if (it == "b") assertEquals("Earlier pack is already visible", 1, updates.size)
+            ByteArrayInputStream(feed())
+        }, packs = packs)
+        val query = it.binario.app.data.repository.TrainNumberQuery("2581", LocalDate.of(2026, 9, 4))
+        val matches = source.searchByNumber(query) { updates += it }
+        assertEquals(listOf(1, 2), updates.map { it.size })
+        assertEquals(2, matches.size)
+        source.searchByNumber(query)
+        assertEquals("Repeated lookup reuses both compact results", 2, reads)
+    }
+
     @Test fun `number lookup returns the complete run without a route or departure cutoff`() = runBlocking {
         val matches = adapter(feed()).searchByNumber(it.binario.app.data.repository.TrainNumberQuery("2581", LocalDate.of(2026, 9, 4)))
         val train = matches.single().service

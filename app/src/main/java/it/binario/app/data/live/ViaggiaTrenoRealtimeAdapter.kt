@@ -101,7 +101,8 @@ internal class HttpViaggiaTrenoRealtimeFetcher(
 class ViaggiaTrenoRealtimeAdapter(
     private val fetcher: ViaggiaTrenoRealtimeFetcher = HttpViaggiaTrenoRealtimeFetcher(),
     private val clock: Clock = Clock.system(RailTime.defaultZone),
-    private val routeDetailsTimeoutMillis: Long = 8_000
+    private val routeDetailsTimeoutMillis: Long = 8_000,
+    private val routeCandidateSource: TrainDataSource? = null
 ) : RealtimeRouteDataSource, StationBoardProvider, StationBoardRunDetailProvider, TrainNumberSearchProvider {
     override val descriptor = ProviderDescriptor(
         id = SourceId("viaggiatreno"), displayName = "Trenitalia — ViaggiaTreno realtime",
@@ -113,10 +114,12 @@ class ViaggiaTrenoRealtimeAdapter(
     private val zone = RailTime.defaultZone
     // Cache failures for the cooldown too, without representing them as an empty board.
     private val cache = BoundedSingleFlightCache<Result<String>>(128, 30_000, clock::millis)
-    private val requests = Semaphore(3)
+    // Boards and number discovery must not queue behind an entire batch of optional run details.
+    private val discoveryRequests = Semaphore(2)
+    private val detailRequests = Semaphore(3)
 
     private suspend fun json(path: String): String = cache.getOrLoad(path, expireFromLoadStart = true, cancelWhenUnused = true) {
-        try { Result.success(requests.withPermit { fetcher.fetch(path) }) }
+        try { Result.success((if (path.startsWith("andamentoTreno/")) detailRequests else discoveryRequests).withPermit { fetcher.fetch(path) }) }
         catch (error: CancellationException) { throw error }
         catch (error: IOException) { Result.failure(error) }
     }.value.getOrThrow()
@@ -134,8 +137,7 @@ class ViaggiaTrenoRealtimeAdapter(
         val origin = route.origin(direction)
         val destination = route.destination(direction)
         val originCode = code(origin.railwayCode)
-        val destinationCode = code(destination.railwayCode)
-        if (originCode == null || destinationCode == null) return DataResult.Failure("Codici stazione ViaggiaTreno mancanti.", RouteFailureReason.RouteNotCovered)
+        if (originCode == null) return DataResult.Failure("Codice della stazione di partenza ViaggiaTreno mancante.", RouteFailureReason.RouteNotCovered)
         val fetched = clock.instant()
         return try {
             val requested = query.requestedAt.atZone(zone).toInstant()
@@ -145,7 +147,7 @@ class ViaggiaTrenoRealtimeAdapter(
             if (!requested.isAfter(fetched.plusSeconds(600))) {
                 val earlier = maxOf(requested.minusSeconds(2 * 3600), query.serviceDate.atStartOfDay(zone).toInstant())
                 if (earlier < requested) {
-                    try { boardRows.addAll(departures(originCode, earlier)) }
+                    try { withTimeoutOrNull(2_000) { departures(originCode, earlier) }?.let(boardRows::addAll) }
                     catch (error: CancellationException) { throw error }
                     catch (_: IOException) { /* Optional lookback must not erase the current board. */ }
                     catch (_: org.json.JSONException) { }
@@ -154,9 +156,16 @@ class ViaggiaTrenoRealtimeAdapter(
             val rows = boardRows.distinctBy { Triple(it.text("codOrigine"), it.text("numeroTreno"), it.millis("dataPartenzaTreno") ?: it.millis("millisDataPartenza")) }
                 .filter { row -> row.millis("orarioPartenza")?.let { it + (row.intOrNull("ritardo") ?: 0).coerceAtLeast(0) * 60_000L >= requested.toEpochMilli() } ?: true }
                 .sortedBy { it.millis("orarioPartenza") ?: Long.MAX_VALUE }
+            // A hub's first twelve departures can all serve other routes. Use trusted
+            // scheduled run numbers as hints, still validating every stop in the live run.
+            val candidateNumbers = if (rows.size > 12 && routeCandidateSource != null) {
+                val planned = withTimeoutOrNull(4_000) { routeCandidateSource.loadRoute(route, direction, query) }
+                (planned as? DataResult.Success)?.snapshot?.services?.mapNotNull { it.publicNumericNumber() }?.toSet().orEmpty()
+            } else emptySet()
+            val prioritized = rows.sortedByDescending { it.text("numeroTreno") in candidateNumbers }
             val completedServices = java.util.concurrent.ConcurrentLinkedQueue<TrainService>()
             withTimeoutOrNull(routeDetailsTimeoutMillis) {
-                coroutineScope { rows.take(12).map { row -> async {
+                coroutineScope { prioritized.take(12).map { row -> async {
                     val number = row.text("numeroTreno")?.takeIf { it.matches(Regex("[0-9]{1,6}")) } ?: return@async null
                     val runOrigin = code(row.text("codOrigine")) ?: return@async null
                     val runDate = row.millis("dataPartenzaTreno") ?: row.millis("millisDataPartenza") ?: return@async null
@@ -260,7 +269,8 @@ class ViaggiaTrenoRealtimeAdapter(
                     .matchEntire(line.substringAfter('|', "").trim()) }
                 .filter { query.matches(it.groupValues[1]) }.map { it.groupValues.drop(1) }.distinct().take(24).toList()
             val failed = java.util.concurrent.atomic.AtomicBoolean(false)
-            val matches = coroutineScope {
+            val completedMatches = java.util.concurrent.ConcurrentLinkedQueue<TrainNumberMatch>()
+            val finished = withTimeoutOrNull(routeDetailsTimeoutMillis) { coroutineScope {
                 references.map { (publicNumber, origin, nativeDate) -> async {
                     val date = nativeDate.toLong()
                     val serviceDay = Instant.ofEpochMilli(date).atZone(zone).toLocalDate()
@@ -300,13 +310,14 @@ class ViaggiaTrenoRealtimeAdapter(
                             operationalSourceIds = if (verified) setOf(descriptor.id.value) else emptySet(),
                             operationalObservedAtEpochMillis = observed?.toEpochMilli().takeIf { verified }
                         )
-                        TrainNumberMatch.create(service, descriptor.displayName, DataConfidence.OPERATOR_PRIMARY, fetched.toEpochMilli(), fetched.plusSeconds(30).toEpochMilli())
+                        TrainNumberMatch.create(service, descriptor.displayName, DataConfidence.OPERATOR_PRIMARY, fetched.toEpochMilli(), fetched.plusSeconds(30).toEpochMilli()).also(completedMatches::add)
                     } catch (error: CancellationException) { throw error }
                     catch (_: IOException) { failed.set(true); null }
                     catch (_: org.json.JSONException) { failed.set(true); null }
-                } }.awaitAll().filterNotNull()
-            }
-            if (failed.get()) ProviderResult.Partial(matches, setOf(ProviderWarning.INCOMPLETE_COVERAGE), meta)
+                } }.awaitAll()
+            }; true } == true
+            val matches = completedMatches.toList()
+            if (failed.get() || !finished) ProviderResult.Partial(matches, setOf(ProviderWarning.INCOMPLETE_COVERAGE), meta)
             else ProviderResult.Success(matches, meta)
         } catch (error: CancellationException) { throw error }
         catch (_: IOException) { ProviderResult.Failure(ProviderError(ProviderErrorKind.NETWORK, "Ricerca ViaggiaTreno non raggiungibile.")) }
@@ -391,7 +402,10 @@ class ViaggiaTrenoRealtimeAdapter(
         val rows = run.optJSONArray("fermate") ?: return null
         val stops = (0 until rows.length()).mapNotNull(rows::optJSONObject)
         val start = stops.indexOfFirst { it.text("id") == route.origin(direction).railwayCode }
-        val end = stops.indexOfFirst { it.text("id") == route.destination(direction).railwayCode }
+        val destination = route.destination(direction)
+        val destinationCode = code(destination.railwayCode)
+        val end = if (destinationCode != null) stops.indexOfFirst { it.text("id") == destinationCode }
+            else stops.indices.filter { destination.isNamedBy(stops[it].text("stazione").orEmpty()) }.singleOrNull() ?: -1
         if (start < 0 || end <= start) return null
         val segment = stops.subList(start, end + 1)
         val cancelled = run.intOrNull("provvedimento") == 1 || run.text("tipoTreno") == "ST"
@@ -437,6 +451,7 @@ class ViaggiaTrenoRealtimeAdapter(
     }
 
     private fun recent(observed: Instant, fetched: Instant) = !observed.isBefore(fetched.minusSeconds(300)) && !observed.isAfter(fetched.plusSeconds(60))
+    private fun TrainService.publicNumericNumber(): String? = TrainNumberQuery(number.substringAfterLast(" - "), clock.instant().atZone(zone).toLocalDate()).numeric
     private fun code(value: String?) = value?.takeIf { it.matches(Regex("S[0-9]{5}")) }
     private fun time(value: Instant) = value.atZone(zone).format(DateTimeFormatter.ofPattern("HH:mm", Locale.ROOT))
     private fun JSONObject.text(key: String): String? = opt(key)?.takeIf { it != JSONObject.NULL }?.toString()?.takeIf { it.isNotBlank() }

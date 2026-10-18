@@ -10,6 +10,21 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class TrainNumberSearchServiceTest {
+    @Test fun `incremental source retains early matches even if later enrichment times out`() = runBlocking {
+        val base = provider("incremental") { result() }
+        val source = object : TrainNumberSearchProvider by base {
+            override fun observeByNumber(query: TrainNumberQuery) = flow {
+                emit(result(match("early")))
+                awaitCancellation()
+            }
+        }
+        val updates = withTimeout(3_000) { TrainNumberSearchService(listOf(source), providerTimeoutMillis = 500).search(query).toList() }
+        assertEquals("early", updates.first().matches.single().id)
+        assertEquals("early", updates.last().matches.single().id)
+        assertTrue(updates.last().complete)
+        assertEquals(setOf("incremental"), updates.last().unavailableSources)
+    }
+
     private val date = LocalDate.of(2026, 10, 16)
     private val now = date.atStartOfDay(ZoneOffset.UTC).toInstant()
     private val query = TrainNumberQuery("23263", date)

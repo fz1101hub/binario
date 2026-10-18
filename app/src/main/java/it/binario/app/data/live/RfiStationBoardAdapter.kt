@@ -48,9 +48,12 @@ fun interface RfiMonitorFetcher {
     suspend fun fetch(url: String): String
 }
 
-internal class HttpRfiMonitorFetcher : RfiMonitorFetcher {
-    override suspend fun fetch(url: String): String = withContext(Dispatchers.IO) {
-        val connection = (URL(url).openConnection() as? HttpURLConnection)
+internal class HttpRfiMonitorFetcher(
+    private val requestTimeoutMillis: Long = 10_000,
+    private val openConnection: (URL) -> HttpURLConnection = { it.openConnection() as HttpURLConnection }
+) : RfiMonitorFetcher {
+    override suspend fun fetch(url: String): String = kotlinx.coroutines.withTimeoutOrNull(requestTimeoutMillis) {
+        val connection = openConnection(URL(url))
             ?: throw IOException("Il monitor RFI non usa una connessione HTTP")
         connection.requestMethod = "GET"
         connection.connectTimeout = 12_000
@@ -60,7 +63,7 @@ internal class HttpRfiMonitorFetcher : RfiMonitorFetcher {
         connection.setRequestProperty("Cache-Control", "no-cache")
         connection.setRequestProperty("Accept", "text/html,application/xhtml+xml")
         connection.setRequestProperty("User-Agent", "Binario/0.20 (personal rail information client)")
-        try {
+        withCancellableHttpConnection(connection) {
             val status = connection.responseCode
             if (status !in 200..299) throw IOException("RFI ha risposto HTTP $status")
             connection.inputStream.use { input ->
@@ -74,10 +77,8 @@ internal class HttpRfiMonitorFetcher : RfiMonitorFetcher {
                 }
                 output.toString("UTF-8")
             }
-        } finally {
-            connection.disconnect()
         }
-    }
+    } ?: throw java.net.SocketTimeoutException("RFI supera il tempo massimo della richiesta")
 }
 
 /**
@@ -215,7 +216,8 @@ class RfiStationBoardAdapter(
                     expiresAt = fetchedAt.plus(descriptor.ratePolicy.defaultTimeToLive)
                 )
             )
-        } catch (error: IOException) {
+        } catch (error: kotlinx.coroutines.CancellationException) { throw error }
+        catch (error: IOException) {
             ProviderResult.Failure(ProviderError(ProviderErrorKind.NETWORK, "Il tabellone RFI non è raggiungibile.", error::class.java.name))
         } catch (error: Exception) {
             ProviderResult.Failure(ProviderError(ProviderErrorKind.PARSE_ERROR, "Il tabellone RFI non è leggibile.", error::class.java.name))
@@ -267,7 +269,8 @@ class RfiStationBoardAdapter(
             )
             mutex.withLock { cache[key] = CachedSnapshot(snapshot, now + cacheTtlMillis) }
             DataResult.Success(snapshot)
-        } catch (error: IOException) {
+        } catch (error: kotlinx.coroutines.CancellationException) { throw error }
+        catch (error: IOException) {
             DataResult.Failure("Il tabellone RFI non è raggiungibile: ${error.message ?: "errore di rete"}.")
         } catch (error: Exception) {
             DataResult.Failure("Il tabellone RFI ha restituito dati non leggibili: ${error.message ?: "errore di parsing"}.")

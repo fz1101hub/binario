@@ -19,6 +19,7 @@ import it.binario.app.data.TrainStop
 import it.binario.app.data.core.SourceId
 import it.binario.app.data.repository.TrainNumberQuery
 import it.binario.app.data.repository.TrainNumberMatch
+import it.binario.app.data.planned.BoundedSingleFlightCache
 import it.binario.app.data.sources.RailInformationCategory
 import it.binario.app.data.sources.RailSourceCatalog
 import it.binario.app.data.sources.RailSourceSelectionPolicy
@@ -67,6 +68,7 @@ class EmbeddedGtfsRouteAdapter(
     }
     private val indexMutex = Mutex()
     private val stopPresenceMutex = Mutex()
+    private val numberCache = BoundedSingleFlightCache<List<TrainNumberMatch>>(40, 6 * 60 * 60_000L, clock)
 
     /** Diagnostica interna usata dal test di regressione a heap limitato. */
     internal fun compactIndexStats(): List<GtfsCompactIndexStats> = synchronized(indexCache) {
@@ -76,7 +78,7 @@ class EmbeddedGtfsRouteAdapter(
     /** Diagnostica interna: la ricerca senza source id deve poter ricordare ogni pack configurato. */
     internal fun stopPresenceCacheSizeForTest(): Int = synchronized(stopPresenceCache) { stopPresenceCache.size }
 
-    suspend fun searchByNumber(query: TrainNumberQuery): List<TrainNumberMatch> = withContext(parsingDispatcher) {
+    suspend fun searchByNumber(query: TrainNumberQuery, onMatches: suspend (List<TrainNumberMatch>) -> Unit = {}): List<TrainNumberMatch> = withContext(parsingDispatcher) {
         if (!query.valid) return@withContext emptyList()
         buildList {
             for (pack in packs) {
@@ -84,12 +86,16 @@ class EmbeddedGtfsRouteAdapter(
                 if (pack.lastServiceDate?.isBefore(query.date.minusDays(2)) == true) continue
                 val source = RailSourceCatalog.byId(pack.sourceId) ?: continue
                 try {
-                    val bytes = assetBytes(pack.assetPath)
-                    val index = parse({ ByteArrayInputStream(bytes) }, query)
-                    val now = clock()
-                    index.servicesByNumber(pack.sourceId.value, query).forEach { service ->
-                        add(TrainNumberMatch.create(service, source.displayName, DataConfidence.STATIC_ONLY, now, now + 12 * 60 * 60_000))
-                    }
+                    val matches = numberCache.getOrLoad("${pack.sourceId.value}:${query.normalized}:${query.date}", cancelWhenUnused = true) {
+                        val bytes = assetBytes(pack.assetPath)
+                        val index = parse({ ByteArrayInputStream(bytes) }, query)
+                        val now = clock()
+                        index.servicesByNumber(pack.sourceId.value, query).map { service ->
+                            TrainNumberMatch.create(service, source.displayName, DataConfidence.STATIC_ONLY, now, now + 12 * 60 * 60_000)
+                        }
+                    }.value
+                    addAll(matches)
+                    if (matches.isNotEmpty()) onMatches(toList())
                 } catch (_: GtfsCompactIndexLimitException) { }
                 catch (_: java.io.IOException) { }
             }

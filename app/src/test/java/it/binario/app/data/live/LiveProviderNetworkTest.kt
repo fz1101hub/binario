@@ -43,6 +43,23 @@ class LiveProviderNetworkTest {
             println("LIVE_ACCEPTANCE Cross-border $number stops=${stops.map { it.optString("id") + ":" + it.optString("stazione") }}")
             assertEquals("Mendrisio native identity changed", "S13143", stops.singleOrNull { it.optString("stazione").equals("MENDRISIO", true) }?.optString("id"))
         }
+        val assets = listOf(File("src/main/assets"), File("app/src/main/assets")).first { it.isDirectory }
+        val static = it.binario.app.data.gtfs.EmbeddedGtfsRouteAdapter({ File(assets, it).inputStream() },
+            packs = it.binario.app.data.gtfs.EmbeddedGtfsPacks.all.filter { it.sourceId.value == "lombardia-trenord-gtfs" })
+        val route = it.binario.app.data.SavedRoute("cross-border-probe", "Milano–Mendrisio",
+            it.binario.app.data.Station("S01700", "Milano Centrale", "Milano", railwayCode = "S01700"),
+            it.binario.app.data.Station("NC000977", "Mendrisio", "Mendrisio"))
+        val schedule = static.loadRoute(route, it.binario.app.data.Direction.OUTBOUND,
+            it.binario.app.data.JourneyQuery(now.atZone(zone).toLocalDate(), LocalTime.NOON)) as it.binario.app.data.DataResult.Success
+        val upcoming = schedule.snapshot.services.filter { it.scheduledDepartureDateTime?.isBefore(now.atZone(zone).toLocalDateTime()) == false }
+        for (service in upcoming.ifEmpty { schedule.snapshot.services }.take(2)) {
+            val number = service.number.substringAfterLast(" - ").trim()
+            val refs = upstream.fetch("cercaNumeroTrenoTrenoAutocomplete/$number")
+            println("LIVE_ACCEPTANCE Cross-border scheduled $number: nativeReferences=${refs.take(600)}")
+            val direct = adapter.searchByNumber(it.binario.app.data.repository.TrainNumberQuery(number, now.atZone(zone).toLocalDate()))
+            val matches = when (direct) { is ProviderResult.Success -> direct.value; is ProviderResult.Partial -> direct.value; else -> emptyList() }
+            println("LIVE_ACCEPTANCE Cross-border number $number: runs=${matches.map { it.service.origin + ":" + it.service.destination + ":stops=" + it.service.stops.map { stop -> stop.station } }}")
+        }
     }
 
     @Test fun viaggiatrenoGlobalNumber() = runBlocking {

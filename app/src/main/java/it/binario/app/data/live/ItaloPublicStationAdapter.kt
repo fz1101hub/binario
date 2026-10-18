@@ -92,22 +92,22 @@ internal class HttpItaloPublicStationFetcher(
     }
 }
 
-internal suspend fun downloadItaloPublic(url: String): String = withContext(Dispatchers.IO) {
-    val connection = URL(url).openConnection() as? HttpURLConnection
-        ?: throw IOException("Italo in Viaggio non usa una connessione HTTP")
+internal suspend fun downloadItaloPublic(url: String): String = downloadItaloPublic(url, 10_000) { it.openConnection() as HttpURLConnection }
+
+internal suspend fun downloadItaloPublic(url: String, timeoutMillis: Long, openConnection: (URL) -> HttpURLConnection): String =
+    kotlinx.coroutines.withTimeoutOrNull(timeoutMillis) {
+    val connection = openConnection(URL(url))
     connection.requestMethod = "GET"
     connection.connectTimeout = 12_000
     connection.readTimeout = 20_000
     connection.instanceFollowRedirects = true
     connection.setRequestProperty("Accept", "application/json,text/html")
     connection.setRequestProperty("User-Agent", "Binario/0.20 (personal rail information client)")
-    try {
+    withCancellableHttpConnection(connection) {
         if (connection.responseCode !in 200..299) throw IOException("Italo in Viaggio ha risposto HTTP ${connection.responseCode}")
         connection.inputStream.use { readBoundedRfiHtml(it, connection.contentLengthLong.takeIf { size -> size >= 0 }) }
-    } finally {
-        connection.disconnect()
     }
-}
+} ?: throw java.net.SocketTimeoutException("Italo supera il tempo massimo della richiesta")
 
 /**
  * Tabellone pubblico Italo in Viaggio. Non utilizza area personale, vendita,
@@ -170,7 +170,8 @@ class ItaloPublicStationAdapter(
                     expiresAt = fetchedAt.plus(descriptor.ratePolicy.defaultTimeToLive)
                 )
             )
-        } catch (error: IOException) {
+        } catch (error: kotlinx.coroutines.CancellationException) { throw error }
+        catch (error: IOException) {
             ProviderResult.Failure(ProviderError(ProviderErrorKind.NETWORK, "Italo in Viaggio non è raggiungibile.", error::class.java.name))
         } catch (error: Exception) {
             ProviderResult.Failure(ProviderError(ProviderErrorKind.PARSE_ERROR, "Italo in Viaggio non è leggibile.", error::class.java.name))
@@ -220,7 +221,8 @@ class ItaloPublicStationAdapter(
             )
             mutex.withLock { cache[key] = CachedSnapshot(snapshot, now + cacheTtlMillis) }
             DataResult.Success(snapshot)
-        } catch (error: IOException) {
+        } catch (error: kotlinx.coroutines.CancellationException) { throw error }
+        catch (error: IOException) {
             DataResult.Failure("Italo in Viaggio non è raggiungibile: ${error.message ?: "errore di rete"}.")
         } catch (error: Exception) {
             DataResult.Failure("Italo in Viaggio ha restituito dati non leggibili: ${error.message ?: "errore di parsing"}.")

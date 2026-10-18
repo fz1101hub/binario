@@ -553,12 +553,15 @@ class TrainViewModel @JvmOverloads constructor(
             }
         }
         trainNumberSearchDate = query.date
+        val retainedMatches = trainNumberMatches
         trainNumberSearchState = RefreshState.LOADING
         trainNumberUnavailableSources = emptySet()
         trainNumberSearchJob = viewModelScope.launch {
             trainNumberSearchService.search(query).collect { update ->
                 if (requestId != trainNumberSearchRequestId) return@collect
-                trainNumberMatches = update.matches
+                trainNumberMatches = if (refresh && !update.complete) {
+                    (retainedMatches.associateBy { it.id } + update.matches.associateBy { it.id }).values.toList()
+                } else update.matches
                 trainNumberUnavailableSources = update.unavailableSources
                 trainNumberSearchState = if (!update.complete) RefreshState.LOADING
                     else if (update.matches.isEmpty() && update.unavailableSources.isNotEmpty()) RefreshState.ERROR else RefreshState.SUCCESS

@@ -62,6 +62,36 @@ import java.time.ZoneOffset
 import java.time.ZonedDateTime
 
 class StationBoardRealtimeReconcilerTest {
+    @Test fun `native source deadlines overlap instead of adding another wait for the fallback`() = runTest {
+        var cancelled = false
+        val slow = object : TrainDataSource {
+            override suspend fun loadRoute(route: SavedRoute, direction: Direction): DataResult {
+                try { awaitCancellation() } finally { cancelled = true }
+            }
+        }
+        val fast = source { DataResult.Success(plannedSnapshot().let { it.copy(services = it.services.map { train -> train.copy(operationalStatusVerified = true) }) }) }
+        val result = StationBoardEnrichedTrainDataSource(source { error("Fallback must not run") }, emptyList(), clock, zone,
+            liveRouteSources = listOf(slow, fast)).loadRoute(route, Direction.OUTBOUND, query) as DataResult.Success
+        assertTrue(result.snapshot.services.single().operationalStatusVerified)
+        assertTrue(cancelled)
+        assertEquals(15_000L, testScheduler.currentTime)
+    }
+
+    @Test fun `a faster fallback does not override the verified operator delay`() = runTest {
+        val preferred = object : TrainDataSource {
+            override suspend fun loadRoute(route: SavedRoute, direction: Direction): DataResult {
+                kotlinx.coroutines.delay(1_000)
+                return DataResult.Success(plannedSnapshot().let { it.copy(services = it.services.map { train -> train.copy(
+                    operationalStatusVerified = true, officialDelayMinutes = 6, delayMinutes = 6) }) })
+            }
+        }
+        val fallback = source { DataResult.Success(plannedSnapshot().let { it.copy(services = it.services.map { train -> train.copy(
+            operationalStatusVerified = true, officialDelayMinutes = 8, delayMinutes = 8) }) }) }
+        val result = StationBoardEnrichedTrainDataSource(source { error("Fallback must not run") }, emptyList(), clock, zone,
+            liveRouteSources = listOf(preferred, fallback)).loadRoute(route, Direction.OUTBOUND, query) as DataResult.Success
+        assertEquals(6, result.snapshot.services.single().officialDelayMinutes)
+        assertEquals(1_000L, testScheduler.currentTime)
+    }
     private val zone = ZoneId.of("Europe/Rome")
     private val route = SavedRoute(
         id = "roma-napoli",

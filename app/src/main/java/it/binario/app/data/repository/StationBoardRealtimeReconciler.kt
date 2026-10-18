@@ -30,6 +30,9 @@ import it.binario.app.data.sources.RailSourceSelectionPolicy
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withTimeoutOrNull
 import java.time.Clock
 import java.time.Duration
@@ -58,13 +61,25 @@ class StationBoardEnrichedTrainDataSource(
         val today = clock.instant().atZone(zone).toLocalDate()
         var unverifiedLive: DataResult.Success? = null
         if (query.serviceDate == today) {
-            for (source in liveRouteSources) {
-                val live = withTimeoutOrNull(liveSourceTimeoutMillis) { source.loadRoute(route, direction, query) }
-                if (live is DataResult.Success) {
-                    if (live.snapshot.services.any { it.operationalStatusVerified }) return live
-                    if (unverifiedLive == null) unverifiedLive = live
+            val verified = coroutineScope {
+                val pending = liveRouteSources.map { source -> async {
+                    try { withTimeoutOrNull(liveSourceTimeoutMillis) { source.loadRoute(route, direction, query) } }
+                        catch (error: CancellationException) { currentCoroutineContext().ensureActive(); null }
+                        catch (_: Exception) { null }
+                } }
+                // Start together, but preserve operator/infrastructure precedence:
+                // network speed must not decide which published delay wins.
+                try { for (attempt in pending) {
+                    val live = attempt.await()
+                    if (live is DataResult.Success) {
+                        if (live.snapshot.services.any { it.operationalStatusVerified }) return@coroutineScope live
+                        if (unverifiedLive == null) unverifiedLive = live
+                    }
                 }
+                null
+                } finally { pending.forEach { it.cancel() } }
             }
+            if (verified != null) return verified
         }
         val planned = plannedSource.loadRoute(route, direction, query)
 
@@ -85,7 +100,7 @@ class StationBoardEnrichedTrainDataSource(
         if (query.serviceDate == today) {
             boardProviders.forEach { provider ->
                 val legacy = provider as? TrainDataSource ?: return@forEach
-                when (val live = legacy.loadRoute(route, direction, query)) {
+                when (val live = withTimeoutOrNull(liveSourceTimeoutMillis) { legacy.loadRoute(route, direction, query) }) {
                     is DataResult.Success -> {
                         return DataResult.Success(
                             live.snapshot.copy(
@@ -97,6 +112,7 @@ class StationBoardEnrichedTrainDataSource(
                         )
                     }
                     is DataResult.Failure -> Unit
+                    null -> Unit
                 }
             }
         }
@@ -109,7 +125,8 @@ class StationBoardRealtimeReconciler(
     private val clock: Clock = Clock.system(RailTime.defaultZone),
     private val zone: ZoneId = RailTime.defaultZone,
     private val scheduleTolerance: Duration = Duration.ofMinutes(20),
-    private val conflictTolerance: Duration = Duration.ofMinutes(5)
+    private val conflictTolerance: Duration = Duration.ofMinutes(5),
+    private val providerTimeoutMillis: Long = 8_000
 ) {
     suspend fun enrich(snapshot: RouteSnapshot, query: JourneyQuery): RouteSnapshot {
         if (snapshot.services.isEmpty()) return snapshot
@@ -130,12 +147,15 @@ class StationBoardRealtimeReconciler(
         val boards = coroutineScope {
             providers.map { provider ->
                 async {
+                    try { withTimeoutOrNull(providerTimeoutMillis) {
                     when (val result = provider.getStationBoard(request)) {
                         is ProviderResult.Success -> ProviderBoard(provider.descriptor.displayName, result.value)
                         is ProviderResult.Partial -> ProviderBoard(provider.descriptor.displayName, result.value)
                         is ProviderResult.Failure,
                         is ProviderResult.NotModified -> null
                     }
+                    } } catch (error: CancellationException) { throw error }
+                    catch (_: Exception) { null }
                 }
             }.awaitAll().filterNotNull()
         }

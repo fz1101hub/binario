@@ -40,11 +40,12 @@ object BinarioDataGraph {
     fun routeDataSource(context: Context): TrainDataSource = synchronized(routeSourcesByPackage) {
         val applicationContext = context.applicationContext
         routeSourcesByPackage.getOrPut(applicationContext.packageName) {
+            val embedded = EmbeddedGtfsRouteAdapter(openAsset = { assetPath -> applicationContext.assets.open(assetPath) })
             val officialPlannedSource = RailDataRepository(
                 authorisedSources = localOnlyPolicy.routeSources(),
                 // Embedded official/open-data GTFS belongs to the primary tier,
                 // not to the best-effort coverage tier.
-                fallback = EmbeddedGtfsRouteAdapter(openAsset = { assetPath -> applicationContext.assets.open(assetPath) })
+                fallback = embedded
             )
             val plannedSource = QualityTieredTrainDataSource(
                 primary = officialPlannedSource,
@@ -56,7 +57,7 @@ object BinarioDataGraph {
                         plannedSource, realtimeEnrichmentService(applicationContext)
                     ),
                     boardProviders = stationBoardProviders(),
-                    liveRouteSources = localOnlyPolicy.liveRouteSources().filter { defaultRegistry.isEnabled(it.descriptor.id) }
+                    liveRouteSources = localOnlyPolicy.liveRouteSources(embedded).filter { defaultRegistry.isEnabled(it.descriptor.id) }
                 ),
                 providerRegistry = defaultRegistry
             )
@@ -71,7 +72,7 @@ object BinarioDataGraph {
             val source = EmbeddedTrainNumberSearchSource(static, GtfsRealtimeEnrichedTrainDataSource(static, realtimeEnrichmentService(app)))
             TrainNumberSearchService(
                 localOnlyPolicy.trainNumberSearchProviders().filter { defaultRegistry.isEnabled(it.descriptor.id) } +
-                    listOf(source.provider(false), source.provider(true))
+                    listOf(source.provider(true))
             )
         }
     }

@@ -48,8 +48,11 @@ object LocalOnlyRailDataPolicy {
     )
 
     /** Current-day operator data is queried before waiting for programmed timetables. */
-    fun liveRouteSources(): List<RealtimeRouteDataSource> =
-        if (BuildConfig.PERSONAL_REALTIME_SOURCES) listOf(viaggiaTrenoBoard, rfiLiveRoutes) else emptyList()
+    fun liveRouteSources(routeCandidateSource: TrainDataSource? = null): List<RealtimeRouteDataSource> =
+        if (BuildConfig.PERSONAL_REALTIME_SOURCES) listOf(
+            if (routeCandidateSource == null) viaggiaTrenoBoard else ViaggiaTrenoRealtimeAdapter(routeCandidateSource = routeCandidateSource),
+            rfiLiveRoutes
+        ) else emptyList()
 
     /** Last-resort route coverage. These sources must never outrank official GTFS/RFI data. */
     fun coverageRouteFallbacks(): List<TrainDataSource> = listOf(
