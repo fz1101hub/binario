@@ -140,8 +140,20 @@ data class TrainStop(
     val platform: String?,
     val delayMinutes: Int,
     val completed: Boolean,
-    val routeChange: StopRouteChange = StopRouteChange.NONE
+    val routeChange: StopRouteChange = StopRouteChange.NONE,
+    /** Null inherits legacy service status; partial live sources set this per stop. */
+    val operationalStatusVerified: Boolean? = null
 )
+
+/** Exact native identity retained from the static feed for realtime reconciliation. */
+data class GtfsServiceIdentity(
+    val sourceId: String,
+    val tripId: String,
+    val serviceDate: LocalDate,
+    val stops: List<GtfsStopIdentity>
+)
+
+data class GtfsStopIdentity(val stopId: String, val sequence: Int)
 
 data class TrainService(
     val id: String,
@@ -176,7 +188,8 @@ data class TrainService(
     val operationalObservedAtEpochMillis: Long? = null,
     /** Operational path change that may override the static GTFS path. */
     val routeChange: OperationalRouteChange? = null,
-    val routeChangeSourceIds: Set<String> = emptySet()
+    val routeChangeSourceIds: Set<String> = emptySet(),
+    val gtfsIdentity: GtfsServiceIdentity? = null
 ) {
     val category: String get() = trainCategory.accessibleLabel
     val displayOperator: String get() = operatorDisplayName?.takeIf(String::isNotBlank) ?: operator.shortLabel
@@ -277,6 +290,9 @@ interface TrainDataSource {
         loadRoute(route, direction)
 }
 
+/** A current-day route source whose availability follows the provider registry. */
+interface RealtimeRouteDataSource : TrainDataSource, it.binario.app.data.provider.RailProvider
+
 /** A future authorised server-side gateway for Trenitalia operational data. */
 interface AuthorizedRailGateway {
     suspend fun loadTrenitaliaRoute(route: SavedRoute, direction: Direction): DataResult
@@ -371,7 +387,7 @@ class RouteSnapshotCache(context: Context) {
 
     fun save(snapshot: RouteSnapshot) {
         preferences.edit {
-            putLong("last_refresh", snapshot.retrievedAtEpochMillis)
+            putLong("last_refresh", snapshot.sourceObservedAtEpochMillis)
             putString("last_provider", snapshot.providerName)
             putString("last_confidence", snapshot.confidence.accessibleLabel)
         }

@@ -30,6 +30,10 @@ import it.binario.app.data.sources.RailSourceSelectionPolicy
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.withTimeoutOrNull
 import java.time.Clock
 import java.time.Duration
 import java.time.LocalDateTime
@@ -39,21 +43,45 @@ import java.util.Locale
 import kotlin.math.abs
 
 /**
- * Keeps journey planning static/deterministic and applies realtime only after a
- * planned service can be matched by public number, destination and schedule.
+ * Uses identity-checked operator routes for today, then enriches programmed
+ * services by matching their public number, service day and schedule.
  */
 class StationBoardEnrichedTrainDataSource(
     private val plannedSource: TrainDataSource,
     private val boardProviders: List<StationBoardProvider>,
     private val clock: Clock = Clock.system(RailTime.defaultZone),
-    private val zone: ZoneId = RailTime.defaultZone
+    private val zone: ZoneId = RailTime.defaultZone,
+    private val liveRouteSources: List<TrainDataSource> = emptyList(),
+    private val liveSourceTimeoutMillis: Long = 15_000
 ) : TrainDataSource {
     override suspend fun loadRoute(route: SavedRoute, direction: Direction): DataResult =
         loadRoute(route, direction, JourneyQuery.now())
 
     override suspend fun loadRoute(route: SavedRoute, direction: Direction, query: JourneyQuery): DataResult {
+        val today = clock.instant().atZone(zone).toLocalDate()
+        var unverifiedLive: DataResult.Success? = null
+        if (query.serviceDate == today) {
+            val verified = coroutineScope {
+                val pending = liveRouteSources.map { source -> async {
+                    try { withTimeoutOrNull(liveSourceTimeoutMillis) { source.loadRoute(route, direction, query) } }
+                        catch (error: CancellationException) { currentCoroutineContext().ensureActive(); null }
+                        catch (_: Exception) { null }
+                } }
+                // Start together, but preserve operator/infrastructure precedence:
+                // network speed must not decide which published delay wins.
+                try { for (attempt in pending) {
+                    val live = attempt.await()
+                    if (live is DataResult.Success) {
+                        if (live.snapshot.services.any { it.operationalStatusVerified }) return@coroutineScope live
+                        if (unverifiedLive == null) unverifiedLive = live
+                    }
+                }
+                null
+                } finally { pending.forEach { it.cancel() } }
+            }
+            if (verified != null) return verified
+        }
         val planned = plannedSource.loadRoute(route, direction, query)
-        val today = clock.instant().atZone(clock.zone).toLocalDate()
 
         if (planned is DataResult.Success) {
             if (query.serviceDate != today || boardProviders.isEmpty()) return planned
@@ -65,10 +93,14 @@ class StationBoardEnrichedTrainDataSource(
             return DataResult.Success(snapshot)
         }
 
+        // A matched timetable without an operational observation must not mask
+        // the next live source. Retain it only if planning is unavailable too.
+        unverifiedLive?.let { return it }
+
         if (query.serviceDate == today) {
             boardProviders.forEach { provider ->
                 val legacy = provider as? TrainDataSource ?: return@forEach
-                when (val live = legacy.loadRoute(route, direction, query)) {
+                when (val live = withTimeoutOrNull(liveSourceTimeoutMillis) { legacy.loadRoute(route, direction, query) }) {
                     is DataResult.Success -> {
                         return DataResult.Success(
                             live.snapshot.copy(
@@ -80,6 +112,7 @@ class StationBoardEnrichedTrainDataSource(
                         )
                     }
                     is DataResult.Failure -> Unit
+                    null -> Unit
                 }
             }
         }
@@ -92,7 +125,8 @@ class StationBoardRealtimeReconciler(
     private val clock: Clock = Clock.system(RailTime.defaultZone),
     private val zone: ZoneId = RailTime.defaultZone,
     private val scheduleTolerance: Duration = Duration.ofMinutes(20),
-    private val conflictTolerance: Duration = Duration.ofMinutes(5)
+    private val conflictTolerance: Duration = Duration.ofMinutes(5),
+    private val providerTimeoutMillis: Long = 8_000
 ) {
     suspend fun enrich(snapshot: RouteSnapshot, query: JourneyQuery): RouteSnapshot {
         if (snapshot.services.isEmpty()) return snapshot
@@ -113,12 +147,15 @@ class StationBoardRealtimeReconciler(
         val boards = coroutineScope {
             providers.map { provider ->
                 async {
+                    try { withTimeoutOrNull(providerTimeoutMillis) {
                     when (val result = provider.getStationBoard(request)) {
                         is ProviderResult.Success -> ProviderBoard(provider.descriptor.displayName, result.value)
                         is ProviderResult.Partial -> ProviderBoard(provider.descriptor.displayName, result.value)
                         is ProviderResult.Failure,
                         is ProviderResult.NotModified -> null
                     }
+                    } } catch (error: CancellationException) { throw error }
+                    catch (_: Exception) { null }
                 }
             }.awaitAll().filterNotNull()
         }
@@ -185,14 +222,15 @@ class StationBoardRealtimeReconciler(
                 }
             }
 
-            val scheduled = scheduledDateTime(service, query)
+            val scheduled = expectedMatch?.entry?.scheduledTime ?: scheduledDateTime(service, query)
+            val scheduledDeparture = scheduled?.let(::displayTime) ?: service.scheduledDeparture
             val expected = expectedMatch?.entry?.expectedTime?.value
             val expectedDeparture = expected?.let(::displayTime) ?: service.expectedDeparture
             val delayMinutes = if (expected != null && scheduled != null) {
                 Duration.between(scheduled, expected).toMinutes().toInt()
             } else {
                 service.delayMinutes
-            }.coerceAtLeast(0)
+            }
 
             val liveStatus = statusMatch?.entry?.status?.value?.toLegacyStatus()
                 ?: if (expected != null) {
@@ -206,26 +244,37 @@ class StationBoardRealtimeReconciler(
             val timingUpdatedStops = if (originStop != null) {
                 listOf(
                     originStop.copy(
+                        scheduled = scheduledDeparture,
                         expected = expectedDeparture,
                         platform = platform,
-                        delayMinutes = delayMinutes
+                        delayMinutes = delayMinutes,
+                        operationalStatusVerified = if (expected != null) true else originStop.operationalStatusVerified
                     )
-                ) + service.stops.drop(1)
+                ) + service.stops.drop(1).map { stop ->
+                    // Legacy programmed stops must not inherit verification
+                    // just because the departure board updated the first stop.
+                    if (!service.operationalStatusVerified && stop.operationalStatusVerified == null) {
+                        stop.copy(operationalStatusVerified = false)
+                    } else stop
+                }
             } else {
                 service.stops
             }
             val updatedStops = applyRouteChange(timingUpdatedStops, routeChange)
 
             service.copy(
+                scheduledDeparture = scheduledDeparture,
+                scheduledDepartureDateTime = if (expectedMatch != null) scheduled?.withZoneSameInstant(zone)?.toLocalDateTime() else service.scheduledDepartureDateTime,
                 expectedDeparture = expectedDeparture,
                 platform = platform,
                 delayMinutes = delayMinutes,
-                officialDelayMinutes = if (verified) delayMinutes else service.officialDelayMinutes,
+                officialDelayMinutes = if (expected != null) delayMinutes else service.officialDelayMinutes,
                 status = liveStatus ?: service.status,
                 stops = updatedStops,
-                operationalStatusVerified = verified,
-                operationalSourceIds = operationalSources.mapTo(linkedSetOf()) { it.sourceId.value },
-                operationalObservedAtEpochMillis = selectedSources.maxOfOrNull { (it.observedAt ?: it.fetchedAt).toEpochMilli() },
+                operationalStatusVerified = verified || service.operationalStatusVerified,
+                operationalSourceIds = service.operationalSourceIds + operationalSources.map { it.sourceId.value },
+                operationalObservedAtEpochMillis = (selectedSources.map { (it.observedAt ?: it.fetchedAt).toEpochMilli() } +
+                    listOfNotNull(service.operationalObservedAtEpochMillis)).maxOrNull(),
                 routeChange = routeChange,
                 routeChangeSourceIds = if (routeChangeSources.isNotEmpty()) {
                     routeChangeSources.mapTo(linkedSetOf()) { it.sourceId.value }
@@ -304,9 +353,18 @@ class StationBoardRealtimeReconciler(
         destination: Station,
         board: StationBoard
     ): StationBoardEntry? {
+        if (!clock.instant().isBefore(board.snapshot.validUntil)) return null
         val scheduled = service.scheduledDepartureDateTime?.atZone(zone)
         val expectedOperator = operatorId(service.operator)
         return board.entries.asSequence()
+            .map { entry ->
+                entry.copy(
+                    expectedTime = entry.expectedTime?.takeIf { fresh(it.source) },
+                    status = entry.status?.takeIf { fresh(it.source) },
+                    platform = entry.platform?.takeIf { fresh(it.source) },
+                    routeChange = entry.routeChange?.takeIf { fresh(it.source) }
+                )
+            }
             .filter { entry ->
                 normalizeTrainNumber(entry.publicNumber.orEmpty()) == normalizeTrainNumber(service.number)
             }
@@ -327,6 +385,13 @@ class StationBoardRealtimeReconciler(
                     .thenBy { it.destinationPenalty }
             )
             ?.entry
+    }
+
+    private fun fresh(source: SourceRef): Boolean {
+        val now = clock.instant()
+        val observed = source.observedAt ?: source.fetchedAt
+        return !observed.isBefore(now.minusSeconds(300)) && !observed.isAfter(now.plusSeconds(60)) &&
+            source.expiresAt?.isAfter(now) != false
     }
 
     private fun hasConflict(matches: List<MatchedEntry>): Boolean {

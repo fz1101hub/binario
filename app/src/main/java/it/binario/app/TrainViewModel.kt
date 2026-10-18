@@ -27,6 +27,13 @@ import it.binario.app.data.repository.BinarioDataGraph
 import it.binario.app.data.repository.StationBoardAggregate
 import it.binario.app.data.repository.StationBoardAggregateResult
 import it.binario.app.data.repository.StationBoardAggregateService
+import it.binario.app.data.repository.TrainNumberSearchService
+import it.binario.app.data.repository.TrainNumberQuery
+import it.binario.app.data.repository.TrainNumberMatch
+import it.binario.app.data.repository.StationBoardRunDetailService
+import it.binario.app.data.repository.StationBoardRunDetails
+import it.binario.app.data.repository.withoutExpiredObservations
+import it.binario.app.data.core.StationBoardEntry
 import it.binario.app.data.TrainService
 import it.binario.app.data.core.BoardKind
 import it.binario.app.data.provider.ProviderWarning
@@ -56,7 +63,10 @@ data class ServiceMonitor(val number: String, val label: String)
 class TrainViewModel @JvmOverloads constructor(
     application: Application,
     /** Widget configuration needs local catalog/search only, never startup refresh or Wear publication. */
-    private val enableStartupEffects: Boolean = true
+    private val enableStartupEffects: Boolean = true,
+    private val stationBoardService: StationBoardAggregateService = StationBoardAggregateService(BinarioDataGraph.stationBoardDisplayProviders()),
+    private val stationBoardDetailsService: StationBoardRunDetailService = BinarioDataGraph.stationBoardRunDetailService(),
+    private val trainNumberSearchService: TrainNumberSearchService = BinarioDataGraph.trainNumberSearchService(application)
 ) : AndroidViewModel(application) {
     private companion object {
         const val STATION_SUGGESTION_DEBOUNCE_MILLIS = 180L
@@ -70,7 +80,6 @@ class TrainViewModel @JvmOverloads constructor(
     private val mobilityPreferencesStore = MobilityPreferencesStore(application)
     private val customStationStore = CustomStationStore(application)
     private val dataSource: TrainDataSource = BinarioDataGraph.routeDataSource(application)
-    private val stationBoardService = StationBoardAggregateService(BinarioDataGraph.stationBoardDisplayProviders())
     private val curatedStationCatalog = EmbeddedCuratedRailStationCatalog(
         openAsset = { assetPath -> application.assets.open(assetPath) }
     )
@@ -97,6 +106,16 @@ class TrainViewModel @JvmOverloads constructor(
         private set
     var stationBoardMessages by mutableStateOf<List<UiMessage>>(emptyList())
         private set
+
+    var selectedBoardEntry by mutableStateOf<StationBoardEntry?>(null)
+        private set
+    var stationBoardRunDetails by mutableStateOf<StationBoardRunDetails?>(null)
+        private set
+    var stationBoardRunRefreshState by mutableStateOf(RefreshState.IDLE)
+        private set
+    private var stationBoardJob: Job? = null
+    private var stationBoardRunJob: Job? = null
+    private var stationBoardRunRequestId = 0L
 
     var savedRoutes by mutableStateOf(pinnedFirst(routeStore.routes(stations)))
         private set
@@ -138,6 +157,17 @@ class TrainViewModel @JvmOverloads constructor(
         private set
     var trainNumberQuery by mutableStateOf("")
         private set
+    var trainNumberMatches by mutableStateOf<List<TrainNumberMatch>>(emptyList())
+        private set
+    var trainNumberSearchState by mutableStateOf(RefreshState.IDLE)
+        private set
+    var trainNumberUnavailableSources by mutableStateOf<Set<String>>(emptySet())
+        private set
+    var trainNumberSearchDate by mutableStateOf(JourneyQuery.now().serviceDate)
+        private set
+    private var trainNumberSearchJob: Job? = null
+    private var trainNumberSearchRequestId = 0L
+    private var selectedGlobalTrainId: String? = null
     var integrationSettings by mutableStateOf(integrationStore.read())
         private set
     var commuterAlerts by mutableStateOf(commuterAlertStore.alerts())
@@ -298,53 +328,80 @@ class TrainViewModel @JvmOverloads constructor(
 
     fun selectStationBoardStation(station: Station) {
         val canonical = canonicalStation(station)
-        if (stationBoardStation?.id == canonical.id) return
-        stationBoardRequestId += 1
-        stationBoardStation = canonical
-        stationBoard = null
-        stationBoardRefreshState = RefreshState.IDLE
-        stationBoardMessages = emptyList()
+        if (stationBoardStation?.id != canonical.id) loadStationBoard(canonical, stationBoardKind)
     }
 
-    fun loadStationBoard(
-        station: Station? = stationBoardStation,
-        kind: BoardKind = stationBoardKind
-    ) {
-        val requestedStation = station ?: return
-        val canonical = canonicalStation(requestedStation)
-        val sameBoardContext = stationBoard?.let { current ->
-            current.station.id == canonical.id && current.kind == kind
-        } == true
+    fun loadStationBoard(station: Station? = stationBoardStation, kind: BoardKind = stationBoardKind) {
+        val canonical = canonicalStation(station ?: return)
+        val sameContext = stationBoardStation?.id == canonical.id && stationBoardKind == kind
+        if (sameContext && stationBoardJob?.isActive == true) return
+        val requestId = ++stationBoardRequestId
+        stationBoardJob?.cancel()
+        if (!sameContext) {
+            stationBoard = null
+            closeStationBoardRun()
+        } else {
+            stationBoard = stationBoard?.withoutExpiredObservations(java.time.Instant.now())
+        }
         stationBoardStation = canonical
         stationBoardKind = kind
-        if (!sameBoardContext) stationBoard = null
         stationBoardRefreshState = RefreshState.LOADING
         stationBoardMessages = emptyList()
-        val requestId = ++stationBoardRequestId
-
-        viewModelScope.launch {
-            when (val result = stationBoardService.load(canonical, kind)) {
-                is StationBoardAggregateResult.Success -> {
-                    if (requestId != stationBoardRequestId) return@launch
-                    stationBoard = result.board
-                    stationBoardRefreshState = RefreshState.SUCCESS
-                    stationBoardMessages = result.board.warnings
-                        .map { UiMessage(it.stationBoardWarningKey()) }
-                        .distinct()
-                }
-                is StationBoardAggregateResult.Unavailable -> {
-                    if (requestId != stationBoardRequestId) return@launch
-                    stationBoard = null
-                    stationBoardRefreshState = RefreshState.ERROR
-                    stationBoardMessages = listOf(UiMessage(UiMessageKey.STATION_BOARD_UNAVAILABLE))
+        stationBoardJob = viewModelScope.launch {
+            stationBoardService.observe(canonical, kind).collect { result ->
+                if (requestId != stationBoardRequestId) return@collect
+                when (result) {
+                    is StationBoardAggregateResult.Success -> {
+                        stationBoard = result.board
+                        stationBoardRefreshState = if (result.isComplete) RefreshState.SUCCESS else RefreshState.LOADING
+                        stationBoardMessages = result.board.warnings.map { UiMessage(it.stationBoardWarningKey()) }.distinct()
+                    }
+                    is StationBoardAggregateResult.Unavailable -> {
+                        // Keep the existing rows during a transient outage, never stale live claims.
+                        stationBoard = stationBoard?.withoutExpiredObservations(java.time.Instant.now())
+                        stationBoardRefreshState = RefreshState.ERROR
+                        stationBoardMessages = listOf(UiMessage(UiMessageKey.STATION_BOARD_UNAVAILABLE))
+                    }
                 }
             }
         }
     }
 
-    fun openStationBoard(station: Station, kind: BoardKind = BoardKind.DEPARTURES) {
-        selectStationBoardStation(station)
-        loadStationBoard(station, kind)
+    fun openStationBoard(station: Station, kind: BoardKind = BoardKind.DEPARTURES) = loadStationBoard(station, kind)
+
+    fun refreshStationBoardIfIdle() {
+        if (stationBoardJob?.isActive != true) loadStationBoard()
+        if (selectedBoardEntry != null && stationBoardRunJob?.isActive != true) refreshStationBoardRun()
+    }
+
+    fun openStationBoardRun(entry: StationBoardEntry) {
+        selectedBoardEntry = entry.withoutExpiredObservations(java.time.Instant.now())
+        refreshStationBoardRun()
+    }
+
+    fun refreshStationBoardRun() {
+        val station = stationBoardStation ?: return
+        val entry = selectedBoardEntry ?: return
+        val kind = stationBoardKind
+        selectedBoardEntry = entry.withoutExpiredObservations(java.time.Instant.now())
+        val requestId = ++stationBoardRunRequestId
+        stationBoardRunJob?.cancel()
+        stationBoardRunDetails = null
+        stationBoardRunRefreshState = RefreshState.LOADING
+        stationBoardRunJob = viewModelScope.launch {
+            val details = stationBoardDetailsService.load(station, kind, entry)
+            if (requestId != stationBoardRunRequestId) return@launch
+            stationBoardRunDetails = details
+            stationBoardRunRefreshState = if (details != null) RefreshState.SUCCESS else RefreshState.ERROR
+        }
+    }
+
+    fun closeStationBoardRun() {
+        ++stationBoardRunRequestId
+        stationBoardRunJob?.cancel()
+        selectedBoardEntry = null
+        stationBoardRunDetails = null
+        stationBoardRunRefreshState = RefreshState.IDLE
     }
 
     fun isStationMonitored(station: Station): Boolean = stationMonitors.any { it.stationId == station.id }
@@ -467,8 +524,66 @@ class TrainViewModel @JvmOverloads constructor(
     }
 
     fun updateTrainNumberQuery(query: String) {
-        trainNumberQuery = query.filter { it.isLetterOrDigit() || it.isWhitespace() }.take(12)
-        refreshVisibleServices()
+        val value = query.filter { it.isLetterOrDigit() || it.isWhitespace() || it == '-' }.take(32)
+        if (value == trainNumberQuery) return
+        trainNumberQuery = value
+        ++trainNumberSearchRequestId
+        trainNumberSearchJob?.cancel()
+        trainNumberMatches = emptyList()
+        trainNumberSearchState = RefreshState.IDLE
+        trainNumberUnavailableSources = emptySet()
+        if (selectedGlobalTrainId != null) clearSelectedService()
+    }
+
+    fun searchTrainNumber(refresh: Boolean = false) {
+        val query = TrainNumberQuery(trainNumberQuery, JourneyQuery.now().serviceDate)
+        if (!query.valid) { trainNumberSearchState = RefreshState.ERROR; return }
+        if (trainNumberSearchJob?.isActive == true && refresh) return
+        val requestId = ++trainNumberSearchRequestId
+        trainNumberSearchJob?.cancel()
+        if (!refresh) {
+            clearSelectedService()
+            trainNumberMatches = emptyList()
+        } else {
+            trainNumberMatches = trainNumberMatches.map { match ->
+                if (!match.snapshot.isExpired) match else {
+                    val service = serviceWithoutCurrentObservation(match.service)
+                    match.copy(service = service, snapshot = match.snapshot.copy(services = listOf(service), freshness = Freshness.STALE))
+                }
+            }
+        }
+        trainNumberSearchDate = query.date
+        val retainedMatches = trainNumberMatches
+        trainNumberSearchState = RefreshState.LOADING
+        trainNumberUnavailableSources = emptySet()
+        trainNumberSearchJob = viewModelScope.launch {
+            trainNumberSearchService.search(query).collect { update ->
+                if (requestId != trainNumberSearchRequestId) return@collect
+                trainNumberMatches = if (refresh && !update.complete) {
+                    (retainedMatches.associateBy { it.id } + update.matches.associateBy { it.id }).values.toList()
+                } else update.matches
+                trainNumberUnavailableSources = update.unavailableSources
+                trainNumberSearchState = if (!update.complete) RefreshState.LOADING
+                    else if (update.matches.isEmpty() && update.unavailableSources.isNotEmpty()) RefreshState.ERROR else RefreshState.SUCCESS
+                selectedGlobalTrainId?.let { selectedId ->
+                    update.matches.singleOrNull { it.id == selectedId }?.let { match ->
+                        selectedService = match.service
+                        selectedServiceSnapshot = match.snapshot
+                    } ?: if (update.complete) {
+                        val service = selectedService?.let(::serviceWithoutCurrentObservation)
+                        selectedService = service
+                        selectedServiceSnapshot = selectedServiceSnapshot?.copy(services = listOfNotNull(service), freshness = Freshness.STALE)
+                    } else Unit
+                }
+            }
+        }
+    }
+
+    fun openTrainNumberMatch(match: TrainNumberMatch) {
+        selectedServiceDirection = null
+        selectedGlobalTrainId = match.id
+        selectedService = match.service
+        selectedServiceSnapshot = match.snapshot
     }
 
     fun clearSearchFilters() {
@@ -552,6 +667,7 @@ class TrainViewModel @JvmOverloads constructor(
     }
 
     fun refresh() {
+        if (selectedGlobalTrainId != null) { searchTrainNumber(refresh = true); return }
         // A detail opened from the independent return leg must not refresh the primary leg
         // or emit its cache/widget/Wear side effects. Results/operations have no selected
         // return service, so their normal refresh still updates both legs when applicable.
@@ -609,6 +725,7 @@ class TrainViewModel @JvmOverloads constructor(
                     refreshMessage = result.snapshot.advisoryMessage()
                 }
                 is DataResult.Failure -> {
+                    invalidateSelectedService(directionAtRequest, onlyIfExpired = true)
                     if (publishesCurrentDepartures) {
                         RouteWidgetProvider.markMatchingRouteDirectionUnavailable(getApplication(), routeAtRequest, directionAtRequest, result.message)
                         RouteWidgetProvider.refreshAll(getApplication())
@@ -637,6 +754,18 @@ class TrainViewModel @JvmOverloads constructor(
             }
         }
         if (returnJourneyQuery != null) refreshReturn()
+    }
+
+    /** Called only while a result/detail surface is visible and the activity is started. */
+    fun refreshLiveIfIdle() {
+        if (selectedGlobalTrainId != null) { searchTrainNumber(refresh = true); return }
+        if (!hasActiveRoute) return
+        val today = JourneyQuery.now().serviceDate
+        if (selectedServiceDirection == Direction.RETURN && returnJourneyQuery != null) {
+            if (returnRefreshState != RefreshState.LOADING && returnJourneyQuery?.serviceDate == today) refreshReturn()
+        } else if (refreshState != RefreshState.LOADING && returnRefreshState != RefreshState.LOADING && journeyQueryState.value.serviceDate == today) {
+            refresh()
+        }
     }
 
     fun refreshSelectedService() {
@@ -670,6 +799,7 @@ class TrainViewModel @JvmOverloads constructor(
                     returnRefreshMessage = result.snapshot.advisoryMessage()
                 }
                 is DataResult.Failure -> {
+                    invalidateSelectedService(Direction.RETURN, onlyIfExpired = true)
                     // Keep the last successful return snapshot, matching the primary-leg
                     // refresh policy. A transient failure must not erase previously
                     // valid data; UI state/message make the failed refresh explicit.
@@ -692,6 +822,7 @@ class TrainViewModel @JvmOverloads constructor(
     }
 
     private fun clearSelectedService() {
+        selectedGlobalTrainId = null
         selectedService = null
         selectedServiceDirection = null
         selectedServiceSnapshot = null
@@ -710,10 +841,24 @@ class TrainViewModel @JvmOverloads constructor(
         findRefreshedService(selected, updated.services)?.let { refreshed ->
             selectedService = refreshed
             selectedServiceSnapshot = updated
-        }
+        } ?: invalidateSelectedService(updatedDirection)
+    }
+
+    private fun invalidateSelectedService(updatedDirection: Direction, onlyIfExpired: Boolean = false) {
+        if (selectedServiceDirection != updatedDirection) return
+        val previous = selectedServiceSnapshot ?: return
+        if (onlyIfExpired && !previous.isExpired) return
+        val retained = selectedService?.let(::serviceWithoutCurrentObservation) ?: return
+        selectedService = retained
+        selectedServiceSnapshot = previous.copy(
+            services = listOf(retained), freshness = Freshness.STALE,
+            qualityScore = null, qualityBand = it.binario.app.data.DataQualityBand.UNKNOWN,
+            qualityWarnings = previous.qualityWarnings + it.binario.app.data.SnapshotWarning.STALE_SOURCE
+        )
     }
 
     fun openService(service: TrainService, serviceDirection: Direction? = null) {
+        selectedGlobalTrainId = null
         val belongsToReturn = returnSnapshot?.services.orEmpty().any { candidate ->
             candidate === service || candidate.id == service.id
         }
@@ -760,12 +905,12 @@ class TrainViewModel @JvmOverloads constructor(
     private fun refreshVisibleServices() {
         visiblePrimaryServices = primaryServicePresentation.filtered(
             operator = operatorFilter,
-            numberQuery = trainNumberQuery,
+            numberQuery = "",
             journeyChangeFilter = journeyChangeFilter
         )
         visibleReturnServices = returnServicePresentation.filtered(
             operator = operatorFilter,
-            numberQuery = trainNumberQuery,
+            numberQuery = "",
             journeyChangeFilter = journeyChangeFilter
         )
     }
@@ -944,7 +1089,8 @@ class TrainViewModel @JvmOverloads constructor(
 
     fun isDemonstrationData(): Boolean = displaySnapshot()?.confidence == DataConfidence.DEMONSTRATION
 
-    fun lastRefreshEpochMillis(): Long = displaySnapshot()?.retrievedAtEpochMillis ?: cache.lastRefreshEpochMillis()
+    fun lastRefreshEpochMillis(): Long = selectedService?.operationalObservedAtEpochMillis
+        ?: displaySnapshot()?.sourceObservedAtEpochMillis ?: cache.lastRefreshEpochMillis()
 
     private fun rememberStation(station: Station): Station {
         val existing = stations.firstOrNull { it.id == station.id } ?: station
@@ -1004,6 +1150,13 @@ internal fun findRefreshedService(selected: TrainService, services: List<TrainSe
                 it.origin == selected.origin &&
                 it.destination == selected.destination
         }
+
+/** Retain the last known times for context without claiming a current zero-minute delay. */
+internal fun serviceWithoutCurrentObservation(service: TrainService): TrainService = service.copy(
+    operationalStatusVerified = false,
+    officialDelayMinutes = null,
+    stops = service.stops.map { it.copy(operationalStatusVerified = false) }
+)
 
 /**
  * Snapshot immutabile già ordinato. Filtri e UI leggono questa struttura invece

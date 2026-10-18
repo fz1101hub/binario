@@ -15,7 +15,8 @@ data class ResolvedScheduledStop(
     val sourceStopId: String,
     val stopSequence: Int,
     val locationLabel: String,
-    val scheduledAt: ZonedDateTime
+    val scheduledAt: ZonedDateTime,
+    val serviceDate: LocalDate = scheduledAt.toLocalDate()
 )
 
 /**
@@ -77,7 +78,8 @@ class EmbeddedGtfsRealtimeScheduleResolver(
             sourceStopId = match.stopId,
             stopSequence = match.sequence,
             locationLabel = name,
-            scheduledAt = scheduledAt
+            scheduledAt = scheduledAt,
+            serviceDate = serviceDate
         )
     }
 

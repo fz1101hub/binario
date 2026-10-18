@@ -31,6 +31,7 @@ import it.binario.app.data.provider.ProviderResult
 import it.binario.app.data.provider.RatePolicy
 import it.binario.app.data.provider.StationBoardProvider
 import it.binario.app.data.provider.StationBoardRequest
+import it.binario.app.data.planned.readBoundedRfiHtml
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -46,26 +47,67 @@ import java.util.Locale
 
 fun interface ItaloPublicStationFetcher {
     suspend fun fetch(slug: String): String
+    suspend fun resolveStationSlug(names: List<String>): String? = null
 }
 
-internal class HttpItaloPublicStationFetcher : ItaloPublicStationFetcher {
-    override suspend fun fetch(slug: String): String = withContext(Dispatchers.IO) {
-        val connection = URL("${ItaloPublicStationAdapter.BASE_URL}/it/stazione/$slug").openConnection() as? HttpURLConnection
-            ?: throw IOException("Italo in Viaggio non usa una connessione HTTP")
-        connection.requestMethod = "GET"
-        connection.connectTimeout = 12_000
-        connection.readTimeout = 20_000
-        connection.instanceFollowRedirects = true
-        connection.setRequestProperty("Accept", "text/html,application/xhtml+xml")
-        connection.setRequestProperty("User-Agent", "Binario/0.20 (personal rail information client)")
-        try {
-            if (connection.responseCode !in 200..299) throw IOException("Italo in Viaggio ha risposto HTTP ${connection.responseCode}")
-            connection.inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() }
-        } finally {
-            connection.disconnect()
+internal class HttpItaloPublicStationFetcher(
+    private val download: suspend (String) -> String = ::downloadItaloPublic
+) : ItaloPublicStationFetcher {
+    private val catalogMutex = Mutex()
+    private var catalog = ItaloPublicStationFallbacks.all
+    private var refreshAfter = 0L
+    private var failure: IOException? = null
+
+    private suspend fun stations(): List<ItaloPublicStation> = catalogMutex.withLock {
+        val now = System.currentTimeMillis()
+        if (now >= refreshAfter) {
+            try {
+                val parsed = parseItaloStationCatalog(download("${ItaloPublicStationAdapter.BASE_URL}/it/stazione"))
+                catalog = parsed.ifEmpty { ItaloPublicStationFallbacks.all }
+                failure = null
+                refreshAfter = now + 24 * 60 * 60_000L
+            } catch (error: IOException) {
+                failure = error
+                refreshAfter = now + 60_000L
+            }
         }
+        if (catalog.isEmpty()) throw failure ?: IOException("Catalogo pubblico Italo vuoto")
+        catalog
+    }
+
+    override suspend fun resolveStationSlug(names: List<String>): String? {
+        val keys = names.map(::italoStationKey).toSet()
+        return stations().filter { station -> (listOf(station.name) + station.aliases).any { italoStationKey(it) in keys } }.singleOrNull()?.slug
+    }
+
+    override suspend fun fetch(slug: String): String {
+        val known = ItaloPublicStationFallbacks.all.singleOrNull { it.slug == slug }
+        val knownNames = known?.let { (listOf(it.name) + it.aliases).map(::italoStationKey).toSet() }.orEmpty()
+        val station = stations().filter { station ->
+            station.slug == slug || station.code == known?.code ||
+                (knownNames.isNotEmpty() && (listOf(station.name) + station.aliases).any { italoStationKey(it) in knownNames })
+        }.singleOrNull()
+            ?: throw IOException("Stazione assente dal catalogo pubblico Italo")
+        return download("${ItaloPublicStationAdapter.BASE_URL}/api/RicercaStazioneService?CodiceStazione=${station.code}")
     }
 }
+
+internal suspend fun downloadItaloPublic(url: String): String = downloadItaloPublic(url, 10_000) { it.openConnection() as HttpURLConnection }
+
+internal suspend fun downloadItaloPublic(url: String, timeoutMillis: Long, openConnection: (URL) -> HttpURLConnection): String =
+    kotlinx.coroutines.withTimeoutOrNull(timeoutMillis) {
+    val connection = openConnection(URL(url))
+    connection.requestMethod = "GET"
+    connection.connectTimeout = 12_000
+    connection.readTimeout = 20_000
+    connection.instanceFollowRedirects = true
+    connection.setRequestProperty("Accept", "application/json,text/html")
+    connection.setRequestProperty("User-Agent", "Binario/0.20 (personal rail information client)")
+    withCancellableHttpConnection(connection) {
+        if (connection.responseCode !in 200..299) throw IOException("Italo in Viaggio ha risposto HTTP ${connection.responseCode}")
+        connection.inputStream.use { readBoundedRfiHtml(it, connection.contentLengthLong.takeIf { size -> size >= 0 }) }
+    }
+} ?: throw java.net.SocketTimeoutException("Italo supera il tempo massimo della richiesta")
 
 /**
  * Tabellone pubblico Italo in Viaggio. Non utilizza area personale, vendita,
@@ -81,7 +123,7 @@ class ItaloPublicStationAdapter(
         id = SourceId("italo-status"),
         displayName = "Italo in Viaggio",
         capabilities = setOf(ProviderCapability.STATION_BOARD),
-        coverage = CoverageDescriptor(countryCodes = setOf("IT"), description = "Tabelloni pubblici delle stazioni Italo configurate"),
+        coverage = CoverageDescriptor(countryCodes = setOf("IT"), description = "Tabelloni pubblici delle stazioni presenti nel catalogo Italo"),
         accessMode = AccessMode.PUBLIC_BEST_EFFORT,
         ratePolicy = RatePolicy(Duration.ofSeconds(30), defaultTimeToLive = Duration.ofMillis(cacheTtlMillis)),
         schemaVersion = 1
@@ -96,6 +138,7 @@ class ItaloPublicStationAdapter(
         }
         val stationName = request.stationName?.takeIf(String::isNotBlank) ?: request.stationId.value
         val slug = ItaloStationSlugs.slug(request.stationId.value, stationName)
+            ?: try { fetcher.resolveStationSlug(listOf(stationName) + request.stationAliases) } catch (_: IOException) { null }
             ?: return ProviderResult.Failure(ProviderError(ProviderErrorKind.NOT_SUPPORTED, "Stazione Italo non configurata."))
         val fetchedAt = clock.instant()
         return try {
@@ -103,7 +146,7 @@ class ItaloPublicStationAdapter(
             val syntheticRoute = SavedRoute(
                 id = "station-board:${request.stationId.value}",
                 name = stationName,
-                outwardOrigin = Station(request.stationId.value, stationName, stationName),
+                outwardOrigin = Station(request.stationId.value, stationName, stationName, aliases = request.stationAliases),
                 outwardDestination = Station("station-board-target", "Destinazione", "")
             )
             val services = parseStationBoard(html, stationName, syntheticRoute, Direction.OUTBOUND)
@@ -127,7 +170,8 @@ class ItaloPublicStationAdapter(
                     expiresAt = fetchedAt.plus(descriptor.ratePolicy.defaultTimeToLive)
                 )
             )
-        } catch (error: IOException) {
+        } catch (error: kotlinx.coroutines.CancellationException) { throw error }
+        catch (error: IOException) {
             ProviderResult.Failure(ProviderError(ProviderErrorKind.NETWORK, "Italo in Viaggio non è raggiungibile.", error::class.java.name))
         } catch (error: Exception) {
             ProviderResult.Failure(ProviderError(ProviderErrorKind.PARSE_ERROR, "Italo in Viaggio non è leggibile.", error::class.java.name))
@@ -146,6 +190,7 @@ class ItaloPublicStationAdapter(
         val origin = route.origin(direction)
         val destination = route.destination(direction)
         val slug = ItaloStationSlugs.slug(origin)
+            ?: try { fetcher.resolveStationSlug(listOf(origin.name) + origin.aliases) } catch (_: IOException) { null }
             ?: return DataResult.Failure("Italo in Viaggio non è ancora configurato per ${origin.name}.")
         val now = clock.millis()
         val key = "${origin.id}:${destination.id}:${direction.name}"
@@ -176,7 +221,8 @@ class ItaloPublicStationAdapter(
             )
             mutex.withLock { cache[key] = CachedSnapshot(snapshot, now + cacheTtlMillis) }
             DataResult.Success(snapshot)
-        } catch (error: IOException) {
+        } catch (error: kotlinx.coroutines.CancellationException) { throw error }
+        catch (error: IOException) {
             DataResult.Failure("Italo in Viaggio non è raggiungibile: ${error.message ?: "errore di rete"}.")
         } catch (error: Exception) {
             DataResult.Failure("Italo in Viaggio ha restituito dati non leggibili: ${error.message ?: "errore di parsing"}.")
@@ -189,6 +235,7 @@ class ItaloPublicStationAdapter(
         route: SavedRoute,
         direction: Direction
     ): List<TrainService> {
+        if (html.trimStart().startsWith("{")) return parseItaloPublicBoard(html, origin, route, direction, clock)
         val document = Jsoup.parse(html)
         val candidates = document.select("[data-train-number], [data-train], article, tr, li")
             .filter { element ->

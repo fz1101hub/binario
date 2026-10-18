@@ -2,15 +2,19 @@ package it.binario.app.data
 
 import it.binario.app.BuildConfig
 import it.binario.app.data.gtfs.RemoteGtfsFallbackDataSource
+import it.binario.app.data.live.ItaloTrainNumberAdapter
 import it.binario.app.data.live.ItaloPublicStationAdapter
 import it.binario.app.data.live.RfiInfomobilityRssAdapter
 import it.binario.app.data.live.RfiStationBoardAdapter
+import it.binario.app.data.live.RfiLiveRouteDataSource
 import it.binario.app.data.live.SncfGtfsRealtimeAdapter
 import it.binario.app.data.live.StaRealtimeAdapter
-import it.binario.app.data.live.ViaggiaTrenoStationAdapter
+import it.binario.app.data.live.ViaggiaTrenoRealtimeAdapter
 import it.binario.app.data.planned.RfiProgrammedStationBoardAdapter
 import it.binario.app.data.planned.RfiProgrammedTimetableAdapter
 import it.binario.app.data.planned.RfiSupplementalHubTimetableAdapter
+import it.binario.app.data.repository.TrainNumberSearchProvider
+import it.binario.app.data.repository.StationBoardRunDetailProvider
 import it.binario.app.data.provider.AlertProvider
 import it.binario.app.data.provider.StationBoardProvider
 import it.binario.app.data.provider.TripUpdateProvider
@@ -19,9 +23,9 @@ import it.binario.app.data.provider.VehiclePositionProvider
 /**
  * Runtime source policy.
  *
- * Quality rule: official/primary sources and coverage fallbacks live in
- * different tiers. A best-effort source is never queried before all official
- * alternatives have failed for the requested route/context.
+ * Current-day operator observations precede static timetables when personal
+ * realtime is enabled. Community coverage fallbacks remain below primary
+ * operator/infrastructure sources and official static data.
  */
 object LocalOnlyRailDataPolicy {
     private val rfiProgrammed by lazy { RfiProgrammedTimetableAdapter() }
@@ -29,8 +33,10 @@ object LocalOnlyRailDataPolicy {
     private val europeanSleeperFallback by lazy { RemoteGtfsFallbackDataSource.europeanSleeper() }
     private val rfiProgrammedBoard by lazy { RfiProgrammedStationBoardAdapter() }
     private val rfiStationBoard by lazy { RfiStationBoardAdapter() }
+    private val rfiLiveRoutes by lazy { RfiLiveRouteDataSource(rfiStationBoard) }
     private val italoStationBoard by lazy { ItaloPublicStationAdapter() }
-    private val viaggiaTrenoBoard by lazy { ViaggiaTrenoStationAdapter() }
+    private val italoNumber by lazy { ItaloTrainNumberAdapter() }
+    private val viaggiaTrenoBoard by lazy { ViaggiaTrenoRealtimeAdapter() }
     private val rfiAlerts by lazy { RfiInfomobilityRssAdapter() }
     private val staRealtime by lazy { StaRealtimeAdapter() }
     private val sncfRealtime by lazy { SncfGtfsRealtimeAdapter() }
@@ -40,6 +46,13 @@ object LocalOnlyRailDataPolicy {
         rfiProgrammed,
         rfiSupplemental
     )
+
+    /** Current-day operator data is queried before waiting for programmed timetables. */
+    fun liveRouteSources(routeCandidateSource: TrainDataSource? = null): List<RealtimeRouteDataSource> =
+        if (BuildConfig.PERSONAL_REALTIME_SOURCES) listOf(
+            if (routeCandidateSource == null) viaggiaTrenoBoard else ViaggiaTrenoRealtimeAdapter(routeCandidateSource = routeCandidateSource),
+            rfiLiveRoutes
+        ) else emptyList()
 
     /** Last-resort route coverage. These sources must never outrank official GTFS/RFI data. */
     fun coverageRouteFallbacks(): List<TrainDataSource> = listOf(
@@ -66,6 +79,12 @@ object LocalOnlyRailDataPolicy {
      */
     fun stationBoardDisplayProviders(): List<StationBoardProvider> =
         listOf(rfiProgrammedBoard) + stationBoardProviders()
+
+    fun trainNumberSearchProviders(): List<TrainNumberSearchProvider> =
+        if (BuildConfig.PERSONAL_REALTIME_SOURCES) listOf(viaggiaTrenoBoard, italoNumber) else emptyList()
+
+    fun stationBoardRunDetailProviders(): List<StationBoardRunDetailProvider> =
+        if (BuildConfig.PERSONAL_REALTIME_SOURCES) listOf(viaggiaTrenoBoard) else emptyList()
 
     fun alertProviders(): List<AlertProvider> = listOf(
         rfiAlerts,

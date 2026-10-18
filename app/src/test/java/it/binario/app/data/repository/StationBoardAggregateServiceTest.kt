@@ -35,12 +35,96 @@ import java.time.ZoneId
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.runCurrent
+import kotlinx.coroutines.test.advanceUntilIdle
 
 class StationBoardAggregateServiceTest {
     private val now = Instant.parse("2026-09-05T08:00:00Z")
     private val zone = ZoneId.of("Europe/Rome")
     private val scheduled = now.plus(Duration.ofHours(2)).atZone(zone)
     private val station = Station("milano-centrale", "Milano Centrale", "Milano", "Lombardia")
+
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    @Test
+    fun `a fast board is visible before an optional source times out`() = kotlinx.coroutines.test.runTest {
+        val source = source("rfi-station-board", Confidence.INFRASTRUCTURE_PRIMARY)
+        val fast = provider("rfi-station-board", "RFI", board(source, 6, "4", RunStatus.DELAYED))
+        var slowCancelled = false
+        val slow = object : StationBoardProvider by fast {
+            override suspend fun getStationBoard(request: StationBoardRequest): ProviderResult<StationBoard> {
+                try { kotlinx.coroutines.awaitCancellation() } finally { slowCancelled = true }
+            }
+        }
+        val updates = mutableListOf<StationBoardAggregateResult>()
+        val job = launch {
+            StationBoardAggregateService(listOf(fast, slow), Clock.fixed(now, ZoneId.of("UTC")),
+                providerTimeoutMillis = 1_000, providerDispatcher = kotlinx.coroutines.test.StandardTestDispatcher(testScheduler))
+                .observe(station).collect { updates += it }
+        }
+        runCurrent()
+        assertEquals(1, updates.size)
+        assertEquals("4", (updates.single() as StationBoardAggregateResult.Success).board.entries.single().platform?.value)
+        assertTrue(!(updates.single() as StationBoardAggregateResult.Success).isComplete)
+        advanceUntilIdle()
+        job.join()
+        val final = updates.last() as StationBoardAggregateResult.Success
+        assertTrue(final.isComplete)
+        assertTrue(slowCancelled)
+        assertTrue(ProviderWarning.REALTIME_UNAVAILABLE in final.board.warnings)
+    }
+
+    @Test
+    fun `a provider throwing an exception cannot erase another providers board`() = kotlinx.coroutines.runBlocking {
+        val source = source("rfi-station-board", Confidence.INFRASTRUCTURE_PRIMARY)
+        val fast = provider("rfi-station-board", "RFI", board(source, 6, "4", RunStatus.DELAYED))
+        val broken = object : StationBoardProvider by fast {
+            override suspend fun getStationBoard(request: StationBoardRequest): ProviderResult<StationBoard> = throw IllegalStateException("bad upstream")
+        }
+        val result = StationBoardAggregateService(listOf(broken, fast), Clock.fixed(now, ZoneId.of("UTC"))).load(station)
+            as StationBoardAggregateResult.Success
+        assertEquals(1, result.board.entries.size)
+        assertTrue(ProviderWarning.REALTIME_UNAVAILABLE in result.board.warnings)
+    }
+
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    @Test
+    fun `leaving a board cancels its pending providers`() = kotlinx.coroutines.test.runTest {
+        val source = source("rfi-station-board", Confidence.INFRASTRUCTURE_PRIMARY)
+        val fast = provider("rfi-station-board", "RFI", board(source, 6, "4", RunStatus.DELAYED))
+        var cancelled = false
+        val slow = object : StationBoardProvider by fast {
+            override suspend fun getStationBoard(request: StationBoardRequest): ProviderResult<StationBoard> {
+                try { kotlinx.coroutines.awaitCancellation() } finally { cancelled = true }
+            }
+        }
+        val job = launch {
+            StationBoardAggregateService(listOf(slow), Clock.fixed(now, ZoneId.of("UTC")),
+                providerDispatcher = kotlinx.coroutines.test.StandardTestDispatcher(testScheduler)).observe(station).collect {}
+        }
+        runCurrent()
+        job.cancel()
+        job.join()
+        assertTrue(cancelled)
+    }
+
+    @Test
+    fun `merging infrastructure fields preserves the operator native run identity`() = kotlinx.coroutines.runBlocking {
+        val rfi = source("rfi-station-board", Confidence.INFRASTRUCTURE_PRIMARY)
+        val vt = source("viaggiatreno", Confidence.OPERATOR_PRIMARY)
+        val programmed = board(rfi, 6, "4", RunStatus.DELAYED)
+        val live = board(vt, 6, "5", RunStatus.DELAYED).let { b ->
+            b.copy(entries = b.entries.map { it.copy(nativeRunIds = mapOf(SourceId("viaggiatreno") to "S08001:1234:1788559200000")) })
+        }
+        val result = StationBoardAggregateService(listOf(provider("rfi-station-board", "RFI", programmed), provider("viaggiatreno", "VT", live)),
+            Clock.fixed(now, ZoneId.of("UTC"))).load(station) as StationBoardAggregateResult.Success
+        assertEquals("4", result.board.entries.single().platform?.value)
+        assertEquals("S08001:1234:1788559200000", result.board.entries.single().nativeRunIds[SourceId("viaggiatreno")])
+        val expired = result.board.withoutExpiredObservations(now.plusSeconds(600)).entries.single()
+        assertEquals(null, expired.expectedTime)
+        assertEquals(null, expired.status)
+        assertEquals(programmed.entries.single().scheduledTime, expired.scheduledTime)
+    }
 
     @Test
     fun `field authority is category aware and source conflicts are preserved`() = kotlinx.coroutines.runBlocking {

@@ -1,5 +1,7 @@
 # Verifica della copertura realtime
 
+> Rapporto storico del 15 agosto 2026. Per protocolli correnti, collegamento alla ricerca e limitazioni osservate nei controlli reali del 16 ottobre vedere [LIVE_PROVIDER_PROTOCOLS.md](LIVE_PROVIDER_PROTOCOLS.md). La sola presenza di un adapter o una risposta HTTP 200 non confermano la disponibilità di ritardi live.
+
 **Data:** 15 agosto 2026  
 **Obiettivo:** massimizzare ritardi, avvisi e posizioni effettive usando esclusivamente fonti ufficiali o pubbliche verificabili.
 

@@ -63,25 +63,25 @@ internal fun readBoundedRfiHtml(
     return output.toString(Charsets.UTF_8.name())
 }
 
-internal class HttpRfiProgrammedTimetableFetcher : RfiProgrammedTimetableFetcher {
-    override suspend fun fetch(url: String): String = withContext(Dispatchers.IO) {
-        val connection = (URL(url).openConnection() as? HttpURLConnection)
-            ?: throw IOException("Il quadro orario RFI non usa una connessione HTTP")
+internal class HttpRfiProgrammedTimetableFetcher(
+    private val timeoutMillis: Long = 10_000,
+    private val openConnection: (URL) -> HttpURLConnection = { it.openConnection() as HttpURLConnection }
+) : RfiProgrammedTimetableFetcher {
+    override suspend fun fetch(url: String): String = kotlinx.coroutines.withTimeoutOrNull(timeoutMillis) {
+        val connection = openConnection(URL(url))
         connection.requestMethod = "GET"
         connection.connectTimeout = 12_000
         connection.readTimeout = 25_000
         connection.instanceFollowRedirects = false
         connection.setRequestProperty("Accept", "text/html,application/xhtml+xml")
         connection.setRequestProperty("User-Agent", "Binario/0.20 (personal rail timetable client)")
-        try {
+        it.binario.app.data.live.withCancellableHttpConnection(connection) {
             val status = connection.responseCode
             if (status !in 200..299) throw IOException("RFI ha risposto HTTP $status")
             val declaredLength = connection.contentLengthLong.takeIf { it >= 0L }
             connection.inputStream.use { readBoundedRfiHtml(it, declaredLength) }
-        } finally {
-            connection.disconnect()
         }
-    }
+    } ?: throw java.net.SocketTimeoutException("Il quadro orario RFI supera il tempo massimo della richiesta")
 }
 
 internal object RfiProgrammedStationIds {
@@ -392,17 +392,17 @@ class RfiProgrammedTimetableAdapter(
         val category = categoryFrom(categoryText, operator)
 
         val stops = buildList {
-            add(TrainStop(origin.name, scheduled, scheduled, null, 0, completed = false))
+            add(TrainStop(origin.name, scheduled, scheduled, null, 0, completed = false, operationalStatusVerified = false))
             if (arrivals) {
                 arrivalStops.drop(1).forEach { stop ->
-                    add(TrainStop(stop.station, stop.time, stop.time, null, 0, completed = false))
+                    add(TrainStop(stop.station, stop.time, stop.time, null, 0, completed = false, operationalStatusVerified = false))
                 }
             } else if (successiveStops.isNotEmpty()) {
                 successiveStops.forEach { stop ->
-                    add(TrainStop(stop.station, stop.time, stop.time, null, 0, completed = false))
+                    add(TrainStop(stop.station, stop.time, stop.time, null, 0, completed = false, operationalStatusVerified = false))
                 }
             } else if (!origin.isNamedBy(finalDestination)) {
-                add(TrainStop(finalDestination, "—", "—", null, 0, completed = false))
+                add(TrainStop(finalDestination, "—", "—", null, 0, completed = false, operationalStatusVerified = false))
             }
         }
 

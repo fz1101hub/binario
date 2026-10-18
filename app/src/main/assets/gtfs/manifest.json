@@ -1,6 +1,6 @@
 {
   "schemaVersion": 4,
-  "generatedAt": "2026-09-23",
+  "generatedAt": "2026-10-16",
   "purpose": "Offline GTFS data packs validated in Binario source test",
   "refreshCadence": "every-timetable-change",
   "filteringVersion": 2,
@@ -21,7 +21,7 @@
       "sourceUrl": "https://gtfs.api.opendatahub.com/v1/dataset/sta-time-tables/raw",
       "accessMode": "OPEN_DIRECT",
       "attribution": "Open Data Hub Alto Adige / STA — CC0",
-      "sha256": "e868b6fe0bce893bac154b2bf1f107409ece4442bdd1ffc94c17d033fdde04de",
+      "sha256": "647db160d874355c44f2d06f701f4ae01b9735c48bc32125b28dee3acedd6c6a",
       "lastServiceDate": "2026-12-12",
       "notes": "Refreshed from the official STA raw endpoint on 2026-08-15 and filtered offline to standard and extended railway route types. Includes 161 rail routes, 3,791 trips and 277 referenced stops. The current realtime sample contained only non-rail entities, so no rail trip match was expected in that snapshot.",
       "filter": {
@@ -131,8 +131,8 @@
           "199"
         ]
       },
-      "sourceArchiveSha256": "af4ed31afa5ecc8f5507dd3a2acc21f58b3de7b8a6629595972ba21d3c46da7f",
-      "contentSha256": "c00af5a938a9e79d4b9d72621edd23d119cf0f05a9982b1bbb9bd79eb540997c"
+      "sourceArchiveSha256": "e942de7374cdbd8d28b1ca731700208fcf0bea222995aff189ba2cbe09c25421",
+      "contentSha256": "411f11dc62d009edc42f0a7ab52d7b9cf14d74764078649fd750cd430440e1b5"
     },
     {
       "sourceId": "arst-gtfs",
@@ -140,7 +140,7 @@
       "sourceUrl": "https://arstspa.info/arst-cagliari-it.zip",
       "accessMode": "OPEN_DIRECT",
       "attribution": "ARST S.p.A.",
-      "sha256": "e9eed8b37186314c341e448ae28c8cab0ce16f3fbd7015b269226d04d77d784c",
+      "sha256": "08cb81ebbb9fb049f3e18102f089b2b675648c1151f409a2b95ce79df7a07c14",
       "lastServiceDate": "2026-12-31",
       "notes": "Multimodal feed with four route_type=2 rail routes; only rail-relevant records must be surfaced.",
       "filter": {
@@ -251,7 +251,7 @@
         ]
       },
       "sourceArchiveSha256": "4dafa94ae8e9fa6971bb3b84b088c8f191df9c689af5d817b66f9bfd9d0d05fa",
-      "contentSha256": "a22f20c56218a281bd208185e88e691bdbd2f06767a646fa00d826af522c814a"
+      "contentSha256": "32a3750b5fb1f9d3eb72d3aa34da78bc7c337f8f2a232c21008b17051a8413ec"
     },
     {
       "sourceId": "ch-otd-gtfs",
@@ -259,7 +259,7 @@
       "sourceUrl": "https://data.opentransportdata.swiss/dataset/3d2c18f9-9ef1-463f-a249-5c67604efd74/resource/32c2dfb4-8953-45b5-b271-211a2fa3aa18/download/gtfs_fp2026_2025-08-14.zip",
       "accessMode": "OPEN_DIRECT",
       "attribution": "Open Data Platform Mobility Switzerland / SBB Infrastructure",
-      "sha256": "1a0b6c473b92fe8e812cf28ae8da6688aef598d9368ae57eb1af17f1a518f8a2",
+      "sha256": "6c1e0e5f88706adb304d9fc106a7a7072f735b4290ba788481c96a25869ced10",
       "lastServiceDate": "2026-12-12",
       "notes": "Filtered offline to rail route types. Includes 407 rail routes, 24,019 trips and 3,114 referenced stops; contains Swiss and transborder services to be filtered by service leg when presented in Italy.",
       "filter": {
@@ -378,7 +378,7 @@
       "sourceUrl": "https://www.wimob.it/cfile/download.php?file=google-transit.zip",
       "accessMode": "OPEN_DIRECT",
       "attribution": "Ente Autonomo Volturno S.r.l.",
-      "sha256": "59ea3b073672ecde72e2b34b97639e44c916024ddef7df745cdf7fb163b93d59",
+      "sha256": "5998d759d89d707e1b28eaf66e15e7fa96a122d408595dec21b5614c388ca1fe",
       "lastServiceDate": "2027-05-13",
       "notes": "GTFS publicized by the EAV open-data page. The imported version contains 16 route_type=2 railway routes; filter the multimodal feed before display.",
       "filter": {
@@ -489,7 +489,7 @@
         ]
       },
       "sourceArchiveSha256": "355e2d128bd36677e22ff5c35a02b18e33795edb34421decc0f5c945c8a0a59f",
-      "contentSha256": "905ea91a319161f49a301b211fd7c6ccdb1566506671c9cfd59dd7369eec96c0"
+      "contentSha256": "224ad83ecc7506baae3836e58c54d08a3ba0879f5be1232040c0601ec7d30445"
     },
     {
       "sourceId": "hzpp-gtfs",
@@ -497,7 +497,7 @@
       "sourceUrl": "https://www.hzpp.hr/GTFS_files.zip",
       "accessMode": "OPEN_DIRECT",
       "attribution": "HŽ Putnički prijevoz",
-      "sha256": "685dc8811e765db9acf8cfeba8571a496808f92ab4069edaea7d12dba3492362",
+      "sha256": "dde828245c5239965174845428b4c6274a302c8daf795da7042ffc33bbe081ae",
       "lastServiceDate": "2026-12-13",
       "notes": "Static timetable pack; coverage in Italy must be filtered by stop and service date.",
       "filter": {
@@ -608,7 +608,7 @@
         ]
       },
       "sourceArchiveSha256": "3bb0f841675ffedb6ade217f14e55ef3886dd09e8da73c39012f07e7f978ad55",
-      "contentSha256": "2fd347f679c45f4ce9445de9677e275f4f907dcd32305409e36feb63000b9004"
+      "contentSha256": "f1402ed90f2db681d489a0f579dab911111c280b2f9cfb5119f3847119ae825c"
     },
     {
       "sourceId": "lombardia-trenord-gtfs",
@@ -616,7 +616,7 @@
       "sourceUrl": "https://www.dati.lombardia.it/download/3z4k-mxz9/application/zip",
       "accessMode": "OPEN_DIRECT",
       "attribution": "Regione Lombardia / Trenord",
-      "sha256": "50caf8f99f9b2ac3288904bfa2e61b3a814a47f83381d08dac521116042ea265",
+      "sha256": "ec86d6e58b2840f3fef28888d2547b1fa32066210898f2af9e17a904ac25322c",
       "lastServiceDate": "2026-12-12",
       "notes": "Regional railway GTFS; 60 route_type=2 routes in the imported version.",
       "filter": {
@@ -735,7 +735,7 @@
       "sourceUrl": "https://static.web.oebb.at/open-data/soll-fahrplan-gtfs/GTFS_Fahrplan_2026.zip",
       "accessMode": "OPEN_DIRECT",
       "attribution": "ÖBB Personenverkehr AG — CC BY 4.0",
-      "sha256": "ae08fb655bc18a310a436584a28e5c0eb6a79f95e360a52d4c4f47b73856d238",
+      "sha256": "e9cf53f895999e00b4031772feae9b36bcd4a2445f071a85969e21eb07cc0a4f",
       "lastServiceDate": "2026-12-12",
       "notes": "Downloaded after user-authorized acceptance of the official terms and filtered offline to rail route types. Includes 259 rail routes, 14,690 trips and 2,169 referenced stops.",
       "filter": {
@@ -846,7 +846,7 @@
         ]
       },
       "sourceArchiveSha256": "425f7e6da89e2f285b0e4185f156f7d2118a0880acc6db20161b45861077161a",
-      "contentSha256": "e5444e2a9d2a8e3950e10c9b24986fa68bd07a94ac2306f9ad8e0725fe572d53"
+      "contentSha256": "e353c3b423960b59d376f4d6aea96591b8cddd39c39d3b0b1cb232e338cf88b1"
     },
     {
       "sourceId": "sncf-gtfs",
@@ -854,8 +854,8 @@
       "sourceUrl": "https://eu.ftp.opendatasoft.com/sncf/plandata/Export_OpenData_SNCF_GTFS_NewTripId.zip",
       "accessMode": "OPEN_DIRECT",
       "attribution": "SNCF Open Data",
-      "sha256": "90d3ff11a8630178ddeddd097c73a0d30708f7060fd27e28d2250192725be7d8",
-      "lastServiceDate": "2026-12-12",
+      "sha256": "fac03fc34032b801d1b2849ed8d0529ab2f176d889816613201cc93d5c0a3cff",
+      "lastServiceDate": "2027-03-31",
       "notes": "Static timetable pack; filter to services with Italian legs before showing to users.",
       "filter": {
         "kind": "gtfs-rail-route-types",
@@ -964,8 +964,8 @@
           "199"
         ]
       },
-      "sourceArchiveSha256": "f770f784493ab2a78f68762eaeab3ce989ce65c5c339895720ced1cf2de87a48",
-      "contentSha256": "3126c927dfc1407abf731e1583501ce404a09d348eac0f082bf6b09cf371d81b"
+      "sourceArchiveSha256": "5599d956aa87ac6e0437c29fb25daa9948560c05a0b32e4fd3f8a7e610c17c49",
+      "contentSha256": "6fc9c08ea6e35cec0e7e1575520ddf3d7e9def258d1c9c79a44798acc8b8e63d"
     },
     {
       "sourceId": "toscana-tft-gtfs",
@@ -973,7 +973,7 @@
       "sourceUrl": "https://dati.toscana.it/dataset/8bb8f8fe-fe7d-41d0-90dc-49f2456180d1/resource/59aeacbc-99ee-410b-ac1e-622b5574a666/download/tft.gtfs",
       "accessMode": "OPEN_DIRECT",
       "attribution": "Regione Toscana / T.F.T. S.p.A.",
-      "sha256": "7f1791a633b1837311b8dff59732214229686e4647bebf643dbe2f36a3a944cc",
+      "sha256": "dab907b5bdaa77accd8ed7f6bffc49b1034b2e1b89d85302da20d7e46ac25d88",
       "lastServiceDate": "2026-12-12",
       "notes": "Arezzo–Stia and Arezzo–Sinalunga. The source labels both routes type 3 despite railway route names; surface only after route-type normalization review.",
       "filter": {
@@ -985,7 +985,7 @@
         ]
       },
       "sourceArchiveSha256": "c21c70f7e3f583dee024595d6edd6d5f44b30d08475992c5f8fb481256e722b5",
-      "contentSha256": "06fcfa1135b5ad3b626c97f2da9257f52ea038e273527066af04a83b062fdfb3"
+      "contentSha256": "c76dfc0f329e642d5a03398293ff3fc24829664efb0ddca437b5b2b5674f55a2"
     },
     {
       "sourceId": "trentino-gtfs",
@@ -993,7 +993,7 @@
       "sourceUrl": "https://www.trentinotrasporti.it/opendata/google_transit_extraurbano_tte.zip",
       "accessMode": "OPEN_DIRECT",
       "attribution": "Trentino Trasporti",
-      "sha256": "6992a6ac4985b2ed9b1aee7baf33131a1218cd1a187201004c483f1bf4ff571e",
+      "sha256": "2c11df1e5f36bdccc8f1362dfffcaf15ae3cf50ffdcf7f75fc091ef48735a1f7",
       "lastServiceDate": "2027-06-25",
       "notes": "Multimodal extraurban feed; expose only route R35, Ferrovia Trento–Malè–Mezzana, when filtering railway data.",
       "filter": {
@@ -1104,7 +1104,7 @@
         ]
       },
       "sourceArchiveSha256": "9459d067792da0160a1a8ed14b1ae4becf8651234b9b9656aa1ee280d594b468",
-      "contentSha256": "142d8694468302757ef21f53e0d91dda2b7185c545abef418d10c09c360609dd"
+      "contentSha256": "72c8dea73d93cbb3688a6df31afeea77e588cc2f0c699c7c005d16193857ac14"
     }
   ]
 }

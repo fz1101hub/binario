@@ -6,9 +6,21 @@ import it.binario.app.data.TrainCategory
 import it.binario.app.data.TrainService
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertSame
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertEquals
+import it.binario.app.data.TrainStop
 import org.junit.Test
 
 class SelectedServiceReconciliationTest {
+    @Test
+    fun `last known zero is not still verified when selected train disappears from the board`() {
+        val selected = service("old", "23263").copy(stops = listOf(TrainStop("Appiano", "10:00", "10:00", null, 0, false)))
+        val retained = serviceWithoutCurrentObservation(selected)
+        assertFalse(retained.operationalStatusVerified)
+        assertNull(retained.officialDelayMinutes)
+        assertEquals(false, retained.stops.single().operationalStatusVerified)
+        assertEquals("10:00", retained.expectedDeparture)
+    }
     @Test
     fun `exact service id wins when snapshot is refreshed`() {
         val selected = service(id = "old", number = "9512")

@@ -1,13 +1,11 @@
 package it.binario.app
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import androidx.test.platform.app.InstrumentationRegistry
 import it.binario.app.data.DataResult
 import it.binario.app.data.Direction
 import it.binario.app.data.JourneyQuery
 import it.binario.app.data.SavedRoute
 import it.binario.app.data.Station
-import it.binario.app.data.repository.BinarioDataGraph
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
@@ -23,7 +21,6 @@ import org.junit.runner.RunWith
 class RfiJourneyNetworkTest {
     @Test
     fun appianoToOstienseHasPublishedDeparturesOnDevice() = runBlocking {
-        val context = InstrumentationRegistry.getInstrumentation().targetContext
         val route = SavedRoute(
             id = "network-appiano-ostiense", name = "Appiano → Roma Ostiense",
             outwardOrigin = Station("curated:S08328", "Appiano Proba Petronia", "Roma",
@@ -31,7 +28,7 @@ class RfiJourneyNetworkTest {
             outwardDestination = Station("curated:S08406", "Roma Ostiense", "Roma", railwayCode = "S08406")
         )
         val query = JourneyQuery(LocalDate.now(ZoneId.of("Europe/Rome")), LocalTime.MIDNIGHT)
-        val result = BinarioDataGraph.routeDataSource(context).loadRoute(route, Direction.OUTBOUND, query)
+        val result = it.binario.app.data.planned.RfiProgrammedTimetableAdapter().loadRoute(route, Direction.OUTBOUND, query)
         assertTrue("Appiano → Ostiense: $result", result is DataResult.Success)
         val snapshot = (result as DataResult.Success).snapshot
         assertTrue(snapshot.services.isNotEmpty())

@@ -26,7 +26,9 @@ data class RealtimeStopUpdate(
     val actualAt: SourcedValue<ZonedDateTime>? = null,
     val officialDelay: SourcedValue<Duration>? = null,
     val observedAt: Instant,
-    val source: SourceRef
+    val source: SourceRef,
+    /** GTFS TripDescriptor.start_date; excludes updates for another operating day. */
+    val serviceDate: java.time.LocalDate? = null
 ) {
     init {
         require(sourceTripId.isNotBlank()) { "L'identificativo della corsa sorgente è obbligatorio" }

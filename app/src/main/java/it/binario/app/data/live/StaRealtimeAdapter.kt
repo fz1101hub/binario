@@ -27,6 +27,9 @@ import it.binario.app.data.provider.ProviderResult
 import it.binario.app.data.provider.RatePolicy
 import it.binario.app.data.provider.VehiclePositionProvider
 import it.binario.app.data.provider.TripUpdateProvider
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
@@ -85,22 +88,29 @@ class StaRealtimeAdapter(
         schemaVersion = 1
     )
 
+    private val alertMutex = Mutex()
+    private val positionMutex = Mutex()
+    private val tripUpdateMutex = Mutex()
+
     private var alertCache: CachedAlerts? = null
     private var positionCache: CachedPositions? = null
     private var tripUpdateCache: CachedTripUpdates? = null
 
-    override suspend fun getAlerts(request: AlertRequest): ProviderResult<List<ServiceAlert>> {
+    override suspend fun getAlerts(request: AlertRequest): ProviderResult<List<ServiceAlert>> = alertMutex.withLock {
         val now = clock.instant()
         alertCache?.takeIf { now.isBefore(it.expiresAt) }?.let { cached ->
-            return ProviderResult.Success(cached.alerts, meta(now, cached.observedAt, cached.expiresAt, fromCache = true))
+            val filtered = if (request.stationIds.isEmpty()) cached.alerts else cached.alerts.filter { alert -> alert.affectedStations.any(request.stationIds::contains) }
+            return@withLock ProviderResult.Success(filtered, meta(now, cached.observedAt, cached.expiresAt, fromCache = true))
         }
-        return try {
+        try {
             val json = fetcher.fetch(StaRealtimeFeed.SERVICE_ALERTS)
             val parsed = parseAlerts(json, now)
             val filtered = if (request.stationIds.isEmpty()) parsed else parsed.filter { alert -> alert.affectedStations.any(request.stationIds::contains) }
             val expiresAt = now.plus(cacheTtl)
             alertCache = CachedAlerts(parsed, observedAt(json, now), expiresAt)
             ProviderResult.Success(filtered, meta(now, observedAt(json, now), expiresAt, fingerprint(json)))
+        } catch (error: CancellationException) {
+            throw error
         } catch (error: IOException) {
             ProviderResult.Failure(ProviderError(ProviderErrorKind.NETWORK, "Realtime Alto Adige non raggiungibile.", error::class.java.name))
         } catch (error: Exception) {
@@ -108,18 +118,20 @@ class StaRealtimeAdapter(
         }
     }
 
-    override suspend fun getTripUpdates(): ProviderResult<List<RealtimeStopUpdate>> {
+    override suspend fun getTripUpdates(): ProviderResult<List<RealtimeStopUpdate>> = tripUpdateMutex.withLock {
         val now = clock.instant()
         tripUpdateCache?.takeIf { now.isBefore(it.expiresAt) }?.let { cached ->
-            return ProviderResult.Success(cached.updates, meta(now, cached.observedAt, cached.expiresAt, fromCache = true))
+            return@withLock ProviderResult.Success(cached.updates, meta(now, cached.observedAt, cached.expiresAt, fromCache = true))
         }
-        return try {
+        try {
             val json = fetcher.fetch(StaRealtimeFeed.TRIP_UPDATES)
             val observed = observedAt(json, now)
             val updates = parseTripUpdates(json, observed)
             val expiresAt = now.plus(cacheTtl)
             tripUpdateCache = CachedTripUpdates(updates, observed, expiresAt)
             ProviderResult.Success(updates, meta(now, observed, expiresAt, fingerprint(json)))
+        } catch (error: CancellationException) {
+            throw error
         } catch (error: IOException) {
             ProviderResult.Failure(ProviderError(ProviderErrorKind.NETWORK, "Trip Updates Alto Adige non raggiungibili.", error::class.java.name))
         } catch (error: Exception) {
@@ -127,18 +139,20 @@ class StaRealtimeAdapter(
         }
     }
 
-    override suspend fun getVehiclePositions(): ProviderResult<List<VehiclePosition>> {
+    override suspend fun getVehiclePositions(): ProviderResult<List<VehiclePosition>> = positionMutex.withLock {
         val now = clock.instant()
         positionCache?.takeIf { now.isBefore(it.expiresAt) }?.let { cached ->
-            return ProviderResult.Success(cached.positions, meta(now, cached.observedAt, cached.expiresAt, fromCache = true))
+            return@withLock ProviderResult.Success(cached.positions, meta(now, cached.observedAt, cached.expiresAt, fromCache = true))
         }
-        return try {
+        try {
             val json = fetcher.fetch(StaRealtimeFeed.VEHICLE_POSITIONS)
             val observed = observedAt(json, now)
             val positions = parsePositions(json, observed)
             val expiresAt = now.plus(cacheTtl)
             positionCache = CachedPositions(positions, observed, expiresAt)
             ProviderResult.Success(positions, meta(now, observed, expiresAt, fingerprint(json)))
+        } catch (error: CancellationException) {
+            throw error
         } catch (error: IOException) {
             ProviderResult.Failure(ProviderError(ProviderErrorKind.NETWORK, "Posizioni Alto Adige non raggiungibili.", error::class.java.name))
         } catch (error: Exception) {
@@ -180,9 +194,18 @@ class StaRealtimeAdapter(
             val update = entity.optJSONObject("trip_update") ?: return@mapObjects null
             val tripId = update.optJSONObject("trip")?.optString("trip_id").orEmpty()
             if (tripId.isBlank()) return@mapObjects null
+            val trip = update.getJSONObject("trip")
+            if (trip.optString("schedule_relationship", "SCHEDULED") !in setOf("SCHEDULED", "0")) return@mapObjects null
+            val dateString = trip.optString("start_date")
+            val serviceDate = dateString.takeIf(String::isNotBlank)?.let {
+                runCatching { java.time.LocalDate.parse(it, java.time.format.DateTimeFormatter.BASIC_ISO_DATE) }.getOrNull()
+            }
+            if (dateString.isNotBlank() && serviceDate == null) return@mapObjects null
             val nativeEntity = entity.optString("id", tripId)
-            val source = sourceRef(nativeEntity, observed)
+            val tripObservedAt = update.optLong("timestamp", 0L).takeIf { it > 0 }?.let(Instant::ofEpochSecond) ?: observed
+            val source = sourceRef(nativeEntity, tripObservedAt)
             update.arrayOrEmpty("stop_time_update").mapObjects { stop ->
+                if (stop.optString("schedule_relationship", "SCHEDULED") !in setOf("SCHEDULED", "0")) return@mapObjects null
                 val stopId = stop.optString("stop_id").takeIf(String::isNotBlank)
                 val sequence = stop.optInt("stop_sequence", -1).takeIf { it >= 0 }
                 if (stopId == null && sequence == null) return@mapObjects null
@@ -199,8 +222,9 @@ class StaRealtimeAdapter(
                     stopSequence = sequence,
                     predictedAt = epoch?.let { itInstant -> SourcedValue(itInstant.let(Instant::ofEpochSecond).atZone(ZoneId.of("Europe/Rome")), valueSource) },
                     officialDelay = delay?.let { SourcedValue(Duration.ofSeconds(it), valueSource) },
-                    observedAt = observed,
-                    source = source
+                    observedAt = tripObservedAt,
+                    source = source,
+                    serviceDate = serviceDate
                 )
             }
         }.flatten()

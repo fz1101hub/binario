@@ -14,6 +14,20 @@ import java.time.ZoneOffset
 
 class SncfGtfsRealtimeAdapterTest {
     @Test
+    fun `SNCF conserva data e timestamp corsa e ignora NO_DATA`() {
+        val feed = tripUpdatesFeed().toBuilder()
+        val trip = feed.getEntityBuilder(0).tripUpdateBuilder
+        trip.tripBuilder.setStartDate("20260815")
+        trip.setTimestamp(1786147000)
+        val adapter = SncfGtfsRealtimeAdapter()
+        val updates = adapter.parseTripUpdates(feed.build(), Instant.ofEpochSecond(1786147200))
+        assertEquals(java.time.LocalDate.of(2026, 8, 15), updates.single().serviceDate)
+        assertEquals(Instant.ofEpochSecond(1786147000), updates.single().observedAt)
+        trip.getStopTimeUpdateBuilder(0).setScheduleRelationship(GtfsRealtime.TripUpdate.StopTimeUpdate.ScheduleRelationship.NO_DATA)
+        assertTrue(adapter.parseTripUpdates(feed.build(), Instant.EPOCH).isEmpty())
+    }
+
+    @Test
     fun `decodifica avviso SNCF protobuf con stazione e severita`() = runBlocking {
         var calls = 0
         val adapter = SncfGtfsRealtimeAdapter(

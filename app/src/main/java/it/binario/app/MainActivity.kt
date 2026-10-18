@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -40,6 +41,7 @@ import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.BrightnessAuto
 import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Info
@@ -65,6 +67,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -88,6 +91,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.pluralStringResource
@@ -95,6 +99,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontFamily
@@ -105,6 +111,9 @@ import it.binario.app.data.RailTime
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 import it.binario.app.data.DataConfidence
 import it.binario.app.data.Direction
 import it.binario.app.data.Freshness
@@ -116,6 +125,7 @@ import it.binario.app.data.TrainCategory
 import it.binario.app.data.TrainService
 import it.binario.app.data.TrainStop
 import it.binario.app.data.accessibleUpdateTime
+import it.binario.app.data.repository.StationBoardRunDetails
 import it.binario.app.data.core.BoardKind
 import it.binario.app.data.core.OperationalRouteChange
 import it.binario.app.data.core.RunStatus
@@ -138,10 +148,11 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-private enum class Screen { PLANNER, OPERATIONS, AGENDA, SETTINGS, RESULTS, DETAIL }
+private enum class Screen { PLANNER, OPERATIONS, AGENDA, SETTINGS, RESULTS, NUMBER_RESULTS, DETAIL }
 internal enum class OperationsSection { TRAINS, STATIONS }
 private enum class SearchMode { ROUTE, TRAIN, STATION }
 
@@ -277,6 +288,24 @@ private fun BinarioApp(
     }
     var stopAlarmFeedback by rememberSaveable { mutableStateOf<String?>(null) }
     val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    LaunchedEffect(lifecycleOwner, screen, operationsSectionName) {
+        if (screen in setOf(Screen.RESULTS, Screen.NUMBER_RESULTS, Screen.DETAIL, Screen.OPERATIONS)) {
+            lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                if (screen == Screen.OPERATIONS && operationsSectionName == OperationsSection.STATIONS.name) {
+                    viewModel.refreshStationBoardIfIdle()
+                }
+                while (true) {
+                    delay(30_000)
+                    if (screen == Screen.NUMBER_RESULTS) {
+                        viewModel.searchTrainNumber(refresh = true)
+                    } else if (screen == Screen.OPERATIONS && operationsSectionName == OperationsSection.STATIONS.name) {
+                        viewModel.refreshStationBoardIfIdle()
+                    } else viewModel.refreshLiveIfIdle()
+                }
+            }
+        }
+    }
     val locale = LocalConfiguration.current.locales[0]
     val trainShareStrings = trainShareStrings(locale)
     val plannedJourneyViewModel: PlannedJourneyViewModel = viewModel(
@@ -386,11 +415,11 @@ private fun BinarioApp(
                 viewModel.closeService()
                 screen = detailReturnScreen
             }
-            Screen.RESULTS -> screen = Screen.PLANNER
+            Screen.RESULTS, Screen.NUMBER_RESULTS -> screen = Screen.PLANNER
             else -> Unit
         }
     }
-    BackHandler(enabled = screen == Screen.DETAIL || screen == Screen.RESULTS, onBack = navigateBack)
+    BackHandler(enabled = screen == Screen.DETAIL || screen == Screen.RESULTS || screen == Screen.NUMBER_RESULTS, onBack = navigateBack)
     val title = stringResource(
         when (screen) {
             Screen.PLANNER -> R.string.screen_title_planner
@@ -398,6 +427,7 @@ private fun BinarioApp(
             Screen.AGENDA -> R.string.screen_title_agenda
             Screen.SETTINGS -> R.string.screen_title_settings
             Screen.RESULTS -> R.string.screen_title_results
+            Screen.NUMBER_RESULTS -> R.string.train_number_results_title
             Screen.DETAIL -> R.string.screen_title_detail
         }
     )
@@ -408,6 +438,7 @@ private fun BinarioApp(
             Screen.AGENDA -> R.string.screen_subtitle_agenda
             Screen.SETTINGS -> R.string.screen_subtitle_settings
             Screen.RESULTS -> R.string.screen_subtitle_results
+            Screen.NUMBER_RESULTS -> R.string.train_number_results_subtitle
             Screen.DETAIL -> R.string.screen_subtitle_detail
         }
     )
@@ -429,7 +460,7 @@ private fun BinarioApp(
                     }
                 },
                 navigationIcon = {
-                    if (screen == Screen.DETAIL || screen == Screen.RESULTS) {
+                    if (screen == Screen.DETAIL || screen == Screen.RESULTS || screen == Screen.NUMBER_RESULTS) {
                         IconButton(onClick = navigateBack) {
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
                         }
@@ -439,8 +470,13 @@ private fun BinarioApp(
                     IconButton(onClick = { showThemePicker = true }) {
                         Icon(Icons.Default.Palette, contentDescription = stringResource(R.string.action_choose_theme, themeMode.localizedLabel()))
                     }
-                    if (screen == Screen.OPERATIONS || screen == Screen.RESULTS || screen == Screen.DETAIL) {
-                        IconButton(onClick = viewModel::refresh) {
+                    if (screen == Screen.OPERATIONS || screen == Screen.RESULTS || screen == Screen.NUMBER_RESULTS || screen == Screen.DETAIL) {
+                        IconButton(onClick = {
+                            if (screen == Screen.NUMBER_RESULTS) viewModel.searchTrainNumber(refresh = true)
+                            else if (screen == Screen.OPERATIONS && operationsSectionName == OperationsSection.STATIONS.name) {
+                                viewModel.refreshStationBoardIfIdle()
+                            } else viewModel.refresh()
+                        }) {
                             Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.action_refresh_rail_information))
                         }
                     }
@@ -449,7 +485,7 @@ private fun BinarioApp(
             )
         },
         bottomBar = {
-            if (screen != Screen.DETAIL && screen != Screen.RESULTS) {
+            if (screen != Screen.DETAIL && screen != Screen.RESULTS && screen != Screen.NUMBER_RESULTS) {
                 NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
                     NavigationBarItem(
                         selected = screen == Screen.PLANNER,
@@ -487,6 +523,7 @@ private fun BinarioApp(
                 initialMode = plannerSearchMode,
                 modeRequestId = plannerSearchRequestId,
                 showResults = { screen = Screen.RESULTS },
+                showTrainResults = { screen = Screen.NUMBER_RESULTS },
                 openMore = { screen = Screen.SETTINGS },
                 openStations = { station ->
                     station?.let(viewModel::openStationBoard)
@@ -535,6 +572,10 @@ private fun BinarioApp(
                 modifier = Modifier.padding(padding),
                 viewModel = viewModel,
                 openDetails = { service -> detailReturnScreen = Screen.RESULTS; viewModel.openService(service); screen = Screen.DETAIL }
+            )
+            Screen.NUMBER_RESULTS -> TrainNumberResultsScreen(
+                modifier = Modifier.padding(padding), viewModel = viewModel,
+                onOpen = { match -> detailReturnScreen = Screen.NUMBER_RESULTS; viewModel.openTrainNumberMatch(match); screen = Screen.DETAIL }
             )
             Screen.DETAIL -> {
                 val service = viewModel.selectedService
@@ -825,6 +866,7 @@ private fun PlannerScreen(
     initialMode: SearchMode,
     modeRequestId: Int,
     showResults: () -> Unit,
+    showTrainResults: () -> Unit,
     openMore: () -> Unit,
     openStations: (Station?) -> Unit
 ) {
@@ -1138,33 +1180,11 @@ private fun PlannerScreen(
                         SearchMode.TRAIN -> {
                             VoiceInputButton(onClick = { startVoiceInput(SearchMode.TRAIN) }, label = stringResource(R.string.planner_voice_train))
                             speechMessage?.let { message -> Text(message, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-                            Text(stringResource(R.string.planner_train_filter_title), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
-                            Text(
-                                stringResource(R.string.planner_train_filter_description),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            TrainNumberSearchForm(
+                                query = viewModel.trainNumberQuery,
+                                onQueryChange = viewModel::updateTrainNumberQuery,
+                                onSearch = { viewModel.searchTrainNumber(); showTrainResults() }
                             )
-                            OutlinedTextField(
-                                value = viewModel.trainNumberQuery,
-                                onValueChange = viewModel::updateTrainNumberQuery,
-                                modifier = Modifier.fillMaxWidth(),
-                                singleLine = true,
-                                label = { Text(stringResource(R.string.planner_train_number)) },
-                                placeholder = { Text(stringResource(R.string.planner_train_number_example)) },
-                                leadingIcon = { Icon(Icons.Default.Train, contentDescription = null) }
-                            )
-                            if (!viewModel.hasActiveRoute) {
-                                Text(stringResource(R.string.planner_choose_route_first), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
-                            }
-                            Button(
-                                onClick = { viewModel.refresh(); showResults() },
-                                enabled = viewModel.trainNumberQuery.isNotBlank() && viewModel.hasActiveRoute,
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Icon(Icons.Default.Search, contentDescription = null)
-                                Spacer(Modifier.width(8.dp))
-                                Text(stringResource(R.string.planner_filter_train))
-                            }
                         }
                         SearchMode.STATION -> {
                             VoiceInputButton(onClick = { startVoiceInput(SearchMode.STATION) }, label = stringResource(R.string.planner_voice_station))
@@ -1310,7 +1330,19 @@ private fun RouteResultsScreen(modifier: Modifier, viewModel: TrainViewModel, op
 }
 
 @Composable
-private fun StationBoardScreen(modifier: Modifier, viewModel: TrainViewModel) {
+internal fun StationBoardScreen(modifier: Modifier, viewModel: TrainViewModel) {
+    LaunchedEffect(Unit) { viewModel.refreshStationBoardIfIdle() }
+    viewModel.selectedBoardEntry?.let { selected ->
+        StationBoardRunDetailsSheet(
+            station = viewModel.stationBoardStation?.name.orEmpty(),
+            entry = viewModel.stationBoardRunDetails?.entry ?: selected,
+            kind = viewModel.stationBoardKind,
+            details = viewModel.stationBoardRunDetails,
+            state = viewModel.stationBoardRunRefreshState,
+            onRefresh = viewModel::refreshStationBoardRun,
+            onDismiss = viewModel::closeStationBoardRun
+        )
+    }
     var stationText by rememberSaveable(viewModel.stationBoardStation?.id) {
         mutableStateOf(viewModel.stationBoardStation?.name.orEmpty())
     }
@@ -1335,7 +1367,8 @@ private fun StationBoardScreen(modifier: Modifier, viewModel: TrainViewModel) {
         else locationMessage = resources.getString(R.string.location_permission_denied)
     }
 
-    val selectedStation = viewModel.stationFromName(stationText)
+    val selectedStation = viewModel.stationBoardStation?.takeIf { it.name.equals(stationText.trim(), ignoreCase = true) }
+        ?: viewModel.stationFromName(stationText)
     val board = viewModel.stationBoard?.takeIf { current ->
         selectedStation != null &&
             current.station.id == selectedStation.id &&
@@ -1343,7 +1376,7 @@ private fun StationBoardScreen(modifier: Modifier, viewModel: TrainViewModel) {
     }
 
     LazyColumn(
-        modifier = modifier.fillMaxSize(),
+        modifier = modifier.fillMaxSize().testTag("station-board-list"),
         verticalArrangement = Arrangement.spacedBy(0.dp)
     ) {
         item {
@@ -1394,6 +1427,9 @@ private fun StationBoardScreen(modifier: Modifier, viewModel: TrainViewModel) {
                         Text(stringResource(if (board == null) R.string.station_board_load else R.string.station_board_refresh))
                     }
 
+                    if (viewModel.stationBoardRefreshState == RefreshState.LOADING) {
+                        LinearProgressIndicator(Modifier.fillMaxWidth())
+                    }
                     Text(stringResource(R.string.station_board_local_monitoring), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         items(StationMonitorMode.entries) { mode ->
@@ -1442,7 +1478,7 @@ private fun StationBoardScreen(modifier: Modifier, viewModel: TrainViewModel) {
             }
         } else {
             when {
-                viewModel.stationBoardRefreshState == RefreshState.LOADING && board == null -> item {
+                viewModel.stationBoardRefreshState == RefreshState.LOADING && board?.entries.isNullOrEmpty() -> item {
                     SearchInfoState(stringResource(R.string.station_board_loading_title), stringResource(R.string.station_board_loading_message))
                 }
                 viewModel.stationBoardRefreshState == RefreshState.ERROR && board == null -> item {
@@ -1492,7 +1528,7 @@ private fun StationBoardScreen(modifier: Modifier, viewModel: TrainViewModel) {
                             ).joinToString("|")
                         }
                     ) { entry ->
-                        StationBoardEntryRow(entry, board.kind)
+                        StationBoardEntryRow(entry, board.kind, onOpen = { viewModel.openStationBoardRun(entry) })
                         HorizontalDivider(
                             modifier = Modifier.padding(start = 20.dp),
                             color = MaterialTheme.colorScheme.outlineVariant
@@ -1550,10 +1586,9 @@ private fun StationBoardScreen(modifier: Modifier, viewModel: TrainViewModel) {
 }
 
 @Composable
-internal fun StationBoardEntryRow(entry: StationBoardEntry, kind: BoardKind) {
+internal fun StationBoardEntryRow(entry: StationBoardEntry, kind: BoardKind, onOpen: (() -> Unit)? = null) {
     val scheduled = entry.scheduledTime.withZoneSameInstant(BOARD_ZONE)
     val expected = entry.expectedTime?.value?.withZoneSameInstant(BOARD_ZONE)
-    val effective = expected ?: scheduled
     val delayedMinutes = expected?.let {
         java.time.Duration.between(scheduled, it).toMinutes().coerceAtLeast(0)
     } ?: 0L
@@ -1588,16 +1623,23 @@ internal fun StationBoardEntryRow(entry: StationBoardEntry, kind: BoardKind) {
     Row(
         Modifier
             .fillMaxWidth()
-            .clearAndSetSemantics { contentDescription = accessibilityDescription }
+            .then(if (onOpen != null) Modifier.clickable(role = Role.Button, onClick = onOpen) else Modifier)
+            .clearAndSetSemantics {
+                contentDescription = accessibilityDescription
+                if (onOpen != null) {
+                    role = Role.Button
+                    onClick { onOpen(); true }
+                }
+            }
             .padding(horizontal = 20.dp, vertical = 12.dp),
         verticalAlignment = Alignment.Top,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Column(horizontalAlignment = Alignment.Start) {
-            Text(effective.format(BOARD_TIME_FORMATTER), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Text(scheduled.format(BOARD_TIME_FORMATTER), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             if (expected != null && expected.toInstant() != scheduled.toInstant()) {
                 Text(
-                    stringResource(R.string.station_board_scheduled_time_short, scheduled.format(BOARD_TIME_FORMATTER)),
+                    stringResource(R.string.expected_time_short, expected.format(BOARD_TIME_FORMATTER)),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -1639,6 +1681,61 @@ internal fun StationBoardEntryRow(entry: StationBoardEntry, kind: BoardKind) {
             ) {
                 Text(stringResource(R.string.station_board_platform, it), modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp), fontWeight = FontWeight.Bold)
             }
+        }
+        if (onOpen != null) {
+            Icon(Icons.Default.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+internal fun StationBoardRunDetailsSheet(
+    station: String,
+    entry: StationBoardEntry,
+    kind: BoardKind,
+    details: StationBoardRunDetails?,
+    state: RefreshState,
+    onRefresh: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        LazyColumn(Modifier.fillMaxWidth().fillMaxHeight(0.9f).testTag("station-run-details")) {
+            item {
+                Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(stringResource(R.string.station_board_run_details_title), style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                        TextButton(onClick = onDismiss) { Text(stringResource(R.string.planned_journey_close)) }
+                    }
+                    Text(station, style = MaterialTheme.typography.titleMedium)
+                    if (details != null) {
+                        Text("${details.origin} → ${details.destination}", style = MaterialTheme.typography.bodyLarge)
+                        Text(details.observedAt?.let {
+                            stringResource(R.string.provider_updated_at, details.providerName, accessibleUpdateTime(it.toEpochMilli()))
+                        } ?: details.providerName, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+                StationBoardEntryRow(entry, kind)
+                TextButton(onClick = onRefresh, enabled = state != RefreshState.LOADING, modifier = Modifier.padding(horizontal = 12.dp)) {
+                    Text(stringResource(R.string.action_refresh))
+                }
+                if (state == RefreshState.LOADING) {
+                    LinearProgressIndicator(Modifier.fillMaxWidth())
+                    Text(stringResource(R.string.station_board_run_details_loading), modifier = Modifier.padding(20.dp))
+                } else if (details == null) {
+                    Text(stringResource(R.string.station_board_run_details_unavailable), modifier = Modifier.padding(20.dp),
+                        style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            if (details != null) {
+                item { Text(stringResource(R.string.service_stops_title), modifier = Modifier.padding(20.dp), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }
+                items(details.stops) { stop ->
+                    StopTimelineRow(stop.station, stop.expected, stop.scheduled, stop.delayMinutes, stop.platform, stop.completed,
+                        operationalStatusVerified = stop.operationalStatusVerified == true, routeChange = stop.routeChange, onSetAlarm = null)
+                }
+            }
+            item { Spacer(Modifier.height(24.dp)) }
         }
     }
 }
@@ -1868,7 +1965,7 @@ private fun ListHeading(title: String, subtitle: String) {
 }
 
 @Composable
-private fun DepartureListRow(service: TrainService, isNext: Boolean = false, onOpen: () -> Unit) {
+internal fun DepartureListRow(service: TrainService, isNext: Boolean = false, onOpen: () -> Unit) {
     val serviceState = if (service.operationalStatusVerified) {
         stringResource(R.string.service_state_live, service.status.localizedLabel())
     } else {
@@ -1883,18 +1980,23 @@ private fun DepartureListRow(service: TrainService, isNext: Boolean = false, onO
         modifier = Modifier
             .fillMaxWidth()
             .background(if (isNext) MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.48f) else MaterialTheme.colorScheme.background)
+            .clickable(role = Role.Button, onClick = onOpen)
             .clearAndSetSemantics {
                 contentDescription = serviceContentDescription
+                role = Role.Button
+                onClick { onOpen(); true }
             }
-            .clickable(role = Role.Button, onClick = onOpen)
             .padding(horizontal = 20.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Column(Modifier.width(68.dp)) {
-            Text(service.expectedDeparture, style = MaterialTheme.typography.titleLarge, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
+        Column(Modifier.width(76.dp)) {
+            Text(service.scheduledDeparture, style = MaterialTheme.typography.titleLarge, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
             if (!service.operationalStatusVerified) Text(stringResource(R.string.service_scheduled_lowercase), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             else if (service.delayMinutes > 0) Text(stringResource(R.string.delay_minutes, service.delayMinutes), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.tertiary, fontWeight = FontWeight.Bold)
             else Text(stringResource(R.string.service_on_time_lowercase), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.secondary)
+            if (service.operationalStatusVerified && service.expectedDeparture != service.scheduledDeparture) {
+                Text(stringResource(R.string.expected_time_short, service.expectedDeparture), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(service.destination, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -2551,9 +2653,11 @@ private fun ServiceDetailScreen(
                     Text(stringResource(R.string.service_number_route, service.number, service.origin, service.destination), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
-                            Text(stringResource(R.string.service_expected_departure), style = MaterialTheme.typography.labelMedium)
-                            Text(service.expectedDeparture, style = MaterialTheme.typography.displaySmall, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
-                            Text(stringResource(R.string.service_scheduled_departure, service.scheduledDeparture), style = MaterialTheme.typography.bodySmall)
+                            Text(stringResource(R.string.service_scheduled_departure_label), style = MaterialTheme.typography.labelMedium)
+                            Text(service.scheduledDeparture, style = MaterialTheme.typography.displaySmall, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
+                            if (service.operationalStatusVerified && service.expectedDeparture != service.scheduledDeparture) {
+                                Text(stringResource(R.string.expected_time, service.expectedDeparture), style = MaterialTheme.typography.bodySmall)
+                            }
                         }
                         ServiceStatusBadge(service)
                     }
@@ -2639,7 +2743,7 @@ private fun ServiceDetailScreen(
                 delay = stop.delayMinutes,
                 platform = stop.platform,
                 completed = stop.completed,
-                operationalStatusVerified = service.operationalStatusVerified,
+                operationalStatusVerified = stop.operationalStatusVerified ?: service.operationalStatusVerified,
                 routeChange = stop.routeChange,
                 onSetAlarm = { onScheduleStopAlarm(service, stop) }
             )
@@ -2649,7 +2753,7 @@ private fun ServiceDetailScreen(
 }
 
 @Composable
-private fun StopTimelineRow(
+internal fun StopTimelineRow(
     station: String,
     expected: String,
     scheduled: String,
@@ -2658,7 +2762,7 @@ private fun StopTimelineRow(
     completed: Boolean,
     operationalStatusVerified: Boolean,
     routeChange: StopRouteChange,
-    onSetAlarm: () -> Unit
+    onSetAlarm: (() -> Unit)?
 ) {
     val changeLabel = when (routeChange) {
         StopRouteChange.NONE -> ""
@@ -2676,8 +2780,8 @@ private fun StopTimelineRow(
         R.string.accessibility_stop_timeline,
         station,
         changeLabel,
-        expected,
         scheduled,
+        if (operationalStatusVerified && expected != scheduled) stringResource(R.string.expected_time, expected) + ". " else "",
         operationalLabel,
         platformLabel
     )
@@ -2706,10 +2810,16 @@ private fun StopTimelineRow(
             Text(platform?.let { stringResource(R.string.platform_label, it) } ?: stringResource(R.string.platform_to_confirm), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Column(horizontalAlignment = Alignment.End) {
-            Text(expected, style = MaterialTheme.typography.titleMedium, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
-            if (expected != scheduled) Text(stringResource(R.string.scheduled_time_short, scheduled), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            if (delay > 0) Text(stringResource(R.string.delay_minutes, delay), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.tertiary, fontWeight = FontWeight.Bold)
-            if (!completed) {
+            Text(scheduled, style = MaterialTheme.typography.titleMedium, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
+            if (!operationalStatusVerified) {
+                Text(stringResource(R.string.operational_status_unverified), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            } else if (delay > 0) {
+                Text(stringResource(R.string.delay_minutes, delay), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.tertiary, fontWeight = FontWeight.Bold)
+            }
+            if (operationalStatusVerified && expected != scheduled) {
+                Text(stringResource(R.string.expected_time_short, expected), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            if (!completed && onSetAlarm != null) {
                 TextButton(onClick = onSetAlarm, contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)) {
                     Text(stringResource(R.string.action_stop_alarm))
                 }
@@ -2899,7 +3009,10 @@ private fun TrainService.localizedAccessibleSummary(): String {
         pluralStringResource(R.plurals.service_transfer_count, transferCount, transferCount)
     }
     val operationalLabel = if (operationalStatusVerified) {
-        status.localizedLabel()
+        listOfNotNull(
+            status.localizedLabel(),
+            if (delayMinutes > 0) pluralStringResource(R.plurals.operational_delay_minutes, delayMinutes, delayMinutes) else null
+        ).joinToString(", ")
     } else {
         stringResource(R.string.operational_status_unverified)
     }
@@ -2912,7 +3025,10 @@ private fun TrainService.localizedAccessibleSummary(): String {
         number,
         origin,
         destination,
-        expectedDeparture,
+        listOfNotNull(
+            stringResource(R.string.service_scheduled_departure, scheduledDeparture),
+            if (operationalStatusVerified && expectedDeparture != scheduledDeparture) stringResource(R.string.expected_time, expectedDeparture) else null
+        ).joinToString(". "),
         transferLabel,
         operationalLabel,
         platformLabel
