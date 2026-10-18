@@ -55,32 +55,24 @@ class LiveProviderNetworkTest {
         val html = downloadItaloPublic("${ItaloPublicStationAdapter.BASE_URL}/it/stazione")
         val document = org.jsoup.Jsoup.parse(html)
         val catalogue = parseItaloStationCatalog(html)
-        println("LIVE_ACCEPTANCE Italo catalogue metadata: " + document.select("[data-ntv-type=Json]").map { it.attr("data-ntv-name") })
-        println("LIVE_ACCEPTANCE Italo catalogue stations: " + catalogue.map { "${it.code}:${it.name}:${it.slug}:${it.aliases}" })
-        println("LIVE_ACCEPTANCE Italo catalogue labels: " + document.select("option[value]").take(8).map { it.attr("value") + ":" + it.text() })
         assertFalse("Current Italo station-to-url JSON is missing", document.select("[data-ntv-name=station-to-url][data-ntv-type=Json]").isEmpty())
-        assertTrue("Current Italo catalogue is not being parsed beyond the old fallback", catalogue.size > ItaloPublicStationFallbacks.all.size)
+        assertTrue("Current catalogue is not parsed beyond the old fallback", catalogue.size > ItaloPublicStationFallbacks.all.size)
+        println("LIVE_ACCEPTANCE Italo current catalogue: distinctCodes=${catalogue.size}, extraCodes=${catalogue.count { row -> ItaloPublicStationFallbacks.all.none { it.code == row.code } }}")
         val fetcher = HttpItaloPublicStationFetcher { url -> if (url.endsWith("/it/stazione")) html else downloadItaloPublic(url) }
-        println("LIVE_ACCEPTANCE Italo station-list markup: " + document.select("[data-ntv-name=station-list]").map { it.outerHtml().replace(Regex("\\s+"), " ").take(16000) })
-        println("LIVE_ACCEPTANCE Italo label markup: " + document.getAllElements().filter { it.ownText().contains("Genova", true) || it.ownText().contains("Bologna", true) }.take(12).map { it.outerHtml().replace(Regex("\\s+"), " ").take(600) })
-        for (name in listOf("Ancona", "Genova", "Bologna", "Pisa", "Treviso Centrale")) {
-            val slug = fetcher.resolveStationSlug(listOf(name)) ?: continue
-            val root = org.json.JSONObject(fetcher.fetch(slug))
-            println("LIVE_ACCEPTANCE Italo board identity $name: " + root.toString().take(2800))
-            if (name == "Genova" || name == "Bologna") {
-                val page = org.jsoup.Jsoup.parse(downloadItaloPublic("${ItaloPublicStationAdapter.BASE_URL}/it/stazione/$slug"))
-                println("LIVE_ACCEPTANCE Italo detail page identity $name: " + page.getAllElements().filter { it.ownText().contains("Principe", true) || it.ownText().contains("Brignole", true) || it.ownText().contains("Bologna", true) || it.hasAttr("data-ntv-name") && it.attr("data-ntv-name").contains("station", true) }.take(18).map { it.outerHtml().replace(Regex("\\s+"), " ").take(5000) })
-            }
-        }
-        for (names in listOf(listOf("Ancona"), listOf("Genova Piazza Principe", "Genova P.P."), listOf("Genova Brignole"),
-            listOf("Pisa Centrale", "Pisa"), listOf("Treviso Centrale", "Treviso"), listOf("Bologna Centrale"))) {
+        for (names in listOf(listOf("Ancona"), listOf("Genova Piazza Principe"), listOf("Genova Brignole"),
+            listOf("Treviso Centrale"), listOf("Bologna Centrale"))) {
             val slug = fetcher.resolveStationSlug(names)
-            println("LIVE_ACCEPTANCE Italo expanded catalogue lookup $names: $slug")
             assertNotNull("Italo station unresolved from current catalogue: $names", slug)
+            val station = catalogue.single { it.slug == slug }
             val root = org.json.JSONObject(fetcher.fetch(slug!!))
-            println("LIVE_ACCEPTANCE Italo expanded catalogue board $slug: station=${root.opt("DescrizioneLocalita")}, empty=${root.opt("IsEmpty")}")
             assertTrue("Unexpected Italo station board schema for $slug", root.has("IsEmpty"))
+            println("LIVE_ACCEPTANCE Italo expanded catalogue board $names: code=${station.code}, slug=$slug, departures=${root.optJSONArray("ListaTreniPartenza")?.length()}, LastUpdate=${root.opt("LastUpdate")}")
         }
+        val principe = catalogue.single { it.code == "G__" }
+        val brignole = catalogue.single { it.code == "GB_" }
+        assertNotEquals("Separate Genova stations must not share a board", principe.code, brignole.code)
+        // The destination map also publishes e.g. Pisa, whose board returned HTTP400 in the audit.
+        // Presence in that map alone is not evidence of an available or operational railway board.
     }
 
     @Test fun italoGlobalNumber() = runBlocking {

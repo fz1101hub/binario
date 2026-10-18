@@ -45,19 +45,29 @@ internal fun parseItaloStationCatalog(html: String): List<ItaloPublicStation> {
         for (index in 0 until minOf(rows.length(), 1_000)) {
             val row = rows.optJSONObject(index) ?: continue
             val code = row.first("code")
-            val slug = row.first("urlCoding")
+            val published = row.first("urlCoding")
             if (!code.matches(Regex("[A-Za-z0-9_]{2,12}")) ||
-                slug.length !in 1..100 || !slug.matches(Regex("[a-z0-9]+(?:-[a-z0-9]+)*"))) continue
+                published.length !in 1..100 || !published.matches(Regex("[\\p{L}\\p{N} .'’()_-]+"))) continue
+            // The live page also puts display labels ("Genova Brignole") in urlCoding.
+            val slug = Normalizer.normalize(published, Normalizer.Form.NFD).replace(Regex("\\p{M}+"), "")
+                .lowercase(Locale.ROOT).replace(Regex("[^a-z0-9]+"), "-").trim('-')
+            if (!slug.matches(Regex("[a-z0-9]+(?:-[a-z0-9]+)*"))) continue
             val known = ItaloPublicStationFallbacks.all.singleOrNull { it.code == code }
+                ?: ItaloPublicStationFallbacks.all.singleOrNull {
+                    // Retain a curated canonical label when the operator changes its code,
+                    // e.g. BO2 -> BC_ and the published city label is "bologna".
+                    italoStationKey(it.name.removeSuffix(" Centrale")) == italoStationKey(published)
+                }
             val slugLabel = slug.replace('-', ' ')
             val publishedLabels = labelsBySlug[slug].orEmpty()
             val name = row.first("name", "label", "Descrizione", "NomeStazione")
                 .ifBlank { labelsByCode[code].orEmpty() }
                 .ifBlank { known?.name.orEmpty() }
+                .ifBlank { published.takeIf { it.any(Char::isUpperCase) || it.contains(' ') }.orEmpty() }
                 .ifBlank { publishedLabels.singleOrNull().orEmpty() }
                 .ifBlank { slugLabel }
             stations += ItaloPublicStation(code, name, slug,
-                (publishedLabels + listOf(slugLabel) + known?.aliases.orEmpty()).filter(String::isNotBlank).toSet())
+                (publishedLabels + listOf(published, slugLabel) + known?.aliases.orEmpty()).filter(String::isNotBlank).toSet())
         }
     }
     Regex("[\"']?station(?:List|Coding)[\"']?\\s*[:=]\\s*[\\[{]", RegexOption.IGNORE_CASE)
@@ -78,7 +88,11 @@ internal fun parseItaloStationCatalog(html: String): List<ItaloPublicStation> {
                 }
             }
         }
-    return stations.distinctBy { it.code }
+    return stations.groupBy { it.code }.values.map { alternatives ->
+        val first = alternatives.first()
+        first.copy(name = alternatives.maxBy { it.name.length }.name,
+            aliases = alternatives.flatMap { listOf(it.name, it.slug.replace('-', ' ')) + it.aliases }.toSet())
+    }
 }
 
 internal fun parseItaloPublicBoard(json: String, origin: String, route: SavedRoute, direction: Direction, clock: Clock): List<TrainService> {

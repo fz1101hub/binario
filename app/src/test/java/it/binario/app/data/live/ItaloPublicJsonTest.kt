@@ -10,6 +10,26 @@ class ItaloPublicJsonTest {
     private val clock = Clock.fixed(Instant.parse("2026-10-16T10:00:00Z"), ZoneOffset.UTC)
     private val route = SavedRoute("test", "Roma–Napoli", Station("roma-termini", "Roma Termini", "Roma"), Station("napoli", "Napoli Centrale", "Napoli"))
 
+    @Test fun `real Genova catalogue labels stay distinct and duplicate native codes retain all aliases`() = runBlocking {
+        val page = """<span data-ntv-name="station-to-url" data-ntv-type="Json">[{"code":"G__","urlCoding":"genova"},{"code":"GB_","urlCoding":"Genova Brignole"},{"code":"G__","urlCoding":"Genova Piazza Principe"},{"code":"BC_","urlCoding":"bologna"}]</span>"""
+        val parsed = parseItaloStationCatalog(page)
+        assertEquals(3, parsed.size)
+        assertEquals("Genova Piazza Principe", parsed.single { it.code == "G__" }.name)
+        assertEquals("genova", parsed.single { it.code == "G__" }.slug)
+        val urls = mutableListOf<String>()
+        val fetcher = HttpItaloPublicStationFetcher { url -> urls += url; if (url.endsWith("/it/stazione")) page else "board" }
+        val principe = fetcher.resolveStationSlug(listOf("Genova Piazza Principe"))!!
+        val brignole = fetcher.resolveStationSlug(listOf("Genova Brignole"))!!
+        assertNotEquals(principe, brignole)
+        fetcher.fetch(principe)
+        assertTrue(urls.last().endsWith("CodiceStazione=G__"))
+        fetcher.fetch(brignole)
+        assertTrue(urls.last().endsWith("CodiceStazione=GB_"))
+        assertEquals("bologna", fetcher.resolveStationSlug(listOf("Bologna Centrale")))
+        fetcher.fetch("bologna-centrale")
+        assertTrue(urls.last().endsWith("CodiceStazione=BC_"))
+    }
+
     @Test fun `reads the current station-to-url span with operator codes published slugs and labels`() {
         val html = """<span data-ntv-name="station-to-url" data-ntv-type="Json">[{"code":"AGR","urlCoding":"agropoli"},{"code":"BC_","urlCoding":"bologna"},{"code":"NEW","urlCoding":"genova-p-p"}]</span>
             <select><option value="BC_">Bologna Centrale</option></select>
