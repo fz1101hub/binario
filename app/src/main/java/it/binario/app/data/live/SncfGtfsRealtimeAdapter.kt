@@ -25,6 +25,9 @@ import it.binario.app.data.provider.ProviderResponseMeta
 import it.binario.app.data.provider.ProviderResult
 import it.binario.app.data.provider.RatePolicy
 import it.binario.app.data.provider.TripUpdateProvider
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.IOException
@@ -79,15 +82,18 @@ class SncfGtfsRealtimeAdapter(
         schemaVersion = 1
     )
 
+    private val alertsMutex = Mutex()
+    private val tripUpdatesMutex = Mutex()
+
     private var cachedAlerts: CachedAlerts? = null
     private var cachedTripUpdates: CachedTripUpdates? = null
 
-    override suspend fun getAlerts(request: AlertRequest): ProviderResult<List<ServiceAlert>> {
+    override suspend fun getAlerts(request: AlertRequest): ProviderResult<List<ServiceAlert>> = alertsMutex.withLock {
         val now = clock.instant()
         cachedAlerts?.takeIf { now.isBefore(it.expiresAt) }?.let { cache ->
-            return ProviderResult.Success(filter(cache.alerts, request), meta(now, cache.observedAt, cache.expiresAt, true, cache.fingerprint))
+            return@withLock ProviderResult.Success(filter(cache.alerts, request), meta(now, cache.observedAt, cache.expiresAt, true, cache.fingerprint))
         }
-        return try {
+        try {
             val payload = fetcher.fetch(SncfRealtimeFeed.SERVICE_ALERTS)
             val feed = GtfsRealtime.FeedMessage.parseFrom(payload)
             val observed = feed.header.timestamp.takeIf { it > 0 }?.let(Instant::ofEpochSecond) ?: now
@@ -96,6 +102,8 @@ class SncfGtfsRealtimeAdapter(
             val fingerprint = fingerprint(payload)
             cachedAlerts = CachedAlerts(alerts, observed, expires, fingerprint)
             ProviderResult.Success(filter(alerts, request), meta(now, observed, expires, false, fingerprint))
+        } catch (error: CancellationException) {
+            throw error
         } catch (error: IOException) {
             ProviderResult.Failure(ProviderError(ProviderErrorKind.NETWORK, "Realtime SNCF non raggiungibile.", error::class.java.name))
         } catch (error: Exception) {
@@ -103,12 +111,12 @@ class SncfGtfsRealtimeAdapter(
         }
     }
 
-    override suspend fun getTripUpdates(): ProviderResult<List<RealtimeStopUpdate>> {
+    override suspend fun getTripUpdates(): ProviderResult<List<RealtimeStopUpdate>> = tripUpdatesMutex.withLock {
         val now = clock.instant()
         cachedTripUpdates?.takeIf { now.isBefore(it.expiresAt) }?.let { cache ->
-            return ProviderResult.Success(cache.updates, meta(now, cache.observedAt, cache.expiresAt, true, cache.fingerprint))
+            return@withLock ProviderResult.Success(cache.updates, meta(now, cache.observedAt, cache.expiresAt, true, cache.fingerprint))
         }
-        return try {
+        try {
             val payload = fetcher.fetch(SncfRealtimeFeed.TRIP_UPDATES)
             val feed = GtfsRealtime.FeedMessage.parseFrom(payload)
             val observed = feed.header.timestamp.takeIf { it > 0 }?.let(Instant::ofEpochSecond) ?: now
@@ -117,6 +125,8 @@ class SncfGtfsRealtimeAdapter(
             val fingerprint = fingerprint(payload)
             cachedTripUpdates = CachedTripUpdates(updates, observed, expires, fingerprint)
             ProviderResult.Success(updates, meta(now, observed, expires, false, fingerprint))
+        } catch (error: CancellationException) {
+            throw error
         } catch (error: IOException) {
             ProviderResult.Failure(ProviderError(ProviderErrorKind.NETWORK, "Aggiornamenti corsa SNCF non raggiungibili.", error::class.java.name))
         } catch (error: Exception) {

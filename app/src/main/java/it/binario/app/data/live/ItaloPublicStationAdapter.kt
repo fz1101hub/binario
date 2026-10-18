@@ -81,8 +81,12 @@ internal class HttpItaloPublicStationFetcher(
     }
 
     override suspend fun fetch(slug: String): String {
-        val knownCode = ItaloPublicStationFallbacks.all.singleOrNull { it.slug == slug }?.code
-        val station = stations().filter { it.slug == slug || it.code == knownCode }.singleOrNull()
+        val known = ItaloPublicStationFallbacks.all.singleOrNull { it.slug == slug }
+        val knownNames = known?.let { (listOf(it.name) + it.aliases).map(::italoStationKey).toSet() }.orEmpty()
+        val station = stations().filter { station ->
+            station.slug == slug || station.code == known?.code ||
+                (knownNames.isNotEmpty() && (listOf(station.name) + station.aliases).any { italoStationKey(it) in knownNames })
+        }.singleOrNull()
             ?: throw IOException("Stazione assente dal catalogo pubblico Italo")
         return download("${ItaloPublicStationAdapter.BASE_URL}/api/RicercaStazioneService?CodiceStazione=${station.code}")
     }

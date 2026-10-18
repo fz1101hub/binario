@@ -10,6 +10,26 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class ViaggiaTrenoRealtimeAdapterTest {
+    @Test fun `a slow detail cannot discard completed verified runs or hold the whole route search`() = runBlocking {
+        val slowStarted = CompletableDeferred<Unit>()
+        val slowCancelled = CompletableDeferred<Unit>()
+        val source = ViaggiaTrenoRealtimeAdapter(ViaggiaTrenoRealtimeFetcher { path ->
+            when {
+                path.startsWith("partenze/") -> JSONArray().apply {
+                    for (number in listOf(12345, 12346)) put(JSONObject().put("numeroTreno", number).put("codOrigine", "S08001")
+                        .put("dataPartenzaTreno", runDate).put("orarioPartenza", now.plusSeconds(300).toEpochMilli()).put("ritardo", 6))
+                }.toString()
+                path.contains("/12346/") -> { slowStarted.complete(Unit); try { awaitCancellation() } finally { slowCancelled.complete(Unit) } }
+                else -> run().toString()
+            }
+        }, clock, routeDetailsTimeoutMillis = 500)
+        val result = withTimeout(3_000) { source.loadRoute(route, Direction.OUTBOUND, query) } as DataResult.Success
+        withTimeout(2_000) { slowStarted.await(); slowCancelled.await() }
+        assertEquals(listOf("12345"), result.snapshot.services.map { it.number })
+        assertTrue(result.snapshot.services.single().operationalStatusVerified)
+        assertEquals(6, result.snapshot.services.single().officialDelayMinutes)
+    }
+
     @Test fun `global number lookup finds the full already departed run without any selected route`() = runBlocking {
         val paths = mutableListOf<String>()
         val source = ViaggiaTrenoRealtimeAdapter(ViaggiaTrenoRealtimeFetcher { path ->

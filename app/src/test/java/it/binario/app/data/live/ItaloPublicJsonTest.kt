@@ -10,6 +10,42 @@ class ItaloPublicJsonTest {
     private val clock = Clock.fixed(Instant.parse("2026-10-16T10:00:00Z"), ZoneOffset.UTC)
     private val route = SavedRoute("test", "Roma–Napoli", Station("roma-termini", "Roma Termini", "Roma"), Station("napoli", "Napoli Centrale", "Napoli"))
 
+    @Test fun `reads the current station-to-url span with operator codes published slugs and labels`() {
+        val html = """<span data-ntv-name="station-to-url" data-ntv-type="Json">[{"code":"AGR","urlCoding":"agropoli"},{"code":"BC_","urlCoding":"bologna"},{"code":"NEW","urlCoding":"genova-p-p"}]</span>
+            <select><option value="BC_">Bologna Centrale</option></select>
+            <a href="/it/stazione/genova-p-p">Genova Piazza Principe</a>"""
+        val stations = parseItaloStationCatalog(html)
+        assertEquals(setOf("AGR", "BC_", "NEW"), stations.map { it.code }.toSet())
+        assertEquals("Agropoli Castellabate", stations.single { it.code == "AGR" }.name)
+        assertTrue("agropoli" in stations.single { it.code == "AGR" }.aliases)
+        assertEquals("Bologna Centrale", stations.single { it.code == "BC_" }.name)
+        assertEquals("bologna", stations.single { it.code == "BC_" }.slug)
+        assertEquals("Genova Piazza Principe", stations.single { it.code == "NEW" }.name)
+    }
+
+    @Test fun `new catalogue resolves stations outside the curated fallback and replaces obsolete codes`() = runBlocking {
+        val urls = mutableListOf<String>()
+        val fetcher = HttpItaloPublicStationFetcher { url ->
+            urls += url
+            if (url.endsWith("/it/stazione")) """<span data-ntv-name="station-to-url" data-ntv-type="Json">[{"code":"NEW","urlCoding":"ancona"},{"code":"BC_","urlCoding":"bologna"}]</span><option value="BC_">Bologna Centrale</option>""" else "board"
+        }
+        assertEquals("ancona", fetcher.resolveStationSlug(listOf("ANCONA")))
+        assertEquals("board", fetcher.fetch("ancona"))
+        assertTrue(urls.last().endsWith("CodiceStazione=NEW"))
+        assertEquals("board", fetcher.fetch("bologna-centrale"))
+        assertTrue(urls.last().endsWith("CodiceStazione=BC_"))
+    }
+
+    @Test fun `malformed catalogue entries cannot introduce URL paths or query parameters`() {
+        val html = """<span data-ntv-name="station-to-url" data-ntv-type="Json">[{"code":"AGR","urlCoding":"agropoli"},{"code":"A&other=1","urlCoding":"ancona"},{"code":"NEW","urlCoding":"https://example.test/station"},{"code":"BAD","urlCoding":"../roma"}]</span>"""
+        assertEquals(listOf("AGR"), parseItaloStationCatalog(html).map { it.code })
+    }
+
+    @Test fun `current catalogue keeps ambiguous station names unresolved`() = runBlocking {
+        val fetcher = HttpItaloPublicStationFetcher { """<span data-ntv-name="station-to-url" data-ntv-type="Json">[{"code":"AAA","urlCoding":"castello"},{"code":"BBB","urlCoding":"castello"}]</span>""" }
+        assertNull(fetcher.resolveStationSlug(listOf("Castello")))
+    }
+
     @Test fun `legge il catalogo pubblico oggetto o lista senza confondere codici RFI e Italo`() {
         val stations = parseItaloStationCatalog("""<script>var stationCoding = {"RMT":"Roma Termini","BO2":"Bologna Centrale"}; var stationList=[{"code":"MC_","name":"Milano Centrale"}];</script>""")
         assertEquals(setOf("RMT", "BO2", "MC_"), stations.map { it.code }.toSet())

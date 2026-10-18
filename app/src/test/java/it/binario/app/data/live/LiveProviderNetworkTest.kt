@@ -50,6 +50,28 @@ class LiveProviderNetworkTest {
         fail("ViaggiaTreno direct lookup did not resolve any of the currently published numbers")
     }
 
+    @Test fun italoCurrentStationCatalogue() = runBlocking {
+        selected("italo")
+        val html = downloadItaloPublic("${ItaloPublicStationAdapter.BASE_URL}/it/stazione")
+        val document = org.jsoup.Jsoup.parse(html)
+        val catalogue = parseItaloStationCatalog(html)
+        println("LIVE_ACCEPTANCE Italo catalogue metadata: " + document.select("[data-ntv-type=Json]").map { it.attr("data-ntv-name") })
+        println("LIVE_ACCEPTANCE Italo catalogue stations: " + catalogue.map { "${it.code}:${it.name}:${it.slug}:${it.aliases}" })
+        println("LIVE_ACCEPTANCE Italo catalogue labels: " + document.select("option[value]").take(8).map { it.attr("value") + ":" + it.text() })
+        assertFalse("Current Italo station-to-url JSON is missing", document.select("[data-ntv-name=station-to-url][data-ntv-type=Json]").isEmpty())
+        assertTrue("Current Italo catalogue is not being parsed beyond the old fallback", catalogue.size > ItaloPublicStationFallbacks.all.size)
+        val fetcher = HttpItaloPublicStationFetcher { url -> if (url.endsWith("/it/stazione")) html else downloadItaloPublic(url) }
+        for (names in listOf(listOf("Ancona"), listOf("Genova Piazza Principe", "Genova P.P."), listOf("Genova Brignole"),
+            listOf("Pisa Centrale", "Pisa"), listOf("Treviso Centrale", "Treviso"), listOf("Bologna Centrale"))) {
+            val slug = fetcher.resolveStationSlug(names)
+            println("LIVE_ACCEPTANCE Italo expanded catalogue lookup $names: $slug")
+            assertNotNull("Italo station unresolved from current catalogue: $names", slug)
+            val root = org.json.JSONObject(fetcher.fetch(slug!!))
+            println("LIVE_ACCEPTANCE Italo expanded catalogue board $slug: station=${root.opt("DescrizioneLocalita")}, empty=${root.opt("IsEmpty")}")
+            assertTrue("Unexpected Italo station board schema for $slug", root.has("IsEmpty"))
+        }
+    }
+
     @Test fun italoGlobalNumber() = runBlocking {
         selected("italo")
         val adapter = ItaloTrainNumberAdapter(fetch = { url ->

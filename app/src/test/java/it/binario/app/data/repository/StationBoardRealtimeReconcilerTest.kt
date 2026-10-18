@@ -42,6 +42,11 @@ import it.binario.app.data.provider.RatePolicy
 import it.binario.app.data.provider.StationBoardProvider
 import it.binario.app.data.provider.StationBoardRequest
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.async
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -66,6 +71,38 @@ class StationBoardRealtimeReconcilerTest {
     )
     private val query = JourneyQuery(LocalDate.of(2026, 9, 4), LocalTime.of(12, 0))
     private val clock = Clock.fixed(Instant.parse("2026-09-04T10:00:00Z"), ZoneOffset.UTC)
+
+    @Test fun `slow operator source has a total deadline and falls back to programmed data`() = runTest {
+        var cancelled = false
+        val slow = object : TrainDataSource {
+            override suspend fun loadRoute(route: SavedRoute, direction: Direction): DataResult {
+                try { awaitCancellation() } finally { cancelled = true }
+            }
+        }
+        val wrapper = StationBoardEnrichedTrainDataSource(source { DataResult.Success(plannedSnapshot()) }, emptyList(), clock, zone,
+            liveRouteSources = listOf(slow))
+        val result = wrapper.loadRoute(route, Direction.OUTBOUND, query) as DataResult.Success
+        assertEquals(15_000L, testScheduler.currentTime)
+        assertTrue(cancelled)
+        assertFalse(result.snapshot.services.single().operationalStatusVerified)
+        assertEquals("12:30", result.snapshot.services.single().scheduledDeparture)
+    }
+
+    @Test fun `cancelling the route search propagates instead of starting a fallback`() = runTest {
+        val started = CompletableDeferred<Unit>()
+        var plannedCalled = false
+        val slow = object : TrainDataSource {
+            override suspend fun loadRoute(route: SavedRoute, direction: Direction): DataResult {
+                started.complete(Unit); awaitCancellation()
+            }
+        }
+        val wrapper = StationBoardEnrichedTrainDataSource(source { plannedCalled = true; DataResult.Success(plannedSnapshot()) }, emptyList(), clock, zone,
+            liveRouteSources = listOf(slow))
+        val pending = async { wrapper.loadRoute(route, Direction.OUTBOUND, query) }
+        started.await()
+        pending.cancelAndJoin()
+        assertFalse(plannedCalled)
+    }
 
     @Test
     fun `il ritardo non include una differenza fra orario statico e orario pubblicato`() = runBlocking {

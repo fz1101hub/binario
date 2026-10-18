@@ -1,6 +1,6 @@
 # Fonti live: protocolli correnti e verifica
 
-Aggiornamento: 16 ottobre 2026. Questo documento sostituisce le ipotesi e i sondaggi dell’agosto 2026; i rapporti storici restano evidenza della sola data indicata. Una risposta HTTP 200, un feed con header recente o un adapter abilitato non bastano a confermare ritardi live.
+Aggiornamento: 18 ottobre 2026. Questo documento sostituisce le ipotesi e i sondaggi dell’agosto 2026; i rapporti storici restano evidenza della sola data indicata. Una risposta HTTP 200, un feed con header recente o un adapter abilitato non bastano a confermare ritardi live.
 
 ## Percorso comune dell’app
 
@@ -20,7 +20,7 @@ Verifica esterna riuscita: [run 38841303515](https://github.com/fz1101hub/binari
 
 ## Italo in Viaggio
 
-Il sito passeggeri usa `https://italoinviaggio.italotreno.com/api/RicercaStazioneService?CodiceStazione=<code>`. Il client legge il catalogo quando disponibile e ha un fallback curato di 50 codici Italo, separati dagli ID RFI. La risposta JSON deve identificare la stazione richiesta. `LastUpdate`, ritardo esplicito e nuovo orario sono controllati prima di dichiarare il dato operativo.
+Il sito passeggeri usa `https://italoinviaggio.italotreno.com/api/RicercaStazioneService?CodiceStazione=<code>`. Il client legge il catalogo pubblico da `[data-ntv-name="station-to-url"][data-ntv-type="Json"]` nella pagina `/it/stazione`, usando i campi `code` e `urlCoding`. Mantiene gli slug pubblicati, i nomi/alias del catalogo e le etichette presenti nella pagina; supporta anche il precedente formato `stationCoding`/`stationList`. I codici appena pubblicati possono quindi essere usati senza ampliare una lista di stazioni nel codice. Un fallback curato di 50 codici Italo, separati dagli ID RFI, resta disponibile quando la pagina non è leggibile. Le corrispondenze ambigue vengono rifiutate; un cambio di codice viene accettato solo con una corrispondenza univoca del catalogo. La risposta JSON deve identificare la stazione richiesta. `LastUpdate`, ritardo esplicito e nuovo orario sono controllati prima di dichiarare il dato operativo.
 
 La pagina HTML `/it/stazione/<slug>` non è più la fonte HTTP del tabellone. Nessun token o proxy esterno viene usato. Nel [run 38841303515](https://github.com/fz1101hub/binario/actions/runs/38841303515) lo schema JSON era raggiungibile ma Roma Termini non aveva partenze e riportava `LastUpdate=00:28`: quell’esito non provava la disponibilità di ritardi numerici. Il controllo aggiornato campiona Roma, Milano e Napoli e richiede osservazioni operative reali: è passato nel [run 38895679873](https://github.com/fz1101hub/binario/actions/runs/38895679873).
 
@@ -44,6 +44,14 @@ Il JSON pubblico legacy usa `http://www.viaggiatreno.it/infomobilita/resteasy/vi
 Prima di questa eccezione, il client rifiutava il trasporto della fonte e la ricerca ripiegava su RFI. Nel [controllo reale 38903013231](https://github.com/fz1101hub/binario/actions/runs/38903013231), commit `b39e155`, il tabellone Milano ha fornito 22 partenze, 5 con dati operativi verificabili, e Appiano → Roma Ostiense ha fornito 4 corse verificate. Per il **23263**, alle 14:50 circa (Europe/Rome), il ritardo pubblicato era **4 minuti**, la partenza programmata 15:06 e quella attesa 15:10. La rilevazione utilizzata dalla fonte era delle 14:46. Il test confronta il numero nell’app con il campo `ritardo` del medesimo JSON: non impone il valore 6 segnalato in un momento precedente.
 
 ViaggiaTreno precede ora il fallback RFI per le tratte con codici e identità della corsa verificabili. Le osservazioni devono essere recenti; ritardi mancanti o vecchi non diventano zero. La cache dei dettagli scade 30 secondi dall’inizio della richiesta, così la latenza non prolunga la vita del vecchio valore al successivo aggiornamento. L’adapter mobile HTML legacy non è collegato al runtime.
+
+## Limiti di attesa e concorrenza
+
+Il percorso operatore prioritario ha un limite di 15 secondi per fonte prima di passare al fallback. Ogni richiesta HTTP ViaggiaTreno ha un limite complessivo di 12 secondi, comprendente connessione, lettura e tutti i redirect; restano attivi i controlli su host, percorso e dimensione della risposta. Il caricamento parallelo dei dettagli di tratta si ferma dopo 8 secondi e conserva le corse già completate e verificate.
+
+Le richieste ViaggiaTreno condivise vengono annullate quando non rimangono consumatori. La cancellazione interrompe il worker e avvia la disconnessione HTTP fuori dal thread chiamante, senza aspettare che una lettura bloccante termini spontaneamente. Un consumatore che abbandona la ricerca non interrompe una richiesta ancora necessaria ad altri; un caricamento annullato non può rimuovere o sovrascrivere il suo successore nella cache.
+
+STA e SNCF sincronizzano separatamente la cache di ciascun feed: richieste concorrenti allo stesso feed condividono un caricamento, mentre feed diversi restano indipendenti. La scadenza e i timestamp delle osservazioni restano controllati. Anche gli avvisi STA già in cache applicano il filtro della stazione di ogni richiesta. La cancellazione del chiamante viene propagata.
 
 ## Altri canali e limiti
 

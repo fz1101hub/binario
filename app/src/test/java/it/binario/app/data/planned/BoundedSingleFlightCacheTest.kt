@@ -1,5 +1,9 @@
 package it.binario.app.data.planned
 
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.async
@@ -10,6 +14,53 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class BoundedSingleFlightCacheTest {
+    @Test fun `abandoned opt-in load cancels and cannot remove the replacement flight`() = runBlocking {
+        val cache = BoundedSingleFlightCache<String>(2, 1_000L) { 100L }
+        val entered = CompletableDeferred<Unit>()
+        val cleaning = CompletableDeferred<Unit>()
+        val finishCleanup = CompletableDeferred<Unit>()
+        val old = async(start = CoroutineStart.UNDISPATCHED) {
+            cache.getOrLoad("run", cancelWhenUnused = true) {
+                entered.complete(Unit)
+                try { awaitCancellation() } finally {
+                    withContext(NonCancellable) { cleaning.complete(Unit); finishCleanup.await() }
+                }
+            }
+        }
+        entered.await()
+        old.cancelAndJoin()
+        withTimeout(2_000) { cleaning.await() }
+        val newEntered = CompletableDeferred<Unit>()
+        val release = CompletableDeferred<Unit>()
+        val fresh = async(start = CoroutineStart.UNDISPATCHED) {
+            cache.getOrLoad("run", cancelWhenUnused = true) { newEntered.complete(Unit); release.await(); "fresh" }
+        }
+        newEntered.await()
+        finishCleanup.complete(Unit)
+        val waiter = async(start = CoroutineStart.UNDISPATCHED) {
+            cache.getOrLoad("run", cancelWhenUnused = true) { error("replacement must remain shared") }
+        }
+        release.complete(Unit)
+        assertEquals("fresh", withTimeout(2_000) { fresh.await().value })
+        assertEquals("fresh", waiter.await().value)
+    }
+
+    @Test fun `opt-in shared request stays alive while another consumer still needs it`() = runBlocking {
+        val cache = BoundedSingleFlightCache<String>(2, 1_000L) { 100L }
+        val entered = CompletableDeferred<Unit>()
+        val release = CompletableDeferred<Unit>()
+        val first = async(start = CoroutineStart.UNDISPATCHED) {
+            cache.getOrLoad("run", cancelWhenUnused = true) { entered.complete(Unit); release.await(); "live" }
+        }
+        entered.await()
+        val second = async(start = CoroutineStart.UNDISPATCHED) {
+            cache.getOrLoad("run", cancelWhenUnused = true) { error("shared load expected") }
+        }
+        first.cancelAndJoin()
+        release.complete(Unit)
+        assertEquals("live", withTimeout(2_000) { second.await().value })
+    }
+
     @Test
     fun `concurrent misses for one key execute one loader`() = runBlocking {
         var now = 100L

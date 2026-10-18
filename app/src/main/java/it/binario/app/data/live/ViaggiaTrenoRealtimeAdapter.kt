@@ -36,9 +36,10 @@ fun interface ViaggiaTrenoRealtimeFetcher {
 }
 
 internal class HttpViaggiaTrenoRealtimeFetcher(
+    private val requestTimeoutMillis: Long = 12_000,
     private val openConnection: (URL) -> HttpURLConnection = { it.openConnection() as HttpURLConnection }
 ) : ViaggiaTrenoRealtimeFetcher {
-    override suspend fun fetch(path: String): String = withContext(Dispatchers.IO) {
+    override suspend fun fetch(path: String): String = withTimeoutOrNull(requestTimeoutMillis) {
         require(path.startsWith("partenze/") || path.startsWith("arrivi/") || path.startsWith("andamentoTreno/") || path.startsWith("cercaNumeroTrenoTrenoAutocomplete/"))
         var url = URL("https://www.viaggiatreno.it/infomobilita/resteasy/viaggiatreno/$path")
         val requestedPath = url.path
@@ -51,51 +52,56 @@ internal class HttpViaggiaTrenoRealtimeFetcher(
             connection.setRequestProperty("Cache-Control", "no-cache")
             connection.setRequestProperty("Accept", if (path.startsWith("cercaNumeroTrenoTrenoAutocomplete/")) "text/plain" else "application/json")
             connection.setRequestProperty("User-Agent", "Binario/0.20 (personal realtime client)")
-            try {
+            val response = withCancellableHttpConnection(connection) {
                 val status = connection.responseCode
-                if (status in setOf(301, 302, 303, 307, 308)) {
-                    val location = connection.getHeaderField("Location") ?: throw IOException("ViaggiaTreno redirect senza destinazione")
-                    var target = try { URL(url, location) } catch (_: java.net.MalformedURLException) {
-                        throw IOException("ViaggiaTreno redirect non leggibile")
-                    }
-                    // The public legacy API is served over HTTP. The exception is
-                    // limited to the exact requested resource on its official www host.
-                    val publicLegacyApi = target.protocol == "http" && target.host == "www.viaggiatreno.it" &&
-                        target.port in setOf(-1, 80) && target.userInfo == null && target.path == requestedPath &&
-                        target.query == null && target.ref == null
-                    if (target.protocol == "http" && target.host == "www.viaggiatreno.it" &&
-                        target.port in setOf(-1, 80) && target.userInfo == null &&
-                        url.host == "www.viaggiatreno.it" && !publicLegacyApi) {
-                        target = URL("https", "viaggiatreno.it", url.file)
-                    }
-                    val knownHttps = target.protocol == "https" &&
-                        target.host.lowercase(Locale.ROOT) in setOf("www.viaggiatreno.it", "viaggiatreno.it") &&
-                        target.port in setOf(-1, 443) && target.userInfo == null && target.path == requestedPath &&
-                        target.query == null && target.ref == null
-                    if (!publicLegacyApi && !knownHttps) {
-                        throw IOException("ViaggiaTreno redirect non consentito da ${url.host}: ${target.protocol}://${target.host}${target.path.take(220)}")
-                    }
-                    if (attempt == 3) throw IOException("ViaggiaTreno: troppi reindirizzamenti")
-                    url = target
-                } else {
-                    if (status == 204) return@withContext "null"
-                    if (status !in 200..299) throw IOException("ViaggiaTreno HTTP $status")
-                    return@withContext connection.inputStream.use {
+                Response(status,
+                    if (status in setOf(301, 302, 303, 307, 308)) connection.getHeaderField("Location") else null,
+                    if (status in 200..299 && status != 204) connection.inputStream.use {
                         readBoundedRfiHtml(it, connection.contentLengthLong.takeIf { n -> n >= 0 })
-                    }
+                    } else null)
+            }
+            val status = response.status
+            if (status in setOf(301, 302, 303, 307, 308)) {
+                val location = response.location ?: throw IOException("ViaggiaTreno redirect senza destinazione")
+                var target = try { URL(url, location) } catch (_: java.net.MalformedURLException) {
+                    throw IOException("ViaggiaTreno redirect non leggibile")
                 }
-            } finally {
-                connection.disconnect()
+                // The public legacy API is served over HTTP. The exception is
+                // limited to the exact requested resource on its official www host.
+                val publicLegacyApi = target.protocol == "http" && target.host == "www.viaggiatreno.it" &&
+                    target.port in setOf(-1, 80) && target.userInfo == null && target.path == requestedPath &&
+                    target.query == null && target.ref == null
+                if (target.protocol == "http" && target.host == "www.viaggiatreno.it" &&
+                    target.port in setOf(-1, 80) && target.userInfo == null &&
+                    url.host == "www.viaggiatreno.it" && !publicLegacyApi) {
+                    target = URL("https", "viaggiatreno.it", url.file)
+                }
+                val knownHttps = target.protocol == "https" &&
+                    target.host.lowercase(Locale.ROOT) in setOf("www.viaggiatreno.it", "viaggiatreno.it") &&
+                    target.port in setOf(-1, 443) && target.userInfo == null && target.path == requestedPath &&
+                    target.query == null && target.ref == null
+                if (!publicLegacyApi && !knownHttps) {
+                    throw IOException("ViaggiaTreno redirect non consentito da ${url.host}: ${target.protocol}://${target.host}${target.path.take(220)}")
+                }
+                if (attempt == 3) throw IOException("ViaggiaTreno: troppi reindirizzamenti")
+                url = target
+            } else {
+                if (status == 204) return@withTimeoutOrNull "null"
+                if (status !in 200..299) throw IOException("ViaggiaTreno HTTP $status")
+                return@withTimeoutOrNull response.body ?: throw IOException("Risposta ViaggiaTreno vuota")
             }
         }
         throw IOException("ViaggiaTreno: destinazione non raggiunta")
-    }
+    } ?: throw java.net.SocketTimeoutException("ViaggiaTreno supera il tempo massimo della richiesta")
+
+    private data class Response(val status: Int, val location: String?, val body: String?)
 }
 
 /** Personal best-effort source. Matches commercial stops by code, not the train's final destination. */
 class ViaggiaTrenoRealtimeAdapter(
     private val fetcher: ViaggiaTrenoRealtimeFetcher = HttpViaggiaTrenoRealtimeFetcher(),
-    private val clock: Clock = Clock.system(RailTime.defaultZone)
+    private val clock: Clock = Clock.system(RailTime.defaultZone),
+    private val routeDetailsTimeoutMillis: Long = 8_000
 ) : RealtimeRouteDataSource, StationBoardProvider, StationBoardRunDetailProvider, TrainNumberSearchProvider {
     override val descriptor = ProviderDescriptor(
         id = SourceId("viaggiatreno"), displayName = "Trenitalia — ViaggiaTreno realtime",
@@ -109,7 +115,7 @@ class ViaggiaTrenoRealtimeAdapter(
     private val cache = BoundedSingleFlightCache<Result<String>>(128, 30_000, clock::millis)
     private val requests = Semaphore(3)
 
-    private suspend fun json(path: String): String = cache.getOrLoad(path, expireFromLoadStart = true) {
+    private suspend fun json(path: String): String = cache.getOrLoad(path, expireFromLoadStart = true, cancelWhenUnused = true) {
         try { Result.success(requests.withPermit { fetcher.fetch(path) }) }
         catch (error: CancellationException) { throw error }
         catch (error: IOException) { Result.failure(error) }
@@ -148,19 +154,21 @@ class ViaggiaTrenoRealtimeAdapter(
             val rows = boardRows.distinctBy { Triple(it.text("codOrigine"), it.text("numeroTreno"), it.millis("dataPartenzaTreno") ?: it.millis("millisDataPartenza")) }
                 .filter { row -> row.millis("orarioPartenza")?.let { it + (row.intOrNull("ritardo") ?: 0).coerceAtLeast(0) * 60_000L >= requested.toEpochMilli() } ?: true }
                 .sortedBy { it.millis("orarioPartenza") ?: Long.MAX_VALUE }
-            val services = coroutineScope {
-                rows.take(12).map { row -> async {
+            val completedServices = java.util.concurrent.ConcurrentLinkedQueue<TrainService>()
+            withTimeoutOrNull(routeDetailsTimeoutMillis) {
+                coroutineScope { rows.take(12).map { row -> async {
                     val number = row.text("numeroTreno")?.takeIf { it.matches(Regex("[0-9]{1,6}")) } ?: return@async null
                     val runOrigin = code(row.text("codOrigine")) ?: return@async null
                     val runDate = row.millis("dataPartenzaTreno") ?: row.millis("millisDataPartenza") ?: return@async null
                     try {
                         val detail = JSONObject(json("andamentoTreno/$runOrigin/$number/$runDate"))
-                        parseRun(detail, number, runOrigin, runDate, route, direction, query, fetched)
+                        parseRun(detail, number, runOrigin, runDate, route, direction, query, fetched)?.also(completedServices::add)
                     } catch (error: CancellationException) { throw error }
                     catch (_: IOException) { null }
                     catch (_: org.json.JSONException) { null }
-                } }.awaitAll().filterNotNull()
-            }.distinctBy { it.id }.sortedBy { it.scheduledDepartureDateTime }
+                } }.awaitAll() }
+            }
+            val services = completedServices.toList().distinctBy { it.id }.sortedBy { it.scheduledDepartureDateTime }
             if (services.isEmpty()) return DataResult.Failure("Nessuna corsa live verificabile per la tratta richiesta.")
             val observed = services.mapNotNull { it.operationalObservedAtEpochMillis }.maxOrNull()
             val snapshot = RouteSnapshot(

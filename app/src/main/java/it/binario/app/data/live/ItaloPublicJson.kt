@@ -3,6 +3,7 @@ package it.binario.app.data.live
 import it.binario.app.data.*
 import org.json.JSONObject
 import org.json.JSONTokener
+import org.jsoup.Jsoup
 import java.text.Normalizer
 import java.time.*
 import java.time.format.DateTimeFormatter
@@ -27,6 +28,38 @@ internal fun parseItaloStationCatalog(html: String): List<ItaloPublicStation> {
     fun JSONObject.first(vararg keys: String): String = keys.firstNotNullOfOrNull { key ->
         optString(key).takeIf { it.isNotBlank() && it != "null" }
     }.orEmpty()
+    val document = Jsoup.parse(html)
+    val labelsBySlug = document.select("a[href]").mapNotNull { link ->
+        val path = runCatching { java.net.URI(link.attr("href")).path }.getOrNull().orEmpty()
+        val slug = path.removeSuffix("/").substringAfter("/it/stazione/", "")
+        val label = link.text().trim()
+        if (slug.matches(Regex("[a-z0-9]+(?:-[a-z0-9]+)*")) && label.isNotBlank()) slug to label else null
+    }.groupBy({ it.first }, { it.second })
+    val labelsByCode = document.select("option[value]").mapNotNull { option ->
+        option.attr("value").takeIf { it.matches(Regex("[A-Za-z0-9_]{2,12}")) }
+            ?.let { it to option.text().trim() }
+    }.toMap()
+    // Current passenger page: the code/URL map is JSON inside a span, not a script assignment.
+    document.select("[data-ntv-name=station-to-url][data-ntv-type=Json]").forEach { element ->
+        val rows = runCatching { org.json.JSONArray(element.wholeText()) }.getOrNull() ?: return@forEach
+        for (index in 0 until minOf(rows.length(), 1_000)) {
+            val row = rows.optJSONObject(index) ?: continue
+            val code = row.first("code")
+            val slug = row.first("urlCoding")
+            if (!code.matches(Regex("[A-Za-z0-9_]{2,12}")) ||
+                slug.length !in 1..100 || !slug.matches(Regex("[a-z0-9]+(?:-[a-z0-9]+)*"))) continue
+            val known = ItaloPublicStationFallbacks.all.singleOrNull { it.code == code }
+            val slugLabel = slug.replace('-', ' ')
+            val publishedLabels = labelsBySlug[slug].orEmpty()
+            val name = row.first("name", "label", "Descrizione", "NomeStazione")
+                .ifBlank { labelsByCode[code].orEmpty() }
+                .ifBlank { known?.name.orEmpty() }
+                .ifBlank { publishedLabels.singleOrNull().orEmpty() }
+                .ifBlank { slugLabel }
+            stations += ItaloPublicStation(code, name, slug,
+                (publishedLabels + listOf(slugLabel) + known?.aliases.orEmpty()).filter(String::isNotBlank).toSet())
+        }
+    }
     Regex("[\"']?station(?:List|Coding)[\"']?\\s*[:=]\\s*[\\[{]", RegexOption.IGNORE_CASE)
         .findAll(html).forEach { match ->
             val value = runCatching { JSONTokener(html.substring(match.range.last)).nextValue() }.getOrNull()

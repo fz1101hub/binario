@@ -30,6 +30,7 @@ import it.binario.app.data.sources.RailSourceSelectionPolicy
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.withTimeoutOrNull
 import java.time.Clock
 import java.time.Duration
 import java.time.LocalDateTime
@@ -47,7 +48,8 @@ class StationBoardEnrichedTrainDataSource(
     private val boardProviders: List<StationBoardProvider>,
     private val clock: Clock = Clock.system(RailTime.defaultZone),
     private val zone: ZoneId = RailTime.defaultZone,
-    private val liveRouteSources: List<TrainDataSource> = emptyList()
+    private val liveRouteSources: List<TrainDataSource> = emptyList(),
+    private val liveSourceTimeoutMillis: Long = 15_000
 ) : TrainDataSource {
     override suspend fun loadRoute(route: SavedRoute, direction: Direction): DataResult =
         loadRoute(route, direction, JourneyQuery.now())
@@ -57,7 +59,7 @@ class StationBoardEnrichedTrainDataSource(
         var unverifiedLive: DataResult.Success? = null
         if (query.serviceDate == today) {
             for (source in liveRouteSources) {
-                val live = source.loadRoute(route, direction, query)
+                val live = withTimeoutOrNull(liveSourceTimeoutMillis) { source.loadRoute(route, direction, query) }
                 if (live is DataResult.Success) {
                     if (live.snapshot.services.any { it.operationalStatusVerified }) return live
                     if (unverifiedLive == null) unverifiedLive = live
