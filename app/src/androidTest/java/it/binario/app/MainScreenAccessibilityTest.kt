@@ -32,7 +32,7 @@ class MainScreenAccessibilityTest {
             }
         }
         composeRule.onNodeWithText("Stato operativo non verificato").fetchSemanticsNode()
-        composeRule.onNodeWithContentDescription("Roma Ostiense. Previsto 14:30. Programmato 14:30. Stato operativo non verificato. Binario non disponibile.")
+        composeRule.onNodeWithContentDescription("Roma Ostiense. Programmato 14:30. Stato operativo non verificato. Binario non disponibile.")
             .fetchSemanticsNode()
     }
 

@@ -325,6 +325,8 @@
     <string name="service_operator_category">%1$s · %2$s</string>
     <string name="service_operator_category_number">%1$s · %2$s %3$s</string>
     <string name="service_number_route">%1$s · %2$s → %3$s</string>
+    <string name="service_scheduled_departure_label">Scheduled departure</string>
+    <string name="expected_time">Expected %1$s</string>
     <string name="service_expected_departure">Expected departure</string>
     <string name="service_scheduled_departure">Scheduled %1$s</string>
     <string name="service_stops_title">Stops</string>
@@ -350,10 +352,10 @@
     <string name="platform_label">Platform %1$s</string>
     <string name="platform_unavailable">Platform unavailable</string>
     <string name="platform_to_confirm">Platform to be confirmed</string>
-    <string name="accessibility_stop_timeline">%1$s. %2$sExpected %3$s. Scheduled %4$s. %5$s. %6$s.</string>
+    <string name="accessibility_stop_timeline">%1$s. %2$sScheduled %3$s. %4$s%5$s. %6$s.</string>
     <string name="stop_skipped_uppercase">STOP SKIPPED</string>
     <string name="stop_added_uppercase">STOP ADDED</string>
-    <string name="scheduled_time_short">exp. %1$s</string>
+    <string name="expected_time_short">exp. %1$s</string>
     <string name="action_stop_alarm">Alarm</string>
     <string name="route_change_skipped">Skipped: %1$s</string>
     <string name="route_change_added">Added: %1$s</string>
@@ -431,7 +433,7 @@
     <string name="train_category_trenord_regional">Trenord regional train</string>
     <string name="train_category_metropolitan">Metropolitan train</string>
     <string name="train_category_other">Train</string>
-    <string name="accessibility_train_service_summary">Operator %1$s. %2$s %3$s from %4$s to %5$s. Expected departure %6$s. %7$s. %8$s. %9$s.</string>
+    <string name="accessibility_train_service_summary">Operator %1$s. %2$s %3$s from %4$s to %5$s. %6$s. %7$s. %8$s. %9$s.</string>
     <string name="service_transfer_direct">Direct journey</string>
     <plurals name="service_transfer_count">
         <item quantity="one">%d change</item>

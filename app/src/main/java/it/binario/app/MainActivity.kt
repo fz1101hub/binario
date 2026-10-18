@@ -1568,7 +1568,6 @@ private fun StationBoardScreen(modifier: Modifier, viewModel: TrainViewModel) {
 internal fun StationBoardEntryRow(entry: StationBoardEntry, kind: BoardKind) {
     val scheduled = entry.scheduledTime.withZoneSameInstant(BOARD_ZONE)
     val expected = entry.expectedTime?.value?.withZoneSameInstant(BOARD_ZONE)
-    val effective = expected ?: scheduled
     val delayedMinutes = expected?.let {
         java.time.Duration.between(scheduled, it).toMinutes().coerceAtLeast(0)
     } ?: 0L
@@ -1609,10 +1608,10 @@ internal fun StationBoardEntryRow(entry: StationBoardEntry, kind: BoardKind) {
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Column(horizontalAlignment = Alignment.Start) {
-            Text(effective.format(BOARD_TIME_FORMATTER), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Text(scheduled.format(BOARD_TIME_FORMATTER), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             if (expected != null && expected.toInstant() != scheduled.toInstant()) {
                 Text(
-                    stringResource(R.string.station_board_scheduled_time_short, scheduled.format(BOARD_TIME_FORMATTER)),
+                    stringResource(R.string.expected_time_short, expected.format(BOARD_TIME_FORMATTER)),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -1905,11 +1904,14 @@ private fun DepartureListRow(service: TrainService, isNext: Boolean = false, onO
             .padding(horizontal = 20.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Column(Modifier.width(68.dp)) {
-            Text(service.expectedDeparture, style = MaterialTheme.typography.titleLarge, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
+        Column(Modifier.width(76.dp)) {
+            Text(service.scheduledDeparture, style = MaterialTheme.typography.titleLarge, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
             if (!service.operationalStatusVerified) Text(stringResource(R.string.service_scheduled_lowercase), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             else if (service.delayMinutes > 0) Text(stringResource(R.string.delay_minutes, service.delayMinutes), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.tertiary, fontWeight = FontWeight.Bold)
             else Text(stringResource(R.string.service_on_time_lowercase), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.secondary)
+            if (service.operationalStatusVerified && service.expectedDeparture != service.scheduledDeparture) {
+                Text(stringResource(R.string.expected_time_short, service.expectedDeparture), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(service.destination, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -2566,9 +2568,11 @@ private fun ServiceDetailScreen(
                     Text(stringResource(R.string.service_number_route, service.number, service.origin, service.destination), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
-                            Text(stringResource(R.string.service_expected_departure), style = MaterialTheme.typography.labelMedium)
-                            Text(service.expectedDeparture, style = MaterialTheme.typography.displaySmall, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
-                            Text(stringResource(R.string.service_scheduled_departure, service.scheduledDeparture), style = MaterialTheme.typography.bodySmall)
+                            Text(stringResource(R.string.service_scheduled_departure_label), style = MaterialTheme.typography.labelMedium)
+                            Text(service.scheduledDeparture, style = MaterialTheme.typography.displaySmall, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
+                            if (service.operationalStatusVerified && service.expectedDeparture != service.scheduledDeparture) {
+                                Text(stringResource(R.string.expected_time, service.expectedDeparture), style = MaterialTheme.typography.bodySmall)
+                            }
                         }
                         ServiceStatusBadge(service)
                     }
@@ -2691,8 +2695,8 @@ internal fun StopTimelineRow(
         R.string.accessibility_stop_timeline,
         station,
         changeLabel,
-        expected,
         scheduled,
+        if (operationalStatusVerified && expected != scheduled) stringResource(R.string.expected_time, expected) + ". " else "",
         operationalLabel,
         platformLabel
     )
@@ -2721,12 +2725,14 @@ internal fun StopTimelineRow(
             Text(platform?.let { stringResource(R.string.platform_label, it) } ?: stringResource(R.string.platform_to_confirm), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Column(horizontalAlignment = Alignment.End) {
-            Text(expected, style = MaterialTheme.typography.titleMedium, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
-            if (expected != scheduled) Text(stringResource(R.string.scheduled_time_short, scheduled), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(scheduled, style = MaterialTheme.typography.titleMedium, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
             if (!operationalStatusVerified) {
                 Text(stringResource(R.string.operational_status_unverified), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             } else if (delay > 0) {
                 Text(stringResource(R.string.delay_minutes, delay), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.tertiary, fontWeight = FontWeight.Bold)
+            }
+            if (operationalStatusVerified && expected != scheduled) {
+                Text(stringResource(R.string.expected_time_short, expected), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             if (!completed) {
                 TextButton(onClick = onSetAlarm, contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)) {
@@ -2918,7 +2924,10 @@ private fun TrainService.localizedAccessibleSummary(): String {
         pluralStringResource(R.plurals.service_transfer_count, transferCount, transferCount)
     }
     val operationalLabel = if (operationalStatusVerified) {
-        status.localizedLabel()
+        listOfNotNull(
+            status.localizedLabel(),
+            if (delayMinutes > 0) pluralStringResource(R.plurals.operational_delay_minutes, delayMinutes, delayMinutes) else null
+        ).joinToString(", ")
     } else {
         stringResource(R.string.operational_status_unverified)
     }
@@ -2931,7 +2940,10 @@ private fun TrainService.localizedAccessibleSummary(): String {
         number,
         origin,
         destination,
-        expectedDeparture,
+        listOfNotNull(
+            stringResource(R.string.service_scheduled_departure, scheduledDeparture),
+            if (operationalStatusVerified && expectedDeparture != scheduledDeparture) stringResource(R.string.expected_time, expectedDeparture) else null
+        ).joinToString(". "),
         transferLabel,
         operationalLabel,
         platformLabel

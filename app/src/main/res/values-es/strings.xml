@@ -328,6 +328,8 @@
     <string name="service_operator_category">%1$s · %2$s</string>
     <string name="service_operator_category_number">%1$s · %2$s %3$s</string>
     <string name="service_number_route">%1$s · %2$s → %3$s</string>
+    <string name="service_scheduled_departure_label">Salida programada</string>
+    <string name="expected_time">Previsto: %1$s</string>
     <string name="service_expected_departure">Salida prevista</string>
     <string name="service_scheduled_departure">Programada: %1$s</string>
     <string name="service_stops_title">Paradas</string>
@@ -354,10 +356,10 @@
     <string name="platform_label">Andén %1$s</string>
     <string name="platform_unavailable">Andén no disponible</string>
     <string name="platform_to_confirm">Andén por confirmar</string>
-    <string name="accessibility_stop_timeline">%1$s. %2$sPrevisto: %3$s. Programado: %4$s. %5$s. %6$s.</string>
+    <string name="accessibility_stop_timeline">%1$s. %2$sProgramado: %3$s. %4$s%5$s. %6$s.</string>
     <string name="stop_skipped_uppercase">PARADA OMITIDA</string>
     <string name="stop_added_uppercase">PARADA AÑADIDA</string>
-    <string name="scheduled_time_short">prev. %1$s</string>
+    <string name="expected_time_short">prev. %1$s</string>
     <string name="action_stop_alarm">Alarma</string>
     <string name="route_change_skipped">Omitadas: %1$s</string>
     <string name="route_change_added">Añadidas: %1$s</string>
@@ -438,7 +440,7 @@
     <string name="train_category_trenord_regional">Tren regional Trenord</string>
     <string name="train_category_metropolitan">Tren metropolitano</string>
     <string name="train_category_other">Tren</string>
-    <string name="accessibility_train_service_summary">Operador %1$s. %2$s %3$s de %4$s a %5$s. Salida prevista %6$s. %7$s. %8$s. %9$s.</string>
+    <string name="accessibility_train_service_summary">Operador %1$s. %2$s %3$s de %4$s a %5$s. %6$s. %7$s. %8$s. %9$s.</string>
     <string name="service_transfer_direct">Viaje directo</string>
     <plurals name="service_transfer_count">
         <item quantity="one">%d transbordo</item>

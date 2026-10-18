@@ -328,6 +328,8 @@
     <string name="service_operator_category">%1$s · %2$s</string>
     <string name="service_operator_category_number">%1$s · %2$s %3$s</string>
     <string name="service_number_route">%1$s · %2$s → %3$s</string>
+    <string name="service_scheduled_departure_label">Départ programmé</string>
+    <string name="expected_time">Prévu à %1$s</string>
     <string name="service_expected_departure">Départ prévu</string>
     <string name="service_scheduled_departure">Programmé à %1$s</string>
     <string name="service_stops_title">Arrêts</string>
@@ -354,10 +356,10 @@
     <string name="platform_label">Voie %1$s</string>
     <string name="platform_unavailable">Voie non disponible</string>
     <string name="platform_to_confirm">Voie à confirmer</string>
-    <string name="accessibility_stop_timeline">%1$s. %2$sPrévu à %3$s. Programmé à %4$s. %5$s. %6$s.</string>
+    <string name="accessibility_stop_timeline">%1$s. %2$sProgrammé à %3$s. %4$s%5$s. %6$s.</string>
     <string name="stop_skipped_uppercase">ARRÊT SUPPRIMÉ</string>
     <string name="stop_added_uppercase">ARRÊT AJOUTÉ</string>
-    <string name="scheduled_time_short">prév. %1$s</string>
+    <string name="expected_time_short">prév. %1$s</string>
     <string name="action_stop_alarm">Alarme</string>
     <string name="route_change_skipped">Supprimés : %1$s</string>
     <string name="route_change_added">Ajoutés : %1$s</string>
@@ -438,7 +440,7 @@
     <string name="train_category_trenord_regional">Train régional Trenord</string>
     <string name="train_category_metropolitan">Train métropolitain</string>
     <string name="train_category_other">Train</string>
-    <string name="accessibility_train_service_summary">Opérateur %1$s. %2$s %3$s de %4$s à %5$s. Départ prévu à %6$s. %7$s. %8$s. %9$s.</string>
+    <string name="accessibility_train_service_summary">Opérateur %1$s. %2$s %3$s de %4$s à %5$s. %6$s. %7$s. %8$s. %9$s.</string>
     <string name="service_transfer_direct">Trajet direct</string>
     <plurals name="service_transfer_count">
         <item quantity="one">%d correspondance</item>

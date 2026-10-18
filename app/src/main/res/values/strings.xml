@@ -328,6 +328,8 @@
     <string name="service_operator_category">%1$s · %2$s</string>
     <string name="service_operator_category_number">%1$s · %2$s %3$s</string>
     <string name="service_number_route">%1$s · %2$s → %3$s</string>
+    <string name="service_scheduled_departure_label">Partenza programmata</string>
+    <string name="expected_time">Previsto %1$s</string>
     <string name="service_expected_departure">Partenza prevista</string>
     <string name="service_scheduled_departure">Programmata %1$s</string>
     <string name="service_stops_title">Fermate</string>
@@ -354,10 +356,10 @@
     <string name="platform_label">Binario %1$s</string>
     <string name="platform_unavailable">Binario non disponibile</string>
     <string name="platform_to_confirm">Binario da confermare</string>
-    <string name="accessibility_stop_timeline">%1$s. %2$sPrevisto %3$s. Programmato %4$s. %5$s. %6$s.</string>
+    <string name="accessibility_stop_timeline">%1$s. %2$sProgrammato %3$s. %4$s%5$s. %6$s.</string>
     <string name="stop_skipped_uppercase">FERMATA SALTATA</string>
     <string name="stop_added_uppercase">FERMATA AGGIUNTA</string>
-    <string name="scheduled_time_short">prev. %1$s</string>
+    <string name="expected_time_short">prev. %1$s</string>
     <string name="action_stop_alarm">Sveglia</string>
     <string name="route_change_skipped">Saltate: %1$s</string>
     <string name="route_change_added">Aggiunte: %1$s</string>
@@ -438,7 +440,7 @@
     <string name="train_category_trenord_regional">Treno Regionale Trenord</string>
     <string name="train_category_metropolitan">Treno metropolitano</string>
     <string name="train_category_other">Treno</string>
-    <string name="accessibility_train_service_summary">Operatore %1$s. %2$s %3$s da %4$s a %5$s. Partenza prevista %6$s. %7$s. %8$s. %9$s.</string>
+    <string name="accessibility_train_service_summary">Operatore %1$s. %2$s %3$s da %4$s a %5$s. %6$s. %7$s. %8$s. %9$s.</string>
     <string name="service_transfer_direct">Viaggio diretto</string>
     <plurals name="service_transfer_count">
         <item quantity="one">%d cambio</item>
