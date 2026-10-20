@@ -1,0 +1,26 @@
+<resources>
+    <string name="app_name">Binario</string>
+    <string name="tile_label">Binario: próximo trayecto</string>
+    <string name="tile_description">Muestra el próximo trayecto compartido por la aplicación Binario de tu teléfono.</string>
+    <string name="complication_label">Binario</string>
+    <string name="empty_snapshot_message">Abre Binario en tu teléfono para sincronizar el trayecto activo.</string>
+    <string name="refresh_phone">Actualizar teléfono</string>
+    <string name="refresh_on_phone">Actualizar en el teléfono</string>
+    <string name="tile_no_synced_route">Ningún trayecto sincronizado</string>
+    <string name="tile_snapshot_unavailable">Instantánea no disponible</string>
+    <string name="tile_service_details">%1$s · %2$s · %3$s</string>
+    <string name="status_programmed">Horario programado</string>
+    <string name="status_received_from_phone">Estado recibido del teléfono</string>
+    <string name="status_updating">Actualizando datos</string>
+    <string name="status_local_snapshot">Última instantánea local</string>
+    <string name="status_live_unavailable">Datos en tiempo real no disponibles</string>
+    <string name="accessibility_data_status">Estado de los datos: %1$s</string>
+    <string name="accessibility_scheduled_departure">Salida programada %1$s</string>
+    <string name="accessibility_expected_departure">Salida prevista %1$s</string>
+    <string name="accessibility_train">Tren %1$s</string>
+    <string name="accessibility_platform">Andén %1$s</string>
+    <string name="service_time_number">%1$s · %2$s</string>
+    <string name="service_destination_status">%1$s · %2$s</string>
+    <string name="service_operator_category">%1$s · %2$s</string>
+    <string name="service_operator_category_platform">%1$s · %2$s · Andén %3$s</string>
+</resources>

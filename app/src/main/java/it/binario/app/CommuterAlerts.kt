@@ -15,6 +15,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.edit
+import it.binario.app.data.RailTime
 import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
@@ -44,16 +45,37 @@ data class CommuterAlert(
         get() = "$routeLabel, fermata $stationName alle $time, avviso $leadMinutes minuti prima, ${repeat.label}${if (quietHoursEnabled) ", fascia silenziosa 22:00–07:00" else ""}${if (!enabled) ", disattivato" else ""}."
 }
 
-object CommuterAlertPlanner {
-    private val formatter = DateTimeFormatter.ofPattern("H:mm")
+sealed interface CommuterAlertTriggerResult {
+    data class TriggerAt(val epochMillis: Long) : CommuterAlertTriggerResult
+    data object Disabled : CommuterAlertTriggerResult
+    data object InvalidTime : CommuterAlertTriggerResult
+    data object QuietHours : CommuterAlertTriggerResult
+    data object NoUpcomingTrigger : CommuterAlertTriggerResult
+}
 
+sealed interface CommuterAlertScheduleResult {
+    data class Scheduled(val triggerAtEpochMillis: Long, val isExact: Boolean) : CommuterAlertScheduleResult
+    data object Disabled : CommuterAlertScheduleResult
+    data object InvalidTime : CommuterAlertScheduleResult
+    data object QuietHours : CommuterAlertScheduleResult
+    data object NoUpcomingTrigger : CommuterAlertScheduleResult
+}
+
+object CommuterAlertPlanner {
     fun nextTrigger(
         alert: CommuterAlert,
         nowEpochMillis: Long = System.currentTimeMillis(),
-        zone: ZoneId = ZoneId.systemDefault()
-    ): Long? {
-        if (!alert.enabled) return null
-        val time = runCatching { LocalTime.parse(alert.time, formatter) }.getOrNull() ?: return null
+        zone: ZoneId = RailTime.defaultZone
+    ): Long? = (nextTriggerResult(alert, nowEpochMillis, zone) as? CommuterAlertTriggerResult.TriggerAt)?.epochMillis
+
+    fun nextTriggerResult(
+        alert: CommuterAlert,
+        nowEpochMillis: Long = System.currentTimeMillis(),
+        zone: ZoneId = RailTime.defaultZone
+    ): CommuterAlertTriggerResult {
+        if (!alert.enabled) return CommuterAlertTriggerResult.Disabled
+        val time = runCatching { LocalTime.parse(alert.time) }.getOrNull()
+            ?: return CommuterAlertTriggerResult.InvalidTime
         val now = Instant.ofEpochMilli(nowEpochMillis).atZone(zone)
         for (offset in 0..7) {
             val date = now.toLocalDate().plusDays(offset.toLong())
@@ -61,10 +83,12 @@ object CommuterAlertPlanner {
             val scheduled = LocalDateTime.of(date, time).atZone(zone).toInstant().toEpochMilli()
             val trigger = scheduled - alert.leadMinutes.coerceIn(1, 60) * 60_000L
             if (trigger <= nowEpochMillis) continue
-            if (alert.quietHoursEnabled && isQuiet(Instant.ofEpochMilli(trigger).atZone(zone).toLocalTime())) continue
-            return trigger
+            if (alert.quietHoursEnabled && isQuiet(Instant.ofEpochMilli(trigger).atZone(zone).toLocalTime())) {
+                return CommuterAlertTriggerResult.QuietHours
+            }
+            return CommuterAlertTriggerResult.TriggerAt(trigger)
         }
-        return null
+        return CommuterAlertTriggerResult.NoUpcomingTrigger
     }
 
     fun isQuiet(time: LocalTime): Boolean = time >= LocalTime.of(22, 0) || time < LocalTime.of(7, 0)
@@ -86,6 +110,12 @@ class CommuterAlertStore(context: Context) {
 
     fun remove(id: String): List<CommuterAlert> {
         val updated = alerts().filterNot { it.id == id }
+        persist(updated)
+        return updated
+    }
+
+    fun disable(id: String): List<CommuterAlert> {
+        val updated = alerts().map { alert -> if (alert.id == id) alert.copy(enabled = false) else alert }
         persist(updated)
         return updated
     }
@@ -130,11 +160,30 @@ object CommuterAlertScheduler {
     private const val EXTRA_ID = "alert_id"
     private const val CHANNEL_ID = "binario_commuter_alerts"
 
-    fun schedule(context: Context, alert: CommuterAlert) {
-        val trigger = CommuterAlertPlanner.nextTrigger(alert) ?: return
+    internal fun acceptsRestoreAction(action: String?): Boolean =
+        action == Intent.ACTION_BOOT_COMPLETED || action == Intent.ACTION_MY_PACKAGE_REPLACED
+
+    fun schedule(context: Context, alert: CommuterAlert): CommuterAlertScheduleResult {
+        val triggerResult = CommuterAlertPlanner.nextTriggerResult(alert)
+        val trigger = (triggerResult as? CommuterAlertTriggerResult.TriggerAt)?.epochMillis
+        if (trigger == null) {
+            cancel(context, alert.id)
+            return when (triggerResult) {
+                CommuterAlertTriggerResult.Disabled -> CommuterAlertScheduleResult.Disabled
+                CommuterAlertTriggerResult.InvalidTime -> CommuterAlertScheduleResult.InvalidTime
+                CommuterAlertTriggerResult.QuietHours -> CommuterAlertScheduleResult.QuietHours
+                CommuterAlertTriggerResult.NoUpcomingTrigger -> CommuterAlertScheduleResult.NoUpcomingTrigger
+                is CommuterAlertTriggerResult.TriggerAt -> error("Trigger result without trigger")
+            }
+        }
         val pending = pendingIntent(context, alert.id)
-        context.getSystemService(AlarmManager::class.java)
-            .setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, trigger, pending)
+        val result = scheduleWakeupAlarm(
+            context = context,
+            alarmManager = context.getSystemService(AlarmManager::class.java),
+            triggerAtEpochMillis = trigger,
+            pendingIntent = pending
+        )
+        return CommuterAlertScheduleResult.Scheduled(result.triggerAtEpochMillis, result.isExact)
     }
 
     fun cancel(context: Context, alertId: String) {
@@ -144,26 +193,37 @@ object CommuterAlertScheduler {
         pending.cancel()
     }
 
+    fun rescheduleAll(context: Context): List<CommuterAlertScheduleResult> =
+        CommuterAlertStore(context).alerts().map { alert -> schedule(context, alert) }
+
     fun notifyAndReschedule(context: Context, alertId: String) {
-        val alert = CommuterAlertStore(context).find(alertId) ?: return
+        val store = CommuterAlertStore(context)
+        val alert = store.find(alertId) ?: return
+        if (alert.repeat == AlertRepeat.ONCE) {
+            store.disable(alert.id)
+            cancel(context, alert.id)
+        }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
             ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
-        ) return
-        val manager = context.getSystemService(NotificationManager::class.java)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            manager.createNotificationChannel(
-                NotificationChannel(CHANNEL_ID, "Avvisi pendolare Binario", NotificationManager.IMPORTANCE_HIGH).apply {
-                    description = "Promemoria locali ricorrenti configurati dall’utente."
-                }
-            )
+        ) {
+            // Recurring reminders must survive a permission denial or revocation at fire time.
+            if (alert.repeat != AlertRepeat.ONCE) schedule(context, alert)
+            return
         }
+        val manager = context.getSystemService(NotificationManager::class.java)
+        manager.createNotificationChannel(
+            NotificationChannel(CHANNEL_ID, context.getString(R.string.commuter_alert_channel_name), NotificationManager.IMPORTANCE_HIGH).apply {
+                description = context.getString(R.string.commuter_alert_channel_description)
+            }
+        )
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_binario)
-            .setContentTitle("Promemoria: ${alert.stationName}")
-            .setContentText("${alert.routeLabel}. Fermata prevista alle ${alert.time}.")
-            .setStyle(NotificationCompat.BigTextStyle().bigText("${alert.routeLabel}: la fermata ${alert.stationName} è prevista alle ${alert.time}. L’avviso è locale e non segue i ritardi senza una fonte autorizzata."))
+            .setContentTitle(context.getString(R.string.commuter_alert_notification_title, alert.stationName))
+            .setContentText(context.getString(R.string.commuter_alert_notification_text, alert.routeLabel, alert.time))
+            .setStyle(NotificationCompat.BigTextStyle().bigText(context.getString(R.string.commuter_alert_notification_big_text, alert.routeLabel, alert.stationName, alert.time)))
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
+            .setContentIntent(contentIntent(context, alert.id))
             .build()
         NotificationManagerCompat.from(context).notify(alert.id.hashCode(), notification)
         if (alert.repeat != AlertRepeat.ONCE) schedule(context, alert)
@@ -176,11 +236,28 @@ object CommuterAlertScheduler {
         PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
     )
 
+    private fun contentIntent(context: Context, alertId: String): PendingIntent = PendingIntent.getActivity(
+        context,
+        alertId.hashCode(),
+        Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+        },
+        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+    )
+
     internal fun alertId(intent: Intent): String = intent.getStringExtra(EXTRA_ID).orEmpty()
 }
 
 class CommuterAlertReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         CommuterAlertScheduler.notifyAndReschedule(context, CommuterAlertScheduler.alertId(intent))
+    }
+}
+
+/** Reinstates persisted reminders after reboot or an app update, when Android has cleared alarms. */
+class CommuterAlertRestoreReceiver : BroadcastReceiver() {
+    override fun onReceive(context: Context, intent: Intent) {
+        if (!CommuterAlertScheduler.acceptsRestoreAction(intent.action)) return
+        CommuterAlertScheduler.rescheduleAll(context)
     }
 }

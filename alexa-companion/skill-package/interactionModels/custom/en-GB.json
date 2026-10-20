@@ -1,0 +1,18 @@
+{
+  "interactionModel": {
+    "languageModel": {
+      "invocationName": "binario trains",
+      "intents": [
+        { "name": "AMAZON.CancelIntent", "samples": [] },
+        { "name": "AMAZON.HelpIntent", "samples": [] },
+        { "name": "AMAZON.StopIntent", "samples": [] },
+        { "name": "AMAZON.NavigateHomeIntent", "samples": [] },
+        { "name": "AMAZON.FallbackIntent", "samples": [] },
+        { "name": "NextTrainsIntent", "slots": [{ "name": "routeName", "type": "AMAZON.SearchQuery" }], "samples": ["what are the next trains", "next trains", "next trains for {routeName}", "when is the next train for {routeName}"] },
+        { "name": "TrainStatusIntent", "slots": [{ "name": "trainNumber", "type": "AMAZON.NUMBER" }], "samples": ["status of train {trainNumber}", "is train {trainNumber} on time", "how is train {trainNumber}", "delay for train {trainNumber}"] },
+        { "name": "MyRoutesIntent", "slots": [], "samples": ["my routes", "list my saved routes", "which routes have I saved", "saved routes"] }
+      ],
+      "types": []
+    }
+  }
+}

@@ -1,0 +1,2 @@
+import { createTranslator, type CompanionLocale } from "@/lib/i18n";
+export function createNativeDiagnosticReport(input: { platform: "android" | "ios" | "web" | "other"; appVersion: string | null }, locale?: CompanionLocale) { return { schemaVersion: 1, generatedAtUtc: new Date().toISOString(), platform: input.platform, appVersion: input.appVersion, localFirst: true, data: createTranslator(locale)("settings.diagnosticData") }; }

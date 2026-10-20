@@ -1,7 +1,6 @@
 package it.binario.app
 
 import android.content.Context
-import android.util.Base64
 import androidx.core.content.edit
 import it.binario.app.data.Station
 import it.binario.app.data.TrainService
@@ -28,12 +27,6 @@ data class ActiveTrip(
     val nextStop: ActiveTripStop? get() = stops.getOrNull(currentStopIndex)
     val isComplete: Boolean get() = currentStopIndex >= stops.size
     fun advance(): ActiveTrip = copy(currentStopIndex = (currentStopIndex + 1).coerceAtMost(stops.size))
-}
-
-enum class WidgetSurface(val label: String) {
-    ACTIVE_ROUTE("Tratta attiva"),
-    ACTIVE_TRIP("Viaggio attivo"),
-    STATION_MONITOR("Stazione monitorata")
 }
 
 class PersonalTravelStore(context: Context) {
@@ -83,12 +76,6 @@ class PersonalTravelStore(context: Context) {
 
     fun endTrip() { prefs.edit { remove(KEY_ACTIVE_TRIP) } }
 
-    fun widgetSurface(): WidgetSurface = runCatching {
-        WidgetSurface.valueOf(prefs.getString(KEY_WIDGET_SURFACE, WidgetSurface.ACTIVE_ROUTE.name) ?: WidgetSurface.ACTIVE_ROUTE.name)
-    }.getOrDefault(WidgetSurface.ACTIVE_ROUTE)
-
-    fun saveWidgetSurface(surface: WidgetSurface) { prefs.edit { putString(KEY_WIDGET_SURFACE, surface.name) } }
-
     private fun persistMonitors(monitors: List<StationMonitor>) {
         prefs.edit { putString(KEY_STATION_MONITORS, monitors.joinToString(";") { encodeMonitor(it) }) }
     }
@@ -118,12 +105,12 @@ class PersonalTravelStore(context: Context) {
         )
     }.getOrNull()
 
-    private fun enc(value: String): String = Base64.encodeToString(value.toByteArray(Charsets.UTF_8), Base64.NO_WRAP)
-    private fun dec(value: String): String = String(Base64.decode(value, Base64.NO_WRAP), Charsets.UTF_8)
+    private fun enc(value: String): String = PreferenceValueCodec.encode(value)
+    private fun dec(value: String): String = PreferenceValueCodec.decode(value)
+        ?: throw IllegalArgumentException("Valore preferenza Base64 non valido")
 
     private companion object {
         const val KEY_STATION_MONITORS = "station_monitors"
         const val KEY_ACTIVE_TRIP = "active_trip"
-        const val KEY_WIDGET_SURFACE = "widget_surface"
     }
 }

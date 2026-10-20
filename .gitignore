@@ -33,5 +33,11 @@ consegna_*/
 
 # Output Apple/Xcode locali
 DerivedData/
+**/.build/
+ios/Binario.xcodeproj/
 *.xcuserstate
 xcuserdata/
+
+# Python build/test artifacts
+__pycache__/
+*.py[cod]

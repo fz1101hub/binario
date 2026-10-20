@@ -4,34 +4,61 @@ options:
 settings:
   base:
     SWIFT_VERSION: 5.10
+    MARKETING_VERSION: 0.1.0
+    CURRENT_PROJECT_VERSION: 1
 targets:
   BinarioWatch:
     type: application
     platform: watchOS
     deploymentTarget: "10.0"
-    sources: [BinarioWatch, Shared]
+    sources: [BinarioWatch, Shared, Resources]
+    scheme:
+      testTargets:
+        - BinarioWatchTests
     settings:
       base:
+        PRODUCT_NAME: BinarioWatch
         PRODUCT_BUNDLE_IDENTIFIER: it.binario.watch
         INFOPLIST_KEY_CFBundleDisplayName: Binario
+        INFOPLIST_KEY_CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+        INFOPLIST_KEY_CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_WKApplication: YES
+        INFOPLIST_KEY_WKWatchOnly: YES
+      configs:
+        debug:
+          ENABLE_TESTABILITY: YES
     entitlements:
       path: BinarioWatch/BinarioWatch.entitlements
+    dependencies:
+      - target: BinarioWatchWidgets
+        embed: true
   BinarioWatchTests:
     type: bundle.unit-test
     platform: watchOS
     deploymentTarget: "10.0"
-    sources: [BinarioWatchTests, Shared]
+    sources:
+      - path: BinarioWatchTests
+      - path: ../contracts/wear-snapshot/v1/ios-to-apple-watch-v1.json
+        buildPhase: resources
     dependencies:
       - target: BinarioWatch
+    settings:
+      base:
+        PRODUCT_NAME: BinarioWatchTests
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/BinarioWatch.app/BinarioWatch"
+        BUNDLE_LOADER: "$(TEST_HOST)"
   BinarioWatchWidgets:
     type: app-extension
     platform: watchOS
     deploymentTarget: "10.0"
-    sources: [BinarioWatchWidgets, Shared]
+    sources: [BinarioWatchWidgets, Shared, Resources]
     settings:
       base:
+        PRODUCT_NAME: BinarioWatchWidgets
         PRODUCT_BUNDLE_IDENTIFIER: it.binario.watch.widgets
         INFOPLIST_KEY_CFBundleDisplayName: Binario
-        GENERATE_INFOPLIST_FILE: YES
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: BinarioWatchWidgets/Info.plist
     entitlements:
       path: BinarioWatch/BinarioWatch.entitlements

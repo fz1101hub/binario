@@ -4,6 +4,27 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
+val releaseSigningPropertyNames = listOf(
+    "BINARIO_RELEASE_STORE_FILE",
+    "BINARIO_RELEASE_STORE_PASSWORD",
+    "BINARIO_RELEASE_KEY_ALIAS",
+    "BINARIO_RELEASE_KEY_PASSWORD",
+)
+val releaseSigningProperties = releaseSigningPropertyNames.associateWith { propertyName ->
+    providers.gradleProperty(propertyName)
+        .orElse(providers.environmentVariable(propertyName))
+}
+val releaseSigningConfigured = releaseSigningProperties.values.all { it.isPresent }
+if (releaseSigningProperties.values.any { it.isPresent } && !releaseSigningConfigured) {
+    logger.warn("Release signing is only enabled when all BINARIO_RELEASE_* properties are set; building unsigned.")
+}
+
+val binarioVersionCode = providers.gradleProperty("BINARIO_VERSION_CODE")
+    .orElse(providers.gradleProperty("BINARIO_APP_VERSION_CODE"))
+    .get()
+    .toInt()
+val binarioVersionName = providers.gradleProperty("BINARIO_VERSION_NAME").get()
+
 android {
     namespace = "it.binario.app"
     compileSdk = 36
@@ -12,8 +33,16 @@ android {
         applicationId = "it.binario.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 25
-        versionName = "0.16.3"
+        versionCode = binarioVersionCode
+        versionName = binarioVersionName
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // Public/operator best-effort pages are an explicit personal-build opt-in.
+        // Enable only with -PBINARIO_PERSONAL_REALTIME_SOURCES=true.
+        val personalRealtimeSources = providers.gradleProperty("BINARIO_PERSONAL_REALTIME_SOURCES")
+            .orElse("false")
+            .get()
+        buildConfigField("boolean", "PERSONAL_REALTIME_SOURCES", personalRealtimeSources)
     }
 
     buildFeatures {
@@ -30,15 +59,51 @@ android {
         jvmTarget = "17"
     }
 
+    signingConfigs {
+        if (releaseSigningConfigured) {
+            create("release") {
+                storeFile = rootProject.file(releaseSigningProperties.getValue("BINARIO_RELEASE_STORE_FILE").get())
+                storePassword = releaseSigningProperties.getValue("BINARIO_RELEASE_STORE_PASSWORD").get()
+                keyAlias = releaseSigningProperties.getValue("BINARIO_RELEASE_KEY_ALIAS").get()
+                keyPassword = releaseSigningProperties.getValue("BINARIO_RELEASE_KEY_PASSWORD").get()
+            }
+        }
+    }
+
+    buildTypes {
+        getByName("release") {
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
+            if (releaseSigningConfigured) {
+                signingConfig = signingConfigs.getByName("release")
+            }
+        }
+    }
+
     packaging {
         resources.excludes += "/META-INF/{AL2.0,LGPL2.1}"
     }
 
     lint {
         abortOnError = true
+        warningsAsErrors = true
         checkReleaseBuilds = true
         checkDependencies = true
+        // The app dependency set is upgraded as a coordinated Android toolchain change;
+        // several currently suggested releases require AGP 9.1 / compileSdk 37.
         disable += "GradleDependency"
+        // Newer remote lint flags targetSdk 36 as old while this pinned AGP/SDK
+        // toolchain is on API 36. Revisit with a tested API 37 migration; do not
+        // silently change the target or disable other security/correctness checks.
+        disable += "OldTargetApi"
+    }
+
+    sourceSets {
+        getByName("test").resources.srcDir(rootProject.file("contracts/wear-snapshot/v1"))
     }
 }
 
@@ -51,6 +116,8 @@ dependencies {
     implementation("androidx.activity:activity-compose:1.10.0")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
     implementation("androidx.work:work-runtime-ktx:2.10.0")
+    implementation("org.jsoup:jsoup:1.18.3")
+    implementation("org.mobilitydata:gtfs-realtime-bindings:0.0.8")
     implementation("com.google.android.gms:play-services-wearable:20.0.1")
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-tooling-preview")
@@ -58,5 +125,17 @@ dependencies {
     implementation("androidx.compose.material:material-icons-extended")
     debugImplementation("androidx.compose.ui:ui-tooling")
     testImplementation("junit:junit:4.13.2")
-    testImplementation("org.json:json:20240303")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")
+    // Android supplies org.json at runtime; this artifact is only the JVM unit-test implementation.
+    testImplementation("org.json:json:20260814")
+    androidTestImplementation(platform("androidx.compose:compose-bom:2026.06.01"))
+    androidTestImplementation("androidx.compose.ui:ui-test-junit4")
+    androidTestImplementation("androidx.test.ext:junit:1.2.1")
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
+}
+
+// Reproduction profile for the large embedded-GTFS regression. The property
+// limits the forked JUnit VM, not only the Gradle daemon.
+tasks.withType<org.gradle.api.tasks.testing.Test>().configureEach {
+    providers.gradleProperty("BINARIO_TEST_MAX_HEAP").orNull?.let { maxHeapSize = it }
 }

@@ -2,9 +2,17 @@ package it.binario.app.data
 
 import android.content.Context
 import androidx.core.content.edit
+import it.binario.app.data.core.DelayConsistency
+import it.binario.app.data.core.OperationalDetection
+import it.binario.app.data.core.OperationalRouteChange
+import java.time.Clock
 import java.time.Instant
+import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.LocalTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 enum class Direction(val label: String) {
     OUTBOUND("Andata"),
@@ -17,6 +25,16 @@ enum class RailOperator(val accessibleLabel: String, val shortLabel: String) {
     TRENITALIA_AV("Trenitalia Frecce", "Frecce"),
     ITALO("Italo", "Italo"),
     TRENORD("Trenord", "Trenord"),
+    SBB("SBB CFF FFS", "SBB"),
+    TILO("TILO", "TILO"),
+    BLS("BLS", "BLS"),
+    RHB("Ferrovia Retica", "RhB"),
+    FART_SSIF("FART / SSIF Vigezzina-Centovalli", "FART/SSIF"),
+    SNCF("SNCF Voyageurs", "SNCF"),
+    OEBB("ÖBB", "ÖBB"),
+    DB("Deutsche Bahn", "DB"),
+    WESTBAHN("WESTbahn", "WESTbahn"),
+    EUROPEAN_SLEEPER("European Sleeper", "European Sleeper"),
     OTHER("Altro operatore", "Altro")
 }
 
@@ -46,6 +64,8 @@ enum class Freshness(val accessibleLabel: String) {
 
 enum class DataConfidence(val accessibleLabel: String) {
     OPERATOR_PRIMARY("Fonte primaria dell’operatore"),
+    INFRASTRUCTURE_PRIMARY("Fonte primaria del gestore dell’infrastruttura"),
+    OPEN_DATA("Open data ufficiale"),
     LICENSED_AGGREGATE("Fonte aggregata autorizzata"),
     STATIC_ONLY("Orario programmato"),
     CACHED("Ultimo snapshot in cache"),
@@ -56,19 +76,61 @@ data class Station(
     val id: String,
     val name: String,
     val city: String,
-    val region: String? = null
+    val region: String? = null,
+    /** Codice ferroviario curato; identificativo stabile della stazione, quando disponibile. */
+    val railwayCode: String? = null,
+    /** Identificativo Trenitalia usabile solo quando la mappatura del catalogo è univoca. */
+    val trenitaliaLocationId: String? = null,
+    val aliases: List<String> = emptyList(),
+    val latitude: Double? = null,
+    val longitude: Double? = null
 )
+
+/** Nomi e codici da usare per ricerca e riconciliazione, non per inferire dati operativi. */
+fun Station.searchableValues(): List<String> = buildList {
+    add(name)
+    add(city)
+    addAll(aliases)
+    railwayCode?.let(::add)
+    trenitaliaLocationId?.let(::add)
+}
+
+fun Station.matchesPublishedName(publishedName: String): Boolean {
+    val actual = normalizeStationIdentity(publishedName)
+    return searchableValues().any { expected ->
+        val normalizedExpected = normalizeStationIdentity(expected)
+        normalizedExpected.isNotBlank() &&
+            (actual == normalizedExpected || actual.contains(normalizedExpected) || normalizedExpected.contains(actual))
+    }
+}
+
+fun Station.liveIdentityKey(): String = trenitaliaLocationId?.let { "trenitalia:$it" }
+    ?: railwayCode?.let { "railway:$it" }
+    ?: id
+
+private fun normalizeStationIdentity(value: String): String = value
+    .uppercase(Locale.ROOT)
+    .replace("S. ", "SAN ")
+    .replace(Regex("[^A-Z0-9]"), "")
 
 data class SavedRoute(
     val id: String,
     val name: String,
     val outwardOrigin: Station,
     val outwardDestination: Station,
-    val isPinned: Boolean = false
+    val isPinned: Boolean = false,
+    /** Local-only rank inside the pinned or regular group. Null preserves legacy alphabetical order. */
+    val manualOrder: Int? = null
 ) {
     fun origin(direction: Direction): Station = if (direction == Direction.OUTBOUND) outwardOrigin else outwardDestination
     fun destination(direction: Direction): Station = if (direction == Direction.OUTBOUND) outwardDestination else outwardOrigin
     fun displayName(direction: Direction): String = "${origin(direction).name} → ${destination(direction).name}"
+}
+
+enum class StopRouteChange {
+    NONE,
+    ADDED,
+    SKIPPED
 }
 
 data class TrainStop(
@@ -77,7 +139,8 @@ data class TrainStop(
     val expected: String,
     val platform: String?,
     val delayMinutes: Int,
-    val completed: Boolean
+    val completed: Boolean,
+    val routeChange: StopRouteChange = StopRouteChange.NONE
 )
 
 data class TrainService(
@@ -93,12 +156,42 @@ data class TrainService(
     val delayMinutes: Int,
     val status: ServiceStatus,
     val stops: List<TrainStop>,
-    val transferCount: Int = 0
+    val transferCount: Int = 0,
+    /** Nome pubblicato da agency.txt o dalla fonte operativa. Mantiene l'identità reale anche per operatori non modellati nell'enum legacy. */
+    val operatorDisplayName: String? = null,
+    /** Ritardo pubblicato direttamente dal provider; non è sostituito dal calcolo sulla rilevazione. */
+    val officialDelayMinutes: Int? = delayMinutes,
+    /** Ultimo evento operativo confermato, se il provider espone località, orario teorico e reale. */
+    val lastOperationalDetection: OperationalDetection? = null,
+    /** Ritardo calcolato sull'ultimo evento operativo; nullo se l'evento non è confrontabile. */
+    val detectionDelayMinutes: Int? = null,
+    val delayConsistency: DelayConsistency = DelayConsistency.NOT_COMPARABLE,
+    /** False for schedule-only data: ON_TIME must never be presented as an observed operational state. */
+    val operationalStatusVerified: Boolean = true,
+    /** Date/time of the scheduled departure when the source query provides a service date. */
+    val scheduledDepartureDateTime: LocalDateTime? = null,
+    /** Canonical source ids that contributed verified operational fields. */
+    val operationalSourceIds: Set<String> = emptySet(),
+    /** Most recent observation time among the operational sources used for this service. */
+    val operationalObservedAtEpochMillis: Long? = null,
+    /** Operational path change that may override the static GTFS path. */
+    val routeChange: OperationalRouteChange? = null,
+    val routeChangeSourceIds: Set<String> = emptySet()
 ) {
     val category: String get() = trainCategory.accessibleLabel
-    val operatorAndCategory: String get() = "${operator.shortLabel} · ${trainCategory.accessibleLabel}"
+    val displayOperator: String get() = operatorDisplayName?.takeIf(String::isNotBlank) ?: operator.shortLabel
+    val accessibleOperator: String get() = operatorDisplayName?.takeIf(String::isNotBlank) ?: operator.accessibleLabel
+    val operatorAndCategory: String get() = "$displayOperator · ${trainCategory.accessibleLabel}"
     val accessibleSummary: String
-        get() = "Operatore ${operator.accessibleLabel}. ${trainCategory.accessibleLabel} $number da $origin a $destination. Partenza prevista $expectedDeparture. ${if (transferCount == 0) "Viaggio diretto" else "$transferCount ${if (transferCount == 1) "cambio" else "cambi"}"}. ${status.accessibleLabel}${if (delayMinutes > 0) ", $delayMinutes minuti di ritardo" else ""}. ${platform?.let { "Binario $it" } ?: "Binario non disponibile"}."
+        get() {
+            val official = officialDelayMinutes?.takeIf { it != 0 }?.let { " Ritardo ufficiale $it minuti." }.orEmpty()
+            val detection = detectionDelayMinutes?.let { value ->
+                lastOperationalDetection?.let { " Ritardo all'ultima rilevazione di ${it.locationLabel}: $value minuti." }
+            }.orEmpty()
+            val operational = if (operationalStatusVerified) status.accessibleLabel else "Stato operativo non verificato"
+            val routeVariation = routeChange?.let { " Variazione di percorso: ${it.summary}." }.orEmpty()
+            return "Operatore $accessibleOperator. ${trainCategory.accessibleLabel} $number da $origin a $destination. Partenza prevista $expectedDeparture. ${if (transferCount == 0) "Viaggio diretto" else "$transferCount ${if (transferCount == 1) "cambio" else "cambi"}"}. $operational$routeVariation$official$detection ${platform?.let { "Binario $it" } ?: "Binario non disponibile"}."
+        }
 }
 
 data class RouteSnapshot(
@@ -111,7 +204,12 @@ data class RouteSnapshot(
     val freshness: Freshness,
     val sourceObservedAtEpochMillis: Long = retrievedAtEpochMillis,
     val confidence: DataConfidence = DataConfidence.DEMONSTRATION,
-    val notice: String? = null
+    val qualityScore: Int? = null,
+    val qualityBand: DataQualityBand = DataQualityBand.UNKNOWN,
+    val qualityWarnings: Set<SnapshotWarning> = emptySet(),
+    val notice: String? = null,
+    /** Built by a best-effort coverage source because no primary source had the route. */
+    val coverageFallback: Boolean = false
 ) {
     val routeLabel: String get() = route.displayName(direction)
     val isExpired: Boolean get() = System.currentTimeMillis() > expiresAtEpochMillis
@@ -119,24 +217,62 @@ data class RouteSnapshot(
 
 sealed interface DataResult {
     data class Success(val snapshot: RouteSnapshot) : DataResult
-    data class Failure(val message: String) : DataResult
+    /** [message] is a diagnostic in Italian; [reason] is what the UI explains, localized. */
+    data class Failure(val message: String, val reason: RouteFailureReason = RouteFailureReason.Unavailable) : DataResult
+}
+
+/** Why no route could be built, when the cause is something the user can act on. */
+sealed interface RouteFailureReason {
+    data object Unavailable : RouteFailureReason
+    /** No timetable the app carries serves both stations. */
+    data object RouteNotCovered : RouteFailureReason
+    /** The timetables that serve the route end before the requested date: the app needs an update. */
+    data class ScheduleExpired(val validUntil: LocalDate) : RouteFailureReason
+    /** The route is covered, but no train runs on that date from that time on. */
+    data class NoServiceAfter(val serviceDate: LocalDate, val departureTime: LocalTime) : RouteFailureReason
 }
 
 /** Single neutral display-order rule shared by lists, widget and smartwatch. */
-fun orderServicesForDisplay(services: List<TrainService>): List<TrainService> =
-    services.sortedWith(
+fun orderServicesForDisplay(services: List<TrainService>): List<TrainService> {
+    if (services.isNotEmpty() && services.all { it.scheduledDepartureDateTime != null }) {
+        return services.sortedWith(
+            compareBy<TrainService> { it.scheduledDepartureDateTime }
+                .thenBy { it.number }
+        )
+    }
+    return services.sortedWith(
         compareBy<TrainService> {
             runCatching { timeToMinutes(it.expectedDeparture) }.getOrDefault(Int.MAX_VALUE)
         }.thenBy { it.number }
     )
+}
 
 /**
  * Contract-only boundary. Production implementations must use a documented,
  * authorized provider or a personal backend. The Android client never embeds
  * credentials and never calls undocumented operator endpoints directly.
  */
+data class JourneyQuery(
+    val serviceDate: LocalDate,
+    val departureTime: LocalTime
+) {
+    val requestedAt: LocalDateTime get() = LocalDateTime.of(serviceDate, departureTime)
+
+    companion object {
+        /** The quick-search default is always a railway-local time, never the phone system zone. */
+        fun now(clock: Clock = Clock.systemUTC()): JourneyQuery {
+            val now = clock.instant().atZone(RailTime.defaultZone)
+            return JourneyQuery(now.toLocalDate(), now.toLocalTime().withSecond(0).withNano(0))
+        }
+    }
+}
+
 interface TrainDataSource {
     suspend fun loadRoute(route: SavedRoute, direction: Direction): DataResult
+
+    /** Query-aware overload. Legacy/live adapters can ignore the schedule query until migrated. */
+    suspend fun loadRoute(route: SavedRoute, direction: Direction, query: JourneyQuery): DataResult =
+        loadRoute(route, direction)
 }
 
 /** A future authorised server-side gateway for Trenitalia operational data. */
@@ -164,115 +300,57 @@ class TrenitaliaViaggiaTrenoAdapter(
  */
 class RailDataRepository(
     private val authorisedSources: List<TrainDataSource> = emptyList(),
-    private val fallback: TrainDataSource = DemoTrainDataSource()
+    private val fallback: TrainDataSource = UnavailableTrainDataSource(),
+    private val clock: () -> Long = System::currentTimeMillis
 ) : TrainDataSource {
-    override suspend fun loadRoute(route: SavedRoute, direction: Direction): DataResult {
+    override suspend fun loadRoute(route: SavedRoute, direction: Direction): DataResult =
+        loadRoute(route, direction, JourneyQuery.now())
+
+    override suspend fun loadRoute(route: SavedRoute, direction: Direction, query: JourneyQuery): DataResult {
+        val candidates = mutableListOf<RouteSnapshot>()
         authorisedSources.forEach { source ->
-            when (val result = source.loadRoute(route, direction)) {
-                is DataResult.Success -> return result
+            when (val result = source.loadRoute(route, direction, query)) {
+                is DataResult.Success -> {
+                    val enriched = withQuality(result.snapshot)
+                    candidates += enriched
+                    if (enriched.qualityBand == DataQualityBand.VERIFIED) {
+                        return DataResult.Success(enriched)
+                    }
+                }
                 is DataResult.Failure -> Unit
             }
         }
-        return fallback.loadRoute(route, direction)
+        candidates.maxWithOrNull(
+            compareBy<RouteSnapshot> { it.qualityScore ?: Int.MIN_VALUE }
+                .thenBy { it.sourceObservedAtEpochMillis }
+        )?.let { return DataResult.Success(it) }
+
+        return when (val result = fallback.loadRoute(route, direction, query)) {
+            is DataResult.Success -> DataResult.Success(withQuality(result.snapshot))
+            is DataResult.Failure -> result
+        }
+    }
+
+    private fun withQuality(snapshot: RouteSnapshot): RouteSnapshot {
+        val quality = SnapshotQualityAssessor.assess(snapshot, clock())
+        return snapshot.copy(
+            qualityScore = quality.score,
+            qualityBand = quality.band,
+            qualityWarnings = quality.warnings
+        )
     }
 }
 
-/** Local-only national multi-operator fixture used until an authorised source is configured. */
-class DemoTrainDataSource : TrainDataSource {
-    private data class DemoSeed(
-        val number: String,
-        val operator: RailOperator,
-        val category: TrainCategory,
-        val delay: Int
-    )
-
-    override suspend fun loadRoute(route: SavedRoute, direction: Direction): DataResult {
-        val now = System.currentTimeMillis()
-        val origin = route.origin(direction).name
-        val destination = route.destination(direction).name
-        val seeds = listOf(
-            DemoSeed("4512", RailOperator.TRENITALIA_REGIONALE, TrainCategory.REGIONALE, 0),
-            DemoSeed("4132", RailOperator.TRENITALIA_REGIONALE, TrainCategory.REGIONALE_VELOCE, 5),
-            DemoSeed("580", RailOperator.TRENITALIA_LONG_DISTANCE, TrainCategory.INTERCITY, 7),
-            DemoSeed("9501", RailOperator.TRENITALIA_AV, TrainCategory.FRECCE, 0),
-            DemoSeed("9927", RailOperator.ITALO, TrainCategory.AV_ITALO, 14),
-            DemoSeed("4178", RailOperator.TRENITALIA_REGIONALE, TrainCategory.REGIONALE_VELOCE, 0),
-            DemoSeed("704", RailOperator.TRENITALIA_LONG_DISTANCE, TrainCategory.INTERCITY, 0),
-            DemoSeed("9623", RailOperator.TRENITALIA_AV, TrainCategory.FRECCE, 9),
-            DemoSeed("9951", RailOperator.ITALO, TrainCategory.AV_ITALO, 0),
-            DemoSeed("4310", RailOperator.TRENITALIA_REGIONALE, TrainCategory.REGIONALE, 3),
-            DemoSeed("611", RailOperator.TRENITALIA_LONG_DISTANCE, TrainCategory.INTERCITY, 0),
-            DemoSeed("2462", RailOperator.TRENORD, TrainCategory.TRENORD_REGIO, 6)
+/**
+ * Fallback di produzione: non crea corse artificiali quando nessuna fonte live
+ * o GTFS programmata restituisce una tratta utilizzabile.
+ */
+class UnavailableTrainDataSource : TrainDataSource {
+    override suspend fun loadRoute(route: SavedRoute, direction: Direction): DataResult =
+        DataResult.Failure(
+            "Nessuna fonte realtime o GTFS programmata ha restituito una corsa per questa tratta. " +
+                "Riprova più tardi o verifica i monitor ufficiali."
         )
-        val baseMinutes = 7 * 60 + if (direction == Direction.OUTBOUND) 8 else 21
-        val services = seeds.mapIndexed { index, seed ->
-            val scheduled = formatTime(baseMinutes + index * 32)
-            val expected = formatTime(baseMinutes + index * 32 + seed.delay)
-            val status = when {
-                index == 10 -> ServiceStatus.CANCELLED
-                seed.delay > 0 -> ServiceStatus.DELAYED
-                else -> ServiceStatus.ON_TIME
-            }
-            TrainService(
-                id = "${route.id}-${direction.name}-${seed.operator.name}-${seed.number}",
-                number = seed.number,
-                operator = seed.operator,
-                trainCategory = seed.category,
-                origin = origin,
-                destination = destination,
-                scheduledDeparture = scheduled,
-                expectedDeparture = expected,
-                platform = if (status == ServiceStatus.CANCELLED) null else ((index % 12) + 1).toString(),
-                delayMinutes = seed.delay,
-                status = status,
-                stops = buildStops(origin, destination, scheduled, seed.delay, index, status),
-                transferCount = when (index % 4) {
-                    0, 1 -> 0
-                    2 -> 1
-                    else -> 2
-                }
-            )
-        }
-        return DataResult.Success(
-            RouteSnapshot(
-                route = route,
-                direction = direction,
-                services = services,
-                providerName = "Catalogo dimostrativo multi-operatore (locale)",
-                retrievedAtEpochMillis = now,
-                expiresAtEpochMillis = now + 15 * 60 * 1000,
-                freshness = Freshness.FRESH,
-                sourceObservedAtEpochMillis = now,
-                confidence = DataConfidence.DEMONSTRATION,
-                notice = "Queste corse dimostrano la copertura nazionale e non sono dati di circolazione. Per ritardi, binari e soppressioni fai riferimento ai canali ufficiali finché un provider autorizzato non è configurato."
-            )
-        )
-    }
-
-    private fun buildStops(
-        origin: String,
-        destination: String,
-        departure: String,
-        delay: Int,
-        index: Int,
-        status: ServiceStatus
-    ): List<TrainStop> {
-        val departureMinutes = timeToMinutes(departure)
-        val middle = listOf("Stazione intermedia", "Nodo di scambio").take(if (index % 2 == 0) 1 else 2)
-        val names = listOf(origin) + middle + destination
-        return names.mapIndexed { stopIndex, name ->
-            val scheduled = formatTime(departureMinutes + stopIndex * 58)
-            val expected = formatTime(departureMinutes + stopIndex * 58 + if (status == ServiceStatus.CANCELLED) 0 else delay)
-            TrainStop(
-                station = name,
-                scheduled = scheduled,
-                expected = expected,
-                platform = if (status == ServiceStatus.CANCELLED) null else ((index + stopIndex) % 12 + 1).toString(),
-                delayMinutes = if (status == ServiceStatus.CANCELLED) 0 else delay,
-                completed = false
-            )
-        }
-    }
 }
 
 class RouteSnapshotCache(context: Context) {
@@ -303,6 +381,6 @@ fun timeToMinutes(value: String): Int {
 
 fun accessibleUpdateTime(epochMillis: Long): String {
     if (epochMillis <= 0L) return "mai aggiornato"
-    val formatter = DateTimeFormatter.ofPattern("HH:mm").withZone(ZoneId.systemDefault())
+    val formatter = DateTimeFormatter.ofPattern("HH:mm").withZone(RailTime.defaultZone)
     return "aggiornato alle ${formatter.format(Instant.ofEpochMilli(epochMillis))}"
 }

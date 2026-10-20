@@ -1,0 +1,2 @@
+d7f04e32a3aa13cc11feda6440e45685fa6e173d9f943580ac904208299b4224  Binario-v0.1.1-recovered-android-release.apk
+04920acd5fa5bb613bcaeb765d0e6f159c5ad4ae04ba3c3c539a90fd7047808b  Binario-v0.1.1-recovered-wear-release.apk
