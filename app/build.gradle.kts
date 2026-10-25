@@ -105,6 +105,9 @@ android {
         // toolchain is on API 36. Revisit with a tested API 37 migration; do not
         // silently change the target or disable other security/correctness checks.
         disable += "OldTargetApi"
+        // Timber reaches the classpath only as a MapLibre dependency and ships its own lint checks;
+        // Binario does not use Timber, so its "use Timber instead of Log" rule does not apply.
+        disable += "LogNotTimber"
     }
 
     sourceSets {
