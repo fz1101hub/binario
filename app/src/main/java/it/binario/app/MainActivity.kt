@@ -218,7 +218,7 @@ private fun BinarioApp(
                 title = {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(if (screen == Screen.PLANNER) "BINARIO" else title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, letterSpacing = if (screen == Screen.PLANNER) 1.sp else 0.sp)
-                        if (screen != Screen.DETAIL) Text(subtitle, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        if (screen != Screen.DETAIL) Text(subtitle, style = MaterialTheme.typography.labelSmall, color = if (screen == Screen.PLANNER) MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.9f) else MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 },
                 navigationIcon = {
@@ -243,7 +243,12 @@ private fun BinarioApp(
                         }
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background)
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = if (screen == Screen.PLANNER) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.background,
+                    titleContentColor = if (screen == Screen.PLANNER) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onBackground,
+                    actionIconContentColor = if (screen == Screen.PLANNER) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onBackground,
+                    navigationIconContentColor = if (screen == Screen.PLANNER) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onBackground
+                )
             )
         },
         bottomBar = {
@@ -367,6 +372,16 @@ private fun TodayScreen(
     ) {
         item { BoardCommandBar(onOpenSearch = { openSearch() }) }
         item { BoardRouteHeader(viewModel.activeRoute, viewModel.direction, viewModel.refreshState, viewModel::switchDirection, viewModel::refresh, openRoutes) }
+        item {
+            DataStatusLine(
+                freshness = viewModel.snapshot?.freshness,
+                provider = viewModel.currentProviderLabel(),
+                confidence = viewModel.currentConfidenceLabel(),
+                refreshedAt = viewModel.lastRefreshEpochMillis(),
+                isDemonstration = viewModel.isDemonstrationData(),
+                message = viewModel.refreshMessage
+            )
+        }
         item { BoardColumnHeader() }
         if (firstService != null) {
             items(services, key = { it.id }) { service ->
@@ -377,16 +392,6 @@ private fun TodayScreen(
         }
         if (viewModel.savedRoutes.size > 1) {
             item { MonitoredRoutesStrip(viewModel.savedRoutes, viewModel.activeRoute.id, viewModel::activateRoute, openRoutes) }
-        }
-        item {
-            DataStatusLine(
-                freshness = viewModel.snapshot?.freshness,
-                provider = viewModel.currentProviderLabel(),
-                confidence = viewModel.currentConfidenceLabel(),
-                refreshedAt = viewModel.lastRefreshEpochMillis(),
-                isDemonstration = viewModel.isDemonstrationData(),
-                message = viewModel.refreshMessage
-            )
         }
         item {
             Text(
@@ -582,8 +587,11 @@ private fun PlannerScreen(
     LazyColumn(modifier = modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(0.dp)) {
         item {
             Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                Text("Pianifica viaggio", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                Text("Cerca le prossime soluzioni per tratta, giorno e orario.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("Dove andiamo?", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                if (viewModel.isDemonstrationData()) {
+                    Text("Catalogo dimostrativo locale — non live", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.tertiary, fontWeight = FontWeight.Bold)
+                }
+                Text("Cerca una tratta, un numero treno oppure una stazione.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     items(SearchMode.entries) { item -> FilterChip(selected = mode == item, onClick = { mode = item }, label = { Text(item.label) }) }
                 }

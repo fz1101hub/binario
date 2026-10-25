@@ -31,10 +31,10 @@ export default function Home() {
   return (
     <DashboardLayout>
       <div className="mx-auto max-w-6xl space-y-6 pb-12">
-        <header className="rounded-3xl bg-slate-950 px-6 py-7 text-slate-50 shadow-xl shadow-slate-950/15 sm:px-8">
+        <header className="rounded-3xl bg-[#205E2B] px-6 py-7 text-slate-50 shadow-xl shadow-green-950/15 sm:px-8">
           <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
             <div className="max-w-2xl">
-              <div className="mb-3 flex items-center gap-2 text-sm font-medium text-cyan-200"><TrainFront className="h-4 w-4" /> Binario Voice Bridge</div>
+              <div className="mb-3 flex items-center gap-2 text-sm font-medium text-green-100"><TrainFront className="h-4 w-4" /> Binario Voice Bridge</div>
               <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Le tue tratte, pronte per la voce.</h1>
               <p className="mt-3 max-w-xl text-sm leading-6 text-slate-300">Gestisci le relazioni personali. Alexa leggerà informazioni personali solo dopo il collegamento verificato dell’account.</p>
             </div>
@@ -45,7 +45,7 @@ export default function Home() {
         <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
           <Card className="border-slate-200 shadow-sm">
             <CardHeader className="pb-4">
-              <div className="flex items-center justify-between gap-4"><div><CardTitle>Tratte personali</CardTitle><CardDescription className="mt-1">Conservate nel tuo profilo Binario. Nessuna cronologia di viaggio o posizione viene registrata.</CardDescription></div><MapPin className="h-5 w-5 text-cyan-700" /></div>
+              <div className="flex items-center justify-between gap-4"><div><CardTitle>Tratte personali</CardTitle><CardDescription className="mt-1">Conservate nel tuo profilo Binario. Nessuna cronologia di viaggio o posizione viene registrata.</CardDescription></div><MapPin className="h-5 w-5 text-green-700" /></div>
             </CardHeader>
             <CardContent className="space-y-5">
               <form onSubmit={submitRoute} className="grid gap-3 rounded-2xl bg-slate-50 p-4 sm:grid-cols-2">
@@ -58,7 +58,7 @@ export default function Home() {
                 {routes.isLoading ? <p className="text-sm text-muted-foreground">Caricamento tratte…</p> : null}
                 {routes.data?.length === 0 ? <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">Non hai ancora salvato tratte. Aggiungine una per preparare le future richieste vocali.</p> : null}
                 {routes.data?.map(route => <div key={route.id} className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3">
-                  <button onClick={() => setPinned.mutate({ id: route.id, isPinned: !route.isPinned })} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-cyan-700" aria-label={route.isPinned ? `Rimuovi ${route.name} dalle tratte fissate` : `Fissa ${route.name}`}><Pin className={`h-4 w-4 ${route.isPinned ? "fill-cyan-600 text-cyan-700" : ""}`} /></button>
+                  <button onClick={() => setPinned.mutate({ id: route.id, isPinned: !route.isPinned })} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-green-700" aria-label={route.isPinned ? `Rimuovi ${route.name} dalle tratte fissate` : `Fissa ${route.name}`}><Pin className={`h-4 w-4 ${route.isPinned ? "fill-green-600 text-green-700" : ""}`} /></button>
                   <div className="min-w-0 flex-1"><p className="font-medium text-slate-900">{route.name}</p><p className="truncate text-sm text-muted-foreground">{route.origin} <span aria-hidden="true">→</span> {route.destination}</p></div>
                   <Button variant="ghost" size="icon" onClick={() => removeRoute.mutate({ id: route.id })} aria-label={`Rimuovi la tratta ${route.name}`}><Trash2 className="h-4 w-4 text-slate-500" /></Button>
                 </div>)}
@@ -68,7 +68,7 @@ export default function Home() {
 
           <div className="space-y-6">
             <Card className="border-slate-200 shadow-sm">
-              <CardHeader className="pb-3"><div className="flex items-center justify-between"><div><CardTitle>Alexa</CardTitle><CardDescription className="mt-1">Account linking OAuth 2.0 e webhook firmato.</CardDescription></div><Radio className="h-5 w-5 text-cyan-700" /></div></CardHeader>
+              <CardHeader className="pb-3"><div className="flex items-center justify-between"><div><CardTitle>Alexa</CardTitle><CardDescription className="mt-1">Account linking OAuth 2.0 e webhook firmato.</CardDescription></div><Radio className="h-5 w-5 text-green-700" /></div></CardHeader>
               <CardContent className="space-y-4">
                 {voice.data?.configured ? <div className="rounded-xl bg-emerald-50 p-3 text-sm text-emerald-950"><strong>Configurazione server disponibile.</strong> Abilita la skill nell’app Alexa per avviare il collegamento.</div> : <div className="rounded-xl bg-amber-50 p-3 text-sm text-amber-950"><strong>Non attivo.</strong> Manca la configurazione della console Alexa; il webhook rifiuta ogni richiesta.</div>}
                 <div className="rounded-xl border border-slate-200 p-3 text-sm"><p className="font-medium text-slate-900">Stato account</p><p className="mt-1 text-muted-foreground">{voice.data?.linked ? "Collegato e verificato." : "Non collegato. Le risposte personali restano bloccate."}</p></div>

@@ -1,5 +1,10 @@
 # Changelog
 
+## Proposta UI/UX Binario 2.0 — 25 ottobre 2026 (branch di design, non release)
+
+Primo passaggio al verde ferroviario (#388E3C di riferimento, #2E7D32 per il contrasto dei componenti interattivi), con modifica alla top bar Android, titolo del pianificatore «Dove andiamo?», posizione dell'indicatore demo prima delle righe delle corse, colori widget e accenti Wear OS/Apple Watch. La dashboard del Voice Bridge adotta la stessa palette. Aggiunti design system multipiattaforma, specifica Alexa Echo Show e mock interattivo offline per i diversi Echo. Nessun provider live, APL Echo o supporto Android Auto è stato implementato da questa modifica.
+
+
 ## 0.16.3 — 14 agosto 2026
 
 Il widget può ora ricevere un **nome personalizzato per istanza**, mostrato in testata al posto del nome della tratta; il nome è locale, opzionale e retrocompatibile con le superfici già create. La configurazione è una superficie Material completa: testo, sfondo e pulsanti ereditano il tema persistito, mentre riepilogo e azioni seguono le categorie in un unico flusso scorrevole e visivamente centrato. Il formato più piccolo riusa il layout RemoteViews standard e stabile, limita il tabellone a due righe complete e nasconde soltanto testata colonne e comandi non essenziali: non impiega più il resource compatto che causava il caricamento fallito nel launcher.

@@ -31,6 +31,7 @@ struct WatchHomeView: View {
                                 VStack(alignment: .leading, spacing: 3) {
                                     Text("\(service.expectedDeparture)  \(service.destination)")
                                         .font(.body.weight(.semibold))
+                                        .foregroundStyle(Color(red: 0.56, green: 0.85, blue: 0.58))
                                     Text("\(service.category) \(service.number) · \(platformText(service))")
                                         .font(.footnote)
                                 }
@@ -54,6 +55,7 @@ struct WatchHomeView: View {
                 }
             }
             .navigationTitle("Binario")
+            .tint(Color(red: 0.56, green: 0.85, blue: 0.58))
         }
     }
 
