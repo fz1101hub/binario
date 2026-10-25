@@ -245,7 +245,7 @@
     <string name="train_number_label">Tren %1$s</string>
     <string name="accessibility_remove_train_monitoring">Eliminar seguimiento del tren %1$s</string>
     <string name="settings_privacy_title">Privacidad y datos</string>
-    <string name="settings_privacy_local_data">Las rutas, favoritos, seguimientos, alertas y widgets permanecen en el dispositivo. Se excluyen la copia de seguridad y la transferencia de Android; el archivo JSON se exporta solo si lo eliges. La ubicación sirve únicamente para ordenar las estaciones cercanas y no se conserva ni se envía a las fuentes ferroviarias.</string>
+    <string name="settings_privacy_local_data">Las rutas, favoritos, seguimientos, alertas y widgets permanecen en el dispositivo. Se excluyen la copia de seguridad y la transferencia de Android; el archivo JSON se exporta solo si lo eliges. La ubicación sirve únicamente para ordenar las estaciones cercanas y, si activas la alarma GPS, para saber cuándo estás cerca de la parada: se procesa solo en memoria y no se conserva ni se envía a las fuentes ferroviarias ni a nadie más.</string>
     <string name="settings_privacy_notifications_voice">Las notificaciones son recordatorios locales. El dictado usa el reconocedor del sistema: Binario no graba audio y usa solo el texto devuelto. Las búsquedas de RFI envían a la fuente el identificador público de la estación de salida; las fuentes personales opcionales pueden recibir un identificador o el nombre de la estación. Sin una fuente autorizada: datos en tiempo real no disponibles. ViaggiaTreno usa HTTP para su API pública: las consultas de estación, hora y tren no están cifradas. Las demás fuentes usan HTTPS.</string>
     <string name="settings_privacy_wear">Si activas el smartwatch, recibe un resumen de la ruta y hasta dos servicios. Desactivar el uso compartido elimina el DataItem y la caché local del reloj al recibir la revocación. La información completa está en PRIVACY.md del repositorio. Antes de una distribución pública faltan una URL verificada y un contacto de privacidad: aún no existe un enlace público en la aplicación.</string>
     <string name="settings_privacy_osm">Autocompletado nacional: © OpenStreetMap contributors, ODbL 1.0. El catálogo geográfico sugiere nombres de estaciones, pero no confirma servicio, horario, andén, retraso ni circulación.</string>
@@ -495,6 +495,51 @@
     </plurals>
     <string name="stop_alarm_permission_required">Para recibir la alarma de parada debes permitir las notificaciones de Binario.</string>
     <string name="stop_alarm_completed">La parada %1$s ya figura como superada.</string>
+    <!-- GPS arrival alarm (October 2026) -->
+    <string name="stop_alarm_dialog_title">Alarma para %1$s</string>
+    <string name="stop_alarm_dialog_time">La alarma suena unos cinco minutos antes de la hora prevista %1$s.</string>
+    <string name="action_set_stop_alarm">Poner alarma</string>
+    <string name="gps_alarm_option">Avisarme también según mi ubicación</string>
+    <string name="gps_alarm_option_description">Suena cuando estás dentro del radio elegido alrededor de la parada, aunque el tren vaya adelantado o con retraso. Cuenta el aviso que llegue primero.</string>
+    <string name="gps_alarm_radius_label">Radio de aviso</string>
+    <plurals name="gps_alarm_radius_km">
+        <item quantity="one">%d km</item>
+        <item quantity="many">%d km</item>
+        <item quantity="other">%d km</item>
+    </plurals>
+    <string name="gps_alarm_high_speed_hint">En trenes de alta velocidad y larga distancia elige un radio más amplio: a máxima velocidad el tren recorre varios kilómetros por minuto y así tendrás tiempo de prepararte.</string>
+    <string name="gps_alarm_privacy_rationale">Para este aviso Binario pide tu ubicación precisa y solo la usa mientras la alarma GPS está activa, también con la pantalla apagada, con una notificación permanente que puedes detener cuando quieras. La ubicación se procesa solo en memoria en el teléfono: no se guarda, no se registra y no se envía.</string>
+    <string name="gps_alarm_approximate_note">Si concedes solo la ubicación aproximada, Android la actualiza con menos frecuencia: el aviso usa un radio más amplio y puede llegar antes o después.</string>
+    <string name="gps_alarm_restart_note">La alarma GPS se detiene sola al llegar y como máximo dos horas después de la hora prevista. Tras reiniciar el teléfono no se reanuda sola: vuelve a activarla desde la aplicación.</string>
+    <string name="gps_alarm_unavailable_no_coordinates">Aviso según la ubicación no disponible: el catálogo de estaciones no tiene las coordenadas de esta parada.</string>
+    <plurals name="gps_alarm_unavailable_too_early">
+        <item quantity="one">El aviso según la ubicación solo está disponible desde %d hora antes de la llegada prevista: vuelve a poner la alarma más tarde para añadirlo.</item>
+        <item quantity="many">El aviso según la ubicación solo está disponible desde %d horas antes de la llegada prevista: vuelve a poner la alarma más tarde para añadirlo.</item>
+        <item quantity="other">El aviso según la ubicación solo está disponible desde %d horas antes de la llegada prevista: vuelve a poner la alarma más tarde para añadirlo.</item>
+    </plurals>
+    <string name="gps_alarm_replaces">Sustituirá la alarma GPS activa para %1$s.</string>
+    <string name="gps_alarm_active_title">Alarma GPS activa para %1$s</string>
+    <string name="gps_alarm_active_precise">Te avisa dentro de %1$s de la parada. La ubicación se queda en el teléfono.</string>
+    <string name="gps_alarm_active_approximate">Ubicación aproximada: te avisa dentro de unos %1$s de la parada, con actualizaciones menos frecuentes. La ubicación se queda en el teléfono.</string>
+    <string name="action_gps_alarm_stop">Desactivar alarma GPS</string>
+    <string name="gps_alarm_status_channel_name">Alarma GPS activa</string>
+    <string name="gps_alarm_status_channel_description">Notificación permanente que se muestra mientras Binario usa la ubicación para una alarma GPS.</string>
+    <string name="gps_alarm_triggered_title">Llegando a %1$s</string>
+    <string name="gps_alarm_triggered_text">Tren %1$s hacia %2$s: estás cerca de la parada, prevista a las %3$s.</string>
+    <string name="gps_alarm_triggered_big_text">Tren %1$s hacia %2$s: estás dentro del radio elegido alrededor de la parada %3$s, prevista a las %4$s. Consulta siempre los paneles y anuncios oficiales.</string>
+    <string name="gps_alarm_permission_denied">Permiso de ubicación no concedido: solo queda activa la alarma por horario. Puedes concederlo en los ajustes de Android.</string>
+    <string name="gps_alarm_location_disabled">La ubicación del teléfono está desactivada: actívala y vuelve a poner la alarma para el aviso según la ubicación. La alarma por horario sigue activa.</string>
+    <string name="gps_alarm_start_failed">Android no ha permitido iniciar la alarma GPS para %1$s: la alarma por horario sigue activa.</string>
+    <string name="gps_alarm_ended_triggered">La alarma GPS ha sonado para %1$s: estabas dentro del radio elegido.</string>
+    <string name="gps_alarm_ended_cancelled">Alarma GPS para %1$s desactivada. La alarma por horario sigue puesta.</string>
+    <string name="gps_alarm_ended_expired">Alarma GPS para %1$s terminada: se ha agotado el tiempo máximo.</string>
+    <string name="gps_alarm_ended_permission">Alarma GPS para %1$s interrumpida: el permiso de ubicación ya no está concedido.</string>
+    <string name="gps_alarm_ended_unavailable">Alarma GPS para %1$s interrumpida: no hay ninguna fuente de ubicación disponible en el teléfono.</string>
+    <string name="gps_alarm_ended_time_alarm">Alarma GPS para %1$s cerrada: la alarma por horario ya ha sonado.</string>
+    <string name="gps_alarm_interrupted">La alarma GPS para %1$s se ha interrumpido, por ejemplo por un reinicio del teléfono. Vuelve a activarla si sigues de viaje.</string>
+    <string name="action_gps_alarm_resume">Reactivar</string>
+    <string name="action_gps_alarm_dismiss">Ignorar</string>
+    <string name="action_close">Cerrar</string>
     <string name="stop_alarm_unavailable">No se puede programar la alarma: la hora prevista de la parada ya ha pasado o no está disponible.</string>
     <string name="stop_alarm_exact">Alarma configurada para %1$s, cinco minutos antes de la hora prevista %2$s.</string>
     <string name="stop_alarm_inexact">Alarma configurada para %1$s, pero Android puede entregarla con retraso porque no se permiten las alarmas exactas.</string>

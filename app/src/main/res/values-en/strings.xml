@@ -242,7 +242,7 @@
     <string name="train_number_label">Train %1$s</string>
     <string name="accessibility_remove_train_monitoring">Remove monitoring for train %1$s</string>
     <string name="settings_privacy_title">Privacy and data</string>
-    <string name="settings_privacy_local_data">Routes, favourites, monitoring, alerts and widgets remain on the device. Android backup and transfer are excluded; the JSON file is exported only if you choose it. Location is used only to order nearby stations and is neither retained nor sent to railway sources.</string>
+    <string name="settings_privacy_local_data">Routes, favourites, monitoring, alerts and widgets remain on the device. Android backup and transfer are excluded; the JSON file is exported only if you choose it. Location is used only to order nearby stations and, if you turn on the GPS alarm, to tell when you are near your stop: it is processed only in memory and is neither retained nor sent to railway sources or anyone else.</string>
     <string name="settings_privacy_notifications_voice">Notifications are local reminders. Dictation uses the system recogniser: Binario does not record audio and uses only the returned text. RFI searches send the source the public identifier of the departure station; optional personal sources may receive an identifier or the station name. Without an authorised source: real-time data unavailable. ViaggiaTreno uses HTTP for its public API: station, time and train requests are unencrypted. Other sources use HTTPS.</string>
     <string name="settings_privacy_wear">If you enable the smartwatch, it receives a summary of the route and up to two services. Turning off sharing deletes the DataItem and the watch’s local cache when the revocation is received. The full notice is PRIVACY.md in the repository. A verified URL and privacy contact are still missing before a public release: there is not yet a public link in the app.</string>
     <string name="settings_privacy_osm">National autocomplete: © OpenStreetMap contributors, ODbL 1.0. The geographic catalogue suggests station names but does not confirm service, time, platform, delay or operation.</string>
@@ -485,6 +485,49 @@
     </plurals>
     <string name="stop_alarm_permission_required">To receive the stop alarm, allow Binario notifications.</string>
     <string name="stop_alarm_completed">Stop %1$s appears to have already been passed.</string>
+    <!-- GPS arrival alarm (October 2026) -->
+    <string name="stop_alarm_dialog_title">Alarm for %1$s</string>
+    <string name="stop_alarm_dialog_time">The alarm rings about five minutes before the expected time of %1$s.</string>
+    <string name="action_set_stop_alarm">Set alarm</string>
+    <string name="gps_alarm_option">Also alert me based on my location</string>
+    <string name="gps_alarm_option_description">Rings when you are within the chosen radius of the stop, even if the train is early or late. Whichever alert comes first counts.</string>
+    <string name="gps_alarm_radius_label">Alert radius</string>
+    <plurals name="gps_alarm_radius_km">
+        <item quantity="one">%d km</item>
+        <item quantity="other">%d km</item>
+    </plurals>
+    <string name="gps_alarm_high_speed_hint">On high-speed and long-distance trains choose a wider radius: at top speed the train covers several kilometres a minute, so a wider radius gives you time to get ready.</string>
+    <string name="gps_alarm_privacy_rationale">For this alert Binario asks for your precise location and uses it only while the GPS alarm is on, including with the screen off, with an ongoing notification you can stop at any time. Your location is processed only in memory on the phone: it is never stored, logged or sent.</string>
+    <string name="gps_alarm_approximate_note">If you grant only approximate location, Android updates it less often: the alert uses a wider radius and may come earlier or later.</string>
+    <string name="gps_alarm_restart_note">The GPS alarm stops by itself on arrival and at the latest two hours after the expected time. After the phone restarts it does not resume on its own: turn it on again from the app.</string>
+    <string name="gps_alarm_unavailable_no_coordinates">Location-based alert unavailable: the station catalogue has no coordinates for this stop.</string>
+    <plurals name="gps_alarm_unavailable_too_early">
+        <item quantity="one">The location-based alert is available only from %d hour before the expected arrival: set the alarm again later to add it.</item>
+        <item quantity="other">The location-based alert is available only from %d hours before the expected arrival: set the alarm again later to add it.</item>
+    </plurals>
+    <string name="gps_alarm_replaces">This replaces the active GPS alarm for %1$s.</string>
+    <string name="gps_alarm_active_title">GPS alarm on for %1$s</string>
+    <string name="gps_alarm_active_precise">Alerts you within %1$s of the stop. Your location stays on the phone.</string>
+    <string name="gps_alarm_active_approximate">Approximate location: alerts you within about %1$s of the stop, with less frequent updates. Your location stays on the phone.</string>
+    <string name="action_gps_alarm_stop">Turn off GPS alarm</string>
+    <string name="gps_alarm_status_channel_name">GPS alarm active</string>
+    <string name="gps_alarm_status_channel_description">Ongoing notification shown while Binario uses your location for a GPS alarm.</string>
+    <string name="gps_alarm_triggered_title">Arriving at %1$s</string>
+    <string name="gps_alarm_triggered_text">Train %1$s to %2$s: you are close to the stop, expected at %3$s.</string>
+    <string name="gps_alarm_triggered_big_text">Train %1$s to %2$s: you are within the chosen radius of stop %3$s, expected at %4$s. Always check official boards and announcements.</string>
+    <string name="gps_alarm_permission_denied">Location permission not granted: only the time-based alarm remains active. You can grant it in the Android settings.</string>
+    <string name="gps_alarm_location_disabled">Phone location is turned off: turn it on and set the alarm again for the location-based alert. The time-based alarm remains active.</string>
+    <string name="gps_alarm_start_failed">Android did not allow the GPS alarm for %1$s to start: the time-based alarm remains active.</string>
+    <string name="gps_alarm_ended_triggered">GPS alarm rang for %1$s: you were within the chosen radius.</string>
+    <string name="gps_alarm_ended_cancelled">GPS alarm for %1$s turned off. The time-based alarm stays set.</string>
+    <string name="gps_alarm_ended_expired">GPS alarm for %1$s ended: the maximum time has run out.</string>
+    <string name="gps_alarm_ended_permission">GPS alarm for %1$s stopped: location permission is no longer granted.</string>
+    <string name="gps_alarm_ended_unavailable">GPS alarm for %1$s stopped: no location source is available on the phone.</string>
+    <string name="gps_alarm_ended_time_alarm">GPS alarm for %1$s closed: the time-based alarm has already rung.</string>
+    <string name="gps_alarm_interrupted">The GPS alarm for %1$s was interrupted, for example by a phone restart. Turn it on again if you are still travelling.</string>
+    <string name="action_gps_alarm_resume">Turn on again</string>
+    <string name="action_gps_alarm_dismiss">Ignore</string>
+    <string name="action_close">Close</string>
     <string name="stop_alarm_unavailable">Unable to schedule the alarm: the expected time for the stop has already passed or is unavailable.</string>
     <string name="stop_alarm_exact">Alarm set for %1$s, five minutes before the expected time of %2$s.</string>
     <string name="stop_alarm_inexact">Alarm set for %1$s, but Android may deliver it late because exact alarms are not allowed.</string>

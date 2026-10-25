@@ -245,7 +245,7 @@
     <string name="train_number_label">Train %1$s</string>
     <string name="accessibility_remove_train_monitoring">Supprimer le suivi du train %1$s</string>
     <string name="settings_privacy_title">Confidentialité et données</string>
-    <string name="settings_privacy_local_data">Les itinéraires, favoris, suivis, alertes et widgets restent sur l’appareil. La sauvegarde et le transfert Android sont exclus ; le fichier JSON n’est exporté que si vous le choisissez. La position sert uniquement à classer les gares proches et n’est ni conservée ni envoyée aux sources ferroviaires.</string>
+    <string name="settings_privacy_local_data">Les itinéraires, favoris, suivis, alertes et widgets restent sur l’appareil. La sauvegarde et le transfert Android sont exclus ; le fichier JSON n’est exporté que si vous le choisissez. La position sert uniquement à classer les gares proches et, si vous activez l’alarme GPS, à savoir quand vous approchez de l’arrêt : elle est traitée uniquement en mémoire et n’est ni conservée ni envoyée aux sources ferroviaires ou à qui que ce soit.</string>
     <string name="settings_privacy_notifications_voice">Les notifications sont des rappels locaux. La dictée utilise le reconnaisseur système : Binario n’enregistre pas l’audio et utilise uniquement le texte renvoyé. Les recherches RFI envoient à la source l’identifiant public de la gare de départ ; les sources personnelles facultatives peuvent recevoir un identifiant ou le nom de la gare. Sans source autorisée : données non disponibles en temps réel. ViaggiaTreno utilise HTTP pour son API publique : les requêtes de gare, heure et train ne sont pas chiffrées. Les autres sources utilisent HTTPS.</string>
     <string name="settings_privacy_wear">Si vous activez la montre connectée, elle reçoit un résumé de l’itinéraire et jusqu’à deux trajets. La désactivation du partage supprime le DataItem et le cache local de la montre à la réception de la révocation. La notice complète est PRIVACY.md dans le dépôt. Avant une diffusion publique, il manque une URL vérifiée et un contact pour la confidentialité : il n’existe pas encore de lien public dans l’application.</string>
     <string name="settings_privacy_osm">Saisie semi-automatique nationale : © contributeurs OpenStreetMap, ODbL 1.0. Le catalogue géographique suggère des noms de gares mais ne confirme ni le service, ni l’horaire, ni la voie, ni le retard, ni la circulation.</string>
@@ -495,6 +495,51 @@
     </plurals>
     <string name="stop_alarm_permission_required">Pour recevoir l’alarme à l’arrêt, vous devez autoriser les notifications de Binario.</string>
     <string name="stop_alarm_completed">L’arrêt %1$s est déjà dépassé.</string>
+    <!-- GPS arrival alarm (October 2026) -->
+    <string name="stop_alarm_dialog_title">Alarme pour %1$s</string>
+    <string name="stop_alarm_dialog_time">L’alarme sonne environ cinq minutes avant l’heure prévue %1$s.</string>
+    <string name="action_set_stop_alarm">Régler l’alarme</string>
+    <string name="gps_alarm_option">M’avertir aussi selon ma position</string>
+    <string name="gps_alarm_option_description">Sonne lorsque vous êtes dans le rayon choisi autour de l’arrêt, même si le train est en avance ou en retard. C’est l’alerte qui arrive en premier qui compte.</string>
+    <string name="gps_alarm_radius_label">Rayon d’alerte</string>
+    <plurals name="gps_alarm_radius_km">
+        <item quantity="one">%d km</item>
+        <item quantity="many">%d km</item>
+        <item quantity="other">%d km</item>
+    </plurals>
+    <string name="gps_alarm_high_speed_hint">Dans les trains à grande vitesse et grandes lignes, choisissez un rayon plus large : à pleine vitesse, le train parcourt plusieurs kilomètres par minute et vous aurez ainsi le temps de vous préparer.</string>
+    <string name="gps_alarm_privacy_rationale">Pour cette alerte, Binario demande votre position précise et ne l’utilise que tant que l’alarme GPS est active, y compris écran éteint, avec une notification permanente que vous pouvez arrêter à tout moment. La position est traitée uniquement en mémoire sur le téléphone : elle n’est ni enregistrée, ni journalisée, ni envoyée.</string>
+    <string name="gps_alarm_approximate_note">Si vous n’accordez que la position approximative, Android la met à jour moins souvent : l’alerte utilise un rayon plus large et peut arriver plus tôt ou plus tard.</string>
+    <string name="gps_alarm_restart_note">L’alarme GPS s’arrête d’elle-même à l’arrivée et au plus tard deux heures après l’heure prévue. Après un redémarrage du téléphone, elle ne reprend pas seule : réactivez-la depuis l’application.</string>
+    <string name="gps_alarm_unavailable_no_coordinates">Alerte selon la position indisponible : le catalogue des gares n’a pas les coordonnées de cet arrêt.</string>
+    <plurals name="gps_alarm_unavailable_too_early">
+        <item quantity="one">L’alerte selon la position n’est disponible qu’à partir de %d heure avant l’arrivée prévue : réglez de nouveau l’alarme plus tard pour l’ajouter.</item>
+        <item quantity="many">L’alerte selon la position n’est disponible qu’à partir de %d heures avant l’arrivée prévue : réglez de nouveau l’alarme plus tard pour l’ajouter.</item>
+        <item quantity="other">L’alerte selon la position n’est disponible qu’à partir de %d heures avant l’arrivée prévue : réglez de nouveau l’alarme plus tard pour l’ajouter.</item>
+    </plurals>
+    <string name="gps_alarm_replaces">Remplacera l’alarme GPS active pour %1$s.</string>
+    <string name="gps_alarm_active_title">Alarme GPS active pour %1$s</string>
+    <string name="gps_alarm_active_precise">Vous avertit dans un rayon de %1$s autour de l’arrêt. La position reste sur le téléphone.</string>
+    <string name="gps_alarm_active_approximate">Position approximative : vous avertit dans un rayon d’environ %1$s autour de l’arrêt, avec des mises à jour moins fréquentes. La position reste sur le téléphone.</string>
+    <string name="action_gps_alarm_stop">Désactiver l’alarme GPS</string>
+    <string name="gps_alarm_status_channel_name">Alarme GPS active</string>
+    <string name="gps_alarm_status_channel_description">Notification permanente affichée pendant que Binario utilise la position pour une alarme GPS.</string>
+    <string name="gps_alarm_triggered_title">Arrivée imminente : %1$s</string>
+    <string name="gps_alarm_triggered_text">Train %1$s vers %2$s : vous approchez de l’arrêt, prévu à %3$s.</string>
+    <string name="gps_alarm_triggered_big_text">Train %1$s vers %2$s : vous êtes dans le rayon choisi autour de l’arrêt %3$s, prévu à %4$s. Vérifiez toujours les tableaux et annonces officiels.</string>
+    <string name="gps_alarm_permission_denied">Autorisation de localisation non accordée : seule l’alarme horaire reste active. Vous pouvez l’accorder dans les paramètres Android.</string>
+    <string name="gps_alarm_location_disabled">La localisation du téléphone est désactivée : activez-la et réglez de nouveau l’alarme pour l’alerte selon la position. L’alarme horaire reste active.</string>
+    <string name="gps_alarm_start_failed">Android n’a pas permis de démarrer l’alarme GPS pour %1$s : l’alarme horaire reste active.</string>
+    <string name="gps_alarm_ended_triggered">L’alarme GPS a sonné pour %1$s : vous étiez dans le rayon choisi.</string>
+    <string name="gps_alarm_ended_cancelled">Alarme GPS pour %1$s désactivée. L’alarme horaire reste réglée.</string>
+    <string name="gps_alarm_ended_expired">Alarme GPS pour %1$s terminée : la durée maximale est écoulée.</string>
+    <string name="gps_alarm_ended_permission">Alarme GPS pour %1$s interrompue : l’autorisation de localisation n’est plus accordée.</string>
+    <string name="gps_alarm_ended_unavailable">Alarme GPS pour %1$s interrompue : aucune source de position n’est disponible sur le téléphone.</string>
+    <string name="gps_alarm_ended_time_alarm">Alarme GPS pour %1$s fermée : l’alarme horaire a déjà sonné.</string>
+    <string name="gps_alarm_interrupted">L’alarme GPS pour %1$s a été interrompue, par exemple par un redémarrage du téléphone. Réactivez-la si vous êtes encore en voyage.</string>
+    <string name="action_gps_alarm_resume">Réactiver</string>
+    <string name="action_gps_alarm_dismiss">Ignorer</string>
+    <string name="action_close">Fermer</string>
     <string name="stop_alarm_unavailable">Impossible de planifier l’alarme : l’heure prévue de l’arrêt est déjà passée ou n’est pas disponible.</string>
     <string name="stop_alarm_exact">Alarme réglée à %1$s, cinq minutes avant l’heure prévue %2$s.</string>
     <string name="stop_alarm_inexact">Alarme réglée à %1$s, mais Android peut la déclencher en retard car les alarmes exactes ne sont pas autorisées.</string>

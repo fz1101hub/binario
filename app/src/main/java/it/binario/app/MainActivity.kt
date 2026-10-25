@@ -108,6 +108,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import it.binario.app.data.RailTime
+import it.binario.app.gpsalarm.GpsArrivalAlarmPanel
+import it.binario.app.gpsalarm.StopAlarmOptionsDialog
+import it.binario.app.gpsalarm.rememberGpsArrivalAlarmFlow
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -288,6 +291,7 @@ private fun BinarioApp(
         mutableStateOf<StopAlarmPlan?>(null)
     }
     var stopAlarmFeedback by rememberSaveable { mutableStateOf<String?>(null) }
+    val gpsArrivalAlarm = rememberGpsArrivalAlarmFlow()
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     LaunchedEffect(lifecycleOwner, screen, operationsSectionName) {
@@ -364,8 +368,19 @@ private fun BinarioApp(
         pendingStopAlarm = null
         if (granted && plan != null) {
             stopAlarmFeedback = stopAlarmScheduleFeedback(resources, StopAlarmScheduler.schedule(context, plan), plan)
+            gpsArrivalAlarm.onTimeAlarmScheduled(plan)
         } else {
+            gpsArrivalAlarm.onTimeAlarmRefused()
             stopAlarmFeedback = resources.getString(R.string.stop_alarm_permission_required)
+        }
+    }
+    val confirmStopAlarm: (StopAlarmPlan) -> Unit = { plan ->
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+            pendingStopAlarm = plan
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        } else {
+            stopAlarmFeedback = stopAlarmScheduleFeedback(resources, StopAlarmScheduler.schedule(context, plan), plan)
+            gpsArrivalAlarm.onTimeAlarmScheduled(plan)
         }
     }
     val scheduleStopAlarm: (TrainService, TrainStop) -> Unit = { service, stop ->
@@ -373,15 +388,11 @@ private fun BinarioApp(
         when {
             stop.completed -> stopAlarmFeedback = resources.getString(R.string.stop_alarm_completed, stop.station)
             plan == null -> stopAlarmFeedback = resources.getString(R.string.stop_alarm_unavailable)
-            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED -> {
-                pendingStopAlarm = plan
-                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-            }
-            else -> {
-                stopAlarmFeedback = stopAlarmScheduleFeedback(resources, StopAlarmScheduler.schedule(context, plan), plan)
-            }
+            // The options dialog adds the optional GPS part; confirming it schedules the time-based alarm.
+            else -> gpsArrivalAlarm.offer(service, stop, plan, viewModel.stations)
         }
     }
+    StopAlarmOptionsDialog(gpsArrivalAlarm, onScheduleTimeAlarm = confirmStopAlarm)
     LaunchedEffect(deepLinkRequest?.id) {
         val request = deepLinkRequest ?: return@LaunchedEffect
         when (val deepLink = request.deepLink) {
@@ -600,6 +611,7 @@ private fun BinarioApp(
                     onToggleMonitoring = { viewModel.toggleServiceMonitoring(service) },
                     onScheduleStopAlarm = scheduleStopAlarm,
                     alarmFeedback = stopAlarmFeedback,
+                    gpsAlarmPanel = { GpsArrivalAlarmPanel(gpsArrivalAlarm) },
                     activeTrip = viewModel.activeTrip,
                     onStartActiveTrip = { viewModel.startActiveTrip(service) },
                     onAdvanceActiveTrip = viewModel::advanceActiveTrip,
@@ -2644,6 +2656,7 @@ private fun ServiceDetailScreen(
     onToggleMonitoring: () -> Unit,
     onScheduleStopAlarm: (TrainService, TrainStop) -> Unit,
     alarmFeedback: String?,
+    gpsAlarmPanel: @Composable () -> Unit,
     activeTrip: ActiveTrip?,
     onStartActiveTrip: () -> Unit,
     onAdvanceActiveTrip: () -> Unit,
@@ -2733,6 +2746,7 @@ private fun ServiceDetailScreen(
                 )
             }
         }
+        item { gpsAlarmPanel() }
         item {
             Text(
                 stringResource(R.string.stop_alarm_notice),

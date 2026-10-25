@@ -13,6 +13,10 @@ import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
+import it.binario.app.gpsalarm.GpsArrivalAlarmController
+
+/** What made a stop alarm ring: its scheduled time, or the GPS arrival alarm reaching the radius. */
+enum class StopAlarmTrigger { TIME, LOCATION }
 
 object StopAlarmScheduler {
     const val CHANNEL_ID = "binario_stop_alarm"
@@ -23,8 +27,7 @@ object StopAlarmScheduler {
     private const val EXTRA_EXPECTED = "expected"
 
     fun schedule(context: Context, plan: StopAlarmPlan): DeviceAlarmScheduleResult {
-        val intent = Intent(context, StopAlarmReceiver::class.java).apply {
-            action = ACTION_STOP_ALARM
+        val intent = alarmIntent(context).apply {
             putExtra(EXTRA_TRAIN, plan.trainNumber)
             putExtra(EXTRA_DESTINATION, plan.destination)
             putExtra(EXTRA_STATION, plan.station)
@@ -32,7 +35,7 @@ object StopAlarmScheduler {
         }
         val pendingIntent = PendingIntent.getBroadcast(
             context,
-            "${plan.trainNumber}-${plan.station}-${plan.triggerAtEpochMillis}".hashCode(),
+            requestCode(plan.trainNumber, plan.station, plan.triggerAtEpochMillis),
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
@@ -40,10 +43,31 @@ object StopAlarmScheduler {
         return scheduleWakeupAlarm(context, alarmManager, plan.triggerAtEpochMillis, pendingIntent)
     }
 
-    fun notify(context: Context, train: String, destination: String, station: String, expected: String) {
+    /** Cancels the time-based alarm scheduled for [plan], if it is still pending. */
+    fun cancel(context: Context, plan: StopAlarmPlan) {
+        val pendingIntent = PendingIntent.getBroadcast(
+            context,
+            requestCode(plan.trainNumber, plan.station, plan.triggerAtEpochMillis),
+            alarmIntent(context),
+            PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE
+        ) ?: return
+        context.getSystemService(AlarmManager::class.java)?.cancel(pendingIntent)
+        pendingIntent.cancel()
+    }
+
+    /** Posts the stop alarm notification; false when Android does not let the app notify. */
+    fun notify(
+        context: Context,
+        train: String,
+        destination: String,
+        station: String,
+        expected: String,
+        trigger: StopAlarmTrigger = StopAlarmTrigger.TIME
+    ): Boolean {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
             ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
-        ) return
+        ) return false
+        if (!NotificationManagerCompat.from(context).areNotificationsEnabled()) return false
         val manager = context.getSystemService(NotificationManager::class.java)
         manager.createNotificationChannel(
             NotificationChannel(
@@ -52,17 +76,30 @@ object StopAlarmScheduler {
                 NotificationManager.IMPORTANCE_HIGH
             ).apply { description = context.getString(R.string.stop_alarm_channel_description) }
         )
+        val byLocation = trigger == StopAlarmTrigger.LOCATION
+        val title = if (byLocation) R.string.gps_alarm_triggered_title else R.string.stop_alarm_notification_title
+        val text = if (byLocation) R.string.gps_alarm_triggered_text else R.string.stop_alarm_notification_text
+        val bigText = if (byLocation) R.string.gps_alarm_triggered_big_text else R.string.stop_alarm_notification_big_text
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_binario)
-            .setContentTitle(context.getString(R.string.stop_alarm_notification_title, station))
-            .setContentText(context.getString(R.string.stop_alarm_notification_text, train, destination, expected))
-            .setStyle(NotificationCompat.BigTextStyle().bigText(context.getString(R.string.stop_alarm_notification_big_text, train, destination, station, expected)))
+            .setContentTitle(context.getString(title, station))
+            .setContentText(context.getString(text, train, destination, expected))
+            .setStyle(NotificationCompat.BigTextStyle().bigText(context.getString(bigText, train, destination, station, expected)))
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
             .setContentIntent(contentIntent(context, train, station, expected))
             .build()
+        // Same id for both triggers: if the other alarm still rings later it replaces this
+        // notification instead of adding a second one.
         NotificationManagerCompat.from(context).notify("$train-$station-$expected".hashCode(), notification)
+        return true
     }
+
+    private fun alarmIntent(context: Context): Intent =
+        Intent(context, StopAlarmReceiver::class.java).setAction(ACTION_STOP_ALARM)
+
+    private fun requestCode(train: String, station: String, triggerAtEpochMillis: Long): Int =
+        "$train-$station-$triggerAtEpochMillis".hashCode()
 
     internal fun trainExtra(intent: Intent) = intent.getStringExtra(EXTRA_TRAIN).orEmpty()
     internal fun destinationExtra(intent: Intent) = intent.getStringExtra(EXTRA_DESTINATION).orEmpty()
@@ -81,12 +118,16 @@ object StopAlarmScheduler {
 
 class StopAlarmReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
+        val train = StopAlarmScheduler.trainExtra(intent)
+        val station = StopAlarmScheduler.stationExtra(intent)
         StopAlarmScheduler.notify(
             context = context,
-            train = StopAlarmScheduler.trainExtra(intent),
+            train = train,
             destination = StopAlarmScheduler.destinationExtra(intent),
-            station = StopAlarmScheduler.stationExtra(intent),
+            station = station,
             expected = StopAlarmScheduler.expectedExtra(intent)
         )
+        // Whichever alarm rings first wins: the GPS alarm for the same stop stops here.
+        GpsArrivalAlarmController.onTimeAlarmFired(context, train, station)
     }
 }

@@ -117,7 +117,7 @@ class AndroidStringResourceParityTest {
             "widget_quality_score", "widget_confidence_open_data", "widget_confidence_cached", "widget_confidence_demonstration",
             "widget_warning_demonstration"
         )
-        val IDENTICAL_PLURAL_KEYS = setOf("minutes_short")
+        val IDENTICAL_PLURAL_KEYS = setOf("minutes_short", "gps_alarm_radius_km")
         val quantitiesByLocale = mapOf(
             "en" to setOf("one", "other"),
             "de" to setOf("one", "other"),

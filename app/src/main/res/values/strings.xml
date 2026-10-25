@@ -245,7 +245,7 @@
     <string name="train_number_label">Treno %1$s</string>
     <string name="accessibility_remove_train_monitoring">Rimuovi monitoraggio treno %1$s</string>
     <string name="settings_privacy_title">Privacy e dati</string>
-    <string name="settings_privacy_local_data">Tratte, preferiti, monitoraggi, avvisi e widget restano nel dispositivo. Backup e trasferimento Android sono esclusi; il file JSON viene esportato solo se lo scegli. La posizione serve solo a ordinare le stazioni vicine e non viene conservata né inviata alle fonti ferroviarie.</string>
+    <string name="settings_privacy_local_data">Tratte, preferiti, monitoraggi, avvisi e widget restano nel dispositivo. Backup e trasferimento Android sono esclusi; il file JSON viene esportato solo se lo scegli. La posizione serve solo a ordinare le stazioni vicine e, se attivi la sveglia GPS, a capire quando sei vicino alla fermata: è elaborata solo in memoria e non viene conservata né inviata alle fonti ferroviarie o ad altri.</string>
     <string name="settings_privacy_notifications_voice">Le notifiche sono promemoria locali. La dettatura usa il riconoscitore di sistema: Binario non registra audio e usa solo il testo restituito. Le ricerche RFI inviano alla fonte l’identificativo pubblico della stazione di partenza o di destinazione. ViaggiaTreno riceve codici stazione, data/ora e identificativi della corsa; Italo il codice della stazione. Senza una rilevazione recente, lo stato operativo resta non verificato. ViaggiaTreno usa HTTP per la propria API pubblica: le richieste di stazione, orario e corsa non sono cifrate. Le altre fonti usano HTTPS.</string>
     <string name="settings_privacy_wear">Se attivi lo smartwatch, riceve una sintesi della tratta e fino a due corse. Disattivare la condivisione elimina il DataItem e la cache locale del watch alla ricezione della revoca. L’informativa completa è PRIVACY.md nel repository. Prima di una distribuzione pubblica manca un URL verificato e un recapito privacy: non esiste ancora un link pubblico nell’app.</string>
     <string name="settings_privacy_osm">Autocompletamento nazionale: © OpenStreetMap contributors, ODbL 1.0. Il catalogo geografico suggerisce nomi di stazioni ma non conferma servizio, orario, binario, ritardo o circolazione.</string>
@@ -495,6 +495,51 @@
     </plurals>
     <string name="stop_alarm_permission_required">Per ricevere la sveglia alla fermata devi consentire le notifiche di Binario.</string>
     <string name="stop_alarm_completed">La fermata %1$s risulta già superata.</string>
+    <!-- GPS arrival alarm (October 2026) -->
+    <string name="stop_alarm_dialog_title">Sveglia per %1$s</string>
+    <string name="stop_alarm_dialog_time">La sveglia suona circa cinque minuti prima dell’orario previsto %1$s.</string>
+    <string name="action_set_stop_alarm">Imposta sveglia</string>
+    <string name="gps_alarm_option">Avvisami anche in base alla posizione</string>
+    <string name="gps_alarm_option_description">Suona quando sei entro il raggio scelto dalla fermata, anche se il treno è in anticipo o in ritardo. Vale l’avviso che arriva per primo.</string>
+    <string name="gps_alarm_radius_label">Raggio di avviso</string>
+    <plurals name="gps_alarm_radius_km">
+        <item quantity="one">%d km</item>
+        <item quantity="many">%d km</item>
+        <item quantity="other">%d km</item>
+    </plurals>
+    <string name="gps_alarm_high_speed_hint">Sui treni ad alta velocità e a lunga percorrenza scegli un raggio più ampio: alla massima velocità il treno percorre diversi chilometri al minuto e così hai il tempo di prepararti.</string>
+    <string name="gps_alarm_privacy_rationale">Per questo avviso Binario chiede la posizione precisa e la usa solo mentre la sveglia GPS è attiva, anche a schermo spento, con una notifica fissa che puoi fermare quando vuoi. La posizione è elaborata solo in memoria sul telefono: non viene salvata, registrata né inviata.</string>
+    <string name="gps_alarm_approximate_note">Se concedi solo la posizione approssimativa, Android la aggiorna più di rado: l’avviso usa un raggio più ampio e può arrivare prima o dopo.</string>
+    <string name="gps_alarm_restart_note">La sveglia GPS si ferma da sola all’arrivo e al più tardi due ore dopo l’orario previsto. Dopo un riavvio del telefono non riparte da sola: riattivala dall’app.</string>
+    <string name="gps_alarm_unavailable_no_coordinates">Avviso in base alla posizione non disponibile: il catalogo stazioni non ha le coordinate di questa fermata.</string>
+    <plurals name="gps_alarm_unavailable_too_early">
+        <item quantity="one">L’avviso in base alla posizione è disponibile solo da %d ora prima dell’arrivo previsto: imposta di nuovo la sveglia più tardi per aggiungerlo.</item>
+        <item quantity="many">L’avviso in base alla posizione è disponibile solo da %d ore prima dell’arrivo previsto: imposta di nuovo la sveglia più tardi per aggiungerlo.</item>
+        <item quantity="other">L’avviso in base alla posizione è disponibile solo da %d ore prima dell’arrivo previsto: imposta di nuovo la sveglia più tardi per aggiungerlo.</item>
+    </plurals>
+    <string name="gps_alarm_replaces">Sostituirà la sveglia GPS attiva per %1$s.</string>
+    <string name="gps_alarm_active_title">Sveglia GPS attiva per %1$s</string>
+    <string name="gps_alarm_active_precise">Ti avvisa entro %1$s dalla fermata. La posizione resta sul telefono.</string>
+    <string name="gps_alarm_active_approximate">Posizione approssimativa: ti avvisa entro circa %1$s dalla fermata, con aggiornamenti meno frequenti. La posizione resta sul telefono.</string>
+    <string name="action_gps_alarm_stop">Disattiva sveglia GPS</string>
+    <string name="gps_alarm_status_channel_name">Sveglia GPS attiva</string>
+    <string name="gps_alarm_status_channel_description">Notifica fissa mostrata mentre Binario usa la posizione per una sveglia GPS.</string>
+    <string name="gps_alarm_triggered_title">Stai arrivando a %1$s</string>
+    <string name="gps_alarm_triggered_text">Treno %1$s verso %2$s: sei vicino alla fermata, prevista alle %3$s.</string>
+    <string name="gps_alarm_triggered_big_text">Treno %1$s verso %2$s: sei entro il raggio scelto dalla fermata %3$s, prevista alle %4$s. Controlla sempre monitor e annunci ufficiali.</string>
+    <string name="gps_alarm_permission_denied">Permesso posizione non concesso: resta attiva solo la sveglia a orario. Puoi concederlo dalle impostazioni di Android.</string>
+    <string name="gps_alarm_location_disabled">La localizzazione del telefono è disattivata: attivala e imposta di nuovo la sveglia per l’avviso in base alla posizione. Resta attiva la sveglia a orario.</string>
+    <string name="gps_alarm_start_failed">Android non ha consentito di avviare la sveglia GPS per %1$s: resta attiva la sveglia a orario.</string>
+    <string name="gps_alarm_ended_triggered">Sveglia GPS suonata per %1$s: eri entro il raggio scelto.</string>
+    <string name="gps_alarm_ended_cancelled">Sveglia GPS per %1$s disattivata. La sveglia a orario resta impostata.</string>
+    <string name="gps_alarm_ended_expired">Sveglia GPS per %1$s terminata: è scaduto il tempo massimo.</string>
+    <string name="gps_alarm_ended_permission">Sveglia GPS per %1$s interrotta: il permesso posizione non è più concesso.</string>
+    <string name="gps_alarm_ended_unavailable">Sveglia GPS per %1$s interrotta: nessuna fonte di posizione disponibile sul telefono.</string>
+    <string name="gps_alarm_ended_time_alarm">Sveglia GPS per %1$s chiusa: è già suonata la sveglia a orario.</string>
+    <string name="gps_alarm_interrupted">La sveglia GPS per %1$s si è interrotta, per esempio dopo un riavvio del telefono. Riattivala se sei ancora in viaggio.</string>
+    <string name="action_gps_alarm_resume">Riattiva</string>
+    <string name="action_gps_alarm_dismiss">Ignora</string>
+    <string name="action_close">Chiudi</string>
     <string name="stop_alarm_unavailable">Non posso pianificare la sveglia: l’orario previsto della fermata è già passato o non è disponibile.</string>
     <string name="stop_alarm_exact">Sveglia impostata per %1$s, cinque minuti prima dell’orario previsto %2$s.</string>
     <string name="stop_alarm_inexact">Sveglia impostata per %1$s, ma Android può consegnarla in ritardo perché gli allarmi esatti non sono consentiti.</string>

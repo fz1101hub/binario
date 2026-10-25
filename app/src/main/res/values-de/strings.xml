@@ -242,7 +242,7 @@
     <string name="train_number_label">Zug %1$s</string>
     <string name="accessibility_remove_train_monitoring">Zugüberwachung für %1$s entfernen</string>
     <string name="settings_privacy_title">Datenschutz und Daten</string>
-    <string name="settings_privacy_local_data">Strecken, Favoriten, Überwachungen, Warnungen und Widgets verbleiben auf dem Gerät. Android-Backup und -Übertragung sind ausgeschlossen; die JSON-Datei wird nur exportiert, wenn du dies auswählst. Der Standort dient nur zum Sortieren naher Bahnhöfe und wird weder gespeichert noch an Bahnquellen gesendet.</string>
+    <string name="settings_privacy_local_data">Strecken, Favoriten, Überwachungen, Warnungen und Widgets verbleiben auf dem Gerät. Android-Backup und -Übertragung sind ausgeschlossen; die JSON-Datei wird nur exportiert, wenn du dies auswählst. Der Standort dient nur zum Sortieren naher Bahnhöfe und, wenn du den GPS-Wecker aktivierst, um zu erkennen, wann du nahe am Halt bist: Er wird nur im Speicher verarbeitet und weder gespeichert noch an Bahnquellen oder Dritte gesendet.</string>
     <string name="settings_privacy_notifications_voice">Benachrichtigungen sind lokale Erinnerungen. Die Diktierfunktion verwendet die System-Spracherkennung: Binario zeichnet kein Audio auf und verwendet nur den zurückgegebenen Text. RFI-Suchen senden die öffentliche Kennung des Abfahrtsbahnhofs an die Quelle; optionale persönliche Quellen können eine Kennung oder den Namen des Bahnhofs erhalten. Ohne autorisierte Quelle: keine Echtzeitdaten verfügbar. ViaggiaTreno nutzt HTTP für seine öffentliche API: Anfragen zu Bahnhof, Zeit und Zug sind unverschlüsselt. Andere Quellen nutzen HTTPS.</string>
     <string name="settings_privacy_wear">Wenn du die Smartwatch aktivierst, erhält sie eine Streckenzusammenfassung und bis zu zwei Fahrten. Das Deaktivieren der Freigabe löscht bei Eingang des Widerrufs das DataItem und den lokalen Watch-Cache. Die vollständigen Hinweise stehen in PRIVACY.md im Repository. Vor einer öffentlichen Veröffentlichung fehlen eine verifizierte URL und eine Datenschutz-Kontaktmöglichkeit: Es gibt noch keinen öffentlichen Link in der App.</string>
     <string name="settings_privacy_osm">Nationale Autovervollständigung: © OpenStreetMap contributors, ODbL 1.0. Der geografische Katalog schlägt Bahnhofsnamen vor, bestätigt jedoch weder Verkehr, Fahrzeit, Gleis, Verspätung noch Betrieb.</string>
@@ -485,6 +485,49 @@
     </plurals>
     <string name="stop_alarm_permission_required">Um den Wecker am Halt zu erhalten, musst du Binario-Benachrichtigungen erlauben.</string>
     <string name="stop_alarm_completed">Der Halt %1$s liegt bereits zurück.</string>
+    <!-- GPS arrival alarm (October 2026) -->
+    <string name="stop_alarm_dialog_title">Wecker für %1$s</string>
+    <string name="stop_alarm_dialog_time">Der Wecker klingelt etwa fünf Minuten vor der voraussichtlichen Zeit %1$s.</string>
+    <string name="action_set_stop_alarm">Wecker stellen</string>
+    <string name="gps_alarm_option">Auch anhand meines Standorts warnen</string>
+    <string name="gps_alarm_option_description">Klingelt, sobald du im gewählten Umkreis des Halts bist, auch wenn der Zug zu früh oder verspätet ist. Es zählt die Warnung, die zuerst kommt.</string>
+    <string name="gps_alarm_radius_label">Warnradius</string>
+    <plurals name="gps_alarm_radius_km">
+        <item quantity="one">%d km</item>
+        <item quantity="other">%d km</item>
+    </plurals>
+    <string name="gps_alarm_high_speed_hint">Wähle in Hochgeschwindigkeits- und Fernverkehrszügen einen größeren Umkreis: Bei Höchstgeschwindigkeit legt der Zug mehrere Kilometer pro Minute zurück, so bleibt dir Zeit, dich vorzubereiten.</string>
+    <string name="gps_alarm_privacy_rationale">Für diese Warnung fragt Binario nach deinem genauen Standort und nutzt ihn nur, solange der GPS-Wecker aktiv ist, auch bei ausgeschaltetem Bildschirm, mit einer dauerhaften Benachrichtigung, die du jederzeit beenden kannst. Der Standort wird nur im Speicher des Telefons verarbeitet: Er wird weder gespeichert noch protokolliert oder gesendet.</string>
+    <string name="gps_alarm_approximate_note">Wenn du nur den ungefähren Standort erlaubst, aktualisiert Android ihn seltener: Die Warnung nutzt einen größeren Umkreis und kann früher oder später kommen.</string>
+    <string name="gps_alarm_restart_note">Der GPS-Wecker endet von selbst bei der Ankunft und spätestens zwei Stunden nach der voraussichtlichen Zeit. Nach einem Neustart des Telefons startet er nicht von selbst: Aktiviere ihn in der App erneut.</string>
+    <string name="gps_alarm_unavailable_no_coordinates">Standortbasierte Warnung nicht verfügbar: Der Bahnhofskatalog enthält keine Koordinaten für diesen Halt.</string>
+    <plurals name="gps_alarm_unavailable_too_early">
+        <item quantity="one">Die standortbasierte Warnung ist erst ab %d Stunde vor der voraussichtlichen Ankunft verfügbar: Stelle den Wecker später erneut, um sie hinzuzufügen.</item>
+        <item quantity="other">Die standortbasierte Warnung ist erst ab %d Stunden vor der voraussichtlichen Ankunft verfügbar: Stelle den Wecker später erneut, um sie hinzuzufügen.</item>
+    </plurals>
+    <string name="gps_alarm_replaces">Ersetzt den aktiven GPS-Wecker für %1$s.</string>
+    <string name="gps_alarm_active_title">GPS-Wecker aktiv für %1$s</string>
+    <string name="gps_alarm_active_precise">Warnt dich im Umkreis von %1$s um den Halt. Dein Standort bleibt auf dem Telefon.</string>
+    <string name="gps_alarm_active_approximate">Ungefährer Standort: warnt dich im Umkreis von etwa %1$s um den Halt, mit selteneren Aktualisierungen. Dein Standort bleibt auf dem Telefon.</string>
+    <string name="action_gps_alarm_stop">GPS-Wecker ausschalten</string>
+    <string name="gps_alarm_status_channel_name">GPS-Wecker aktiv</string>
+    <string name="gps_alarm_status_channel_description">Dauerhafte Benachrichtigung, solange Binario deinen Standort für einen GPS-Wecker nutzt.</string>
+    <string name="gps_alarm_triggered_title">Gleich am Halt: %1$s</string>
+    <string name="gps_alarm_triggered_text">Zug %1$s nach %2$s: Du bist nahe am Halt, voraussichtlich um %3$s.</string>
+    <string name="gps_alarm_triggered_big_text">Zug %1$s nach %2$s: Du bist im gewählten Umkreis des Halts %3$s, voraussichtlich um %4$s. Beachte immer die offiziellen Anzeigen und Durchsagen.</string>
+    <string name="gps_alarm_permission_denied">Standortberechtigung nicht erteilt: Nur der zeitbasierte Wecker bleibt aktiv. Du kannst sie in den Android-Einstellungen erteilen.</string>
+    <string name="gps_alarm_location_disabled">Die Standortbestimmung des Telefons ist ausgeschaltet: Schalte sie ein und stelle den Wecker für die standortbasierte Warnung erneut. Der zeitbasierte Wecker bleibt aktiv.</string>
+    <string name="gps_alarm_start_failed">Android hat den Start des GPS-Weckers für %1$s nicht erlaubt: Der zeitbasierte Wecker bleibt aktiv.</string>
+    <string name="gps_alarm_ended_triggered">GPS-Wecker für %1$s hat geklingelt: Du warst im gewählten Umkreis.</string>
+    <string name="gps_alarm_ended_cancelled">GPS-Wecker für %1$s ausgeschaltet. Der zeitbasierte Wecker bleibt gestellt.</string>
+    <string name="gps_alarm_ended_expired">GPS-Wecker für %1$s beendet: Die maximale Laufzeit ist abgelaufen.</string>
+    <string name="gps_alarm_ended_permission">GPS-Wecker für %1$s gestoppt: Die Standortberechtigung ist nicht mehr erteilt.</string>
+    <string name="gps_alarm_ended_unavailable">GPS-Wecker für %1$s gestoppt: Auf dem Telefon ist keine Standortquelle verfügbar.</string>
+    <string name="gps_alarm_ended_time_alarm">GPS-Wecker für %1$s beendet: Der zeitbasierte Wecker hat bereits geklingelt.</string>
+    <string name="gps_alarm_interrupted">Der GPS-Wecker für %1$s wurde unterbrochen, zum Beispiel durch einen Neustart des Telefons. Aktiviere ihn erneut, wenn du noch unterwegs bist.</string>
+    <string name="action_gps_alarm_resume">Erneut aktivieren</string>
+    <string name="action_gps_alarm_dismiss">Ignorieren</string>
+    <string name="action_close">Schließen</string>
     <string name="stop_alarm_unavailable">Der Wecker kann nicht geplant werden: Die voraussichtliche Zeit des Halts liegt bereits zurück oder ist nicht verfügbar.</string>
     <string name="stop_alarm_exact">Wecker für %1$s eingestellt, fünf Minuten vor der voraussichtlichen Zeit %2$s.</string>
     <string name="stop_alarm_inexact">Wecker für %1$s eingestellt, aber Android kann ihn verspätet ausliefern, da exakte Wecker nicht erlaubt sind.</string>

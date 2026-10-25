@@ -3,6 +3,11 @@
     xmlns:tools="http://schemas.android.com/tools">
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <!-- GPS arrival alarm: precise location only while its foreground service runs, started from
+         the visible app (while-in-use). There is deliberately no ACCESS_BACKGROUND_LOCATION. -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
@@ -81,6 +86,11 @@
         <receiver
             android:name=".StopAlarmReceiver"
             android:exported="false" />
+
+        <service
+            android:name=".gpsalarm.GpsArrivalAlarmService"
+            android:exported="false"
+            android:foregroundServiceType="location" />
 
         <receiver android:name=".plannedjourney.PlannedJourneyReminderReceiver" android:exported="false" />
         <receiver android:name=".plannedjourney.PlannedJourneyReminderRestoreReceiver" android:exported="true">
