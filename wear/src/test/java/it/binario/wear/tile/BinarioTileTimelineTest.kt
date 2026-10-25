@@ -1,5 +1,6 @@
 package it.binario.wear.tile
 
+import androidx.wear.protolayout.DeviceParametersBuilders
 import androidx.wear.protolayout.LayoutElementBuilders
 import it.binario.wear.ResourceNameStrings
 import it.binario.wear.model.WearConfidence
@@ -14,6 +15,7 @@ import it.binario.wear.model.WearSnapshot
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class BinarioTileTimelineTest {
@@ -64,11 +66,37 @@ class BinarioTileTimelineTest {
         )
     }
 
+    @Test
+    fun `round screens inset the centred column more than square ones`() {
+        val round = binarioTileLayout(null, device(DeviceParametersBuilders.SCREEN_SHAPE_ROUND), ResourceNameStrings) as LayoutElementBuilders.Box
+        val square = binarioTileLayout(null, device(DeviceParametersBuilders.SCREEN_SHAPE_RECT), ResourceNameStrings) as LayoutElementBuilders.Box
+
+        assertTrue(tileInsetFraction(device(DeviceParametersBuilders.SCREEN_SHAPE_ROUND)) > tileInsetFraction(device(DeviceParametersBuilders.SCREEN_SHAPE_RECT)))
+        assertEquals(192f * tileInsetFraction(device(DeviceParametersBuilders.SCREEN_SHAPE_ROUND)), sidePadding(round), 0.001f)
+        assertEquals(192f * tileInsetFraction(device(DeviceParametersBuilders.SCREEN_SHAPE_RECT)), sidePadding(square), 0.001f)
+        assertEquals(LayoutElementBuilders.VERTICAL_ALIGN_CENTER, requireNotNull(round.verticalAlignment).value)
+        column(round).contents.forEach { line ->
+            assertEquals(LayoutElementBuilders.TEXT_ALIGN_CENTER, requireNotNull((line as LayoutElementBuilders.Text).multilineAlignment).value)
+        }
+    }
+
     private fun productionLayout(snapshot: WearSnapshot?): LayoutElementBuilders.LayoutElement =
-        binarioTileLayout(snapshot, ResourceNameStrings)
+        binarioTileLayout(snapshot, device(DeviceParametersBuilders.SCREEN_SHAPE_ROUND), ResourceNameStrings)
+
+    private fun device(shape: Int): DeviceParametersBuilders.DeviceParameters =
+        DeviceParametersBuilders.DeviceParameters.Builder().setScreenWidthDp(192).setScreenHeightDp(192).setScreenShape(shape).build()
+
+    private fun column(box: LayoutElementBuilders.Box): LayoutElementBuilders.Column =
+        box.contents.single() as LayoutElementBuilders.Column
+
+    private fun sidePadding(box: LayoutElementBuilders.Box): Float {
+        val padding = requireNotNull(requireNotNull(box.modifiers).padding)
+        assertEquals(requireNotNull(padding.start).value, requireNotNull(padding.end).value, 0.001f)
+        return requireNotNull(padding.start).value
+    }
 
     private fun texts(element: LayoutElementBuilders.LayoutElement): List<String> =
-        (element as LayoutElementBuilders.Column).contents.map { requireNotNull((it as LayoutElementBuilders.Text).text).value }
+        column(element as LayoutElementBuilders.Box).contents.map { requireNotNull((it as LayoutElementBuilders.Text).text).value }
 
     private val service = WearService(
         number = "RV 2345",
