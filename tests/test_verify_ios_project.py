@@ -358,6 +358,19 @@ class IOSProjectTests(unittest.TestCase):
         self.assertIn('clearKey = "binario_snapshot_clear"', receiver)
         self.assertIn("store.clear()", receiver)
 
+    def test_bundled_schedule_fast_path_validates_the_cache_without_rehashing_it(self) -> None:
+        installer = (IOS / "BinarioKit/Sources/BinarioKit/BundledGTFSScheduleInstaller.swift").read_text(encoding="utf-8")
+        tests = (IOS / "BinarioKit/Tests/BinarioKitTests/SQLiteGTFSJourneyRepositoryTests.swift").read_text(encoding="utf-8")
+        fast_path = installer.split("if let cachedSize", 1)[1].split("return destination", 1)[0]
+        # Every launch used to run pure-Swift SHA-256 over the whole cached database while the
+        # planner stayed disabled; size, digest-named file and SQLite validation are enough.
+        self.assertNotIn("hashFile", installer)
+        self.assertIn("cachedSize == metadata.database.sizeBytes", fast_path)
+        self.assertIn("SQLiteGTFSJourneyRepository.validatesDatabase(", fast_path)
+        self.assertIn("inputFingerprint: metadata.inputs.fingerprintSha256", fast_path)
+        self.assertIn("sha256Hex(database) == metadata.database.sha256", installer)
+        self.assertIn("testBundledInstallerFastPathDoesNotTrustASameSizeCorruptCache", tests)
+
     def test_generated_project_is_not_checked_in(self) -> None:
         self.assertFalse((IOS / "Binario.xcodeproj").exists())
 

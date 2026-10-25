@@ -185,6 +185,39 @@ final class SQLiteGTFSJourneyRepositoryTests: XCTestCase {
         XCTAssertEqual(try Data(contentsOf: replaced), database)
     }
 
+    func testBundledInstallerFastPathDoesNotTrustASameSizeCorruptCache() throws {
+        let fixture = try Fixture()
+        let database = try Data(contentsOf: fixture.url)
+        let compressed = try zlibCompress(database)
+        let temporary = FileManager.default.temporaryDirectory
+            .appendingPathComponent("BinarioGTFSFastPathTests-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: temporary, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: temporary) }
+        let compressedURL = temporary.appendingPathComponent("schedule.sqlite.zlib")
+        let metadataURL = temporary.appendingPathComponent("schedule.metadata.json")
+        let cacheURL = temporary.appendingPathComponent("cache", isDirectory: true)
+        try compressed.write(to: compressedURL)
+        try JSONSerialization.data(
+            withJSONObject: installerMetadata(database: database, compressed: compressed),
+            options: [.sortedKeys]
+        ).write(to: metadataURL)
+        try FileManager.default.createDirectory(at: cacheURL, withIntermediateDirectories: true)
+        // Same name and same size as the genuine cache, but not a valid database: the fast
+        // path must fall through to a verified reinstall instead of serving it.
+        let digest = BundledGTFSScheduleInstaller.sha256Hex(database)
+        let destination = cacheURL.appendingPathComponent("binario-gtfs-\(digest.prefix(16)).sqlite", isDirectory: false)
+        try Data(repeating: 0x5a, count: database.count).write(to: destination)
+
+        let installed = try BundledGTFSScheduleInstaller().install(
+            compressedURL: compressedURL,
+            metadataURL: metadataURL,
+            cacheDirectory: cacheURL
+        )
+
+        XCTAssertEqual(installed, destination)
+        XCTAssertEqual(try Data(contentsOf: installed), database)
+    }
+
     func testBundledInstallerRejectsTamperedCompressedData() throws {
         let fixture = try Fixture()
         let database = try Data(contentsOf: fixture.url)

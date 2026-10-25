@@ -30,8 +30,13 @@ public struct BundledGTFSScheduleInstaller: Sendable {
         let destination = cacheDirectory
             .appendingPathComponent("binario-gtfs-\(metadata.database.sha256.prefix(16)).sqlite", isDirectory: false)
 
-        if FileManager.default.fileExists(atPath: destination.path),
-           try Self.hashFile(destination, maximumBytes: Self.maximumDatabaseBytes) == metadata.database.sha256,
+        // Fast path: the cache name carries the digest prefix, the size must match the
+        // metadata and the database must still validate (schema, quick_check, fingerprint).
+        // Re-hashing the whole database with pure-Swift SHA-256 on every launch kept the
+        // planner disabled for seconds on older iPhones; the full digest is verified below
+        // whenever the cache is written.
+        if let cachedSize = try? destination.resourceValues(forKeys: [.fileSizeKey]).fileSize,
+           cachedSize == metadata.database.sizeBytes,
            SQLiteGTFSJourneyRepository.validatesDatabase(
                at: destination,
                inputFingerprint: metadata.inputs.fingerprintSha256
@@ -155,10 +160,6 @@ public struct BundledGTFSScheduleInstaller: Sendable {
             throw BundledGTFSScheduleError.decompressionFailed
         }
         return output
-    }
-
-    private static func hashFile(_ url: URL, maximumBytes: Int) throws -> String {
-        sha256Hex(try readBounded(url, maximumBytes: maximumBytes, expectedBytes: nil))
     }
 
     private static func isSHA256(_ value: String) -> Bool {
