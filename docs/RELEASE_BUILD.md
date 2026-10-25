@@ -12,6 +12,7 @@ La build release non richiede né cerca chiavi nel repository. In assenza della 
 ./gradlew --no-daemon :app:assembleRelease :wear:assembleRelease \
   :app:bundleRelease :wear:bundleRelease \
   :app:lintVitalRelease :wear:lintVitalRelease \
+  :app:lintRelease :wear:lintRelease \
   --dependency-verification=strict
 python3 tools/verify_android_app_bundles.py
 ```

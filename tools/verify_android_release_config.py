@@ -86,6 +86,8 @@ def verify(read_file=read) -> None:
         ":wear:bundleRelease",
         ":app:lintVitalRelease",
         ":wear:lintVitalRelease",
+        ":app:lintRelease",
+        ":wear:lintRelease",
         "python3 -m unittest tests.test_wear_compose_gradle_dependency_suppressions",
     )
 

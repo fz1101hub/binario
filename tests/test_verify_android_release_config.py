@@ -38,6 +38,15 @@ class VerifyAndroidReleaseConfigTest(unittest.TestCase):
         with self.assertRaisesRegex(AssertionError, "test_wear_compose_gradle_dependency_suppressions"):
             POLICY.verify(without_test)
 
+    def test_ci_must_lint_both_release_variants(self) -> None:
+        without_wear_lint = replacing(
+            ".github/workflows/android-ci.yml",
+            "          :app:lintRelease :wear:lintRelease\n",
+            "          :app:lintRelease\n",
+        )
+        with self.assertRaisesRegex(AssertionError, ":wear:lintRelease"):
+            POLICY.verify(without_wear_lint)
+
 
 if __name__ == "__main__":
     unittest.main()

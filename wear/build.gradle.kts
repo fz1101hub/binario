@@ -67,6 +67,10 @@ android {
         abortOnError = true
         warningsAsErrors = true
         checkReleaseBuilds = true
+        // Newer remote lint flags targetSdk 36 as old while this pinned AGP/SDK
+        // toolchain is on API 36. Revisit with a tested API 37 migration; do not
+        // silently change the target or disable other security/correctness checks.
+        disable += "OldTargetApi"
     }
 
     sourceSets {

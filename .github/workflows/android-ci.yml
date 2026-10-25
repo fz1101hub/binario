@@ -116,6 +116,7 @@ jobs:
           :app:assembleRelease :wear:assembleRelease
           :app:bundleRelease :wear:bundleRelease
           :app:lintVitalRelease :wear:lintVitalRelease
+          :app:lintRelease :wear:lintRelease
 
       - name: Verify unsigned Google Play bundles
         run: python3 tools/verify_android_app_bundles.py

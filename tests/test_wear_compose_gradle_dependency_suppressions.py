@@ -23,13 +23,16 @@ REQUIRED_RATIONALE = "AGP >= 9.1 and compileSdk >= 37"
 
 class WearComposeGradleDependencySuppressionsTest(unittest.TestCase):
     def test_android_target_api_exception_is_narrow_and_lint_remains_strict(self) -> None:
-        source = APP_BUILD.read_text(encoding="utf-8")
-        self.assertIn('compileSdk = 36', source)
-        self.assertIn('targetSdk = 36', source)
-        self.assertIn('warningsAsErrors = true', source)
-        self.assertIn('abortOnError = true', source)
-        self.assertEqual(1, source.count('disable += "OldTargetApi"'))
-        self.assertIn('Revisit with a tested API 37 migration', source)
+        for build_file in (APP_BUILD, WEAR_BUILD):
+            with self.subTest(module=build_file.parent.name):
+                source = build_file.read_text(encoding="utf-8")
+                self.assertIn('compileSdk = 36', source)
+                self.assertIn('targetSdk = 36', source)
+                self.assertIn('warningsAsErrors = true', source)
+                self.assertIn('abortOnError = true', source)
+                self.assertIn('checkReleaseBuilds = true', source)
+                self.assertEqual(1, source.count('disable += "OldTargetApi"'))
+                self.assertIn('Revisit with a tested API 37 migration', source)
 
     def test_only_toolchain_pinned_wear_compose_dependencies_are_suppressed(self) -> None:
         gradle_files = [
