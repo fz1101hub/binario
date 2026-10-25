@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import importlib.util
+import re
 import unittest
 from pathlib import Path
 
@@ -39,10 +40,12 @@ class VerifyAndroidReleaseConfigTest(unittest.TestCase):
             POLICY.verify(without_test)
 
     def test_wear_version_code_is_derived_from_the_phone_code_in_a_disjoint_range(self) -> None:
+        # Read the current line instead of hard-coding the number: every release bumps it.
+        current = re.search(r"^BINARIO_APP_VERSION_CODE=\d+\n", POLICY.read("gradle.properties"), re.MULTILINE).group(0)
         stale_wear_property = replacing(
             "gradle.properties",
-            "BINARIO_APP_VERSION_CODE=35\n",
-            "BINARIO_APP_VERSION_CODE=35\nBINARIO_WEAR_VERSION_CODE=35\n",
+            current,
+            current + current.replace("BINARIO_APP_", "BINARIO_WEAR_"),
         )
         with self.assertRaisesRegex(AssertionError, "BINARIO_WEAR_VERSION_CODE"):
             POLICY.verify(stale_wear_property)
@@ -57,7 +60,7 @@ class VerifyAndroidReleaseConfigTest(unittest.TestCase):
 
         phone_code_inside_wear_range = replacing(
             "gradle.properties",
-            "BINARIO_APP_VERSION_CODE=35\n",
+            current,
             f"BINARIO_APP_VERSION_CODE={POLICY.WEAR_VERSION_CODE_OFFSET}\n",
         )
         with self.assertRaisesRegex(AssertionError, "below the Wear range"):
