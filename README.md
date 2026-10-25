@@ -1,5 +1,9 @@
 # Binario — app, widget e companion smartwatch
 
+## Binario 2.0 — proposta UI/UX (branch di design)
+
+Il design system verde ispirato a un riferimento cromatico fornito dall'utente è documentato in [design/BINARIO_2_DESIGN_SYSTEM.md](design/BINARIO_2_DESIGN_SYSTEM.md). La [specifica Alexa Echo Show](voice-bridge/docs/ECHO_SHOW_APL_UI_SPEC.md) e il [prototipo interattivo offline per i display Echo](design/binario-echo-preview.html) sono **concept**, non feature live o una skill APL pubblicata. La prima parte implementata aggiorna palette Android, widget, accenti Wear OS/watchOS, Voice Bridge e gerarchia dei dati nella UI Android. Le altre schermate/layout della roadmap restano da sviluppare e testare.
+
 **Binario** è un’app Android originale per seguire le proprie tratte ferroviarie in tutta Italia. La home è un pianificatore di viaggio con modalità **Viaggio**, **Treno** e **Stazione**, partenza, arrivo, inversione, opzione andata/ritorno, data e ora selezionabili, filtri, ricerche recenti e preferite. Le soluzioni e il tabellone della tratta attiva sono superfici successive nella sezione Consulta; il widget home è un tabellone ridimensionabile, configurabile per istanza. È possibile salvare tratte e monitorare localmente un numero treno; alert reali restano disabilitati senza fonte autorizzata. L’app espone operatore, categoria, orari, ritardi, binari e fermate. La tratta dimostrativa iniziale è **Roma Termini – Torino Porta Nuova** e le corse sono ordinate in modo neutrale per orario previsto.
 
 > **Stato dei dati:** la versione 0.16.3 include un catalogo dimostrativo locale multi-operatore. L’interfaccia, la cache, l’app e il widget sono funzionanti, ma gli orari e i ritardi non sono ancora live. L’app lo dichiara esplicitamente con l’etichetta **“catalogo dimostrativo locale — non live”**. Per uso ferroviario reale, configurare un provider documentato e autorizzato dietro `TrainDataSource` o un gateway personale.
