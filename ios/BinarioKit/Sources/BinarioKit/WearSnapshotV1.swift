@@ -308,6 +308,9 @@ public enum WatchSyncStatus: Equatable, Sendable {
     case contextUpdated
     case cleared
     case unsupported
+    /// The iPhone has no paired Apple Watch with the Binario app: nothing can be delivered,
+    /// which is a neutral state, not a failure.
+    case notPaired
     case failed
 }
 
@@ -363,6 +366,9 @@ public struct WatchSyncStateMachine: Sendable {
 public protocol WatchSnapshotSession: AnyObject {
     var isSupported: Bool { get }
     var activationState: WatchSessionActivationState { get }
+    /// Meaningful only once the session is activated, like WCSession.isPaired.
+    var isPaired: Bool { get }
+    var isWatchAppInstalled: Bool { get }
     var activationHandler: (@MainActor (WatchSessionActivationState) -> Void)? { get set }
     func activate()
     func updateApplicationContext(_ context: [String: Data]) throws
@@ -462,6 +468,15 @@ public final class WatchSnapshotPublisher {
         case .activate:
             session.activate()
         case let .publish(operation):
+            // Publish directives are only issued once activated, where the pairing state is
+            // valid. Without a paired Watch carrying the app, updateApplicationContext throws
+            // on every launch: keep the operation for a later activation and report the
+            // neutral state instead of a failure.
+            guard session.isPaired, session.isWatchAppInstalled else {
+                stateMachine.publicationFailed(operation)
+                status = .notPaired
+                return
+            }
             do {
                 switch operation {
                 case let .snapshot(data):

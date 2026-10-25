@@ -231,6 +231,11 @@ final class AppModel: ObservableObject {
         }
     }
 
+    /// What Settings shows: a switched-off toggle reads as off, whatever the session reports.
+    var displayedWatchSyncStatus: WatchSyncStatus {
+        watchSharingEnabled ? watchSyncStatus : .disabled
+    }
+
     func setWatchSharingEnabled(_ enabled: Bool) {
         guard watchSharingEnabled != enabled else { return }
         watchSharingStore.save(enabled)
@@ -474,6 +479,7 @@ extension WatchSyncStatus {
         case .contextUpdated: "watch.status.context_updated"
         case .cleared: "watch.status.cleared"
         case .unsupported: "watch.status.unsupported"
+        case .notPaired: "watch.status.not_paired"
         case .failed: "watch.status.failed"
         }
     }

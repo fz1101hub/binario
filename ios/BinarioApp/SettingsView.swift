@@ -55,7 +55,7 @@ struct SettingsView: View {
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                 LabeledContent("settings.privacy.watch_status") {
-                    Text(LocalizedStringKey(model.watchSyncStatus.localizationKey))
+                    Text(LocalizedStringKey(model.displayedWatchSyncStatus.localizationKey))
                         .multilineTextAlignment(.trailing)
                 }
             }

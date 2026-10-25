@@ -77,4 +77,5 @@
 "watch.status.context_updated" = "Contesto aggiornato; consegna non verificata";
 "watch.status.cleared" = "Cancellazione richiesta; consegna non verificata";
 "watch.status.unsupported" = "Watch Connectivity non supportato";
+"watch.status.not_paired" = "Nessun Apple Watch abbinato con l’app Binario";
 "watch.status.failed" = "Aggiornamento non riuscito";

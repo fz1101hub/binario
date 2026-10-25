@@ -77,4 +77,5 @@
 "watch.status.context_updated" = "Contexte mis à jour ; livraison non vérifiée";
 "watch.status.cleared" = "Effacement demandé ; livraison non vérifiée";
 "watch.status.unsupported" = "Watch Connectivity non pris en charge";
+"watch.status.not_paired" = "Aucune Apple Watch jumelée avec l’app Binario";
 "watch.status.failed" = "Échec de la mise à jour";

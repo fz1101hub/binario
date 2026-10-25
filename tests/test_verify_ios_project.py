@@ -131,6 +131,25 @@ class IOSProjectTests(unittest.TestCase):
             self.assertIn(f"case .{state}: return .{state}", adapter)
         self.assertIn("@unknown default: return .failed", adapter)
 
+    def test_unpaired_iphone_reports_a_neutral_watch_status_and_off_reads_as_off(self) -> None:
+        adapter = (IOS / "BinarioApp/WCSessionAdapter.swift").read_text(encoding="utf-8")
+        snapshot = (IOS / "BinarioKit/Sources/BinarioKit/WearSnapshotV1.swift").read_text(encoding="utf-8")
+        model = (IOS / "BinarioApp/AppModel.swift").read_text(encoding="utf-8")
+        settings = (IOS / "BinarioApp/SettingsView.swift").read_text(encoding="utf-8")
+        # An iPhone without a paired Watch used to show "Aggiornamento non riuscito" under a
+        # toggle that was off; the pairing state is checked before any context is sent.
+        self.assertIn("isSupported && session.isPaired", adapter)
+        self.assertIn("isSupported && session.isWatchAppInstalled", adapter)
+        self.assertIn("var isPaired: Bool { get }", snapshot)
+        self.assertIn("guard session.isPaired, session.isWatchAppInstalled else {", snapshot.split("case let .publish(operation):", 1)[1])
+        self.assertIn("case notPaired", snapshot)
+        self.assertIn('case .notPaired: "watch.status.not_paired"', model)
+        self.assertIn("watchSharingEnabled ? watchSyncStatus : .disabled", model)
+        self.assertIn("model.displayedWatchSyncStatus.localizationKey", settings)
+        self.assertNotIn("model.watchSyncStatus.localizationKey", settings)
+        self.assertIn("testUnpairedIPhoneReadsOffWhenSharingIsOffAndNotPairedWhenOn", (IOS / "BinarioAppTests/BinarioAppTests.swift").read_text(encoding="utf-8"))
+        self.assertIn("testUnpairedPhoneReportsNotPairedAndKeepsTheOperationPending", (IOS / "BinarioKit/Tests/BinarioKitTests/WearSnapshotV1Tests.swift").read_text(encoding="utf-8"))
+
     def test_generated_targets_explicitly_support_phone_and_watch_simulators(self) -> None:
         platforms = {
             "Binario": ("iOS", "iphoneos", "iphoneos iphonesimulator"),
@@ -259,7 +278,7 @@ class IOSProjectTests(unittest.TestCase):
             "settings.about.version_unavailable",
             "watch.status.disabled", "watch.status.activating", "watch.status.pending",
             "watch.status.context_updated", "watch.status.cleared",
-            "watch.status.unsupported", "watch.status.failed",
+            "watch.status.unsupported", "watch.status.not_paired", "watch.status.failed",
         }
         self.assertEqual(set(), canonical - used - intentionally_dynamic)
 

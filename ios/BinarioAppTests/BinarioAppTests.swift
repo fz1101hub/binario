@@ -57,6 +57,23 @@ final class BinarioAppTests: XCTestCase {
         XCTAssertFalse(relaunched.watchSharingEnabled)
     }
 
+    func testUnpairedIPhoneReadsOffWhenSharingIsOffAndNotPairedWhenOn() throws {
+        let defaults = try makeDefaults()
+        defer { clear(defaults) }
+        let session = FakeAppSession()
+        session.isPaired = false
+        let model = makeModel(defaults: defaults, publisher: WatchSnapshotPublisher(session: session))
+        session.completeActivation(.activated)
+
+        // No Watch: the clear is held back and the row reads as off, never as a failure.
+        XCTAssertTrue(session.contexts.isEmpty)
+        XCTAssertEqual(model.watchSyncStatus, .notPaired)
+        XCTAssertEqual(model.displayedWatchSyncStatus, .disabled)
+
+        model.setWatchSharingEnabled(true)
+        XCTAssertEqual(model.displayedWatchSyncStatus, .notPaired)
+    }
+
     func testDisabledSharingReplacesPendingRouteWithClearSignal() async throws {
         let defaults = try makeDefaults()
         defer { clear(defaults) }
@@ -491,6 +508,8 @@ private actor ControlledJourneyRepository: JourneyRepository {
 @MainActor
 private final class FakeAppSession: WatchSnapshotSession {
     var isSupported = true
+    var isPaired = true
+    var isWatchAppInstalled = true
     private(set) var activationState: WatchSessionActivationState = .notActivated
     var activationHandler: (@MainActor (WatchSessionActivationState) -> Void)?
     var contexts: [[String: Data]] = []

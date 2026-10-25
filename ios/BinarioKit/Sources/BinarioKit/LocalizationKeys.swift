@@ -30,7 +30,7 @@ public enum BinarioLocalizationKeys {
         "watch.source.unavailable", "watch.notice.unavailable", "watch.notice.programmed",
         "watch.status.disabled", "watch.status.activating", "watch.status.pending",
         "watch.status.context_updated", "watch.status.cleared",
-        "watch.status.unsupported", "watch.status.failed",
+        "watch.status.unsupported", "watch.status.not_paired", "watch.status.failed",
         "accessibility.station_suggestions", "accessibility.selected_station",
         "accessibility.swap_route", "accessibility.saved_route", "accessibility.delete_route"
     ]

@@ -14,6 +14,14 @@ final class WCSessionAdapter: NSObject, WatchSnapshotSession, WCSessionDelegate 
         WCSession.isSupported()
     }
 
+    var isPaired: Bool {
+        isSupported && session.isPaired
+    }
+
+    var isWatchAppInstalled: Bool {
+        isSupported && session.isWatchAppInstalled
+    }
+
     var activationState: WatchSessionActivationState {
         guard isSupported else { return .unsupported }
         switch session.activationState {

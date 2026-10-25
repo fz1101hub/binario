@@ -121,6 +121,22 @@ final class WearSnapshotV1Tests: XCTestCase {
         XCTAssertEqual(publisher.status, .cleared)
     }
 
+    func testUnpairedPhoneReportsNotPairedAndKeepsTheOperationPending() throws {
+        let session = FakeSession(activationState: .activated)
+        session.isPaired = false
+        let publisher = WatchSnapshotPublisher(session: session)
+        publisher.bootstrap()
+
+        XCTAssertNoThrow(try publisher.publish(operationalFixture(), nowEpochMillis: now))
+
+        XCTAssertEqual(publisher.status, .notPaired)
+        XCTAssertTrue(session.contexts.isEmpty)
+        session.isPaired = true
+        session.completeActivation(.activated)
+        XCTAssertEqual(session.contexts.count, 1)
+        XCTAssertEqual(publisher.status, .contextUpdated)
+    }
+
     func testClearSignalReplacesPendingSnapshotOutsideV1JSONContract() throws {
         let session = FakeSession()
         let publisher = WatchSnapshotPublisher(session: session)
@@ -235,6 +251,8 @@ private enum TestError: Error {
 @MainActor
 private final class FakeSession: WatchSnapshotSession {
     let isSupported: Bool
+    var isPaired = true
+    var isWatchAppInstalled = true
     private(set) var activationState: WatchSessionActivationState
     var activationHandler: (@MainActor (WatchSessionActivationState) -> Void)?
     var activationCount = 0
