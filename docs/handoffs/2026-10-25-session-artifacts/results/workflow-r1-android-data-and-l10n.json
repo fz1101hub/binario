@@ -1,0 +1,630 @@
+{
+ "workflow_run": "wf_7bd0a268-c51",
+ "entries": [
+  {
+   "key": "v2:fefb38f13cfd23bb226fae2d0fa30a206b3ee2bb21f2c79e48a482f67dcd2a9b",
+   "result": {
+    "branch": "fix/r1-android-l10n",
+    "worktree": "/tmp/claude-0/-home-user-binario/ec2338fa-afae-5418-81d9-da7d3b962a13/scratchpad/fix/wt-android-l10n",
+    "commits": [
+     {
+      "sha": "ba58f3a",
+      "subject": "fix(android): localize the update-time label and reach the provider fallback",
+      "items": [
+       "LOC-11",
+       "E2E-12",
+       "AND-NEW-6",
+       "PU-6"
+      ]
+     },
+     {
+      "sha": "b2e78b3",
+      "subject": "fix(android): show the quality band and score again and warn about conflicting sources",
+      "items": [
+       "LOC-14",
+       "AND-NEW-5"
+      ]
+     },
+     {
+      "sha": "9fb6542",
+      "subject": "fix(android): render the home-screen widget in the app language",
+      "items": [
+       "LOC-11",
+       "E2E-12",
+       "PU-6",
+       "VT-12",
+       "AND-NEW-6"
+      ]
+     },
+     {
+      "sha": "6618865",
+      "subject": "fix(wear): send the watch status, category and notice in the phone language",
+      "items": [
+       "LOC-11",
+       "E2E-12",
+       "PU-6",
+       "VT-12"
+      ]
+     },
+     {
+      "sha": "658dacf",
+      "subject": "fix(android): do not offer commuter alerts while no route is selected",
+      "items": [
+       "E2E-12"
+      ]
+     }
+    ],
+    "items": [
+     {
+      "id": "LOC-11",
+      "outcome": "fixed",
+      "what_changed": "HEAD still had every residual: RouteSnapshotCache.lastProvider() returned the literal \"Nessun provider\" (so the localized provider_unavailable fallback in MainActivity was unreachable), accessibleUpdateTime() in app/src/main/java/it/binario/app/data/TrainDataSource.kt built \"aggiornato alle HH:mm\"/\"mai aggiornato\", RouteWidgetProvider.kt carried ~30 Italian literals (meta labels, status column, TalkBack, direction/target via Direction.label/WidgetTargetType.label, persisted failure text) and AndroidWearSnapshotContract.kt sent Italian enum labels plus \"Programmato\", \"dati non disponibili in tempo reale\", \"Non disponibile\". Fixes: lastProvider() now returns String? (null when nothing cached) and TrainViewModel.currentProviderLabel() falls through to the UI fallback; the update time is a UiMessage (UPDATE_TIME_AT/UPDATE_TIME_NEVER, new keys update_time_at/update_time_never in all 5 catalogues) rendered with .localized() in Compose and .resolve(resources) in the widget; new EnumLabelResources.kt holds the shared enum→R.string table (MainActivity's localizedLabel() helpers now delegate to it); new widget/WidgetStrings.kt (TrainShareStrings pattern) is resolved once per render and drives compactMeta, accessibleDataSummary, statusLabel/displayStatus, row TalkBack, direction and target labels (37 new widget_*/snapshot_warning_* keys in 5 languages); widget state persists the TrainCategory enum name (legacy Italian label mapped back) and the failure as UiMessage key + ISO arguments (legacy free text dropped for the generic label); the Wear encoder takes a WearSnapshotStrings catalogue resolved from resources by WearSnapshotPublisher (confidence, category, status, scheduled badge, data_status_unavailable notice, new wear_payload_value_unavailable). Voice feedback (E2E-12/AND-NEW-6) was already localized at HEAD (PlannerVoiceFeedbackResources.kt) — no change. Removed now-unused Direction.label and WidgetTargetType.label.",
+      "tests": "UpdateTimeMessageTest (key + Europe/Rome time; never-updated), WidgetStateMetadataTest rewritten (Italian and English catalogues: compact meta, TalkBack data summary, row TalkBack), WidgetChangeHighlightTest adjusted to the new displayStatus(service, confidence, strings) signature with an English expectation (SCHED.), new WidgetFailureCodecTest (round trip with LocalDate/LocalTime args; legacy Italian text → null), AndroidWearSnapshotContractTest: golden test now builds the catalogue from the real values/strings.xml and still matches the v1 fixture, new test builds it from values-en and asserts Delayed/On time/Scheduled/Operator primary source/Live data unavailable/Not available. Without the fix every new test fails (the new APIs do not exist; the old code produced the Italian texts the English assertions reject). The existing widget tests that pinned Italian literals had their expectations changed in the same commit (9fb6542). The widget/Wear resource-resolution glue (WidgetStrings.from(context), WearSnapshotStrings.from(resources), RemoteViews rendering) is static only.",
+      "reason_if_not_fixed": ""
+     },
+     {
+      "id": "LOC-14",
+      "outcome": "fixed",
+      "what_changed": "HEAD still had the regression: TrainViewModel.currentQualityBand()/currentQualityScore() were dead and the status line/detail screen showed only the confidence. MainActivity now renders \"<band> · <score>/100 · <confidence>\" through a TrainViewModel.localizedQualityLabel() composable with new quality_band_* keys (6) and quality_band_score in 5 languages, used by both DataStatusLine and the detail/share header (the old currentConfidenceLabel() format). AND-NEW-5's conflict warning: RouteSnapshot.advisoryMessage() now returns the new ROUTE_SOURCE_CONFLICT UiMessage (key route_source_conflict, 5 languages) when SnapshotWarning.SOURCE_CONFLICT is among the quality warnings, with the coverage-fallback caveat keeping priority; the fallback caveat and the GTFS-expiry message were already shown at HEAD via advisoryMessage()/RouteFailureReason.uiMessage() (upstream e70941e). Dead helpers removed: RouteSnapshotCache.lastConfidence() and the last_confidence write (Italian label persisted for nothing), TrainService.accessibleSummary, CommuterAlert.accessibleSummary, MobilityPreferences.accessibleSummary, StationMonitor.accessibleSummary and the Italian enum labels that only fed them (AlertRepeat.label, StationMonitorMode.label); unused Instant/DateTimeFormatter imports in TrainDataSource.kt. Docs: README (snapshots expose the quality score; widget exposes quality score) and CHANGELOG (widget/Wear texts resolved at the UI boundary, no Italian copy in persisted state) are true again after these commits, so no doc text needed changing; a scan of values-en for Italian leftovers found none and the finding named no specific mistranslation.",
+      "tests": "RouteFailureMessageTest gained a test for advisoryMessage(): null without warnings, ROUTE_SOURCE_CONFLICT with a conflict, ROUTE_COVERAGE_FALLBACK winning when both apply (fails without the fix: the key does not exist and the old function returned null for conflicts). AndroidStringResourceParityTest allowlist extended with quality_band_score (format-only). The Compose status-line rendering itself is static only (no Compose runtime in the harness).",
+      "reason_if_not_fixed": ""
+     },
+     {
+      "id": "E2E-12",
+      "outcome": "fixed",
+      "what_changed": "Covered by the LOC-11 commits for widget, watch payload, update time and provider fallback; voice feedback was already localized at HEAD. The commuter-alert label: unconfiguredRoute() has empty station names since PR#34, so an alert created before choosing a route stored and announced \" → \". CommuterAlertsPanel now takes canAdd = viewModel.hasActiveRoute, disables the create button and shows the new commuter_alerts_route_required hint (5 languages); TrainViewModel.createCommuterAlert() returns null for the placeholder route (covers a composer restored across process death) and MainActivity reports the same hint as feedback.",
+      "tests": "static only for the alert guard (Compose + AndroidViewModel need an Application; no Robolectric here). The localization parts share the tests listed under LOC-11.",
+      "reason_if_not_fixed": ""
+     },
+     {
+      "id": "PU-6",
+      "outcome": "fixed",
+      "what_changed": "Widget meta, failure text, direction/target labels and TalkBack text come from WidgetStrings (resources) at render time; persisted widget data is language-neutral (TrainCategory enum name instead of the Italian label, failure stored as UiMessage key + ISO arguments instead of the data layer's Italian diagnostic; the ViewModel and WidgetRefreshWorker now pass result.reason.uiMessage()); the Wear status/category/notice are localized by the publisher; the unreachable localized provider fallback is reachable (lastProvider() nullable, publishUnavailable(provider: String?) → localized \"not available\").",
+      "tests": "WidgetStateMetadataTest, WidgetChangeHighlightTest, WidgetFailureCodecTest, AndroidWearSnapshotContractTest (see LOC-11).",
+      "reason_if_not_fixed": ""
+     },
+     {
+      "id": "VT-12",
+      "outcome": "fixed",
+      "what_changed": "Widget and Wear payload texts are rendered from string resources in the phone language (see LOC-11); the tests no longer pin Italian literals: they feed Italian and English catalogues and assert the output follows the catalogue, and the Wear golden test derives its catalogue from the real Italian strings.xml so the fixture match now certifies the resources rather than enum constants.",
+      "tests": "WidgetStateMetadataTest (3 tests), WidgetChangeHighlightTest (English SCHED. expectation), AndroidWearSnapshotContractTest (golden from values/strings.xml; English payload texts).",
+      "reason_if_not_fixed": ""
+     },
+     {
+      "id": "AND-NEW-6",
+      "outcome": "fixed",
+      "what_changed": "Update-time label, provider default, widget direction/status/target/failure texts follow the device language (commits ba58f3a and 9fb6542); voice feedback was already fixed at HEAD: PlannerVoiceFeedback.resolve(resources) in PlannerVoiceFeedbackResources.kt resolves every outcome from voice_feedback_* resources.",
+      "tests": "UpdateTimeMessageTest, widget tests (see LOC-11).",
+      "reason_if_not_fixed": ""
+     },
+     {
+      "id": "AND-NEW-5",
+      "outcome": "fixed",
+      "what_changed": "Quality band and score are shown again in the home status line and detail/share header; a localized source-conflict advisory is shown for reconciled results; fallback caveat and expired-timetable message were already shown at HEAD (ROUTE_COVERAGE_FALLBACK advisory and ROUTE_SCHEDULE_EXPIRED failure reason) — evidence: TrainViewModel.refresh() sets refreshMessage = result.snapshot.advisoryMessage() / result.reason.uiMessage() and DataStatusLine/TodayEmptyState render it.",
+      "tests": "RouteFailureMessageTest advisory test; status-line composition static only.",
+      "reason_if_not_fixed": ""
+     }
+    ],
+    "verification": "REPO=$PWD /tmp/claude-0/-home-user-binario/ec2338fa-afae-5418-81d9-da7d3b962a13/scratchpad/kt/android-check.sh all → ui compile rc=0 errors=0; app tests compile rc=0 errors=0; app tests rc=0 run=547 fail=0 ignored=0 classes=101 (base: 539/99); wear compile rc=0 errors=0; wear tests compile rc=0 errors=0; wear tests rc=0 run=13 fail=0 ignored=0 classes=4; all: app rc=0 wear rc=0. python3 -m unittest discover -s tests → Ran 143 tests, OK. All five strings.xml parse with xml.dom.minidom; AndroidStringResourceParityTest (key/placeholder/attribute parity it/en/de/fr/es) passes. git status in the worktree is clean; /home/user/binario is untouched (branch claude/git-repo-audit-cdcsm6 at 041bc70, clean).",
+    "concerns": "1) Static-only parts: Compose rendering of the quality label and the disabled alert button, WidgetStrings.from(context)/WearSnapshotStrings.from(resources) glue, RemoteViews rendering and the ViewModel guard cannot run in the harness (no Compose/Robolectric runtime). 2) \\\"Fails without the fix\\\" evidence is compile-level for the new tests (they exercise new API) plus the semantic fact that the old code produced the Italian texts the English assertions reject; the pre-existing widget tests that pinned Italian literals had their expectations changed in commit 9fb6542 (same commit as the fix, as required). 3) Out of scope but still Italian: RailOperator labels (OTHER = \\\"Altro operatore\\\"/\\\"Altro\\\", RHB = \\\"Ferrovia Retica\\\") are used as proper names in the widget row and the Wear service{n}Operator field; the operational payload's `notice` is still the data layer's Italian snapshot.notice (the v1 golden fixture pins it and SnapshotQualityAssessor sniffs its Italian wording), so localizing it is a data-layer change beyond this package. 4) Behaviour change for legacy widget state: a failure text persisted by earlier versions no longer appears (generic \\\"data unavailable\\\" label until the next refresh); legacy Italian category labels are mapped back to the enum, unknown ones become TrainCategory.OTHER. 5) Public signatures changed inside the app module: WidgetService.category is TrainCategory, WidgetState.compactMeta/accessibleDataSummary and WidgetChangeHighlight.displayStatus take WidgetStrings, WidgetStateStore.markUnavailable/lastFailure use UiMessage, RouteWidgetProvider.markMatchingRouteDirectionUnavailable takes UiMessage, AndroidWearSnapshotContract.operational/unavailable take WearSnapshotStrings, WearSnapshotPublisher.publishUnavailable takes String?, RouteSnapshotCache.lastProvider() is nullable, TrainViewModel.createCommuterAlert() is nullable; enum properties Direction.label, WidgetTargetType.label, AlertRepeat.label, StationMonitorMode.label were removed (no remaining references in app or wear). 6) The parity test allowlist grew by format-only or universally identical keys (quality_band_score, widget_status_on_time \\\"OK\\\", widget_status_delayed \\\"+%1$d\\\", widget_status_demo/widget_confidence_demonstration/widget_warning_demonstration \\\"DEMO\\\", widget_quality_score \\\"Q%1$d\\\", widget_confidence_open_data (en), widget_confidence_cached). 7) Translations are mine; a native check of the de/fr/es compact widget abbreviations (AUSF., SUPPR., GEPL., PROGR., CANC.) and of the new TalkBack sentences is advisable. 8) LOC-14's \\\"stale docs\\\" and \\\"translation-quality slips\\\" named nothing concrete; after the fixes the README/CHANGELOG claims hold and a scan of values-en found no Italian leftovers, so no doc or translation text was changed for that part."
+   }
+  },
+  {
+   "key": "v2:fefb38f13cfd23bb226fae2d0fa30a206b3ee2bb21f2c79e48a482f67dcd2a9b",
+   "result": {
+    "branch": "fix/r1-android-l10n",
+    "worktree": "/tmp/claude-0/-home-user-binario/ec2338fa-afae-5418-81d9-da7d3b962a13/scratchpad/fix/wt-android-l10n",
+    "commits": [
+     {
+      "sha": "ba58f3ab00e778572677c3514d446f8500492b0a",
+      "subject": "fix(android): localize the update-time label and reach the provider fallback",
+      "items": [
+       "LOC-11",
+       "E2E-12",
+       "PU-6",
+       "AND-NEW-6"
+      ]
+     },
+     {
+      "sha": "9fb65422546383b517a9942d3a207b3ac615106a",
+      "subject": "fix(android): render the home-screen widget in the app language",
+      "items": [
+       "LOC-11",
+       "E2E-12",
+       "PU-6",
+       "VT-12",
+       "AND-NEW-6"
+      ]
+     },
+     {
+      "sha": "66188658d5712aeb21e51e2f0ee7b9381441569f",
+      "subject": "fix(wear): send the watch status, category and notice in the phone language",
+      "items": [
+       "LOC-11",
+       "E2E-12",
+       "PU-6",
+       "VT-12"
+      ]
+     },
+     {
+      "sha": "b2e78b33ba78bb434a08c6a6ce44c978545979ff",
+      "subject": "fix(android): show the quality band and score again and warn about conflicting sources",
+      "items": [
+       "LOC-14",
+       "AND-NEW-5"
+      ]
+     },
+     {
+      "sha": "658dacf30de12c8efe49a0366078c3c822af0373",
+      "subject": "fix(android): do not offer commuter alerts while no route is selected",
+      "items": [
+       "E2E-12"
+      ]
+     },
+     {
+      "sha": "890edea",
+      "subject": "fix(android): drop the Italian enum labels nothing reads any more",
+      "items": [
+       "LOC-14"
+      ]
+     }
+    ],
+    "items": [
+     {
+      "id": "LOC-11",
+      "outcome": "fixed",
+      "what_changed": "Worktree already held five commits from an interrupted run; I re-verified them (suites green at HEAD 658dacf before touching anything) and reviewed every diff. (1) ba58f3a: the 'aggiornato alle HH:mm' / 'mai aggiornato' text (home status line, detail screen, station run details, widget TalkBack) is now a UiMessage (UPDATE_TIME_AT / UPDATE_TIME_NEVER) resolved from string resources at the rendering boundary; RouteSnapshotCache.lastProvider() returns null instead of the literal 'Nessun provider', so the localized provider_unavailable fallback is reachable. (2) 9fb6542: the widget resolves a WidgetStrings catalogue from resources once per render (compact meta line, status column SOPP./PROGRAM., direction and target labels, header and row TalkBack text, failure line); persisted state is language-neutral (category stored as enum name, legacy Italian label still decoded; failures stored as message key + ISO arguments and rendered in the current language, legacy free text falls back to the generic unavailable label). (3) 6618865: the phone-to-watch v1 payload takes a WearSnapshotStrings catalogue resolved from the phone's resources (source label, category, status, 'Scheduled' badge, unavailable notice, missing-value placeholder) instead of the enums' Italian labels. New string keys were added to values/, values-en/, values-de/, values-fr/, values-es/ with real translations; all five files parse.",
+      "tests": "app/src/test/java/it/binario/app/UpdateTimeMessageTest.kt (new; references updateTimeMessage which does not exist at base, so it cannot pass without the fix); widget/WidgetFailureCodecTest.kt (new; encode/decode round trip and legacy Italian text dropped), widget/WidgetStateMetadataTest.kt and widget/WidgetChangeHighlightTest.kt (now fed an Italian and an English catalogue via widget/WidgetStringsFixtures.kt and assert the output follows the catalogue; they previously pinned Italian literals and that expectation was changed in the same commit); wear/AndroidWearSnapshotContractTest.kt (golden v1 fixture still matches with the catalogue built from the real Italian strings.xml, plus a new English-catalogue test asserting 'Operator primary source', 'Delayed', 'Scheduled', 'Live data unavailable', 'Not available'). AndroidStringResourceParityTest IDENTICAL_KEYS allowlist extended for keys legitimately identical across languages (DEMO, CACHE, OPEN DATA, Q%1$d, +%1$d, '%1$s · %2$d/100'). Compose rendering itself: static only (harness compiles Compose, never executes it).",
+      "reason_if_not_fixed": ""
+     },
+     {
+      "id": "E2E-12",
+      "outcome": "fixed",
+      "what_changed": "Widget, watch payload, update-time label and provider fallback: see LOC-11. Voice feedback: already fixed at HEAD: base MainActivity.kt:937 sets speechMessage = review.feedback(dictationTarget).resolve(resources) via PlannerVoiceFeedbackResources.kt (voice_feedback_* keys), nothing to change. Commuter alert ' → ' label: commit 658dacf disables the create button with a localized explanation (commuter_alerts_route_required, five locales) while no route is active, and TrainViewModel.createCommuterAlert() returns null for the placeholder route so a composer restored across process death cannot store the empty label; SettingsScreen shows the same explanation when it gets null.",
+      "tests": "Widget/Wear/update-time tests as listed under LOC-11. Commuter-alert guard: static only (TrainViewModel needs an Application and no JVM test constructs it in this harness; compile verified by android-check.sh).",
+      "reason_if_not_fixed": ""
+     },
+     {
+      "id": "PU-6",
+      "outcome": "fixed",
+      "what_changed": "Widget meta, failure text, direction/target labels and TalkBack text come from WidgetStrings (resources); persisted widget data holds enum names and message keys instead of Italian copy (legacy values still read back); Wear status/category/notice come from WearSnapshotStrings; the provider fallback is reachable (null instead of 'Nessun provider'). See LOC-11.",
+      "tests": "WidgetFailureCodecTest, WidgetStateMetadataTest, WidgetChangeHighlightTest, AndroidWearSnapshotContractTest, UpdateTimeMessageTest (see LOC-11).",
+      "reason_if_not_fixed": ""
+     },
+     {
+      "id": "VT-12",
+      "outcome": "fixed",
+      "what_changed": "Tests no longer pin Italian literals: the widget model tests take an explicit Italian or English catalogue (WidgetStringsFixtures.kt) and assert the rendered meta/TalkBack text follows it; the Wear contract test builds the catalogue from the real values/strings.xml (golden fixture unchanged) and from values-en/strings.xml (asserts English texts in the payload).",
+      "tests": "app/src/test/java/it/binario/app/widget/WidgetStateMetadataTest.kt, WidgetChangeHighlightTest.kt, WidgetStringsFixtures.kt, wear/AndroidWearSnapshotContractTest.kt; all run in android-check.sh app (547 tests green).",
+      "reason_if_not_fixed": ""
+     },
+     {
+      "id": "AND-NEW-6",
+      "outcome": "fixed",
+      "what_changed": "Widget texts, the update-time label and the provider default follow the device language (commits ba58f3a, 9fb6542). Voice feedback: already fixed at HEAD (base MainActivity.kt:937 resolves PlannerVoiceFeedback from voice_feedback_* resources).",
+      "tests": "See LOC-11.",
+      "reason_if_not_fixed": ""
+     },
+     {
+      "id": "LOC-14",
+      "outcome": "fixed",
+      "what_changed": "Commit b2e78b3: the home status line and the detail screen render '<band> · <score>/100 · <confidence>' through TrainViewModel.localizedQualityLabel() using the formerly dead currentQualityBand()/currentQualityScore() and new quality_band_* / quality_band_score resources in five locales; the enum→resource table moved to EnumLabelResources.kt and is shared by Compose, the widget and the Wear payload; dead Italian-only helpers removed (TrainService.accessibleSummary, CommuterAlert/MobilityPreferences/StationMonitor accessibleSummary, AlertRepeat/StationMonitorMode/Direction/WidgetTargetType .label, RouteSnapshotCache.lastConfidence, accessibleUpdateTime). Commit 890edea (this run): removed the remaining dead Italian accessibleLabel constants on ServiceStatus, Freshness, DataConfidence, DataQualityBand and SnapshotWarning and the unused TrainService.category/operatorAndCategory getters (grep over app main/test/androidTest, wear/, tools/, tests/ found no readers; RailOperator and TrainCategory labels are kept because they are still read). Stale docs: no document references the removed helpers; the README ('Gli snapshot espongono ... punteggio qualità', widget 'Espone ... quality score') and CHANGELOG ('senza incorporare copy italiano nello stato persistito') statements that were false after the localization are true again, so no doc edit was needed. Translation slips: a same-text comparison of values/ against values-en/de/fr/es and an Italian-token scan found only legitimate identical values (brand names, DEMO, CACHE, Intercity, Freccia, Spanish words); nothing to correct.",
+      "tests": "RouteFailureMessageTest (advisory test added, see AND-NEW-5). Quality label rendering: static only (Compose). Dead-code removal: static only (compile proves no readers; android-check.sh ui/app/wear rc=0).",
+      "reason_if_not_fixed": ""
+     },
+     {
+      "id": "AND-NEW-5",
+      "outcome": "fixed",
+      "what_changed": "Quality band/score: shown again (commit b2e78b3, see LOC-14). Conflict warning: RouteSnapshot.advisoryMessage() now returns ROUTE_SOURCE_CONFLICT (new route_source_conflict string, five locales) when the reconciled snapshot carries SnapshotWarning.SOURCE_CONFLICT, with the coverage-fallback caveat keeping priority; the ViewModel already assigned advisoryMessage() to refreshMessage/returnRefreshMessage. Fallback caveat and GTFS-expiry 'update the app' message: already fixed at HEAD: base TrainViewModel.kt:725/752 (and 799/808 for the return leg) set refreshMessage = result.snapshot.advisoryMessage() / result.reason.uiMessage(), base UiMessage.kt maps coverageFallback → ROUTE_COVERAGE_FALLBACK and RouteFailureReason.ScheduleExpired → ROUTE_SCHEDULE_EXPIRED whose five translations say 'update the app'; DataStatusLine renders the message.",
+      "tests": "app/src/test/java/it/binario/app/RouteFailureMessageTest.kt: new test asserts null without warnings, ROUTE_SOURCE_CONFLICT with the conflict warning, and ROUTE_COVERAGE_FALLBACK outranking it; at base advisoryMessage() returned only the fallback caveat, so the conflict assertion fails without the fix.",
+      "reason_if_not_fixed": ""
+     }
+    ],
+    "verification": "Final state (HEAD 890edea), run in the worktree:\nREPO=$PWD /tmp/claude-0/-home-user-binario/ec2338fa-afae-5418-81d9-da7d3b962a13/scratchpad/kt/android-check.sh all → ui compile rc=0 errors=0; app tests compile rc=0 errors=0; app tests rc=0 run=547 fail=0 ignored=0 classes=101; wear compile rc=0 errors=0; wear tests compile rc=0 errors=0; wear tests rc=0 run=13 fail=0 ignored=0 classes=4; all: app rc=0 wear rc=0\npython3 -m unittest discover -s tests → Ran 143 tests ... OK\npython3 -c \"import xml.dom.minidom;xml.dom.minidom.parse(...)\" on values/, values-en/, values-de/, values-fr/, values-es/ strings.xml → all parse\ngit status --short → clean (0 lines); git log claude/git-repo-audit-cdcsm6..HEAD → 6 commits; /home/user/binario left on claude/git-repo-audit-cdcsm6 with a clean tree (read only).\nThe same android-check.sh all and python suite were also run on the inherited HEAD 658dacf before any change (547/13/143, all green).",
+    "concerns": "1) Harness limits: Compose is compiled but never executed, so the status-line rendering ('<band> · <score>/100 · <confidence>'), the disabled commuter-alert button and the widget RemoteViews are verified statically only; instrumented androidTest sources are not compiled here. 2) Persisted-format changes in the widget (commit 9fb6542): service category now stored as enum name (Italian label of earlier versions still decoded), failure stored as 'KEY,arg,...' base64 fields; free-text failures persisted by earlier versions are dropped and replaced by the generic unavailable label on the next render. 3) The Wear v1 payload now carries phone-language texts; the Italian golden fixture still matches byte-for-byte, but a watch paired to a phone in another language will show that language (the contract README only calls the field a human-readable label). 4) The String parity test's IDENTICAL_KEYS allowlist was extended for widget keys that are legitimately identical across languages (said so in the commit). 5) Items reported as 'already fixed at HEAD' (voice feedback, GTFS-expiry message, coverage-fallback caveat) were verified by reading the base commit's code, not by a device run. 6) No stale document needed editing; if the auditor had specific docs or mistranslations in mind for LOC-14 they are not identifiable from the finding text, and my same-text/Italian-token scans of en/de/fr/es found nothing to correct."
+   }
+  },
+  {
+   "key": "v2:04a8f3ce9a42abd8dc94bfe1943d11eb7e8699c58a7b15b9cf52ee5c7db49e73",
+   "result": {
+    "verdict": "changes_required",
+    "findings": [
+     {
+      "item": "LOC-11 / PU-6 / VT-12 (Wear payload notice)",
+      "severity": "major",
+      "file": "app/src/main/java/it/binario/app/wear/AndroidWearSnapshotContract.kt",
+      "description": "The finding names the Wear payload's status/notice. The branch localizes the status, the category, the source label and the notice of the *unavailable* payload, but `operational()` still sends `put(\"notice\", optional(snapshot.notice.orEmpty(), 180))`, i.e. the data layer's Italian prose (e.g. RfiLiveRouteDataSource: \"Ritardi dai tabelloni RFI. Sono mostrate le fermate di partenza e arrivo richieste.\", ViaggiaTrenoStationAdapter: \"Dati live ViaggiaTreno: partenze da … verso …\", DataReconciliation: \"Fonti concordanti non disponibili per N campo/i …\"). The watch shows that text verbatim (wear/src/main/java/it/binario/wear/WearMainActivity.kt:83 and tile/BinarioTileService.kt:89), so the normal (non-error) path of the watch still shows Italian in en/de/fr/es. The phone UI no longer renders snapshot.notice at all (MainActivity has no reader), so the Wear payload is the only surface that still leaks it. The colleague's report does not mention this path.",
+      "suggested_fix": "Send a catalogue-resolved text instead of the raw snapshot.notice: extend WearSnapshotStrings with the localized advisories (route_coverage_fallback, route_source_conflict via UiMessageKey, or the SnapshotWarning labels via the shared labelRes()) and in operational() put `notice` = `snapshot.advisoryMessage()?.let { strings.advisoryNotices.getValue(it.key) } ?: snapshot.qualityWarnings.firstOrNull()?.let { strings.warningLabels.getValue(it) }.orEmpty()` (the contract README allows an empty notice). Update the golden expectation in AndroidWearSnapshotContractTest / contracts/wear-snapshot/v1/android-to-wear-v1.json (the golden snapshot has no warnings, so the notice becomes \"\"), keep the truncation test by driving it through a long localized advisory or by asserting the 180-char trim on the new field source, and add an English-catalogue assertion for the notice. Alternatively drop the data-layer notice from the payload entirely with the same test updates; either way no Italian data-layer prose must reach the payload."
+     },
+     {
+      "item": "PU-6 (widget TalkBack text)",
+      "severity": "minor",
+      "file": "app/src/main/java/it/binario/app/widget/RouteWidgetProvider.kt",
+      "description": "WidgetService.accessibleLabel() picks the delay wording with `delayMinutes > 0` regardless of status. ViaggiaTrenoRealtimeAdapter keeps delayMinutes for verified cancelled trains (status = CANCELLED, delayMinutes = delay), so TalkBack would read \"Soppresso +12 min\" / \"Cancelled +12 min\" for a cancelled train.",
+      "suggested_fix": "Use `status == ServiceStatus.DELAYED && delayMinutes > 0` for the delayed branch so a cancelled service is announced only as cancelled."
+     },
+     {
+      "item": "VT-12 (widget tests)",
+      "severity": "minor",
+      "file": "app/src/test/java/it/binario/app/widget/WidgetStringsFixtures.kt",
+      "description": "The widget tests feed hand-written catalogues, so the actual widget_* resource values (e.g. a typo in widget_confidence_infrastructure_primary) are only compile-checked through R and key-checked by the parity test, never content-checked; the Wear test in the same branch already shows how to build the catalogue from the real values/strings.xml.",
+      "suggested_fix": "Advisory: add one test that builds WidgetStrings from app/src/main/res/values/strings.xml (and values-en) with the same DOM reader used by AndroidWearSnapshotContractTest and asserts the original Italian meta line, so the resources themselves are covered."
+     }
+    ],
+    "verification": "Run in the worktree /tmp/claude-0/-home-user-binario/ec2338fa-afae-5418-81d9-da7d3b962a13/scratchpad/fix/wt-android-l10n at HEAD 890edea (6 commits over claude/git-repo-audit-cdcsm6):\n- REPO=$PWD .../kt/android-check.sh all → ui compile rc=0 errors=0; app tests compile rc=0 errors=0; app tests rc=0 run=547 fail=0 ignored=0 classes=101; wear compile rc=0 errors=0; wear tests compile rc=0; wear tests rc=0 run=13 fail=0 ignored=0 classes=4; all: app rc=0 wear rc=0; EXIT=0 (log: /tmp/claude-0/-home-user-binario/ec2338fa-afae-5418-81d9-da7d3b962a13/scratchpad/fix/review-android-l10n/android-check.log). Matches the colleague's numbers.\n- python3 -m unittest discover -s tests → Ran 143 tests, OK. Matches.\n- XML: all five strings.xml parse with xml.dom.minidom; 632 string keys in each, no duplicate names, no unescaped apostrophes in any file.\n- git diff --check clean; git status clean in the worktree; /home/user/binario untouched (clean tree, on claude/git-repo-audit-cdcsm6).\n- All six commit messages carry both required trailers; no model/tool names in code, comments or messages.\n- Read every hunk of git diff claude/git-repo-audit-cdcsm6...fix/r1-android-l10n (29 files). Grepped the whole repo (app main/test/androidTest, wear/, tools/, tests/, docs) for readers of removed members (accessibleUpdateTime, lastConfidence, operatorAndCategory, accessibleSummary, enum .label/.accessibleLabel, TrainService.category, \"Nessun provider\"): none left in Android code; the only \"Nessun provider\" hits are iOS/watch catalogues and their own Python test, which are untouched.\n- Regression-test checks: UpdateTimeMessageTest, WidgetFailureCodecTest and the English Wear test reference APIs that do not exist at base (cannot compile without the fix); RouteFailureMessageTest's ROUTE_SOURCE_CONFLICT assertion fails at base where advisoryMessage() only returns the coverage-fallback caveat; the Italian golden v1 fixture still matches with a catalogue built from the real values/strings.xml, which proves the Italian resources reproduce the former literal payload. WidgetStateMetadataTest/WidgetChangeHighlightTest expectation changes are the declared move from Italian literals to catalogue-driven output, not a weakening; the IDENTICAL_STRING_KEYS allowlist additions are all legitimately language-neutral values (OK, +%1$d, DEMO, Q%1$d, CACHE, OPEN DATA, '%1$s · %2$d/100').\n- Checked persistence compatibility: widget category stored as enum name with legacy Italian label decode (labels are unique across TrainCategory), failures stored as key + ISO args behind base64 and decoded inside runCatching (legacy free text → null → generic label), last_confidence pref simply no longer written (no readers). minSdk 26, so configuration.locales[0] is safe and already used elsewhere (UiMessageResources, AndroidPlannedJourneyReminders).",
+    "notes": "Overall the approach is right and consistent with the codebase (UiMessage at the rendering boundary, TrainShareStrings-style catalogue for the widget, shared EnumLabelResources table, resource-built catalogue in the Wear test). All colleague claims I could check hold (suites, XML, trailers, 'already fixed at HEAD' items such as voice feedback at MainActivity:937 and the advisory/refreshMessage wiring). The one item that forces a revision is the Wear operational payload's `notice`, which still carries the data layer's Italian prose and is displayed verbatim by the watch activity and tile; this is inside the surface LOC-11/PU-6/VT-12 name and no other round-1 package owns notice localization. The two minor findings are advisory. Compose rendering, RemoteViews and the disabled commuter-alert button remain static-only here, as the colleague stated. Concern 3 of the report (watch shows the phone's language) is a reasonable design choice given the contract README calls these fields human-readable labels."
+   }
+  },
+  {
+   "key": "v2:e46de3d956b02965be2899b2b446a1e5ee7575fe429f1564635349bc2b822aef",
+   "result": {
+    "branch": "fix/r1-android-data",
+    "worktree": "/tmp/claude-0/-home-user-binario/ec2338fa-afae-5418-81d9-da7d3b962a13/scratchpad/fix/wt-android-data",
+    "commits": [
+     {
+      "sha": "baac02f",
+      "subject": "fix(agenda): reject a deeply nested journey file instead of crashing",
+      "items": [
+       "TB-3"
+      ]
+     },
+     {
+      "sha": "26d3961",
+      "subject": "fix(gtfs): keep the European Sleeper mirror from serving other operators' trains",
+      "items": [
+       "TB-9"
+      ]
+     },
+     {
+      "sha": "a5be5aa",
+      "subject": "fix(gtfs): survive garbage timestamps in the European Sleeper realtime mirror",
+      "items": [
+       "FS-2"
+      ]
+     },
+     {
+      "sha": "727003c",
+      "subject": "fix(gtfs): show a stop's arrival time, not 00:00, when its departure is unreadable",
+      "items": [
+       "VT-11"
+      ]
+     },
+     {
+      "sha": "46189e3",
+      "subject": "fix(gtfs): show a train number instead of a 100-character trip_id",
+      "items": [
+       "TW-10"
+      ]
+     },
+     {
+      "sha": "689a09e",
+      "subject": "fix(planned): show the next morning's trains after the day's last departure",
+      "items": [
+       "TW-11"
+      ]
+     },
+     {
+      "sha": "51c7faa",
+      "subject": "fix(search): rank exact and prefix station names first in suggestions",
+      "items": [
+       "TW-16"
+      ]
+     },
+     {
+      "sha": "7510492",
+      "subject": "fix(alexa): send only train numbers the companion profile accepts",
+      "items": [
+       "TW-18"
+      ]
+     },
+     {
+      "sha": "701e2e9",
+      "subject": "fix(voice): read \"alle 8 di sera\" and \"stasera alle 9\" as evening times",
+      "items": [
+       "RT-9"
+      ]
+     },
+     {
+      "sha": "4557969",
+      "subject": "fix(catalog): load a missing station code as null, not the text \"null\"",
+      "items": [
+       "FS-1"
+      ]
+     },
+     {
+      "sha": "e8835f1",
+      "subject": "fix(planned): treat 4 October as a national holiday from 2026",
+      "items": [
+       "TW-17",
+       "RT-12",
+       "FSK-ND4-02"
+      ]
+     },
+     {
+      "sha": "fc06765",
+      "subject": "fix(planned): understand \"prefestivi\" and \"lavorativi\" RFI periodicities",
+      "items": [
+       "FSKB-2"
+      ]
+     },
+     {
+      "sha": "26443f4",
+      "subject": "fix(gtfs): derive lastServiceDate from real continuous timetable coverage",
+      "items": [
+       "F-CHK-07"
+      ]
+     }
+    ],
+    "items": [
+     {
+      "id": "TB-3",
+      "outcome": "fixed",
+      "what_changed": "Already committed by the interrupted earlier attempt (baac02f) and re-verified: PlannedJourneyTransfer measures bracket nesting outside string literals before org.json parses the document and rejects anything deeper than twice the schema depth as malformed, so a crafted <=256 KiB file no longer escapes decode() with a StackOverflowError.",
+      "tests": "PlannedJourneyTransferTest: `rejects a deeply nested document before any value is parsed`, `brackets inside string values do not count as nesting` (in the committed state; re-run green in the final suite).",
+      "reason_if_not_fixed": ""
+     },
+     {
+      "id": "TB-9",
+      "outcome": "fixed",
+      "what_changed": "Already committed by the earlier attempt (26d3961) and re-verified: RemoteGtfsFallbackDataSource declares the single operator it exists for and drops every other agency's service from the community mirror; a route served only by foreign trips is reported as not covered.",
+      "tests": "RemoteGtfsFallbackDataSourceTest: `il mirror community non popola tratte di altri operatori` (committed; green in final suite).",
+      "reason_if_not_fixed": ""
+     },
+     {
+      "id": "FS-2",
+      "outcome": "fixed",
+      "what_changed": "Already committed by the earlier attempt (a5be5aa) and re-verified: EuropeanSleeperGtfsRealtimeAdapter treats epoch seconds outside 1970..9999 as absent and RemoteGtfsFallbackDataSource keeps the static timetable when realtime reconciliation throws, so a garbage timestamp no longer crashes the refresh with an ArithmeticException.",
+      "tests": "RemoteGtfsFallbackDataSourceTest: `un timestamp realtime spazzatura degrada all orario statico senza interrompere il refresh`; EuropeanSleeperGtfsRealtimeAdapterTest: `timestamp spazzatura del mirror non diventano istanti inutilizzabili` (committed; green in final suite).",
+      "reason_if_not_fixed": ""
+     },
+     {
+      "id": "VT-11",
+      "outcome": "fixed",
+      "what_changed": "Already committed by the earlier attempt (727003c) and re-verified: in EmbeddedGtfsRouteAdapter a stop whose departure_time is blank or malformed now falls back to its valid arrival and shows '—' when neither is readable; the fallback-source test that pinned the fabricated 00:00 was changed in that commit to expect the stop's 12:00 arrival.",
+      "tests": "EmbeddedGtfsRouteAdapterTest: `una partenza malformata mostra l arrivo valido della fermata e mai uno 00 00 inventato`; RemoteGtfsFallbackDataSourceTest expectation changed from 00:00 to 12:00 (committed; green in final suite).",
+      "reason_if_not_fixed": ""
+     },
+     {
+      "id": "TW-10",
+      "outcome": "fixed",
+      "what_changed": "Already committed by the earlier attempt (46189e3) and re-verified: publicNumber() derives the train number from trip_short_name, then a numeric trip_headsign (SNCF), then route_short_name, keeping trip_id only as a last resort; number search reaches SNCF trains through the headsign.",
+      "tests": "EmbeddedGtfsRouteAdapterTest: `senza trip_short_name usa il headsign numerico o la linea e mai il trip_id` (committed; green in final suite).",
+      "reason_if_not_fixed": ""
+     },
+     {
+      "id": "TW-11",
+      "outcome": "fixed",
+      "what_changed": "Found uncommitted in the worktree; reviewed against HEAD and iOS (SQLiteGTFSJourneyRepository bounds candidates to query.departure + 24 h), verified and committed (689a09e). EmbeddedGtfsRouteAdapter's NEXT_DAY_LOOK_AHEAD_HOURS goes from 6 to 24 so a search after the day's last train lists the next morning's first departures; ItalianRailServiceCalendar.rfiDepartureDate now maps RFI board rows earlier than the requested time to the next day unconditionally (validity and periodicity are still checked for that date) instead of dropping them beyond a 6-hour window. RfiProgrammedTimetableAdapterTest and ItalianRailServiceCalendarTest expectations that pinned the 'no service after' failure were changed in the same commit.",
+      "tests": "EmbeddedGtfsRouteAdapterTest: `dopo l ultimo treno della giornata propone i primi treni del giorno successivo` (Thu 14:00 -> Fri 08:05; fails with the 6 h window), adjusted `late searches…` test; ItalianRailServiceCalendarTest `RFI rows earlier than the requested time are the next day's trains`; RfiProgrammedTimetableAdapterTest three expectations changed from NoServiceAfter to the next day's departure. Harness: 547/547 green on that state.",
+      "reason_if_not_fixed": ""
+     },
+     {
+      "id": "TW-16",
+      "outcome": "fixed",
+      "what_changed": "StationAutocompleteEngine.suggest now ranks matches as iOS (StationCatalog.search) and the Companion do: own name equal to the query (0), name prefix (1), word prefix (2), substring (3); the same match on an alias, city or code ranks one step later; a match spread over several tokens ranks last (5); ties sort by normalized name. The match set is unchanged, only the order. IndexedStation gained normalizedName.",
+      "tests": "StationAutocompleteEngineTest `suggestions rank exact and prefix names first regardless of catalogue order`: fails at HEAD (expected [Roma, Roma Termini, …] got catalogue order), passes with the fix; existing suggest/findExact tests unchanged and green.",
+      "reason_if_not_fixed": ""
+     },
+     {
+      "id": "TW-17",
+      "outcome": "fixed",
+      "what_changed": "ItalianRailServiceCalendar.isHoliday returns true for 4 October from 2026 (legge 151/2025), so FESTIVO/FERIALE periodicities are right on Mon 2027-10-04; docs/data-sources/DATA_CORRECTNESS_V0204.md mentions it. Also closes RT-12 and FSK-ND4-02 (same defect). Note: day-name terms such as 'Lun-Ven' intentionally ignore holidays in the existing matcher (Easter Monday is still a Monday), so they are unaffected, as before.",
+      "tests": "ItalianRailServiceCalendarTest `4 October is a national holiday from 2026`: fails at HEAD (isHoliday false), passes with the fix; the TW-17-only commit state was run through the harness separately (552/552 green).",
+      "reason_if_not_fixed": ""
+     },
+     {
+      "id": "FSKB-2",
+      "outcome": "partial",
+      "what_changed": "At HEAD the 'festività/festive/prefestivi' spellings of FESTIV*, the full-word negations and 'Sabati e festivi' already work (covered by existing tests: `every festiv form…`, `negations exclude days…`, SABATO E FESTIVI), so only the remainder was fixed: PREFESTIV* now means the day before a Sunday or holiday (every Saturday, the eve of a weekday holiday such as 1 June 2026 or 24 December) unless that day is a holiday itself, and LAVORATIV* is read as FERIALE (Mon–Sat excluding holidays). Before, 'prefestivi' had no recognised term and the train showed every day, and 'giorni lavorativi' ran on Sundays and holidays. KDoc and the data-correctness doc updated.",
+      "tests": "ItalianRailServiceCalendarTest `prefestivi are saturdays and the eves of holidays, lavorativi are weekdays`: fails at HEAD (Prefestivo ran every day), passes with the fix.",
+      "reason_if_not_fixed": "Marked partial only because part of the finding (festività/festive forms, full-word negations, 'Sabati e festivi') was already fixed at HEAD by the upstream merge and verified by the existing tests; the still-defective part (prefestivi, lavorativi) is fixed."
+     },
+     {
+      "id": "TW-18",
+      "outcome": "fixed",
+      "what_changed": "toAlexaCompanionProfileRequest maps each monitored number through alexaCompanionTrainNumber(): whitespace removed; if the result matches the server's ^[A-Za-z0-9-]{1,32}$ it is kept (so 'RV 4132' -> 'RV4132', 'S9 - 25015' -> 'S9-25015', exactly what alexa-companion/server/profile/contract.ts stores); a Trenord-style '<line> - <number>' label with an otherwise unacceptable prefix ('RE_80 - 2551') keeps the train number that ends it; anything else (blank, raw GTFS trip ids, >32 chars) is dropped one by one instead of making profile.upsert reject the whole profile. The sync itself is still not wired (preparedVoiceProfileRequest only builds the body), as the finding states.",
+      "tests": "AlexaCompanionProfileTest `numbers the companion would reject are normalised or dropped one by one`: fails at HEAD (raw labels pass through), passes with the fix; existing test ('RV-4132' kept) unchanged.",
+      "reason_if_not_fixed": ""
+     },
+     {
+      "id": "FS-1",
+      "outcome": "fixed",
+      "what_changed": "EmbeddedCuratedRailStationCatalog reads railwayCode and trenitaliaLocationId through a new optTextOrNull() that checks has()/isNull() before optString(), like the existing optDoubleOrNull. The shipped asset carries 1809 \"railwayCode\":null and 2193 \"trenitaliaLocationId\":null, and Android's org.json returns the text \"null\" from optString for a JSON null (proved with a probe run against the android-all framework jar: optString(null value) -> \"null\"; the fixed catalog under that jar -> railwayCode=null). CustomStationStore and WidgetConfiguration (listed in the item) do not parse JSON; they only persist what the catalog provides, so no change there.",
+      "tests": "EmbeddedCuratedRailStationCatalogTest `a station without codes keeps them null, never the text null` runs the parser on a document with null codes and asserts null. Caveat: under the Maven org.json used by unit tests (and by Gradle unit tests) optString already returns \"\" for null, so this test passes with and without the fix; the Android-specific behaviour was verified only by the one-off probe (scratchpad fs1-probe/Probe.java, classpath android-all first) — effectively static only for the regression-test requirement.",
+      "reason_if_not_fixed": ""
+     },
+     {
+      "id": "RT-9",
+      "outcome": "partial",
+      "what_changed": "At HEAD 'dopodomani', whole-word 'oggi' (Poggibonsi) and HH:MM minutes were already handled (existing tests `relative dates match whole words only`, `numeric dates and clock times survive punctuation`), so only the time-of-day part was fixed: PlannerVoiceParser recognises Italian/English/German/French/Spanish afternoon, evening and night phrases ('di sera', 'del pomeriggio', 'stasera', 'in the evening', 'tonight', 'abends', 'du soir', 'de la tarde', …) and moves a 12-hour hour (1..11) to the afternoon when no explicit am/pm is dictated; 24-hour times and explicit am/pm keep their meaning, 'stasera' still dates the journey today.",
+      "tests": "PlannerVoiceParserTest `evening and afternoon phrases make a dictated hour a pm time` (8 phrasings in 5 languages plus the 18:00 / '8 am' / 'di mattina' guards): fails at HEAD (08:00), passes with the fix.",
+      "reason_if_not_fixed": "Partial only in the sense that the other three symptoms in the finding were already fixed at HEAD and are covered by existing tests; the remaining defect (evening/afternoon times) is fixed."
+     },
+     {
+      "id": "F-CHK-07",
+      "outcome": "fixed",
+      "what_changed": "tools/build_gtfs_packs.py: last_service_date() now expands calendar.txt by its weekday flags, applies calendar_dates.txt additions/removals (new service_dates()), splits the service days into periods whose days are at most MAX_SERVICE_GAP_DAYS=7 apart and returns the end of the latest period lasting at least MIN_COVERAGE_SPAN_DAYS=7 (falling back to the last day for a feed with no such period, BuildError for none). Verified over all ten packs: only eav (2027-05-13 -> 2026-12-31: three services on one isolated day 133 days after the timetable) and hzpp (2026-12-13 -> 2026-12-12: rows end on a Sunday no service runs on) change; manifest.json, EmbeddedGtfsPacks.kt and docs/data-sources/GTFS_PACK_REFRESH.md updated; ios/Resources index + metadata rebuilt with tools/build_ios_gtfs_schedule.py (database sha bc24d77f…, compressed 7842391 bytes) and checked with verify_ios_gtfs_schedule.py and the CI-style verify_ios_gtfs_rebuild.py (identical rebuild). build_gtfs_packs.py --check passes. The existing fixture test expectation moved from 2027-01-15 (lone exception) to 2026-12-31, as stated in the commit.",
+      "tests": "tests/test_build_gtfs_packs.py `test_last_service_date_is_the_end_of_the_last_real_timetable_period` (eav-like stray date, hzpp-like Sunday end, removal, bridged gap, works closure, sparse feed, empty feed, unfiltered fixture archive): fails at HEAD, passes with the fix; the Kotlin EmbeddedGtfsAssetIntegrityTest ties manifest and EmbeddedGtfsPacks (green). Full python suite 144/144.",
+      "reason_if_not_fixed": ""
+     }
+    ],
+    "verification": "Final committed state (26443f4), worktree clean (git status --short empty):\n- REPO=$PWD /tmp/claude-0/-home-user-binario/ec2338fa-afae-5418-81d9-da7d3b962a13/scratchpad/kt/android-check.sh all -> ui compile rc=0 errors=0; app tests compile rc=0; app tests rc=0 run=553 fail=0 ignored=0 classes=99; wear compile rc=0; wear tests rc=0 run=13 fail=0 ignored=0 classes=4; all: app rc=0 wear rc=0 (baseline before this package: 539 app tests).\n- python3 -m unittest discover -s tests -> Ran 144 tests, OK.\n- python3 tools/verify_ios_gtfs_schedule.py -> rc=0 (databaseSha256 bc24d77f6cef0703b7e077db5f498782367a7e29fca7cf2c9eb216444aa17cf7, compressedSizeBytes 7842391, pack rows 10); python3 tools/verify_ios_gtfs_rebuild.py on a CI-style rebuild -> rc=0 (identical database and compressed bytes); python3 tools/build_gtfs_packs.py --check -> 'GTFS asset verification passed'.\nFail-without-fix evidence: harness run with the new tests and app/src/main reverted to HEAD -> run=553 fail=5 (TW-16, TW-17, FSKB-2, TW-18, RT-9 tests failing; FS-1 test passes either way under Maven org.json, see item); Python builder test failed at HEAD derivation.",
+    "concerns": "1) FS-1: the regression test cannot fail under the org.json implementation available to JVM unit tests (Maven org.json returns \\\"\\\" for a JSON null; only Android's returns \\\"null\\\"); the on-device behaviour was demonstrated with a one-off probe against the android-all framework jar, not by the suite. LocalDataBackup.kt reads strings with optString(key, \\\"\\\") as well, but the backup writer never emits JSON nulls (JSONObject.put with null removes the key), so it was left untouched. 2) F-CHK-07: the existing eav/hzpp ZIPs still carry the old lastServiceDate inside their binario_filter_manifest.json member (informational; nothing verifies or consumes it, and rebuilding the ZIPs needs the source archives, which are not in the repo). The 7-day gap / 7-day span rule is a judgement call: a pack whose last real period is shorter than a week would be understated by a few days; a works closure longer than a week followed by a real period is handled. 3) TW-11 widens Android's next-day window to 24 h as iOS; the widget/Wear snapshots already handled next-day departures from the previous 6 h window, so no consumer change was needed. 4) TW-18: the normaliser keeps server-acceptable forms as the server would store them ('S9-25015'), and reduces only otherwise-rejected labelled forms to their trailing train number; the Alexa sync itself is still not wired. 5) The existing comment references to 'Opus audit N-M12' in EmbeddedGtfsRouteAdapter/ItalianRailServiceCalendar predate this work and were kept as the repository's own audit-ID convention."
+   }
+  },
+  {
+   "key": "v2:3c521ee1f744cfd09f925fb1876d8267e6d3dc3d41f0cf1be4063655450edbfe",
+   "result": {
+    "verdict": "approve",
+    "findings": [
+     {
+      "item": "FS-1",
+      "severity": "minor",
+      "file": "app/src/main/java/it/binario/app/widget/WidgetConfiguration.kt",
+      "description": "The catalogue now yields null instead of the text \"null\", but WidgetConfiguration (lines 121-122) and CustomStationStore (lines 58-59) persist a copy of the station and decode the code with `.ifBlank { null }` only, so a widget or custom station saved on a device before this fix keeps railwayCode/trenitaliaLocationId = \"null\" until it is reconfigured. The plan listed both files under FS-1. Practical impact is small (such stations have no real code, so live lookups fail either way), hence minor.",
+      "suggested_fix": "In both decoders treat the literal \"null\" like blank, e.g. `parts[4].takeUnless { it.isBlank() || it == \"null\" }`, so upgraded installs self-heal on the next read; add a one-line decode test for a legacy \"null\" entry."
+     },
+     {
+      "item": "TW-11",
+      "severity": "minor",
+      "file": "app/src/main/java/it/binario/app/MainActivity.kt",
+      "description": "With the 24 h window a Thursday 14:00 search correctly lists Friday 08:05, but the phone row (lines 1993/2657), the widget (expectedDeparture only) and the Wear payload (service{n}Scheduled HH:mm) carry no day hint, so the next morning's trains look like today's. iOS renders a bare HH:mm string too (SQLiteGTFSJourneyRepository.timeString), so this is a pre-existing cross-platform gap that the fix makes far more visible, not a regression; the StopAlarmPlanner and board reconciler use the full LocalDateTime and stay correct (a next-day 08:05 is 24 h away from today's board row, outside scheduleTolerance).",
+      "suggested_fix": "Advisory follow-up (all platforms): add a 'domani'/date marker when scheduledDepartureDateTime.toLocalDate() != query.serviceDate (phone list, widget row, Wear snapshot field). Not required for this package."
+     },
+     {
+      "item": "FSKB-2",
+      "severity": "minor",
+      "file": "app/src/main/java/it/binario/app/data/planned/ItalianRailServiceCalendar.kt",
+      "description": "Positive terms are OR-ed (`positives.any { it.kind.matches(date) }`), so a text such as \"nei giorni lavorativi dal lunedì al venerdì\" now runs on Saturday (LAVORATIV* = Mon–Sat matches) whereas at the base branch only the Mon–Fri range was recognised. The same already holds for \"feriale dal lunedì al venerdì\", no fixture or real text with 'lavorativ' exists in the repo, and 'lavorativo' = 'feriale' is what the plan asked for, so advisory only.",
+      "suggested_fix": "Optional: when a clause contains both a generic term (FERIALE/LAVORATIV*/FESTIV*) and an explicit day set, intersect rather than union them; add a test for \"Lavorativi dal lunedì al venerdì\" on a Saturday. Out of this item's scope."
+     },
+     {
+      "item": "RT-9",
+      "severity": "minor",
+      "file": "app/src/main/java/it/binario/app/PlannerVoiceParser.kt",
+      "description": "afternoonPhrases covers 'di sera', 'stasera', 'del pomeriggio' etc., but the very common 'domani sera alle 8' / 'domani pomeriggio alle 3' (bare 'sera'/'pomeriggio' after a date word) still yield 08:00 / 03:00; same for 'tomorrow evening at 8' and 'morgen abend um 8' ('abends'/'am abend' are listed, 'abend' alone is not).",
+      "suggested_fix": "Add 'domani sera', 'domani pomeriggio', 'dopodomani sera', 'tomorrow evening', 'tomorrow afternoon', 'morgen abend', 'demain soir', 'manana por la tarde' (or simply a trailing-word match for sera/pomeriggio/notte after a date word) to afternoonPhrases with test cases."
+     },
+     {
+      "item": "TW-10",
+      "severity": "minor",
+      "file": "app/src/main/java/it/binario/app/data/gtfs/EmbeddedGtfsRouteAdapter.kt",
+      "description": "The fallback chain matches the plan, but note the real data: ARST shows 'Linea SASSARI-ALGHERO' / 'Linea MONSERRATO-ISILI' as the train number (iOS does the same via route_short_name, so parity holds), and for SNCF Android now shows the numeric headsign ('105241') while iOS still shows route_short_name ('A01'): a cross-platform divergence where Android is the better one. A number search for '445'/'446' now returns every TFT run on that line (bounded by limits).",
+      "suggested_fix": "No change needed here; file a follow-up to add the numeric-headsign step to iOS's number derivation (SQLiteGTFSJourneyRepository rawNumber) so both platforms show the same SNCF number."
+     },
+     {
+      "item": "TB-9",
+      "severity": "minor",
+      "file": "app/src/main/java/it/binario/app/data/gtfs/RemoteGtfsFallbackDataSource.kt",
+      "description": "The scope compares operatorDisplayName, which canonicalAgencyLabel derives from the mirror's agency_name (substring 'europeansleeper'); with parserSourceId 'european-sleeper' a blank/unknown agency name maps to null, so a mirror that drops agency_name fails closed with RouteNotCovered. Acceptable (fail-closed is the right direction for a security fix); informational.",
+      "suggested_fix": "None required. Optionally add 'european-sleeper' to the blank-agency fallback in canonicalAgencyLabel if the real mirror ever ships without agency_name."
+     },
+     {
+      "item": "F-CHK-07",
+      "severity": "minor",
+      "file": "app/src/main/assets/gtfs/eav-gtfs.zip",
+      "description": "The binario_filter_manifest.json member inside eav-gtfs.zip and hzpp-gtfs.zip still carries the old lastServiceDate (2027-05-13 / 2026-12-13). I confirmed nothing consumes it (build_gtfs_packs.py --check recomputes from calendar tables; verify_embedded_assets.py reads only manifest.json; the Kotlin integrity test ties manifest.json to EmbeddedGtfsPacks), so this is informational, as the colleague disclosed; rebuilding the ZIPs needs the source archives.",
+      "suggested_fix": "Refresh the two ZIPs at the next pack refresh so the embedded filter manifest agrees with manifest.json."
+     },
+     {
+      "item": "style",
+      "severity": "minor",
+      "file": "app/src/main/java/it/binario/app/data/gtfs/EmbeddedGtfsRouteAdapter.kt",
+      "description": "The edited comment lines in EmbeddedGtfsRouteAdapter (line ~530) and ItalianRailServiceCalendar.rfiDepartureDate KDoc re-include the pre-existing '(Opus audit N-M12)' reference. It is the repository's own audit-ID convention and predates this work (disclosed in the report), but the package rules say no model names in comments.",
+      "suggested_fix": "Optional: drop the parenthetical from the two touched comment lines (keep 'N-M12' if the audit ID is needed)."
+     }
+    ],
+    "verification": "All run in the worktree /tmp/claude-0/-home-user-binario/ec2338fa-afae-5418-81d9-da7d3b962a13/scratchpad/fix/wt-android-data (git status --short empty; 13 commits over claude/git-repo-audit-cdcsm6, every message has the two required trailers and no other tool/model names):\n- REPO=$PWD .../kt/android-check.sh all -> ui compile rc=0 errors=0; app tests compile rc=0; app tests rc=0 run=553 fail=0 ignored=0 classes=99; wear compile rc=0; wear tests rc=0 run=13 fail=0 classes=4; all: app rc=0 wear rc=0 (matches the report).\n- python3 -m unittest discover -s tests -> Ran 144 tests, OK.\n- python3 tools/verify_ios_gtfs_schedule.py -> rc=0, databaseSha256 bc24d77f6cef0703b7e077db5f498782367a7e29fca7cf2c9eb216444aa17cf7, compressedSizeBytes 7842391, pack 10 (metadata already rebuilt for the changed manifest.json, sha cccc9c50…; no rebuild needed from my side).\n- python3 tools/build_gtfs_packs.py --check -> 'GTFS asset verification passed' (recomputes eav 2026-12-31 / hzpp 2026-12-12 from the ZIPs); python3 tools/verify_embedded_assets.py -> failures 0, freshness enforced, 0 expiring (today 2026-10-25).\n- Fail-without-fix, in a scratch copy under .../scratchpad/fix/review-android-data/copy with the touched main sources reverted to the base branch (RemoteGtfsFallbackDataSource and PlannedJourneyTransfer reverted but given the new constructor param/constant so the tests compile): app tests run=553 fail=18 — exactly the new/changed tests of TB-3, TB-9, FS-2 (adapter + fallback, ArithmeticException long overflow reproduced), VT-11 (08:22 vs 00:00; 12:00 vs 00:00), TW-10 (trip_id shown), TW-11 (GTFS next-day, RFI next-day, 3 RfiProgrammedTimetableAdapterTest expectations), TW-16, TW-17, FSKB-2, TW-18, RT-9. The FS-1 catalog test passes with and without the fix under Maven org.json, as disclosed.\n- tests/test_build_gtfs_packs.py with tools/build_gtfs_packs.py reverted to base: 2 failures (new period test + the fixture expectation), OK with the branch file.\n- FS-1 probe (javac/java against the harness android-all-16 jar first on the classpath): new JSONObject(\"{\\\"railwayCode\\\":null}\").optString(\"railwayCode\") -> \"null\"; the has()/isNull() guard -> null. Confirms the on-device defect and the fix.\n- Data check of the shipped packs for TW-10: only sncf (56336 trips, all with numeric trip_headsign, trip_id up to 106 chars), arst (117), toscana-tft (118) and trentino (64) lack trip_short_name; their route_short_name fallbacks are 'Linea SASSARI-ALGHERO'-style names, '445'/'446' and 'R35' (iOS uses the same route_short_name fallback; it does not use the headsign).\n- Read every hunk of git diff claude/git-repo-audit-cdcsm6...fix/r1-android-data (27 files) plus the surrounding code: RFI adapters' use of rfiDepartureDate (validity/periodicity still checked on the mapped date), GTFS services() selection/bounding, StationBoardRealtimeReconciler (full-datetime tolerance, so next-day services cannot match today's board rows), Wear contract (number/scheduled bounded to 24/16 chars, '—' placeholder already used by live boards), alexa-companion contract.ts normaliser (whitespace removal + ^[A-Za-z0-9-]{1,32}$, identical to the Android normaliser), iOS StationCatalog.search ranking (same tiers; alias/code +1 vs iOS code exact 0 is an immaterial divergence).",
+    "notes": "Approve: every item in the package is genuinely fixed for the code paths the findings name, each behavioural fix has a regression test that fails without it (verified by me, not just claimed), the existing tests whose expectations changed (RFI next-day, 00:00->12:00, 2027-01-15->2026-12-31, Thursday-08:00 look-ahead) encode the intended new semantics and were disclosed in the commits, the suites are green and match the report exactly, and commit hygiene is correct. Partial outcomes (FSKB-2, RT-9) are honestly labelled: the remaining parts were already fixed upstream and are covered by existing tests, which I confirmed in the base branch. The findings above are advisory only: an upgrade-path nit for FS-1 (persisted \"null\" codes in widget/custom-station stores), the cross-platform lack of a next-day marker that TW-11 makes more visible (iOS has the same gap), the OR-semantics of generic periodicity terms, a few evening phrasings RT-9 still misses, the Android/iOS divergence on SNCF numbers introduced by preferring the numeric headsign, the stale lastServiceDate inside the two unrebuilt ZIPs, and the retained 'Opus audit' comment reference. None of these blocks merging."
+   }
+  },
+  {
+   "key": "v2:73ff3087c19dd506f872316c206526cc546f9c0859ca9fd6778528bccf936da2",
+   "result": {
+    "branch": "fix/r1-android-l10n",
+    "worktree": "/tmp/claude-0/-home-user-binario/ec2338fa-afae-5418-81d9-da7d3b962a13/scratchpad/fix/wt-android-l10n",
+    "commits": [
+     {
+      "sha": "50fe555",
+      "subject": "fix(wear): send the watch a localized advisory instead of the data source's Italian notice",
+      "items": [
+       "LOC-11 / PU-6 / VT-12 (Wear payload notice)"
+      ]
+     },
+     {
+      "sha": "d8af16c",
+      "subject": "fix(android): announce a cancelled train in the widget only as cancelled",
+      "items": [
+       "PU-6 (widget TalkBack text)"
+      ]
+     },
+     {
+      "sha": "bbe9fc3",
+      "subject": "test(android): check the widget texts against the shipped string catalogues",
+      "items": [
+       "VT-12 (widget tests)"
+      ]
+     },
+     {
+      "sha": "ba58f3a",
+      "subject": "fix(android): localize the update-time label and reach the provider fallback",
+      "items": [
+       "LOC-11",
+       "E2E-12",
+       "PU-6",
+       "AND-NEW-6"
+      ]
+     },
+     {
+      "sha": "b2e78b3",
+      "subject": "fix(android): show the quality band and score again and warn about conflicting sources",
+      "items": [
+       "LOC-14",
+       "AND-NEW-5"
+      ]
+     },
+     {
+      "sha": "9fb6542",
+      "subject": "fix(android): render the home-screen widget in the app language",
+      "items": [
+       "LOC-11",
+       "E2E-12",
+       "PU-6",
+       "VT-12",
+       "AND-NEW-6"
+      ]
+     },
+     {
+      "sha": "6618865",
+      "subject": "fix(wear): send the watch status, category and notice in the phone language",
+      "items": [
+       "LOC-11",
+       "E2E-12",
+       "PU-6",
+       "VT-12"
+      ]
+     },
+     {
+      "sha": "658dacf",
+      "subject": "fix(android): do not offer commuter alerts while no route is selected",
+      "items": [
+       "E2E-12"
+      ]
+     },
+     {
+      "sha": "890edea",
+      "subject": "fix(android): drop the Italian enum labels nothing reads any more",
+      "items": [
+       "LOC-14"
+      ]
+     }
+    ],
+    "items": [
+     {
+      "id": "LOC-11 / PU-6 / VT-12 (Wear payload notice)",
+      "outcome": "fixed",
+      "what_changed": "Commit 50fe555 (new, on top of the existing six). app/src/main/java/it/binario/app/wear/AndroidWearSnapshotContract.kt: WearSnapshotStrings gains advisoryNotices (Map<UiMessageKey,String> for the keys RouteSnapshot.advisoryMessage() can raise, listed once in the internal companion value advisoryKeys = ROUTE_COVERAGE_FALLBACK, ROUTE_SOURCE_CONFLICT, resolved via UiMessageKey.resourceId()) and warningLabels (Map<SnapshotWarning,String> via the shared labelRes(), i.e. the snapshot_warning_* resources). operational() no longer copies snapshot.notice; it sends notice(snapshot, strings) = the phone's advisory (advisoryMessage(), so the coverage-fallback caveat keeps priority over the conflict text exactly as on the phone), else the first quality warning label (qualityWarnings.firstOrNull(), mirroring the widget's compactMeta), else \"\" (the contract README allows an empty notice; WearMainActivity hides a blank notice and the tile prints an empty text). The 180-char normalisation/trim still applies. The publisher already resolves WearSnapshotStrings.from(context.resources), so nothing changed there; the unavailable() path was already localized. contracts/wear-snapshot/v1/android-to-wear-v1.json: notice is now \"\" (the golden snapshot carries no warnings). contracts/wear-snapshot/v1/README.md: one sentence stating what the Android producer writes in notice (phone-language advisory, never the data source's free text, empty without advisories). No data-layer Italian prose can reach the payload any more: the only remaining text inputs are catalogue values and the route/service fields.",
+      "tests": "app/src/test/java/it/binario/app/wear/AndroidWearSnapshotContractTest.kt: (1) the golden test keeps notice = \"Dati operativi ricevuti dal telefono.\" in its snapshot (commented) and now expects the fixture's empty notice, so it proves the prose is not forwarded; (2) new test 'notice carries the phone's localized advisory or first warning, never the data source's prose' asserts, with catalogues built from the real values/strings.xml and values-en/strings.xml: \"\" for the clean snapshot, the route_source_conflict text for a SOURCE_CONFLICT warning, the route_coverage_fallback text when coverageFallback is also set (priority), and the snapshot_warning_stale_source label for a snapshot whose first warning is STALE_SOURCE, in Italian and English; (3) the truncation test now drives the 179-char trim through a long ROUTE_COVERAGE_FALLBACK advisory in the catalogue (coverageFallback = true) instead of a long snapshot.notice. Evidence: with the old expression put(\"notice\", optional(snapshot.notice.orEmpty(), 180)) temporarily restored, android-check.sh app gives run=548 fail=3 (golden test: notice=Dati operativi ricevuti dal telefono. instead of empty; new notice test: expected <> but was <Dati operativi ricevuti dal telefono.>; truncation test: expected 179 but was 0); with the fix run=548 fail=0. The Wear decoder suite (wear/src/test WearSnapshotCodecTest, which decodes the same golden fixture) stays green: 13/13. Watch rendering of the empty notice: static only (read WearMainActivity.kt:83 and BinarioTileService.kt:89; Compose for Wear is compiled, never executed here).",
+      "reason_if_not_fixed": ""
+     },
+     {
+      "id": "PU-6 (widget TalkBack text)",
+      "outcome": "fixed",
+      "what_changed": "Commit d8af16c. app/src/main/java/it/binario/app/widget/RouteWidgetProvider.kt WidgetService.accessibleLabel(): the delayed branch is now `status == ServiceStatus.DELAYED && delayMinutes > 0`, so a verified cancelled train (ViaggiaTrenoRealtimeAdapter keeps its last delay) is announced only as cancelled, consistent with the visible status column (statusLabel() already showed the delay only for DELAYED). All sources set DELAYED whenever delay > 0 (checked every ServiceStatus derivation under app/src/main/java/it/binario/app/data), so no legitimate on-time delay wording is lost; unverified services still take the 'operational status unverified' branch first.",
+      "tests": "app/src/test/java/it/binario/app/widget/WidgetStateMetadataTest.kt: new test 'a cancelled service is announced only as cancelled even when its delay is known' (CANCELLED, delayMinutes 12, English catalogue) expects \"... Expected departure 12:45. Cancelled. Platform 7.\". Evidence: written before the fix, android-check.sh app run=549 fail=1 (was \"Cancelled +12 min\"); after the one-line fix run=549 fail=0.",
+      "reason_if_not_fixed": ""
+     },
+     {
+      "id": "VT-12 (widget tests)",
+      "outcome": "fixed",
+      "what_changed": "Commit bbe9fc3 (advisory finding). New app/src/test/java/it/binario/app/widget/WidgetStringsResourceTest.kt builds a WidgetStrings from app/src/main/res/values/strings.xml and values-en/strings.xml with the same DOM reader as AndroidWearSnapshotContractTest (kept private in the test like the existing readers; no shared helper exists and extracting one would be a drive-by refactor), key by key as WidgetStrings.from(context) does (every DataConfidence/Freshness/SnapshotWarning/ServiceStatus/TrainCategory/Direction/DataQualityBand entry is looked up with getValue, so a missing key fails too). It asserts the original Italian meta line \"RFI · INFRASTRUTTURA · Q84 · IN AGGIORNAMENTO · CONFLITTO FONTI · PAG 1/1\", the Italian TalkBack data summary and a delayed service's TalkBack text, and the English equivalents.",
+      "tests": "The test itself (2 tests; app suite 551 green). Evidence it checks content: with widget_confidence_infrastructure_primary temporarily misspelt in values/strings.xml the run gives run=551 fail=1 (expected INFRASTRUTTURA, was INFRASTRUTURA); the resource was restored with git checkout and the worktree is clean.",
+      "reason_if_not_fixed": ""
+     }
+    ],
+    "verification": "Final state (HEAD bbe9fc3), all run in the worktree after the last commit:\nREPO=$PWD /tmp/claude-0/-home-user-binario/ec2338fa-afae-5418-81d9-da7d3b962a13/scratchpad/kt/android-check.sh all → ui compile rc=0 errors=0; app tests compile rc=0 errors=0; app tests rc=0 run=551 fail=0 ignored=0 classes=102; wear compile rc=0 errors=0; wear tests compile rc=0 errors=0; wear tests rc=0 run=13 fail=0 ignored=0 classes=4; all: app rc=0 wear rc=0 (was 547/13 at the reviewed HEAD 890edea: +1 Wear notice test, +1 TalkBack test, +2 resource tests)\npython3 -m unittest discover -s tests → Ran 143 tests ... OK\npython3 -c \"import xml.dom.minidom;xml.dom.minidom.parse(...)\" on app/src/main/res/{values,values-en,values-de,values-fr,values-es}/strings.xml → all parse (no string keys were added or changed in this round; the new Wear texts reuse the existing route_coverage_fallback, route_source_conflict and snapshot_warning_* keys that already exist in all five locales)\ngit status --short → clean (0 lines); git log claude/git-repo-audit-cdcsm6..HEAD → 9 commits (6 inherited + 3 new, no history rewriting); /home/user/binario left on claude/git-repo-audit-cdcsm6 with a clean tree (read only, never modified).\nNegative checks run during the work: old notice expression → app run=548 fail=3; TalkBack test before the guard → run=549 fail=1; misspelt widget resource → run=551 fail=1.",
+    "concerns": "1) Behaviour change visible to Italian watch users too: the informational data-source prose (\"Ritardi dai tabelloni RFI...\", \"Dati live ViaggiaTreno: partenze da...\") no longer appears on the watch in any language; the watch now shows only the phone's advisory (unofficial coverage source / conflicting sources) or the first snapshot quality warning, and nothing for a clean snapshot. The contract README documents this; the field semantics (bounded string, may be empty) are unchanged, so no schemaVersion bump. 2) The golden fixture contracts/wear-snapshot/v1/android-to-wear-v1.json changed (notice \"\"); the Wear decoder tests that consume it are green, and the companion/iOS fixtures are untouched. CI's android-ci path filter includes contracts/wear-snapshot/**, as expected. 3) The first warning is chosen with qualityWarnings.firstOrNull(), mirroring the widget's compactMeta; for a freshly evaluated snapshot the set is DataQuality's insertion-ordered linkedSetOf, so the choice is deterministic. 4) strings.advisoryNotices.getValue(key) would throw if a future advisoryMessage() key were not added to WearSnapshotStrings.advisoryKeys; WearSnapshotPublisher.publish() already wraps operational() in runCatching and falls back to the unavailable payload, so the failure mode is a watch showing 'unavailable', not a crash; the test builds its catalogue from the same advisoryKeys list. 5) Static only: the watch's rendering of an empty notice (WearMainActivity hides blank text; the tile prints an empty line) and the widget's RemoteViews TalkBack are verified by reading, since Compose/RemoteViews are compiled but never executed in this harness. 6) The resource-backed widget test keeps its own private strings.xml reader (the third such private copy in the test tree, next to the Wear contract test and the parity test); I chose that over extracting a shared helper to avoid touching unrelated tests."
+   }
+  }
+ ]
+}

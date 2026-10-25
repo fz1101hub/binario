@@ -1,0 +1,15 @@
+repo=/tmp/claude-0/-home-user-binario/ec2338fa-afae-5418-81d9-da7d3b962a13/scratchpad/fix/wt-wear mode=all out=/tmp/claude-0/-home-user-binario/ec2338fa-afae-5418-81d9-da7d3b962a13/scratchpad/kt/out/be04ae38a84e23f56705ab7291f32d9e7398659e/android
+repo=/tmp/claude-0/-home-user-binario/ec2338fa-afae-5418-81d9-da7d3b962a13/scratchpad/fix/wt-wear mode=app out=/tmp/claude-0/-home-user-binario/ec2338fa-afae-5418-81d9-da7d3b962a13/scratchpad/kt/out/be04ae38a84e23f56705ab7291f32d9e7398659e/android
+gen_r app (it.binario.app): array=1, color=9, drawable=5, id=39, layout=1, plurals=12, string=583, style=2, xml=6, BuildConfig
+ui compile rc=0 errors=0 (log /tmp/claude-0/-home-user-binario/ec2338fa-afae-5418-81d9-da7d3b962a13/scratchpad/kt/out/be04ae38a84e23f56705ab7291f32d9e7398659e/android/app/compile-main.log)
+app tests compile rc=0 errors=0 (log /tmp/claude-0/-home-user-binario/ec2338fa-afae-5418-81d9-da7d3b962a13/scratchpad/kt/out/be04ae38a84e23f56705ab7291f32d9e7398659e/android/app/compile-test.log)
+TOTAL	run=542 fail=0 ignored=0 classes=99 time_ms=17778
+app tests rc=0 run=542 fail=0 ignored=0 classes=99 time_ms=17778 (log /tmp/claude-0/-home-user-binario/ec2338fa-afae-5418-81d9-da7d3b962a13/scratchpad/kt/out/be04ae38a84e23f56705ab7291f32d9e7398659e/android/app/test-run.log, stderr /tmp/claude-0/-home-user-binario/ec2338fa-afae-5418-81d9-da7d3b962a13/scratchpad/kt/out/be04ae38a84e23f56705ab7291f32d9e7398659e/android/app/test-run.err)
+repo=/tmp/claude-0/-home-user-binario/ec2338fa-afae-5418-81d9-da7d3b962a13/scratchpad/fix/wt-wear mode=wear out=/tmp/claude-0/-home-user-binario/ec2338fa-afae-5418-81d9-da7d3b962a13/scratchpad/kt/out/be04ae38a84e23f56705ab7291f32d9e7398659e/android
+gen_r wear (it.binario.wear): drawable=4, mipmap=1, string=25, style=1, xml=2
+wear compile rc=0 errors=0 (log /tmp/claude-0/-home-user-binario/ec2338fa-afae-5418-81d9-da7d3b962a13/scratchpad/kt/out/be04ae38a84e23f56705ab7291f32d9e7398659e/android/wear/compile-main.log)
+wear tests compile rc=0 errors=0 (log /tmp/claude-0/-home-user-binario/ec2338fa-afae-5418-81d9-da7d3b962a13/scratchpad/kt/out/be04ae38a84e23f56705ab7291f32d9e7398659e/android/wear/compile-test.log)
+TOTAL	run=25 fail=0 ignored=0 classes=7 time_ms=558
+wear tests rc=0 run=25 fail=0 ignored=0 classes=7 time_ms=558 (log /tmp/claude-0/-home-user-binario/ec2338fa-afae-5418-81d9-da7d3b962a13/scratchpad/kt/out/be04ae38a84e23f56705ab7291f32d9e7398659e/android/wear/test-run.log, stderr /tmp/claude-0/-home-user-binario/ec2338fa-afae-5418-81d9-da7d3b962a13/scratchpad/kt/out/be04ae38a84e23f56705ab7291f32d9e7398659e/android/wear/test-run.err)
+all: app rc=0 wear rc=0
+android-check exit=0

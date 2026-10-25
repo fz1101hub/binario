@@ -1,0 +1,455 @@
+{
+ "round": 1,
+ "packages": [
+  {
+   "id": "android-data",
+   "area": "Android data layer, parsers, calendar, GTFS tooling",
+   "items": [
+    {
+     "id": "TB-3",
+     "text": "Android: crafted planned-journey JSON (deep nesting, <=256 KiB) crashes the app via StackOverflowError that escapes decode; unit tests cannot see it — `app/plannedjourney/PlannedJourneyTransfer.kt`",
+     "fix_summary": "A crafted, deeply nested Agenda JSON file is rejected as malformed instead of crashing the app (StackOverflowError).",
+     "files": [
+      "app/src/main/java/it/binario/app/plannedjourney/PlannedJourneyTransfer.kt",
+      "app/src/test/java/it/binario/app/plannedjourney/PlannedJourneyTransferTest.kt"
+     ]
+    },
+    {
+     "id": "TB-9",
+     "text": "Android: European Sleeper community-mirror fallback is not scoped to European Sleeper services; mirror content can populate arbitrary domestic routes — `app/data/gtfs/RemoteGtfsFallbackDataSource.kt`",
+     "fix_summary": "The European Sleeper community fallback only ever shows European Sleeper trains, so a tampered mirror cannot fill domestic routes with other operators.",
+     "files": [
+      "app/src/main/java/it/binario/app/data/gtfs/RemoteGtfsFallbackDataSource.kt",
+      "app/src/test/java/it/binario/app/data/gtfs/RemoteGtfsFallbackDataSourceTest.kt"
+     ]
+    },
+    {
+     "id": "FS-2",
+     "text": "Companion Kotlin v1 contract tests (the ones N-C3 wired into CI) cannot detect removal of about half the decoder rules on either Kotlin twin — `companion-expo/plugins/templates/CompanionWearPayloadV1Test.kt`",
+     "fix_summary": "A garbage realtime timestamp from the European Sleeper mirror degrades to the static fallback timetable instead of crashing the refresh.",
+     "files": [
+      "app/src/main/java/it/binario/app/data/gtfs/RemoteGtfsFallbackDataSource.kt",
+      "app/src/main/java/it/binario/app/data/live/EuropeanSleeperGtfsRealtimeAdapter.kt",
+      "app/src/test/java/it/binario/app/data/gtfs/RemoteGtfsFallbackDataSourceTest.kt"
+     ]
+    },
+    {
+     "id": "VT-11",
+     "text": "PR#33 test pins a fabricated '00:00' stop time for a malformed departure even though the stop's arrival is valid — `app/data/gtfs/RemoteGtfsFallbackDataSourceTest.kt`",
+     "fix_summary": "A stop with a malformed or blank departure shows its valid arrival time (or '—' when neither time is valid) instead of a fabricated 00:00.",
+     "files": [
+      "app/src/main/java/it/binario/app/data/gtfs/EmbeddedGtfsRouteAdapter.kt",
+      "app/src/test/java/it/binario/app/data/gtfs/RemoteGtfsFallbackDataSourceTest.kt",
+      "app/src/test/java/it/binario/app/data/gtfs/EmbeddedGtfsRouteAdapterTest.kt"
+     ]
+    },
+    {
+     "id": "TW-10",
+     "text": "Android uses the raw GTFS trip_id as train number when trip_short_name is absent (SNCF, Trentino, TFT, ARST): 100+ character ids on phone/widget and a meaningless 24-char prefix on the watch; iOS fal… — `app/data/gtfs/EmbeddedGtfsRouteAdapter.kt`",
+     "fix_summary": "Trains without trip_short_name show their numeric headsign (SNCF) or the route short name instead of a 100-character GTFS trip_id.",
+     "files": [
+      "app/src/main/java/it/binario/app/data/gtfs/EmbeddedGtfsRouteAdapter.kt",
+      "app/src/test/java/it/binario/app/data/gtfs/EmbeddedGtfsRouteAdapterTest.kt"
+     ]
+    },
+    {
+     "id": "TW-11",
+     "text": "Android planned search never looks at the next service day: after the last train of the day the app/widget/Wear report 'no trains' while iOS shows the next morning's departures — `app/data/gtfs/EmbeddedGtfsRouteAdapter.kt`",
+     "fix_summary": "A search made after the evening's last train shows the next morning's first trains, as iOS does, instead of 'no train after HH:MM' (check what the 6-hour look-ahead already covers; extend to the next service day's first trains).",
+     "files": [
+      "app/src/main/java/it/binario/app/data/gtfs/EmbeddedGtfsRouteAdapter.kt",
+      "app/src/main/java/it/binario/app/data/planned/ItalianRailServiceCalendar.kt",
+      "app/src/test/java/it/binario/app/data/gtfs/EmbeddedGtfsRouteAdapterTest.kt"
+     ]
+    },
+    {
+     "id": "TW-16",
+     "text": "Android station autocomplete is unranked (first N substring matches in catalog order): query 'Roma' never shows 'Roma'/'Roma Termini' among the 5 visible suggestions, unlike iOS and Companion — `app/data/StationAutocompleteEngine.kt`",
+     "fix_summary": "Station suggestions put exact and prefix name matches first ('Roma', 'Roma Termini'), matching iOS and the Companion.",
+     "files": [
+      "app/src/main/java/it/binario/app/data/StationAutocompleteEngine.kt",
+      "app/src/test/java/it/binario/app/data/StationAutocompleteEngineTest.kt"
+     ]
+    },
+    {
+     "id": "TW-17",
+     "text": "Italian rail holiday calendar lacks 4 October, a national holiday since 2026 (Law 151/2025): from 2027-10-04 (Monday) RFI 'FERIALE' trains are assumed running and 'FESTIVO' ones not — `app/data/planned/ItalianRailServiceCalendar.kt`",
+     "fix_summary": "From 2026, 4 October counts as a national holiday, so on Mon 2027-10-04 RFI 'festivo' trains run and 'feriale' ones do not.",
+     "files": [
+      "app/src/main/java/it/binario/app/data/planned/ItalianRailServiceCalendar.kt",
+      "app/src/test/java/it/binario/app/data/planned/ItalianRailServiceCalendarTest.kt",
+      "docs/data-sources/DATA_CORRECTNESS_V0204.md"
+     ],
+     "also_closes": [
+      {
+       "id": "RT-12",
+       "text": "National holiday of 4 October (restored from 2026) missing from the RFI holiday calendar — `app/data/planned/ItalianRailServiceCalendar.kt`",
+       "fix_summary": "From 2026 on, RFI periodicity treats 4 October as a public holiday, so 'festivo' and 'feriale' trains are filtered correctly on that day.",
+       "files": [
+        "app/src/main/java/it/binario/app/data/planned/ItalianRailServiceCalendar.kt",
+        "app/src/test/java/it/binario/app/data/planned/ItalianRailServiceCalendarTest.kt",
+        "docs/data-sources/DATA_CORRECTNESS_V0204.md"
+       ]
+      },
+      {
+       "id": "FSK-ND4-02",
+       "text": "Italian holiday calendar lacks 4 October (restored national holiday from 2026): FESTIVO/FERIALE wrong on Mon 2027-10-04 — `app/data/planned/ItalianRailServiceCalendar.kt`",
+       "fix_summary": "Same fix as TW-17: from 2026, 4 October is a holiday for FESTIVO/FERIALE periodicities.",
+       "files": [
+        "app/src/main/java/it/binario/app/data/planned/ItalianRailServiceCalendar.kt"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "FSKB-2",
+     "text": "The M-16 fix (179d2b4) changes RFI periodicity semantics beyond SAB+FEST: 'festività/festive/prefestivi' forms and full-word negations regress, and 'Sabati e festivi' still drops Saturday — `app/data/planned/ItalianRailServiceCalendar.kt`",
+     "fix_summary": "RFI trains marked 'prefestivi' run only on Saturdays and the eves of holidays, and 'giorni lavorativi' trains no longer run on Sundays and holidays.",
+     "files": [
+      "app/src/main/java/it/binario/app/data/planned/ItalianRailServiceCalendar.kt",
+      "app/src/test/java/it/binario/app/data/planned/ItalianRailServiceCalendarTest.kt"
+     ]
+    },
+    {
+     "id": "TW-18",
+     "text": "Android -> Alexa profile contract drift: monitored train numbers produced by Android (Trenord 'RE_2 - 2247', SNCF trip ids) violate the server's ^[A-Za-z0-9-]{1,32}$ and one invalid entry rejects the… — `app/AlexaCompanionProfile.kt`",
+     "fix_summary": "Once Alexa profile sync is wired, unusable train numbers are normalised or dropped one by one instead of making the server reject the whole profile.",
+     "files": [
+      "app/src/main/java/it/binario/app/AlexaCompanionProfile.kt",
+      "app/src/test/java/it/binario/app/AlexaCompanionProfileTest.kt"
+     ]
+    },
+    {
+     "id": "FS-1",
+     "text": "Companion phone debug build fails on a fresh clone: PR#34 restored the Expo template's repository-local debug.keystore reference, but *.keystore is git-ignored and Expo never recreates it while andro… — `companion-expo/android/app/build.gradle`",
+     "fix_summary": "On Android devices, stations without a railway code or Trenitalia id load them as null instead of the literal text 'null' (android org.json optString semantics), so labels, search and saved identities stay correct; test against android's org.json semantics.",
+     "files": [
+      "app/src/main/java/it/binario/app/data/catalog/EmbeddedCuratedRailStationCatalog.kt",
+      "app/src/main/java/it/binario/app/CustomStationStore.kt",
+      "app/src/main/java/it/binario/app/widget/WidgetConfiguration.kt"
+     ]
+    },
+    {
+     "id": "RT-9",
+     "text": "Android voice planner mis-dates and mis-times dictation: 'dopodomani'→tomorrow, stations containing 'oggi' (Foggia, Poggibonsi) force today, 'HH:MM' minutes dropped, 'di sera'/'stasera' ignored — `app/PlannerVoiceParser.kt`",
+     "fix_summary": "Dictated evening and afternoon times such as 'alle 8 di sera' or 'stasera alle 9' fill 20:00 or 21:00 instead of the morning hour.",
+     "files": [
+      "app/src/main/java/it/binario/app/PlannerVoiceParser.kt",
+      "app/src/test/java/it/binario/app/PlannerVoiceParserTest.kt"
+     ]
+    },
+    {
+     "id": "F-CHK-07",
+     "text": "Manifest lastServiceDate overstates effective coverage for eav-gtfs (and hzpp by one day); the iOS index copies the overstated value — `app/src/main/assets/gtfs/manifest.json`",
+     "fix_summary": "The manifest's last service date reflects real continuous timetable coverage (e.g. eav 2026-12-31, hzpp 2026-12-12), so expiry warnings and freshness gates are truthful; rebuild the iOS index if the manifest changes.",
+     "files": [
+      "tools/build_gtfs_packs.py",
+      "tests/test_build_gtfs_packs.py",
+      "app/src/main/assets/gtfs/manifest.json",
+      "app/src/main/java/it/binario/app/data/gtfs/EmbeddedGtfsPacks.kt",
+      "ios/Resources/binario_gtfs_schedule_v1.metadata.json"
+     ]
+    }
+   ],
+   "suites": [
+    "REPO=$PWD /tmp/claude-0/-home-user-binario/ec2338fa-afae-5418-81d9-da7d3b962a13/scratchpad/kt/android-check.sh all",
+    "python3 -m unittest discover -s tests",
+    "python3 tools/verify_ios_gtfs_schedule.py (after rebuilding ios/Resources with python3 tools/build_ios_gtfs_schedule.py if app/src/main/assets/gtfs/manifest.json changed; commit the rebuilt index + metadata)"
+   ]
+  },
+  {
+   "id": "android-l10n",
+   "area": "Android phone UI, widget and Wear payload localization",
+   "items": [
+    {
+     "id": "LOC-11",
+     "text": "Residual hard-coded Italian in 'localized' Android surfaces: new provider fallback unreachable ('Nessun provider'), update time 'aggiornato alle', home-screen widget labels, Wear payload status/notice — `app/TrainViewModel.kt`",
+     "fix_summary": "Provider fallback ('Nessun provider'), update time ('aggiornato alle'), widget labels and the phone-to-Wear status/category/notice text follow the app language instead of staying Italian.",
+     "files": [
+      "app/src/main/java/it/binario/app/data/TrainDataSource.kt",
+      "app/src/main/java/it/binario/app/UiMessageResources.kt",
+      "app/src/main/java/it/binario/app/MainActivity.kt",
+      "app/src/main/java/it/binario/app/widget/RouteWidgetProvider.kt",
+      "app/src/main/java/it/binario/app/wear/AndroidWearSnapshotContract.kt",
+      "app/src/main/java/it/binario/app/TrainViewModel.kt",
+      "app/src/main/res/values*/strings.xml"
+     ],
+     "also_closes": [
+      {
+       "id": "E2E-12",
+       "text": "Localization residuals after PR#34: widget, watch payload, update-time and provider fallback, voice feedback remain Italian; unconfigured route label became ' -> ' in commuter alerts — `app/widget/RouteWidgetProvider.kt`",
+       "fix_summary": "Widget, Wear and status texts follow the app language, and commuter alerts can no longer be created with the empty ' → ' route label.",
+       "files": [
+        "app/src/main/java/it/binario/app/data/TrainDataSource.kt",
+        "app/src/main/java/it/binario/app/UiMessageResources.kt",
+        "app/src/main/java/it/binario/app/MainActivity.kt",
+        "app/src/main/java/it/binario/app/TrainViewModel.kt",
+        "app/src/main/java/it/binario/app/CommuterAlerts.kt"
+       ]
+      },
+      {
+       "id": "PU-6",
+       "text": "PR#34 localization leaves persisted/transported data strings Italian: widget meta, failure text, direction/target labels and TalkBack text; Wear status/category/notice; unreachable localized provider… — `app/widget/RouteWidgetProvider.kt`",
+       "fix_summary": "Widget meta, failure text, direction and target labels, TalkBack text and the Wear payload are rendered in the app language, and persisted widget data is not language-bound.",
+       "files": [
+        "app/src/main/java/it/binario/app/widget/RouteWidgetProvider.kt",
+        "app/src/main/java/it/binario/app/widget/WidgetChangeHighlight.kt",
+        "app/src/main/java/it/binario/app/TrainViewModel.kt"
+       ]
+      },
+      {
+       "id": "VT-12",
+       "text": "Localization tests certify only strings.xml; widget metadata/TalkBack text and the Android->Wear payload stay Italian in all locales, and tests pin the Italian literals — `app/widget/RouteWidgetProvider.kt`",
+       "fix_summary": "Widget meta/TalkBack text and the phone-to-watch payload are rendered from string resources in the phone's language instead of hard-coded Italian.",
+       "files": [
+        "app/src/main/java/it/binario/app/EnumLabelResources.kt",
+        "app/src/main/java/it/binario/app/MainActivity.kt",
+        "app/src/main/java/it/binario/app/widget/RouteWidgetProvider.kt",
+        "app/src/main/java/it/binario/app/wear/AndroidWearSnapshotContract.kt"
+       ]
+      },
+      {
+       "id": "AND-NEW-6",
+       "text": "Android localization is incomplete after PR#34: the widget, update-time label, voice feedback and provider default still render Italian in en/de/fr/es — `app/widget/RouteWidgetProvider.kt`",
+       "fix_summary": "The update-time label, the provider fallback and the widget's direction, status, target and failure texts follow the device language.",
+       "files": [
+        "app/src/main/java/it/binario/app/data/TrainDataSource.kt",
+        "app/src/main/java/it/binario/app/UpdateTimeLabel.kt",
+        "app/src/main/java/it/binario/app/MainActivity.kt",
+        "app/src/main/java/it/binario/app/TrainViewModel.kt",
+        "app/src/main/java/it/binario/app/widget/RouteWidgetProvider.kt"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "LOC-14",
+     "text": "Localization side effects and drift: quality score/band dropped from the phone UI (dead currentQualityBand/Score), stale docs and dead helpers, translation-quality slips — `app/TrainViewModel.kt`",
+     "fix_summary": "Restores the localized quality band and score in the phone data-status line, removes dead helpers and imports, corrects stale docs and mistranslations.",
+     "files": [
+      "app/src/main/java/it/binario/app/TrainViewModel.kt",
+      "app/src/main/java/it/binario/app/MainActivity.kt",
+      "app/src/main/java/it/binario/app/data/TrainDataSource.kt",
+      "app/src/main/res/values*/strings.xml"
+     ],
+     "also_closes": [
+      {
+       "id": "AND-NEW-5",
+       "text": "PR#34 removed data-layer notices and failure reasons from the phone UI: the fallback caveat, conflict warning, quality band/score and the GTFS-expiry 'update the app' message are no longer shown — `app/TrainViewModel.kt`",
+       "fix_summary": "The phone status line shows the localized quality band and score again, as the README promises.",
+       "files": [
+        "app/src/main/java/it/binario/app/EnumLabelResources.kt",
+        "app/src/main/java/it/binario/app/MainActivity.kt",
+        "app/src/main/res/values*/strings.xml"
+       ]
+      }
+     ]
+    }
+   ],
+   "suites": [
+    "REPO=$PWD /tmp/claude-0/-home-user-binario/ec2338fa-afae-5418-81d9-da7d3b962a13/scratchpad/kt/android-check.sh all",
+    "python3 -m unittest discover -s tests"
+   ]
+  },
+  {
+   "id": "android-vm",
+   "area": "Android ViewModel/MainActivity/widget: routes, limits, backup, widget security, startup",
+   "items": [
+    {
+     "id": "RD-9",
+     "text": "Station canonicalizer indexes are built twice on the Main thread at catalog load, roughly doubling startup main-thread index work — `app/TrainViewModel.kt`",
+     "fix_summary": "The station indexes for the curated catalog are built off the main thread, so cold start no longer stalls the interactive planner.",
+     "files": [
+      "app/src/main/java/it/binario/app/TrainViewModel.kt"
+     ],
+     "also_closes": [
+      {
+       "id": "AND-NEW-7",
+       "text": "The H-1 fix builds two StationCanonicalizers (about 16k normalizations) on the Main dispatcher at startup, on top of the 19.8k-value autocomplete index — `app/TrainViewModel.kt`",
+       "fix_summary": "The station indexes are built off the main thread at startup, removing a few hundred ms of jank from the first frames.",
+       "files": [
+        "app/src/main/java/it/binario/app/TrainViewModel.kt"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "RD-10",
+     "text": "Saved routes, recents and favourites referencing a custom station that the catalog canonicalizes are dropped and later deleted permanently — `app/TrainViewModel.kt`",
+     "fix_summary": "Saved routes, recents, favourites and monitors that point at a custom station the catalog now covers are moved to the catalog station instead of being dropped and deleted.",
+     "files": [
+      "app/src/main/java/it/binario/app/data/CatalogStationMigration.kt",
+      "app/src/main/java/it/binario/app/TrainViewModel.kt",
+      "app/src/test/java/it/binario/app/data/CatalogStationMigrationTest.kt"
+     ],
+     "also_closes": [
+      {
+       "id": "VT-06",
+       "text": "H-1 (station identity) regression test covers only StationCanonicalizer; reverting the TrainViewModel call-site fix leaves every test green — `app/data/StationCanonicalizerTest.kt`",
+       "fix_summary": "The ViewModel's station-identity migration runs through a helper with a real-catalog regression test, so reverting the call-site fix turns a test red.",
+       "files": [
+        "app/src/main/java/it/binario/app/data/CatalogStationMigration.kt",
+        "app/src/main/java/it/binario/app/TrainViewModel.kt",
+        "app/src/test/java/it/binario/app/data/CatalogStationMigrationTest.kt"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "E2E-11",
+     "text": "Backup import replaces all routes, favourites, monitors, alerts and preferences immediately, without preview, confirmation or undo — `app/MainActivity.kt`",
+     "fix_summary": "Choosing a backup first shows what it contains and that it will replace the current local data; nothing changes until the user confirms.",
+     "files": [
+      "app/src/main/java/it/binario/app/MainActivity.kt",
+      "app/src/main/res/values*/strings.xml"
+     ]
+    },
+    {
+     "id": "E2E-13",
+     "text": "Pinning/unpinning any saved route while a searched (ad-hoc) or widget route is active switches the app to 'no route selected' while still showing the old departures — `app/TrainViewModel.kt`",
+     "fix_summary": "Pinning or unpinning a saved route keeps the current searched or widget route active.",
+     "files": [
+      "app/src/main/java/it/binario/app/TrainViewModel.kt",
+      "app/src/test/java/it/binario/app/ActiveRouteReconciliationTest.kt"
+     ]
+    },
+    {
+     "id": "E2E-14",
+     "text": "Widget refresh is gated on network even for routes served entirely by embedded offline GTFS: new widgets and direction toggles stay 'data unavailable' offline — `app/widget/RouteWidgetProvider.kt`",
+     "fix_summary": "User-initiated widget refreshes (configure, direction tap, refresh button) run offline and are answered from the embedded timetables, while periodic background refreshes keep their network constraint.",
+     "files": [
+      "app/src/main/java/it/binario/app/widget/RouteWidgetProvider.kt"
+     ]
+    },
+    {
+     "id": "E2E-15",
+     "text": "Stop-alarm confirmation persists for the whole session and is shown on every other train's detail screen — `app/MainActivity.kt`",
+     "fix_summary": "The stop-alarm confirmation appears only on the detail screen of the train it was set for.",
+     "files": [
+      "app/src/main/java/it/binario/app/MainActivity.kt"
+     ]
+    },
+    {
+     "id": "E2E-16",
+     "text": "Creating a route when 32 routes exist silently deletes the last existing route — `app/data/SavedRouteOrdering.kt`",
+     "fix_summary": "Creating a route at the 32-route limit is refused with a message instead of silently deleting an existing route.",
+     "files": [
+      "app/src/main/java/it/binario/app/data/SavedRouteOrdering.kt",
+      "app/src/main/java/it/binario/app/TrainViewModel.kt",
+      "app/src/main/java/it/binario/app/UiMessage.kt",
+      "app/src/main/java/it/binario/app/UiMessageResources.kt",
+      "app/src/main/res/values*/strings.xml"
+     ],
+     "also_closes": [
+      {
+       "id": "PU-8",
+       "text": "Android: saved-route (32) and commuter-alert (24) caps silently evict an existing record on create; evicted alert's alarm stays armed but fires into nothing — `app/data/SavedRouteOrdering.kt`",
+       "fix_summary": "At the route (32) or alert (24) limit, creating a new one is refused with a message instead of silently deleting an existing record, and the alarms of a dropped alert are cancelled.",
+       "files": [
+        "app/src/main/java/it/binario/app/data/SavedRouteOrdering.kt",
+        "app/src/main/java/it/binario/app/CommuterAlerts.kt",
+        "app/src/main/java/it/binario/app/TrainViewModel.kt",
+        "app/src/main/java/it/binario/app/MainActivity.kt"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "TB-4",
+     "text": "Android: v0.16.3 backups import the preset route 'default-roma-torino' as a success, which RouteStore then silently drops on the next launch — `app/LocalDataBackup.kt`",
+     "fix_summary": "Backups from v0.16.3 no longer import the retired Roma–Torino preset as a route that then disappears on the next launch; import counts match what is kept.",
+     "files": [
+      "app/src/main/java/it/binario/app/LocalDataBackup.kt",
+      "app/src/main/java/it/binario/app/TrainViewModel.kt",
+      "app/src/test/java/it/binario/app/LocalDataBackupCodecTest.kt"
+     ]
+    },
+    {
+     "id": "TB-6",
+     "text": "Android: exported MainActivity trusts EXTRA_APPWIDGET_ID from any caller and persists the corresponding route as active — `app/MainActivity.kt`",
+     "fix_summary": "Only taps on the app's own widgets can switch and persist the active route; another app sending a widget id to MainActivity no longer can.",
+     "files": [
+      "app/src/main/java/it/binario/app/widget/RouteWidgetProvider.kt",
+      "app/src/main/java/it/binario/app/MainActivity.kt",
+      "app/src/test/java/it/binario/app/widget/WidgetLaunchTokenTest.kt"
+     ],
+     "also_closes": [
+      {
+       "id": "MS-7",
+       "text": "Exported entry points cause state changes without caller validation: MainActivity trusts a caller-supplied EXTRA_APPWIDGET_ID, and the companion Wear exports an unreachable checklist activity that ma… — `app/MainActivity.kt`",
+       "fix_summary": "Only Binario's own widget can activate a route in MainActivity, and other watch apps can no longer make the phone post a stream of checklist notifications.",
+       "files": [
+        "app/src/main/AndroidManifest.xml",
+        "app/src/main/java/it/binario/app/MainActivity.kt",
+        "app/src/main/java/it/binario/app/widget/RouteWidgetProvider.kt",
+        "app/src/test/java/it/binario/app/widget/WidgetLaunchTokenTest.kt"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "MS-6",
+     "text": "Native launcher shortcuts use implicit intents on an unverified custom scheme (no targetPackage/targetClass), so other apps can intercept them — `app/src/main/res/xml/shortcuts.xml`",
+     "fix_summary": "Launcher shortcuts always open Binario's own MainActivity (explicit targetPackage/targetClass) and can no longer be intercepted by another app registering the binario:// scheme.",
+     "files": [
+      "app/src/main/res/xml/shortcuts.xml",
+      "app/src/test/java/it/binario/app/LauncherShortcutsTest.kt"
+     ]
+    },
+    {
+     "id": "PU-7",
+     "text": "Android: opening the app from a widget persists a synthetic active-route id ('route:<o>:<d>') that RouteStore can never resolve; next cold start opens another route and pinning resets to no route — `app/widget/WidgetConfigureActivity.kt`",
+     "fix_summary": "Opening the app from a widget activates the matching saved route when one exists, and no longer persists an id that the next cold start cannot resolve.",
+     "files": [
+      "app/src/main/java/it/binario/app/TrainViewModel.kt",
+      "app/src/test/java/it/binario/app/ActiveRouteReconciliationTest.kt"
+     ]
+    },
+    {
+     "id": "AND-NEW-1",
+     "text": "Picking a station by name still resolves to the first catalog match: 122 stations cannot be selected; some map silently to another town and are saved that way — `app/data/StationAutocompleteEngine.kt`",
+     "fix_summary": "The station the user taps in a suggestion list is the one saved and searched, even when another station has the same name.",
+     "files": [
+      "app/src/main/java/it/binario/app/MainActivity.kt",
+      "app/src/main/java/it/binario/app/TrainViewModel.kt",
+      "app/src/main/java/it/binario/app/data/StationSelection.kt",
+      "app/src/main/java/it/binario/app/widget/WidgetConfigureActivity.kt"
+     ]
+    },
+    {
+     "id": "FS-3",
+     "text": "M-6 regression guard is textual: re-introducing the original watch false success (show 'Checklist aperta sul telefono' as soon as the request is sent) keeps all 25 native-surface contract tests green — `companion-expo/tests/native-surface-contract.test.ts`",
+     "fix_summary": "Restoring a backup waits for the station catalogue to load, so old backups are no longer rejected or imported in part after the app was killed while the catalogue was loading.",
+     "files": [
+      "app/src/main/java/it/binario/app/TrainViewModel.kt",
+      "app/src/main/java/it/binario/app/MainActivity.kt",
+      "app/src/test/java/it/binario/app/LocalDataBackupCodecTest.kt"
+     ]
+    },
+    {
+     "id": "FSKB-1",
+     "text": "PR#34 removed the 'pending export missing' feedback, so a second Agenda export result leaves a 0-byte file silently — `app/MainActivity.kt`",
+     "fix_summary": "A double tap on Esporta JSON/ICS opens only one picker; any orphan result is reported as a failure and its empty file deleted.",
+     "files": [
+      "app/src/main/java/it/binario/app/MainActivity.kt",
+      "app/src/main/java/it/binario/app/plannedjourney/PlannedJourneyViewModel.kt"
+     ]
+    },
+    {
+     "id": "VT-13",
+     "text": "Android instrumented Compose accessibility tests are never compiled or run by CI and assert Italian strings without pinning a locale — `app/MainScreenAccessibilityTest.kt`",
+     "fix_summary": "CI compiles the instrumented accessibility tests, and those tests take their expected text from string resources, so they hold in any device language (static only: no SDK).",
+     "files": [
+      ".github/workflows/android-ci.yml",
+      "tools/verify_android_release_config.py",
+      "app/src/androidTest/java/it/binario/app/MainScreenAccessibilityTest.kt"
+     ]
+    }
+   ],
+   "suites": [
+    "REPO=$PWD /tmp/claude-0/-home-user-binario/ec2338fa-afae-5418-81d9-da7d3b962a13/scratchpad/kt/android-check.sh all",
+    "python3 -m unittest discover -s tests"
+   ]
+  }
+ ]
+}

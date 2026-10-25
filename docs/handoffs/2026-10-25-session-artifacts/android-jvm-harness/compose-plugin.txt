@@ -1,0 +1,1 @@
+/tmp/claude-0/-home-user-binario/ec2338fa-afae-5418-81d9-da7d3b962a13/scratchpad/kt/lib/org.jetbrains.kotlin/kotlin-compose-compiler-plugin-embeddable-2.0.21.jar
