@@ -1,11 +1,14 @@
 <resources>
-    <color name="widget_surface">#004B3A</color>
-    <color name="widget_on_surface">#F5FBF5</color>
-    <color name="widget_on_surface_muted">#C5D9CF</color>
-    <color name="widget_accent">#4FE0AE</color>
-    <color name="widget_warning">#FFB870</color>
-    <color name="widget_error">#FFB4AB</color>
-    <color name="widget_divider">#4E796A</color>
-    <color name="widget_header">#C5D9CF</color>
-    <color name="widget_header_text">#003527</color>
+    <!-- Verde ferroviario Binario 2.0: più chiaro come ispirazione, scuro per contrasto WCAG. -->
+    <color name="brand_reference_green">#388E3C</color>
+    <color name="brand_action_green">#2E7D32</color>
+    <color name="widget_surface">#205E2B</color>
+    <color name="widget_on_surface">#FFFFFF</color>
+    <color name="widget_on_surface_muted">#E0F1E2</color>
+    <color name="widget_accent">#D7F0DA</color>
+    <color name="widget_warning">#FFCB93</color>
+    <color name="widget_error">#FFD0CC</color>
+    <color name="widget_divider">#76AC7A</color>
+    <color name="widget_header">#D7F0DA</color>
+    <color name="widget_header_text">#143A1A</color>
 </resources>

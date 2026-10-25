@@ -43,14 +43,17 @@
 }
 
 :root {
-  --primary: var(--color-blue-700);
+  --brand-green-primary: #2e7d32;
+  --brand-green-secondary: #388e3c;
+  --brand-green-light: #b6dfba;
+  --primary: var(--brand-green-primary);
   --primary-foreground: var(--color-blue-50);
-  --sidebar-primary: var(--color-blue-600);
+  --sidebar-primary: var(--brand-green-primary);
   --sidebar-primary-foreground: var(--color-blue-50);
-  --chart-1: var(--color-blue-300);
-  --chart-2: var(--color-blue-500);
-  --chart-3: var(--color-blue-600);
-  --chart-4: var(--color-blue-700);
+  --chart-1: var(--brand-green-light);
+  --chart-2: var(--brand-green-secondary);
+  --chart-3: var(--brand-green-primary);
+  --chart-4: var(--brand-green-primary);
   --chart-5: var(--color-blue-800);
   --radius: 0.65rem;
   --background: oklch(1 0 0);
@@ -69,7 +72,7 @@
   --destructive-foreground: oklch(0.985 0 0);
   --border: oklch(0.92 0.004 286.32);
   --input: oklch(0.92 0.004 286.32);
-  --ring: oklch(0.623 0.214 259.815);
+  --ring: #2e7d32;
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.235 0.015 65);
   --sidebar-accent: oklch(0.967 0.001 286.375);
@@ -79,9 +82,9 @@
 }
 
 .dark {
-  --primary: var(--color-blue-700);
+  --primary: var(--brand-green-primary);
   --primary-foreground: var(--color-blue-50);
-  --sidebar-primary: var(--color-blue-500);
+  --sidebar-primary: var(--brand-green-secondary);
   --sidebar-primary-foreground: var(--color-blue-50);
   --background: oklch(0.141 0.005 285.823);
   --foreground: oklch(0.85 0.005 65);
@@ -99,11 +102,11 @@
   --destructive-foreground: oklch(0.985 0 0);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.488 0.243 264.376);
-  --chart-1: var(--color-blue-300);
-  --chart-2: var(--color-blue-500);
-  --chart-3: var(--color-blue-600);
-  --chart-4: var(--color-blue-700);
+  --ring: #9bdd9e;
+  --chart-1: var(--brand-green-light);
+  --chart-2: var(--brand-green-secondary);
+  --chart-3: var(--brand-green-primary);
+  --chart-4: var(--brand-green-primary);
   --chart-5: var(--color-blue-800);
   --sidebar: oklch(0.21 0.006 285.885);
   --sidebar-foreground: oklch(0.85 0.005 65);
