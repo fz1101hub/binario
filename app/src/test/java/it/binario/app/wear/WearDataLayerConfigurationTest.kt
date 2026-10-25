@@ -49,6 +49,21 @@ class WearDataLayerConfigurationTest {
     }
 
     @Test
+    fun `watch launcher icon is adaptive while tile and complication keep the service glyph`() {
+        val manifest = File(repositoryRoot, "wear/src/main/AndroidManifest.xml").readText()
+        val launcherIcon = File(repositoryRoot, "wear/src/main/res/mipmap-anydpi/ic_launcher.xml").readText()
+
+        assertTrue(manifest.contains("android:icon=\"@mipmap/ic_launcher\""))
+        assertTrue(manifest.contains("android:roundIcon=\"@mipmap/ic_launcher\""))
+        assertEquals(2, Regex("android:icon=\"@drawable/ic_binario_wear\"").findAll(manifest).count())
+        assertTrue(launcherIcon.contains("<adaptive-icon"))
+        assertTrue(launcherIcon.contains("<background android:drawable=\"@drawable/ic_launcher_background\""))
+        assertTrue(launcherIcon.contains("<foreground android:drawable=\"@drawable/ic_launcher_foreground\""))
+        assertTrue(File(repositoryRoot, "wear/src/main/res/drawable/ic_launcher_background.xml").isFile)
+        assertTrue(File(repositoryRoot, "wear/src/main/res/drawable/ic_launcher_foreground.xml").isFile)
+    }
+
+    @Test
     fun `privacy copy describes fail closed watch revocation`() {
         val strings = File(repositoryRoot, "app/src/main/res/values/strings.xml").readText()
 
