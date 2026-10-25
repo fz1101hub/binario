@@ -242,7 +242,7 @@
     <string name="train_number_label">Train %1$s</string>
     <string name="accessibility_remove_train_monitoring">Remove monitoring for train %1$s</string>
     <string name="settings_privacy_title">Privacy and data</string>
-    <string name="settings_privacy_local_data">Routes, favourites, monitoring, alerts and widgets remain on the device. Android backup and transfer are excluded; the JSON file is exported only if you choose it. Location is used only to order nearby stations and is neither retained nor sent to railway sources.</string>
+    <string name="settings_privacy_local_data">Routes, favourites, monitoring, alerts, widgets and the punctuality history remain on the device. The punctuality history keeps, only on the phone and for up to 90 days, the date, number, operator, delay and cancellation of trains opened with operational data or monitored. A train’s history can be deleted from its Punctuality card, shown from the second observation; deleting the app data removes all of it. Android backup and transfer are excluded; the JSON file is exported only if you choose it. Location is used only to order nearby stations and is neither retained nor sent to railway sources.</string>
     <string name="settings_privacy_notifications_voice">Notifications are local reminders. Dictation uses the system recogniser: Binario does not record audio and uses only the returned text. RFI searches send the source the public identifier of the departure station; optional personal sources may receive an identifier or the station name. Without an authorised source: real-time data unavailable. ViaggiaTreno uses HTTP for its public API: station, time and train requests are unencrypted. Other sources use HTTPS.</string>
     <string name="settings_privacy_wear">If you enable the smartwatch, it receives a summary of the route and up to two services. Turning off sharing deletes the DataItem and the watch’s local cache when the revocation is received. The full notice is PRIVACY.md in the repository. A verified URL and privacy contact are still missing before a public release: there is not yet a public link in the app.</string>
     <string name="settings_privacy_osm">National autocomplete: © OpenStreetMap contributors, ODbL 1.0. The geographic catalogue suggests station names but does not confirm service, time, platform, delay or operation.</string>
@@ -276,7 +276,7 @@
     <string name="mobility_compact_timetable">I prefer compact boards</string>
 
     <string name="local_backup_title">Local backup</string>
-    <string name="local_backup_description">Export or import routes, favourites, monitoring, alerts and preferences with a JSON file that you choose. No automatic cloud is used.</string>
+    <string name="local_backup_description">Export or import routes, favourites, monitoring, alerts, preferences and the punctuality history with a JSON file that you choose. No automatic cloud is used.</string>
     <string name="action_export">Export</string>
     <string name="action_import">Import</string>
 
@@ -757,4 +757,16 @@
     <string name="station_widget_favourites_optional">Favourite stations (optional)</string>
     <string name="station_widget_selected_summary">Widget station: %1$s</string>
     <string name="station_widget_station_missing">no station chosen</string>
+    <string name="punctuality_title">Punctuality</string>
+    <string name="punctuality_on_time_share">On time (within 5 minutes): %1$d%%</string>
+    <string name="punctuality_average_delay">Average delay: %1$s</string>
+    <string name="punctuality_average_delay_unavailable">Average delay unavailable: every observed run was cancelled.</string>
+    <string name="punctuality_cancelled_count">Cancellations: %1$d</string>
+    <string name="punctuality_recent_title">Latest observations</string>
+    <string name="punctuality_local_note">Recorded only on this device when you open a train with operational data or a monitored train is refreshed: one observation per day, for up to 90 days.</string>
+    <string name="punctuality_clear">Delete this train’s history</string>
+    <plurals name="punctuality_observation_count">
+        <item quantity="one">%d observation recorded on this device</item>
+        <item quantity="other">%d observations recorded on this device</item>
+    </plurals>
 </resources>

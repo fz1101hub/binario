@@ -80,6 +80,7 @@ class TrainViewModel @JvmOverloads constructor(
     private val personalTravelStore = PersonalTravelStore(application)
     private val mobilityPreferencesStore = MobilityPreferencesStore(application)
     private val customStationStore = CustomStationStore(application)
+    private val punctualityStore = PunctualityHistoryStore(application)
     private val dataSource: TrainDataSource = BinarioDataGraph.routeDataSource(application)
     private val curatedStationCatalog = EmbeddedCuratedRailStationCatalog(
         openAsset = { assetPath -> application.assets.open(assetPath) }
@@ -178,6 +179,9 @@ class TrainViewModel @JvmOverloads constructor(
     var activeTrip by mutableStateOf(personalTravelStore.activeTrip())
         private set
     var mobilityPreferences by mutableStateOf(mobilityPreferencesStore.read())
+        private set
+    /** Local-only punctuality observations, newest first. */
+    var punctualityHistory by mutableStateOf(punctualityStore.read())
         private set
 
     private var primaryServicePresentation by mutableStateOf(ServicePresentation.empty())
@@ -580,6 +584,7 @@ class TrainViewModel @JvmOverloads constructor(
                     update.matches.singleOrNull { it.id == selectedId }?.let { match ->
                         selectedService = match.service
                         selectedServiceSnapshot = match.snapshot
+                        notePunctuality(listOf(match.service), match.snapshot)
                     } ?: if (update.complete) {
                         val service = selectedService?.let(::serviceWithoutCurrentObservation)
                         selectedService = service
@@ -595,6 +600,7 @@ class TrainViewModel @JvmOverloads constructor(
         selectedGlobalTrainId = match.id
         selectedService = match.service
         selectedServiceSnapshot = match.snapshot
+        notePunctuality(listOf(match.service), match.snapshot)
     }
 
     fun clearSearchFilters() {
@@ -712,6 +718,7 @@ class TrainViewModel @JvmOverloads constructor(
                     primarySnapshotIsCurrent = publishesCurrentDepartures
                     rebuildServicePresentations()
                     reconcileSelectedService(result.snapshot, directionAtRequest)
+                    notePunctuality(result.snapshot.services.filter(::isMonitoring), result.snapshot)
                     retainAvailableOperatorFilter()
                     cache.save(result.snapshot)
                     if (publishesCurrentDepartures) {
@@ -805,6 +812,7 @@ class TrainViewModel @JvmOverloads constructor(
                     returnSnapshot = result.snapshot
                     rebuildServicePresentations()
                     reconcileSelectedService(result.snapshot, Direction.RETURN)
+                    notePunctuality(result.snapshot.services.filter(::isMonitoring), result.snapshot)
                     retainAvailableOperatorFilter()
                     returnRefreshState = RefreshState.SUCCESS
                     returnRefreshMessage = result.snapshot.advisoryMessage()
@@ -852,6 +860,7 @@ class TrainViewModel @JvmOverloads constructor(
         findRefreshedService(selected, updated.services)?.let { refreshed ->
             selectedService = refreshed
             selectedServiceSnapshot = updated
+            notePunctuality(listOf(refreshed), updated)
         } ?: invalidateSelectedService(updatedDirection)
     }
 
@@ -890,6 +899,28 @@ class TrainViewModel @JvmOverloads constructor(
         } else {
             primarySnapshot
         }
+        notePunctuality(listOf(service), selectedServiceSnapshot)
+    }
+
+    /** Statistics of the open train from the local history; null below two observations. */
+    fun punctualityStats(service: TrainService): PunctualityStats? = PunctualityHistory.stats(punctualityHistory, service.number)
+
+    fun clearPunctualityHistory(trainNumber: String) {
+        punctualityHistory = punctualityStore.removeTrain(punctualityHistory, trainNumber)
+    }
+
+    /**
+     * Records operational observations in the local punctuality history: the train whose detail is
+     * open, and the monitored trains of a refreshed snapshot. Scheduled-only, expired and
+     * demonstration data never count; an unchanged observation is not written again.
+     */
+    private fun notePunctuality(services: List<TrainService>, snapshot: RouteSnapshot?) {
+        if (services.isEmpty() || snapshot?.confidence == DataConfidence.DEMONSTRATION || snapshot?.isExpired == true) return
+        val today = JourneyQuery.now().serviceDate
+        val observations = services.mapNotNull { PunctualityHistory.observationOf(it, today) }
+            .filterNot { it in punctualityHistory }
+        if (observations.isEmpty()) return
+        punctualityHistory = punctualityStore.record(punctualityHistory, observations)
     }
 
     fun closeService() {
@@ -992,6 +1023,7 @@ class TrainViewModel @JvmOverloads constructor(
                 stationMonitors = stationMonitors,
                 commuterAlerts = commuterAlerts,
                 mobilityPreferences = mobilityPreferences,
+                punctualityHistory = punctualityHistory,
                 stations = (
                     savedRoutes.flatMap { listOf(it.outwardOrigin, it.outwardDestination) } +
                         stations.filter { it.id in favouriteIds || it.id in monitoredStationIds }
@@ -1023,6 +1055,7 @@ class TrainViewModel @JvmOverloads constructor(
             commuterAlerts = commuterAlertStore.replace(backup.commuterAlerts)
             CommuterAlertScheduler.rescheduleAll(getApplication())
             updateMobilityPreferences(backup.mobilityPreferences)
+            backup.punctualityHistory?.let { punctualityHistory = punctualityStore.replace(it) }
             if (hasActiveRoute) refresh() else {
                 refreshRequestId += 1
                 primarySnapshot = null

@@ -614,6 +614,8 @@ private fun BinarioApp(
                     hasBoardProviders = viewModel.hasStationBoardProviders,
                     loadConnectionBoard = viewModel::connectionBoard,
                     shareStrings = trainShareStrings,
+                    punctuality = viewModel.punctualityStats(service),
+                    onClearPunctuality = { viewModel.clearPunctualityHistory(service.number) },
                     onShare = {
                         val content = TrainShareFormatter.create(
                             service = service,
@@ -2662,6 +2664,8 @@ private fun ServiceDetailScreen(
     hasBoardProviders: Boolean,
     loadConnectionBoard: (String, java.time.Instant) -> kotlinx.coroutines.flow.Flow<it.binario.app.data.repository.StationBoardAggregateResult>?,
     shareStrings: TrainShareStrings,
+    punctuality: PunctualityStats?,
+    onClearPunctuality: () -> Unit,
     onShare: () -> Unit
 ) {
     val dataLabel = if (isDemonstration) stringResource(R.string.data_status_demo) else freshness?.localizedLabel() ?: stringResource(R.string.data_status_unavailable)
@@ -2776,6 +2780,9 @@ private fun ServiceDetailScreen(
                 routeChange = stop.routeChange,
                 onSetAlarm = { onScheduleStopAlarm(service, stop) }
             )
+        }
+        punctuality?.let { stats ->
+            item { PunctualityCard(stats = stats, onClear = onClearPunctuality) }
         }
         item { Spacer(Modifier.height(24.dp)) }
     }

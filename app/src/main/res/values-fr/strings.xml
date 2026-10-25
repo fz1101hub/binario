@@ -245,7 +245,7 @@
     <string name="train_number_label">Train %1$s</string>
     <string name="accessibility_remove_train_monitoring">Supprimer le suivi du train %1$s</string>
     <string name="settings_privacy_title">Confidentialité et données</string>
-    <string name="settings_privacy_local_data">Les itinéraires, favoris, suivis, alertes et widgets restent sur l’appareil. La sauvegarde et le transfert Android sont exclus ; le fichier JSON n’est exporté que si vous le choisissez. La position sert uniquement à classer les gares proches et n’est ni conservée ni envoyée aux sources ferroviaires.</string>
+    <string name="settings_privacy_local_data">Les itinéraires, favoris, suivis, alertes, widgets et l’historique de ponctualité restent sur l’appareil. L’historique de ponctualité conserve, uniquement sur le téléphone et pendant 90 jours au plus, la date, le numéro, l’opérateur, le retard et la suppression des trains ouverts avec des données d’exploitation ou suivis. L’historique d’un train s’efface depuis sa carte Ponctualité, affichée dès la deuxième observation ; effacer les données de l’application supprime tout l’historique. La sauvegarde et le transfert Android sont exclus ; le fichier JSON n’est exporté que si vous le choisissez. La position sert uniquement à classer les gares proches et n’est ni conservée ni envoyée aux sources ferroviaires.</string>
     <string name="settings_privacy_notifications_voice">Les notifications sont des rappels locaux. La dictée utilise le reconnaisseur système : Binario n’enregistre pas l’audio et utilise uniquement le texte renvoyé. Les recherches RFI envoient à la source l’identifiant public de la gare de départ ; les sources personnelles facultatives peuvent recevoir un identifiant ou le nom de la gare. Sans source autorisée : données non disponibles en temps réel. ViaggiaTreno utilise HTTP pour son API publique : les requêtes de gare, heure et train ne sont pas chiffrées. Les autres sources utilisent HTTPS.</string>
     <string name="settings_privacy_wear">Si vous activez la montre connectée, elle reçoit un résumé de l’itinéraire et jusqu’à deux trajets. La désactivation du partage supprime le DataItem et le cache local de la montre à la réception de la révocation. La notice complète est PRIVACY.md dans le dépôt. Avant une diffusion publique, il manque une URL vérifiée et un contact pour la confidentialité : il n’existe pas encore de lien public dans l’application.</string>
     <string name="settings_privacy_osm">Saisie semi-automatique nationale : © contributeurs OpenStreetMap, ODbL 1.0. Le catalogue géographique suggère des noms de gares mais ne confirme ni le service, ni l’horaire, ni la voie, ni le retard, ni la circulation.</string>
@@ -279,7 +279,7 @@
     <string name="mobility_compact_timetable">Je préfère les tableaux compacts</string>
 
     <string name="local_backup_title">Sauvegarde locale</string>
-    <string name="local_backup_description">Exportez ou importez les itinéraires, favoris, suivis, alertes et préférences avec un fichier JSON de votre choix. Aucun cloud automatique n’est utilisé.</string>
+    <string name="local_backup_description">Exportez ou importez les itinéraires, favoris, suivis, alertes, préférences et l’historique de ponctualité avec un fichier JSON de votre choix. Aucun cloud automatique n’est utilisé.</string>
     <string name="action_export">Exporter</string>
     <string name="action_import">Importer</string>
 
@@ -769,4 +769,17 @@
     <string name="station_widget_favourites_optional">Gares favorites (facultatif)</string>
     <string name="station_widget_selected_summary">Gare du widget : %1$s</string>
     <string name="station_widget_station_missing">aucune gare choisie</string>
+    <string name="punctuality_title">Ponctualité</string>
+    <string name="punctuality_on_time_share">À l’heure (5 minutes au plus) : %1$d%%</string>
+    <string name="punctuality_average_delay">Retard moyen : %1$s</string>
+    <string name="punctuality_average_delay_unavailable">Retard moyen indisponible : toutes les circulations observées ont été supprimées.</string>
+    <string name="punctuality_cancelled_count">Suppressions : %1$d</string>
+    <string name="punctuality_recent_title">Dernières observations</string>
+    <string name="punctuality_local_note">Enregistré uniquement sur cet appareil quand vous ouvrez un train avec des données d’exploitation ou qu’un train suivi est actualisé : une observation par jour, pendant 90 jours au plus.</string>
+    <string name="punctuality_clear">Effacer l’historique de ce train</string>
+    <plurals name="punctuality_observation_count">
+        <item quantity="one">%d observation enregistrée sur cet appareil</item>
+        <item quantity="many">%d observations enregistrées sur cet appareil</item>
+        <item quantity="other">%d observations enregistrées sur cet appareil</item>
+    </plurals>
 </resources>

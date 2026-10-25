@@ -13,6 +13,8 @@
 | Posizione | Letta una volta, su azione esplicita, per ordinare in memoria il catalogo stazioni offline; non viene salvata, inclusa nei backup o nei widget, né inviata a un host. | `StationProximity.kt`, `PRIVACY.md` § Posizione effimera |
 | Notifiche | Avvisi pendolare e sveglia fermata sono notifiche locali pianificate dal dispositivo; nessun push server. | `CommuterAlerts.kt`, `StopAlarmPlanner.kt` |
 | Dettatura | Avvia il riconoscitore vocale di sistema e riceve solo il testo; l'app non apre il microfono. | `PlannerVoiceParser.kt` |
+| Storico puntualità | Al massimo un'osservazione per treno e giorno (data, numero, operatore, ritardo, soppressione) nelle `SharedPreferences`, limitata a 90 giorni, 30 per treno e 500 in totale; mai inviata a un host. | `PunctualityHistory.kt`, `PRIVACY.md` |
+| Calendario | "Aggiungi al calendario" passa un evento precompilato all'app calendario con `ACTION_INSERT`; nessun permesso calendario, nessuna lettura o scrittura diretta dei calendari. | `TrainCalendarEvent.kt` |
 | Backup | `allowBackup="false"`, regole di esclusione per cloud backup e trasferimento; l'export JSON è manuale e scelto dall'utente. | `app/src/main/res/xml/backup_rules.xml`, `data_extraction_rules.xml` |
 | Wear OS | Il telefono invia tramite Google Play Services Data Layer etichetta tratta, provenienza, freschezza, avviso e al massimo due corse; nessuna credenziale, posizione o audio. La revoca cancella il DataItem e la cache del watch. | `app/src/main/java/it/binario/app/wear/`, `wear/src/main/java/it/binario/wear/sync/` |
 

@@ -242,7 +242,7 @@
     <string name="train_number_label">Zug %1$s</string>
     <string name="accessibility_remove_train_monitoring">Zugüberwachung für %1$s entfernen</string>
     <string name="settings_privacy_title">Datenschutz und Daten</string>
-    <string name="settings_privacy_local_data">Strecken, Favoriten, Überwachungen, Warnungen und Widgets verbleiben auf dem Gerät. Android-Backup und -Übertragung sind ausgeschlossen; die JSON-Datei wird nur exportiert, wenn du dies auswählst. Der Standort dient nur zum Sortieren naher Bahnhöfe und wird weder gespeichert noch an Bahnquellen gesendet.</string>
+    <string name="settings_privacy_local_data">Strecken, Favoriten, Überwachungen, Warnungen, Widgets und der Pünktlichkeitsverlauf verbleiben auf dem Gerät. Der Pünktlichkeitsverlauf speichert nur auf dem Telefon und höchstens 90 Tage lang Datum, Nummer, Betreiber, Verspätung und Ausfall der mit Betriebsdaten geöffneten oder überwachten Züge. Der Verlauf eines Zuges lässt sich in seiner Pünktlichkeitskarte löschen, die ab der zweiten Beobachtung erscheint; das Löschen der App-Daten entfernt den gesamten Verlauf. Android-Backup und -Übertragung sind ausgeschlossen; die JSON-Datei wird nur exportiert, wenn du dies auswählst. Der Standort dient nur zum Sortieren naher Bahnhöfe und wird weder gespeichert noch an Bahnquellen gesendet.</string>
     <string name="settings_privacy_notifications_voice">Benachrichtigungen sind lokale Erinnerungen. Die Diktierfunktion verwendet die System-Spracherkennung: Binario zeichnet kein Audio auf und verwendet nur den zurückgegebenen Text. RFI-Suchen senden die öffentliche Kennung des Abfahrtsbahnhofs an die Quelle; optionale persönliche Quellen können eine Kennung oder den Namen des Bahnhofs erhalten. Ohne autorisierte Quelle: keine Echtzeitdaten verfügbar. ViaggiaTreno nutzt HTTP für seine öffentliche API: Anfragen zu Bahnhof, Zeit und Zug sind unverschlüsselt. Andere Quellen nutzen HTTPS.</string>
     <string name="settings_privacy_wear">Wenn du die Smartwatch aktivierst, erhält sie eine Streckenzusammenfassung und bis zu zwei Fahrten. Das Deaktivieren der Freigabe löscht bei Eingang des Widerrufs das DataItem und den lokalen Watch-Cache. Die vollständigen Hinweise stehen in PRIVACY.md im Repository. Vor einer öffentlichen Veröffentlichung fehlen eine verifizierte URL und eine Datenschutz-Kontaktmöglichkeit: Es gibt noch keinen öffentlichen Link in der App.</string>
     <string name="settings_privacy_osm">Nationale Autovervollständigung: © OpenStreetMap contributors, ODbL 1.0. Der geografische Katalog schlägt Bahnhofsnamen vor, bestätigt jedoch weder Verkehr, Fahrzeit, Gleis, Verspätung noch Betrieb.</string>
@@ -276,7 +276,7 @@
     <string name="mobility_compact_timetable">Kompakte Abfahrtstafeln bevorzugen</string>
 
     <string name="local_backup_title">Lokales Backup</string>
-    <string name="local_backup_description">Exportiere oder importiere Strecken, Favoriten, Überwachungen, Warnungen und Einstellungen mit einer von dir ausgewählten JSON-Datei. Es wird keine automatische Cloud verwendet.</string>
+    <string name="local_backup_description">Exportiere oder importiere Strecken, Favoriten, Überwachungen, Warnungen, Einstellungen und den Pünktlichkeitsverlauf mit einer von dir ausgewählten JSON-Datei. Es wird keine automatische Cloud verwendet.</string>
     <string name="action_export">Exportieren</string>
     <string name="action_import">Importieren</string>
 
@@ -757,4 +757,16 @@
     <string name="station_widget_favourites_optional">Lieblingsbahnhöfe (optional)</string>
     <string name="station_widget_selected_summary">Bahnhof des Widgets: %1$s</string>
     <string name="station_widget_station_missing">kein Bahnhof gewählt</string>
+    <string name="punctuality_title">Pünktlichkeit</string>
+    <string name="punctuality_on_time_share">Pünktlich (bis 5 Minuten): %1$d%%</string>
+    <string name="punctuality_average_delay">Durchschnittliche Verspätung: %1$s</string>
+    <string name="punctuality_average_delay_unavailable">Durchschnittliche Verspätung nicht verfügbar: Alle beobachteten Fahrten sind ausgefallen.</string>
+    <string name="punctuality_cancelled_count">Ausfälle: %1$d</string>
+    <string name="punctuality_recent_title">Letzte Beobachtungen</string>
+    <string name="punctuality_local_note">Nur auf diesem Gerät erfasst, wenn du einen Zug mit Betriebsdaten öffnest oder ein überwachter Zug aktualisiert wird: eine Beobachtung pro Tag, höchstens 90 Tage lang.</string>
+    <string name="punctuality_clear">Verlauf dieses Zuges löschen</string>
+    <plurals name="punctuality_observation_count">
+        <item quantity="one">%d Beobachtung auf diesem Gerät erfasst</item>
+        <item quantity="other">%d Beobachtungen auf diesem Gerät erfasst</item>
+    </plurals>
 </resources>

@@ -245,7 +245,7 @@
     <string name="train_number_label">Treno %1$s</string>
     <string name="accessibility_remove_train_monitoring">Rimuovi monitoraggio treno %1$s</string>
     <string name="settings_privacy_title">Privacy e dati</string>
-    <string name="settings_privacy_local_data">Tratte, preferiti, monitoraggi, avvisi e widget restano nel dispositivo. Backup e trasferimento Android sono esclusi; il file JSON viene esportato solo se lo scegli. La posizione serve solo a ordinare le stazioni vicine e non viene conservata né inviata alle fonti ferroviarie.</string>
+    <string name="settings_privacy_local_data">Tratte, preferiti, monitoraggi, avvisi, widget e storico puntualità restano nel dispositivo. Lo storico puntualità conserva solo sul telefono, per al massimo 90 giorni, data, numero, operatore, ritardo e soppressione dei treni aperti con dati operativi o monitorati. Lo storico di un treno si cancella dalla sua scheda Puntualità, visibile dalla seconda osservazione; tutto lo storico si cancella anche cancellando i dati dell’app. Backup e trasferimento Android sono esclusi; il file JSON viene esportato solo se lo scegli. La posizione serve solo a ordinare le stazioni vicine e non viene conservata né inviata alle fonti ferroviarie.</string>
     <string name="settings_privacy_notifications_voice">Le notifiche sono promemoria locali. La dettatura usa il riconoscitore di sistema: Binario non registra audio e usa solo il testo restituito. Le ricerche RFI inviano alla fonte l’identificativo pubblico della stazione di partenza o di destinazione. ViaggiaTreno riceve codici stazione, data/ora e identificativi della corsa; Italo il codice della stazione. Senza una rilevazione recente, lo stato operativo resta non verificato. ViaggiaTreno usa HTTP per la propria API pubblica: le richieste di stazione, orario e corsa non sono cifrate. Le altre fonti usano HTTPS.</string>
     <string name="settings_privacy_wear">Se attivi lo smartwatch, riceve una sintesi della tratta e fino a due corse. Disattivare la condivisione elimina il DataItem e la cache locale del watch alla ricezione della revoca. L’informativa completa è PRIVACY.md nel repository. Prima di una distribuzione pubblica manca un URL verificato e un recapito privacy: non esiste ancora un link pubblico nell’app.</string>
     <string name="settings_privacy_osm">Autocompletamento nazionale: © OpenStreetMap contributors, ODbL 1.0. Il catalogo geografico suggerisce nomi di stazioni ma non conferma servizio, orario, binario, ritardo o circolazione.</string>
@@ -279,7 +279,7 @@
     <string name="mobility_compact_timetable">Preferisco tabelloni compatti</string>
 
     <string name="local_backup_title">Backup locale</string>
-    <string name="local_backup_description">Esporta o importa tratte, preferiti, monitoraggi, avvisi e preferenze con un file JSON scelto da te. Non viene usato alcun cloud automatico.</string>
+    <string name="local_backup_description">Esporta o importa tratte, preferiti, monitoraggi, avvisi, preferenze e storico puntualità con un file JSON scelto da te. Non viene usato alcun cloud automatico.</string>
     <string name="action_export">Esporta</string>
     <string name="action_import">Importa</string>
 
@@ -769,4 +769,17 @@
     <string name="station_widget_favourites_optional">Stazioni preferite (facoltativo)</string>
     <string name="station_widget_selected_summary">Stazione del widget: %1$s</string>
     <string name="station_widget_station_missing">nessuna stazione scelta</string>
+    <string name="punctuality_title">Puntualità</string>
+    <string name="punctuality_on_time_share">In orario (entro 5 minuti): %1$d%%</string>
+    <string name="punctuality_average_delay">Ritardo medio: %1$s</string>
+    <string name="punctuality_average_delay_unavailable">Ritardo medio non disponibile: tutte le corse osservate sono state soppresse.</string>
+    <string name="punctuality_cancelled_count">Soppressioni: %1$d</string>
+    <string name="punctuality_recent_title">Ultime osservazioni</string>
+    <string name="punctuality_local_note">Registrato solo su questo dispositivo quando apri un treno con dati operativi o aggiorni un treno monitorato: una osservazione al giorno, per al massimo 90 giorni.</string>
+    <string name="punctuality_clear">Cancella lo storico di questo treno</string>
+    <plurals name="punctuality_observation_count">
+        <item quantity="one">%d osservazione registrata su questo dispositivo</item>
+        <item quantity="many">%d osservazioni registrate su questo dispositivo</item>
+        <item quantity="other">%d osservazioni registrate su questo dispositivo</item>
+    </plurals>
 </resources>
