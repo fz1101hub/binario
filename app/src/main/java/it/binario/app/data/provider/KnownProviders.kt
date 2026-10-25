@@ -23,6 +23,7 @@ object KnownProviderIds {
     val SWISS_OPEN_TRANSPORT = SourceId("ch-transport-opendata")
     val VIAGGIATRENO_TRAIN_NOTICES = SourceId("viaggiatreno-train-notices")
     val TRENITALIA_INFOMOBILITY_NEWS = SourceId("trenitalia-infomobility-news")
+    val TRENORD_LINE_NOTICES = SourceId("trenord-line-notices")
     val DEMO_LOCAL = SourceId("demo-local")
 }
 
@@ -269,6 +270,19 @@ object KnownProviders {
             ),
             enabled = BuildConfig.PERSONAL_REALTIME_SOURCES,
             priorityByCapability = mapOf(ProviderCapability.SERVICE_ALERTS to 25)
+        ),
+        ProviderPolicy(
+            descriptor = ProviderDescriptor(
+                id = KnownProviderIds.TRENORD_LINE_NOTICES,
+                displayName = "Trenord — avvisi per direttrice",
+                capabilities = setOf(ProviderCapability.SERVICE_ALERTS),
+                coverage = CoverageDescriptor(countryCodes = setOf("IT", "CH"), description = "Avvisi Trenord per linea (direttrice)"),
+                accessMode = AccessMode.PUBLIC_BEST_EFFORT,
+                ratePolicy = RatePolicy(Duration.ofMinutes(10), defaultTimeToLive = Duration.ofMinutes(15)),
+                schemaVersion = 1
+            ),
+            enabled = BuildConfig.PERSONAL_REALTIME_SOURCES,
+            priorityByCapability = mapOf(ProviderCapability.SERVICE_ALERTS to 26)
         )
     )
 

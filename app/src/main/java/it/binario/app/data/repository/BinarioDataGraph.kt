@@ -109,7 +109,8 @@ object BinarioDataGraph {
     /** Notices for the train detail and the notices area, from the registry-enabled public sources only. */
     fun railNoticesService(): it.binario.app.data.notices.RailNoticesService = it.binario.app.data.notices.RailNoticesService(
         trainNoticeProviders = activeProviders(localOnlyPolicy.trainNoticeProviders(), ProviderCapability.SERVICE_ALERTS),
-        networkAlertProviders = activeProviders(localOnlyPolicy.networkNoticeProviders(), ProviderCapability.SERVICE_ALERTS)
+        networkAlertProviders = activeProviders(localOnlyPolicy.networkNoticeProviders(), ProviderCapability.SERVICE_ALERTS),
+        trenord = activeProviders(localOnlyPolicy.trenordLineNoticeProviders(), ProviderCapability.SERVICE_ALERTS).firstOrNull()
     )
 
     fun vehiclePositionProviders(): List<VehiclePositionProvider> =

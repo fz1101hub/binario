@@ -17,8 +17,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.lifecycle.viewmodel.compose.viewModel
 
 /**
- * "Avvisi e infomobilità": RFI and Trenitalia network notices, deduplicated by title. Nothing is downloaded until
- * the user opens the area.
+ * "Avvisi e infomobilità": RFI and Trenitalia network notices, deduplicated by title, and Trenord notices grouped
+ * by line. Nothing is downloaded until the user opens the area.
  */
 @Composable
 fun RailNoticesArea(viewModel: RailNoticesViewModel = viewModel()) {
@@ -43,6 +43,15 @@ fun RailNoticesArea(viewModel: RailNoticesViewModel = viewModel()) {
                 }
                 if (!showAll && value.network.size > COLLAPSED_COUNT) {
                     TextButton(onClick = { showAll = true }) { Text(stringResource(R.string.notices_area_show_all)) }
+                }
+                if (value.trenordGroups.isNotEmpty()) {
+                    Text(stringResource(R.string.notices_trenord_heading), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+                    value.trenordGroups.forEach { group ->
+                        noticeLinesLabel(group.lines, group.allLines)?.let {
+                            Text(it, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                        }
+                        group.notices.forEach { RailNoticeItem(it, showLines = false) }
+                    }
                 }
                 if (value.stale) SourceSectionNote(stringResource(R.string.notices_stale))
                 value.unavailable.forEach { publisher ->

@@ -47,6 +47,8 @@ class ProviderRegistryTest {
         assertEquals(BuildConfig.PERSONAL_REALTIME_SOURCES, registry.isEnabled(SourceId("viaggiatreno-train-notices")))
         assertEquals(AccessMode.PUBLIC_BEST_EFFORT, registry.policy(SourceId("viaggiatreno-train-notices"))?.descriptor?.accessMode)
         assertEquals(BuildConfig.PERSONAL_REALTIME_SOURCES, registry.isEnabled(SourceId("trenitalia-infomobility-news")))
+        assertEquals(BuildConfig.PERSONAL_REALTIME_SOURCES, registry.isEnabled(SourceId("trenord-line-notices")))
+        assertTrue(registry.policy(SourceId("trenord-line-notices"))!!.descriptor.ratePolicy.defaultTimeToLive >= Duration.ofMinutes(10))
         assertTrue(registry.isEnabled(SourceId("rfi-programmed")))
         assertTrue(registry.isEnabled(SourceId("rfi-infomobility-rss")))
         assertTrue(registry.isEnabled(SourceId("alto-adige-sta-realtime")))

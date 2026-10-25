@@ -11,6 +11,7 @@ import it.binario.app.data.live.SncfGtfsRealtimeAdapter
 import it.binario.app.data.live.StaRealtimeAdapter
 import it.binario.app.data.live.SwissOpenTransportStationBoardAdapter
 import it.binario.app.data.live.TrenitaliaInfomobilityNewsAdapter
+import it.binario.app.data.live.TrenordLineNoticesAdapter
 import it.binario.app.data.live.ViaggiaTrenoRealtimeAdapter
 import it.binario.app.data.live.ViaggiaTrenoTrainNoticesAdapter
 import it.binario.app.data.planned.RfiProgrammedStationBoardAdapter
@@ -47,6 +48,7 @@ object LocalOnlyRailDataPolicy {
     private val swissOpenTransportBoard by lazy { SwissOpenTransportStationBoardAdapter() }
     private val viaggiaTrenoTrainNotices by lazy { ViaggiaTrenoTrainNoticesAdapter() }
     private val trenitaliaNews by lazy { TrenitaliaInfomobilityNewsAdapter() }
+    private val trenordNotices by lazy { TrenordLineNoticesAdapter() }
 
     /** Official programmed sources only. */
     fun routeSources(): List<TrainDataSource> = listOf(
@@ -99,10 +101,14 @@ object LocalOnlyRailDataPolicy {
         rfiAlerts,
         staRealtime,
         sncfRealtime
-    ) + personalNoticeProviders()
+    ) + personalNoticeProviders() + trenordLineNoticeProviders()
 
     /** Network notices for the notices area: official RFI feed always, best-effort operator notices if enabled. */
     fun networkNoticeProviders(): List<AlertProvider> = listOf(rfiAlerts) + personalNoticeProviders()
+
+    /** Trenord line notices, grouped by line in the notices area; best effort, personal sources only. */
+    fun trenordLineNoticeProviders(): List<TrenordLineNoticesAdapter> =
+        if (BuildConfig.PERSONAL_REALTIME_SOURCES) listOf(trenordNotices) else emptyList()
 
     private fun personalNoticeProviders(): List<AlertProvider> =
         if (BuildConfig.PERSONAL_REALTIME_SOURCES) listOf(trenitaliaNews) else emptyList()

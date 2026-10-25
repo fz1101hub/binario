@@ -1520,6 +1520,7 @@ internal fun StationBoardScreen(modifier: Modifier, viewModel: TrainViewModel) {
                             }
                         }
                     }
+                    item { StationLineNoticesSection(board.station) }
                     items(
                         board.entries.take(60),
                         key = { entry ->

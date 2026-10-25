@@ -340,6 +340,11 @@ class LiveProviderNetworkTest {
         assertTrue("Trenitalia infomobility: markup left in descriptions",
             alerts.none { alert -> alert.description?.value?.let { "&lt;" in it || "<p>" in it } == true })
         println("LIVE_ACCEPTANCE trenitalia-infomobility-news: items=${alerts.size}, tagged=${alerts.count { it.affectedTrainNumbers.isNotEmpty() }}")
+        val trenord = TrenordLineNoticesAdapter(clock).getLineNotices()
+        if (trenord !is ProviderResult.Success) fail("Trenord direttrici: $trenord")
+        val lines = (trenord as ProviderResult.Success).value
+        assertTrue("Trenord direttrici: no lines", lines.lines.isNotEmpty())
+        println("LIVE_ACCEPTANCE trenord-line-notices: lines=${lines.lines.size}, notices=${lines.alerts.size}")
     }
 
     /**

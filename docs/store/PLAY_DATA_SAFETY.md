@@ -91,6 +91,7 @@ La tabella copre ogni host `http(s)://` trovato in `app/src/main/java`, `wear/sr
 | `iechub.rfi.it` | B | `data/live/RfiStationBoardAdapter.kt` | Mai nella build distribuita | `GET` con `placeId` pubblico della stazione |
 | `italoinviaggio.italotreno.com` | B | `data/live/ItaloPublicStationAdapter.kt`, catalogo | Mai nella build distribuita | `GET` con slug pubblico della stazione nello URL |
 | `transport.opendata.ch` | B | `data/live/SwissOpenTransportStationBoardAdapter.kt`, catalogo | Tabellone stazione e arricchimento delle tratte con partenza da una stazione svizzera (UIC `85…`) o, una sola volta per stazione, ricerca del nome di una stazione di confine | `GET` con numero UIC della stazione, tipo di tabellone, limite e, per orari non correnti, data/ora; per la sola ricerca di identità il nome della stazione |
+| `www.trenord.it` | B | `data/live/TrenordLineNoticesAdapter.kt`, catalogo | Area avvisi aperta dall'utente, dettaglio di un treno Trenord o di una tratta nell'area Trenord, tabellone di una stazione dell'area Trenord | `GET` dell'elenco pubblico delle direttrici, senza parametri utente |
 | `www.viaggiatreno.it` | B | `data/live/ViaggiaTrenoStationAdapter.kt`, catalogo | Mai nella build distribuita | `POST` modulo con il nome della stazione |
 | `www.rfi.it` | C | `data/live/RfiInfomobilityRssAdapter.kt`, catalogo | Mai: `alertProviders()` non ha chiamanti nelle superfici | Feed RSS nazionale, nessun dato utente |
 | `gtfs.api.opendatahub.com` | C, D | `data/live/StaRealtimeAdapter.kt`, catalogo, provenienza del pack `alto-adige-sta-gtfs` | Mai: `tripUpdateProviders()` e `vehiclePositionProviders()` non hanno chiamanti; il pack è scaricato offline | Feed GTFS-Realtime JSON, nessun dato utente |
@@ -144,7 +145,6 @@ La tabella copre ogni host `http(s)://` trovato in `app/src/main/java`, `wear/sr
 | `www.opendata-oepnv.de` | E | Catalogo fonti (`InternationalSourceCatalog.kt`): DELFI ufficiale dietro registrazione |
 | `www.snalltaget.se` | E | Catalogo fonti (`InternationalSourceCatalog.kt`), monitor-only |
 | `www.trenitalia.com` | E | Catalogo fonti (`RailSourceCatalog.kt`): pagina pubblica dell'infomobilità Trenitalia |
-| `www.trenord.it` | E | Catalogo fonti (`RailSourceCatalog.kt`) |
 | `www.tuabruzzo.it` | E | Catalogo fonti (`RailSourceCatalog.kt`) |
 
 Nessun SDK di terze parti aggiunge host propri: le uniche librerie con accesso alla rete sono quelle AndroidX/Play Services elencate sopra, e Play Services Wearable comunica solo con l'infrastruttura Google del dispositivo associato.

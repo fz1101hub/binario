@@ -433,6 +433,21 @@ object RailSourceCatalog {
             notes = "Famiglia ViaggiaTreno best effort, stesso reindirizzamento HTTP limitato a www.viaggiatreno.it. Descrizioni HTML con entità codificate due volte: decodifica e riduzione a testo con jsoup, mai resa come HTML."
         ),
         RailSourceDefinition(
+            id = SourceId("trenord-line-notices"),
+            displayName = "Trenord — avvisi per direttrice",
+            operatorOrAuthority = "Trenord S.r.l.",
+            formats = setOf(SourceFormat.JSON_API),
+            capabilities = setOf(ProviderCapability.SERVICE_ALERTS),
+            accessMode = AccessMode.PUBLIC_BEST_EFFORT,
+            readiness = SourceReadiness.BEST_EFFORT_DISABLED,
+            countryCodes = setOf("IT", "CH"),
+            coverage = "Avvisi testuali Trenord per ogni direttrice (lavori, variazioni, scioperi, bus sostitutivi).",
+            landingPage = uri("https://www.trenord.it/linee-e-orari/circolazione/le-nostre-linee/"),
+            downloadOrProbeUri = uri("https://www.trenord.it/mgmt/store-management-api/mia/direttrici/"),
+            attribution = "Trenord",
+            notes = "JSON pubblico di circa 90 KB usato dal sito Trenord; best effort con TTL 15 minuti. Solo avvisi: i ritardi strutturati restano legati all'adesione E015. Le notizie promozionali senza parole chiave operative vengono scartate."
+        ),
+        RailSourceDefinition(
             id = SourceId("trenord-realtime"),
             displayName = "Trenord — tempo reale e avvisi",
             operatorOrAuthority = "Trenord S.r.l.",

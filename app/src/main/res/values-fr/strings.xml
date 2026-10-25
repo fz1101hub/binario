@@ -22,6 +22,13 @@
     <string name="notices_collapse">Afficher moins</string>
     <string name="notices_unavailable_publisher">Injoignable pour le moment : %1$s</string>
     <string name="notices_train_network_heading">Actualités Trenitalia citant ce train</string>
+    <string name="notices_trenord_heading">Trenord par ligne</string>
+    <string name="notices_trenord_all_lines">Toutes les lignes</string>
+    <string name="notices_trenord_line">Ligne %1$s · %2$s</string>
+    <string name="notices_trenord_line_code">Ligne %1$s</string>
+    <string name="notices_trenord_lines">Lignes %1$s</string>
+    <string name="notices_train_trenord_heading">Avis Trenord sur la ligne</string>
+    <string name="notices_station_trenord_title">Avis Trenord pour cette gare</string>
 
     <string name="app_name">Binario</string>
     <string name="widget_description">Affiche les prochains services de votre itinéraire Binario.</string>

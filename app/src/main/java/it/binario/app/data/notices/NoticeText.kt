@@ -57,3 +57,31 @@ internal object NoticeText {
         .replace(Regex("[^a-z0-9]+"), " ")
         .trim()
 }
+
+/** Splits notice text into plain runs and http(s) URLs, so the UI can make only the URLs tappable. */
+object NoticeLinks {
+    sealed interface Segment {
+        val text: String
+        data class Plain(override val text: String) : Segment
+        data class Link(override val text: String, val url: String) : Segment
+    }
+
+    private val URL = Regex("https?://[^\\s<>\"'\\u00A0]+", RegexOption.IGNORE_CASE)
+    private const val TRAILING = ".,;:!?)]}»"
+    private const val MIN_URL_LENGTH = 9
+
+    fun segments(text: String): List<Segment> {
+        val out = mutableListOf<Segment>()
+        var cursor = 0
+        for (match in URL.findAll(text)) {
+            val url = match.value.trimEnd { it in TRAILING }
+            // Shorter than a scheme plus one host character: not a usable link.
+            if (url.length < MIN_URL_LENGTH) continue
+            if (match.range.first > cursor) out += Segment.Plain(text.substring(cursor, match.range.first))
+            out += Segment.Link(url, url)
+            cursor = match.range.first + url.length
+        }
+        if (cursor < text.length) out += Segment.Plain(text.substring(cursor))
+        return out
+    }
+}

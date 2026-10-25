@@ -13,6 +13,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import it.binario.app.data.TrainService
+import it.binario.app.data.notices.StationCoordinateIndex
 import it.binario.app.data.notices.TrainNoticeContext
 
 /**
@@ -20,13 +21,16 @@ import it.binario.app.data.notices.TrainNoticeContext
  * detail is shown. Hidden when no notice source is enabled, so an empty list is never mistaken for "no disruption".
  */
 @Composable
-fun TrainNoticesSection(service: TrainService, viewModel: RailNoticesViewModel) {
+fun TrainNoticesSection(service: TrainService, viewModel: RailNoticesViewModel, index: StationCoordinateIndex?) {
     if (!viewModel.hasTrainNoticeSources) return
-    val context = remember(service.id, service.number, service.scheduledDepartureDateTime) { TrainNoticeContext.from(service) } ?: return
-    LaunchedEffect(context.key) { viewModel.loadTrainNotices(context) }
+    val base = remember(service.id, service.number, service.scheduledDepartureDateTime, service.origin, service.destination) {
+        TrainNoticeContext.from(service)
+    } ?: return
+    val context = remember(base, index) { index?.let { base.copy(nearTrenordNetwork = it.anyInTrenordArea(base.endpoints)) } }
+    LaunchedEffect(context) { context?.let(viewModel::loadTrainNotices) }
     val locale = LocalConfiguration.current.locales[0]
     SourceSectionCard(title = stringResource(R.string.notices_train_title)) {
-        when (val state = viewModel.trainNoticesFor(context.key)) {
+        when (val state = context?.let { viewModel.trainNoticesFor(it.key) } ?: SourceSectionState.Loading) {
             SourceSectionState.Idle, SourceSectionState.Loading -> SourceSectionNote(stringResource(R.string.notices_loading))
             is SourceSectionState.Ready -> {
                 val value = state.value
@@ -42,10 +46,14 @@ fun TrainNoticesSection(service: TrainService, viewModel: RailNoticesViewModel) 
                     Text(stringResource(R.string.notices_train_network_heading), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
                     value.networkNotices.forEach { RailNoticeItem(it) }
                 }
+                if (value.trenordNotices.isNotEmpty()) {
+                    Text(stringResource(R.string.notices_train_trenord_heading), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+                    value.trenordNotices.forEach { RailNoticeItem(it) }
+                }
                 if (value.stale) SourceSectionNote(stringResource(R.string.notices_stale))
                 if (value.unavailable) {
                     SourceSectionNote(stringResource(R.string.notices_unavailable))
-                    TextButton(onClick = { viewModel.loadTrainNotices(context, force = true) }) {
+                    TextButton(onClick = { context?.let { viewModel.loadTrainNotices(it, force = true) } }) {
                         Text(stringResource(R.string.notices_retry))
                     }
                 }

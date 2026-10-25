@@ -22,6 +22,13 @@
     <string name="notices_collapse">Mostra meno</string>
     <string name="notices_unavailable_publisher">Non raggiungibile ora: %1$s</string>
     <string name="notices_train_network_heading">Notizie Trenitalia che citano questo treno</string>
+    <string name="notices_trenord_heading">Trenord per direttrice</string>
+    <string name="notices_trenord_all_lines">Tutte le direttrici</string>
+    <string name="notices_trenord_line">Direttrice %1$s · %2$s</string>
+    <string name="notices_trenord_line_code">Direttrice %1$s</string>
+    <string name="notices_trenord_lines">Direttrici %1$s</string>
+    <string name="notices_train_trenord_heading">Avvisi Trenord sulla linea</string>
+    <string name="notices_station_trenord_title">Avvisi Trenord per questa stazione</string>
 
     <string name="app_name">Binario</string>
     <string name="widget_description">Mostra le prossime corse della tua tratta Binario.</string>

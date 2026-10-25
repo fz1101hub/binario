@@ -21,6 +21,16 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.UriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.runtime.remember
+import androidx.compose.ui.text.LinkAnnotation
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextLinkStyles
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.withLink
+import it.binario.app.data.notices.NoticeLine
+import it.binario.app.data.notices.NoticeLinks
 import it.binario.app.data.notices.NoticePublisher
 import it.binario.app.data.notices.RailNotice
 import androidx.compose.ui.semantics.heading
@@ -77,20 +87,61 @@ internal fun openExternalLink(uriHandler: UriHandler, url: String) {
     runCatching { uriHandler.openUri(link) }
 }
 
+/** Text whose http(s) URLs open in the browser on tap; everything else stays plain. */
+@Composable
+internal fun LinkifiedText(
+    text: String,
+    style: TextStyle,
+    modifier: Modifier = Modifier,
+    maxLines: Int = Int.MAX_VALUE,
+    fontWeight: FontWeight? = null
+) {
+    val uriHandler = LocalUriHandler.current
+    val linkColor = MaterialTheme.colorScheme.primary
+    val annotated = remember(text, linkColor) {
+        buildAnnotatedString {
+            NoticeLinks.segments(text).forEach { segment ->
+                when (segment) {
+                    is NoticeLinks.Segment.Plain -> append(segment.text)
+                    is NoticeLinks.Segment.Link -> withLink(
+                        LinkAnnotation.Url(
+                            segment.url,
+                            TextLinkStyles(SpanStyle(color = linkColor, textDecoration = TextDecoration.Underline)),
+                            linkInteractionListener = { openExternalLink(uriHandler, segment.url) }
+                        )
+                    ) { append(segment.text) }
+                }
+            }
+        }
+    }
+    Text(annotated, modifier = modifier, style = style, fontWeight = fontWeight, maxLines = maxLines, overflow = TextOverflow.Ellipsis)
+}
+
+/** "D034 · LAVENO-VARESE-SARONNO-MILANO" for one line, "D034, D010, D004" for several. */
+@Composable
+internal fun noticeLinesLabel(lines: List<NoticeLine>, allLines: Boolean = false): String? = when {
+    allLines -> stringResource(R.string.notices_trenord_all_lines)
+    lines.isEmpty() -> null
+    lines.size == 1 && lines.single().name.isBlank() -> stringResource(R.string.notices_trenord_line_code, lines.single().code)
+    lines.size == 1 -> stringResource(R.string.notices_trenord_line, lines.single().code, lines.single().name)
+    else -> stringResource(R.string.notices_trenord_lines, lines.take(MAX_LINE_CODES).joinToString(", ") { it.code } +
+        if (lines.size > MAX_LINE_CODES) ", …" else "")
+}
+
 /** One network notice: title, collapsible plain-text body, publisher and time, and the publisher's page. */
 @Composable
-internal fun RailNoticeItem(notice: RailNotice) {
+internal fun RailNoticeItem(notice: RailNotice, showLines: Boolean = true) {
     var expanded by rememberSaveable(notice.id) { mutableStateOf(false) }
     val locale = LocalConfiguration.current.locales[0]
     val uriHandler = LocalUriHandler.current
     Column(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        Text(notice.title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+        LinkifiedText(notice.title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+        if (showLines) noticeLinesLabel(notice.lines)?.let { SourceSectionNote(it) }
         notice.body?.let { body ->
-            Text(
+            LinkifiedText(
                 body,
                 style = MaterialTheme.typography.bodySmall,
-                maxLines = if (expanded) Int.MAX_VALUE else COLLAPSED_LINES,
-                overflow = TextOverflow.Ellipsis
+                maxLines = if (expanded) Int.MAX_VALUE else COLLAPSED_LINES
             )
             if (body.length > COLLAPSED_CHARACTERS || body.count { it == '\n' } >= COLLAPSED_LINES) {
                 TextButton(onClick = { expanded = !expanded }) {
@@ -110,3 +161,4 @@ internal fun RailNoticeItem(notice: RailNotice) {
 
 private const val COLLAPSED_LINES = 3
 private const val COLLAPSED_CHARACTERS = 180
+private const val MAX_LINE_CODES = 6

@@ -337,7 +337,9 @@ data class ServiceAlert(
     /** Public train numbers the publisher tags the notice with (for example Trenitalia `trainTags`). */
     val affectedTrainNumbers: Set<String> = emptySet(),
     /** Publisher page for the notice, http(s) only. */
-    val link: String? = null
+    val link: String? = null,
+    /** Line identifiers the publisher files the notice under (for example Trenord `D034`). */
+    val affectedLines: Set<String> = emptySet()
 )
 
 /**
