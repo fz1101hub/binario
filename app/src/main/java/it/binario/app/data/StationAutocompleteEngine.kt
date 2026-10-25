@@ -12,6 +12,7 @@ class StationAutocompleteEngine(stations: List<Station>) {
     private val indexedStations: List<IndexedStation> = stations.map { station ->
         IndexedStation(
             station = station,
+            normalizedName = StationSearchNormalizer.normalize(station.name),
             normalizedValues = station.searchableValues()
                 .asSequence()
                 .map(StationSearchNormalizer::normalize)
@@ -33,14 +34,24 @@ class StationAutocompleteEngine(stations: List<Station>) {
         .groupBy({ it.first }, { it.second })
         .mapValues { (_, matches) -> matches.distinctBy(Station::id) }
 
-    /** The index is immutable, so it can safely be retained across recompositions. */
+    /**
+     * The index is immutable, so it can safely be retained across recompositions.
+     *
+     * Matches are ranked as on iOS and in the Companion: a station whose own name equals the
+     * query comes first, then names starting with it, then names with a word starting with it,
+     * then names containing it; a match on an alias, city or code ranks one step behind the same
+     * match on the name, and a match spread over several words comes last. Ties keep the
+     * alphabetical order of the name, so "Roma" and "Roma Termini" lead the suggestions for
+     * "Roma" instead of whichever substring matches the catalogue lists first.
+     */
     fun suggest(query: String, limit: Int = DEFAULT_LIMIT): List<Station> {
         val normalizedQuery = StationSearchNormalizer.normalize(query)
         if (normalizedQuery.length < MIN_QUERY_LENGTH || limit <= 0) return emptyList()
         val tokens = normalizedQuery.split(' ')
         return indexedStations.asSequence()
-            .filter { indexed -> indexed.matches(normalizedQuery, tokens) }
-            .map(IndexedStation::station)
+            .mapNotNull { indexed -> indexed.rank(normalizedQuery, tokens)?.let { rank -> rank to indexed } }
+            .sortedWith(compareBy({ (rank, _) -> rank }, { (_, indexed) -> indexed.normalizedName }))
+            .map { (_, indexed) -> indexed.station }
             .take(limit)
             .toList()
     }
@@ -70,16 +81,38 @@ class StationAutocompleteEngine(stations: List<Station>) {
 
     private data class IndexedStation(
         val station: Station,
+        val normalizedName: String,
         val normalizedValues: List<String>
     ) {
-        fun matches(normalizedQuery: String, tokens: List<String>): Boolean = normalizedValues.any { candidate ->
-            candidate.contains(normalizedQuery) || tokens.all(candidate::contains)
+        /** Lower ranks first; null when the station does not match at all. */
+        fun rank(normalizedQuery: String, tokens: List<String>): Int? {
+            val byName = matchRank(normalizedName, normalizedQuery)
+            val byOtherValue = normalizedValues.asSequence()
+                .filter { it != normalizedName }
+                .mapNotNull { matchRank(it, normalizedQuery) }
+                .minOrNull()
+                ?.plus(1)
+            return listOfNotNull(byName, byOtherValue).minOrNull()
+                ?: TOKENS_RANK.takeIf { normalizedValues.any { candidate -> tokens.all(candidate::contains) } }
+        }
+
+        private fun matchRank(candidate: String, normalizedQuery: String): Int? = when {
+            candidate == normalizedQuery -> EXACT_RANK
+            candidate.startsWith(normalizedQuery) -> PREFIX_RANK
+            candidate.split(' ').any { word -> word.startsWith(normalizedQuery) } -> WORD_PREFIX_RANK
+            candidate.contains(normalizedQuery) -> CONTAINS_RANK
+            else -> null
         }
     }
 
     private companion object {
         const val MIN_QUERY_LENGTH = 2
         const val DEFAULT_LIMIT = 8
+        const val EXACT_RANK = 0
+        const val PREFIX_RANK = 1
+        const val WORD_PREFIX_RANK = 2
+        const val CONTAINS_RANK = 3
+        const val TOKENS_RANK = 5
     }
 }
 

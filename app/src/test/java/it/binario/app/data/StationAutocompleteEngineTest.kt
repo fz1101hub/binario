@@ -33,6 +33,24 @@ class StationAutocompleteEngineTest {
     }
 
     @Test
+    fun `suggestions rank exact and prefix names first regardless of catalogue order`() {
+        val romano = Station(id = "romano", name = "Romano di Lombardia", city = "Romano di Lombardia")
+        val ladispoli = Station(id = "ladispoli", name = "Ladispoli-Cerveteri", city = "Ladispoli", aliases = listOf("Roma Ladispoli"))
+        val tiburtina = Station(id = "tiburtina", name = "Roma Tiburtina", city = "Roma")
+        val fiumicino = Station(id = "fiumicino", name = "Fiumicino Aeroporto", city = "Fiumicino", aliases = listOf("Roma Fiumicino"))
+        val pomezia = Station(id = "pomezia", name = "Pomezia-Santa Palomba", city = "Pomezia", aliases = listOf("Santa Palomba Roma"))
+        val termini = Station(id = "termini", name = "Roma Termini", city = "Roma")
+        val roma = Station(id = "roma", name = "Roma", city = "Roma")
+        val engine = StationAutocompleteEngine(listOf(romano, ladispoli, tiburtina, fiumicino, pomezia, termini, roma))
+
+        // Exact name, then name prefixes in alphabetical order, then alias prefixes; the catalogue order is irrelevant.
+        assertEquals(listOf(roma, termini, tiburtina, romano, fiumicino), engine.suggest("Roma", limit = 5))
+        assertEquals(listOf(roma, termini, tiburtina, romano, fiumicino, ladispoli, pomezia), engine.suggest("roma"))
+        // A query spread over several words still matches, after every contiguous match.
+        assertEquals(listOf(pomezia), engine.suggest("palomba roma"))
+    }
+
+    @Test
     fun `exact lookup is normalized and short queries do not scan`() {
         assertEquals(portaNuova, engine.findExact("TORINO P.N."))
         assertTrue(engine.suggest("t").isEmpty())
