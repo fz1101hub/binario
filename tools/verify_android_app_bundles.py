@@ -6,6 +6,7 @@ import argparse
 import hashlib
 import json
 import re
+import struct
 import sys
 import zlib
 import zipfile
@@ -30,6 +31,19 @@ MAX_UNCOMPRESSED_BYTES = 1024 * 1024 * 1024
 MAX_MANIFEST_BYTES = 4 * 1024 * 1024
 REQUIRED_FILES = {"BundleConfig.pb", MANIFEST_PATH}
 SIGNATURE_SUFFIXES = (".RSA", ".DSA", ".EC", ".SF")
+NATIVE_LIBRARY = re.compile(r"^[^/]+/lib/([^/]+)/[^/]+\.so$")
+# Devices with 16 KB pages run only 64-bit code: Play requires every PT_LOAD of
+# these ABIs to be aligned to at least 16 KiB. 32-bit libraries are parsed but exempt.
+PAGE_SIZE_16K_ABIS = {"arm64-v8a", "x86_64"}
+MIN_LOAD_ALIGNMENT = 0x4000
+MAX_ELF_HEADER_BYTES = 1024 * 1024
+ELF_MAGIC = b"\x7fELF"
+PT_LOAD = 1
+# Header layouts after e_ident: (header format, header size, program header format, entry size).
+ELF_LAYOUTS = {
+    1: ("HHIIIIIHHHHHH", 52, "IIIIIIII", 32),
+    2: ("HHIQQQIHHHHHH", 64, "IIQQQQQQ", 56),
+}
 ANDROID_PACKAGE = "it.binario.app"
 # Mirrors wear/build.gradle.kts: the Wear versionCode is the phone code moved into its own range.
 WEAR_VERSION_CODE_OFFSET = 1_000_000
@@ -43,6 +57,10 @@ IDENTITY_NAMESPACES = {
 
 class ProtoError(ValueError):
     """Raised when the AAPT protobuf manifest is malformed or unsupported."""
+
+
+class ElfError(ValueError):
+    """Raised when a native library header is malformed or unsupported."""
 
 
 def sha256_file(path: Path) -> str:
@@ -234,6 +252,72 @@ def expected_manifests(profile: str = "root") -> dict[str, dict[str, str]]:
     }
 
 
+def parse_load_alignments(stream) -> list[int]:
+    """Read p_align of every PT_LOAD segment from an ELF program header table."""
+    ident = stream.read(16)
+    if len(ident) != 16 or ident[:4] != ELF_MAGIC:
+        raise ElfError("magic ELF assente")
+    elf_class, data_encoding, ident_version = ident[4], ident[5], ident[6]
+    if ident_version != 1:
+        raise ElfError(f"versione ELF non supportata: {ident_version}")
+    if data_encoding not in (1, 2):
+        raise ElfError(f"codifica ELF non supportata: {data_encoding}")
+    order = "<" if data_encoding == 1 else ">"
+    if elf_class not in ELF_LAYOUTS:
+        raise ElfError(f"classe ELF non supportata: {elf_class}")
+    header_format, header_size, phdr_format, phdr_size = ELF_LAYOUTS[elf_class]
+    header = stream.read(header_size - 16)
+    if len(header) != header_size - 16:
+        raise ElfError("header ELF troncato")
+    fields = struct.unpack(order + header_format, header)
+    phoff, ehsize, phentsize, phnum = fields[4], fields[7], fields[8], fields[9]
+    if ehsize != header_size or phentsize != phdr_size:
+        raise ElfError("dimensioni header ELF incoerenti")
+    if phnum == 0 or phnum >= 0xFFFF:
+        raise ElfError(f"numero di program header non supportato: {phnum}")
+    if phoff < header_size or phoff + phnum * phdr_size > MAX_ELF_HEADER_BYTES:
+        raise ElfError("tabella program header ELF fuori dai limiti")
+    skipped = phoff - header_size
+    table = stream.read(skipped + phnum * phdr_size)[skipped:]
+    if len(table) != phnum * phdr_size:
+        raise ElfError("tabella program header ELF troncata")
+    alignments = [
+        entry[7]
+        for index in range(phnum)
+        for entry in [struct.unpack_from(order + phdr_format, table, index * phdr_size)]
+        if entry[0] == PT_LOAD
+    ]
+    if not alignments:
+        raise ElfError("nessun segmento PT_LOAD")
+    return alignments
+
+
+def verify_native_libraries(bundle: zipfile.ZipFile, members: list[zipfile.ZipInfo]) -> list[str]:
+    problems: list[str] = []
+    for member in members:
+        abi = NATIVE_LIBRARY.fullmatch(member.filename).group(1)
+        try:
+            with bundle.open(member) as stream:
+                alignments = parse_load_alignments(stream)
+        except ElfError as error:
+            problems.append(f"libreria nativa non valida {member.filename}: {error}")
+            continue
+        if abi not in PAGE_SIZE_16K_ABIS:
+            continue
+        misaligned = [align for align in alignments if align < MIN_LOAD_ALIGNMENT or align & (align - 1)]
+        if misaligned:
+            problems.append(
+                f"segmento PT_LOAD non allineato a 16 KB in {member.filename}: "
+                f"p_align {', '.join(hex(align) for align in misaligned)}"
+            )
+    return problems
+
+
+def native_abis(path: Path) -> list[str]:
+    with zipfile.ZipFile(path) as bundle:
+        return sorted({match.group(1) for name in bundle.namelist() if (match := NATIVE_LIBRARY.fullmatch(name))})
+
+
 def verify_manifest(data: bytes, expected: Mapping[str, str]) -> list[str]:
     try:
         attributes = parse_manifest_attributes(data)
@@ -268,6 +352,7 @@ def verify_bundle(path: Path, expected_manifest: Mapping[str, str] | None = None
             names: set[str] = set()
             total_uncompressed = 0
             manifest_info: zipfile.ZipInfo | None = None
+            native_libraries: list[zipfile.ZipInfo] = []
             for member in members:
                 name = member.filename
                 posix = PurePosixPath(name)
@@ -278,6 +363,8 @@ def verify_bundle(path: Path, expected_manifest: Mapping[str, str] | None = None
                 names.add(name)
                 if name == MANIFEST_PATH:
                     manifest_info = member
+                if NATIVE_LIBRARY.fullmatch(name):
+                    native_libraries.append(member)
                 upper_name = name.upper()
                 if upper_name.startswith("META-INF/") and upper_name.endswith(SIGNATURE_SUFFIXES):
                     problems.append(f"firma JAR inattesa nel bundle unsigned: {name}")
@@ -300,6 +387,7 @@ def verify_bundle(path: Path, expected_manifest: Mapping[str, str] | None = None
                     manifest_data = bundle.read(manifest_info)
                     problems.extend(verify_manifest(manifest_data, expected_manifest or {}))
             if not limits_exceeded:
+                problems.extend(verify_native_libraries(bundle, native_libraries))
                 bad_member = bundle.testzip()
                 if bad_member:
                     problems.append(f"CRC ZIP non valido: {bad_member}")
@@ -366,6 +454,7 @@ def main(argv: list[str] | None = None) -> int:
             if reference is not None:
                 details.append("byte-riproducibile")
             details.extend((f"{path.stat().st_size} bytes", f"sha256:{sha256_file(path)}"))
+            details.append(f"ABI native: {', '.join(native_abis(path)) or 'nessuna'}")
             print(f"Android App Bundle ({label}): PASS ({', '.join(details)}).")
     return 1 if failed else 0
 

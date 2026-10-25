@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import importlib.util
+import io
 import struct
 import tempfile
 import unittest
@@ -64,6 +65,30 @@ def manifest_proto(
         + attributes
     )
     return proto_string(1, element)
+
+
+def elf_shared_object(
+    load_alignments: tuple[int, ...],
+    elf_class: int = 2,
+    data_encoding: int = 1,
+    program_headers: tuple[tuple[int, int], ...] | None = None,
+) -> bytes:
+    """Minimal ELF with a program header table: one PT_DYNAMIC plus the requested PT_LOADs."""
+    order = "<" if data_encoding == 1 else ">"
+    header_format, header_size, phdr_format, phdr_size = POLICY.ELF_LAYOUTS[elf_class]
+    if program_headers is None:
+        program_headers = ((2, 8),) + tuple((POLICY.PT_LOAD, align) for align in load_alignments)
+    ident = POLICY.ELF_MAGIC + bytes((elf_class, data_encoding, 1)) + bytes(9)
+    header = ident + struct.pack(
+        order + header_format, 3, 183, 1, 0, header_size, 0, 0, header_size, phdr_size, len(program_headers), 0, 0, 0
+    )
+    table = b"".join(
+        struct.pack(order + phdr_format, p_type, 5, 0, 0, 0, 0, 0, align)
+        if elf_class == 2
+        else struct.pack(order + phdr_format, p_type, 0, 0, 0, 0, 0, 5, align)
+        for p_type, align in program_headers
+    )
+    return header + table + bytes(64)
 
 
 class VerifyAndroidAppBundlesTest(unittest.TestCase):
@@ -186,6 +211,47 @@ class VerifyAndroidAppBundlesTest(unittest.TestCase):
         self.write_bundle(entries)
         problems = POLICY.verify_bundle(self.path)
         self.assertEqual(2, sum("firma JAR inattesa" in problem for problem in problems))
+
+    def test_accepts_16kb_aligned_64bit_native_libraries_and_lists_abis(self) -> None:
+        entries = self.valid_entries()
+        entries["base/lib/arm64-v8a/libgraphics-path.so"] = elf_shared_object((0x4000, 0x10000))
+        entries["base/lib/x86_64/libgraphics-path.so"] = elf_shared_object((0x4000,))
+        entries["base/lib/armeabi-v7a/libgraphics-path.so"] = elf_shared_object((0x1000,), elf_class=1)
+        self.write_bundle(entries)
+        self.assertEqual([], POLICY.verify_bundle(self.path, {}))
+        self.assertEqual(["arm64-v8a", "armeabi-v7a", "x86_64"], POLICY.native_abis(self.path))
+        self.assertEqual(
+            [0x4000, 0x8000],
+            POLICY.parse_load_alignments(io.BytesIO(elf_shared_object((0x4000, 0x8000), elf_class=1, data_encoding=2))),
+        )
+
+    def test_rejects_64bit_native_library_with_4kb_load_segment(self) -> None:
+        entries = self.valid_entries()
+        entries["base/lib/arm64-v8a/libaligned.so"] = elf_shared_object((0x4000,))
+        entries["base/lib/arm64-v8a/liblegacy.so"] = elf_shared_object((0x4000, 0x1000))
+        entries["base/lib/x86_64/libodd.so"] = elf_shared_object((0x6000,))
+        self.write_bundle(entries)
+        problems = POLICY.verify_bundle(self.path, {})
+        self.assertEqual(2, sum("non allineato a 16 KB" in problem for problem in problems))
+        self.assertTrue(any("base/lib/arm64-v8a/liblegacy.so" in problem and "0x1000" in problem for problem in problems))
+        self.assertTrue(any("base/lib/x86_64/libodd.so" in problem and "0x6000" in problem for problem in problems))
+        self.assertFalse(any("libaligned.so" in problem for problem in problems))
+
+    def test_rejects_malformed_native_libraries(self) -> None:
+        malformed = {
+            "not-elf": b"not-an-elf-at-all" + bytes(64),
+            "truncated": elf_shared_object((0x4000,))[:40],
+            "no-load": elf_shared_object((), program_headers=((2, 8),)),
+            "no-headers": elf_shared_object((), program_headers=()),
+            "bad-class": POLICY.ELF_MAGIC + bytes((7, 1, 1)) + bytes(9) + bytes(64),
+        }
+        for label, payload in malformed.items():
+            with self.subTest(library=label):
+                entries = self.valid_entries()
+                entries["base/lib/arm64-v8a/libbroken.so"] = payload
+                self.write_bundle(entries)
+                problems = POLICY.verify_bundle(self.path, {})
+                self.assertTrue(any("libreria nativa non valida base/lib/arm64-v8a/libbroken.so" in problem for problem in problems), problems)
 
     def test_reproducibility_requires_identical_bytes(self) -> None:
         reference = Path(self.temp.name) / "reference.aab"

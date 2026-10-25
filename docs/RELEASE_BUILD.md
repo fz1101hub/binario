@@ -19,7 +19,7 @@ python3 tools/verify_android_app_bundles.py
 
 ## Artifact per Google Play
 
-Google Play richiede Android App Bundle (AAB) per le nuove app. Un bundle è un formato di pubblicazione dal quale Play genera APK ottimizzati; non sostituisce un APK installabile direttamente.[2] Il gate produce `app-release.aab` e `wear-release.aab` separati, poi verifica ZIP, DEX, CRC, percorsi, duplicati, limiti dimensionali e SHA-256. Il manifest protobuf compilato viene letto direttamente: package, `versionName` e `versionCode` devono coincidere con la configurazione release canonica. Gli artifact restano unsigned finché non vengono fornite le credenziali di firma.
+Google Play richiede Android App Bundle (AAB) per le nuove app. Un bundle è un formato di pubblicazione dal quale Play genera APK ottimizzati; non sostituisce un APK installabile direttamente.[2] Il gate produce `app-release.aab` e `wear-release.aab` separati, poi verifica ZIP, DEX, CRC, percorsi, duplicati, limiti dimensionali e SHA-256. Il manifest protobuf compilato viene letto direttamente: package, `versionName` e `versionCode` devono coincidere con la configurazione release canonica. Il verifier enumera inoltre le librerie native `*/lib/<abi>/*.so` (Compose UI porta `androidx.graphics:graphics-path`), legge i program header ELF senza strumenti esterni e richiede che ogni segmento `PT_LOAD` delle ABI a 64 bit (`arm64-v8a`, `x86_64`) sia allineato ad almeno 16 KB (`p_align >= 0x4000`), come richiesto da Google Play per i dispositivi con pagine da 16 KB;[4] le librerie a 32 bit vengono solo validate, perché quei dispositivi eseguono esclusivamente codice a 64 bit. L'elenco delle ABI presenti viene stampato nel `PASS`. Gli artifact restano unsigned finché non vengono fornite le credenziali di firma.
 
 Il modulo Wear usa lo stesso package dell'app telefono, dichiara `android.hardware.type.watch` e `standalone=false`, ma conserva un proprio `versionCode` nell'intervallo dedicato. Google indica che l'app Wear viene caricata e aggiornata separatamente e raccomanda codici versione indipendenti tra form factor.[3] La scelta del track Play, la firma e l'upload restano azioni proprietarie esterne a questo gate.
 
@@ -109,3 +109,4 @@ Non sono configurati segreti nel workflow: un ambiente di distribuzione può ini
 [1]: https://docs.gradle.org/8.14.3/userguide/dependency_verification.html "Gradle 8.14.3 — Verifying dependencies"
 [2]: https://developer.android.com/guide/app-bundle "Android Developers — About Android App Bundles"
 [3]: https://developer.android.com/training/wearables/packaging "Android Developers — Package and distribute Wear OS apps"
+[4]: https://developer.android.com/guide/practices/page-sizes "Android Developers — Support 16 KB page sizes"
