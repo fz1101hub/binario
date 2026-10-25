@@ -305,6 +305,47 @@ class LiveProviderNetworkTest {
         tripUpdates(EuropeanSleeperGtfsRealtimeAdapter(), "european-sleeper", resolver, tripIds(bytes))
     }
 
+    /**
+     * Raw samples of candidate sources (ViaggiaTreno per-train notices, transport.opendata.ch, Trenord line
+     * notices, MIT strike calendar, Open-Meteo) so their formats are known before an adapter is written.
+     * Prints only public response bodies; no credential is sent.
+     */
+    @Test fun candidateSourceSamples() = runBlocking {
+        selected("discovery")
+        val upstream = diagnosticViaggiaTrenoFetcher()
+        val adapter = ViaggiaTrenoRealtimeAdapter(upstream, clock)
+        val now = clock.instant()
+        val board = adapter.getStationBoard(StationBoardRequest(StationId("S01700"), "Milano Centrale", railwayCode = "S01700",
+            from = now.minusSeconds(1800), to = now.plusSeconds(3 * 3600), kind = BoardKind.DEPARTURES))
+        val numbers = (board as? ProviderResult.Success)?.value?.entries.orEmpty().mapNotNull { it.publicNumber?.takeIf(String::isNotBlank) }.distinct().take(6)
+        println("LIVE_ACCEPTANCE SAMPLE numbers=$numbers")
+        val urls = buildList {
+            numbers.forEach { add("vt-infomobility-$it" to "https://www.viaggiatreno.it/infomobilitamobile/resteasy/news/infomobility?trainNumber=$it") }
+            numbers.take(3).forEach { add("vt-smartcaring-$it" to "https://www.viaggiatreno.it/infomobilitamobile/resteasy/news/smartcaring?commercialTrainNumber=$it") }
+            add("vt-infomobility-general" to "https://www.viaggiatreno.it/infomobilitamobile/resteasy/news/infomobility")
+            add("opendata-ch-stationboard-name" to "https://transport.opendata.ch/v1/stationboard?station=Lugano&limit=4")
+            add("opendata-ch-stationboard-id" to "https://transport.opendata.ch/v1/stationboard?id=8505300&limit=3&type=arrival")
+            add("opendata-ch-locations" to "https://transport.opendata.ch/v1/locations?query=Chiasso&type=station")
+            add("trenord-direttrici" to "https://www.trenord.it/mgmt/store-management-api/mia/direttrici/")
+            add("mit-scioperi" to "https://scioperi.mit.gov.it/mit2/public/scioperi")
+            add("open-meteo" to "https://api.open-meteo.com/v1/forecast?latitude=46.0037&longitude=8.9511&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=Europe%2FRome&forecast_days=2")
+        }
+        for ((name, url) in urls) {
+            val sample = runCatching {
+                val connection = java.net.URI(url).toURL().openConnection() as java.net.HttpURLConnection
+                connection.connectTimeout = 15_000
+                connection.readTimeout = 20_000
+                connection.setRequestProperty("User-Agent", "Binario/0.20 (source format discovery)")
+                connection.setRequestProperty("Accept", "application/json, text/html;q=0.9, */*;q=0.5")
+                val code = connection.responseCode
+                val body = (if (code in 200..299) connection.inputStream else connection.errorStream)?.use { it.readBytes().toString(Charsets.UTF_8) }.orEmpty()
+                "status=$code type=${connection.contentType} length=${body.length} links=${Regex("href=\"([^\"]*(rss|xml|csv|xls|json|ical|ics|export)[^\"]*)\"", RegexOption.IGNORE_CASE).findAll(body).map { it.groupValues[1] }.distinct().take(15).toList()} body=" +
+                    body.take(if (name == "mit-scioperi") 12_000 else 7_000).replace("\r", "").replace("\n", "\\n")
+            }.getOrElse { "error=${it::class.java.simpleName}: ${it.message}" }
+            println("LIVE_ACCEPTANCE SAMPLE $name $sample")
+        }
+    }
+
     private fun selected(source: String) {
         val requested = System.getProperty("binario.live.sources", "").orEmpty().split(',').toSet()
         assumeTrue("Source not selected: $source", source in requested)
