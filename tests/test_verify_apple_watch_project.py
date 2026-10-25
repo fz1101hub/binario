@@ -178,6 +178,22 @@ class AppleWatchProjectTests(unittest.TestCase):
         self.assertIn('systemImage: "train.side.front.car"', home_source)
         self.assertIn('systemImage: "arrow.clockwise"', home_source)
 
+    def test_programmed_snapshots_are_presented_as_scheduled_with_catalog_backed_status(self) -> None:
+        home_source = (APPLE_WATCH / "BinarioWatch" / "WatchHomeView.swift").read_text(encoding="utf-8")
+        model_source = (APPLE_WATCH / "Shared" / "WatchModels.swift").read_text(encoding="utf-8")
+        tests_source = (APPLE_WATCH / "BinarioWatchTests" / "WatchSnapshotTests.swift").read_text(encoding="utf-8")
+        # Programmed snapshots arrive with freshness UNKNOWN and status "PROGRAMMED": the home
+        # headline must not be the red realtime warning and the detail must not print the token.
+        self.assertIn("var isScheduledOnly: Bool", model_source)
+        self.assertIn('WatchLocalization.text("watch.freshness.scheduled")', model_source)
+        self.assertIn('WatchLocalization.text("watch.serviceStatus.programmed")', model_source)
+        self.assertIn("Text(store.snapshot.displayFreshnessLabel)", home_source)
+        self.assertNotIn("Text(store.snapshot.freshness.label)", home_source)
+        self.assertIn("if store.snapshot.isScheduledOnly { return .secondary }", home_source)
+        self.assertIn("value: service.displayStatus)", home_source)
+        self.assertNotIn("value: service.status)", home_source)
+        self.assertIn("testProgrammedSnapshotIsPresentedAsScheduledNotAsMissingRealtime", tests_source)
+
     def test_circular_widget_uses_background_without_an_unsupported_closure(self) -> None:
         source = (APPLE_WATCH / "BinarioWatchWidgets" / "BinarioWatchWidgets.swift").read_text(encoding="utf-8")
         circular = source.split("case .accessoryCircular:", 1)[1].split("case .accessoryInline:", 1)[0]

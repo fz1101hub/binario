@@ -14,11 +14,11 @@ struct WatchHomeView: View {
                                 "watch.accessibility.route \(store.snapshot.displayRouteLabel) \(store.snapshot.direction.accessibilityLabel)"
                             )
                         )
-                    Text(store.snapshot.freshness.label)
+                    Text(store.snapshot.displayFreshnessLabel)
                         .font(.footnote)
                         .foregroundStyle(statusColor)
                         .accessibilityLabel(
-                            WatchLocalization.text("watch.accessibility.dataStatus \(store.snapshot.freshness.label)")
+                            WatchLocalization.text("watch.accessibility.dataStatus \(store.snapshot.displayFreshnessLabel)")
                         )
                 }
 
@@ -67,6 +67,7 @@ struct WatchHomeView: View {
     }
 
     private var statusColor: Color {
+        if store.snapshot.isScheduledOnly { return .secondary }
         switch store.snapshot.freshness {
         case .fresh: return .green
         case .aging: return .yellow
@@ -99,7 +100,7 @@ private struct WatchServiceDetailView: View {
                 WatchLocalization.text("watch.detail.platform"),
                 value: service.platform ?? WatchLocalization.text("watch.detail.noValue")
             )
-            LabeledContent(WatchLocalization.text("watch.detail.status"), value: service.status)
+            LabeledContent(WatchLocalization.text("watch.detail.status"), value: service.displayStatus)
             if service.delayMinutes > 0 {
                 LabeledContent(
                     WatchLocalization.text("watch.detail.delay.label"),

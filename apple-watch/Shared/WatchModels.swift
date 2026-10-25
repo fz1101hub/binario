@@ -131,6 +131,14 @@ struct WatchService: Codable, Equatable, Identifiable {
 
     var id: String { number + "-" + expectedDeparture }
 
+    /// The wire status is the OperationalState raw value for programmed data (free text for
+    /// operational data): never show the raw token.
+    var displayStatus: String {
+        status == BinarioOperationalState.programmed.rawValue
+            ? WatchLocalization.text("watch.serviceStatus.programmed")
+            : status
+    }
+
     var accessibilitySummary: String {
         let platformLabel = platform ?? WatchLocalization.text("watch.detail.noValue")
         if delayMinutes > 0 {
@@ -189,6 +197,14 @@ struct BinarioWatchSnapshot: Codable, Equatable {
             : notice
     }
     var confidenceLabel: String { confidence.label }
+    /// A programmed snapshot carries no realtime freshness by contract: present it as scheduled
+    /// data instead of the red "not available in real time" reserved for unavailable data.
+    var isScheduledOnly: Bool {
+        provenanceDataNature == .programmed && operationalState == .programmed && freshness == .unknown
+    }
+    var displayFreshnessLabel: String {
+        isScheduledOnly ? WatchLocalization.text("watch.freshness.scheduled") : freshness.label
+    }
     var retrievedAtEpochMillis: Int64 { generatedAtEpochMillis }
     var retrievedAt: Date { Date(timeIntervalSince1970: TimeInterval(generatedAtEpochMillis) / 1_000) }
     var isCompatible: Bool { isCompatible(at: Int64(Date().timeIntervalSince1970 * 1_000)) }

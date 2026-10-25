@@ -31,6 +31,28 @@ final class WatchSnapshotTests: XCTestCase {
         XCTAssertEqual(snapshot?.services.first?.number, "FR 9505")
     }
 
+    func testProgrammedSnapshotIsPresentedAsScheduledNotAsMissingRealtime() throws {
+        let object = try XCTUnwrap(JSONSerialization.jsonObject(with: fixtureData()) as? [String: Any])
+        var programmed = object
+        programmed["provenanceDataNature"] = "PROGRAMMED"
+        programmed["operationalState"] = "PROGRAMMED"
+        programmed["freshness"] = "UNKNOWN"
+        programmed["service0Status"] = "PROGRAMMED"
+        let snapshot = try XCTUnwrap(BinarioWatchSnapshot.decodeContract(
+            try JSONSerialization.data(withJSONObject: programmed),
+            nowEpochMillis: fixtureNow
+        ))
+
+        XCTAssertTrue(snapshot.isScheduledOnly)
+        XCTAssertNotEqual(snapshot.displayFreshnessLabel, snapshot.freshness.label)
+        XCTAssertNotEqual(snapshot.services.first?.displayStatus, "PROGRAMMED")
+        XCTAssertFalse(BinarioWatchSnapshot.unavailable.isScheduledOnly)
+        XCTAssertEqual(BinarioWatchSnapshot.unavailable.displayFreshnessLabel, BinarioFreshness.unavailable.label)
+        let operational = try XCTUnwrap(BinarioWatchSnapshot.decodeContract(try fixtureData(), nowEpochMillis: fixtureNow))
+        XCTAssertFalse(operational.isScheduledOnly)
+        XCTAssertEqual(operational.services.first?.displayStatus, "In ritardo")
+    }
+
     func testUnknownFutureEnumsDegradeToUnknown() throws {
         let object = try XCTUnwrap(JSONSerialization.jsonObject(with: fixtureData()) as? [String: Any])
         var future = object
