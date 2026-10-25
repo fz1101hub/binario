@@ -1,0 +1,61 @@
+name: Dependency verification refresh
+
+# Manual helper for dependency changes: regenerates the SHA-256 entries of
+# gradle/verification-metadata.xml with the same task set as Android CI and
+# prints the diff (gzip + base64) for review. It never commits or pushes; the
+# reviewed diff is applied in the pull request that changes the dependency.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dependency-metadata-refresh-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  refresh:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Validate Gradle wrappers
+        uses: gradle/actions/wrapper-validation@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
+        with:
+          min-wrapper-count: "2"
+
+      - name: Java 17
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version: "17.0.20+101"
+
+      - name: Enable Gradle wrapper
+        run: chmod +x gradlew
+
+      - name: Regenerate SHA-256 verification metadata
+        # --continue: a failing lint or test task must not stop the resolution of later configurations.
+        run: >-
+          ./gradlew --no-daemon --continue --write-verification-metadata sha256
+          :app:testDebugUnitTest :wear:testDebugUnitTest
+          :app:lintDebug :wear:lintDebug
+          :app:assembleDebug :wear:assembleDebug
+          :app:assembleDebugAndroidTest
+          :app:assembleRelease :wear:assembleRelease
+          :app:bundleRelease :wear:bundleRelease
+          :app:lintVitalRelease :wear:lintVitalRelease
+          :app:lintRelease :wear:lintRelease
+
+      - name: Print the metadata diff for review
+        if: always()
+        run: |
+          git diff --stat -- gradle/verification-metadata.xml
+          git diff -- gradle/verification-metadata.xml > "$RUNNER_TEMP/metadata.diff"
+          sha256sum "$RUNNER_TEMP/metadata.diff"
+          gzip -9 -c "$RUNNER_TEMP/metadata.diff" | base64 -w 0 | fold -w 4000 | sed 's/^/METADATA_DIFF /'
+          echo
+          echo "METADATA_DIFF_END"
