@@ -9,6 +9,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import yaml
+
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "tools/verify_ci_pinning.py"
 SPEC = importlib.util.spec_from_file_location("verify_ci_pinning", SCRIPT)
@@ -51,6 +53,21 @@ class VerifyCiPinningTest(unittest.TestCase):
                 )
                 problems = policy.workflow_problems(workflow_path, with_integration_push, LOCK)
                 self.assertTrue(any("push branches" in problem for problem in problems))
+
+    def test_every_offline_test_module_runs_in_a_workflow(self) -> None:
+        # Path filters also name test files, so only `run` scripts count as executing a module.
+        commands: list[str] = []
+        for workflow_path in sorted((ROOT / ".github/workflows").glob("*.yml")):
+            workflow = yaml.safe_load(workflow_path.read_text(encoding="utf-8"))
+            for job in (workflow.get("jobs") or {}).values():
+                commands += [step["run"] for step in job.get("steps") or [] if isinstance(step.get("run"), str)]
+        run_scripts = "\n".join(commands)
+        for module in sorted((ROOT / "tests").glob("test_*.py")):
+            with self.subTest(module=module.name):
+                self.assertTrue(
+                    f"tests/{module.name}" in run_scripts or f"tests.{module.stem}" in run_scripts,
+                    f"{module.name} is not run by any workflow step",
+                )
 
     def test_apple_paths_must_cover_xcodegen_trust_chain(self) -> None:
         workflow_path = ROOT / ".github/workflows/apple-watch-ci.yml"
