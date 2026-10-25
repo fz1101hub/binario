@@ -53,6 +53,23 @@ class VerifyPrivacyPolicyTest(unittest.TestCase):
             errors,
         )
 
+    def test_iphone_and_apple_watch_disclosures_are_checked(self) -> None:
+        # App Store Connect needs a policy that covers the app being submitted: the iOS section
+        # must name the UserDefaults keys, the Watch App Group and the revocation signal.
+        for fragment in (
+            "## App iPhone e Apple Watch",
+            "`it.binario.ios.saved-routes.v1`",
+            "`group.it.binario.watch`",
+            "### English summary (iPhone and Apple Watch)",
+        ):
+            with self.subTest(fragment=fragment):
+                def without_fragment(relative: str, fragment: str = fragment) -> str:
+                    text = (ROOT / relative).read_text(encoding="utf-8")
+                    # Several fragments recur in the English summary: drop every occurrence.
+                    return text.replace(fragment, "") if relative == "PRIVACY.md" else text
+
+                self.assertIn(f"PRIVACY.md: missing {fragment!r}", POLICY.verification_errors(without_fragment))
+
     def test_code_host_inventory_covers_runtime_endpoints_and_skips_xml_namespaces(self) -> None:
         hosts = POLICY.code_hosts()
         self.assertTrue(

@@ -1,12 +1,12 @@
 # Informativa privacy di Binario
 
-**Stato del documento:** fotografia del comportamento implementato nel ramo di integrazione `integration/stabilization-complete-v0204`, aggiornata il 30 settembre 2026. Questa informativa distingue espressamente il codice attivo dalle funzioni presenti ma non operative. Non descrive funzionalità future.
+**Stato del documento:** fotografia del comportamento implementato nel ramo di integrazione `integration/stabilization-complete-v0204`, aggiornata il 25 ottobre 2026. Questa informativa distingue espressamente il codice attivo dalle funzioni presenti ma non operative. Non descrive funzionalità future.
 
 > **Blocco per una distribuzione pubblica.** Il repository non identifica il titolare del trattamento, un recapito per i diritti privacy, un URL pubblico dell'informativa né la retention operativa di log e backup dell'hosting. Prima di una pubblicazione vanno completati questi elementi e va collegato un URL pubblico verificato nell'app e nei canali di distribuzione. `PRIVACY.md` è il documento sorgente del progetto, non un sostituto di quel collegamento pubblico.
 
 ## Ambito e superfici interessate
 
-Questa informativa riguarda il codice attuale di **Binario Android**, del relativo **companion Wear OS**, del **Companion Expo** e di **Alexa Companion** in `alexa-companion/`. Le superfici non si comportano tutte allo stesso modo: l'app Android e il Companion Expo funzionano principalmente con dati locali; il companion Wear riceve snapshot dal telefono; Alexa Companion usa un backend e un database solo quando viene configurato e collegato un account.
+Questa informativa riguarda il codice attuale di **Binario Android**, del relativo **companion Wear OS**, del **Companion Expo**, di **Alexa Companion** in `alexa-companion/` e dell'**app iPhone con companion Apple Watch** in `ios/` e `apple-watch/`. Le superfici non si comportano tutte allo stesso modo: l'app Android e il Companion Expo funzionano principalmente con dati locali; il companion Wear riceve snapshot dal telefono; Alexa Companion usa un backend e un database solo quando viene configurato e collegato un account; l'app iPhone lavora soltanto con dati inclusi nell'app e invia al Watch abbinato, su scelta dell'utente, lo stesso snapshot ridotto.
 
 Il documento descrive i dati trattati dall'applicazione e dal backend del repository. Non sostituisce le informative del sistema operativo, di Google Play Services, di Amazon Alexa, del gestore dell'account della dashboard o dei gestori ferroviari. Quando l'utente usa tali servizi, essi possono trattare dati tecnici di rete, inclusi indirizzo IP, data e ora della richiesta e intestazioni standard, secondo le rispettive informative.
 
@@ -18,6 +18,8 @@ Il documento descrive i dati trattati dall'applicazione e dal backend del reposi
 | Wear OS | Etichetta della tratta, provenienza e freschezza del dato, avviso, e al massimo due corse con numero, destinazione, orario, stato e binario. | Il telefono li invia attraverso il Data Layer a un orologio associato; il watch li conserva nella propria memoria privata. |
 | Companion Expo | Tratte pianificate, date e orari, checklist, promemoria, preferenze, itinerari, stazioni preferite e impostazioni di accessibilità locali. | Restano nel dispositivo; i file e il calendario passano al sistema o all'app scelta solo dopo un'azione di esportazione dell'utente. |
 | Alexa Companion | Identificativi e profilo dell'account dashboard, tratte personali, profilo minimo, hash dell'identificativo Alexa e artefatti OAuth in forma hash. | Sono conservati nel database configurato dal gestore del backend per il collegamento account e le risposte personali della skill. |
+| iPhone | Tratte salvate (al massimo 32) e preferenza di condivisione con il Watch nelle `UserDefaults` dell'app; cache dell'indice orari in Application Support. | Restano sull'iPhone; nessuna richiesta di rete. I backup di sistema Apple possono includere tratte e preferenza, non la cache. |
+| Apple Watch | Etichetta della tratta, provenienza, freschezza, avviso e al massimo due corse con numero, operatore, categoria, destinazione, orari, stato e binario. | L'iPhone li invia tramite Watch Connectivity solo con la condivisione attiva; il Watch li conserva nell'App Group `group.it.binario.watch` per app e complicazione. |
 
 ## App Android
 
@@ -87,6 +89,24 @@ Il Companion Expo può creare un file di trasferimento o un file calendario e ap
 
 L'implementazione corrente di `companion-api.ts` non effettua richieste di rete: le funzioni di pairing, consenso, revoca e sincronizzazione sono stub che restituiscono esiti vuoti. Un eventuale URL configurato tramite variabile d'ambiente non rende attiva una sincronizzazione. Di conseguenza il Companion Expo attuale non crea un account remoto, non invia tratte a un backend e non può cancellare dati remoti. Il bridge Wear sperimentale conserva sul watch solo titolo, stato, date di validità e numero di elementi checklist; le sue funzioni vocali usano servizi di sistema e messaggi tra telefono e watch, non un upload audio del Companion.
 
+## App iPhone e Apple Watch
+
+### Dati conservati sull'iPhone
+
+L'app iPhone (`it.binario.ios`) salva nelle `UserDefaults` standard dell'app le tratte salvate, al massimo 32, con la chiave `it.binario.ios.saved-routes.v1` (identificativo e nome della stazione di partenza e di destinazione, nome della tratta e data di creazione) e la preferenza di condivisione con Apple Watch con la chiave `it.binario.ios.watch-sharing-enabled.v1`, disattivata per impostazione predefinita. Il catalogo stazioni e l'indice degli orari programmati sono inclusi nell'app: al primo avvio l'indice viene decompresso e verificato in `Application Support/Binario/GTFS`, in un file escluso dai backup. Non esistono account, analytics, pubblicità, posizione, microfono, notifiche push, modalità in background né alcuna richiesta di rete: la ricerca e i risultati restano sul dispositivo. L'unica uscita verso l'esterno è il collegamento, nella sezione **Fonti dati GTFS** delle impostazioni, alla pagina pubblica di ciascun feed, che si apre nel browser soltanto su tocco dell'utente ed è trattato da quel sito secondo le sue condizioni.
+
+I backup iCloud e del computer gestiti dal sistema possono includere le `UserDefaults` dell'app, quindi tratte salvate e preferenza di condivisione; la cache dell'indice è esclusa. Le tratte si eliminano singolarmente o tutte insieme dalla scheda **Tratte**; la cancellazione dell'app dal dispositivo rimuove tutto. I manifesti privacy dei tre eseguibili dichiarano l'uso delle `UserDefaults` (motivi `CA92.1` per l'app e `1C8F.1` per l'App Group del Watch), nessun tracciamento, nessun dominio di tracciamento e nessun dato raccolto: la risposta coerente al questionario App Privacy di App Store Connect è «Dati non raccolti».
+
+### Condivisione con Apple Watch
+
+Con la condivisione attiva, dopo una ricerca per l'orario corrente l'iPhone pubblica tramite Watch Connectivity un application context con l'etichetta della tratta, la provenienza e la natura del dato (programmato o non disponibile), la fonte, l'avviso e al massimo due corse con numero, operatore, categoria, destinazione, orario programmato e previsto, stato, binario e ritardo; il payload è limitato a 8.192 byte e scade con l'ultima corsa elencata. Non vengono inviati tratte salvate, posizione, credenziali o dati personali. Il Watch (`it.binario.ios.watchkitapp`) convalida lo snapshot e lo conserva nelle `UserDefaults` dell'App Group `group.it.binario.watch`, condiviso con la complicazione, con la chiave `binario_watch_snapshot_v1`. Su un iPhone senza Watch abbinato nulla viene inviato e le impostazioni mostrano uno stato neutro.
+
+Disattivare la condivisione, o cambiare gli input della ricerca, sostituisce qualsiasi contesto in attesa con il segnale di cancellazione `binario_snapshot_clear`: alla ricezione il Watch elimina lo snapshot dall'App Group e aggiorna la complicazione nello stato non disponibile. Se il Watch è irraggiungibile, la propagazione dipende dalla consegna successiva di Watch Connectivity; la disinstallazione dell'app Watch rimuove direttamente la copia locale.
+
+### English summary (iPhone and Apple Watch)
+
+The iPhone app keeps up to 32 saved routes (`it.binario.ios.saved-routes.v1`) and the Watch-sharing preference (`it.binario.ios.watch-sharing-enabled.v1`, off by default) in the app's standard `UserDefaults`; the bundled timetable index is cached in Application Support and excluded from backups. The app has no account, analytics, advertising, location, microphone, push or background activity and makes no network request; links to the public page of each data source open in the browser only when tapped. Apple system backups may include the saved routes and the preference. When sharing is on, a search for now sends the paired Watch an application context with the route label, provenance, notice and at most two services; the Watch stores it in the `group.it.binario.watch` App Group for the app and its complication, and clears it when the iPhone sends the revocation signal. App Privacy answer: Data Not Collected.
+
 ## Alexa Companion
 
 ### Quando viene usato
@@ -120,22 +140,26 @@ La sessione della dashboard è un cookie HTTP-only con durata di trenta giorni. 
 | Rimuovere dati Android | Rimuovere le singole voci, cancellare i dati dell'app dal sistema o disinstallare; eliminare separatamente gli eventuali backup JSON esportati. |
 | Rimuovere dati Companion Expo | Usare **Cancella archivio locale** per tratte, itinerari e promemoria; cancellare dati/disinstallare per le altre preferenze e rimuovere separatamente file o eventi esportati. |
 | Interrompere Wear | Disabilitare la condivisione per nuovi invii; per cancellare la copia già ricevuta, cancellare dati o disinstallare l'app Wear. |
+| Rimuovere dati iPhone | Eliminare le tratte dalla scheda **Tratte** o disinstallare l'app; eliminare separatamente i backup di sistema che le contengono. |
+| Interrompere Apple Watch | Disattivare **Condividi le tratte con Apple Watch**: l'iPhone invia la cancellazione e il Watch elimina lo snapshot dall'App Group alla ricezione; disinstallare l'app Watch rimuove direttamente la copia. |
 | Scollegare Alexa | Usare **unlink** nella dashboard; ciò revoca il collegamento e i refresh token, senza cancellare i dati descritti sopra. |
 | Eliminare l'account Alexa Companion | Usare **Elimina account e dati** nella dashboard e confermare con `ELIMINA`; il database operativo elimina l'utente e i record figli, mentre retention di log e backup resta da definire dal titolare. |
 | Richiedere accesso, correzione o cancellazione del backend | **Non è configurato un recapito nel repository.** La pubblicazione pubblica resta bloccata finché il titolare non ne indica uno e definisce la procedura. |
 
 ## Sicurezza e limiti di questa informativa
 
-Le app Android usano HTTPS; solo il client smartphone ha una eccezione HTTP circoscritta a `www.viaggiatreno.it` per le API pubbliche ferroviarie, senza account o credenziali; le app Android e Companion Expo escludono il backup automatico del loro contenitore. Queste misure non rendono i dati locali automaticamente cifrati dal codice applicativo: le preferenze private descritte sopra non sono ulteriormente cifrate dall'app nel sorgente corrente. Nessun segreto Alexa è inserito nel client Android; il backend Alexa richiede variabili d'ambiente e rifiuta la skill se non sono complete.
+Le app Android usano HTTPS; solo il client smartphone ha una eccezione HTTP circoscritta a `www.viaggiatreno.it` per le API pubbliche ferroviarie, senza account o credenziali; le app Android e Companion Expo escludono il backup automatico del loro contenitore; l'app iPhone non effettua richieste di rete. Queste misure non rendono i dati locali automaticamente cifrati dal codice applicativo: le preferenze private descritte sopra non sono ulteriormente cifrate dall'app nel sorgente corrente. Nessun segreto Alexa è inserito nel client Android; il backend Alexa richiede variabili d'ambiente e rifiuta la skill se non sono complete.
 
 Ogni modifica del comportamento implementato richiede il riesame di questa informativa prima del rilascio. In particolare, la sincronizzazione Companion reale, un percorso di cancellazione Wear, un servizio Alexa diverso o l'introduzione di analytics, push o nuove fonti non sono coperti da promesse retroattive di questo documento.
 
 ## Riferimenti al codice
 
-Questa informativa è verificabile nelle implementazioni Android [1], Wear [2], Companion Expo [3] e Alexa Companion [4]. Il piano di stabilizzazione registra i limiti che restano bloccanti per la pubblicazione [5].
+Questa informativa è verificabile nelle implementazioni Android [1], Wear [2], Companion Expo [3], Alexa Companion [4], iPhone [6] e Apple Watch [7]. Il piano di stabilizzazione registra i limiti che restano bloccanti per la pubblicazione [5].
 
 [1]: https://github.com/fz1101hub/binario/tree/integration/stabilization-complete-v0204/app/src/main/java/it/binario/app "App Android: dati locali, posizione, backup e fonti"
 [2]: https://github.com/fz1101hub/binario/tree/integration/stabilization-complete-v0204/wear/src/main/java/it/binario/wear "Companion Wear OS: snapshot locale"
 [3]: https://github.com/fz1101hub/binario/tree/integration/stabilization-complete-v0204/companion-expo "Companion Expo: dati locali, promemoria e configurazione"
 [4]: https://github.com/fz1101hub/binario/tree/integration/stabilization-complete-v0204/alexa-companion "Alexa Companion: database, OAuth e skill"
 [5]: https://github.com/fz1101hub/binario/blob/stabilization/v0.20.4/docs/PIANO_STABILIZZAZIONE_v0.20.4.md "Piano di stabilizzazione Binario v0.20.4"
+[6]: ios/BinarioApp "App iPhone: tratte locali, preferenza Watch, cache dell'indice orari"
+[7]: apple-watch/BinarioWatch "Companion Apple Watch: snapshot nell'App Group e revoca"
