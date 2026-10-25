@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """Generate the Google Play listing assets that derive from the brand icon.
 
-Pure Python and offline: decodes the 1024x1024 brand PNG, drops its (fully
-opaque) alpha channel, box-filters it to the 512x512 app icon Play requires
-and writes store/play/README.md with the assets that still need a designer.
+Pure Python and offline: decodes the 1024x1024 brand PNG, checks that its
+alpha channel is fully opaque, box-filters the colour to the 512x512 app icon
+Play requires, writes it as the 32-bit RGBA PNG Play documents (alpha kept
+opaque) and writes store/play/README.md with the assets that still need a
+designer.
 """
 from __future__ import annotations
 
@@ -26,7 +28,7 @@ Cartella generata da `python3 tools/build_store_assets.py`: non modificare a man
 
 | Asset | Requisito Play | Stato |
 |---|---|---|
-| `icon-512.png` | Icona app: PNG 512×512 a 32 bit, max 1024 KB, quadrato pieno senza angoli arrotondati (Play applica la maschera) | Generata dal marchio `companion-expo/assets/brand/binario-companion-icon.png` (1024 px, lo stesso segno di `ic_binario`) con box filter 2×2, RGB opaco |
+| `icon-512.png` | Icona app: PNG 512×512 a 32 bit, max 1024 KB, quadrato pieno senza angoli arrotondati (Play applica la maschera) | Generata dal marchio `companion-expo/assets/brand/binario-companion-icon.png` (1024 px, lo stesso segno di `ic_binario`) con box filter 2×2; PNG RGBA a 32 bit con canale alfa interamente opaco, nessuna trasparenza |
 | Grafica in evidenza | 1024×500 px, PNG o JPEG, max 15 MB; niente testo essenziale ai bordi, nessuna cornice di dispositivo | Da progettare dal titolare |
 | Screenshot telefono | Da 2 a 8, PNG o JPEG, rapporto 16:9 o 9:16, lato minore ≥ 320 px, lato maggiore ≤ 3840 px | Da catturare: pianificatore, Consulta, dettaglio corsa, widget, impostazioni privacy |
 | Screenshot tablet 7" e 10" | Facoltativi finché il listing non dichiara il supporto tablet; stessi vincoli di formato | Da decidere |
@@ -140,6 +142,11 @@ def opaque_rgb(channels: int, pixels: bytes) -> bytes:
     return bytes(value for index, value in enumerate(pixels) if index % 4 != 3)
 
 
+def with_opaque_alpha(pixels: bytes) -> bytes:
+    """Append an opaque alpha byte to every RGB pixel: Play documents the icon as a 32-bit PNG."""
+    return b"".join(pixels[index : index + 3] + b"\xff" for index in range(0, len(pixels), 3))
+
+
 def box_downscale(width: int, height: int, pixels: bytes, factor: int) -> bytes:
     """Average every factor x factor block of an RGB image, rounding half up."""
     if factor < 1 or width % factor or height % factor:
@@ -165,7 +172,7 @@ def build_play_icon(source: bytes) -> bytes:
     if width != height or width % ICON_SIZE:
         raise ValueError(f"l'icona sorgente deve essere quadrata e multipla di {ICON_SIZE} px, non {width}x{height}")
     scaled = box_downscale(width, height, opaque_rgb(channels, pixels), width // ICON_SIZE)
-    return write_png(ICON_SIZE, ICON_SIZE, 3, scaled)
+    return write_png(ICON_SIZE, ICON_SIZE, 4, with_opaque_alpha(scaled))
 
 
 def build_assets(source: Path = SOURCE_ICON, output_dir: Path = OUTPUT_DIR) -> list[Path]:

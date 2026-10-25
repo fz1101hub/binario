@@ -96,6 +96,7 @@ class BuildStoreAssetsTest(unittest.TestCase):
 
         rgba = b"".join(bytes([1, 2, 3, 255]) for _ in range(4))
         self.assertEqual(bytes([1, 2, 3]) * 4, BUILDER.opaque_rgb(4, rgba))
+        self.assertEqual(rgba, BUILDER.with_opaque_alpha(bytes([1, 2, 3]) * 4))
         translucent = rgba[:-1] + bytes([128])
         with self.assertRaisesRegex(ValueError, "trasparenza"):
             BUILDER.opaque_rgb(4, translucent)
@@ -116,11 +117,13 @@ class BuildStoreAssetsTest(unittest.TestCase):
         committed = (ROOT / "store" / "play" / "icon-512.png").read_bytes()
         self.assertEqual(BUILDER.read_png(committed), BUILDER.read_png(icon))
         width, height, channels, pixels = BUILDER.read_png(committed)
-        self.assertEqual((512, 512, 3), (width, height, channels))
+        # Play documents the icon as a 32-bit PNG: RGBA with every alpha byte opaque.
+        self.assertEqual((512, 512, 4), (width, height, channels))
         self.assertLess(len(committed), 1024 * 1024)
-        self.assertEqual(bytes([0, 90, 82]), pixels[:3])
-        center = (256 * 512 + 256) * 3
-        self.assertEqual(bytes([255, 255, 255]), pixels[center : center + 3])
+        self.assertEqual({255}, set(pixels[3::4]))
+        self.assertEqual(bytes([0, 90, 82, 255]), pixels[:4])
+        center = (256 * 512 + 256) * 4
+        self.assertEqual(bytes([255, 255, 255, 255]), pixels[center : center + 4])
 
 
 if __name__ == "__main__":
