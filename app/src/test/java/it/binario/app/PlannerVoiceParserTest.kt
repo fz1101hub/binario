@@ -196,6 +196,26 @@ class PlannerVoiceParserTest {
     }
 
     @Test
+    fun `evening and afternoon phrases make a dictated hour a pm time`() {
+        val stations = listOf(termini, torino)
+        fun time(spoken: String) = PlannerVoiceParser.parse(spoken, stations, today).time
+
+        assertEquals(LocalTime.of(20, 0), time("Da Roma Termini a Torino Porta Nuova alle 8 di sera"))
+        assertEquals(LocalTime.of(21, 0), time("Da Roma Termini a Torino Porta Nuova stasera alle 9"))
+        assertEquals(LocalTime.of(15, 30), time("Da Roma Termini a Torino Porta Nuova alle 3 e mezza del pomeriggio"))
+        assertEquals(LocalTime.of(20, 15), time("Da Roma Termini a Torino Porta Nuova 8:15 di sera"))
+        assertEquals(LocalTime.of(20, 0), time("From Roma Termini to Torino Porta Nuova at 8 in the evening"))
+        assertEquals(LocalTime.of(20, 0), time("Von Roma Termini nach Torino Porta Nuova um 8 Uhr abends"))
+        assertEquals(LocalTime.of(20, 0), time("De Roma Termini à Torino Porta Nuova à 8 heures du soir"))
+        assertEquals(LocalTime.of(20, 0), time("De Roma Termini a Torino Porta Nuova a las 8 de la tarde"))
+        // A 24-hour time or an explicit am keeps its meaning; "stasera" still dates the journey today.
+        assertEquals(LocalTime.of(18, 0), time("Da Roma Termini a Torino Porta Nuova alle 18 di sera"))
+        assertEquals(LocalTime.of(8, 0), time("From Roma Termini to Torino Porta Nuova tonight at 8 am"))
+        assertEquals(today, PlannerVoiceParser.parse("Da Roma Termini a Torino Porta Nuova stasera alle 9", stations, today).date)
+        assertEquals(LocalTime.of(8, 0), time("Da Roma Termini a Torino Porta Nuova alle 8 di mattina"))
+    }
+
+    @Test
     fun `a bare number is a train number`() {
         val review = PlannerVoiceParser.review("9512", listOf(termini, torino), DictationTarget.TRAIN, today)
 

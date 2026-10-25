@@ -98,6 +98,15 @@ internal object PlannerVoiceParser {
     // Time-of-day phrases that contain a "tomorrow" word: "heute morgen" is this morning,
     // "por la mañana" in the morning.
     private val morningPhrases = Regex("\\b(?:heute morgen|por la manana|de la manana)\\b")
+    // "alle 8 di sera", "stasera alle 9", "at 8 tonight": an hour said with an afternoon or
+    // evening phrase and no am/pm is a 12-hour time of the second half of the day.
+    private val afternoonPhrases = Regex(
+        "(?:^|\\s)(?:di sera|della sera|la sera|stasera|di pomeriggio|del pomeriggio|nel pomeriggio|il pomeriggio|" +
+            "di notte|stanotte|in the evening|this evening|tonight|in the afternoon|this afternoon|at night|" +
+            "abends|am abend|heute abend|nachmittags|am nachmittag|heute nachmittag|nachts|" +
+            "du soir|le soir|ce soir|de l apres midi|l apres midi|cet apres midi|" +
+            "de la tarde|por la tarde|esta tarde|de la noche|por la noche|esta noche)(?=\\s|$)"
+    )
     private val returnWords = listOf(
         "andata e ritorno", "andata ritorno", "return trip", "round trip", "return journey", "and back",
         "hin und zuruck", "hin und ruckfahrt", "hin und retour", "aller retour", "ida y vuelta"
@@ -227,13 +236,14 @@ internal object PlannerVoiceParser {
     }
 
     private fun parseTime(normalized: String, raw: String): LocalTime? {
+        val afternoon = afternoonPhrases.containsMatchIn(normalized)
         (keywordTimePattern.find(normalized) ?: unitTimePattern.find(normalized))?.let { match ->
-            return clockTime(match.groupValues[1], match.groupValues[2], match.groupValues[3])
+            return clockTime(match.groupValues[1], match.groupValues[2], match.groupValues[3], afternoon)
         }
-        return clockTimePattern.find(raw)?.let { match -> clockTime(match.groupValues[1], match.groupValues[2], "") }
+        return clockTimePattern.find(raw)?.let { match -> clockTime(match.groupValues[1], match.groupValues[2], "", afternoon) }
     }
 
-    private fun clockTime(hourText: String, minuteText: String, meridiem: String): LocalTime? {
+    private fun clockTime(hourText: String, minuteText: String, meridiem: String, afternoon: Boolean = false): LocalTime? {
         var hour = hourText.toIntOrNull() ?: return null
         val minute = when (minuteText) {
             "" -> 0
@@ -244,6 +254,8 @@ internal object PlannerVoiceParser {
         when (meridiem.replace(" ", "")) {
             "pm" -> if (hour in 1..11) hour += 12 else if (hour != 12) return null
             "am" -> if (hour == 12) hour = 0 else if (hour !in 1..11) return null
+            // "alle 8 di sera" is 20:00; "alle 18 di sera" is already a 24-hour time.
+            else -> if (afternoon && hour in 1..11) hour += 12
         }
         return if (hour in 0..23 && minute in 0..59) LocalTime.of(hour, minute) else null
     }
