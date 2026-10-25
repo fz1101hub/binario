@@ -71,6 +71,10 @@ android {
         abortOnError = true
         warningsAsErrors = true
         checkReleaseBuilds = true
+        // The wrapper-version check reports the Gradle wrapper as soon as a newer
+        // patch release exists. Wrapper bumps are deliberate and checksum-pinned;
+        // Gradle's release day must not turn the release gate red.
+        disable += "AndroidGradlePluginVersion"
         // Newer remote lint flags targetSdk 36 as old while this pinned AGP/SDK
         // toolchain is on API 36. Revisit with a tested API 37 migration; do not
         // silently change the target or disable other security/correctness checks.
