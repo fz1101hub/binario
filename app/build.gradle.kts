@@ -124,6 +124,11 @@ dependencies {
     implementation("org.jsoup:jsoup:1.18.3")
     implementation("org.mobilitydata:gtfs-realtime-bindings:0.0.8")
     implementation("com.google.android.gms:play-services-wearable:20.0.1")
+    // Open maps (MapLibre Native, BSD-2-Clause) on OpenFreeMap tiles. 13.0.2 is the newest release whose
+    // closure keeps kotlin-stdlib at 2.0.x (13.1+ needs Kotlin 2.2 metadata) and androidx below the
+    // compileSdk 37 line; its arm64-v8a/x86_64 libmaplibre.so are 16 KB aligned. Since 13.0 the plain
+    // `android-sdk` coordinate is the Vulkan build: the OpenGL ES 3 build runs on every API 26+ device.
+    implementation("org.maplibre.gl:android-sdk-opengl:13.0.2")
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.compose.material3:material3")

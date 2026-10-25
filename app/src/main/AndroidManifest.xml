@@ -11,6 +11,11 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- MapLibre's AAR also declares ACCESS_WIFI_STATE, which the SDK never uses: removed. Its
+         ACCESS_NETWORK_STATE stays (the renderer's connectivity check needs it; install-time, reveals nothing
+         about the user). Its ACCESS_COARSE/FINE_LOCATION merge into the declarations above, which the app
+         makes for its own features; the maps never enable MapLibre's LocationComponent. -->
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" tools:node="remove" />
 
     <queries>
         <intent>

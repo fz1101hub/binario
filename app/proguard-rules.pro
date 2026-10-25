@@ -15,3 +15,9 @@
 
 # Keep project-specific Wear listener entry points and their inherited callbacks.
 -keep class it.binario.app.wear.** { *; }
+
+# MapLibre Native: libmaplibre.so finds Java classes, constructors, fields and callbacks by name through
+# JNI (sources, layers, the map renderer, geometry, GeoJSON). The AAR ships consumer rules for part of
+# this; keep the whole SDK and its GeoJSON model so R8 renaming can never break a native lookup.
+-keep class org.maplibre.android.** { *; }
+-keep class org.maplibre.geojson.** { *; }
