@@ -1,4 +1,3 @@
-"app.name" = "Binario";
 "tab.planner" = "Journey";
 "tab.saved" = "Routes";
 "tab.settings" = "Settings";
@@ -15,7 +14,6 @@
 "planner.save" = "Save route";
 "planner.same_station" = "Origin and destination must be different.";
 "planner.selection_required" = "Select an origin and destination.";
-"planner.route_accessibility" = "Route from %@ to %@";
 "planner.station.no_timetable" = "No timetable included";
 "planner.sources.footer" = "Included timetables:";
 "catalog.unavailable.title" = "Catalogue unavailable";
@@ -45,7 +43,7 @@
 "settings.data.provider" = "Timetable and operations source";
 "settings.data.provider_unavailable" = "Unavailable";
 "settings.data.provider_loading" = "Preparing";
-"settings.data.provider_programmed" = "10 included GTFS sources · scheduled data";
+"settings.data.provider_programmed" = "Included GTFS sources: %lld · scheduled data";
 "settings.data.valid_until" = "First feed to expire";
 "settings.data.catalog_notice" = "The station catalogue is used only for identity and search. It neither contains nor determines schedules, delays, platforms, or official statuses.";
 "settings.sources.title" = "GTFS data sources";

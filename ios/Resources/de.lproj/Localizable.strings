@@ -1,4 +1,3 @@
-"app.name" = "Binario";
 "tab.planner" = "Reise";
 "tab.saved" = "Strecken";
 "tab.settings" = "Einstellungen";
@@ -15,7 +14,6 @@
 "planner.save" = "Strecke speichern";
 "planner.same_station" = "Start und Ziel müssen verschieden sein.";
 "planner.selection_required" = "Wählen Sie Start und Ziel aus.";
-"planner.route_accessibility" = "Strecke von %@ nach %@";
 "planner.station.no_timetable" = "Kein Fahrplan enthalten";
 "planner.sources.footer" = "Enthaltene Fahrpläne:";
 "catalog.unavailable.title" = "Katalog nicht verfügbar";
@@ -45,7 +43,7 @@
 "settings.data.provider" = "Fahrplan- und Betriebsquelle";
 "settings.data.provider_unavailable" = "Nicht verfügbar";
 "settings.data.provider_loading" = "Wird vorbereitet";
-"settings.data.provider_programmed" = "10 enthaltene GTFS-Quellen · Fahrplandaten";
+"settings.data.provider_programmed" = "Enthaltene GTFS-Quellen: %lld · Fahrplandaten";
 "settings.data.valid_until" = "Erster ablaufender Feed";
 "settings.data.catalog_notice" = "Der Bahnhofskatalog dient nur der Identität und Suche. Er enthält oder bestimmt keine Fahrzeiten, Verspätungen, Gleise oder offiziellen Statusangaben.";
 "settings.sources.title" = "GTFS-Datenquellen";

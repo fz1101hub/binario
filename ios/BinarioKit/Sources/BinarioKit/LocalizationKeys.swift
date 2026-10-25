@@ -1,12 +1,12 @@
 public enum BinarioLocalizationKeys {
     public static let required: Set<String> = [
-        "action.ok", "app.name",
+        "action.ok",
         "tab.planner", "tab.saved", "tab.settings",
         "planner.title", "planner.intro.title", "planner.intro.body",
         "planner.origin", "planner.destination", "planner.departure",
         "planner.choose_station", "planner.search_station",
         "planner.swap", "planner.search", "planner.save", "planner.same_station",
-        "planner.selection_required", "planner.route_accessibility",
+        "planner.selection_required",
         "planner.station.no_timetable", "planner.sources.footer",
         "catalog.loading", "catalog.unavailable.title", "catalog.unavailable.body",
         "schedule.loading", "schedule.unavailable",

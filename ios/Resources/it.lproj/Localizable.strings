@@ -1,4 +1,3 @@
-"app.name" = "Binario";
 "tab.planner" = "Viaggio";
 "tab.saved" = "Tratte";
 "tab.settings" = "Impostazioni";
@@ -15,7 +14,6 @@
 "planner.save" = "Salva tratta";
 "planner.same_station" = "Partenza e destinazione devono essere diverse.";
 "planner.selection_required" = "Seleziona partenza e destinazione.";
-"planner.route_accessibility" = "Tratta da %@ a %@";
 "planner.station.no_timetable" = "Orari non inclusi";
 "planner.sources.footer" = "Orari inclusi:";
 "catalog.unavailable.title" = "Catalogo non disponibile";
@@ -45,7 +43,7 @@
 "settings.data.provider" = "Fonte orari e circolazione";
 "settings.data.provider_unavailable" = "Non disponibile";
 "settings.data.provider_loading" = "Preparazione in corso";
-"settings.data.provider_programmed" = "10 fonti GTFS incluse · dati programmati";
+"settings.data.provider_programmed" = "Fonti GTFS incluse: %lld · dati programmati";
 "settings.data.valid_until" = "Primo feed in scadenza";
 "settings.data.catalog_notice" = "Il catalogo stazioni serve solo per identità e ricerca. Non contiene né determina orari, ritardi, binari o stati ufficiali.";
 "settings.sources.title" = "Fonti dati GTFS";

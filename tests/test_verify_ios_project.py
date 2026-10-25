@@ -20,7 +20,7 @@ CATALOG_MANIFEST = ROOT / "app/src/main/assets/stations/manifest.json"
 LANGUAGES = {"it", "en", "de", "fr", "es"}
 STRINGS_ENTRY = re.compile(r'^"((?:[^"\\]|\\.)+)"\s*=\s*"((?:[^"\\]|\\.)*)";$')
 SWIFT_REQUIRED_KEY = re.compile(r'"((?:action|app|tab|planner|catalog|schedule|result|saved|settings|watch|accessibility)\.[a-z0-9_.]+)"')
-PLACEHOLDER = re.compile(r'%(?:\d+\$)?[@diufFeEgGxXoscpaA]')
+PLACEHOLDER = re.compile(r'%(?:\d+\$)?(?:hh|h|ll|l)?[@diufFeEgGxXoscpaA]')
 
 
 def read_strings(path: Path) -> dict[str, str]:
@@ -256,8 +256,6 @@ class IOSProjectTests(unittest.TestCase):
             used.update(SWIFT_REQUIRED_KEY.findall(path.read_text(encoding="utf-8")))
         self.assertTrue(used <= canonical, sorted(used - canonical))
         intentionally_dynamic = {
-            "app.name",
-            "planner.route_accessibility",
             "settings.about.version_unavailable",
             "watch.status.disabled", "watch.status.activating", "watch.status.pending",
             "watch.status.context_updated", "watch.status.cleared",
@@ -365,6 +363,21 @@ class IOSProjectTests(unittest.TestCase):
         self.assertIn('clearContextKey = "binario_snapshot_clear"', snapshot)
         self.assertIn('clearKey = "binario_snapshot_clear"', receiver)
         self.assertIn("store.clear()", receiver)
+
+    def test_settings_data_rows_describe_the_loaded_catalog_and_index(self) -> None:
+        settings = (IOS / "BinarioApp/SettingsView.swift").read_text(encoding="utf-8")
+        # A literal catalogue name and a literal feed count drift at every data refresh.
+        self.assertNotIn("stazioni-ferroviarie-curato-v4", settings)
+        self.assertIn("case let .available(catalog): catalog.sourceDatabaseName", settings)
+        self.assertIn('format: String(localized: "settings.data.provider_programmed")', settings)
+        self.assertIn("model.includedPacks.count", settings)
+        for language in sorted(LANGUAGES):
+            with self.subTest(language=language):
+                values = read_strings(IOS / "Resources" / f"{language}.lproj" / "Localizable.strings")
+                self.assertEqual(["%lld"], PLACEHOLDER.findall(values["settings.data.provider_programmed"]))
+                self.assertNotRegex(values["settings.data.provider_programmed"], r"\d")
+                self.assertNotIn("app.name", values)
+                self.assertNotIn("planner.route_accessibility", values)
 
     def test_planner_marks_stations_without_timetable_and_names_the_included_feeds(self) -> None:
         gtfs = (IOS / "BinarioKit/Sources/BinarioKit/SQLiteGTFSJourneyRepository.swift").read_text(encoding="utf-8")

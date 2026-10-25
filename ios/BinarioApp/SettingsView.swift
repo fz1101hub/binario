@@ -8,10 +8,11 @@ struct SettingsView: View {
         List {
             Section("settings.data.title") {
                 LabeledContent("settings.data.catalog") {
-                    Text("stazioni-ferroviarie-curato-v4")
+                    Text(catalogName)
+                        .multilineTextAlignment(.trailing)
                 }
                 LabeledContent("settings.data.provider") {
-                    Text(providerStatusKey)
+                    Text(providerStatus)
                         .multilineTextAlignment(.trailing)
                 }
                 if let expiry = model.firstPackExpiry {
@@ -29,7 +30,7 @@ struct SettingsView: View {
             // source page, not only the feed that happens to answer the current search.
             Section("settings.sources.title") {
                 if model.schedulePacks.isEmpty {
-                    Text(providerStatusKey)
+                    Text(providerStatus)
                         .foregroundStyle(.secondary)
                 } else {
                     ForEach(model.schedulePacks, id: \.sourceID) { pack in
@@ -68,11 +69,25 @@ struct SettingsView: View {
         .navigationTitle("settings.title")
     }
 
-    private var providerStatusKey: LocalizedStringKey {
+    // Both rows describe the data actually loaded: the catalogue names itself and the feed
+    // count follows the index, so neither drifts when the assets are refreshed.
+    private var catalogName: String {
+        switch model.catalogState {
+        case let .available(catalog): catalog.sourceDatabaseName
+        case .loading: String(localized: "settings.data.provider_loading")
+        case .unavailable: String(localized: "settings.data.provider_unavailable")
+        }
+    }
+
+    private var providerStatus: String {
         switch model.scheduleState {
-        case .loading: "settings.data.provider_loading"
-        case .available: "settings.data.provider_programmed"
-        case .unavailable: "settings.data.provider_unavailable"
+        case .loading: String(localized: "settings.data.provider_loading")
+        case .available: String(
+            format: String(localized: "settings.data.provider_programmed"),
+            locale: .current,
+            model.includedPacks.count
+        )
+        case .unavailable: String(localized: "settings.data.provider_unavailable")
         }
     }
 }

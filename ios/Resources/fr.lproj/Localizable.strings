@@ -1,4 +1,3 @@
-"app.name" = "Binario";
 "tab.planner" = "Trajet";
 "tab.saved" = "Trajets";
 "tab.settings" = "Réglages";
@@ -15,7 +14,6 @@
 "planner.save" = "Enregistrer le trajet";
 "planner.same_station" = "Le départ et la destination doivent être différents.";
 "planner.selection_required" = "Sélectionnez un départ et une destination.";
-"planner.route_accessibility" = "Trajet de %@ à %@";
 "planner.station.no_timetable" = "Horaires non inclus";
 "planner.sources.footer" = "Horaires inclus :";
 "catalog.unavailable.title" = "Catalogue indisponible";
@@ -45,7 +43,7 @@
 "settings.data.provider" = "Source horaires et exploitation";
 "settings.data.provider_unavailable" = "Indisponible";
 "settings.data.provider_loading" = "Préparation en cours";
-"settings.data.provider_programmed" = "10 sources GTFS incluses · données programmées";
+"settings.data.provider_programmed" = "Sources GTFS incluses : %lld · données programmées";
 "settings.data.valid_until" = "Première source à expirer";
 "settings.data.catalog_notice" = "Le catalogue des gares sert uniquement à l’identité et à la recherche. Il ne contient ni ne détermine les horaires, retards, voies ou états officiels.";
 "settings.sources.title" = "Sources de données GTFS";
