@@ -14,7 +14,9 @@ data class StopAlarmPlan(
     val destination: String,
     val station: String,
     val expectedTime: String,
-    val triggerAtEpochMillis: Long
+    val triggerAtEpochMillis: Long,
+    /** The expected arrival itself; the GPS arrival alarm runs until a bounded time after it. */
+    val expectedAtEpochMillis: Long
 )
 
 object StopAlarmPlanner {
@@ -75,7 +77,7 @@ object StopAlarmPlanner {
     ): StopAlarmPlan? {
         if (expectedEpochMillis <= nowEpochMillis) return null
         val trigger = maxOf(nowEpochMillis + 1_000L, expectedEpochMillis - LEAD_MINUTES * 60_000L)
-        return StopAlarmPlan(trainNumber, destination, station, expectedTime, trigger)
+        return StopAlarmPlan(trainNumber, destination, station, expectedTime, trigger, expectedEpochMillis)
     }
 
     private fun parse(value: String): LocalTime? = runCatching { LocalTime.parse(value, timeFormatter) }.getOrNull()

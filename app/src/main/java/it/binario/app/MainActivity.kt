@@ -174,7 +174,7 @@ private fun SearchMode.localizedLabel(): String = stringResource(
 private val stopAlarmPlanSaver = listSaver<StopAlarmPlan?, Any>(
     save = { plan ->
         if (plan == null) emptyList()
-        else listOf(plan.trainNumber, plan.destination, plan.station, plan.expectedTime, plan.triggerAtEpochMillis)
+        else listOf(plan.trainNumber, plan.destination, plan.station, plan.expectedTime, plan.triggerAtEpochMillis, plan.expectedAtEpochMillis)
     },
     restore = { values ->
         if (values.isEmpty()) null
@@ -183,7 +183,8 @@ private val stopAlarmPlanSaver = listSaver<StopAlarmPlan?, Any>(
             destination = values[1] as String,
             station = values[2] as String,
             expectedTime = values[3] as String,
-            triggerAtEpochMillis = values[4] as Long
+            triggerAtEpochMillis = values[4] as Long,
+            expectedAtEpochMillis = values.getOrNull(5) as? Long ?: values[4] as Long
         )
     }
 )

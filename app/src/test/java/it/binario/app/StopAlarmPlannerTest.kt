@@ -40,6 +40,17 @@ class StopAlarmPlannerTest {
     }
 
     @Test
+    fun `plan keeps the expected arrival even when the stop is less than five minutes away`() {
+        val now = LocalDateTime.of(2026, 3, 2, 10, 0).atZone(zone).toInstant().toEpochMilli()
+        val expected = LocalDateTime.of(2026, 3, 2, 10, 3).atZone(zone).toInstant().toEpochMilli()
+
+        val plan = StopAlarmPlanner.plan("4132", "Torino", "Firenze", "10:03", now, zone)!!
+
+        assertEquals(expected, plan.expectedAtEpochMillis)
+        assertEquals(now + 1_000L, plan.triggerAtEpochMillis)
+    }
+
+    @Test
     fun `implicit stop alarm uses the Italian railway zone`() {
         val now = LocalDateTime.of(2026, 1, 1, 1, 0).atZone(zone).toInstant().toEpochMilli()
 
