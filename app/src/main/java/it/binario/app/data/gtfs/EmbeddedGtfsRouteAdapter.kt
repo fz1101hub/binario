@@ -864,7 +864,8 @@ class EmbeddedGtfsRouteAdapter(
             fun comesBefore(first: Int, second: Int): Boolean =
                 sequence(first) < sequence(second) || (sequence(first) == sequence(second) && ordinal(first) < ordinal(second))
 
-            fun preferredDeparture(index: Int): Int = departures[index].takeUnless { it == MISSING_TIME } ?: arrivals[index]
+            /** A blank or unreadable departure falls back to the arrival; negative when neither time is usable. */
+            fun preferredDeparture(index: Int): Int = departures[index].takeIf { it >= 0 } ?: arrivals[index]
             fun recordRowsRead(value: Int) { sourceRowsRead = value }
             fun rowsRead(): Int = sourceRowsRead
             fun size(): Int = count
@@ -931,8 +932,9 @@ class EmbeddedGtfsRouteAdapter(
             return if (hours < 0 || minutes !in 0..59) INVALID_TIME else hours * 60 + minutes
         }
 
+        /** A stop without a readable time shows the same placeholder as the live boards, never a fabricated 00:00. */
         fun hhmm(minutes: Int): String {
-            if (minutes < 0) return "00:00"
+            if (minutes < 0) return "—"
             return "%02d:%02d".format(Locale.ROOT, (minutes / 60) % 24, minutes % 60)
         }
 

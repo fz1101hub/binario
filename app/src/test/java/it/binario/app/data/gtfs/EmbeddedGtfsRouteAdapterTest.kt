@@ -372,6 +372,34 @@ class EmbeddedGtfsRouteAdapterTest {
     }
 
     @Test
+    fun `una partenza malformata mostra l arrivo valido della fermata e mai uno 00 00 inventato`() = runBlocking {
+        val query = JourneyQuery(LocalDate.of(2026, 9, 4), LocalTime.of(8, 0))
+        val malformedDeparture = adapter(
+            feed(
+                stopTimes = "trip_id,arrival_time,departure_time,stop_id,stop_sequence\n" +
+                    "T1,08:05:00,08:05:00,MI,1\n" +
+                    "T1,08:22:00,nope,MO,2\n" +
+                    "T1,08:50:00,08:50:00,CO,3\n"
+            )
+        ).loadRoute(route, Direction.OUTBOUND, query)
+        val noTimes = adapter(
+            feed(
+                stopTimes = "trip_id,arrival_time,departure_time,stop_id,stop_sequence\n" +
+                    "T1,08:05:00,08:05:00,MI,1\n" +
+                    "T1,,,MO,2\n" +
+                    "T1,08:50:00,08:50:00,CO,3\n"
+            )
+        ).loadRoute(route, Direction.OUTBOUND, query)
+
+        val monza = (malformedDeparture as DataResult.Success).snapshot.services.single().stops.single { it.station == "Monza" }
+        assertEquals("08:22", monza.scheduled)
+        assertEquals("08:22", monza.expected)
+        val unknown = (noTimes as DataResult.Success).snapshot.services.single().stops.single { it.station == "Monza" }
+        assertEquals("—", unknown.scheduled)
+        assertEquals("—", unknown.expected)
+    }
+
+    @Test
     fun `non inventa corse quando la tratta non esiste`() = runBlocking {
         val missing = route.copy(outwardDestination = Station("bergamo", "Bergamo", "Bergamo"))
 

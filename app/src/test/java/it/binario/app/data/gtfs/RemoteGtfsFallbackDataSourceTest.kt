@@ -149,8 +149,9 @@ class RemoteGtfsFallbackDataSourceTest {
         assertTrue(result is DataResult.Success)
         val service = (result as DataResult.Success).snapshot.services.single()
         assertEquals("09:10", service.expectedDeparture)
+        // The stop's departure is unreadable, so its valid arrival is shown and no realtime is attached.
         val malformedStop = service.stops.single { it.station == "Köln Hbf" }
-        assertEquals("00:00", malformedStop.expected)
+        assertEquals("12:00", malformedStop.expected)
         assertEquals(0, malformedStop.delayMinutes)
     }
 
