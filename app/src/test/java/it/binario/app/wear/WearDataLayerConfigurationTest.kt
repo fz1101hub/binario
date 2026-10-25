@@ -64,6 +64,15 @@ class WearDataLayerConfigurationTest {
     }
 
     @Test
+    fun `complication is push driven by the data layer listener instead of polling`() {
+        val manifest = File(repositoryRoot, "wear/src/main/AndroidManifest.xml").readText()
+        val listener = File(repositoryRoot, "wear/src/main/java/it/binario/wear/sync/WearDataLayerListenerService.kt").readText()
+
+        assertTrue(manifest.contains("android.support.wearable.complications.UPDATE_PERIOD_SECONDS\" android:value=\"0\""))
+        assertTrue(listener.contains("ComplicationDataSourceUpdateRequester.create(applicationContext, ComponentName(applicationContext, BinarioComplicationService::class.java)).requestUpdateAll()"))
+    }
+
+    @Test
     fun `privacy copy describes fail closed watch revocation`() {
         val strings = File(repositoryRoot, "app/src/main/res/values/strings.xml").readText()
 
