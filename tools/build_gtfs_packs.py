@@ -73,6 +73,12 @@ MAX_RETAINED_BUILD_CELLS = 6_000_000
 MAX_RETAINED_BUILD_UTF8_BYTES = 128 * 1024 * 1024
 TOOL_VERSION = 2
 RELEASE_MANIFEST_VERSION = 4
+WEEKDAY_COLUMNS = ("monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday")
+# A timetable period keeps its service days at most a week apart and lasts at least a week;
+# a lone exception date months later or a calendar row that ends on a day the service skips
+# is not coverage the app can promise.
+MAX_SERVICE_GAP_DAYS = 7
+MIN_COVERAGE_SPAN_DAYS = 7
 FILTER_MANIFEST_MEMBER = "binario_filter_manifest.json"
 MEMBER_DIGEST_FIELD = "memberSha256"
 
@@ -465,22 +471,53 @@ def parse_gtfs_date(value: str, context: str) -> date:
         raise BuildError(f"data GTFS non valida ({context}): {value!r}") from error
 
 
-def last_service_date(calendar: CsvTable, calendar_dates: CsvTable, source_id: str) -> date:
-    values: list[date] = []
-    require_columns(calendar, "calendar.txt", "end_date")
-    require_columns(calendar_dates, "calendar_dates.txt", "date", "exception_type")
-    for row in calendar.rows:
-        value = row.get("end_date", "").strip()
-        if value:
-            values.append(parse_gtfs_date(value, f"{source_id}:calendar.txt"))
+def service_dates(calendar: CsvTable, calendar_dates: CsvTable, source_id: str) -> set[date]:
+    """Every date on which at least one service runs, after weekday flags and exceptions."""
+    require_columns(calendar, "calendar.txt", "service_id", "start_date", "end_date", *WEEKDAY_COLUMNS)
+    require_columns(calendar_dates, "calendar_dates.txt", "service_id", "date", "exception_type")
+    added: dict[str, set[date]] = {}
+    removed: dict[str, set[date]] = {}
     for row in calendar_dates.rows:
-        if row.get("exception_type", "").strip() == "1":
-            value = row.get("date", "").strip()
-            if value:
-                values.append(parse_gtfs_date(value, f"{source_id}:calendar_dates.txt"))
-    if not values:
+        value = row.get("date", "").strip()
+        if not value:
+            continue
+        exceptions = added if row.get("exception_type", "").strip() == "1" else removed
+        exceptions.setdefault(row.get("service_id", ""), set()).add(parse_gtfs_date(value, f"{source_id}:calendar_dates.txt"))
+    active: set[date] = set()
+    for row in calendar.rows:
+        start_value = row.get("start_date", "").strip()
+        end_value = row.get("end_date", "").strip()
+        if not start_value or not end_value:
+            continue
+        current = parse_gtfs_date(start_value, f"{source_id}:calendar.txt")
+        end = parse_gtfs_date(end_value, f"{source_id}:calendar.txt")
+        runs = tuple(row.get(column, "").strip() == "1" for column in WEEKDAY_COLUMNS)
+        skipped = removed.get(row.get("service_id", ""), set())
+        while current <= end:
+            if runs[current.weekday()] and current not in skipped:
+                active.add(current)
+            current += timedelta(days=1)
+    for dates in added.values():
+        active.update(dates)
+    return active
+
+
+def last_service_date(calendar: CsvTable, calendar_dates: CsvTable, source_id: str) -> date:
+    """Last day of continuous coverage: the end of the latest real timetable period."""
+    dates = sorted(service_dates(calendar, calendar_dates, source_id))
+    if not dates:
         raise BuildError(f"impossibile derivare lastServiceDate per {source_id}")
-    return max(values)
+    periods: list[tuple[date, date]] = []
+    first = dates[0]
+    for previous, current in zip(dates, dates[1:]):
+        if (current - previous).days > MAX_SERVICE_GAP_DAYS:
+            periods.append((first, previous))
+            first = current
+    periods.append((first, dates[-1]))
+    for start, end in reversed(periods):
+        if (end - start).days + 1 >= MIN_COVERAGE_SPAN_DAYS:
+            return end
+    return dates[-1]
 
 
 def selected_routes(source_id: str, routes: CsvTable) -> tuple[tuple[dict[str, str], ...], dict[str, Any]]:

@@ -16,7 +16,7 @@ Il gate della release richiede invece almeno 30 giorni di copertura residua e no
 python3 tools/build_gtfs_packs.py --check --as-of "$(date --utc +%F)" --min-valid-days 30
 ```
 
-Entrambi i comandi confrontano il digest di ciascun ZIP con `manifest.json` e `SHA256SUMS` e derivano `lastServiceDate` da `calendar.txt` e dalle aggiunte (`exception_type=1`) di `calendar_dates.txt`. Il secondo blocca inoltre pack scaduti o entro la soglia ed è il gate vincolante per un candidato release. Il workflow `GTFS Asset Integrity` esegue offline il controllo strutturale; la checklist release deve registrare separatamente l'esito del controllo freshness.
+Entrambi i comandi confrontano il digest di ciascun ZIP con `manifest.json` e `SHA256SUMS` e derivano `lastServiceDate` come ultimo giorno dell'ultimo periodo di orario reale: i giorni di esercizio ricavati da `calendar.txt` (con i flag dei giorni della settimana) e dalle eccezioni di `calendar_dates.txt`, distanti al massimo 7 giorni l'uno dall'altro e per almeno una settimana. Una data isolata mesi dopo o una riga che termina in un giorno in cui il servizio non circola non estendono la copertura. Il secondo blocca inoltre pack scaduti o entro la soglia ed è il gate vincolante per un candidato release. Il workflow `GTFS Asset Integrity` esegue offline il controllo strutturale; la checklist release deve registrare separatamente l'esito del controllo freshness.
 
 ## Build da archivi completi già acquisiti
 

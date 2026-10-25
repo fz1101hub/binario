@@ -196,7 +196,8 @@ class BuildGtfsPacksTest(unittest.TestCase):
         output_dir = self.temp / "output"
         manifest = builder.build_packs(input_dir, output_dir, generated_at="2026-01-01")
 
-        self.assertEqual("2027-01-15", manifest["packs"][0]["lastServiceDate"])
+        # The lone RAIL exception on 2027-01-15 does not extend the coverage past the calendar year.
+        self.assertEqual("2026-12-31", manifest["packs"][0]["lastServiceDate"])
         self.assertEqual(["FGC-164"], manifest["packs"][0]["filter"]["routeIds"])
         with zipfile.ZipFile(output_dir / "amt-genova-casella-gtfs.zip") as archive:
             routes = builder.read_table(archive, "routes.txt", required=True)
@@ -214,6 +215,39 @@ class BuildGtfsPacksTest(unittest.TestCase):
                 builder.canonical_member_digests(archive, "binario_filter_manifest.json"),
                 filter_manifest["memberSha256"],
             )
+
+    def test_last_service_date_is_the_end_of_the_last_real_timetable_period(self) -> None:
+        header = ("service_id", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday", "start_date", "end_date")
+
+        def calendar(*rows: tuple[str, ...]) -> builder.CsvTable:
+            return builder.CsvTable(header, tuple(dict(zip(header, row)) for row in rows))
+
+        def exceptions(*rows: tuple[str, str, str]) -> builder.CsvTable:
+            return builder.CsvTable(("service_id", "date", "exception_type"), tuple(dict(zip(("service_id", "date", "exception_type"), row)) for row in rows))
+
+        daily = ("DAILY", "1", "1", "1", "1", "1", "1", "1", "20260101", "20261231")
+        # A single exception date months after the timetable (eav-gtfs) is not coverage.
+        self.assertEqual(date(2026, 12, 31), builder.last_service_date(calendar(daily), exceptions(("EXTRA", "20270513", "1")), "eav"))
+        # A last row ending on a Sunday the service never runs on (hzpp-gtfs) ends on its Saturday.
+        until_december = ("YEAR", "1", "1", "1", "1", "1", "1", "1", "20260101", "20261206")
+        last_week = ("WEEK", "1", "1", "1", "1", "1", "1", "0", "20261207", "20261213")
+        self.assertEqual(date(2026, 12, 12), builder.last_service_date(calendar(until_december, last_week), builder.empty_calendar_dates(), "hzpp"))
+        # A removal exception on the last day moves the end back; an added day after a short gap extends it.
+        self.assertEqual(date(2026, 12, 30), builder.last_service_date(calendar(daily), exceptions(("DAILY", "20261231", "2")), "removal"))
+        self.assertEqual(date(2027, 1, 6), builder.last_service_date(calendar(daily), exceptions(("DAILY", "20270106", "1")), "bridge"))
+        # Weekend gaps and works closures do not end the coverage when a real period follows.
+        mon_fri = ("MF", "1", "1", "1", "1", "1", "0", "0", "20260601", "20260731")
+        autumn = ("AUT", "1", "1", "1", "1", "1", "1", "1", "20260914", "20261212")
+        self.assertEqual(date(2026, 12, 12), builder.last_service_date(calendar(mon_fri, autumn), builder.empty_calendar_dates(), "works"))
+        # Without any period of a week the last service day still counts; no dates at all is an error.
+        self.assertEqual(date(2026, 3, 1), builder.last_service_date(builder.empty_calendar(), exceptions(("A", "20260101", "1"), ("A", "20260301", "1")), "sparse"))
+        with self.assertRaisesRegex(builder.BuildError, "impossibile derivare lastServiceDate"):
+            builder.last_service_date(builder.empty_calendar(), builder.empty_calendar_dates(), "empty")
+        # The unfiltered fixture archive: the BUS row runs through 2027-01-01, its lone 2028-01-01 exception does not count.
+        self.assertEqual(
+            date(2027, 1, 1),
+            builder.service_end_from_asset(self.make_input() / "amt-genova-casella-gtfs.zip", "amt-genova-casella-gtfs"),
+        )
 
     def test_build_is_deterministic_and_publishes_complete_metadata(self) -> None:
         input_dir = self.make_input()

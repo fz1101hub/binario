@@ -379,7 +379,7 @@
       "accessMode": "OPEN_DIRECT",
       "attribution": "Ente Autonomo Volturno S.r.l.",
       "sha256": "5998d759d89d707e1b28eaf66e15e7fa96a122d408595dec21b5614c388ca1fe",
-      "lastServiceDate": "2027-05-13",
+      "lastServiceDate": "2026-12-31",
       "notes": "GTFS publicized by the EAV open-data page. The imported version contains 16 route_type=2 railway routes; filter the multimodal feed before display.",
       "filter": {
         "kind": "gtfs-rail-route-types",
@@ -498,7 +498,7 @@
       "accessMode": "OPEN_DIRECT",
       "attribution": "HŽ Putnički prijevoz",
       "sha256": "dde828245c5239965174845428b4c6274a302c8daf795da7042ffc33bbe081ae",
-      "lastServiceDate": "2026-12-13",
+      "lastServiceDate": "2026-12-12",
       "notes": "Static timetable pack; coverage in Italy must be filtered by stop and service date.",
       "filter": {
         "kind": "gtfs-rail-route-types",
