@@ -64,6 +64,11 @@ class IOSProjectTests(unittest.TestCase):
         self.assertEqual(1, global_settings["CURRENT_PROJECT_VERSION"])
         self.assertEqual("1", settings["TARGETED_DEVICE_FAMILY"])
         self.assertEqual(sorted(LANGUAGES), sorted(settings["INFOPLIST_KEY_CFBundleLocalizations"]))
+        # Every executable declares export compliance, or App Store Connect holds each build.
+        self.assertIs(False, settings["INFOPLIST_KEY_ITSAppUsesNonExemptEncryption"])
+        self.assertIs(False, self.targets["BinarioWatch"]["settings"]["base"]["INFOPLIST_KEY_ITSAppUsesNonExemptEncryption"])
+        widget_plist = plistlib.loads((ROOT / "apple-watch/BinarioWatchWidgets/Info.plist").read_bytes())
+        self.assertIs(False, widget_plist["ITSAppUsesNonExemptEncryption"])
 
     def test_iphone_test_bundles_have_unique_nonempty_product_names(self) -> None:
         names = [self.targets[target]["settings"]["base"]["PRODUCT_NAME"]

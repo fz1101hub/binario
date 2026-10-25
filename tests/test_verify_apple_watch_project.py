@@ -36,6 +36,7 @@ class AppleWatchProjectTests(unittest.TestCase):
         self.assertEqual({"debug": {"ENABLE_TESTABILITY": True}}, application["settings"]["configs"])
         self.assertNotIn("INFOPLIST_KEY_WKCompanionAppBundleIdentifier", settings)
         self.assertEqual("AppIcon", settings["ASSETCATALOG_COMPILER_APPICON_NAME"])
+        self.assertIs(False, settings["INFOPLIST_KEY_ITSAppUsesNonExemptEncryption"])
         self.assertTrue(all(target["platform"] == "watchOS" for target in self.targets.values()))
         self.assertIn(
             {"target": "BinarioWatchWidgets", "embed": True},
@@ -77,6 +78,7 @@ class AppleWatchProjectTests(unittest.TestCase):
             "com.apple.widgetkit-extension",
             plist["NSExtension"]["NSExtensionPointIdentifier"],
         )
+        self.assertIs(False, plist["ITSAppUsesNonExemptEncryption"])
 
     def test_tests_import_the_application_module_instead_of_compiling_shared_twice(self) -> None:
         settings = self.targets["BinarioWatchTests"]["settings"]["base"]
