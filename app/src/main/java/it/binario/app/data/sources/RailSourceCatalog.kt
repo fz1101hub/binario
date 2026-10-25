@@ -12,7 +12,8 @@ enum class SourceFormat {
     NETEX,
     SIRI,
     HTML_OR_PDF,
-    OPERATOR_GATEWAY
+    OPERATOR_GATEWAY,
+    JSON_API
 }
 
 enum class SourceReadiness {
@@ -385,6 +386,21 @@ object RailSourceCatalog {
             landingPage = uri("https://italoinviaggio.italotreno.com/"),
             attribution = "Italo / NTV",
             notes = "Tracker HTTPS verificato; nessun token/app ufficiale o endpoint non documentato viene riusato."
+        ),
+        RailSourceDefinition(
+            id = SourceId("ch-transport-opendata"),
+            displayName = "transport.opendata.ch — tabelloni svizzeri",
+            operatorOrAuthority = "Opendata.ch (API pubblica su dati orario svizzeri)",
+            formats = setOf(SourceFormat.JSON_API),
+            capabilities = setOf(ProviderCapability.STATION_BOARD),
+            accessMode = AccessMode.PUBLIC_BEST_EFFORT,
+            readiness = SourceReadiness.BEST_EFFORT_DISABLED,
+            countryCodes = setOf("CH", "IT"),
+            coverage = "Partenze e arrivi delle stazioni svizzere e transfrontaliere identificate da un numero UIC 85…",
+            landingPage = uri("https://transport.opendata.ch/docs.html"),
+            downloadOrProbeUri = uri("https://transport.opendata.ch/v1/stationboard?id=8505300&limit=3"),
+            attribution = "transport.opendata.ch",
+            notes = "API pubblica documentata senza token con limiti di uso corretto; attiva solo con le fonti personali, cache 60 s e circuit breaker. Le previsioni incoerenti con il lato del tabellone vengono scartate."
         ),
         RailSourceDefinition(
             id = SourceId("trenord-realtime"),

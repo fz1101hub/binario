@@ -69,7 +69,8 @@ class StationBoardAggregateService(
         val request = StationBoardRequest(
             stationId = StationId(station.id), stationName = station.name,
             stationAliases = station.aliases, railwayCode = station.railwayCode,
-            from = from.minus(Duration.ofMinutes(10)), to = from.plus(window), kind = kind
+            from = from.minus(Duration.ofMinutes(10)), to = from.plus(window), kind = kind,
+            trenitaliaLocationId = station.trenitaliaLocationId, coordinates = station.catalogueCoordinates()
         )
         coroutineScope {
             val completed = Channel<Pair<Int, ProviderAttempt>>(providers.size)
@@ -294,7 +295,8 @@ class StationBoardAggregateService(
             platform = platform,
             status = status,
             routeChange = routeChange,
-            nativeRunIds = group.flatMap { it.entry.nativeRunIds.entries }.associate { it.key to it.value }
+            nativeRunIds = group.flatMap { it.entry.nativeRunIds.entries }.associate { it.key to it.value },
+            lineLabel = base.entry.lineLabel ?: group.firstNotNullOfOrNull { it.entry.lineLabel }
         )
     }
 
@@ -368,6 +370,13 @@ class StationBoardAggregateService(
         .replace("ä", "ae")
         .replace("ü", "ue")
         .replace(Regex("[^a-z0-9]"), "")
+}
+
+/** Catalogue coordinates as a validated point; a station without both values, or with invalid ones, has none. */
+internal fun Station.catalogueCoordinates(): it.binario.app.data.core.GeoPoint? {
+    val lat = latitude ?: return null
+    val lon = longitude ?: return null
+    return if (lat in -90.0..90.0 && lon in -180.0..180.0) it.binario.app.data.core.GeoPoint(lat, lon) else null
 }
 
 data class StationBoardAggregate(

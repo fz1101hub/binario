@@ -1655,6 +1655,7 @@ internal fun StationBoardEntryRow(entry: StationBoardEntry, kind: BoardKind, onO
             )
             Text(
                 listOfNotNull(
+                    entry.lineLabel?.takeIf(String::isNotBlank),
                     entry.publicNumber?.takeIf(String::isNotBlank)?.let { stringResource(R.string.station_board_train_number, it) },
                     entry.operatorId?.value?.takeIf(String::isNotBlank),
                     entry.status?.value?.stationBoardLabel()

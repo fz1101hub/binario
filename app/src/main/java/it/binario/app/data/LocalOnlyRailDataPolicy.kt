@@ -9,6 +9,7 @@ import it.binario.app.data.live.RfiStationBoardAdapter
 import it.binario.app.data.live.RfiLiveRouteDataSource
 import it.binario.app.data.live.SncfGtfsRealtimeAdapter
 import it.binario.app.data.live.StaRealtimeAdapter
+import it.binario.app.data.live.SwissOpenTransportStationBoardAdapter
 import it.binario.app.data.live.ViaggiaTrenoRealtimeAdapter
 import it.binario.app.data.planned.RfiProgrammedStationBoardAdapter
 import it.binario.app.data.planned.RfiProgrammedTimetableAdapter
@@ -40,6 +41,7 @@ object LocalOnlyRailDataPolicy {
     private val rfiAlerts by lazy { RfiInfomobilityRssAdapter() }
     private val staRealtime by lazy { StaRealtimeAdapter() }
     private val sncfRealtime by lazy { SncfGtfsRealtimeAdapter() }
+    private val swissOpenTransportBoard by lazy { SwissOpenTransportStationBoardAdapter() }
 
     /** Official programmed sources only. */
     fun routeSources(): List<TrainDataSource> = listOf(
@@ -67,7 +69,9 @@ object LocalOnlyRailDataPolicy {
             listOf(
                 rfiStationBoard,
                 italoStationBoard,
-                viaggiaTrenoBoard
+                viaggiaTrenoBoard,
+                // Best effort as well; returns NOT_SUPPORTED without network for non-Swiss stations.
+                swissOpenTransportBoard
             )
         } else {
             emptyList()

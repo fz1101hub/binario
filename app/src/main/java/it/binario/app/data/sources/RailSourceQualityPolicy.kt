@@ -30,6 +30,7 @@ object RailSourceQualityPolicy {
         "italo-status" to 15,
         "db-timetables" to 15,
         "viaggiatreno" to 20,
+        "ch-transport-opendata" to 25,
         "european-sleeper-gtfs-rt" to 40
     )
 
@@ -37,7 +38,8 @@ object RailSourceQualityPolicy {
         "rfi-station-board" to 5,
         "italo-status" to 10,
         "viaggiatreno" to 15,
-        "db-timetables" to 20
+        "db-timetables" to 20,
+        "ch-transport-opendata" to 25
     )
 
     private val alertRanks = mapOf(

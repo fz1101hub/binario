@@ -305,6 +305,20 @@ class LiveProviderNetworkTest {
         tripUpdates(EuropeanSleeperGtfsRealtimeAdapter(), "european-sleeper", resolver, tripIds(bytes))
     }
 
+    @Test fun swissOpenTransport() = runBlocking {
+        selected("opendata-ch")
+        // Lugano, picked from the embedded Swiss GTFS pack, and Bellinzona through its curated Trenitalia id.
+        board(SwissOpenTransportStationBoardAdapter(clock), "gtfs:ch-otd-gtfs:8505300", "Lugano")
+        val now = clock.instant()
+        val result = SwissOpenTransportStationBoardAdapter(clock).getStationBoard(StationBoardRequest(StationId("curated:S00300"), "Bellinzona",
+            railwayCode = "S00300", from = now.minusSeconds(600), to = now.plusSeconds(6 * 3600), kind = BoardKind.DEPARTURES,
+            trenitaliaLocationId = "850005213"))
+        if (result !is ProviderResult.Success) fail("transport.opendata.ch Bellinzona: $result")
+        val entries = (result as ProviderResult.Success).value.entries
+        assertTrue("transport.opendata.ch Bellinzona: no journey numbers", entries.all { it.publicNumber?.all(Char::isDigit) == true })
+        println("LIVE_ACCEPTANCE ch-transport-opendata: bellinzona=${entries.size}, lines=${entries.mapNotNull { it.lineLabel }.distinct().take(6)}")
+    }
+
     /**
      * Raw samples of candidate sources (ViaggiaTreno per-train notices, transport.opendata.ch, Trenord line
      * notices, MIT strike calendar, Open-Meteo) so their formats are known before an adapter is written.

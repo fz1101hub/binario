@@ -42,6 +42,8 @@ class ProviderRegistryTest {
         assertEquals(BuildConfig.PERSONAL_REALTIME_SOURCES, registry.isEnabled(SourceId("viaggiatreno")))
         assertEquals(BuildConfig.PERSONAL_REALTIME_SOURCES, registry.isEnabled(SourceId("rfi-station-board")))
         assertEquals(BuildConfig.PERSONAL_REALTIME_SOURCES, registry.isEnabled(SourceId("italo-status")))
+        assertEquals(BuildConfig.PERSONAL_REALTIME_SOURCES, registry.isEnabled(SourceId("ch-transport-opendata")))
+        assertEquals(AccessMode.PUBLIC_BEST_EFFORT, registry.policy(SourceId("ch-transport-opendata"))?.descriptor?.accessMode)
         assertTrue(registry.isEnabled(SourceId("rfi-programmed")))
         assertTrue(registry.isEnabled(SourceId("rfi-infomobility-rss")))
         assertTrue(registry.isEnabled(SourceId("alto-adige-sta-realtime")))

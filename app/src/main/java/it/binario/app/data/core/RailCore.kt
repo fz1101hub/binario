@@ -294,7 +294,12 @@ data class StationBoardEntry(
     val status: SourcedValue<RunStatus>? = null,
     val routeChange: SourcedValue<OperationalRouteChange>? = null,
     /** Exact source identity for opening this run without guessing from a train number. */
-    val nativeRunIds: Map<SourceId, String> = emptyMap()
+    val nativeRunIds: Map<SourceId, String> = emptyMap(),
+    /**
+     * Commercial line label published next to the run number (for example "RE 80" or "S 10"). Display only:
+     * board identity keeps using [publicNumber], the run number shared with GTFS and the other boards.
+     */
+    val lineLabel: String? = null
 )
 
 data class StationBoard(

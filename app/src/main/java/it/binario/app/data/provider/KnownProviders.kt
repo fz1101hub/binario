@@ -20,6 +20,7 @@ object KnownProviderIds {
     val RFI_INFOMOBILITY_RSS = SourceId("rfi-infomobility-rss")
     val STA_REALTIME = SourceId("alto-adige-sta-realtime")
     val ITALO_STATUS = SourceId("italo-status")
+    val SWISS_OPEN_TRANSPORT = SourceId("ch-transport-opendata")
     val DEMO_LOCAL = SourceId("demo-local")
 }
 
@@ -227,6 +228,19 @@ object KnownProviders {
                 ProviderCapability.TRAIN_RUN_REALTIME to 20,
                 ProviderCapability.STATION_BOARD to 20
             )
+        ),
+        ProviderPolicy(
+            descriptor = ProviderDescriptor(
+                id = KnownProviderIds.SWISS_OPEN_TRANSPORT,
+                displayName = "transport.opendata.ch — tabelloni svizzeri",
+                capabilities = setOf(ProviderCapability.STATION_BOARD),
+                coverage = CoverageDescriptor(countryCodes = setOf("CH", "IT"), description = "Stazioni svizzere e transfrontaliere con numero UIC svizzero"),
+                accessMode = AccessMode.PUBLIC_BEST_EFFORT,
+                ratePolicy = realtimeRatePolicy,
+                schemaVersion = 1
+            ),
+            enabled = BuildConfig.PERSONAL_REALTIME_SOURCES,
+            priorityByCapability = mapOf(ProviderCapability.STATION_BOARD to 25)
         )
     )
 

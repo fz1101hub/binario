@@ -160,7 +160,11 @@ data class StationBoardRequest(
     val railwayCode: String? = null,
     val from: Instant,
     val to: Instant,
-    val kind: it.binario.app.data.core.BoardKind
+    val kind: it.binario.app.data.core.BoardKind,
+    /** Curated Trenitalia location id (country prefix + code); Swiss stations carry `85…` here. */
+    val trenitaliaLocationId: String? = null,
+    /** Catalogue coordinates, used only to verify a provider's own station identity, never sent as user location. */
+    val coordinates: it.binario.app.data.core.GeoPoint? = null
 ) {
     init {
         require(to.isAfter(from)) { "La finestra del tabellone non è valida" }
