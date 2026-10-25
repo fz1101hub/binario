@@ -734,13 +734,13 @@
     <string name="connections_buffer_negative">Fährt %1$s vor der Ankunft</string>
     <string name="connections_risk_missed">Verpasst</string>
     <string name="connections_risk_at_risk">Gefährdet</string>
-    <string name="connections_risk_ok">Machbar</string>
+    <string name="connections_risk_ok">Erreichbar</string>
     <string name="calendar_add">Zum Kalender hinzufügen</string>
     <string name="calendar_event_operator">Betreiber: %1$s</string>
-    <string name="calendar_event_times_note">Planmäßige Zeiten: Sie können sich ändern. Prüfe vor der Fahrt den Zugstatus.</string>
+    <string name="calendar_event_times_note">Planmäßige Zeiten, Änderungen sind möglich. Prüfe vor der Fahrt den Zugstatus.</string>
     <string name="calendar_no_app">Keine Kalender-App auf diesem Gerät kann den Termin übernehmen.</string>
     <string name="calendar_time_unavailable">Die Abfahrtszeit ist nicht lesbar: Der Termin kann nicht erstellt werden.</string>
-    <string name="station_widget_name">Bahnhofstafel</string>
+    <string name="station_widget_name">Abfahrtstafel</string>
     <string name="station_widget_description">Zeigt die nächsten Abfahrten eines Bahnhofs deiner Wahl.</string>
     <string name="station_widget_preview_meta">Nächste Abfahrten mit Gleis und Verspätung</string>
     <string name="station_widget_configuration_title">Bahnhof auswählen</string>
@@ -751,7 +751,7 @@
     <string name="station_widget_status_late">VERSP.</string>
     <string name="station_widget_status_changed">ÄND.</string>
     <string name="station_widget_title_accessibility">Abfahrten ab %1$s. Quelle: %2$s. %3$s. %4$s</string>
-    <string name="station_widget_configure_title">Bahnhofstafel einrichten</string>
+    <string name="station_widget_configure_title">Abfahrtstafel einrichten</string>
     <string name="station_widget_configure_description">Das Widget zeigt die nächsten vier Abfahrten des gewählten Bahnhofs, mit Gleis und Verspätung, wenn die Quelle sie veröffentlicht. Es aktualisiert sich höchstens alle fünfzehn Minuten oder wenn du auf die Schaltfläche zum Aktualisieren tippst.</string>
     <string name="station_widget_validation_missing_station">Wähle einen Bahnhof aus der Liste oder gib seinen Namen ein.</string>
     <string name="station_widget_favourites_optional">Lieblingsbahnhöfe (optional)</string>

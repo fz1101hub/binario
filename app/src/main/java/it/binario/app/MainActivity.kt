@@ -1769,7 +1769,7 @@ private fun stationBoardStatusAnnouncement(entry: StationBoardEntry): String {
 }
 
 @Composable
-private fun RunStatus.stationBoardLabel(): String = when (this) {
+internal fun RunStatus.stationBoardLabel(): String = when (this) {
     RunStatus.SCHEDULED -> stringResource(R.string.run_status_scheduled)
     RunStatus.ON_TIME -> stringResource(R.string.run_status_on_time)
     RunStatus.DELAYED -> stringResource(R.string.run_status_delayed)

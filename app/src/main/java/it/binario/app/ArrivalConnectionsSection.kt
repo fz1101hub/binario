@@ -23,6 +23,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -38,9 +39,13 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 import it.binario.app.data.RailTime
 import it.binario.app.data.ServiceStatus
 import it.binario.app.data.TrainService
+import it.binario.app.data.core.RunStatus
 import it.binario.app.data.repository.StationBoardAggregate
 import it.binario.app.data.repository.StationBoardAggregateResult
 import java.time.Duration
@@ -49,16 +54,19 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 
 private enum class ConnectionLoadState { IDLE, LOADING, SUCCESS, ERROR, STATION_UNKNOWN }
 
 private val CONNECTION_TIME_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm", Locale.ITALIAN)
+private const val CONNECTIONS_REFRESH_MILLIS = 30_000L
+private val ROUTINE_STATUSES = setOf(RunStatus.SCHEDULED, RunStatus.UNKNOWN, RunStatus.ON_TIME, RunStatus.DELAYED)
 
 /**
  * Collapsible "connections at arrival" section of the train detail. Nothing is requested before
- * the user expands it; the board is collected in this composition, so leaving the detail or
- * collapsing the section cancels the requests.
+ * the user expands it; the board is collected in this composition while the app is started, so
+ * leaving the detail, collapsing the section or leaving the app cancels the requests.
  */
 @Composable
 internal fun ArrivalConnectionsSection(
@@ -75,35 +83,44 @@ internal fun ArrivalConnectionsSection(
     var reloadRequest by remember(service.id) { mutableIntStateOf(0) }
     var board by remember(service.id, stationName) { mutableStateOf<StationBoardAggregate?>(null) }
     var loadState by remember(service.id, stationName) { mutableStateOf(ConnectionLoadState.IDLE) }
-    val boardFrom = arrival?.boardFrom
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val boardFrom by rememberUpdatedState(arrival?.boardFrom)
 
-    LaunchedEffect(expanded, stationName, reloadRequest, boardFrom == null, trainCancelled) {
-        if (!expanded || !hasBoardProviders || boardFrom == null || trainCancelled) return@LaunchedEffect
-        val updates = loadBoard(stationName, boardFrom)
-        if (updates == null) {
-            loadState = ConnectionLoadState.STATION_UNKNOWN
-            return@LaunchedEffect
-        }
-        loadState = ConnectionLoadState.LOADING
-        try {
-            updates.collect { result ->
-                when (result) {
-                    is StationBoardAggregateResult.Success -> {
-                        board = result.board
-                        loadState = if (result.isComplete) ConnectionLoadState.SUCCESS else ConnectionLoadState.LOADING
-                    }
-                    is StationBoardAggregateResult.Unavailable -> {
-                        // Rows already shown stay, without live claims whose validity has ended.
-                        board = board?.withoutExpiredObservations(Instant.now())
-                        loadState = ConnectionLoadState.ERROR
-                    }
+    LaunchedEffect(expanded, stationName, reloadRequest, arrival == null, trainCancelled, lifecycleOwner) {
+        if (!expanded || !hasBoardProviders || arrival == null || trainCancelled) return@LaunchedEffect
+        // Like the station board, refresh while visible and the app is started: board predictions
+        // expire within a minute and must not linger as live.
+        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            while (true) {
+                val from = boardFrom ?: break
+                val updates = loadBoard(stationName, from)
+                if (updates == null) {
+                    loadState = ConnectionLoadState.STATION_UNKNOWN
+                    break
                 }
+                loadState = ConnectionLoadState.LOADING
+                try {
+                    updates.collect { result ->
+                        when (result) {
+                            is StationBoardAggregateResult.Success -> {
+                                board = result.board
+                                loadState = if (result.isComplete) ConnectionLoadState.SUCCESS else ConnectionLoadState.LOADING
+                            }
+                            is StationBoardAggregateResult.Unavailable -> {
+                                // Rows already shown stay, without live claims whose validity has ended.
+                                board = board?.withoutExpiredObservations(Instant.now())
+                                loadState = ConnectionLoadState.ERROR
+                            }
+                        }
+                    }
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
+                } catch (_: Exception) {
+                    board = board?.withoutExpiredObservations(Instant.now())
+                    loadState = ConnectionLoadState.ERROR
+                }
+                delay(CONNECTIONS_REFRESH_MILLIS)
             }
-        } catch (cancelled: CancellationException) {
-            throw cancelled
-        } catch (_: Exception) {
-            board = board?.withoutExpiredObservations(Instant.now())
-            loadState = ConnectionLoadState.ERROR
         }
     }
 
@@ -231,11 +248,15 @@ private fun ArrivalConnectionRow(connection: ArrivalConnection) {
     } else {
         stringResource(R.string.station_board_scheduled_time, scheduled.format(CONNECTION_TIME_FORMATTER))
     }
+    // Same convention as the station board: a status other than scheduled/unknown is a live observation.
+    val runStatus = entry.status?.value
     val statusLabel = when {
         connection.risk == ConnectionRisk.CANCELLED -> stringResource(R.string.run_status_cancelled)
-        !connection.isLive -> stringResource(R.string.run_status_scheduled)
-        delayMinutes > 0 -> stringResource(R.string.delay_minutes, delayMinutes)
-        else -> stringResource(R.string.operational_on_time)
+        runStatus != null && runStatus !in ROUTINE_STATUSES -> runStatus.stationBoardLabel()
+        connection.isLive && delayMinutes > 0 -> stringResource(R.string.delay_minutes, delayMinutes)
+        connection.isLive || runStatus == RunStatus.ON_TIME -> stringResource(R.string.operational_on_time)
+        runStatus == RunStatus.DELAYED -> runStatus.stationBoardLabel()
+        else -> stringResource(R.string.run_status_scheduled)
     }
     val riskLabel = connection.risk.label()
     // A missed connection reports the whole minutes it leaves early, a reachable one the whole minutes to spare.

@@ -153,8 +153,12 @@ class PunctualityHistoryStore(
 ) {
     private val preferences = context.getSharedPreferences("binario_punctuality_history_v1", Context.MODE_PRIVATE)
 
-    fun read(): List<PunctualityObservation> =
-        PunctualityHistory.bound(PunctualityHistory.decode(preferences.getString(KEY_HISTORY, null)), today())
+    /** Observations past the retention are removed from storage too, not only from the result. */
+    fun read(): List<PunctualityObservation> {
+        val stored = PunctualityHistory.decode(preferences.getString(KEY_HISTORY, null))
+        val bounded = PunctualityHistory.bound(stored, today())
+        return if (bounded.size != stored.size) save(bounded) else bounded
+    }
 
     fun record(current: List<PunctualityObservation>, observations: List<PunctualityObservation>): List<PunctualityObservation> =
         save(PunctualityHistory.record(current, observations, today()))
