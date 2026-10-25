@@ -490,7 +490,7 @@
     <string name="stop_alarm_dialog_time">Der Wecker klingelt etwa fünf Minuten vor der voraussichtlichen Zeit %1$s.</string>
     <string name="action_set_stop_alarm">Wecker stellen</string>
     <string name="gps_alarm_option">Auch anhand meines Standorts warnen</string>
-    <string name="gps_alarm_option_description">Klingelt, sobald du im gewählten Umkreis des Halts bist, auch wenn der Zug zu früh oder verspätet ist. Es zählt die Warnung, die zuerst kommt.</string>
+    <string name="gps_alarm_option_description">Klingelt, sobald du im gewählten Umkreis des Halts bist (sofort, wenn du schon dort bist), auch wenn der Zug zu früh oder verspätet ist. Es zählt die Warnung, die zuerst kommt.</string>
     <string name="gps_alarm_radius_label">Warnradius</string>
     <plurals name="gps_alarm_radius_km">
         <item quantity="one">%d km</item>

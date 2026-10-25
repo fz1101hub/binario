@@ -500,7 +500,7 @@
     <string name="stop_alarm_dialog_time">L’alarme sonne environ cinq minutes avant l’heure prévue %1$s.</string>
     <string name="action_set_stop_alarm">Régler l’alarme</string>
     <string name="gps_alarm_option">M’avertir aussi selon ma position</string>
-    <string name="gps_alarm_option_description">Sonne lorsque vous êtes dans le rayon choisi autour de l’arrêt, même si le train est en avance ou en retard. C’est l’alerte qui arrive en premier qui compte.</string>
+    <string name="gps_alarm_option_description">Sonne lorsque vous êtes dans le rayon choisi autour de l’arrêt (tout de suite si vous y êtes déjà), même si le train est en avance ou en retard. C’est l’alerte qui arrive en premier qui compte.</string>
     <string name="gps_alarm_radius_label">Rayon d’alerte</string>
     <plurals name="gps_alarm_radius_km">
         <item quantity="one">%d km</item>

@@ -114,7 +114,7 @@ class GpsArrivalAlarmService : Service() {
         GpsArrivalAlarmStore(this).saveActiveTarget(newTarget)
         GpsArrivalAlarmRuntime.markActive(newTarget, precise)
         requestUpdates(GpsArrivalAlarmPolicy.nextIntervalMillis(null))
-        handler.postDelayed(watchdog, WATCHDOG_INTERVAL_MILLIS)
+        if (!finished) handler.postDelayed(watchdog, WATCHDOG_INTERVAL_MILLIS)
     }
 
     private fun enterForeground(newTarget: GpsArrivalAlarmTarget?): Boolean {
@@ -200,17 +200,22 @@ class GpsArrivalAlarmService : Service() {
             // Android itself ends the request at the expiry even if this service misbehaves.
             .setDurationMillis(remaining)
             .build()
-        try {
+        val registered = try {
             // Requesting again for the same listener and provider replaces the previous request.
-            providers.forEach { provider ->
-                LocationManagerCompat.requestLocationUpdates(locationManager, provider, request, ContextCompat.getMainExecutor(this), listener)
+            providers.count { provider ->
+                try {
+                    LocationManagerCompat.requestLocationUpdates(locationManager, provider, request, ContextCompat.getMainExecutor(this), listener)
+                    true
+                } catch (_: IllegalArgumentException) {
+                    // The provider vanished; the other one may still work.
+                    false
+                }
             }
-            intervalMillis = nextIntervalMillis
         } catch (_: SecurityException) {
             finish(GpsArrivalAlarmEndReason.PERMISSION_REVOKED)
-        } catch (_: IllegalArgumentException) {
-            finish(GpsArrivalAlarmEndReason.LOCATION_UNAVAILABLE)
+            return
         }
+        if (registered == 0) finish(GpsArrivalAlarmEndReason.LOCATION_UNAVAILABLE) else intervalMillis = nextIntervalMillis
     }
 
     // Removing a listener must also work after the permission was revoked, so it is not guarded

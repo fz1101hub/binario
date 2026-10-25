@@ -490,7 +490,7 @@
     <string name="stop_alarm_dialog_time">The alarm rings about five minutes before the expected time of %1$s.</string>
     <string name="action_set_stop_alarm">Set alarm</string>
     <string name="gps_alarm_option">Also alert me based on my location</string>
-    <string name="gps_alarm_option_description">Rings when you are within the chosen radius of the stop, even if the train is early or late. Whichever alert comes first counts.</string>
+    <string name="gps_alarm_option_description">Rings when you are within the chosen radius of the stop (straight away if you already are), even if the train is early or late. Whichever alert comes first counts.</string>
     <string name="gps_alarm_radius_label">Alert radius</string>
     <plurals name="gps_alarm_radius_km">
         <item quantity="one">%d km</item>
