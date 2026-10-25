@@ -9,7 +9,7 @@ patchedDependencies:
 
 overrides:
   "@babel/core": 7.29.6
-  body-parser@1: 1.20.6
+  body-parser@1: 1.20.9
   browserslist: 4.29.0
   esbuild@<0.25.0: 0.25.12
   path-to-regexp@0.1.12: 0.1.13
@@ -23,3 +23,6 @@ overrides:
   qs: 6.16.0
   source-map-js: 1.2.2
   tinypool: 2.1.2
+  follow-redirects: 1.16.1
+  vite: 7.3.7
+  zod: 4.6.6
