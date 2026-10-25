@@ -13,7 +13,7 @@
   "routeId": "roma-termini-napoli-centrale",
   "routeLabel": "Roma Termini → Napoli Centrale",
   "direction": "OUTBOUND",
-  "notice": "Dati operativi ricevuti dal telefono.",
+  "notice": "",
   "serviceCount": 2,
   "service0Number": "FR 9505",
   "service0Operator": "Trenitalia Frecce",

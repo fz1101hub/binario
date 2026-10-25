@@ -2,12 +2,16 @@ package it.binario.app.wear
 
 import android.content.res.Resources
 import it.binario.app.R
+import it.binario.app.UiMessageKey
+import it.binario.app.advisoryMessage
 import it.binario.app.data.DataConfidence
 import it.binario.app.data.RouteSnapshot
 import it.binario.app.data.ServiceStatus
+import it.binario.app.data.SnapshotWarning
 import it.binario.app.data.TrainCategory
 import it.binario.app.data.orderServicesForDisplay
 import it.binario.app.labelRes
+import it.binario.app.resourceId
 
 /**
  * Phone-language texts carried by the v1 payload. The watch shows them verbatim, so they are
@@ -17,15 +21,22 @@ internal data class WearSnapshotStrings(
     val confidenceLabels: Map<DataConfidence, String>,
     val categoryLabels: Map<TrainCategory, String>,
     val statusLabels: Map<ServiceStatus, String>,
+    val advisoryNotices: Map<UiMessageKey, String>,
+    val warningLabels: Map<SnapshotWarning, String>,
     val scheduledStatus: String,
     val unavailableNotice: String,
     val missingValue: String
 ) {
     companion object {
+        /** The advisories RouteSnapshot.advisoryMessage() can raise; the watch shows them as the notice. */
+        internal val advisoryKeys = listOf(UiMessageKey.ROUTE_COVERAGE_FALLBACK, UiMessageKey.ROUTE_SOURCE_CONFLICT)
+
         fun from(resources: Resources): WearSnapshotStrings = WearSnapshotStrings(
             confidenceLabels = DataConfidence.entries.associateWith { resources.getString(it.labelRes()) },
             categoryLabels = TrainCategory.entries.associateWith { resources.getString(it.labelRes()) },
             statusLabels = ServiceStatus.entries.associateWith { resources.getString(it.labelRes()) },
+            advisoryNotices = advisoryKeys.associateWith { resources.getString(it.resourceId()) },
+            warningLabels = SnapshotWarning.entries.associateWith { resources.getString(it.labelRes()) },
             scheduledStatus = resources.getString(R.string.service_status_scheduled_badge),
             unavailableNotice = resources.getString(R.string.data_status_unavailable),
             missingValue = resources.getString(R.string.wear_payload_value_unavailable)
@@ -62,7 +73,7 @@ internal object AndroidWearSnapshotContract {
             put("routeId", required(snapshot.route.id, 64, strings.missingValue))
             put("routeLabel", required(snapshot.routeLabel, 96, strings.missingValue))
             put("direction", snapshot.direction.name)
-            put("notice", optional(snapshot.notice.orEmpty(), 180))
+            put("notice", optional(notice(snapshot, strings), 180))
             put("serviceCount", services.size)
             services.forEachIndexed { index, service ->
                 put("service${index}Number", required(service.number, 24, strings.missingValue))
@@ -99,6 +110,12 @@ internal object AndroidWearSnapshotContract {
         "notice" to optional(strings.unavailableNotice, 180),
         "serviceCount" to 0
     )
+
+    /** The phone's own advisory, else its first quality warning: the data layer's free text is Italian prose and never reaches the watch. */
+    private fun notice(snapshot: RouteSnapshot, strings: WearSnapshotStrings): String =
+        snapshot.advisoryMessage()?.let { strings.advisoryNotices.getValue(it.key) }
+            ?: snapshot.qualityWarnings.firstOrNull()?.let { strings.warningLabels.getValue(it) }
+            ?: ""
 
     private fun required(value: String, limit: Int, fallback: String): String = optional(value, limit).ifBlank { fallback }
     private fun optional(value: String, limit: Int): String = value.replace(Regex("\\s+"), " ").trim().take(limit).trim()

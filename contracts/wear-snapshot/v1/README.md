@@ -21,6 +21,8 @@ Un decoder accetta esclusivamente `schemaVersion: 1`. Una versione superiore (o 
 
 `generatedAtEpochMillis` identifica l'istante di generazione dello snapshot; `expiresAtEpochMillis` è il limite assoluto di visualizzazione e `ttlMillis` rende verificabile la finestra senza interpretazioni implicite del trasporto. Il produttore Android limita ulteriormente i dati operativi alla scadenza ricevuta e a 15 minuti; il Companion usa la scadenza della pianificazione locale.
 
+Il campo `notice` del produttore Android contiene l'avviso nella lingua del telefono (fonte di copertura non ufficiale, fonti in conflitto, altrimenti il primo avviso di qualità dello snapshot), mai il testo libero della fonte dati; senza avvisi il campo è vuoto.
+
 Il set di chiavi è chiuso. Non sono ammessi segreti o materiale sensibile: token, password, credenziali, header/autorizzazioni, identificativi di sessione, posizione/coordinate, tracce GPS, audio, trascrizioni o comandi vocali. In particolare non esistono campi per location, latitude, longitude, audio, transcript o voice. I valori non elencati non possono essere aggiunti in v1: richiedono una nuova `schemaVersion` e fixture.
 
 ## Campi e enum

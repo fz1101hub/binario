@@ -1,5 +1,6 @@
 package it.binario.app.wear
 
+import it.binario.app.UiMessageKey
 import it.binario.app.data.DataConfidence
 import it.binario.app.data.Direction
 import it.binario.app.data.Freshness
@@ -7,6 +8,7 @@ import it.binario.app.data.RailOperator
 import it.binario.app.data.RouteSnapshot
 import it.binario.app.data.SavedRoute
 import it.binario.app.data.ServiceStatus
+import it.binario.app.data.SnapshotWarning
 import it.binario.app.data.Station
 import it.binario.app.data.TrainCategory
 import it.binario.app.data.TrainService
@@ -39,6 +41,7 @@ class AndroidWearSnapshotContractTest {
         expiresAtEpochMillis = 1_893_485_700_000L,
         freshness = Freshness.FRESH,
         confidence = DataConfidence.OPERATOR_PRIMARY,
+        // The data layer's Italian prose: the golden payload proves it is never forwarded.
         notice = "Dati operativi ricevuti dal telefono."
     )
 
@@ -69,6 +72,24 @@ class AndroidWearSnapshotContractTest {
     }
 
     @Test
+    fun `notice carries the phone's localized advisory or first warning, never the data source's prose`() {
+        val conflicting = goldenSnapshot.copy(qualityWarnings = setOf(SnapshotWarning.SOURCE_CONFLICT))
+        val fallback = conflicting.copy(coverageFallback = true)
+        val stale = goldenSnapshot.copy(qualityWarnings = setOf(SnapshotWarning.STALE_SOURCE, SnapshotWarning.INCOMPLETE_SERVICE))
+
+        fun notice(snapshot: RouteSnapshot, locale: String?) = AndroidWearSnapshotContract.operational(snapshot, generatedAt, strings(locale))["notice"]
+
+        assertEquals("", notice(goldenSnapshot, null))
+        assertEquals("Fonti in conflitto per alcuni campi: verifica il canale ufficiale prima di viaggiare.", notice(conflicting, null))
+        assertEquals("Orario da una fonte di copertura non ufficiale: verifica con il vettore prima di partire.", notice(fallback, null))
+        assertEquals("Aggiornamento non recente", notice(stale, null))
+        assertEquals("", notice(goldenSnapshot, "en"))
+        assertEquals("Sources conflict on some fields: check the official channel before you travel.", notice(conflicting, "en"))
+        assertEquals("Timetable from an unofficial coverage source: check with the operator before you travel.", notice(fallback, "en"))
+        assertEquals("Update not recent", notice(stale, "en"))
+    }
+
+    @Test
     fun `encoder trims whitespace introduced by notice truncation`() {
         val generatedAt = 1_893_484_800_000L
         val snapshot = RouteSnapshot(
@@ -86,10 +107,13 @@ class AndroidWearSnapshotContractTest {
             expiresAtEpochMillis = generatedAt + 60_000L,
             freshness = Freshness.AGING,
             confidence = DataConfidence.INFRASTRUCTURE_PRIMARY,
-            notice = "x".repeat(179) + " parole oltre il limite"
+            coverageFallback = true
         )
+        val strings = strings(locale = null).let {
+            it.copy(advisoryNotices = it.advisoryNotices + (UiMessageKey.ROUTE_COVERAGE_FALLBACK to "x".repeat(179) + " parole oltre il limite"))
+        }
 
-        val notice = AndroidWearSnapshotContract.operational(snapshot, generatedAt, strings(locale = null)).getValue("notice") as String
+        val notice = AndroidWearSnapshotContract.operational(snapshot, generatedAt, strings).getValue("notice") as String
 
         assertEquals(179, notice.length)
         assertFalse(notice.endsWith(" "))
@@ -129,6 +153,8 @@ class AndroidWearSnapshotContractTest {
             confidenceLabels = DataConfidence.entries.associateWith { catalogue.getValue("data_confidence_${it.name.lowercase()}") },
             categoryLabels = TrainCategory.entries.associateWith { catalogue.getValue(categoryKeys.getValue(it)) },
             statusLabels = ServiceStatus.entries.associateWith { catalogue.getValue("service_status_${it.name.lowercase()}") },
+            advisoryNotices = WearSnapshotStrings.advisoryKeys.associateWith { catalogue.getValue(it.resourceName) },
+            warningLabels = SnapshotWarning.entries.associateWith { catalogue.getValue("snapshot_warning_${it.name.lowercase()}") },
             scheduledStatus = catalogue.getValue("service_status_scheduled_badge"),
             unavailableNotice = catalogue.getValue("data_status_unavailable"),
             missingValue = catalogue.getValue("wear_payload_value_unavailable")
