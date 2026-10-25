@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
     inputs:
       sources:
-        description: "Fonti: rfi,sta,sncf,italo,european-sleeper,viaggiatreno,viaggiatreno-html,opendata-ch,notices,discovery"
+        description: "Fonti: rfi,sta,sncf,italo,european-sleeper,viaggiatreno,viaggiatreno-html,opendata-ch,notices,open-meteo,discovery"
         required: true
         type: string
         default: "rfi,sta,sncf,italo,european-sleeper,viaggiatreno"
@@ -42,7 +42,7 @@ jobs:
           python3 - <<'PY'
           import os
           sources = os.environ['LIVE_SOURCES'].split(',')
-          assert sources and all(s in {'rfi', 'sta', 'sncf', 'italo', 'european-sleeper', 'viaggiatreno', 'viaggiatreno-html', 'opendata-ch', 'notices', 'discovery'} for s in sources)
+          assert sources and all(s in {'rfi', 'sta', 'sncf', 'italo', 'european-sleeper', 'viaggiatreno', 'viaggiatreno-html', 'opendata-ch', 'notices', 'open-meteo', 'discovery'} for s in sources)
           PY
       - name: Functional source checks
         env:

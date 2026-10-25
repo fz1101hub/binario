@@ -89,6 +89,7 @@ La tabella copre ogni host `http(s)://` trovato in `app/src/main/java`, `wear/sr
 |---|---|---|---|---|
 | `prm.rfi.it` | A | `data/planned/RfiProgrammedTimetableAdapter.kt`, `RfiProgrammedStationBoardAdapter.kt`, `RfiSupplementalHubTimetableAdapter.kt` | Ricerca tratta, tabellone stazione e refresh widget per le stazioni hub RFI mappate | `GET` con identificativo pubblico PRM della stazione, `lin=it`, `User-Agent` Binario |
 | `jbb.ghsq.de` | A | `data/sources/InternationalSourceCatalog.kt` (URL del catalogo, scaricati da `data/gtfs/GtfsArtifactDownloader.kt` per `RemoteGtfsFallbackDataSource.kt`), `data/live/EuropeanSleeperGtfsRealtimeAdapter.kt` | Solo dopo che le fonti primarie non hanno restituito la tratta: GTFS statico e Trip Updates European Sleeper | `GET` senza parametri utente; soli metadati di rete |
+| `api.open-meteo.com` | A | `data/weather/OpenMeteoForecastAdapter.kt`, catalogo | Dettaglio di un treno, con l'impostazione «Meteo a destinazione» attiva (predefinita) e la stazione di arrivo nel catalogo con coordinate | `GET` con le coordinate della stazione di arrivo arrotondate a due decimali e parametri fissi; mai la posizione dell'utente |
 | `iechub.rfi.it` | B | `data/live/RfiStationBoardAdapter.kt` | Mai nella build distribuita | `GET` con `placeId` pubblico della stazione |
 | `italoinviaggio.italotreno.com` | B | `data/live/ItaloPublicStationAdapter.kt`, catalogo | Mai nella build distribuita | `GET` con slug pubblico della stazione nello URL |
 | `transport.opendata.ch` | B | `data/live/SwissOpenTransportStationBoardAdapter.kt`, catalogo | Tabellone stazione e arricchimento delle tratte con partenza da una stazione svizzera (UIC `85…`) o, una sola volta per stazione, ricerca del nome di una stazione di confine | `GET` con numero UIC della stazione, tipo di tabellone, limite e, per orari non correnti, data/ora; per la sola ricerca di identità il nome della stazione |
@@ -152,6 +153,7 @@ La tabella copre ogni host `http(s)://` trovato in `app/src/main/java`, `wear/sr
 
 | Host | Categoria | Ruolo |
 |---|---|---|
+| `open-meteo.com` | F | Attribuzione CC BY 4.0 della previsione e condizioni d'uso nel catalogo fonti (`OpenMeteoForecastAdapter.kt`, `RailSourceCatalog.kt`) |
 | `scioperi.mit.gov.it` | F | Calendario scioperi del Ministero delle infrastrutture e dei trasporti, dall'area avvisi (`data/notices/RailExternalLinks.kt`) |
 
 Nessun SDK di terze parti aggiunge host propri: le uniche librerie con accesso alla rete sono quelle AndroidX/Play Services elencate sopra, e Play Services Wearable comunica solo con l'infrastruttura Google del dispositivo associato.

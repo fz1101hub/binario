@@ -113,6 +113,9 @@ object BinarioDataGraph {
         trenord = activeProviders(localOnlyPolicy.trenordLineNoticeProviders(), ProviderCapability.SERVICE_ALERTS).firstOrNull()
     )
 
+    fun weatherForecastProvider(): it.binario.app.data.weather.OpenMeteoForecastAdapter? =
+        activeProviders(listOf(localOnlyPolicy.weatherForecastProvider()), ProviderCapability.WEATHER_FORECAST).firstOrNull()
+
     fun vehiclePositionProviders(): List<VehiclePositionProvider> =
         activeProviders(localOnlyPolicy.vehiclePositionProviders(), ProviderCapability.VEHICLE_POSITIONS)
 

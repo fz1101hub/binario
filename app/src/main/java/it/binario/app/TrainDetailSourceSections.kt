@@ -22,5 +22,6 @@ fun TrainDetailSourceSections(service: TrainService, stations: List<Station>) {
     }
     Column {
         TrainNoticesSection(service, viewModel, index)
+        DestinationWeatherSection(service, viewModel, index)
     }
 }

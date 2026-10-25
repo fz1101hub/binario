@@ -448,6 +448,21 @@ object RailSourceCatalog {
             notes = "JSON pubblico di circa 90 KB usato dal sito Trenord; best effort con TTL 15 minuti. Solo avvisi: i ritardi strutturati restano legati all'adesione E015. Le notizie promozionali senza parole chiave operative vengono scartate."
         ),
         RailSourceDefinition(
+            id = SourceId("open-meteo"),
+            displayName = "Open-Meteo — previsioni giornaliere",
+            operatorOrAuthority = "Open-Meteo.com",
+            formats = setOf(SourceFormat.JSON_API),
+            capabilities = setOf(ProviderCapability.WEATHER_FORECAST),
+            accessMode = AccessMode.OPEN_DIRECT,
+            readiness = SourceReadiness.READY_FOR_PROTOCOL_TEST,
+            countryCodes = emptySet(),
+            coverage = "Previsione giornaliera (tempo, temperature, probabilità di precipitazioni) per la stazione di arrivo, oggi e domani.",
+            landingPage = uri("https://open-meteo.com/en/terms"),
+            downloadOrProbeUri = uri("https://api.open-meteo.com/v1/forecast?latitude=46.00&longitude=8.95&daily=weather_code&forecast_days=2"),
+            attribution = "Dati meteo: Open-Meteo.com (CC BY 4.0)",
+            notes = "Licenza CC BY 4.0, uso non commerciale gratuito, nessuna chiave. Riceve solo le coordinate della stazione arrotondate a due decimali; disattivabile nelle impostazioni."
+        ),
+        RailSourceDefinition(
             id = SourceId("trenord-realtime"),
             displayName = "Trenord — tempo reale e avvisi",
             operatorOrAuthority = "Trenord S.r.l.",

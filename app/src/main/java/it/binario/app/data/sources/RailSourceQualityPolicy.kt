@@ -59,6 +59,7 @@ object RailSourceQualityPolicy {
         ProviderCapability.VEHICLE_POSITIONS -> realtimeRanks[sourceId.value] ?: 100
         ProviderCapability.STATION_BOARD -> boardRanks[sourceId.value] ?: 100
         ProviderCapability.SERVICE_ALERTS -> alertRanks[sourceId.value] ?: 100
+        ProviderCapability.WEATHER_FORECAST -> 100
     }
 
     /**

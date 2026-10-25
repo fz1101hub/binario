@@ -26,7 +26,9 @@ enum class ProviderCapability {
     TRAIN_RUN_REALTIME,
     STATION_BOARD,
     SERVICE_ALERTS,
-    VEHICLE_POSITIONS
+    VEHICLE_POSITIONS,
+    /** Not railway data: forecast for a station's place, shown next to the journey. */
+    WEATHER_FORECAST
 }
 
 enum class AccessMode {

@@ -49,6 +49,7 @@ object LocalOnlyRailDataPolicy {
     private val viaggiaTrenoTrainNotices by lazy { ViaggiaTrenoTrainNoticesAdapter() }
     private val trenitaliaNews by lazy { TrenitaliaInfomobilityNewsAdapter() }
     private val trenordNotices by lazy { TrenordLineNoticesAdapter() }
+    private val openMeteo by lazy { it.binario.app.data.weather.OpenMeteoForecastAdapter() }
 
     /** Official programmed sources only. */
     fun routeSources(): List<TrainDataSource> = listOf(
@@ -116,6 +117,12 @@ object LocalOnlyRailDataPolicy {
     /** Per-train notices: ViaggiaTreno family, best effort, so only with the personal realtime sources. */
     fun trainNoticeProviders(): List<TrainNoticeProvider> =
         if (BuildConfig.PERSONAL_REALTIME_SOURCES) listOf(viaggiaTrenoTrainNotices) else emptyList()
+
+    /**
+     * Destination weather: open data (CC BY 4.0), not a best-effort rail source, so not tied to the personal
+     * realtime flag; the user switches it off in the settings ("Meteo a destinazione").
+     */
+    fun weatherForecastProvider(): it.binario.app.data.weather.OpenMeteoForecastAdapter = openMeteo
 
     fun vehiclePositionProviders(): List<VehiclePositionProvider> = listOf(
         staRealtime

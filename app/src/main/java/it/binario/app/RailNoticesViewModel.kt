@@ -6,7 +6,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import it.binario.app.data.RailTime
 import it.binario.app.data.Station
+import it.binario.app.data.provider.ProviderErrorKind
+import it.binario.app.data.provider.ProviderResult
+import it.binario.app.data.weather.DailyForecast
+import it.binario.app.data.weather.OpenMeteoForecastAdapter
+import java.time.LocalDate
 import it.binario.app.data.notices.GeneralNotices
 import it.binario.app.data.notices.StationCoordinateIndex
 import it.binario.app.data.notices.StationNotices
@@ -29,8 +35,65 @@ sealed interface SourceSectionState<out T> {
  * State of the notice and weather sections. Nothing is fetched until a section is shown: each composable asks
  * for its data when it enters the composition, and every request runs off the main thread.
  */
+/** Outcome of the destination weather request. */
+sealed interface DestinationWeatherResult {
+    data class Forecast(val forecast: DailyForecast, val stale: Boolean) : DestinationWeatherResult
+    /** The arrival day is outside the published forecast (today and tomorrow). */
+    data object OutOfRange : DestinationWeatherResult
+    data object Unavailable : DestinationWeatherResult
+}
+
 class RailNoticesViewModel(application: Application) : AndroidViewModel(application) {
     private val notices = BinarioDataGraph.railNoticesService()
+    private val weather = BinarioDataGraph.weatherForecastProvider()
+    private val settings = SourcesSettingsStore(application)
+
+    var destinationWeatherEnabled by mutableStateOf(settings.destinationWeatherEnabled)
+        private set
+
+    fun updateDestinationWeather(enabled: Boolean) {
+        settings.destinationWeatherEnabled = enabled
+        destinationWeatherEnabled = enabled
+        if (!enabled) {
+            weatherJob?.cancel()
+            weatherKey = null
+            weatherState = SourceSectionState.Idle
+        }
+    }
+
+    private var weatherState by mutableStateOf<SourceSectionState<DestinationWeatherResult>>(SourceSectionState.Idle)
+    private var weatherKey: String? = null
+    private var weatherJob: Job? = null
+
+    fun weatherFor(key: String): SourceSectionState<DestinationWeatherResult> =
+        if (key == weatherKey) weatherState else SourceSectionState.Loading
+
+    /** Requests the forecast only while the setting is on; a day outside today/tomorrow causes no request. */
+    val hasWeatherSource: Boolean get() = weather != null
+
+    fun loadWeather(key: String, latitude: Double, longitude: Double, date: LocalDate) {
+        val source = weather ?: return
+        if (!destinationWeatherEnabled) return
+        if (key == weatherKey && weatherState != SourceSectionState.Idle) return
+        weatherKey = key
+        weatherJob?.cancel()
+        val today = LocalDate.now(RailTime.defaultZone)
+        if (date < today || date > today.plusDays(OpenMeteoForecastAdapter.FORECAST_DAYS - 1L)) {
+            weatherState = SourceSectionState.Ready(DestinationWeatherResult.OutOfRange)
+            return
+        }
+        weatherState = SourceSectionState.Loading
+        weatherJob = viewModelScope.launch {
+            val result = when (val read = source.forecast(latitude, longitude, date)) {
+                is ProviderResult.Success -> DestinationWeatherResult.Forecast(read.value, stale = false)
+                is ProviderResult.Partial -> DestinationWeatherResult.Forecast(read.value, stale = true)
+                is ProviderResult.Failure -> if (read.error.kind == ProviderErrorKind.NOT_FOUND) DestinationWeatherResult.OutOfRange
+                    else DestinationWeatherResult.Unavailable
+                is ProviderResult.NotModified -> DestinationWeatherResult.Unavailable
+            }
+            if (weatherKey == key) weatherState = SourceSectionState.Ready(result)
+        }
+    }
 
     val hasTrainNoticeSources: Boolean get() = notices.hasTrainSources
     val hasNetworkNoticeSources: Boolean get() = notices.hasNetworkSources

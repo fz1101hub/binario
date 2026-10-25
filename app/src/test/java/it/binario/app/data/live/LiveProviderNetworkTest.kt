@@ -347,6 +347,17 @@ class LiveProviderNetworkTest {
         println("LIVE_ACCEPTANCE trenord-line-notices: lines=${lines.lines.size}, notices=${lines.alerts.size}")
     }
 
+    @Test fun openMeteo() = runBlocking {
+        selected("open-meteo")
+        val today = clock.instant().atZone(zone).toLocalDate()
+        // Lugano station, as the curated catalogue places it.
+        val result = it.binario.app.data.weather.OpenMeteoForecastAdapter(clock).forecast(46.005499, 8.946841, today)
+        if (result !is ProviderResult.Success) fail("Open-Meteo: $result")
+        val forecast = (result as ProviderResult.Success).value
+        assertTrue("Open-Meteo: no weather code", forecast.weatherCode != null)
+        println("LIVE_ACCEPTANCE open-meteo: $forecast")
+    }
+
     /**
      * Raw samples of candidate sources (ViaggiaTreno per-train notices, transport.opendata.ch, Trenord line
      * notices, MIT strike calendar, Open-Meteo) so their formats are known before an adapter is written.

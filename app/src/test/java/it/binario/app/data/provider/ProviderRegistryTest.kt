@@ -48,6 +48,9 @@ class ProviderRegistryTest {
         assertEquals(AccessMode.PUBLIC_BEST_EFFORT, registry.policy(SourceId("viaggiatreno-train-notices"))?.descriptor?.accessMode)
         assertEquals(BuildConfig.PERSONAL_REALTIME_SOURCES, registry.isEnabled(SourceId("trenitalia-infomobility-news")))
         assertEquals(BuildConfig.PERSONAL_REALTIME_SOURCES, registry.isEnabled(SourceId("trenord-line-notices")))
+        // Open data with its own user switch, not a best-effort rail source.
+        assertTrue(registry.isEnabled(SourceId("open-meteo")))
+        assertEquals(AccessMode.OPEN_DIRECT, registry.policy(SourceId("open-meteo"))?.descriptor?.accessMode)
         assertTrue(registry.policy(SourceId("trenord-line-notices"))!!.descriptor.ratePolicy.defaultTimeToLive >= Duration.ofMinutes(10))
         assertTrue(registry.isEnabled(SourceId("rfi-programmed")))
         assertTrue(registry.isEnabled(SourceId("rfi-infomobility-rss")))

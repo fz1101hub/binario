@@ -24,6 +24,7 @@ object KnownProviderIds {
     val VIAGGIATRENO_TRAIN_NOTICES = SourceId("viaggiatreno-train-notices")
     val TRENITALIA_INFOMOBILITY_NEWS = SourceId("trenitalia-infomobility-news")
     val TRENORD_LINE_NOTICES = SourceId("trenord-line-notices")
+    val OPEN_METEO = SourceId("open-meteo")
     val DEMO_LOCAL = SourceId("demo-local")
 }
 
@@ -283,6 +284,20 @@ object KnownProviders {
             ),
             enabled = BuildConfig.PERSONAL_REALTIME_SOURCES,
             priorityByCapability = mapOf(ProviderCapability.SERVICE_ALERTS to 26)
+        ),
+        ProviderPolicy(
+            descriptor = ProviderDescriptor(
+                id = KnownProviderIds.OPEN_METEO,
+                displayName = "Open-Meteo — previsioni giornaliere",
+                capabilities = setOf(ProviderCapability.WEATHER_FORECAST),
+                coverage = CoverageDescriptor(description = "Previsione giornaliera per le coordinate arrotondate della stazione di arrivo"),
+                accessMode = AccessMode.OPEN_DIRECT,
+                ratePolicy = RatePolicy(Duration.ofMinutes(1), defaultTimeToLive = Duration.ofHours(3)),
+                schemaVersion = 1
+            ),
+            // Open data under CC BY 4.0; the user-facing switch is the "Meteo a destinazione" setting.
+            enabled = true,
+            priorityByCapability = mapOf(ProviderCapability.WEATHER_FORECAST to 10)
         )
     )
 
