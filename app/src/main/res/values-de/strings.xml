@@ -8,6 +8,20 @@
     <string name="notices_stale">Angezeigt werden die Hinweise des letzten erfolgreichen Abrufs.</string>
     <string name="notices_unavailable">Eine oder mehrere Hinweisquellen sind gerade nicht erreichbar.</string>
     <string name="notices_retry">Erneut versuchen</string>
+    <string name="notices_area_title">Hinweise und Verkehrsinformationen</string>
+    <string name="notices_area_description">Betriebshinweise des Netzbetreibers und der Bahnunternehmen. Sie werden erst geladen, wenn du sie öffnest.</string>
+    <string name="notices_area_show">Hinweise anzeigen</string>
+    <string name="notices_area_refresh">Hinweise aktualisieren</string>
+    <string name="notices_area_show_all">Alle Hinweise anzeigen</string>
+    <string name="notices_area_empty">Derzeit liegen keine Hinweise vor.</string>
+    <string name="notices_network_heading">Landesweite Hinweise</string>
+    <string name="notices_published_by">Veröffentlicht von %1$s</string>
+    <string name="notices_published_by_at">Veröffentlicht von %1$s, %2$s</string>
+    <string name="notices_open_source">Quellseite öffnen</string>
+    <string name="notices_expand">Mehr anzeigen</string>
+    <string name="notices_collapse">Weniger anzeigen</string>
+    <string name="notices_unavailable_publisher">Gerade nicht erreichbar: %1$s</string>
+    <string name="notices_train_network_heading">Trenitalia-Meldungen zu diesem Zug</string>
 
     <string name="app_name">Binario</string>
     <string name="widget_description">Zeigt die nächsten Verbindungen auf deiner Binario-Strecke.</string>

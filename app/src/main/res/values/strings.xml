@@ -8,6 +8,20 @@
     <string name="notices_stale">Mostrati gli avvisi dell’ultimo aggiornamento riuscito.</string>
     <string name="notices_unavailable">Una o più fonti di avvisi non sono raggiungibili in questo momento.</string>
     <string name="notices_retry">Riprova</string>
+    <string name="notices_area_title">Avvisi e infomobilità</string>
+    <string name="notices_area_description">Avvisi di circolazione pubblicati dal gestore della rete e dalle imprese ferroviarie. Vengono scaricati solo quando li apri.</string>
+    <string name="notices_area_show">Mostra avvisi</string>
+    <string name="notices_area_refresh">Aggiorna avvisi</string>
+    <string name="notices_area_show_all">Mostra tutti gli avvisi</string>
+    <string name="notices_area_empty">Nessun avviso pubblicato in questo momento.</string>
+    <string name="notices_network_heading">Avvisi nazionali</string>
+    <string name="notices_published_by">Pubblicato da %1$s</string>
+    <string name="notices_published_by_at">Pubblicato da %1$s, %2$s</string>
+    <string name="notices_open_source">Apri la pagina della fonte</string>
+    <string name="notices_expand">Mostra tutto</string>
+    <string name="notices_collapse">Mostra meno</string>
+    <string name="notices_unavailable_publisher">Non raggiungibile ora: %1$s</string>
+    <string name="notices_train_network_heading">Notizie Trenitalia che citano questo treno</string>
 
     <string name="app_name">Binario</string>
     <string name="widget_description">Mostra le prossime corse della tua tratta Binario.</string>

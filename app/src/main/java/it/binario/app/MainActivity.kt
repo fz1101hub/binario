@@ -759,6 +759,7 @@ private fun TodayScreen(
                 message = viewModel.refreshMessage
             )
         }
+        item { RailNoticesArea() }
         item {
             Text(
                 text = stringResource(R.string.official_information_notice),

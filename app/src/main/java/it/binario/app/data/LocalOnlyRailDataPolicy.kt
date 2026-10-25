@@ -10,6 +10,7 @@ import it.binario.app.data.live.RfiLiveRouteDataSource
 import it.binario.app.data.live.SncfGtfsRealtimeAdapter
 import it.binario.app.data.live.StaRealtimeAdapter
 import it.binario.app.data.live.SwissOpenTransportStationBoardAdapter
+import it.binario.app.data.live.TrenitaliaInfomobilityNewsAdapter
 import it.binario.app.data.live.ViaggiaTrenoRealtimeAdapter
 import it.binario.app.data.live.ViaggiaTrenoTrainNoticesAdapter
 import it.binario.app.data.planned.RfiProgrammedStationBoardAdapter
@@ -45,6 +46,7 @@ object LocalOnlyRailDataPolicy {
     private val sncfRealtime by lazy { SncfGtfsRealtimeAdapter() }
     private val swissOpenTransportBoard by lazy { SwissOpenTransportStationBoardAdapter() }
     private val viaggiaTrenoTrainNotices by lazy { ViaggiaTrenoTrainNoticesAdapter() }
+    private val trenitaliaNews by lazy { TrenitaliaInfomobilityNewsAdapter() }
 
     /** Official programmed sources only. */
     fun routeSources(): List<TrainDataSource> = listOf(
@@ -97,7 +99,13 @@ object LocalOnlyRailDataPolicy {
         rfiAlerts,
         staRealtime,
         sncfRealtime
-    )
+    ) + personalNoticeProviders()
+
+    /** Network notices for the notices area: official RFI feed always, best-effort operator notices if enabled. */
+    fun networkNoticeProviders(): List<AlertProvider> = listOf(rfiAlerts) + personalNoticeProviders()
+
+    private fun personalNoticeProviders(): List<AlertProvider> =
+        if (BuildConfig.PERSONAL_REALTIME_SOURCES) listOf(trenitaliaNews) else emptyList()
 
     /** Per-train notices: ViaggiaTreno family, best effort, so only with the personal realtime sources. */
     fun trainNoticeProviders(): List<TrainNoticeProvider> =

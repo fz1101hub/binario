@@ -143,6 +143,7 @@ La tabella copre ogni host `http(s)://` trovato in `app/src/main/java`, `wear/sr
 | `www.mavcsoport.hu` | E | Catalogo fonti (`InternationalSourceCatalog.kt`), monitor-only |
 | `www.opendata-oepnv.de` | E | Catalogo fonti (`InternationalSourceCatalog.kt`): DELFI ufficiale dietro registrazione |
 | `www.snalltaget.se` | E | Catalogo fonti (`InternationalSourceCatalog.kt`), monitor-only |
+| `www.trenitalia.com` | E | Catalogo fonti (`RailSourceCatalog.kt`): pagina pubblica dell'infomobilità Trenitalia |
 | `www.trenord.it` | E | Catalogo fonti (`RailSourceCatalog.kt`) |
 | `www.tuabruzzo.it` | E | Catalogo fonti (`RailSourceCatalog.kt`) |
 

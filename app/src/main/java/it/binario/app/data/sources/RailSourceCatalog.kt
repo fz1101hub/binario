@@ -418,6 +418,21 @@ object RailSourceCatalog {
             notes = "Stessa famiglia best effort di ViaggiaTreno: HTTPS reindirizzato alla stessa risorsa HTTP su www.viaggiatreno.it, unico dominio in chiaro consentito. La risposta contiene molti giorni passati: si tengono solo le note valide nel giorno della corsa, per numero e stazione di origine."
         ),
         RailSourceDefinition(
+            id = SourceId("trenitalia-infomobility-news"),
+            displayName = "Trenitalia — Infomobilità (ViaggiaTreno)",
+            operatorOrAuthority = "Trenitalia",
+            formats = setOf(SourceFormat.JSON_API),
+            capabilities = setOf(ProviderCapability.SERVICE_ALERTS),
+            accessMode = AccessMode.PUBLIC_BEST_EFFORT,
+            readiness = SourceReadiness.BEST_EFFORT_DISABLED,
+            countryCodes = setOf("IT"),
+            coverage = "Notizie nazionali e regionali di circolazione Trenitalia, con i numeri dei treni interessati.",
+            landingPage = uri("https://www.trenitalia.com/it/informazioni/Infomobilita/notizie-infomobilita.html"),
+            downloadOrProbeUri = uri("https://www.viaggiatreno.it/infomobilitamobile/resteasy/news/infomobility"),
+            attribution = "Trenitalia",
+            notes = "Famiglia ViaggiaTreno best effort, stesso reindirizzamento HTTP limitato a www.viaggiatreno.it. Descrizioni HTML con entità codificate due volte: decodifica e riduzione a testo con jsoup, mai resa come HTML."
+        ),
+        RailSourceDefinition(
             id = SourceId("trenord-realtime"),
             displayName = "Trenord — tempo reale e avvisi",
             operatorOrAuthority = "Trenord S.r.l.",

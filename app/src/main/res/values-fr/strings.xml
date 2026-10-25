@@ -8,6 +8,20 @@
     <string name="notices_stale">Affichage des avis de la dernière mise à jour réussie.</string>
     <string name="notices_unavailable">Une ou plusieurs sources d’avis sont injoignables pour le moment.</string>
     <string name="notices_retry">Réessayer</string>
+    <string name="notices_area_title">Avis et info trafic</string>
+    <string name="notices_area_description">Avis de circulation publiés par le gestionnaire du réseau et les entreprises ferroviaires. Ils ne sont téléchargés que lorsque vous les ouvrez.</string>
+    <string name="notices_area_show">Afficher les avis</string>
+    <string name="notices_area_refresh">Actualiser les avis</string>
+    <string name="notices_area_show_all">Afficher tous les avis</string>
+    <string name="notices_area_empty">Aucun avis publié pour le moment.</string>
+    <string name="notices_network_heading">Avis nationaux</string>
+    <string name="notices_published_by">Publié par %1$s</string>
+    <string name="notices_published_by_at">Publié par %1$s, %2$s</string>
+    <string name="notices_open_source">Ouvrir la page de la source</string>
+    <string name="notices_expand">Afficher plus</string>
+    <string name="notices_collapse">Afficher moins</string>
+    <string name="notices_unavailable_publisher">Injoignable pour le moment : %1$s</string>
+    <string name="notices_train_network_heading">Actualités Trenitalia citant ce train</string>
 
     <string name="app_name">Binario</string>
     <string name="widget_description">Affiche les prochains services de votre itinéraire Binario.</string>

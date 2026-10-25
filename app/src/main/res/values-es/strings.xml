@@ -8,6 +8,20 @@
     <string name="notices_stale">Se muestran los avisos de la última actualización correcta.</string>
     <string name="notices_unavailable">Una o más fuentes de avisos no están disponibles en este momento.</string>
     <string name="notices_retry">Reintentar</string>
+    <string name="notices_area_title">Avisos e información del servicio</string>
+    <string name="notices_area_description">Avisos de circulación publicados por el gestor de la red y las empresas ferroviarias. Solo se descargan cuando los abres.</string>
+    <string name="notices_area_show">Mostrar avisos</string>
+    <string name="notices_area_refresh">Actualizar avisos</string>
+    <string name="notices_area_show_all">Mostrar todos los avisos</string>
+    <string name="notices_area_empty">No hay avisos publicados en este momento.</string>
+    <string name="notices_network_heading">Avisos nacionales</string>
+    <string name="notices_published_by">Publicado por %1$s</string>
+    <string name="notices_published_by_at">Publicado por %1$s, %2$s</string>
+    <string name="notices_open_source">Abrir la página de la fuente</string>
+    <string name="notices_expand">Mostrar más</string>
+    <string name="notices_collapse">Mostrar menos</string>
+    <string name="notices_unavailable_publisher">No disponible ahora: %1$s</string>
+    <string name="notices_train_network_heading">Noticias de Trenitalia que mencionan este tren</string>
 
     <string name="app_name">Binario</string>
     <string name="widget_description">Muestra los próximos servicios de tu ruta Binario.</string>

@@ -10,13 +10,14 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import it.binario.app.data.TrainService
 import it.binario.app.data.notices.TrainNoticeContext
 
 /**
- * "Avvisi per questo treno": per-train notices from the enabled public sources, loaded only when the detail is
- * shown. Hidden when no notice source is enabled, so an empty list is never mistaken for "no disruption".
+ * "Avvisi per questo treno": per-train notices and the network news that name this train, loaded only when the
+ * detail is shown. Hidden when no notice source is enabled, so an empty list is never mistaken for "no disruption".
  */
 @Composable
 fun TrainNoticesSection(service: TrainService, viewModel: RailNoticesViewModel) {
@@ -29,9 +30,7 @@ fun TrainNoticesSection(service: TrainService, viewModel: RailNoticesViewModel) 
             SourceSectionState.Idle, SourceSectionState.Loading -> SourceSectionNote(stringResource(R.string.notices_loading))
             is SourceSectionState.Ready -> {
                 val value = state.value
-                if (value.trainNotices.isEmpty()) {
-                    SourceSectionNote(stringResource(R.string.notices_train_empty))
-                }
+                if (value.isEmpty) SourceSectionNote(stringResource(R.string.notices_train_empty))
                 value.trainNotices.forEach { notice ->
                     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                         Text(notice.textFor(locale.language), style = MaterialTheme.typography.bodyMedium)
@@ -39,6 +38,10 @@ fun TrainNoticesSection(service: TrainService, viewModel: RailNoticesViewModel) 
                     }
                 }
                 if (value.trainNotices.isNotEmpty()) SourceSectionNote(stringResource(R.string.notices_source_viaggiatreno))
+                if (value.networkNotices.isNotEmpty()) {
+                    Text(stringResource(R.string.notices_train_network_heading), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+                    value.networkNotices.forEach { RailNoticeItem(it) }
+                }
                 if (value.stale) SourceSectionNote(stringResource(R.string.notices_stale))
                 if (value.unavailable) {
                     SourceSectionNote(stringResource(R.string.notices_unavailable))

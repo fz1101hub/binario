@@ -334,6 +334,12 @@ class LiveProviderNetworkTest {
             number to (result as ProviderResult.Success).value.size
         }
         println("LIVE_ACCEPTANCE viaggiatreno-train-notices: $counts")
+        val news = TrenitaliaInfomobilityNewsAdapter(clock).getAlerts(AlertRequest())
+        if (news !is ProviderResult.Success) fail("Trenitalia infomobility: $news")
+        val alerts = (news as ProviderResult.Success).value
+        assertTrue("Trenitalia infomobility: markup left in descriptions",
+            alerts.none { alert -> alert.description?.value?.let { "&lt;" in it || "<p>" in it } == true })
+        println("LIVE_ACCEPTANCE trenitalia-infomobility-news: items=${alerts.size}, tagged=${alerts.count { it.affectedTrainNumbers.isNotEmpty() }}")
     }
 
     /**

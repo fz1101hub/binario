@@ -8,6 +8,20 @@
     <string name="notices_stale">Showing the notices of the last successful update.</string>
     <string name="notices_unavailable">One or more notice sources cannot be reached right now.</string>
     <string name="notices_retry">Try again</string>
+    <string name="notices_area_title">Notices and service updates</string>
+    <string name="notices_area_description">Service notices published by the network manager and the rail operators. They are downloaded only when you open them.</string>
+    <string name="notices_area_show">Show notices</string>
+    <string name="notices_area_refresh">Refresh notices</string>
+    <string name="notices_area_show_all">Show all notices</string>
+    <string name="notices_area_empty">No notice is published at the moment.</string>
+    <string name="notices_network_heading">National notices</string>
+    <string name="notices_published_by">Published by %1$s</string>
+    <string name="notices_published_by_at">Published by %1$s, %2$s</string>
+    <string name="notices_open_source">Open the source page</string>
+    <string name="notices_expand">Show more</string>
+    <string name="notices_collapse">Show less</string>
+    <string name="notices_unavailable_publisher">Unreachable right now: %1$s</string>
+    <string name="notices_train_network_heading">Trenitalia news mentioning this train</string>
 
     <string name="app_name">Binario</string>
     <string name="widget_description">Displays the next services on your Binario route.</string>

@@ -46,6 +46,7 @@ class ProviderRegistryTest {
         assertEquals(AccessMode.PUBLIC_BEST_EFFORT, registry.policy(SourceId("ch-transport-opendata"))?.descriptor?.accessMode)
         assertEquals(BuildConfig.PERSONAL_REALTIME_SOURCES, registry.isEnabled(SourceId("viaggiatreno-train-notices")))
         assertEquals(AccessMode.PUBLIC_BEST_EFFORT, registry.policy(SourceId("viaggiatreno-train-notices"))?.descriptor?.accessMode)
+        assertEquals(BuildConfig.PERSONAL_REALTIME_SOURCES, registry.isEnabled(SourceId("trenitalia-infomobility-news")))
         assertTrue(registry.isEnabled(SourceId("rfi-programmed")))
         assertTrue(registry.isEnabled(SourceId("rfi-infomobility-rss")))
         assertTrue(registry.isEnabled(SourceId("alto-adige-sta-realtime")))

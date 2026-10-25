@@ -22,6 +22,7 @@ object KnownProviderIds {
     val ITALO_STATUS = SourceId("italo-status")
     val SWISS_OPEN_TRANSPORT = SourceId("ch-transport-opendata")
     val VIAGGIATRENO_TRAIN_NOTICES = SourceId("viaggiatreno-train-notices")
+    val TRENITALIA_INFOMOBILITY_NEWS = SourceId("trenitalia-infomobility-news")
     val DEMO_LOCAL = SourceId("demo-local")
 }
 
@@ -255,6 +256,19 @@ object KnownProviders {
             ),
             enabled = BuildConfig.PERSONAL_REALTIME_SOURCES,
             priorityByCapability = mapOf(ProviderCapability.SERVICE_ALERTS to 30)
+        ),
+        ProviderPolicy(
+            descriptor = ProviderDescriptor(
+                id = KnownProviderIds.TRENITALIA_INFOMOBILITY_NEWS,
+                displayName = "Trenitalia — Infomobilità (ViaggiaTreno)",
+                capabilities = setOf(ProviderCapability.SERVICE_ALERTS),
+                coverage = CoverageDescriptor(countryCodes = setOf("IT"), description = "Notizie di circolazione Trenitalia con numeri treno interessati"),
+                accessMode = AccessMode.PUBLIC_BEST_EFFORT,
+                ratePolicy = RatePolicy(Duration.ofMinutes(5), defaultTimeToLive = Duration.ofMinutes(10)),
+                schemaVersion = 1
+            ),
+            enabled = BuildConfig.PERSONAL_REALTIME_SOURCES,
+            priorityByCapability = mapOf(ProviderCapability.SERVICE_ALERTS to 25)
         )
     )
 

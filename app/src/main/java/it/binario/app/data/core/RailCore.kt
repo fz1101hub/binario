@@ -333,7 +333,11 @@ data class ServiceAlert(
     val affectedStations: Set<StationId> = emptySet(),
     val affectedRuns: Set<TrainRunId> = emptySet(),
     val affectedOperators: Set<OperatorId> = emptySet(),
-    val source: SourceRef
+    val source: SourceRef,
+    /** Public train numbers the publisher tags the notice with (for example Trenitalia `trainTags`). */
+    val affectedTrainNumbers: Set<String> = emptySet(),
+    /** Publisher page for the notice, http(s) only. */
+    val link: String? = null
 )
 
 /**
