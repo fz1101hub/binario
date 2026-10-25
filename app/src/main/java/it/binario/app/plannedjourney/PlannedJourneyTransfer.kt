@@ -13,6 +13,8 @@ object PlannedJourneyTransferContract {
     const val KIND = "binario_planned_journeys"
     const val VERSION = 1
     const val MAX_BYTES = 262_144
+    /** The schema nests seven levels deep (root → journeys → itinerary → segments → stations); twice that is generous. */
+    const val MAX_NESTING_DEPTH = 16
 }
 
 enum class PlannedJourneyTransferErrorCode {
@@ -68,6 +70,12 @@ object PlannedJourneyTransfer {
     fun decode(encoded: String): PlannedJourneyTransferDecodeResult {
         if (encoded.toByteArray(StandardCharsets.UTF_8).size > PlannedJourneyTransferContract.MAX_BYTES) {
             return invalid(PlannedJourneyTransferErrorCode.TOO_LARGE, "Transfer exceeds the byte limit")
+        }
+        // org.json parses nested values recursively and Android's implementation has no depth
+        // guard: a crafted document within the byte limit would overflow the stack before the
+        // first field check (StackOverflowError is not a RuntimeException), so refuse it up front.
+        if (nestingDepth(encoded) > PlannedJourneyTransferContract.MAX_NESTING_DEPTH) {
+            return invalid(PlannedJourneyTransferErrorCode.MALFORMED_DOCUMENT, "Transfer nesting exceeds the depth limit")
         }
         return try {
             val root = JSONObject(encoded)
@@ -267,6 +275,32 @@ object PlannedJourneyTransfer {
 
     private fun invalid(code: PlannedJourneyTransferErrorCode, detail: String) =
         PlannedJourneyTransferDecodeResult.Invalid(listOf(PlannedJourneyTransferError(code, detail)))
+
+    /** Deepest array/object nesting outside string literals; stops as soon as the limit is exceeded. */
+    private fun nestingDepth(encoded: String): Int {
+        var depth = 0
+        var deepest = 0
+        var inString = false
+        var index = 0
+        while (index < encoded.length) {
+            val char = encoded[index]
+            when {
+                inString -> when (char) {
+                    '\\' -> index++
+                    '"' -> inString = false
+                }
+                char == '"' -> inString = true
+                char == '[' || char == '{' -> {
+                    depth++
+                    if (depth > deepest) deepest = depth
+                    if (deepest > PlannedJourneyTransferContract.MAX_NESTING_DEPTH) return deepest
+                }
+                char == ']' || char == '}' -> depth--
+            }
+            index++
+        }
+        return deepest
+    }
 }
 
 private class TransferParseException(message: String) : IllegalArgumentException(message)

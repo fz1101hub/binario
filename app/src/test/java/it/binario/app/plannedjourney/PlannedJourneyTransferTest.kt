@@ -56,6 +56,30 @@ class PlannedJourneyTransferTest {
     }
 
     @Test
+    fun `rejects a deeply nested document before any value is parsed`() {
+        // Android's org.json parses nested values recursively without a depth guard, so a crafted
+        // file under the byte limit must be refused by the transfer's own nesting check.
+        val depth = PlannedJourneyTransferContract.MAX_NESTING_DEPTH * 4
+        val nested = "{\"kind\":\"${PlannedJourneyTransferContract.KIND}\",\"schemaVersion\":${PlannedJourneyTransferContract.VERSION}," +
+            "\"journeys\":" + "[".repeat(depth) + "]".repeat(depth) + "}"
+
+        val error = (PlannedJourneyTransfer.decode(nested) as PlannedJourneyTransferDecodeResult.Invalid).errors.single()
+
+        assertEquals(PlannedJourneyTransferErrorCode.MALFORMED_DOCUMENT, error.code)
+        assertTrue(error.detail, error.detail.contains("nesting"))
+    }
+
+    @Test
+    fun `brackets inside string values do not count as nesting`() {
+        val bracketed = journey("brackets", 0).copy(label = "[".repeat(PlannedJourneyTransferContract.MAX_NESTING_DEPTH * 2))
+        val snapshot = PlannedJourneyPersistenceSnapshot(journeys = listOf(bracketed))
+
+        val decoded = PlannedJourneyTransfer.decode(PlannedJourneyTransfer.encode(snapshot))
+
+        assertEquals(snapshot, (decoded as PlannedJourneyTransferDecodeResult.Valid).snapshot)
+    }
+
+    @Test
     fun `previews accepted duplicate and conflicting journeys before merge`() {
         val existing = journey("same-id", 0)
         val duplicate = journey("other-id", 0)
