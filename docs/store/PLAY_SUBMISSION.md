@@ -27,7 +27,7 @@
    - *App governative*: no. *Funzionalità finanziarie*: nessuna. *Salute*: nessuna funzionalità sanitaria.
    - *Categoria dell'app e dettagli di contatto*: categoria *Mappe e navigazione* (alternativa: *Viaggi e info locali*), tag *Treni* e *Trasporto pubblico*; email di contatto pubblica; sito web facoltativo.
    - *Scheda dello Store*: testi della sezione 2 e grafica della sezione 3.
-3. **Impostazioni avanzate → Fattori di forma**: aggiungere *Wear OS* prima della prima release, così la Console espone i canali di rilascio Wear (vedi la sezione dedicata in fondo).
+3. **Impostazioni avanzate → Fattori di forma**: aggiungere *Wear OS* prima della prima release, così la Console espone i canali di rilascio Wear (sezione 5).
 
 ## 2. Testi del listing
 
@@ -300,8 +300,20 @@ Primera publicación de Binario 0.20.4 en Google Play: planificador con cuadros 
 4. **Produzione**: creare la release con le note di rilascio della sezione 2, scegliere i paesi (almeno Italia, poi gli altri paesi delle lingue supportate) e inviare per la revisione. La prima revisione può richiedere diversi giorni.
 5. **Report pre-lancio** e avvisi delle norme: controllare la scheda *Panoramica delle norme* dopo ogni invio; un rifiuto del solo fattore di forma Wear non blocca il telefono.
 
-## 5. Dopo la pubblicazione
+## 5. Pubblicazione Wear OS su Google Play
 
-- Ogni aggiornamento ripete solo i punti 4.1–4.4 con `BINARIO_APP_VERSION_CODE` incrementato; Wear riceve automaticamente il codice derivato.
+Il companion Wear OS è lo stesso listing `it.binario.app`, non una seconda app: la Console lo gestisce come **fattore di forma** aggiuntivo con canali di rilascio propri.
+
+1. **Opt-in del fattore di forma**: *Impostazioni avanzate → Fattori di forma → Aggiungi fattore di forma → Wear OS*. Senza questo passaggio la Console non mostra i canali Wear e rifiuta `wear-release.aab`.
+2. **Due bundle, due canali, una chiave**: caricare `wear-release.aab` nel canale *Wear OS* (test interno, chiuso o produzione «solo Wear OS») e `app-release.aab` nel canale telefono della stessa app. Entrambi provengono dall'artifact `binario-play-bundles-signed` e sono firmati con la stessa upload key; Play li ri-firma con la stessa chiave di firma dell'app, condizione necessaria perché il Data Layer riconosca telefono e orologio come la stessa identità.
+3. **`versionCode` distinti e mai riusati**: il telefono carica `BINARIO_APP_VERSION_CODE`, Wear carica `1000000 + codice telefono` (`wear/build.gradle.kts`). I due canali condividono lo spazio dei codici dell'app: un codice già caricato in uno dei due canali non può essere ricaricato in nessuno dei due. Incrementare la sola proprietà del telefono aggiorna entrambi.
+4. **Dipendenza dal telefono**: il manifest Wear dichiara `com.google.android.wearable.standalone=false` e `android.hardware.type.watch` obbligatorio, non richiede `INTERNET`. Il listing deve dirlo esplicitamente (le descrizioni della sezione 2 lo fanno: il companion richiede l'app installata sul telefono) e i tester devono installare prima l'app telefono dallo stesso canale, altrimenti l'orologio non riceve alcuno snapshot.
+5. **Screenshot Wear OS**: da 1 a 8 immagini in rapporto 1:1, da 384×384 a 3840×3840 px, senza cornice dell'orologio né testo sovrapposto; catturare tratta attiva, riquadro (Tile) e complicazione su un emulatore rotondo. Senza screenshot Wear il fattore di forma non viene pubblicato.
+6. **Criteri di revisione Wear**: Google valuta il bundle Wear con le linee guida di qualità per Wear OS: interfaccia progettata per schermo rotondo e piccolo (nessuna UI telefono riadattata), avvio dal launcher dell'orologio, riquadro e complicazione dichiarati nel manifest, nessun permesso non necessario, livello API target entro la scadenza annuale per Wear OS. Un rifiuto del fattore di forma Wear non blocca la release telefono: correggere e ricaricare solo `wear-release.aab` con un nuovo `BINARIO_APP_VERSION_CODE`.
+7. **Note di rilascio Wear**: la Console accetta note separate per il canale Wear; in assenza, riusare quelle della sezione 2 (limite 500 caratteri).
+
+## 6. Dopo la pubblicazione
+
+- Ogni aggiornamento ripete solo i punti 4.1–4.4 e 5.2 con `BINARIO_APP_VERSION_CODE` incrementato; Wear riceve automaticamente il codice derivato.
 - Un cambiamento di permessi, host contattati o SDK richiede di aggiornare prima `PRIVACY.md` e `PLAY_DATA_SAFETY.md` (il gate `tools/verify_privacy_policy.py` lo impone per gli host) e poi il modulo Sicurezza dei dati nella Console.
 - Rispettare le scadenze annuali di Google sul livello API target: la toolchain corrente è su API 36.

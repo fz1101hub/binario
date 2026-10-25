@@ -62,6 +62,11 @@ class PlayStoreDocsTest(unittest.TestCase):
             "13 novembre 2023",
             "12 tester",
             "Fattori di forma",
+            "## 5. Pubblicazione Wear OS su Google Play",
+            "`wear-release.aab` nel canale *Wear OS*",
+            "`1000000 + codice telefono`",
+            "rapporto 1:1",
+            "com.google.android.wearable.standalone=false",
         ):
             with self.subTest(fragment=fragment):
                 self.assertIn(fragment, text)
