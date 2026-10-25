@@ -7,9 +7,7 @@ import it.binario.app.data.Direction
 import it.binario.app.data.SavedRoute
 import it.binario.app.data.Station
 
-enum class WidgetTargetType(val label: String) {
-    ROUTE("Tratta")
-}
+enum class WidgetTargetType { ROUTE }
 
 /**
  * La configurazione appartiene alla singola istanza di widget. Una tratta conserva

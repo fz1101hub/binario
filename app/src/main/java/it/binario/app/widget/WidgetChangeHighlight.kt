@@ -20,9 +20,9 @@ object WidgetChangeHighlight {
             freshness in setOf(Freshness.FRESH, Freshness.AGING) &&
             status in setOf(ServiceStatus.DELAYED, ServiceStatus.CANCELLED)
 
-    fun displayStatus(service: WidgetService, confidence: DataConfidence): String = when {
-        confidence == DataConfidence.DEMONSTRATION && service.status != ServiceStatus.ON_TIME -> "DEMO"
-        !service.operationalStatusVerified -> "PROGRAM."
-        else -> service.statusLabel
+    fun displayStatus(service: WidgetService, confidence: DataConfidence, strings: WidgetStrings): String = when {
+        confidence == DataConfidence.DEMONSTRATION && service.status != ServiceStatus.ON_TIME -> strings.statusDemo
+        !service.operationalStatusVerified -> strings.statusScheduled
+        else -> service.statusLabel(strings)
     }
 }

@@ -727,7 +727,7 @@ class TrainViewModel @JvmOverloads constructor(
                 is DataResult.Failure -> {
                     invalidateSelectedService(directionAtRequest, onlyIfExpired = true)
                     if (publishesCurrentDepartures) {
-                        RouteWidgetProvider.markMatchingRouteDirectionUnavailable(getApplication(), routeAtRequest, directionAtRequest, result.message)
+                        RouteWidgetProvider.markMatchingRouteDirectionUnavailable(getApplication(), routeAtRequest, directionAtRequest, result.reason.uiMessage())
                         RouteWidgetProvider.refreshAll(getApplication())
                     }
                     if (publishesCurrentDepartures && integrationSettings.wearSnapshotSharingEnabled) {

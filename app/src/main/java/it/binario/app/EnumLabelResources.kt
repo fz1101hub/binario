@@ -6,6 +6,7 @@ import it.binario.app.data.DataQualityBand
 import it.binario.app.data.Direction
 import it.binario.app.data.Freshness
 import it.binario.app.data.ServiceStatus
+import it.binario.app.data.SnapshotWarning
 import it.binario.app.data.TrainCategory
 
 /**
@@ -64,4 +65,16 @@ internal fun ServiceStatus.labelRes(): Int = when (this) {
     ServiceStatus.ON_TIME -> R.string.service_status_on_time
     ServiceStatus.DELAYED -> R.string.service_status_delayed
     ServiceStatus.CANCELLED -> R.string.service_status_cancelled
+}
+
+@StringRes
+internal fun SnapshotWarning.labelRes(): Int = when (this) {
+    SnapshotWarning.SOURCE_CONFLICT -> R.string.snapshot_warning_source_conflict
+    SnapshotWarning.PARTIAL_ROUTE_MATCH -> R.string.snapshot_warning_partial_route_match
+    SnapshotWarning.STALE_SOURCE -> R.string.snapshot_warning_stale_source
+    SnapshotWarning.STATIC_ONLY -> R.string.snapshot_warning_static_only
+    SnapshotWarning.DEMONSTRATION -> R.string.snapshot_warning_demonstration
+    SnapshotWarning.INCOMPLETE_SERVICE -> R.string.snapshot_warning_incomplete_service
+    SnapshotWarning.IDENTITY_AMBIGUOUS -> R.string.snapshot_warning_identity_ambiguous
+    SnapshotWarning.DELAY_DIVERGENCE -> R.string.snapshot_warning_delay_divergence
 }

@@ -24,7 +24,11 @@ import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import it.binario.app.MainActivity
 import it.binario.app.R
+import it.binario.app.UiMessage
+import it.binario.app.UiMessageKey
+import it.binario.app.labelRes
 import it.binario.app.resolve
+import it.binario.app.uiMessage
 import it.binario.app.updateTimeMessage
 import it.binario.app.data.DataResult
 import it.binario.app.data.DataConfidence
@@ -39,10 +43,13 @@ import it.binario.app.data.SavedRoute
 import it.binario.app.data.ServiceStatus
 import it.binario.app.data.SnapshotWarning
 import it.binario.app.data.Station
+import it.binario.app.data.TrainCategory
 import it.binario.app.data.TrainService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.time.Instant
+import java.time.LocalDate
+import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import java.util.concurrent.TimeUnit
 
@@ -125,10 +132,10 @@ class RouteWidgetProvider : AppWidgetProvider() {
             }
         }
 
-        fun markMatchingRouteDirectionUnavailable(context: Context, route: SavedRoute, direction: Direction, message: String) {
+        fun markMatchingRouteDirectionUnavailable(context: Context, route: SavedRoute, direction: Direction, failure: UiMessage) {
             WidgetConfigurationStore(context).all().forEach { (widgetId, configuration) ->
                 if (configuration.matchesRouteDirection(route, direction, WidgetStateStore.displayedDirection(context, widgetId))) {
-                    WidgetStateStore.markUnavailable(context, widgetId, message)
+                    WidgetStateStore.markUnavailable(context, widgetId, failure)
                 }
             }
         }
@@ -136,6 +143,7 @@ class RouteWidgetProvider : AppWidgetProvider() {
         private fun render(context: Context, manager: AppWidgetManager, widgetId: Int) {
             val mode = layoutMode(manager, widgetId)
             val views = RemoteViews(context.packageName, layoutResourceFor(mode))
+            val strings = WidgetStrings.from(context)
             applyDensity(views, mode)
             views.setViewVisibility(R.id.widget_actions_container, if (mode == WidgetLayoutMode.COMPACT) View.GONE else View.VISIBLE)
             val configuration = WidgetConfigurationStore(context).read(widgetId)
@@ -168,14 +176,14 @@ class RouteWidgetProvider : AppWidgetProvider() {
 
             val title = configuration.widgetTitle(state.routeLabel)
             views.setTextViewText(R.id.widget_route, title)
-            views.setTextViewText(R.id.widget_meta, state.compactMeta(pageLabel, freshness, updatedAtLabel(context, state.retrievedAt)))
+            views.setTextViewText(R.id.widget_meta, state.compactMeta(strings, pageLabel, freshness, updatedAtLabel(context, state.retrievedAt)))
             views.setViewVisibility(R.id.widget_column_header, if (mode.showColumnHeader) View.VISIBLE else View.GONE)
             views.setContentDescription(
                 R.id.widget_route,
                 context.getString(
                     R.string.widget_route_accessibility,
                     title,
-                    state.accessibleDataSummary(freshness),
+                    state.accessibleDataSummary(strings, freshness),
                     updateTimeMessage(state.retrievedAt).resolve(context.resources)
                 )
             )
@@ -187,10 +195,10 @@ class RouteWidgetProvider : AppWidgetProvider() {
                     views.setViewVisibility(id, View.VISIBLE)
                     views.setTextViewText(timeIds[index], service.expectedDeparture)
                     views.setTextViewText(destinationIds[index], service.destination)
-                    views.setTextViewText(trainIds[index], "${service.operator.shortLabel} · ${service.category} ${service.number}")
+                    views.setTextViewText(trainIds[index], "${service.operator.shortLabel} · ${strings.categoryLabels.getValue(service.category)} ${service.number}")
                     views.setTextViewText(platformIds[index], service.platform?.let { context.getString(R.string.widget_platform_short, it) } ?: "—")
-                    views.setTextViewText(statusIds[index], WidgetChangeHighlight.displayStatus(service, state.confidence))
-                    views.setContentDescription(id, service.accessibleLabel(state.confidence))
+                    views.setTextViewText(statusIds[index], WidgetChangeHighlight.displayStatus(service, state.confidence, strings))
+                    views.setContentDescription(id, service.accessibleLabel(strings))
                     views.setTextColor(statusIds[index], statusColor(context, service.status))
                     views.setInt(
                         id,
@@ -200,7 +208,7 @@ class RouteWidgetProvider : AppWidgetProvider() {
                     views.setOnClickPendingIntent(id, openAppIntent(context, widgetId))
                 }
             }
-            views.setTextViewText(R.id.widget_direction, state.direction.label.uppercase())
+            views.setTextViewText(R.id.widget_direction, strings.directionLabels.getValue(state.direction).uppercase())
             views.setTextViewText(R.id.widget_refresh, context.getString(R.string.widget_refresh_symbol))
             views.setOnClickPendingIntent(R.id.widget_previous_page, actionIntent(context, ACTION_PREVIOUS_PAGE, widgetId))
             views.setOnClickPendingIntent(R.id.widget_next_page, actionIntent(context, ACTION_NEXT_PAGE, widgetId))
@@ -241,11 +249,10 @@ class RouteWidgetProvider : AppWidgetProvider() {
 
         private fun renderNoSnapshot(context: Context, manager: AppWidgetManager, widgetId: Int, views: RemoteViews, configuration: WidgetDisplayConfiguration) {
             views.setTextViewText(R.id.widget_route, configuration.widgetTitle().uppercase())
-            val failure = WidgetStateStore.lastFailure(context, widgetId)
+            val failure = WidgetStateStore.lastFailure(context, widgetId)?.resolve(context.resources)
             views.setTextViewText(
                 R.id.widget_meta,
-                failure?.takeIf { it.isNotBlank() }
-                    ?: context.getString(R.string.widget_unavailable_meta, configuration.targetType.label.uppercase())
+                failure ?: context.getString(R.string.widget_unavailable_meta, context.getString(configuration.targetType.labelRes()).uppercase())
             )
             rowIds.forEach { views.setViewVisibility(it, View.GONE) }
             views.setViewVisibility(R.id.widget_column_header, View.GONE)
@@ -295,6 +302,10 @@ class RouteWidgetProvider : AppWidgetProvider() {
             )
         }
 
+        private fun WidgetTargetType.labelRes(): Int = when (this) {
+            WidgetTargetType.ROUTE -> R.string.widget_target_route
+        }
+
         private fun statusColor(context: Context, status: ServiceStatus): Int = when (status) {
             ServiceStatus.ON_TIME -> ContextCompat.getColor(context, R.color.widget_on_surface)
             ServiceStatus.DELAYED -> ContextCompat.getColor(context, R.color.widget_warning)
@@ -325,7 +336,7 @@ class WidgetRefreshWorker(appContext: Context, params: WorkerParameters) : Corou
                 is DataResult.Success -> WidgetStateStore.saveSnapshot(applicationContext, widgetId, result.snapshot, previous?.rowOffset ?: 0)
                 is DataResult.Failure -> {
                     failed = true
-                    WidgetStateStore.markUnavailable(applicationContext, widgetId, result.message)
+                    WidgetStateStore.markUnavailable(applicationContext, widgetId, result.reason.uiMessage())
                 }
             }
         }
@@ -361,7 +372,7 @@ class WidgetRefreshWorker(appContext: Context, params: WorkerParameters) : Corou
 data class WidgetService(
     val number: String,
     val operator: RailOperator,
-    val category: String,
+    val category: TrainCategory,
     val destination: String,
     val expectedDeparture: String,
     val status: ServiceStatus,
@@ -369,14 +380,27 @@ data class WidgetService(
     val platform: String?,
     val operationalStatusVerified: Boolean
 ) {
-    val statusLabel: String get() = when (status) {
-        ServiceStatus.ON_TIME -> "OK"
-        ServiceStatus.DELAYED -> "+$delayMinutes"
-        ServiceStatus.CANCELLED -> "SOPP."
+    fun statusLabel(strings: WidgetStrings): String = when (status) {
+        ServiceStatus.ON_TIME -> strings.statusOnTime
+        ServiceStatus.DELAYED -> strings.format(strings.statusDelayed, delayMinutes)
+        ServiceStatus.CANCELLED -> strings.statusCancelled
     }
-    fun accessibleLabel(confidence: DataConfidence): String {
-        val operational = if (!operationalStatusVerified) "Orario programmato; stato operativo non verificato" else statusLabel
-        return "Operatore ${operator.accessibleLabel}. $category $number verso $destination. Partenza prevista $expectedDeparture. $operational. ${platform?.let { "Binario $it" } ?: "Binario non disponibile"}."
+    fun accessibleLabel(strings: WidgetStrings): String {
+        val operational = when {
+            !operationalStatusVerified -> strings.scheduledUnverified
+            delayMinutes > 0 -> "${strings.statusLabels.getValue(status)} ${strings.format(strings.delayMinutes, delayMinutes)}"
+            else -> strings.statusLabels.getValue(status)
+        }
+        return strings.format(
+            strings.serviceAccessibility,
+            operator.accessibleLabel,
+            strings.categoryLabels.getValue(category),
+            number,
+            destination,
+            expectedDeparture,
+            operational,
+            platform?.let { strings.format(strings.platform, it) } ?: strings.platformUnavailable
+        )
     }
 }
 
@@ -398,49 +422,31 @@ data class WidgetState(
 ) {
     val routeLabel: String get() = route.displayName(direction)
 
-    fun compactMeta(pageLabel: String? = null, freshnessAtRender: Freshness = freshness, updatedAt: String? = null): String = listOfNotNull(
+    fun compactMeta(strings: WidgetStrings, pageLabel: String? = null, freshnessAtRender: Freshness = freshness, updatedAt: String? = null): String = listOfNotNull(
         providerName.ifBlank { null },
-        confidence.widgetLabel(),
-        qualityScore?.let { "Q$it" },
-        freshnessAtRender.widgetLabel(),
-        qualityWarnings.firstOrNull()?.widgetLabel(),
+        strings.confidenceLabels.getValue(confidence),
+        qualityScore?.let { strings.format(strings.qualityScore, it) },
+        strings.freshnessLabels.getValue(freshnessAtRender),
+        qualityWarnings.firstOrNull()?.let { strings.warningLabels.getValue(it) },
         updatedAt,
         pageLabel
     ).joinToString(" · ")
 
-    fun accessibleDataSummary(freshnessAtRender: Freshness = freshness): String = buildString {
-        append("Provider $providerName. ${freshnessAtRender.accessibleLabel}. ${confidence.accessibleLabel}. ${qualityBand.accessibleLabel}")
-        qualityScore?.let { append(", punteggio qualità $it su 100") }
-        if (qualityWarnings.isNotEmpty()) append(". Avvisi: ${qualityWarnings.joinToString { it.accessibleLabel }}")
+    fun accessibleDataSummary(strings: WidgetStrings, freshnessAtRender: Freshness = freshness): String = buildString {
+        append(
+            strings.format(
+                strings.dataAccessibility,
+                providerName,
+                strings.freshnessAccessibleLabels.getValue(freshnessAtRender),
+                strings.confidenceAccessibleLabels.getValue(confidence),
+                strings.qualityBandLabels.getValue(qualityBand)
+            )
+        )
+        qualityScore?.let { append(strings.format(strings.qualityScoreAccessibility, it)) }
+        if (qualityWarnings.isNotEmpty()) {
+            append(strings.format(strings.warningsAccessibility, qualityWarnings.joinToString { strings.warningAccessibleLabels.getValue(it) }))
+        }
     }
-}
-
-private fun DataConfidence.widgetLabel(): String = when (this) {
-    DataConfidence.OPERATOR_PRIMARY -> "OPERATORE"
-    DataConfidence.INFRASTRUCTURE_PRIMARY -> "INFRASTRUTTURA"
-    DataConfidence.OPEN_DATA -> "OPEN DATA"
-    DataConfidence.LICENSED_AGGREGATE -> "AGGREGATO"
-    DataConfidence.STATIC_ONLY -> "PROGRAMMATO"
-    DataConfidence.CACHED -> "CACHE"
-    DataConfidence.DEMONSTRATION -> "DEMO"
-}
-
-private fun Freshness.widgetLabel(): String = when (this) {
-    Freshness.FRESH -> "AGGIORNATO"
-    Freshness.AGING -> "IN AGGIORNAMENTO"
-    Freshness.STALE -> "ULTIMO DATO"
-    Freshness.UNAVAILABLE -> "LIVE NON DISPONIBILE"
-}
-
-private fun SnapshotWarning.widgetLabel(): String = when (this) {
-    SnapshotWarning.SOURCE_CONFLICT -> "CONFLITTO FONTI"
-    SnapshotWarning.PARTIAL_ROUTE_MATCH -> "TRATTA PARZIALE"
-    SnapshotWarning.STALE_SOURCE -> "FONTE NON RECENTE"
-    SnapshotWarning.STATIC_ONLY -> "SOLO PROGRAMMATO"
-    SnapshotWarning.DEMONSTRATION -> "DEMO"
-    SnapshotWarning.INCOMPLETE_SERVICE -> "CORSA INCOMPLETA"
-    SnapshotWarning.IDENTITY_AMBIGUOUS -> "IDENTITÀ DA VERIFICARE"
-    SnapshotWarning.DELAY_DIVERGENCE -> "RITARDI DIVERGENTI"
 }
 
 object WidgetStateStore {
@@ -466,7 +472,7 @@ object WidgetStateStore {
             listOf(
                 service.number,
                 service.operator.name,
-                service.category,
+                service.trainCategory.name,
                 service.destination,
                 service.expectedDeparture,
                 service.status.name,
@@ -559,14 +565,31 @@ object WidgetStateStore {
         }
     }
 
-    fun markUnavailable(context: Context, widgetId: Int, message: String? = null) {
+    fun markUnavailable(context: Context, widgetId: Int, failure: UiMessage? = null) {
         prefs(context).edit {
             putString(key(widgetId, KEY_FRESHNESS), Freshness.UNAVAILABLE.name)
-            message?.takeIf { it.isNotBlank() }?.let { putString(key(widgetId, KEY_FAILURE), it) }
+            failure?.let { putString(key(widgetId, KEY_FAILURE), encodeFailure(it)) }
         }
     }
 
-    fun lastFailure(context: Context, widgetId: Int): String? = prefs(context).getString(key(widgetId, KEY_FAILURE), null)
+    /** Null for the free text persisted by earlier versions, which the generic unavailable label replaces. */
+    fun lastFailure(context: Context, widgetId: Int): UiMessage? = prefs(context).getString(key(widgetId, KEY_FAILURE), null)?.let(::decodeFailure)
+
+    /** Failures persist as message key plus ISO arguments, so the widget renders them in the current language. */
+    internal fun encodeFailure(failure: UiMessage): String =
+        (listOf(failure.key.name) + failure.arguments.map { it.toString() }).joinToString(",") { encode(it) }
+
+    internal fun decodeFailure(value: String): UiMessage? = runCatching {
+        val parts = value.split(",").map(::decode)
+        UiMessage(
+            UiMessageKey.valueOf(parts.first()),
+            parts.drop(1).map { argument ->
+                runCatching { LocalDate.parse(argument) }.getOrNull()
+                    ?: runCatching { LocalTime.parse(argument) }.getOrNull()
+                    ?: argument
+            }
+        )
+    }.getOrNull()
 
     internal fun shouldDiscardLegacyDemo(confidence: DataConfidence): Boolean =
         confidence == DataConfidence.DEMONSTRATION
@@ -607,7 +630,7 @@ object WidgetStateStore {
             WidgetService(
                 number = parts[0],
                 operator = RailOperator.valueOf(parts[1]),
-                category = parts[2],
+                category = decodeCategory(parts[2]),
                 destination = parts[3],
                 expectedDeparture = parts[4],
                 status = ServiceStatus.valueOf(parts[5]),
@@ -618,6 +641,10 @@ object WidgetStateStore {
             )
         }.getOrNull()
     }
+
+    /** Earlier versions persisted the Italian category label; it maps back to its enum constant. */
+    private fun decodeCategory(value: String): TrainCategory =
+        TrainCategory.entries.firstOrNull { it.name == value || it.accessibleLabel == value } ?: TrainCategory.OTHER
 
     private fun encode(value: String): String = Base64.encodeToString(value.toByteArray(Charsets.UTF_8), Base64.NO_WRAP)
     private fun decode(value: String): String = String(Base64.decode(value, Base64.NO_WRAP), Charsets.UTF_8)

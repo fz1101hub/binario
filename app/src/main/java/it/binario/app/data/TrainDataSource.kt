@@ -12,10 +12,7 @@ import java.time.LocalTime
 import java.time.ZoneId
 import java.util.Locale
 
-enum class Direction(val label: String) {
-    OUTBOUND("Andata"),
-    RETURN("Ritorno")
-}
+enum class Direction { OUTBOUND, RETURN }
 
 enum class RailOperator(val accessibleLabel: String, val shortLabel: String) {
     TRENITALIA_REGIONALE("Trenitalia Regionale", "Regionale"),

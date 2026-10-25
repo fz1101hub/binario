@@ -4,6 +4,7 @@ import it.binario.app.data.DataConfidence
 import it.binario.app.data.Freshness
 import it.binario.app.data.RailOperator
 import it.binario.app.data.ServiceStatus
+import it.binario.app.data.TrainCategory
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -28,17 +29,18 @@ class WidgetChangeHighlightTest {
         assertFalse(WidgetChangeHighlight.shouldHighlight(ServiceStatus.CANCELLED, DataConfidence.OPERATOR_PRIMARY, Freshness.UNAVAILABLE, true))
 
     @Test fun `demo status is labelled as demo`() {
-        val service = WidgetService("123", RailOperator.TRENITALIA_REGIONALE, "Regionale", "Roma", "12:00", ServiceStatus.DELAYED, 4, null, false)
-        assertTrue(WidgetChangeHighlight.displayStatus(service, DataConfidence.DEMONSTRATION) == "DEMO")
+        val service = WidgetService("123", RailOperator.TRENITALIA_REGIONALE, TrainCategory.REGIONALE, "Roma", "12:00", ServiceStatus.DELAYED, 4, null, false)
+        assertTrue(WidgetChangeHighlight.displayStatus(service, DataConfidence.DEMONSTRATION, italianWidgetStrings()) == "DEMO")
     }
 
     @Test fun `static unverified status is labelled as scheduled`() {
-        val service = WidgetService("123", RailOperator.TRENITALIA_REGIONALE, "Regionale", "Roma", "12:00", ServiceStatus.ON_TIME, 0, null, false)
-        assertTrue(WidgetChangeHighlight.displayStatus(service, DataConfidence.STATIC_ONLY) == "PROGRAM.")
+        val service = WidgetService("123", RailOperator.TRENITALIA_REGIONALE, TrainCategory.REGIONALE, "Roma", "12:00", ServiceStatus.ON_TIME, 0, null, false)
+        assertTrue(WidgetChangeHighlight.displayStatus(service, DataConfidence.STATIC_ONLY, italianWidgetStrings()) == "PROGRAM.")
+        assertTrue(WidgetChangeHighlight.displayStatus(service, DataConfidence.STATIC_ONLY, englishWidgetStrings()) == "SCHED.")
     }
 
     @Test fun `static reconciled status shows live result`() {
-        val service = WidgetService("123", RailOperator.TRENITALIA_REGIONALE, "Regionale", "Roma", "12:04", ServiceStatus.DELAYED, 4, "7", true)
-        assertTrue(WidgetChangeHighlight.displayStatus(service, DataConfidence.STATIC_ONLY) == "+4")
+        val service = WidgetService("123", RailOperator.TRENITALIA_REGIONALE, TrainCategory.REGIONALE, "Roma", "12:04", ServiceStatus.DELAYED, 4, "7", true)
+        assertTrue(WidgetChangeHighlight.displayStatus(service, DataConfidence.STATIC_ONLY, englishWidgetStrings()) == "+4")
     }
 }
