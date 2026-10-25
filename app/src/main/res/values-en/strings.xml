@@ -714,4 +714,25 @@
     <string name="agenda_editor_first_segment">You are editing the first leg; other legs stay unchanged.</string>
     <string name="agenda_editor_station_hint">Search by name or code and select a station.</string>
     <string name="agenda_editor_select_station">Select %1$s, code %2$s</string>
+    <!-- New features (October 2026) -->
+    <string name="connections_title">Connections at arrival</string>
+    <string name="connections_subtitle">At %1$s, departures up to 90 minutes after arrival</string>
+    <string name="connections_state_expanded">Expanded</string>
+    <string name="connections_state_collapsed">Collapsed</string>
+    <string name="connections_train_cancelled">This train is reported cancelled: connections cannot be calculated.</string>
+    <string name="connections_arrival_unavailable">The arrival time at %1$s is not available: connections cannot be calculated.</string>
+    <string name="connections_arrival_live">Expected arrival at %1$s according to operational data.</string>
+    <string name="connections_arrival_scheduled">Scheduled arrival at %1$s. The train status is not verified: margins use the scheduled time.</string>
+    <string name="connections_loading">Loading departures from %1$s…</string>
+    <string name="connections_station_unknown">%1$s does not match a station known to the departure board sources.</string>
+    <string name="connections_sources">Board: %1$s</string>
+    <string name="connections_empty">No departures in the 90 minutes after arrival.</string>
+    <string name="connections_note">With less than 5 minutes to spare a connection is at risk. Times can change: always check the station displays.</string>
+    <string name="connections_reload">Refresh connections</string>
+    <string name="connections_time_scheduled_short">sched. %1$s</string>
+    <string name="connections_buffer">Margin %1$s</string>
+    <string name="connections_buffer_negative">Leaves %1$s before arrival</string>
+    <string name="connections_risk_missed">Missed</string>
+    <string name="connections_risk_at_risk">At risk</string>
+    <string name="connections_risk_ok">Feasible</string>
 </resources>

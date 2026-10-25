@@ -46,6 +46,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
 import java.util.UUID
 import java.util.Locale
@@ -394,6 +395,16 @@ class TrainViewModel @JvmOverloads constructor(
             stationBoardRunDetails = details
             stationBoardRunRefreshState = if (details != null) RefreshState.SUCCESS else RefreshState.ERROR
         }
+    }
+
+    /**
+     * Departures board of a stop of the open train, for its connections at arrival. Null when the
+     * stop name resolves to no station; the requests start only when the flow is collected.
+     */
+    fun connectionBoard(stopName: String, from: java.time.Instant): Flow<StationBoardAggregateResult>? {
+        if (!stationBoardService.hasProviders) return null
+        val station = stationFromName(stopName) ?: return null
+        return stationBoardService.observe(canonicalStation(station), BoardKind.DEPARTURES, from)
     }
 
     fun closeStationBoardRun() {
@@ -1127,7 +1138,7 @@ class TrainViewModel @JvmOverloads constructor(
     }
 }
 
-private fun ProviderWarning.stationBoardWarningKey(): UiMessageKey = when (this) {
+internal fun ProviderWarning.stationBoardWarningKey(): UiMessageKey = when (this) {
     ProviderWarning.SOURCE_CONFLICT -> UiMessageKey.STATION_BOARD_SOURCE_CONFLICT
     ProviderWarning.REALTIME_UNAVAILABLE -> UiMessageKey.STATION_BOARD_REALTIME_UNAVAILABLE
     ProviderWarning.STALE_SOURCE -> UiMessageKey.STATION_BOARD_STALE_SOURCE

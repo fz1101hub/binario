@@ -714,4 +714,25 @@
     <string name="agenda_editor_first_segment">Du bearbeitest die erste Etappe; die anderen bleiben unverändert.</string>
     <string name="agenda_editor_station_hint">Nach Name oder Code suchen und einen Bahnhof auswählen.</string>
     <string name="agenda_editor_select_station">%1$s auswählen, Code %2$s</string>
+    <!-- New features (October 2026) -->
+    <string name="connections_title">Anschlüsse bei Ankunft</string>
+    <string name="connections_subtitle">In %1$s, Abfahrten bis 90 Minuten nach der Ankunft</string>
+    <string name="connections_state_expanded">Aufgeklappt</string>
+    <string name="connections_state_collapsed">Zugeklappt</string>
+    <string name="connections_train_cancelled">Der Zug ist als ausgefallen gemeldet: Anschlüsse lassen sich nicht berechnen.</string>
+    <string name="connections_arrival_unavailable">Die Ankunftszeit in %1$s ist nicht verfügbar: Anschlüsse lassen sich nicht berechnen.</string>
+    <string name="connections_arrival_live">Erwartete Ankunft um %1$s laut Betriebsdaten.</string>
+    <string name="connections_arrival_scheduled">Planmäßige Ankunft um %1$s. Der Zugstatus ist nicht bestätigt: Die Übergangszeiten beruhen auf dem Fahrplan.</string>
+    <string name="connections_loading">Abfahrten ab %1$s werden geladen…</string>
+    <string name="connections_station_unknown">%1$s entspricht keinem Bahnhof, den die Quellen der Abfahrtstafel kennen.</string>
+    <string name="connections_sources">Abfahrtstafel: %1$s</string>
+    <string name="connections_empty">Keine Abfahrten in den 90 Minuten nach der Ankunft.</string>
+    <string name="connections_note">Mit weniger als 5 Minuten Übergangszeit ist ein Anschluss gefährdet. Zeiten können sich ändern: Prüfe immer die Anzeigen im Bahnhof.</string>
+    <string name="connections_reload">Anschlüsse aktualisieren</string>
+    <string name="connections_time_scheduled_short">plan. %1$s</string>
+    <string name="connections_buffer">Übergangszeit %1$s</string>
+    <string name="connections_buffer_negative">Fährt %1$s vor der Ankunft</string>
+    <string name="connections_risk_missed">Verpasst</string>
+    <string name="connections_risk_at_risk">Gefährdet</string>
+    <string name="connections_risk_ok">Machbar</string>
 </resources>

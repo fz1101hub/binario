@@ -726,4 +726,25 @@
     <string name="agenda_editor_first_segment">Modifichi la prima tratta; le altre restano invariate.</string>
     <string name="agenda_editor_station_hint">Cerca per nome o codice e scegli una stazione.</string>
     <string name="agenda_editor_select_station">Seleziona %1$s, codice %2$s</string>
+    <!-- New features (October 2026) -->
+    <string name="connections_title">Coincidenze all’arrivo</string>
+    <string name="connections_subtitle">A %1$s, partenze fino a 90 minuti dopo l’arrivo</string>
+    <string name="connections_state_expanded">Sezione aperta</string>
+    <string name="connections_state_collapsed">Sezione chiusa</string>
+    <string name="connections_train_cancelled">Il treno risulta soppresso: le coincidenze non si possono calcolare.</string>
+    <string name="connections_arrival_unavailable">L’orario di arrivo a %1$s non è disponibile: le coincidenze non si possono calcolare.</string>
+    <string name="connections_arrival_live">Arrivo previsto alle %1$s secondo il dato operativo.</string>
+    <string name="connections_arrival_scheduled">Arrivo programmato alle %1$s. Lo stato del treno non è verificato: i margini usano l’orario programmato.</string>
+    <string name="connections_loading">Caricamento delle partenze da %1$s…</string>
+    <string name="connections_station_unknown">%1$s non corrisponde a una stazione nota alle fonti del tabellone.</string>
+    <string name="connections_sources">Tabellone: %1$s</string>
+    <string name="connections_empty">Nessuna partenza nei 90 minuti dopo l’arrivo.</string>
+    <string name="connections_note">Con meno di 5 minuti di margine la coincidenza è a rischio. Gli orari possono cambiare: controlla sempre i monitor in stazione.</string>
+    <string name="connections_reload">Aggiorna coincidenze</string>
+    <string name="connections_time_scheduled_short">progr. %1$s</string>
+    <string name="connections_buffer">Margine %1$s</string>
+    <string name="connections_buffer_negative">Parte %1$s prima dell’arrivo</string>
+    <string name="connections_risk_missed">Persa</string>
+    <string name="connections_risk_at_risk">A rischio</string>
+    <string name="connections_risk_ok">Fattibile</string>
 </resources>

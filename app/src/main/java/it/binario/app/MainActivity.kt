@@ -287,6 +287,9 @@ private fun BinarioApp(
         mutableStateOf<StopAlarmPlan?>(null)
     }
     var stopAlarmFeedback by rememberSaveable { mutableStateOf<String?>(null) }
+    // The stop chosen with the last stop alarm: the detail of that train looks for connections there.
+    var stopAlarmTrain by rememberSaveable { mutableStateOf<String?>(null) }
+    var stopAlarmStation by rememberSaveable { mutableStateOf<String?>(null) }
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     LaunchedEffect(lifecycleOwner, screen, operationsSectionName) {
@@ -369,6 +372,10 @@ private fun BinarioApp(
     }
     val scheduleStopAlarm: (TrainService, TrainStop) -> Unit = { service, stop ->
         val plan = StopAlarmPlanner.plan(service, stop)
+        if (plan != null && !stop.completed) {
+            stopAlarmTrain = service.number
+            stopAlarmStation = stop.station
+        }
         when {
             stop.completed -> stopAlarmFeedback = resources.getString(R.string.stop_alarm_completed, stop.station)
             plan == null -> stopAlarmFeedback = resources.getString(R.string.stop_alarm_unavailable)
@@ -603,6 +610,9 @@ private fun BinarioApp(
                     onStartActiveTrip = { viewModel.startActiveTrip(service) },
                     onAdvanceActiveTrip = viewModel::advanceActiveTrip,
                     onEndActiveTrip = viewModel::endActiveTrip,
+                    connectionStop = stopAlarmStation.takeIf { stopAlarmTrain == service.number },
+                    hasBoardProviders = viewModel.hasStationBoardProviders,
+                    loadConnectionBoard = viewModel::connectionBoard,
                     onShare = {
                         val content = TrainShareFormatter.create(
                             service = service,
@@ -2647,6 +2657,9 @@ private fun ServiceDetailScreen(
     onStartActiveTrip: () -> Unit,
     onAdvanceActiveTrip: () -> Unit,
     onEndActiveTrip: () -> Unit,
+    connectionStop: String?,
+    hasBoardProviders: Boolean,
+    loadConnectionBoard: (String, java.time.Instant) -> kotlinx.coroutines.flow.Flow<it.binario.app.data.repository.StationBoardAggregateResult>?,
     onShare: () -> Unit
 ) {
     val dataLabel = if (isDemonstration) stringResource(R.string.data_status_demo) else freshness?.localizedLabel() ?: stringResource(R.string.data_status_unavailable)
@@ -2721,6 +2734,14 @@ private fun ServiceDetailScreen(
                     }
                 }
             }
+        }
+        item {
+            ArrivalConnectionsSection(
+                service = service,
+                preferredStop = connectionStop,
+                hasBoardProviders = hasBoardProviders,
+                loadBoard = loadConnectionBoard
+            )
         }
         alarmFeedback?.let { feedback ->
             item {

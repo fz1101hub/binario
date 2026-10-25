@@ -726,4 +726,25 @@
     <string name="agenda_editor_first_segment">Estás editando el primer tramo; los demás no cambian.</string>
     <string name="agenda_editor_station_hint">Busca por nombre o código y selecciona una estación.</string>
     <string name="agenda_editor_select_station">Seleccionar %1$s, código %2$s</string>
+    <!-- New features (October 2026) -->
+    <string name="connections_title">Conexiones a la llegada</string>
+    <string name="connections_subtitle">En %1$s, salidas hasta 90 minutos después de la llegada</string>
+    <string name="connections_state_expanded">Sección abierta</string>
+    <string name="connections_state_collapsed">Sección cerrada</string>
+    <string name="connections_train_cancelled">El tren figura como suprimido: no se pueden calcular las conexiones.</string>
+    <string name="connections_arrival_unavailable">La hora de llegada a %1$s no está disponible: no se pueden calcular las conexiones.</string>
+    <string name="connections_arrival_live">Llegada prevista a las %1$s según los datos operativos.</string>
+    <string name="connections_arrival_scheduled">Llegada programada a las %1$s. El estado del tren no está verificado: los márgenes usan la hora programada.</string>
+    <string name="connections_loading">Cargando las salidas desde %1$s…</string>
+    <string name="connections_station_unknown">%1$s no corresponde a ninguna estación conocida por las fuentes del panel.</string>
+    <string name="connections_sources">Panel: %1$s</string>
+    <string name="connections_empty">No hay salidas en los 90 minutos posteriores a la llegada.</string>
+    <string name="connections_note">Con menos de 5 minutos de margen la conexión está en riesgo. Los horarios pueden cambiar: comprueba siempre las pantallas de la estación.</string>
+    <string name="connections_reload">Actualizar conexiones</string>
+    <string name="connections_time_scheduled_short">prog. %1$s</string>
+    <string name="connections_buffer">Margen %1$s</string>
+    <string name="connections_buffer_negative">Sale %1$s antes de la llegada</string>
+    <string name="connections_risk_missed">Perdida</string>
+    <string name="connections_risk_at_risk">En riesgo</string>
+    <string name="connections_risk_ok">Factible</string>
 </resources>

@@ -726,4 +726,25 @@
     <string name="agenda_editor_first_segment">Vous modifiez la première étape ; les autres restent inchangées.</string>
     <string name="agenda_editor_station_hint">Recherchez par nom ou code et sélectionnez une gare.</string>
     <string name="agenda_editor_select_station">Sélectionner %1$s, code %2$s</string>
+    <!-- New features (October 2026) -->
+    <string name="connections_title">Correspondances à l’arrivée</string>
+    <string name="connections_subtitle">À %1$s, départs jusqu’à 90 minutes après l’arrivée</string>
+    <string name="connections_state_expanded">Section ouverte</string>
+    <string name="connections_state_collapsed">Section fermée</string>
+    <string name="connections_train_cancelled">Ce train est signalé supprimé : les correspondances ne peuvent pas être calculées.</string>
+    <string name="connections_arrival_unavailable">L’heure d’arrivée à %1$s n’est pas disponible : les correspondances ne peuvent pas être calculées.</string>
+    <string name="connections_arrival_live">Arrivée prévue à %1$s selon les données d’exploitation.</string>
+    <string name="connections_arrival_scheduled">Arrivée programmée à %1$s. L’état du train n’est pas vérifié : les marges utilisent l’horaire programmé.</string>
+    <string name="connections_loading">Chargement des départs de %1$s…</string>
+    <string name="connections_station_unknown">%1$s ne correspond à aucune gare connue des sources du tableau.</string>
+    <string name="connections_sources">Tableau : %1$s</string>
+    <string name="connections_empty">Aucun départ dans les 90 minutes après l’arrivée.</string>
+    <string name="connections_note">Avec moins de 5 minutes de marge, la correspondance est à risque. Les horaires peuvent changer : vérifiez toujours les écrans en gare.</string>
+    <string name="connections_reload">Actualiser les correspondances</string>
+    <string name="connections_time_scheduled_short">prog. %1$s</string>
+    <string name="connections_buffer">Marge %1$s</string>
+    <string name="connections_buffer_negative">Part %1$s avant l’arrivée</string>
+    <string name="connections_risk_missed">Manquée</string>
+    <string name="connections_risk_at_risk">À risque</string>
+    <string name="connections_risk_ok">Faisable</string>
 </resources>
