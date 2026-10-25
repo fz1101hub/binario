@@ -7,15 +7,18 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def require(path: str, *needles: str) -> str:
-    text = (ROOT / path).read_text(encoding="utf-8")
-    missing = [needle for needle in needles if needle not in text]
-    if missing:
-        raise AssertionError(f"{path}: missing {', '.join(missing)}")
-    return text
+def read(relative: str) -> str:
+    return (ROOT / relative).read_text(encoding="utf-8")
 
 
-def main() -> int:
+def verify(read_file=read) -> None:
+    def require(path: str, *needles: str) -> str:
+        text = read_file(path)
+        missing = [needle for needle in needles if needle not in text]
+        if missing:
+            raise AssertionError(f"{path}: missing {', '.join(missing)}")
+        return text
+
     properties = require(
         "gradle.properties",
         "BINARIO_APP_VERSION_CODE=",
@@ -83,7 +86,12 @@ def main() -> int:
         ":wear:bundleRelease",
         ":app:lintVitalRelease",
         ":wear:lintVitalRelease",
+        "python3 -m unittest tests.test_wear_compose_gradle_dependency_suppressions",
     )
+
+
+def main() -> int:
+    verify()
     print("Android release configuration: PASS")
     return 0
 
