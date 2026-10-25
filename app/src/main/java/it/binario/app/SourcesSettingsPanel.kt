@@ -42,5 +42,8 @@ fun SourcesSettingsPanel(viewModel: RailNoticesViewModel = viewModel()) {
                 Switch(checked = viewModel.destinationWeatherEnabled, onCheckedChange = null)
             }
         }
+        // What each additional source receives: the in-app counterpart of PRIVACY.md.
+        Text(stringResource(R.string.settings_privacy_new_sources), style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }

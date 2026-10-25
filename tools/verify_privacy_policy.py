@@ -51,6 +51,9 @@ REQUIRED_DISCLOSURES: tuple[tuple[str, str, tuple[str, ...]], ...] = (
             "tier primario fallisce",
             "metadati di rete della richiesta sono visibili",
             "[docs/store/PLAY_DATA_SAFETY.md](docs/store/PLAY_DATA_SAFETY.md)",
+            "### Avvisi, tabelloni svizzeri e meteo a destinazione",
+            "coordinate della stazione di arrivo arrotondate a due decimali",
+            "Anche le richieste di avvisi a ViaggiaTreno passano in HTTP non cifrato",
         ),
     ),
     (
@@ -79,6 +82,8 @@ REQUIRED_DISCLOSURES: tuple[tuple[str, str, tuple[str, ...]], ...] = (
             "`jbb.ghsq.de`",
             "Nessun SDK",
             "URL pubblico",
+            "tranne `www.viaggiatreno.it` (senza sottodomini)",
+            "valore predefinito anche in release",
         ),
     ),
     ("README.md", "README.md", ("[PRIVACY.md](PRIVACY.md)",)),
@@ -95,6 +100,8 @@ REQUIRED_DISCLOSURES: tuple[tuple[str, str, tuple[str, ...]], ...] = (
             "Le ricerche RFI inviano alla fonte l’identificativo pubblico della stazione di partenza",
             "Disattivare la condivisione elimina il DataItem e la cache locale del watch alla ricezione della revoca.",
             "non esiste ancora un link pubblico nell’app",
+            "Open-Meteo le coordinate arrotondate della stazione di arrivo",
+            "in HTTP non cifrato come la sua API pubblica",
         ),
     ),
     (

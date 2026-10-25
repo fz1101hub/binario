@@ -70,6 +70,7 @@
     <string name="weather_out_of_range">Die Vorhersage gilt nur für heute und morgen.</string>
     <string name="settings_sources_title">Zusätzliche Quellen</string>
     <string name="settings_weather_description">Zeigt im Zugdetail die Open-Meteo-Vorhersage für den Zielbahnhof. Open-Meteo erhält nur die auf zwei Dezimalstellen gerundeten Koordinaten des Bahnhofs, nie deinen Standort.</string>
+    <string name="settings_privacy_new_sources">Wenn aktiv, erhalten die zusätzlichen Quellen nur, was die Anfrage braucht, ohne Konto oder Standort: transport.opendata.ch die UIC-Nummer des Schweizer Bahnhofs (oder einmalig den Namen eines Grenzbahnhofs); ViaggiaTreno die Zugnummer für seine Hinweise, über unverschlüsseltes HTTP wie seine öffentliche API; RFI, Trenitalia und Trenord keine Daten von dir für ihre Hinweislisten, die nur geladen werden, wenn du den Hinweisbereich, ein Detail oder eine passende Tafel öffnest; Open-Meteo die gerundeten Koordinaten des Zielbahnhofs. Externe Links öffnen sich nur im Browser, wenn du sie antippst.</string>
 
     <string name="app_name">Binario</string>
     <string name="widget_description">Zeigt die nächsten Verbindungen auf deiner Binario-Strecke.</string>

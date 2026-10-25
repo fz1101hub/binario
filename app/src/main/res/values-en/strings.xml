@@ -70,6 +70,7 @@
     <string name="weather_out_of_range">The forecast covers only today and tomorrow.</string>
     <string name="settings_sources_title">Additional sources</string>
     <string name="settings_weather_description">Shows the Open-Meteo forecast for the arrival station in the train detail. Open-Meteo receives only the station’s coordinates rounded to two decimals, never your location.</string>
+    <string name="settings_privacy_new_sources">When active, the additional sources receive only what the request needs, with no account or location: transport.opendata.ch the UIC number of the Swiss station (or, once, the name of a border station); ViaggiaTreno the train number for its notices, over unencrypted HTTP like its public API; RFI, Trenitalia and Trenord no data of yours for their notice lists, downloaded only when you open the notices area, a detail or a relevant board; Open-Meteo the rounded coordinates of the arrival station. External links open in the browser only when you tap them.</string>
 
     <string name="app_name">Binario</string>
     <string name="widget_description">Displays the next services on your Binario route.</string>
