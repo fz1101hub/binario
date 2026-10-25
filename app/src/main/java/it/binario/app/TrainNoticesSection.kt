@@ -13,6 +13,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import it.binario.app.data.TrainService
+import it.binario.app.data.notices.NoticeText
 import it.binario.app.data.notices.StationCoordinateIndex
 import it.binario.app.data.notices.TrainNoticeContext
 
@@ -37,7 +38,9 @@ fun TrainNoticesSection(service: TrainService, viewModel: RailNoticesViewModel, 
                 if (value.isEmpty) SourceSectionNote(stringResource(R.string.notices_train_empty))
                 value.trainNotices.forEach { notice ->
                     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                        Text(notice.textFor(locale.language), style = MaterialTheme.typography.bodyMedium)
+                        val text = notice.textFor(locale.language)
+                        if (NoticeText.mentionsStrike(notice.text, text)) StrikeBadge()
+                        Text(text, style = MaterialTheme.typography.bodyMedium)
                         notice.publishedAt?.let { SourceSectionNote(stringResource(R.string.notices_published_at, noticeTimestamp(it, locale))) }
                     }
                 }

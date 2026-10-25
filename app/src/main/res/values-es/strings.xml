@@ -29,6 +29,8 @@
     <string name="notices_trenord_lines">Líneas %1$s</string>
     <string name="notices_train_trenord_heading">Avisos de Trenord en la línea</string>
     <string name="notices_station_trenord_title">Avisos de Trenord para esta estación</string>
+    <string name="notices_strike_badge">Huelga</string>
+    <string name="notices_strike_calendar">Calendario de huelgas (MIT)</string>
 
     <string name="app_name">Binario</string>
     <string name="widget_description">Muestra los próximos servicios de tu ruta Binario.</string>

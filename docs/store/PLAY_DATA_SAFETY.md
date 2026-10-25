@@ -81,6 +81,7 @@ La tabella copre ogni host `http(s)://` trovato in `app/src/main/java`, `wear/sr
 - **C — adapter non collegato:** esiste un client nel data layer, ma nessuna superficie lo invoca nella build corrente, oppure richiede credenziali che nessun chiamante fornisce.
 - **D — provenienza dei data pack:** URL da cui `tools/build_gtfs_packs.py` ha scaricato offline i GTFS embedded; l'app legge solo gli asset inclusi.
 - **E — catalogo fonti:** `landingPage` o `downloadOrProbeUri` del censimento fonti; nessun adapter, nessun traffico.
+- **F — collegamento esterno:** pagina aperta nel browser di sistema solo quando l'utente tocca il collegamento; l'app non contatta l'host.
 
 ### Host contattabili a runtime (A, B, C)
 
@@ -146,5 +147,11 @@ La tabella copre ogni host `http(s)://` trovato in `app/src/main/java`, `wear/sr
 | `www.snalltaget.se` | E | Catalogo fonti (`InternationalSourceCatalog.kt`), monitor-only |
 | `www.trenitalia.com` | E | Catalogo fonti (`RailSourceCatalog.kt`): pagina pubblica dell'infomobilità Trenitalia |
 | `www.tuabruzzo.it` | E | Catalogo fonti (`RailSourceCatalog.kt`) |
+
+### Collegamenti aperti nel browser su tocco (F)
+
+| Host | Categoria | Ruolo |
+|---|---|---|
+| `scioperi.mit.gov.it` | F | Calendario scioperi del Ministero delle infrastrutture e dei trasporti, dall'area avvisi (`data/notices/RailExternalLinks.kt`) |
 
 Nessun SDK di terze parti aggiunge host propri: le uniche librerie con accesso alla rete sono quelle AndroidX/Play Services elencate sopra, e Play Services Wearable comunica solo con l'infrastruttura Google del dispositivo associato.

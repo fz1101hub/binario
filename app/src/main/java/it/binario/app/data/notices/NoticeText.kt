@@ -50,6 +50,11 @@ internal object NoticeText {
         return if (text.length <= maxLength) text else text.take(maxLength - 1).trimEnd() + "…"
     }
 
+    private val STRIKE = Regex("\\bscioper[oi]\\b", RegexOption.IGNORE_CASE)
+
+    /** True when the text mentions a strike ("sciopero" / "scioperi"), the trigger for the strike badge. */
+    fun mentionsStrike(vararg texts: String?): Boolean = texts.any { it != null && STRIKE.containsMatchIn(it) }
+
     /** Key used to recognise the same notice published twice (case, spacing and punctuation ignored). */
     fun dedupKey(value: String): String = java.text.Normalizer.normalize(value, java.text.Normalizer.Form.NFD)
         .replace(Regex("\\p{M}+"), "")

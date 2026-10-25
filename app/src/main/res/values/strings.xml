@@ -29,6 +29,8 @@
     <string name="notices_trenord_lines">Direttrici %1$s</string>
     <string name="notices_train_trenord_heading">Avvisi Trenord sulla linea</string>
     <string name="notices_station_trenord_title">Avvisi Trenord per questa stazione</string>
+    <string name="notices_strike_badge">Sciopero</string>
+    <string name="notices_strike_calendar">Calendario scioperi (MIT)</string>
 
     <string name="app_name">Binario</string>
     <string name="widget_description">Mostra le prossime corse della tua tratta Binario.</string>

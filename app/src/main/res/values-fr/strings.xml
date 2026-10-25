@@ -29,6 +29,8 @@
     <string name="notices_trenord_lines">Lignes %1$s</string>
     <string name="notices_train_trenord_heading">Avis Trenord sur la ligne</string>
     <string name="notices_station_trenord_title">Avis Trenord pour cette gare</string>
+    <string name="notices_strike_badge">Grève</string>
+    <string name="notices_strike_calendar">Calendrier des grèves (MIT)</string>
 
     <string name="app_name">Binario</string>
     <string name="widget_description">Affiche les prochains services de votre itinéraire Binario.</string>

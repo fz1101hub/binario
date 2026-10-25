@@ -29,6 +29,8 @@
     <string name="notices_trenord_lines">Lines %1$s</string>
     <string name="notices_train_trenord_heading">Trenord notices on the line</string>
     <string name="notices_station_trenord_title">Trenord notices for this station</string>
+    <string name="notices_strike_badge">Strike</string>
+    <string name="notices_strike_calendar">Strike calendar (MIT)</string>
 
     <string name="app_name">Binario</string>
     <string name="widget_description">Displays the next services on your Binario route.</string>

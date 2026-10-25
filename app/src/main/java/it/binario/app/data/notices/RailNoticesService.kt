@@ -88,7 +88,10 @@ data class RailNotice(
     val publishedAt: Instant?,
     val link: String?,
     val lines: List<NoticeLine> = emptyList()
-)
+) {
+    /** Strike badge: RFI, Trenitalia and Trenord notices whose text mentions "sciopero" or "scioperi". */
+    val mentionsStrike: Boolean get() = NoticeText.mentionsStrike(title, body)
+}
 
 /** Trenord notices of one set of lines; [allLines] marks notices published on (almost) every line. */
 data class NoticeGroup(val lines: List<NoticeLine>, val allLines: Boolean, val notices: List<RailNotice>)

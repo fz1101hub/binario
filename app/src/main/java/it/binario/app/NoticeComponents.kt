@@ -128,6 +128,23 @@ internal fun noticeLinesLabel(lines: List<NoticeLine>, allLines: Boolean = false
         if (lines.size > MAX_LINE_CODES) ", …" else "")
 }
 
+/** Badge for notices that mention a strike. */
+@Composable
+internal fun StrikeBadge() {
+    Surface(
+        color = MaterialTheme.colorScheme.errorContainer,
+        contentColor = MaterialTheme.colorScheme.onErrorContainer,
+        shape = RoundedCornerShape(6.dp)
+    ) {
+        Text(
+            stringResource(R.string.notices_strike_badge),
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Bold
+        )
+    }
+}
+
 /** One network notice: title, collapsible plain-text body, publisher and time, and the publisher's page. */
 @Composable
 internal fun RailNoticeItem(notice: RailNotice, showLines: Boolean = true) {
@@ -135,6 +152,7 @@ internal fun RailNoticeItem(notice: RailNotice, showLines: Boolean = true) {
     val locale = LocalConfiguration.current.locales[0]
     val uriHandler = LocalUriHandler.current
     Column(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        if (notice.mentionsStrike) StrikeBadge()
         LinkifiedText(notice.title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
         if (showLines) noticeLinesLabel(notice.lines)?.let { SourceSectionNote(it) }
         notice.body?.let { body ->

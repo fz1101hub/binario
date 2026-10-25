@@ -29,6 +29,8 @@
     <string name="notices_trenord_lines">Linien %1$s</string>
     <string name="notices_train_trenord_heading">Trenord-Hinweise zur Linie</string>
     <string name="notices_station_trenord_title">Trenord-Hinweise für diesen Bahnhof</string>
+    <string name="notices_strike_badge">Streik</string>
+    <string name="notices_strike_calendar">Streikkalender (MIT)</string>
 
     <string name="app_name">Binario</string>
     <string name="widget_description">Zeigt die nächsten Verbindungen auf deiner Binario-Strecke.</string>

@@ -12,7 +12,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
+import it.binario.app.data.notices.RailExternalLinks
 import androidx.compose.ui.text.font.FontWeight
 import androidx.lifecycle.viewmodel.compose.viewModel
 
@@ -26,8 +28,13 @@ fun RailNoticesArea(viewModel: RailNoticesViewModel = viewModel()) {
     var open by rememberSaveable { mutableStateOf(false) }
     var showAll by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(open) { if (open) viewModel.loadGeneralNotices() }
+    val uriHandler = LocalUriHandler.current
     SourceSectionCard(title = stringResource(R.string.notices_area_title)) {
         SourceSectionNote(stringResource(R.string.notices_area_description))
+        // No strike feed is machine-readable from here: the official calendar opens in the browser on tap only.
+        TextButton(onClick = { openExternalLink(uriHandler, RailExternalLinks.MIT_STRIKE_CALENDAR) }) {
+            Text(stringResource(R.string.notices_strike_calendar))
+        }
         if (!open) {
             Button(onClick = { open = true }) { Text(stringResource(R.string.notices_area_show)) }
         } else when (val state = viewModel.generalNotices) {
