@@ -61,6 +61,7 @@ jobs:
           tests/test_verify_android_release_config.py
           tests/test_build_store_assets.py
           tests/test_play_store_docs.py
+          tests/test_app_store_docs.py
 
       - name: Verify immutable CI inputs
         run: |
