@@ -53,6 +53,27 @@ class VerifyPrivacyPolicyTest(unittest.TestCase):
             errors,
         )
 
+    def test_wear_choice_row_describes_the_implemented_watch_side_revocation(self) -> None:
+        # The "Scelte dell'utente" row must not fall back to "delete data or uninstall": the
+        # phone deletes the Data Item and the watch clears its cache when the revocation lands.
+        current_row = (
+            "| Interrompere Wear | Disattivare la condivisione nell'app Android: il telefono richiede "
+            "la cancellazione del Data Item"
+        )
+        stale_row = (
+            "| Interrompere Wear | Disabilitare la condivisione per nuovi invii; per cancellare la copia "
+            "già ricevuta, cancellare dati o disinstallare l'app Wear."
+        )
+
+        def with_stale_row(relative: str) -> str:
+            text = (ROOT / relative).read_text(encoding="utf-8")
+            if relative == "PRIVACY.md":
+                self.assertIn(current_row, text)
+                return text.replace(current_row, stale_row, 1)
+            return text
+
+        self.assertIn(f"PRIVACY.md: missing {current_row!r}", POLICY.verification_errors(with_stale_row))
+
     def test_iphone_and_apple_watch_disclosures_are_checked(self) -> None:
         # App Store Connect needs a policy that covers the app being submitted: the iOS section
         # must name the UserDefaults keys, the Watch App Group and the revocation signal.

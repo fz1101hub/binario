@@ -42,6 +42,7 @@ REQUIRED_DISCLOSURES: tuple[tuple[str, str, tuple[str, ...]], ...] = (
             "Feed ferroviari esterni, European Sleeper/JBB e nomi di stazione",
             "Backup, conservazione e cancellazione",
             "Revoca, cancellazione e conservazione",
+            "| Interrompere Wear | Disattivare la condivisione nell'app Android: il telefono richiede la cancellazione del Data Item",
             "riconoscitore vocale di sistema",
             "titolare del trattamento",
             "URL pubblico",

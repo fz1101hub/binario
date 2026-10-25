@@ -139,7 +139,7 @@ La sessione della dashboard è un cookie HTTP-only con durata di trenta giorni. 
 | Fermare notifiche | Non concedere il permesso, rimuovere il singolo avviso/promemoria oppure disattivare le notifiche nelle impostazioni del sistema. |
 | Rimuovere dati Android | Rimuovere le singole voci, cancellare i dati dell'app dal sistema o disinstallare; eliminare separatamente gli eventuali backup JSON esportati. |
 | Rimuovere dati Companion Expo | Usare **Cancella archivio locale** per tratte, itinerari e promemoria; cancellare dati/disinstallare per le altre preferenze e rimuovere separatamente file o eventi esportati. |
-| Interrompere Wear | Disabilitare la condivisione per nuovi invii; per cancellare la copia già ricevuta, cancellare dati o disinstallare l'app Wear. |
+| Interrompere Wear | Disattivare la condivisione nell'app Android: il telefono richiede la cancellazione del Data Item e il watch elimina la cache locale alla ricezione della revoca; se l'orologio è offline la cancellazione avviene alla consegna successiva del Data Layer. Cancellare dati o disinstallare l'app Wear rimuove direttamente la copia locale. |
 | Rimuovere dati iPhone | Eliminare le tratte dalla scheda **Tratte** o disinstallare l'app; eliminare separatamente i backup di sistema che le contengono. |
 | Interrompere Apple Watch | Disattivare **Condividi le tratte con Apple Watch**: l'iPhone invia la cancellazione e il Watch elimina lo snapshot dall'App Group alla ricezione; disinstallare l'app Watch rimuove direttamente la copia. |
 | Scollegare Alexa | Usare **unlink** nella dashboard; ciò revoca il collegamento e i refresh token, senza cancellare i dati descritti sopra. |
@@ -150,7 +150,7 @@ La sessione della dashboard è un cookie HTTP-only con durata di trenta giorni. 
 
 Le app Android usano HTTPS; solo il client smartphone ha una eccezione HTTP circoscritta a `www.viaggiatreno.it` per le API pubbliche ferroviarie, senza account o credenziali; le app Android e Companion Expo escludono il backup automatico del loro contenitore; l'app iPhone non effettua richieste di rete. Queste misure non rendono i dati locali automaticamente cifrati dal codice applicativo: le preferenze private descritte sopra non sono ulteriormente cifrate dall'app nel sorgente corrente. Nessun segreto Alexa è inserito nel client Android; il backend Alexa richiede variabili d'ambiente e rifiuta la skill se non sono complete.
 
-Ogni modifica del comportamento implementato richiede il riesame di questa informativa prima del rilascio. In particolare, la sincronizzazione Companion reale, un percorso di cancellazione Wear, un servizio Alexa diverso o l'introduzione di analytics, push o nuove fonti non sono coperti da promesse retroattive di questo documento.
+Ogni modifica del comportamento implementato richiede il riesame di questa informativa prima del rilascio. In particolare, la sincronizzazione Companion reale, un percorso di cancellazione Wear diverso dalla revoca descritta, un servizio Alexa diverso o l'introduzione di analytics, push o nuove fonti non sono coperti da promesse retroattive di questo documento.
 
 ## Riferimenti al codice
 
