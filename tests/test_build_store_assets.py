@@ -110,12 +110,14 @@ class BuildStoreAssetsTest(unittest.TestCase):
             written = BUILDER.build_assets(output_dir=output_dir)
             self.assertEqual([output_dir / "icon-512.png", output_dir / "README.md"], written)
             icon = written[0].read_bytes()
-            self.assertEqual((ROOT / "store" / "play" / "icon-512.png").read_bytes(), icon)
             self.assertEqual((ROOT / "store" / "play" / "README.md").read_text(encoding="utf-8"), written[1].read_text(encoding="utf-8"))
 
-        width, height, channels, pixels = BUILDER.read_png(icon)
+        # Compare decoded pixels, not the compressed stream: zlib output differs between implementations.
+        committed = (ROOT / "store" / "play" / "icon-512.png").read_bytes()
+        self.assertEqual(BUILDER.read_png(committed), BUILDER.read_png(icon))
+        width, height, channels, pixels = BUILDER.read_png(committed)
         self.assertEqual((512, 512, 3), (width, height, channels))
-        self.assertLess(len(icon), 1024 * 1024)
+        self.assertLess(len(committed), 1024 * 1024)
         self.assertEqual(bytes([0, 90, 82]), pixels[:3])
         center = (256 * 512 + 256) * 3
         self.assertEqual(bytes([255, 255, 255]), pixels[center : center + 3])
