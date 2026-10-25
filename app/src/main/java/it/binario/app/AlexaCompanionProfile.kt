@@ -27,7 +27,22 @@ fun UnifiedBinarioProfile.toAlexaCompanionProfileRequest(
     schemaVersion = schemaVersion,
     activeRouteId = activeRouteId,
     direction = direction,
-    monitoredTrainNumbers = monitoredTrainNumbers.distinct().take(32),
+    monitoredTrainNumbers = monitoredTrainNumbers.mapNotNull(::alexaCompanionTrainNumber).distinct().take(32),
     expectedRevision = expectedRevision,
     clientMutationId = clientMutationId
 )
+
+/**
+ * A monitored number in the only form the Alexa Companion accepts: letters, digits and dashes,
+ * at most 32 of them, after whitespace removal (`profile.upsert` rejects the whole profile on a
+ * single other entry). Operator labels such as Trenord's "RE_80 - 2551" keep the train number
+ * that ends them; anything else that cannot be sent, such as a raw GTFS trip id, is dropped.
+ */
+internal fun alexaCompanionTrainNumber(number: String): String? {
+    val compact = number.filterNot(Char::isWhitespace)
+    if (ALEXA_TRAIN_NUMBER.matches(compact)) return compact
+    return LABELLED_TRAIN_NUMBER.find(number)?.groupValues?.get(1)
+}
+
+private val ALEXA_TRAIN_NUMBER = Regex("[A-Za-z0-9-]{1,32}")
+private val LABELLED_TRAIN_NUMBER = Regex("\\s[-/]?\\s*(\\d{1,6})\\s*$")
