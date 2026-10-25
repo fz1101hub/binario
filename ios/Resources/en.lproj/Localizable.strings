@@ -44,6 +44,7 @@
 "settings.data.provider_unavailable" = "Unavailable";
 "settings.data.provider_loading" = "Preparing";
 "settings.data.provider_programmed" = "10 included GTFS sources · scheduled data";
+"settings.data.valid_until" = "First feed to expire";
 "settings.data.catalog_notice" = "The station catalogue is used only for identity and search. It neither contains nor determines schedules, delays, platforms, or official statuses.";
 "settings.sources.title" = "GTFS data sources";
 "settings.sources.valid_until" = "Valid until";

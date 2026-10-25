@@ -17,7 +17,7 @@ public enum BinarioLocalizationKeys {
         "saved.delete_all", "saved.storage_error", "saved.limit_error",
         "settings.title", "settings.data.title", "settings.data.catalog",
         "settings.data.provider", "settings.data.provider_unavailable",
-        "settings.data.provider_loading", "settings.data.provider_programmed",
+        "settings.data.provider_loading", "settings.data.provider_programmed", "settings.data.valid_until",
         "settings.data.catalog_notice",
         "settings.sources.title", "settings.sources.valid_until", "settings.sources.licence",
         "settings.sources.no_trips",

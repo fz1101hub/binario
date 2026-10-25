@@ -41,6 +41,21 @@ final class SQLiteGTFSJourneyRepositoryTests: XCTestCase {
         XCTAssertEqual(withinValidity, .unavailable(.noJourney))
     }
 
+    func testQueriesAfterTheIndexEndsReportExpiryEvenForStationsItNeverServed() async throws {
+        let fixture = try Fixture()
+        try fixture.insertTrip(id: 1, externalID: "direct", seconds: 10 * 3_600)
+        let unserved = StationIdentity(id: "never-indexed", name: "Napoli Centrale")
+        func request(_ value: String) throws -> JourneyQuery {
+            try JourneyQuery(origin: unserved, destination: destination, departure: date(value))
+        }
+
+        let afterIndexEnd = await fixture.repository.journeys(for: try request("2025-01-15 09:00"))
+        let withinValidity = await fixture.repository.journeys(for: try request("2024-04-02 09:00"))
+
+        XCTAssertEqual(afterIndexEnd, .unavailable(.scheduleExpired))
+        XCTAssertEqual(withinValidity, .unavailable(.noJourney))
+    }
+
     func testSourcePacksListAttributionValidityAndRetainedTripCount() throws {
         let fixture = try Fixture()
         XCTAssertEqual(try fixture.repository.sourcePacks().map(\.tripCount), [0])

@@ -167,6 +167,12 @@ final class AppModel: ObservableObject {
         schedulePacks.filter { $0.tripCount > 0 }
     }
 
+    /// The earliest day on which one of the included feeds stops: from then on its routes
+    /// report an expired timetable until the app is updated.
+    var firstPackExpiry: Date? {
+        includedPacks.map(\.lastServiceDate).min()
+    }
+
     func run(query: JourneyQuery) async {
         searchRequestID &+= 1
         let requestID = searchRequestID

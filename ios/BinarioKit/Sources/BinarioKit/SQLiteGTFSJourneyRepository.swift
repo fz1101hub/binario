@@ -98,11 +98,17 @@ public struct SQLiteGTFSJourneyRepository: JourneyRepository, Sendable {
         guard let sourceGeneratedAt = metadata["source_generated_at"],
               let sourceObservedAt = parseSourceDate(sourceGeneratedAt)
         else { throw SQLiteGTFSFailure.invalidData }
+        let timeZones = try agencyTimeZones(database)
+        let referenceTimeZone = timeZones.first ?? TimeZone(identifier: "Europe/Rome") ?? .current
+        // After the last day any included pack runs, every search needs an app update: report
+        // the expiry even for stations the index never served instead of "no data".
+        if try indexEnded(before: query.departure, timeZone: referenceTimeZone, database: database) {
+            throw SQLiteGTFSFailure.scheduleExpired
+        }
         let originIDs = try resolve(query.origin, database: database)
         let destinationIDs = try resolve(query.destination, database: database)
         guard Set(originIDs).isDisjoint(with: destinationIDs) else { throw SQLiteGTFSFailure.noRoute }
 
-        let timeZones = try agencyTimeZones(database)
         var candidates: [Candidate] = []
         for timeZone in timeZones {
             let calendar = serviceCalendar(timeZone: timeZone)
@@ -140,7 +146,7 @@ public struct SQLiteGTFSJourneyRepository: JourneyRepository, Sendable {
                 before: query.departure,
                 originIDs: originIDs,
                 destinationIDs: destinationIDs,
-                timeZone: timeZones.first ?? TimeZone(identifier: "Europe/Rome") ?? .current,
+                timeZone: referenceTimeZone,
                 database: database
             ) {
                 throw SQLiteGTFSFailure.scheduleExpired
@@ -240,6 +246,22 @@ public struct SQLiteGTFSJourneyRepository: JourneyRepository, Sendable {
             return exactCode.map(\.id)
         }
         return matches.map(\.id)
+    }
+
+    /// True when the last service day of every pack that holds trips is before the requested
+    /// day: nothing in the index can answer, whatever the stations.
+    private static func indexEnded(before departure: Date, timeZone: TimeZone, database: SQLiteDatabase) throws -> Bool {
+        let statement = try database.statement(
+            """
+            SELECT COALESCE(MAX(p.last_service_date), 0) FROM pack AS p
+            WHERE EXISTS (SELECT 1 FROM trip AS t WHERE t.pack_id = p.id)
+            """
+        )
+        guard try statement.step() else { return false }
+        let lastServiceDate = statement.int(at: 0)
+        guard lastServiceDate > 0 else { return false }
+        let requestedDay = Int64(encodedDate(departure, calendar: serviceCalendar(timeZone: timeZone)))
+        return lastServiceDate < requestedDay
     }
 
     /// True when every pack that holds both stations has its last service day before the

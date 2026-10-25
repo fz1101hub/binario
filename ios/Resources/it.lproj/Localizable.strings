@@ -44,6 +44,7 @@
 "settings.data.provider_unavailable" = "Non disponibile";
 "settings.data.provider_loading" = "Preparazione in corso";
 "settings.data.provider_programmed" = "10 fonti GTFS incluse · dati programmati";
+"settings.data.valid_until" = "Primo feed in scadenza";
 "settings.data.catalog_notice" = "Il catalogo stazioni serve solo per identità e ricerca. Non contiene né determina orari, ritardi, binari o stati ufficiali.";
 "settings.sources.title" = "Fonti dati GTFS";
 "settings.sources.valid_until" = "Valido fino al";

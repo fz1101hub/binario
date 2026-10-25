@@ -14,6 +14,12 @@ struct SettingsView: View {
                     Text(providerStatusKey)
                         .multilineTextAlignment(.trailing)
                 }
+                if let expiry = model.firstPackExpiry {
+                    LabeledContent("settings.data.valid_until") {
+                        Text(expiry.formatted(date: .long, time: .omitted))
+                            .multilineTextAlignment(.trailing)
+                    }
+                }
                 Text("settings.data.catalog_notice")
                     .font(.footnote)
                     .foregroundStyle(.secondary)

@@ -342,6 +342,14 @@ class IOSProjectTests(unittest.TestCase):
         self.assertIn("testNoJourneyAndInvalidProviderHaveDistinctState", model_tests)
         self.assertIn('case .noJourney: "result.unavailable.title"', planner)
         self.assertIn('case .scheduleExpired: "result.expired.title"', planner)
+        # The expiry is checked for the whole index before stations are resolved, so a query
+        # after the last service day is "expired" even for stations the index never served.
+        load_body = gtfs.split("private static func load(", 1)[1]
+        self.assertLess(load_body.index("indexEnded(before: query.departure"), load_body.index("try resolve(query.origin"))
+        self.assertIn("WHERE EXISTS (SELECT 1 FROM trip AS t WHERE t.pack_id = p.id)", gtfs)
+        self.assertIn("testQueriesAfterTheIndexEndsReportExpiryEvenForStationsItNeverServed", (IOS / "BinarioKit/Tests/BinarioKitTests/SQLiteGTFSJourneyRepositoryTests.swift").read_text(encoding="utf-8"))
+        self.assertIn("var firstPackExpiry: Date?", model)
+        self.assertIn('LabeledContent("settings.data.valid_until")', (IOS / "BinarioApp/SettingsView.swift").read_text(encoding="utf-8"))
         self.assertTrue(source_policy.is_file())
         self.assertIn("source_policy_path", builder)
         self.assertIn("source_policy_path", verifier)

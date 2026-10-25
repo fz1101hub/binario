@@ -61,6 +61,8 @@ Next, provision `it.binario.ios`, `it.binario.ios.watchkitapp`, `it.binario.ios.
 
 Finally, install a development build on a paired iPhone and Apple Watch. Verify a covered iPhone search produces a `PROGRAMMED` application context with no realtime claims, the Watch accepts at most two services, and the widget reloads from shared storage. Verify an uncovered search produces an `UNAVAILABLE` context with no services. Repeat with the phone unreachable, after snapshot expiry, and after disabling Watch sharing. Record logs or a test protocol as hardware evidence; this repository does not claim delivery proof.
 
+The bundled timetables expire: seven of the ten packs end on 2026-12-12/13 (`lastServiceDate` in `app/src/main/assets/gtfs/manifest.json`), after which the planner reports `result.expired` for every query and Settings shows the first feed to expire. Before the submission build refresh the GTFS packs, run `python3 tools/build_ios_gtfs_schedule.py` and `python3 tools/verify_ios_gtfs_schedule.py`, commit the new artifact and metadata, and plan a monthly data-refresh/app-update cadence with the first App Store update scheduled before 2026-12-12.
+
 Before TestFlight or App Store submission, provide approved legal privacy text and support contact details, create reviewed store metadata and screenshots in all intended locales, complete Apple's privacy questionnaire from the implemented capability set, run accessibility review at the largest Dynamic Type sizes and with VoiceOver, archive with distribution signing, and conduct TestFlight testing on supported iPhone/Watch combinations.
 
 ## References
