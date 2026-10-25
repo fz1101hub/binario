@@ -41,6 +41,20 @@ Le chiamate JBB sono richieste HTTPS `GET` dirette che impostano `Accept` e un `
 
 Alla baseline corrente ViaggiaTreno, RFI Monitor e Italo in Viaggio sono presenti come adapter `PUBLIC_BEST_EFFORT` abilitati nel `ProviderRegistry`, ciascuno con limiti, cache e fallback. Questa abilitazione non ne modifica la classe di accesso: il connettore deve poter essere sospeso immediatamente se la salute, le condizioni o il comportamento della fonte non restano compatibili con questa policy. Trenord realtime rimane fuori dal registry attivo fino a un canale E015 autorizzato.
 
+## Mappe di base
+
+Le mappe dell'app non sono una fonte ferroviaria: sono uno sfondo cartografico su cui l'app disegna soltanto coordinate del catalogo stazioni curato. Non determinano orari, binari, ritardi, soppressioni o posizioni dei treni, e Binario non disegna mai una posizione del treno che nessuna fonte ha pubblicato.
+
+### OpenFreeMap: fornitore di mappe open con attribuzione
+
+Classe: **Open diretto — fornitore di mappe open**. OpenFreeMap pubblica gratuitamente, senza chiave API e con uso consentito anche nelle app, stili e tessere vettoriali generate da dati OpenStreetMap (ODbL 1.0) nello schema OpenMapTiles. Il client Android usa soltanto l'host `tiles.openfreemap.org`: stile `liberty` nel tema chiaro e `dark` nel tema scuro, con tessere, glifi e sprite referenziati dallo stesso stile; il rendering è locale con MapLibre Native (BSD-2-Clause).
+
+Salvaguardie: le mappe partono solo da un'azione esplicita dell'utente (scheda espansa o *Carica la mappa* per le stazioni vicine, con avviso); le richieste HTTPS `GET` non contengono nomi di fermata, orari o coordinate dell'utente, ma l'host vede i normali metadati di rete (indirizzo IP, data e ora, intestazioni) e la zona mostrata; un errore di caricamento mostra un messaggio con *Riprova* e le stesse informazioni restano disponibili come testo; la mappa non è mai l'unico modo di leggere un dato.
+
+Attribuzione obbligatoria: il controllo di attribuzione di MapLibre resta attivo, ogni scheda mappa mostra «OpenFreeMap © OpenMapTiles, dati © OpenStreetMap contributors» e le impostazioni riportano lo stesso credito, con la licenza di MapLibre Native, accanto al credito OpenStreetMap del catalogo stazioni.
+
+Esclusi: le tessere di `tile.openstreetmap.org` (la tile usage policy di OSMF non ammette app distribuite senza autorizzazione) e le tessere OpenRailwayMap (la loro policy pone la stessa restrizione). Non vanno introdotti senza un permesso scritto del gestore.
+
 ## Attribuzione e presentazione
 
 Ogni snapshot visualizzabile espone nome della fonte, ultimo aggiornamento, freshness e confidence. I dati open data mantengono l’attribuzione richiesta dal titolare. Marchi, loghi, testi editoriali e layout degli operatori non vengono copiati senza permesso.

@@ -134,6 +134,13 @@ import it.binario.app.data.core.OperationalRouteChange
 import it.binario.app.data.core.RunStatus
 import it.binario.app.data.core.StationBoardEntry
 import it.binario.app.data.core.RouteChangeKind
+import it.binario.app.maps.GeoPoint
+import it.binario.app.maps.NearbyStationsMapCard
+import it.binario.app.maps.OpenMapStationIndex
+import it.binario.app.maps.OpenMapsPrivacyNotes
+import it.binario.app.maps.RouteMapCard
+import it.binario.app.maps.StationMapCard
+import it.binario.app.maps.rememberOpenMapStationIndex
 import it.binario.app.plannedjourney.PlannedJourneyAgendaScreen
 import it.binario.app.plannedjourney.PlannedJourneyExportFormat
 import it.binario.app.plannedjourney.PlannedJourneyIcsContract
@@ -629,6 +636,7 @@ private fun BinarioApp(
                     shareStrings = trainShareStrings,
                     punctuality = viewModel.punctualityStats(service),
                     onClearPunctuality = { viewModel.clearPunctualityHistory(service.number) },
+                    mapStationIndex = rememberOpenMapStationIndex(viewModel.stations, viewModel::stationFromName),
                     onShare = {
                         val content = TrainShareFormatter.create(
                             service = service,
@@ -1373,6 +1381,9 @@ internal fun StationBoardScreen(modifier: Modifier, viewModel: TrainViewModel) {
         mutableStateOf(viewModel.stationBoardStation?.name.orEmpty())
     }
     var locationMessage by rememberSaveable { mutableStateOf<String?>(null) }
+    // In memory only (not saved state): the nearby map may mark it, nothing persists it.
+    var nearbyPosition by remember { mutableStateOf<GeoPoint?>(null) }
+    val mapStationIndex = rememberOpenMapStationIndex(viewModel.stations, viewModel::stationFromName)
     var monitorMode by rememberSaveable { mutableStateOf(StationMonitorMode.BOTH.name) }
     val context = LocalContext.current
     val resources = LocalResources.current
@@ -1383,6 +1394,7 @@ internal fun StationBoardScreen(modifier: Modifier, viewModel: TrainViewModel) {
                 locationMessage = resources.getString(R.string.location_unavailable)
             } else {
                 viewModel.updateNearbyStations(location.latitude, location.longitude)
+                nearbyPosition = GeoPoint(location.latitude, location.longitude)
                 locationMessage = resources.getString(R.string.location_sorted_not_saved)
             }
         }
@@ -1472,6 +1484,10 @@ internal fun StationBoardScreen(modifier: Modifier, viewModel: TrainViewModel) {
                     ) {
                         Text(stringResource(if (viewModel.isStationMonitored(station)) R.string.station_board_stop_monitoring else R.string.station_board_start_monitoring))
                     }
+                    StationMapCard(station, mapStationIndex, onOpenStation = {
+                        stationText = it.name
+                        viewModel.selectStationBoardStation(it)
+                    })
                 }
 
                 val findNearbyStationsDescription = stringResource(R.string.accessibility_find_nearby_stations)
@@ -1594,6 +1610,12 @@ internal fun StationBoardScreen(modifier: Modifier, viewModel: TrainViewModel) {
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp)
                 )
+            }
+            item(key = "nearby-map") {
+                NearbyStationsMapCard(viewModel.nearbyStations, nearbyPosition, onOpenStation = {
+                    stationText = it.name
+                    viewModel.selectStationBoardStation(it)
+                }, modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp))
             }
             items(viewModel.nearbyStations, key = { "near-${it.station.id}" }) { nearby ->
                 StationPreferenceRow(
@@ -2294,6 +2316,7 @@ private fun SettingsScreen(
                 Text(stringResource(R.string.settings_privacy_notifications_voice), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text(stringResource(R.string.settings_privacy_wear), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text(stringResource(R.string.settings_privacy_osm), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                OpenMapsPrivacyNotes()
             }
         }
         items(viewModel.savedRoutes, key = { it.id }) { route ->
@@ -2680,6 +2703,7 @@ private fun ServiceDetailScreen(
     shareStrings: TrainShareStrings,
     punctuality: PunctualityStats?,
     onClearPunctuality: () -> Unit,
+    mapStationIndex: OpenMapStationIndex,
     onShare: () -> Unit
 ) {
     val dataLabel = if (isDemonstration) stringResource(R.string.data_status_demo) else freshness?.localizedLabel() ?: stringResource(R.string.data_status_unavailable)
@@ -2782,6 +2806,9 @@ private fun ServiceDetailScreen(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+        }
+        item(key = "route-map-${service.id}") {
+            RouteMapCard(service, mapStationIndex, Modifier.padding(horizontal = 20.dp, vertical = 6.dp))
         }
         items(service.stops, key = { "${service.id}-${it.station}" }) { stop ->
             StopTimelineRow(
