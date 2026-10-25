@@ -19,10 +19,14 @@ if (releaseSigningProperties.values.any { it.isPresent } && !releaseSigningConfi
     logger.warn("Release signing is only enabled when all BINARIO_RELEASE_* properties are set; building unsigned.")
 }
 
+// Play requires distinct versionCodes per form factor and rejects a code that
+// was uploaded before: the Wear code lives in its own range above the phone
+// code, so a shared -PBINARIO_VERSION_CODE override can never make them collide.
+val wearVersionCodeOffset = 1_000_000
 val binarioVersionCode = providers.gradleProperty("BINARIO_VERSION_CODE")
-    .orElse(providers.gradleProperty("BINARIO_WEAR_VERSION_CODE"))
+    .orElse(providers.gradleProperty("BINARIO_APP_VERSION_CODE"))
     .get()
-    .toInt()
+    .toInt() + wearVersionCodeOffset
 val binarioVersionName = providers.gradleProperty("BINARIO_VERSION_NAME").get()
 
 android {

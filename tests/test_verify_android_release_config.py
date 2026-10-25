@@ -38,6 +38,31 @@ class VerifyAndroidReleaseConfigTest(unittest.TestCase):
         with self.assertRaisesRegex(AssertionError, "test_wear_compose_gradle_dependency_suppressions"):
             POLICY.verify(without_test)
 
+    def test_wear_version_code_is_derived_from_the_phone_code_in_a_disjoint_range(self) -> None:
+        stale_wear_property = replacing(
+            "gradle.properties",
+            "BINARIO_APP_VERSION_CODE=35\n",
+            "BINARIO_APP_VERSION_CODE=35\nBINARIO_WEAR_VERSION_CODE=35\n",
+        )
+        with self.assertRaisesRegex(AssertionError, "BINARIO_WEAR_VERSION_CODE"):
+            POLICY.verify(stale_wear_property)
+
+        shared_override_without_offset = replacing(
+            "wear/build.gradle.kts",
+            "    .toInt() + wearVersionCodeOffset\n",
+            "    .toInt()\n",
+        )
+        with self.assertRaisesRegex(AssertionError, "wearVersionCodeOffset"):
+            POLICY.verify(shared_override_without_offset)
+
+        phone_code_inside_wear_range = replacing(
+            "gradle.properties",
+            "BINARIO_APP_VERSION_CODE=35\n",
+            f"BINARIO_APP_VERSION_CODE={POLICY.WEAR_VERSION_CODE_OFFSET}\n",
+        )
+        with self.assertRaisesRegex(AssertionError, "below the Wear range"):
+            POLICY.verify(phone_code_inside_wear_range)
+
     def test_ci_must_lint_both_release_variants(self) -> None:
         without_wear_lint = replacing(
             ".github/workflows/android-ci.yml",

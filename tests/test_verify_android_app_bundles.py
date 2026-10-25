@@ -96,6 +96,15 @@ class VerifyAndroidAppBundlesTest(unittest.TestCase):
         self.assertEqual([], POLICY.verify_bundle(self.path, expected))
         self.assertEqual(64, len(POLICY.sha256_file(self.path)))
 
+    def test_root_profile_moves_wear_version_code_into_its_own_range(self) -> None:
+        expected = POLICY.expected_manifests("root")
+        phone_code = int(expected["phone"]["versionCode"])
+        self.assertEqual("it.binario.app", expected["phone"]["package"])
+        self.assertEqual("it.binario.app", expected["wear"]["package"])
+        self.assertEqual(expected["phone"]["versionName"], expected["wear"]["versionName"])
+        self.assertTrue(0 < phone_code < POLICY.WEAR_VERSION_CODE_OFFSET)
+        self.assertEqual(str(POLICY.WEAR_VERSION_CODE_OFFSET + phone_code), expected["wear"]["versionCode"])
+
     def test_companion_profile_uses_separate_canonical_identity(self) -> None:
         expected = POLICY.expected_manifests("companion")
         self.assertEqual(

@@ -31,6 +31,8 @@ MAX_MANIFEST_BYTES = 4 * 1024 * 1024
 REQUIRED_FILES = {"BundleConfig.pb", MANIFEST_PATH}
 SIGNATURE_SUFFIXES = (".RSA", ".DSA", ".EC", ".SF")
 ANDROID_PACKAGE = "it.binario.app"
+# Mirrors wear/build.gradle.kts: the Wear versionCode is the phone code moved into its own range.
+WEAR_VERSION_CODE_OFFSET = 1_000_000
 ANDROID_NAMESPACE = "http://schemas.android.com/apk/res/android"
 IDENTITY_NAMESPACES = {
     "package": "",
@@ -226,7 +228,7 @@ def expected_manifests(profile: str = "root") -> dict[str, dict[str, str]]:
         },
         "wear": {
             "package": ANDROID_PACKAGE,
-            "versionCode": properties["BINARIO_WEAR_VERSION_CODE"],
+            "versionCode": str(WEAR_VERSION_CODE_OFFSET + int(properties["BINARIO_APP_VERSION_CODE"])),
             "versionName": properties["BINARIO_VERSION_NAME"],
         },
     }
