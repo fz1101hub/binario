@@ -161,8 +161,8 @@ class IosGtfsScheduleTest(unittest.TestCase):
         policy.write_text(json.dumps({
             "schemaVersion": 1,
             "sources": [
-                {"sourceId": pack["sourceId"], "sourceUrl": pack["sourceUrl"], "accessMode": pack["accessMode"]}
-                for pack in manifest_payload["packs"]
+                {"sourceId": pack["sourceId"], "sourceUrl": pack["sourceUrl"], "accessMode": pack["accessMode"], "licence": "CC BY 4.0" if index else None}
+                for index, pack in enumerate(manifest_payload["packs"])
             ],
         }), encoding="utf-8")
         output = self.temp / "policy.sqlite.zlib"
@@ -193,6 +193,45 @@ class IosGtfsScheduleTest(unittest.TestCase):
                 source_policy_path=policy,
                 max_compressed_bytes=4 * 1024 * 1024,
             )
+
+    def test_source_policy_must_record_a_licence_entry_for_every_index_pack(self) -> None:
+        manifest, catalog = write_inputs(self.temp)
+        manifest_payload = json.loads(manifest.read_text(encoding="utf-8"))
+        sources = [
+            {"sourceId": pack["sourceId"], "sourceUrl": pack["sourceUrl"], "accessMode": pack["accessMode"], "licence": None}
+            for pack in manifest_payload["packs"]
+        ]
+        policy = self.temp / "source-policy.json"
+        output = self.temp / "policy.sqlite.zlib"
+        metadata = self.temp / "policy.metadata.json"
+        options = {"source_policy_path": policy, "max_compressed_bytes": 4 * 1024 * 1024}
+
+        without_licence = [{key: value for key, value in source.items() if key != "licence"} for source in sources]
+        policy.write_text(json.dumps({"schemaVersion": 1, "sources": without_licence}), encoding="utf-8")
+        with self.assertRaisesRegex(builder.BuildError, "policy entry 0 is invalid"):
+            builder.build_database(manifest, catalog, output, metadata, **options)
+        blank_licence = [dict(source, licence=" ") for source in sources]
+        policy.write_text(json.dumps({"schemaVersion": 1, "sources": blank_licence}), encoding="utf-8")
+        with self.assertRaisesRegex(builder.BuildError, "invalid licence"):
+            builder.build_database(manifest, catalog, output, metadata, **options)
+
+        policy.write_text(json.dumps({"schemaVersion": 1, "sources": sources}), encoding="utf-8")
+        builder.build_database(manifest, catalog, output, metadata, **options)
+        verify_options = {"source_policy_path": policy, "max_compressed_bytes": 4 * 1024 * 1024, "max_database_bytes": 16 * 1024 * 1024}
+        verifier.verify(output, metadata, **verify_options)
+        # The verifier reads the policy independently of the builder: a source renamed away
+        # from the index packs or a blank licence is rejected on its own.
+        renamed = [dict(source, sourceId=source["sourceId"] + "-renamed") for source in sources]
+        with self.assertRaisesRegex(verifier.VerificationError, "differ from the index packs"):
+            verifier.verify_source_policy(self.write_policy(renamed), {source["sourceId"] for source in sources})
+        with self.assertRaisesRegex(verifier.VerificationError, "invalid licence"):
+            verifier.verify_source_policy(self.write_policy([dict(source, licence="") for source in sources]), {source["sourceId"] for source in sources})
+        verifier.verify_source_policy(self.write_policy(sources), {source["sourceId"] for source in sources})
+
+    def write_policy(self, sources: list[dict]) -> Path:
+        path = self.temp / f"policy-{len(sources)}-{hash(json.dumps(sources, sort_keys=True)) & 0xFFFF}.json"
+        path.write_text(json.dumps({"schemaVersion": 1, "sources": sources}), encoding="utf-8")
+        return path
 
     def test_verifier_independently_rejects_non_rail_route(self) -> None:
         _, _, output, metadata_path, result = self.build()

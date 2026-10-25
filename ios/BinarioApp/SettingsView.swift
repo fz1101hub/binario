@@ -1,4 +1,5 @@
 import SwiftUI
+import BinarioKit
 
 struct SettingsView: View {
     @EnvironmentObject private var model: AppModel
@@ -16,6 +17,19 @@ struct SettingsView: View {
                 Text("settings.data.catalog_notice")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
+            }
+
+            // Guideline 5.2.2 and CC BY: every bundled feed is attributed with its licence and
+            // source page, not only the feed that happens to answer the current search.
+            Section("settings.sources.title") {
+                if model.schedulePacks.isEmpty {
+                    Text(providerStatusKey)
+                        .foregroundStyle(.secondary)
+                } else {
+                    ForEach(model.schedulePacks, id: \.sourceID) { pack in
+                        SourcePackRow(pack: pack, source: model.sourcePolicy?.source(id: pack.sourceID))
+                    }
+                }
             }
 
             Section("settings.privacy.title") {
@@ -53,6 +67,35 @@ struct SettingsView: View {
         case .loading: "settings.data.provider_loading"
         case .available: "settings.data.provider_programmed"
         case .unavailable: "settings.data.provider_unavailable"
+        }
+    }
+}
+
+private struct SourcePackRow: View {
+    let pack: GTFSSourcePack
+    let source: GTFSSourcePolicy.Source?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(pack.attribution)
+            if pack.tripCount > 0 {
+                Text("\(String(localized: "settings.sources.valid_until")) \(pack.lastServiceDate.formatted(date: .long, time: .omitted))")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            } else {
+                Text("settings.sources.no_trips")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+            if let licence = source?.licence {
+                Text("\(String(localized: "settings.sources.licence")) \(licence)")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+            if let source {
+                Link(source.sourceURL.host() ?? source.sourceURL.absoluteString, destination: source.sourceURL)
+                    .font(.footnote)
+            }
         }
     }
 }

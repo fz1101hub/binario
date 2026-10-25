@@ -23,6 +23,8 @@ final class AppModel: ObservableObject {
     @Published fileprivate(set) var watchSyncStatus: WatchSyncStatus
     @Published var searchState: SearchState = .idle
     @Published private(set) var scheduleState: ScheduleState
+    @Published private(set) var schedulePacks: [GTFSSourcePack] = []
+    @Published private(set) var sourcePolicy: GTFSSourcePolicy?
     @Published private(set) var latestSnapshot: JourneySnapshot?
     @Published var persistenceMessageKey: String?
 
@@ -97,6 +99,7 @@ final class AppModel: ObservableObject {
         guard
             let compressedURL = bundle.url(forResource: "binario_gtfs_schedule_v1.sqlite", withExtension: "zlib"),
             let metadataURL = bundle.url(forResource: "binario_gtfs_schedule_v1.metadata", withExtension: "json"),
+            let sourcePolicyURL = bundle.url(forResource: "binario_gtfs_source_policy_v1", withExtension: "json"),
             let applicationSupport = FileManager.default.urls(
                 for: .applicationSupportDirectory,
                 in: .userDomainMask
@@ -112,6 +115,7 @@ final class AppModel: ObservableObject {
             await model.loadSchedule(
                 compressedURL: compressedURL,
                 metadataURL: metadataURL,
+                sourcePolicyURL: sourcePolicyURL,
                 cacheDirectory: cacheDirectory
             )
         }
@@ -128,22 +132,39 @@ final class AppModel: ObservableObject {
         return catalog.search(query)
     }
 
-    func loadSchedule(compressedURL: URL, metadataURL: URL, cacheDirectory: URL) async {
+    func loadSchedule(compressedURL: URL, metadataURL: URL, sourcePolicyURL: URL? = nil, cacheDirectory: URL) async {
         scheduleState = .loading
-        let installedURL = await Task.detached(priority: .utility) {
-            try? BundledGTFSScheduleInstaller().install(
+        let installed = await Task.detached(priority: .utility) { () -> InstalledSchedule? in
+            guard let installedURL = try? BundledGTFSScheduleInstaller().install(
                 compressedURL: compressedURL,
                 metadataURL: metadataURL,
                 cacheDirectory: cacheDirectory
-            )
+            ) else { return nil }
+            let repository = SQLiteGTFSJourneyRepository(databaseURL: installedURL)
+            // The source list is read from the same validated index as the journeys: an index
+            // that cannot describe its packs is not served either.
+            guard let packs = try? repository.sourcePacks() else { return nil }
+            let policy = sourcePolicyURL.flatMap { url in
+                (try? Data(contentsOf: url)).flatMap { try? GTFSSourcePolicy(data: $0) }
+            }
+            return InstalledSchedule(repository: repository, packs: packs, sourcePolicy: policy)
         }.value
-        guard let installedURL else {
+        guard let installed else {
             repository = FailClosedJourneyRepository()
+            schedulePacks = []
+            sourcePolicy = nil
             scheduleState = .unavailable
             return
         }
-        repository = SQLiteGTFSJourneyRepository(databaseURL: installedURL)
+        repository = installed.repository
+        schedulePacks = installed.packs
+        sourcePolicy = installed.sourcePolicy
         scheduleState = .available
+    }
+
+    /// The packs whose filter retained at least one rail trip: the feeds that can answer a search.
+    var includedPacks: [GTFSSourcePack] {
+        schedulePacks.filter { $0.tripCount > 0 }
     }
 
     func run(query: JourneyQuery) async {
@@ -351,6 +372,12 @@ final class AppModel: ObservableObject {
             matchingPolicy: .nextTime
         )
     }
+}
+
+private struct InstalledSchedule: Sendable {
+    let repository: SQLiteGTFSJourneyRepository
+    let packs: [GTFSSourcePack]
+    let sourcePolicy: GTFSSourcePolicy?
 }
 
 @MainActor

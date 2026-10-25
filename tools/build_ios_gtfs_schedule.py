@@ -649,11 +649,16 @@ def read_manifest(
             raise BuildError("GTFS source policy must contain exactly 10 schema-v1 sources")
         policy_by_id = {}
         for index, source in enumerate(sources):
-            if not isinstance(source, dict) or set(source) != {"sourceId", "sourceUrl", "accessMode"}:
+            if not isinstance(source, dict) or set(source) != {"sourceId", "sourceUrl", "accessMode", "licence"}:
                 raise BuildError(f"GTFS source policy entry {index} is invalid")
             source_id, source_url, access_mode = source["sourceId"], source["sourceUrl"], source["accessMode"]
             if not all(isinstance(value, str) and value for value in (source_id, source_url, access_mode)):
                 raise BuildError(f"GTFS source policy entry {index} is incomplete")
+            # The licence is shown in the app's source list; null records that it has not been
+            # confirmed yet, an empty or non-string value is a mistake.
+            licence = source["licence"]
+            if licence is not None and (not isinstance(licence, str) or not licence.strip()):
+                raise BuildError(f"GTFS source policy entry {source_id!r} has an invalid licence")
             if source_id in policy_by_id or access_mode != "OPEN_DIRECT" or not source_url.startswith("https://"):
                 raise BuildError(f"GTFS source policy entry {source_id!r} is not an authorised HTTPS direct source")
             policy_by_id[source_id] = (source_url, access_mode)

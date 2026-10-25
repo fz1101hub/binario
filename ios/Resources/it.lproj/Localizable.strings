@@ -45,6 +45,10 @@
 "settings.data.provider_loading" = "Preparazione in corso";
 "settings.data.provider_programmed" = "10 fonti GTFS incluse · dati programmati";
 "settings.data.catalog_notice" = "Il catalogo stazioni serve solo per identità e ricerca. Non contiene né determina orari, ritardi, binari o stati ufficiali.";
+"settings.sources.title" = "Fonti dati GTFS";
+"settings.sources.valid_until" = "Valido fino al";
+"settings.sources.licence" = "Licenza:";
+"settings.sources.no_trips" = "Nessuna corsa ferroviaria inclusa in questa versione";
 "settings.privacy.title" = "Privacy";
 "settings.privacy.body" = "Binario iOS usa una configurazione locale e minimale.";
 "settings.privacy.no_collection" = "Nessun account, analytics, posizione, microfono o rete in background";

@@ -45,6 +45,10 @@
 "settings.data.provider_loading" = "Preparing";
 "settings.data.provider_programmed" = "10 included GTFS sources · scheduled data";
 "settings.data.catalog_notice" = "The station catalogue is used only for identity and search. It neither contains nor determines schedules, delays, platforms, or official statuses.";
+"settings.sources.title" = "GTFS data sources";
+"settings.sources.valid_until" = "Valid until";
+"settings.sources.licence" = "Licence:";
+"settings.sources.no_trips" = "No rail service included in this version";
 "settings.privacy.title" = "Privacy";
 "settings.privacy.body" = "Binario iOS uses a minimal, local configuration.";
 "settings.privacy.no_collection" = "No account, analytics, location, microphone, or background network access";

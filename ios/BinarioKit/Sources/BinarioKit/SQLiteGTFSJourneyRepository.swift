@@ -25,6 +25,7 @@ public struct SQLiteGTFSJourneyRepository: JourneyRepository, Sendable {
     ]
     private static let maximumResolvedStops = 128
     private static let maximumTimeZones = 16
+    private static let maximumPacks = 64
     private static let maximumCandidateRows = 4_096
     private static let maximumGTFSSeconds = 168 * 60 * 60 - 1
     private static let maximumServiceDayLookback = maximumGTFSSeconds / (24 * 60 * 60)
@@ -44,6 +45,39 @@ public struct SQLiteGTFSJourneyRepository: JourneyRepository, Sendable {
         } catch {
             return false
         }
+    }
+
+    /// Every pack of the index with its attribution, last service day and the number of rail
+    /// trips its filter retained (0 when a feed contributed nothing), in ingestion order.
+    public func sourcePacks() throws -> [GTFSSourcePack] {
+        let database = try SQLiteDatabase(readOnlyURL: databaseURL)
+        _ = try Self.validate(database)
+        let calendar = Self.serviceCalendar(timeZone: TimeZone(identifier: "Europe/Rome") ?? .current)
+        let statement = try database.statement(
+            """
+            SELECT p.source_id, p.attribution, p.last_service_date,
+                   (SELECT count(*) FROM trip AS t WHERE t.pack_id = p.id)
+            FROM pack AS p ORDER BY p.id LIMIT ?
+            """
+        )
+        try statement.bind(Int64(Self.maximumPacks + 1), at: 1)
+        var packs: [GTFSSourcePack] = []
+        while try statement.step() {
+            guard packs.count < Self.maximumPacks else { throw SQLiteGTFSFailure.limitExceeded }
+            guard let sourceID = statement.text(at: 0)?.nonEmpty,
+                  let attribution = statement.text(at: 1)?.normalizedWhitespace.nonEmpty,
+                  let lastServiceDay = Self.date(from: statement.int(at: 2), calendar: calendar)
+            else { throw SQLiteGTFSFailure.invalidData }
+            packs.append(GTFSSourcePack(
+                sourceID: sourceID,
+                attribution: attribution,
+                // Noon keeps the calendar day stable when the date is formatted in any time zone.
+                lastServiceDate: lastServiceDay.addingTimeInterval(12 * 60 * 60),
+                tripCount: Int(statement.int(at: 3))
+            ))
+        }
+        guard !packs.isEmpty else { throw SQLiteGTFSFailure.invalidData }
+        return packs
     }
 
     public func journeys(for query: JourneyQuery) async -> JourneyResult {
@@ -431,6 +465,22 @@ public struct SQLiteGTFSJourneyRepository: JourneyRepository, Sendable {
         let departure: Date
         let attribution: String
         let service: TrainService
+    }
+}
+
+/// One bundled GTFS pack as listed in the artifact's `pack` table.
+public struct GTFSSourcePack: Equatable, Hashable, Sendable {
+    public let sourceID: String
+    public let attribution: String
+    /// The last calendar day on which the pack's services run.
+    public let lastServiceDate: Date
+    public let tripCount: Int
+
+    public init(sourceID: String, attribution: String, lastServiceDate: Date, tripCount: Int) {
+        self.sourceID = sourceID
+        self.attribution = attribution
+        self.lastServiceDate = lastServiceDate
+        self.tripCount = tripCount
     }
 }
 

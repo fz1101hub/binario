@@ -358,6 +358,32 @@ class IOSProjectTests(unittest.TestCase):
         self.assertIn('clearKey = "binario_snapshot_clear"', receiver)
         self.assertIn("store.clear()", receiver)
 
+    def test_settings_source_list_is_backed_by_the_reviewed_policy_licences(self) -> None:
+        policy = json.loads((IOS / "Resources/binario_gtfs_source_policy_v1.json").read_text(encoding="utf-8"))
+        metadata = json.loads((IOS / "Resources/binario_gtfs_schedule_v1.metadata.json").read_text(encoding="utf-8"))
+        settings = (IOS / "BinarioApp/SettingsView.swift").read_text(encoding="utf-8")
+        model = (IOS / "BinarioApp/AppModel.swift").read_text(encoding="utf-8")
+        gtfs = (IOS / "BinarioKit/Sources/BinarioKit/SQLiteGTFSJourneyRepository.swift").read_text(encoding="utf-8")
+        verifier = (ROOT / "tools/verify_ios_gtfs_schedule.py").read_text(encoding="utf-8")
+
+        # Every pack of the index has a policy entry with a licence key (null until confirmed).
+        self.assertEqual(set(metadata["packRowCounts"]), {source["sourceId"] for source in policy["sources"]})
+        for source in policy["sources"]:
+            with self.subTest(source=source["sourceId"]):
+                self.assertEqual({"sourceId", "sourceUrl", "accessMode", "licence"}, set(source))
+                self.assertTrue(source["licence"] is None or source["licence"].strip())
+        self.assertEqual("CC BY 4.0", next(source["licence"] for source in policy["sources"] if source["sourceId"] == "oebb-gtfs"))
+        self.assertIn("verify_source_policy(source_policy_path, pack_source_ids(raw_path))", verifier)
+        # The Settings list reads attribution and validity from the index and licence and URL
+        # from the policy bundled with it.
+        self.assertIn("public func sourcePacks() throws -> [GTFSSourcePack]", gtfs)
+        self.assertIn("repository.sourcePacks()", model)
+        self.assertIn('bundle.url(forResource: "binario_gtfs_source_policy_v1", withExtension: "json")', model)
+        self.assertIn('Section("settings.sources.title")', settings)
+        self.assertIn("ForEach(model.schedulePacks, id: \\.sourceID)", settings)
+        self.assertIn("model.sourcePolicy?.source(id: pack.sourceID)", settings)
+        self.assertIn("settings.sources.licence", settings)
+
     def test_bundled_schedule_fast_path_validates_the_cache_without_rehashing_it(self) -> None:
         installer = (IOS / "BinarioKit/Sources/BinarioKit/BundledGTFSScheduleInstaller.swift").read_text(encoding="utf-8")
         tests = (IOS / "BinarioKit/Tests/BinarioKitTests/SQLiteGTFSJourneyRepositoryTests.swift").read_text(encoding="utf-8")

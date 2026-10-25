@@ -45,6 +45,10 @@
 "settings.data.provider_loading" = "Wird vorbereitet";
 "settings.data.provider_programmed" = "10 enthaltene GTFS-Quellen · Fahrplandaten";
 "settings.data.catalog_notice" = "Der Bahnhofskatalog dient nur der Identität und Suche. Er enthält oder bestimmt keine Fahrzeiten, Verspätungen, Gleise oder offiziellen Statusangaben.";
+"settings.sources.title" = "GTFS-Datenquellen";
+"settings.sources.valid_until" = "Gültig bis";
+"settings.sources.licence" = "Lizenz:";
+"settings.sources.no_trips" = "Keine Bahnverbindung in dieser Version enthalten";
 "settings.privacy.title" = "Datenschutz";
 "settings.privacy.body" = "Binario iOS verwendet eine minimale, lokale Konfiguration.";
 "settings.privacy.no_collection" = "Kein Konto, keine Analyse, kein Standort, kein Mikrofon und kein Netzwerkzugriff im Hintergrund";

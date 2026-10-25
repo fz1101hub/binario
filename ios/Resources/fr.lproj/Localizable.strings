@@ -45,6 +45,10 @@
 "settings.data.provider_loading" = "Préparation en cours";
 "settings.data.provider_programmed" = "10 sources GTFS incluses · données programmées";
 "settings.data.catalog_notice" = "Le catalogue des gares sert uniquement à l’identité et à la recherche. Il ne contient ni ne détermine les horaires, retards, voies ou états officiels.";
+"settings.sources.title" = "Sources de données GTFS";
+"settings.sources.valid_until" = "Valable jusqu’au";
+"settings.sources.licence" = "Licence :";
+"settings.sources.no_trips" = "Aucune circulation ferroviaire incluse dans cette version";
 "settings.privacy.title" = "Confidentialité";
 "settings.privacy.body" = "Binario iOS utilise une configuration locale et minimale.";
 "settings.privacy.no_collection" = "Aucun compte, suivi analytique, localisation, microphone ou accès réseau en arrière-plan";

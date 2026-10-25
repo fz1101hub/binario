@@ -41,6 +41,23 @@ final class SQLiteGTFSJourneyRepositoryTests: XCTestCase {
         XCTAssertEqual(withinValidity, .unavailable(.noJourney))
     }
 
+    func testSourcePacksListAttributionValidityAndRetainedTripCount() throws {
+        let fixture = try Fixture()
+        XCTAssertEqual(try fixture.repository.sourcePacks().map(\.tripCount), [0])
+        try fixture.insertTrip(id: 1, externalID: "direct", seconds: 10 * 3_600)
+        try fixture.insertTrip(id: 2, externalID: "later", seconds: 11 * 3_600)
+
+        let packs = try fixture.repository.sourcePacks()
+
+        XCTAssertEqual(packs.map(\.sourceID), ["source"])
+        XCTAssertEqual(packs.map(\.attribution), ["Synthetic official feed"])
+        XCTAssertEqual(packs.map(\.tripCount), [2])
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = rome
+        let day = calendar.dateComponents([.year, .month, .day], from: packs[0].lastServiceDate)
+        XCTAssertEqual([day.year, day.month, day.day], [2024, 12, 31])
+    }
+
     func testReverseStopSequenceIsRejected() async throws {
         let fixture = try Fixture()
         try fixture.insertTrip(id: 1, externalID: "reverse", originSequence: 2, destinationSequence: 1, seconds: 10 * 3_600)

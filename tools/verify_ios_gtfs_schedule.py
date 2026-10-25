@@ -118,6 +118,34 @@ def verify_input_fingerprint(
         require(source_policy_path.resolve() in resolved_inputs, "reviewed GTFS source policy is absent from the input fingerprint")
     return actual_fingerprint
 
+def verify_source_policy(source_policy_path: Path, pack_source_ids: set[str]) -> None:
+    """The reviewed policy must describe exactly the packs of the index, each with a licence entry."""
+    try:
+        policy = json.loads(source_policy_path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError) as error:
+        raise VerificationError(f"cannot parse GTFS source policy: {error}") from error
+    sources = policy.get("sources") if isinstance(policy, dict) else None
+    require(isinstance(policy, dict) and policy.get("schemaVersion") == 1 and isinstance(sources, list), "invalid GTFS source policy")
+    policy_ids: set[str] = set()
+    for index, source in enumerate(sources):
+        require(isinstance(source, dict) and set(source) == {"sourceId", "sourceUrl", "accessMode", "licence"}, f"GTFS source policy entry {index} is invalid")
+        source_id, source_url, access_mode, licence = source["sourceId"], source["sourceUrl"], source["accessMode"], source["licence"]
+        require(isinstance(source_id, str) and source_id and source_id not in policy_ids, f"GTFS source policy entry {index} has an invalid sourceId")
+        require(isinstance(source_url, str) and source_url.startswith("https://") and access_mode == "OPEN_DIRECT", f"GTFS source policy entry {source_id!r} is not an HTTPS direct source")
+        require(licence is None or (isinstance(licence, str) and licence.strip()), f"GTFS source policy entry {source_id!r} has an invalid licence")
+        policy_ids.add(source_id)
+    require(policy_ids == pack_source_ids, f"GTFS source policy ids {sorted(policy_ids)} differ from the index packs {sorted(pack_source_ids)}")
+
+def pack_source_ids(path: Path) -> set[str]:
+    try:
+        connection = sqlite3.connect(f"file:{path}?mode=ro&immutable=1", uri=True)
+        try:
+            return {str(row[0]) for row in connection.execute("SELECT source_id FROM pack")}
+        finally:
+            connection.close()
+    except sqlite3.Error as error:
+        raise VerificationError(f"SQLite verification failed: {error}") from error
+
 def decompress_bounded(source_path: Path, destination: Path, maximum: int) -> tuple[str, int]:
     digest = hashlib.sha256()
     size = 0
@@ -259,6 +287,8 @@ def verify(
         require(database.get("sizeBytes") == database_size, "decompressed size metadata mismatch")
         require(database.get("sha256") == database_hash, "decompressed SHA-256 mismatch")
         counts = verify_database(raw_path, metadata, input_fingerprint)
+        if source_policy_path is not None:
+            verify_source_policy(source_policy_path, pack_source_ids(raw_path))
     finally:
         raw_path.unlink(missing_ok=True)
     return {"compressedSizeBytes": compressed_size, "databaseSizeBytes": database_size, "compressedSha256": compressed_hash, "databaseSha256": database_hash, "inputFingerprintSha256": input_fingerprint, "rowCounts": counts}
