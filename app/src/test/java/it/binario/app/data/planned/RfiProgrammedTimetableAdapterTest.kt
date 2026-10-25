@@ -103,7 +103,13 @@ class RfiProgrammedTimetableAdapterTest {
         )
 
         assertTrue(result is DataResult.Success)
-        assertEquals(listOf("9923"), (result as DataResult.Success).snapshot.services.map { it.number })
+        // The 08:20 that already left is never today's train: it follows as the next day's departure.
+        val services = (result as DataResult.Success).snapshot.services
+        assertEquals(listOf("9923", "9611"), services.map { it.number })
+        assertEquals(
+            listOf(LocalDate.of(2026, 9, 4).atTime(9, 30), LocalDate.of(2026, 9, 5).atTime(8, 20)),
+            services.map { it.scheduledDepartureDateTime }
+        )
     }
 
     @Test
@@ -182,8 +188,9 @@ class RfiProgrammedTimetableAdapterTest {
         assertEquals(null, service.platform)
         assertEquals(null, service.officialDelayMinutes)
 
+        // After the day's only train the same row is offered as the next day's 08:12, from the cached board.
         val later = adapter.loadRoute(route(appiano, ostiense), Direction.OUTBOUND, query.copy(departureTime = LocalTime.of(8, 13)))
-        assertEquals(RouteFailureReason.NoServiceAfter(query.serviceDate, LocalTime.of(8, 13)), (later as DataResult.Failure).reason)
+        assertEquals(query.serviceDate.plusDays(1).atTime(8, 12), (later as DataResult.Success).snapshot.services.single().scheduledDepartureDateTime)
         assertEquals(1, urls.size)
     }
 
@@ -237,8 +244,8 @@ class RfiProgrammedTimetableAdapterTest {
         val result = source.loadRoute(route(appiano, ostiense), Direction.OUTBOUND, query) as DataResult.Success
         assertEquals("08:12", result.snapshot.services.single().scheduledDeparture)
         val lateQuery = query.copy(departureTime = LocalTime.of(9, 0))
-        val late = source.loadRoute(route(appiano, ostiense), Direction.OUTBOUND, lateQuery) as DataResult.Failure
-        assertEquals(RouteFailureReason.NoServiceAfter(query.serviceDate, lateQuery.departureTime), late.reason)
+        val late = source.loadRoute(route(appiano, ostiense), Direction.OUTBOUND, lateQuery) as DataResult.Success
+        assertEquals(query.serviceDate.plusDays(1).atTime(8, 12), late.snapshot.services.single().scheduledDepartureDateTime)
     }
 
     @Test

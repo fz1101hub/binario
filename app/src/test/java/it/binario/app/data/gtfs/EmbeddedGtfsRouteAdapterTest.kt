@@ -366,9 +366,31 @@ class EmbeddedGtfsRouteAdapterTest {
             LocalDateTime.of(2026, 9, 4, 0, 2),
             (late as DataResult.Success).snapshot.services.single().scheduledDepartureDateTime
         )
-        // Thursday 08:00: Friday 00:02 is beyond the look-ahead and is not offered as "next".
+        // Thursday 08:00: nothing else runs on Thursday, so Friday 00:02 is the next train (within 24 hours).
         val morning = adapter.loadRoute(route, Direction.OUTBOUND, JourneyQuery(LocalDate.of(2026, 9, 3), LocalTime.of(8, 0)))
-        assertTrue(morning is DataResult.Failure)
+        assertTrue(morning.toString(), morning is DataResult.Success)
+        assertEquals(
+            LocalDateTime.of(2026, 9, 4, 0, 2),
+            (morning as DataResult.Success).snapshot.services.single().scheduledDepartureDateTime
+        )
+    }
+
+    @Test
+    fun `dopo l ultimo treno della giornata propone i primi treni del giorno successivo`() = runBlocking {
+        val adapter = adapter(feed())
+        // Thursday 14:00: the 08:05 has left; the answer is Friday's 08:05, not "no train after 14:00".
+        val afternoon = adapter.loadRoute(route, Direction.OUTBOUND, JourneyQuery(LocalDate.of(2026, 9, 3), LocalTime.of(14, 0)))
+        assertTrue(afternoon.toString(), afternoon is DataResult.Success)
+        val service = (afternoon as DataResult.Success).snapshot.services.single()
+        assertEquals(LocalDateTime.of(2026, 9, 4, 8, 5), service.scheduledDepartureDateTime)
+        assertEquals("08:05", service.scheduledDeparture)
+        assertEquals(LocalDate.of(2026, 9, 4), service.gtfsIdentity?.serviceDate)
+        // Friday 14:00: the weekday-only service has no Saturday run, so the day really is over.
+        val friday = adapter.loadRoute(route, Direction.OUTBOUND, JourneyQuery(LocalDate.of(2026, 9, 4), LocalTime.of(14, 0)))
+        assertEquals(RouteFailureReason.NoServiceAfter(LocalDate.of(2026, 9, 4), LocalTime.of(14, 0)), (friday as DataResult.Failure).reason)
+        // Thursday 08:05 exactly: today's train is offered once, Friday's 08:05 lies outside the window.
+        val exact = adapter.loadRoute(route, Direction.OUTBOUND, JourneyQuery(LocalDate.of(2026, 9, 3), LocalTime.of(8, 5)))
+        assertEquals(listOf(LocalDateTime.of(2026, 9, 3, 8, 5)), (exact as DataResult.Success).snapshot.services.map { it.scheduledDepartureDateTime })
     }
 
     @Test

@@ -72,14 +72,16 @@ class ItalianRailServiceCalendarTest {
     }
 
     @Test
-    fun `late searches include the next day's early RFI rows within the look-ahead`() {
+    fun `RFI rows earlier than the requested time are the next day's trains`() {
         val thursday = LocalDate.of(2026, 10, 8)
         val requested = 23 * 60 + 30
         assertEquals(thursday, ItalianRailServiceCalendar.rfiDepartureDate(23 * 60 + 45, thursday, requested))
         assertEquals(thursday.plusDays(1), ItalianRailServiceCalendar.rfiDepartureDate(5, thursday, requested))
-        assertEquals(null, ItalianRailServiceCalendar.rfiDepartureDate(8 * 60, thursday, requested))
-        // A morning search never pulls the next day's early trains.
-        assertEquals(null, ItalianRailServiceCalendar.rfiDepartureDate(5, thursday, 8 * 60))
+        // After the day's last train the next morning's departures are the answer, as in the GTFS packs.
+        assertEquals(thursday.plusDays(1), ItalianRailServiceCalendar.rfiDepartureDate(8 * 60, thursday, requested))
+        assertEquals(thursday.plusDays(1), ItalianRailServiceCalendar.rfiDepartureDate(5, thursday, 8 * 60))
+        assertEquals(thursday, ItalianRailServiceCalendar.rfiDepartureDate(8 * 60, thursday, 8 * 60))
+        assertEquals(null, ItalianRailServiceCalendar.rfiDepartureDate(25 * 60, thursday, requested))
         assertEquals(thursday, ItalianRailServiceCalendar.rfiDepartureDate(Int.MAX_VALUE, thursday, requested))
     }
 }
