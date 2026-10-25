@@ -134,6 +134,13 @@ targets:
         # App Store Connect rejects an embedded Watch app without its own 1024 pt icon (ITMS-90713).
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: NO
+      configs:
+        debug:
+          # BinarioWatchTests uses `@testable import BinarioWatch`: the Debug build must be
+          # compiled with testability, as the iPhone app above and the standalone harness are.
+          ONLY_ACTIVE_ARCH: YES
+          ENABLE_TESTABILITY: YES
+          SWIFT_OPTIMIZATION_LEVEL: -Onone
     entitlements:
       path: ../apple-watch/BinarioWatch/BinarioWatch.entitlements
     dependencies:
@@ -156,6 +163,10 @@ targets:
         PRODUCT_NAME: BinarioWatchTests
         TEST_HOST: "$(BUILT_PRODUCTS_DIR)/BinarioWatch.app/BinarioWatch"
         BUNDLE_LOADER: "$(TEST_HOST)"
+      configs:
+        debug:
+          ONLY_ACTIVE_ARCH: YES
+          SWIFT_OPTIMIZATION_LEVEL: -Onone
   BinarioWatchWidgets:
     type: app-extension
     platform: watchOS
@@ -175,5 +186,9 @@ targets:
         INFOPLIST_KEY_CFBundleDisplayName: Binario
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: ../apple-watch/BinarioWatchWidgets/Info.plist
+      configs:
+        debug:
+          ONLY_ACTIVE_ARCH: YES
+          SWIFT_OPTIMIZATION_LEVEL: -Onone
     entitlements:
       path: ../apple-watch/BinarioWatch/BinarioWatch.entitlements

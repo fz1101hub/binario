@@ -107,8 +107,15 @@ class IOSProjectTests(unittest.TestCase):
         self.assertNotIn('pkgConfig: "sqlite3"', manifest)
         self.assertNotIn('pkgConfig: "zlib"', manifest)
 
-    def test_iphone_debug_targets_match_the_active_simulator_architecture(self) -> None:
-        for name in ("Binario", "BinarioAppTests", "BinarioKitTests"):
+    def test_debug_targets_match_the_active_simulator_architecture(self) -> None:
+        for name in (
+            "Binario",
+            "BinarioAppTests",
+            "BinarioKitTests",
+            "BinarioWatch",
+            "BinarioWatchTests",
+            "BinarioWatchWidgets",
+        ):
             with self.subTest(target=name):
                 settings = self.targets[name]["settings"]
                 self.assertTrue(settings["configs"]["debug"]["ONLY_ACTIVE_ARCH"])
@@ -116,9 +123,15 @@ class IOSProjectTests(unittest.TestCase):
                 self.assertNotIn("ONLY_ACTIVE_ARCH", settings["base"])
                 self.assertNotIn("SWIFT_OPTIMIZATION_LEVEL", settings["base"])
                 self.assertNotIn("release", settings["configs"])
-        app_settings = self.targets["Binario"]["settings"]
-        self.assertTrue(app_settings["configs"]["debug"]["ENABLE_TESTABILITY"])
-        self.assertNotIn("ENABLE_TESTABILITY", app_settings["base"])
+
+    def test_hosted_test_bundles_import_debug_builds_compiled_for_testing(self) -> None:
+        # BinarioAppTests and BinarioWatchTests use `@testable import`; a host app built
+        # without ENABLE_TESTABILITY makes xcodebuild fail with "was not compiled for testing".
+        for name in ("Binario", "BinarioWatch"):
+            with self.subTest(target=name):
+                settings = self.targets[name]["settings"]
+                self.assertTrue(settings["configs"]["debug"]["ENABLE_TESTABILITY"])
+                self.assertNotIn("ENABLE_TESTABILITY", settings["base"])
 
     def test_watch_sharing_binding_uses_explicit_actor_isolated_setter_closure(self) -> None:
         settings = (IOS / "BinarioApp/SettingsView.swift").read_text(encoding="utf-8")
