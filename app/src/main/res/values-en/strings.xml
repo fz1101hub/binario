@@ -1,4 +1,4 @@
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
     <string name="app_name">Binario</string>
     <string name="widget_description">Displays the next services on your Binario route.</string>
     <string name="widget_refresh">Refresh services</string>
@@ -645,7 +645,8 @@
     <string name="widget_warning_delay_divergence">DELAYS DIVERGE</string>
     <string name="widget_service_accessibility">Operator %1$s. %2$s %3$s to %4$s. Expected departure %5$s. %6$s. %7$s.</string>
     <string name="widget_data_accessibility">Source %1$s. %2$s. %3$s. %4$s</string>
-    <string name="widget_quality_score_accessibility">, quality score %1$d out of 100</string>
+    <!-- "out of 100" is a score scale, not a countable quantity: no plural forms apply. -->
+    <string name="widget_quality_score_accessibility" tools:ignore="PluralsCandidate">, quality score %1$d out of 100</string>
     <string name="widget_warnings_accessibility">. Warnings: %1$s</string>
 
     <!-- Texts carried verbatim in the Wear payload. -->
