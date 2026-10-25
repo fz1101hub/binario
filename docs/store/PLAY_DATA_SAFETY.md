@@ -87,7 +87,7 @@ La tabella copre ogni host `http(s)://` trovato in `app/src/main/java`, `wear/sr
 | Host | Categoria | Dove nel codice | Quando viene contattato | Dati inviati |
 |---|---|---|---|---|
 | `prm.rfi.it` | A | `data/planned/RfiProgrammedTimetableAdapter.kt`, `RfiProgrammedStationBoardAdapter.kt`, `RfiSupplementalHubTimetableAdapter.kt` | Ricerca tratta, tabellone stazione e refresh widget per le stazioni hub RFI mappate | `GET` con identificativo pubblico PRM della stazione, `lin=it`, `User-Agent` Binario |
-| `jbb.ghsq.de` | A | `data/gtfs/RemoteGtfsFallbackDataSource.kt`, `data/gtfs/GtfsArtifactDownloader.kt`, `data/live/EuropeanSleeperGtfsRealtimeAdapter.kt`, catalogo | Solo dopo che le fonti primarie non hanno restituito la tratta: GTFS statico e Trip Updates European Sleeper | `GET` senza parametri utente; soli metadati di rete |
+| `jbb.ghsq.de` | A | `data/sources/InternationalSourceCatalog.kt` (URL del catalogo, scaricati da `data/gtfs/GtfsArtifactDownloader.kt` per `RemoteGtfsFallbackDataSource.kt`), `data/live/EuropeanSleeperGtfsRealtimeAdapter.kt` | Solo dopo che le fonti primarie non hanno restituito la tratta: GTFS statico e Trip Updates European Sleeper | `GET` senza parametri utente; soli metadati di rete |
 | `iechub.rfi.it` | B | `data/live/RfiStationBoardAdapter.kt` | Mai nella build distribuita | `GET` con `placeId` pubblico della stazione |
 | `italoinviaggio.italotreno.com` | B | `data/live/ItaloPublicStationAdapter.kt`, catalogo | Mai nella build distribuita | `GET` con slug pubblico della stazione nello URL |
 | `www.viaggiatreno.it` | B | `data/live/ViaggiaTrenoStationAdapter.kt`, catalogo | Mai nella build distribuita | `POST` modulo con il nome della stazione |
