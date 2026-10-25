@@ -595,6 +595,7 @@
     <string name="commuter_alerts_title">Commuter alerts</string>
     <string name="commuter_alerts_description">Local reminders with lead time, recurrence and a quiet period. They do not update with delays without an authorised source.</string>
     <string name="commuter_alerts_create">Create commuter alert</string>
+    <string name="commuter_alerts_route_required">Select a route to create a commuter alert.</string>
     <string name="accessibility_remove_commuter_alert">Delete alert for %1$s</string>
     <string name="commuter_alert_sheet_title">Commuter alert</string>
     <string name="commuter_alert_station">Stop</string>

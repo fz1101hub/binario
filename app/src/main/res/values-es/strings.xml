@@ -605,6 +605,7 @@
     <string name="commuter_alerts_title">Alertas de viajeros</string>
     <string name="commuter_alerts_description">Recordatorios locales con anticipo, recurrencia y periodo de silencio. No se actualizan con los retrasos sin una fuente autorizada.</string>
     <string name="commuter_alerts_create">Crear alerta de viajero</string>
+    <string name="commuter_alerts_route_required">Selecciona una ruta para crear una alerta de viajero.</string>
     <string name="accessibility_remove_commuter_alert">Eliminar alerta para %1$s</string>
     <string name="commuter_alert_sheet_title">Alerta de viajero</string>
     <string name="commuter_alert_station">Parada</string>

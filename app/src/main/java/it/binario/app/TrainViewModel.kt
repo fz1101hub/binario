@@ -933,13 +933,15 @@ class TrainViewModel @JvmOverloads constructor(
         monitoredServices = routeStore.replaceServiceMonitors(monitors)
     }
 
+    /** Null without an active route: the placeholder route has no label an alert could carry. */
     fun createCommuterAlert(
         stationName: String,
         time: String,
         leadMinutes: Int,
         repeat: AlertRepeat,
         quietHoursEnabled: Boolean
-    ): CommuterAlert {
+    ): CommuterAlert? {
+        if (!hasActiveRoute) return null
         val alert = commuterAlertStore.newAlert(currentRouteLabel(), stationName, time, leadMinutes, repeat, quietHoursEnabled)
         commuterAlerts = commuterAlertStore.save(alert)
         return alert

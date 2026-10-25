@@ -605,6 +605,7 @@
     <string name="commuter_alerts_title">Alertes de navetteur</string>
     <string name="commuter_alerts_description">Rappels locaux avec anticipation, récurrence et plage silencieuse. Ils ne se mettent pas à jour avec les retards sans source autorisée.</string>
     <string name="commuter_alerts_create">Créer une alerte de navetteur</string>
+    <string name="commuter_alerts_route_required">Sélectionnez un trajet pour créer une alerte de navetteur.</string>
     <string name="accessibility_remove_commuter_alert">Supprimer l’alerte pour %1$s</string>
     <string name="commuter_alert_sheet_title">Alerte de navetteur</string>
     <string name="commuter_alert_station">Arrêt</string>

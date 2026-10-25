@@ -595,6 +595,7 @@
     <string name="commuter_alerts_title">Pendlerwarnungen</string>
     <string name="commuter_alerts_description">Lokale Erinnerungen mit Vorlaufzeit, Wiederholung und Ruhezeit. Ohne autorisierte Quelle werden sie nicht bei Verspätungen aktualisiert.</string>
     <string name="commuter_alerts_create">Pendlerwarnung erstellen</string>
+    <string name="commuter_alerts_route_required">Wähle eine Strecke aus, um eine Pendlerwarnung zu erstellen.</string>
     <string name="accessibility_remove_commuter_alert">Warnung für %1$s löschen</string>
     <string name="commuter_alert_sheet_title">Pendlerwarnung</string>
     <string name="commuter_alert_station">Halt</string>

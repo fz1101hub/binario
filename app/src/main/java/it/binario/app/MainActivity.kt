@@ -2160,7 +2160,9 @@ private fun SettingsScreen(
             onSave = { station, time, lead, repeat, quietHours ->
                 val alert = viewModel.createCommuterAlert(station, time, lead, repeat, quietHours)
                 showAlertComposer = false
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                if (alert == null) {
+                    alertFeedback = resources.getString(R.string.commuter_alerts_route_required)
+                } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
                     ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
                 ) {
                     pendingAlert = alert
@@ -2201,6 +2203,7 @@ private fun SettingsScreen(
             CommuterAlertsPanel(
                 alerts = viewModel.commuterAlerts,
                 feedback = alertFeedback,
+                canAdd = viewModel.hasActiveRoute,
                 onAdd = { showAlertComposer = true },
                 onRemove = viewModel::removeCommuterAlert
             )
@@ -2312,13 +2315,15 @@ private fun SettingsActionRow(title: String, detail: String, onClick: () -> Unit
 private fun CommuterAlertsPanel(
     alerts: List<CommuterAlert>,
     feedback: String?,
+    canAdd: Boolean,
     onAdd: () -> Unit,
     onRemove: (CommuterAlert) -> Unit
 ) {
     Column(Modifier.padding(horizontal = 20.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(stringResource(R.string.commuter_alerts_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         Text(stringResource(R.string.commuter_alerts_description), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Button(onClick = onAdd, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.commuter_alerts_create)) }
+        Button(onClick = onAdd, enabled = canAdd, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.commuter_alerts_create)) }
+        if (!canAdd) Text(stringResource(R.string.commuter_alerts_route_required), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         feedback?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
         alerts.forEach { alert ->
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
