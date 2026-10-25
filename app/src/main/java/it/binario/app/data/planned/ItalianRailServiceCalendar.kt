@@ -34,7 +34,8 @@ internal object ItalianRailServiceCalendar {
      * The text is read as clauses of day terms with a polarity. Positive terms say when a train
      * runs; terms after a negation (NON, ESCLUSO, ECCETTO, TRANNE, SALVO) say when it does not,
      * until the clause ends. Day names, three-letter and two-letter abbreviations, ranges
-     * ("LUN-VEN", "DAL LUNEDÌ AL SABATO"), FERIALE and every FESTIV* form are understood.
+     * ("LUN-VEN", "DAL LUNEDÌ AL SABATO"), FERIALE, LAVORATIV*, every FESTIV* form and
+     * PREFESTIV* (Saturdays and the eves of holidays) are understood.
      * A train runs when no positive term exists or one matches, and no negative term matches.
      * Text with no recognised term (warnings such as "Non ferma a X") stays fail-open.
      */
@@ -61,6 +62,11 @@ internal object ItalianRailServiceCalendar {
 
     private data object Weekday : TermKind {
         override fun matches(date: LocalDate) = date.dayOfWeek != DayOfWeek.SUNDAY && !isHoliday(date)
+    }
+
+    /** The day before a Sunday or holiday (so every Saturday), unless it is a holiday itself. */
+    private data object HolidayEve : TermKind {
+        override fun matches(date: LocalDate) = Weekday.matches(date) && Holiday.matches(date.plusDays(1))
     }
 
     private data object Daily : TermKind {
@@ -126,8 +132,9 @@ internal object ItalianRailServiceCalendar {
                 token == "GIORNALIERO" || token == "QUOTIDIANO" ||
                     token == "TUTTI" && tokens.getOrNull(index + 1) == "I" && tokens.getOrNull(index + 2) == "GIORNI" ->
                     terms += Term(Daily, negated)
+                token.startsWith("PREFEST") -> terms += Term(HolidayEve, negated)
                 token.startsWith("FEST") -> terms += Term(Holiday, negated)
-                token == "FERIALE" || token == "FERIALI" -> terms += Term(Weekday, negated)
+                token == "FERIALE" || token == "FERIALI" || token.startsWith("LAVORATIV") -> terms += Term(Weekday, negated)
                 (token == "DAL" || token == "DA") && dayAt(index + 1) != null &&
                     tokens.getOrNull(index + 2).let { it == "AL" || it == "A" } && dayAt(index + 3) != null -> {
                     terms += Term(Days(dayRange(dayAt(index + 1)!!, dayAt(index + 3)!!)), negated)

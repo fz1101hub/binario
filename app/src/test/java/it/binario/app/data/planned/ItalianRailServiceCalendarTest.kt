@@ -59,6 +59,23 @@ class ItalianRailServiceCalendarTest {
     }
 
     @Test
+    fun `prefestivi are saturdays and the eves of holidays, lavorativi are weekdays`() {
+        //                       Mon    Tue    Wed    Fri    Sat    Sun    HolTue EastMon
+        assertEquals(listOf(false, false, false, false, true, false, false, false), week("Prefestivo"))
+        assertEquals(listOf(false, false, false, false, true, false, false, false), week("Prefestivi"))
+        assertEquals(listOf(false, false, false, false, true, true, true, true), week("Prefestivi e festivi"))
+        // "Lavorativo" is the RFI "feriale": Saturdays included, Sundays and holidays excluded.
+        assertEquals(listOf(true, true, true, true, true, false, false, false), week("Lavorativi"))
+        assertEquals(listOf(true, true, true, true, true, false, false, false), week("Giorni lavorativi"))
+        assertEquals(listOf(true, true, true, true, false, true, true, true), week("Non si effettua nei giorni prefestivi"))
+        // The eve of a weekday holiday counts (Monday 2026-06-01 before the Tuesday 2 June), a holiday itself does not.
+        assertEquals(true, ItalianRailServiceCalendar.runsOnDate("Prefestivi", LocalDate.of(2026, 6, 1)))
+        assertEquals(false, ItalianRailServiceCalendar.runsOnDate("Prefestivi", LocalDate.of(2026, 12, 25)))
+        assertEquals(false, ItalianRailServiceCalendar.runsOnDate("Prefestivi", LocalDate.of(2026, 4, 5)))
+        assertEquals(true, ItalianRailServiceCalendar.runsOnDate("Prefestivi", LocalDate.of(2026, 12, 24)))
+    }
+
+    @Test
     fun `written ranges cover every day in between`() {
         assertEquals(listOf(true, true, true, true, true, false, true, true), week("Dal lunedì al sabato"))
         assertEquals(listOf(true, true, true, true, true, false, true, true), week("Lun-Sab"))
