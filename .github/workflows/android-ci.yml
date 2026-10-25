@@ -76,6 +76,11 @@ on:
         required: false
         type: boolean
         default: false
+      refresh_dependency_metadata:
+        description: "Rigenera i checksum SHA-256 di gradle/verification-metadata.xml e stampa il diff da revisionare (non esegue il gate)"
+        required: false
+        type: boolean
+        default: false
 
 concurrency:
   group: android-ci-${{ github.event.pull_request.number || github.ref }}
@@ -86,6 +91,7 @@ permissions:
 
 jobs:
   android:
+    if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.refresh_dependency_metadata) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 60
 
@@ -291,3 +297,53 @@ jobs:
       - name: Remove the upload keystore
         if: ${{ always() }}
         run: rm -f "$RUNNER_TEMP/binario-upload.jks"
+
+  # Manual helper for dependency changes. Gradle cannot run in the development container (Google Maven and
+  # the Android SDK are unreachable), so a dependency change gets its checksums here: the CI task set runs
+  # with --write-verification-metadata sha256 and the diff is printed (gzip + base64) for review. The job
+  # never commits; the reviewed diff is applied in the change that adds the dependency.
+  dependency-metadata:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.refresh_dependency_metadata }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Validate Gradle wrappers
+        uses: gradle/actions/wrapper-validation@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
+        with:
+          min-wrapper-count: "2"
+
+      - name: Java 17
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version: "17.0.20+101"
+
+      - name: Enable Gradle wrapper
+        run: chmod +x gradlew
+
+      - name: Regenerate SHA-256 verification metadata
+        # --continue: a failing lint or test task must not stop the resolution of later configurations.
+        run: >-
+          ./gradlew --no-daemon --continue --write-verification-metadata sha256
+          :app:testDebugUnitTest :wear:testDebugUnitTest
+          :app:lintDebug :wear:lintDebug
+          :app:assembleDebug :wear:assembleDebug
+          :app:assembleDebugAndroidTest
+          :app:assembleRelease :wear:assembleRelease
+          :app:bundleRelease :wear:bundleRelease
+          :app:lintVitalRelease :wear:lintVitalRelease
+          :app:lintRelease :wear:lintRelease
+
+      - name: Print the metadata diff for review
+        if: always()
+        run: |
+          git diff --stat -- gradle/verification-metadata.xml
+          git diff -- gradle/verification-metadata.xml > "$RUNNER_TEMP/metadata.diff"
+          sha256sum "$RUNNER_TEMP/metadata.diff"
+          gzip -9 -c "$RUNNER_TEMP/metadata.diff" | base64 -w 0 | fold -w 4000 | sed 's/^/METADATA_DIFF /'
+          echo
+          echo "METADATA_DIFF_END"

@@ -18,8 +18,10 @@ def read(relative: str) -> str:
 
 
 def verify(read_file=read) -> None:
-    def require(path: str, *needles: str) -> str:
+    def require(path: str, *needles: str, section=None) -> str:
         text = read_file(path)
+        if section is not None:
+            text = section(text)
         missing = [needle for needle in needles if needle not in text]
         if missing:
             raise AssertionError(f"{path}: missing {', '.join(missing)}")
@@ -94,6 +96,8 @@ def verify(read_file=read) -> None:
         "<verify-metadata>true</verify-metadata>",
         '<sha256 value="',
     )
+    # The gate is the `android` job: the manual `dependency-metadata` helper job repeats the task list
+    # without dependency verification, so it must not satisfy these checks.
     require(
         ".github/workflows/android-ci.yml",
         "tools/verify_gradle_dependency_metadata.py",
@@ -108,6 +112,7 @@ def verify(read_file=read) -> None:
         ":app:lintRelease",
         ":wear:lintRelease",
         "python3 -m unittest tests.test_wear_compose_gradle_dependency_suppressions",
+        section=lambda text: text.split("\n  dependency-metadata:\n", 1)[0],
     )
 
 
