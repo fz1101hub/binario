@@ -4,7 +4,7 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <!-- GPS arrival alarm: precise location only while its foreground service runs, started from
-         the visible app (while-in-use). There is deliberately no ACCESS_BACKGROUND_LOCATION. -->
+         the visible app (while-in-use). The background location permission is deliberately absent. -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
