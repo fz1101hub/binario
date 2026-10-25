@@ -151,14 +151,16 @@ internal fun RailNoticeItem(notice: RailNotice, showLines: Boolean = true) {
     var expanded by rememberSaveable(notice.id) { mutableStateOf(false) }
     val locale = LocalConfiguration.current.locales[0]
     val uriHandler = LocalUriHandler.current
+    // Trenord titles are the first sentence of the text: when the body repeats it, the body alone is shown.
+    val titleInBody = notice.body?.startsWith(notice.title.removeSuffix("…").trimEnd()) == true
     Column(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
         if (notice.mentionsStrike) StrikeBadge()
-        LinkifiedText(notice.title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+        if (!titleInBody) LinkifiedText(notice.title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
         if (showLines) noticeLinesLabel(notice.lines)?.let { SourceSectionNote(it) }
         notice.body?.let { body ->
             LinkifiedText(
                 body,
-                style = MaterialTheme.typography.bodySmall,
+                style = if (titleInBody) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.bodySmall,
                 maxLines = if (expanded) Int.MAX_VALUE else COLLAPSED_LINES
             )
             if (body.length > COLLAPSED_CHARACTERS || body.count { it == '\n' } >= COLLAPSED_LINES) {

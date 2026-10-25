@@ -36,6 +36,15 @@ class ViaggiaTrenoTrainNoticesAdapterTest {
         assertTrue(result.value.all { it.validFrom == LocalDate.of(2026, 7, 4) && it.validUntil == LocalDate.of(2026, 7, 4) })
     }
 
+    @Test fun `a second real train keeps its own origin and orders same-day notes by insertion time`() = runBlocking {
+        val adapter = adapter(RecordingPublicSourceFetcher { sourceFixture("viaggiatreno-smartcaring-9588.json") })
+        val notes = (adapter.getTrainNotices(TrainNoticeRequest("9588", LocalDate.of(2026, 10, 11), "S11781")) as ProviderResult.Success).value
+        assertEquals(listOf("viaggiatreno-train-notices:815568", "viaggiatreno-train-notices:815521"), notes.map { it.id })
+        assertTrue(notes.all { it.text.startsWith("Il treno 9588 da REGGIO DI CALABRIA CENTRALE") })
+        val wrongOrigin = adapter.getTrainNotices(TrainNoticeRequest("9588", LocalDate.of(2026, 10, 11), "S01700")) as ProviderResult.Success
+        assertTrue(wrongOrigin.value.isEmpty())
+    }
+
     @Test fun `past days, another origin and another number are filtered out`() = runBlocking {
         val adapter = adapter(RecordingPublicSourceFetcher { notes8829 })
         val today = adapter.getTrainNotices(TrainNoticeRequest("8829", LocalDate.of(2026, 10, 25), "S01700")) as ProviderResult.Success

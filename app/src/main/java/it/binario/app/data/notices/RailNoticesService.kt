@@ -136,6 +136,15 @@ class RailNoticesService(
 
     val hasTrenordSource: Boolean get() = trenord != null
 
+    /**
+     * Whether any enabled source would be asked for this train. When none applies the detail shows no notice
+     * section at all, because an empty list would wrongly read as "no notice published".
+     */
+    fun appliesTo(context: TrainNoticeContext): Boolean =
+        (context.matchesTrenitaliaNumbers && (trainNoticeProviders.isNotEmpty() ||
+            networkAlertProviders.any { publisherOf(it.descriptor.id) == NoticePublisher.TRENITALIA })) ||
+            (trenord != null && (context.trenordOperated || context.nearTrenordNetwork))
+
     suspend fun forTrain(context: TrainNoticeContext): TrainDetailNotices = coroutineScope {
         val trenitalia = context.matchesTrenitaliaNumbers
         // Per-train notices are a Trenitalia service; other operators' numbers would only match by coincidence.

@@ -119,6 +119,17 @@ class TrenordLineNoticesAdapterTest {
         assertTrue(general.unavailable.isEmpty())
     }
 
+    @Test fun `the train detail shows a notice section only when an enabled source covers the train`() {
+        val trenitaliaNews = TrenitaliaInfomobilityNewsAdapter(RecordingPublicSourceFetcher { "[]" }, clock, 0)
+        val service = RailNoticesService(emptyList(), listOf(trenitaliaNews), adapter())
+        val base = TrainNoticeContext("28", LocalDate.of(2026, 10, 25), null, RailOperator.SBB, listOf("Lugano", "Zürich HB"), listOf("Lugano", "Zürich HB"))
+        assertFalse(service.appliesTo(base))
+        assertTrue(service.appliesTo(base.copy(operator = RailOperator.TRENITALIA_LONG_DISTANCE)))
+        assertTrue(service.appliesTo(base.copy(operator = RailOperator.TRENORD)))
+        assertTrue(service.appliesTo(base.copy(nearTrenordNetwork = true)))
+        assertFalse(RailNoticesService(emptyList(), emptyList(), null).appliesTo(base.copy(operator = RailOperator.TRENORD)))
+    }
+
     @Test fun `line matching uses whole station names, not substrings`() {
         val line = TrenordLine("D034", "LAVENO-VARESE-SARONNO-MILANO")
         assertEquals(setOf("VARESE", "MILANO"), TrenordLineMatcher.matchedTokens(line, listOf("Varese Nord", "Milano P.ta Garibaldi")))

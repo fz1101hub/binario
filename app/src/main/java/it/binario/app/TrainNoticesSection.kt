@@ -28,6 +28,8 @@ fun TrainNoticesSection(service: TrainService, viewModel: RailNoticesViewModel, 
         TrainNoticeContext.from(service)
     } ?: return
     val context = remember(base, index) { index?.let { base.copy(nearTrenordNetwork = it.anyInTrenordArea(base.endpoints)) } }
+    // No enabled source covers this train (for example a Swiss or French service): no section at all.
+    if (context != null && !viewModel.trainNoticesApply(context)) return
     LaunchedEffect(context) { context?.let(viewModel::loadTrainNotices) }
     val locale = LocalConfiguration.current.locales[0]
     SourceSectionCard(title = stringResource(R.string.notices_train_title)) {
