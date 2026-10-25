@@ -31,6 +31,11 @@ class AppleWatchProjectTests(unittest.TestCase):
         self.assertTrue(settings["INFOPLIST_KEY_WKWatchOnly"])
         self.assertEqual(1, self.project["settings"]["base"]["CURRENT_PROJECT_VERSION"])
         self.assertEqual("0.1.0", self.project["settings"]["base"]["MARKETING_VERSION"])
+        # The harness compiles the Watch sources in the same language mode as the store product.
+        self.assertEqual(6.0, self.project["settings"]["base"]["SWIFT_VERSION"])
+        self.assertIn("harness", (APPLE_WATCH / "project.yml").read_text(encoding="utf-8"))
+        self.assertIn("Non va mai inviato ad App Store Connect", (APPLE_WATCH / "APPLE_WATCH_IMPLEMENTATION.md").read_text(encoding="utf-8"))
+        self.assertIn("harness watch-only di CI e test", (ROOT / "README.md").read_text(encoding="utf-8"))
         self.assertEqual("$(CURRENT_PROJECT_VERSION)", settings["INFOPLIST_KEY_CFBundleVersion"])
         self.assertEqual("$(MARKETING_VERSION)", settings["INFOPLIST_KEY_CFBundleShortVersionString"])
         self.assertEqual({"debug": {"ENABLE_TESTABILITY": True}}, application["settings"]["configs"])

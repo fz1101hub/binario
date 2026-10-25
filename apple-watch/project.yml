@@ -1,9 +1,13 @@
+# Watch-only CI/test harness (WKWatchOnly, it.binario.watch): it has no iPhone companion and
+# therefore no data path, so it must never be submitted. The store product is the
+# BinarioWatch target embedded by ../ios/project.yml; both compile the same sources in
+# Swift language mode 6.
 name: BinarioWatch
 options:
   bundleIdPrefix: it.binario
 settings:
   base:
-    SWIFT_VERSION: 5.10
+    SWIFT_VERSION: 6.0
     MARKETING_VERSION: 0.1.0
     CURRENT_PROJECT_VERSION: 1
 targets:
