@@ -53,6 +53,7 @@ object RailSourceSelectionPolicy {
         pref("italo-status", RailInformationCategory.TRAIN_REALTIME, 130, "Fonte operatore Italo per stato della corsa, best-effort personale."),
         pref("viaggiatreno", RailInformationCategory.TRAIN_REALTIME, 128, "Fonte Trenitalia per stato corsa; uso personale/best-effort e condizioni da rispettare."),
         pref("rfi-station-board", RailInformationCategory.TRAIN_REALTIME, 126, "Fonte infrastrutturale italiana multi-operatore, ottima per evento di stazione."),
+        pref("ch-transport-opendata", RailInformationCategory.TRAIN_REALTIME, 118, "API pubblica svizzera best-effort: previsioni di stazione per i servizi svizzeri senza il gateway GTFS-RT."),
         pref("european-sleeper-gtfs-rt", RailInformationCategory.TRAIN_REALTIME, 60, "Fallback community a bassa priorità; non deve sostituire RFI o un feed ufficiale."),
 
         pref("rfi-station-board", RailInformationCategory.STATION_BOARD, 150, "Fonte infrastrutturale primaria per arrivi/partenze e binari sulle stazioni RFI."),
@@ -61,6 +62,7 @@ object RailSourceSelectionPolicy {
         pref("db-timetables", RailInformationCategory.STATION_BOARD, 135, "Timetables API DB per stazioni servite nel perimetro disponibile."),
         pref("italo-status", RailInformationCategory.STATION_BOARD, 128, "Fonte operatore complementare per Italo."),
         pref("viaggiatreno", RailInformationCategory.STATION_BOARD, 128, "Fonte operatore complementare per Trenitalia."),
+        pref("ch-transport-opendata", RailInformationCategory.STATION_BOARD, 118, "Tabellone pubblico svizzero best-effort, con binari per le stazioni svizzere."),
 
         pref("db-ris-disruptions", RailInformationCategory.SERVICE_ALERTS, 148, "RIS::Disruptions ufficiale DB per perturbazioni e corse/fermate interessate."),
         pref("sncf-gtfs-rt", RailInformationCategory.SERVICE_ALERTS, 145, "Provider runtime SNCF GTFS-RT; usa Service Alerts per gli avvisi."),
@@ -105,7 +107,7 @@ object RailSourceSelectionPolicy {
         val op = normalize(operatorHint.orEmpty())
         if (op.isBlank()) return 0
         return when (sourceId.value) {
-            "ch-otd-gtfs", "ch-otd-gtfs-rt" ->
+            "ch-otd-gtfs", "ch-otd-gtfs-rt", "ch-transport-opendata" ->
                 if (op.containsAny("sbb", "tilo", "bls", "rhb", "rhatischebahn", "rhaetischebahn", "fart", "ssif")) 20 else 0
             "oebb-gtfs" -> if (op.containsAny("oebb", "obb", "osterreichischebundesbahnen")) 20 else 0
             "sncf-gtfs", "sncf-gtfs-rt", "sncf-gtfs-rt-trip-updates", "sncf-gtfs-rt-alerts" -> if (op.contains("sncf")) 20 else 0

@@ -9,7 +9,11 @@ import it.binario.app.data.live.RfiStationBoardAdapter
 import it.binario.app.data.live.RfiLiveRouteDataSource
 import it.binario.app.data.live.SncfGtfsRealtimeAdapter
 import it.binario.app.data.live.StaRealtimeAdapter
+import it.binario.app.data.live.SwissOpenTransportStationBoardAdapter
+import it.binario.app.data.live.TrenitaliaInfomobilityNewsAdapter
+import it.binario.app.data.live.TrenordLineNoticesAdapter
 import it.binario.app.data.live.ViaggiaTrenoRealtimeAdapter
+import it.binario.app.data.live.ViaggiaTrenoTrainNoticesAdapter
 import it.binario.app.data.planned.RfiProgrammedStationBoardAdapter
 import it.binario.app.data.planned.RfiProgrammedTimetableAdapter
 import it.binario.app.data.planned.RfiSupplementalHubTimetableAdapter
@@ -17,6 +21,7 @@ import it.binario.app.data.repository.TrainNumberSearchProvider
 import it.binario.app.data.repository.StationBoardRunDetailProvider
 import it.binario.app.data.provider.AlertProvider
 import it.binario.app.data.provider.StationBoardProvider
+import it.binario.app.data.provider.TrainNoticeProvider
 import it.binario.app.data.provider.TripUpdateProvider
 import it.binario.app.data.provider.VehiclePositionProvider
 
@@ -40,6 +45,11 @@ object LocalOnlyRailDataPolicy {
     private val rfiAlerts by lazy { RfiInfomobilityRssAdapter() }
     private val staRealtime by lazy { StaRealtimeAdapter() }
     private val sncfRealtime by lazy { SncfGtfsRealtimeAdapter() }
+    private val swissOpenTransportBoard by lazy { SwissOpenTransportStationBoardAdapter() }
+    private val viaggiaTrenoTrainNotices by lazy { ViaggiaTrenoTrainNoticesAdapter() }
+    private val trenitaliaNews by lazy { TrenitaliaInfomobilityNewsAdapter() }
+    private val trenordNotices by lazy { TrenordLineNoticesAdapter() }
+    private val openMeteo by lazy { it.binario.app.data.weather.OpenMeteoForecastAdapter() }
 
     /** Official programmed sources only. */
     fun routeSources(): List<TrainDataSource> = listOf(
@@ -67,7 +77,9 @@ object LocalOnlyRailDataPolicy {
             listOf(
                 rfiStationBoard,
                 italoStationBoard,
-                viaggiaTrenoBoard
+                viaggiaTrenoBoard,
+                // Best effort as well; returns NOT_SUPPORTED without network for non-Swiss stations.
+                swissOpenTransportBoard
             )
         } else {
             emptyList()
@@ -90,7 +102,27 @@ object LocalOnlyRailDataPolicy {
         rfiAlerts,
         staRealtime,
         sncfRealtime
-    )
+    ) + personalNoticeProviders() + trenordLineNoticeProviders()
+
+    /** Network notices for the notices area: official RFI feed always, best-effort operator notices if enabled. */
+    fun networkNoticeProviders(): List<AlertProvider> = listOf(rfiAlerts) + personalNoticeProviders()
+
+    /** Trenord line notices, grouped by line in the notices area; best effort, personal sources only. */
+    fun trenordLineNoticeProviders(): List<TrenordLineNoticesAdapter> =
+        if (BuildConfig.PERSONAL_REALTIME_SOURCES) listOf(trenordNotices) else emptyList()
+
+    private fun personalNoticeProviders(): List<AlertProvider> =
+        if (BuildConfig.PERSONAL_REALTIME_SOURCES) listOf(trenitaliaNews) else emptyList()
+
+    /** Per-train notices: ViaggiaTreno family, best effort, so only with the personal realtime sources. */
+    fun trainNoticeProviders(): List<TrainNoticeProvider> =
+        if (BuildConfig.PERSONAL_REALTIME_SOURCES) listOf(viaggiaTrenoTrainNotices) else emptyList()
+
+    /**
+     * Destination weather: open data (CC BY 4.0), not a best-effort rail source, so not tied to the personal
+     * realtime flag; the user switches it off in the settings ("Meteo a destinazione").
+     */
+    fun weatherForecastProvider(): it.binario.app.data.weather.OpenMeteoForecastAdapter = openMeteo
 
     fun vehiclePositionProviders(): List<VehiclePositionProvider> = listOf(
         staRealtime

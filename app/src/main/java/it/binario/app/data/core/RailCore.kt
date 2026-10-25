@@ -294,7 +294,12 @@ data class StationBoardEntry(
     val status: SourcedValue<RunStatus>? = null,
     val routeChange: SourcedValue<OperationalRouteChange>? = null,
     /** Exact source identity for opening this run without guessing from a train number. */
-    val nativeRunIds: Map<SourceId, String> = emptyMap()
+    val nativeRunIds: Map<SourceId, String> = emptyMap(),
+    /**
+     * Commercial line label published next to the run number (for example "RE 80" or "S 10"). Display only:
+     * board identity keeps using [publicNumber], the run number shared with GTFS and the other boards.
+     */
+    val lineLabel: String? = null
 )
 
 data class StationBoard(
@@ -328,8 +333,32 @@ data class ServiceAlert(
     val affectedStations: Set<StationId> = emptySet(),
     val affectedRuns: Set<TrainRunId> = emptySet(),
     val affectedOperators: Set<OperatorId> = emptySet(),
-    val source: SourceRef
+    val source: SourceRef,
+    /** Public train numbers the publisher tags the notice with (for example Trenitalia `trainTags`). */
+    val affectedTrainNumbers: Set<String> = emptySet(),
+    /** Publisher page for the notice, http(s) only. */
+    val link: String? = null,
+    /** Line identifiers the publisher files the notice under (for example Trenord `D034`). */
+    val affectedLines: Set<String> = emptySet()
 )
+
+/**
+ * Operator notice about one train on one service day (for example a ViaggiaTreno delay explanation). The text is
+ * the publisher's own; [englishText] is its English variant when the publisher provides one.
+ */
+data class TrainNotice(
+    val id: String,
+    val text: String,
+    val englishText: String? = null,
+    val validFrom: LocalDate,
+    val validUntil: LocalDate,
+    val publishedAt: Instant? = null,
+    val source: SourceRef
+) {
+    /** The publisher's English text for a non-Italian app language when it is present, else the Italian text. */
+    fun textFor(languageCode: String): String =
+        englishText?.takeIf { !languageCode.equals("it", ignoreCase = true) && it.isNotBlank() } ?: text
+}
 
 enum class PositionKind {
     GPS,

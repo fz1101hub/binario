@@ -4,6 +4,8 @@ import it.binario.app.BuildConfig
 import it.binario.app.data.live.RfiInfomobilityRssAdapter
 import it.binario.app.data.live.SncfGtfsRealtimeAdapter
 import it.binario.app.data.live.StaRealtimeAdapter
+import it.binario.app.data.live.TrenitaliaInfomobilityNewsAdapter
+import it.binario.app.data.live.TrenordLineNoticesAdapter
 import it.binario.app.data.provider.ProviderCapability
 import it.binario.app.data.repository.BinarioDataGraph
 import org.junit.Assert.assertEquals
@@ -25,7 +27,8 @@ class LocalOnlyRailDataPolicyTest {
 
         val boardProviderNames = LocalOnlyRailDataPolicy.stationBoardProviders().map { it::class.simpleName }.toSet()
         if (BuildConfig.PERSONAL_REALTIME_SOURCES) {
-            assertEquals(setOf("RfiStationBoardAdapter", "ItaloPublicStationAdapter", "ViaggiaTrenoRealtimeAdapter"), boardProviderNames)
+            assertEquals(setOf("RfiStationBoardAdapter", "ItaloPublicStationAdapter", "ViaggiaTrenoRealtimeAdapter",
+                "SwissOpenTransportStationBoardAdapter"), boardProviderNames)
             assertSame(LocalOnlyRailDataPolicy.liveRouteSources().single { it.descriptor.id.value == "viaggiatreno" }, LocalOnlyRailDataPolicy.stationBoardProviders().single { it.descriptor.id.value == "viaggiatreno" })
             assertEquals("viaggiatreno", LocalOnlyRailDataPolicy.liveRouteSources().first().descriptor.id.value)
         } else {
@@ -39,14 +42,19 @@ class LocalOnlyRailDataPolicyTest {
         assertEquals(1 + boardProviderNames.size, displayBoards.size)
 
         val alerts = LocalOnlyRailDataPolicy.alertProviders()
+        val personalAlerts = if (BuildConfig.PERSONAL_REALTIME_SOURCES) setOf(TrenitaliaInfomobilityNewsAdapter.SOURCE_ID) else emptySet()
+        val trenordAlerts = if (BuildConfig.PERSONAL_REALTIME_SOURCES) setOf(TrenordLineNoticesAdapter.SOURCE_ID) else emptySet()
         assertEquals(
             setOf(
                 RfiInfomobilityRssAdapter.SOURCE_ID,
                 StaRealtimeAdapter.SOURCE_ID,
                 SncfGtfsRealtimeAdapter.SOURCE_ID
-            ),
+            ) + personalAlerts + trenordAlerts,
             alerts.map { it.descriptor.id }.toSet()
         )
+        assertEquals(trenordAlerts, LocalOnlyRailDataPolicy.trenordLineNoticeProviders().map { it.descriptor.id }.toSet())
+        assertEquals(setOf(RfiInfomobilityRssAdapter.SOURCE_ID) + personalAlerts,
+            LocalOnlyRailDataPolicy.networkNoticeProviders().map { it.descriptor.id }.toSet())
 
         assertEquals(
             setOf(StaRealtimeAdapter.SOURCE_ID),

@@ -12,7 +12,8 @@ enum class SourceFormat {
     NETEX,
     SIRI,
     HTML_OR_PDF,
-    OPERATOR_GATEWAY
+    OPERATOR_GATEWAY,
+    JSON_API
 }
 
 enum class SourceReadiness {
@@ -385,6 +386,81 @@ object RailSourceCatalog {
             landingPage = uri("https://italoinviaggio.italotreno.com/"),
             attribution = "Italo / NTV",
             notes = "Tracker HTTPS verificato; nessun token/app ufficiale o endpoint non documentato viene riusato."
+        ),
+        RailSourceDefinition(
+            id = SourceId("ch-transport-opendata"),
+            displayName = "transport.opendata.ch — tabelloni svizzeri",
+            operatorOrAuthority = "Opendata.ch (API pubblica su dati orario svizzeri)",
+            formats = setOf(SourceFormat.JSON_API),
+            capabilities = setOf(ProviderCapability.STATION_BOARD),
+            accessMode = AccessMode.PUBLIC_BEST_EFFORT,
+            readiness = SourceReadiness.BEST_EFFORT_DISABLED,
+            countryCodes = setOf("CH", "IT"),
+            coverage = "Partenze e arrivi delle stazioni svizzere e transfrontaliere identificate da un numero UIC 85…",
+            landingPage = uri("https://transport.opendata.ch/docs.html"),
+            downloadOrProbeUri = uri("https://transport.opendata.ch/v1/stationboard?id=8505300&limit=3"),
+            attribution = "transport.opendata.ch",
+            notes = "API pubblica documentata senza token con limiti di uso corretto; attiva solo con le fonti personali, cache 60 s e circuit breaker. Le previsioni incoerenti con il lato del tabellone vengono scartate."
+        ),
+        RailSourceDefinition(
+            id = SourceId("viaggiatreno-train-notices"),
+            displayName = "ViaggiaTreno — avvisi per treno",
+            operatorOrAuthority = "Trenitalia",
+            formats = setOf(SourceFormat.JSON_API),
+            capabilities = setOf(ProviderCapability.SERVICE_ALERTS),
+            accessMode = AccessMode.PUBLIC_BEST_EFFORT,
+            readiness = SourceReadiness.BEST_EFFORT_DISABLED,
+            countryCodes = setOf("IT"),
+            coverage = "Avvisi Trenitalia per numero treno commerciale (ritardi e cause pubblicati).",
+            landingPage = uri("https://www.viaggiatreno.it/infomobilitamobile/pages/cercaTreno/cercaTreno.jsp"),
+            downloadOrProbeUri = uri("https://www.viaggiatreno.it/infomobilitamobile/resteasy/news/smartcaring?commercialTrainNumber=8829"),
+            attribution = "Trenitalia",
+            notes = "Stessa famiglia best effort di ViaggiaTreno: HTTPS reindirizzato alla stessa risorsa HTTP su www.viaggiatreno.it, unico dominio in chiaro consentito. La risposta contiene molti giorni passati: si tengono solo le note valide nel giorno della corsa, per numero e stazione di origine."
+        ),
+        RailSourceDefinition(
+            id = SourceId("trenitalia-infomobility-news"),
+            displayName = "Trenitalia — Infomobilità (ViaggiaTreno)",
+            operatorOrAuthority = "Trenitalia",
+            formats = setOf(SourceFormat.JSON_API),
+            capabilities = setOf(ProviderCapability.SERVICE_ALERTS),
+            accessMode = AccessMode.PUBLIC_BEST_EFFORT,
+            readiness = SourceReadiness.BEST_EFFORT_DISABLED,
+            countryCodes = setOf("IT"),
+            coverage = "Notizie nazionali e regionali di circolazione Trenitalia, con i numeri dei treni interessati.",
+            landingPage = uri("https://www.trenitalia.com/it/informazioni/Infomobilita/notizie-infomobilita.html"),
+            downloadOrProbeUri = uri("https://www.viaggiatreno.it/infomobilitamobile/resteasy/news/infomobility"),
+            attribution = "Trenitalia",
+            notes = "Famiglia ViaggiaTreno best effort, stesso reindirizzamento HTTP limitato a www.viaggiatreno.it. Descrizioni HTML con entità codificate due volte: decodifica e riduzione a testo con jsoup, mai resa come HTML."
+        ),
+        RailSourceDefinition(
+            id = SourceId("trenord-line-notices"),
+            displayName = "Trenord — avvisi per direttrice",
+            operatorOrAuthority = "Trenord S.r.l.",
+            formats = setOf(SourceFormat.JSON_API),
+            capabilities = setOf(ProviderCapability.SERVICE_ALERTS),
+            accessMode = AccessMode.PUBLIC_BEST_EFFORT,
+            readiness = SourceReadiness.BEST_EFFORT_DISABLED,
+            countryCodes = setOf("IT", "CH"),
+            coverage = "Avvisi testuali Trenord per ogni direttrice (lavori, variazioni, scioperi, bus sostitutivi).",
+            landingPage = uri("https://www.trenord.it/linee-e-orari/circolazione/le-nostre-linee/"),
+            downloadOrProbeUri = uri("https://www.trenord.it/mgmt/store-management-api/mia/direttrici/"),
+            attribution = "Trenord",
+            notes = "JSON pubblico di circa 90 KB usato dal sito Trenord; best effort con TTL 15 minuti. Solo avvisi: i ritardi strutturati restano legati all'adesione E015. Le notizie promozionali senza parole chiave operative vengono scartate."
+        ),
+        RailSourceDefinition(
+            id = SourceId("open-meteo"),
+            displayName = "Open-Meteo — previsioni giornaliere",
+            operatorOrAuthority = "Open-Meteo.com",
+            formats = setOf(SourceFormat.JSON_API),
+            capabilities = setOf(ProviderCapability.WEATHER_FORECAST),
+            accessMode = AccessMode.OPEN_DIRECT,
+            readiness = SourceReadiness.READY_FOR_PROTOCOL_TEST,
+            countryCodes = emptySet(),
+            coverage = "Previsione giornaliera (tempo, temperature, probabilità di precipitazioni) per la stazione di arrivo, oggi e domani.",
+            landingPage = uri("https://open-meteo.com/en/terms"),
+            downloadOrProbeUri = uri("https://api.open-meteo.com/v1/forecast?latitude=46.00&longitude=8.95&daily=weather_code&forecast_days=2"),
+            attribution = "Dati meteo: Open-Meteo.com (CC BY 4.0)",
+            notes = "Licenza CC BY 4.0, uso non commerciale gratuito, nessuna chiave. Riceve solo le coordinate della stazione arrotondate a due decimali; disattivabile nelle impostazioni."
         ),
         RailSourceDefinition(
             id = SourceId("trenord-realtime"),

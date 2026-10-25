@@ -20,6 +20,11 @@ object KnownProviderIds {
     val RFI_INFOMOBILITY_RSS = SourceId("rfi-infomobility-rss")
     val STA_REALTIME = SourceId("alto-adige-sta-realtime")
     val ITALO_STATUS = SourceId("italo-status")
+    val SWISS_OPEN_TRANSPORT = SourceId("ch-transport-opendata")
+    val VIAGGIATRENO_TRAIN_NOTICES = SourceId("viaggiatreno-train-notices")
+    val TRENITALIA_INFOMOBILITY_NEWS = SourceId("trenitalia-infomobility-news")
+    val TRENORD_LINE_NOTICES = SourceId("trenord-line-notices")
+    val OPEN_METEO = SourceId("open-meteo")
     val DEMO_LOCAL = SourceId("demo-local")
 }
 
@@ -227,6 +232,72 @@ object KnownProviders {
                 ProviderCapability.TRAIN_RUN_REALTIME to 20,
                 ProviderCapability.STATION_BOARD to 20
             )
+        ),
+        ProviderPolicy(
+            descriptor = ProviderDescriptor(
+                id = KnownProviderIds.SWISS_OPEN_TRANSPORT,
+                displayName = "transport.opendata.ch — tabelloni svizzeri",
+                capabilities = setOf(ProviderCapability.STATION_BOARD),
+                coverage = CoverageDescriptor(countryCodes = setOf("CH", "IT"), description = "Stazioni svizzere e transfrontaliere con numero UIC svizzero"),
+                accessMode = AccessMode.PUBLIC_BEST_EFFORT,
+                ratePolicy = realtimeRatePolicy,
+                schemaVersion = 1
+            ),
+            enabled = BuildConfig.PERSONAL_REALTIME_SOURCES,
+            priorityByCapability = mapOf(ProviderCapability.STATION_BOARD to 25)
+        ),
+        ProviderPolicy(
+            descriptor = ProviderDescriptor(
+                id = KnownProviderIds.VIAGGIATRENO_TRAIN_NOTICES,
+                displayName = "ViaggiaTreno — avvisi per treno",
+                capabilities = setOf(ProviderCapability.SERVICE_ALERTS),
+                coverage = CoverageDescriptor(countryCodes = setOf("IT"), description = "Avvisi Trenitalia pubblicati per numero treno"),
+                accessMode = AccessMode.PUBLIC_BEST_EFFORT,
+                ratePolicy = RatePolicy(Duration.ofSeconds(30), defaultTimeToLive = Duration.ofMinutes(5)),
+                schemaVersion = 1
+            ),
+            enabled = BuildConfig.PERSONAL_REALTIME_SOURCES,
+            priorityByCapability = mapOf(ProviderCapability.SERVICE_ALERTS to 30)
+        ),
+        ProviderPolicy(
+            descriptor = ProviderDescriptor(
+                id = KnownProviderIds.TRENITALIA_INFOMOBILITY_NEWS,
+                displayName = "Trenitalia — Infomobilità (ViaggiaTreno)",
+                capabilities = setOf(ProviderCapability.SERVICE_ALERTS),
+                coverage = CoverageDescriptor(countryCodes = setOf("IT"), description = "Notizie di circolazione Trenitalia con numeri treno interessati"),
+                accessMode = AccessMode.PUBLIC_BEST_EFFORT,
+                ratePolicy = RatePolicy(Duration.ofMinutes(5), defaultTimeToLive = Duration.ofMinutes(10)),
+                schemaVersion = 1
+            ),
+            enabled = BuildConfig.PERSONAL_REALTIME_SOURCES,
+            priorityByCapability = mapOf(ProviderCapability.SERVICE_ALERTS to 25)
+        ),
+        ProviderPolicy(
+            descriptor = ProviderDescriptor(
+                id = KnownProviderIds.TRENORD_LINE_NOTICES,
+                displayName = "Trenord — avvisi per direttrice",
+                capabilities = setOf(ProviderCapability.SERVICE_ALERTS),
+                coverage = CoverageDescriptor(countryCodes = setOf("IT", "CH"), description = "Avvisi Trenord per linea (direttrice)"),
+                accessMode = AccessMode.PUBLIC_BEST_EFFORT,
+                ratePolicy = RatePolicy(Duration.ofMinutes(10), defaultTimeToLive = Duration.ofMinutes(15)),
+                schemaVersion = 1
+            ),
+            enabled = BuildConfig.PERSONAL_REALTIME_SOURCES,
+            priorityByCapability = mapOf(ProviderCapability.SERVICE_ALERTS to 26)
+        ),
+        ProviderPolicy(
+            descriptor = ProviderDescriptor(
+                id = KnownProviderIds.OPEN_METEO,
+                displayName = "Open-Meteo — previsioni giornaliere",
+                capabilities = setOf(ProviderCapability.WEATHER_FORECAST),
+                coverage = CoverageDescriptor(description = "Previsione giornaliera per le coordinate arrotondate della stazione di arrivo"),
+                accessMode = AccessMode.OPEN_DIRECT,
+                ratePolicy = RatePolicy(Duration.ofMinutes(1), defaultTimeToLive = Duration.ofHours(3)),
+                schemaVersion = 1
+            ),
+            // Open data under CC BY 4.0; the user-facing switch is the "Meteo a destinazione" setting.
+            enabled = true,
+            priorityByCapability = mapOf(ProviderCapability.WEATHER_FORECAST to 10)
         )
     )
 

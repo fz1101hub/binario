@@ -305,6 +305,59 @@ class LiveProviderNetworkTest {
         tripUpdates(EuropeanSleeperGtfsRealtimeAdapter(), "european-sleeper", resolver, tripIds(bytes))
     }
 
+    @Test fun swissOpenTransport() = runBlocking {
+        selected("opendata-ch")
+        // Lugano, picked from the embedded Swiss GTFS pack, and Bellinzona through its curated Trenitalia id.
+        board(SwissOpenTransportStationBoardAdapter(clock), "gtfs:ch-otd-gtfs:8505300", "Lugano")
+        val now = clock.instant()
+        val result = SwissOpenTransportStationBoardAdapter(clock).getStationBoard(StationBoardRequest(StationId("curated:S00300"), "Bellinzona",
+            railwayCode = "S00300", from = now.minusSeconds(600), to = now.plusSeconds(6 * 3600), kind = BoardKind.DEPARTURES,
+            trenitaliaLocationId = "850005213"))
+        if (result !is ProviderResult.Success) fail("transport.opendata.ch Bellinzona: $result")
+        val entries = (result as ProviderResult.Success).value.entries
+        assertTrue("transport.opendata.ch Bellinzona: no journey numbers", entries.all { it.publicNumber?.all(Char::isDigit) == true })
+        println("LIVE_ACCEPTANCE ch-transport-opendata: bellinzona=${entries.size}, lines=${entries.mapNotNull { it.lineLabel }.distinct().take(6)}")
+    }
+
+    @Test fun viaggiatrenoNotices() = runBlocking {
+        selected("notices")
+        val now = clock.instant()
+        val board = ViaggiaTrenoRealtimeAdapter(diagnosticViaggiaTrenoFetcher(), clock).getStationBoard(StationBoardRequest(StationId("S01700"),
+            "Milano Centrale", railwayCode = "S01700", from = now.minusSeconds(1800), to = now.plusSeconds(3 * 3600), kind = BoardKind.DEPARTURES))
+        val numbers = (board as? ProviderResult.Success)?.value?.entries.orEmpty().mapNotNull { it.publicNumber?.takeIf(String::isNotBlank) }.distinct().take(4)
+        assertTrue("ViaggiaTreno board gave no train numbers: $board", numbers.isNotEmpty())
+        val adapter = ViaggiaTrenoTrainNoticesAdapter(clock)
+        val today = now.atZone(zone).toLocalDate()
+        val counts = numbers.map { number ->
+            val result = adapter.getTrainNotices(TrainNoticeRequest(number, today))
+            if (result is ProviderResult.Failure) fail("ViaggiaTreno smartcaring $number: $result")
+            number to (result as ProviderResult.Success).value.size
+        }
+        println("LIVE_ACCEPTANCE viaggiatreno-train-notices: $counts")
+        val news = TrenitaliaInfomobilityNewsAdapter(clock).getAlerts(AlertRequest())
+        if (news !is ProviderResult.Success) fail("Trenitalia infomobility: $news")
+        val alerts = (news as ProviderResult.Success).value
+        assertTrue("Trenitalia infomobility: markup left in descriptions",
+            alerts.none { alert -> alert.description?.value?.let { "&lt;" in it || "<p>" in it } == true })
+        println("LIVE_ACCEPTANCE trenitalia-infomobility-news: items=${alerts.size}, tagged=${alerts.count { it.affectedTrainNumbers.isNotEmpty() }}")
+        val trenord = TrenordLineNoticesAdapter(clock).getLineNotices()
+        if (trenord !is ProviderResult.Success) fail("Trenord direttrici: $trenord")
+        val lines = (trenord as ProviderResult.Success).value
+        assertTrue("Trenord direttrici: no lines", lines.lines.isNotEmpty())
+        println("LIVE_ACCEPTANCE trenord-line-notices: lines=${lines.lines.size}, notices=${lines.alerts.size}")
+    }
+
+    @Test fun openMeteo() = runBlocking {
+        selected("open-meteo")
+        val today = clock.instant().atZone(zone).toLocalDate()
+        // Lugano station, as the curated catalogue places it.
+        val result = it.binario.app.data.weather.OpenMeteoForecastAdapter(clock).forecast(46.005499, 8.946841, today)
+        if (result !is ProviderResult.Success) fail("Open-Meteo: $result")
+        val forecast = (result as ProviderResult.Success).value
+        assertTrue("Open-Meteo: no weather code", forecast.weatherCode != null)
+        println("LIVE_ACCEPTANCE open-meteo: $forecast")
+    }
+
     /**
      * Raw samples of candidate sources (ViaggiaTreno per-train notices, transport.opendata.ch, Trenord line
      * notices, MIT strike calendar, Open-Meteo) so their formats are known before an adapter is written.

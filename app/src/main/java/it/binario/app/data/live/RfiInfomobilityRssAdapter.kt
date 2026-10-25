@@ -17,9 +17,12 @@ import it.binario.app.data.provider.ProviderError
 import it.binario.app.data.provider.ProviderErrorKind
 import it.binario.app.data.provider.ProviderResponseMeta
 import it.binario.app.data.provider.ProviderResult
+import it.binario.app.data.provider.ProviderWarning
 import it.binario.app.data.provider.RatePolicy
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import org.w3c.dom.Element
 import java.io.ByteArrayInputStream
 import java.io.IOException
@@ -36,22 +39,25 @@ fun interface RfiRssFetcher {
     suspend fun fetch(url: String): String
 }
 
-internal class HttpRfiRssFetcher : RfiRssFetcher {
-    override suspend fun fetch(url: String): String = withContext(Dispatchers.IO) {
-        val connection = URL(url).openConnection() as? HttpURLConnection
-            ?: throw IOException("Il feed RFI non usa una connessione HTTP")
-        connection.requestMethod = "GET"
-        connection.connectTimeout = 12_000
-        connection.readTimeout = 20_000
-        connection.setRequestProperty("Accept", "application/rss+xml, application/xml, text/xml")
-        connection.setRequestProperty("User-Agent", "Binario/0.15 (personal rail information client)")
-        try {
-            if (connection.responseCode !in 200..299) throw IOException("RFI RSS ha risposto HTTP ${connection.responseCode}")
-            connection.inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() }
-        } finally {
-            connection.disconnect()
+internal class HttpRfiRssFetcher(private val maxBytes: Int = 2 * 1024 * 1024) : RfiRssFetcher {
+    override suspend fun fetch(url: String): String = withTimeoutOrNull(25_000) {
+        withContext(Dispatchers.IO) {
+            val connection = URL(url).openConnection() as? HttpURLConnection
+                ?: throw IOException("Il feed RFI non usa una connessione HTTP")
+            connection.requestMethod = "GET"
+            connection.connectTimeout = 12_000
+            connection.readTimeout = 20_000
+            connection.setRequestProperty("Accept", "application/rss+xml, application/xml, text/xml")
+            connection.setRequestProperty("User-Agent", "Binario/0.15 (personal rail information client)")
+            try {
+                if (connection.responseCode !in 200..299) throw IOException("RFI RSS ha risposto HTTP ${connection.responseCode}")
+                // The feed is now read from the notices area: a body is bounded instead of read whole into memory.
+                connection.inputStream.use { readBoundedUtf8(it, connection.contentLengthLong.takeIf { n -> n >= 0 }, maxBytes) }
+            } finally {
+                connection.disconnect()
+            }
         }
-    }
+    } ?: throw java.net.SocketTimeoutException("RFI RSS supera il tempo massimo della richiesta")
 }
 
 /** Feed ufficiale RFI per aggiornamenti nazionali di infomobilità. */
@@ -70,27 +76,50 @@ class RfiInfomobilityRssAdapter(
         schemaVersion = 1
     )
 
+    @Volatile
     private var cached: CachedAlerts? = null
+    private val breaker = SourceCircuitBreaker(clock)
+    private val refresh = kotlinx.coroutines.sync.Mutex()
 
     override suspend fun getAlerts(request: AlertRequest): ProviderResult<List<ServiceAlert>> {
-        val now = clock.instant()
-        cached?.takeIf { now.isBefore(it.expiresAt) }?.let {
-            return ProviderResult.Success(
-                it.alerts,
-                ProviderResponseMeta(SOURCE_ID, now, observedAt = it.observedAt, expiresAt = it.expiresAt, fromCache = true)
-            )
+        cachedResult(clock.instant())?.let { return it }
+        // Concurrent callers share one request: the second waits and reads the cache the first filled.
+        return refresh.withLock {
+            val now = clock.instant()
+            cachedResult(now) ?: load(now)
         }
+    }
+
+    private fun cachedResult(now: Instant): ProviderResult<List<ServiceAlert>>? = cached?.takeIf { now.isBefore(it.expiresAt) }?.let {
+        ProviderResult.Success(it.alerts, ProviderResponseMeta(SOURCE_ID, now, observedAt = it.observedAt, expiresAt = it.expiresAt, fromCache = true))
+    }
+
+    private suspend fun load(now: Instant): ProviderResult<List<ServiceAlert>> {
+        if (!breaker.allowRequest()) return staleOr(ProviderError(ProviderErrorKind.UPSTREAM_UNAVAILABLE, "Feed RFI Infomobilità sospeso dopo errori ripetuti."))
         return try {
             val xml = fetcher.fetch(NATIONAL_UPDATES_URL)
             val alerts = parseUpdates(xml, now)
             val expiresAt = now.plus(cacheTtl)
             cached = CachedAlerts(alerts, now, expiresAt)
+            breaker.recordSuccess()
             ProviderResult.Success(alerts, ProviderResponseMeta(SOURCE_ID, now, observedAt = now, expiresAt = expiresAt, responseFingerprint = sha256(xml)))
+        } catch (error: kotlinx.coroutines.CancellationException) {
+            throw error
         } catch (error: IOException) {
-            ProviderResult.Failure(ProviderError(ProviderErrorKind.NETWORK, "Feed RFI Infomobilità non raggiungibile.", error::class.java.name))
+            breaker.recordFailure()
+            staleOr(ProviderError(ProviderErrorKind.NETWORK, "Feed RFI Infomobilità non raggiungibile.", error::class.java.name))
         } catch (error: Exception) {
-            ProviderResult.Failure(ProviderError(ProviderErrorKind.PARSE_ERROR, "Feed RFI Infomobilità non leggibile.", error::class.java.name))
+            breaker.recordFailure()
+            staleOr(ProviderError(ProviderErrorKind.PARSE_ERROR, "Feed RFI Infomobilità non leggibile.", error::class.java.name))
         }
+    }
+
+    /** The last feed, if at most an hour past its TTL, marked stale; otherwise the typed failure. */
+    private fun staleOr(error: ProviderError): ProviderResult<List<ServiceAlert>> {
+        val last = cached?.takeIf { !clock.instant().isAfter(it.expiresAt.plus(Duration.ofHours(1))) }
+            ?: return ProviderResult.Failure(error)
+        return ProviderResult.Partial(last.alerts, setOf(ProviderWarning.STALE_SOURCE),
+            ProviderResponseMeta(SOURCE_ID, last.observedAt, observedAt = last.observedAt, fromCache = true))
     }
 
     internal fun parseUpdates(xml: String, fetchedAt: Instant): List<ServiceAlert> {
@@ -110,11 +139,15 @@ class RfiInfomobilityRssAdapter(
             val description = item.textOf("description").trim().takeIf { it.isNotBlank() }
             val link = item.textOf("link").trim()
             if (title.isBlank() || link.isBlank()) return@mapNotNull null
+            val published = item.textOf("pubDate").trim().takeIf { it.isNotEmpty() }
+                ?.let { runCatching { java.time.ZonedDateTime.parse(it, java.time.format.DateTimeFormatter.RFC_1123_DATE_TIME).toInstant() }.getOrNull() }
             ServiceAlert(
                 id = AlertId("rfi-rss:${sha256(link)}"),
                 title = LocalizedText(title),
                 description = description?.let(::LocalizedText),
                 severity = severityOf("$title $description"),
+                validFrom = published,
+                link = link.takeIf { it.startsWith("https://") || it.startsWith("http://") },
                 source = SourceRef(
                     sourceId = SOURCE_ID,
                     nativeId = link,

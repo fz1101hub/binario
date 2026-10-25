@@ -141,7 +141,9 @@ class StationBoardRealtimeReconciler(
             railwayCode = origin.railwayCode,
             from = requested.minusMinutes(30).toInstant(),
             to = requested.plusHours(8).toInstant(),
-            kind = BoardKind.DEPARTURES
+            kind = BoardKind.DEPARTURES,
+            trenitaliaLocationId = origin.trenitaliaLocationId,
+            coordinates = origin.catalogueCoordinates()
         )
 
         val boards = coroutineScope {

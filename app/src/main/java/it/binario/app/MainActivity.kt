@@ -637,6 +637,7 @@ private fun BinarioApp(
                     punctuality = viewModel.punctualityStats(service),
                     onClearPunctuality = { viewModel.clearPunctualityHistory(service.number) },
                     mapStationIndex = rememberOpenMapStationIndex(viewModel.stations, viewModel::stationFromName),
+                    sourceSections = { TrainDetailSourceSections(service, viewModel.stations) },
                     onShare = {
                         val content = TrainShareFormatter.create(
                             service = service,
@@ -792,6 +793,7 @@ private fun TodayScreen(
                 message = viewModel.refreshMessage
             )
         }
+        item { RailNoticesArea() }
         item {
             Text(
                 text = stringResource(R.string.official_information_notice),
@@ -1560,6 +1562,7 @@ internal fun StationBoardScreen(modifier: Modifier, viewModel: TrainViewModel) {
                             }
                         }
                     }
+                    item { StationLineNoticesSection(board.station) }
                     items(
                         board.entries.take(60),
                         key = { entry ->
@@ -1703,6 +1706,7 @@ internal fun StationBoardEntryRow(entry: StationBoardEntry, kind: BoardKind, onO
             )
             Text(
                 listOfNotNull(
+                    entry.lineLabel?.takeIf(String::isNotBlank),
                     entry.publicNumber?.takeIf(String::isNotBlank)?.let { stringResource(R.string.station_board_train_number, it) },
                     entry.operatorId?.value?.takeIf(String::isNotBlank),
                     entry.status?.value?.stationBoardLabel()
@@ -2309,6 +2313,7 @@ private fun SettingsScreen(
                 HorizontalDivider(modifier = Modifier.padding(start = 20.dp), color = MaterialTheme.colorScheme.outlineVariant)
             }
         }
+        item { SourcesSettingsPanel() }
         item {
             Column(Modifier.padding(horizontal = 20.dp, vertical = 14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(stringResource(R.string.settings_privacy_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
@@ -2704,7 +2709,8 @@ private fun ServiceDetailScreen(
     punctuality: PunctualityStats?,
     onClearPunctuality: () -> Unit,
     mapStationIndex: OpenMapStationIndex,
-    onShare: () -> Unit
+    onShare: () -> Unit,
+    sourceSections: @Composable () -> Unit = {}
 ) {
     val dataLabel = if (isDemonstration) stringResource(R.string.data_status_demo) else freshness?.localizedLabel() ?: stringResource(R.string.data_status_unavailable)
     LazyColumn(modifier = modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(0.dp)) {
@@ -2788,6 +2794,7 @@ private fun ServiceDetailScreen(
                 loadBoard = loadConnectionBoard
             )
         }
+        item { sourceSections() }
         alarmFeedback?.let { feedback ->
             item {
                 Text(
