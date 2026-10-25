@@ -500,6 +500,8 @@
     <string name="location_permission_denied">Standortberechtigung nicht erteilt. Du kannst weiter manuell nach Bahnhöfen suchen.</string>
     <string name="distance_kilometers">%1$.1f km</string>
     <string name="provider_updated_at">%1$s · %2$s</string>
+    <string name="update_time_at">aktualisiert um %1$s</string>
+    <string name="update_time_never">nie aktualisiert</string>
     <string name="accessibility_optional_message"> %1$s</string>
     <string name="platform_short">Gl. %1$s</string>
     <string name="service_status_scheduled_badge">Geplant</string>

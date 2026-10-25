@@ -1,7 +1,10 @@
 package it.binario.app
 
+import it.binario.app.data.RailTime
 import it.binario.app.data.RouteFailureReason
 import it.binario.app.data.RouteSnapshot
+import java.time.Instant
+import java.time.format.DateTimeFormatter
 
 /**
  * Resource-independent user-facing event emitted by state holders.
@@ -51,7 +54,9 @@ enum class UiMessageKey(val resourceName: String) {
     STATION_BOARD_INCOMPLETE_COVERAGE("station_board_warning_incomplete_coverage"),
     BACKUP_IMPORTED_WITHOUT_ROUTE("backup_imported_without_route"),
     BACKUP_IMPORT_SUCCESS("backup_import_success_summary"),
-    BACKUP_IMPORT_INVALID("backup_import_invalid")
+    BACKUP_IMPORT_INVALID("backup_import_invalid"),
+    UPDATE_TIME_AT("update_time_at"),
+    UPDATE_TIME_NEVER("update_time_never")
 }
 
 /** The localized explanation of a failed route search; dates and times are formatted on render. */
@@ -67,3 +72,10 @@ internal fun RouteFailureReason.uiMessage(): UiMessage = when (this) {
 /** The advisory a successful route search must carry, if any. */
 internal fun RouteSnapshot.advisoryMessage(): UiMessage? =
     if (coverageFallback) UiMessage(UiMessageKey.ROUTE_COVERAGE_FALLBACK) else null
+
+/** When the shown data was last refreshed, as a railway-local clock time; the wording follows the display language. */
+internal fun updateTimeMessage(epochMillis: Long): UiMessage {
+    if (epochMillis <= 0L) return UiMessage(UiMessageKey.UPDATE_TIME_NEVER)
+    val formatter = DateTimeFormatter.ofPattern("HH:mm").withZone(RailTime.defaultZone)
+    return UiMessage(UiMessageKey.UPDATE_TIME_AT, formatter.format(Instant.ofEpochMilli(epochMillis)))
+}

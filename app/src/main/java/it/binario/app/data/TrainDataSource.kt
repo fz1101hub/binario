@@ -6,12 +6,10 @@ import it.binario.app.data.core.DelayConsistency
 import it.binario.app.data.core.OperationalDetection
 import it.binario.app.data.core.OperationalRouteChange
 import java.time.Clock
-import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.ZoneId
-import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 enum class Direction(val label: String) {
@@ -394,7 +392,7 @@ class RouteSnapshotCache(context: Context) {
     }
 
     fun lastRefreshEpochMillis(): Long = preferences.getLong("last_refresh", 0L)
-    fun lastProvider(): String = preferences.getString("last_provider", "Nessun provider") ?: "Nessun provider"
+    fun lastProvider(): String? = preferences.getString("last_provider", null)?.takeIf(String::isNotBlank)
     fun lastConfidence(): String = preferences.getString("last_confidence", "Qualità non disponibile") ?: "Qualità non disponibile"
 }
 
@@ -406,10 +404,4 @@ fun formatTime(totalMinutes: Int): String {
 fun timeToMinutes(value: String): Int {
     val pieces = value.split(":")
     return pieces[0].toInt() * 60 + pieces[1].toInt()
-}
-
-fun accessibleUpdateTime(epochMillis: Long): String {
-    if (epochMillis <= 0L) return "mai aggiornato"
-    val formatter = DateTimeFormatter.ofPattern("HH:mm").withZone(RailTime.defaultZone)
-    return "aggiornato alle ${formatter.format(Instant.ofEpochMilli(epochMillis))}"
 }

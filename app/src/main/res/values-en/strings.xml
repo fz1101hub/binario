@@ -500,6 +500,8 @@
     <string name="location_permission_denied">Location permission not granted. You can continue to search for stations manually.</string>
     <string name="distance_kilometers">%1$.1f km</string>
     <string name="provider_updated_at">%1$s · %2$s</string>
+    <string name="update_time_at">updated at %1$s</string>
+    <string name="update_time_never">never updated</string>
     <string name="accessibility_optional_message"> %1$s</string>
     <string name="platform_short">Plat. %1$s</string>
     <string name="service_status_scheduled_badge">Scheduled</string>

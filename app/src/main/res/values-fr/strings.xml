@@ -510,6 +510,8 @@
     <string name="location_permission_denied">Autorisation de localisation non accordée. Vous pouvez continuer à rechercher les gares manuellement.</string>
     <string name="distance_kilometers">%1$.1f km</string>
     <string name="provider_updated_at">%1$s · %2$s</string>
+    <string name="update_time_at">actualisé à %1$s</string>
+    <string name="update_time_never">jamais actualisé</string>
     <string name="accessibility_optional_message"> %1$s</string>
     <string name="platform_short">Voie %1$s</string>
     <string name="service_status_scheduled_badge">Programmé</string>

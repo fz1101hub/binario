@@ -124,7 +124,6 @@ import it.binario.app.data.StopRouteChange
 import it.binario.app.data.TrainCategory
 import it.binario.app.data.TrainService
 import it.binario.app.data.TrainStop
-import it.binario.app.data.accessibleUpdateTime
 import it.binario.app.data.repository.StationBoardRunDetails
 import it.binario.app.data.core.BoardKind
 import it.binario.app.data.core.OperationalRouteChange
@@ -1712,7 +1711,7 @@ internal fun StationBoardRunDetailsSheet(
                     if (details != null) {
                         Text("${details.origin} → ${details.destination}", style = MaterialTheme.typography.bodyLarge)
                         Text(details.observedAt?.let {
-                            stringResource(R.string.provider_updated_at, details.providerName, accessibleUpdateTime(it.toEpochMilli()))
+                            stringResource(R.string.provider_updated_at, details.providerName, updateTimeMessage(it.toEpochMilli()).localized())
                         } ?: details.providerName, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
@@ -1928,7 +1927,7 @@ private fun DataStatusLine(
         label,
         provider,
         confidence,
-        accessibleUpdateTime(refreshedAt),
+        updateTimeMessage(refreshedAt).localized(),
         messageText?.takeIf(String::isNotBlank)?.let { stringResource(R.string.accessibility_optional_message, it) }.orEmpty()
     )
     Row(
@@ -1944,7 +1943,7 @@ private fun DataStatusLine(
         Spacer(Modifier.width(8.dp))
         Column(Modifier.weight(1f)) {
             Text(label, style = MaterialTheme.typography.labelLarge, color = color, fontWeight = FontWeight.Bold)
-            Text(if (refreshedAt > 0L) stringResource(R.string.provider_updated_at, provider, accessibleUpdateTime(refreshedAt)) else provider, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(if (refreshedAt > 0L) stringResource(R.string.provider_updated_at, provider, updateTimeMessage(refreshedAt).localized()) else provider, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
             messageText?.takeIf { it.isNotBlank() }?.let {
                 Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
@@ -2678,7 +2677,7 @@ private fun ServiceDetailScreen(
                 Column(Modifier.weight(1f)) {
                     Text(stringResource(R.string.service_stops_title), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                     Text(stringResource(R.string.service_data_summary, dataLabel, provider, confidence), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                    Text(accessibleUpdateTime(refreshedAt), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(updateTimeMessage(refreshedAt).localized(), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 Row {
                     IconButton(onClick = onShare) {

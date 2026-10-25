@@ -741,7 +741,7 @@ class TrainViewModel @JvmOverloads constructor(
                                 WearSnapshotPublisher.publishUnavailable(
                                     getApplication(),
                                     routeAtRequest.displayName(directionAtRequest),
-                                    primarySnapshot?.providerName ?: cache.lastProvider()
+                                    primarySnapshot?.providerName ?: cache.lastProvider().orEmpty()
                                 )
                             } else if (!integrationSettings.wearSnapshotSharingEnabled || !hasActiveRoute) {
                                 WearSnapshotPublisher.clear(getApplication())
@@ -1077,7 +1077,7 @@ class TrainViewModel @JvmOverloads constructor(
 
     private fun displaySnapshot(): RouteSnapshot? = selectedServiceSnapshot ?: primarySnapshot
 
-    fun currentProviderLabel(): String? = displaySnapshot()?.providerName ?: cache.lastProvider().takeIf(String::isNotBlank)
+    fun currentProviderLabel(): String? = displaySnapshot()?.providerName ?: cache.lastProvider()
 
     fun currentConfidence(): DataConfidence? = displaySnapshot()?.confidence
 

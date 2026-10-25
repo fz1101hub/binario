@@ -48,6 +48,8 @@ internal fun UiMessageKey.resourceId(): Int = when (this) {
     UiMessageKey.BACKUP_IMPORTED_WITHOUT_ROUTE -> R.string.backup_imported_without_route
     UiMessageKey.BACKUP_IMPORT_SUCCESS -> R.string.backup_import_success_summary
     UiMessageKey.BACKUP_IMPORT_INVALID -> R.string.backup_import_invalid
+    UiMessageKey.UPDATE_TIME_AT -> R.string.update_time_at
+    UiMessageKey.UPDATE_TIME_NEVER -> R.string.update_time_never
 }
 
 internal fun UiMessage.resolve(resources: Resources): String {

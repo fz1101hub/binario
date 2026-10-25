@@ -24,6 +24,8 @@ import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import it.binario.app.MainActivity
 import it.binario.app.R
+import it.binario.app.resolve
+import it.binario.app.updateTimeMessage
 import it.binario.app.data.DataResult
 import it.binario.app.data.DataConfidence
 import it.binario.app.data.DataQualityBand
@@ -38,7 +40,6 @@ import it.binario.app.data.ServiceStatus
 import it.binario.app.data.SnapshotWarning
 import it.binario.app.data.Station
 import it.binario.app.data.TrainService
-import it.binario.app.data.accessibleUpdateTime
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.time.Instant
@@ -175,7 +176,7 @@ class RouteWidgetProvider : AppWidgetProvider() {
                     R.string.widget_route_accessibility,
                     title,
                     state.accessibleDataSummary(freshness),
-                    accessibleUpdateTime(state.retrievedAt)
+                    updateTimeMessage(state.retrievedAt).resolve(context.resources)
                 )
             )
             rowIds.forEachIndexed { index, id ->
