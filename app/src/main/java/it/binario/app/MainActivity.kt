@@ -613,6 +613,7 @@ private fun BinarioApp(
                     connectionStop = stopAlarmStation.takeIf { stopAlarmTrain == service.number },
                     hasBoardProviders = viewModel.hasStationBoardProviders,
                     loadConnectionBoard = viewModel::connectionBoard,
+                    shareStrings = trainShareStrings,
                     onShare = {
                         val content = TrainShareFormatter.create(
                             service = service,
@@ -2660,6 +2661,7 @@ private fun ServiceDetailScreen(
     connectionStop: String?,
     hasBoardProviders: Boolean,
     loadConnectionBoard: (String, java.time.Instant) -> kotlinx.coroutines.flow.Flow<it.binario.app.data.repository.StationBoardAggregateResult>?,
+    shareStrings: TrainShareStrings,
     onShare: () -> Unit
 ) {
     val dataLabel = if (isDemonstration) stringResource(R.string.data_status_demo) else freshness?.localizedLabel() ?: stringResource(R.string.data_status_unavailable)
@@ -2735,6 +2737,7 @@ private fun ServiceDetailScreen(
                 }
             }
         }
+        item { TrainCalendarAction(service = service, shareStrings = shareStrings) }
         item {
             ArrivalConnectionsSection(
                 service = service,

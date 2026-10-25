@@ -747,4 +747,9 @@
     <string name="connections_risk_missed">Persa</string>
     <string name="connections_risk_at_risk">A rischio</string>
     <string name="connections_risk_ok">Fattibile</string>
+    <string name="calendar_add">Aggiungi al calendario</string>
+    <string name="calendar_event_operator">Operatore: %1$s</string>
+    <string name="calendar_event_times_note">Orari programmati: possono cambiare. Controlla lo stato del treno prima di partire.</string>
+    <string name="calendar_no_app">Nessuna app calendario può ricevere l’evento su questo dispositivo.</string>
+    <string name="calendar_time_unavailable">L’orario di partenza non è leggibile: l’evento non può essere creato.</string>
 </resources>

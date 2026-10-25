@@ -57,6 +57,8 @@ L’attivazione vale solo per questo dispositivo e non viene esportata o importa
 
 Il comando di condivisione apre il selettore Android e trasferisce testo ferroviario alla destinazione scelta dall'utente. Binario non controlla il successivo trattamento effettuato dall'app destinataria.
 
+Il comando **Aggiungi al calendario** del dettaglio treno apre l'app calendario del dispositivo con un evento precompilato: titolo con categoria, numero e destinazione, orari programmati di partenza e arrivo, stazione di partenza, operatore ed eventuale binario. Binario non richiede il permesso calendario, non legge né scrive direttamente i calendari e non conserva l'evento; il salvataggio e il trattamento successivo dipendono dall'app calendario.
+
 La dettatura Android avvia il riconoscitore vocale di sistema. Binario non richiede il permesso microfono e non registra né carica l'audio. Riceve il testo restituito dal servizio di sistema per compilare o interpretare la ricerca; il testo grezzo non viene salvato come registrazione o trascrizione autonoma. Il trattamento dell'audio da parte del riconoscitore è soggetto alle condizioni del sistema o del fornitore di quel servizio.
 
 ### Backup, conservazione e cancellazione

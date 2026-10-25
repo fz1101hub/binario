@@ -735,4 +735,9 @@
     <string name="connections_risk_missed">Missed</string>
     <string name="connections_risk_at_risk">At risk</string>
     <string name="connections_risk_ok">Feasible</string>
+    <string name="calendar_add">Add to calendar</string>
+    <string name="calendar_event_operator">Operator: %1$s</string>
+    <string name="calendar_event_times_note">Scheduled times: they can change. Check the train status before you travel.</string>
+    <string name="calendar_no_app">No calendar app on this device can receive the event.</string>
+    <string name="calendar_time_unavailable">The departure time cannot be read: the event cannot be created.</string>
 </resources>

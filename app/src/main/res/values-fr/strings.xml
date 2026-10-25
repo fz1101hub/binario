@@ -747,4 +747,9 @@
     <string name="connections_risk_missed">Manquée</string>
     <string name="connections_risk_at_risk">À risque</string>
     <string name="connections_risk_ok">Faisable</string>
+    <string name="calendar_add">Ajouter à l’agenda</string>
+    <string name="calendar_event_operator">Opérateur : %1$s</string>
+    <string name="calendar_event_times_note">Horaires programmés : ils peuvent changer. Vérifiez l’état du train avant de partir.</string>
+    <string name="calendar_no_app">Aucune application d’agenda de cet appareil ne peut recevoir l’événement.</string>
+    <string name="calendar_time_unavailable">L’heure de départ est illisible : l’événement ne peut pas être créé.</string>
 </resources>

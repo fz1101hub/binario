@@ -747,4 +747,9 @@
     <string name="connections_risk_missed">Perdida</string>
     <string name="connections_risk_at_risk">En riesgo</string>
     <string name="connections_risk_ok">Factible</string>
+    <string name="calendar_add">Añadir al calendario</string>
+    <string name="calendar_event_operator">Operador: %1$s</string>
+    <string name="calendar_event_times_note">Horarios programados: pueden cambiar. Comprueba el estado del tren antes de salir.</string>
+    <string name="calendar_no_app">Ninguna aplicación de calendario de este dispositivo puede recibir el evento.</string>
+    <string name="calendar_time_unavailable">La hora de salida no es legible: no se puede crear el evento.</string>
 </resources>

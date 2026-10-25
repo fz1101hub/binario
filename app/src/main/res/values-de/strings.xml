@@ -735,4 +735,9 @@
     <string name="connections_risk_missed">Verpasst</string>
     <string name="connections_risk_at_risk">Gefährdet</string>
     <string name="connections_risk_ok">Machbar</string>
+    <string name="calendar_add">Zum Kalender hinzufügen</string>
+    <string name="calendar_event_operator">Betreiber: %1$s</string>
+    <string name="calendar_event_times_note">Planmäßige Zeiten: Sie können sich ändern. Prüfe vor der Fahrt den Zugstatus.</string>
+    <string name="calendar_no_app">Keine Kalender-App auf diesem Gerät kann den Termin übernehmen.</string>
+    <string name="calendar_time_unavailable">Die Abfahrtszeit ist nicht lesbar: Der Termin kann nicht erstellt werden.</string>
 </resources>
