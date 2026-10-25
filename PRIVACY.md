@@ -39,6 +39,8 @@ Quando tale fallback viene interrogato, l'implementazione esegue una richiesta H
 
 Le richieste sono dirette dal dispositivo al gestore ferroviario o del feed. Il codice Android richiede HTTPS, disabilita il traffico in chiaro e invia un `User-Agent` che identifica Binario e la versione del client; non invia un account Binario, un token di autenticazione, una posizione o una registrazione vocale alle fonti ferroviarie. Il gestore della fonte può comunque vedere i normali metadati di rete della richiesta.
 
+L'inventario completo degli host presenti nel codice Android, con la classificazione di quando ciascuno viene contattato (build distribuita, build personale, adapter non collegato, provenienza offline dei data pack o soli metadati del catalogo fonti) e le risposte derivate per il modulo Sicurezza dei dati di Google Play, è in [docs/store/PLAY_DATA_SAFETY.md](docs/store/PLAY_DATA_SAFETY.md). `tools/verify_privacy_policy.py` fallisce se un host del codice manca da quella tabella o se la tabella elenca un host non più presente nel codice.
+
 ### Posizione effimera
 
 L'app richiede la posizione approssimata solo dopo un'azione esplicita per trovare le stazioni vicine. Legge una posizione corrente oppure, se non disponibile, l'ultima posizione conosciuta del sistema; usa coordinate e catalogo offline per ordinare le stazioni in memoria. La posizione non è scritta nelle preferenze, non è inclusa nei backup o nei widget, non viene inviata ai feed ferroviari e non è richiesta in background. Negare il permesso lascia disponibile la ricerca manuale.

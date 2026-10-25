@@ -53,6 +53,31 @@ class VerifyPrivacyPolicyTest(unittest.TestCase):
             errors,
         )
 
+    def test_code_host_inventory_covers_runtime_endpoints_and_skips_xml_namespaces(self) -> None:
+        hosts = POLICY.code_hosts()
+        self.assertTrue(
+            {"prm.rfi.it", "jbb.ghsq.de", "www.rfi.it", "gtfs.api.opendatahub.com", "proxy.transport.data.gouv.fr"} <= hosts
+        )
+        self.assertFalse({"apache.org", "xml.org", "javax.xml.xmlconstants", "schemas.android.com"} & hosts)
+        self.assertFalse(any(":" in host or host != host.lower() for host in hosts))
+
+    def test_every_host_in_app_code_must_be_classified_in_the_data_safety_table(self) -> None:
+        hosts = POLICY.code_hosts()
+        self.assertEqual([], POLICY.verification_errors(hosts=hosts))
+        errors = POLICY.verification_errors(hosts=hosts | {"telemetry.example.invalid"})
+        self.assertIn("Play Data safety host table: missing `telemetry.example.invalid`", errors)
+        errors = POLICY.verification_errors(hosts=hosts - {"prm.rfi.it"})
+        self.assertIn("Play Data safety host table: stale `prm.rfi.it` no longer in app code", errors)
+
+        def without_jbb_row(relative: str) -> str:
+            text = (ROOT / relative).read_text(encoding="utf-8")
+            if relative == POLICY.DATA_SAFETY_PATH:
+                return text.replace("| `jbb.ghsq.de` |", "| jbb.ghsq.de |", 1)
+            return text
+
+        errors = POLICY.verification_errors(without_jbb_row, hosts=hosts)
+        self.assertIn("Play Data safety host table: missing `jbb.ghsq.de`", errors)
+
     def test_expo_privacy_disclosure_requires_rendering_and_catalog_copy(self) -> None:
         render_fragment = 't("settings.privacyDisclosure")'
         catalog_fragment = "Binario non registra audio"

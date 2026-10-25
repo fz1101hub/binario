@@ -2,9 +2,24 @@
 """Fail fast if privacy and source-disclosure inventory or release links drift."""
 
 from pathlib import Path
+import re
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
+DATA_SAFETY_PATH = "docs/store/PLAY_DATA_SAFETY.md"
+HOST_SOURCE_GLOBS = ("app/src/main/java/**/*.kt", "wear/src/main/java/**/*.kt")
+HOST_SOURCE_FILES = (
+    "app/src/main/assets/gtfs/manifest.json",
+    "app/src/main/assets/stations/manifest.json",
+)
+# XML parser feature and namespace URIs are not network endpoints.
+NON_NETWORK_URI_PREFIXES = (
+    "http://apache.org/xml/",
+    "http://xml.org/sax/",
+    "http://javax.xml.XMLConstants/",
+)
+URL_PATTERN = re.compile(r"(https?://([A-Za-z0-9.-]+))[^\s\"'<>)]*")
+HOST_ROW = re.compile(r"^\| `([a-z0-9.-]+)` \|", re.MULTILINE)
 
 REQUIRED_DISCLOSURES: tuple[tuple[str, str, tuple[str, ...]], ...] = (
     (
@@ -27,6 +42,7 @@ REQUIRED_DISCLOSURES: tuple[tuple[str, str, tuple[str, ...]], ...] = (
             "community best-effort",
             "tier primario fallisce",
             "metadati di rete della richiesta sono visibili",
+            "[docs/store/PLAY_DATA_SAFETY.md](docs/store/PLAY_DATA_SAFETY.md)",
         ),
     ),
     (
@@ -39,6 +55,22 @@ REQUIRED_DISCLOSURES: tuple[tuple[str, str, tuple[str, ...]], ...] = (
             "tier primario",
             "HTTPS `GET`",
             "metadati di rete ordinari",
+        ),
+    ),
+    (
+        "Play Data safety answers",
+        DATA_SAFETY_PATH,
+        (
+            "## Risposte proposte al modulo",
+            "## Inventario degli host presenti nel codice Android",
+            "ACCESS_COARSE_LOCATION",
+            "POST_NOTIFICATIONS",
+            "SCHEDULE_EXACT_ALARM",
+            "Data Layer",
+            "`prm.rfi.it`",
+            "`jbb.ghsq.de`",
+            "Nessun SDK",
+            "URL pubblico",
         ),
     ),
     ("README.md", "README.md", ("[PRIVACY.md](PRIVACY.md)",)),
@@ -86,10 +118,30 @@ def require_all(label: str, text: str, fragments: tuple[str, ...]) -> list[str]:
     return [f"{label}: missing {fragment!r}" for fragment in fragments if fragment not in text]
 
 
-def verification_errors(read_file=read) -> list[str]:
+def code_hosts(root: Path = ROOT) -> set[str]:
+    """Every network host referenced by the Android sources and asset manifests."""
+    paths = [path for pattern in HOST_SOURCE_GLOBS for path in root.glob(pattern)]
+    paths += [root / relative for relative in HOST_SOURCE_FILES]
+    hosts: set[str] = set()
+    for path in paths:
+        for match in URL_PATTERN.finditer(path.read_text(encoding="utf-8")):
+            if not match.group(0).startswith(NON_NETWORK_URI_PREFIXES):
+                hosts.add(match.group(2).lower())
+    return hosts
+
+
+def host_inventory_errors(data_safety: str, hosts: set[str]) -> list[str]:
+    documented = set(HOST_ROW.findall(data_safety))
+    errors = [f"Play Data safety host table: missing `{host}`" for host in sorted(hosts - documented)]
+    errors += [f"Play Data safety host table: stale `{host}` no longer in app code" for host in sorted(documented - hosts)]
+    return errors
+
+
+def verification_errors(read_file=read, hosts: set[str] | None = None) -> list[str]:
     errors: list[str] = []
     for label, relative_path, fragments in REQUIRED_DISCLOSURES:
         errors += require_all(label, read_file(relative_path), fragments)
+    errors += host_inventory_errors(read_file(DATA_SAFETY_PATH), code_hosts() if hosts is None else hosts)
     return errors
 
 
