@@ -22,6 +22,8 @@ internal object ItalianRailServiceCalendar {
             Month.DECEMBER to 26
         )
         if ((date.month to date.dayOfMonth) in fixed) return true
+        // San Francesco d'Assisi, national holiday again from 2026 (legge 151/2025).
+        if (date.year >= 2026 && date.month == Month.OCTOBER && date.dayOfMonth == 4) return true
         val easter = easterSunday(date.year)
         return date == easter || date == easter.plusDays(1)
     }

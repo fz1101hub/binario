@@ -47,6 +47,18 @@ class ItalianRailServiceCalendarTest {
     }
 
     @Test
+    fun `4 October is a national holiday from 2026`() {
+        // Monday 2027-10-04: "festivo" trains run, "feriale" ones do not; before 2026 it was an ordinary day.
+        val monday2027 = LocalDate.of(2027, 10, 4)
+        assertEquals(true, ItalianRailServiceCalendar.isHoliday(monday2027))
+        assertEquals(true, ItalianRailServiceCalendar.runsOnDate("Festivo", monday2027))
+        assertEquals(false, ItalianRailServiceCalendar.runsOnDate("Feriale", monday2027))
+        assertEquals(true, ItalianRailServiceCalendar.isHoliday(LocalDate.of(2026, 10, 4)))
+        assertEquals(false, ItalianRailServiceCalendar.isHoliday(LocalDate.of(2025, 10, 4)))
+        assertEquals(false, ItalianRailServiceCalendar.runsOnDate("Festivo", LocalDate.of(2025, 10, 4)))
+    }
+
+    @Test
     fun `written ranges cover every day in between`() {
         assertEquals(listOf(true, true, true, true, true, false, true, true), week("Dal lunedì al sabato"))
         assertEquals(listOf(true, true, true, true, true, false, true, true), week("Lun-Sab"))
