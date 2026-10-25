@@ -410,15 +410,20 @@ class EmbeddedGtfsRouteAdapter(
             val serviceIndex = rows.header.indexOf("service_id")
             val tripIndex = rows.header.indexOf("trip_id")
             val shortNameIndex = rows.header.indexOf("trip_short_name")
+            val headsignIndex = rows.header.indexOf("trip_headsign")
             rows.forEachRow(limits.maxTrips) { row ->
                 val tripId = row.gtfsRawValue(tripIndex)
-                val publicNumber = row.getOrNull(shortNameIndex)?.takeIf(String::isNotBlank) ?: tripId
+                val shortName = row.getOrNull(shortNameIndex)
+                // SNCF publishes the train number as trip_headsign; a destination name there is not a number.
+                val numericHeadsign = row.getOrNull(headsignIndex)?.trim()?.takeIf { it.isNotEmpty() && it.all(Char::isDigit) }
+                val publicNumber = shortName?.takeIf(String::isNotBlank) ?: numericHeadsign ?: tripId
                 if (numberQuery != null && !numberQuery.matches(publicNumber)) return@forEachRow
                 trips.configure(
                     tripId = tripId,
                     routeId = row.gtfsRawValue(routeIndex),
                     serviceId = row.gtfsRawValue(serviceIndex),
-                    shortName = row.getOrNull(shortNameIndex)
+                    shortName = shortName,
+                    numericHeadsign = numericHeadsign
                 )
             }
         }
@@ -556,7 +561,7 @@ class EmbeddedGtfsRouteAdapter(
             val worst = selected.maxWithOrNull(
                 compareBy<TrainService> { it.scheduledDepartureDateTime ?: java.time.LocalDateTime.MAX }.thenBy { it.number }
             ) ?: return false
-            val number = trip.shortName?.takeIf(String::isNotBlank) ?: trip.id
+            val number = publicNumber(trip, routes[trip.routeId])
             return compareValuesBy(
                 TrainServiceSortKey(scheduledDateTime, number),
                 TrainServiceSortKey(worst.scheduledDepartureDateTime ?: java.time.LocalDateTime.MAX, worst.number),
@@ -617,7 +622,7 @@ class EmbeddedGtfsRouteAdapter(
             val departureMinutes = stopTimes.preferredDeparture(segment.originEntry)
             val segmentEntries = segmentEntries(segment)
             val agencyName = agencyName(route)
-            val number = trip.shortName?.takeIf(String::isNotBlank) ?: trip.id
+            val number = publicNumber(trip, route)
             return TrainService(
                 id = "$sourceId:${trip.id}:$serviceDate",
                 number = number,
@@ -658,6 +663,17 @@ class EmbeddedGtfsRouteAdapter(
             entries.sortWith(compareBy<Int> { stopTimes.sequence(it) }.thenBy { stopTimes.ordinal(it) })
             return entries
         }
+
+        /**
+         * The number travellers see: trip_short_name, else a numeric trip_headsign (SNCF), else the
+         * line's route_short_name. The raw trip_id is a last resort only: SNCF ids run past 100
+         * characters and Trentino ids are 25 digits nobody recognises on a phone or a watch.
+         */
+        private fun publicNumber(trip: CompactTrip, route: CompactRoute?): String =
+            trip.shortName?.takeIf(String::isNotBlank)
+                ?: trip.numericHeadsign
+                ?: route?.shortName?.trim()?.takeIf(String::isNotEmpty)
+                ?: trip.id
 
         private fun agencyName(route: CompactRoute?): String? {
             val agencyId = route?.agencyId.orEmpty().trim()
@@ -787,11 +803,12 @@ class EmbeddedGtfsRouteAdapter(
 
             fun indexIfDeclared(id: String): Int? = indexById[id]?.takeIf { items[it].declared }
 
-            fun configure(tripId: String, routeId: String, serviceId: String, shortName: String?) {
+            fun configure(tripId: String, routeId: String, serviceId: String, shortName: String?, numericHeadsign: String?) {
                 val trip = items[indexFor(tripId)]
                 trip.routeId = routeId
                 trip.serviceId = serviceId
                 trip.shortName = shortName
+                trip.numericHeadsign = numericHeadsign
                 trip.declared = true
             }
 
@@ -818,6 +835,7 @@ class EmbeddedGtfsRouteAdapter(
             var routeId: String = ""
             var serviceId: String = ""
             var shortName: String? = null
+            var numericHeadsign: String? = null
             var declared: Boolean = false
         }
 

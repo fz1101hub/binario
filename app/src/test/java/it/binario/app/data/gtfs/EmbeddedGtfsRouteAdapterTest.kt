@@ -400,6 +400,23 @@ class EmbeddedGtfsRouteAdapterTest {
     }
 
     @Test
+    fun `senza trip_short_name usa il headsign numerico o la linea e mai il trip_id`() = runBlocking {
+        val query = JourneyQuery(LocalDate.of(2026, 9, 4), LocalTime.of(8, 0))
+        val sncfTripId = "OCESN105241F1187_F:NAV:FR:Line::85d3579c-996b-4671-89af-839855ede78a::87571000:87571240:2:1959:20261030"
+        val sncfLike = adapter(feed(tripId = sncfTripId, tripNumber = "", headsign = "105241", routeShortName = "A01"))
+        val tftLike = adapter(feed(tripId = "6924_92204", tripNumber = "", headsign = "Arezzo Rfi", routeShortName = "445"))
+
+        val sncf = (sncfLike.loadRoute(route, Direction.OUTBOUND, query) as DataResult.Success).snapshot.services.single()
+        val tft = (tftLike.loadRoute(route, Direction.OUTBOUND, query) as DataResult.Success).snapshot.services.single()
+
+        assertEquals("105241", sncf.number)
+        assertEquals(sncfTripId, sncf.gtfsIdentity?.tripId)
+        assertEquals("445", tft.number)
+        // The number search reaches the SNCF train through the same public number.
+        assertEquals(1, sncfLike.searchByNumber(it.binario.app.data.repository.TrainNumberQuery("105241", LocalDate.of(2026, 9, 4))).size)
+    }
+
+    @Test
     fun `non inventa corse quando la tratta non esiste`() = runBlocking {
         val missing = route.copy(outwardDestination = Station("bergamo", "Bergamo", "Bergamo"))
 
@@ -516,7 +533,9 @@ class EmbeddedGtfsRouteAdapterTest {
         stopTimes: String? = null,
         tripId: String = "T1",
         tripNumber: String = "2581",
-        departure: String = "08:05:00"
+        departure: String = "08:05:00",
+        headsign: String = "Como S. Giovanni",
+        routeShortName: String = "RE"
     ): ByteArray {
         val effectiveStopTimes = stopTimes ?: (
             "trip_id,arrival_time,departure_time,stop_id,stop_sequence\n" +
@@ -527,8 +546,8 @@ class EmbeddedGtfsRouteAdapterTest {
         val content = linkedMapOf(
             "agency.txt" to "agency_id,agency_name,agency_url,agency_timezone\nT,Test Rail,https://example.test,Europe/Rome\n",
             "stops.txt" to "stop_id,stop_name,stop_lat,stop_lon\nMI,Milano Centrale,45.48,9.20\nMO,Monza,45.58,9.27\nCO,Como S. Giovanni,45.80,9.08\n",
-            "routes.txt" to "route_id,agency_id,route_short_name,route_long_name,route_type\nR,T,RE,Milano Como,2\n",
-            "trips.txt" to "route_id,service_id,trip_id,trip_headsign,trip_short_name\nR,W,$tripId,Como S. Giovanni,$tripNumber\n",
+            "routes.txt" to "route_id,agency_id,route_short_name,route_long_name,route_type\nR,T,$routeShortName,Milano Como,2\n",
+            "trips.txt" to "route_id,service_id,trip_id,trip_headsign,trip_short_name\nR,W,$tripId,$headsign,$tripNumber\n",
             "stop_times.txt" to effectiveStopTimes,
             "calendar.txt" to "service_id,monday,tuesday,wednesday,thursday,friday,saturday,sunday,start_date,end_date\nW,1,1,1,1,1,0,0,20260101,20261231\n"
         )
