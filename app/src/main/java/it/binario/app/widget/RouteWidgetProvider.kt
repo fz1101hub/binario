@@ -388,7 +388,7 @@ data class WidgetService(
     fun accessibleLabel(strings: WidgetStrings): String {
         val operational = when {
             !operationalStatusVerified -> strings.scheduledUnverified
-            delayMinutes > 0 -> "${strings.statusLabels.getValue(status)} ${strings.format(strings.delayMinutes, delayMinutes)}"
+            status == ServiceStatus.DELAYED && delayMinutes > 0 -> "${strings.statusLabels.getValue(status)} ${strings.format(strings.delayMinutes, delayMinutes)}"
             else -> strings.statusLabels.getValue(status)
         }
         return strings.format(

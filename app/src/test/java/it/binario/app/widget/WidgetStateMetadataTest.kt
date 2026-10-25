@@ -65,4 +65,13 @@ class WidgetStateMetadataTest {
             scheduled.accessibleLabel(italianWidgetStrings())
         )
     }
+
+    @Test fun `a cancelled service is announced only as cancelled even when its delay is known`() {
+        val cancelled = WidgetService("789", RailOperator.TRENITALIA_REGIONALE, TrainCategory.REGIONALE, "Roma", "12:45", ServiceStatus.CANCELLED, 12, "7", true)
+
+        assertEquals(
+            "Operator Trenitalia Regionale. Regional 789 to Roma. Expected departure 12:45. Cancelled. Platform 7.",
+            cancelled.accessibleLabel(englishWidgetStrings())
+        )
+    }
 }
