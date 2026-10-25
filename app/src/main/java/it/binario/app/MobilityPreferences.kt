@@ -8,10 +8,7 @@ data class MobilityPreferences(
     val transferMarginMinutes: Int = 10,
     val stepFreePreferred: Boolean = false,
     val compactTimetablePreferred: Boolean = false
-) {
-    val accessibleSummary: String
-        get() = "${maxChanges?.let { "Massimo $it cambi" } ?: "Numero cambi libero"}, margine di interscambio $transferMarginMinutes minuti${if (stepFreePreferred) ", priorità percorsi senza barriere" else ""}${if (compactTimetablePreferred) ", tabellone compatto" else ""}."
-}
+)
 
 class MobilityPreferencesStore(context: Context) {
     private val prefs = context.getSharedPreferences("binario_mobility_preferences", Context.MODE_PRIVATE)

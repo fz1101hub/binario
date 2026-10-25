@@ -406,6 +406,7 @@
     <string name="route_schedule_expired">Los horarios incluidos para este trayecto son válidos hasta el %1$s: actualiza la app para obtener horarios más recientes.</string>
     <string name="route_no_service_after">No hay ningún tren programado el %1$s a partir de las %2$s.</string>
     <string name="route_coverage_fallback">Horario de una fuente de cobertura no oficial: compruébalo con el operador antes de viajar.</string>
+    <string name="route_source_conflict">Conflicto entre fuentes en algunos campos: comprueba el canal oficial antes de viajar.</string>
     <string name="station_board_unavailable_generic">Panel de estación no disponible.</string>
     <string name="station_board_warning_source_conflict">Conflicto entre fuentes: cada campo se ha elegido según la autoridad de su fuente.</string>
     <string name="station_board_warning_realtime_unavailable">Los datos en tiempo real están parcialmente no disponibles.</string>
@@ -440,6 +441,13 @@
     <string name="data_confidence_static_only">Horario programado</string>
     <string name="data_confidence_cached">Última instantánea en caché</string>
     <string name="data_confidence_demonstration">Datos locales de demostración</string>
+    <string name="quality_band_verified">Datos verificados</string>
+    <string name="quality_band_official_scheduled">Horario programado oficial</string>
+    <string name="quality_band_reliable">Datos fiables</string>
+    <string name="quality_band_limited">Datos con cobertura limitada</string>
+    <string name="quality_band_not_publishable">Datos no publicables</string>
+    <string name="quality_band_unknown">Calidad no evaluada</string>
+    <string name="quality_band_score">%1$s · %2$d/100</string>
     <string name="train_category_regionale">Regional</string>
     <string name="train_category_regionale_veloce">Regional rápido</string>
     <string name="train_category_intercity">Intercity</string>

@@ -115,6 +115,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
 import it.binario.app.data.DataConfidence
+import it.binario.app.data.DataQualityBand
 import it.binario.app.data.Direction
 import it.binario.app.data.Freshness
 import it.binario.app.data.SavedRoute
@@ -579,7 +580,7 @@ private fun BinarioApp(
             Screen.DETAIL -> {
                 val service = viewModel.selectedService
                 val detailProvider = viewModel.currentProviderLabel() ?: stringResource(R.string.provider_unavailable)
-                val detailConfidence = viewModel.currentConfidence()?.localizedLabel() ?: stringResource(R.string.data_confidence_unavailable)
+                val detailConfidence = viewModel.localizedQualityLabel()
                 if (service == null) {
                     // The selected service is intentionally in-memory. After process
                     // death, a restored DETAIL screen returns to its saved parent
@@ -751,7 +752,7 @@ private fun TodayScreen(
             DataStatusLine(
                 freshness = viewModel.snapshot?.freshness,
                 provider = viewModel.currentProviderLabel() ?: stringResource(R.string.provider_unavailable),
-                confidence = viewModel.currentConfidence()?.localizedLabel() ?: stringResource(R.string.data_confidence_unavailable),
+                confidence = viewModel.localizedQualityLabel(),
                 refreshedAt = viewModel.lastRefreshEpochMillis(),
                 isDemonstration = viewModel.isDemonstrationData(),
                 message = viewModel.refreshMessage
@@ -2956,10 +2957,7 @@ private fun SavedRoute.localizedDisplayName(direction: Direction): String =
     }
 
 @Composable
-private fun Direction.localizedLabel(): String = when (this) {
-    Direction.OUTBOUND -> stringResource(R.string.direction_outbound)
-    Direction.RETURN -> stringResource(R.string.direction_return)
-}
+private fun Direction.localizedLabel(): String = stringResource(labelRes())
 
 @Composable
 private fun RefreshState.localizedLabel(): String = when (this) {
@@ -2970,35 +2968,25 @@ private fun RefreshState.localizedLabel(): String = when (this) {
 }
 
 @Composable
-private fun Freshness.localizedLabel(): String = when (this) {
-    Freshness.FRESH -> stringResource(R.string.freshness_fresh)
-    Freshness.AGING -> stringResource(R.string.freshness_aging)
-    Freshness.STALE -> stringResource(R.string.freshness_stale)
-    Freshness.UNAVAILABLE -> stringResource(R.string.freshness_unavailable)
+private fun Freshness.localizedLabel(): String = stringResource(labelRes())
+
+@Composable
+private fun DataConfidence.localizedLabel(): String = stringResource(labelRes())
+
+@Composable
+private fun DataQualityBand.localizedLabel(): String = stringResource(labelRes())
+
+/** Quality band and score precede the confidence, as promised for every published snapshot. */
+@Composable
+private fun TrainViewModel.localizedQualityLabel(): String {
+    val confidence = currentConfidence()?.localizedLabel() ?: return stringResource(R.string.data_confidence_unavailable)
+    val band = currentQualityBand()
+    val quality = currentQualityScore()?.let { score -> band?.let { stringResource(R.string.quality_band_score, it.localizedLabel(), score) } }
+    return listOfNotNull(quality, confidence).joinToString(" · ")
 }
 
 @Composable
-private fun DataConfidence.localizedLabel(): String = when (this) {
-    DataConfidence.OPERATOR_PRIMARY -> stringResource(R.string.data_confidence_operator_primary)
-    DataConfidence.INFRASTRUCTURE_PRIMARY -> stringResource(R.string.data_confidence_infrastructure_primary)
-    DataConfidence.OPEN_DATA -> stringResource(R.string.data_confidence_open_data)
-    DataConfidence.LICENSED_AGGREGATE -> stringResource(R.string.data_confidence_licensed_aggregate)
-    DataConfidence.STATIC_ONLY -> stringResource(R.string.data_confidence_static_only)
-    DataConfidence.CACHED -> stringResource(R.string.data_confidence_cached)
-    DataConfidence.DEMONSTRATION -> stringResource(R.string.data_confidence_demonstration)
-}
-
-@Composable
-private fun TrainCategory.localizedLabel(): String = when (this) {
-    TrainCategory.REGIONALE -> stringResource(R.string.train_category_regionale)
-    TrainCategory.REGIONALE_VELOCE -> stringResource(R.string.train_category_regionale_veloce)
-    TrainCategory.INTERCITY -> stringResource(R.string.train_category_intercity)
-    TrainCategory.FRECCE -> stringResource(R.string.train_category_frecce)
-    TrainCategory.AV_ITALO -> stringResource(R.string.train_category_italo_high_speed)
-    TrainCategory.TRENORD_REGIO -> stringResource(R.string.train_category_trenord_regional)
-    TrainCategory.METROPOLITANO -> stringResource(R.string.train_category_metropolitan)
-    TrainCategory.OTHER -> stringResource(R.string.train_category_other)
-}
+private fun TrainCategory.localizedLabel(): String = stringResource(labelRes())
 
 @Composable
 private fun TrainService.localizedAccessibleSummary(): String {
@@ -3064,11 +3052,7 @@ private fun MobilityPreferences.localizedSummary(): String = stringResource(
 )
 
 @Composable
-private fun ServiceStatus.localizedLabel(): String = when (this) {
-    ServiceStatus.ON_TIME -> stringResource(R.string.service_status_on_time)
-    ServiceStatus.DELAYED -> stringResource(R.string.service_status_delayed)
-    ServiceStatus.CANCELLED -> stringResource(R.string.service_status_cancelled)
-}
+private fun ServiceStatus.localizedLabel(): String = stringResource(labelRes())
 
 @Composable
 private fun StationMonitorMode.localizedLabel(): String = when (this) {

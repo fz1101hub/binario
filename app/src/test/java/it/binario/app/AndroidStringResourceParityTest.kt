@@ -113,7 +113,7 @@ class AndroidStringResourceParityTest {
             "share_category_frecce", "share_category_intercity", "share_stop_delay", "alert_repeat_weekdays",
             "commuter_alert_lead", "integration_wear_title",
             "expected_time_short", "theme_system_label", "train_category_intercity", "train_category_frecce",
-            "unconfigured_route_display"
+            "unconfigured_route_display", "quality_band_score"
         )
         val IDENTICAL_PLURAL_KEYS = setOf("minutes_short")
         val quantitiesByLocale = mapOf(

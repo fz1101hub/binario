@@ -38,6 +38,7 @@ internal fun UiMessageKey.resourceId(): Int = when (this) {
     UiMessageKey.ROUTE_SCHEDULE_OUTSIDE_VALIDITY -> R.string.route_schedule_outside_validity
     UiMessageKey.ROUTE_NO_SERVICE_AFTER -> R.string.route_no_service_after
     UiMessageKey.ROUTE_COVERAGE_FALLBACK -> R.string.route_coverage_fallback
+    UiMessageKey.ROUTE_SOURCE_CONFLICT -> R.string.route_source_conflict
     UiMessageKey.STATION_BOARD_UNAVAILABLE -> R.string.station_board_unavailable_generic
     UiMessageKey.STATION_BOARD_SOURCE_CONFLICT -> R.string.station_board_warning_source_conflict
     UiMessageKey.STATION_BOARD_REALTIME_UNAVAILABLE -> R.string.station_board_warning_realtime_unavailable

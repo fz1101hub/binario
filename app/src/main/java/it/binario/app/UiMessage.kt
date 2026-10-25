@@ -3,6 +3,7 @@ package it.binario.app
 import it.binario.app.data.RailTime
 import it.binario.app.data.RouteFailureReason
 import it.binario.app.data.RouteSnapshot
+import it.binario.app.data.SnapshotWarning
 import java.time.Instant
 import java.time.format.DateTimeFormatter
 
@@ -45,6 +46,7 @@ enum class UiMessageKey(val resourceName: String) {
     ROUTE_SCHEDULE_OUTSIDE_VALIDITY("route_schedule_outside_validity"),
     ROUTE_NO_SERVICE_AFTER("route_no_service_after"),
     ROUTE_COVERAGE_FALLBACK("route_coverage_fallback"),
+    ROUTE_SOURCE_CONFLICT("route_source_conflict"),
     STATION_BOARD_UNAVAILABLE("station_board_unavailable_generic"),
     STATION_BOARD_SOURCE_CONFLICT("station_board_warning_source_conflict"),
     STATION_BOARD_REALTIME_UNAVAILABLE("station_board_warning_realtime_unavailable"),
@@ -69,9 +71,12 @@ internal fun RouteFailureReason.uiMessage(): UiMessage = when (this) {
     is RouteFailureReason.NoServiceAfter -> UiMessage(UiMessageKey.ROUTE_NO_SERVICE_AFTER, serviceDate, departureTime)
 }
 
-/** The advisory a successful route search must carry, if any. */
-internal fun RouteSnapshot.advisoryMessage(): UiMessage? =
-    if (coverageFallback) UiMessage(UiMessageKey.ROUTE_COVERAGE_FALLBACK) else null
+/** The advisory a successful route search must carry, if any; an unofficial source outranks a field conflict. */
+internal fun RouteSnapshot.advisoryMessage(): UiMessage? = when {
+    coverageFallback -> UiMessage(UiMessageKey.ROUTE_COVERAGE_FALLBACK)
+    SnapshotWarning.SOURCE_CONFLICT in qualityWarnings -> UiMessage(UiMessageKey.ROUTE_SOURCE_CONFLICT)
+    else -> null
+}
 
 /** When the shown data was last refreshed, as a railway-local clock time; the wording follows the display language. */
 internal fun updateTimeMessage(epochMillis: Long): UiMessage {

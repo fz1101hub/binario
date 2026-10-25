@@ -402,6 +402,7 @@
     <string name="route_schedule_expired">Die enthaltenen Fahrpläne für diese Strecke gelten bis %1$s: Aktualisiere die App für neuere Fahrpläne.</string>
     <string name="route_no_service_after">Am %1$s ab %2$s ist kein Zug geplant.</string>
     <string name="route_coverage_fallback">Fahrplan aus einer inoffiziellen Ergänzungsquelle: Prüfe ihn vor der Fahrt beim Verkehrsunternehmen.</string>
+    <string name="route_source_conflict">Quellenkonflikt bei einigen Feldern: Prüfe vor der Fahrt den offiziellen Kanal.</string>
     <string name="station_board_unavailable_generic">Abfahrtstafel nicht verfügbar.</string>
     <string name="station_board_warning_source_conflict">Quellenkonflikt: Jedes Feld wurde nach Quellenautorität ausgewählt.</string>
     <string name="station_board_warning_realtime_unavailable">Echtzeitdaten sind teilweise nicht verfügbar.</string>
@@ -433,6 +434,13 @@
     <string name="data_confidence_static_only">Geplanter Fahrplan</string>
     <string name="data_confidence_cached">Letzter Cache-Snapshot</string>
     <string name="data_confidence_demonstration">Lokale Demonstrationsdaten</string>
+    <string name="quality_band_verified">Verifizierte Daten</string>
+    <string name="quality_band_official_scheduled">Offizieller geplanter Fahrplan</string>
+    <string name="quality_band_reliable">Zuverlässige Daten</string>
+    <string name="quality_band_limited">Daten mit begrenzter Abdeckung</string>
+    <string name="quality_band_not_publishable">Nicht veröffentlichbare Daten</string>
+    <string name="quality_band_unknown">Qualität nicht bewertet</string>
+    <string name="quality_band_score">%1$s · %2$d/100</string>
     <string name="train_category_regionale">Regionalzug</string>
     <string name="train_category_regionale_veloce">Regionalexpress</string>
     <string name="train_category_intercity">Intercity</string>

@@ -7,13 +7,9 @@ import it.binario.app.data.TrainService
 import it.binario.app.data.TrainStop
 import java.util.UUID
 
-enum class StationMonitorMode(val label: String) {
-    DEPARTURES("Partenze"), ARRIVALS("Arrivi"), BOTH("Arrivi e partenze")
-}
+enum class StationMonitorMode { DEPARTURES, ARRIVALS, BOTH }
 
-data class StationMonitor(val stationId: String, val stationName: String, val mode: StationMonitorMode) {
-    val accessibleSummary: String get() = "$stationName, monitoraggio ${mode.label.lowercase()}. Dati non disponibili in tempo reale."
-}
+data class StationMonitor(val stationId: String, val stationName: String, val mode: StationMonitorMode)
 
 data class ActiveTripStop(val station: String, val expected: String, val platform: String?)
 

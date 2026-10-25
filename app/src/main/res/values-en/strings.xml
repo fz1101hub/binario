@@ -402,6 +402,7 @@
     <string name="route_schedule_expired">The timetables included for this route are valid until %1$s: update the app for newer timetables.</string>
     <string name="route_no_service_after">No scheduled train on %1$s from %2$s onwards.</string>
     <string name="route_coverage_fallback">Timetable from an unofficial coverage source: check with the operator before you travel.</string>
+    <string name="route_source_conflict">Sources conflict on some fields: check the official channel before you travel.</string>
     <string name="station_board_unavailable_generic">Station board unavailable.</string>
     <string name="station_board_warning_source_conflict">Sources conflict: each field was selected by source authority.</string>
     <string name="station_board_warning_realtime_unavailable">Realtime data is partially unavailable.</string>
@@ -433,6 +434,13 @@
     <string name="data_confidence_static_only">Scheduled timetable</string>
     <string name="data_confidence_cached">Latest cached snapshot</string>
     <string name="data_confidence_demonstration">Local demonstration data</string>
+    <string name="quality_band_verified">Verified data</string>
+    <string name="quality_band_official_scheduled">Official scheduled timetable</string>
+    <string name="quality_band_reliable">Reliable data</string>
+    <string name="quality_band_limited">Data with limited coverage</string>
+    <string name="quality_band_not_publishable">Data not publishable</string>
+    <string name="quality_band_unknown">Quality not assessed</string>
+    <string name="quality_band_score">%1$s · %2$d/100</string>
     <string name="train_category_regionale">Regional</string>
     <string name="train_category_regionale_veloce">Fast regional</string>
     <string name="train_category_intercity">Intercity</string>

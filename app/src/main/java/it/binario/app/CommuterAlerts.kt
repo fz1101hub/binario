@@ -25,10 +25,10 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.UUID
 
-enum class AlertRepeat(val label: String, val days: Set<DayOfWeek>) {
-    ONCE("Una volta", emptySet()),
-    WEEKDAYS("Lun–ven", setOf(DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY, DayOfWeek.THURSDAY, DayOfWeek.FRIDAY)),
-    DAILY("Ogni giorno", DayOfWeek.entries.toSet())
+enum class AlertRepeat(val days: Set<DayOfWeek>) {
+    ONCE(emptySet()),
+    WEEKDAYS(setOf(DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY, DayOfWeek.THURSDAY, DayOfWeek.FRIDAY)),
+    DAILY(DayOfWeek.entries.toSet())
 }
 
 data class CommuterAlert(
@@ -40,10 +40,7 @@ data class CommuterAlert(
     val repeat: AlertRepeat,
     val quietHoursEnabled: Boolean,
     val enabled: Boolean = true
-) {
-    val accessibleSummary: String
-        get() = "$routeLabel, fermata $stationName alle $time, avviso $leadMinutes minuti prima, ${repeat.label}${if (quietHoursEnabled) ", fascia silenziosa 22:00–07:00" else ""}${if (!enabled) ", disattivato" else ""}."
-}
+)
 
 sealed interface CommuterAlertTriggerResult {
     data class TriggerAt(val epochMillis: Long) : CommuterAlertTriggerResult
