@@ -12,7 +12,7 @@ import org.junit.runner.RunWith
 class RealtimeBuildConfigurationTest {
     @Test fun personalTestApkEnablesOperationalSources() {
         assertTrue("L’APK personale di test deve includere le fonti live", BuildConfig.PERSONAL_REALTIME_SOURCES)
-        assertEquals(setOf("rfi-station-board", "italo-status", "viaggiatreno"),
+        assertEquals(setOf("rfi-station-board", "italo-status", "viaggiatreno", "ch-transport-opendata"),
             BinarioDataGraph.stationBoardProviders().map { it.descriptor.id.value }.toSet())
     }
 }
