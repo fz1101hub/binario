@@ -323,6 +323,9 @@ class LiveProviderNetworkTest {
             numbers.forEach { add("vt-infomobility-$it" to "https://www.viaggiatreno.it/infomobilitamobile/resteasy/news/infomobility?trainNumber=$it") }
             numbers.take(3).forEach { add("vt-smartcaring-$it" to "https://www.viaggiatreno.it/infomobilitamobile/resteasy/news/smartcaring?commercialTrainNumber=$it") }
             add("vt-infomobility-general" to "https://www.viaggiatreno.it/infomobilitamobile/resteasy/news/infomobility")
+            numbers.take(2).forEach { add("vt-infomobilita-news-$it" to "https://www.viaggiatreno.it/infomobilita/resteasy/news/infomobility?trainNumber=$it") }
+            add("vt-infomobilita-ticker" to "https://www.viaggiatreno.it/infomobilita/resteasy/viaggiatreno/infomobilitaTicker")
+            add("mit-scioperi-root" to "https://scioperi.mit.gov.it/")
             add("opendata-ch-stationboard-name" to "https://transport.opendata.ch/v1/stationboard?station=Lugano&limit=4")
             add("opendata-ch-stationboard-id" to "https://transport.opendata.ch/v1/stationboard?id=8505300&limit=3&type=arrival")
             add("opendata-ch-locations" to "https://transport.opendata.ch/v1/locations?query=Chiasso&type=station")
@@ -337,7 +340,9 @@ class LiveProviderNetworkTest {
                 connection.readTimeout = 20_000
                 connection.setRequestProperty("User-Agent", "Binario/0.20 (source format discovery)")
                 connection.setRequestProperty("Accept", "application/json, text/html;q=0.9, */*;q=0.5")
+                connection.instanceFollowRedirects = false
                 val code = connection.responseCode
+                connection.getHeaderField("Location")?.let { println("LIVE_ACCEPTANCE SAMPLE $name redirect=$it") }
                 val body = (if (code in 200..299) connection.inputStream else connection.errorStream)?.use { it.readBytes().toString(Charsets.UTF_8) }.orEmpty()
                 "status=$code type=${connection.contentType} length=${body.length} links=${Regex("href=\"([^\"]*(rss|xml|csv|xls|json|ical|ics|export)[^\"]*)\"", RegexOption.IGNORE_CASE).findAll(body).map { it.groupValues[1] }.distinct().take(15).toList()} body=" +
                     body.take(if (name == "mit-scioperi") 12_000 else 7_000).replace("\r", "").replace("\n", "\\n")
