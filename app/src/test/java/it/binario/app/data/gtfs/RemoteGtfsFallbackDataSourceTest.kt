@@ -3,6 +3,7 @@ package it.binario.app.data.gtfs
 import it.binario.app.data.DataResult
 import it.binario.app.data.Direction
 import it.binario.app.data.JourneyQuery
+import it.binario.app.data.RouteFailureReason
 import it.binario.app.data.SavedRoute
 import it.binario.app.data.Station
 import it.binario.app.data.core.Confidence
@@ -117,6 +118,22 @@ class RemoteGtfsFallbackDataSourceTest {
     }
 
     @Test
+    fun `il mirror community non popola tratte di altri operatori`() = runBlocking {
+        val adapter = adapter(realtimeProvider("trip-1"), gtfs(foreignOperatorTrip = true))
+        val query = JourneyQuery(LocalDate.of(2026, 9, 10), LocalTime.of(8, 0))
+        val domestic = SavedRoute("rm-mi", "Roma–Milano", Station("curated:rom", "Roma Termini", "Roma"), destination)
+
+        val foreign = adapter.loadRoute(domestic, Direction.OUTBOUND, query)
+        assertTrue(foreign.toString(), foreign is DataResult.Failure)
+        assertEquals(RouteFailureReason.RouteNotCovered, (foreign as DataResult.Failure).reason)
+
+        val own = adapter.loadRoute(route, Direction.OUTBOUND, query)
+        val services = (own as DataResult.Success).snapshot.services
+        assertEquals(listOf("ES123"), services.map { it.number })
+        assertEquals(listOf("European Sleeper"), services.map { it.operatorDisplayName })
+    }
+
+    @Test
     fun `un orario realtime malformato degrada solo quel singolo update allo snapshot statico`() = runBlocking {
         val adapter = adapter(
             realtimeProvider(realtimeUpdate("trip-1"), realtimeUpdate("trip-1", "col", 2)),
@@ -164,6 +181,7 @@ class RemoteGtfsFallbackDataSourceTest {
         val adapter = RemoteGtfsFallbackDataSource(
             source = source,
             parserSourceId = SourceId("european-sleeper"),
+            operatorScope = "European Sleeper",
             downloader = GtfsArtifactSource { _, _ ->
                 downloadThread = Thread.currentThread()
                 GtfsDownloadSession(ByteArrayInputStream(gtfs()))
@@ -196,6 +214,7 @@ class RemoteGtfsFallbackDataSourceTest {
         val adapter = RemoteGtfsFallbackDataSource(
             source = source,
             parserSourceId = SourceId("european-sleeper"),
+            operatorScope = "European Sleeper",
             downloader = GtfsArtifactSource { _, _ ->
                 downloads.incrementAndGet()
                 downloadStarted.complete(Unit)
@@ -234,6 +253,7 @@ class RemoteGtfsFallbackDataSourceTest {
     private fun adapter(provider: TripUpdateProvider, feed: ByteArray = gtfs()) = RemoteGtfsFallbackDataSource(
         source = source,
         parserSourceId = SourceId("european-sleeper"),
+        operatorScope = "European Sleeper",
         downloader = GtfsArtifactSource { _, _ -> GtfsDownloadSession(ByteArrayInputStream(feed)) },
         clock = clock,
         realtimeProvider = provider,
@@ -285,19 +305,33 @@ class RemoteGtfsFallbackDataSourceTest {
         )
     }
 
-    private fun gtfs(includeMalformedStop: Boolean = false, stopTimesOverride: String? = null): ByteArray {
+    private fun gtfs(
+        includeMalformedStop: Boolean = false,
+        stopTimesOverride: String? = null,
+        foreignOperatorTrip: Boolean = false
+    ): ByteArray {
         val stop = if (includeMalformedStop) "col,Köln Hbf\n" else ""
         val stopTimes = if (includeMalformedStop) {
             "trip-1,09:00:00,09:00:00,bru,1\ntrip-1,12:00:00,nope,col,2\ntrip-1,19:00:00,19:00:00,mil,3\n"
         } else {
             "trip-1,09:00:00,09:00:00,bru,1\ntrip-1,19:00:00,19:00:00,mil,2\n"
         }
+        // A tampered or over-broad mirror: another agency's train serving the same and a domestic route.
+        val foreignAgency = if (foreignOperatorTrip) "x,Altro Vettore\n" else ""
+        val foreignStop = if (foreignOperatorTrip) "rom,Roma Termini\n" else ""
+        val foreignRoute = if (foreignOperatorTrip) "r2,x,IC,Bruxelles Roma Milano,2\n" else ""
+        val foreignTrip = if (foreignOperatorTrip) "r2,daily,trip-2,IC500\n" else ""
+        val foreignStopTimes = if (foreignOperatorTrip) {
+            "trip-2,10:00:00,10:00:00,bru,1\ntrip-2,16:00:00,16:00:00,rom,2\ntrip-2,20:00:00,20:00:00,mil,3\n"
+        } else {
+            ""
+        }
         val files = linkedMapOf(
-            "agency.txt" to "agency_id,agency_name\nes,European Sleeper\n",
-            "stops.txt" to "stop_id,stop_name\nbru,Bruxelles-Midi\n${stop}mil,Milano Centrale\n",
-            "routes.txt" to "route_id,agency_id,route_short_name,route_long_name,route_type\nr1,es,ES,Bruxelles Milano,2\n",
-            "trips.txt" to "route_id,service_id,trip_id,trip_short_name\nr1,daily,trip-1,ES123\n",
-            "stop_times.txt" to "trip_id,arrival_time,departure_time,stop_id,stop_sequence\n${stopTimesOverride ?: stopTimes}",
+            "agency.txt" to "agency_id,agency_name\nes,European Sleeper\n$foreignAgency",
+            "stops.txt" to "stop_id,stop_name\nbru,Bruxelles-Midi\n${stop}${foreignStop}mil,Milano Centrale\n",
+            "routes.txt" to "route_id,agency_id,route_short_name,route_long_name,route_type\nr1,es,ES,Bruxelles Milano,2\n$foreignRoute",
+            "trips.txt" to "route_id,service_id,trip_id,trip_short_name\nr1,daily,trip-1,ES123\n$foreignTrip",
+            "stop_times.txt" to "trip_id,arrival_time,departure_time,stop_id,stop_sequence\n${stopTimesOverride ?: stopTimes}$foreignStopTimes",
             "calendar.txt" to "service_id,monday,tuesday,wednesday,thursday,friday,saturday,sunday,start_date,end_date\ndaily,1,1,1,1,1,1,1,20260901,20261231\n",
             "calendar_dates.txt" to "service_id,date,exception_type\n"
         )

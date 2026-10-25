@@ -4,6 +4,7 @@ import it.binario.app.data.DataResult
 import it.binario.app.data.Direction
 import it.binario.app.data.Freshness
 import it.binario.app.data.JourneyQuery
+import it.binario.app.data.RouteFailureReason
 import it.binario.app.data.RouteSnapshot
 import it.binario.app.data.SavedRoute
 import it.binario.app.data.ServiceStatus
@@ -47,6 +48,8 @@ import kotlinx.coroutines.withContext
 class RemoteGtfsFallbackDataSource(
     private val source: RailSourceDefinition,
     private val parserSourceId: SourceId,
+    /** Canonical operator label of the only trains this mirror may contribute; other agencies it carries are ignored. */
+    private val operatorScope: String,
     private val downloader: GtfsArtifactSource = GtfsArtifactDownloader(),
     private val clock: Clock = Clock.systemUTC(),
     private val notBefore: LocalDate? = null,
@@ -70,7 +73,18 @@ class RemoteGtfsFallbackDataSource(
         }
         return when (val result = feed.adapter.loadRoute(route, direction, query)) {
             is DataResult.Success -> {
+                // A community mirror can carry any agency: only the operator this fallback exists
+                // for may populate a route through it, so a tampered feed cannot fill domestic
+                // routes with trains the primary sources never confirmed.
+                val scoped = result.snapshot.services.filter { it.operatorDisplayName == operatorScope }
+                if (scoped.isEmpty()) {
+                    return DataResult.Failure(
+                        "La fonte GTFS fallback ${source.displayName} non pubblica corse $operatorScope per questa tratta.",
+                        RouteFailureReason.RouteNotCovered
+                    )
+                }
                 val planned = result.snapshot.copy(
+                    services = scoped,
                     providerName = "${source.displayName} · fallback best-effort",
                     notice = listOfNotNull(
                         "Copertura fallback: usata perché le fonti ferroviarie primarie non hanno restituito questa tratta. Verifica l'orario con il vettore prima del viaggio.",
@@ -241,6 +255,7 @@ class RemoteGtfsFallbackDataSource(
                 source = requireNotNull(InternationalSourceCatalog.byId(SourceId("european-sleeper-gtfs"))),
                 // The legacy source id already exists in RailSourceCatalog and is used only as parser provenance.
                 parserSourceId = SourceId("european-sleeper"),
+                operatorScope = "European Sleeper",
                 clock = clock,
                 notBefore = LocalDate.of(2026, 9, 9),
                 realtimeProvider = EuropeanSleeperGtfsRealtimeAdapter(clock = clock)
