@@ -4,6 +4,7 @@ import it.binario.app.data.matchesPublishedName
 import it.binario.app.data.liveIdentityKey
 import java.io.File
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -65,6 +66,26 @@ class EmbeddedCuratedRailStationCatalogTest {
 
         assertEquals(5239, stations.size)
         assertTrue(stations.all { it.id.startsWith("curated:") })
+    }
+
+    @Test
+    fun `a station without codes keeps them null, never the text null`() {
+        // The shipped catalogue writes "railwayCode": null for such stations; Android's org.json
+        // would read that back as the text "null" through a plain optString.
+        val document = """
+            {"kind":"curated-rail-station-catalog","operationalData":false,"stations":[
+              {"id":"NC000001","name":"Fermata Senza Codici","railwayCode":null,"trenitaliaLocationId":null,"aliases":[],"latitude":null,"longitude":null},
+              {"id":"S01700","name":"Milano Centrale","railwayCode":" S01700 ","trenitaliaLocationId":"830001700","aliases":["Milano C.le"]}
+            ]}
+        """.trimIndent()
+        val stations = EmbeddedCuratedRailStationCatalog(openAsset = { document.byteInputStream() }).load()
+
+        val bare = stations.first { it.id == "curated:NC000001" }
+        assertNull(bare.railwayCode)
+        assertNull(bare.trenitaliaLocationId)
+        assertNull(bare.latitude)
+        assertEquals("S01700", stations.first { it.id == "curated:S01700" }.railwayCode)
+        assertTrue(stations.none { it.railwayCode == "null" || it.trenitaliaLocationId == "null" })
     }
 
     @Test

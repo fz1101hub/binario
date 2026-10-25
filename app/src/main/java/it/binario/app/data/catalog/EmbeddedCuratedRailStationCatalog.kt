@@ -37,8 +37,8 @@ class EmbeddedCuratedRailStationCatalog(
                 name = name,
                 city = name,
                 region = SOURCE_LABEL,
-                railwayCode = value.optString("railwayCode").trim().ifBlank { null },
-                trenitaliaLocationId = value.optString("trenitaliaLocationId").trim().ifBlank { null },
+                railwayCode = value.optTextOrNull("railwayCode"),
+                trenitaliaLocationId = value.optTextOrNull("trenitaliaLocationId"),
                 aliases = aliases,
                 latitude = value.optDoubleOrNull("latitude"),
                 longitude = value.optDoubleOrNull("longitude")
@@ -56,6 +56,14 @@ class EmbeddedCuratedRailStationCatalog(
 
     private fun JSONObject.optDoubleOrNull(name: String): Double? =
         if (has(name) && !isNull(name)) optDouble(name).takeIf { it.isFinite() } else null
+
+    /**
+     * The catalogue writes `null` for a station without the code. Android's org.json renders a
+     * JSON null as the text "null" from optString, unlike the org.json used by the unit tests, so
+     * the null is checked first: a station must never carry "null" as its railway code.
+     */
+    private fun JSONObject.optTextOrNull(name: String): String? =
+        if (has(name) && !isNull(name)) optString(name).trim().ifBlank { null } else null
 
     companion object {
         const val ASSET_PATH = "stations/curated_it_rail_stations.json"
