@@ -47,7 +47,7 @@ class WidgetStateMetadataTest {
     @Test fun `compact metadata and TalkBack summary follow the catalogue they are given`() {
         assertEquals("RFI · INFRASTRUCTURE · Q84 · UPDATING · SOURCE CONFLICT · PAGE 1/1", state.compactMeta(englishWidgetStrings(), "PAGE 1/1"))
         assertEquals(
-            "Source RFI. Data updating. Infrastructure manager primary source. Reliable data, quality score 84 out of 100. Warnings: Sources in conflict",
+            "Source RFI. Data updating. Infrastructure manager primary source. Reliable data, quality score out of 100: 84. Warnings: Sources in conflict",
             state.accessibleDataSummary(englishWidgetStrings())
         )
     }

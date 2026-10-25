@@ -59,7 +59,7 @@ class WidgetStringsResourceTest {
 
         assertEquals("RFI · INFRASTRUCTURE · Q84 · UPDATING · SOURCE CONFLICT · PAGE 1/1", state.compactMeta(strings, "PAGE 1/1"))
         assertEquals(
-            "Source RFI. Data updating. Infrastructure manager primary source. Reliable data, quality score 84 out of 100. Warnings: Sources in conflict",
+            "Source RFI. Data updating. Infrastructure manager primary source. Reliable data, quality score out of 100: 84. Warnings: Sources in conflict",
             state.accessibleDataSummary(strings)
         )
         assertEquals("Operator Trenitalia Regionale. Regional 123 to Roma. Expected departure 12:04. Delayed +4 min. Platform 7.", delayed.accessibleLabel(strings))
