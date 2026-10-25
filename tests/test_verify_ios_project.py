@@ -62,6 +62,13 @@ class IOSProjectTests(unittest.TestCase):
         self.assertEqual(6.0, global_settings["SWIFT_VERSION"])
         self.assertEqual("0.1.0", global_settings["MARKETING_VERSION"])
         self.assertEqual(1, global_settings["CURRENT_PROJECT_VERSION"])
+        # Signing comes from the environment at generation time: no team or identity is
+        # committed, but an archive needs one team on every target.
+        self.assertEqual("Automatic", global_settings["CODE_SIGN_STYLE"])
+        self.assertEqual("${BINARIO_APPLE_TEAM_ID}", global_settings["DEVELOPMENT_TEAM"])
+        self.assertNotIn("CODE_SIGN_IDENTITY", global_settings)
+        self.assertIn('export BINARIO_APPLE_TEAM_ID="${BINARIO_APPLE_TEAM_ID:-}"', (IOS / "Scripts/generate-project.sh").read_text(encoding="utf-8"))
+        self.assertIn("BINARIO_APPLE_TEAM_ID", (IOS / "APPLE_PLATFORM_READINESS.md").read_text(encoding="utf-8"))
         self.assertEqual("1", settings["TARGETED_DEVICE_FAMILY"])
         self.assertIs(False, settings["SUPPORTS_MACCATALYST"])
         self.assertIs(False, settings["SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD"])
