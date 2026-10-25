@@ -12,6 +12,7 @@
 | Keystore di upload e iscrizione a Play App Signing | Procedura in `RELEASE_BUILD.md` | Generare il keystore, caricare i quattro secret, eseguire il dispatch con `sign_release=true`. |
 | `versionCode` mai riusati | Garantito da `tools/verify_android_release_config.py` | Incrementare `BINARIO_APP_VERSION_CODE` a ogni upload; Wear deriva automaticamente `1000000 + codice telefono`. |
 | Risposte Sicurezza dei dati coerenti con il codice | `PLAY_DATA_SAFETY.md`, verificato da `tools/verify_privacy_policy.py` | Trascrivere le risposte nella Console e confermarle. |
+| Dichiarazione del servizio in primo piano di tipo `location` (sveglia GPS) | Manifest: `ACCESS_FINE_LOCATION`, `FOREGROUND_SERVICE_LOCATION`, servizio non esportato di tipo `location`; nessuna posizione in background | **OWNER ACTION**: compilare *Autorizzazioni dei servizi in primo piano* con la descrizione e un video dimostrativo come indicato in `PLAY_DATA_SAFETY.md`; senza la dichiarazione la Console non accetta il bundle. |
 
 ## 1. Creazione dell'app nella Console
 
@@ -24,6 +25,8 @@
    - *Pubblico di destinazione e contenuti*: fasce *13-15*, *16-17* e *18 e oltre*; l'app non è pensata per bambini e non deve attrarli involontariamente. Selezionare una fascia sotto i 13 anni attiverebbe le norme Famiglie, non richieste.
    - *App di notizie*: no. *App di monitoraggio e tracciamento dei contatti COVID-19*: no.
    - *Sicurezza dei dati*: copiare le risposte di `PLAY_DATA_SAFETY.md`, sezione «Risposte proposte al modulo».
+   - *Autorizzazioni dei servizi in primo piano*: dichiarare il tipo *Posizione* per la sveglia GPS con descrizione e link al video, come in `PLAY_DATA_SAFETY.md` («OWNER ACTION — dichiarazione del servizio in primo piano»). La spiegazione del permesso è già mostrata nell'app prima della richiesta di sistema.
+   - *Autorizzazioni per la posizione*: solo accesso in primo piano; nessuna dichiarazione di posizione in background.
    - *App governative*: no. *Funzionalità finanziarie*: nessuna. *Salute*: nessuna funzionalità sanitaria.
    - *Categoria dell'app e dettagli di contatto*: categoria *Mappe e navigazione* (alternativa: *Viaggi e info locali*), tag *Treni* e *Trasporto pubblico*; email di contatto pubblica; sito web facoltativo.
    - *Scheda dello Store*: testi della sezione 2 e grafica della sezione 3.
@@ -108,7 +111,7 @@ CONSULTA
 • Quadri orario programmati RFI per le stazioni hub coperte e orari GTFS ufficiali inclusi nell'app per dieci reti regionali e transfrontaliere.
 • Dettaglio corsa con operatore, categoria, orari programmati e fermate.
 • Tratte salvate, preferiti e monitoraggio locale di un numero treno.
-• Sveglia fermata e avvisi pendolare come notifiche locali.
+• Sveglia fermata e avvisi pendolare come notifiche locali; la sveglia può anche avvisarti in base alla posizione, che resta sul telefono.
 
 WIDGET E WEAR OS
 • Widget ad alto contrasto, ridimensionabile e configurabile per istanza su tratta, stazione o numero treno.
@@ -141,7 +144,7 @@ BROWSE
 • RFI scheduled departure boards for the covered hub stations and official GTFS timetables bundled in the app for ten regional and cross-border networks.
 • Service details with operator, category, scheduled times and all stops.
 • Saved routes, favourites and local monitoring of a train number.
-• Stop alarm and commuter alerts as local notifications.
+• Stop alarm and commuter alerts as local notifications; the alarm can also alert you based on your location, which stays on the phone.
 
 WIDGET AND WEAR OS
 • High-contrast, resizable widget, configured per instance for a route, a station or a train number.
@@ -174,7 +177,7 @@ ANSEHEN
 • Planmäßige RFI-Abfahrtstafeln für die abgedeckten Knotenbahnhöfe und offizielle GTFS-Fahrpläne in der App für zehn regionale und grenzüberschreitende Netze.
 • Verbindungsdetails mit Betreiber, Kategorie, Planzeiten und allen Halten.
 • Gespeicherte Strecken, Favoriten und lokale Überwachung einer Zugnummer.
-• Haltwecker und Pendlerwarnungen als lokale Benachrichtigungen.
+• Haltwecker und Pendlerwarnungen als lokale Benachrichtigungen; der Wecker kann dich auch anhand deines Standorts warnen, der auf dem Telefon bleibt.
 
 WIDGET UND WEAR OS
 • Kontrastreiches, größenveränderbares Widget, je Instanz für eine Strecke, einen Bahnhof oder eine Zugnummer konfigurierbar.
@@ -207,7 +210,7 @@ CONSULTER
 • Tableaux des départs programmés RFI pour les gares principales couvertes et horaires GTFS officiels intégrés à l'application pour dix réseaux régionaux et transfrontaliers.
 • Détail du train avec opérateur, catégorie, horaires programmés et tous les arrêts.
 • Trajets enregistrés, favoris et suivi local d'un numéro de train.
-• Réveil à l'arrêt et alertes pendulaires sous forme de notifications locales.
+• Réveil à l'arrêt et alertes pendulaires sous forme de notifications locales ; le réveil peut aussi vous avertir selon votre position, qui reste sur le téléphone.
 
 WIDGET ET WEAR OS
 • Widget à fort contraste, redimensionnable et configurable par instance pour un trajet, une gare ou un numéro de train.
@@ -240,7 +243,7 @@ CONSULTAR
 • Cuadros de salidas programadas de RFI para las estaciones principales cubiertas y horarios GTFS oficiales incluidos en la app para diez redes regionales y transfronterizas.
 • Detalle del tren con operador, categoría, horarios programados y todas las paradas.
 • Rutas guardadas, favoritos y seguimiento local de un número de tren.
-• Alarma de parada y avisos para viajeros habituales como notificaciones locales.
+• Alarma de parada y avisos para viajeros habituales como notificaciones locales; la alarma también puede avisarte según tu ubicación, que se queda en el teléfono.
 
 WIDGET Y WEAR OS
 • Widget de alto contraste, redimensionable y configurable por instancia para una ruta, una estación o un número de tren.

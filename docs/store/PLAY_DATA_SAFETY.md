@@ -9,9 +9,9 @@
 | Backend Binario | Nessun server, account o sincronizzazione remota per l'app Android e Wear; i dati restano nelle `SharedPreferences` private. | `app/src/main/java/it/binario/app/*Store.kt`, `PRIVACY.md` |
 | SDK di terze parti | Nessun SDK pubblicitario, di analytics o di crash reporting; le dipendenze sono AndroidX, Compose, WorkManager, jsoup, `gtfs-realtime-bindings` e Play Services Wearable. | `app/build.gradle.kts`, `wear/build.gradle.kts` |
 | Rete | Solo HTTPS con trust store di sistema; traffico in chiaro disabilitato. Il modulo Wear **non** dichiara `INTERNET`. | `app/src/main/res/xml/network_security_config.xml`, manifest Wear |
-| Permessi dichiarati | `INTERNET`, `ACCESS_COARSE_LOCATION`, `POST_NOTIFICATIONS`, `SCHEDULE_EXACT_ALARM`, `RECEIVE_BOOT_COMPLETED`; `queries` per `RECOGNIZE_SPEECH`. Nessun `RECORD_AUDIO`, `ACCESS_FINE_LOCATION`, posizione in background, contatti, file o foto. | `app/src/main/AndroidManifest.xml` |
-| Posizione | Letta una volta, su azione esplicita, per ordinare in memoria il catalogo stazioni offline; non viene salvata, inclusa nei backup o nei widget, né inviata a un host. | `StationProximity.kt`, `PRIVACY.md` § Posizione effimera |
-| Notifiche | Avvisi pendolare e sveglia fermata sono notifiche locali pianificate dal dispositivo; nessun push server. | `CommuterAlerts.kt`, `StopAlarmPlanner.kt` |
+| Permessi dichiarati | `INTERNET`, `ACCESS_COARSE_LOCATION`, `ACCESS_FINE_LOCATION`, `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_LOCATION`, `POST_NOTIFICATIONS`, `SCHEDULE_EXACT_ALARM`, `RECEIVE_BOOT_COMPLETED`; `queries` per `RECOGNIZE_SPEECH`; un solo servizio in primo piano, non esportato, di tipo `location` (`GpsArrivalAlarmService`). Nessun `RECORD_AUDIO`, `ACCESS_BACKGROUND_LOCATION` (posizione in background), `USE_FULL_SCREEN_INTENT`, contatti, file o foto. | `app/src/main/AndroidManifest.xml` |
+| Posizione | Stazioni vicine: letta una volta, su azione esplicita, per ordinare in memoria il catalogo stazioni offline. Sveglia GPS: posizione precisa (o approssimativa, se l'utente concede solo quella) letta solo mentre è attivo il servizio in primo piano avviato dall'utente con l'app visibile, confrontata in memoria con le coordinate della stazione di arrivo e scartata. In entrambi i casi non viene salvata, scritta nei log, inclusa nei backup, nell'export o nei widget, né inviata a un host. | `StationProximity.kt`, `gpsalarm/GpsArrivalAlarmService.kt`, `gpsalarm/GpsArrivalAlarmPolicy.kt`, `PRIVACY.md` § Posizione effimera |
+| Notifiche | Avvisi pendolare e sveglia fermata sono notifiche locali pianificate dal dispositivo; la sveglia GPS mostra in più la notifica fissa del suo servizio in primo piano e, quando suona, la stessa notifica della sveglia fermata. Nessun push server. | `CommuterAlerts.kt`, `StopAlarmPlanner.kt`, `StopAlarm.kt` |
 | Dettatura | Avvia il riconoscitore vocale di sistema e riceve solo il testo; l'app non apre il microfono. | `PlannerVoiceParser.kt` |
 | Backup | `allowBackup="false"`, regole di esclusione per cloud backup e trasferimento; l'export JSON è manuale e scelto dall'utente. | `app/src/main/res/xml/backup_rules.xml`, `data_extraction_rules.xml` |
 | Wear OS | Il telefono invia tramite Google Play Services Data Layer etichetta tratta, provenienza, freschezza, avviso e al massimo due corse; nessuna credenziale, posizione o audio. La revoca cancella il DataItem e la cache del watch. | `app/src/main/java/it/binario/app/wear/`, `wear/src/main/java/it/binario/wear/sync/` |
@@ -41,8 +41,8 @@ Tutti gli altri host presenti nel codice sono classificati nella tabella finale:
 
 | Categoria Play | Tipo | Raccolto | Condiviso | Note derivate dal codice |
 |---|---|---|---|---|
-| Posizione | Posizione approssimativa | No | No | `ACCESS_COARSE_LOCATION` su azione esplicita, solo in memoria, mai trasmessa. |
-| Posizione | Posizione esatta | No | No | Permesso non dichiarato. |
+| Posizione | Posizione approssimativa | No | No | `ACCESS_COARSE_LOCATION` su azione esplicita (stazioni vicine, sveglia GPS con la sola posizione approssimativa), solo in memoria, mai trasmessa. |
+| Posizione | Posizione esatta | No | No | `ACCESS_FINE_LOCATION` solo per la sveglia GPS attivata dall'utente: **accessibile solo sul dispositivo**, elaborata in memoria nel servizio in primo piano, mai conservata né trasmessa. Per Google i dati trattati solo sul dispositivo non sono «raccolti»; nessuna condivisione. |
 | Informazioni personali | Nome, email, ID utente, indirizzo, telefono, altro | No | No | Nessun account; nessun campo di profilo. |
 | Informazioni finanziarie | Tutte | No | No | Nessun acquisto, pagamento o biglietteria. |
 | Salute e fitness | Tutte | No | No | Non trattate. |
@@ -61,12 +61,23 @@ Tutti gli altri host presenti nel codice sono classificati nella tabella finale:
 
 | Sezione | Risposta proposta | Note |
 |---|---|---|
-| Norme relative alle autorizzazioni per la posizione | Nessuna autorizzazione in background: non serve la dichiarazione di posizione in background. | Solo `ACCESS_COARSE_LOCATION` in primo piano. |
+| Norme relative alle autorizzazioni per la posizione | Nessuna autorizzazione in background: non serve la dichiarazione di posizione in background. | `ACCESS_COARSE_LOCATION` e `ACCESS_FINE_LOCATION` solo in primo piano («while in use»): la sveglia GPS usa un servizio in primo piano di tipo `location` avviato dall'app visibile, con notifica fissa. Il testo esplicativo dell'opzione *Avvisami anche in base alla posizione* è mostrato nell'app prima della richiesta di sistema. |
+| Autorizzazioni dei servizi in primo piano (`FOREGROUND_SERVICE_LOCATION`) | Tipo `location` per la *Sveglia GPS*: funzione avviata dall'utente, visibile tramite notifica fissa, che si ferma da sola all'arrivo o al più tardi due ore dopo l'orario previsto. | **OWNER ACTION** (vedi sotto): dichiarazione obbligatoria nella Console con descrizione e video. |
 | `SCHEDULE_EXACT_ALARM` | Usato per *Sveglia fermata* e *Avvisi pendolare*, che l'utente crea esplicitamente; l'app continua a funzionare se l'utente nega l'accesso speciale. | Da Android 14 il permesso non è concesso automaticamente alle app che non sono sveglie o calendari: descriverlo nelle note per il revisore se richiesto. |
 | `POST_NOTIFICATIONS` | Richiesto solo quando l'utente crea un avviso. | Notifiche locali. |
 | Accesso all'app | Tutte le funzionalità sono disponibili senza credenziali: nessuna istruzione di accesso. | Nessun login. |
 | Annunci | L'app non contiene annunci. | Nessun SDK pubblicitario. |
 | Norme relative all'URL dell'informativa sulla privacy | **Blocco aperto**: serve un URL pubblico verificato che pubblichi il contenuto di `PRIVACY.md` con titolare e recapito. | Vedi il blocco dichiarato in `PRIVACY.md`. |
+
+### OWNER ACTION — dichiarazione del servizio in primo piano di tipo `location`
+
+Per un'app con `targetSdk` 34 o superiore la Play Console blocca l'invio finché non è compilata la dichiarazione *Contenuti dell'app → Autorizzazioni dei servizi in primo piano*. Il titolare deve:
+
+1. selezionare il tipo **Posizione** (`FOREGROUND_SERVICE_LOCATION`) e la categoria d'uso più vicina (navigazione/avviso legato alla posizione avviato dall'utente);
+2. incollare una descrizione breve, per esempio: *«Sveglia GPS: l'utente imposta la sveglia di una fermata e sceglie "Avvisami anche in base alla posizione". Un servizio in primo piano, avviato con l'app aperta e accompagnato da una notifica fissa con il comando Disattiva, confronta la posizione del telefono con le coordinate della stazione di arrivo e suona entro il raggio scelto (da 1 a 25 km). La posizione resta sul dispositivo, non viene salvata né inviata; il servizio si ferma all'arrivo, alla disattivazione o al più tardi due ore dopo l'orario previsto. Non è richiesta la posizione in background.»* (in inglese: *"GPS arrival alarm: the user sets a stop alarm and enables 'Also alert me based on my location'. A foreground service started while the app is open, with an ongoing notification and a Turn off action, compares the phone's location with the destination station's coordinates and rings within the chosen radius (1 to 25 km). The location stays on the device and is never stored or sent; the service stops on arrival, when turned off, or at the latest two hours after the expected arrival. No background location is requested."*);
+3. caricare un **video dimostrativo** (link YouTube o Drive, non incluso nel repository) che mostri: apertura del dettaglio treno, tocco su *Sveglia*, attivazione dell'opzione con il testo esplicativo visibile, richiesta di permesso di sistema, notifica fissa *Sveglia GPS attiva per …* con il comando *Disattiva*, e la notifica di arrivo;
+4. verificare che la spiegazione del permesso sia mostrata **nell'app** prima della richiesta di sistema: è il testo dell'opzione nel dialogo della sveglia (`gps_alarm_option_description`, `gps_alarm_privacy_rationale`, `gps_alarm_approximate_note`), presente nelle cinque lingue;
+5. nel modulo Sicurezza dei dati, mantenere *Posizione esatta* e *Posizione approssimativa* come **non raccolte e non condivise** (trattate solo sul dispositivo), coerentemente con le righe sopra.
 
 ## Wear OS
 
