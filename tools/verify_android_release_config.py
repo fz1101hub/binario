@@ -7,9 +7,10 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 # Mirrors wear/build.gradle.kts: Wear versionCode = offset + phone versionCode,
-# so the two form factors never share a Play versionCode.
+# so the two form factors never share a Play versionCode. With the phone code
+# kept below the offset the derived Wear code is at most 1_999_999, far under
+# the Play maximum of 2_100_000_000, so no upper-bound check is needed.
 WEAR_VERSION_CODE_OFFSET = 1_000_000
-MAX_PLAY_VERSION_CODE = 2_100_000_000
 
 
 def read(relative: str) -> str:
@@ -42,13 +43,10 @@ def verify(read_file=read) -> None:
         for key, value in [line.split("=", 1)]
     }
     app_version_code = int(parsed_properties["BINARIO_APP_VERSION_CODE"])
-    wear_version_code = WEAR_VERSION_CODE_OFFSET + app_version_code
     if not 0 < app_version_code < WEAR_VERSION_CODE_OFFSET:
         raise AssertionError(
             f"phone versionCode must be a positive integer below the Wear range (1..{WEAR_VERSION_CODE_OFFSET - 1})"
         )
-    if wear_version_code > MAX_PLAY_VERSION_CODE:
-        raise AssertionError("derived Wear versionCode exceeds the Play limit")
 
     wear_build = require("wear/build.gradle.kts", f"val wearVersionCodeOffset = {WEAR_VERSION_CODE_OFFSET:_}")
     if "BINARIO_WEAR_VERSION_CODE" in wear_build:
