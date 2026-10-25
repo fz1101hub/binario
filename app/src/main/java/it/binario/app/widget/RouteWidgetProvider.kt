@@ -6,7 +6,6 @@ import android.appwidget.AppWidgetProvider
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
-import android.util.Base64
 import android.util.TypedValue
 import android.view.View
 import android.widget.RemoteViews
@@ -646,6 +645,8 @@ object WidgetStateStore {
     private fun decodeCategory(value: String): TrainCategory =
         TrainCategory.entries.firstOrNull { it.name == value || it.accessibleLabel == value } ?: TrainCategory.OTHER
 
-    private fun encode(value: String): String = Base64.encodeToString(value.toByteArray(Charsets.UTF_8), Base64.NO_WRAP)
-    private fun decode(value: String): String = String(Base64.decode(value, Base64.NO_WRAP), Charsets.UTF_8)
+    // java.util.Base64 (API 26+) writes the same padded, unwrapped alphabet that android.util.Base64.NO_WRAP
+    // persisted before, and unlike the framework class it runs in JVM unit tests (the SDK stub throws).
+    private fun encode(value: String): String = java.util.Base64.getEncoder().encodeToString(value.toByteArray(Charsets.UTF_8))
+    private fun decode(value: String): String = String(java.util.Base64.getDecoder().decode(value), Charsets.UTF_8)
 }
