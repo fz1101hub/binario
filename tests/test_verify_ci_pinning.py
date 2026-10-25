@@ -4,6 +4,7 @@ from __future__ import annotations
 import copy
 import importlib.util
 import json
+import re
 import sys
 import tempfile
 import unittest
@@ -181,10 +182,12 @@ class VerifyCiPinningTest(unittest.TestCase):
         self.assertEqual([], policy.workflow_problems(workflow_path, original, LOCK))
         sign_condition = "    if: ${{ github.event_name == 'workflow_dispatch' && inputs.sign_release }}\n"
         mutations = {
-            "input booleano sign_release": original.replace(
-                "        type: boolean\n        default: false\n\nconcurrency:",
-                "        type: string\n        default: false\n\nconcurrency:",
-                1,
+            # Mutate the sign_release input itself, wherever it sits among the dispatch inputs.
+            "input booleano sign_release": re.sub(
+                r"(      sign_release:\n(?:        .*\n)*?        type: )boolean",
+                r"\1string",
+                original,
+                count=1,
             ),
             "non è limitato a un dispatch esplicito con sign_release": original.replace(sign_condition, "", 1),
             "deve dipendere dal gate unsigned": original.replace("    needs: android\n", "", 1),

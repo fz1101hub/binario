@@ -10,6 +10,11 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class BinarioDeepLinkTest {
+    @Test fun `agenda notification opens only the allowlisted destination without parameters`() {
+        assertEquals(BinarioDeepLink.Agenda, BinarioDeepLinkParser.parse(BinarioDeepLinkParser.viewAction, "binario://agenda"))
+        listOf("binario://agenda?journey=private", "binario://agenda/extra", "binario://agenda#fragment")
+            .forEach { assertNull(BinarioDeepLinkParser.parse(BinarioDeepLinkParser.viewAction, it)) }
+    }
     @Test
     fun `allows only the documented route and departures destinations`() {
         assertEquals(

@@ -55,7 +55,7 @@
 
     <!-- Local-only planned journeys. These records never alter SavedRoute or live rail data. -->
     <string name="planned_journey_description">Create a personal journey reminder and view its occurrences.</string>
-    <string name="planned_journey_local_only">Saved only on this device. No automatic sync or notifications.</string>
+    <string name="planned_journey_local_only">Journeys saved only on this device. No synchronization.</string>
     <string name="planned_journey_add">New journey</string>
     <string name="planned_journey_edit">Edit journey</string>
     <string name="planned_journey_import">Import</string>
@@ -70,9 +70,6 @@
     <string name="planned_journey_origin">Origin</string>
     <string name="planned_journey_destination">Destination</string>
     <string name="planned_journey_route">%1$s → %2$s</string>
-    <string name="planned_journey_date">Date</string>
-    <string name="planned_journey_date_hint">Format YYYY-MM-DD</string>
-    <string name="planned_journey_time">Time</string>
     <string name="planned_journey_reminder">Reminder before departure</string>
     <plurals name="planned_journey_reminder_value">
         <item quantity="one">Reminder %1$d minute before</item>
@@ -106,7 +103,6 @@
     <string name="station_board_departure_to">To %1$s</string>
     <string name="station_board_arrival_from">From %1$s</string>
     <string name="station_board_scheduled_time">Scheduled time %1$s</string>
-    <string name="station_board_scheduled_time_short">sched. %1$s</string>
     <string name="station_board_status_planned">Scheduled time; live status unavailable</string>
     <string name="station_board_status_live">Live status: %1$s</string>
     <string name="station_board_status_live_prediction">Live update: expected time %1$s</string>
@@ -140,12 +136,19 @@
     <string name="planner_search_round_trip">Search outbound and return</string>
     <string name="planner_search_solutions">Search options</string>
     <string name="planner_voice_train">Dictate train number</string>
-    <string name="planner_train_filter_title">TRAIN NUMBER FILTER ON THE ROUTE</string>
-    <string name="planner_train_filter_description">This search filters trains on the active route. Nationwide number-only search requires a dedicated TrainRun provider and is not simulated.</string>
+    <string name="train_number_results_title">Train number results</string>
+    <string name="train_number_results_subtitle">Today’s trains, independent of the selected route.</string>
+    <string name="train_number_results_heading">Train %1$s</string>
+    <string name="train_number_loading">Searching for trains…</string>
+    <string name="train_number_sources_partial">Some sources are unavailable. Available results remain accessible.</string>
+    <string name="train_number_unavailable">Search is unavailable from one or more sources. Please try again shortly.</string>
+    <string name="train_number_not_found">No train with this number was found for today in the available sources.</string>
+    <string name="train_number_run_date">Departs on %1$s</string>
+    <string name="planner_train_filter_title">SEARCH BY TRAIN NUMBER</string>
+    <string name="planner_train_filter_description">Find a train by number without selecting a route.</string>
     <string name="planner_train_number">Train number</string>
     <string name="planner_train_number_example">E.g. 9310</string>
-    <string name="planner_choose_route_first">Choose a route to browse first.</string>
-    <string name="planner_filter_train">Filter train on route</string>
+    <string name="planner_filter_train">Find train</string>
     <string name="planner_voice_station">Dictate station</string>
     <string name="planner_station_board_title">STATION BOARD</string>
     <string name="station_label">Station</string>
@@ -180,6 +183,9 @@
     <string name="search_return_unavailable_message">The source did not return the requested return journey.</string>
     <string name="search_return_empty_title">No return options</string>
     <string name="search_return_empty_message">Change the return date or time and try again.</string>
+    <string name="station_board_run_details_title">Train details</string>
+    <string name="station_board_run_details_loading">Loading updated stops…</string>
+    <string name="station_board_run_details_unavailable">The complete stop list is unavailable from this source. You can still view the station board information here.</string>
     <string name="station_board_title">Station board</string>
     <string name="station_board_section">BOARD</string>
     <string name="station_board_departures">Departures</string>
@@ -237,7 +243,7 @@
     <string name="accessibility_remove_train_monitoring">Remove monitoring for train %1$s</string>
     <string name="settings_privacy_title">Privacy and data</string>
     <string name="settings_privacy_local_data">Routes, favourites, monitoring, alerts and widgets remain on the device. Android backup and transfer are excluded; the JSON file is exported only if you choose it. Location is used only to order nearby stations and is neither retained nor sent to railway sources.</string>
-    <string name="settings_privacy_notifications_voice">Notifications are local reminders. Dictation uses the system recogniser: Binario does not record audio and uses only the returned text. RFI searches send the source the public identifier of the departure station; optional personal sources may receive an identifier or the station name. Without an authorised source: real-time data unavailable.</string>
+    <string name="settings_privacy_notifications_voice">Notifications are local reminders. Dictation uses the system recogniser: Binario does not record audio and uses only the returned text. RFI searches send the source the public identifier of the departure station; optional personal sources may receive an identifier or the station name. Without an authorised source: real-time data unavailable. ViaggiaTreno uses HTTP for its public API: station, time and train requests are unencrypted. Other sources use HTTPS.</string>
     <string name="settings_privacy_wear">If you enable the smartwatch, it receives a summary of the route and up to two services. Turning off sharing deletes the DataItem and the watch’s local cache when the revocation is received. The full notice is PRIVACY.md in the repository. A verified URL and privacy contact are still missing before a public release: there is not yet a public link in the app.</string>
     <string name="settings_privacy_osm">National autocomplete: © OpenStreetMap contributors, ODbL 1.0. The geographic catalogue suggests station names but does not confirm service, time, platform, delay or operation.</string>
     <string name="notification_permission_required">Alert saved. To receive it, allow Binario notifications in Android settings.</string>
@@ -328,7 +334,8 @@
     <string name="service_operator_category">%1$s · %2$s</string>
     <string name="service_operator_category_number">%1$s · %2$s %3$s</string>
     <string name="service_number_route">%1$s · %2$s → %3$s</string>
-    <string name="service_expected_departure">Expected departure</string>
+    <string name="service_scheduled_departure_label">Scheduled departure</string>
+    <string name="expected_time">Expected %1$s</string>
     <string name="service_scheduled_departure">Scheduled %1$s</string>
     <string name="service_stops_title">Stops</string>
     <string name="service_data_summary">%1$s · %2$s · %3$s</string>
@@ -353,10 +360,10 @@
     <string name="platform_label">Platform %1$s</string>
     <string name="platform_unavailable">Platform unavailable</string>
     <string name="platform_to_confirm">Platform to be confirmed</string>
-    <string name="accessibility_stop_timeline">%1$s. %2$sExpected %3$s. Scheduled %4$s. %5$s. %6$s.</string>
+    <string name="accessibility_stop_timeline">%1$s. %2$sScheduled %3$s. %4$s%5$s. %6$s.</string>
     <string name="stop_skipped_uppercase">STOP SKIPPED</string>
     <string name="stop_added_uppercase">STOP ADDED</string>
-    <string name="scheduled_time_short">exp. %1$s</string>
+    <string name="expected_time_short">exp. %1$s</string>
     <string name="action_stop_alarm">Alarm</string>
     <string name="route_change_skipped">Skipped: %1$s</string>
     <string name="route_change_added">Added: %1$s</string>
@@ -389,6 +396,8 @@
     <string name="route_required_to_start">Enter a route to start browsing.</string>
     <string name="route_origin_destination_required">Enter an origin and destination to view a route.</string>
     <string name="rail_data_unavailable">Railway data is unavailable for this request.</string>
+    <string name="rail_network_unavailable">The timetable service cannot be reached. Check your connection and try again shortly.</string>
+    <string name="route_schedule_outside_validity">This timetable only covers %1$s to %2$s. Choose a date within that period.</string>
     <string name="route_not_covered">The timetables included in the app do not cover this route.</string>
     <string name="route_schedule_expired">The timetables included for this route are valid until %1$s: update the app for newer timetables.</string>
     <string name="route_no_service_after">No scheduled train on %1$s from %2$s onwards.</string>
@@ -432,7 +441,7 @@
     <string name="train_category_trenord_regional">Trenord regional train</string>
     <string name="train_category_metropolitan">Metropolitan train</string>
     <string name="train_category_other">Train</string>
-    <string name="accessibility_train_service_summary">Operator %1$s. %2$s %3$s from %4$s to %5$s. Expected departure %6$s. %7$s. %8$s. %9$s.</string>
+    <string name="accessibility_train_service_summary">Operator %1$s. %2$s %3$s from %4$s to %5$s. %6$s. %7$s. %8$s. %9$s.</string>
     <string name="service_transfer_direct">Direct journey</string>
     <plurals name="service_transfer_count">
         <item quantity="one">%d change</item>
@@ -637,4 +646,21 @@
     <string name="share_freshness_unavailable">Live data unavailable</string>
     <string name="planned_journey_ics_event_description">Journey: %1$s → %2$s, departure %3$s at %4$s (%5$s)</string>
     <string name="planned_journey_ics_reminder_description">Binario journey reminder</string>
+    <string name="agenda_reminder_enable">Agenda notifications</string>
+    <string name="agenda_reminder_explanation">Enable notifications for journeys with a reminder time. They stay on this device. Android may delay delivery.</string>
+    <string name="agenda_reminder_permission_required">Notifications are blocked by Android. Enable them in the app settings.</string>
+    <string name="agenda_reminder_settings">Notification settings</string>
+    <string name="agenda_reminder_failed">Some reminders could not be updated. Reopen Agenda to retry.</string>
+    <string name="agenda_reminder_channel">Agenda reminders</string>
+    <string name="agenda_reminder_channel_description">Local reminders before planned journeys depart.</string>
+    <string name="agenda_reminder_notification_title">Reminder: %1$s</string>
+    <string name="agenda_reminder_notification_text">Scheduled departure %1$s · %2$s → %3$s</string>
+    <string name="planned_journey_delete">Delete journey</string>
+    <string name="planned_journey_delete_confirmation">Delete this journey and its reminders from this device?</string>
+    <string name="planned_journey_delete_success">Journey and its reminders deleted.</string>
+    <string name="agenda_editor_date_value">Date: %1$s</string>
+    <string name="agenda_editor_time_value">Time: %1$s</string>
+    <string name="agenda_editor_first_segment">You are editing the first leg; other legs stay unchanged.</string>
+    <string name="agenda_editor_station_hint">Search by name or code and select a station.</string>
+    <string name="agenda_editor_select_station">Select %1$s, code %2$s</string>
 </resources>

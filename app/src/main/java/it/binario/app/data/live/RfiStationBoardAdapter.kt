@@ -48,24 +48,37 @@ fun interface RfiMonitorFetcher {
     suspend fun fetch(url: String): String
 }
 
-internal class HttpRfiMonitorFetcher : RfiMonitorFetcher {
-    override suspend fun fetch(url: String): String = withContext(Dispatchers.IO) {
-        val connection = (URL(url).openConnection() as? HttpURLConnection)
+internal class HttpRfiMonitorFetcher(
+    private val requestTimeoutMillis: Long = 10_000,
+    private val openConnection: (URL) -> HttpURLConnection = { it.openConnection() as HttpURLConnection }
+) : RfiMonitorFetcher {
+    override suspend fun fetch(url: String): String = kotlinx.coroutines.withTimeoutOrNull(requestTimeoutMillis) {
+        val connection = openConnection(URL(url))
             ?: throw IOException("Il monitor RFI non usa una connessione HTTP")
         connection.requestMethod = "GET"
         connection.connectTimeout = 12_000
         connection.readTimeout = 20_000
         connection.instanceFollowRedirects = true
+        connection.useCaches = false
+        connection.setRequestProperty("Cache-Control", "no-cache")
         connection.setRequestProperty("Accept", "text/html,application/xhtml+xml")
         connection.setRequestProperty("User-Agent", "Binario/0.20 (personal rail information client)")
-        try {
+        withCancellableHttpConnection(connection) {
             val status = connection.responseCode
             if (status !in 200..299) throw IOException("RFI ha risposto HTTP $status")
-            connection.inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() }
-        } finally {
-            connection.disconnect()
+            connection.inputStream.use { input ->
+                val output = java.io.ByteArrayOutputStream()
+                val buffer = ByteArray(8192)
+                while (true) {
+                    val count = input.read(buffer)
+                    if (count < 0) break
+                    if (output.size() + count > 2 * 1024 * 1024) throw IOException("Risposta RFI troppo grande")
+                    output.write(buffer, 0, count)
+                }
+                output.toString("UTF-8")
+            }
         }
-    }
+    } ?: throw java.net.SocketTimeoutException("RFI supera il tempo massimo della richiesta")
 }
 
 /**
@@ -156,7 +169,7 @@ class RfiStationBoardAdapter(
         id = SourceId("rfi-station-board"),
         displayName = "RFI — Monitor Arrivi/Partenze",
         capabilities = setOf(ProviderCapability.STATION_BOARD),
-        coverage = CoverageDescriptor(countryCodes = setOf("IT"), description = "Tabelloni partenze delle stazioni RFI configurate"),
+        coverage = CoverageDescriptor(countryCodes = setOf("IT"), description = "Tabelloni partenze delle stazioni presenti nel catalogo ufficiale RFI"),
         accessMode = AccessMode.PUBLIC_BEST_EFFORT,
         ratePolicy = RatePolicy(Duration.ofSeconds(20), defaultTimeToLive = Duration.ofMillis(cacheTtlMillis)),
         schemaVersion = 1
@@ -164,17 +177,17 @@ class RfiStationBoardAdapter(
 
     private val mutex = Mutex()
     private val cache = mutableMapOf<String, CachedSnapshot>()
+    private val stationCatalog = RfiStationCatalog(fetcher, clock)
 
     override suspend fun getStationBoard(request: StationBoardRequest): ProviderResult<it.binario.app.data.core.StationBoard> {
-        if (request.kind != BoardKind.DEPARTURES) {
-            return ProviderResult.Failure(ProviderError(ProviderErrorKind.NOT_SUPPORTED, "RFI: sono supportate solo le partenze."))
-        }
         val stationName = request.stationName?.takeIf(String::isNotBlank) ?: request.stationId.value
         val placeId = RfiStationIds.placeId(request.stationId.value, stationName)
-            ?: return ProviderResult.Failure(ProviderError(ProviderErrorKind.NOT_SUPPORTED, "Stazione RFI non configurata."))
+            ?: stationCatalog.placeId(listOf(stationName) + request.stationAliases)
+            ?: return ProviderResult.Failure(ProviderError(ProviderErrorKind.NOT_SUPPORTED, "Stazione assente dal catalogo live RFI disponibile."))
         val fetchedAt = clock.instant()
         return try {
-            val url = "https://iechub.rfi.it/ArriviPartenze/ArrivalsDepartures/Monitor?placeId=$placeId&arrivals=False"
+            val arrivals = if (request.kind == BoardKind.ARRIVALS) "True" else "False"
+            val url = "https://iechub.rfi.it/ArriviPartenze/ArrivalsDepartures/Monitor?placeId=$placeId&arrivals=$arrivals"
             val html = fetcher.fetch(url)
             val syntheticRoute = SavedRoute(
                 id = "station-board:${request.stationId.value}",
@@ -203,7 +216,8 @@ class RfiStationBoardAdapter(
                     expiresAt = fetchedAt.plus(descriptor.ratePolicy.defaultTimeToLive)
                 )
             )
-        } catch (error: IOException) {
+        } catch (error: kotlinx.coroutines.CancellationException) { throw error }
+        catch (error: IOException) {
             ProviderResult.Failure(ProviderError(ProviderErrorKind.NETWORK, "Il tabellone RFI non è raggiungibile.", error::class.java.name))
         } catch (error: Exception) {
             ProviderResult.Failure(ProviderError(ProviderErrorKind.PARSE_ERROR, "Il tabellone RFI non è leggibile.", error::class.java.name))
@@ -222,7 +236,8 @@ class RfiStationBoardAdapter(
         val origin = route.origin(direction)
         val destination = route.destination(direction)
         val placeId = RfiStationIds.placeId(origin)
-            ?: return DataResult.Failure("Il tabellone RFI non è ancora configurato per ${origin.name}.")
+            ?: stationCatalog.placeId(listOf(origin.name) + origin.aliases)
+            ?: return DataResult.Failure("Il catalogo live RFI disponibile non contiene ${origin.name}.")
         val key = "${origin.id}:${destination.id}:${direction.name}"
         val now = clock.millis()
         mutex.withLock {
@@ -254,7 +269,8 @@ class RfiStationBoardAdapter(
             )
             mutex.withLock { cache[key] = CachedSnapshot(snapshot, now + cacheTtlMillis) }
             DataResult.Success(snapshot)
-        } catch (error: IOException) {
+        } catch (error: kotlinx.coroutines.CancellationException) { throw error }
+        catch (error: IOException) {
             DataResult.Failure("Il tabellone RFI non è raggiungibile: ${error.message ?: "errore di rete"}.")
         } catch (error: Exception) {
             DataResult.Failure("Il tabellone RFI ha restituito dati non leggibili: ${error.message ?: "errore di parsing"}.")
@@ -277,13 +293,13 @@ class RfiStationBoardAdapter(
 
             val delayLabel = row.selectFirst("#RRitardo")?.attr("aria-label").orEmpty()
             val delayText = row.selectFirst("#RRitardo")?.text().orEmpty()
-            val delay = parseDelay(delayLabel.ifBlank { delayText })
+            // The visible cell is what passengers see. Some boards retain a
+            // generic or older aria-label while replacing the displayed number.
+            val publishedDelay = parseDelay(delayText) ?: parseDelay(delayLabel)
+            val delay = publishedDelay ?: 0
             val statusText = row.text()
             val cancelled = statusText.hasExplicitCancellationStatus()
-            val explicitOnTime = listOf(delayLabel, delayText, statusText).any {
-                it.contains("NESSUNO", ignoreCase = true) || it.contains("IN ORARIO", ignoreCase = true)
-            }
-            val operationalVerified = cancelled || delay > 0 || explicitOnTime
+            val operationalVerified = cancelled || publishedDelay != null
             val status = when {
                 cancelled -> ServiceStatus.CANCELLED
                 delay > 0 -> ServiceStatus.DELAYED
@@ -308,11 +324,11 @@ class RfiStationBoardAdapter(
                 expectedDeparture = expected,
                 platform = platform,
                 delayMinutes = delay,
-                officialDelayMinutes = delay,
+                officialDelayMinutes = publishedDelay,
                 status = status,
                 stops = listOf(
-                    TrainStop(origin, scheduled, expected, platform, delay, completed = false),
-                    TrainStop(destination, "—", "—", null, delay, completed = false)
+                    TrainStop(origin, scheduled, expected, platform, delay, completed = false, operationalStatusVerified = publishedDelay != null && !cancelled),
+                    TrainStop(destination, "—", "—", null, 0, completed = false, operationalStatusVerified = false)
                 ),
                 transferCount = 0,
                 operationalStatusVerified = operationalVerified,
@@ -347,10 +363,14 @@ class RfiStationBoardAdapter(
         }
     }
 
-    private fun parseDelay(value: String): Int {
-        val normalized = value.uppercase(Locale.ROOT)
-        if (normalized.isBlank() || "NESSUNO" in normalized || "IN ORARIO" in normalized) return 0
-        return Regex("(\\d{1,3})").find(normalized)?.groupValues?.getOrNull(1)?.toIntOrNull() ?: 0
+    private fun parseDelay(value: String): Int? {
+        val normalized = value.uppercase(Locale.ROOT).normalizeSpace()
+        if (normalized in setOf("NESSUNO", "IN ORARIO")) return 0
+        // RFI can expose a quoted "Nessuno" placeholder in an empty cell.
+        // Only an actual numeric value inside quotes is an explicit delay.
+        val numeric = normalized.removeSurrounding("\"").removeSurrounding("'")
+        return Regex("^(?:RITARDO(?:\\s+DI)?\\s*[:=]?\\s*)?([+-]?\\d{1,3})\\s*(?:MIN(?:UTI)?\\.?|['′])?$")
+            .matchEntire(numeric)?.groupValues?.getOrNull(1)?.toIntOrNull()
     }
 
     private fun addDelay(time: String, delay: Int): String = runCatching {

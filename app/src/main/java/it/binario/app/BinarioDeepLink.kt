@@ -14,6 +14,7 @@ import java.net.URI
 sealed interface BinarioDeepLink {
     data object ActiveRoute : BinarioDeepLink
     data object NextDepartures : BinarioDeepLink
+    data object Agenda : BinarioDeepLink
     data class TrainSearch(val number: String?) : BinarioDeepLink
     data class WidgetRoute(val route: SavedRoute, val direction: Direction) : BinarioDeepLink
 }
@@ -47,6 +48,7 @@ object BinarioDeepLinkParser {
         ) return null
 
         return when (uri.host to uri.rawPath) {
+            "agenda" to "" -> if (uri.rawQuery == null) BinarioDeepLink.Agenda else null
             "route" to "/active" -> if (uri.rawQuery == null) BinarioDeepLink.ActiveRoute else null
             "departures" to "/next" -> if (uri.rawQuery == null) BinarioDeepLink.NextDepartures else null
             "train" to "/search" -> parseTrainSearch(uri.rawQuery)

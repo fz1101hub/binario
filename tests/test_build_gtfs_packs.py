@@ -122,6 +122,64 @@ class FakeResponse:
 
 
 class BuildGtfsPacksTest(unittest.TestCase):
+    def test_empty_optional_translation_file_does_not_block_timetable_refresh(self) -> None:
+        source = self.temp / "empty-translations.zip"
+        output = self.temp / "timetable.zip"
+        with zipfile.ZipFile(source, "w") as archive:
+            for file in sorted(FIXTURE.iterdir()):
+                if file.name != "translations.txt":
+                    archive.write(file, file.name)
+            archive.writestr("translations.txt", b"")
+        builder.filter_archive(source, output, "amt-genova-casella-gtfs")
+        with zipfile.ZipFile(output) as archive:
+            self.assertNotIn("translations.txt", archive.namelist())
+            self.assertIn("stop_times.txt", archive.namelist())
+
+    def test_empty_required_table_is_still_rejected(self) -> None:
+        source = self.temp / "empty-routes.zip"
+        with zipfile.ZipFile(source, "w") as archive:
+            archive.writestr("routes.txt", b"")
+        with zipfile.ZipFile(source) as archive:
+            with self.assertRaisesRegex(builder.BuildError, "tabella vuota"):
+                builder.read_table(archive, "routes.txt", required=True)
+
+    def test_large_unused_shapes_are_not_opened_and_references_are_removed(self) -> None:
+        source = self.temp / "with-shapes.zip"
+        output = self.temp / "timetable.zip"
+        with zipfile.ZipFile(source, "w", compression=zipfile.ZIP_STORED) as archive:
+            for file in sorted(FIXTURE.iterdir()):
+                if file.name != "shapes.txt":
+                    archive.writestr(file.name, file.read_text())
+            archive.writestr("shapes.txt", b"unused geometry" * 200)
+        with mock.patch.object(builder, "MAX_ARCHIVE_MEMBER_BYTES", 512):
+            with zipfile.ZipFile(source) as archive:
+                with self.assertRaisesRegex(builder.BuildError, "membro GTFS oltre limite"):
+                    builder.validate_archive_limits(archive)
+            with mock.patch.object(builder, "read_table", wraps=builder.read_table) as reader:
+                builder.filter_archive(source, output, "amt-genova-casella-gtfs")
+                self.assertFalse(any(call.args[1] == "shapes.txt" for call in reader.call_args_list))
+        with zipfile.ZipFile(output) as archive:
+            self.assertNotIn("shapes.txt", archive.namelist())
+            self.assertNotIn("shape_id", archive.read("trips.txt").decode().splitlines()[0])
+            metadata = json.loads(archive.read(builder.FILTER_MANIFEST_MEMBER))
+            self.assertEqual(metadata["sourceArchiveSha256"], builder.sha256_file(source))
+
+    def test_omitted_geometry_still_obeys_total_archive_limit(self) -> None:
+        source = self.temp / "large-geometry.zip"
+        with zipfile.ZipFile(source, "w") as archive:
+            archive.writestr("shapes.txt", b"geometry" * 200)
+        with zipfile.ZipFile(source) as archive, mock.patch.object(builder, "MAX_ARCHIVE_UNCOMPRESSED_BYTES", 512):
+            with self.assertRaisesRegex(builder.BuildError, "decompresso oltre limite"):
+                builder.validate_archive_limits(archive, omit_geometry=True)
+
+    def test_omitted_geometry_still_obeys_compression_ratio_limit(self) -> None:
+        source = self.temp / "geometry-bomb.zip"
+        with zipfile.ZipFile(source, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+            archive.writestr("shapes.txt", b"A" * 1_000_000)
+        with zipfile.ZipFile(source) as archive:
+            with self.assertRaisesRegex(builder.BuildError, "rapporto di compressione"):
+                builder.validate_archive_limits(archive, omit_geometry=True)
+
     def setUp(self) -> None:
         self.temp = Path(tempfile.mkdtemp(prefix="gtfs-pipeline-test-"))
         self.addCleanup(shutil.rmtree, self.temp, ignore_errors=True)

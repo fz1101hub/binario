@@ -20,4 +20,16 @@ Il merge richiede una scelta esplicita fra mantenere il dato locale e sostituirl
 
 ## Stato dell’integrazione
 
-Questa tranche fornisce il dominio, agenda, lifecycle, deduplica, formato JSON e ICS con test JVM. Non introduce ancora una schermata Android, una pianificazione notifiche o una sincronizzazione remota. Tali adapter devono dipendere da questi contratti e restare separati da Alexa Companion e dal Data Layer Wear.
+La schermata Android Agenda integra dominio, lifecycle, checklist, import/export e selettori nativi di data e ora. La ricerca delle stazioni avviene fuori dal thread UI, supporta accenti e codici, ordina risultati deterministici e richiede una scelta canonica per nomi ambigui. La modifica di un itinerario importato conserva le tratte successive e il fuso originale.
+
+`PlannedJourneyReminderEngine` e `AndroidPlannedJourneyReminders` pianificano notifiche locali soltanto dopo consenso esplicito per dispositivo, inizialmente disabilitato. Tale consenso e il registro di consegna sono separati dal formato di trasferimento v1. La pianificazione usa il fuso IANA di ciascuna occorrenza e al massimo 64 allarmi contemporanei, riconciliati dopo mutazioni, riapertura, riavvio, aggiornamento dell’app e modifiche dell’ora/fuso. Senza accesso agli allarmi esatti Android può differire la consegna.
+
+Il registro viene persistito prima di chiamare AlarmManager/NotificationManager. Ogni consegna rilegge il viaggio corrente, verifica consenso e permesso, scarta allarmi obsoleti e deduplica le occorrenze anche attraverso cambi dell’orologio. La consegna è **al più una volta**: un arresto fra registrazione e pubblicazione può perdere un avviso; Android non garantisce puntualità o consegna. Al riavvio non vengono riprodotti avvisi con anticipo già trascorso; quelli già in coda possono arrivare soltanto prima della partenza.
+
+Completamento, archiviazione, cancellazione e disattivazione annullano gli allarmi interessati e ritirano le notifiche attive. Il payload degli intent contiene solo un identificatore opaco; il tocco apre `binario://agenda`. Nessuna sincronizzazione remota viene introdotta. Questi adapter restano separati da Alexa Companion e dal Data Layer Wear.
+
+## Test Android e APK per prove manuali
+
+La CI Android esegue `tools/run_android_ui_tests.sh` su emulatore API 35 con KVM, con permesso notifiche accordato e poi negato. Include Agenda a caratteri grandi, selezione di stazioni e data/ora, creazione/cancellazione di allarmi Android e notifica privata. La macchina cloud senza KVM verifica unit test, lint e compilazione dei test strumentali; l’esecuzione strumentale è verificata sul runner GitHub.
+
+Dopo i test, il workflow pubblica l’artifact `binario-agenda-test-apk`, contenente APK debug firmato, SHA-256, informazioni sulla firma e commit sorgente. L’APK richiede Android 8.0 o successivo ed è destinato a prove manuali.

@@ -65,6 +65,7 @@ object SnapshotQualityAssessor {
         val publishableScore = when {
             snapshot.confidence == DataConfidence.DEMONSTRATION -> bounded.coerceAtMost(39)
             coverageFallback -> bounded.coerceAtMost(64)
+            snapshot.services.any { it.operationalStatusVerified } && snapshot.services.any { !it.operationalStatusVerified } -> bounded.coerceAtMost(84)
             else -> bounded
         }
         return SnapshotQuality(
@@ -176,7 +177,7 @@ object SnapshotQualityAssessor {
         snapshot: RouteSnapshot,
         warnings: MutableSet<SnapshotWarning>
     ): Int {
-        if (snapshot.confidence == DataConfidence.STATIC_ONLY) warnings += SnapshotWarning.STATIC_ONLY
+        if (snapshot.confidence == DataConfidence.STATIC_ONLY && snapshot.services.none { it.operationalStatusVerified }) warnings += SnapshotWarning.STATIC_ONLY
         if (snapshot.services.any { it.id.isBlank() || it.number.isBlank() }) warnings += SnapshotWarning.IDENTITY_AMBIGUOUS
         return when {
             SnapshotWarning.IDENTITY_AMBIGUOUS in warnings -> 3

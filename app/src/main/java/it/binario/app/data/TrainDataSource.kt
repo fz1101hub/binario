@@ -140,8 +140,20 @@ data class TrainStop(
     val platform: String?,
     val delayMinutes: Int,
     val completed: Boolean,
-    val routeChange: StopRouteChange = StopRouteChange.NONE
+    val routeChange: StopRouteChange = StopRouteChange.NONE,
+    /** Null inherits legacy service status; partial live sources set this per stop. */
+    val operationalStatusVerified: Boolean? = null
 )
+
+/** Exact native identity retained from the static feed for realtime reconciliation. */
+data class GtfsServiceIdentity(
+    val sourceId: String,
+    val tripId: String,
+    val serviceDate: LocalDate,
+    val stops: List<GtfsStopIdentity>
+)
+
+data class GtfsStopIdentity(val stopId: String, val sequence: Int)
 
 data class TrainService(
     val id: String,
@@ -176,7 +188,8 @@ data class TrainService(
     val operationalObservedAtEpochMillis: Long? = null,
     /** Operational path change that may override the static GTFS path. */
     val routeChange: OperationalRouteChange? = null,
-    val routeChangeSourceIds: Set<String> = emptySet()
+    val routeChangeSourceIds: Set<String> = emptySet(),
+    val gtfsIdentity: GtfsServiceIdentity? = null
 ) {
     val category: String get() = trainCategory.accessibleLabel
     val displayOperator: String get() = operatorDisplayName?.takeIf(String::isNotBlank) ?: operator.shortLabel
@@ -224,10 +237,12 @@ sealed interface DataResult {
 /** Why no route could be built, when the cause is something the user can act on. */
 sealed interface RouteFailureReason {
     data object Unavailable : RouteFailureReason
+    data object NetworkUnavailable : RouteFailureReason
     /** No timetable the app carries serves both stations. */
     data object RouteNotCovered : RouteFailureReason
     /** The timetables that serve the route end before the requested date: the app needs an update. */
     data class ScheduleExpired(val validUntil: LocalDate) : RouteFailureReason
+    data class ScheduleOutsideValidity(val validFrom: LocalDate, val validUntil: LocalDate) : RouteFailureReason
     /** The route is covered, but no train runs on that date from that time on. */
     data class NoServiceAfter(val serviceDate: LocalDate, val departureTime: LocalTime) : RouteFailureReason
 }
@@ -275,6 +290,9 @@ interface TrainDataSource {
         loadRoute(route, direction)
 }
 
+/** A current-day route source whose availability follows the provider registry. */
+interface RealtimeRouteDataSource : TrainDataSource, it.binario.app.data.provider.RailProvider
+
 /** A future authorised server-side gateway for Trenitalia operational data. */
 interface AuthorizedRailGateway {
     suspend fun loadTrenitaliaRoute(route: SavedRoute, direction: Direction): DataResult
@@ -308,6 +326,7 @@ class RailDataRepository(
 
     override suspend fun loadRoute(route: SavedRoute, direction: Direction, query: JourneyQuery): DataResult {
         val candidates = mutableListOf<RouteSnapshot>()
+        val failures = mutableListOf<DataResult.Failure>()
         authorisedSources.forEach { source ->
             when (val result = source.loadRoute(route, direction, query)) {
                 is DataResult.Success -> {
@@ -317,7 +336,7 @@ class RailDataRepository(
                         return DataResult.Success(enriched)
                     }
                 }
-                is DataResult.Failure -> Unit
+                is DataResult.Failure -> failures += result
             }
         }
         candidates.maxWithOrNull(
@@ -327,7 +346,17 @@ class RailDataRepository(
 
         return when (val result = fallback.loadRoute(route, direction, query)) {
             is DataResult.Success -> DataResult.Success(withQuality(result.snapshot))
-            is DataResult.Failure -> result
+            // A local pack that does not cover the route cannot invalidate a more
+            // specific result from its official timetable (date/time or network).
+            is DataResult.Failure -> if (result.reason == RouteFailureReason.RouteNotCovered) {
+                failures.firstOrNull {
+                    it.reason is RouteFailureReason.NoServiceAfter || it.reason is RouteFailureReason.ScheduleExpired ||
+                        it.reason is RouteFailureReason.ScheduleOutsideValidity
+                }
+                    ?: failures.firstOrNull { it.reason == RouteFailureReason.NetworkUnavailable }
+                    ?: failures.firstOrNull { it.reason == RouteFailureReason.Unavailable }
+                    ?: result
+            } else result
         }
     }
 
@@ -358,7 +387,7 @@ class RouteSnapshotCache(context: Context) {
 
     fun save(snapshot: RouteSnapshot) {
         preferences.edit {
-            putLong("last_refresh", snapshot.retrievedAtEpochMillis)
+            putLong("last_refresh", snapshot.sourceObservedAtEpochMillis)
             putString("last_provider", snapshot.providerName)
             putString("last_confidence", snapshot.confidence.accessibleLabel)
         }

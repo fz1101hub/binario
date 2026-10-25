@@ -25,16 +25,16 @@
       "release": "v6"
     },
     {
-      "reference": "actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4",
-      "release": "v5"
-    },
-    {
       "reference": "gradle/actions/wrapper-validation@ed408507eac070d1f99cc633dbcf757c94c7933a",
       "release": "v4"
     },
     {
       "reference": "pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86",
       "release": "v6"
+    },
+    {
+      "reference": "actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+      "release": "v7.0.2"
     }
   ],
   "containerImages": [
@@ -92,6 +92,12 @@
       "version": "2.46.0",
       "url": "https://github.com/yonaskolb/XcodeGen/releases/download/2.46.0/xcodegen.zip",
       "sha256": "4d9e34b62172d645eed6457cac13fc222569974098ef4ee9c3368bedf0196806"
+    },
+    {
+      "name": "AndroidCommandlineTools",
+      "version": "19.0",
+      "url": "https://dl.google.com/android/repository/commandlinetools-linux-13114758_latest.zip",
+      "sha256": "7ec965280a073311c339e571cd5de778b9975026cfcbe79f2b1cdcb1e15317ee"
     }
   ],
   "appleWatchRunSteps": [

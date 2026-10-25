@@ -57,3 +57,9 @@ La voce di catalogo e la provenienza storica restano documentate per facilitarne
 3. `lastServiceDate` con almeno 30 giorni residui alla data prevista di release;
 4. rigenerazione atomica di ZIP, `manifest.json`, `SHA256SUMS` e `EmbeddedGtfsPacks.all`;
 5. esito verde sia del controllo integrità sia del gate freshness.
+
+## Controparti statiche dei feed live
+
+`Refresh static counterparts of live feeds` scarica soltanto STA e SNCF dagli URL HTTPS `OPEN_DIRECT` registrati, ricostruisce i pack con la stessa pipeline e ne controlla integrità e validità minima. Salva asset, date Kotlin e provenienza su un ramo `data/refresh-live-gtfs-*` separato da main. Il ramo va verificato e incorporato nel candidato APK prima della consegna.
+
+I pack dell'app contengono orari e coordinate delle fermate. La pipeline non apre né include `shapes.txt` e rimuove i riferimenti opzionali `shape_id`: il dataset attuale può contenere oltre 512 MiB di geometrie che il runtime non utilizza. Per questo solo quel membro ignorato non è soggetto al limite per singolo file; restano i limiti complessivi dell'archivio, delle entry, del rapporto di compressione e di tutte le tabelle lette. Il digest dell'archivio sorgente completo rimane registrato e i member effettivamente distribuiti sono attestati separatamente.

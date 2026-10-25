@@ -1,6 +1,6 @@
 # Policy di audit delle dipendenze e degli input CI
 
-**Aggiornata:** 23 settembre 2026
+**Aggiornata:** 15 ottobre 2026
 
 I due progetti JavaScript del repository applicano un controllo riproducibile sulle vulnerabilità **high** e **critical** durante la CI.
 
@@ -8,7 +8,9 @@ I due progetti JavaScript del repository applicano un controllo riproducibile su
 
 `alexa-companion/` esegue `pnpm audit --audit-level high`. Il lockfile usa pnpm 10.34.5 e contiene versioni corrette di tRPC, Axios, Drizzle ORM, MySQL2, Nano ID, PostCSS, Vite, Vitest e dei transitivi con patch disponibili. La rimozione dei componenti template `AIChatBox` e `chart`, non raggiungibili dalla dashboard, ha eliminato Recharts, Streamdown e 303 pacchetti transitivi. Anche il runtime, il collector e il plugin JSX specifici di Manus sono stati rimossi dalla configurazione Vite: il companion non dipende più da essi neppure in sviluppo.
 
-Il gate è verde soltanto se non esistono advisory high o critical.
+Il gate è verde soltanto se non esistono advisory high o critical. L’aggiornamento del 15 ottobre risolve anche le advisory low/moderate rilevate: Vitest 4.1.11, esbuild 0.25.12, Babel 7.29.6, body-parser 1.20.6, qs 6.16.0 e postcss-selector-parser 7.1.6. Sono verificati typecheck, suite, assenza di drift Drizzle, build e avvio con sole dipendenze di produzione.
+
+L’adapter `ask-sdk-express-adapter` è stato rimosso per eliminare `node-forge@1.4.0` dal grafo Alexa di produzione: GHSA-86w9-cpqp-85rv non dispone di una release corretta. Il webhook usa ora Node/OpenSSL per RSA-SHA256 e PKIjs 3.4.1 con WebCrypto per la catena X.509; l’ASK SDK rimane per gli intent. Il verifier mantiene i controlli Amazon su URL del certificato, CA, SAN, scadenza, corpo originale, timestamp e Skill ID, con test di regressione sulle firme PKCS#1 malformate di richieste e certificati. Non sono previste deroghe all’audit Alexa.
 
 ## Companion Expo
 
@@ -35,11 +37,11 @@ La baseline storica registrata sul **default branch** è di 155 alert aperti: 4 
 
 ## Dipendenze Gradle verificate
 
-Il progetto Android/Wear usa `gradle/verification-metadata.xml` in modalità strict. Il file contiene un solo SHA-256 per ciascuno dei 1.041 artifact appartenenti a 599 componenti, inclusi plugin Android/Kotlin, metadata Maven e dipendenze transitive. Il Companion usa un secondo lock sorgente in `companion-expo/native/android/verification-metadata.xml`: copre 2.043 artifact di 1.127 componenti, inclusi React Native, Expo, plugin Gradle e Wear. Il plugin Expo lo copia byte per byte in `android/gradle/verification-metadata.xml` durante ogni prebuild pulito; il verifier release richiede che le due copie coincidano.
+Il progetto Android/Wear usa `gradle/verification-metadata.xml` in modalità strict. Il file contiene un solo SHA-256 per ciascuno dei 1.044 artifact appartenenti a 601 componenti, inclusi plugin Android/Kotlin, metadata Maven e dipendenze transitive. Il Companion usa un secondo lock sorgente in `companion-expo/native/android/verification-metadata.xml`: copre 2.058 artifact di 1.133 componenti, inclusi React Native, Expo, plugin Gradle e Wear. Il plugin Expo lo copia byte per byte in `android/gradle/verification-metadata.xml` durante ogni prebuild pulito; il verifier release richiede che le due copie coincidano.
 
 Non sono presenti algoritmi deboli, `trusted-artifacts`, chiavi ignorate o altre aperture. Gradle verifica automaticamente il grafo quando trova il metadata; entrambi i workflow nativi richiedono inoltre esplicitamente `--dependency-verification=strict`.[1]
 
-`tools/verify_gradle_dependency_metadata.py` controlla struttura, copertura minima, componenti critici e assenza di bypass per entrambi i profili. Sei test coprono i due lock e provano la disattivazione del metadata, l'aggiunta di trust globale, checksum mancanti o malformati e componenti duplicati. Ogni aggiornamento proposto da Dependabot deve rigenerare il metadata interessato con il gate completo e sottoporre a review il relativo diff.
+`tools/verify_gradle_dependency_metadata.py` controlla struttura, copertura minima, componenti critici, checksum delle distribuzioni wrapper e assenza di bypass per entrambi i profili. Dieci test coprono i due lock e provano la disattivazione del metadata, l'aggiunta di trust globale, checksum mancanti o malformati e componenti duplicati. Il wrapper root è aggiornato a Gradle 8.14.6 con checksum ufficiale; il gate lint mantiene `warningsAsErrors` attivo. Ogni aggiornamento proposto da Dependabot deve rigenerare il metadata interessato con il gate completo e sottoporre a review il relativo diff.
 
 ## Input CI immutabili
 

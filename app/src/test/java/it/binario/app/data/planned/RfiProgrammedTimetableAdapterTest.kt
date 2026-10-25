@@ -5,6 +5,11 @@ import it.binario.app.data.DataResult
 import it.binario.app.data.Direction
 import it.binario.app.data.JourneyQuery
 import it.binario.app.data.RailOperator
+import it.binario.app.data.RouteFailureReason
+import it.binario.app.data.RailDataRepository
+import it.binario.app.data.gtfs.EmbeddedGtfsRouteAdapter
+import it.binario.app.data.repository.QualityTieredTrainDataSource
+import it.binario.app.data.repository.StationBoardEnrichedTrainDataSource
 import it.binario.app.data.SavedRoute
 import it.binario.app.data.Station
 import it.binario.app.data.TrainCategory
@@ -17,6 +22,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.ByteArrayInputStream
 import java.io.IOException
+import java.io.File
 import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
@@ -122,7 +128,7 @@ class RfiProgrammedTimetableAdapterTest {
         val unknown = Station("stazione-ignota", "Stazione ignota", "Italia")
 
         val result = adapter.loadRoute(
-            route(unknown, napoli),
+            route(unknown, Station("altra-ignota", "Altra ignota", "Italia")),
             Direction.OUTBOUND,
             JourneyQuery(LocalDate.of(2026, 9, 4), LocalTime.of(8, 0))
         )
@@ -132,7 +138,7 @@ class RfiProgrammedTimetableAdapterTest {
     }
 
     @Test
-    fun `destinazione hub mappata spiega il limite del quadro partenze`() = runBlocking {
+    fun `destinazione hub consulta arrivi senza inventare la partenza di una stazione assente`() = runBlocking {
         var calls = 0
         val adapter = RfiProgrammedTimetableAdapter(
             fetcher = RfiProgrammedTimetableFetcher { calls += 1; fixture() },
@@ -147,9 +153,182 @@ class RfiProgrammedTimetableAdapterTest {
         )
 
         assertTrue(result is DataResult.Failure)
-        assertTrue((result as DataResult.Failure).message.contains("partenze dall’hub Milano Centrale"))
-        assertEquals(0, calls)
+        assertEquals(RouteFailureReason.RouteNotCovered, (result as DataResult.Failure).reason)
+        assertEquals(1, calls)
     }
+
+    private val appiano = Station(
+        "curated:S08328", "Appiano Proba Petronia", "Roma", railwayCode = "S08328", aliases = listOf("APPIANO")
+    )
+    private val ostiense = Station("curated:S08406", "Roma Ostiense", "Roma", railwayCode = "S08406")
+
+    @Test
+    fun `Appiano Ostiense usa la partenza pubblicata nelle fermate precedenti degli arrivi`() = runBlocking {
+        val urls = mutableListOf<String>()
+        val adapter = RfiProgrammedTimetableAdapter(
+            fetcher = RfiProgrammedTimetableFetcher { url -> urls += url; arrivalsFixture() }, clock = clock
+        )
+        val query = JourneyQuery(LocalDate.of(2026, 9, 4), LocalTime.of(8, 0))
+        val result = adapter.loadRoute(route(appiano, ostiense), Direction.OUTBOUND, query) as DataResult.Success
+        val service = result.snapshot.services.single()
+
+        assertTrue(urls.single().contains("QO_Arrivi_SiPMR.aspx?Id=2211&"))
+        assertEquals("08:12", service.scheduledDeparture)
+        assertEquals(query.serviceDate.atTime(8, 12), service.scheduledDepartureDateTime)
+        assertEquals(listOf(appiano.name, "Valle Aurelia", "Roma S.Pietro", "Roma Trastevere", ostiense.name), service.stops.map { it.station })
+        assertEquals("08:30", service.stops.last().scheduled)
+        assertEquals(ostiense.name, service.destination)
+        assertFalse(service.operationalStatusVerified)
+        assertEquals(null, service.platform)
+        assertEquals(null, service.officialDelayMinutes)
+
+        val later = adapter.loadRoute(route(appiano, ostiense), Direction.OUTBOUND, query.copy(departureTime = LocalTime.of(8, 13)))
+        assertEquals(RouteFailureReason.NoServiceAfter(query.serviceDate, LocalTime.of(8, 13)), (later as DataResult.Failure).reason)
+        assertEquals(1, urls.size)
+    }
+
+    @Test
+    fun `Appiano Ostiense rispetta direzione inversa e non scambia partenze per arrivi`() = runBlocking {
+        val adapter = RfiProgrammedTimetableAdapter(
+            fetcher = RfiProgrammedTimetableFetcher { url ->
+                assertTrue(url.contains("QO_Arrivi_SiPMR.aspx?Id=2211&"))
+                arrivalsFixture()
+            }, clock = clock
+        )
+        assertTrue(adapter.loadRoute(route(ostiense, appiano), Direction.RETURN,
+            JourneyQuery(LocalDate.of(2026, 9, 4), LocalTime.of(8, 0))) is DataResult.Success)
+        val wrongBoard = RfiProgrammedTimetableAdapter(
+            fetcher = RfiProgrammedTimetableFetcher { fixture() }, clock = clock
+        )
+        assertTrue(wrongBoard.loadRoute(route(appiano, ostiense), Direction.OUTBOUND,
+            JourneyQuery(LocalDate.of(2026, 9, 4), LocalTime.of(8, 0))) is DataResult.Failure)
+    }
+
+    @Test
+    fun `arrivi rispettano periodicita e validita del quadro`() = runBlocking {
+        val adapter = RfiProgrammedTimetableAdapter(
+            fetcher = RfiProgrammedTimetableFetcher { arrivalsFixture(periodicity = "feriale") }, clock = clock
+        )
+        val route = route(appiano, ostiense)
+        assertTrue(adapter.loadRoute(route, Direction.OUTBOUND,
+            JourneyQuery(LocalDate.of(2026, 9, 6), LocalTime.of(8, 0))) is DataResult.Failure)
+        for (date in listOf(LocalDate.of(2026, 1, 10), LocalDate.of(2027, 1, 10))) {
+            val outside = adapter.loadRoute(route, Direction.OUTBOUND,
+                JourneyQuery(date, LocalTime.of(8, 0))) as DataResult.Failure
+            assertEquals(RouteFailureReason.ScheduleOutsideValidity(LocalDate.of(2026, 6, 14), LocalDate.of(2026, 12, 12)), outside.reason)
+        }
+    }
+
+    @Test
+    fun `ricerca Appiano Ostiense attraversa il repository reale senza pack Lazio o fonti live`() = runBlocking {
+        val fetcher = RfiProgrammedTimetableFetcher { arrivalsFixture() }
+        val repository = RailDataRepository(
+            authorisedSources = listOf(
+                RfiProgrammedTimetableAdapter(fetcher = fetcher, clock = clock),
+                RfiSupplementalHubTimetableAdapter(fetcher = fetcher, clock = clock)
+            ),
+            fallback = EmbeddedGtfsRouteAdapter(openAsset = { File("src/main/assets", it).inputStream() })
+        )
+        val source = StationBoardEnrichedTrainDataSource(
+            plannedSource = QualityTieredTrainDataSource(repository, emptyList()),
+            boardProviders = emptyList(), clock = clock
+        )
+        val query = JourneyQuery(LocalDate.of(2026, 9, 4), LocalTime.of(8, 0))
+        val result = source.loadRoute(route(appiano, ostiense), Direction.OUTBOUND, query) as DataResult.Success
+        assertEquals("08:12", result.snapshot.services.single().scheduledDeparture)
+        val lateQuery = query.copy(departureTime = LocalTime.of(9, 0))
+        val late = source.loadRoute(route(appiano, ostiense), Direction.OUTBOUND, lateQuery) as DataResult.Failure
+        assertEquals(RouteFailureReason.NoServiceAfter(query.serviceDate, lateQuery.departureTime), late.reason)
+    }
+
+    @Test
+    fun `arrivi senza ora pubblicata o con tempi di arrivo intermedi non inventano partenze`() = runBlocking {
+        for (html in listOf(
+            arrivalsFixture().replace("<td>08.30</td>", "<td>—</td>"),
+            arrivalsFixture().replace("Appiano (08.12)", "Appiano (25.99)"),
+            arrivalsFixture().replace("Fermate precedenti (orario di partenza)", "Fermate precedenti (orario di arrivo)")
+        )) {
+            val adapter = RfiProgrammedTimetableAdapter(
+                fetcher = RfiProgrammedTimetableFetcher { html }, clock = clock
+            )
+            assertTrue(adapter.loadRoute(route(appiano, ostiense), Direction.OUTBOUND,
+                JourneyQuery(LocalDate.of(2026, 9, 4), LocalTime.of(8, 0))) is DataResult.Failure)
+        }
+    }
+
+    @Test
+    fun `timeout degli arrivi resta distinto da tratta non coperta e un nuovo tentativo puo riuscire`() = runBlocking {
+        var calls = 0
+        val adapter = RfiProgrammedTimetableAdapter(
+            fetcher = RfiProgrammedTimetableFetcher {
+                if (++calls == 1) throw java.net.SocketTimeoutException("timeout")
+                arrivalsFixture()
+            }, clock = clock
+        )
+        val query = JourneyQuery(LocalDate.of(2026, 9, 4), LocalTime.of(8, 0))
+        val first = adapter.loadRoute(route(appiano, ostiense), Direction.OUTBOUND, query) as DataResult.Failure
+        assertEquals(RouteFailureReason.NetworkUnavailable, first.reason)
+        assertTrue(adapter.loadRoute(route(appiano, ostiense), Direction.OUTBOUND, query) is DataResult.Success)
+        assertEquals(2, calls)
+    }
+
+    @Test
+    fun `cambiare origine mantenendo l'id della tratta non riusa la fermata di salita precedente`() = runBlocking {
+        val adapter = RfiProgrammedTimetableAdapter(
+            fetcher = RfiProgrammedTimetableFetcher { arrivalsFixture() }, clock = clock
+        )
+        val query = JourneyQuery(LocalDate.of(2026, 9, 4), LocalTime.of(8, 0))
+        val original = route(appiano, ostiense)
+        val first = adapter.loadRoute(original, Direction.OUTBOUND, query) as DataResult.Success
+        assertEquals("08:12", first.snapshot.services.single().scheduledDeparture)
+        val changed = original.copy(outwardOrigin = Station("valle-aurelia", "Valle Aurelia", "Roma"))
+        val second = adapter.loadRoute(changed, Direction.OUTBOUND, query) as DataResult.Success
+        assertEquals("08:15", second.snapshot.services.single().scheduledDeparture)
+        assertEquals("Valle Aurelia", second.snapshot.services.single().stops.first().station)
+        assertFalse(second.snapshot.services.single().stops.any { it.station == appiano.name })
+    }
+
+    @Test
+    fun `arrivi riconoscono intestazioni in celle td e hub supplementari`() = runBlocking {
+        val adapter = RfiProgrammedTimetableAdapter(
+            fetcher = RfiProgrammedTimetableFetcher { url ->
+                assertTrue(url.contains("QO_Arrivi_SiPMR.aspx?Id=408&"))
+                arrivalsFixture().replace("<th>", "<td>").replace("</th>", "</td>")
+            }, clock = clock
+        )
+        // Only verifies parsing/orchestration with synthetic data, not a real Appiano–Ancona train.
+        val ancona = Station("curated:S07113", "Ancona", "Ancona", railwayCode = "S07113")
+        val result = adapter.loadRoute(route(appiano, ancona), Direction.OUTBOUND,
+            JourneyQuery(LocalDate.of(2026, 9, 4), LocalTime.of(8, 0))) as DataResult.Success
+        assertEquals(ancona.name, result.snapshot.services.single().stops.last().station)
+    }
+
+    @Test
+    fun `ricerca serale filtra gli arrivi con l'ora di partenza e il giorno effettivo`() = runBlocking {
+        val adapter = RfiProgrammedTimetableAdapter(
+            fetcher = RfiProgrammedTimetableFetcher {
+                arrivalsFixture(periodicity = "festivo").replace("08.12", "23.52")
+                    .replace("08.15", "23.55").replace("08.20", "00.00")
+                    .replace("08.26", "00.06").replace("08.30", "00.10")
+            }, clock = clock
+        )
+        val query = JourneyQuery(LocalDate.of(2026, 9, 5), LocalTime.of(23, 50))
+        val result = adapter.loadRoute(route(appiano, ostiense), Direction.OUTBOUND, query) as DataResult.Success
+        assertEquals(query.serviceDate.atTime(23, 52), result.snapshot.services.single().scheduledDepartureDateTime)
+        val outsideValidity = adapter.loadRoute(route(appiano, ostiense), Direction.OUTBOUND,
+            query.copy(serviceDate = LocalDate.of(2026, 12, 12)))
+        assertTrue(outsideValidity is DataResult.Failure)
+    }
+
+    // Synthetic published-format fixture: these times are deliberately not evidence of a live service.
+    private fun arrivalsFixture(periodicity: String = "Giornaliero") = """
+        <html><body><div>ORARIO PROGRAMMATO 14 Giugno 2026 - 12 Dicembre 2026</div>
+        <table><tr><th>Orario di arrivo</th><th>Tipo e n. di treno</th><th>Stazione di partenza</th>
+        <th>Fermate precedenti (orario di partenza)</th><th>Periodicità e avvertenze</th></tr>
+        <tr><td>08.30</td><td><img alt="Treno Regionale"/>12345</td><td>Viterbo Porta Fiorentina</td>
+        <td>Roma Monte Mario (08.05) Appiano (08.12) Valle Aurelia (08.15) Roma S.Pietro (08.20) Roma Trastevere (08.26)</td>
+        <td>$periodicity</td></tr></table></body></html>
+    """.trimIndent()
 
     @Test
     fun `quadro per la stessa route viene riusato tra date diverse`() = runBlocking {

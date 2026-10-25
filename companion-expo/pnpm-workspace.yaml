@@ -9,6 +9,7 @@ overrides:
   image-size: 2.0.3
   postcss: 8.5.23
   source-map-js: 1.2.2
+  shell-quote: 1.11.0
   tinypool: 2.1.2
   undici: 6.28.1
   vite: 6.4.3

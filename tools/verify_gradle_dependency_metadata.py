@@ -46,8 +46,8 @@ PROFILES = {
 WRAPPER_EXPECTATIONS = {
     "root": (
         ROOT_WRAPPER,
-        r"https\://services.gradle.org/distributions/gradle-8.14.5-bin.zip",
-        "6f74b601422d6d6fc4e1f9a1ab6522f642c2fdcbc15ae33ebd30ba3d7198e854",
+        r"https\://services.gradle.org/distributions/gradle-8.14.6-bin.zip",
+        "7988ed071b2a07900e2ec715fca15c6ab72bce6db433af301fa7fa7e9407bd24",
     ),
     "companion": (
         COMPANION_WRAPPER,

@@ -5,6 +5,7 @@ import it.binario.app.data.LocalOnlyRailDataPolicy
 import it.binario.app.data.RailDataRepository
 import it.binario.app.data.TrainDataSource
 import it.binario.app.data.gtfs.EmbeddedGtfsRealtimeScheduleResolver
+import it.binario.app.data.gtfs.EmbeddedGtfsPacks
 import it.binario.app.data.gtfs.EmbeddedGtfsRouteAdapter
 import it.binario.app.data.gtfs.EmbeddedGtfsStationSearchIndex
 import it.binario.app.data.provider.AlertProvider
@@ -33,16 +34,18 @@ object BinarioDataGraph {
     private val localOnlyPolicy = LocalOnlyRailDataPolicy
     private val routeSourcesByPackage = mutableMapOf<String, TrainDataSource>()
     private val realtimeResolversByPackage = mutableMapOf<String, EmbeddedGtfsRealtimeScheduleResolver>()
+    private val numberSearchByPackage = mutableMapOf<String, TrainNumberSearchService>()
     private val stationIndexesByPackage = mutableMapOf<String, EmbeddedGtfsStationSearchIndex>()
 
     fun routeDataSource(context: Context): TrainDataSource = synchronized(routeSourcesByPackage) {
         val applicationContext = context.applicationContext
         routeSourcesByPackage.getOrPut(applicationContext.packageName) {
+            val embedded = EmbeddedGtfsRouteAdapter(openAsset = { assetPath -> applicationContext.assets.open(assetPath) })
             val officialPlannedSource = RailDataRepository(
                 authorisedSources = localOnlyPolicy.routeSources(),
                 // Embedded official/open-data GTFS belongs to the primary tier,
                 // not to the best-effort coverage tier.
-                fallback = EmbeddedGtfsRouteAdapter(openAsset = { assetPath -> applicationContext.assets.open(assetPath) })
+                fallback = embedded
             )
             val plannedSource = QualityTieredTrainDataSource(
                 primary = officialPlannedSource,
@@ -50,10 +53,26 @@ object BinarioDataGraph {
             )
             LegacyTrainDataSourceFacade(
                 legacySource = StationBoardEnrichedTrainDataSource(
-                    plannedSource = plannedSource,
-                    boardProviders = stationBoardProviders()
+                    plannedSource = GtfsRealtimeEnrichedTrainDataSource(
+                        plannedSource, realtimeEnrichmentService(applicationContext)
+                    ),
+                    boardProviders = stationBoardProviders(),
+                    liveRouteSources = localOnlyPolicy.liveRouteSources(embedded).filter { defaultRegistry.isEnabled(it.descriptor.id) }
                 ),
                 providerRegistry = defaultRegistry
+            )
+        }
+    }
+
+    fun trainNumberSearchService(context: Context): TrainNumberSearchService = synchronized(numberSearchByPackage) {
+        val app = context.applicationContext
+        numberSearchByPackage.getOrPut(app.packageName) {
+            val static = EmbeddedGtfsRouteAdapter(openAsset = { app.assets.open(it) },
+                packs = EmbeddedGtfsPacks.all.filter { defaultRegistry.isEnabled(it.sourceId) })
+            val source = EmbeddedTrainNumberSearchSource(static, GtfsRealtimeEnrichedTrainDataSource(static, realtimeEnrichmentService(app)))
+            TrainNumberSearchService(
+                localOnlyPolicy.trainNumberSearchProviders().filter { defaultRegistry.isEnabled(it.descriptor.id) } +
+                    listOf(source.provider(true))
             )
         }
     }
@@ -79,6 +98,10 @@ object BinarioDataGraph {
 
     fun stationBoardDisplayProviders(): List<StationBoardProvider> =
         activeProviders(localOnlyPolicy.stationBoardDisplayProviders(), ProviderCapability.STATION_BOARD)
+
+    fun stationBoardRunDetailService(): StationBoardRunDetailService = StationBoardRunDetailService(
+        activeProviders(localOnlyPolicy.stationBoardRunDetailProviders(), ProviderCapability.TRAIN_RUN_REALTIME)
+    )
 
     fun alertProviders(): List<AlertProvider> =
         activeProviders(localOnlyPolicy.alertProviders(), ProviderCapability.SERVICE_ALERTS)
@@ -150,16 +173,39 @@ object BinarioDataGraph {
  */
 class LegacyTrainDataSourceFacade(
     private val legacySource: TrainDataSource,
-    val providerRegistry: ProviderRegistry
+    val providerRegistry: ProviderRegistry,
+    private val clock: () -> Long = System::currentTimeMillis
 ) : TrainDataSource {
     override suspend fun loadRoute(
         route: it.binario.app.data.SavedRoute,
         direction: it.binario.app.data.Direction
-    ): it.binario.app.data.DataResult = legacySource.loadRoute(route, direction)
+    ): it.binario.app.data.DataResult = assessed(legacySource.loadRoute(route, direction))
 
     override suspend fun loadRoute(
         route: it.binario.app.data.SavedRoute,
         direction: it.binario.app.data.Direction,
         query: it.binario.app.data.JourneyQuery
-    ): it.binario.app.data.DataResult = legacySource.loadRoute(route, direction, query)
+    ): it.binario.app.data.DataResult = assessed(legacySource.loadRoute(route, direction, query))
+
+    private fun assessed(result: it.binario.app.data.DataResult): it.binario.app.data.DataResult {
+        if (result !is it.binario.app.data.DataResult.Success) return result
+        val original = result.snapshot
+        val ids = original.services.flatMap { it.operationalSourceIds }.toSet()
+        val confidence = if (!original.coverageFallback &&
+            original.confidence == it.binario.app.data.DataConfidence.STATIC_ONLY &&
+            original.services.any { it.operationalStatusVerified } && ids.isNotEmpty()) {
+            when {
+                ids.any { it in setOf("viaggiatreno", "italo-status") } -> it.binario.app.data.DataConfidence.OPERATOR_PRIMARY
+                "rfi-station-board" in ids -> it.binario.app.data.DataConfidence.INFRASTRUCTURE_PRIMARY
+                else -> original.confidence
+            }
+        } else original.confidence
+        val snapshot = original.copy(confidence = confidence)
+        val quality = it.binario.app.data.SnapshotQualityAssessor.assess(snapshot, clock())
+        return it.binario.app.data.DataResult.Success(snapshot.copy(
+            qualityScore = quality.score,
+            qualityBand = quality.band,
+            qualityWarnings = (snapshot.qualityWarnings - it.binario.app.data.SnapshotWarning.STATIC_ONLY) + quality.warnings
+        ))
+    }
 }

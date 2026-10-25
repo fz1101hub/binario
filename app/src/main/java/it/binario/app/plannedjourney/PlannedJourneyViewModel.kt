@@ -6,6 +6,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
@@ -17,14 +18,21 @@ import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
 import java.util.UUID
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 data class PlannedJourneyEditorState(
     val journeyId: String? = null,
     val label: String = "",
     val originQuery: String = "",
     val destinationQuery: String = "",
+    val originStationId: String? = null,
+    val destinationStationId: String? = null,
+    val isMultiSegment: Boolean = false,
     val date: String = LocalDate.now(RailTime.defaultZone).toString(),
     val time: String = "09:00",
+    val timeZoneId: String = RailTime.defaultZone.id,
     val reminderMinutes: PlannedJourneyReminderMinutes? = null,
     val checklistText: String = "",
     val validationMessage: UiMessage? = null
@@ -50,7 +58,8 @@ class PlannedJourneyViewModel(
     private val savedStateHandle: SavedStateHandle = SavedStateHandle(),
     private val now: () -> Instant = Instant::now,
     private val zone: ZoneId = RailTime.defaultZone,
-    private val newId: () -> String = { UUID.randomUUID().toString() }
+    private val newId: () -> String = { UUID.randomUUID().toString() },
+    private val reminders: PlannedJourneyReminderController? = null
 ) : ViewModel() {
     private val initialRead = repository.read()
     var snapshot by mutableStateOf(initialRead.snapshot)
@@ -74,6 +83,30 @@ class PlannedJourneyViewModel(
             ?.let { runCatching { PlannedJourneyExportFormat.valueOf(it) }.getOrNull() }
     )
         private set
+    var reminderStatus by mutableStateOf(PlannedJourneyReminderStatus())
+        private set
+    private var reminderRefreshGeneration = 0L
+
+    fun refreshReminders() {
+        val controller = reminders ?: return
+        val generation = ++reminderRefreshGeneration
+        viewModelScope.launch {
+            val status = withContext(Dispatchers.IO) {
+                runCatching { controller.refresh() }.getOrElse { reminderStatus.copy(failed = true) }
+            }
+            if (generation == reminderRefreshGeneration) reminderStatus = status
+        }
+    }
+
+    fun setRemindersEnabled(enabled: Boolean) {
+        val controller = reminders ?: return
+        runCatching { controller.setEnabled(enabled) }
+            .onSuccess {
+                reminderStatus = reminderStatus.copy(enabled = enabled)
+                refreshReminders()
+            }
+            .onFailure { reminderStatus = reminderStatus.copy(failed = true) }
+    }
 
     fun agendaEntries(): List<PlannedJourneyAgendaEntry> = PlannedJourneyAgenda.ordered(
         journeys = snapshot.journeys,
@@ -87,7 +120,7 @@ class PlannedJourneyViewModel(
     }
 
     fun beginCreate() {
-        editor = PlannedJourneyEditorState(date = LocalDate.now(zone).toString())
+        editor = PlannedJourneyEditorState(date = LocalDate.now(zone).toString(), timeZoneId = zone.id)
         feedback = null
     }
 
@@ -98,8 +131,12 @@ class PlannedJourneyViewModel(
             label = journey.label,
             originQuery = segment.origin.displayName,
             destinationQuery = segment.destination.displayName,
+            originStationId = segment.origin.canonicalId,
+            destinationStationId = segment.destination.canonicalId,
+            isMultiSegment = journey.itinerary.segments.size > 1,
             date = segment.departure.date.toString(),
             time = segment.departure.time.toString(),
+            timeZoneId = segment.departure.timeZone.id,
             reminderMinutes = journey.reminder?.minutesBeforeDeparture,
             checklistText = journey.checklist.joinToString("\n") { item -> item.label }
         )
@@ -118,10 +155,10 @@ class PlannedJourneyViewModel(
     fun saveEditor(stations: Iterable<PlannedJourneyStation>) {
         val current = editor ?: return
         val stationList = stations.toList()
-        val origin = resolveStation(current.originQuery, stationList)
-        val destination = resolveStation(current.destinationQuery, stationList)
+        val origin = resolveStation(current.originQuery, current.originStationId, stationList)
+        val destination = resolveStation(current.destinationQuery, current.destinationStationId, stationList)
         val departure = runCatching {
-            PlannedJourneyDateTime(LocalDate.parse(current.date.trim()), LocalTime.parse(current.time.trim()), zone)
+            PlannedJourneyDateTime(LocalDate.parse(current.date.trim()), LocalTime.parse(current.time.trim()), ZoneId.of(current.timeZoneId))
         }.getOrNull()
         if (origin == null || destination == null || departure == null) {
             editor = current.copy(validationMessage = UiMessage(UiMessageKey.PLANNED_JOURNEY_EDITOR_INVALID))
@@ -159,7 +196,8 @@ class PlannedJourneyViewModel(
             existing.copy(
                 label = current.label.trim(),
                 itinerary = PlannedJourneyItinerary(
-                    listOf(PlannedJourneySegment("segment-1", origin, destination, departure))
+                    listOf(existing.itinerary.segments.first().copy(origin = origin, destination = destination, departure = departure)) +
+                        existing.itinerary.segments.drop(1)
                 ),
                 reminder = current.reminderMinutes?.let(::PlannedJourneyReminder),
                 checklist = checklist
@@ -176,6 +214,10 @@ class PlannedJourneyViewModel(
 
     fun archive(journeyId: String) {
         persist(repository.archive(journeyId, now()), UiMessageKey.PLANNED_JOURNEY_ARCHIVE_SUCCESS)
+    }
+
+    fun remove(journeyId: String) {
+        persist(repository.remove(journeyId), UiMessageKey.PLANNED_JOURNEY_DELETE_SUCCESS)
     }
 
     fun toggleChecklist(journeyId: String, item: PlannedJourneyChecklistItem) {
@@ -236,15 +278,19 @@ class PlannedJourneyViewModel(
                 warning = null
                 feedback = UiMessage(success)
                 afterSuccess()
+                refreshReminders()
             }
             is PlannedJourneyRepositorySaveResult.Rejected -> feedback = UiMessage(UiMessageKey.PLANNED_JOURNEY_ACTION_REJECTED)
         }
     }
 
-    private fun resolveStation(query: String, stations: List<PlannedJourneyStation>): PlannedJourneyStation? {
+    private fun resolveStation(query: String, selectedId: String?, stations: List<PlannedJourneyStation>): PlannedJourneyStation? {
         val normalized = query.trim()
-        return stations.firstOrNull { it.canonicalId.equals(normalized, ignoreCase = true) }
-            ?: stations.firstOrNull { it.displayName.equals(normalized, ignoreCase = true) }
+        if (selectedId != null) return stations.singleOrNull {
+            it.canonicalId == selectedId && it.displayName.equals(normalized, ignoreCase = true)
+        }
+        return stations.singleOrNull { it.canonicalId.equals(normalized, ignoreCase = true) }
+            ?: stations.filter { it.displayName.equals(normalized, ignoreCase = true) }.distinctBy { it.canonicalId }.singleOrNull()
     }
     companion object {
         internal const val AGENDA_FILTER_KEY = "plannedJourney.agendaFilter"
@@ -253,7 +299,8 @@ class PlannedJourneyViewModel(
             initializer {
                 PlannedJourneyViewModel(
                     repository = PlannedJourneyRepository(SharedPreferencesPlannedJourneyStorage(context.applicationContext)),
-                    savedStateHandle = createSavedStateHandle()
+                    savedStateHandle = createSavedStateHandle(),
+                    reminders = AndroidPlannedJourneyReminders.controller(context.applicationContext)
                 )
             }
         }

@@ -18,6 +18,7 @@ internal fun UiMessageKey.resourceId(): Int = when (this) {
     UiMessageKey.PLANNED_JOURNEY_SAVE_SUCCESS -> R.string.planned_journey_save_success
     UiMessageKey.PLANNED_JOURNEY_COMPLETE_SUCCESS -> R.string.planned_journey_complete_success
     UiMessageKey.PLANNED_JOURNEY_ARCHIVE_SUCCESS -> R.string.planned_journey_archive_success
+    UiMessageKey.PLANNED_JOURNEY_DELETE_SUCCESS -> R.string.planned_journey_delete_success
     UiMessageKey.PLANNED_JOURNEY_CHECKLIST_SUCCESS -> R.string.planned_journey_checklist_success
     UiMessageKey.PLANNED_JOURNEY_IMPORT_SUCCESS -> R.string.planned_journey_import_success
     UiMessageKey.PLANNED_JOURNEY_IMPORT_INVALID -> R.string.planned_journey_import_invalid
@@ -31,8 +32,10 @@ internal fun UiMessageKey.resourceId(): Int = when (this) {
     UiMessageKey.ROUTE_REQUIRED_TO_START -> R.string.route_required_to_start
     UiMessageKey.ROUTE_ORIGIN_DESTINATION_REQUIRED -> R.string.route_origin_destination_required
     UiMessageKey.RAIL_DATA_UNAVAILABLE -> R.string.rail_data_unavailable
+    UiMessageKey.RAIL_NETWORK_UNAVAILABLE -> R.string.rail_network_unavailable
     UiMessageKey.ROUTE_NOT_COVERED -> R.string.route_not_covered
     UiMessageKey.ROUTE_SCHEDULE_EXPIRED -> R.string.route_schedule_expired
+    UiMessageKey.ROUTE_SCHEDULE_OUTSIDE_VALIDITY -> R.string.route_schedule_outside_validity
     UiMessageKey.ROUTE_NO_SERVICE_AFTER -> R.string.route_no_service_after
     UiMessageKey.ROUTE_COVERAGE_FALLBACK -> R.string.route_coverage_fallback
     UiMessageKey.STATION_BOARD_UNAVAILABLE -> R.string.station_board_unavailable_generic

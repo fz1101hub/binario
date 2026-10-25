@@ -23,6 +23,8 @@ on:
       - "tools/verify_gradle_dependency_metadata.py"
       - "tools/verify_privacy_policy.py"
       - "tests/test_wear_compose_gradle_dependency_suppressions.py"
+      - "tools/run_android_ui_tests.sh"
+      - ".github/ci-inputs-lock.json"
       - ".github/workflows/android-ci.yml"
   push:
     branches:
@@ -49,6 +51,8 @@ on:
       - "tools/verify_gradle_dependency_metadata.py"
       - "tools/verify_privacy_policy.py"
       - "tests/test_wear_compose_gradle_dependency_suppressions.py"
+      - "tools/run_android_ui_tests.sh"
+      - ".github/ci-inputs-lock.json"
       - ".github/workflows/android-ci.yml"
   workflow_dispatch:
     inputs:
@@ -59,6 +63,16 @@ on:
         default: false
       sign_release:
         description: "Firma gli AAB con l'upload key dai secret e pubblica gli artifact firmati"
+        required: false
+        type: boolean
+        default: false
+      verify_live_route:
+        description: "Verifica ViaggiaTreno Appiano → Roma Ostiense con HTTPS reale su Android"
+        required: false
+        type: boolean
+        default: false
+      verify_rfi_route:
+        description: "Verifica Appiano → Roma Ostiense con le fonti reali sull’emulatore"
         required: false
         type: boolean
         default: false
@@ -114,6 +128,13 @@ jobs:
           python3 tools/verify_gradle_dependency_metadata.py
           python3 -m unittest tests.test_wear_compose_gradle_dependency_suppressions
 
+      - name: Android UI and notification tests on API 35
+        timeout-minutes: 25
+        env:
+          BINARIO_VERIFY_LIVE_ROUTE: ${{ github.event_name == 'workflow_dispatch' && inputs.verify_live_route || false }}
+          BINARIO_VERIFY_RFI_ROUTE: ${{ github.event_name == 'workflow_dispatch' && inputs.verify_rfi_route || false }}
+        run: bash tools/run_android_ui_tests.sh
+
       - name: Unit tests, lint, debug and unsigned release builds
         run: >-
           ./gradlew --no-daemon --dependency-verification=strict
@@ -134,12 +155,46 @@ jobs:
 
       - name: Upload unsigned Google Play bundles
         if: ${{ github.event_name != 'pull_request' }}
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: binario-play-bundles-unsigned
           path: ${{ runner.temp }}/play-bundles-unsigned
           if-no-files-found: error
           retention-days: 14
+          overwrite: true
+
+      - name: Prepare installable test APK
+        env:
+          SOURCE_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/binario-test-apk"
+          cp app/build/outputs/apk/debug/app-debug.apk "$RUNNER_TEMP/binario-test-apk/binario-agenda-test.apk"
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$RUNNER_TEMP/binario-test-apk/binario-agenda-test.apk" > "$RUNNER_TEMP/binario-test-apk/signature.txt"
+          printf 'Source commit: %s\nAndroid 8.0 or later. Debug build for manual testing.\n' "$SOURCE_COMMIT" > "$RUNNER_TEMP/binario-test-apk/README.txt"
+          cd "$RUNNER_TEMP/binario-test-apk"
+          sha256sum binario-agenda-test.apk > SHA256SUMS
+
+      - name: Upload test APK
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: binario-agenda-test-apk
+          path: ${{ runner.temp }}/binario-test-apk/
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
+          overwrite: true
+
+      - name: Upload Android UI reports
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: android-ui-test-reports
+          path: |
+            app/build/reports/androidTests/
+            app/build/outputs/androidTest-results/
+            ${{ runner.temp }}/binario-ui-*.log
+          retention-days: 14
+          if-no-files-found: error
           overwrite: true
 
       - name: First reproducibility rebuild
@@ -225,7 +280,7 @@ jobs:
           cp app/build/outputs/bundle/release/app-release.aab wear/build/outputs/bundle/release/wear-release.aab "$RUNNER_TEMP/play-bundles-signed/"
 
       - name: Upload signed Google Play bundles
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: binario-play-bundles-signed
           path: ${{ runner.temp }}/play-bundles-signed
