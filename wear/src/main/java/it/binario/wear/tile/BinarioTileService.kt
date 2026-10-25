@@ -11,19 +11,22 @@ import androidx.wear.tiles.TileBuilders
 import androidx.wear.tiles.TileService
 import com.google.common.util.concurrent.ListenableFuture
 import it.binario.wear.R
+import it.binario.wear.WearStringProvider
 import it.binario.wear.dataStatusResId
 import it.binario.wear.model.WearSnapshot
 import it.binario.wear.sync.WearSnapshotStore
+import it.binario.wear.wearStrings
 
 /** Glanceable local cache; it never initiates a railway-network request. */
 class BinarioTileService : TileService() {
     override fun onTileRequest(requestParams: RequestBuilders.TileRequest): ListenableFuture<TileBuilders.Tile> {
         val snapshot = WearSnapshotStore.current(this)
+        val strings = wearStrings()
         return immediate(
             TileBuilders.Tile.Builder()
                 .setResourcesVersion(RESOURCES_VERSION)
                 .setFreshnessIntervalMillis(30L * 60L * 1000L)
-                .setTileTimeline(binarioTileTimeline(snapshot, ::binarioTileLayout))
+                .setTileTimeline(binarioTileTimeline(snapshot) { entry -> binarioTileLayout(entry, strings) })
                 .build()
         )
     }
@@ -45,11 +48,11 @@ class BinarioTileService : TileService() {
 /**
  * The renderer owns this expiry transition even when the app process and its expiry callback are
  * not running. The unbounded entry is the fallback selected whenever the snapshot entry is no
- * longer valid.
+ * longer valid; both entries come from the same [layout] so the fallback is the production one.
  */
 internal fun binarioTileTimeline(
     snapshot: WearSnapshot?,
-    layout: (WearSnapshot?) -> LayoutElementBuilders.LayoutElement = ::fallbackBinarioTileLayout
+    layout: (WearSnapshot?) -> LayoutElementBuilders.LayoutElement,
 ): TimelineBuilders.Timeline =
     TimelineBuilders.Timeline.Builder()
         .addTimelineEntry(
@@ -71,22 +74,14 @@ internal fun binarioTileTimeline(
         }
         .build()
 
-private fun BinarioTileService.binarioTileLayout(snapshot: WearSnapshot?): LayoutElementBuilders.LayoutElement {
+/** Production layout for both timeline entries; a null snapshot renders the "nothing synced" texts. */
+internal fun binarioTileLayout(snapshot: WearSnapshot?, strings: WearStringProvider): LayoutElementBuilders.LayoutElement {
     val details = snapshot?.services?.firstOrNull()
     return LayoutElementBuilders.Column.Builder()
-        .addContent(binarioTileText(getString(R.string.app_name), 18f, 0xFFFFFFFF.toInt(), 1))
-        .addContent(binarioTileText(snapshot?.routeLabel ?: getString(R.string.tile_no_synced_route), 15f, 0xFFB8F3D7.toInt(), 2))
-        .addContent(binarioTileText(details?.let { getString(R.string.tile_service_details, it.expectedDeparture, it.number, it.destination) } ?: getString(R.string.empty_snapshot_message), 14f, 0xFFFFFFFF.toInt(), 2))
-        .addContent(binarioTileText(snapshot?.let { getString(it.dataStatusResId()) } ?: getString(R.string.tile_snapshot_unavailable), 12f, 0xFFB3C8BE.toInt(), 2))
-        .build()
-}
-private fun fallbackBinarioTileLayout(snapshot: WearSnapshot?): LayoutElementBuilders.LayoutElement {
-    val details = snapshot?.services?.firstOrNull()
-    return LayoutElementBuilders.Column.Builder()
-        .addContent(binarioTileText("Binario", 18f, 0xFFFFFFFF.toInt(), 1))
-        .addContent(binarioTileText(snapshot?.routeLabel.orEmpty(), 15f, 0xFFB8F3D7.toInt(), 2))
-        .addContent(binarioTileText(details?.let { listOfNotNull(it.expectedDeparture, it.number, it.destination).joinToString(" · ") }.orEmpty(), 14f, 0xFFFFFFFF.toInt(), 2))
-        .addContent(binarioTileText(snapshot?.notice.orEmpty(), 12f, 0xFFB3C8BE.toInt(), 2))
+        .addContent(binarioTileText(strings.string(R.string.app_name), 18f, 0xFFFFFFFF.toInt(), 1))
+        .addContent(binarioTileText(snapshot?.routeLabel ?: strings.string(R.string.tile_no_synced_route), 15f, 0xFFB8F3D7.toInt(), 2))
+        .addContent(binarioTileText(details?.let { strings.string(R.string.tile_service_details, it.expectedDeparture, it.number, it.destination) } ?: strings.string(R.string.empty_snapshot_message), 14f, 0xFFFFFFFF.toInt(), 2))
+        .addContent(binarioTileText(snapshot?.let { strings.string(it.dataStatusResId()) } ?: strings.string(R.string.tile_snapshot_unavailable), 12f, 0xFFB3C8BE.toInt(), 2))
         .build()
 }
 

@@ -105,7 +105,7 @@ dependencies {
     implementation("androidx.wear.compose:compose-foundation:1.6.2")
     // Compose 1.7.0 requires AGP >= 9.1 and compileSdk >= 37; TODO: remove when the toolchain reaches AGP >= 9.1 and compileSdk >= 37.
     //noinspection GradleDependency
-    implementation("androidx.wear.compose:compose-ui-tooling:1.6.2")
+    debugImplementation("androidx.wear.compose:compose-ui-tooling:1.6.2")
     implementation("androidx.wear.tiles:tiles:1.6.2")
     implementation("androidx.wear.protolayout:protolayout:1.4.2")
     implementation("androidx.wear.watchface:watchface-complications-data-source-ktx:1.3.0")
