@@ -66,4 +66,48 @@ class EuropeanSleeperGtfsRealtimeAdapterTest {
         assertEquals(420L, update.officialDelay?.value?.seconds)
         assertEquals(Confidence.DERIVED, update.source.confidence)
     }
+
+    @Test
+    fun `timestamp spazzatura del mirror non diventano istanti inutilizzabili`() = runBlocking {
+        val now = Instant.parse("2026-09-10T08:00:00Z")
+        // Accepted by Instant.ofEpochSecond, but far past any calendar: toEpochMilli() overflows.
+        val garbageSeconds = 10_000_000_000_000_000L
+        val feed = GtfsRealtime.FeedMessage.newBuilder()
+            .setHeader(
+                GtfsRealtime.FeedHeader.newBuilder()
+                    .setGtfsRealtimeVersion("2.0")
+                    .setTimestamp(garbageSeconds)
+            )
+            .addEntity(
+                GtfsRealtime.FeedEntity.newBuilder()
+                    .setId("es-1")
+                    .setTripUpdate(
+                        GtfsRealtime.TripUpdate.newBuilder()
+                            .setTrip(GtfsRealtime.TripDescriptor.newBuilder().setTripId("ES-MILAN-1"))
+                            .addStopTimeUpdate(
+                                GtfsRealtime.TripUpdate.StopTimeUpdate.newBuilder()
+                                    .setStopId("MILANO-PG")
+                                    .setStopSequence(8)
+                                    .setDeparture(
+                                        GtfsRealtime.TripUpdate.StopTimeEvent.newBuilder()
+                                            .setTime(garbageSeconds)
+                                            .setDelay(420)
+                                    )
+                            )
+                    )
+            )
+            .build()
+        val adapter = EuropeanSleeperGtfsRealtimeAdapter(
+            fetcher = EuropeanSleeperRealtimeFetcher { feed.toByteArray() },
+            clock = Clock.fixed(now, ZoneOffset.UTC)
+        )
+
+        val result = adapter.getTripUpdates() as ProviderResult.Success
+        val update = result.value.single()
+
+        assertEquals(now, result.meta.observedAt)
+        assertEquals(now.toEpochMilli(), update.observedAt.toEpochMilli())
+        assertEquals(null, update.predictedAt)
+        assertEquals(420L, update.officialDelay?.value?.seconds)
+    }
 }

@@ -85,7 +85,7 @@ class EuropeanSleeperGtfsRealtimeAdapter(
         }
         return try {
             val feed = GtfsRealtime.FeedMessage.parseFrom(fetcher.fetch())
-            val observed = feed.header.timestamp.takeIf { it > 0 }?.let(java.time.Instant::ofEpochSecond) ?: now
+            val observed = epochSecondOrNull(feed.header.timestamp) ?: now
             ProviderResult.Success(
                 parse(feed, observed),
                 ProviderResponseMeta(SOURCE_ID, now, observedAt = observed, expiresAt = now.plus(ttl))
@@ -127,7 +127,7 @@ class EuropeanSleeperGtfsRealtimeAdapter(
                     sourceStopId = stopId,
                     stopSequence = sequence,
                     predictedAt = event?.takeIf { it.hasTime() }?.time
-                        ?.let(java.time.Instant::ofEpochSecond)
+                        ?.let(::epochSecondOrNull)
                         ?.atZone(ZoneId.of("Europe/Brussels"))
                         ?.let { SourcedValue(it, source) },
                     officialDelay = event?.takeIf { it.hasDelay() }?.delay
@@ -138,7 +138,16 @@ class EuropeanSleeperGtfsRealtimeAdapter(
             }
         }
 
+    /**
+     * POSIX seconds outside the civil calendar (zero, negative or past year 9999) are feed garbage,
+     * not a time: Instant would accept far larger values whose epoch milliseconds then overflow
+     * when the snapshot is assembled, taking the whole refresh down with them.
+     */
+    private fun epochSecondOrNull(seconds: Long): java.time.Instant? =
+        seconds.takeIf { it in 1..MAX_EPOCH_SECOND }?.let(java.time.Instant::ofEpochSecond)
+
     companion object {
         val SOURCE_ID = SourceId("european-sleeper-gtfs-rt")
+        private const val MAX_EPOCH_SECOND = 253_402_300_799L // 9999-12-31T23:59:59Z
     }
 }

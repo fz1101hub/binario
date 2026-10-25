@@ -155,6 +155,26 @@ class RemoteGtfsFallbackDataSourceTest {
     }
 
     @Test
+    fun `un timestamp realtime spazzatura degrada all orario statico senza interrompere il refresh`() = runBlocking {
+        // Within Instant's range but far past what epoch milliseconds can hold (year ~316 million).
+        val garbage = Instant.ofEpochSecond(10_000_000_000_000_000L)
+        val adapter = adapter(realtimeProvider(realtimeUpdate("trip-1", observedAt = garbage)))
+
+        val result = adapter.loadRoute(
+            route,
+            Direction.OUTBOUND,
+            JourneyQuery(LocalDate.of(2026, 9, 10), LocalTime.of(8, 0))
+        )
+
+        assertTrue(result.toString(), result is DataResult.Success)
+        val snapshot = (result as DataResult.Success).snapshot
+        val service = snapshot.services.single()
+        assertEquals("09:00", service.expectedDeparture)
+        assertFalse(service.operationalStatusVerified)
+        assertFalse(snapshot.providerName.contains("Realtime test"))
+    }
+
+    @Test
     fun `la cancellazione realtime non viene degradata a snapshot statico`() {
         val adapter = adapter(object : TripUpdateProvider {
             override val descriptor = realtimeDescriptor()
@@ -284,11 +304,16 @@ class RemoteGtfsFallbackDataSourceTest {
         schemaVersion = 1
     )
 
-    private fun realtimeUpdate(tripId: String, stopId: String = "bru", stopSequence: Int = 1): RealtimeStopUpdate {
+    private fun realtimeUpdate(
+        tripId: String,
+        stopId: String = "bru",
+        stopSequence: Int = 1,
+        observedAt: Instant = now
+    ): RealtimeStopUpdate {
         val ref = SourceRef(
             sourceId = SourceId("european-sleeper-gtfs-rt"),
             nativeId = tripId,
-            observedAt = now,
+            observedAt = observedAt,
             fetchedAt = now,
             confidence = Confidence.DERIVED,
             traceId = "test:$tripId"
@@ -300,7 +325,7 @@ class RemoteGtfsFallbackDataSourceTest {
             stopSequence = stopSequence,
             predictedAt = SourcedValue(Instant.parse("2026-09-10T07:10:00Z").atZone(ZoneId.of("Europe/Brussels")), ref),
             officialDelay = SourcedValue(Duration.ofMinutes(10), ref),
-            observedAt = now,
+            observedAt = observedAt,
             source = ref
         )
     }

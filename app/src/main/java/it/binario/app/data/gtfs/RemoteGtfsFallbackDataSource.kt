@@ -92,7 +92,17 @@ class RemoteGtfsFallbackDataSource(
                     ).joinToString(" "),
                     coverageFallback = true
                 )
-                DataResult.Success(enrichWithSameFeedRealtime(planned, feed.bytes, query))
+                DataResult.Success(
+                    try {
+                        enrichWithSameFeedRealtime(planned, feed.bytes, query)
+                    } catch (error: CancellationException) {
+                        throw error
+                    } catch (_: Exception) {
+                        // Realtime is best-effort: a community feed that cannot be reconciled
+                        // (unusable timestamps, odd values) never costs the static timetable.
+                        planned
+                    }
+                )
             }
             is DataResult.Failure -> result
         }
