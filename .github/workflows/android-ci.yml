@@ -140,6 +140,7 @@ jobs:
           path: ${{ runner.temp }}/play-bundles-unsigned
           if-no-files-found: error
           retention-days: 14
+          overwrite: true
 
       - name: First reproducibility rebuild
         if: ${{ (github.event_name == 'workflow_dispatch' && inputs.verify_reproducibility) || (github.event_name == 'pull_request' && startsWith(github.base_ref, 'stabilization/')) }}
@@ -230,6 +231,7 @@ jobs:
           path: ${{ runner.temp }}/play-bundles-signed
           if-no-files-found: error
           retention-days: 14
+          overwrite: true
 
       - name: Remove the upload keystore
         if: ${{ always() }}

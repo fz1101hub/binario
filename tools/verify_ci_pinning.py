@@ -238,6 +238,10 @@ def _check_upload_artifact(step: Mapping[str, Any], *, location: str, problems: 
         problems.append(f"{location}.with.retention-days: artifact deve scadere entro {MAX_ARTIFACT_RETENTION_DAYS} giorni")
     if inputs.get("if-no-files-found") != "error":
         problems.append(f"{location}.with.if-no-files-found: upload artifact deve fallire senza file")
+    # upload-artifact v4+ rejects a second artifact with the same name in one run:
+    # without overwrite a "Re-run failed jobs" of the same run fails on the upload.
+    if inputs.get("overwrite") is not True:
+        problems.append(f"{location}.with.overwrite: upload artifact deve sovrascrivere l'artifact omonimo di un re-run")
 
 
 def _check_release_signing(

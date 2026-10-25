@@ -106,7 +106,7 @@ I rail ordinari non leggono alcun secret: un ambiente di distribuzione può inie
 
 ## Artifact CI e firma su GitHub Actions
 
-Il job `android` conserva per 14 giorni l'artifact `binario-play-bundles-unsigned` con `app-release.aab`, `wear-release.aab` e il log del verifier, ma soltanto per i push su `main`/`stabilization/**` e per i dispatch manuali: le pull request non caricano artifact, così lo spazio di archiviazione del repository non cresce a ogni revisione. I bundle unsigned servono come evidenza e per un confronto locale; non sono caricabili su Play.
+Il job `android` conserva per 14 giorni l'artifact `binario-play-bundles-unsigned` con `app-release.aab`, `wear-release.aab` e il log del verifier, ma soltanto per i push su `main`/`stabilization/**` e per i dispatch manuali: le pull request non caricano artifact, così lo spazio di archiviazione del repository non cresce a ogni revisione. I bundle unsigned servono come evidenza e per un confronto locale; non sono caricabili su Play. Entrambi gli upload hanno `overwrite: true`: `actions/upload-artifact` dalla v4 rifiuta un secondo artifact con lo stesso nome nello stesso run, quindi senza quell'opzione un *Re-run failed jobs* dopo un passo fallito a valle dell'upload (per esempio la ricostruzione di riproducibilità) fallirebbe per conflitto di nome e costringerebbe a rilanciare l'intero workflow.
 
 Il job `release-sign` produce invece i bundle pronti per l'upload. Gira soltanto con `workflow_dispatch` e `sign_release=true`, dopo che il job `android` dello stesso commit è verde, e legge quattro secret del repository:
 
@@ -117,7 +117,7 @@ Il job `release-sign` produce invece i bundle pronti per l'upload. Gira soltanto
 | `BINARIO_RELEASE_KEY_ALIAS` | Alias della chiave di upload (per esempio `binario-upload`) |
 | `BINARIO_RELEASE_KEY_PASSWORD` | Password della chiave |
 
-Il job decodifica il keystore in `RUNNER_TEMP`, esporta le quattro variabili `BINARIO_RELEASE_*` che `app/build.gradle.kts` e `wear/build.gradle.kts` già riconoscono, esegue `:app:bundleRelease :wear:bundleRelease`, verifica i due AAB con `tools/verify_android_app_bundles.py --signed` (stessi controlli del gate unsigned, ma la firma JAR `META-INF/MANIFEST.MF`, `*.SF` e `*.RSA|DSA|EC` diventa obbligatoria) e pubblica l'artifact `binario-play-bundles-signed`, anch'esso con scadenza a 14 giorni; il keystore viene rimosso a fine job. `tools/verify_ci_pinning.py` blocca un job di firma senza `needs: android`, senza la condizione di dispatch, con secret interpolati nello script, con keystore fuori da `RUNNER_TEMP`, senza `--signed` o con artifact oltre i 14 giorni.
+Il job decodifica il keystore in `RUNNER_TEMP`, esporta le quattro variabili `BINARIO_RELEASE_*` che `app/build.gradle.kts` e `wear/build.gradle.kts` già riconoscono, esegue `:app:bundleRelease :wear:bundleRelease`, verifica i due AAB con `tools/verify_android_app_bundles.py --signed` (stessi controlli del gate unsigned, ma la firma JAR `META-INF/MANIFEST.MF`, `*.SF` e `*.RSA|DSA|EC` diventa obbligatoria) e pubblica l'artifact `binario-play-bundles-signed`, anch'esso con scadenza a 14 giorni; il keystore viene rimosso a fine job. `tools/verify_ci_pinning.py` blocca un job di firma senza `needs: android`, senza la condizione di dispatch, con secret interpolati nello script, con keystore fuori da `RUNNER_TEMP`, senza `--signed`, con artifact oltre i 14 giorni o senza `overwrite: true`.
 
 ```sh
 gh workflow run android-ci.yml \

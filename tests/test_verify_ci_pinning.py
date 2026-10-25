@@ -210,6 +210,7 @@ class VerifyCiPinningTest(unittest.TestCase):
             ),
             "artifact deve scadere entro 14 giorni": original.replace("          retention-days: 14\n", "          retention-days: 90\n", 1),
             "upload artifact deve fallire senza file": original.replace("          if-no-files-found: error\n", "", 1),
+            "deve sovrascrivere l'artifact omonimo": original.replace("          overwrite: true\n", "          overwrite: false\n", 1),
         }
         for expected, mutated in mutations.items():
             with self.subTest(expected=expected):
