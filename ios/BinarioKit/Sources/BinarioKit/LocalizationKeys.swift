@@ -7,6 +7,7 @@ public enum BinarioLocalizationKeys {
         "planner.choose_station", "planner.search_station",
         "planner.swap", "planner.search", "planner.save", "planner.same_station",
         "planner.selection_required", "planner.route_accessibility",
+        "planner.station.no_timetable", "planner.sources.footer",
         "catalog.loading", "catalog.unavailable.title", "catalog.unavailable.body",
         "schedule.loading", "schedule.unavailable",
         "result.title", "result.unavailable.title", "result.unavailable.body",

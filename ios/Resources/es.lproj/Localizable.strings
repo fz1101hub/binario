@@ -4,7 +4,7 @@
 "tab.settings" = "Ajustes";
 "planner.title" = "Planificar";
 "planner.intro.title" = "Buscar una ruta";
-"planner.intro.body" = "Elige origen y destino en el catálogo verificado. Los resultados ferroviarios solo aparecen cuando hay una fuente autorizada disponible.";
+"planner.intro.body" = "Elige origen y destino en el catálogo verificado. Los horarios incluidos son datos programados y cubren solo las redes regionales y transfronterizas indicadas abajo: Trenitalia e Italo no están incluidos, y las estaciones sin horarios se señalan en la búsqueda.";
 "planner.origin" = "Origen";
 "planner.destination" = "Destino";
 "planner.departure" = "Fecha y hora";
@@ -16,6 +16,8 @@
 "planner.same_station" = "El origen y el destino deben ser diferentes.";
 "planner.selection_required" = "Selecciona un origen y un destino.";
 "planner.route_accessibility" = "Ruta de %@ a %@";
+"planner.station.no_timetable" = "Horarios no incluidos";
+"planner.sources.footer" = "Horarios incluidos:";
 "catalog.unavailable.title" = "Catálogo no disponible";
 "catalog.unavailable.body" = "No se puede leer el catálogo verificado de estaciones. La búsqueda permanece desactivada para evitar identidades sin verificar.";
 "result.title" = "Resultado";

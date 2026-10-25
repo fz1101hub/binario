@@ -4,7 +4,7 @@
 "tab.settings" = "Impostazioni";
 "planner.title" = "Pianifica";
 "planner.intro.title" = "Cerca una tratta";
-"planner.intro.body" = "Scegli partenza e destinazione dal catalogo curato. I risultati ferroviari vengono mostrati solo quando una fonte autorizzata è disponibile.";
+"planner.intro.body" = "Scegli partenza e destinazione dal catalogo curato. Gli orari inclusi sono programmati e coprono solo le reti regionali ed estere elencate sotto: Trenitalia e Italo non sono inclusi e le stazioni senza orari sono segnalate nella ricerca.";
 "planner.origin" = "Partenza";
 "planner.destination" = "Destinazione";
 "planner.departure" = "Data e ora";
@@ -16,6 +16,8 @@
 "planner.same_station" = "Partenza e destinazione devono essere diverse.";
 "planner.selection_required" = "Seleziona partenza e destinazione.";
 "planner.route_accessibility" = "Tratta da %@ a %@";
+"planner.station.no_timetable" = "Orari non inclusi";
+"planner.sources.footer" = "Orari inclusi:";
 "catalog.unavailable.title" = "Catalogo non disponibile";
 "catalog.unavailable.body" = "Il catalogo curato delle stazioni non può essere letto. La ricerca resta disabilitata per evitare identità non verificate.";
 "result.title" = "Risultato";

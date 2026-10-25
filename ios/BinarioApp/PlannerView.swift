@@ -17,6 +17,11 @@ struct PlannerView: View {
                     .font(.headline)
                 Text("planner.intro.body")
                     .foregroundStyle(.secondary)
+                if !model.includedPacks.isEmpty {
+                    Text("\(String(localized: "planner.sources.footer")) \(model.includedFeedAttributions)")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
             }
 
             switch model.catalogState {

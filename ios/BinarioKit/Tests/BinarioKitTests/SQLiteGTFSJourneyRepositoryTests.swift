@@ -56,6 +56,16 @@ final class SQLiteGTFSJourneyRepositoryTests: XCTestCase {
         XCTAssertEqual(withinValidity, .unavailable(.noJourney))
     }
 
+    func testCoveredCatalogStationIDsListEveryBoundStopOnce() throws {
+        let fixture = try Fixture()
+        try fixture.execute("""
+            INSERT INTO stop VALUES (3, 1, 'unbound', 'Platform only', NULL, NULL, NULL, NULL, NULL);
+            INSERT INTO stop VALUES (4, 1, 'origin-platform', 'Roma Termini 1', NULL, NULL, 'catalog-origin', 'RM', NULL);
+            """)
+
+        XCTAssertEqual(try fixture.repository.coveredCatalogStationIDs(), ["catalog-origin", "catalog-destination"])
+    }
+
     func testSourcePacksListAttributionValidityAndRetainedTripCount() throws {
         let fixture = try Fixture()
         XCTAssertEqual(try fixture.repository.sourcePacks().map(\.tripCount), [0])

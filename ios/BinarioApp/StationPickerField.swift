@@ -68,9 +68,14 @@ private struct StationSearchView: View {
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
                                 }
+                                if model.hasTimetable(station) == false {
+                                    Text("planner.station.no_timetable")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
                             }
                         }
-                        .accessibilityLabel(Text("\(String(localized: "accessibility.selected_station")): \(station.name)"))
+                        .accessibilityLabel(Text(accessibilityLabel(for: station)))
                     }
                     .accessibilityLabel(Text("accessibility.station_suggestions"))
                 }
@@ -79,5 +84,11 @@ private struct StationSearchView: View {
             .navigationBarTitleDisplayMode(.inline)
             .searchable(text: $query, prompt: "planner.search_station")
         }
+    }
+
+    private func accessibilityLabel(for station: Station) -> String {
+        let label = "\(String(localized: "accessibility.selected_station")): \(station.name)"
+        guard model.hasTimetable(station) == false else { return label }
+        return "\(label), \(String(localized: "planner.station.no_timetable"))"
     }
 }

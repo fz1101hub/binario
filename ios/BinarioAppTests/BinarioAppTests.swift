@@ -256,6 +256,37 @@ final class BinarioAppTests: XCTestCase {
         XCTAssertEqual(model.catalogState, .unavailable)
     }
 
+    func testStationsWithoutTimetableAreMarkedAndListedAfterCoveredOnes() async throws {
+        let defaults = try makeDefaults()
+        defer { clear(defaults) }
+        let data = try Data(contentsOf: repositoryRoot
+            .appendingPathComponent("app/src/main/assets/stations/curated_it_rail_stations.json"))
+        let unmarked = makeModel(defaults: defaults, publisher: nil)
+        await unmarked.loadCatalog { data }
+        let covered = AppModel(
+            catalogState: .loading,
+            savedRouteStore: SavedRouteStore(defaults: defaults),
+            watchSharingStore: WatchSharingPreferenceStore(defaults: defaults),
+            repository: FailClosedJourneyRepository(),
+            coveredStationIDs: ["NC000040"],
+            watchPublisher: nil,
+            versionDisplay: "test"
+        )
+        await covered.loadCatalog { data }
+
+        let plain = unmarked.suggestions(for: "Bergamo")
+        let ranked = covered.suggestions(for: "Bergamo")
+
+        // Without an index nothing is marked and the catalogue order stands.
+        XCTAssertEqual(plain.first?.name, "Bergamo")
+        XCTAssertNil(unmarked.hasTimetable(try XCTUnwrap(plain.first)))
+        // With an index the served station leads and the others are flagged, not hidden.
+        XCTAssertEqual(ranked.first?.id, "NC000040")
+        XCTAssertEqual(ranked.map(\.id).sorted(), plain.map(\.id).sorted())
+        XCTAssertEqual(covered.hasTimetable(try XCTUnwrap(ranked.first)), true)
+        XCTAssertEqual(covered.hasTimetable(try XCTUnwrap(ranked.first { $0.name == "Bergamo" })), false)
+    }
+
     func testOnlySearchesForNowAreCurrentForTheWatch() throws {
         let now = Date(timeIntervalSince1970: 1_790_000_000)
         func query(_ offset: TimeInterval) throws -> JourneyQuery {

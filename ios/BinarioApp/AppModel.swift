@@ -25,6 +25,8 @@ final class AppModel: ObservableObject {
     @Published private(set) var scheduleState: ScheduleState
     @Published private(set) var schedulePacks: [GTFSSourcePack] = []
     @Published private(set) var sourcePolicy: GTFSSourcePolicy?
+    /// Nil until the timetable index has been read.
+    @Published private(set) var coveredStationIDs: Set<String>?
     @Published private(set) var latestSnapshot: JourneySnapshot?
     @Published var persistenceMessageKey: String?
 
@@ -42,6 +44,7 @@ final class AppModel: ObservableObject {
         watchSharingStore: WatchSharingPreferenceStore,
         repository: any JourneyRepository,
         scheduleState: ScheduleState = .available,
+        coveredStationIDs: Set<String>? = nil,
         watchPublisher: WatchSnapshotPublisher?,
         versionDisplay: String
     ) {
@@ -50,6 +53,7 @@ final class AppModel: ObservableObject {
         self.watchSharingStore = watchSharingStore
         self.repository = repository
         self.scheduleState = scheduleState
+        self.coveredStationIDs = coveredStationIDs
         self.latestSnapshot = nil
         self.watchPublisher = watchPublisher
         self.versionDisplay = versionDisplay
@@ -129,7 +133,18 @@ final class AppModel: ObservableObject {
 
     func suggestions(for query: String) -> [Station] {
         guard case let .available(catalog) = catalogState else { return [] }
-        return catalog.search(query)
+        let stations = catalog.search(query)
+        guard let coveredStationIDs else { return stations }
+        // Stations the bundled timetables serve come first; the others stay selectable and
+        // are marked, so a search for Roma Termini explains itself instead of "no data".
+        return stations.filter { coveredStationIDs.contains($0.id) }
+            + stations.filter { !coveredStationIDs.contains($0.id) }
+    }
+
+    /// Nil until the timetable index has been read, true when one of its stops is bound to
+    /// the station.
+    func hasTimetable(_ station: Station) -> Bool? {
+        coveredStationIDs?.contains(station.id)
     }
 
     func loadSchedule(compressedURL: URL, metadataURL: URL, sourcePolicyURL: URL? = nil, cacheDirectory: URL) async {
@@ -141,23 +156,32 @@ final class AppModel: ObservableObject {
                 cacheDirectory: cacheDirectory
             ) else { return nil }
             let repository = SQLiteGTFSJourneyRepository(databaseURL: installedURL)
-            // The source list is read from the same validated index as the journeys: an index
-            // that cannot describe its packs is not served either.
-            guard let packs = try? repository.sourcePacks() else { return nil }
+            // The source list and the covered stations are read from the same validated index
+            // as the journeys: an index that cannot describe itself is not served either.
+            guard let packs = try? repository.sourcePacks(),
+                  let coveredStationIDs = try? repository.coveredCatalogStationIDs()
+            else { return nil }
             let policy = sourcePolicyURL.flatMap { url in
                 (try? Data(contentsOf: url)).flatMap { try? GTFSSourcePolicy(data: $0) }
             }
-            return InstalledSchedule(repository: repository, packs: packs, sourcePolicy: policy)
+            return InstalledSchedule(
+                repository: repository,
+                packs: packs,
+                coveredStationIDs: coveredStationIDs,
+                sourcePolicy: policy
+            )
         }.value
         guard let installed else {
             repository = FailClosedJourneyRepository()
             schedulePacks = []
+            coveredStationIDs = nil
             sourcePolicy = nil
             scheduleState = .unavailable
             return
         }
         repository = installed.repository
         schedulePacks = installed.packs
+        coveredStationIDs = installed.coveredStationIDs
         sourcePolicy = installed.sourcePolicy
         scheduleState = .available
     }
@@ -171,6 +195,11 @@ final class AppModel: ObservableObject {
     /// report an expired timetable until the app is updated.
     var firstPackExpiry: Date? {
         includedPacks.map(\.lastServiceDate).min()
+    }
+
+    /// The attribution of every feed that contributes trips, for the planner footer.
+    var includedFeedAttributions: String {
+        includedPacks.map(\.attribution).joined(separator: ", ")
     }
 
     func run(query: JourneyQuery) async {
@@ -383,6 +412,7 @@ final class AppModel: ObservableObject {
 private struct InstalledSchedule: Sendable {
     let repository: SQLiteGTFSJourneyRepository
     let packs: [GTFSSourcePack]
+    let coveredStationIDs: Set<String>
     let sourcePolicy: GTFSSourcePolicy?
 }
 

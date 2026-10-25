@@ -26,6 +26,7 @@ public struct SQLiteGTFSJourneyRepository: JourneyRepository, Sendable {
     private static let maximumResolvedStops = 128
     private static let maximumTimeZones = 16
     private static let maximumPacks = 64
+    private static let maximumCoveredStations = 8_192
     private static let maximumCandidateRows = 4_096
     private static let maximumGTFSSeconds = 168 * 60 * 60 - 1
     private static let maximumServiceDayLookback = maximumGTFSSeconds / (24 * 60 * 60)
@@ -78,6 +79,24 @@ public struct SQLiteGTFSJourneyRepository: JourneyRepository, Sendable {
         }
         guard !packs.isEmpty else { throw SQLiteGTFSFailure.invalidData }
         return packs
+    }
+
+    /// The catalogue station identities that at least one stop of the index is bound to: the
+    /// only stations for which a search can find trains at all.
+    public func coveredCatalogStationIDs() throws -> Set<String> {
+        let database = try SQLiteDatabase(readOnlyURL: databaseURL)
+        _ = try Self.validate(database)
+        let statement = try database.statement(
+            "SELECT DISTINCT catalog_station_id FROM stop WHERE catalog_station_id IS NOT NULL LIMIT ?"
+        )
+        try statement.bind(Int64(Self.maximumCoveredStations + 1), at: 1)
+        var identifiers = Set<String>()
+        while try statement.step() {
+            guard identifiers.count < Self.maximumCoveredStations else { throw SQLiteGTFSFailure.limitExceeded }
+            guard let identifier = statement.text(at: 0)?.nonEmpty else { throw SQLiteGTFSFailure.invalidData }
+            identifiers.insert(identifier)
+        }
+        return identifiers
     }
 
     public func journeys(for query: JourneyQuery) async -> JourneyResult {

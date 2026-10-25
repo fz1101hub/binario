@@ -4,7 +4,7 @@
 "tab.settings" = "Settings";
 "planner.title" = "Plan";
 "planner.intro.title" = "Search for a route";
-"planner.intro.body" = "Choose the origin and destination from the curated catalogue. Railway results appear only when an authorised source is available.";
+"planner.intro.body" = "Choose the origin and destination from the curated catalogue. The included timetables are scheduled data and cover only the regional and cross-border networks listed below: Trenitalia and Italo are not included, and stations without timetables are flagged in the search.";
 "planner.origin" = "Origin";
 "planner.destination" = "Destination";
 "planner.departure" = "Date and time";
@@ -16,6 +16,8 @@
 "planner.same_station" = "Origin and destination must be different.";
 "planner.selection_required" = "Select an origin and destination.";
 "planner.route_accessibility" = "Route from %@ to %@";
+"planner.station.no_timetable" = "No timetable included";
+"planner.sources.footer" = "Included timetables:";
 "catalog.unavailable.title" = "Catalogue unavailable";
 "catalog.unavailable.body" = "The curated station catalogue cannot be read. Search remains disabled to avoid unverified identities.";
 "result.title" = "Result";

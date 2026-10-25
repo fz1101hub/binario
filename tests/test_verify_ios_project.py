@@ -366,6 +366,31 @@ class IOSProjectTests(unittest.TestCase):
         self.assertIn('clearKey = "binario_snapshot_clear"', receiver)
         self.assertIn("store.clear()", receiver)
 
+    def test_planner_marks_stations_without_timetable_and_names_the_included_feeds(self) -> None:
+        gtfs = (IOS / "BinarioKit/Sources/BinarioKit/SQLiteGTFSJourneyRepository.swift").read_text(encoding="utf-8")
+        model = (IOS / "BinarioApp/AppModel.swift").read_text(encoding="utf-8")
+        picker = (IOS / "BinarioApp/StationPickerField.swift").read_text(encoding="utf-8")
+        planner = (IOS / "BinarioApp/PlannerView.swift").read_text(encoding="utf-8")
+        model_tests = (IOS / "BinarioAppTests/BinarioAppTests.swift").read_text(encoding="utf-8")
+
+        # The planner offers the whole catalogue while the index serves a fraction of it: the
+        # covered set comes from the index, uncovered stations are flagged and sorted last.
+        self.assertIn("public func coveredCatalogStationIDs() throws -> Set<String>", gtfs)
+        self.assertIn("let coveredStationIDs = try? repository.coveredCatalogStationIDs()", model)
+        self.assertIn("func hasTimetable(_ station: Station) -> Bool?", model)
+        self.assertIn("stations.filter { coveredStationIDs.contains($0.id) }", model)
+        self.assertIn("model.hasTimetable(station) == false", picker)
+        self.assertIn('Text("planner.station.no_timetable")', picker)
+        self.assertIn('String(localized: "planner.sources.footer")', planner)
+        self.assertIn("model.includedFeedAttributions", planner)
+        self.assertIn("testStationsWithoutTimetableAreMarkedAndListedAfterCoveredOnes", model_tests)
+        self.assertIn("testCoveredCatalogStationIDsListEveryBoundStopOnce", (IOS / "BinarioKit/Tests/BinarioKitTests/SQLiteGTFSJourneyRepositoryTests.swift").read_text(encoding="utf-8"))
+        # The intro no longer implies national coverage.
+        italian = read_strings(IOS / "Resources/it.lproj/Localizable.strings")
+        english = read_strings(IOS / "Resources/en.lproj/Localizable.strings")
+        self.assertIn("Trenitalia e Italo non sono inclusi", italian["planner.intro.body"])
+        self.assertIn("Trenitalia and Italo are not included", english["planner.intro.body"])
+
     def test_settings_source_list_is_backed_by_the_reviewed_policy_licences(self) -> None:
         policy = json.loads((IOS / "Resources/binario_gtfs_source_policy_v1.json").read_text(encoding="utf-8"))
         metadata = json.loads((IOS / "Resources/binario_gtfs_schedule_v1.metadata.json").read_text(encoding="utf-8"))

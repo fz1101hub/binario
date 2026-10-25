@@ -4,7 +4,7 @@
 "tab.settings" = "Einstellungen";
 "planner.title" = "Planen";
 "planner.intro.title" = "Strecke suchen";
-"planner.intro.body" = "Wählen Sie Start und Ziel aus dem kuratierten Katalog. Bahnverbindungen werden nur angezeigt, wenn eine autorisierte Quelle verfügbar ist.";
+"planner.intro.body" = "Wählen Sie Start und Ziel aus dem kuratierten Katalog. Die enthaltenen Fahrpläne sind Plandaten und decken nur die unten aufgeführten regionalen und grenzüberschreitenden Netze ab: Trenitalia und Italo sind nicht enthalten, Bahnhöfe ohne Fahrplan werden in der Suche gekennzeichnet.";
 "planner.origin" = "Start";
 "planner.destination" = "Ziel";
 "planner.departure" = "Datum und Uhrzeit";
@@ -16,6 +16,8 @@
 "planner.same_station" = "Start und Ziel müssen verschieden sein.";
 "planner.selection_required" = "Wählen Sie Start und Ziel aus.";
 "planner.route_accessibility" = "Strecke von %@ nach %@";
+"planner.station.no_timetable" = "Kein Fahrplan enthalten";
+"planner.sources.footer" = "Enthaltene Fahrpläne:";
 "catalog.unavailable.title" = "Katalog nicht verfügbar";
 "catalog.unavailable.body" = "Der kuratierte Bahnhofskatalog kann nicht gelesen werden. Die Suche bleibt deaktiviert, um ungeprüfte Identitäten zu vermeiden.";
 "result.title" = "Ergebnis";

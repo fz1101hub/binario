@@ -4,7 +4,7 @@
 "tab.settings" = "Réglages";
 "planner.title" = "Planifier";
 "planner.intro.title" = "Rechercher un trajet";
-"planner.intro.body" = "Choisissez le départ et la destination dans le catalogue vérifié. Les résultats ferroviaires ne s’affichent que lorsqu’une source autorisée est disponible.";
+"planner.intro.body" = "Choisissez le départ et la destination dans le catalogue vérifié. Les horaires inclus sont des données programmées et ne couvrent que les réseaux régionaux et transfrontaliers listés ci-dessous : Trenitalia et Italo ne sont pas inclus, et les gares sans horaires sont signalées dans la recherche.";
 "planner.origin" = "Départ";
 "planner.destination" = "Destination";
 "planner.departure" = "Date et heure";
@@ -16,6 +16,8 @@
 "planner.same_station" = "Le départ et la destination doivent être différents.";
 "planner.selection_required" = "Sélectionnez un départ et une destination.";
 "planner.route_accessibility" = "Trajet de %@ à %@";
+"planner.station.no_timetable" = "Horaires non inclus";
+"planner.sources.footer" = "Horaires inclus :";
 "catalog.unavailable.title" = "Catalogue indisponible";
 "catalog.unavailable.body" = "Le catalogue vérifié des gares ne peut pas être lu. La recherche reste désactivée pour éviter les identités non vérifiées.";
 "result.title" = "Résultat";
