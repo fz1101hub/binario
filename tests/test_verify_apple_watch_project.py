@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 import plistlib
 import re
+import struct
 import unittest
 
 import yaml
@@ -34,6 +35,7 @@ class AppleWatchProjectTests(unittest.TestCase):
         self.assertEqual("$(MARKETING_VERSION)", settings["INFOPLIST_KEY_CFBundleShortVersionString"])
         self.assertEqual({"debug": {"ENABLE_TESTABILITY": True}}, application["settings"]["configs"])
         self.assertNotIn("INFOPLIST_KEY_WKCompanionAppBundleIdentifier", settings)
+        self.assertEqual("AppIcon", settings["ASSETCATALOG_COMPILER_APPICON_NAME"])
         self.assertTrue(all(target["platform"] == "watchOS" for target in self.targets.values()))
         self.assertIn(
             {"target": "BinarioWatchWidgets", "embed": True},
@@ -44,6 +46,23 @@ class AppleWatchProjectTests(unittest.TestCase):
         for name, target in self.targets.items():
             with self.subTest(name=name):
                 self.assertEqual(name, target["settings"]["base"]["PRODUCT_NAME"])
+
+    def test_watch_app_icon_is_an_opaque_1024_watchos_catalog_entry_outside_the_widget(self) -> None:
+        # The embedded Watch app must ship its own icon (ITMS-90713); the widget extension
+        # does not carry one, so the catalogue lives under BinarioWatch/, not Resources/.
+        self.assertIn("BinarioWatch", self.targets["BinarioWatch"]["sources"])
+        self.assertNotIn("BinarioWatch", self.targets["BinarioWatchWidgets"]["sources"])
+        catalog = APPLE_WATCH / "BinarioWatch" / "Assets.xcassets"
+        self.assertEqual({"info": {"author": "xcode", "version": 1}}, json.loads((catalog / "Contents.json").read_text(encoding="utf-8")))
+        contents = json.loads((catalog / "AppIcon.appiconset" / "Contents.json").read_text(encoding="utf-8"))
+        self.assertEqual(
+            [{"filename": "AppIcon-1024.png", "idiom": "universal", "platform": "watchos", "size": "1024x1024"}],
+            contents["images"],
+        )
+        header = (catalog / "AppIcon.appiconset" / "AppIcon-1024.png").read_bytes()[:26]
+        self.assertTrue(header.startswith(b"\x89PNG\r\n\x1a\n"))
+        width, height, bit_depth, colour_type = struct.unpack(">IIBB", header[16:26])
+        self.assertEqual((1024, 1024, 8, 2), (width, height, bit_depth, colour_type), "expected an 8-bit RGB PNG without alpha")
 
     def test_widget_has_the_explicit_widgetkit_extension_point(self) -> None:
         widget = self.targets["BinarioWatchWidgets"]

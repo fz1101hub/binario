@@ -105,6 +105,35 @@ class BuildStoreAssetsTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "quadrata"):
             BUILDER.build_play_icon(filtered_png(4, 8, 3, bytes(4 * 8 * 3), [0] * 8))
 
+    def test_apple_icon_requires_the_1024_source_and_drops_the_opaque_alpha(self) -> None:
+        with self.assertRaisesRegex(ValueError, "1024x1024"):
+            BUILDER.build_apple_icon(filtered_png(4, 4, 3, bytes(4 * 4 * 3), [0] * 4))
+        rgba = b"".join(bytes([index & 0xFF, 7, 9, 255]) for index in range(1024 * 1024))
+        icon = BUILDER.build_apple_icon(filtered_png(1024, 1024, 4, rgba, [0] * 1024))
+        width, height, channels, pixels = BUILDER.read_png(icon)
+        self.assertEqual((1024, 1024, 3), (width, height, channels))
+        self.assertEqual(bytes([1, 7, 9]), pixels[3:6])
+
+    def test_committed_apple_icons_and_readme_match_the_generator(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="store-appstore-") as temporary:
+            root = Path(temporary)
+            written = BUILDER.build_apple_assets(root=root)
+            self.assertEqual([root / relative for relative in BUILDER.APPLE_ICONS] + [root / BUILDER.APPSTORE_README_PATH], written)
+            self.assertEqual(
+                (ROOT / BUILDER.APPSTORE_README_PATH).read_text(encoding="utf-8"),
+                written[-1].read_text(encoding="utf-8"),
+            )
+            generated = BUILDER.read_png(written[0].read_bytes())
+
+        for relative in BUILDER.APPLE_ICONS:
+            with self.subTest(icon=relative.as_posix()):
+                committed = (ROOT / relative).read_bytes()
+                self.assertEqual(generated, BUILDER.read_png(committed))
+                width, height, channels, pixels = BUILDER.read_png(committed)
+                # App Store Connect rejects icons with an alpha channel: 1024 pt RGB only.
+                self.assertEqual((1024, 1024, 3), (width, height, channels))
+                self.assertEqual(bytes([0, 90, 82]), pixels[:3])
+
     def test_committed_play_icon_and_readme_match_the_generator(self) -> None:
         with tempfile.TemporaryDirectory(prefix="store-play-") as temporary:
             output_dir = Path(temporary)

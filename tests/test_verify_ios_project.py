@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 import plistlib
 import re
+import struct
 import unittest
 
 import yaml
@@ -176,6 +177,7 @@ class IOSProjectTests(unittest.TestCase):
         ios_id = self.targets["Binario"]["settings"]["base"]["PRODUCT_BUNDLE_IDENTIFIER"]
         self.assertEqual(ios_id, settings["INFOPLIST_KEY_WKCompanionAppBundleIdentifier"])
         self.assertEqual(f"{ios_id}.watchkitapp", settings["PRODUCT_BUNDLE_IDENTIFIER"])
+        self.assertEqual("AppIcon", settings["ASSETCATALOG_COMPILER_APPICON_NAME"])
         self.assertIn({"target": "BinarioWatchWidgets", "embed": True}, watch["dependencies"])
         self.assertEqual("app-extension", widget["type"])
         widget_settings = widget["settings"]["base"]
@@ -184,6 +186,29 @@ class IOSProjectTests(unittest.TestCase):
         self.assertEqual("../apple-watch/BinarioWatchWidgets/Info.plist", widget_settings["INFOPLIST_FILE"])
         self.assertEqual("0.1.0", global_settings["MARKETING_VERSION"])
         self.assertEqual(1, global_settings["CURRENT_PROJECT_VERSION"])
+
+    def test_iphone_and_watch_app_icons_are_opaque_1024_catalog_entries(self) -> None:
+        # App Store Connect refuses an upload whose iPhone or embedded Watch app lacks a
+        # 1024 pt icon, and refuses icons that carry an alpha channel.
+        self.assertEqual("AppIcon", self.targets["Binario"]["settings"]["base"]["ASSETCATALOG_COMPILER_APPICON_NAME"])
+        watch_sources = [entry["path"] for entry in self.targets["BinarioWatch"]["sources"] if isinstance(entry, dict)]
+        self.assertIn("../apple-watch/BinarioWatch", watch_sources)
+        for catalog, platform in (
+            (IOS / "Resources/Assets.xcassets", "ios"),
+            (ROOT / "apple-watch/BinarioWatch/Assets.xcassets", "watchos"),
+        ):
+            with self.subTest(platform=platform):
+                self.assertEqual({"info": {"author": "xcode", "version": 1}}, json.loads((catalog / "Contents.json").read_text(encoding="utf-8")))
+                icon_set = catalog / "AppIcon.appiconset"
+                contents = json.loads((icon_set / "Contents.json").read_text(encoding="utf-8"))
+                self.assertEqual(
+                    [{"filename": "AppIcon-1024.png", "idiom": "universal", "platform": platform, "size": "1024x1024"}],
+                    contents["images"],
+                )
+                header = (icon_set / "AppIcon-1024.png").read_bytes()[:26]
+                self.assertTrue(header.startswith(b"\x89PNG\r\n\x1a\n"))
+                width, height, bit_depth, colour_type = struct.unpack(">IIBB", header[16:26])
+                self.assertEqual((1024, 1024, 8, 2), (width, height, bit_depth, colour_type), "expected an 8-bit RGB PNG without alpha")
 
     def test_localizations_match_canonical_keys_usage_and_placeholders(self) -> None:
         key_source = (IOS / "BinarioKit/Sources/BinarioKit/LocalizationKeys.swift").read_text(encoding="utf-8")

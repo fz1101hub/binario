@@ -25,6 +25,7 @@ targets:
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_WKApplication: YES
         INFOPLIST_KEY_WKWatchOnly: YES
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
       configs:
         debug:
           ENABLE_TESTABILITY: YES

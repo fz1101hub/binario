@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
-"""Generate the Google Play listing assets that derive from the brand icon.
+"""Generate the Google Play and App Store listing assets that derive from the brand icon.
 
 Pure Python and offline: decodes the 1024x1024 brand PNG, checks that its
 alpha channel is fully opaque, box-filters the colour to the 512x512 app icon
 Play requires, writes it as the 32-bit RGBA PNG Play documents (alpha kept
-opaque) and writes store/play/README.md with the assets that still need a
-designer.
+opaque), writes the 1024 pt iPhone and Apple Watch icons (RGB, no alpha, as
+App Store Connect requires) into their asset catalogues, and writes
+store/play/README.md and store/appstore/README.md with the assets that still
+need a designer.
 """
 from __future__ import annotations
 
@@ -19,6 +21,13 @@ ROOT = Path(__file__).resolve().parents[1]
 SOURCE_ICON = ROOT / "companion-expo" / "assets" / "brand" / "binario-companion-icon.png"
 OUTPUT_DIR = ROOT / "store" / "play"
 ICON_SIZE = 512
+APPLE_ICON_SIZE = 1024
+# The 1024 pt icons live in the Xcode asset catalogues; Xcode derives every other size.
+APPLE_ICONS = (
+    Path("ios/Resources/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png"),
+    Path("apple-watch/BinarioWatch/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png"),
+)
+APPSTORE_README_PATH = Path("store/appstore/README.md")
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 CHANNELS_BY_COLOR_TYPE = {2: 3, 6: 4}
 COLOR_TYPE_BY_CHANNELS = {3: 2, 4: 6}
@@ -36,6 +45,21 @@ Cartella generata da `python3 tools/build_store_assets.py`: non modificare a man
 | Video promozionale | Facoltativo, URL YouTube pubblico | Non previsto |
 
 I testi del listing nelle cinque lingue, le risposte del modulo Sicurezza dei dati e la procedura di invio sono in `docs/store/PLAY_SUBMISSION.md` e `docs/store/PLAY_DATA_SAFETY.md`.
+"""
+APPSTORE_README = """# Asset del listing App Store
+
+Icone generate da `python3 tools/build_store_assets.py`: non modificare a mano i file generati, rigenerali e committa il risultato. `tests/test_build_store_assets.py` fallisce se i file committati divergono dal generatore. Le dimensioni richieste da App Store Connect cambiano: rileggerle nella pagina dell'app al momento dell'invio.
+
+| Asset | Requisito App Store Connect | Stato |
+|---|---|---|
+| `ios/Resources/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png` | Icona app iPhone: PNG 1024×1024 a 8 bit, senza canale alfa né angoli arrotondati (iOS applica la maschera); Xcode deriva le altre dimensioni dal catalogo | Generata dal marchio `companion-expo/assets/brand/binario-companion-icon.png` (1024 px, lo stesso segno di `ic_binario`), ricodificata in RGB senza trasparenza |
+| `apple-watch/BinarioWatch/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png` | Icona app Apple Watch: PNG 1024×1024 senza alfa nel catalogo `platform: watchos`; obbligatoria per l'app Watch incorporata, altrimenti il caricamento fallisce con ITMS-90713 (`CFBundleIconName` assente in `it.binario.ios.watchkitapp`) | Generata dallo stesso marchio: pixel identici all'icona iPhone |
+| Screenshot iPhone 6,9" | Da 1 a 10, PNG o JPEG, verticali 1320×2868 o 1290×2796 px; senza cornice del dispositivo e senza testo che prometta dati in tempo reale | Da catturare: pianificatore con stazioni coperte, risultato con riga fonte, tratte salvate, impostazioni privacy, fonti dati |
+| Screenshot iPhone 6,5" | Da 1 a 10, verticali 1284×2778 o 1242×2688 px | Facoltativi se App Store Connect riusa i 6,9"; stesse schermate |
+| Screenshot Apple Watch | Da 1 a 10, PNG o JPEG, nel formato del modello più grande supportato (per esempio 410×502 px Ultra o 416×496 px Series 10 46 mm), senza cornice dell'orologio | Obbligatori perché il listing include l'app Watch: schermata principale con tratta, dettaglio corsa, complicazione |
+| Anteprima video | Facoltativa, da 15 a 30 s per formato | Non prevista |
+
+I testi del listing nelle cinque lingue, le risposte sulla privacy, la classificazione per età, i diritti sui contenuti e la procedura di invio sono in `docs/store/APP_STORE_SUBMISSION.md`.
 """
 
 
@@ -138,7 +162,7 @@ def opaque_rgb(channels: int, pixels: bytes) -> bytes:
     if channels == 3:
         return pixels
     if any(pixels[index] != 255 for index in range(3, len(pixels), 4)):
-        raise ValueError("l'icona sorgente contiene trasparenza: Play richiede un quadrato pieno senza alfa")
+        raise ValueError("l'icona sorgente contiene trasparenza: gli store richiedono un quadrato pieno senza alfa")
     return bytes(value for index, value in enumerate(pixels) if index % 4 != 3)
 
 
@@ -175,6 +199,29 @@ def build_play_icon(source: bytes) -> bytes:
     return write_png(ICON_SIZE, ICON_SIZE, 4, with_opaque_alpha(scaled))
 
 
+def build_apple_icon(source: bytes) -> bytes:
+    """The 1024 pt App Store icon: the brand square as an 8-bit RGB PNG with no alpha channel."""
+    width, height, channels, pixels = read_png(source)
+    if (width, height) != (APPLE_ICON_SIZE, APPLE_ICON_SIZE):
+        raise ValueError(f"l'icona sorgente deve essere {APPLE_ICON_SIZE}x{APPLE_ICON_SIZE} px, non {width}x{height}")
+    return write_png(width, height, 3, opaque_rgb(channels, pixels))
+
+
+def build_apple_assets(source: Path = SOURCE_ICON, root: Path = ROOT) -> list[Path]:
+    icon = build_apple_icon(source.read_bytes())
+    written: list[Path] = []
+    for relative in APPLE_ICONS:
+        path = root / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(icon)
+        written.append(path)
+    readme = root / APPSTORE_README_PATH
+    readme.parent.mkdir(parents=True, exist_ok=True)
+    readme.write_text(APPSTORE_README, encoding="utf-8")
+    written.append(readme)
+    return written
+
+
 def build_assets(source: Path = SOURCE_ICON, output_dir: Path = OUTPUT_DIR) -> list[Path]:
     output_dir.mkdir(parents=True, exist_ok=True)
     icon = output_dir / "icon-512.png"
@@ -188,9 +235,10 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--source", type=Path, default=SOURCE_ICON)
     parser.add_argument("--output-dir", type=Path, default=OUTPUT_DIR)
+    parser.add_argument("--apple-root", type=Path, default=ROOT, help="repository root that holds the Xcode asset catalogues")
     args = parser.parse_args(argv)
     try:
-        written = build_assets(args.source, args.output_dir)
+        written = build_assets(args.source, args.output_dir) + build_apple_assets(args.source, args.apple_root)
     except (OSError, ValueError, zlib.error) as error:
         print(f"Store assets: FAIL: {error}", file=sys.stderr)
         return 1
