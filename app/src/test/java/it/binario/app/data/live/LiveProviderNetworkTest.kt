@@ -326,6 +326,11 @@ class LiveProviderNetworkTest {
             numbers.take(2).forEach { add("vt-infomobilita-news-$it" to "https://www.viaggiatreno.it/infomobilita/resteasy/news/infomobility?trainNumber=$it") }
             add("vt-infomobilita-ticker" to "https://www.viaggiatreno.it/infomobilita/resteasy/viaggiatreno/infomobilitaTicker")
             add("mit-scioperi-root" to "https://scioperi.mit.gov.it/")
+            // The HTTPS news endpoints answer 301 to cleartext; www.viaggiatreno.it is the one cleartext domain allowed.
+            numbers.forEach { add("vt-http-infomobility-$it" to "http://www.viaggiatreno.it/infomobilitamobile/resteasy/news/infomobility?trainNumber=$it") }
+            numbers.take(3).forEach { add("vt-http-smartcaring-$it" to "http://www.viaggiatreno.it/infomobilitamobile/resteasy/news/smartcaring?commercialTrainNumber=$it") }
+            add("vt-http-infomobility-general" to "http://www.viaggiatreno.it/infomobilitamobile/resteasy/news/infomobility")
+            add("vt-http-ticker" to "http://www.viaggiatreno.it/infomobilita/resteasy/viaggiatreno/infomobilitaTicker")
             add("opendata-ch-stationboard-name" to "https://transport.opendata.ch/v1/stationboard?station=Lugano&limit=4")
             add("opendata-ch-stationboard-id" to "https://transport.opendata.ch/v1/stationboard?id=8505300&limit=3&type=arrival")
             add("opendata-ch-locations" to "https://transport.opendata.ch/v1/locations?query=Chiasso&type=station")
