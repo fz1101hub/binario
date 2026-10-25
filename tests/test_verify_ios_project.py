@@ -63,6 +63,9 @@ class IOSProjectTests(unittest.TestCase):
         self.assertEqual("0.1.0", global_settings["MARKETING_VERSION"])
         self.assertEqual(1, global_settings["CURRENT_PROJECT_VERSION"])
         self.assertEqual("1", settings["TARGETED_DEVICE_FAMILY"])
+        self.assertIs(False, settings["SUPPORTS_MACCATALYST"])
+        self.assertIs(False, settings["SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD"])
+        self.assertIs(False, settings["SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD"])
         # The development region comes from the project, not from INFOPLIST_KEY_ overrides that
         # would conflict with XcodeGen's default "en"; the .lproj folders declare the languages.
         self.assertEqual("it", self.project["options"]["developmentLanguage"])

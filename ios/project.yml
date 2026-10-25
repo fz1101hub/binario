@@ -47,6 +47,10 @@ targets:
         INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: NO
         TARGETED_DEVICE_FAMILY: "1"
         SUPPORTS_MACCATALYST: NO
+        # Watch Connectivity is unsupported on Apple silicon Macs and Apple Vision, and the
+        # app was never exercised there: do not offer the iPhone build on those stores.
+        SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: NO
+        SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD: NO
       configs:
         debug:
           ONLY_ACTIVE_ARCH: YES
