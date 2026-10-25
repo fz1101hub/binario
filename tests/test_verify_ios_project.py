@@ -63,7 +63,12 @@ class IOSProjectTests(unittest.TestCase):
         self.assertEqual("0.1.0", global_settings["MARKETING_VERSION"])
         self.assertEqual(1, global_settings["CURRENT_PROJECT_VERSION"])
         self.assertEqual("1", settings["TARGETED_DEVICE_FAMILY"])
-        self.assertEqual(sorted(LANGUAGES), sorted(settings["INFOPLIST_KEY_CFBundleLocalizations"]))
+        # The development region comes from the project, not from INFOPLIST_KEY_ overrides that
+        # would conflict with XcodeGen's default "en"; the .lproj folders declare the languages.
+        self.assertEqual("it", self.project["options"]["developmentLanguage"])
+        self.assertNotIn("INFOPLIST_KEY_CFBundleDevelopmentRegion", settings)
+        self.assertNotIn("INFOPLIST_KEY_CFBundleLocalizations", settings)
+        self.assertEqual(LANGUAGES, {path.name.removesuffix(".lproj") for path in (IOS / "Resources").glob("*.lproj")})
         # Every executable declares export compliance, or App Store Connect holds each build.
         self.assertIs(False, settings["INFOPLIST_KEY_ITSAppUsesNonExemptEncryption"])
         self.assertIs(False, self.targets["BinarioWatch"]["settings"]["base"]["INFOPLIST_KEY_ITSAppUsesNonExemptEncryption"])

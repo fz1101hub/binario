@@ -2,6 +2,9 @@ name: Binario
 options:
   bundleIdPrefix: it.binario
   createIntermediateGroups: true
+  # Italian is the development region and the fallback for unsupported device languages,
+  # as on Android; the five .lproj folders declare the localisations.
+  developmentLanguage: it
 settings:
   base:
     SWIFT_VERSION: 6.0
@@ -35,8 +38,6 @@ targets:
         INFOPLIST_KEY_CFBundleDisplayName: Binario
         INFOPLIST_KEY_CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
         INFOPLIST_KEY_CFBundleShortVersionString: "$(MARKETING_VERSION)"
-        INFOPLIST_KEY_CFBundleDevelopmentRegion: it
-        INFOPLIST_KEY_CFBundleLocalizations: [it, en, de, fr, es]
         # A launch screen entry keeps the app out of letterboxed compatibility mode, and
         # App Store Connect rejects builds without a 1024 pt opaque app icon.
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
