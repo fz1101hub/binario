@@ -55,6 +55,10 @@
             android:name=".widget.WidgetConfigureActivity"
             android:exported="false" />
 
+        <activity
+            android:name=".widget.StationWidgetConfigureActivity"
+            android:exported="false" />
+
         <service
             android:name=".wear.WearRefreshRequestListenerService"
             android:exported="true">
@@ -81,6 +85,19 @@
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/route_widget_info" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.StationWidgetProvider"
+            android:exported="false"
+            android:label="@string/station_widget_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="it.binario.app.widget.STATION_REFRESH" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/station_widget_info" />
         </receiver>
 
         <receiver

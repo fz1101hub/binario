@@ -50,7 +50,7 @@ import it.binario.app.ThemeSettings
 import it.binario.app.TrainViewModel
 import it.binario.app.data.Station
 
-private class WidgetConfiguratorViewModelFactory(
+internal class WidgetConfiguratorViewModelFactory(
     private val application: Application
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
@@ -207,7 +207,7 @@ class WidgetConfigureActivity : ComponentActivity() {
 }
 
 @androidx.compose.runtime.Composable
-private fun WidgetStationField(
+internal fun WidgetStationField(
     label: String,
     value: String,
     onValueChange: (String) -> Unit,
@@ -257,7 +257,7 @@ private fun WidgetTargetCard(title: String, selected: Boolean, description: Stri
 }
 
 @androidx.compose.runtime.Composable
-private fun WidgetChoiceButton(label: String, selected: Boolean, onClick: () -> Unit) {
+internal fun WidgetChoiceButton(label: String, selected: Boolean, onClick: () -> Unit) {
     OutlinedButton(onClick = onClick, modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) {
         Text(if (selected) stringResource(R.string.widget_selected_option, label) else label, modifier = Modifier.fillMaxWidth())
     }

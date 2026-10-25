@@ -242,7 +242,7 @@
     <string name="train_number_label">Train %1$s</string>
     <string name="accessibility_remove_train_monitoring">Remove monitoring for train %1$s</string>
     <string name="settings_privacy_title">Privacy and data</string>
-    <string name="settings_privacy_local_data">Routes, favourites, monitoring, alerts and widgets remain on the device. Android backup and transfer are excluded; the JSON file is exported only if you choose it. Location is used only to order nearby stations and, if you turn on the GPS alarm, to tell when you are near your stop: it is processed only in memory and is neither retained nor sent to railway sources or anyone else.</string>
+    <string name="settings_privacy_local_data">Routes, favourites, monitoring, alerts, widgets and the punctuality history remain on the device. The punctuality history keeps, only on the phone and for up to 90 days, the date, number, operator, delay and cancellation of trains opened with operational data or monitored. A train’s history can be deleted from its Punctuality card, shown from the second observation; deleting the app data removes all of it. Android backup and transfer are excluded; the JSON file is exported only if you choose it. Location is used only to order nearby stations and, if you turn on the GPS alarm, to tell when you are near your stop: it is processed only in memory and is neither retained nor sent to railway sources or anyone else.</string>
     <string name="settings_privacy_notifications_voice">Notifications are local reminders. Dictation uses the system recogniser: Binario does not record audio and uses only the returned text. RFI searches send the source the public identifier of the departure station; optional personal sources may receive an identifier or the station name. Without an authorised source: real-time data unavailable. ViaggiaTreno uses HTTP for its public API: station, time and train requests are unencrypted. Other sources use HTTPS.</string>
     <string name="settings_privacy_wear">If you enable the smartwatch, it receives a summary of the route and up to two services. Turning off sharing deletes the DataItem and the watch’s local cache when the revocation is received. The full notice is PRIVACY.md in the repository. A verified URL and privacy contact are still missing before a public release: there is not yet a public link in the app.</string>
     <string name="settings_privacy_osm">National autocomplete: © OpenStreetMap contributors, ODbL 1.0. The geographic catalogue suggests station names but does not confirm service, time, platform, delay or operation.</string>
@@ -276,7 +276,7 @@
     <string name="mobility_compact_timetable">I prefer compact boards</string>
 
     <string name="local_backup_title">Local backup</string>
-    <string name="local_backup_description">Export or import routes, favourites, monitoring, alerts and preferences with a JSON file that you choose. No automatic cloud is used.</string>
+    <string name="local_backup_description">Export or import routes, favourites, monitoring, alerts, preferences and the punctuality history with a JSON file that you choose. No automatic cloud is used.</string>
     <string name="action_export">Export</string>
     <string name="action_import">Import</string>
 
@@ -757,4 +757,59 @@
     <string name="agenda_editor_first_segment">You are editing the first leg; other legs stay unchanged.</string>
     <string name="agenda_editor_station_hint">Search by name or code and select a station.</string>
     <string name="agenda_editor_select_station">Select %1$s, code %2$s</string>
+    <!-- New features (October 2026) -->
+    <string name="connections_title">Connections at arrival</string>
+    <string name="connections_subtitle">At %1$s, departures up to 90 minutes after arrival</string>
+    <string name="connections_state_expanded">Expanded</string>
+    <string name="connections_state_collapsed">Collapsed</string>
+    <string name="connections_train_cancelled">This train is reported cancelled: connections cannot be calculated.</string>
+    <string name="connections_arrival_unavailable">The arrival time at %1$s is not available: connections cannot be calculated.</string>
+    <string name="connections_arrival_live">Expected arrival at %1$s according to operational data.</string>
+    <string name="connections_arrival_scheduled">Scheduled arrival at %1$s. The train status is not verified: margins use the scheduled time.</string>
+    <string name="connections_loading">Loading departures from %1$s…</string>
+    <string name="connections_station_unknown">%1$s does not match a station known to the departure board sources.</string>
+    <string name="connections_sources">Board: %1$s</string>
+    <string name="connections_empty">No departures in the 90 minutes after arrival.</string>
+    <string name="connections_note">With less than 5 minutes to spare a connection is at risk. Times can change: always check the station displays.</string>
+    <string name="connections_reload">Refresh connections</string>
+    <string name="connections_time_scheduled_short">sched. %1$s</string>
+    <string name="connections_buffer">Margin %1$s</string>
+    <string name="connections_buffer_negative">Leaves %1$s before arrival</string>
+    <string name="connections_risk_missed">Missed</string>
+    <string name="connections_risk_at_risk">At risk</string>
+    <string name="connections_risk_ok">Feasible</string>
+    <string name="calendar_add">Add to calendar</string>
+    <string name="calendar_event_operator">Operator: %1$s</string>
+    <string name="calendar_event_times_note">Scheduled times: they can change. Check the train status before you travel.</string>
+    <string name="calendar_no_app">No calendar app on this device can receive the event.</string>
+    <string name="calendar_time_unavailable">The departure time cannot be read: the event cannot be created.</string>
+    <string name="station_widget_name">Station board</string>
+    <string name="station_widget_description">Shows the next departures from a station of your choice.</string>
+    <string name="station_widget_preview_meta">Next departures with platform and delay</string>
+    <string name="station_widget_configuration_title">Choose a station</string>
+    <string name="station_widget_configuration_subtitle">Tap to set up the board</string>
+    <string name="station_widget_waiting">Waiting for the first update</string>
+    <string name="station_widget_empty">No upcoming departures in the available data.</string>
+    <string name="station_widget_refresh">Refresh board</string>
+    <string name="station_widget_status_late">LATE</string>
+    <string name="station_widget_status_changed">CHANGE</string>
+    <string name="station_widget_title_accessibility">Departures from %1$s. Source: %2$s. %3$s. %4$s</string>
+    <string name="station_widget_configure_title">Set up the station board</string>
+    <string name="station_widget_configure_description">The widget shows the next four departures from the chosen station, with platform and delay when the source publishes them. It refreshes at most every fifteen minutes, or when you tap the refresh button.</string>
+    <string name="station_widget_validation_missing_station">Choose a station from the list or type its name.</string>
+    <string name="station_widget_favourites_optional">Favourite stations (optional)</string>
+    <string name="station_widget_selected_summary">Widget station: %1$s</string>
+    <string name="station_widget_station_missing">no station chosen</string>
+    <string name="punctuality_title">Punctuality</string>
+    <string name="punctuality_on_time_share">On time (within 5 minutes): %1$d%%</string>
+    <string name="punctuality_average_delay">Average delay: %1$s</string>
+    <string name="punctuality_average_delay_unavailable">Average delay unavailable: every observed run was cancelled.</string>
+    <string name="punctuality_cancelled_count">Cancellations: %1$d</string>
+    <string name="punctuality_recent_title">Latest observations</string>
+    <string name="punctuality_local_note">Recorded only on this device when you open a train with operational data or a monitored train is refreshed: one observation per day, for up to 90 days.</string>
+    <string name="punctuality_clear">Delete this train’s history</string>
+    <plurals name="punctuality_observation_count">
+        <item quantity="one">%d observation recorded on this device</item>
+        <item quantity="other">%d observations recorded on this device</item>
+    </plurals>
 </resources>

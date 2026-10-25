@@ -245,7 +245,7 @@
     <string name="train_number_label">Tren %1$s</string>
     <string name="accessibility_remove_train_monitoring">Eliminar seguimiento del tren %1$s</string>
     <string name="settings_privacy_title">Privacidad y datos</string>
-    <string name="settings_privacy_local_data">Las rutas, favoritos, seguimientos, alertas y widgets permanecen en el dispositivo. Se excluyen la copia de seguridad y la transferencia de Android; el archivo JSON se exporta solo si lo eliges. La ubicación sirve únicamente para ordenar las estaciones cercanas y, si activas la alarma GPS, para saber cuándo estás cerca de la parada: se procesa solo en memoria y no se conserva ni se envía a las fuentes ferroviarias ni a nadie más.</string>
+    <string name="settings_privacy_local_data">Las rutas, favoritos, seguimientos, alertas, widgets y el historial de puntualidad permanecen en el dispositivo. El historial de puntualidad guarda, solo en el teléfono y durante 90 días como máximo, la fecha, el número, el operador, el retraso y la supresión de los trenes abiertos con datos operativos o seguidos. El historial de un tren se borra desde su tarjeta de Puntualidad, visible a partir de la segunda observación; borrar los datos de la aplicación elimina todo el historial. Se excluyen la copia de seguridad y la transferencia de Android; el archivo JSON se exporta solo si lo eliges. La ubicación sirve únicamente para ordenar las estaciones cercanas y, si activas la alarma GPS, para saber cuándo estás cerca de la parada: se procesa solo en memoria y no se conserva ni se envía a las fuentes ferroviarias ni a nadie más.</string>
     <string name="settings_privacy_notifications_voice">Las notificaciones son recordatorios locales. El dictado usa el reconocedor del sistema: Binario no graba audio y usa solo el texto devuelto. Las búsquedas de RFI envían a la fuente el identificador público de la estación de salida; las fuentes personales opcionales pueden recibir un identificador o el nombre de la estación. Sin una fuente autorizada: datos en tiempo real no disponibles. ViaggiaTreno usa HTTP para su API pública: las consultas de estación, hora y tren no están cifradas. Las demás fuentes usan HTTPS.</string>
     <string name="settings_privacy_wear">Si activas el smartwatch, recibe un resumen de la ruta y hasta dos servicios. Desactivar el uso compartido elimina el DataItem y la caché local del reloj al recibir la revocación. La información completa está en PRIVACY.md del repositorio. Antes de una distribución pública faltan una URL verificada y un contacto de privacidad: aún no existe un enlace público en la aplicación.</string>
     <string name="settings_privacy_osm">Autocompletado nacional: © OpenStreetMap contributors, ODbL 1.0. El catálogo geográfico sugiere nombres de estaciones, pero no confirma servicio, horario, andén, retraso ni circulación.</string>
@@ -279,7 +279,7 @@
     <string name="mobility_compact_timetable">Prefiero paneles compactos</string>
 
     <string name="local_backup_title">Copia de seguridad local</string>
-    <string name="local_backup_description">Exporta o importa rutas, favoritos, seguimientos, alertas y preferencias mediante un archivo JSON elegido por ti. No se utiliza ninguna nube automática.</string>
+    <string name="local_backup_description">Exporta o importa rutas, favoritos, seguimientos, alertas, preferencias y el historial de puntualidad mediante un archivo JSON elegido por ti. No se utiliza ninguna nube automática.</string>
     <string name="action_export">Exportar</string>
     <string name="action_import">Importar</string>
 
@@ -771,4 +771,60 @@
     <string name="agenda_editor_first_segment">Estás editando el primer tramo; los demás no cambian.</string>
     <string name="agenda_editor_station_hint">Busca por nombre o código y selecciona una estación.</string>
     <string name="agenda_editor_select_station">Seleccionar %1$s, código %2$s</string>
+    <!-- New features (October 2026) -->
+    <string name="connections_title">Conexiones a la llegada</string>
+    <string name="connections_subtitle">En %1$s, salidas hasta 90 minutos después de la llegada</string>
+    <string name="connections_state_expanded">Sección abierta</string>
+    <string name="connections_state_collapsed">Sección cerrada</string>
+    <string name="connections_train_cancelled">El tren figura como suprimido: no se pueden calcular las conexiones.</string>
+    <string name="connections_arrival_unavailable">La hora de llegada a %1$s no está disponible: no se pueden calcular las conexiones.</string>
+    <string name="connections_arrival_live">Llegada prevista a las %1$s según los datos operativos.</string>
+    <string name="connections_arrival_scheduled">Llegada programada a las %1$s. El estado del tren no está verificado: los márgenes usan la hora programada.</string>
+    <string name="connections_loading">Cargando las salidas desde %1$s…</string>
+    <string name="connections_station_unknown">%1$s no corresponde a ninguna estación conocida por las fuentes del panel.</string>
+    <string name="connections_sources">Panel: %1$s</string>
+    <string name="connections_empty">No hay salidas en los 90 minutos posteriores a la llegada.</string>
+    <string name="connections_note">Con menos de 5 minutos de margen la conexión está en riesgo. Los horarios pueden cambiar: comprueba siempre las pantallas de la estación.</string>
+    <string name="connections_reload">Actualizar conexiones</string>
+    <string name="connections_time_scheduled_short">prog. %1$s</string>
+    <string name="connections_buffer">Margen %1$s</string>
+    <string name="connections_buffer_negative">Sale %1$s antes de la llegada</string>
+    <string name="connections_risk_missed">Perdida</string>
+    <string name="connections_risk_at_risk">En riesgo</string>
+    <string name="connections_risk_ok">Factible</string>
+    <string name="calendar_add">Añadir al calendario</string>
+    <string name="calendar_event_operator">Operador: %1$s</string>
+    <string name="calendar_event_times_note">Horarios programados: pueden cambiar. Comprueba el estado del tren antes de salir.</string>
+    <string name="calendar_no_app">Ninguna aplicación de calendario de este dispositivo puede recibir el evento.</string>
+    <string name="calendar_time_unavailable">La hora de salida no es legible: no se puede crear el evento.</string>
+    <string name="station_widget_name">Panel de estación</string>
+    <string name="station_widget_description">Muestra las próximas salidas de la estación que elijas.</string>
+    <string name="station_widget_preview_meta">Próximas salidas con andén y retraso</string>
+    <string name="station_widget_configuration_title">Elige una estación</string>
+    <string name="station_widget_configuration_subtitle">Toca para configurar el panel</string>
+    <string name="station_widget_waiting">Esperando la primera actualización</string>
+    <string name="station_widget_empty">No hay salidas próximas en los datos disponibles.</string>
+    <string name="station_widget_refresh">Actualizar panel</string>
+    <string name="station_widget_status_late">RETR.</string>
+    <string name="station_widget_status_changed">CAMBIO</string>
+    <string name="station_widget_title_accessibility">Salidas desde %1$s. Fuente: %2$s. %3$s. %4$s</string>
+    <string name="station_widget_configure_title">Configurar el panel de estación</string>
+    <string name="station_widget_configure_description">El widget muestra las próximas cuatro salidas de la estación elegida, con andén y retraso cuando la fuente los publica. Se actualiza como máximo cada quince minutos o cuando tocas el botón de actualizar.</string>
+    <string name="station_widget_validation_missing_station">Elige una estación de la lista o escribe su nombre.</string>
+    <string name="station_widget_favourites_optional">Estaciones favoritas (opcional)</string>
+    <string name="station_widget_selected_summary">Estación del widget: %1$s</string>
+    <string name="station_widget_station_missing">ninguna estación elegida</string>
+    <string name="punctuality_title">Puntualidad</string>
+    <string name="punctuality_on_time_share">Puntual (hasta 5 minutos): %1$d%%</string>
+    <string name="punctuality_average_delay">Retraso medio: %1$s</string>
+    <string name="punctuality_average_delay_unavailable">Retraso medio no disponible: todas las circulaciones observadas se suprimieron.</string>
+    <string name="punctuality_cancelled_count">Supresiones: %1$d</string>
+    <string name="punctuality_recent_title">Últimas observaciones</string>
+    <string name="punctuality_local_note">Registrado solo en este dispositivo cuando abres un tren con datos operativos o se actualiza un tren seguido: una observación por día, durante 90 días como máximo.</string>
+    <string name="punctuality_clear">Borrar el historial de este tren</string>
+    <plurals name="punctuality_observation_count">
+        <item quantity="one">%d observación registrada en este dispositivo</item>
+        <item quantity="many">%d observaciones registradas en este dispositivo</item>
+        <item quantity="other">%d observaciones registradas en este dispositivo</item>
+    </plurals>
 </resources>

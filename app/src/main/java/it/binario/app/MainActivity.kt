@@ -292,6 +292,9 @@ private fun BinarioApp(
     }
     var stopAlarmFeedback by rememberSaveable { mutableStateOf<String?>(null) }
     val gpsArrivalAlarm = rememberGpsArrivalAlarmFlow()
+    // The stop chosen with the last stop alarm: the detail of that train looks for connections there.
+    var stopAlarmTrain by rememberSaveable { mutableStateOf<String?>(null) }
+    var stopAlarmStation by rememberSaveable { mutableStateOf<String?>(null) }
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     LaunchedEffect(lifecycleOwner, screen, operationsSectionName) {
@@ -385,6 +388,10 @@ private fun BinarioApp(
     }
     val scheduleStopAlarm: (TrainService, TrainStop) -> Unit = { service, stop ->
         val plan = StopAlarmPlanner.plan(service, stop)
+        if (plan != null && !stop.completed) {
+            stopAlarmTrain = service.number
+            stopAlarmStation = stop.station
+        }
         when {
             stop.completed -> stopAlarmFeedback = resources.getString(R.string.stop_alarm_completed, stop.station)
             plan == null -> stopAlarmFeedback = resources.getString(R.string.stop_alarm_unavailable)
@@ -616,6 +623,12 @@ private fun BinarioApp(
                     onStartActiveTrip = { viewModel.startActiveTrip(service) },
                     onAdvanceActiveTrip = viewModel::advanceActiveTrip,
                     onEndActiveTrip = viewModel::endActiveTrip,
+                    connectionStop = stopAlarmStation.takeIf { stopAlarmTrain == service.number },
+                    hasBoardProviders = viewModel.hasStationBoardProviders,
+                    loadConnectionBoard = viewModel::connectionBoard,
+                    shareStrings = trainShareStrings,
+                    punctuality = viewModel.punctualityStats(service),
+                    onClearPunctuality = { viewModel.clearPunctualityHistory(service.number) },
                     onShare = {
                         val content = TrainShareFormatter.create(
                             service = service,
@@ -1769,7 +1782,7 @@ private fun stationBoardStatusAnnouncement(entry: StationBoardEntry): String {
 }
 
 @Composable
-private fun RunStatus.stationBoardLabel(): String = when (this) {
+internal fun RunStatus.stationBoardLabel(): String = when (this) {
     RunStatus.SCHEDULED -> stringResource(R.string.run_status_scheduled)
     RunStatus.ON_TIME -> stringResource(R.string.run_status_on_time)
     RunStatus.DELAYED -> stringResource(R.string.run_status_delayed)
@@ -2661,6 +2674,12 @@ private fun ServiceDetailScreen(
     onStartActiveTrip: () -> Unit,
     onAdvanceActiveTrip: () -> Unit,
     onEndActiveTrip: () -> Unit,
+    connectionStop: String?,
+    hasBoardProviders: Boolean,
+    loadConnectionBoard: (String, java.time.Instant) -> kotlinx.coroutines.flow.Flow<it.binario.app.data.repository.StationBoardAggregateResult>?,
+    shareStrings: TrainShareStrings,
+    punctuality: PunctualityStats?,
+    onClearPunctuality: () -> Unit,
     onShare: () -> Unit
 ) {
     val dataLabel = if (isDemonstration) stringResource(R.string.data_status_demo) else freshness?.localizedLabel() ?: stringResource(R.string.data_status_unavailable)
@@ -2736,6 +2755,15 @@ private fun ServiceDetailScreen(
                 }
             }
         }
+        item { TrainCalendarAction(service = service, shareStrings = shareStrings) }
+        item {
+            ArrivalConnectionsSection(
+                service = service,
+                preferredStop = connectionStop,
+                hasBoardProviders = hasBoardProviders,
+                loadBoard = loadConnectionBoard
+            )
+        }
         alarmFeedback?.let { feedback ->
             item {
                 Text(
@@ -2767,6 +2795,9 @@ private fun ServiceDetailScreen(
                 routeChange = stop.routeChange,
                 onSetAlarm = { onScheduleStopAlarm(service, stop) }
             )
+        }
+        punctuality?.let { stats ->
+            item { PunctualityCard(stats = stats, onClear = onClearPunctuality) }
         }
         item { Spacer(Modifier.height(24.dp)) }
     }

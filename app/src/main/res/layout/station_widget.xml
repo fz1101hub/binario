@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/station_widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/widget_background"
+    android:orientation="vertical"
+    android:padding="10dp">
+
+    <TextView
+        android:id="@+id/station_widget_title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:contentDescription="@string/widget_open_app"
+        android:ellipsize="end"
+        android:focusable="true"
+        android:maxLines="1"
+        android:text="@string/station_widget_name"
+        android:textAllCaps="true"
+        android:textColor="@color/widget_on_surface"
+        android:textSize="16sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/station_widget_meta"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:text="@string/station_widget_preview_meta"
+        android:textColor="@color/widget_on_surface_muted"
+        android:textSize="11sp"
+        android:textStyle="bold" />
+
+    <LinearLayout
+        android:id="@+id/station_widget_column_header"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:background="@color/widget_header"
+        android:orientation="horizontal"
+        android:paddingHorizontal="6dp"
+        android:paddingVertical="4dp"
+        android:visibility="gone">
+
+        <TextView android:layout_width="50dp" android:layout_height="wrap_content" android:text="@string/widget_column_time" android:textColor="@color/widget_header_text" android:textSize="11sp" android:textStyle="bold" />
+        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="@string/widget_column_destination_train" android:textColor="@color/widget_header_text" android:textSize="11sp" android:textStyle="bold" />
+        <TextView android:layout_width="42dp" android:layout_height="wrap_content" android:gravity="end" android:text="@string/widget_column_platform" android:textColor="@color/widget_header_text" android:textSize="11sp" android:textStyle="bold" />
+        <TextView android:layout_width="52dp" android:layout_height="wrap_content" android:gravity="end" android:text="@string/widget_column_status" android:textColor="@color/widget_header_text" android:textSize="11sp" android:textStyle="bold" />
+    </LinearLayout>
+
+    <LinearLayout android:id="@+id/station_widget_row_0" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="3dp" android:background="@drawable/widget_row_background" android:gravity="center_vertical" android:orientation="horizontal" android:paddingHorizontal="6dp" android:paddingVertical="5dp" android:visibility="gone">
+        <TextView android:id="@+id/station_widget_time_0" android:layout_width="50dp" android:layout_height="wrap_content" android:fontFamily="monospace" android:textColor="@color/widget_on_surface" android:textSize="15sp" android:textStyle="bold" />
+        <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical">
+            <TextView android:id="@+id/station_widget_destination_0" android:layout_width="match_parent" android:layout_height="wrap_content" android:ellipsize="end" android:maxLines="1" android:textColor="@color/widget_on_surface" android:textSize="13sp" android:textStyle="bold" />
+            <TextView android:id="@+id/station_widget_train_0" android:layout_width="match_parent" android:layout_height="wrap_content" android:ellipsize="end" android:maxLines="1" android:textColor="@color/widget_on_surface_muted" android:textSize="11sp" />
+        </LinearLayout>
+        <TextView android:id="@+id/station_widget_platform_0" android:layout_width="42dp" android:layout_height="wrap_content" android:gravity="end" android:textColor="@color/widget_on_surface" android:textSize="11sp" android:textStyle="bold" />
+        <TextView android:id="@+id/station_widget_status_0" android:layout_width="52dp" android:layout_height="wrap_content" android:gravity="end" android:maxLines="1" android:textColor="@color/widget_on_surface" android:textSize="11sp" android:textStyle="bold" />
+    </LinearLayout>
+    <LinearLayout android:id="@+id/station_widget_row_1" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="3dp" android:background="@drawable/widget_row_background" android:gravity="center_vertical" android:orientation="horizontal" android:paddingHorizontal="6dp" android:paddingVertical="5dp" android:visibility="gone">
+        <TextView android:id="@+id/station_widget_time_1" android:layout_width="50dp" android:layout_height="wrap_content" android:fontFamily="monospace" android:textColor="@color/widget_on_surface" android:textSize="15sp" android:textStyle="bold" />
+        <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical">
+            <TextView android:id="@+id/station_widget_destination_1" android:layout_width="match_parent" android:layout_height="wrap_content" android:ellipsize="end" android:maxLines="1" android:textColor="@color/widget_on_surface" android:textSize="13sp" android:textStyle="bold" />
+            <TextView android:id="@+id/station_widget_train_1" android:layout_width="match_parent" android:layout_height="wrap_content" android:ellipsize="end" android:maxLines="1" android:textColor="@color/widget_on_surface_muted" android:textSize="11sp" />
+        </LinearLayout>
+        <TextView android:id="@+id/station_widget_platform_1" android:layout_width="42dp" android:layout_height="wrap_content" android:gravity="end" android:textColor="@color/widget_on_surface" android:textSize="11sp" android:textStyle="bold" />
+        <TextView android:id="@+id/station_widget_status_1" android:layout_width="52dp" android:layout_height="wrap_content" android:gravity="end" android:maxLines="1" android:textColor="@color/widget_on_surface" android:textSize="11sp" android:textStyle="bold" />
+    </LinearLayout>
+    <LinearLayout android:id="@+id/station_widget_row_2" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="3dp" android:background="@drawable/widget_row_background" android:gravity="center_vertical" android:orientation="horizontal" android:paddingHorizontal="6dp" android:paddingVertical="5dp" android:visibility="gone">
+        <TextView android:id="@+id/station_widget_time_2" android:layout_width="50dp" android:layout_height="wrap_content" android:fontFamily="monospace" android:textColor="@color/widget_on_surface" android:textSize="15sp" android:textStyle="bold" />
+        <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical">
+            <TextView android:id="@+id/station_widget_destination_2" android:layout_width="match_parent" android:layout_height="wrap_content" android:ellipsize="end" android:maxLines="1" android:textColor="@color/widget_on_surface" android:textSize="13sp" android:textStyle="bold" />
+            <TextView android:id="@+id/station_widget_train_2" android:layout_width="match_parent" android:layout_height="wrap_content" android:ellipsize="end" android:maxLines="1" android:textColor="@color/widget_on_surface_muted" android:textSize="11sp" />
+        </LinearLayout>
+        <TextView android:id="@+id/station_widget_platform_2" android:layout_width="42dp" android:layout_height="wrap_content" android:gravity="end" android:textColor="@color/widget_on_surface" android:textSize="11sp" android:textStyle="bold" />
+        <TextView android:id="@+id/station_widget_status_2" android:layout_width="52dp" android:layout_height="wrap_content" android:gravity="end" android:maxLines="1" android:textColor="@color/widget_on_surface" android:textSize="11sp" android:textStyle="bold" />
+    </LinearLayout>
+    <LinearLayout android:id="@+id/station_widget_row_3" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="3dp" android:background="@drawable/widget_row_background" android:gravity="center_vertical" android:orientation="horizontal" android:paddingHorizontal="6dp" android:paddingVertical="5dp" android:visibility="gone">
+        <TextView android:id="@+id/station_widget_time_3" android:layout_width="50dp" android:layout_height="wrap_content" android:fontFamily="monospace" android:textColor="@color/widget_on_surface" android:textSize="15sp" android:textStyle="bold" />
+        <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical">
+            <TextView android:id="@+id/station_widget_destination_3" android:layout_width="match_parent" android:layout_height="wrap_content" android:ellipsize="end" android:maxLines="1" android:textColor="@color/widget_on_surface" android:textSize="13sp" android:textStyle="bold" />
+            <TextView android:id="@+id/station_widget_train_3" android:layout_width="match_parent" android:layout_height="wrap_content" android:ellipsize="end" android:maxLines="1" android:textColor="@color/widget_on_surface_muted" android:textSize="11sp" />
+        </LinearLayout>
+        <TextView android:id="@+id/station_widget_platform_3" android:layout_width="42dp" android:layout_height="wrap_content" android:gravity="end" android:textColor="@color/widget_on_surface" android:textSize="11sp" android:textStyle="bold" />
+        <TextView android:id="@+id/station_widget_status_3" android:layout_width="52dp" android:layout_height="wrap_content" android:gravity="end" android:maxLines="1" android:textColor="@color/widget_on_surface" android:textSize="11sp" android:textStyle="bold" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/station_widget_empty"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="@string/station_widget_empty"
+        android:textColor="@color/widget_on_surface"
+        android:textSize="13sp"
+        android:visibility="gone" />
+
+    <TextView
+        android:id="@+id/station_widget_refresh"
+        style="@style/Binario.Widget.Action"
+        android:layout_gravity="end"
+        android:layout_marginTop="8dp"
+        android:contentDescription="@string/station_widget_refresh"
+        android:text="@string/widget_refresh_symbol" />
+</LinearLayout>
