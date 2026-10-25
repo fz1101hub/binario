@@ -752,4 +752,21 @@
     <string name="calendar_event_times_note">Orari programmati: possono cambiare. Controlla lo stato del treno prima di partire.</string>
     <string name="calendar_no_app">Nessuna app calendario può ricevere l’evento su questo dispositivo.</string>
     <string name="calendar_time_unavailable">L’orario di partenza non è leggibile: l’evento non può essere creato.</string>
+    <string name="station_widget_name">Tabellone stazione</string>
+    <string name="station_widget_description">Mostra le prossime partenze di una stazione a scelta.</string>
+    <string name="station_widget_preview_meta">Prossime partenze con binario e ritardo</string>
+    <string name="station_widget_configuration_title">Scegli una stazione</string>
+    <string name="station_widget_configuration_subtitle">Tocca per configurare il tabellone</string>
+    <string name="station_widget_waiting">In attesa del primo aggiornamento</string>
+    <string name="station_widget_empty">Nessuna partenza imminente nei dati disponibili.</string>
+    <string name="station_widget_refresh">Aggiorna tabellone</string>
+    <string name="station_widget_status_late">RIT.</string>
+    <string name="station_widget_status_changed">VAR.</string>
+    <string name="station_widget_title_accessibility">Partenze da %1$s. Fonte: %2$s. %3$s. %4$s</string>
+    <string name="station_widget_configure_title">Configura il tabellone</string>
+    <string name="station_widget_configure_description">Il widget mostra le prossime quattro partenze della stazione scelta, con binario e ritardo quando la fonte li pubblica. Si aggiorna al massimo ogni quindici minuti oppure quando tocchi il pulsante di aggiornamento.</string>
+    <string name="station_widget_validation_missing_station">Scegli una stazione dall’elenco o scrivine il nome.</string>
+    <string name="station_widget_favourites_optional">Stazioni preferite (facoltativo)</string>
+    <string name="station_widget_selected_summary">Stazione del widget: %1$s</string>
+    <string name="station_widget_station_missing">nessuna stazione scelta</string>
 </resources>

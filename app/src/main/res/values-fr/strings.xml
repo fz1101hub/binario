@@ -752,4 +752,21 @@
     <string name="calendar_event_times_note">Horaires programmés : ils peuvent changer. Vérifiez l’état du train avant de partir.</string>
     <string name="calendar_no_app">Aucune application d’agenda de cet appareil ne peut recevoir l’événement.</string>
     <string name="calendar_time_unavailable">L’heure de départ est illisible : l’événement ne peut pas être créé.</string>
+    <string name="station_widget_name">Tableau de gare</string>
+    <string name="station_widget_description">Affiche les prochains départs d’une gare de votre choix.</string>
+    <string name="station_widget_preview_meta">Prochains départs avec voie et retard</string>
+    <string name="station_widget_configuration_title">Choisissez une gare</string>
+    <string name="station_widget_configuration_subtitle">Touchez pour configurer le tableau</string>
+    <string name="station_widget_waiting">En attente de la première mise à jour</string>
+    <string name="station_widget_empty">Aucun départ imminent dans les données disponibles.</string>
+    <string name="station_widget_refresh">Actualiser le tableau</string>
+    <string name="station_widget_status_late">RET.</string>
+    <string name="station_widget_status_changed">MODIF.</string>
+    <string name="station_widget_title_accessibility">Départs de %1$s. Source : %2$s. %3$s. %4$s</string>
+    <string name="station_widget_configure_title">Configurer le tableau de gare</string>
+    <string name="station_widget_configure_description">Le widget affiche les quatre prochains départs de la gare choisie, avec la voie et le retard lorsque la source les publie. Il s’actualise au plus toutes les quinze minutes, ou quand vous touchez le bouton d’actualisation.</string>
+    <string name="station_widget_validation_missing_station">Choisissez une gare dans la liste ou saisissez son nom.</string>
+    <string name="station_widget_favourites_optional">Gares favorites (facultatif)</string>
+    <string name="station_widget_selected_summary">Gare du widget : %1$s</string>
+    <string name="station_widget_station_missing">aucune gare choisie</string>
 </resources>

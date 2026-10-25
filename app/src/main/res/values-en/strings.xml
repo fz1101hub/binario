@@ -740,4 +740,21 @@
     <string name="calendar_event_times_note">Scheduled times: they can change. Check the train status before you travel.</string>
     <string name="calendar_no_app">No calendar app on this device can receive the event.</string>
     <string name="calendar_time_unavailable">The departure time cannot be read: the event cannot be created.</string>
+    <string name="station_widget_name">Station board</string>
+    <string name="station_widget_description">Shows the next departures from a station of your choice.</string>
+    <string name="station_widget_preview_meta">Next departures with platform and delay</string>
+    <string name="station_widget_configuration_title">Choose a station</string>
+    <string name="station_widget_configuration_subtitle">Tap to set up the board</string>
+    <string name="station_widget_waiting">Waiting for the first update</string>
+    <string name="station_widget_empty">No upcoming departures in the available data.</string>
+    <string name="station_widget_refresh">Refresh board</string>
+    <string name="station_widget_status_late">LATE</string>
+    <string name="station_widget_status_changed">CHANGE</string>
+    <string name="station_widget_title_accessibility">Departures from %1$s. Source: %2$s. %3$s. %4$s</string>
+    <string name="station_widget_configure_title">Set up the station board</string>
+    <string name="station_widget_configure_description">The widget shows the next four departures from the chosen station, with platform and delay when the source publishes them. It refreshes at most every fifteen minutes, or when you tap the refresh button.</string>
+    <string name="station_widget_validation_missing_station">Choose a station from the list or type its name.</string>
+    <string name="station_widget_favourites_optional">Favourite stations (optional)</string>
+    <string name="station_widget_selected_summary">Widget station: %1$s</string>
+    <string name="station_widget_station_missing">no station chosen</string>
 </resources>

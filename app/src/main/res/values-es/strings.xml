@@ -752,4 +752,21 @@
     <string name="calendar_event_times_note">Horarios programados: pueden cambiar. Comprueba el estado del tren antes de salir.</string>
     <string name="calendar_no_app">Ninguna aplicación de calendario de este dispositivo puede recibir el evento.</string>
     <string name="calendar_time_unavailable">La hora de salida no es legible: no se puede crear el evento.</string>
+    <string name="station_widget_name">Panel de estación</string>
+    <string name="station_widget_description">Muestra las próximas salidas de la estación que elijas.</string>
+    <string name="station_widget_preview_meta">Próximas salidas con andén y retraso</string>
+    <string name="station_widget_configuration_title">Elige una estación</string>
+    <string name="station_widget_configuration_subtitle">Toca para configurar el panel</string>
+    <string name="station_widget_waiting">Esperando la primera actualización</string>
+    <string name="station_widget_empty">No hay salidas próximas en los datos disponibles.</string>
+    <string name="station_widget_refresh">Actualizar panel</string>
+    <string name="station_widget_status_late">RETR.</string>
+    <string name="station_widget_status_changed">CAMBIO</string>
+    <string name="station_widget_title_accessibility">Salidas desde %1$s. Fuente: %2$s. %3$s. %4$s</string>
+    <string name="station_widget_configure_title">Configurar el panel de estación</string>
+    <string name="station_widget_configure_description">El widget muestra las próximas cuatro salidas de la estación elegida, con andén y retraso cuando la fuente los publica. Se actualiza como máximo cada quince minutos o cuando tocas el botón de actualizar.</string>
+    <string name="station_widget_validation_missing_station">Elige una estación de la lista o escribe su nombre.</string>
+    <string name="station_widget_favourites_optional">Estaciones favoritas (opcional)</string>
+    <string name="station_widget_selected_summary">Estación del widget: %1$s</string>
+    <string name="station_widget_station_missing">ninguna estación elegida</string>
 </resources>
