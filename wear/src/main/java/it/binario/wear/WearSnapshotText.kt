@@ -26,6 +26,13 @@ internal fun WearSnapshot.dataStatusResId(): Int = when (operationalState) {
     WearOperationalState.UNAVAILABLE, WearOperationalState.UNKNOWN -> R.string.status_live_unavailable
 }
 
+/** A missing phone app gets its own message; otherwise the phone setting that enables sharing is named. */
+@StringRes
+internal fun emptySnapshotMessageResId(phoneApp: WearPhoneAppPresence): Int = when (phoneApp) {
+    WearPhoneAppPresence.ABSENT -> R.string.empty_snapshot_phone_app_missing
+    WearPhoneAppPresence.PRESENT, WearPhoneAppPresence.UNKNOWN -> R.string.empty_snapshot_message
+}
+
 internal fun WearService.accessibleLabel(context: Context): String = accessibleLabel(context.wearStrings())
 
 internal fun WearService.accessibleLabel(strings: WearStringProvider): String = listOfNotNull(

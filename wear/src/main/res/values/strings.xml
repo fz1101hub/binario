@@ -3,7 +3,8 @@
     <string name="tile_label">Binario: prossima tratta</string>
     <string name="tile_description">Mostra la prossima tratta condivisa dall’app Binario sul telefono.</string>
     <string name="complication_label">Binario</string>
-    <string name="empty_snapshot_message">Apri Binario sul telefono per sincronizzare la tratta attiva.</string>
+    <string name="empty_snapshot_message">Attiva Smartwatch Android in Binario sul telefono (Integrazioni Binario) e aggiorna la tratta.</string>
+    <string name="empty_snapshot_phone_app_missing">Installa Binario sul telefono abbinato: l’orologio riceve la tratta solo dall’app del telefono.</string>
     <string name="refresh_phone">Aggiorna telefono</string>
     <string name="refresh_on_phone">Aggiorna sul telefono</string>
     <string name="tile_no_synced_route">Nessuna tratta sincronizzata</string>

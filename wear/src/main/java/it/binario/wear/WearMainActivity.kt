@@ -27,16 +27,21 @@ import androidx.wear.compose.material3.Card
 import androidx.wear.compose.material3.MaterialTheme
 import androidx.wear.compose.material3.ScreenScaffold
 import androidx.wear.compose.material3.Text
+import com.google.android.gms.wearable.CapabilityClient
 import com.google.android.gms.wearable.Wearable
 import it.binario.wear.model.WearSnapshot
 import it.binario.wear.sync.WearSnapshotStore
+import kotlinx.coroutines.flow.MutableStateFlow
 
 class WearMainActivity : ComponentActivity() {
+    private val phoneApp = MutableStateFlow(WearPhoneAppPresence.UNKNOWN)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
             val snapshot by WearSnapshotStore.snapshot(this).collectAsState()
-            MaterialTheme { AppScaffold { WearHome(snapshot, ::requestRefreshFromPhone) } }
+            val phoneAppPresence by phoneApp.collectAsState()
+            MaterialTheme { AppScaffold { WearHome(snapshot, phoneAppPresence, ::requestRefreshFromPhone) } }
         }
     }
 
@@ -45,6 +50,9 @@ class WearMainActivity : ComponentActivity() {
         // The expiry callback is posted on uptime, which stops while the watch sleeps, so a value
         // that expired meanwhile is still in the StateFlow: revalidate before the screen shows it.
         WearSnapshotStore.current(this)
+        // Without the phone app no setting can help: the empty state must say which one is missing.
+        Wearable.getCapabilityClient(this).getCapability(PHONE_APP_CAPABILITY, CapabilityClient.FILTER_ALL)
+            .addOnSuccessListener { info -> phoneApp.value = WearPhoneAppPresence.fromNodeCount(info.nodes.size) }
     }
 
     private fun requestRefreshFromPhone() {
@@ -62,14 +70,14 @@ class WearMainActivity : ComponentActivity() {
  * ScalingLazyColumn keep the first and last items inside the visible disc of a round screen.
  */
 @Composable
-private fun WearHome(snapshot: WearSnapshot?, onRefreshPhone: () -> Unit) {
+private fun WearHome(snapshot: WearSnapshot?, phoneApp: WearPhoneAppPresence, onRefreshPhone: () -> Unit) {
     val context = LocalContext.current
     val listState = rememberScalingLazyListState()
     ScreenScaffold(scrollState = listState) { contentPadding ->
         ScalingLazyColumn(state = listState, contentPadding = contentPadding, modifier = Modifier.fillMaxSize()) {
             if (snapshot == null) {
                 item { Text(stringResource(R.string.app_name), style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center) }
-                item { Text(stringResource(R.string.empty_snapshot_message), style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center) }
+                item { Text(stringResource(emptySnapshotMessageResId(phoneApp)), style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center) }
                 item { Button(onClick = onRefreshPhone, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.refresh_phone)) } }
             } else {
                 item { Text(snapshot.routeLabel, style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center) }

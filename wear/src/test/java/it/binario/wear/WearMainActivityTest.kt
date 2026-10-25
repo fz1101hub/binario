@@ -27,6 +27,15 @@ class WearMainActivityTest {
         assertTrue(activitySource().contains("WearSnapshotStore.current(this)"))
     }
 
+    @Test
+    fun `empty state tells a missing phone app apart from disabled sharing`() {
+        val source = activitySource()
+
+        assertTrue(source.contains("getCapability(PHONE_APP_CAPABILITY, CapabilityClient.FILTER_ALL)"))
+        assertTrue(source.contains("WearPhoneAppPresence.fromNodeCount(info.nodes.size)"))
+        assertTrue(source.contains("stringResource(emptySnapshotMessageResId(phoneApp))"))
+    }
+
     private fun activitySource(): String = sequenceOf(File("src/main/java"), File("wear/src/main/java"))
         .firstOrNull(File::isDirectory)
         ?.resolve("it/binario/wear/WearMainActivity.kt")

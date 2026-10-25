@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Advertised to paired watches through the Wear Data Layer so the companion can tell a missing
+    phone app apart from disabled sharing. Play services looks the array up by name, so it is kept
+    for the resource shrinker and for lint's unused-resource check.
+-->
+<resources xmlns:tools="http://schemas.android.com/tools" tools:keep="@array/android_wear_capabilities">
+    <string-array name="android_wear_capabilities" translatable="false">
+        <item>binario_phone_app</item>
+    </string-array>
+</resources>
