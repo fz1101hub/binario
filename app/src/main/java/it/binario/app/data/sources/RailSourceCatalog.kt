@@ -403,6 +403,21 @@ object RailSourceCatalog {
             notes = "API pubblica documentata senza token con limiti di uso corretto; attiva solo con le fonti personali, cache 60 s e circuit breaker. Le previsioni incoerenti con il lato del tabellone vengono scartate."
         ),
         RailSourceDefinition(
+            id = SourceId("viaggiatreno-train-notices"),
+            displayName = "ViaggiaTreno — avvisi per treno",
+            operatorOrAuthority = "Trenitalia",
+            formats = setOf(SourceFormat.JSON_API),
+            capabilities = setOf(ProviderCapability.SERVICE_ALERTS),
+            accessMode = AccessMode.PUBLIC_BEST_EFFORT,
+            readiness = SourceReadiness.BEST_EFFORT_DISABLED,
+            countryCodes = setOf("IT"),
+            coverage = "Avvisi Trenitalia per numero treno commerciale (ritardi e cause pubblicati).",
+            landingPage = uri("https://www.viaggiatreno.it/infomobilitamobile/pages/cercaTreno/cercaTreno.jsp"),
+            downloadOrProbeUri = uri("https://www.viaggiatreno.it/infomobilitamobile/resteasy/news/smartcaring?commercialTrainNumber=8829"),
+            attribution = "Trenitalia",
+            notes = "Stessa famiglia best effort di ViaggiaTreno: HTTPS reindirizzato alla stessa risorsa HTTP su www.viaggiatreno.it, unico dominio in chiaro consentito. La risposta contiene molti giorni passati: si tengono solo le note valide nel giorno della corsa, per numero e stazione di origine."
+        ),
+        RailSourceDefinition(
             id = SourceId("trenord-realtime"),
             displayName = "Trenord — tempo reale e avvisi",
             operatorOrAuthority = "Trenord S.r.l.",

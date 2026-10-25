@@ -319,6 +319,23 @@ class LiveProviderNetworkTest {
         println("LIVE_ACCEPTANCE ch-transport-opendata: bellinzona=${entries.size}, lines=${entries.mapNotNull { it.lineLabel }.distinct().take(6)}")
     }
 
+    @Test fun viaggiatrenoNotices() = runBlocking {
+        selected("notices")
+        val now = clock.instant()
+        val board = ViaggiaTrenoRealtimeAdapter(diagnosticViaggiaTrenoFetcher(), clock).getStationBoard(StationBoardRequest(StationId("S01700"),
+            "Milano Centrale", railwayCode = "S01700", from = now.minusSeconds(1800), to = now.plusSeconds(3 * 3600), kind = BoardKind.DEPARTURES))
+        val numbers = (board as? ProviderResult.Success)?.value?.entries.orEmpty().mapNotNull { it.publicNumber?.takeIf(String::isNotBlank) }.distinct().take(4)
+        assertTrue("ViaggiaTreno board gave no train numbers: $board", numbers.isNotEmpty())
+        val adapter = ViaggiaTrenoTrainNoticesAdapter(clock)
+        val today = now.atZone(zone).toLocalDate()
+        val counts = numbers.map { number ->
+            val result = adapter.getTrainNotices(TrainNoticeRequest(number, today))
+            if (result is ProviderResult.Failure) fail("ViaggiaTreno smartcaring $number: $result")
+            number to (result as ProviderResult.Success).value.size
+        }
+        println("LIVE_ACCEPTANCE viaggiatreno-train-notices: $counts")
+    }
+
     /**
      * Raw samples of candidate sources (ViaggiaTreno per-train notices, transport.opendata.ch, Trenord line
      * notices, MIT strike calendar, Open-Meteo) so their formats are known before an adapter is written.

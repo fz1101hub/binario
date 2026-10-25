@@ -603,6 +603,7 @@ private fun BinarioApp(
                     onStartActiveTrip = { viewModel.startActiveTrip(service) },
                     onAdvanceActiveTrip = viewModel::advanceActiveTrip,
                     onEndActiveTrip = viewModel::endActiveTrip,
+                    sourceSections = { TrainDetailSourceSections(service, viewModel.stations) },
                     onShare = {
                         val content = TrainShareFormatter.create(
                             service = service,
@@ -2648,7 +2649,8 @@ private fun ServiceDetailScreen(
     onStartActiveTrip: () -> Unit,
     onAdvanceActiveTrip: () -> Unit,
     onEndActiveTrip: () -> Unit,
-    onShare: () -> Unit
+    onShare: () -> Unit,
+    sourceSections: @Composable () -> Unit = {}
 ) {
     val dataLabel = if (isDemonstration) stringResource(R.string.data_status_demo) else freshness?.localizedLabel() ?: stringResource(R.string.data_status_unavailable)
     LazyColumn(modifier = modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(0.dp)) {
@@ -2723,6 +2725,7 @@ private fun ServiceDetailScreen(
                 }
             }
         }
+        item { sourceSections() }
         alarmFeedback?.let { feedback ->
             item {
                 Text(

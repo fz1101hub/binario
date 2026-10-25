@@ -4,7 +4,7 @@ import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.io.InputStream
 import java.net.HttpURLConnection
-import java.net.MalformedURLException
+import java.net.URI
 import java.net.SocketTimeoutException
 import java.net.URL
 import java.util.Locale
@@ -50,7 +50,7 @@ internal class HttpPublicSourceFetcher(
     private val openConnection: (URL) -> HttpURLConnection = { it.openConnection() as HttpURLConnection }
 ) : PublicSourceFetcher {
     override suspend fun get(url: String): String = withTimeoutOrNull(policy.totalTimeoutMillis) {
-        val requested = try { URL(url) } catch (_: MalformedURLException) { throw IOException("URL della fonte non valido") }
+        val requested = try { URI(url).toURL() } catch (_: Exception) { throw IOException("URL della fonte non valido") }
         if (requested.protocol != "https" || requested.userInfo != null) throw IOException("La fonte deve usare HTTPS")
         var current = requested
         repeat(MAX_HOPS) {
@@ -75,7 +75,7 @@ internal class HttpPublicSourceFetcher(
             when (response.status) {
                 in REDIRECTS -> {
                     val location = response.location ?: throw IOException("Reindirizzamento senza destinazione")
-                    val target = try { URL(current, location) } catch (_: MalformedURLException) {
+                    val target = try { current.toURI().resolve(location.trim()).toURL() } catch (_: Exception) {
                         throw IOException("Reindirizzamento non leggibile")
                     }
                     if (!allowedRedirect(requested, target)) {

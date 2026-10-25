@@ -21,6 +21,7 @@ object KnownProviderIds {
     val STA_REALTIME = SourceId("alto-adige-sta-realtime")
     val ITALO_STATUS = SourceId("italo-status")
     val SWISS_OPEN_TRANSPORT = SourceId("ch-transport-opendata")
+    val VIAGGIATRENO_TRAIN_NOTICES = SourceId("viaggiatreno-train-notices")
     val DEMO_LOCAL = SourceId("demo-local")
 }
 
@@ -241,6 +242,19 @@ object KnownProviders {
             ),
             enabled = BuildConfig.PERSONAL_REALTIME_SOURCES,
             priorityByCapability = mapOf(ProviderCapability.STATION_BOARD to 25)
+        ),
+        ProviderPolicy(
+            descriptor = ProviderDescriptor(
+                id = KnownProviderIds.VIAGGIATRENO_TRAIN_NOTICES,
+                displayName = "ViaggiaTreno — avvisi per treno",
+                capabilities = setOf(ProviderCapability.SERVICE_ALERTS),
+                coverage = CoverageDescriptor(countryCodes = setOf("IT"), description = "Avvisi Trenitalia pubblicati per numero treno"),
+                accessMode = AccessMode.PUBLIC_BEST_EFFORT,
+                ratePolicy = RatePolicy(Duration.ofSeconds(30), defaultTimeToLive = Duration.ofMinutes(5)),
+                schemaVersion = 1
+            ),
+            enabled = BuildConfig.PERSONAL_REALTIME_SOURCES,
+            priorityByCapability = mapOf(ProviderCapability.SERVICE_ALERTS to 30)
         )
     )
 

@@ -1,4 +1,14 @@
 <resources>
+    <!-- New data sources (October 2026) -->
+    <string name="notices_train_title">Hinweise zu diesem Zug</string>
+    <string name="notices_loading">Hinweise werden gesucht…</string>
+    <string name="notices_train_empty">Für diesen Zug liegt am Fahrtag kein Hinweis vor.</string>
+    <string name="notices_published_at">Veröffentlicht: %1$s</string>
+    <string name="notices_source_viaggiatreno">Quelle: ViaggiaTreno (Trenitalia), öffentlicher Dienst ohne Verfügbarkeitsgarantie.</string>
+    <string name="notices_stale">Angezeigt werden die Hinweise des letzten erfolgreichen Abrufs.</string>
+    <string name="notices_unavailable">Eine oder mehrere Hinweisquellen sind gerade nicht erreichbar.</string>
+    <string name="notices_retry">Erneut versuchen</string>
+
     <string name="app_name">Binario</string>
     <string name="widget_description">Zeigt die nächsten Verbindungen auf deiner Binario-Strecke.</string>
     <string name="widget_refresh">Verbindungen aktualisieren</string>

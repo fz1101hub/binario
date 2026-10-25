@@ -1,4 +1,14 @@
 <resources>
+    <!-- New data sources (October 2026) -->
+    <string name="notices_train_title">Notices for this train</string>
+    <string name="notices_loading">Looking for notices…</string>
+    <string name="notices_train_empty">No notice published for this train on its service day.</string>
+    <string name="notices_published_at">Published: %1$s</string>
+    <string name="notices_source_viaggiatreno">Source: ViaggiaTreno (Trenitalia), a public service with no availability guarantee.</string>
+    <string name="notices_stale">Showing the notices of the last successful update.</string>
+    <string name="notices_unavailable">One or more notice sources cannot be reached right now.</string>
+    <string name="notices_retry">Try again</string>
+
     <string name="app_name">Binario</string>
     <string name="widget_description">Displays the next services on your Binario route.</string>
     <string name="widget_refresh">Refresh services</string>

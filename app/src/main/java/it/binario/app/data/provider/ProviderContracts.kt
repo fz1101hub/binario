@@ -179,6 +179,17 @@ data class AlertRequest(
     val knownAlertIds: Set<AlertId> = emptySet()
 )
 
+/** Notices for one public train number on one service day; [originCode] narrows them when the app knows it. */
+data class TrainNoticeRequest(
+    val publicNumber: String,
+    val serviceDate: LocalDate,
+    val originCode: String? = null
+) {
+    init {
+        require(publicNumber.isNotBlank()) { "Il numero treno è obbligatorio" }
+    }
+}
+
 interface RailProvider {
     val descriptor: ProviderDescriptor
 }
@@ -202,6 +213,10 @@ interface StationBoardProvider : RailProvider {
 
 interface AlertProvider : RailProvider {
     suspend fun getAlerts(request: AlertRequest): ProviderResult<List<ServiceAlert>>
+}
+
+interface TrainNoticeProvider : RailProvider {
+    suspend fun getTrainNotices(request: TrainNoticeRequest): ProviderResult<List<it.binario.app.data.core.TrainNotice>>
 }
 
 interface VehiclePositionProvider : RailProvider {

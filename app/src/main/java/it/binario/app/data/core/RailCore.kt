@@ -336,6 +336,24 @@ data class ServiceAlert(
     val source: SourceRef
 )
 
+/**
+ * Operator notice about one train on one service day (for example a ViaggiaTreno delay explanation). The text is
+ * the publisher's own; [englishText] is its English variant when the publisher provides one.
+ */
+data class TrainNotice(
+    val id: String,
+    val text: String,
+    val englishText: String? = null,
+    val validFrom: LocalDate,
+    val validUntil: LocalDate,
+    val publishedAt: Instant? = null,
+    val source: SourceRef
+) {
+    /** The publisher's English text for a non-Italian app language when it is present, else the Italian text. */
+    fun textFor(languageCode: String): String =
+        englishText?.takeIf { !languageCode.equals("it", ignoreCase = true) && it.isNotBlank() } ?: text
+}
+
 enum class PositionKind {
     GPS,
     OPERATIONAL_EVENT,

@@ -106,6 +106,11 @@ object BinarioDataGraph {
     fun alertProviders(): List<AlertProvider> =
         activeProviders(localOnlyPolicy.alertProviders(), ProviderCapability.SERVICE_ALERTS)
 
+    /** Notices for the train detail and the notices area, from the registry-enabled public sources only. */
+    fun railNoticesService(): it.binario.app.data.notices.RailNoticesService = it.binario.app.data.notices.RailNoticesService(
+        trainNoticeProviders = activeProviders(localOnlyPolicy.trainNoticeProviders(), ProviderCapability.SERVICE_ALERTS)
+    )
+
     fun vehiclePositionProviders(): List<VehiclePositionProvider> =
         activeProviders(localOnlyPolicy.vehiclePositionProviders(), ProviderCapability.VEHICLE_POSITIONS)
 

@@ -11,6 +11,7 @@ import it.binario.app.data.live.SncfGtfsRealtimeAdapter
 import it.binario.app.data.live.StaRealtimeAdapter
 import it.binario.app.data.live.SwissOpenTransportStationBoardAdapter
 import it.binario.app.data.live.ViaggiaTrenoRealtimeAdapter
+import it.binario.app.data.live.ViaggiaTrenoTrainNoticesAdapter
 import it.binario.app.data.planned.RfiProgrammedStationBoardAdapter
 import it.binario.app.data.planned.RfiProgrammedTimetableAdapter
 import it.binario.app.data.planned.RfiSupplementalHubTimetableAdapter
@@ -18,6 +19,7 @@ import it.binario.app.data.repository.TrainNumberSearchProvider
 import it.binario.app.data.repository.StationBoardRunDetailProvider
 import it.binario.app.data.provider.AlertProvider
 import it.binario.app.data.provider.StationBoardProvider
+import it.binario.app.data.provider.TrainNoticeProvider
 import it.binario.app.data.provider.TripUpdateProvider
 import it.binario.app.data.provider.VehiclePositionProvider
 
@@ -42,6 +44,7 @@ object LocalOnlyRailDataPolicy {
     private val staRealtime by lazy { StaRealtimeAdapter() }
     private val sncfRealtime by lazy { SncfGtfsRealtimeAdapter() }
     private val swissOpenTransportBoard by lazy { SwissOpenTransportStationBoardAdapter() }
+    private val viaggiaTrenoTrainNotices by lazy { ViaggiaTrenoTrainNoticesAdapter() }
 
     /** Official programmed sources only. */
     fun routeSources(): List<TrainDataSource> = listOf(
@@ -95,6 +98,10 @@ object LocalOnlyRailDataPolicy {
         staRealtime,
         sncfRealtime
     )
+
+    /** Per-train notices: ViaggiaTreno family, best effort, so only with the personal realtime sources. */
+    fun trainNoticeProviders(): List<TrainNoticeProvider> =
+        if (BuildConfig.PERSONAL_REALTIME_SOURCES) listOf(viaggiaTrenoTrainNotices) else emptyList()
 
     fun vehiclePositionProviders(): List<VehiclePositionProvider> = listOf(
         staRealtime
