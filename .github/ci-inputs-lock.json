@@ -1,6 +1,6 @@
 {
   "schemaVersion": 3,
-  "verifiedAt": "2026-09-30",
+  "verifiedAt": "2026-10-25",
   "workflowTriggerPolicy": {
     "pushBranches": [
       "main",
@@ -23,6 +23,10 @@
     {
       "reference": "actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1",
       "release": "v6"
+    },
+    {
+      "reference": "actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4",
+      "release": "v5"
     },
     {
       "reference": "gradle/actions/wrapper-validation@ed408507eac070d1f99cc633dbcf757c94c7933a",

@@ -102,7 +102,48 @@ BINARIO_RELEASE_KEY_PASSWORD=...
 
 Le stesse chiavi possono essere esposte al processo Gradle come variabili d'ambiente con gli stessi nomi. Se manca anche una sola proprietà, Gradle emette un avviso e continua deliberatamente con una build unsigned: non esiste alcun fallback a file, password o segreti versionati. Il keystore e i relativi file sensibili restano esclusi da Git.
 
-Non sono configurati segreti nel workflow: un ambiente di distribuzione può iniettare le quattro variabili senza modificare il codice o la CI.
+I rail ordinari non leggono alcun secret: un ambiente di distribuzione può iniettare le quattro variabili senza modificare il codice o la CI. L'unico percorso CI che usa secret è il job `release-sign` descritto sotto, attivo soltanto su richiesta esplicita.
+
+## Artifact CI e firma su GitHub Actions
+
+Il job `android` conserva per 14 giorni l'artifact `binario-play-bundles-unsigned` con `app-release.aab`, `wear-release.aab` e il log del verifier, ma soltanto per i push su `main`/`stabilization/**` e per i dispatch manuali: le pull request non caricano artifact, così lo spazio di archiviazione del repository non cresce a ogni revisione. I bundle unsigned servono come evidenza e per un confronto locale; non sono caricabili su Play.
+
+Il job `release-sign` produce invece i bundle pronti per l'upload. Gira soltanto con `workflow_dispatch` e `sign_release=true`, dopo che il job `android` dello stesso commit è verde, e legge quattro secret del repository:
+
+| Secret | Contenuto |
+|---|---|
+| `BINARIO_RELEASE_KEYSTORE_BASE64` | Il keystore di upload codificato con `base64 -w0 binario-upload.jks` |
+| `BINARIO_RELEASE_STORE_PASSWORD` | Password del keystore |
+| `BINARIO_RELEASE_KEY_ALIAS` | Alias della chiave di upload (per esempio `binario-upload`) |
+| `BINARIO_RELEASE_KEY_PASSWORD` | Password della chiave |
+
+Il job decodifica il keystore in `RUNNER_TEMP`, esporta le quattro variabili `BINARIO_RELEASE_*` che `app/build.gradle.kts` e `wear/build.gradle.kts` già riconoscono, esegue `:app:bundleRelease :wear:bundleRelease`, verifica i due AAB con `tools/verify_android_app_bundles.py --signed` (stessi controlli del gate unsigned, ma la firma JAR `META-INF/MANIFEST.MF`, `*.SF` e `*.RSA|DSA|EC` diventa obbligatoria) e pubblica l'artifact `binario-play-bundles-signed`, anch'esso con scadenza a 14 giorni; il keystore viene rimosso a fine job. `tools/verify_ci_pinning.py` blocca un job di firma senza `needs: android`, senza la condizione di dispatch, con secret interpolati nello script, con keystore fuori da `RUNNER_TEMP`, senza `--signed` o con artifact oltre i 14 giorni.
+
+```sh
+gh workflow run android-ci.yml \
+  --repo fz1101hub/binario \
+  --ref stabilization/v0.20.4 \
+  -f verify_reproducibility=true \
+  -f sign_release=true
+gh run download --repo fz1101hub/binario --name binario-play-bundles-signed
+```
+
+Il keystore di upload va generato fuori dal repository, una sola volta, con validità superiore ai 25 anni richiesti da Play:
+
+```sh
+keytool -genkeypair -v -keystore binario-upload.jks -alias binario-upload \
+  -keyalg RSA -keysize 4096 -validity 10000
+```
+
+## Google Play App Signing
+
+Google Play firma gli APK consegnati agli utenti con una **chiave di firma dell'app** custodita da Google; il repository firma gli AAB con una **chiave di upload** distinta, che serve soltanto a Play per autenticare chi carica.[5] L'iscrizione a Play App Signing avviene al primo upload dell'app: in quella fase si può lasciare generare la chiave di firma a Google oppure caricare una chiave esistente con lo strumento PEPK. Dopo l'iscrizione la chiave di firma non è più sostituibile liberamente, mentre una chiave di upload smarrita può essere reimpostata dal supporto Play.
+
+Regole che il rail e questa procedura danno per acquisite:
+
+- `app-release.aab` e `wear-release.aab` sono lo stesso listing Play (`it.binario.app`) e vengono firmati con la **stessa chiave di upload**; Play li ri-firma con la stessa chiave di firma dell'app. Il companion Wear richiede la stessa identità di firma del telefono per il Data Layer, quindi non vanno mai usati keystore diversi per i due moduli.
+- Una build già installata via sideload, come l'APK `v0.1.1` conservato in `artifacts/`, può essere aggiornata da Play soltanto se il certificato della chiave di firma dell'app coincide con quello usato per il sideload. Per mantenere la continuità, al momento dell'iscrizione va caricata come chiave di firma la chiave locale con cui quell'APK fu firmato; in caso contrario gli utenti con il sideload dovranno disinstallare e reinstallare da Play. Se quella chiave non è più disponibile, la seconda opzione è l'unica praticabile e va comunicata nelle note di rilascio.
+- Il keystore di upload va conservato in almeno due copie offline cifrate, con password in un gestore di credenziali e mai nel repository; `.gitignore` esclude già `*.jks`, `*.keystore`, `*.p12` e `*.pem`. Prima dell'iscrizione a Play App Signing, perdere il keystore significherebbe perdere la possibilità di aggiornare l'app.
 
 ## Riferimenti
 
@@ -110,3 +151,4 @@ Non sono configurati segreti nel workflow: un ambiente di distribuzione può ini
 [2]: https://developer.android.com/guide/app-bundle "Android Developers — About Android App Bundles"
 [3]: https://developer.android.com/training/wearables/packaging "Android Developers — Package and distribute Wear OS apps"
 [4]: https://developer.android.com/guide/practices/page-sizes "Android Developers — Support 16 KB page sizes"
+[5]: https://support.google.com/googleplay/android-developer/answer/9842756 "Google Play Console Help — Use Play App Signing"

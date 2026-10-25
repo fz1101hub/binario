@@ -19,6 +19,7 @@ SHA_REF = re.compile(r"^[^\s@]+@[0-9a-f]{40}$")
 OCI_DIGEST = re.compile(r"^[^\s@]+@sha256:[0-9a-f]{64}$")
 HEX_64 = re.compile(r"^[0-9a-f]{64}$")
 APPROVED_GITHUB_RUNNERS = {"ubuntu-24.04", "macos-15"}
+MAX_ARTIFACT_RETENTION_DAYS = 14
 
 
 class WorkflowLoader(yaml.SafeLoader):
@@ -228,6 +229,57 @@ def _commands(value: object) -> str:
     if not isinstance(value, str):
         return ""
     return "\n".join(line for line in value.splitlines() if not line.lstrip().startswith("#"))
+
+
+def _check_upload_artifact(step: Mapping[str, Any], *, location: str, problems: list[str]) -> None:
+    inputs = _mapping(step.get("with")) or {}
+    retention = inputs.get("retention-days")
+    if not isinstance(retention, int) or not 0 < retention <= MAX_ARTIFACT_RETENTION_DAYS:
+        problems.append(f"{location}.with.retention-days: artifact deve scadere entro {MAX_ARTIFACT_RETENTION_DAYS} giorni")
+    if inputs.get("if-no-files-found") != "error":
+        problems.append(f"{location}.with.if-no-files-found: upload artifact deve fallire senza file")
+
+
+def _check_release_signing(
+    path: Path,
+    workflow: Mapping[str, Any],
+    problems: list[str],
+) -> None:
+    triggers = _mapping(workflow.get("on")) or {}
+    workflow_dispatch = _mapping(triggers.get("workflow_dispatch")) or {}
+    dispatch_inputs = _mapping(workflow_dispatch.get("inputs")) or {}
+    sign_input = _mapping(dispatch_inputs.get("sign_release"))
+    if (
+        not sign_input
+        or sign_input.get("type") != "boolean"
+        or sign_input.get("required") is not False
+        or sign_input.get("default") is not False
+    ):
+        problems.append(f"{path.name}: input booleano sign_release fail-closed assente")
+
+    jobs = _mapping(workflow.get("jobs")) or {}
+    job = _mapping(jobs.get("release-sign"))
+    if not job:
+        problems.append(f"{path.name}: job release-sign assente")
+        return
+    if job.get("needs") not in ("android", ["android"]):
+        problems.append(f"{path.name}: release-sign deve dipendere dal gate unsigned del job android")
+    if job.get("if") != "${{ github.event_name == 'workflow_dispatch' && inputs.sign_release }}":
+        problems.append(f"{path.name}: release-sign non è limitato a un dispatch esplicito con sign_release")
+    steps = job.get("steps")
+    step_list = [step for raw_step in (steps if isinstance(steps, list) else []) for step in [_mapping(raw_step)] if step]
+    for index, step in enumerate(step_list):
+        if "continue-on-error" in step:
+            problems.append(f"{path.name}: release-sign step {index} non può usare continue-on-error")
+        if "secrets." in str(step.get("run", "")):
+            problems.append(f"{path.name}: release-sign step {index} interpola un secret nello script invece di env")
+    commands = "\n".join(_commands(step.get("run")) for step in step_list)
+    if 'base64 --decode > "$RUNNER_TEMP/' not in commands:
+        problems.append(f"{path.name}: keystore di upload non decodificato in RUNNER_TEMP")
+    if "python3 tools/verify_android_app_bundles.py --signed" not in commands:
+        problems.append(f"{path.name}: verifica degli AAB firmati assente")
+    if ":app:bundleRelease :wear:bundleRelease" not in commands:
+        problems.append(f"{path.name}: release-sign deve firmare telefono e Wear insieme")
 
 
 def _check_apple_paths(
@@ -638,8 +690,12 @@ def workflow_problems(
                         runtime_locks=runtime_locks,
                         problems=problems,
                     )
+                if action_name == "actions/upload-artifact":
+                    _check_upload_artifact(step, location=f"{location}.steps[{index}]", problems=problems)
 
     _check_linux_trigger_budget(path, root or {}, lock, problems)
+    if path.name == "android-ci.yml":
+        _check_release_signing(path, root or {}, problems)
     if path.name == "apple-watch-ci.yml":
         _check_apple_paths(path, root or {}, lock, problems)
         _check_apple_toolchain(path, jobs, lock, problems)

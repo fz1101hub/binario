@@ -31,6 +31,8 @@ MAX_UNCOMPRESSED_BYTES = 1024 * 1024 * 1024
 MAX_MANIFEST_BYTES = 4 * 1024 * 1024
 REQUIRED_FILES = {"BundleConfig.pb", MANIFEST_PATH}
 SIGNATURE_SUFFIXES = (".RSA", ".DSA", ".EC", ".SF")
+SIGNATURE_BLOCK_SUFFIXES = (".RSA", ".DSA", ".EC")
+JAR_MANIFEST_PATH = "META-INF/MANIFEST.MF"
 NATIVE_LIBRARY = re.compile(r"^[^/]+/lib/([^/]+)/[^/]+\.so$")
 # Devices with 16 KB pages run only 64-bit code: Play requires every PT_LOAD of
 # these ABIs to be aligned to at least 16 KiB. 32-bit libraries are parsed but exempt.
@@ -333,7 +335,26 @@ def verify_manifest(data: bytes, expected: Mapping[str, str]) -> list[str]:
     return problems
 
 
-def verify_bundle(path: Path, expected_manifest: Mapping[str, str] | None = None) -> list[str]:
+def verify_jar_signature(names: set[str]) -> list[str]:
+    """Require the jarsigner members Play expects on a signed App Bundle."""
+    upper_names = {name.upper() for name in names}
+    missing = []
+    if JAR_MANIFEST_PATH not in upper_names:
+        missing.append(JAR_MANIFEST_PATH)
+    if not any(name.startswith("META-INF/") and name.endswith(".SF") for name in upper_names):
+        missing.append("META-INF/*.SF")
+    if not any(name.startswith("META-INF/") and name.endswith(SIGNATURE_BLOCK_SUFFIXES) for name in upper_names):
+        missing.append("META-INF/*.RSA|DSA|EC")
+    if missing:
+        return [f"firma JAR assente nel bundle firmato: {', '.join(missing)}"]
+    return []
+
+
+def verify_bundle(
+    path: Path,
+    expected_manifest: Mapping[str, str] | None = None,
+    signed: bool = False,
+) -> list[str]:
     problems: list[str] = []
     try:
         size = path.stat().st_size
@@ -366,7 +387,7 @@ def verify_bundle(path: Path, expected_manifest: Mapping[str, str] | None = None
                 if NATIVE_LIBRARY.fullmatch(name):
                     native_libraries.append(member)
                 upper_name = name.upper()
-                if upper_name.startswith("META-INF/") and upper_name.endswith(SIGNATURE_SUFFIXES):
+                if not signed and upper_name.startswith("META-INF/") and upper_name.endswith(SIGNATURE_SUFFIXES):
                     problems.append(f"firma JAR inattesa nel bundle unsigned: {name}")
                 if member.flag_bits & 0x1:
                     problems.append(f"membro ZIP cifrato non ammesso: {name}")
@@ -378,6 +399,8 @@ def verify_bundle(path: Path, expected_manifest: Mapping[str, str] | None = None
             missing = REQUIRED_FILES - names
             if missing:
                 problems.append(f"file App Bundle obbligatori assenti: {sorted(missing)}")
+            if signed:
+                problems.extend(verify_jar_signature(names))
             if not any(name.startswith("base/dex/") and name.endswith(".dex") for name in names):
                 problems.append("DEX base assente")
             if manifest_info is not None and not limits_exceeded:
@@ -425,6 +448,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--wear", type=Path)
     parser.add_argument("--reference-phone", type=Path)
     parser.add_argument("--reference-wear", type=Path)
+    parser.add_argument(
+        "--signed",
+        action="store_true",
+        help="richiedi la firma JAR dell'upload key invece di rifiutarla (bundle pronti per Play)",
+    )
     args = parser.parse_args(argv)
     reference_problems = verify_reference_pair(args.reference_phone, args.reference_wear)
     if reference_problems:
@@ -442,7 +470,7 @@ def main(argv: list[str] | None = None) -> int:
         ("phone", args.phone or DEFAULT_BUNDLES[args.profile]["phone"], args.reference_phone),
         ("wear", args.wear or DEFAULT_BUNDLES[args.profile]["wear"], args.reference_wear),
     ):
-        problems = verify_bundle(path, manifests[label])
+        problems = verify_bundle(path, manifests[label], signed=args.signed)
         if reference is not None:
             problems.extend(verify_reproducible(path, reference))
         if problems:
@@ -451,6 +479,8 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"Android App Bundle ({label}): FAIL: {problem}", file=sys.stderr)
         else:
             details = []
+            if args.signed:
+                details.append("firma JAR presente")
             if reference is not None:
                 details.append("byte-riproducibile")
             details.extend((f"{path.stat().st_size} bytes", f"sha256:{sha256_file(path)}"))

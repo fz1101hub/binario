@@ -253,6 +253,23 @@ class VerifyAndroidAppBundlesTest(unittest.TestCase):
                 problems = POLICY.verify_bundle(self.path, {})
                 self.assertTrue(any("libreria nativa non valida base/lib/arm64-v8a/libbroken.so" in problem for problem in problems), problems)
 
+    def test_signed_mode_requires_a_complete_jar_signature(self) -> None:
+        self.write_bundle(self.valid_entries())
+        problems = POLICY.verify_bundle(self.path, {}, signed=True)
+        self.assertTrue(any("firma JAR assente nel bundle firmato" in problem for problem in problems))
+
+        entries = self.valid_entries()
+        entries["META-INF/MANIFEST.MF"] = b"Manifest-Version: 1.0\n"
+        entries["META-INF/UPLOAD.SF"] = b"signature metadata"
+        self.write_bundle(entries)
+        problems = POLICY.verify_bundle(self.path, {}, signed=True)
+        self.assertTrue(any("META-INF/*.RSA|DSA|EC" in problem for problem in problems))
+
+        entries["META-INF/UPLOAD.RSA"] = b"signature block"
+        self.write_bundle(entries)
+        self.assertEqual([], POLICY.verify_bundle(self.path, {}, signed=True))
+        self.assertEqual(2, sum("firma JAR inattesa" in problem for problem in POLICY.verify_bundle(self.path, {})))
+
     def test_reproducibility_requires_identical_bytes(self) -> None:
         reference = Path(self.temp.name) / "reference.aab"
         self.write_bundle(self.valid_entries())

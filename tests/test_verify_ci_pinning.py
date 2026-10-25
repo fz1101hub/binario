@@ -158,6 +158,48 @@ class VerifyCiPinningTest(unittest.TestCase):
             problems = policy.workflow_problems(workflow_path, without_wear_reference, LOCK)
             self.assertTrue(any("confronto AAB con riferimenti assente" in problem for problem in problems), workflow_name)
 
+    def test_release_signing_job_is_dispatch_only_and_fail_closed(self) -> None:
+        workflow_path = ROOT / ".github/workflows/android-ci.yml"
+        original = workflow_path.read_text(encoding="utf-8")
+        self.assertEqual([], policy.workflow_problems(workflow_path, original, LOCK))
+        sign_condition = "    if: ${{ github.event_name == 'workflow_dispatch' && inputs.sign_release }}\n"
+        mutations = {
+            "input booleano sign_release": original.replace(
+                "        type: boolean\n        default: false\n\nconcurrency:",
+                "        type: string\n        default: false\n\nconcurrency:",
+                1,
+            ),
+            "non è limitato a un dispatch esplicito con sign_release": original.replace(sign_condition, "", 1),
+            "deve dipendere dal gate unsigned": original.replace("    needs: android\n", "", 1),
+            "interpola un secret nello script": original.replace(
+                '          test -n "$BINARIO_RELEASE_KEYSTORE_BASE64"\n',
+                '          test -n "${{ secrets.BINARIO_RELEASE_KEYSTORE_BASE64 }}"\n',
+                1,
+            ),
+            "keystore di upload non decodificato in RUNNER_TEMP": original.replace(
+                'base64 --decode > "$RUNNER_TEMP/binario-upload.jks"',
+                'base64 --decode > "$GITHUB_WORKSPACE/binario-upload.jks"',
+                1,
+            ),
+            "verifica degli AAB firmati assente": original.replace(
+                "python3 tools/verify_android_app_bundles.py --signed",
+                "python3 tools/verify_android_app_bundles.py",
+                1,
+            ),
+            "non può usare continue-on-error": original.replace(
+                "      - name: Signed Google Play bundles\n",
+                "      - name: Signed Google Play bundles\n        continue-on-error: true\n",
+                1,
+            ),
+            "artifact deve scadere entro 14 giorni": original.replace("          retention-days: 14\n", "          retention-days: 90\n", 1),
+            "upload artifact deve fallire senza file": original.replace("          if-no-files-found: error\n", "", 1),
+        }
+        for expected, mutated in mutations.items():
+            with self.subTest(expected=expected):
+                self.assertNotEqual(original, mutated)
+                problems = policy.workflow_problems(workflow_path, mutated, LOCK)
+                self.assertTrue(any(expected in problem for problem in problems), problems)
+
     def test_apple_rejects_bash_env_and_run_step_mutations(self) -> None:
         workflow_path = ROOT / ".github/workflows/apple-watch-ci.yml"
         original = workflow_path.read_text(encoding="utf-8")
