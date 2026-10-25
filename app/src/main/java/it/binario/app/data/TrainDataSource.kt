@@ -44,27 +44,18 @@ enum class TrainCategory(val accessibleLabel: String) {
     OTHER("Treno")
 }
 
-enum class ServiceStatus(val accessibleLabel: String) {
-    ON_TIME("In orario"),
-    DELAYED("In ritardo"),
-    CANCELLED("Soppresso")
-}
+enum class ServiceStatus { ON_TIME, DELAYED, CANCELLED }
 
-enum class Freshness(val accessibleLabel: String) {
-    FRESH("Dati aggiornati"),
-    AGING("Dati in aggiornamento"),
-    STALE("Ultimo dato disponibile"),
-    UNAVAILABLE("Dati live non disponibili")
-}
+enum class Freshness { FRESH, AGING, STALE, UNAVAILABLE }
 
-enum class DataConfidence(val accessibleLabel: String) {
-    OPERATOR_PRIMARY("Fonte primaria dell’operatore"),
-    INFRASTRUCTURE_PRIMARY("Fonte primaria del gestore dell’infrastruttura"),
-    OPEN_DATA("Open data ufficiale"),
-    LICENSED_AGGREGATE("Fonte aggregata autorizzata"),
-    STATIC_ONLY("Orario programmato"),
-    CACHED("Ultimo snapshot in cache"),
-    DEMONSTRATION("Dato dimostrativo locale")
+enum class DataConfidence {
+    OPERATOR_PRIMARY,
+    INFRASTRUCTURE_PRIMARY,
+    OPEN_DATA,
+    LICENSED_AGGREGATE,
+    STATIC_ONLY,
+    CACHED,
+    DEMONSTRATION
 }
 
 data class Station(
@@ -186,10 +177,8 @@ data class TrainService(
     val routeChangeSourceIds: Set<String> = emptySet(),
     val gtfsIdentity: GtfsServiceIdentity? = null
 ) {
-    val category: String get() = trainCategory.accessibleLabel
     val displayOperator: String get() = operatorDisplayName?.takeIf(String::isNotBlank) ?: operator.shortLabel
     val accessibleOperator: String get() = operatorDisplayName?.takeIf(String::isNotBlank) ?: operator.accessibleLabel
-    val operatorAndCategory: String get() = "$displayOperator · ${trainCategory.accessibleLabel}"
 }
 
 data class RouteSnapshot(

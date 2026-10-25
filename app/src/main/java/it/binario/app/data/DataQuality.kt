@@ -3,24 +3,17 @@ package it.binario.app.data
 import it.binario.app.data.core.DelayConsistency
 import kotlin.math.max
 
-enum class DataQualityBand(val accessibleLabel: String) {
-    VERIFIED("Dato verificato"),
-    OFFICIAL_SCHEDULED("Orario programmato ufficiale"),
-    RELIABLE("Dato affidabile"),
-    LIMITED("Dato con copertura limitata"),
-    NOT_PUBLISHABLE("Dato non pubblicabile"),
-    UNKNOWN("Qualità non valutata")
-}
+enum class DataQualityBand { VERIFIED, OFFICIAL_SCHEDULED, RELIABLE, LIMITED, NOT_PUBLISHABLE, UNKNOWN }
 
-enum class SnapshotWarning(val accessibleLabel: String) {
-    SOURCE_CONFLICT("Fonti in conflitto"),
-    PARTIAL_ROUTE_MATCH("Nessuna corrispondenza diretta di destinazione"),
-    STALE_SOURCE("Aggiornamento non recente"),
-    STATIC_ONLY("Sono disponibili solo orari programmati"),
-    DEMONSTRATION("Sono visualizzati dati dimostrativi"),
-    INCOMPLETE_SERVICE("Corsa incompleta"),
-    IDENTITY_AMBIGUOUS("Identità della corsa da verificare"),
-    DELAY_DIVERGENCE("Il ritardo ufficiale differisce dall'ultima rilevazione")
+enum class SnapshotWarning {
+    SOURCE_CONFLICT,
+    PARTIAL_ROUTE_MATCH,
+    STALE_SOURCE,
+    STATIC_ONLY,
+    DEMONSTRATION,
+    INCOMPLETE_SERVICE,
+    IDENTITY_AMBIGUOUS,
+    DELAY_DIVERGENCE
 }
 
 data class SnapshotQuality(
