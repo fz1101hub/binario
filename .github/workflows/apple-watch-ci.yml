@@ -133,7 +133,7 @@ jobs:
 
   ios:
     runs-on: macos-15
-    timeout-minutes: 40
+    timeout-minutes: 60
     env:
       XCODE_VERSION: "16.4"
       XCODE_BUILD: "16F6"
@@ -230,3 +230,44 @@ jobs:
             -destination "id=${{ steps.ios-simulator.outputs.udid }}" \
             CODE_SIGNING_ALLOWED=NO \
             test
+          xcodebuild \
+            -project Binario.xcodeproj \
+            -scheme BinarioWatch \
+            -destination "id=${{ steps.ios-simulator.outputs.watch_udid }}" \
+            CODE_SIGNING_ALLOWED=NO \
+            test
+      - name: Archive Release build and check the App Store bundle layout
+        working-directory: ios
+        run: |
+          xcodebuild \
+            -project Binario.xcodeproj \
+            -scheme Binario \
+            -configuration Release \
+            -destination "generic/platform=iOS" \
+            -archivePath "$RUNNER_TEMP/Binario.xcarchive" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            archive
+          app="$RUNNER_TEMP/Binario.xcarchive/Products/Applications/Binario.app"
+          watch="$app/Watch/BinarioWatch.app"
+          widget="$watch/PlugIns/BinarioWatchWidgets.appex"
+          test -d "$watch"
+          test -d "$widget"
+          for bundle in "$app" "$watch" "$widget"; do
+            test -f "$bundle/PrivacyInfo.xcprivacy"
+            test "$(plutil -extract ITSAppUsesNonExemptEncryption raw -o - "$bundle/Info.plist")" = "false"
+          done
+          for bundle in "$app" "$watch"; do
+            test "$(plutil -extract CFBundleIconName raw -o - "$bundle/Info.plist")" = "AppIcon"
+          done
+          test "$(plutil -extract CFBundleDevelopmentRegion raw -o - "$app/Info.plist")" = "it"
+          test "$(plutil -extract WKCompanionAppBundleIdentifier raw -o - "$watch/Info.plist")" = "it.binario.ios"
+      - name: Upload unsigned Release archive
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: binario-ios-unsigned-xcarchive
+          path: ${{ runner.temp }}/Binario.xcarchive
+          retention-days: 14
+          if-no-files-found: error
+          overwrite: true

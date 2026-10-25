@@ -245,6 +245,41 @@ class VerifyCiPinningTest(unittest.TestCase):
         self.assertTrue(any(":ios: contenuto step run diverso" in problem for problem in problems))
         self.assertTrue(any("test Swift 6 BinarioKit assente" in problem for problem in problems))
 
+    def test_ios_release_archive_gate_and_watch_tests_are_locked(self) -> None:
+        workflow_path = ROOT / ".github/workflows/apple-watch-ci.yml"
+        original = workflow_path.read_text(encoding="utf-8")
+        self.assertEqual([], policy.workflow_problems(workflow_path, original, LOCK))
+
+        debug_archive = original.replace("            -configuration Release \\\n", "", 1)
+        self.assertNotEqual(original, debug_archive)
+        problems = policy.workflow_problems(workflow_path, debug_archive, LOCK)
+        self.assertTrue(any(":ios: contenuto step run diverso" in problem for problem in problems))
+        self.assertTrue(any("archivio Release" in problem for problem in problems))
+
+        unchecked_icon = original.replace(
+            '            test "$(plutil -extract CFBundleIconName raw -o - "$bundle/Info.plist")" = "AppIcon"\n', "", 1
+        )
+        self.assertNotEqual(original, unchecked_icon)
+        self.assertTrue(any("archivio Release" in problem for problem in policy.workflow_problems(workflow_path, unchecked_icon, LOCK)))
+
+        without_watch_tests = original.replace(
+            '            -scheme BinarioWatch \\\n            -destination "id=${{ steps.ios-simulator.outputs.watch_udid }}" \\\n',
+            '            -scheme Binario \\\n            -destination "id=${{ steps.ios-simulator.outputs.udid }}" \\\n',
+            1,
+        )
+        self.assertNotEqual(original, without_watch_tests)
+        self.assertTrue(any("test Watch sul progetto integrato assente" in problem for problem in policy.workflow_problems(workflow_path, without_watch_tests, LOCK)))
+
+        upload_start = original.index("      - name: Upload unsigned Release archive\n")
+        without_upload = original[:upload_start]
+        self.assertTrue(any(":ios: step action diversi" in problem for problem in policy.workflow_problems(workflow_path, without_upload, LOCK)))
+
+        long_retention = original.replace("          retention-days: 14\n          if-no-files-found: error\n", "          retention-days: 90\n          if-no-files-found: error\n", 1)
+        self.assertNotEqual(original, long_retention)
+        problems = policy.workflow_problems(workflow_path, long_retention, LOCK)
+        self.assertTrue(any("retention-days" in problem for problem in problems))
+        self.assertTrue(any(":ios: step action diversi" in problem for problem in problems))
+
     def test_flow_style_mutable_inputs_are_rejected(self) -> None:
         text = """
         jobs: {build: {runs-on: ubuntu-latest, services: {db: {image: mariadb:latest}}, steps: [{uses: actions/checkout@v4}]}}

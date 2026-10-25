@@ -141,6 +141,7 @@ def load_ci_lock(path: Path = LOCK_PATH) -> dict[str, Any]:
             "Verify and generate integrated iOS project",
             "Select an available iOS simulator",
             "Build and test integrated iPhone and Watch app",
+            "Archive Release build and check the App Store bundle layout",
         },
     }
     for lock_key, expected_run_names in expected_apple_runs.items():
@@ -510,6 +511,19 @@ def _check_apple_toolchain(
             "with": {"python-version": "3.12.10"},
         },
     ]
+    # The ios job keeps the unsigned Release archive for inspection; the generic
+    # upload-artifact rules (retention, fail without files, overwrite) apply to it as well.
+    ios_upload_step = {
+        "name": "Upload unsigned Release archive",
+        "uses": action_references.get("actions/upload-artifact"),
+        "with": {
+            "name": "binario-ios-unsigned-xcarchive",
+            "path": "${{ runner.temp }}/Binario.xcarchive",
+            "retention-days": 14,
+            "if-no-files-found": "error",
+            "overwrite": True,
+        },
+    }
     for job_name, lock_key in (
         ("watchos", "appleWatchRunSteps"),
         ("ios", "appleIosRunSteps"),
@@ -532,7 +546,8 @@ def _check_apple_toolchain(
             problems.append(f"{path.name}:{job_name}: steps non validi")
             continue
         actual_action_steps = [dict(step) for step in steps if isinstance(step, Mapping) and "uses" in step]
-        if actual_action_steps != expected_action_steps:
+        expected_job_action_steps = expected_action_steps + ([ios_upload_step] if job_name == "ios" else [])
+        if actual_action_steps != expected_job_action_steps:
             problems.append(f"{path.name}:{job_name}: step action diversi dalla sequenza revisionata")
 
         locked_run_entries = [entry for entry in lock.get(lock_key, []) if isinstance(entry, Mapping)]
@@ -607,6 +622,26 @@ def _check_apple_toolchain(
             build = runs.get("Build and test integrated iPhone and Watch app", "")
             if "-project Binario.xcodeproj" not in build or "-scheme Binario" not in build:
                 problems.append(f"{path.name}: build/test iPhone integrato assente")
+            if "-scheme BinarioWatch" not in build or "steps.ios-simulator.outputs.watch_udid" not in build:
+                problems.append(f"{path.name}: test Watch sul progetto integrato assente")
+            # The simulator tests never exercise what App Store Connect receives: the Release
+            # archive of the generated plists, the embedded Watch app and widget and the
+            # privacy manifests must be produced and inspected, unsigned, on every run.
+            archive = runs.get("Archive Release build and check the App Store bundle layout", "")
+            archive_markers = (
+                "-configuration Release",
+                '-destination "generic/platform=iOS"',
+                '-archivePath "$RUNNER_TEMP/Binario.xcarchive"',
+                "CODE_SIGNING_ALLOWED=NO",
+                "Products/Applications/Binario.app",
+                "Watch/BinarioWatch.app",
+                "PlugIns/BinarioWatchWidgets.appex",
+                "PrivacyInfo.xcprivacy",
+                "plutil -extract ITSAppUsesNonExemptEncryption raw",
+                "plutil -extract CFBundleIconName raw",
+            )
+            if any(marker not in archive for marker in archive_markers) or not archive.rstrip().endswith('"it.binario.ios"'):
+                problems.append(f"{path.name}: archivio Release non firmato con verifica del bundle App Store assente")
 
 
 def workflow_problems(

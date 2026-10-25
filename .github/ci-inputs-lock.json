@@ -157,7 +157,12 @@
     },
     {
       "name": "Build and test integrated iPhone and Watch app",
-      "sha256": "8d16f023048a8395a5e29b16c7aca6b4ca650e3fe4f2152a8fcadad19688789d",
+      "sha256": "e27933c6931225ae3801e22b130b7d70a0e5834beb7c9551b9b3e50d13df304c",
+      "workingDirectory": "ios"
+    },
+    {
+      "name": "Archive Release build and check the App Store bundle layout",
+      "sha256": "0461ab3d6d73618eaa5f086144117ff62be8a542e8897ff981e73f3604182e4b",
       "workingDirectory": "ios"
     }
   ]
