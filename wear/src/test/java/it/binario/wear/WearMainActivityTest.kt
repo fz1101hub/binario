@@ -2,6 +2,7 @@ package it.binario.wear
 
 import java.io.File
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -16,6 +17,14 @@ class WearMainActivityTest {
         assertTrue(source.contains("ScalingLazyColumn(state = listState, contentPadding = contentPadding"))
         assertTrue(source.contains("import androidx.wear.compose.foundation.lazy.itemsIndexed"))
         assertFalse(source.contains("import androidx.compose.foundation.lazy.LazyColumn"))
+    }
+
+    @Test
+    fun `activity revalidates the snapshot on resume because the expiry callback runs on uptime`() {
+        // WearSnapshotRuntimeTest proves current() revokes an expired value before the scheduler
+        // fires; the Activity must call it on resume, which is checked here on the override.
+        assertNotNull(WearMainActivity::class.java.getDeclaredMethod("onResume"))
+        assertTrue(activitySource().contains("WearSnapshotStore.current(this)"))
     }
 
     private fun activitySource(): String = sequenceOf(File("src/main/java"), File("wear/src/main/java"))

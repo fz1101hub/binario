@@ -40,6 +40,13 @@ class WearMainActivity : ComponentActivity() {
         }
     }
 
+    override fun onResume() {
+        super.onResume()
+        // The expiry callback is posted on uptime, which stops while the watch sleeps, so a value
+        // that expired meanwhile is still in the StateFlow: revalidate before the screen shows it.
+        WearSnapshotStore.current(this)
+    }
+
     private fun requestRefreshFromPhone() {
         Wearable.getNodeClient(this@WearMainActivity).connectedNodes.addOnSuccessListener { nodes ->
             nodes.forEach { node ->
