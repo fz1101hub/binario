@@ -741,7 +741,7 @@ class TrainViewModel @JvmOverloads constructor(
                                 WearSnapshotPublisher.publishUnavailable(
                                     getApplication(),
                                     routeAtRequest.displayName(directionAtRequest),
-                                    primarySnapshot?.providerName ?: cache.lastProvider().orEmpty()
+                                    primarySnapshot?.providerName ?: cache.lastProvider()
                                 )
                             } else if (!integrationSettings.wearSnapshotSharingEnabled || !hasActiveRoute) {
                                 WearSnapshotPublisher.clear(getApplication())

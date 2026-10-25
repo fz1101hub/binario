@@ -647,6 +647,9 @@
     <string name="widget_quality_score_accessibility">, quality score %1$d out of 100</string>
     <string name="widget_warnings_accessibility">. Warnings: %1$s</string>
 
+    <!-- Texts carried verbatim in the Wear payload. -->
+    <string name="wear_payload_value_unavailable">Not available</string>
+
     <plurals name="search_results_count">
         <item quantity="one">%d result</item>
         <item quantity="other">%d results</item>

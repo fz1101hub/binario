@@ -34,16 +34,18 @@ object WearSnapshotPublisher {
     suspend fun publish(context: Context, snapshot: RouteSnapshot) {
         val token = operationGate.publicationToken()
         val generatedAt = System.currentTimeMillis()
-        val payload = runCatching { AndroidWearSnapshotContract.operational(snapshot, generatedAt) }
-            .getOrElse { AndroidWearSnapshotContract.unavailable(snapshot.routeLabel, snapshot.providerName, generatedAt) }
+        val strings = WearSnapshotStrings.from(context.resources)
+        val payload = runCatching { AndroidWearSnapshotContract.operational(snapshot, generatedAt, strings) }
+            .getOrElse { AndroidWearSnapshotContract.unavailable(snapshot.routeLabel, snapshot.providerName, generatedAt, strings) }
         publishPayload(context, payload, token)
     }
 
-    suspend fun publishUnavailable(context: Context, routeLabel: String, provider: String) {
+    /** A null provider means nothing was ever cached; the payload then carries the localized "not available". */
+    suspend fun publishUnavailable(context: Context, routeLabel: String, provider: String?) {
         val token = operationGate.publicationToken()
         publishPayload(
             context,
-            AndroidWearSnapshotContract.unavailable(routeLabel, provider, System.currentTimeMillis()),
+            AndroidWearSnapshotContract.unavailable(routeLabel, provider.orEmpty(), System.currentTimeMillis(), WearSnapshotStrings.from(context.resources)),
             token
         )
     }
