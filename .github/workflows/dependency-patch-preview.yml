@@ -1,0 +1,42 @@
+name: Dependency patch lock preview
+on:
+  push:
+    branches:
+      - main
+      - "stabilization/**"
+permissions:
+  contents: read
+jobs:
+  resolve:
+    if: github.ref == 'refs/heads/stabilization/resolve-alexa-audit-20261026'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: alexa-companion
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86
+        with:
+          version: 10.34.5
+          run_install: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: "22.23.2"
+      - name: Resolve reviewed patch versions without running dependency scripts
+        run: pnpm install --lockfile-only --no-frozen-lockfile --ignore-scripts
+      - name: Emit reviewable lockfile preview
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          text = Path("pnpm-lock.yaml").read_text()
+          print("BINARIO_LOCK_START")
+          for offset in range(0, len(text), 8192):
+              print("BINARIO_LOCK_CHUNK " + json.dumps(text[offset:offset+8192]))
+          print("BINARIO_LOCK_END")
+          PY
+      - name: Audit resolved graph
+        run: pnpm audit --audit-level high

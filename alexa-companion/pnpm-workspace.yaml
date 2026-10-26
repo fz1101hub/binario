@@ -8,8 +8,9 @@ patchedDependencies:
   wouter@3.7.1: patches/wouter@3.7.1.patch
 
 overrides:
+  follow-redirects: 1.16.1
   "@babel/core": 7.29.6
-  body-parser@1: 1.20.6
+  body-parser@1: 1.20.9
   browserslist: 4.29.0
   esbuild@<0.25.0: 0.25.12
   path-to-regexp@0.1.12: 0.1.13
