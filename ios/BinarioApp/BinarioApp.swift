@@ -9,6 +9,7 @@ struct BinarioApp: App {
         WindowGroup {
             RootView()
                 .environmentObject(model)
+                .tint(Color("AccentColor"))
         }
     }
 }

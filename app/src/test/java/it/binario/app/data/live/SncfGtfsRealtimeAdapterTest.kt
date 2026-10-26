@@ -45,10 +45,11 @@ class SncfGtfsRealtimeAdapterTest {
         )
 
         val result = adapter.getTripUpdates()
-
         assertTrue(result is ProviderResult.Success)
         val updates = (result as ProviderResult.Success).value
         assertEquals(1, updates.size)
+        assertEquals(java.time.LocalDate.of(2026, 8, 15), updates.single().serviceDate)
+        assertEquals(it.binario.app.data.core.RealtimeStopEventKind.DEPARTURE, updates.single().eventKind)
         assertEquals("trip-42", updates.single().sourceTripId)
         assertEquals("FRPMO", updates.single().sourceStopId)
         assertEquals(180L, updates.single().officialDelay?.value?.seconds)
@@ -72,7 +73,7 @@ class SncfGtfsRealtimeAdapterTest {
         .addEntity(
             GtfsRealtime.FeedEntity.newBuilder().setId("tu-1").setTripUpdate(
                 GtfsRealtime.TripUpdate.newBuilder()
-                    .setTrip(GtfsRealtime.TripDescriptor.newBuilder().setTripId("trip-42"))
+                    .setTrip(GtfsRealtime.TripDescriptor.newBuilder().setTripId("trip-42").setStartDate("20260815"))
                     .addStopTimeUpdate(
                         GtfsRealtime.TripUpdate.StopTimeUpdate.newBuilder()
                             .setStopId("FRPMO")

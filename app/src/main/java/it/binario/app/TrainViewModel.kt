@@ -163,6 +163,53 @@ class TrainViewModel @JvmOverloads constructor(
     private var returnRefreshRequestId: Long = 0L
     /** Independent station-board token; changing station/kind invalidates older responses. */
     private var stationBoardRequestId: Long = 0L
+    private var routeRefreshJob: Job? = null
+    private var returnRefreshJob: Job? = null
+    private var stationBoardRefreshJob: Job? = null
+    private var lastRefreshAttempt: Long? = null
+    private var lastStationBoardRefreshAttempt: Long? = null
+    private var stationCatalogReady = false
+
+    val followsCurrentDepartures: Boolean get() = journeyQueryState.followsCurrentTime
+
+    /** Explicitly leaves a planned search and starts following the current railway time. */
+    fun resumeCurrentDepartures() {
+        clearReturnJourneyState()
+        journeyQueryState.resetForRouteActivation()
+        clearSelectedService()
+        primarySnapshot = null
+        rebuildServicePresentations()
+        refresh()
+    }
+
+    /** Called by a lifecycle-bound UI effect; it never installs a background polling worker. */
+    fun refreshForeground(stationBoardVisible: Boolean = false, now: Long = System.currentTimeMillis()) {
+        if (!stationCatalogReady) return
+        fun RouteSnapshot.expire(): RouteSnapshot = if (
+            availabilityAt(now) == SnapshotAvailability.STALE && freshness != Freshness.STALE
+        ) copy(freshness = Freshness.STALE) else this
+        primarySnapshot = primarySnapshot?.expire()
+        returnSnapshot = returnSnapshot?.expire()
+        selectedServiceSnapshot = selectedServiceSnapshot?.expire()
+        if (stationBoardVisible) {
+            val attempt = lastStationBoardRefreshAttempt
+            val interval = if (stationBoardRefreshState == RefreshState.ERROR) {
+                CommuterRefreshPolicy.RETRY_INTERVAL_MILLIS
+            } else if (BuildConfig.PERSONAL_REALTIME_SOURCES) {
+                CommuterRefreshPolicy.LIVE_INTERVAL_MILLIS
+            } else CommuterRefreshPolicy.SCHEDULE_INTERVAL_MILLIS
+            if (stationBoardStation != null && stationBoardRefreshState != RefreshState.LOADING &&
+                (attempt == null || now - attempt >= interval)
+            ) loadStationBoard()
+        } else if (hasActiveRoute && CommuterRefreshPolicy.shouldRefresh(
+                followsCurrentTime = followsCurrentDepartures,
+                loading = refreshState == RefreshState.LOADING,
+                lastAttempt = lastRefreshAttempt,
+                snapshot = primarySnapshot,
+                now = now,
+                failed = refreshState == RefreshState.ERROR
+            )) refresh()
+    }
 
     init {
         if (enableStartupEffects) {
@@ -218,6 +265,7 @@ class TrainViewModel @JvmOverloads constructor(
                     stationMonitors = personalTravelStore.stationMonitors(stations)
                 }
 
+                stationCatalogReady = true
                 // If no user-driven refresh started while the catalog was loading, perform
                 // the one bootstrap refresh now (also when the catalog load failed/was empty).
                 if (enableStartupEffects && refreshRequestId == 0L && hasActiveRoute) refresh()
@@ -321,8 +369,9 @@ class TrainViewModel @JvmOverloads constructor(
         stationBoardRefreshState = RefreshState.LOADING
         stationBoardMessages = emptyList()
         val requestId = ++stationBoardRequestId
-
-        viewModelScope.launch {
+        lastStationBoardRefreshAttempt = System.currentTimeMillis()
+        stationBoardRefreshJob?.cancel()
+        stationBoardRefreshJob = viewModelScope.launch {
             when (val result = stationBoardService.load(canonical, kind)) {
                 is StationBoardAggregateResult.Success -> {
                     if (requestId != stationBoardRequestId) return@launch
@@ -576,7 +625,9 @@ class TrainViewModel @JvmOverloads constructor(
         // search for another date or time must stay inside the app.
         val publishesCurrentDepartures = journeyQueryState.followsCurrentTime
         val requestId = ++refreshRequestId
-        viewModelScope.launch {
+        lastRefreshAttempt = System.currentTimeMillis()
+        routeRefreshJob?.cancel()
+        routeRefreshJob = viewModelScope.launch {
             val result = dataSource.loadRoute(routeAtRequest, directionAtRequest, queryAtRequest)
             if (requestId != refreshRequestId) return@launch
             when (result) {
@@ -657,7 +708,8 @@ class TrainViewModel @JvmOverloads constructor(
         returnRefreshMessage = null
         val routeAtRequest = activeRoute
         val requestId = ++returnRefreshRequestId
-        viewModelScope.launch {
+        returnRefreshJob?.cancel()
+        returnRefreshJob = viewModelScope.launch {
             val result = dataSource.loadRoute(routeAtRequest, Direction.RETURN, queryAtRequest)
             if (requestId != returnRefreshRequestId || returnJourneyQuery != queryAtRequest) return@launch
             when (result) {
@@ -682,6 +734,7 @@ class TrainViewModel @JvmOverloads constructor(
     }
 
     private fun clearReturnJourneyState() {
+        returnRefreshJob?.cancel()
         returnRefreshRequestId += 1
         if (selectedServiceDirection == Direction.RETURN) clearSelectedService()
         returnJourneyQuery = null

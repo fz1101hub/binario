@@ -11,6 +11,7 @@ import it.binario.app.data.core.SourceId
 import it.binario.app.data.core.SourceRef
 import it.binario.app.data.core.SourcedValue
 import it.binario.app.data.core.RealtimeStopUpdate
+import it.binario.app.data.core.RealtimeStopEventKind
 import it.binario.app.data.core.StationId
 import it.binario.app.data.core.TrainRunId
 import it.binario.app.data.provider.AccessMode
@@ -128,6 +129,9 @@ class SncfGtfsRealtimeAdapter(
         if (!entity.hasTripUpdate()) return@flatMap emptyList()
         val update = entity.tripUpdate
         val tripId = update.trip.tripId.takeIf(String::isNotBlank) ?: return@flatMap emptyList()
+        val serviceDate = runCatching {
+            java.time.LocalDate.parse(update.trip.startDate, java.time.format.DateTimeFormatter.BASIC_ISO_DATE)
+        }.getOrNull()
         val nativeEntity = entity.id.takeIf(String::isNotBlank) ?: tripId
         val source = sourceRef(nativeEntity, observedAt)
         update.stopTimeUpdateList.mapNotNull { stop ->
@@ -150,7 +154,13 @@ class SncfGtfsRealtimeAdapter(
                 predictedAt = epoch?.let { Instant.ofEpochSecond(it).atZone(ZoneId.of("Europe/Paris")) }?.let { SourcedValue(it, valueSource) },
                 officialDelay = delay?.let { SourcedValue(Duration.ofSeconds(it.toLong()), valueSource) },
                 observedAt = observedAt,
-                source = source
+                source = source,
+                serviceDate = serviceDate,
+                eventKind = when {
+                    stop.hasDeparture() -> RealtimeStopEventKind.DEPARTURE
+                    stop.hasArrival() -> RealtimeStopEventKind.ARRIVAL
+                    else -> RealtimeStopEventKind.UNKNOWN
+                }
             )
         }
     }

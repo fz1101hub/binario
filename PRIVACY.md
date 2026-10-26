@@ -1,12 +1,12 @@
 # Informativa privacy di Binario
 
-**Stato del documento:** fotografia del comportamento implementato nel ramo di integrazione `integration/stabilization-complete-v0204`, aggiornata il 30 settembre 2026. Questa informativa distingue espressamente il codice attivo dalle funzioni presenti ma non operative. Non descrive funzionalità future.
+**Stato del documento:** fotografia del comportamento implementato, aggiornata il 26 ottobre 2026 con home pendolari, preferenze iPhone, integrazione Trip Updates Android e presentazione APL. Questa informativa distingue espressamente il codice attivo dalle funzioni presenti ma non operative. Non descrive funzionalità future.
 
 > **Blocco per una distribuzione pubblica.** Il repository non identifica il titolare del trattamento, un recapito per i diritti privacy, un URL pubblico dell'informativa né la retention operativa di log e backup dell'hosting. Prima di una pubblicazione vanno completati questi elementi e va collegato un URL pubblico verificato nell'app e nei canali di distribuzione. `PRIVACY.md` è il documento sorgente del progetto, non un sostituto di quel collegamento pubblico.
 
 ## Ambito e superfici interessate
 
-Questa informativa riguarda il codice attuale di **Binario Android**, del relativo **companion Wear OS**, del **Companion Expo** e di **Alexa Companion** in `alexa-companion/`. Le superfici non si comportano tutte allo stesso modo: l'app Android e il Companion Expo funzionano principalmente con dati locali; il companion Wear riceve snapshot dal telefono; Alexa Companion usa un backend e un database solo quando viene configurato e collegato un account.
+Questa informativa riguarda il codice attuale di **Binario Android**, **Binario iPhone e Apple Watch**, del **companion Wear OS**, del **Companion Expo** e di **Alexa Companion** in `alexa-companion/`. Le superfici non si comportano tutte allo stesso modo: le preferenze e le tratte degli smartphone restano principalmente locali; gli orologi ricevono snapshot dai telefoni; Alexa Companion usa un backend e un database solo quando viene configurato e collegato un account.
 
 Il documento descrive i dati trattati dall'applicazione e dal backend del repository. Non sostituisce le informative del sistema operativo, di Google Play Services, di Amazon Alexa, del gestore dell'account della dashboard o dei gestori ferroviari. Quando l'utente usa tali servizi, essi possono trattare dati tecnici di rete, inclusi indirizzo IP, data e ora della richiesta e intestazioni standard, secondo le rispettive informative.
 
@@ -15,6 +15,7 @@ Il documento descrive i dati trattati dall'applicazione e dal backend del reposi
 | Superficie | Dati trattati dal codice | Destinazione e finalità |
 |---|---|---|
 | Android | Tratte, stazioni, preferiti, ricerche recenti, monitoraggi, avvisi, viaggio attivo, preferenze, configurazioni widget e metadati di refresh. | Restano nella memoria privata dell'app sul telefono, salvo ricerca presso fonti ferroviarie, condivisione o backup scelti dall'utente. |
+| iPhone | Tratte salvate, identificativo e direzione della tratta abituale, preferenza di condivisione Apple Watch e orari GTFS locali. | Le preferenze restano in UserDefaults; gli orari sono inclusi nell’app. La home non aggiunge account, analytics, accesso alla posizione o feed realtime iOS. |
 | Wear OS | Etichetta della tratta, provenienza e freschezza del dato, avviso, e al massimo due corse con numero, destinazione, orario, stato e binario. | Il telefono li invia attraverso il Data Layer a un orologio associato; il watch li conserva nella propria memoria privata. |
 | Companion Expo | Tratte pianificate, date e orari, checklist, promemoria, preferenze, itinerari, stazioni preferite e impostazioni di accessibilità locali. | Restano nel dispositivo; i file e il calendario passano al sistema o all'app scelta solo dopo un'azione di esportazione dell'utente. |
 | Alexa Companion | Identificativi e profilo dell'account dashboard, tratte personali, profilo minimo, hash dell'identificativo Alexa e artefatti OAuth in forma hash. | Sono conservati nel database configurato dal gestore del backend per il collegamento account e le risposte personali della skill. |
@@ -31,6 +32,8 @@ Questi dati servono a ripristinare le scelte dell'utente, generare promemoria lo
 
 La build distribuita consulta il quadro orario programmato RFI per le stazioni RFI mappate. La richiesta contiene l'identificativo pubblico RFI della **stazione di partenza**; il filtro della stazione di arrivo viene applicato nell'app sul quadro ricevuto. I data pack GTFS embedded e il catalogo stazioni sono inclusi nell'app e non ricevono la ricerca dell'utente.
 
+Per una tratta prodotta dal pack STA o SNCF, Android può inoltre scaricare i Trip Updates pubblici del relativo feed. La richiesta scarica il feed e non trasmette la ricerca, gli identificativi della tratta o la posizione dell’utente; il raccordo di corsa, giorno e fermata avviene sul dispositivo. Gli altri feed non sono interrogati per questa integrazione. I controlli di freschezza rifiutano osservazioni scadute o prive dell’identità necessaria. Il nuovo aggiornamento periodico delle schermate è limitato alla consultazione in primo piano, rispettando gli intervalli e le cache dei provider; questa modifica non aggiunge un servizio di polling in background. I worker già esistenti dei widget conservano il proprio ciclo di aggiornamento.
+
 La build personale attivata esplicitamente con `BINARIO_PERSONAL_REALTIME_SOURCES=true` può interrogare tabelloni pubblici RFI, Italo in Viaggio e ViaggiaTreno. In quel caso RFI riceve un identificativo pubblico della stazione; Italo riceve nello URL lo slug pubblico della stazione; ViaggiaTreno riceve il **nome della stazione** nel corpo del modulo HTTP. Il nome della destinazione viene usato localmente per filtrare il tabellone ricevuto. Gli adapter di feed GTFS o avvisi pubblici possono scaricare il feed dal rispettivo host senza inserire la tratta dell'utente nella richiesta. Le sorgenti autorizzate, le fonti personali opzionali e quelle non attive sono dettagliate nel README e nel data layer; una fonte non attiva non viene trasformata in un invio di dati.
 
 Per la copertura di **European Sleeper**, il codice dispone di un feed statico GTFS e di Trip Updates GTFS-Realtime dal mirror **European Sleeper/JBB** sull'host `jbb.ghsq.de` (`/gtfs/eu-es.gtfs.zip` e `/gtfs/european-sleeper/TripUpdates`). È una fonte **community best-effort**, non un feed ufficiale dell'operatore. Nel percorso a tier, può essere interrogata solo dopo che il **tier primario fallisce** nel costruire la tratta richiesta; una risposta del tier primario evita la chiamata al fallback e il feed JBB non lo sostituisce. Il risultato resta segnalato come fallback a copertura limitata.
@@ -45,7 +48,7 @@ L'app richiede la posizione approssimata solo dopo un'azione esplicita per trova
 
 ### Notifiche, condivisione e dettatura
 
-Le notifiche Android sono facoltative. Gli avvisi pendolare e la sveglia fermata sono pianificati localmente dal dispositivo e possono mostrare nome della fermata, tratta, numero treno, destinazione e orario. Il consenso `POST_NOTIFICATIONS` è richiesto solo quando l'utente crea tale funzione. Eliminare un avviso dall'app ne annulla la pianificazione; le notifiche già visualizzate sono gestite dal sistema operativo.
+Le notifiche Android sono facoltative. Gli avvisi pendolare e la sveglia fermata sono pianificati localmente dal dispositivo e possono mostrare nome della fermata, tratta, numero treno, destinazione e orario. La sveglia fermata permette un anticipo di 1–60 minuti, calcolato sull’orario mostrato alla conferma; non aggiorna automaticamente l’allarme se cambia la previsione. Reimpostare la stessa fermata sostituisce l’allarme precedente. Il consenso `POST_NOTIFICATIONS` è richiesto solo quando l'utente crea tale funzione. Eliminare un avviso pendolare dall'app ne annulla la pianificazione; le notifiche già visualizzate sono gestite dal sistema operativo.
 
 Il comando di condivisione apre il selettore Android e trasferisce testo ferroviario alla destinazione scelta dall'utente. Binario non controlla il successivo trattamento effettuato dall'app destinataria.
 
@@ -96,6 +99,8 @@ Nel collegamento Alexa, il backend conserva l'identificativo Alexa solo come dig
 Amazon Alexa tratta l'audio per riconoscere il comando secondo i propri termini. Alla skill il backend riceve la richiesta firmata da Alexa, il token di account linking, l'identificativo Alexa e gli slot testuali pertinenti, per esempio nome della tratta o numero treno. Il backend non salva il contenuto audio e il codice non registra gli slot di intent come cronologia vocale. Per verificare il collegamento salva soltanto l'hash dell'identificativo Alexa; per rispondere può leggere dal database le tratte personali e pronunciare i loro nomi tramite la piattaforma Alexa.
 
 La skill corrente non recupera dati ferroviari live: per richieste di prossimi treni o stato treno risponde che i dati realtime non sono disponibili. Non invia quindi nome della stazione, posizione o numero treno a un feed ferroviario come parte della risposta Alexa attuale.
+
+Sui dispositivi Echo compatibili con APL, la stessa risposta già destinata alla scheda Alexa viene mostrata sullo schermo. Può contenere i nomi delle tratte personali dopo il collegamento account. Non vengono caricati immagini, font o altre risorse remote; non viene renderizzato un riepilogo personale prima del collegamento account né dopo un comando di arresto. La visualizzazione non costituisce una nuova fonte realtime.
 
 ### Revoca, cancellazione e conservazione
 

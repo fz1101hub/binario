@@ -51,6 +51,7 @@ import { isAlexaConfigured } from "./config";
 import { needsAccountLink } from "./guards";
 import { parseOAuthAuthorizationParameters } from "./oauthContract";
 import { escapeSsmlText, liveDataUnavailableSpeech, plainSpeechText } from "./speech";
+import { screenResponseInterceptor } from "./presentation";
 
 /** Intent names the skill handles; the interaction model in skill-package/ must declare all of them. */
 export const HANDLED_INTENTS = [
@@ -350,6 +351,7 @@ export function createAlexaSkill() {
       fallbackHandler
     )
     .addErrorHandlers(errorHandler)
+    .addResponseInterceptors(screenResponseInterceptor)
     .create();
 }
 

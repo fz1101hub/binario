@@ -54,6 +54,7 @@ import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.Train
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material3.Button
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
@@ -105,6 +106,11 @@ import it.binario.app.data.RailTime
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import it.binario.app.data.DataConfidence
 import it.binario.app.data.Direction
 import it.binario.app.data.Freshness
@@ -141,7 +147,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-private enum class Screen { PLANNER, OPERATIONS, AGENDA, SETTINGS, RESULTS, DETAIL }
+private enum class Screen { HOME, PLANNER, OPERATIONS, AGENDA, SETTINGS, RESULTS, DETAIL }
 internal enum class OperationsSection { TRAINS, STATIONS }
 private enum class SearchMode { ROUTE, TRAIN, STATION }
 
@@ -163,7 +169,7 @@ private fun SearchMode.localizedLabel(): String = stringResource(
 private val stopAlarmPlanSaver = listSaver<StopAlarmPlan?, Any>(
     save = { plan ->
         if (plan == null) emptyList()
-        else listOf(plan.trainNumber, plan.destination, plan.station, plan.expectedTime, plan.triggerAtEpochMillis)
+        else listOf(plan.trainNumber, plan.destination, plan.station, plan.expectedTime, plan.triggerAtEpochMillis, plan.alarmId)
     },
     restore = { values ->
         if (values.isEmpty()) null
@@ -172,7 +178,8 @@ private val stopAlarmPlanSaver = listSaver<StopAlarmPlan?, Any>(
             destination = values[1] as String,
             station = values[2] as String,
             expectedTime = values[3] as String,
-            triggerAtEpochMillis = values[4] as Long
+            triggerAtEpochMillis = values[4] as Long,
+            alarmId = values.getOrNull(5) as? String ?: "${values[0]}|${values[2]}|${values[3]}"
         )
     }
 )
@@ -261,7 +268,7 @@ private fun BinarioApp(
     deepLinkRequest: DeepLinkRequest?,
     onDeepLinkConsumed: (Long) -> Unit
 ) {
-    var screen by rememberSaveable { mutableStateOf(Screen.PLANNER) }
+    var screen by rememberSaveable { mutableStateOf(Screen.HOME) }
     var detailReturnScreen by rememberSaveable { mutableStateOf(Screen.RESULTS) }
     var operationsSectionName by rememberSaveable { mutableStateOf(OperationsSection.TRAINS.name) }
     var plannerSearchModeName by rememberSaveable { mutableStateOf(SearchMode.ROUTE.name) }
@@ -278,6 +285,20 @@ private fun BinarioApp(
         factory = PlannedJourneyViewModel.factory(context.applicationContext)
     )
     val resources = LocalResources.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    LaunchedEffect(lifecycleOwner, screen, operationsSectionName) {
+        if (screen in setOf(Screen.HOME, Screen.OPERATIONS, Screen.RESULTS, Screen.DETAIL)) {
+            lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                while (isActive) {
+                    viewModel.refreshForeground(
+                        stationBoardVisible = screen == Screen.OPERATIONS &&
+                            operationsSectionName == OperationsSection.STATIONS.name
+                    )
+                    delay(CommuterRefreshPolicy.TICK_MILLIS)
+                }
+            }
+        }
+    }
     val plannedJourneyExportLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("application/octet-stream")
     ) { uri ->
@@ -333,8 +354,8 @@ private fun BinarioApp(
             stopAlarmFeedback = resources.getString(R.string.stop_alarm_permission_required)
         }
     }
-    val scheduleStopAlarm: (TrainService, TrainStop) -> Unit = { service, stop ->
-        val plan = StopAlarmPlanner.plan(service, stop)
+    val scheduleStopAlarm: (TrainService, TrainStop, Int) -> Unit = { service, stop, leadMinutes ->
+        val plan = StopAlarmPlanner.plan(service, stop, leadMinutes = leadMinutes)
         when {
             stop.completed -> stopAlarmFeedback = resources.getString(R.string.stop_alarm_completed, stop.station)
             plan == null -> stopAlarmFeedback = resources.getString(R.string.stop_alarm_unavailable)
@@ -384,6 +405,7 @@ private fun BinarioApp(
     BackHandler(enabled = screen == Screen.DETAIL || screen == Screen.RESULTS, onBack = navigateBack)
     val title = stringResource(
         when (screen) {
+            Screen.HOME -> R.string.commuter_title
             Screen.PLANNER -> R.string.screen_title_planner
             Screen.OPERATIONS -> R.string.screen_title_operations
             Screen.AGENDA -> R.string.screen_title_agenda
@@ -394,6 +416,7 @@ private fun BinarioApp(
     )
     val subtitle = stringResource(
         when (screen) {
+            Screen.HOME -> R.string.commuter_intro
             Screen.PLANNER -> R.string.screen_subtitle_planner
             Screen.OPERATIONS -> R.string.screen_subtitle_operations
             Screen.AGENDA -> R.string.screen_subtitle_agenda
@@ -415,8 +438,8 @@ private fun BinarioApp(
             CenterAlignedTopAppBar(
                 title = {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(if (screen == Screen.PLANNER) stringResource(R.string.app_brand) else title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, letterSpacing = if (screen == Screen.PLANNER) 1.sp else 0.sp)
-                        if (screen != Screen.DETAIL) Text(subtitle, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(if (screen == Screen.PLANNER || screen == Screen.HOME) stringResource(R.string.app_brand) else title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, letterSpacing = if (screen == Screen.PLANNER || screen == Screen.HOME) 1.sp else 0.sp)
+                        if (screen != Screen.DETAIL && screen != Screen.HOME) Text(subtitle, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 },
                 navigationIcon = {
@@ -431,7 +454,10 @@ private fun BinarioApp(
                         Icon(Icons.Default.Palette, contentDescription = stringResource(R.string.action_choose_theme, themeMode.localizedLabel()))
                     }
                     if (screen == Screen.OPERATIONS || screen == Screen.RESULTS || screen == Screen.DETAIL) {
-                        IconButton(onClick = viewModel::refresh) {
+                        IconButton(onClick = {
+                            if (screen == Screen.OPERATIONS && operationsSectionName == OperationsSection.STATIONS.name) viewModel.loadStationBoard()
+                            else viewModel.refresh()
+                        }) {
                             Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.action_refresh_rail_information))
                         }
                     }
@@ -442,6 +468,12 @@ private fun BinarioApp(
         bottomBar = {
             if (screen != Screen.DETAIL && screen != Screen.RESULTS) {
                 NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
+                    NavigationBarItem(
+                        selected = screen == Screen.HOME,
+                        onClick = { screen = Screen.HOME },
+                        icon = { Icon(Icons.Default.Home, contentDescription = null) },
+                        label = { Text(stringResource(R.string.commuter_nav)) }
+                    )
                     NavigationBarItem(
                         selected = screen == Screen.PLANNER,
                         onClick = { screen = Screen.PLANNER },
@@ -455,12 +487,6 @@ private fun BinarioApp(
                         label = { Text(stringResource(R.string.nav_operations)) }
                     )
                     NavigationBarItem(
-                        selected = screen == Screen.AGENDA,
-                        onClick = { screen = Screen.AGENDA },
-                        icon = { Icon(Icons.Default.CalendarMonth, contentDescription = null) },
-                        label = { Text(stringResource(R.string.nav_agenda)) }
-                    )
-                    NavigationBarItem(
                         selected = screen == Screen.SETTINGS,
                         onClick = { screen = Screen.SETTINGS },
                         icon = { Icon(Icons.Default.Info, contentDescription = null) },
@@ -472,6 +498,15 @@ private fun BinarioApp(
         containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
         when (screen) {
+            Screen.HOME -> CommuterHomeScreen(
+                modifier = Modifier.padding(padding),
+                viewModel = viewModel,
+                openSearch = { screen = Screen.PLANNER },
+                openBoard = { operationsSectionName = OperationsSection.TRAINS.name; screen = Screen.OPERATIONS },
+                openAgenda = { screen = Screen.AGENDA },
+                openSettings = { screen = Screen.SETTINGS },
+                openService = { service -> detailReturnScreen = Screen.HOME; viewModel.openService(service); screen = Screen.DETAIL }
+            )
             Screen.PLANNER -> PlannerScreen(
                 modifier = Modifier.padding(padding),
                 viewModel = viewModel,
@@ -642,7 +677,13 @@ private fun readBoundedPlannedJourneyDocument(input: java.io.InputStream, tooLar
 
 private fun stopAlarmScheduleFeedback(resources: android.content.res.Resources, result: DeviceAlarmScheduleResult, plan: StopAlarmPlan): String =
     if (result.isExact) {
-        resources.getString(R.string.stop_alarm_exact, plan.station, plan.expectedTime)
+        resources.getString(
+            R.string.stop_alarm_exact, plan.station,
+            java.time.format.DateTimeFormatter.ofLocalizedDateTime(java.time.format.FormatStyle.SHORT)
+                .withLocale(resources.configuration.locales[0]).withZone(RailTime.defaultZone)
+                .format(java.time.Instant.ofEpochMilli(plan.triggerAtEpochMillis)),
+            plan.expectedTime
+        )
     } else {
         resources.getString(R.string.stop_alarm_inexact, plan.station)
     }
@@ -680,10 +721,9 @@ private fun TodayScreen(
     ) {
         item { BoardCommandBar(onOpenSearch = { openSearch() }) }
         item { BoardRouteHeader(viewModel.activeRoute, viewModel.direction, viewModel.refreshState, viewModel::switchDirection, viewModel::refresh, openRoutes) }
-        item { BoardColumnHeader() }
         if (firstService != null) {
             items(services, key = { it.id }) { service ->
-                DepartureListRow(service, isNext = service.id == firstService.id, onOpen = { openDetails(service) })
+                DepartureListRow(service, isNext = service.id == firstService.id, isCurrent = viewModel.snapshot?.freshness != Freshness.STALE, onOpen = { openDetails(service) })
             }
         } else {
             item {
@@ -699,14 +739,7 @@ private fun TodayScreen(
             item { MonitoredRoutesStrip(viewModel.savedRoutes, viewModel.activeRoute.id, viewModel::activateRoute, openRoutes) }
         }
         item {
-            DataStatusLine(
-                freshness = viewModel.snapshot?.freshness,
-                provider = viewModel.currentProviderLabel() ?: stringResource(R.string.provider_unavailable),
-                confidence = viewModel.currentConfidence()?.localizedLabel() ?: stringResource(R.string.data_confidence_unavailable),
-                refreshedAt = viewModel.lastRefreshEpochMillis(),
-                isDemonstration = viewModel.isDemonstrationData(),
-                message = viewModel.refreshMessage
-            )
+            SnapshotStatus(viewModel.snapshot, viewModel.refreshMessage)
         }
         item {
             Text(
@@ -1258,7 +1291,6 @@ private fun RouteResultsScreen(modifier: Modifier, viewModel: TrainViewModel, op
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            BoardColumnHeader()
         }
         when {
             viewModel.refreshState == RefreshState.LOADING && viewModel.snapshot == null ->
@@ -1268,7 +1300,7 @@ private fun RouteResultsScreen(modifier: Modifier, viewModel: TrainViewModel, op
             services.isEmpty() ->
                 item { SearchInfoState(stringResource(R.string.search_outbound_empty_title), stringResource(R.string.search_outbound_empty_message)) }
             else -> items(services, key = { "out-${it.id}" }) { service ->
-                DepartureListRow(service, isNext = service == services.first(), onOpen = { openDetails(service) })
+                DepartureListRow(service, isNext = service == services.first(), isCurrent = viewModel.snapshot?.freshness != Freshness.STALE, onOpen = { openDetails(service) })
             }
         }
 
@@ -1283,8 +1315,7 @@ private fun RouteResultsScreen(modifier: Modifier, viewModel: TrainViewModel, op
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-                BoardColumnHeader()
-            }
+                }
             when {
                 viewModel.returnRefreshState == RefreshState.LOADING && viewModel.returnSnapshot == null ->
                     item { SearchInfoState(stringResource(R.string.search_return_loading_title), stringResource(R.string.search_return_loading_message)) }
@@ -1293,7 +1324,7 @@ private fun RouteResultsScreen(modifier: Modifier, viewModel: TrainViewModel, op
                 returnServices.isEmpty() ->
                     item { SearchInfoState(stringResource(R.string.search_return_empty_title), stringResource(R.string.search_return_empty_message)) }
                 else -> items(returnServices, key = { "ret-${it.id}" }) { service ->
-                    DepartureListRow(service, isNext = service == returnServices.first(), onOpen = { openDetails(service) })
+                    DepartureListRow(service, isNext = service == returnServices.first(), isCurrent = viewModel.returnSnapshot?.freshness != Freshness.STALE, onOpen = { openDetails(service) })
                 }
             }
         }
@@ -1757,19 +1788,6 @@ private fun BoardRouteHeader(
 }
 
 @Composable
-private fun BoardColumnHeader() {
-    Row(
-        modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceVariant).padding(horizontal = 20.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(stringResource(R.string.board_column_time), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, modifier = Modifier.width(68.dp))
-        Text(stringResource(R.string.board_column_service), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-        Text(stringResource(R.string.board_column_platform), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, modifier = Modifier.width(42.dp), textAlign = androidx.compose.ui.text.style.TextAlign.End)
-        Text(stringResource(R.string.board_column_status), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, modifier = Modifier.width(50.dp), textAlign = androidx.compose.ui.text.style.TextAlign.End)
-    }
-}
-
-@Composable
 private fun MonitoredRoutesStrip(
     routes: List<SavedRoute>,
     activeId: String,
@@ -1798,56 +1816,6 @@ private fun MonitoredRoutesStrip(
 }
 
 @Composable
-private fun DataStatusLine(
-    freshness: Freshness?,
-    provider: String,
-    confidence: String,
-    refreshedAt: Long,
-    isDemonstration: Boolean,
-    message: UiMessage?
-) {
-    val messageText = message?.localized()
-    val label = when {
-        isDemonstration -> stringResource(R.string.data_status_demo)
-        freshness == Freshness.UNAVAILABLE || freshness == null -> stringResource(R.string.data_status_unavailable)
-        else -> stringResource(R.string.data_status_live, freshness.localizedLabel())
-    }
-    val color = when {
-        isDemonstration -> MaterialTheme.colorScheme.tertiary
-        freshness == Freshness.UNAVAILABLE || freshness == null -> MaterialTheme.colorScheme.error
-        else -> MaterialTheme.colorScheme.secondary
-    }
-    val statusContentDescription = stringResource(
-        R.string.accessibility_data_status,
-        label,
-        provider,
-        confidence,
-        accessibleUpdateTime(refreshedAt),
-        messageText?.takeIf(String::isNotBlank)?.let { stringResource(R.string.accessibility_optional_message, it) }.orEmpty()
-    )
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 14.dp)
-            .clearAndSetSemantics {
-                contentDescription = statusContentDescription
-            },
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(Icons.Default.Info, contentDescription = null, tint = color, modifier = Modifier.size(18.dp))
-        Spacer(Modifier.width(8.dp))
-        Column(Modifier.weight(1f)) {
-            Text(label, style = MaterialTheme.typography.labelLarge, color = color, fontWeight = FontWeight.Bold)
-            Text(if (refreshedAt > 0L) stringResource(R.string.provider_updated_at, provider, accessibleUpdateTime(refreshedAt)) else provider, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            messageText?.takeIf { it.isNotBlank() }?.let {
-                Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        }
-    }
-    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-}
-
-@Composable
 private fun ListHeading(title: String, subtitle: String) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 8.dp),
@@ -1856,58 +1824,6 @@ private fun ListHeading(title: String, subtitle: String) {
         Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
         Text(subtitle, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
-}
-
-@Composable
-private fun DepartureListRow(service: TrainService, isNext: Boolean = false, onOpen: () -> Unit) {
-    val serviceState = if (service.operationalStatusVerified) {
-        stringResource(R.string.service_state_live, service.status.localizedLabel())
-    } else {
-        stringResource(R.string.service_state_scheduled)
-    }
-    val serviceContentDescription = stringResource(
-        R.string.accessibility_open_service,
-        service.localizedAccessibleSummary(),
-        serviceState
-    )
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(if (isNext) MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.48f) else MaterialTheme.colorScheme.background)
-            .clearAndSetSemantics {
-                contentDescription = serviceContentDescription
-            }
-            .clickable(role = Role.Button, onClick = onOpen)
-            .padding(horizontal = 20.dp, vertical = 14.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Column(Modifier.width(68.dp)) {
-            Text(service.expectedDeparture, style = MaterialTheme.typography.titleLarge, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
-            if (!service.operationalStatusVerified) Text(stringResource(R.string.service_scheduled_lowercase), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            else if (service.delayMinutes > 0) Text(stringResource(R.string.delay_minutes, service.delayMinutes), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.tertiary, fontWeight = FontWeight.Bold)
-            else Text(stringResource(R.string.service_on_time_lowercase), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.secondary)
-        }
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(service.destination, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(stringResource(R.string.service_operator_category_number, service.displayOperator, service.trainCategory.localizedLabel(), service.number), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            service.routeChange?.let {
-                Text(
-                    routeChangeLabel(it),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = routeChangeAccent(it),
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1
-                )
-            }
-        }
-        Column(horizontalAlignment = Alignment.End, modifier = Modifier.width(50.dp)) {
-            Text(service.platform?.let { stringResource(R.string.platform_short, it) } ?: "—", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
-        }
-        Column(horizontalAlignment = Alignment.End, modifier = Modifier.width(50.dp)) {
-            Text(compactStatusLabel(service), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
-        }
-    }
-    HorizontalDivider(modifier = Modifier.padding(start = 20.dp), color = MaterialTheme.colorScheme.outlineVariant)
 }
 
 @Composable
@@ -2525,7 +2441,7 @@ private fun ServiceDetailScreen(
     onRefresh: () -> Unit,
     isMonitored: Boolean,
     onToggleMonitoring: () -> Unit,
-    onScheduleStopAlarm: (TrainService, TrainStop) -> Unit,
+    onScheduleStopAlarm: (TrainService, TrainStop, Int) -> Unit,
     alarmFeedback: String?,
     activeTrip: ActiveTrip?,
     onStartActiveTrip: () -> Unit,
@@ -2533,6 +2449,15 @@ private fun ServiceDetailScreen(
     onEndActiveTrip: () -> Unit,
     onShare: () -> Unit
 ) {
+    var alarmTarget by remember(service.id) { mutableStateOf<TrainStop?>(null) }
+    alarmTarget?.let { target ->
+        StopAlarmSheet(
+            service = service,
+            stop = target,
+            onConfirm = { minutes -> onScheduleStopAlarm(service, target, minutes); alarmTarget = null },
+            onDismiss = { alarmTarget = null }
+        )
+    }
     val dataLabel = if (isDemonstration) stringResource(R.string.data_status_demo) else freshness?.localizedLabel() ?: stringResource(R.string.data_status_unavailable)
     LazyColumn(modifier = modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(0.dp)) {
         item {
@@ -2546,7 +2471,7 @@ private fun ServiceDetailScreen(
                             Text(service.expectedDeparture, style = MaterialTheme.typography.displaySmall, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
                             Text(stringResource(R.string.service_scheduled_departure, service.scheduledDeparture), style = MaterialTheme.typography.bodySmall)
                         }
-                        ServiceStatusBadge(service)
+                        ServiceStatusBadge(service, isCurrent = freshness != Freshness.STALE)
                     }
                     Text(service.platform?.let { stringResource(R.string.platform_label, it) } ?: stringResource(R.string.platform_to_confirm), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 }
@@ -2632,7 +2557,7 @@ private fun ServiceDetailScreen(
                 completed = stop.completed,
                 operationalStatusVerified = service.operationalStatusVerified,
                 routeChange = stop.routeChange,
-                onSetAlarm = { onScheduleStopAlarm(service, stop) }
+                onSetAlarm = { alarmTarget = stop }
             )
         }
         item { Spacer(Modifier.height(24.dp)) }
@@ -2798,119 +2723,6 @@ private fun routeChangeAccent(routeChange: OperationalRouteChange) =
     }
 
 @Composable
-private fun ServiceStatusBadge(service: TrainService) {
-    val (container, foreground, text) = if (!service.operationalStatusVerified) {
-        Triple(MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.colorScheme.onSurfaceVariant, stringResource(R.string.service_status_scheduled_badge))
-    } else when (service.status) {
-        ServiceStatus.ON_TIME -> Triple(MaterialTheme.colorScheme.secondary, MaterialTheme.colorScheme.onSecondary, stringResource(R.string.operational_on_time))
-        ServiceStatus.DELAYED -> Triple(MaterialTheme.colorScheme.tertiary, MaterialTheme.colorScheme.onTertiary, stringResource(R.string.delay_minutes, service.delayMinutes))
-        ServiceStatus.CANCELLED -> Triple(MaterialTheme.colorScheme.error, MaterialTheme.colorScheme.onError, stringResource(R.string.service_status_cancelled))
-    }
-    Surface(color = container, contentColor = foreground, shape = RoundedCornerShape(999.dp)) {
-        Text(text, modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
-    }
-}
-
-@Composable
-private fun compactStatusLabel(service: TrainService): String {
-    if (!service.operationalStatusVerified) return stringResource(R.string.service_status_scheduled_compact)
-    return when (service.status) {
-        ServiceStatus.ON_TIME -> stringResource(R.string.operational_on_time)
-        ServiceStatus.DELAYED -> stringResource(R.string.delay_minutes, service.delayMinutes)
-        ServiceStatus.CANCELLED -> stringResource(R.string.service_status_cancelled)
-    }
-}
-
-@Composable
-private fun SavedRoute.localizedName(): String =
-    if (id == UNCONFIGURED_ROUTE_ID) stringResource(R.string.unconfigured_route_name) else name
-
-@Composable
-private fun SavedRoute.localizedDisplayName(direction: Direction): String =
-    if (id == UNCONFIGURED_ROUTE_ID) {
-        stringResource(
-            R.string.unconfigured_route_display,
-            stringResource(R.string.unconfigured_route_origin),
-            stringResource(R.string.unconfigured_route_destination)
-        )
-    } else {
-        displayName(direction)
-    }
-
-@Composable
-private fun Direction.localizedLabel(): String = when (this) {
-    Direction.OUTBOUND -> stringResource(R.string.direction_outbound)
-    Direction.RETURN -> stringResource(R.string.direction_return)
-}
-
-@Composable
-private fun RefreshState.localizedLabel(): String = when (this) {
-    RefreshState.IDLE -> stringResource(R.string.refresh_idle)
-    RefreshState.LOADING -> stringResource(R.string.refresh_loading)
-    RefreshState.SUCCESS -> stringResource(R.string.refresh_success)
-    RefreshState.ERROR -> stringResource(R.string.refresh_error)
-}
-
-@Composable
-private fun Freshness.localizedLabel(): String = when (this) {
-    Freshness.FRESH -> stringResource(R.string.freshness_fresh)
-    Freshness.AGING -> stringResource(R.string.freshness_aging)
-    Freshness.STALE -> stringResource(R.string.freshness_stale)
-    Freshness.UNAVAILABLE -> stringResource(R.string.freshness_unavailable)
-}
-
-@Composable
-private fun DataConfidence.localizedLabel(): String = when (this) {
-    DataConfidence.OPERATOR_PRIMARY -> stringResource(R.string.data_confidence_operator_primary)
-    DataConfidence.INFRASTRUCTURE_PRIMARY -> stringResource(R.string.data_confidence_infrastructure_primary)
-    DataConfidence.OPEN_DATA -> stringResource(R.string.data_confidence_open_data)
-    DataConfidence.LICENSED_AGGREGATE -> stringResource(R.string.data_confidence_licensed_aggregate)
-    DataConfidence.STATIC_ONLY -> stringResource(R.string.data_confidence_static_only)
-    DataConfidence.CACHED -> stringResource(R.string.data_confidence_cached)
-    DataConfidence.DEMONSTRATION -> stringResource(R.string.data_confidence_demonstration)
-}
-
-@Composable
-private fun TrainCategory.localizedLabel(): String = when (this) {
-    TrainCategory.REGIONALE -> stringResource(R.string.train_category_regionale)
-    TrainCategory.REGIONALE_VELOCE -> stringResource(R.string.train_category_regionale_veloce)
-    TrainCategory.INTERCITY -> stringResource(R.string.train_category_intercity)
-    TrainCategory.FRECCE -> stringResource(R.string.train_category_frecce)
-    TrainCategory.AV_ITALO -> stringResource(R.string.train_category_italo_high_speed)
-    TrainCategory.TRENORD_REGIO -> stringResource(R.string.train_category_trenord_regional)
-    TrainCategory.METROPOLITANO -> stringResource(R.string.train_category_metropolitan)
-    TrainCategory.OTHER -> stringResource(R.string.train_category_other)
-}
-
-@Composable
-private fun TrainService.localizedAccessibleSummary(): String {
-    val transferLabel = if (transferCount == 0) {
-        stringResource(R.string.service_transfer_direct)
-    } else {
-        pluralStringResource(R.plurals.service_transfer_count, transferCount, transferCount)
-    }
-    val operationalLabel = if (operationalStatusVerified) {
-        status.localizedLabel()
-    } else {
-        stringResource(R.string.operational_status_unverified)
-    }
-    val platformLabel = platform?.let { stringResource(R.string.platform_label, it) }
-        ?: stringResource(R.string.platform_unavailable)
-    return stringResource(
-        R.string.accessibility_train_service_summary,
-        displayOperator,
-        trainCategory.localizedLabel(),
-        number,
-        origin,
-        destination,
-        expectedDeparture,
-        transferLabel,
-        operationalLabel,
-        platformLabel
-    )
-}
-
-@Composable
 private fun StationMonitor.localizedSummary(): String = stringResource(
     R.string.station_monitor_summary,
     stationName,
@@ -2938,13 +2750,6 @@ private fun MobilityPreferences.localizedSummary(): String = stringResource(
     if (stepFreePreferred) stringResource(R.string.mobility_summary_step_free) else "",
     if (compactTimetablePreferred) stringResource(R.string.mobility_summary_compact) else ""
 )
-
-@Composable
-private fun ServiceStatus.localizedLabel(): String = when (this) {
-    ServiceStatus.ON_TIME -> stringResource(R.string.service_status_on_time)
-    ServiceStatus.DELAYED -> stringResource(R.string.service_status_delayed)
-    ServiceStatus.CANCELLED -> stringResource(R.string.service_status_cancelled)
-}
 
 @Composable
 private fun StationMonitorMode.localizedLabel(): String = when (this) {

@@ -14,11 +14,13 @@ data class StopAlarmPlan(
     val destination: String,
     val station: String,
     val expectedTime: String,
-    val triggerAtEpochMillis: Long
+    val triggerAtEpochMillis: Long,
+    val alarmId: String = "$trainNumber|$station|$expectedTime"
 )
 
 object StopAlarmPlanner {
-    private const val LEAD_MINUTES = 5L
+    const val DEFAULT_LEAD_MINUTES = 5
+    val leadMinutesRange: IntRange = 1..60
     private val timeFormatter = DateTimeFormatter.ofPattern("H:mm")
 
     fun plan(
@@ -27,8 +29,10 @@ object StopAlarmPlanner {
         station: String,
         expectedTime: String,
         nowEpochMillis: Long = System.currentTimeMillis(),
-        zoneId: ZoneId = RailTime.defaultZone
+        zoneId: ZoneId = RailTime.defaultZone,
+        leadMinutes: Int = DEFAULT_LEAD_MINUTES
     ): StopAlarmPlan? {
+        if (leadMinutes !in leadMinutesRange) return null
         val time = parse(expectedTime) ?: return null
         val now = Instant.ofEpochMilli(nowEpochMillis).atZone(zoneId)
         val todayExpected = LocalDateTime.of(now.toLocalDate(), time).atZone(zoneId).toInstant().toEpochMilli()
@@ -43,7 +47,9 @@ object StopAlarmPlanner {
         } else {
             todayExpected
         }
-        return planAt(trainNumber, destination, station, expectedTime, expected, nowEpochMillis)
+        val expectedDate = Instant.ofEpochMilli(expected).atZone(zoneId).toLocalDate()
+        return planAt(trainNumber, destination, station, expectedTime, expected, nowEpochMillis, leadMinutes,
+            "$trainNumber|$station|$expectedDate")
     }
 
     /**
@@ -55,14 +61,18 @@ object StopAlarmPlanner {
         service: TrainService,
         stop: TrainStop,
         nowEpochMillis: Long = System.currentTimeMillis(),
-        zoneId: ZoneId = RailTime.defaultZone
+        zoneId: ZoneId = RailTime.defaultZone,
+        leadMinutes: Int = DEFAULT_LEAD_MINUTES
     ): StopAlarmPlan? {
+        if (stop.completed || leadMinutes !in leadMinutesRange) return null
         val departure = service.scheduledDepartureDateTime
-            ?: return plan(service.number, service.destination, stop.station, stop.expected, nowEpochMillis, zoneId)
+            ?: return plan(service.number, service.destination, stop.station, stop.expected, nowEpochMillis, zoneId, leadMinutes)
+                ?.let { it.copy(alarmId = "${it.alarmId}|${service.id}|${stop.scheduled}") }
         val time = parse(stop.expected) ?: return null
         val date = if (time < departure.toLocalTime()) departure.toLocalDate().plusDays(1) else departure.toLocalDate()
         val expected = LocalDateTime.of(date, time).atZone(zoneId).toInstant().toEpochMilli()
-        return planAt(service.number, service.destination, stop.station, stop.expected, expected, nowEpochMillis)
+        return planAt(service.number, service.destination, stop.station, stop.expected, expected, nowEpochMillis, leadMinutes,
+            "${service.id}|${departure.toLocalDate()}|${stop.station}|${stop.scheduled}")
     }
 
     private fun planAt(
@@ -71,11 +81,13 @@ object StopAlarmPlanner {
         station: String,
         expectedTime: String,
         expectedEpochMillis: Long,
-        nowEpochMillis: Long
+        nowEpochMillis: Long,
+        leadMinutes: Int,
+        alarmId: String
     ): StopAlarmPlan? {
         if (expectedEpochMillis <= nowEpochMillis) return null
-        val trigger = maxOf(nowEpochMillis + 1_000L, expectedEpochMillis - LEAD_MINUTES * 60_000L)
-        return StopAlarmPlan(trainNumber, destination, station, expectedTime, trigger)
+        val trigger = minOf(expectedEpochMillis, maxOf(nowEpochMillis + 1_000L, expectedEpochMillis - leadMinutes * 60_000L))
+        return StopAlarmPlan(trainNumber, destination, station, expectedTime, trigger, alarmId)
     }
 
     private fun parse(value: String): LocalTime? = runCatching { LocalTime.parse(value, timeFormatter) }.getOrNull()

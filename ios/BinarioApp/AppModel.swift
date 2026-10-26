@@ -24,10 +24,14 @@ final class AppModel: ObservableObject {
     @Published var searchState: SearchState = .idle
     @Published private(set) var scheduleState: ScheduleState
     @Published private(set) var latestSnapshot: JourneySnapshot?
+    @Published private(set) var isRefreshing = false
+    @Published private(set) var commuterRouteID: String?
+    @Published private(set) var commuterDirection: JourneyDirection = .outbound
     @Published var persistenceMessageKey: String?
 
     private(set) var repository: any JourneyRepository
     private var searchRequestID = 0
+    private var lastCommuteAttempt: Date?
     let versionDisplay: String
 
     private let savedRouteStore: SavedRouteStore
@@ -52,6 +56,8 @@ final class AppModel: ObservableObject {
         self.watchPublisher = watchPublisher
         self.versionDisplay = versionDisplay
         self.savedRoutes = savedRouteStore.load()
+        self.commuterRouteID = savedRouteStore.commuterRouteID
+        self.commuterDirection = savedRouteStore.commuterDirection
         let sharingEnabled = watchSharingStore.load()
         self.watchSharingEnabled = sharingEnabled
         self.watchSyncStatus = sharingEnabled ? .activating : .disabled
@@ -146,11 +152,20 @@ final class AppModel: ObservableObject {
         scheduleState = .available
     }
 
-    func run(query: JourneyQuery) async {
+    func run(query: JourneyQuery, followingCommute: Bool = false) async {
+        if !followingCommute { lastCommuteAttempt = nil }
         searchRequestID &+= 1
         let requestID = searchRequestID
+        isRefreshing = true
+        defer {
+            if requestID == searchRequestID {
+                isRefreshing = false
+                if Task.isCancelled && followingCommute { lastCommuteAttempt = nil }
+            }
+        }
         let result = await repository.journeys(for: query)
         guard requestID == searchRequestID else { return }
+        guard !Task.isCancelled else { return }
         switch result {
         case let .available(snapshot):
             searchState = .idle
@@ -168,10 +183,46 @@ final class AppModel: ObservableObject {
 
     func invalidateSearchResult() {
         searchRequestID &+= 1
+        isRefreshing = false
+        lastCommuteAttempt = nil
         searchState = .idle
         latestSnapshot = nil
         if watchSharingEnabled {
             revokeWatchSnapshot()
+        }
+    }
+
+    var commuterRoute: SavedRoute? { savedRoutes.first { $0.id == commuterRouteID } }
+
+    func followRoute(_ route: SavedRoute, direction: JourneyDirection = .outbound, now: Date = Date()) async {
+        guard scheduleState == .available, savedRoutes.contains(where: { $0.id == route.id }) else { return }
+        let reversed = direction == .return
+        guard let query = try? JourneyQuery(
+            origin: reversed ? route.destination : route.origin,
+            destination: reversed ? route.origin : route.destination,
+            departure: now,
+            direction: direction
+        ) else { return }
+        if commuterRouteID != route.id || commuterDirection != direction {
+            invalidateSearchResult()
+        }
+        commuterRouteID = route.id
+        commuterDirection = direction
+        savedRouteStore.selectCommute(routeID: route.id, direction: direction)
+        lastCommuteAttempt = now
+        await run(query: query, followingCommute: true)
+    }
+
+    /// The view owns the cancellable foreground loop. There is no background timer or location access.
+    func refreshCommute(now: Date = Date(), force: Bool = false) async {
+        guard let route = commuterRoute, scheduleState == .available, !isRefreshing else { return }
+        let failed: Bool
+        if case .unavailable = searchState { failed = true } else { failed = false }
+        if force || CommuterRefreshPolicy.shouldRefresh(
+            loading: isRefreshing, lastAttempt: lastCommuteAttempt, snapshot: latestSnapshot,
+            now: now, failed: failed
+        ) {
+            await followRoute(route, direction: commuterDirection, now: now)
         }
     }
 
@@ -230,6 +281,11 @@ final class AppModel: ObservableObject {
         let validated = try SavedRouteCollection(validating: routes)
         try savedRouteStore.save(validated.routes)
         savedRoutes = validated.routes
+        if commuterRouteID != nil, commuterRoute == nil {
+            commuterRouteID = nil
+            savedRouteStore.selectCommute(routeID: nil, direction: .outbound)
+            invalidateSearchResult()
+        }
     }
 
     private func revokeWatchSnapshot() {
@@ -356,6 +412,8 @@ final class AppModel: ObservableObject {
 @MainActor
 final class SavedRouteStore {
     static let storageKey = "it.binario.ios.saved-routes.v1"
+    private static let commuterRouteKey = "it.binario.ios.commuter-route.v1"
+    private static let commuterDirectionKey = "it.binario.ios.commuter-direction.v1"
 
     private let defaults: UserDefaults
     private let encoder: JSONEncoder
@@ -380,6 +438,21 @@ final class SavedRouteStore {
     func save(_ routes: [SavedRoute]) throws {
         let validated = try SavedRouteCollection(validating: routes)
         defaults.set(try encoder.encode(validated.routes), forKey: Self.storageKey)
+    }
+
+    var commuterRouteID: String? { defaults.string(forKey: Self.commuterRouteKey) }
+    var commuterDirection: JourneyDirection {
+        JourneyDirection(rawValue: defaults.string(forKey: Self.commuterDirectionKey) ?? "") == .return ? .return : .outbound
+    }
+
+    func selectCommute(routeID: String?, direction: JourneyDirection) {
+        if let routeID {
+            defaults.set(routeID, forKey: Self.commuterRouteKey)
+            defaults.set(direction.rawValue, forKey: Self.commuterDirectionKey)
+        } else {
+            defaults.removeObject(forKey: Self.commuterRouteKey)
+            defaults.removeObject(forKey: Self.commuterDirectionKey)
+        }
     }
 }
 

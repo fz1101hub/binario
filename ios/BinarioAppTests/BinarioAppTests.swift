@@ -324,6 +324,23 @@ final class BinarioAppTests: XCTestCase {
         XCTAssertEqual(BundleAppVersionFormatter().displayVersion(bundle: bundle), "1.2.3 (45)")
     }
 
+    func testCommuteSelectionPersistsLocallyAndIsClearedWithTheSavedRoute() throws {
+        let defaults = try makeDefaults()
+        defer { clear(defaults) }
+        let store = SavedRouteStore(defaults: defaults)
+        let route = try fixtureRoute()
+        try store.save([route])
+        store.selectCommute(routeID: route.id, direction: .return)
+        let model = makeModel(defaults: defaults, publisher: nil)
+
+        XCTAssertEqual(model.commuterRoute?.id, route.id)
+        XCTAssertEqual(model.commuterDirection, .return)
+        model.deleteAllRoutes()
+        XCTAssertNil(model.commuterRouteID)
+        XCTAssertNil(store.commuterRouteID)
+        XCTAssertEqual(store.commuterDirection, .outbound)
+    }
+
     private func makeModel(
         defaults: UserDefaults,
         publisher: WatchSnapshotPublisher?,

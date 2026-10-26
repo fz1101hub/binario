@@ -1,6 +1,11 @@
 public enum BinarioLocalizationKeys {
     public static let required: Set<String> = [
         "action.ok", "app.name",
+        "commuter.tab", "commuter.title", "commuter.intro",
+        "commuter.empty.title", "commuter.empty.body", "commuter.search", "commuter.routes",
+        "commuter.refresh.note", "commuter.active", "commuter.reverse", "commuter.refresh", "commuter.next",
+        "commuter.data.live", "commuter.data.scheduled", "commuter.data.stale", "commuter.unavailable",
+        "commuter.delay_format", "commuter.platform",
         "tab.planner", "tab.saved", "tab.settings",
         "planner.title", "planner.intro.title", "planner.intro.body",
         "planner.origin", "planner.destination", "planner.departure",
