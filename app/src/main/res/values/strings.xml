@@ -1,4 +1,4 @@
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools" tools:locale="it">
     <string name="app_name">Binario</string>
     <string name="widget_description">Mostra le prossime corse della tua tratta Binario.</string>
     <string name="widget_refresh">Aggiorna corse</string>
