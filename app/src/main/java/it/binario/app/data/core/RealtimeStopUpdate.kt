@@ -2,6 +2,7 @@ package it.binario.app.data.core
 
 import java.time.Duration
 import java.time.Instant
+import java.time.LocalDate
 import java.time.ZonedDateTime
 
 /** Indica se il tempo realtime è una previsione o un evento effettivamente osservato dal provider. */
@@ -10,6 +11,8 @@ enum class RealtimeTimeKind {
     ACTUAL,
     UNKNOWN
 }
+
+enum class RealtimeStopEventKind { ARRIVAL, DEPARTURE, UNKNOWN }
 
 /**
  * Forma normalizzata di un aggiornamento GTFS-Realtime per una fermata.
@@ -26,7 +29,10 @@ data class RealtimeStopUpdate(
     val actualAt: SourcedValue<ZonedDateTime>? = null,
     val officialDelay: SourcedValue<Duration>? = null,
     val observedAt: Instant,
-    val source: SourceRef
+    val source: SourceRef,
+    /** GTFS service day. Without it a repeating trip template cannot be attributed safely. */
+    val serviceDate: LocalDate? = null,
+    val eventKind: RealtimeStopEventKind = RealtimeStopEventKind.UNKNOWN
 ) {
     init {
         require(sourceTripId.isNotBlank()) { "L'identificativo della corsa sorgente è obbligatorio" }

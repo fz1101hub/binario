@@ -24,15 +24,21 @@ final class AppModel: ObservableObject {
     @Published var searchState: SearchState = .idle
     @Published private(set) var scheduleState: ScheduleState
     @Published private(set) var latestSnapshot: JourneySnapshot?
+    @Published private(set) var isRefreshing = false
+    @Published private(set) var commuterRouteID: String?
+    @Published private(set) var commuterDirection: JourneyDirection = .outbound
     @Published var persistenceMessageKey: String?
 
     private(set) var repository: any JourneyRepository
     private var searchRequestID = 0
+    private var lastCommuteAttempt: Date?
     let versionDisplay: String
 
     private let savedRouteStore: SavedRouteStore
     private let watchSharingStore: WatchSharingPreferenceStore
     private let watchPublisher: WatchSnapshotPublisher?
+    private let realtimeCatalog: RfiStationCatalog?
+    var hasRealtimeProvider: Bool { realtimeCatalog != nil }
 
     init(
         catalogState: CatalogState,
@@ -41,7 +47,8 @@ final class AppModel: ObservableObject {
         repository: any JourneyRepository,
         scheduleState: ScheduleState = .available,
         watchPublisher: WatchSnapshotPublisher?,
-        versionDisplay: String
+        versionDisplay: String,
+        realtimeCatalog: RfiStationCatalog? = nil
     ) {
         self.catalogState = catalogState
         self.savedRouteStore = savedRouteStore
@@ -50,8 +57,11 @@ final class AppModel: ObservableObject {
         self.scheduleState = scheduleState
         self.latestSnapshot = nil
         self.watchPublisher = watchPublisher
+        self.realtimeCatalog = realtimeCatalog
         self.versionDisplay = versionDisplay
         self.savedRoutes = savedRouteStore.load()
+        self.commuterRouteID = savedRouteStore.commuterRouteID
+        self.commuterDirection = savedRouteStore.commuterDirection
         let sharingEnabled = watchSharingStore.load()
         self.watchSharingEnabled = sharingEnabled
         self.watchSyncStatus = sharingEnabled ? .activating : .disabled
@@ -77,14 +87,24 @@ final class AppModel: ObservableObject {
         publisher = nil
         #endif
 
+        let realtimeCatalog = bundle.url(forResource: "rfi_stations.v1", withExtension: "json")
+            .flatMap { try? Data(contentsOf: $0) }
+            .flatMap { try? RfiStationCatalog(data: $0) }
+        let liveRepository: any JourneyRepository
+        if let realtimeCatalog {
+            liveRepository = RfiJourneyRepository(catalog: realtimeCatalog)
+        } else {
+            liveRepository = FailClosedJourneyRepository()
+        }
         let model = AppModel(
             catalogState: .loading,
             savedRouteStore: SavedRouteStore(),
             watchSharingStore: WatchSharingPreferenceStore(),
-            repository: FailClosedJourneyRepository(),
+            repository: liveRepository,
             scheduleState: .loading,
             watchPublisher: publisher,
-            versionDisplay: versionFormatter.displayVersion(bundle: bundle)
+            versionDisplay: versionFormatter.displayVersion(bundle: bundle),
+            realtimeCatalog: realtimeCatalog
         )
 
         if let url = bundle.url(forResource: "curated_it_rail_stations", withExtension: "json") {
@@ -102,7 +122,7 @@ final class AppModel: ObservableObject {
                 in: .userDomainMask
             ).first
         else {
-            model.scheduleState = .unavailable
+            model.scheduleState = realtimeCatalog == nil ? .unavailable : .available
             return model
         }
         let cacheDirectory = applicationSupport
@@ -129,7 +149,7 @@ final class AppModel: ObservableObject {
     }
 
     func loadSchedule(compressedURL: URL, metadataURL: URL, cacheDirectory: URL) async {
-        scheduleState = .loading
+        scheduleState = realtimeCatalog == nil ? .loading : .available
         let installedURL = await Task.detached(priority: .utility) {
             try? BundledGTFSScheduleInstaller().install(
                 compressedURL: compressedURL,
@@ -138,19 +158,33 @@ final class AppModel: ObservableObject {
             )
         }.value
         guard let installedURL else {
-            repository = FailClosedJourneyRepository()
-            scheduleState = .unavailable
+            repository = withRealtime(fallback: FailClosedJourneyRepository())
+            scheduleState = realtimeCatalog == nil ? .unavailable : .available
             return
         }
-        repository = SQLiteGTFSJourneyRepository(databaseURL: installedURL)
+        repository = withRealtime(fallback: SQLiteGTFSJourneyRepository(databaseURL: installedURL))
         scheduleState = .available
     }
 
-    func run(query: JourneyQuery) async {
+    private func withRealtime(fallback: any JourneyRepository) -> any JourneyRepository {
+        guard let realtimeCatalog else { return fallback }
+        return RfiJourneyRepository(catalog: realtimeCatalog, fallback: fallback)
+    }
+
+    func run(query: JourneyQuery, followingCommute: Bool = false) async {
+        if !followingCommute { lastCommuteAttempt = nil }
         searchRequestID &+= 1
         let requestID = searchRequestID
+        isRefreshing = true
+        defer {
+            if requestID == searchRequestID {
+                isRefreshing = false
+                if Task.isCancelled && followingCommute { lastCommuteAttempt = nil }
+            }
+        }
         let result = await repository.journeys(for: query)
         guard requestID == searchRequestID else { return }
+        guard !Task.isCancelled else { return }
         switch result {
         case let .available(snapshot):
             searchState = .idle
@@ -159,7 +193,7 @@ final class AppModel: ObservableObject {
         case let .unavailable(reason):
             searchState = .unavailable(reason)
             latestSnapshot = nil
-            if reason == .noAuthorizedProvider || reason == .providerInvalid {
+            if realtimeCatalog == nil && (reason == .noAuthorizedProvider || reason == .providerInvalid) {
                 scheduleState = .unavailable
             }
             publishUnavailableSnapshot(for: query)
@@ -168,10 +202,46 @@ final class AppModel: ObservableObject {
 
     func invalidateSearchResult() {
         searchRequestID &+= 1
+        isRefreshing = false
+        lastCommuteAttempt = nil
         searchState = .idle
         latestSnapshot = nil
         if watchSharingEnabled {
             revokeWatchSnapshot()
+        }
+    }
+
+    var commuterRoute: SavedRoute? { savedRoutes.first { $0.id == commuterRouteID } }
+
+    func followRoute(_ route: SavedRoute, direction: JourneyDirection = .outbound, now: Date = Date()) async {
+        guard scheduleState == .available, savedRoutes.contains(where: { $0.id == route.id }) else { return }
+        let reversed = direction == .return
+        guard let query = try? JourneyQuery(
+            origin: reversed ? route.destination : route.origin,
+            destination: reversed ? route.origin : route.destination,
+            departure: now,
+            direction: direction
+        ) else { return }
+        if commuterRouteID != route.id || commuterDirection != direction {
+            invalidateSearchResult()
+        }
+        commuterRouteID = route.id
+        commuterDirection = direction
+        savedRouteStore.selectCommute(routeID: route.id, direction: direction)
+        lastCommuteAttempt = now
+        await run(query: query, followingCommute: true)
+    }
+
+    /// The view owns the cancellable foreground loop. There is no background timer or location access.
+    func refreshCommute(now: Date = Date(), force: Bool = false) async {
+        guard let route = commuterRoute, scheduleState == .available, !isRefreshing else { return }
+        let failed: Bool
+        if case .unavailable = searchState { failed = true } else { failed = false }
+        if force || CommuterRefreshPolicy.shouldRefresh(
+            loading: isRefreshing, lastAttempt: lastCommuteAttempt,
+            now: now, failed: failed
+        ) {
+            await followRoute(route, direction: commuterDirection, now: now)
         }
     }
 
@@ -230,6 +300,11 @@ final class AppModel: ObservableObject {
         let validated = try SavedRouteCollection(validating: routes)
         try savedRouteStore.save(validated.routes)
         savedRoutes = validated.routes
+        if commuterRouteID != nil, commuterRoute == nil {
+            commuterRouteID = nil
+            savedRouteStore.selectCommute(routeID: nil, direction: .outbound)
+            invalidateSearchResult()
+        }
     }
 
     private func revokeWatchSnapshot() {
@@ -356,6 +431,8 @@ final class AppModel: ObservableObject {
 @MainActor
 final class SavedRouteStore {
     static let storageKey = "it.binario.ios.saved-routes.v1"
+    private static let commuterRouteKey = "it.binario.ios.commuter-route.v1"
+    private static let commuterDirectionKey = "it.binario.ios.commuter-direction.v1"
 
     private let defaults: UserDefaults
     private let encoder: JSONEncoder
@@ -380,6 +457,21 @@ final class SavedRouteStore {
     func save(_ routes: [SavedRoute]) throws {
         let validated = try SavedRouteCollection(validating: routes)
         defaults.set(try encoder.encode(validated.routes), forKey: Self.storageKey)
+    }
+
+    var commuterRouteID: String? { defaults.string(forKey: Self.commuterRouteKey) }
+    var commuterDirection: JourneyDirection {
+        JourneyDirection(rawValue: defaults.string(forKey: Self.commuterDirectionKey) ?? "") == .return ? .return : .outbound
+    }
+
+    func selectCommute(routeID: String?, direction: JourneyDirection) {
+        if let routeID {
+            defaults.set(routeID, forKey: Self.commuterRouteKey)
+            defaults.set(direction.rawValue, forKey: Self.commuterDirectionKey)
+        } else {
+            defaults.removeObject(forKey: Self.commuterRouteKey)
+            defaults.removeObject(forKey: Self.commuterDirectionKey)
+        }
     }
 }
 

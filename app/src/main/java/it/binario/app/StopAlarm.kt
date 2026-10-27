@@ -10,6 +10,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
+import android.net.Uri
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
@@ -25,6 +26,7 @@ object StopAlarmScheduler {
     fun schedule(context: Context, plan: StopAlarmPlan): DeviceAlarmScheduleResult {
         val intent = Intent(context, StopAlarmReceiver::class.java).apply {
             action = ACTION_STOP_ALARM
+            data = Uri.Builder().scheme("binario").authority("stop-alarm").appendPath(plan.alarmId).build()
             putExtra(EXTRA_TRAIN, plan.trainNumber)
             putExtra(EXTRA_DESTINATION, plan.destination)
             putExtra(EXTRA_STATION, plan.station)
@@ -32,7 +34,7 @@ object StopAlarmScheduler {
         }
         val pendingIntent = PendingIntent.getBroadcast(
             context,
-            "${plan.trainNumber}-${plan.station}-${plan.triggerAtEpochMillis}".hashCode(),
+            0,
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )

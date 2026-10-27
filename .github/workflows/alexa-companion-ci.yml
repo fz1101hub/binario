@@ -4,6 +4,8 @@ on:
   pull_request:
     paths:
       - "alexa-companion/**"
+      - "contracts/rail-sources/**"
+      - "contracts/rail-live-fixtures/**"
       - ".github/workflows/alexa-companion-ci.yml"
   push:
     branches:
@@ -11,6 +13,8 @@ on:
       - "stabilization/**"
     paths:
       - "alexa-companion/**"
+      - "contracts/rail-sources/**"
+      - "contracts/rail-live-fixtures/**"
       - ".github/workflows/alexa-companion-ci.yml"
   workflow_dispatch:
 
@@ -75,8 +79,16 @@ jobs:
           pnpm run db:generate
           test -z "$(git status --porcelain --untracked-files=all -- drizzle)"
 
+
       - name: Unit tests
         run: pnpm test
+
+      - name: Verify current HTTPS departures through the Alexa data source
+        working-directory: alexa-companion
+        env:
+          BINARIO_VERIFY_LIVE: "true"
+        run: pnpm exec vitest run server/rail/rfi.test.ts
+
 
       - name: Real MariaDB migration checks
         env:

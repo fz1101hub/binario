@@ -18,7 +18,7 @@ CATALOG = ROOT / "app/src/main/assets/stations/curated_it_rail_stations.json"
 CATALOG_MANIFEST = ROOT / "app/src/main/assets/stations/manifest.json"
 LANGUAGES = {"it", "en", "de", "fr", "es"}
 STRINGS_ENTRY = re.compile(r'^"((?:[^"\\]|\\.)+)"\s*=\s*"((?:[^"\\]|\\.)*)";$')
-SWIFT_REQUIRED_KEY = re.compile(r'"((?:action|app|tab|planner|catalog|schedule|result|saved|settings|watch|accessibility)\.[a-z0-9_.]+)"')
+SWIFT_REQUIRED_KEY = re.compile(r'"((?:action|app|tab|planner|catalog|schedule|result|saved|settings|watch|accessibility|commuter)\.[a-z0-9_.]+)"')
 PLACEHOLDER = re.compile(r'%(?:\d+\$)?[@diufFeEgGxXoscpaA]')
 
 

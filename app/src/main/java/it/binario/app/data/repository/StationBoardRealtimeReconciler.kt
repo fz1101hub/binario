@@ -49,11 +49,20 @@ class StationBoardEnrichedTrainDataSource(
     private val zone: ZoneId = RailTime.defaultZone
 ) : TrainDataSource {
     override suspend fun loadRoute(route: SavedRoute, direction: Direction): DataResult =
-        loadRoute(route, direction, JourneyQuery.now())
+        loadRoute(route, direction, JourneyQuery.now(clock))
 
     override suspend fun loadRoute(route: SavedRoute, direction: Direction, query: JourneyQuery): DataResult {
-        val planned = plannedSource.loadRoute(route, direction, query)
         val today = clock.instant().atZone(clock.zone).toLocalDate()
+        // The current station board already carries train identities and onward
+        // stops. Serve it first, even if the static timetable has no such route.
+        // Future dates keep their explicit planned search semantics.
+        if (query.serviceDate == today) {
+            boardProviders.filterIsInstance<it.binario.app.data.live.RfiStationBoardAdapter>().forEach { provider ->
+                val live = provider.loadRoute(route, direction, query)
+                if (live is DataResult.Success) return live
+            }
+        }
+        val planned = plannedSource.loadRoute(route, direction, query)
 
         if (planned is DataResult.Success) {
             if (query.serviceDate != today || boardProviders.isEmpty()) return planned

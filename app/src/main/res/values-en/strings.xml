@@ -35,7 +35,6 @@
     <string name="nav_search">Search</string>
     <string name="nav_operations">Browse</string>
     <string name="nav_settings">Settings</string>
-    <string name="nav_agenda">Agenda</string>
     <string name="action_back">Go back</string>
     <string name="action_choose_theme">Choose theme. Current theme %1$s</string>
     <string name="action_refresh_rail_information">Refresh rail information</string>
@@ -97,12 +96,7 @@
 
     <!-- Data provenance and operational-state announcements. -->
     <string name="data_status_demo">Local demonstration catalogue, not live</string>
-    <string name="data_status_live">Live data: %1$s</string>
     <string name="data_status_unavailable">Live data unavailable</string>
-    <string name="accessibility_data_status">Data status: %1$s. Source %2$s. Quality %3$s. %4$s%5$s</string>
-    <string name="accessibility_open_service">Open details. %1$s. %2$s</string>
-    <string name="service_state_scheduled">Scheduled time; live status unavailable</string>
-    <string name="service_state_live">Live status: %1$s</string>
     <string name="station_board_departure_to">To %1$s</string>
     <string name="station_board_arrival_from">From %1$s</string>
     <string name="station_board_scheduled_time">Scheduled time %1$s</string>
@@ -297,13 +291,7 @@
     <string name="accessibility_refresh_departures">Refresh departures. Status: %1$s</string>
     <string name="action_direction">Direction</string>
     <string name="action_change_route">Change route</string>
-    <string name="board_column_time">TIME</string>
-    <string name="board_column_service">DESTINATION / TRAIN</string>
-    <string name="board_column_platform">PLAT.</string>
-    <string name="board_column_status">STATUS</string>
     <string name="monitored_routes_title">Monitored routes</string>
-    <string name="service_scheduled_lowercase">scheduled</string>
-    <string name="service_on_time_lowercase">on time</string>
     <string name="today_empty_description">Refresh the active route or choose a different saved route. Unavailable data is not replaced with estimated times.</string>
     <string name="action_refresh">Refresh</string>
     <string name="action_open_routes">Open my routes</string>
@@ -340,7 +328,7 @@
     <string name="follow_trip_title">Follow this journey</string>
     <string name="follow_trip_description">Keep the next stop locally and advance it manually.</string>
     <string name="action_start_trip">Start journey</string>
-    <string name="stop_alarm_notice">The alarm is local and based on the displayed time. For operational changes, always refer to official boards and announcements.</string>
+    <string name="stop_alarm_notice">The reminder uses the time shown when you set it. Set it again if the train time changes.</string>
 
     <string name="stop_change_added_accessibility">Stop added to the operational route.</string>
     <string name="stop_change_skipped_accessibility">Stop skipped on the operational route.</string>
@@ -432,7 +420,6 @@
     <string name="train_category_trenord_regional">Trenord regional train</string>
     <string name="train_category_metropolitan">Metropolitan train</string>
     <string name="train_category_other">Train</string>
-    <string name="accessibility_train_service_summary">Operator %1$s. %2$s %3$s from %4$s to %5$s. Expected departure %6$s. %7$s. %8$s. %9$s.</string>
     <string name="service_transfer_direct">Direct journey</string>
     <plurals name="service_transfer_count">
         <item quantity="one">%d change</item>
@@ -461,7 +448,7 @@
     <string name="stop_alarm_permission_required">To receive the stop alarm, allow Binario notifications.</string>
     <string name="stop_alarm_completed">Stop %1$s appears to have already been passed.</string>
     <string name="stop_alarm_unavailable">Unable to schedule the alarm: the expected time for the stop has already passed or is unavailable.</string>
-    <string name="stop_alarm_exact">Alarm set for %1$s, five minutes before the expected time of %2$s.</string>
+    <string name="stop_alarm_exact">Reminder for %1$s scheduled for %2$s. Stop expected at %3$s.</string>
     <string name="stop_alarm_inexact">Alarm set for %1$s, but Android may deliver it late because exact alarms are not allowed.</string>
     <string name="commuter_alert_scheduled">Alert saved and scheduled on the device.</string>
     <string name="commuter_alert_scheduled_inexact">Alert saved and scheduled in inexact mode: Android may deliver it late because exact alarms are not allowed.</string>
@@ -491,8 +478,6 @@
     <string name="location_permission_denied">Location permission not granted. You can continue to search for stations manually.</string>
     <string name="distance_kilometers">%1$.1f km</string>
     <string name="provider_updated_at">%1$s · %2$s</string>
-    <string name="accessibility_optional_message"> %1$s</string>
-    <string name="platform_short">Plat. %1$s</string>
     <string name="service_status_scheduled_badge">Scheduled</string>
     <string name="service_status_cancelled">Cancelled</string>
     <string name="service_status_scheduled_compact">Sched.</string>
@@ -547,8 +532,6 @@
     <string name="freshness_aging">Data updating</string>
     <string name="freshness_stale">Last available data</string>
     <string name="freshness_unavailable">Live data unavailable</string>
-    <string name="service_status_on_time">On time</string>
-    <string name="service_status_delayed">Delayed</string>
     <string name="station_monitor_departures">Departures</string>
     <string name="station_monitor_arrivals">Arrivals</string>
     <string name="station_monitor_both">Arrivals and departures</string>
@@ -637,4 +620,32 @@
     <string name="share_freshness_unavailable">Live data unavailable</string>
     <string name="planned_journey_ics_event_description">Journey: %1$s → %2$s, departure %3$s at %4$s (%5$s)</string>
     <string name="planned_journey_ics_reminder_description">Binario journey reminder</string>
+
+    <!-- Commuter home and foreground data state. -->
+    <string name="commuter_nav">Today</string>
+    <string name="commuter_title">Your commute at a glance.</string>
+    <string name="commuter_intro">Your route and next departures, right here.</string>
+    <string name="commuter_active_route">YOUR ROUTE</string>
+    <string name="commuter_return">Reverse direction</string>
+    <string name="commuter_departures_now">Follow departures from now</string>
+    <string name="commuter_empty_title">Where are we heading?</string>
+    <string name="commuter_empty_body">Choose a route to see upcoming trains. Save it to find it here next time.</string>
+    <string name="commuter_choose_route">Find your route</string>
+    <string name="commuter_next_trains">Upcoming trains</string>
+    <string name="commuter_refresh_note">Updates automatically while the app is visible. Delays appear only when confirmed by the source.</string>
+    <string name="commuter_no_trains">No trains available for this search. Try refreshing or choose another route.</string>
+    <string name="commuter_all_trains">Open the full departure board</string>
+    <string name="commuter_saved_routes">Your routes</string>
+    <string name="commuter_agenda">Open your journey agenda</string>
+    <string name="commuter_data_live">Current operational data</string>
+    <string name="commuter_data_scheduled">Scheduled timetable · delays unavailable</string>
+    <string name="commuter_data_stale">Last observation · refresh needed</string>
+
+    <!-- Local stop reminder configuration. -->
+    <string name="stop_alarm_setup_title">Stop reminder</string>
+    <string name="stop_alarm_setup_description">Train %1$s · stop expected at %2$s</string>
+    <string name="stop_alarm_lead_label">Minutes before arrival (1–60)</string>
+    <string name="stop_alarm_lead_error">Choose a number from 1 to 60.</string>
+    <string name="stop_alarm_confirm">Set reminder</string>
+    <string name="stop_alarm_lead_elapsed">If less time remains than your chosen advance, the reminder will arrive as soon as possible.</string>
 </resources>

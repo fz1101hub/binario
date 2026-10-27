@@ -11,6 +11,7 @@ import it.binario.app.data.core.SourceId
 import it.binario.app.data.core.SourceRef
 import it.binario.app.data.core.SourcedValue
 import it.binario.app.data.core.RealtimeStopUpdate
+import it.binario.app.data.core.RealtimeStopEventKind
 import it.binario.app.data.core.StationId
 import it.binario.app.data.core.TrainRunId
 import it.binario.app.data.core.VehiclePosition
@@ -180,6 +181,9 @@ class StaRealtimeAdapter(
             val update = entity.optJSONObject("trip_update") ?: return@mapObjects null
             val tripId = update.optJSONObject("trip")?.optString("trip_id").orEmpty()
             if (tripId.isBlank()) return@mapObjects null
+            val serviceDate = runCatching {
+                java.time.LocalDate.parse(update.optJSONObject("trip")?.optString("start_date"), java.time.format.DateTimeFormatter.BASIC_ISO_DATE)
+            }.getOrNull()
             val nativeEntity = entity.optString("id", tripId)
             val source = sourceRef(nativeEntity, observed)
             update.arrayOrEmpty("stop_time_update").mapObjects { stop ->
@@ -200,7 +204,13 @@ class StaRealtimeAdapter(
                     predictedAt = epoch?.let { itInstant -> SourcedValue(itInstant.let(Instant::ofEpochSecond).atZone(ZoneId.of("Europe/Rome")), valueSource) },
                     officialDelay = delay?.let { SourcedValue(Duration.ofSeconds(it), valueSource) },
                     observedAt = observed,
-                    source = source
+                    source = source,
+                    serviceDate = serviceDate,
+                    eventKind = when {
+                        departure != null -> RealtimeStopEventKind.DEPARTURE
+                        arrival != null -> RealtimeStopEventKind.ARRIVAL
+                        else -> RealtimeStopEventKind.UNKNOWN
+                    }
                 )
             }
         }.flatten()

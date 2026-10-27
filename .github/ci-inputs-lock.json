@@ -31,6 +31,10 @@
     {
       "reference": "pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86",
       "release": "v6"
+    },
+    {
+      "reference": "actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+      "release": "v7.0.2"
     }
   ],
   "containerImages": [
@@ -134,7 +138,7 @@
     },
     {
       "name": "Test BinarioKit with Swift 6",
-      "sha256": "cae777bd117ce7758fbd7f52be90f86a7f377146639aa74c5e19ba3f4ab5889a"
+      "sha256": "59099b6429e63265775ac791f0587b7a27a0d799cff4736ac4dc229a67c05225"
     },
     {
       "name": "Verify and generate integrated iOS project",

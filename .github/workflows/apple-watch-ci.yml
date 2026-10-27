@@ -8,6 +8,8 @@ on:
       - "app/src/main/assets/gtfs/**"
       - "app/src/main/assets/stations/curated_it_rail_stations.json"
       - "contracts/wear-snapshot/**"
+      - "contracts/rail-sources/**"
+      - "contracts/rail-live-fixtures/**"
       - "tools/build_ios_gtfs_schedule.py"
       - "tools/verify_ios_gtfs_schedule.py"
       - "tools/verify_ios_gtfs_rebuild.py"
@@ -32,6 +34,8 @@ on:
       - "app/src/main/assets/gtfs/**"
       - "app/src/main/assets/stations/curated_it_rail_stations.json"
       - "contracts/wear-snapshot/**"
+      - "contracts/rail-sources/**"
+      - "contracts/rail-live-fixtures/**"
       - "tools/build_ios_gtfs_schedule.py"
       - "tools/verify_ios_gtfs_schedule.py"
       - "tools/verify_ios_gtfs_rebuild.py"
@@ -173,7 +177,7 @@ jobs:
           echo "$(dirname "$destination")" >> "$GITHUB_PATH"
           "$destination" --version
       - name: Test BinarioKit with Swift 6
-        run: swift test --package-path ios/BinarioKit
+        run: BINARIO_VERIFY_LIVE=true swift test --package-path ios/BinarioKit
       - name: Verify and generate integrated iOS project
         run: |
           python3 ios/Scripts/verify-deterministic-generation.py --xcodegen "$(command -v xcodegen)"

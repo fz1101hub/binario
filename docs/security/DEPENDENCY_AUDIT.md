@@ -54,3 +54,16 @@ Apple Watch seleziona esplicitamente **Xcode 16.4 build 16F6**, disponibile sull
 ## Riferimenti
 
 [1]: https://docs.gradle.org/8.14.3/userguide/dependency_verification.html "Gradle 8.14.3 — Verifying dependencies"
+
+## Aggiornamento del 26 ottobre 2026 — PR pendolari
+
+L’audit CI del companion Alexa ha rilevato cinque advisory high in quattro pacchetti. Sono state selezionate versioni corrette compatibili con le major già usate:
+
+| Pacchetto | Versione minima fissata | Advisory |
+|---|---|---|
+| follow-redirects | 1.16.1 | GHSA-q3jh-wrc6-jgq8, GHSA-8r9p-f939-6h3c |
+| vite | 7.3.7 | GHSA-587h-7wmj-h5pm |
+| zod | 4.6.6 | GHSA-mrhx-c7xc-m3w5 |
+| body-parser 1.x | 1.20.9 | GHSA-27r3-jxmh-p828 |
+
+Il lockfile è stato risolto con pnpm 10.34.5, senza eseguire script delle dipendenze, nel [job isolato 40388390939](https://github.com/fz1101hub/binario/actions/runs/40388390939). L’audit del grafo risolto termina con **zero high/critical e tre moderate**. Il controllo standard `pnpm install --frozen-lockfile` e il gate `pnpm audit --audit-level high` restano obbligatori nella CI applicativa; il job di risoluzione non li sostituisce e non è incluso nel branch dell’app.

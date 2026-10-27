@@ -7,6 +7,7 @@ import it.binario.app.data.gtfs.EmbeddedGtfsRealtimeScheduleResolver
 import it.binario.app.data.provider.ProviderError
 import it.binario.app.data.provider.ProviderResult
 import it.binario.app.data.provider.TripUpdateProvider
+import it.binario.app.data.provider.KnownProviders
 import java.time.LocalDate
 import java.time.ZoneId
 
@@ -51,7 +52,7 @@ class RealtimeEnrichmentService(
         zone: ZoneId,
         destination: MutableList<EnrichedRealtimeStop>
     ) {
-        val staticSourceId = staticFeedFor(providerId) ?: return
+        val staticSourceId = KnownProviders.staticFeedForRealtime(providerId) ?: return
         updates.forEach { update ->
             val scheduled = listOf(serviceDate, serviceDate.minusDays(1), serviceDate.minusDays(2))
                 .firstNotNullOfOrNull { candidate -> scheduleResolver.resolve(staticSourceId, update, candidate, zone) }
@@ -60,9 +61,4 @@ class RealtimeEnrichmentService(
         }
     }
 
-    private fun staticFeedFor(providerId: SourceId): SourceId? = when (providerId.value) {
-        "alto-adige-sta-realtime" -> SourceId("alto-adige-sta-gtfs")
-        "sncf-gtfs-rt" -> SourceId("sncf-gtfs")
-        else -> null
-    }
 }

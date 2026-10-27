@@ -50,7 +50,14 @@ object BinarioDataGraph {
             )
             LegacyTrainDataSourceFacade(
                 legacySource = StationBoardEnrichedTrainDataSource(
-                    plannedSource = plannedSource,
+                    plannedSource = GtfsRealtimeRouteDataSource(
+                        plannedSource = plannedSource,
+                        providersByStaticFeed = tripUpdateProviders().mapNotNull { provider ->
+                            val feed = KnownProviders.staticFeedForRealtime(provider.descriptor.id)
+                            feed?.let { it to provider }
+                        }.toMap(),
+                        resolve = realtimeScheduleResolver(applicationContext)::resolve
+                    ),
                     boardProviders = stationBoardProviders()
                 ),
                 providerRegistry = defaultRegistry

@@ -39,8 +39,8 @@ def generate(xcodegen: str, destination: Path) -> str:
         catalog_target,
     )
     shutil.copytree(
-        REPOSITORY_ROOT / "contracts/wear-snapshot/v1",
-        repository / "contracts/wear-snapshot/v1",
+        REPOSITORY_ROOT / "contracts",
+        repository / "contracts",
     )
     subprocess.run(
         [xcodegen, "generate", "--spec", "project.yml"],

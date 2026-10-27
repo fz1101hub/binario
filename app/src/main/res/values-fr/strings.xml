@@ -35,7 +35,6 @@
     <string name="nav_search">Rechercher</string>
     <string name="nav_operations">Consulter</string>
     <string name="nav_settings">Paramètres</string>
-    <string name="nav_agenda">Agenda</string>
     <string name="action_back">Retour</string>
     <string name="action_choose_theme">Choisir le thème. Thème actuel : %1$s</string>
     <string name="action_refresh_rail_information">Actualiser les informations ferroviaires</string>
@@ -98,12 +97,7 @@
 
     <!-- Data provenance and operational-state announcements. -->
     <string name="data_status_demo">Catalogue de démonstration local, non en direct</string>
-    <string name="data_status_live">Données en direct : %1$s</string>
     <string name="data_status_unavailable">Données en direct non disponibles</string>
-    <string name="accessibility_data_status">État des données : %1$s. Source : %2$s. Qualité : %3$s. %4$s%5$s</string>
-    <string name="accessibility_open_service">Ouvrir le détail. %1$s. %2$s</string>
-    <string name="service_state_scheduled">Horaire programmé ; état en direct non disponible</string>
-    <string name="service_state_live">État en direct : %1$s</string>
     <string name="station_board_departure_to">Vers %1$s</string>
     <string name="station_board_arrival_from">En provenance de %1$s</string>
     <string name="station_board_scheduled_time">Horaire programmé : %1$s</string>
@@ -300,13 +294,7 @@
     <string name="accessibility_refresh_departures">Actualiser les départs. État : %1$s</string>
     <string name="action_direction">Direction</string>
     <string name="action_change_route">Changer d’itinéraire</string>
-    <string name="board_column_time">HEURE</string>
-    <string name="board_column_service">DESTINATION / TRAIN</string>
-    <string name="board_column_platform">VOIE</string>
-    <string name="board_column_status">ÉTAT</string>
     <string name="monitored_routes_title">Itinéraires suivis</string>
-    <string name="service_scheduled_lowercase">programmé</string>
-    <string name="service_on_time_lowercase">à l’heure</string>
     <string name="today_empty_description">Actualisez l’itinéraire actif ou choisissez un autre itinéraire enregistré. Les données non disponibles ne sont pas remplacées par des horaires estimés.</string>
     <string name="action_refresh">Actualiser</string>
     <string name="action_open_routes">Ouvrir mes itinéraires</string>
@@ -343,7 +331,7 @@
     <string name="follow_trip_title">Suivre ce voyage</string>
     <string name="follow_trip_description">Conservez localement le prochain arrêt et avancez-le manuellement.</string>
     <string name="action_start_trip">Commencer le voyage</string>
-    <string name="stop_alarm_notice">L’alarme est locale et repose sur l’horaire affiché. Pour les modifications d’exploitation, référez-vous toujours aux tableaux et annonces officiels.</string>
+    <string name="stop_alarm_notice">Le rappel utilise l’heure affichée lors de sa programmation. Reprogrammez-le si l’horaire du train change.</string>
 
     <string name="stop_change_added_accessibility">Arrêt ajouté au parcours d’exploitation.</string>
     <string name="stop_change_skipped_accessibility">Arrêt supprimé du parcours d’exploitation.</string>
@@ -439,7 +427,6 @@
     <string name="train_category_trenord_regional">Train régional Trenord</string>
     <string name="train_category_metropolitan">Train métropolitain</string>
     <string name="train_category_other">Train</string>
-    <string name="accessibility_train_service_summary">Opérateur %1$s. %2$s %3$s de %4$s à %5$s. Départ prévu à %6$s. %7$s. %8$s. %9$s.</string>
     <string name="service_transfer_direct">Trajet direct</string>
     <plurals name="service_transfer_count">
         <item quantity="one">%d correspondance</item>
@@ -471,7 +458,7 @@
     <string name="stop_alarm_permission_required">Pour recevoir l’alarme à l’arrêt, vous devez autoriser les notifications de Binario.</string>
     <string name="stop_alarm_completed">L’arrêt %1$s est déjà dépassé.</string>
     <string name="stop_alarm_unavailable">Impossible de planifier l’alarme : l’heure prévue de l’arrêt est déjà passée ou n’est pas disponible.</string>
-    <string name="stop_alarm_exact">Alarme réglée à %1$s, cinq minutes avant l’heure prévue %2$s.</string>
+    <string name="stop_alarm_exact">Rappel pour %1$s programmé le %2$s. Arrêt prévu à %3$s.</string>
     <string name="stop_alarm_inexact">Alarme réglée à %1$s, mais Android peut la déclencher en retard car les alarmes exactes ne sont pas autorisées.</string>
     <string name="commuter_alert_scheduled">Alerte enregistrée et planifiée sur l’appareil.</string>
     <string name="commuter_alert_scheduled_inexact">Alerte enregistrée et planifiée en mode approximatif : Android peut la déclencher en retard car les alarmes exactes ne sont pas autorisées.</string>
@@ -501,8 +488,6 @@
     <string name="location_permission_denied">Autorisation de localisation non accordée. Vous pouvez continuer à rechercher les gares manuellement.</string>
     <string name="distance_kilometers">%1$.1f km</string>
     <string name="provider_updated_at">%1$s · %2$s</string>
-    <string name="accessibility_optional_message"> %1$s</string>
-    <string name="platform_short">Voie %1$s</string>
     <string name="service_status_scheduled_badge">Programmé</string>
     <string name="service_status_cancelled">Supprimé</string>
     <string name="service_status_scheduled_compact">Programmé</string>
@@ -557,8 +542,6 @@
     <string name="freshness_aging">Données en cours d’actualisation</string>
     <string name="freshness_stale">Dernières données disponibles</string>
     <string name="freshness_unavailable">Données en direct non disponibles</string>
-    <string name="service_status_on_time">À l’heure</string>
-    <string name="service_status_delayed">En retard</string>
     <string name="station_monitor_departures">Départs</string>
     <string name="station_monitor_arrivals">Arrivées</string>
     <string name="station_monitor_both">Arrivées et départs</string>
@@ -649,4 +632,32 @@
     <string name="share_freshness_unavailable">Données en direct non disponibles</string>
     <string name="planned_journey_ics_event_description">Voyage : %1$s → %2$s, départ le %3$s à %4$s (%5$s)</string>
     <string name="planned_journey_ics_reminder_description">Rappel de voyage Binario</string>
+
+    <!-- Commuter home and foreground data state. -->
+    <string name="commuter_nav">Aujourd’hui</string>
+    <string name="commuter_title">Votre trajet en un coup d’œil.</string>
+    <string name="commuter_intro">Votre ligne et les prochains départs, immédiatement.</string>
+    <string name="commuter_active_route">VOTRE TRAJET</string>
+    <string name="commuter_return">Inverser le sens</string>
+    <string name="commuter_departures_now">Suivre les départs à partir de maintenant</string>
+    <string name="commuter_empty_title">Quelle est votre destination ?</string>
+    <string name="commuter_empty_body">Choisissez un trajet pour voir les prochains trains. Enregistrez-le pour le retrouver ici.</string>
+    <string name="commuter_choose_route">Rechercher votre trajet</string>
+    <string name="commuter_next_trains">Les prochains trains</string>
+    <string name="commuter_refresh_note">Actualisation automatique lorsque l’application est visible. Les retards ne sont affichés que si la source les confirme.</string>
+    <string name="commuter_no_trains">Aucun train disponible pour cette recherche. Actualisez ou choisissez un autre trajet.</string>
+    <string name="commuter_all_trains">Ouvrir le tableau complet</string>
+    <string name="commuter_saved_routes">Vos trajets</string>
+    <string name="commuter_agenda">Ouvrir votre agenda de voyage</string>
+    <string name="commuter_data_live">Données de circulation actuelles</string>
+    <string name="commuter_data_scheduled">Horaires prévus · retards indisponibles</string>
+    <string name="commuter_data_stale">Dernière observation · à actualiser</string>
+
+    <!-- Local stop reminder configuration. -->
+    <string name="stop_alarm_setup_title">Rappel d’arrêt</string>
+    <string name="stop_alarm_setup_description">Train %1$s · arrêt prévu à %2$s</string>
+    <string name="stop_alarm_lead_label">Minutes avant l’arrêt (1–60)</string>
+    <string name="stop_alarm_lead_error">Choisissez un nombre de 1 à 60.</string>
+    <string name="stop_alarm_confirm">Programmer le rappel</string>
+    <string name="stop_alarm_lead_elapsed">Si le temps restant est inférieur au délai choisi, le rappel sera envoyé dès que possible.</string>
 </resources>

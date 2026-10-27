@@ -1,0 +1,93 @@
+{
+  "method": "Static DEX string inspection; package was not executed. References do not prove runtime use, current availability or permission to reuse.",
+  "size": 44435213,
+  "git_blob_sha1": "84007d65164c327aede305267bd7bca7d0ea5cee",
+  "sha256": "05e0a37c64cc13e2c0faf4083d5b6a9b07951f42f47b999335708398231368c3",
+  "matches_reference_blob": true,
+  "manifest_reported_metadata": {},
+  "apk_splits": 4,
+  "dex_files": 2,
+  "strings_scanned": 55735,
+  "operator_references": [
+    {
+      "host": "app.lefrecce.it",
+      "scheme": "https",
+      "path": "/Channels.Mobile.BFF/api/info/mobility/status"
+    },
+    {
+      "host": "app.lefrecce.it",
+      "scheme": "https",
+      "path": "/Channels.Mobile.BFF/api/info/mobility/train/{parameter}"
+    },
+    {
+      "host": "app.lefrecce.it",
+      "scheme": "https",
+      "path": "/Channels.Mobile.BFF/api/info/mobility/{parameter}"
+    },
+    {
+      "host": "app.lefrecce.it",
+      "scheme": "https",
+      "path": "/Channels.Mobile.BFF/api/{parameter}/{parameter}"
+    },
+    {
+      "host": "app.lefrecce.it",
+      "scheme": "https",
+      "path": "/Channels.Mobile.BFF/api/{parameter}/{parameter}/{parameter}"
+    },
+    {
+      "host": "iechub.rfi.it",
+      "scheme": "https",
+      "path": "/{parameter}/{parameter}/{parameter}"
+    },
+    {
+      "host": "www.lefrecce.it",
+      "scheme": "https",
+      "path": "/{parameter}/{parameter}/{parameter}/{parameter}"
+    },
+    {
+      "host": "www.trenord.it",
+      "scheme": "https",
+      "path": "/{parameter}/{parameter}/{parameter}/{parameter}"
+    },
+    {
+      "host": "www.viaggiatreno.it",
+      "scheme": "http",
+      "path": "/{parameter}/resteasy/viaggiatreno"
+    },
+    {
+      "host": "www.viaggiatreno.it",
+      "scheme": "http",
+      "path": "/{parameter}/resteasy/viaggiatreno/partenze"
+    },
+    {
+      "host": "www.viaggiatreno.it",
+      "scheme": "http",
+      "path": "/{parameter}/resteasy/viaggiatreno/{parameter}"
+    },
+    {
+      "host": "www.viaggiatreno.it",
+      "scheme": "http",
+      "path": "/{parameter}/resteasy/{parameter}/{parameter}"
+    },
+    {
+      "host": "www.viaggiatreno.it",
+      "scheme": "https",
+      "path": "/{parameter}/resteasy/viaggiatreno/{parameter}"
+    },
+    {
+      "host": "www.viaggiatreno.it",
+      "scheme": "https",
+      "path": "/{parameter}/resteasy/{parameter}/{parameter}"
+    }
+  ],
+  "feature_string_evidence": {
+    "delay_distinction": 2,
+    "disruption_alerts": 64,
+    "geofencing": 112,
+    "journey_replanning": 1,
+    "punctuality_history": 1,
+    "recurring_commute": 17,
+    "stop_reminders": 37
+  },
+  "secrets_policy": "Queries, fragments, userinfo, unknown path components and raw strings are excluded. No credentials are used or published."
+}

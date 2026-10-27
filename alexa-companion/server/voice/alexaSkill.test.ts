@@ -26,7 +26,10 @@ vi.mock("../db", () => ({
   rotateRefreshToken: vi.fn(),
 }));
 
+vi.mock("../rail/rfi", () => ({ getLiveDepartures: vi.fn(async () => undefined) }));
+
 import { getAlexaLinkStatus, listPersonalRoutesForAlexa } from "../db";
+import { getLiveDepartures } from "../rail/rfi";
 import { createAlexaSkill, HANDLED_INTENTS } from "./alexa";
 import { issueVoiceAccessToken } from "./crypto";
 
@@ -129,6 +132,74 @@ function speechText(
 }
 
 describe("Alexa skill handlers", () => {
+  it("speaks the real provider delay and renders the same data on Echo Show", async () => {
+    vi.mocked(getAlexaLinkStatus).mockResolvedValue({ userId: 7, credentialVersion: 3, revokedAt: null } as Awaited<ReturnType<typeof getAlexaLinkStatus>>);
+    vi.mocked(listPersonalRoutesForAlexa).mockResolvedValue([
+      { id: 1, name: "Lavoro", origin: "Milano Centrale", destination: "Lodi", isPinned: true },
+    ] as Awaited<ReturnType<typeof listPersonalRoutesForAlexa>>);
+    const now = Date.now();
+    vi.mocked(getLiveDepartures).mockResolvedValueOnce({ observedAt: now, departures: [{
+      number: "2451", destination: "Bologna Centrale", scheduledAt: now, expectedAt: now + 900_000,
+      delayMinutes: 15, cancelled: false, platform: "7", stopNames: new Set(["LODI"]),
+    }] });
+    const request = withAccessToken(intent("NextTrainsIntent"), await issueVoiceAccessToken(7, 3));
+    request.context.System.device!.supportedInterfaces["Alexa.Presentation.APL"] = { runtime: { maxVersion: "1.8" } };
+    const response = await createAlexaSkill().invoke(request);
+    expect(getLiveDepartures).toHaveBeenLastCalledWith("Milano Centrale", "Lodi");
+    expect(speechText(response)).toContain("15 minuti di ritardo");
+    expect(speechText(response)).toContain("Binario 7");
+    expect(speechText(response)).not.toContain("dati non disponibili");
+    expect(JSON.stringify(response.response.directives)).toContain("15 minuti di ritardo");
+  });
+
+  it("keeps voice responses identical on Echo speakers and adds an accessible summary on Echo Show", async () => {
+    const speaker = envelope({ type: "LaunchRequest" });
+    const screen = envelope({ type: "LaunchRequest" });
+    screen.context.System.device!.supportedInterfaces["Alexa.Presentation.APL"] = { runtime: { maxVersion: "1.8" } };
+    const voiceResponse = await createAlexaSkill().invoke(speaker);
+    const screenResponse = await createAlexaSkill().invoke(screen);
+    expect(screenResponse.response.outputSpeech).toEqual(voiceResponse.response.outputSpeech);
+    expect(voiceResponse.response.directives ?? []).toHaveLength(0);
+    expect(screenResponse.response.directives).toContainEqual(expect.objectContaining({
+      type: "Alexa.Presentation.APL.RenderDocument",
+      datasources: { summary: { title: "Binario", content: expect.stringContaining("Benvenuta in Binario") } },
+    }));
+    expect(JSON.stringify(screenResponse.response.directives)).toContain("accessibilityLabel");
+  });
+
+  it("does not render personal information while linking is required or after Stop", async () => {
+    for (const name of ["NextTrainsIntent", "AMAZON.StopIntent"]) {
+      const request = intent(name);
+      request.context.System.device!.supportedInterfaces["Alexa.Presentation.APL"] = { runtime: { maxVersion: "1.8" } };
+      const response = await createAlexaSkill().invoke(request);
+      expect(response.response.directives ?? []).toHaveLength(0);
+    }
+  });
+
+  it("falls back to voice and card on devices with an older APL runtime", async () => {
+    const request = envelope({ type: "LaunchRequest" });
+    request.context.System.device!.supportedInterfaces["Alexa.Presentation.APL"] = { runtime: { maxVersion: "1.0" } };
+    const response = await createAlexaSkill().invoke(request);
+    expect(response.response.directives ?? []).toHaveLength(0);
+    expect(response.response.outputSpeech).toBeDefined();
+    expect(response.response.card?.type).toBe("Simple");
+  });
+
+  it("escapes route markup in APL and retains the explicit realtime availability caveat", async () => {
+    vi.mocked(getAlexaLinkStatus).mockResolvedValue({ userId: 7, credentialVersion: 3, revokedAt: null } as Awaited<ReturnType<typeof getAlexaLinkStatus>>);
+    vi.mocked(listPersonalRoutesForAlexa).mockResolvedValue([
+      { id: 1, name: "Casa & <lavoro>", origin: "Roma", destination: "Tivoli", isPinned: true },
+    ] as Awaited<ReturnType<typeof listPersonalRoutesForAlexa>>);
+    const request = withAccessToken(intent("NextTrainsIntent"), await issueVoiceAccessToken(7, 3));
+    request.context.System.device!.supportedInterfaces["Alexa.Presentation.APL"] = { runtime: { maxVersion: "1.8" } };
+    const response = await createAlexaSkill().invoke(request);
+    const directive = response.response.directives?.find(item => item.type === "Alexa.Presentation.APL.RenderDocument");
+    expect(directive).toBeDefined();
+    expect(JSON.stringify(directive)).toContain("Casa &amp; &lt;lavoro&gt;");
+    expect(JSON.stringify(directive)).toContain("dati non disponibili in tempo reale");
+    expect(response.response.card).toMatchObject({ type: "Simple", content: expect.stringContaining("Casa & <lavoro>") });
+  });
+
   it("ends the session for Stop, Cancel, and NavigateHome", async () => {
     for (const name of [
       "AMAZON.StopIntent",

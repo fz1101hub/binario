@@ -35,7 +35,6 @@
     <string name="nav_search">Suchen</string>
     <string name="nav_operations">Ansehen</string>
     <string name="nav_settings">Einstellungen</string>
-    <string name="nav_agenda">Agenda</string>
     <string name="action_back">Zurück</string>
     <string name="action_choose_theme">Design auswählen. Aktuelles Design: %1$s</string>
     <string name="action_refresh_rail_information">Bahninformationen aktualisieren</string>
@@ -97,12 +96,7 @@
 
     <!-- Data provenance and operational-state announcements. -->
     <string name="data_status_demo">Lokaler Demokatalog, nicht live</string>
-    <string name="data_status_live">Live-Daten: %1$s</string>
     <string name="data_status_unavailable">Live-Daten nicht verfügbar</string>
-    <string name="accessibility_data_status">Datenstatus: %1$s. Quelle %2$s. Qualität %3$s. %4$s%5$s</string>
-    <string name="accessibility_open_service">Details öffnen. %1$s. %2$s</string>
-    <string name="service_state_scheduled">Planfahrzeit; Live-Status nicht verfügbar</string>
-    <string name="service_state_live">Live-Status: %1$s</string>
     <string name="station_board_departure_to">Nach %1$s</string>
     <string name="station_board_arrival_from">Von %1$s</string>
     <string name="station_board_scheduled_time">Planfahrzeit %1$s</string>
@@ -297,13 +291,7 @@
     <string name="accessibility_refresh_departures">Abfahrten aktualisieren. Status: %1$s</string>
     <string name="action_direction">Richtung</string>
     <string name="action_change_route">Strecke ändern</string>
-    <string name="board_column_time">ZEIT</string>
-    <string name="board_column_service">ZIEL / ZUG</string>
-    <string name="board_column_platform">GL.</string>
-    <string name="board_column_status">STATUS</string>
     <string name="monitored_routes_title">Überwachte Strecken</string>
-    <string name="service_scheduled_lowercase">geplant</string>
-    <string name="service_on_time_lowercase">pünktlich</string>
     <string name="today_empty_description">Aktualisiere die aktive Strecke oder wähle eine andere gespeicherte Strecke. Nicht verfügbare Daten werden nicht durch geschätzte Zeiten ersetzt.</string>
     <string name="action_refresh">Aktualisieren</string>
     <string name="action_open_routes">Meine Strecken öffnen</string>
@@ -340,7 +328,7 @@
     <string name="follow_trip_title">Diese Reise verfolgen</string>
     <string name="follow_trip_description">Speichere den nächsten Halt lokal und rücke ihn manuell weiter.</string>
     <string name="action_start_trip">Reise beginnen</string>
-    <string name="stop_alarm_notice">Der Wecker ist lokal und basiert auf der angezeigten Zeit. Beachte bei Betriebsänderungen immer die offiziellen Anzeigen und Durchsagen.</string>
+    <string name="stop_alarm_notice">Der Wecker verwendet die beim Einstellen angezeigte Zeit. Stelle ihn bei einer Zeitänderung erneut ein.</string>
 
     <string name="stop_change_added_accessibility">Halt zur Betriebsstrecke hinzugefügt.</string>
     <string name="stop_change_skipped_accessibility">Halt auf der Betriebsstrecke ausgelassen.</string>
@@ -432,7 +420,6 @@
     <string name="train_category_trenord_regional">Trenord-Regionalzug</string>
     <string name="train_category_metropolitan">Metropolitanzug</string>
     <string name="train_category_other">Zug</string>
-    <string name="accessibility_train_service_summary">Betreiber %1$s. %2$s %3$s von %4$s nach %5$s. Voraussichtliche Abfahrt %6$s. %7$s. %8$s. %9$s.</string>
     <string name="service_transfer_direct">Direktverbindung</string>
     <plurals name="service_transfer_count">
         <item quantity="one">%d Umstieg</item>
@@ -461,7 +448,7 @@
     <string name="stop_alarm_permission_required">Um den Wecker am Halt zu erhalten, musst du Binario-Benachrichtigungen erlauben.</string>
     <string name="stop_alarm_completed">Der Halt %1$s liegt bereits zurück.</string>
     <string name="stop_alarm_unavailable">Der Wecker kann nicht geplant werden: Die voraussichtliche Zeit des Halts liegt bereits zurück oder ist nicht verfügbar.</string>
-    <string name="stop_alarm_exact">Wecker für %1$s eingestellt, fünf Minuten vor der voraussichtlichen Zeit %2$s.</string>
+    <string name="stop_alarm_exact">Wecker für %1$s am %2$s geplant. Halt voraussichtlich um %3$s.</string>
     <string name="stop_alarm_inexact">Wecker für %1$s eingestellt, aber Android kann ihn verspätet ausliefern, da exakte Wecker nicht erlaubt sind.</string>
     <string name="commuter_alert_scheduled">Warnung gespeichert und auf dem Gerät geplant.</string>
     <string name="commuter_alert_scheduled_inexact">Warnung gespeichert und ungenau geplant: Android kann sie verspätet ausliefern, da exakte Wecker nicht erlaubt sind.</string>
@@ -491,8 +478,6 @@
     <string name="location_permission_denied">Standortberechtigung nicht erteilt. Du kannst weiter manuell nach Bahnhöfen suchen.</string>
     <string name="distance_kilometers">%1$.1f km</string>
     <string name="provider_updated_at">%1$s · %2$s</string>
-    <string name="accessibility_optional_message"> %1$s</string>
-    <string name="platform_short">Gl. %1$s</string>
     <string name="service_status_scheduled_badge">Geplant</string>
     <string name="service_status_cancelled">Ausgefallen</string>
     <string name="service_status_scheduled_compact">Gepl.</string>
@@ -547,8 +532,6 @@
     <string name="freshness_aging">Daten werden aktualisiert</string>
     <string name="freshness_stale">Letzte verfügbare Daten</string>
     <string name="freshness_unavailable">Live-Daten nicht verfügbar</string>
-    <string name="service_status_on_time">Pünktlich</string>
-    <string name="service_status_delayed">Verspätet</string>
     <string name="station_monitor_departures">Abfahrten</string>
     <string name="station_monitor_arrivals">Ankünfte</string>
     <string name="station_monitor_both">Ankünfte und Abfahrten</string>
@@ -637,4 +620,32 @@
     <string name="share_freshness_unavailable">Live-Daten nicht verfügbar</string>
     <string name="planned_journey_ics_event_description">Reise: %1$s → %2$s, Abfahrt %3$s um %4$s (%5$s)</string>
     <string name="planned_journey_ics_reminder_description">Binario-Reiseerinnerung</string>
+
+    <!-- Commuter home and foreground data state. -->
+    <string name="commuter_nav">Heute</string>
+    <string name="commuter_title">Dein Arbeitsweg auf einen Blick.</string>
+    <string name="commuter_intro">Deine Strecke und die nächsten Abfahrten, sofort.</string>
+    <string name="commuter_active_route">DEINE STRECKE</string>
+    <string name="commuter_return">Richtung umkehren</string>
+    <string name="commuter_departures_now">Abfahrten ab jetzt verfolgen</string>
+    <string name="commuter_empty_title">Wohin geht die Reise?</string>
+    <string name="commuter_empty_body">Wähle eine Strecke für die nächsten Züge. Speichere sie, um sie hier wiederzufinden.</string>
+    <string name="commuter_choose_route">Deine Strecke suchen</string>
+    <string name="commuter_next_trains">Die nächsten Züge</string>
+    <string name="commuter_refresh_note">Automatische Aktualisierung bei sichtbarer App. Verspätungen erscheinen nur mit Bestätigung der Quelle.</string>
+    <string name="commuter_no_trains">Keine Züge für diese Suche verfügbar. Aktualisiere die Daten oder wähle eine andere Strecke.</string>
+    <string name="commuter_all_trains">Vollständige Abfahrtstafel öffnen</string>
+    <string name="commuter_saved_routes">Deine Strecken</string>
+    <string name="commuter_agenda">Deine Reiseagenda öffnen</string>
+    <string name="commuter_data_live">Aktuelle Betriebsdaten</string>
+    <string name="commuter_data_scheduled">Fahrplan · Verspätungen nicht verfügbar</string>
+    <string name="commuter_data_stale">Letzte Meldung · Aktualisierung nötig</string>
+
+    <!-- Local stop reminder configuration. -->
+    <string name="stop_alarm_setup_title">Haltestellenwecker</string>
+    <string name="stop_alarm_setup_description">Zug %1$s · Halt voraussichtlich um %2$s</string>
+    <string name="stop_alarm_lead_label">Minuten vor dem Halt (1–60)</string>
+    <string name="stop_alarm_lead_error">Wähle eine Zahl zwischen 1 und 60.</string>
+    <string name="stop_alarm_confirm">Wecker stellen</string>
+    <string name="stop_alarm_lead_elapsed">Bleibt weniger Zeit als der gewählte Vorlauf, erfolgt der Hinweis so bald wie möglich.</string>
 </resources>

@@ -19,11 +19,19 @@ object KnownProviderIds {
     val RFI_STATION_BOARD = SourceId("rfi-station-board")
     val RFI_INFOMOBILITY_RSS = SourceId("rfi-infomobility-rss")
     val STA_REALTIME = SourceId("alto-adige-sta-realtime")
+    val STA_STATIC = SourceId("alto-adige-sta-gtfs")
     val ITALO_STATUS = SourceId("italo-status")
     val DEMO_LOCAL = SourceId("demo-local")
 }
 
 object KnownProviders {
+    /** A realtime trip identity is meaningful only inside its own static feed. */
+    fun staticFeedForRealtime(providerId: SourceId): SourceId? = when (providerId) {
+        KnownProviderIds.STA_REALTIME -> KnownProviderIds.STA_STATIC
+        KnownProviderIds.SNCF_REALTIME -> KnownProviderIds.SNCF_STATIC
+        else -> null
+    }
+
     private val staticRatePolicy = RatePolicy(
         minimumRequestInterval = Duration.ofMinutes(5),
         defaultTimeToLive = Duration.ofHours(6),
@@ -172,14 +180,14 @@ object KnownProviders {
         ProviderPolicy(
             descriptor = ProviderDescriptor(
                 id = KnownProviderIds.RFI_STATION_BOARD,
-                displayName = "RFI Monitor Arrivi/Partenze — best effort",
+                displayName = "RFI — Monitor Arrivi/Partenze live",
                 capabilities = setOf(ProviderCapability.STATION_BOARD),
                 coverage = CoverageDescriptor(countryCodes = setOf("IT"), description = "Tabelloni delle stazioni RFI"),
                 accessMode = AccessMode.PUBLIC_BEST_EFFORT,
                 ratePolicy = realtimeRatePolicy,
                 schemaVersion = 1
             ),
-            enabled = BuildConfig.PERSONAL_REALTIME_SOURCES,
+            enabled = true,
             priorityByCapability = mapOf(ProviderCapability.STATION_BOARD to 20)
         ),
         ProviderPolicy(

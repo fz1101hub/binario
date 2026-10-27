@@ -155,32 +155,22 @@ private struct AvailableResultView: View {
 
     var body: some View {
         Section("result.title") {
-            ForEach(snapshot.services, id: \.id) { service in
-                VStack(alignment: .leading, spacing: 5) {
-                    HStack(alignment: .firstTextBaseline) {
-                        Text(service.scheduledDeparture)
-                            .font(.headline.monospacedDigit())
-                        Text(service.number)
-                            .font(.headline)
-                        Spacer()
-                        Text(service.category)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+            TimelineView(.periodic(from: .now, by: 15)) { context in
+                let availability = snapshot.availability(at: context.date)
+                VStack(alignment: .leading, spacing: 16) {
+                    ForEach(snapshot.services, id: \.id) { service in
+                        TrainServiceSummary(service: service, availability: availability)
                     }
-                    Text(service.destination)
-                    Text(service.operatorName)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    Text("\(String(localized: "result.source_label")) \(snapshot.provenance.sourceLabel)")
+                        .font(.footnote).foregroundStyle(.secondary)
+                    Text(snapshot.provenance.observedAt, format: .dateTime.day().month().hour().minute())
+                        .font(.footnote).foregroundStyle(.secondary)
+                    Label(LocalizedStringKey(availability == .live ? "result.live.disclosure"
+                        : availability == .stale ? "result.stale.disclosure" : "result.programmed.disclosure"),
+                        systemImage: availability == .live ? "dot.radiowaves.left.and.right" : "clock")
+                        .font(.footnote).foregroundStyle(.secondary)
                 }
-                .accessibilityElement(children: .combine)
             }
-
-            Text("\(String(localized: "result.source_label")) \(snapshot.provenance.sourceLabel)")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-            Label("result.programmed.disclosure", systemImage: "clock")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
         }
     }
 }

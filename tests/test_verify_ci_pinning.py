@@ -174,7 +174,7 @@ class VerifyCiPinningTest(unittest.TestCase):
         self.assertTrue(any("contenuto step run diverso" in problem for problem in problems))
 
         mutated_ios = original.replace(
-            "run: swift test --package-path ios/BinarioKit",
+            "run: BINARIO_VERIFY_LIVE=true swift test --package-path ios/BinarioKit",
             "run: echo skipped-ios-tests",
             1,
         )

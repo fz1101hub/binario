@@ -141,7 +141,10 @@ data class TrainStop(
     val delayMinutes: Int,
     val completed: Boolean,
     val routeChange: StopRouteChange = StopRouteChange.NONE
-)
+) {
+    /** A reminder may use a published scheduled time when no prediction is available. */
+    val referenceTime: String get() = expected.takeIf { Regex("\\d{1,2}:\\d{2}").matches(it) } ?: scheduled
+}
 
 data class TrainService(
     val id: String,
