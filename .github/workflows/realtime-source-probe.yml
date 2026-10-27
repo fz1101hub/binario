@@ -9,19 +9,34 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 4
     steps:
-      - name: Check public HTTPS station boards without executing page scripts
+      - name: Observe public train delays without executing page scripts
         shell: python
         run: |
-          import urllib.request, json, datetime, re
-          base = "https://iechub.rfi.it/ArriviPartenze/ArrivalsDepartures/"
-          for path in ["Home", "Monitor?placeId=2416&arrivals=False", "Monitor?placeId=1728&arrivals=False"]:
-              url = base + path
+          import urllib.request, json, datetime, re, html
+          from zoneinfo import ZoneInfo
+          stations = [(683,"Bologna Centrale"),(2385,"Roma Tiburtina"),(257,"Genova Piazza Principe"),(2876,"Torino Porta Nuova")]
+          def text(value):
+              return re.sub(r"\s+"," ",html.unescape(re.sub("<[^>]+>"," ",value))).strip()
+          for place, name in stations:
+              url = "https://iechub.rfi.it/ArriviPartenze/ArrivalsDepartures/Monitor?placeId="+str(place)+"&arrivals=False"
               try:
-                  req = urllib.request.Request(url, headers={"User-Agent":"Binario-source-check/1.0 (read-only)", "Accept":"text/html", "Cache-Control":"no-cache"})
-                  with urllib.request.urlopen(req, timeout=30) as response:
-                      body = response.read(1_000_001)
-                      if len(body)>1_000_000: raise ValueError("Page exceeds size limit")
-                      if not response.url.startswith(base): raise ValueError("Unexpected redirect")
-                      print("RFI_DOCUMENT_JSON " + json.dumps({"url":response.url,"fetchedAt":datetime.datetime.now(datetime.timezone.utc).isoformat(),"status":response.status,"html":body.decode("utf-8")}, ensure_ascii=True))
+                  req = urllib.request.Request(url,headers={"User-Agent":"Binario-source-check/1.0 (read-only)","Accept":"text/html","Cache-Control":"no-cache"})
+                  with urllib.request.urlopen(req,timeout=20) as response:
+                      payload = response.read(2_000_001)
+                      if len(payload)>2_000_000: raise ValueError("Size limit")
+                      source=payload.decode("utf-8")
+                  label=text(source)
+                  stamp=re.search(r"aggiornato il\s+(\d{2}/\d{2}/\d{4})\s+alle ore\s+(\d{2}:\d{2}:\d{2})",label,re.I)
+                  observed=datetime.datetime.strptime(stamp[1]+" "+stamp[2],"%d/%m/%Y %H:%M:%S").replace(tzinfo=ZoneInfo("Europe/Rome"))
+                  now=datetime.datetime.now(datetime.timezone.utc)
+                  rows=re.findall(r'<tr\b[^>]*name="treno"[^>]*>.*?</tr>',source,re.S)
+                  delayed=[]
+                  for row in rows:
+                      cells=dict(re.findall(r'<td\b[^>]*id="(R\w+)"[^>]*>(.*?)</td>',row,re.S))
+                      delay=text(cells.get("RRitardo",""))
+                      number=re.search(r"\b(\d{1,4})\b",delay)
+                      if number and int(number[1])>0:
+                          delayed.append({"number":text(cells.get("RTreno","")),"scheduledDeparture":text(cells.get("ROrario","")),"delayMinutes":int(number[1]),"destination":text(cells.get("RStazione",""))})
+                  print("RFI_CURRENT_DELAY "+json.dumps({"station":name,"sourceTimestamp":observed.isoformat(),"fetchedAt":now.isoformat(),"ageSeconds":round((now-observed).total_seconds(),2),"rows":len(rows),"delayedTrains":delayed[:5]}))
               except Exception as error:
-                  print("RFI_SOURCE_ERROR " + json.dumps({"url":url,"type":type(error).__name__,"message":str(error)[:200]}))
+                  print("RFI_SOURCE_ERROR "+json.dumps({"station":name,"kind":type(error).__name__}))
