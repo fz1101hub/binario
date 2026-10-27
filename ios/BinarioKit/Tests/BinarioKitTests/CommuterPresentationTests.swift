@@ -22,7 +22,6 @@ final class CommuterPresentationTests: XCTestCase {
     }
 
     func testScheduledFallbackRetriesLiveAfterOneMinute() throws {
-        let value = try snapshot()
         XCTAssertFalse(CommuterRefreshPolicy.shouldRefresh(loading: true, lastAttempt: nil, now: now))
         XCTAssertFalse(CommuterRefreshPolicy.shouldRefresh(loading: false, lastAttempt: now.addingTimeInterval(-59), now: now))
         XCTAssertTrue(CommuterRefreshPolicy.shouldRefresh(loading: false, lastAttempt: now.addingTimeInterval(-60), now: now))

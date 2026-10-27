@@ -54,7 +54,9 @@ describe("public RFI live data", () => {
   });
 
   it.runIf(process.env.BINARIO_VERIFY_LIVE === "true")("reaches current departures with the production HTTPS fetcher", async () => {
-    const result = await new RfiLiveDepartures().get("Roma Termini", "Roma Tiburtina");
+    const failures: string[] = [];
+    const result = await new RfiLiveDepartures(undefined, Date.now, kind => failures.push(kind)).get("Roma Termini", "Roma Tiburtina");
+    expect(result, `Current RFI data missing: ${failures.join(", ")}`).toBeDefined();
     expect(result?.departures.length).toBeGreaterThan(0);
     expect(Date.now() - result!.observedAt).toBeLessThan(120_000);
     console.info("LIVE VERIFIED Alexa: Roma Termini → Roma Tiburtina", result!.departures.map(train => train.number), new Date(result!.observedAt).toISOString());

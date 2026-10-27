@@ -79,14 +79,16 @@ jobs:
           pnpm run db:generate
           test -z "$(git status --porcelain --untracked-files=all -- drizzle)"
 
+
+      - name: Unit tests
+        run: pnpm test
+
       - name: Verify current HTTPS departures through the Alexa data source
         working-directory: alexa-companion
         env:
           BINARIO_VERIFY_LIVE: "true"
         run: pnpm exec vitest run server/rail/rfi.test.ts
 
-      - name: Unit tests
-        run: pnpm test
 
       - name: Real MariaDB migration checks
         env:

@@ -85,7 +85,7 @@ export function parseRfiBoard(html: string, fetchedAt: number): Board {
 
 async function fetchBoard(url: URL): Promise<string> {
   const response = await fetch(url, {
-    signal: AbortSignal.timeout(4_000), redirect: "error", credentials: "omit",
+    signal: AbortSignal.timeout(6_000), redirect: "error", credentials: "omit",
     headers: { "User-Agent": "Binario/1.0 (rail information client)", Accept: "text/html", "Cache-Control": "no-cache" },
   });
   if (!response.ok || !response.body) throw new Error("RFI unavailable");
@@ -110,7 +110,10 @@ export class RfiLiveDepartures {
   private readonly cache = new Map<number, Board>();
   private readonly pending = new Map<number, Promise<Board>>();
   private readonly attempted = new Map<number, number>();
-  constructor(private readonly fetch: Fetch = fetchBoard, private readonly now = Date.now) {}
+  constructor(
+    private readonly fetch: Fetch = fetchBoard, private readonly now = Date.now,
+    private readonly onFailure?: (kind: string) => void
+  ) {}
 
   async get(origin: string, destination: string): Promise<LiveDepartures | undefined> {
     const placeID = placeIDs.get(stationKey(origin));
@@ -146,7 +149,10 @@ export class RfiLiveDepartures {
           && (stationKey(train.destination) === target || train.stopNames.has(target));
       });
       return departures.length ? { observedAt: board.observedAt, departures } : undefined;
-    } catch { return undefined; }
+    } catch (error) {
+      this.onFailure?.(error instanceof Error ? error.name : "UnknownError");
+      return undefined;
+    }
   }
 }
 
