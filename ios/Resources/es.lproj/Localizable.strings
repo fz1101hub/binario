@@ -91,3 +91,9 @@
 "commuter.unavailable" = "Datos en tiempo real no disponibles";
 "commuter.delay_format" = "Retraso de %ld minutos";
 "commuter.platform" = "Andén";
+"commuter.status.on_time" = "Puntual";
+"commuter.status.delayed" = "Con retraso";
+"commuter.status.cancelled" = "Cancelado";
+"result.live.disclosure" = "Retrasos y vías del panel de la estación. La previsión corresponde a la salida.";
+"result.stale.disclosure" = "Últimos datos disponibles. Actualiza para comprobar retrasos y vías.";
+"settings.data.provider_live" = "Salidas RFI en tiempo real · horarios GTFS incluidos";

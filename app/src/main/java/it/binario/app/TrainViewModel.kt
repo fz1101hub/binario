@@ -195,9 +195,7 @@ class TrainViewModel @JvmOverloads constructor(
             val attempt = lastStationBoardRefreshAttempt
             val interval = if (stationBoardRefreshState == RefreshState.ERROR) {
                 CommuterRefreshPolicy.RETRY_INTERVAL_MILLIS
-            } else if (BuildConfig.PERSONAL_REALTIME_SOURCES) {
-                CommuterRefreshPolicy.LIVE_INTERVAL_MILLIS
-            } else CommuterRefreshPolicy.SCHEDULE_INTERVAL_MILLIS
+            } else CommuterRefreshPolicy.LIVE_INTERVAL_MILLIS
             if (stationBoardStation != null && stationBoardRefreshState != RefreshState.LOADING &&
                 (attempt == null || now - attempt >= interval)
             ) loadStationBoard()
@@ -205,7 +203,6 @@ class TrainViewModel @JvmOverloads constructor(
                 followsCurrentTime = followsCurrentDepartures,
                 loading = refreshState == RefreshState.LOADING,
                 lastAttempt = lastRefreshAttempt,
-                snapshot = primarySnapshot,
                 now = now,
                 failed = refreshState == RefreshState.ERROR
             )) refresh()

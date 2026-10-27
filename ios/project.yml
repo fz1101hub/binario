@@ -21,6 +21,8 @@ targets:
         buildPhase: resources
       - path: ../app/src/main/assets/stations/curated_it_rail_stations.json
         buildPhase: resources
+      - path: ../contracts/rail-sources/rfi_stations.v1.json
+        buildPhase: resources
     scheme:
       testTargets:
         - BinarioAppTests
@@ -80,6 +82,10 @@ targets:
     sources:
       - path: BinarioKit/Tests/BinarioKitTests
       - path: ../contracts/wear-snapshot/v1/ios-to-apple-watch-v1.json
+        buildPhase: resources
+      - path: ../contracts/rail-live-fixtures
+        buildPhase: resources
+      - path: ../contracts/rail-sources/rfi_stations.v1.json
         buildPhase: resources
     dependencies:
       - package: BinarioKit

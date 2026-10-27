@@ -17,18 +17,16 @@ internal fun RouteSnapshot.availabilityAt(now: Long): SnapshotAvailability = whe
     else -> SnapshotAvailability.LIVE
 }
 
-/** Foreground only. Static schedules do not need the polling frequency of operational data. */
+/** Foreground only. Retry live data even when the previous result was schedule-only. */
 internal object CommuterRefreshPolicy {
     const val TICK_MILLIS = 15_000L
     const val LIVE_INTERVAL_MILLIS = 60_000L
-    const val SCHEDULE_INTERVAL_MILLIS = 5 * 60_000L
     const val RETRY_INTERVAL_MILLIS = 2 * 60_000L
 
     fun shouldRefresh(
         followsCurrentTime: Boolean,
         loading: Boolean,
         lastAttempt: Long?,
-        snapshot: RouteSnapshot?,
         now: Long,
         failed: Boolean = false
     ): Boolean {
@@ -36,7 +34,6 @@ internal object CommuterRefreshPolicy {
         if (lastAttempt == null) return true
         val interval = when {
             failed -> RETRY_INTERVAL_MILLIS
-            snapshot?.availabilityAt(now) == SnapshotAvailability.SCHEDULED -> SCHEDULE_INTERVAL_MILLIS
             else -> LIVE_INTERVAL_MILLIS
         }
         return now >= lastAttempt && now - lastAttempt >= interval

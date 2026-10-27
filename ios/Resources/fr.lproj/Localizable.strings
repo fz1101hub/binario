@@ -91,3 +91,9 @@
 "commuter.unavailable" = "Données en direct non disponibles";
 "commuter.delay_format" = "Retard de %ld minutes";
 "commuter.platform" = "Voie";
+"commuter.status.on_time" = "À l’heure";
+"commuter.status.delayed" = "En retard";
+"commuter.status.cancelled" = "Supprimé";
+"result.live.disclosure" = "Retards et quais du tableau de la gare. La prévision concerne le départ.";
+"result.stale.disclosure" = "Dernières données disponibles. Actualisez pour vérifier les retards et les quais.";
+"settings.data.provider_live" = "Départs RFI en temps réel · horaires GTFS inclus";

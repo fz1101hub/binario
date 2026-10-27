@@ -1,5 +1,6 @@
 import { escapeXmlCharacters } from "ask-sdk-core";
-import { messagesForLocale, type SupportedLocale } from "@shared/i18n";
+import { formatMessage, formatPlural, messagesForLocale, type SupportedLocale } from "@shared/i18n";
+import type { LiveDepartures } from "../rail/rfi";
 import { LIVE_DATA_UNAVAILABLE_SPEECH } from "./config";
 
 const localeSet = new Set<SupportedLocale>([
@@ -50,3 +51,20 @@ export function liveDataUnavailableSpeech(
 
 /** Legacy configuration value retained for operational documentation and it-IT compatibility. */
 export const italianLiveDataUnavailableSpeech = LIVE_DATA_UNAVAILABLE_SPEECH;
+
+/** The spoken answer and Echo Show card use exactly the same source-backed fields. */
+export function liveDeparturesSpeech(locale: SupportedLocale, live: LiveDepartures, card = false) {
+  const messages = messagesForLocale(locale).voice;
+  const safe = card ? plainSpeechText : escapeSsmlText;
+  const time = (instant: number) => new Intl.DateTimeFormat(locale, {
+    timeZone: "Europe/Rome", hour: "2-digit", minute: "2-digit", hourCycle: "h23",
+  }).format(instant);
+  const source = formatMessage(messages.liveSource, { time: time(live.observedAt) });
+  const trains = live.departures.slice(0, 2).map(train => formatMessage(messages.liveTrain, {
+    number: safe(train.number), destination: safe(train.destination), time: time(train.expectedAt),
+    status: train.cancelled ? messages.liveCancelled : train.delayMinutes > 0
+      ? formatPlural(locale, train.delayMinutes, messages.liveDelayed) : messages.liveOnTime,
+    platform: train.platform ? formatMessage(messages.livePlatform, { platform: safe(train.platform) }) : "",
+  }));
+  return [source, ...trains].join(" ");
+}

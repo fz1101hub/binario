@@ -37,18 +37,21 @@ internal object LegacyStationBoardInterop {
         services: List<TrainService>,
         fetchedAt: Instant,
         ttl: Duration,
-        zone: ZoneId = defaultZone
+        zone: ZoneId = defaultZone,
+        observedAt: Instant = fetchedAt,
+        expiresAt: Instant = fetchedAt.plus(ttl)
     ): StationBoard {
         val entries = services.mapNotNull { service ->
-            val scheduled = resolveBoardDateTime(service.scheduledDeparture, from, to, zone) ?: return@mapNotNull null
+            val scheduled = service.scheduledDepartureDateTime?.atZone(zone)
+                ?: resolveBoardDateTime(service.scheduledDeparture, from, to, zone) ?: return@mapNotNull null
             if (scheduled.toInstant().isBefore(from) || scheduled.toInstant().isAfter(to)) return@mapNotNull null
 
             val source = SourceRef(
                 sourceId = sourceId,
                 nativeId = service.id,
-                observedAt = fetchedAt,
+                observedAt = observedAt,
                 fetchedAt = fetchedAt,
-                expiresAt = fetchedAt.plus(ttl),
+                expiresAt = expiresAt,
                 confidence = confidence,
                 traceId = "${sourceId.value}:${service.id}"
             )
@@ -73,9 +76,9 @@ internal object LegacyStationBoardInterop {
 
         val boardSource = SourceRef(
             sourceId = sourceId,
-            observedAt = fetchedAt,
+            observedAt = observedAt,
             fetchedAt = fetchedAt,
-            expiresAt = fetchedAt.plus(ttl),
+            expiresAt = expiresAt,
             confidence = confidence,
             traceId = "${sourceId.value}:board:${stationId.value}:${fetchedAt.toEpochMilli()}"
         )
@@ -88,7 +91,7 @@ internal object LegacyStationBoardInterop {
             snapshot = SnapshotMeta(
                 schemaVersion = 1,
                 generatedAt = fetchedAt,
-                validUntil = fetchedAt.plus(ttl),
+                validUntil = expiresAt,
                 freshness = Freshness.FRESH,
                 completeness = Completeness.PARTIAL,
                 contributingSources = setOf(boardSource)

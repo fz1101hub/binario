@@ -91,3 +91,9 @@
 "commuter.unavailable" = "Live data unavailable";
 "commuter.delay_format" = "Delayed by %ld minutes";
 "commuter.platform" = "Platform";
+"commuter.status.on_time" = "On time";
+"commuter.status.delayed" = "Delayed";
+"commuter.status.cancelled" = "Cancelled";
+"result.live.disclosure" = "Delays and platforms from the station board. The prediction applies to departure.";
+"result.stale.disclosure" = "Last available data. Refresh to check delays and platforms.";
+"settings.data.provider_live" = "RFI live departures · included GTFS timetables";

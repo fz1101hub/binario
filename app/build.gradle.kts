@@ -103,7 +103,9 @@ android {
     }
 
     sourceSets {
+        getByName("main").resources.srcDir(rootProject.file("contracts/rail-sources"))
         getByName("test").resources.srcDir(rootProject.file("contracts/wear-snapshot/v1"))
+        getByName("test").resources.srcDir(rootProject.file("contracts/rail-live-fixtures"))
     }
 }
 
@@ -137,5 +139,8 @@ dependencies {
 // Reproduction profile for the large embedded-GTFS regression. The property
 // limits the forked JUnit VM, not only the Gradle daemon.
 tasks.withType<org.gradle.api.tasks.testing.Test>().configureEach {
+    val verifyLive = providers.environmentVariable("BINARIO_VERIFY_LIVE").orElse("false")
+    inputs.property("verifyLive", verifyLive)
+    testLogging.showStandardStreams = verifyLive.get() == "true"
     providers.gradleProperty("BINARIO_TEST_MAX_HEAP").orNull?.let { maxHeapSize = it }
 }

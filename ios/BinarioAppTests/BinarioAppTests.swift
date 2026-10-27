@@ -5,6 +5,33 @@ import BinarioKit
 
 @MainActor
 final class BinarioAppTests: XCTestCase {
+    func testLiveDelayReachesTheStateUsedByTheCommuterScreen() async throws {
+        let defaults = try makeDefaults()
+        defer { clear(defaults) }
+        let current = Date(timeIntervalSince1970: 1_793_062_002)
+        let catalog = try RfiStationCatalog(data: Data(contentsOf: repositoryRoot.appendingPathComponent("contracts/rail-sources/rfi_stations.v1.json")))
+        let recorded = try String(contentsOf: repositoryRoot.appendingPathComponent("contracts/rail-live-fixtures/rfi-milano-20261027.html"), encoding: .utf8)
+        let data = Data(recorded.replacingOccurrences(of: "&quot;Nessuno&quot;", with: "&quot;15 minuti&quot;").utf8)
+        let repository = RfiJourneyRepository(catalog: catalog, now: { current }, fetch: { _ in data })
+        let store = SavedRouteStore(defaults: defaults)
+        let route = try SavedRoute(id: "commute", name: "Lavoro",
+            origin: StationIdentity(id: "S01700", name: "Milano Centrale"),
+            destination: StationIdentity(id: "S01825", name: "Lodi"))
+        try store.save([route])
+        let model = AppModel(catalogState: .loading, savedRouteStore: store,
+            watchSharingStore: WatchSharingPreferenceStore(defaults: defaults), repository: repository,
+            watchPublisher: nil, versionDisplay: "test", realtimeCatalog: catalog)
+        await model.followRoute(route, now: current)
+        let snapshot = try XCTUnwrap(model.latestSnapshot)
+        XCTAssertEqual(snapshot.availability(at: current), .live)
+        let train = try XCTUnwrap(snapshot.services.first { $0.number == "2451" })
+        XCTAssertEqual(train.delayMinutes, 15)
+        XCTAssertEqual(train.expectedDeparture, "05:30")
+        XCTAssertEqual(train.status, "DELAYED")
+        XCTAssertFalse(model.isRefreshing)
+        XCTAssertEqual(model.scheduleState, .available)
+    }
+
     func testSavedRoutesRemainInInjectedLocalUserDefaults() throws {
         let defaults = try makeDefaults()
         defer { clear(defaults) }

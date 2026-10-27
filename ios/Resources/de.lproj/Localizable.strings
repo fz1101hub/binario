@@ -91,3 +91,9 @@
 "commuter.unavailable" = "Live-Daten nicht verfügbar";
 "commuter.delay_format" = "%ld Minuten Verspätung";
 "commuter.platform" = "Gleis";
+"commuter.status.on_time" = "Pünktlich";
+"commuter.status.delayed" = "Verspätet";
+"commuter.status.cancelled" = "Fällt aus";
+"result.live.disclosure" = "Verspätungen und Gleise von der Bahnhofstafel. Die Prognose gilt für die Abfahrt.";
+"result.stale.disclosure" = "Zuletzt verfügbare Daten. Für Verspätungen und Gleise bitte aktualisieren.";
+"settings.data.provider_live" = "RFI in Echtzeit · enthaltene GTFS-Fahrpläne";

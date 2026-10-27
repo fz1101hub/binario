@@ -51,7 +51,7 @@ struct SettingsView: View {
     private var providerStatusKey: LocalizedStringKey {
         switch model.scheduleState {
         case .loading: "settings.data.provider_loading"
-        case .available: "settings.data.provider_programmed"
+        case .available: model.hasRealtimeProvider ? "settings.data.provider_live" : "settings.data.provider_programmed"
         case .unavailable: "settings.data.provider_unavailable"
         }
     }

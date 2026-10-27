@@ -180,14 +180,14 @@ object KnownProviders {
         ProviderPolicy(
             descriptor = ProviderDescriptor(
                 id = KnownProviderIds.RFI_STATION_BOARD,
-                displayName = "RFI Monitor Arrivi/Partenze — best effort",
+                displayName = "RFI — Monitor Arrivi/Partenze live",
                 capabilities = setOf(ProviderCapability.STATION_BOARD),
                 coverage = CoverageDescriptor(countryCodes = setOf("IT"), description = "Tabelloni delle stazioni RFI"),
                 accessMode = AccessMode.PUBLIC_BEST_EFFORT,
                 ratePolicy = realtimeRatePolicy,
                 schemaVersion = 1
             ),
-            enabled = BuildConfig.PERSONAL_REALTIME_SOURCES,
+            enabled = true,
             priorityByCapability = mapOf(ProviderCapability.STATION_BOARD to 20)
         ),
         ProviderPolicy(

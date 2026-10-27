@@ -50,8 +50,9 @@ import {
 import { isAlexaConfigured } from "./config";
 import { needsAccountLink } from "./guards";
 import { parseOAuthAuthorizationParameters } from "./oauthContract";
-import { escapeSsmlText, liveDataUnavailableSpeech, plainSpeechText } from "./speech";
+import { escapeSsmlText, liveDataUnavailableSpeech, liveDeparturesSpeech, plainSpeechText } from "./speech";
 import { screenResponseInterceptor } from "./presentation";
+import { getLiveDepartures } from "../rail/rfi";
 
 /** Intent names the skill handles; the interaction model in skill-package/ must declare all of them. */
 export const HANDLED_INTENTS = [
@@ -185,11 +186,12 @@ const nextTrainsHandler: RequestHandler = {
         .getResponse();
     // SSML needs escaped text; the companion-app card is plain text and must
     // show the route name as typed, not XML entities.
-    const speech = liveDataUnavailableSpeech(
+    const live = await getLiveDepartures(route.origin, route.destination);
+    const speech = live ? liveDeparturesSpeech(locale, live) : liveDataUnavailableSpeech(
       locale,
       formatMessage(messages.routeSubject, { routeName: escapeSsmlText(route.name) })
     );
-    const card = liveDataUnavailableSpeech(
+    const card = live ? liveDeparturesSpeech(locale, live, true) : liveDataUnavailableSpeech(
       locale,
       formatMessage(messages.routeSubject, { routeName: plainSpeechText(route.name) })
     );
@@ -222,10 +224,19 @@ const trainStatusHandler: RequestHandler = {
     const cardSubject = trainNumber
       ? formatMessage(messages.trainSubject, { trainNumber: plainSpeechText(trainNumber) })
       : undefined;
-    const speech = liveDataUnavailableSpeech(locale, subject);
+    // Scope a train-number request to the linked user's saved routes. Never
+    // guess a station or fan out across the national network.
+    const routes = await listPersonalRoutesForAlexa(principal.userId, principal.credentialVersion);
+    const candidates = trainNumber && /^\d{1,8}$/.test(trainNumber)
+      ? await Promise.all((routes ?? []).slice(0, 2).map(route => getLiveDepartures(route.origin, route.destination)))
+      : [];
+    const matched = candidates.flatMap(live => live?.departures.map(train => ({ train, observedAt: live.observedAt })) ?? [])
+      .find(value => value.train.number === trainNumber);
+    const live = matched ? { observedAt: matched.observedAt, departures: [matched.train] } : undefined;
+    const speech = live ? liveDeparturesSpeech(locale, live) : liveDataUnavailableSpeech(locale, subject);
     return input.responseBuilder
       .speak(speech)
-      .withSimpleCard(messages.cardTitle, liveDataUnavailableSpeech(locale, cardSubject))
+      .withSimpleCard(messages.cardTitle, live ? liveDeparturesSpeech(locale, live, true) : liveDataUnavailableSpeech(locale, cardSubject))
       .withShouldEndSession(true)
       .getResponse();
   },

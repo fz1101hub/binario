@@ -26,7 +26,10 @@ vi.mock("../db", () => ({
   rotateRefreshToken: vi.fn(),
 }));
 
+vi.mock("../rail/rfi", () => ({ getLiveDepartures: vi.fn(async () => undefined) }));
+
 import { getAlexaLinkStatus, listPersonalRoutesForAlexa } from "../db";
+import { getLiveDepartures } from "../rail/rfi";
 import { createAlexaSkill, HANDLED_INTENTS } from "./alexa";
 import { issueVoiceAccessToken } from "./crypto";
 
@@ -129,6 +132,26 @@ function speechText(
 }
 
 describe("Alexa skill handlers", () => {
+  it("speaks the real provider delay and renders the same data on Echo Show", async () => {
+    vi.mocked(getAlexaLinkStatus).mockResolvedValue({ userId: 7, credentialVersion: 3, revokedAt: null } as Awaited<ReturnType<typeof getAlexaLinkStatus>>);
+    vi.mocked(listPersonalRoutesForAlexa).mockResolvedValue([
+      { id: 1, name: "Lavoro", origin: "Milano Centrale", destination: "Lodi", isPinned: true },
+    ] as Awaited<ReturnType<typeof listPersonalRoutesForAlexa>>);
+    const now = Date.now();
+    vi.mocked(getLiveDepartures).mockResolvedValueOnce({ observedAt: now, departures: [{
+      number: "2451", destination: "Bologna Centrale", scheduledAt: now, expectedAt: now + 900_000,
+      delayMinutes: 15, cancelled: false, platform: "7", stopNames: new Set(["LODI"]),
+    }] });
+    const request = withAccessToken(intent("NextTrainsIntent"), await issueVoiceAccessToken(7, 3));
+    request.context.System.device!.supportedInterfaces["Alexa.Presentation.APL"] = { runtime: { maxVersion: "1.8" } };
+    const response = await createAlexaSkill().invoke(request);
+    expect(getLiveDepartures).toHaveBeenLastCalledWith("Milano Centrale", "Lodi");
+    expect(speechText(response)).toContain("15 minuti di ritardo");
+    expect(speechText(response)).toContain("Binario 7");
+    expect(speechText(response)).not.toContain("dati non disponibili");
+    expect(JSON.stringify(response.response.directives)).toContain("15 minuti di ritardo");
+  });
+
   it("keeps voice responses identical on Echo speakers and adds an accessible summary on Echo Show", async () => {
     const speaker = envelope({ type: "LaunchRequest" });
     const screen = envelope({ type: "LaunchRequest" });

@@ -30,7 +30,7 @@ class RfiStationBoardAdapterTest {
     fun `trasforma il tabellone RFI in dati live filtrati sulla destinazione`() = runBlocking {
         val adapter = RfiStationBoardAdapter(
             fetcher = RfiMonitorFetcher { htmlFixture() },
-            clock = Clock.fixed(Instant.parse("2026-08-14T12:00:00Z"), ZoneOffset.UTC)
+            clock = Clock.fixed(Instant.parse("2026-08-14T07:55:00Z"), ZoneOffset.UTC)
         )
 
         val result = adapter.loadRoute(route, Direction.OUTBOUND)
@@ -51,7 +51,7 @@ class RfiStationBoardAdapterTest {
     fun `espone il tabellone RFI nel contratto canonico`() = runBlocking {
         val adapter = RfiStationBoardAdapter(
             fetcher = RfiMonitorFetcher { htmlFixture() },
-            clock = Clock.fixed(Instant.parse("2026-08-14T12:00:00Z"), ZoneOffset.UTC)
+            clock = Clock.fixed(Instant.parse("2026-08-14T07:55:00Z"), ZoneOffset.UTC)
         )
 
         val result = adapter.getStationBoard(
@@ -79,7 +79,7 @@ class RfiStationBoardAdapterTest {
         )
         val adapter = RfiStationBoardAdapter(
             fetcher = RfiMonitorFetcher { divertedHtml },
-            clock = Clock.fixed(Instant.parse("2026-08-14T12:00:00Z"), ZoneOffset.UTC)
+            clock = Clock.fixed(Instant.parse("2026-08-14T07:55:00Z"), ZoneOffset.UTC)
         )
 
         val result = adapter.getStationBoard(
@@ -102,7 +102,7 @@ class RfiStationBoardAdapterTest {
         var calls = 0
         val adapter = RfiStationBoardAdapter(
             fetcher = RfiMonitorFetcher { calls += 1; htmlFixture() },
-            clock = Clock.fixed(Instant.parse("2026-08-14T12:00:00Z"), ZoneOffset.UTC)
+            clock = Clock.fixed(Instant.parse("2026-08-14T07:55:00Z"), ZoneOffset.UTC)
         )
 
         adapter.loadRoute(route, Direction.OUTBOUND)
@@ -121,7 +121,7 @@ class RfiStationBoardAdapterTest {
     }
 
     private fun htmlFixture(): String = """
-        <html><body><table>
+        <html><body><h1>ROMA TERMINI</h1><p>aggiornato il 14/08/2026 alle ore 09:55:00</p><table>
           <tr name="treno" class="row">
             <td id="RVettore"><img alt="TRENITALIA" /></td>
             <td id="RCategoria"><img alt="Frecciarossa" /></td>

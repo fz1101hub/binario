@@ -23,20 +23,17 @@ extension JourneySnapshot {
 
 public enum CommuterRefreshPolicy {
     public static let liveInterval: TimeInterval = 60
-    public static let scheduledInterval: TimeInterval = 300
     public static let retryInterval: TimeInterval = 120
 
     public static func shouldRefresh(
         loading: Bool,
         lastAttempt: Date?,
-        snapshot: JourneySnapshot?,
         now: Date,
         failed: Bool = false
     ) -> Bool {
         guard !loading else { return false }
         guard let lastAttempt else { return true }
-        let interval = failed ? retryInterval
-            : (snapshot?.availability(at: now) == .scheduled ? scheduledInterval : liveInterval)
+        let interval = failed ? retryInterval : liveInterval
         return now.timeIntervalSince(lastAttempt) >= interval
     }
 }

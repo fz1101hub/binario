@@ -112,22 +112,7 @@ struct CommuterView: View {
                     .font(.footnote).foregroundStyle(.secondary)
                 ForEach(Array(snapshot.services.prefix(2))) { service in
                     Divider()
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text(availability == .live ? service.expectedDeparture : service.scheduledDeparture)
-                            .font(.largeTitle.bold().monospacedDigit())
-                        Text(service.destination).font(.headline)
-                        Text("\(service.operatorName) · \(service.category) \(service.number)").foregroundStyle(.secondary)
-                        if availability == .live {
-                            Text(service.status)
-                            if service.delayMinutes > 0 {
-                                Text(String(format: String(localized: "commuter.delay_format"), service.delayMinutes))
-                            }
-                            if let platform = service.platform {
-                                Text("\(String(localized: "commuter.platform")) \(platform)")
-                            }
-                        }
-                    }
-                    .accessibilityElement(children: .combine)
+                    TrainServiceSummary(service: service, availability: availability, prominent: true)
                 }
             } else if model.scheduleState == .unavailable {
                 Label("schedule.unavailable", systemImage: "exclamationmark.triangle")

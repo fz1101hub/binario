@@ -32,6 +32,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -2547,7 +2548,7 @@ private fun ServiceDetailScreen(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
-        items(service.stops, key = { "${service.id}-${it.station}" }) { stop ->
+        itemsIndexed(service.stops, key = { index, stop -> "${service.id}:$index:${stop.station}" }) { _, stop ->
             StopTimelineRow(
                 station = stop.station,
                 expected = stop.expected,
@@ -2555,7 +2556,7 @@ private fun ServiceDetailScreen(
                 delay = stop.delayMinutes,
                 platform = stop.platform,
                 completed = stop.completed,
-                operationalStatusVerified = service.operationalStatusVerified,
+                operationalStatusVerified = service.operationalStatusVerified && stop.expected != "—",
                 routeChange = stop.routeChange,
                 onSetAlarm = { alarmTarget = stop }
             )

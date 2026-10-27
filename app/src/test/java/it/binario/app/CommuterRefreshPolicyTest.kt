@@ -30,18 +30,19 @@ class CommuterRefreshPolicyTest {
     }
 
     @Test fun `planned searches and in flight requests are never polled`() {
-        assertFalse(CommuterRefreshPolicy.shouldRefresh(false, false, null, snapshot, now))
-        assertFalse(CommuterRefreshPolicy.shouldRefresh(true, true, null, snapshot, now))
+        assertFalse(CommuterRefreshPolicy.shouldRefresh(false, false, null, now))
+        assertFalse(CommuterRefreshPolicy.shouldRefresh(true, true, null, now))
     }
 
-    @Test fun `static schedules use a slower refresh interval`() {
-        assertFalse(CommuterRefreshPolicy.shouldRefresh(true, false, now - 60_000, snapshot, now))
-        assertTrue(CommuterRefreshPolicy.shouldRefresh(true, false, now - 300_000, snapshot, now))
+    @Test fun `current routes retry live data after a scheduled fallback`() {
+        assertFalse(CommuterRefreshPolicy.shouldRefresh(true, false, now - 59_999, now))
+        assertTrue(CommuterRefreshPolicy.shouldRefresh(true, false, now - 60_000, now))
+        assertTrue(CommuterRefreshPolicy.shouldRefresh(true, false, now - 300_000, now))
     }
 
     @Test fun `failed fetches back off rather than hammering an unavailable source`() {
-        assertFalse(CommuterRefreshPolicy.shouldRefresh(true, false, now - 60_000, null, now, failed = true))
-        assertTrue(CommuterRefreshPolicy.shouldRefresh(true, false, now - 120_000, null, now, failed = true))
+        assertFalse(CommuterRefreshPolicy.shouldRefresh(true, false, now - 60_000, now, failed = true))
+        assertTrue(CommuterRefreshPolicy.shouldRefresh(true, false, now - 120_000, now, failed = true))
     }
 
     @Test fun `unavailable and demonstration states cannot become current operational data`() {

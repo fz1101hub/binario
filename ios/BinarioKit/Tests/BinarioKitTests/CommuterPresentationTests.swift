@@ -21,13 +21,14 @@ final class CommuterPresentationTests: XCTestCase {
         XCTAssertEqual(try snapshot(nature: .operational, state: .operational, confidence: .staticOnly, freshness: .fresh).availability(at: now), .unavailable)
     }
 
-    func testStaticSchedulesAndFailuresHaveDifferentBoundedRefreshIntervals() throws {
+    func testScheduledFallbackRetriesLiveAfterOneMinute() throws {
         let value = try snapshot()
-        XCTAssertFalse(CommuterRefreshPolicy.shouldRefresh(loading: true, lastAttempt: nil, snapshot: value, now: now))
-        XCTAssertFalse(CommuterRefreshPolicy.shouldRefresh(loading: false, lastAttempt: now.addingTimeInterval(-60), snapshot: value, now: now))
-        XCTAssertTrue(CommuterRefreshPolicy.shouldRefresh(loading: false, lastAttempt: now.addingTimeInterval(-300), snapshot: value, now: now))
-        XCTAssertFalse(CommuterRefreshPolicy.shouldRefresh(loading: false, lastAttempt: now.addingTimeInterval(-60), snapshot: nil, now: now, failed: true))
-        XCTAssertTrue(CommuterRefreshPolicy.shouldRefresh(loading: false, lastAttempt: now.addingTimeInterval(-120), snapshot: nil, now: now, failed: true))
+        XCTAssertFalse(CommuterRefreshPolicy.shouldRefresh(loading: true, lastAttempt: nil, now: now))
+        XCTAssertFalse(CommuterRefreshPolicy.shouldRefresh(loading: false, lastAttempt: now.addingTimeInterval(-59), now: now))
+        XCTAssertTrue(CommuterRefreshPolicy.shouldRefresh(loading: false, lastAttempt: now.addingTimeInterval(-60), now: now))
+        XCTAssertTrue(CommuterRefreshPolicy.shouldRefresh(loading: false, lastAttempt: now.addingTimeInterval(-300), now: now))
+        XCTAssertFalse(CommuterRefreshPolicy.shouldRefresh(loading: false, lastAttempt: now.addingTimeInterval(-60), now: now, failed: true))
+        XCTAssertTrue(CommuterRefreshPolicy.shouldRefresh(loading: false, lastAttempt: now.addingTimeInterval(-120), now: now, failed: true))
     }
 
     private func snapshot(

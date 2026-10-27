@@ -91,3 +91,9 @@
 "commuter.unavailable" = "Dati live non disponibili";
 "commuter.delay_format" = "Ritardo di %ld minuti";
 "commuter.platform" = "Binario";
+"commuter.status.on_time" = "In orario";
+"commuter.status.delayed" = "In ritardo";
+"commuter.status.cancelled" = "Soppresso";
+"result.live.disclosure" = "Ritardi e binari dal tabellone della stazione. La previsione riguarda la partenza.";
+"result.stale.disclosure" = "Ultimo dato disponibile. Aggiorna per verificare ritardi e binari.";
+"settings.data.provider_live" = "RFI in tempo reale · GTFS programmati inclusi";

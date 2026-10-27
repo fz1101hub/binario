@@ -66,12 +66,12 @@ object StopAlarmPlanner {
     ): StopAlarmPlan? {
         if (stop.completed || leadMinutes !in leadMinutesRange) return null
         val departure = service.scheduledDepartureDateTime
-            ?: return plan(service.number, service.destination, stop.station, stop.expected, nowEpochMillis, zoneId, leadMinutes)
+            ?: return plan(service.number, service.destination, stop.station, stop.referenceTime, nowEpochMillis, zoneId, leadMinutes)
                 ?.let { it.copy(alarmId = "${it.alarmId}|${service.id}|${stop.scheduled}") }
-        val time = parse(stop.expected) ?: return null
+        val time = parse(stop.referenceTime) ?: return null
         val date = if (time < departure.toLocalTime()) departure.toLocalDate().plusDays(1) else departure.toLocalDate()
         val expected = LocalDateTime.of(date, time).atZone(zoneId).toInstant().toEpochMilli()
-        return planAt(service.number, service.destination, stop.station, stop.expected, expected, nowEpochMillis, leadMinutes,
+        return planAt(service.number, service.destination, stop.station, stop.referenceTime, expected, nowEpochMillis, leadMinutes,
             "${service.id}|${departure.toLocalDate()}|${stop.station}|${stop.scheduled}")
     }
 

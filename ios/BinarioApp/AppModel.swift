@@ -37,6 +37,8 @@ final class AppModel: ObservableObject {
     private let savedRouteStore: SavedRouteStore
     private let watchSharingStore: WatchSharingPreferenceStore
     private let watchPublisher: WatchSnapshotPublisher?
+    private let realtimeCatalog: RfiStationCatalog?
+    var hasRealtimeProvider: Bool { realtimeCatalog != nil }
 
     init(
         catalogState: CatalogState,
@@ -45,7 +47,8 @@ final class AppModel: ObservableObject {
         repository: any JourneyRepository,
         scheduleState: ScheduleState = .available,
         watchPublisher: WatchSnapshotPublisher?,
-        versionDisplay: String
+        versionDisplay: String,
+        realtimeCatalog: RfiStationCatalog? = nil
     ) {
         self.catalogState = catalogState
         self.savedRouteStore = savedRouteStore
@@ -54,6 +57,7 @@ final class AppModel: ObservableObject {
         self.scheduleState = scheduleState
         self.latestSnapshot = nil
         self.watchPublisher = watchPublisher
+        self.realtimeCatalog = realtimeCatalog
         self.versionDisplay = versionDisplay
         self.savedRoutes = savedRouteStore.load()
         self.commuterRouteID = savedRouteStore.commuterRouteID
@@ -83,14 +87,24 @@ final class AppModel: ObservableObject {
         publisher = nil
         #endif
 
+        let realtimeCatalog = bundle.url(forResource: "rfi_stations.v1", withExtension: "json")
+            .flatMap { try? Data(contentsOf: $0) }
+            .flatMap { try? RfiStationCatalog(data: $0) }
+        let liveRepository: any JourneyRepository
+        if let realtimeCatalog {
+            liveRepository = RfiJourneyRepository(catalog: realtimeCatalog)
+        } else {
+            liveRepository = FailClosedJourneyRepository()
+        }
         let model = AppModel(
             catalogState: .loading,
             savedRouteStore: SavedRouteStore(),
             watchSharingStore: WatchSharingPreferenceStore(),
-            repository: FailClosedJourneyRepository(),
+            repository: liveRepository,
             scheduleState: .loading,
             watchPublisher: publisher,
-            versionDisplay: versionFormatter.displayVersion(bundle: bundle)
+            versionDisplay: versionFormatter.displayVersion(bundle: bundle),
+            realtimeCatalog: realtimeCatalog
         )
 
         if let url = bundle.url(forResource: "curated_it_rail_stations", withExtension: "json") {
@@ -108,7 +122,7 @@ final class AppModel: ObservableObject {
                 in: .userDomainMask
             ).first
         else {
-            model.scheduleState = .unavailable
+            model.scheduleState = realtimeCatalog == nil ? .unavailable : .available
             return model
         }
         let cacheDirectory = applicationSupport
@@ -135,7 +149,7 @@ final class AppModel: ObservableObject {
     }
 
     func loadSchedule(compressedURL: URL, metadataURL: URL, cacheDirectory: URL) async {
-        scheduleState = .loading
+        scheduleState = realtimeCatalog == nil ? .loading : .available
         let installedURL = await Task.detached(priority: .utility) {
             try? BundledGTFSScheduleInstaller().install(
                 compressedURL: compressedURL,
@@ -144,12 +158,17 @@ final class AppModel: ObservableObject {
             )
         }.value
         guard let installedURL else {
-            repository = FailClosedJourneyRepository()
-            scheduleState = .unavailable
+            repository = withRealtime(fallback: FailClosedJourneyRepository())
+            scheduleState = realtimeCatalog == nil ? .unavailable : .available
             return
         }
-        repository = SQLiteGTFSJourneyRepository(databaseURL: installedURL)
+        repository = withRealtime(fallback: SQLiteGTFSJourneyRepository(databaseURL: installedURL))
         scheduleState = .available
+    }
+
+    private func withRealtime(fallback: any JourneyRepository) -> any JourneyRepository {
+        guard let realtimeCatalog else { return fallback }
+        return RfiJourneyRepository(catalog: realtimeCatalog, fallback: fallback)
     }
 
     func run(query: JourneyQuery, followingCommute: Bool = false) async {
@@ -174,7 +193,7 @@ final class AppModel: ObservableObject {
         case let .unavailable(reason):
             searchState = .unavailable(reason)
             latestSnapshot = nil
-            if reason == .noAuthorizedProvider || reason == .providerInvalid {
+            if realtimeCatalog == nil && (reason == .noAuthorizedProvider || reason == .providerInvalid) {
                 scheduleState = .unavailable
             }
             publishUnavailableSnapshot(for: query)
@@ -219,7 +238,7 @@ final class AppModel: ObservableObject {
         let failed: Bool
         if case .unavailable = searchState { failed = true } else { failed = false }
         if force || CommuterRefreshPolicy.shouldRefresh(
-            loading: isRefreshing, lastAttempt: lastCommuteAttempt, snapshot: latestSnapshot,
+            loading: isRefreshing, lastAttempt: lastCommuteAttempt,
             now: now, failed: failed
         ) {
             await followRoute(route, direction: commuterDirection, now: now)

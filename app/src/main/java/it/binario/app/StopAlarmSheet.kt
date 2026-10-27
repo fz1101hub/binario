@@ -50,7 +50,7 @@ internal fun StopAlarmSheet(
             Text(stringResource(R.string.stop_alarm_setup_title), style = MaterialTheme.typography.titleLarge,
                 modifier = Modifier.semantics { heading() })
             Text(stop.station, style = MaterialTheme.typography.titleMedium)
-            Text(stringResource(R.string.stop_alarm_setup_description, service.number, stop.expected),
+            Text(stringResource(R.string.stop_alarm_setup_description, service.number, stop.referenceTime),
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf(5, 10, 15, 30).forEach { value ->

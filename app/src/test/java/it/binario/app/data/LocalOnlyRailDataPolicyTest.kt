@@ -27,7 +27,7 @@ class LocalOnlyRailDataPolicyTest {
         if (BuildConfig.PERSONAL_REALTIME_SOURCES) {
             assertEquals(setOf("RfiStationBoardAdapter", "ItaloPublicStationAdapter", "ViaggiaTrenoStationAdapter"), boardProviderNames)
         } else {
-            assertTrue(boardProviderNames.isEmpty())
+            assertEquals(setOf("RfiStationBoardAdapter"), boardProviderNames)
         }
 
         val displayBoards = LocalOnlyRailDataPolicy.stationBoardDisplayProviders()

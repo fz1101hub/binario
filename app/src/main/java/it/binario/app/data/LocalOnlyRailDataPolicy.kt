@@ -20,8 +20,8 @@ import it.binario.app.data.provider.VehiclePositionProvider
  * Runtime source policy.
  *
  * Quality rule: official/primary sources and coverage fallbacks live in
- * different tiers. A best-effort source is never queried before all official
- * alternatives have failed for the requested route/context.
+ * different tiers for planned coverage. The public RFI station board is queried
+ * first for current departures; static timetables remain the explicit fallback.
  */
 object LocalOnlyRailDataPolicy {
     private val rfiProgrammed by lazy { RfiProgrammedTimetableAdapter() }
@@ -50,15 +50,9 @@ object LocalOnlyRailDataPolicy {
 
     /** Realtime/operational boards used to enrich planned route snapshots. */
     fun stationBoardProviders(): List<StationBoardProvider> =
-        if (BuildConfig.PERSONAL_REALTIME_SOURCES) {
-            listOf(
-                rfiStationBoard,
-                italoStationBoard,
-                viaggiaTrenoBoard
-            )
-        } else {
-            emptyList()
-        }
+        listOf(rfiStationBoard) + if (BuildConfig.PERSONAL_REALTIME_SOURCES) {
+            listOf(italoStationBoard, viaggiaTrenoBoard)
+        } else emptyList()
 
     /**
      * User-facing station board: always starts from the official RFI programmed
