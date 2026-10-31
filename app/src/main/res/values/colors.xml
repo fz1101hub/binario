@@ -1,11 +1,18 @@
 <resources>
-    <color name="widget_surface">#004B3A</color>
-    <color name="widget_on_surface">#F5FBF5</color>
-    <color name="widget_on_surface_muted">#C5D9CF</color>
-    <color name="widget_accent">#4FE0AE</color>
-    <color name="widget_warning">#FFB870</color>
-    <color name="widget_error">#FFB4AB</color>
-    <color name="widget_divider">#4E796A</color>
-    <color name="widget_header">#C5D9CF</color>
-    <color name="widget_header_text">#003527</color>
+    <!-- Binario 2.0 railway green. #2E7D32 is the only green that carries small white text (5.1:1); the lighter
+         reference green #388E3C (4.1:1) is an identity accent and is not used behind text. Every pair below
+         meets WCAG AA: rows and highlights are darker than the widget surface so that muted, warning and error
+         text keep at least 4.5:1, and boundaries keep at least 3:1 against the surface. -->
+    <color name="brand_action_green">#2E7D32</color>
+    <color name="widget_surface">#205E2B</color>
+    <color name="widget_row">#184F1F</color>
+    <color name="widget_on_surface">#FFFFFF</color>
+    <color name="widget_on_surface_muted">#E0F1E2</color>
+    <color name="widget_warning">#FFCB93</color>
+    <color name="widget_error">#FFD0CC</color>
+    <color name="widget_divider">#8FC493</color>
+    <color name="widget_header">#D7F0DA</color>
+    <color name="widget_header_text">#143A1A</color>
+    <color name="widget_variation">#71400E</color>
+    <color name="widget_variation_stroke">#FFC489</color>
 </resources>
