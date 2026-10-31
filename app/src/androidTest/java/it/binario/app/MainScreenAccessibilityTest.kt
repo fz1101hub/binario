@@ -1,5 +1,9 @@
 package it.binario.app
 
+import it.binario.app.ui.detail.StopTimelineRow
+import it.binario.app.ui.departures.StationBoardEntryRow
+import it.binario.app.ui.departures.OperationsSectionCard
+import it.binario.app.ui.departures.OperationsSection
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.junit4.createComposeRule

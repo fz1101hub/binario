@@ -1,5 +1,6 @@
 package it.binario.app
 
+import it.binario.app.ui.common.DepartureListRow
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items

@@ -1,5 +1,6 @@
 package it.binario.app
 
+import it.binario.app.ui.departures.stationBoardLabel
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement

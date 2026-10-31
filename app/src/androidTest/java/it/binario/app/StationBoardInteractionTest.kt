@@ -1,5 +1,6 @@
 package it.binario.app
 
+import it.binario.app.ui.departures.StationBoardScreen
 import android.app.Application
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.hasClickAction

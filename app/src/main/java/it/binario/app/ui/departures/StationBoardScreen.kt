@@ -1,0 +1,603 @@
+package it.binario.app.ui.departures
+
+import android.Manifest
+import android.content.pm.PackageManager
+import android.location.Location
+import android.location.LocationManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Route
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.StarBorder
+import androidx.compose.material3.Button
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.viewmodel.compose.viewModel
+import it.binario.app.R
+import it.binario.app.RefreshState
+import it.binario.app.StationLineNoticesSection
+import it.binario.app.StationMonitorMode
+import it.binario.app.TrainViewModel
+import it.binario.app.data.Station
+import it.binario.app.data.core.BoardKind
+import it.binario.app.data.core.RunStatus
+import it.binario.app.data.core.StationBoardEntry
+import it.binario.app.data.repository.StationBoardRunDetails
+import it.binario.app.localized
+import it.binario.app.maps.GeoPoint
+import it.binario.app.maps.NearbyStationsMapCard
+import it.binario.app.maps.StationMapCard
+import it.binario.app.maps.rememberOpenMapStationIndex
+import it.binario.app.ui.common.SearchInfoState
+import it.binario.app.ui.common.StationField
+import it.binario.app.ui.common.localizedLabel
+import it.binario.app.ui.detail.StopTimelineRow
+import it.binario.app.updateTimeMessage
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.util.Locale
+
+// Partenze: departures and arrivals of a station, with the run details of a board entry.
+
+@Composable
+internal fun StationBoardScreen(modifier: Modifier, viewModel: TrainViewModel) {
+    LaunchedEffect(Unit) { viewModel.refreshStationBoardIfIdle() }
+    viewModel.selectedBoardEntry?.let { selected ->
+        StationBoardRunDetailsSheet(
+            station = viewModel.stationBoardStation?.name.orEmpty(),
+            entry = viewModel.stationBoardRunDetails?.entry ?: selected,
+            kind = viewModel.stationBoardKind,
+            details = viewModel.stationBoardRunDetails,
+            state = viewModel.stationBoardRunRefreshState,
+            onRefresh = viewModel::refreshStationBoardRun,
+            onDismiss = viewModel::closeStationBoardRun
+        )
+    }
+    var stationText by rememberSaveable(viewModel.stationBoardStation?.id) {
+        mutableStateOf(viewModel.stationBoardStation?.name.orEmpty())
+    }
+    var locationMessage by rememberSaveable { mutableStateOf<String?>(null) }
+    // In memory only (not saved state): the nearby map may mark it, nothing persists it.
+    var nearbyPosition by remember { mutableStateOf<GeoPoint?>(null) }
+    val mapStationIndex = rememberOpenMapStationIndex(viewModel.stations, viewModel::stationFromName)
+    var monitorMode by rememberSaveable { mutableStateOf(StationMonitorMode.BOTH.name) }
+    val context = LocalContext.current
+    val resources = LocalResources.current
+
+    fun locateNearbyStations() {
+        requestNearbyStationLocation(context) { location ->
+            if (location == null) {
+                locationMessage = resources.getString(R.string.location_unavailable)
+            } else {
+                viewModel.updateNearbyStations(location.latitude, location.longitude)
+                nearbyPosition = GeoPoint(location.latitude, location.longitude)
+                locationMessage = resources.getString(R.string.location_sorted_not_saved)
+            }
+        }
+    }
+
+    val locationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) locateNearbyStations()
+        else locationMessage = resources.getString(R.string.location_permission_denied)
+    }
+
+    val selectedStation = viewModel.stationBoardStation?.takeIf { it.name.equals(stationText.trim(), ignoreCase = true) }
+        ?: viewModel.stationFromName(stationText)
+    val board = viewModel.stationBoard?.takeIf { current ->
+        selectedStation != null &&
+            current.station.id == selectedStation.id &&
+            current.kind == viewModel.stationBoardKind
+    }
+
+    LazyColumn(
+        modifier = modifier.fillMaxSize().testTag("station-board-list"),
+        verticalArrangement = Arrangement.spacedBy(0.dp)
+    ) {
+        item {
+            Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(stringResource(R.string.station_board_title), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                StationField(
+                    label = stringResource(R.string.station_label),
+                    value = stationText,
+                    onValueChange = { stationText = it; viewModel.updateStationSuggestions("station-board", it) },
+                    matches = viewModel.stationSuggestions("station-board"),
+                    onSelect = {
+                        stationText = it.name
+                        viewModel.clearStationSuggestions("station-board")
+                        viewModel.selectStationBoardStation(it)
+                    }
+                )
+
+                selectedStation?.let { station ->
+                    StationPreferenceRow(
+                        station = station,
+                        favourite = viewModel.isStationFavourite(station),
+                        onSelect = {
+                            stationText = station.name
+                            viewModel.selectStationBoardStation(station)
+                        },
+                        onToggleFavourite = { viewModel.toggleStationFavourite(station) }
+                    )
+
+                    Text(stringResource(R.string.station_board_section), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        items(BoardKind.entries) { kind ->
+                            FilterChip(
+                                selected = viewModel.stationBoardKind == kind,
+                                onClick = { viewModel.loadStationBoard(station, kind) },
+                                enabled = viewModel.hasStationBoardProviders,
+                                label = { Text(stringResource(if (kind == BoardKind.DEPARTURES) R.string.station_board_departures else R.string.station_board_arrivals)) }
+                            )
+                        }
+                    }
+                    Button(
+                        onClick = { viewModel.loadStationBoard(station, viewModel.stationBoardKind) },
+                        enabled = viewModel.hasStationBoardProviders &&
+                            viewModel.stationBoardRefreshState != RefreshState.LOADING,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Default.Refresh, contentDescription = null)
+                        Spacer(Modifier.width(8.dp))
+                        Text(stringResource(if (board == null) R.string.station_board_load else R.string.station_board_refresh))
+                    }
+
+                    if (viewModel.stationBoardRefreshState == RefreshState.LOADING) {
+                        LinearProgressIndicator(Modifier.fillMaxWidth())
+                    }
+                    Text(stringResource(R.string.station_board_local_monitoring), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        items(StationMonitorMode.entries) { mode ->
+                            FilterChip(
+                                selected = monitorMode == mode.name,
+                                onClick = { monitorMode = mode.name },
+                                label = { Text(mode.localizedLabel()) }
+                            )
+                        }
+                    }
+                    OutlinedButton(
+                        onClick = { viewModel.toggleStationMonitor(station, StationMonitorMode.valueOf(monitorMode)) },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(stringResource(if (viewModel.isStationMonitored(station)) R.string.station_board_stop_monitoring else R.string.station_board_start_monitoring))
+                    }
+                    StationMapCard(station, mapStationIndex, onOpenStation = {
+                        stationText = it.name
+                        viewModel.selectStationBoardStation(it)
+                    })
+                }
+
+                val findNearbyStationsDescription = stringResource(R.string.accessibility_find_nearby_stations)
+                OutlinedButton(
+                    onClick = {
+                        if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) locateNearbyStations()
+                        else locationPermission.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
+                    },
+                    modifier = Modifier.fillMaxWidth().semantics {
+                        contentDescription = findNearbyStationsDescription
+                    }
+                ) {
+                    Icon(Icons.Default.Route, contentDescription = null)
+                    Spacer(Modifier.width(8.dp))
+                    Text(stringResource(R.string.station_board_find_nearby))
+                }
+
+                locationMessage?.let { message ->
+                    Text(message, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+        }
+
+        if (!viewModel.hasStationBoardProviders) {
+            item {
+                SearchInfoState(
+                    stringResource(R.string.station_board_live_disabled_title),
+                    stringResource(R.string.station_board_live_disabled_message)
+                )
+            }
+        } else {
+            when {
+                viewModel.stationBoardRefreshState == RefreshState.LOADING && board?.entries.isNullOrEmpty() -> item {
+                    SearchInfoState(stringResource(R.string.station_board_loading_title), stringResource(R.string.station_board_loading_message))
+                }
+                viewModel.stationBoardRefreshState == RefreshState.ERROR && board == null -> item {
+                    SearchInfoState(
+                        stringResource(R.string.station_board_unavailable_title),
+                        viewModel.stationBoardMessages.firstOrNull()?.localized() ?: stringResource(R.string.station_board_unavailable_message)
+                    )
+                }
+                board != null && board.entries.isEmpty() -> item {
+                    SearchInfoState(
+                        stringResource(R.string.station_board_empty_title),
+                        viewModel.stationBoardMessages.firstOrNull()?.localized() ?: stringResource(R.string.station_board_empty_message)
+                    )
+                }
+                board != null -> {
+                    item {
+                        Column(
+                            Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Text(
+                                stringResource(if (board.kind == BoardKind.DEPARTURES) R.string.station_board_departures_uppercase else R.string.station_board_arrivals_uppercase),
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                board.providerNames.joinToString(" · "),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            viewModel.stationBoardMessages.forEach { message ->
+                                Text(
+                                    message.localized(),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                    item { StationLineNoticesSection(board.station) }
+                    items(
+                        board.entries.take(60),
+                        key = { entry ->
+                            listOf(
+                                entry.runId.value,
+                                entry.scheduledTime.toInstant().toEpochMilli().toString(),
+                                entry.destinationOrOrigin.value
+                            ).joinToString("|")
+                        }
+                    ) { entry ->
+                        StationBoardEntryRow(entry, board.kind, onOpen = { viewModel.openStationBoardRun(entry) })
+                        HorizontalDivider(
+                            modifier = Modifier.padding(start = 20.dp),
+                            color = MaterialTheme.colorScheme.outlineVariant
+                        )
+                    }
+                }
+            }
+        }
+
+        if (viewModel.favouriteStations.isNotEmpty()) {
+            item {
+                Text(
+                    stringResource(R.string.station_board_favourites),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp)
+                )
+            }
+            items(viewModel.favouriteStations, key = { "fav-${it.id}" }) { station ->
+                StationPreferenceRow(
+                    station = station,
+                    favourite = true,
+                    onSelect = {
+                        stationText = station.name
+                        viewModel.selectStationBoardStation(station)
+                    },
+                    onToggleFavourite = { viewModel.toggleStationFavourite(station) }
+                )
+            }
+        }
+
+        if (viewModel.nearbyStations.isNotEmpty()) {
+            item {
+                Text(
+                    stringResource(R.string.station_board_nearby),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp)
+                )
+            }
+            item(key = "nearby-map") {
+                NearbyStationsMapCard(viewModel.nearbyStations, nearbyPosition, onOpenStation = {
+                    stationText = it.name
+                    viewModel.selectStationBoardStation(it)
+                }, modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp))
+            }
+            items(viewModel.nearbyStations, key = { "near-${it.station.id}" }) { nearby ->
+                StationPreferenceRow(
+                    station = nearby.station,
+                    favourite = viewModel.isStationFavourite(nearby.station),
+                    distanceLabel = stringResource(R.string.distance_kilometers, nearby.distanceKm),
+                    onSelect = {
+                        stationText = nearby.station.name
+                        viewModel.selectStationBoardStation(nearby.station)
+                    },
+                    onToggleFavourite = { viewModel.toggleStationFavourite(nearby.station) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+internal fun StationBoardEntryRow(entry: StationBoardEntry, kind: BoardKind, onOpen: (() -> Unit)? = null) {
+    val scheduled = entry.scheduledTime.withZoneSameInstant(BOARD_ZONE)
+    val expected = entry.expectedTime?.value?.withZoneSameInstant(BOARD_ZONE)
+    val delayedMinutes = expected?.let {
+        java.time.Duration.between(scheduled, it).toMinutes().coerceAtLeast(0)
+    } ?: 0L
+    val endpoint = entry.destinationOrOriginLabel?.takeIf(String::isNotBlank)
+        ?: entry.destinationOrOrigin.value
+    val platform = entry.platform?.value?.takeIf(String::isNotBlank)
+    val directionLabel = stringResource(
+        if (kind == BoardKind.DEPARTURES) R.string.station_board_departure_to
+        else R.string.station_board_arrival_from,
+        endpoint
+    )
+    val scheduledLabel = stringResource(
+        R.string.station_board_scheduled_time,
+        scheduled.format(BOARD_TIME_FORMATTER)
+    )
+    val statusLabel = stationBoardStatusAnnouncement(entry)
+    val platformLabel = platform?.let {
+        stringResource(R.string.station_board_platform_accessible, it)
+    } ?: stringResource(R.string.station_board_platform_unavailable)
+    val trainLabel = entry.publicNumber?.takeIf(String::isNotBlank)
+        ?.let { stringResource(R.string.station_board_train_number, it) }
+        .orEmpty()
+    val accessibilityDescription = stringResource(
+        R.string.station_board_entry_accessibility,
+        directionLabel,
+        scheduledLabel,
+        statusLabel,
+        platformLabel,
+        trainLabel
+    )
+
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .then(if (onOpen != null) Modifier.clickable(role = Role.Button, onClick = onOpen) else Modifier)
+            .clearAndSetSemantics {
+                contentDescription = accessibilityDescription
+                if (onOpen != null) {
+                    role = Role.Button
+                    onClick { onOpen(); true }
+                }
+            }
+            .padding(horizontal = 20.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.Top,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Column(horizontalAlignment = Alignment.Start) {
+            Text(scheduled.format(BOARD_TIME_FORMATTER), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            if (expected != null && expected.toInstant() != scheduled.toInstant()) {
+                Text(
+                    stringResource(R.string.expected_time_short, expected.format(BOARD_TIME_FORMATTER)),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(
+                directionLabel,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                listOfNotNull(
+                    entry.lineLabel?.takeIf(String::isNotBlank),
+                    entry.publicNumber?.takeIf(String::isNotBlank)?.let { stringResource(R.string.station_board_train_number, it) },
+                    entry.operatorId?.value?.takeIf(String::isNotBlank),
+                    entry.status?.value?.stationBoardLabel()
+                ).joinToString(" · "),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            if (delayedMinutes > 0) {
+                Text(stringResource(R.string.delay_minutes, delayedMinutes), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.error)
+            }
+            entry.routeChange?.value?.let { change ->
+                Text(
+                    stringResource(R.string.station_board_route_change, change.summary),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
+        }
+        platform?.let {
+            Surface(
+                shape = RoundedCornerShape(10.dp),
+                color = MaterialTheme.colorScheme.secondaryContainer,
+                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+            ) {
+                Text(stringResource(R.string.station_board_platform, it), modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp), fontWeight = FontWeight.Bold)
+            }
+        }
+        if (onOpen != null) {
+            Icon(Icons.Default.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+internal fun StationBoardRunDetailsSheet(
+    station: String,
+    entry: StationBoardEntry,
+    kind: BoardKind,
+    details: StationBoardRunDetails?,
+    state: RefreshState,
+    onRefresh: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        LazyColumn(Modifier.fillMaxWidth().fillMaxHeight(0.9f).testTag("station-run-details")) {
+            item {
+                Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(stringResource(R.string.station_board_run_details_title), style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                        TextButton(onClick = onDismiss) { Text(stringResource(R.string.planned_journey_close)) }
+                    }
+                    Text(station, style = MaterialTheme.typography.titleMedium)
+                    if (details != null) {
+                        Text("${details.origin} → ${details.destination}", style = MaterialTheme.typography.bodyLarge)
+                        Text(details.observedAt?.let {
+                            stringResource(R.string.provider_updated_at, details.providerName, updateTimeMessage(it.toEpochMilli()).localized())
+                        } ?: details.providerName, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+                StationBoardEntryRow(entry, kind)
+                TextButton(onClick = onRefresh, enabled = state != RefreshState.LOADING, modifier = Modifier.padding(horizontal = 12.dp)) {
+                    Text(stringResource(R.string.action_refresh))
+                }
+                if (state == RefreshState.LOADING) {
+                    LinearProgressIndicator(Modifier.fillMaxWidth())
+                    Text(stringResource(R.string.station_board_run_details_loading), modifier = Modifier.padding(20.dp))
+                } else if (details == null) {
+                    Text(stringResource(R.string.station_board_run_details_unavailable), modifier = Modifier.padding(20.dp),
+                        style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            if (details != null) {
+                item { Text(stringResource(R.string.service_stops_title), modifier = Modifier.padding(20.dp), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }
+                items(details.stops) { stop ->
+                    StopTimelineRow(stop.station, stop.expected, stop.scheduled, stop.delayMinutes, stop.platform, stop.completed,
+                        operationalStatusVerified = stop.operationalStatusVerified == true, routeChange = stop.routeChange, onSetAlarm = null)
+                }
+            }
+            item { Spacer(Modifier.height(24.dp)) }
+        }
+    }
+}
+
+@Composable
+private fun stationBoardStatusAnnouncement(entry: StationBoardEntry): String {
+    val runStatus = entry.status?.value
+    return when {
+        entry.expectedTime != null -> stringResource(
+            R.string.station_board_status_live_prediction,
+            entry.expectedTime.value.withZoneSameInstant(BOARD_ZONE).format(BOARD_TIME_FORMATTER)
+        )
+        runStatus != null && runStatus != RunStatus.SCHEDULED && runStatus != RunStatus.UNKNOWN ->
+            stringResource(R.string.station_board_status_live, runStatus.stationBoardLabel())
+        runStatus == RunStatus.UNKNOWN -> stringResource(R.string.station_board_status_unavailable)
+        else -> stringResource(R.string.station_board_status_planned)
+    }
+}
+
+@Composable
+internal fun RunStatus.stationBoardLabel(): String = when (this) {
+    RunStatus.SCHEDULED -> stringResource(R.string.run_status_scheduled)
+    RunStatus.ON_TIME -> stringResource(R.string.run_status_on_time)
+    RunStatus.DELAYED -> stringResource(R.string.run_status_delayed)
+    RunStatus.CANCELLED -> stringResource(R.string.run_status_cancelled)
+    RunStatus.PARTIALLY_CANCELLED -> stringResource(R.string.run_status_partially_cancelled)
+    RunStatus.DIVERTED -> stringResource(R.string.run_status_diverted)
+    RunStatus.ADDED -> stringResource(R.string.run_status_added)
+    RunStatus.REPLACED_BY_BUS -> stringResource(R.string.run_status_bus_replacement)
+    RunStatus.COMPLETED -> stringResource(R.string.run_status_completed)
+    RunStatus.UNKNOWN -> stringResource(R.string.run_status_unknown)
+}
+
+private val BOARD_ZONE: ZoneId = ZoneId.of("Europe/Rome")
+
+private val BOARD_TIME_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm", Locale.ITALIAN)
+
+private fun requestNearbyStationLocation(context: android.content.Context, onResult: (Location?) -> Unit) {
+    if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+        onResult(null)
+        return
+    }
+    val locationManager = context.getSystemService(LocationManager::class.java) ?: run {
+        onResult(null)
+        return
+    }
+    val fallback = {
+        onResult(runCatching {
+            locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)
+                ?: locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER)
+        }.getOrNull())
+    }
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+        runCatching {
+            locationManager.getCurrentLocation(LocationManager.NETWORK_PROVIDER, null, ContextCompat.getMainExecutor(context)) { location ->
+                if (location != null) onResult(location) else fallback()
+            }
+        }.onFailure { fallback() }
+    } else fallback()
+}
+
+@Composable
+private fun StationPreferenceRow(
+    station: Station,
+    favourite: Boolean,
+    onSelect: () -> Unit,
+    onToggleFavourite: () -> Unit,
+    distanceLabel: String? = null
+) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        TextButton(onClick = onSelect, modifier = Modifier.weight(1f)) {
+            Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.Start) {
+                Text(station.name, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(listOfNotNull(station.city, distanceLabel).joinToString(" · "), style = MaterialTheme.typography.bodySmall)
+            }
+        }
+        IconButton(onClick = onToggleFavourite) {
+            Icon(
+                imageVector = if (favourite) Icons.Default.Star else Icons.Default.StarBorder,
+                contentDescription = stringResource(
+                    if (favourite) R.string.accessibility_remove_favourite_station else R.string.accessibility_add_favourite_station,
+                    station.name
+                )
+            )
+        }
+    }
+}
