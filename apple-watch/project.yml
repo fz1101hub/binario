@@ -30,6 +30,8 @@ targets:
         INFOPLIST_KEY_WKApplication: YES
         INFOPLIST_KEY_WKWatchOnly: YES
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        # Binario 2.0 green from BinarioWatch/Assets.xcassets: the app-wide tint.
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: NO
       configs:
         debug:

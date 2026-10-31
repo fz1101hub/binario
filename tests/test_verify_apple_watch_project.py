@@ -16,6 +16,33 @@ ROOT = Path(__file__).resolve().parents[1]
 APPLE_WATCH = ROOT / "apple-watch"
 
 
+def colorset_values(catalog: Path, name: str) -> dict[str, str]:
+    """Hex value per appearance ("any" or "dark") of an asset-catalogue colour set."""
+    contents = json.loads((catalog / f"{name}.colorset" / "Contents.json").read_text(encoding="utf-8"))
+    values: dict[str, str] = {}
+    for entry in contents["colors"]:
+        appearance = next(
+            (item["value"] for item in entry.get("appearances", []) if item["appearance"] == "luminosity"),
+            "any",
+        )
+        components = entry["color"]["components"]
+        values[appearance] = "#" + "".join(
+            f"{int(components[channel], 0):02X}" for channel in ("red", "green", "blue")
+        )
+        assert components["alpha"] == "1.000", (name, appearance)
+    return values
+
+
+def contrast(first: str, second: str) -> float:
+    def luminance(colour: str) -> float:
+        channels = [int(colour[index:index + 2], 16) / 255 for index in (1, 3, 5)]
+        linear = [c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4 for c in channels]
+        return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2]
+
+    lighter, darker = sorted((luminance(first), luminance(second)), reverse=True)
+    return (lighter + 0.05) / (darker + 0.05)
+
+
 class AppleWatchProjectTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
@@ -237,6 +264,37 @@ class AppleWatchProjectTests(unittest.TestCase):
         self.assertRegex(intent_body, r"static\s+var\s+description\s*:\s*IntentDescription\s*\{")
         self.assertNotRegex(intent_body, r"static\s+var\s+title\s*:\s*LocalizedStringResource\s*=")
         self.assertNotRegex(intent_body, r"static\s+var\s+description(?:\s*:\s*IntentDescription)?\s*=")
+
+
+    def test_binario_2_colour_tokens_are_catalogue_backed_and_tint_the_watch_app(self) -> None:
+        # design/BINARIO_2_DESIGN_SYSTEM.md, dark column: the watch is always dark, one value per token.
+        catalog = APPLE_WATCH / "BinarioWatch" / "Assets.xcassets"
+        expected = {
+            "AccentColor": "#9BDD9E",
+            "BrandGreen": "#9BDD9E",
+            "StatusWarning": "#FFC489",
+            "StatusError": "#FFB4AB",
+        }
+        for name, value in expected.items():
+            with self.subTest(colour=name):
+                self.assertEqual({"any": value}, colorset_values(catalog, name))
+                # Every token is used for text on the black watch background: AA.
+                self.assertGreaterEqual(contrast(value, "#000000"), 4.5)
+        self.assertEqual("AccentColor", self.targets["BinarioWatch"]["settings"]["base"]["ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME"])
+
+        home = (APPLE_WATCH / "BinarioWatch" / "WatchHomeView.swift").read_text(encoding="utf-8")
+        palette = (APPLE_WATCH / "BinarioWatch" / "BinarioPalette.swift").read_text(encoding="utf-8")
+        widget = (APPLE_WATCH / "BinarioWatchWidgets" / "BinarioWatchWidgets.swift").read_text(encoding="utf-8")
+        self.assertNotRegex(home, r"Color\(\s*red:")
+        self.assertNotRegex(home, r"return \.(?:green|yellow|orange|red)\b")
+        self.assertIn("case .fresh: return BinarioPalette.brandGreen", home)
+        self.assertIn(".foregroundStyle(statusColor)", home)
+        for colour in re.findall(r'Color\("([A-Za-z]+)"\)', palette):
+            with self.subTest(reference=colour):
+                self.assertIn(colour, expected)
+        # The widget extension compiles Shared/ and Resources/ only, without this catalogue.
+        self.assertNotIn("BinarioPalette", widget)
+        self.assertNotIn('Color("', widget)
 
 
 if __name__ == "__main__":

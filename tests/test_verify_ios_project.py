@@ -44,6 +44,33 @@ def privacy_manifest(path: Path) -> dict:
         return plistlib.load(source)
 
 
+def colorset_values(catalog: Path, name: str) -> dict[str, str]:
+    """Hex value per appearance ("any" or "dark") of an asset-catalogue colour set."""
+    contents = json.loads((catalog / f"{name}.colorset" / "Contents.json").read_text(encoding="utf-8"))
+    values: dict[str, str] = {}
+    for entry in contents["colors"]:
+        appearance = next(
+            (item["value"] for item in entry.get("appearances", []) if item["appearance"] == "luminosity"),
+            "any",
+        )
+        components = entry["color"]["components"]
+        values[appearance] = "#" + "".join(
+            f"{int(components[channel], 0):02X}" for channel in ("red", "green", "blue")
+        )
+        assert components["alpha"] == "1.000", (name, appearance)
+    return values
+
+
+def contrast(first: str, second: str) -> float:
+    def luminance(colour: str) -> float:
+        channels = [int(colour[index:index + 2], 16) / 255 for index in (1, 3, 5)]
+        linear = [c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4 for c in channels]
+        return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2]
+
+    lighter, darker = sorted((luminance(first), luminance(second)), reverse=True)
+    return (lighter + 0.05) / (darker + 0.05)
+
+
 class IOSProjectTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
@@ -474,6 +501,45 @@ class IOSProjectTests(unittest.TestCase):
         self.assertIn("inputFingerprint: metadata.inputs.fingerprintSha256", fast_path)
         self.assertIn("sha256Hex(database) == metadata.database.sha256", installer)
         self.assertIn("testBundledInstallerFastPathDoesNotTrustASameSizeCorruptCache", tests)
+
+    def test_binario_2_colour_tokens_are_catalogue_backed_and_tint_the_apps(self) -> None:
+        # design/BINARIO_2_DESIGN_SYSTEM.md: one definition per target, light and dark on iPhone.
+        catalog = IOS / "Resources/Assets.xcassets"
+        expected = {
+            "AccentColor": {"any": "#2E7D32", "dark": "#9BDD9E"},
+            "OnAccentColor": {"any": "#FFFFFF", "dark": "#0D1710"},
+            "BrandGreen": {"any": "#388E3C", "dark": "#9BDD9E"},
+            "StatusError": {"any": "#B3261E", "dark": "#FFB4AB"},
+        }
+        for name, values in expected.items():
+            with self.subTest(colour=name):
+                self.assertEqual(values, colorset_values(catalog, name))
+        # The accent tints text-sized controls (tabs, links, toggles): AA on both system backgrounds,
+        # and the paired label colour stays AA on the prominent accent fill.
+        for appearance, background in (("any", "#FFFFFF"), ("dark", "#000000")):
+            with self.subTest(appearance=appearance):
+                accent = expected["AccentColor"][appearance]
+                self.assertGreaterEqual(contrast(accent, background), 4.5)
+                self.assertGreaterEqual(contrast(expected["OnAccentColor"][appearance], accent), 4.5)
+                self.assertGreaterEqual(contrast(expected["StatusError"][appearance], background), 4.5)
+                # The reference green is decorative only: 3:1 for graphics, never small white text.
+                self.assertGreaterEqual(contrast(expected["BrandGreen"][appearance], background), 3.0)
+        self.assertLess(contrast("#FFFFFF", expected["BrandGreen"]["any"]), 4.5)
+
+        for target in ("Binario", "BinarioWatch"):
+            with self.subTest(target=target):
+                self.assertEqual("AccentColor", self.targets[target]["settings"]["base"]["ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME"])
+
+        sources = {path.name: path.read_text(encoding="utf-8") for path in (IOS / "BinarioApp").glob("*.swift")}
+        for name, source in sources.items():
+            with self.subTest(source=name):
+                self.assertNotRegex(source, r"(?:UI)?Color\(\s*red:")
+                self.assertNotRegex(source, r"\.foregroundStyle\(\.(?:red|green|blue|orange|yellow)\)")
+                for colour in re.findall(r'Color\("([A-Za-z]+)"\)', source):
+                    self.assertTrue((catalog / f"{colour}.colorset").is_dir(), colour)
+        planner = sources["PlannerView.swift"]
+        self.assertIn("BinarioPalette.onAccent", planner)
+        self.assertIn(".foregroundStyle(BinarioPalette.statusError)", planner)
 
     def test_generated_project_is_not_checked_in(self) -> None:
         self.assertFalse((IOS / "Binario.xcodeproj").exists())

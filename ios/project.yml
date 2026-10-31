@@ -48,6 +48,8 @@ targets:
         # App Store Connect rejects builds without a 1024 pt opaque app icon.
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        # Binario 2.0 green (Resources/Assets.xcassets, light and dark): the app-wide tint.
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         # No networking and only a pure-Swift SHA-256 for integrity: export-compliance exempt.
         # Without the key App Store Connect holds every build as "Missing Compliance".
         INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: NO
@@ -133,6 +135,8 @@ targets:
         INFOPLIST_KEY_WKCompanionAppBundleIdentifier: it.binario.ios
         # App Store Connect rejects an embedded Watch app without its own 1024 pt icon (ITMS-90713).
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        # Binario 2.0 green from the Watch catalogue: the app-wide tint, navigation title included.
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: NO
       configs:
         debug:

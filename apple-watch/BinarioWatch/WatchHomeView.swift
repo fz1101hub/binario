@@ -40,6 +40,7 @@ struct WatchHomeView: View {
                                 VStack(alignment: .leading, spacing: 3) {
                                     Text("\(service.expectedDeparture)  \(service.destination)")
                                         .font(.body.weight(.semibold))
+                                        .foregroundStyle(BinarioPalette.brandGreen)
                                     Text("\(service.category) \(service.number) · \(platformText(service))")
                                         .font(.footnote)
                                 }
@@ -69,10 +70,9 @@ struct WatchHomeView: View {
     private var statusColor: Color {
         if store.snapshot.isScheduledOnly { return .secondary }
         switch store.snapshot.freshness {
-        case .fresh: return .green
-        case .aging: return .yellow
-        case .stale: return .orange
-        case .unavailable, .unknown: return .red
+        case .fresh: return BinarioPalette.brandGreen
+        case .aging, .stale: return BinarioPalette.statusWarning
+        case .unavailable, .unknown: return BinarioPalette.statusError
         }
     }
 

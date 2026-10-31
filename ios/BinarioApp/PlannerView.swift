@@ -13,8 +13,13 @@ struct PlannerView: View {
     var body: some View {
         Form {
             Section {
-                Label("planner.intro.title", systemImage: "train.side.front.car")
-                    .font(.headline)
+                Label {
+                    Text("planner.intro.title")
+                } icon: {
+                    Image(systemName: "train.side.front.car")
+                        .foregroundStyle(BinarioPalette.brandGreen)
+                }
+                .font(.headline)
                 Text("planner.intro.body")
                     .foregroundStyle(.secondary)
                 if !model.includedPacks.isEmpty {
@@ -64,14 +69,15 @@ struct PlannerView: View {
                             ProgressView()
                                 .frame(maxWidth: .infinity)
                         } else {
+                            // The prominent fill is AccentColor: white text fails on its
+                            // light dark-mode green, so the label takes the paired token.
                             Text("planner.search")
+                                .foregroundStyle(canSearch ? BinarioPalette.onAccent : Color.secondary)
                                 .frame(maxWidth: .infinity)
                         }
                     }
                     .buttonStyle(.borderedProminent)
-                    .disabled(
-                        origin == nil || destination == nil || isSearching || model.scheduleState != .available
-                    )
+                    .disabled(!canSearch)
 
                     Button(action: save) {
                         Label("planner.save", systemImage: "star")
@@ -80,7 +86,7 @@ struct PlannerView: View {
                 }
 
                 if let validationKey {
-                    Section { Text(LocalizedStringKey(validationKey)).foregroundStyle(.red) }
+                    Section { Text(LocalizedStringKey(validationKey)).foregroundStyle(BinarioPalette.statusError) }
                 }
 
                 if let snapshot = model.latestSnapshot {
@@ -100,6 +106,10 @@ struct PlannerView: View {
         .onChange(of: origin?.id) { _, _ in inputDidChange() }
         .onChange(of: destination?.id) { _, _ in inputDidChange() }
         .onChange(of: departure) { _, _ in inputDidChange() }
+    }
+
+    private var canSearch: Bool {
+        origin != nil && destination != nil && !isSearching && model.scheduleState == .available
     }
 
     private func swapStations() {
