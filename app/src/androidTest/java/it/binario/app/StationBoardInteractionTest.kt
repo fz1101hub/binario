@@ -1,6 +1,5 @@
 package it.binario.app
 
-import it.binario.app.ui.departures.StationBoardScreen
 import android.app.Application
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.hasClickAction
@@ -19,6 +18,7 @@ import it.binario.app.data.TrainStop
 import it.binario.app.data.core.*
 import it.binario.app.data.provider.*
 import it.binario.app.data.repository.*
+import it.binario.app.ui.departures.StationBoardScreen
 import java.time.Clock
 import java.time.Duration
 import java.time.Instant

@@ -1,7 +1,6 @@
 package it.binario.app
 
 import android.Manifest
-import android.app.Activity
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
@@ -12,25 +11,16 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.CalendarMonth
-import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Train
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
@@ -46,9 +36,8 @@ import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.onClick
 import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.Lifecycle
@@ -69,21 +58,24 @@ import it.binario.app.plannedjourney.PlannedJourneyIcsText
 import it.binario.app.plannedjourney.PlannedJourneyStation
 import it.binario.app.plannedjourney.PlannedJourneyTransferContract
 import it.binario.app.plannedjourney.PlannedJourneyViewModel
+import it.binario.app.ui.AppNavigation
+import it.binario.app.ui.AppScreen
+import it.binario.app.ui.TopDestination
+import it.binario.app.ui.WidthClass
+import it.binario.app.ui.common.BinarioNavigationBar
 import it.binario.app.ui.common.BinarioTopBar
 import it.binario.app.ui.common.localizedQualityLabel
-import it.binario.app.ui.departures.OperationsScreen
+import it.binario.app.ui.departures.DeparturesScreen
 import it.binario.app.ui.departures.OperationsSection
 import it.binario.app.ui.detail.ServiceDetailScreen
 import it.binario.app.ui.detail.trainShareStrings
-import it.binario.app.ui.foryou.SettingsScreen
+import it.binario.app.ui.foryou.ForYouScreen
 import it.binario.app.ui.planner.PlannerScreen
 import it.binario.app.ui.planner.RouteResultsScreen
 import it.binario.app.ui.planner.SearchMode
 import it.binario.app.widget.WidgetConfigurationStore
 import it.binario.app.widget.WidgetStateStore
 import kotlinx.coroutines.delay
-
-private enum class Screen { PLANNER, OPERATIONS, AGENDA, SETTINGS, RESULTS, NUMBER_RESULTS, DETAIL }
 
 private val stopAlarmPlanSaver = listSaver<StopAlarmPlan?, Any>(
     save = { plan ->
@@ -172,8 +164,8 @@ private fun BinarioApp(
     onDeepLinkConsumed: (Long) -> Unit,
     onSystemBarsAppearance: (lightStatusBar: Boolean, lightNavigationBar: Boolean) -> Unit
 ) {
-    var screen by rememberSaveable { mutableStateOf(Screen.PLANNER) }
-    var detailReturnScreen by rememberSaveable { mutableStateOf(Screen.RESULTS) }
+    var screen by rememberSaveable { mutableStateOf(AppScreen.PLANNER) }
+    var detailReturnScreen by rememberSaveable { mutableStateOf(AppScreen.RESULTS) }
     var operationsSectionName by rememberSaveable { mutableStateOf(OperationsSection.TRAINS.name) }
     var plannerSearchModeName by rememberSaveable { mutableStateOf(SearchMode.ROUTE.name) }
     var plannerSearchRequestId by rememberSaveable { mutableIntStateOf(0) }
@@ -189,16 +181,16 @@ private fun BinarioApp(
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     LaunchedEffect(lifecycleOwner, screen, operationsSectionName) {
-        if (screen in setOf(Screen.RESULTS, Screen.NUMBER_RESULTS, Screen.DETAIL, Screen.OPERATIONS)) {
+        if (AppNavigation.refreshesPeriodically(screen)) {
             lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                if (screen == Screen.OPERATIONS && operationsSectionName == OperationsSection.STATIONS.name) {
+                if (screen == AppScreen.DEPARTURES && operationsSectionName == OperationsSection.STATIONS.name) {
                     viewModel.refreshStationBoardIfIdle()
                 }
                 while (true) {
                     delay(30_000)
-                    if (screen == Screen.NUMBER_RESULTS) {
+                    if (screen == AppScreen.NUMBER_RESULTS) {
                         viewModel.searchTrainNumber(refresh = true)
-                    } else if (screen == Screen.OPERATIONS && operationsSectionName == OperationsSection.STATIONS.name) {
+                    } else if (screen == AppScreen.DEPARTURES && operationsSectionName == OperationsSection.STATIONS.name) {
                         viewModel.refreshStationBoardIfIdle()
                     } else viewModel.refreshLiveIfIdle()
                 }
@@ -291,66 +283,69 @@ private fun BinarioApp(
         }
     }
     StopAlarmOptionsDialog(gpsArrivalAlarm, onScheduleTimeAlarm = confirmStopAlarm)
+    /** Leaves the detail (if open) so that its pinned snapshot no longer drives the other screens. */
+    fun showScreen(target: AppScreen) {
+        if (screen == AppScreen.DETAIL && target != AppScreen.DETAIL) viewModel.closeService()
+        screen = target
+    }
+    fun openDetail(parent: AppScreen, open: () -> Unit) {
+        detailReturnScreen = parent
+        open()
+        screen = AppScreen.DETAIL
+    }
+    fun showDepartures(section: OperationsSection) {
+        operationsSectionName = section.name
+        showScreen(AppScreen.DEPARTURES)
+    }
     LaunchedEffect(deepLinkRequest?.id) {
         val request = deepLinkRequest ?: return@LaunchedEffect
-        when (val deepLink = request.deepLink) {
-            BinarioDeepLink.Agenda -> {
+        val deepLink = request.deepLink
+        when (deepLink) {
+            BinarioDeepLink.Agenda ->
                 plannedJourneyViewModel.selectFilter(it.binario.app.plannedjourney.PlannedJourneyAgendaFilter.UPCOMING)
-                screen = Screen.AGENDA
-            }
-            BinarioDeepLink.ActiveRoute, BinarioDeepLink.NextDepartures -> {
-                operationsSectionName = OperationsSection.TRAINS.name
-                screen = Screen.OPERATIONS
-            }
-            is BinarioDeepLink.TrainSearch -> {
-                viewModel.updateTrainNumberQuery(deepLink.number.orEmpty())
-                plannerSearchModeName = SearchMode.TRAIN.name
-                plannerSearchRequestId += 1
-                screen = Screen.PLANNER
-            }
-            is BinarioDeepLink.WidgetRoute -> {
-                viewModel.activateRoute(deepLink.route, deepLink.direction)
-                operationsSectionName = OperationsSection.TRAINS.name
-                screen = Screen.OPERATIONS
-            }
+            is BinarioDeepLink.TrainSearch -> viewModel.updateTrainNumberQuery(deepLink.number.orEmpty())
+            is BinarioDeepLink.WidgetRoute -> viewModel.activateRoute(deepLink.route, deepLink.direction)
+            BinarioDeepLink.ActiveRoute, BinarioDeepLink.NextDepartures -> Unit
         }
+        val target = AppNavigation.targetOf(deepLink)
+        target.departuresSection?.let { operationsSectionName = it.name }
+        target.plannerMode?.let { mode ->
+            plannerSearchModeName = mode.name
+            plannerSearchRequestId += 1
+        }
+        showScreen(target.screen)
         // Clear the event only after applying it. Subsequent recompositions and
         // lifecycle restores therefore cannot replay the same external navigation.
         onDeepLinkConsumed(request.id)
     }
     val plannerSearchMode = SearchMode.valueOf(plannerSearchModeName)
-    val navigateBack = {
-        when (screen) {
-            Screen.DETAIL -> {
-                viewModel.closeService()
-                screen = detailReturnScreen
-            }
-            Screen.RESULTS, Screen.NUMBER_RESULTS -> screen = Screen.PLANNER
-            else -> Unit
-        }
-    }
-    BackHandler(enabled = screen == Screen.DETAIL || screen == Screen.RESULTS || screen == Screen.NUMBER_RESULTS, onBack = navigateBack)
+    val operationsSection = OperationsSection.valueOf(operationsSectionName)
+    val backTarget = AppNavigation.back(screen, detailReturnScreen)
+    val navigateBack: () -> Unit = { backTarget?.let(::showScreen) }
+    BackHandler(enabled = backTarget != null, onBack = navigateBack)
+    val selectedDestination = AppNavigation.destinationOf(screen, detailReturnScreen)
+    val selectDestination: (TopDestination) -> Unit = { destination -> showScreen(AppNavigation.rootOf(destination)) }
     val title = stringResource(
         when (screen) {
-            Screen.PLANNER -> R.string.app_brand
-            Screen.OPERATIONS -> R.string.screen_title_operations
-            Screen.AGENDA -> R.string.screen_title_agenda
-            Screen.SETTINGS -> R.string.screen_title_settings
-            Screen.RESULTS -> R.string.screen_title_results
-            Screen.NUMBER_RESULTS -> R.string.train_number_results_title
-            Screen.DETAIL -> R.string.screen_title_detail
+            AppScreen.PLANNER -> R.string.app_brand
+            AppScreen.DEPARTURES -> R.string.nav_departures
+            AppScreen.FOR_YOU -> R.string.nav_for_you
+            AppScreen.AGENDA -> R.string.screen_title_agenda
+            AppScreen.RESULTS -> R.string.screen_title_results
+            AppScreen.NUMBER_RESULTS -> R.string.train_number_results_title
+            AppScreen.DETAIL -> R.string.screen_title_detail
         }
     )
     val subtitle = when (screen) {
         // The green planner header below the bar carries the headline and its subtitle.
-        Screen.PLANNER, Screen.DETAIL -> null
-        Screen.OPERATIONS -> stringResource(R.string.screen_subtitle_operations)
-        Screen.AGENDA -> stringResource(R.string.screen_subtitle_agenda)
-        Screen.SETTINGS -> stringResource(R.string.screen_subtitle_settings)
-        Screen.RESULTS -> stringResource(R.string.screen_subtitle_results)
-        Screen.NUMBER_RESULTS -> stringResource(R.string.train_number_results_subtitle)
+        AppScreen.PLANNER, AppScreen.DETAIL -> null
+        AppScreen.DEPARTURES -> stringResource(R.string.departures_subtitle)
+        AppScreen.FOR_YOU -> stringResource(R.string.for_you_subtitle)
+        AppScreen.AGENDA -> stringResource(R.string.screen_subtitle_agenda)
+        AppScreen.RESULTS -> stringResource(R.string.screen_subtitle_results)
+        AppScreen.NUMBER_RESULTS -> stringResource(R.string.train_number_results_subtitle)
     }
-    val greenTopBar = screen == Screen.PLANNER
+    val greenTopBar = screen == AppScreen.PLANNER
     val topBarColor = if (greenTopBar) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.background
     val navigationBarColor = MaterialTheme.colorScheme.surface
     SideEffect {
@@ -364,96 +359,50 @@ private fun BinarioApp(
         }, onDismiss = { showThemePicker = false })
     }
 
-    Scaffold(
-        topBar = {
-            BinarioTopBar(
-                title = title,
-                subtitle = subtitle,
-                containerColor = topBarColor,
-                contentColor = if (greenTopBar) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onBackground,
-                brand = greenTopBar,
-                navigationIcon = {
-                    if (screen == Screen.DETAIL || screen == Screen.RESULTS || screen == Screen.NUMBER_RESULTS) {
-                        IconButton(onClick = navigateBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
-                        }
-                    }
-                },
-                actions = {
-                    IconButton(onClick = { showThemePicker = true }) {
-                        Icon(Icons.Default.Palette, contentDescription = stringResource(R.string.action_choose_theme, themeMode.localizedLabel()))
-                    }
-                    if (screen == Screen.OPERATIONS || screen == Screen.RESULTS || screen == Screen.NUMBER_RESULTS || screen == Screen.DETAIL) {
-                        IconButton(onClick = {
-                            if (screen == Screen.NUMBER_RESULTS) viewModel.searchTrainNumber(refresh = true)
-                            else if (screen == Screen.OPERATIONS && operationsSectionName == OperationsSection.STATIONS.name) {
-                                viewModel.refreshStationBoardIfIdle()
-                            } else viewModel.refresh()
-                        }) {
-                            Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.action_refresh_rail_information))
-                        }
-                    }
-                }
-            )
-        },
-        bottomBar = {
-            if (screen != Screen.DETAIL && screen != Screen.RESULTS && screen != Screen.NUMBER_RESULTS) {
-                NavigationBar(containerColor = navigationBarColor) {
-                    NavigationBarItem(
-                        selected = screen == Screen.PLANNER,
-                        onClick = { screen = Screen.PLANNER },
-                        icon = { Icon(Icons.Default.Search, contentDescription = null) },
-                        label = { Text(stringResource(R.string.nav_search)) }
-                    )
-                    NavigationBarItem(
-                        selected = screen == Screen.OPERATIONS,
-                        onClick = { screen = Screen.OPERATIONS },
-                        icon = { Icon(Icons.Default.Train, contentDescription = null) },
-                        label = { Text(stringResource(R.string.nav_operations)) }
-                    )
-                    NavigationBarItem(
-                        selected = screen == Screen.AGENDA,
-                        onClick = { screen = Screen.AGENDA },
-                        icon = { Icon(Icons.Default.CalendarMonth, contentDescription = null) },
-                        label = { Text(stringResource(R.string.nav_agenda)) }
-                    )
-                    NavigationBarItem(
-                        selected = screen == Screen.SETTINGS,
-                        onClick = { screen = Screen.SETTINGS },
-                        icon = { Icon(Icons.Default.Info, contentDescription = null) },
-                        label = { Text(stringResource(R.string.nav_settings)) }
-                    )
-                }
-            }
-        },
-        containerColor = MaterialTheme.colorScheme.background
-    ) { padding ->
-        when (screen) {
-            Screen.PLANNER -> PlannerScreen(
-                modifier = Modifier.padding(padding),
+    val screenContent: @Composable (AppScreen, Modifier) -> Unit = { shown, modifier ->
+        when (shown) {
+            AppScreen.PLANNER -> PlannerScreen(
+                modifier = modifier,
                 viewModel = viewModel,
                 initialMode = plannerSearchMode,
                 modeRequestId = plannerSearchRequestId,
-                showResults = { screen = Screen.RESULTS },
-                showTrainResults = { screen = Screen.NUMBER_RESULTS },
-                openMore = { screen = Screen.SETTINGS },
+                showResults = { showScreen(AppScreen.RESULTS) },
+                showTrainResults = { showScreen(AppScreen.NUMBER_RESULTS) },
+                openMore = { showScreen(AppScreen.FOR_YOU) },
                 openStations = { station ->
                     station?.let(viewModel::openStationBoard)
-                    operationsSectionName = OperationsSection.STATIONS.name
-                    screen = Screen.OPERATIONS
+                    showDepartures(OperationsSection.STATIONS)
                 }
             )
-            Screen.OPERATIONS -> OperationsScreen(
-                modifier = Modifier.padding(padding),
+            AppScreen.DEPARTURES -> DeparturesScreen(
+                modifier = modifier,
                 viewModel = viewModel,
-                selectedSection = OperationsSection.valueOf(operationsSectionName),
-                onSectionSelected = { operationsSectionName = it.name },
-                openDetails = { service -> detailReturnScreen = Screen.OPERATIONS; viewModel.openService(service); screen = Screen.DETAIL },
-                openRoutes = { screen = Screen.SETTINGS },
-                openSearch = { screen = Screen.PLANNER }
+                selectedSection = operationsSection,
+                onSectionSelected = { section ->
+                    operationsSectionName = section.name
+                    // A side-pane detail belongs to the route board it was opened from.
+                    if (screen == AppScreen.DETAIL) showScreen(AppScreen.DEPARTURES)
+                },
+                openDetails = { service -> openDetail(AppScreen.DEPARTURES) { viewModel.openService(service) } },
+                manageRoutes = { showScreen(AppScreen.FOR_YOU) }
             )
-            Screen.AGENDA -> PlannedJourneyAgendaScreen(
-                modifier = Modifier.padding(padding),
+            AppScreen.FOR_YOU -> ForYouScreen(
+                modifier = modifier,
+                viewModel = viewModel,
+                onThemeClick = { showThemePicker = true },
+                openRoute = {
+                    viewModel.activateRoute(it)
+                    showDepartures(OperationsSection.TRAINS)
+                },
+                openAgenda = { showScreen(AppScreen.AGENDA) },
+                openStationBoard = { station ->
+                    viewModel.openStationBoard(station)
+                    showDepartures(OperationsSection.STATIONS)
+                },
+                gpsAlarmPanel = { GpsArrivalAlarmPanel(gpsArrivalAlarm) }
+            )
+            AppScreen.AGENDA -> PlannedJourneyAgendaScreen(
+                modifier = modifier,
                 viewModel = plannedJourneyViewModel,
                 stations = viewModel.stations.map { station ->
                     PlannedJourneyStation(station.id, station.name, station.railwayCode)
@@ -470,26 +419,16 @@ private fun BinarioApp(
                     plannedJourneyImportLauncher.launch(arrayOf("application/json", "text/calendar", "text/plain"))
                 }
             )
-            Screen.SETTINGS -> SettingsScreen(
-                modifier = Modifier.padding(padding),
+            AppScreen.RESULTS -> RouteResultsScreen(
+                modifier = modifier,
                 viewModel = viewModel,
-                onThemeClick = { showThemePicker = true },
-                openRoute = {
-                    viewModel.activateRoute(it)
-                    operationsSectionName = OperationsSection.TRAINS.name
-                    screen = Screen.OPERATIONS
-                }
+                openDetails = { service -> openDetail(AppScreen.RESULTS) { viewModel.openService(service) } }
             )
-            Screen.RESULTS -> RouteResultsScreen(
-                modifier = Modifier.padding(padding),
-                viewModel = viewModel,
-                openDetails = { service -> detailReturnScreen = Screen.RESULTS; viewModel.openService(service); screen = Screen.DETAIL }
+            AppScreen.NUMBER_RESULTS -> TrainNumberResultsScreen(
+                modifier = modifier, viewModel = viewModel,
+                onOpen = { match -> openDetail(AppScreen.NUMBER_RESULTS) { viewModel.openTrainNumberMatch(match) } }
             )
-            Screen.NUMBER_RESULTS -> TrainNumberResultsScreen(
-                modifier = Modifier.padding(padding), viewModel = viewModel,
-                onOpen = { match -> detailReturnScreen = Screen.NUMBER_RESULTS; viewModel.openTrainNumberMatch(match); screen = Screen.DETAIL }
-            )
-            Screen.DETAIL -> {
+            AppScreen.DETAIL -> {
                 val service = viewModel.selectedService
                 val detailProvider = viewModel.currentProviderLabel() ?: stringResource(R.string.provider_unavailable)
                 val detailConfidence = viewModel.localizedQualityLabel()
@@ -499,7 +438,7 @@ private fun BinarioApp(
                     // instead of showing an empty screen or recreating stale data.
                     LaunchedEffect(detailReturnScreen) { screen = detailReturnScreen }
                 } else ServiceDetailScreen(
-                    modifier = Modifier.padding(padding),
+                    modifier = modifier,
                     service = service,
                     provider = detailProvider,
                     confidence = detailConfidence,
@@ -547,6 +486,48 @@ private fun BinarioApp(
                 )
             }
         }
+    }
+
+    Scaffold(
+        topBar = {
+            BinarioTopBar(
+                title = title,
+                subtitle = subtitle,
+                containerColor = topBarColor,
+                contentColor = if (greenTopBar) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onBackground,
+                brand = greenTopBar,
+                navigationIcon = {
+                    if (backTarget != null) {
+                        IconButton(onClick = navigateBack, modifier = Modifier.testTag("top-bar-back")) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
+                        }
+                    }
+                },
+                actions = {
+                    IconButton(onClick = { showThemePicker = true }) {
+                        Icon(Icons.Default.Palette, contentDescription = stringResource(R.string.action_choose_theme, themeMode.localizedLabel()))
+                    }
+                    if (screen == AppScreen.DEPARTURES || screen == AppScreen.RESULTS || screen == AppScreen.NUMBER_RESULTS || screen == AppScreen.DETAIL) {
+                        IconButton(onClick = {
+                            if (screen == AppScreen.NUMBER_RESULTS) viewModel.searchTrainNumber(refresh = true)
+                            else if (screen == AppScreen.DEPARTURES && operationsSection == OperationsSection.STATIONS) {
+                                viewModel.refreshStationBoardIfIdle()
+                            } else viewModel.refresh()
+                        }) {
+                            Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.action_refresh_rail_information))
+                        }
+                    }
+                }
+            )
+        },
+        bottomBar = {
+            if (AppNavigation.showsNavigation(screen, WidthClass.COMPACT)) {
+                BinarioNavigationBar(selected = selectedDestination, onSelect = selectDestination, containerColor = navigationBarColor)
+            }
+        },
+        containerColor = MaterialTheme.colorScheme.background
+    ) { padding ->
+        screenContent(screen, Modifier.padding(padding))
     }
 }
 

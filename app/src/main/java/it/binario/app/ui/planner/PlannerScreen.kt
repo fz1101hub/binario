@@ -49,6 +49,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
@@ -57,7 +58,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import it.binario.app.DictationReviewStatus
 import it.binario.app.DictationTarget
 import it.binario.app.JourneyChangeFilter
@@ -252,7 +252,7 @@ internal fun PlannerScreen(
                 selectedReturnTime
             )
         )
-    LazyColumn(modifier = modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(0.dp)) {
+    LazyColumn(modifier = modifier.fillMaxSize().testTag("planner-screen"), verticalArrangement = Arrangement.spacedBy(0.dp)) {
         item {
             PlannerHeader(isDemonstration = viewModel.isDemonstrationData())
         }
@@ -405,7 +405,7 @@ internal fun PlannerScreen(
                                 selectedDepartureDate != null &&
                                 selectedDepartureTime != null &&
                                 roundTripChronologyValid,
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier.fillMaxWidth().testTag("planner-search")
                         ) {
                             Icon(Icons.Default.Search, contentDescription = null)
                             Spacer(Modifier.width(8.dp))

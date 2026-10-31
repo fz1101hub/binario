@@ -93,23 +93,15 @@
 
     <!-- Main app shell and primary journey planner. -->
     <string name="app_brand">BINARIO</string>
-    <string name="screen_title_operations">Browse</string>
-    <string name="screen_title_settings">Settings</string>
     <string name="screen_title_results">Journey options</string>
     <string name="screen_title_detail">Service details</string>
     <string name="screen_title_agenda">Agenda</string>
-    <string name="screen_subtitle_operations">Trains and stations</string>
-    <string name="screen_subtitle_settings">Preferences and personal data</string>
     <string name="screen_subtitle_results">Available services</string>
     <string name="screen_subtitle_agenda">Journeys planned on this device</string>
-    <string name="nav_search">Search</string>
-    <string name="nav_operations">Browse</string>
-    <string name="nav_settings">Settings</string>
-    <string name="nav_agenda">Agenda</string>
     <string name="action_back">Go back</string>
     <string name="action_choose_theme">Choose theme. Current theme %1$s</string>
     <string name="action_refresh_rail_information">Refresh rail information</string>
-    <string name="search_mode_route">Route</string>
+    <string name="search_mode_route">Journey</string>
     <string name="search_mode_train">Train no.</string>
     <string name="search_mode_station">Station</string>
     <string name="operations_section_trains">Trains</string>
@@ -118,8 +110,6 @@
     <string name="operations_section_stations_subtitle">Arrivals and departures</string>
     <string name="accessibility_section_selected">Selected</string>
     <string name="accessibility_section_not_selected">Not selected</string>
-    <string name="action_new_search">New search</string>
-    <string name="action_plan_route">Plan route</string>
 
     <!-- Local-only planned journeys. These records never alter SavedRoute or live rail data. -->
     <string name="planned_journey_description">Create a personal journey reminder and view its occurrences.</string>
@@ -296,12 +286,9 @@
     <string name="today_empty_title">No departures to show</string>
 
     <!-- Settings, privacy and integrations. -->
-    <string name="settings_title">Settings</string>
-    <string name="settings_description">Manage Binario preferences, personal journeys and integrations.</string>
     <string name="settings_appearance">Appearance</string>
     <string name="settings_theme_title">App theme</string>
     <string name="settings_theme_description">System, light or dark</string>
-    <string name="settings_personal_journeys">Personal journeys</string>
     <string name="settings_personal_journeys_description">Pinned routes remain available in the widget too. Tap a route to make it active.</string>
     <string name="settings_add_route">Add a route</string>
     <string name="settings_integrations">Integrations</string>
@@ -318,6 +305,25 @@
     <string name="planner_subtitle">Search for a route, a train number or a station.</string>
     <string name="data_status_quality">Data quality: %1$s</string>
     <string name="data_status_cached">Saved copy, not real time: %1$s</string>
+    <string name="nav_plan">Plan</string>
+    <string name="nav_departures">Departures</string>
+    <string name="nav_for_you">For you</string>
+    <string name="departures_subtitle">Active route and station boards</string>
+    <string name="for_you_subtitle">Routes, journeys, alerts and preferences</string>
+    <string name="departures_next_departure">Next departure</string>
+    <string name="route_picker_title">Choose the route</string>
+    <string name="route_picker_empty">No saved route yet. Add one in For you.</string>
+    <string name="route_picker_manage">Manage routes</string>
+    <string name="for_you_saved_routes">Saved routes</string>
+    <string name="for_you_alarms">Alarms and alerts</string>
+    <string name="for_you_stop_alarm_hint">Stop alarms, GPS ones included, are set from a stop in a train’s detail.</string>
+    <string name="for_you_credits">Credits and licences</string>
+    <string name="action_follow_trip">Follow trip</string>
+    <string name="action_save">Save</string>
+    <string name="action_saved">Saved</string>
+    <string name="action_share">Share</string>
+    <string name="detail_save_hint">Save adds the train to the monitored trains in For you; Follow trip keeps the next stop on this device only.</string>
+    <string name="stop_position_passed">Stop passed</string>
     <string name="settings_privacy_osm">National autocomplete: © OpenStreetMap contributors, ODbL 1.0. The geographic catalogue suggests station names but does not confirm service, time, platform, delay or operation.</string>
     <!-- Open maps (October 2026) -->
     <string name="map_attribution">OpenFreeMap © OpenMapTiles, data © OpenStreetMap contributors</string>
@@ -445,14 +451,9 @@
     <string name="service_scheduled_departure">Scheduled %1$s</string>
     <string name="service_stops_title">Stops</string>
     <string name="service_data_summary">%1$s · %2$s · %3$s</string>
-    <string name="accessibility_share_service">Share train details with system apps</string>
     <string name="accessibility_refresh_service">Refresh service details</string>
-    <string name="accessibility_monitor_service">Monitor this train</string>
-    <string name="accessibility_stop_monitoring_service">Remove train monitoring</string>
     <string name="active_trip_title">Active journey</string>
-    <string name="follow_trip_title">Follow this journey</string>
     <string name="follow_trip_description">Keep the next stop locally and advance it manually.</string>
-    <string name="action_start_trip">Start journey</string>
     <string name="stop_alarm_notice">The alarm is local and based on the displayed time. For operational changes, always refer to official boards and announcements.</string>
 
     <string name="stop_change_added_accessibility">Stop added to the operational route.</string>

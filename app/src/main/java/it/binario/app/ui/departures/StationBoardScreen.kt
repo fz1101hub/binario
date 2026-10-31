@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
@@ -57,6 +58,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
@@ -64,7 +66,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
-import androidx.lifecycle.viewmodel.compose.viewModel
 import it.binario.app.R
 import it.binario.app.RefreshState
 import it.binario.app.StationLineNoticesSection
@@ -78,11 +79,13 @@ import it.binario.app.data.repository.StationBoardRunDetails
 import it.binario.app.localized
 import it.binario.app.maps.GeoPoint
 import it.binario.app.maps.NearbyStationsMapCard
+import it.binario.app.maps.RouteMapPlanner
 import it.binario.app.maps.StationMapCard
 import it.binario.app.maps.rememberOpenMapStationIndex
 import it.binario.app.ui.common.SearchInfoState
 import it.binario.app.ui.common.StationField
 import it.binario.app.ui.common.localizedLabel
+import it.binario.app.ui.detail.StopTimelinePosition
 import it.binario.app.ui.detail.StopTimelineRow
 import it.binario.app.updateTimeMessage
 import java.time.ZoneId
@@ -92,9 +95,10 @@ import java.util.Locale
 // Partenze: departures and arrivals of a station, with the run details of a board entry.
 
 @Composable
-internal fun StationBoardScreen(modifier: Modifier, viewModel: TrainViewModel) {
+internal fun StationBoardScreen(modifier: Modifier, viewModel: TrainViewModel, runDetailsInSheet: Boolean = true) {
     LaunchedEffect(Unit) { viewModel.refreshStationBoardIfIdle() }
-    viewModel.selectedBoardEntry?.let { selected ->
+    // From 840 dp the run details sit in the side pane instead (StationBoardRunDetailsPane).
+    if (runDetailsInSheet) viewModel.selectedBoardEntry?.let { selected ->
         StationBoardRunDetailsSheet(
             station = viewModel.stationBoardStation?.name.orEmpty(),
             entry = viewModel.stationBoardRunDetails?.entry ?: selected,
@@ -478,43 +482,90 @@ internal fun StationBoardRunDetailsSheet(
     onDismiss: () -> Unit
 ) {
     ModalBottomSheet(onDismissRequest = onDismiss) {
-        LazyColumn(Modifier.fillMaxWidth().fillMaxHeight(0.9f).testTag("station-run-details")) {
-            item {
-                Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(stringResource(R.string.station_board_run_details_title), style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                        TextButton(onClick = onDismiss) { Text(stringResource(R.string.planned_journey_close)) }
-                    }
-                    Text(station, style = MaterialTheme.typography.titleMedium)
-                    if (details != null) {
-                        Text("${details.origin} → ${details.destination}", style = MaterialTheme.typography.bodyLarge)
-                        Text(details.observedAt?.let {
-                            stringResource(R.string.provider_updated_at, details.providerName, updateTimeMessage(it.toEpochMilli()).localized())
-                        } ?: details.providerName, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
+        StationBoardRunDetailsContent(
+            modifier = Modifier.fillMaxWidth().fillMaxHeight(0.9f),
+            station = station,
+            entry = entry,
+            kind = kind,
+            details = details,
+            state = state,
+            onRefresh = onRefresh,
+            onDismiss = onDismiss
+        )
+    }
+}
+
+/** The run details of the selected board entry in the side pane of a wide window. */
+@Composable
+internal fun StationBoardRunDetailsPane(modifier: Modifier, viewModel: TrainViewModel, placeholder: @Composable () -> Unit) {
+    val selected = viewModel.selectedBoardEntry
+    if (selected == null) {
+        placeholder()
+        return
+    }
+    StationBoardRunDetailsContent(
+        modifier = modifier.fillMaxSize(),
+        station = viewModel.stationBoardStation?.name.orEmpty(),
+        entry = viewModel.stationBoardRunDetails?.entry ?: selected,
+        kind = viewModel.stationBoardKind,
+        details = viewModel.stationBoardRunDetails,
+        state = viewModel.stationBoardRunRefreshState,
+        onRefresh = viewModel::refreshStationBoardRun,
+        onDismiss = viewModel::closeStationBoardRun
+    )
+}
+
+@Composable
+private fun StationBoardRunDetailsContent(
+    modifier: Modifier,
+    station: String,
+    entry: StationBoardEntry,
+    kind: BoardKind,
+    details: StationBoardRunDetails?,
+    state: RefreshState,
+    onRefresh: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    LazyColumn(modifier.testTag("station-run-details")) {
+        item {
+            Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(stringResource(R.string.station_board_run_details_title), style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f).semantics { heading() })
+                    TextButton(onClick = onDismiss) { Text(stringResource(R.string.planned_journey_close)) }
                 }
-                StationBoardEntryRow(entry, kind)
-                TextButton(onClick = onRefresh, enabled = state != RefreshState.LOADING, modifier = Modifier.padding(horizontal = 12.dp)) {
-                    Text(stringResource(R.string.action_refresh))
-                }
-                if (state == RefreshState.LOADING) {
-                    LinearProgressIndicator(Modifier.fillMaxWidth())
-                    Text(stringResource(R.string.station_board_run_details_loading), modifier = Modifier.padding(20.dp))
-                } else if (details == null) {
-                    Text(stringResource(R.string.station_board_run_details_unavailable), modifier = Modifier.padding(20.dp),
-                        style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(station, style = MaterialTheme.typography.titleMedium)
+                if (details != null) {
+                    Text("${details.origin} → ${details.destination}", style = MaterialTheme.typography.bodyLarge)
+                    Text(details.observedAt?.let {
+                        stringResource(R.string.provider_updated_at, details.providerName, updateTimeMessage(it.toEpochMilli()).localized())
+                    } ?: details.providerName, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
-            if (details != null) {
-                item { Text(stringResource(R.string.service_stops_title), modifier = Modifier.padding(20.dp), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }
-                items(details.stops) { stop ->
-                    StopTimelineRow(stop.station, stop.expected, stop.scheduled, stop.delayMinutes, stop.platform, stop.completed,
-                        operationalStatusVerified = stop.operationalStatusVerified == true, routeChange = stop.routeChange, onSetAlarm = null)
-                }
+            StationBoardEntryRow(entry, kind)
+            TextButton(onClick = onRefresh, enabled = state != RefreshState.LOADING, modifier = Modifier.padding(horizontal = 12.dp)) {
+                Text(stringResource(R.string.action_refresh))
             }
-            item { Spacer(Modifier.height(24.dp)) }
+            if (state == RefreshState.LOADING) {
+                LinearProgressIndicator(Modifier.fillMaxWidth())
+                Text(stringResource(R.string.station_board_run_details_loading), modifier = Modifier.padding(20.dp))
+            } else if (details == null) {
+                Text(stringResource(R.string.station_board_run_details_unavailable), modifier = Modifier.padding(20.dp),
+                    style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
         }
+        if (details != null) {
+            item { Text(stringResource(R.string.service_stops_title), modifier = Modifier.padding(20.dp), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }
+            val progress = RouteMapPlanner.progress(details.stops)
+            itemsIndexed(details.stops) { index, stop ->
+                StopTimelineRow(stop.station, stop.expected, stop.scheduled, stop.delayMinutes, stop.platform, stop.completed,
+                    operationalStatusVerified = stop.operationalStatusVerified == true, routeChange = stop.routeChange, onSetAlarm = null,
+                    position = StopTimelinePosition.of(index, progress, stop.completed),
+                    isFirst = index == 0,
+                    isLast = index == details.stops.lastIndex)
+            }
+        }
+        item { Spacer(Modifier.height(24.dp)) }
     }
 }
 
@@ -576,7 +627,7 @@ private fun requestNearbyStationLocation(context: android.content.Context, onRes
 }
 
 @Composable
-private fun StationPreferenceRow(
+internal fun StationPreferenceRow(
     station: Station,
     favourite: Boolean,
     onSelect: () -> Unit,

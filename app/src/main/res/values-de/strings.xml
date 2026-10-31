@@ -93,23 +93,15 @@
 
     <!-- Main app shell and primary journey planner. -->
     <string name="app_brand">BINARIO</string>
-    <string name="screen_title_operations">Ansehen</string>
-    <string name="screen_title_settings">Einstellungen</string>
     <string name="screen_title_results">Verbindungen</string>
     <string name="screen_title_detail">Fahrtdetails</string>
     <string name="screen_title_agenda">Agenda</string>
-    <string name="screen_subtitle_operations">Züge und Bahnhöfe</string>
-    <string name="screen_subtitle_settings">Einstellungen und persönliche Daten</string>
     <string name="screen_subtitle_results">Verfügbare Verbindungen</string>
     <string name="screen_subtitle_agenda">Auf dem Gerät geplante Reisen</string>
-    <string name="nav_search">Suchen</string>
-    <string name="nav_operations">Ansehen</string>
-    <string name="nav_settings">Einstellungen</string>
-    <string name="nav_agenda">Agenda</string>
     <string name="action_back">Zurück</string>
     <string name="action_choose_theme">Design auswählen. Aktuelles Design: %1$s</string>
     <string name="action_refresh_rail_information">Bahninformationen aktualisieren</string>
-    <string name="search_mode_route">Strecke</string>
+    <string name="search_mode_route">Reise</string>
     <string name="search_mode_train">Zugnr.</string>
     <string name="search_mode_station">Bahnhof</string>
     <string name="operations_section_trains">Züge</string>
@@ -118,8 +110,6 @@
     <string name="operations_section_stations_subtitle">Ankünfte und Abfahrten</string>
     <string name="accessibility_section_selected">Ausgewählt</string>
     <string name="accessibility_section_not_selected">Nicht ausgewählt</string>
-    <string name="action_new_search">Neue Suche</string>
-    <string name="action_plan_route">Strecke planen</string>
 
     <!-- Local-only planned journeys. These records never alter SavedRoute or live rail data. -->
     <string name="planned_journey_description">Erstelle eine persönliche Reiseerinnerung und sieh ihre Vorkommnisse an.</string>
@@ -296,12 +286,9 @@
     <string name="today_empty_title">Keine Abfahrten zum Anzeigen</string>
 
     <!-- Settings, privacy and integrations. -->
-    <string name="settings_title">Einstellungen</string>
-    <string name="settings_description">Einstellungen, persönliche Reisen und Binario-Integrationen verwalten.</string>
     <string name="settings_appearance">Darstellung</string>
     <string name="settings_theme_title">App-Design</string>
     <string name="settings_theme_description">System, hell oder dunkel</string>
-    <string name="settings_personal_journeys">Persönliche Reisen</string>
     <string name="settings_personal_journeys_description">Angeheftete Strecken bleiben auch im Widget verfügbar. Tippe auf eine Strecke, um sie zu aktivieren.</string>
     <string name="settings_add_route">Strecke hinzufügen</string>
     <string name="settings_integrations">Integrationen</string>
@@ -318,6 +305,25 @@
     <string name="planner_subtitle">Suche eine Strecke, eine Zugnummer oder einen Bahnhof.</string>
     <string name="data_status_quality">Datenqualität: %1$s</string>
     <string name="data_status_cached">Gespeicherte Kopie, nicht in Echtzeit: %1$s</string>
+    <string name="nav_plan">Planen</string>
+    <string name="nav_departures">Abfahrten</string>
+    <string name="nav_for_you">Für dich</string>
+    <string name="departures_subtitle">Aktive Strecke und Bahnhofstafeln</string>
+    <string name="for_you_subtitle">Strecken, Reisen, Hinweise und Einstellungen</string>
+    <string name="departures_next_departure">Nächste Abfahrt</string>
+    <string name="route_picker_title">Strecke wählen</string>
+    <string name="route_picker_empty">Noch keine gespeicherte Strecke. Füge eine unter Für dich hinzu.</string>
+    <string name="route_picker_manage">Strecken verwalten</string>
+    <string name="for_you_saved_routes">Gespeicherte Strecken</string>
+    <string name="for_you_alarms">Wecker und Hinweise</string>
+    <string name="for_you_stop_alarm_hint">Haltewecker, auch per GPS, stellst du an einem Halt in den Zugdetails.</string>
+    <string name="for_you_credits">Quellen und Lizenzen</string>
+    <string name="action_follow_trip">Fahrt verfolgen</string>
+    <string name="action_save">Speichern</string>
+    <string name="action_saved">Gespeichert</string>
+    <string name="action_share">Teilen</string>
+    <string name="detail_save_hint">Speichern fügt den Zug den überwachten Zügen unter Für dich hinzu; Fahrt verfolgen speichert den nächsten Halt nur auf diesem Gerät.</string>
+    <string name="stop_position_passed">Halt passiert</string>
     <string name="settings_privacy_osm">Nationale Autovervollständigung: © OpenStreetMap contributors, ODbL 1.0. Der geografische Katalog schlägt Bahnhofsnamen vor, bestätigt jedoch weder Verkehr, Fahrzeit, Gleis, Verspätung noch Betrieb.</string>
     <!-- Open maps (October 2026) -->
     <string name="map_attribution">OpenFreeMap © OpenMapTiles, Daten © OpenStreetMap contributors</string>
@@ -445,14 +451,9 @@
     <string name="service_scheduled_departure">Geplant %1$s</string>
     <string name="service_stops_title">Halte</string>
     <string name="service_data_summary">%1$s · %2$s · %3$s</string>
-    <string name="accessibility_share_service">Zugdetails mit System-Apps teilen</string>
     <string name="accessibility_refresh_service">Fahrtdetails aktualisieren</string>
-    <string name="accessibility_monitor_service">Diesen Zug überwachen</string>
-    <string name="accessibility_stop_monitoring_service">Zugüberwachung entfernen</string>
     <string name="active_trip_title">Aktive Reise</string>
-    <string name="follow_trip_title">Diese Reise verfolgen</string>
     <string name="follow_trip_description">Speichere den nächsten Halt lokal und rücke ihn manuell weiter.</string>
-    <string name="action_start_trip">Reise beginnen</string>
     <string name="stop_alarm_notice">Der Wecker ist lokal und basiert auf der angezeigten Zeit. Beachte bei Betriebsänderungen immer die offiziellen Anzeigen und Durchsagen.</string>
 
     <string name="stop_change_added_accessibility">Halt zur Betriebsstrecke hinzugefügt.</string>

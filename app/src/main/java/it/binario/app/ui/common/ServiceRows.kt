@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Info
@@ -34,6 +35,7 @@ import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import it.binario.app.R
@@ -49,18 +51,38 @@ import it.binario.app.updateTimeMessage
 
 // Rows, status lines and fields shared by the planner results, the departures and the detail.
 
+/** Column titles of the compact rows; minimum widths keep them aligned while letting large text grow. */
 @Composable
 internal fun BoardColumnHeader() {
     Row(
         modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceVariant).padding(horizontal = 20.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(stringResource(R.string.board_column_time), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, modifier = Modifier.width(68.dp))
+        Text(stringResource(R.string.board_column_time), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, modifier = Modifier.widthIn(min = TIME_COLUMN))
         Text(stringResource(R.string.board_column_service), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-        Text(stringResource(R.string.board_column_platform), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, modifier = Modifier.width(42.dp), textAlign = androidx.compose.ui.text.style.TextAlign.End)
-        Text(stringResource(R.string.board_column_status), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, modifier = Modifier.width(50.dp), textAlign = androidx.compose.ui.text.style.TextAlign.End)
+        Text(stringResource(R.string.board_column_platform), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, modifier = Modifier.widthIn(min = SIDE_COLUMN), textAlign = TextAlign.End)
+        Text(stringResource(R.string.board_column_status), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, modifier = Modifier.widthIn(min = SIDE_COLUMN), textAlign = TextAlign.End)
     }
 }
+
+private val TIME_COLUMN = 76.dp
+private val SIDE_COLUMN = 50.dp
+
+/**
+ * How demonstration data is shown: the timetable only. Delays, expected times and platforms of the
+ * local demonstration catalogue are never presented as if they were real.
+ */
+internal fun TrainService.presentedAsDemonstration(): TrainService = copy(
+    expectedDeparture = scheduledDeparture,
+    platform = null,
+    delayMinutes = 0,
+    officialDelayMinutes = null,
+    status = ServiceStatus.ON_TIME,
+    operationalStatusVerified = false,
+    stops = stops.map { stop ->
+        stop.copy(expected = stop.scheduled, platform = null, delayMinutes = 0, completed = false, operationalStatusVerified = false)
+    }
+)
 
 /**
  * Provenance of the departures above the rows: demonstration, unavailable, live or saved copy, always as
@@ -123,58 +145,61 @@ internal fun DataStatusLine(
     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 }
 
+/** A compact, neutral row of a departures or results list (the board highlights its next service separately). */
 @Composable
-internal fun DepartureListRow(service: TrainService, isNext: Boolean = false, onOpen: () -> Unit) {
-    val serviceState = if (service.operationalStatusVerified) {
-        stringResource(R.string.service_state_live, service.status.localizedLabel())
+internal fun DepartureListRow(service: TrainService, isDemonstration: Boolean = false, onOpen: () -> Unit) {
+    val shown = if (isDemonstration) service.presentedAsDemonstration() else service
+    val serviceState = if (shown.operationalStatusVerified) {
+        stringResource(R.string.service_state_live, shown.status.localizedLabel())
     } else {
         stringResource(R.string.service_state_scheduled)
     }
     val serviceContentDescription = stringResource(
         R.string.accessibility_open_service,
-        service.localizedAccessibleSummary(),
+        shown.localizedAccessibleSummary(),
         serviceState
     )
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(if (isNext) MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.48f) else MaterialTheme.colorScheme.background)
             .clickable(role = Role.Button, onClick = onOpen)
             .clearAndSetSemantics {
                 contentDescription = serviceContentDescription
                 role = Role.Button
                 onClick { onOpen(); true }
             }
-            .padding(horizontal = 20.dp, vertical = 14.dp),
+            .padding(horizontal = 20.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Column(Modifier.width(76.dp)) {
-            Text(service.scheduledDeparture, style = MaterialTheme.typography.titleLarge, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
-            if (!service.operationalStatusVerified) Text(stringResource(R.string.service_scheduled_lowercase), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            else if (service.delayMinutes > 0) Text(stringResource(R.string.delay_minutes, service.delayMinutes), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.tertiary, fontWeight = FontWeight.Bold)
-            else Text(stringResource(R.string.service_on_time_lowercase), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.secondary)
-            if (service.operationalStatusVerified && service.expectedDeparture != service.scheduledDeparture) {
-                Text(stringResource(R.string.expected_time_short, service.expectedDeparture), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Column(Modifier.widthIn(min = TIME_COLUMN).padding(end = 8.dp)) {
+            Text(shown.scheduledDeparture, style = MaterialTheme.typography.titleLarge, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
+            when {
+                !shown.operationalStatusVerified -> Text(stringResource(R.string.service_scheduled_lowercase), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                shown.status == ServiceStatus.CANCELLED -> Text(stringResource(R.string.service_status_cancelled), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
+                shown.delayMinutes > 0 -> Text(stringResource(R.string.delay_minutes, shown.delayMinutes), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.tertiary, fontWeight = FontWeight.Bold)
+                else -> Text(stringResource(R.string.service_on_time_lowercase), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.secondary)
+            }
+            if (shown.operationalStatusVerified && shown.expectedDeparture != shown.scheduledDeparture) {
+                Text(stringResource(R.string.expected_time_short, shown.expectedDeparture), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(service.destination, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(stringResource(R.string.service_operator_category_number, service.displayOperator, service.trainCategory.localizedLabel(), service.number), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            service.routeChange?.let {
+            Text(shown.destination, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(stringResource(R.string.service_operator_category_number, shown.displayOperator, shown.trainCategory.localizedLabel(), shown.number), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            shown.routeChange?.let {
                 Text(
                     routeChangeLabel(it),
                     style = MaterialTheme.typography.labelSmall,
                     color = routeChangeAccent(it),
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1
+                    fontWeight = FontWeight.Bold
                 )
             }
         }
-        Column(horizontalAlignment = Alignment.End, modifier = Modifier.width(50.dp)) {
-            Text(service.platform?.let { stringResource(R.string.platform_short, it) } ?: "—", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+        Column(horizontalAlignment = Alignment.End, modifier = Modifier.widthIn(min = SIDE_COLUMN)) {
+            Text(shown.platform?.let { stringResource(R.string.platform_short, it) } ?: "—", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
         }
-        Column(horizontalAlignment = Alignment.End, modifier = Modifier.width(50.dp)) {
-            Text(compactStatusLabel(service), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+        Column(horizontalAlignment = Alignment.End, modifier = Modifier.widthIn(min = SIDE_COLUMN)) {
+            Text(compactStatusLabel(shown), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.End)
         }
     }
     HorizontalDivider(modifier = Modifier.padding(start = 20.dp), color = MaterialTheme.colorScheme.outlineVariant)
@@ -230,7 +255,7 @@ internal fun routeChangeLabel(routeChange: OperationalRouteChange): String = whe
 }
 
 @Composable
-private fun routeChangeAccent(routeChange: OperationalRouteChange) =
+internal fun routeChangeAccent(routeChange: OperationalRouteChange) =
     if (routeChange.kind in setOf(RouteChangeKind.SKIPPED_STOPS, RouteChangeKind.SHORT_TURN, RouteChangeKind.REPLACEMENT_SERVICE)) {
         MaterialTheme.colorScheme.error
     } else {

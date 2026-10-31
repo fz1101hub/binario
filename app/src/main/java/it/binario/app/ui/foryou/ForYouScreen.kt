@@ -7,7 +7,6 @@ import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -15,8 +14,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -26,6 +25,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Star
@@ -55,12 +56,15 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
@@ -68,7 +72,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
-import androidx.lifecycle.viewmodel.compose.viewModel
 import it.binario.app.ActiveTrip
 import it.binario.app.AlertRepeat
 import it.binario.app.CommuterAlert
@@ -84,13 +87,14 @@ import it.binario.app.TrainViewModel
 import it.binario.app.VoiceProfileSyncReadiness
 import it.binario.app.data.Direction
 import it.binario.app.data.SavedRoute
-import it.binario.app.maps.OpenMapsPrivacyNotes
+import it.binario.app.data.Station
 import it.binario.app.resolve
 import it.binario.app.ui.common.StationField
 import it.binario.app.ui.common.localizedDisplayName
 import it.binario.app.ui.common.localizedLabel
 import it.binario.app.ui.common.localizedName
 import it.binario.app.ui.common.localizedSummary
+import it.binario.app.ui.departures.StationPreferenceRow
 import java.time.LocalTime
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -143,12 +147,20 @@ private fun commuterAlertScheduleFeedback(resources: android.content.res.Resourc
         resources.getString(R.string.commuter_alert_no_trigger_feedback)
 }
 
+/**
+ * "Per te": what belongs to the user, all stored on this device. Saved routes come first, then the agenda
+ * of planned journeys, favourite stations, trips and monitoring, alarms and alerts, preferences, data and
+ * privacy (with the local export), integrations, sources and credits.
+ */
 @Composable
-internal fun SettingsScreen(
+internal fun ForYouScreen(
     modifier: Modifier,
     viewModel: TrainViewModel,
     onThemeClick: () -> Unit,
-    openRoute: (SavedRoute) -> Unit
+    openRoute: (SavedRoute) -> Unit,
+    openAgenda: () -> Unit,
+    openStationBoard: (Station) -> Unit,
+    gpsAlarmPanel: @Composable () -> Unit
 ) {
     var showComposer by rememberSaveable { mutableStateOf(false) }
     var showAlertComposer by rememberSaveable { mutableStateOf(false) }
@@ -217,24 +229,10 @@ internal fun SettingsScreen(
             }
         )
     }
-    LazyColumn(modifier = modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(0.dp)) {
-        item {
-            Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text(stringResource(R.string.settings_title), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                Text(stringResource(R.string.settings_description), color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        }
-        item {
-            SettingsSectionTitle(stringResource(R.string.settings_appearance))
-            SettingsActionRow(
-                title = stringResource(R.string.settings_theme_title),
-                detail = stringResource(R.string.settings_theme_description),
-                onClick = onThemeClick
-            )
-        }
+    LazyColumn(modifier = modifier.fillMaxSize().testTag("for-you-screen"), verticalArrangement = Arrangement.spacedBy(0.dp)) {
         item {
             Column(Modifier.padding(horizontal = 20.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text(stringResource(R.string.settings_personal_journeys), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                SectionHeading(stringResource(R.string.for_you_saved_routes))
                 Text(stringResource(R.string.settings_personal_journeys_description), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Button(onClick = { showComposer = true }, modifier = Modifier.fillMaxWidth()) {
                     Icon(Icons.Default.Add, contentDescription = null)
@@ -243,14 +241,38 @@ internal fun SettingsScreen(
                 }
             }
         }
-        item {
-            CommuterAlertsPanel(
-                alerts = viewModel.commuterAlerts,
-                feedback = alertFeedback,
-                canAdd = viewModel.hasActiveRoute,
-                onAdd = { showAlertComposer = true },
-                onRemove = viewModel::removeCommuterAlert
+        items(viewModel.savedRoutes, key = { it.id }) { route ->
+            RouteListRow(
+                route = route,
+                isActive = route.id == viewModel.activeRoute.id,
+                onOpen = { openRoute(route) },
+                onPin = { viewModel.toggleRoutePin(route) },
+                onMove = { delta -> viewModel.moveRoute(route, delta) },
+                canMoveUp = viewModel.canMoveRoute(route, -1),
+                canMoveDown = viewModel.canMoveRoute(route, 1),
+                onRemove = { viewModel.removeRoute(route) },
+                canRemove = viewModel.savedRoutes.size > 1
             )
+        }
+        item {
+            SettingsActionRow(
+                title = stringResource(R.string.screen_title_agenda),
+                detail = stringResource(R.string.screen_subtitle_agenda),
+                icon = Icons.Default.CalendarMonth,
+                onClick = openAgenda,
+                modifier = Modifier.testTag("for-you-agenda")
+            )
+        }
+        if (viewModel.favouriteStations.isNotEmpty()) {
+            item { SettingsSectionTitle(stringResource(R.string.station_board_favourites)) }
+            items(viewModel.favouriteStations, key = { "fav-${it.id}" }) { station ->
+                StationPreferenceRow(
+                    station = station,
+                    favourite = true,
+                    onSelect = { openStationBoard(station) },
+                    onToggleFavourite = { viewModel.toggleStationFavourite(station) }
+                )
+            }
         }
         item {
             PersonalTravelPanel(
@@ -259,29 +281,6 @@ internal fun SettingsScreen(
                 onAdvanceTrip = viewModel::advanceActiveTrip,
                 onEndTrip = viewModel::endActiveTrip,
                 onRemoveStationMonitor = viewModel::removeStationMonitor
-            )
-        }
-        item {
-            MobilityPreferencesPanel(
-                value = viewModel.mobilityPreferences,
-                onChange = viewModel::updateMobilityPreferences
-            )
-        }
-        item {
-            LocalBackupPanel(
-                feedback = backupFeedback,
-                onExport = { createBackupDocument.launch("binario-backup.json") },
-                onImport = { openBackupDocument.launch(arrayOf(LocalDataBackupCodec.MIME_TYPE, "text/plain")) }
-            )
-        }
-        item { SettingsSectionTitle(stringResource(R.string.settings_integrations)) }
-        item {
-            IntegrationsPanel(
-                settings = viewModel.integrationSettings,
-                voiceReadiness = viewModel.voiceProfileSyncReadiness(),
-                onWearSharingChanged = viewModel::setWearSnapshotSharing,
-                onVoiceProfileChanged = viewModel::setVoiceProfileSyncRequested,
-                onAppleWatchSetupChanged = viewModel::setAppleWatchSetupRequested
             )
         }
         if (viewModel.monitoredServices.isNotEmpty()) {
@@ -305,31 +304,78 @@ internal fun SettingsScreen(
                 HorizontalDivider(modifier = Modifier.padding(start = 20.dp), color = MaterialTheme.colorScheme.outlineVariant)
             }
         }
-        item { SourcesSettingsPanel() }
+        item {
+            Column(Modifier.padding(horizontal = 20.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                SectionHeading(stringResource(R.string.for_you_alarms))
+                Text(stringResource(R.string.for_you_stop_alarm_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            gpsAlarmPanel()
+        }
+        item {
+            CommuterAlertsPanel(
+                alerts = viewModel.commuterAlerts,
+                feedback = alertFeedback,
+                canAdd = viewModel.hasActiveRoute,
+                onAdd = { showAlertComposer = true },
+                onRemove = viewModel::removeCommuterAlert
+            )
+        }
+        item {
+            SettingsSectionTitle(stringResource(R.string.settings_appearance))
+            SettingsActionRow(
+                title = stringResource(R.string.settings_theme_title),
+                detail = stringResource(R.string.settings_theme_description),
+                icon = Icons.Default.Palette,
+                onClick = onThemeClick
+            )
+        }
+        item {
+            MobilityPreferencesPanel(
+                value = viewModel.mobilityPreferences,
+                onChange = viewModel::updateMobilityPreferences
+            )
+        }
         item {
             Column(Modifier.padding(horizontal = 20.dp, vertical = 14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(stringResource(R.string.settings_privacy_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                SectionHeading(stringResource(R.string.settings_privacy_title))
                 Text(stringResource(R.string.settings_privacy_local_data), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text(stringResource(R.string.settings_privacy_notifications_voice), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text(stringResource(R.string.settings_privacy_wear), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text(stringResource(R.string.settings_privacy_osm), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                OpenMapsPrivacyNotes()
+                Text(stringResource(R.string.settings_privacy_maps), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
-        items(viewModel.savedRoutes, key = { it.id }) { route ->
-            RouteListRow(
-                route = route,
-                isActive = route.id == viewModel.activeRoute.id,
-                onOpen = { openRoute(route) },
-                onPin = { viewModel.toggleRoutePin(route) },
-                onMove = { delta -> viewModel.moveRoute(route, delta) },
-                canMoveUp = viewModel.canMoveRoute(route, -1),
-                canMoveDown = viewModel.canMoveRoute(route, 1),
-                onRemove = { viewModel.removeRoute(route) },
-                canRemove = viewModel.savedRoutes.size > 1
+        item {
+            LocalBackupPanel(
+                feedback = backupFeedback,
+                onExport = { createBackupDocument.launch("binario-backup.json") },
+                onImport = { openBackupDocument.launch(arrayOf(LocalDataBackupCodec.MIME_TYPE, "text/plain")) }
             )
         }
+        item { SettingsSectionTitle(stringResource(R.string.settings_integrations)) }
+        item {
+            IntegrationsPanel(
+                settings = viewModel.integrationSettings,
+                voiceReadiness = viewModel.voiceProfileSyncReadiness(),
+                onWearSharingChanged = viewModel::setWearSnapshotSharing,
+                onVoiceProfileChanged = viewModel::setVoiceProfileSyncRequested,
+                onAppleWatchSetupChanged = viewModel::setAppleWatchSetupRequested
+            )
+        }
+        item { SourcesSettingsPanel() }
+        item {
+            Column(Modifier.padding(horizontal = 20.dp, vertical = 14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                SectionHeading(stringResource(R.string.for_you_credits))
+                Text(stringResource(R.string.settings_privacy_osm), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(stringResource(R.string.settings_credits_maps), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        item { Spacer(Modifier.height(24.dp)) }
     }
+}
+
+@Composable
+private fun SectionHeading(title: String) {
+    Text(title, modifier = Modifier.semantics { heading() }, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
 }
 
 @Composable
@@ -338,22 +384,24 @@ private fun SettingsSectionTitle(title: String) {
         text = title,
         style = MaterialTheme.typography.titleMedium,
         fontWeight = FontWeight.Bold,
-        modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp)
+        modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp).semantics { heading() }
     )
 }
 
 @Composable
-private fun SettingsActionRow(title: String, detail: String, onClick: () -> Unit) {
+private fun SettingsActionRow(title: String, detail: String, icon: ImageVector, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val accessibilityLabel = stringResource(R.string.accessibility_title_detail, title, detail)
     TextButton(
         onClick = onClick,
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp).semantics { contentDescription = accessibilityLabel }
+        modifier = modifier.fillMaxWidth().padding(horizontal = 12.dp).semantics { contentDescription = accessibilityLabel }
     ) {
+        Icon(icon, contentDescription = null)
+        Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f), horizontalAlignment = Alignment.Start) {
             Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             Text(detail, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        Icon(Icons.Default.Palette, contentDescription = null)
+        Icon(Icons.Default.ChevronRight, contentDescription = null)
     }
 }
 

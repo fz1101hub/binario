@@ -254,12 +254,6 @@ internal fun NearbyStationsMapCard(
 
 /** Privacy and credit lines for the settings screen, next to the OpenStreetMap catalogue credit. */
 @Composable
-internal fun OpenMapsPrivacyNotes() {
-    Text(stringResource(R.string.settings_privacy_maps), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-    Text(stringResource(R.string.settings_credits_maps), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-}
-
-@Composable
 private fun StationList(stations: List<NearbyStation>, onOpenStation: (Station) -> Unit) {
     Column {
         stations.forEach { nearby ->
