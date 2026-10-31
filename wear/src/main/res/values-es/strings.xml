@@ -13,7 +13,7 @@
     <string name="status_received_from_phone">Estado recibido del teléfono</string>
     <string name="status_updating">Actualizando datos</string>
     <string name="status_local_snapshot">Última instantánea local</string>
-    <string name="status_live_unavailable">Datos en tiempo real no disponibles</string>
+    <string name="status_live_unavailable">Datos no disponibles en tiempo real</string>
     <string name="accessibility_data_status">Estado de los datos: %1$s</string>
     <string name="accessibility_scheduled_departure">Salida programada %1$s</string>
     <string name="accessibility_expected_departure">Salida prevista %1$s</string>
