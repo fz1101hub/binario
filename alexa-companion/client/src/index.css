@@ -40,77 +40,100 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  --color-brand-header: var(--brand-header);
+  --color-brand-container: var(--brand-container);
+  --color-brand-on-container: var(--brand-on-container);
 }
 
+/*
+ * Binario 2.0 tokens (design/BINARIO_2_DESIGN_SYSTEM.md), defined once here and mapped onto the
+ * shadcn roles below. #2E7D32 carries white text (5.1:1); the #388E3C reference green is chart-only
+ * because white text on it is 4.1:1.
+ */
+
 :root {
-  --primary: var(--color-blue-700);
-  --primary-foreground: var(--color-blue-50);
-  --sidebar-primary: var(--color-blue-600);
-  --sidebar-primary-foreground: var(--color-blue-50);
-  --chart-1: var(--color-blue-300);
-  --chart-2: var(--color-blue-500);
-  --chart-3: var(--color-blue-600);
-  --chart-4: var(--color-blue-700);
-  --chart-5: var(--color-blue-800);
+  --brand-green-primary: #2e7d32;
+  --brand-green-reference: #388e3c;
+  --brand-header: #205b2a;
+  --brand-container: #ddf0de;
+  --brand-on-container: #0d3912;
+  --brand-background: #f7f8f5;
+  --brand-surface: #ffffff;
+  --brand-error: #b3261e;
+  --primary: var(--brand-green-primary);
+  --primary-foreground: #ffffff;
+  --sidebar-primary: var(--brand-green-primary);
+  --sidebar-primary-foreground: #ffffff;
+  --chart-1: #b6dfba;
+  --chart-2: var(--brand-green-reference);
+  --chart-3: var(--brand-green-primary);
+  --chart-4: var(--brand-header);
+  --chart-5: var(--brand-on-container);
   --radius: 0.65rem;
-  --background: oklch(1 0 0);
+  --background: var(--brand-background);
   --foreground: oklch(0.235 0.015 65);
-  --card: oklch(1 0 0);
+  --card: var(--brand-surface);
   --card-foreground: oklch(0.235 0.015 65);
-  --popover: oklch(1 0 0);
+  --popover: var(--brand-surface);
   --popover-foreground: oklch(0.235 0.015 65);
   --secondary: oklch(0.98 0.001 286.375);
   --secondary-foreground: oklch(0.4 0.015 65);
   --muted: oklch(0.967 0.001 286.375);
   --muted-foreground: oklch(0.552 0.016 285.938);
-  --accent: oklch(0.967 0.001 286.375);
-  --accent-foreground: oklch(0.141 0.005 285.823);
-  --destructive: oklch(0.577 0.245 27.325);
+  --accent: var(--brand-container);
+  --accent-foreground: var(--brand-on-container);
+  --destructive: var(--brand-error);
   --destructive-foreground: oklch(0.985 0 0);
   --border: oklch(0.92 0.004 286.32);
   --input: oklch(0.92 0.004 286.32);
-  --ring: oklch(0.623 0.214 259.815);
+  --ring: var(--brand-green-primary);
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.235 0.015 65);
-  --sidebar-accent: oklch(0.967 0.001 286.375);
-  --sidebar-accent-foreground: oklch(0.141 0.005 285.823);
+  --sidebar-accent: var(--brand-container);
+  --sidebar-accent-foreground: var(--brand-on-container);
   --sidebar-border: oklch(0.92 0.004 286.32);
-  --sidebar-ring: oklch(0.623 0.214 259.815);
+  --sidebar-ring: var(--brand-green-primary);
 }
 
 .dark {
-  --primary: var(--color-blue-700);
-  --primary-foreground: var(--color-blue-50);
-  --sidebar-primary: var(--color-blue-500);
-  --sidebar-primary-foreground: var(--color-blue-50);
-  --background: oklch(0.141 0.005 285.823);
+  --brand-green-primary: #9bdd9e;
+  --brand-header: #205b2a;
+  --brand-container: #205b2a;
+  --brand-on-container: #ddf0de;
+  --brand-background: #0d1710;
+  --brand-surface: #142018;
+  --primary: var(--brand-green-primary);
+  --primary-foreground: #0d1710;
+  --sidebar-primary: var(--brand-green-primary);
+  --sidebar-primary-foreground: #0d1710;
+  --background: var(--brand-background);
   --foreground: oklch(0.85 0.005 65);
-  --card: oklch(0.21 0.006 285.885);
+  --card: var(--brand-surface);
   --card-foreground: oklch(0.85 0.005 65);
-  --popover: oklch(0.21 0.006 285.885);
+  --popover: var(--brand-surface);
   --popover-foreground: oklch(0.85 0.005 65);
   --secondary: oklch(0.24 0.006 286.033);
   --secondary-foreground: oklch(0.7 0.005 65);
   --muted: oklch(0.274 0.006 286.033);
   --muted-foreground: oklch(0.705 0.015 286.067);
-  --accent: oklch(0.274 0.006 286.033);
-  --accent-foreground:  oklch(0.92 0.005 65);
+  --accent: var(--brand-container);
+  --accent-foreground: var(--brand-on-container);
   --destructive: oklch(0.704 0.191 22.216);
   --destructive-foreground: oklch(0.985 0 0);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.488 0.243 264.376);
-  --chart-1: var(--color-blue-300);
-  --chart-2: var(--color-blue-500);
-  --chart-3: var(--color-blue-600);
-  --chart-4: var(--color-blue-700);
-  --chart-5: var(--color-blue-800);
-  --sidebar: oklch(0.21 0.006 285.885);
+  --ring: var(--brand-green-primary);
+  --chart-1: #b6dfba;
+  --chart-2: var(--brand-green-primary);
+  --chart-3: var(--brand-green-reference);
+  --chart-4: var(--brand-container);
+  --chart-5: #ddf0de;
+  --sidebar: var(--brand-surface);
   --sidebar-foreground: oklch(0.85 0.005 65);
-  --sidebar-accent: oklch(0.274 0.006 286.033);
-  --sidebar-accent-foreground:  oklch(0.985 0 0);
+  --sidebar-accent: var(--brand-container);
+  --sidebar-accent-foreground: var(--brand-on-container);
   --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.488 0.243 264.376);
+  --sidebar-ring: var(--brand-green-primary);
 }
 
 @layer base {

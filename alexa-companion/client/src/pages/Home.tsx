@@ -56,21 +56,21 @@ export default function Home() {
   return (
     <DashboardLayout>
       <div className="mx-auto max-w-6xl space-y-6 pb-12">
-        <header className="rounded-3xl bg-slate-950 px-6 py-7 text-slate-50 shadow-xl shadow-slate-950/15 sm:px-8">
+        <header className="rounded-3xl bg-brand-header px-6 py-7 text-white shadow-xl shadow-brand-header/15 sm:px-8">
           <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
             <div className="max-w-2xl">
-              <div className="mb-3 flex items-center gap-2 text-sm font-medium text-cyan-200"><TrainFront className="h-4 w-4" /> {t.productName}</div>
+              <div className="mb-3 flex items-center gap-2 text-sm font-medium text-brand-container"><TrainFront className="h-4 w-4" /> {t.productName}</div>
               <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">{t.heroTitle}</h1>
-              <p className="mt-3 max-w-xl text-sm leading-6 text-slate-300">{t.heroDescription}</p>
+              <p className="mt-3 max-w-xl text-sm leading-6 text-brand-container">{t.heroDescription}</p>
             </div>
-            <Badge className="w-fit bg-amber-300 text-amber-950 hover:bg-amber-300">{t.liveDataNotConnected}</Badge>
+            <Badge className="w-fit border-transparent bg-brand-container text-brand-on-container hover:bg-brand-container">{t.liveDataNotConnected}</Badge>
           </div>
         </header>
 
         <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
           <Card className="border-slate-200 shadow-sm">
             <CardHeader className="pb-4">
-              <div className="flex items-center justify-between gap-4"><div><CardTitle>{t.personalRoutes}</CardTitle><CardDescription className="mt-1">{t.personalRoutesDescription}</CardDescription></div><MapPin className="h-5 w-5 text-cyan-700" /></div>
+              <div className="flex items-center justify-between gap-4"><div><CardTitle>{t.personalRoutes}</CardTitle><CardDescription className="mt-1">{t.personalRoutesDescription}</CardDescription></div><MapPin className="h-5 w-5 text-primary" /></div>
             </CardHeader>
             <CardContent className="space-y-5">
               <form onSubmit={submitRoute} className="grid gap-3 rounded-2xl bg-slate-50 p-4 sm:grid-cols-2">
@@ -83,7 +83,7 @@ export default function Home() {
                 {routes.isLoading ? <p className="text-sm text-muted-foreground">{t.loadingRoutes}</p> : null}
                 {routes.data?.length === 0 ? <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">{t.noRoutes}</p> : null}
                 {routes.data?.map(route => <div key={route.id} className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3">
-                  <button onClick={() => setPinned.mutate({ id: route.id, isPinned: !route.isPinned })} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-cyan-700" aria-label={format(route.isPinned ? t.unpinRoute : t.pinNamedRoute, { routeName: route.name })}><Pin className={`h-4 w-4 ${route.isPinned ? "fill-cyan-600 text-cyan-700" : ""}`} /></button>
+                  <button onClick={() => setPinned.mutate({ id: route.id, isPinned: !route.isPinned })} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-ring" aria-label={format(route.isPinned ? t.unpinRoute : t.pinNamedRoute, { routeName: route.name })}><Pin className={`h-4 w-4 ${route.isPinned ? "fill-primary text-primary" : ""}`} /></button>
                   <div className="min-w-0 flex-1"><p className="font-medium text-slate-900">{route.name}</p><p className="truncate text-sm text-muted-foreground">{route.origin} <span aria-hidden="true">→</span> {route.destination}</p></div>
                   <Button variant="ghost" size="icon" onClick={() => removeRoute.mutate({ id: route.id })} aria-label={format(t.removeRoute, { routeName: route.name })}><Trash2 className="h-4 w-4 text-slate-500" /></Button>
                 </div>)}
@@ -93,9 +93,9 @@ export default function Home() {
 
           <div className="space-y-6">
             <Card className="border-slate-200 shadow-sm">
-              <CardHeader className="pb-3"><div className="flex items-center justify-between"><div><CardTitle>{t.alexa}</CardTitle><CardDescription className="mt-1">{t.alexaDescription}</CardDescription></div><Radio className="h-5 w-5 text-cyan-700" /></div></CardHeader>
+              <CardHeader className="pb-3"><div className="flex items-center justify-between"><div><CardTitle>{t.alexa}</CardTitle><CardDescription className="mt-1">{t.alexaDescription}</CardDescription></div><Radio className="h-5 w-5 text-primary" /></div></CardHeader>
               <CardContent className="space-y-4">
-                {voice.data?.configured ? <div className="rounded-xl bg-emerald-50 p-3 text-sm text-emerald-950"><strong>{t.alexaConfigured}</strong></div> : <div className="rounded-xl bg-amber-50 p-3 text-sm text-amber-950"><strong>{t.alexaNotConfigured}</strong></div>}
+                {voice.data?.configured ? <div className="rounded-xl bg-brand-container p-3 text-sm text-brand-on-container"><strong>{t.alexaConfigured}</strong></div> : <div className="rounded-xl bg-amber-50 p-3 text-sm text-amber-950"><strong>{t.alexaNotConfigured}</strong></div>}
                 <div className="rounded-xl border border-slate-200 p-3 text-sm"><p className="font-medium text-slate-900">{t.accountStatus}</p><p className="mt-1 text-muted-foreground">{voice.data?.linked ? t.accountLinked : t.accountNotLinked}</p></div>
                 {voice.data?.linked ? <Button variant="outline" className="w-full" onClick={() => unlink.mutate()} disabled={unlink.isPending}><Link2Off className="mr-2 h-4 w-4" />{t.unlinkAlexa}</Button> : <p className="text-xs leading-5 text-muted-foreground">{t.linkingInstructions}</p>}
               </CardContent>
@@ -106,7 +106,7 @@ export default function Home() {
               <CardContent><div className="flex gap-3 rounded-xl bg-slate-100 p-3 text-sm text-slate-800"><CircleAlert className="mt-0.5 h-4 w-4 shrink-0" /><p>{format(t.dataGuaranteeDescription, { liveDataUnavailable: messages.voice.liveDataUnavailable })}</p></div></CardContent>
             </Card>
 
-            <Card className="border-slate-200 shadow-sm"><CardHeader className="pb-3"><CardTitle className="text-base">{t.androidAssistant}</CardTitle></CardHeader><CardContent><p className="text-sm leading-6 text-muted-foreground">{t.androidAssistantDescription}</p><a className="mt-3 inline-flex items-center text-sm font-medium text-cyan-800 hover:underline" href="/app/active-route">{t.activeRouteDeepLink} <ChevronRight className="h-4 w-4" /></a></CardContent></Card>
+            <Card className="border-slate-200 shadow-sm"><CardHeader className="pb-3"><CardTitle className="text-base">{t.androidAssistant}</CardTitle></CardHeader><CardContent><p className="text-sm leading-6 text-muted-foreground">{t.androidAssistantDescription}</p><a className="mt-3 inline-flex items-center text-sm font-medium text-primary hover:underline" href="/app/active-route">{t.activeRouteDeepLink} <ChevronRight className="h-4 w-4" /></a></CardContent></Card>
 
             <Card className="border-red-200 shadow-sm">
               <CardHeader className="pb-3"><CardTitle className="text-base text-red-900">{t.accountAndData}</CardTitle><CardDescription>{t.accountAndDataDescription}</CardDescription></CardHeader>
