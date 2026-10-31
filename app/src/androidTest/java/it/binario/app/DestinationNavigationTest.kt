@@ -23,6 +23,7 @@ import it.binario.app.data.TrainService
 import it.binario.app.data.TrainStop
 import it.binario.app.ui.TopDestination
 import it.binario.app.ui.common.BinarioNavigationBar
+import it.binario.app.ui.common.BinarioNavigationRail
 import it.binario.app.ui.departures.HeroDepartureCard
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -56,6 +57,25 @@ class DestinationNavigationTest {
         composeRule.onNodeWithTag("nav-for-you").assertIsSelected()
         composeRule.onNodeWithTag("nav-departures").performClick()
         composeRule.runOnIdle { assertEquals(TopDestination.DEPARTURES, selected) }
+    }
+
+    @Test
+    fun wideWindowsOfferTheSameDestinationsInTheNavigationRail() {
+        var selected by mutableStateOf(TopDestination.DEPARTURES)
+        composeRule.setContent {
+            CompositionLocalProvider(LocalDensity provides Density(density = 1f, fontScale = 2f)) {
+                BinarioTheme {
+                    BinarioNavigationRail(selected = selected, onSelect = { selected = it })
+                }
+            }
+        }
+
+        composeRule.onNodeWithTag("navigation-rail").fetchSemanticsNode()
+        composeRule.onNodeWithTag("nav-departures").assertIsSelected()
+        composeRule.onNodeWithText("Per te").performClick()
+        composeRule.runOnIdle { assertEquals(TopDestination.FOR_YOU, selected) }
+        composeRule.onNodeWithTag("nav-plan").performClick()
+        composeRule.runOnIdle { assertEquals(TopDestination.PLAN, selected) }
     }
 
     @Test

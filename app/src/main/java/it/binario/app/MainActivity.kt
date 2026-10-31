@@ -11,7 +11,13 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Palette
@@ -21,6 +27,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
@@ -31,6 +38,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalConfiguration
@@ -38,6 +46,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.Lifecycle
@@ -63,10 +72,13 @@ import it.binario.app.ui.AppScreen
 import it.binario.app.ui.TopDestination
 import it.binario.app.ui.WidthClass
 import it.binario.app.ui.common.BinarioNavigationBar
+import it.binario.app.ui.common.BinarioNavigationRail
 import it.binario.app.ui.common.BinarioTopBar
+import it.binario.app.ui.common.DetailPlaceholder
 import it.binario.app.ui.common.localizedQualityLabel
 import it.binario.app.ui.departures.DeparturesScreen
 import it.binario.app.ui.departures.OperationsSection
+import it.binario.app.ui.departures.StationBoardRunDetailsPane
 import it.binario.app.ui.detail.ServiceDetailScreen
 import it.binario.app.ui.detail.trainShareStrings
 import it.binario.app.ui.foryou.ForYouScreen
@@ -359,7 +371,8 @@ private fun BinarioApp(
         }, onDismiss = { showThemePicker = false })
     }
 
-    val screenContent: @Composable (AppScreen, Modifier) -> Unit = { shown, modifier ->
+    // inSidePane: from 840 dp a list shares the window with the detail pane (station run details included).
+    val screenContent: @Composable (AppScreen, Modifier, Boolean) -> Unit = { shown, modifier, inSidePane ->
         when (shown) {
             AppScreen.PLANNER -> PlannerScreen(
                 modifier = modifier,
@@ -384,7 +397,8 @@ private fun BinarioApp(
                     if (screen == AppScreen.DETAIL) showScreen(AppScreen.DEPARTURES)
                 },
                 openDetails = { service -> openDetail(AppScreen.DEPARTURES) { viewModel.openService(service) } },
-                manageRoutes = { showScreen(AppScreen.FOR_YOU) }
+                manageRoutes = { showScreen(AppScreen.FOR_YOU) },
+                stationRunDetailsInSheet = !inSidePane
             )
             AppScreen.FOR_YOU -> ForYouScreen(
                 modifier = modifier,
@@ -488,48 +502,82 @@ private fun BinarioApp(
         }
     }
 
-    Scaffold(
-        topBar = {
-            BinarioTopBar(
-                title = title,
-                subtitle = subtitle,
-                containerColor = topBarColor,
-                contentColor = if (greenTopBar) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onBackground,
-                brand = greenTopBar,
-                navigationIcon = {
-                    if (backTarget != null) {
-                        IconButton(onClick = navigateBack, modifier = Modifier.testTag("top-bar-back")) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
+    // Width classes come from the window this activity really has (multi-window and foldables included).
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        val widthClass = WidthClass.fromWidthDp(maxWidth.value)
+        val withRail = widthClass != WidthClass.COMPACT
+        val listPane = AppNavigation.listPaneOf(screen, detailReturnScreen, widthClass)
+        Scaffold(
+            topBar = {
+                BinarioTopBar(
+                    title = title,
+                    subtitle = subtitle,
+                    containerColor = topBarColor,
+                    contentColor = if (greenTopBar) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onBackground,
+                    brand = greenTopBar,
+                    navigationIcon = {
+                        if (backTarget != null) {
+                            IconButton(onClick = navigateBack, modifier = Modifier.testTag("top-bar-back")) {
+                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
+                            }
+                        }
+                    },
+                    actions = {
+                        IconButton(onClick = { showThemePicker = true }) {
+                            Icon(Icons.Default.Palette, contentDescription = stringResource(R.string.action_choose_theme, themeMode.localizedLabel()))
+                        }
+                        if (screen == AppScreen.DEPARTURES || screen == AppScreen.RESULTS || screen == AppScreen.NUMBER_RESULTS || screen == AppScreen.DETAIL) {
+                            IconButton(onClick = {
+                                if (screen == AppScreen.NUMBER_RESULTS) viewModel.searchTrainNumber(refresh = true)
+                                else if (screen == AppScreen.DEPARTURES && operationsSection == OperationsSection.STATIONS) {
+                                    viewModel.refreshStationBoardIfIdle()
+                                } else viewModel.refresh()
+                            }) {
+                                Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.action_refresh_rail_information))
+                            }
                         }
                     }
-                },
-                actions = {
-                    IconButton(onClick = { showThemePicker = true }) {
-                        Icon(Icons.Default.Palette, contentDescription = stringResource(R.string.action_choose_theme, themeMode.localizedLabel()))
-                    }
-                    if (screen == AppScreen.DEPARTURES || screen == AppScreen.RESULTS || screen == AppScreen.NUMBER_RESULTS || screen == AppScreen.DETAIL) {
-                        IconButton(onClick = {
-                            if (screen == AppScreen.NUMBER_RESULTS) viewModel.searchTrainNumber(refresh = true)
-                            else if (screen == AppScreen.DEPARTURES && operationsSection == OperationsSection.STATIONS) {
-                                viewModel.refreshStationBoardIfIdle()
-                            } else viewModel.refresh()
-                        }) {
-                            Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.action_refresh_rail_information))
-                        }
-                    }
+                )
+            },
+            bottomBar = {
+                if (!withRail && AppNavigation.showsNavigation(screen, widthClass)) {
+                    BinarioNavigationBar(selected = selectedDestination, onSelect = selectDestination, containerColor = navigationBarColor)
                 }
-            )
-        },
-        bottomBar = {
-            if (AppNavigation.showsNavigation(screen, WidthClass.COMPACT)) {
-                BinarioNavigationBar(selected = selectedDestination, onSelect = selectDestination, containerColor = navigationBarColor)
+            },
+            containerColor = MaterialTheme.colorScheme.background
+        ) { padding ->
+            Row(Modifier.fillMaxSize().padding(padding)) {
+                if (withRail) {
+                    // Below the full-width app bar, so the status bar area keeps a single colour.
+                    BinarioNavigationRail(selected = selectedDestination, onSelect = selectDestination)
+                    VerticalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                }
+                when {
+                    listPane != null -> {
+                        // List and detail side by side: the list keeps its place while trains are opened.
+                        screenContent(listPane, Modifier.weight(1f).fillMaxHeight(), true)
+                        VerticalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                        Box(Modifier.weight(1.2f).fillMaxHeight().testTag("detail-pane")) {
+                            when {
+                                screen == AppScreen.DETAIL -> screenContent(AppScreen.DETAIL, Modifier.fillMaxSize(), true)
+                                listPane == AppScreen.DEPARTURES && operationsSection == OperationsSection.STATIONS ->
+                                    StationBoardRunDetailsPane(Modifier.fillMaxSize(), viewModel) { DetailPlaceholder() }
+                                else -> DetailPlaceholder()
+                            }
+                        }
+                    }
+                    withRail -> Box(Modifier.weight(1f).fillMaxHeight(), contentAlignment = Alignment.TopCenter) {
+                        screenContent(screen, Modifier.widthIn(max = SINGLE_PANE_MAX_WIDTH).fillMaxSize(), false)
+                    }
+                    else -> screenContent(screen, Modifier.weight(1f).fillMaxHeight(), false)
+                }
             }
-        },
-        containerColor = MaterialTheme.colorScheme.background
-    ) { padding ->
-        screenContent(screen, Modifier.padding(padding))
+        }
     }
 }
+
+/** A single column wider than this is hard to read; wider windows centre it beside the rail. */
+private val SINGLE_PANE_MAX_WIDTH = 840.dp
 
 private fun readBoundedPlannedJourneyDocument(input: java.io.InputStream, tooLargeMessage: String): String {
     val limit = maxOf(PlannedJourneyTransferContract.MAX_BYTES, PlannedJourneyIcsContract.MAX_BYTES)

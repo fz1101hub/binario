@@ -327,6 +327,7 @@
     <string name="action_share">Partager</string>
     <string name="detail_save_hint">Enregistrer ajoute le train aux trains suivis dans Pour vous ; Suivre le trajet garde le prochain arrêt sur cet appareil uniquement.</string>
     <string name="stop_position_passed">Arrêt passé</string>
+    <string name="detail_pane_placeholder">Sélectionnez un train pour voir ici son détail.</string>
     <string name="settings_privacy_osm">Saisie semi-automatique nationale : © contributeurs OpenStreetMap, ODbL 1.0. Le catalogue géographique suggère des noms de gares mais ne confirme ni le service, ni l’horaire, ni la voie, ni le retard, ni la circulation.</string>
     <!-- Open maps (October 2026) -->
     <string name="map_attribution">OpenFreeMap © OpenMapTiles, données © contributeurs OpenStreetMap</string>

@@ -324,6 +324,7 @@
     <string name="action_share">Teilen</string>
     <string name="detail_save_hint">Speichern fügt den Zug den überwachten Zügen unter Für dich hinzu; Fahrt verfolgen speichert den nächsten Halt nur auf diesem Gerät.</string>
     <string name="stop_position_passed">Halt passiert</string>
+    <string name="detail_pane_placeholder">Wähle einen Zug, um hier seine Details zu sehen.</string>
     <string name="settings_privacy_osm">Nationale Autovervollständigung: © OpenStreetMap contributors, ODbL 1.0. Der geografische Katalog schlägt Bahnhofsnamen vor, bestätigt jedoch weder Verkehr, Fahrzeit, Gleis, Verspätung noch Betrieb.</string>
     <!-- Open maps (October 2026) -->
     <string name="map_attribution">OpenFreeMap © OpenMapTiles, Daten © OpenStreetMap contributors</string>

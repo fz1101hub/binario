@@ -327,6 +327,7 @@
     <string name="action_share">Compartir</string>
     <string name="detail_save_hint">Guardar añade el tren a los trenes seguidos en Para ti; Seguir viaje guarda la próxima parada solo en este dispositivo.</string>
     <string name="stop_position_passed">Parada superada</string>
+    <string name="detail_pane_placeholder">Selecciona un tren para ver aquí su detalle.</string>
     <string name="settings_privacy_osm">Autocompletado nacional: © OpenStreetMap contributors, ODbL 1.0. El catálogo geográfico sugiere nombres de estaciones, pero no confirma servicio, horario, andén, retraso ni circulación.</string>
     <!-- Open maps (October 2026) -->
     <string name="map_attribution">OpenFreeMap © OpenMapTiles, datos © colaboradores de OpenStreetMap</string>

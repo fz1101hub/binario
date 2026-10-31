@@ -1,9 +1,14 @@
 package it.binario.app.ui.common
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.windowInsetsPadding
@@ -16,6 +21,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationRail
+import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
@@ -29,6 +36,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import it.binario.app.R
@@ -117,3 +125,38 @@ internal val TopDestination.testTag: String
         TopDestination.DEPARTURES -> "nav-departures"
         TopDestination.FOR_YOU -> "nav-for-you"
     }
+
+/** From 600 dp the destinations move to a navigation rail beside the content. */
+@Composable
+internal fun BinarioNavigationRail(selected: TopDestination, onSelect: (TopDestination) -> Unit, modifier: Modifier = Modifier) {
+    NavigationRail(
+        modifier = modifier.testTag("navigation-rail"),
+        containerColor = MaterialTheme.colorScheme.surface,
+        // The scaffold already applied the system bar insets around the rail.
+        windowInsets = WindowInsets(0, 0, 0, 0)
+    ) {
+        Spacer(Modifier.height(8.dp))
+        TopDestination.entries.forEach { destination ->
+            NavigationRailItem(
+                selected = selected == destination,
+                onClick = { onSelect(destination) },
+                icon = { Icon(destination.icon, contentDescription = null) },
+                label = { Text(destination.label(), textAlign = TextAlign.Center) },
+                modifier = Modifier.testTag(destination.testTag)
+            )
+        }
+    }
+}
+
+/** Second pane of a wide window while no train is selected. */
+@Composable
+internal fun DetailPlaceholder(modifier: Modifier = Modifier) {
+    Box(modifier.fillMaxSize().padding(32.dp).testTag("detail-placeholder"), contentAlignment = Alignment.Center) {
+        Text(
+            stringResource(R.string.detail_pane_placeholder),
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center
+        )
+    }
+}

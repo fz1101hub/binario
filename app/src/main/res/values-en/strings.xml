@@ -324,6 +324,7 @@
     <string name="action_share">Share</string>
     <string name="detail_save_hint">Save adds the train to the monitored trains in For you; Follow trip keeps the next stop on this device only.</string>
     <string name="stop_position_passed">Stop passed</string>
+    <string name="detail_pane_placeholder">Select a train to see its details here.</string>
     <string name="settings_privacy_osm">National autocomplete: © OpenStreetMap contributors, ODbL 1.0. The geographic catalogue suggests station names but does not confirm service, time, platform, delay or operation.</string>
     <!-- Open maps (October 2026) -->
     <string name="map_attribution">OpenFreeMap © OpenMapTiles, data © OpenStreetMap contributors</string>
