@@ -93,17 +93,14 @@
 
     <!-- Main app shell and primary journey planner. -->
     <string name="app_brand">BINARIO</string>
-    <string name="screen_title_planner">Rechercher et consulter</string>
     <string name="screen_title_operations">Consulter</string>
     <string name="screen_title_settings">Paramètres</string>
     <string name="screen_title_results">Solutions</string>
     <string name="screen_title_detail">Détail du trajet</string>
     <string name="screen_title_agenda">Agenda</string>
-    <string name="screen_subtitle_planner">Planifiez votre prochain voyage</string>
     <string name="screen_subtitle_operations">Trains et gares</string>
     <string name="screen_subtitle_settings">Préférences et données personnelles</string>
     <string name="screen_subtitle_results">Trajets disponibles</string>
-    <string name="screen_subtitle_detail">État et arrêts</string>
     <string name="screen_subtitle_agenda">Voyages planifiés sur l’appareil</string>
     <string name="nav_search">Rechercher</string>
     <string name="nav_operations">Consulter</string>
@@ -112,8 +109,6 @@
     <string name="action_back">Retour</string>
     <string name="action_choose_theme">Choisir le thème. Thème actuel : %1$s</string>
     <string name="action_refresh_rail_information">Actualiser les informations ferroviaires</string>
-    <string name="planner_title">Planifier un voyage</string>
-    <string name="planner_description">Recherchez les prochaines solutions par itinéraire, jour et heure.</string>
     <string name="search_mode_route">Itinéraire</string>
     <string name="search_mode_train">N° de train</string>
     <string name="search_mode_station">Gare</string>
@@ -167,9 +162,9 @@
     <string name="planned_journey_close">Fermer</string>
 
     <!-- Data provenance and operational-state announcements. -->
-    <string name="data_status_demo">Catalogue de démonstration local, non en direct</string>
+    <string name="data_status_demo">Catalogue de démonstration local — non en direct</string>
     <string name="data_status_live">Données en direct : %1$s</string>
-    <string name="data_status_unavailable">Données en direct non disponibles</string>
+    <string name="data_status_unavailable">Données en temps réel non disponibles</string>
     <string name="accessibility_data_status">État des données : %1$s. Source : %2$s. Qualité : %3$s. %4$s%5$s</string>
     <string name="accessibility_open_service">Ouvrir le détail. %1$s. %2$s</string>
     <string name="service_state_scheduled">Horaire programmé ; état en direct non disponible</string>
@@ -321,6 +316,11 @@
     <string name="settings_privacy_local_data">Les itinéraires, favoris, suivis, alertes, widgets et l’historique de ponctualité restent sur l’appareil. L’historique de ponctualité conserve, uniquement sur le téléphone et pendant 90 jours au plus, la date, le numéro, l’opérateur, le retard et la suppression des trains ouverts avec des données d’exploitation ou suivis. L’historique d’un train s’efface depuis sa carte Ponctualité, affichée dès la deuxième observation ; effacer les données de l’application supprime tout l’historique. La sauvegarde et le transfert Android sont exclus ; le fichier JSON n’est exporté que si vous le choisissez. La position sert uniquement à classer les gares proches et, si vous activez l’alarme GPS, à savoir quand vous approchez de l’arrêt : elle est traitée uniquement en mémoire et n’est ni conservée ni envoyée aux sources ferroviaires ou à qui que ce soit.</string>
     <string name="settings_privacy_notifications_voice">Les notifications sont des rappels locaux. La dictée utilise le reconnaisseur système : Binario n’enregistre pas l’audio et utilise uniquement le texte renvoyé. Les recherches RFI envoient à la source l’identifiant public de la gare de départ ; les sources personnelles facultatives peuvent recevoir un identifiant ou le nom de la gare. Sans source autorisée : données non disponibles en temps réel. ViaggiaTreno utilise HTTP pour son API publique : les requêtes de gare, heure et train ne sont pas chiffrées. Les autres sources utilisent HTTPS.</string>
     <string name="settings_privacy_wear">Si vous activez la montre connectée, elle reçoit un résumé de l’itinéraire et jusqu’à deux trajets. La désactivation du partage supprime le DataItem et le cache local de la montre à la réception de la révocation. La notice complète est PRIVACY.md dans le dépôt. Avant une diffusion publique, il manque une URL vérifiée et un contact pour la confidentialité : il n’existe pas encore de lien public dans l’application.</string>
+    <!-- Binario 2.0 UX (October 2026) -->
+    <string name="planner_headline">Où allons-nous ?</string>
+    <string name="planner_subtitle">Recherchez un itinéraire, un numéro de train ou une gare.</string>
+    <string name="data_status_quality">Qualité des données : %1$s</string>
+    <string name="data_status_cached">Copie enregistrée, pas en temps réel : %1$s</string>
     <string name="settings_privacy_osm">Saisie semi-automatique nationale : © contributeurs OpenStreetMap, ODbL 1.0. Le catalogue géographique suggère des noms de gares mais ne confirme ni le service, ni l’horaire, ni la voie, ni le retard, ni la circulation.</string>
     <!-- Open maps (October 2026) -->
     <string name="map_attribution">OpenFreeMap © OpenMapTiles, données © contributeurs OpenStreetMap</string>

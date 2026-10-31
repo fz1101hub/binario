@@ -67,7 +67,7 @@ class AndroidWearSnapshotContractTest {
         assertEquals("Delayed", payload["service0Status"])
         assertEquals("On time", payload["service1Status"])
         assertEquals("Scheduled", scheduled["service0Status"])
-        assertEquals("Live data unavailable", unavailable["notice"])
+        assertEquals("Real-time data not available", unavailable["notice"])
         assertEquals("Not available", unavailable["provenanceSourceLabel"])
     }
 

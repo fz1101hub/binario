@@ -93,17 +93,14 @@
 
     <!-- Main app shell and primary journey planner. -->
     <string name="app_brand">BINARIO</string>
-    <string name="screen_title_planner">Cerca e consulta</string>
     <string name="screen_title_operations">Consulta</string>
     <string name="screen_title_settings">Impostazioni</string>
     <string name="screen_title_results">Soluzioni</string>
     <string name="screen_title_detail">Dettaglio corsa</string>
     <string name="screen_title_agenda">Agenda</string>
-    <string name="screen_subtitle_planner">Pianifica il prossimo viaggio</string>
     <string name="screen_subtitle_operations">Treni e stazioni</string>
     <string name="screen_subtitle_settings">Preferenze e dati personali</string>
     <string name="screen_subtitle_results">Corse disponibili</string>
-    <string name="screen_subtitle_detail">Stato e fermate</string>
     <string name="screen_subtitle_agenda">Viaggi pianificati sul dispositivo</string>
     <string name="nav_search">Cerca</string>
     <string name="nav_operations">Consulta</string>
@@ -112,8 +109,6 @@
     <string name="action_back">Torna indietro</string>
     <string name="action_choose_theme">Scegli tema. Tema attuale %1$s</string>
     <string name="action_refresh_rail_information">Aggiorna le informazioni ferroviarie</string>
-    <string name="planner_title">Pianifica viaggio</string>
-    <string name="planner_description">Cerca le prossime soluzioni per tratta, giorno e orario.</string>
     <string name="search_mode_route">Tratta</string>
     <string name="search_mode_train">N. treno</string>
     <string name="search_mode_station">Stazione</string>
@@ -167,9 +162,9 @@
     <string name="planned_journey_close">Chiudi</string>
 
     <!-- Data provenance and operational-state announcements. -->
-    <string name="data_status_demo">Catalogo dimostrativo locale, non live</string>
+    <string name="data_status_demo">Catalogo dimostrativo locale — non live</string>
     <string name="data_status_live">Dati live: %1$s</string>
-    <string name="data_status_unavailable">Dati live non disponibili</string>
+    <string name="data_status_unavailable">Dati non disponibili in tempo reale</string>
     <string name="accessibility_data_status">Stato dei dati: %1$s. Fonte %2$s. Qualità %3$s. %4$s%5$s</string>
     <string name="accessibility_open_service">Apri dettaglio. %1$s. %2$s</string>
     <string name="service_state_scheduled">Orario programmato; stato live non disponibile</string>
@@ -321,6 +316,11 @@
     <string name="settings_privacy_local_data">Tratte, preferiti, monitoraggi, avvisi, widget e storico puntualità restano nel dispositivo. Lo storico puntualità conserva solo sul telefono, per al massimo 90 giorni, data, numero, operatore, ritardo e soppressione dei treni aperti con dati operativi o monitorati. Lo storico di un treno si cancella dalla sua scheda Puntualità, visibile dalla seconda osservazione; tutto lo storico si cancella anche cancellando i dati dell’app. Backup e trasferimento Android sono esclusi; il file JSON viene esportato solo se lo scegli. La posizione serve solo a ordinare le stazioni vicine e, se attivi la sveglia GPS, a capire quando sei vicino alla fermata: è elaborata solo in memoria e non viene conservata né inviata alle fonti ferroviarie o ad altri.</string>
     <string name="settings_privacy_notifications_voice">Le notifiche sono promemoria locali. La dettatura usa il riconoscitore di sistema: Binario non registra audio e usa solo il testo restituito. Le ricerche RFI inviano alla fonte l’identificativo pubblico della stazione di partenza o di destinazione. ViaggiaTreno riceve codici stazione, data/ora e identificativi della corsa; Italo il codice della stazione. Senza una rilevazione recente, lo stato operativo resta non verificato. ViaggiaTreno usa HTTP per la propria API pubblica: le richieste di stazione, orario e corsa non sono cifrate. Le altre fonti usano HTTPS.</string>
     <string name="settings_privacy_wear">Se attivi lo smartwatch, riceve una sintesi della tratta e fino a due corse. Disattivare la condivisione elimina il DataItem e la cache locale del watch alla ricezione della revoca. L’informativa completa è PRIVACY.md nel repository. Prima di una distribuzione pubblica manca un URL verificato e un recapito privacy: non esiste ancora un link pubblico nell’app.</string>
+    <!-- Binario 2.0 UX (October 2026) -->
+    <string name="planner_headline">Dove andiamo?</string>
+    <string name="planner_subtitle">Cerca una tratta, un numero treno oppure una stazione.</string>
+    <string name="data_status_quality">Qualità del dato: %1$s</string>
+    <string name="data_status_cached">Copia salvata, non in tempo reale: %1$s</string>
     <string name="settings_privacy_osm">Autocompletamento nazionale: © OpenStreetMap contributors, ODbL 1.0. Il catalogo geografico suggerisce nomi di stazioni ma non conferma servizio, orario, binario, ritardo o circolazione.</string>
     <!-- Open maps (October 2026) -->
     <string name="map_attribution">OpenFreeMap © OpenMapTiles, dati © OpenStreetMap contributors</string>

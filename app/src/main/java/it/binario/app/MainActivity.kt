@@ -1,5 +1,13 @@
 package it.binario.app
 
+import androidx.core.view.WindowCompat
+import androidx.compose.ui.semantics.heading
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.Color
+import androidx.compose.runtime.SideEffect
 import androidx.compose.foundation.BorderStroke
 import android.Manifest
 import android.app.Activity
@@ -59,7 +67,6 @@ import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.Train
 import androidx.compose.material3.Button
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -249,7 +256,8 @@ class MainActivity : ComponentActivity() {
                     themeMode = themeSettings.mode,
                     onThemeModeChange = themeSettings::selectMode,
                     deepLinkRequest = deepLinkRequest,
-                    onDeepLinkConsumed = ::consumeDeepLink
+                    onDeepLinkConsumed = ::consumeDeepLink,
+                    onSystemBarsAppearance = ::applySystemBarsAppearance
                 )
             }
         }
@@ -278,6 +286,13 @@ class MainActivity : ComponentActivity() {
     private fun consumeDeepLink(requestId: Long) {
         if (deepLinkDispatcher.consume(requestId)) deepLinkRequest = null
     }
+
+    /** Status and navigation bar icons follow the colour actually drawn behind them (green planner bar, theme). */
+    private fun applySystemBarsAppearance(lightStatusBar: Boolean, lightNavigationBar: Boolean) {
+        val controller = WindowCompat.getInsetsController(window, window.decorView)
+        controller.isAppearanceLightStatusBars = lightStatusBar
+        controller.isAppearanceLightNavigationBars = lightNavigationBar
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -287,7 +302,8 @@ private fun BinarioApp(
     themeMode: AppThemeMode,
     onThemeModeChange: (AppThemeMode) -> Unit,
     deepLinkRequest: DeepLinkRequest?,
-    onDeepLinkConsumed: (Long) -> Unit
+    onDeepLinkConsumed: (Long) -> Unit,
+    onSystemBarsAppearance: (lightStatusBar: Boolean, lightNavigationBar: Boolean) -> Unit
 ) {
     var screen by rememberSaveable { mutableStateOf(Screen.PLANNER) }
     var detailReturnScreen by rememberSaveable { mutableStateOf(Screen.RESULTS) }
@@ -449,7 +465,7 @@ private fun BinarioApp(
     BackHandler(enabled = screen == Screen.DETAIL || screen == Screen.RESULTS || screen == Screen.NUMBER_RESULTS, onBack = navigateBack)
     val title = stringResource(
         when (screen) {
-            Screen.PLANNER -> R.string.screen_title_planner
+            Screen.PLANNER -> R.string.app_brand
             Screen.OPERATIONS -> R.string.screen_title_operations
             Screen.AGENDA -> R.string.screen_title_agenda
             Screen.SETTINGS -> R.string.screen_title_settings
@@ -458,17 +474,21 @@ private fun BinarioApp(
             Screen.DETAIL -> R.string.screen_title_detail
         }
     )
-    val subtitle = stringResource(
-        when (screen) {
-            Screen.PLANNER -> R.string.screen_subtitle_planner
-            Screen.OPERATIONS -> R.string.screen_subtitle_operations
-            Screen.AGENDA -> R.string.screen_subtitle_agenda
-            Screen.SETTINGS -> R.string.screen_subtitle_settings
-            Screen.RESULTS -> R.string.screen_subtitle_results
-            Screen.NUMBER_RESULTS -> R.string.train_number_results_subtitle
-            Screen.DETAIL -> R.string.screen_subtitle_detail
-        }
-    )
+    val subtitle = when (screen) {
+        // The green planner header below the bar carries the headline and its subtitle.
+        Screen.PLANNER, Screen.DETAIL -> null
+        Screen.OPERATIONS -> stringResource(R.string.screen_subtitle_operations)
+        Screen.AGENDA -> stringResource(R.string.screen_subtitle_agenda)
+        Screen.SETTINGS -> stringResource(R.string.screen_subtitle_settings)
+        Screen.RESULTS -> stringResource(R.string.screen_subtitle_results)
+        Screen.NUMBER_RESULTS -> stringResource(R.string.train_number_results_subtitle)
+    }
+    val greenTopBar = screen == Screen.PLANNER
+    val topBarColor = if (greenTopBar) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.background
+    val navigationBarColor = MaterialTheme.colorScheme.surface
+    SideEffect {
+        onSystemBarsAppearance(topBarColor.luminance() > 0.5f, navigationBarColor.luminance() > 0.5f)
+    }
 
     if (showThemePicker) {
         ThemePickerSheet(currentMode = themeMode, onModeSelected = {
@@ -479,13 +499,12 @@ private fun BinarioApp(
 
     Scaffold(
         topBar = {
-            CenterAlignedTopAppBar(
-                title = {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(if (screen == Screen.PLANNER) stringResource(R.string.app_brand) else title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, letterSpacing = if (screen == Screen.PLANNER) 1.sp else 0.sp)
-                        if (screen != Screen.DETAIL) Text(subtitle, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                },
+            BinarioTopBar(
+                title = title,
+                subtitle = subtitle,
+                containerColor = topBarColor,
+                contentColor = if (greenTopBar) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onBackground,
+                brand = greenTopBar,
                 navigationIcon = {
                     if (screen == Screen.DETAIL || screen == Screen.RESULTS || screen == Screen.NUMBER_RESULTS) {
                         IconButton(onClick = navigateBack) {
@@ -507,13 +526,12 @@ private fun BinarioApp(
                             Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.action_refresh_rail_information))
                         }
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background)
+                }
             )
         },
         bottomBar = {
             if (screen != Screen.DETAIL && screen != Screen.RESULTS && screen != Screen.NUMBER_RESULTS) {
-                NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
+                NavigationBar(containerColor = navigationBarColor) {
                     NavigationBarItem(
                         selected = screen == Screen.PLANNER,
                         onClick = { screen = Screen.PLANNER },
@@ -665,6 +683,48 @@ private fun BinarioApp(
     }
 }
 
+/**
+ * App bar that grows with the text instead of clipping it: at 200 % font scale the title and the
+ * subtitle wrap and the bar becomes taller, while the 64 dp minimum keeps the usual height.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun BinarioTopBar(
+    title: String,
+    subtitle: String?,
+    containerColor: Color,
+    contentColor: Color,
+    brand: Boolean,
+    navigationIcon: @Composable () -> Unit,
+    actions: @Composable RowScope.() -> Unit
+) {
+    Surface(color = containerColor, contentColor = contentColor, modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .windowInsetsPadding(TopAppBarDefaults.windowInsets)
+                .heightIn(min = 64.dp)
+                .padding(horizontal = 4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            navigationIcon()
+            Column(Modifier.weight(1f).padding(horizontal = 12.dp, vertical = 8.dp)) {
+                Text(
+                    title,
+                    modifier = Modifier.semantics { heading() },
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = if (brand) 1.sp else 0.sp
+                )
+                subtitle?.let {
+                    Text(it, style = MaterialTheme.typography.labelMedium, color = if (brand) contentColor else MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            Row(verticalAlignment = Alignment.CenterVertically, content = actions)
+        }
+    }
+}
+
 @Composable
 private fun trainShareStrings(locale: Locale): TrainShareStrings = TrainShareStrings(
     locale = locale,
@@ -766,6 +826,17 @@ private fun TodayScreen(
     ) {
         item { BoardCommandBar(onOpenSearch = { openSearch() }) }
         item { BoardRouteHeader(viewModel.activeRoute, viewModel.direction, viewModel.refreshState, viewModel::switchDirection, viewModel::refresh, openRoutes) }
+        item {
+            DataStatusLine(
+                freshness = viewModel.snapshot?.freshness,
+                provider = viewModel.currentProviderLabel() ?: stringResource(R.string.provider_unavailable),
+                confidence = viewModel.localizedQualityLabel(),
+                refreshedAt = viewModel.lastRefreshEpochMillis(),
+                isDemonstration = viewModel.isDemonstrationData(),
+                isCachedCopy = viewModel.isCachedCopy(),
+                message = viewModel.refreshMessage
+            )
+        }
         item { BoardColumnHeader() }
         if (firstService != null) {
             items(services, key = { it.id }) { service ->
@@ -783,16 +854,6 @@ private fun TodayScreen(
         }
         if (viewModel.savedRoutes.size > 1) {
             item { MonitoredRoutesStrip(viewModel.savedRoutes, viewModel.activeRoute.id, viewModel::activateRoute, openRoutes) }
-        }
-        item {
-            DataStatusLine(
-                freshness = viewModel.snapshot?.freshness,
-                provider = viewModel.currentProviderLabel() ?: stringResource(R.string.provider_unavailable),
-                confidence = viewModel.localizedQualityLabel(),
-                refreshedAt = viewModel.lastRefreshEpochMillis(),
-                isDemonstration = viewModel.isDemonstrationData(),
-                message = viewModel.refreshMessage
-            )
         }
         item { RailNoticesArea() }
         item {
@@ -1057,9 +1118,10 @@ private fun PlannerScreen(
         )
     LazyColumn(modifier = modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(0.dp)) {
         item {
+            PlannerHeader(isDemonstration = viewModel.isDemonstrationData())
+        }
+        item {
             Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                Text(stringResource(R.string.planner_title), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                Text(stringResource(R.string.planner_description), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     items(SearchMode.entries) { item -> FilterChip(selected = mode == item, onClick = { mode = item }, label = { Text(item.localizedLabel()) }) }
                 }
@@ -1282,6 +1344,40 @@ private fun PlannerScreen(
                 Icon(Icons.Default.Search, contentDescription = stringResource(R.string.accessibility_use_route, route.localizedName()))
             }
             HorizontalDivider(modifier = Modifier.padding(start = 56.dp), color = MaterialTheme.colorScheme.outlineVariant)
+        }
+    }
+}
+
+/** Planner-first home: the green app bar continues into the headline, so the question is the first thing read. */
+@Composable
+private fun PlannerHeader(isDemonstration: Boolean) {
+    Surface(
+        color = MaterialTheme.colorScheme.primary,
+        contentColor = MaterialTheme.colorScheme.onPrimary,
+        shape = RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(Modifier.padding(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 20.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(
+                stringResource(R.string.planner_headline),
+                modifier = Modifier.semantics { heading() },
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold
+            )
+            Text(stringResource(R.string.planner_subtitle), style = MaterialTheme.typography.bodyMedium)
+            if (isDemonstration) {
+                Surface(
+                    color = MaterialTheme.colorScheme.tertiaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Row(Modifier.padding(horizontal = 10.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.Info, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text(stringResource(R.string.data_status_demo), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
         }
     }
 }
@@ -1956,6 +2052,10 @@ private fun MonitoredRoutesStrip(
     }
 }
 
+/**
+ * Provenance of the departures above the rows: demonstration, unavailable, live or saved copy, always as
+ * text (the icon colour only repeats it), with source, update time and quality visible.
+ */
 @Composable
 private fun DataStatusLine(
     freshness: Freshness?,
@@ -1963,6 +2063,7 @@ private fun DataStatusLine(
     confidence: String,
     refreshedAt: Long,
     isDemonstration: Boolean,
+    isCachedCopy: Boolean,
     message: UiMessage?
 ) {
     val messageText = message?.localized()
@@ -1976,28 +2077,34 @@ private fun DataStatusLine(
         freshness == Freshness.UNAVAILABLE || freshness == null -> MaterialTheme.colorScheme.error
         else -> MaterialTheme.colorScheme.secondary
     }
+    val updated = updateTimeMessage(refreshedAt).localized()
+    val sourceLine = if (refreshedAt > 0L) stringResource(R.string.provider_updated_at, provider, updated) else provider
+    val qualityLine = stringResource(R.string.data_status_quality, confidence)
+    val cachedLine = if (isCachedCopy && !isDemonstration) stringResource(R.string.data_status_cached, updated) else null
     val statusContentDescription = stringResource(
         R.string.accessibility_data_status,
-        label,
+        listOfNotNull(label, cachedLine).joinToString(". "),
         provider,
         confidence,
-        updateTimeMessage(refreshedAt).localized(),
+        updated,
         messageText?.takeIf(String::isNotBlank)?.let { stringResource(R.string.accessibility_optional_message, it) }.orEmpty()
     )
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 14.dp)
+            .padding(horizontal = 20.dp, vertical = 12.dp)
             .clearAndSetSemantics {
                 contentDescription = statusContentDescription
             },
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.Top
     ) {
-        Icon(Icons.Default.Info, contentDescription = null, tint = color, modifier = Modifier.size(18.dp))
+        Icon(Icons.Default.Info, contentDescription = null, tint = color, modifier = Modifier.padding(top = 2.dp).size(18.dp))
         Spacer(Modifier.width(8.dp))
-        Column(Modifier.weight(1f)) {
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(label, style = MaterialTheme.typography.labelLarge, color = color, fontWeight = FontWeight.Bold)
-            Text(if (refreshedAt > 0L) stringResource(R.string.provider_updated_at, provider, updateTimeMessage(refreshedAt).localized()) else provider, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            cachedLine?.let { Text(it, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold) }
+            Text(sourceLine, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(qualityLine, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             messageText?.takeIf { it.isNotBlank() }?.let {
                 Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
@@ -3063,6 +3170,10 @@ private fun DataConfidence.localizedLabel(): String = stringResource(labelRes())
 
 @Composable
 private fun DataQualityBand.localizedLabel(): String = stringResource(labelRes())
+
+/** A copy kept from an earlier refresh (cache or expired source): the UI shows its snapshot time. */
+private fun TrainViewModel.isCachedCopy(): Boolean =
+    currentConfidence() == DataConfidence.CACHED || currentFreshness() == Freshness.STALE
 
 /** Quality band and score precede the confidence, as promised for every published snapshot. */
 @Composable
