@@ -23,6 +23,6 @@ overrides:
   qs: 6.16.0
   source-map-js: 1.2.2
   tinypool: 2.1.2
-  follow-redirects: 1.16.1
+  follow-redirects: 1.16.2
   vite: 7.3.7
   zod: 4.6.6
