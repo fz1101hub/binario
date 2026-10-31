@@ -42,7 +42,7 @@ public struct BundledGTFSScheduleInstaller: Sendable {
                inputFingerprint: metadata.inputs.fingerprintSha256
            ) {
             try Self.excludeFromBackup(destination)
-            return destination
+            return Self.withoutCachedResourceValues(destination)
         }
 
         do {
@@ -90,7 +90,7 @@ public struct BundledGTFSScheduleInstaller: Sendable {
             }
             try Self.excludeFromBackup(destination)
             Self.removeSupersededDatabases(in: cacheDirectory, keeping: destination)
-            return destination
+            return Self.withoutCachedResourceValues(destination)
         } catch let error as BundledGTFSScheduleError {
             throw error
         } catch {
@@ -181,6 +181,17 @@ public struct BundledGTFSScheduleInstaller: Sendable {
             && url.pathExtension == "sqlite" {
             try? FileManager.default.removeItem(at: url)
         }
+    }
+
+    /// `destination` caches the resource values read while checking the size of an existing
+    /// cache, including the backup flag as it was before `excludeFromBackup`. Callers get a copy
+    /// without that cache, so they read the flag that is now on disk.
+    private static func withoutCachedResourceValues(_ url: URL) -> URL {
+        var fresh = url
+        #if os(iOS) || os(macOS) || os(watchOS) || os(tvOS) || os(visionOS)
+        fresh.removeAllCachedResourceValues()
+        #endif
+        return fresh
     }
 
     private static func excludeFromBackup(_ url: URL) throws {

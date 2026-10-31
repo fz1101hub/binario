@@ -639,8 +639,11 @@ def _check_apple_toolchain(
                 "PrivacyInfo.xcprivacy",
                 "plutil -extract ITSAppUsesNonExemptEncryption raw",
                 "plutil -extract CFBundleIconName raw",
+                "WKCompanionAppBundleIdentifier",
+                '[ "$value" = "it.binario.ios" ]',
             )
-            if any(marker not in archive for marker in archive_markers) or not archive.rstrip().endswith('"it.binario.ios"'):
+            # Each check records a failure instead of exiting, so the step must end on the tally.
+            if any(marker not in archive for marker in archive_markers) or not archive.rstrip().endswith('test "$failures" -eq 0'):
                 problems.append(f"{path.name}: archivio Release non firmato con verifica del bundle App Store assente")
 
 

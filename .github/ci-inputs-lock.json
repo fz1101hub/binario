@@ -162,7 +162,7 @@
     },
     {
       "name": "Archive Release build and check the App Store bundle layout",
-      "sha256": "0461ab3d6d73618eaa5f086144117ff62be8a542e8897ff981e73f3604182e4b",
+      "sha256": "7c797ee78538a11dcf7834a31ed229ad6835abfbce359ef2d73936cf7cb32667",
       "workingDirectory": "ios"
     }
   ]
