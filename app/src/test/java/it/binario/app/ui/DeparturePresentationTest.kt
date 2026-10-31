@@ -6,12 +6,15 @@ import it.binario.app.data.StopRouteChange
 import it.binario.app.data.TrainCategory
 import it.binario.app.data.TrainService
 import it.binario.app.data.TrainStop
+import it.binario.app.data.core.OperationalRouteChange
+import it.binario.app.data.core.RouteChangeKind
 import it.binario.app.maps.RouteMapPlanner
 import it.binario.app.ui.common.presentedAsDemonstration
 import it.binario.app.ui.detail.StopTimelinePosition
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class DeparturePresentationTest {
@@ -28,7 +31,11 @@ class DeparturePresentationTest {
 
     @Test
     fun `demonstration data keeps the timetable but never presents delays platforms or progress as real`() {
-        val shown = service.presentedAsDemonstration()
+        val shown = service.copy(
+            stops = stops.mapIndexed { index, stop -> if (index == 2) stop.copy(routeChange = StopRouteChange.SKIPPED) else stop },
+            routeChange = OperationalRouteChange(RouteChangeKind.SKIPPED_STOPS, "Formia soppressa"),
+            routeChangeSourceIds = setOf("demo")
+        ).presentedAsDemonstration()
 
         assertEquals("08:00", shown.scheduledDeparture)
         assertEquals("08:00", shown.expectedDeparture)
@@ -36,12 +43,15 @@ class DeparturePresentationTest {
         assertEquals(0, shown.delayMinutes)
         assertNull(shown.officialDelayMinutes)
         assertFalse(shown.operationalStatusVerified)
+        assertNull(shown.routeChange)
+        assertTrue(shown.routeChangeSourceIds.isEmpty())
         assertEquals(service.stops.map { it.station }, shown.stops.map { it.station })
         shown.stops.forEach { stop ->
             assertEquals(stop.scheduled, stop.expected)
             assertNull(stop.platform)
             assertEquals(0, stop.delayMinutes)
             assertFalse(stop.completed)
+            assertEquals(StopRouteChange.NONE, stop.routeChange)
             assertEquals(false, stop.operationalStatusVerified)
         }
         assertEquals(

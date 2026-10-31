@@ -88,6 +88,8 @@ import it.binario.app.VoiceProfileSyncReadiness
 import it.binario.app.data.Direction
 import it.binario.app.data.SavedRoute
 import it.binario.app.data.Station
+import it.binario.app.gpsalarm.GpsArrivalAlarmFlow
+import it.binario.app.gpsalarm.GpsArrivalAlarmPanel
 import it.binario.app.resolve
 import it.binario.app.ui.common.StationField
 import it.binario.app.ui.common.localizedDisplayName
@@ -160,7 +162,7 @@ internal fun ForYouScreen(
     openRoute: (SavedRoute) -> Unit,
     openAgenda: () -> Unit,
     openStationBoard: (Station) -> Unit,
-    gpsAlarmPanel: @Composable () -> Unit
+    gpsArrivalAlarm: GpsArrivalAlarmFlow
 ) {
     var showComposer by rememberSaveable { mutableStateOf(false) }
     var showAlertComposer by rememberSaveable { mutableStateOf(false) }
@@ -309,7 +311,7 @@ internal fun ForYouScreen(
                 SectionHeading(stringResource(R.string.for_you_alarms))
                 Text(stringResource(R.string.for_you_stop_alarm_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            gpsAlarmPanel()
+            GpsArrivalAlarmPanel(gpsArrivalAlarm)
         }
         item {
             CommuterAlertsPanel(

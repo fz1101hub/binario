@@ -236,6 +236,7 @@ private fun RouteBoard(
  * The only highlighted service of the board: the next departure. Demonstration data shows the timetable
  * alone, never a delay, an expected time or a platform as if they were real.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun HeroDepartureCard(service: TrainService, isDemonstration: Boolean, onOpen: () -> Unit) {
     val shown = if (isDemonstration) service.presentedAsDemonstration() else service
@@ -266,28 +267,32 @@ internal fun HeroDepartureCard(service: TrainService, isDemonstration: Boolean, 
                 onClick { onOpen(); true }
             }
     ) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        // One column: at 200 % font scale the large time never squeezes the destination.
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(heading, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                Text(shown.scheduledDeparture, style = MaterialTheme.typography.displaySmall, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text(shown.destination, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    Text(
-                        stringResource(R.string.service_operator_category_number, shown.displayOperator, shown.trainCategory.localizedLabel(), shown.number),
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                }
-            }
+            Text(shown.scheduledDeparture, style = MaterialTheme.typography.displaySmall, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
             if (shown.operationalStatusVerified && shown.expectedDeparture != shown.scheduledDeparture) {
                 Text(stringResource(R.string.expected_time, shown.expectedDeparture), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
             }
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text(shown.destination, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Text(
+                stringResource(R.string.service_operator_category_number, shown.displayOperator, shown.trainCategory.localizedLabel(), shown.number),
+                style = MaterialTheme.typography.bodyMedium
+            )
+            FlowRow(
+                modifier = Modifier.padding(top = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
                 ServiceStatusBadge(shown)
-                Text(
-                    shown.platform?.let { stringResource(R.string.platform_label, it) } ?: stringResource(R.string.platform_to_confirm),
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold
-                )
+                // A demonstration catalogue has no platform to confirm: nothing is shown instead.
+                if (!isDemonstration) {
+                    Text(
+                        shown.platform?.let { stringResource(R.string.platform_label, it) } ?: stringResource(R.string.platform_to_confirm),
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
             if (isDemonstration) {
                 Text(stringResource(R.string.data_status_demo), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)

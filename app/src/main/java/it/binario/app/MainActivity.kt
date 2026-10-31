@@ -413,7 +413,7 @@ private fun BinarioApp(
                     viewModel.openStationBoard(station)
                     showDepartures(OperationsSection.STATIONS)
                 },
-                gpsAlarmPanel = { GpsArrivalAlarmPanel(gpsArrivalAlarm) }
+                gpsArrivalAlarm = gpsArrivalAlarm
             )
             AppScreen.AGENDA -> PlannedJourneyAgendaScreen(
                 modifier = modifier,
@@ -560,8 +560,9 @@ private fun BinarioApp(
                         Box(Modifier.weight(1.2f).fillMaxHeight().testTag("detail-pane")) {
                             when {
                                 screen == AppScreen.DETAIL -> screenContent(AppScreen.DETAIL, Modifier.fillMaxSize(), true)
-                                listPane == AppScreen.DEPARTURES && operationsSection == OperationsSection.STATIONS ->
-                                    StationBoardRunDetailsPane(Modifier.fillMaxSize(), viewModel) { DetailPlaceholder() }
+                                listPane == AppScreen.DEPARTURES && operationsSection == OperationsSection.STATIONS &&
+                                    viewModel.selectedBoardEntry != null ->
+                                    StationBoardRunDetailsPane(Modifier.fillMaxSize(), viewModel)
                                 else -> DetailPlaceholder()
                             }
                         }

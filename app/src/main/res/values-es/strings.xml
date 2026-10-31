@@ -88,7 +88,7 @@
     <string name="widget_column_platform">AND.</string>
     <string name="widget_column_status">ESTADO</string>
     <string name="shortcut_active_route">Ruta activa</string>
-    <string name="shortcut_next_departures">Próximos servicios</string>
+    <string name="shortcut_next_departures">Próximas salidas</string>
     <string name="shortcut_train_search">Buscar tren</string>
 
     <!-- Main app shell and primary journey planner. -->

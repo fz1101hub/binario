@@ -333,11 +333,13 @@ private fun ServiceDetailHeader(service: TrainService, isDemonstration: Boolean)
                 }
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     ServiceStatusBadge(service)
-                    Text(
-                        service.platform?.let { stringResource(R.string.platform_label, it) } ?: stringResource(R.string.platform_to_confirm),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
+                    if (!isDemonstration) {
+                        Text(
+                            service.platform?.let { stringResource(R.string.platform_label, it) } ?: stringResource(R.string.platform_to_confirm),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
             }
             if (isDemonstration) {

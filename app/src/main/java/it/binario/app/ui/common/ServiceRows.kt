@@ -43,6 +43,7 @@ import it.binario.app.UiMessage
 import it.binario.app.data.Freshness
 import it.binario.app.data.ServiceStatus
 import it.binario.app.data.Station
+import it.binario.app.data.StopRouteChange
 import it.binario.app.data.TrainService
 import it.binario.app.data.core.OperationalRouteChange
 import it.binario.app.data.core.RouteChangeKind
@@ -69,8 +70,8 @@ private val TIME_COLUMN = 76.dp
 private val SIDE_COLUMN = 50.dp
 
 /**
- * How demonstration data is shown: the timetable only. Delays, expected times and platforms of the
- * local demonstration catalogue are never presented as if they were real.
+ * How demonstration data is shown: the timetable only. Delays, expected times, platforms, progress and
+ * route changes of the local demonstration catalogue are never presented as if they were real.
  */
 internal fun TrainService.presentedAsDemonstration(): TrainService = copy(
     expectedDeparture = scheduledDeparture,
@@ -79,8 +80,19 @@ internal fun TrainService.presentedAsDemonstration(): TrainService = copy(
     officialDelayMinutes = null,
     status = ServiceStatus.ON_TIME,
     operationalStatusVerified = false,
+    lastOperationalDetection = null,
+    detectionDelayMinutes = null,
+    routeChange = null,
+    routeChangeSourceIds = emptySet(),
     stops = stops.map { stop ->
-        stop.copy(expected = stop.scheduled, platform = null, delayMinutes = 0, completed = false, operationalStatusVerified = false)
+        stop.copy(
+            expected = stop.scheduled,
+            platform = null,
+            delayMinutes = 0,
+            completed = false,
+            routeChange = StopRouteChange.NONE,
+            operationalStatusVerified = false
+        )
     }
 )
 

@@ -495,14 +495,10 @@ internal fun StationBoardRunDetailsSheet(
     }
 }
 
-/** The run details of the selected board entry in the side pane of a wide window. */
+/** The run details of the selected board entry in the side pane of a wide window; empty without a selection. */
 @Composable
-internal fun StationBoardRunDetailsPane(modifier: Modifier, viewModel: TrainViewModel, placeholder: @Composable () -> Unit) {
-    val selected = viewModel.selectedBoardEntry
-    if (selected == null) {
-        placeholder()
-        return
-    }
+internal fun StationBoardRunDetailsPane(modifier: Modifier, viewModel: TrainViewModel) {
+    val selected = viewModel.selectedBoardEntry ?: return
     StationBoardRunDetailsContent(
         modifier = modifier.fillMaxSize(),
         station = viewModel.stationBoardStation?.name.orEmpty(),
