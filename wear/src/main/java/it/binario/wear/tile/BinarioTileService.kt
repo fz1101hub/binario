@@ -10,6 +10,7 @@ import androidx.wear.tiles.RequestBuilders
 import androidx.wear.tiles.TileBuilders
 import androidx.wear.tiles.TileService
 import com.google.common.util.concurrent.ListenableFuture
+import it.binario.wear.BinarioWearPalette
 import it.binario.wear.R
 import it.binario.wear.dataStatusResId
 import it.binario.wear.model.WearSnapshot
@@ -74,19 +75,19 @@ internal fun binarioTileTimeline(
 private fun BinarioTileService.binarioTileLayout(snapshot: WearSnapshot?): LayoutElementBuilders.LayoutElement {
     val details = snapshot?.services?.firstOrNull()
     return LayoutElementBuilders.Column.Builder()
-        .addContent(binarioTileText(getString(R.string.app_name), 18f, 0xFFFFFFFF.toInt(), 1))
-        .addContent(binarioTileText(snapshot?.routeLabel ?: getString(R.string.tile_no_synced_route), 15f, 0xFFB8F3D7.toInt(), 2))
-        .addContent(binarioTileText(details?.let { getString(R.string.tile_service_details, it.expectedDeparture, it.number, it.destination) } ?: getString(R.string.empty_snapshot_message), 14f, 0xFFFFFFFF.toInt(), 2))
-        .addContent(binarioTileText(snapshot?.let { getString(it.dataStatusResId()) } ?: getString(R.string.tile_snapshot_unavailable), 12f, 0xFFB3C8BE.toInt(), 2))
+        .addContent(binarioTileText(getString(R.string.app_name), 18f, BinarioWearPalette.ON_BACKGROUND.toInt(), 1))
+        .addContent(binarioTileText(snapshot?.routeLabel ?: getString(R.string.tile_no_synced_route), 15f, BinarioWearPalette.PRIMARY.toInt(), 2))
+        .addContent(binarioTileText(details?.let { getString(R.string.tile_service_details, it.expectedDeparture, it.number, it.destination) } ?: getString(R.string.empty_snapshot_message), 14f, BinarioWearPalette.ON_BACKGROUND.toInt(), 2))
+        .addContent(binarioTileText(snapshot?.let { getString(it.dataStatusResId()) } ?: getString(R.string.tile_snapshot_unavailable), 12f, BinarioWearPalette.ON_SURFACE_VARIANT.toInt(), 2))
         .build()
 }
 private fun fallbackBinarioTileLayout(snapshot: WearSnapshot?): LayoutElementBuilders.LayoutElement {
     val details = snapshot?.services?.firstOrNull()
     return LayoutElementBuilders.Column.Builder()
-        .addContent(binarioTileText("Binario", 18f, 0xFFFFFFFF.toInt(), 1))
-        .addContent(binarioTileText(snapshot?.routeLabel.orEmpty(), 15f, 0xFFB8F3D7.toInt(), 2))
-        .addContent(binarioTileText(details?.let { listOfNotNull(it.expectedDeparture, it.number, it.destination).joinToString(" · ") }.orEmpty(), 14f, 0xFFFFFFFF.toInt(), 2))
-        .addContent(binarioTileText(snapshot?.notice.orEmpty(), 12f, 0xFFB3C8BE.toInt(), 2))
+        .addContent(binarioTileText("Binario", 18f, BinarioWearPalette.ON_BACKGROUND.toInt(), 1))
+        .addContent(binarioTileText(snapshot?.routeLabel.orEmpty(), 15f, BinarioWearPalette.PRIMARY.toInt(), 2))
+        .addContent(binarioTileText(details?.let { listOfNotNull(it.expectedDeparture, it.number, it.destination).joinToString(" · ") }.orEmpty(), 14f, BinarioWearPalette.ON_BACKGROUND.toInt(), 2))
+        .addContent(binarioTileText(snapshot?.notice.orEmpty(), 12f, BinarioWearPalette.ON_SURFACE_VARIANT.toInt(), 2))
         .build()
 }
 

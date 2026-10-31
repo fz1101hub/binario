@@ -31,7 +31,7 @@ class WearMainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             val snapshot by WearSnapshotStore.snapshot(this).collectAsState()
-            MaterialTheme { WearHome(snapshot, ::requestRefreshFromPhone) }
+            BinarioWearTheme { WearHome(snapshot, ::requestRefreshFromPhone) }
         }
     }
 
@@ -50,14 +50,14 @@ private fun WearHome(snapshot: WearSnapshot?, onRefreshPhone: () -> Unit) {
     val context = LocalContext.current
     if (snapshot == null) {
         Column(Modifier.fillMaxSize().padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text(stringResource(R.string.app_name), style = MaterialTheme.typography.titleMedium)
+            Text(stringResource(R.string.app_name), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
             Text(stringResource(R.string.empty_snapshot_message), style = MaterialTheme.typography.bodyMedium)
             Button(onClick = onRefreshPhone, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.refresh_phone)) }
         }
         return
     }
     LazyColumn(Modifier.fillMaxSize().padding(horizontal = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        item { Text(snapshot.routeLabel, style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 10.dp)) }
+        item { Text(snapshot.routeLabel, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 10.dp)) }
         item {
             val dataStatus = stringResource(snapshot.dataStatusResId())
             val statusDescription = stringResource(R.string.accessibility_data_status, dataStatus)
@@ -69,7 +69,7 @@ private fun WearHome(snapshot: WearSnapshot?, onRefreshPhone: () -> Unit) {
         ) { _, service ->
             Card(onClick = {}, modifier = Modifier.fillMaxWidth().semantics { contentDescription = service.accessibleLabel(context) }) {
                 Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text(stringResource(R.string.service_time_number, service.expectedDeparture, service.number), style = MaterialTheme.typography.titleSmall)
+                    Text(stringResource(R.string.service_time_number, service.expectedDeparture, service.number), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
                     Text(stringResource(R.string.service_destination_status, service.destination, service.status), style = MaterialTheme.typography.bodyMedium)
                     Text(
                         service.platform?.let { stringResource(R.string.service_operator_category_platform, service.operator, service.category, it) }
