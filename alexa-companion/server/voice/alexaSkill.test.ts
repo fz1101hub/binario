@@ -266,6 +266,131 @@ describe("Alexa skill handlers", () => {
   });
 });
 
+describe("Echo Show screens (APL)", () => {
+  type SkillResponse = Awaited<ReturnType<ReturnType<typeof createAlexaSkill>["invoke"]>>;
+  const ROUTES = [
+    { id: 1, name: "Casa & <lavoro>", origin: "Roma Termini", destination: "Tivoli", isPinned: true },
+    { id: 2, name: "Mare", origin: "Roma Ostiense", destination: "Ostia", isPinned: false },
+  ];
+
+  function withApl(request: Envelope, maxVersion = "1.8"): Envelope {
+    request.context.System.device!.supportedInterfaces["Alexa.Presentation.APL"] = { runtime: { maxVersion } };
+    return request;
+  }
+
+  async function linkedRequest(request: Envelope) {
+    vi.mocked(getAlexaLinkStatus).mockResolvedValue({ userId: 7, credentialVersion: 3, revokedAt: null } as Awaited<ReturnType<typeof getAlexaLinkStatus>>);
+    vi.mocked(listPersonalRoutesForAlexa).mockResolvedValue(ROUTES as Awaited<ReturnType<typeof listPersonalRoutesForAlexa>>);
+    const accessToken = await issueVoiceAccessToken(7, 3);
+    return { request: withAccessToken(request, accessToken), accessToken };
+  }
+
+  function renderDocument(response: SkillResponse) {
+    return response.response.directives?.find(item => item.type === "Alexa.Presentation.APL.RenderDocument") as
+      | { token: string; datasources: { binario: Record<string, unknown> & { routes: Array<Record<string, unknown>> } } }
+      | undefined;
+  }
+
+  function userEvent(args: unknown[], token = "binario.myRoutes", locale = "it-IT") {
+    return envelope({ type: "Alexa.Presentation.APL.UserEvent", token, arguments: args }, locale);
+  }
+
+  it("keeps the voice response identical on speakers and adds the departures screen on Echo Show", async () => {
+    const speaker = await linkedRequest(intent("NextTrainsIntent"));
+    const voice = await createAlexaSkill().invoke(speaker.request);
+    const screen = await linkedRequest(withApl(intent("NextTrainsIntent")));
+    const shown = await createAlexaSkill().invoke(screen.request);
+
+    expect(voice.response.directives ?? []).toHaveLength(0);
+    expect(voice.response.shouldEndSession).toBe(true);
+    expect(shown.response.outputSpeech).toEqual(voice.response.outputSpeech);
+    expect(shown.response.card).toEqual(voice.response.card);
+    // The session stays open with the microphone closed so the screen and its buttons remain usable.
+    expect(shown.response.shouldEndSession).toBeUndefined();
+    expect(shown.response.reprompt).toBeUndefined();
+    const document = renderDocument(shown);
+    expect(document?.token).toBe("binario.departures");
+    expect(document?.datasources.binario).toMatchObject({
+      screen: "departures",
+      title: "Partenze",
+      hero: "Casa &amp; &lt;lavoro&gt;",
+      quality: { state: "unavailable", label: "Dati non disponibili in tempo reale" },
+    });
+  });
+
+  it("never puts tokens, identifiers, origins or destinations on the screen", async () => {
+    for (const name of ["NextTrainsIntent", "MyRoutesIntent", "TrainStatusIntent"]) {
+      const { request, accessToken } = await linkedRequest(withApl(intent(name, "it-IT", { trainNumber: "9512" })));
+      const serialized = JSON.stringify((await createAlexaSkill().invoke(request)).response.directives);
+      expect(serialized).toContain("RenderDocument");
+      for (const secret of [accessToken, "amzn1.ask.account", "amzn1.echo-api", "device", "Roma Termini", "Tivoli", "Ostia", "userId", "credentialVersion"])
+        expect(serialized, `${name}: ${secret}`).not.toContain(secret);
+    }
+  });
+
+  it("projects the spoken route names and the train asked for", async () => {
+    const routes = renderDocument(await createAlexaSkill().invoke((await linkedRequest(withApl(intent("MyRoutesIntent")))).request));
+    expect(routes?.datasources.binario.routes.map(route => route.name)).toEqual(["Casa & <lavoro>", "Mare"]);
+    expect(routes?.datasources.binario.routes[0].pinnedText).toBe("Fissata");
+    const train = renderDocument(await createAlexaSkill().invoke((await linkedRequest(withApl(intent("TrainStatusIntent", "de-DE", { trainNumber: "9512" })))).request));
+    expect(train?.datasources.binario).toMatchObject({ screen: "trainStatus", title: "Zugstatus", hero: "Zug 9512" });
+  });
+
+  it("shows a non-personal home screen for launch and help, keeping the microphone open", async () => {
+    for (const request of [envelope({ type: "LaunchRequest" }), intent("AMAZON.HelpIntent")]) {
+      const response = await createAlexaSkill().invoke(withApl(request));
+      expect(renderDocument(response)?.datasources.binario).toMatchObject({ screen: "home", routes: [] });
+      expect(response.response.shouldEndSession).toBe(false);
+      expect(response.response.reprompt).toBeDefined();
+    }
+  });
+
+  it("renders nothing before account linking, after Stop, or on an older APL runtime", async () => {
+    for (const name of ["NextTrainsIntent", "MyRoutesIntent", "TrainStatusIntent", "AMAZON.StopIntent"]) {
+      const response = await createAlexaSkill().invoke(withApl(intent(name)));
+      expect(response.response.directives ?? [], name).toHaveLength(0);
+      expect(response.response.shouldEndSession, name).toBe(true);
+    }
+    const old = await createAlexaSkill().invoke(withApl(envelope({ type: "LaunchRequest" }), "1.0"));
+    expect(old.response.directives ?? []).toHaveLength(0);
+    expect(old.response.card?.type).toBe("Simple");
+  });
+
+  it("does not render a screen when a personal request fails", async () => {
+    const { request } = await linkedRequest(withApl(intent("MyRoutesIntent")));
+    vi.mocked(listPersonalRoutesForAlexa).mockRejectedValueOnce(new Error("database down"));
+    const response = await createAlexaSkill().invoke(request);
+    expect(speechText(response)).toContain("Si è verificato un problema");
+    expect(response.response.directives ?? []).toHaveLength(0);
+  });
+
+  it("answers a touched route with that route's screen after re-checking the link", async () => {
+    const { request } = await linkedRequest(withApl(userEvent(["binario.nextTrains", "Mare"])));
+    const response = await createAlexaSkill().invoke(request);
+    expect(speechText(response)).toContain("Per la tratta Mare: dati non disponibili in tempo reale");
+    expect(renderDocument(response)?.datasources.binario).toMatchObject({ screen: "departures", hero: "Mare" });
+
+    const pinned = await linkedRequest(withApl(userEvent(["binario.nextTrains", ""])));
+    expect(speechText(await createAlexaSkill().invoke(pinned.request))).toContain("Casa &amp; &lt;lavoro&gt;");
+
+    const gone = await linkedRequest(withApl(userEvent(["binario.nextTrains", "Montagna"])));
+    expect(renderDocument(await createAlexaSkill().invoke(gone.request))?.datasources.binario.screen).toBe("myRoutes");
+
+    const list = await linkedRequest(withApl(userEvent(["binario.myRoutes"])));
+    expect(renderDocument(await createAlexaSkill().invoke(list.request))?.datasources.binario.screen).toBe("myRoutes");
+  });
+
+  it("asks for linking again when a touch arrives without a valid link, and rejects unknown events", async () => {
+    const unlinked = await createAlexaSkill().invoke(withApl(userEvent(["binario.myRoutes"])));
+    expect(unlinked.response.card?.type).toBe("LinkAccount");
+    expect(unlinked.response.directives ?? []).toHaveLength(0);
+
+    const forged = await createAlexaSkill().invoke(withApl(userEvent(["binario.deleteAccount"])));
+    expect(speechText(forged)).toContain("Non ho capito la richiesta");
+    expect(renderDocument(forged)?.datasources.binario.screen).toBe("home");
+  });
+});
+
 describe("dynamic Alexa speech values", () => {
   const unsafeText = `A & B < C > D "quotes" 'apostrophes' <break time="1s"/>`;
   const escapedUnsafeText =
@@ -337,6 +462,12 @@ describe("versioned interaction models", () => {
       [...LOCALES].sort()
     );
     for (const locale of LOCALES) expect(() => model(locale)).not.toThrow();
+  });
+
+  it("declares the APL interface for the Echo Show screens, rectangular and round hubs", () => {
+    const custom = manifest().manifest.apis.custom as { interfaces?: Array<{ type: string; supportedViewports?: Array<{ mode: string; shape: string }> }> };
+    const apl = custom.interfaces?.find(item => item.type === "ALEXA_PRESENTATION_APL");
+    expect(apl?.supportedViewports?.map(viewport => `${viewport.mode}:${viewport.shape}`).sort()).toEqual(["HUB:RECTANGLE", "HUB:ROUND"]);
   });
 
   it("keeps all manifest URLs HTTPS and deliberately unconfigured", () => {

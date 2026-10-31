@@ -51,6 +51,7 @@ import { isAlexaConfigured } from "./config";
 import { needsAccountLink } from "./guards";
 import { parseOAuthAuthorizationParameters } from "./oauthContract";
 import { escapeSsmlText, liveDataUnavailableSpeech, plainSpeechText } from "./speech";
+import { parseScreenEvent, screenResponseInterceptor, setScreen } from "./presentation";
 
 /** Intent names the skill handles; the interaction model in skill-package/ must declare all of them. */
 export const HANDLED_INTENTS = [
@@ -142,6 +143,7 @@ const launchHandler: RequestHandler = {
   canHandle: input => getRequestType(input.requestEnvelope) === "LaunchRequest",
   handle: input => {
     const messages = voiceMessages(input);
+    setScreen(input, { kind: "home", message: messages.launch });
     return input.responseBuilder
       .speak(messages.launch)
       .reprompt(messages.unsupported)
@@ -151,53 +153,73 @@ const launchHandler: RequestHandler = {
   },
 };
 
+type PersonalRoute = Awaited<ReturnType<typeof listPersonalRoutesForAlexa>>[number];
+type SkillResponse = ReturnType<HandlerInput["responseBuilder"]["getResponse"]>;
+
+/**
+ * Speaks the live-data caveat for one saved route. `select` picks the route among the named ones;
+ * undefined means none matched. Only reached after the account link has been verified.
+ */
+async function respondNextTrains(
+  input: HandlerInput,
+  select: (namedRoutes: PersonalRoute[], locale: SupportedLocale) => PersonalRoute | undefined,
+  onMissing?: () => Promise<SkillResponse>
+) {
+  const locale = getAlexaLocale(input);
+  const messages = messagesForLocale(locale).voice;
+  const principal = await getLinkedUser(input);
+  if (!principal) return linkRequiredResponse(input);
+  const routes = await listPersonalRoutesForAlexa(
+    principal.userId,
+    principal.credentialVersion
+  );
+  const namedRoutes = routes.filter(item => item.name.trim().length > 0);
+  const route = select(namedRoutes, locale);
+  if (!route && onMissing && namedRoutes.length) return onMissing();
+  if (!route) {
+    setScreen(input, { kind: "myRoutes", routes: [], remainingCount: 0 });
+    return input.responseBuilder
+      .speak(messages.noRoutes)
+      .withSimpleCard(messages.cardTitle, messages.noRoutes)
+      .withShouldEndSession(true)
+      .getResponse();
+  }
+  // SSML needs escaped text; the companion-app card is plain text and must
+  // show the route name as typed, not XML entities.
+  const speech = liveDataUnavailableSpeech(
+    locale,
+    formatMessage(messages.routeSubject, { routeName: escapeSsmlText(route.name) })
+  );
+  const card = liveDataUnavailableSpeech(
+    locale,
+    formatMessage(messages.routeSubject, { routeName: plainSpeechText(route.name) })
+  );
+  setScreen(input, { kind: "departures", routeName: route.name });
+  return input.responseBuilder
+    .speak(speech)
+    .withSimpleCard(messages.cardTitle, card)
+    .withShouldEndSession(true)
+    .getResponse();
+}
+
 const nextTrainsHandler: RequestHandler = {
   canHandle: input =>
     getRequestType(input.requestEnvelope) === "IntentRequest" &&
     getIntentName(input.requestEnvelope) === "NextTrainsIntent",
-  handle: async input => {
-    const locale = getAlexaLocale(input);
-    const messages = messagesForLocale(locale).voice;
-    const principal = await getLinkedUser(input);
-    if (!principal) return linkRequiredResponse(input);
-    const routes = await listPersonalRoutesForAlexa(
-      principal.userId,
-      principal.credentialVersion
-    );
-    const requestedName = intentSlot(
-      input,
-      "routeName",
-      "route",
-      "tratta"
-    )?.toLocaleLowerCase(locale);
-    const namedRoutes = routes.filter(item => item.name.trim().length > 0);
-    const route = requestedName
-      ? namedRoutes.find(
-          item => item.name.toLocaleLowerCase(locale) === requestedName
-        )
-      : (namedRoutes.find(item => item.isPinned) ?? namedRoutes[0]);
-    if (!route)
-      return input.responseBuilder
-        .speak(messages.noRoutes)
-        .withSimpleCard(messages.cardTitle, messages.noRoutes)
-        .withShouldEndSession(true)
-        .getResponse();
-    // SSML needs escaped text; the companion-app card is plain text and must
-    // show the route name as typed, not XML entities.
-    const speech = liveDataUnavailableSpeech(
-      locale,
-      formatMessage(messages.routeSubject, { routeName: escapeSsmlText(route.name) })
-    );
-    const card = liveDataUnavailableSpeech(
-      locale,
-      formatMessage(messages.routeSubject, { routeName: plainSpeechText(route.name) })
-    );
-    return input.responseBuilder
-      .speak(speech)
-      .withSimpleCard(messages.cardTitle, card)
-      .withShouldEndSession(true)
-      .getResponse();
-  },
+  handle: input =>
+    respondNextTrains(input, (namedRoutes, locale) => {
+      const requestedName = intentSlot(
+        input,
+        "routeName",
+        "route",
+        "tratta"
+      )?.toLocaleLowerCase(locale);
+      return requestedName
+        ? namedRoutes.find(
+            item => item.name.toLocaleLowerCase(locale) === requestedName
+          )
+        : (namedRoutes.find(item => item.isPinned) ?? namedRoutes[0]);
+    }),
 };
 
 const trainStatusHandler: RequestHandler = {
@@ -222,6 +244,7 @@ const trainStatusHandler: RequestHandler = {
       ? formatMessage(messages.trainSubject, { trainNumber: plainSpeechText(trainNumber) })
       : undefined;
     const speech = liveDataUnavailableSpeech(locale, subject);
+    setScreen(input, { kind: "trainStatus", trainNumber });
     return input.responseBuilder
       .speak(speech)
       .withSimpleCard(messages.cardTitle, liveDataUnavailableSpeech(locale, cardSubject))
@@ -230,44 +253,82 @@ const trainStatusHandler: RequestHandler = {
   },
 };
 
+/** Reads the saved route names; only reached after the account link has been verified. */
+async function respondMyRoutes(input: HandlerInput) {
+  const locale = getAlexaLocale(input);
+  const messages = messagesForLocale(locale).voice;
+  const principal = await getLinkedUser(input);
+  if (!principal) return linkRequiredResponse(input);
+  const routes = await listPersonalRoutesForAlexa(
+    principal.userId,
+    principal.credentialVersion
+  );
+  if (!routes.length) {
+    setScreen(input, { kind: "myRoutes", routes: [], remainingCount: 0 });
+    return input.responseBuilder
+      .speak(messages.noRoutes)
+      .withSimpleCard(messages.cardTitle, messages.noRoutes)
+      .withShouldEndSession(true)
+      .getResponse();
+  }
+  const spoken = routes.slice(0, 5);
+  const remainingRouteCount = Math.max(routes.length - 5, 0);
+  const suffix =
+    remainingRouteCount > 0
+      ? formatPlural(locale, remainingRouteCount, messages.moreRoutes)
+      : ".";
+  const speech = formatMessage(messages.routesSaved, {
+    routes: spoken.map(route => escapeSsmlText(route.name)).join(", "),
+    suffix,
+  });
+  const card = formatMessage(messages.routesSaved, {
+    routes: spoken.map(route => plainSpeechText(route.name)).join(", "),
+    suffix,
+  });
+  // The screen shows the same five names the voice reads, and nothing else about them.
+  setScreen(input, {
+    kind: "myRoutes",
+    routes: spoken.map(route => ({ name: route.name, isPinned: route.isPinned })),
+    remainingCount: remainingRouteCount,
+  });
+  return input.responseBuilder
+    .speak(speech)
+    .withSimpleCard(messages.cardTitle, card)
+    .withShouldEndSession(true)
+    .getResponse();
+}
+
 const myRoutesHandler: RequestHandler = {
   canHandle: input =>
     getRequestType(input.requestEnvelope) === "IntentRequest" &&
     getIntentName(input.requestEnvelope) === "MyRoutesIntent",
-  handle: async input => {
-    const locale = getAlexaLocale(input);
-    const messages = messagesForLocale(locale).voice;
-    const principal = await getLinkedUser(input);
-    if (!principal) return linkRequiredResponse(input);
-    const routes = await listPersonalRoutesForAlexa(
-      principal.userId,
-      principal.credentialVersion
+  handle: input => respondMyRoutes(input),
+};
+
+/**
+ * Touches on the Echo Show document. Each event is re-authorised exactly like a voice request
+ * (the access token travels with it), and only the two allowlisted actions are accepted.
+ */
+const screenEventHandler: RequestHandler = {
+  canHandle: input =>
+    getRequestType(input.requestEnvelope) === "Alexa.Presentation.APL.UserEvent",
+  handle: input => {
+    const event = parseScreenEvent(input.requestEnvelope.request);
+    if (!event) return unsupportedResponse(input);
+    if (event.action === "myRoutes") return respondMyRoutes(input);
+    const { routeName } = event;
+    if (!routeName)
+      return respondNextTrains(
+        input,
+        namedRoutes => namedRoutes.find(item => item.isPinned) ?? namedRoutes[0]
+      );
+    // The touched route may have been renamed or deleted since the screen was drawn: show the
+    // current list instead of another route's caveat.
+    return respondNextTrains(
+      input,
+      namedRoutes => namedRoutes.find(item => plainSpeechText(item.name) === routeName),
+      () => respondMyRoutes(input)
     );
-    if (!routes.length)
-      return input.responseBuilder
-        .speak(messages.noRoutes)
-        .withSimpleCard(messages.cardTitle, messages.noRoutes)
-        .withShouldEndSession(true)
-        .getResponse();
-    const spoken = routes.slice(0, 5);
-    const remainingRouteCount = Math.max(routes.length - 5, 0);
-    const suffix =
-      remainingRouteCount > 0
-        ? formatPlural(locale, remainingRouteCount, messages.moreRoutes)
-        : ".";
-    const speech = formatMessage(messages.routesSaved, {
-      routes: spoken.map(route => escapeSsmlText(route.name)).join(", "),
-      suffix,
-    });
-    const card = formatMessage(messages.routesSaved, {
-      routes: spoken.map(route => plainSpeechText(route.name)).join(", "),
-      suffix,
-    });
-    return input.responseBuilder
-      .speak(speech)
-      .withSimpleCard(messages.cardTitle, card)
-      .withShouldEndSession(true)
-      .getResponse();
   },
 };
 
@@ -275,6 +336,7 @@ const helpHandler: RequestHandler = {
   canHandle: input => isIntent(input, "AMAZON.HelpIntent"),
   handle: input => {
     const messages = voiceMessages(input);
+    setScreen(input, { kind: "home", message: messages.help });
     return input.responseBuilder
       .speak(messages.help)
       .reprompt(messages.help)
@@ -311,23 +373,29 @@ const sessionEndedHandler: RequestHandler = {
   handle: input => input.responseBuilder.getResponse(),
 };
 
+function unsupportedResponse(input: HandlerInput) {
+  const messages = voiceMessages(input);
+  setScreen(input, { kind: "home", message: messages.unsupported });
+  return input.responseBuilder
+    .speak(messages.unsupported)
+    .reprompt(messages.unsupported)
+    .withSimpleCard(messages.cardTitle, messages.unsupported)
+    .withShouldEndSession(false)
+    .getResponse();
+}
+
 const fallbackHandler: RequestHandler = {
   canHandle: input => getRequestType(input.requestEnvelope) === "IntentRequest",
-  handle: input => {
-    const messages = voiceMessages(input);
-    return input.responseBuilder
-      .speak(messages.unsupported)
-      .reprompt(messages.unsupported)
-      .withSimpleCard(messages.cardTitle, messages.unsupported)
-      .withShouldEndSession(false)
-      .getResponse();
-  },
+  handle: input => unsupportedResponse(input),
 };
 
 const errorHandler = {
   canHandle: () => true,
   handle: (input: HandlerInput) => {
     const messages = voiceMessages(input);
+    // A handler may have described its screen before failing. The SDK skips response
+    // interceptors on this path today; clearing keeps an error from ever rendering it.
+    setScreen(input, null);
     return input.responseBuilder
       .speak(messages.error)
       .withSimpleCard(messages.cardTitle, messages.error)
@@ -347,9 +415,11 @@ export function createAlexaSkill() {
       nextTrainsHandler,
       trainStatusHandler,
       myRoutesHandler,
+      screenEventHandler,
       fallbackHandler
     )
     .addErrorHandlers(errorHandler)
+    .addResponseInterceptors(screenResponseInterceptor)
     .create();
 }
 

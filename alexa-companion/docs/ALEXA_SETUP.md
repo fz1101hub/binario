@@ -36,6 +36,22 @@ Tutti gli intent che restituiscono dati personali richiedono un access token val
 
 Se Amazon apre l'autorizzazione prima che l'utente abbia una sessione dashboard, il companion conserva **solo** la richiesta già verificata in un cookie firmato `__Host-`, `Secure`, `HttpOnly`, `SameSite=Lax`, con `Path=/` e TTL di dieci minuti. Dopo il callback dashboard la richiesta è verificata di nuovo contro client e callback URI consentiti, quindi viene cancellata e viene mostrata la stessa pagina di consenso CSRF-protetta. Il cookie non contiene credenziali.
 
+## Schermate Echo Show (APL) — azione del titolare
+
+Il codice della skill proietta su Echo Show le risposte che già pronuncia: **Partenze** (`NextTrainsIntent`), **Stato treno** (`TrainStatusIntent`), **Le mie tratte** (`MyRoutesIntent`, stesse cinque tratte lette a voce) e una home non personale per avvio, aiuto e richieste non riconosciute. L’implementazione è in `server/voice/presentation.ts`, la specifica in [`ECHO_SHOW_APL_UI_SPEC.md`](ECHO_SHOW_APL_UI_SPEC.md).
+
+**Azione del titolare, obbligatoria perché le schermate compaiano:** nella console Alexa, *Build → Interfaces*, attivare **Alexa Presentation Language** e selezionare i profili Hub rotondo e Hub orizzontale (piccolo, medio, grande, extra-large), poi salvare e ricompilare il modello. In alternativa distribuire con ASK CLI `skill-package/skill.json`, che dichiara già l’interfaccia `ALEXA_PRESENTATION_APL` con viewport `HUB` rettangolari e rotondi: importare un manifest con `"interfaces": []` la disattiverebbe di nuovo. Finché l’interfaccia non è attiva, Alexa non segnala `Alexa.Presentation.APL` in `context.System.device.supportedInterfaces` e la skill resta solo vocale, identica a prima su ogni dispositivo.
+
+Comportamento verificabile nei test (`server/voice/presentation.test.ts`, `server/voice/alexaSkill.test.ts`):
+
+- il documento `Alexa.Presentation.APL.RenderDocument` viene aggiunto solo se il dispositivo dichiara APL con runtime ≥ 1.4; altoparlanti, Echo Spot 2024 e dispositivi senza APL ricevono la stessa voce e la stessa card;
+- nessuna schermata personale prima dell’account linking verificato, dopo Stop/Annulla, su `SessionEndedRequest` o in caso di errore; il documento non contiene token, identificativi Alexa o Binario, origini o destinazioni;
+- ogni schermata riporta lo stato del dato in testo («Dati non disponibili in tempo reale», o l’etichetta del catalogo dimostrativo), la fonte e l’ora della verifica (ora italiana), mai un orario, ritardo o binario inventato;
+- layout per classi di viewport lette dal dispositivo (piccolo, medio, grande, extra-large, rotondo), token Binario 2.0 chiari e scuri, nessun pacchetto, font o immagine remota, target touch ≥ 64 dp;
+- sui dispositivi con schermo la sessione resta aperta a microfono chiuso (`shouldEndSession` assente) perché il documento resti leggibile e i pulsanti funzionino; ogni tocco (`Alexa.Presentation.APL.UserEvent`) è accettato solo per due azioni in allowlist e riverifica l’account linking come una richiesta vocale.
+
+Da verificare dal titolare con il simulatore della console e su hardware reale prima della pubblicazione: rendering per ciascun profilo, lettura VoiceView, testi lunghi, timeout dello schermo e tocchi dopo la fine della sessione.
+
 ## Privacy, sicurezza e pubblicazione
 
 Il companion conserva tratte e metadati minimi del collegamento; token, authorization code e identificativi Alexa sono memorizzati soltanto come hash HMAC server-side. Non vengono registrati nei log origine, destinazione, nome della tratta, numero treno, token o richiesta vocale. I codici OAuth sono monouso e scadono dopo cinque minuti; gli access token scadono dopo un’ora e i refresh token ruotano e sono revocabili.

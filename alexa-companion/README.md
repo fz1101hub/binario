@@ -7,6 +7,7 @@
 Il companion gestisce:
 
 - webhook HTTPS della Custom Skill Alexa;
+- schermate Echo Show (APL) che proiettano le stesse risposte vocali, solo sui dispositivi che dichiarano APL;
 - account linking OAuth 2.0 con consenso esplicito e protezione CSRF;
 - revoca e nuovo collegamento dell'account;
 - profilo vocale minimo, versionato e autenticato;
@@ -47,6 +48,7 @@ Il test crea database effimeri, verifica una catena da database vuoto e un upgra
 ## Documentazione
 
 - [`docs/ALEXA_SETUP.md`](docs/ALEXA_SETUP.md): configurazione e pubblicazione Alexa.
+- [`docs/ECHO_SHOW_APL_UI_SPEC.md`](docs/ECHO_SHOW_APL_UI_SPEC.md): schermate Echo Show (APL), implementate ma attive solo dopo l’abilitazione dell’interfaccia APL da parte del titolare (vedi `ALEXA_SETUP.md`).
 - [`docs/ANDROID_COMPANION_CONTRACT.md`](docs/ANDROID_COMPANION_CONTRACT.md): relazione tra app principale e companion.
 - [`docs/REMOTE_PROFILE_SYNC.md`](docs/REMOTE_PROFILE_SYNC.md): contratto del profilo vocale remoto.
 - [`../docs/architecture/ADR-0001-APP-PRINCIPALE-E-COMPANION-ALEXA.md`](../docs/architecture/ADR-0001-APP-PRINCIPALE-E-COMPANION-ALEXA.md): decisione architetturale.

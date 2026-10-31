@@ -30,7 +30,7 @@
     "apis": {
       "custom": {
         "endpoint": { "uri": "https://REPLACE_WITH_HTTPS_HOST/api/alexa/webhook", "sslCertificateType": "Trusted" },
-        "interfaces": []
+        "interfaces": [{ "type": "ALEXA_PRESENTATION_APL", "supportedViewports": [{ "mode": "HUB", "shape": "RECTANGLE", "minWidth": 320, "maxWidth": 2560, "minHeight": 240, "maxHeight": 1600 }, { "mode": "HUB", "shape": "ROUND", "minWidth": 320, "maxWidth": 960, "minHeight": 320, "maxHeight": 960 }] }]
       }
     },
     "permissions": [],
