@@ -257,7 +257,7 @@ class VerifyCiPinningTest(unittest.TestCase):
         self.assertTrue(any("archivio Release" in problem for problem in problems))
 
         unchecked_icon = original.replace(
-            '            value="$(plutil -extract CFBundleIconName raw -o - "$bundle/Info.plist" 2>/dev/null || echo "<missing>")"\n', "", 1
+            '            [ "$value" = "AppIcon" ] || { plutil -p "$bundle/Info.plist" | grep -i icon || true; fail "${bundle##*/}: CFBundleIconName is $value, expected AppIcon"; }\n', "", 1
         )
         self.assertNotEqual(original, unchecked_icon)
         self.assertTrue(any("archivio Release" in problem for problem in policy.workflow_problems(workflow_path, unchecked_icon, LOCK)))

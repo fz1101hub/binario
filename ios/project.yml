@@ -133,6 +133,10 @@ targets:
         INFOPLIST_KEY_CFBundleShortVersionString: "$(MARKETING_VERSION)"
         INFOPLIST_KEY_WKWatchOnly: NO
         INFOPLIST_KEY_WKCompanionAppBundleIdentifier: it.binario.ios
+        # The Watch app ships only inside Binario.app/Watch: installing it on its own as well puts a
+        # second top-level app in the archive, which Xcode then treats as a generic archive that
+        # cannot be distributed to App Store Connect.
+        SKIP_INSTALL: YES
         # App Store Connect rejects an embedded Watch app without its own 1024 pt icon (ITMS-90713).
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         # Binario 2.0 green from the Watch catalogue: the app-wide tint, navigation title included.
@@ -187,6 +191,8 @@ targets:
         SUPPORTED_PLATFORMS: "watchos watchsimulator"
         PRODUCT_NAME: BinarioWatchWidgets
         PRODUCT_BUNDLE_IDENTIFIER: it.binario.ios.watchkitapp.widgets
+        # Embedded in BinarioWatch.app/PlugIns only, never installed on its own.
+        SKIP_INSTALL: YES
         INFOPLIST_KEY_CFBundleDisplayName: Binario
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: ../apple-watch/BinarioWatchWidgets/Info.plist

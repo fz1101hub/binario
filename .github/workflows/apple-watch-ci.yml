@@ -257,6 +257,11 @@ jobs:
           fail() { echo "::error title=App Store bundle layout::$1"; failures=$((failures + 1)); }
           info() { plutil -extract "$2" raw -o - "$1/Info.plist" 2>/dev/null || echo "<missing>"; }
           find "$RUNNER_TEMP/Binario.xcarchive/Products" \( -name "*.app" -o -name "*.appex" \) -print
+          # App Store Connect only receives an archive whose single top-level product is the iPhone app.
+          top_level="$(ls "$RUNNER_TEMP/Binario.xcarchive/Products/Applications")"
+          [ "$top_level" = "Binario.app" ] || fail "archive must contain only Binario.app at top level, found: $(echo $top_level)"
+          # actool records the icon either at the top level or under CFBundleIcons.CFBundlePrimaryIcon.
+          icon() { for key in CFBundleIconName CFBundleIcons.CFBundlePrimaryIcon.CFBundleIconName; do v="$(plutil -extract "$key" raw -o - "$1/Info.plist" 2>/dev/null)" && { echo "$v"; return; }; done; echo "<missing>"; }
           [ -d "$watch" ] || fail "embedded Watch app missing: Watch/BinarioWatch.app"
           [ -d "$widget" ] || fail "Watch widget extension missing: PlugIns/BinarioWatchWidgets.appex"
           for bundle in "$app" "$watch" "$widget"; do
@@ -265,8 +270,9 @@ jobs:
             [ "$value" = "false" ] || fail "${bundle##*/}: ITSAppUsesNonExemptEncryption is $value, expected false"
           done
           for bundle in "$app" "$watch"; do
-            value="$(plutil -extract CFBundleIconName raw -o - "$bundle/Info.plist" 2>/dev/null || echo "<missing>")"
-            [ "$value" = "AppIcon" ] || fail "${bundle##*/}: CFBundleIconName is $value, expected AppIcon"
+            value="$(icon "$bundle")"
+            [ "$value" = "AppIcon" ] || { plutil -p "$bundle/Info.plist" | grep -i icon || true; fail "${bundle##*/}: CFBundleIconName is $value, expected AppIcon"; }
+            [ -f "$bundle/Assets.car" ] || fail "${bundle##*/}: compiled asset catalog Assets.car missing"
           done
           value="$(info "$app" CFBundleDevelopmentRegion)"
           [ "$value" = "it" ] || fail "Binario.app: CFBundleDevelopmentRegion is $value, expected it"

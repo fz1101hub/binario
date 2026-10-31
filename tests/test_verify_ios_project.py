@@ -258,6 +258,12 @@ class IOSProjectTests(unittest.TestCase):
         self.assertEqual(f"{ios_id}.watchkitapp", settings["PRODUCT_BUNDLE_IDENTIFIER"])
         self.assertEqual("AppIcon", settings["ASSETCATALOG_COMPILER_APPICON_NAME"])
         self.assertIn({"target": "BinarioWatchWidgets", "embed": True}, watch["dependencies"])
+        # Embedded products are not installed on their own: a second top-level app in the
+        # Release archive makes it a generic archive that App Store Connect cannot receive.
+        for name in ("BinarioWatch", "BinarioWatchWidgets"):
+            with self.subTest(target=name):
+                self.assertIs(True, self.targets[name]["settings"]["base"]["SKIP_INSTALL"])
+        self.assertNotIn("SKIP_INSTALL", self.targets["Binario"]["settings"]["base"])
         self.assertEqual("app-extension", widget["type"])
         widget_settings = widget["settings"]["base"]
         self.assertEqual(f"{ios_id}.watchkitapp.widgets", widget_settings["PRODUCT_BUNDLE_IDENTIFIER"])

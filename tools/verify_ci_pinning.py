@@ -638,7 +638,9 @@ def _check_apple_toolchain(
                 "PlugIns/BinarioWatchWidgets.appex",
                 "PrivacyInfo.xcprivacy",
                 "plutil -extract ITSAppUsesNonExemptEncryption raw",
-                "plutil -extract CFBundleIconName raw",
+                "CFBundleIcons.CFBundlePrimaryIcon.CFBundleIconName",
+                '[ "$value" = "AppIcon" ]',
+                '[ "$top_level" = "Binario.app" ]',
                 "WKCompanionAppBundleIdentifier",
                 '[ "$value" = "it.binario.ios" ]',
             )
