@@ -4,7 +4,7 @@
 
 - Design system Binario 2.0 ([design/BINARIO_2_DESIGN_SYSTEM.md](design/BINARIO_2_DESIGN_SYSTEM.md)) e prototipo Echo offline portati dal branch di design, con lo stato reale di ogni superficie; le fasi Android sono in applicazione su un branch separato.
 - Wear OS: tema verde unico (`WearTheme.kt`, `ColorScheme` Material 3 for Wear con i token scuri su sfondo nero), titoli in `colorScheme.primary`, Tile, icona e anteprime con gli stessi token; contrasto AA verificato da test.
-- Apple Watch e iPhone: token nei cataloghi asset (chiaro/scuro su iPhone), `AccentColor` applicato come tinta globale, etichetta del pulsante di ricerca e messaggi di errore leggibili AA anche in modalità scura; stato del dato sempre anche in testo.
+- Apple Watch e iPhone: token nei cataloghi asset (chiaro/scuro su iPhone), `AccentColor` applicato come tinta globale; su iPhone etichetta del pulsante di ricerca e messaggi di errore AA in entrambe le modalità, su Apple Watch stato del dato con i token verde/attenzione/errore e sempre anche in testo.
 - Dashboard del companion Alexa: palette verde al posto del blu del template.
 - Echo Show: schermate APL (Home, Partenze, Stato treno, Le mie tratte) solo sui dispositivi che dichiarano APL, con stato «dati non disponibili in tempo reale», fonte e ora della verifica, layout per classi di viewport, token chiari/scuri, target touch ≥ 64 dp e nessun dato personale prima dell’account linking. Attive solo dopo l’abilitazione dell’interfaccia APL da parte del titolare; la voce resta invariata su ogni altro dispositivo.
 

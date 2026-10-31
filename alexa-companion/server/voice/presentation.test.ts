@@ -116,6 +116,10 @@ describe("screen datasource", () => {
     expect(data.routes[1].pinnedText).toBe("");
     expect(buildScreenDatasource(departures, { locale: "it-IT", checkedAt: CHECKED_AT }).hero).toBe("Casa &amp; &lt;lavoro&gt;");
     expect(aplText("${payload.secret}")).toBe("${payload.secret}");
+    // Long names are cut by code point: an emoji on the boundary is never split into a lone surrogate.
+    const cut = aplText(`${"a".repeat(119)}🚆🚆`);
+    expect(cut).toBe(`${"a".repeat(119)}🚆`);
+    expect(cut).not.toMatch(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])/);
   });
 
   it("projects the spoken route list: same names, the dashboard remainder, no other route fields", () => {

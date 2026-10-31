@@ -132,17 +132,17 @@ export function parseScreenEvent(request: HandlerInput["requestEnvelope"]["reque
   return { action: "nextTrains", routeName };
 }
 
+/** Display text without XML-forbidden characters, cut by code point so no emoji is split. */
+function plainLabel(value: string) {
+  return Array.from(plainSpeechText(value)).slice(0, MAX_DISPLAY_LENGTH).join("");
+}
+
 /** APL Text understands a little markup: user text is shown literally, never interpreted. */
 export function aplText(value: string) {
-  return plainSpeechText(value)
-    .slice(0, MAX_DISPLAY_LENGTH)
+  return plainLabel(value)
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
-}
-
-function plainLabel(value: string) {
-  return plainSpeechText(value).slice(0, MAX_DISPLAY_LENGTH);
 }
 
 function sentenceCase(value: string, locale: SupportedLocale) {
