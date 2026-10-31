@@ -1,5 +1,6 @@
 package it.binario.app.maps
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -219,7 +220,7 @@ internal fun NearbyStationsMapCard(
     val mappable = remember(nearby) { nearby.filter { it.station.mapPoint() != null } }
     if (mappable.isEmpty()) return
     var loaded by rememberSaveable { mutableStateOf(false) }
-    Surface(modifier = modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.surfaceVariant, shape = RoundedCornerShape(8.dp)) {
+    Surface(modifier = modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.surface, border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant), shape = RoundedCornerShape(8.dp)) {
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(stringResource(R.string.map_nearby_title), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
             if (!loaded) {
@@ -253,12 +254,6 @@ internal fun NearbyStationsMapCard(
 
 /** Privacy and credit lines for the settings screen, next to the OpenStreetMap catalogue credit. */
 @Composable
-internal fun OpenMapsPrivacyNotes() {
-    Text(stringResource(R.string.settings_privacy_maps), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-    Text(stringResource(R.string.settings_credits_maps), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-}
-
-@Composable
 private fun StationList(stations: List<NearbyStation>, onOpenStation: (Station) -> Unit) {
     Column {
         stations.forEach { nearby ->
@@ -287,7 +282,7 @@ private fun OpenMapCardFrame(
     modifier: Modifier = Modifier,
     content: @Composable ColumnScope.() -> Unit
 ) {
-    Surface(modifier = modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.surfaceVariant, shape = RoundedCornerShape(8.dp)) {
+    Surface(modifier = modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.surface, border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant), shape = RoundedCornerShape(8.dp)) {
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))

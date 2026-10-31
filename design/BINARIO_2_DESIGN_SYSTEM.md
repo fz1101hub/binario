@@ -1,8 +1,8 @@
 # Binario 2.0 — sistema UI/UX multipiattaforma
 
-**Stato:** proposta di prodotto del 25 ottobre 2026, in applicazione al codice. **Non è una release pubblicata**.
+**Stato:** proposta di prodotto del 25 ottobre 2026, applicata al codice il 31 ottobre 2026. **Non è una release pubblicata** e non è ancora stata verificata su dispositivi reali.
 
-> **Stato sul branch `feat/ux2-clients` (31 ottobre 2026).** Token applicati a Wear OS, Apple Watch, iPhone e dashboard del companion Alexa; schermate Echo Show (APL) implementate nella skill ma attive solo dopo che il titolare abilita l’interfaccia APL ([azione del titolare](../alexa-companion/docs/ALEXA_SETUP.md#schermate-echo-show-apl--azione-del-titolare)). Le fasi Android 1–3 (app e widget) sono **in applicazione** sul branch `feat/ux2-android`, sviluppato in parallelo: le righe Android di questo documento descrivono quel lavoro come in corso e vanno finalizzate dall’integratore al merge dei due branch. Le verifiche Swift e il rendering APL sui dispositivi sono, per ora, solo statici.
+> **Stato al 31 ottobre 2026.** Token applicati a Wear OS, Apple Watch, iPhone e dashboard del companion Alexa; schermate Echo Show (APL) implementate nella skill ma attive solo dopo che il titolare abilita l’interfaccia APL ([azione del titolare](../alexa-companion/docs/ALEXA_SETUP.md#schermate-echo-show-apl--azione-del-titolare)). Le fasi Android 1–3 (app e widget) sono **applicate**: palette e testata del planner, navigazione `Pianifica / Partenze / Per te`, card della prossima partenza, dettaglio a timeline, barra laterale da 600 dp ed elenco più dettaglio da 840 dp. Le verifiche Swift e il rendering APL sui dispositivi sono, per ora, solo statici; le schermate Android sono verificate da test JVM, test strumentati su emulatore e lint in CI, non su telefoni, tablet o pieghevoli reali.
 
 ## Visione e rispetto del prodotto attuale
 
@@ -28,7 +28,7 @@ I token sono definiti **una volta per superficie** e i componenti li leggono da 
 
 | Superficie | Definizione dei token | Stato |
 |---|---|---|
-| Android app e widget | `app/src/main/java/it/binario/app/Theme.kt`, `app/src/main/res/values/colors.xml` | In applicazione su `feat/ux2-android` |
+| Android app e widget | `app/src/main/java/it/binario/app/Theme.kt`, `app/src/main/res/values/colors.xml` | Applicata |
 | Wear OS | `wear/src/main/java/it/binario/wear/WearTheme.kt` (`BinarioWearPalette` + `ColorScheme` Material 3 for Wear, colonna scura, sfondo nero); Tile e anteprime usano la stessa palette | Applicato |
 | Apple Watch | `apple-watch/BinarioWatch/Assets.xcassets` (`AccentColor` tinta globale, `BrandGreen`, `StatusWarning`, `StatusError`, valori scuri) letti da `BinarioPalette.swift` | Applicato, compilazione in CI |
 | iPhone | `ios/Resources/Assets.xcassets` (`AccentColor` tinta globale, `OnAccentColor`, `BrandGreen`, `StatusError`, chiaro e scuro) letti da `BinarioPalette.swift` | Applicato, compilazione in CI |
@@ -43,19 +43,19 @@ Mantenere i token convergenti senza introdurre asset di terzi.
 - **Partenze:** tratta attiva, cambio direzione, accesso alle corse, orario tabulare, destinazione, categoria/numero e binario; riga compatta e dettaglio contestuale.
 - **Per te:** tratte fissate, preferiti, viaggi attivi, sveglie, monitoraggi, tema, dati e privacy, esportazione locale, connessioni/integrazioni.
 
-**Nota di stato:** sul branch di base la barra Android è ancora `Cerca / Consulta / Impostazioni` (più `Agenda`). La nuova architettura `Pianifica / Partenze / Per te`, la testata «Dove andiamo?» e la qualità del dato sopra la lista di partenze sono **in applicazione** su `feat/ux2-android`; l’integratore aggiornerà questa nota quando quel branch sarà unito.
+**Nota di stato:** la barra Android `Cerca / Consulta / Agenda / Impostazioni` è stata sostituita da `Pianifica / Partenze / Per te` (l’Agenda è una sezione di Per te). La testata «Dove andiamo?» e la qualità del dato sopra la lista di partenze sono applicate.
 
 ## Layout per superficie
 
 | Superficie | Layout | Informazione dominante | Implementazione |
 |---|---|---|---|
-| Smartphone Android | Una colonna, bottom navigation | Ricerca → soluzioni → dettaglio | Fasi 1–2 in applicazione su `feat/ux2-android` |
-| Tablet portrait | Planner con scorciatoie laterali / rail | Confronto percorsi e preferiti | Fase 3, in applicazione su `feat/ux2-android` |
-| Tablet landscape | Due o tre pannelli, elenco+detail | Più corse e timeline | Fase 3, in applicazione su `feat/ux2-android` |
-| Foldable chiuso | Phone responsive | Pianifica e corsa | Fase 3, in applicazione su `feat/ux2-android` |
-| Foldable aperto | Doppio pannello | Elenco e dettaglio persistenti | Fase 3, in applicazione su `feat/ux2-android` |
-| Widget Android compatto | Due righe complete | Ora e destinazione | Implementato; palette in applicazione su `feat/ux2-android` |
-| Widget Android standard/espanso | Fino a cinque righe, paginazione | Tabellone tratta/stazione/treno | Implementato; palette in applicazione su `feat/ux2-android` |
+| Smartphone Android | Una colonna, bottom navigation | Ricerca → soluzioni → dettaglio | Fasi 1–2 applicate |
+| Tablet portrait | Planner con scorciatoie laterali / rail | Confronto percorsi e preferiti | Fase 3 applicata (larghezza ≥ 600 dp: barra laterale; ≥ 840 dp: elenco e dettaglio) |
+| Tablet landscape | Due o tre pannelli, elenco+detail | Più corse e timeline | Fase 3 applicata (larghezza ≥ 600 dp: barra laterale; ≥ 840 dp: elenco e dettaglio) |
+| Foldable chiuso | Phone responsive | Pianifica e corsa | Fase 3 applicata (larghezza ≥ 600 dp: barra laterale; ≥ 840 dp: elenco e dettaglio) |
+| Foldable aperto | Doppio pannello | Elenco e dettaglio persistenti | Fase 3 applicata (larghezza ≥ 600 dp: barra laterale; ≥ 840 dp: elenco e dettaglio) |
+| Widget Android compatto | Due righe complete | Ora e destinazione | Implementato; palette applicata con contrasto AA |
+| Widget Android standard/espanso | Fino a cinque righe, paginazione | Tabellone tratta/stazione/treno | Implementato; palette applicata con contrasto AA |
 | Wear OS | Prossimo treno, 2 righe, refresh al telefono | Ora, tratta, qualità dato | Tema verde Material 3 for Wear, Tile e anteprime con gli stessi token; funzionalità esistenti |
 | Apple Watch | Tratta, 2 corse, dettaglio, complication | Ora, destinazione, stato cache | Tinta globale e stati dal catalogo asset; funzionalità esistenti; la complication mantiene lo stile del quadrante |
 | iPhone | Planner, tratte salvate, impostazioni | Ricerca e risultati programmati | Tinta globale verde chiaro/scuro, pulsante principale e messaggi di errore AA; funzionalità esistenti |
@@ -97,9 +97,9 @@ Coerenza di nomi e stato con la home Android. Su orologi: lettura in pochi secon
 
 ## Roadmap
 
-- **Fase 1:** verde condiviso accessibile. **Applicata** su Wear OS, Apple Watch, iPhone e dashboard del companion Alexa (`feat/ux2-clients`); **in applicazione** su app e widget Android, con testata planner e indicatore di origine dati più in alto (`feat/ux2-android`).
-- **Fase 2:** estrarre composable da `MainActivity.kt`, nuova navigation `Pianifica/Partenze/Per te`, card hero e dettaglio timeline. In applicazione su `feat/ux2-android`.
-- **Fase 3:** adattamento tablet/foldable, polish widget e companion, test visual regression. Parte Android in applicazione su `feat/ux2-android`.
+- **Fase 1:** verde condiviso accessibile. **Applicata** su Wear OS, Apple Watch, iPhone e dashboard del companion Alexa (`feat/ux2-clients`); **applicata** su app e widget Android, con testata planner e indicatore di origine dati più in alto.
+- **Fase 2:** estrarre composable da `MainActivity.kt`, nuova navigation `Pianifica/Partenze/Per te`, card hero e dettaglio timeline. **Applicata** su Android.
+- **Fase 3:** adattamento tablet/foldable, polish widget e companion, test visual regression. Parte Android **applicata** (rail e doppio pannello); test di regressione visiva non ancora presenti.
 - **Fase 4:** Echo Show APL. **Implementata** nella skill (`feat/ux2-clients`), attiva solo quando il titolare abilita l’interfaccia APL in console (o distribuisce il manifest che la dichiara); verifica con simulatore e hardware ancora da fare. Solo successivamente valutare ulteriori form factor.
 - **Dipendenza esterna:** live ferroviario solo da provider documentato/autorizzato.
 

@@ -12,6 +12,11 @@ import it.binario.app.data.core.StationBoardEntry
 import it.binario.app.data.core.StationId
 import it.binario.app.data.core.TrainRunId
 import it.binario.app.data.StopRouteChange
+import it.binario.app.ui.departures.OperationsSection
+import it.binario.app.ui.departures.OperationsSectionCard
+import it.binario.app.ui.departures.StationBoardEntryRow
+import it.binario.app.ui.detail.StopTimelinePosition
+import it.binario.app.ui.detail.StopTimelineRow
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import org.junit.Rule
@@ -33,6 +38,20 @@ class MainScreenAccessibilityTest {
         }
         composeRule.onNodeWithText("Stato operativo non verificato").fetchSemanticsNode()
         composeRule.onNodeWithContentDescription("Roma Ostiense. Programmato 14:30. Stato operativo non verificato. Binario non disponibile.")
+            .fetchSemanticsNode()
+    }
+
+    @Test
+    fun theNextStopOfTheTimelineIsNamedInTextNotOnlyByColour() {
+        composeRule.setContent {
+            BinarioTheme {
+                StopTimelineRow("Roma Ostiense", "14:30", "14:30", 0, null, false,
+                    operationalStatusVerified = false, routeChange = StopRouteChange.NONE, onSetAlarm = {},
+                    position = StopTimelinePosition.NEXT, isFirst = false, isLast = true)
+            }
+        }
+        composeRule.onNodeWithText("Prossima fermata").fetchSemanticsNode()
+        composeRule.onNodeWithContentDescription("Prossima fermata. Roma Ostiense. Programmato 14:30. Stato operativo non verificato. Binario non disponibile.")
             .fetchSemanticsNode()
     }
 

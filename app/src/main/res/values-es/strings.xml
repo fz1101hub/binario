@@ -88,33 +88,20 @@
     <string name="widget_column_platform">AND.</string>
     <string name="widget_column_status">ESTADO</string>
     <string name="shortcut_active_route">Ruta activa</string>
-    <string name="shortcut_next_departures">Próximos servicios</string>
+    <string name="shortcut_next_departures">Próximas salidas</string>
     <string name="shortcut_train_search">Buscar tren</string>
 
     <!-- Main app shell and primary journey planner. -->
     <string name="app_brand">BINARIO</string>
-    <string name="screen_title_planner">Buscar y consultar</string>
-    <string name="screen_title_operations">Consultar</string>
-    <string name="screen_title_settings">Ajustes</string>
     <string name="screen_title_results">Opciones</string>
     <string name="screen_title_detail">Detalle del servicio</string>
     <string name="screen_title_agenda">Agenda</string>
-    <string name="screen_subtitle_planner">Planifica tu próximo viaje</string>
-    <string name="screen_subtitle_operations">Trenes y estaciones</string>
-    <string name="screen_subtitle_settings">Preferencias y datos personales</string>
     <string name="screen_subtitle_results">Servicios disponibles</string>
-    <string name="screen_subtitle_detail">Estado y paradas</string>
     <string name="screen_subtitle_agenda">Viajes planificados en el dispositivo</string>
-    <string name="nav_search">Buscar</string>
-    <string name="nav_operations">Consultar</string>
-    <string name="nav_settings">Ajustes</string>
-    <string name="nav_agenda">Agenda</string>
     <string name="action_back">Volver</string>
     <string name="action_choose_theme">Elegir tema. Tema actual: %1$s</string>
     <string name="action_refresh_rail_information">Actualizar la información ferroviaria</string>
-    <string name="planner_title">Planificar viaje</string>
-    <string name="planner_description">Busca las próximas opciones por ruta, día y hora.</string>
-    <string name="search_mode_route">Ruta</string>
+    <string name="search_mode_route">Viaje</string>
     <string name="search_mode_train">N.º de tren</string>
     <string name="search_mode_station">Estación</string>
     <string name="operations_section_trains">Trenes</string>
@@ -123,8 +110,6 @@
     <string name="operations_section_stations_subtitle">Llegadas y salidas</string>
     <string name="accessibility_section_selected">Seleccionada</string>
     <string name="accessibility_section_not_selected">No seleccionada</string>
-    <string name="action_new_search">Nueva búsqueda</string>
-    <string name="action_plan_route">Planificar ruta</string>
 
     <!-- Local-only planned journeys. These records never alter SavedRoute or live rail data. -->
     <string name="planned_journey_description">Crea un recordatorio de viaje personal y consulta sus ocurrencias.</string>
@@ -167,9 +152,9 @@
     <string name="planned_journey_close">Cerrar</string>
 
     <!-- Data provenance and operational-state announcements. -->
-    <string name="data_status_demo">Catálogo de demostración local, no en tiempo real</string>
+    <string name="data_status_demo">Catálogo de demostración local — no en tiempo real</string>
     <string name="data_status_live">Datos en tiempo real: %1$s</string>
-    <string name="data_status_unavailable">Datos en tiempo real no disponibles</string>
+    <string name="data_status_unavailable">Datos no disponibles en tiempo real</string>
     <string name="accessibility_data_status">Estado de los datos: %1$s. Fuente: %2$s. Calidad: %3$s. %4$s%5$s</string>
     <string name="accessibility_open_service">Abrir detalle. %1$s. %2$s</string>
     <string name="service_state_scheduled">Horario programado; estado en tiempo real no disponible</string>
@@ -304,12 +289,9 @@
     <string name="today_empty_title">No hay salidas que mostrar</string>
 
     <!-- Settings, privacy and integrations. -->
-    <string name="settings_title">Ajustes</string>
-    <string name="settings_description">Gestiona preferencias, viajes personales e integraciones de Binario.</string>
     <string name="settings_appearance">Apariencia</string>
     <string name="settings_theme_title">Tema de la aplicación</string>
     <string name="settings_theme_description">Sistema, claro u oscuro</string>
-    <string name="settings_personal_journeys">Viajes personales</string>
     <string name="settings_personal_journeys_description">Las rutas fijadas siguen disponibles también en el widget. Toca una ruta para activarla.</string>
     <string name="settings_add_route">Añadir una ruta</string>
     <string name="settings_integrations">Integraciones</string>
@@ -321,6 +303,31 @@
     <string name="settings_privacy_local_data">Las rutas, favoritos, seguimientos, alertas, widgets y el historial de puntualidad permanecen en el dispositivo. El historial de puntualidad guarda, solo en el teléfono y durante 90 días como máximo, la fecha, el número, el operador, el retraso y la supresión de los trenes abiertos con datos operativos o seguidos. El historial de un tren se borra desde su tarjeta de Puntualidad, visible a partir de la segunda observación; borrar los datos de la aplicación elimina todo el historial. Se excluyen la copia de seguridad y la transferencia de Android; el archivo JSON se exporta solo si lo eliges. La ubicación sirve únicamente para ordenar las estaciones cercanas y, si activas la alarma GPS, para saber cuándo estás cerca de la parada: se procesa solo en memoria y no se conserva ni se envía a las fuentes ferroviarias ni a nadie más.</string>
     <string name="settings_privacy_notifications_voice">Las notificaciones son recordatorios locales. El dictado usa el reconocedor del sistema: Binario no graba audio y usa solo el texto devuelto. Las búsquedas de RFI envían a la fuente el identificador público de la estación de salida; las fuentes personales opcionales pueden recibir un identificador o el nombre de la estación. Sin una fuente autorizada: datos en tiempo real no disponibles. ViaggiaTreno usa HTTP para su API pública: las consultas de estación, hora y tren no están cifradas. Las demás fuentes usan HTTPS.</string>
     <string name="settings_privacy_wear">Si activas el smartwatch, recibe un resumen de la ruta y hasta dos servicios. Desactivar el uso compartido elimina el DataItem y la caché local del reloj al recibir la revocación. La información completa está en PRIVACY.md del repositorio. Antes de una distribución pública faltan una URL verificada y un contacto de privacidad: aún no existe un enlace público en la aplicación.</string>
+    <!-- Binario 2.0 UX (October 2026) -->
+    <string name="planner_headline">¿Adónde vamos?</string>
+    <string name="planner_subtitle">Busca una ruta, un número de tren o una estación.</string>
+    <string name="data_status_quality">Calidad del dato: %1$s</string>
+    <string name="data_status_cached">Copia guardada, no en tiempo real: %1$s</string>
+    <string name="nav_plan">Planificar</string>
+    <string name="nav_departures">Salidas</string>
+    <string name="nav_for_you">Para ti</string>
+    <string name="departures_subtitle">Ruta activa y paneles de estación</string>
+    <string name="for_you_subtitle">Rutas, viajes, avisos y preferencias</string>
+    <string name="departures_next_departure">Próxima salida</string>
+    <string name="route_picker_title">Elegir la ruta</string>
+    <string name="route_picker_empty">Ninguna ruta guardada. Añade una en Para ti.</string>
+    <string name="route_picker_manage">Gestionar rutas</string>
+    <string name="for_you_saved_routes">Rutas guardadas</string>
+    <string name="for_you_alarms">Alarmas y avisos</string>
+    <string name="for_you_stop_alarm_hint">Las alarmas de parada, también por GPS, se configuran desde una parada en el detalle de un tren.</string>
+    <string name="for_you_credits">Créditos y licencias</string>
+    <string name="action_follow_trip">Seguir viaje</string>
+    <string name="action_save">Guardar</string>
+    <string name="action_saved">Guardado</string>
+    <string name="action_share">Compartir</string>
+    <string name="detail_save_hint">Guardar añade el tren a los trenes seguidos en Para ti; Seguir viaje guarda la próxima parada solo en este dispositivo.</string>
+    <string name="stop_position_passed">Parada superada</string>
+    <string name="detail_pane_placeholder">Selecciona un tren para ver aquí su detalle.</string>
     <string name="settings_privacy_osm">Autocompletado nacional: © OpenStreetMap contributors, ODbL 1.0. El catálogo geográfico sugiere nombres de estaciones, pero no confirma servicio, horario, andén, retraso ni circulación.</string>
     <!-- Open maps (October 2026) -->
     <string name="map_attribution">OpenFreeMap © OpenMapTiles, datos © colaboradores de OpenStreetMap</string>
@@ -448,14 +455,9 @@
     <string name="service_scheduled_departure">Programada: %1$s</string>
     <string name="service_stops_title">Paradas</string>
     <string name="service_data_summary">%1$s · %2$s · %3$s</string>
-    <string name="accessibility_share_service">Compartir detalles del tren con las aplicaciones del sistema</string>
     <string name="accessibility_refresh_service">Actualizar detalle del servicio</string>
-    <string name="accessibility_monitor_service">Seguir este tren</string>
-    <string name="accessibility_stop_monitoring_service">Eliminar seguimiento del tren</string>
     <string name="active_trip_title">Viaje activo</string>
-    <string name="follow_trip_title">Seguir este viaje</string>
     <string name="follow_trip_description">Conserva localmente la próxima parada y avánzala de forma manual.</string>
-    <string name="action_start_trip">Iniciar viaje</string>
     <string name="stop_alarm_notice">La alarma es local y se basa en el horario mostrado. Para cambios operativos, consulta siempre los paneles y anuncios oficiales.</string>
 
     <string name="stop_change_added_accessibility">Parada añadida al recorrido operativo.</string>

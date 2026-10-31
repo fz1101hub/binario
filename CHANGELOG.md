@@ -2,7 +2,7 @@
 
 ## In sviluppo — Binario 2.0 UI/UX sui client non Android
 
-- Design system Binario 2.0 ([design/BINARIO_2_DESIGN_SYSTEM.md](design/BINARIO_2_DESIGN_SYSTEM.md)) e prototipo Echo offline portati dal branch di design, con lo stato reale di ogni superficie; le fasi Android sono in applicazione su un branch separato.
+- Design system Binario 2.0 ([design/BINARIO_2_DESIGN_SYSTEM.md](design/BINARIO_2_DESIGN_SYSTEM.md)) e prototipo Echo offline portati dal branch di design, con lo stato reale di ogni superficie; sull’app Android sono applicate le fasi 1–3: palette e testata del planner, navigazione Pianifica / Partenze / Per te con card della prossima partenza e dettaglio a timeline, barra laterale e doppio pannello su tablet e pieghevoli.
 - Wear OS: tema verde unico (`WearTheme.kt`, `ColorScheme` Material 3 for Wear con i token scuri su sfondo nero), titoli in `colorScheme.primary`, Tile, icona e anteprime con gli stessi token; contrasto AA verificato da test.
 - Apple Watch e iPhone: token nei cataloghi asset (chiaro/scuro su iPhone), `AccentColor` applicato come tinta globale; su iPhone etichetta del pulsante di ricerca e messaggi di errore AA in entrambe le modalità, su Apple Watch stato del dato con i token verde/attenzione/errore e sempre anche in testo.
 - Dashboard del companion Alexa: palette verde al posto del blu del template.
