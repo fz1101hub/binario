@@ -41,6 +41,7 @@ import androidx.compose.ui.graphics.vector.addPathNodes
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -78,6 +79,8 @@ internal fun ScreenHeader(
     overline: String? = null,
     subtitle: String? = null,
     bottomPadding: Dp = 20.dp,
+    /** Read instead of [title] when the title is a shortened form (the full station names). */
+    titleDescription: String? = null,
     trailing: (@Composable () -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit = {}
 ) {
@@ -86,7 +89,10 @@ internal fun ScreenHeader(
         overline?.let { HeaderOverline(it) }
         Text(
             title,
-            modifier = Modifier.semantics { heading() },
+            modifier = Modifier.semantics {
+                heading()
+                titleDescription?.let { contentDescription = it }
+            },
             style = if (wide) MaterialTheme.typography.headlineSmall else MaterialTheme.typography.headlineMedium
         )
         if (subtitle != null || trailing != null) {
@@ -358,7 +364,9 @@ internal fun NavigationRow(
     icon: ImageVector,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    detail: String? = null
+    detail: String? = null,
+    /** The chevron of an in-app screen; a link that leaves the app shows "open in new" instead. */
+    trailingIcon: ImageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight
 ) {
     Row(
         modifier
@@ -373,7 +381,7 @@ internal fun NavigationRow(
             Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
             detail?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
         }
-        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        Icon(trailingIcon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 

@@ -23,7 +23,9 @@ internal enum class AppScreen(val destination: TopDestination?) {
     SETTINGS(TopDestination.FOR_YOU),
     /** One group of settings opened from "Impostazioni" (alerts, widgets, data, language, information). */
     SETTINGS_SECTION(TopDestination.FOR_YOU),
-    DETAIL(null)
+    DETAIL(null),
+    /** An option of the journeys-with-changes search, opened from the route results. */
+    JOURNEY_DETAIL(TopDestination.PLAN)
 }
 
 /** Width classes of the Material guidance, computed from the window width in dp. */
@@ -61,6 +63,7 @@ internal object AppNavigation {
     fun back(screen: AppScreen, detailParent: AppScreen): AppScreen? = when (screen) {
         AppScreen.DETAIL -> detailParent.takeIf { it != AppScreen.DETAIL } ?: AppScreen.PLANNER
         AppScreen.RESULTS, AppScreen.NUMBER_RESULTS -> AppScreen.PLANNER
+        AppScreen.JOURNEY_DETAIL -> AppScreen.RESULTS
         AppScreen.AGENDA, AppScreen.SETTINGS -> AppScreen.FOR_YOU
         AppScreen.SETTINGS_SECTION -> AppScreen.SETTINGS
         AppScreen.PLANNER, AppScreen.DEPARTURES, AppScreen.FOR_YOU -> null
@@ -71,7 +74,7 @@ internal object AppNavigation {
      * action at the bottom (as in the approved render); from 600 dp the side navigation is always visible.
      */
     fun showsNavigation(screen: AppScreen, widthClass: WidthClass): Boolean =
-        widthClass != WidthClass.COMPACT || screen != AppScreen.DETAIL
+        widthClass != WidthClass.COMPACT || screen !in DETAIL_SCREENS
 
     /** Screens whose rail data is refreshed every 30 seconds while visible. */
     fun refreshesPeriodically(screen: AppScreen): Boolean =
@@ -83,7 +86,11 @@ internal object AppNavigation {
      */
     fun listPaneOf(screen: AppScreen, detailParent: AppScreen, widthClass: WidthClass): AppScreen? {
         if (widthClass != WidthClass.EXPANDED) return null
-        val list = if (screen == AppScreen.DETAIL) detailParent else screen
+        val list = when (screen) {
+            AppScreen.DETAIL -> detailParent
+            AppScreen.JOURNEY_DETAIL -> AppScreen.RESULTS
+            else -> screen
+        }
         return list.takeIf { it in TWO_PANE_LISTS }
     }
 
@@ -94,6 +101,8 @@ internal object AppNavigation {
         is BinarioDeepLink.TrainSearch -> NavigationTarget(AppScreen.PLANNER, plannerMode = SearchMode.TRAIN)
         is BinarioDeepLink.FavouriteTrain -> NavigationTarget(AppScreen.NUMBER_RESULTS)
     }
+
+    private val DETAIL_SCREENS = setOf(AppScreen.DETAIL, AppScreen.JOURNEY_DETAIL)
 
     private val TWO_PANE_LISTS = setOf(AppScreen.DEPARTURES, AppScreen.RESULTS, AppScreen.NUMBER_RESULTS)
 }

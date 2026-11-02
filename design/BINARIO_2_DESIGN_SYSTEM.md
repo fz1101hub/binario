@@ -77,11 +77,11 @@ Mantenere i token convergenti senza introdurre asset di terzi.
 
 ## Differenze volute rispetto al render (Android)
 
-- **Cambi:** la ricerca di Binario restituisce corse dirette; i risultati mostrano «Diretto» e mostrano «N cambi» solo se la fonte pubblica dei cambi. I filtri sono quelli che i dati supportano: categorie presenti (Regionali / Intercity / Frecce / Italo) e ordine «Più veloce» / «Orario»; «Meno cambi» non è offerto.
+- **Cambi:** i risultati uniscono per orario di partenza i treni diretti della ricerca (live o catalogo) e i viaggi con cambi calcolati offline sugli orari GTFS inclusi, ciascuno con la propria fonte; i viaggi con cambi esistono solo dove le reti incluse coprono entrambe le stazioni e sono sempre orari programmati. I filtri sono quelli del render: «Tutti», «Diretti», «Meno cambi», «Più veloce».
 - **Binari, ritardi, orari previsti:** con il catalogo dimostrativo restano «Binario —» e l'etichetta «Catalogo dimostrativo locale — non live».
 - **Foto del treno:** dove il render mostra una fotografia, l'app mostra la mappa del percorso (MapLibre / OpenFreeMap); nessuna immagine di terzi.
-- **Titoli:** le tratte usano i nomi delle stazioni («Roma Termini → Torino Porta Nuova»), non quelli abbreviati delle città.
-- **Suggerisci una stazione:** non presente, l'app non ha questa funzione.
+- **Titoli:** Risultati e dettagli usano la forma breve «Roma → Torino» (città del catalogo o rimozione prudente della designazione della stazione principale); restano i nomi completi quando le due stazioni sono nella stessa città, e TalkBack legge sempre i nomi completi.
+- **Suggerisci una stazione:** apre nel browser il modulo pubblico delle segnalazioni del progetto su GitHub (nessun indirizzo e-mail di contatto); l'icona «apri all'esterno» sostituisce la freccia.
 - **Partenze:** l'interruttore «Treni | Stazioni» resta nella testata perché il tabellone di stazione fa parte della stessa destinazione.
 
 ## Stati e contenuti obbligatori

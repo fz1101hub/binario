@@ -46,6 +46,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -74,6 +75,9 @@ import it.binario.app.data.TrainStop
 import it.binario.app.gpsalarm.GpsArrivalAlarmPanel
 import it.binario.app.gpsalarm.StopAlarmOptionsDialog
 import it.binario.app.gpsalarm.rememberGpsArrivalAlarmFlow
+import it.binario.app.journeys.JourneyOptionRow
+import it.binario.app.journeys.JourneyResultsPresenter
+import it.binario.app.journeys.JourneySearchViewModel
 import it.binario.app.maps.rememberOpenMapStationIndex
 import it.binario.app.plannedjourney.PlannedJourneyAgendaScreen
 import it.binario.app.plannedjourney.PlannedJourneyExportFormat
@@ -100,6 +104,8 @@ import it.binario.app.ui.departures.StationBoardRunDetailsPane
 import it.binario.app.ui.detail.ServiceDetailScreen
 import it.binario.app.ui.detail.trainShareStrings
 import it.binario.app.ui.foryou.ForYouScreen
+import it.binario.app.ui.journeys.JourneyDetailScreen
+import it.binario.app.ui.planner.JourneyRequest
 import it.binario.app.ui.planner.PlannerScreen
 import it.binario.app.ui.planner.ResultsMapPane
 import it.binario.app.ui.planner.RouteResultsScreen
@@ -202,9 +208,12 @@ internal fun BinarioApp(
     onThemeModeChange: (AppThemeMode) -> Unit,
     deepLinkRequest: DeepLinkRequest?,
     onDeepLinkConsumed: (Long) -> Unit,
-    onSystemBarsAppearance: (lightStatusBar: Boolean, lightNavigationBar: Boolean) -> Unit
+    onSystemBarsAppearance: (lightStatusBar: Boolean, lightNavigationBar: Boolean) -> Unit,
+    /** Journeys with changes, a separate search next to the direct trains of [viewModel]. */
+    journeyViewModel: JourneySearchViewModel = viewModel(factory = JourneySearchViewModel.factory(LocalContext.current.applicationContext))
 ) {
     var screen by rememberSaveable { mutableStateOf(AppScreen.PLANNER) }
+    var selectedJourneyId by rememberSaveable { mutableStateOf<String?>(null) }
     var detailReturnScreen by rememberSaveable { mutableStateOf(AppScreen.RESULTS) }
     var operationsSectionName by rememberSaveable { mutableStateOf(OperationsSection.TRAINS.name) }
     var plannerSearchModeName by rememberSaveable { mutableStateOf(SearchMode.ROUTE.name) }
@@ -332,6 +341,23 @@ internal fun BinarioApp(
     fun showScreen(target: AppScreen) {
         if (screen == AppScreen.DETAIL && target != AppScreen.DETAIL) viewModel.closeService()
         screen = target
+    }
+    val journeyState by journeyViewModel.state.collectAsState()
+    // The journeys with changes are searched next to the direct trains whenever the route results are on screen
+    // (alone, beside a detail, or under a detail opened from them), from any path that leads there: planner, recent
+    // routes, saved routes. The direct-train search and its sources are left exactly as they are.
+    val showingRouteResults = screen == AppScreen.RESULTS || screen == AppScreen.JOURNEY_DETAIL ||
+        (screen == AppScreen.DETAIL && detailReturnScreen == AppScreen.RESULTS)
+    val journeyRequest = JourneyRequest.of(viewModel)
+    LaunchedEffect(showingRouteResults, journeyRequest?.key) {
+        val request = journeyRequest ?: return@LaunchedEffect
+        if (showingRouteResults && request.needsSearch(journeyViewModel.state.value.query)) {
+            journeyViewModel.searchJourneys(request.origin, request.destination, request.departure.toLocalDate(), request.departure.toLocalTime())
+        }
+    }
+    fun openJourney(row: JourneyOptionRow) {
+        selectedJourneyId = row.id
+        showScreen(AppScreen.JOURNEY_DETAIL)
     }
     fun openDetail(parent: AppScreen, open: () -> Unit) {
         detailReturnScreen = parent
@@ -540,12 +566,31 @@ internal fun BinarioApp(
             AppScreen.RESULTS -> RouteResultsScreen(
                 modifier = modifier,
                 viewModel = viewModel,
+                journeys = journeyState,
                 openDetails = { service -> openDetail(AppScreen.RESULTS) { viewModel.openService(service) } },
+                openJourney = ::openJourney,
+                retryJourneys = journeyViewModel::retry,
                 editSearch = { showScreen(AppScreen.PLANNER) },
                 selectedServiceId = if (inSidePane) {
-                    viewModel.selectedService?.id.takeIf { screen == AppScreen.DETAIL } ?: viewModel.currentServices().firstOrNull()?.id
-                } else null
+                    viewModel.selectedService?.id.takeIf { screen == AppScreen.DETAIL }
+                        ?: viewModel.currentServices().firstOrNull()?.id.takeIf { screen != AppScreen.JOURNEY_DETAIL }
+                } else null,
+                selectedJourneyId = selectedJourneyId.takeIf { inSidePane && screen == AppScreen.JOURNEY_DETAIL }
             )
+            AppScreen.JOURNEY_DETAIL -> {
+                val row = remember(journeyState.result, selectedJourneyId) {
+                    journeyState.result?.let { result -> JourneyResultsPresenter.present(result).rows.firstOrNull { it.id == selectedJourneyId } }
+                }
+                if (row == null) {
+                    // The journeys are kept in memory only: after process death the detail returns to the results.
+                    LaunchedEffect(selectedJourneyId) { screen = AppScreen.RESULTS }
+                } else JourneyDetailScreen(
+                    modifier = modifier,
+                    row = row,
+                    origin = journeyState.query?.origin,
+                    destination = journeyState.query?.destination
+                )
+            }
             AppScreen.NUMBER_RESULTS -> HeaderedPane(
                 modifier = modifier,
                 title = stringResource(R.string.train_number_results_title),
@@ -587,6 +632,7 @@ internal fun BinarioApp(
                     punctuality = viewModel.punctualityStats(service),
                     onClearPunctuality = { viewModel.clearPunctualityHistory(service.number) },
                     mapStationIndex = rememberOpenMapStationIndex(viewModel.stations, viewModel::stationFromName),
+                    stationLookup = viewModel::stationFromName,
                     sourceSections = { TrainDetailSourceSections(service, viewModel.stations) },
                     onShare = shareSelectedService,
                     showShareButton = inSidePane
@@ -635,7 +681,7 @@ internal fun BinarioApp(
                     Icon(Icons.Default.Share, contentDescription = stringResource(R.string.action_share))
                 }
             }
-            AppScreen.AGENDA, AppScreen.SETTINGS, AppScreen.SETTINGS_SECTION -> Unit
+            AppScreen.AGENDA, AppScreen.SETTINGS, AppScreen.SETTINGS_SECTION, AppScreen.JOURNEY_DETAIL -> Unit
         }
     }
 
@@ -687,6 +733,7 @@ internal fun BinarioApp(
                                         val previewService = viewModel.currentServices().firstOrNull()
                                         when {
                                             screen == AppScreen.DETAIL -> screenContent(AppScreen.DETAIL, Modifier.fillMaxSize(), true)
+                                            screen == AppScreen.JOURNEY_DETAIL -> screenContent(AppScreen.JOURNEY_DETAIL, Modifier.fillMaxSize(), true)
                                             listPane == AppScreen.DEPARTURES && operationsSection == OperationsSection.STATIONS &&
                                                 viewModel.selectedBoardEntry != null ->
                                                 StationBoardRunDetailsPane(Modifier.fillMaxSize(), viewModel)

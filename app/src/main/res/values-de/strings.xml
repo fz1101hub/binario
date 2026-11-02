@@ -328,6 +328,8 @@
     </plurals>
     <string name="journey_arrival_next_day">am Folgetag</string>
     <string name="journey_leg_replacement_bus">Ersatzbus</string>
+    <string name="journey_leg_bus">Bus</string>
+    <string name="journey_leg_walk">Zu Fuß</string>
     <string name="journey_source_offline">Offline-Sollfahrplan (GTFS Open Data)</string>
     <string name="journey_scheduled_only_notice">Planmäßige Zeiten: Verspätungen, Gleise und Ausfälle sind nicht geprüft. Bitte die Anzeigen im Bahnhof beachten.</string>
     <string name="journey_coverage_notice">Auf dem Telefon mit den in der App enthaltenen Fahrplänen berechnet, nur für die abgedeckten Netze: Lombardei, Südtirol, Trentino, EAV, ARST, TFT, Schweiz, Österreich, Frankreich und Kroatien. Andere Züge können fehlen.</string>
@@ -1071,8 +1073,6 @@
     <string name="service_scheduled_arrival">Planmäßige Ankunft %1$s</string>
     <string name="service_duration_accessible">Fahrtdauer %1$s</string>
     <string name="action_modify_search">Ändern</string>
-    <string name="results_order_fastest">Schnellste</string>
-    <string name="results_order_departure">Nach Uhrzeit</string>
     <string name="service_group_regional">Regionalzüge</string>
     <string name="service_group_frecce">Frecce</string>
     <string name="service_group_italo">Italo</string>
@@ -1135,9 +1135,9 @@
     <string name="settings_language_open">Sprache in den Systemeinstellungen wählen</string>
     <string name="settings_language_system">Auf dieser Android-Version folgt die App-Sprache der Systemsprache.</string>
     <string name="settings_about_version">Version %1$s</string>
-    <plurals name="duration_hours">
-        <item quantity="one">%d Stunde</item>
-        <item quantity="other">%d Stunden</item>
-    </plurals>
     <string name="results_map_notice">Die Karte öffnet sich nur auf Wunsch: Zum Zeichnen lädt die App die Kacheln des Streckengebiets von OpenFreeMap.</string>
+    <string name="journey_source_title">Quelle</string>
+    <string name="settings_suggest_station">Bahnhof vorschlagen</string>
+    <string name="settings_suggest_station_detail">Öffnet das öffentliche Meldeformular des Projekts im Browser (GitHub)</string>
+    <string name="settings_suggest_station_issue_title">Bahnhofsvorschlag:</string>
 </resources>

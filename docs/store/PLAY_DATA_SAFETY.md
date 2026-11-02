@@ -182,6 +182,7 @@ La tabella copre ogni host `http(s)://` trovato in `app/src/main/java`, `wear/sr
 
 | Host | Categoria | Ruolo |
 |---|---|---|
+| `github.com` | F | Modulo pubblico delle segnalazioni del progetto, aperto da Impostazioni → Suggerisci una stazione (`ProjectLinks.kt`) |
 | `open-meteo.com` | F | Attribuzione CC BY 4.0 della previsione e condizioni d'uso nel catalogo fonti (`OpenMeteoForecastAdapter.kt`, `RailSourceCatalog.kt`) |
 | `scioperi.mit.gov.it` | F | Calendario scioperi del Ministero delle infrastrutture e dei trasporti, dall'area avvisi (`data/notices/RailExternalLinks.kt`) |
 

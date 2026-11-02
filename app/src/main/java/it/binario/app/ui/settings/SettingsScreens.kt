@@ -22,6 +22,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
+import androidx.compose.material.icons.filled.AddLocationAlt
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Language
@@ -53,6 +55,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -71,6 +74,7 @@ import it.binario.app.CommuterAlertScheduler
 import it.binario.app.IntegrationSettings
 import it.binario.app.LocalDataBackupCodec
 import it.binario.app.MobilityPreferences
+import it.binario.app.ProjectLinks
 import it.binario.app.R
 import it.binario.app.SourcesSettingsPanel
 import it.binario.app.TrainViewModel
@@ -78,6 +82,7 @@ import it.binario.app.VoiceProfileSyncReadiness
 import it.binario.app.gpsalarm.GpsArrivalAlarmFlow
 import it.binario.app.gpsalarm.GpsArrivalAlarmPanel
 import it.binario.app.localizedLabel
+import it.binario.app.openExternalLink
 import it.binario.app.resolve
 import it.binario.app.ui.common.BinarioCard
 import it.binario.app.ui.common.HeaderOverlapBox
@@ -95,8 +100,20 @@ import kotlinx.coroutines.withContext
 
 // Impostazioni: the theme and the existing settings grouped in the rows of the approved render.
 
-/** The groups of "Impostazioni". A station suggestion row is not offered: the app has no such feature. */
+/** The groups of "Impostazioni"; "Suggerisci una stazione" is a link row of the screen, not a group. */
 internal enum class SettingsSection { ALERTS, WIDGETS, DATA, LANGUAGE, ABOUT }
+
+/** A row of "Impostazioni": a group of settings, or the station suggestion that opens in the browser. */
+internal sealed interface SettingsRow {
+    data class Group(val section: SettingsSection) : SettingsRow
+    data object SuggestStation : SettingsRow
+}
+
+/** The cards of "Impostazioni" below the theme, as in the render: the four groups, then the suggestion and "Informazioni". */
+internal val SETTINGS_CARDS: List<List<SettingsRow>> = listOf(
+    listOf(SettingsSection.ALERTS, SettingsSection.WIDGETS, SettingsSection.DATA, SettingsSection.LANGUAGE).map { SettingsRow.Group(it) },
+    listOf(SettingsRow.SuggestStation, SettingsRow.Group(SettingsSection.ABOUT))
+)
 
 @Composable
 internal fun SettingsSection.title(): String = stringResource(
@@ -158,29 +175,33 @@ internal fun SettingsScreen(
                 }
             }
         }
-        item {
-            BinarioCard(Modifier.padding(horizontal = ScreenMargin, vertical = 12.dp)) {
-                listOf(SettingsSection.ALERTS, SettingsSection.WIDGETS, SettingsSection.DATA, SettingsSection.LANGUAGE).forEachIndexed { index, section ->
-                    if (index > 0) RowDivider()
-                    NavigationRow(
-                        title = section.title(),
-                        detail = section.detail(),
-                        icon = section.icon,
-                        onClick = { openSection(section) },
-                        modifier = Modifier.testTag("settings-${section.name.lowercase(java.util.Locale.ROOT)}")
-                    )
+        SETTINGS_CARDS.forEachIndexed { cardIndex, rows ->
+            item {
+                val uriHandler = LocalUriHandler.current
+                val issueTitle = stringResource(R.string.settings_suggest_station_issue_title)
+                BinarioCard(Modifier.padding(horizontal = ScreenMargin).padding(top = if (cardIndex == 0) 12.dp else 0.dp, bottom = 12.dp)) {
+                    rows.forEachIndexed { index, row ->
+                        if (index > 0) RowDivider()
+                        when (row) {
+                            is SettingsRow.Group -> NavigationRow(
+                                title = row.section.title(),
+                                detail = row.section.detail(),
+                                icon = row.section.icon,
+                                onClick = { openSection(row.section) },
+                                modifier = Modifier.testTag("settings-${row.section.name.lowercase(java.util.Locale.ROOT)}")
+                            )
+                            // The project has no e-mail contact: the row opens its public issue form with a prefilled title.
+                            SettingsRow.SuggestStation -> NavigationRow(
+                                title = stringResource(R.string.settings_suggest_station),
+                                detail = stringResource(R.string.settings_suggest_station_detail),
+                                icon = Icons.Default.AddLocationAlt,
+                                onClick = { openExternalLink(uriHandler, ProjectLinks.newIssue("$issueTitle ")) },
+                                modifier = Modifier.testTag("settings-suggest-station"),
+                                trailingIcon = Icons.AutoMirrored.Filled.OpenInNew
+                            )
+                        }
+                    }
                 }
-            }
-        }
-        item {
-            BinarioCard(Modifier.padding(horizontal = ScreenMargin)) {
-                NavigationRow(
-                    title = SettingsSection.ABOUT.title(),
-                    detail = SettingsSection.ABOUT.detail(),
-                    icon = SettingsSection.ABOUT.icon,
-                    onClick = { openSection(SettingsSection.ABOUT) },
-                    modifier = Modifier.testTag("settings-about")
-                )
             }
         }
         item { Spacer(Modifier.height(24.dp)) }

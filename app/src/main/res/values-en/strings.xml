@@ -328,6 +328,8 @@
     </plurals>
     <string name="journey_arrival_next_day">next day</string>
     <string name="journey_leg_replacement_bus">Replacement bus</string>
+    <string name="journey_leg_bus">Bus</string>
+    <string name="journey_leg_walk">On foot</string>
     <string name="journey_source_offline">Offline scheduled timetable (GTFS open data)</string>
     <string name="journey_scheduled_only_notice">Scheduled times: delays, platforms and cancellations are not checked. Check the station displays.</string>
     <string name="journey_coverage_notice">Calculated on the phone with the timetables included in the app, only for the networks they cover: Lombardy, South Tyrol, Trentino, EAV, ARST, TFT, Switzerland, Austria, France and Croatia. Other trains may be missing.</string>
@@ -1071,8 +1073,6 @@
     <string name="service_scheduled_arrival">Scheduled arrival %1$s</string>
     <string name="service_duration_accessible">Duration %1$s</string>
     <string name="action_modify_search">Edit</string>
-    <string name="results_order_fastest">Fastest</string>
-    <string name="results_order_departure">By time</string>
     <string name="service_group_regional">Regional</string>
     <string name="service_group_frecce">Frecce</string>
     <string name="service_group_italo">Italo</string>
@@ -1135,9 +1135,9 @@
     <string name="settings_language_open">Choose the language in the system settings</string>
     <string name="settings_language_system">On this Android version the app language follows the system language.</string>
     <string name="settings_about_version">Version %1$s</string>
-    <plurals name="duration_hours">
-        <item quantity="one">%d hour</item>
-        <item quantity="other">%d hours</item>
-    </plurals>
     <string name="results_map_notice">The map opens only on request: to draw it the app downloads the tiles of the route area from OpenFreeMap.</string>
+    <string name="journey_source_title">Source</string>
+    <string name="settings_suggest_station">Suggest a station</string>
+    <string name="settings_suggest_station_detail">Opens the project\'s public issue form in the browser (GitHub)</string>
+    <string name="settings_suggest_station_issue_title">Station suggestion:</string>
 </resources>

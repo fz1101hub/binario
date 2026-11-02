@@ -1,5 +1,13 @@
 # Changelog
 
+## In sviluppo — Viaggi con cambi nei risultati Android
+
+- **Risultati**: i treni diretti della ricerca (live e catalogo, con fonti, priorità e selezione invariate) e i viaggi con cambi calcolati offline sugli orari GTFS inclusi formano un solo elenco per orario di partenza, ciascuno con la propria fonte; un viaggio diretto che è lo stesso treno di un risultato diretto compare una volta sola, come treno. Righe «17:40 → 22:05», durata «4h 25min», treni, «Diretto» / «1 cambio» / «2 cambi» e «Binario —»; i filtri sono quelli del render: **Tutti**, **Diretti**, **Meno cambi**, **Più veloce**, con conteggio annunciato da TalkBack.
+- **Dettaglio del viaggio con cambi**: tratte sulla timeline verde del dettaglio corsa, blocco «Cambio a … · Attesa di N minuti», treno (o bus sostitutivo, autobus, tratto a piedi) di ogni tratta, avviso orari programmati e fonte. Le righe dirette aprono come prima il dettaglio del treno.
+- Avvisi dei viaggi con cambi sotto l'elenco: calcolo in corso, orari solo programmati, reti coperte, dati incompleti e motivo dell'assenza di soluzioni (con «Riprova» quando il calcolo non è disponibile).
+- Intestazioni brevi «Roma → Torino» in Risultati e nei dettagli (città del catalogo o rimozione prudente di «Centrale», «Termini», «Porta Nuova»…; nomi completi letti da TalkBack e quando le due stazioni sono nella stessa città).
+- Impostazioni: **Suggerisci una stazione** prima di «Informazioni» apre nel browser il modulo pubblico delle segnalazioni del progetto su GitHub con il titolo precompilato.
+
 ## In sviluppo — Widget Android con le impostazioni di Orario Treni
 
 - Impostazioni per istanza per i widget **Tratta** e **Tabellone stazione**, salvate con la configurazione esistente: aggiornamento automatico disattivato per i nuovi widget, nelle fasce orarie scelte (ogni 15/30/60 minuti, Lun–Ven, tutti i giorni o giorni scelti, una o due fasce anche dopo la mezzanotte) oppure sempre; tipi di treno da nascondere (Frecce/alta velocità, Intercity/notte, regionali/suburbani, Italo, bus sostitutivi, internazionali — i tipi ignoti restano visibili); colonna binario, nome/categoria e titolo personalizzato. I widget già aggiunti mantengono l'aggiornamento ogni quindici minuti e le stesse corse finché non vengono modificati.

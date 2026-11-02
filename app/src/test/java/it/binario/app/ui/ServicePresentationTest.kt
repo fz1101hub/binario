@@ -6,7 +6,6 @@ import it.binario.app.data.TrainCategory
 import it.binario.app.data.TrainService
 import it.binario.app.data.TrainStop
 import it.binario.app.ui.common.JourneyTimes
-import it.binario.app.ui.common.ResultOrder
 import it.binario.app.ui.common.ServiceGroup
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -36,20 +35,9 @@ class ServicePresentationTest {
 
     @Test
     fun `duration labels use hour and minute symbols`() {
-        assertEquals("4 h 25 min", JourneyTimes.durationLabel(265))
-        assertEquals("45 min", JourneyTimes.durationLabel(45))
-        assertEquals("2 h", JourneyTimes.durationLabel(120))
-    }
-
-    @Test
-    fun `fastest order is stable and puts unknown durations last while departure order is untouched`() {
-        val slow = service("1", TrainCategory.REGIONALE, "08:00", "12:00")
-        val fast = service("2", TrainCategory.FRECCE, "09:00", "11:00")
-        val unknown = service("3", TrainCategory.INTERCITY, "10:00", null)
-        val sameAsFast = service("4", TrainCategory.FRECCE, "11:00", "13:00")
-        val all = listOf(slow, unknown, fast, sameAsFast)
-        assertEquals(all, JourneyTimes.ordered(all, ResultOrder.DEPARTURE))
-        assertEquals(listOf(fast, sameAsFast, slow, unknown), JourneyTimes.ordered(all, ResultOrder.FASTEST))
+        assertEquals("4h 25min", JourneyTimes.durationLabel(265))
+        assertEquals("45min", JourneyTimes.durationLabel(45))
+        assertEquals("2h", JourneyTimes.durationLabel(120))
     }
 
     @Test

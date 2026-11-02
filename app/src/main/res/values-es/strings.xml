@@ -334,6 +334,8 @@
     </plurals>
     <string name="journey_arrival_next_day">al día siguiente</string>
     <string name="journey_leg_replacement_bus">Autobús sustitutivo</string>
+    <string name="journey_leg_bus">Autobús</string>
+    <string name="journey_leg_walk">A pie</string>
     <string name="journey_source_offline">Horario programado sin conexión (datos abiertos GTFS)</string>
     <string name="journey_scheduled_only_notice">Horarios programados: retrasos, andenes y cancelaciones no están verificados. Consulta las pantallas de la estación.</string>
     <string name="journey_coverage_notice">Calculado en el teléfono con los horarios incluidos en la app, solo para las redes que cubren: Lombardía, Alto Adigio, Trentino, EAV, ARST, TFT, Suiza, Austria, Francia y Croacia. Pueden faltar otros trenes.</string>
@@ -1095,8 +1097,6 @@
     <string name="service_scheduled_arrival">Llegada programada %1$s</string>
     <string name="service_duration_accessible">Duración %1$s</string>
     <string name="action_modify_search">Editar</string>
-    <string name="results_order_fastest">Más rápido</string>
-    <string name="results_order_departure">Por horario</string>
     <string name="service_group_regional">Regionales</string>
     <string name="service_group_frecce">Frecce</string>
     <string name="service_group_italo">Italo</string>
@@ -1159,10 +1159,9 @@
     <string name="settings_language_open">Elegir el idioma en los ajustes del sistema</string>
     <string name="settings_language_system">En esta versión de Android el idioma de la app sigue al del sistema.</string>
     <string name="settings_about_version">Versión %1$s</string>
-    <plurals name="duration_hours">
-        <item quantity="one">%d hora</item>
-        <item quantity="many">%d horas</item>
-        <item quantity="other">%d horas</item>
-    </plurals>
     <string name="results_map_notice">El mapa solo se abre si lo pides: para dibujarlo la app descarga las teselas de la zona del recorrido desde OpenFreeMap.</string>
+    <string name="journey_source_title">Fuente</string>
+    <string name="settings_suggest_station">Sugerir una estación</string>
+    <string name="settings_suggest_station_detail">Abre en el navegador el formulario público de incidencias del proyecto (GitHub)</string>
+    <string name="settings_suggest_station_issue_title">Sugerencia de estación:</string>
 </resources>

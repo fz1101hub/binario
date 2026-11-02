@@ -16,11 +16,13 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -28,6 +30,8 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import it.binario.app.BinarioTheme
@@ -38,22 +42,29 @@ import it.binario.app.data.Direction
 import it.binario.app.data.JourneyQuery
 import it.binario.app.data.RailTime
 import it.binario.app.data.TrainService
+import it.binario.app.data.repository.JourneySearchStatus
+import it.binario.app.journeys.JourneyEmptyReason
+import it.binario.app.journeys.JourneyOptionRow
+import it.binario.app.journeys.JourneyResultsFilter
+import it.binario.app.journeys.JourneyResultsPresentation
+import it.binario.app.journeys.JourneyResultsPresenter
+import it.binario.app.journeys.JourneySearchUiState
 import it.binario.app.localized
 import it.binario.app.ui.common.DataStatusLine
 import it.binario.app.ui.common.HeaderSheetTop
-import it.binario.app.ui.common.JourneyTimes
+import it.binario.app.ui.common.InfoNoticeCard
 import it.binario.app.ui.common.ResultCard
-import it.binario.app.ui.common.ResultOrder
 import it.binario.app.ui.common.ScreenHeader
 import it.binario.app.ui.common.ScreenMargin
 import it.binario.app.ui.common.SearchInfoState
 import it.binario.app.ui.common.SectionTitle
-import it.binario.app.ui.common.ServiceGroup
+import it.binario.app.ui.common.StationShortNames
 import it.binario.app.ui.common.TonalButton
 import it.binario.app.ui.common.isCachedCopy
 import it.binario.app.ui.common.localizedDisplayName
 import it.binario.app.ui.common.localizedLabel
 import it.binario.app.ui.common.localizedQualityLabel
+import it.binario.app.ui.journeys.JourneyResultCard
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -61,61 +72,82 @@ import java.util.Locale
 // Pianifica: the solutions of a route or round-trip search.
 
 /**
- * Results of a route search as the cards of the render. The chips filter by the train categories present in
- * the results and order by departure (the neutral default) or by the shortest scheduled journey: the route
- * search returns direct services, so no "fewer changes" filter is offered.
+ * Results of a route search as the cards of the render: one list by departure that holds the direct trains of the
+ * route search (live or catalogue, unchanged) and the options of the separate journeys-with-changes search, each
+ * with its badge ("Diretto", "1 cambio", "2 cambi") and source. A journey without changes that is the same train as
+ * a direct-train result is shown once, as the direct train. The chips are the render's: Tutti, Diretti, Meno cambi,
+ * Più veloce, over everything shown. The notices of the journeys search (in progress, scheduled times only, coverage,
+ * why it found nothing) follow the outbound list, so the top of the screen stays the render's.
  *
- * @param selectedServiceId the solution shown beside the list on wide windows, tinted in the list.
+ * @param journeys state of the journeys-with-changes search; its options appear only when they answer this route,
+ *   direction, date and time ([JourneyRequest.isAnsweredBy]).
+ * @param selectedServiceId / selectedJourneyId the option shown beside the list on wide windows, tinted in the list.
  */
 @Composable
 internal fun RouteResultsScreen(
     modifier: Modifier,
     viewModel: TrainViewModel,
+    journeys: JourneySearchUiState,
     openDetails: (TrainService) -> Unit,
+    openJourney: (JourneyOptionRow) -> Unit,
+    retryJourneys: () -> Unit,
     editSearch: () -> Unit,
-    selectedServiceId: String? = null
+    selectedServiceId: String? = null,
+    selectedJourneyId: String? = null
 ) {
     val roundTrip = viewModel.hasReturnJourney
     val primaryDirection = viewModel.direction
     val locale = LocalConfiguration.current.locales[0]
-    var groupName by rememberSaveable { mutableStateOf<String?>(null) }
-    var orderName by rememberSaveable { mutableStateOf(ResultOrder.DEPARTURE.name) }
+    val query = viewModel.journeyQuery
+    val route = viewModel.activeRoute
+    var filterName by rememberSaveable { mutableStateOf(JourneyResultsFilter.ALL.name) }
+    val filter = JourneyResultsFilter.valueOf(filterName)
+    val journeysMatch = JourneyRequest.of(viewModel)?.isAnsweredBy(journeys.query) == true
+    val journeyResult = journeys.result.takeIf { journeysMatch }
+    // Always the unfiltered options: the chips below filter the merged list.
+    val presentation = remember(journeyResult) { journeyResult?.let { JourneyResultsPresenter.present(it) } }
+    val journeyRows = presentation?.rows.orEmpty()
     val allServices = viewModel.currentServices()
     val allReturnServices = viewModel.currentReturnServices()
-    val groups = ServiceGroup.chipsFor(allServices + allReturnServices)
-    val group = groupName?.let { name -> ServiceGroup.entries.firstOrNull { it.name == name } }?.takeIf { it in groups }
-    val order = ResultOrder.valueOf(orderName)
-    val services = JourneyTimes.ordered(JourneyTimes.filtered(allServices, group), order)
-    val returnServices = JourneyTimes.ordered(JourneyTimes.filtered(allReturnServices, group), order)
-    // Solutions stay in neutral departure order unless the traveller asks for the fastest: no row is promoted.
+    val entries = remember(allServices, journeyRows, query.serviceDate) { ResultsMerge.entries(allServices, journeyRows, query.serviceDate) }
+    val returnEntries = remember(allReturnServices, query.serviceDate) { ResultsMerge.entries(allReturnServices, emptyList(), query.serviceDate) }
+    val shown = ResultsMerge.apply(entries, filter)
+    val returnShown = ResultsMerge.apply(returnEntries, filter)
+    val counts = ResultsMerge.counts(entries + returnEntries)
+    val journeysShown = entries.any { it is ResultEntry.Journey }
     val isDemonstration = viewModel.isDemonstrationData()
     val resultSummary = if (roundTrip) {
         stringResource(
             R.string.planner_round_trip_results,
-            pluralStringResource(R.plurals.planner_outbound_result_count, services.size, services.size),
-            pluralStringResource(R.plurals.planner_return_result_count, returnServices.size, returnServices.size)
+            pluralStringResource(R.plurals.planner_outbound_result_count, shown.size, shown.size),
+            pluralStringResource(R.plurals.planner_return_result_count, returnShown.size, returnShown.size)
         )
     } else {
-        pluralStringResource(R.plurals.search_results_count, services.size, services.size)
+        pluralStringResource(R.plurals.search_results_count, shown.size, shown.size)
     }
+    // "Roma → Torino" as in the render; screen readers and the cards keep the full station names.
+    val headline = if (viewModel.hasActiveRoute) StationShortNames.route(route.origin(primaryDirection), route.destination(primaryDirection)) else null
 
     val outboundStates = ResultStates(
         loading = stringResource(R.string.search_outbound_loading_title) to stringResource(R.string.search_outbound_loading_message),
         unavailable = stringResource(R.string.search_outbound_unavailable_title) to
             (viewModel.refreshMessage?.localized() ?: stringResource(R.string.search_outbound_unavailable_message)),
-        empty = stringResource(R.string.search_outbound_empty_title) to stringResource(R.string.search_outbound_empty_message)
+        empty = stringResource(R.string.search_outbound_empty_title) to stringResource(R.string.search_outbound_empty_message),
+        noDirect = stringResource(R.string.journey_empty_no_direct)
     )
     val returnStates = ResultStates(
         loading = stringResource(R.string.search_return_loading_title) to stringResource(R.string.search_return_loading_message),
         unavailable = stringResource(R.string.search_return_unavailable_title) to
             (viewModel.returnRefreshMessage?.localized() ?: stringResource(R.string.search_return_unavailable_message)),
-        empty = stringResource(R.string.search_return_empty_title) to stringResource(R.string.search_return_empty_message)
+        empty = stringResource(R.string.search_return_empty_title) to stringResource(R.string.search_return_empty_message),
+        noDirect = stringResource(R.string.journey_empty_no_direct)
     )
     LazyColumn(modifier = modifier.fillMaxSize().testTag("route-results")) {
         item {
             ScreenHeader(
-                title = viewModel.activeRoute.localizedDisplayName(primaryDirection),
-                subtitle = journeyLabel(viewModel.journeyQuery, locale),
+                title = headline?.short ?: route.localizedDisplayName(primaryDirection),
+                titleDescription = headline?.full,
+                subtitle = journeyLabel(query, locale),
                 trailing = {
                     TonalButton(
                         text = stringResource(R.string.action_modify_search),
@@ -129,13 +161,7 @@ internal fun RouteResultsScreen(
         }
         item {
             HeaderSheetTop {
-                ResultChips(
-                    groups = groups,
-                    selectedGroup = group,
-                    onGroup = { groupName = it?.name },
-                    order = order,
-                    onOrder = { orderName = it.name }
-                )
+                ResultFilterChips(selected = filter, counts = counts, onSelect = { filterName = it.name })
                 Text(
                     listOfNotNull(resultSummary, viewModel.refreshState.localizedLabel(), viewModel.refreshMessage?.localized()).joinToString(" · "),
                     modifier = Modifier.padding(horizontal = ScreenMargin, vertical = 8.dp),
@@ -154,22 +180,37 @@ internal fun RouteResultsScreen(
             }
         }
         if (roundTrip) {
-            item { SectionTitle(stringResource(R.string.planner_outbound) + " · " + viewModel.activeRoute.localizedDisplayName(primaryDirection)) }
+            item { SectionTitle(stringResource(R.string.planner_outbound) + " · " + route.localizedDisplayName(primaryDirection)) }
         }
         resultItems(
             keyPrefix = "out",
-            services = services,
+            entries = shown,
+            anyEntries = entries.isNotEmpty(),
             state = viewModel.refreshState,
             hasSnapshot = viewModel.snapshot != null,
             states = outboundStates,
             isDemonstration = isDemonstration,
             selectedServiceId = selectedServiceId,
-            openDetails = openDetails
+            selectedJourneyId = selectedJourneyId,
+            openDetails = openDetails,
+            openJourney = openJourney
         )
+        if (journeysMatch) {
+            item(key = "journey-notices") {
+                Column(Modifier.padding(top = 6.dp).testTag("journey-notices")) {
+                    JourneyNotices(
+                        loading = journeys.loading,
+                        presentation = presentation?.takeIf { !journeys.loading },
+                        optionsShown = journeysShown,
+                        onRetry = retryJourneys
+                    )
+                }
+            }
+        }
         if (roundTrip) {
             item {
                 Column(Modifier.padding(top = 8.dp)) {
-                    SectionTitle(stringResource(R.string.planner_return) + " · " + viewModel.activeRoute.localizedDisplayName(Direction.RETURN))
+                    SectionTitle(stringResource(R.string.planner_return) + " · " + route.localizedDisplayName(Direction.RETURN))
                     Text(
                         listOfNotNull(viewModel.returnRefreshState.localizedLabel(), viewModel.returnRefreshMessage?.localized()).joinToString(" · "),
                         modifier = Modifier.padding(horizontal = ScreenMargin),
@@ -180,13 +221,16 @@ internal fun RouteResultsScreen(
             }
             resultItems(
                 keyPrefix = "ret",
-                services = returnServices,
+                entries = returnShown,
+                anyEntries = returnEntries.isNotEmpty(),
                 state = viewModel.returnRefreshState,
                 hasSnapshot = viewModel.returnSnapshot != null,
                 states = returnStates,
                 isDemonstration = isDemonstration,
                 selectedServiceId = selectedServiceId,
-                openDetails = openDetails
+                selectedJourneyId = null,
+                openDetails = openDetails,
+                openJourney = openJourney
             )
         }
         item { Spacer(Modifier.height(24.dp)) }
@@ -194,42 +238,111 @@ internal fun RouteResultsScreen(
 }
 
 /** Title and message of the loading, unavailable and empty states of one leg. */
-private class ResultStates(val loading: Pair<String, String>, val unavailable: Pair<String, String>, val empty: Pair<String, String>)
+private class ResultStates(
+    val loading: Pair<String, String>,
+    val unavailable: Pair<String, String>,
+    val empty: Pair<String, String>,
+    val noDirect: String
+)
 
 private fun LazyListScope.resultItems(
     keyPrefix: String,
-    services: List<TrainService>,
+    entries: List<ResultEntry>,
+    anyEntries: Boolean,
     state: RefreshState,
     hasSnapshot: Boolean,
     states: ResultStates,
     isDemonstration: Boolean,
     selectedServiceId: String?,
-    openDetails: (TrainService) -> Unit
+    selectedJourneyId: String?,
+    openDetails: (TrainService) -> Unit,
+    openJourney: (JourneyOptionRow) -> Unit
 ) {
     when {
-        state == RefreshState.LOADING && !hasSnapshot -> item(key = "$keyPrefix-loading") { SearchInfoState(states.loading.first, states.loading.second) }
-        state == RefreshState.ERROR && !hasSnapshot -> item(key = "$keyPrefix-error") { SearchInfoState(states.unavailable.first, states.unavailable.second) }
-        services.isEmpty() -> item(key = "$keyPrefix-empty") { SearchInfoState(states.empty.first, states.empty.second) }
-        else -> items(services, key = { "$keyPrefix-${it.id}" }) { service ->
-            ResultCard(
-                service = service,
-                isDemonstration = isDemonstration,
-                onOpen = { openDetails(service) },
-                modifier = Modifier.padding(horizontal = ScreenMargin, vertical = 6.dp).testTag("result-card"),
-                selected = service.id == selectedServiceId
-            )
+        state == RefreshState.LOADING && !hasSnapshot ->
+            item(key = "$keyPrefix-loading") { SearchInfoState(states.loading.first, states.loading.second) }
+        state == RefreshState.ERROR && !hasSnapshot ->
+            item(key = "$keyPrefix-error") { SearchInfoState(states.unavailable.first, states.unavailable.second) }
+    }
+    when {
+        entries.isNotEmpty() -> items(entries, key = { "$keyPrefix-${it.key}" }) { entry ->
+            val itemModifier = Modifier.padding(horizontal = ScreenMargin, vertical = 6.dp)
+            when (entry) {
+                is ResultEntry.Train -> ResultCard(
+                    service = entry.service,
+                    isDemonstration = isDemonstration,
+                    onOpen = { openDetails(entry.service) },
+                    modifier = itemModifier.testTag("result-card"),
+                    selected = entry.service.id == selectedServiceId
+                )
+                is ResultEntry.Journey -> JourneyResultCard(
+                    row = entry.row,
+                    onOpen = { openJourney(entry.row) },
+                    modifier = itemModifier.testTag("journey-result-card"),
+                    selected = entry.row.id == selectedJourneyId
+                )
+            }
         }
+        // "Diretti" can hide every option that exists.
+        anyEntries -> item(key = "$keyPrefix-no-direct") { SearchInfoState(states.noDirect, "") }
+        hasSnapshot || state == RefreshState.SUCCESS -> item(key = "$keyPrefix-empty") { SearchInfoState(states.empty.first, states.empty.second) }
     }
 }
 
+/**
+ * Notices of the journeys-with-changes search in the style of the other notice cards: the search in progress,
+ * scheduled times only, the networks the offline timetable covers, incomplete data, and why it found nothing.
+ */
 @Composable
-private fun ResultChips(
-    groups: List<ServiceGroup>,
-    selectedGroup: ServiceGroup?,
-    onGroup: (ServiceGroup?) -> Unit,
-    order: ResultOrder,
-    onOrder: (ResultOrder) -> Unit
+private fun JourneyNotices(
+    loading: Boolean,
+    presentation: JourneyResultsPresentation?,
+    optionsShown: Boolean,
+    onRetry: () -> Unit
 ) {
+    if (loading) {
+        InfoNoticeCard(text = stringResource(R.string.journey_searching), modifier = Modifier.testTag("journeys-loading")) {
+            LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 6.dp))
+        }
+        return
+    }
+    presentation ?: return
+    if (optionsShown && presentation.showScheduledOnlyNotice) {
+        InfoNoticeCard(
+            title = stringResource(R.string.journey_results_title),
+            text = stringResource(R.string.journey_scheduled_only_notice),
+            modifier = Modifier.testTag("journeys-scheduled-only")
+        )
+    }
+    if (optionsShown && presentation.showCoverageNotice) {
+        InfoNoticeCard(text = stringResource(R.string.journey_coverage_notice))
+    }
+    if (presentation.showIncompleteNotice) {
+        InfoNoticeCard(text = stringResource(R.string.journey_incomplete_notice))
+    }
+    if (presentation.status != JourneySearchStatus.FOUND) {
+        val reason = presentation.emptyReason ?: JourneyEmptyReason.UNAVAILABLE
+        InfoNoticeCard(
+            title = stringResource(R.string.journey_results_title),
+            text = stringResource(reason.messageRes()),
+            actionLabel = if (reason == JourneyEmptyReason.UNAVAILABLE) stringResource(R.string.notices_retry) else null,
+            onAction = onRetry,
+            modifier = Modifier.testTag("journeys-empty")
+        )
+    }
+}
+
+internal fun JourneyEmptyReason.messageRes(): Int = when (this) {
+    JourneyEmptyReason.NO_SOLUTION -> R.string.journey_empty_no_solution
+    JourneyEmptyReason.NOT_COVERED -> R.string.journey_empty_not_covered
+    JourneyEmptyReason.SCHEDULE_EXPIRED -> R.string.journey_empty_schedule_expired
+    JourneyEmptyReason.UNAVAILABLE -> R.string.journey_empty_unavailable
+    JourneyEmptyReason.NO_DIRECT -> R.string.journey_empty_no_direct
+}
+
+/** The four chips of the render; each announces whether it is selected and how many options it shows. */
+@Composable
+private fun ResultFilterChips(selected: JourneyResultsFilter, counts: Map<JourneyResultsFilter, Int>, onSelect: (JourneyResultsFilter) -> Unit) {
     val colors = BinarioTheme.colors
     val chipColors = FilterChipDefaults.filterChipColors(
         containerColor = colors.segmentTrack,
@@ -242,21 +355,29 @@ private fun ResultChips(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         contentPadding = PaddingValues(horizontal = ScreenMargin)
     ) {
-        if (groups.isNotEmpty()) {
-            item {
-                FilterChip(selected = selectedGroup == null, onClick = { onGroup(null) }, label = { Text(stringResource(R.string.filter_all), fontWeight = FontWeight.Bold) }, colors = chipColors, border = null)
-            }
-            items(groups) { group ->
-                FilterChip(selected = selectedGroup == group, onClick = { onGroup(group) }, label = { Text(group.localizedLabel()) }, colors = chipColors, border = null)
-            }
-        }
-        item {
-            FilterChip(selected = order == ResultOrder.FASTEST, onClick = { onOrder(ResultOrder.FASTEST) }, label = { Text(stringResource(R.string.results_order_fastest)) }, colors = chipColors, border = null)
-        }
-        item {
-            FilterChip(selected = order == ResultOrder.DEPARTURE, onClick = { onOrder(ResultOrder.DEPARTURE) }, label = { Text(stringResource(R.string.results_order_departure)) }, colors = chipColors, border = null)
+        items(JourneyResultsFilter.entries) { filter ->
+            val label = stringResource(filter.labelRes())
+            val count = counts[filter] ?: 0
+            val description = label + ", " + pluralStringResource(R.plurals.search_results_count, count, count)
+            FilterChip(
+                selected = filter == selected,
+                onClick = { onSelect(filter) },
+                label = { Text(label, fontWeight = if (filter == selected) FontWeight.Bold else FontWeight.Medium) },
+                colors = chipColors,
+                border = null,
+                modifier = Modifier
+                    .semantics { contentDescription = description }
+                    .testTag("results-filter-${filter.name.lowercase(Locale.ROOT)}")
+            )
         }
     }
+}
+
+private fun JourneyResultsFilter.labelRes(): Int = when (this) {
+    JourneyResultsFilter.ALL -> R.string.journey_filter_all
+    JourneyResultsFilter.DIRECT -> R.string.journey_filter_direct
+    JourneyResultsFilter.FEWEST_CHANGES -> R.string.journey_filter_fewest_changes
+    JourneyResultsFilter.FASTEST -> R.string.journey_filter_fastest
 }
 
 /** "Oggi, 21 nov · dalle 17:00" for the date and time the results answer. */

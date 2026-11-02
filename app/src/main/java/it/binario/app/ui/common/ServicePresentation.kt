@@ -29,9 +29,6 @@ internal enum class ServiceGroup {
     }
 }
 
-/** Order of the route results: neutral departure order (the default) or shortest scheduled journey first. */
-internal enum class ResultOrder { DEPARTURE, FASTEST }
-
 /** Times of a journey as published by the timetable: departure, arrival at the last stop and duration. */
 internal object JourneyTimes {
     private const val DAY_MINUTES = 24 * 60
@@ -52,17 +49,11 @@ internal object JourneyTimes {
         return minutes.takeIf { it in 1 until DAY_MINUTES }
     }
 
-    /** "4 h 25 min", "45 min": hour and minute symbols read the same in the five app languages. */
+    /** "4h 25min", "45min" as in the render: hour and minute symbols read the same in the five app languages. */
     fun durationLabel(minutes: Int): String = when {
-        minutes < 60 -> String.format(Locale.ROOT, "%d min", minutes)
-        minutes % 60 == 0 -> String.format(Locale.ROOT, "%d h", minutes / 60)
-        else -> String.format(Locale.ROOT, "%d h %d min", minutes / 60, minutes % 60)
-    }
-
-    fun ordered(services: List<TrainService>, order: ResultOrder): List<TrainService> = when (order) {
-        ResultOrder.DEPARTURE -> services
-        // Stable: equal durations keep the neutral departure order; unknown durations go last.
-        ResultOrder.FASTEST -> services.sortedWith(compareBy(nullsLast()) { durationMinutes(it) })
+        minutes < 60 -> String.format(Locale.ROOT, "%dmin", minutes)
+        minutes % 60 == 0 -> String.format(Locale.ROOT, "%dh", minutes / 60)
+        else -> String.format(Locale.ROOT, "%dh %dmin", minutes / 60, minutes % 60)
     }
 
     fun filtered(services: List<TrainService>, group: ServiceGroup?): List<TrainService> =
