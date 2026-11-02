@@ -310,6 +310,40 @@ class TransitRegistryTest(unittest.TestCase):
         acquire.load_registry(self.registry(sourceUrl="http://example.test/demo.zip", transport="http", httpReason="no HTTPS",
                                             directory="gtfs-personal", distribution="personal"))
 
+    def test_a_busy_server_is_asked_again(self) -> None:
+        import urllib.error
+        from unittest import mock
+
+        import acquire_transit_sources as acquire
+
+        class Response(io.BytesIO):
+            status = 200
+
+            def geturl(self) -> str:
+                return "https://example.test/demo.zip"
+
+        calls: list[str] = []
+
+        class Opener:
+            def open(self, request, timeout):  # type: ignore[no-untyped-def]
+                calls.append(request.full_url)
+                if len(calls) == 1:
+                    raise urllib.error.HTTPError(request.full_url, 503, "Service Temporarily Unavailable", {}, None)
+                return Response(b"payload")
+
+        target = Path(tempfile.mkdtemp()) / "demo.zip"
+        with mock.patch.object(acquire.urllib.request, "build_opener", return_value=Opener()), mock.patch.object(acquire, "RETRY_DELAY_SECONDS", 0):
+            record = acquire.download("https://example.test/demo.zip", target)
+        self.assertEqual(2, len(calls))
+        self.assertEqual(7, record["bytes"])
+
+        def not_found(request, timeout):  # type: ignore[no-untyped-def]
+            raise urllib.error.HTTPError(request.full_url, 404, "Not Found", {}, None)
+
+        with mock.patch.object(acquire.urllib.request, "build_opener", return_value=mock.Mock(open=not_found)), \
+                self.assertRaises(acquire.AcquisitionError):
+            acquire.download("https://example.test/missing.zip", target)
+
     def test_directory_distribution_and_licence_are_required(self) -> None:
         import acquire_transit_sources as acquire
 

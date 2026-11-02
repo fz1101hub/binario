@@ -25,6 +25,7 @@ import json
 import os
 import shutil
 import sys
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -43,6 +44,8 @@ USER_AGENT = "Binario-GTFS-build/0.20.4 (release tooling; read-only)"
 DIRECTORIES = {"gtfs-transit", "gtfs-personal"}
 FORMATS = {"gtfs", "netex"}
 KINDS = {"rail", "urban"}
+RETRYABLE_STATUS = {500, 502, 503, 504}
+RETRY_DELAY_SECONDS = 20
 
 
 class AcquisitionError(RuntimeError):
@@ -125,7 +128,15 @@ def download(url: str, destination: Path, *, allow_http: bool = False, attempts:
                         output.write(chunk)
             break
         except (http.client.IncompleteRead, ConnectionError, TimeoutError, urllib.error.URLError) as error:
-            if isinstance(error, urllib.error.HTTPError) or attempt == attempts - 1 or not destination.exists():
+            if isinstance(error, urllib.error.HTTPError):
+                # A busy server (the access point answers 503 at times) is asked again a little later; any other
+                # HTTP status is final.
+                if error.code not in RETRYABLE_STATUS or attempt == attempts - 1:
+                    raise AcquisitionError(f"download fallito {url}: {error}") from error
+                print(f"  HTTP {error.code} da {url}: nuovo tentativo {attempt + 1}", flush=True)
+                time.sleep(RETRY_DELAY_SECONDS * (attempt + 1))
+                continue
+            if attempt == attempts - 1 or not destination.exists():
                 raise AcquisitionError(f"download fallito {url}: {error}") from error
             written = destination.stat().st_size
             print(f"  ripresa {attempt + 1} di {url} da {written} byte", flush=True)
