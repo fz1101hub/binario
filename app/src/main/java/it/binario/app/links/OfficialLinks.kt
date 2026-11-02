@@ -101,12 +101,13 @@ object OfficialLinks {
 
     /** The operator whose official site sells a journey run by [operator]; null for the others. */
     fun purchaseSiteOf(operator: RailOperator, operatorName: String? = null): OperatorLinks? {
-        // The published operator name wins: several sources file every train under the Trenitalia constant.
+        // The published operator name wins: several sources file every regional train (Trenord, Tper...) under the
+        // Trenitalia regional constant, so without a name only Italo and the Trenitalia Frecce and Intercity qualify.
         val name = operatorName?.trim()?.lowercase(Locale.ROOT)?.takeIf(String::isNotEmpty)
         return when {
             name != null -> purchaseSiteOf(listOf(name))
             operator == RailOperator.ITALO -> ITALO
-            operator in TRENITALIA_OPERATORS -> TRENITALIA
+            operator in TRENITALIA_LONG_DISTANCE -> TRENITALIA
             else -> null
         }
     }
@@ -139,5 +140,5 @@ object OfficialLinks {
         return domains.any { host == it || host.endsWith(".$it") }
     }
 
-    private val TRENITALIA_OPERATORS = setOf(RailOperator.TRENITALIA_REGIONALE, RailOperator.TRENITALIA_LONG_DISTANCE, RailOperator.TRENITALIA_AV)
+    private val TRENITALIA_LONG_DISTANCE = setOf(RailOperator.TRENITALIA_LONG_DISTANCE, RailOperator.TRENITALIA_AV)
 }

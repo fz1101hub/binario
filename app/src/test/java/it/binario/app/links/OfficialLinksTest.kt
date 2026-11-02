@@ -47,6 +47,9 @@ class OfficialLinksTest {
         assertEquals(OfficialLinks.TRENITALIA, OfficialLinks.purchaseSiteOf(RailOperator.TRENITALIA_AV))
         // The published brand wins over the legacy constant several sources use for every train.
         assertNull(OfficialLinks.purchaseSiteOf(RailOperator.TRENITALIA_REGIONALE, "Trenord"))
+        // A regional train without a published operator may be Trenord, Tper or another company: no guess.
+        assertNull(OfficialLinks.purchaseSiteOf(RailOperator.TRENITALIA_REGIONALE))
+        assertEquals(OfficialLinks.TRENITALIA, OfficialLinks.purchaseSiteOf(RailOperator.TRENITALIA_REGIONALE, "Trenitalia"))
         assertNull(OfficialLinks.purchaseSiteOf(RailOperator.SBB))
         assertEquals(OfficialLinks.TRENITALIA, OfficialLinks.purchaseSiteOf(listOf("Trenitalia", "Trenitalia")))
         assertNull(OfficialLinks.purchaseSiteOf(listOf("Trenitalia", "Italo")))
