@@ -11,4 +11,4 @@ Icone generate da `python3 tools/build_store_assets.py`: non modificare a mano i
 | Screenshot Apple Watch | Da 1 a 10, PNG o JPEG, nel formato del modello più grande supportato (per esempio 410×502 px Ultra o 416×496 px Series 10 46 mm), senza cornice dell'orologio | Obbligatori perché il listing include l'app Watch: schermata principale con tratta, dettaglio corsa, complicazione |
 | Anteprima video | Facoltativa, da 15 a 30 s per formato | Non prevista |
 
-I testi del listing nelle cinque lingue, le risposte sulla privacy, la classificazione per età, i diritti sui contenuti e la procedura di invio sono in `docs/store/APP_STORE_SUBMISSION.md`.
+I testi del listing in tutte le lingue accettate da App Store Connect (sedici; il birmano non è disponibile come lingua del listing), le risposte sulla privacy, la classificazione per età, i diritti sui contenuti e la procedura di invio sono in `docs/store/APP_STORE_SUBMISSION.md`.
