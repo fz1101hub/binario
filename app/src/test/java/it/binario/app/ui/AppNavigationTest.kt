@@ -28,6 +28,8 @@ class AppNavigationTest {
         assertEquals(TopDestination.PLAN, AppNavigation.destinationOf(AppScreen.RESULTS, AppScreen.PLANNER))
         assertEquals(TopDestination.PLAN, AppNavigation.destinationOf(AppScreen.NUMBER_RESULTS, AppScreen.PLANNER))
         assertEquals(TopDestination.FOR_YOU, AppNavigation.destinationOf(AppScreen.AGENDA, AppScreen.PLANNER))
+        assertEquals(TopDestination.FOR_YOU, AppNavigation.destinationOf(AppScreen.SETTINGS, AppScreen.PLANNER))
+        assertEquals(TopDestination.FOR_YOU, AppNavigation.destinationOf(AppScreen.SETTINGS_SECTION, AppScreen.PLANNER))
         assertEquals(TopDestination.DEPARTURES, AppNavigation.destinationOf(AppScreen.DETAIL, AppScreen.DEPARTURES))
         assertEquals(TopDestination.PLAN, AppNavigation.destinationOf(AppScreen.DETAIL, AppScreen.NUMBER_RESULTS))
         TopDestination.entries.forEach { destination ->
@@ -42,18 +44,20 @@ class AppNavigationTest {
         assertEquals(AppScreen.PLANNER, AppNavigation.back(AppScreen.RESULTS, AppScreen.PLANNER))
         assertEquals(AppScreen.PLANNER, AppNavigation.back(AppScreen.NUMBER_RESULTS, AppScreen.PLANNER))
         assertEquals(AppScreen.FOR_YOU, AppNavigation.back(AppScreen.AGENDA, AppScreen.PLANNER))
+        assertEquals(AppScreen.FOR_YOU, AppNavigation.back(AppScreen.SETTINGS, AppScreen.PLANNER))
+        assertEquals(AppScreen.SETTINGS, AppNavigation.back(AppScreen.SETTINGS_SECTION, AppScreen.PLANNER))
         assertNull(AppNavigation.back(AppScreen.PLANNER, AppScreen.PLANNER))
         assertNull(AppNavigation.back(AppScreen.DEPARTURES, AppScreen.PLANNER))
         assertNull(AppNavigation.back(AppScreen.FOR_YOU, AppScreen.PLANNER))
     }
 
     @Test
-    fun `phones hide the bottom bar in the search flow while the rail stays from 600 dp`() {
-        listOf(AppScreen.PLANNER, AppScreen.DEPARTURES, AppScreen.FOR_YOU, AppScreen.AGENDA).forEach {
+    fun `phones hide the bottom bar only in the train detail while the side navigation stays from 600 dp`() {
+        AppScreen.entries.filter { it != AppScreen.DETAIL }.forEach {
             assertTrue(AppNavigation.showsNavigation(it, WidthClass.COMPACT))
         }
-        listOf(AppScreen.RESULTS, AppScreen.NUMBER_RESULTS, AppScreen.DETAIL).forEach {
-            assertFalse(AppNavigation.showsNavigation(it, WidthClass.COMPACT))
+        assertFalse(AppNavigation.showsNavigation(AppScreen.DETAIL, WidthClass.COMPACT))
+        AppScreen.entries.forEach {
             assertTrue(AppNavigation.showsNavigation(it, WidthClass.MEDIUM))
             assertTrue(AppNavigation.showsNavigation(it, WidthClass.EXPANDED))
         }
@@ -70,6 +74,7 @@ class AppNavigationTest {
         assertNull(AppNavigation.listPaneOf(AppScreen.PLANNER, AppScreen.PLANNER, WidthClass.EXPANDED))
         assertNull(AppNavigation.listPaneOf(AppScreen.FOR_YOU, AppScreen.PLANNER, WidthClass.EXPANDED))
         assertNull(AppNavigation.listPaneOf(AppScreen.AGENDA, AppScreen.PLANNER, WidthClass.EXPANDED))
+        assertNull(AppNavigation.listPaneOf(AppScreen.SETTINGS, AppScreen.PLANNER, WidthClass.EXPANDED))
     }
 
     @Test
@@ -96,5 +101,6 @@ class AppNavigationTest {
         assertFalse(AppNavigation.refreshesPeriodically(AppScreen.PLANNER))
         assertFalse(AppNavigation.refreshesPeriodically(AppScreen.FOR_YOU))
         assertFalse(AppNavigation.refreshesPeriodically(AppScreen.AGENDA))
+        assertFalse(AppNavigation.refreshesPeriodically(AppScreen.SETTINGS))
     }
 }

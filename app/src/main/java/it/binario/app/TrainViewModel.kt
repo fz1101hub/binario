@@ -67,7 +67,9 @@ class TrainViewModel @JvmOverloads constructor(
     private val enableStartupEffects: Boolean = true,
     private val stationBoardService: StationBoardAggregateService = StationBoardAggregateService(BinarioDataGraph.stationBoardDisplayProviders()),
     private val stationBoardDetailsService: StationBoardRunDetailService = BinarioDataGraph.stationBoardRunDetailService(),
-    private val trainNumberSearchService: TrainNumberSearchService = BinarioDataGraph.trainNumberSearchService(application)
+    private val trainNumberSearchService: TrainNumberSearchService = BinarioDataGraph.trainNumberSearchService(application),
+    /** Route source; null uses the application data graph. Instrumented tests pass a fixed local catalogue. */
+    routeDataSource: TrainDataSource? = null
 ) : AndroidViewModel(application) {
     private companion object {
         const val STATION_SUGGESTION_DEBOUNCE_MILLIS = 180L
@@ -81,7 +83,7 @@ class TrainViewModel @JvmOverloads constructor(
     private val mobilityPreferencesStore = MobilityPreferencesStore(application)
     private val customStationStore = CustomStationStore(application)
     private val punctualityStore = PunctualityHistoryStore(application)
-    private val dataSource: TrainDataSource = BinarioDataGraph.routeDataSource(application)
+    private val dataSource: TrainDataSource = routeDataSource ?: BinarioDataGraph.routeDataSource(application)
     private val curatedStationCatalog = EmbeddedCuratedRailStationCatalog(
         openAsset = { assetPath -> application.assets.open(assetPath) }
     )
@@ -268,6 +270,10 @@ class TrainViewModel @JvmOverloads constructor(
     private fun canonicalStation(station: Station): Station = stationCanonicalizer.canonicalize(station)
 
     val hasActiveRoute: Boolean get() = activeRoute.id != UNCONFIGURED_ROUTE_ID
+    /** Date and time the route results answer: the planned search, or the current railway time. */
+    val journeyQuery: JourneyQuery get() = journeyQueryState.value
+    /** True when the results are the next departures from now rather than a planned date and time. */
+    val journeyFollowsCurrentTime: Boolean get() = journeyQueryState.followsCurrentTime
     val hasReturnJourney: Boolean get() = returnJourneyQuery != null
     val hasStationBoardProviders: Boolean get() = stationBoardService.hasProviders
 

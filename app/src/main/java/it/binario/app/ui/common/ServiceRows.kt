@@ -1,5 +1,6 @@
 package it.binario.app.ui.common
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -13,32 +14,38 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.SyncAlt
 import androidx.compose.material.icons.filled.Train
-import androidx.compose.material3.Button
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
-import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import it.binario.app.R
+import it.binario.app.TabularFigures
 import it.binario.app.UiMessage
 import it.binario.app.data.Freshness
 import it.binario.app.data.ServiceStatus
@@ -52,22 +59,8 @@ import it.binario.app.updateTimeMessage
 
 // Rows, status lines and fields shared by the planner results, the departures and the detail.
 
-/** Column titles of the compact rows; minimum widths keep them aligned while letting large text grow. */
-@Composable
-internal fun BoardColumnHeader() {
-    Row(
-        modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceVariant).padding(horizontal = 20.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(stringResource(R.string.board_column_time), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, modifier = Modifier.widthIn(min = TIME_COLUMN))
-        Text(stringResource(R.string.board_column_service), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-        Text(stringResource(R.string.board_column_platform), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, modifier = Modifier.widthIn(min = SIDE_COLUMN), textAlign = TextAlign.End)
-        Text(stringResource(R.string.board_column_status), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, modifier = Modifier.widthIn(min = SIDE_COLUMN), textAlign = TextAlign.End)
-    }
-}
-
-private val TIME_COLUMN = 76.dp
-private val SIDE_COLUMN = 50.dp
+private val TIME_COLUMN = 64.dp
+private val SIDE_COLUMN = 56.dp
 
 /**
  * How demonstration data is shown: the timetable only. Delays, expected times, platforms, progress and
@@ -136,10 +129,12 @@ internal fun DataStatusLine(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 12.dp)
+            .padding(horizontal = ScreenMargin, vertical = 6.dp)
+            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(16.dp))
             .clearAndSetSemantics {
                 contentDescription = statusContentDescription
-            },
+            }
+            .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.Top
     ) {
         Icon(Icons.Default.Info, contentDescription = null, tint = color, modifier = Modifier.padding(top = 2.dp).size(18.dp))
@@ -154,12 +149,14 @@ internal fun DataStatusLine(
             }
         }
     }
-    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 }
 
-/** A compact, neutral row of a departures or results list (the board highlights its next service separately). */
+/**
+ * A compact, neutral row of a departures list (the board highlights its next service separately): time and
+ * state, destination and train, platform. [selected] tints the row whose detail is open beside the list.
+ */
 @Composable
-internal fun DepartureListRow(service: TrainService, isDemonstration: Boolean = false, onOpen: () -> Unit) {
+internal fun DepartureListRow(service: TrainService, isDemonstration: Boolean = false, selected: Boolean = false, onOpen: () -> Unit) {
     val shown = if (isDemonstration) service.presentedAsDemonstration() else service
     val serviceState = if (shown.operationalStatusVerified) {
         stringResource(R.string.service_state_live, shown.status.localizedLabel())
@@ -171,33 +168,40 @@ internal fun DepartureListRow(service: TrainService, isDemonstration: Boolean = 
         shown.localizedAccessibleSummary(),
         serviceState
     )
+    val selectedState = if (selected) stringResource(R.string.accessibility_row_selected) else null
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .padding(horizontal = ScreenMargin, vertical = 4.dp)
+            .background(
+                if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
+                RoundedCornerShape(16.dp)
+            )
             .clickable(role = Role.Button, onClick = onOpen)
             .clearAndSetSemantics {
                 contentDescription = serviceContentDescription
+                selectedState?.let { stateDescription = it }
                 role = Role.Button
                 onClick { onOpen(); true }
             }
-            .padding(horizontal = 20.dp, vertical = 12.dp),
+            .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Column(Modifier.widthIn(min = TIME_COLUMN).padding(end = 8.dp)) {
-            Text(shown.scheduledDeparture, style = MaterialTheme.typography.titleLarge, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
+        Column(Modifier.widthIn(min = TIME_COLUMN).padding(end = 10.dp)) {
+            Text(shown.scheduledDeparture, style = MaterialTheme.typography.titleMedium.copy(fontFeatureSettings = TabularFigures), fontWeight = FontWeight.Bold)
             when {
-                !shown.operationalStatusVerified -> Text(stringResource(R.string.service_scheduled_lowercase), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                !shown.operationalStatusVerified -> Text(stringResource(R.string.service_scheduled_lowercase), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 shown.status == ServiceStatus.CANCELLED -> Text(stringResource(R.string.service_status_cancelled), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
                 shown.delayMinutes > 0 -> Text(stringResource(R.string.delay_minutes, shown.delayMinutes), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.tertiary, fontWeight = FontWeight.Bold)
-                else -> Text(stringResource(R.string.service_on_time_lowercase), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.secondary)
+                else -> Text(stringResource(R.string.service_on_time_lowercase), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
             }
             if (shown.operationalStatusVerified && shown.expectedDeparture != shown.scheduledDeparture) {
                 Text(stringResource(R.string.expected_time_short, shown.expectedDeparture), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(shown.destination, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            Text(stringResource(R.string.service_operator_category_number, shown.displayOperator, shown.trainCategory.localizedLabel(), shown.number), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(shown.destination, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(stringResource(R.string.service_category_number, shown.trainCategory.localizedLabel(), shown.number), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             shown.routeChange?.let {
                 Text(
                     routeChangeLabel(it),
@@ -209,12 +213,113 @@ internal fun DepartureListRow(service: TrainService, isDemonstration: Boolean = 
         }
         Column(horizontalAlignment = Alignment.End, modifier = Modifier.widthIn(min = SIDE_COLUMN)) {
             Text(shown.platform?.let { stringResource(R.string.platform_short, it) } ?: "—", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
-        }
-        Column(horizontalAlignment = Alignment.End, modifier = Modifier.widthIn(min = SIDE_COLUMN)) {
             Text(compactStatusLabel(shown), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.End)
         }
     }
-    HorizontalDivider(modifier = Modifier.padding(start = 20.dp), color = MaterialTheme.colorScheme.outlineVariant)
+}
+
+/**
+ * A route search solution as a card of the render: "17:40 → 22:05", the scheduled duration, the train in
+ * capitals, "Diretto" (or the number of changes the source published) and the platform. Demonstration data
+ * shows the timetable only.
+ */
+@Composable
+internal fun ResultCard(
+    service: TrainService,
+    isDemonstration: Boolean,
+    onOpen: () -> Unit,
+    modifier: Modifier = Modifier,
+    selected: Boolean = false
+) {
+    val shown = if (isDemonstration) service.presentedAsDemonstration() else service
+    val locale = LocalConfiguration.current.locales[0]
+    val arrival = JourneyTimes.arrival(shown)
+    val duration = JourneyTimes.durationMinutes(shown)
+    val serviceState = if (shown.operationalStatusVerified) {
+        stringResource(R.string.service_state_live, shown.status.localizedLabel())
+    } else {
+        stringResource(R.string.service_state_scheduled)
+    }
+    val description = listOfNotNull(
+        stringResource(R.string.accessibility_open_service, shown.localizedAccessibleSummary(), serviceState),
+        arrival?.let { stringResource(R.string.service_scheduled_arrival, it) },
+        duration?.let { durationAccessibleLabel(it) },
+        if (selected) stringResource(R.string.accessibility_row_selected) else null
+    ).joinToString(". ")
+    Surface(
+        modifier = modifier
+            .fillMaxWidth()
+            .clearAndSetSemantics {
+                contentDescription = description
+                role = Role.Button
+                onClick { onOpen(); true }
+            },
+        onClick = onOpen,
+        color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
+        shape = RoundedCornerShape(20.dp),
+        shadowElevation = 1.dp,
+        border = if (selected) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null
+    ) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    listOfNotNull(shown.scheduledDeparture, arrival).joinToString(" → "),
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.titleLarge.copy(fontFeatureSettings = TabularFigures)
+                )
+                duration?.let {
+                    Text(JourneyTimes.durationLabel(it), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            Text(
+                stringResource(R.string.service_category_number, shown.trainCategory.localizedLabel(), shown.number).uppercase(locale),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                letterSpacing = 0.5.sp
+            )
+            if (shown.operationalStatusVerified && shown.status != ServiceStatus.ON_TIME) {
+                Text(
+                    compactStatusLabel(shown),
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = if (shown.status == ServiceStatus.CANCELLED) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.tertiary
+                )
+            }
+            Row(Modifier.padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                if (shown.transferCount == 0) {
+                    Icon(Icons.Default.CheckCircle, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text(stringResource(R.string.journey_change_direct), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                } else {
+                    Icon(Icons.Default.SyncAlt, contentDescription = null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        pluralStringResource(R.plurals.service_transfer_count, shown.transferCount, shown.transferCount),
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+                Spacer(Modifier.weight(1f))
+                Text(
+                    stringResource(R.string.platform_label, shown.platform ?: "—"),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+/** Spoken duration ("4 ore 25 min") next to the visible "4 h 25 min". */
+@Composable
+internal fun durationAccessibleLabel(minutes: Int): String {
+    val hours = minutes / 60
+    val rest = minutes % 60
+    return listOfNotNull(
+        if (hours > 0) pluralStringResource(R.plurals.duration_hours, hours, hours) else null,
+        if (rest > 0 || hours == 0) pluralStringResource(R.plurals.minutes_short, rest, rest) else null
+    ).joinToString(" ").let { stringResource(R.string.service_duration_accessible, it) }
 }
 
 @Composable
@@ -235,7 +340,22 @@ internal fun StationField(
     onSelect: (Station) -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        OutlinedTextField(value = value, onValueChange = onValueChange, modifier = Modifier.fillMaxWidth(), singleLine = true, label = { Text(label) }, leadingIcon = { Icon(Icons.Default.Train, contentDescription = null) })
+        TextField(
+            value = value,
+            onValueChange = onValueChange,
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            label = { Text(label) },
+            textStyle = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+            shape = RoundedCornerShape(16.dp),
+            colors = TextFieldDefaults.colors(
+                focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                focusedIndicatorColor = Color.Transparent,
+                unfocusedIndicatorColor = Color.Transparent,
+                disabledIndicatorColor = Color.Transparent
+            )
+        )
         if (matches.isNotEmpty() && (matches.none { it.name.equals(value, ignoreCase = true) } || matches.any { it.id.startsWith("manual:") })) {
             matches.take(5).forEach { station ->
                 TextButton(onClick = { onSelect(station) }, modifier = Modifier.fillMaxWidth()) {
@@ -277,19 +397,17 @@ internal fun routeChangeAccent(routeChange: OperationalRouteChange) =
 @Composable
 internal fun ServiceStatusBadge(service: TrainService) {
     val (container, foreground, text) = if (!service.operationalStatusVerified) {
-        Triple(MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.colorScheme.onSurfaceVariant, stringResource(R.string.service_status_scheduled_badge))
+        Triple(MaterialTheme.colorScheme.secondaryContainer, MaterialTheme.colorScheme.onSecondaryContainer, stringResource(R.string.service_status_scheduled_badge))
     } else when (service.status) {
-        ServiceStatus.ON_TIME -> Triple(MaterialTheme.colorScheme.secondary, MaterialTheme.colorScheme.onSecondary, stringResource(R.string.operational_on_time))
-        ServiceStatus.DELAYED -> Triple(MaterialTheme.colorScheme.tertiary, MaterialTheme.colorScheme.onTertiary, stringResource(R.string.delay_minutes, service.delayMinutes))
-        ServiceStatus.CANCELLED -> Triple(MaterialTheme.colorScheme.error, MaterialTheme.colorScheme.onError, stringResource(R.string.service_status_cancelled))
+        ServiceStatus.ON_TIME -> Triple(MaterialTheme.colorScheme.secondaryContainer, MaterialTheme.colorScheme.onSecondaryContainer, stringResource(R.string.operational_on_time))
+        ServiceStatus.DELAYED -> Triple(MaterialTheme.colorScheme.tertiaryContainer, MaterialTheme.colorScheme.onTertiaryContainer, stringResource(R.string.delay_minutes, service.delayMinutes))
+        ServiceStatus.CANCELLED -> Triple(MaterialTheme.colorScheme.errorContainer, MaterialTheme.colorScheme.onErrorContainer, stringResource(R.string.service_status_cancelled))
     }
-    Surface(color = container, contentColor = foreground, shape = RoundedCornerShape(999.dp)) {
-        Text(text, modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
-    }
+    Pill(text, container = container, content = foreground)
 }
 
 @Composable
-private fun compactStatusLabel(service: TrainService): String {
+internal fun compactStatusLabel(service: TrainService): String {
     if (!service.operationalStatusVerified) return stringResource(R.string.service_status_scheduled_compact)
     return when (service.status) {
         ServiceStatus.ON_TIME -> stringResource(R.string.operational_on_time)

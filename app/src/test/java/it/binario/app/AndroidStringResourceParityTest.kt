@@ -105,17 +105,16 @@ class AndroidStringResourceParityTest {
         val IDENTICAL_STRING_KEYS = setOf(
             "app_name", "app_brand", "nav_agenda", "screen_title_agenda", "planned_journey_checklist",
             "integration_apple_watch_title", "widget_previous_symbol", "widget_next_symbol", "widget_refresh_symbol",
-            "delay_minutes", "planned_journey_route", "service_operator_category", "service_operator_category_number",
-            "service_number_route", "service_data_summary", "station_board_entry_accessibility",
+            "delay_minutes", "planned_journey_route", "service_operator_category_number", "service_data_summary", "station_board_entry_accessibility",
             "accessibility_optional_message", "accessibility_title_detail", "provider_updated_at", "distance_kilometers",
-            "board_route_direction", "planner_round_trip_results", "widget_accessibility_target", "share_operator_category",
+            "planner_round_trip_results", "widget_accessibility_target", "share_operator_category",
             "share_route", "planned_journey_checklist_item", "mobility_changes_max", "route_change_via",
             "share_category_frecce", "share_category_intercity", "share_stop_delay", "alert_repeat_weekdays",
             "commuter_alert_lead", "integration_wear_title",
             "expected_time_short", "theme_system_label", "train_category_intercity", "train_category_frecce",
             "unconfigured_route_display", "quality_band_score", "widget_status_on_time", "widget_status_delayed", "widget_status_demo",
             "widget_quality_score", "widget_confidence_open_data", "widget_confidence_cached", "widget_confidence_demonstration",
-            "widget_warning_demonstration"
+            "widget_warning_demonstration", "service_group_italo", "service_group_frecce", "service_category_number"
         )
         val IDENTICAL_PLURAL_KEYS = setOf("minutes_short", "gps_alarm_radius_km")
         val quantitiesByLocale = mapOf(

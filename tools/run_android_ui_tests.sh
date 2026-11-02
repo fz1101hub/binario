@@ -83,11 +83,40 @@ adb -s "$binario_serial" shell cmd locale set-app-locales it.binario.app --local
 adb -s "$binario_serial" shell pm grant it.binario.app android.permission.POST_NOTIFICATIONS
 adb -s "$binario_serial" shell appops set it.binario.app SCHEDULE_EXACT_ALARM allow
 ./gradlew --no-daemon --max-workers=2 --dependency-verification=strict :app:connectedDebugAndroidTest \
-  -Pandroid.testInstrumentationRunnerArguments.notClass=it.binario.app.PlannedJourneyReminderPermissionTest,it.binario.app.RfiJourneyNetworkTest,it.binario.app.ViaggiaTrenoJourneyNetworkTest
+  -Pandroid.testInstrumentationRunnerArguments.notClass=it.binario.app.PlannedJourneyReminderPermissionTest,it.binario.app.RfiJourneyNetworkTest,it.binario.app.ViaggiaTrenoJourneyNetworkTest,it.binario.app.DesignScreenshotTest
 
 # Revoke outside instrumentation: Android may terminate a process when its permission changes.
 adb -s "$binario_serial" install -r app/build/outputs/apk/debug/app-debug.apk
 adb -s "$binario_serial" install -r -t app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+if [ "${BINARIO_CAPTURE_SCREENS:-false}" = true ]; then
+  # Design screenshots for the comparison with the approved Binario 2.0 render: the test saves JPEG files in the
+  # app's files/design-screens, copied out with run-as and printed as base64 chunks the integrator can decode.
+  adb -s "$binario_serial" shell am instrument -w -r \
+    -e class it.binario.app.DesignScreenshotTest \
+    it.binario.app.test/androidx.test.runner.AndroidJUnitRunner \
+    | tee "$RUNNER_TEMP/binario-ui-design-screens.log"
+  if ! grep -Eq '^OK \([0-9]+ tests?\)' "$RUNNER_TEMP/binario-ui-design-screens.log" ||
+      grep -Eq 'FAILURES|INSTRUMENTATION_FAILED|Process crashed' "$RUNNER_TEMP/binario-ui-design-screens.log"; then
+    echo '::error title=Schermate di design::DesignScreenshotTest non è riuscito: consultare binario-ui-design-screens.log.'
+    exit 1
+  fi
+  binario_design_dir="$RUNNER_TEMP/binario-design-screens"
+  rm -rf "$binario_design_dir"
+  mkdir -p "$binario_design_dir"
+  adb -s "$binario_serial" exec-out "run-as it.binario.app sh -c 'cd files && tar cf - design-screens'" \
+    > "$binario_design_dir/design-screens.tar"
+  tar -xf "$binario_design_dir/design-screens.tar" -C "$binario_design_dir"
+  binario_design_count=0
+  for binario_screen in "$binario_design_dir"/design-screens/*.jpg; do
+    test -s "$binario_screen" || continue
+    binario_screen_name="$(basename "$binario_screen")"
+    base64 -w 0 "$binario_screen" | fold -w 4000 | sed "s/^/DESIGN_SCREEN $binario_screen_name /"
+    echo
+    echo "DESIGN_SCREEN_END $binario_screen_name"
+    binario_design_count=$((binario_design_count + 1))
+  done
+  test "$binario_design_count" -gt 0 || { echo 'DesignScreenshotTest produced no screenshots.' >&2; exit 1; }
+fi
 if [ "${BINARIO_VERIFY_LIVE_ROUTE:-false}" = true ]; then
   adb -s "$binario_serial" shell am instrument -w -r \
     -e class it.binario.app.ViaggiaTrenoJourneyNetworkTest \

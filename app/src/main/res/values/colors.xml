@@ -1,18 +1,22 @@
 <resources>
-    <!-- Binario 2.0 railway green. #2E7D32 is the only green that carries small white text (5.1:1); the lighter
-         reference green #388E3C (4.1:1) is an identity accent and is not used behind text. Every pair below
-         meets WCAG AA: rows and highlights are darker than the widget surface so that muted, warning and error
-         text keep at least 4.5:1, and boundaries keep at least 3:1 against the surface. -->
-    <color name="brand_action_green">#2E7D32</color>
-    <color name="widget_surface">#205E2B</color>
-    <color name="widget_row">#184F1F</color>
-    <color name="widget_on_surface">#FFFFFF</color>
-    <color name="widget_on_surface_muted">#E0F1E2</color>
-    <color name="widget_warning">#FFCB93</color>
-    <color name="widget_error">#FFD0CC</color>
-    <color name="widget_divider">#8FC493</color>
-    <color name="widget_header">#D7F0DA</color>
-    <color name="widget_header_text">#143A1A</color>
-    <color name="widget_variation">#71400E</color>
-    <color name="widget_variation_stroke">#FFC489</color>
+    <!-- Binario 2.0 palette of the approved render (design/BINARIO_2_DESIGN_SYSTEM.md): deep forest green header
+         #003A28, filled actions #00703E, light cards #FCFCFC on the #F4F7F6 page. Every pair below meets WCAG AA:
+         white on the header 12.8:1, mint details 8.5:1, row text 15.6:1, muted 8.1:1, delay text 6.6:1 and
+         error text 6.4:1 on the rows (5.8:1 and 5.6:1 on a highlighted row), white on the actions 6.2:1;
+         boundaries keep at least 3:1 against the page. -->
+    <color name="brand_action_green">#00703E</color>
+    <color name="widget_surface">#F4F7F6</color>
+    <color name="widget_header_green">#003A28</color>
+    <color name="widget_on_header">#FFFFFF</color>
+    <color name="widget_on_header_muted">#8FE3C0</color>
+    <color name="widget_row">#FCFCFC</color>
+    <color name="widget_on_surface">#17241F</color>
+    <color name="widget_on_surface_muted">#3F5249</color>
+    <color name="widget_warning">#8A4B12</color>
+    <color name="widget_error">#B3261E</color>
+    <color name="widget_divider">#6F7F78</color>
+    <color name="widget_header">#E2EEEA</color>
+    <color name="widget_header_text">#003A28</color>
+    <color name="widget_variation">#FFE9D1</color>
+    <color name="widget_variation_stroke">#99571B</color>
 </resources>

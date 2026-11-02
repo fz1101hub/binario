@@ -1,106 +1,126 @@
 package it.binario.app.ui.common
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DepartureBoard
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material.icons.outlined.DepartureBoard
+import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationRail
-import androidx.compose.material3.NavigationRailItem
-import androidx.compose.material3.Surface
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import it.binario.app.BinarioTheme
 import it.binario.app.R
 import it.binario.app.ui.TopDestination
 
-// App chrome shared by every destination.
+// App chrome shared by every destination: the green top bar, the bottom navigation and the green side
+// navigation of wide windows.
 
 /**
- * App bar that grows with the text instead of clipping it: at 200 % font scale the title and the
- * subtitle wrap and the bar becomes taller, while the 64 dp minimum keeps the usual height.
+ * The row above every screen: Back (or the Binario logo on the planner) and the screen actions. On phones it
+ * is green and reaches behind the status bar, continuing into the screen header; on wide windows it is a
+ * flat row above the panes. It never clips: the 56 dp minimum grows with the font scale.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun BinarioTopBar(
-    title: String,
-    subtitle: String?,
-    containerColor: Color,
-    contentColor: Color,
     brand: Boolean,
     navigationIcon: @Composable () -> Unit,
     actions: @Composable RowScope.() -> Unit
 ) {
-    Surface(color = containerColor, contentColor = contentColor, modifier = Modifier.fillMaxWidth()) {
+    val wide = LocalWideLayout.current
+    val colors = BinarioTheme.colors
+    val background = if (wide) MaterialTheme.colorScheme.background else colors.header
+    val foreground = if (wide) MaterialTheme.colorScheme.onBackground else colors.onHeader
+    CompositionLocalProvider(LocalContentColor provides foreground) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .windowInsetsPadding(TopAppBarDefaults.windowInsets)
-                .heightIn(min = 64.dp)
-                .padding(horizontal = 4.dp),
+                .background(background)
+                .then(
+                    if (wide) Modifier
+                    else Modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal))
+                )
+                .heightIn(min = 56.dp)
+                .padding(horizontal = 4.dp)
+                .testTag("top-bar"),
             verticalAlignment = Alignment.CenterVertically
         ) {
             navigationIcon()
-            Column(Modifier.weight(1f).padding(horizontal = 12.dp, vertical = 8.dp)) {
-                Text(
-                    title,
-                    modifier = Modifier.semantics { heading() },
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = if (brand) 1.sp else 0.sp
-                )
-                subtitle?.let {
-                    Text(it, style = MaterialTheme.typography.labelMedium, color = if (brand) contentColor else MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
+            if (brand && !wide) BinarioLogo(foreground, Modifier.padding(start = 12.dp))
+            Spacer(Modifier.weight(1f))
             Row(verticalAlignment = Alignment.CenterVertically, content = actions)
         }
     }
 }
 
-/** Bottom navigation of phones: Pianifica, Partenze, Per te. */
+/** Bottom navigation of phones: Pianifica, Partenze, Per te. The selected item has a filled icon and a bold label. */
 @Composable
 internal fun BinarioNavigationBar(selected: TopDestination, onSelect: (TopDestination) -> Unit, containerColor: Color) {
-    NavigationBar(containerColor = containerColor, modifier = Modifier.testTag("bottom-navigation")) {
+    val colors = BinarioTheme.colors
+    val selectedColor = if (MaterialTheme.colorScheme.surface.isLight()) colors.segmentSelected else MaterialTheme.colorScheme.primary
+    NavigationBar(containerColor = containerColor, tonalElevation = 0.dp, modifier = Modifier.testTag("bottom-navigation")) {
         TopDestination.entries.forEach { destination ->
+            val isSelected = selected == destination
             NavigationBarItem(
-                selected = selected == destination,
+                selected = isSelected,
                 onClick = { onSelect(destination) },
-                icon = { Icon(destination.icon, contentDescription = null) },
-                label = { Text(destination.label()) },
+                icon = { Icon(destination.icon(isSelected), contentDescription = null) },
+                label = { Text(destination.label(), fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium) },
+                colors = NavigationBarItemDefaults.colors(
+                    selectedIconColor = selectedColor,
+                    selectedTextColor = selectedColor,
+                    indicatorColor = MaterialTheme.colorScheme.secondaryContainer,
+                    unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+                ),
                 modifier = Modifier.testTag(destination.testTag)
             )
         }
     }
 }
+
+private fun Color.isLight(): Boolean = (red * 0.299f + green * 0.587f + blue * 0.114f) > 0.5f
 
 @Composable
 internal fun TopDestination.label(): String = stringResource(
@@ -111,14 +131,13 @@ internal fun TopDestination.label(): String = stringResource(
     }
 )
 
-private val TopDestination.icon: ImageVector
-    get() = when (this) {
-        TopDestination.PLAN -> Icons.Default.Search
-        TopDestination.DEPARTURES -> Icons.Default.DepartureBoard
-        TopDestination.FOR_YOU -> Icons.Default.Person
-    }
+private fun TopDestination.icon(selected: Boolean): ImageVector = when (this) {
+    TopDestination.PLAN -> if (selected) Icons.Filled.Search else Icons.Outlined.Search
+    TopDestination.DEPARTURES -> if (selected) Icons.Filled.DepartureBoard else Icons.Outlined.DepartureBoard
+    TopDestination.FOR_YOU -> if (selected) Icons.Filled.Person else Icons.Outlined.Person
+}
 
-/** Stable test tags of the destinations, shared by the bottom bar and the navigation rail. */
+/** Stable test tags of the destinations, shared by the bottom bar and the side navigation. */
 internal val TopDestination.testTag: String
     get() = when (this) {
         TopDestination.PLAN -> "nav-plan"
@@ -126,24 +145,69 @@ internal val TopDestination.testTag: String
         TopDestination.FOR_YOU -> "nav-for-you"
     }
 
-/** From 600 dp the destinations move to a navigation rail beside the content. */
+/**
+ * From 600 dp the destinations move to a permanent deep green side navigation that reaches behind the status
+ * bar: the Binario logo, then one item per destination. [expanded] (from 840 dp) puts the label beside the
+ * icon as in the tablet render; the narrower rail stacks it below. The selected item is a rounded lighter green
+ * with a filled icon and a bold label.
+ */
 @Composable
-internal fun BinarioNavigationRail(selected: TopDestination, onSelect: (TopDestination) -> Unit, modifier: Modifier = Modifier) {
-    NavigationRail(
-        modifier = modifier.testTag("navigation-rail"),
-        containerColor = MaterialTheme.colorScheme.surface,
-        // The scaffold already applied the system bar insets around the rail.
-        windowInsets = WindowInsets(0, 0, 0, 0)
+internal fun BinarioNavigationRail(
+    selected: TopDestination,
+    onSelect: (TopDestination) -> Unit,
+    modifier: Modifier = Modifier,
+    expanded: Boolean = false
+) {
+    val colors = BinarioTheme.colors
+    Column(
+        modifier
+            .fillMaxHeight()
+            .width(if (expanded) 216.dp else 96.dp)
+            .background(colors.header)
+            .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Vertical + WindowInsetsSides.Start))
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 12.dp, vertical = 16.dp)
+            .selectableGroup()
+            .testTag("navigation-rail"),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Spacer(Modifier.height(8.dp))
+        BinarioLogo(
+            colors.onHeader,
+            Modifier.padding(start = if (expanded) 12.dp else 22.dp, bottom = 16.dp, top = 8.dp),
+            showWordmark = expanded
+        )
         TopDestination.entries.forEach { destination ->
-            NavigationRailItem(
-                selected = selected == destination,
-                onClick = { onSelect(destination) },
-                icon = { Icon(destination.icon, contentDescription = null) },
-                label = { Text(destination.label(), textAlign = TextAlign.Center) },
-                modifier = Modifier.testTag(destination.testTag)
-            )
+            val isSelected = selected == destination
+            val content = if (isSelected) colors.onRailSelected else colors.onRail
+            val itemModifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 56.dp)
+                .background(if (isSelected) colors.railSelected else Color.Transparent, RoundedCornerShape(16.dp))
+                .selectable(selected = isSelected, role = Role.Tab, onClick = { onSelect(destination) })
+                .testTag(destination.testTag)
+                .padding(horizontal = 12.dp, vertical = 10.dp)
+            val label: @Composable () -> Unit = {
+                Text(
+                    destination.label(),
+                    color = content,
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                    textAlign = if (expanded) TextAlign.Start else TextAlign.Center
+                )
+            }
+            if (expanded) {
+                Row(itemModifier, verticalAlignment = Alignment.CenterVertically) {
+                    Icon(destination.icon(isSelected), contentDescription = null, tint = content)
+                    Spacer(Modifier.width(14.dp))
+                    label()
+                }
+            } else {
+                Column(itemModifier, horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(destination.icon(isSelected), contentDescription = null, tint = content)
+                    Spacer(Modifier.height(4.dp))
+                    label()
+                }
+            }
         }
     }
 }

@@ -93,16 +93,14 @@
 
     <!-- Main app shell and primary journey planner. -->
     <string name="app_brand">BINARIO</string>
-    <string name="screen_title_results">Soluzioni</string>
     <string name="screen_title_detail">Dettaglio corsa</string>
     <string name="screen_title_agenda">Agenda</string>
-    <string name="screen_subtitle_results">Corse disponibili</string>
     <string name="screen_subtitle_agenda">Viaggi pianificati sul dispositivo</string>
     <string name="action_back">Torna indietro</string>
     <string name="action_choose_theme">Scegli tema. Tema attuale %1$s</string>
     <string name="action_refresh_rail_information">Aggiorna le informazioni ferroviarie</string>
     <string name="search_mode_route">Viaggio</string>
-    <string name="search_mode_train">N. treno</string>
+    <string name="search_mode_train">Treno</string>
     <string name="search_mode_station">Stazione</string>
     <string name="operations_section_trains">Treni</string>
     <string name="operations_section_stations">Stazioni</string>
@@ -173,17 +171,11 @@
 
     <!-- Search and station board. -->
     <string name="planner_voice_route">Detta tratta</string>
-    <string name="planner_departure_station">STAZIONE PARTENZA</string>
-    <string name="planner_arrival_station">STAZIONE ARRIVO</string>
-    <string name="planner_origin">Partenza</string>
-    <string name="planner_destination">Arrivo</string>
+    <string name="planner_origin">Da</string>
+    <string name="planner_destination">A</string>
     <string name="action_swap_origin_destination">Inverti partenza e arrivo</string>
     <string name="planner_one_way">Sola andata</string>
     <string name="planner_round_trip">Andata e ritorno</string>
-    <string name="planner_outbound_date">ANDATA · DATA</string>
-    <string name="planner_outbound_time">ANDATA · ORA</string>
-    <string name="planner_return_date">RITORNO · DATA</string>
-    <string name="planner_return_time">RITORNO · ORA</string>
     <string name="accessibility_select_outbound_date">Seleziona data andata. Valore attuale %1$s</string>
     <string name="accessibility_select_outbound_time">Seleziona ora andata. Valore attuale %1$s</string>
     <string name="accessibility_select_return_date">Seleziona data ritorno. Valore attuale %1$s</string>
@@ -209,7 +201,6 @@
     <string name="planner_train_number_example">Es. 9310</string>
     <string name="planner_filter_train">Cerca treno</string>
     <string name="planner_voice_station">Detta stazione</string>
-    <string name="planner_station_board_title">TABELLONE STAZIONE</string>
     <string name="station_label">Stazione</string>
     <string name="planner_open_station_board">Apri tabellone</string>
     <string name="planner_recent_and_favourite">Recenti e preferite</string>
@@ -289,12 +280,9 @@
     <string name="today_empty_title">Nessuna partenza da mostrare</string>
 
     <!-- Settings, privacy and integrations. -->
-    <string name="settings_appearance">Aspetto</string>
     <string name="settings_theme_title">Tema dell’app</string>
     <string name="settings_theme_description">Sistema, chiaro o scuro</string>
     <string name="settings_personal_journeys_description">Le tratte fissate restano disponibili anche nel widget. Tocca una tratta per renderla attiva.</string>
-    <string name="settings_add_route">Aggiungi una tratta</string>
-    <string name="settings_integrations">Integrazioni</string>
     <string name="settings_monitored_trains">Treni monitorati</string>
     <string name="settings_monitored_trains_description">Gli avvisi in tempo reale saranno disponibili solo con una fonte autorizzata.</string>
     <string name="train_number_label">Treno %1$s</string>
@@ -305,25 +293,20 @@
     <string name="settings_privacy_wear">Se attivi lo smartwatch, riceve una sintesi della tratta e fino a due corse. Disattivare la condivisione elimina il DataItem e la cache locale del watch alla ricezione della revoca. L’informativa completa è PRIVACY.md nel repository. Prima di una distribuzione pubblica manca un URL verificato e un recapito privacy: non esiste ancora un link pubblico nell’app.</string>
     <!-- Binario 2.0 UX (October 2026) -->
     <string name="planner_headline">Dove andiamo?</string>
-    <string name="planner_subtitle">Cerca una tratta, un numero treno oppure una stazione.</string>
+    <string name="planner_subtitle">Il tuo prossimo viaggio parte da qui.</string>
     <string name="data_status_quality">Qualità del dato: %1$s</string>
     <string name="data_status_cached">Copia salvata, non in tempo reale: %1$s</string>
     <string name="nav_plan">Pianifica</string>
     <string name="nav_departures">Partenze</string>
     <string name="nav_for_you">Per te</string>
-    <string name="departures_subtitle">Tratta attiva e tabelloni di stazione</string>
-    <string name="for_you_subtitle">Tratte, viaggi, avvisi e preferenze</string>
-    <string name="departures_next_departure">Prossima partenza</string>
+    <string name="departures_next_departure">Prossima corsa</string>
     <string name="route_picker_title">Scegli la tratta</string>
     <string name="route_picker_empty">Nessuna tratta salvata. Aggiungine una in Per te.</string>
     <string name="route_picker_manage">Gestisci tratte</string>
-    <string name="for_you_saved_routes">Tratte salvate</string>
     <string name="for_you_alarms">Sveglie e avvisi</string>
     <string name="for_you_stop_alarm_hint">Le sveglie di fermata, anche GPS, si impostano dalla fermata nel dettaglio di una corsa.</string>
     <string name="for_you_credits">Crediti e licenze</string>
     <string name="action_follow_trip">Segui viaggio</string>
-    <string name="action_save">Salva</string>
-    <string name="action_saved">Salvato</string>
     <string name="action_share">Condividi</string>
     <string name="detail_save_hint">Salva aggiunge il treno ai treni monitorati in Per te; Segui viaggio conserva la prossima fermata solo su questo dispositivo.</string>
     <string name="stop_position_passed">Fermata superata</string>
@@ -414,15 +397,8 @@
 
     <!-- Board, routes and service detail. -->
     <string name="delay_minutes">+%1$d min</string>
-    <string name="board_header_title">PARTENZE · %1$s</string>
-    <string name="board_route_direction">%1$s · %2$s</string>
-    <string name="accessibility_refresh_departures">Aggiorna partenze. Stato: %1$s</string>
     <string name="action_direction">Direzione</string>
     <string name="action_change_route">Cambia tratta</string>
-    <string name="board_column_time">ORA</string>
-    <string name="board_column_service">DESTINAZIONE / TRENO</string>
-    <string name="board_column_platform">BIN.</string>
-    <string name="board_column_status">STATO</string>
     <string name="monitored_routes_title">Tratte monitorate</string>
     <string name="service_scheduled_lowercase">programmato</string>
     <string name="service_on_time_lowercase">in orario</string>
@@ -447,9 +423,7 @@
     <string name="route_name_example">Es. Casa – lavoro</string>
     <string name="route_save_and_activate">Salva e attiva tratta</string>
 
-    <string name="service_operator_category">%1$s · %2$s</string>
     <string name="service_operator_category_number">%1$s · %2$s %3$s</string>
-    <string name="service_number_route">%1$s · %2$s → %3$s</string>
     <string name="service_scheduled_departure_label">Partenza programmata</string>
     <string name="expected_time">Previsto %1$s</string>
     <string name="service_scheduled_departure">Programmata %1$s</string>
@@ -935,4 +909,80 @@
         <item quantity="many">%d osservazioni registrate su questo dispositivo</item>
         <item quantity="other">%d osservazioni registrate su questo dispositivo</item>
     </plurals>
+    <!-- Binario 2.0 approved render (November 2026). -->
+    <string name="accessibility_row_selected">Selezionata</string>
+    <string name="service_category_number">%1$s %2$s</string>
+    <string name="service_scheduled_arrival">Arrivo programmato %1$s</string>
+    <string name="service_duration_accessible">Durata %1$s</string>
+    <string name="action_modify_search">Modifica</string>
+    <string name="results_order_fastest">Più veloce</string>
+    <string name="results_order_departure">Orario</string>
+    <string name="service_group_regional">Regionali</string>
+    <string name="service_group_frecce">Frecce</string>
+    <string name="service_group_italo">Italo</string>
+    <string name="service_group_other">Altri</string>
+    <string name="results_date_today">Oggi, %1$s</string>
+    <string name="results_date_from_time">%1$s · dalle %2$s</string>
+    <string name="planner_time_now">Adesso</string>
+    <string name="accessibility_trip_kind">Tipo di viaggio: %1$s. Tocca per passare da sola andata ad andata e ritorno</string>
+    <string name="planner_filters">Filtri</string>
+    <string name="planner_return_short">Ritorno %1$s</string>
+    <string name="planner_date_today">Oggi %1$s</string>
+    <string name="action_see_details">Vedi dettagli</string>
+    <string name="departures_title">Le tue partenze</string>
+    <string name="departures_other_services">Altre corse</string>
+    <string name="filter_all_services">Tutte</string>
+    <string name="action_details">Dettagli</string>
+    <string name="detail_info_operator">Operatore</string>
+    <string name="detail_info_train">Treno</string>
+    <string name="detail_info_expected">Partenza prevista</string>
+    <string name="detail_info_platform">Binario</string>
+    <string name="detail_info_status">Stato</string>
+    <string name="detail_monitored_state">Salvato tra i treni monitorati di Per te.</string>
+    <string name="detail_not_monitored_state">Non salvato: il cuore in alto lo aggiunge ai treni monitorati di Per te.</string>
+    <string name="detail_stop_alarm_title">Sveglia alla fermata</string>
+    <string name="accessibility_stop_alarm_at">Imposta la sveglia alla fermata %1$s, orario %2$s</string>
+    <string name="action_follow_this_trip">Segui questo viaggio</string>
+    <string name="detail_departure_time">Partenza %1$s</string>
+    <string name="detail_tab_route">Percorso</string>
+    <string name="detail_tab_info">Info</string>
+    <string name="detail_tab_services">Servizi</string>
+    <string name="stop_role_departure">Partenza</string>
+    <string name="stop_role_arrival">Arrivo</string>
+    <string name="stop_role_intermediate">Fermata intermedia</string>
+    <string name="accessibility_save_monitored">Salva tra i treni monitorati di Per te</string>
+    <string name="accessibility_saved_monitored">Salvato tra i treni monitorati di Per te. Tocca per rimuoverlo</string>
+    <string name="for_you_routes_title">Le tue tratte</string>
+    <string name="for_you_tab_favourites">Preferite</string>
+    <string name="for_you_tab_recent">Recenti</string>
+    <string name="for_you_no_recent">Nessuna ricerca recente su questo dispositivo.</string>
+    <string name="accessibility_route_actions">Altre azioni per %1$s</string>
+    <string name="settings_title">Impostazioni</string>
+    <string name="settings_row_detail">Tema, notifiche, widget, dati e lingua</string>
+    <string name="settings_theme">Tema</string>
+    <string name="settings_section_alerts">Notifiche e sveglie</string>
+    <string name="settings_section_alerts_detail">Sveglia alla fermata, sveglia GPS e avvisi pendolare</string>
+    <string name="settings_section_widgets">Widget</string>
+    <string name="settings_section_widgets_detail">Widget della schermata Home e dispositivi collegati</string>
+    <string name="settings_section_data">Dati e aggiornamenti</string>
+    <string name="settings_section_data_detail">Fonti dei dati, privacy e backup locale</string>
+    <string name="settings_section_language">Lingua e accessibilità</string>
+    <string name="settings_section_language_detail">Lingua dell’app, tema e preferenze di mobilità</string>
+    <string name="settings_section_about">Informazioni</string>
+    <string name="settings_section_about_detail">Versione, crediti e licenze</string>
+    <string name="settings_widgets_title">Widget di Binario</string>
+    <string name="settings_widgets_route">Widget Tratta: le prossime partenze di una tratta salvata, con cambio di direzione e pagine.</string>
+    <string name="settings_widgets_station">Widget Stazione: il tabellone di una stazione scelta da te.</string>
+    <string name="settings_widgets_how">Per aggiungerli tieni premuto sulla schermata Home, scegli Widget e cerca Binario. Ogni widget conserva la propria tratta o stazione.</string>
+    <string name="settings_language_title">Lingua dell’app</string>
+    <string name="settings_language_description">Binario è disponibile in italiano, inglese, tedesco, francese e spagnolo.</string>
+    <string name="settings_language_open">Scegli la lingua nelle impostazioni di sistema</string>
+    <string name="settings_language_system">Su questa versione di Android la lingua dell’app segue quella del sistema.</string>
+    <string name="settings_about_version">Versione %1$s</string>
+    <plurals name="duration_hours">
+        <item quantity="one">%d ora</item>
+        <item quantity="many">%d ore</item>
+        <item quantity="other">%d ore</item>
+    </plurals>
+    <string name="results_map_notice">La mappa si apre solo su richiesta: per disegnarla l’app scarica le tessere della zona del percorso da OpenFreeMap.</string>
 </resources>

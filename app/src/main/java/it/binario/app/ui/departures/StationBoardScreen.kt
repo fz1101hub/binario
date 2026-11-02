@@ -7,7 +7,9 @@ import android.location.LocationManager
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -32,7 +34,6 @@ import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -51,6 +52,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.testTag
@@ -62,6 +64,7 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -82,6 +85,9 @@ import it.binario.app.maps.NearbyStationsMapCard
 import it.binario.app.maps.RouteMapPlanner
 import it.binario.app.maps.StationMapCard
 import it.binario.app.maps.rememberOpenMapStationIndex
+import it.binario.app.ui.common.BinarioCard
+import it.binario.app.ui.common.HeaderOverlapBox
+import it.binario.app.ui.common.ScreenMargin
 import it.binario.app.ui.common.SearchInfoState
 import it.binario.app.ui.common.StationField
 import it.binario.app.ui.common.localizedLabel
@@ -150,8 +156,10 @@ internal fun StationBoardScreen(modifier: Modifier, viewModel: TrainViewModel, r
         verticalArrangement = Arrangement.spacedBy(0.dp)
     ) {
         item {
-            Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(stringResource(R.string.station_board_title), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+            HeaderOverlapBox {
+            BinarioCard(Modifier.padding(horizontal = ScreenMargin)) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(stringResource(R.string.station_board_title), modifier = Modifier.semantics { heading() }, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 StationField(
                     label = stringResource(R.string.station_label),
                     value = stationText,
@@ -241,6 +249,8 @@ internal fun StationBoardScreen(modifier: Modifier, viewModel: TrainViewModel, r
                     Text(message, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
+            }
+            }
         }
 
         if (!viewModel.hasStationBoardProviders) {
@@ -303,11 +313,18 @@ internal fun StationBoardScreen(modifier: Modifier, viewModel: TrainViewModel, r
                             ).joinToString("|")
                         }
                     ) { entry ->
-                        StationBoardEntryRow(entry, board.kind, onOpen = { viewModel.openStationBoardRun(entry) })
-                        HorizontalDivider(
-                            modifier = Modifier.padding(start = 20.dp),
-                            color = MaterialTheme.colorScheme.outlineVariant
-                        )
+                        val selected = entry == viewModel.selectedBoardEntry
+                        Box(
+                            Modifier
+                                .padding(horizontal = ScreenMargin, vertical = 4.dp)
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(
+                                    if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
+                                    RoundedCornerShape(16.dp)
+                                )
+                        ) {
+                            StationBoardEntryRow(entry, board.kind, onOpen = { viewModel.openStationBoardRun(entry) }, selected = selected)
+                        }
                     }
                 }
             }
@@ -367,7 +384,7 @@ internal fun StationBoardScreen(modifier: Modifier, viewModel: TrainViewModel, r
 }
 
 @Composable
-internal fun StationBoardEntryRow(entry: StationBoardEntry, kind: BoardKind, onOpen: (() -> Unit)? = null) {
+internal fun StationBoardEntryRow(entry: StationBoardEntry, kind: BoardKind, onOpen: (() -> Unit)? = null, selected: Boolean = false) {
     val scheduled = entry.scheduledTime.withZoneSameInstant(BOARD_ZONE)
     val expected = entry.expectedTime?.value?.withZoneSameInstant(BOARD_ZONE)
     val delayedMinutes = expected?.let {
@@ -400,6 +417,7 @@ internal fun StationBoardEntryRow(entry: StationBoardEntry, kind: BoardKind, onO
         platformLabel,
         trainLabel
     )
+    val selectedState = if (selected) stringResource(R.string.accessibility_row_selected) else null
 
     Row(
         Modifier
@@ -407,12 +425,13 @@ internal fun StationBoardEntryRow(entry: StationBoardEntry, kind: BoardKind, onO
             .then(if (onOpen != null) Modifier.clickable(role = Role.Button, onClick = onOpen) else Modifier)
             .clearAndSetSemantics {
                 contentDescription = accessibilityDescription
+                selectedState?.let { stateDescription = it }
                 if (onOpen != null) {
                     role = Role.Button
                     onClick { onOpen(); true }
                 }
             }
-            .padding(horizontal = 20.dp, vertical = 12.dp),
+            .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.Top,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
