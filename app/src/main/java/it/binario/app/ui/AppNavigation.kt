@@ -99,6 +99,7 @@ internal object AppNavigation {
         BinarioDeepLink.ActiveRoute, BinarioDeepLink.NextDepartures, is BinarioDeepLink.WidgetRoute ->
             NavigationTarget(AppScreen.DEPARTURES, departuresSection = OperationsSection.TRAINS)
         is BinarioDeepLink.TrainSearch -> NavigationTarget(AppScreen.PLANNER, plannerMode = SearchMode.TRAIN)
+        is BinarioDeepLink.FavouriteTrain -> NavigationTarget(AppScreen.NUMBER_RESULTS)
     }
 
     private val DETAIL_SCREENS = setOf(AppScreen.DETAIL, AppScreen.JOURNEY_DETAIL)

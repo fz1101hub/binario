@@ -296,6 +296,8 @@ private fun WidgetSettings(viewModel: TrainViewModel) {
         SectionHeading(stringResource(R.string.settings_widgets_title))
         Text(stringResource(R.string.settings_widgets_route), style = MaterialTheme.typography.bodyMedium)
         Text(stringResource(R.string.settings_widgets_station), style = MaterialTheme.typography.bodyMedium)
+        Text(stringResource(R.string.settings_widgets_trains), style = MaterialTheme.typography.bodyMedium)
+        Text(stringResource(R.string.settings_widgets_refresh), style = MaterialTheme.typography.bodyMedium)
         Text(stringResource(R.string.settings_widgets_how), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
     IntegrationsPanel(

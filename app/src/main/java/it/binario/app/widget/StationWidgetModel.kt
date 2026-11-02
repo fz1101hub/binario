@@ -24,7 +24,9 @@ data class StationWidgetDeparture(
     val operator: String?,
     val destination: String,
     val platform: String?,
-    val status: RunStatus?
+    val status: RunStatus?,
+    /** Train type group for the exclusions; null when the board does not tell, and then never hidden. */
+    val typeGroup: TrainTypeGroup? = null
 ) {
     /** True when the source published an operational observation rather than the timetable alone. */
     val hasObservation: Boolean
@@ -63,7 +65,8 @@ data class StationWidgetSnapshot(
                         operator = entry.operatorId?.value?.trim()?.takeIf(String::isNotEmpty),
                         destination = entry.destinationOrOriginLabel?.takeIf(String::isNotBlank) ?: entry.destinationOrOrigin.value,
                         platform = entry.platform?.value?.trim()?.takeIf(String::isNotEmpty),
-                        status = entry.status?.value
+                        status = entry.status?.value,
+                        typeGroup = WidgetTrainTypes.groupOf(entry.serviceKind, entry.operatorId?.value, entry.lineLabel, entry.status?.value)
                     )
                 }
                 .filter { (it.expectedEpochMillis ?: it.scheduledEpochMillis) >= now.toEpochMilli() - DEPARTED_GRACE_MILLIS }
@@ -155,13 +158,15 @@ object StationWidgetPresenter {
     fun isLive(departure: StationWidgetDeparture, freshness: Freshness): Boolean =
         freshness in setOf(Freshness.FRESH, Freshness.AGING) && departure.hasObservation
 
-    /** Departures that have not left yet by their live (or else scheduled) time, earliest first. */
+    /** Departures that have not left yet by their live (or else scheduled) time, earliest first, without excluded types. */
     fun upcoming(
         departures: List<StationWidgetDeparture>,
         freshness: Freshness,
         nowEpochMillis: Long,
-        limit: Int = MAX_ROWS
+        limit: Int = MAX_ROWS,
+        excluded: Set<TrainTypeGroup> = emptySet()
     ): List<StationWidgetDeparture> = departures
+        .filter { departure -> !WidgetTrainTypes.isHidden(departure.typeGroup, excluded) }
         .filter { departure -> effectiveDeparture(departure, freshness) >= nowEpochMillis - DEPARTED_GRACE_MILLIS }
         .sortedWith(compareBy<StationWidgetDeparture> { effectiveDeparture(it, freshness) }.thenBy { it.scheduledEpochMillis })
         .take(limit.coerceIn(0, MAX_ROWS))
@@ -211,8 +216,8 @@ object StationWidgetPresenter {
         )
     }
 
-    /** Source, scheduled-only marker, freshness and update time, like the route widget's meta line. */
-    fun meta(snapshot: StationWidgetSnapshot, freshness: Freshness, updatedAt: String, strings: StationWidgetStrings): String = listOfNotNull(
+    /** Source, scheduled-only marker, freshness and (when given) update time, like the route widget's meta line. */
+    fun meta(snapshot: StationWidgetSnapshot, freshness: Freshness, updatedAt: String?, strings: StationWidgetStrings): String = listOfNotNull(
         snapshot.providerNames.joinToString(", ").ifBlank { null },
         strings.widget.confidenceLabels.getValue(DataConfidence.STATIC_ONLY).takeIf { snapshot.departures.none { isLive(it, freshness) } },
         strings.widget.freshnessLabels.getValue(freshness),
@@ -253,6 +258,24 @@ object StationWidgetCodec {
         station.longitude?.toString().orEmpty()
     ).joinToString(FIELD) { encode(it) }
 
+    /** Station plus display name and settings text: 11 fields. A 9-field record is a configuration of an earlier version. */
+    fun encodeConfiguration(configuration: StationWidgetConfiguration): String = listOf(
+        encodeStation(configuration.station),
+        encode(configuration.settings.displayName),
+        encode(WidgetSettingsCodec.encodeStation(configuration.settings))
+    ).joinToString(FIELD)
+
+    fun decodeConfiguration(value: String): StationWidgetConfiguration? = runCatching {
+        val fields = value.split(FIELD)
+        when (fields.size) {
+            9 -> decodeStation(value)?.let { StationWidgetConfiguration(it, StationWidgetSettings.LEGACY) }
+            11 -> decodeStation(fields.take(9).joinToString(FIELD))?.let { station ->
+                StationWidgetConfiguration(station, WidgetSettingsCodec.decodeStation(decode(fields[10]), decode(fields[9])))
+            }
+            else -> null
+        }
+    }.getOrNull()
+
     fun decodeStation(value: String): Station? = runCatching {
         val parts = value.split(FIELD).map(::decode)
         require(parts.size == 9)
@@ -280,7 +303,8 @@ object StationWidgetCodec {
             departure.operator.orEmpty(),
             departure.destination,
             departure.platform.orEmpty(),
-            departure.status?.name.orEmpty()
+            departure.status?.name.orEmpty(),
+            departure.typeGroup?.name.orEmpty()
         ).joinToString(FIELD) { encode(it) }
     }
 
@@ -290,7 +314,7 @@ object StationWidgetCodec {
         .mapNotNull { record ->
             runCatching {
                 val parts = record.split(FIELD).map(::decode)
-                require(parts.size == 7)
+                require(parts.size == 7 || parts.size == 8)
                 StationWidgetDeparture(
                     scheduledEpochMillis = parts[0].toLong(),
                     expectedEpochMillis = parts[1].ifBlank { null }?.toLong(),
@@ -298,7 +322,10 @@ object StationWidgetCodec {
                     operator = parts[3].ifBlank { null },
                     destination = parts[4],
                     platform = parts[5].ifBlank { null },
-                    status = parts[6].ifBlank { null }?.let { name -> RunStatus.entries.firstOrNull { it.name == name } ?: RunStatus.UNKNOWN }
+                    status = parts[6].ifBlank { null }?.let { name -> RunStatus.entries.firstOrNull { it.name == name } ?: RunStatus.UNKNOWN },
+                    // Records of earlier versions: only the operator can tell the group.
+                    typeGroup = if (parts.size == 8) TrainTypeGroup.entries.firstOrNull { it.name == parts[7] }
+                    else WidgetTrainTypes.groupOf(it.binario.app.data.core.ServiceKind.UNKNOWN, parts[3].ifBlank { null }, null, null)
                 )
             }.getOrNull()
         }

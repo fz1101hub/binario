@@ -49,7 +49,13 @@ object LocalDataBackupCodec {
             put("id", route.id); put("name", route.name); put("originId", route.outwardOrigin.id); put("destinationId", route.outwardDestination.id); put("pinned", route.isPinned); route.manualOrder?.takeIf { it in 0 until SavedRouteOrdering.MAX_ROUTES }?.let { put("manualOrder", it) }
         }) } })
         put("favouriteStationIds", JSONArray(backup.favouriteStationIds.sorted()))
-        put("monitoredServices", JSONArray().apply { backup.monitoredServices.forEach { monitor -> put(JSONObject().apply { put("number", monitor.number); put("label", monitor.label) }) } })
+        // "customName", "origin" and "scheduledDeparture" are optional: older readers ignore them.
+        put("monitoredServices", JSONArray().apply { backup.monitoredServices.forEach { monitor -> put(JSONObject().apply {
+            put("number", monitor.number); put("label", monitor.label)
+            monitor.customName.takeIf(String::isNotBlank)?.let { put("customName", it) }
+            monitor.origin.takeIf(String::isNotBlank)?.let { put("origin", it) }
+            monitor.scheduledDeparture.takeIf(String::isNotBlank)?.let { put("scheduledDeparture", it) }
+        }) } })
         put("stationMonitors", JSONArray().apply { backup.stationMonitors.forEach { monitor -> put(JSONObject().apply { put("stationId", monitor.stationId); put("stationName", monitor.stationName); put("mode", monitor.mode.name) }) } })
         put("commuterAlerts", JSONArray().apply { backup.commuterAlerts.forEach { alert -> put(JSONObject().apply {
             put("id", alert.id); put("routeLabel", alert.routeLabel); put("stationName", alert.stationName); put("time", alert.time); put("leadMinutes", alert.leadMinutes); put("repeat", alert.repeat.name); put("quietHoursEnabled", alert.quietHoursEnabled); put("enabled", alert.enabled)
@@ -120,7 +126,15 @@ object LocalDataBackupCodec {
         val favouriteIds = root.optJSONArray("favouriteStationIds").orEmpty()
             .mapNotNull { (it as? String)?.let(::station)?.id }
             .toSet()
-        val services = root.optJSONArray("monitoredServices").orEmpty().mapNotNull { item -> (item as? JSONObject)?.let { ServiceMonitor(it.optString("number"), it.optString("label")) } }.filter { it.number.isNotBlank() }.distinctBy { it.number }.take(12)
+        val services = root.optJSONArray("monitoredServices").orEmpty().mapNotNull { item -> (item as? JSONObject)?.let {
+            ServiceMonitor(
+                number = it.optString("number"),
+                label = it.optString("label"),
+                customName = it.optString("customName").trim().take(FavouriteTrains.MAX_NAME_LENGTH),
+                origin = it.optString("origin").trim().take(MAX_STATION_TEXT),
+                scheduledDeparture = it.optString("scheduledDeparture").trim().takeIf { time -> runCatching { LocalTime.parse(time) }.isSuccess }.orEmpty()
+            )
+        } }.filter { it.number.isNotBlank() }.distinctBy { it.number }.take(FavouriteTrains.MAX)
         val stationMonitors = root.optJSONArray("stationMonitors").orEmpty().mapNotNull { item -> (item as? JSONObject)?.let { value ->
             val station = station(value.optString("stationId")) ?: return@let null
             runCatching { StationMonitor(station.id, station.name, StationMonitorMode.valueOf(value.optString("mode"))) }.getOrNull()

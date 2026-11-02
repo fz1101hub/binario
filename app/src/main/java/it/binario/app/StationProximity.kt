@@ -1,5 +1,12 @@
 package it.binario.app
 
+import android.Manifest
+import android.content.Context
+import android.content.pm.PackageManager
+import android.location.Location
+import android.location.LocationManager
+import android.os.Build
+import androidx.core.content.ContextCompat
 import it.binario.app.data.Station
 import java.text.Collator
 import java.util.Locale
@@ -39,4 +46,44 @@ internal object StationCoordinates {
             cos(Math.toRadians(latitudeA)) * cos(Math.toRadians(latitudeB)) * sin(longitudeDelta / 2) * sin(longitudeDelta / 2)
         return 2 * earthRadiusKm * atan2(sqrt(a), sqrt(1 - a))
     }
+}
+
+/**
+ * The nearest catalogue station to one position, or null when none with coordinates lies within
+ * [maxDistanceKm] (abroad, or a position far from any railway).
+ */
+internal object NearestStationPicker {
+    const val DEFAULT_MAX_DISTANCE_KM = 50.0
+
+    fun pick(stations: List<Station>, latitude: Double, longitude: Double, maxDistanceKm: Double = DEFAULT_MAX_DISTANCE_KM): NearbyStation? =
+        StationCoordinates.nearby(stations, latitude, longitude).firstOrNull()?.takeIf { it.distanceKm <= maxDistanceKm }
+}
+
+/**
+ * One approximate location fix for an explicit user action (nearby stations, the station widget's
+ * "Più vicina"): the current network position on Android 11+, otherwise the last known one. Never
+ * stored; null without the foreground permission or without a position.
+ */
+internal fun requestSingleLocationFix(context: Context, onResult: (Location?) -> Unit) {
+    if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+        onResult(null)
+        return
+    }
+    val locationManager = context.getSystemService(LocationManager::class.java) ?: run {
+        onResult(null)
+        return
+    }
+    val fallback = {
+        onResult(runCatching {
+            locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)
+                ?: locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER)
+        }.getOrNull())
+    }
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+        runCatching {
+            locationManager.getCurrentLocation(LocationManager.NETWORK_PROVIDER, null, ContextCompat.getMainExecutor(context)) { location ->
+                if (location != null) onResult(location) else fallback()
+            }
+        }.onFailure { fallback() }
+    } else fallback()
 }

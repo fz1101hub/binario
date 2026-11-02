@@ -32,14 +32,33 @@ L’Agenda offre promemoria locali su attivazione esplicita, scelta guidata di s
 | Dettatura viaggio | Avvia il riconoscitore vocale di sistema per compilare tratta, stazione, treno, data, ora e andata/ritorno; Binario non richiede il permesso microfono e interpreta solo il testo restituito. |
 | Filtro cambi | Nella ricerca tratta permette di scegliere qualsiasi viaggio, diretto, massimo uno o massimo due cambi; viene applicato solo se la fonte restituisce il dato, senza stime locali. |
 | Partenze | Riunisce il tabellone della tratta attiva (prossima partenza evidenziata, le altre in righe compatte, cambio direzione e scelta tratta) e i tabelloni di stazione, con lo stato del dato sopra le corse. |
-| Per te | Raccoglie tratte salvate, Agenda dei viaggi pianificati, stazioni preferite, viaggio attivo e monitoraggi, sveglie e avvisi, tema, preferenze, privacy ed esportazione locale, integrazioni, fonti e crediti. |
-| Widget Android | Tabellone originale ad alto contrasto, configurabile per istanza come qualunque tratta digitata, stazione o numero treno, con nome locale facoltativo. Non richiede una tratta o un monitoraggio salvato nell’app: ogni istanza conserva target, snapshot, direzione, pagina ed errore separatamente. Risponde al resize con densità compatta, standard ed espansa; il formato compatto mostra due righe complete sul layout stabile, il formato standard conserva 5 corse per pagina. Espone provider, confidenza, quality score, freshness e warning; il giallo segnala solo variazioni di snapshot operativi qualificabili, mai del fallback GTFS programmato. |
+| Per te | Raccoglie tratte salvate, Agenda dei viaggi pianificati, stazioni preferite, **I miei treni** (i treni salvati con il cuore del dettaglio, con nome personalizzato, da aprire, rinominare o rimuovere), viaggio attivo e monitoraggi, sveglie e avvisi, tema, preferenze, privacy ed esportazione locale, integrazioni, fonti e crediti. |
+| Widget Android | Tre widget — **Tratta**, **Tabellone stazione** e **I miei treni** — con impostazioni per istanza sul modello di Orario Treni (vedi [Widget della schermata Home](#widget-della-schermata-home)). Tabellone originale ad alto contrasto, configurabile per istanza come qualunque tratta digitata, stazione o numero treno, con nome locale facoltativo. Non richiede una tratta o un monitoraggio salvato nell’app: ogni istanza conserva target, snapshot, direzione, pagina ed errore separatamente. Risponde al resize con densità compatta, standard ed espansa; il formato compatto mostra due righe complete sul layout stabile, il formato standard conserva 5 corse per pagina. Espone provider, confidenza, quality score, freshness e warning; il giallo segnala solo variazioni di snapshot operativi qualificabili, mai del fallback GTFS programmato. |
 | Wear OS | Companion Android 11+/API 30+ con tratta attiva, massimo due corse, stato quality/freshness, refresh delegato al telefono, Tile e complication testuale. |
 | Apple Watch | Companion nativo watchOS 10 ricostruito in `apple-watch/`: SwiftUI, cache-first, Widget/complication, App Intent e Watch Connectivity con l’app iPhone Binario (`ios/`). Il prodotto da pubblicare è il target Watch incorporato da `ios/project.yml`; `apple-watch/project.yml` è solo un harness watch-only di CI e test e non va inviato allo store. Richiede Xcode su macOS per generazione, firma e test. |
 | Alexa | Companion server-side in `alexa-companion/` con Custom Skill, account linking e profilo vocale minimo. Non è una seconda app ferroviaria: usa soltanto dati sincronizzati dall'app principale o dallo stesso backend autorizzato e fallisce esplicitamente se lo snapshot è assente o scaduto. |
 | Accessibilità | Tema chiaro/scuro, palette ad alto contrasto, font scalabile, testo esplicito degli stati, target ampi e semantica TalkBack. |
 | Tema personale | Selettore persistente Sistema/Chiaro/Scuro nella barra superiore; la scelta resta locale al dispositivo. |
 | Privacy | Nessun SDK pubblicitario o analytics è configurato nel codice. Tratte e cache restano locali; posizione approssimata e notifiche sono richieste soltanto su azione esplicita. Il backup automatico Android è escluso; l'esportazione JSON è manuale e scelta dall'utente. Leggi [PRIVACY.md](PRIVACY.md) per superfici, feed esterni, Wear, Companion Expo, Alexa, conservazione e limiti attuali. |
+
+## Widget della schermata Home
+
+Tre widget, ciascuno con impostazioni proprie per istanza (salvate con la configurazione del widget; su Android 12+ si cambiano tenendo premuto il widget e scegliendo le impostazioni del widget). I widget aggiunti prima di queste impostazioni continuano a comportarsi come prima — aggiornamento ogni quindici minuti, stesse corse — finché non vengono modificati. In testata ogni widget mostra «Aggiornato alle HH:mm», così un dato vecchio si riconosce subito.
+
+| Impostazione | Tratta | Tabellone stazione | I miei treni |
+|---|---|---|---|
+| Aggiornamento automatico: disattivato (predefinito per i nuovi widget), nelle fasce orarie scelte (ogni 15/30/60 minuti; Lun–Ven, tutti i giorni o giorni scelti; una o due fasce, anche a cavallo della mezzanotte) oppure sempre ogni 15 minuti | ✓ | ✓ | ✓ |
+| «Mostra il ritorno dalle HH:mm»: andata prima, ritorno dopo; il pulsante della direzione vale fino al cambio successivo (l'ora scelta o la mezzanotte) | ✓ | | |
+| Treni da nascondere: Frecce/alta velocità, Intercity/notte, regionali/suburbani, Italo, bus sostitutivi, internazionali/esteri (i treni di tipo ignoto restano visibili) | ✓ | ✓ | |
+| Treni fino all'arrivo, segnati «In viaggio» | ✓ | | |
+| Corse mostrate: le prossime (come prima), prossime 3 o 6 ore, tutto il giorno (orario della giornata conservato e leggibile offline, segnato come programmato) | ✓ | | |
+| Colonna binario, nome e categoria del treno, titolo personalizzato | ✓ | ✓ | binario e titolo |
+| Pulsante «📍 Più vicina»: una sola posizione su tocco, nessun permesso in background | | ✓ | |
+| Prossima stazione o ultimo rilevamento, solo treni in viaggio, ordine per partenza o per nome | | | ✓ |
+
+**I miei treni** elenca i treni salvati con il cuore del dettaglio (con il nome scelto, per esempio «Il mio treno delle 7:42»): ritardo (l'anticipo in verde), binario, soppressione o variazione e prossima stazione o ultimo rilevamento; un tocco apre il dettaglio di quel treno. I dati vengono dalla ricerca per numero dell'app per la corsa di oggi, con le sue fonti nello stesso ordine; se una ricerca fallisce resta l'ultimo valore noto, segnato con l'ora del dato.
+
+**Pianificazione.** Un solo lavoro WorkManager (`WidgetAutoRefreshScheduler`) serve tutti i widget: a ogni esecuzione aggiorna soltanto le istanze dovute (dentro una fascia e passato il loro intervallo, mai meno di quindici minuti dall'ultimo aggiornamento, con rete disponibile) e si ripianifica per il primo istante in cui qualcosa sarà dovuto — l'inizio della fascia successiva o il cambio di direzione. Fuori dalle fasce non resta alcun lavoro in coda, quindi il telefono non viene risvegliato; con l'aggiornamento automatico disattivato su tutti i widget non esiste alcun lavoro. Rimuovere un widget cancella la sua pianificazione; WorkManager la conserva dopo un riavvio e l'aggiornamento dell'app la ricalcola.
 
 ## Installazione
 
@@ -50,7 +69,7 @@ app/build/outputs/apk/debug/app-debug.apk
 wear/build/outputs/apk/debug/wear-debug.apk
 ```
 
-Richiede **Android 8.0 o successivo** (`minSdk 26`). Per installare il file su un dispositivo personale, Android può chiedere di autorizzare l’installazione dall’origine utilizzata. Aggiungi il widget dalla schermata home e scegli, per quella singola istanza, **tratta**, **stazione** oppure **treno**; il contenuto può essere modificato dalla testata del widget.
+Richiede **Android 8.0 o successivo** (`minSdk 26`). Per installare il file su un dispositivo personale, Android può chiedere di autorizzare l’installazione dall’origine utilizzata. Aggiungi dalla schermata home il widget **Tratta**, **Tabellone stazione** o **I miei treni** e scegline, per quella singola istanza, il contenuto e le impostazioni; su Android 12 e successivi si modificano tenendo premuto il widget.
 
 ## Sviluppo e build
 
@@ -71,7 +90,7 @@ flowchart LR
     DS --> Cache[Snapshot cache locale\nTTL e freschezza]
     VM --> Store[Tratte locali]
     VM --> Widget[Widget Android\n5 corse per pagina]
-    Widget --> Worker[WorkManager\nrefresh controllato]
+    Widget --> Worker[WorkManager\nfasce orarie per istanza]
     Future[Provider autorizzato\no backend personale] --> DS
 ```
 

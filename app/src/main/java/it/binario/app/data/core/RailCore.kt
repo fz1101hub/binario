@@ -310,7 +310,9 @@ data class StationBoardEntry(
      * Commercial line label published next to the run number (for example "RE 80" or "S 10"). Display only:
      * board identity keeps using [publicNumber], the run number shared with GTFS and the other boards.
      */
-    val lineLabel: String? = null
+    val lineLabel: String? = null,
+    /** Kind of service when the source tells it (display and widget filters only, never an identity). */
+    val serviceKind: ServiceKind = ServiceKind.UNKNOWN
 )
 
 data class StationBoard(
