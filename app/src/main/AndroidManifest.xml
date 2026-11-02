@@ -64,6 +64,19 @@
             android:name=".widget.StationWidgetConfigureActivity"
             android:exported="false" />
 
+        <activity
+            android:name=".widget.TrainsWidgetConfigureActivity"
+            android:exported="false" />
+
+        <!-- "Più vicina" of the station widget: one foreground location fix on tap, then it finishes. -->
+        <activity
+            android:name=".widget.StationWidgetNearestActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:noHistory="true"
+            android:taskAffinity=""
+            android:theme="@style/Theme.Binario.Translucent" />
+
         <service
             android:name=".wear.WearRefreshRequestListenerService"
             android:exported="true">
@@ -103,6 +116,21 @@
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/station_widget_info" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.TrainsWidgetProvider"
+            android:exported="false"
+            android:label="@string/trains_widget_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="it.binario.app.widget.TRAINS_REFRESH" />
+                <action android:name="it.binario.app.widget.TRAINS_NEXT_PAGE" />
+                <action android:name="it.binario.app.widget.TRAINS_PREVIOUS_PAGE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/trains_widget_info" />
         </receiver>
 
         <receiver

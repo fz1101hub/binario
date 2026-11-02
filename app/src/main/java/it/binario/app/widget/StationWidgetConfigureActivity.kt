@@ -20,6 +20,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.SideEffect
@@ -69,8 +70,11 @@ class StationWidgetConfigureActivity : ComponentActivity() {
                     WindowCompat.getInsetsController(window, view).isAppearanceLightNavigationBars = foregroundIsLight.not()
                 }
 
-                val existing = remember { StationWidgetConfigurationStore(this@StationWidgetConfigureActivity).read(widgetId) }
+                val existingConfiguration = remember { StationWidgetConfigurationStore(this@StationWidgetConfigureActivity).read(widgetId) }
+                val existing = existingConfiguration?.station
                 var stationText by remember { mutableStateOf(existing?.name.orEmpty()) }
+                // A new widget starts with the new defaults (automatic refresh off); an existing one keeps its settings.
+                var settings by remember { mutableStateOf(existingConfiguration?.settings ?: StationWidgetSettings()) }
                 var validationMessage by remember { mutableStateOf<String?>(null) }
                 val missingStation = stringResource(R.string.station_widget_validation_missing_station)
 
@@ -85,11 +89,13 @@ class StationWidgetConfigureActivity : ComponentActivity() {
                     }
                     val context = this@StationWidgetConfigureActivity
                     // Rows of a previous station must never appear under the new one.
-                    StationWidgetStateStore.clear(context, widgetId)
-                    StationWidgetConfigurationStore(context).save(widgetId, station)
+                    if (station.id != existing?.id) StationWidgetStateStore.clear(context, widgetId)
+                    StationWidgetConfigurationStore(context).save(widgetId, StationWidgetConfiguration(station, settings.copy(displayName = settings.displayName.trim())))
                     StationWidgetProvider.refreshAll(context)
-                    StationWidgetRefreshWorker.ensurePeriodicRefresh(context)
-                    StationWidgetRefreshWorker.enqueue(context)
+                    // The refresh enqueued now counts as the latest one for the automatic schedule.
+                    WidgetAutoRefreshStore.recordAttempt(context, WidgetKind.STATION, widgetId)
+                    StationWidgetRefreshWorker.enqueue(context, widgetId)
+                    WidgetAutoRefreshScheduler.reschedule(context)
                     setResult(RESULT_OK, Intent().putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId))
                     finish()
                 }
@@ -106,6 +112,16 @@ class StationWidgetConfigureActivity : ComponentActivity() {
                                 stringResource(R.string.station_widget_configure_description),
                                 modifier = Modifier.padding(top = 4.dp),
                                 style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+                        item {
+                            OutlinedTextField(
+                                value = settings.displayName,
+                                onValueChange = { if (it.length <= 42) settings = settings.copy(displayName = it) },
+                                modifier = Modifier.fillMaxWidth(),
+                                label = { Text(stringResource(R.string.widget_display_name_label)) },
+                                supportingText = { Text(stringResource(R.string.station_widget_display_name_description)) },
+                                singleLine = true
                             )
                         }
                         item {
@@ -131,6 +147,20 @@ class StationWidgetConfigureActivity : ComponentActivity() {
                                         model.clearStationSuggestions("station-widget")
                                     }
                                 }
+                            }
+                        }
+                        item { AutoRefreshSection(settings.autoRefresh) { settings = settings.copy(autoRefresh = it) } }
+                        item { TrainTypeExclusionSection(settings.excludedTypes) { settings = settings.copy(excludedTypes = it) } }
+                        item {
+                            WidgetSettingsCard(stringResource(R.string.widget_settings_display_title)) {
+                                WidgetSwitchRow(stringResource(R.string.widget_settings_show_platform), settings.showPlatform, { settings = settings.copy(showPlatform = it) })
+                                WidgetSwitchRow(stringResource(R.string.widget_settings_show_train_name), settings.showTrainName, { settings = settings.copy(showTrainName = it) })
+                                WidgetSwitchRow(
+                                    stringResource(R.string.station_widget_settings_nearest),
+                                    settings.showNearestButton,
+                                    { settings = settings.copy(showNearestButton = it) },
+                                    stringResource(R.string.station_widget_settings_nearest_description)
+                                )
                             }
                         }
                         validationMessage?.let { message ->

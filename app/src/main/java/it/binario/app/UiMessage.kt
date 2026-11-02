@@ -58,7 +58,10 @@ enum class UiMessageKey(val resourceName: String) {
     BACKUP_IMPORT_SUCCESS("backup_import_success_summary"),
     BACKUP_IMPORT_INVALID("backup_import_invalid"),
     UPDATE_TIME_AT("update_time_at"),
-    UPDATE_TIME_NEVER("update_time_never")
+    UPDATE_TIME_NEVER("update_time_never"),
+    WIDGET_NEAREST_PERMISSION_DENIED("station_widget_nearest_denied"),
+    WIDGET_NEAREST_LOCATION_UNAVAILABLE("station_widget_nearest_unavailable"),
+    WIDGET_NEAREST_NONE_NEARBY("station_widget_nearest_none")
 }
 
 /** The localized explanation of a failed route search; dates and times are formatted on render. */

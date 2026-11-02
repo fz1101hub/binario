@@ -1,7 +1,6 @@
 package it.binario.app.widget
 
 import android.content.Context
-import android.util.Base64
 import androidx.core.content.edit
 import it.binario.app.data.Direction
 import it.binario.app.data.SavedRoute
@@ -19,7 +18,9 @@ data class WidgetDisplayConfiguration(
     val targetLabel: String,
     val displayName: String = "",
     val routeOrigin: Station? = null,
-    val routeDestination: Station? = null
+    val routeDestination: Station? = null,
+    /** Settings of this instance; configurations saved before they existed read as [RouteWidgetSettings.LEGACY]. */
+    val settings: RouteWidgetSettings = RouteWidgetSettings.LEGACY
 ) {
     fun routeTarget(): SavedRoute? = if (targetType == WidgetTargetType.ROUTE && routeOrigin != null && routeDestination != null) {
         SavedRoute(targetId, targetLabel, routeOrigin, routeDestination)
@@ -58,17 +59,29 @@ class WidgetConfigurationStore(context: Context) {
 
     private fun key(widgetId: Int): String = "widget_$widgetId"
 
-    private fun encode(value: WidgetDisplayConfiguration): String = (
+    internal fun encode(value: WidgetDisplayConfiguration): String = WidgetConfigurationCodec.encode(value)
+
+    internal fun decode(value: String): WidgetDisplayConfiguration? = WidgetConfigurationCodec.decode(value)
+}
+
+/**
+ * Persistence of a route widget instance: Base64 fields joined by `|`. Earlier versions wrote 3, 4,
+ * 12 or 22 fields; the current one appends the settings text as a 23rd field. Older records decode
+ * with [RouteWidgetSettings.LEGACY], so an existing widget behaves as before until it is edited.
+ * java.util.Base64 writes the same alphabet as android.util.Base64.NO_WRAP and also runs in JVM tests.
+ */
+internal object WidgetConfigurationCodec {
+    fun encode(value: WidgetDisplayConfiguration): String = (
         listOf(
             value.targetType.name,
             value.targetId,
             value.targetLabel,
             value.displayName
-        ) + encodeStation(value.routeOrigin) + encodeStation(value.routeDestination)
-        ).joinToString("|") { Base64.encodeToString(it.toByteArray(Charsets.UTF_8), Base64.NO_WRAP) }
+        ) + encodeStation(value.routeOrigin) + encodeStation(value.routeDestination) + WidgetSettingsCodec.encodeRoute(value.settings)
+        ).joinToString("|") { java.util.Base64.getEncoder().encodeToString(it.toByteArray(Charsets.UTF_8)) }
 
-    private fun decode(value: String): WidgetDisplayConfiguration? = runCatching {
-        val parts = value.split("|").map { String(Base64.decode(it, Base64.NO_WRAP), Charsets.UTF_8) }
+    fun decode(value: String): WidgetDisplayConfiguration? = runCatching {
+        val parts = value.split("|").map { String(java.util.Base64.getDecoder().decode(it), Charsets.UTF_8) }
         when (parts.size) {
             3 -> WidgetDisplayConfiguration(WidgetTargetType.valueOf(parts[0]), parts[1], parts[2])
             4 -> WidgetDisplayConfiguration(WidgetTargetType.valueOf(parts[0]), parts[1], parts[2], parts[3])
@@ -87,6 +100,15 @@ class WidgetConfigurationStore(context: Context) {
                 displayName = parts[3],
                 routeOrigin = stationOrNull(parts.subList(4, 13)),
                 routeDestination = stationOrNull(parts.subList(13, 22))
+            )
+            23 -> WidgetDisplayConfiguration(
+                targetType = WidgetTargetType.valueOf(parts[0]),
+                targetId = parts[1],
+                targetLabel = parts[2],
+                displayName = parts[3],
+                routeOrigin = stationOrNull(parts.subList(4, 13)),
+                routeDestination = stationOrNull(parts.subList(13, 22)),
+                settings = WidgetSettingsCodec.decodeRoute(parts[22])
             )
             else -> null
         }
@@ -124,7 +146,5 @@ class WidgetConfigurationStore(context: Context) {
         )
     }
 
-    private companion object {
-        const val ALIAS_SEPARATOR = "\u001F"
-    }
+    private const val ALIAS_SEPARATOR = "\u001F"
 }

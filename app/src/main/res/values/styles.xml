@@ -8,6 +8,15 @@
         <item name="android:colorAccent">@color/brand_action_green</item>
     </style>
 
+    <!-- The "Più vicina" activity of the station widget: no window of its own until it shows a message. -->
+    <style name="Theme.Binario.Translucent" parent="android:style/Theme.Material.Light.Dialog.NoActionBar">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:backgroundDimEnabled">false</item>
+        <item name="android:windowCloseOnTouchOutside">true</item>
+    </style>
+
     <style name="Binario.Widget.Action" parent="">
         <item name="android:layout_width">wrap_content</item>
         <item name="android:layout_height">48dp</item>

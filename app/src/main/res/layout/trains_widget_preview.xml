@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Picker preview of "I miei treni": two sample favourites, drawn like the live widget. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/widget_background"
+    android:orientation="vertical">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@drawable/widget_header_background"
+        android:orientation="vertical"
+        android:paddingHorizontal="12dp"
+        android:paddingTop="10dp"
+        android:paddingBottom="10dp">
+
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:maxLines="1" android:text="@string/trains_widget_name" android:textAllCaps="true" android:textColor="@color/widget_on_header" android:textSize="16sp" android:textStyle="bold" />
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:maxLines="1" android:text="@string/trains_widget_preview_meta" android:textColor="@color/widget_on_header_muted" android:textSize="11sp" android:textStyle="bold" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="10dp">
+
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:background="@drawable/widget_row_background" android:gravity="center_vertical" android:orientation="horizontal" android:paddingHorizontal="6dp" android:paddingVertical="5dp">
+            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical">
+                <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:maxLines="1" android:text="@string/trains_widget_preview_title" android:textColor="@color/widget_on_surface" android:textSize="13sp" android:textStyle="bold" />
+                <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:maxLines="1" android:text="@string/trains_widget_preview_detail" android:textColor="@color/widget_on_surface_muted" android:textSize="11sp" />
+            </LinearLayout>
+            <TextView android:layout_width="56dp" android:layout_height="wrap_content" android:gravity="end" android:text="@string/trains_widget_preview_status" android:textColor="@color/widget_warning" android:textSize="11sp" android:textStyle="bold" />
+        </LinearLayout>
+
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="3dp" android:background="@drawable/widget_row_background" android:gravity="center_vertical" android:orientation="horizontal" android:paddingHorizontal="6dp" android:paddingVertical="5dp">
+            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical">
+                <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:maxLines="1" android:text="@string/trains_widget_preview_title_second" android:textColor="@color/widget_on_surface" android:textSize="13sp" android:textStyle="bold" />
+                <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:maxLines="1" android:text="@string/trains_widget_preview_detail_second" android:textColor="@color/widget_on_surface_muted" android:textSize="11sp" />
+            </LinearLayout>
+            <TextView android:layout_width="56dp" android:layout_height="wrap_content" android:gravity="end" android:text="@string/widget_status_on_time" android:textColor="@color/widget_on_surface" android:textSize="11sp" android:textStyle="bold" />
+        </LinearLayout>
+    </LinearLayout>
+</LinearLayout>

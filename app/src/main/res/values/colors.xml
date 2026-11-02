@@ -14,6 +14,8 @@
     <color name="widget_on_surface_muted">#3F5249</color>
     <color name="widget_warning">#8A4B12</color>
     <color name="widget_error">#B3261E</color>
+    <!-- Early trains in the "I miei treni" widget: the action green, 6.1:1 on the rows. -->
+    <color name="widget_early">#00703E</color>
     <color name="widget_divider">#6F7F78</color>
     <color name="widget_header">#E2EEEA</color>
     <color name="widget_header_text">#003A28</color>

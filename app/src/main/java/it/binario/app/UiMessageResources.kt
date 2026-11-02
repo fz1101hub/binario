@@ -51,6 +51,9 @@ internal fun UiMessageKey.resourceId(): Int = when (this) {
     UiMessageKey.BACKUP_IMPORT_INVALID -> R.string.backup_import_invalid
     UiMessageKey.UPDATE_TIME_AT -> R.string.update_time_at
     UiMessageKey.UPDATE_TIME_NEVER -> R.string.update_time_never
+    UiMessageKey.WIDGET_NEAREST_PERMISSION_DENIED -> R.string.station_widget_nearest_denied
+    UiMessageKey.WIDGET_NEAREST_LOCATION_UNAVAILABLE -> R.string.station_widget_nearest_unavailable
+    UiMessageKey.WIDGET_NEAREST_NONE_NEARBY -> R.string.station_widget_nearest_none
 }
 
 internal fun UiMessage.resolve(resources: Resources): String {

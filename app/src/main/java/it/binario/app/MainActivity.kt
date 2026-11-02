@@ -107,6 +107,8 @@ import it.binario.app.ui.planner.SearchMode
 import it.binario.app.ui.settings.SettingsScreen
 import it.binario.app.ui.settings.SettingsSection
 import it.binario.app.ui.settings.SettingsSectionScreen
+import it.binario.app.ui.foryou.FavouriteTrainNameDialog
+import it.binario.app.widget.TrainsWidgetProvider
 import it.binario.app.widget.WidgetConfigurationStore
 import it.binario.app.widget.WidgetStateStore
 import kotlinx.coroutines.delay
@@ -168,7 +170,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun receiveDeepLinkIntent(intent: Intent?) {
-        val widgetDeepLink = parseWidgetDeepLink(intent, applicationContext)
+        val widgetDeepLink = parseFavouriteTrainDeepLink(intent) ?: parseWidgetDeepLink(intent, applicationContext)
         deepLinkRequest = if (widgetDeepLink != null) {
             deepLinkDispatcher.receive(widgetDeepLink)
         } else {
@@ -217,6 +219,10 @@ internal fun BinarioApp(
     // The stop chosen with the last stop alarm: the detail of that train looks for connections there.
     var stopAlarmTrain by rememberSaveable { mutableStateOf<String?>(null) }
     var stopAlarmStation by rememberSaveable { mutableStateOf<String?>(null) }
+    // A favourite train to open as soon as the number search finds its run ("number<US>origin").
+    var pendingFavouriteTrain by rememberSaveable { mutableStateOf<String?>(null) }
+    // The train just saved with the heart, offered a custom name.
+    var namingFavouriteTrain by rememberSaveable { mutableStateOf<String?>(null) }
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     LaunchedEffect(lifecycleOwner, screen, operationsSectionName) {
@@ -344,6 +350,11 @@ internal fun BinarioApp(
                 plannedJourneyViewModel.selectFilter(it.binario.app.plannedjourney.PlannedJourneyAgendaFilter.UPCOMING)
             is BinarioDeepLink.TrainSearch -> viewModel.updateTrainNumberQuery(deepLink.number.orEmpty())
             is BinarioDeepLink.WidgetRoute -> viewModel.activateRoute(deepLink.route, deepLink.direction)
+            is BinarioDeepLink.FavouriteTrain -> {
+                viewModel.updateTrainNumberQuery(deepLink.number)
+                viewModel.searchTrainNumber()
+                pendingFavouriteTrain = deepLink.number + FAVOURITE_SEPARATOR + deepLink.origin
+            }
             BinarioDeepLink.ActiveRoute, BinarioDeepLink.NextDepartures -> Unit
         }
         val target = AppNavigation.targetOf(deepLink)
@@ -356,6 +367,52 @@ internal fun BinarioApp(
         // Clear the event only after applying it. Subsequent recompositions and
         // lifecycle restores therefore cannot replay the same external navigation.
         onDeepLinkConsumed(request.id)
+    }
+    // Opens the favourite train's run once the search finds it: at once when it comes from the saved
+    // origin, otherwise when the search is complete (the run must not be guessed among homonyms).
+    LaunchedEffect(pendingFavouriteTrain, viewModel.trainNumberMatches, viewModel.trainNumberSearchState) {
+        val pending = pendingFavouriteTrain ?: return@LaunchedEffect
+        val number = pending.substringBefore(FAVOURITE_SEPARATOR)
+        val origin = pending.substringAfter(FAVOURITE_SEPARATOR, "")
+        val saved = viewModel.monitoredServices.firstOrNull { it.number.equals(number, ignoreCase = true) }
+        val monitor = (saved ?: ServiceMonitor(number, "")).let { if (origin.isNotBlank()) it.copy(origin = origin) else it }
+        val loading = viewModel.trainNumberSearchState == RefreshState.LOADING
+        val matches = viewModel.trainNumberMatches
+        val picked = FavouriteTrainMatcher.pick(matches.map { it.service }, monitor)
+        // While sources are still answering, only a run from the saved origin is certain.
+        if (loading && (picked == null || !FavouriteTrainMatcher.isFromOrigin(picked, monitor))) return@LaunchedEffect
+        val match = picked?.let { service -> matches.firstOrNull { it.service === service } }
+        if (match != null) {
+            pendingFavouriteTrain = null
+            openDetail(AppScreen.NUMBER_RESULTS) { viewModel.openTrainNumberMatch(match) }
+        } else if (!loading) {
+            // Several runs, or none: the results stay on screen to choose from.
+            pendingFavouriteTrain = null
+        }
+    }
+    fun openFavouriteTrain(monitor: ServiceMonitor) {
+        viewModel.updateTrainNumberQuery(monitor.number)
+        viewModel.searchTrainNumber()
+        pendingFavouriteTrain = monitor.number + FAVOURITE_SEPARATOR + monitor.origin
+        showScreen(AppScreen.NUMBER_RESULTS)
+    }
+    namingFavouriteTrain?.let { number ->
+        val monitor = viewModel.monitoredServices.firstOrNull { it.number.equals(number, ignoreCase = true) }
+        if (monitor == null) {
+            namingFavouriteTrain = null
+        } else {
+            FavouriteTrainNameDialog(
+                monitor = monitor,
+                title = stringResource(R.string.favourite_train_saved_title),
+                description = stringResource(R.string.favourite_train_saved_description),
+                dismissLabel = stringResource(R.string.favourite_train_skip_name),
+                onSave = { name ->
+                    viewModel.renameServiceMonitor(monitor.number, name)
+                    namingFavouriteTrain = null
+                },
+                onDismiss = { namingFavouriteTrain = null }
+            )
+        }
     }
     val plannerSearchMode = SearchMode.valueOf(plannerSearchModeName)
     val operationsSection = OperationsSection.valueOf(operationsSectionName)
@@ -439,7 +496,8 @@ internal fun BinarioApp(
                     viewModel.openStationBoard(station)
                     showDepartures(OperationsSection.STATIONS)
                 },
-                openSettings = { showScreen(AppScreen.SETTINGS) }
+                openSettings = { showScreen(AppScreen.SETTINGS) },
+                openFavouriteTrain = ::openFavouriteTrain
             )
             AppScreen.SETTINGS -> SettingsScreen(
                 modifier = modifier,
@@ -562,8 +620,12 @@ internal fun BinarioApp(
             }
             AppScreen.DETAIL -> viewModel.selectedService?.let { service ->
                 val monitored = viewModel.isMonitoring(service)
-                // The heart is the existing "Salva": it adds the train to the monitored trains of Per te.
-                IconButton(onClick = { viewModel.toggleServiceMonitoring(service) }, modifier = Modifier.testTag("detail-save")) {
+                // The heart is the existing "Salva": it adds the train to "I miei treni" of Per te (and the
+                // widget), then offers a custom name; tapped again it removes the train.
+                IconButton(onClick = {
+                    viewModel.toggleServiceMonitoring(service)
+                    if (!monitored) namingFavouriteTrain = service.number
+                }, modifier = Modifier.testTag("detail-save")) {
                     Icon(
                         if (monitored) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
                         contentDescription = stringResource(if (monitored) R.string.accessibility_saved_monitored else R.string.accessibility_save_monitored)
@@ -690,6 +752,17 @@ private fun stopAlarmScheduleFeedback(resources: android.content.res.Resources, 
     } else {
         resources.getString(R.string.stop_alarm_inexact, plan.station)
     }
+
+private const val FAVOURITE_SEPARATOR = "\u001F"
+
+/** A tap on a row of the "I miei treni" widget. */
+private fun parseFavouriteTrainDeepLink(intent: Intent?): BinarioDeepLink.FavouriteTrain? {
+    if (intent?.action != TrainsWidgetProvider.ACTION_OPEN_TRAIN) return null
+    return BinarioDeepLink.FavouriteTrain.of(
+        intent.getStringExtra(TrainsWidgetProvider.EXTRA_TRAIN_NUMBER),
+        intent.getStringExtra(TrainsWidgetProvider.EXTRA_TRAIN_ORIGIN)
+    )
+}
 
 private fun parseWidgetDeepLink(intent: Intent?, context: android.content.Context): BinarioDeepLink.WidgetRoute? {
     val widgetId = intent?.getIntExtra(android.appwidget.AppWidgetManager.EXTRA_APPWIDGET_ID, android.appwidget.AppWidgetManager.INVALID_APPWIDGET_ID)

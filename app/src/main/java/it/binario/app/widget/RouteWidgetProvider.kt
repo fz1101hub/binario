@@ -14,18 +14,15 @@ import androidx.core.content.edit
 import androidx.work.BackoffPolicy
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
-import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.ExistingWorkPolicy
-import androidx.work.OneTimeWorkRequestBuilder
-import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.NetworkType
+import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import it.binario.app.MainActivity
 import it.binario.app.R
 import it.binario.app.UiMessage
 import it.binario.app.UiMessageKey
-import it.binario.app.labelRes
 import it.binario.app.resolve
 import it.binario.app.uiMessage
 import it.binario.app.updateTimeMessage
@@ -36,26 +33,29 @@ import it.binario.app.data.Direction
 import it.binario.app.data.Freshness
 import it.binario.app.data.RailOperator
 import it.binario.app.data.RailTime
+import it.binario.app.data.RouteFailureReason
 import it.binario.app.data.RouteSnapshot
+import it.binario.app.data.TrainDataSource
 import it.binario.app.data.repository.BinarioDataGraph
 import it.binario.app.data.SavedRoute
 import it.binario.app.data.ServiceStatus
 import it.binario.app.data.SnapshotWarning
 import it.binario.app.data.Station
 import it.binario.app.data.TrainCategory
-import it.binario.app.data.TrainService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
+import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.util.concurrent.TimeUnit
 
 class RouteWidgetProvider : AppWidgetProvider() {
     override fun onUpdate(context: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray) {
         appWidgetIds.forEach { render(context, appWidgetManager, it) }
-        WidgetRefreshWorker.ensurePeriodicRefresh(context)
+        // Also sent after a reboot or an app update: the scheduler replaces the earlier periodic work.
+        WidgetAutoRefreshScheduler.reschedule(context)
     }
 
     override fun onAppWidgetOptionsChanged(context: Context, appWidgetManager: AppWidgetManager, appWidgetId: Int, newOptions: android.os.Bundle) {
@@ -67,21 +67,17 @@ class RouteWidgetProvider : AppWidgetProvider() {
         val widgetId = intent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, AppWidgetManager.INVALID_APPWIDGET_ID)
         when (intent.action) {
             ACTION_NEXT_PAGE -> {
-                if (widgetId != AppWidgetManager.INVALID_APPWIDGET_ID) {
-                    val mode = layoutMode(AppWidgetManager.getInstance(context), widgetId)
-                    WidgetStateStore.changePage(context, widgetId, 1, mode.visibleRows)
-                }
+                if (widgetId != AppWidgetManager.INVALID_APPWIDGET_ID) changePage(context, widgetId, 1)
                 refreshAll(context)
             }
             ACTION_PREVIOUS_PAGE -> {
-                if (widgetId != AppWidgetManager.INVALID_APPWIDGET_ID) {
-                    val mode = layoutMode(AppWidgetManager.getInstance(context), widgetId)
-                    WidgetStateStore.changePage(context, widgetId, -1, mode.visibleRows)
-                }
+                if (widgetId != AppWidgetManager.INVALID_APPWIDGET_ID) changePage(context, widgetId, -1)
                 refreshAll(context)
             }
             ACTION_SWITCH_DIRECTION -> {
-                if (widgetId != AppWidgetManager.INVALID_APPWIDGET_ID) WidgetStateStore.switchDirection(context, widgetId)
+                if (widgetId != AppWidgetManager.INVALID_APPWIDGET_ID) {
+                    WidgetStateStore.switchDirection(context, widgetId, ZonedDateTime.now(RailTime.defaultZone))
+                }
                 refreshAll(context)
                 WidgetRefreshWorker.enqueue(context)
             }
@@ -94,8 +90,9 @@ class RouteWidgetProvider : AppWidgetProvider() {
         appWidgetIds.forEach { widgetId ->
             store.remove(widgetId)
             WidgetStateStore.clear(context, widgetId)
+            WidgetAutoRefreshStore.clear(context, WidgetKind.ROUTE, widgetId)
         }
-        WidgetRefreshWorker.ensurePeriodicRefresh(context)
+        WidgetAutoRefreshScheduler.reschedule(context)
     }
 
     companion object {
@@ -122,11 +119,13 @@ class RouteWidgetProvider : AppWidgetProvider() {
             manager.getAppWidgetIds(component).forEach { render(context, manager, it) }
         }
 
+        /** Snapshots loaded by the app also feed the widgets showing the same route and direction. */
         fun saveSnapshotForMatchingRoutes(context: Context, snapshot: RouteSnapshot) {
+            val rows = snapshot.services.map { WidgetServiceMapper.fromService(it, snapshot.retrievedAtEpochMillis) }
             WidgetConfigurationStore(context).all().forEach { (widgetId, configuration) ->
                 if (configuration.matchesRouteDirection(snapshot.route, snapshot.direction, WidgetStateStore.displayedDirection(context, widgetId))) {
                     val rowOffset = WidgetStateStore.read(context, widgetId)?.rowOffset ?: 0
-                    WidgetStateStore.saveSnapshot(context, widgetId, snapshot, rowOffset)
+                    WidgetStateStore.saveRows(context, widgetId, snapshot, rows, configuration.settings, rowOffset)
                 }
             }
         }
@@ -139,18 +138,32 @@ class RouteWidgetProvider : AppWidgetProvider() {
             }
         }
 
+        private fun changePage(context: Context, widgetId: Int, delta: Int) {
+            val configuration = WidgetConfigurationStore(context).read(widgetId) ?: return
+            val state = WidgetStateStore.read(context, widgetId) ?: return
+            val mode = layoutMode(AppWidgetManager.getInstance(context), widgetId)
+            val visibleCount = RouteWidgetPresenter.visible(state.services, System.currentTimeMillis(), configuration.settings).size
+            WidgetStateStore.setRowOffset(context, widgetId, WidgetRowPagination.move(state.rowOffset, delta, visibleCount, mode.visibleRows))
+        }
+
         private fun render(context: Context, manager: AppWidgetManager, widgetId: Int) {
             val mode = layoutMode(manager, widgetId)
             val views = RemoteViews(context.packageName, layoutResourceFor(mode))
             val strings = WidgetStrings.from(context)
             applyDensity(views, mode)
             views.setViewVisibility(R.id.widget_actions_container, if (mode == WidgetLayoutMode.COMPACT) View.GONE else View.VISIBLE)
+            views.setViewVisibility(R.id.widget_empty, View.GONE)
             val configuration = WidgetConfigurationStore(context).read(widgetId)
             if (configuration == null) {
                 renderConfigurationRequired(context, manager, widgetId, views)
                 return
             }
+            val settings = configuration.settings
+            val nowMillis = System.currentTimeMillis()
+            // The automatic swap (and the end of a manual override) is applied whenever the widget is drawn.
+            WidgetStateStore.syncDirection(context, widgetId, ZonedDateTime.now(RailTime.defaultZone))
             val state = WidgetStateStore.read(context, widgetId)
+            views.setTextViewText(R.id.widget_updated, updatedAtHeader(context, state?.retrievedAt ?: 0L))
             if (state == null) {
                 renderNoSnapshot(context, manager, widgetId, views, configuration)
                 return
@@ -161,22 +174,27 @@ class RouteWidgetProvider : AppWidgetProvider() {
                 return
             }
 
+            val visible = RouteWidgetPresenter.visible(state.services, nowMillis, settings)
             val pageSize = mode.visibleRows
-            val rowOffset = WidgetRowPagination.normalizedOffset(state.rowOffset, state.services.size, pageSize)
+            val rowOffset = WidgetRowPagination.normalizedOffset(state.rowOffset, visible.size, pageSize)
             if (rowOffset != state.rowOffset) WidgetStateStore.setRowOffset(context, widgetId, rowOffset)
-            val services = state.services.drop(rowOffset).take(pageSize)
+            val rows = visible.drop(rowOffset).take(pageSize)
             val freshness = if (state.freshness == Freshness.UNAVAILABLE) Freshness.UNAVAILABLE
-            else WidgetFreshness.fromAge(state.retrievedAt)
+            else WidgetFreshness.fromAge(state.retrievedAt, nowMillis)
+            // "Whole day" keeps showing the cached timetable offline: without fresh data it is the timetable only.
+            val timetableOnly = settings.timeRange == RouteTimeRange.WHOLE_DAY && freshness !in setOf(Freshness.FRESH, Freshness.AGING)
             val pageLabel = context.getString(
                 R.string.widget_page_label,
                 WidgetRowPagination.pageNumber(rowOffset, pageSize),
-                WidgetRowPagination.pageCount(state.services.size, pageSize)
+                WidgetRowPagination.pageCount(visible.size, pageSize)
             )
 
             val title = configuration.widgetTitle(state.routeLabel)
             views.setTextViewText(R.id.widget_route, title)
-            views.setTextViewText(R.id.widget_meta, state.compactMeta(strings, pageLabel, freshness, updatedAtLabel(context, state.retrievedAt)))
-            views.setViewVisibility(R.id.widget_column_header, if (mode.showColumnHeader) View.VISIBLE else View.GONE)
+            views.setTextViewText(R.id.widget_meta, state.compactMeta(strings, pageLabel, freshness))
+            views.setViewVisibility(R.id.widget_column_header, if (mode.showColumnHeader && rows.isNotEmpty()) View.VISIBLE else View.GONE)
+            views.setViewVisibility(R.id.widget_column_platform, if (settings.showPlatform) View.VISIBLE else View.GONE)
+            views.setViewVisibility(R.id.widget_empty, if (rows.isEmpty()) View.VISIBLE else View.GONE)
             views.setContentDescription(
                 R.id.widget_route,
                 context.getString(
@@ -187,22 +205,42 @@ class RouteWidgetProvider : AppWidgetProvider() {
                 )
             )
             rowIds.forEachIndexed { index, id ->
-                val service = services.getOrNull(index)
-                if (service == null) {
+                val row = rows.getOrNull(index)
+                if (row == null) {
                     views.setViewVisibility(id, View.GONE)
                 } else {
+                    val service = row.service
+                    val inTransitLabel = if (row.inTransit) {
+                        service.arrivalLabel?.let { context.getString(R.string.widget_in_transit_arrival, it) } ?: context.getString(R.string.widget_in_transit)
+                    } else null
                     views.setViewVisibility(id, View.VISIBLE)
-                    views.setTextViewText(timeIds[index], service.expectedDeparture)
+                    views.setTextViewText(timeIds[index], if (timetableOnly) service.scheduledDeparture else service.expectedDeparture)
                     views.setTextViewText(destinationIds[index], service.destination)
-                    views.setTextViewText(trainIds[index], "${service.operator.shortLabel} · ${strings.categoryLabels.getValue(service.category)} ${service.number}")
+                    val trainLine = listOfNotNull(
+                        inTransitLabel,
+                        if (settings.showTrainName) "${service.operator.shortLabel} · ${strings.categoryLabels.getValue(service.category)} ${service.number}" else null
+                    ).joinToString(" · ")
+                    views.setTextViewText(trainIds[index], trainLine)
+                    views.setViewVisibility(trainIds[index], if (trainLine.isBlank()) View.GONE else View.VISIBLE)
                     views.setTextViewText(platformIds[index], service.platform?.let { context.getString(R.string.widget_platform_short, it) } ?: "—")
-                    views.setTextViewText(statusIds[index], WidgetChangeHighlight.displayStatus(service, state.confidence, strings))
-                    views.setContentDescription(id, service.accessibleLabel(strings))
-                    views.setTextColor(statusIds[index], statusColor(context, service.status))
+                    views.setViewVisibility(platformIds[index], if (settings.showPlatform) View.VISIBLE else View.GONE)
+                    views.setTextViewText(
+                        statusIds[index],
+                        if (timetableOnly) strings.statusScheduled else WidgetChangeHighlight.displayStatus(service, state.confidence, strings)
+                    )
+                    views.setContentDescription(
+                        id,
+                        listOfNotNull(
+                            service.accessibleLabel(strings),
+                            inTransitLabel,
+                            if (timetableOnly) strings.scheduledUnverified else null
+                        ).joinToString(" ")
+                    )
+                    views.setTextColor(statusIds[index], statusColor(context, if (timetableOnly) ServiceStatus.ON_TIME else service.status))
                     views.setInt(
                         id,
                         "setBackgroundResource",
-                        if (WidgetChangeHighlight.shouldHighlight(service.status, state.confidence, freshness, service.operationalStatusVerified)) R.drawable.widget_row_variation else R.drawable.widget_row_background
+                        if (!timetableOnly && WidgetChangeHighlight.shouldHighlight(service.status, state.confidence, freshness, service.operationalStatusVerified)) R.drawable.widget_row_variation else R.drawable.widget_row_background
                     )
                     views.setOnClickPendingIntent(id, openAppIntent(context, widgetId))
                 }
@@ -236,6 +274,7 @@ class RouteWidgetProvider : AppWidgetProvider() {
         private fun renderConfigurationRequired(context: Context, manager: AppWidgetManager, widgetId: Int, views: RemoteViews) {
             views.setTextViewText(R.id.widget_route, context.getString(R.string.widget_configuration_title))
             views.setTextViewText(R.id.widget_meta, context.getString(R.string.widget_configuration_subtitle))
+            views.setTextViewText(R.id.widget_updated, "")
             rowIds.forEach { views.setViewVisibility(it, View.GONE) }
             views.setViewVisibility(R.id.widget_column_header, View.GONE)
             views.setTextViewText(R.id.widget_direction, context.getString(R.string.widget_configuration_action))
@@ -256,7 +295,8 @@ class RouteWidgetProvider : AppWidgetProvider() {
             rowIds.forEach { views.setViewVisibility(it, View.GONE) }
             views.setViewVisibility(R.id.widget_column_header, View.GONE)
             views.setTextViewText(R.id.widget_direction, context.getString(R.string.widget_configuration_action))
-            views.setTextViewText(R.id.widget_refresh, context.getString(R.string.widget_open_action))
+            views.setTextViewText(R.id.widget_refresh, context.getString(R.string.widget_refresh_symbol))
+            views.setContentDescription(R.id.widget_refresh, context.getString(R.string.widget_refresh))
             views.setContentDescription(
                 R.id.widget_root,
                 context.getString(
@@ -267,7 +307,8 @@ class RouteWidgetProvider : AppWidgetProvider() {
             )
             views.setOnClickPendingIntent(R.id.widget_root, openAppIntent(context, widgetId))
             views.setOnClickPendingIntent(R.id.widget_direction, configureIntent(context, widgetId))
-            views.setOnClickPendingIntent(R.id.widget_refresh, openAppIntent(context, widgetId))
+            // Without data (automatic refresh off, or a direction just swapped) the button loads it now.
+            views.setOnClickPendingIntent(R.id.widget_refresh, actionIntent(context, ACTION_REFRESH, widgetId))
             manager.updateAppWidget(widgetId, views)
         }
 
@@ -310,42 +351,31 @@ class RouteWidgetProvider : AppWidgetProvider() {
             ServiceStatus.DELAYED -> ContextCompat.getColor(context, R.color.widget_warning)
             ServiceStatus.CANCELLED -> ContextCompat.getColor(context, R.color.widget_error)
         }
-
-        private fun updatedAtLabel(context: Context, retrievedAt: Long): String = if (retrievedAt <= 0L) {
-            context.getString(R.string.widget_never_updated)
-        } else {
-            context.getString(
-                R.string.widget_updated_at,
-                DateTimeFormatter.ofPattern("HH:mm").withZone(RailTime.defaultZone).format(Instant.ofEpochMilli(retrievedAt))
-            )
-        }
     }
 }
 
+/** "Aggiornato alle HH:mm" in the widget header, so that stale data is visible at a glance. */
+internal fun updatedAtHeader(context: Context, retrievedAt: Long): String = if (retrievedAt <= 0L) {
+    context.getString(R.string.widget_updated_header_never)
+} else {
+    context.getString(
+        R.string.widget_updated_header,
+        DateTimeFormatter.ofPattern("HH:mm").withZone(RailTime.defaultZone).format(Instant.ofEpochMilli(retrievedAt))
+    )
+}
+
+/**
+ * The refresh requested by the widget's button (and, in versions before the settings, its periodic
+ * refresh). It refreshes every route widget, as before; automatic refreshes go through
+ * [WidgetAutoRefreshWorker], which refreshes only the widgets that are due.
+ */
 class WidgetRefreshWorker(appContext: Context, params: WorkerParameters) : CoroutineWorker(appContext, params) {
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
-        val routeWidgets = WidgetConfigurationStore(applicationContext).all()
-            .mapNotNull { (widgetId, configuration) -> configuration.routeTarget()?.let { widgetId to it } }
-        if (routeWidgets.isEmpty()) return@withContext Result.success()
-        var failed = false
-        routeWidgets.forEach { (widgetId, route) ->
-            val previous = WidgetStateStore.read(applicationContext, widgetId)
-            val direction = WidgetStateStore.displayedDirection(applicationContext, widgetId) ?: Direction.OUTBOUND
-            when (val result = BinarioDataGraph.routeDataSource(applicationContext).loadRoute(route, direction)) {
-                is DataResult.Success -> WidgetStateStore.saveSnapshot(applicationContext, widgetId, result.snapshot, previous?.rowOffset ?: 0)
-                is DataResult.Failure -> {
-                    failed = true
-                    WidgetStateStore.markUnavailable(applicationContext, widgetId, result.reason.uiMessage())
-                }
-            }
-        }
-        RouteWidgetProvider.refreshAll(applicationContext)
-        if (failed) Result.retry() else Result.success()
+        if (RouteWidgetRefresher.refresh(applicationContext, null)) Result.success() else Result.retry()
     }
 
     companion object {
         private const val ONE_TIME_WORK = "binario-widget-refresh"
-        private const val PERIODIC_WORK = "binario-widget-periodic-refresh"
         private val networkConnected = Constraints.Builder()
             .setRequiredNetworkType(NetworkType.CONNECTED)
             .build()
@@ -358,13 +388,76 @@ class WidgetRefreshWorker(appContext: Context, params: WorkerParameters) : Corou
             WorkManager.getInstance(context).enqueueUniqueWork(ONE_TIME_WORK, ExistingWorkPolicy.REPLACE, request)
         }
 
-        fun ensurePeriodicRefresh(context: Context) {
-            val request = PeriodicWorkRequestBuilder<WidgetRefreshWorker>(15, TimeUnit.MINUTES)
-                .setConstraints(networkConnected)
-                .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 15, TimeUnit.MINUTES)
-                .build()
-            WorkManager.getInstance(context).enqueueUniquePeriodicWork(PERIODIC_WORK, ExistingPeriodicWorkPolicy.KEEP, request)
+        /** Kept for callers of the earlier API: the scheduler decides now whether any refresh is due. */
+        fun ensurePeriodicRefresh(context: Context) = WidgetAutoRefreshScheduler.reschedule(context)
+    }
+}
+
+/** A loaded route with the rows of every page requested for the widget's time range. */
+internal sealed interface RouteWidgetFetch {
+    data class Loaded(val snapshot: RouteSnapshot, val rows: List<WidgetService>) : RouteWidgetFetch
+    data class Failed(val reason: RouteFailureReason) : RouteWidgetFetch
+}
+
+/** Loads route widgets through the app's route source, with its order, priority and gating unchanged. */
+internal object RouteWidgetRefresher {
+    /** Refreshes the route widgets in [widgetIds], all of them when null. True when every request succeeded. */
+    suspend fun refresh(context: Context, widgetIds: Set<Int>?): Boolean {
+        val now = ZonedDateTime.now(RailTime.defaultZone)
+        val widgets = WidgetConfigurationStore(context).all()
+            .filter { (widgetId, _) -> widgetIds == null || widgetId in widgetIds }
+            .mapNotNull { (widgetId, configuration) -> configuration.routeTarget()?.let { Triple(widgetId, configuration, it) } }
+        if (widgets.isEmpty()) return true
+        val source = BinarioDataGraph.routeDataSource(context)
+        val fetched = mutableMapOf<String, RouteWidgetFetch>()
+        var failed = false
+        widgets.forEach { (widgetId, configuration, route) ->
+            WidgetAutoRefreshStore.recordAttempt(context, WidgetKind.ROUTE, widgetId, now.toInstant().toEpochMilli())
+            val direction = WidgetStateStore.syncDirection(context, widgetId, now)
+            val previous = WidgetStateStore.read(context, widgetId)
+            val range = configuration.settings.timeRange
+            // "Whole day" pages through the timetable only for the first refresh of the day.
+            val storedDay = previous?.takeIf { it.direction == direction && it.snapshotDirection == direction && configuration.matchesRoute(it.route) }
+                ?.services?.filter { it.serviceDate == now.toLocalDate() }.orEmpty()
+            val allowPaging = range != RouteTimeRange.WHOLE_DAY || storedDay.isEmpty()
+            val key = "${route.id}|${route.outwardOrigin.id}|${route.outwardDestination.id}|$direction|$range|$allowPaging"
+            when (val result = fetched.getOrPut(key) { fetch(source, route, direction, range, now, allowPaging) }) {
+                is RouteWidgetFetch.Loaded ->
+                    WidgetStateStore.saveRows(context, widgetId, result.snapshot, result.rows, configuration.settings, previous?.rowOffset ?: 0)
+                is RouteWidgetFetch.Failed -> {
+                    failed = true
+                    WidgetStateStore.markUnavailable(context, widgetId, result.reason.uiMessage())
+                }
+            }
         }
+        RouteWidgetProvider.refreshAll(context)
+        return !failed
+    }
+
+    suspend fun fetch(
+        source: TrainDataSource,
+        route: SavedRoute,
+        direction: Direction,
+        range: RouteTimeRange,
+        now: ZonedDateTime,
+        allowPaging: Boolean = true
+    ): RouteWidgetFetch {
+        val first = when (val result = source.loadRoute(route, direction)) {
+            is DataResult.Success -> result.snapshot
+            is DataResult.Failure -> return RouteWidgetFetch.Failed(result.reason)
+        }
+        val rows = first.services.map { WidgetServiceMapper.fromService(it, first.retrievedAtEpochMillis) }.toMutableList()
+        var pages = 0
+        while (allowPaging) {
+            val query = RouteWidgetPaging.nextQuery(range, now, rows.mapNotNull { it.departureEpochMillis }.maxOrNull(), pages) ?: break
+            pages += 1
+            val page = (source.loadRoute(route, direction, query) as? DataResult.Success)?.snapshot ?: break
+            val known = rows.mapTo(hashSetOf()) { it.runKey }
+            val extra = page.services.map { WidgetServiceMapper.fromService(it, page.retrievedAtEpochMillis) }.filter { it.runKey !in known }
+            if (extra.isEmpty()) break
+            rows += extra
+        }
+        return RouteWidgetFetch.Loaded(first, rows.sortedWith(compareBy<WidgetService, Long?>(nullsLast()) { it.departureEpochMillis }.thenBy { it.number }))
     }
 }
 
@@ -377,8 +470,21 @@ data class WidgetService(
     val status: ServiceStatus,
     val delayMinutes: Int,
     val platform: String?,
-    val operationalStatusVerified: Boolean
+    val operationalStatusVerified: Boolean,
+    /** Timetable departure ("HH:mm"); rows saved before it existed repeat the expected time. */
+    val scheduledDeparture: String = expectedDeparture,
+    /** Departure instant: expected when verified, else scheduled. Null when the time cannot be read. */
+    val departureEpochMillis: Long? = null,
+    /** Arrival at the searched destination: expected when verified, else scheduled. */
+    val arrivalEpochMillis: Long? = null,
+    val arrivalLabel: String? = null,
+    /** Group used by the train type exclusions; null when the data do not tell. */
+    val typeGroup: TrainTypeGroup? = WidgetTrainTypes.groupOf(category, operator),
+    val serviceDate: LocalDate? = null
 ) {
+    /** One run of the day: the same number at the same scheduled departure. */
+    val runKey: String get() = "$number@$scheduledDeparture"
+
     fun statusLabel(strings: WidgetStrings): String = when (status) {
         ServiceStatus.ON_TIME -> strings.statusOnTime
         ServiceStatus.DELAYED -> strings.format(strings.statusDelayed, delayMinutes)
@@ -464,22 +570,26 @@ object WidgetStateStore {
     private const val KEY_ROW_OFFSET = "row_offset"
     private const val KEY_LEGACY_PAGE = "page"
     private const val KEY_FAILURE = "last_failure"
+    private const val KEY_MANUAL_DIRECTION = "manual_direction"
+    private const val KEY_MANUAL_UNTIL = "manual_direction_until"
 
+    /** Saves a snapshot as rows, sorted by departure; "whole day" merges them into the stored rows of the day. */
     fun saveSnapshot(context: Context, widgetId: Int, snapshot: RouteSnapshot, rowOffset: Int = 0) {
-        val orderedServices = snapshot.services.sortedWith(compareBy<TrainService> { it.expectedDeparture }.thenBy { it.number })
-        val lines = orderedServices.map { service ->
-            listOf(
-                service.number,
-                service.operator.name,
-                service.trainCategory.name,
-                service.destination,
-                service.expectedDeparture,
-                service.status.name,
-                service.delayMinutes.toString(),
-                service.platform.orEmpty(),
-                service.operationalStatusVerified.toString()
-            ).joinToString(",") { encode(it) }
-        }.joinToString(";")
+        val rows = snapshot.services.map { WidgetServiceMapper.fromService(it, snapshot.retrievedAtEpochMillis) }
+        saveRows(context, widgetId, snapshot, rows, RouteWidgetSettings.LEGACY, rowOffset)
+    }
+
+    fun saveRows(context: Context, widgetId: Int, snapshot: RouteSnapshot, rows: List<WidgetService>, settings: RouteWidgetSettings, rowOffset: Int = 0) {
+        val today = Instant.ofEpochMilli(snapshot.retrievedAtEpochMillis).atZone(RailTime.defaultZone).toLocalDate()
+        val ordered = if (settings.timeRange == RouteTimeRange.WHOLE_DAY) {
+            val stored = read(context, widgetId)
+                ?.takeIf { it.route.outwardOrigin.id == snapshot.route.outwardOrigin.id && it.route.outwardDestination.id == snapshot.route.outwardDestination.id && it.snapshotDirection == snapshot.direction }
+                ?.services.orEmpty()
+            RouteWidgetDayCache.merge(stored, rows, today)
+        } else {
+            rows.sortedWith(compareBy<WidgetService, Long?>(nullsLast()) { it.departureEpochMillis }.thenBy { it.expectedDeparture }.thenBy { it.number })
+        }
+        val lines = ordered.joinToString(";") { encodeService(it) }
         val hasDisplayedDirection = prefs(context).contains(key(widgetId, KEY_DIRECTION))
         prefs(context).edit {
             putString(key(widgetId, KEY_ROUTE), encodeRoute(snapshot.route))
@@ -498,6 +608,9 @@ object WidgetStateStore {
             remove(key(widgetId, KEY_FAILURE))
         }
     }
+
+    /** Instant of the last data the widget received, 0 when it has none. */
+    fun readMetadata(context: Context, widgetId: Int): Long = prefs(context).getLong(key(widgetId, KEY_RETRIEVED), 0L)
 
     fun read(context: Context, widgetId: Int): WidgetState? {
         val route = prefs(context).getString(key(widgetId, KEY_ROUTE), null)?.let(::decodeRoute) ?: return null
@@ -526,7 +639,8 @@ object WidgetStateStore {
             .split("|")
             .mapNotNull { encoded -> runCatching { SnapshotWarning.valueOf(encoded) }.getOrNull() }
             .toSet()
-        val lines = prefs(context).getString(key(widgetId, KEY_LINES), "").orEmpty().split(";").mapNotNull { decodeService(it, confidence) }
+        val retrievedAt = prefs(context).getLong(key(widgetId, KEY_RETRIEVED), 0L)
+        val lines = prefs(context).getString(key(widgetId, KEY_LINES), "").orEmpty().split(";").mapNotNull { decodeService(it, confidence, retrievedAt) }
         return WidgetState(
             route = route,
             snapshotDirection = snapshotDirection,
@@ -538,7 +652,7 @@ object WidgetStateStore {
             qualityScore = if (prefs(context).contains(key(widgetId, KEY_QUALITY_SCORE))) prefs(context).getInt(key(widgetId, KEY_QUALITY_SCORE), 0) else null,
             qualityBand = qualityBand,
             qualityWarnings = warnings,
-            retrievedAt = prefs(context).getLong(key(widgetId, KEY_RETRIEVED), 0L),
+            retrievedAt = retrievedAt,
             rowOffset = prefs(context).getInt(key(widgetId, KEY_ROW_OFFSET), 0)
         )
     }
@@ -556,12 +670,58 @@ object WidgetStateStore {
         prefs(context).edit { putInt(key(widgetId, KEY_ROW_OFFSET), rowOffset.coerceAtLeast(0)) }
     }
 
-    fun switchDirection(context: Context, widgetId: Int) {
+    /**
+     * The manual direction button. With an automatic swap configured, the choice holds until the next
+     * swap boundary (the chosen time or midnight); then the automatic direction applies again.
+     */
+    fun switchDirection(context: Context, widgetId: Int, now: ZonedDateTime) {
         val next = if (displayedDirection(context, widgetId) == Direction.OUTBOUND) Direction.RETURN else Direction.OUTBOUND
+        val returnFrom = WidgetConfigurationStore(context).read(widgetId)?.settings?.returnFrom
         prefs(context).edit {
             putString(key(widgetId, KEY_DIRECTION), next.name)
             putInt(key(widgetId, KEY_ROW_OFFSET), 0)
+            if (returnFrom != null) {
+                putString(key(widgetId, KEY_MANUAL_DIRECTION), next.name)
+                putLong(key(widgetId, KEY_MANUAL_UNTIL), WidgetDirectionSchedule.nextBoundary(returnFrom, now).toInstant().toEpochMilli())
+            } else {
+                remove(key(widgetId, KEY_MANUAL_DIRECTION))
+                remove(key(widgetId, KEY_MANUAL_UNTIL))
+            }
         }
+    }
+
+    /** The direction the widget should show now, from its settings and any manual override still valid. */
+    fun effectiveDirection(context: Context, widgetId: Int, settings: RouteWidgetSettings, now: ZonedDateTime): Direction {
+        val manual = prefs(context).getString(key(widgetId, KEY_MANUAL_DIRECTION), null)?.let { name -> Direction.entries.firstOrNull { it.name == name } }
+        return WidgetDirectionSchedule.effectiveDirection(
+            returnFrom = settings.returnFrom,
+            storedDirection = displayedDirection(context, widgetId) ?: Direction.OUTBOUND,
+            manualDirection = manual,
+            manualUntilEpochMillis = prefs(context).getLong(key(widgetId, KEY_MANUAL_UNTIL), 0L),
+            now = now
+        )
+    }
+
+    /** Applies the automatic direction (if configured) and returns the direction to show and load. */
+    fun syncDirection(context: Context, widgetId: Int, now: ZonedDateTime): Direction {
+        val stored = displayedDirection(context, widgetId) ?: Direction.OUTBOUND
+        val settings = WidgetConfigurationStore(context).read(widgetId)?.settings ?: return stored
+        if (settings.returnFrom == null) return stored
+        val effective = effectiveDirection(context, widgetId, settings, now)
+        val manualExpired = now.toInstant().toEpochMilli() >= prefs(context).getLong(key(widgetId, KEY_MANUAL_UNTIL), 0L)
+        if (effective != stored || manualExpired) {
+            prefs(context).edit {
+                if (effective != stored) {
+                    putString(key(widgetId, KEY_DIRECTION), effective.name)
+                    putInt(key(widgetId, KEY_ROW_OFFSET), 0)
+                }
+                if (manualExpired) {
+                    remove(key(widgetId, KEY_MANUAL_DIRECTION))
+                    remove(key(widgetId, KEY_MANUAL_UNTIL))
+                }
+            }
+        }
+        return effective
     }
 
     fun markUnavailable(context: Context, widgetId: Int, failure: UiMessage? = null) {
@@ -594,7 +754,7 @@ object WidgetStateStore {
         confidence == DataConfidence.DEMONSTRATION
 
     fun clear(context: Context, widgetId: Int) {
-        prefs(context).edit { listOf(KEY_ROUTE, KEY_DIRECTION, KEY_SNAPSHOT_DIRECTION, KEY_LINES, KEY_FRESHNESS, KEY_CONFIDENCE, KEY_PROVIDER, KEY_QUALITY_SCORE, KEY_QUALITY_BAND, KEY_QUALITY_WARNINGS, KEY_RETRIEVED, KEY_ROW_OFFSET, KEY_LEGACY_PAGE, KEY_FAILURE).forEach { remove(key(widgetId, it)) } }
+        prefs(context).edit { listOf(KEY_ROUTE, KEY_DIRECTION, KEY_SNAPSHOT_DIRECTION, KEY_LINES, KEY_FRESHNESS, KEY_CONFIDENCE, KEY_PROVIDER, KEY_QUALITY_SCORE, KEY_QUALITY_BAND, KEY_QUALITY_WARNINGS, KEY_RETRIEVED, KEY_ROW_OFFSET, KEY_LEGACY_PAGE, KEY_FAILURE, KEY_MANUAL_DIRECTION, KEY_MANUAL_UNTIL).forEach { remove(key(widgetId, it)) } }
     }
 
     private fun prefs(context: Context) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -622,21 +782,55 @@ object WidgetStateStore {
         )
     }
 
-    private fun decodeService(value: String, confidence: DataConfidence): WidgetService? {
-        val parts = value.split(",").map(::decode)
-        if (parts.size !in setOf(8, 9)) return null
+    private fun encodeService(service: WidgetService): String = listOf(
+        service.number,
+        service.operator.name,
+        service.category.name,
+        service.destination,
+        service.expectedDeparture,
+        service.status.name,
+        service.delayMinutes.toString(),
+        service.platform.orEmpty(),
+        service.operationalStatusVerified.toString(),
+        service.scheduledDeparture,
+        service.departureEpochMillis?.toString().orEmpty(),
+        service.arrivalEpochMillis?.toString().orEmpty(),
+        service.arrivalLabel.orEmpty(),
+        service.typeGroup?.name.orEmpty(),
+        service.serviceDate?.toString().orEmpty()
+    ).joinToString(",") { encode(it) }
+
+    /**
+     * Rows of earlier versions have 8 or 9 fields: their departure instant is read from the expected
+     * time around the snapshot's retrieval and their type group from category and operator.
+     */
+    internal fun decodeService(value: String, confidence: DataConfidence, retrievedAt: Long): WidgetService? {
+        val parts = runCatching { value.split(",").map(::decode) }.getOrNull() ?: return null
+        if (parts.size !in setOf(8, 9, 15)) return null
         return runCatching {
+            val operator = RailOperator.valueOf(parts[1])
+            val category = decodeCategory(parts[2])
+            val expected = parts[4]
+            val extended = parts.size == 15
+            val legacyDeparture = if (extended || retrievedAt <= 0L) null else WidgetClock.resolve(expected, retrievedAt)
             WidgetService(
                 number = parts[0],
-                operator = RailOperator.valueOf(parts[1]),
-                category = decodeCategory(parts[2]),
+                operator = operator,
+                category = category,
                 destination = parts[3],
-                expectedDeparture = parts[4],
+                expectedDeparture = expected,
                 status = ServiceStatus.valueOf(parts[5]),
                 delayMinutes = parts[6].toInt(),
                 platform = parts[7].ifBlank { null },
                 operationalStatusVerified = parts.getOrNull(8)?.toBooleanStrictOrNull()
-                    ?: (confidence !in setOf(DataConfidence.STATIC_ONLY, DataConfidence.DEMONSTRATION))
+                    ?: (confidence !in setOf(DataConfidence.STATIC_ONLY, DataConfidence.DEMONSTRATION)),
+                scheduledDeparture = if (extended) parts[9].ifBlank { expected } else expected,
+                departureEpochMillis = if (extended) parts[10].toLongOrNull() else legacyDeparture,
+                arrivalEpochMillis = if (extended) parts[11].toLongOrNull() else null,
+                arrivalLabel = if (extended) parts[12].ifBlank { null } else null,
+                typeGroup = if (extended) TrainTypeGroup.entries.firstOrNull { it.name == parts[13] } else WidgetTrainTypes.groupOf(category, operator),
+                serviceDate = if (extended) runCatching { LocalDate.parse(parts[14]) }.getOrNull()
+                else legacyDeparture?.let { Instant.ofEpochMilli(it).atZone(RailTime.defaultZone).toLocalDate() }
             )
         }.getOrNull()
     }

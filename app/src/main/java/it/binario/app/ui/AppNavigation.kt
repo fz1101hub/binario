@@ -92,6 +92,7 @@ internal object AppNavigation {
         BinarioDeepLink.ActiveRoute, BinarioDeepLink.NextDepartures, is BinarioDeepLink.WidgetRoute ->
             NavigationTarget(AppScreen.DEPARTURES, departuresSection = OperationsSection.TRAINS)
         is BinarioDeepLink.TrainSearch -> NavigationTarget(AppScreen.PLANNER, plannerMode = SearchMode.TRAIN)
+        is BinarioDeepLink.FavouriteTrain -> NavigationTarget(AppScreen.NUMBER_RESULTS)
     }
 
     private val TWO_PANE_LISTS = setOf(AppScreen.DEPARTURES, AppScreen.RESULTS, AppScreen.NUMBER_RESULTS)

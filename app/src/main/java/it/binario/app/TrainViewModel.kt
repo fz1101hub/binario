@@ -40,6 +40,7 @@ import it.binario.app.data.provider.ProviderWarning
 import it.binario.app.data.catalog.EmbeddedCuratedRailStationCatalog
 import it.binario.app.data.orderServicesForDisplay
 import it.binario.app.widget.RouteWidgetProvider
+import it.binario.app.widget.TrainsWidgetProvider
 import it.binario.app.widget.WidgetStateStore
 import it.binario.app.wear.WearSnapshotPublisher
 import kotlinx.coroutines.launch
@@ -58,8 +59,6 @@ enum class RefreshState { IDLE, LOADING, SUCCESS, ERROR }
 data class RecentRoute(val origin: Station, val destination: Station) {
     val label: String get() = "${origin.name} → ${destination.name}"
 }
-
-data class ServiceMonitor(val number: String, val label: String)
 
 class TrainViewModel @JvmOverloads constructor(
     application: Application,
@@ -970,15 +969,25 @@ class TrainViewModel @JvmOverloads constructor(
     fun isMonitoring(service: TrainService): Boolean = monitoredServices.any { it.number.equals(service.number, ignoreCase = true) }
 
     fun toggleServiceMonitoring(service: TrainService) {
+        val added = !isMonitoring(service)
         monitoredServices = routeStore.toggleServiceMonitor(service)
+        TrainsWidgetProvider.onFavouritesChanged(getApplication(), lookUpNewTrains = added)
     }
 
     fun removeServiceMonitoring(number: String) {
         monitoredServices = routeStore.removeServiceMonitor(number)
+        TrainsWidgetProvider.onFavouritesChanged(getApplication(), lookUpNewTrains = false)
+    }
+
+    /** Custom name of a favourite train ("Il mio treno delle 7:42"); a blank name restores the train label. */
+    fun renameServiceMonitor(number: String, customName: String) {
+        monitoredServices = routeStore.renameServiceMonitor(number, customName)
+        TrainsWidgetProvider.onFavouritesChanged(getApplication(), lookUpNewTrains = false)
     }
 
     fun replaceServiceMonitors(monitors: List<ServiceMonitor>) {
         monitoredServices = routeStore.replaceServiceMonitors(monitors)
+        TrainsWidgetProvider.onFavouritesChanged(getApplication(), lookUpNewTrains = true)
     }
 
     /** Null without an active route: the placeholder route has no label an alert could carry. */
@@ -1242,6 +1251,7 @@ private fun pinnedFirst(routes: List<SavedRoute>): List<SavedRoute> = SavedRoute
 
 private class RouteStore(context: Context) {
     private val preferences = context.getSharedPreferences("binario_routes_v3", Context.MODE_PRIVATE)
+    private val favourites = FavouriteTrainStore(context)
 
     fun routes(stations: List<Station>): List<SavedRoute> {
         val stored = preferences.getString(KEY_ROUTES, null)
@@ -1302,34 +1312,16 @@ private class RouteStore(context: Context) {
         return recentRoutes(stations)
     }
 
-    fun monitoredServices(): List<ServiceMonitor> = preferences.getString(KEY_MONITORED_SERVICES, "")
-        .orEmpty()
-        .split(";")
-        .mapNotNull { entry ->
-            val parts = entry.split(",")
-            if (parts.size != 2) null else runCatching { ServiceMonitor(decode(parts[0]), decode(parts[1])) }.getOrNull()
-        }
+    // The favourite ("monitored") trains live in the same preferences; FavouriteTrainStore owns their format.
+    fun monitoredServices(): List<ServiceMonitor> = favourites.all()
 
-    fun toggleServiceMonitor(service: TrainService): List<ServiceMonitor> {
-        val current = monitoredServices()
-        val exists = current.any { it.number.equals(service.number, ignoreCase = true) }
-        val updated = if (exists) current.filterNot { it.number.equals(service.number, ignoreCase = true) }
-        else (listOf(ServiceMonitor(service.number, "${service.displayOperator} · ${service.destination}")) + current).take(12)
-        preferences.edit { putString(KEY_MONITORED_SERVICES, updated.joinToString(";") { "${encode(it.number)},${encode(it.label)}" }) }
-        return updated
-    }
+    fun toggleServiceMonitor(service: TrainService): List<ServiceMonitor> = favourites.toggle(service)
 
-    fun removeServiceMonitor(number: String): List<ServiceMonitor> {
-        val updated = monitoredServices().filterNot { it.number.equals(number, ignoreCase = true) }
-        preferences.edit { putString(KEY_MONITORED_SERVICES, updated.joinToString(";") { "${encode(it.number)},${encode(it.label)}" }) }
-        return updated
-    }
+    fun removeServiceMonitor(number: String): List<ServiceMonitor> = favourites.remove(number)
 
-    fun replaceServiceMonitors(monitors: List<ServiceMonitor>): List<ServiceMonitor> {
-        val updated = monitors.distinctBy { it.number.uppercase() }.take(12)
-        preferences.edit { putString(KEY_MONITORED_SERVICES, updated.joinToString(";") { "${encode(it.number)},${encode(it.label)}" }) }
-        return updated
-    }
+    fun renameServiceMonitor(number: String, customName: String): List<ServiceMonitor> = favourites.rename(number, customName)
+
+    fun replaceServiceMonitors(monitors: List<ServiceMonitor>): List<ServiceMonitor> = favourites.replace(monitors)
 
     private fun encodeRoute(route: SavedRoute): String = listOf(
         route.id,
@@ -1365,7 +1357,6 @@ private class RouteStore(context: Context) {
         const val KEY_ACTIVE_ROUTE = "active_route"
         const val KEY_DIRECTION = "direction"
         const val KEY_RECENT = "recent"
-        const val KEY_MONITORED_SERVICES = "monitored_services"
 
         val legacyStations = listOf(
             Station("roma-termini", "Roma Termini", "Roma", "Lazio"),

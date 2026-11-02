@@ -3,6 +3,7 @@ package it.binario.app.data.repository
 import it.binario.app.data.Station
 import it.binario.app.data.core.BoardKind
 import it.binario.app.data.core.RouteChangeKind
+import it.binario.app.data.core.ServiceKind
 import it.binario.app.data.core.SourceRef
 import it.binario.app.data.core.StationBoard
 import it.binario.app.data.core.StationBoardEntry
@@ -296,7 +297,10 @@ class StationBoardAggregateService(
             status = status,
             routeChange = routeChange,
             nativeRunIds = group.flatMap { it.entry.nativeRunIds.entries }.associate { it.key to it.value },
-            lineLabel = base.entry.lineLabel ?: group.firstNotNullOfOrNull { it.entry.lineLabel }
+            lineLabel = base.entry.lineLabel ?: group.firstNotNullOfOrNull { it.entry.lineLabel },
+            serviceKind = base.entry.serviceKind.takeIf { kind -> kind != ServiceKind.UNKNOWN }
+                ?: group.firstOrNull { candidate -> candidate.entry.serviceKind != ServiceKind.UNKNOWN }?.entry?.serviceKind
+                ?: ServiceKind.UNKNOWN
         )
     }
 

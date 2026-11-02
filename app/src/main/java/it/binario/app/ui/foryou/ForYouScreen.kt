@@ -24,7 +24,6 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material.icons.filled.SwapHoriz
-import androidx.compose.material.icons.filled.Train
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -53,6 +52,7 @@ import androidx.compose.ui.unit.dp
 import it.binario.app.ActiveTrip
 import it.binario.app.R
 import it.binario.app.RecentRoute
+import it.binario.app.ServiceMonitor
 import it.binario.app.StationMonitor
 import it.binario.app.TrainViewModel
 import it.binario.app.data.Direction
@@ -75,7 +75,7 @@ import it.binario.app.ui.common.localizedSummary
 import it.binario.app.ui.departures.StationPreferenceRow
 
 // Per te: "Le tue tratte" (favourite and recent routes), the agenda, favourite stations, the trip being
-// followed, monitored trains and the way to "Impostazioni". Everything is stored on this device.
+// followed, "I miei treni" (the favourite trains) and the way to "Impostazioni". Everything is stored on this device.
 
 private enum class RoutesTab { FAVOURITES, RECENT }
 
@@ -91,7 +91,8 @@ internal fun ForYouScreen(
     openRecent: (RecentRoute) -> Unit,
     openAgenda: () -> Unit,
     openStationBoard: (Station) -> Unit,
-    openSettings: () -> Unit
+    openSettings: () -> Unit,
+    openFavouriteTrain: (ServiceMonitor) -> Unit = {}
 ) {
     var showComposer by rememberSaveable { mutableStateOf(false) }
     var tabName by rememberSaveable { mutableStateOf(RoutesTab.FAVOURITES.name) }
@@ -216,27 +217,13 @@ internal fun ForYouScreen(
                 )
             }
         }
-        if (viewModel.monitoredServices.isNotEmpty()) {
-            item {
-                BinarioCard(Modifier.padding(horizontal = ScreenMargin)) {
-                    Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(stringResource(R.string.settings_monitored_trains), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                        Text(stringResource(R.string.settings_monitored_trains_description), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        viewModel.monitoredServices.forEach { monitor ->
-                            Row(Modifier.fillMaxWidth().heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.Train, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                                Column(Modifier.weight(1f).padding(start = 12.dp)) {
-                                    Text(stringResource(R.string.train_number_label, monitor.number), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-                                    Text(monitor.label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                }
-                                IconButton(onClick = { viewModel.removeServiceMonitoring(monitor.number) }) {
-                                    Icon(Icons.Default.DeleteOutline, contentDescription = stringResource(R.string.accessibility_remove_train_monitoring, monitor.number))
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+        item {
+            FavouriteTrainsSection(
+                monitors = viewModel.monitoredServices,
+                onOpen = openFavouriteTrain,
+                onRename = { monitor, name -> viewModel.renameServiceMonitor(monitor.number, name) },
+                onRemove = { monitor -> viewModel.removeServiceMonitoring(monitor.number) }
+            )
         }
         item { Spacer(Modifier.height(24.dp)) }
     }
