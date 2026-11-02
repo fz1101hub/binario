@@ -1,0 +1,2 @@
+feed_publisher_name,feed_publisher_url,feed_lang,feed_start_date,feed_end_date,feed_version,feed_license_url,feed_contact_url,feed_contact_email
+Clément Desouche (@deryclem) (via data from Trenitalia / CCISS MMTIS),https://github.com/deryclem/trenitalia-gtfs,it,20261024,20271211,2026-10-22T14:15:47Z,https://creativecommons.org/licenses/by/4.0/,https://github.com/deryclem/trenitalia-gtfs,cdesouche28@gmail.com

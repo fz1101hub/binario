@@ -115,6 +115,8 @@ enum class ServiceKind {
     TOURIST,
     LUXURY,
     REPLACEMENT_BUS,
+    /** Scheduled coach of the operator's timetable ([LegMode.BUS]). */
+    BUS,
     SPECIAL,
     UNKNOWN
 }
@@ -248,6 +250,8 @@ data class TrainRun(
 enum class LegMode {
     TRAIN,
     REPLACEMENT_BUS,
+    /** A scheduled coach of the operator's timetable (Trenitalia bus, ItaloBus): a vehicle and a change, not a train. */
+    BUS,
     WALK,
     UNKNOWN
 }

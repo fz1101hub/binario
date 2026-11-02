@@ -634,9 +634,10 @@ def read_manifest(
     except ValueError as error:
         raise BuildError("GTFS manifest generatedAt is not a valid calendar date") from error
     packs = manifest.get("packs")
-    if not isinstance(packs, list) or len(packs) != 10:
+    if not isinstance(packs, list):
         raise BuildError("GTFS manifest must contain exactly 10 packs")
     policy_by_id: dict[str, tuple[str, str]] | None = None
+    android_only: dict[str, tuple[str, str]] = {}
     policy_bytes: bytes | None = None
     if source_policy_path is not None:
         try:
@@ -662,6 +663,33 @@ def read_manifest(
             if source_id in policy_by_id or access_mode != "OPEN_DIRECT" or not source_url.startswith("https://"):
                 raise BuildError(f"GTFS source policy entry {source_id!r} is not an authorised HTTPS direct source")
             policy_by_id[source_id] = (source_url, access_mode)
+        # Packs the Android app embeds but the iOS index deliberately leaves out (reviewed, with a reason): they
+        # must still match the manifest exactly, so an unreviewed manifest addition keeps failing closed.
+        excluded = policy.get("androidOnlySources", [])
+        if not isinstance(excluded, list):
+            raise BuildError("GTFS source policy androidOnlySources must be a list")
+        for index, source in enumerate(excluded):
+            if not isinstance(source, dict) or set(source) != {"sourceId", "sourceUrl", "accessMode", "reason"}:
+                raise BuildError(f"GTFS source policy androidOnlySources entry {index} is invalid")
+            source_id, source_url, access_mode, reason = (source[key] for key in ("sourceId", "sourceUrl", "accessMode", "reason"))
+            if not all(isinstance(value, str) and value.strip() for value in (source_id, source_url, access_mode, reason)):
+                raise BuildError(f"GTFS source policy androidOnlySources entry {index} is incomplete")
+            if source_id in policy_by_id or source_id in android_only:
+                raise BuildError(f"GTFS source policy lists {source_id!r} twice")
+            android_only[source_id] = (source_url, access_mode)
+    indexed_packs = []
+    for item in packs:
+        source_id = item.get("sourceId") if isinstance(item, dict) else None
+        if source_id in android_only:
+            if android_only[source_id] != (item.get("sourceUrl"), item.get("accessMode")):
+                raise BuildError(f"{source_id}: manifest source URL/access mode differs from reviewed iOS policy")
+            continue
+        indexed_packs.append(item)
+    if set(android_only) - {item.get("sourceId") for item in packs if isinstance(item, dict)}:
+        raise BuildError("GTFS source policy androidOnlySources names packs absent from the manifest")
+    packs = indexed_packs
+    if len(packs) != 10:
+        raise BuildError("GTFS manifest must contain exactly 10 packs")
     inputs = [
         InputFile(manifest_path.as_posix(), len(manifest_bytes), hashlib.sha256(manifest_bytes).hexdigest()),
         InputFile(catalog_path.as_posix(), catalog_path.stat().st_size, sha256_file(catalog_path)),

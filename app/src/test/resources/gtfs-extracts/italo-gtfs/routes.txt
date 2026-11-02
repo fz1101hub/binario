@@ -1,0 +1,6 @@
+route_long_name,route_short_name,agency_id,route_type,route_id,route_color,route_text_color
+Italo AV (Alta Velocità),Italo,IT::Operator:1,2,IT::Line:RAIL-BSC-RMT-c858fe,E30037,FFFFFF
+Italo AV (Alta Velocità),Italo,IT::Operator:1,2,IT::Line:RAIL-MC--NAC-4146cd,E30037,FFFFFF
+Italo AV (Alta Velocità),Italo,IT::Operator:1,2,IT::Line:RAIL-NAC-RCE-c1ac16,E30037,FFFFFF
+Italo AV (Alta Velocità),Italo,IT::Operator:1,2,IT::Line:RAIL-RMT-NAC-e401ba,E30037,FFFFFF
+ItaloBus (Collegamento),ItaloBus,IT::Operator:1,3,IT::Line:BUS-VEM-CDZ-a0541b,E30037,FFFFFF

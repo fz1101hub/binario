@@ -30,6 +30,7 @@ import java.text.Normalizer
 import java.time.LocalDate
 import java.util.LinkedHashMap
 import java.util.Locale
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
@@ -58,17 +59,25 @@ class EmbeddedGtfsRouteAdapter(
     private val parsingDispatcher: CoroutineDispatcher = Dispatchers.Default,
     private val onParsing: (() -> Unit)? = null,
     /**
-     * Compact indexes kept in memory. Two by default, so a full AMT pack stays safe on small heaps; the journey
-     * planner keeps one, because it caches the much smaller per-day connection arrays it derives from it.
+     * Compact indexes kept in memory. Three by default: a route served by three packs (the national Trenitalia pack
+     * next to a regional and a cross-border one, as Bolzano–Verona) would otherwise read one of them again at every
+     * search. The journey planner keeps one, because it caches the much smaller per-day connection arrays it derives
+     * from it.
      */
-    private val indexCacheCapacity: Int = 2
+    private val indexCacheCapacity: Int = 3,
+    /**
+     * The station catalogue, read once and only for packs that publish station codes
+     * ([EmbeddedGtfsPack.stopCodeScheme]): their stops are then matched to the requested stations by code before
+     * name ("BOLOGNA C.LE", "Padua"). Null keeps name matching only.
+     */
+    private val stationCatalog: (suspend () -> List<Station>)? = null
 ) : TrainDataSource {
     init {
         require(indexCacheCapacity > 0) { "Serve almeno un indice GTFS in cache" }
     }
 
-    /** Due indici compatti al massimo: un pack AMT completo resta sicuro anche su heap piccoli. */
-    private val indexCache = object : LinkedHashMap<SourceId, StaticGtfsIndex>(2, 0.75f, true) {
+    /** Al più [indexCacheCapacity] indici compatti (LRU). */
+    private val indexCache = object : LinkedHashMap<SourceId, StaticGtfsIndex>(4, 0.75f, true) {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<SourceId, StaticGtfsIndex>?): Boolean = size > indexCacheCapacity
     }
     // Candidate discovery touches every pack when a route has no explicit source id. Keep one
@@ -80,6 +89,10 @@ class EmbeddedGtfsRouteAdapter(
     }
     private val indexMutex = Mutex()
     private val stopPresenceMutex = Mutex()
+    private val codeNamesMutex = Mutex()
+    @Volatile private var codeIndex: GtfsStationCodeIndex? = null
+    /** Per code-publishing pack: catalogue station id → the pack's stop names bound to it by code. */
+    private val codeNamesCache = HashMap<SourceId, Map<String, List<String>>>()
     private val numberCache = BoundedSingleFlightCache<List<TrainNumberMatch>>(40, 6 * 60 * 60_000L, clock)
 
     /** Diagnostica interna usata dal test di regressione a heap limitato. */
@@ -145,8 +158,11 @@ class EmbeddedGtfsRouteAdapter(
                     if (explicitSourceIds != null && pack.sourceId !in explicitSourceIds) continue
                     try {
                         val stops = stopNames(pack)
-                        val origin = originNames.firstOrNull { normalize(it) in stops }
-                        val destination = destinationNames.firstOrNull { normalize(it) in stops }
+                        // A pack that publishes station codes is matched by code first: its own spelling of the
+                        // station ("BOLOGNA C.LE") is then the name the index searches.
+                        val byCode = codeNames(pack)
+                        val origin = (byCode[originStation.id] ?: originNames).firstOrNull { normalize(it) in stops }
+                        val destination = (byCode[destinationStation.id] ?: destinationNames).firstOrNull { normalize(it) in stops }
                         when {
                             origin != null && destination != null -> add(CandidatePack(pack, origin, destination))
                             explicitSourceIds != null -> add(CandidatePack(pack, originStation.name, destinationStation.name))
@@ -172,7 +188,9 @@ class EmbeddedGtfsRouteAdapter(
                     } catch (_: GtfsCompactIndexLimitException) {
                         continue
                     }
-                    index.services(candidate.originStopName, candidate.destinationStopName, source.id.value, query).forEach { service ->
+                    index.services(
+                        candidate.originStopName, candidate.destinationStopName, source.id.value, query, pack.busRoutesAreScheduledCoaches
+                    ).forEach { service ->
                         add(SourcedService(source.displayName, pack.sourceId, service))
                     }
                 }
@@ -247,7 +265,7 @@ class EmbeddedGtfsRouteAdapter(
         val index = indexFor(pack)
         return withContext(parsingDispatcher) {
             val job = currentCoroutineContext().job
-            index.dayTimetable(pack.sourceId, serviceDate, fromMinute, untilMinute) { job.ensureActive() }
+            index.dayTimetable(pack.sourceId, serviceDate, fromMinute, untilMinute, pack.busRoutesAreScheduledCoaches) { job.ensureActive() }
         }
     }
 
@@ -255,6 +273,40 @@ class EmbeddedGtfsRouteAdapter(
     internal suspend fun stopDirectory(pack: EmbeddedGtfsPack): GtfsStopDirectory {
         val bytes = assetBytes(pack.assetPath)
         return withContext(parsingDispatcher) { scanStopDirectory(ByteArrayInputStream(bytes)) }
+    }
+
+    /**
+     * For a pack with [EmbeddedGtfsPack.stopCodeScheme], the stop names its codes bind to each catalogue station
+     * (see [GtfsStationCodeIndex]); empty for the other packs or without [stationCatalog]. Built once per pack.
+     */
+    private suspend fun codeNames(pack: EmbeddedGtfsPack): Map<String, List<String>> {
+        if (pack.stopCodeScheme == GtfsStopCodeScheme.NONE) return emptyMap()
+        val catalog = stationCatalog ?: return emptyMap()
+        synchronized(codeNamesCache) { codeNamesCache[pack.sourceId] }?.let { return it }
+        return codeNamesMutex.withLock {
+            synchronized(codeNamesCache) { codeNamesCache[pack.sourceId] } ?: run {
+                val index = codeIndex ?: try {
+                    GtfsStationCodeIndex(catalog()).also { codeIndex = it }
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (_: Exception) {
+                    // Without a readable catalogue the pack is still matched by name, as before.
+                    return@withLock emptyMap()
+                }
+                val directory = stopDirectory(pack)
+                val names = withContext(parsingDispatcher) {
+                    val byStation = LinkedHashMap<String, LinkedHashSet<String>>()
+                    for (stop in 0 until directory.size) {
+                        val station = index.resolve(
+                            pack.stopCodeScheme, directory.codes[stop], directory.latitude(stop), directory.longitude(stop), directory.names[stop]
+                        ) ?: continue
+                        directory.names[stop].takeIf(String::isNotBlank)?.let { byStation.getOrPut(station.id) { linkedSetOf() } += it }
+                    }
+                    byStation.mapValues { it.value.toList() }
+                }
+                synchronized(codeNamesCache) { codeNamesCache[pack.sourceId] ?: names.also { codeNamesCache[pack.sourceId] = it } }
+            }
+        }
     }
 
     private suspend fun stopNames(pack: EmbeddedGtfsPack): Set<String> {
@@ -364,10 +416,16 @@ class EmbeddedGtfsRouteAdapter(
         val ids = ArrayList<String>()
         val names = ArrayList<String>()
         val parents = ArrayList<String>()
+        val codes = ArrayList<String>()
+        val latitudes = ArrayList<Double>()
+        val longitudes = ArrayList<Double>()
         BoundedGtfsZipScanner(compactIndexLimits).scan(stream, setOf("stops.txt")) { _, rows ->
             val idIndex = rows.header.indexOf("stop_id")
             val nameIndex = rows.header.indexOf("stop_name")
             val parentIndex = rows.header.indexOf("parent_station")
+            val codeIndex = rows.header.indexOf("stop_code")
+            val latitudeIndex = rows.header.indexOf("stop_lat")
+            val longitudeIndex = rows.header.indexOf("stop_lon")
             if (idIndex >= 0 && nameIndex >= 0) {
                 rows.forEachRow(compactIndexLimits.maxStops) { row ->
                     val id = row.gtfsRawValue(idIndex)
@@ -375,11 +433,17 @@ class EmbeddedGtfsRouteAdapter(
                         ids += id
                         names += row.gtfsValue(nameIndex)
                         parents += row.gtfsValue(parentIndex)
+                        codes += row.gtfsValue(codeIndex)
+                        latitudes += row.gtfsValue(latitudeIndex).toDoubleOrNull() ?: Double.NaN
+                        longitudes += row.gtfsValue(longitudeIndex).toDoubleOrNull() ?: Double.NaN
                     }
                 }
             }
         }
-        return GtfsStopDirectory(ids.toTypedArray(), names.toTypedArray(), parents.toTypedArray())
+        return GtfsStopDirectory(
+            ids.toTypedArray(), names.toTypedArray(), parents.toTypedArray(), codes.toTypedArray(),
+            latitudes.toDoubleArray(), longitudes.toDoubleArray()
+        )
     }
 
     /**
@@ -401,6 +465,7 @@ class EmbeddedGtfsRouteAdapter(
         }
         // Seconda passata: trips è ormai completo anche quando stop_times è la
         // prima entry (come nel pack AMT), quindi non indicizziamo trip ignoti.
+        index.finishReading()
         if (numberQuery == null || index.hasTrips()) {
             BoundedGtfsZipScanner(compactIndexLimits).scan(openStream(), setOf("stop_times.txt")) { _, rows -> index.readStopTimes(rows) }
         }
@@ -429,6 +494,20 @@ class EmbeddedGtfsRouteAdapter(
         private val stopTimes = CompactStopTimes(limits.maxStopTimeRows)
         private val calendars = HashMap<String, CompactCalendar>()
         private val calendarDates = HashMap<String, CompactCalendarExceptions>()
+        /**
+         * One instance per service_id while the tables are read (calendar, calendar_dates and trips repeat it; the
+         * national pack has a service per trip), dropped by [finishReading].
+         */
+        private var serviceIds: HashMap<String, String>? = HashMap()
+
+        private fun serviceId(value: String): String {
+            val pool = serviceIds ?: return value
+            return pool.putIfAbsent(value, value) ?: value
+        }
+
+        fun finishReading() {
+            serviceIds = null
+        }
 
         fun readAgencies(rows: GtfsCsvRows) {
             val idIndex = rows.header.indexOf("agency_id")
@@ -470,6 +549,8 @@ class EmbeddedGtfsRouteAdapter(
             val tripIndex = rows.header.indexOf("trip_id")
             val shortNameIndex = rows.header.indexOf("trip_short_name")
             val headsignIndex = rows.header.indexOf("trip_headsign")
+            // Route ids repeat on every trip: keep the instance already held by the routes table.
+            val routeIds = routes.keys.associateBy { it }
             rows.forEachRow(limits.maxTrips) { row ->
                 val tripId = row.gtfsRawValue(tripIndex)
                 val shortName = row.getOrNull(shortNameIndex)
@@ -477,10 +558,11 @@ class EmbeddedGtfsRouteAdapter(
                 val numericHeadsign = row.getOrNull(headsignIndex)?.trim()?.takeIf { it.isNotEmpty() && it.all(Char::isDigit) }
                 val publicNumber = shortName?.takeIf(String::isNotBlank) ?: numericHeadsign ?: tripId
                 if (numberQuery != null && !numberQuery.matches(publicNumber)) return@forEachRow
+                val routeId = row.gtfsRawValue(routeIndex)
                 trips.configure(
                     tripId = tripId,
-                    routeId = row.gtfsRawValue(routeIndex),
-                    serviceId = row.gtfsRawValue(serviceIndex),
+                    routeId = routeIds[routeId] ?: routeId,
+                    serviceId = serviceId(row.gtfsRawValue(serviceIndex)),
                     shortName = shortName,
                     numericHeadsign = numericHeadsign
                 )
@@ -527,9 +609,9 @@ class EmbeddedGtfsRouteAdapter(
                 weekdayIndexes.forEachIndexed { day, index ->
                     if (row.getOrNull(index) == "1") activeDays = activeDays or (1 shl day)
                 }
-                calendars[row.gtfsRawValue(serviceIndex)] = CompactCalendar(
-                    startDate = gtfsDateToInt(row.gtfsRawValue(startIndex)),
-                    endDate = gtfsDateToInt(row.gtfsRawValue(endIndex)),
+                calendars[serviceId(row.gtfsRawValue(serviceIndex))] = CompactCalendar(
+                    startDate = gtfsDateToInt(row.gtfsRawValue(startIndex)) ?: NO_DATE,
+                    endDate = gtfsDateToInt(row.gtfsRawValue(endIndex)) ?: NO_DATE,
                     activeDays = activeDays
                 )
             }
@@ -542,7 +624,7 @@ class EmbeddedGtfsRouteAdapter(
             rows.forEachRow(limits.maxCalendarDateRows) { row ->
                 val date = gtfsDateToInt(row.gtfsRawValue(dateIndex))
                 if (date != null) {
-                    calendarDates.getOrPut(row.gtfsRawValue(serviceIndex)) { CompactCalendarExceptions() }
+                    calendarDates.getOrPut(serviceId(row.gtfsRawValue(serviceIndex))) { CompactCalendarExceptions() }
                         .add(date, row.gtfsRawValue(exceptionIndex))
                 }
             }
@@ -578,7 +660,13 @@ class EmbeddedGtfsRouteAdapter(
             return selected
         }
 
-        fun services(origin: String, destination: String, sourceId: String, query: JourneyQuery): List<TrainService> {
+        fun services(
+            origin: String,
+            destination: String,
+            sourceId: String,
+            query: JourneyQuery,
+            scheduledCoaches: Boolean = false
+        ): List<TrainService> {
             val wantedOrigin = normalize(origin)
             val wantedDestination = normalize(destination)
             val selected = ArrayList<TrainService>()
@@ -607,7 +695,11 @@ class EmbeddedGtfsRouteAdapter(
                     if (selected.size >= limits.maxServicesPerPack && isAfterCurrentWorst(scheduledDateTime, trip, selected)) {
                         return@forEachDeclared
                     }
-                    offerBounded(selected, buildService(segment, trip, sourceId, serviceDate, scheduledDateTime), limits.maxServicesPerPack)
+                    offerBounded(
+                        selected,
+                        buildService(segment, trip, sourceId, serviceDate, scheduledDateTime, scheduledCoaches),
+                        limits.maxServicesPerPack
+                    )
                 }
             }
             return selected.sortedWith(compareBy<TrainService> { it.scheduledDepartureDateTime }.thenBy { it.number })
@@ -676,19 +768,22 @@ class EmbeddedGtfsRouteAdapter(
             trip: CompactTrip,
             sourceId: String,
             serviceDate: java.time.LocalDate,
-            scheduledDateTime: java.time.LocalDateTime
+            scheduledDateTime: java.time.LocalDateTime,
+            scheduledCoaches: Boolean = false
         ): TrainService {
             val route = routes[trip.routeId]
             val departureMinutes = stopTimes.preferredDeparture(segment.originEntry)
             val segmentEntries = segmentEntries(segment)
             val agencyName = agencyName(route)
             val number = publicNumber(trip, route)
+            val scheduledBus = scheduledCoaches && journeyLegMode(route?.type, scheduledCoaches) == LegMode.BUS
             return TrainService(
                 id = "$sourceId:${trip.id}:$serviceDate",
                 number = number,
                 operator = legacyOperator(sourceId, agencyName, route),
                 operatorDisplayName = canonicalAgencyLabel(agencyName, sourceId),
-                trainCategory = category(route?.type, route, agencyName),
+                trainCategory = if (scheduledBus) TrainCategory.OTHER else category(route?.type, route, agencyName),
+                scheduledBus = scheduledBus,
                 origin = stops.name(stopTimes.stop(segment.originEntry)),
                 destination = stops.name(stopTimes.stop(segment.destinationEntry)),
                 scheduledDeparture = hhmm(departureMinutes),
@@ -764,13 +859,20 @@ class EmbeddedGtfsRouteAdapter(
                 normalized.contains("europeansleeper") -> "European Sleeper"
                 normalized.contains("trenord") -> "Trenord"
                 normalized.contains("trenitalia") -> "Trenitalia"
-                normalized.contains("ntv") || normalized.contains("italotreno") -> "Italo"
+                normalized.contains("ntv") || normalized.contains("italotreno") || normalized.startsWith("italo") -> "Italo"
                 else -> raw
             }
         }
 
         private fun legacyOperator(sourceId: String, agencyName: String?, route: CompactRoute?): RailOperator {
             val identity = normalize(listOfNotNull(agencyName, route?.shortName, route?.longName).joinToString(" "))
+            trenitaliaLineCode(route)?.let { code ->
+                if (identity.contains("trenitalia")) return when (code) {
+                    "FR", "FA", "FB" -> RailOperator.TRENITALIA_AV
+                    "IC", "ICN", "EC", "EN" -> RailOperator.TRENITALIA_LONG_DISTANCE
+                    else -> RailOperator.TRENITALIA_REGIONALE
+                }
+            }
             return when {
                 identity.contains("trenord") || sourceId == "lombardia-trenord-gtfs" -> RailOperator.TRENORD
                 identity.contains("italo") || identity.contains("ntv") -> RailOperator.ITALO
@@ -782,6 +884,14 @@ class EmbeddedGtfsRouteAdapter(
 
         private fun category(routeType: String?, route: CompactRoute?, agencyName: String?): TrainCategory {
             val identity = normalize(listOfNotNull(route?.shortName, route?.longName, agencyName).joinToString(" "))
+            if (identity.contains("trenitalia")) when (trenitaliaLineCode(route)) {
+                "FR", "FA", "FB" -> return TrainCategory.FRECCE
+                "IC", "ICN" -> return TrainCategory.INTERCITY
+                "RV" -> return TrainCategory.REGIONALE_VELOCE
+                "REG", "SFM" -> return TrainCategory.REGIONALE
+                "MET" -> return TrainCategory.METROPOLITANO
+                "EC", "EN", "EXP" -> return TrainCategory.OTHER
+            }
             return when {
                 identity.contains("italo") -> TrainCategory.AV_ITALO
                 identity.contains("frecc") -> TrainCategory.FRECCE
@@ -793,6 +903,16 @@ class EmbeddedGtfsRouteAdapter(
             }
         }
 
+        /** route_short_name without Trenitalia's "0083_" company prefix ("0083_FR" is "FR"), display only. */
+        private fun lineLabel(route: CompactRoute?): String? {
+            val shortName = route?.shortName?.trim()?.takeIf(String::isNotEmpty) ?: return null
+            return TRENITALIA_LINE.matchEntire(shortName)?.groupValues?.get(1) ?: shortName
+        }
+
+        /** The category code of a Trenitalia route ("0083_FR" → "FR"), or null for any other route. */
+        private fun trenitaliaLineCode(route: CompactRoute?): String? =
+            route?.shortName?.trim()?.let(TRENITALIA_LINE::matchEntire)?.groupValues?.get(1)?.uppercase(Locale.ROOT)
+
         private fun serviceRunsOn(serviceId: String, date: LocalDate): Boolean {
             when (calendarDates[serviceId]?.exception(date.toGtfsInt())) {
                 "1" -> return true
@@ -800,8 +920,8 @@ class EmbeddedGtfsRouteAdapter(
             }
             val calendar = calendars[serviceId] ?: return false
             val encodedDate = date.toGtfsInt()
-            val startDate = calendar.startDate ?: return false
-            val endDate = calendar.endDate ?: return false
+            val startDate = calendar.startDate.takeIf { it != NO_DATE } ?: return false
+            val endDate = calendar.endDate.takeIf { it != NO_DATE } ?: return false
             if (encodedDate !in startDate..endDate) return false
             return calendar.activeDays and (1 shl date.dayOfWeek.ordinal) != 0
         }
@@ -817,6 +937,7 @@ class EmbeddedGtfsRouteAdapter(
             serviceDate: LocalDate,
             fromMinute: Int,
             untilMinute: Int,
+            scheduledCoaches: Boolean,
             ensureActive: () -> Unit
         ): GtfsDayTimetable {
             val builder = GtfsDayTimetable.Builder(sourceId, serviceDate, stops.size(), stops::id, stops::name)
@@ -827,7 +948,7 @@ class EmbeddedGtfsRouteAdapter(
                 if (visited and 255 == 0) ensureActive()
                 if (!serviceRunsOn(trip.serviceId, serviceDate)) return@forEachDeclared
                 val route = routes[trip.routeId]
-                val mode = journeyLegMode(route?.type) ?: return@forEachDeclared
+                val mode = journeyLegMode(route?.type, scheduledCoaches) ?: return@forEachDeclared
                 var count = 0
                 var entry = trips.head(tripIndex)
                 while (entry >= 0) {
@@ -856,9 +977,9 @@ class EmbeddedGtfsRouteAdapter(
                 builder.beginTrip(
                     tripId = trip.id,
                     publicNumber = publicNumber(trip, route),
-                    lineLabel = route?.shortName?.trim()?.takeIf(String::isNotEmpty),
+                    lineLabel = lineLabel(route),
                     operatorName = canonicalAgencyLabel(agency, sourceId.value),
-                    category = category(route?.type, route, agency),
+                    category = if (mode == LegMode.BUS) TrainCategory.OTHER else category(route?.type, route, agency),
                     operator = legacyOperator(sourceId.value, agency, route),
                     mode = mode
                 )
@@ -901,7 +1022,8 @@ class EmbeddedGtfsRouteAdapter(
         )
 
         private data class CompactRoute(val agencyId: String, val shortName: String, val longName: String, val type: String?)
-        private data class CompactCalendar(val startDate: Int?, val endDate: Int?, val activeDays: Int)
+        /** Dates as yyyyMMdd ints, [NO_DATE] when unreadable: no boxed Integer per calendar row. */
+        private class CompactCalendar(val startDate: Int, val endDate: Int, val activeDays: Int)
         private data class CompactSegment(val originEntry: Int, val destinationEntry: Int, val tripIndex: Int)
         private data class TrainServiceSortKey(val scheduledDateTime: java.time.LocalDateTime, val number: String)
 
@@ -1066,7 +1188,12 @@ class EmbeddedGtfsRouteAdapter(
                     types = types.copyOf(types.size * 2)
                 }
                 dates[count] = date
-                types[count] = type
+                // One shared instance per exception type: the national pack has a quarter of a million rows.
+                types[count] = when (type) {
+                    "1" -> "1"
+                    "2" -> "2"
+                    else -> type
+                }
                 count += 1
             }
 
@@ -1078,10 +1205,13 @@ class EmbeddedGtfsRouteAdapter(
     }
 
     private companion object {
+        private const val NO_DATE = Int.MIN_VALUE
         private const val MISSING_TIME = Int.MIN_VALUE
         private const val INVALID_TIME = Int.MIN_VALUE + 1
         private const val NEXT_DAY_LOOK_AHEAD_HOURS = 24L
         private val RAIL_ROUTE_TYPES = setOf("2", "100", "101", "102", "103", "104", "105", "106", "107", "108", "109")
+        /** Trenitalia's route_short_name: its company code 0083, then the category ("0083_REG", "0083_BUS"). */
+        private val TRENITALIA_LINE = Regex("0083_([A-Za-z]{1,4})")
         private val compactIndexTables = setOf("agency.txt", "stops.txt", "routes.txt", "trips.txt", "stop_times.txt", "calendar.txt", "calendar_dates.txt")
         private val compactIndexLimits = GtfsCompactIndexLimits()
 
@@ -1110,17 +1240,19 @@ class EmbeddedGtfsRouteAdapter(
         fun LocalDate.toGtfsInt(): Int = year * 10_000 + monthValue * 100 + dayOfMonth
 
         /**
-         * Journey legs come from rail (route_type 2, 100-199), urban rail (1, 400-499) and, as replacement
-         * buses, from bus routes (3, 700-799) that the rail packs publish; a missing type is a train, as in the
-         * route search. Anything else (ferries, cable cars, …) is not a leg of a rail journey.
+         * Journey legs come from rail (route_type 2, 100-199), urban rail (1, 400-499) and bus routes (3,
+         * 700-799); a missing type is a train, as in the route search. A bus route is the operator's own scheduled
+         * coach ([LegMode.BUS]) in a pack whose buses are [EmbeddedGtfsPack.busRoutesAreScheduledCoaches]
+         * (Trenitalia, ItaloBus) and a rail replacement bus in the others. Anything else (ferries, cable cars, …)
+         * is not a leg of a rail journey.
          */
-        fun journeyLegMode(rawType: String?): LegMode? {
+        fun journeyLegMode(rawType: String?, scheduledCoaches: Boolean = false): LegMode? {
             val text = rawType?.trim().orEmpty()
             if (text.isEmpty()) return LegMode.TRAIN
             val type = text.toIntOrNull() ?: return null
             return when (type) {
                 1, 2, in 100..199, in 400..499 -> LegMode.TRAIN
-                3, in 700..799 -> LegMode.REPLACEMENT_BUS
+                3, in 700..799 -> if (scheduledCoaches) LegMode.BUS else LegMode.REPLACEMENT_BUS
                 else -> null
             }
         }

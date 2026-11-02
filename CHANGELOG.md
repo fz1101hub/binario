@@ -17,6 +17,14 @@
 - **I miei treni** in Per te sostituisce l'elenco dei treni monitorati: dopo il cuore l'app propone un nome, il menu permette di aprire, rinominare o rimuovere; nomi e corsa salvata entrano nel backup locale JSON (campi facoltativi, i backup precedenti restano importabili).
 - Un solo lavoro WorkManager pianifica tutti i widget per il prossimo istante dovuto: fuori dalle fasce non resta nulla in coda. «Aggiornato alle HH:mm» in testata a ogni widget.
 - I tabelloni di stazione conservano il tipo di servizio già pubblicato dalle fonti (`StationBoardEntry.serviceKind`), senza cambiare ordine, priorità o selezione delle fonti.
+## In sviluppo — Orari ufficiali Trenitalia e Italo offline
+
+- Due nuovi data pack embedded: `trenitalia-gtfs` (treni Trenitalia e bus di linea Trenitalia, valido fino all'11 dicembre 2027, 4,8 MB) e `italo-gtfs` (treni Italo e ItaloBus, calendario fino al 12 dicembre 2026, 49 KB), dagli orari NeTEx ufficiali del National Access Point italiano (dataset 1077621 e 1814124) nella conversione GTFS CC BY 4.0 di Clément Desouche, fissati al commit e allo SHA-256 dell'archivio; geometrie escluse. Crediti in Impostazioni › Info.
+- Il calcolo offline dei viaggi con cambi e il tier statico delle tratte coprono ora Trenitalia e Italo (es. Domodossola → Milano mostra i regionali oltre agli EuroCity, Merano → Roma, Venezia → Cortina con ItaloBus); le fonti live restano prime e l'ordine delle fonti esistenti non cambia.
+- Fermate Trenitalia legate al catalogo dal location id (94,7% delle stazioni, 98,8% con il nome), codici Italo da una tabella rivista (63 su 64).
+- Nuova modalità `LegMode.BUS` per gli autobus di linea («Bus Trenitalia», «ItaloBus»), distinta dal bus sostitutivo; un passaggio treno–bus è un cambio. `TrainService.scheduledBus`, `JourneyLegRow.vehicle`/`isBus` e `JourneyOptionRow.hasBusLeg` per icone e filtri.
+- Planner: una corsa presente in due pack è una sola corsa; i viaggi lunghi che partono nella finestra possono arrivare dopo (orizzonte di 10 h); i pack regionali che servono un solo estremo affiancano il pack nazionale; lettura GTFS a blocchi (indice Trenitalia in circa 1 s sul JVM dei test).
+- `tools/build_gtfs_packs.py`: `--only` e `--source-archive` per aggiornare solo i pack indicati, verifica dell'upstream fissato; l'indice iOS resta sulle stesse 10 fonti (`androidOnlySources` nella policy iOS).
 
 ## In sviluppo — Android allineato al render approvato di Binario 2.0
 

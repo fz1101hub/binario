@@ -23,8 +23,24 @@ data class EmbeddedGtfsPack(
      * calendar.txt e le date con exception_type=1 di calendar_dates.txt.
      * Deve coincidere con lastServiceDate nel manifest; null se sconosciuto.
      */
-    val lastServiceDate: LocalDate? = null
+    val lastServiceDate: LocalDate? = null,
+    /** How stop_code ties a stop of this pack to a catalogue station; [GtfsStopCodeScheme.NONE] matches by name only. */
+    val stopCodeScheme: GtfsStopCodeScheme = GtfsStopCodeScheme.NONE,
+    /**
+     * route_type 3 of this pack are the operator's own scheduled coaches (Trenitalia buses, ItaloBus), shown as
+     * [it.binario.app.data.core.LegMode.BUS]. In every other pack a bus route is a rail replacement bus.
+     */
+    val busRoutesAreScheduledCoaches: Boolean = false
 )
+
+/** The station code a pack publishes as stop_code, used to find its catalogue station before the name. */
+enum class GtfsStopCodeScheme {
+    NONE,
+    /** Trenitalia location id ("830001700"), the catalogue's trenitaliaLocationId; see [GtfsStationCodeIndex]. */
+    TRENITALIA_LOCATION_ID,
+    /** Italo's three-character station code ("MC_"), mapped by the reviewed [ItaloGtfsStationCodes] table. */
+    ITALO_STATION_CODE
+}
 
 object EmbeddedGtfsPacks {
     val all = listOf(
@@ -33,10 +49,18 @@ object EmbeddedGtfsPacks {
         EmbeddedGtfsPack(SourceId("ch-otd-gtfs"), "gtfs/ch-otd-gtfs.zip", LocalDate.of(2026, 12, 12)),
         EmbeddedGtfsPack(SourceId("eav-gtfs"), "gtfs/eav-gtfs.zip", LocalDate.of(2026, 12, 31)),
         EmbeddedGtfsPack(SourceId("hzpp-gtfs"), "gtfs/hzpp-gtfs.zip", LocalDate.of(2026, 12, 12)),
+        EmbeddedGtfsPack(
+            SourceId("italo-gtfs"), "gtfs/italo-gtfs.zip", LocalDate.of(2026, 12, 12),
+            stopCodeScheme = GtfsStopCodeScheme.ITALO_STATION_CODE, busRoutesAreScheduledCoaches = true
+        ),
         EmbeddedGtfsPack(SourceId("lombardia-trenord-gtfs"), "gtfs/lombardia-trenord-gtfs.zip", LocalDate.of(2026, 12, 12)),
         EmbeddedGtfsPack(SourceId("oebb-gtfs"), "gtfs/oebb-gtfs.zip", LocalDate.of(2026, 12, 12)),
         EmbeddedGtfsPack(SourceId("sncf-gtfs"), "gtfs/sncf-gtfs.zip", LocalDate.of(2027, 3, 31)),
         EmbeddedGtfsPack(SourceId("toscana-tft-gtfs"), "gtfs/toscana-tft-gtfs.zip", LocalDate.of(2026, 12, 12)),
+        EmbeddedGtfsPack(
+            SourceId("trenitalia-gtfs"), "gtfs/trenitalia-gtfs.zip", LocalDate.of(2027, 12, 11),
+            stopCodeScheme = GtfsStopCodeScheme.TRENITALIA_LOCATION_ID, busRoutesAreScheduledCoaches = true
+        ),
         EmbeddedGtfsPack(SourceId("trentino-gtfs"), "gtfs/trentino-extraurban-gtfs.zip", LocalDate.of(2027, 6, 25))
     )
 

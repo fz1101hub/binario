@@ -115,7 +115,9 @@ class AndroidStringResourceParityTest {
             "unconfigured_route_display", "quality_band_score", "widget_status_on_time", "widget_status_delayed", "widget_status_demo",
             "widget_quality_score", "widget_confidence_open_data", "widget_confidence_cached", "widget_confidence_demonstration",
             "widget_warning_demonstration", "service_group_italo", "service_group_frecce", "service_category_number",
-            "trains_widget_status_early"
+            "trains_widget_status_early",
+            // Brand names, the same in several languages.
+            "journey_leg_freccialink", "journey_leg_italobus"
         )
         val IDENTICAL_PLURAL_KEYS = setOf("minutes_short", "gps_alarm_radius_km")
         val quantitiesByLocale = mapOf(

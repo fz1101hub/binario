@@ -1,0 +1,4 @@
+attribution_id,organization_name,is_producer,is_operator,attribution_url
+,OpenStreetMap contributors,1,,https://www.openstreetmap.org/copyright
+converter,Clément Desouche (@deryclem),,,https://github.com/deryclem/italo-gtfs
+source-data,Italo S.p.A. / CCISS MMTIS,1,1,https://www.cciss.it/nap/mmtis/public/en/catalog/Dataset/1814124

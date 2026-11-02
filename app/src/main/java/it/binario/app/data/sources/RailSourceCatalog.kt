@@ -195,6 +195,40 @@ object RailSourceCatalog {
             notes = "GTFS ufficiale regionale; il pack resta ferroviario anche quando route_type richiede normalizzazione specifica della fonte."
         ),
         RailSourceDefinition(
+            id = SourceId("trenitalia-gtfs"),
+            displayName = "Trenitalia — orario ufficiale (NAP, GTFS)",
+            operatorOrAuthority = "Trenitalia S.p.A.",
+            formats = setOf(SourceFormat.NETEX, SourceFormat.GTFS_ZIP),
+            capabilities = staticCapabilities,
+            accessMode = AccessMode.OPEN_DIRECT,
+            readiness = SourceReadiness.READY_FOR_GTFS_PACK,
+            countryCodes = setOf("IT"),
+            coverage = "Treni Trenitalia nazionali, regionali e internazionali e bus di linea Trenitalia, orario programmato.",
+            landingPage = uri("https://www.cciss.it/nap/mmtis/public/en/catalog/Dataset/1077621"),
+            downloadOrProbeUri = uri("https://raw.githubusercontent.com/deryclem/trenitalia-gtfs/6c907245537b84a705265905dd41b62ef854bf29/gtfs-trenitalia.zip"),
+            attribution = "Trenitalia S.p.A. via NAP CCISS (CAD art. 52, Reg. UE 2017/1926); GTFS © Clément Desouche, CC BY 4.0",
+            notes = "Dati MMTIS ufficiali pubblicati in NeTEx sul National Access Point (dataset 1077621), convertiti in GTFS " +
+                "dalla comunità (deryclem/trenitalia-gtfs, CC BY 4.0). Data pack offline fissato a un commit e allo SHA-256 " +
+                "dell'archivio; solo orario programmato, shapes esclusi."
+        ),
+        RailSourceDefinition(
+            id = SourceId("italo-gtfs"),
+            displayName = "Italo — orario ufficiale (NAP, GTFS)",
+            operatorOrAuthority = "Italo S.p.A. (NTV)",
+            formats = setOf(SourceFormat.NETEX, SourceFormat.GTFS_ZIP),
+            capabilities = staticCapabilities,
+            accessMode = AccessMode.OPEN_DIRECT,
+            readiness = SourceReadiness.READY_FOR_GTFS_PACK,
+            countryCodes = setOf("IT"),
+            coverage = "Treni Italo AV e ItaloBus, orario programmato.",
+            landingPage = uri("https://www.cciss.it/nap/mmtis/public/en/catalog/Dataset/1814124"),
+            downloadOrProbeUri = uri("https://raw.githubusercontent.com/deryclem/italo-gtfs/4e96f9067e6adb154c357c366a513c45bc624382/gtfs-italo.zip"),
+            attribution = "Italo S.p.A. via NAP CCISS (CAD art. 52, Reg. UE 2017/1926); GTFS © Clément Desouche, CC BY 4.0",
+            notes = "Dati MMTIS ufficiali pubblicati in NeTEx sul National Access Point (dataset 1814124), convertiti in GTFS " +
+                "dalla comunità (deryclem/italo-gtfs, CC BY 4.0). Data pack offline fissato a un commit e allo SHA-256 " +
+                "dell'archivio; solo orario programmato; shapes (derivati da OpenStreetMap, ODbL) esclusi."
+        ),
+        RailSourceDefinition(
             id = SourceId("hzpp-gtfs"),
             displayName = "HŽ Putnički prijevoz — GTFS",
             operatorOrAuthority = "HŽPP",

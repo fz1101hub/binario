@@ -57,18 +57,24 @@ internal data class ConnectionScanQuery(
     val destinations: BooleanArray,
     /** Earliest departure from an origin node. */
     val departureMinute: Int,
-    /** No connection departing after this minute is used (the search window). */
+    /** No journey leaves an origin node after this minute (the search window). */
     val latestDepartureMinute: Int,
     val maxTransfers: Int,
     val maxResults: Int,
     /** Bound on the earliest-arrival scans of one search (each one starts after the previous best departure). */
-    val maxIterations: Int
+    val maxIterations: Int,
+    /**
+     * No connection departing after this minute is used: a journey that leaves inside the window can go on with
+     * connections up to here, so a long trip leaving near the end of the window still arrives.
+     */
+    val lastConnectionMinute: Int = latestDepartureMinute
 ) {
     init {
         require(maxTransfers in 0..6) { "Numero di cambi non supportato" }
         require(maxResults > 0) { "Serve almeno un risultato" }
         require(maxIterations > 0) { "Serve almeno una scansione" }
         require(latestDepartureMinute >= departureMinute) { "Finestra di ricerca non valida" }
+        require(lastConnectionMinute >= latestDepartureMinute) { "Orizzonte delle connessioni non valido" }
     }
 }
 
@@ -142,7 +148,7 @@ internal class ConnectionScanPlanner(private val timetable: ConnectionScanTimeta
         val size = timetable.size
         while (connection < size) {
             val departure = departureMinute[connection]
-            if (departure > query.latestDepartureMinute) break
+            if (departure > query.lastConnectionMinute) break
             // Nothing leaving at or after the best direct arrival can improve any round (see class comment).
             if (departure >= bestAtDestination[1]) break
             if (connection and 4095 == 0) ensureActive()
@@ -157,7 +163,7 @@ internal class ConnectionScanPlanner(private val timetable: ConnectionScanTimeta
                 var boarded = boardedAt[slot]
                 if (boarded < 0 && pickup) {
                     val reachable = if (round == 1) {
-                        query.origins[boardNode]
+                        query.origins[boardNode] && departure <= query.latestDepartureMinute
                     } else {
                         val reached = arrival[(round - 1) * nodes + boardNode]
                         reached != UNREACHED && reached + transferMinutes[boardNode] <= departure

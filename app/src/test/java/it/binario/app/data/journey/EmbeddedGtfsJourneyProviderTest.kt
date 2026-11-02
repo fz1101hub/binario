@@ -5,6 +5,7 @@ import it.binario.app.data.core.DataWarning
 import it.binario.app.data.core.JourneyOption
 import it.binario.app.data.core.LegMode
 import it.binario.app.data.core.ServiceKind
+import it.binario.app.data.core.SourceId
 import it.binario.app.data.core.StationId
 import it.binario.app.data.journey.JourneyFixtures.Trip
 import it.binario.app.data.journey.JourneyFixtures.alfa
@@ -23,6 +24,7 @@ import it.binario.app.data.provider.ProviderErrorKind
 import it.binario.app.data.provider.ProviderResult
 import it.binario.app.data.provider.ProviderWarning
 import java.time.LocalDateTime
+import it.binario.app.data.gtfs.EmbeddedGtfsPack
 import it.binario.app.data.gtfs.EmbeddedGtfsRouteAdapter
 import java.io.ByteArrayInputStream
 import kotlinx.coroutines.CancellationException
@@ -246,6 +248,61 @@ class EmbeddedGtfsJourneyProviderTest {
         assertEquals(ServiceKind.REPLACEMENT_BUS, option.legs.first().serviceKind)
         assertEquals(1, option.transfers)
         assertNull("The line equal to the number is not repeated", option.legs.first().lineLabel)
+    }
+
+    @Test fun `a bus of a pack of scheduled coaches is a bus leg, not a replacement bus`() = runBlocking {
+        val coaches = EmbeddedGtfsPack(SourceId("italo-gtfs"), "gtfs/italo-gtfs.zip", busRoutesAreScheduledCoaches = true)
+        val provider = provider(mapOf(coaches to feed(listOf(
+            Trip("T1", "8959", listOf("A" to "08:00", "B" to "08:30")),
+            Trip("B1", "1060", listOf("B" to "08:40", "E" to "10:10"), route = "BUS")
+        ))))
+        val option = options(provider.searchJourneys(request(alfa, epsilon))).single()
+        assertEquals(listOf(LegMode.TRAIN, LegMode.BUS), option.legs.map { it.mode })
+        assertEquals(ServiceKind.BUS, option.legs[1].serviceKind)
+        assertEquals("B1", option.legs[1].lineLabel)
+        // A train to bus transfer is a change, with the station's transfer time.
+        assertEquals(1, option.transfers)
+    }
+
+    @Test fun `the same run in two packs is scanned once and staying on board across both copies is no change`() = runBlocking {
+        // The ÖBB pack (preferred) publishes EC 85 Alfa-Beta-Gamma, the Trenitalia pack Beta-Gamma-Delta: Beta-Gamma
+        // is the same connection, so Alfa to Delta is one train, boarded in one pack and left in the other.
+        val provider = provider(mapOf(
+            pack("trenitalia-gtfs") to feed(listOf(
+                Trip("TI85", "85", listOf("B" to "09:00", "C" to "09:30", "D" to "10:00")),
+                Trip("TI90", "90", listOf("A" to "08:05", "C" to "09:40"))
+            )),
+            pack("oebb-gtfs") to feed(listOf(Trip("OBB85", "EC 85", listOf("A" to "08:00", "B" to "09:00", "C" to "09:30"))))
+        ))
+        val through = options(provider.searchJourneys(request(alfa, delta))).single()
+        assertEquals(0, through.transfers)
+        val leg = through.legs.single()
+        assertEquals("EC 85", leg.publicNumber)
+        assertEquals("oebb-gtfs:OBB85:$monday", leg.runId?.value)
+        assertEquals(LocalDateTime.of(monday, java.time.LocalTime.of(10, 0)), leg.scheduledArrival.toLocalDateTime())
+        assertEquals(setOf("oebb-gtfs", "trenitalia-gtfs"), through.snapshot.contributingSources.map { it.sourceId.value }.toSet())
+
+        // Between two stations both copies serve, the run is one option, the preferred pack's.
+        val shared = options(provider.searchJourneys(request(beta, gamma)))
+        assertEquals(listOf("oebb-gtfs"), shared.map { it.legs.single().runId!!.value.substringBefore(':') })
+    }
+
+    @Test fun `runs of two packs with the same number but other times stay two trains`() = runBlocking {
+        val provider = provider(mapOf(
+            pack("trenitalia-gtfs") to feed(listOf(Trip("TI85", "85", listOf("B" to "09:05", "C" to "09:35")))),
+            pack("oebb-gtfs") to feed(listOf(Trip("OBB85", "85", listOf("B" to "09:00", "C" to "09:30"))))
+        ))
+        val found = options(provider.searchJourneys(request(beta, gamma)))
+        assertEquals(listOf("oebb-gtfs", "trenitalia-gtfs"), found.map { it.legs.single().runId!!.value.substringBefore(':') })
+    }
+
+    @Test fun `run numbers compare by their digits across packs`() {
+        assertEquals("85", EmbeddedGtfsJourneyProvider.runNumberKey("EC 85"))
+        assertEquals("2153", EmbeddedGtfsJourneyProvider.runNumberKey("RE_11 - 2153"))
+        assertEquals("1060", EmbeddedGtfsJourneyProvider.runNumberKey("1060"))
+        assertEquals("42", EmbeddedGtfsJourneyProvider.runNumberKey("AO042"))
+        assertNull(EmbeddedGtfsJourneyProvider.runNumberKey("IT::VehicleJourney:railTRENITALIA:0083_10083_0_v_1-5655"))
+        assertNull(EmbeddedGtfsJourneyProvider.runNumberKey(" "))
     }
 
     @Test fun `a station picked from a pack and not in the catalogue is matched by its stop id and name`() = runBlocking {

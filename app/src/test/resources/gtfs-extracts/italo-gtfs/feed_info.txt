@@ -1,0 +1,2 @@
+feed_publisher_name,feed_publisher_url,feed_lang,feed_start_date,feed_end_date,feed_version,feed_contact_email,feed_contact_url,feed_license_url
+Clément Desouche (@deryclem) (via data from Italo S.p.A. / CCISS MMTIS),https://github.com/deryclem/italo-gtfs,it,20261024,20270202,2026-10-25T02:03:07+02:00,cdesouche28@gmail.com,https://github.com/deryclem/italo-gtfs,https://creativecommons.org/licenses/by/4.0/

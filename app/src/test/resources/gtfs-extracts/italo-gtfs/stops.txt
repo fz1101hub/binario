@@ -1,0 +1,55 @@
+stop_name,parent_station,stop_code,stop_id,stop_lat,stop_lon,location_type,wheelchair_boarding
+Agropoli,,AGR,IT::StopPlace:AGR,40.351517,15.002049,1,1
+Agropoli,IT::StopPlace:AGR,AGR,IT::ScheduledStopPoint:AGR,40.351517,15.002049,,1
+Bologna Centrale,,BC_,IT::StopPlace:BC-,44.50626,11.342268,1,1
+Bologna Centrale,IT::StopPlace:BC-,BC_,IT::ScheduledStopPoint:BC-,44.50626,11.342268,,1
+Brescia,,BSC,IT::StopPlace:BSC,45.53231,10.212845,1,1
+Brescia,IT::StopPlace:BSC,BSC,IT::ScheduledStopPoint:BSC,45.53231,10.212845,,1
+Cortina D'Ampezzo BUS,,CDZ,IT::StopPlace:CDZ,46.539173,12.138057,1,
+Cortina D'Ampezzo BUS,IT::StopPlace:CDZ,CDZ,IT::ScheduledStopPoint:CDZ,46.539173,12.138057,,
+Desenzano,,DSG,IT::StopPlace:DSG,45.462677,10.536332,1,1
+Desenzano,IT::StopPlace:DSG,DSG,IT::ScheduledStopPoint:DSG,45.462677,10.536332,,1
+Firenze S.M.Novella,,SMN,IT::StopPlace:SMN,43.776894,11.247388,1,1
+Firenze S.M.Novella,IT::StopPlace:SMN,SMN,IT::ScheduledStopPoint:SMN,43.776894,11.247388,,1
+Lamezia Terme C,,LON,IT::StopPlace:LON,38.92135,16.255575,1,1
+Lamezia Terme C,IT::StopPlace:LON,LON,IT::ScheduledStopPoint:LON,38.92135,16.255575,,1
+Longarone-Zoldo,,LGZ,IT::StopPlace:LGZ,46.267456,12.301965,1,
+Longarone-Zoldo,IT::StopPlace:LGZ,LGZ,IT::ScheduledStopPoint:LGZ,46.267456,12.301965,,
+Maratea,,MRT,IT::StopPlace:MRT,39.99503,15.709749,1,1
+Maratea,IT::StopPlace:MRT,MRT,IT::ScheduledStopPoint:MRT,39.99503,15.709749,,1
+Milano Centrale,,MC_,IT::StopPlace:MC-,45.486347,9.204545,1,1
+Milano Centrale,IT::StopPlace:MC-,MC_,IT::ScheduledStopPoint:MC-,45.486347,9.204545,,1
+Milano Rogoredo,,RG_,IT::StopPlace:RG-,45.43386,9.23911,1,1
+Milano Rogoredo,IT::StopPlace:RG-,RG_,IT::ScheduledStopPoint:RG-,45.43386,9.23911,,1
+Napoli Afragola,,NAF,IT::StopPlace:NAF,40.930695,14.331179,1,1
+Napoli Afragola,IT::StopPlace:NAF,NAF,IT::ScheduledStopPoint:NAF,40.930695,14.331179,,1
+Napoli Centrale,,NAC,IT::StopPlace:NAC,40.852932,14.272898,1,1
+Napoli Centrale,IT::StopPlace:NAC,NAC,IT::ScheduledStopPoint:NAC,40.852932,14.272898,,1
+Paola,,PAR,IT::StopPlace:PAR,39.359444,16.033085,1,1
+Paola,IT::StopPlace:PAR,PAR,IT::ScheduledStopPoint:PAR,39.359444,16.033085,,1
+Peschiera,,PSY,IT::StopPlace:PSY,45.4385,10.702516,1,1
+Peschiera,IT::StopPlace:PSY,PSY,IT::ScheduledStopPoint:PSY,45.4385,10.702516,,1
+Reggio Calabria,,RCE,IT::StopPlace:RCE,38.10389,15.635844,1,1
+Reggio Calabria,IT::StopPlace:RCE,RCE,IT::ScheduledStopPoint:RCE,38.10389,15.635844,,1
+Roma Termini,,RMT,IT::StopPlace:RMT,41.900635,12.502013,1,1
+Roma Termini,IT::StopPlace:RMT,RMT,IT::ScheduledStopPoint:RMT,41.900635,12.502013,,1
+Rosarno,,RUT,IT::StopPlace:RUT,38.4886,15.97015,1,1
+Rosarno,IT::StopPlace:RUT,RUT,IT::ScheduledStopPoint:RUT,38.4886,15.97015,,1
+Salerno,,SAL,IT::StopPlace:SAL,40.675133,14.77281,1,1
+Salerno,IT::StopPlace:SAL,SAL,IT::ScheduledStopPoint:SAL,40.675133,14.77281,,1
+San Vito di Cadore BUS,,SDX,IT::StopPlace:SDX,46.463985,12.204753,1,
+San Vito di Cadore BUS,IT::StopPlace:SDX,SDX,IT::ScheduledStopPoint:SDX,46.463985,12.204753,,
+Sapri,,SRI,IT::StopPlace:SRI,40.078014,15.627202,1,1
+Sapri,IT::StopPlace:SRI,SRI,IT::ScheduledStopPoint:SRI,40.078014,15.627202,,1
+Tai di Cadore BUS,,TDX,IT::StopPlace:TDX,46.42249,12.359924,1,
+Tai di Cadore BUS,IT::StopPlace:TDX,TDX,IT::ScheduledStopPoint:TDX,46.42249,12.359924,,
+Vallo della Lucania,,VLH,IT::StopPlace:VLH,40.229614,15.158047,1,1
+Vallo della Lucania,IT::StopPlace:VLH,VLH,IT::ScheduledStopPoint:VLH,40.229614,15.158047,,1
+Venezia Mestre,,VEM,IT::StopPlace:VEM,45.482124,12.232075,1,1
+Venezia Mestre,IT::StopPlace:VEM,VEM,IT::ScheduledStopPoint:VEM,45.482124,12.232075,,1
+Verona Porta Nuova,,VPN,IT::StopPlace:VPN,45.428604,10.982384,1,1
+Verona Porta Nuova,IT::StopPlace:VPN,VPN,IT::ScheduledStopPoint:VPN,45.428604,10.982384,,1
+Vibo-Pizzo,,VIP,IT::StopPlace:VIP,38.714596,16.139885,1,1
+Vibo-Pizzo,IT::StopPlace:VIP,VIP,IT::ScheduledStopPoint:VIP,38.714596,16.139885,,1
+Villa San Giovanni Marittima,,SGM,IT::StopPlace:SGM,38.21004,15.635136,1,1
+Villa San Giovanni Marittima,IT::StopPlace:SGM,SGM,IT::ScheduledStopPoint:SGM,38.21004,15.635136,,1

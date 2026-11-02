@@ -228,6 +228,34 @@ class IosGtfsScheduleTest(unittest.TestCase):
             verifier.verify_source_policy(self.write_policy([dict(source, licence="") for source in sources]), {source["sourceId"] for source in sources})
         verifier.verify_source_policy(self.write_policy(sources), {source["sourceId"] for source in sources})
 
+    def test_android_only_packs_are_reviewed_in_the_policy_and_left_out_of_the_index(self) -> None:
+        manifest, catalog = write_inputs(self.temp)
+        payload = json.loads(manifest.read_text(encoding="utf-8"))
+        sources = [
+            {"sourceId": pack["sourceId"], "sourceUrl": pack["sourceUrl"], "accessMode": pack["accessMode"], "licence": None}
+            for pack in payload["packs"]
+        ]
+        # An eleventh, Android-only pack whose archive the iOS index never reads.
+        payload["packs"].append({"sourceId": "national-gtfs", "asset": "gtfs/national.zip", "sourceUrl": "https://example.test/national.zip",
+                                 "accessMode": "OPEN_DIRECT", "attribution": "Test data", "lastServiceDate": "2026-01-07", "sha256": "0" * 64})
+        manifest.write_text(json.dumps(payload), encoding="utf-8")
+        policy = self.temp / "source-policy.json"
+        output = self.temp / "policy.sqlite.zlib"
+        metadata = self.temp / "policy.metadata.json"
+        options = {"source_policy_path": policy, "max_compressed_bytes": 4 * 1024 * 1024}
+        policy.write_text(json.dumps({"schemaVersion": 1, "sources": sources}), encoding="utf-8")
+        with self.assertRaisesRegex(builder.BuildError, "differ from reviewed iOS policy|exactly 10 packs"):
+            builder.build_database(manifest, catalog, output, metadata, **options)
+        excluded = {"sourceId": "national-gtfs", "sourceUrl": "https://example.test/national.zip", "accessMode": "OPEN_DIRECT", "reason": "bus legs"}
+        policy.write_text(json.dumps({"schemaVersion": 1, "sources": sources, "androidOnlySources": [excluded]}), encoding="utf-8")
+        result = builder.build_database(manifest, catalog, output, metadata, **options)
+        self.assertEqual(10, result["rowCounts"]["pack"])
+        verifier.verify(output, metadata, source_policy_path=policy, max_compressed_bytes=4 * 1024 * 1024, max_database_bytes=16 * 1024 * 1024)
+        # A drifted URL of the excluded pack still fails closed.
+        policy.write_text(json.dumps({"schemaVersion": 1, "sources": sources, "androidOnlySources": [dict(excluded, sourceUrl="https://attacker.invalid/x.zip")]}), encoding="utf-8")
+        with self.assertRaisesRegex(builder.BuildError, "differs from reviewed iOS policy"):
+            builder.build_database(manifest, catalog, output, metadata, **options)
+
     def write_policy(self, sources: list[dict]) -> Path:
         path = self.temp / f"policy-{len(sources)}-{hash(json.dumps(sources, sort_keys=True)) & 0xFFFF}.json"
         path.write_text(json.dumps({"schemaVersion": 1, "sources": sources}), encoding="utf-8")

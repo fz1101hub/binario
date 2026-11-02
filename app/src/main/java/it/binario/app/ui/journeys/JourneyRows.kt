@@ -33,6 +33,7 @@ import it.binario.app.R
 import it.binario.app.TabularFigures
 import it.binario.app.data.core.LegMode
 import it.binario.app.journeys.JourneyLegRow
+import it.binario.app.journeys.JourneyLegVehicle
 import it.binario.app.journeys.JourneyOptionRow
 import it.binario.app.journeys.JourneySourceLabel
 import it.binario.app.ui.common.ChangesBadge
@@ -80,7 +81,19 @@ internal fun journeyLegLabel(leg: JourneyLegRow): String {
     return when (JourneyLegKind.of(leg.mode)) {
         JourneyLegKind.TRAIN -> listOfNotNull(line ?: leg.trainCategory.localizedLabel(), number).joinToString(" ")
         JourneyLegKind.REPLACEMENT_BUS -> listOfNotNull(stringResource(R.string.journey_leg_replacement_bus), line, number).joinToString(" ")
-        JourneyLegKind.BUS -> listOfNotNull(stringResource(R.string.journey_leg_bus), line, number).joinToString(" ")
+        JourneyLegKind.BUS -> {
+            val label = stringResource(
+                when (leg.vehicle) {
+                    JourneyLegVehicle.BUS_TRENITALIA -> R.string.journey_leg_bus_trenitalia
+                    JourneyLegVehicle.FRECCIALINK -> R.string.journey_leg_freccialink
+                    JourneyLegVehicle.ITALOBUS -> R.string.journey_leg_italobus
+                    else -> R.string.journey_leg_bus
+                }
+            )
+            // The published line often repeats the brand ("ItaloBus ItaloBus 1060"): keep it only when it adds something.
+            val extraLine = line?.takeUnless { it.replace(" ", "").equals(label.replace(" ", ""), ignoreCase = true) }
+            listOfNotNull(label, extraLine, number).joinToString(" ")
+        }
         JourneyLegKind.WALK -> stringResource(R.string.journey_leg_walk)
         JourneyLegKind.OTHER -> listOfNotNull(line, number).joinToString(" ").ifEmpty { leg.trainCategory.localizedLabel() }
     }

@@ -2,6 +2,8 @@ package it.binario.app.data.journey
 
 import it.binario.app.data.RailStopNameMatcher
 import it.binario.app.data.Station
+import it.binario.app.data.gtfs.GtfsStationCodeIndex
+import it.binario.app.data.gtfs.GtfsStopCodeScheme
 import it.binario.app.data.isNamedBy
 import java.text.Normalizer
 import java.util.Locale
@@ -20,6 +22,9 @@ import java.util.Locale
  *    the province (the one with the fewest extra words), so "Verona" never becomes "Verona Parona";
  * 3. the strict whole-name matcher of the timetables ([RailStopNameMatcher]: "Bologna C.le", "S. Vitale").
  * Anything else stays a station of its own pack (never merged across packs by a guess).
+ *
+ * The stops of a pack that publishes station codes ([GtfsStopCodeScheme]: Trenitalia, Italo) are first resolved by
+ * their code ([resolveStop], [GtfsStationCodeIndex]); the name rules above only see the stops no code binds.
  */
 internal class GtfsStopStationResolver(stations: List<Station>) {
     private val byId: Map<String, Station> = stations.associateBy(Station::id)
@@ -27,6 +32,7 @@ internal class GtfsStopStationResolver(stations: List<Station>) {
     private val ambiguousKeys: Set<String>
     private val bilingualByPrefix: Map<String, List<Pair<Station, Int>>>
     private val byToken: Map<String, List<Station>>
+    private val codes = GtfsStationCodeIndex(stations)
 
     init {
         val keyed = HashMap<String, MutableSet<String>>()
@@ -56,6 +62,14 @@ internal class GtfsStopStationResolver(stations: List<Station>) {
     }
 
     fun station(id: String): Station? = byId[id]
+
+    /** A stop of a pack: by the code it publishes under [scheme] when one binds it, otherwise by its name. */
+    fun resolveStop(scheme: GtfsStopCodeScheme, code: String, latitude: Double?, longitude: Double?, stopName: String): Station? =
+        resolveCode(scheme, code, latitude, longitude, stopName) ?: resolve(stopName)
+
+    /** Only the code rule of [resolveStop] (see [GtfsStationCodeIndex]); null when no code binds the stop. */
+    fun resolveCode(scheme: GtfsStopCodeScheme, code: String, latitude: Double?, longitude: Double?, stopName: String): Station? =
+        codes.resolve(scheme, code, latitude, longitude, stopName)
 
     fun resolve(stopName: String): Station? {
         val variants = variants(stopName)

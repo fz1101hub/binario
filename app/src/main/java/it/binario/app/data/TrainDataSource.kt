@@ -175,7 +175,12 @@ data class TrainService(
     /** Operational path change that may override the static GTFS path. */
     val routeChange: OperationalRouteChange? = null,
     val routeChangeSourceIds: Set<String> = emptySet(),
-    val gtfsIdentity: GtfsServiceIdentity? = null
+    val gtfsIdentity: GtfsServiceIdentity? = null,
+    /**
+     * A scheduled coach of the operator's own timetable (Trenitalia bus, ItaloBus) from an offline pack, not a
+     * train and not a rail replacement bus: show a bus, never a train category.
+     */
+    val scheduledBus: Boolean = false
 ) {
     val displayOperator: String get() = operatorDisplayName?.takeIf(String::isNotBlank) ?: operator.shortLabel
     val accessibleOperator: String get() = operatorDisplayName?.takeIf(String::isNotBlank) ?: operator.accessibleLabel
