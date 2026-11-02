@@ -175,6 +175,28 @@ def probe_nextdata(url: str, *, excerpt: int = 40000) -> None:
         rest = {key: value for key, value in page.items() if key not in {"searchResults", "types", "__namespaces"}}
         emit("  other " + json.dumps(rest, ensure_ascii=False)[:8000])
         return
+    entity = page.get("entityData") if isinstance(page, dict) else None
+    if isinstance(entity, dict):
+        emit(f"  entity {entity.get('objectId')} parent={entity.get('parentId')} {entity.get('type')} | {entity.get('name')}")
+        for item in [entity, *(entity.get("children") or [])]:
+            if not isinstance(item, dict):
+                continue
+            attributes = {attribute.get("name"): attribute.get("value") for attribute in item.get("attributes") or [] if isinstance(attribute, dict)}
+            def plain(value):  # noqa: ANN001 - catalogue values are enumerations, strings or blobs
+                if isinstance(value, dict):
+                    return value.get("value") or value.get("fileName") or value.get("it") or value.get("en")
+                if isinstance(value, list):
+                    return ",".join(str(plain(entry)) for entry in value)
+                return value
+            blob = attributes.get("checkedResource") or attributes.get("resource")
+            emit(
+                f"  child {item.get('objectId')} {item.get('type')} | {item.get('name')} | licence={plain(attributes.get('licence'))} "
+                f"| format={plain(attributes.get('format'))} | modes={plain(attributes.get('transportationModes'))} "
+                f"| owner={plain(attributes.get('dataOwnerName'))} | file={blob.get('fileName') if isinstance(blob, dict) else ''} "
+                f"| uploaded={blob.get('uploadDate') if isinstance(blob, dict) else ''} | valid={plain(attributes.get('validationResult'))} "
+                f"| url={plain(attributes.get('accessUrl')) or plain(attributes.get('url')) or ''}"
+            )
+        return
     emit("  " + json.dumps(props, ensure_ascii=False)[:excerpt])
 
 
