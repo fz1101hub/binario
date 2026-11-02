@@ -76,6 +76,11 @@ on:
         required: false
         type: boolean
         default: false
+      capture_design_screens:
+        description: "Cattura le schermate di design sull’emulatore e stampale in base64 nel log (confronto con il render approvato)"
+        required: false
+        type: boolean
+        default: false
       refresh_dependency_metadata:
         description: "Rigenera i checksum SHA-256 di gradle/verification-metadata.xml e stampa il diff da revisionare (non esegue il gate)"
         required: false
@@ -139,6 +144,7 @@ jobs:
         env:
           BINARIO_VERIFY_LIVE_ROUTE: ${{ github.event_name == 'workflow_dispatch' && inputs.verify_live_route || false }}
           BINARIO_VERIFY_RFI_ROUTE: ${{ github.event_name == 'workflow_dispatch' && inputs.verify_rfi_route || false }}
+          BINARIO_CAPTURE_SCREENS: ${{ github.event_name == 'workflow_dispatch' && inputs.capture_design_screens || false }}
         run: bash tools/run_android_ui_tests.sh
 
       - name: Unit tests, lint, debug and unsigned release builds
@@ -199,6 +205,7 @@ jobs:
             app/build/reports/androidTests/
             app/build/outputs/androidTest-results/
             ${{ runner.temp }}/binario-ui-*.log
+            ${{ runner.temp }}/binario-design-screens/design-screens/
           retention-days: 14
           if-no-files-found: error
           overwrite: true
