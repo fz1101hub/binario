@@ -1,5 +1,12 @@
 # Changelog
 
+## In sviluppo — Android allineato al render approvato di Binario 2.0
+
+- Palette misurata sul render approvato (testata `#003A28`, azioni `#00703E`, tonali `#D8F4EA`, card `#FCFCFC` su `#F4F7F6`, timeline `#12785A`) con schema scuro derivato e contrasto AA; il design system indica il render come riferimento.
+- Testata verde sotto la status bar che continua sotto la prima card, barra in basso bianca e, da 600 dp, barra laterale verde con il logo; Pianifica, Risultati (card con durata, «Diretto», filtri per categoria e ordine), Partenze (card «Prossima corsa», «Altre corse»), Dettaglio corsa con le schede Percorso / Info / Servizi e «Segui questo viaggio», «Le tue tratte» con Preferite / Recenti e la nuova schermata Impostazioni che raggruppa le impostazioni esistenti.
+- Su tablet la mappa del percorso (OpenFreeMap, aperta su richiesta) affianca le soluzioni al posto della fotografia del render; i widget hanno la testata verde e righe chiare.
+- `DesignScreenshotTest` cattura le schermate con un catalogo dimostrativo fisso; il workflow Android CI le stampa nel log con `capture_design_screens=true`.
+
 ## In sviluppo — Binario 2.0 UI/UX sui client non Android
 
 - Design system Binario 2.0 ([design/BINARIO_2_DESIGN_SYSTEM.md](design/BINARIO_2_DESIGN_SYSTEM.md)) e prototipo Echo offline portati dal branch di design, con lo stato reale di ogni superficie; sull’app Android sono applicate le fasi 1–3: palette e testata del planner, navigazione Pianifica / Partenze / Per te con card della prossima partenza e dettaglio a timeline, barra laterale e doppio pannello su tablet e pieghevoli.
