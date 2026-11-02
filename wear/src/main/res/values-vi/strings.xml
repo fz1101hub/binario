@@ -1,0 +1,26 @@
+<resources>
+    <string name="app_name">Binario</string>
+    <string name="tile_label">Binario: hành trình tiếp theo</string>
+    <string name="tile_description">Hiển thị hành trình tiếp theo được ứng dụng Binario trên điện thoại chia sẻ.</string>
+    <string name="complication_label">Binario</string>
+    <string name="empty_snapshot_message">Mở Binario trên điện thoại để đồng bộ tuyến đang dùng.</string>
+    <string name="refresh_phone">Làm mới điện thoại</string>
+    <string name="refresh_on_phone">Làm mới trên điện thoại</string>
+    <string name="tile_no_synced_route">Chưa có tuyến được đồng bộ</string>
+    <string name="tile_snapshot_unavailable">Không có ảnh chụp nhanh</string>
+    <string name="tile_service_details">%1$s · %2$s · %3$s</string>
+    <string name="status_programmed">Lịch theo kế hoạch</string>
+    <string name="status_received_from_phone">Đã nhận trạng thái từ điện thoại</string>
+    <string name="status_updating">Dữ liệu đang cập nhật</string>
+    <string name="status_local_snapshot">Ảnh chụp nhanh cục bộ gần nhất</string>
+    <string name="status_live_unavailable">Không có dữ liệu thời gian thực</string>
+    <string name="accessibility_data_status">Trạng thái dữ liệu: %1$s</string>
+    <string name="accessibility_scheduled_departure">Khởi hành theo lịch %1$s</string>
+    <string name="accessibility_expected_departure">Khởi hành dự kiến %1$s</string>
+    <string name="accessibility_train">Tàu %1$s</string>
+    <string name="accessibility_platform">Sân ga %1$s</string>
+    <string name="service_time_number">%1$s · %2$s</string>
+    <string name="service_destination_status">%1$s · %2$s</string>
+    <string name="service_operator_category">%1$s · %2$s</string>
+    <string name="service_operator_category_platform">%1$s · %2$s · Sân ga %3$s</string>
+</resources>
