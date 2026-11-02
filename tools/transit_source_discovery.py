@@ -32,6 +32,7 @@ PAGE_LIMIT = 4 * 1024 * 1024
 JSON_LIMIT = 16 * 1024 * 1024
 ARCHIVE_LIMIT = 400 * 1024 * 1024
 TIMEOUT = 60
+NETEX_SUMMARY_SECONDS = 150
 
 URBAN_TYPES = {"0", "1", "5", "6", "7", "12"} | {str(v) for v in range(400, 1800)}
 RAIL_TYPES = {"2"} | {str(v) for v in range(100, 200)}
@@ -41,17 +42,42 @@ DEFAULT_PROBES = [
     "atlas",
 ]
 
-_report: list[str] = []
+_report_path: Path | None = None
 
 
 def emit(line: str = "") -> None:
+    """Print and append to the report at once, so a run stopped by its time limit still leaves the report."""
     print(line, flush=True)
-    _report.append(line)
+    if _report_path is not None:
+        with _report_path.open("a", encoding="utf-8") as report:
+            report.write(line + "\n")
 
 
 def fetch(url: str, *, limit: int, method: str = "GET", accept: str = "*/*", destination: Path | None = None):
-    """Return (status, final_url, headers, body_or_path, error)."""
-    request = urllib.request.Request(url, method=method, headers={"User-Agent": USER_AGENT, "Accept": accept})
+    """Return (status, final_url, headers, body_or_path, error); a file download resumes after a dropped connection."""
+    if destination is None or method != "GET":
+        return _fetch_once(url, limit=limit, method=method, accept=accept, destination=destination)
+    result = _fetch_once(url, limit=limit, method=method, accept=accept, destination=destination)
+    attempts = 0
+    while (
+        result[4]
+        and any(marker in result[4] for marker in ("IncompleteRead", "timed out", "Connection", "oltre 600 s"))
+        and attempts < 20
+        and destination.exists()
+        and destination.stat().st_size > 0
+    ):
+        attempts += 1
+        offset = destination.stat().st_size
+        emit(f"  resume {attempts} from byte {offset}")
+        result = _fetch_once(url, limit=limit, method=method, accept=accept, destination=destination, offset=offset)
+    return result
+
+
+def _fetch_once(url: str, *, limit: int, method: str, accept: str, destination: Path | None, offset: int = 0):
+    headers = {"User-Agent": USER_AGENT, "Accept": accept}
+    if offset:
+        headers["Range"] = f"bytes={offset}-"
+    request = urllib.request.Request(url, method=method, headers=headers)
     started = time.monotonic()
     try:
         with urllib.request.urlopen(request, timeout=TIMEOUT) as response:
@@ -60,9 +86,11 @@ def fetch(url: str, *, limit: int, method: str = "GET", accept: str = "*/*", des
             headers = dict(response.headers.items())
             if method == "HEAD":
                 return status, final, headers, b"", None
-            total = 0
+            if offset and status != 206:
+                return status, final, headers, None, f"resume non supportato (HTTP {status})"
+            total = offset
             chunks: list[bytes] = []
-            sink = destination.open("wb") if destination else None
+            sink = destination.open("ab" if offset else "wb") if destination else None
             try:
                 while True:
                     chunk = response.read(64 * 1024)
@@ -89,7 +117,7 @@ def fetch(url: str, *, limit: int, method: str = "GET", accept: str = "*/*", des
             pass
         return error.code, url, dict(error.headers.items()) if error.headers else {}, body, f"HTTP {error.code}"
     except Exception as error:  # noqa: BLE001 - every failure is reported, none is fatal
-        return None, url, {}, None, f"{type(error).__name__}: {error}"
+        return None, url, {}, None, f"{type(error).__name__}: {str(error)[:200]}"
 
 
 def header_summary(headers: dict) -> str:
@@ -118,6 +146,25 @@ def probe_page(url: str, *, excerpt: int = 1500) -> None:
         compact = re.sub(r"<[^>]+>", " ", compact)
         compact = re.sub(r"\s+", " ", compact)
         emit(f"  excerpt {compact[:excerpt]}")
+
+
+def probe_nextdata(url: str, *, excerpt: int = 40000) -> None:
+    """A Next.js page (the NAP catalogue): print its embedded __NEXT_DATA__ JSON, which holds the page's records."""
+    status, final, headers, body, error = fetch(url, limit=PAGE_LIMIT, accept="text/html")
+    emit(f"NEXTDATA {url} status={status} final={final} error={error}")
+    if not isinstance(body, bytes):
+        return
+    text = body.decode("utf-8", errors="replace")
+    match = re.search(r'<script id="__NEXT_DATA__" type="application/json"[^>]*>(.*?)</script>', text, re.S)
+    if not match:
+        emit("  no __NEXT_DATA__")
+        return
+    try:
+        payload = json.loads(match.group(1))
+    except json.JSONDecodeError as problem:
+        emit(f"  invalid __NEXT_DATA__: {problem}")
+        return
+    emit("  " + json.dumps(payload.get("props", payload), ensure_ascii=False)[:excerpt])
 
 
 def probe_json(url: str, *, excerpt: int = 6000) -> object | None:
@@ -279,11 +326,18 @@ def summarize_netex(path: Path) -> None:
         return tag.rsplit("}", 1)[-1]
 
     sources: list[tuple[str, object]] = []
-    if zipfile.is_zipfile(path):
+    with path.open("rb") as probe:
+        magic = probe.read(2)
+    if magic == b"\x1f\x8b":
+        import gzip
+
+        emit("  gzip stream")
+        sources.append((path.name, lambda: gzip.open(path, "rb")))
+    elif zipfile.is_zipfile(path):
         archive = zipfile.ZipFile(path)
         members = [info for info in archive.infolist() if not info.is_dir()]
         emit("  members " + ", ".join(f"{info.filename}:{info.file_size}" for info in members[:40]) + (" ..." if len(members) > 40 else ""))
-        for info in members[:6]:
+        for info in members[:3]:
             if info.filename.lower().endswith(".xml"):
                 sources.append((info.filename, lambda info=info: archive.open(info)))
     else:
@@ -293,8 +347,12 @@ def summarize_netex(path: Path) -> None:
     for name, opener in sources:
         counts: Counter[str] = Counter()
         samples: dict[str, str] = {}
+        started = time.monotonic()
         with opener() as stream:  # type: ignore[operator]
             for event, element in ET.iterparse(stream, events=("end",)):
+                if time.monotonic() - started > NETEX_SUMMARY_SECONDS:
+                    emit(f"  file {name} summary stopped after {NETEX_SUMMARY_SECONDS} s (partial counts)")
+                    break
                 tag = local(element.tag)
                 counts[tag] += 1
                 if tag in {"Operator", "Line", "StopPlace", "ServiceJourney", "DayType", "UicOperatingPeriod", "OperatingPeriod",
@@ -381,8 +439,9 @@ def run(tokens: list[str], out: Path, keep: bool) -> None:
             scan_mdb(out)
         elif token == "atlas":
             scan_atlas(out)
-        elif kind in {"page", "json", "gtfs", "head", "jsgrep", "netexinfo"} and url.startswith(("http://", "https://")):
+        elif kind in {"page", "json", "gtfs", "head", "jsgrep", "netexinfo", "nextdata"} and url.startswith(("http://", "https://")):
             {
+                "nextdata": lambda: probe_nextdata(url),
                 "page": lambda: probe_page(url),
                 "json": lambda: probe_json(url),
                 "gtfs": lambda: probe_gtfs(url, out, keep=keep),
@@ -414,8 +473,10 @@ def main(argv: list[str] | None = None) -> int:
         ]
     if not tokens:
         tokens = list(DEFAULT_PROBES)
+    global _report_path
+    _report_path = args.out / "report.txt"
+    _report_path.write_text("", encoding="utf-8")
     run(tokens, args.out, args.keep)
-    (args.out / "report.txt").write_text("\n".join(_report) + "\n", encoding="utf-8")
     return 0
 
 
