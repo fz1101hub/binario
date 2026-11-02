@@ -150,7 +150,7 @@ class EmbeddedUrbanStopIndex(
         val rows = ArrayList<List<String>>()
         var line = reader.readLine()
         while (line != null) {
-            if (line.length <= MAX_LINE) rows += splitCsv(line.removePrefix("﻿"))
+            if (line.length <= MAX_LINE) rows += splitCsv(line.removePrefix("\uFEFF"))
             line = reader.readLine()
         }
         return rows

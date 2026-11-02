@@ -192,7 +192,7 @@ class EmbeddedGtfsTransitPacksTest {
             var entry = zip.nextEntry
             while (entry != null) {
                 if (entry.name.substringAfterLast('/') == "stops.txt") {
-                    zip.bufferedReader().lineSequence().forEach { rows += csv(it.removePrefix("﻿")) }
+                    zip.bufferedReader().lineSequence().forEach { rows += csv(it.removePrefix("\uFEFF")) }
                     break
                 }
                 entry = zip.nextEntry
