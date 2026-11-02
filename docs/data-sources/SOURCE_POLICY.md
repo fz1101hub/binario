@@ -64,6 +64,24 @@ Regole che impediscono di inventare dati:
 - **Scioperi.** Non esiste una fonte strutturata verificata: `scioperi.mit.gov.it` non risponde dai runner cloud e il formato non è verificato. L'app non lo interroga; mostra il collegamento al calendario e un'etichetta «Sciopero» sugli avvisi RFI, Trenitalia e Trenord che citano «sciopero» o «scioperi».
 - **Meteo.** Le coordinate sono quelle del catalogo curato per la stazione di arrivo; una stazione senza coordinate non mostra nulla. A Open-Meteo arrivano solo quelle coordinate arrotondate a due decimali, mai la posizione dell'utente.
 
+### Viaggi con cambi (novembre 2026)
+
+La ricerca dei viaggi con cambi è un'aggiunta accanto alla ricerca dei treni diretti: `JourneySearchService` (`data/repository/JourneySearchService.kt`, composto in `BinarioDataGraph.journeySearchService`) interroga i provider `JOURNEY_SEARCH` nell'ordine del registry e passa al successivo quando uno è disattivato, fallisce, supera il timeout o non restituisce soluzioni. Non alimenta, non riordina e non cambia il gating di tratte dirette, tabelloni o arricchimento realtime, che restano quelli descritti sopra.
+
+| Fonte | `SourceId` | Classe | Capability | Copertura | Rate policy / TTL | Limiti | In caso di errore | Attivazione |
+|---|---|---|---|---|---|---|---|---|
+| Calcolo offline (Connection Scan) sui data pack GTFS inclusi | `embedded-gtfs-journeys` | **Open diretto**: gli stessi data pack open data già inclusi e verificati; nessuna richiesta di rete | `JOURNEY_SEARCH` | Solo le reti dei pack inclusi (Trenord, Alto Adige, Trentino, EAV, ARST, TFT, Svizzera, ÖBB, SNCF, HŽPP): i treni Trenitalia/Italo fuori da questi feed non ci sono | Nessun intervallo minimo; risultati validi 12 h | Finestra di 8 h dalla partenza richiesta; al più 3 pack e 400.000 connessioni per ricerca; cache dei giorni di servizio limitata a 16 voci e 16 MB; un solo indice compatto in memoria | Pack oltre i limiti ignorato e risultato marcato `INCOMPLETE_COVERAGE`; pack scaduto per la data richiesta segnalato `STALE_SOURCE`, mai sostituito da orari inventati | Sempre (registry), sui pack abilitati |
+| ViaggiaTreno, `soluzioniViaggioNew` / `soluzioniViaggio` | — | **Best effort pubblico**, famiglia ViaggiaTreno | — | — | — | — | — | **Non integrata**: non più pubblicata |
+
+Regole del calcolo offline:
+
+- **Solo orario programmato.** Ogni soluzione è marcata `STATIC_ONLY` e `REALTIME_UNAVAILABLE` con la provenienza open data dei pack usati: nessun ritardo, binario o soppressione viene attribuito.
+- **Cambi.** Un cambio avviene nella stessa stazione del catalogo curato: fermate di pack diversi e binari di una stessa `parent_station` coincidono quando risolvono alla stessa stazione (nome o alias della stessa stazione, forme «Stazione di …», suffissi di binario o di paese, nomi bilingui dell'Alto Adige, confronto rigoroso dei nomi orario). Una fermata che il catalogo non conosce resta una stazione del proprio pack, mai unita per somiglianza a quella di un altro pack. Il tempo minimo di cambio è 5 minuti, 10 negli hub con quadro orario RFI verificato; una coincidenza che parte prima dell'arrivo più il tempo di cambio non è mai usata. I percorsi a piedi fra stazioni diverse non sono modellati.
+- **Pack consultati.** Prima i pack che contengono entrambe le stazioni; se non danno soluzioni, coppie di pack che condividono una stazione intermedia senza grandi deviazioni (ad esempio STA e ÖBB al Brennero), così un pack che condivide solo una stazione lontana non viene caricato.
+- **Giorni di servizio.** Il giorno richiesto, il precedente solo oltre la sua mezzanotte (corse 24:00+) e, quando la finestra la supera, il successivo; `calendar.txt` e `calendar_dates.txt` come nella ricerca delle tratte.
+
+ViaggiaTreno `soluzioniViaggioNew` è stato verificato dai runner il **2 novembre 2026**: tutte le varianti (`infomobilita` e `infomobilitamobile`, `soluzioniViaggioNew` e `soluzioniViaggio`, con e senza secondi, codici numerici e con prefisso `S`, Roma Termini–Torino Porta Nuova e Milano Centrale–Merano) rispondono, dopo il consueto reindirizzamento a `http://www.viaggiatreno.it`, **HTTP 404** con «Error» o «Could not find resource». L'endpoint non è più pubblicato: l'app non lo chiama, l'allowlist dei percorsi ViaggiaTreno non è stata ampliata e i viaggi con cambi provengono solo dal calcolo offline, limitato alle reti coperte dai pack inclusi.
+
 ## Mappe di base
 
 Le mappe dell'app non sono una fonte ferroviaria: sono uno sfondo cartografico su cui l'app disegna soltanto coordinate del catalogo stazioni curato. Non determinano orari, binari, ritardi, soppressioni o posizioni dei treni, e Binario non disegna mai una posizione del treno che nessuna fonte ha pubblicato.

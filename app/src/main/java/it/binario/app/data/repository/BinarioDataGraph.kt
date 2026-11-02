@@ -8,10 +8,12 @@ import it.binario.app.data.gtfs.EmbeddedGtfsRealtimeScheduleResolver
 import it.binario.app.data.gtfs.EmbeddedGtfsPacks
 import it.binario.app.data.gtfs.EmbeddedGtfsRouteAdapter
 import it.binario.app.data.gtfs.EmbeddedGtfsStationSearchIndex
+import it.binario.app.data.journey.EmbeddedGtfsJourneyProvider
 import it.binario.app.data.provider.AlertProvider
 import it.binario.app.data.provider.AuthorizedExternalProviderFactory
 import it.binario.app.data.provider.AuthorizedExternalProviders
 import it.binario.app.data.provider.ExternalRailCredentials
+import it.binario.app.data.provider.JourneyProvider
 import it.binario.app.data.provider.KnownProviders
 import it.binario.app.data.provider.ProviderCapability
 import it.binario.app.data.provider.RailProvider
@@ -36,6 +38,7 @@ object BinarioDataGraph {
     private val realtimeResolversByPackage = mutableMapOf<String, EmbeddedGtfsRealtimeScheduleResolver>()
     private val numberSearchByPackage = mutableMapOf<String, TrainNumberSearchService>()
     private val stationIndexesByPackage = mutableMapOf<String, EmbeddedGtfsStationSearchIndex>()
+    private val journeySearchByPackage = mutableMapOf<String, JourneySearchService>()
 
     fun routeDataSource(context: Context): TrainDataSource = synchronized(routeSourcesByPackage) {
         val applicationContext = context.applicationContext
@@ -74,6 +77,22 @@ object BinarioDataGraph {
                 localOnlyPolicy.trainNumberSearchProviders().filter { defaultRegistry.isEnabled(it.descriptor.id) } +
                     listOf(source.provider(true))
             )
+        }
+    }
+
+    /**
+     * Journeys with changes, separate from [routeDataSource]: the direct-train sources keep their order, priority
+     * and gating. The registry decides which journey providers take part and in which order; today only the offline
+     * planner on the registry-enabled embedded packs, which sends nothing over the network.
+     */
+    fun journeySearchService(context: Context): JourneySearchService = synchronized(journeySearchByPackage) {
+        val app = context.applicationContext
+        journeySearchByPackage.getOrPut(app.packageName) {
+            val offline = EmbeddedGtfsJourneyProvider.create(
+                openAsset = { assetPath -> app.assets.open(assetPath) },
+                packs = EmbeddedGtfsPacks.all.filter { defaultRegistry.isEnabled(it.sourceId) }
+            )
+            JourneySearchService(activeProviders(listOf<JourneyProvider>(offline), ProviderCapability.JOURNEY_SEARCH))
         }
     }
 

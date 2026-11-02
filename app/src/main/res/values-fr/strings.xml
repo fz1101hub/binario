@@ -328,6 +328,42 @@
     <string name="detail_save_hint">Enregistrer ajoute le train aux trains suivis dans Pour vous ; Suivre le trajet garde le prochain arrêt sur cet appareil uniquement.</string>
     <string name="stop_position_passed">Arrêt passé</string>
     <string name="detail_pane_placeholder">Sélectionnez un train pour voir ici son détail.</string>
+    <!-- Journeys with changes (November 2026) -->
+    <string name="journey_results_title">Trajets avec correspondance</string>
+    <string name="journey_searching">Calcul des trajets avec correspondance…</string>
+    <string name="journey_filter_all">Tous</string>
+    <string name="journey_filter_direct">Directs</string>
+    <string name="journey_filter_fewest_changes">Moins de correspondances</string>
+    <string name="journey_filter_fastest">Le plus rapide</string>
+    <string name="journey_direct">Direct</string>
+    <plurals name="journey_changes">
+        <item quantity="one">%d correspondance</item>
+        <item quantity="many">%d correspondances</item>
+        <item quantity="other">%d correspondances</item>
+    </plurals>
+    <string name="journey_transfer_at">Correspondance à %1$s</string>
+    <plurals name="journey_transfer_wait">
+        <item quantity="one">Attente de %d minute</item>
+        <item quantity="many">Attente de %d minutes</item>
+        <item quantity="other">Attente de %d minutes</item>
+    </plurals>
+    <plurals name="journey_duration_hours">
+        <item quantity="one">%d heure</item>
+        <item quantity="many">%d heures</item>
+        <item quantity="other">%d heures</item>
+    </plurals>
+    <string name="journey_arrival_next_day">le lendemain</string>
+    <string name="journey_leg_replacement_bus">Bus de substitution</string>
+    <string name="journey_source_offline">Horaire théorique hors ligne (open data GTFS)</string>
+    <string name="journey_scheduled_only_notice">Horaires théoriques : retards, voies et suppressions ne sont pas vérifiés. Consultez les écrans en gare.</string>
+    <string name="journey_coverage_notice">Calculé sur le téléphone avec les horaires inclus dans l’app, uniquement pour les réseaux qu’ils couvrent : Lombardie, Haut-Adige, Trentin, EAV, ARST, TFT, Suisse, Autriche, France et Croatie. D’autres trains peuvent manquer.</string>
+    <string name="journey_incomplete_notice">Certains horaires hors ligne n’ont pas pu être lus : les trajets peuvent être incomplets.</string>
+    <string name="journey_empty_no_solution">Aucun trajet dans les horaires hors ligne pour la plage horaire recherchée.</string>
+    <string name="journey_empty_not_covered">Les horaires hors ligne inclus ne couvrent pas l’une des gares ou les deux.</string>
+    <string name="journey_empty_schedule_expired">Les horaires hors ligne inclus ne couvrent pas la date choisie : mettez l’app à jour.</string>
+    <string name="journey_empty_unavailable">Les trajets avec correspondance ne peuvent pas être calculés pour le moment. Réessayez.</string>
+    <string name="journey_empty_no_direct">Aucun des trajets trouvés n’est direct.</string>
+    <string name="journey_option_accessibility">Départ à %1$s de %2$s, arrivée à %3$s à %4$s, durée %5$s, %6$s.</string>
     <string name="settings_privacy_osm">Saisie semi-automatique nationale : © contributeurs OpenStreetMap, ODbL 1.0. Le catalogue géographique suggère des noms de gares mais ne confirme ni le service, ni l’horaire, ni la voie, ni le retard, ni la circulation.</string>
     <!-- Open maps (October 2026) -->
     <string name="map_attribution">OpenFreeMap © OpenMapTiles, données © contributeurs OpenStreetMap</string>

@@ -1,0 +1,108 @@
+package it.binario.app.journeys
+
+import android.content.Context
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
+import it.binario.app.UiMessage
+import it.binario.app.UiMessageKey
+import it.binario.app.data.Station
+import it.binario.app.data.repository.BinarioDataGraph
+import it.binario.app.data.repository.JourneySearchQuery
+import it.binario.app.data.repository.JourneySearchResult
+import it.binario.app.data.repository.JourneySearchService
+import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.LocalTime
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+
+/** What the journeys-with-changes results need; [presentation] is null before the first answer. */
+data class JourneySearchUiState(
+    val loading: Boolean = false,
+    val query: JourneySearchQuery? = null,
+    val result: JourneySearchResult? = null,
+    val filter: JourneyResultsFilter = JourneyResultsFilter.ALL,
+    val presentation: JourneyResultsPresentation? = null,
+    /** A request the screen should not have sent (same station twice), localized at render. */
+    val validationMessage: UiMessage? = null
+)
+
+/**
+ * Entry point of the journeys-with-changes results, separate from [it.binario.app.TrainViewModel] so the direct-
+ * train search keeps working exactly as before. The screen obtains it with `viewModel(factory =
+ * JourneySearchViewModel.factory(context))`, calls [searchJourneys] with the planner's stations, date and time, and
+ * renders [state]. Searching runs off the main thread (the providers switch dispatcher); a new search cancels the
+ * previous one and a late answer of a cancelled search is never shown.
+ */
+class JourneySearchViewModel(private val service: JourneySearchService) : ViewModel() {
+    private val mutableState = MutableStateFlow(JourneySearchUiState())
+    val state: StateFlow<JourneySearchUiState> = mutableState.asStateFlow()
+    private var searchJob: Job? = null
+    private var searchGeneration = 0L
+
+    /** Starts a search; false (with [JourneySearchUiState.validationMessage]) when origin and destination coincide. */
+    fun searchJourneys(
+        origin: Station,
+        destination: Station,
+        serviceDate: LocalDate,
+        departureTime: LocalTime,
+        maxTransfers: Int = 2
+    ): Boolean {
+        if (origin.id == destination.id) {
+            mutableState.update { it.copy(validationMessage = UiMessage(UiMessageKey.ROUTE_STATIONS_MUST_DIFFER)) }
+            return false
+        }
+        val query = JourneySearchQuery(
+            origin = origin,
+            destination = destination,
+            departure = LocalDateTime.of(serviceDate, departureTime.withSecond(0).withNano(0)),
+            maxTransfers = maxTransfers.coerceIn(0, 6)
+        )
+        start(query)
+        return true
+    }
+
+    /** Repeats the last search (for example after "not available"). */
+    fun retry() {
+        state.value.query?.let(::start)
+    }
+
+    fun selectFilter(filter: JourneyResultsFilter) {
+        mutableState.update { current ->
+            current.copy(filter = filter, presentation = current.result?.let { JourneyResultsPresenter.present(it, filter) })
+        }
+    }
+
+    fun reset() {
+        searchJob?.cancel()
+        searchGeneration += 1
+        mutableState.value = JourneySearchUiState()
+    }
+
+    private fun start(query: JourneySearchQuery) {
+        searchJob?.cancel()
+        val generation = ++searchGeneration
+        mutableState.update {
+            it.copy(loading = true, query = query, result = null, presentation = null, validationMessage = null)
+        }
+        searchJob = viewModelScope.launch {
+            val result = service.search(query)
+            if (generation != searchGeneration) return@launch
+            mutableState.update { current ->
+                current.copy(loading = false, result = result, presentation = JourneyResultsPresenter.present(result, current.filter))
+            }
+        }
+    }
+
+    companion object {
+        fun factory(context: Context) = viewModelFactory {
+            initializer { JourneySearchViewModel(BinarioDataGraph.journeySearchService(context.applicationContext)) }
+        }
+    }
+}
