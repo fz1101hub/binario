@@ -328,6 +328,8 @@
     </plurals>
     <string name="journey_arrival_next_day">am Folgetag</string>
     <string name="journey_leg_replacement_bus">Ersatzbus</string>
+    <string name="journey_leg_bus">Bus</string>
+    <string name="journey_leg_walk">Zu Fuß</string>
     <string name="journey_source_offline">Offline-Sollfahrplan (GTFS Open Data)</string>
     <string name="journey_scheduled_only_notice">Planmäßige Zeiten: Verspätungen, Gleise und Ausfälle sind nicht geprüft. Bitte die Anzeigen im Bahnhof beachten.</string>
     <string name="journey_coverage_notice">Auf dem Telefon mit den in der App enthaltenen Fahrplänen berechnet, nur für die abgedeckten Netze: Lombardei, Südtirol, Trentino, EAV, ARST, TFT, Schweiz, Österreich, Frankreich und Kroatien. Andere Züge können fehlen.</string>

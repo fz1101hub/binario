@@ -23,6 +23,7 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
@@ -44,10 +45,6 @@ import it.binario.app.data.TrainCategory
 import it.binario.app.data.TrainDataSource
 import it.binario.app.data.TrainService
 import it.binario.app.data.TrainStop
-import it.binario.app.data.repository.StationBoardAggregateService
-import it.binario.app.data.repository.StationBoardRunDetailService
-import it.binario.app.data.repository.TrainNumberSearchService
-import it.binario.app.data.repository.JourneySearchService
 import it.binario.app.data.core.Completeness
 import it.binario.app.data.core.JourneyId
 import it.binario.app.data.core.JourneyLeg
@@ -67,12 +64,16 @@ import it.binario.app.data.provider.ProviderDescriptor
 import it.binario.app.data.provider.ProviderResponseMeta
 import it.binario.app.data.provider.ProviderResult
 import it.binario.app.data.provider.RatePolicy
+import it.binario.app.data.repository.JourneySearchService
+import it.binario.app.data.repository.StationBoardAggregateService
+import it.binario.app.data.repository.StationBoardRunDetailService
+import it.binario.app.data.repository.TrainNumberSearchService
 import it.binario.app.journeys.JourneySearchViewModel
+import java.io.File
 import java.time.Duration
 import java.time.Instant
-import java.time.ZoneId
-import java.io.File
 import java.time.LocalTime
+import java.time.ZoneId
 import org.junit.After
 import org.junit.Before
 import org.junit.FixMethodOrder
@@ -118,56 +119,51 @@ class DesignScreenshotTest {
         capture("01-pianifica")
         click("planner-search")
         waitForTag("result-card")
-        // Direct trains and the journeys with changes of the fixture, merged by departure.
         waitForTag("journey-result-card")
         capture("02-risultati")
-        clickFirst("journey-result-card")
-        waitForTag("journey-transfer")
-        capture("03-viaggio-con-cambio")
-        click("top-bar-back")
-        waitForTag("route-results")
         clickFirst("result-card")
         waitForTag("detail-timeline")
-        capture("04-dettaglio-percorso")
+        capture("03-dettaglio-percorso")
         click("detail-tab-info")
         waitForTag("detail-info")
-        capture("05-dettaglio-info")
+        capture("04-dettaglio-info")
         click("detail-tab-services")
         waitForTag("detail-services")
-        capture("06-dettaglio-servizi")
+        capture("05-dettaglio-servizi")
         click("top-bar-back")
         waitForTag("route-results")
         click("nav-departures")
         waitForTag("departures-hero")
-        capture("07-partenze")
+        capture("06-partenze")
         click("departures-section-stations")
         waitForTag("station-board-list")
-        capture("08-partenze-stazioni")
+        capture("07-partenze-stazioni")
         click("departures-section-trains")
         click("nav-for-you")
         waitForTag("for-you-screen")
-        capture("09-per-te-tratte")
+        capture("08-per-te-tratte")
         click("for-you-tab-recent")
         composeRule.waitForIdle()
-        capture("10-per-te-recenti")
+        capture("09-per-te-recenti")
         click("top-bar-settings")
         waitForTag("settings-screen")
-        capture("11-impostazioni")
+        waitForTag("settings-suggest-station")
+        capture("10-impostazioni")
         click("settings-alerts")
         waitForTag("settings-section-alerts")
-        capture("12-impostazioni-notifiche")
+        capture("11-impostazioni-notifiche")
     }
 
     @Test fun b_departuresAndDetailInDarkTheme() {
         val model = demoViewModel()
         showApp(model, AppThemeMode.DARK)
-        capture("13-pianifica-scuro")
+        capture("12-pianifica-scuro")
         click("nav-departures")
         waitForTag("departures-hero")
-        capture("14-partenze-scuro")
+        capture("13-partenze-scuro")
         click("departures-hero")
         waitForTag("detail-timeline")
-        capture("15-dettaglio-scuro")
+        capture("14-dettaglio-scuro")
     }
 
     @Test fun c_tabletResultsWithMap() {
@@ -179,7 +175,7 @@ class DesignScreenshotTest {
         click("results-map-show")
         // MapLibre draws the OpenFreeMap tiles outside Compose: give them time to arrive.
         SystemClock.sleep(MAP_SETTLE_MILLIS)
-        captureNode("16-tablet-risultati", "wide-frame")
+        captureNode("15-tablet-risultati", "wide-frame")
     }
 
     @Test fun d_tabletDeparturesWithDetail() {
@@ -189,7 +185,26 @@ class DesignScreenshotTest {
         waitForTag("departures-hero")
         clickFirst("departures-hero")
         waitForTag("detail-timeline")
-        captureNode("17-tablet-partenze", "wide-frame")
+        captureNode("16-tablet-partenze", "wide-frame")
+    }
+
+    /**
+     * The results of the render with the journeys of [DemoJourneyProvider] merged by departure ("Diretto",
+     * "1 cambio", "Diretto", "2 cambi"; the direct 17:40 journey is the 9558 already listed and appears once), then
+     * the detail of the journey with one change.
+     */
+    @Test fun e_resultsWithChangesAndJourneyDetail() {
+        val model = demoViewModel()
+        showApp(model, AppThemeMode.LIGHT)
+        click("planner-search")
+        waitForTag("result-card")
+        waitForTag("journey-result-card")
+        // The chips at the top, then the first four solutions.
+        composeRule.onNodeWithTag("route-results").performScrollToIndex(1)
+        capture("17-risultati-con-cambi")
+        clickFirst("journey-result-card")
+        waitForTag("journey-transfer")
+        capture("18-viaggio-con-cambi")
     }
 
     private fun showApp(model: TrainViewModel, theme: AppThemeMode) {

@@ -364,7 +364,9 @@ internal fun NavigationRow(
     icon: ImageVector,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    detail: String? = null
+    detail: String? = null,
+    /** The chevron of an in-app screen; a link that leaves the app shows "open in new" instead. */
+    trailingIcon: ImageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight
 ) {
     Row(
         modifier
@@ -379,7 +381,7 @@ internal fun NavigationRow(
             Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
             detail?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
         }
-        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        Icon(trailingIcon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 

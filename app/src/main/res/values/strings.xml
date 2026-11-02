@@ -334,6 +334,8 @@
     </plurals>
     <string name="journey_arrival_next_day">il giorno dopo</string>
     <string name="journey_leg_replacement_bus">Bus sostitutivo</string>
+    <string name="journey_leg_bus">Autobus</string>
+    <string name="journey_leg_walk">A piedi</string>
     <string name="journey_source_offline">Orario programmato offline (open data GTFS)</string>
     <string name="journey_scheduled_only_notice">Orari programmati: ritardi, binari e soppressioni non sono verificati. Controlla i monitor in stazione.</string>
     <string name="journey_coverage_notice">Calcolato sul telefono con gli orari inclusi nell’app, solo per le reti che coprono: Lombardia, Alto Adige, Trentino, EAV, ARST, TFT, Svizzera, Austria, Francia e Croazia. Altri treni possono non comparire.</string>

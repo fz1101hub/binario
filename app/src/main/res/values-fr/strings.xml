@@ -334,6 +334,8 @@
     </plurals>
     <string name="journey_arrival_next_day">le lendemain</string>
     <string name="journey_leg_replacement_bus">Bus de substitution</string>
+    <string name="journey_leg_bus">Bus</string>
+    <string name="journey_leg_walk">À pied</string>
     <string name="journey_source_offline">Horaire théorique hors ligne (open data GTFS)</string>
     <string name="journey_scheduled_only_notice">Horaires théoriques : retards, voies et suppressions ne sont pas vérifiés. Consultez les écrans en gare.</string>
     <string name="journey_coverage_notice">Calculé sur le téléphone avec les horaires inclus dans l’app, uniquement pour les réseaux qu’ils couvrent : Lombardie, Haut-Adige, Trentin, EAV, ARST, TFT, Suisse, Autriche, France et Croatie. D’autres trains peuvent manquer.</string>

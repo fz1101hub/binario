@@ -37,6 +37,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -63,6 +64,7 @@ import it.binario.app.TrainCalendarAction
 import it.binario.app.TrainShareStrings
 import it.binario.app.data.Freshness
 import it.binario.app.data.ServiceStatus
+import it.binario.app.data.Station
 import it.binario.app.data.StopRouteChange
 import it.binario.app.data.TrainCategory
 import it.binario.app.data.TrainService
@@ -182,6 +184,8 @@ internal fun ServiceDetailScreen(
     mapStationIndex: OpenMapStationIndex,
     onShare: () -> Unit,
     showShareButton: Boolean = false,
+    /** The catalogue station of a published name, for the short city form of the header ("Roma → Torino"). */
+    stationLookup: (String) -> Station? = { null },
     sourceSections: @Composable () -> Unit = {}
 ) {
     // Demonstration data shows the timetable only: no delay, expected time, platform or progress as if real.
@@ -194,7 +198,7 @@ internal fun ServiceDetailScreen(
     val tab = DetailTab.valueOf(tabName)
     Column(modifier.fillMaxSize().testTag("train-detail-screen")) {
         LazyColumn(modifier = Modifier.weight(1f).fillMaxWidth().testTag("train-detail"), verticalArrangement = Arrangement.spacedBy(0.dp)) {
-            item { ServiceDetailHeader(shown, isDemonstration, tab, onTab = { tabName = it.name }) }
+            item { ServiceDetailHeader(shown, isDemonstration, tab, onTab = { tabName = it.name }, stationLookup = stationLookup) }
             when (tab) {
                 DetailTab.ROUTE -> {
                     item(key = "timeline-${service.id}") {
@@ -422,7 +426,13 @@ private fun StopAlarmRow(station: String, scheduled: String, onClick: () -> Unit
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun ServiceDetailHeader(service: TrainService, isDemonstration: Boolean, tab: DetailTab, onTab: (DetailTab) -> Unit) {
+private fun ServiceDetailHeader(
+    service: TrainService,
+    isDemonstration: Boolean,
+    tab: DetailTab,
+    onTab: (DetailTab) -> Unit,
+    stationLookup: (String) -> Station?
+) {
     val locale = LocalConfiguration.current.locales[0]
     val wide = LocalWideLayout.current
     HeaderBlock(bottomPadding = 12.dp) {
@@ -431,7 +441,9 @@ private fun ServiceDetailHeader(service: TrainService, isDemonstration: Boolean,
         }
         HeaderOverline(stringResource(R.string.service_category_number, service.trainCategory.localizedLabel(), service.number).uppercase(locale))
         // The render's short city form ("Roma → Torino"); screen readers get the full station names.
-        val headline = StationShortNames.route(service.origin, service.destination)
+        val headline = remember(service.origin, service.destination) {
+            StationShortNames.route(service.origin, service.destination, stationLookup(service.origin)?.city, stationLookup(service.destination)?.city)
+        }
         Text(
             headline.short,
             modifier = Modifier.semantics {

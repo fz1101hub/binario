@@ -2,21 +2,25 @@ package it.binario.app.ui
 
 import it.binario.app.data.RailOperator
 import it.binario.app.data.ServiceStatus
+import it.binario.app.data.Station
 import it.binario.app.data.TrainCategory
 import it.binario.app.data.TrainService
 import it.binario.app.data.TrainStop
 import it.binario.app.data.core.LegMode
 import it.binario.app.data.core.ServiceKind
+import it.binario.app.data.repository.JourneySearchQuery
 import it.binario.app.journeys.JourneyChangesLabel
 import it.binario.app.journeys.JourneyLegRow
 import it.binario.app.journeys.JourneyOptionRow
 import it.binario.app.journeys.JourneyResultsFilter
 import it.binario.app.journeys.JourneySourceLabel
 import it.binario.app.journeys.JourneyTransferRow
+import it.binario.app.ui.planner.JourneyRequest
 import it.binario.app.ui.planner.ResultEntry
 import it.binario.app.ui.planner.ResultsMerge
 import java.time.Duration
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.ZoneId
 import java.time.ZonedDateTime
@@ -121,5 +125,42 @@ class ResultsMergeTest {
         assertEquals("train-train:1", merged.last().key)
         assertEquals(null, merged.last().durationMinutes)
         assertEquals("train-train:1", ResultsMerge.apply(merged, JourneyResultsFilter.FASTEST).last().key)
+    }
+
+    private val roma = Station("curated:roma-termini", "Roma Termini", "Roma Termini")
+    private val torino = Station("curated:torino-pn", "Torino Porta Nuova", "Torino Porta Nuova")
+    private val milano = Station("curated:milano-c", "Milano Centrale", "Milano Centrale")
+    private fun searched(from: Station, to: Station, departure: String) = JourneySearchQuery(from, to, LocalDateTime.parse(departure))
+
+    @Test
+    fun `a planned search is answered only by the journeys searched for the same stations and minute`() {
+        val request = JourneyRequest(roma, torino, LocalDateTime.parse("2026-11-21T17:00"), followsCurrentTime = false)
+        assertTrue(request.isAnsweredBy(searched(roma, torino, "2026-11-21T17:00")))
+        assertFalse(request.isAnsweredBy(searched(roma, torino, "2026-11-21T17:05")))
+        assertFalse(request.isAnsweredBy(searched(roma, milano, "2026-11-21T17:00")))
+        assertFalse(request.isAnsweredBy(searched(torino, roma, "2026-11-21T17:00")))
+        assertFalse(request.isAnsweredBy(null))
+        assertFalse(request.needsSearch(searched(roma, torino, "2026-11-21T17:00")))
+        assertTrue(request.needsSearch(searched(roma, torino, "2026-11-21T16:00")))
+        assertTrue(request.needsSearch(null))
+    }
+
+    @Test
+    fun `results that follow the current time keep their journeys as the clock moves and search again later`() {
+        val at = { time: String -> JourneyRequest(roma, torino, LocalDateTime.parse("2026-11-21T$time"), followsCurrentTime = true) }
+        val search = searched(roma, torino, "2026-11-21T17:00")
+        // Same request a minute later: still answered, so the options do not vanish, and the key does not change.
+        assertTrue(at("17:01").isAnsweredBy(search))
+        assertEquals(at("17:00").key, at("17:42").key)
+        assertFalse(at("17:10").needsSearch(search))
+        // Coming back to the results more than 15 minutes later computes them again from the new time.
+        assertTrue(at("17:16").isAnsweredBy(search))
+        assertTrue(at("17:16").needsSearch(search))
+        // A search for a later time, another day, or other stations never answers "now".
+        assertFalse(at("16:59").isAnsweredBy(search))
+        assertFalse(JourneyRequest(roma, torino, LocalDateTime.parse("2026-11-22T17:00"), followsCurrentTime = true).isAnsweredBy(search))
+        assertFalse(JourneyRequest(roma, milano, LocalDateTime.parse("2026-11-21T17:01"), followsCurrentTime = true).isAnsweredBy(search))
+        // Planned and current-time requests for the same stations ask for different searches.
+        assertFalse(at("17:00").key == JourneyRequest(roma, torino, LocalDateTime.parse("2026-11-21T17:00"), followsCurrentTime = false).key)
     }
 }

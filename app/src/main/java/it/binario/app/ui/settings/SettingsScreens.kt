@@ -22,6 +22,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.AddLocationAlt
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Info
@@ -102,6 +103,18 @@ import kotlinx.coroutines.withContext
 /** The groups of "Impostazioni"; "Suggerisci una stazione" is a link row of the screen, not a group. */
 internal enum class SettingsSection { ALERTS, WIDGETS, DATA, LANGUAGE, ABOUT }
 
+/** A row of "Impostazioni": a group of settings, or the station suggestion that opens in the browser. */
+internal sealed interface SettingsRow {
+    data class Group(val section: SettingsSection) : SettingsRow
+    data object SuggestStation : SettingsRow
+}
+
+/** The cards of "Impostazioni" below the theme, as in the render: the four groups, then the suggestion and "Informazioni". */
+internal val SETTINGS_CARDS: List<List<SettingsRow>> = listOf(
+    listOf(SettingsSection.ALERTS, SettingsSection.WIDGETS, SettingsSection.DATA, SettingsSection.LANGUAGE).map { SettingsRow.Group(it) },
+    listOf(SettingsRow.SuggestStation, SettingsRow.Group(SettingsSection.ABOUT))
+)
+
 @Composable
 internal fun SettingsSection.title(): String = stringResource(
     when (this) {
@@ -162,40 +175,33 @@ internal fun SettingsScreen(
                 }
             }
         }
-        item {
-            BinarioCard(Modifier.padding(horizontal = ScreenMargin, vertical = 12.dp)) {
-                listOf(SettingsSection.ALERTS, SettingsSection.WIDGETS, SettingsSection.DATA, SettingsSection.LANGUAGE).forEachIndexed { index, section ->
-                    if (index > 0) RowDivider()
-                    NavigationRow(
-                        title = section.title(),
-                        detail = section.detail(),
-                        icon = section.icon,
-                        onClick = { openSection(section) },
-                        modifier = Modifier.testTag("settings-${section.name.lowercase(java.util.Locale.ROOT)}")
-                    )
+        SETTINGS_CARDS.forEachIndexed { cardIndex, rows ->
+            item {
+                val uriHandler = LocalUriHandler.current
+                val issueTitle = stringResource(R.string.settings_suggest_station_issue_title)
+                BinarioCard(Modifier.padding(horizontal = ScreenMargin).padding(top = if (cardIndex == 0) 12.dp else 0.dp, bottom = 12.dp)) {
+                    rows.forEachIndexed { index, row ->
+                        if (index > 0) RowDivider()
+                        when (row) {
+                            is SettingsRow.Group -> NavigationRow(
+                                title = row.section.title(),
+                                detail = row.section.detail(),
+                                icon = row.section.icon,
+                                onClick = { openSection(row.section) },
+                                modifier = Modifier.testTag("settings-${row.section.name.lowercase(java.util.Locale.ROOT)}")
+                            )
+                            // The project has no e-mail contact: the row opens its public issue form with a prefilled title.
+                            SettingsRow.SuggestStation -> NavigationRow(
+                                title = stringResource(R.string.settings_suggest_station),
+                                detail = stringResource(R.string.settings_suggest_station_detail),
+                                icon = Icons.Default.AddLocationAlt,
+                                onClick = { openExternalLink(uriHandler, ProjectLinks.newIssue("$issueTitle ")) },
+                                modifier = Modifier.testTag("settings-suggest-station"),
+                                trailingIcon = Icons.AutoMirrored.Filled.OpenInNew
+                            )
+                        }
+                    }
                 }
-            }
-        }
-        item {
-            val uriHandler = LocalUriHandler.current
-            val issueTitle = stringResource(R.string.settings_suggest_station_issue_title)
-            BinarioCard(Modifier.padding(horizontal = ScreenMargin)) {
-                // No e-mail contact exists for the project: the row opens its public issue form in the browser.
-                NavigationRow(
-                    title = stringResource(R.string.settings_suggest_station),
-                    detail = stringResource(R.string.settings_suggest_station_detail),
-                    icon = Icons.Default.AddLocationAlt,
-                    onClick = { openExternalLink(uriHandler, ProjectLinks.newIssue("$issueTitle ")) },
-                    modifier = Modifier.testTag("settings-suggest-station")
-                )
-                RowDivider()
-                NavigationRow(
-                    title = SettingsSection.ABOUT.title(),
-                    detail = SettingsSection.ABOUT.detail(),
-                    icon = SettingsSection.ABOUT.icon,
-                    onClick = { openSection(SettingsSection.ABOUT) },
-                    modifier = Modifier.testTag("settings-about")
-                )
             }
         }
         item { Spacer(Modifier.height(24.dp)) }

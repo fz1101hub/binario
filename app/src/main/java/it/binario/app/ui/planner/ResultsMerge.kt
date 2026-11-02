@@ -1,10 +1,14 @@
 package it.binario.app.ui.planner
 
+import it.binario.app.TrainViewModel
+import it.binario.app.data.Station
 import it.binario.app.data.TrainService
 import it.binario.app.data.core.LegMode
+import it.binario.app.data.repository.JourneySearchQuery
 import it.binario.app.journeys.JourneyOptionRow
 import it.binario.app.journeys.JourneyResultsFilter
 import it.binario.app.ui.common.JourneyTimes
+import java.time.Duration
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
@@ -96,4 +100,56 @@ internal object ResultsMerge {
         value?.filter(Char::isDigit)?.trimStart('0')?.takeIf { it.isNotEmpty() }
 
     private fun parse(value: String): LocalTime? = runCatching { LocalTime.parse(value.trim()) }.getOrNull()
+}
+
+/**
+ * What the journeys-with-changes search must answer for the route results on screen: the stations of the primary
+ * direction and the planned date and time, or the railway time of now when the results follow the current time.
+ */
+internal data class JourneyRequest(
+    val origin: Station,
+    val destination: Station,
+    val departure: LocalDateTime,
+    val followsCurrentTime: Boolean
+) {
+    /** Changes when another search is asked for; not every minute while the results follow the current time. */
+    val key: String
+        get() = listOf(origin.id, destination.id, if (followsCurrentTime) CURRENT_TIME_KEY else departure.toString()).joinToString("|")
+
+    /**
+     * [searched] (the journeys state) belongs to this request: same stations and, for a planned search, the same
+     * minute. A search from the current time keeps answering while the clock moves on (up to [CURRENT_TIME_SHOWN]),
+     * so its options do not vanish a minute later.
+     */
+    fun isAnsweredBy(searched: JourneySearchQuery?): Boolean {
+        if (searched == null || searched.origin.id != origin.id || searched.destination.id != destination.id) return false
+        if (!followsCurrentTime) return searched.departure == departure
+        return !searched.departure.isAfter(departure) && Duration.between(searched.departure, departure) <= CURRENT_TIME_SHOWN
+    }
+
+    /** A new search is due: nothing answers this request, or a current-time search is older than [CURRENT_TIME_REUSE]. */
+    fun needsSearch(searched: JourneySearchQuery?): Boolean {
+        if (searched == null || !isAnsweredBy(searched)) return true
+        return followsCurrentTime && Duration.between(searched.departure, departure) > CURRENT_TIME_REUSE
+    }
+
+    companion object {
+        private const val CURRENT_TIME_KEY = "now"
+        /** Coming back to the results within this time reuses a current-time search instead of computing it again. */
+        val CURRENT_TIME_REUSE: Duration = Duration.ofMinutes(15)
+        val CURRENT_TIME_SHOWN: Duration = Duration.ofHours(12)
+
+        /** The request for the results of [viewModel], or null without an active route. */
+        fun of(viewModel: TrainViewModel): JourneyRequest? {
+            if (!viewModel.hasActiveRoute) return null
+            val route = viewModel.activeRoute
+            val query = viewModel.journeyQuery
+            return JourneyRequest(
+                origin = route.origin(viewModel.direction),
+                destination = route.destination(viewModel.direction),
+                departure = LocalDateTime.of(query.serviceDate, query.departureTime.withSecond(0).withNano(0)),
+                followsCurrentTime = viewModel.journeyFollowsCurrentTime
+            )
+        }
+    }
 }

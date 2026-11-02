@@ -40,6 +40,7 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -55,11 +56,7 @@ import it.binario.app.data.Station
 import it.binario.app.data.StopRouteChange
 import it.binario.app.data.TrainService
 import it.binario.app.data.core.OperationalRouteChange
-import it.binario.app.data.core.LegMode
 import it.binario.app.data.core.RouteChangeKind
-import it.binario.app.journeys.JourneyLegRow
-import it.binario.app.journeys.JourneyOptionRow
-import it.binario.app.journeys.JourneySourceLabel
 import it.binario.app.localized
 import it.binario.app.updateTimeMessage
 
@@ -158,8 +155,8 @@ internal fun DataStatusLine(
 }
 
 /**
- * A notice in the style of the data status card: info icon, optional title, text, optional action and extra
- * content (a progress bar). Used for the scheduled-only, coverage and empty notices of the journeys search.
+ * A notice in the style of the data status card ([DataStatusLine]): info icon, optional title, text, optional action
+ * and extra content (a progress bar). Used for the scheduled-only, coverage and empty notices of the journeys search.
  */
 @Composable
 internal fun InfoNoticeCard(
@@ -181,8 +178,11 @@ internal fun InfoNoticeCard(
         Icon(Icons.Default.Info, contentDescription = null, tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.padding(top = 2.dp).size(18.dp))
         Spacer(Modifier.width(8.dp))
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            title?.let { Text(it, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold) }
-            Text(text, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            // Title and text are read together; the action stays its own target.
+            Column(Modifier.semantics(mergeDescendants = true) {}, verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                title?.let { Text(it, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold) }
+                Text(text, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
             actionLabel?.let { label ->
                 TextButton(onClick = onAction, modifier = Modifier.heightIn(min = 48.dp)) { Text(label) }
             }
@@ -357,95 +357,6 @@ internal fun ChangesBadge(changes: Int, modifier: Modifier = Modifier) {
 internal fun changesLabel(changes: Int): String =
     if (changes <= 0) stringResource(R.string.journey_direct) else pluralStringResource(R.plurals.journey_changes, changes, changes)
 
-/**
- * An option of the journeys-with-changes search, in the same card as the direct trains: times, scheduled duration,
- * the trains of each leg, the source that computed it, the changes badge and "Binario —" (the offline timetable has
- * no platforms). Read as `journey_option_accessibility`.
- */
-@Composable
-internal fun JourneyResultCard(
-    row: JourneyOptionRow,
-    onOpen: () -> Unit,
-    modifier: Modifier = Modifier,
-    selected: Boolean = false
-) {
-    val locale = LocalConfiguration.current.locales[0]
-    val from = row.legs.firstOrNull()?.fromLabel.orEmpty()
-    val to = row.legs.lastOrNull()?.toLabel.orEmpty()
-    val source = journeySourceLabel(row)
-    val description = listOfNotNull(
-        stringResource(
-            R.string.journey_option_accessibility,
-            row.departureTime, from, row.arrivalTime, to, journeyDurationSpoken(row.durationMinutes), changesLabel(row.changes)
-        ),
-        if (row.arrivalDayOffset > 0) stringResource(R.string.journey_arrival_next_day) else null,
-        journeyTrainsLabel(row),
-        source,
-        if (selected) stringResource(R.string.accessibility_row_selected) else null
-    ).joinToString(". ")
-    Surface(
-        modifier = modifier
-            .fillMaxWidth()
-            .clearAndSetSemantics {
-                contentDescription = description
-                role = Role.Button
-                onClick { onOpen(); true }
-            },
-        onClick = onOpen,
-        color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
-        shape = RoundedCornerShape(20.dp),
-        shadowElevation = 1.dp,
-        border = if (selected) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null
-    ) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    "${row.departureTime} → ${row.arrivalTime}",
-                    modifier = Modifier.weight(1f),
-                    style = MaterialTheme.typography.titleLarge.copy(fontFeatureSettings = TabularFigures)
-                )
-                Text(JourneyTimes.durationLabel(row.durationMinutes.toInt()), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            if (row.arrivalDayOffset > 0) {
-                Text(stringResource(R.string.journey_arrival_next_day), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            Text(
-                journeyTrainsLabel(row).uppercase(locale),
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                letterSpacing = 0.5.sp
-            )
-            Text(source, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Row(Modifier.padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                ChangesBadge(row.changes, Modifier.weight(1f))
-                Text(
-                    stringResource(R.string.platform_label, "—"),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-    }
-}
-
-/** "REGIONALE 2153 › RE 24617": the train of every leg, in order; a replacement bus is named as such. */
-@Composable
-internal fun journeyTrainsLabel(row: JourneyOptionRow): String = row.legs
-    .filter { it.mode != LegMode.WALK }
-    .map { journeyLegLabel(it) }
-    .joinToString(" › ")
-
-@Composable
-internal fun journeyLegLabel(leg: JourneyLegRow): String = when (leg.mode) {
-    LegMode.REPLACEMENT_BUS -> listOfNotNull(stringResource(R.string.journey_leg_replacement_bus), leg.number).joinToString(" ")
-    else -> listOfNotNull(leg.lineLabel?.takeIf(String::isNotBlank) ?: leg.trainCategory.localizedLabel(), leg.number?.takeIf(String::isNotBlank)).joinToString(" ")
-}
-
-/** The localized source of a journey option: the offline timetable label, or the provider's own name. */
-@Composable
-internal fun journeySourceLabel(row: JourneyOptionRow): String =
-    if (row.sourceLabel == JourneySourceLabel.OFFLINE_TIMETABLE) stringResource(R.string.journey_source_offline) else row.sourceName
-
 /** "4 ore 25 min" for screen readers. */
 @Composable
 internal fun journeyDurationSpoken(minutes: Long): String {
@@ -466,7 +377,7 @@ internal fun durationAccessibleLabel(minutes: Int): String =
 internal fun SearchInfoState(title: String, message: String, openRoutes: (() -> Unit)? = null) {
     Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-        Text(message, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        if (message.isNotBlank()) Text(message, color = MaterialTheme.colorScheme.onSurfaceVariant)
         openRoutes?.let { OutlinedButton(onClick = it) { Text(stringResource(R.string.action_open_routes)) } }
     }
 }

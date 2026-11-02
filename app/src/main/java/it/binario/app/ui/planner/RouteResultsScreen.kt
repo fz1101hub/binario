@@ -38,7 +38,6 @@ import it.binario.app.BinarioTheme
 import it.binario.app.R
 import it.binario.app.RefreshState
 import it.binario.app.TrainViewModel
-import it.binario.app.UNCONFIGURED_ROUTE_ID
 import it.binario.app.data.Direction
 import it.binario.app.data.JourneyQuery
 import it.binario.app.data.RailTime
@@ -47,13 +46,13 @@ import it.binario.app.data.repository.JourneySearchStatus
 import it.binario.app.journeys.JourneyEmptyReason
 import it.binario.app.journeys.JourneyOptionRow
 import it.binario.app.journeys.JourneyResultsFilter
+import it.binario.app.journeys.JourneyResultsPresentation
 import it.binario.app.journeys.JourneyResultsPresenter
 import it.binario.app.journeys.JourneySearchUiState
 import it.binario.app.localized
 import it.binario.app.ui.common.DataStatusLine
 import it.binario.app.ui.common.HeaderSheetTop
 import it.binario.app.ui.common.InfoNoticeCard
-import it.binario.app.ui.common.JourneyResultCard
 import it.binario.app.ui.common.ResultCard
 import it.binario.app.ui.common.ScreenHeader
 import it.binario.app.ui.common.ScreenMargin
@@ -65,8 +64,8 @@ import it.binario.app.ui.common.isCachedCopy
 import it.binario.app.ui.common.localizedDisplayName
 import it.binario.app.ui.common.localizedLabel
 import it.binario.app.ui.common.localizedQualityLabel
+import it.binario.app.ui.journeys.JourneyResultCard
 import java.time.LocalDate
-import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
@@ -77,10 +76,11 @@ import java.util.Locale
  * route search (live or catalogue, unchanged) and the options of the separate journeys-with-changes search, each
  * with its badge ("Diretto", "1 cambio", "2 cambi") and source. A journey without changes that is the same train as
  * a direct-train result is shown once, as the direct train. The chips are the render's: Tutti, Diretti, Meno cambi,
- * Più veloce.
+ * Più veloce, over everything shown. The notices of the journeys search (in progress, scheduled times only, coverage,
+ * why it found nothing) follow the outbound list, so the top of the screen stays the render's.
  *
  * @param journeys state of the journeys-with-changes search; its options appear only when they answer this route,
- *   direction, date and time.
+ *   direction, date and time ([JourneyRequest.isAnsweredBy]).
  * @param selectedServiceId / selectedJourneyId the option shown beside the list on wide windows, tinted in the list.
  */
 @Composable
@@ -102,7 +102,7 @@ internal fun RouteResultsScreen(
     val route = viewModel.activeRoute
     var filterName by rememberSaveable { mutableStateOf(JourneyResultsFilter.ALL.name) }
     val filter = JourneyResultsFilter.valueOf(filterName)
-    val journeysMatch = journeysAnswer(journeys, viewModel, query)
+    val journeysMatch = JourneyRequest.of(viewModel)?.isAnsweredBy(journeys.query) == true
     val journeyResult = journeys.result.takeIf { journeysMatch }
     // Always the unfiltered options: the chips below filter the merged list.
     val presentation = remember(journeyResult) { journeyResult?.let { JourneyResultsPresenter.present(it) } }
@@ -125,8 +125,8 @@ internal fun RouteResultsScreen(
     } else {
         pluralStringResource(R.plurals.search_results_count, shown.size, shown.size)
     }
-    val headline = if (route.id == UNCONFIGURED_ROUTE_ID) null
-    else StationShortNames.route(route.origin(primaryDirection).name, route.destination(primaryDirection).name)
+    // "Roma → Torino" as in the render; screen readers and the cards keep the full station names.
+    val headline = if (viewModel.hasActiveRoute) StationShortNames.route(route.origin(primaryDirection), route.destination(primaryDirection)) else null
 
     val outboundStates = ResultStates(
         loading = stringResource(R.string.search_outbound_loading_title) to stringResource(R.string.search_outbound_loading_message),
@@ -177,14 +177,6 @@ internal fun RouteResultsScreen(
                     isCachedCopy = viewModel.isCachedCopy(),
                     message = null
                 )
-                if (journeysMatch) {
-                    JourneyNotices(
-                        loading = journeys.loading,
-                        presentation = presentation?.takeIf { !journeys.loading },
-                        optionsShown = journeysShown,
-                        onRetry = retryJourneys
-                    )
-                }
             }
         }
         if (roundTrip) {
@@ -203,6 +195,18 @@ internal fun RouteResultsScreen(
             openDetails = openDetails,
             openJourney = openJourney
         )
+        if (journeysMatch) {
+            item(key = "journey-notices") {
+                Column(Modifier.padding(top = 6.dp).testTag("journey-notices")) {
+                    JourneyNotices(
+                        loading = journeys.loading,
+                        presentation = presentation?.takeIf { !journeys.loading },
+                        optionsShown = journeysShown,
+                        onRetry = retryJourneys
+                    )
+                }
+            }
+        }
         if (roundTrip) {
             item {
                 Column(Modifier.padding(top = 8.dp)) {
@@ -231,16 +235,6 @@ internal fun RouteResultsScreen(
         }
         item { Spacer(Modifier.height(24.dp)) }
     }
-}
-
-/** The journeys-with-changes state answers this route, direction, date and time (not an older search). */
-internal fun journeysAnswer(journeys: JourneySearchUiState, viewModel: TrainViewModel, query: JourneyQuery): Boolean {
-    val searched = journeys.query ?: return false
-    if (!viewModel.hasActiveRoute) return false
-    val route = viewModel.activeRoute
-    return searched.origin.id == route.origin(viewModel.direction).id &&
-        searched.destination.id == route.destination(viewModel.direction).id &&
-        searched.departure == LocalDateTime.of(query.serviceDate, query.departureTime.withSecond(0).withNano(0))
 }
 
 /** Title and message of the loading, unavailable and empty states of one leg. */
@@ -302,7 +296,7 @@ private fun LazyListScope.resultItems(
 @Composable
 private fun JourneyNotices(
     loading: Boolean,
-    presentation: it.binario.app.journeys.JourneyResultsPresentation?,
+    presentation: JourneyResultsPresentation?,
     optionsShown: Boolean,
     onRetry: () -> Unit
 ) {
@@ -314,7 +308,11 @@ private fun JourneyNotices(
     }
     presentation ?: return
     if (optionsShown && presentation.showScheduledOnlyNotice) {
-        InfoNoticeCard(text = stringResource(R.string.journey_scheduled_only_notice))
+        InfoNoticeCard(
+            title = stringResource(R.string.journey_results_title),
+            text = stringResource(R.string.journey_scheduled_only_notice),
+            modifier = Modifier.testTag("journeys-scheduled-only")
+        )
     }
     if (optionsShown && presentation.showCoverageNotice) {
         InfoNoticeCard(text = stringResource(R.string.journey_coverage_notice))

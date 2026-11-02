@@ -1,8 +1,5 @@
 package it.binario.app.ui.journeys
 
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -12,14 +9,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.DirectionsBus
 import androidx.compose.material.icons.filled.SyncAlt
-import androidx.compose.material.icons.filled.Train
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -27,8 +20,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
@@ -38,10 +29,10 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import it.binario.app.BinarioTheme
 import it.binario.app.R
 import it.binario.app.TabularFigures
-import it.binario.app.data.core.LegMode
+import it.binario.app.data.Station
+import it.binario.app.data.StopRouteChange
 import it.binario.app.journeys.JourneyLegRow
 import it.binario.app.journeys.JourneyOptionRow
 import it.binario.app.journeys.JourneySourceLabel
@@ -55,22 +46,27 @@ import it.binario.app.ui.common.ScreenHeader
 import it.binario.app.ui.common.ScreenMargin
 import it.binario.app.ui.common.StationShortNames
 import it.binario.app.ui.common.changesLabel
-import it.binario.app.ui.common.journeyLegLabel
-import it.binario.app.ui.common.journeySourceLabel
+import it.binario.app.ui.detail.StopTimelineRow
 
 // Pianifica: the detail of an option of the journeys-with-changes search.
 
 /**
- * A journey with changes: the legs on the green timeline of the train detail, each change as a block "Cambio a
- * <stazione>" with the wait, the train of every leg, and the source with the scheduled-only notice. The app does
- * not follow or monitor multi-train journeys, so there is no "Segui questo viaggio" here.
+ * A journey with changes: every leg on the green timeline of the train detail (departure and arrival of the leg),
+ * each change as a block "Cambio a <stazione> · Attesa di N minuti", the train of every leg, and the source with the
+ * scheduled-only notice. The app does not follow or monitor multi-train journeys, so there is no "Segui questo
+ * viaggio" here; a direct option keeps opening the train detail from the results.
+ *
+ * @param origin / destination the searched stations, for the short header ("Roma → Torino"); the legs' own names
+ *   are used when they are not known.
  */
 @Composable
-internal fun JourneyDetailScreen(modifier: Modifier, row: JourneyOptionRow) {
+internal fun JourneyDetailScreen(modifier: Modifier, row: JourneyOptionRow, origin: Station? = null, destination: Station? = null) {
     val locale = LocalConfiguration.current.locales[0]
-    val from = row.legs.firstOrNull()?.fromLabel.orEmpty()
-    val to = row.legs.lastOrNull()?.toLabel.orEmpty()
-    val headline = StationShortNames.route(from, to)
+    val headline = if (origin != null && destination != null) {
+        StationShortNames.route(origin, destination)
+    } else {
+        StationShortNames.route(row.legs.firstOrNull()?.fromLabel.orEmpty(), row.legs.lastOrNull()?.toLabel.orEmpty())
+    }
     val times = listOfNotNull(
         "${row.departureTime} → ${row.arrivalTime}",
         if (row.arrivalDayOffset > 0) stringResource(R.string.journey_arrival_next_day) else null,
@@ -85,9 +81,7 @@ internal fun JourneyDetailScreen(modifier: Modifier, row: JourneyOptionRow) {
                 subtitle = times,
                 bottomPadding = 12.dp
             ) {
-                if (row.scheduledOnly) {
-                    Pill(stringResource(R.string.service_status_scheduled_badge))
-                }
+                if (row.scheduledOnly) Pill(stringResource(R.string.service_status_scheduled_badge))
             }
         }
         item {
@@ -96,8 +90,8 @@ internal fun JourneyDetailScreen(modifier: Modifier, row: JourneyOptionRow) {
                     Column(Modifier.padding(vertical = 12.dp).testTag("journey-timeline")) {
                         row.legs.forEachIndexed { index, leg ->
                             LegHeader(leg)
-                            JourneyStopRow(leg.departureTime, leg.fromLabel, stringResource(R.string.stop_role_departure), isFirst = true, isLast = false)
-                            JourneyStopRow(leg.arrivalTime, leg.toLabel, stringResource(R.string.stop_role_arrival), isFirst = false, isLast = true)
+                            LegStop(time = leg.departureTime, station = leg.fromLabel, isFirst = true)
+                            LegStop(time = leg.arrivalTime, station = leg.toLabel, isFirst = false)
                             row.transfers.getOrNull(index)?.let { TransferBlock(it) }
                         }
                     }
@@ -121,10 +115,11 @@ internal fun JourneyDetailScreen(modifier: Modifier, row: JourneyOptionRow) {
     }
 }
 
-/** The train of a leg (or the replacement bus), its operator and the scheduled duration of the leg. */
+/** The train of a leg (or bus, or walk), its operator and the scheduled duration of the leg. */
 @Composable
 private fun LegHeader(leg: JourneyLegRow) {
     val locale = LocalConfiguration.current.locales[0]
+    val kind = JourneyLegKind.of(leg.mode)
     Row(
         Modifier
             .fillMaxWidth()
@@ -132,16 +127,11 @@ private fun LegHeader(leg: JourneyLegRow) {
             .semantics(mergeDescendants = true) { heading() },
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(
-            if (leg.mode == LegMode.REPLACEMENT_BUS) Icons.Default.DirectionsBus else Icons.Default.Train,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(20.dp)
-        )
+        Icon(kind.icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
         Spacer(Modifier.width(8.dp))
         Column(Modifier.weight(1f)) {
             Text(journeyLegLabel(leg).uppercase(locale), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp)
-            leg.operatorName?.takeIf(String::isNotBlank)?.let {
+            leg.operatorName?.takeIf { it.isNotBlank() && kind != JourneyLegKind.WALK }?.let {
                 Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
@@ -153,42 +143,25 @@ private fun LegHeader(leg: JourneyLegRow) {
     }
 }
 
-/** A departure or arrival of a leg on the green line, as in the train detail. */
+/** The departure ("Partenza") or arrival ("Arrivo") of a leg on the timeline of the train detail; times are scheduled. */
 @Composable
-private fun JourneyStopRow(time: String, station: String, role: String, isFirst: Boolean, isLast: Boolean) {
-    val lineColor = BinarioTheme.colors.timeline
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .drawBehind {
-                val x = TIMELINE_START.toPx() + TIMELINE_WIDTH.toPx() / 2
-                val dotCenter = TIMELINE_TOP.toPx() + TIMELINE_DOT_SLOT.toPx() / 2
-                val stroke = 3.dp.toPx()
-                if (!isFirst) drawLine(lineColor, Offset(x, 0f), Offset(x, dotCenter), stroke)
-                if (!isLast) drawLine(lineColor, Offset(x, dotCenter), Offset(x, size.height), stroke)
-            }
-            .padding(start = TIMELINE_START, end = 16.dp, top = TIMELINE_TOP, bottom = TIMELINE_TOP)
-            .semantics(mergeDescendants = true) {},
-        verticalAlignment = Alignment.Top
-    ) {
-        Box(Modifier.width(TIMELINE_WIDTH).height(TIMELINE_DOT_SLOT), contentAlignment = Alignment.Center) {
-            Surface(Modifier.size(16.dp), shape = CircleShape, color = MaterialTheme.colorScheme.surface, border = BorderStroke(3.dp, lineColor)) {}
-        }
-        Spacer(Modifier.width(10.dp))
-        Text(
-            time,
-            modifier = Modifier.widthIn(min = 56.dp).padding(end = 12.dp),
-            style = MaterialTheme.typography.titleMedium.copy(fontFeatureSettings = TabularFigures),
-            fontWeight = FontWeight.Bold
-        )
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(station, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-            Text(role, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-    }
+private fun LegStop(time: String, station: String, isFirst: Boolean) {
+    StopTimelineRow(
+        station = station,
+        expected = time,
+        scheduled = time,
+        delay = 0,
+        platform = null,
+        completed = false,
+        operationalStatusVerified = false,
+        routeChange = StopRouteChange.NONE,
+        onSetAlarm = null,
+        isFirst = isFirst,
+        isLast = !isFirst
+    )
 }
 
-/** "Cambio a Milano Centrale · Attesa di 10 minuti", with the arrival and the next departure. */
+/** "Cambio a Milano Centrale · Attesa di 15 minuti", with the arrival and the next departure. */
 @Composable
 private fun TransferBlock(transfer: JourneyTransferRow) {
     val wait = transfer.waitMinutes.coerceAtLeast(0).toInt()
@@ -220,8 +193,3 @@ private fun TransferBlock(transfer: JourneyTransferRow) {
         }
     }
 }
-
-private val TIMELINE_START = 16.dp
-private val TIMELINE_WIDTH = 24.dp
-private val TIMELINE_TOP = 10.dp
-private val TIMELINE_DOT_SLOT = 24.dp

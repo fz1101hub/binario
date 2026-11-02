@@ -328,6 +328,8 @@
     </plurals>
     <string name="journey_arrival_next_day">next day</string>
     <string name="journey_leg_replacement_bus">Replacement bus</string>
+    <string name="journey_leg_bus">Bus</string>
+    <string name="journey_leg_walk">On foot</string>
     <string name="journey_source_offline">Offline scheduled timetable (GTFS open data)</string>
     <string name="journey_scheduled_only_notice">Scheduled times: delays, platforms and cancellations are not checked. Check the station displays.</string>
     <string name="journey_coverage_notice">Calculated on the phone with the timetables included in the app, only for the networks they cover: Lombardy, South Tyrol, Trentino, EAV, ARST, TFT, Switzerland, Austria, France and Croatia. Other trains may be missing.</string>
