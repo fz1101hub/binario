@@ -401,9 +401,28 @@ class LiveProviderNetworkTest {
             "roma-torino-prefixed" to "S08409/S00219"
         ).forEach { (name, pair) ->
             val path = "soluzioniViaggioNew/$pair/${tomorrow}T08:00:00"
-            val sample = runCatching { upstream.fetch(path) }
-                .map { body -> "length=${body.length} body=" + body.take(9_000).replace("\r", "").replace("\n", "\\n") }
-                .getOrElse { "error=${it::class.java.simpleName}: ${it.message}" }
+            // The production fetcher only allows the board/run endpoints: follow its redirect rule by hand.
+            val sample = runCatching {
+                var target = "https://www.viaggiatreno.it/infomobilita/resteasy/viaggiatreno/$path"
+                val hops = mutableListOf<String>()
+                var result = ""
+                for (hop in 0 until 4) {
+                    val connection = java.net.URI(target).toURL().openConnection() as java.net.HttpURLConnection
+                    connection.instanceFollowRedirects = false
+                    connection.connectTimeout = 15_000
+                    connection.readTimeout = 25_000
+                    connection.setRequestProperty("User-Agent", "Binario/0.20 (source format discovery)")
+                    connection.setRequestProperty("Accept", "application/json")
+                    val code = connection.responseCode
+                    hops += "$code ${target.substringBefore("/infomobilita")}"
+                    val location = connection.getHeaderField("Location")
+                    if (code in 300..399 && location != null) { target = location; continue }
+                    val body = (if (code in 200..299) connection.inputStream else connection.errorStream)?.use { it.readBytes().toString(Charsets.UTF_8) }.orEmpty()
+                    result = "hops=$hops type=${connection.contentType} length=${body.length} body=" + body.take(9_000).replace("\r", "").replace("\n", "\\n")
+                    break
+                }
+                result.ifEmpty { "hops=$hops (too many redirects)" }
+            }.getOrElse { "error=${it::class.java.simpleName}: ${it.message}" }
             println("LIVE_ACCEPTANCE SAMPLE vt-solutions-$name path=$path $sample")
         }
         for ((name, url) in urls) {
