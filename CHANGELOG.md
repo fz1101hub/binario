@@ -1,5 +1,15 @@
 # Changelog
 
+## In sviluppo — Widget Android con le impostazioni di Orario Treni
+
+- Impostazioni per istanza per i widget **Tratta** e **Tabellone stazione**, salvate con la configurazione esistente: aggiornamento automatico disattivato per i nuovi widget, nelle fasce orarie scelte (ogni 15/30/60 minuti, Lun–Ven, tutti i giorni o giorni scelti, una o due fasce anche dopo la mezzanotte) oppure sempre; tipi di treno da nascondere (Frecce/alta velocità, Intercity/notte, regionali/suburbani, Italo, bus sostitutivi, internazionali — i tipi ignoti restano visibili); colonna binario, nome/categoria e titolo personalizzato. I widget già aggiunti mantengono l'aggiornamento ogni quindici minuti e le stesse corse finché non vengono modificati.
+- Widget Tratta: «Mostra il ritorno dalle HH:mm» con il pulsante della direzione valido fino al cambio successivo, treni visibili fino all'arrivo segnati «In viaggio», corse delle prossime 3 o 6 ore o di tutto il giorno (orario conservato e leggibile offline, segnato come programmato).
+- Widget Tabellone stazione: pulsante facoltativo «📍 Più vicina» che legge una sola posizione al tocco con il permesso in primo piano già usato dall'app, sceglie la stazione più vicina del catalogo e la salva nel widget; gli aggiornamenti automatici non leggono mai la posizione.
+- Nuovo widget **I miei treni**: i treni salvati con il cuore del dettaglio, con nome personalizzato, prossima stazione o ultimo rilevamento, ritardo (anticipo in verde), binario, soppressione o variazione; solo i treni in viaggio (facoltativo), ordine per partenza o per nome, aggiornamento in fasce orarie; un tocco apre il treno. Una ricerca fallita lascia l'ultimo valore noto segnato con l'ora del dato.
+- **I miei treni** in Per te sostituisce l'elenco dei treni monitorati: dopo il cuore l'app propone un nome, il menu permette di aprire, rinominare o rimuovere; nomi e corsa salvata entrano nel backup locale JSON (campi facoltativi, i backup precedenti restano importabili).
+- Un solo lavoro WorkManager pianifica tutti i widget per il prossimo istante dovuto: fuori dalle fasce non resta nulla in coda. «Aggiornato alle HH:mm» in testata a ogni widget.
+- I tabelloni di stazione conservano il tipo di servizio già pubblicato dalle fonti (`StationBoardEntry.serviceKind`), senza cambiare ordine, priorità o selezione delle fonti.
+
 ## In sviluppo — Android allineato al render approvato di Binario 2.0
 
 - Palette misurata sul render approvato (testata `#003A28`, azioni `#00703E`, tonali `#D8F4EA`, card `#FCFCFC` su `#F4F7F6`, timeline `#12785A`) con schema scuro derivato e contrasto AA; il design system indica il render come riferimento.
