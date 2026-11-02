@@ -64,6 +64,7 @@ jobs:
           python3 -m unittest -v
           tests/test_verify_android_app_bundles.py
           tests/test_build_gtfs_packs.py
+          tests/test_netex_to_gtfs.py
           tests/test_verify_gradle_dependency_metadata.py
           tests/test_install_xcodegen.py
           tests/test_verify_ci_pinning.py
