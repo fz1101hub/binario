@@ -1,0 +1,26 @@
+<resources>
+    <string name="app_name">Binario</string>
+    <string name="tile_label">Binario: следующий маршрут</string>
+    <string name="tile_description">Показывает следующий маршрут, переданный приложением Binario на телефоне.</string>
+    <string name="complication_label">Binario</string>
+    <string name="empty_snapshot_message">Откройте Binario на телефоне, чтобы синхронизировать активный маршрут.</string>
+    <string name="refresh_phone">Обновить телефон</string>
+    <string name="refresh_on_phone">Обновить на телефоне</string>
+    <string name="tile_no_synced_route">Нет синхронизированного маршрута</string>
+    <string name="tile_snapshot_unavailable">Снимок недоступен</string>
+    <string name="tile_service_details">%1$s · %2$s · %3$s</string>
+    <string name="status_programmed">Время по расписанию</string>
+    <string name="status_received_from_phone">Статус получен с телефона</string>
+    <string name="status_updating">Данные обновляются</string>
+    <string name="status_local_snapshot">Последний локальный снимок</string>
+    <string name="status_live_unavailable">Данные в реальном времени недоступны</string>
+    <string name="accessibility_data_status">Состояние данных: %1$s</string>
+    <string name="accessibility_scheduled_departure">Отправление по расписанию %1$s</string>
+    <string name="accessibility_expected_departure">Ожидаемое отправление %1$s</string>
+    <string name="accessibility_train">Поезд %1$s</string>
+    <string name="accessibility_platform">Путь %1$s</string>
+    <string name="service_time_number">%1$s · %2$s</string>
+    <string name="service_destination_status">%1$s · %2$s</string>
+    <string name="service_operator_category">%1$s · %2$s</string>
+    <string name="service_operator_category_platform">%1$s · %2$s · путь %3$s</string>
+</resources>

@@ -1,0 +1,26 @@
+<resources>
+    <string name="app_name">Binario</string>
+    <string name="tile_label">Binario: 다음 구간</string>
+    <string name="tile_description">휴대전화의 Binario 앱에서 공유한 다음 구간을 표시합니다.</string>
+    <string name="complication_label">Binario</string>
+    <string name="empty_snapshot_message">활성 구간을 동기화하려면 휴대전화에서 Binario를 여세요.</string>
+    <string name="refresh_phone">휴대전화 새로고침</string>
+    <string name="refresh_on_phone">휴대전화에서 새로고침</string>
+    <string name="tile_no_synced_route">동기화된 구간 없음</string>
+    <string name="tile_snapshot_unavailable">스냅샷 없음</string>
+    <string name="tile_service_details">%1$s · %2$s · %3$s</string>
+    <string name="status_programmed">예정 시각</string>
+    <string name="status_received_from_phone">휴대전화에서 받은 상태</string>
+    <string name="status_updating">데이터 업데이트 중</string>
+    <string name="status_local_snapshot">마지막 로컬 스냅샷</string>
+    <string name="status_live_unavailable">실시간 데이터를 이용할 수 없음</string>
+    <string name="accessibility_data_status">데이터 상태: %1$s</string>
+    <string name="accessibility_scheduled_departure">예정 출발 %1$s</string>
+    <string name="accessibility_expected_departure">출발 예상 %1$s</string>
+    <string name="accessibility_train">열차 %1$s</string>
+    <string name="accessibility_platform">승강장 %1$s</string>
+    <string name="service_time_number">%1$s · %2$s</string>
+    <string name="service_destination_status">%1$s · %2$s</string>
+    <string name="service_operator_category">%1$s · %2$s</string>
+    <string name="service_operator_category_platform">%1$s · %2$s · 승강장 %3$s</string>
+</resources>
