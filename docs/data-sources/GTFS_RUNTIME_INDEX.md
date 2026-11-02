@@ -14,3 +14,7 @@ La regressione usa 1.355.184 righe, cardinalità misurata sul pack AMT che ha or
 ```
 
 Il test verifica sia l’esito funzionale sia le metriche: tutte le righe vengono consumate, soltanto quelle della corsa dichiarata sono indicizzate e l’allocazione delle colonne `stop_times` resta proporzionale alle righe conservate.
+
+## Viaggi con cambi
+
+Il calcolo offline dei viaggi con cambi (`data/journey/EmbeddedGtfsJourneyProvider.kt`) usa questo stesso indice tramite un'istanza dell'adapter con un solo indice in cache. Dall'indice ricava, per pack e giorno di servizio, un array compatto di connessioni (fermate consecutive con orario di ogni corsa attiva in quel giorno secondo `calendar.txt` e `calendar_dates.txt`): circa 25 byte per connessione, 4,8 MB per un giorno del pack svizzero. Del giorno precedente conserva solo le connessioni oltre la mezzanotte (24:00+) e del successivo solo quelle entro la finestra di ricerca; la cache dei giorni è limitata a 16 voci e 16 MB. Per riconoscere i punti di cambio legge una volta `stops.txt` di ogni pack con lo stesso scanner limitato.

@@ -30,6 +30,7 @@ import java.time.LocalDateTime
 import java.time.ZoneId
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -101,11 +102,12 @@ class JourneySearchServiceTest {
         val failing = FakeProvider("failing") { ProviderResult.Failure(ProviderError(ProviderErrorKind.NETWORK, "down")) }
         val slow = FakeProvider("slow") { awaitCancellation() }
         val throwing = FakeProvider("throwing") { throw IllegalStateException("bug") }
+        val ownTimeout = FakeProvider("own-timeout") { withTimeout(1) { awaitCancellation() } }
         val empty = FakeProvider("empty") { success("empty") }
         val offline = FakeProvider("offline") { success("offline", option(staticOnly = false)) }
-        val result = JourneySearchService(listOf(failing, slow, throwing, empty, offline), providerTimeoutMillis = 50, clock = clock).search(query)
+        val result = JourneySearchService(listOf(failing, slow, throwing, ownTimeout, empty, offline), providerTimeoutMillis = 50, clock = clock).search(query)
         assertEquals(JourneySearchStatus.FOUND, result.status)
-        assertEquals(listOf("failing", "slow", "throwing", "empty", "offline"), result.consultedSources.map { it.value })
+        assertEquals(listOf("failing", "slow", "throwing", "own-timeout", "empty", "offline"), result.consultedSources.map { it.value })
         assertEquals(SourceId("offline"), result.options.single().sourceId)
         assertFalse(result.options.single().scheduledOnly)
     }

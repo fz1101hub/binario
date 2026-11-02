@@ -808,9 +808,9 @@ class EmbeddedGtfsRouteAdapter(
 
         /**
          * Connections of the trips running on [serviceDate]: one per pair of consecutive timed stops, in trip
-         * order. Stops without any usable time are skipped (they can be neither boarded nor left); a pair whose
-         * arrival precedes its departure is dropped as malformed. Only rail, urban rail and rail-replacement bus
-         * route types take part.
+         * order. Stops without any usable time are skipped (they can be neither boarded nor left), and so is a stop
+         * whose time goes back (arriving before the previous stop's departure, or after a departure earlier than the
+         * previous arrival). Only rail, urban rail and rail-replacement bus route types take part.
          */
         fun dayTimetable(
             sourceId: SourceId,
@@ -863,13 +863,17 @@ class EmbeddedGtfsRouteAdapter(
                     mode = mode
                 )
                 var previous = -1
+                var lastArrival = Int.MIN_VALUE
                 for (index in 0 until count) {
                     val current = entries[index]
                     if (stopTimes.preferredDeparture(current) < 0) continue
                     if (previous >= 0) {
                         val departure = stopTimes.preferredDeparture(previous)
                         val arrival = stopTimes.preferredArrival(current)
-                        if (arrival >= departure && departure in fromMinute..untilMinute) {
+                        // A stop whose time goes back is skipped like an untimed one, so the kept connections of a
+                        // trip never go back in time and a scan meets them in stop order.
+                        if (departure < lastArrival || arrival < departure) continue
+                        if (departure in fromMinute..untilMinute) {
                             builder.connection(
                                 departureStop = stopTimes.stop(previous),
                                 arrivalStop = stopTimes.stop(current),
@@ -879,6 +883,7 @@ class EmbeddedGtfsRouteAdapter(
                                 dropOffAllowed = stopTimes.allowsDropOff(current)
                             )
                         }
+                        lastArrival = arrival
                     }
                     previous = current
                 }

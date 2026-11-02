@@ -18,6 +18,8 @@ import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withTimeoutOrNull
 
 /** A journeys-with-changes search: two stations and a railway-local departure date and time. */
@@ -105,7 +107,9 @@ class JourneySearchService(
             val result = try {
                 withTimeoutOrNull(providerTimeoutMillis) { provider.searchJourneys(request) }
             } catch (error: CancellationException) {
-                throw error
+                // Our own cancellation propagates; a provider's internal timeout is just a failed provider.
+                currentCoroutineContext().ensureActive()
+                null
             } catch (_: RuntimeException) {
                 null
             }

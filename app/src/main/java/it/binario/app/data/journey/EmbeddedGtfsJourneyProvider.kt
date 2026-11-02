@@ -206,11 +206,11 @@ class EmbeddedGtfsJourneyProvider internal constructor(
 
     /**
      * Packs for a journey that changes between packs. A pack serving the origin and one serving the destination
-     * form a pair when they share a catalogue station, other than the two ends, that is not a large detour (origin → station → destination
-     * at most 1.5 times the direct distance plus 30 km), so a Swiss or French pack that only shares Milano is not
-     * loaded for a trip across the Brenner. Pairs are taken by increasing detour while both packs fit in
-     * [GtfsJourneyPlannerSettings.maxPacksPerSearch]. Without coordinates, or when no pair qualifies, the
-     * best-ranked packs serving either end are used.
+     * form a pair when they share a catalogue station, other than the two ends, that is not a large detour
+     * (origin → station → destination at most 1.5 times the direct distance plus 30 km), so a Swiss or French pack
+     * that only shares Milano is not loaded for a trip across the Brenner. Pairs are taken by increasing detour
+     * while both packs fit in [GtfsJourneyPlannerSettings.maxPacksPerSearch]. Without coordinates, or when no pair
+     * qualifies, the best-ranked packs serving either end are used.
      */
     private fun unionForChanges(
         ranked: List<PackCoverage>,

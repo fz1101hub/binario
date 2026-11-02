@@ -23,10 +23,16 @@ import it.binario.app.data.provider.ProviderErrorKind
 import it.binario.app.data.provider.ProviderResult
 import it.binario.app.data.provider.ProviderWarning
 import java.time.LocalDateTime
+import it.binario.app.data.gtfs.EmbeddedGtfsRouteAdapter
+import java.io.ByteArrayInputStream
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.CoroutineStart
-import kotlinx.coroutines.async
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -115,6 +121,14 @@ class EmbeddedGtfsJourneyProviderTest {
         ))))
         val option = options(provider.searchJourneys(request(alfa, delta))).single()
         assertEquals(0, option.transfers)
+    }
+
+    @Test fun `a stop whose time goes back is skipped and never travelled to`() = runBlocking {
+        val provider = provider(mapOf(pack() to feed(listOf(
+            Trip("T1", "100", listOf("A" to "08:00", "B" to "08:30", "C" to "08:10", "D" to "09:00"))
+        ))))
+        assertEquals("100 Alfa 08:00-09:00 Delta", options(provider.searchJourneys(request(alfa, delta))).single().summary())
+        assertTrue(options(provider.searchJourneys(request(alfa, gamma))).isEmpty())
     }
 
     @Test fun `after midnight runs of the same and of the next service day are joined`() = runBlocking {
@@ -276,14 +290,39 @@ class EmbeddedGtfsJourneyProviderTest {
         assertTrue(provider.cachedBytesForTest() > 0)
     }
 
-    @Test fun `a cancelled search stops with a cancellation`() = runBlocking {
-        val provider = provider(mapOf(pack() to feed(listOf(Trip("T1", "100", listOf("A" to "08:00", "D" to "09:00"))))))
-        val search = async(start = CoroutineStart.LAZY) { provider.searchJourneys(request(alfa, delta)) }
-        search.cancel()
+    @Test fun `cancelling a running search stops the provider`() = runBlocking {
+        val bytes = feed(listOf(Trip("T1", "100", listOf("A" to "08:00", "D" to "09:00"))))
+        val started = CompletableDeferred<Unit>()
+        val provider = EmbeddedGtfsJourneyProvider(
+            adapter = EmbeddedGtfsRouteAdapter(openAsset = { ByteArrayInputStream(bytes) }, packs = listOf(pack()), indexCacheCapacity = 1),
+            packs = listOf(pack()),
+            loadStations = {
+                started.complete(Unit)
+                awaitCancellation()
+            }
+        )
+        val search = launch(Dispatchers.Default) { provider.searchJourneys(request(alfa, delta)) }
+        withTimeout(5_000) { started.await() }
+        search.cancelAndJoin()
+        assertTrue(search.isCancelled)
+    }
+
+    @Test fun `the scan checks for cancellation while it runs`() {
+        val size = 10_000
+        val timetable = ConnectionScanTimetable(
+            nodeCount = 2, tripCount = size, transferMinutes = IntArray(2) { 5 },
+            departureNode = IntArray(size), arrivalNode = IntArray(size) { 1 },
+            departureMinute = IntArray(size) { it / 10 }, arrivalMinute = IntArray(size) { it / 10 + 1 },
+            trip = IntArray(size) { it }, boarding = ByteArray(size)
+        )
+        var checks = 0
         try {
-            search.await()
-            fail("A cancelled search must not return journeys")
+            ConnectionScanPlanner(timetable).plan(
+                ConnectionScanQuery(booleanArrayOf(true, false), booleanArrayOf(false, true), 0, 2_000, 2, 6, 32)
+            ) { if (++checks > 1) throw CancellationException("cancelled") }
+            fail("The scan must stop when cancelled")
         } catch (_: CancellationException) {
         }
+        assertTrue(checks > 1)
     }
 }
