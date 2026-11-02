@@ -1,0 +1,95 @@
+package it.binario.app.ui.planner
+
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import it.binario.app.R
+import it.binario.app.TabularFigures
+import it.binario.app.data.TrainService
+import it.binario.app.maps.OpenMapStationIndex
+import it.binario.app.maps.RouteOverviewMap
+import it.binario.app.ui.common.BinarioCard
+import it.binario.app.ui.common.JourneyTimes
+import it.binario.app.ui.common.Pill
+import it.binario.app.ui.common.localizedLabel
+import it.binario.app.ui.common.presentedAsDemonstration
+
+/**
+ * Second pane of the route results on wide windows: the open map of the highlighted solution with a floating
+ * summary card ("FRECCIA 9558", the route, times and duration, "Vedi dettagli"). The render's stock photo is
+ * replaced by this map; no third-party image is shown.
+ */
+@Composable
+internal fun ResultsMapPane(
+    service: TrainService,
+    isDemonstration: Boolean,
+    stationIndex: OpenMapStationIndex,
+    onOpenDetails: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val shown = if (isDemonstration) service.presentedAsDemonstration() else service
+    val locale = LocalConfiguration.current.locales[0]
+    Box(modifier.fillMaxSize().padding(12.dp).testTag("results-map-pane")) {
+        RouteOverviewMap(shown, stationIndex, Modifier.fillMaxSize())
+        BinarioCard(
+            Modifier
+                .align(Alignment.BottomStart)
+                .padding(16.dp)
+                .widthIn(max = 420.dp)
+        ) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    stringResource(R.string.service_category_number, shown.trainCategory.localizedLabel(), shown.number).uppercase(locale),
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Text(
+                    "${shown.origin} → ${shown.destination}",
+                    modifier = Modifier.semantics { heading() },
+                    style = MaterialTheme.typography.titleLarge
+                )
+                val arrival = JourneyTimes.arrival(shown)
+                val duration = JourneyTimes.durationMinutes(shown)
+                Text(
+                    listOfNotNull(
+                        listOfNotNull(shown.scheduledDeparture, arrival).joinToString(" → "),
+                        duration?.let { "(" + JourneyTimes.durationLabel(it) + ")" }
+                    ).joinToString("  "),
+                    style = MaterialTheme.typography.titleMedium.copy(fontFeatureSettings = TabularFigures)
+                )
+                if (isDemonstration) {
+                    Pill(
+                        stringResource(R.string.data_status_demo),
+                        container = MaterialTheme.colorScheme.tertiaryContainer,
+                        content = MaterialTheme.colorScheme.onTertiaryContainer
+                    )
+                }
+                TextButton(onClick = onOpenDetails, modifier = Modifier.fillMaxWidth().testTag("results-map-details")) {
+                    Text(stringResource(R.string.action_see_details), fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                    Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null)
+                }
+            }
+        }
+    }
+}

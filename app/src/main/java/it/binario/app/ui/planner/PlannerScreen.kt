@@ -7,13 +7,14 @@ import android.content.Intent
 import android.speech.RecognizerIntent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -22,19 +23,25 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Mic
-import androidx.compose.material.icons.filled.Route
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.filled.SwapHoriz
+import androidx.compose.material.icons.filled.SwapVert
+import androidx.compose.material.icons.filled.ToggleOff
+import androidx.compose.material.icons.filled.ToggleOn
 import androidx.compose.material3.Button
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -46,14 +53,13 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -71,6 +77,13 @@ import it.binario.app.data.RailTime
 import it.binario.app.data.Station
 import it.binario.app.feedback
 import it.binario.app.resolve
+import it.binario.app.ui.common.BinarioCard
+import it.binario.app.ui.common.HeaderOverlapBox
+import it.binario.app.ui.common.Pill
+import it.binario.app.ui.common.ScreenHeader
+import it.binario.app.ui.common.ScreenMargin
+import it.binario.app.ui.common.SectionTitle
+import it.binario.app.ui.common.SegmentedControl
 import it.binario.app.ui.common.StationField
 import it.binario.app.ui.common.localizedAccessibleLabel
 import it.binario.app.ui.common.localizedDisplayName
@@ -78,6 +91,7 @@ import it.binario.app.ui.common.localizedLabel
 import it.binario.app.ui.common.localizedName
 import java.time.LocalDate
 import java.time.LocalTime
+import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 // Pianifica: journey, train-number and station search.
@@ -114,6 +128,9 @@ internal fun PlannerScreen(
     var travelTime by rememberSaveable { mutableStateOf(LocalTime.now(RailTime.defaultZone).withSecond(0).withNano(0).toString()) }
     var returnDate by rememberSaveable { mutableStateOf(LocalDate.now(RailTime.defaultZone).plusDays(1).toString()) }
     var returnTime by rememberSaveable { mutableStateOf(LocalTime.now(RailTime.defaultZone).withSecond(0).withNano(0).toString()) }
+    // Until the traveller picks a date or a time the search means "today" and "now" at the moment of searching.
+    var dateChosen by rememberSaveable { mutableStateOf(false) }
+    var timeChosen by rememberSaveable { mutableStateOf(false) }
     var showDatePicker by rememberSaveable { mutableStateOf(false) }
     var showTimePicker by rememberSaveable { mutableStateOf(false) }
     var showReturnDatePicker by rememberSaveable { mutableStateOf(false) }
@@ -145,8 +162,8 @@ internal fun PlannerScreen(
                 SearchMode.ROUTE -> {
                     dictated.origin?.let { originText = it.name }
                     dictated.destination?.let { destinationText = it.name }
-                    dictated.date?.let { travelDate = it.toString() }
-                    dictated.time?.let { travelTime = it.toString() }
+                    dictated.date?.let { travelDate = it.toString(); dateChosen = true }
+                    dictated.time?.let { travelTime = it.toString(); timeChosen = true }
                     dictated.returnJourney?.let { requestedReturn ->
                         returnJourney = requestedReturn
                         if (requestedReturn) {
@@ -191,6 +208,7 @@ internal fun PlannerScreen(
         LaunchedEffect(selected) {
             DatePickerDialog(context, { _, year, month, day ->
                 travelDate = LocalDate.of(year, month + 1, day).toString()
+                dateChosen = true
                 showDatePicker = false
             }, selected.year, selected.monthValue - 1, selected.dayOfMonth).apply {
                 setOnDismissListener { showDatePicker = false }
@@ -203,6 +221,7 @@ internal fun PlannerScreen(
         LaunchedEffect(selected) {
             TimePickerDialog(context, { _, hour, minute ->
                 travelTime = LocalTime.of(hour, minute).toString()
+                timeChosen = true
                 showTimePicker = false
             }, selected.hour, selected.minute, true).apply {
                 setOnDismissListener { showTimePicker = false }
@@ -252,270 +271,301 @@ internal fun PlannerScreen(
                 selectedReturnTime
             )
         )
+    val search: () -> Unit = {
+        // "Adesso" and "Oggi" mean the moment of the search, not the moment the screen was opened.
+        val departureDate = if (dateChosen) selectedDepartureDate else LocalDate.now(RailTime.defaultZone)
+        val departureTime = if (timeChosen) selectedDepartureTime else LocalTime.now(RailTime.defaultZone).withSecond(0).withNano(0)
+        val searched = if (
+            origin != null &&
+            destination != null &&
+            origin != destination &&
+            departureDate != null &&
+            departureTime != null
+        ) {
+            if (
+                returnJourney &&
+                selectedReturnDate != null &&
+                selectedReturnTime != null &&
+                PlannerDateTime.isReturnAfterDeparture(departureDate, departureTime, selectedReturnDate, selectedReturnTime)
+            ) {
+                viewModel.searchRoundTrip(origin, destination, departureDate, departureTime, selectedReturnDate, selectedReturnTime)
+            } else if (!returnJourney) {
+                viewModel.searchRoute(origin, destination, departureDate, departureTime)
+            } else false
+        } else false
+        if (searched) showResults()
+    }
+    val today = LocalDate.now(RailTime.defaultZone)
+    val outboundDateLabel = shortDateLabel(selectedDepartureDate, today, locale, dateUnselected)
+    val outboundTimeLabel = if (timeChosen) PlannerDateTime.timeLabel(travelTime, locale, timeUnselected) else stringResource(R.string.planner_time_now)
     LazyColumn(modifier = modifier.fillMaxSize().testTag("planner-screen"), verticalArrangement = Arrangement.spacedBy(0.dp)) {
         item {
-            PlannerHeader(isDemonstration = viewModel.isDemonstrationData())
+            ScreenHeader(
+                title = stringResource(R.string.planner_headline),
+                subtitle = stringResource(R.string.planner_subtitle),
+                bottomPadding = 12.dp
+            ) {
+                if (viewModel.isDemonstrationData()) {
+                    Pill(
+                        stringResource(R.string.data_status_demo),
+                        container = MaterialTheme.colorScheme.tertiaryContainer,
+                        content = MaterialTheme.colorScheme.onTertiaryContainer,
+                        icon = Icons.Default.Info
+                    )
+                }
+            }
         }
         item {
-            Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(SearchMode.entries) { item -> FilterChip(selected = mode == item, onClick = { mode = item }, label = { Text(item.localizedLabel()) }) }
-                }
-                Surface(color = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(20.dp), tonalElevation = 1.dp, shadowElevation = 1.dp, modifier = Modifier.fillMaxWidth()) {
+            HeaderOverlapBox {
+                BinarioCard(Modifier.padding(horizontal = ScreenMargin)) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        SegmentedControl(
+                            options = SearchMode.entries,
+                            selected = mode,
+                            onSelect = { mode = it },
+                            label = { it.localizedLabel() },
+                            tagOf = { "planner-mode-${it.name.lowercase(Locale.ROOT)}" }
+                        )
                         when (mode) {
-                        SearchMode.ROUTE -> {
-                        VoiceInputButton(onClick = { startVoiceInput(SearchMode.ROUTE) }, label = stringResource(R.string.planner_voice_route))
-                        speechMessage?.let { message -> Text(message, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-                        Text(stringResource(R.string.planner_departure_station), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
-                        StationField(
-                            label = stringResource(R.string.planner_origin),
-                            value = originText,
-                            onValueChange = { originText = it; viewModel.updateStationSuggestions("planner-origin", it) },
-                            matches = viewModel.stationSuggestions("planner-origin"),
-                            onSelect = { originText = it.name; viewModel.clearStationSuggestions("planner-origin") }
-                        )
-                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                            Text(stringResource(R.string.planner_arrival_station), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                            IconButton(onClick = { val old = originText; originText = destinationText; destinationText = old }) {
-                                Icon(Icons.Default.SwapHoriz, contentDescription = stringResource(R.string.action_swap_origin_destination))
-                            }
-                        }
-                        StationField(
-                            label = stringResource(R.string.planner_destination),
-                            value = destinationText,
-                            onValueChange = { destinationText = it; viewModel.updateStationSuggestions("planner-destination", it) },
-                            matches = viewModel.stationSuggestions("planner-destination"),
-                            onSelect = { destinationText = it.name; viewModel.clearStationSuggestions("planner-destination") }
-                        )
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                            FilterChip(selected = !returnJourney, onClick = { returnJourney = false }, label = { Text(stringResource(R.string.planner_one_way)) })
-                            FilterChip(
-                                selected = returnJourney,
-                                onClick = {
-                                    returnJourney = true
-                                    val outboundDate = PlannerDateTime.dateOrToday(travelDate)
-                                    val outboundTime = PlannerDateTime.timeOrNow(travelTime)
-                                    val currentReturnDate = PlannerDateTime.dateOrToday(returnDate)
-                                    val currentReturnTime = PlannerDateTime.timeOrNow(returnTime)
-                                    if (!PlannerDateTime.isReturnAfterDeparture(outboundDate, outboundTime, currentReturnDate, currentReturnTime)) {
-                                        returnDate = outboundDate.plusDays(1).toString()
-                                        returnTime = outboundTime.toString()
-                                    }
-                                },
-                                label = { Text(stringResource(R.string.planner_round_trip)) }
-                            )
-                        }
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                            val outboundDateDescription = stringResource(
-                                R.string.accessibility_select_outbound_date,
-                                PlannerDateTime.dateLabel(travelDate, locale, dateUnselected)
-                            )
-                            val outboundTimeDescription = stringResource(
-                                R.string.accessibility_select_outbound_time,
-                                PlannerDateTime.timeLabel(travelTime, locale, timeUnselected)
-                            )
-                            OutlinedButton(
-                                onClick = { showDatePicker = true },
-                                modifier = Modifier.weight(1f).semantics { contentDescription = outboundDateDescription }
-                            ) {
-                                Column(horizontalAlignment = Alignment.Start) { Text(stringResource(R.string.planner_outbound_date), style = MaterialTheme.typography.labelSmall); Text(PlannerDateTime.dateLabel(travelDate, locale, dateUnselected), fontWeight = FontWeight.Bold) }
-                            }
-                            OutlinedButton(
-                                onClick = { showTimePicker = true },
-                                modifier = Modifier.weight(1f).semantics { contentDescription = outboundTimeDescription }
-                            ) {
-                                Column(horizontalAlignment = Alignment.Start) { Text(stringResource(R.string.planner_outbound_time), style = MaterialTheme.typography.labelSmall); Text(PlannerDateTime.timeLabel(travelTime, locale, timeUnselected), fontWeight = FontWeight.Bold) }
-                            }
-                        }
-                        if (returnJourney) {
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                                val returnDateDescription = stringResource(
-                                    R.string.accessibility_select_return_date,
-                                    PlannerDateTime.dateLabel(returnDate, locale, dateUnselected)
-                                )
-                                val returnTimeDescription = stringResource(
-                                    R.string.accessibility_select_return_time,
-                                    PlannerDateTime.timeLabel(returnTime, locale, timeUnselected)
-                                )
-                                OutlinedButton(
-                                    onClick = { showReturnDatePicker = true },
-                                    modifier = Modifier.weight(1f).semantics { contentDescription = returnDateDescription }
-                                ) {
-                                    Column(horizontalAlignment = Alignment.Start) { Text(stringResource(R.string.planner_return_date), style = MaterialTheme.typography.labelSmall); Text(PlannerDateTime.dateLabel(returnDate, locale, dateUnselected), fontWeight = FontWeight.Bold) }
-                                }
-                                OutlinedButton(
-                                    onClick = { showReturnTimePicker = true },
-                                    modifier = Modifier.weight(1f).semantics { contentDescription = returnTimeDescription }
-                                ) {
-                                    Column(horizontalAlignment = Alignment.Start) { Text(stringResource(R.string.planner_return_time), style = MaterialTheme.typography.labelSmall); Text(PlannerDateTime.timeLabel(returnTime, locale, timeUnselected), fontWeight = FontWeight.Bold) }
-                                }
-                            }
-                            if (!roundTripChronologyValid) {
-                                Text(
-                                    stringResource(R.string.planner_return_after_outbound),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.error
-                                )
-                            }
-                        }
-                        FilterChip(
-                            selected = showFilters,
-                            onClick = { showFilters = !showFilters },
-                            label = { Text(stringResource(if (showFilters) R.string.planner_filters_open else R.string.planner_filters_all_trains)) },
-                            leadingIcon = { Icon(Icons.Default.Info, contentDescription = null, modifier = Modifier.size(18.dp)) }
-                        )
-                        if (showFilters) {
-                            JourneyChangeFilterBar(viewModel.journeyChangeFilter, viewModel::selectJourneyChangeFilter)
-                            OperatorFilterBar(viewModel.operatorFilter, viewModel.operatorFilterOptions(), viewModel::selectOperatorFilter)
-                            Text(stringResource(R.string.planner_filter_disclosure), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                        Button(
-                            onClick = {
-                                val searched = if (
-                                    origin != null &&
-                                    destination != null &&
-                                    origin != destination &&
-                                    selectedDepartureDate != null &&
-                                    selectedDepartureTime != null
-                                ) {
-                                    if (
-                                        returnJourney &&
-                                        selectedReturnDate != null &&
-                                        selectedReturnTime != null &&
-                                        roundTripChronologyValid
-                                    ) {
-                                        viewModel.searchRoundTrip(
-                                            origin,
-                                            destination,
-                                            selectedDepartureDate,
-                                            selectedDepartureTime,
-                                            selectedReturnDate,
-                                            selectedReturnTime
+                            SearchMode.ROUTE -> {
+                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        StationField(
+                                            label = stringResource(R.string.planner_origin),
+                                            value = originText,
+                                            onValueChange = { originText = it; viewModel.updateStationSuggestions("planner-origin", it) },
+                                            matches = viewModel.stationSuggestions("planner-origin"),
+                                            onSelect = { originText = it.name; viewModel.clearStationSuggestions("planner-origin") }
                                         )
-                                    } else if (!returnJourney) {
-                                        viewModel.searchRoute(origin, destination, selectedDepartureDate, selectedDepartureTime)
-                                    } else false
-                                } else false
-                                if (searched) showResults()
-                            },
-                            enabled = origin != null &&
-                                destination != null &&
-                                origin != destination &&
-                                selectedDepartureDate != null &&
-                                selectedDepartureTime != null &&
-                                roundTripChronologyValid,
-                            modifier = Modifier.fillMaxWidth().testTag("planner-search")
-                        ) {
-                            Icon(Icons.Default.Search, contentDescription = null)
-                            Spacer(Modifier.width(8.dp))
-                            Text(stringResource(if (returnJourney) R.string.planner_search_round_trip else R.string.planner_search_solutions))
-                        }
-                        }
-                        SearchMode.TRAIN -> {
-                            VoiceInputButton(onClick = { startVoiceInput(SearchMode.TRAIN) }, label = stringResource(R.string.planner_voice_train))
-                            speechMessage?.let { message -> Text(message, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-                            TrainNumberSearchForm(
-                                query = viewModel.trainNumberQuery,
-                                onQueryChange = viewModel::updateTrainNumberQuery,
-                                onSearch = { viewModel.searchTrainNumber(); showTrainResults() }
-                            )
-                        }
-                        SearchMode.STATION -> {
-                            VoiceInputButton(onClick = { startVoiceInput(SearchMode.STATION) }, label = stringResource(R.string.planner_voice_station))
-                            speechMessage?.let { message -> Text(message, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-                            Text(stringResource(R.string.planner_station_board_title), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
-                            StationField(
-                                label = stringResource(R.string.station_label),
-                                value = stationText,
-                                onValueChange = { stationText = it; viewModel.updateStationSuggestions("planner-station", it) },
-                                matches = viewModel.stationSuggestions("planner-station"),
-                                onSelect = { stationText = it.name; viewModel.clearStationSuggestions("planner-station") }
-                            )
-                            Button(
-                                onClick = { openStations(viewModel.stationFromName(stationText)) },
-                                enabled = viewModel.stationFromName(stationText) != null,
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Icon(Icons.Default.Route, contentDescription = null)
-                                Spacer(Modifier.width(8.dp))
-                                Text(stringResource(R.string.planner_open_station_board))
+                                        StationField(
+                                            label = stringResource(R.string.planner_destination),
+                                            value = destinationText,
+                                            onValueChange = { destinationText = it; viewModel.updateStationSuggestions("planner-destination", it) },
+                                            matches = viewModel.stationSuggestions("planner-destination"),
+                                            onSelect = { destinationText = it.name; viewModel.clearStationSuggestions("planner-destination") }
+                                        )
+                                    }
+                                    FilledTonalIconButton(
+                                        onClick = { val old = originText; originText = destinationText; destinationText = old },
+                                        modifier = Modifier.size(48.dp).testTag("planner-swap")
+                                    ) {
+                                        Icon(Icons.Default.SwapVert, contentDescription = stringResource(R.string.action_swap_origin_destination))
+                                    }
+                                }
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                                    PlannerChoiceButton(
+                                        icon = Icons.Default.CalendarMonth,
+                                        text = outboundDateLabel,
+                                        description = stringResource(R.string.accessibility_select_outbound_date, PlannerDateTime.dateLabel(travelDate, locale, dateUnselected)),
+                                        onClick = { showDatePicker = true },
+                                        modifier = Modifier.weight(1f).testTag("planner-date")
+                                    )
+                                    PlannerChoiceButton(
+                                        icon = Icons.Default.Schedule,
+                                        text = outboundTimeLabel,
+                                        description = stringResource(R.string.accessibility_select_outbound_time, outboundTimeLabel),
+                                        onClick = { showTimePicker = true },
+                                        modifier = Modifier.weight(1f).testTag("planner-time")
+                                    )
+                                }
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                                    val tripLabel = stringResource(if (returnJourney) R.string.planner_round_trip else R.string.planner_one_way)
+                                    PlannerChoiceButton(
+                                        icon = if (returnJourney) Icons.Default.ToggleOn else Icons.Default.ToggleOff,
+                                        text = tripLabel,
+                                        description = stringResource(R.string.accessibility_trip_kind, tripLabel),
+                                        onClick = {
+                                            returnJourney = !returnJourney
+                                            if (returnJourney) {
+                                                val outboundDate = PlannerDateTime.dateOrToday(travelDate)
+                                                val outboundTime = PlannerDateTime.timeOrNow(travelTime)
+                                                val currentReturnDate = PlannerDateTime.dateOrToday(returnDate)
+                                                val currentReturnTime = PlannerDateTime.timeOrNow(returnTime)
+                                                if (!PlannerDateTime.isReturnAfterDeparture(outboundDate, outboundTime, currentReturnDate, currentReturnTime)) {
+                                                    returnDate = outboundDate.plusDays(1).toString()
+                                                    returnTime = outboundTime.toString()
+                                                }
+                                            }
+                                        },
+                                        modifier = Modifier.weight(1f).testTag("planner-trip-kind")
+                                    )
+                                    PlannerChoiceButton(
+                                        icon = Icons.Default.FilterList,
+                                        text = stringResource(R.string.planner_filters),
+                                        description = stringResource(if (showFilters) R.string.planner_filters_open else R.string.planner_filters_all_trains),
+                                        onClick = { showFilters = !showFilters },
+                                        trailingIcon = if (showFilters) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                                        modifier = Modifier.weight(1f).testTag("planner-filters")
+                                    )
+                                }
+                                if (returnJourney) {
+                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                                        val returnDateLabel = shortDateLabel(selectedReturnDate, today, locale, dateUnselected)
+                                        val returnTimeLabel = PlannerDateTime.timeLabel(returnTime, locale, timeUnselected)
+                                        PlannerChoiceButton(
+                                            icon = Icons.Default.CalendarMonth,
+                                            text = stringResource(R.string.planner_return_short, returnDateLabel),
+                                            description = stringResource(R.string.accessibility_select_return_date, PlannerDateTime.dateLabel(returnDate, locale, dateUnselected)),
+                                            onClick = { showReturnDatePicker = true },
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                        PlannerChoiceButton(
+                                            icon = Icons.Default.Schedule,
+                                            text = returnTimeLabel,
+                                            description = stringResource(R.string.accessibility_select_return_time, returnTimeLabel),
+                                            onClick = { showReturnTimePicker = true },
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                    }
+                                    if (!roundTripChronologyValid) {
+                                        Text(
+                                            stringResource(R.string.planner_return_after_outbound),
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.error
+                                        )
+                                    }
+                                }
+                                if (showFilters) {
+                                    JourneyChangeFilterBar(viewModel.journeyChangeFilter, viewModel::selectJourneyChangeFilter)
+                                    OperatorFilterBar(viewModel.operatorFilter, viewModel.operatorFilterOptions(), viewModel::selectOperatorFilter)
+                                    Text(stringResource(R.string.planner_filter_disclosure), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                                Button(
+                                    onClick = search,
+                                    enabled = origin != null &&
+                                        destination != null &&
+                                        origin != destination &&
+                                        selectedDepartureDate != null &&
+                                        selectedDepartureTime != null &&
+                                        roundTripChronologyValid,
+                                    modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp).testTag("planner-search"),
+                                    shape = RoundedCornerShape(16.dp)
+                                ) {
+                                    Text(stringResource(if (returnJourney) R.string.planner_search_round_trip else R.string.planner_search_solutions), fontWeight = FontWeight.Bold)
+                                    Spacer(Modifier.width(8.dp))
+                                    Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null)
+                                }
+                                VoiceInputButton(onClick = { startVoiceInput(SearchMode.ROUTE) }, label = stringResource(R.string.planner_voice_route))
+                                speechMessage?.let { message -> Text(message, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                             }
-                        }
+                            SearchMode.TRAIN -> {
+                                TrainNumberSearchForm(
+                                    query = viewModel.trainNumberQuery,
+                                    onQueryChange = viewModel::updateTrainNumberQuery,
+                                    onSearch = { viewModel.searchTrainNumber(); showTrainResults() }
+                                )
+                                VoiceInputButton(onClick = { startVoiceInput(SearchMode.TRAIN) }, label = stringResource(R.string.planner_voice_train))
+                                speechMessage?.let { message -> Text(message, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                            }
+                            SearchMode.STATION -> {
+                                StationField(
+                                    label = stringResource(R.string.station_label),
+                                    value = stationText,
+                                    onValueChange = { stationText = it; viewModel.updateStationSuggestions("planner-station", it) },
+                                    matches = viewModel.stationSuggestions("planner-station"),
+                                    onSelect = { stationText = it.name; viewModel.clearStationSuggestions("planner-station") }
+                                )
+                                Button(
+                                    onClick = { openStations(viewModel.stationFromName(stationText)) },
+                                    enabled = viewModel.stationFromName(stationText) != null,
+                                    modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
+                                    shape = RoundedCornerShape(16.dp)
+                                ) {
+                                    Text(stringResource(R.string.planner_open_station_board), fontWeight = FontWeight.Bold)
+                                    Spacer(Modifier.width(8.dp))
+                                    Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null)
+                                }
+                                VoiceInputButton(onClick = { startVoiceInput(SearchMode.STATION) }, label = stringResource(R.string.planner_voice_station))
+                                speechMessage?.let { message -> Text(message, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                            }
                         }
                     }
                 }
             }
         }
         item {
-            Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text(stringResource(R.string.planner_recent_and_favourite), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+            Row(Modifier.fillMaxWidth().padding(top = 12.dp, end = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                SectionTitle(stringResource(R.string.planner_recent_and_favourite), Modifier.weight(1f))
                 TextButton(onClick = openMore) { Text(stringResource(R.string.action_manage)) }
             }
         }
         items(viewModel.recentRoutes.take(4), key = { "recent-${it.origin.id}-${it.destination.id}" }) { recent ->
-            Row(
-                Modifier.fillMaxWidth().clickable { if (viewModel.useRecentRoute(recent)) { originText = recent.origin.name; destinationText = recent.destination.name } }.padding(horizontal = 20.dp, vertical = 14.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(Icons.Default.Route, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                Column(Modifier.weight(1f).padding(start = 12.dp)) {
-                    Text(recent.label, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text(stringResource(R.string.planner_recent_search), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                Icon(Icons.Default.Search, contentDescription = stringResource(R.string.accessibility_repeat_search, recent.label))
-            }
-            HorizontalDivider(modifier = Modifier.padding(start = 56.dp), color = MaterialTheme.colorScheme.outlineVariant)
+            PlannerRouteRow(
+                title = recent.label,
+                detail = stringResource(R.string.planner_recent_search),
+                icon = Icons.Default.History,
+                actionDescription = stringResource(R.string.accessibility_repeat_search, recent.label),
+                onClick = { if (viewModel.useRecentRoute(recent)) { originText = recent.origin.name; destinationText = recent.destination.name } }
+            )
         }
         items(viewModel.savedRoutes.filter { it.isPinned }.take(4), key = { it.id }) { route ->
-            Row(
-                Modifier.fillMaxWidth().clickable { viewModel.activateRoute(route); originText = route.outwardOrigin.name; destinationText = route.outwardDestination.name }.padding(horizontal = 20.dp, vertical = 14.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(if (route.isPinned) Icons.Default.Star else Icons.Default.Route, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                Column(Modifier.weight(1f).padding(start = 12.dp)) {
-                    Text(route.localizedName(), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    Text(route.localizedDisplayName(Direction.OUTBOUND), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                }
-                Icon(Icons.Default.Search, contentDescription = stringResource(R.string.accessibility_use_route, route.localizedName()))
-            }
-            HorizontalDivider(modifier = Modifier.padding(start = 56.dp), color = MaterialTheme.colorScheme.outlineVariant)
+            PlannerRouteRow(
+                title = route.localizedDisplayName(Direction.OUTBOUND),
+                detail = route.localizedName(),
+                icon = Icons.Default.Star,
+                actionDescription = stringResource(R.string.accessibility_use_route, route.localizedName()),
+                onClick = { viewModel.activateRoute(route); originText = route.outwardOrigin.name; destinationText = route.outwardDestination.name }
+            )
+        }
+        item { Spacer(Modifier.height(24.dp)) }
+    }
+}
+
+/** A light box of the planner card: icon and value, the whole box is the 56 dp touch target. */
+@Composable
+private fun PlannerChoiceButton(
+    icon: ImageVector,
+    text: String,
+    description: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    trailingIcon: ImageVector? = null
+) {
+    Surface(
+        onClick = onClick,
+        modifier = modifier.heightIn(min = 56.dp).semantics { contentDescription = description },
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Row(Modifier.padding(horizontal = 14.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(22.dp))
+            Spacer(Modifier.width(10.dp))
+            Text(text, modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+            trailingIcon?.let { Icon(it, contentDescription = null, modifier = Modifier.size(20.dp)) }
         }
     }
 }
 
-/** Planner-first home: the green app bar continues into the headline, so the question is the first thing read. */
+/** A recent search or pinned route under the planner card, as a white row of the render. */
 @Composable
-private fun PlannerHeader(isDemonstration: Boolean) {
+private fun PlannerRouteRow(title: String, detail: String, icon: ImageVector, actionDescription: String, onClick: () -> Unit) {
     Surface(
-        color = MaterialTheme.colorScheme.primary,
-        contentColor = MaterialTheme.colorScheme.onPrimary,
-        shape = RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp),
-        modifier = Modifier.fillMaxWidth()
+        onClick = onClick,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = ScreenMargin, vertical = 4.dp)
+            .semantics { contentDescription = actionDescription },
+        color = MaterialTheme.colorScheme.surface,
+        shape = RoundedCornerShape(16.dp),
+        shadowElevation = 1.dp
     ) {
-        Column(Modifier.padding(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 20.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text(
-                stringResource(R.string.planner_headline),
-                modifier = Modifier.semantics { heading() },
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold
-            )
-            Text(stringResource(R.string.planner_subtitle), style = MaterialTheme.typography.bodyMedium)
-            if (isDemonstration) {
-                Surface(
-                    color = MaterialTheme.colorScheme.tertiaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Row(Modifier.padding(horizontal = 10.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.Info, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Text(stringResource(R.string.data_status_demo), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
-                    }
-                }
+        Row(Modifier.heightIn(min = 56.dp).padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+            Column(Modifier.weight(1f).padding(start = 12.dp)) {
+                Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Text(detail, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
+            Icon(Icons.Default.Search, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
+}
+
+/** "Oggi 21 nov", or "ven 22 nov" for another day. */
+@Composable
+private fun shortDateLabel(date: LocalDate?, today: LocalDate, locale: Locale, fallback: String): String = when (date) {
+    null -> fallback
+    today -> stringResource(R.string.planner_date_today, date.format(DateTimeFormatter.ofPattern("d MMM", locale)))
+    else -> date.format(DateTimeFormatter.ofPattern("EEE d MMM", locale))
 }
 
 @Composable
@@ -561,9 +611,9 @@ private fun JourneyChangeFilterBar(selected: JourneyChangeFilter, onSelected: (J
 @Composable
 private fun VoiceInputButton(onClick: () -> Unit, label: String) {
     val accessibilityLabel = stringResource(R.string.accessibility_system_voice_input, label)
-    OutlinedButton(
+    TextButton(
         onClick = onClick,
-        modifier = Modifier.fillMaxWidth().semantics { contentDescription = accessibilityLabel }
+        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).semantics { contentDescription = accessibilityLabel }
     ) {
         Icon(Icons.Default.Mic, contentDescription = null)
         Spacer(Modifier.width(8.dp))

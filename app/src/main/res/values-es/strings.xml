@@ -93,16 +93,14 @@
 
     <!-- Main app shell and primary journey planner. -->
     <string name="app_brand">BINARIO</string>
-    <string name="screen_title_results">Opciones</string>
     <string name="screen_title_detail">Detalle del servicio</string>
     <string name="screen_title_agenda">Agenda</string>
-    <string name="screen_subtitle_results">Servicios disponibles</string>
     <string name="screen_subtitle_agenda">Viajes planificados en el dispositivo</string>
     <string name="action_back">Volver</string>
     <string name="action_choose_theme">Elegir tema. Tema actual: %1$s</string>
     <string name="action_refresh_rail_information">Actualizar la información ferroviaria</string>
     <string name="search_mode_route">Viaje</string>
-    <string name="search_mode_train">N.º de tren</string>
+    <string name="search_mode_train">Tren</string>
     <string name="search_mode_station">Estación</string>
     <string name="operations_section_trains">Trenes</string>
     <string name="operations_section_stations">Estaciones</string>
@@ -173,17 +171,11 @@
 
     <!-- Search and station board. -->
     <string name="planner_voice_route">Dictar ruta</string>
-    <string name="planner_departure_station">ESTACIÓN DE SALIDA</string>
-    <string name="planner_arrival_station">ESTACIÓN DE LLEGADA</string>
-    <string name="planner_origin">Salida</string>
-    <string name="planner_destination">Llegada</string>
+    <string name="planner_origin">Desde</string>
+    <string name="planner_destination">Hasta</string>
     <string name="action_swap_origin_destination">Intercambiar salida y llegada</string>
     <string name="planner_one_way">Solo ida</string>
     <string name="planner_round_trip">Ida y vuelta</string>
-    <string name="planner_outbound_date">IDA · FECHA</string>
-    <string name="planner_outbound_time">IDA · HORA</string>
-    <string name="planner_return_date">VUELTA · FECHA</string>
-    <string name="planner_return_time">VUELTA · HORA</string>
     <string name="accessibility_select_outbound_date">Selecciona la fecha de ida. Valor actual: %1$s</string>
     <string name="accessibility_select_outbound_time">Selecciona la hora de ida. Valor actual: %1$s</string>
     <string name="accessibility_select_return_date">Selecciona la fecha de vuelta. Valor actual: %1$s</string>
@@ -209,7 +201,6 @@
     <string name="planner_train_number_example">P. ej. 9310</string>
     <string name="planner_filter_train">Buscar tren</string>
     <string name="planner_voice_station">Dictar estación</string>
-    <string name="planner_station_board_title">PANEL DE ESTACIÓN</string>
     <string name="station_label">Estación</string>
     <string name="planner_open_station_board">Abrir panel</string>
     <string name="planner_recent_and_favourite">Recientes y favoritas</string>
@@ -289,12 +280,9 @@
     <string name="today_empty_title">No hay salidas que mostrar</string>
 
     <!-- Settings, privacy and integrations. -->
-    <string name="settings_appearance">Apariencia</string>
     <string name="settings_theme_title">Tema de la aplicación</string>
     <string name="settings_theme_description">Sistema, claro u oscuro</string>
     <string name="settings_personal_journeys_description">Las rutas fijadas siguen disponibles también en el widget. Toca una ruta para activarla.</string>
-    <string name="settings_add_route">Añadir una ruta</string>
-    <string name="settings_integrations">Integraciones</string>
     <string name="settings_monitored_trains">Trenes seguidos</string>
     <string name="settings_monitored_trains_description">Las alertas en tiempo real solo estarán disponibles con una fuente autorizada.</string>
     <string name="train_number_label">Tren %1$s</string>
@@ -305,25 +293,20 @@
     <string name="settings_privacy_wear">Si activas el smartwatch, recibe un resumen de la ruta y hasta dos servicios. Desactivar el uso compartido elimina el DataItem y la caché local del reloj al recibir la revocación. La información completa está en PRIVACY.md del repositorio. Antes de una distribución pública faltan una URL verificada y un contacto de privacidad: aún no existe un enlace público en la aplicación.</string>
     <!-- Binario 2.0 UX (October 2026) -->
     <string name="planner_headline">¿Adónde vamos?</string>
-    <string name="planner_subtitle">Busca una ruta, un número de tren o una estación.</string>
+    <string name="planner_subtitle">Tu próximo viaje empieza aquí.</string>
     <string name="data_status_quality">Calidad del dato: %1$s</string>
     <string name="data_status_cached">Copia guardada, no en tiempo real: %1$s</string>
     <string name="nav_plan">Planificar</string>
     <string name="nav_departures">Salidas</string>
     <string name="nav_for_you">Para ti</string>
-    <string name="departures_subtitle">Ruta activa y paneles de estación</string>
-    <string name="for_you_subtitle">Rutas, viajes, avisos y preferencias</string>
-    <string name="departures_next_departure">Próxima salida</string>
+    <string name="departures_next_departure">Próximo tren</string>
     <string name="route_picker_title">Elegir la ruta</string>
     <string name="route_picker_empty">Ninguna ruta guardada. Añade una en Para ti.</string>
     <string name="route_picker_manage">Gestionar rutas</string>
-    <string name="for_you_saved_routes">Rutas guardadas</string>
     <string name="for_you_alarms">Alarmas y avisos</string>
     <string name="for_you_stop_alarm_hint">Las alarmas de parada, también por GPS, se configuran desde una parada en el detalle de un tren.</string>
     <string name="for_you_credits">Créditos y licencias</string>
     <string name="action_follow_trip">Seguir viaje</string>
-    <string name="action_save">Guardar</string>
-    <string name="action_saved">Guardado</string>
     <string name="action_share">Compartir</string>
     <string name="detail_save_hint">Guardar añade el tren a los trenes seguidos en Para ti; Seguir viaje guarda la próxima parada solo en este dispositivo.</string>
     <string name="stop_position_passed">Parada superada</string>
@@ -414,15 +397,9 @@
 
     <!-- Board, routes and service detail. -->
     <string name="delay_minutes">+%1$d min</string>
-    <string name="board_header_title">SALIDAS · %1$s</string>
     <string name="board_route_direction">%1$s · %2$s</string>
-    <string name="accessibility_refresh_departures">Actualizar salidas. Estado: %1$s</string>
     <string name="action_direction">Sentido</string>
     <string name="action_change_route">Cambiar ruta</string>
-    <string name="board_column_time">HORA</string>
-    <string name="board_column_service">DESTINO / TREN</string>
-    <string name="board_column_platform">AND.</string>
-    <string name="board_column_status">ESTADO</string>
     <string name="monitored_routes_title">Rutas seguidas</string>
     <string name="service_scheduled_lowercase">programado</string>
     <string name="service_on_time_lowercase">en hora</string>
@@ -447,9 +424,7 @@
     <string name="route_name_example">P. ej. Casa – trabajo</string>
     <string name="route_save_and_activate">Guardar y activar ruta</string>
 
-    <string name="service_operator_category">%1$s · %2$s</string>
     <string name="service_operator_category_number">%1$s · %2$s %3$s</string>
-    <string name="service_number_route">%1$s · %2$s → %3$s</string>
     <string name="service_scheduled_departure_label">Salida programada</string>
     <string name="expected_time">Previsto: %1$s</string>
     <string name="service_scheduled_departure">Programada: %1$s</string>
@@ -934,5 +909,80 @@
         <item quantity="one">%d observación registrada en este dispositivo</item>
         <item quantity="many">%d observaciones registradas en este dispositivo</item>
         <item quantity="other">%d observaciones registradas en este dispositivo</item>
+    </plurals>
+    <!-- Binario 2.0 approved render (November 2026). -->
+    <string name="accessibility_row_selected">Seleccionada</string>
+    <string name="service_category_number">%1$s %2$s</string>
+    <string name="service_scheduled_arrival">Llegada programada %1$s</string>
+    <string name="service_duration_accessible">Duración %1$s</string>
+    <string name="action_modify_search">Editar</string>
+    <string name="results_order_fastest">Más rápido</string>
+    <string name="results_order_departure">Por horario</string>
+    <string name="service_group_regional">Regionales</string>
+    <string name="service_group_frecce">Frecce</string>
+    <string name="service_group_italo">Italo</string>
+    <string name="service_group_other">Otros</string>
+    <string name="results_date_today">Hoy, %1$s</string>
+    <string name="results_date_from_time">%1$s · desde las %2$s</string>
+    <string name="planner_time_now">Ahora</string>
+    <string name="accessibility_trip_kind">Tipo de viaje: %1$s. Toca para cambiar entre solo ida e ida y vuelta</string>
+    <string name="planner_filters">Filtros</string>
+    <string name="planner_return_short">Vuelta %1$s</string>
+    <string name="planner_date_today">Hoy %1$s</string>
+    <string name="action_see_details">Ver detalles</string>
+    <string name="departures_title">Tus salidas</string>
+    <string name="departures_other_services">Otros trenes</string>
+    <string name="filter_all_services">Todos</string>
+    <string name="action_details">Detalles</string>
+    <string name="detail_info_operator">Operador</string>
+    <string name="detail_info_train">Tren</string>
+    <string name="detail_info_expected">Salida prevista</string>
+    <string name="detail_info_platform">Andén</string>
+    <string name="detail_info_status">Estado</string>
+    <string name="detail_monitored_state">Guardado entre los trenes seguidos de Para ti.</string>
+    <string name="detail_not_monitored_state">No guardado: el corazón de arriba lo añade a los trenes seguidos de Para ti.</string>
+    <string name="detail_stop_alarm_title">Alarma en la parada</string>
+    <string name="accessibility_stop_alarm_at">Poner la alarma en la parada %1$s, hora %2$s</string>
+    <string name="action_follow_this_trip">Seguir este viaje</string>
+    <string name="detail_departure_time">Salida %1$s</string>
+    <string name="detail_tab_route">Recorrido</string>
+    <string name="detail_tab_info">Información</string>
+    <string name="detail_tab_services">Servicios</string>
+    <string name="stop_role_departure">Salida</string>
+    <string name="stop_role_arrival">Llegada</string>
+    <string name="stop_role_intermediate">Parada intermedia</string>
+    <string name="accessibility_save_monitored">Guardar entre los trenes seguidos de Para ti</string>
+    <string name="accessibility_saved_monitored">Guardado entre los trenes seguidos de Para ti. Toca para quitarlo</string>
+    <string name="for_you_routes_title">Tus rutas</string>
+    <string name="for_you_tab_favourites">Favoritas</string>
+    <string name="for_you_tab_recent">Recientes</string>
+    <string name="for_you_no_recent">No hay búsquedas recientes en este dispositivo.</string>
+    <string name="accessibility_route_actions">Más acciones para %1$s</string>
+    <string name="settings_title">Ajustes</string>
+    <string name="settings_row_detail">Tema, notificaciones, widgets, datos e idioma</string>
+    <string name="settings_theme">Apariencia</string>
+    <string name="settings_section_alerts">Notificaciones y alarmas</string>
+    <string name="settings_section_alerts_detail">Alarma en la parada, alarma GPS y avisos para el trayecto diario</string>
+    <string name="settings_section_widgets">Widgets</string>
+    <string name="settings_section_widgets_detail">Widgets de la pantalla de inicio y dispositivos conectados</string>
+    <string name="settings_section_data">Datos y actualizaciones</string>
+    <string name="settings_section_data_detail">Fuentes de datos, privacidad y copia local</string>
+    <string name="settings_section_language">Idioma y accesibilidad</string>
+    <string name="settings_section_language_detail">Idioma de la app, tema y preferencias de movilidad</string>
+    <string name="settings_section_about">Información</string>
+    <string name="settings_section_about_detail">Versión, créditos y licencias</string>
+    <string name="settings_widgets_title">Widgets de Binario</string>
+    <string name="settings_widgets_route">Widget Ruta: las próximas salidas de una ruta guardada, con cambio de sentido y páginas.</string>
+    <string name="settings_widgets_station">Widget Estación: el panel de una estación que elijas.</string>
+    <string name="settings_widgets_how">Para añadir uno, mantén pulsada la pantalla de inicio, elige Widgets y busca Binario. Cada widget conserva su propia ruta o estación.</string>
+    <string name="settings_language_title">Idioma de la app</string>
+    <string name="settings_language_description">Binario está disponible en italiano, inglés, alemán, francés y español.</string>
+    <string name="settings_language_open">Elegir el idioma en los ajustes del sistema</string>
+    <string name="settings_language_system">En esta versión de Android el idioma de la app sigue al del sistema.</string>
+    <string name="settings_about_version">Versión %1$s</string>
+    <plurals name="duration_hours">
+        <item quantity="one">%d hora</item>
+        <item quantity="many">%d horas</item>
+        <item quantity="other">%d horas</item>
     </plurals>
 </resources>

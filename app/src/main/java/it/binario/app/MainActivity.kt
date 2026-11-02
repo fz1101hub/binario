@@ -11,24 +11,39 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
@@ -75,6 +90,9 @@ import it.binario.app.ui.common.BinarioNavigationBar
 import it.binario.app.ui.common.BinarioNavigationRail
 import it.binario.app.ui.common.BinarioTopBar
 import it.binario.app.ui.common.DetailPlaceholder
+import it.binario.app.ui.common.HeaderOverlapBox
+import it.binario.app.ui.common.LocalWideLayout
+import it.binario.app.ui.common.ScreenHeader
 import it.binario.app.ui.common.localizedQualityLabel
 import it.binario.app.ui.departures.DeparturesScreen
 import it.binario.app.ui.departures.OperationsSection
@@ -83,8 +101,12 @@ import it.binario.app.ui.detail.ServiceDetailScreen
 import it.binario.app.ui.detail.trainShareStrings
 import it.binario.app.ui.foryou.ForYouScreen
 import it.binario.app.ui.planner.PlannerScreen
+import it.binario.app.ui.planner.ResultsMapPane
 import it.binario.app.ui.planner.RouteResultsScreen
 import it.binario.app.ui.planner.SearchMode
+import it.binario.app.ui.settings.SettingsScreen
+import it.binario.app.ui.settings.SettingsSection
+import it.binario.app.ui.settings.SettingsSectionScreen
 import it.binario.app.widget.WidgetConfigurationStore
 import it.binario.app.widget.WidgetStateStore
 import kotlinx.coroutines.delay
@@ -166,9 +188,13 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+/**
+ * The whole Binario UI: chrome (green header and bottom navigation on phones, green side navigation from 600 dp),
+ * the screens and the list-detail panes from 840 dp. Internal so that the design screenshot test can render it
+ * with a deterministic view model.
+ */
 @Composable
-private fun BinarioApp(
+internal fun BinarioApp(
     viewModel: TrainViewModel,
     themeMode: AppThemeMode,
     onThemeModeChange: (AppThemeMode) -> Unit,
@@ -182,6 +208,7 @@ private fun BinarioApp(
     var plannerSearchModeName by rememberSaveable { mutableStateOf(SearchMode.ROUTE.name) }
     var plannerSearchRequestId by rememberSaveable { mutableIntStateOf(0) }
     var showThemePicker by rememberSaveable { mutableStateOf(false) }
+    var settingsSectionName by rememberSaveable { mutableStateOf(SettingsSection.ALERTS.name) }
     var pendingStopAlarm by rememberSaveable(stateSaver = stopAlarmPlanSaver) {
         mutableStateOf<StopAlarmPlan?>(null)
     }
@@ -337,38 +364,36 @@ private fun BinarioApp(
     BackHandler(enabled = backTarget != null, onBack = navigateBack)
     val selectedDestination = AppNavigation.destinationOf(screen, detailReturnScreen)
     val selectDestination: (TopDestination) -> Unit = { destination -> showScreen(AppNavigation.rootOf(destination)) }
-    val title = stringResource(
-        when (screen) {
-            AppScreen.PLANNER -> R.string.app_brand
-            AppScreen.DEPARTURES -> R.string.nav_departures
-            AppScreen.FOR_YOU -> R.string.nav_for_you
-            AppScreen.AGENDA -> R.string.screen_title_agenda
-            AppScreen.RESULTS -> R.string.screen_title_results
-            AppScreen.NUMBER_RESULTS -> R.string.train_number_results_title
-            AppScreen.DETAIL -> R.string.screen_title_detail
-        }
-    )
-    val subtitle = when (screen) {
-        // The green planner header below the bar carries the headline and its subtitle.
-        AppScreen.PLANNER, AppScreen.DETAIL -> null
-        AppScreen.DEPARTURES -> stringResource(R.string.departures_subtitle)
-        AppScreen.FOR_YOU -> stringResource(R.string.for_you_subtitle)
-        AppScreen.AGENDA -> stringResource(R.string.screen_subtitle_agenda)
-        AppScreen.RESULTS -> stringResource(R.string.screen_subtitle_results)
-        AppScreen.NUMBER_RESULTS -> stringResource(R.string.train_number_results_subtitle)
-    }
-    val greenTopBar = screen == AppScreen.PLANNER
-    val topBarColor = if (greenTopBar) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.background
-    val navigationBarColor = MaterialTheme.colorScheme.surface
-    SideEffect {
-        onSystemBarsAppearance(topBarColor.luminance() > 0.5f, navigationBarColor.luminance() > 0.5f)
-    }
-
     if (showThemePicker) {
         ThemePickerSheet(currentMode = themeMode, onModeSelected = {
             onThemeModeChange(it)
             showThemePicker = false
         }, onDismiss = { showThemePicker = false })
+    }
+
+    val detailProviderLabel = viewModel.currentProviderLabel() ?: stringResource(R.string.provider_unavailable)
+    val detailConfidenceLabel = viewModel.localizedQualityLabel()
+    val shareSelectedService: () -> Unit = {
+        viewModel.selectedService?.let { service ->
+            val content = TrainShareFormatter.create(
+                service = service,
+                provider = detailProviderLabel,
+                confidence = detailConfidenceLabel,
+                freshness = viewModel.snapshot?.freshness,
+                refreshedAt = viewModel.lastRefreshEpochMillis(),
+                isDemonstration = viewModel.isDemonstrationData(),
+                strings = trainShareStrings
+            )
+            context.startActivity(
+                Intent.createChooser(
+                    Intent(Intent.ACTION_SEND)
+                        .setType("text/plain")
+                        .putExtra(Intent.EXTRA_TITLE, content.title)
+                        .putExtra(Intent.EXTRA_TEXT, content.text),
+                    resources.getString(R.string.share_train_chooser)
+                )
+            )
+        }
     }
 
     // inSidePane: from 840 dp a list shares the window with the detail pane (station run details included).
@@ -398,25 +423,46 @@ private fun BinarioApp(
                 },
                 openDetails = { service -> openDetail(AppScreen.DEPARTURES) { viewModel.openService(service) } },
                 manageRoutes = { showScreen(AppScreen.FOR_YOU) },
-                stationRunDetailsInSheet = !inSidePane
+                stationRunDetailsInSheet = !inSidePane,
+                selectedServiceId = viewModel.selectedService?.id.takeIf { inSidePane && screen == AppScreen.DETAIL }
             )
             AppScreen.FOR_YOU -> ForYouScreen(
                 modifier = modifier,
                 viewModel = viewModel,
-                onThemeClick = { showThemePicker = true },
                 openRoute = {
                     viewModel.activateRoute(it)
                     showDepartures(OperationsSection.TRAINS)
                 },
+                openRecent = { recent -> if (viewModel.useRecentRoute(recent)) showScreen(AppScreen.RESULTS) },
                 openAgenda = { showScreen(AppScreen.AGENDA) },
                 openStationBoard = { station ->
                     viewModel.openStationBoard(station)
                     showDepartures(OperationsSection.STATIONS)
                 },
-                gpsArrivalAlarm = gpsArrivalAlarm
+                openSettings = { showScreen(AppScreen.SETTINGS) }
             )
-            AppScreen.AGENDA -> PlannedJourneyAgendaScreen(
+            AppScreen.SETTINGS -> SettingsScreen(
                 modifier = modifier,
+                themeMode = themeMode,
+                onThemeModeChange = onThemeModeChange,
+                openSection = { section ->
+                    settingsSectionName = section.name
+                    showScreen(AppScreen.SETTINGS_SECTION)
+                }
+            )
+            AppScreen.SETTINGS_SECTION -> SettingsSectionScreen(
+                modifier = modifier,
+                section = SettingsSection.valueOf(settingsSectionName),
+                viewModel = viewModel,
+                gpsArrivalAlarm = gpsArrivalAlarm,
+                onThemeClick = { showThemePicker = true }
+            )
+            AppScreen.AGENDA -> HeaderedPane(
+                modifier = modifier,
+                title = stringResource(R.string.screen_title_agenda),
+                subtitle = stringResource(R.string.screen_subtitle_agenda)
+            ) { paneModifier -> PlannedJourneyAgendaScreen(
+                modifier = paneModifier,
                 viewModel = plannedJourneyViewModel,
                 stations = viewModel.stations.map { station ->
                     PlannedJourneyStation(station.id, station.name, station.railwayCode)
@@ -432,20 +478,28 @@ private fun BinarioApp(
                 onImportRequested = {
                     plannedJourneyImportLauncher.launch(arrayOf("application/json", "text/calendar", "text/plain"))
                 }
-            )
+            ) }
             AppScreen.RESULTS -> RouteResultsScreen(
                 modifier = modifier,
                 viewModel = viewModel,
-                openDetails = { service -> openDetail(AppScreen.RESULTS) { viewModel.openService(service) } }
+                openDetails = { service -> openDetail(AppScreen.RESULTS) { viewModel.openService(service) } },
+                editSearch = { showScreen(AppScreen.PLANNER) },
+                selectedServiceId = if (inSidePane) {
+                    viewModel.selectedService?.id.takeIf { screen == AppScreen.DETAIL } ?: viewModel.currentServices().firstOrNull()?.id
+                } else null
             )
-            AppScreen.NUMBER_RESULTS -> TrainNumberResultsScreen(
-                modifier = modifier, viewModel = viewModel,
-                onOpen = { match -> openDetail(AppScreen.NUMBER_RESULTS) { viewModel.openTrainNumberMatch(match) } }
-            )
+            AppScreen.NUMBER_RESULTS -> HeaderedPane(
+                modifier = modifier,
+                title = stringResource(R.string.train_number_results_title),
+                subtitle = stringResource(R.string.train_number_results_subtitle)
+            ) { paneModifier ->
+                TrainNumberResultsScreen(
+                    modifier = paneModifier, viewModel = viewModel,
+                    onOpen = { match -> openDetail(AppScreen.NUMBER_RESULTS) { viewModel.openTrainNumberMatch(match) } }
+                )
+            }
             AppScreen.DETAIL -> {
                 val service = viewModel.selectedService
-                val detailProvider = viewModel.currentProviderLabel() ?: stringResource(R.string.provider_unavailable)
-                val detailConfidence = viewModel.localizedQualityLabel()
                 if (service == null) {
                     // The selected service is intentionally in-memory. After process
                     // death, a restored DETAIL screen returns to its saved parent
@@ -454,14 +508,13 @@ private fun BinarioApp(
                 } else ServiceDetailScreen(
                     modifier = modifier,
                     service = service,
-                    provider = detailProvider,
-                    confidence = detailConfidence,
+                    provider = detailProviderLabel,
+                    confidence = detailConfidenceLabel,
                     freshness = viewModel.snapshot?.freshness,
                     refreshedAt = viewModel.lastRefreshEpochMillis(),
                     isDemonstration = viewModel.isDemonstrationData(),
                     onRefresh = viewModel::refresh,
                     isMonitored = viewModel.isMonitoring(service),
-                    onToggleMonitoring = { viewModel.toggleServiceMonitoring(service) },
                     onScheduleStopAlarm = scheduleStopAlarm,
                     alarmFeedback = stopAlarmFeedback,
                     gpsAlarmPanel = { GpsArrivalAlarmPanel(gpsArrivalAlarm) },
@@ -477,107 +530,145 @@ private fun BinarioApp(
                     onClearPunctuality = { viewModel.clearPunctualityHistory(service.number) },
                     mapStationIndex = rememberOpenMapStationIndex(viewModel.stations, viewModel::stationFromName),
                     sourceSections = { TrainDetailSourceSections(service, viewModel.stations) },
-                    onShare = {
-                        val content = TrainShareFormatter.create(
-                            service = service,
-                            provider = detailProvider,
-                            confidence = detailConfidence,
-                            freshness = viewModel.snapshot?.freshness,
-                            refreshedAt = viewModel.lastRefreshEpochMillis(),
-                            isDemonstration = viewModel.isDemonstrationData(),
-                            strings = trainShareStrings
-                        )
-                        context.startActivity(
-                            Intent.createChooser(
-                                Intent(Intent.ACTION_SEND)
-                                    .setType("text/plain")
-                                    .putExtra(Intent.EXTRA_TITLE, content.title)
-                                    .putExtra(Intent.EXTRA_TEXT, content.text),
-                                resources.getString(R.string.share_train_chooser)
-                            )
-                        )
-                    }
+                    onShare = shareSelectedService,
+                    showShareButton = inSidePane
                 )
             }
         }
     }
 
+    val navigationIcon: @Composable () -> Unit = {
+        if (backTarget != null) {
+            IconButton(onClick = navigateBack, modifier = Modifier.testTag("top-bar-back")) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
+            }
+        }
+    }
+    val actions: @Composable RowScope.() -> Unit = {
+        when (screen) {
+            AppScreen.PLANNER -> IconButton(onClick = { showThemePicker = true }) {
+                Icon(Icons.Default.Palette, contentDescription = stringResource(R.string.action_choose_theme, themeMode.localizedLabel()))
+            }
+            AppScreen.FOR_YOU -> IconButton(onClick = { showScreen(AppScreen.SETTINGS) }, modifier = Modifier.testTag("top-bar-settings")) {
+                Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.settings_title))
+            }
+            AppScreen.DEPARTURES, AppScreen.RESULTS, AppScreen.NUMBER_RESULTS -> IconButton(onClick = {
+                if (screen == AppScreen.NUMBER_RESULTS) viewModel.searchTrainNumber(refresh = true)
+                else if (screen == AppScreen.DEPARTURES && operationsSection == OperationsSection.STATIONS) {
+                    viewModel.refreshStationBoardIfIdle()
+                } else viewModel.refresh()
+            }) {
+                Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.action_refresh_rail_information))
+            }
+            AppScreen.DETAIL -> viewModel.selectedService?.let { service ->
+                val monitored = viewModel.isMonitoring(service)
+                // The heart is the existing "Salva": it adds the train to the monitored trains of Per te.
+                IconButton(onClick = { viewModel.toggleServiceMonitoring(service) }, modifier = Modifier.testTag("detail-save")) {
+                    Icon(
+                        if (monitored) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                        contentDescription = stringResource(if (monitored) R.string.accessibility_saved_monitored else R.string.accessibility_save_monitored)
+                    )
+                }
+                IconButton(onClick = shareSelectedService, modifier = Modifier.testTag("detail-share")) {
+                    Icon(Icons.Default.Share, contentDescription = stringResource(R.string.action_share))
+                }
+            }
+            AppScreen.AGENDA, AppScreen.SETTINGS, AppScreen.SETTINGS_SECTION -> Unit
+        }
+    }
+
     // Width classes come from the window this activity really has (multi-window and foldables included).
-    BoxWithConstraints(Modifier.fillMaxSize()) {
+    BoxWithConstraints(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         val widthClass = WidthClass.fromWidthDp(maxWidth.value)
-        val withRail = widthClass != WidthClass.COMPACT
+        val wide = widthClass != WidthClass.COMPACT
         val listPane = AppNavigation.listPaneOf(screen, detailReturnScreen, widthClass)
-        Scaffold(
-            topBar = {
-                BinarioTopBar(
-                    title = title,
-                    subtitle = subtitle,
-                    containerColor = topBarColor,
-                    contentColor = if (greenTopBar) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onBackground,
-                    brand = greenTopBar,
-                    navigationIcon = {
-                        if (backTarget != null) {
-                            IconButton(onClick = navigateBack, modifier = Modifier.testTag("top-bar-back")) {
-                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
-                            }
+        val statusBarColor = if (wide) MaterialTheme.colorScheme.background else BinarioTheme.colors.header
+        val navigationBarColor = MaterialTheme.colorScheme.surface
+        SideEffect {
+            onSystemBarsAppearance(statusBarColor.luminance() > 0.5f, navigationBarColor.luminance() > 0.5f)
+        }
+        CompositionLocalProvider(LocalWideLayout provides wide) {
+            if (!wide) {
+                Scaffold(
+                    topBar = { BinarioTopBar(brand = screen == AppScreen.PLANNER, navigationIcon = navigationIcon, actions = actions) },
+                    bottomBar = {
+                        if (AppNavigation.showsNavigation(screen, widthClass)) {
+                            BinarioNavigationBar(selected = selectedDestination, onSelect = selectDestination, containerColor = navigationBarColor)
                         }
                     },
-                    actions = {
-                        IconButton(onClick = { showThemePicker = true }) {
-                            Icon(Icons.Default.Palette, contentDescription = stringResource(R.string.action_choose_theme, themeMode.localizedLabel()))
-                        }
-                        if (screen == AppScreen.DEPARTURES || screen == AppScreen.RESULTS || screen == AppScreen.NUMBER_RESULTS || screen == AppScreen.DETAIL) {
-                            IconButton(onClick = {
-                                if (screen == AppScreen.NUMBER_RESULTS) viewModel.searchTrainNumber(refresh = true)
-                                else if (screen == AppScreen.DEPARTURES && operationsSection == OperationsSection.STATIONS) {
-                                    viewModel.refreshStationBoardIfIdle()
-                                } else viewModel.refresh()
-                            }) {
-                                Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.action_refresh_rail_information))
-                            }
-                        }
-                    }
-                )
-            },
-            bottomBar = {
-                if (!withRail && AppNavigation.showsNavigation(screen, widthClass)) {
-                    BinarioNavigationBar(selected = selectedDestination, onSelect = selectDestination, containerColor = navigationBarColor)
+                    containerColor = MaterialTheme.colorScheme.background
+                ) { padding ->
+                    screenContent(screen, Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding), false)
                 }
-            },
-            containerColor = MaterialTheme.colorScheme.background
-        ) { padding ->
-            Row(Modifier.fillMaxSize().padding(padding)) {
-                if (withRail) {
-                    // Below the full-width app bar, so the status bar area keeps a single colour.
-                    BinarioNavigationRail(selected = selectedDestination, onSelect = selectDestination)
-                    VerticalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                }
-                when {
-                    listPane != null -> {
-                        // List and detail side by side: the list keeps its place while trains are opened.
-                        screenContent(listPane, Modifier.weight(1f).fillMaxHeight(), true)
-                        VerticalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                        Box(Modifier.weight(1.2f).fillMaxHeight().testTag("detail-pane")) {
+            } else {
+                Row(Modifier.fillMaxSize()) {
+                    // The green side navigation reaches behind the status bar, as in the tablet render.
+                    BinarioNavigationRail(
+                        selected = selectedDestination,
+                        onSelect = selectDestination,
+                        expanded = widthClass == WidthClass.EXPANDED
+                    )
+                    Column(
+                        Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.End + WindowInsetsSides.Bottom))
+                    ) {
+                        BinarioTopBar(brand = false, navigationIcon = navigationIcon, actions = actions)
+                        Row(Modifier.weight(1f).fillMaxWidth()) {
                             when {
-                                screen == AppScreen.DETAIL -> screenContent(AppScreen.DETAIL, Modifier.fillMaxSize(), true)
-                                listPane == AppScreen.DEPARTURES && operationsSection == OperationsSection.STATIONS &&
-                                    viewModel.selectedBoardEntry != null ->
-                                    StationBoardRunDetailsPane(Modifier.fillMaxSize(), viewModel)
-                                else -> DetailPlaceholder()
+                                listPane != null -> {
+                                    // List and detail side by side: the list keeps its place while trains are opened.
+                                    screenContent(listPane, Modifier.weight(1f).fillMaxHeight(), true)
+                                    VerticalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                                    Box(Modifier.weight(1.2f).fillMaxHeight().testTag("detail-pane")) {
+                                        val previewService = viewModel.currentServices().firstOrNull()
+                                        when {
+                                            screen == AppScreen.DETAIL -> screenContent(AppScreen.DETAIL, Modifier.fillMaxSize(), true)
+                                            listPane == AppScreen.DEPARTURES && operationsSection == OperationsSection.STATIONS &&
+                                                viewModel.selectedBoardEntry != null ->
+                                                StationBoardRunDetailsPane(Modifier.fillMaxSize(), viewModel)
+                                            listPane == AppScreen.RESULTS && previewService != null -> ResultsMapPane(
+                                                service = previewService,
+                                                isDemonstration = viewModel.isDemonstrationData(),
+                                                stationIndex = rememberOpenMapStationIndex(viewModel.stations, viewModel::stationFromName),
+                                                onOpenDetails = { openDetail(AppScreen.RESULTS) { viewModel.openService(previewService) } }
+                                            )
+                                            else -> DetailPlaceholder()
+                                        }
+                                    }
+                                }
+                                else -> Box(Modifier.weight(1f).fillMaxHeight(), contentAlignment = Alignment.TopCenter) {
+                                    screenContent(screen, Modifier.widthIn(max = SINGLE_PANE_MAX_WIDTH).fillMaxSize(), false)
+                                }
                             }
                         }
                     }
-                    withRail -> Box(Modifier.weight(1f).fillMaxHeight(), contentAlignment = Alignment.TopCenter) {
-                        screenContent(screen, Modifier.widthIn(max = SINGLE_PANE_MAX_WIDTH).fillMaxSize(), false)
-                    }
-                    else -> screenContent(screen, Modifier.weight(1f).fillMaxHeight(), false)
                 }
             }
         }
     }
 }
 
-/** A single column wider than this is hard to read; wider windows centre it beside the rail. */
+/** A screen without its own header (agenda, train number results): the header, then the content on a sheet. */
+@Composable
+private fun HeaderedPane(modifier: Modifier, title: String, subtitle: String?, content: @Composable (Modifier) -> Unit) {
+    Column(modifier) {
+        ScreenHeader(title = title, subtitle = subtitle, bottomPadding = 8.dp)
+        HeaderOverlapBox(Modifier.weight(1f), overlap = 28.dp) {
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.background, RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
+                    .padding(top = 8.dp)
+            ) {
+                content(Modifier.fillMaxSize())
+            }
+        }
+    }
+}
+
+/** A single column wider than this is hard to read; wider windows centre it beside the side navigation. */
 private val SINGLE_PANE_MAX_WIDTH = 840.dp
 
 private fun readBoundedPlannedJourneyDocument(input: java.io.InputStream, tooLargeMessage: String): String {

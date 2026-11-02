@@ -1,5 +1,7 @@
 package it.binario.app.ui.departures
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -19,21 +21,21 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Route
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.Train
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
@@ -49,6 +51,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -59,9 +63,9 @@ import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import it.binario.app.BinarioTheme
 import it.binario.app.R
 import it.binario.app.RailNoticesArea
 import it.binario.app.RefreshState
@@ -71,10 +75,20 @@ import it.binario.app.data.Direction
 import it.binario.app.data.SavedRoute
 import it.binario.app.data.TrainService
 import it.binario.app.localized
-import it.binario.app.ui.common.BoardColumnHeader
 import it.binario.app.ui.common.DataStatusLine
 import it.binario.app.ui.common.DepartureListRow
+import it.binario.app.ui.common.HeaderBlock
+import it.binario.app.ui.common.HeaderOverlapBox
+import it.binario.app.ui.common.HeaderOverline
+import it.binario.app.ui.common.JourneyTimes
+import it.binario.app.ui.common.LocalWideLayout
+import it.binario.app.ui.common.ScreenHeader
+import it.binario.app.ui.common.ScreenMargin
+import it.binario.app.ui.common.SectionTitle
+import it.binario.app.ui.common.ServiceGroup
 import it.binario.app.ui.common.ServiceStatusBadge
+import it.binario.app.ui.common.TonalButton
+import it.binario.app.ui.common.headerMutedColor
 import it.binario.app.ui.common.isCachedCopy
 import it.binario.app.ui.common.localizedAccessibleSummary
 import it.binario.app.ui.common.localizedDisplayName
@@ -95,9 +109,10 @@ internal fun OperationsSection.localizedLabel(): String = stringResource(
 
 /**
  * "Partenze": the board of the active route (one highlighted next departure, the rest compact) or the
- * station boards, with the network notices.
+ * station boards, with the network notices. The header carries the title and the switch between the two.
  *
  * @param stationRunDetailsInSheet false when a side pane shows the run details of a station board entry.
+ * @param selectedServiceId the train whose detail is open beside the list on wide windows.
  */
 @Composable
 internal fun DeparturesScreen(
@@ -107,32 +122,45 @@ internal fun DeparturesScreen(
     onSectionSelected: (OperationsSection) -> Unit,
     openDetails: (TrainService) -> Unit,
     manageRoutes: () -> Unit,
-    stationRunDetailsInSheet: Boolean = true
+    stationRunDetailsInSheet: Boolean = true,
+    selectedServiceId: String? = null
 ) {
     Column(modifier = modifier.fillMaxSize().testTag("departures-screen")) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ScreenHeader(
+            title = stringResource(if (selectedSection == OperationsSection.TRAINS) R.string.departures_title else R.string.nav_departures),
+            bottomPadding = 8.dp
         ) {
-            OperationsSectionCard(
-                modifier = Modifier.weight(1f).testTag("departures-section-trains"),
-                section = OperationsSection.TRAINS,
-                selected = selectedSection == OperationsSection.TRAINS,
-                onClick = { onSectionSelected(OperationsSection.TRAINS) }
-            )
-            OperationsSectionCard(
-                modifier = Modifier.weight(1f).testTag("departures-section-stations"),
-                section = OperationsSection.STATIONS,
-                selected = selectedSection == OperationsSection.STATIONS,
-                onClick = { onSectionSelected(OperationsSection.STATIONS) }
-            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 4.dp)
+                    .background(
+                        if (LocalWideLayout.current) BinarioTheme.colors.segmentTrack else BinarioTheme.colors.headerTonal,
+                        RoundedCornerShape(50)
+                    )
+                    .padding(4.dp)
+                    .selectableGroup(),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                OperationsSection.entries.forEach { section ->
+                    OperationsSectionCard(
+                        modifier = Modifier.weight(1f).testTag(
+                            if (section == OperationsSection.TRAINS) "departures-section-trains" else "departures-section-stations"
+                        ),
+                        section = section,
+                        selected = selectedSection == section,
+                        onClick = { onSectionSelected(section) }
+                    )
+                }
+            }
         }
         when (selectedSection) {
             OperationsSection.TRAINS -> RouteBoard(
                 modifier = Modifier.weight(1f),
                 viewModel = viewModel,
                 openDetails = openDetails,
-                manageRoutes = manageRoutes
+                manageRoutes = manageRoutes,
+                selectedServiceId = selectedServiceId
             )
             OperationsSection.STATIONS -> StationBoardScreen(
                 modifier = Modifier.weight(1f),
@@ -148,10 +176,12 @@ private fun RouteBoard(
     modifier: Modifier,
     viewModel: TrainViewModel,
     openDetails: (TrainService) -> Unit,
-    manageRoutes: () -> Unit
+    manageRoutes: () -> Unit,
+    selectedServiceId: String?
 ) {
     LaunchedEffect(Unit) { viewModel.reconcileWidgetState() }
     var showRoutePicker by rememberSaveable { mutableStateOf(false) }
+    var groupName by rememberSaveable { mutableStateOf<String?>(null) }
     if (showRoutePicker) {
         RoutePickerSheet(
             routes = viewModel.savedRoutes,
@@ -172,6 +202,9 @@ private fun RouteBoard(
     val services = viewModel.homeServices()
     val nextService = services.firstOrNull()
     val laterServices = services.drop(1)
+    val groups = ServiceGroup.chipsFor(laterServices)
+    val group = groupName?.let { name -> ServiceGroup.entries.firstOrNull { it.name == name } }?.takeIf { it in groups }
+    val shownLater = JourneyTimes.filtered(laterServices, group)
     LazyColumn(
         modifier = modifier.fillMaxSize().testTag("route-board"),
         verticalArrangement = Arrangement.spacedBy(0.dp)
@@ -180,11 +213,23 @@ private fun RouteBoard(
             BoardRouteHeader(
                 route = viewModel.activeRoute,
                 direction = viewModel.direction,
-                refreshState = viewModel.refreshState,
                 onSwitchDirection = viewModel::switchDirection,
-                onRefresh = viewModel::refresh,
-                onChooseRoute = { showRoutePicker = true }
+                onChooseRoute = { showRoutePicker = true },
+                bottomPadding = if (nextService != null) 12.dp else 20.dp
             )
+        }
+        if (nextService != null) {
+            item(key = "next-${nextService.id}") {
+                HeaderOverlapBox {
+                    HeroDepartureCard(
+                        nextService,
+                        isDemonstration,
+                        onOpen = { openDetails(nextService) },
+                        modifier = Modifier.padding(horizontal = ScreenMargin),
+                        selected = nextService.id == selectedServiceId
+                    )
+                }
+            }
         }
         item {
             DataStatusLine(
@@ -198,13 +243,15 @@ private fun RouteBoard(
             )
         }
         if (nextService != null) {
-            item(key = "next-${nextService.id}") {
-                HeroDepartureCard(nextService, isDemonstration, onOpen = { openDetails(nextService) })
-            }
             if (laterServices.isNotEmpty()) {
-                item { BoardColumnHeader() }
-                items(laterServices, key = { it.id }) { service ->
-                    DepartureListRow(service, isDemonstration = isDemonstration, onOpen = { openDetails(service) })
+                item { SectionTitle(stringResource(R.string.departures_other_services), Modifier.padding(top = 4.dp)) }
+                if (groups.isNotEmpty()) {
+                    item {
+                        CategoryChips(groups = groups, selected = group, onSelect = { groupName = it?.name })
+                    }
+                }
+                items(shownLater, key = { it.id }) { service ->
+                    DepartureListRow(service, isDemonstration = isDemonstration, selected = service.id == selectedServiceId, onOpen = { openDetails(service) })
                 }
             }
         } else {
@@ -232,13 +279,44 @@ private fun RouteBoard(
     }
 }
 
+/** "Tutte / Regionali / Intercity / Frecce": only the groups present among the listed trains. */
+@Composable
+private fun CategoryChips(groups: List<ServiceGroup>, selected: ServiceGroup?, onSelect: (ServiceGroup?) -> Unit) {
+    val colors = BinarioTheme.colors
+    val chipColors = FilterChipDefaults.filterChipColors(
+        containerColor = colors.segmentTrack,
+        labelColor = colors.onSegmentTrack,
+        selectedContainerColor = colors.segmentSelected,
+        selectedLabelColor = colors.onSegmentSelected
+    )
+    LazyRow(
+        modifier = Modifier.fillMaxWidth().testTag("departures-category-chips"),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        contentPadding = PaddingValues(horizontal = ScreenMargin, vertical = 4.dp)
+    ) {
+        item {
+            FilterChip(selected = selected == null, onClick = { onSelect(null) }, label = { Text(stringResource(R.string.filter_all_services), fontWeight = FontWeight.Bold) }, colors = chipColors, border = null)
+        }
+        items(groups) { group ->
+            FilterChip(selected = selected == group, onClick = { onSelect(group) }, label = { Text(group.localizedLabel()) }, colors = chipColors, border = null)
+        }
+    }
+}
+
 /**
- * The only highlighted service of the board: the next departure. Demonstration data shows the timetable
- * alone, never a delay, an expected time or a platform as if they were real.
+ * The only highlighted service of the board: the next departure, as the white card of the render ("Prossima
+ * corsa", the big time, destination, train, status pill, platform and "Dettagli"). Demonstration data shows
+ * the timetable alone, never a delay, an expected time or a platform as if they were real.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-internal fun HeroDepartureCard(service: TrainService, isDemonstration: Boolean, onOpen: () -> Unit) {
+internal fun HeroDepartureCard(
+    service: TrainService,
+    isDemonstration: Boolean,
+    onOpen: () -> Unit,
+    modifier: Modifier = Modifier,
+    selected: Boolean = false
+) {
     val shown = if (isDemonstration) service.presentedAsDemonstration() else service
     val heading = stringResource(R.string.departures_next_departure)
     val serviceState = if (shown.operationalStatusVerified) {
@@ -250,15 +328,16 @@ internal fun HeroDepartureCard(service: TrainService, isDemonstration: Boolean, 
     val description = listOfNotNull(
         heading,
         if (isDemonstration) stringResource(R.string.data_status_demo) else null,
-        summary
+        summary,
+        if (selected) stringResource(R.string.accessibility_row_selected) else null
     ).joinToString(". ")
     Surface(
-        color = MaterialTheme.colorScheme.primaryContainer,
-        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-        shape = RoundedCornerShape(16.dp),
-        modifier = Modifier
+        color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
+        contentColor = MaterialTheme.colorScheme.onSurface,
+        shape = RoundedCornerShape(20.dp),
+        shadowElevation = 2.dp,
+        modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp)
             .testTag("departures-hero")
             .clickable(role = Role.Button, onClick = onOpen)
             .clearAndSetSemantics {
@@ -269,38 +348,64 @@ internal fun HeroDepartureCard(service: TrainService, isDemonstration: Boolean, 
     ) {
         // One column: at 200 % font scale the large time never squeezes the destination.
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(heading, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
-            Text(shown.scheduledDeparture, style = MaterialTheme.typography.displaySmall, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(heading, modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                ServiceStatusBadge(shown)
+            }
+            Text(shown.scheduledDeparture, style = MaterialTheme.typography.displaySmall)
             if (shown.operationalStatusVerified && shown.expectedDeparture != shown.scheduledDeparture) {
                 Text(stringResource(R.string.expected_time, shown.expectedDeparture), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
             }
-            Text(shown.destination, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Text(shown.destination, style = MaterialTheme.typography.titleLarge)
             Text(
                 stringResource(R.string.service_operator_category_number, shown.displayOperator, shown.trainCategory.localizedLabel(), shown.number),
-                style = MaterialTheme.typography.bodyMedium
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            FlowRow(
-                modifier = Modifier.padding(top = 4.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                ServiceStatusBadge(shown)
-                // A demonstration catalogue has no platform to confirm: nothing is shown instead.
-                if (!isDemonstration) {
-                    Text(
-                        shown.platform?.let { stringResource(R.string.platform_label, it) } ?: stringResource(R.string.platform_to_confirm),
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            }
             if (isDemonstration) {
-                Text(stringResource(R.string.data_status_demo), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.data_status_demo), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.tertiary)
+            }
+            FlowRow(
+                modifier = Modifier.padding(top = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // A demonstration catalogue has no platform: a dash, never a number.
+                Surface(
+                    shape = RoundedCornerShape(50),
+                    color = MaterialTheme.colorScheme.surfaceContainerLow,
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                    modifier = Modifier.heightIn(min = 48.dp)
+                ) {
+                    Row(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            shown.platform?.let { stringResource(R.string.platform_label, it) }
+                                ?: stringResource(R.string.platform_label, "—"),
+                            style = MaterialTheme.typography.labelLarge
+                        )
+                    }
+                }
+                Surface(
+                    shape = RoundedCornerShape(50),
+                    color = MaterialTheme.colorScheme.secondaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                    modifier = Modifier.heightIn(min = 48.dp)
+                ) {
+                    Row(Modifier.padding(horizontal = 20.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text(stringResource(R.string.action_details), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+                        Spacer(Modifier.width(8.dp))
+                        Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, modifier = Modifier.size(18.dp))
+                    }
+                }
             }
         }
     }
 }
 
+/**
+ * One segment of the "Treni | Stazioni" switch in the Partenze header: the selected one is filled and
+ * announced as selected, the label always says which board it opens.
+ */
 @Composable
 internal fun OperationsSectionCard(
     modifier: Modifier,
@@ -309,73 +414,72 @@ internal fun OperationsSectionCard(
     onClick: () -> Unit
 ) {
     val label = section.localizedLabel()
+    val selectionState = stringResource(
+        if (selected) R.string.accessibility_section_selected else R.string.accessibility_section_not_selected
+    )
     val subtitle = stringResource(
         if (section == OperationsSection.TRAINS) R.string.operations_section_trains_subtitle
         else R.string.operations_section_stations_subtitle
     )
-    val selectionState = stringResource(
-        if (selected) R.string.accessibility_section_selected else R.string.accessibility_section_not_selected
-    )
     val icon = if (section == OperationsSection.TRAINS) Icons.Default.Train else Icons.Default.Route
-    Surface(
+    val colors = BinarioTheme.colors
+    val flat = LocalWideLayout.current
+    val (container, content) = when {
+        selected && flat -> colors.segmentSelected to colors.onSegmentSelected
+        selected -> MaterialTheme.colorScheme.surface to colors.header
+        flat -> Color.Transparent to colors.onSegmentTrack
+        else -> Color.Transparent to colors.onHeaderTonal
+    }
+    Row(
         modifier = modifier
             .heightIn(min = 48.dp)
-            .clickable(role = Role.Button, onClick = onClick)
-            .semantics { stateDescription = selectionState },
-        color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
-        contentColor = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
-        shape = RoundedCornerShape(8.dp),
-        tonalElevation = if (selected) 2.dp else 0.dp
-    ) {
-        Row(Modifier.padding(horizontal = 12.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-            Icon(icon, contentDescription = null)
-            Spacer(Modifier.width(10.dp))
-            Column {
-                Text(label, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                Text(subtitle, style = MaterialTheme.typography.labelMedium)
+            .background(container, RoundedCornerShape(50))
+            .selectable(selected = selected, role = Role.Tab, onClick = onClick)
+            .semantics {
+                stateDescription = selectionState
+                contentDescription = "$label. $subtitle"
             }
-        }
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center
+    ) {
+        Icon(icon, contentDescription = null, tint = content, modifier = Modifier.size(18.dp))
+        Spacer(Modifier.width(8.dp))
+        Text(label, color = content, style = MaterialTheme.typography.labelLarge, fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium)
     }
 }
 
+/** "TRATTA ATTIVA", the route and its two commands, continuing the green header of Partenze. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun BoardRouteHeader(
     route: SavedRoute,
     direction: Direction,
-    refreshState: RefreshState,
     onSwitchDirection: () -> Unit,
-    onRefresh: () -> Unit,
-    onChooseRoute: () -> Unit
+    onChooseRoute: () -> Unit,
+    bottomPadding: androidx.compose.ui.unit.Dp
 ) {
-    Surface(
-        color = MaterialTheme.colorScheme.primary,
-        contentColor = MaterialTheme.colorScheme.onPrimary,
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Column(Modifier.padding(horizontal = 20.dp, vertical = 14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    val directionUppercase = stringResource(if (direction == Direction.OUTBOUND) R.string.planner_outbound else R.string.planner_return)
-                    val directionLabel = stringResource(if (direction == Direction.OUTBOUND) R.string.direction_outbound else R.string.direction_return)
-                    Text(stringResource(R.string.board_header_title, directionUppercase), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
-                    Text(route.localizedDisplayName(direction), modifier = Modifier.semantics { heading() }, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    Text(stringResource(R.string.board_route_direction, route.localizedName(), directionLabel), style = MaterialTheme.typography.bodySmall)
-                }
-                IconButton(onClick = onRefresh) {
-                    Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.accessibility_refresh_departures, refreshState.localizedLabel()))
-                }
-            }
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                FilledTonalButton(onClick = onSwitchDirection, modifier = Modifier.testTag("departures-switch-direction")) {
-                    Icon(Icons.Default.SwapHoriz, contentDescription = null)
-                    Spacer(Modifier.width(6.dp))
-                    Text(stringResource(R.string.action_direction))
-                }
-                TextButton(onClick = onChooseRoute, modifier = Modifier.testTag("departures-choose-route")) {
-                    Text(stringResource(R.string.action_change_route), color = MaterialTheme.colorScheme.onPrimary)
-                }
-            }
+    val locale = LocalConfiguration.current.locales[0]
+    HeaderBlock(topPadding = 8.dp, bottomPadding = bottomPadding) {
+        val directionLabel = stringResource(if (direction == Direction.OUTBOUND) R.string.direction_outbound else R.string.direction_return)
+        HeaderOverline(stringResource(R.string.shortcut_active_route).uppercase(locale))
+        Text(route.localizedDisplayName(direction), modifier = Modifier.semantics { heading() }, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        Text(stringResource(R.string.board_route_direction, route.localizedName(), directionLabel), style = MaterialTheme.typography.bodySmall, color = headerMutedColor())
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 4.dp)) {
+            TonalButton(
+                text = stringResource(R.string.action_direction),
+                onClick = onSwitchDirection,
+                leadingIcon = Icons.Default.SwapHoriz,
+                onHeader = true,
+                modifier = Modifier.testTag("departures-switch-direction")
+            )
+            TonalButton(
+                text = stringResource(R.string.action_change_route),
+                onClick = onChooseRoute,
+                leadingIcon = Icons.Default.Route,
+                onHeader = true,
+                modifier = Modifier.testTag("departures-choose-route")
+            )
         }
     }
 }

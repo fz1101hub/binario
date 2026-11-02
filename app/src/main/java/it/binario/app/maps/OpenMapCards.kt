@@ -75,6 +75,47 @@ internal fun RouteMapCard(service: TrainService, stationIndex: OpenMapStationInd
     }
 }
 
+/**
+ * The route of [service] on a map that fills [modifier], without the card frame: the map pane beside the
+ * route results on wide windows. The stops it cannot place are listed by the caller's text, never guessed.
+ */
+@Composable
+internal fun RouteOverviewMap(service: TrainService, stationIndex: OpenMapStationIndex, modifier: Modifier = Modifier) {
+    val model by produceState<RouteMapModel?>(null, service.id, service.stops, stationIndex) {
+        value = withContext(Dispatchers.Default) {
+            RouteMapPlanner.build(service.stops, service.operationalStatusVerified) { name ->
+                stationIndex.locate(name)?.mapPoint()
+            }
+        }
+    }
+    val current = model
+    val mapped = current?.mappedStops.orEmpty()
+    Box(modifier, contentAlignment = Alignment.Center) {
+        when {
+            current == null -> OpenMapNote(stringResource(R.string.map_loading))
+            mapped.isEmpty() -> OpenMapNote(stringResource(R.string.map_route_no_coordinates))
+            else -> {
+                val palette = openMapPalette(MaterialTheme.colorScheme)
+                val lineColor = MaterialTheme.colorScheme.primary.toArgb()
+                val content = remember(current, palette, lineColor) {
+                    OpenMapContent(
+                        markers = mapped.map { stop -> OpenMapMarker(stop.point!!, OpenMapMarkerStyles.routeStop(stop.primaryRole, false, palette), tappable = false) },
+                        line = current.line,
+                        lineColor = lineColor,
+                        camera = current.camera
+                    )
+                }
+                OpenMap(
+                    content = content,
+                    contentDescription = stringResource(R.string.map_route_content_description, service.origin, service.destination),
+                    onMarkerTap = {},
+                    modifier = Modifier.matchParentSize()
+                )
+            }
+        }
+    }
+}
+
 @Composable
 private fun ColumnScope.RouteMapBody(service: TrainService, stationIndex: OpenMapStationIndex) {
     val model by produceState<RouteMapModel?>(null, service.stops, service.operationalStatusVerified, stationIndex) {

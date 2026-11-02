@@ -172,3 +172,14 @@ internal fun AlertRepeat.localizedLabel(): String = when (this) {
     AlertRepeat.WEEKDAYS -> stringResource(R.string.alert_repeat_weekdays)
     AlertRepeat.DAILY -> stringResource(R.string.alert_repeat_daily)
 }
+
+@Composable
+internal fun ServiceGroup.localizedLabel(): String = stringResource(
+    when (this) {
+        ServiceGroup.REGIONAL -> R.string.service_group_regional
+        ServiceGroup.INTERCITY -> R.string.train_category_intercity
+        ServiceGroup.FRECCE -> R.string.service_group_frecce
+        ServiceGroup.ITALO -> R.string.service_group_italo
+        ServiceGroup.OTHER -> R.string.service_group_other
+    }
+)

@@ -93,16 +93,14 @@
 
     <!-- Main app shell and primary journey planner. -->
     <string name="app_brand">BINARIO</string>
-    <string name="screen_title_results">Journey options</string>
     <string name="screen_title_detail">Service details</string>
     <string name="screen_title_agenda">Agenda</string>
-    <string name="screen_subtitle_results">Available services</string>
     <string name="screen_subtitle_agenda">Journeys planned on this device</string>
     <string name="action_back">Go back</string>
     <string name="action_choose_theme">Choose theme. Current theme %1$s</string>
     <string name="action_refresh_rail_information">Refresh rail information</string>
     <string name="search_mode_route">Journey</string>
-    <string name="search_mode_train">Train no.</string>
+    <string name="search_mode_train">Train</string>
     <string name="search_mode_station">Station</string>
     <string name="operations_section_trains">Trains</string>
     <string name="operations_section_stations">Stations</string>
@@ -172,17 +170,11 @@
 
     <!-- Search and station board. -->
     <string name="planner_voice_route">Dictate route</string>
-    <string name="planner_departure_station">DEPARTURE STATION</string>
-    <string name="planner_arrival_station">ARRIVAL STATION</string>
-    <string name="planner_origin">Origin</string>
-    <string name="planner_destination">Destination</string>
+    <string name="planner_origin">From</string>
+    <string name="planner_destination">To</string>
     <string name="action_swap_origin_destination">Swap origin and destination</string>
     <string name="planner_one_way">One way</string>
     <string name="planner_round_trip">Return</string>
-    <string name="planner_outbound_date">OUTBOUND · DATE</string>
-    <string name="planner_outbound_time">OUTBOUND · TIME</string>
-    <string name="planner_return_date">RETURN · DATE</string>
-    <string name="planner_return_time">RETURN · TIME</string>
     <string name="accessibility_select_outbound_date">Select outbound date. Current value %1$s</string>
     <string name="accessibility_select_outbound_time">Select outbound time. Current value %1$s</string>
     <string name="accessibility_select_return_date">Select return date. Current value %1$s</string>
@@ -208,7 +200,6 @@
     <string name="planner_train_number_example">E.g. 9310</string>
     <string name="planner_filter_train">Find train</string>
     <string name="planner_voice_station">Dictate station</string>
-    <string name="planner_station_board_title">STATION BOARD</string>
     <string name="station_label">Station</string>
     <string name="planner_open_station_board">Open board</string>
     <string name="planner_recent_and_favourite">Recent and favourite</string>
@@ -286,12 +277,9 @@
     <string name="today_empty_title">No departures to show</string>
 
     <!-- Settings, privacy and integrations. -->
-    <string name="settings_appearance">Appearance</string>
     <string name="settings_theme_title">App theme</string>
     <string name="settings_theme_description">System, light or dark</string>
     <string name="settings_personal_journeys_description">Pinned routes remain available in the widget too. Tap a route to make it active.</string>
-    <string name="settings_add_route">Add a route</string>
-    <string name="settings_integrations">Integrations</string>
     <string name="settings_monitored_trains">Monitored trains</string>
     <string name="settings_monitored_trains_description">Real-time alerts will be available only with an authorised source.</string>
     <string name="train_number_label">Train %1$s</string>
@@ -302,25 +290,20 @@
     <string name="settings_privacy_wear">If you enable the smartwatch, it receives a summary of the route and up to two services. Turning off sharing deletes the DataItem and the watch’s local cache when the revocation is received. The full notice is PRIVACY.md in the repository. A verified URL and privacy contact are still missing before a public release: there is not yet a public link in the app.</string>
     <!-- Binario 2.0 UX (October 2026) -->
     <string name="planner_headline">Where are we going?</string>
-    <string name="planner_subtitle">Search for a route, a train number or a station.</string>
+    <string name="planner_subtitle">Your next journey starts here.</string>
     <string name="data_status_quality">Data quality: %1$s</string>
     <string name="data_status_cached">Saved copy, not real time: %1$s</string>
     <string name="nav_plan">Plan</string>
     <string name="nav_departures">Departures</string>
     <string name="nav_for_you">For you</string>
-    <string name="departures_subtitle">Active route and station boards</string>
-    <string name="for_you_subtitle">Routes, journeys, alerts and preferences</string>
-    <string name="departures_next_departure">Next departure</string>
+    <string name="departures_next_departure">Next train</string>
     <string name="route_picker_title">Choose the route</string>
     <string name="route_picker_empty">No saved route yet. Add one in For you.</string>
     <string name="route_picker_manage">Manage routes</string>
-    <string name="for_you_saved_routes">Saved routes</string>
     <string name="for_you_alarms">Alarms and alerts</string>
     <string name="for_you_stop_alarm_hint">Stop alarms, GPS ones included, are set from a stop in a train’s detail.</string>
     <string name="for_you_credits">Credits and licences</string>
     <string name="action_follow_trip">Follow trip</string>
-    <string name="action_save">Save</string>
-    <string name="action_saved">Saved</string>
     <string name="action_share">Share</string>
     <string name="detail_save_hint">Save adds the train to the monitored trains in For you; Follow trip keeps the next stop on this device only.</string>
     <string name="stop_position_passed">Stop passed</string>
@@ -411,15 +394,9 @@
 
     <!-- Board, routes and service detail. -->
     <string name="delay_minutes">+%1$d min</string>
-    <string name="board_header_title">DEPARTURES · %1$s</string>
     <string name="board_route_direction">%1$s · %2$s</string>
-    <string name="accessibility_refresh_departures">Refresh departures. Status: %1$s</string>
     <string name="action_direction">Direction</string>
     <string name="action_change_route">Change route</string>
-    <string name="board_column_time">TIME</string>
-    <string name="board_column_service">DESTINATION / TRAIN</string>
-    <string name="board_column_platform">PLAT.</string>
-    <string name="board_column_status">STATUS</string>
     <string name="monitored_routes_title">Monitored routes</string>
     <string name="service_scheduled_lowercase">scheduled</string>
     <string name="service_on_time_lowercase">on time</string>
@@ -444,9 +421,7 @@
     <string name="route_name_example">E.g. Home – work</string>
     <string name="route_save_and_activate">Save and activate route</string>
 
-    <string name="service_operator_category">%1$s · %2$s</string>
     <string name="service_operator_category_number">%1$s · %2$s %3$s</string>
-    <string name="service_number_route">%1$s · %2$s → %3$s</string>
     <string name="service_scheduled_departure_label">Scheduled departure</string>
     <string name="expected_time">Expected %1$s</string>
     <string name="service_scheduled_departure">Scheduled %1$s</string>
@@ -919,5 +894,79 @@
     <plurals name="punctuality_observation_count">
         <item quantity="one">%d observation recorded on this device</item>
         <item quantity="other">%d observations recorded on this device</item>
+    </plurals>
+    <!-- Binario 2.0 approved render (November 2026). -->
+    <string name="accessibility_row_selected">Selected</string>
+    <string name="service_category_number">%1$s %2$s</string>
+    <string name="service_scheduled_arrival">Scheduled arrival %1$s</string>
+    <string name="service_duration_accessible">Duration %1$s</string>
+    <string name="action_modify_search">Edit</string>
+    <string name="results_order_fastest">Fastest</string>
+    <string name="results_order_departure">By time</string>
+    <string name="service_group_regional">Regional</string>
+    <string name="service_group_frecce">Frecce</string>
+    <string name="service_group_italo">Italo</string>
+    <string name="service_group_other">Other</string>
+    <string name="results_date_today">Today, %1$s</string>
+    <string name="results_date_from_time">%1$s · from %2$s</string>
+    <string name="planner_time_now">Now</string>
+    <string name="accessibility_trip_kind">Trip type: %1$s. Tap to switch between one way and return</string>
+    <string name="planner_filters">Filters</string>
+    <string name="planner_return_short">Return %1$s</string>
+    <string name="planner_date_today">Today %1$s</string>
+    <string name="action_see_details">See details</string>
+    <string name="departures_title">Your departures</string>
+    <string name="departures_other_services">Other trains</string>
+    <string name="filter_all_services">All</string>
+    <string name="action_details">Details</string>
+    <string name="detail_info_operator">Operator</string>
+    <string name="detail_info_train">Train</string>
+    <string name="detail_info_expected">Expected departure</string>
+    <string name="detail_info_platform">Platform</string>
+    <string name="detail_info_status">Status</string>
+    <string name="detail_monitored_state">Saved among the monitored trains in For you.</string>
+    <string name="detail_not_monitored_state">Not saved: the heart at the top adds it to the monitored trains in For you.</string>
+    <string name="detail_stop_alarm_title">Stop alarm</string>
+    <string name="accessibility_stop_alarm_at">Set the alarm for the stop %1$s, time %2$s</string>
+    <string name="action_follow_this_trip">Follow this journey</string>
+    <string name="detail_departure_time">Departure %1$s</string>
+    <string name="detail_tab_route">Route</string>
+    <string name="detail_tab_info">Information</string>
+    <string name="detail_tab_services">Services</string>
+    <string name="stop_role_departure">Departure</string>
+    <string name="stop_role_arrival">Arrival</string>
+    <string name="stop_role_intermediate">Intermediate stop</string>
+    <string name="accessibility_save_monitored">Save among the monitored trains in For you</string>
+    <string name="accessibility_saved_monitored">Saved among the monitored trains in For you. Tap to remove it</string>
+    <string name="for_you_routes_title">Your routes</string>
+    <string name="for_you_tab_favourites">Favourites</string>
+    <string name="for_you_tab_recent">Recent</string>
+    <string name="for_you_no_recent">No recent searches on this device.</string>
+    <string name="accessibility_route_actions">More actions for %1$s</string>
+    <string name="settings_title">Settings</string>
+    <string name="settings_row_detail">Theme, notifications, widgets, data and language</string>
+    <string name="settings_theme">Theme</string>
+    <string name="settings_section_alerts">Notifications and alarms</string>
+    <string name="settings_section_alerts_detail">Stop alarm, GPS alarm and commuter alerts</string>
+    <string name="settings_section_widgets">Widgets</string>
+    <string name="settings_section_widgets_detail">Home screen widgets and connected devices</string>
+    <string name="settings_section_data">Data and updates</string>
+    <string name="settings_section_data_detail">Data sources, privacy and local backup</string>
+    <string name="settings_section_language">Language and accessibility</string>
+    <string name="settings_section_language_detail">App language, theme and mobility preferences</string>
+    <string name="settings_section_about">About</string>
+    <string name="settings_section_about_detail">Version, credits and licences</string>
+    <string name="settings_widgets_title">Binario widgets</string>
+    <string name="settings_widgets_route">Route widget: the next departures of a saved route, with direction switch and pages.</string>
+    <string name="settings_widgets_station">Station widget: the board of a station you choose.</string>
+    <string name="settings_widgets_how">To add one, touch and hold the Home screen, choose Widgets and look for Binario. Each widget keeps its own route or station.</string>
+    <string name="settings_language_title">App language</string>
+    <string name="settings_language_description">Binario is available in Italian, English, German, French and Spanish.</string>
+    <string name="settings_language_open">Choose the language in the system settings</string>
+    <string name="settings_language_system">On this Android version the app language follows the system language.</string>
+    <string name="settings_about_version">Version %1$s</string>
+    <plurals name="duration_hours">
+        <item quantity="one">%d hour</item>
+        <item quantity="other">%d hours</item>
     </plurals>
 </resources>

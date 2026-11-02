@@ -19,6 +19,10 @@ internal enum class AppScreen(val destination: TopDestination?) {
     FOR_YOU(TopDestination.FOR_YOU),
     /** The agenda of planned journeys: a section of "Per te", formerly its own tab. */
     AGENDA(TopDestination.FOR_YOU),
+    /** "Impostazioni", reached from "Per te": theme and the grouped settings rows. */
+    SETTINGS(TopDestination.FOR_YOU),
+    /** One group of settings opened from "Impostazioni" (alerts, widgets, data, language, information). */
+    SETTINGS_SECTION(TopDestination.FOR_YOU),
     DETAIL(null)
 }
 
@@ -57,16 +61,17 @@ internal object AppNavigation {
     fun back(screen: AppScreen, detailParent: AppScreen): AppScreen? = when (screen) {
         AppScreen.DETAIL -> detailParent.takeIf { it != AppScreen.DETAIL } ?: AppScreen.PLANNER
         AppScreen.RESULTS, AppScreen.NUMBER_RESULTS -> AppScreen.PLANNER
-        AppScreen.AGENDA -> AppScreen.FOR_YOU
+        AppScreen.AGENDA, AppScreen.SETTINGS -> AppScreen.FOR_YOU
+        AppScreen.SETTINGS_SECTION -> AppScreen.SETTINGS
         AppScreen.PLANNER, AppScreen.DEPARTURES, AppScreen.FOR_YOU -> null
     }
 
     /**
-     * Phones keep the bottom bar out of the search flow (results and detail are full screen with Back);
-     * from 600 dp the navigation rail is always visible.
+     * Phones show the bottom bar everywhere but in the train detail, which keeps its "Segui questo viaggio"
+     * action at the bottom (as in the approved render); from 600 dp the side navigation is always visible.
      */
     fun showsNavigation(screen: AppScreen, widthClass: WidthClass): Boolean =
-        widthClass != WidthClass.COMPACT || screen in setOf(AppScreen.PLANNER, AppScreen.DEPARTURES, AppScreen.FOR_YOU, AppScreen.AGENDA)
+        widthClass != WidthClass.COMPACT || screen != AppScreen.DETAIL
 
     /** Screens whose rail data is refreshed every 30 seconds while visible. */
     fun refreshesPeriodically(screen: AppScreen): Boolean =

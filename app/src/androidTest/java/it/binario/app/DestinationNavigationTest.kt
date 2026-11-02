@@ -94,7 +94,7 @@ class DestinationNavigationTest {
 
         val hero = composeRule.onNodeWithTag("departures-hero")
         val description = hero.fetchSemanticsNode().config[SemanticsProperties.ContentDescription].joinToString(" ")
-        assertTrue(description, description.startsWith("Prossima partenza. Catalogo dimostrativo locale — non live."))
+        assertTrue(description, description.startsWith("Prossima corsa. Catalogo dimostrativo locale — non live."))
         assertTrue(description, description.contains("Binario non disponibile"))
         assertFalse(description, description.contains("Binario 5"))
         assertFalse(description, description.contains("08:06"))
