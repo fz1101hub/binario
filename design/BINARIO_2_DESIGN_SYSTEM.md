@@ -8,27 +8,36 @@
 
 Binario resta un assistente personale di consultazione ferroviaria, senza biglietteria, pubblicità, tracciamento continuo o account obbligatorio nell'app Android. La home resta **planner-first**: «Dove andiamo?»; le partenze abituali sono a un solo passaggio. Non replicare layout, icone, loghi, componenti o testo dell'app usata come riferimento cromatico.
 
-Il verde della schermata condivisa dall'utente è il riferimento visivo, non un'interfaccia da copiare. Campionamento indicativo: barra principale `#388E3C`, variante scura `#2E7D32`.
+> **Riferimento: il render approvato.** Dal 2 novembre 2026 il riferimento visivo di Binario 2.0 è il **render approvato dal product owner** (tavola «BINARIO 2.0 — Una stessa esperienza, su tutti i tuoi dispositivi»: Pianificazione, Risultati, Partenze, Dettaglio corsa, Le tue tratte, Impostazioni, tablet e pieghevole). Sostituisce il campionamento iniziale (`#388E3C` / `#2E7D32`) e la tabella dei token precedente. Le schermate Android si confrontano con il render tramite `DesignScreenshotTest` (workflow Android CI con `capture_design_screens=true`). Il render resta un riferimento di stile: dove mostra dati non disponibili (cambi, binari, foto di treni) l'app mostra ciò che i dati supportano (vedi «Differenze volute»).
 
 ## Token condivisi
 
-| Ruolo | Chiaro | Scuro | Vincolo |
-|---|---|---|---|
-| Primary interattivo | `#2E7D32` | `#9BDD9E` | Contrasto migliore sul bianco rispetto al verde chiaro di riferimento |
-| Verde di riferimento | `#388E3C` | `#9BDD9E` | Accent/identità, mai unico segnale di stato |
-| Primary container | `#DDF0DE` | `#205B2A` | Chip, selezioni, hero leggeri |
-| Sfondo | `#F7F8F5` | `#0D1710` | Lettura continua |
-| Surface | `#FFFFFF` | `#142018` | Form e contenuti |
-| Attenzione | `#99571B` | `#FFC489` | Solo variazioni corroborate da fonte non-demo |
-| Errore | `#B3261E` | `#FFB4AB` | Errori e soppressioni documentate |
+Colori misurati sul render (colore dominante per regione) e ruoli dello schema scuro derivati dalle stesse tinte:
 
-**Regola accessibilità:** `#388E3C` con testo bianco normale può non soddisfare WCAG AA (contrasto circa 4,12:1); usare `#2E7D32` per pulsanti, barre con etichette piccole e grafici informativi. Target minimo 48 dp su Android, font 200%, TalkBack/VoiceOver, stati con testo oltre al colore.
+| Ruolo | Chiaro | Scuro | Uso e contrasto |
+|---|---|---|---|
+| Testata e barra laterale | `#003A28` | `#0A1F17` | Testata verde che continua sotto la status bar e sotto la prima card; testo bianco 12,8:1 |
+| Sottotitoli e overline sulla testata | `#8FE3C0` | `#8FE3C0` | «Il tuo prossimo viaggio parte da qui.», «TRATTA ATTIVA»: 8,5:1 su `#003A28` |
+| Segmento / chip selezionato | `#004A33` | `#7FDBB5` | Testo bianco 10,4:1 (scuro: testo `#0A1F17`, 10,4:1) |
+| Voce selezionata della barra laterale | `#00523A` | `#1E4A3A` | Testo bianco 9,3:1 |
+| Primary (pulsanti pieni) | `#00703E` | `#7FDBB5` | «Cerca soluzioni», «Segui questo viaggio»: bianco 6,2:1 (scuro: `#003826`, 8,0:1) |
+| Tonale (pulsanti e pill di stato) | `#D8F4EA` | `#1E4A3A` | «Dettagli», «Nuova tratta», stato: testo `#00513A` 8,1:1 (scuro `#C9F2E1`, 8,2:1) |
+| Chip e segmenti non selezionati | `#E2EEEA` | `#233630` | Testo `#1A2E26` 12,1:1 |
+| Card e campi | `#FCFCFC` | `#14221C` | Testo `#17241F` 15,6:1, secondario `#3F5249` 8,1:1 |
+| Sfondo pagina | `#F4F7F6` | `#0B1511` | Lettura continua |
+| Timeline (linea e fermate) | `#12785A` | `#6FD3A8` | 5,3:1 sulle card |
+| Attenzione | `#99571B` | `#FFC489` | Solo variazioni corroborate da fonte non-demo, sempre con testo |
+| Errore e cambi | `#B3261E` | `#FFB4AB` | Errori, soppressioni e «N cambi» solo se la fonte li pubblica |
+
+**Regola accessibilità:** ogni coppia testo/sfondo elencata raggiunge almeno 4,5:1 (WCAG AA); target minimo 48 dp su Android, font 200% senza altezze fisse per il testo, TalkBack/VoiceOver, stati sempre con testo oltre al colore.
+
+**Nota:** la tabella vale per l'app Android e i suoi widget. Wear OS, Apple Watch, iPhone e il companion Alexa usano ancora la palette precedente (`#2E7D32` / `#9BDD9E`) finché non vengono allineati al render in un intervento dedicato.
 
 I token sono definiti **una volta per superficie** e i componenti li leggono da lì, senza colori RGB nelle viste:
 
 | Superficie | Definizione dei token | Stato |
 |---|---|---|
-| Android app e widget | `app/src/main/java/it/binario/app/Theme.kt`, `app/src/main/res/values/colors.xml` | Applicata |
+| Android app e widget | `app/src/main/java/it/binario/app/Theme.kt` (`ColorScheme` chiaro e scuro più `BinarioColors` per testata, segmenti, barra laterale e timeline), `app/src/main/res/values/colors.xml` (widget: testata verde, righe chiare) | Applicata secondo il render approvato |
 | Wear OS | `wear/src/main/java/it/binario/wear/WearTheme.kt` (`BinarioWearPalette` + `ColorScheme` Material 3 for Wear, colonna scura, sfondo nero); Tile e anteprime usano la stessa palette | Applicato |
 | Apple Watch | `apple-watch/BinarioWatch/Assets.xcassets` (`AccentColor` tinta globale, `BrandGreen`, `StatusWarning`, `StatusError`, valori scuri) letti da `BinarioPalette.swift` | Applicato, compilazione in CI |
 | iPhone | `ios/Resources/Assets.xcassets` (`AccentColor` tinta globale, `OnAccentColor`, `BrandGreen`, `StatusError`, chiaro e scuro) letti da `BinarioPalette.swift` | Applicato, compilazione in CI |
@@ -65,6 +74,15 @@ Mantenere i token convergenti senza introdurre asset di terzi.
 | Alexa speaker | Conversazione sintetica | Richieste vocali | Companion predisposto ma dipendente dalla configurazione; risposta invariata |
 | Alexa Echo Show | APL responsive, touch+voice | Tratte, partenze, dettagli | APL implementata (Home, Partenze, Stato treno, Le mie tratte); attiva solo dopo l’abilitazione dell’interfaccia APL da parte del titolare; rendering su dispositivo da verificare |
 
+## Differenze volute rispetto al render (Android)
+
+- **Cambi:** la ricerca di Binario restituisce corse dirette; i risultati mostrano «Diretto» e mostrano «N cambi» solo se la fonte pubblica dei cambi. I filtri sono quelli che i dati supportano: categorie presenti (Regionali / Intercity / Frecce / Italo) e ordine «Più veloce» / «Orario»; «Meno cambi» non è offerto.
+- **Binari, ritardi, orari previsti:** con il catalogo dimostrativo restano «Binario —» e l'etichetta «Catalogo dimostrativo locale — non live».
+- **Foto del treno:** dove il render mostra una fotografia, l'app mostra la mappa del percorso (MapLibre / OpenFreeMap); nessuna immagine di terzi.
+- **Titoli:** le tratte usano i nomi delle stazioni («Roma Termini → Torino Porta Nuova»), non quelli abbreviati delle città.
+- **Suggerisci una stazione:** non presente, l'app non ha questa funzione.
+- **Partenze:** l'interruttore «Treni | Stazioni» resta nella testata perché il tabellone di stazione fa parte della stessa destinazione.
+
 ## Stati e contenuti obbligatori
 
 1. **Demo:** dicitura esplicita «Catalogo dimostrativo locale — non live». Non inserire countdown («in 3 minuti»), ritardi o binari come fossero reali.
@@ -99,7 +117,7 @@ Coerenza di nomi e stato con la home Android. Su orologi: lettura in pochi secon
 
 - **Fase 1:** verde condiviso accessibile. **Applicata** su Wear OS, Apple Watch, iPhone e dashboard del companion Alexa (`feat/ux2-clients`); **applicata** su app e widget Android, con testata planner e indicatore di origine dati più in alto.
 - **Fase 2:** estrarre composable da `MainActivity.kt`, nuova navigation `Pianifica/Partenze/Per te`, card hero e dettaglio timeline. **Applicata** su Android.
-- **Fase 3:** adattamento tablet/foldable, polish widget e companion, test visual regression. Parte Android **applicata** (rail e doppio pannello); test di regressione visiva non ancora presenti.
+- **Fase 3:** adattamento tablet/foldable, polish widget e companion, test visual regression. Parte Android **applicata** secondo il render approvato (barra laterale verde, doppio pannello con mappa del percorso, widget con testata verde); le schermate si catturano con `DesignScreenshotTest` su richiesta (`capture_design_screens`), il confronto con il render resta visivo.
 - **Fase 4:** Echo Show APL. **Implementata** nella skill (`feat/ux2-clients`), attiva solo quando il titolare abilita l’interfaccia APL in console (o distribuisce il manifest che la dichiara); verifica con simulatore e hardware ancora da fare. Solo successivamente valutare ulteriori form factor.
 - **Dipendenza esterna:** live ferroviario solo da provider documentato/autorizzato.
 
