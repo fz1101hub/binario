@@ -262,7 +262,17 @@ data class JourneyLeg(
     val scheduledArrival: ZonedDateTime,
     val expectedArrival: SourcedValue<ZonedDateTime>? = null,
     val operatorId: OperatorId? = null,
-    val intermediateCalls: List<StopCall> = emptyList()
+    val intermediateCalls: List<StopCall> = emptyList(),
+    /** Public train number as published by the source ("2153"); null for a leg without one. */
+    val publicNumber: String? = null,
+    /** Category or line published next to the number ("RE11", "REG", "EC"). Display only, never an identity. */
+    val lineLabel: String? = null,
+    /** Names the source publishes for [origin] and [destination], for display. */
+    val originLabel: String? = null,
+    val destinationLabel: String? = null,
+    val serviceKind: ServiceKind = ServiceKind.UNKNOWN,
+    /** Operator brand as published ("Trenord", "SBB"), display only. */
+    val operatorName: String? = null
 )
 
 data class JourneyOption(
@@ -274,7 +284,8 @@ data class JourneyOption(
     val legs: List<JourneyLeg>,
     val snapshot: SnapshotMeta
 ) {
-    val transfers: Int get() = (legs.count { it.mode == LegMode.TRAIN } - 1).coerceAtLeast(0)
+    /** Changes between vehicles: a replacement bus between two trains is a change too; walking is not a vehicle. */
+    val transfers: Int get() = (legs.count { it.mode != LegMode.WALK } - 1).coerceAtLeast(0)
 }
 
 enum class BoardKind {

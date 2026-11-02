@@ -4,6 +4,7 @@ import it.binario.app.BuildConfig
 
 import it.binario.app.data.core.SourceId
 import it.binario.app.data.gtfs.EmbeddedGtfsPacks
+import it.binario.app.data.journey.EmbeddedGtfsJourneyProvider
 import it.binario.app.data.sources.RailSourceCatalog
 import java.time.Duration
 
@@ -25,6 +26,8 @@ object KnownProviderIds {
     val TRENITALIA_INFOMOBILITY_NEWS = SourceId("trenitalia-infomobility-news")
     val TRENORD_LINE_NOTICES = SourceId("trenord-line-notices")
     val OPEN_METEO = SourceId("open-meteo")
+    /** Journeys with changes computed offline on the embedded GTFS packs. */
+    val EMBEDDED_GTFS_JOURNEYS = SourceId("embedded-gtfs-journeys")
     val DEMO_LOCAL = SourceId("demo-local")
 }
 
@@ -298,6 +301,13 @@ object KnownProviders {
             // Open data under CC BY 4.0; the user-facing switch is the "Meteo a destinazione" setting.
             enabled = true,
             priorityByCapability = mapOf(ProviderCapability.WEATHER_FORECAST to 10)
+        ),
+        ProviderPolicy(
+            // Offline calculation on the embedded open-data packs: no request leaves the device. It only feeds the
+            // journeys-with-changes search; direct-train searches, boards and enrichment never consult it.
+            descriptor = EmbeddedGtfsJourneyProvider.DESCRIPTOR,
+            enabled = true,
+            priorityByCapability = mapOf(ProviderCapability.JOURNEY_SEARCH to 50)
         )
     )
 

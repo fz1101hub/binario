@@ -65,6 +65,11 @@ class ProviderRegistryTest {
         assertTrue(registry.policy(SourceId("cotral-ferro-gtfs")) != null)
         assertFalse(registry.isEnabled(SourceId("amt-genova-casella-gtfs")))
         assertFalse(registry.isEnabled(SourceId("cotral-ferro-gtfs")))
+        // Offline journeys with changes: open data, no network, journey search only.
+        val journeys = registry.policy(SourceId("embedded-gtfs-journeys"))!!.descriptor
+        assertTrue(registry.isEnabled(journeys.id))
+        assertEquals(AccessMode.OPEN_DIRECT, journeys.accessMode)
+        assertEquals(setOf(ProviderCapability.JOURNEY_SEARCH), journeys.capabilities)
     }
 
     @Test(expected = IllegalArgumentException::class)
