@@ -378,7 +378,8 @@ private fun LanguageSettings(viewModel: TrainViewModel, onThemeClick: () -> Unit
         SectionHeading(stringResource(R.string.settings_language_title))
         Text(stringResource(R.string.settings_language_description), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            // The per-app language list comes from locale_config.xml; Android shows it in the system settings.
+            AppLanguagePicker(Modifier.testTag("settings-language-picker"))
+            // The same list (locale_config.xml) in the system settings, where Android also keeps the choice.
             OutlinedButton(
                 onClick = {
                     runCatching {

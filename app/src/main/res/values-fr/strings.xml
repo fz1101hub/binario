@@ -1242,7 +1242,7 @@
     <string name="settings_widgets_station">Widget Gare : le tableau d’une gare de votre choix.</string>
     <string name="settings_widgets_how">Pour en ajouter un, appuyez longuement sur l’écran d’accueil, choisissez Widgets et cherchez Binario. Chaque widget garde son propre trajet ou sa gare.</string>
     <string name="settings_language_title">Langue de l’app</string>
-    <string name="settings_language_description">Binario est disponible en italien, anglais, allemand, français et espagnol.</string>
+    <string name="settings_language_description">Binario est disponible en 17 langues ; l’italien est la langue de référence.</string>
     <string name="settings_language_open">Choisir la langue dans les paramètres système</string>
     <string name="settings_language_system">Sur cette version d’Android, la langue de l’app suit celle du système.</string>
     <string name="settings_about_version">Version %1$s</string>

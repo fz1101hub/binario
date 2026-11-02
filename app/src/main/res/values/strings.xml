@@ -1242,7 +1242,7 @@
     <string name="settings_widgets_station">Widget Stazione: il tabellone di una stazione scelta da te.</string>
     <string name="settings_widgets_how">Per aggiungerli tieni premuto sulla schermata Home, scegli Widget e cerca Binario. Ogni widget conserva la propria tratta o stazione.</string>
     <string name="settings_language_title">Lingua dell’app</string>
-    <string name="settings_language_description">Binario è disponibile in italiano, inglese, tedesco, francese e spagnolo.</string>
+    <string name="settings_language_description">Binario è disponibile in 17 lingue; l’italiano è la lingua di riferimento.</string>
     <string name="settings_language_open">Scegli la lingua nelle impostazioni di sistema</string>
     <string name="settings_language_system">Su questa versione di Android la lingua dell’app segue quella del sistema.</string>
     <string name="settings_about_version">Versione %1$s</string>

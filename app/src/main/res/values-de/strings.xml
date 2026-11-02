@@ -1215,7 +1215,7 @@
     <string name="settings_widgets_station">Bahnhofs-Widget: die Anzeigetafel eines Bahnhofs deiner Wahl.</string>
     <string name="settings_widgets_how">Zum Hinzufügen den Startbildschirm gedrückt halten, Widgets wählen und nach Binario suchen. Jedes Widget behält seine eigene Strecke oder seinen Bahnhof.</string>
     <string name="settings_language_title">App-Sprache</string>
-    <string name="settings_language_description">Binario ist auf Italienisch, Englisch, Deutsch, Französisch und Spanisch verfügbar.</string>
+    <string name="settings_language_description">Binario ist in 17 Sprachen verfügbar; Italienisch ist die Referenzsprache.</string>
     <string name="settings_language_open">Sprache in den Systemeinstellungen wählen</string>
     <string name="settings_language_system">Auf dieser Android-Version folgt die App-Sprache der Systemsprache.</string>
     <string name="settings_about_version">Version %1$s</string>

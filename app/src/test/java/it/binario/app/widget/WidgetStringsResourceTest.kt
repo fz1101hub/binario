@@ -1,5 +1,6 @@
 package it.binario.app.widget
 
+import it.binario.app.AppLocales
 import it.binario.app.data.DataConfidence
 import it.binario.app.data.DataQualityBand
 import it.binario.app.data.Direction
@@ -14,6 +15,7 @@ import java.io.File
 import java.util.Locale
 import javax.xml.parsers.DocumentBuilderFactory
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.w3c.dom.Element
 
@@ -65,11 +67,29 @@ class WidgetStringsResourceTest {
         assertEquals("Operator Trenitalia Regionale. Regional 123 to Roma. Expected departure 12:04. Delayed +4 min. Platform 7.", delayed.accessibleLabel(strings))
     }
 
+    @Test fun `every language composes the widget texts with all values and no leftover placeholder`() {
+        val italian = listOf(state.compactMeta(widgetStrings(locale = null), "1/1"), state.accessibleDataSummary(widgetStrings(locale = null)), delayed.accessibleLabel(widgetStrings(locale = null)))
+        val failures = AppLocales.translated.flatMap { tag ->
+            if (!catalogueFile(AppLocales.qualifier(tag)).isFile) return@flatMap listOf("$tag: missing ${AppLocales.folder(tag)}/strings.xml")
+            val strings = widgetStrings(AppLocales.qualifier(tag), Locale.forLanguageTag(tag))
+            // Arabic, Hindi or Burmese formatting may write the numbers in their own digits: compare them as ASCII digits.
+            val texts = listOf(state.compactMeta(strings, "1/1"), state.accessibleDataSummary(strings), delayed.accessibleLabel(strings))
+                .map { text -> text.map { if (Character.isDigit(it)) '0' + Character.digit(it, 10) else it }.joinToString("") }
+            buildList {
+                texts.forEach { text -> if (LEFTOVER_PLACEHOLDER.containsMatchIn(text)) add("$tag: placeholder left in \"$text\"") }
+                if (!texts[0].contains("RFI") || !texts[0].contains("84")) add("$tag: meta line without provider or score: ${texts[0]}")
+                if (!texts[2].contains("123") || !texts[2].contains("12:04") || !texts[2].contains("7")) add("$tag: TalkBack row without number, time or platform: ${texts[2]}")
+                if (texts[1] == italian[1] || texts[2] == italian[2]) add("$tag: TalkBack texts are the Italian ones")
+            }
+        }
+        assertTrue(failures.joinToString("\n"), failures.isEmpty())
+    }
+
     /** The catalogue WidgetStrings.from(context) would resolve for the given locale (null = Italian default), key by key. */
-    private fun widgetStrings(locale: String?): WidgetStrings {
+    private fun widgetStrings(locale: String?, javaLocale: Locale? = null): WidgetStrings {
         val catalogue = catalogue(locale)
         return WidgetStrings(
-            locale = locale?.let(Locale::forLanguageTag) ?: Locale.ITALIAN,
+            locale = javaLocale ?: locale?.let(Locale::forLanguageTag) ?: Locale.ITALIAN,
             statusOnTime = catalogue.getValue("widget_status_on_time"),
             statusDelayed = catalogue.getValue("widget_status_delayed"),
             statusCancelled = catalogue.getValue("widget_status_cancelled"),
@@ -99,6 +119,10 @@ class WidgetStringsResourceTest {
 
     private val Enum<*>.key: String get() = name.lowercase()
 
+    private companion object {
+        val LEFTOVER_PLACEHOLDER = Regex("%(\\d+\\$)?[-#+ 0,(]*\\d*(\\.\\d+)?[sdf]")
+    }
+
     private val categoryKeys = mapOf(
         TrainCategory.REGIONALE to "train_category_regionale",
         TrainCategory.REGIONALE_VELOCE to "train_category_regionale_veloce",
@@ -110,10 +134,14 @@ class WidgetStringsResourceTest {
         TrainCategory.OTHER to "train_category_other"
     )
 
-    private fun catalogue(locale: String?): Map<String, String> {
+    private fun catalogueFile(locale: String?): File {
         val repositoryRoot = generateSequence(File(requireNotNull(System.getProperty("user.dir")))) { it.parentFile }
             .first { File(it, "settings.gradle.kts").isFile }
-        val file = File(repositoryRoot, "app/src/main/res/values${locale?.let { "-$it" }.orEmpty()}/strings.xml")
+        return File(repositoryRoot, "app/src/main/res/values${locale?.let { "-$it" }.orEmpty()}/strings.xml")
+    }
+
+    private fun catalogue(locale: String?): Map<String, String> {
+        val file = catalogueFile(locale)
         val root = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(file).documentElement
         val nodes = root.childNodes
         return buildMap {
