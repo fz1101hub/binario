@@ -156,8 +156,13 @@ describe("authorize Alexa con consenso esplicito", () => {
     ["de-DE", "de-DE", "Alexa mit Binario verknüpfen"],
     ["fr-FR", "fr-FR", "Associer Alexa à Binario"],
     ["es-ES", "es-ES", "Vincular Alexa con Binario"],
-    ["pt-BR, de-DE;q=0.8", "de-DE", "Alexa mit Binario verknüpfen"],
-    ["pt-BR", "it-IT", "Collega Alexa a Binario"],
+    ["pt-BR", "pt-BR", "Conectar a Alexa ao Binario"],
+    ["ja-JP", "ja-JP", "Alexa を Binario にリンク"],
+    // Web-only locales: the consent page is a web page, not an Alexa response.
+    ["ko-KR", "ko-KR", "Alexa를 Binario에 연결"],
+    ["zh-CN", "zh-Hans", "将 Alexa 关联到 Binario"],
+    ["nl-NL, de-DE;q=0.8", "de-DE", "Alexa mit Binario verknüpfen"],
+    ["zh-TW, nl-NL", "it-IT", "Collega Alexa a Binario"],
   ] as const)(
     "localizza l'HTML di consenso per %s come %s",
     async (header, expectedLocale, expectedTitle) => {
@@ -172,6 +177,14 @@ describe("authorize Alexa con consenso esplicito", () => {
       expect(html).toContain('name="decision" value="deny"');
     }
   );
+
+  it("imposta la direzione da destra a sinistra solo per l'arabo", async () => {
+    const { response, html } = await openConsentPage("ar-SA");
+    expect(response.status).toBe(200);
+    expect(html).toContain('<html lang="ar-SA" dir="rtl">');
+    expect(html).toContain("<title>ربط Alexa بـ Binario</title>");
+    expect((await openConsentPage("en-US")).html).not.toContain("dir=");
+  });
 
   it("escapa il nome utente senza alterare il markup localizzato", async () => {
     sdkMocks.authenticateRequest.mockResolvedValueOnce({

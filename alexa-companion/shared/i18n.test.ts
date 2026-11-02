@@ -3,11 +3,19 @@ import { ACCOUNT_DELETION_CONFIRMATION } from "./const";
 import {
   LOCALE_MESSAGES,
   SUPPORTED_LOCALES,
+  WEB_LOCALES,
   formatMessage,
   formatPlural,
+  localizeHtmlLang,
   messagesForLocale,
   resolveLocale,
+  resolveWebLocale,
+  textDirection,
 } from "./i18n";
+
+const LANGUAGES = Object.keys(LOCALE_MESSAGES) as Array<keyof typeof LOCALE_MESSAGES>;
+/** Plural forms beyond one/other that a language may add, per its CLDR rules. */
+const EXTRA_PLURAL_FORM = /\.(zero|two|few|many)$/;
 
 function leafPaths(value: unknown, prefix = ""): string[] {
   if (!value || typeof value !== "object") return [prefix];
@@ -42,14 +50,52 @@ describe("locale resolution", () => {
     ["de-DE;q=bogus, es-ES;q=0.7", "es-ES"],
     ["*;q=1, fr;q=0.5", "fr-FR"],
     ["EN_gb", "en-GB"],
-    ["pt-BR", "it-IT"],
+    ["pt-BR", "pt-BR"],
+    ["pt-PT", "pt-BR"],
+    ["ar-EG", "ar-SA"],
+    ["hi", "hi-IN"],
+    ["ja-JP", "ja-JP"],
+    ["ko-KR", "it-IT"],
+    ["nl-NL", "it-IT"],
     [undefined, "it-IT"],
   ] as const)("resolves %s to %s", (header, expected) => {
     expect(resolveLocale(header)).toBe(expected);
   });
 
   it("uses browser language order when qualities are implicit", () => {
-    expect(resolveLocale(["pt-BR", "fr-CA", "de-DE"])).toBe("fr-FR");
+    expect(resolveLocale(["nl-NL", "fr-CA", "de-DE"])).toBe("fr-FR");
+  });
+
+  it.each([
+    ["ko-KR", "ko-KR"],
+    ["ru", "ru-RU"],
+    ["tr-TR,en;q=0.5", "tr-TR"],
+    ["th-TH", "th-TH"],
+    ["vi", "vi-VN"],
+    ["id-ID", "id-ID"],
+    ["in-ID", "it-IT"],
+    ["my-MM", "my-MM"],
+    ["zh-CN", "zh-Hans"],
+    ["zh-Hans-SG", "zh-Hans"],
+    ["zh", "zh-Hans"],
+    ["zh-TW, en-GB;q=0.5", "en-GB"],
+    ["zh-Hant-HK", "it-IT"],
+    ["ja-JP", "ja-JP"],
+    ["nl-NL", "it-IT"],
+  ] as const)("resolves the web preference %s to %s", (header, expected) => {
+    expect(resolveWebLocale(header)).toBe(expected);
+  });
+
+  it("keeps the web locales a superset of the Alexa locales", () => {
+    expect(WEB_LOCALES.slice(0, SUPPORTED_LOCALES.length)).toEqual([...SUPPORTED_LOCALES]);
+    for (const locale of WEB_LOCALES) expect(messagesForLocale(locale)).toBeDefined();
+    expect(new Set(WEB_LOCALES.map(locale => messagesForLocale(locale))).size).toBe(LANGUAGES.length);
+  });
+
+  it("marks only Arabic as right-to-left, in the document and in HTML", () => {
+    expect(WEB_LOCALES.filter(locale => textDirection(locale) === "rtl")).toEqual(["ar-SA"]);
+    expect(localizeHtmlLang('<html lang="it">', "ar-SA")).toBe('<html lang="ar-SA" dir="rtl">');
+    expect(localizeHtmlLang('<html lang="ar-SA" dir="rtl">', "ja-JP")).toBe('<html lang="ja-JP">');
   });
 
   it.each(["constructor", "constructor-foo", "__proto__", "toString", "hasOwnProperty"])(
@@ -66,17 +112,36 @@ describe("locale resolution", () => {
 describe("typed locale dictionaries", () => {
   it("has identical leaf-key parity for every language dictionary", () => {
     const italianKeys = leafPaths(LOCALE_MESSAGES.it).sort();
-    for (const language of ["en", "de", "fr", "es"] as const)
-      expect(leafPaths(LOCALE_MESSAGES[language]).sort()).toEqual(italianKeys);
+    for (const language of LANGUAGES)
+      expect(
+        leafPaths(LOCALE_MESSAGES[language]).filter(path => !EXTRA_PLURAL_FORM.test(path)).sort(),
+        language
+      ).toEqual(italianKeys);
+  });
+
+  it("adds plural forms only where the language's CLDR rules use them", () => {
+    for (const locale of WEB_LOCALES) {
+      const categories = new Intl.PluralRules(locale).resolvedOptions().pluralCategories;
+      for (const path of leafPaths(messagesForLocale(locale))) {
+        const extra = EXTRA_PLURAL_FORM.exec(path)?.[1];
+        if (extra) expect(categories, `${locale}:${path}`).toContain(extra);
+      }
+    }
   });
 
   it("has identical interpolation-placeholder parity for every translated leaf", () => {
     const italianLeaves = new Map(stringLeaves(LOCALE_MESSAGES.it));
-    for (const language of ["en", "de", "fr", "es"] as const) {
-      for (const [path, translation] of stringLeaves(LOCALE_MESSAGES[language]))
-        expect(placeholders(translation), `${language}:${path}`).toEqual(
-          placeholders(italianLeaves.get(path) ?? "")
-        );
+    for (const language of LANGUAGES) {
+      for (const [path, translation] of stringLeaves(LOCALE_MESSAGES[language])) {
+        // An extra plural form matches either the Italian singular or the Italian plural.
+        const references = EXTRA_PLURAL_FORM.test(path)
+          ? [".one", ".other"].map(form => path.replace(EXTRA_PLURAL_FORM, form))
+          : [path];
+        expect(
+          references.map(reference => placeholders(italianLeaves.get(reference) ?? "")),
+          `${language}:${path}`
+        ).toContainEqual(placeholders(translation));
+      }
     }
   });
 
@@ -103,6 +168,15 @@ describe("typed locale dictionaries", () => {
     expect(
       formatPlural("de-DE", 3, messagesForLocale("de-DE").voice.moreRoutes)
     ).toContain("3 weitere Strecken");
+    const russian = messagesForLocale("ru-RU").voice.moreRoutes;
+    expect(formatPlural("ru-RU", 1, russian)).toContain("ещё один маршрут");
+    expect(formatPlural("ru-RU", 3, russian)).toContain("ещё 3 маршрута");
+    expect(formatPlural("ru-RU", 5, russian)).toContain("ещё 5 маршрутов");
+    const arabic = messagesForLocale("ar-SA").voice.moreRoutes;
+    expect(formatPlural("ar-SA", 2, arabic)).toContain("مساران");
+    expect(formatPlural("ar-SA", 4, arabic)).toContain("4 مسارات");
+    expect(formatPlural("ar-SA", 12, arabic)).toContain("12 مسارًا");
+    expect(formatPlural("ja-JP", 1, messagesForLocale("ja-JP").voice.moreRoutes)).toContain("ほかに 1 件");
   });
 
   it("keeps the destructive confirmation contract locale-independent and explicit", () => {
@@ -121,6 +195,10 @@ describe("typed locale dictionaries", () => {
       "de-DE",
       "fr-FR",
       "es-ES",
+      "ar-SA",
+      "hi-IN",
+      "ja-JP",
+      "pt-BR",
     ]);
   });
 });

@@ -86,11 +86,25 @@ describe("screen datasource", () => {
     ["de-DE", "Abfahrten", "Echtzeitdaten sind nicht verfügbar"],
     ["fr-FR", "Départs", "Les données en temps réel ne sont pas disponibles"],
     ["es-ES", "Salidas", "Los datos en tiempo real no están disponibles"],
+    ["ar-SA", "المغادرة", "البيانات في الوقت الفعلي غير متاحة"],
+    ["hi-IN", "प्रस्थान", "रीयल-टाइम डेटा उपलब्ध नहीं है"],
+    ["ja-JP", "出発", "リアルタイムデータは利用できません"],
+    ["pt-BR", "Partidas", "Os dados em tempo real não estão disponíveis"],
   ] as const)("localizes the departures screen for %s", (locale, title, label) => {
     const data = buildScreenDatasource(departures, { locale, checkedAt: CHECKED_AT });
     expect(data.title).toBe(title);
     expect(data.quality.label).toBe(label);
-    expect(data.quality.checked).toMatch(/\d{2}:05/);
+    // Arabic formats the time with Arabic-Indic digits.
+    expect(data.quality.checked).toMatch(/[\d٠-٩]{2}:[0٠][5٥]/);
+  });
+
+  it("right-aligns the Arabic screen text and leaves the other locales left-aligned", () => {
+    const alignments = (locale: "ar-SA" | "it-IT") =>
+      (buildRenderDocumentDirective(departures, { locale, checkedAt: CHECKED_AT }).document.resources as Array<{
+        strings?: Record<string, string>;
+      }>).flatMap(resource => resource.strings?.binarioTextAlign ?? []);
+    expect(alignments("ar-SA")).toEqual(["right", "center"]);
+    expect(alignments("it-IT")).toEqual(["left", "center"]);
   });
 
   it("labels a demo catalogue explicitly instead of presenting it as live", () => {

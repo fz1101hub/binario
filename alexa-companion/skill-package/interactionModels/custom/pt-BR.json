@@ -1,0 +1,70 @@
+{
+  "interactionModel": {
+    "languageModel": {
+      "invocationName": "binario trens",
+      "intents": [
+        {
+          "name": "AMAZON.CancelIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.HelpIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.StopIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.NavigateHomeIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.FallbackIntent",
+          "samples": []
+        },
+        {
+          "name": "NextTrainsIntent",
+          "slots": [
+            {
+              "name": "routeName",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "quais são os próximos trens",
+            "próximos trens",
+            "próximos trens para {routeName}",
+            "quando sai o próximo trem para {routeName}"
+          ]
+        },
+        {
+          "name": "TrainStatusIntent",
+          "slots": [
+            {
+              "name": "trainNumber",
+              "type": "AMAZON.NUMBER"
+            }
+          ],
+          "samples": [
+            "situação do trem {trainNumber}",
+            "o trem {trainNumber} está no horário",
+            "como está o trem {trainNumber}",
+            "atraso do trem {trainNumber}"
+          ]
+        },
+        {
+          "name": "MyRoutesIntent",
+          "slots": [],
+          "samples": [
+            "meus trajetos",
+            "liste meus trajetos salvos",
+            "quais trajetos eu salvei",
+            "trajetos salvos"
+          ]
+        }
+      ],
+      "types": []
+    }
+  }
+}

@@ -1,0 +1,70 @@
+{
+  "interactionModel": {
+    "languageModel": {
+      "invocationName": "قطارات بيناريو",
+      "intents": [
+        {
+          "name": "AMAZON.CancelIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.HelpIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.StopIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.NavigateHomeIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.FallbackIntent",
+          "samples": []
+        },
+        {
+          "name": "NextTrainsIntent",
+          "slots": [
+            {
+              "name": "routeName",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "ما هي القطارات التالية",
+            "القطارات التالية",
+            "القطارات التالية إلى {routeName}",
+            "متى يغادر القطار التالي إلى {routeName}"
+          ]
+        },
+        {
+          "name": "TrainStatusIntent",
+          "slots": [
+            {
+              "name": "trainNumber",
+              "type": "AMAZON.NUMBER"
+            }
+          ],
+          "samples": [
+            "حالة القطار {trainNumber}",
+            "هل القطار {trainNumber} في موعده",
+            "كيف وضع القطار {trainNumber}",
+            "تأخير القطار {trainNumber}"
+          ]
+        },
+        {
+          "name": "MyRoutesIntent",
+          "slots": [],
+          "samples": [
+            "مساراتي",
+            "اعرض مساراتي المحفوظة",
+            "ما المسارات التي حفظتها",
+            "المسارات المحفوظة"
+          ]
+        }
+      ],
+      "types": []
+    }
+  }
+}

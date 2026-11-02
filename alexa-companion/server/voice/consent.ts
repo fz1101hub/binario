@@ -2,7 +2,8 @@ import { createHmac, hkdfSync } from "node:crypto";
 import {
   formatMessage,
   messagesForLocale,
-  type SupportedLocale,
+  textDirection,
+  type WebLocale,
 } from "@shared/i18n";
 import { ENV } from "../_core/env";
 import { createOpaqueSecret, secureStringEquals } from "./crypto";
@@ -148,7 +149,7 @@ export function escapeHtml(value: string) {
 }
 
 export type ConsentPageInput = {
-  locale: SupportedLocale;
+  locale: WebLocale;
   userName: string;
   clientId: string;
   redirectUri: string;
@@ -163,6 +164,11 @@ export type ConsentErrorKind =
   | "invalidCsrf"
   | "loginRequired";
 
+/** Left-to-right pages keep the bare lang attribute; Arabic adds dir="rtl". */
+function htmlDirection(locale: WebLocale) {
+  return textDirection(locale) === "rtl" ? ' dir="rtl"' : "";
+}
+
 function pageStyles() {
   return `<style>
 body{font-family:system-ui,sans-serif;max-width:32rem;margin:3rem auto;padding:0 1rem;line-height:1.5;color:#1b1b1b}
@@ -173,12 +179,12 @@ form{display:flex;gap:1rem;margin-top:1.5rem}
 }
 
 export function renderConsentErrorPage(
-  locale: SupportedLocale,
+  locale: WebLocale,
   kind: ConsentErrorKind
 ) {
   const messages = messagesForLocale(locale).consent;
   return `<!doctype html>
-<html lang="${locale}">
+<html lang="${locale}"${htmlDirection(locale)}>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -205,7 +211,7 @@ export function renderConsentPage(input: ConsentPageInput) {
     : "";
   const description = formatMessage(messages.description, { signedInAs: who });
   return `<!doctype html>
-<html lang="${input.locale}">
+<html lang="${input.locale}"${htmlDirection(input.locale)}>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">

@@ -1,20 +1,21 @@
 import {
   formatMessage,
   messagesForLocale,
-  resolveLocale,
+  resolveWebLocale,
+  textDirection,
   type InterpolationValues,
   type LocaleMessages,
-  type SupportedLocale,
+  type WebLocale,
 } from "@shared/i18n";
 import { createContext, useContext, useEffect, useMemo } from "react";
 
 type LocaleContextValue = {
-  locale: SupportedLocale;
+  locale: WebLocale;
   messages: LocaleMessages;
   format: (template: string, values?: InterpolationValues) => string;
 };
 
-const italianLocale = resolveLocale(undefined);
+const italianLocale = resolveWebLocale(undefined);
 const LocaleContext = createContext<LocaleContextValue>({
   locale: italianLocale,
   messages: messagesForLocale(italianLocale),
@@ -22,7 +23,7 @@ const LocaleContext = createContext<LocaleContextValue>({
 });
 
 export function LocaleProvider({ children }: { children: React.ReactNode }) {
-  const locale = resolveLocale(
+  const locale = resolveWebLocale(
     typeof navigator === "undefined" ? undefined : navigator.languages
   );
   const messages = messagesForLocale(locale);
@@ -33,6 +34,7 @@ export function LocaleProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     document.documentElement.lang = locale;
+    document.documentElement.dir = textDirection(locale);
     document.title = messages.dashboard.documentTitle;
   }, [locale, messages.dashboard.documentTitle]);
 

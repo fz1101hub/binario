@@ -8,6 +8,7 @@ import {
   formatPlural,
   messagesForLocale,
   resolveLocale,
+  textDirection,
   type SupportedLocale,
 } from "@shared/i18n";
 import { plainSpeechText } from "./speech";
@@ -260,8 +261,26 @@ export function buildRenderDocumentDirective(
   return {
     type: "Alexa.Presentation.APL.RenderDocument",
     token: `${TOKEN_PREFIX}${screen.kind}`,
-    document: { ...BINARIO_APL_DOCUMENT, theme: options.theme ?? "dark" },
+    document: { ...aplDocumentFor(options.locale), theme: options.theme ?? "dark" },
     datasources: { binario: buildScreenDatasource(screen, options) },
+  };
+}
+
+/**
+ * APL 1.4 has no layoutDirection: for Arabic the size-class strings right-align the text that
+ * the other locales left-align (the round Echo Spot stays centred).
+ */
+function aplDocumentFor(locale: SupportedLocale): Record<string, unknown> {
+  if (textDirection(locale) !== "rtl") return BINARIO_APL_DOCUMENT;
+  const resources = BINARIO_APL_DOCUMENT.resources as Array<Record<string, unknown>>;
+  return {
+    ...BINARIO_APL_DOCUMENT,
+    resources: resources.map(resource => {
+      const strings = resource.strings as Record<string, string> | undefined;
+      return strings?.binarioTextAlign === "left"
+        ? { ...resource, strings: { ...strings, binarioTextAlign: "right" } }
+        : resource;
+    }),
   };
 }
 

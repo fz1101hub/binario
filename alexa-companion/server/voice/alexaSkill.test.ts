@@ -1,10 +1,10 @@
-import { SUPPORTED_LOCALES } from "@shared/i18n";
+import { messagesForLocale, SUPPORTED_LOCALES } from "@shared/i18n";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
 
 const SKILL_ID = "amzn1.ask.skill.test";
-const LOCALES = ["it-IT", "en-US", "en-GB", "de-DE", "fr-FR", "es-ES"] as const;
+const LOCALES = ["it-IT", "en-US", "en-GB", "de-DE", "fr-FR", "es-ES", "ar-SA", "hi-IN", "ja-JP", "pt-BR"] as const;
 
 vi.hoisted(() => {
   Object.assign(process.env, {
@@ -168,6 +168,10 @@ describe("Alexa skill handlers", () => {
     ["de-DE", "Willkommen bei Binario"],
     ["fr-FR", "Bienvenue dans Binario"],
     ["es-ES", "Te damos la bienvenida a Binario"],
+    ["ar-SA", "مرحبًا بك في بيناريو"],
+    ["hi-IN", "बिनारियो में आपका स्वागत है"],
+    ["ja-JP", "ビナリオへようこそ"],
+    ["pt-BR", "Boas-vindas ao Binario"],
   ] as const)("uses request.locale %s for launch speech", async (locale, expectedSpeech) => {
     const response = await createAlexaSkill().invoke(
       envelope({ type: "LaunchRequest" }, locale)
@@ -188,6 +192,10 @@ describe("Alexa skill handlers", () => {
     ["de-DE", "Echtzeitdaten sind nicht verfügbar"],
     ["fr-FR", "les données en temps réel ne sont pas disponibles"],
     ["es-ES", "los datos en tiempo real no están disponibles"],
+    ["ar-SA", "البيانات في الوقت الفعلي غير متاحة"],
+    ["hi-IN", "रीयल-टाइम डेटा उपलब्ध नहीं है"],
+    ["ja-JP", "リアルタイムデータは利用できません"],
+    ["pt-BR", "os dados em tempo real não estão disponíveis"],
   ] as const)(
     "localizes one linked personal request and its card for %s",
     async (locale, expectedSpeech) => {
@@ -253,7 +261,7 @@ describe("Alexa skill handlers", () => {
 
   it("falls back to Italian for an unsupported Alexa request locale", async () => {
     const response = await createAlexaSkill().invoke(
-      envelope({ type: "LaunchRequest" }, "pt-BR")
+      envelope({ type: "LaunchRequest" }, "nl-NL")
     );
     expect(speechText(response)).toContain("Benvenuta in Binario");
   });
@@ -462,6 +470,21 @@ describe("versioned interaction models", () => {
       [...LOCALES].sort()
     );
     for (const locale of LOCALES) expect(() => model(locale)).not.toThrow();
+  });
+
+  it("names each locale's invocation in its example phrases and Echo Show hints", () => {
+    const published = manifest().manifest.publishingInformation.locales as Record<string, { examplePhrases: string[] }>;
+    for (const locale of LOCALES) {
+      const invocation = model(locale).interactionModel.languageModel.invocationName.toLocaleLowerCase(locale);
+      const screen = messagesForLocale(locale).screen;
+      for (const phrase of [
+        ...published[locale].examplePhrases,
+        screen.hintNextTrains,
+        screen.hintTrainStatus,
+        screen.hintMyRoutes,
+      ])
+        expect(phrase.toLocaleLowerCase(locale), `${locale}: ${phrase}`).toContain(invocation);
+    }
   });
 
   it("declares the APL interface for the Echo Show screens, rectangular and round hubs", () => {
