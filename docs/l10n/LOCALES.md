@@ -1,5 +1,7 @@
 # Lingue dell’app Android e di Wear OS
 
+Le altre piattaforme (iPhone, Apple Watch, Companion Expo, pagine web e skill Alexa) sono descritte in [APPLE_ALEXA_LOCALES.md](APPLE_ALEXA_LOCALES.md).
+
 L’italiano (`values/`) è la lingua di riferimento: ogni testo nasce in italiano e le altre lingue lo traducono chiave per chiave.
 **Le traduzioni diverse dall’italiano sono scritte automaticamente e non sono state revisionate da madrelingua.** In caso di dubbio fa fede il testo italiano; l’inglese (`values-en/`) serve solo come controllo del significato.
 

@@ -14,6 +14,7 @@ import {
   formatPlural,
   messagesForLocale,
   resolveLocale,
+  resolveWebLocale,
   type SupportedLocale,
 } from "@shared/i18n";
 import {
@@ -440,7 +441,7 @@ function oauthHtmlError(
   status: number,
   kind: "notConfigured" | "invalidRequest" | "invalidCsrf"
 ) {
-  const locale = resolveLocale(req.get("accept-language"));
+  const locale = resolveWebLocale(req.get("accept-language"));
   res.setHeader("Cache-Control", "no-store");
   return res.status(status).type("html").send(renderConsentErrorPage(locale, kind));
 }
@@ -553,7 +554,7 @@ export function registerAlexaRoutes(app: Express) {
       .type("html")
       .send(
         renderConsentPage({
-          locale: resolveLocale(req.get("accept-language")),
+          locale: resolveWebLocale(req.get("accept-language")),
           userName: user.name ?? "",
           ...request,
           token: consentToken(nonce, user.id),
@@ -574,7 +575,7 @@ export function registerAlexaRoutes(app: Express) {
       if (!user)
         return res.status(401).type("html").send(
           renderConsentErrorPage(
-            resolveLocale(req.get("accept-language")),
+            resolveWebLocale(req.get("accept-language")),
             "loginRequired"
           )
         );

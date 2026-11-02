@@ -1,0 +1,70 @@
+{
+  "interactionModel": {
+    "languageModel": {
+      "invocationName": "बिनारियो ट्रेन",
+      "intents": [
+        {
+          "name": "AMAZON.CancelIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.HelpIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.StopIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.NavigateHomeIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.FallbackIntent",
+          "samples": []
+        },
+        {
+          "name": "NextTrainsIntent",
+          "slots": [
+            {
+              "name": "routeName",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "अगली ट्रेनें कौन सी हैं",
+            "अगली ट्रेनें",
+            "{routeName} के लिए अगली ट्रेनें",
+            "{routeName} के लिए अगली ट्रेन कब है"
+          ]
+        },
+        {
+          "name": "TrainStatusIntent",
+          "slots": [
+            {
+              "name": "trainNumber",
+              "type": "AMAZON.NUMBER"
+            }
+          ],
+          "samples": [
+            "ट्रेन {trainNumber} की स्थिति",
+            "क्या ट्रेन {trainNumber} समय पर है",
+            "ट्रेन {trainNumber} कहाँ तक पहुँची",
+            "ट्रेन {trainNumber} कितनी लेट है"
+          ]
+        },
+        {
+          "name": "MyRoutesIntent",
+          "slots": [],
+          "samples": [
+            "मेरे रूट",
+            "मेरे सहेजे गए रूट बताओ",
+            "मैंने कौन से रूट सहेजे हैं",
+            "सहेजे गए रूट"
+          ]
+        }
+      ],
+      "types": []
+    }
+  }
+}

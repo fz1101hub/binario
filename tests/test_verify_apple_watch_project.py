@@ -125,7 +125,17 @@ class AppleWatchProjectTests(unittest.TestCase):
     def test_string_catalog_is_included_in_each_watch_target_with_all_required_locales(self) -> None:
         catalog_path = APPLE_WATCH / "Resources" / "Localizable.xcstrings"
         catalog = json.loads(catalog_path.read_text(encoding="utf-8"))
-        required_locales = {"it", "en", "de", "fr", "es"}
+        # CLDR plural categories per catalogue language: Arabic and Russian need more than
+        # one/other, the East and South-East Asian languages only "other".
+        plural_categories = {
+            "it": {"one", "other"}, "en": {"one", "other"}, "de": {"one", "other"},
+            "fr": {"one", "other"}, "es": {"one", "other"},
+            "ar": {"zero", "one", "two", "few", "many", "other"}, "hi": {"one", "other"},
+            "id": {"other"}, "ja": {"other"}, "ko": {"other"}, "my": {"other"},
+            "pt-BR": {"one", "other"}, "ru": {"one", "few", "many", "other"}, "th": {"other"},
+            "tr": {"one", "other"}, "vi": {"other"}, "zh-Hans": {"other"},
+        }
+        required_locales = set(plural_categories)
 
         self.assertEqual("it", catalog["sourceLanguage"])
         self.assertEqual("1.0", catalog["version"])
@@ -142,9 +152,10 @@ class AppleWatchProjectTests(unittest.TestCase):
                         self.assertTrue(translation["stringUnit"]["value"].strip(), locale)
                     else:
                         plural = translation["variations"]["plural"]
-                        self.assertEqual({"one", "other"}, set(plural))
-                        self.assertTrue(plural["one"]["stringUnit"]["value"].strip())
-                        self.assertTrue(plural["other"]["stringUnit"]["value"].strip())
+                        self.assertEqual(plural_categories[locale], set(plural), locale)
+                        for form in plural.values():
+                            self.assertEqual("translated", form["stringUnit"]["state"], locale)
+                            self.assertIn("%lld", form["stringUnit"]["value"], locale)
 
     def test_user_visible_italian_literals_are_catalog_backed(self) -> None:
         source_paths = [

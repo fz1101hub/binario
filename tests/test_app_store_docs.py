@@ -12,7 +12,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SUBMISSION = ROOT / "docs" / "store" / "APP_STORE_SUBMISSION.md"
 SCHEDULE = ROOT / "ios" / "Resources" / "binario_gtfs_schedule_v1.sqlite.zlib"
-LANGUAGES = ("it", "en", "de", "fr", "es")
+# Burmese ("my") ships in the app but App Store Connect has no Burmese listing language.
+LANGUAGES = ("it", "en", "de", "fr", "es", "ar", "hi", "id", "ja", "ko", "pt-BR", "ru", "th", "tr", "vi", "zh-Hans")
 LIMITS = {
     "Nome": 30,
     "Sottotitolo": 30,
@@ -22,7 +23,7 @@ LIMITS = {
     "Novità": 4000,
 }
 BLOCK = re.compile(
-    r"^#### (Nome|Sottotitolo|Testo promozionale|Descrizione|Parole chiave|Novità) \((it|en|de|fr|es)\)\n\n```text\n(.*?)\n```$",
+    r"^#### (Nome|Sottotitolo|Testo promozionale|Descrizione|Parole chiave|Novità) \((it|en|de|fr|es|ar|hi|id|ja|ko|pt-BR|ru|th|tr|vi|zh-Hans)\)\n\n```text\n(.*?)\n```$",
     re.MULTILINE | re.DOTALL,
 )
 REVIEW_NOTES = re.compile(r"^#### Note per la revisione\n\n```text\n(.*?)\n```$", re.MULTILINE | re.DOTALL)
@@ -38,7 +39,7 @@ class AppStoreDocsTest(unittest.TestCase):
         self.document = SUBMISSION.read_text(encoding="utf-8")
         self.texts = {(kind, language): text for kind, language, text in BLOCK.findall(self.document)}
 
-    def test_every_listing_text_exists_in_all_five_languages_within_connect_limits(self) -> None:
+    def test_every_listing_text_exists_in_every_listing_language_within_connect_limits(self) -> None:
         for kind, limit in LIMITS.items():
             for language in LANGUAGES:
                 with self.subTest(kind=kind, language=language):
@@ -65,10 +66,13 @@ class AppStoreDocsTest(unittest.TestCase):
             for fragment in fragments:
                 with self.subTest(language=language, fragment=fragment):
                     self.assertIn(fragment, full)
-            self.assertIn("iOS 17", full)
-            self.assertIn("watchOS 10", full)
-            self.assertIn("Trenitalia", self.texts[("Testo promozionale", language)])
-            self.assertEqual("Binario", self.texts[("Nome", language)])
+        for language in LANGUAGES:
+            with self.subTest(language=language):
+                full = self.texts[("Descrizione", language)]
+                for fragment in ("iOS 17", "watchOS 10", "Trenitalia", "Italo", "GTFS"):
+                    self.assertIn(fragment, full)
+                self.assertIn("Trenitalia", self.texts[("Testo promozionale", language)])
+                self.assertEqual("Binario", self.texts[("Nome", language)])
 
     def test_submission_checklist_links_the_verified_documents_and_fixes_the_answers(self) -> None:
         for fragment in (

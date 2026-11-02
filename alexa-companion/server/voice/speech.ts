@@ -1,15 +1,8 @@
 import { escapeXmlCharacters } from "ask-sdk-core";
-import { messagesForLocale, type SupportedLocale } from "@shared/i18n";
+import { messagesForLocale, SUPPORTED_LOCALES, type SupportedLocale } from "@shared/i18n";
 import { LIVE_DATA_UNAVAILABLE_SPEECH } from "./config";
 
-const localeSet = new Set<SupportedLocale>([
-  "it-IT",
-  "en-US",
-  "en-GB",
-  "de-DE",
-  "fr-FR",
-  "es-ES",
-]);
+const localeSet = new Set<SupportedLocale>(SUPPORTED_LOCALES);
 
 // Characters XML 1.0 forbids even when escaped: C0 controls other than tab,
 // line feed and carriage return, the U+FFFE/U+FFFF non-characters, and

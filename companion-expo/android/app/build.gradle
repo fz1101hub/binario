@@ -117,7 +117,7 @@ android {
         versionName "0.1.1"
 
         buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
-        resourceConfigurations += ["it", "en", "de", "fr", "es"]
+        resourceConfigurations += ["it", "en", "de", "fr", "es", "ar", "hi", "in", "ja", "ko", "my", "pt", "ru", "th", "tr", "vi", "zh"]
     }
     // Use AGP's standard debug signing; CI must not depend on a repository-local keystore.
 buildTypes {

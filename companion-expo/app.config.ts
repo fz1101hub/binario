@@ -21,7 +21,15 @@ const config: ExpoConfig = {
     [
       "expo-localization",
       {
-        supportedLocales: ["it", "en", "de", "fr", "es"],
+        // iOS takes Apple's localization IDs. The Android list also becomes
+        // resourceConfigurations, so it uses resource qualifiers: legacy "in" for
+        // Indonesian and "zh", which keeps the region-less values-b+zh+Hans strings.
+        supportedLocales: {
+          ios: ["it", "en", "de", "fr", "es", "ar", "hi", "id", "ja", "ko", "my", "pt-BR", "ru", "th", "tr", "vi", "zh-Hans"],
+          android: ["it", "en", "de", "fr", "es", "ar", "hi", "in", "ja", "ko", "my", "pt", "ru", "th", "tr", "vi", "zh"],
+        },
+        // Arabic mirrors the layout; React Native follows the device direction once allowed.
+        supportsRTL: true,
         allowDynamicLocaleChangesAndroid: true,
       },
     ],

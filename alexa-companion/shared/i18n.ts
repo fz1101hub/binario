@@ -1,3 +1,21 @@
+import { ar } from "./locales/ar";
+import { hi } from "./locales/hi";
+import { id } from "./locales/id";
+import { ja } from "./locales/ja";
+import { ko } from "./locales/ko";
+import { my } from "./locales/my";
+import { pt } from "./locales/pt";
+import { ru } from "./locales/ru";
+import { th } from "./locales/th";
+import { tr } from "./locales/tr";
+import { vi } from "./locales/vi";
+import { zh } from "./locales/zh";
+
+/**
+ * Alexa publishing locales: skill.json, the interaction models and the voice/APL responses
+ * cover exactly these. Alexa offers no Indonesian, Korean, Burmese, Russian, Thai, Turkish,
+ * Vietnamese or Chinese skill locale (docs/l10n/LOCALES.md).
+ */
 export const SUPPORTED_LOCALES = [
   "it-IT",
   "en-US",
@@ -5,12 +23,36 @@ export const SUPPORTED_LOCALES = [
   "de-DE",
   "fr-FR",
   "es-ES",
+  "ar-SA",
+  "hi-IN",
+  "ja-JP",
+  "pt-BR",
 ] as const;
 
 export type SupportedLocale = (typeof SUPPORTED_LOCALES)[number];
-type Language = "it" | "en" | "de" | "fr" | "es";
+
+/** Web dashboard and OAuth consent pages: every Alexa locale plus the web-only languages. */
+export const WEB_LOCALES = [
+  ...SUPPORTED_LOCALES,
+  "id-ID",
+  "ko-KR",
+  "my-MM",
+  "ru-RU",
+  "th-TH",
+  "tr-TR",
+  "vi-VN",
+  "zh-Hans",
+] as const;
+
+export type WebLocale = (typeof WEB_LOCALES)[number];
+type Language =
+  | "it" | "en" | "de" | "fr" | "es"
+  | "ar" | "hi" | "id" | "ja" | "ko" | "my" | "pt" | "ru" | "th" | "tr" | "vi" | "zh";
 export type InterpolationValues = Record<string, string | number>;
-export type PluralMessages = { one: string; other: string };
+/** "one" and "other" are mandatory; languages whose CLDR rules need more forms add them. */
+export type PluralMessages = { one: string; other: string } & Partial<
+  Record<"zero" | "two" | "few" | "many", string>
+>;
 
 export type LocaleMessages = {
   dashboard: {
@@ -292,22 +334,54 @@ const es: LocaleMessages = {
   screen: { homeTitle: "Qué puedes preguntar", departuresTitle: "Salidas", trainStatusTitle: "Estado del tren", myRoutesTitle: "Mis rutas", demoData: "Catálogo de demostración local — no en directo", sourceNone: "Fuente: ningún proveedor ferroviario en tiempo real conectado", sourceDemo: "Fuente: datos de demostración, no operativos", checkedAt: "Comprobado a las {time}", noTimetable: "No se muestran horarios: Binario nunca inventa salidas, retrasos ni andenes.", trainNumber: "Tren {trainNumber}", trainNumberMissing: "No se ha indicado número de tren", pinned: "Fijada", moreRoutes: { one: "Hay otra ruta en el panel de Binario.", other: "Hay {count} rutas más en el panel de Binario." }, showRoute: "Próximos trenes para {routeName}", nextTrainsAction: "Próximos trenes", myRoutesAction: "Mis rutas", hintsTitle: "Prueba a preguntar", hintNextTrains: "«Alexa, pregunta a Binario Trenes por los próximos trenes»", hintTrainStatus: "«Alexa, pregunta a Binario Trenes por el estado del tren 9512»", hintMyRoutes: "«Alexa, pregunta a Binario Trenes por mis rutas»" },
 };
 
-export const LOCALE_MESSAGES: Record<Language, LocaleMessages> = { it, en, de, fr, es };
+export const LOCALE_MESSAGES: Record<Language, LocaleMessages> = {
+  it, en, de, fr, es, ar, hi, id, ja, ko, my, pt, ru, th, tr, vi, zh,
+};
 
-const exactLocaleMap: Record<string, SupportedLocale> = Object.fromEntries(
-  SUPPORTED_LOCALES.map(locale => [locale.toLowerCase(), locale])
-) as Record<string, SupportedLocale>;
+function localeMap<T extends string>(locales: readonly T[]): Record<string, T> {
+  return Object.fromEntries(locales.map(locale => [locale.toLowerCase(), locale])) as Record<string, T>;
+}
 
-const languageDefaultLocale: Record<Language, SupportedLocale> = {
+const exactLocaleMap = localeMap(SUPPORTED_LOCALES);
+const exactWebLocaleMap = localeMap(WEB_LOCALES);
+
+const languageDefaultLocale: Partial<Record<Language, SupportedLocale>> = {
   it: "it-IT",
   en: "en-US",
   de: "de-DE",
   fr: "fr-FR",
   es: "es-ES",
+  ar: "ar-SA",
+  hi: "hi-IN",
+  ja: "ja-JP",
+  // Neutral Brazilian Portuguese also serves pt-PT and the other Portuguese variants.
+  pt: "pt-BR",
 };
 
-function languageForLocale(locale: SupportedLocale): Language {
+const languageDefaultWebLocale: Record<Language, WebLocale> = {
+  ...(languageDefaultLocale as Record<"it" | "en" | "de" | "fr" | "es" | "ar" | "hi" | "ja" | "pt", SupportedLocale>),
+  id: "id-ID",
+  ko: "ko-KR",
+  my: "my-MM",
+  ru: "ru-RU",
+  th: "th-TH",
+  tr: "tr-TR",
+  vi: "vi-VN",
+  zh: "zh-Hans",
+};
+
+function languageForLocale(locale: WebLocale): Language {
   return locale.slice(0, 2) as Language;
+}
+
+/** Traditional-script Chinese preferences are not served Simplified Chinese silently. */
+function isTraditionalChinese(normalized: string) {
+  const subtags = normalized.split("-");
+  return (
+    subtags[0] === "zh" &&
+    !subtags.includes("hans") &&
+    (subtags.includes("hant") || subtags.some(tag => tag === "tw" || tag === "hk" || tag === "mo"))
+  );
 }
 
 type LocaleCandidate = { locale: string; quality: number; order: number };
@@ -336,24 +410,49 @@ function candidates(value: string | readonly string[] | undefined): string[] {
     .map(candidate => candidate.locale);
 }
 
-/** Resolves browser navigator languages or an HTTP Accept-Language header. Italian is the safe fallback. */
-export function resolveLocale(
+function resolveFrom<T extends string>(
   value: string | readonly string[] | undefined,
-  fallback: SupportedLocale = "it-IT"
-): SupportedLocale {
+  exact: Record<string, T>,
+  byLanguage: Partial<Record<Language, T>>,
+  fallback: T
+): T {
   for (const candidate of candidates(value)) {
     const normalized = candidate.replaceAll("_", "-").toLowerCase();
-    if (Object.hasOwn(exactLocaleMap, normalized))
-      return exactLocaleMap[normalized];
+    if (Object.hasOwn(exact, normalized)) return exact[normalized];
+    if (isTraditionalChinese(normalized)) continue;
     const language = normalized.split("-", 1)[0] as Language;
-    if (Object.hasOwn(languageDefaultLocale, language))
-      return languageDefaultLocale[language];
+    const locale = Object.hasOwn(byLanguage, language) ? byLanguage[language] : undefined;
+    if (locale) return locale;
   }
   return fallback;
 }
 
-export function messagesForLocale(locale: SupportedLocale): LocaleMessages {
+/**
+ * Resolves an Alexa request locale to a skill locale. Italian is the safe fallback; Alexa only
+ * sends locales published in skill.json, so the fallback covers malformed input.
+ */
+export function resolveLocale(
+  value: string | readonly string[] | undefined,
+  fallback: SupportedLocale = "it-IT"
+): SupportedLocale {
+  return resolveFrom(value, exactLocaleMap, languageDefaultLocale, fallback);
+}
+
+/** Resolves browser navigator languages or an HTTP Accept-Language header. Italian is the safe fallback. */
+export function resolveWebLocale(
+  value: string | readonly string[] | undefined,
+  fallback: WebLocale = "it-IT"
+): WebLocale {
+  return resolveFrom(value, exactWebLocaleMap, languageDefaultWebLocale, fallback);
+}
+
+export function messagesForLocale(locale: WebLocale): LocaleMessages {
   return LOCALE_MESSAGES[languageForLocale(locale)];
+}
+
+/** Arabic is the only right-to-left language served. */
+export function textDirection(locale: WebLocale): "ltr" | "rtl" {
+  return languageForLocale(locale) === "ar" ? "rtl" : "ltr";
 }
 
 /** Interpolates explicitly named values only; unknown placeholders remain visible to expose dictionary mistakes. */
@@ -365,14 +464,17 @@ export function formatMessage(template: string, values: InterpolationValues = {}
 
 /** Selects singular/plural wording using the locale's native plural rules, then interpolates the count. */
 export function formatPlural(
-  locale: SupportedLocale,
+  locale: WebLocale,
   count: number,
   messages: PluralMessages
 ): string {
   const category = new Intl.PluralRules(locale).select(count);
-  return formatMessage(category === "one" ? messages.one : messages.other, { count });
+  const extra = category === "one" || category === "other" ? undefined : messages[category];
+  return formatMessage(extra ?? (category === "one" ? messages.one : messages.other), { count });
 }
 
-export function localizeHtmlLang(template: string, locale: SupportedLocale): string {
-  return template.replace(/<html\s+lang="[^"]*"/i, `<html lang="${locale}"`);
+/** Sets the document language, and the direction for right-to-left locales only. */
+export function localizeHtmlLang(template: string, locale: WebLocale): string {
+  const direction = textDirection(locale) === "rtl" ? ' dir="rtl"' : "";
+  return template.replace(/<html\s+lang="[^"]*"(?:\s+dir="[^"]*")?/i, `<html lang="${locale}"${direction}`);
 }

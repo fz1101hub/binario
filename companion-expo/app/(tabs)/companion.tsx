@@ -1,7 +1,7 @@
 import { MaterialIcons } from "@expo/vector-icons";
 import { router, useFocusEffect, type Href } from "expo-router";
 import { useCallback, useState } from "react";
-import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
+import { FlatList, I18nManager, Pressable, StyleSheet, Text, View } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
 import { buildCompanionHub, type CompanionHubSurface } from "@/lib/companion-hub";
 import { getCompanionHubActions, companionSurfaceSemantics } from "@/lib/companion-ui-semantics";
@@ -55,7 +55,7 @@ export default function CompanionScreen() {
           return <Pressable key={action.id} {...semantics} onPress={() => router.navigate(action.destination)} style={({ pressed }) => [styles.action, { borderColor: colors.border, backgroundColor: colors.surface, opacity: pressed ? 0.72 : 1 }]}>
           <MaterialIcons name={action.icon} size={20} color={colors.primary} />
           <View style={styles.actionText}><Text style={[styles.actionLabel, { color: colors.foreground }]}>{action.label}</Text><Text style={[styles.actionDescription, { color: colors.muted }]}>{action.description}</Text></View>
-          <MaterialIcons name="chevron-right" size={22} color={colors.muted} />
+          <MaterialIcons name={I18nManager.isRTL ? "chevron-left" : "chevron-right"} size={22} color={colors.muted} />
         </Pressable>;
         })}</View>
         <Text accessibilityRole="header" style={[styles.sectionTitle, { color: colors.foreground }]}>{t("hub.surfaceStatus")}</Text>

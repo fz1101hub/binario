@@ -279,8 +279,9 @@ class DesignScreenshotTest {
             return
         }
         val context = LocalContext.current
+        val baseConfiguration = LocalConfiguration.current
         val configuration = remember(locale) {
-            Configuration(context.resources.configuration).apply {
+            Configuration(baseConfiguration).apply {
                 setLocale(locale)
                 setLayoutDirection(locale)
             }
