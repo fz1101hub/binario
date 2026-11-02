@@ -23,9 +23,15 @@ on:
       - ".github/ci-inputs-lock.json"
       - ".github/workflows/**"
   workflow_dispatch:
+    inputs:
+      transit_discovery:
+        description: "Scoperta fonti orario (token KIND:URL separati da spazi, mdb, atlas): solo lettura, report come artifact"
+        required: false
+        type: string
+        default: ""
 
 concurrency:
-  group: gtfs-assets-ci-${{ github.event.pull_request.number || github.ref }}
+  group: gtfs-assets-ci-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name == 'workflow_dispatch' && github.run_id || 'checks' }}
   cancel-in-progress: true
 
 permissions:
@@ -33,6 +39,7 @@ permissions:
 
 jobs:
   gtfs-assets:
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.transit_discovery == '' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -73,3 +80,36 @@ jobs:
 
       - name: Gate GTFS freshness for at least 30 days
         run: python3 tools/build_gtfs_packs.py --check --min-valid-days 30
+
+  # Manual, read-only discovery of public timetable sources (GTFS, NeTEx on the Italian National Access Point).
+  # The development container cannot reach most open-data hosts; the runner can. Everything downloaded is
+  # untrusted data parsed by this repository's standard-library tool (python3 -I); nothing fetched is executed.
+  transit-discovery:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.transit_discovery != '' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Python 3
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12.10"
+
+      - name: Discover sources
+        env:
+          DISCOVERY_TOKENS: ${{ inputs.transit_discovery }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/discovery"
+          python3 -I tools/transit_source_discovery.py --out "$RUNNER_TEMP/discovery" --tokens-env DISCOVERY_TOKENS
+
+      - name: Upload discovery report
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: transit-discovery
+          path: ${{ runner.temp }}/discovery/
+          retention-days: 3
+          if-no-files-found: error
+          overwrite: true
