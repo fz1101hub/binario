@@ -1,0 +1,26 @@
+<resources>
+    <string name="app_name">Binario</string>
+    <string name="tile_label">Binario: sonraki yolculuk</string>
+    <string name="tile_description">Telefondaki Binario uygulamasının paylaştığı sonraki yolculuğu gösterir.</string>
+    <string name="complication_label">Binario</string>
+    <string name="empty_snapshot_message">Etkin güzergâhı senkronize etmek için telefonda Binario\'yu açın.</string>
+    <string name="refresh_phone">Telefonu yenile</string>
+    <string name="refresh_on_phone">Telefonda yenile</string>
+    <string name="tile_no_synced_route">Senkronize güzergâh yok</string>
+    <string name="tile_snapshot_unavailable">Anlık görüntü yok</string>
+    <string name="tile_service_details">%1$s · %2$s · %3$s</string>
+    <string name="status_programmed">Planlanan tarife</string>
+    <string name="status_received_from_phone">Durum telefondan alındı</string>
+    <string name="status_updating">Veriler güncelleniyor</string>
+    <string name="status_local_snapshot">Son yerel anlık görüntü</string>
+    <string name="status_live_unavailable">Gerçek zamanlı veri yok</string>
+    <string name="accessibility_data_status">Veri durumu: %1$s</string>
+    <string name="accessibility_scheduled_departure">Planlanan kalkış %1$s</string>
+    <string name="accessibility_expected_departure">Tahmini kalkış %1$s</string>
+    <string name="accessibility_train">Tren %1$s</string>
+    <string name="accessibility_platform">Peron %1$s</string>
+    <string name="service_time_number">%1$s · %2$s</string>
+    <string name="service_destination_status">%1$s · %2$s</string>
+    <string name="service_operator_category">%1$s · %2$s</string>
+    <string name="service_operator_category_platform">%1$s · %2$s · Peron %3$s</string>
+</resources>
