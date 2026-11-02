@@ -1,5 +1,6 @@
 package it.binario.app.ui.planner
 
+import it.binario.app.ui.common.LocalizedDates
 import android.app.Activity
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
@@ -91,7 +92,6 @@ import it.binario.app.ui.common.localizedLabel
 import it.binario.app.ui.common.localizedName
 import java.time.LocalDate
 import java.time.LocalTime
-import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 // Pianifica: journey, train-number and station search.
@@ -565,8 +565,8 @@ private fun PlannerRouteRow(title: String, detail: String, icon: ImageVector, ac
 @Composable
 private fun shortDateLabel(date: LocalDate?, today: LocalDate, locale: Locale, fallback: String): String = when (date) {
     null -> fallback
-    today -> stringResource(R.string.planner_date_today, date.format(DateTimeFormatter.ofPattern("d MMM", locale)))
-    else -> date.format(DateTimeFormatter.ofPattern("EEE d MMM", locale))
+    today -> stringResource(R.string.planner_date_today, date.format(LocalizedDates.dayMonth(locale)))
+    else -> date.format(LocalizedDates.weekdayDayMonth(locale))
 }
 
 @Composable

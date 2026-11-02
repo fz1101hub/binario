@@ -1,5 +1,6 @@
 package it.binario.app.ui.planner
 
+import it.binario.app.ui.common.LocalizedDates
 import android.content.Context
 import android.content.Intent
 import androidx.compose.runtime.Composable
@@ -62,7 +63,7 @@ internal fun searchDateLabel(date: LocalDate, from: LocalTime): String {
     val locale = LocalConfiguration.current.locales[0]
     return stringResource(
         R.string.results_date_from_time,
-        date.format(DateTimeFormatter.ofPattern("EEE d MMM", locale)),
+        date.format(LocalizedDates.weekdayDayMonth(locale)),
         from.format(DateTimeFormatter.ofPattern("HH:mm", locale))
     )
 }

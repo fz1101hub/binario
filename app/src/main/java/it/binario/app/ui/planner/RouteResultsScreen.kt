@@ -1,5 +1,6 @@
 package it.binario.app.ui.planner
 
+import it.binario.app.ui.common.LocalizedDates
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -481,9 +482,9 @@ private fun JourneyResultsFilter.labelRes(): Int = when (this) {
 internal fun journeyLabel(query: JourneyQuery, locale: Locale): String {
     val today = LocalDate.now(RailTime.defaultZone)
     val date = if (query.serviceDate == today) {
-        stringResource(R.string.results_date_today, query.serviceDate.format(DateTimeFormatter.ofPattern("d MMM", locale)))
+        stringResource(R.string.results_date_today, query.serviceDate.format(LocalizedDates.dayMonth(locale)))
     } else {
-        query.serviceDate.format(DateTimeFormatter.ofPattern("EEE d MMM", locale))
+        query.serviceDate.format(LocalizedDates.weekdayDayMonth(locale))
     }
     return stringResource(R.string.results_date_from_time, date, query.departureTime.format(DateTimeFormatter.ofPattern("HH:mm", locale)))
 }

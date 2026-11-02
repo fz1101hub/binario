@@ -1,5 +1,6 @@
 package it.binario.app.ui.journeys
 
+import it.binario.app.ui.common.LocalizedDates
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -67,7 +68,6 @@ import it.binario.app.ui.detail.StopTimelineRow
 import it.binario.app.ui.planner.journeyTimetableRow
 import it.binario.app.ui.planner.startTextShare
 import it.binario.app.ui.planner.timetableShareStrings
-import java.time.format.DateTimeFormatter
 
 // Pianifica: the detail of an option of the journeys-with-changes search.
 
@@ -98,7 +98,7 @@ internal fun JourneyDetailScreen(
     val solution = journeyTimetableRow(row, fetchedAt = 0L)
     val originName = origin?.name ?: row.legs.firstOrNull()?.fromLabel.orEmpty()
     val destinationName = destination?.name ?: row.legs.lastOrNull()?.toLabel.orEmpty()
-    val dateLabel = row.departure.format(DateTimeFormatter.ofPattern("EEE d MMM", locale))
+    val dateLabel = row.departure.format(LocalizedDates.weekdayDayMonth(locale))
     // Trenitalia or Italo for the whole journey: their official site, opened without any prefilled search.
     val purchaseSite = OfficialLinks.purchaseSiteOf(row.legs.filter { JourneyLegKind.of(it.mode) != JourneyLegKind.WALK }.map { it.operatorName })
     val co2 = stationIndex?.let { rememberCo2(row, it) }
