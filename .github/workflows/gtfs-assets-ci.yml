@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - "app/src/main/assets/**"
+      - "app/src/personal/assets/**"
       - "gradle/verification-metadata.xml"
       - "requirements-ci.txt"
       - "tools/**"
@@ -16,6 +17,7 @@ on:
       - "stabilization/**"
     paths:
       - "app/src/main/assets/**"
+      - "app/src/personal/assets/**"
       - "gradle/verification-metadata.xml"
       - "requirements-ci.txt"
       - "tools/**"
@@ -86,6 +88,17 @@ jobs:
 
       - name: Gate GTFS freshness for at least 30 days
         run: python3 tools/build_gtfs_packs.py --check --min-valid-days 30
+
+      # Regional railways and city networks (every build) and the personal-build packs: same checks, each pack's own
+      # minValidDays (a city feed published a few weeks at a time) capped at 30.
+      - name: Verify the transit and personal GTFS packs
+        run: |
+          for directory in app/src/main/assets/gtfs-transit app/src/personal/assets/gtfs-personal; do
+            if [ -f "$directory/manifest.json" ]; then
+              python3 tools/build_gtfs_packs.py --check --integrity-only --input-dir "$directory"
+              python3 tools/build_gtfs_packs.py --check --min-valid-days 30 --input-dir "$directory"
+            fi
+          done
 
   # Manual, read-only discovery of public timetable sources (GTFS, NeTEx on the Italian National Access Point).
   # The development container cannot reach most open-data hosts; the runner can. Everything downloaded is

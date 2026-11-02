@@ -202,6 +202,51 @@ class NetexToGtfsTest(unittest.TestCase):
         )
         self.assertIn('"trips": 2', completed.stdout)
 
+    def test_internal_line_ids_are_not_public_names(self) -> None:
+        # Producers write their database id as ShortName ("route170", "3000"); the public names stay.
+        for internal in ("route170", "3000", "1", "Linea 5", "line_12"):
+            self.assertEqual("", netex_to_gtfs.public_line_name(internal), internal)
+        for public in ("REG", "FR1", "M1", "SIR1", "T2", "FM2"):
+            self.assertEqual(public, netex_to_gtfs.public_line_name(public))
+
+
+class CompareGtfsTest(unittest.TestCase):
+    """tools/compare_gtfs.py: whole runs are compared regardless of how variants of one number pair up."""
+
+    @staticmethod
+    def feed(directory: Path, name: str, runs: list[tuple[str, str, list[tuple[str, str]]]]) -> Path:
+        path = directory / name
+        with zipfile.ZipFile(path, "w") as archive:
+            archive.writestr("stops.txt", "stop_id,stop_code,stop_name,location_type\nA,1,A,\nB,2,B,\nC,3,C,\n")
+            archive.writestr("routes.txt", "route_id,route_type\nR,2\n")
+            archive.writestr("calendar.txt", "service_id,monday,tuesday,wednesday,thursday,friday,saturday,sunday,start_date,end_date\n"
+                             "W,1,1,1,1,1,0,0,20261102,20261231\nE,0,0,0,0,0,1,1,20261102,20261231\n")
+            archive.writestr("trips.txt", "route_id,service_id,trip_id,trip_short_name\n" + "".join(
+                f"R,{service},{trip_id},100\n" for trip_id, service, _ in runs))
+            archive.writestr("stop_times.txt", "trip_id,arrival_time,departure_time,stop_id,stop_sequence\n" + "".join(
+                f"{trip_id},{time},{time},{stop},{index}\n" for trip_id, _, stops in runs for index, (stop, time) in enumerate(stops, 1)))
+        return path
+
+    def test_variants_of_one_number_are_found_whatever_the_pairing(self) -> None:
+        sys.path.insert(0, str(ROOT / "tools"))
+        import compare_gtfs
+
+        directory = Path(tempfile.mkdtemp())
+        weekday = [("A", "08:00:00"), ("B", "08:10:00"), ("C", "08:20:00")]
+        weekend = [("A", "08:00:00"), ("B", "08:12:00"), ("C", "08:25:00")]
+        reference = self.feed(directory, "reference.zip", [("r1", "W", weekday), ("r2", "E", weekend)])
+        candidate = self.feed(directory, "candidate.zip", [("c1", "E", weekend), ("c2", "W", weekday)])
+        result = compare_gtfs.compare(compare_gtfs.Feed(candidate, date(2026, 11, 2), 14), compare_gtfs.Feed(reference, date(2026, 11, 2), 14))
+        self.assertEqual(1.0, result["referenceRunsFoundShare"])
+        self.assertEqual(1.0, result["referenceDayRunsFoundShare"])
+        self.assertEqual(1.0, result["candidateDayRunsFoundShare"])
+
+        shifted = self.feed(directory, "shifted.zip", [("c1", "E", weekend), ("c2", "W", [("A", "08:00:00"), ("B", "08:11:00"), ("C", "08:20:00")])])
+        result = compare_gtfs.compare(compare_gtfs.Feed(shifted, date(2026, 11, 2), 14), compare_gtfs.Feed(reference, date(2026, 11, 2), 14))
+        self.assertEqual(0.5, result["referenceRunsFoundShare"])
+        # Two weeks from Monday 2 November: the 4 weekend days are found, the 10 weekdays are not.
+        self.assertEqual(round(4 / 14, 4), result["referenceDayRunsFoundShare"])
+
 
 if __name__ == "__main__":
     unittest.main()

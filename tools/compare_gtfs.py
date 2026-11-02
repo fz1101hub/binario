@@ -114,6 +114,26 @@ def compare(candidate: Feed, reference: Feed, *, seed: int = 7) -> dict[str, obj
     for trip_id in candidate.trips:
         for day in candidate.days(trip_id):
             day_counts_candidate[day] += 1
+    # A train number often has several variants with the same first departure (other days, later times, a split
+    # run): pairing by number and departure can pick the wrong variant. Compare whole runs instead, regardless of
+    # pairing: a reference run is found when a candidate run with the same number has the same stops and times, and
+    # day by day when it runs that day too.
+    def run_key(feed: Feed, trip_id: str) -> tuple[str, tuple[tuple[str, str, str], ...]]:
+        return (feed.trips[trip_id].get("trip_short_name", "").strip(), tuple(s[1:] for s in feed.times.get(trip_id, ())))
+
+    candidate_runs: Counter[tuple[str, tuple[tuple[str, str, str], ...]]] = Counter(run_key(candidate, t) for t in candidate.trips)
+    exact_runs = sum(1 for trip_id in reference.trips if candidate_runs[run_key(reference, trip_id)] > 0)
+    day_runs_reference: Counter[tuple[date, object]] = Counter()
+    day_runs_candidate: Counter[tuple[date, object]] = Counter()
+    for trip_id in reference.trips:
+        key = run_key(reference, trip_id)
+        for day in reference.days(trip_id):
+            day_runs_reference[(day, key)] += 1
+    for trip_id in candidate.trips:
+        key = run_key(candidate, trip_id)
+        for day in candidate.days(trip_id):
+            day_runs_candidate[(day, key)] += 1
+    day_runs_found = sum(min(count, day_runs_candidate.get(key, 0)) for key, count in day_runs_reference.items())
     randomizer = random.Random(seed)
     samples = randomizer.sample(matched, min(5, len(matched)))
     differing = [(mine, theirs) for mine, theirs in matched if [s[1:] for s in candidate.times[mine]] != [s[1:] for s in reference.times[theirs]]]
@@ -129,6 +149,9 @@ def compare(candidate: Feed, reference: Feed, *, seed: int = 7) -> dict[str, obj
         "sameStopSequenceShare": round(same_stops / max(len(matched), 1), 4),
         "sameTimesShare": round(same_times / max(len(matched), 1), 4),
         "sameServiceDaysShare": round(same_days / max(len(matched), 1), 4),
+        "referenceRunsFoundShare": round(exact_runs / max(len(reference.trips), 1), 4),
+        "referenceDayRunsFoundShare": round(day_runs_found / max(sum(day_runs_reference.values()), 1), 4),
+        "candidateDayRunsFoundShare": round(day_runs_found / max(sum(day_runs_candidate.values()), 1), 4),
         "tripsPerDay": [
             {"date": day.isoformat(), "candidate": day_counts_candidate.get(day, 0), "reference": day_counts_reference.get(day, 0)}
             for day in sorted(set(day_counts_reference) | set(day_counts_candidate))[:: max(1, len(set(day_counts_reference)) // 12)]

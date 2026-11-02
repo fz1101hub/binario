@@ -217,6 +217,45 @@ class BuildGtfsPacksTest(unittest.TestCase):
                 filter_manifest["memberSha256"],
             )
 
+    def test_transit_directory_keeps_its_asset_prefix(self) -> None:
+        input_dir = self.make_input()
+        manifest = json.loads((input_dir / "manifest.json").read_text(encoding="utf-8"))
+        manifest["packs"][0]["asset"] = "gtfs-transit/amt-genova-casella-gtfs.zip"
+        (input_dir / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+        output_dir = self.temp / "publish" / "gtfs-transit"
+        built = builder.build_packs(input_dir, output_dir, generated_at="2026-01-01")
+
+        self.assertEqual("gtfs-transit/amt-genova-casella-gtfs.zip", built["packs"][0]["asset"])
+        published = json.loads((output_dir / "manifest.json").read_text(encoding="utf-8"))
+        self.assertEqual("gtfs-transit/amt-genova-casella-gtfs.zip", published["packs"][0]["asset"])
+        builder.verify_assets(output_dir, as_of=None, min_valid_days=None)
+
+    def test_urban_policy_keeps_metro_and_drops_buses_with_stop_modes(self) -> None:
+        input_dir = self.temp / "urban-input"
+        input_dir.mkdir()
+        with zipfile.ZipFile(input_dir / "genova-amt-gtfs.zip", "w", compression=zipfile.ZIP_DEFLATED) as archive:
+            for file in sorted(FIXTURE.iterdir()):
+                text = file.read_text(encoding="utf-8")
+                if file.name == "routes.txt":
+                    text = text.replace("Manin - Casella,2", "Brin - Brignole,1")
+                archive.writestr(file.name, text)
+        write_manifest(input_dir)
+        manifest = json.loads((input_dir / "manifest.json").read_text(encoding="utf-8"))
+        manifest["packs"][0].update({"sourceId": "genova-amt-gtfs", "asset": "gtfs-transit/genova-amt-gtfs.zip"})
+        (input_dir / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+        output_dir = self.temp / "gtfs-transit"
+        built = builder.build_packs(input_dir, output_dir, generated_at="2026-01-01")
+
+        self.assertEqual("gtfs-urban-route-types", built["packs"][0]["filter"]["kind"])
+        with zipfile.ZipFile(output_dir / "genova-amt-gtfs.zip") as archive:
+            routes = builder.read_table(archive, "routes.txt", required=True)
+            modes = builder.read_table(archive, builder.STOP_MODES_MEMBER, required=True)
+            assert routes and modes
+            self.assertEqual(["FGC-191"], [row["route_id"] for row in routes.rows])
+            self.assertNotIn("shapes.txt", archive.namelist())
+            # The metro stop and its parent station carry "M"; the bus terminal is gone.
+            self.assertEqual({"A": "M", "PARENT": "M"}, {row["stop_id"]: row["modes"] for row in modes.rows})
+
     def test_last_service_date_is_the_end_of_the_last_real_timetable_period(self) -> None:
         header = ("service_id", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday", "start_date", "end_date")
 

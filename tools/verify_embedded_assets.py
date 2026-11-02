@@ -19,6 +19,14 @@ ROOT = Path(__file__).resolve().parents[1]
 ASSET_ROOT = ROOT / "app" / "src" / "main" / "assets"
 GTFS_ROOT = ASSET_ROOT / "gtfs"
 STATION_ROOT = ASSET_ROOT / "stations"
+# The GTFS directories an APK can hold: (asset root, directory, required). gtfs-transit/ (regional railways and city
+# networks, every build) and gtfs-personal/ (personal builds only, src/personal/assets) are verified when present.
+PERSONAL_ASSET_ROOT = ROOT / "app" / "src" / "personal" / "assets"
+GTFS_DIRECTORIES = (
+    (ASSET_ROOT, "gtfs", True),
+    (ASSET_ROOT, "gtfs-transit", False),
+    (PERSONAL_ASSET_ROOT, "gtfs-personal", False),
+)
 REQUIRED_GTFS_FILES = {"agency.txt", "stops.txt", "routes.txt", "trips.txt", "stop_times.txt"}
 DEFAULT_MIN_VALID_DAYS = 30
 
@@ -39,11 +47,11 @@ def load_json(path: Path, failures: list[str]) -> Any | None:
         return None
 
 
-def safe_asset_path(value: object, failures: list[str], label: str) -> Path | None:
+def safe_asset_path(value: object, failures: list[str], label: str, asset_root: Path = ASSET_ROOT) -> Path | None:
     if not isinstance(value, str) or not value:
         failures.append(f"{label} must be a non-empty relative asset path")
         return None
-    root = ASSET_ROOT.resolve()
+    root = asset_root.resolve()
     path = (root / value).resolve()
     try:
         path.relative_to(root)
@@ -80,16 +88,37 @@ def verify_gtfs(
     *,
     enforce_freshness: bool = True,
 ) -> dict[str, int]:
-    manifest_path = GTFS_ROOT / "manifest.json"
+    totals = {"gtfs_packs": 0, "gtfs_expiring_or_expired": 0}
+    for asset_root, directory, required in GTFS_DIRECTORIES:
+        if not (asset_root / directory).is_dir() and not required:
+            continue
+        result = verify_gtfs_directory(
+            asset_root, directory, today, minimum_valid_days, failures, enforce_freshness=enforce_freshness
+        )
+        for key in totals:
+            totals[key] += result[key]
+    return totals
+
+
+def verify_gtfs_directory(
+    asset_root: Path,
+    directory: str,
+    today: date,
+    minimum_valid_days: int,
+    failures: list[str],
+    *,
+    enforce_freshness: bool = True,
+) -> dict[str, int]:
+    gtfs_root = asset_root / directory
+    manifest_path = gtfs_root / "manifest.json"
     manifest = load_json(manifest_path, failures)
     if not isinstance(manifest, dict) or not isinstance(manifest.get("packs"), list):
-        failures.append("GTFS manifest must contain a packs array")
+        failures.append(f"GTFS manifest {directory}/manifest.json must contain a packs array")
         return {"gtfs_packs": 0, "gtfs_expiring_or_expired": 0}
 
     packs = manifest["packs"]
     expected_files: set[str] = set()
     expiring_or_expired = 0
-    cutoff = today + timedelta(days=minimum_valid_days)
 
     for index, pack in enumerate(packs):
         label = f"GTFS pack #{index}"
@@ -100,7 +129,18 @@ def verify_gtfs(
         if not isinstance(source_id, str) or not source_id:
             failures.append(f"{label} has no sourceId")
             source_id = f"#{index}"
-        asset = safe_asset_path(pack.get("asset"), failures, f"GTFS pack {source_id} asset")
+        if not str(pack.get("asset", "")).startswith(directory + "/"):
+            failures.append(f"GTFS pack {source_id} asset is outside {directory}/: {pack.get('asset')}")
+        asset = safe_asset_path(pack.get("asset"), failures, f"GTFS pack {source_id} asset", asset_root)
+        # A city feed published a few weeks ahead declares a shorter release window (minValidDays, at most the default).
+        declared_days = pack.get("minValidDays")
+        window = minimum_valid_days
+        if declared_days is not None:
+            if isinstance(declared_days, int) and not isinstance(declared_days, bool) and 1 <= declared_days <= minimum_valid_days:
+                window = declared_days
+            elif not (isinstance(declared_days, int) and declared_days > minimum_valid_days):
+                failures.append(f"GTFS pack {source_id} has an invalid minValidDays: {declared_days!r}")
+        cutoff = today + timedelta(days=window)
         expected_hash = pack.get("sha256")
         if not isinstance(expected_hash, str) or len(expected_hash) != 64:
             failures.append(f"GTFS pack {source_id} has no valid sha256")
@@ -140,21 +180,21 @@ def verify_gtfs(
                     f"required through {cutoff.isoformat()}"
                 )
 
-    actual_files = {path.name for path in GTFS_ROOT.glob("*.zip")}
+    actual_files = {path.name for path in gtfs_root.glob("*.zip")}
     if actual_files != expected_files:
         failures.append(
             "GTFS manifest/assets mismatch: "
             f"unlisted={sorted(actual_files - expected_files)}, missing={sorted(expected_files - actual_files)}"
         )
 
-    checksums = read_checksum_file(GTFS_ROOT / "SHA256SUMS", failures)
+    checksums = read_checksum_file(gtfs_root / "SHA256SUMS", failures)
     if checksums.keys() != actual_files:
         failures.append(
             "SHA256SUMS/assets mismatch: "
             f"unlisted={sorted(actual_files - checksums.keys())}, missing={sorted(checksums.keys() - actual_files)}"
         )
     for name, expected_hash in checksums.items():
-        asset = GTFS_ROOT / name
+        asset = gtfs_root / name
         if asset.is_file() and sha256(asset) != expected_hash:
             failures.append(f"SHA256SUMS mismatch for {name}")
 

@@ -146,7 +146,7 @@ URBAN_SOURCES: Mapping[str, frozenset[str]] = {
     "venezia-actv-gtfs": frozenset(),
     "genova-amt-gtfs": frozenset(),
     "arst-metro-gtfs": frozenset(),
-    "torino-gtt-gtfs": frozenset(),
+    "gtt-gtfs": frozenset(),
 }
 # One letter per mode for the stop search badges of the city packs ("M" metro, "T" tram, "F" funicular or lift,
 # "R" railway), written to binario_stop_modes.txt next to the GTFS tables.
@@ -968,7 +968,8 @@ def manifest_for_build(
         pack["filter"] = result.filter_metadata["policy"]
         pack["sourceArchiveSha256"] = result.source_archive_sha256
         pack["contentSha256"] = result.content_sha256
-        pack["asset"] = f"gtfs/{name}"
+        # The asset keeps its directory (gtfs/, gtfs-transit/ or gtfs-personal/, checked by safe_asset_name).
+        pack["asset"] = f"{pack['asset'].replace(chr(92), '/').split('/', 1)[0]}/{name}"
         packs.append(pack)
     return {
         "schemaVersion": RELEASE_MANIFEST_VERSION,

@@ -42,32 +42,6 @@
       "notes": "Orario ufficiale delle Ferrovie del Gargano (San Severo - Peschici, Foggia - Lucera) dal Regional Access Point Puglia; NeTEx convertito da tools/netex_to_gtfs.py."
     },
     {
-      "sourceId": "fse-puglia",
-      "directory": "gtfs-transit",
-      "distribution": "all",
-      "kind": "rail",
-      "format": "netex",
-      "operator": "Ferrovie del Sud Est",
-      "sourceUrl": "https://www.cciss.it/nap/mmtis/public/api/v1/download/blob/Asset/369410/checkedResource",
-      "licence": "NAP CCISS: no licence - no contract (dati aperti per default, art. 52 c. 2 CAD; Reg. UE 2017/1926)",
-      "licenceEvidence": "https://www.cciss.it/nap/mmtis/public/it/catalog/Dataset/1860 (RAP Puglia, asset IT-ITF4-FSE, licence no_licence_no_contract)",
-      "attribution": "Ferrovie del Sud Est via RAP Puglia / NAP CCISS (NeTEx, conversione Binario)",
-      "notes": "Orario ufficiale FSE (Bari - Martina Franca - Taranto/Lecce, Lecce - Gallipoli/Otranto/Gagliano) dal Regional Access Point Puglia; NeTEx convertito da tools/netex_to_gtfs.py, filtrato ai servizi ferroviari."
-    },
-    {
-      "sourceId": "fuc-udine-cividale",
-      "directory": "gtfs-transit",
-      "distribution": "all",
-      "kind": "rail",
-      "format": "netex",
-      "operator": "Ferrovie Udine Cividale",
-      "sourceUrl": "https://www.cciss.it/nap/mmtis/public/api/v1/download/blob/Asset/204061/checkedResource",
-      "licence": "NAP CCISS: no licence - no contract (dati aperti per default, art. 52 c. 2 CAD; Reg. UE 2017/1926)",
-      "licenceEvidence": "https://www.cciss.it/nap/mmtis/public/it/catalog/Dataset/204008 (RAP Friuli Venezia Giulia, asset IT-ITH4-FUC, licence no_licence_no_contract)",
-      "attribution": "Ferrovie Udine Cividale via RAP Friuli Venezia Giulia / NAP CCISS (NeTEx, conversione Binario)",
-      "notes": "Orario ufficiale FUC Udine - Cividale dal Regional Access Point Friuli Venezia Giulia; NeTEx convertito da tools/netex_to_gtfs.py, filtrato ai servizi ferroviari."
-    },
-    {
       "sourceId": "micotra-udine-villach",
       "directory": "gtfs-transit",
       "distribution": "all",
@@ -180,7 +154,7 @@
       "minValidDays": 14
     },
     {
-      "sourceId": "torino-gtt-gtfs",
+      "sourceId": "gtt-gtfs",
       "directory": "gtfs-personal",
       "distribution": "personal",
       "kind": "urban",

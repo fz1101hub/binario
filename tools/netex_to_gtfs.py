@@ -36,6 +36,7 @@ import csv
 import gzip
 import io
 import json
+import re
 import sys
 import zipfile
 from collections import defaultdict
@@ -526,6 +527,15 @@ def stops_rows(model: Model, used_points: set[str]) -> list[dict[str, str]]:
     return sorted(parents.values(), key=lambda row: row["stop_id"]) + rows
 
 
+INTERNAL_LINE_NAME = re.compile(r"(?i)^(?:route|line|linea)?[ _-]?\d+$")
+
+
+def public_line_name(value: str) -> str:
+    """A line name a passenger reads ("REG", "FR1", "M1"), or "" for an internal identifier ("route170", "3000")."""
+    value = value.strip()
+    return "" if INTERNAL_LINE_NAME.match(value) else value
+
+
 def route_type(mode: str) -> str:
     return str(ROUTE_TYPES.get(mode.strip().lower(), 3 if "bus" in mode.lower() else 2))
 
@@ -566,7 +576,7 @@ def convert(source: Path, destination: Path, *, source_label: str) -> dict[str, 
         values = model.lines[line]
         route_rows.append({
             "route_id": line, "agency_id": values["operator"],
-            "route_short_name": values["short"] or values["public"] or model.products.get(values["product"], ""),
+            "route_short_name": public_line_name(values["short"] or values["public"] or model.products.get(values["product"], "")),
             "route_long_name": values["name"], "route_type": route_type(values["mode"]),
         })
     all_dates = sorted({day for days in output.services for day in days})
