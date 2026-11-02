@@ -391,6 +391,21 @@ class LiveProviderNetworkTest {
             add("mit-scioperi" to "https://scioperi.mit.gov.it/mit2/public/scioperi")
             add("open-meteo" to "https://api.open-meteo.com/v1/forecast?latitude=46.0037&longitude=8.9511&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=Europe%2FRome&forecast_days=2")
         }
+        // ViaggiaTreno journey solutions (with changes), through the production fetcher and its
+        // HTTPS-to-cleartext handling: the format must be known before a journey adapter exists.
+        val tomorrow = now.atZone(zone).toLocalDate().plusDays(1)
+        listOf(
+            "roma-torino" to "8409/219",
+            "milano-merano" to "1700/2216",
+            "lodi-lecco" to "1825/1520",
+            "roma-torino-prefixed" to "S08409/S00219"
+        ).forEach { (name, pair) ->
+            val path = "soluzioniViaggioNew/$pair/${tomorrow}T08:00:00"
+            val sample = runCatching { upstream.fetch(path) }
+                .map { body -> "length=${body.length} body=" + body.take(9_000).replace("\r", "").replace("\n", "\\n") }
+                .getOrElse { "error=${it::class.java.simpleName}: ${it.message}" }
+            println("LIVE_ACCEPTANCE SAMPLE vt-solutions-$name path=$path $sample")
+        }
         for ((name, url) in urls) {
             val sample = runCatching {
                 val connection = java.net.URI(url).toURL().openConnection() as java.net.HttpURLConnection
