@@ -1,5 +1,14 @@
 # Changelog
 
+## In sviluppo — Orari ufficiali Trenitalia e Italo offline
+
+- Due nuovi data pack embedded: `trenitalia-gtfs` (treni Trenitalia e bus di linea Trenitalia, valido fino all'11 dicembre 2027, 4,8 MB) e `italo-gtfs` (treni Italo e ItaloBus, calendario fino al 12 dicembre 2026, 49 KB), dagli orari NeTEx ufficiali del National Access Point italiano (dataset 1077621 e 1814124) nella conversione GTFS CC BY 4.0 di Clément Desouche, fissati al commit e allo SHA-256 dell'archivio; geometrie escluse. Crediti in Impostazioni › Info.
+- Il calcolo offline dei viaggi con cambi e il tier statico delle tratte coprono ora Trenitalia e Italo (es. Domodossola → Milano mostra i regionali oltre agli EuroCity, Merano → Roma, Venezia → Cortina con ItaloBus); le fonti live restano prime e l'ordine delle fonti esistenti non cambia.
+- Fermate Trenitalia legate al catalogo dal location id (94,7% delle stazioni, 98,8% con il nome), codici Italo da una tabella rivista (63 su 64).
+- Nuova modalità `LegMode.BUS` per gli autobus di linea («Bus Trenitalia», «ItaloBus»), distinta dal bus sostitutivo; un passaggio treno–bus è un cambio. `TrainService.scheduledBus`, `JourneyLegRow.vehicle`/`isBus` e `JourneyOptionRow.hasBusLeg` per icone e filtri.
+- Planner: una corsa presente in due pack è una sola corsa; i viaggi lunghi che partono nella finestra possono arrivare dopo (orizzonte di 10 h); i pack regionali che servono un solo estremo affiancano il pack nazionale; lettura GTFS a blocchi (indice Trenitalia in circa 1 s sul JVM dei test).
+- `tools/build_gtfs_packs.py`: `--only` e `--source-archive` per aggiornare solo i pack indicati, verifica dell'upstream fissato; l'indice iOS resta sulle stesse 10 fonti (`androidOnlySources` nella policy iOS).
+
 ## In sviluppo — Android allineato al render approvato di Binario 2.0
 
 - Palette misurata sul render approvato (testata `#003A28`, azioni `#00703E`, tonali `#D8F4EA`, card `#FCFCFC` su `#F4F7F6`, timeline `#12785A`) con schema scuro derivato e contrasto AA; il design system indica il render come riferimento.
