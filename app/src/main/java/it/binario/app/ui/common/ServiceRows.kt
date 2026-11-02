@@ -319,7 +319,7 @@ internal fun ResultCard(
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    listOfNotNull(shown.scheduledDeparture, arrival).joinToString(" → "),
+                    ltrUnit(listOfNotNull(shown.scheduledDeparture, arrival).joinToString(" → ")),
                     modifier = Modifier.weight(1f),
                     style = MaterialTheme.typography.titleLarge.copy(fontFeatureSettings = TabularFigures)
                 )

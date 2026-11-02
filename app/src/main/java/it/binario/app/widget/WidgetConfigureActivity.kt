@@ -49,6 +49,7 @@ import it.binario.app.R
 import it.binario.app.ThemeSettings
 import it.binario.app.TrainViewModel
 import it.binario.app.data.Station
+import it.binario.app.ui.common.ltrUnit
 
 internal class WidgetConfiguratorViewModelFactory(
     private val application: Application
@@ -210,7 +211,7 @@ class WidgetConfigureActivity : ComponentActivity() {
                         item {
                             Card(modifier = Modifier.fillMaxWidth().padding(top = 4.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
                                 val selectedLabel = when (targetType) {
-                                    WidgetTargetType.ROUTE -> listOf(routeOriginText, routeDestinationText).filter { it.isNotBlank() }.joinToString(" → ").ifBlank { routeMissingLabel }
+                                    WidgetTargetType.ROUTE -> listOf(routeOriginText, routeDestinationText).filter { it.isNotBlank() }.joinToString(" → ").let { ltrUnit(it) }.ifBlank { routeMissingLabel }
                                 }
                                 Text(stringResource(R.string.widget_selected_summary, routeTargetLabel, selectedLabel), modifier = Modifier.padding(12.dp), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onPrimaryContainer)
                             }

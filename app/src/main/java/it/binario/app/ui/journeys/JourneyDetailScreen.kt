@@ -61,6 +61,7 @@ import it.binario.app.ui.common.StationShortNames
 import it.binario.app.ui.common.TonalButton
 import it.binario.app.ui.common.changesLabel
 import it.binario.app.ui.common.co2Line
+import it.binario.app.ui.common.ltrUnit
 import it.binario.app.ui.common.rememberCo2
 import it.binario.app.ui.detail.StopTimelineRow
 import it.binario.app.ui.planner.journeyTimetableRow
@@ -107,14 +108,14 @@ internal fun JourneyDetailScreen(
         StationShortNames.route(row.legs.firstOrNull()?.fromLabel.orEmpty(), row.legs.lastOrNull()?.toLabel.orEmpty())
     }
     val times = listOfNotNull(
-        "${row.departureTime} → ${row.arrivalTime}",
+        ltrUnit("${row.departureTime} → ${row.arrivalTime}"),
         if (row.arrivalDayOffset > 0) stringResource(R.string.journey_arrival_next_day) else null,
         JourneyTimes.durationLabel(row.durationMinutes.toInt())
     ).joinToString(" · ")
     LazyColumn(modifier.fillMaxSize().testTag("journey-detail")) {
         item {
             ScreenHeader(
-                title = headline.short,
+                title = ltrUnit(headline.short),
                 titleDescription = headline.full,
                 overline = changesLabel(row.changes).uppercase(locale),
                 subtitle = times,
@@ -261,7 +262,7 @@ private fun TransferBlock(transfer: JourneyTransferRow) {
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    "${transfer.arrivalTime} → ${transfer.departureTime}",
+                    ltrUnit("${transfer.arrivalTime} → ${transfer.departureTime}"),
                     style = MaterialTheme.typography.bodySmall.copy(fontFeatureSettings = TabularFigures),
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

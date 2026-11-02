@@ -2,8 +2,12 @@ package it.binario.app
 
 import android.app.Application
 import android.content.Context
+import android.content.ContextWrapper
+import android.content.res.Configuration
+import android.content.res.Resources
 import android.graphics.Bitmap
 import android.os.SystemClock
+import android.view.View
 import androidx.activity.ComponentActivity
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.Box
@@ -12,10 +16,16 @@ import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.width
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.captureToImage
@@ -26,6 +36,7 @@ import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.ViewModelStore
@@ -74,6 +85,7 @@ import java.time.Duration
 import java.time.Instant
 import java.time.LocalTime
 import java.time.ZoneId
+import java.util.Locale
 import org.junit.After
 import org.junit.Before
 import org.junit.FixMethodOrder
@@ -91,6 +103,9 @@ import org.junit.runners.MethodSorters
  *
  * Files: filesDir/design-screens/NN-name.jpg, the full window (status and navigation bars included) for
  * phones, the 900 x 600 dp frame for the wide layouts, scaled to 50 % and saved at JPEG quality 85.
+ *
+ * The -ar and -ja screens render the same UI in Arabic (right to left) and Japanese through a locale override of
+ * the composition ([WithLocale]), whatever the emulator's language.
  */
 @RunWith(AndroidJUnit4::class)
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
@@ -111,7 +126,10 @@ class DesignScreenshotTest {
     @After fun cleanup() {
         composeRule.runOnIdle { store.clear() }
         clearPreferences()
+        Locale.setDefault(deviceLocale)
     }
+
+    private val deviceLocale: Locale = Locale.getDefault()
 
     @Test fun a_phoneScreensInLightTheme() {
         val model = demoViewModel()
@@ -207,21 +225,78 @@ class DesignScreenshotTest {
         capture("18-viaggio-con-cambi")
     }
 
-    private fun showApp(model: TrainViewModel, theme: AppThemeMode) {
+    /**
+     * The planner and the results in Arabic: right-to-left layout, Arabic plurals, the routes and time ranges kept as
+     * left-to-right units ("17:40 → 22:05") and the start-side timeline.
+     */
+    @Test fun f_arabicRightToLeft() {
+        val model = demoViewModel()
+        showApp(model, AppThemeMode.LIGHT, Locale.forLanguageTag("ar"))
+        capture("19-pianifica-ar")
+        click("planner-search")
+        waitForTag("result-card")
+        waitForTag("journey-result-card")
+        capture("20-risultati-ar")
+    }
+
+    /** The planner in Japanese: CJK glyphs from the system fonts and the short labels of the chips. */
+    @Test fun g_japanese() {
+        val model = demoViewModel()
+        showApp(model, AppThemeMode.LIGHT, Locale.JAPANESE)
+        capture("21-pianifica-ja")
+    }
+
+    private fun showApp(model: TrainViewModel, theme: AppThemeMode, locale: Locale? = null) {
+        locale?.let(Locale::setDefault)
         composeRule.setContent {
-            BinarioTheme(theme) {
-                BinarioApp(
-                    viewModel = model,
-                    themeMode = theme,
-                    onThemeModeChange = {},
-                    deepLinkRequest = null,
-                    onDeepLinkConsumed = {},
-                    onSystemBarsAppearance = ::applySystemBars,
-                    journeyViewModel = journeyModel
-                )
+            WithLocale(locale) {
+                BinarioTheme(theme) {
+                    BinarioApp(
+                        viewModel = model,
+                        themeMode = theme,
+                        onThemeModeChange = {},
+                        deepLinkRequest = null,
+                        onDeepLinkConsumed = {},
+                        onSystemBarsAppearance = ::applySystemBars,
+                        journeyViewModel = journeyModel
+                    )
+                }
             }
         }
         waitForTag("planner-screen")
+    }
+
+    /**
+     * [content] in [locale] without changing the emulator's language: resources from a configuration context of that
+     * locale (strings, plurals), its layout direction, and [Locale.getDefault] set by the caller for dates and
+     * numbers. The context wrapper keeps the activity as its base, so code looking for the activity still finds it.
+     * Texts the view model resolves itself through the application context stay in the emulator's language.
+     */
+    @Composable
+    private fun WithLocale(locale: Locale?, content: @Composable () -> Unit) {
+        if (locale == null) {
+            content()
+            return
+        }
+        val context = LocalContext.current
+        val configuration = remember(locale) {
+            Configuration(context.resources.configuration).apply {
+                setLocale(locale)
+                setLayoutDirection(locale)
+            }
+        }
+        val localized = remember(locale) { LocalizedContext(context, context.createConfigurationContext(configuration).resources) }
+        CompositionLocalProvider(
+            LocalContext provides localized,
+            LocalConfiguration provides configuration,
+            LocalResources provides localized.resources,
+            LocalLayoutDirection provides if (configuration.layoutDirection == View.LAYOUT_DIRECTION_RTL) LayoutDirection.Rtl else LayoutDirection.Ltr,
+            content = content
+        )
+    }
+
+    private class LocalizedContext(base: Context, private val localizedResources: Resources) : ContextWrapper(base) {
+        override fun getResources(): Resources = localizedResources
     }
 
     /**

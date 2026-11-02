@@ -1,5 +1,14 @@
 # Changelog
 
+## In sviluppo — 17 lingue su Android e Wear
+
+- **Dodici nuove lingue** per l’app Android e Wear OS: arabo, hindi, indonesiano, giapponese, coreano, birmano, portoghese, russo, thai, turco, vietnamita e cinese semplificato, accanto a italiano, inglese, tedesco, francese e spagnolo. Tutte le stringhe e i plurali hanno le quantità CLDR richieste dal lint (arabo zero/one/two/few/many/other, russo one/few/many/other, portoghese one/many/other, lingue senza plurale solo other). Le traduzioni diverse dall’italiano sono scritte automaticamente e non sono ancora revisionate da madrelingua; l’italiano resta il riferimento.
+- Cartelle: `values-in` per l’indonesiano (Android cerca `in` anche quando la lingua è `id`; `values-id` non verrebbe mai usata) e `values-zh-rCN` per il cinese semplificato; tag BCP-47 `id` e `zh-CN` in `locale_config.xml`. Dettagli e glossario in [docs/l10n/LOCALES.md](docs/l10n/LOCALES.md).
+- **Selettore della lingua nell’app** (Android 13 e successivi, `LocaleManager`): «Sistema» e le 17 lingue con il proprio nome, ordinate per scrittura; resta il collegamento alle impostazioni di sistema. Prima di Android 13 la lingua segue quella del sistema.
+- **Arabo da destra a sinistra**: Wear dichiara `supportsRtl`; tratte e orari composti nel codice («Roma → Torino», «17:40 → 22:05») restano un’unità leggibile da sinistra a destra anche in arabo; la freccia del tabellone stazioni è speculare e la linea della timeline del dettaglio segue il lato iniziale. Nessun carattere personalizzato: arabo, devanagari, thai, birmano e CJK usano i caratteri di sistema.
+- Test: parità di chiavi, attributi, segnaposto e quantità per tutte le lingue (app e Wear), nessun BOM o carattere invisibile, cartelle allineate a `locale_config.xml`, testi dei widget per ogni lingua, selettore della lingua, caratteri di sistema; schermate di design `19-pianifica-ar`, `20-risultati-ar` e `21-pianifica-ja`.
+- Limite noto: la dettatura interpreta solo frasi in italiano, inglese, tedesco, francese e spagnolo; nelle altre lingue i campi si compilano a mano.
+
 ## In sviluppo — Notifiche e stato in tempo reale
 
 - **Notifica del viaggio seguito** (facoltativa, dal viaggio attivo «Segui viaggio» o da «Segui con notifica» nel dettaglio di un viaggio con cambi): ritardo, prossima fermata e binario, e per i viaggi con cambi il rischio della prossima coincidenza; da 30 minuti prima della partenza a 30 minuti dopo l'arrivo (prolungata dal ritardo noto), aggiornata ogni 15 minuti con WorkManager e con il comando «Aggiorna», rimovibile («Interrompi» o scorrendola) e chiusa da sola alla fine. Canale a bassa importanza, senza suono.

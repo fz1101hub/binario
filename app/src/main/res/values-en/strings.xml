@@ -1215,7 +1215,7 @@
     <string name="settings_widgets_station">Station widget: the board of a station you choose.</string>
     <string name="settings_widgets_how">To add one, touch and hold the Home screen, choose Widgets and look for Binario. Each widget keeps its own route or station.</string>
     <string name="settings_language_title">App language</string>
-    <string name="settings_language_description">Binario is available in Italian, English, German, French and Spanish.</string>
+    <string name="settings_language_description">Binario is available in 17 languages; Italian is the reference language.</string>
     <string name="settings_language_open">Choose the language in the system settings</string>
     <string name="settings_language_system">On this Android version the app language follows the system language.</string>
     <string name="settings_about_version">Version %1$s</string>
