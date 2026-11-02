@@ -164,7 +164,26 @@ def probe_nextdata(url: str, *, excerpt: int = 40000) -> None:
     except json.JSONDecodeError as problem:
         emit(f"  invalid __NEXT_DATA__: {problem}")
         return
-    emit("  " + json.dumps(payload.get("props", payload), ensure_ascii=False)[:excerpt])
+    props = payload.get("props", payload)
+    page = props.get("pageProps", {}) if isinstance(props, dict) else {}
+    results = page.get("searchResults") if isinstance(page, dict) else None
+    if isinstance(results, list):
+        emit(f"  searchResults={len(results)} keys={sorted(page)}")
+        for item in results:
+            if isinstance(item, dict):
+                emit(f"  result {item.get('objectId')} parent={item.get('parentId')} {item.get('type')} | {item.get('name')}")
+        rest = {key: value for key, value in page.items() if key not in {"searchResults", "types", "__namespaces"}}
+        emit("  other " + json.dumps(rest, ensure_ascii=False)[:8000])
+        return
+    emit("  " + json.dumps(props, ensure_ascii=False)[:excerpt])
+
+
+def probe_text(url: str, *, excerpt: int = 60000) -> None:
+    """Print the start of a text resource (a script of the catalogue, a CSV), whitespace collapsed."""
+    status, final, headers, body, error = fetch(url, limit=PAGE_LIMIT, accept="*/*")
+    emit(f"TEXT {url} status={status} final={final} {header_summary(headers)} error={error}")
+    if isinstance(body, bytes):
+        emit("  " + re.sub(r"\s+", " ", body.decode("utf-8", errors="replace"))[:excerpt])
 
 
 def probe_json(url: str, *, excerpt: int = 6000) -> object | None:
@@ -439,8 +458,9 @@ def run(tokens: list[str], out: Path, keep: bool) -> None:
             scan_mdb(out)
         elif token == "atlas":
             scan_atlas(out)
-        elif kind in {"page", "json", "gtfs", "head", "jsgrep", "netexinfo", "nextdata"} and url.startswith(("http://", "https://")):
+        elif kind in {"page", "json", "gtfs", "head", "jsgrep", "netexinfo", "nextdata", "text"} and url.startswith(("http://", "https://")):
             {
+                "text": lambda: probe_text(url),
                 "nextdata": lambda: probe_nextdata(url),
                 "page": lambda: probe_page(url),
                 "json": lambda: probe_json(url),
