@@ -1,5 +1,14 @@
 # Changelog
 
+## In sviluppo — Ferrovie regionali, metropolitane e tram offline
+
+- Nuovi data pack in `gtfs-transit/` (ogni build): Genova–Casella dal GTFS AMT; metropolitane e tram di Milano (ATM), Genova (metro, funicolari, cremagliera e ascensori AMT), Firenze (tramvia) e Cagliari/Sassari (ARST). Le ferrovie FAL, Ferrotramviaria, Ferrovie del Gargano e Mi.Co.Tra. Udine–Villach dei Regional Access Point del NAP sono registrate in `tools/transit_packs.json` e si aggiungono al refresh `transit_packs` (il NAP rispondeva 503 al momento della build). In tutto 4,8 MB in `gtfs-transit/` e 4,5 MB in `gtfs-personal/`, accanto ai 19,0 MB dei dodici pack del primo rilascio.
+- Build personali (`-Pbinario.personalSources=true`, predefinito per l'APK debug, mai per release e Play): metro e tram di Roma, metro, tram e cremagliera GTT Torino (licenza non commerciale), metro, funicolari e tram ANM Napoli, tram ACTV di Mestre, ferrovie Cotral Roma–Lido e Roma–Viterbo (licenze non dichiarate o non verificabili), in `app/src/personal/assets/gtfs-personal/`.
+- Convertitore NeTEx → GTFS scritto nel repository (`tools/netex_to_gtfs.py`, libreria standard), validato sul dataset Trenitalia del NAP contro il pack `trenitalia-gtfs`; acquisizione e build solo in CI (`GTFS Asset Integrity`, input `transit_packs`), registro `tools/transit_packs.json`.
+- Viaggi con cambi: tratte Metro, Tram e Funicolare («Metro M1», «Tram 14») con icone e testi in 5 lingue; tratti a piedi fino a 400 m fra stazioni e fermate vicine (4,5 km/h più 2 minuti, configurabili), all'inizio, ai cambi e alla fine; un pack urbano entra in una ricerca solo se un estremo è una sua fermata o, fra due stazioni della sua città, quando i treni da soli non trovano soluzioni.
+- Ricerca stazioni: fermate di metro, tram e funicolare con badge «M», «T», «F», dietro l'impostazione «Includi fermate di metro e tram nella ricerca» (attiva nelle build personali).
+- Impostazioni › Info: crediti e licenza di ogni rete inclusa nella build.
+
 ## In sviluppo — Viaggi con cambi nei risultati Android
 
 - **Risultati**: i treni diretti della ricerca (live e catalogo, con fonti, priorità e selezione invariate) e i viaggi con cambi calcolati offline sugli orari GTFS inclusi formano un solo elenco per orario di partenza, ciascuno con la propria fonte; un viaggio diretto che è lo stesso treno di un risultato diretto compare una volta sola, come treno. Righe «17:40 → 22:05», durata «4h 25min», treni, «Diretto» / «1 cambio» / «2 cambi» e «Binario —»; i filtri sono quelli del render: **Tutti**, **Diretti**, **Meno cambi**, **Più veloce**, con conteggio annunciato da TalkBack.

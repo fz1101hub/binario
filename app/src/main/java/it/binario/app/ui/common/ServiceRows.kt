@@ -4,6 +4,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.heightIn
@@ -33,6 +34,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -57,6 +59,8 @@ import it.binario.app.data.StopRouteChange
 import it.binario.app.data.TrainService
 import it.binario.app.data.core.OperationalRouteChange
 import it.binario.app.data.core.RouteChangeKind
+import it.binario.app.data.gtfs.UrbanStopBadge
+import it.binario.app.data.repository.BinarioDataGraph
 import it.binario.app.localized
 import it.binario.app.updateTimeMessage
 
@@ -408,17 +412,21 @@ internal fun StationField(
             )
         )
         if (matches.isNotEmpty() && (matches.none { it.name.equals(value, ignoreCase = true) } || matches.any { it.id.startsWith("manual:") })) {
+            val urbanStops = BinarioDataGraph.urbanStopIndex(LocalContext.current)
             matches.take(5).forEach { station ->
                 TextButton(onClick = { onSelect(station) }, modifier = Modifier.fillMaxWidth()) {
+                    // A metro or tram stop of a city pack: "M"/"T" badge and the city instead of a railway code.
+                    val badge = urbanStops.badgeOf(station.id)
                     val stationLabel = if (station.id.startsWith("manual:")) {
                         stringResource(R.string.station_suggestion_free_text, station.name)
                     } else {
                         buildString {
                             append(station.name)
-                            station.railwayCode?.let { append(" · ").append(it) }
+                            if (badge != null) station.city.takeIf { it.isNotBlank() && it != station.name }?.let { append(" · ").append(it) }
+                            else station.railwayCode?.let { append(" · ").append(it) }
                         }
                     }
-                    Icon(Icons.Default.Train, contentDescription = null, modifier = Modifier.size(20.dp))
+                    if (badge != null) UrbanStopBadgeMark(badge) else Icon(Icons.Default.Train, contentDescription = null, modifier = Modifier.size(20.dp))
                     Spacer(Modifier.width(10.dp))
                     Text(stationLabel, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
@@ -464,5 +472,27 @@ internal fun compactStatusLabel(service: TrainService): String {
         ServiceStatus.ON_TIME -> stringResource(R.string.operational_on_time)
         ServiceStatus.DELAYED -> stringResource(R.string.delay_minutes, service.delayMinutes)
         ServiceStatus.CANCELLED -> stringResource(R.string.service_status_cancelled)
+    }
+}
+
+/** The "M" / "T" / "F" mark of a city stop in the station suggestions, read as "Fermata della metropolitana". */
+@Composable
+internal fun UrbanStopBadgeMark(badge: UrbanStopBadge) {
+    val description = stringResource(
+        when (badge) {
+            UrbanStopBadge.METRO -> R.string.station_badge_metro
+            UrbanStopBadge.TRAM -> R.string.station_badge_tram
+            UrbanStopBadge.FUNICULAR -> R.string.station_badge_funicular
+        }
+    )
+    Surface(
+        modifier = Modifier.size(20.dp).semantics { contentDescription = description },
+        shape = RoundedCornerShape(5.dp),
+        color = MaterialTheme.colorScheme.primary,
+        contentColor = MaterialTheme.colorScheme.onPrimary
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Text(badge.letter, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+        }
     }
 }

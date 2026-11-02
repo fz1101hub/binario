@@ -15,19 +15,35 @@ internal class ConnectionScanTimetable(
     val departureMinute: IntArray,
     val arrivalMinute: IntArray,
     val trip: IntArray,
-    private val boarding: ByteArray
+    private val boarding: ByteArray,
+    /**
+     * Walking transfers between nearby nodes (two stations, a station and a metro stop): the footpaths leaving node
+     * `n` are `footTarget[i]`, `footMinutes[i]` for `i` in `footStart[n] until footStart[n + 1]`. [footMinutes] is the
+     * whole time from the arrival at `n` to being ready to board at the target (walk, margin and change time).
+     */
+    val footStart: IntArray = IntArray(nodeCount + 1),
+    val footTarget: IntArray = IntArray(0),
+    val footMinutes: IntArray = IntArray(0)
 ) {
     init {
         val size = departureNode.size
         require(arrivalNode.size == size && departureMinute.size == size && arrivalMinute.size == size &&
             trip.size == size && boarding.size == size) { "Colonne delle connessioni di lunghezza diversa" }
         require(transferMinutes.size == nodeCount) { "Un tempo di cambio per nodo" }
+        require(footStart.size == nodeCount + 1 && footTarget.size == footMinutes.size &&
+            footStart[nodeCount] == footTarget.size) { "Percorsi a piedi non coerenti" }
         for (index in 1 until size) {
             require(departureMinute[index - 1] <= departureMinute[index]) { "Connessioni non ordinate per partenza" }
         }
     }
 
     val size: Int get() = departureNode.size
+
+    /** Minutes of the footpath from [from] to [to], or -1 when there is none. */
+    fun footpathMinutes(from: Int, to: Int): Int {
+        for (index in footStart[from] until footStart[from + 1]) if (footTarget[index] == to) return footMinutes[index]
+        return -1
+    }
 
     fun pickupAllowed(connection: Int): Boolean = boarding[connection].toInt() and NO_PICKUP == 0
     fun dropOffAllowed(connection: Int): Boolean = boarding[connection].toInt() and NO_DROP_OFF == 0
@@ -44,16 +60,30 @@ internal class ConnectionScanTimetable(
 /** One vehicle of a journey: boarded on [boardConnection], left after [alightConnection] (same trip). */
 internal data class ScannedLeg(val boardConnection: Int, val alightConnection: Int)
 
+/**
+ * A walk of a journey: from node [fromNode] to node [toNode] in [minutes]. The walk from the origin has no
+ * [fromNode] (-1), the walk to the destination no [toNode] (-1).
+ */
+internal data class ScannedWalk(val fromNode: Int, val toNode: Int, val minutes: Int)
+
 internal data class ScannedJourney(
     val legs: List<ScannedLeg>,
     val departureMinute: Int,
-    val arrivalMinute: Int
+    val arrivalMinute: Int,
+    /** Walk from the origin to the first boarding node, when the journey does not start at an origin node. */
+    val accessWalk: ScannedWalk? = null,
+    /** For each change (`legs.size - 1`), the walk between the two vehicles, or null when both use the same node. */
+    val transferWalks: List<ScannedWalk?> = List((legs.size - 1).coerceAtLeast(0)) { null },
+    /** Walk from the last alighting node to the destination, when it is not a destination node. */
+    val egressWalk: ScannedWalk? = null
 ) {
     val transfers: Int get() = legs.size - 1
 }
 
 internal data class ConnectionScanQuery(
+    /** Origin nodes: the journey may board there with no walk. */
     val origins: BooleanArray,
+    /** Destination nodes: the journey ends when it alights there. */
     val destinations: BooleanArray,
     /** Earliest departure from an origin node. */
     val departureMinute: Int,
@@ -67,10 +97,19 @@ internal data class ConnectionScanQuery(
      * No connection departing after this minute is used: a journey that leaves inside the window can go on with
      * connections up to here, so a long trip leaving near the end of the window still arrives.
      */
-    val lastConnectionMinute: Int = latestDepartureMinute
+    val lastConnectionMinute: Int = latestDepartureMinute,
+    /**
+     * Minutes of walking from the origin to a nearby node (-1: none), so that a journey can start at a metro stop near
+     * the requested station. Origin nodes need no walk whatever this says.
+     */
+    val originWalkMinutes: IntArray? = null,
+    /** Minutes of walking from a node to the destination (-1: none). Destination nodes need no walk. */
+    val destinationWalkMinutes: IntArray? = null
 ) {
     init {
         require(maxTransfers in 0..6) { "Numero di cambi non supportato" }
+        require(originWalkMinutes == null || originWalkMinutes.size == origins.size) { "Un tempo a piedi per nodo" }
+        require(destinationWalkMinutes == null || destinationWalkMinutes.size == destinations.size) { "Un tempo a piedi per nodo" }
         require(maxResults > 0) { "Serve almeno un risultato" }
         require(maxIterations > 0) { "Serve almeno una scansione" }
         require(latestDepartureMinute >= departureMinute) { "Finestra di ricerca non valida" }
@@ -88,6 +127,12 @@ internal data class ConnectionScanQuery(
  * the traveller reached the boarding node in round k-1 at least the node's transfer time before the connection
  * departs (round 1: from an origin node). Staying on a trip needs no transfer.
  *
+ * Walking (Dibbelt et al., section 3.2, footpaths relaxed when a node is reached): alighting at node `u` at time `t`
+ * makes `u` ready for the next vehicle at `t` + its transfer time and every node `v` with a footpath from `u` ready at
+ * `t` + the footpath's minutes. A walk is not a vehicle and never counts as a change. The query may also start with a
+ * walk from the origin to a nearby node and end with a walk from a nearby node to the destination; a journey that
+ * only walks is never returned.
+ *
  * [plan] repeats the scan from one minute after the earliest departure found so far, so options leaving later are
  * found too; afterwards it removes dominated options (leaving no later, arriving no earlier, with no fewer
  * changes), keeps one option per train sequence and per (departure, arrival, changes) and returns at most
@@ -99,11 +144,12 @@ internal class ConnectionScanPlanner(private val timetable: ConnectionScanTimeta
         require(query.origins.size == timetable.nodeCount && query.destinations.size == timetable.nodeCount) {
             "Origini e destinazioni devono coprire tutti i nodi"
         }
-        if ((0 until timetable.nodeCount).none { query.origins[it] } ||
-            (0 until timetable.nodeCount).none { query.destinations[it] }) return emptyList()
+        val access = walkTimes(query.origins, query.originWalkMinutes)
+        val egress = walkTimes(query.destinations, query.destinationWalkMinutes)
+        if (access.none { it >= 0 } || egress.none { it >= 0 }) return emptyList()
         if ((0 until timetable.nodeCount).any { query.origins[it] && query.destinations[it] }) return emptyList()
 
-        val state = ScanState(query.maxTransfers + 1, timetable.nodeCount, timetable.tripCount)
+        val state = ScanState(query.maxTransfers + 1, timetable.nodeCount, timetable.tripCount, access, egress)
         val found = ArrayList<ScannedJourney>()
         var from = query.departureMinute
         var iterations = 0
@@ -133,16 +179,24 @@ internal class ConnectionScanPlanner(private val timetable: ConnectionScanTimeta
         val rounds = state.rounds
         state.reset()
         val arrival = state.arrival
+        val ready = state.ready
+        val readyFrom = state.readyFrom
         val boardedAt = state.boardedAt
         val parentBoard = state.parentBoard
         val parentAlight = state.parentAlight
         val bestAtDestination = state.bestAtDestination
+        val destinationNode = state.destinationNode
+        val access = state.access
+        val egress = state.egress
         val departureMinute = timetable.departureMinute
         val arrivalMinute = timetable.arrivalMinute
         val departureNode = timetable.departureNode
         val arrivalNode = timetable.arrivalNode
         val tripOf = timetable.trip
         val transferMinutes = timetable.transferMinutes
+        val footStart = timetable.footStart
+        val footTarget = timetable.footTarget
+        val footMinutes = timetable.footMinutes
 
         var connection = firstDepartingAtOrAfter(from)
         val size = timetable.size
@@ -163,10 +217,11 @@ internal class ConnectionScanPlanner(private val timetable: ConnectionScanTimeta
                 var boarded = boardedAt[slot]
                 if (boarded < 0 && pickup) {
                     val reachable = if (round == 1) {
-                        query.origins[boardNode] && departure <= query.latestDepartureMinute
+                        val walk = access[boardNode]
+                        // The journey leaves the origin `walk` minutes before this departure, inside the window.
+                        walk >= 0 && departure - walk >= from && departure - walk <= query.latestDepartureMinute
                     } else {
-                        val reached = arrival[(round - 1) * nodes + boardNode]
-                        reached != UNREACHED && reached + transferMinutes[boardNode] <= departure
+                        ready[(round - 1) * nodes + boardNode] <= departure
                     }
                     if (reachable) {
                         boardedAt[slot] = connection
@@ -179,7 +234,28 @@ internal class ConnectionScanPlanner(private val timetable: ConnectionScanTimeta
                         arrival[cell] = arrives
                         parentBoard[cell] = boarded
                         parentAlight[cell] = connection
-                        if (query.destinations[alightNode] && arrives < bestAtDestination[round]) bestAtDestination[round] = arrives
+                        if (round < rounds) {
+                            // Ready for the next vehicle here after the change time, or at a nearby node after the walk.
+                            val base = round * nodes
+                            val here = arrives + transferMinutes[alightNode]
+                            if (here < ready[base + alightNode]) {
+                                ready[base + alightNode] = here
+                                readyFrom[base + alightNode] = alightNode
+                            }
+                            for (path in footStart[alightNode] until footStart[alightNode + 1]) {
+                                val target = footTarget[path]
+                                val there = arrives + footMinutes[path]
+                                if (there < ready[base + target]) {
+                                    ready[base + target] = there
+                                    readyFrom[base + target] = alightNode
+                                }
+                            }
+                        }
+                        val walk = egress[alightNode]
+                        if (walk >= 0 && arrives + walk < bestAtDestination[round]) {
+                            bestAtDestination[round] = arrives + walk
+                            destinationNode[round] = alightNode
+                        }
                     }
                 }
             }
@@ -192,39 +268,58 @@ internal class ConnectionScanPlanner(private val timetable: ConnectionScanTimeta
             val best = bestAtDestination[round]
             if (best >= bestWithFewer) continue
             bestWithFewer = best
-            var destination = -1
-            for (node in 0 until nodes) {
-                if (query.destinations[node] && arrival[round * nodes + node] == best) {
-                    destination = node
-                    break
-                }
-            }
-            if (destination >= 0) reconstruct(round, destination, state, query)?.let(journeys::add)
+            val destination = destinationNode[round]
+            if (destination >= 0) reconstruct(round, destination, state)?.let(journeys::add)
         }
         return journeys
     }
 
-    private fun reconstruct(round: Int, destination: Int, state: ScanState, query: ConnectionScanQuery): ScannedJourney? {
+    private fun reconstruct(round: Int, destination: Int, state: ScanState): ScannedJourney? {
         val nodes = timetable.nodeCount
         val legs = ArrayList<ScannedLeg>(round)
+        val walks = ArrayList<ScannedWalk?>(round)
         var node = destination
         var current = round
+        var firstBoardNode = -1
         while (current >= 1) {
             val cell = current * nodes + node
             val board = state.parentBoard[cell]
             val alight = state.parentAlight[cell]
             if (board < 0 || alight < 0) return null
             legs += ScannedLeg(board, alight)
-            node = timetable.departureNode[board]
+            val boardNode = timetable.departureNode[board]
+            if (current > 1) {
+                val from = state.readyFrom[(current - 1) * nodes + boardNode]
+                if (from < 0) return null
+                walks += if (from == boardNode) null else ScannedWalk(from, boardNode, timetable.footpathMinutes(from, boardNode).coerceAtLeast(0))
+                node = from
+            } else {
+                firstBoardNode = boardNode
+            }
             current -= 1
         }
-        if (!query.origins[node]) return null
+        val accessMinutes = state.access[firstBoardNode]
+        val egressMinutes = state.egress[destination]
+        if (accessMinutes < 0 || egressMinutes < 0) return null
         legs.reverse()
+        walks.reverse()
         return ScannedJourney(
             legs = legs,
-            departureMinute = timetable.departureMinute[legs.first().boardConnection],
-            arrivalMinute = timetable.arrivalMinute[legs.last().alightConnection]
+            departureMinute = timetable.departureMinute[legs.first().boardConnection] - accessMinutes,
+            arrivalMinute = timetable.arrivalMinute[legs.last().alightConnection] + egressMinutes,
+            accessWalk = if (accessMinutes > 0) ScannedWalk(-1, firstBoardNode, accessMinutes) else null,
+            transferWalks = walks,
+            egressWalk = if (egressMinutes > 0) ScannedWalk(destination, -1, egressMinutes) else null
         )
+    }
+
+    /** Per node, 0 for the given nodes, else the walk minutes ([walk]) or -1. */
+    private fun walkTimes(nodes: BooleanArray, walk: IntArray?): IntArray = IntArray(nodes.size) { node ->
+        when {
+            nodes[node] -> 0
+            walk != null && walk[node] >= 0 -> walk[node]
+            else -> -1
+        }
     }
 
     /** First connection departing at or after [minute] (binary search on the sorted departures). */
@@ -260,19 +355,27 @@ internal class ConnectionScanPlanner(private val timetable: ConnectionScanTimeta
             (first.departureMinute > second.departureMinute || first.arrivalMinute < second.arrivalMinute ||
                 first.transfers < second.transfers)
 
-    private class ScanState(val rounds: Int, nodes: Int, trips: Int) {
+    private class ScanState(val rounds: Int, nodes: Int, trips: Int, val access: IntArray, val egress: IntArray) {
         val arrival = IntArray((rounds + 1) * nodes)
+        /** Earliest minute a traveller who used `round` vehicles can board another one at a node. */
+        val ready = IntArray((rounds + 1) * nodes)
+        /** The node where that traveller left the vehicle (itself, or the start of the walk). */
+        val readyFrom = IntArray((rounds + 1) * nodes)
         val parentBoard = IntArray((rounds + 1) * nodes)
         val parentAlight = IntArray((rounds + 1) * nodes)
         val boardedAt = IntArray(rounds * trips)
         val bestAtDestination = IntArray(rounds + 1)
+        val destinationNode = IntArray(rounds + 1)
 
         fun reset() {
             arrival.fill(UNREACHED)
+            ready.fill(UNREACHED)
+            readyFrom.fill(-1)
             parentBoard.fill(-1)
             parentAlight.fill(-1)
             boardedAt.fill(-1)
             bestAtDestination.fill(UNREACHED)
+            destinationNode.fill(-1)
         }
     }
 

@@ -1,6 +1,7 @@
 package it.binario.app
 
 import android.app.Application
+import it.binario.app.data.StationSearchNormalizer
 import android.util.Log
 import android.content.Context
 import androidx.compose.runtime.getValue
@@ -72,6 +73,8 @@ class TrainViewModel @JvmOverloads constructor(
 ) : AndroidViewModel(application) {
     private companion object {
         const val STATION_SUGGESTION_DEBOUNCE_MILLIS = 180L
+        /** Metro and tram stops among the station suggestions (the field shows five). */
+        const val URBAN_SUGGESTIONS = 3
     }
     private val routeStore = RouteStore(application)
     private val cache = RouteSnapshotCache(application)
@@ -81,6 +84,9 @@ class TrainViewModel @JvmOverloads constructor(
     private val personalTravelStore = PersonalTravelStore(application)
     private val mobilityPreferencesStore = MobilityPreferencesStore(application)
     private val customStationStore = CustomStationStore(application)
+    /** Metro and tram stops of the city packs, offered next to the stations when the setting is on. */
+    private val urbanStopIndex = BinarioDataGraph.urbanStopIndex(application)
+    private val sourcesSettingsStore = SourcesSettingsStore(application)
     private val punctualityStore = PunctualityHistoryStore(application)
     private val dataSource: TrainDataSource = routeDataSource ?: BinarioDataGraph.routeDataSource(application)
     private val curatedStationCatalog = EmbeddedCuratedRailStationCatalog(
@@ -302,7 +308,8 @@ class TrainViewModel @JvmOverloads constructor(
 
         stationSuggestionJobs[fieldKey] = viewModelScope.launch(Dispatchers.Default) {
             delay(STATION_SUGGESTION_DEBOUNCE_MILLIS)
-            val suggestions = autocomplete.suggest(query)
+            val urban = if (sourcesSettingsStore.urbanStopsInSearch) urbanStopIndex.search(query, URBAN_SUGGESTIONS).map { it.station } else emptyList()
+            val suggestions = withUrbanStops(autocomplete.suggest(query), urban, query)
                 .ifEmpty { listOfNotNull(stationFromFreeText(query)) }
             withContext(Dispatchers.Main) {
                 if (stationSuggestionRequestIds[fieldKey] == requestId) {
@@ -311,6 +318,17 @@ class TrainViewModel @JvmOverloads constructor(
                 }
             }
         }
+    }
+
+    /**
+     * Stations whose name is the query first, then the metro and tram stops (marked M/T by the field), then the other
+     * stations: "Duomo" offers the metro stop before "Duomo (stazione)"-like partial matches, "Milano Centrale" the station.
+     */
+    private fun withUrbanStops(stations: List<Station>, urban: List<Station>, query: String): List<Station> {
+        if (urban.isEmpty()) return stations
+        val normalized = StationSearchNormalizer.normalize(query)
+        val (exact, others) = stations.partition { station -> StationSearchNormalizer.normalize(station.name) == normalized }
+        return (exact + urban + others).distinctBy(Station::id)
     }
 
     fun clearStationSuggestions(fieldKey: String) {

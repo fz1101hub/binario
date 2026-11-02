@@ -130,6 +130,19 @@ class EmbeddedGtfsRouteAdapter(
     override suspend fun loadRoute(route: SavedRoute, direction: Direction): DataResult =
         loadRoute(route, direction, JourneyQuery.now())
 
+    /**
+     * The catalogue names of a station, then the same names without the operator suffix the pack's stations carry in
+     * the catalogue ([EmbeddedGtfsPack.catalogueNameSuffixes]: "Matera Centrale FAL" is "Matera Centrale" in the FAL
+     * pack). Packs without suffixes get the names unchanged.
+     */
+    private fun withoutSuffixes(names: List<String>, pack: EmbeddedGtfsPack): List<String> {
+        if (pack.catalogueNameSuffixes.isEmpty()) return names
+        val stripped = names.mapNotNull { name ->
+            pack.catalogueNameSuffixes.firstNotNullOfOrNull { suffix -> name.removeSuffix(" $suffix").takeIf { it != name && it.isNotBlank() } }
+        }
+        return names + stripped
+    }
+
     override suspend fun loadRoute(route: SavedRoute, direction: Direction, query: JourneyQuery): DataResult {
         val originStation = route.origin(direction)
         val destinationStation = route.destination(direction)
@@ -161,8 +174,8 @@ class EmbeddedGtfsRouteAdapter(
                         // A pack that publishes station codes is matched by code first: its own spelling of the
                         // station ("BOLOGNA C.LE") is then the name the index searches.
                         val byCode = codeNames(pack)
-                        val origin = (byCode[originStation.id] ?: originNames).firstOrNull { normalize(it) in stops }
-                        val destination = (byCode[destinationStation.id] ?: destinationNames).firstOrNull { normalize(it) in stops }
+                        val origin = (byCode[originStation.id] ?: withoutSuffixes(originNames, pack)).firstOrNull { normalize(it) in stops }
+                        val destination = (byCode[destinationStation.id] ?: withoutSuffixes(destinationNames, pack)).firstOrNull { normalize(it) in stops }
                         when {
                             origin != null && destination != null -> add(CandidatePack(pack, origin, destination))
                             explicitSourceIds != null -> add(CandidatePack(pack, originStation.name, destinationStation.name))
@@ -1240,18 +1253,22 @@ class EmbeddedGtfsRouteAdapter(
         fun LocalDate.toGtfsInt(): Int = year * 10_000 + monthValue * 100 + dayOfMonth
 
         /**
-         * Journey legs come from rail (route_type 2, 100-199), urban rail (1, 400-499) and bus routes (3,
-         * 700-799); a missing type is a train, as in the route search. A bus route is the operator's own scheduled
-         * coach ([LegMode.BUS]) in a pack whose buses are [EmbeddedGtfsPack.busRoutesAreScheduledCoaches]
-         * (Trenitalia, ItaloBus) and a rail replacement bus in the others. Anything else (ferries, cable cars, …)
-         * is not a leg of a rail journey.
+         * Journey legs come from rail (route_type 2, 100-199), metro (1, 400-499), tram (0, 900-999),
+         * funicular and lift (5, 6, 7, 1300-1499) and bus routes (3, 700-799); a missing type is a train, as in the
+         * route search. Metro, tram and funicular lines are only in the city packs (the railway packs keep rail and
+         * the operators' coaches). A bus route is the operator's own scheduled coach ([LegMode.BUS]) in a pack
+         * whose buses are [EmbeddedGtfsPack.busRoutesAreScheduledCoaches] (Trenitalia, ItaloBus) and a rail
+         * replacement bus in the others. Anything else (ferries, …) is not a leg of a rail journey.
          */
         fun journeyLegMode(rawType: String?, scheduledCoaches: Boolean = false): LegMode? {
             val text = rawType?.trim().orEmpty()
             if (text.isEmpty()) return LegMode.TRAIN
             val type = text.toIntOrNull() ?: return null
             return when (type) {
-                1, 2, in 100..199, in 400..499 -> LegMode.TRAIN
+                2, in 100..199 -> LegMode.TRAIN
+                1, in 400..499 -> LegMode.METRO
+                0, in 900..999 -> LegMode.TRAM
+                5, 6, 7, in 1300..1499 -> LegMode.FUNICULAR
                 3, in 700..799 -> if (scheduledCoaches) LegMode.BUS else LegMode.REPLACEMENT_BUS
                 else -> null
             }

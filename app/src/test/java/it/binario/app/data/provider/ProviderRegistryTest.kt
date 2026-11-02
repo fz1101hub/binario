@@ -63,8 +63,12 @@ class ProviderRegistryTest {
         assertTrue(registry.isEnabled(SourceId("hzpp-gtfs")))
         assertTrue(registry.policy(SourceId("amt-genova-casella-gtfs")) != null)
         assertTrue(registry.policy(SourceId("cotral-ferro-gtfs")) != null)
-        assertFalse(registry.isEnabled(SourceId("amt-genova-casella-gtfs")))
-        assertFalse(registry.isEnabled(SourceId("cotral-ferro-gtfs")))
+        // Offline packs again since November 2026: Genova-Casella in every build, Cotral in personal builds only.
+        assertTrue(registry.isEnabled(SourceId("amt-genova-casella-gtfs")))
+        assertEquals(BuildConfig.PERSONAL_TRANSIT_SOURCES, registry.isEnabled(SourceId("cotral-ferro-gtfs")))
+        assertEquals(BuildConfig.PERSONAL_TRANSIT_SOURCES, registry.isEnabled(SourceId("gtt-gtfs")))
+        assertTrue(registry.isEnabled(SourceId("milano-atm-gtfs")))
+        assertFalse(registry.isEnabled(SourceId("fse-puglia")))
         // Offline journeys with changes: open data, no network, journey search only.
         val journeys = registry.policy(SourceId("embedded-gtfs-journeys"))!!.descriptor
         assertTrue(registry.isEnabled(journeys.id))

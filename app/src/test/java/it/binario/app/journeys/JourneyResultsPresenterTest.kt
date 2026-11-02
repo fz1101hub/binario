@@ -139,6 +139,36 @@ class JourneyResultsPresenterTest {
         assertEquals(LegMode.REPLACEMENT_BUS, row.legs[1].mode)
     }
 
+    @Test fun `a walk between two vehicles is a leg and the change follows it where the next vehicle leaves`() {
+        val walkThenMetro = option("w",
+            leg("2158", "RE11", "Lodi", "Milano Centrale", "08:14", "08:45"),
+            leg("", null, "Milano Centrale", "Centrale FS M3", "08:45", "08:51", mode = LegMode.WALK, kind = ServiceKind.UNKNOWN, operator = null)
+                .copy(publicNumber = null),
+            leg("", "M3", "Centrale FS M3", "Duomo", "08:54", "09:02", mode = LegMode.METRO, kind = ServiceKind.URBAN, operator = "ATM")
+                .copy(publicNumber = null))
+        val row = JourneyResultsPresenter.row(walkThenMetro, zone)
+        // A walk is no vehicle: one change, shown after the walk, at the metro stop, waiting from 08:51 to 08:54.
+        assertEquals(1, row.changes)
+        val transfer = row.transfers.single()
+        assertEquals(1, transfer.afterLegIndex)
+        assertEquals("Centrale FS M3", transfer.stationLabel)
+        assertEquals("08:51" to "08:54", transfer.arrivalTime to transfer.departureTime)
+        assertEquals(3, transfer.waitMinutes)
+        assertEquals(listOf(JourneyLegVehicle.TRAIN, JourneyLegVehicle.OTHER, JourneyLegVehicle.METRO), row.legs.map { it.vehicle })
+        assertFalse(row.hasBusLeg)
+
+        // A walk from the origin to the first stop is no change either.
+        val accessWalk = option("x",
+            leg("", null, "Milano Centrale", "Centrale FS M2", "08:40", "08:45", mode = LegMode.WALK, kind = ServiceKind.UNKNOWN, operator = null),
+            leg("", "14", "Centrale FS M2", "Cairoli", "08:47", "09:05", mode = LegMode.TRAM, kind = ServiceKind.URBAN, operator = "ATM"))
+        val accessRow = JourneyResultsPresenter.row(accessWalk, zone)
+        assertEquals(0, accessRow.changes)
+        assertTrue(accessRow.transfers.isEmpty())
+        assertEquals(JourneyLegVehicle.TRAM, accessRow.legs[1].vehicle)
+        assertEquals(JourneyLegVehicle.FUNICULAR, JourneyLegVehicle.of(LegMode.FUNICULAR, "AMT", "FRI"))
+        assertEquals(TrainCategory.OTHER, JourneyResultsPresenter.trainCategory(walkThenMetro.option.legs[2]))
+    }
+
     @Test fun `foreign high-speed trains are not called Frecce and other sources keep their name`() {
         val railjet = leg("88", "RJ", "Brennero", "Innsbruck", "11:58", "12:32", kind = ServiceKind.HIGH_SPEED, operator = "ÖBB")
         assertEquals(TrainCategory.OTHER, JourneyResultsPresenter.trainCategory(railjet))
@@ -163,10 +193,12 @@ class JourneyResultsPresenterTest {
         val strings = names("string")
         val plurals = names("plurals")
         val expectedStrings = JourneyResultsFilter.entries.map { it.resourceName } +
+            JourneyLegVehicle.entries.mapNotNull { it.resourceName } +
             JourneyEmptyReason.entries.map { it.resourceName } +
             JourneySourceLabel.entries.mapNotNull { it.resourceName } +
             listOf(JourneyChangesLabel.directResourceName, "journey_results_title", "journey_searching", "journey_transfer_at",
                 "journey_arrival_next_day", "journey_leg_replacement_bus", "journey_scheduled_only_notice",
+                "journey_leg_metro", "journey_leg_tram", "journey_leg_funicular", "journey_leg_walk",
                 "journey_coverage_notice", "journey_incomplete_notice", "journey_option_accessibility")
         assertEquals(emptyList<String>(), expectedStrings.filterNot(strings::contains))
         val expectedPlurals = listOf(JourneyChangesLabel.changesPluralName, "journey_transfer_wait", "journey_duration_hours", "minutes_short")

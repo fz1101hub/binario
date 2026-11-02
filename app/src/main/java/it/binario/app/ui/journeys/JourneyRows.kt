@@ -10,8 +10,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.DirectionsWalk
 import androidx.compose.material.icons.filled.DirectionsBus
+import androidx.compose.material.icons.filled.DirectionsRailway
 import androidx.compose.material.icons.filled.DirectionsTransit
+import androidx.compose.material.icons.filled.Subway
 import androidx.compose.material.icons.filled.Train
+import androidx.compose.material.icons.filled.Tram
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -47,12 +50,15 @@ import it.binario.app.ui.common.localizedLabel
  * and a scheduled bus mode of the timetable packs (`BUS`, `*_BUS`) is drawn as a bus without changing this file.
  */
 internal enum class JourneyLegKind {
-    TRAIN, BUS, REPLACEMENT_BUS, WALK, OTHER;
+    TRAIN, BUS, REPLACEMENT_BUS, METRO, TRAM, FUNICULAR, WALK, OTHER;
 
     companion object {
         fun of(mode: LegMode): JourneyLegKind = when (mode) {
             LegMode.TRAIN -> TRAIN
             LegMode.REPLACEMENT_BUS -> REPLACEMENT_BUS
+            LegMode.METRO -> METRO
+            LegMode.TRAM -> TRAM
+            LegMode.FUNICULAR -> FUNICULAR
             LegMode.WALK -> WALK
             else -> ofModeName(mode.name)
         }
@@ -66,19 +72,22 @@ internal val JourneyLegKind.icon: ImageVector
     get() = when (this) {
         JourneyLegKind.TRAIN -> Icons.Default.Train
         JourneyLegKind.BUS, JourneyLegKind.REPLACEMENT_BUS -> Icons.Default.DirectionsBus
+        JourneyLegKind.METRO -> Icons.Default.Subway
+        JourneyLegKind.TRAM -> Icons.Default.Tram
+        JourneyLegKind.FUNICULAR -> Icons.Default.DirectionsRailway
         JourneyLegKind.WALK -> Icons.AutoMirrored.Filled.DirectionsWalk
         JourneyLegKind.OTHER -> Icons.Default.DirectionsTransit
     }
 
 /**
- * "REGIONALE 2153", "RE 24617", "Bus sostitutivo 123", "Autobus B12 4417", "A piedi": the published line or category
- * and the number of a leg; never empty.
+ * "REGIONALE 2153", "RE 24617", "Bus sostitutivo 123", "Autobus B12 4417", "Metro M1", "Tram 14", "A piedi": the
+ * published line or category and the number of a leg; never empty.
  */
 @Composable
 internal fun journeyLegLabel(leg: JourneyLegRow): String {
     val line = leg.lineLabel?.trim()?.takeIf(String::isNotEmpty)
     val number = leg.number?.trim()?.takeIf(String::isNotEmpty)
-    return when (JourneyLegKind.of(leg.mode)) {
+    return when (val kind = JourneyLegKind.of(leg.mode)) {
         JourneyLegKind.TRAIN -> listOfNotNull(line ?: leg.trainCategory.localizedLabel(), number).joinToString(" ")
         JourneyLegKind.REPLACEMENT_BUS -> listOfNotNull(stringResource(R.string.journey_leg_replacement_bus), line, number).joinToString(" ")
         JourneyLegKind.BUS -> {
@@ -94,10 +103,34 @@ internal fun journeyLegLabel(leg: JourneyLegRow): String {
             val extraLine = line?.takeUnless { it.replace(" ", "").equals(label.replace(" ", ""), ignoreCase = true) }
             listOfNotNull(label, extraLine, number).joinToString(" ")
         }
+        JourneyLegKind.METRO, JourneyLegKind.TRAM, JourneyLegKind.FUNICULAR -> {
+            val label = stringResource(
+                when (kind) {
+                    JourneyLegKind.METRO -> R.string.journey_leg_metro
+                    JourneyLegKind.TRAM -> R.string.journey_leg_tram
+                    else -> R.string.journey_leg_funicular
+                }
+            )
+            // "Metro M1", "Tram 14", "Funicolare Centrale": the line only, a city run has no public number. A line
+            // that only repeats the mode ("METRO", "Tram") is left out.
+            val extraLine = line?.takeUnless { urbanLineRepeatsMode(it, label) }
+            listOfNotNull(label, extraLine).joinToString(" ")
+        }
         JourneyLegKind.WALK -> stringResource(R.string.journey_leg_walk)
         JourneyLegKind.OTHER -> listOfNotNull(line, number).joinToString(" ").ifEmpty { leg.trainCategory.localizedLabel() }
     }
 }
+
+/** True when a city line's published name is only the mode ("METRO", "Metropolitana", "tram") in any language. */
+internal fun urbanLineRepeatsMode(line: String, label: String): Boolean {
+    val compact = line.replace(" ", "").lowercase()
+    return compact == label.replace(" ", "").lowercase() || compact in URBAN_MODE_WORDS
+}
+
+private val URBAN_MODE_WORDS = setOf(
+    "metro", "metropolitana", "métro", "u-bahn", "subway", "tram", "tramvia", "tranvia", "tranvía", "tramway",
+    "straßenbahn", "funicolare", "funicular", "funiculaire", "standseilbahn"
+)
 
 /** "REGIONALE 2153 › RE 24617": every leg on board, in order (walks between stations are left out). */
 @Composable

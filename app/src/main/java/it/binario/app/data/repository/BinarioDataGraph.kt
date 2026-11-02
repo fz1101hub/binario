@@ -9,6 +9,7 @@ import it.binario.app.data.gtfs.EmbeddedGtfsRealtimeScheduleResolver
 import it.binario.app.data.gtfs.EmbeddedGtfsPacks
 import it.binario.app.data.gtfs.EmbeddedGtfsRouteAdapter
 import it.binario.app.data.gtfs.EmbeddedGtfsStationSearchIndex
+import it.binario.app.data.gtfs.EmbeddedUrbanStopIndex
 import it.binario.app.data.journey.EmbeddedGtfsJourneyProvider
 import it.binario.app.data.provider.AlertProvider
 import it.binario.app.data.provider.AuthorizedExternalProviderFactory
@@ -42,6 +43,7 @@ object BinarioDataGraph {
     private val numberSearchByPackage = mutableMapOf<String, TrainNumberSearchService>()
     private val stationIndexesByPackage = mutableMapOf<String, EmbeddedGtfsStationSearchIndex>()
     private val journeySearchByPackage = mutableMapOf<String, JourneySearchService>()
+    private val urbanStopIndexesByPackage = mutableMapOf<String, EmbeddedUrbanStopIndex>()
 
     fun routeDataSource(context: Context): TrainDataSource = synchronized(routeSourcesByPackage) {
         val applicationContext = context.applicationContext
@@ -98,13 +100,25 @@ object BinarioDataGraph {
         journeySearchByPackage.getOrPut(app.packageName) {
             val offline = EmbeddedGtfsJourneyProvider.create(
                 openAsset = { assetPath -> app.assets.open(assetPath) },
-                packs = EmbeddedGtfsPacks.all.filter { defaultRegistry.isEnabled(it.sourceId) }
+                // The railway packs, then the city networks (metro, tram) this build includes.
+                packs = (EmbeddedGtfsPacks.all + EmbeddedGtfsPacks.urban).filter { defaultRegistry.isEnabled(it.sourceId) }
             )
             JourneySearchService(activeProviders(listOf<JourneyProvider>(offline), ProviderCapability.JOURNEY_SEARCH))
         }
     }
 
     fun providerRegistry(): ProviderRegistry = defaultRegistry
+
+    /** Metro, tram and funicular stops of this build's city packs, for the station search (read lazily). */
+    fun urbanStopIndex(context: Context): EmbeddedUrbanStopIndex = synchronized(urbanStopIndexesByPackage) {
+        val app = context.applicationContext
+        urbanStopIndexesByPackage.getOrPut(app.packageName) {
+            EmbeddedUrbanStopIndex(
+                openAsset = { assetPath -> app.assets.open(assetPath) },
+                packs = EmbeddedGtfsPacks.urban.filter { defaultRegistry.isEnabled(it.sourceId) }
+            )
+        }
+    }
 
     fun stationSearchIndex(context: Context): EmbeddedGtfsStationSearchIndex = synchronized(stationIndexesByPackage) {
         val applicationContext = context.applicationContext

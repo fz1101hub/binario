@@ -44,7 +44,7 @@ python3 tools/build_gtfs_packs.py --refresh --source-id toscana-tft-gtfs \
   --output-dir /tmp/binario-gtfs --generated-at "$(date --utc +%F)"
 ```
 
-Le sorgenti `GATEWAY_ONLY`, inclusi **AMT Genova–Casella** e **Cotral Ferro**, non vengono scaricate da endpoint non verificabili. Al 23 settembre 2026, Transitland conferma un feed AMT aggiornato fino al 6 novembre 2026, ma l'origine pubblicata è solo HTTP e il mirror HTTPS richiede credenziali; l'URL Cotral usa invece un certificato valido per `*.cotralspa.it` ma non per il nome a tre livelli `travel.mob.cotralspa.it`, quindi fallisce la verifica TLS. Servono un gateway HTTPS approvato o un nuovo endpoint ufficiale con certificato valido e un archivio GTFS completo. Il filtro AMT è volutamente stretto: mantiene solo l'identificatore revisionato `FGC-164` (Manin–Casella); non usa un matching fuzzy sul nome e fallisce se la route cambia identificatore, imponendo una nuova revisione.
+Le sorgenti `GATEWAY_ONLY`, inclusi **AMT Genova–Casella** e **Cotral Ferro**, non vengono scaricate da endpoint non verificabili. Al 23 settembre 2026, Transitland conferma un feed AMT aggiornato fino al 6 novembre 2026, ma l'origine pubblicata è solo HTTP e il mirror HTTPS richiede credenziali; l'URL Cotral usa invece un certificato valido per `*.cotralspa.it` ma non per il nome a tre livelli `travel.mob.cotralspa.it`, quindi fallisce la verifica TLS. Servono un gateway HTTPS approvato o un nuovo endpoint ufficiale con certificato valido e un archivio GTFS completo. Il filtro AMT è volutamente stretto: mantiene solo l'identificatore revisionato `FGC-191` (Manin–Casella, `FGC-164` fino al feed di settembre 2026); non usa un matching fuzzy sul nome e fallisce se la route cambia identificatore, imponendo una nuova revisione. Da novembre 2026 entrambi sono di nuovo inclusi dalla pipeline `transit-packs` (sezione «Ferrovie regionali e reti urbane»): AMT dall'origine HTTP verificata contro la copia HTTPS del Mobility Database, Cotral solo nelle build personali.
 
 ## Pack nazionali Trenitalia e Italo (fissati a un commit)
 
@@ -70,9 +70,45 @@ Passi di refresh (azione del titolare, almeno a ogni cambio orario):
 
 **Italo: scadenza il 12 dicembre 2026.** Il calendario Italo del commit fissato (`calendar.txt` fino al 12 dicembre 2026, poche date sparse fino al 2 febbraio 2027) termina con il cambio orario: il gate a 30 giorni lo blocca dal 12 novembre 2026, come gli altri pack che terminano lo stesso giorno (STA, svizzero, ÖBB, Trenord, TFT, HŽPP). Il pack va rinnovato appena l'upstream pubblica l'orario dal 13 dicembre 2026, prima della release successiva. Trenitalia è valido fino all'11 dicembre 2027.
 
+## Ferrovie regionali e reti urbane (`gtfs-transit/`, `gtfs-personal/`)
+
+Dal novembre 2026 le ferrovie regionali pubblicate sul National Access Point e le reti di metropolitane, tram e funicolari sono pack separati dai dodici del primo rilascio, che restano invariati byte per byte:
+
+- `app/src/main/assets/gtfs-transit/`: dati aperti, in ogni build;
+- `app/src/personal/assets/gtfs-personal/`: licenza non commerciale o non dichiarata, solo nelle build personali (`-Pbinario.personalSources=true`; predefinito `true` per debug e `false` per release, vedi `SOURCE_POLICY.md`).
+
+Il registro delle sorgenti è `tools/transit_packs.json` (per ogni pack: `sourceId`, directory, distribuzione, `kind` `rail` o `urban`, formato `gtfs` o `netex`, URL, licenza con la sua evidenza, attribuzione, `minValidDays`; per un'origine solo HTTP la copia HTTPS da confrontare, `corroborateWith`, oppure, per un pack personale, il motivo `httpReason`). Il container di sviluppo non raggiunge questi host: acquisizione e build avvengono **solo sui runner GitHub**, nel job `transit-packs` del workflow `GTFS Asset Integrity`. Nessun codice di terzi è eseguito: i file scaricati (ZIP GTFS, XML NeTEx compresso) sono dati non fidati letti da `tools/acquire_transit_sources.py`, `tools/netex_to_gtfs.py` e `tools/build_gtfs_packs.py` (libreria standard, `python3 -I`).
+
+Passi di refresh (azione del titolare, settimanale per le reti urbane, a ogni cambio orario per le ferrovie):
+
+1. Avviare il job sul ramo di lavoro:
+
+   ```sh
+   gh api -X POST repos/<owner>/binario/actions/workflows/gtfs-assets-ci.yml/dispatches \
+     -f ref=<ramo> -f 'inputs[transit_packs]=build=all'
+   ```
+
+   `build=id1,id2` ricostruisce solo alcuni pack (la directory pubblicata contiene allora solo quelli: unire a mano con il manifest esistente); aggiungere `validate-netex` (`'inputs[transit_packs]=validate-netex build=all'`) per ripetere la validazione del convertitore sul dataset Trenitalia del NAP contro il pack `trenitalia-gtfs`.
+2. Il job scarica ogni sorgente (resume e riavvio da zero se il server non supporta `Range`; un 500/502/503/504, che il NAP restituisce a volte per decine di minuti, è ritentato con pause crescenti e, se persiste, il job fallisce senza pubblicare nulla e va rilanciato più tardi; un'origine HTTP deve coincidere byte per byte con la copia HTTPS indicata), converte i NeTEx, scrive un manifest per directory, costruisce i pack con `build_gtfs_packs.py` (filtro ferroviario per i pack `rail`, `gtfs-urban-route-types` per quelli `urban`: metro, tram, funicolari e ascensori, autobus esclusi, nessun `shapes.txt`), li verifica con `--check --integrity-only` e stampa ogni file nel log come righe `BINARIO_FILE percorso byte sha256`, `BINARIO_B64 percorso blocco`, `BINARIO_END percorso`, perché gli artifact non sono scaricabili dal container di sviluppo.
+3. Ricostruire i file dal log (`gh api repos/<owner>/binario/actions/jobs/<job_id>/logs`), verificando dimensione e SHA-256 di ciascuno, e copiarli in `app/src/main/assets/gtfs-transit/` e `app/src/personal/assets/gtfs-personal/` (ZIP, `manifest.json`, `SHA256SUMS`).
+4. Verificare offline:
+
+   ```sh
+   for d in app/src/main/assets/gtfs-transit app/src/personal/assets/gtfs-personal; do
+     python3 tools/build_gtfs_packs.py --check --integrity-only --input-dir "$d"
+     python3 tools/build_gtfs_packs.py --check --min-valid-days 30 --input-dir "$d"
+   done
+   python3 tools/verify_embedded_assets.py
+   ```
+
+   `minValidDays` del pack abbassa la soglia per i feed urbani pubblicati poche settimane alla volta (Milano circa cinque settimane): 14 giorni per Milano, Genova, Firenze, Roma, Napoli e Mestre, 30 per gli altri.
+5. Allineare `lastServiceDate` in `TransitGtfsPacks.kt` (lo controlla `EmbeddedGtfsAssetIntegrityTest`), aggiornare in `EmbeddedGtfsTransitPacksTest` le corse attese se l'orario è cambiato, poi i test Android e Python.
+
+Il convertitore NeTEx (profilo italiano livello 1) legge `ServiceJourney`, `TimetabledPassingTime` con `DayOffset`, `ServiceJourneyPattern` con salita e discesa ammesse, `DayType`/`UicOperatingPeriod`/`DayTypeAssignment`, `StopPlace`/`Quay`/`ScheduledStopPoint`/`PassengerStopAssignment`, `Line` e `Operator`; rifiuta `DOCTYPE` ed entità, ignora le geometrie dei `ServiceLink` e scrive un GTFS con `feed_info.txt`. Le corse senza giorni di servizio sono contate e scartate.
+
 ## Sorgenti temporaneamente escluse dalla release
 
-Dal 23 settembre 2026, `amt-genova-casella-gtfs` e `cotral-ferro-gtfs` non fanno parte degli asset embedded: il primo non garantiva i 30 giorni minimi di copertura e il secondo era già scaduto. Lasciare dati vecchi nell'APK avrebbe violato il gate G2; l'esclusione riduce la copertura ma mantiene veritiera la qualità dichiarata.
+Dal 23 settembre al novembre 2026, `amt-genova-casella-gtfs` e `cotral-ferro-gtfs` non hanno fatto parte degli asset embedded (oggi sono in `gtfs-transit/` e, per Cotral, in `gtfs-personal/`): il primo non garantiva i 30 giorni minimi di copertura e il secondo era già scaduto. Lasciare dati vecchi nell'APK avrebbe violato il gate G2; l'esclusione riduce la copertura ma mantiene veritiera la qualità dichiarata.
 
 La voce di catalogo e la provenienza storica restano documentate per facilitarne il ripristino. La reintroduzione richiede, nello stesso commit:
 

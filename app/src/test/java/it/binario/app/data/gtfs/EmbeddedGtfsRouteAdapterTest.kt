@@ -488,7 +488,7 @@ class EmbeddedGtfsRouteAdapterTest {
     }
 
     @Test
-    fun `cache stop presence retains all twelve configured packs`() = runBlocking {
+    fun `cache stop presence retains every configured pack`() = runBlocking {
         val packs = EmbeddedGtfsPacks.all
         val bytes = feed()
         var assetOpenCount = 0
@@ -502,9 +502,10 @@ class EmbeddedGtfsRouteAdapterTest {
         adapter.loadRoute(route, Direction.OUTBOUND, query)
         adapter.loadRoute(route, Direction.OUTBOUND, query)
 
-        assertEquals(12, packs.size)
+        // The twelve packs of the first release and the regional railways of gtfs-transit/ (and gtfs-personal/).
+        assertTrue(packs.size > 12)
         assertEquals(packs.size, adapter.stopPresenceCacheSizeForTest())
-        // Each pass reparses all packs through the bounded full-index LRU (three entries, twelve packs);
+        // Each pass reparses all packs through the bounded full-index LRU (three entries, every pack);
         // the second pass must not additionally reopen every zip just to rediscover stops.
         assertEquals(packs.size * 3, assetOpenCount)
     }

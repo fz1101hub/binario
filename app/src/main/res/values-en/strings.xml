@@ -70,6 +70,11 @@
     <string name="weather_out_of_range">The forecast covers only today and tomorrow.</string>
     <string name="settings_sources_title">Additional sources</string>
     <string name="settings_weather_description">Shows the Open-Meteo forecast for the arrival station in the train detail. Open-Meteo receives only the station’s coordinates rounded to two decimals, never your location.</string>
+    <string name="settings_urban_stops_title">Include metro and tram stops in the search</string>
+    <string name="settings_urban_stops_description">Stops of the included city networks (metro, tram, funiculars) appear among the suggestions marked M, T or F. Journeys with changes reach them on foot from nearby stations.</string>
+    <string name="station_badge_metro">Metro stop</string>
+    <string name="station_badge_tram">Tram stop</string>
+    <string name="station_badge_funicular">Funicular or lift</string>
     <string name="settings_privacy_new_sources">When active, the additional sources receive only what the request needs, with no account or location: transport.opendata.ch the UIC number of the Swiss station (or, once, the name of a border station); ViaggiaTreno the train number for its notices, over unencrypted HTTP like its public API; RFI, Trenitalia and Trenord no data of yours for their notice lists, downloaded only when you open the notices area, a detail or a relevant board; Open-Meteo the rounded coordinates of the arrival station. External links open in the browser only when you tap them.</string>
 
     <string name="app_name">Binario</string>
@@ -333,9 +338,12 @@
     <string name="journey_leg_bus_trenitalia">Trenitalia bus</string>
     <string name="journey_leg_freccialink">FrecciaLink</string>
     <string name="journey_leg_italobus">ItaloBus</string>
+    <string name="journey_leg_metro">Metro</string>
+    <string name="journey_leg_tram">Tram</string>
+    <string name="journey_leg_funicular">Funicular</string>
     <string name="journey_source_offline">Offline scheduled timetable (GTFS open data)</string>
     <string name="journey_scheduled_only_notice">Scheduled times: delays, platforms and cancellations are not checked. Check the station displays.</string>
-    <string name="journey_coverage_notice">Calculated on the phone with the timetables included in the app, only for the networks they cover: Trenitalia (trains and buses), Italo (trains and ItaloBus), Lombardy, South Tyrol, Trentino, EAV, ARST, TFT, Switzerland, Austria, France and Croatia. Other trains and buses may be missing.</string>
+    <string name="journey_coverage_notice">Calculated on the phone with the timetables included in the app, only for the networks they cover: Trenitalia (trains and buses), Italo (trains and ItaloBus), Lombardy, South Tyrol, Trentino, EAV, ARST, TFT, Switzerland, Austria, France and Croatia, some regional railways, and the metros and trams of some cities. Other trains and buses may be missing.</string>
     <string name="journey_incomplete_notice">Some offline timetables could not be read: the journeys may be incomplete.</string>
     <string name="journey_empty_no_solution">No journey in the offline timetables for the searched time range.</string>
     <string name="journey_empty_not_covered">The offline timetables included do not cover one or both stations.</string>
@@ -379,6 +387,7 @@
     <string name="settings_credits_maps">Maps: OpenFreeMap © OpenMapTiles, data © OpenStreetMap contributors (ODbL 1.0). Rendered with MapLibre Native, BSD 2-Clause licence.</string>
     <string name="settings_credits_trenitalia">Trenitalia timetables (trains and buses): official Trenitalia S.p.A. data published on the Italian National Access Point (CCISS) under art. 52 CAD and EU Regulation 2017/1926, https://www.cciss.it/nap/mmtis/public/en/catalog/Dataset/1077621. GTFS conversion © Clément Desouche, CC BY 4.0: https://github.com/deryclem/trenitalia-gtfs (licence https://creativecommons.org/licenses/by/4.0/). Binario uses the scheduled times only, without route geometry, and is not affiliated with Trenitalia.</string>
     <string name="settings_credits_italo">Italo timetables (trains and ItaloBus): official Italo S.p.A. data published on the Italian National Access Point (CCISS) under art. 52 CAD and EU Regulation 2017/1926, https://www.cciss.it/nap/mmtis/public/en/catalog/Dataset/1814124. GTFS conversion © Clément Desouche, CC BY 4.0: https://github.com/deryclem/italo-gtfs (licence https://creativecommons.org/licenses/by/4.0/). Binario uses the scheduled times only, without route geometry, and is not affiliated with Italo.</string>
+    <string name="settings_credits_transit">Offline timetables of regional railways, metros and trams (scheduled times only, without route geometry; Binario is not affiliated with the operators):</string>
     <string name="notification_permission_required">Alert saved. To receive it, allow Binario notifications in Android settings.</string>
     <string name="backup_open_output_error">Unable to open the selected file.</string>
     <string name="backup_read_input_error">Unable to read the selected file.</string>

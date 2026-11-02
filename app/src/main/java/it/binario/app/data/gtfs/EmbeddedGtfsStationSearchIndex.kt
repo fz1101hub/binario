@@ -66,7 +66,9 @@ class EmbeddedGtfsStationSearchIndex(
                                     }
                                     val values = csvLine(line)
                                     val nativeId = values.getOrNull(idIndex)?.trim().orEmpty()
-                                    val name = values.getOrNull(nameIndex)?.trim().orEmpty()
+                                    val published = values.getOrNull(nameIndex)?.trim().orEmpty()
+                                    // The packs added after the first release often publish names in capitals.
+                                    val name = if (pack.assetPath.startsWith("gtfs/")) published else StopNameCase.display(published)
                                     val locationType = values.getOrNull(locationTypeIndex)?.trim().orEmpty()
                                     if (nativeId.isNotBlank() && name.isNotBlank() && (locationType.isBlank() || locationType in setOf("0", "1")) && matchesQuery(name, normalizedQuery)) {
                                         matches += Station(

@@ -102,7 +102,7 @@ Le stesse risposte valgono per il bundle Wear dello stesso listing: il modulo no
 
 ## Inventario degli host presenti nel codice Android
 
-La tabella copre ogni host `http(s)://` trovato in `app/src/main/java`, `wear/src/main/java`, `app/src/main/assets/gtfs/manifest.json` e `app/src/main/assets/stations/manifest.json`, esclusi gli URI di namespace dei parser XML, che non sono endpoint di rete. Le categorie:
+La tabella copre ogni host `http(s)://` trovato in `app/src/main/java`, `wear/src/main/java`, `app/src/main/assets/gtfs/manifest.json`, `app/src/main/assets/gtfs-transit/manifest.json`, `app/src/personal/assets/gtfs-personal/manifest.json` (solo build personali) e `app/src/main/assets/stations/manifest.json`, esclusi gli URI di namespace dei parser XML, che non sono endpoint di rete. Le categorie:
 
 - **A — build distribuita:** contattato a runtime dall'app pubblicata, qualunque sia `PERSONAL_REALTIME_SOURCES`.
 - **B — fonti best-effort personali:** contattato solo con `PERSONAL_REALTIME_SOURCES=true`, che oggi è il **valore predefinito anche in release**; `-PBINARIO_PERSONAL_REALTIME_SOURCES=false` lo esclude dalla build.
@@ -134,48 +134,54 @@ La tabella copre ogni host `http(s)://` trovato in `app/src/main/java`, `wear/sr
 
 | Host | Categoria | Ruolo |
 |---|---|---|
-| `arstspa.info` | D | Provenienza del pack `arst-gtfs`; anche nel catalogo |
+| `actv.avmspa.it` | D | Provenienza del pack `venezia-actv-gtfs`, incluso solo nelle build personali; anche nel catalogo |
+| `anmspa.file.force.com` | D | URL finale (reindirizzamento) del download ANM registrato nel manifest `gtfs-personal/` per `napoli-anm-gtfs` |
+| `arstspa.info` | D | Provenienza dei pack `arst-gtfs` e `arst-metro-gtfs`; anche nel catalogo |
 | `data.opentransportdata.swiss` | D | Provenienza del pack `ch-otd-gtfs`; anche nel catalogo |
-| `dati.toscana.it` | D | Provenienza del pack `toscana-tft-gtfs`; anche nel catalogo |
+| `dati.comune.milano.it` | D | Provenienza del pack `milano-atm-gtfs`; anche nel catalogo e come evidenza di licenza nel manifest `gtfs-transit/` |
+| `dati.toscana.it` | D | Provenienza dei pack `toscana-tft-gtfs` e `firenze-gest-gtfs`; anche nel catalogo e come evidenza di licenza nel manifest `gtfs-transit/` |
 | `eu.ftp.opendatasoft.com` | D | Provenienza del pack `sncf-gtfs`; anche nel catalogo |
+| `files.mobilitydatabase.org` | D | Manifest `gtfs-transit/` e `gtfs-personal/`: copia HTTPS del Mobility Database con cui il CI verifica i byte del feed AMT Genova (solo HTTP all'origine) e da cui legge il feed ufficiale GTT (`gtt-gtfs`, solo build personali) |
+| `opendatagoogletransit.comune.genova.it` | D | Provenienza (solo HTTP, verificata in CI contro la copia HTTPS del Mobility Database) dei pack `amt-genova-casella-gtfs` e `genova-amt-gtfs`; anche nel catalogo |
 | `raw.githubusercontent.com` | D | Provenienza dei pack `trenitalia-gtfs` e `italo-gtfs` (archivio GTFS a un commit fissato); anche nel catalogo |
+| `romamobilita.it` | D | Provenienza del pack `roma-mobilita-gtfs`, incluso solo nelle build personali; anche nel catalogo |
 | `static.web.oebb.at` | D | Provenienza del pack `oebb-gtfs`; anche nel catalogo |
+| `travel.mob.cotralspa.it` | D | Provenienza (solo HTTP) del pack `cotral-ferro-gtfs`, incluso solo nelle build personali; anche nel catalogo |
+| `www.anm.it` | D | Provenienza del pack `napoli-anm-gtfs`, incluso solo nelle build personali; anche nel catalogo |
+| `www.arstspa.info` | D | URL finale (reindirizzamento) del download ARST registrato nel manifest `gtfs-transit/` per `arst-metro-gtfs` |
 | `www.dati.lombardia.it` | D | Provenienza del pack `lombardia-trenord-gtfs`; anche nel catalogo |
 | `www.hzpp.hr` | D | Provenienza del pack `hzpp-gtfs`; anche nel catalogo |
 | `www.trentinotrasporti.it` | D | Provenienza del pack `trentino-gtfs`; anche nel catalogo |
 | `www.wimob.it` | D | Provenienza del pack `eav-gtfs`; anche nel catalogo |
 | `arenaways.it` | E | Catalogo fonti (`RailSourceCatalog.kt`) |
 | `data.oebb.at` | E | Catalogo fonti (`RailSourceCatalog.kt`) |
+| `dati.comune.genova.it` | E | Catalogo fonti (`RailSourceCatalog.kt`) e evidenza di licenza (CC BY 4.0) nel manifest `gtfs-transit/` |
 | `developer-docs.deutschebahn.com` | E | Catalogo fonti (`InternationalSourceCatalog.kt`) |
 | `developers.deutschebahn.com` | E | Catalogo fonti (`InternationalSourceCatalog.kt`) |
-| `ferrovieappulolucane.it` | E | Catalogo fonti (`RailSourceCatalog.kt`) |
 | `github.com` | E | Catalogo fonti (`InternationalSourceCatalog.kt`): landing page del mirror DELFI community; nel manifest GTFS, repository della conversione GTFS dei pack `trenitalia-gtfs` e `italo-gtfs` |
-| `infomobilita.astralspa.it` | E | Catalogo fonti (`RailSourceCatalog.kt`) |
-| `opendatagoogletransit.comune.genova.it` | E | Catalogo fonti (`RailSourceCatalog.kt`): feed HTTP, pack escluso dall'APK |
 | `opentransportdata.swiss` | E | Catalogo fonti (`RailSourceCatalog.kt`) |
 | `potniski.sz.si` | E | Catalogo fonti (`RailSourceCatalog.kt`) |
 | `regiojet.com` | E | Catalogo fonti (`InternationalSourceCatalog.kt`), monitor-only |
 | `ressources.data.sncf.com` | E | Catalogo fonti (`RailSourceCatalog.kt`) |
 | `scraped.data.public-transport.earth` | E | Catalogo fonti (`InternationalSourceCatalog.kt`): mirror DELFI community, nessun adapter |
-| `travel.mob.cotralspa.it` | E | Catalogo fonti (`RailSourceCatalog.kt`): feed HTTP, pack escluso dall'APK |
 | `urlaubs-express.de` | E | Catalogo fonti (`InternationalSourceCatalog.kt`), monitor-only |
 | `web.ferroviedellacalabria.it` | E | Catalogo fonti (`RailSourceCatalog.kt`) |
 | `westbahn.at` | E | Catalogo fonti (`InternationalSourceCatalog.kt`), monitor-only |
 | `www.arst.sardegna.it` | E | Catalogo fonti (`RailSourceCatalog.kt`) |
-| `www.cciss.it` | E | Catalogo fonti (`RailSourceCatalog.kt`) e manifest GTFS: dataset ufficiali del National Access Point italiano da cui derivano i pack `trenitalia-gtfs` e `italo-gtfs` |
+| `www.cciss.it` | E | Catalogo fonti (`RailSourceCatalog.kt`) e manifest GTFS: dataset ufficiali del National Access Point italiano da cui derivano i pack `trenitalia-gtfs` e `italo-gtfs` e, convertiti da NeTEx in CI, i pack regionali di `gtfs-transit/` (FAL, Ferrotramviaria, Ferrovie del Gargano, Mi.Co.Tra.) e i tram ACTV |
 | `www.cd.cz` | E | Catalogo fonti (`InternationalSourceCatalog.kt`), monitor-only |
 | `www.circumetnea.it` | E | Catalogo fonti (`RailSourceCatalog.kt`) |
+| `www.cotralspa.it` | E | Catalogo fonti (`RailSourceCatalog.kt`) |
 | `www.data.gouv.fr` | E | Catalogo fonti (`RailSourceCatalog.kt`) |
 | `www.eavsrl.it` | E | Catalogo fonti (`RailSourceCatalog.kt`) |
 | `www.europeansleeper.eu` | E | Catalogo fonti (`InternationalSourceCatalog.kt`, `RailSourceCatalog.kt`): landing page, nessun traffico |
-| `www.ferrotramviaria.it` | E | Catalogo fonti (`RailSourceCatalog.kt`) |
-| `www.ferroviagenovacasella.it` | E | Catalogo fonti (`RailSourceCatalog.kt`) |
 | `www.ferrovieudinecividale.it` | E | Catalogo fonti (`RailSourceCatalog.kt`) |
 | `www.fseonline.it` | E | Catalogo fonti (`RailSourceCatalog.kt`) |
 | `www.fstrenituristici.it` | E | Catalogo fonti (`RailSourceCatalog.kt`) |
-| `www.gtt.to.it` | E | Catalogo fonti (`RailSourceCatalog.kt`): licenza non compatibile, mai abilitato |
+| `www.gtt.to.it` | E | Catalogo fonti (`RailSourceCatalog.kt`) e licenza nel manifest `gtfs-personal/`: licenza non commerciale, pack `gtt-gtfs` solo nelle build personali |
 | `www.mavcsoport.hu` | E | Catalogo fonti (`InternationalSourceCatalog.kt`), monitor-only |
 | `www.opendata-oepnv.de` | E | Catalogo fonti (`InternationalSourceCatalog.kt`): DELFI ufficiale dietro registrazione |
+| `www.sardegnamobilita.it` | E | Evidenza di licenza (CC BY 4.0) dei dati ARST nel manifest `gtfs-transit/` |
 | `www.snalltaget.se` | E | Catalogo fonti (`InternationalSourceCatalog.kt`), monitor-only |
 | `www.trenitalia.com` | E | Catalogo fonti (`RailSourceCatalog.kt`): pagina pubblica dell'infomobilità Trenitalia |
 | `www.tuabruzzo.it` | E | Catalogo fonti (`RailSourceCatalog.kt`) |

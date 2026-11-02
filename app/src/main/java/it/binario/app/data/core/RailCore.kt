@@ -117,6 +117,8 @@ enum class ServiceKind {
     REPLACEMENT_BUS,
     /** Scheduled coach of the operator's timetable ([LegMode.BUS]). */
     BUS,
+    /** City metro, tram or funicular ([LegMode.METRO], [LegMode.TRAM], [LegMode.FUNICULAR]). */
+    URBAN,
     SPECIAL,
     UNKNOWN
 }
@@ -252,6 +254,12 @@ enum class LegMode {
     REPLACEMENT_BUS,
     /** A scheduled coach of the operator's timetable (Trenitalia bus, ItaloBus): a vehicle and a change, not a train. */
     BUS,
+    /** A city metro line (GTFS route_type 1, 400-499) of a city pack: "Metro M1". */
+    METRO,
+    /** A city tram line (GTFS route_type 0, 900-999): "Tram 14". */
+    TRAM,
+    /** A funicular, cable railway or lift of a city network (GTFS route_type 5, 6, 7, 1300-1499). */
+    FUNICULAR,
     WALK,
     UNKNOWN
 }

@@ -70,6 +70,11 @@
     <string name="weather_out_of_range">Die Vorhersage gilt nur für heute und morgen.</string>
     <string name="settings_sources_title">Zusätzliche Quellen</string>
     <string name="settings_weather_description">Zeigt im Zugdetail die Open-Meteo-Vorhersage für den Zielbahnhof. Open-Meteo erhält nur die auf zwei Dezimalstellen gerundeten Koordinaten des Bahnhofs, nie deinen Standort.</string>
+    <string name="settings_urban_stops_title">Metro- und Tramhaltestellen in die Suche aufnehmen</string>
+    <string name="settings_urban_stops_description">Haltestellen der enthaltenen Stadtnetze (Metro, Tram, Standseilbahnen) erscheinen in den Vorschlägen mit M, T oder F. Verbindungen mit Umstieg erreichen sie zu Fuß von nahen Bahnhöfen.</string>
+    <string name="station_badge_metro">Metrohaltestelle</string>
+    <string name="station_badge_tram">Tramhaltestelle</string>
+    <string name="station_badge_funicular">Standseilbahn oder Aufzug</string>
     <string name="settings_privacy_new_sources">Wenn aktiv, erhalten die zusätzlichen Quellen nur, was die Anfrage braucht, ohne Konto oder Standort: transport.opendata.ch die UIC-Nummer des Schweizer Bahnhofs (oder einmalig den Namen eines Grenzbahnhofs); ViaggiaTreno die Zugnummer für seine Hinweise, über unverschlüsseltes HTTP wie seine öffentliche API; RFI, Trenitalia und Trenord keine Daten von dir für ihre Hinweislisten, die nur geladen werden, wenn du den Hinweisbereich, ein Detail oder eine passende Tafel öffnest; Open-Meteo die gerundeten Koordinaten des Zielbahnhofs. Externe Links öffnen sich nur im Browser, wenn du sie antippst.</string>
 
     <string name="app_name">Binario</string>
@@ -333,9 +338,12 @@
     <string name="journey_leg_bus_trenitalia">Trenitalia-Bus</string>
     <string name="journey_leg_freccialink">FrecciaLink</string>
     <string name="journey_leg_italobus">ItaloBus</string>
+    <string name="journey_leg_metro">Metro</string>
+    <string name="journey_leg_tram">Tram</string>
+    <string name="journey_leg_funicular">Standseilbahn</string>
     <string name="journey_source_offline">Offline-Sollfahrplan (GTFS Open Data)</string>
     <string name="journey_scheduled_only_notice">Planmäßige Zeiten: Verspätungen, Gleise und Ausfälle sind nicht geprüft. Bitte die Anzeigen im Bahnhof beachten.</string>
-    <string name="journey_coverage_notice">Auf dem Telefon mit den in der App enthaltenen Fahrplänen berechnet, nur für die abgedeckten Netze: Trenitalia (Züge und Busse), Italo (Züge und ItaloBus), Lombardei, Südtirol, Trentino, EAV, ARST, TFT, Schweiz, Österreich, Frankreich und Kroatien. Andere Züge und Busse können fehlen.</string>
+    <string name="journey_coverage_notice">Auf dem Telefon mit den in der App enthaltenen Fahrplänen berechnet, nur für die abgedeckten Netze: Trenitalia (Züge und Busse), Italo (Züge und ItaloBus), Lombardei, Südtirol, Trentino, EAV, ARST, TFT, Schweiz, Österreich, Frankreich und Kroatien, einige Regionalbahnen sowie U-Bahnen und Straßenbahnen einiger Städte. Andere Züge und Busse können fehlen.</string>
     <string name="journey_incomplete_notice">Einige Offline-Fahrpläne konnten nicht gelesen werden: Die Verbindungen können unvollständig sein.</string>
     <string name="journey_empty_no_solution">Keine Verbindung in den Offline-Fahrplänen im gesuchten Zeitraum.</string>
     <string name="journey_empty_not_covered">Die enthaltenen Offline-Fahrpläne decken einen oder beide Bahnhöfe nicht ab.</string>
@@ -379,6 +387,7 @@
     <string name="settings_credits_maps">Karten: OpenFreeMap © OpenMapTiles, Daten © OpenStreetMap contributors (ODbL 1.0). Darstellung mit MapLibre Native, Lizenz BSD 2-Clause.</string>
     <string name="settings_credits_trenitalia">Trenitalia-Fahrpläne (Züge und Busse): offizielle Daten der Trenitalia S.p.A., veröffentlicht auf dem italienischen National Access Point (CCISS) gemäß Art. 52 CAD und Verordnung (EU) 2017/1926, https://www.cciss.it/nap/mmtis/public/en/catalog/Dataset/1077621. GTFS-Umwandlung © Clément Desouche, CC BY 4.0: https://github.com/deryclem/trenitalia-gtfs (Lizenz https://creativecommons.org/licenses/by/4.0/). Binario nutzt nur die Sollfahrzeiten, ohne Streckengeometrie, und ist nicht mit Trenitalia verbunden.</string>
     <string name="settings_credits_italo">Italo-Fahrpläne (Züge und ItaloBus): offizielle Daten der Italo S.p.A., veröffentlicht auf dem italienischen National Access Point (CCISS) gemäß Art. 52 CAD und Verordnung (EU) 2017/1926, https://www.cciss.it/nap/mmtis/public/en/catalog/Dataset/1814124. GTFS-Umwandlung © Clément Desouche, CC BY 4.0: https://github.com/deryclem/italo-gtfs (Lizenz https://creativecommons.org/licenses/by/4.0/). Binario nutzt nur die Sollfahrzeiten, ohne Streckengeometrie, und ist nicht mit Italo verbunden.</string>
+    <string name="settings_credits_transit">Offline-Fahrpläne von Regionalbahnen, U-Bahnen und Straßenbahnen (nur Sollfahrplan, ohne Streckengeometrie; Binario ist mit den Betreibern nicht verbunden):</string>
     <string name="notification_permission_required">Warnung gespeichert. Um sie zu erhalten, erlaube Binario-Benachrichtigungen in den Android-Einstellungen.</string>
     <string name="backup_open_output_error">Die ausgewählte Datei kann nicht geöffnet werden.</string>
     <string name="backup_read_input_error">Die ausgewählte Datei kann nicht gelesen werden.</string>

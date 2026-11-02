@@ -25,6 +25,14 @@ val binarioVersionCode = providers.gradleProperty("BINARIO_VERSION_CODE")
     .toInt()
 val binarioVersionName = providers.gradleProperty("BINARIO_VERSION_NAME").get()
 
+/**
+ * Timetable packs licensed for personal use only (non-commercial or unstated reuse terms, see
+ * docs/data-sources/SOURCE_POLICY.md): `-Pbinario.personalSources=true|false` decides for every build type; unset,
+ * the debug test APK includes them and release builds and Play bundles do not.
+ */
+fun personalTransitSources(buildType: String): Boolean =
+    providers.gradleProperty("binario.personalSources").orNull?.toBooleanStrict() ?: (buildType == "debug")
+
 android {
     namespace = "it.binario.app"
     compileSdk = 36
@@ -69,10 +77,16 @@ android {
             // Device-test builds are personal builds and must exercise realtime.
             buildConfigField("boolean", "PERSONAL_REALTIME_SOURCES",
                 providers.gradleProperty("BINARIO_PERSONAL_REALTIME_SOURCES").orElse("true").get())
+            // Timetable packs whose licence allows personal use only (src/personal/assets): in the debug test APK.
+            buildConfigField("boolean", "PERSONAL_TRANSIT_SOURCES",
+                providers.gradleProperty("binario.personalSources").orElse("true").get())
         }
         getByName("release") {
             buildConfigField("boolean", "PERSONAL_REALTIME_SOURCES",
                 providers.gradleProperty("BINARIO_PERSONAL_REALTIME_SOURCES").orElse("true").get())
+            // Never in a release or Play bundle unless the owner builds one for personal use with -Pbinario.personalSources=true.
+            buildConfigField("boolean", "PERSONAL_TRANSIT_SOURCES",
+                providers.gradleProperty("binario.personalSources").orElse("false").get())
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(
@@ -112,6 +126,11 @@ android {
 
     sourceSets {
         getByName("test").resources.srcDir(rootProject.file("contracts/wear-snapshot/v1"))
+        // Personal-use timetable packs (gtfs-personal/): the same default as PERSONAL_TRANSIT_SOURCES above, so the
+        // assets are in an APK exactly when its BuildConfig enables them.
+        for (buildType in listOf("debug", "release")) {
+            if (personalTransitSources(buildType)) getByName(buildType).assets.srcDir("src/personal/assets")
+        }
     }
 }
 

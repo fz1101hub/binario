@@ -46,6 +46,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -413,6 +414,12 @@ private fun AboutSettings() {
         val creditStyle = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)
         LinkifiedText(stringResource(R.string.settings_credits_trenitalia), style = creditStyle)
         LinkifiedText(stringResource(R.string.settings_credits_italo), style = creditStyle)
+        // Regional railways and city networks of this build (gtfs-transit/, and gtfs-personal/ in a personal build).
+        val transitCredits = remember { it.binario.app.data.gtfs.EmbeddedGtfsPacks.transitCredits() }
+        if (transitCredits.isNotEmpty()) {
+            Text(stringResource(R.string.settings_credits_transit), style = creditStyle)
+            transitCredits.forEach { credit -> LinkifiedText(credit, style = creditStyle) }
+        }
         Text(stringResource(R.string.settings_privacy_local_data), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }

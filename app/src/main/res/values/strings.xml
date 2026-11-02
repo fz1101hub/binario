@@ -70,6 +70,11 @@
     <string name="weather_out_of_range">La previsione è disponibile solo per oggi e domani.</string>
     <string name="settings_sources_title">Fonti aggiuntive</string>
     <string name="settings_weather_description">Mostra nel dettaglio del treno la previsione Open-Meteo per la stazione di arrivo. Open-Meteo riceve solo le coordinate della stazione arrotondate a due decimali, mai la tua posizione.</string>
+    <string name="settings_urban_stops_title">Includi fermate di metro e tram nella ricerca</string>
+    <string name="settings_urban_stops_description">Le fermate delle reti urbane incluse (metropolitana, tram, funicolari) compaiono tra i suggerimenti con il simbolo M, T o F. I viaggi con cambi le raggiungono a piedi dalle stazioni vicine.</string>
+    <string name="station_badge_metro">Fermata della metropolitana</string>
+    <string name="station_badge_tram">Fermata del tram</string>
+    <string name="station_badge_funicular">Funicolare o ascensore</string>
     <string name="settings_privacy_new_sources">Quando sono attive, le fonti aggiuntive ricevono solo ciò che serve alla richiesta, senza account né posizione: transport.opendata.ch il numero UIC della stazione svizzera (o, una volta, il nome di una stazione di confine); ViaggiaTreno il numero del treno per gli avvisi, in HTTP non cifrato come la sua API pubblica; RFI, Trenitalia e Trenord nessun dato tuo per gli elenchi di avvisi, scaricati solo quando apri l’area avvisi, un dettaglio o un tabellone pertinente; Open-Meteo le coordinate arrotondate della stazione di arrivo. I collegamenti esterni si aprono nel browser solo se li tocchi.</string>
 
     <string name="app_name">Binario</string>
@@ -339,9 +344,12 @@
     <string name="journey_leg_bus_trenitalia">Bus Trenitalia</string>
     <string name="journey_leg_freccialink">FrecciaLink</string>
     <string name="journey_leg_italobus">ItaloBus</string>
+    <string name="journey_leg_metro">Metro</string>
+    <string name="journey_leg_tram">Tram</string>
+    <string name="journey_leg_funicular">Funicolare</string>
     <string name="journey_source_offline">Orario programmato offline (open data GTFS)</string>
     <string name="journey_scheduled_only_notice">Orari programmati: ritardi, binari e soppressioni non sono verificati. Controlla i monitor in stazione.</string>
-    <string name="journey_coverage_notice">Calcolato sul telefono con gli orari inclusi nell’app, solo per le reti che coprono: Trenitalia (treni e bus), Italo (treni e ItaloBus), Lombardia, Alto Adige, Trentino, EAV, ARST, TFT, Svizzera, Austria, Francia e Croazia. Altri treni e bus possono non comparire.</string>
+    <string name="journey_coverage_notice">Calcolato sul telefono con gli orari inclusi nell’app, solo per le reti che coprono: Trenitalia (treni e bus), Italo (treni e ItaloBus), Lombardia, Alto Adige, Trentino, EAV, ARST, TFT, Svizzera, Austria, Francia e Croazia, alcune ferrovie regionali e metropolitane e tram di alcune città. Altri treni e bus possono non comparire.</string>
     <string name="journey_incomplete_notice">Alcuni orari offline non sono stati letti: le soluzioni possono essere incomplete.</string>
     <string name="journey_empty_no_solution">Nessuna soluzione negli orari offline nella fascia oraria cercata.</string>
     <string name="journey_empty_not_covered">Gli orari offline inclusi non coprono una o entrambe le stazioni.</string>
@@ -385,6 +393,7 @@
     <string name="settings_credits_maps">Mappe: OpenFreeMap © OpenMapTiles, dati © OpenStreetMap contributors (ODbL 1.0). Visualizzazione con MapLibre Native, licenza BSD 2-Clause.</string>
     <string name="settings_credits_trenitalia">Orari Trenitalia (treni e bus): dati ufficiali di Trenitalia S.p.A. pubblicati sul National Access Point italiano (CCISS) ai sensi dell’art. 52 CAD e del Reg. UE 2017/1926, https://www.cciss.it/nap/mmtis/public/en/catalog/Dataset/1077621. Conversione GTFS © Clément Desouche, CC BY 4.0: https://github.com/deryclem/trenitalia-gtfs (licenza https://creativecommons.org/licenses/by/4.0/). Binario usa solo gli orari programmati, senza le geometrie dei percorsi, e non è affiliata a Trenitalia.</string>
     <string name="settings_credits_italo">Orari Italo (treni e ItaloBus): dati ufficiali di Italo S.p.A. pubblicati sul National Access Point italiano (CCISS) ai sensi dell’art. 52 CAD e del Reg. UE 2017/1926, https://www.cciss.it/nap/mmtis/public/en/catalog/Dataset/1814124. Conversione GTFS © Clément Desouche, CC BY 4.0: https://github.com/deryclem/italo-gtfs (licenza https://creativecommons.org/licenses/by/4.0/). Binario usa solo gli orari programmati, senza le geometrie dei percorsi, e non è affiliata a Italo.</string>
+    <string name="settings_credits_transit">Orari offline di ferrovie regionali, metropolitane e tram (solo orario programmato, senza geometrie dei percorsi; Binario non è affiliata agli operatori):</string>
     <string name="notification_permission_required">Avviso salvato. Per riceverlo, consenti le notifiche di Binario nelle impostazioni Android.</string>
     <string name="backup_open_output_error">Impossibile aprire il file scelto.</string>
     <string name="backup_read_input_error">Impossibile leggere il file scelto.</string>

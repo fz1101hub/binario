@@ -1,6 +1,7 @@
 package it.binario.app.data.gtfs
 
 import it.binario.app.data.core.SourceId
+import it.binario.app.data.sources.RailSourceCatalog
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -26,15 +27,22 @@ class EmbeddedGtfsPackLoaderTest {
 
     @Test
     fun `tutti i data pack embedded appartengono al catalogo`() {
-        assertEquals(12, EmbeddedGtfsPacks.all.size)
-        assertEquals(12, EmbeddedGtfsPacks.all.map { it.sourceId }.distinct().size)
+        // The railway packs of the first release come first, in their reviewed order; the transit packs follow.
+        val core = EmbeddedGtfsPacks.all.filter { it.assetPath.startsWith("gtfs/") }
+        assertEquals(12, core.size)
+        assertEquals(core, EmbeddedGtfsPacks.all.take(12))
+        assertEquals(EmbeddedGtfsPacks.all.size, EmbeddedGtfsPacks.all.map { it.sourceId }.distinct().size)
+        (EmbeddedGtfsPacks.all + EmbeddedGtfsPacks.urban).forEach { pack ->
+            assertTrue("fonte assente: ${pack.sourceId.value}", RailSourceCatalog.byId(pack.sourceId) != null)
+        }
         assertTrue(EmbeddedGtfsPacks.sourceIds.contains(SourceId("trenitalia-gtfs")))
         assertTrue(EmbeddedGtfsPacks.sourceIds.contains(SourceId("italo-gtfs")))
         assertTrue(EmbeddedGtfsPacks.sourceIds.contains(SourceId("alto-adige-sta-gtfs")))
         assertTrue(EmbeddedGtfsPacks.sourceIds.contains(SourceId("ch-otd-gtfs")))
         assertTrue(EmbeddedGtfsPacks.sourceIds.contains(SourceId("oebb-gtfs")))
-        assertFalse(EmbeddedGtfsPacks.sourceIds.contains(SourceId("amt-genova-casella-gtfs")))
-        assertFalse(EmbeddedGtfsPacks.sourceIds.contains(SourceId("cotral-ferro-gtfs")))
+        // Genova-Casella is open data (every build); Cotral's licence is not stated (personal builds only).
+        assertTrue(EmbeddedGtfsPacks.sourceIds.contains(SourceId("amt-genova-casella-gtfs")))
+        assertEquals(EmbeddedGtfsPacks.personalSourcesIncluded, EmbeddedGtfsPacks.sourceIds.contains(SourceId("cotral-ferro-gtfs")))
     }
 
     private fun validGtfs(): ByteArray {

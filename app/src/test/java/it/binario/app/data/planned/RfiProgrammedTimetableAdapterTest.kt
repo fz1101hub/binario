@@ -1,5 +1,6 @@
 package it.binario.app.data.planned
 
+import it.binario.app.TestAssets
 import it.binario.app.data.DataConfidence
 import it.binario.app.data.DataResult
 import it.binario.app.data.Direction
@@ -22,7 +23,6 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.ByteArrayInputStream
 import java.io.IOException
-import java.io.File
 import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
@@ -234,7 +234,7 @@ class RfiProgrammedTimetableAdapterTest {
                 RfiProgrammedTimetableAdapter(fetcher = fetcher, clock = clock),
                 RfiSupplementalHubTimetableAdapter(fetcher = fetcher, clock = clock)
             ),
-            fallback = EmbeddedGtfsRouteAdapter(openAsset = { File("src/main/assets", it).inputStream() })
+            fallback = EmbeddedGtfsRouteAdapter(openAsset = TestAssets::open)
         )
         val source = StationBoardEnrichedTrainDataSource(
             plannedSource = QualityTieredTrainDataSource(repository, emptyList()),

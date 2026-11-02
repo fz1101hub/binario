@@ -117,7 +117,9 @@ class AndroidStringResourceParityTest {
             "widget_warning_demonstration", "service_group_italo", "service_group_frecce", "service_category_number",
             "trains_widget_status_early",
             // Brand names, the same in several languages.
-            "journey_leg_freccialink", "journey_leg_italobus"
+            "journey_leg_freccialink", "journey_leg_italobus",
+            // "Metro M1", "Tram 14": the same word in Italian, English, German and Spanish; "Funicular" in English and Spanish.
+            "journey_leg_metro", "journey_leg_tram", "journey_leg_funicular"
         )
         val IDENTICAL_PLURAL_KEYS = setOf("minutes_short", "gps_alarm_radius_km")
         val quantitiesByLocale = mapOf(

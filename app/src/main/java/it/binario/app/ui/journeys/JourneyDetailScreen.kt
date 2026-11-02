@@ -92,7 +92,7 @@ internal fun JourneyDetailScreen(modifier: Modifier, row: JourneyOptionRow, orig
                             LegHeader(leg)
                             LegStop(time = leg.departureTime, station = leg.fromLabel, isFirst = true)
                             LegStop(time = leg.arrivalTime, station = leg.toLabel, isFirst = false)
-                            row.transfers.getOrNull(index)?.let { TransferBlock(it) }
+                            row.transfers.firstOrNull { it.afterLegIndex == index }?.let { TransferBlock(it) }
                         }
                     }
                 }

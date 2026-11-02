@@ -30,8 +30,48 @@ data class EmbeddedGtfsPack(
      * route_type 3 of this pack are the operator's own scheduled coaches (Trenitalia buses, ItaloBus), shown as
      * [it.binario.app.data.core.LegMode.BUS]. In every other pack a bus route is a rail replacement bus.
      */
-    val busRoutesAreScheduledCoaches: Boolean = false
-)
+    val busRoutesAreScheduledCoaches: Boolean = false,
+    /** Railway pack or city network (metro, tram, funicular); see [EmbeddedGtfsPackKind]. */
+    val kind: EmbeddedGtfsPackKind = EmbeddedGtfsPackKind.RAIL,
+    /**
+     * For a [EmbeddedGtfsPackKind.URBAN] pack, the areas it serves (a city, or the two cities of ARST's light rail):
+     * the journey planner reads it only for a search with an end inside one of them.
+     */
+    val areas: List<TransitArea> = emptyList(),
+    /**
+     * Shipped only in personal builds ([EmbeddedGtfsPacks.personalSourcesIncluded]): a licence that does not allow
+     * redistribution in a public app (non-commercial, or public but not stated), see SOURCE_POLICY.md.
+     */
+    val personalOnly: Boolean = false,
+    /**
+     * Suffixes the curated catalogue adds to this operator's stations ("Matera Centrale FAL", "Bari Centrale FNB"):
+     * a stop published as "Matera Centrale" is that station before any station named "Matera Centrale" alone.
+     */
+    val catalogueNameSuffixes: List<String> = emptyList()
+) {
+    val isUrban: Boolean get() = kind == EmbeddedGtfsPackKind.URBAN
+}
+
+/** What a pack holds. */
+enum class EmbeddedGtfsPackKind {
+    /** Trains (and the operator's coaches): stops are matched to catalogue stations; route search, boards, journeys. */
+    RAIL,
+    /**
+     * Metro, tram and funicular lines of one city: stops stay stops of the pack (never merged with a railway station by
+     * name) and join stations and other networks only by short walks. Journeys and the stop search only.
+     */
+    URBAN
+}
+
+/** A circle around a city centre: an urban pack takes part in a search when an end of it lies inside. */
+data class TransitArea(val name: String, val latitude: Double, val longitude: Double, val radiusKm: Double) {
+    init {
+        require(latitude in -90.0..90.0 && longitude in -180.0..180.0 && radiusKm > 0) { "Area non valida" }
+    }
+
+    fun contains(latitude: Double, longitude: Double): Boolean =
+        GtfsStationCodeIndex.distanceKm(this.latitude, this.longitude, latitude, longitude) <= radiusKm
+}
 
 /** The station code a pack publishes as stop_code, used to find its catalogue station before the name. */
 enum class GtfsStopCodeScheme {
@@ -43,7 +83,14 @@ enum class GtfsStopCodeScheme {
 }
 
 object EmbeddedGtfsPacks {
-    val all = listOf(
+    /**
+     * True in personal builds (the debug test APK; a release only with `-Pbinario.personalSources=true`): their packs
+     * marked [EmbeddedGtfsPack.personalOnly] are in the APK (`app/src/personal/assets/gtfs-personal/`) and used.
+     */
+    val personalSourcesIncluded: Boolean = it.binario.app.BuildConfig.PERSONAL_TRANSIT_SOURCES
+
+    /** The railway packs of the first release, in their reviewed order (the route search, boards and journeys). */
+    private val corePacks = listOf(
         EmbeddedGtfsPack(SourceId("alto-adige-sta-gtfs"), "gtfs/alto-adige-sta-gtfs.zip", LocalDate.of(2026, 12, 12)),
         EmbeddedGtfsPack(SourceId("arst-gtfs"), "gtfs/arst-gtfs.zip", LocalDate.of(2026, 12, 31)),
         EmbeddedGtfsPack(SourceId("ch-otd-gtfs"), "gtfs/ch-otd-gtfs.zip", LocalDate.of(2026, 12, 12)),
@@ -64,7 +111,39 @@ object EmbeddedGtfsPacks {
         EmbeddedGtfsPack(SourceId("trentino-gtfs"), "gtfs/trentino-extraurban-gtfs.zip", LocalDate.of(2027, 6, 25))
     )
 
-    val sourceIds: Set<SourceId> = all.mapTo(linkedSetOf()) { it.sourceId }
+    /**
+     * Packs added after the core ones (`gtfs-transit/`, open data in every build; `gtfs-personal/`, personal builds
+     * only): regional railways and city networks. See TransitGtfsPacks.
+     */
+    val transit: List<EmbeddedGtfsPack> = TransitGtfsPacks.all
+
+    /** Every pack of this build: the core railway packs, then the transit packs this build includes. */
+    fun forBuild(personalSources: Boolean): List<EmbeddedGtfsPack> =
+        corePacks + transit.filter { personalSources || !it.personalOnly }
+
+    private val included: List<EmbeddedGtfsPack> = forBuild(personalSourcesIncluded)
+
+    /** The railway packs of this build: route search, train-number search, boards and journeys. */
+    val all: List<EmbeddedGtfsPack> = included.filterNot(EmbeddedGtfsPack::isUrban)
+
+    /** The city packs (metro, tram, funicular) of this build: journeys with changes and the stop search only. */
+    val urban: List<EmbeddedGtfsPack> = included.filter(EmbeddedGtfsPack::isUrban)
+
+    /** Every pack of this build, railway then urban: what the registry enables. */
+    val sourceIds: Set<SourceId> = included.mapTo(linkedSetOf()) { it.sourceId }
+
+    /**
+     * The credit lines of this build's transit packs (Settings › Info): network, attribution with licence, and the
+     * page that publishes the data. One line per source, in pack order.
+     */
+    fun transitCredits(): List<String> = included
+        .filter { it in transit }
+        .distinctBy(EmbeddedGtfsPack::sourceId)
+        .mapNotNull { pack ->
+            RailSourceCatalog.byId(pack.sourceId)?.let { source ->
+                "${source.displayName}: ${source.attribution ?: source.operatorOrAuthority}. ${source.landingPage}"
+            }
+        }
 }
 
 /**

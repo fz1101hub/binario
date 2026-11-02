@@ -18,6 +18,11 @@ enum class SourceFormat {
 
 enum class SourceReadiness {
     READY_FOR_GTFS_PACK,
+    /**
+     * Data pack incluso soltanto nelle build personali (`binario.personalSources`): licenza non commerciale o non
+     * dichiarata, quindi mai nella build pubblica. Vedi SOURCE_POLICY.md.
+     */
+    PERSONAL_GTFS_PACK,
     /** Fonte non primaria ma ammessa per colmare una tratta altrimenti scoperta. */
     BEST_EFFORT_FALLBACK,
     READY_FOR_PROTOCOL_TEST,
@@ -106,33 +111,35 @@ object RailSourceCatalog {
         ),
         RailSourceDefinition(
             id = SourceId("amt-genova-casella-gtfs"),
-            displayName = "AMT Genova–Casella — GTFS",
-            operatorOrAuthority = "AMT Genova",
+            displayName = "Ferrovia Genova–Casella — GTFS AMT",
+            operatorOrAuthority = "AMT Genova / Comune di Genova",
             formats = setOf(SourceFormat.GTFS_ZIP),
             capabilities = staticCapabilities,
             accessMode = AccessMode.GATEWAY_ONLY,
             readiness = SourceReadiness.IMPORT_VIA_GATEWAY,
             countryCodes = setOf("IT"),
-            coverage = "Ferrovia Genova–Casella inclusa nel feed urbano/metropolitano.",
-            landingPage = uri("https://www.ferroviagenovacasella.it/geca/"),
+            coverage = "Ferrovia Genova (piazza Manin) – Casella, dal GTFS urbano AMT.",
+            landingPage = uri("https://dati.comune.genova.it/"),
             downloadOrProbeUri = uri("http://opendatagoogletransit.comune.genova.it/downloads/google_transit.zip"),
-            attribution = "Comune di Genova / AMT",
-            notes = "Feed verificato soltanto in HTTP; il client Binario blocca cleartext, quindi import offline o gateway HTTPS."
+            attribution = "AMT Genova / Comune di Genova — CC BY 4.0",
+            notes = "Origine pubblicata solo in HTTP: il data pack è importato offline in CI e i byte devono coincidere " +
+                "con la copia HTTPS del Mobility Database (tld-958). Il client Binario non scarica mai il feed."
         ),
         RailSourceDefinition(
             id = SourceId("cotral-ferro-gtfs"),
-            displayName = "Cotral/ASTRAL — GTFS Ferro",
-            operatorOrAuthority = "Cotral / ASTRAL",
+            displayName = "Cotral — ferrovie Roma–Lido e Roma–Viterbo",
+            operatorOrAuthority = "Cotral S.p.A.",
             formats = setOf(SourceFormat.GTFS_ZIP),
             capabilities = staticCapabilities,
             accessMode = AccessMode.GATEWAY_ONLY,
-            readiness = SourceReadiness.IMPORT_VIA_GATEWAY,
+            readiness = SourceReadiness.PERSONAL_GTFS_PACK,
             countryCodes = setOf("IT"),
-            coverage = "Roma–Viterbo e Metromare quando rappresentate nel feed ferroviario.",
-            landingPage = uri("https://infomobilita.astralspa.it/"),
+            coverage = "Roma – Lido di Ostia (Metromare) e Roma – Civita Castellana – Viterbo.",
+            landingPage = uri("https://www.cotralspa.it/"),
             downloadOrProbeUri = uri("http://travel.mob.cotralspa.it:7777/GTFS/GTFS_FERRO.zip"),
-            attribution = "Cotral / ASTRAL",
-            notes = "Feed verificato soltanto in HTTP; usare import offline o gateway HTTPS e verificare licenza/versione."
+            attribution = "Cotral S.p.A.",
+            notes = "Feed pubblico solo in HTTP e senza licenza dichiarata: data pack importato offline in CI e incluso " +
+                "soltanto nelle build personali (gtfs-personal/). Il client Binario non scarica mai il feed."
         ),
         RailSourceDefinition(
             id = SourceId("lombardia-trenord-gtfs"),
@@ -512,18 +519,20 @@ object RailSourceCatalog {
         ),
         RailSourceDefinition(
             id = SourceId("gtt-gtfs"),
-            displayName = "GTT Torino — GTFS",
+            displayName = "Metro e tram GTT Torino — GTFS",
             operatorOrAuthority = "Gruppo Torinese Trasporti S.p.A.",
             formats = setOf(SourceFormat.GTFS_ZIP),
             capabilities = staticCapabilities,
-            accessMode = AccessMode.AGREEMENT_REQUIRED,
-            readiness = SourceReadiness.AGREEMENT_REQUIRED,
+            accessMode = AccessMode.PUBLIC_BEST_EFFORT,
+            readiness = SourceReadiness.PERSONAL_GTFS_PACK,
             countryCodes = setOf("IT"),
-            coverage = "Feed multimodale GTT che include anche l'agenzia ferroviaria; verificare i servizi ferroviari effettivamente attivi prima dell'import.",
+            coverage = "Metropolitana M1, tram e cremagliera Sassi – Superga; autobus e ferrovie esclusi.",
             landingPage = uri("https://www.gtt.to.it/gtt_gtfs_license.html"),
             downloadOrProbeUri = uri("https://www.gtt.to.it/open_data/gtt_gtfs.zip"),
-            attribution = "GTT S.p.A.",
-            notes = "Il feed è pubblico ma la licenza ufficiale corrente limita l'uso non commerciale; non abilitarlo in produzione senza autorizzazione compatibile con la distribuzione di Binario."
+            attribution = "GTT S.p.A. — licenza per uso non commerciale",
+            notes = "Il feed è pubblico ma la licenza ufficiale ne limita l'uso a fini non commerciali: data pack incluso " +
+                "soltanto nelle build personali (gtfs-personal/), mai nella build pubblica. Il CI legge la copia del " +
+                "Mobility Database (mdb-2687) del feed ufficiale."
         ),
         RailSourceDefinition(
             id = SourceId("sz-passenger"),
@@ -551,7 +560,7 @@ object RailSourceCatalog {
             coverage = "Udine–Cividale e servizi Mi.Co.Tra. con partner austriaci.",
             landingPage = uri("https://www.ferrovieudinecividale.it/orari-fuc-udine-cividale/"),
             attribution = "FUC",
-            notes = "Orari pubblici ma feed strutturato/realtime da richiedere."
+            notes = "Sul NAP (RAP Friuli Venezia Giulia) il dataset FUC verificato il 2 novembre 2026 contiene solo autobus, scaduti il 30 aprile 2026: Udine – Cividale resta senza orario offline. I treni Mi.Co.Tra. sono nel pack micotra-udine-villach."
         ),
         RailSourceDefinition(
             id = SourceId("fse-puglia"),
@@ -565,35 +574,37 @@ object RailSourceCatalog {
             coverage = "Linee ferroviarie FSE e autosostituzioni da modellare separatamente.",
             landingPage = uri("https://www.fseonline.it/"),
             attribution = "Ferrovie del Sud Est",
-            notes = "Non usare dataset regionali storici o aggregatori come fonte primaria."
+            notes = "Sul NAP (RAP Puglia) l'asset FSE verificato il 2 novembre 2026 è vuoto: nessun orario ferroviario FSE importabile. Non usare dataset regionali storici o aggregatori come fonte primaria."
         ),
         RailSourceDefinition(
             id = SourceId("fal-basilicata-puglia"),
-            displayName = "Ferrovie Appulo Lucane",
-            operatorOrAuthority = "FAL",
-            formats = setOf(SourceFormat.HTML_OR_PDF),
-            capabilities = setOf(ProviderCapability.JOURNEY_SEARCH, ProviderCapability.SERVICE_ALERTS),
-            accessMode = AccessMode.AGREEMENT_REQUIRED,
-            readiness = SourceReadiness.AGREEMENT_REQUIRED,
+            displayName = "Ferrovie Appulo Lucane — orario NAP",
+            operatorOrAuthority = "Ferrovie Appulo Lucane S.r.l.",
+            formats = setOf(SourceFormat.NETEX),
+            capabilities = staticCapabilities,
+            accessMode = AccessMode.OPEN_DIRECT,
+            readiness = SourceReadiness.IMPORT_VIA_GATEWAY,
             countryCodes = setOf("IT"),
-            coverage = "Rete FAL fra Puglia e Basilicata.",
-            landingPage = uri("https://ferrovieappulolucane.it/tratta/orari/"),
-            attribution = "Ferrovie Appulo Lucane",
-            notes = "Feed GTFS/NeTEx e realtime da richiedere all'operatore."
+            coverage = "Bari – Altamura – Matera, Altamura – Gravina e Avigliano – Potenza.",
+            landingPage = uri("https://www.cciss.it/nap/mmtis/public/it/catalog/Dataset/1860"),
+            downloadOrProbeUri = uri("https://www.cciss.it/nap/mmtis/public/api/v1/download/blob/Asset/305982/checkedResource"),
+            attribution = "Ferrovie Appulo Lucane via RAP Puglia / NAP CCISS (dati aperti, art. 52 CAD; Reg. UE 2017/1926)",
+            notes = "Orario ufficiale NeTEx (profilo italiano, livello 1) del Regional Access Point Puglia sul NAP, convertito in GTFS offline dal job CI transit-packs (tools/netex_to_gtfs.py) per gtfs-transit/ (ogni build). Nessuna richiesta di rete dall'app."
         ),
         RailSourceDefinition(
             id = SourceId("ferrotramviaria-bari-barletta"),
-            displayName = "Ferrotramviaria",
+            displayName = "Ferrotramviaria — orario NAP",
             operatorOrAuthority = "Ferrotramviaria S.p.A.",
-            formats = setOf(SourceFormat.HTML_OR_PDF),
-            capabilities = setOf(ProviderCapability.JOURNEY_SEARCH, ProviderCapability.SERVICE_ALERTS),
-            accessMode = AccessMode.AGREEMENT_REQUIRED,
-            readiness = SourceReadiness.AGREEMENT_REQUIRED,
+            formats = setOf(SourceFormat.NETEX),
+            capabilities = staticCapabilities,
+            accessMode = AccessMode.OPEN_DIRECT,
+            readiness = SourceReadiness.IMPORT_VIA_GATEWAY,
             countryCodes = setOf("IT"),
-            coverage = "Bari–Barletta e collegamento aeroporto quando attivo.",
-            landingPage = uri("https://www.ferrotramviaria.it/web/guest/avvisi"),
-            attribution = "Ferrotramviaria",
-            notes = "Realtime pubblico non documentato; richiedere feed diretto."
+            coverage = "Ferrovie del Nord Barese: Bari – Barletta, anche via Aeroporto, e servizi metropolitani FM.",
+            landingPage = uri("https://www.cciss.it/nap/mmtis/public/it/catalog/Dataset/1860"),
+            downloadOrProbeUri = uri("https://www.cciss.it/nap/mmtis/public/api/v1/download/blob/Asset/477050/checkedResource"),
+            attribution = "Ferrotramviaria via RAP Puglia / NAP CCISS (dati aperti, art. 52 CAD; Reg. UE 2017/1926)",
+            notes = "Orario ufficiale NeTEx del Regional Access Point Puglia sul NAP, convertito in GTFS offline dal job CI transit-packs per gtfs-transit/ (ogni build). Nessuna richiesta di rete dall'app."
         ),
         RailSourceDefinition(
             id = SourceId("fce-circumetnea"),
@@ -607,7 +618,7 @@ object RailSourceCatalog {
             coverage = "Rete ferroviaria Circumetnea; metropolitana fuori perimetro ferroviario iniziale.",
             landingPage = uri("https://www.circumetnea.it/category/news/"),
             attribution = "FCE",
-            notes = "Non usare feed che rappresentano soltanto il bus; richiedere feed ferroviario dedicato."
+            notes = "Il GTFS FCE pubblico verificato il 2 novembre 2026 contiene solo autobus, scaduti; nessun dataset ferroviario o della metropolitana di Catania trovato sul NAP. Richiedere feed ferroviario dedicato."
         ),
         RailSourceDefinition(
             id = SourceId("fdc-calabria"),
@@ -621,7 +632,7 @@ object RailSourceCatalog {
             coverage = "Servizi ferroviari e turistici attivi, con stato linea da verificare.",
             landingPage = uri("https://web.ferroviedellacalabria.it/orari-dei-trasporti/"),
             attribution = "Ferrovie della Calabria",
-            notes = "PDF/XLS pubblici; feed strutturato ferroviario da richiedere."
+            notes = "PDF/XLS pubblici; sul NAP (RAP Calabria) solo autobus al 2 novembre 2026. Feed strutturato ferroviario da richiedere."
         ),
         RailSourceDefinition(
             id = SourceId("tua-abruzzo"),
@@ -635,7 +646,143 @@ object RailSourceCatalog {
             coverage = "Servizi ferroviari regionali TUA e collegamenti sulle linee interessate.",
             landingPage = uri("https://www.tuabruzzo.it/comunicazioni/25.html"),
             attribution = "TUA",
-            notes = "Feed ferroviario GTFS/NeTEx non verificato come aperto."
+            notes = "Sul NAP (RAP Abruzzo) il dataset TUA verificato il 2 novembre 2026 contiene solo autobus; feed ferroviario GTFS/NeTEx non pubblicato."
+        ),
+        RailSourceDefinition(
+            id = SourceId("fdg-gargano"),
+            displayName = "Ferrovie del Gargano — orario NAP",
+            operatorOrAuthority = "Ferrovie del Gargano S.r.l.",
+            formats = setOf(SourceFormat.NETEX),
+            capabilities = staticCapabilities,
+            accessMode = AccessMode.OPEN_DIRECT,
+            readiness = SourceReadiness.IMPORT_VIA_GATEWAY,
+            countryCodes = setOf("IT"),
+            coverage = "San Severo – Peschici e Foggia – Lucera.",
+            landingPage = uri("https://www.cciss.it/nap/mmtis/public/it/catalog/Dataset/1860"),
+            downloadOrProbeUri = uri("https://www.cciss.it/nap/mmtis/public/api/v1/download/blob/Asset/307477/checkedResource"),
+            attribution = "Ferrovie del Gargano via RAP Puglia / NAP CCISS (dati aperti, art. 52 CAD; Reg. UE 2017/1926)",
+            notes = "Orario ufficiale NeTEx del Regional Access Point Puglia sul NAP, convertito in GTFS offline dal job CI transit-packs per gtfs-transit/ (ogni build). Nessuna richiesta di rete dall'app."
+        ),
+        RailSourceDefinition(
+            id = SourceId("micotra-udine-villach"),
+            displayName = "Mi.Co.Tra. Udine–Villach — orario NAP",
+            operatorOrAuthority = "Ferrovie Udine Cividale / ÖBB",
+            formats = setOf(SourceFormat.NETEX),
+            capabilities = staticCapabilities,
+            accessMode = AccessMode.OPEN_DIRECT,
+            readiness = SourceReadiness.IMPORT_VIA_GATEWAY,
+            countryCodes = setOf("IT", "AT"),
+            coverage = "Treni transfrontalieri Mi.Co.Tra. Trieste/Udine – Tarvisio – Villach.",
+            landingPage = uri("https://www.cciss.it/nap/mmtis/public/it/catalog/Dataset/204008"),
+            downloadOrProbeUri = uri("https://www.cciss.it/nap/mmtis/public/api/v1/download/blob/Asset/204098/checkedResource"),
+            attribution = "Mi.Co.Tra. (FUC – ÖBB) via RAP Friuli Venezia Giulia / NAP CCISS (dati aperti, art. 52 CAD; Reg. UE 2017/1926)",
+            notes = "Orario ufficiale NeTEx del Regional Access Point Friuli Venezia Giulia sul NAP, convertito in GTFS offline dal job CI transit-packs per gtfs-transit/ (ogni build). La linea Udine – Cividale non ha un dataset ferroviario valido sul NAP."
+        ),
+        RailSourceDefinition(
+            id = SourceId("milano-atm-gtfs"),
+            displayName = "Metro e tram ATM Milano — GTFS",
+            operatorOrAuthority = "Comune di Milano / AMAT / ATM",
+            formats = setOf(SourceFormat.GTFS_ZIP),
+            capabilities = setOf(ProviderCapability.STATION_CATALOG, ProviderCapability.JOURNEY_SEARCH),
+            accessMode = AccessMode.OPEN_DIRECT,
+            readiness = SourceReadiness.READY_FOR_GTFS_PACK,
+            countryCodes = setOf("IT"),
+            coverage = "Metropolitane M1 – M5 e tram ATM; autobus esclusi.",
+            landingPage = uri("https://dati.comune.milano.it/dataset/ds929-orari-del-trasporto-pubblico-locale-nel-comune-di-milano-in-formato-gtfs"),
+            downloadOrProbeUri = uri("https://dati.comune.milano.it/dataset/ae3f3db9-de61-45b7-94e7-9395c0e3ef53/resource/6251f156-4c74-4a0b-904e-01bcb701a686/download/gtfs.zip"),
+            attribution = "Comune di Milano / AMAT, dati ATM — CC BY 4.0",
+            notes = "GTFS del Comune di Milano filtrato a metro e tram in CI; data pack urbano in gtfs-transit/, ogni build. Il feed copre circa cinque settimane: refresh settimanale."
+        ),
+        RailSourceDefinition(
+            id = SourceId("genova-amt-gtfs"),
+            displayName = "Metro, funicolari e ascensori AMT Genova — GTFS",
+            operatorOrAuthority = "AMT Genova / Comune di Genova",
+            formats = setOf(SourceFormat.GTFS_ZIP),
+            capabilities = setOf(ProviderCapability.STATION_CATALOG, ProviderCapability.JOURNEY_SEARCH),
+            accessMode = AccessMode.GATEWAY_ONLY,
+            readiness = SourceReadiness.IMPORT_VIA_GATEWAY,
+            countryCodes = setOf("IT"),
+            coverage = "Metropolitana Brin – Brignole, funicolari Zecca – Righi e Sant'Anna, cremagliera Principe – Granarolo e ascensori pubblici; autobus esclusi.",
+            landingPage = uri("https://dati.comune.genova.it/"),
+            downloadOrProbeUri = uri("http://opendatagoogletransit.comune.genova.it/downloads/google_transit.zip"),
+            attribution = "AMT Genova / Comune di Genova — CC BY 4.0",
+            notes = "Stesso feed del pack amt-genova-casella-gtfs, solo HTTP all'origine e verificato contro la copia HTTPS del Mobility Database (tld-958); data pack urbano in gtfs-transit/, ogni build."
+        ),
+        RailSourceDefinition(
+            id = SourceId("firenze-gest-gtfs"),
+            displayName = "Tramvia di Firenze — GTFS",
+            operatorOrAuthority = "Regione Toscana / GEST S.p.A.",
+            formats = setOf(SourceFormat.GTFS_ZIP),
+            capabilities = setOf(ProviderCapability.STATION_CATALOG, ProviderCapability.JOURNEY_SEARCH),
+            accessMode = AccessMode.OPEN_DIRECT,
+            readiness = SourceReadiness.READY_FOR_GTFS_PACK,
+            countryCodes = setOf("IT"),
+            coverage = "Tramvia T1 (Villa Costanza – Careggi) e T2 (Aeroporto – Unità/San Marco).",
+            landingPage = uri("https://dati.toscana.it/dataset/rt-oraritb"),
+            downloadOrProbeUri = uri("https://dati.toscana.it/dataset/8bb8f8fe-fe7d-41d0-90dc-49f2456180d1/resource/1f62d551-65f4-49f8-9a99-e19b02077be3/download/gest.gtfs"),
+            attribution = "Regione Toscana / GEST S.p.A. — CC BY 4.0",
+            notes = "GTFS ufficiale regionale (dataset rt-oraritb); data pack urbano in gtfs-transit/, ogni build."
+        ),
+        RailSourceDefinition(
+            id = SourceId("arst-metro-gtfs"),
+            displayName = "Metrocagliari e Metrosassari — GTFS",
+            operatorOrAuthority = "ARST S.p.A.",
+            formats = setOf(SourceFormat.GTFS_ZIP),
+            capabilities = setOf(ProviderCapability.STATION_CATALOG, ProviderCapability.JOURNEY_SEARCH),
+            accessMode = AccessMode.OPEN_DIRECT,
+            readiness = SourceReadiness.READY_FOR_GTFS_PACK,
+            countryCodes = setOf("IT"),
+            coverage = "Metrotranvie di Cagliari (linee 1 e 2) e di Sassari; autobus esclusi.",
+            landingPage = uri("https://www.arst.sardegna.it/open-data/"),
+            downloadOrProbeUri = uri("https://arstspa.info/arst-cagliari-it.zip"),
+            attribution = "ARST S.p.A. — CC BY 4.0",
+            notes = "Stesso GTFS ARST del pack arst-gtfs, filtrato ai tram (route_type 0); data pack urbano in gtfs-transit/, ogni build."
+        ),
+        RailSourceDefinition(
+            id = SourceId("venezia-actv-gtfs"),
+            displayName = "Tram di Mestre ACTV — GTFS",
+            operatorOrAuthority = "ACTV S.p.A.",
+            formats = setOf(SourceFormat.GTFS_ZIP, SourceFormat.NETEX),
+            capabilities = setOf(ProviderCapability.STATION_CATALOG, ProviderCapability.JOURNEY_SEARCH),
+            accessMode = AccessMode.PUBLIC_BEST_EFFORT,
+            readiness = SourceReadiness.PERSONAL_GTFS_PACK,
+            countryCodes = setOf("IT"),
+            coverage = "Tram T1 e T2 di Venezia Mestre; autobus e navigazione esclusi.",
+            landingPage = uri("https://actv.avmspa.it/it/content/catalogo-dei-dati-metadati-e-banche-dati-actv"),
+            downloadOrProbeUri = uri("https://actv.avmspa.it/sites/default/files/attachments/opendata/automobilistico/actv_aut.zip"),
+            attribution = "ACTV S.p.A.",
+            notes = "GTFS automobilistico ACTV senza licenza dichiarata: data pack solo nelle build personali (gtfs-personal/). " +
+                "Il NeTEx del RAP Veneto (licenza del NAP) pubblica i tram come linee bus e non è usato."
+        ),
+        RailSourceDefinition(
+            id = SourceId("napoli-anm-gtfs"),
+            displayName = "Metro, funicolari e tram ANM Napoli — GTFS",
+            operatorOrAuthority = "ANM - Azienda Napoletana Mobilità S.p.A.",
+            formats = setOf(SourceFormat.GTFS_ZIP),
+            capabilities = setOf(ProviderCapability.STATION_CATALOG, ProviderCapability.JOURNEY_SEARCH),
+            accessMode = AccessMode.PUBLIC_BEST_EFFORT,
+            readiness = SourceReadiness.PERSONAL_GTFS_PACK,
+            countryCodes = setOf("IT"),
+            coverage = "Metropolitana Linea 1 e Linea 6, funicolari e tram ANM; autobus e Linea 2 (treni Trenitalia) esclusi.",
+            landingPage = uri("https://www.anm.it/"),
+            downloadOrProbeUri = uri("https://www.anm.it/google/google-transit.zip"),
+            attribution = "ANM - Azienda Napoletana Mobilità",
+            notes = "GTFS pubblico; la pagina open data con la licenza richiede l'accesso (IODL 2.0 secondo Transitland, non verificabile sul sito ufficiale): data pack solo nelle build personali (gtfs-personal/)."
+        ),
+        RailSourceDefinition(
+            id = SourceId("roma-mobilita-gtfs"),
+            displayName = "Metro e tram di Roma — GTFS",
+            operatorOrAuthority = "Roma Servizi per la Mobilità / ATAC",
+            formats = setOf(SourceFormat.GTFS_ZIP),
+            capabilities = setOf(ProviderCapability.STATION_CATALOG, ProviderCapability.JOURNEY_SEARCH),
+            accessMode = AccessMode.PUBLIC_BEST_EFFORT,
+            readiness = SourceReadiness.PERSONAL_GTFS_PACK,
+            countryCodes = setOf("IT"),
+            coverage = "Metropolitane A, B/B1, C e tram ATAC; autobus esclusi.",
+            landingPage = uri("https://romamobilita.it/"),
+            downloadOrProbeUri = uri("https://romamobilita.it/sites/default/files/rome_static_gtfs.zip"),
+            attribution = "Roma Servizi per la Mobilità (dati ATAC)",
+            notes = "Feed pubblico; licenza CC BY 3.0 riportata dai cataloghi Transitland e Mobility Database ma non verificabile sul sito ufficiale (pagina open data 404 al 2 novembre 2026): data pack solo nelle build personali (gtfs-personal/)."
         ),
         RailSourceDefinition(
             id = SourceId("arenaways"),

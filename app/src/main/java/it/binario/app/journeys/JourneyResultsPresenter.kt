@@ -76,6 +76,12 @@ enum class JourneyLegVehicle(val resourceName: String?, val isBus: Boolean) {
     BUS("journey_leg_bus", true),
     /** Bus replacing a train. */
     REPLACEMENT_BUS("journey_leg_replacement_bus", true),
+    /** City metro line ("Metro M1"). */
+    METRO("journey_leg_metro", false),
+    /** City tram line ("Tram 14"). */
+    TRAM("journey_leg_tram", false),
+    /** Funicular or lift of a city network. */
+    FUNICULAR("journey_leg_funicular", false),
     /** Walking or unknown: no vehicle label. */
     OTHER(null, false);
 
@@ -92,6 +98,9 @@ enum class JourneyLegVehicle(val resourceName: String?, val isBus: Boolean) {
                     operator.contains("trenitalia") -> BUS_TRENITALIA
                     else -> BUS
                 }
+                LegMode.METRO -> METRO
+                LegMode.TRAM -> TRAM
+                LegMode.FUNICULAR -> FUNICULAR
                 LegMode.WALK, LegMode.UNKNOWN -> OTHER
             }
         }
@@ -126,13 +135,18 @@ data class JourneyLegRow(
     val isBus: Boolean get() = vehicle.isBus
 }
 
-/** A change between two legs: where, when the first arrives, when the next leaves, and the wait. */
+/**
+ * A change between two vehicles: where the next one leaves, when the traveller gets there (the first vehicle's
+ * arrival, or the end of the walk between them), when the next one leaves, and the wait. [afterLegIndex] is the leg
+ * the change follows in [JourneyOptionRow.legs]: the arriving vehicle, or the walk when the change needs one.
+ */
 data class JourneyTransferRow(
     val stationLabel: String,
     val stationId: String,
     val arrivalTime: String,
     val departureTime: String,
-    val waitMinutes: Long
+    val waitMinutes: Long,
+    val afterLegIndex: Int = -1
 )
 
 data class JourneyOptionRow(
@@ -232,13 +246,22 @@ object JourneyResultsPresenter {
     fun row(sourced: SourcedJourneyOption, zone: ZoneId = RailTime.defaultZone): JourneyOptionRow {
         val option = sourced.option
         val legs = option.legs.map { leg(it, zone) }
-        val transfers = option.legs.zipWithNext { arriving, leaving ->
+        // A change joins two vehicles; a walk between them (to the metro, to another station) is its own leg and the
+        // change follows it, at the place where the next vehicle leaves.
+        val transfers = option.legs.indices.zipWithNext().mapNotNull { (arrivingIndex, leavingIndex) ->
+            val arriving = option.legs[arrivingIndex]
+            val leaving = option.legs[leavingIndex]
+            if (leaving.mode == LegMode.WALK) return@mapNotNull null
+            val walked = arriving.mode == LegMode.WALK
+            if (walked && arrivingIndex == 0) return@mapNotNull null
             JourneyTransferRow(
-                stationLabel = arriving.destinationLabel ?: leaving.originLabel ?: arriving.destination.value,
-                stationId = arriving.destination.value,
+                stationLabel = (if (walked) leaving.originLabel else arriving.destinationLabel ?: leaving.originLabel)
+                    ?: arriving.destination.value,
+                stationId = if (walked) leaving.origin.value else arriving.destination.value,
                 arrivalTime = time(arriving.scheduledArrival, zone),
                 departureTime = time(leaving.scheduledDeparture, zone),
-                waitMinutes = Duration.between(arriving.scheduledArrival, leaving.scheduledDeparture).toMinutes()
+                waitMinutes = Duration.between(arriving.scheduledArrival, leaving.scheduledDeparture).toMinutes(),
+                afterLegIndex = arrivingIndex
             )
         }
         val departure = option.departure.withZoneSameInstant(zone)

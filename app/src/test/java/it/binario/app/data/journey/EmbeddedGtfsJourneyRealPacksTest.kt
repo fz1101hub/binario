@@ -1,5 +1,6 @@
 package it.binario.app.data.journey
 
+import it.binario.app.TestAssets
 import it.binario.app.data.Station
 import it.binario.app.data.catalog.EmbeddedCuratedRailStationCatalog
 import it.binario.app.data.core.JourneyOption
@@ -10,7 +11,6 @@ import it.binario.app.data.gtfs.EmbeddedGtfsPacks
 import it.binario.app.data.provider.JourneySearchRequest
 import it.binario.app.data.provider.ProviderErrorKind
 import it.binario.app.data.provider.ProviderResult
-import java.io.File
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
@@ -26,7 +26,7 @@ import org.junit.Test
  * them, never the structure checked here.
  */
 class EmbeddedGtfsJourneyRealPacksTest {
-    private val openAsset = { path: String -> File("src/main/assets", path).inputStream() }
+    private val openAsset = { path: String -> TestAssets.open(path) }
     private val stations: List<Station> by lazy { EmbeddedCuratedRailStationCatalog(openAsset).load() }
     private val zone = ZoneId.of("Europe/Rome")
     /** A Tuesday inside the validity of every bundled pack. */
@@ -107,9 +107,14 @@ class EmbeddedGtfsJourneyRealPacksTest {
             found[0].summary()
         )
         assertEquals(6, found.size)
-        val sources = found.flatMap { it.legs }.map { it.runId!!.value.substringBefore(':') }.toSet()
+        // A walk has no run: the EuroCity's pack calls its stop "Verona", a name the catalogue does not know, a few
+        // hundred metres from Verona Porta Nuova; walking there takes the large hub's 10 minutes of change time.
+        val sources = found.flatMap { it.legs }.filter { it.mode != LegMode.WALK }.map { it.runId!!.value.substringBefore(':') }.toSet()
         assertTrue(sources.containsAll(listOf("alto-adige-sta-gtfs", "trenitalia-gtfs", "italo-gtfs")))
         assertTrue(found.all { it.transfers <= 2 })
+        val walk = found.flatMap { it.legs }.single { it.mode == LegMode.WALK }
+        assertEquals("Verona" to "Verona Porta Nuova", walk.originLabel to walk.destinationLabel)
+        assertEquals(10L, java.time.Duration.between(walk.scheduledDeparture, walk.scheduledArrival).toMinutes())
     }
 
     @Test fun `Venezia to Cortina takes the ItaloBus from Mestre`() = runBlocking {
@@ -131,10 +136,18 @@ class EmbeddedGtfsJourneyRealPacksTest {
         assertTrue(ivrea.all { option -> option.legs.all { it.mode == LegMode.BUS && it.serviceKind == ServiceKind.BUS } })
     }
 
-    @Test fun `Matera has no stop in the bundled packs`() = runBlocking {
-        // The city is served by FAL trains and FrecciaLink coaches, neither of which is in the Trenitalia feed.
-        val result = EmbeddedGtfsJourneyProvider.create(openAsset).searchJourneys(request("Milano Centrale", "Matera", "07:00"))
-        assertEquals(ProviderErrorKind.NOT_SUPPORTED, (result as ProviderResult.Failure).error.kind)
+    @Test fun `Matera is covered by the FAL pack, Gallipoli by none`() = runBlocking {
+        // Matera is served by FAL trains (gtfs-transit/, from the National Access Point, when the build has the pack)
+        // and FrecciaLink coaches, which are not in the Trenitalia feed.
+        val provider = EmbeddedGtfsJourneyProvider.create(openAsset)
+        if (EmbeddedGtfsPacks.all.any { it.sourceId.value == "fal-basilicata-puglia" }) {
+            val matera = provider.searchJourneys(request("Bari", "Matera", "07:00"))
+            val legs = options(matera).flatMap { it.legs }
+            assertTrue(legs.any { it.runId?.value?.startsWith("fal-basilicata-puglia:") == true })
+        }
+        // Ferrovie del Sud Est publishes no timetable on the access point.
+        val gallipoli = provider.searchJourneys(request("Lecce", "Gallipoli", "07:00"))
+        assertEquals(ProviderErrorKind.NOT_SUPPORTED, (gallipoli as ProviderResult.Failure).error.kind)
     }
 
     @Test fun `search times on the bundled packs`() = runBlocking {

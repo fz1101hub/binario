@@ -44,6 +44,15 @@ object RailSourceSelectionPolicy {
         // stays the one shown, so these packs only add the trains and buses no other pack has.
         pref("trenitalia-gtfs", RailInformationCategory.PLANNED_ITINERARY, 130, "Orario ufficiale Trenitalia dal NAP (NeTEx, conversione GTFS CC BY 4.0), treni e bus."),
         pref("italo-gtfs", RailInformationCategory.PLANNED_ITINERARY, 130, "Orario ufficiale Italo dal NAP (NeTEx, conversione GTFS CC BY 4.0), treni e ItaloBus."),
+        // Regional railways added with the transit packs (gtfs-transit/, gtfs-personal/), below every pack above: a
+        // run that a national or core pack also carries (a Mi.Co.Tra. train in the ÖBB pack) keeps that pack's copy;
+        // these packs add the lines no other pack has.
+        pref("fal-basilicata-puglia", RailInformationCategory.PLANNED_ITINERARY, 120, "Orario ufficiale FAL dal NAP (NeTEx, conversione Binario)."),
+        pref("ferrotramviaria-bari-barletta", RailInformationCategory.PLANNED_ITINERARY, 120, "Orario ufficiale Ferrotramviaria dal NAP (NeTEx, conversione Binario)."),
+        pref("fdg-gargano", RailInformationCategory.PLANNED_ITINERARY, 120, "Orario ufficiale Ferrovie del Gargano dal NAP (NeTEx, conversione Binario)."),
+        pref("micotra-udine-villach", RailInformationCategory.PLANNED_ITINERARY, 120, "Orario ufficiale Mi.Co.Tra. dal NAP (NeTEx, conversione Binario)."),
+        pref("amt-genova-casella-gtfs", RailInformationCategory.PLANNED_ITINERARY, 120, "GTFS AMT del Comune di Genova per la Genova–Casella, CC BY 4.0."),
+        pref("cotral-ferro-gtfs", RailInformationCategory.PLANNED_ITINERARY, 115, "GTFS Cotral delle ferrovie Roma–Lido e Roma–Viterbo, solo build personali."),
         pref("delfi-gtfs", RailInformationCategory.PLANNED_ITINERARY, 125, "Dataset nazionale tedesco ufficiale; complemento DB, non duplicato preferito di un feed diretto dell'operatore."),
         pref("delfi-gtfs-community", RailInformationCategory.PLANNED_ITINERARY, 65, "Mirror community del dataset DELFI: utile solo se il download ufficiale non è disponibile e la tratta resterebbe scoperta."),
         pref("european-sleeper-gtfs", RailInformationCategory.PLANNED_ITINERARY, 60, "Feed community best-effort; ammesso come fallback dopo l'avvio ufficiale del servizio Milano."),

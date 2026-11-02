@@ -45,9 +45,23 @@ class RailSourceCatalogTest {
         assertEquals(SourceReadiness.READY_FOR_PROTOCOL_TEST, rfiProgrammed.readiness)
         assertTrue(ProviderCapability.STATION_BOARD in rfiProgrammed.capabilities)
         assertEquals(SourceReadiness.READY_FOR_PROTOCOL_TEST, rfiRss.readiness)
-        assertEquals(SourceReadiness.AGREEMENT_REQUIRED, gtt.readiness)
+        // Non-commercial licence: personal builds only, never the public one.
+        assertEquals(SourceReadiness.PERSONAL_GTFS_PACK, gtt.readiness)
 
         assertTrue(rfiRss.formats.contains(SourceFormat.RSS_XML))
         assertTrue(gtt.downloadOrProbeUri.toString().startsWith("https://"))
+    }
+
+    @Test
+    fun `le fonti dei pack regionali e urbani sono nel catalogo con licenza e attribuzione`() {
+        val transit = it.binario.app.data.gtfs.EmbeddedGtfsPacks.forBuild(personalSources = true)
+            .filter { it.assetPath.startsWith("gtfs-transit/") || it.assetPath.startsWith("gtfs-personal/") }
+        transit.forEach { pack ->
+            val source = requireNotNull(RailSourceCatalog.byId(pack.sourceId)) { "Fonte assente: ${pack.sourceId.value}" }
+            assertFalse(source.attribution.isNullOrBlank())
+            assertTrue(source.readiness != SourceReadiness.AGREEMENT_REQUIRED)
+            // A personal-only pack is declared as such in the catalogue too, and the other way round.
+            assertEquals(pack.personalOnly, source.readiness == SourceReadiness.PERSONAL_GTFS_PACK)
+        }
     }
 }

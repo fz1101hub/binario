@@ -24,6 +24,8 @@ import it.binario.app.data.gtfs.EmbeddedGtfsPacks
 import it.binario.app.data.gtfs.EmbeddedGtfsRouteAdapter
 import it.binario.app.data.gtfs.GtfsCompactIndexLimitException
 import it.binario.app.data.gtfs.GtfsDayTimetable
+import it.binario.app.data.gtfs.GtfsStationCodeIndex
+import it.binario.app.data.gtfs.StopNameCase
 import it.binario.app.data.gtfs.GtfsStopCodeScheme
 import it.binario.app.data.gtfs.GtfsStopDirectory
 import it.binario.app.data.planned.RfiProgrammedStationIds
@@ -88,7 +90,20 @@ data class GtfsJourneyPlannerSettings(
      * Trenitalia one 2.5 MB): room for the requested and the next day of the three packs of one search.
      */
     val maxCachedDays: Int = 16,
-    val maxCachedBytes: Long = 24L * 1024L * 1024L
+    val maxCachedBytes: Long = 24L * 1024L * 1024L,
+    /**
+     * Walking transfers: two transfer points at most this far apart (straight line) are joined by a walk, and so are
+     * the requested stations and the stops near them (Milano Centrale and the Centrale M2/M3 stops).
+     */
+    val maxWalkMeters: Int = 400,
+    /** Walking speed of those transfers. */
+    val walkingSpeedKmh: Double = 4.5,
+    /** Added to every walk (finding the way, stairs, ticket barriers). */
+    val walkMarginMinutes: Int = 2,
+    /** Minimum change time at a stop of a city network (metro, tram, funicular). */
+    val urbanTransferMinutes: Int = 3,
+    /** City packs loaded for one search besides the [maxPacksPerSearch] railway packs: the city of each end. */
+    val maxUrbanPacksPerSearch: Int = 2
 ) {
     init {
         require(defaultTransferMinutes in 0..60 && largeHubTransferMinutes in 0..60) { "Tempo di cambio non valido" }
@@ -96,7 +111,13 @@ data class GtfsJourneyPlannerSettings(
         require(journeyHorizonMinutes in 0..24 * 60) { "Orizzonte dei viaggi non valido" }
         require(maxPacksPerSearch in 1..8) { "Numero di pack non valido" }
         require(maxIterations > 0 && maxSearchConnections > 0 && maxCachedDays > 0 && maxCachedBytes > 0)
+        require(maxWalkMeters in 0..2_000 && walkingSpeedKmh > 0 && walkMarginMinutes in 0..30) { "Percorsi a piedi non validi" }
+        require(urbanTransferMinutes in 0..60 && maxUrbanPacksPerSearch in 0..4) { "Reti urbane non valide" }
     }
+
+    /** Minutes of a walk of [meters]: the distance at [walkingSpeedKmh], rounded up, plus [walkMarginMinutes]. */
+    fun walkMinutes(meters: Double): Int =
+        Math.ceil(meters / (walkingSpeedKmh * 1000.0 / 60.0)).toInt() + walkMarginMinutes
 
     companion object {
         val DEFAULT_LARGE_HUB_RAILWAY_CODES: Set<String> =
@@ -127,6 +148,9 @@ class EmbeddedGtfsJourneyProvider internal constructor(
     override val descriptor: ProviderDescriptor = DESCRIPTOR
 
     private val zone = RailTime.defaultZone
+    /** Packs of `gtfs-transit/` and `gtfs-personal/`, whose stop names [StopNameCase] tidies. */
+    private val transitSources: Set<SourceId> = packs.filterNot { it.assetPath.startsWith("gtfs/") }.mapTo(HashSet()) { it.sourceId }
+    private val urbanSources: Set<SourceId> = packs.filter(EmbeddedGtfsPack::isUrban).mapTo(HashSet()) { it.sourceId }
     private val resolverMutex = Mutex()
     @Volatile private var resolver: GtfsStopStationResolver? = null
     private val packStopsMutex = Mutex()
@@ -162,6 +186,8 @@ class EmbeddedGtfsJourneyProvider internal constructor(
         val resolver = resolver()
         val origin = endpoint(request.origin, request.originEndpoint, resolver) ?: return notCovered()
         val destination = endpoint(request.destination, request.destinationEndpoint, resolver) ?: return notCovered()
+        locateStop(origin, resolver)
+        locateStop(destination, resolver)
 
         val departure = request.departureAt.withZoneSameInstant(zone).toLocalDateTime()
         val serviceDate = departure.toLocalDate()
@@ -172,14 +198,16 @@ class EmbeddedGtfsJourneyProvider internal constructor(
         val coverage = ArrayList<PackCoverage>()
         for (pack in packs) {
             currentCoroutineContext().ensureActive()
+            // A city network is read only for a search with an end in its city (or at one of its stops).
+            if (pack.isUrban && !urbanCandidate(pack, origin, destination)) continue
             val stops = try {
                 packStops(pack, resolver)
             } catch (_: GtfsCompactIndexLimitException) {
                 incomplete = true
                 continue
             }
-            val originNodes = stops.nodesFor(origin)
-            val destinationNodes = stops.nodesFor(destination)
+            val originNodes = stops.accessFor(origin, settings)
+            val destinationNodes = stops.accessFor(destination, settings)
             if (originNodes.isNotEmpty() || destinationNodes.isNotEmpty()) {
                 coverage += PackCoverage(pack, stops, originNodes, destinationNodes)
             }
@@ -192,18 +220,37 @@ class EmbeddedGtfsJourneyProvider internal constructor(
 
         // The pack the route search prefers for planned itineraries comes first, so that when two packs publish
         // the same train its copy is the one kept.
-        val ranked = current.sortedByDescending {
+        val ranked = current.filterNot { it.pack.isUrban }.sortedByDescending {
             RailSourceSelectionPolicy.score(RailInformationCategory.PLANNED_ITINERARY, it.pack.sourceId, null)
         }
+        // The city networks of the two ends (metro, tram), next to the railway packs of every selection.
+        val urban = current.filter { it.pack.isUrban }
+            .sortedByDescending { (if (it.coversOrigin) 1 else 0) + (if (it.coversDestination) 1 else 0) }
+            .take(settings.maxUrbanPacksPerSearch)
         val primary = ranked.filter { it.coversOrigin && it.coversDestination }
-        val union = unionForChanges(ranked, origin, destination, resolver)
-        // A national pack (Trenitalia) serves both ends of most Italian searches: the free places of the first
-        // selection go to the packs the change pairing chose, so a regional network that only serves one end
-        // (the South Tyrol trains to Merano) still takes part when the national pack alone would find a journey.
-        val primaryWithChanges = (primary.take(settings.maxPacksPerSearch) + union).distinctBy { it.pack.sourceId }
-        val selections = listOf(primaryWithChanges, union).filter(List<PackCoverage>::isNotEmpty)
-            .map { selection -> selection.take(settings.maxPacksPerSearch).sortedBy(ranked::indexOf) }
-            .distinctBy { selection -> selection.map { it.pack.sourceId } }
+        val railSelections = if (ranked.any { it.coversOrigin } && ranked.any { it.coversDestination }) {
+            val union = unionForChanges(ranked, origin, destination, resolver)
+            // A national pack (Trenitalia) serves both ends of most Italian searches: the free places of the first
+            // selection go to the packs the change pairing chose, so a regional network that only serves one end
+            // (the South Tyrol trains to Merano) still takes part when the national pack alone would find a journey.
+            val primaryWithChanges = (primary.take(settings.maxPacksPerSearch) + union).distinctBy { it.pack.sourceId }
+            listOf(primaryWithChanges, union)
+        } else {
+            // One end is reached only by a city network: the railway packs of the other end.
+            listOf(ranked.filter { it.coversOrigin || it.coversDestination })
+        }.filter(List<PackCoverage>::isNotEmpty).map { selection -> selection.take(settings.maxPacksPerSearch).sortedBy(ranked::indexOf) }
+        // A journey to or from a city stop (Duomo, Peretola Aeroporto) takes the city lines from the start. Between two
+        // railway stations the railway packs are searched as before and the city lines of the two ends only join when
+        // they find nothing: a long-distance search through Milan does not read the Milan metro and trams.
+        val endAtCityStop = urban.any { coverage ->
+            coverage.pack.sourceId.value == origin.gtfsStop?.first || coverage.pack.sourceId.value == destination.gtfsStop?.first
+        }
+        val selections = buildList {
+            if (!endAtCityStop) railSelections.forEach { add(it) }
+            // Both ends in a city network (Milano Centrale to Duomo): the city lines with the railway packs serving both.
+            if (urban.any { it.coversOrigin } && urban.any { it.coversDestination }) add(primary.take(settings.maxPacksPerSearch) + urban)
+            if (urban.isNotEmpty()) railSelections.forEach { add(it + urban) }
+        }.filter(List<PackCoverage>::isNotEmpty).distinctBy { selection -> selection.map { it.pack.sourceId } }
 
         var options = emptyList<JourneyOption>()
         for (selection in selections) {
@@ -299,11 +346,21 @@ class EmbeddedGtfsJourneyProvider internal constructor(
         }
         val graph = buildGraph(slices, startMinute, lastConnectionMinute, resolver)
         incomplete = incomplete || graph.truncated
-        val origins = BooleanArray(graph.timetable.nodeCount)
-        val destinations = BooleanArray(graph.timetable.nodeCount)
+        val nodeCount = graph.timetable.nodeCount
+        val origins = BooleanArray(nodeCount)
+        val destinations = BooleanArray(nodeCount)
+        val originWalk = IntArray(nodeCount) { -1 }
+        val destinationWalk = IntArray(nodeCount) { -1 }
+        fun mark(nodes: Map<String, Int>, exact: BooleanArray, walk: IntArray) {
+            nodes.forEach { (key, minutes) ->
+                val node = graph.nodeIndex[key] ?: return@forEach
+                if (minutes == 0) exact[node] = true
+                else if (walk[node] < 0 || minutes < walk[node]) walk[node] = minutes
+            }
+        }
         selection.forEach { coverage ->
-            coverage.originNodes.forEach { key -> graph.nodeIndex[key]?.let { origins[it] = true } }
-            coverage.destinationNodes.forEach { key -> graph.nodeIndex[key]?.let { destinations[it] = true } }
+            mark(coverage.originNodes, origins, originWalk)
+            mark(coverage.destinationNodes, destinations, destinationWalk)
         }
         val job = currentCoroutineContext().job
         val journeys = ConnectionScanPlanner(graph.timetable).plan(
@@ -315,7 +372,9 @@ class EmbeddedGtfsJourneyProvider internal constructor(
                 maxTransfers = request.maxTransfers,
                 maxResults = request.maxResults,
                 maxIterations = settings.maxIterations,
-                lastConnectionMinute = lastConnectionMinute
+                lastConnectionMinute = lastConnectionMinute,
+                originWalkMinutes = originWalk,
+                destinationWalkMinutes = destinationWalk
             )
         ) { job.ensureActive() }
         val options = journeys.map { journey ->
@@ -384,11 +443,17 @@ class EmbeddedGtfsJourneyProvider internal constructor(
             sliceOf[index] = sliceIndex
             connectionOf[index] = connection
         }
+        val urbanPrefixes = slices.filter { it.coverage.pack.isUrban }.mapTo(HashSet()) { it.coverage.pack.sourceId.value + ":" }
         val transferMinutes = IntArray(nodeKeys.size) { node ->
-            val railwayCode = resolver.station(nodeKeys[node])?.railwayCode
-            if (railwayCode != null && railwayCode in settings.largeHubRailwayCodes) settings.largeHubTransferMinutes
-            else settings.defaultTransferMinutes
+            val key = nodeKeys[node]
+            val railwayCode = resolver.station(key)?.railwayCode
+            when {
+                railwayCode != null && railwayCode in settings.largeHubRailwayCodes -> settings.largeHubTransferMinutes
+                urbanPrefixes.any(key::startsWith) -> settings.urbanTransferMinutes
+                else -> settings.defaultTransferMinutes
+            }
         }
+        val footpaths = footpaths(nodeKeys, slices, resolver, transferMinutes)
         return SearchGraph(
             timetable = ConnectionScanTimetable(
                 nodeCount = nodeKeys.size,
@@ -399,7 +464,10 @@ class EmbeddedGtfsJourneyProvider internal constructor(
                 departureMinute = departureMinute,
                 arrivalMinute = arrivalMinute,
                 trip = trip,
-                boarding = boarding
+                boarding = boarding,
+                footStart = footpaths.start,
+                footTarget = footpaths.target,
+                footMinutes = footpaths.minutes
             ),
             nodeKeys = nodeKeys,
             nodeIndex = nodeIndex,
@@ -407,6 +475,83 @@ class EmbeddedGtfsJourneyProvider internal constructor(
             connectionOf = connectionOf,
             truncated = truncated
         )
+    }
+
+    /**
+     * Walking transfers between the transfer points of one search at most [GtfsJourneyPlannerSettings.maxWalkMeters]
+     * apart (two stations, a station and a metro or tram stop, stops of two networks): minutes are the walk
+     * ([GtfsJourneyPlannerSettings.walkMinutes]) and never less than the change time of the node walked to. Points
+     * come from the catalogue station or, for a stop the catalogue does not know, from its pack; a node without
+     * coordinates has no footpath. Nodes are bucketed on a grid of cells about [maxWalkMeters] wide.
+     */
+    private fun footpaths(
+        nodeKeys: List<String>,
+        slices: List<Slice>,
+        resolver: GtfsStopStationResolver,
+        transferMinutes: IntArray
+    ): Footpaths {
+        val size = nodeKeys.size
+        val maxMeters = settings.maxWalkMeters.toDouble()
+        if (maxMeters <= 0.0 || size == 0) return Footpaths(IntArray(size + 1), IntArray(0), IntArray(0))
+        val stops = slices.map { it.coverage.stops }.distinct()
+        val latitudes = DoubleArray(size) { Double.NaN }
+        val longitudes = DoubleArray(size) { Double.NaN }
+        for (node in 0 until size) {
+            val key = nodeKeys[node]
+            val station = resolver.station(key)
+            val point = if (station?.latitude != null && station.longitude != null) doubleArrayOf(station.latitude, station.longitude)
+            else stops.firstNotNullOfOrNull { it.point(key) }
+            if (point != null) {
+                latitudes[node] = point[0]
+                longitudes[node] = point[1]
+            }
+        }
+        val cellDegrees = maxMeters / 111_000.0
+        fun cellOf(latitude: Double, longitude: Double): Long {
+            val row = Math.floor(latitude / cellDegrees).toLong()
+            val column = Math.floor(longitude * Math.cos(Math.toRadians(latitude)) / cellDegrees).toLong()
+            return (row shl 32) xor (column and 0xFFFFFFFFL)
+        }
+        val cells = HashMap<Long, MutableList<Int>>()
+        for (node in 0 until size) {
+            if (latitudes[node].isNaN() || longitudes[node].isNaN()) continue
+            cells.getOrPut(cellOf(latitudes[node], longitudes[node])) { ArrayList(4) } += node
+        }
+        val targets = Array(size) { IntArrayList() }
+        val minutes = Array(size) { IntArrayList() }
+        var total = 0
+        for (node in 0 until size) {
+            val latitude = latitudes[node]
+            val longitude = longitudes[node]
+            if (latitude.isNaN() || longitude.isNaN()) continue
+            val row = Math.floor(latitude / cellDegrees).toLong()
+            val column = Math.floor(longitude * Math.cos(Math.toRadians(latitude)) / cellDegrees).toLong()
+            for (deltaRow in -1L..1L) for (deltaColumn in -1L..1L) {
+                val cell = ((row + deltaRow) shl 32) xor ((column + deltaColumn) and 0xFFFFFFFFL)
+                for (other in cells[cell] ?: continue) {
+                    if (other == node) continue
+                    val meters = GtfsStationCodeIndex.distanceKm(latitude, longitude, latitudes[other], longitudes[other]) * 1000.0
+                    if (meters > maxMeters) continue
+                    targets[node].add(other)
+                    minutes[node].add(maxOf(settings.walkMinutes(meters), transferMinutes[other]))
+                    total += 1
+                }
+            }
+        }
+        val start = IntArray(size + 1)
+        val target = IntArray(total)
+        val walk = IntArray(total)
+        var position = 0
+        for (node in 0 until size) {
+            start[node] = position
+            for (index in 0 until targets[node].size) {
+                target[position] = targets[node][index]
+                walk[position] = minutes[node][index]
+                position += 1
+            }
+        }
+        start[size] = position
+        return Footpaths(start, target, walk)
     }
 
     /**
@@ -435,6 +580,8 @@ class EmbeddedGtfsJourneyProvider internal constructor(
             slice.day.trips.forEachIndexed { local, dayTrip ->
                 val global = tripOffsets[sliceIndex] + local
                 sliceOfTrip[global] = sliceIndex
+                // City runs have no public number (their trip ids are not one) and are never published twice.
+                if (dayTrip.mode in URBAN_MODES) return@forEachIndexed
                 val number = runNumberKey(dayTrip.publicNumber) ?: return@forEachIndexed
                 numberOfTrip[global] = number
                 sourcesByNumber.getOrPut(number) { HashSet(2) } += slice.day.sourceId
@@ -491,7 +638,11 @@ class EmbeddedGtfsJourneyProvider internal constructor(
         resolver: GtfsStopStationResolver
     ): JourneyOption {
         val usedPacks = linkedSetOf<SourceId>()
-        val legs = journey.legs.mapIndexed { index, leg ->
+        val legs = ArrayList<JourneyLeg>(journey.legs.size * 2 + 1)
+        // Where each vehicle leg is boarded and left, for the walks between them.
+        val boardPlaces = ArrayList<Pair<StationId, String>>(journey.legs.size)
+        val alightPlaces = ArrayList<Pair<StationId, String>>(journey.legs.size)
+        val vehicleLegs = journey.legs.mapIndexed { index, leg ->
             val day = slices[graph.sliceOf[leg.boardConnection]].day
             // A run merged across packs can be left on a connection only the other pack publishes.
             val alightDay = slices[graph.sliceOf[leg.alightConnection]].day
@@ -502,12 +653,17 @@ class EmbeddedGtfsJourneyProvider internal constructor(
             usedPacks += alightDay.sourceId
             val boardStop = day.departureStop[board]
             val alightStop = alightDay.arrivalStop[alight]
-            val (originId, originLabel) = if (index == 0) request.origin to origin.name
-            else place(graph.nodeKeys[graph.timetable.departureNode[leg.boardConnection]], day, boardStop, resolver)
-            val (destinationId, destinationLabel) = if (index == journey.legs.lastIndex) request.destination to destination.name
-            else place(graph.nodeKeys[graph.timetable.arrivalNode[leg.alightConnection]], alightDay, alightStop, resolver)
-            val number = displayNumber(trip.publicNumber)
-            val line = trip.lineLabel?.takeIf { label ->
+            val boardPlace = place(graph.nodeKeys[graph.timetable.departureNode[leg.boardConnection]], day, boardStop, resolver)
+            val alightPlace = place(graph.nodeKeys[graph.timetable.arrivalNode[leg.alightConnection]], alightDay, alightStop, resolver)
+            boardPlaces += boardPlace
+            alightPlaces += alightPlace
+            val (originId, originLabel) = if (index == 0 && journey.accessWalk == null) request.origin to origin.name else boardPlace
+            val (destinationId, destinationLabel) =
+                if (index == journey.legs.lastIndex && journey.egressWalk == null) request.destination to destination.name else alightPlace
+            val urban = trip.mode in URBAN_MODES
+            // A city run has a line ("M1", "14") but no public number: its trip id is not one.
+            val number = if (urban) null else displayNumber(trip.publicNumber)
+            val line = (if (urban) urbanLineName(trip.mode, trip.lineLabel) else trip.lineLabel)?.takeIf { label ->
                 label.length <= 10 && '(' !in label && !label.equals("INCONNU", ignoreCase = true) &&
                     !label.equals(number, ignoreCase = true)
             }
@@ -527,6 +683,32 @@ class EmbeddedGtfsJourneyProvider internal constructor(
                 operatorName = trip.operatorName
             )
         }
+        fun walk(from: Pair<StationId, String>, to: Pair<StationId, String>, startMinute: Int, minutes: Int) = JourneyLeg(
+            mode = LegMode.WALK,
+            origin = from.first,
+            destination = to.first,
+            scheduledDeparture = at(serviceDate, startMinute),
+            scheduledArrival = at(serviceDate, startMinute + minutes),
+            originLabel = from.second,
+            destinationLabel = to.second
+        )
+        journey.accessWalk?.let { access ->
+            val first = graph.timetable.departureMinute[journey.legs.first().boardConnection]
+            legs += walk(request.origin to origin.name, boardPlaces.first(), first - access.minutes, access.minutes)
+        }
+        vehicleLegs.forEachIndexed { index, leg ->
+            if (index > 0) {
+                journey.transferWalks.getOrNull(index - 1)?.let { transfer ->
+                    val arrived = graph.timetable.arrivalMinute[journey.legs[index - 1].alightConnection]
+                    legs += walk(alightPlaces[index - 1], boardPlaces[index], arrived, transfer.minutes)
+                }
+            }
+            legs += leg
+        }
+        journey.egressWalk?.let { egress ->
+            val arrived = graph.timetable.arrivalMinute[journey.legs.last().alightConnection]
+            legs += walk(alightPlaces.last(), request.destination to destination.name, arrived, egress.minutes)
+        }
         val sources = usedPacks.map { sourceId ->
             SourceRef(
                 sourceId = sourceId,
@@ -537,7 +719,7 @@ class EmbeddedGtfsJourneyProvider internal constructor(
             )
         }.toSet()
         return JourneyOption(
-            id = JourneyId("gtfs-journey:" + legs.joinToString("|") { "${it.runId?.value}@${it.scheduledDeparture.toLocalDateTime()}" }),
+            id = JourneyId("gtfs-journey:" + vehicleLegs.joinToString("|") { "${it.runId?.value}@${it.scheduledDeparture.toLocalDateTime()}" }),
             origin = request.origin,
             destination = request.destination,
             departure = legs.first().scheduledDeparture,
@@ -557,7 +739,11 @@ class EmbeddedGtfsJourneyProvider internal constructor(
 
     private fun place(nodeKey: String, day: GtfsDayTimetable, stop: Int, resolver: GtfsStopStationResolver): Pair<StationId, String> {
         resolver.station(nodeKey)?.let { return StationId(it.id) to it.name }
-        return StationId("gtfs:${day.sourceId.value}:${day.stopIds[stop]}") to resolver.displayName(day.stopNames[stop])
+        // A city stop keeps its own name ("Valfonda - Stazione Smn"): the railway shortening ("Stazione di …") is not
+        // for it. The packs added with the city networks often publish names in capitals ("DUOMO M1", "CASELLA/PAESE").
+        val label = if (day.sourceId in urbanSources) day.stopNames[stop] else resolver.displayName(day.stopNames[stop])
+        return StationId("gtfs:${day.sourceId.value}:${day.stopIds[stop]}") to
+            (if (day.sourceId in transitSources) StopNameCase.display(label) else label)
     }
 
     private fun at(serviceDate: LocalDate, minute: Int): ZonedDateTime =
@@ -608,16 +794,43 @@ class EmbeddedGtfsJourneyProvider internal constructor(
         val station = catalogue ?: hint?.let {
             Station(id = id.value, name = it.name, city = it.name, railwayCode = it.railwayCode, aliases = it.aliases)
         } ?: return null
-        // A station picked outside the catalogue joins the catalogue station its name resolves to, if exactly one.
-        val resolved = catalogue ?: resolver.resolve(station.name)
         val gtfsStop = id.value.takeIf { it.startsWith("gtfs:") }?.removePrefix("gtfs:")?.let { native ->
             val source = native.substringBefore(':')
             val stopId = native.substringAfter(':', "")
             if (source.isNotEmpty() && stopId.isNotEmpty()) source to stopId else null
         }
+        // A metro or tram stop is that stop only: never a railway station by name ("Garibaldi FS" is not the station).
+        if (gtfsStop != null && packs.any { it.isUrban && it.sourceId.value == gtfsStop.first }) {
+            return Endpoint(name = station.name, catalogueId = null, keys = emptySet(), gtfsStop = gtfsStop, point = null)
+        }
+        // A station picked outside the catalogue joins the catalogue station its name resolves to, if exactly one.
+        val resolved = catalogue ?: resolver.resolve(station.name)
         val keys = GtfsStopStationResolver.candidateKeys(station) +
             (resolved?.let(GtfsStopStationResolver::candidateKeys) ?: emptySet())
-        return Endpoint(name = catalogue?.name ?: station.name, catalogueId = resolved?.id, keys = keys, gtfsStop = gtfsStop)
+        val point = resolved?.point() ?: station.point()
+        return Endpoint(name = catalogue?.name ?: station.name, catalogueId = resolved?.id, keys = keys, gtfsStop = gtfsStop, point = point)
+    }
+
+    /** A stop picked from a pack (`gtfs:<source>:<stop>`) without a catalogue position takes its pack's coordinates. */
+    private suspend fun locateStop(endpoint: Endpoint, resolver: GtfsStopStationResolver) {
+        if (endpoint.point != null) return
+        val (source, stopId) = endpoint.gtfsStop ?: return
+        val pack = packs.firstOrNull { it.sourceId.value == source } ?: return
+        val stops = try {
+            packStops(pack, resolver)
+        } catch (_: GtfsCompactIndexLimitException) {
+            return
+        }
+        endpoint.point = stops.stopPoint(stopId)
+    }
+
+    /** A city pack joins a search with an end at one of its stops or inside its area. */
+    private fun urbanCandidate(pack: EmbeddedGtfsPack, origin: Endpoint, destination: Endpoint): Boolean {
+        if (settings.maxUrbanPacksPerSearch == 0) return false
+        if (origin.gtfsStop?.first == pack.sourceId.value || destination.gtfsStop?.first == pack.sourceId.value) return true
+        return listOfNotNull(origin.point, destination.point).any { (latitude, longitude) ->
+            pack.areas.any { area -> area.contains(latitude, longitude) }
+        }
     }
 
     private fun notCovered(): ProviderResult<List<JourneyOption>> = ProviderResult.Failure(
@@ -628,7 +841,9 @@ class EmbeddedGtfsJourneyProvider internal constructor(
         val name: String,
         val catalogueId: String?,
         val keys: Set<String>,
-        val gtfsStop: Pair<String, String>?
+        val gtfsStop: Pair<String, String>?,
+        /** Latitude and longitude, for the walks to nearby stops; null when unknown. */
+        var point: Pair<Double, Double>?
     )
 
     /** Transfer-point identity of every stop of one pack; built once per pack and kept (bounded by the packs). */
@@ -639,8 +854,20 @@ class EmbeddedGtfsJourneyProvider internal constructor(
         private val stopsByMatchKey: HashMap<String, MutableList<Int>>,
         private val stopsByNode: HashMap<String, MutableList<Int>>,
         /** Catalogue stations among this pack's transfer points. */
-        val catalogueStations: Set<String>
+        val catalogueStations: Set<String>,
+        private val latitudes: DoubleArray,
+        private val longitudes: DoubleArray,
+        /** Catalogue coordinates of the catalogue nodes (they win over the pack's own stop coordinates). */
+        private val cataloguePoints: Map<String, Pair<Double, Double>>
     ) {
+        /** Stops with coordinates, bucketed on a grid of [GRID_DEGREES] for the nearby search. */
+        private val grid: HashMap<Long, MutableList<Int>> = HashMap<Long, MutableList<Int>>().also { cells ->
+            for (index in latitudes.indices) {
+                if (latitudes[index].isNaN() || longitudes[index].isNaN()) continue
+                cells.getOrPut(cell(latitudes[index], longitudes[index])) { ArrayList(4) } += index
+            }
+        }
+
         fun nodeKey(stopId: String): String = indexById[stopId]?.let { nodeKeys[it] } ?: "${sourceId.value}:stop:$stopId"
 
         fun nodesFor(endpoint: Endpoint): Set<String> {
@@ -653,22 +880,79 @@ class EmbeddedGtfsJourneyProvider internal constructor(
             return nodes
         }
 
+        /**
+         * The transfer points of this pack a journey can start or end at for [endpoint], with the minutes of walking:
+         * 0 for the endpoint's own nodes ([nodesFor]), the walk for the other points within
+         * [GtfsJourneyPlannerSettings.maxWalkMeters] of the endpoint's coordinates.
+         */
+        fun accessFor(endpoint: Endpoint, settings: GtfsJourneyPlannerSettings): Map<String, Int> {
+            val result = LinkedHashMap<String, Int>()
+            nodesFor(endpoint).forEach { result[it] = 0 }
+            val (latitude, longitude) = endpoint.point ?: return result
+            val maxMeters = settings.maxWalkMeters.toDouble()
+            if (maxMeters <= 0.0) return result
+            val reach = Math.ceil(maxMeters / 111_000.0 / GRID_DEGREES).toInt().coerceAtLeast(1)
+            val row = Math.floor(latitude / GRID_DEGREES).toLong()
+            val column = Math.floor(longitude / GRID_DEGREES).toLong()
+            for (deltaRow in -reach..reach) for (deltaColumn in -reach * 2..reach * 2) {
+                val stops = grid[key(row + deltaRow, column + deltaColumn)] ?: continue
+                for (stop in stops) {
+                    val node = nodeKeys[stop]
+                    if (result[node] == 0) continue
+                    val point = cataloguePoints[node] ?: (latitudes[stop] to longitudes[stop])
+                    val meters = GtfsStationCodeIndex.distanceKm(latitude, longitude, point.first, point.second) * 1000.0
+                    if (meters > maxMeters) continue
+                    val minutes = settings.walkMinutes(meters)
+                    if (result[node]?.let { minutes < it } != false) result[node] = minutes
+                }
+            }
+            return result
+        }
+
+        /** Coordinates of a transfer point of this pack: the catalogue station's, or those of its first stop with them. */
+        fun point(nodeKey: String): DoubleArray? {
+            cataloguePoints[nodeKey]?.let { return doubleArrayOf(it.first, it.second) }
+            val stops = stopsByNode[nodeKey] ?: return null
+            for (stop in stops) if (!latitudes[stop].isNaN() && !longitudes[stop].isNaN()) return doubleArrayOf(latitudes[stop], longitudes[stop])
+            return null
+        }
+
+        /** Coordinates of one stop of this pack, or of its transfer point. */
+        fun stopPoint(stopId: String): Pair<Double, Double>? {
+            val index = indexById[stopId] ?: return null
+            if (!latitudes[index].isNaN() && !longitudes[index].isNaN()) return latitudes[index] to longitudes[index]
+            return point(nodeKeys[index])?.let { it[0] to it[1] }
+        }
+
         companion object {
+            /** About 550 m of latitude: the nearby search reads the 3 x 5 cells around a point. */
+            private const val GRID_DEGREES = 0.005
+
+            private fun key(row: Long, column: Long): Long = (row shl 32) xor (column and 0xFFFFFFFFL)
+
+            private fun cell(latitude: Double, longitude: Double): Long =
+                key(Math.floor(latitude / GRID_DEGREES).toLong(), Math.floor(longitude / GRID_DEGREES).toLong())
+
             /**
              * A stop's transfer point is the catalogue station it resolves to (by the station code the pack
              * publishes, if any, else by name); the platforms of one parent_station share the station any of them
              * resolves to (when they agree). Stops the catalogue does not know stay points of their own pack:
-             * grouped by parent_station, or by identical name when they have none.
+             * grouped by parent_station, or by identical name when they have none. The stops of a city network
+             * ([EmbeddedGtfsPack.isUrban]) never resolve to a catalogue station: they reach stations by walking.
              */
             fun build(pack: EmbeddedGtfsPack, directory: GtfsStopDirectory, resolver: GtfsStopStationResolver): PackStops {
                 val sourceId = pack.sourceId
                 val size = directory.size
                 val resolvedByName = HashMap<String, Station?>()
                 val resolved = Array(size) { index ->
+                    if (pack.isUrban) return@Array null
                     val name = directory.names[index]
                     val byCode = if (pack.stopCodeScheme == GtfsStopCodeScheme.NONE) null
                     else resolver.resolveCode(pack.stopCodeScheme, directory.codes[index], directory.latitude(index), directory.longitude(index), name)
-                    byCode ?: resolvedByName.getOrPut(name) { resolver.resolve(name) }
+                    byCode ?: resolvedByName.getOrPut(name) {
+                        // "Matera Centrale" of the FAL pack is the catalogue's "Matera Centrale FAL" when it exists.
+                        pack.catalogueNameSuffixes.firstNotNullOfOrNull { suffix -> resolver.resolve("$name $suffix") } ?: resolver.resolve(name)
+                    }
                 }
                 val referencedParents = directory.parents.filter(String::isNotEmpty).toHashSet()
                 val groupOf = Array(size) { index -> directory.parents[index].ifEmpty { directory.ids[index] } }
@@ -695,11 +979,21 @@ class EmbeddedGtfsJourneyProvider internal constructor(
                 val stopsByNode = HashMap<String, MutableList<Int>>()
                 for (index in 0 until size) {
                     indexById[directory.ids[index]] = index
-                    for (key in resolver.matchKeys(directory.names[index])) stopsByMatchKey.getOrPut(key) { ArrayList(2) } += index
+                    // A city stop is found by its id only, never by a railway station's name.
+                    if (!pack.isUrban) for (key in resolver.matchKeys(directory.names[index])) stopsByMatchKey.getOrPut(key) { ArrayList(2) } += index
                     stopsByNode.getOrPut(nodeKeys[index]) { ArrayList(2) } += index
                 }
                 val catalogueStations = stopsByNode.keys.filterTo(HashSet()) { resolver.station(it) != null }
-                return PackStops(sourceId, nodeKeys, indexById, stopsByMatchKey, stopsByNode, catalogueStations)
+                val cataloguePoints = HashMap<String, Pair<Double, Double>>()
+                for (id in catalogueStations) {
+                    val station = resolver.station(id) ?: continue
+                    val latitude = station.latitude ?: continue
+                    val longitude = station.longitude ?: continue
+                    cataloguePoints[id] = latitude to longitude
+                }
+                val latitudes = DoubleArray(size) { directory.latitude(it) ?: Double.NaN }
+                val longitudes = DoubleArray(size) { directory.longitude(it) ?: Double.NaN }
+                return PackStops(sourceId, nodeKeys, indexById, stopsByMatchKey, stopsByNode, catalogueStations, latitudes, longitudes, cataloguePoints)
             }
         }
     }
@@ -707,8 +1001,10 @@ class EmbeddedGtfsJourneyProvider internal constructor(
     private class PackCoverage(
         val pack: EmbeddedGtfsPack,
         val stops: PackStops,
-        val originNodes: Set<String>,
-        val destinationNodes: Set<String>
+        /** Transfer points of the pack for the origin, with the minutes of walking to them (0: the origin itself). */
+        val originNodes: Map<String, Int>,
+        /** The same for the destination. */
+        val destinationNodes: Map<String, Int>
     ) {
         val coversOrigin: Boolean get() = originNodes.isNotEmpty()
         val coversDestination: Boolean get() = destinationNodes.isNotEmpty()
@@ -746,6 +1042,23 @@ class EmbeddedGtfsJourneyProvider internal constructor(
 
     private class SearchOutcome(val options: List<JourneyOption>, val incomplete: Boolean)
 
+    /** Footpaths in the [ConnectionScanTimetable] layout. */
+    private class Footpaths(val start: IntArray, val target: IntArray, val minutes: IntArray)
+
+    /** A growable int list without boxing. */
+    private class IntArrayList {
+        private var values = IntArray(4)
+        var size = 0
+            private set
+
+        fun add(value: Int) {
+            if (size == values.size) values = values.copyOf(size * 2)
+            values[size++] = value
+        }
+
+        operator fun get(index: Int): Int = values[index]
+    }
+
     /** [representative] maps a trip to the trip it is scanned as; the first [keptConnections] keys remain. */
     private class MergedRuns(val representative: IntArray, val keptConnections: Int)
 
@@ -762,22 +1075,28 @@ class EmbeddedGtfsJourneyProvider internal constructor(
             coverage = CoverageDescriptor(
                 countryCodes = setOf("IT", "CH", "AT", "FR", "HR"),
                 description = "Solo le reti dei data pack GTFS inclusi nell'app (Trenitalia con i suoi bus, Italo con " +
-                    "ItaloBus, Trenord, Alto Adige, Trentino, EAV, ARST, TFT, Svizzera, ÖBB, SNCF, HŽPP): i treni fuori da " +
-                    "questi feed non ci sono. Orari programmati, senza ritardi, binari né soppressioni."
+                    "ItaloBus, Trenord, Alto Adige, Trentino, EAV, ARST, TFT, Svizzera, ÖBB, SNCF, HŽPP; le ferrovie " +
+                    "regionali di gtfs-transit/ e gtfs-personal/; metropolitane, tram e funicolari delle città incluse, con " +
+                    "brevi tratti a piedi): i treni fuori da questi feed non ci sono. Orari programmati, senza ritardi, " +
+                    "binari né soppressioni."
             ),
             accessMode = AccessMode.OPEN_DIRECT,
             ratePolicy = RatePolicy(minimumRequestInterval = Duration.ZERO, defaultTimeToLive = Duration.ofHours(12)),
             schemaVersion = 1
         )
 
+        private val URBAN_MODES = setOf(LegMode.METRO, LegMode.TRAM, LegMode.FUNICULAR)
         private const val MINUTES_PER_DAY = 24 * 60
         private const val MAX_SLICES = 63
         private const val MAX_ENCODED_DURATION = 0x3FFF
 
-        /** The production instance: its own adapter with a one-index cache, over the registry-enabled packs. */
+        /**
+         * The production instance: its own adapter with a one-index cache, over the registry-enabled railway packs and
+         * the city packs of this build.
+         */
         fun create(
             openAsset: (String) -> InputStream,
-            packs: List<EmbeddedGtfsPack> = EmbeddedGtfsPacks.all
+            packs: List<EmbeddedGtfsPack> = EmbeddedGtfsPacks.all + EmbeddedGtfsPacks.urban
         ): EmbeddedGtfsJourneyProvider = EmbeddedGtfsJourneyProvider(
             adapter = EmbeddedGtfsRouteAdapter(openAsset = openAsset, packs = packs, indexCacheCapacity = 1),
             packs = packs,
@@ -803,6 +1122,7 @@ class EmbeddedGtfsJourneyProvider internal constructor(
         internal fun serviceKind(mode: LegMode, category: TrainCategory, line: String?): ServiceKind {
             if (mode == LegMode.REPLACEMENT_BUS) return ServiceKind.REPLACEMENT_BUS
             if (mode == LegMode.BUS) return ServiceKind.BUS
+            if (mode in URBAN_MODES) return ServiceKind.URBAN
             // An Intercity Notte is a night train before it is an Intercity.
             if (line?.uppercase(Locale.ROOT)?.replace(" ", "") == "ICN") return ServiceKind.NIGHT
             when (category) {
@@ -824,3 +1144,16 @@ class EmbeddedGtfsJourneyProvider internal constructor(
         }
     }
 }
+
+/**
+ * The public name of a city line from its route_short_name: Milan publishes its metro lines as "1".."5" ("M1"),
+ * Rome as "MEA", "MEB1" ("A", "B1"); every other name is kept as published ("M1", "T2", "14").
+ */
+internal fun urbanLineName(mode: LegMode, label: String?): String? {
+    val value = label?.trim()?.takeIf(String::isNotEmpty) ?: return null
+    if (mode != LegMode.METRO) return value
+    if (value.length <= 2 && value.all(Char::isDigit)) return "M$value"
+    return ROME_METRO_LINE.matchEntire(value)?.groupValues?.get(1) ?: value
+}
+
+private val ROME_METRO_LINE = Regex("ME([A-Z][0-9]?)")
