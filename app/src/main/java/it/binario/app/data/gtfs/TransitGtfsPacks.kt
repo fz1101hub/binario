@@ -13,6 +13,28 @@ import java.time.LocalDate
 internal object TransitGtfsPacks {
     val all: List<EmbeddedGtfsPack> = listOf(
         EmbeddedGtfsPack(
+            SourceId("fal-basilicata-puglia"),
+            "gtfs-transit/fal-basilicata-puglia.zip",
+            LocalDate.of(2026, 12, 31),
+            catalogueNameSuffixes = listOf("FAL")
+        ),
+        EmbeddedGtfsPack(
+            SourceId("ferrotramviaria-bari-barletta"),
+            "gtfs-transit/ferrotramviaria-bari-barletta.zip",
+            LocalDate.of(2026, 12, 31),
+            catalogueNameSuffixes = listOf("FNB", "FBN")
+        ),
+        EmbeddedGtfsPack(
+            SourceId("fdg-gargano"),
+            "gtfs-transit/fdg-gargano.zip",
+            LocalDate.of(2026, 12, 31)
+        ),
+        EmbeddedGtfsPack(
+            SourceId("micotra-udine-villach"),
+            "gtfs-transit/micotra-udine-villach.zip",
+            LocalDate.of(2026, 12, 12)
+        ),
+        EmbeddedGtfsPack(
             SourceId("amt-genova-casella-gtfs"),
             "gtfs-transit/amt-genova-casella-gtfs.zip",
             LocalDate.of(2026, 12, 18)

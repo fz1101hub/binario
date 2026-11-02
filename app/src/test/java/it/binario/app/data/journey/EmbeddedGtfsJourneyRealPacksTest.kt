@@ -141,7 +141,7 @@ class EmbeddedGtfsJourneyRealPacksTest {
         // and FrecciaLink coaches, which are not in the Trenitalia feed.
         val provider = EmbeddedGtfsJourneyProvider.create(openAsset)
         if (EmbeddedGtfsPacks.all.any { it.sourceId.value == "fal-basilicata-puglia" }) {
-            val matera = provider.searchJourneys(request("Bari", "Matera", "07:00"))
+            val matera = provider.searchJourneys(request("Bari", "Matera Centrale FAL", "07:00"))
             val legs = options(matera).flatMap { it.legs }
             assertTrue(legs.any { it.runId?.value?.startsWith("fal-basilicata-puglia:") == true })
         }

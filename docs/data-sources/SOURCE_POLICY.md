@@ -106,6 +106,10 @@ Pack aggiunti accanto ai dodici del primo rilascio, che restano invariati: le fe
 
 | Fonte | `SourceId` | Distribuzione | Licenza | Tipo | Pack | Corse / fermate | Fino al |
 |---|---|---|---|---|---|---|---|
+| Ferrovie Appulo Lucane, RAP Puglia sul NAP ([dataset 1860](https://www.cciss.it/nap/mmtis/public/it/catalog/Dataset/1860), asset 305982) | `fal-basilicata-puglia` | ogni build (`gtfs-transit/`) | NAP CCISS: no licence - no contract | ferrovia | 21 KB | 240 / 36 | 2026-12-31 |
+| Ferrotramviaria (Ferrovie del Nord Barese), RAP Puglia (dataset 1860, asset 477050) | `ferrotramviaria-bari-barletta` | ogni build (`gtfs-transit/`) | NAP CCISS: no licence - no contract | ferrovia | 25 KB | 238 / 22 | 2026-12-31 |
+| Ferrovie del Gargano, RAP Puglia (dataset 1860, asset 307477) | `fdg-gargano` | ogni build (`gtfs-transit/`) | NAP CCISS: no licence - no contract | ferrovia | 10 KB | 127 / 22 | 2026-12-31 |
+| Mi.Co.Tra. Udine – Villach, RAP Friuli Venezia Giulia ([dataset 204008](https://www.cciss.it/nap/mmtis/public/it/catalog/Dataset/204008), asset 204098) | `micotra-udine-villach` | ogni build (`gtfs-transit/`) | NAP CCISS: no licence - no contract | ferrovia | 5 KB | 9 / 18 | 2026-12-12 |
 | Ferrovia Genova – Casella, GTFS AMT del Comune di Genova | `amt-genova-casella-gtfs` | ogni build (`gtfs-transit/`) | CC BY 4.0 | ferrovia | 10 KB | 48 / 20 | 2026-12-18 |
 | Metro, funicolari, cremagliera e ascensori AMT Genova, GTFS del Comune di Genova | `genova-amt-gtfs` | ogni build (`gtfs-transit/`) | CC BY 4.0 | urbano | 73 KB | 1.327 / 46 | 2026-12-18 |
 | Metro e tram ATM, GTFS del Comune di Milano (ds929) | `milano-atm-gtfs` | ogni build (`gtfs-transit/`) | CC BY 4.0 | urbano | 3,7 MB | 18.684 / 854 | 2026-11-30 |
@@ -117,7 +121,7 @@ Pack aggiunti accanto ai dodici del primo rilascio, che restano invariati: le fe
 | Metro, funicolari e tram ANM Napoli, GTFS ANM | `napoli-anm-gtfs` | solo build personali (`gtfs-personal/`) | Non verificabile sul sito ufficiale: la pagina open data ANM richiede l'accesso; IODL 2.0 secondo Transitland | urbano | 329 KB | 2.472 / 128 | 2026-12-31 |
 | Cotral, GTFS ferroviario (Roma – Lido, Roma – Viterbo) | `cotral-ferro-gtfs` | solo build personali (`gtfs-personal/`) | Non dichiarata dall'operatore | ferrovia | 258 KB | 2.904 / 46 | 2026-12-13 |
 
-Registrati in `tools/transit_packs.json` ma non in questa build: le ferrovie **FAL** (Bari – Matera, Altamura – Gravina, Avigliano – Potenza; RAP Puglia, asset 305982), **Ferrotramviaria** (Bari – Barletta, asset 477050), **Ferrovie del Gargano** (asset 307477) e **Mi.Co.Tra.** Udine – Villach (RAP Friuli Venezia Giulia, asset 204098), tutte con licenza del NAP e destinate a `gtfs-transit/`. La prima build CI le ha convertite (FAL 240 corse e 36 stazioni, Ferrotramviaria 238 e 22, Gargano 127 e 22, Mi.Co.Tra. 9 e 18) ma con i codici delle fermate al posto dei nomi, che il RAP Puglia scrive in `ShortName`; corretto il convertitore, le build successive del 2 novembre 2026 non hanno potuto scaricarle perché il NAP rispondeva HTTP 503. Entrano al prossimo `transit_packs=build=all` riuscito (azione del titolare, `GTFS_PACK_REFRESH.md`); i treni Mi.Co.Tra. sono comunque già nel pack ÖBB.
+I quattro pack del NAP sono convertiti da NeTEx (vedi sotto): il RAP Puglia scrive il codice della fermata in `Name` e il nome in `ShortName`, che il convertitore usa quando `Name` coincide con il codice; i treni Mi.Co.Tra. sono anche nel pack ÖBB e una corsa presente in entrambi resta una sola. Le stazioni del catalogo curato con il suffisso dell'operatore («Matera Centrale FAL», «Bari Centrale FNB») sono legate alle fermate del proprio pack (`EmbeddedGtfsPack.catalogueNameSuffixes`). Una build CI del 2 novembre 2026 ha trovato il NAP in errore HTTP 503 per circa 40 minuti: l'acquisizione ritenta e, se l'errore persiste, fallisce senza pubblicare nulla.
 
 **Regole di licenza e distribuzione.**
 
