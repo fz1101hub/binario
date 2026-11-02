@@ -296,7 +296,8 @@ internal fun PlannerScreen(
         if (searched) showResults()
     }
     val today = LocalDate.now(RailTime.defaultZone)
-    val outboundDateLabel = shortDateLabel(selectedDepartureDate, today, locale, dateUnselected)
+    val shownDepartureDate = if (dateChosen) selectedDepartureDate else today
+    val outboundDateLabel = shortDateLabel(shownDepartureDate, today, locale, dateUnselected)
     val outboundTimeLabel = if (timeChosen) PlannerDateTime.timeLabel(travelTime, locale, timeUnselected) else stringResource(R.string.planner_time_now)
     LazyColumn(modifier = modifier.fillMaxSize().testTag("planner-screen"), verticalArrangement = Arrangement.spacedBy(0.dp)) {
         item {
@@ -356,7 +357,7 @@ internal fun PlannerScreen(
                                     PlannerChoiceButton(
                                         icon = Icons.Default.CalendarMonth,
                                         text = outboundDateLabel,
-                                        description = stringResource(R.string.accessibility_select_outbound_date, PlannerDateTime.dateLabel(travelDate, locale, dateUnselected)),
+                                        description = stringResource(R.string.accessibility_select_outbound_date, PlannerDateTime.dateLabel(shownDepartureDate.toString(), locale, dateUnselected)),
                                         onClick = { showDatePicker = true },
                                         modifier = Modifier.weight(1f).testTag("planner-date")
                                     )
