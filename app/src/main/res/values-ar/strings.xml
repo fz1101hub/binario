@@ -585,7 +585,7 @@
     <string name="data_confidence_infrastructure_primary">مصدر أساسي من مدير البنية التحتية</string>
     <string name="data_confidence_open_data">بيانات مفتوحة رسمية</string>
     <string name="data_confidence_licensed_aggregate">مصدر مجمَّع مرخّص</string>
-    <string name="data_confidence_static_only">الجدول المجدول</string>
+    <string name="data_confidence_static_only">المواعيد المجدولة</string>
     <string name="data_confidence_cached">آخر لقطة محفوظة مؤقتًا</string>
     <string name="data_confidence_demonstration">بيانات تجريبية محلية</string>
     <string name="quality_band_verified">بيانات مؤكَّدة</string>
