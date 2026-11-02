@@ -27,6 +27,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -73,13 +74,16 @@ class StationWidgetNearestActivity : ComponentActivity() {
             BinarioTheme(themeSettings.mode) {
                 val context = this@StationWidgetNearestActivity
                 val scope = rememberCoroutineScope()
-                var message by remember { mutableStateOf<UiMessage?>(null) }
+                // Saveable, so that a rotation neither asks twice nor loses the reason shown.
+                var messageKey by rememberSaveable { mutableStateOf<String?>(null) }
+                var awaitingPermission by rememberSaveable { mutableStateOf(false) }
+                val message = messageKey?.let { key -> UiMessageKey.entries.firstOrNull { it.name == key } }
+                    ?.let { UiMessage(it, configuration.station.name) }
 
                 fun keepStation(key: UiMessageKey) {
-                    val note = UiMessage(key, configuration.station.name)
-                    StationWidgetStateStore.setNearestNote(context, widgetId, note)
+                    StationWidgetStateStore.setNearestNote(context, widgetId, UiMessage(key, configuration.station.name))
                     StationWidgetProvider.refreshAll(context)
-                    message = note
+                    messageKey = key.name
                 }
 
                 fun locate() {
@@ -106,11 +110,19 @@ class StationWidgetNearestActivity : ComponentActivity() {
                 }
 
                 val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+                    awaitingPermission = false
                     if (granted) locate() else keepStation(UiMessageKey.WIDGET_NEAREST_PERMISSION_DENIED)
                 }
                 LaunchedEffect(Unit) {
-                    if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) locate()
-                    else permission.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
+                    when {
+                        messageKey != null -> Unit
+                        ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED -> locate()
+                        // Asked only now, by this tap, with the same foreground permission as the app's nearby stations.
+                        !awaitingPermission -> {
+                            awaitingPermission = true
+                            permission.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
+                        }
+                    }
                 }
 
                 Surface(

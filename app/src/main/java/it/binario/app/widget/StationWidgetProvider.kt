@@ -221,7 +221,8 @@ class StationWidgetProvider : AppWidgetProvider() {
             "station-nearest-$widgetId".hashCode(),
             Intent(context, StationWidgetNearestActivity::class.java)
                 .putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId)
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_HISTORY),
+                // Not NO_HISTORY: the activity must stay to receive the permission result; it finishes itself.
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
     }
