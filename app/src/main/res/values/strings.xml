@@ -311,6 +311,42 @@
     <string name="detail_save_hint">Salva aggiunge il treno ai treni monitorati in Per te; Segui viaggio conserva la prossima fermata solo su questo dispositivo.</string>
     <string name="stop_position_passed">Fermata superata</string>
     <string name="detail_pane_placeholder">Seleziona una corsa per vederne qui il dettaglio.</string>
+    <!-- Journeys with changes (November 2026) -->
+    <string name="journey_results_title">Viaggi con cambi</string>
+    <string name="journey_searching">Calcolo dei viaggi con cambi…</string>
+    <string name="journey_filter_all">Tutti</string>
+    <string name="journey_filter_direct">Diretti</string>
+    <string name="journey_filter_fewest_changes">Meno cambi</string>
+    <string name="journey_filter_fastest">Più veloce</string>
+    <string name="journey_direct">Diretto</string>
+    <plurals name="journey_changes">
+        <item quantity="one">%d cambio</item>
+        <item quantity="many">%d cambi</item>
+        <item quantity="other">%d cambi</item>
+    </plurals>
+    <string name="journey_transfer_at">Cambio a %1$s</string>
+    <plurals name="journey_transfer_wait">
+        <item quantity="one">Attesa di %d minuto</item>
+        <item quantity="many">Attesa di %d minuti</item>
+        <item quantity="other">Attesa di %d minuti</item>
+    </plurals>
+    <plurals name="journey_duration_hours">
+        <item quantity="one">%d ora</item>
+        <item quantity="many">%d ore</item>
+        <item quantity="other">%d ore</item>
+    </plurals>
+    <string name="journey_arrival_next_day">il giorno dopo</string>
+    <string name="journey_leg_replacement_bus">Bus sostitutivo</string>
+    <string name="journey_source_offline">Orario programmato offline (open data GTFS)</string>
+    <string name="journey_scheduled_only_notice">Orari programmati: ritardi, binari e soppressioni non sono verificati. Controlla i monitor in stazione.</string>
+    <string name="journey_coverage_notice">Calcolato sul telefono con gli orari inclusi nell’app, solo per le reti che coprono: Lombardia, Alto Adige, Trentino, EAV, ARST, TFT, Svizzera, Austria, Francia e Croazia. Altri treni possono non comparire.</string>
+    <string name="journey_incomplete_notice">Alcuni orari offline non sono stati letti: le soluzioni possono essere incomplete.</string>
+    <string name="journey_empty_no_solution">Nessuna soluzione negli orari offline nella fascia oraria cercata.</string>
+    <string name="journey_empty_not_covered">Gli orari offline inclusi non coprono una o entrambe le stazioni.</string>
+    <string name="journey_empty_schedule_expired">Gli orari offline inclusi non coprono la data scelta: aggiorna l’app.</string>
+    <string name="journey_empty_unavailable">Calcolo dei viaggi con cambi non disponibile. Riprova.</string>
+    <string name="journey_empty_no_direct">Nessuna soluzione diretta tra quelle trovate.</string>
+    <string name="journey_option_accessibility">Partenza alle %1$s da %2$s, arrivo alle %3$s a %4$s, durata %5$s, %6$s.</string>
     <string name="settings_privacy_osm">Autocompletamento nazionale: © OpenStreetMap contributors, ODbL 1.0. Il catalogo geografico suggerisce nomi di stazioni ma non conferma servizio, orario, binario, ritardo o circolazione.</string>
     <!-- Open maps (October 2026) -->
     <string name="map_attribution">OpenFreeMap © OpenMapTiles, dati © OpenStreetMap contributors</string>

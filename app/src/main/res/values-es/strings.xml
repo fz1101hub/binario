@@ -311,6 +311,42 @@
     <string name="detail_save_hint">Guardar añade el tren a los trenes seguidos en Para ti; Seguir viaje guarda la próxima parada solo en este dispositivo.</string>
     <string name="stop_position_passed">Parada superada</string>
     <string name="detail_pane_placeholder">Selecciona un tren para ver aquí su detalle.</string>
+    <!-- Journeys with changes (November 2026) -->
+    <string name="journey_results_title">Viajes con transbordo</string>
+    <string name="journey_searching">Calculando viajes con transbordo…</string>
+    <string name="journey_filter_all">Todos</string>
+    <string name="journey_filter_direct">Directos</string>
+    <string name="journey_filter_fewest_changes">Menos transbordos</string>
+    <string name="journey_filter_fastest">Más rápido</string>
+    <string name="journey_direct">Directo</string>
+    <plurals name="journey_changes">
+        <item quantity="one">%d transbordo</item>
+        <item quantity="many">%d transbordos</item>
+        <item quantity="other">%d transbordos</item>
+    </plurals>
+    <string name="journey_transfer_at">Transbordo en %1$s</string>
+    <plurals name="journey_transfer_wait">
+        <item quantity="one">Espera de %d minuto</item>
+        <item quantity="many">Espera de %d minutos</item>
+        <item quantity="other">Espera de %d minutos</item>
+    </plurals>
+    <plurals name="journey_duration_hours">
+        <item quantity="one">%d hora</item>
+        <item quantity="many">%d horas</item>
+        <item quantity="other">%d horas</item>
+    </plurals>
+    <string name="journey_arrival_next_day">al día siguiente</string>
+    <string name="journey_leg_replacement_bus">Autobús sustitutivo</string>
+    <string name="journey_source_offline">Horario programado sin conexión (datos abiertos GTFS)</string>
+    <string name="journey_scheduled_only_notice">Horarios programados: retrasos, andenes y cancelaciones no están verificados. Consulta las pantallas de la estación.</string>
+    <string name="journey_coverage_notice">Calculado en el teléfono con los horarios incluidos en la app, solo para las redes que cubren: Lombardía, Alto Adigio, Trentino, EAV, ARST, TFT, Suiza, Austria, Francia y Croacia. Pueden faltar otros trenes.</string>
+    <string name="journey_incomplete_notice">No se han podido leer algunos horarios sin conexión: los viajes pueden estar incompletos.</string>
+    <string name="journey_empty_no_solution">Ningún viaje en los horarios sin conexión para la franja horaria buscada.</string>
+    <string name="journey_empty_not_covered">Los horarios sin conexión incluidos no cubren una o ambas estaciones.</string>
+    <string name="journey_empty_schedule_expired">Los horarios sin conexión incluidos no cubren la fecha elegida: actualiza la app.</string>
+    <string name="journey_empty_unavailable">Ahora no se pueden calcular los viajes con transbordo. Inténtalo de nuevo.</string>
+    <string name="journey_empty_no_direct">Ninguno de los viajes encontrados es directo.</string>
+    <string name="journey_option_accessibility">Salida a las %1$s desde %2$s, llegada a las %3$s a %4$s, duración %5$s, %6$s.</string>
     <string name="settings_privacy_osm">Autocompletado nacional: © OpenStreetMap contributors, ODbL 1.0. El catálogo geográfico sugiere nombres de estaciones, pero no confirma servicio, horario, andén, retraso ni circulación.</string>
     <!-- Open maps (October 2026) -->
     <string name="map_attribution">OpenFreeMap © OpenMapTiles, datos © colaboradores de OpenStreetMap</string>

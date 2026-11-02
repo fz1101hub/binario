@@ -16,6 +16,7 @@ import it.binario.app.data.TrainCategory
 import it.binario.app.data.TrainDataSource
 import it.binario.app.data.TrainService
 import it.binario.app.data.TrainStop
+import it.binario.app.data.core.LegMode
 import it.binario.app.data.core.SourceId
 import it.binario.app.data.repository.TrainNumberQuery
 import it.binario.app.data.repository.TrainNumberMatch
@@ -35,6 +36,8 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.job
 
 /**
  * Fallback offline per orari programmati. Legge soltanto i data pack GTFS già
@@ -53,11 +56,20 @@ class EmbeddedGtfsRouteAdapter(
     private val clock: () -> Long = System::currentTimeMillis,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
     private val parsingDispatcher: CoroutineDispatcher = Dispatchers.Default,
-    private val onParsing: (() -> Unit)? = null
+    private val onParsing: (() -> Unit)? = null,
+    /**
+     * Compact indexes kept in memory. Two by default, so a full AMT pack stays safe on small heaps; the journey
+     * planner keeps one, because it caches the much smaller per-day connection arrays it derives from it.
+     */
+    private val indexCacheCapacity: Int = 2
 ) : TrainDataSource {
+    init {
+        require(indexCacheCapacity > 0) { "Serve almeno un indice GTFS in cache" }
+    }
+
     /** Due indici compatti al massimo: un pack AMT completo resta sicuro anche su heap piccoli. */
     private val indexCache = object : LinkedHashMap<SourceId, StaticGtfsIndex>(2, 0.75f, true) {
-        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<SourceId, StaticGtfsIndex>?): Boolean = size > 2
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<SourceId, StaticGtfsIndex>?): Boolean = size > indexCacheCapacity
     }
     // Candidate discovery touches every pack when a route has no explicit source id. Keep one
     // compact stop-name set per configured pack so the access-order LRU cannot churn on 10 packs.
@@ -220,6 +232,31 @@ class EmbeddedGtfsRouteAdapter(
         )
     }
 
+    /**
+     * Every connection (consecutive timed stops of one trip) of [pack] that runs on [serviceDate] and departs
+     * between [fromMinute] and [untilMinute] inclusive, built from the same cached compact index the route search
+     * uses. Times are GTFS minutes from the service day's midnight, so after-midnight runs keep values of 24:00 and
+     * beyond. Runs on the parsing dispatcher and is cancellable.
+     */
+    internal suspend fun dayTimetable(
+        pack: EmbeddedGtfsPack,
+        serviceDate: LocalDate,
+        fromMinute: Int = 0,
+        untilMinute: Int = Int.MAX_VALUE
+    ): GtfsDayTimetable {
+        val index = indexFor(pack)
+        return withContext(parsingDispatcher) {
+            val job = currentCoroutineContext().job
+            index.dayTimetable(pack.sourceId, serviceDate, fromMinute, untilMinute) { job.ensureActive() }
+        }
+    }
+
+    /** stop_id, stop_name and parent_station of [pack], read with the same bounded scanner as the index. */
+    internal suspend fun stopDirectory(pack: EmbeddedGtfsPack): GtfsStopDirectory {
+        val bytes = assetBytes(pack.assetPath)
+        return withContext(parsingDispatcher) { scanStopDirectory(ByteArrayInputStream(bytes)) }
+    }
+
     private suspend fun stopNames(pack: EmbeddedGtfsPack): Set<String> {
         synchronized(stopPresenceCache) { stopPresenceCache[pack.sourceId] }?.let { return it }
         return stopPresenceMutex.withLock {
@@ -321,6 +358,28 @@ class EmbeddedGtfsRouteAdapter(
             }
         }
         return names
+    }
+
+    private fun scanStopDirectory(stream: InputStream): GtfsStopDirectory {
+        val ids = ArrayList<String>()
+        val names = ArrayList<String>()
+        val parents = ArrayList<String>()
+        BoundedGtfsZipScanner(compactIndexLimits).scan(stream, setOf("stops.txt")) { _, rows ->
+            val idIndex = rows.header.indexOf("stop_id")
+            val nameIndex = rows.header.indexOf("stop_name")
+            val parentIndex = rows.header.indexOf("parent_station")
+            if (idIndex >= 0 && nameIndex >= 0) {
+                rows.forEachRow(compactIndexLimits.maxStops) { row ->
+                    val id = row.gtfsRawValue(idIndex)
+                    if (id.isNotEmpty()) {
+                        ids += id
+                        names += row.gtfsValue(nameIndex)
+                        parents += row.gtfsValue(parentIndex)
+                    }
+                }
+            }
+        }
+        return GtfsStopDirectory(ids.toTypedArray(), names.toTypedArray(), parents.toTypedArray())
     }
 
     /**
@@ -747,6 +806,92 @@ class EmbeddedGtfsRouteAdapter(
             return calendar.activeDays and (1 shl date.dayOfWeek.ordinal) != 0
         }
 
+        /**
+         * Connections of the trips running on [serviceDate]: one per pair of consecutive timed stops, in trip
+         * order. Stops without any usable time are skipped (they can be neither boarded nor left), and so is a stop
+         * whose time goes back (arriving before the previous stop's departure, or after a departure earlier than the
+         * previous arrival). Only rail, urban rail and rail-replacement bus route types take part.
+         */
+        fun dayTimetable(
+            sourceId: SourceId,
+            serviceDate: LocalDate,
+            fromMinute: Int,
+            untilMinute: Int,
+            ensureActive: () -> Unit
+        ): GtfsDayTimetable {
+            val builder = GtfsDayTimetable.Builder(sourceId, serviceDate, stops.size(), stops::id, stops::name)
+            var entries = IntArray(64)
+            var visited = 0
+            trips.forEachDeclared { tripIndex, trip ->
+                visited += 1
+                if (visited and 255 == 0) ensureActive()
+                if (!serviceRunsOn(trip.serviceId, serviceDate)) return@forEachDeclared
+                val route = routes[trip.routeId]
+                val mode = journeyLegMode(route?.type) ?: return@forEachDeclared
+                var count = 0
+                var entry = trips.head(tripIndex)
+                while (entry >= 0) {
+                    if (count == entries.size) entries = entries.copyOf(count * 2)
+                    entries[count++] = entry
+                    entry = stopTimes.next(entry)
+                }
+                // The per-trip chain is in reverse file order; files are usually sorted by stop_sequence, so a
+                // reversal makes the insertion sort below linear in the common case.
+                for (left in 0 until count / 2) {
+                    val right = count - 1 - left
+                    val swap = entries[left]
+                    entries[left] = entries[right]
+                    entries[right] = swap
+                }
+                for (index in 1 until count) {
+                    val value = entries[index]
+                    var position = index - 1
+                    while (position >= 0 && stopTimes.comesBefore(value, entries[position])) {
+                        entries[position + 1] = entries[position]
+                        position -= 1
+                    }
+                    entries[position + 1] = value
+                }
+                val agency = agencyName(route)
+                builder.beginTrip(
+                    tripId = trip.id,
+                    publicNumber = publicNumber(trip, route),
+                    lineLabel = route?.shortName?.trim()?.takeIf(String::isNotEmpty),
+                    operatorName = canonicalAgencyLabel(agency, sourceId.value),
+                    category = category(route?.type, route, agency),
+                    operator = legacyOperator(sourceId.value, agency, route),
+                    mode = mode
+                )
+                var previous = -1
+                var lastArrival = Int.MIN_VALUE
+                for (index in 0 until count) {
+                    val current = entries[index]
+                    if (stopTimes.preferredDeparture(current) < 0) continue
+                    if (previous >= 0) {
+                        val departure = stopTimes.preferredDeparture(previous)
+                        val arrival = stopTimes.preferredArrival(current)
+                        // A stop whose time goes back is skipped like an untimed one, so the kept connections of a
+                        // trip never go back in time and a scan meets them in stop order.
+                        if (departure < lastArrival || arrival < departure) continue
+                        if (departure in fromMinute..untilMinute) {
+                            builder.connection(
+                                departureStop = stopTimes.stop(previous),
+                                arrivalStop = stopTimes.stop(current),
+                                departureMinute = departure,
+                                arrivalMinute = arrival,
+                                pickupAllowed = stopTimes.allowsPickup(previous),
+                                dropOffAllowed = stopTimes.allowsDropOff(current)
+                            )
+                        }
+                        lastArrival = arrival
+                    }
+                    previous = current
+                }
+                builder.endTrip()
+            }
+            return builder.build()
+        }
+
         fun stats(): GtfsCompactIndexStats = GtfsCompactIndexStats(
             stopTimeRowsRead = stopTimes.rowsRead(),
             indexedStopTimeRows = stopTimes.size(),
@@ -885,6 +1030,8 @@ class EmbeddedGtfsRouteAdapter(
 
             /** A blank or unreadable departure falls back to the arrival; negative when neither time is usable. */
             fun preferredDeparture(index: Int): Int = departures[index].takeIf { it >= 0 } ?: arrivals[index]
+            /** The mirror of [preferredDeparture] for the arrival side of a stop. */
+            fun preferredArrival(index: Int): Int = arrivals[index].takeIf { it >= 0 } ?: departures[index]
             fun recordRowsRead(value: Int) { sourceRowsRead = value }
             fun rowsRead(): Int = sourceRowsRead
             fun size(): Int = count
@@ -961,6 +1108,22 @@ class EmbeddedGtfsRouteAdapter(
             value.takeIf { it.matches(Regex("\\d{8}")) }?.toIntOrNull()
 
         fun LocalDate.toGtfsInt(): Int = year * 10_000 + monthValue * 100 + dayOfMonth
+
+        /**
+         * Journey legs come from rail (route_type 2, 100-199), urban rail (1, 400-499) and, as replacement
+         * buses, from bus routes (3, 700-799) that the rail packs publish; a missing type is a train, as in the
+         * route search. Anything else (ferries, cable cars, …) is not a leg of a rail journey.
+         */
+        fun journeyLegMode(rawType: String?): LegMode? {
+            val text = rawType?.trim().orEmpty()
+            if (text.isEmpty()) return LegMode.TRAIN
+            val type = text.toIntOrNull() ?: return null
+            return when (type) {
+                1, 2, in 100..199, in 400..499 -> LegMode.TRAIN
+                3, in 700..799 -> LegMode.REPLACEMENT_BUS
+                else -> null
+            }
+        }
     }
 
 }

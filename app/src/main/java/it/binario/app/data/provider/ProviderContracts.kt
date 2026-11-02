@@ -131,15 +131,34 @@ data class StationSearchRequest(
     }
 }
 
+/**
+ * Names and code of a journey endpoint as the app's station model knows them, so that a provider can match the
+ * station the user picked even when its id is not in the catalogue (a stop picked from a GTFS pack).
+ */
+data class JourneyEndpoint(
+    val name: String,
+    val aliases: List<String> = emptyList(),
+    val railwayCode: String? = null
+) {
+    init {
+        require(name.isNotBlank()) { "Il nome della stazione è obbligatorio" }
+    }
+}
+
 data class JourneySearchRequest(
     val origin: StationId,
     val destination: StationId,
     val departureAt: ZonedDateTime,
-    val maxTransfers: Int = 2
+    val maxTransfers: Int = 2,
+    val originEndpoint: JourneyEndpoint? = null,
+    val destinationEndpoint: JourneyEndpoint? = null,
+    /** At most this many options, sorted by departure. */
+    val maxResults: Int = 6
 ) {
     init {
         require(origin != destination) { "Origine e destinazione devono essere diverse" }
         require(maxTransfers in 0..6) { "Il numero massimo di cambi non è supportato" }
+        require(maxResults in 1..20) { "Il numero di soluzioni deve essere tra 1 e 20" }
     }
 }
 

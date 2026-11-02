@@ -308,6 +308,39 @@
     <string name="detail_save_hint">Save adds the train to the monitored trains in For you; Follow trip keeps the next stop on this device only.</string>
     <string name="stop_position_passed">Stop passed</string>
     <string name="detail_pane_placeholder">Select a train to see its details here.</string>
+    <!-- Journeys with changes (November 2026) -->
+    <string name="journey_results_title">Journeys with changes</string>
+    <string name="journey_searching">Calculating journeys with changes…</string>
+    <string name="journey_filter_all">All</string>
+    <string name="journey_filter_direct">Direct</string>
+    <string name="journey_filter_fewest_changes">Fewest changes</string>
+    <string name="journey_filter_fastest">Fastest</string>
+    <string name="journey_direct">Direct</string>
+    <plurals name="journey_changes">
+        <item quantity="one">%d change</item>
+        <item quantity="other">%d changes</item>
+    </plurals>
+    <string name="journey_transfer_at">Change at %1$s</string>
+    <plurals name="journey_transfer_wait">
+        <item quantity="one">Wait of %d minute</item>
+        <item quantity="other">Wait of %d minutes</item>
+    </plurals>
+    <plurals name="journey_duration_hours">
+        <item quantity="one">%d hour</item>
+        <item quantity="other">%d hours</item>
+    </plurals>
+    <string name="journey_arrival_next_day">next day</string>
+    <string name="journey_leg_replacement_bus">Replacement bus</string>
+    <string name="journey_source_offline">Offline scheduled timetable (GTFS open data)</string>
+    <string name="journey_scheduled_only_notice">Scheduled times: delays, platforms and cancellations are not checked. Check the station displays.</string>
+    <string name="journey_coverage_notice">Calculated on the phone with the timetables included in the app, only for the networks they cover: Lombardy, South Tyrol, Trentino, EAV, ARST, TFT, Switzerland, Austria, France and Croatia. Other trains may be missing.</string>
+    <string name="journey_incomplete_notice">Some offline timetables could not be read: the journeys may be incomplete.</string>
+    <string name="journey_empty_no_solution">No journey in the offline timetables for the searched time range.</string>
+    <string name="journey_empty_not_covered">The offline timetables included do not cover one or both stations.</string>
+    <string name="journey_empty_schedule_expired">The offline timetables included do not cover the chosen date: update the app.</string>
+    <string name="journey_empty_unavailable">Journeys with changes cannot be calculated right now. Try again.</string>
+    <string name="journey_empty_no_direct">None of the journeys found is direct.</string>
+    <string name="journey_option_accessibility">Departs at %1$s from %2$s, arrives at %3$s in %4$s, duration %5$s, %6$s.</string>
     <string name="settings_privacy_osm">National autocomplete: © OpenStreetMap contributors, ODbL 1.0. The geographic catalogue suggests station names but does not confirm service, time, platform, delay or operation.</string>
     <!-- Open maps (October 2026) -->
     <string name="map_attribution">OpenFreeMap © OpenMapTiles, data © OpenStreetMap contributors</string>

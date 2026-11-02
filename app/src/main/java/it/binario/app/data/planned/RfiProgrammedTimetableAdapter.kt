@@ -144,6 +144,9 @@ internal object RfiProgrammedStationIds {
         "S09818" to 2434 // Salerno
     )
 
+    /** Railway codes of the hubs with a verified RFI timetable: the large stations of the network. */
+    val hubRailwayCodes: Set<String> get() = byRailwayCode.keys
+
     fun timetableId(station: Station): Int? = byLegacyId[station.id]
         ?: station.railwayCode?.let(byRailwayCode::get)
         ?: (listOf(station.name) + station.aliases).firstNotNullOfOrNull { byName[key(it)] }

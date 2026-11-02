@@ -308,6 +308,39 @@
     <string name="detail_save_hint">Speichern fügt den Zug den überwachten Zügen unter Für dich hinzu; Fahrt verfolgen speichert den nächsten Halt nur auf diesem Gerät.</string>
     <string name="stop_position_passed">Halt passiert</string>
     <string name="detail_pane_placeholder">Wähle einen Zug, um hier seine Details zu sehen.</string>
+    <!-- Journeys with changes (November 2026) -->
+    <string name="journey_results_title">Verbindungen mit Umstieg</string>
+    <string name="journey_searching">Verbindungen mit Umstieg werden berechnet…</string>
+    <string name="journey_filter_all">Alle</string>
+    <string name="journey_filter_direct">Direkt</string>
+    <string name="journey_filter_fewest_changes">Wenigste Umstiege</string>
+    <string name="journey_filter_fastest">Schnellste</string>
+    <string name="journey_direct">Direktverbindung</string>
+    <plurals name="journey_changes">
+        <item quantity="one">%d Umstieg</item>
+        <item quantity="other">%d Umstiege</item>
+    </plurals>
+    <string name="journey_transfer_at">Umstieg in %1$s</string>
+    <plurals name="journey_transfer_wait">
+        <item quantity="one">Wartezeit %d Minute</item>
+        <item quantity="other">Wartezeit %d Minuten</item>
+    </plurals>
+    <plurals name="journey_duration_hours">
+        <item quantity="one">%d Stunde</item>
+        <item quantity="other">%d Stunden</item>
+    </plurals>
+    <string name="journey_arrival_next_day">am Folgetag</string>
+    <string name="journey_leg_replacement_bus">Ersatzbus</string>
+    <string name="journey_source_offline">Offline-Sollfahrplan (GTFS Open Data)</string>
+    <string name="journey_scheduled_only_notice">Planmäßige Zeiten: Verspätungen, Gleise und Ausfälle sind nicht geprüft. Bitte die Anzeigen im Bahnhof beachten.</string>
+    <string name="journey_coverage_notice">Auf dem Telefon mit den in der App enthaltenen Fahrplänen berechnet, nur für die abgedeckten Netze: Lombardei, Südtirol, Trentino, EAV, ARST, TFT, Schweiz, Österreich, Frankreich und Kroatien. Andere Züge können fehlen.</string>
+    <string name="journey_incomplete_notice">Einige Offline-Fahrpläne konnten nicht gelesen werden: Die Verbindungen können unvollständig sein.</string>
+    <string name="journey_empty_no_solution">Keine Verbindung in den Offline-Fahrplänen im gesuchten Zeitraum.</string>
+    <string name="journey_empty_not_covered">Die enthaltenen Offline-Fahrpläne decken einen oder beide Bahnhöfe nicht ab.</string>
+    <string name="journey_empty_schedule_expired">Die enthaltenen Offline-Fahrpläne decken das gewählte Datum nicht ab: Bitte die App aktualisieren.</string>
+    <string name="journey_empty_unavailable">Verbindungen mit Umstieg können gerade nicht berechnet werden. Bitte erneut versuchen.</string>
+    <string name="journey_empty_no_direct">Keine der gefundenen Verbindungen ist direkt.</string>
+    <string name="journey_option_accessibility">Abfahrt um %1$s ab %2$s, Ankunft um %3$s in %4$s, Dauer %5$s, %6$s.</string>
     <string name="settings_privacy_osm">Nationale Autovervollständigung: © OpenStreetMap contributors, ODbL 1.0. Der geografische Katalog schlägt Bahnhofsnamen vor, bestätigt jedoch weder Verkehr, Fahrzeit, Gleis, Verspätung noch Betrieb.</string>
     <!-- Open maps (October 2026) -->
     <string name="map_attribution">OpenFreeMap © OpenMapTiles, Daten © OpenStreetMap contributors</string>
