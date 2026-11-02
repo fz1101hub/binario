@@ -147,6 +147,7 @@ class MainActivity : ComponentActivity() {
         // launch Intent and navigate away from the screen the user was using.
         if (savedInstanceState == null) receiveDeepLinkIntent(intent)
         CommuterAlertScheduler.rescheduleAll(applicationContext)
+        it.binario.app.notifications.LiveNotificationScheduling.onAppStart(applicationContext)
         enableEdgeToEdge()
         setContent {
             val themeSettings = remember { ThemeSettings(applicationContext) }
@@ -578,8 +579,8 @@ internal fun BinarioApp(
                 selectedJourneyId = selectedJourneyId.takeIf { inSidePane && screen == AppScreen.JOURNEY_DETAIL }
             )
             AppScreen.JOURNEY_DETAIL -> {
-                val row = remember(journeyState.result, selectedJourneyId) {
-                    journeyState.result?.let { result -> JourneyResultsPresenter.present(result).rows.firstOrNull { it.id == selectedJourneyId } }
+                val row = remember(journeyState.result, journeyState.liveLegs, selectedJourneyId) {
+                    journeyState.result?.let { result -> JourneyResultsPresenter.present(result, live = journeyState.liveLegs).rows.firstOrNull { it.id == selectedJourneyId } }
                 }
                 if (row == null) {
                     // The journeys are kept in memory only: after process death the detail returns to the results.

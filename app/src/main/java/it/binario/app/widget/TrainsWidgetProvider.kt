@@ -94,6 +94,8 @@ class TrainsWidgetProvider : AppWidgetProvider() {
                 refreshAll(context)
                 if (lookUpNewTrains && TrainsWidgetConfigurationStore(context).all().isNotEmpty()) TrainsWidgetRefreshWorker.enqueue(context)
             }
+            // The notice checks and the punctuality recording follow the favourite trains too.
+            it.binario.app.notifications.LiveNotificationScheduling.onFavouritesChanged(context)
         }
 
         private fun visibleRows(manager: AppWidgetManager, widgetId: Int): Int {

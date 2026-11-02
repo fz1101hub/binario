@@ -22,7 +22,10 @@ class PunctualityHistoryTest {
     fun `only operational data gives an observation, with the delay of the last verified stop`() {
         val live = service(verified = true, stops = listOf(stop("Roma Termini", 2, true), stop("Latina", 9, true), stop("Napoli Centrale", 0, false)))
 
-        assertEquals(PunctualityObservation(today, "2345", "Trenitalia", 9, false), PunctualityHistory.observationOf(live, today))
+        assertEquals(
+            PunctualityObservation(today, "2345", "Trenitalia", 9, false, listOf(StopDelay("Roma Termini", 2), StopDelay("Latina", 9))),
+            PunctualityHistory.observationOf(live, today)
+        )
         assertNull(PunctualityHistory.observationOf(live.copy(operationalStatusVerified = false), today))
         assertNull(PunctualityHistory.observationOf(live.copy(scheduledDepartureDateTime = today.plusDays(1).atTime(8, 0)), today))
         assertNull(PunctualityHistory.observationOf(live.copy(number = "  "), today))
@@ -47,25 +50,84 @@ class PunctualityHistoryTest {
     }
 
     @Test
-    fun `history keeps ninety days and drops future service days`() {
-        val kept = observation("1", today.minusDays(89), 1)
-        val expired = observation("1", today.minusDays(90), 1)
+    fun `history keeps a year and drops future service days`() {
+        val kept = observation("1", today.minusDays(364), 1)
+        val expired = observation("1", today.minusDays(365), 1)
         val future = observation("1", today.plusDays(1), 1)
 
         assertEquals(listOf(kept), PunctualityHistory.bound(listOf(expired, kept, future), today))
     }
 
     @Test
-    fun `history keeps the newest thirty per train and five hundred in total`() {
-        val oneTrain = (0 until 40).map { observation("7", today.minusDays(it.toLong()), it) }
+    fun `history keeps a year per train and fifteen hundred observations in total`() {
+        val oneTrain = (0 until 400).map { observation("7", today.minusDays(it.toLong()), it % 60) }
         val bounded = PunctualityHistory.bound(oneTrain, today)
         assertEquals(PunctualityHistory.MAX_PER_TRAIN, bounded.size)
-        assertEquals(today.minusDays(29), bounded.last().serviceDate)
+        assertEquals(today.minusDays(364), bounded.last().serviceDate)
 
-        val manyTrains = (0 until 30).flatMap { train -> (0 until 20).map { day -> observation("T$train", today.minusDays(day.toLong()), 0) } }
+        val manyTrains = (0 until 30).flatMap { train -> (0 until 60).map { day -> observation("T$train", today.minusDays(day.toLong()), 0) } }
         val total = PunctualityHistory.bound(manyTrains, today)
         assertEquals(PunctualityHistory.MAX_TOTAL, total.size)
-        assertTrue(total.all { !it.serviceDate.isBefore(today.minusDays(16)) })
+        assertTrue(total.all { !it.serviceDate.isBefore(today.minusDays(50)) })
+    }
+
+    @Test
+    fun `per-stop delays are kept only for the newest observations of each train`() {
+        val stops = listOf(StopDelay("Roma Termini", 0), StopDelay("Latina", 4))
+        val detailed = (0 until 40).map { observation("7", today.minusDays(it.toLong()), 4).copy(stopDelays = stops) }
+
+        val bounded = PunctualityHistory.bound(detailed, today)
+
+        assertEquals(PunctualityHistory.DETAILED_PER_TRAIN, bounded.count { it.stopDelays.isNotEmpty() })
+        assertTrue(bounded.take(PunctualityHistory.DETAILED_PER_TRAIN).all { it.stopDelays == stops })
+        assertEquals(40, bounded.size)
+    }
+
+    @Test
+    fun `statistics give the share over fifteen minutes, the distribution and the stop where the delay grows`() {
+        fun run(day: Long, vararg delays: Pair<String, Int>) = observation("2345", today.minusDays(day), delays.last().second)
+            .copy(stopDelays = delays.map { StopDelay(it.first, it.second) })
+        val history = listOf(
+            run(0, "Roma Termini" to 0, "Latina" to 6, "Napoli Centrale" to 7),
+            run(1, "Roma Termini" to 1, "Latina" to 9, "Napoli Centrale" to 9),
+            run(2, "Roma Termini" to 0, "Latina" to 20, "Napoli Centrale" to 31),
+            observation("2345", today.minusDays(3), 3),
+            observation("2345", today.minusDays(4), 0, cancelled = true)
+        )
+
+        val stats = PunctualityHistory.stats(history, "2345")!!
+
+        assertEquals(5, stats.count)
+        assertEquals(20, stats.onTimePercent)
+        assertEquals(20, stats.latePercent)
+        assertEquals(13, stats.averageDelayMinutes)
+        assertEquals(
+            mapOf(PunctualityBucket.ON_TIME to 1, PunctualityBucket.UP_TO_15 to 2, PunctualityBucket.UP_TO_30 to 0, PunctualityBucket.OVER_30 to 1, PunctualityBucket.CANCELLED to 1),
+            stats.distribution
+        )
+        // Latina gains 6, 8 and 20 minutes (average 11), Napoli 1, 0 and 11 (average 4).
+        assertEquals(PunctualityWorstStop("Latina", 11, 3), stats.worstStop)
+        assertEquals((0L..4L).map { today.minusDays(it) }, stats.history.map { it.serviceDate })
+        assertEquals(PunctualityBucket.UP_TO_30, PunctualityHistory.bucketOf(observation("1", today, 16)))
+    }
+
+    @Test
+    fun `no worst stop without two detailed observations or a growing delay`() {
+        val one = listOf(observation("1", today, 5).copy(stopDelays = listOf(StopDelay("A", 0), StopDelay("B", 5))))
+        val flat = (0L..2L).map { observation("1", today.minusDays(it), 0).copy(stopDelays = listOf(StopDelay("A", 3), StopDelay("B", 3))) }
+
+        assertNull(PunctualityHistory.worstStop(one))
+        assertNull(PunctualityHistory.worstStop(flat))
+    }
+
+    @Test
+    fun `the store keeps what the background recorder wrote over an older in-memory history`() {
+        val recorded = listOf(observation("2345", today, 12).copy(stopDelays = listOf(StopDelay("Roma Termini", 0), StopDelay("Napoli Centrale", 12))))
+        val stale = listOf(observation("2345", today, 3))
+
+        val merged = PunctualityHistory.bound(stale.asReversed() + recorded.asReversed(), today)
+
+        assertEquals(recorded, merged)
     }
 
     @Test
@@ -102,8 +164,13 @@ class PunctualityHistoryTest {
 
     @Test
     fun `json round trip skips damaged entries and clamps values`() {
-        val history = listOf(observation("2345", today, 7), observation("REG 12", today.minusDays(3), 0, cancelled = true))
+        val history = listOf(
+            observation("2345", today, 7).copy(stopDelays = listOf(StopDelay("Roma Termini", 1), StopDelay("Latina", 7))),
+            observation("REG 12", today.minusDays(3), 0, cancelled = true)
+        )
         assertEquals(history, PunctualityHistory.fromJson(PunctualityHistory.toJson(history)))
+        val withBrokenStops = JSONArray("""[{"date":"2026-10-20","train":"5","delayMinutes":3,"stops":[["A",1],"x",[""],["B",-4]]}]""")
+        assertEquals(listOf(StopDelay("A", 1), StopDelay("B", 0)), PunctualityHistory.fromJson(withBrokenStops).single().stopDelays)
 
         val raw = JSONArray(
             """[{"date":"2026-10-20","train":"1","operator":"Italo","delayMinutes":99999,"cancelled":false},

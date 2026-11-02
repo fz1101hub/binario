@@ -1029,6 +1029,8 @@ class TrainViewModel @JvmOverloads constructor(
 
     fun startActiveTrip(service: TrainService) {
         activeTrip = personalTravelStore.startTrip(service)
+        // The ongoing notification follows one trip: another train ends the previous one.
+        it.binario.app.notifications.FollowedTripScheduler.syncWithActiveTrip(getApplication(), service.number, ending = false)
     }
 
     fun advanceActiveTrip() {
@@ -1036,6 +1038,7 @@ class TrainViewModel @JvmOverloads constructor(
     }
 
     fun endActiveTrip() {
+        activeTrip?.let { trip -> it.binario.app.notifications.FollowedTripScheduler.syncWithActiveTrip(getApplication(), trip.trainNumber, ending = true) }
         personalTravelStore.endTrip()
         activeTrip = null
     }

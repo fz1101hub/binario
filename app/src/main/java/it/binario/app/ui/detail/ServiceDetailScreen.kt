@@ -76,6 +76,8 @@ import it.binario.app.maps.OpenMapStationIndex
 import it.binario.app.maps.RouteMapCard
 import it.binario.app.maps.RouteMapPlanner
 import it.binario.app.maps.RouteProgress
+import it.binario.app.notifications.FollowedTripNotificationToggle
+import it.binario.app.notifications.TrainAlertToggle
 import it.binario.app.ui.common.BinarioCard
 import it.binario.app.ui.common.HeaderBlock
 import it.binario.app.ui.common.HeaderOverlapBox
@@ -262,6 +264,7 @@ internal fun ServiceDetailScreen(
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
+                                    if (!isDemonstration) TrainAlertToggle(service, eligible = isMonitored || isThisTrip)
                                 }
                             }
                         }
@@ -321,7 +324,8 @@ internal fun ServiceDetailScreen(
             onStartActiveTrip = onStartActiveTrip,
             onAdvanceActiveTrip = onAdvanceActiveTrip,
             onEndActiveTrip = onEndActiveTrip,
-            onShare = onShare.takeIf { showShareButton }
+            onShare = onShare.takeIf { showShareButton },
+            followedService = service.takeIf { !isDemonstration }
         )
     }
 }
@@ -335,7 +339,9 @@ private fun DetailBottomBar(
     onStartActiveTrip: () -> Unit,
     onAdvanceActiveTrip: () -> Unit,
     onEndActiveTrip: () -> Unit,
-    onShare: (() -> Unit)?
+    onShare: (() -> Unit)?,
+    /** The train whose opt-in ongoing notification is offered while it is followed; null offers none. */
+    followedService: TrainService? = null
 ) {
     Surface(color = MaterialTheme.colorScheme.background, modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(horizontal = ScreenMargin, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -355,6 +361,7 @@ private fun DetailBottomBar(
                             OutlinedButton(onClick = onAdvanceActiveTrip, enabled = activeTrip?.isComplete == false) { Text(stringResource(R.string.action_stop_reached)) }
                             TextButton(onClick = onEndActiveTrip) { Text(stringResource(R.string.action_end)) }
                         }
+                        followedService?.let { FollowedTripNotificationToggle(it) }
                     }
                 }
             }

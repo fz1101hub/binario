@@ -39,6 +39,7 @@ import it.binario.app.journeys.JourneyLegRow
 import it.binario.app.journeys.JourneyLegVehicle
 import it.binario.app.journeys.JourneyOptionRow
 import it.binario.app.journeys.JourneySourceLabel
+import it.binario.app.journeys.TransferRiskLevel
 import it.binario.app.ui.common.ChangesBadge
 import it.binario.app.ui.common.JourneyTimes
 import it.binario.app.ui.common.changesLabel
@@ -170,6 +171,7 @@ internal fun JourneyResultCard(
         nextDay,
         trains,
         source,
+        transferRiskLabel(row.transferRisk, rowLevel = true),
         if (selected) stringResource(R.string.accessibility_row_selected) else null
     ).joinToString(". ")
     Surface(
@@ -208,6 +210,7 @@ internal fun JourneyResultCard(
                 letterSpacing = 0.5.sp
             )
             Text(source, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            TransferRiskChip(row.transferRisk, rowLevel = true)
             Row(Modifier.padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                 ChangesBadge(row.changes, Modifier.weight(1f))
                 Text(
@@ -217,5 +220,31 @@ internal fun JourneyResultCard(
                 )
             }
         }
+    }
+}
+
+/**
+ * "Coincidenza a rischio" / "Coincidenza persa" (and, in the detail, "Coincidenza confermata") from live data; null
+ * without live data, where the scheduled-only notice already speaks. A result row shows only the warnings.
+ */
+@Composable
+internal fun transferRiskLabel(level: TransferRiskLevel, rowLevel: Boolean = false): String? = when (level) {
+    TransferRiskLevel.MISSED -> stringResource(R.string.journey_transfer_missed)
+    TransferRiskLevel.AT_RISK -> stringResource(R.string.journey_transfer_at_risk)
+    TransferRiskLevel.OK -> if (rowLevel) null else stringResource(R.string.journey_transfer_confirmed)
+    TransferRiskLevel.UNKNOWN -> null
+}
+
+@Composable
+internal fun TransferRiskChip(level: TransferRiskLevel, modifier: Modifier = Modifier, rowLevel: Boolean = false) {
+    val label = transferRiskLabel(level, rowLevel) ?: return
+    val warning = level == TransferRiskLevel.MISSED || level == TransferRiskLevel.AT_RISK
+    Surface(
+        modifier = modifier,
+        color = if (warning) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.secondaryContainer,
+        contentColor = if (warning) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onSecondaryContainer,
+        shape = RoundedCornerShape(8.dp)
+    ) {
+        Text(label, modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
     }
 }

@@ -146,7 +146,12 @@ data class JourneyTransferRow(
     val arrivalTime: String,
     val departureTime: String,
     val waitMinutes: Long,
-    val afterLegIndex: Int = -1
+    val afterLegIndex: Int = -1,
+    /** "Coincidenza a rischio" / "Coincidenza persa" with live data; [TransferRiskLevel.UNKNOWN] on the timetable only. */
+    val risk: TransferRiskLevel = TransferRiskLevel.UNKNOWN,
+    /** "HH:mm" expected arrival at the change and expected next departure, set only with live data. */
+    val expectedArrivalTime: String? = null,
+    val expectedDepartureTime: String? = null
 )
 
 data class JourneyOptionRow(
@@ -169,7 +174,9 @@ data class JourneyOptionRow(
     val sourceLabel: JourneySourceLabel,
     val sourceName: String,
     /** Scheduled times only: no delay, platform or cancellation checked (`journey_scheduled_only_notice`). */
-    val scheduledOnly: Boolean
+    val scheduledOnly: Boolean,
+    /** The worst change of the option with live data (see [TransferRiskLevel]); UNKNOWN without live data. */
+    val transferRisk: TransferRiskLevel = TransferRiskLevel.UNKNOWN
 ) {
     /** Some leg is a bus (scheduled coach or replacement): for a bus icon on the row or a "no bus" filter. */
     val hasBusLeg: Boolean get() = legs.any(JourneyLegRow::isBus)
@@ -205,9 +212,11 @@ object JourneyResultsPresenter {
     fun present(
         result: JourneySearchResult,
         filter: JourneyResultsFilter = JourneyResultsFilter.ALL,
-        zone: ZoneId = RailTime.defaultZone
+        zone: ZoneId = RailTime.defaultZone,
+        /** Live data of the legs ([TransferRiskCalculator.legKey]), from [JourneyLiveLookup]; empty on the timetable only. */
+        live: Map<String, JourneyLegLive> = emptyMap()
     ): JourneyResultsPresentation {
-        val all = result.options.map { row(it, zone) }
+        val all = result.options.map { row(it, zone, live) }
         val rows = apply(all, filter)
         val emptyReason = when {
             rows.isNotEmpty() -> null
@@ -243,7 +252,7 @@ object JourneyResultsPresenter {
         }
     }
 
-    fun row(sourced: SourcedJourneyOption, zone: ZoneId = RailTime.defaultZone): JourneyOptionRow {
+    fun row(sourced: SourcedJourneyOption, zone: ZoneId = RailTime.defaultZone, live: Map<String, JourneyLegLive> = emptyMap()): JourneyOptionRow {
         val option = sourced.option
         val legs = option.legs.map { leg(it, zone) }
         // A change joins two vehicles; a walk between them (to the metro, to another station) is its own leg and the
@@ -254,6 +263,8 @@ object JourneyResultsPresenter {
             if (leaving.mode == LegMode.WALK) return@mapNotNull null
             val walked = arriving.mode == LegMode.WALK
             if (walked && arrivingIndex == 0) return@mapNotNull null
+            val assessment = TransferRiskCalculator.assessChange(option.legs, leavingIndex, live)
+            val risk = assessment?.level ?: TransferRiskLevel.UNKNOWN
             JourneyTransferRow(
                 stationLabel = (if (walked) leaving.originLabel else arriving.destinationLabel ?: leaving.originLabel)
                     ?: arriving.destination.value,
@@ -261,7 +272,10 @@ object JourneyResultsPresenter {
                 arrivalTime = time(arriving.scheduledArrival, zone),
                 departureTime = time(leaving.scheduledDeparture, zone),
                 waitMinutes = Duration.between(arriving.scheduledArrival, leaving.scheduledDeparture).toMinutes(),
-                afterLegIndex = arrivingIndex
+                afterLegIndex = arrivingIndex,
+                risk = risk,
+                expectedArrivalTime = assessment?.takeIf { risk != TransferRiskLevel.UNKNOWN }?.let { time(it.expectedArrival.atZone(zone), zone) },
+                expectedDepartureTime = assessment?.takeIf { risk != TransferRiskLevel.UNKNOWN }?.let { time(it.expectedDeparture.atZone(zone), zone) }
             )
         }
         val departure = option.departure.withZoneSameInstant(zone)
@@ -284,7 +298,8 @@ object JourneyResultsPresenter {
             sourceId = sourced.sourceId.value,
             sourceLabel = if (sourced.sourceId == EmbeddedGtfsJourneyProvider.SOURCE_ID) JourneySourceLabel.OFFLINE_TIMETABLE else JourneySourceLabel.OTHER,
             sourceName = sourced.sourceName,
-            scheduledOnly = sourced.scheduledOnly
+            scheduledOnly = sourced.scheduledOnly,
+            transferRisk = TransferRiskLevel.worst(transfers.map { it.risk })
         )
     }
 

@@ -30,7 +30,9 @@ data class JourneySearchUiState(
     val filter: JourneyResultsFilter = JourneyResultsFilter.ALL,
     val presentation: JourneyResultsPresentation? = null,
     /** A request the screen should not have sent (same station twice), localized at render. */
-    val validationMessage: UiMessage? = null
+    val validationMessage: UiMessage? = null,
+    /** Live data of the legs running now or soon ([JourneyLiveLookup]); empty until it arrives or without live data. */
+    val liveLegs: Map<String, JourneyLegLive> = emptyMap()
 )
 
 /**
@@ -40,7 +42,11 @@ data class JourneySearchUiState(
  * renders [state]. Searching runs off the main thread (the providers switch dispatcher); a new search cancels the
  * previous one and a late answer of a cancelled search is never shown.
  */
-class JourneySearchViewModel(private val service: JourneySearchService) : ViewModel() {
+class JourneySearchViewModel(
+    private val service: JourneySearchService,
+    /** Live lookup of the legs for "Coincidenza a rischio"; null keeps the scheduled times only. */
+    private val liveLookup: JourneyLiveLookup? = null
+) : ViewModel() {
     private val mutableState = MutableStateFlow(JourneySearchUiState())
     val state: StateFlow<JourneySearchUiState> = mutableState.asStateFlow()
     private var searchJob: Job? = null
@@ -75,7 +81,7 @@ class JourneySearchViewModel(private val service: JourneySearchService) : ViewMo
 
     fun selectFilter(filter: JourneyResultsFilter) {
         mutableState.update { current ->
-            current.copy(filter = filter, presentation = current.result?.let { JourneyResultsPresenter.present(it, filter) })
+            current.copy(filter = filter, presentation = current.result?.let { JourneyResultsPresenter.present(it, filter, live = current.liveLegs) })
         }
     }
 
@@ -89,7 +95,7 @@ class JourneySearchViewModel(private val service: JourneySearchService) : ViewMo
         searchJob?.cancel()
         val generation = ++searchGeneration
         mutableState.update {
-            it.copy(loading = true, query = query, result = null, presentation = null, validationMessage = null)
+            it.copy(loading = true, query = query, result = null, presentation = null, validationMessage = null, liveLegs = emptyMap())
         }
         searchJob = viewModelScope.launch {
             val result = service.search(query)
@@ -97,12 +103,24 @@ class JourneySearchViewModel(private val service: JourneySearchService) : ViewMo
             mutableState.update { current ->
                 current.copy(loading = false, result = result, presentation = JourneyResultsPresenter.present(result, current.filter))
             }
+            // The scheduled results are shown first; the live check of the changes follows when it answers.
+            val live = liveLookup?.takeIf { result.options.any { it.option.transfers > 0 } }?.lookup(result.options).orEmpty()
+            if (generation != searchGeneration || live.isEmpty()) return@launch
+            mutableState.update { current ->
+                current.copy(liveLegs = live, presentation = JourneyResultsPresenter.present(result, current.filter, live = live))
+            }
         }
     }
 
     companion object {
         fun factory(context: Context) = viewModelFactory {
-            initializer { JourneySearchViewModel(BinarioDataGraph.journeySearchService(context.applicationContext)) }
+            initializer {
+                val app = context.applicationContext
+                JourneySearchViewModel(
+                    BinarioDataGraph.journeySearchService(app),
+                    JourneyLiveLookup(BinarioDataGraph.trainNumberSearchService(app))
+                )
+            }
         }
     }
 }
