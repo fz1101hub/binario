@@ -48,6 +48,7 @@
           ],
           "samples": [
             "situação do trem {trainNumber}",
+            "a situação do trem {trainNumber}",
             "o trem {trainNumber} está no horário",
             "como está o trem {trainNumber}",
             "atraso do trem {trainNumber}"
@@ -58,6 +59,7 @@
           "slots": [],
           "samples": [
             "meus trajetos",
+            "quais são meus trajetos",
             "liste meus trajetos salvos",
             "quais trajetos eu salvei",
             "trajetos salvos"
