@@ -26,6 +26,8 @@ object KnownProviderIds {
     val TRENITALIA_INFOMOBILITY_NEWS = SourceId("trenitalia-infomobility-news")
     val TRENORD_LINE_NOTICES = SourceId("trenord-line-notices")
     val OPEN_METEO = SourceId("open-meteo")
+    /** Strike calendar of the Ministry of infrastructure and transport, RSS, rail sector only. */
+    val MIT_STRIKES = SourceId("mit-strikes-rss")
     /** Journeys with changes computed offline on the embedded GTFS packs. */
     val EMBEDDED_GTFS_JOURNEYS = SourceId("embedded-gtfs-journeys")
     val DEMO_LOCAL = SourceId("demo-local")
@@ -301,6 +303,21 @@ object KnownProviders {
             // Open data under CC BY 4.0; the user-facing switch is the "Meteo a destinazione" setting.
             enabled = true,
             priorityByCapability = mapOf(ProviderCapability.WEATHER_FORECAST to 10)
+        ),
+        ProviderPolicy(
+            descriptor = ProviderDescriptor(
+                id = KnownProviderIds.MIT_STRIKES,
+                displayName = "MIT — calendario scioperi (RSS)",
+                capabilities = setOf(ProviderCapability.SERVICE_ALERTS),
+                coverage = CoverageDescriptor(countryCodes = setOf("IT"), description = "Scioperi del settore ferroviario proclamati e comunicati al Ministero"),
+                accessMode = AccessMode.OPEN_DIRECT,
+                ratePolicy = RatePolicy(Duration.ofMinutes(30), defaultTimeToLive = Duration.ofHours(6)),
+                schemaVersion = 1
+            ),
+            // Public institutional feed, read only by the notices area (on opening) and the 18:00 strike reminder;
+            // it is not one of the network notice providers and does not change their order.
+            enabled = true,
+            priorityByCapability = mapOf(ProviderCapability.SERVICE_ALERTS to 90)
         ),
         ProviderPolicy(
             // Offline calculation on the embedded open-data packs: no request leaves the device. It only feeds the

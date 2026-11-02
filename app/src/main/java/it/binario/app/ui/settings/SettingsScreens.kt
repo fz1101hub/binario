@@ -296,6 +296,7 @@ private fun AlertsSettings(viewModel: TrainViewModel, gpsArrivalAlarm: GpsArriva
         onAdd = { showAlertComposer = true },
         onRemove = viewModel::removeCommuterAlert
     )
+    it.binario.app.notifications.LiveUpdatesSettingsPanel()
 }
 
 @Composable

@@ -17,6 +17,18 @@ import androidx.compose.ui.res.stringResource
 import it.binario.app.data.notices.RailExternalLinks
 import androidx.compose.ui.text.font.FontWeight
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.unit.dp
+import it.binario.app.data.RailTime
+import it.binario.app.data.live.StrikeNotice
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 
 /**
  * "Avvisi e infomobilità": RFI and Trenitalia network notices, deduplicated by title, and Trenord notices grouped
@@ -31,7 +43,8 @@ fun RailNoticesArea(viewModel: RailNoticesViewModel = viewModel()) {
     val uriHandler = LocalUriHandler.current
     SourceSectionCard(title = stringResource(R.string.notices_area_title)) {
         SourceSectionNote(stringResource(R.string.notices_area_description))
-        // No strike feed is machine-readable from here: the official calendar opens in the browser on tap only.
+        // The rail strikes of the MIT feed, once the area is open; the official calendar stays a link either way.
+        if (open && viewModel.upcomingStrikes.isNotEmpty()) UpcomingStrikes(viewModel.upcomingStrikes)
         TextButton(onClick = { openExternalLink(uriHandler, RailExternalLinks.MIT_STRIKE_CALENDAR) }) {
             Text(stringResource(R.string.notices_strike_calendar))
         }
@@ -71,3 +84,34 @@ fun RailNoticesArea(viewModel: RailNoticesViewModel = viewModel()) {
 }
 
 private const val COLLAPSED_COUNT = 6
+
+/** "Scioperi in programma": date (or range), title and the announcement's page, from the MIT calendar. */
+@Composable
+private fun UpcomingStrikes(strikes: List<StrikeNotice>) {
+    val locale = LocalConfiguration.current.locales[0]
+    val uriHandler = LocalUriHandler.current
+    val dates = DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(locale)
+    Column(Modifier.fillMaxWidth().testTag("notices-upcoming-strikes"), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(stringResource(R.string.strikes_upcoming_title), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+        strikes.forEachIndexed { index, strike ->
+            if (index > 0) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            Column(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                StrikeBadge()
+                val start = strike.startDate
+                val end = strike.endDate
+                val published = strike.publishedAt
+                when {
+                    start != null && end != null && end != start ->
+                        Text(stringResource(R.string.strikes_date_range, start.format(dates), end.format(dates)), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                    start != null -> Text(start.format(dates), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                    published != null -> SourceSectionNote(stringResource(R.string.strikes_published_on, published.atZone(RailTime.defaultZone).toLocalDate().format(dates)))
+                }
+                Text(strike.title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                strike.link?.let { link ->
+                    TextButton(onClick = { openExternalLink(uriHandler, link) }) { Text(stringResource(R.string.notices_open_source)) }
+                }
+            }
+        }
+        SourceSectionNote(stringResource(R.string.strikes_upcoming_source))
+    }
+}

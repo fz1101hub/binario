@@ -46,6 +46,7 @@ sealed interface DestinationWeatherResult {
  */
 class RailNoticesViewModel(application: Application) : AndroidViewModel(application) {
     private val notices = BinarioDataGraph.railNoticesService()
+    private val strikeCalendar = BinarioDataGraph.strikeCalendar()
     private val weather = BinarioDataGraph.weatherForecastProvider()
     private val settings = SourcesSettingsStore(application)
 
@@ -153,6 +154,29 @@ class RailNoticesViewModel(application: Application) : AndroidViewModel(applicat
         if (generalNotices !is SourceSectionState.Ready) generalNotices = SourceSectionState.Loading
         generalJob = viewModelScope.launch {
             generalNotices = SourceSectionState.Ready(withContext(Dispatchers.Default) { notices.general() })
+        }
+        loadStrikes()
+    }
+
+    /**
+     * "Scioperi in programma" from the MIT calendar, rail sector only; empty when the feed fails, so the area keeps
+     * just the link to the calendar. The adapter caches the feed for six hours.
+     */
+    var upcomingStrikes by mutableStateOf<List<it.binario.app.data.live.StrikeNotice>>(emptyList())
+        private set
+    private var strikesJob: Job? = null
+
+    private fun loadStrikes() {
+        val calendar = strikeCalendar ?: return
+        strikesJob?.cancel()
+        strikesJob = viewModelScope.launch {
+            val strikes = when (val read = calendar.strikes()) {
+                is ProviderResult.Success -> read.value
+                is ProviderResult.Partial -> read.value
+                else -> emptyList()
+            }
+            val today = LocalDate.now(RailTime.defaultZone)
+            upcomingStrikes = it.binario.app.data.live.StrikeCalendar.upcoming(strikes, today, java.time.Instant.now())
         }
     }
 

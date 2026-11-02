@@ -75,7 +75,9 @@ ottobre 2026»):
 
 - **Calendario scioperi MIT**: solo collegamento. `scioperi.mit.gov.it` va in timeout dai runner cloud e il formato
   della pagina non è verificato, quindi nessun dato ne viene letto; gli avvisi RFI, Trenitalia e Trenord che citano uno
-  sciopero ricevono un'etichetta.
+  sciopero ricevono un'etichetta. Aggiornamento di novembre 2026: il feed RSS del calendario
+  (`mit2/public/scioperi/rss`) è ora letto per «Scioperi in programma» e per il promemoria del giorno prima, con il
+  formato ancora da verificare dal CI (vedi `SOURCE_POLICY.md`, voce «Scioperi»).
 - **LeFrecce, SNCF Connect, SNCF Voyageurs, Gares & Connexions e gateway dell'app SBB**: backend di app e siti non
   documentati per terzi, esclusi dalla policy.
 - **Navitia SNCF**: API ufficiale con chiave personale, utilizzabile solo tramite il gateway server descritto nella

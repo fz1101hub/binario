@@ -1,5 +1,6 @@
 package it.binario.app.ui.journeys
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -37,6 +38,7 @@ import it.binario.app.journeys.JourneyLegRow
 import it.binario.app.journeys.JourneyOptionRow
 import it.binario.app.journeys.JourneySourceLabel
 import it.binario.app.journeys.JourneyTransferRow
+import it.binario.app.notifications.FollowJourneyNotificationControl
 import it.binario.app.ui.common.BinarioCard
 import it.binario.app.ui.common.HeaderOverlapBox
 import it.binario.app.ui.common.InfoNoticeCard
@@ -53,8 +55,8 @@ import it.binario.app.ui.detail.StopTimelineRow
 /**
  * A journey with changes: every leg on the green timeline of the train detail (departure and arrival of the leg),
  * each change as a block "Cambio a <stazione> · Attesa di N minuti", the train of every leg, and the source with the
- * scheduled-only notice. The app does not follow or monitor multi-train journeys, so there is no "Segui questo
- * viaggio" here; a direct option keeps opening the train detail from the results.
+ * scheduled-only notice. A journey with changes can be followed with the ongoing notification ("Segui con notifica"),
+ * which also warns when a change is at risk; a direct option keeps opening the train detail from the results.
  *
  * @param origin / destination the searched stations, for the short header ("Roma → Torino"); the legs' own names
  *   are used when they are not known.
@@ -100,6 +102,9 @@ internal fun JourneyDetailScreen(modifier: Modifier, row: JourneyOptionRow, orig
         }
         if (row.scheduledOnly) {
             item { InfoNoticeCard(text = stringResource(R.string.journey_scheduled_only_notice), modifier = Modifier.padding(top = 8.dp)) }
+        }
+        if (row.changes > 0) {
+            item { FollowJourneyNotificationControl(row) }
         }
         item {
             InfoNoticeCard(
@@ -177,7 +182,7 @@ private fun TransferBlock(transfer: JourneyTransferRow) {
         Row(Modifier.padding(horizontal = 14.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Default.SyncAlt, contentDescription = null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(20.dp))
             Spacer(Modifier.width(10.dp))
-            Column(Modifier.weight(1f)) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(
                     stringResource(R.string.journey_transfer_at, transfer.stationLabel) + " · " +
                         pluralStringResource(R.plurals.journey_transfer_wait, wait, wait),
@@ -189,6 +194,14 @@ private fun TransferBlock(transfer: JourneyTransferRow) {
                     style = MaterialTheme.typography.bodySmall.copy(fontFeatureSettings = TabularFigures),
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+                TransferRiskChip(transfer.risk)
+                if (transfer.expectedArrivalTime != null && transfer.expectedDepartureTime != null) {
+                    Text(
+                        stringResource(R.string.journey_transfer_live_times, transfer.expectedArrivalTime, transfer.expectedDepartureTime),
+                        style = MaterialTheme.typography.bodySmall.copy(fontFeatureSettings = TabularFigures),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         }
     }

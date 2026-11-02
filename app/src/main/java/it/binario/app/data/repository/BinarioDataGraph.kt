@@ -154,6 +154,22 @@ object BinarioDataGraph {
         trenord = activeProviders(localOnlyPolicy.trenordLineNoticeProviders(), ProviderCapability.SERVICE_ALERTS).firstOrNull()
     )
 
+    /**
+     * Per-train notices and Trenitalia infomobility only (no Trenord line notices), for the notifications of the
+     * followed and favourite trains; the same registry gating as the train detail.
+     */
+    fun trainAlertNoticesService(): it.binario.app.data.notices.RailNoticesService = it.binario.app.data.notices.RailNoticesService(
+        trainNoticeProviders = activeProviders(localOnlyPolicy.trainNoticeProviders(), ProviderCapability.SERVICE_ALERTS),
+        networkAlertProviders = activeProviders(localOnlyPolicy.networkNoticeProviders(), ProviderCapability.SERVICE_ALERTS).filter { provider ->
+            it.binario.app.data.notices.RailNoticesService.publisherOf(provider.descriptor.id) == it.binario.app.data.notices.NoticePublisher.TRENITALIA
+        },
+        trenord = null
+    )
+
+    /** The MIT strike calendar (RSS), when the registry enables it. */
+    fun strikeCalendar(): it.binario.app.data.live.MitStrikeRssAdapter? =
+        activeProviders(listOf(localOnlyPolicy.strikeCalendarProvider()), ProviderCapability.SERVICE_ALERTS).firstOrNull()
+
     fun weatherForecastProvider(): it.binario.app.data.weather.OpenMeteoForecastAdapter? =
         activeProviders(listOf(localOnlyPolicy.weatherForecastProvider()), ProviderCapability.WEATHER_FORECAST).firstOrNull()
 

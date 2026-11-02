@@ -50,6 +50,7 @@ object LocalOnlyRailDataPolicy {
     private val trenitaliaNews by lazy { TrenitaliaInfomobilityNewsAdapter() }
     private val trenordNotices by lazy { TrenordLineNoticesAdapter() }
     private val openMeteo by lazy { it.binario.app.data.weather.OpenMeteoForecastAdapter() }
+    private val mitStrikes by lazy { it.binario.app.data.live.MitStrikeRssAdapter() }
 
     /** Official programmed sources only. */
     fun routeSources(): List<TrainDataSource> = listOf(
@@ -123,6 +124,12 @@ object LocalOnlyRailDataPolicy {
      * realtime flag; the user switches it off in the settings ("Meteo a destinazione").
      */
     fun weatherForecastProvider(): it.binario.app.data.weather.OpenMeteoForecastAdapter = openMeteo
+
+    /**
+     * MIT strike calendar: a public institutional RSS feed (HTTPS), not a best-effort rail source, so not tied to the
+     * personal realtime flag. It is not a network notice provider: the notices area and the 18:00 reminder read it.
+     */
+    fun strikeCalendarProvider(): it.binario.app.data.live.MitStrikeRssAdapter = mitStrikes
 
     fun vehiclePositionProviders(): List<VehiclePositionProvider> = listOf(
         staRealtime

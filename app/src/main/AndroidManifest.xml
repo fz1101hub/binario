@@ -155,6 +155,10 @@
         <receiver
             android:name=".CommuterAlertReceiver"
             android:exported="false" />
+        <!-- "Aggiorna" / "Interrompi" and the dismissal of the followed-trip notification; app-internal only. -->
+        <receiver
+            android:name=".notifications.FollowedTripActionReceiver"
+            android:exported="false" />
         <receiver
             android:name=".CommuterAlertRestoreReceiver"
             android:exported="true">

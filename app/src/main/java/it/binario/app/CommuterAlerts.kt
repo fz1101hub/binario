@@ -24,6 +24,10 @@ import java.time.LocalTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.UUID
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 
 enum class AlertRepeat(val days: Set<DayOfWeek>) {
     ONCE(emptySet()),
@@ -193,20 +197,26 @@ object CommuterAlertScheduler {
     fun rescheduleAll(context: Context): List<CommuterAlertScheduleResult> =
         CommuterAlertStore(context).alerts().map { alert -> schedule(context, alert) }
 
-    fun notifyAndReschedule(context: Context, alertId: String) {
+    /**
+     * Shows the reminder with the train's current status (delay, platform, cancellation) when the route sources answer
+     * within [CommuterAlertStatusLookup.TIMEOUT_MILLIS], else with "stato non disponibile". The next alarm is set
+     * before the lookup, so a slow or failing source never costs a recurring reminder.
+     */
+    suspend fun notifyAndReschedule(context: Context, alertId: String) {
         val store = CommuterAlertStore(context)
         val alert = store.find(alertId) ?: return
         if (alert.repeat == AlertRepeat.ONCE) {
             store.disable(alert.id)
             cancel(context, alert.id)
         }
+        // Recurring reminders must survive a permission denial or revocation at fire time.
+        if (alert.repeat != AlertRepeat.ONCE) schedule(context, alert)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
             ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
-        ) {
-            // Recurring reminders must survive a permission denial or revocation at fire time.
-            if (alert.repeat != AlertRepeat.ONCE) schedule(context, alert)
-            return
-        }
+        ) return
+        val status = CommuterAlertStatusLookup.fetch(context, alert)
+        val statusText = CommuterAlertStatusRules.format(status, CommuterAlertStatusLookup.strings(context))
+        val statusSentence = context.getString(R.string.commuter_alert_notification_status, statusText)
         val manager = context.getSystemService(NotificationManager::class.java)
         manager.createNotificationChannel(
             NotificationChannel(CHANNEL_ID, context.getString(R.string.commuter_alert_channel_name), NotificationManager.IMPORTANCE_HIGH).apply {
@@ -216,14 +226,20 @@ object CommuterAlertScheduler {
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_binario)
             .setContentTitle(context.getString(R.string.commuter_alert_notification_title, alert.stationName))
-            .setContentText(context.getString(R.string.commuter_alert_notification_text, alert.routeLabel, alert.time))
-            .setStyle(NotificationCompat.BigTextStyle().bigText(context.getString(R.string.commuter_alert_notification_big_text, alert.routeLabel, alert.stationName, alert.time)))
+            .setContentText(context.getString(R.string.commuter_alert_notification_text, alert.routeLabel, alert.time) + " " + statusSentence)
+            .setStyle(
+                NotificationCompat.BigTextStyle().bigText(
+                    context.getString(
+                        if (status != null) R.string.commuter_alert_notification_big_text_live else R.string.commuter_alert_notification_big_text,
+                        alert.routeLabel, alert.stationName, alert.time
+                    ) + " " + statusSentence
+                )
+            )
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
             .setContentIntent(contentIntent(context, alert.id))
             .build()
         NotificationManagerCompat.from(context).notify(alert.id.hashCode(), notification)
-        if (alert.repeat != AlertRepeat.ONCE) schedule(context, alert)
     }
 
     private fun pendingIntent(context: Context, alertId: String): PendingIntent = PendingIntent.getBroadcast(
@@ -247,7 +263,17 @@ object CommuterAlertScheduler {
 
 class CommuterAlertReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-        CommuterAlertScheduler.notifyAndReschedule(context, CommuterAlertScheduler.alertId(intent))
+        val pending = goAsync()
+        val appContext = context.applicationContext
+        val alertId = CommuterAlertScheduler.alertId(intent)
+        // The status lookup is bounded well inside the time Android gives a receiver that went asynchronous.
+        CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
+            try {
+                CommuterAlertScheduler.notifyAndReschedule(appContext, alertId)
+            } finally {
+                pending.finish()
+            }
+        }
     }
 }
 

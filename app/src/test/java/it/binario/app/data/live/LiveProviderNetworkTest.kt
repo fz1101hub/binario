@@ -389,6 +389,7 @@ class LiveProviderNetworkTest {
             add("opendata-ch-locations" to "https://transport.opendata.ch/v1/locations?query=Chiasso&type=station")
             add("trenord-direttrici" to "https://www.trenord.it/mgmt/store-management-api/mia/direttrici/")
             add("mit-scioperi" to "https://scioperi.mit.gov.it/mit2/public/scioperi")
+            add("mit-scioperi-rss" to MitStrikeRssAdapter.URL)
             add("open-meteo" to "https://api.open-meteo.com/v1/forecast?latitude=46.0037&longitude=8.9511&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=Europe%2FRome&forecast_days=2")
         }
         // ViaggiaTreno journey solutions (with changes), through the production fetcher and its
@@ -445,6 +446,16 @@ class LiveProviderNetworkTest {
             }.getOrElse { "error=${it::class.java.simpleName}: ${it.message}" }
             println("LIVE_ACCEPTANCE SAMPLE $name $sample")
         }
+        // One check of the MIT strike feed through the production adapter, so its format can be verified in CI: it
+        // reports (never fails on) what the RSS 2.0 reader and the rail filter make of the live items.
+        val strikes = runCatching { MitStrikeRssAdapter(clock).strikes() }
+            .getOrElse { error -> ProviderResult.Failure(ProviderError(ProviderErrorKind.NETWORK, error.toString())) }
+        val strikeSummary = when (strikes) {
+            is ProviderResult.Success -> "rail=${strikes.value.size} dated=${strikes.value.count { it.startDate != null }} " +
+                strikes.value.take(5).joinToString(" | ") { "${it.startDate}..${it.endDate} ${it.title.take(120)}" }
+            else -> strikes.toString().take(500)
+        }
+        println("LIVE_ACCEPTANCE mit-strikes-rss: $strikeSummary")
     }
 
     private fun selected(source: String) {

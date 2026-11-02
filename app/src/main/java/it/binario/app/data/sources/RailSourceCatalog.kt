@@ -504,6 +504,21 @@ object RailSourceCatalog {
             notes = "Licenza CC BY 4.0, uso non commerciale gratuito, nessuna chiave. Riceve solo le coordinate della stazione arrotondate a due decimali; disattivabile nelle impostazioni."
         ),
         RailSourceDefinition(
+            id = SourceId("mit-strikes-rss"),
+            displayName = "MIT — calendario scioperi (RSS)",
+            operatorOrAuthority = "Ministero delle infrastrutture e dei trasporti",
+            formats = setOf(SourceFormat.RSS_XML),
+            capabilities = setOf(ProviderCapability.SERVICE_ALERTS),
+            accessMode = AccessMode.OPEN_DIRECT,
+            readiness = SourceReadiness.READY_FOR_PROTOCOL_TEST,
+            countryCodes = setOf("IT"),
+            coverage = "Scioperi proclamati nei trasporti; l'app tiene solo le voci del settore ferroviario.",
+            landingPage = uri("https://scioperi.mit.gov.it/mit2/public/scioperi"),
+            downloadOrProbeUri = uri("https://scioperi.mit.gov.it/mit2/public/scioperi/rss"),
+            attribution = "Ministero delle infrastrutture e dei trasporti",
+            notes = "Feed RSS 2.0 istituzionale e pubblico, letto in HTTPS con cache di sei ore e ultimo elenco servito per un giorno se la fonte non risponde. Formato non ancora verificato dai runner (l'host andava in timeout): parser RSS standard, filtro sulle parole del settore ferroviario e date lette dal testo della voce; in caso di errore resta il solo collegamento al calendario."
+        ),
+        RailSourceDefinition(
             id = SourceId("trenord-realtime"),
             displayName = "Trenord — tempo reale e avvisi",
             operatorOrAuthority = "Trenord S.r.l.",
