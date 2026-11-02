@@ -138,6 +138,7 @@ La tabella copre ogni host `http(s)://` trovato in `app/src/main/java`, `wear/sr
 | `data.opentransportdata.swiss` | D | Provenienza del pack `ch-otd-gtfs`; anche nel catalogo |
 | `dati.toscana.it` | D | Provenienza del pack `toscana-tft-gtfs`; anche nel catalogo |
 | `eu.ftp.opendatasoft.com` | D | Provenienza del pack `sncf-gtfs`; anche nel catalogo |
+| `raw.githubusercontent.com` | D | Provenienza dei pack `trenitalia-gtfs` e `italo-gtfs` (archivio GTFS a un commit fissato); anche nel catalogo |
 | `static.web.oebb.at` | D | Provenienza del pack `oebb-gtfs`; anche nel catalogo |
 | `www.dati.lombardia.it` | D | Provenienza del pack `lombardia-trenord-gtfs`; anche nel catalogo |
 | `www.hzpp.hr` | D | Provenienza del pack `hzpp-gtfs`; anche nel catalogo |
@@ -148,7 +149,7 @@ La tabella copre ogni host `http(s)://` trovato in `app/src/main/java`, `wear/sr
 | `developer-docs.deutschebahn.com` | E | Catalogo fonti (`InternationalSourceCatalog.kt`) |
 | `developers.deutschebahn.com` | E | Catalogo fonti (`InternationalSourceCatalog.kt`) |
 | `ferrovieappulolucane.it` | E | Catalogo fonti (`RailSourceCatalog.kt`) |
-| `github.com` | E | Catalogo fonti (`InternationalSourceCatalog.kt`): landing page del mirror DELFI community |
+| `github.com` | E | Catalogo fonti (`InternationalSourceCatalog.kt`): landing page del mirror DELFI community; nel manifest GTFS, repository della conversione GTFS dei pack `trenitalia-gtfs` e `italo-gtfs` |
 | `infomobilita.astralspa.it` | E | Catalogo fonti (`RailSourceCatalog.kt`) |
 | `opendatagoogletransit.comune.genova.it` | E | Catalogo fonti (`RailSourceCatalog.kt`): feed HTTP, pack escluso dall'APK |
 | `opentransportdata.swiss` | E | Catalogo fonti (`RailSourceCatalog.kt`) |
@@ -161,6 +162,7 @@ La tabella copre ogni host `http(s)://` trovato in `app/src/main/java`, `wear/sr
 | `web.ferroviedellacalabria.it` | E | Catalogo fonti (`RailSourceCatalog.kt`) |
 | `westbahn.at` | E | Catalogo fonti (`InternationalSourceCatalog.kt`), monitor-only |
 | `www.arst.sardegna.it` | E | Catalogo fonti (`RailSourceCatalog.kt`) |
+| `www.cciss.it` | E | Catalogo fonti (`RailSourceCatalog.kt`) e manifest GTFS: dataset ufficiali del National Access Point italiano da cui derivano i pack `trenitalia-gtfs` e `italo-gtfs` |
 | `www.cd.cz` | E | Catalogo fonti (`InternationalSourceCatalog.kt`), monitor-only |
 | `www.circumetnea.it` | E | Catalogo fonti (`RailSourceCatalog.kt`) |
 | `www.data.gouv.fr` | E | Catalogo fonti (`RailSourceCatalog.kt`) |

@@ -331,9 +331,13 @@
     </plurals>
     <string name="journey_arrival_next_day">next day</string>
     <string name="journey_leg_replacement_bus">Replacement bus</string>
+    <string name="journey_leg_bus_trenitalia">Trenitalia bus</string>
+    <string name="journey_leg_freccialink">FrecciaLink</string>
+    <string name="journey_leg_italobus">ItaloBus</string>
+    <string name="journey_leg_bus">Bus</string>
     <string name="journey_source_offline">Offline scheduled timetable (GTFS open data)</string>
     <string name="journey_scheduled_only_notice">Scheduled times: delays, platforms and cancellations are not checked. Check the station displays.</string>
-    <string name="journey_coverage_notice">Calculated on the phone with the timetables included in the app, only for the networks they cover: Lombardy, South Tyrol, Trentino, EAV, ARST, TFT, Switzerland, Austria, France and Croatia. Other trains may be missing.</string>
+    <string name="journey_coverage_notice">Calculated on the phone with the timetables included in the app, only for the networks they cover: Trenitalia (trains and buses), Italo (trains and ItaloBus), Lombardy, South Tyrol, Trentino, EAV, ARST, TFT, Switzerland, Austria, France and Croatia. Other trains and buses may be missing.</string>
     <string name="journey_incomplete_notice">Some offline timetables could not be read: the journeys may be incomplete.</string>
     <string name="journey_empty_no_solution">No journey in the offline timetables for the searched time range.</string>
     <string name="journey_empty_not_covered">The offline timetables included do not cover one or both stations.</string>
@@ -375,6 +379,8 @@
     <string name="map_legend_user_position">Approximate position, not saved</string>
     <string name="settings_privacy_maps">Maps: they open only when you expand or load them. To draw them the app downloads style, tiles, fonts and icons from tiles.openfreemap.org (OpenFreeMap), which sees your IP address and the area shown: the train route, the chosen station or, for nearby stations, the area around your approximate position. The position is neither sent nor saved; tiles stay in a local app cache.</string>
     <string name="settings_credits_maps">Maps: OpenFreeMap © OpenMapTiles, data © OpenStreetMap contributors (ODbL 1.0). Rendered with MapLibre Native, BSD 2-Clause licence.</string>
+    <string name="settings_credits_trenitalia">Trenitalia timetables (trains and buses): official Trenitalia S.p.A. data published on the Italian National Access Point (CCISS) under art. 52 CAD and EU Regulation 2017/1926, https://www.cciss.it/nap/mmtis/public/en/catalog/Dataset/1077621. GTFS conversion © Clément Desouche, CC BY 4.0: https://github.com/deryclem/trenitalia-gtfs (licence https://creativecommons.org/licenses/by/4.0/). Binario uses the scheduled times only, without route geometry, and is not affiliated with Trenitalia.</string>
+    <string name="settings_credits_italo">Italo timetables (trains and ItaloBus): official Italo S.p.A. data published on the Italian National Access Point (CCISS) under art. 52 CAD and EU Regulation 2017/1926, https://www.cciss.it/nap/mmtis/public/en/catalog/Dataset/1814124. GTFS conversion © Clément Desouche, CC BY 4.0: https://github.com/deryclem/italo-gtfs (licence https://creativecommons.org/licenses/by/4.0/). Binario uses the scheduled times only, without route geometry, and is not affiliated with Italo.</string>
     <string name="notification_permission_required">Alert saved. To receive it, allow Binario notifications in Android settings.</string>
     <string name="backup_open_output_error">Unable to open the selected file.</string>
     <string name="backup_read_input_error">Unable to read the selected file.</string>

@@ -177,15 +177,25 @@ internal class GtfsDayTimetable private constructor(
     }
 }
 
-/** stops.txt of one pack: stop_id, stop_name and parent_station (blank when the stop has no parent). */
+/**
+ * stops.txt of one pack: stop_id, stop_name, parent_station (blank when the stop has no parent), stop_code (blank
+ * when absent) and stop_lat/stop_lon (NaN when absent or unreadable).
+ */
 internal class GtfsStopDirectory(
     val ids: Array<String>,
     val names: Array<String>,
-    val parents: Array<String>
+    val parents: Array<String>,
+    val codes: Array<String> = Array(ids.size) { "" },
+    val latitudes: DoubleArray = DoubleArray(ids.size) { Double.NaN },
+    val longitudes: DoubleArray = DoubleArray(ids.size) { Double.NaN }
 ) {
     init {
         require(ids.size == names.size && ids.size == parents.size)
+        require(ids.size == codes.size && ids.size == latitudes.size && ids.size == longitudes.size)
     }
 
     val size: Int get() = ids.size
+
+    fun latitude(index: Int): Double? = latitudes[index].takeIf { it.isFinite() && it in -90.0..90.0 }
+    fun longitude(index: Int): Double? = longitudes[index].takeIf { it.isFinite() && it in -180.0..180.0 }
 }

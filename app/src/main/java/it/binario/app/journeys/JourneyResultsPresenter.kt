@@ -60,6 +60,44 @@ enum class JourneyEmptyReason(val resourceName: String) {
     NO_DIRECT("journey_empty_no_direct")
 }
 
+/**
+ * What a leg travels on, for its icon and its vehicle label: [resourceName] is the string resource of the label (null
+ * for a train, which shows its category and number), [isBus] asks for a bus icon.
+ */
+enum class JourneyLegVehicle(val resourceName: String?, val isBus: Boolean) {
+    TRAIN(null, false),
+    /** Scheduled Trenitalia bus ("Bus Trenitalia"). */
+    BUS_TRENITALIA("journey_leg_bus_trenitalia", true),
+    /** Trenitalia FrecciaLink coach, when the timetable names it so. */
+    FRECCIALINK("journey_leg_freccialink", true),
+    /** ItaloBus coach. */
+    ITALOBUS("journey_leg_italobus", true),
+    /** Scheduled coach of another operator. */
+    BUS("journey_leg_bus", true),
+    /** Bus replacing a train. */
+    REPLACEMENT_BUS("journey_leg_replacement_bus", true),
+    /** Walking or unknown: no vehicle label. */
+    OTHER(null, false);
+
+    companion object {
+        fun of(mode: LegMode, operatorName: String?, lineLabel: String?): JourneyLegVehicle {
+            val operator = operatorName.orEmpty().lowercase(Locale.ROOT)
+            val line = lineLabel.orEmpty().uppercase(Locale.ROOT).replace(" ", "")
+            return when (mode) {
+                LegMode.TRAIN -> TRAIN
+                LegMode.REPLACEMENT_BUS -> REPLACEMENT_BUS
+                LegMode.BUS -> when {
+                    line == "FL" || line.contains("FRECCIALINK") -> FRECCIALINK
+                    operator.contains("italo") || line.contains("ITALOBUS") -> ITALOBUS
+                    operator.contains("trenitalia") -> BUS_TRENITALIA
+                    else -> BUS
+                }
+                LegMode.WALK, LegMode.UNKNOWN -> OTHER
+            }
+        }
+    }
+}
+
 data class JourneyLegRow(
     val mode: LegMode,
     /** Published category or line ("RE11", "REG", "EC"), shown before the number; may be null. */
@@ -81,8 +119,12 @@ data class JourneyLegRow(
     val arrivalTime: String,
     val durationMinutes: Long,
     /** Source identity of the run (for example `lombardia-trenord-gtfs:<trip>:<service day>`). */
-    val runId: String?
-)
+    val runId: String?,
+    /** Vehicle icon and label: a bus leg ([JourneyLegVehicle.isBus]) shows a bus and its label, never a train. */
+    val vehicle: JourneyLegVehicle = JourneyLegVehicle.of(mode, operatorName, lineLabel)
+) {
+    val isBus: Boolean get() = vehicle.isBus
+}
 
 /** A change between two legs: where, when the first arrives, when the next leaves, and the wait. */
 data class JourneyTransferRow(
@@ -114,7 +156,10 @@ data class JourneyOptionRow(
     val sourceName: String,
     /** Scheduled times only: no delay, platform or cancellation checked (`journey_scheduled_only_notice`). */
     val scheduledOnly: Boolean
-)
+) {
+    /** Some leg is a bus (scheduled coach or replacement): for a bus icon on the row or a "no bus" filter. */
+    val hasBusLeg: Boolean get() = legs.any(JourneyLegRow::isBus)
+}
 
 data class JourneyFilterChip(
     val filter: JourneyResultsFilter,
@@ -239,7 +284,7 @@ object JourneyResultsPresenter {
         runId = leg.runId?.value
     )
 
-    /** The app's category for a leg; a foreign high-speed train is never called a "Freccia". */
+    /** The app's category for a leg; a foreign high-speed train is never called a "Freccia", a bus is never a train. */
     internal fun trainCategory(leg: JourneyLeg): TrainCategory {
         val line = leg.lineLabel?.uppercase(Locale.ROOT)?.replace(" ", "").orEmpty()
         val operator = leg.operatorName.orEmpty().lowercase(Locale.ROOT)

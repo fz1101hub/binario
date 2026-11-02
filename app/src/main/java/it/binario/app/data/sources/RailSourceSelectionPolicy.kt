@@ -40,6 +40,10 @@ object RailSourceSelectionPolicy {
         pref("sncf-gtfs", RailInformationCategory.PLANNED_ITINERARY, 140, "GTFS ufficiale SNCF per TGV/TER/Intercités."),
         pref("lombardia-trenord-gtfs", RailInformationCategory.PLANNED_ITINERARY, 137, "GTFS ferroviario ufficiale Regione Lombardia/Trenord."),
         pref("alto-adige-sta-gtfs", RailInformationCategory.PLANNED_ITINERARY, 135, "Open Data Hub/STA ufficiale, utile anche per servizi transfrontalieri."),
+        // Added after the packs above and below all of them: when a run is in an existing pack too, that pack's copy
+        // stays the one shown, so these packs only add the trains and buses no other pack has.
+        pref("trenitalia-gtfs", RailInformationCategory.PLANNED_ITINERARY, 130, "Orario ufficiale Trenitalia dal NAP (NeTEx, conversione GTFS CC BY 4.0), treni e bus."),
+        pref("italo-gtfs", RailInformationCategory.PLANNED_ITINERARY, 130, "Orario ufficiale Italo dal NAP (NeTEx, conversione GTFS CC BY 4.0), treni e ItaloBus."),
         pref("delfi-gtfs", RailInformationCategory.PLANNED_ITINERARY, 125, "Dataset nazionale tedesco ufficiale; complemento DB, non duplicato preferito di un feed diretto dell'operatore."),
         pref("delfi-gtfs-community", RailInformationCategory.PLANNED_ITINERARY, 65, "Mirror community del dataset DELFI: utile solo se il download ufficiale non è disponibile e la tratta resterebbe scoperta."),
         pref("european-sleeper-gtfs", RailInformationCategory.PLANNED_ITINERARY, 60, "Feed community best-effort; ammesso come fallback dopo l'avvio ufficiale del servizio Milano."),

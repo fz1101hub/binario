@@ -488,7 +488,7 @@ class EmbeddedGtfsRouteAdapterTest {
     }
 
     @Test
-    fun `cache stop presence retains all ten configured packs`() = runBlocking {
+    fun `cache stop presence retains all twelve configured packs`() = runBlocking {
         val packs = EmbeddedGtfsPacks.all
         val bytes = feed()
         var assetOpenCount = 0
@@ -502,9 +502,9 @@ class EmbeddedGtfsRouteAdapterTest {
         adapter.loadRoute(route, Direction.OUTBOUND, query)
         adapter.loadRoute(route, Direction.OUTBOUND, query)
 
-        assertEquals(10, packs.size)
+        assertEquals(12, packs.size)
         assertEquals(packs.size, adapter.stopPresenceCacheSizeForTest())
-        // Each pass reparses all packs through the intentionally two-entry full-index LRU;
+        // Each pass reparses all packs through the bounded full-index LRU (three entries, twelve packs);
         // the second pass must not additionally reopen every zip just to rediscover stops.
         assertEquals(packs.size * 3, assetOpenCount)
     }

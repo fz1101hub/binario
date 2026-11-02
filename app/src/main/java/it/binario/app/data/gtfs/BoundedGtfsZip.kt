@@ -125,25 +125,41 @@ internal class GtfsCsvRows(
 
 /**
  * Diversamente da BufferedReader.readLine(), interrompe la lettura prima di
- * allocare una String per una riga arbitrariamente lunga.
+ * allocare una String per una riga arbitrariamente lunga. Legge a blocchi in un
+ * buffer di caratteri: la lettura carattere per carattere dall'InputStreamReader
+ * costava più del parsing sui pack nazionali (decine di MB di stop_times).
  */
 private class BoundedLineReader(input: InputStream, private val maxLineLength: Int) {
     private val reader = InputStreamReader(input, StandardCharsets.UTF_8)
+    private val buffer = CharArray(16 * 1024)
+    private var position = 0
+    private var limit = 0
+    private val result = StringBuilder()
 
     fun readLine(): String? {
-        val result = StringBuilder()
+        result.setLength(0)
         var sawCharacter = false
         while (true) {
-            val value = reader.read()
-            if (value < 0) return if (sawCharacter) result.toString() else null
-            sawCharacter = true
-            val character = value.toChar()
-            if (character == '\n') return result.toString()
-            if (character == '\r') continue
-            if (result.length >= maxLineLength) {
-                throw GtfsCompactIndexLimitException("Riga CSV GTFS troppo lunga")
+            if (position == limit) {
+                val read = reader.read(buffer, 0, buffer.size)
+                if (read <= 0) {
+                    position = 0
+                    limit = 0
+                    return if (sawCharacter) result.toString() else null
+                }
+                position = 0
+                limit = read
             }
-            result.append(character)
+            while (position < limit) {
+                val character = buffer[position++]
+                sawCharacter = true
+                if (character == '\n') return result.toString()
+                if (character == '\r') continue
+                if (result.length >= maxLineLength) {
+                    throw GtfsCompactIndexLimitException("Riga CSV GTFS troppo lunga")
+                }
+                result.append(character)
+            }
         }
     }
 }
@@ -177,6 +193,20 @@ private class BoundedEntryInputStream(
 }
 
 internal fun parseGtfsCsvLine(line: String): List<String> {
+    // Most rows have no quote at all: split them without copying through a builder.
+    if (line.indexOf('"') < 0) {
+        val fields = ArrayList<String>(16)
+        var start = 0
+        while (true) {
+            val comma = line.indexOf(',', start)
+            if (comma < 0) {
+                fields += line.substring(start)
+                return fields
+            }
+            fields += line.substring(start, comma)
+            start = comma + 1
+        }
+    }
     val values = ArrayList<String>()
     val current = StringBuilder()
     var quoted = false

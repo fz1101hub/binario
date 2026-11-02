@@ -28,6 +28,12 @@ Examples::
     python3 tools/build_gtfs_packs.py --refresh --source-id toscana-tft-gtfs \
       --output-dir /tmp/binario-gtfs --generated-at 2026-09-23
 
+    # Add or refresh only the pinned national packs from reviewed upstream ZIPs;
+    # every other published pack and manifest entry is kept byte for byte.
+    python3 tools/build_gtfs_packs.py --only trenitalia-gtfs --only italo-gtfs \
+      --source-archive trenitalia-gtfs=/path/gtfs-trenitalia.zip \
+      --source-archive italo-gtfs=/path/gtfs-italo.zip --generated-at 2026-11-02
+
 HTTP/GATEWAY_ONLY sources are intentionally not fetched.  They require an
 approved HTTPS gateway and a complete replacement archive; the tool never
 silently falls back to an old or partial download.
@@ -102,6 +108,14 @@ RELEASE_INTEGRITY = {
 # explicit rather than inferred from names so a feed refresh cannot accidentally
 # turn an urban bus line into a railway service.
 RAIL_ROUTE_TYPES = frozenset({"2", *(str(value) for value in range(100, 200))})
+
+# Operator-native national feeds whose own scheduled coach lines (route_type 3)
+# belong to the operator's published timetable: Trenitalia's regional and
+# connecting buses and ItaloBus.  They are kept as scheduled coaches next to the
+# trains; every other source stays rail-only, so a refresh can never turn an
+# urban bus network into railway data.
+SCHEDULED_COACH_ROUTE_TYPES = frozenset({"3"})
+SCHEDULED_COACH_SOURCES = frozenset({"trenitalia-gtfs", "italo-gtfs"})
 
 # Exceptional source-specific selectors are reviewed identifiers, not fuzzy
 # keywords.  A changed upstream ID fails the build and requires review.
@@ -297,7 +311,53 @@ def read_manifest(path: Path) -> dict[str, Any]:
         seen_assets.add(name)
         if not isinstance(pack.get("sourceUrl"), str):
             raise BuildError(f"sourceUrl mancante per {source_id}")
+        if "upstream" in pack:
+            validate_upstream_pin(source_id, pack)
     return manifest
+
+
+def _is_hex(value: object, length: int) -> bool:
+    return isinstance(value, str) and len(value) == length and all(ch in "0123456789abcdef" for ch in value)
+
+
+def validate_upstream_pin(source_id: str, pack: Mapping[str, Any]) -> None:
+    """A pinned upstream names one immutable archive: a Git commit, a path and its SHA-256.
+
+    The registered sourceUrl must be the raw URL of exactly that commit and path, so
+    ``--refresh`` can only ever download the reviewed archive, and the build rejects
+    any input whose digest differs from ``archiveSha256``.
+    """
+    upstream = pack.get("upstream")
+    if not isinstance(upstream, dict):
+        raise BuildError(f"{source_id}: upstream non valido")
+    if upstream.get("kind") != "github-commit":
+        raise BuildError(f"{source_id}: tipo di upstream non supportato: {upstream.get('kind')!r}")
+    repository = upstream.get("repository")
+    path = upstream.get("path")
+    commit = upstream.get("commit")
+    if not isinstance(repository, str) or not repository.startswith("https://github.com/"):
+        raise BuildError(f"{source_id}: repository upstream non valido")
+    slug = repository.removeprefix("https://github.com/")
+    if slug.count("/") != 1 or not all(part and part not in {".", ".."} for part in slug.split("/")):
+        raise BuildError(f"{source_id}: repository upstream non valido")
+    if not isinstance(path, str) or not path or path.startswith("/") or ".." in path.split("/"):
+        raise BuildError(f"{source_id}: percorso upstream non valido")
+    if not _is_hex(commit, 40):
+        raise BuildError(f"{source_id}: commit upstream non valido")
+    if not _is_hex(upstream.get("archiveSha256"), 64):
+        raise BuildError(f"{source_id}: archiveSha256 upstream non valido")
+    expected_url = f"https://raw.githubusercontent.com/{slug}/{commit}/{path}"
+    if pack.get("sourceUrl") != expected_url:
+        raise BuildError(f"{source_id}: sourceUrl non corrisponde al commit upstream fissato ({expected_url})")
+
+
+def require_pinned_archive(pack: Mapping[str, Any], source_archive_sha256: str) -> None:
+    upstream = pack.get("upstream")
+    if isinstance(upstream, dict) and upstream.get("archiveSha256") != source_archive_sha256:
+        raise BuildError(
+            f"{pack.get('sourceId')}: archivio sorgente {source_archive_sha256} diverso da quello fissato "
+            f"{upstream.get('archiveSha256')}"
+        )
 
 
 def find_entry(archive: zipfile.ZipFile, basename: str) -> str | None:
@@ -533,6 +593,17 @@ def selected_routes(source_id: str, routes: CsvTable) -> tuple[tuple[dict[str, s
             "kind": "explicit-route-ids",
             "description": "Selettore revisionato specifico della fonte; nessun matching per nome.",
             "routeIds": sorted(explicit),
+        }
+    elif source_id in SCHEDULED_COACH_SOURCES:
+        allowed = RAIL_ROUTE_TYPES | SCHEDULED_COACH_ROUTE_TYPES
+        selected = tuple(row for row in routes.rows if row.get("route_type", "").strip() in allowed)
+        metadata = {
+            "kind": "gtfs-rail-and-operator-coach-route-types",
+            "description": (
+                "route_type GTFS ferroviari standard ed estesi (2, 100-199) e autobus di linea "
+                "dell'operatore (3), presentati come bus programmati e mai come treni."
+            ),
+            "routeTypes": sorted(allowed, key=int),
         }
     else:
         selected = tuple(row for row in routes.rows if row.get("route_type", "").strip() in RAIL_ROUTE_TYPES)
@@ -785,15 +856,26 @@ def write_deterministic_zip(destination: Path, tables: Mapping[str, CsvTable], m
         )
 
 
-def manifest_for_build(source_manifest: Mapping[str, Any], results: Mapping[str, FilterResult], generated_at: str) -> dict[str, Any]:
+def manifest_for_build(
+    source_manifest: Mapping[str, Any],
+    results: Mapping[str, FilterResult],
+    generated_at: str,
+    kept_entries: Mapping[str, Mapping[str, Any]] | None = None,
+) -> dict[str, Any]:
     try:
         date.fromisoformat(generated_at)
     except ValueError as error:
         raise BuildError(f"generatedAt non ISO-8601: {generated_at}") from error
+    kept = kept_entries or {}
     packs: list[dict[str, Any]] = []
     for original in source_manifest["packs"]:
         source_id = original["sourceId"]
+        if source_id in kept:
+            # Not rebuilt (--only): the published entry and ZIP stay byte for byte.
+            packs.append(dict(kept[source_id]))
+            continue
         result = results[source_id]
+        require_pinned_archive(original, result.source_archive_sha256)
         pack = dict(original)
         name = safe_asset_name(pack["asset"])
         pack["sha256"] = result.source_archive_sha256  # overwritten after ZIP write below
@@ -869,8 +951,14 @@ def _build_packs_locked(
     manifest_path: Path | None = None,
     generated_at: str | None = None,
     input_overrides: Mapping[str, Path] | None = None,
+    only: Iterable[str] | None = None,
 ) -> dict[str, Any]:
-    """Build all registered packs and atomically replace ``output_dir``."""
+    """Build the registered packs and atomically replace ``output_dir``.
+
+    With ``only``, just those sources are filtered again; every other pack must
+    already be published in ``output_dir`` and is copied with its manifest entry
+    unchanged, so adding a source never rewrites the bytes of the others.
+    """
     manifest_path = manifest_path or input_dir / "manifest.json"
     source_manifest = read_manifest(manifest_path)
     generated_at = generated_at or source_manifest.get("generatedAt")
@@ -879,12 +967,29 @@ def _build_packs_locked(
     overrides = input_overrides or {}
     published_assets: dict[str, Path] = {}
     published_manifest_path = output_dir / "manifest.json"
-    if overrides and output_dir != input_dir and published_manifest_path.is_file():
+    if (overrides or only) and output_dir != input_dir and published_manifest_path.is_file():
         published_manifest = read_manifest(published_manifest_path)
         published_assets = {
             pack["sourceId"]: output_dir / safe_asset_name(pack["asset"])
             for pack in published_manifest["packs"]
         }
+    selected = set(only or ())
+    registered = {pack["sourceId"] for pack in source_manifest["packs"]}
+    if selected - registered:
+        raise BuildError(f"--only con sourceId non registrato: {', '.join(sorted(selected - registered))}")
+    kept_entries: dict[str, Mapping[str, Any]] = {}
+    if selected:
+        if not published_manifest_path.is_file():
+            raise BuildError("--only richiede un manifest gia pubblicato nella directory di output")
+        published_entries = {pack["sourceId"]: pack for pack in read_manifest(published_manifest_path)["packs"]}
+        for pack in source_manifest["packs"]:
+            source_id = pack["sourceId"]
+            if source_id in selected:
+                continue
+            entry = published_entries.get(source_id)
+            if entry is None or safe_asset_name(entry["asset"]) != safe_asset_name(pack["asset"]):
+                raise BuildError(f"{source_id}: non pubblicato in {output_dir}; ricostruirlo o includerlo in --only")
+            kept_entries[source_id] = entry
     output_dir.parent.mkdir(parents=True, exist_ok=True)
     staging = Path(tempfile.mkdtemp(prefix=".gtfs-build-", dir=output_dir.parent))
     try:
@@ -892,10 +997,15 @@ def _build_packs_locked(
         for pack in source_manifest["packs"]:
             source_id = pack["sourceId"]
             name = safe_asset_name(pack["asset"])
+            if source_id in kept_entries:
+                shutil.copyfile(output_dir / name, staging / name)
+                continue
             source = overrides.get(source_id) or published_assets.get(source_id) or input_dir / name
             results[source_id] = filter_archive(source, staging / name, source_id)
-        output_manifest = manifest_for_build(source_manifest, results, generated_at)
+        output_manifest = manifest_for_build(source_manifest, results, generated_at, kept_entries)
         for pack in output_manifest["packs"]:
+            if pack["sourceId"] in kept_entries:
+                continue
             name = safe_asset_name(pack["asset"])
             pack["sha256"] = sha256_file(staging / name)
         write_json(staging / "manifest.json", output_manifest)
@@ -915,6 +1025,7 @@ def build_packs(
     manifest_path: Path | None = None,
     generated_at: str | None = None,
     input_overrides: Mapping[str, Path] | None = None,
+    only: Iterable[str] | None = None,
 ) -> dict[str, Any]:
     """Serialize the complete base-read/build/publish transaction for ``output_dir``."""
     with publication_lock(output_dir):
@@ -924,6 +1035,7 @@ def build_packs(
             manifest_path=manifest_path,
             generated_at=generated_at,
             input_overrides=input_overrides,
+            only=only,
         )
 
 
@@ -1019,6 +1131,11 @@ def verify_assets(
         path = asset_dir / name
         if not path.is_file():
             continue
+        upstream = pack.get("upstream")
+        if isinstance(upstream, dict) and upstream.get("archiveSha256") != pack.get("sourceArchiveSha256"):
+            problems.append(
+                f"archivio sorgente non fissato per {name}: {pack.get('sourceArchiveSha256')} != {upstream.get('archiveSha256')}"
+            )
         actual_hash = sha256_file(path)
         if pack.get("sha256") != actual_hash:
             problems.append(f"hash manifest incoerente per {name}: {pack.get('sha256')} != {actual_hash}")
@@ -1185,6 +1302,20 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--generated-at", help="data ISO da scrivere nel manifest; default: data gia registrata")
     parser.add_argument("--refresh", action="store_true", help="scarica ZIP solo da source HTTPS OPEN_DIRECT registrate")
     parser.add_argument("--source-id", action="append", default=[], help="limita --refresh alle sourceId indicate (ripetibile)")
+    parser.add_argument(
+        "--source-archive",
+        action="append",
+        default=[],
+        metavar="SOURCE_ID=PATH",
+        help="archivio GTFS completo gia acquisito per una sourceId (ripetibile); un upstream fissato ne verifica lo SHA-256",
+    )
+    parser.add_argument(
+        "--only",
+        action="append",
+        default=[],
+        metavar="SOURCE_ID",
+        help="ricostruisce solo queste sourceId; gli altri pack pubblicati restano invariati byte per byte (ripetibile)",
+    )
     parser.add_argument("--max-download-bytes", type=int, default=DEFAULT_MAX_DOWNLOAD_BYTES, help="cap hard per ogni download")
     parser.add_argument("--check", action="store_true", help="verifica asset, hash e validita release senza rete")
     parser.add_argument("--as-of", type=parse_date, default=date.today(), help="data di riferimento per --check")
@@ -1222,20 +1353,29 @@ def main(argv: Sequence[str] | None = None) -> int:
             print(f"GTFS asset verification passed: {args.input_dir}")
             return 0
         overrides: dict[str, Path] = {}
+        for item in args.source_archive:
+            source_id, separator, location = item.partition("=")
+            if not separator or not source_id or not location:
+                parser.error(f"--source-archive richiede SOURCE_ID=PATH: {item!r}")
+            if source_id in overrides:
+                parser.error(f"--source-archive duplicato per {source_id}")
+            overrides[source_id] = Path(location)
         download_dir: Path | None = None
         try:
             if args.refresh:
-                overrides, download_dir = refresh_overrides(
+                downloaded, download_dir = refresh_overrides(
                     manifest,
                     set(args.source_id),
                     max_download_bytes=args.max_download_bytes,
                 )
+                overrides.update(downloaded)
             output = build_packs(
                 args.input_dir,
                 args.output_dir,
                 manifest_path=manifest_path,
                 generated_at=args.generated_at,
                 input_overrides=overrides,
+                only=args.only,
             )
         finally:
             if download_dir is not None:

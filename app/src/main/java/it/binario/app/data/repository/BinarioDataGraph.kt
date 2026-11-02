@@ -4,6 +4,7 @@ import android.content.Context
 import it.binario.app.data.LocalOnlyRailDataPolicy
 import it.binario.app.data.RailDataRepository
 import it.binario.app.data.TrainDataSource
+import it.binario.app.data.catalog.EmbeddedCuratedRailStationCatalog
 import it.binario.app.data.gtfs.EmbeddedGtfsRealtimeScheduleResolver
 import it.binario.app.data.gtfs.EmbeddedGtfsPacks
 import it.binario.app.data.gtfs.EmbeddedGtfsRouteAdapter
@@ -21,6 +22,8 @@ import it.binario.app.data.provider.ProviderRegistry
 import it.binario.app.data.provider.StationBoardProvider
 import it.binario.app.data.provider.TripUpdateProvider
 import it.binario.app.data.provider.VehiclePositionProvider
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /**
  * Punto di composizione unico del livello dati. Nessuna UI, worker o companion
@@ -43,7 +46,12 @@ object BinarioDataGraph {
     fun routeDataSource(context: Context): TrainDataSource = synchronized(routeSourcesByPackage) {
         val applicationContext = context.applicationContext
         routeSourcesByPackage.getOrPut(applicationContext.packageName) {
-            val embedded = EmbeddedGtfsRouteAdapter(openAsset = { assetPath -> applicationContext.assets.open(assetPath) })
+            val openAsset = { assetPath: String -> applicationContext.assets.open(assetPath) }
+            // The catalogue is read only for the packs that publish station codes (Trenitalia, Italo).
+            val embedded = EmbeddedGtfsRouteAdapter(
+                openAsset = openAsset,
+                stationCatalog = { withContext(Dispatchers.IO) { EmbeddedCuratedRailStationCatalog(openAsset).load() } }
+            )
             val officialPlannedSource = RailDataRepository(
                 authorisedSources = localOnlyPolicy.routeSources(),
                 // Embedded official/open-data GTFS belongs to the primary tier,

@@ -3,9 +3,12 @@ package it.binario.app.data.journey
 import it.binario.app.data.Station
 import it.binario.app.data.catalog.EmbeddedCuratedRailStationCatalog
 import it.binario.app.data.core.JourneyOption
+import it.binario.app.data.core.LegMode
+import it.binario.app.data.core.ServiceKind
 import it.binario.app.data.core.StationId
 import it.binario.app.data.gtfs.EmbeddedGtfsPacks
 import it.binario.app.data.provider.JourneySearchRequest
+import it.binario.app.data.provider.ProviderErrorKind
 import it.binario.app.data.provider.ProviderResult
 import java.io.File
 import java.time.LocalDate
@@ -19,7 +22,8 @@ import org.junit.Test
 
 /**
  * The planner on the packs and the catalogue shipped in the APK. The expected trains belong to the bundled
- * timetables (valid until December 2026): a pack refresh may change them, never the structure checked here.
+ * timetables (valid until December 2026; Italo until the timetable change of 13 December): a pack refresh may change
+ * them, never the structure checked here.
  */
 class EmbeddedGtfsJourneyRealPacksTest {
     private val openAsset = { path: String -> File("src/main/assets", path).inputStream() }
@@ -81,6 +85,58 @@ class EmbeddedGtfsJourneyRealPacksTest {
         )
     }
 
+    @Test fun `Domodossola to Milano adds the Trenitalia regionals to the EuroCity trains, each run once`() = runBlocking {
+        val found = options(EmbeddedGtfsJourneyProvider.create(openAsset).searchJourneys(request("Domodossola", "Milano Centrale", "07:00")))
+        assertEquals(
+            "REG 10217 Domodossola 07:25-09:10 Rho-Fiera Milano | RV 2017 Rho-Fiera Milano 09:31-09:49 Milano Centrale",
+            found[0].summary()
+        )
+        assertEquals("EC 41 Domodossola 08:17-09:50 Milano Centrale", found[1].summary())
+        // EC 41 is in the Swiss and in the Trenitalia pack: one option, from the preferred Swiss pack.
+        assertEquals(1, found.count { option -> option.legs.any { it.publicNumber == "41" } })
+        assertEquals("ch-otd-gtfs", found[1].legs.single().runId!!.value.substringBefore(':'))
+        assertTrue(found.flatMap { it.legs }.any { it.runId!!.value.startsWith("trenitalia-gtfs:") })
+        assertEquals(found.map { it.id }.distinct(), found.map { it.id })
+    }
+
+    @Test fun `Merano to Roma combines the South Tyrol, Trenitalia and Italo packs`() = runBlocking {
+        val found = options(EmbeddedGtfsJourneyProvider.create(openAsset).searchJourneys(request("Merano Meran", "Roma Termini", "07:00")))
+        assertEquals(
+            "REG 17106 Merano Meran 07:46-08:26 Bolzano Bozen | AV 9721 Bolzano Bozen 08:45-11:45 Milano Centrale | " +
+                "FR 9627 Milano Centrale 11:58-15:10 Roma Termini",
+            found[0].summary()
+        )
+        assertEquals(6, found.size)
+        val sources = found.flatMap { it.legs }.map { it.runId!!.value.substringBefore(':') }.toSet()
+        assertTrue(sources.containsAll(listOf("alto-adige-sta-gtfs", "trenitalia-gtfs", "italo-gtfs")))
+        assertTrue(found.all { it.transfers <= 2 })
+    }
+
+    @Test fun `Venezia to Cortina takes the ItaloBus from Mestre`() = runBlocking {
+        val option = options(EmbeddedGtfsJourneyProvider.create(openAsset).searchJourneys(request("Venezia S. Lucia", "Cortina D'Ampezzo", "08:00"))).single()
+        assertEquals(
+            "REG 17180 Venezia S. Lucia 10:04-10:15 Venezia Mestre | ItaloBus 1060 Venezia Mestre 10:20-13:10 Cortina D'Ampezzo",
+            option.summary()
+        )
+        assertEquals(listOf(LegMode.TRAIN, LegMode.BUS), option.legs.map { it.mode })
+    }
+
+    @Test fun `Firenze to Siena on the Trenitalia regionals and Aosta to Ivrea on its buses`() = runBlocking {
+        val provider = EmbeddedGtfsJourneyProvider.create(openAsset)
+        val siena = options(provider.searchJourneys(request("Firenze S. M. Novella", "Siena", "08:00")))
+        assertEquals("REG 18203 Firenze S. M. Novella 08:10-09:38 Siena", siena[0].summary())
+        assertEquals(6, siena.size)
+        val ivrea = options(provider.searchJourneys(request("Aosta", "Ivrea", "08:00")))
+        assertEquals("BUS AO042 Aosta 08:16-09:26 Ivrea", ivrea[0].summary())
+        assertTrue(ivrea.all { option -> option.legs.all { it.mode == LegMode.BUS && it.serviceKind == ServiceKind.BUS } })
+    }
+
+    @Test fun `Matera has no stop in the bundled packs`() = runBlocking {
+        // The city is served by FAL trains and FrecciaLink coaches, neither of which is in the Trenitalia feed.
+        val result = EmbeddedGtfsJourneyProvider.create(openAsset).searchJourneys(request("Milano Centrale", "Matera", "07:00"))
+        assertEquals(ProviderErrorKind.NOT_SUPPORTED, (result as ProviderResult.Failure).error.kind)
+    }
+
     @Test fun `search times on the bundled packs`() = runBlocking {
         val provider = EmbeddedGtfsJourneyProvider.create(openAsset)
         fun timed(block: suspend () -> Unit): Long = runBlocking {
@@ -96,16 +152,27 @@ class EmbeddedGtfsJourneyRealPacksTest {
         val swissWarm = timed { options(provider.searchJourneys(request("Milano Centrale", "Mendrisio", "09:00"))) }
         val crossPackCold = timed { options(provider.searchJourneys(request("Merano Meran", "Innsbruck Hbf.", "08:00"))) }
         val crossPackWarm = timed { options(provider.searchJourneys(request("Bolzano Bozen", "Innsbruck Hbf.", "08:00"))) }
+        // The national packs on a fresh provider: first search, the same search cached, then other national searches.
+        val national = EmbeddedGtfsJourneyProvider.create(openAsset)
+        val nationalCold = timed { options(national.searchJourneys(request("Merano Meran", "Roma Termini", "07:00"))) }
+        val nationalWarm = timed { options(national.searchJourneys(request("Merano Meran", "Roma Termini", "07:00"))) }
+        val nationalOther = timed { options(national.searchJourneys(request("Domodossola", "Milano Centrale", "07:00"))) }
+        val busCrossPack = timed { options(national.searchJourneys(request("Venezia S. Lucia", "Cortina D'Ampezzo", "08:00"))) }
+        val nationalBus = timed { options(national.searchJourneys(request("Milano Centrale", "Potenza Centrale", "07:00"))) }
         println(
             "JOURNEY_PERF coldFirstSearchMs=$cold warmMs=$warm otherTimeMs=$otherTime nextDayWindowMs=$nextDayWindow " +
                 "swissColdMs=$swissCold swissWarmMs=$swissWarm crossPackColdMs=$crossPackCold crossPackWarmMs=$crossPackWarm " +
-                "cachedDays=${provider.cachedDaysForTest()} cachedBytes=${provider.cachedBytesForTest()}"
+                "cachedDays=${provider.cachedDaysForTest()} cachedBytes=${provider.cachedBytesForTest()} " +
+                "nationalColdMs=$nationalCold nationalWarmMs=$nationalWarm nationalOtherMs=$nationalOther " +
+                "busCrossPackMs=$busCrossPack nationalBusMs=$nationalBus nationalCachedBytes=${national.cachedBytesForTest()}"
         )
         // Once the day arrays are cached a search is a scan of a few tens of thousands of connections; the bound is
         // loose for slow CI machines, the measured values are reported above.
         assertTrue("warm search took $warm ms", warm < 1_000)
         assertTrue("warm Swiss search took $swissWarm ms", swissWarm < 1_000)
         assertTrue("warm cross-pack search took $crossPackWarm ms", crossPackWarm < 1_000)
+        assertTrue("warm national search took $nationalWarm ms", nationalWarm < 1_000)
         assertTrue(provider.cachedBytesForTest() <= GtfsJourneyPlannerSettings().maxCachedBytes)
+        assertTrue(national.cachedBytesForTest() <= GtfsJourneyPlannerSettings().maxCachedBytes)
     }
 }

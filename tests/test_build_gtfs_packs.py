@@ -2,6 +2,7 @@
 """Offline regression tests for tools/build_gtfs_packs.py."""
 from __future__ import annotations
 
+import csv
 import hashlib
 import importlib.util
 import io
@@ -663,6 +664,160 @@ class BuildGtfsPacksTest(unittest.TestCase):
         final_hashes = {pack["sourceId"]: pack["sourceArchiveSha256"] for pack in final_manifest["packs"]}
         self.assertEqual(builder.sha256_file(override_a), final_hashes["source-a"])
         self.assertEqual(builder.sha256_file(override_b), final_hashes["source-b"])
+
+
+
+# Small extracts of the Trenitalia and Italo feeds committed for the app tests; zipped here as an upstream-like
+# archive with an unused shapes.txt, so the full upstream archives are never needed.
+EXTRACTS = ROOT / "app/src/test/resources/gtfs-extracts"
+ASSETS = ROOT / "app/src/main/assets/gtfs"
+
+
+def upstream_zip(source_id: str, target: Path) -> str:
+    with zipfile.ZipFile(target, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        for file in sorted((EXTRACTS / source_id).glob("*.txt")):
+            archive.write(file, file.name)
+        archive.writestr("shapes.txt", "shape_id,shape_pt_lat,shape_pt_lon,shape_pt_sequence\nS,45,9,1\n")
+    return hashlib.sha256(target.read_bytes()).hexdigest()
+
+
+def registry_entry(source_id: str, archive_sha256: str, commit: str = "a" * 40) -> dict[str, object]:
+    repository = f"deryclem/{source_id}"
+    return {
+        "sourceId": source_id,
+        "asset": f"gtfs/{source_id}.zip",
+        "sourceUrl": f"https://raw.githubusercontent.com/{repository}/{commit}/gtfs.zip",
+        "accessMode": "OPEN_DIRECT",
+        "attribution": "fixture",
+        "sha256": "0" * 64,
+        "lastServiceDate": "2026-01-01",
+        "notes": "fixture",
+        "upstream": {
+            "kind": "github-commit",
+            "repository": f"https://github.com/{repository}",
+            "commit": commit,
+            "path": "gtfs.zip",
+            "archiveSha256": archive_sha256,
+            "licence": "CC BY 4.0",
+            "officialDataset": "https://example.test/dataset",
+        },
+    }
+
+
+def table(archive: zipfile.ZipFile, name: str) -> list[dict[str, str]]:
+    return list(csv.DictReader(io.StringIO(archive.read(name).decode("utf-8"))))
+
+
+class NationalPackTest(unittest.TestCase):
+    """The pinned Trenitalia and Italo packs: coach policy, upstream pin, incremental build, reproducibility."""
+
+    def setUp(self) -> None:
+        self.temp = Path(tempfile.mkdtemp(prefix="gtfs-national-test-"))
+        self.addCleanup(shutil.rmtree, self.temp, ignore_errors=True)
+
+    def build(self, source_ids: tuple[str, ...] = ("trenitalia-gtfs", "italo-gtfs")) -> tuple[Path, dict[str, Path]]:
+        inputs = self.temp / "inputs"
+        inputs.mkdir(exist_ok=True)
+        archives = {source_id: inputs / f"upstream-{source_id}.zip" for source_id in source_ids}
+        entries = [registry_entry(source_id, upstream_zip(source_id, path)) for source_id, path in archives.items()]
+        registry = self.temp / "registry.json"
+        registry.write_text(json.dumps({"generatedAt": "2026-11-02", "purpose": "test", "packs": entries}), encoding="utf-8")
+        return registry, archives
+
+    def test_trains_and_operator_coaches_are_kept_and_geometry_is_dropped(self) -> None:
+        registry, archives = self.build()
+        output = self.temp / "out"
+        manifest = builder.build_packs(self.temp, output, manifest_path=registry, generated_at="2026-11-02", input_overrides=archives)
+        policy = {pack["sourceId"]: pack["filter"] for pack in manifest["packs"]}
+        self.assertEqual("gtfs-rail-and-operator-coach-route-types", policy["trenitalia-gtfs"]["kind"])
+        self.assertIn("3", policy["italo-gtfs"]["routeTypes"])
+        for source_id in ("trenitalia-gtfs", "italo-gtfs"):
+            with zipfile.ZipFile(output / f"{source_id}.zip") as archive:
+                self.assertNotIn("shapes.txt", archive.namelist())
+                self.assertNotIn("shape_id", archive.read("trips.txt").decode("utf-8").splitlines()[0])
+                route_types = {row["route_type"] for row in table(archive, "routes.txt")}
+                self.assertEqual({"2", "3"}, route_types)
+                # The upstream attribution travels with the pack.
+                self.assertIn("attributions.txt", archive.namelist())
+        with zipfile.ZipFile(output / "trenitalia-gtfs.zip") as archive:
+            numbers = {row["trip_short_name"] for row in table(archive, "trips.txt")}
+            self.assertTrue({"AO042", "PZ101", "9721", "41"} <= numbers)
+        builder.verify_assets(output, as_of=None, min_valid_days=None)
+
+    def test_rail_only_sources_still_drop_bus_routes(self) -> None:
+        source = self.temp / "upstream.zip"
+        upstream_zip("italo-gtfs", source)
+        output = self.temp / "rail-only.zip"
+        builder.filter_archive(source, output, "some-rail-gtfs")
+        with zipfile.ZipFile(output) as archive:
+            self.assertEqual({"2"}, {row["route_type"] for row in table(archive, "routes.txt")})
+            self.assertNotIn("1060", {row["trip_short_name"] for row in table(archive, "trips.txt")})
+
+    def test_build_is_reproducible_from_the_pinned_archive(self) -> None:
+        registry, archives = self.build()
+        first = builder.build_packs(self.temp, self.temp / "one", manifest_path=registry, generated_at="2026-11-02", input_overrides=archives)
+        second = builder.build_packs(self.temp, self.temp / "two", manifest_path=registry, generated_at="2026-11-02", input_overrides=archives)
+        self.assertEqual(first, second)
+        for name in ("trenitalia-gtfs.zip", "italo-gtfs.zip", "manifest.json", "SHA256SUMS"):
+            self.assertEqual((self.temp / "one" / name).read_bytes(), (self.temp / "two" / name).read_bytes())
+        for pack in first["packs"]:
+            self.assertEqual(pack["upstream"]["archiveSha256"], pack["sourceArchiveSha256"])
+
+    def test_an_archive_other_than_the_pinned_one_is_rejected(self) -> None:
+        registry, archives = self.build(("italo-gtfs",))
+        payload = json.loads(registry.read_text(encoding="utf-8"))
+        payload["packs"][0]["upstream"]["archiveSha256"] = "f" * 64
+        registry.write_text(json.dumps(payload), encoding="utf-8")
+        with self.assertRaisesRegex(builder.BuildError, "diverso da quello fissato"):
+            builder.build_packs(self.temp, self.temp / "out", manifest_path=registry, generated_at="2026-11-02", input_overrides=archives)
+        self.assertFalse((self.temp / "out").exists())
+
+    def test_the_source_url_must_be_the_pinned_commit(self) -> None:
+        registry, _ = self.build(("italo-gtfs",))
+        payload = json.loads(registry.read_text(encoding="utf-8"))
+        payload["packs"][0]["sourceUrl"] = "https://raw.githubusercontent.com/deryclem/italo-gtfs/main/gtfs.zip"
+        registry.write_text(json.dumps(payload), encoding="utf-8")
+        with self.assertRaisesRegex(builder.BuildError, "commit upstream fissato"):
+            builder.read_manifest(registry)
+        payload["packs"][0]["upstream"]["commit"] = "main"
+        registry.write_text(json.dumps(payload), encoding="utf-8")
+        with self.assertRaisesRegex(builder.BuildError, "commit upstream non valido"):
+            builder.read_manifest(registry)
+
+    def test_only_rebuilds_the_named_sources_and_keeps_the_others_byte_for_byte(self) -> None:
+        registry, archives = self.build()
+        output = self.temp / "out"
+        builder.build_packs(self.temp, output, manifest_path=registry, generated_at="2026-11-01", input_overrides=archives)
+        italo_before = (output / "italo-gtfs.zip").read_bytes()
+        italo_entry = next(p for p in json.loads((output / "manifest.json").read_text(encoding="utf-8"))["packs"] if p["sourceId"] == "italo-gtfs")
+        (output / "trenitalia-gtfs.zip").unlink()
+        (output / "trenitalia-gtfs.zip").write_bytes(b"broken")  # rebuilt from the pinned archive below
+        manifest = builder.build_packs(
+            self.temp, output, manifest_path=registry, generated_at="2026-11-02",
+            input_overrides={"trenitalia-gtfs": archives["trenitalia-gtfs"]}, only=["trenitalia-gtfs"],
+        )
+        self.assertEqual("2026-11-02", manifest["generatedAt"])
+        self.assertEqual(italo_before, (output / "italo-gtfs.zip").read_bytes())
+        self.assertEqual(italo_entry, next(p for p in manifest["packs"] if p["sourceId"] == "italo-gtfs"))
+        builder.verify_assets(output, as_of=None, min_valid_days=None)
+        with self.assertRaisesRegex(builder.BuildError, "non registrato"):
+            builder.build_packs(self.temp, output, manifest_path=registry, only=["missing-gtfs"])
+
+    def test_shipped_national_packs_are_pinned_and_current(self) -> None:
+        manifest = builder.read_manifest(ASSETS / "manifest.json")
+        packs = {pack["sourceId"]: pack for pack in manifest["packs"]}
+        self.assertEqual("15350b3047d009b8a07e7e800f6ba9736ced0990e6fa6875f87d1190767c9461", packs["trenitalia-gtfs"]["sourceArchiveSha256"])
+        self.assertEqual("6c907245537b84a705265905dd41b62ef854bf29", packs["trenitalia-gtfs"]["upstream"]["commit"])
+        self.assertEqual("2a74f21478812e191b15cc2d7648cbdeb91b933867461df5c64f3a51b0c68662", packs["italo-gtfs"]["sourceArchiveSha256"])
+        self.assertEqual("4e96f9067e6adb154c357c366a513c45bc624382", packs["italo-gtfs"]["upstream"]["commit"])
+        self.assertEqual("https://www.cciss.it/nap/mmtis/public/en/catalog/Dataset/1077621", packs["trenitalia-gtfs"]["upstream"]["officialDataset"])
+        self.assertEqual("https://www.cciss.it/nap/mmtis/public/en/catalog/Dataset/1814124", packs["italo-gtfs"]["upstream"]["officialDataset"])
+        for source_id in ("trenitalia-gtfs", "italo-gtfs"):
+            with zipfile.ZipFile(ASSETS / f"{source_id}.zip") as archive:
+                self.assertNotIn("shapes.txt", archive.namelist())
+        self.assertEqual(date(2027, 12, 11), date.fromisoformat(packs["trenitalia-gtfs"]["lastServiceDate"]))
+        # Italo's calendar ends with the December 2026 timetable change: refresh before then (GTFS_PACK_REFRESH.md).
+        self.assertEqual(date(2026, 12, 12), date.fromisoformat(packs["italo-gtfs"]["lastServiceDate"]))
 
 
 if __name__ == "__main__":

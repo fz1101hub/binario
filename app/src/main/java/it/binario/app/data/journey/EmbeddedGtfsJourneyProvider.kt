@@ -24,6 +24,7 @@ import it.binario.app.data.gtfs.EmbeddedGtfsPacks
 import it.binario.app.data.gtfs.EmbeddedGtfsRouteAdapter
 import it.binario.app.data.gtfs.GtfsCompactIndexLimitException
 import it.binario.app.data.gtfs.GtfsDayTimetable
+import it.binario.app.data.gtfs.GtfsStopCodeScheme
 import it.binario.app.data.gtfs.GtfsStopDirectory
 import it.binario.app.data.planned.RfiProgrammedStationIds
 import it.binario.app.data.planned.SupplementalRfiProgrammedStationIds
@@ -73,17 +74,26 @@ data class GtfsJourneyPlannerSettings(
     val largeHubRailwayCodes: Set<String> = DEFAULT_LARGE_HUB_RAILWAY_CODES,
     /** Departures are searched from the requested time up to this many minutes later. */
     val searchWindowMinutes: Int = 8 * 60,
+    /**
+     * Connections leaving up to this long after the window are scanned too, so that a journey leaving inside the
+     * window can still arrive (Merano → Roma takes seven hours): only its first departure must be in the window.
+     */
+    val journeyHorizonMinutes: Int = 10 * 60,
     val maxPacksPerSearch: Int = 3,
     val maxIterations: Int = 32,
     /** Bound on the connections of one search window (they are copied into the scan arrays). */
     val maxSearchConnections: Int = 400_000,
-    /** Bound on the cached per-pack, per-service-day connection arrays (the Swiss pack's day is about 5 MB). */
+    /**
+     * Bound on the cached per-pack, per-service-day connection arrays (the Swiss pack's day is about 5 MB, the
+     * Trenitalia one 2.5 MB): room for the requested and the next day of the three packs of one search.
+     */
     val maxCachedDays: Int = 16,
-    val maxCachedBytes: Long = 16L * 1024L * 1024L
+    val maxCachedBytes: Long = 24L * 1024L * 1024L
 ) {
     init {
         require(defaultTransferMinutes in 0..60 && largeHubTransferMinutes in 0..60) { "Tempo di cambio non valido" }
         require(searchWindowMinutes in 30..24 * 60) { "Finestra di ricerca non valida" }
+        require(journeyHorizonMinutes in 0..24 * 60) { "Orizzonte dei viaggi non valido" }
         require(maxPacksPerSearch in 1..8) { "Numero di pack non valido" }
         require(maxIterations > 0 && maxSearchConnections > 0 && maxCachedDays > 0 && maxCachedBytes > 0)
     }
@@ -187,8 +197,12 @@ class EmbeddedGtfsJourneyProvider internal constructor(
         }
         val primary = ranked.filter { it.coversOrigin && it.coversDestination }
         val union = unionForChanges(ranked, origin, destination, resolver)
-        val selections = listOf(primary, union).filter(List<PackCoverage>::isNotEmpty)
-            .map { it.take(settings.maxPacksPerSearch) }
+        // A national pack (Trenitalia) serves both ends of most Italian searches: the free places of the first
+        // selection go to the packs the change pairing chose, so a regional network that only serves one end
+        // (the South Tyrol trains to Merano) still takes part when the national pack alone would find a journey.
+        val primaryWithChanges = (primary.take(settings.maxPacksPerSearch) + union).distinctBy { it.pack.sourceId }
+        val selections = listOf(primaryWithChanges, union).filter(List<PackCoverage>::isNotEmpty)
+            .map { selection -> selection.take(settings.maxPacksPerSearch).sortedBy(ranked::indexOf) }
             .distinctBy { selection -> selection.map { it.pack.sourceId } }
 
         var options = emptyList<JourneyOption>()
@@ -259,12 +273,15 @@ class EmbeddedGtfsJourneyProvider internal constructor(
         resolver: GtfsStopStationResolver
     ): SearchOutcome {
         var incomplete = false
-        // The previous service day only matters past its midnight and the next one only before the window ends,
-        // so those two are cached as partial days; the requested day is cached whole for later searches.
+        // The previous service day only matters past its midnight, so it is cached as a partial day; the requested
+        // day is cached whole for later searches, and so is the next one when the horizon reaches it.
+        val lastConnectionMinute = endMinute + settings.journeyHorizonMinutes
         val parts = buildList {
             add(DayPart(serviceDate.minusDays(1), MINUTES_PER_DAY, Int.MAX_VALUE))
             add(DayPart(serviceDate, 0, Int.MAX_VALUE))
-            if (endMinute >= MINUTES_PER_DAY) add(DayPart(serviceDate.plusDays(1), 0, settings.searchWindowMinutes - 1))
+            // Whole, like a requested day: every later search of the same two dates, at any time of day, reuses it
+            // instead of reading the pack again.
+            if (lastConnectionMinute >= MINUTES_PER_DAY) add(DayPart(serviceDate.plusDays(1), 0, Int.MAX_VALUE))
         }
         val slices = ArrayList<Slice>()
         for (coverage in selection) {
@@ -280,7 +297,7 @@ class EmbeddedGtfsJourneyProvider internal constructor(
                 }
             }
         }
-        val graph = buildGraph(slices, startMinute, endMinute, resolver)
+        val graph = buildGraph(slices, startMinute, lastConnectionMinute, resolver)
         incomplete = incomplete || graph.truncated
         val origins = BooleanArray(graph.timetable.nodeCount)
         val destinations = BooleanArray(graph.timetable.nodeCount)
@@ -297,7 +314,8 @@ class EmbeddedGtfsJourneyProvider internal constructor(
                 latestDepartureMinute = endMinute,
                 maxTransfers = request.maxTransfers,
                 maxResults = request.maxResults,
-                maxIterations = settings.maxIterations
+                maxIterations = settings.maxIterations,
+                lastConnectionMinute = lastConnectionMinute
             )
         ) { job.ensureActive() }
         val options = journeys.map { journey ->
@@ -306,7 +324,7 @@ class EmbeddedGtfsJourneyProvider internal constructor(
         return SearchOutcome(options, incomplete)
     }
 
-    private fun buildGraph(slices: List<Slice>, startMinute: Int, endMinute: Int, resolver: GtfsStopStationResolver): SearchGraph {
+    private fun buildGraph(slices: List<Slice>, startMinute: Int, lastMinute: Int, resolver: GtfsStopStationResolver): SearchGraph {
         require(slices.size <= MAX_SLICES) { "Troppi giorni di servizio in una ricerca" }
         val nodeIndex = HashMap<String, Int>()
         val nodeKeys = ArrayList<String>()
@@ -328,7 +346,7 @@ class EmbeddedGtfsJourneyProvider internal constructor(
             val day = slice.day
             for (connection in 0 until day.connectionCount) {
                 val departure = day.departureMinute[connection] + slice.offset
-                if (departure < startMinute || departure > endMinute) continue
+                if (departure < startMinute || departure > lastMinute) continue
                 if (count == settings.maxSearchConnections) {
                     truncated = true
                     break@selection
@@ -339,6 +357,8 @@ class EmbeddedGtfsJourneyProvider internal constructor(
                     (sliceIndex.toLong() shl 22) or connection.toLong()
             }
         }
+        val runs = mergeCrossPackRuns(slices, keys, count, stopNodes, tripOffsets, tripCount)
+        count = runs.keptConnections
         keys.sort(0, count)
 
         val departureNode = IntArray(count)
@@ -359,7 +379,7 @@ class EmbeddedGtfsJourneyProvider internal constructor(
             arrivalNode[index] = stopNodes[sliceIndex][day.arrivalStop[connection]]
             departureMinute[index] = day.departureMinute[connection] + slice.offset
             arrivalMinute[index] = day.arrivalMinute[connection] + slice.offset
-            trip[index] = tripOffsets[sliceIndex] + day.connectionTrip[connection]
+            trip[index] = runs.representative[tripOffsets[sliceIndex] + day.connectionTrip[connection]]
             boarding[index] = ConnectionScanTimetable.boardingFlags(day.pickupAllowed(connection), day.dropOffAllowed(connection))
             sliceOf[index] = sliceIndex
             connectionOf[index] = connection
@@ -389,6 +409,76 @@ class EmbeddedGtfsJourneyProvider internal constructor(
         )
     }
 
+    /**
+     * The same run published by two packs (an EuroCity in the Trenitalia and the ÖBB packs, a South Tyrol regional
+     * in the Trenitalia and the STA packs) becomes one trip of the scan: a trip of a later (lower-ranked) slice that
+     * has the same public number as a trip of another pack and at least one identical connection (same transfer
+     * points, departure and arrival minute) takes that trip's identity, and its identical connections are dropped.
+     * Staying on board across the part each pack publishes is then no change, and the run is scanned once.
+     * Connections of [keys] (the first [count], in slice order, so the preferred pack comes first) are compacted in
+     * place; the result maps every trip to the trip it is scanned as.
+     */
+    private fun mergeCrossPackRuns(
+        slices: List<Slice>,
+        keys: LongArray,
+        count: Int,
+        stopNodes: List<IntArray>,
+        tripOffsets: IntArray,
+        tripCount: Int
+    ): MergedRuns {
+        val representative = IntArray(tripCount) { it }
+        if (slices.map { it.day.sourceId }.distinct().size < 2) return MergedRuns(representative, count)
+        val numberOfTrip = arrayOfNulls<String>(tripCount)
+        val sliceOfTrip = IntArray(tripCount)
+        val sourcesByNumber = HashMap<String, MutableSet<SourceId>>()
+        slices.forEachIndexed { sliceIndex, slice ->
+            slice.day.trips.forEachIndexed { local, dayTrip ->
+                val global = tripOffsets[sliceIndex] + local
+                sliceOfTrip[global] = sliceIndex
+                val number = runNumberKey(dayTrip.publicNumber) ?: return@forEachIndexed
+                numberOfTrip[global] = number
+                sourcesByNumber.getOrPut(number) { HashSet(2) } += slice.day.sourceId
+            }
+        }
+        val shared = sourcesByNumber.filterValues { it.size > 1 }.keys
+        if (shared.isEmpty()) return MergedRuns(representative, count)
+        fun root(trip: Int): Int {
+            var current = trip
+            while (representative[current] != current) current = representative[current]
+            return current
+        }
+        val owner = HashMap<RunConnection, Int>()
+        var kept = 0
+        for (index in 0 until count) {
+            val key = keys[index]
+            val sliceIndex = ((key ushr 22) and 0x3F).toInt()
+            val connection = (key and 0x3FFFFF).toInt()
+            val slice = slices[sliceIndex]
+            val day = slice.day
+            val trip = tripOffsets[sliceIndex] + day.connectionTrip[connection]
+            val number = numberOfTrip[trip]
+            var duplicate = false
+            if (number != null && number in shared) {
+                val identity = RunConnection(
+                    number,
+                    stopNodes[sliceIndex][day.departureStop[connection]],
+                    stopNodes[sliceIndex][day.arrivalStop[connection]],
+                    day.departureMinute[connection] + slice.offset,
+                    day.arrivalMinute[connection] + slice.offset
+                )
+                val first = owner.putIfAbsent(identity, trip)
+                if (first != null && first != trip && slices[sliceOfTrip[first]].day.sourceId != day.sourceId) {
+                    val target = root(first)
+                    if (representative[trip] == trip && target != trip) representative[trip] = target
+                    duplicate = root(trip) == target
+                }
+            }
+            if (!duplicate) keys[kept++] = key
+        }
+        for (trip in 0 until tripCount) representative[trip] = root(trip)
+        return MergedRuns(representative, kept)
+    }
+
     private fun toOption(
         journey: ScannedJourney,
         graph: SearchGraph,
@@ -402,18 +492,20 @@ class EmbeddedGtfsJourneyProvider internal constructor(
     ): JourneyOption {
         val usedPacks = linkedSetOf<SourceId>()
         val legs = journey.legs.mapIndexed { index, leg ->
-            val slice = slices[graph.sliceOf[leg.boardConnection]]
-            val day = slice.day
+            val day = slices[graph.sliceOf[leg.boardConnection]].day
+            // A run merged across packs can be left on a connection only the other pack publishes.
+            val alightDay = slices[graph.sliceOf[leg.alightConnection]].day
             val board = graph.connectionOf[leg.boardConnection]
             val alight = graph.connectionOf[leg.alightConnection]
             val trip = day.trips[day.connectionTrip[board]]
             usedPacks += day.sourceId
+            usedPacks += alightDay.sourceId
             val boardStop = day.departureStop[board]
-            val alightStop = day.arrivalStop[alight]
+            val alightStop = alightDay.arrivalStop[alight]
             val (originId, originLabel) = if (index == 0) request.origin to origin.name
             else place(graph.nodeKeys[graph.timetable.departureNode[leg.boardConnection]], day, boardStop, resolver)
             val (destinationId, destinationLabel) = if (index == journey.legs.lastIndex) request.destination to destination.name
-            else place(graph.nodeKeys[graph.timetable.arrivalNode[leg.alightConnection]], day, alightStop, resolver)
+            else place(graph.nodeKeys[graph.timetable.arrivalNode[leg.alightConnection]], alightDay, alightStop, resolver)
             val number = displayNumber(trip.publicNumber)
             val line = trip.lineLabel?.takeIf { label ->
                 label.length <= 10 && '(' !in label && !label.equals("INCONNU", ignoreCase = true) &&
@@ -484,7 +576,7 @@ class EmbeddedGtfsJourneyProvider internal constructor(
             synchronized(packStops) { packStops[pack.sourceId] } ?: run {
                 val directory = adapter.stopDirectory(pack)
                 currentCoroutineContext().ensureActive()
-                PackStops.build(pack.sourceId, directory, resolver).also { built ->
+                PackStops.build(pack, directory, resolver).also { built ->
                     synchronized(packStops) { packStops[pack.sourceId] = built }
                 }
             }
@@ -563,16 +655,20 @@ class EmbeddedGtfsJourneyProvider internal constructor(
 
         companion object {
             /**
-             * A stop's transfer point is the catalogue station it resolves to; the platforms of one parent_station
-             * share the station any of them resolves to (when they agree). Stops the catalogue does not know stay
-             * points of their own pack: grouped by parent_station, or by identical name when they have none.
+             * A stop's transfer point is the catalogue station it resolves to (by the station code the pack
+             * publishes, if any, else by name); the platforms of one parent_station share the station any of them
+             * resolves to (when they agree). Stops the catalogue does not know stay points of their own pack:
+             * grouped by parent_station, or by identical name when they have none.
              */
-            fun build(sourceId: SourceId, directory: GtfsStopDirectory, resolver: GtfsStopStationResolver): PackStops {
+            fun build(pack: EmbeddedGtfsPack, directory: GtfsStopDirectory, resolver: GtfsStopStationResolver): PackStops {
+                val sourceId = pack.sourceId
                 val size = directory.size
                 val resolvedByName = HashMap<String, Station?>()
                 val resolved = Array(size) { index ->
                     val name = directory.names[index]
-                    resolvedByName.getOrPut(name) { resolver.resolve(name) }
+                    val byCode = if (pack.stopCodeScheme == GtfsStopCodeScheme.NONE) null
+                    else resolver.resolveCode(pack.stopCodeScheme, directory.codes[index], directory.latitude(index), directory.longitude(index), name)
+                    byCode ?: resolvedByName.getOrPut(name) { resolver.resolve(name) }
                 }
                 val referencedParents = directory.parents.filter(String::isNotEmpty).toHashSet()
                 val groupOf = Array(size) { index -> directory.parents[index].ifEmpty { directory.ids[index] } }
@@ -650,6 +746,12 @@ class EmbeddedGtfsJourneyProvider internal constructor(
 
     private class SearchOutcome(val options: List<JourneyOption>, val incomplete: Boolean)
 
+    /** [representative] maps a trip to the trip it is scanned as; the first [keptConnections] keys remain. */
+    private class MergedRuns(val representative: IntArray, val keptConnections: Int)
+
+    /** One connection of a numbered run, in the search's transfer points and minutes. */
+    private data class RunConnection(val number: String, val from: Int, val to: Int, val departure: Int, val arrival: Int)
+
     companion object {
         val SOURCE_ID: SourceId = KnownProviderIds.EMBEDDED_GTFS_JOURNEYS
 
@@ -659,9 +761,9 @@ class EmbeddedGtfsJourneyProvider internal constructor(
             capabilities = setOf(ProviderCapability.JOURNEY_SEARCH),
             coverage = CoverageDescriptor(
                 countryCodes = setOf("IT", "CH", "AT", "FR", "HR"),
-                description = "Solo le reti dei data pack GTFS inclusi nell'app (Trenord, Alto Adige, Trentino, EAV, " +
-                    "ARST, TFT, Svizzera, ÖBB, SNCF, HŽPP): i treni fuori da questi feed non ci sono. Orari programmati, " +
-                    "senza ritardi, binari né soppressioni."
+                description = "Solo le reti dei data pack GTFS inclusi nell'app (Trenitalia con i suoi bus, Italo con " +
+                    "ItaloBus, Trenord, Alto Adige, Trentino, EAV, ARST, TFT, Svizzera, ÖBB, SNCF, HŽPP): i treni fuori da " +
+                    "questi feed non ci sono. Orari programmati, senza ritardi, binari né soppressioni."
             ),
             accessMode = AccessMode.OPEN_DIRECT,
             ratePolicy = RatePolicy(minimumRequestInterval = Duration.ZERO, defaultTimeToLive = Duration.ofHours(12)),
@@ -686,8 +788,23 @@ class EmbeddedGtfsJourneyProvider internal constructor(
         internal fun displayNumber(published: String): String? =
             published.substringAfterLast(" - ").trim().ifEmpty { published.trim() }.ifEmpty { null }
 
+        /**
+         * The number two packs publish for the same run, compared across packs: the digits of the displayed
+         * number ("EC 85", "85" and "RE_11 - 85" all give "85"), or the letters and digits when it has no digit.
+         * Numbers longer than eight characters are ids, not train numbers, and never merge.
+         */
+        internal fun runNumberKey(published: String): String? {
+            val shown = displayNumber(published) ?: return null
+            val digits = shown.filter(Char::isDigit).trimStart('0')
+            val key = digits.ifEmpty { shown.uppercase(Locale.ROOT).filter(Char::isLetterOrDigit) }
+            return key.takeIf { it.isNotEmpty() && it.length <= 8 }
+        }
+
         internal fun serviceKind(mode: LegMode, category: TrainCategory, line: String?): ServiceKind {
             if (mode == LegMode.REPLACEMENT_BUS) return ServiceKind.REPLACEMENT_BUS
+            if (mode == LegMode.BUS) return ServiceKind.BUS
+            // An Intercity Notte is a night train before it is an Intercity.
+            if (line?.uppercase(Locale.ROOT)?.replace(" ", "") == "ICN") return ServiceKind.NIGHT
             when (category) {
                 TrainCategory.FRECCE, TrainCategory.AV_ITALO -> return ServiceKind.HIGH_SPEED
                 TrainCategory.INTERCITY -> return ServiceKind.INTERCITY

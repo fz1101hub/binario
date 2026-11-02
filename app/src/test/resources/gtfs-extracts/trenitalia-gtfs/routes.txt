@@ -1,0 +1,5 @@
+route_id,agency_id,route_short_name,route_long_name,route_desc,route_type,route_url,route_color,route_text_color,route_sort_order,continuous_pickup,continuous_drop_off,network_id
+IT::Line:busTRENITALIA:0083_70083,IT::Operator:05403151003:TRENITALIA:TRENITALIA,0083_BUS,Autobus,,3,,,,,,,
+IT::Line:railTRENITALIA:0083_10083,IT::Operator:05403151003:TRENITALIA:TRENITALIA,0083_REG,Regionale,,2,,,,,,,
+IT::Line:railTRENITALIA:0083_60083,IT::Operator:05403151003:TRENITALIA:TRENITALIA,0083_EC,Eurocity,,2,,,,,,,
+IT::Line:railTRENITALIA:0083_680083,IT::Operator:05403151003:TRENITALIA:TRENITALIA,0083_FR,Frecciarossa,,2,,,,,,,

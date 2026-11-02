@@ -1,0 +1,2 @@
+agency_id,agency_name,agency_url,agency_timezone,agency_lang,agency_phone,agency_fare_url,agency_email
+IT::Operator:05403151003:TRENITALIA:TRENITALIA,TRENITALIA,http://www.trenitalia.com,Europe/Rome,it,,,

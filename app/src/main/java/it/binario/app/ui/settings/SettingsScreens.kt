@@ -69,6 +69,7 @@ import it.binario.app.CommuterAlert
 import it.binario.app.CommuterAlertScheduleResult
 import it.binario.app.CommuterAlertScheduler
 import it.binario.app.IntegrationSettings
+import it.binario.app.LinkifiedText
 import it.binario.app.LocalDataBackupCodec
 import it.binario.app.MobilityPreferences
 import it.binario.app.R
@@ -385,6 +386,10 @@ private fun AboutSettings() {
         SectionHeading(stringResource(R.string.for_you_credits))
         Text(stringResource(R.string.settings_privacy_osm), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Text(stringResource(R.string.settings_credits_maps), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        // Offline Trenitalia and Italo timetables (CC BY 4.0 GTFS conversion of the NAP data): attribution with links.
+        val creditStyle = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)
+        LinkifiedText(stringResource(R.string.settings_credits_trenitalia), style = creditStyle)
+        LinkifiedText(stringResource(R.string.settings_credits_italo), style = creditStyle)
         Text(stringResource(R.string.settings_privacy_local_data), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }

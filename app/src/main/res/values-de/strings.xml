@@ -331,9 +331,13 @@
     </plurals>
     <string name="journey_arrival_next_day">am Folgetag</string>
     <string name="journey_leg_replacement_bus">Ersatzbus</string>
+    <string name="journey_leg_bus_trenitalia">Trenitalia-Bus</string>
+    <string name="journey_leg_freccialink">FrecciaLink</string>
+    <string name="journey_leg_italobus">ItaloBus</string>
+    <string name="journey_leg_bus">Bus</string>
     <string name="journey_source_offline">Offline-Sollfahrplan (GTFS Open Data)</string>
     <string name="journey_scheduled_only_notice">Planmäßige Zeiten: Verspätungen, Gleise und Ausfälle sind nicht geprüft. Bitte die Anzeigen im Bahnhof beachten.</string>
-    <string name="journey_coverage_notice">Auf dem Telefon mit den in der App enthaltenen Fahrplänen berechnet, nur für die abgedeckten Netze: Lombardei, Südtirol, Trentino, EAV, ARST, TFT, Schweiz, Österreich, Frankreich und Kroatien. Andere Züge können fehlen.</string>
+    <string name="journey_coverage_notice">Auf dem Telefon mit den in der App enthaltenen Fahrplänen berechnet, nur für die abgedeckten Netze: Trenitalia (Züge und Busse), Italo (Züge und ItaloBus), Lombardei, Südtirol, Trentino, EAV, ARST, TFT, Schweiz, Österreich, Frankreich und Kroatien. Andere Züge und Busse können fehlen.</string>
     <string name="journey_incomplete_notice">Einige Offline-Fahrpläne konnten nicht gelesen werden: Die Verbindungen können unvollständig sein.</string>
     <string name="journey_empty_no_solution">Keine Verbindung in den Offline-Fahrplänen im gesuchten Zeitraum.</string>
     <string name="journey_empty_not_covered">Die enthaltenen Offline-Fahrpläne decken einen oder beide Bahnhöfe nicht ab.</string>
@@ -375,6 +379,8 @@
     <string name="map_legend_user_position">Ungefähre Position, nicht gespeichert</string>
     <string name="settings_privacy_maps">Karten: Sie öffnen sich nur, wenn du sie aufklappst oder lädst. Zum Zeichnen lädt die App Stil, Kacheln, Schriften und Symbole von tiles.openfreemap.org (OpenFreeMap), das deine IP-Adresse und den gezeigten Bereich sieht: die Zugstrecke, den gewählten Bahnhof oder, bei Bahnhöfen in der Nähe, den Bereich um deine ungefähre Position. Die Position wird weder gesendet noch gespeichert; Kacheln bleiben in einem lokalen App-Cache.</string>
     <string name="settings_credits_maps">Karten: OpenFreeMap © OpenMapTiles, Daten © OpenStreetMap contributors (ODbL 1.0). Darstellung mit MapLibre Native, Lizenz BSD 2-Clause.</string>
+    <string name="settings_credits_trenitalia">Trenitalia-Fahrpläne (Züge und Busse): offizielle Daten der Trenitalia S.p.A., veröffentlicht auf dem italienischen National Access Point (CCISS) gemäß Art. 52 CAD und Verordnung (EU) 2017/1926, https://www.cciss.it/nap/mmtis/public/en/catalog/Dataset/1077621. GTFS-Umwandlung © Clément Desouche, CC BY 4.0: https://github.com/deryclem/trenitalia-gtfs (Lizenz https://creativecommons.org/licenses/by/4.0/). Binario nutzt nur die Sollfahrzeiten, ohne Streckengeometrie, und ist nicht mit Trenitalia verbunden.</string>
+    <string name="settings_credits_italo">Italo-Fahrpläne (Züge und ItaloBus): offizielle Daten der Italo S.p.A., veröffentlicht auf dem italienischen National Access Point (CCISS) gemäß Art. 52 CAD und Verordnung (EU) 2017/1926, https://www.cciss.it/nap/mmtis/public/en/catalog/Dataset/1814124. GTFS-Umwandlung © Clément Desouche, CC BY 4.0: https://github.com/deryclem/italo-gtfs (Lizenz https://creativecommons.org/licenses/by/4.0/). Binario nutzt nur die Sollfahrzeiten, ohne Streckengeometrie, und ist nicht mit Italo verbunden.</string>
     <string name="notification_permission_required">Warnung gespeichert. Um sie zu erhalten, erlaube Binario-Benachrichtigungen in den Android-Einstellungen.</string>
     <string name="backup_open_output_error">Die ausgewählte Datei kann nicht geöffnet werden.</string>
     <string name="backup_read_input_error">Die ausgewählte Datei kann nicht gelesen werden.</string>
