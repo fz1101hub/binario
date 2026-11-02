@@ -94,6 +94,8 @@ class WidgetConfigureActivity : ComponentActivity() {
                 var routeOriginText by remember { mutableStateOf(existing?.routeOrigin?.name.orEmpty()) }
                 var routeDestinationText by remember { mutableStateOf(existing?.routeDestination?.name.orEmpty()) }
                 var displayName by remember { mutableStateOf(existing?.displayName.orEmpty()) }
+                // A new widget starts with the new defaults (automatic refresh off); an existing one keeps its settings.
+                var settings by remember { mutableStateOf(existing?.settings ?: RouteWidgetSettings()) }
                 var validationMessage by remember { mutableStateOf<String?>(null) }
                 val routeOrigin = model.stationFromName(routeOriginText)
                 val routeDestination = model.stationFromName(routeDestinationText)
@@ -119,18 +121,22 @@ class WidgetConfigureActivity : ComponentActivity() {
                                 targetLabel = "${routeOrigin.name} → ${routeDestination.name}",
                                 displayName = displayName.trim(),
                                 routeOrigin = routeOrigin,
-                                routeDestination = routeDestination
+                                routeDestination = routeDestination,
+                                settings = settings
                             )
                         }
                     }
                     configuration?.let {
                         // Uno stato/snapshot di una configurazione precedente non deve mai
                         // comparire per la nuova tratta o direzione dell'istanza.
-                        WidgetStateStore.clear(this@WidgetConfigureActivity, widgetId)
-                        WidgetConfigurationStore(this@WidgetConfigureActivity).save(widgetId, it)
-                        RouteWidgetProvider.refreshAll(this@WidgetConfigureActivity)
-                        WidgetRefreshWorker.ensurePeriodicRefresh(this@WidgetConfigureActivity)
-                        WidgetRefreshWorker.enqueue(this@WidgetConfigureActivity)
+                        val context = this@WidgetConfigureActivity
+                        WidgetStateStore.clear(context, widgetId)
+                        WidgetConfigurationStore(context).save(widgetId, it)
+                        RouteWidgetProvider.refreshAll(context)
+                        // The refresh enqueued now counts as the latest one for the automatic schedule.
+                        WidgetAutoRefreshStore.recordAttempt(context, WidgetKind.ROUTE, widgetId)
+                        WidgetRefreshWorker.enqueue(context)
+                        WidgetAutoRefreshScheduler.reschedule(context)
                         setResult(RESULT_OK, Intent().putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId))
                         finish()
                     }
@@ -180,6 +186,22 @@ class WidgetConfigureActivity : ComponentActivity() {
                                         }
                                     }
                                 }
+                            }
+                        }
+                        item { AutoRefreshSection(settings.autoRefresh) { settings = settings.copy(autoRefresh = it) } }
+                        item { RouteDirectionSection(settings) { settings = it } }
+                        item { RouteTimeRangeSection(settings) { settings = it } }
+                        item { TrainTypeExclusionSection(settings.excludedTypes) { settings = settings.copy(excludedTypes = it) } }
+                        item {
+                            WidgetSettingsCard(stringResource(R.string.widget_settings_display_title)) {
+                                WidgetSwitchRow(
+                                    stringResource(R.string.widget_settings_until_arrival),
+                                    settings.untilArrival,
+                                    { settings = settings.copy(untilArrival = it) },
+                                    stringResource(R.string.widget_settings_until_arrival_description)
+                                )
+                                WidgetSwitchRow(stringResource(R.string.widget_settings_show_platform), settings.showPlatform, { settings = settings.copy(showPlatform = it) })
+                                WidgetSwitchRow(stringResource(R.string.widget_settings_show_train_name), settings.showTrainName, { settings = settings.copy(showTrainName = it) })
                             }
                         }
                         validationMessage?.let { message ->
@@ -262,3 +284,41 @@ internal fun WidgetChoiceButton(label: String, selected: Boolean, onClick: () ->
         Text(if (selected) stringResource(R.string.widget_selected_option, label) else label, modifier = Modifier.fillMaxWidth())
     }
 }
+
+/** "Mostra il ritorno dalle HH:mm": automatic direction by time of day. */
+@androidx.compose.runtime.Composable
+private fun RouteDirectionSection(settings: RouteWidgetSettings, onChange: (RouteWidgetSettings) -> Unit) {
+    WidgetSettingsCard(stringResource(R.string.widget_settings_direction_title), stringResource(R.string.widget_settings_return_description)) {
+        val returnFrom = settings.returnFrom
+        WidgetSwitchRow(
+            stringResource(R.string.widget_settings_return_switch),
+            returnFrom != null,
+            { enabled -> onChange(settings.copy(returnFrom = if (enabled) DEFAULT_RETURN_FROM else null)) }
+        )
+        if (returnFrom != null) {
+            val label = returnFrom.format(HH_MM)
+            WidgetTimeButton(
+                stringResource(R.string.widget_settings_return_from, label),
+                stringResource(R.string.widget_settings_return_from_accessibility, label),
+                returnFrom
+            ) { onChange(settings.copy(returnFrom = it)) }
+        }
+    }
+}
+
+@androidx.compose.runtime.Composable
+private fun RouteTimeRangeSection(settings: RouteWidgetSettings, onChange: (RouteWidgetSettings) -> Unit) {
+    WidgetSettingsCard(stringResource(R.string.widget_settings_range_title)) {
+        WidgetChoiceRow(stringResource(R.string.widget_settings_range_next), settings.timeRange == RouteTimeRange.NEXT, { onChange(settings.copy(timeRange = RouteTimeRange.NEXT)) })
+        WidgetChoiceRow(stringResource(R.string.widget_settings_range_3h), settings.timeRange == RouteTimeRange.NEXT_3H, { onChange(settings.copy(timeRange = RouteTimeRange.NEXT_3H)) })
+        WidgetChoiceRow(stringResource(R.string.widget_settings_range_6h), settings.timeRange == RouteTimeRange.NEXT_6H, { onChange(settings.copy(timeRange = RouteTimeRange.NEXT_6H)) })
+        WidgetChoiceRow(
+            stringResource(R.string.widget_settings_range_day),
+            settings.timeRange == RouteTimeRange.WHOLE_DAY,
+            { onChange(settings.copy(timeRange = RouteTimeRange.WHOLE_DAY)) },
+            stringResource(R.string.widget_settings_range_day_description)
+        )
+    }
+}
+
+private val DEFAULT_RETURN_FROM: java.time.LocalTime = java.time.LocalTime.of(14, 0)

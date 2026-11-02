@@ -2,9 +2,6 @@ package it.binario.app.ui.departures
 
 import android.Manifest
 import android.content.pm.PackageManager
-import android.location.Location
-import android.location.LocationManager
-import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -80,6 +77,7 @@ import it.binario.app.data.core.RunStatus
 import it.binario.app.data.core.StationBoardEntry
 import it.binario.app.data.repository.StationBoardRunDetails
 import it.binario.app.localized
+import it.binario.app.requestSingleLocationFix
 import it.binario.app.maps.GeoPoint
 import it.binario.app.maps.NearbyStationsMapCard
 import it.binario.app.maps.RouteMapPlanner
@@ -127,7 +125,7 @@ internal fun StationBoardScreen(modifier: Modifier, viewModel: TrainViewModel, r
     val resources = LocalResources.current
 
     fun locateNearbyStations() {
-        requestNearbyStationLocation(context) { location ->
+        requestSingleLocationFix(context) { location ->
             if (location == null) {
                 locationMessage = resources.getString(R.string.location_unavailable)
             } else {
@@ -616,30 +614,6 @@ internal fun RunStatus.stationBoardLabel(): String = when (this) {
 private val BOARD_ZONE: ZoneId = ZoneId.of("Europe/Rome")
 
 private val BOARD_TIME_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm", Locale.ITALIAN)
-
-private fun requestNearbyStationLocation(context: android.content.Context, onResult: (Location?) -> Unit) {
-    if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-        onResult(null)
-        return
-    }
-    val locationManager = context.getSystemService(LocationManager::class.java) ?: run {
-        onResult(null)
-        return
-    }
-    val fallback = {
-        onResult(runCatching {
-            locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)
-                ?: locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER)
-        }.getOrNull())
-    }
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-        runCatching {
-            locationManager.getCurrentLocation(LocationManager.NETWORK_PROVIDER, null, ContextCompat.getMainExecutor(context)) { location ->
-                if (location != null) onResult(location) else fallback()
-            }
-        }.onFailure { fallback() }
-    } else fallback()
-}
 
 @Composable
 internal fun StationPreferenceRow(

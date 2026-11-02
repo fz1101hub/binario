@@ -14,18 +14,16 @@ import androidx.core.content.edit
 import androidx.work.BackoffPolicy
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
-import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.Data
 import androidx.work.ExistingWorkPolicy
 import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
-import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import it.binario.app.MainActivity
 import it.binario.app.R
 import it.binario.app.UiMessage
 import it.binario.app.UiMessageKey
-import it.binario.app.data.RailTime
 import it.binario.app.data.Station
 import it.binario.app.data.core.BoardKind
 import it.binario.app.data.repository.BinarioDataGraph
@@ -34,7 +32,6 @@ import it.binario.app.data.repository.StationBoardAggregateService
 import it.binario.app.resolve
 import it.binario.app.updateTimeMessage
 import java.time.Instant
-import java.time.format.DateTimeFormatter
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -43,7 +40,7 @@ import kotlinx.coroutines.withContext
 class StationWidgetProvider : AppWidgetProvider() {
     override fun onUpdate(context: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray) {
         appWidgetIds.forEach { render(context, appWidgetManager, it) }
-        StationWidgetRefreshWorker.ensurePeriodicRefresh(context)
+        WidgetAutoRefreshScheduler.reschedule(context)
     }
 
     override fun onAppWidgetOptionsChanged(context: Context, appWidgetManager: AppWidgetManager, appWidgetId: Int, newOptions: android.os.Bundle) {
@@ -60,12 +57,15 @@ class StationWidgetProvider : AppWidgetProvider() {
         appWidgetIds.forEach { widgetId ->
             store.remove(widgetId)
             StationWidgetStateStore.clear(context, widgetId)
+            WidgetAutoRefreshStore.clear(context, WidgetKind.STATION, widgetId)
         }
+        // No automatic board request may outlive the widgets that asked for it.
+        WidgetAutoRefreshScheduler.reschedule(context)
     }
 
     override fun onDisabled(context: Context) {
-        // The last station widget is gone: no periodic board request may outlive it.
         StationWidgetRefreshWorker.cancel(context)
+        WidgetAutoRefreshScheduler.reschedule(context)
     }
 
     companion object {
@@ -91,13 +91,15 @@ class StationWidgetProvider : AppWidgetProvider() {
             destinationIds.forEach { views.setTextViewTextSize(it, TypedValue.COMPLEX_UNIT_SP, mode.rowTextSizeSp) }
             views.setTextViewText(R.id.station_widget_refresh, context.getString(R.string.widget_refresh_symbol))
             views.setOnClickPendingIntent(R.id.station_widget_refresh, refreshIntent(context, widgetId))
+            views.setViewVisibility(R.id.station_widget_nearest, View.GONE)
+            views.setTextViewText(R.id.station_widget_updated, "")
 
-            val station = StationWidgetConfigurationStore(context).read(widgetId)
-            if (station == null) {
+            val configuration = StationWidgetConfigurationStore(context).read(widgetId)
+            if (configuration == null) {
                 views.setTextViewText(R.id.station_widget_title, context.getString(R.string.station_widget_configuration_title))
                 views.setTextViewText(R.id.station_widget_meta, context.getString(R.string.station_widget_configuration_subtitle))
                 views.setContentDescription(R.id.station_widget_title, context.getString(R.string.station_widget_configuration_subtitle))
-                showRows(views, emptyList(), null, context)
+                showRows(views, emptyList(), null, context, StationWidgetSettings())
                 views.setViewVisibility(R.id.station_widget_empty, View.GONE)
                 views.setViewVisibility(R.id.station_widget_column_header, View.GONE)
                 views.setOnClickPendingIntent(R.id.station_widget_root, configureIntent(context, widgetId))
@@ -105,16 +107,25 @@ class StationWidgetProvider : AppWidgetProvider() {
                 manager.updateAppWidget(widgetId, views)
                 return
             }
+            val station = configuration.station
+            val settings = configuration.settings
+            val title = configuration.title
+            if (settings.showNearestButton) {
+                views.setViewVisibility(R.id.station_widget_nearest, View.VISIBLE)
+                views.setOnClickPendingIntent(R.id.station_widget_nearest, nearestIntent(context, widgetId))
+            }
 
-            views.setTextViewText(R.id.station_widget_title, station.name)
+            views.setTextViewText(R.id.station_widget_title, title)
             views.setOnClickPendingIntent(R.id.station_widget_root, openAppIntent(context, widgetId))
             val snapshot = StationWidgetStateStore.read(context, widgetId)?.takeIf { it.stationId == station.id }
+            views.setTextViewText(R.id.station_widget_updated, updatedAtHeader(context, snapshot?.retrievedAt ?: 0L))
+            val nearestNote = StationWidgetStateStore.nearestNote(context, widgetId)?.resolve(context.resources)
             if (snapshot == null) {
                 val failure = StationWidgetStateStore.lastFailure(context, widgetId)?.resolve(context.resources)
-                val meta = failure ?: context.getString(R.string.station_widget_waiting)
+                val meta = nearestNote ?: failure ?: context.getString(R.string.station_widget_waiting)
                 views.setTextViewText(R.id.station_widget_meta, meta)
-                views.setContentDescription(R.id.station_widget_title, context.getString(R.string.widget_unavailable_accessibility, station.name, meta))
-                showRows(views, emptyList(), null, context)
+                views.setContentDescription(R.id.station_widget_title, context.getString(R.string.widget_unavailable_accessibility, title, meta))
+                showRows(views, emptyList(), null, context, settings)
                 views.setViewVisibility(R.id.station_widget_column_header, View.GONE)
                 views.setViewVisibility(R.id.station_widget_empty, View.GONE)
                 manager.updateAppWidget(widgetId, views)
@@ -123,20 +134,23 @@ class StationWidgetProvider : AppWidgetProvider() {
 
             val now = System.currentTimeMillis()
             val freshness = snapshot.freshnessAt(now)
-            val updatedAt = updatedAtLabel(context, snapshot.retrievedAt)
-            val departures = StationWidgetPresenter.upcoming(snapshot.departures, freshness, now, mode.visibleRows)
-            views.setTextViewText(R.id.station_widget_meta, StationWidgetPresenter.meta(snapshot, freshness, updatedAt, strings))
+            val departures = StationWidgetPresenter.upcoming(snapshot.departures, freshness, now, mode.visibleRows, settings.excludedTypes)
+            views.setTextViewText(
+                R.id.station_widget_meta,
+                listOfNotNull(nearestNote, StationWidgetPresenter.meta(snapshot, freshness, null, strings)).joinToString(" · ")
+            )
             views.setContentDescription(
                 R.id.station_widget_title,
-                StationWidgetPresenter.titleAccessibility(snapshot, freshness, updateTimeMessage(snapshot.retrievedAt).resolve(context.resources), strings)
+                StationWidgetPresenter.titleAccessibility(snapshot.copy(stationName = title), freshness, updateTimeMessage(snapshot.retrievedAt).resolve(context.resources), strings)
             )
             views.setViewVisibility(R.id.station_widget_column_header, if (mode.showColumnHeader && departures.isNotEmpty()) View.VISIBLE else View.GONE)
+            views.setViewVisibility(R.id.station_widget_column_platform, if (settings.showPlatform) View.VISIBLE else View.GONE)
             views.setViewVisibility(R.id.station_widget_empty, if (departures.isEmpty()) View.VISIBLE else View.GONE)
-            showRows(views, departures.map { StationWidgetPresenter.row(it, freshness, strings) }, openAppIntent(context, widgetId), context)
+            showRows(views, departures.map { StationWidgetPresenter.row(it, freshness, strings) }, openAppIntent(context, widgetId), context, settings)
             manager.updateAppWidget(widgetId, views)
         }
 
-        private fun showRows(views: RemoteViews, rows: List<StationWidgetRow>, onOpen: PendingIntent?, context: Context) {
+        private fun showRows(views: RemoteViews, rows: List<StationWidgetRow>, onOpen: PendingIntent?, context: Context, settings: StationWidgetSettings) {
             rowIds.forEachIndexed { index, id ->
                 val row = rows.getOrNull(index)
                 if (row == null) {
@@ -147,7 +161,9 @@ class StationWidgetProvider : AppWidgetProvider() {
                 views.setTextViewText(timeIds[index], row.time)
                 views.setTextViewText(destinationIds[index], row.destination)
                 views.setTextViewText(trainIds[index], row.train)
+                views.setViewVisibility(trainIds[index], if (settings.showTrainName) View.VISIBLE else View.GONE)
                 views.setTextViewText(platformIds[index], row.platform)
+                views.setViewVisibility(platformIds[index], if (settings.showPlatform) View.VISIBLE else View.GONE)
                 views.setTextViewText(statusIds[index], row.status)
                 views.setTextColor(statusIds[index], ContextCompat.getColor(context, row.emphasis.colorRes()))
                 views.setContentDescription(id, row.accessibility)
@@ -200,87 +216,107 @@ class StationWidgetProvider : AppWidgetProvider() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        private fun updatedAtLabel(context: Context, retrievedAt: Long): String = if (retrievedAt <= 0L) {
-            context.getString(R.string.widget_never_updated)
-        } else {
-            context.getString(
-                R.string.widget_updated_at,
-                DateTimeFormatter.ofPattern("HH:mm").withZone(RailTime.defaultZone).format(Instant.ofEpochMilli(retrievedAt))
-            )
-        }
+        private fun nearestIntent(context: Context, widgetId: Int): PendingIntent = PendingIntent.getActivity(
+            context,
+            "station-nearest-$widgetId".hashCode(),
+            Intent(context, StationWidgetNearestActivity::class.java)
+                .putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId)
+                // Not NO_HISTORY: the activity must stay to receive the permission result; it finishes itself.
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
     }
 }
 
 /** Loads the board once per configured station; widgets showing the same station share the request. */
-class StationWidgetRefreshWorker(appContext: Context, params: WorkerParameters) : CoroutineWorker(appContext, params) {
-    override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
-        val widgets = StationWidgetConfigurationStore(applicationContext).all()
-        if (widgets.isEmpty()) return@withContext Result.success()
+internal object StationWidgetRefresher {
+    /** Refreshes the station widgets in [widgetIds], all of them when null. False when a retry may help. */
+    suspend fun refresh(context: Context, widgetIds: Set<Int>?): Boolean {
+        val widgets = StationWidgetConfigurationStore(context).all().filter { (widgetId, _) -> widgetIds == null || widgetId in widgetIds }
+        if (widgets.isEmpty()) return true
         val service = StationBoardAggregateService(BinarioDataGraph.stationBoardDisplayProviders())
+        val attemptAt = System.currentTimeMillis()
         var failed = false
-        widgets.groupBy { (_, station) -> station.id }.values.forEach { group ->
-            val station = group.first().second
+        widgets.groupBy { (_, configuration) -> configuration.station.id }.values.forEach { group ->
+            val station = group.first().second.station
+            group.forEach { (widgetId, _) -> WidgetAutoRefreshStore.recordAttempt(context, WidgetKind.STATION, widgetId, attemptAt) }
             val result = if (service.hasProviders) service.load(station, BoardKind.DEPARTURES) else null
             if (result is StationBoardAggregateResult.Success) {
                 val snapshot = StationWidgetSnapshot.fromBoard(result.board, Instant.now())
-                group.forEach { (widgetId, _) -> StationWidgetStateStore.save(applicationContext, widgetId, snapshot) }
+                group.forEach { (widgetId, _) -> StationWidgetStateStore.save(context, widgetId, snapshot) }
             } else {
                 // Without any active board source a retry cannot help; a failed request can.
                 if (service.hasProviders) failed = true
                 group.forEach { (widgetId, _) ->
-                    StationWidgetStateStore.markUnavailable(applicationContext, widgetId, UiMessage(UiMessageKey.STATION_BOARD_UNAVAILABLE))
+                    StationWidgetStateStore.markUnavailable(context, widgetId, UiMessage(UiMessageKey.STATION_BOARD_UNAVAILABLE))
                 }
             }
         }
-        StationWidgetProvider.refreshAll(applicationContext)
-        if (failed) Result.retry() else Result.success()
+        StationWidgetProvider.refreshAll(context)
+        return !failed
+    }
+}
+
+/** The refresh button of the station widget (and its periodic refresh before the settings existed). */
+class StationWidgetRefreshWorker(appContext: Context, params: WorkerParameters) : CoroutineWorker(appContext, params) {
+    override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
+        val ids = inputData.getInt(KEY_WIDGET_ID, AppWidgetManager.INVALID_APPWIDGET_ID)
+            .takeIf { it != AppWidgetManager.INVALID_APPWIDGET_ID }?.let { setOf(it) }
+        if (StationWidgetRefresher.refresh(applicationContext, ids)) Result.success() else Result.retry()
     }
 
     companion object {
         private const val ONE_TIME_WORK = "binario-station-widget-refresh"
-        private const val PERIODIC_WORK = "binario-station-widget-periodic-refresh"
+        private const val KEY_WIDGET_ID = "widget_id"
         private val networkConnected = Constraints.Builder()
             .setRequiredNetworkType(NetworkType.CONNECTED)
             .build()
 
-        fun enqueue(context: Context) {
+        /** Refreshes every station widget, or only [widgetId] (after the nearest station was chosen). */
+        fun enqueue(context: Context, widgetId: Int? = null) {
             val request = OneTimeWorkRequestBuilder<StationWidgetRefreshWorker>()
                 .setConstraints(networkConnected)
                 .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 15, TimeUnit.MINUTES)
+                .apply { widgetId?.let { setInputData(Data.Builder().putInt(KEY_WIDGET_ID, it).build()) } }
                 .build()
-            WorkManager.getInstance(context).enqueueUniqueWork(ONE_TIME_WORK, ExistingWorkPolicy.REPLACE, request)
+            WorkManager.getInstance(context).enqueueUniqueWork(
+                if (widgetId == null) ONE_TIME_WORK else "$ONE_TIME_WORK-$widgetId",
+                ExistingWorkPolicy.REPLACE,
+                request
+            )
         }
 
-        /** Same cadence as the route widget: never more often than every fifteen minutes. */
-        fun ensurePeriodicRefresh(context: Context) {
-            val request = PeriodicWorkRequestBuilder<StationWidgetRefreshWorker>(15, TimeUnit.MINUTES)
-                .setConstraints(networkConnected)
-                .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 15, TimeUnit.MINUTES)
-                .build()
-            WorkManager.getInstance(context).enqueueUniquePeriodicWork(PERIODIC_WORK, ExistingPeriodicWorkPolicy.KEEP, request)
-        }
+        /** Kept for callers of the earlier API: the scheduler decides now whether any refresh is due. */
+        fun ensurePeriodicRefresh(context: Context) = WidgetAutoRefreshScheduler.reschedule(context)
 
         fun cancel(context: Context) {
-            WorkManager.getInstance(context).cancelUniqueWork(PERIODIC_WORK)
             WorkManager.getInstance(context).cancelUniqueWork(ONE_TIME_WORK)
         }
     }
 }
 
-/** The station of each widget instance, independent of the app's favourites or catalogue. */
+/** A station widget instance: its station and its settings. */
+data class StationWidgetConfiguration(
+    val station: Station,
+    val settings: StationWidgetSettings = StationWidgetSettings.LEGACY
+) {
+    val title: String get() = settings.displayName.trim().ifBlank { station.name }
+}
+
+/** The station and settings of each widget instance, independent of the app's favourites or catalogue. */
 class StationWidgetConfigurationStore(context: Context) {
     private val preferences = context.getSharedPreferences("binario_station_widget_configuration_v1", Context.MODE_PRIVATE)
 
-    fun read(widgetId: Int): Station? = preferences.getString(key(widgetId), null)?.let(StationWidgetCodec::decodeStation)
+    fun read(widgetId: Int): StationWidgetConfiguration? = preferences.getString(key(widgetId), null)?.let(StationWidgetCodec::decodeConfiguration)
 
-    fun all(): List<Pair<Int, Station>> = preferences.all.mapNotNull { (key, value) ->
+    fun all(): List<Pair<Int, StationWidgetConfiguration>> = preferences.all.mapNotNull { (key, value) ->
         val widgetId = key.removePrefix("widget_").toIntOrNull() ?: return@mapNotNull null
-        val station = (value as? String)?.let(StationWidgetCodec::decodeStation) ?: return@mapNotNull null
-        widgetId to station
+        val configuration = (value as? String)?.let(StationWidgetCodec::decodeConfiguration) ?: return@mapNotNull null
+        widgetId to configuration
     }
 
-    fun save(widgetId: Int, station: Station) {
-        preferences.edit { putString(key(widgetId), StationWidgetCodec.encodeStation(station)) }
+    fun save(widgetId: Int, configuration: StationWidgetConfiguration) {
+        preferences.edit { putString(key(widgetId), StationWidgetCodec.encodeConfiguration(configuration)) }
     }
 
     fun remove(widgetId: Int) {
@@ -299,7 +335,8 @@ object StationWidgetStateStore {
     private const val KEY_RETRIEVED = "retrieved"
     private const val KEY_UNAVAILABLE = "unavailable"
     private const val KEY_FAILURE = "last_failure"
-    private val keys = listOf(KEY_STATION_ID, KEY_STATION_NAME, KEY_DEPARTURES, KEY_PROVIDERS, KEY_RETRIEVED, KEY_UNAVAILABLE, KEY_FAILURE)
+    private const val KEY_NEAREST_NOTE = "nearest_note"
+    private val keys = listOf(KEY_STATION_ID, KEY_STATION_NAME, KEY_DEPARTURES, KEY_PROVIDERS, KEY_RETRIEVED, KEY_UNAVAILABLE, KEY_FAILURE, KEY_NEAREST_NOTE)
 
     fun save(context: Context, widgetId: Int, snapshot: StationWidgetSnapshot) {
         prefs(context).edit {
@@ -310,6 +347,8 @@ object StationWidgetStateStore {
             putLong(key(widgetId, KEY_RETRIEVED), snapshot.retrievedAt)
             remove(key(widgetId, KEY_UNAVAILABLE))
             remove(key(widgetId, KEY_FAILURE))
+            // The reason a "Più vicina" tap kept the station is shown until the next board arrives.
+            remove(key(widgetId, KEY_NEAREST_NOTE))
         }
     }
 
@@ -336,6 +375,18 @@ object StationWidgetStateStore {
 
     fun lastFailure(context: Context, widgetId: Int): UiMessage? =
         prefs(context).getString(key(widgetId, KEY_FAILURE), null)?.let(WidgetStateStore::decodeFailure)
+
+    fun retrievedAt(context: Context, widgetId: Int): Long = prefs(context).getLong(key(widgetId, KEY_RETRIEVED), 0L)
+
+    /** Why the last "Più vicina" tap kept the station (permission denied, no fix): shown in the meta line. */
+    fun nearestNote(context: Context, widgetId: Int): UiMessage? =
+        prefs(context).getString(key(widgetId, KEY_NEAREST_NOTE), null)?.let(WidgetStateStore::decodeFailure)
+
+    fun setNearestNote(context: Context, widgetId: Int, note: UiMessage?) {
+        prefs(context).edit {
+            if (note == null) remove(key(widgetId, KEY_NEAREST_NOTE)) else putString(key(widgetId, KEY_NEAREST_NOTE), WidgetStateStore.encodeFailure(note))
+        }
+    }
 
     fun clear(context: Context, widgetId: Int) {
         prefs(context).edit { keys.forEach { remove(key(widgetId, it)) } }

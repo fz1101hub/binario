@@ -2,6 +2,7 @@ package it.binario.app.data.live
 
 import it.binario.app.data.RailOperator
 import it.binario.app.data.ServiceStatus
+import it.binario.app.data.TrainCategory
 import it.binario.app.data.TrainService
 import it.binario.app.data.core.BoardKind
 import it.binario.app.data.core.Completeness
@@ -9,6 +10,7 @@ import it.binario.app.data.core.Confidence
 import it.binario.app.data.core.Freshness
 import it.binario.app.data.core.OperatorId
 import it.binario.app.data.core.RunStatus
+import it.binario.app.data.core.ServiceKind
 import it.binario.app.data.core.SnapshotMeta
 import it.binario.app.data.core.SourceId
 import it.binario.app.data.core.SourceRef
@@ -67,7 +69,8 @@ internal object LegacyStationBoardInterop {
                 operatorId = operatorId(service.operator),
                 platform = service.platform?.let { SourcedValue(it, source) },
                 status = if (service.operationalStatusVerified) SourcedValue(runStatus(service.status), source) else null,
-                routeChange = service.routeChange?.let { SourcedValue(it, source) }
+                routeChange = service.routeChange?.let { SourcedValue(it, source) },
+                serviceKind = serviceKind(service.trainCategory)
             )
         }
 
@@ -137,6 +140,15 @@ internal object LegacyStationBoardInterop {
         ServiceStatus.ON_TIME -> RunStatus.ON_TIME
         ServiceStatus.DELAYED -> RunStatus.DELAYED
         ServiceStatus.CANCELLED -> RunStatus.CANCELLED
+    }
+
+    /** The category the legacy sources already publish, kept for display and the widget's type filters. */
+    private fun serviceKind(category: TrainCategory): ServiceKind = when (category) {
+        TrainCategory.FRECCE, TrainCategory.AV_ITALO -> ServiceKind.HIGH_SPEED
+        TrainCategory.INTERCITY -> ServiceKind.INTERCITY
+        TrainCategory.REGIONALE, TrainCategory.REGIONALE_VELOCE, TrainCategory.TRENORD_REGIO -> ServiceKind.REGIONAL
+        TrainCategory.METROPOLITANO -> ServiceKind.SUBURBAN
+        TrainCategory.OTHER -> ServiceKind.UNKNOWN
     }
 
     private fun operatorId(operator: RailOperator): OperatorId? = when (operator) {

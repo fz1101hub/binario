@@ -9,5 +9,6 @@
     android:configure="it.binario.app.widget.StationWidgetConfigureActivity"
     android:updatePeriodMillis="0"
     android:widgetCategory="home_screen"
+    android:widgetFeatures="reconfigurable"
     android:description="@string/station_widget_description"
     tools:ignore="UnusedAttribute" />
