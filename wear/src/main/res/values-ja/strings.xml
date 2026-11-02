@@ -1,0 +1,26 @@
+<resources>
+    <string name="app_name">Binario</string>
+    <string name="tile_label">Binario：次の区間</string>
+    <string name="tile_description">スマートフォンの Binario アプリから共有された次の区間を表示します。</string>
+    <string name="complication_label">Binario</string>
+    <string name="empty_snapshot_message">選択中の区間を同期するには、スマートフォンで Binario を開いてください。</string>
+    <string name="refresh_phone">スマホを更新</string>
+    <string name="refresh_on_phone">スマホで更新</string>
+    <string name="tile_no_synced_route">同期した区間なし</string>
+    <string name="tile_snapshot_unavailable">スナップショットなし</string>
+    <string name="tile_service_details">%1$s · %2$s · %3$s</string>
+    <string name="status_programmed">時刻表どおり</string>
+    <string name="status_received_from_phone">スマホから受信した状況</string>
+    <string name="status_updating">データを更新中</string>
+    <string name="status_local_snapshot">前回のスナップショット</string>
+    <string name="status_live_unavailable">リアルタイムデータなし</string>
+    <string name="accessibility_data_status">データの状態：%1$s</string>
+    <string name="accessibility_scheduled_departure">予定出発時刻 %1$s</string>
+    <string name="accessibility_expected_departure">出発見込み %1$s</string>
+    <string name="accessibility_train">列車 %1$s</string>
+    <string name="accessibility_platform">%1$s 番線</string>
+    <string name="service_time_number">%1$s · %2$s</string>
+    <string name="service_destination_status">%1$s · %2$s</string>
+    <string name="service_operator_category">%1$s · %2$s</string>
+    <string name="service_operator_category_platform">%1$s · %2$s · %3$s 番線</string>
+</resources>

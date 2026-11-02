@@ -1,0 +1,26 @@
+<resources>
+    <string name="app_name">Binario</string>
+    <string name="tile_label">Binario: الرحلة التالية</string>
+    <string name="tile_description">يعرض الرحلة التالية التي شاركها تطبيق Binario على الهاتف.</string>
+    <string name="complication_label">Binario</string>
+    <string name="empty_snapshot_message">افتح Binario على الهاتف لمزامنة المسار النشط.</string>
+    <string name="refresh_phone">تحديث الهاتف</string>
+    <string name="refresh_on_phone">التحديث على الهاتف</string>
+    <string name="tile_no_synced_route">لا يوجد مسار متزامن</string>
+    <string name="tile_snapshot_unavailable">اللقطة غير متاحة</string>
+    <string name="tile_service_details">%1$s · %2$s · %3$s</string>
+    <string name="status_programmed">الموعد المجدول</string>
+    <string name="status_received_from_phone">الحالة مستلمة من الهاتف</string>
+    <string name="status_updating">البيانات قيد التحديث</string>
+    <string name="status_local_snapshot">آخر لقطة محلية</string>
+    <string name="status_live_unavailable">البيانات المباشرة غير متاحة</string>
+    <string name="accessibility_data_status">حالة البيانات: %1$s</string>
+    <string name="accessibility_scheduled_departure">المغادرة المجدولة %1$s</string>
+    <string name="accessibility_expected_departure">المغادرة المتوقعة %1$s</string>
+    <string name="accessibility_train">القطار %1$s</string>
+    <string name="accessibility_platform">الرصيف %1$s</string>
+    <string name="service_time_number">%1$s · %2$s</string>
+    <string name="service_destination_status">%1$s · %2$s</string>
+    <string name="service_operator_category">%1$s · %2$s</string>
+    <string name="service_operator_category_platform">%1$s · %2$s · رصيف %3$s</string>
+</resources>
