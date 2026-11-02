@@ -323,7 +323,7 @@ internal fun PlannerScreen(
                             options = SearchMode.entries,
                             selected = mode,
                             onSelect = { mode = it },
-                            label = { it.localizedLabel() },
+                            labels = SearchMode.entries.map { it.localizedLabel() },
                             tagOf = { "planner-mode-${it.name.lowercase(Locale.ROOT)}" }
                         )
                         when (mode) {

@@ -466,7 +466,7 @@ private fun ServiceDetailHeader(service: TrainService, isDemonstration: Boolean,
             options = DetailTab.entries,
             selected = tab,
             onSelect = onTab,
-            label = { it.localizedLabel() },
+            labels = DetailTab.entries.map { it.localizedLabel() },
             onHeader = true,
             modifier = Modifier.padding(top = 8.dp),
             tagOf = {

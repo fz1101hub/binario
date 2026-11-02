@@ -1,5 +1,6 @@
 package it.binario.app.ui.foryou
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -45,6 +46,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -60,6 +62,7 @@ import it.binario.app.ui.common.BinarioCard
 import it.binario.app.ui.common.HeaderOverlapBox
 import it.binario.app.ui.common.NavigationRow
 import it.binario.app.ui.common.RowDivider
+import it.binario.app.ui.common.RowIcon
 import it.binario.app.ui.common.ScreenHeader
 import it.binario.app.ui.common.ScreenMargin
 import it.binario.app.ui.common.SectionTitle
@@ -106,7 +109,7 @@ internal fun ForYouScreen(
                             options = RoutesTab.entries,
                             selected = tab,
                             onSelect = { tabName = it.name },
-                            label = { stringResource(if (it == RoutesTab.FAVOURITES) R.string.for_you_tab_favourites else R.string.for_you_tab_recent) },
+                            labels = listOf(stringResource(R.string.for_you_tab_favourites), stringResource(R.string.for_you_tab_recent)),
                             modifier = Modifier.padding(horizontal = 12.dp),
                             tagOf = { if (it == RoutesTab.FAVOURITES) "for-you-tab-favourites" else "for-you-tab-recent" }
                         )
@@ -262,46 +265,54 @@ private fun SavedRouteRow(
         if (isActive) stringResource(R.string.shortcut_active_route) else null,
         if (route.isPinned) stringResource(R.string.route_pinned) else null
     ).joinToString(" · ")
-    NavigationRow(
-        title = name,
-        detail = detail.ifBlank { null },
-        icon = if (route.isPinned) Icons.Default.Star else Icons.Default.Route,
-        onClick = onOpen,
-        trailing = {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = onPin) {
-                    Icon(
-                        if (route.isPinned) Icons.Default.Star else Icons.Default.StarBorder,
-                        contentDescription = stringResource(if (route.isPinned) R.string.accessibility_unpin_route else R.string.accessibility_pin_route),
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                }
-                Box {
-                    IconButton(onClick = { menuOpen = true }) {
-                        Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.accessibility_route_actions, name))
-                    }
-                    DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.accessibility_move_route_up, name)) },
-                            onClick = { menuOpen = false; onMove(-1) },
-                            enabled = canMoveUp
-                        )
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.accessibility_move_route_down, name)) },
-                            onClick = { menuOpen = false; onMove(1) },
-                            enabled = canMoveDown
-                        )
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.accessibility_delete_route, name)) },
-                            leadingIcon = { Icon(Icons.Default.DeleteOutline, contentDescription = null) },
-                            onClick = { menuOpen = false; onRemove() },
-                            enabled = canRemove
-                        )
-                    }
+    Row(Modifier.fillMaxWidth().padding(end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            Modifier
+                .weight(1f)
+                .heightIn(min = 56.dp)
+                .clickable(role = Role.Button, onClick = onOpen)
+                .padding(start = 16.dp, top = 10.dp, bottom = 10.dp, end = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            RowIcon(if (route.isPinned) Icons.Default.Star else Icons.Default.Route)
+            Column(Modifier.weight(1f).padding(start = 14.dp)) {
+                Text(name, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                if (detail.isNotBlank()) {
+                    Text(detail, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }
-    )
+        IconButton(onClick = onPin) {
+            Icon(
+                if (route.isPinned) Icons.Default.Star else Icons.Default.StarBorder,
+                contentDescription = stringResource(if (route.isPinned) R.string.accessibility_unpin_route else R.string.accessibility_pin_route),
+                tint = MaterialTheme.colorScheme.primary
+            )
+        }
+        Box {
+            IconButton(onClick = { menuOpen = true }) {
+                Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.accessibility_route_actions, name))
+            }
+            DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.accessibility_move_route_up, name)) },
+                    onClick = { menuOpen = false; onMove(-1) },
+                    enabled = canMoveUp
+                )
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.accessibility_move_route_down, name)) },
+                    onClick = { menuOpen = false; onMove(1) },
+                    enabled = canMoveDown
+                )
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.accessibility_delete_route, name)) },
+                    leadingIcon = { Icon(Icons.Default.DeleteOutline, contentDescription = null) },
+                    onClick = { menuOpen = false; onRemove() },
+                    enabled = canRemove
+                )
+            }
+        }
+    }
 }
 
 @Composable

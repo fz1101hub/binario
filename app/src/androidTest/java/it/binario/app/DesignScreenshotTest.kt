@@ -17,12 +17,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onRoot
-import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
@@ -85,37 +86,37 @@ class DesignScreenshotTest {
         val model = demoViewModel()
         showApp(model, AppThemeMode.LIGHT)
         capture("01-pianifica")
-        composeRule.onNodeWithTag("planner-search").performClick()
+        click("planner-search")
         waitForTag("result-card")
         capture("02-risultati")
-        composeRule.onAllNodesWithTag("result-card")[0].performClick()
+        clickFirst("result-card")
         waitForTag("detail-timeline")
         capture("03-dettaglio-percorso")
-        composeRule.onNodeWithTag("detail-tab-info").performClick()
+        click("detail-tab-info")
         waitForTag("detail-info")
         capture("04-dettaglio-info")
-        composeRule.onNodeWithTag("detail-tab-services").performClick()
+        click("detail-tab-services")
         waitForTag("detail-services")
         capture("05-dettaglio-servizi")
-        composeRule.onNodeWithTag("top-bar-back").performClick()
+        click("top-bar-back")
         waitForTag("route-results")
-        composeRule.onNodeWithTag("nav-departures").performClick()
+        click("nav-departures")
         waitForTag("departures-hero")
         capture("06-partenze")
-        composeRule.onNodeWithTag("departures-section-stations").performClick()
+        click("departures-section-stations")
         waitForTag("station-board-list")
         capture("07-partenze-stazioni")
-        composeRule.onNodeWithTag("departures-section-trains").performClick()
-        composeRule.onNodeWithTag("nav-for-you").performClick()
+        click("departures-section-trains")
+        click("nav-for-you")
         waitForTag("for-you-screen")
         capture("08-per-te-tratte")
-        composeRule.onNodeWithTag("for-you-tab-recent").performClick()
+        click("for-you-tab-recent")
         composeRule.waitForIdle()
         capture("09-per-te-recenti")
-        composeRule.onNodeWithTag("top-bar-settings").performClick()
+        click("top-bar-settings")
         waitForTag("settings-screen")
         capture("10-impostazioni")
-        composeRule.onNodeWithTag("settings-alerts").performClick()
+        click("settings-alerts")
         waitForTag("settings-section-alerts")
         capture("11-impostazioni-notifiche")
     }
@@ -124,10 +125,10 @@ class DesignScreenshotTest {
         val model = demoViewModel()
         showApp(model, AppThemeMode.DARK)
         capture("12-pianifica-scuro")
-        composeRule.onNodeWithTag("nav-departures").performClick()
+        click("nav-departures")
         waitForTag("departures-hero")
         capture("13-partenze-scuro")
-        composeRule.onNodeWithTag("departures-hero").performClick()
+        click("departures-hero")
         waitForTag("detail-timeline")
         capture("14-dettaglio-scuro")
     }
@@ -135,10 +136,10 @@ class DesignScreenshotTest {
     @Test fun c_tabletResultsWithMap() {
         val model = demoViewModel()
         showWideApp(model)
-        composeRule.onNodeWithTag("planner-search").performClick()
+        click("planner-search")
         waitForTag("results-map-pane")
         // The map starts only on request (privacy policy), as a traveller would open it.
-        composeRule.onNodeWithTag("results-map-show").performClick()
+        click("results-map-show")
         // MapLibre draws the OpenFreeMap tiles outside Compose: give them time to arrive.
         SystemClock.sleep(MAP_SETTLE_MILLIS)
         captureNode("15-tablet-risultati", "wide-frame")
@@ -147,9 +148,9 @@ class DesignScreenshotTest {
     @Test fun d_tabletDeparturesWithDetail() {
         val model = demoViewModel()
         showWideApp(model)
-        composeRule.onNodeWithTag("nav-departures").performClick()
+        click("nav-departures")
         waitForTag("departures-hero")
-        composeRule.onAllNodesWithTag("departures-hero")[0].performClick()
+        clickFirst("departures-hero")
         waitForTag("detail-timeline")
         captureNode("16-tablet-partenze", "wide-frame")
     }
@@ -237,6 +238,20 @@ class DesignScreenshotTest {
         }
         composeRule.waitUntil(DATA_TIMEOUT_MILLIS) { model.homeServices().isNotEmpty() }
         return model
+    }
+
+    /**
+     * Runs the node's click action instead of injecting a touch: a control can sit below the visible part of
+     * a list or under the bottom navigation, and the screenshot must not depend on the emulator's height.
+     */
+    private fun click(tag: String) {
+        composeRule.onNodeWithTag(tag).performSemanticsAction(SemanticsActions.OnClick)
+        composeRule.waitForIdle()
+    }
+
+    private fun clickFirst(tag: String) {
+        composeRule.onAllNodesWithTag(tag)[0].performSemanticsAction(SemanticsActions.OnClick)
+        composeRule.waitForIdle()
     }
 
     private fun waitForTag(tag: String) {

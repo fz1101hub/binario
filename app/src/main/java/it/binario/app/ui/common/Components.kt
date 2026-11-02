@@ -214,15 +214,16 @@ internal fun SectionTitle(text: String, modifier: Modifier = Modifier) {
 }
 
 /**
- * Segmented control with equal segments ("Viaggio | Treno | Stazione", "Chiaro | Scuro | Sistema"). The
- * selected segment is announced as selected and drawn filled; [onHeader] draws it on the green header.
+ * Segmented control with equal segments ("Viaggio | Treno | Stazione", "Chiaro | Scuro | Sistema"), one label
+ * per option. The selected segment is announced as selected and drawn filled; [onHeader] draws it on the
+ * green header.
  */
 @Composable
 internal fun <T> SegmentedControl(
     options: List<T>,
     selected: T,
     onSelect: (T) -> Unit,
-    label: @Composable (T) -> String,
+    labels: List<String>,
     modifier: Modifier = Modifier,
     onHeader: Boolean = false,
     tagOf: (T) -> String? = { null }
@@ -242,7 +243,7 @@ internal fun <T> SegmentedControl(
             .selectableGroup(),
         horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
-        options.forEach { option ->
+        options.forEachIndexed { index, option ->
             val isSelected = option == selected
             val (container, content) = when {
                 isSelected && onHeader && !flatHeader -> colors.headerSelected to colors.onHeaderSelected
@@ -261,7 +262,7 @@ internal fun <T> SegmentedControl(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    label(option),
+                    labels[index],
                     color = content,
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
@@ -357,8 +358,7 @@ internal fun NavigationRow(
     icon: ImageVector,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    detail: String? = null,
-    trailing: (@Composable () -> Unit)? = null
+    detail: String? = null
 ) {
     Row(
         modifier
@@ -368,19 +368,23 @@ internal fun NavigationRow(
             .padding(horizontal = 16.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(
-            Modifier.size(36.dp).background(MaterialTheme.colorScheme.secondaryContainer, CircleShape),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSecondaryContainer, modifier = Modifier.size(20.dp))
-        }
+        RowIcon(icon)
         Column(Modifier.weight(1f).padding(start = 14.dp, end = 8.dp)) {
             Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
             detail?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
         }
-        if (trailing != null) trailing() else {
-            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
+        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+/** The leading icon of a group row, in a tonal circle. */
+@Composable
+internal fun RowIcon(icon: ImageVector) {
+    Box(
+        Modifier.size(36.dp).background(MaterialTheme.colorScheme.secondaryContainer, CircleShape),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSecondaryContainer, modifier = Modifier.size(20.dp))
     }
 }
 

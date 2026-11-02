@@ -129,6 +129,9 @@ private val SettingsSection.icon: ImageVector
         SettingsSection.ABOUT -> Icons.Default.Info
     }
 
+/** Order of the render: Chiaro | Scuro | Sistema. */
+private val THEME_OPTIONS = listOf(AppThemeMode.LIGHT, AppThemeMode.DARK, AppThemeMode.SYSTEM)
+
 /** "Impostazioni": the theme as a segmented control, then the groups of settings. */
 @Composable
 internal fun SettingsScreen(
@@ -145,10 +148,10 @@ internal fun SettingsScreen(
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         Text(stringResource(R.string.settings_theme), modifier = Modifier.semantics { heading() }, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                         SegmentedControl(
-                            options = listOf(AppThemeMode.LIGHT, AppThemeMode.DARK, AppThemeMode.SYSTEM),
+                            options = THEME_OPTIONS,
                             selected = themeMode,
                             onSelect = onThemeModeChange,
-                            label = { it.localizedLabel() },
+                            labels = THEME_OPTIONS.map { it.localizedLabel() },
                             tagOf = { "settings-theme-${it.name.lowercase(java.util.Locale.ROOT)}" }
                         )
                     }
