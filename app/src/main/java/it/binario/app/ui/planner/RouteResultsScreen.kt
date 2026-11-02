@@ -2,6 +2,8 @@ package it.binario.app.ui.planner
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -13,7 +15,10 @@ import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.BookmarkAdd
+import androidx.compose.material.icons.filled.BookmarkAdded
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.LinearProgressIndicator
@@ -27,10 +32,13 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -50,6 +58,11 @@ import it.binario.app.journeys.JourneyResultsPresentation
 import it.binario.app.journeys.JourneyResultsPresenter
 import it.binario.app.journeys.JourneySearchUiState
 import it.binario.app.localized
+import it.binario.app.maps.OpenMapStationIndex
+import it.binario.app.maps.rememberOpenMapStationIndex
+import it.binario.app.timetables.SavedTimetable
+import it.binario.app.timetables.SavedTimetableStore
+import it.binario.app.timetables.TimetableShareFormatter
 import it.binario.app.ui.common.DataStatusLine
 import it.binario.app.ui.common.HeaderSheetTop
 import it.binario.app.ui.common.InfoNoticeCard
@@ -64,10 +77,12 @@ import it.binario.app.ui.common.isCachedCopy
 import it.binario.app.ui.common.localizedDisplayName
 import it.binario.app.ui.common.localizedLabel
 import it.binario.app.ui.common.localizedQualityLabel
+import it.binario.app.ui.common.rememberCo2
 import it.binario.app.ui.journeys.JourneyResultCard
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import java.util.UUID
 
 // Pianifica: the solutions of a route or round-trip search.
 
@@ -127,6 +142,21 @@ internal fun RouteResultsScreen(
     }
     // "Roma → Torino" as in the render; screen readers and the cards keep the full station names.
     val headline = if (viewModel.hasActiveRoute) StationShortNames.route(route.origin(primaryDirection), route.destination(primaryDirection)) else null
+    // "Salva orario" and "Condividi": the list on screen as plain rows (labels in the app language, demonstration
+    // data as timetable only), saved on this device or shared as text.
+    val context = LocalContext.current
+    val providerLabel = viewModel.currentProviderLabel() ?: stringResource(R.string.provider_unavailable)
+    val journeysFetchedAt = journeyResult?.generatedAt?.toEpochMilli() ?: 0L
+    val outboundRows = timetableRows(shown, isDemonstration, providerLabel, viewModel.lastRefreshEpochMillis(), journeysFetchedAt)
+    val returnRows = if (roundTrip) timetableRows(returnShown, isDemonstration, providerLabel, viewModel.lastRefreshEpochMillis(), journeysFetchedAt) else emptyList()
+    val originName = route.origin(primaryDirection).name
+    val destinationName = route.destination(primaryDirection).name
+    val defaultTimetableName = stringResource(R.string.share_route, originName, destinationName)
+    val shareStrings = timetableShareStrings()
+    val searchLabel = searchDateLabel(query.serviceDate, query.departureTime)
+    val shareChooser = stringResource(R.string.share_timetable_chooser)
+    var savedTimetableId by rememberSaveable(route.id, primaryDirection, query) { mutableStateOf<String?>(null) }
+    val stationIndex = rememberOpenMapStationIndex(viewModel.stations, viewModel::stationFromName)
 
     val outboundStates = ResultStates(
         loading = stringResource(R.string.search_outbound_loading_title) to stringResource(R.string.search_outbound_loading_message),
@@ -177,6 +207,36 @@ internal fun RouteResultsScreen(
                     isCachedCopy = viewModel.isCachedCopy(),
                     message = null
                 )
+                if (viewModel.hasActiveRoute && (outboundRows.isNotEmpty() || returnRows.isNotEmpty())) {
+                    ResultsActions(
+                        saved = savedTimetableId != null,
+                        onSave = {
+                            val id = savedTimetableId ?: UUID.randomUUID().toString()
+                            SavedTimetableStore.save(
+                                context,
+                                SavedTimetable(
+                                    id = id,
+                                    name = defaultTimetableName,
+                                    origin = originName,
+                                    destination = destinationName,
+                                    serviceDate = query.serviceDate,
+                                    fromTime = query.departureTime.format(DateTimeFormatter.ofPattern("HH:mm", Locale.ROOT)),
+                                    savedAtEpochMillis = System.currentTimeMillis(),
+                                    rows = outboundRows,
+                                    returnRows = returnRows
+                                )
+                            )
+                            savedTimetableId = id
+                        },
+                        onShare = {
+                            startTextShare(
+                                context,
+                                TimetableShareFormatter.list(originName, destinationName, searchLabel, outboundRows, returnRows, shareStrings),
+                                shareChooser
+                            )
+                        }
+                    )
+                }
             }
         }
         if (roundTrip) {
@@ -193,7 +253,8 @@ internal fun RouteResultsScreen(
             selectedServiceId = selectedServiceId,
             selectedJourneyId = selectedJourneyId,
             openDetails = openDetails,
-            openJourney = openJourney
+            openJourney = openJourney,
+            stationIndex = stationIndex
         )
         if (journeysMatch) {
             item(key = "journey-notices") {
@@ -230,10 +291,41 @@ internal fun RouteResultsScreen(
                 selectedServiceId = selectedServiceId,
                 selectedJourneyId = null,
                 openDetails = openDetails,
-                openJourney = openJourney
+                openJourney = openJourney,
+                stationIndex = stationIndex
             )
         }
         item { Spacer(Modifier.height(24.dp)) }
+    }
+}
+
+/** "Salva orario" (again after a save it updates the same saved copy) and "Condividi" for the list on screen. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun ResultsActions(saved: Boolean, onSave: () -> Unit, onShare: () -> Unit) {
+    Column(Modifier.fillMaxWidth().padding(horizontal = ScreenMargin, vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            TonalButton(
+                text = stringResource(R.string.results_save_timetable),
+                onClick = onSave,
+                leadingIcon = if (saved) Icons.Default.BookmarkAdded else Icons.Default.BookmarkAdd,
+                modifier = Modifier.testTag("results-save-timetable")
+            )
+            TonalButton(
+                text = stringResource(R.string.action_share),
+                onClick = onShare,
+                leadingIcon = Icons.Default.Share,
+                modifier = Modifier.testTag("results-share")
+            )
+        }
+        if (saved) {
+            Text(
+                stringResource(R.string.results_timetable_saved),
+                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
 }
 
@@ -256,7 +348,8 @@ private fun LazyListScope.resultItems(
     selectedServiceId: String?,
     selectedJourneyId: String?,
     openDetails: (TrainService) -> Unit,
-    openJourney: (JourneyOptionRow) -> Unit
+    openJourney: (JourneyOptionRow) -> Unit,
+    stationIndex: OpenMapStationIndex
 ) {
     when {
         state == RefreshState.LOADING && !hasSnapshot ->
@@ -273,13 +366,15 @@ private fun LazyListScope.resultItems(
                     isDemonstration = isDemonstration,
                     onOpen = { openDetails(entry.service) },
                     modifier = itemModifier.testTag("result-card"),
-                    selected = entry.service.id == selectedServiceId
+                    selected = entry.service.id == selectedServiceId,
+                    co2 = rememberCo2(entry.service, stationIndex)
                 )
                 is ResultEntry.Journey -> JourneyResultCard(
                     row = entry.row,
                     onOpen = { openJourney(entry.row) },
                     modifier = itemModifier.testTag("journey-result-card"),
-                    selected = entry.row.id == selectedJourneyId
+                    selected = entry.row.id == selectedJourneyId,
+                    co2 = rememberCo2(entry.row, stationIndex)
                 )
             }
         }

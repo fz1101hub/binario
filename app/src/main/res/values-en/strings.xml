@@ -1167,9 +1167,56 @@
     <string name="partenze_types_sheet_description">Untick the types you do not need: the choice applies to this station and stays on this device. Trains whose type the source does not give are always shown.</string>
     <string name="partenze_types_done">Done</string>
     <string name="partenze_type_bus">Buses</string>
+    <string name="results_save_timetable">Save timetable</string>
+    <string name="results_timetable_saved">Timetable saved in For you › Saved timetables, also available offline.</string>
+    <string name="saved_timetables_title">Saved timetables</string>
+    <string name="saved_timetables_empty">In the results of a search tap “Save timetable”: the solutions stay available here, also without a connection.</string>
+    <string name="saved_timetable_saved_at">Saved on %1$s · not updated</string>
+    <string name="saved_timetable_offline_notice">Copy saved on this device: times, platforms and delays do not update. Before you travel, check the service and the official notices.</string>
+    <string name="saved_timetable_actions">Actions for %1$s</string>
+    <string name="saved_timetable_delete">Delete</string>
+    <string name="saved_timetable_rename_title">Timetable name</string>
+    <string name="saved_timetable_name_label">Name</string>
+    <string name="saved_timetable_save_name">Save</string>
+    <string name="share_timetable_header">Timetable %1$s → %2$s · %3$s</string>
+    <string name="share_timetable_source">Source: %1$s</string>
+    <string name="share_timetable_chooser">Share timetable</string>
+    <string name="share_solution_chooser">Share option</string>
+    <string name="share_stop_chooser">Share stop</string>
+    <string name="share_stop_action">Share the stop %1$s</string>
+    <string name="share_stop_line">Train %1$s, stop %2$s: %3$s</string>
+    <string name="share_stop_arrival">arrives %1$s</string>
+    <string name="share_stop_departure">dep. %1$s</string>
+    <string name="share_stop_expected">expected %1$s</string>
+    <string name="share_stop_platform_short">plat. %1$s</string>
+    <string name="share_stop_platform_changed">plat. %1$s (was %2$s)</string>
+    <string name="settings_section_tickets">Tickets and assistance</string>
+    <string name="settings_section_tickets_detail">Official operator sites: tickets, changes, passes, bikes, assistance and refunds</string>
+    <string name="tickets_description">Binario does not sell tickets and sends no data to these sites: each entry opens the operator’s official page in the browser, only when you tap it. Some pages are only available in English.</string>
+    <string name="tickets_link_buy">Buy tickets</string>
+    <string name="tickets_link_change">Ticket changes</string>
+    <string name="tickets_link_subscriptions">Season tickets and passes</string>
+    <string name="tickets_link_bikes">Bikes on board</string>
+    <string name="tickets_link_customer_care">Customer care</string>
+    <string name="tickets_link_refunds">Refunds, compensation and claims</string>
+    <string name="tickets_link_strikes">Guaranteed trains during strikes</string>
+    <string name="tickets_link_website">Official website</string>
+    <string name="official_site_open">Open on the official site (%1$s)</string>
+    <string name="official_site_note">Binario does not sell tickets: search for this option again on the operator’s site to buy it.</string>
+    <string name="notices_fs_news_bulletin">Listen to the FS News bulletin</string>
+    <string name="notices_guaranteed_trains">Guaranteed trains during strikes (%1$s)</string>
+    <string name="co2_estimate_title">Estimated CO₂</string>
+    <string name="co2_estimate_line">Estimated CO₂: %1$s kg (car ~%2$s kg, plane ~%3$s kg)</string>
+    <string name="co2_estimate_accessible">Estimated emissions per passenger: %1$s kilograms of CO₂ by train, about %2$s by car and %3$s by plane</string>
+    <string name="co2_estimate_note">Indicative estimate per passenger, computed on the device from the straight-line distance between stations and average factors of the European Environment Agency; it is not the figure of the actual train. Sources in Settings › About.</string>
+    <string name="settings_credits_co2">CO₂ estimate: factors per passenger-km of the European Environment Agency (EEA), %1$s: train %2$s g, car %3$s g (1.5 occupants), plane from %4$s g (1,000 km) to %5$s g (500 km) of CO₂ equivalent. Straight-line distances between stations, ×1.2 for the train, ×1.25 for the car, ×1.08 for the plane. %6$s</string>
     <plurals name="partenze_hidden_trains">
         <item quantity="one">%d train hidden</item>
         <item quantity="other">%d trains hidden</item>
+    </plurals>
+    <plurals name="saved_timetable_solutions">
+        <item quantity="one">%d option</item>
+        <item quantity="other">%d options</item>
     </plurals>
     <!-- End of platform changes, Partenze train types, saved timetables, sharing, tickets and assistance, CO2 estimate -->
 </resources>

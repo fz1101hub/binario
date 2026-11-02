@@ -1,6 +1,9 @@
 package it.binario.app.ui.journeys
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -12,6 +15,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.SyncAlt
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -21,6 +26,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -37,6 +44,11 @@ import it.binario.app.journeys.JourneyLegRow
 import it.binario.app.journeys.JourneyOptionRow
 import it.binario.app.journeys.JourneySourceLabel
 import it.binario.app.journeys.JourneyTransferRow
+import it.binario.app.links.OfficialLinks
+import it.binario.app.links.OperatorLinkKind
+import it.binario.app.maps.OpenMapStationIndex
+import it.binario.app.openExternalLink
+import it.binario.app.timetables.TimetableShareFormatter
 import it.binario.app.ui.common.BinarioCard
 import it.binario.app.ui.common.HeaderOverlapBox
 import it.binario.app.ui.common.InfoNoticeCard
@@ -45,8 +57,15 @@ import it.binario.app.ui.common.Pill
 import it.binario.app.ui.common.ScreenHeader
 import it.binario.app.ui.common.ScreenMargin
 import it.binario.app.ui.common.StationShortNames
+import it.binario.app.ui.common.TonalButton
 import it.binario.app.ui.common.changesLabel
+import it.binario.app.ui.common.co2Line
+import it.binario.app.ui.common.rememberCo2
 import it.binario.app.ui.detail.StopTimelineRow
+import it.binario.app.ui.planner.journeyTimetableRow
+import it.binario.app.ui.planner.startTextShare
+import it.binario.app.ui.planner.timetableShareStrings
+import java.time.format.DateTimeFormatter
 
 // Pianifica: the detail of an option of the journeys-with-changes search.
 
@@ -59,9 +78,28 @@ import it.binario.app.ui.detail.StopTimelineRow
  * @param origin / destination the searched stations, for the short header ("Roma → Torino"); the legs' own names
  *   are used when they are not known.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-internal fun JourneyDetailScreen(modifier: Modifier, row: JourneyOptionRow, origin: Station? = null, destination: Station? = null) {
+internal fun JourneyDetailScreen(
+    modifier: Modifier,
+    row: JourneyOptionRow,
+    origin: Station? = null,
+    destination: Station? = null,
+    /** Catalogue positions for the CO2 estimate; null shows none. */
+    stationIndex: OpenMapStationIndex? = null
+) {
     val locale = LocalConfiguration.current.locales[0]
+    val context = LocalContext.current
+    val uriHandler = LocalUriHandler.current
+    val shareStrings = timetableShareStrings()
+    val shareChooser = stringResource(R.string.share_solution_chooser)
+    val solution = journeyTimetableRow(row, fetchedAt = 0L)
+    val originName = origin?.name ?: row.legs.firstOrNull()?.fromLabel.orEmpty()
+    val destinationName = destination?.name ?: row.legs.lastOrNull()?.toLabel.orEmpty()
+    val dateLabel = row.departure.format(DateTimeFormatter.ofPattern("EEE d MMM", locale))
+    // Trenitalia or Italo for the whole journey: their official site, opened without any prefilled search.
+    val purchaseSite = OfficialLinks.purchaseSiteOf(row.legs.filter { JourneyLegKind.of(it.mode) != JourneyLegKind.WALK }.map { it.operatorName })
+    val co2 = stationIndex?.let { rememberCo2(row, it) }
     val headline = if (origin != null && destination != null) {
         StationShortNames.route(origin, destination)
     } else {
@@ -96,6 +134,40 @@ internal fun JourneyDetailScreen(modifier: Modifier, row: JourneyOptionRow, orig
                         }
                     }
                 }
+            }
+        }
+        item {
+            FlowRow(
+                Modifier.fillMaxWidth().padding(horizontal = ScreenMargin, vertical = 8.dp).testTag("journey-actions"),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                TonalButton(
+                    text = stringResource(R.string.action_share),
+                    onClick = { startTextShare(context, TimetableShareFormatter.solution(solution, originName, destinationName, dateLabel, shareStrings), shareChooser) },
+                    leadingIcon = Icons.Default.Share,
+                    modifier = Modifier.testTag("journey-share")
+                )
+                purchaseSite?.let { site ->
+                    TonalButton(
+                        text = stringResource(R.string.official_site_open, site.name),
+                        onClick = { site.url(OperatorLinkKind.BUY)?.let { openExternalLink(uriHandler, it) } },
+                        trailingIcon = Icons.AutoMirrored.Filled.OpenInNew,
+                        modifier = Modifier.testTag("journey-official-site")
+                    )
+                }
+            }
+        }
+        if (purchaseSite != null) {
+            item { InfoNoticeCard(text = stringResource(R.string.official_site_note)) }
+        }
+        co2?.let { estimate ->
+            item {
+                InfoNoticeCard(
+                    title = stringResource(R.string.co2_estimate_title),
+                    text = co2Line(estimate) + "\n" + stringResource(R.string.co2_estimate_note),
+                    modifier = Modifier.testTag("journey-co2")
+                )
             }
         }
         if (row.scheduledOnly) {

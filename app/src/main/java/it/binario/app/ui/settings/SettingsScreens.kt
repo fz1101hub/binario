@@ -24,6 +24,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.AddLocationAlt
+import androidx.compose.material.icons.filled.ConfirmationNumber
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Language
@@ -93,6 +94,7 @@ import it.binario.app.ui.common.RowDivider
 import it.binario.app.ui.common.ScreenHeader
 import it.binario.app.ui.common.ScreenMargin
 import it.binario.app.ui.common.SegmentedControl
+import it.binario.app.ui.common.co2Credits
 import it.binario.app.ui.common.localizedLabel
 import it.binario.app.ui.common.localizedSummary
 import java.time.LocalTime
@@ -103,7 +105,7 @@ import kotlinx.coroutines.withContext
 // Impostazioni: the theme and the existing settings grouped in the rows of the approved render.
 
 /** The groups of "Impostazioni"; "Suggerisci una stazione" is a link row of the screen, not a group. */
-internal enum class SettingsSection { ALERTS, WIDGETS, DATA, LANGUAGE, ABOUT }
+internal enum class SettingsSection { ALERTS, WIDGETS, DATA, LANGUAGE, TICKETS, ABOUT }
 
 /** A row of "Impostazioni": a group of settings, or the station suggestion that opens in the browser. */
 internal sealed interface SettingsRow {
@@ -114,6 +116,8 @@ internal sealed interface SettingsRow {
 /** The cards of "Impostazioni" below the theme, as in the render: the four groups, then the suggestion and "Informazioni". */
 internal val SETTINGS_CARDS: List<List<SettingsRow>> = listOf(
     listOf(SettingsSection.ALERTS, SettingsSection.WIDGETS, SettingsSection.DATA, SettingsSection.LANGUAGE).map { SettingsRow.Group(it) },
+    // "Biglietti e assistenza": official links of the operators (see TicketsAssistance.kt).
+    listOf(SettingsRow.Group(SettingsSection.TICKETS)),
     listOf(SettingsRow.SuggestStation, SettingsRow.Group(SettingsSection.ABOUT))
 )
 
@@ -124,6 +128,7 @@ internal fun SettingsSection.title(): String = stringResource(
         SettingsSection.WIDGETS -> R.string.settings_section_widgets
         SettingsSection.DATA -> R.string.settings_section_data
         SettingsSection.LANGUAGE -> R.string.settings_section_language
+        SettingsSection.TICKETS -> R.string.settings_section_tickets
         SettingsSection.ABOUT -> R.string.settings_section_about
     }
 )
@@ -135,6 +140,7 @@ private fun SettingsSection.detail(): String = stringResource(
         SettingsSection.WIDGETS -> R.string.settings_section_widgets_detail
         SettingsSection.DATA -> R.string.settings_section_data_detail
         SettingsSection.LANGUAGE -> R.string.settings_section_language_detail
+        SettingsSection.TICKETS -> R.string.settings_section_tickets_detail
         SettingsSection.ABOUT -> R.string.settings_section_about_detail
     }
 )
@@ -145,6 +151,7 @@ private val SettingsSection.icon: ImageVector
         SettingsSection.WIDGETS -> Icons.Default.Widgets
         SettingsSection.DATA -> Icons.Default.Sync
         SettingsSection.LANGUAGE -> Icons.Default.Language
+        SettingsSection.TICKETS -> Icons.Default.ConfirmationNumber
         SettingsSection.ABOUT -> Icons.Default.Info
     }
 
@@ -230,6 +237,7 @@ internal fun SettingsSectionScreen(
                             SettingsSection.WIDGETS -> WidgetSettings(viewModel)
                             SettingsSection.DATA -> DataSettings(viewModel)
                             SettingsSection.LANGUAGE -> LanguageSettings(viewModel, onThemeClick)
+                            SettingsSection.TICKETS -> TicketsAssistanceSettings()
                             SettingsSection.ABOUT -> AboutSettings()
                         }
                     }
@@ -420,6 +428,8 @@ private fun AboutSettings() {
             Text(stringResource(R.string.settings_credits_transit), style = creditStyle)
             transitCredits.forEach { credit -> LinkifiedText(credit, style = creditStyle) }
         }
+        // Emission factors of the CO2 estimate, with their source (co2/Co2Estimate.kt).
+        LinkifiedText(co2Credits(), style = creditStyle)
         Text(stringResource(R.string.settings_privacy_local_data), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }

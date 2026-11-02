@@ -52,6 +52,7 @@ import androidx.compose.ui.unit.sp
 import it.binario.app.R
 import it.binario.app.TabularFigures
 import it.binario.app.UiMessage
+import it.binario.app.co2.Co2Estimate
 import it.binario.app.data.Freshness
 import it.binario.app.data.ServiceStatus
 import it.binario.app.data.Station
@@ -281,7 +282,9 @@ internal fun ResultCard(
     isDemonstration: Boolean,
     onOpen: () -> Unit,
     modifier: Modifier = Modifier,
-    selected: Boolean = false
+    selected: Boolean = false,
+    /** Estimated CO2 of the trip, shown as a small line; null without station positions. */
+    co2: Co2Estimate? = null
 ) {
     val shown = if (isDemonstration) service.presentedAsDemonstration() else service
     val locale = LocalConfiguration.current.locales[0]
@@ -296,6 +299,7 @@ internal fun ResultCard(
         stringResource(R.string.accessibility_open_service, shown.localizedAccessibleSummary(), serviceState),
         arrival?.let { stringResource(R.string.service_scheduled_arrival, it) },
         duration?.let { durationAccessibleLabel(it) },
+        co2?.let { co2Spoken(it) },
         if (selected) stringResource(R.string.accessibility_row_selected) else null
     ).joinToString(". ")
     Surface(
@@ -345,6 +349,7 @@ internal fun ResultCard(
                     color = platformColor(shown.platform, shown.scheduledPlatform, MaterialTheme.colorScheme.onSurfaceVariant)
                 )
             }
+            co2?.let { Text(co2Line(it), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
         }
     }
 }

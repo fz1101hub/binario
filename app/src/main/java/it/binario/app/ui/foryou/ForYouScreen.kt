@@ -58,6 +58,7 @@ import it.binario.app.TrainViewModel
 import it.binario.app.data.Direction
 import it.binario.app.data.SavedRoute
 import it.binario.app.data.Station
+import it.binario.app.timetables.SavedTimetable
 import it.binario.app.ui.common.BinarioCard
 import it.binario.app.ui.common.HeaderOverlapBox
 import it.binario.app.ui.common.NavigationRow
@@ -92,7 +93,8 @@ internal fun ForYouScreen(
     openAgenda: () -> Unit,
     openStationBoard: (Station) -> Unit,
     openSettings: () -> Unit,
-    openFavouriteTrain: (ServiceMonitor) -> Unit = {}
+    openFavouriteTrain: (ServiceMonitor) -> Unit = {},
+    openSavedTimetable: (SavedTimetable) -> Unit = {}
 ) {
     var showComposer by rememberSaveable { mutableStateOf(false) }
     var tabName by rememberSaveable { mutableStateOf(RoutesTab.FAVOURITES.name) }
@@ -189,6 +191,7 @@ internal fun ForYouScreen(
                 )
             }
         }
+        item { SavedTimetablesSection(onOpen = openSavedTimetable) }
         if (viewModel.favouriteStations.isNotEmpty()) {
             item { SectionTitle(stringResource(R.string.station_board_favourites)) }
             item {

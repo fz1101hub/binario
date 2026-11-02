@@ -40,6 +40,7 @@ import it.binario.app.data.core.BoardKind
 import it.binario.app.data.provider.ProviderWarning
 import it.binario.app.data.catalog.EmbeddedCuratedRailStationCatalog
 import it.binario.app.data.orderServicesForDisplay
+import it.binario.app.timetables.SavedTimetableStore
 import it.binario.app.widget.RouteWidgetProvider
 import it.binario.app.widget.TrainsWidgetProvider
 import it.binario.app.widget.WidgetStateStore
@@ -1057,6 +1058,7 @@ class TrainViewModel @JvmOverloads constructor(
                 commuterAlerts = commuterAlerts,
                 mobilityPreferences = mobilityPreferences,
                 punctualityHistory = punctualityHistory,
+                savedTimetables = SavedTimetableStore.all(getApplication()),
                 stations = (
                     savedRoutes.flatMap { listOf(it.outwardOrigin, it.outwardDestination) } +
                         stations.filter { it.id in favouriteIds || it.id in monitoredStationIds }
@@ -1089,6 +1091,7 @@ class TrainViewModel @JvmOverloads constructor(
             CommuterAlertScheduler.rescheduleAll(getApplication())
             updateMobilityPreferences(backup.mobilityPreferences)
             backup.punctualityHistory?.let { punctualityHistory = punctualityStore.replace(it) }
+            backup.savedTimetables?.let { SavedTimetableStore.replace(getApplication(), it) }
             if (hasActiveRoute) refresh() else {
                 refreshRequestId += 1
                 primarySnapshot = null

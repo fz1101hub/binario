@@ -38,6 +38,7 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import it.binario.app.links.OfficialLinks
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -177,6 +178,14 @@ internal fun RailNoticeItem(notice: RailNotice, showLines: Boolean = true) {
         )
         notice.link?.let { link ->
             TextButton(onClick = { openExternalLink(uriHandler, link) }) { Text(stringResource(R.string.notices_open_source)) }
+        }
+        // A strike notice of Trenitalia or Trenord: the operator's own page of guaranteed trains (none is known for RFI).
+        if (notice.mentionsStrike) {
+            OfficialLinks.guaranteedTrainsOf(notice.publisher.name)?.let { page ->
+                TextButton(onClick = { openExternalLink(uriHandler, page) }) {
+                    Text(stringResource(R.string.notices_guaranteed_trains, notice.publisher.brand()))
+                }
+            }
         }
     }
 }
