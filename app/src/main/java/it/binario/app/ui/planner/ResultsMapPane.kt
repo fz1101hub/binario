@@ -43,6 +43,7 @@ import it.binario.app.ui.common.BinarioCard
 import it.binario.app.ui.common.JourneyTimes
 import it.binario.app.ui.common.Pill
 import it.binario.app.ui.common.localizedLabel
+import it.binario.app.ui.common.ltrUnit
 import it.binario.app.ui.common.presentedAsDemonstration
 
 /**
@@ -103,7 +104,7 @@ internal fun ResultsMapPane(
                     color = MaterialTheme.colorScheme.primary
                 )
                 Text(
-                    "${shown.origin} → ${shown.destination}",
+                    ltrUnit("${shown.origin} → ${shown.destination}"),
                     modifier = Modifier.semantics { heading() },
                     style = MaterialTheme.typography.titleLarge
                 )
@@ -111,7 +112,7 @@ internal fun ResultsMapPane(
                 val duration = JourneyTimes.durationMinutes(shown)
                 Text(
                     listOfNotNull(
-                        listOfNotNull(shown.scheduledDeparture, arrival).joinToString(" → "),
+                        ltrUnit(listOfNotNull(shown.scheduledDeparture, arrival).joinToString(" → ")),
                         duration?.let { "(" + JourneyTimes.durationLabel(it) + ")" }
                     ).joinToString("  "),
                     style = MaterialTheme.typography.titleMedium.copy(fontFeatureSettings = TabularFigures)

@@ -77,6 +77,7 @@ import it.binario.app.ui.common.isCachedCopy
 import it.binario.app.ui.common.localizedDisplayName
 import it.binario.app.ui.common.localizedLabel
 import it.binario.app.ui.common.localizedQualityLabel
+import it.binario.app.ui.common.ltrUnit
 import it.binario.app.ui.common.rememberCo2
 import it.binario.app.ui.journeys.JourneyResultCard
 import java.time.LocalDate
@@ -175,7 +176,7 @@ internal fun RouteResultsScreen(
     LazyColumn(modifier = modifier.fillMaxSize().testTag("route-results")) {
         item {
             ScreenHeader(
-                title = headline?.short ?: route.localizedDisplayName(primaryDirection),
+                title = ltrUnit(headline?.short ?: route.localizedDisplayName(primaryDirection)),
                 titleDescription = headline?.full,
                 subtitle = journeyLabel(query, locale),
                 trailing = {

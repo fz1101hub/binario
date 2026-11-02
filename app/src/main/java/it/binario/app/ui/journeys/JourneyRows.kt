@@ -48,6 +48,7 @@ import it.binario.app.ui.common.co2Line
 import it.binario.app.ui.common.co2Spoken
 import it.binario.app.ui.common.journeyDurationSpoken
 import it.binario.app.ui.common.localizedLabel
+import it.binario.app.ui.common.ltrUnit
 
 /**
  * How a leg is drawn and named. Modes the app does not know yet fall back to [OTHER] (line and number as published),
@@ -197,7 +198,7 @@ internal fun JourneyResultCard(
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    "${row.departureTime} → ${row.arrivalTime}",
+                    ltrUnit("${row.departureTime} → ${row.arrivalTime}"),
                     modifier = Modifier.weight(1f),
                     style = MaterialTheme.typography.titleLarge.copy(fontFeatureSettings = TabularFigures)
                 )

@@ -69,6 +69,7 @@ import it.binario.app.ui.common.ScreenHeader
 import it.binario.app.ui.common.ScreenMargin
 import it.binario.app.ui.common.SectionTitle
 import it.binario.app.ui.common.TonalButton
+import it.binario.app.ui.common.ltrUnit
 import it.binario.app.ui.common.platformColor
 import it.binario.app.ui.common.platformText
 import it.binario.app.ui.planner.savedAtLabel
@@ -280,7 +281,7 @@ private fun SavedTimetableRowCard(row: TimetableRow) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    listOfNotNull(row.departure, row.arrival).joinToString(" → "),
+                    ltrUnit(listOfNotNull(row.departure, row.arrival).joinToString(" → ")),
                     modifier = Modifier.weight(1f).semantics { heading() },
                     style = MaterialTheme.typography.titleLarge.copy(fontFeatureSettings = TabularFigures)
                 )

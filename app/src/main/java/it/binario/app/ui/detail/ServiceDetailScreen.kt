@@ -55,6 +55,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import it.binario.app.ActiveTrip
 import it.binario.app.ArrivalConnectionsSection
@@ -100,6 +101,7 @@ import it.binario.app.ui.common.TonalButton
 import it.binario.app.ui.common.co2Line
 import it.binario.app.ui.common.headerMutedColor
 import it.binario.app.ui.common.localizedLabel
+import it.binario.app.ui.common.ltrUnit
 import it.binario.app.ui.common.platformColor
 import it.binario.app.ui.common.platformSpoken
 import it.binario.app.ui.common.platformText
@@ -511,7 +513,7 @@ private fun ServiceDetailHeader(
             StationShortNames.route(service.origin, service.destination, stationLookup(service.origin)?.city, stationLookup(service.destination)?.city)
         }
         Text(
-            headline.short,
+            ltrUnit(headline.short),
             modifier = Modifier.semantics {
                 heading()
                 contentDescription = headline.full
@@ -659,7 +661,9 @@ internal fun StopTimelineRow(
         modifier = Modifier
             .fillMaxWidth()
             .drawBehind {
-                val x = TIMELINE_START.toPx() + TIMELINE_WIDTH.toPx() / 2
+                // The dot column sits at the start edge: the right one in a right-to-left layout.
+                val fromStart = TIMELINE_START.toPx() + TIMELINE_WIDTH.toPx() / 2
+                val x = if (layoutDirection == LayoutDirection.Rtl) size.width - fromStart else fromStart
                 val dotCenter = TIMELINE_DOT_CENTER.toPx()
                 val stroke = 3.dp.toPx()
                 if (!isFirst) drawLine(lineColor, Offset(x, 0f), Offset(x, dotCenter), stroke)

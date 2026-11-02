@@ -23,7 +23,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Route
 import androidx.compose.material.icons.filled.Star
@@ -90,6 +90,7 @@ import it.binario.app.ui.common.ScreenMargin
 import it.binario.app.ui.common.SearchInfoState
 import it.binario.app.ui.common.StationField
 import it.binario.app.ui.common.localizedLabel
+import it.binario.app.ui.common.ltrUnit
 import it.binario.app.ui.detail.StopTimelinePosition
 import it.binario.app.ui.detail.StopTimelineRow
 import it.binario.app.updateTimeMessage
@@ -501,7 +502,7 @@ internal fun StationBoardEntryRow(entry: StationBoardEntry, kind: BoardKind, onO
             }
         }
         if (onOpen != null) {
-            Icon(Icons.Default.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
@@ -568,7 +569,7 @@ private fun StationBoardRunDetailsContent(
                 }
                 Text(station, style = MaterialTheme.typography.titleMedium)
                 if (details != null) {
-                    Text("${details.origin} → ${details.destination}", style = MaterialTheme.typography.bodyLarge)
+                    Text(ltrUnit("${details.origin} → ${details.destination}"), style = MaterialTheme.typography.bodyLarge)
                     Text(details.observedAt?.let {
                         stringResource(R.string.provider_updated_at, details.providerName, updateTimeMessage(it.toEpochMilli()).localized())
                     } ?: details.providerName, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
