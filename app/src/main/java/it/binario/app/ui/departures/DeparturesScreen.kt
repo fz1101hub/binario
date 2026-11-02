@@ -88,7 +88,6 @@ import it.binario.app.ui.common.SectionTitle
 import it.binario.app.ui.common.ServiceGroup
 import it.binario.app.ui.common.ServiceStatusBadge
 import it.binario.app.ui.common.TonalButton
-import it.binario.app.ui.common.headerMutedColor
 import it.binario.app.ui.common.isCachedCopy
 import it.binario.app.ui.common.localizedAccessibleSummary
 import it.binario.app.ui.common.localizedDisplayName
@@ -426,7 +425,7 @@ internal fun OperationsSectionCard(
     val flat = LocalWideLayout.current
     val (container, content) = when {
         selected && flat -> colors.segmentSelected to colors.onSegmentSelected
-        selected -> MaterialTheme.colorScheme.surface to colors.header
+        selected -> colors.headerSelected to colors.onHeaderSelected
         flat -> Color.Transparent to colors.onSegmentTrack
         else -> Color.Transparent to colors.onHeaderTonal
     }
@@ -461,10 +460,8 @@ private fun BoardRouteHeader(
 ) {
     val locale = LocalConfiguration.current.locales[0]
     HeaderBlock(topPadding = 8.dp, bottomPadding = bottomPadding) {
-        val directionLabel = stringResource(if (direction == Direction.OUTBOUND) R.string.direction_outbound else R.string.direction_return)
         HeaderOverline(stringResource(R.string.shortcut_active_route).uppercase(locale))
         Text(route.localizedDisplayName(direction), modifier = Modifier.semantics { heading() }, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-        Text(stringResource(R.string.board_route_direction, route.localizedName(), directionLabel), style = MaterialTheme.typography.bodySmall, color = headerMutedColor())
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 4.dp)) {
             TonalButton(
                 text = stringResource(R.string.action_direction),

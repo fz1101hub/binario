@@ -245,7 +245,7 @@ internal fun <T> SegmentedControl(
         options.forEach { option ->
             val isSelected = option == selected
             val (container, content) = when {
-                isSelected && onHeader && !flatHeader -> MaterialTheme.colorScheme.surface to colors.header
+                isSelected && onHeader && !flatHeader -> colors.headerSelected to colors.onHeaderSelected
                 isSelected -> colors.segmentSelected to colors.onSegmentSelected
                 onHeader && !flatHeader -> Color.Transparent to colors.onHeaderTonal
                 else -> Color.Transparent to colors.onSegmentTrack

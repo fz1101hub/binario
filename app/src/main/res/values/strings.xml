@@ -397,7 +397,6 @@
 
     <!-- Board, routes and service detail. -->
     <string name="delay_minutes">+%1$d min</string>
-    <string name="board_route_direction">%1$s · %2$s</string>
     <string name="action_direction">Direzione</string>
     <string name="action_change_route">Cambia tratta</string>
     <string name="monitored_routes_title">Tratte monitorate</string>
@@ -985,4 +984,5 @@
         <item quantity="many">%d ore</item>
         <item quantity="other">%d ore</item>
     </plurals>
+    <string name="results_map_notice">La mappa si apre solo su richiesta: per disegnarla l’app scarica le tessere della zona del percorso da OpenFreeMap.</string>
 </resources>

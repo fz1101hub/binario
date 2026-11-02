@@ -188,7 +188,8 @@ internal fun ServiceDetailScreen(
     val dataLabel = if (isDemonstration) stringResource(R.string.data_status_demo) else freshness?.localizedLabel() ?: stringResource(R.string.data_status_unavailable)
     val isThisTrip = activeTrip?.trainNumber == service.number
     val progress = RouteMapPlanner.progress(shown.stops)
-    var tabName by rememberSaveable { mutableStateOf(DetailTab.ROUTE.name) }
+    // Another train opens on Percorso again; the same train keeps its tab across recreation.
+    var tabName by rememberSaveable(service.id) { mutableStateOf(DetailTab.ROUTE.name) }
     val tab = DetailTab.valueOf(tabName)
     Column(modifier.fillMaxSize().testTag("train-detail-screen")) {
         LazyColumn(modifier = Modifier.weight(1f).fillMaxWidth().testTag("train-detail"), verticalArrangement = Arrangement.spacedBy(0.dp)) {
@@ -279,8 +280,8 @@ internal fun ServiceDetailScreen(
                                     alarmFeedback?.let { feedback ->
                                         Text(feedback, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
                                     }
-                                    service.stops.drop(1).forEachIndexed { offset, original ->
-                                        val stop = shown.stops.getOrNull(offset + 1) ?: original
+                                    service.stops.forEachIndexed { index, original ->
+                                        val stop = shown.stops.getOrNull(index) ?: original
                                         if (!stop.completed) {
                                             StopAlarmRow(stop.station, stop.scheduled, onClick = { onScheduleStopAlarm(service, original) })
                                         }

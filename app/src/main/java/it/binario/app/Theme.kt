@@ -150,6 +150,9 @@ data class BinarioColors(
     /** Chips and unselected tabs drawn on the header. */
     val headerTonal: Color,
     val onHeaderTonal: Color,
+    /** The selected tab or segment on the header ("Percorso", "Treni"): white in the render. */
+    val headerSelected: Color,
+    val onHeaderSelected: Color,
     val segmentSelected: Color,
     val onSegmentSelected: Color,
     /** Track of segmented controls and unselected chips on cards. */
@@ -168,6 +171,8 @@ private val LightBinarioColors = BinarioColors(
     onHeaderMuted = Color(0xFF8FE3C0),
     headerTonal = Color(0xFF1E5A44),
     onHeaderTonal = Color(0xFFFFFFFF),
+    headerSelected = Color(0xFFFCFCFC),
+    onHeaderSelected = Color(0xFF003A28),
     segmentSelected = Color(0xFF004A33),
     onSegmentSelected = Color(0xFFFFFFFF),
     segmentTrack = Color(0xFFE2EEEA),
@@ -184,6 +189,8 @@ private val DarkBinarioColors = BinarioColors(
     onHeaderMuted = Color(0xFF8FE3C0),
     headerTonal = Color(0xFF173F31),
     onHeaderTonal = Color(0xFFE3F1EB),
+    headerSelected = Color(0xFFC9F2E1),
+    onHeaderSelected = Color(0xFF0A1F17),
     segmentSelected = Color(0xFF7FDBB5),
     onSegmentSelected = Color(0xFF0A1F17),
     segmentTrack = Color(0xFF233630),

@@ -137,6 +137,8 @@ class DesignScreenshotTest {
         showWideApp(model)
         composeRule.onNodeWithTag("planner-search").performClick()
         waitForTag("results-map-pane")
+        // The map starts only on request (privacy policy), as a traveller would open it.
+        composeRule.onNodeWithTag("results-map-show").performClick()
         // MapLibre draws the OpenFreeMap tiles outside Compose: give them time to arrive.
         SystemClock.sleep(MAP_SETTLE_MILLIS)
         captureNode("15-tablet-risultati", "wide-frame")

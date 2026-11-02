@@ -397,7 +397,6 @@
 
     <!-- Board, routes and service detail. -->
     <string name="delay_minutes">+%1$d min</string>
-    <string name="board_route_direction">%1$s · %2$s</string>
     <string name="action_direction">Sentido</string>
     <string name="action_change_route">Cambiar ruta</string>
     <string name="monitored_routes_title">Rutas seguidas</string>
@@ -985,4 +984,5 @@
         <item quantity="many">%d horas</item>
         <item quantity="other">%d horas</item>
     </plurals>
+    <string name="results_map_notice">El mapa solo se abre si lo pides: para dibujarlo la app descarga las teselas de la zona del recorrido desde OpenFreeMap.</string>
 </resources>

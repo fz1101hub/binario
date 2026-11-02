@@ -394,7 +394,6 @@
 
     <!-- Board, routes and service detail. -->
     <string name="delay_minutes">+%1$d Min.</string>
-    <string name="board_route_direction">%1$s · %2$s</string>
     <string name="action_direction">Richtung</string>
     <string name="action_change_route">Strecke ändern</string>
     <string name="monitored_routes_title">Überwachte Strecken</string>
@@ -969,4 +968,5 @@
         <item quantity="one">%d Stunde</item>
         <item quantity="other">%d Stunden</item>
     </plurals>
+    <string name="results_map_notice">Die Karte öffnet sich nur auf Wunsch: Zum Zeichnen lädt die App die Kacheln des Streckengebiets von OpenFreeMap.</string>
 </resources>

@@ -107,7 +107,7 @@ class AndroidStringResourceParityTest {
             "integration_apple_watch_title", "widget_previous_symbol", "widget_next_symbol", "widget_refresh_symbol",
             "delay_minutes", "planned_journey_route", "service_operator_category_number", "service_data_summary", "station_board_entry_accessibility",
             "accessibility_optional_message", "accessibility_title_detail", "provider_updated_at", "distance_kilometers",
-            "board_route_direction", "planner_round_trip_results", "widget_accessibility_target", "share_operator_category",
+            "planner_round_trip_results", "widget_accessibility_target", "share_operator_category",
             "share_route", "planned_journey_checklist_item", "mobility_changes_max", "route_change_via",
             "share_category_frecce", "share_category_intercity", "share_stop_delay", "alert_repeat_weekdays",
             "commuter_alert_lead", "integration_wear_title",

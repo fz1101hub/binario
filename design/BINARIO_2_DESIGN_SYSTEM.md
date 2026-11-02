@@ -20,6 +20,7 @@ Colori misurati sul render (colore dominante per regione) e ruoli dello schema s
 | Sottotitoli e overline sulla testata | `#8FE3C0` | `#8FE3C0` | «Il tuo prossimo viaggio parte da qui.», «TRATTA ATTIVA»: 8,5:1 su `#003A28` |
 | Segmento / chip selezionato | `#004A33` | `#7FDBB5` | Testo bianco 10,4:1 (scuro: testo `#0A1F17`, 10,4:1) |
 | Voce selezionata della barra laterale | `#00523A` | `#1E4A3A` | Testo bianco 9,3:1 |
+| Tab o segmento selezionato sulla testata | `#FCFCFC` | `#C9F2E1` | «Percorso», «Treni»: testo `#003A28` 12,5:1 (scuro `#0A1F17`, 14,1:1); le altre tab `#1E5A44` con testo bianco 8,1:1 |
 | Primary (pulsanti pieni) | `#00703E` | `#7FDBB5` | «Cerca soluzioni», «Segui questo viaggio»: bianco 6,2:1 (scuro: `#003826`, 8,0:1) |
 | Tonale (pulsanti e pill di stato) | `#D8F4EA` | `#1E4A3A` | «Dettagli», «Nuova tratta», stato: testo `#00513A` 8,1:1 (scuro `#C9F2E1`, 8,2:1) |
 | Chip e segmenti non selezionati | `#E2EEEA` | `#233630` | Testo `#1A2E26` 12,1:1 |
