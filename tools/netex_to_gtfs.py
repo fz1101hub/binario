@@ -239,6 +239,18 @@ def iter_objects(stream: io.BufferedIOBase, wanted: set[str]) -> Iterator[tuple[
             element.clear()
 
 
+def stop_name(element: ET.Element) -> str:
+    """The name a passenger reads: Name, or ShortName when Name is only the stop's code. Some regional producers write
+    the code in Name and the name in ShortName (Name "TRAIN110-174" or "LUCERA", ShortName "Bari Centrale" or
+    "Stazione di Lucera", PrivateCode equal to Name)."""
+    name = text(element, "Name")
+    short = text(element, "ShortName")
+    codes = {text(element, "PrivateCode"), text(element, "PublicCode")} - {""}
+    if short and (not name or name in codes):
+        return short
+    return name or short
+
+
 def first_pass(streams: Callable[[], Iterator[tuple[str, io.BufferedIOBase]]]) -> Model:
     model = Model()
     wanted = {
@@ -255,14 +267,14 @@ def first_pass(streams: Callable[[], Iterator[tuple[str, io.BufferedIOBase]]]) -
                                                text(element, "ContactDetails", "Url"))
             elif name == "StopPlace":
                 latitude, longitude = coordinates(element)
-                model.stop_places[identifier] = (text(element, "Name"), text(element, "PrivateCode"), latitude, longitude)
+                model.stop_places[identifier] = (stop_name(element), text(element, "PrivateCode"), latitude, longitude)
             elif name == "Quay":
                 place = next((owner for kind, owner in reversed(context) if kind == "StopPlace"), "")
                 latitude, longitude = coordinates(element)
-                model.quays[identifier] = (place, text(element, "Name"), text(element, "PrivateCode"), latitude, longitude)
+                model.quays[identifier] = (place, stop_name(element), text(element, "PrivateCode"), latitude, longitude)
             elif name == "ScheduledStopPoint":
                 latitude, longitude = coordinates(element)
-                model.points[identifier] = (text(element, "Name"), text(element, "PrivateCode"), latitude, longitude)
+                model.points[identifier] = (stop_name(element), text(element, "PrivateCode"), latitude, longitude)
             elif name == "PassengerStopAssignment":
                 point = ref(element, "ScheduledStopPointRef")
                 if point:
@@ -467,7 +479,15 @@ def journey_number(element: ET.Element) -> str:
             value = (item.get("ref") or "").rsplit(":", 1)[-1]
             if value:
                 return value
-    return text(element, "PrivateCode")
+    private = text(element, "PrivateCode")
+    if private:
+        return private
+    # Last resort: a train number closing the journey id ("...:MI_TU_1816"), as Mi.Co.Tra. publishes it.
+    found = TRAILING_NUMBER.search(element.get("id") or "")
+    return found.group(1) if found else ""
+
+
+TRAILING_NUMBER = re.compile(r"[_:-](\d{3,6})$")
 
 
 def calendar_rows(services: dict[frozenset[date], str]) -> tuple[list[dict[str, str]], list[dict[str, str]]]:
@@ -576,8 +596,9 @@ def convert(source: Path, destination: Path, *, source_label: str) -> dict[str, 
         values = model.lines[line]
         route_rows.append({
             "route_id": line, "agency_id": values["operator"],
-            "route_short_name": public_line_name(values["short"] or values["public"] or model.products.get(values["product"], "")),
-            "route_long_name": values["name"], "route_type": route_type(values["mode"]),
+            "route_short_name": next((name for name in (public_line_name(values["short"]), public_line_name(values["public"]),
+                                                     model.products.get(values["product"], "")) if name), ""),
+            "route_long_name": public_line_name(values["name"]), "route_type": route_type(values["mode"]),
         })
     all_dates = sorted({day for days in output.services for day in days})
     destination.parent.mkdir(parents=True, exist_ok=True)

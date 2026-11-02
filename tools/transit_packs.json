@@ -55,19 +55,6 @@
       "notes": "Treni transfrontalieri Mi.Co.Tra. Trieste/Udine - Villach dal Regional Access Point Friuli Venezia Giulia; NeTEx convertito da tools/netex_to_gtfs.py."
     },
     {
-      "sourceId": "trenitalia-tper-rer",
-      "directory": "gtfs-transit",
-      "distribution": "all",
-      "kind": "rail",
-      "format": "netex",
-      "operator": "Trenitalia Tper",
-      "sourceUrl": "https://www.cciss.it/nap/mmtis/public/api/v1/download/blob/Asset/399807/checkedResource",
-      "licence": "NAP CCISS: no licence - no contract (dati aperti per default, art. 52 c. 2 CAD; Reg. UE 2017/1926)",
-      "licenceEvidence": "https://www.cciss.it/nap/mmtis/public/it/catalog/Dataset/1561 (RAP Emilia-Romagna, asset IT-ITH5-TRENITALIA-RER, licence no_licence_no_contract)",
-      "attribution": "Treni regionali dell'Emilia-Romagna via RAP Emilia-Romagna / NAP CCISS (NeTEx, conversione Binario)",
-      "notes": "Orario ferroviario regionale dell'Emilia-Romagna (Trenitalia Tper: Modena - Sassuolo, Reggio Emilia - Guastalla, Parma - Suzzara, Bologna - Portomaggiore, ...) dal Regional Access Point Emilia-Romagna; NeTEx convertito da tools/netex_to_gtfs.py. Le corse anche nel pack Trenitalia nazionale restano mostrate da quello."
-    },
-    {
       "sourceId": "amt-genova-casella-gtfs",
       "directory": "gtfs-transit",
       "distribution": "all",

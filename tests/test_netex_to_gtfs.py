@@ -203,6 +203,27 @@ class NetexToGtfsTest(unittest.TestCase):
         )
         self.assertIn('"trips": 2', completed.stdout)
 
+    def test_codes_written_as_names_give_way_to_the_short_name(self) -> None:
+        # The Puglia access point writes the stop code in Name ("TRAIN110-174", "LUCERA") and the name in ShortName,
+        # the line id in Line/Name and ShortName, and Mi.Co.Tra. its train number only at the end of the journey id.
+        coded = (NETEX
+                 .replace('<Name>Bari Centrale FAL</Name><PrivateCode>B01</PrivateCode>',
+                          '<Name>B01</Name><ShortName>Bari Centrale</ShortName><PrivateCode>B01</PrivateCode>')
+                 .replace('<ScheduledStopPoint id="IT::SSP:ALTAMURA" version="1"><Name>ALTAMURA</Name>',
+                          '<ScheduledStopPoint id="IT::SSP:ALTAMURA" version="1"><ShortName>Stazione di Altamura</ShortName>')
+                 .replace('<Line id="IT::Line:BM" version="1"><Name>Bari - Matera</Name><TransportMode>rail</TransportMode><PublicCode>FR</PublicCode>',
+                          '<Line id="IT::Line:BM" version="1"><Name>route170</Name><ShortName>route170</ShortName><TransportMode>rail</TransportMode><PublicCode>FR</PublicCode>')
+                 .replace('<ServiceJourney id="IT::SJ:A" version="1"><Name>12345</Name>', '<ServiceJourney id="IT::SJ:MI_TU_1816" version="1"><Name/>'))
+        _, archive = self.convert(gzip.compress(coded.encode("utf-8")))
+        stops = {row["stop_id"]: row for row in table(archive, "stops.txt")}
+        self.assertEqual("Bari Centrale", stops["IT::StopPlace:BARI"]["stop_name"])
+        self.assertEqual("Stazione di Altamura", stops["IT::SSP:ALTAMURA"]["stop_name"])
+        route = table(archive, "routes.txt")[0]
+        # The internal ids are dropped and the public code wins; the long name stays empty rather than "route170".
+        self.assertEqual(("FR", ""), (route["route_short_name"], route["route_long_name"]))
+        trips = {row["trip_id"]: row for row in table(archive, "trips.txt")}
+        self.assertEqual("1816", trips["IT::SJ:MI_TU_1816"]["trip_short_name"])
+
     def test_internal_line_ids_are_not_public_names(self) -> None:
         # Producers write their database id as ShortName ("route170", "3000"); the public names stay.
         for internal in ("route170", "3000", "1", "Linea 5", "line_12"):
