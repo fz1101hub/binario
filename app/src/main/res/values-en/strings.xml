@@ -1159,5 +1159,17 @@
     <string name="platform_changed_label">Platform %1$s (was %2$s)</string>
     <string name="platform_changed_accessible">Platform changed: %1$s, scheduled %2$s</string>
     <string name="widget_platform_changed">PLAT %1$s\nwas %2$s</string>
+    <string name="partenze_types_action">Train types</string>
+    <string name="partenze_types_all">All train types</string>
+    <string name="partenze_types_hidden">Hidden: %1$s</string>
+    <string name="partenze_types_show_all">Show all</string>
+    <string name="partenze_types_sheet_title">Train types at %1$s</string>
+    <string name="partenze_types_sheet_description">Untick the types you do not need: the choice applies to this station and stays on this device. Trains whose type the source does not give are always shown.</string>
+    <string name="partenze_types_done">Done</string>
+    <string name="partenze_type_bus">Buses</string>
+    <plurals name="partenze_hidden_trains">
+        <item quantity="one">%d train hidden</item>
+        <item quantity="other">%d trains hidden</item>
+    </plurals>
     <!-- End of platform changes, Partenze train types, saved timetables, sharing, tickets and assistance, CO2 estimate -->
 </resources>

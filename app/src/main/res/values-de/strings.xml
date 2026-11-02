@@ -1159,5 +1159,17 @@
     <string name="platform_changed_label">Gleis %1$s (statt %2$s)</string>
     <string name="platform_changed_accessible">Gleiswechsel: %1$s, geplant %2$s</string>
     <string name="widget_platform_changed">GL %1$s\nstatt %2$s</string>
+    <string name="partenze_types_action">Zugarten</string>
+    <string name="partenze_types_all">Alle Zugarten</string>
+    <string name="partenze_types_hidden">Ausgeblendet: %1$s</string>
+    <string name="partenze_types_show_all">Alle anzeigen</string>
+    <string name="partenze_types_sheet_title">Zugarten in %1$s</string>
+    <string name="partenze_types_sheet_description">Entferne die Zugarten, die dich nicht interessieren: Die Auswahl gilt für diesen Bahnhof und bleibt auf diesem Gerät. Züge, deren Art die Quelle nicht angibt, bleiben immer sichtbar.</string>
+    <string name="partenze_types_done">Fertig</string>
+    <string name="partenze_type_bus">Busse</string>
+    <plurals name="partenze_hidden_trains">
+        <item quantity="one">%d Zug ausgeblendet</item>
+        <item quantity="other">%d Züge ausgeblendet</item>
+    </plurals>
     <!-- End of platform changes, Partenze train types, saved timetables, sharing, tickets and assistance, CO2 estimate -->
 </resources>

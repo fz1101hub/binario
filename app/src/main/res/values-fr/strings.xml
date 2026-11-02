@@ -1183,5 +1183,18 @@
     <string name="platform_changed_label">Voie %1$s (au lieu de %2$s)</string>
     <string name="platform_changed_accessible">Changement de voie : %1$s, prévue %2$s</string>
     <string name="widget_platform_changed">VOIE %1$s\nau lieu %2$s</string>
+    <string name="partenze_types_action">Types de train</string>
+    <string name="partenze_types_all">Tous les types de train</string>
+    <string name="partenze_types_hidden">Masqués : %1$s</string>
+    <string name="partenze_types_show_all">Tout afficher</string>
+    <string name="partenze_types_sheet_title">Types de train à %1$s</string>
+    <string name="partenze_types_sheet_description">Décochez les types qui ne vous intéressent pas : le choix vaut pour cette gare et reste sur cet appareil. Les trains dont la source n’indique pas le type restent toujours affichés.</string>
+    <string name="partenze_types_done">Terminé</string>
+    <string name="partenze_type_bus">Cars et bus</string>
+    <plurals name="partenze_hidden_trains">
+        <item quantity="one">%d train masqué</item>
+        <item quantity="many">%d trains masqués</item>
+        <item quantity="other">%d trains masqués</item>
+    </plurals>
     <!-- End of platform changes, Partenze train types, saved timetables, sharing, tickets and assistance, CO2 estimate -->
 </resources>

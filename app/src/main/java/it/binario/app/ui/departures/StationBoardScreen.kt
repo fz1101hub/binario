@@ -149,6 +149,9 @@ internal fun StationBoardScreen(modifier: Modifier, viewModel: TrainViewModel, r
             current.station.id == selectedStation.id &&
             current.kind == viewModel.stationBoardKind
     }
+    // Train types hidden at this station (on this device); a train of unknown type is never hidden.
+    val (excludedTypes, setExcludedTypes) = rememberTrainTypeExclusions(board?.station?.id)
+    val shownEntries = board?.entries.orEmpty().let { entries -> PartenzeTrainTypes.visible(entries, excludedTypes, PartenzeTrainTypes::groupOf) }
 
     LazyColumn(
         modifier = modifier.fillMaxSize().testTag("station-board-list"),
@@ -302,8 +305,16 @@ internal fun StationBoardScreen(modifier: Modifier, viewModel: TrainViewModel, r
                         }
                     }
                     item { StationLineNoticesSection(board.station) }
+                    item(key = "train-types") {
+                        TrainTypeFilterControl(
+                            stationName = board.station.name,
+                            excluded = excludedTypes,
+                            hiddenCount = board.entries.size - shownEntries.size,
+                            onChange = setExcludedTypes
+                        )
+                    }
                     items(
-                        board.entries.take(60),
+                        shownEntries.take(60),
                         key = { entry ->
                             listOf(
                                 entry.runId.value,

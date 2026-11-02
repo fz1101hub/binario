@@ -200,7 +200,11 @@ private fun RouteBoard(
         )
     }
     val isDemonstration = viewModel.isDemonstrationData()
-    val services = viewModel.homeServices()
+    // Train types hidden at the departure station of the route (Partenze only; unknown types always stay).
+    val boardStation = viewModel.activeRoute.origin(viewModel.direction).takeIf { viewModel.hasActiveRoute }
+    val (excludedTypes, setExcludedTypes) = rememberTrainTypeExclusions(boardStation?.id)
+    val allServices = viewModel.homeServices()
+    val services = PartenzeTrainTypes.visible(allServices, excludedTypes, PartenzeTrainTypes::groupOf)
     val nextService = services.firstOrNull()
     val laterServices = services.drop(1)
     val groups = ServiceGroup.chipsFor(laterServices)
@@ -242,6 +246,16 @@ private fun RouteBoard(
                 isCachedCopy = viewModel.isCachedCopy(),
                 message = viewModel.refreshMessage
             )
+        }
+        if (boardStation != null && allServices.isNotEmpty()) {
+            item(key = "train-types") {
+                TrainTypeFilterControl(
+                    stationName = boardStation.name,
+                    excluded = excludedTypes,
+                    hiddenCount = allServices.size - services.size,
+                    onChange = setExcludedTypes
+                )
+            }
         }
         if (nextService != null) {
             if (laterServices.isNotEmpty()) {

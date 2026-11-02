@@ -1183,5 +1183,18 @@
     <string name="platform_changed_label">Binario %1$s (era %2$s)</string>
     <string name="platform_changed_accessible">Binario cambiato: %1$s, previsto %2$s</string>
     <string name="widget_platform_changed">BIN %1$s\nera %2$s</string>
+    <string name="partenze_types_action">Tipi di treno</string>
+    <string name="partenze_types_all">Tutti i tipi di treno</string>
+    <string name="partenze_types_hidden">Nascosti: %1$s</string>
+    <string name="partenze_types_show_all">Mostra tutti</string>
+    <string name="partenze_types_sheet_title">Tipi di treno a %1$s</string>
+    <string name="partenze_types_sheet_description">Togli i tipi che non ti interessano: la scelta vale per questa stazione e resta su questo dispositivo. I treni di cui la fonte non indica il tipo restano sempre visibili.</string>
+    <string name="partenze_types_done">Fatto</string>
+    <string name="partenze_type_bus">Bus</string>
+    <plurals name="partenze_hidden_trains">
+        <item quantity="one">%d treno nascosto</item>
+        <item quantity="many">%d treni nascosti</item>
+        <item quantity="other">%d treni nascosti</item>
+    </plurals>
     <!-- End of platform changes, Partenze train types, saved timetables, sharing, tickets and assistance, CO2 estimate -->
 </resources>
