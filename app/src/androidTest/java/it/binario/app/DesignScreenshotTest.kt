@@ -47,6 +47,30 @@ import it.binario.app.data.TrainStop
 import it.binario.app.data.repository.StationBoardAggregateService
 import it.binario.app.data.repository.StationBoardRunDetailService
 import it.binario.app.data.repository.TrainNumberSearchService
+import it.binario.app.data.repository.JourneySearchService
+import it.binario.app.data.core.Completeness
+import it.binario.app.data.core.JourneyId
+import it.binario.app.data.core.JourneyLeg
+import it.binario.app.data.core.JourneyOption
+import it.binario.app.data.core.LegMode
+import it.binario.app.data.core.ServiceKind
+import it.binario.app.data.core.SnapshotMeta
+import it.binario.app.data.core.SourceId
+import it.binario.app.data.core.StationId
+import it.binario.app.data.core.TrainRunId
+import it.binario.app.data.provider.AccessMode
+import it.binario.app.data.provider.CoverageDescriptor
+import it.binario.app.data.provider.JourneyProvider
+import it.binario.app.data.provider.JourneySearchRequest
+import it.binario.app.data.provider.ProviderCapability
+import it.binario.app.data.provider.ProviderDescriptor
+import it.binario.app.data.provider.ProviderResponseMeta
+import it.binario.app.data.provider.ProviderResult
+import it.binario.app.data.provider.RatePolicy
+import it.binario.app.journeys.JourneySearchViewModel
+import java.time.Duration
+import java.time.Instant
+import java.time.ZoneId
 import java.io.File
 import java.time.LocalTime
 import org.junit.After
@@ -62,6 +86,8 @@ import org.junit.runners.MethodSorters
  * approved Binario 2.0 render. Not part of the normal device-test run: tools/run_android_ui_tests.sh runs it on
  * demand (BINARIO_CAPTURE_SCREENS=true) and prints the JPEG files into the CI log.
  *
+ * The journeys with changes come from a fixed fixture too, so the results mix "Diretto", "1 cambio" and "2 cambi".
+ *
  * Files: filesDir/design-screens/NN-name.jpg, the full window (status and navigation bars included) for
  * phones, the 900 x 600 dp frame for the wide layouts, scaled to 50 % and saved at JPEG quality 85.
  */
@@ -71,6 +97,10 @@ class DesignScreenshotTest {
     @get:Rule val composeRule = createAndroidComposeRule<ComponentActivity>()
     private val application = ApplicationProvider.getApplicationContext<Application>()
     private val store = ViewModelStore()
+    /** Journeys with changes from a fixed local fixture, never the network or the offline packs. */
+    private val journeyModel: JourneySearchViewModel by lazy {
+        JourneySearchViewModel(JourneySearchService(listOf(DemoJourneyProvider()))).also { store.put("design-journeys", it) }
+    }
 
     @Before fun prepare() {
         clearPreferences()
@@ -88,49 +118,56 @@ class DesignScreenshotTest {
         capture("01-pianifica")
         click("planner-search")
         waitForTag("result-card")
+        // Direct trains and the journeys with changes of the fixture, merged by departure.
+        waitForTag("journey-result-card")
         capture("02-risultati")
+        clickFirst("journey-result-card")
+        waitForTag("journey-transfer")
+        capture("03-viaggio-con-cambio")
+        click("top-bar-back")
+        waitForTag("route-results")
         clickFirst("result-card")
         waitForTag("detail-timeline")
-        capture("03-dettaglio-percorso")
+        capture("04-dettaglio-percorso")
         click("detail-tab-info")
         waitForTag("detail-info")
-        capture("04-dettaglio-info")
+        capture("05-dettaglio-info")
         click("detail-tab-services")
         waitForTag("detail-services")
-        capture("05-dettaglio-servizi")
+        capture("06-dettaglio-servizi")
         click("top-bar-back")
         waitForTag("route-results")
         click("nav-departures")
         waitForTag("departures-hero")
-        capture("06-partenze")
+        capture("07-partenze")
         click("departures-section-stations")
         waitForTag("station-board-list")
-        capture("07-partenze-stazioni")
+        capture("08-partenze-stazioni")
         click("departures-section-trains")
         click("nav-for-you")
         waitForTag("for-you-screen")
-        capture("08-per-te-tratte")
+        capture("09-per-te-tratte")
         click("for-you-tab-recent")
         composeRule.waitForIdle()
-        capture("09-per-te-recenti")
+        capture("10-per-te-recenti")
         click("top-bar-settings")
         waitForTag("settings-screen")
-        capture("10-impostazioni")
+        capture("11-impostazioni")
         click("settings-alerts")
         waitForTag("settings-section-alerts")
-        capture("11-impostazioni-notifiche")
+        capture("12-impostazioni-notifiche")
     }
 
     @Test fun b_departuresAndDetailInDarkTheme() {
         val model = demoViewModel()
         showApp(model, AppThemeMode.DARK)
-        capture("12-pianifica-scuro")
+        capture("13-pianifica-scuro")
         click("nav-departures")
         waitForTag("departures-hero")
-        capture("13-partenze-scuro")
+        capture("14-partenze-scuro")
         click("departures-hero")
         waitForTag("detail-timeline")
-        capture("14-dettaglio-scuro")
+        capture("15-dettaglio-scuro")
     }
 
     @Test fun c_tabletResultsWithMap() {
@@ -142,7 +179,7 @@ class DesignScreenshotTest {
         click("results-map-show")
         // MapLibre draws the OpenFreeMap tiles outside Compose: give them time to arrive.
         SystemClock.sleep(MAP_SETTLE_MILLIS)
-        captureNode("15-tablet-risultati", "wide-frame")
+        captureNode("16-tablet-risultati", "wide-frame")
     }
 
     @Test fun d_tabletDeparturesWithDetail() {
@@ -152,7 +189,7 @@ class DesignScreenshotTest {
         waitForTag("departures-hero")
         clickFirst("departures-hero")
         waitForTag("detail-timeline")
-        captureNode("16-tablet-partenze", "wide-frame")
+        captureNode("17-tablet-partenze", "wide-frame")
     }
 
     private fun showApp(model: TrainViewModel, theme: AppThemeMode) {
@@ -164,7 +201,8 @@ class DesignScreenshotTest {
                     onThemeModeChange = {},
                     deepLinkRequest = null,
                     onDeepLinkConsumed = {},
-                    onSystemBarsAppearance = ::applySystemBars
+                    onSystemBarsAppearance = ::applySystemBars,
+                    journeyViewModel = journeyModel
                 )
             }
         }
@@ -194,7 +232,8 @@ class DesignScreenshotTest {
                             onThemeModeChange = {},
                             deepLinkRequest = null,
                             onDeepLinkConsumed = {},
-                            onSystemBarsAppearance = ::applySystemBars
+                            onSystemBarsAppearance = ::applySystemBars,
+                            journeyViewModel = journeyModel
                         )
                     }
                 }
@@ -334,6 +373,57 @@ class DesignScreenshotTest {
                     confidence = DataConfidence.DEMONSTRATION
                 )
             )
+        }
+    }
+
+    /**
+     * Journeys for the same route as [DemoRouteSource], labelled with the demonstration catalogue as source: the
+     * direct 17:40 train (which the results show once, as the direct train), one option with one change at Milano
+     * Centrale and one with two changes arriving after midnight. Scheduled times only.
+     */
+    private class DemoJourneyProvider : JourneyProvider {
+        override val descriptor = ProviderDescriptor(
+            SourceId("demo-journeys"), "Catalogo dimostrativo locale", setOf(ProviderCapability.JOURNEY_SEARCH),
+            CoverageDescriptor(description = "Fixture of the design screenshots"), AccessMode.OPEN_DIRECT,
+            RatePolicy(Duration.ZERO, defaultTimeToLive = Duration.ofMinutes(30)), 1
+        )
+
+        override suspend fun searchJourneys(request: JourneySearchRequest): ProviderResult<List<JourneyOption>> {
+            val day = request.departureAt.toLocalDate()
+            val zone = ZoneId.of("Europe/Rome")
+            val origin = request.originEndpoint?.name ?: "Roma Termini"
+            val destination = request.destinationEndpoint?.name ?: "Torino Porta Nuova"
+            fun at(time: String, plusDays: Long = 0) = day.plusDays(plusDays).atTime(LocalTime.parse(time)).atZone(zone)
+            fun leg(line: String, number: String, kind: ServiceKind, from: Pair<String, String>, to: Pair<String, String>,
+                    departure: java.time.ZonedDateTime, arrival: java.time.ZonedDateTime) = JourneyLeg(
+                mode = LegMode.TRAIN, runId = TrainRunId("demo:$number"), origin = StationId(from.first), destination = StationId(to.first),
+                scheduledDeparture = departure, scheduledArrival = arrival, publicNumber = number, lineLabel = line,
+                originLabel = from.second, destinationLabel = to.second, serviceKind = kind, operatorName = "Trenitalia"
+            )
+            val start = request.origin.value to origin
+            val end = request.destination.value to destination
+            val milano = "demo:milano" to "Milano Centrale"
+            val firenze = "demo:firenze" to "Firenze S. M. Novella"
+            val bologna = "demo:bologna" to "Bologna Centrale"
+            val meta = SnapshotMeta(1, Instant.now(), null, it.binario.app.data.core.Freshness.FRESH, Completeness.STATIC_ONLY, emptySet())
+            fun option(id: String, vararg legs: JourneyLeg) = JourneyOption(
+                JourneyId(id), request.origin, request.destination, legs.first().scheduledDeparture, legs.last().scheduledArrival, legs.toList(), meta
+            )
+            val options = listOf(
+                option("demo-direct", leg("FR", "9558", ServiceKind.HIGH_SPEED, start, end, at("17:40"), at("22:05"))),
+                option(
+                    "demo-one-change",
+                    leg("FR", "9620", ServiceKind.HIGH_SPEED, start, milano, at("18:00"), at("21:10")),
+                    leg("RV", "2041", ServiceKind.REGIONAL, milano, end, at("21:25"), at("22:50"))
+                ),
+                option(
+                    "demo-two-changes",
+                    leg("RV", "2310", ServiceKind.REGIONAL, start, firenze, at("18:35"), at("20:20")),
+                    leg("R", "6420", ServiceKind.REGIONAL, firenze, bologna, at("20:35"), at("21:55")),
+                    leg("IC", "35", ServiceKind.INTERCITY, bologna, end, at("22:10"), at("00:40", plusDays = 1))
+                )
+            )
+            return ProviderResult.Success(options, ProviderResponseMeta(descriptor.id, Instant.now()))
         }
     }
 

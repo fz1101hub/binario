@@ -41,6 +41,7 @@ import androidx.compose.ui.graphics.vector.addPathNodes
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -78,6 +79,8 @@ internal fun ScreenHeader(
     overline: String? = null,
     subtitle: String? = null,
     bottomPadding: Dp = 20.dp,
+    /** Read instead of [title] when the title is a shortened form (the full station names). */
+    titleDescription: String? = null,
     trailing: (@Composable () -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit = {}
 ) {
@@ -86,7 +89,10 @@ internal fun ScreenHeader(
         overline?.let { HeaderOverline(it) }
         Text(
             title,
-            modifier = Modifier.semantics { heading() },
+            modifier = Modifier.semantics {
+                heading()
+                titleDescription?.let { contentDescription = it }
+            },
             style = if (wide) MaterialTheme.typography.headlineSmall else MaterialTheme.typography.headlineMedium
         )
         if (subtitle != null || trailing != null) {

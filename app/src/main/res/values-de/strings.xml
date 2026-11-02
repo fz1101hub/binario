@@ -933,8 +933,6 @@
     <string name="service_scheduled_arrival">Planmäßige Ankunft %1$s</string>
     <string name="service_duration_accessible">Fahrtdauer %1$s</string>
     <string name="action_modify_search">Ändern</string>
-    <string name="results_order_fastest">Schnellste</string>
-    <string name="results_order_departure">Nach Uhrzeit</string>
     <string name="service_group_regional">Regionalzüge</string>
     <string name="service_group_frecce">Frecce</string>
     <string name="service_group_italo">Italo</string>
@@ -997,9 +995,9 @@
     <string name="settings_language_open">Sprache in den Systemeinstellungen wählen</string>
     <string name="settings_language_system">Auf dieser Android-Version folgt die App-Sprache der Systemsprache.</string>
     <string name="settings_about_version">Version %1$s</string>
-    <plurals name="duration_hours">
-        <item quantity="one">%d Stunde</item>
-        <item quantity="other">%d Stunden</item>
-    </plurals>
     <string name="results_map_notice">Die Karte öffnet sich nur auf Wunsch: Zum Zeichnen lädt die App die Kacheln des Streckengebiets von OpenFreeMap.</string>
+    <string name="journey_source_title">Quelle</string>
+    <string name="settings_suggest_station">Bahnhof vorschlagen</string>
+    <string name="settings_suggest_station_detail">Öffnet das öffentliche Meldeformular des Projekts im Browser (GitHub)</string>
+    <string name="settings_suggest_station_issue_title">Bahnhofsvorschlag:</string>
 </resources>

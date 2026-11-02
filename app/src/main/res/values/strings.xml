@@ -951,8 +951,6 @@
     <string name="service_scheduled_arrival">Arrivo programmato %1$s</string>
     <string name="service_duration_accessible">Durata %1$s</string>
     <string name="action_modify_search">Modifica</string>
-    <string name="results_order_fastest">Più veloce</string>
-    <string name="results_order_departure">Orario</string>
     <string name="service_group_regional">Regionali</string>
     <string name="service_group_frecce">Frecce</string>
     <string name="service_group_italo">Italo</string>
@@ -1015,10 +1013,9 @@
     <string name="settings_language_open">Scegli la lingua nelle impostazioni di sistema</string>
     <string name="settings_language_system">Su questa versione di Android la lingua dell’app segue quella del sistema.</string>
     <string name="settings_about_version">Versione %1$s</string>
-    <plurals name="duration_hours">
-        <item quantity="one">%d ora</item>
-        <item quantity="many">%d ore</item>
-        <item quantity="other">%d ore</item>
-    </plurals>
     <string name="results_map_notice">La mappa si apre solo su richiesta: per disegnarla l’app scarica le tessere della zona del percorso da OpenFreeMap.</string>
+    <string name="journey_source_title">Fonte</string>
+    <string name="settings_suggest_station">Suggerisci una stazione</string>
+    <string name="settings_suggest_station_detail">Apre nel browser il modulo pubblico delle segnalazioni del progetto (GitHub)</string>
+    <string name="settings_suggest_station_issue_title">Suggerimento stazione:</string>
 </resources>

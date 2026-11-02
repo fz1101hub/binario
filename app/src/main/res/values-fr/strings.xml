@@ -951,8 +951,6 @@
     <string name="service_scheduled_arrival">Arrivée prévue %1$s</string>
     <string name="service_duration_accessible">Durée %1$s</string>
     <string name="action_modify_search">Modifier</string>
-    <string name="results_order_fastest">Plus rapide</string>
-    <string name="results_order_departure">Par horaire</string>
     <string name="service_group_regional">Régionaux</string>
     <string name="service_group_frecce">Frecce</string>
     <string name="service_group_italo">Italo</string>
@@ -1015,10 +1013,9 @@
     <string name="settings_language_open">Choisir la langue dans les paramètres système</string>
     <string name="settings_language_system">Sur cette version d’Android, la langue de l’app suit celle du système.</string>
     <string name="settings_about_version">Version %1$s</string>
-    <plurals name="duration_hours">
-        <item quantity="one">%d heure</item>
-        <item quantity="many">%d heures</item>
-        <item quantity="other">%d heures</item>
-    </plurals>
     <string name="results_map_notice">La carte ne s’ouvre que sur demande : pour la dessiner, l’app télécharge les tuiles de la zone du trajet depuis OpenFreeMap.</string>
+    <string name="journey_source_title">Source</string>
+    <string name="settings_suggest_station">Suggérer une gare</string>
+    <string name="settings_suggest_station_detail">Ouvre dans le navigateur le formulaire public de signalement du projet (GitHub)</string>
+    <string name="settings_suggest_station_issue_title">Suggestion de gare :</string>
 </resources>

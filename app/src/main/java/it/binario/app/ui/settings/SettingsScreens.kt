@@ -22,6 +22,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AddLocationAlt
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Language
@@ -53,6 +54,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -71,6 +73,7 @@ import it.binario.app.CommuterAlertScheduler
 import it.binario.app.IntegrationSettings
 import it.binario.app.LocalDataBackupCodec
 import it.binario.app.MobilityPreferences
+import it.binario.app.ProjectLinks
 import it.binario.app.R
 import it.binario.app.SourcesSettingsPanel
 import it.binario.app.TrainViewModel
@@ -78,6 +81,7 @@ import it.binario.app.VoiceProfileSyncReadiness
 import it.binario.app.gpsalarm.GpsArrivalAlarmFlow
 import it.binario.app.gpsalarm.GpsArrivalAlarmPanel
 import it.binario.app.localizedLabel
+import it.binario.app.openExternalLink
 import it.binario.app.resolve
 import it.binario.app.ui.common.BinarioCard
 import it.binario.app.ui.common.HeaderOverlapBox
@@ -95,7 +99,7 @@ import kotlinx.coroutines.withContext
 
 // Impostazioni: the theme and the existing settings grouped in the rows of the approved render.
 
-/** The groups of "Impostazioni". A station suggestion row is not offered: the app has no such feature. */
+/** The groups of "Impostazioni"; "Suggerisci una stazione" is a link row of the screen, not a group. */
 internal enum class SettingsSection { ALERTS, WIDGETS, DATA, LANGUAGE, ABOUT }
 
 @Composable
@@ -173,7 +177,18 @@ internal fun SettingsScreen(
             }
         }
         item {
+            val uriHandler = LocalUriHandler.current
+            val issueTitle = stringResource(R.string.settings_suggest_station_issue_title)
             BinarioCard(Modifier.padding(horizontal = ScreenMargin)) {
+                // No e-mail contact exists for the project: the row opens its public issue form in the browser.
+                NavigationRow(
+                    title = stringResource(R.string.settings_suggest_station),
+                    detail = stringResource(R.string.settings_suggest_station_detail),
+                    icon = Icons.Default.AddLocationAlt,
+                    onClick = { openExternalLink(uriHandler, ProjectLinks.newIssue("$issueTitle ")) },
+                    modifier = Modifier.testTag("settings-suggest-station")
+                )
+                RowDivider()
                 NavigationRow(
                     title = SettingsSection.ABOUT.title(),
                     detail = SettingsSection.ABOUT.detail(),

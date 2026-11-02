@@ -82,6 +82,7 @@ import it.binario.app.ui.common.LocalWideLayout
 import it.binario.app.ui.common.Pill
 import it.binario.app.ui.common.ScreenMargin
 import it.binario.app.ui.common.SegmentedControl
+import it.binario.app.ui.common.StationShortNames
 import it.binario.app.ui.common.ServiceStatusBadge
 import it.binario.app.ui.common.headerMutedColor
 import it.binario.app.ui.common.localizedLabel
@@ -429,9 +430,14 @@ private fun ServiceDetailHeader(service: TrainService, isDemonstration: Boolean,
             Text(stringResource(R.string.screen_title_detail), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         HeaderOverline(stringResource(R.string.service_category_number, service.trainCategory.localizedLabel(), service.number).uppercase(locale))
+        // The render's short city form ("Roma → Torino"); screen readers get the full station names.
+        val headline = StationShortNames.route(service.origin, service.destination)
         Text(
-            "${service.origin} → ${service.destination}",
-            modifier = Modifier.semantics { heading() },
+            headline.short,
+            modifier = Modifier.semantics {
+                heading()
+                contentDescription = headline.full
+            },
             style = if (wide) MaterialTheme.typography.headlineSmall else MaterialTheme.typography.headlineMedium
         )
         FlowRow(
