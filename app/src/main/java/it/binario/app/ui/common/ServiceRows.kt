@@ -76,6 +76,7 @@ private val SIDE_COLUMN = 56.dp
 internal fun TrainService.presentedAsDemonstration(): TrainService = copy(
     expectedDeparture = scheduledDeparture,
     platform = null,
+    scheduledPlatform = null,
     delayMinutes = 0,
     officialDelayMinutes = null,
     status = ServiceStatus.ON_TIME,
@@ -88,6 +89,7 @@ internal fun TrainService.presentedAsDemonstration(): TrainService = copy(
         stop.copy(
             expected = stop.scheduled,
             platform = null,
+            scheduledPlatform = null,
             delayMinutes = 0,
             completed = false,
             routeChange = StopRouteChange.NONE,
@@ -256,7 +258,13 @@ internal fun DepartureListRow(service: TrainService, isDemonstration: Boolean = 
             }
         }
         Column(horizontalAlignment = Alignment.End, modifier = Modifier.widthIn(min = SIDE_COLUMN)) {
-            Text(shown.platform?.let { stringResource(R.string.platform_short, it) } ?: "—", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+            Text(
+                platformText(shown.platform, shown.scheduledPlatform) ?: "—",
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Bold,
+                color = platformColor(shown.platform, shown.scheduledPlatform, MaterialTheme.colorScheme.onSurface),
+                textAlign = TextAlign.End
+            )
             Text(compactStatusLabel(shown), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.End)
         }
     }
@@ -332,9 +340,9 @@ internal fun ResultCard(
             Row(Modifier.padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                 ChangesBadge(shown.transferCount, Modifier.weight(1f))
                 Text(
-                    stringResource(R.string.platform_label, shown.platform ?: "—"),
+                    platformText(shown.platform, shown.scheduledPlatform, long = true) ?: stringResource(R.string.platform_label, "—"),
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = platformColor(shown.platform, shown.scheduledPlatform, MaterialTheme.colorScheme.onSurfaceVariant)
                 )
             }
         }

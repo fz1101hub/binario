@@ -92,8 +92,7 @@ internal fun TrainService.localizedAccessibleSummary(): String {
     } else {
         stringResource(R.string.operational_status_unverified)
     }
-    val platformLabel = platform?.let { stringResource(R.string.platform_label, it) }
-        ?: stringResource(R.string.platform_unavailable)
+    val platformLabel = platformSpoken(platform, scheduledPlatform)
     return stringResource(
         R.string.accessibility_train_service_summary,
         displayOperator,

@@ -1178,4 +1178,10 @@
     <string name="settings_suggest_station">Suggerisci una stazione</string>
     <string name="settings_suggest_station_detail">Apre nel browser il modulo pubblico delle segnalazioni del progetto (GitHub)</string>
     <string name="settings_suggest_station_issue_title">Suggerimento stazione:</string>
+    <!-- Platform changes, Partenze train types, saved timetables, sharing, tickets and assistance, CO2 estimate -->
+    <string name="platform_changed_short">Bin. %1$s (era %2$s)</string>
+    <string name="platform_changed_label">Binario %1$s (era %2$s)</string>
+    <string name="platform_changed_accessible">Binario cambiato: %1$s, previsto %2$s</string>
+    <string name="widget_platform_changed">BIN %1$s\nera %2$s</string>
+    <!-- End of platform changes, Partenze train types, saved timetables, sharing, tickets and assistance, CO2 estimate -->
 </resources>

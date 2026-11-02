@@ -71,6 +71,7 @@ import it.binario.app.RefreshState
 import it.binario.app.StationLineNoticesSection
 import it.binario.app.StationMonitorMode
 import it.binario.app.TrainViewModel
+import it.binario.app.data.PlatformChange
 import it.binario.app.data.Station
 import it.binario.app.data.core.BoardKind
 import it.binario.app.data.core.RunStatus
@@ -401,9 +402,10 @@ internal fun StationBoardEntryRow(entry: StationBoardEntry, kind: BoardKind, onO
         scheduled.format(BOARD_TIME_FORMATTER)
     )
     val statusLabel = stationBoardStatusAnnouncement(entry)
-    val platformLabel = platform?.let {
-        stringResource(R.string.station_board_platform_accessible, it)
-    } ?: stringResource(R.string.station_board_platform_unavailable)
+    val platformChange = PlatformChange.of(platform, entry.scheduledPlatform?.value)
+    val platformLabel = platformChange?.let { stringResource(R.string.platform_changed_accessible, it.actual, it.scheduled) }
+        ?: platform?.let { stringResource(R.string.station_board_platform_accessible, it) }
+        ?: stringResource(R.string.station_board_platform_unavailable)
     val trainLabel = entry.publicNumber?.takeIf(String::isNotBlank)
         ?.let { stringResource(R.string.station_board_train_number, it) }
         .orEmpty()
@@ -473,12 +475,18 @@ internal fun StationBoardEntryRow(entry: StationBoardEntry, kind: BoardKind, onO
             }
         }
         platform?.let {
+            // A platform the source moved: "Bin. 7 (era 5)" in the attention colour, never the colour alone.
             Surface(
                 shape = RoundedCornerShape(10.dp),
-                color = MaterialTheme.colorScheme.secondaryContainer,
-                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                color = if (platformChange != null) MaterialTheme.colorScheme.tertiaryContainer else MaterialTheme.colorScheme.secondaryContainer,
+                contentColor = if (platformChange != null) MaterialTheme.colorScheme.onTertiaryContainer else MaterialTheme.colorScheme.onSecondaryContainer
             ) {
-                Text(stringResource(R.string.station_board_platform, it), modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp), fontWeight = FontWeight.Bold)
+                Text(
+                    platformChange?.let { change -> stringResource(R.string.platform_changed_short, change.actual, change.scheduled) }
+                        ?: stringResource(R.string.station_board_platform, it),
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
+                    fontWeight = FontWeight.Bold
+                )
             }
         }
         if (onOpen != null) {
@@ -575,7 +583,8 @@ private fun StationBoardRunDetailsContent(
                     operationalStatusVerified = stop.operationalStatusVerified == true, routeChange = stop.routeChange, onSetAlarm = null,
                     position = StopTimelinePosition.of(index, progress, stop.completed),
                     isFirst = index == 0,
-                    isLast = index == details.stops.lastIndex)
+                    isLast = index == details.stops.lastIndex,
+                    scheduledPlatform = stop.scheduledPlatform)
             }
         }
         item { Spacer(Modifier.height(24.dp)) }

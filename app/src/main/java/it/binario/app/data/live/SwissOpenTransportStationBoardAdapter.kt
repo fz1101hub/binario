@@ -202,7 +202,9 @@ class SwissOpenTransportStationBoardAdapter internal constructor(
             endpoint = endpoint.take(120),
             scheduled = scheduled,
             expected = expected,
-            platform = (prognosis?.text("platform") ?: stop.text("platform"))?.take(12)
+            platform = (prognosis?.text("platform") ?: stop.text("platform"))?.take(12),
+            // The planned platform, kept only when the prognosis moved the train elsewhere.
+            scheduledPlatform = stop.text("platform")?.take(12)?.takeIf { prognosis?.text("platform") != null }
         )
     }
 
@@ -241,6 +243,7 @@ class SwissOpenTransportStationBoardAdapter internal constructor(
                     publicNumber = row.journeyNumber,
                     operatorId = row.operator?.let(::OperatorId),
                     platform = row.platform?.takeIf(String::isNotBlank)?.let { SourcedValue(it, source) },
+                    scheduledPlatform = row.scheduledPlatform?.takeIf { it.isNotBlank() && !row.platform.isNullOrBlank() }?.let { SourcedValue(it, source) },
                     status = expected?.let {
                         SourcedValue(if (it.isAfter(row.scheduled.plusSeconds(59))) RunStatus.DELAYED else RunStatus.ON_TIME, source)
                     },
@@ -334,7 +337,8 @@ class SwissOpenTransportStationBoardAdapter internal constructor(
         val endpoint: String,
         val scheduled: ZonedDateTime,
         val expected: ZonedDateTime?,
-        val platform: String?
+        val platform: String?,
+        val scheduledPlatform: String? = null
     )
 
     internal data class ParsedBoard(val uic: String, val kind: BoardKind, val rows: List<BoardRow>)

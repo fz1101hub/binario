@@ -266,6 +266,8 @@ class StationBoardAggregateService(
         val platform = bestSourced(group, RailInformationCategory.STATION_BOARD, operatorHint) {
             it.entry.platform
         }
+        // The timetable platform of the entry that gave [platform]: two sources never make a change together.
+        val scheduledPlatform = platform?.let { chosen -> group.firstOrNull { it.entry.platform === chosen }?.entry?.scheduledPlatform }
         val status = bestSourced(group, RailInformationCategory.TRAIN_REALTIME, operatorHint) {
             it.entry.status
         }
@@ -294,6 +296,7 @@ class StationBoardAggregateService(
                 ?: group.firstNotNullOfOrNull { it.entry.operatorId },
             expectedTime = expected,
             platform = platform,
+            scheduledPlatform = scheduledPlatform,
             status = status,
             routeChange = routeChange,
             nativeRunIds = group.flatMap { it.entry.nativeRunIds.entries }.associate { it.key to it.value },
@@ -397,6 +400,7 @@ data class StationBoardAggregate(
 fun StationBoardEntry.withoutExpiredObservations(now: Instant): StationBoardEntry = copy(
     expectedTime = expectedTime?.takeIf { it.source.expiresAt?.isAfter(now) != false },
     platform = platform?.takeIf { it.source.expiresAt?.isAfter(now) != false },
+    scheduledPlatform = scheduledPlatform?.takeIf { it.source.expiresAt?.isAfter(now) != false },
     status = status?.takeIf { it.source.expiresAt?.isAfter(now) != false },
     routeChange = routeChange?.takeIf { it.source.expiresAt?.isAfter(now) != false }
 )

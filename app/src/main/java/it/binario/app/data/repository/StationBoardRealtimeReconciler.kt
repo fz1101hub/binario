@@ -240,6 +240,8 @@ class StationBoardRealtimeReconciler(
                 } else null
 
             val platform = platformMatch?.entry?.platform?.value ?: service.platform
+            // The timetable platform comes with the actual one, from the same source, so a change is never mixed up.
+            val scheduledPlatform = if (platformMatch?.entry?.platform != null) platformMatch.entry.scheduledPlatform?.value else service.scheduledPlatform
             val verified = liveStatus != null || expected != null
             val routeChange = routeChangeMatch?.entry?.routeChange?.value ?: service.routeChange
             val originStop = service.stops.firstOrNull()
@@ -249,6 +251,7 @@ class StationBoardRealtimeReconciler(
                         scheduled = scheduledDeparture,
                         expected = expectedDeparture,
                         platform = platform,
+                        scheduledPlatform = scheduledPlatform,
                         delayMinutes = delayMinutes,
                         operationalStatusVerified = if (expected != null) true else originStop.operationalStatusVerified
                     )
@@ -269,6 +272,7 @@ class StationBoardRealtimeReconciler(
                 scheduledDepartureDateTime = if (expectedMatch != null) scheduled?.withZoneSameInstant(zone)?.toLocalDateTime() else service.scheduledDepartureDateTime,
                 expectedDeparture = expectedDeparture,
                 platform = platform,
+                scheduledPlatform = scheduledPlatform,
                 delayMinutes = delayMinutes,
                 officialDelayMinutes = if (expected != null) delayMinutes else service.officialDelayMinutes,
                 status = liveStatus ?: service.status,
@@ -364,6 +368,7 @@ class StationBoardRealtimeReconciler(
                     expectedTime = entry.expectedTime?.takeIf { fresh(it.source) },
                     status = entry.status?.takeIf { fresh(it.source) },
                     platform = entry.platform?.takeIf { fresh(it.source) },
+                    scheduledPlatform = entry.scheduledPlatform?.takeIf { fresh(it.source) },
                     routeChange = entry.routeChange?.takeIf { fresh(it.source) }
                 )
             }

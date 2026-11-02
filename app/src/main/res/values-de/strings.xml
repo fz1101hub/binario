@@ -1154,4 +1154,10 @@
     <string name="settings_suggest_station">Bahnhof vorschlagen</string>
     <string name="settings_suggest_station_detail">Öffnet das öffentliche Meldeformular des Projekts im Browser (GitHub)</string>
     <string name="settings_suggest_station_issue_title">Bahnhofsvorschlag:</string>
+    <!-- Platform changes, Partenze train types, saved timetables, sharing, tickets and assistance, CO2 estimate -->
+    <string name="platform_changed_short">Gl. %1$s (statt %2$s)</string>
+    <string name="platform_changed_label">Gleis %1$s (statt %2$s)</string>
+    <string name="platform_changed_accessible">Gleiswechsel: %1$s, geplant %2$s</string>
+    <string name="widget_platform_changed">GL %1$s\nstatt %2$s</string>
+    <!-- End of platform changes, Partenze train types, saved timetables, sharing, tickets and assistance, CO2 estimate -->
 </resources>

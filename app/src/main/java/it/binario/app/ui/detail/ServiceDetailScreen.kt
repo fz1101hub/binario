@@ -63,6 +63,7 @@ import it.binario.app.TabularFigures
 import it.binario.app.TrainCalendarAction
 import it.binario.app.TrainShareStrings
 import it.binario.app.data.Freshness
+import it.binario.app.data.PlatformChange
 import it.binario.app.data.ServiceStatus
 import it.binario.app.data.Station
 import it.binario.app.data.StopRouteChange
@@ -88,6 +89,9 @@ import it.binario.app.ui.common.StationShortNames
 import it.binario.app.ui.common.ServiceStatusBadge
 import it.binario.app.ui.common.headerMutedColor
 import it.binario.app.ui.common.localizedLabel
+import it.binario.app.ui.common.platformColor
+import it.binario.app.ui.common.platformSpoken
+import it.binario.app.ui.common.platformText
 import it.binario.app.ui.common.presentedAsDemonstration
 import it.binario.app.ui.common.routeChangeLabel
 import it.binario.app.updateTimeMessage
@@ -219,7 +223,8 @@ internal fun ServiceDetailScreen(
                                             onSetAlarm = null,
                                             position = StopTimelinePosition.of(index, progress, stop.completed),
                                             isFirst = index == 0,
-                                            isLast = index == shown.stops.lastIndex
+                                            isLast = index == shown.stops.lastIndex,
+                                            scheduledPlatform = stop.scheduledPlatform
                                         )
                                     }
                                 }
@@ -246,7 +251,7 @@ internal fun ServiceDetailScreen(
                                         stringResource(R.string.detail_info_platform),
                                         when {
                                             isDemonstration -> stringResource(R.string.platform_unavailable)
-                                            shown.platform != null -> stringResource(R.string.platform_label, shown.platform)
+                                            shown.platform != null -> platformText(shown.platform, shown.scheduledPlatform, long = true) ?: shown.platform
                                             else -> stringResource(R.string.platform_to_confirm)
                                         }
                                     )
@@ -435,6 +440,7 @@ private fun ServiceDetailHeader(
 ) {
     val locale = LocalConfiguration.current.locales[0]
     val wide = LocalWideLayout.current
+    val platformSpokenLabel = if (service.platform != null) platformSpoken(service.platform, service.scheduledPlatform) else stringResource(R.string.platform_to_confirm)
     HeaderBlock(bottomPadding = 12.dp) {
         if (wide) {
             Text(stringResource(R.string.screen_title_detail), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -467,9 +473,11 @@ private fun ServiceDetailHeader(
             }
             if (!isDemonstration) {
                 Text(
-                    service.platform?.let { stringResource(R.string.platform_label, it) } ?: stringResource(R.string.platform_to_confirm),
+                    platformText(service.platform, service.scheduledPlatform, long = true) ?: stringResource(R.string.platform_to_confirm),
+                    modifier = Modifier.semantics { contentDescription = platformSpokenLabel },
                     style = MaterialTheme.typography.bodyMedium,
-                    color = headerMutedColor()
+                    color = headerMutedColor(),
+                    fontWeight = if (PlatformChange.of(service.platform, service.scheduledPlatform) != null) FontWeight.Bold else null
                 )
             }
         }
@@ -538,7 +546,9 @@ internal fun StopTimelineRow(
     onSetAlarm: (() -> Unit)?,
     position: StopTimelinePosition = StopTimelinePosition.UPCOMING,
     isFirst: Boolean = false,
-    isLast: Boolean = false
+    isLast: Boolean = false,
+    /** Timetable platform when the source moved the train ("Binario 7 (era 5)"). */
+    scheduledPlatform: String? = null
 ) {
     val changeLabel = when (routeChange) {
         StopRouteChange.NONE -> ""
@@ -550,8 +560,7 @@ internal fun StopTimelineRow(
         delay > 0 -> pluralStringResource(R.plurals.operational_delay_minutes, delay, delay)
         else -> stringResource(R.string.operational_on_time)
     }
-    val platformLabel = platform?.let { stringResource(R.string.platform_label, it) }
-        ?: stringResource(R.string.platform_unavailable)
+    val platformLabel = platformSpoken(platform, scheduledPlatform)
     val positionLabel = when (position) {
         StopTimelinePosition.PASSED -> stringResource(R.string.stop_position_passed)
         StopTimelinePosition.LAST_CONFIRMED -> stringResource(R.string.map_role_last_confirmed)
@@ -641,7 +650,15 @@ internal fun StopTimelineRow(
                 StopRouteChange.ADDED -> Text(stringResource(R.string.stop_added_uppercase), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.tertiary, fontWeight = FontWeight.Bold)
                 StopRouteChange.NONE -> Unit
             }
-            platform?.let { Text(stringResource(R.string.platform_label, it), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            platformText(platform, scheduledPlatform, long = true)?.let {
+                val changed = PlatformChange.of(platform, scheduledPlatform) != null
+                Text(
+                    it,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = platformColor(platform, scheduledPlatform, MaterialTheme.colorScheme.onSurfaceVariant),
+                    fontWeight = if (changed) FontWeight.Bold else null
+                )
+            }
             if (!operationalStatusVerified) {
                 Text(stringResource(R.string.operational_status_unverified), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }

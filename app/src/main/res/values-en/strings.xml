@@ -1154,4 +1154,10 @@
     <string name="settings_suggest_station">Suggest a station</string>
     <string name="settings_suggest_station_detail">Opens the project\'s public issue form in the browser (GitHub)</string>
     <string name="settings_suggest_station_issue_title">Station suggestion:</string>
+    <!-- Platform changes, Partenze train types, saved timetables, sharing, tickets and assistance, CO2 estimate -->
+    <string name="platform_changed_short">Plat. %1$s (was %2$s)</string>
+    <string name="platform_changed_label">Platform %1$s (was %2$s)</string>
+    <string name="platform_changed_accessible">Platform changed: %1$s, scheduled %2$s</string>
+    <string name="widget_platform_changed">PLAT %1$s\nwas %2$s</string>
+    <!-- End of platform changes, Partenze train types, saved timetables, sharing, tickets and assistance, CO2 estimate -->
 </resources>

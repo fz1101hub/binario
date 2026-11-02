@@ -94,6 +94,8 @@ import it.binario.app.ui.common.localizedDisplayName
 import it.binario.app.ui.common.localizedLabel
 import it.binario.app.ui.common.localizedName
 import it.binario.app.ui.common.localizedQualityLabel
+import it.binario.app.ui.common.platformColor
+import it.binario.app.ui.common.platformText
 import it.binario.app.ui.common.presentedAsDemonstration
 
 // Partenze: the active route board and the switch to the station boards.
@@ -378,9 +380,10 @@ internal fun HeroDepartureCard(
                 ) {
                     Row(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            shown.platform?.let { stringResource(R.string.platform_label, it) }
+                            platformText(shown.platform, shown.scheduledPlatform, long = true)
                                 ?: stringResource(R.string.platform_label, "—"),
-                            style = MaterialTheme.typography.labelLarge
+                            style = MaterialTheme.typography.labelLarge,
+                            color = platformColor(shown.platform, shown.scheduledPlatform, MaterialTheme.colorScheme.onSurface)
                         )
                     }
                 }

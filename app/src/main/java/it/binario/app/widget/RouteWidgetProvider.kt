@@ -222,7 +222,8 @@ class RouteWidgetProvider : AppWidgetProvider() {
                     ).joinToString(" · ")
                     views.setTextViewText(trainIds[index], trainLine)
                     views.setViewVisibility(trainIds[index], if (trainLine.isBlank()) View.GONE else View.VISIBLE)
-                    views.setTextViewText(platformIds[index], service.platform?.let { context.getString(R.string.widget_platform_short, it) } ?: "—")
+                    views.setTextViewText(platformIds[index], widgetPlatformText(context, service.platform, service.scheduledPlatform))
+                    views.setTextColor(platformIds[index], widgetPlatformColor(context, service.platform, service.scheduledPlatform))
                     views.setViewVisibility(platformIds[index], if (settings.showPlatform) View.VISIBLE else View.GONE)
                     views.setTextViewText(
                         statusIds[index],
@@ -480,7 +481,9 @@ data class WidgetService(
     val arrivalLabel: String? = null,
     /** Group used by the train type exclusions; null when the data do not tell. */
     val typeGroup: TrainTypeGroup? = WidgetTrainTypes.groupOf(category, operator),
-    val serviceDate: LocalDate? = null
+    val serviceDate: LocalDate? = null,
+    /** Timetable platform when the source moved the train ("BIN 7 era 5"); null otherwise or unknown. */
+    val scheduledPlatform: String? = null
 ) {
     /** One run of the day: the same number at the same scheduled departure. */
     val runKey: String get() = "$number@$scheduledDeparture"
@@ -504,7 +507,7 @@ data class WidgetService(
             destination,
             expectedDeparture,
             operational,
-            platform?.let { strings.format(strings.platform, it) } ?: strings.platformUnavailable
+            strings.platformSpoken(platform, scheduledPlatform)
         )
     }
 }
@@ -782,7 +785,7 @@ object WidgetStateStore {
         )
     }
 
-    private fun encodeService(service: WidgetService): String = listOf(
+    internal fun encodeService(service: WidgetService): String = listOf(
         service.number,
         service.operator.name,
         service.category.name,
@@ -797,7 +800,8 @@ object WidgetStateStore {
         service.arrivalEpochMillis?.toString().orEmpty(),
         service.arrivalLabel.orEmpty(),
         service.typeGroup?.name.orEmpty(),
-        service.serviceDate?.toString().orEmpty()
+        service.serviceDate?.toString().orEmpty(),
+        service.scheduledPlatform.orEmpty()
     ).joinToString(",") { encode(it) }
 
     /**
@@ -806,12 +810,13 @@ object WidgetStateStore {
      */
     internal fun decodeService(value: String, confidence: DataConfidence, retrievedAt: Long): WidgetService? {
         val parts = runCatching { value.split(",").map(::decode) }.getOrNull() ?: return null
-        if (parts.size !in setOf(8, 9, 15)) return null
+        // 16 fields since the timetable platform; 15 before it.
+        if (parts.size !in setOf(8, 9, 15, 16)) return null
         return runCatching {
             val operator = RailOperator.valueOf(parts[1])
             val category = decodeCategory(parts[2])
             val expected = parts[4]
-            val extended = parts.size == 15
+            val extended = parts.size >= 15
             val legacyDeparture = if (extended || retrievedAt <= 0L) null else WidgetClock.resolve(expected, retrievedAt)
             WidgetService(
                 number = parts[0],
@@ -830,7 +835,8 @@ object WidgetStateStore {
                 arrivalLabel = if (extended) parts[12].ifBlank { null } else null,
                 typeGroup = if (extended) TrainTypeGroup.entries.firstOrNull { it.name == parts[13] } else WidgetTrainTypes.groupOf(category, operator),
                 serviceDate = if (extended) runCatching { LocalDate.parse(parts[14]) }.getOrNull()
-                else legacyDeparture?.let { Instant.ofEpochMilli(it).atZone(RailTime.defaultZone).toLocalDate() }
+                else legacyDeparture?.let { Instant.ofEpochMilli(it).atZone(RailTime.defaultZone).toLocalDate() },
+                scheduledPlatform = parts.getOrNull(15)?.ifBlank { null }
             )
         }.getOrNull()
     }
