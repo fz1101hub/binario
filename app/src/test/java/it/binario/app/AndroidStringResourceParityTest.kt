@@ -74,7 +74,8 @@ class AndroidStringResourceParityTest {
     fun `locale config lists every language of the app in order`() {
         val config = parse(File(resourceRoot, "xml/locale_config.xml"))
         val locales = elements(config.documentElement, "locale").map { it.getAttributeNS(ANDROID_NS, "name") }
-        assertEquals(AppLocales.tags, locales)
+        // Indonesian is declared with its legacy code "in", which Android and lint use for values-in.
+        assertEquals(AppLocales.tags, locales.map { if (it == "in") "id" else it })
         assertEquals(AppLocales.tags.toSet(), QUANTITIES_BY_LOCALE.keys)
     }
 

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Every language of the app (docs/l10n/LOCALES.md). BCP-47 tags: Indonesian is "id" here although its
-     resources live in values-in, the folder name Android looks up for it. -->
+<!-- Every language of the app (docs/l10n/LOCALES.md). BCP-47 tags, except Indonesian: it is declared with
+     its legacy code "in", the one Android and lint use for values-in (lint UnusedTranslation rejects "id"). -->
 <locale-config xmlns:android="http://schemas.android.com/apk/res/android">
     <locale android:name="it" />
     <locale android:name="en" />
@@ -9,7 +9,7 @@
     <locale android:name="es" />
     <locale android:name="ar" />
     <locale android:name="hi" />
-    <locale android:name="id" />
+    <locale android:name="in" />
     <locale android:name="ja" />
     <locale android:name="ko" />
     <locale android:name="my" />

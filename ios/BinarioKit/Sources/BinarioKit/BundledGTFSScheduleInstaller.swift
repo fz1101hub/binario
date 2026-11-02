@@ -187,7 +187,9 @@ public struct BundledGTFSScheduleInstaller: Sendable {
     /// cache, including the backup flag as it was before `excludeFromBackup`. Callers get a copy
     /// without that cache, so they read the flag that is now on disk.
     private static func withoutCachedResourceValues(_ url: URL) -> URL {
-        var fresh = url
+        // A new URL instance for the same path: copies of `url` share its underlying
+        // reference and therefore its resource value cache.
+        var fresh = URL(fileURLWithPath: url.path, isDirectory: false)
         #if os(iOS) || os(macOS) || os(watchOS) || os(tvOS) || os(visionOS)
         fresh.removeAllCachedResourceValues()
         #endif
@@ -196,10 +198,14 @@ public struct BundledGTFSScheduleInstaller: Sendable {
 
     private static func excludeFromBackup(_ url: URL) throws {
         #if os(iOS) || os(macOS) || os(watchOS) || os(tvOS) || os(visionOS)
+        // Write through a fresh URL with an empty cache: a cached "already excluded" value
+        // from an earlier read must not let the flag be skipped after someone cleared it.
+        var mutableURL = URL(fileURLWithPath: url.path, isDirectory: false)
+        mutableURL.removeAllCachedResourceValues()
         var values = URLResourceValues()
         values.isExcludedFromBackup = true
-        var mutableURL = url
         try mutableURL.setResourceValues(values)
+        mutableURL.removeAllCachedResourceValues()
         #endif
     }
 

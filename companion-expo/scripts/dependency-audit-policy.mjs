@@ -12,7 +12,7 @@ export const allowedUnpatchedAdvisories = Object.freeze([
   Object.freeze({
     id: "GHSA-86w9-cpqp-85rv",
     module: "node-forge",
-    version: "1.4.0",
+    version: "1.4.2",
     path: ".>expo>@expo/cli>node-forge",
     reason: "Expo CLI dev-server certificate tooling; not bundled in the app.",
   }),

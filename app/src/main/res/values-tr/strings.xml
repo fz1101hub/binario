@@ -249,7 +249,7 @@
     <string name="station_board_live_disabled_title">Canlı pano etkin değil</string>
     <string name="station_board_live_disabled_message">Bu sürüm, en iyi çaba esaslı pano kaynaklarını otomatik olarak etkinleştirmez. Bunları kişisel bir sürümde açıkça etkinleştirin veya yetkili bir sağlayıcı kullanın; Binario yapay kalkışlar üretmez.</string>
     <string name="station_board_loading_title">Pano yükleniyor</string>
-    <string name="station_board_loading_message">Etkin kaynaklar sorgulanıyor ve bilgiler alan alan uzlaştırılıyor.</string>
+    <string name="station_board_loading_message">Etkin kaynaklar sorgulanıyor ve bilgiler her alan için uzlaştırılıyor.</string>
     <string name="station_board_unavailable_title">Pano kullanılamıyor</string>
     <string name="station_board_unavailable_message">Etkin kaynaklar kullanılabilir veri döndürmedi.</string>
     <string name="station_board_empty_title">Bu zaman aralığında hareket yok</string>
