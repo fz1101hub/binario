@@ -25,7 +25,9 @@ internal enum class AppScreen(val destination: TopDestination?) {
     SETTINGS_SECTION(TopDestination.FOR_YOU),
     DETAIL(null),
     /** An option of the journeys-with-changes search, opened from the route results. */
-    JOURNEY_DETAIL(TopDestination.PLAN)
+    JOURNEY_DETAIL(TopDestination.PLAN),
+    /** A result list saved from the route results ("Orari salvati" of Per te), read-only and offline. */
+    SAVED_TIMETABLE(TopDestination.FOR_YOU)
 }
 
 /** Width classes of the Material guidance, computed from the window width in dp. */
@@ -64,7 +66,7 @@ internal object AppNavigation {
         AppScreen.DETAIL -> detailParent.takeIf { it != AppScreen.DETAIL } ?: AppScreen.PLANNER
         AppScreen.RESULTS, AppScreen.NUMBER_RESULTS -> AppScreen.PLANNER
         AppScreen.JOURNEY_DETAIL -> AppScreen.RESULTS
-        AppScreen.AGENDA, AppScreen.SETTINGS -> AppScreen.FOR_YOU
+        AppScreen.AGENDA, AppScreen.SETTINGS, AppScreen.SAVED_TIMETABLE -> AppScreen.FOR_YOU
         AppScreen.SETTINGS_SECTION -> AppScreen.SETTINGS
         AppScreen.PLANNER, AppScreen.DEPARTURES, AppScreen.FOR_YOU -> null
     }

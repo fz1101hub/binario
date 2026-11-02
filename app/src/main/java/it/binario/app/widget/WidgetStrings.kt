@@ -7,6 +7,7 @@ import it.binario.app.data.DataConfidence
 import it.binario.app.data.DataQualityBand
 import it.binario.app.data.Direction
 import it.binario.app.data.Freshness
+import it.binario.app.data.PlatformChange
 import it.binario.app.data.ServiceStatus
 import it.binario.app.data.SnapshotWarning
 import it.binario.app.data.TrainCategory
@@ -43,8 +44,18 @@ data class WidgetStrings(
     val confidenceAccessibleLabels: Map<DataConfidence, String>,
     val freshnessAccessibleLabels: Map<Freshness, String>,
     val qualityBandLabels: Map<DataQualityBand, String>,
-    val warningAccessibleLabels: Map<SnapshotWarning, String>
+    val warningAccessibleLabels: Map<SnapshotWarning, String>,
+    /** "Binario cambiato: %1$s, previsto %2$s"; blank falls back to [platform]. */
+    val platformChanged: String = ""
 ) {
+    /** "Binario cambiato: 7, previsto 5", "Binario 7" or "Binario non disponibile". */
+    fun platformSpoken(actual: String?, scheduled: String?): String {
+        val shown = actual?.takeIf(String::isNotBlank) ?: return platformUnavailable
+        val change = PlatformChange.of(shown, scheduled)
+        return if (change != null && platformChanged.isNotBlank()) format(platformChanged, change.actual, change.scheduled)
+        else format(platform, shown)
+    }
+
     fun format(template: String, vararg values: Any): String = template.format(locale, *values)
 
     companion object {
@@ -61,6 +72,7 @@ data class WidgetStrings(
             scheduledUnverified = context.getString(R.string.operational_status_unverified),
             platform = context.getString(R.string.platform_label),
             platformUnavailable = context.getString(R.string.platform_unavailable),
+            platformChanged = context.getString(R.string.platform_changed_accessible),
             dataAccessibility = context.getString(R.string.widget_data_accessibility),
             qualityScoreAccessibility = context.getString(R.string.widget_quality_score_accessibility),
             warningsAccessibility = context.getString(R.string.widget_warnings_accessibility),

@@ -104,6 +104,7 @@ import it.binario.app.ui.departures.StationBoardRunDetailsPane
 import it.binario.app.ui.detail.ServiceDetailScreen
 import it.binario.app.ui.detail.trainShareStrings
 import it.binario.app.ui.foryou.ForYouScreen
+import it.binario.app.ui.foryou.SavedTimetableScreen
 import it.binario.app.ui.journeys.JourneyDetailScreen
 import it.binario.app.ui.planner.JourneyRequest
 import it.binario.app.ui.planner.PlannerScreen
@@ -215,6 +216,7 @@ internal fun BinarioApp(
 ) {
     var screen by rememberSaveable { mutableStateOf(AppScreen.PLANNER) }
     var selectedJourneyId by rememberSaveable { mutableStateOf<String?>(null) }
+    var savedTimetableId by rememberSaveable { mutableStateOf<String?>(null) }
     var detailReturnScreen by rememberSaveable { mutableStateOf(AppScreen.RESULTS) }
     var operationsSectionName by rememberSaveable { mutableStateOf(OperationsSection.TRAINS.name) }
     var plannerSearchModeName by rememberSaveable { mutableStateOf(SearchMode.ROUTE.name) }
@@ -524,8 +526,15 @@ internal fun BinarioApp(
                     showDepartures(OperationsSection.STATIONS)
                 },
                 openSettings = { showScreen(AppScreen.SETTINGS) },
-                openFavouriteTrain = ::openFavouriteTrain
+                openFavouriteTrain = ::openFavouriteTrain,
+                openSavedTimetable = { timetable ->
+                    savedTimetableId = timetable.id
+                    showScreen(AppScreen.SAVED_TIMETABLE)
+                }
             )
+            AppScreen.SAVED_TIMETABLE -> savedTimetableId?.let { id ->
+                SavedTimetableScreen(modifier = modifier, id = id, onGone = { showScreen(AppScreen.FOR_YOU) })
+            } ?: LaunchedEffect(Unit) { showScreen(AppScreen.FOR_YOU) }
             AppScreen.SETTINGS -> SettingsScreen(
                 modifier = modifier,
                 themeMode = themeMode,
@@ -589,7 +598,8 @@ internal fun BinarioApp(
                     modifier = modifier,
                     row = row,
                     origin = journeyState.query?.origin,
-                    destination = journeyState.query?.destination
+                    destination = journeyState.query?.destination,
+                    stationIndex = rememberOpenMapStationIndex(viewModel.stations, viewModel::stationFromName)
                 )
             }
             AppScreen.NUMBER_RESULTS -> HeaderedPane(
@@ -682,7 +692,7 @@ internal fun BinarioApp(
                     Icon(Icons.Default.Share, contentDescription = stringResource(R.string.action_share))
                 }
             }
-            AppScreen.AGENDA, AppScreen.SETTINGS, AppScreen.SETTINGS_SECTION, AppScreen.JOURNEY_DETAIL -> Unit
+            AppScreen.AGENDA, AppScreen.SETTINGS, AppScreen.SETTINGS_SECTION, AppScreen.JOURNEY_DETAIL, AppScreen.SAVED_TIMETABLE -> Unit
         }
     }
 

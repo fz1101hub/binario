@@ -29,6 +29,7 @@ import it.binario.app.data.RailTime
 import it.binario.app.data.live.StrikeNotice
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
+import it.binario.app.links.OfficialLinks
 
 /**
  * "Avvisi e infomobilità": RFI and Trenitalia network notices, deduplicated by title, and Trenord notices grouped
@@ -47,6 +48,10 @@ fun RailNoticesArea(viewModel: RailNoticesViewModel = viewModel()) {
         if (open && viewModel.upcomingStrikes.isNotEmpty()) UpcomingStrikes(viewModel.upcomingStrikes)
         TextButton(onClick = { openExternalLink(uriHandler, RailExternalLinks.MIT_STRIKE_CALENDAR) }) {
             Text(stringResource(R.string.notices_strike_calendar))
+        }
+        // The FS Italiane news site with its radio traffic bulletins: a link, no audio is played or hosted in the app.
+        TextButton(onClick = { openExternalLink(uriHandler, OfficialLinks.FS_NEWS) }) {
+            Text(stringResource(R.string.notices_fs_news_bulletin))
         }
         if (!open) {
             Button(onClick = { open = true }) { Text(stringResource(R.string.notices_area_show)) }

@@ -20,6 +20,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Alarm
 import androidx.compose.material.icons.filled.Refresh
@@ -45,6 +46,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -63,6 +66,7 @@ import it.binario.app.TabularFigures
 import it.binario.app.TrainCalendarAction
 import it.binario.app.TrainShareStrings
 import it.binario.app.data.Freshness
+import it.binario.app.data.PlatformChange
 import it.binario.app.data.ServiceStatus
 import it.binario.app.data.Station
 import it.binario.app.data.StopRouteChange
@@ -71,6 +75,8 @@ import it.binario.app.data.TrainService
 import it.binario.app.data.TrainStop
 import it.binario.app.data.core.OperationalRouteChange
 import it.binario.app.data.core.RouteChangeKind
+import it.binario.app.links.OfficialLinks
+import it.binario.app.links.OperatorLinkKind
 import it.binario.app.localized
 import it.binario.app.maps.OpenMapStationIndex
 import it.binario.app.maps.RouteMapCard
@@ -78,6 +84,8 @@ import it.binario.app.maps.RouteMapPlanner
 import it.binario.app.maps.RouteProgress
 import it.binario.app.notifications.FollowedTripNotificationToggle
 import it.binario.app.notifications.TrainAlertToggle
+import it.binario.app.openExternalLink
+import it.binario.app.timetables.TimetableShareFormatter
 import it.binario.app.ui.common.BinarioCard
 import it.binario.app.ui.common.HeaderBlock
 import it.binario.app.ui.common.HeaderOverlapBox
@@ -88,10 +96,18 @@ import it.binario.app.ui.common.ScreenMargin
 import it.binario.app.ui.common.SegmentedControl
 import it.binario.app.ui.common.StationShortNames
 import it.binario.app.ui.common.ServiceStatusBadge
+import it.binario.app.ui.common.TonalButton
+import it.binario.app.ui.common.co2Line
 import it.binario.app.ui.common.headerMutedColor
 import it.binario.app.ui.common.localizedLabel
+import it.binario.app.ui.common.platformColor
+import it.binario.app.ui.common.platformSpoken
+import it.binario.app.ui.common.platformText
 import it.binario.app.ui.common.presentedAsDemonstration
+import it.binario.app.ui.common.rememberCo2
 import it.binario.app.ui.common.routeChangeLabel
+import it.binario.app.ui.planner.startTextShare
+import it.binario.app.ui.planner.timetableShareStrings
 import it.binario.app.updateTimeMessage
 import java.util.Locale
 
@@ -197,6 +213,12 @@ internal fun ServiceDetailScreen(
     val progress = RouteMapPlanner.progress(shown.stops)
     // Another train opens on Percorso again; the same train keeps its tab across recreation.
     var tabName by rememberSaveable(service.id) { mutableStateOf(DetailTab.ROUTE.name) }
+    val context = LocalContext.current
+    val uriHandler = LocalUriHandler.current
+    val purchaseSite = OfficialLinks.purchaseSiteOf(service.operator, service.operatorDisplayName)
+    val co2 = rememberCo2(service, mapStationIndex)
+    val stopShareStrings = timetableShareStrings()
+    val stopShareChooser = stringResource(R.string.share_stop_chooser)
     val tab = DetailTab.valueOf(tabName)
     Column(modifier.fillMaxSize().testTag("train-detail-screen")) {
         LazyColumn(modifier = Modifier.weight(1f).fillMaxWidth().testTag("train-detail"), verticalArrangement = Arrangement.spacedBy(0.dp)) {
@@ -221,7 +243,25 @@ internal fun ServiceDetailScreen(
                                             onSetAlarm = null,
                                             position = StopTimelinePosition.of(index, progress, stop.completed),
                                             isFirst = index == 0,
-                                            isLast = index == shown.stops.lastIndex
+                                            isLast = index == shown.stops.lastIndex,
+                                            scheduledPlatform = stop.scheduledPlatform,
+                                            onShare = {
+                                                val verified = stop.operationalStatusVerified ?: shown.operationalStatusVerified
+                                                startTextShare(
+                                                    context,
+                                                    TimetableShareFormatter.stop(
+                                                        train = shown.number,
+                                                        station = stop.station,
+                                                        scheduled = stop.scheduled,
+                                                        expected = stop.expected.takeIf { verified },
+                                                        departure = index == 0,
+                                                        platform = stop.platform,
+                                                        scheduledPlatform = stop.scheduledPlatform,
+                                                        strings = stopShareStrings
+                                                    ),
+                                                    stopShareChooser
+                                                )
+                                            }
                                         )
                                     }
                                 }
@@ -248,7 +288,7 @@ internal fun ServiceDetailScreen(
                                         stringResource(R.string.detail_info_platform),
                                         when {
                                             isDemonstration -> stringResource(R.string.platform_unavailable)
-                                            shown.platform != null -> stringResource(R.string.platform_label, shown.platform)
+                                            shown.platform != null -> platformText(shown.platform, shown.scheduledPlatform, long = true) ?: shown.platform
                                             else -> stringResource(R.string.platform_to_confirm)
                                         }
                                     )
@@ -265,6 +305,24 @@ internal fun ServiceDetailScreen(
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                     if (!isDemonstration) TrainAlertToggle(service, eligible = isMonitored || isThisTrip)
+                                    co2?.let { estimate ->
+                                        Column(Modifier.testTag("detail-co2"), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                            InfoRow(stringResource(R.string.co2_estimate_title), co2Line(estimate))
+                                            Text(stringResource(R.string.co2_estimate_note), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                        }
+                                    }
+                                    // Trenitalia or Italo: their official site, without a prefilled search (none is documented).
+                                    purchaseSite?.let { site ->
+                                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                            TonalButton(
+                                                text = stringResource(R.string.official_site_open, site.name),
+                                                onClick = { site.url(OperatorLinkKind.BUY)?.let { openExternalLink(uriHandler, it) } },
+                                                trailingIcon = Icons.AutoMirrored.Filled.OpenInNew,
+                                                modifier = Modifier.testTag("detail-official-site")
+                                            )
+                                            Text(stringResource(R.string.official_site_note), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -442,6 +500,7 @@ private fun ServiceDetailHeader(
 ) {
     val locale = LocalConfiguration.current.locales[0]
     val wide = LocalWideLayout.current
+    val platformSpokenLabel = if (service.platform != null) platformSpoken(service.platform, service.scheduledPlatform) else stringResource(R.string.platform_to_confirm)
     HeaderBlock(bottomPadding = 12.dp) {
         if (wide) {
             Text(stringResource(R.string.screen_title_detail), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -474,9 +533,11 @@ private fun ServiceDetailHeader(
             }
             if (!isDemonstration) {
                 Text(
-                    service.platform?.let { stringResource(R.string.platform_label, it) } ?: stringResource(R.string.platform_to_confirm),
+                    platformText(service.platform, service.scheduledPlatform, long = true) ?: stringResource(R.string.platform_to_confirm),
+                    modifier = Modifier.semantics { contentDescription = platformSpokenLabel },
                     style = MaterialTheme.typography.bodyMedium,
-                    color = headerMutedColor()
+                    color = headerMutedColor(),
+                    fontWeight = if (PlatformChange.of(service.platform, service.scheduledPlatform) != null) FontWeight.Bold else null
                 )
             }
         }
@@ -545,7 +606,11 @@ internal fun StopTimelineRow(
     onSetAlarm: (() -> Unit)?,
     position: StopTimelinePosition = StopTimelinePosition.UPCOMING,
     isFirst: Boolean = false,
-    isLast: Boolean = false
+    isLast: Boolean = false,
+    /** Timetable platform when the source moved the train ("Binario 7 (era 5)"). */
+    scheduledPlatform: String? = null,
+    /** Shares this stop as text ("Treno X, fermata Y: arr. 10:05, bin. 3"); null hides the command. */
+    onShare: (() -> Unit)? = null
 ) {
     val changeLabel = when (routeChange) {
         StopRouteChange.NONE -> ""
@@ -557,8 +622,7 @@ internal fun StopTimelineRow(
         delay > 0 -> pluralStringResource(R.plurals.operational_delay_minutes, delay, delay)
         else -> stringResource(R.string.operational_on_time)
     }
-    val platformLabel = platform?.let { stringResource(R.string.platform_label, it) }
-        ?: stringResource(R.string.platform_unavailable)
+    val platformLabel = platformSpoken(platform, scheduledPlatform)
     val positionLabel = when (position) {
         StopTimelinePosition.PASSED -> stringResource(R.string.stop_position_passed)
         StopTimelinePosition.LAST_CONFIRMED -> stringResource(R.string.map_role_last_confirmed)
@@ -648,7 +712,15 @@ internal fun StopTimelineRow(
                 StopRouteChange.ADDED -> Text(stringResource(R.string.stop_added_uppercase), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.tertiary, fontWeight = FontWeight.Bold)
                 StopRouteChange.NONE -> Unit
             }
-            platform?.let { Text(stringResource(R.string.platform_label, it), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            platformText(platform, scheduledPlatform, long = true)?.let {
+                val changed = PlatformChange.of(platform, scheduledPlatform) != null
+                Text(
+                    it,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = platformColor(platform, scheduledPlatform, MaterialTheme.colorScheme.onSurfaceVariant),
+                    fontWeight = if (changed) FontWeight.Bold else null
+                )
+            }
             if (!operationalStatusVerified) {
                 Text(stringResource(R.string.operational_status_unverified), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
@@ -656,6 +728,16 @@ internal fun StopTimelineRow(
                 TextButton(onClick = onSetAlarm, modifier = Modifier.heightIn(min = 48.dp)) {
                     Text(stringResource(R.string.action_stop_alarm))
                 }
+            }
+        }
+        onShare?.let { share ->
+            IconButton(onClick = share, modifier = Modifier.testTag("detail-share-stop")) {
+                Icon(
+                    Icons.Default.Share,
+                    contentDescription = stringResource(R.string.share_stop_action, station),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(20.dp)
+                )
             }
         }
     }

@@ -4,6 +4,7 @@ import android.content.Context
 import it.binario.app.R
 import it.binario.app.data.DataConfidence
 import it.binario.app.data.Freshness
+import it.binario.app.data.PlatformChange
 import it.binario.app.data.RailTime
 import it.binario.app.data.Station
 import it.binario.app.data.core.RunStatus
@@ -26,7 +27,9 @@ data class StationWidgetDeparture(
     val platform: String?,
     val status: RunStatus?,
     /** Train type group for the exclusions; null when the board does not tell, and then never hidden. */
-    val typeGroup: TrainTypeGroup? = null
+    val typeGroup: TrainTypeGroup? = null,
+    /** Timetable platform published by the same source when it moved the train; null otherwise. */
+    val scheduledPlatform: String? = null
 ) {
     /** True when the source published an operational observation rather than the timetable alone. */
     val hasObservation: Boolean
@@ -66,7 +69,8 @@ data class StationWidgetSnapshot(
                         destination = entry.destinationOrOriginLabel?.takeIf(String::isNotBlank) ?: entry.destinationOrOrigin.value,
                         platform = entry.platform?.value?.trim()?.takeIf(String::isNotEmpty),
                         status = entry.status?.value,
-                        typeGroup = WidgetTrainTypes.groupOf(entry.serviceKind, entry.operatorId?.value, entry.lineLabel, entry.status?.value)
+                        typeGroup = WidgetTrainTypes.groupOf(entry.serviceKind, entry.operatorId?.value, entry.lineLabel, entry.status?.value),
+                        scheduledPlatform = entry.scheduledPlatform?.value?.trim()?.takeIf { it.isNotEmpty() && entry.platform != null }
                     )
                 }
                 .filter { (it.expectedEpochMillis ?: it.scheduledEpochMillis) >= now.toEpochMilli() - DEPARTED_GRACE_MILLIS }
@@ -93,7 +97,9 @@ data class StationWidgetRow(
     val platform: String,
     val status: String,
     val emphasis: StationWidgetEmphasis,
-    val accessibility: String
+    val accessibility: String,
+    /** The platform differs from the timetable one: drawn in the attention colour. */
+    val platformChanged: Boolean = false
 )
 
 /** Resource-backed texts of the station widget; the route widget's [WidgetStrings] supply the shared labels. */
@@ -109,7 +115,9 @@ data class StationWidgetStrings(
     val liveStatus: String,
     val plannedOnly: String,
     val runStatusLabels: Map<RunStatus, String>,
-    val titleAccessibility: String
+    val titleAccessibility: String,
+    /** "BIN %1$s\nera %2$s"; blank falls back to [platformShort]. */
+    val platformChangedShort: String = ""
 ) {
     fun format(template: String, vararg values: Any): String = widget.format(template, *values)
 
@@ -126,7 +134,8 @@ data class StationWidgetStrings(
             liveStatus = context.getString(R.string.station_board_status_live),
             plannedOnly = context.getString(R.string.station_board_status_planned),
             runStatusLabels = RunStatus.entries.associateWith { context.getString(it.widgetLabelRes()) },
-            titleAccessibility = context.getString(R.string.station_widget_title_accessibility)
+            titleAccessibility = context.getString(R.string.station_widget_title_accessibility),
+            platformChangedShort = context.getString(R.string.widget_platform_changed)
         )
 
         private fun RunStatus.widgetLabelRes(): Int = when (this) {
@@ -203,16 +212,20 @@ object StationWidgetPresenter {
             strings.format(strings.departureTo, departure.destination),
             strings.format(strings.scheduledTime, scheduled),
             operational,
-            departure.platform?.let { strings.format(widget.platform, it) } ?: widget.platformUnavailable
+            widget.platformSpoken(departure.platform, departure.scheduledPlatform)
         ).joinToString(". ")
+        val platformChange = PlatformChange.of(departure.platform, departure.scheduledPlatform)
         return StationWidgetRow(
             time = scheduled,
             train = listOfNotNull(departure.operator?.uppercase(widget.locale), departure.number).joinToString(" · ").ifBlank { "—" },
             destination = departure.destination,
-            platform = departure.platform?.let { strings.format(strings.platformShort, it) } ?: "—",
+            platform = platformChange?.takeIf { strings.platformChangedShort.isNotBlank() }
+                ?.let { strings.format(strings.platformChangedShort, it.actual, it.scheduled) }
+                ?: departure.platform?.let { strings.format(strings.platformShort, it) } ?: "—",
             status = statusLabel,
             emphasis = emphasis,
-            accessibility = accessibility
+            accessibility = accessibility,
+            platformChanged = platformChange != null
         )
     }
 
@@ -304,7 +317,8 @@ object StationWidgetCodec {
             departure.destination,
             departure.platform.orEmpty(),
             departure.status?.name.orEmpty(),
-            departure.typeGroup?.name.orEmpty()
+            departure.typeGroup?.name.orEmpty(),
+            departure.scheduledPlatform.orEmpty()
         ).joinToString(FIELD) { encode(it) }
     }
 
@@ -314,7 +328,8 @@ object StationWidgetCodec {
         .mapNotNull { record ->
             runCatching {
                 val parts = record.split(FIELD).map(::decode)
-                require(parts.size == 7 || parts.size == 8)
+                // 9 fields since the timetable platform, 8 before it, 7 before the train type group.
+                require(parts.size in 7..9)
                 StationWidgetDeparture(
                     scheduledEpochMillis = parts[0].toLong(),
                     expectedEpochMillis = parts[1].ifBlank { null }?.toLong(),
@@ -324,8 +339,9 @@ object StationWidgetCodec {
                     platform = parts[5].ifBlank { null },
                     status = parts[6].ifBlank { null }?.let { name -> RunStatus.entries.firstOrNull { it.name == name } ?: RunStatus.UNKNOWN },
                     // Records of earlier versions: only the operator can tell the group.
-                    typeGroup = if (parts.size == 8) TrainTypeGroup.entries.firstOrNull { it.name == parts[7] }
-                    else WidgetTrainTypes.groupOf(it.binario.app.data.core.ServiceKind.UNKNOWN, parts[3].ifBlank { null }, null, null)
+                    typeGroup = if (parts.size >= 8) TrainTypeGroup.entries.firstOrNull { it.name == parts[7] }
+                    else WidgetTrainTypes.groupOf(it.binario.app.data.core.ServiceKind.UNKNOWN, parts[3].ifBlank { null }, null, null),
+                    scheduledPlatform = parts.getOrNull(8)?.ifBlank { null }
                 )
             }.getOrNull()
         }

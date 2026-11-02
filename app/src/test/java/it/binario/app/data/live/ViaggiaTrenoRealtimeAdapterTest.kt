@@ -155,6 +155,35 @@ class ViaggiaTrenoRealtimeAdapterTest {
         assertEquals(entry.scheduledTime.plusMinutes(6), details.entry.expectedTime?.value)
     }
 
+    @Test fun `the programmed platform travels with the actual one so a moved train reads era 5`() = runBlocking {
+        val adapter = ViaggiaTrenoRealtimeAdapter(ViaggiaTrenoRealtimeFetcher { path ->
+            if (path.startsWith("arrivi/")) JSONArray()
+                .put(JSONObject().put("numeroTreno", 12345).put("codOrigine", "S08001")
+                    .put("dataPartenzaTreno", runDate).put("orarioArrivo", now.plusSeconds(1800).toEpochMilli())
+                    .put("origine", "Viterbo").put("destinazione", "Roma Tiburtina").put("ritardo", 6)
+                    .put("ultimoRilev", now.minusSeconds(30).toEpochMilli())
+                    .put("binarioProgrammatoArrivoDescrizione", "5").put("binarioEffettivoArrivoDescrizione", "7"))
+                .put(JSONObject().put("numeroTreno", 12347).put("codOrigine", "S08001")
+                    .put("dataPartenzaTreno", runDate).put("orarioArrivo", now.plusSeconds(2400).toEpochMilli())
+                    .put("origine", "Viterbo").put("destinazione", "Roma Tiburtina")
+                    .put("binarioProgrammatoArrivoDescrizione", "4")).toString()
+            else run().toString()
+        }, clock)
+        val request = it.binario.app.data.provider.StationBoardRequest(
+            it.binario.app.data.core.StationId(route.outwardDestination.id), route.outwardDestination.name,
+            railwayCode = route.outwardDestination.railwayCode, from = now, to = now.plusSeconds(3600),
+            kind = it.binario.app.data.core.BoardKind.ARRIVALS)
+        val entries = (adapter.getStationBoard(request) as it.binario.app.data.provider.ProviderResult.Success).value.entries
+        val moved = entries.single { it.publicNumber == "12345" }
+        assertEquals("7", moved.platform?.value)
+        assertEquals("5", moved.scheduledPlatform?.value)
+        assertEquals(PlatformChange("7", "5"), PlatformChange.of(moved.platform?.value, moved.scheduledPlatform?.value))
+        // Without an actual platform the timetable one is not presented as a change (nor as the platform).
+        val planned = entries.single { it.publicNumber == "12347" }
+        assertNull(planned.platform)
+        assertNull(planned.scheduledPlatform)
+    }
+
     @Test fun `details cannot substitute a different service date station time or public number`() = runBlocking {
         val adapter = adapter()
         val request = it.binario.app.data.provider.StationBoardRequest(it.binario.app.data.core.StationId(route.outwardOrigin.id), route.outwardOrigin.name,

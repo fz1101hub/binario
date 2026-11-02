@@ -31,6 +31,7 @@ class AppNavigationTest {
         assertEquals(TopDestination.FOR_YOU, AppNavigation.destinationOf(AppScreen.SETTINGS, AppScreen.PLANNER))
         assertEquals(TopDestination.PLAN, AppNavigation.destinationOf(AppScreen.JOURNEY_DETAIL, AppScreen.DEPARTURES))
         assertEquals(TopDestination.FOR_YOU, AppNavigation.destinationOf(AppScreen.SETTINGS_SECTION, AppScreen.PLANNER))
+        assertEquals(TopDestination.FOR_YOU, AppNavigation.destinationOf(AppScreen.SAVED_TIMETABLE, AppScreen.PLANNER))
         assertEquals(TopDestination.DEPARTURES, AppNavigation.destinationOf(AppScreen.DETAIL, AppScreen.DEPARTURES))
         assertEquals(TopDestination.PLAN, AppNavigation.destinationOf(AppScreen.DETAIL, AppScreen.NUMBER_RESULTS))
         TopDestination.entries.forEach { destination ->
@@ -48,6 +49,7 @@ class AppNavigationTest {
         assertEquals(AppScreen.FOR_YOU, AppNavigation.back(AppScreen.SETTINGS, AppScreen.PLANNER))
         assertEquals(AppScreen.SETTINGS, AppNavigation.back(AppScreen.SETTINGS_SECTION, AppScreen.PLANNER))
         assertEquals(AppScreen.RESULTS, AppNavigation.back(AppScreen.JOURNEY_DETAIL, AppScreen.DEPARTURES))
+        assertEquals(AppScreen.FOR_YOU, AppNavigation.back(AppScreen.SAVED_TIMETABLE, AppScreen.PLANNER))
         assertNull(AppNavigation.back(AppScreen.PLANNER, AppScreen.PLANNER))
         assertNull(AppNavigation.back(AppScreen.DEPARTURES, AppScreen.PLANNER))
         assertNull(AppNavigation.back(AppScreen.FOR_YOU, AppScreen.PLANNER))

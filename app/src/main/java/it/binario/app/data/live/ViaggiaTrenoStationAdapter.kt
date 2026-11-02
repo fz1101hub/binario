@@ -224,6 +224,9 @@ class ViaggiaTrenoStationAdapter(
             }
             val platform = Regex("\\bBinario\\s+Reale:\\s*(\\d+)", RegexOption.IGNORE_CASE)
                 .find(content)?.groupValues?.getOrNull(1)
+            // "Binario Previsto": the timetable platform, shown next to the real one only when they differ.
+            val scheduledPlatform = Regex("\\bBinario\\s+Previsto:\\s*(\\d+)", RegexOption.IGNORE_CASE)
+                .find(content)?.groupValues?.getOrNull(1)?.takeIf { platform != null }
             val expected = if (status == ServiceStatus.CANCELLED) scheduled else addDelay(scheduled, delay)
             val routeChange = OperationalRouteChangeDetector.detect(content)
             TrainService(
@@ -239,8 +242,9 @@ class ViaggiaTrenoStationAdapter(
                 delayMinutes = delay,
                 officialDelayMinutes = delay,
                 status = status,
+                scheduledPlatform = scheduledPlatform,
                 stops = listOf(
-                    TrainStop(origin, scheduled, expected, platform, delay, completed = false),
+                    TrainStop(origin, scheduled, expected, platform, delay, completed = false, scheduledPlatform = scheduledPlatform),
                     TrainStop(destination, "—", "—", null, delay, completed = false)
                 ),
                 transferCount = 0,

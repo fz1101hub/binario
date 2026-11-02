@@ -219,6 +219,7 @@ class ViaggiaTrenoRealtimeAdapter(
                     origin = request.stationName.orEmpty(), destination = row.text(if (arrival) "origine" else "destinazione").orEmpty(),
                     scheduledDeparture = time(scheduled), expectedDeparture = time(scheduled.plusSeconds(if (verified) (delay ?: 0) * 60L else 0)),
                     platform = row.text(if (arrival) "binarioEffettivoArrivoDescrizione" else "binarioEffettivoPartenzaDescrizione"), delayMinutes = if (verified) delay ?: 0 else 0,
+                    scheduledPlatform = row.text(if (arrival) "binarioProgrammatoArrivoDescrizione" else "binarioProgrammatoPartenzaDescrizione"),
                     officialDelayMinutes = if (verified) delay else null,
                     status = if (cancelled) ServiceStatus.CANCELLED else if (verified && (delay ?: 0) > 0) ServiceStatus.DELAYED else ServiceStatus.ON_TIME,
                     stops = emptyList(), operationalStatusVerified = verified, scheduledDepartureDateTime = scheduled.atZone(zone).toLocalDateTime(),
@@ -303,6 +304,7 @@ class ViaggiaTrenoRealtimeAdapter(
                             origin = detail.origin, destination = detail.destination, scheduledDeparture = time(scheduled),
                             expectedDeparture = detail.entry.expectedTime?.value?.toInstant()?.let(::time) ?: time(scheduled),
                             platform = detail.entry.platform?.value, delayMinutes = if (verified) delay ?: 0 else 0,
+                            scheduledPlatform = detail.entry.scheduledPlatform?.value,
                             officialDelayMinutes = delay.takeIf { verified },
                             status = if (cancelled) ServiceStatus.CANCELLED else if (verified && (delay ?: 0) > 0) ServiceStatus.DELAYED else ServiceStatus.ON_TIME,
                             stops = detail.stops, operatorDisplayName = brand, operationalStatusVerified = verified,
@@ -372,6 +374,7 @@ class ViaggiaTrenoRealtimeAdapter(
         val actual = selected.millis(if (arrival) "arrivoReale" else "partenzaReale")?.let(Instant::ofEpochMilli)
         val updatedExpected = actual ?: if (verified && !cancelled) entry.scheduledTime.toInstant().plusSeconds(delay!! * 60L) else null
         val platform = selected.text(if (arrival) "binarioEffettivoArrivoDescrizione" else "binarioEffettivoPartenzaDescrizione")
+        val scheduledPlatform = selected.text(if (arrival) "binarioProgrammatoArrivoDescrizione" else "binarioProgrammatoPartenzaDescrizione")
         val stops = rows.mapIndexedNotNull { index, row ->
             val scheduled = (if (index == 0) row.millis("partenza_teorica") else row.millis("arrivo_teorico"))
                 ?: row.millis("programmata") ?: return@mapIndexedNotNull null
@@ -383,12 +386,15 @@ class ViaggiaTrenoRealtimeAdapter(
                 platform = row.text(if (index == 0) "binarioEffettivoPartenzaDescrizione" else "binarioEffettivoArrivoDescrizione"),
                 delayMinutes = actualStop?.let { Duration.between(at, it).toMinutes().toInt() } ?: if (stopVerified) delay ?: 0 else 0,
                 completed = actualStop != null, operationalStatusVerified = stopVerified,
-                routeChange = if (row.intOrNull("actualFermataType") in setOf(2, 3)) StopRouteChange.SKIPPED else StopRouteChange.NONE)
+                routeChange = if (row.intOrNull("actualFermataType") in setOf(2, 3)) StopRouteChange.SKIPPED else StopRouteChange.NONE,
+                scheduledPlatform = row.text(if (index == 0) "binarioProgrammatoPartenzaDescrizione" else "binarioProgrammatoArrivoDescrizione"))
         }
         if (stops.isEmpty()) return null
         return StationBoardRunDetails(
             entry.copy(expectedTime = updatedExpected?.let { SourcedValue(it.atZone(zone), source) },
                 platform = platform?.let { SourcedValue(it, source) } ?: entry.platform,
+                // The timetable platform travels with the actual one of the same source, never on its own.
+                scheduledPlatform = if (platform != null) scheduledPlatform?.let { SourcedValue(it, source) } else entry.scheduledPlatform,
                 status = if (cancelled) SourcedValue(RunStatus.CANCELLED, source) else if (verified || actual != null)
                     SourcedValue(if (updatedExpected != null && updatedExpected > entry.scheduledTime.toInstant()) RunStatus.DELAYED else RunStatus.ON_TIME, source) else null),
             stops.first().station, stops.last().station, stops, descriptor.displayName, observed
@@ -431,7 +437,8 @@ class ViaggiaTrenoRealtimeAdapter(
                 scheduled = time(at), expected = time(actual?.let(Instant::ofEpochMilli) ?: at.plusSeconds(visibleDelay * 60L)),
                 platform = stop.text(if (index == 0) "binarioEffettivoPartenzaDescrizione" else "binarioEffettivoArrivoDescrizione"),
                 delayMinutes = actual?.let { Duration.between(at, Instant.ofEpochMilli(it)).toMinutes().toInt() } ?: visibleDelay,
-                completed = actual != null, operationalStatusVerified = actual != null || (verified && !cancelled)
+                completed = actual != null, operationalStatusVerified = actual != null || (verified && !cancelled),
+                scheduledPlatform = stop.text(if (index == 0) "binarioProgrammatoPartenzaDescrizione" else "binarioProgrammatoArrivoDescrizione")
             )
         }
         val category = run.text("categoria").orEmpty().uppercase(Locale.ROOT)
@@ -442,6 +449,7 @@ class ViaggiaTrenoRealtimeAdapter(
             origin = route.origin(direction).name, destination = route.destination(direction).name,
             scheduledDeparture = time(departure), expectedDeparture = trainStops.first().expected,
             platform = trainStops.first().platform, delayMinutes = visibleDelay, officialDelayMinutes = publishedDelay,
+            scheduledPlatform = trainStops.first().scheduledPlatform,
             status = if (cancelled) ServiceStatus.CANCELLED else if (visibleDelay > 0) ServiceStatus.DELAYED else ServiceStatus.ON_TIME,
             stops = trainStops, operationalStatusVerified = verified,
             scheduledDepartureDateTime = departure.atZone(zone).toLocalDateTime(),

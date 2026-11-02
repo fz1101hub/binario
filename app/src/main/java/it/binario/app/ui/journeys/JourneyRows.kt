@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import it.binario.app.R
 import it.binario.app.TabularFigures
+import it.binario.app.co2.Co2Estimate
 import it.binario.app.data.core.LegMode
 import it.binario.app.journeys.JourneyLegRow
 import it.binario.app.journeys.JourneyLegVehicle
@@ -43,6 +44,8 @@ import it.binario.app.journeys.TransferRiskLevel
 import it.binario.app.ui.common.ChangesBadge
 import it.binario.app.ui.common.JourneyTimes
 import it.binario.app.ui.common.changesLabel
+import it.binario.app.ui.common.co2Line
+import it.binario.app.ui.common.co2Spoken
 import it.binario.app.ui.common.journeyDurationSpoken
 import it.binario.app.ui.common.localizedLabel
 
@@ -155,7 +158,9 @@ internal fun JourneyResultCard(
     row: JourneyOptionRow,
     onOpen: () -> Unit,
     modifier: Modifier = Modifier,
-    selected: Boolean = false
+    selected: Boolean = false,
+    /** Estimated CO2 of the journey, shown as a small line; null without station positions. */
+    co2: Co2Estimate? = null
 ) {
     val locale = LocalConfiguration.current.locales[0]
     val from = row.legs.firstOrNull()?.fromLabel.orEmpty()
@@ -172,6 +177,7 @@ internal fun JourneyResultCard(
         trains,
         source,
         transferRiskLabel(row.transferRisk, rowLevel = true),
+        co2?.let { co2Spoken(it) },
         if (selected) stringResource(R.string.accessibility_row_selected) else null
     ).joinToString(". ")
     Surface(
@@ -219,6 +225,7 @@ internal fun JourneyResultCard(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
+            co2?.let { Text(co2Line(it), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
         }
     }
 }

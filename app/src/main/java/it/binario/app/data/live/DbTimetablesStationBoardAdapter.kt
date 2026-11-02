@@ -188,6 +188,8 @@ class DbTimetablesStationBoardAdapter(
                     publicNumber = planned.number,
                     operatorId = planned.owner?.takeIf(String::isNotBlank)?.let(::OperatorId) ?: OperatorId("db"),
                     platform = (changed?.platform ?: planned.platform)?.takeIf(String::isNotBlank)?.let { SourcedValue(it, source.copy(nativeId = planned.id)) },
+                    // The planned platform ("pp") next to a changed one ("cp"): "Gl. 7 (statt 5)".
+                    scheduledPlatform = planned.platform?.takeIf { changed?.platform != null }?.let { SourcedValue(it, source.copy(nativeId = planned.id)) },
                     status = if (status == RunStatus.SCHEDULED) null else SourcedValue(status, source.copy(nativeId = planned.id)),
                     routeChange = routeChange
                 )

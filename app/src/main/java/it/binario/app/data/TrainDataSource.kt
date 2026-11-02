@@ -128,7 +128,9 @@ data class TrainStop(
     val completed: Boolean,
     val routeChange: StopRouteChange = StopRouteChange.NONE,
     /** Null inherits legacy service status; partial live sources set this per stop. */
-    val operationalStatusVerified: Boolean? = null
+    val operationalStatusVerified: Boolean? = null,
+    /** Platform of the timetable when the source publishes it next to the actual [platform]. */
+    val scheduledPlatform: String? = null
 )
 
 /** Exact native identity retained from the static feed for realtime reconciliation. */
@@ -180,7 +182,9 @@ data class TrainService(
      * A scheduled coach of the operator's own timetable (Trenitalia bus, ItaloBus) from an offline pack, not a
      * train and not a rail replacement bus: show a bus, never a train category.
      */
-    val scheduledBus: Boolean = false
+    val scheduledBus: Boolean = false,
+    /** Platform of the timetable when the source publishes it next to the actual [platform] ("era 5"). */
+    val scheduledPlatform: String? = null
 ) {
     val displayOperator: String get() = operatorDisplayName?.takeIf(String::isNotBlank) ?: operator.shortLabel
     val accessibleOperator: String get() = operatorDisplayName?.takeIf(String::isNotBlank) ?: operator.accessibleLabel

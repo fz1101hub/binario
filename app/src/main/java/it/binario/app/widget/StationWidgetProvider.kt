@@ -163,6 +163,7 @@ class StationWidgetProvider : AppWidgetProvider() {
                 views.setTextViewText(trainIds[index], row.train)
                 views.setViewVisibility(trainIds[index], if (settings.showTrainName) View.VISIBLE else View.GONE)
                 views.setTextViewText(platformIds[index], row.platform)
+                views.setTextColor(platformIds[index], ContextCompat.getColor(context, if (row.platformChanged) R.color.widget_warning else R.color.widget_on_surface))
                 views.setViewVisibility(platformIds[index], if (settings.showPlatform) View.VISIBLE else View.GONE)
                 views.setTextViewText(statusIds[index], row.status)
                 views.setTextColor(statusIds[index], ContextCompat.getColor(context, row.emphasis.colorRes()))

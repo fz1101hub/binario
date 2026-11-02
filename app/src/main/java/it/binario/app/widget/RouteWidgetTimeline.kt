@@ -78,7 +78,8 @@ object WidgetServiceMapper {
             arrivalEpochMillis = arrivalEpoch,
             arrivalLabel = arrivalLabel,
             typeGroup = WidgetTrainTypes.groupOf(service.trainCategory, service.operator, WidgetTrainTypes.isReplacement(service.routeChange?.kind)),
-            serviceDate = scheduledDate
+            serviceDate = scheduledDate,
+            scheduledPlatform = service.scheduledPlatform?.takeIf { service.platform != null }
         )
     }
 }

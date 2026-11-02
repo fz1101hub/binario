@@ -184,7 +184,10 @@ data class StopCall(
     val departurePlatform: SourcedValue<String>? = null,
     val status: SourcedValue<CallStatus>? = null,
     val pickupAllowed: Boolean? = null,
-    val dropOffAllowed: Boolean? = null
+    val dropOffAllowed: Boolean? = null,
+    /** Platforms of the timetable when the source publishes them next to the actual ones ([arrivalPlatform]). */
+    val scheduledArrivalPlatform: SourcedValue<String>? = null,
+    val scheduledDeparturePlatform: SourcedValue<String>? = null
 ) {
     init {
         require(sequence >= 0) { "La sequenza della fermata non può essere negativa" }
@@ -324,7 +327,12 @@ data class StationBoardEntry(
      */
     val lineLabel: String? = null,
     /** Kind of service when the source tells it (display and widget filters only, never an identity). */
-    val serviceKind: ServiceKind = ServiceKind.UNKNOWN
+    val serviceKind: ServiceKind = ServiceKind.UNKNOWN,
+    /**
+     * Platform of the timetable, when the same source publishes it next to [platform] (ViaggiaTreno
+     * `binarioProgrammato*`, DB planned platform, transport.opendata.ch planned platform). Display only.
+     */
+    val scheduledPlatform: SourcedValue<String>? = null
 )
 
 data class StationBoard(

@@ -15,6 +15,8 @@
 | Notifiche | Avvisi pendolare e sveglia fermata sono notifiche locali pianificate dal dispositivo; la sveglia GPS mostra in più la notifica fissa del suo servizio in primo piano e, quando suona, la stessa notifica della sveglia fermata. Quando un avviso pendolare suona, l'app chiede per pochi secondi lo stato del treno alle fonti della ricerca tratta. Le notifiche in tempo reale (viaggio seguito, avvisi sui treni con la campanella, scioperi del giorno dopo) sono generate sul dispositivo da lavori WorkManager che interrogano le fonti pubbliche solo nelle loro finestre; nessun servizio in primo piano nuovo, nessun permesso nuovo. Nessun push server. | `CommuterAlerts.kt`, `CommuterAlertStatus.kt`, `StopAlarmPlanner.kt`, `StopAlarm.kt`, `notifications/` |
 | Dettatura | Avvia il riconoscitore vocale di sistema e riceve solo il testo; l'app non apre il microfono. | `PlannerVoiceParser.kt` |
 | Storico puntualità | Al massimo un'osservazione per treno e giorno (data, numero, operatore, ritardo, soppressione e, per le più recenti, ritardo alle fermate) nelle `SharedPreferences`, limitata a 365 giorni, 365 per treno e 1.500 in totale; per i treni preferiti è registrata anche da un lavoro giornaliero dopo l'arrivo previsto. Solo locale ed export manuale, mai inviata a un host. | `PunctualityHistory.kt`, `notifications/PunctualityRecorder.kt`, `PRIVACY.md` |
+| Orari salvati e filtri | «Salva orario» conserva nelle `SharedPreferences` al massimo 15 elenchi di risultati (stazioni, data, orari, treni, cambi, binario se noto, fonte e istante del dato), senza aggiornarli; i tipi di treno nascosti in Partenze sono salvati per stazione. Mai inviati a un host; gli orari salvati sono inclusi nell'export JSON manuale. La stima CO₂ è calcolata sul dispositivo e non viene salvata. | `timetables/SavedTimetableStore.kt`, `ui/departures/TrainTypeExclusions.kt`, `co2/Co2Estimate.kt`, `PRIVACY.md` |
+| Collegamenti ufficiali | Biglietti e assistenza, «Apri sul sito ufficiale», bollettino FS News e treni garantiti aprono il browser solo su tocco, senza parametri dell'utente (nessuna ricerca precompilata). | `links/OfficialLinks.kt` |
 | Calendario | "Aggiungi al calendario" passa un evento precompilato all'app calendario con `ACTION_INSERT`; nessun permesso calendario, nessuna lettura o scrittura diretta dei calendari. | `TrainCalendarEvent.kt` |
 | Backup | `allowBackup="false"`, regole di esclusione per cloud backup e trasferimento; l'export JSON è manuale e scelto dall'utente. | `app/src/main/res/xml/backup_rules.xml`, `data_extraction_rules.xml` |
 | Wear OS | Il telefono invia tramite Google Play Services Data Layer etichetta tratta, provenienza, freschezza, avviso e al massimo due corse; nessuna credenziale, posizione o audio. La revoca cancella il DataItem e la cache del watch. | `app/src/main/java/it/binario/app/wear/`, `wear/src/main/java/it/binario/wear/sync/` |
@@ -124,7 +126,7 @@ La tabella copre ogni host `http(s)://` trovato in `app/src/main/java`, `wear/sr
 | `iechub.rfi.it` | B | `data/live/RfiStationBoardAdapter.kt` | Tabellone stazione, arricchimento e ricerca live delle tratte; catalogo pubblico delle stazioni del monitor | `GET` con `placeId` pubblico della stazione |
 | `italoinviaggio.italotreno.com` | B | `data/live/ItaloPublicStationAdapter.kt`, `ItaloTrainNumberAdapter.kt`, catalogo | Tabellone stazione, arricchimento delle tratte, ricerca per numero treno (anche dal widget «I miei treni») | `GET` con codice pubblico della stazione o numero treno |
 | `transport.opendata.ch` | B | `data/live/SwissOpenTransportStationBoardAdapter.kt`, catalogo | Tabellone stazione e arricchimento delle tratte con partenza da una stazione svizzera (UIC `85…`) o, una volta per stazione e sessione dell'app, ricerca del nome di una stazione svizzera senza UIC o vicina al confine | `GET` con numero UIC della stazione, tipo di tabellone, limite e, per orari non correnti, data/ora; per la sola ricerca di identità il nome della stazione |
-| `www.trenord.it` | B | `data/live/TrenordLineNoticesAdapter.kt`, catalogo | Area avvisi aperta dall'utente, dettaglio di un treno Trenord o di una tratta nell'area Trenord, tabellone di una stazione dell'area Trenord | `GET` dell'elenco pubblico delle direttrici, senza parametri utente |
+| `www.trenord.it` | B, F | `data/live/TrenordLineNoticesAdapter.kt`, catalogo; `links/OfficialLinks.kt` (collegamenti su tocco) | Area avvisi aperta dall'utente, dettaglio di un treno Trenord o di una tratta nell'area Trenord, tabellone di una stazione dell'area Trenord; le pagine ufficiali di Biglietti e assistenza e dei treni garantiti si aprono nel browser solo su tocco | `GET` dell'elenco pubblico delle direttrici, senza parametri utente; nessun dato per i collegamenti |
 | `www.viaggiatreno.it` | B | `data/live/ViaggiaTrenoRealtimeAdapter.kt`, `ViaggiaTrenoTrainNoticesAdapter.kt`, `TrenitaliaInfomobilityNewsAdapter.kt`, catalogo (`ViaggiaTrenoStationAdapter.kt` esiste ma non è istanziato) | Tabellone stazione, ricerca tratta live, ricerca per numero treno (anche dal widget «I miei treni» per i treni preferiti), dettaglio corsa; avvisi nel dettaglio di un treno Trenitalia; area avvisi aperta dall'utente | `GET` con codice stazione e data/ora, numero treno, codice di origine e giorno della corsa; numero treno per gli avvisi; nessun parametro per l'elenco infomobilità. HTTPS, poi **HTTP non cifrato** sulla stessa risorsa quando la fonte reindirizza |
 | `www.rfi.it` | A | `data/live/RfiInfomobilityRssAdapter.kt`, catalogo | Area avvisi aperta dall'utente | Feed RSS nazionale, nessun dato utente |
 | `scioperi.mit.gov.it` | A | `data/live/MitStrikeRssAdapter.kt`, catalogo; la pagina del calendario resta anche un collegamento aperto su tocco (`data/notices/RailExternalLinks.kt`) | Area avvisi aperta dall'utente; con «Scioperi del giorno dopo» attivo e le notifiche consentite, una volta al giorno verso le 18 | `GET` HTTPS del feed RSS, nessun dato utente |
@@ -154,7 +156,7 @@ La tabella copre ogni host `http(s)://` trovato in `app/src/main/java`, `wear/sr
 | `www.arstspa.info` | D | URL finale (reindirizzamento) del download ARST registrato nel manifest `gtfs-transit/` per `arst-metro-gtfs` |
 | `www.dati.lombardia.it` | D | Provenienza del pack `lombardia-trenord-gtfs`; anche nel catalogo |
 | `www.hzpp.hr` | D | Provenienza del pack `hzpp-gtfs`; anche nel catalogo |
-| `www.trentinotrasporti.it` | D | Provenienza del pack `trentino-gtfs`; anche nel catalogo |
+| `www.trentinotrasporti.it` | D, F | Provenienza del pack `trentino-gtfs`; anche nel catalogo; sito e abbonamenti in Biglietti e assistenza (`links/OfficialLinks.kt`) |
 | `www.wimob.it` | D | Provenienza del pack `eav-gtfs`; anche nel catalogo |
 | `arenaways.it` | E | Catalogo fonti (`RailSourceCatalog.kt`) |
 | `data.oebb.at` | E | Catalogo fonti (`RailSourceCatalog.kt`) |
@@ -170,15 +172,15 @@ La tabella copre ogni host `http(s)://` trovato in `app/src/main/java`, `wear/sr
 | `urlaubs-express.de` | E | Catalogo fonti (`InternationalSourceCatalog.kt`), monitor-only |
 | `web.ferroviedellacalabria.it` | E | Catalogo fonti (`RailSourceCatalog.kt`) |
 | `westbahn.at` | E | Catalogo fonti (`InternationalSourceCatalog.kt`), monitor-only |
-| `www.arst.sardegna.it` | E | Catalogo fonti (`RailSourceCatalog.kt`) |
+| `www.arst.sardegna.it` | E, F | Catalogo fonti (`RailSourceCatalog.kt`); pagina dei servizi ferroviari in Biglietti e assistenza (`links/OfficialLinks.kt`) |
 | `www.cciss.it` | E | Catalogo fonti (`RailSourceCatalog.kt`) e manifest GTFS: dataset ufficiali del National Access Point italiano da cui derivano i pack `trenitalia-gtfs` e `italo-gtfs` e, convertiti da NeTEx in CI, i pack regionali di `gtfs-transit/` (FAL, Ferrotramviaria, Ferrovie del Gargano, Mi.Co.Tra.) e i tram ACTV |
 | `www.cd.cz` | E | Catalogo fonti (`InternationalSourceCatalog.kt`), monitor-only |
 | `www.circumetnea.it` | E | Catalogo fonti (`RailSourceCatalog.kt`) |
 | `www.cotralspa.it` | E | Catalogo fonti (`RailSourceCatalog.kt`) |
 | `www.data.gouv.fr` | E | Catalogo fonti (`RailSourceCatalog.kt`) |
-| `www.eavsrl.it` | E | Catalogo fonti (`RailSourceCatalog.kt`) |
+| `www.eavsrl.it` | E, F | Catalogo fonti (`RailSourceCatalog.kt`); sito ufficiale in Biglietti e assistenza (`links/OfficialLinks.kt`) |
 | `www.europeansleeper.eu` | E | Catalogo fonti (`InternationalSourceCatalog.kt`, `RailSourceCatalog.kt`): landing page, nessun traffico |
-| `www.ferrovieudinecividale.it` | E | Catalogo fonti (`RailSourceCatalog.kt`) |
+| `www.ferrovieudinecividale.it` | E, F | Catalogo fonti (`RailSourceCatalog.kt`); sito ufficiale in Biglietti e assistenza (`links/OfficialLinks.kt`) |
 | `www.fseonline.it` | E | Catalogo fonti (`RailSourceCatalog.kt`) |
 | `www.fstrenituristici.it` | E | Catalogo fonti (`RailSourceCatalog.kt`) |
 | `www.gtt.to.it` | E | Catalogo fonti (`RailSourceCatalog.kt`) e licenza nel manifest `gtfs-personal/`: licenza non commerciale, pack `gtt-gtfs` solo nelle build personali |
@@ -186,7 +188,7 @@ La tabella copre ogni host `http(s)://` trovato in `app/src/main/java`, `wear/sr
 | `www.opendata-oepnv.de` | E | Catalogo fonti (`InternationalSourceCatalog.kt`): DELFI ufficiale dietro registrazione |
 | `www.sardegnamobilita.it` | E | Evidenza di licenza (CC BY 4.0) dei dati ARST nel manifest `gtfs-transit/` |
 | `www.snalltaget.se` | E | Catalogo fonti (`InternationalSourceCatalog.kt`), monitor-only |
-| `www.trenitalia.com` | E | Catalogo fonti (`RailSourceCatalog.kt`): pagina pubblica dell'infomobilità Trenitalia |
+| `www.trenitalia.com` | E, F | Catalogo fonti (`RailSourceCatalog.kt`): pagina pubblica dell'infomobilità Trenitalia; collegamenti su tocco (F) alle pagine ufficiali di Biglietti e assistenza, ai treni garantiti accanto agli avvisi di sciopero e ad «Apri sul sito ufficiale» (`links/OfficialLinks.kt`) |
 | `www.tuabruzzo.it` | E | Catalogo fonti (`RailSourceCatalog.kt`) |
 
 ### Collegamenti aperti nel browser su tocco (F)
@@ -195,5 +197,15 @@ La tabella copre ogni host `http(s)://` trovato in `app/src/main/java`, `wear/sr
 |---|---|---|
 | `github.com` | F | Modulo pubblico delle segnalazioni del progetto, aperto da Impostazioni → Suggerisci una stazione (`ProjectLinks.kt`) |
 | `open-meteo.com` | F | Attribuzione CC BY 4.0 della previsione e condizioni d'uso nel catalogo fonti (`OpenMeteoForecastAdapter.kt`, `RailSourceCatalog.kt`) |
+| `cotralspa.it` | F | Sito ufficiale Cotral in Impostazioni → Biglietti e assistenza (`links/OfficialLinks.kt`) |
+| `eticket.ferrovienordbarese.it` | F | Acquisto biglietti Ferrotramviaria in Biglietti e assistenza (`links/OfficialLinks.kt`) |
+| `ferroviedelgargano.com` | F | Sito ufficiale Ferrovie del Gargano in Biglietti e assistenza (`links/OfficialLinks.kt`) |
+| `ferrovieappulolucane.it` | F | Sito ufficiale Ferrovie Appulo Lucane in Biglietti e assistenza (`links/OfficialLinks.kt`) |
+| `www.eea.europa.eu` | F | Rapporto dell'Agenzia europea dell'ambiente da cui provengono i fattori della stima CO₂, nei crediti di Impostazioni → Informazioni (`co2/Co2Estimate.kt`) |
+| `www.ferrovienordbarese.it` | F | Sito ufficiale Ferrotramviaria in Biglietti e assistenza (`links/OfficialLinks.kt`) |
+| `www.fsnews.it` | F | Bollettino FS News («Ascolta il bollettino FS News») dall'area avvisi (`links/OfficialLinks.kt`); nessun audio riprodotto nell'app |
+| `www.italotreno.com` | F | Pagine ufficiali Italo (acquisto, tariffe e cambi, carnet, assistenza, reclami) in Biglietti e assistenza e «Apri sul sito ufficiale» (`links/OfficialLinks.kt`) |
+| `www.sad.it` | F | Pagina dei treni SAD in Biglietti e assistenza (`links/OfficialLinks.kt`) |
+| `www.trasportoferroviariotoscano.it` | F | Sito ufficiale TFT in Biglietti e assistenza (`links/OfficialLinks.kt`) |
 
 Nessun SDK di terze parti aggiunge host propri: le uniche librerie con accesso alla rete sono quelle AndroidX/Play Services elencate sopra e MapLibre Native, che contatta soltanto gli host dello stile configurato dall'app (`tiles.openfreemap.org`) e non ha telemetria; Play Services Wearable comunica solo con l'infrastruttura Google del dispositivo associato.

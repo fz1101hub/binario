@@ -6,6 +6,7 @@ import it.binario.app.FavouriteTrainOrdering
 import it.binario.app.R
 import it.binario.app.ServiceMonitor
 import it.binario.app.data.Freshness
+import it.binario.app.data.PlatformChange
 import it.binario.app.data.RailTime
 import it.binario.app.data.ServiceStatus
 import it.binario.app.data.StopRouteChange
@@ -48,7 +49,9 @@ data class FavouriteTrainStatus(
     val arrived: Boolean? = null,
     val operationalVerified: Boolean = false,
     val providerName: String = "",
-    val stale: Boolean = false
+    val stale: Boolean = false,
+    /** Timetable platform of the same stop when the source moved the train; null otherwise. */
+    val scheduledPlatform: String? = null
 )
 
 object FavouriteTrainStatusMapper {
@@ -86,6 +89,8 @@ object FavouriteTrainStatusMapper {
             lastDetectionTime = detection?.actualAt?.value?.withZoneSameInstant(zone)?.format(timeFormatter)
                 ?: lastCompleted?.expected?.takeIf { verified },
             platform = (next ?: service.stops.firstOrNull())?.platform ?: service.platform,
+            scheduledPlatform = ((next ?: service.stops.firstOrNull())?.takeIf { it.platform != null }?.scheduledPlatform)
+                ?: service.scheduledPlatform.takeIf { (next ?: service.stops.firstOrNull())?.platform == null && service.platform != null },
             departed = if (verified) detection != null || service.stops.firstOrNull()?.completed == true else null,
             arrived = if (verified) last?.completed == true else null,
             operationalVerified = verified,
@@ -104,7 +109,9 @@ data class TrainsWidgetRow(
     val status: String,
     val emphasis: TrainsRowEmphasis,
     val platform: String,
-    val accessibility: String
+    val accessibility: String,
+    /** The platform differs from the timetable one: drawn in the attention colour. */
+    val platformChanged: Boolean = false
 )
 
 /** Resource-backed texts of the trains widget, resolved once per render. */
@@ -133,7 +140,10 @@ data class TrainsWidgetStrings(
     val cancelledAccessibility: String,
     val variationAccessibility: String,
     val scheduledAccessibility: String,
-    val categoryLabels: Map<TrainCategory, String>
+    val categoryLabels: Map<TrainCategory, String>,
+    /** "BIN %1$s\nera %2$s" and "Binario cambiato: %1$s, previsto %2$s"; blank falls back to the plain forms. */
+    val platformChangedShort: String = "",
+    val platformChangedSpoken: String = ""
 ) {
     fun format(template: String, vararg values: Any): String = template.format(locale, *values)
 
@@ -163,7 +173,9 @@ data class TrainsWidgetStrings(
             cancelledAccessibility = context.getString(R.string.trains_widget_cancelled_accessibility),
             variationAccessibility = context.getString(R.string.trains_widget_variation_accessibility),
             scheduledAccessibility = context.getString(R.string.operational_status_unverified),
-            categoryLabels = TrainCategory.entries.associateWith { context.getString(it.trainsWidgetLabelRes()) }
+            categoryLabels = TrainCategory.entries.associateWith { context.getString(it.trainsWidgetLabelRes()) },
+            platformChangedShort = context.getString(R.string.widget_platform_changed),
+            platformChangedSpoken = context.getString(R.string.platform_changed_accessible)
         )
 
         private fun TrainCategory.trainsWidgetLabelRes(): Int = when (this) {
@@ -250,6 +262,7 @@ object TrainsWidgetPresenter {
             )
         }
         val live = isLive(status, nowEpochMillis)
+        val platformChange = PlatformChange.of(status.platform, status.scheduledPlatform)
         val info = when (settings.info) {
             TrainsWidgetInfo.NEXT_STATION -> status.nextStation?.let { strings.format(strings.nextStation, it, status.nextStationTime.orEmpty()).trim() }
             TrainsWidgetInfo.LAST_DETECTION -> status.lastDetectionStation?.let { strings.format(strings.lastDetection, it, status.lastDetectionTime.orEmpty()).trim() }
@@ -285,14 +298,21 @@ object TrainsWidgetPresenter {
             detail = detail,
             status = statusLabel,
             emphasis = emphasis,
-            platform = status.platform?.let { strings.format(strings.platformShort, it) } ?: "—",
+            platform = platformChange?.takeIf { strings.platformChangedShort.isNotBlank() }
+                ?.let { strings.format(strings.platformChangedShort, it.actual, it.scheduled) }
+                ?: status.platform?.let { strings.format(strings.platformShort, it) } ?: "—",
+            platformChanged = platformChange != null,
             accessibility = listOfNotNull(
                 title,
                 trainLabel.takeIf { monitor.displayName != null },
                 statusAccessibility,
                 staleMarker,
                 info,
-                if (settings.showPlatform) status.platform?.let { strings.format(strings.platform, it) } ?: strings.platformUnavailable else null
+                if (settings.showPlatform) {
+                    platformChange?.takeIf { strings.platformChangedSpoken.isNotBlank() }
+                        ?.let { strings.format(strings.platformChangedSpoken, it.actual, it.scheduled) }
+                        ?: status.platform?.let { strings.format(strings.platform, it) } ?: strings.platformUnavailable
+                } else null
             ).joinToString(". ")
         )
     }
@@ -300,7 +320,7 @@ object TrainsWidgetPresenter {
 
 /** Codec of [FavouriteTrainStatus]: Base64 fields joined by `,`; unreadable records read as absent. */
 object FavouriteTrainStatusCodec {
-    private const val FIELDS = 22
+    private const val FIELDS = 23
 
     fun encode(status: FavouriteTrainStatus): String = listOf(
         status.number,
@@ -324,12 +344,14 @@ object FavouriteTrainStatusCodec {
         status.arrived?.let(::flag).orEmpty(),
         flag(status.operationalVerified),
         status.providerName,
-        flag(status.stale)
+        flag(status.stale),
+        status.scheduledPlatform.orEmpty()
     ).joinToString(",") { java.util.Base64.getEncoder().encodeToString(it.toByteArray(Charsets.UTF_8)) }
 
     fun decode(value: String): FavouriteTrainStatus? = runCatching {
         val parts = value.split(",").map { String(java.util.Base64.getDecoder().decode(it), Charsets.UTF_8) }
-        require(parts.size == FIELDS)
+        // Records written before the timetable platform have one field less.
+        require(parts.size == FIELDS || parts.size == FIELDS - 1)
         FavouriteTrainStatus(
             number = parts[0],
             retrievedAt = parts[1].toLong(),
@@ -352,7 +374,8 @@ object FavouriteTrainStatusCodec {
             arrived = parts[18].ifBlank { null }?.let { it == "1" },
             operationalVerified = parts[19] == "1",
             providerName = parts[20],
-            stale = parts[21] == "1"
+            stale = parts[21] == "1",
+            scheduledPlatform = parts.getOrNull(22)?.ifBlank { null }
         )
     }.getOrNull()
 
