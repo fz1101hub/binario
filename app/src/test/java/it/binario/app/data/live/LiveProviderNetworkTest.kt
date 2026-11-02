@@ -394,16 +394,20 @@ class LiveProviderNetworkTest {
         // ViaggiaTreno journey solutions (with changes), through the production fetcher and its
         // HTTPS-to-cleartext handling: the format must be known before a journey adapter exists.
         val tomorrow = now.atZone(zone).toLocalDate().plusDays(1)
+        val base = "https://www.viaggiatreno.it/infomobilita/resteasy/viaggiatreno"
+        val mobileBase = "https://www.viaggiatreno.it/infomobilitamobile/resteasy/viaggiatreno"
         listOf(
-            "roma-torino" to "8409/219",
-            "milano-merano" to "1700/2216",
-            "lodi-lecco" to "1825/1520",
-            "roma-torino-prefixed" to "S08409/S00219"
-        ).forEach { (name, pair) ->
-            val path = "soluzioniViaggioNew/$pair/${tomorrow}T08:00:00"
+            "new-mobile" to "$mobileBase/soluzioniViaggioNew/8409/219/${tomorrow}T08:00:00",
+            "new-mobile-nosec" to "$mobileBase/soluzioniViaggioNew/8409/219/${tomorrow}T08:00",
+            "new-nosec" to "$base/soluzioniViaggioNew/8409/219/${tomorrow}T08:00",
+            "old" to "$base/soluzioniViaggio/8409/219/${tomorrow}T08:00:00",
+            "old-mobile" to "$mobileBase/soluzioniViaggio/8409/219/${tomorrow}T08:00:00",
+            "new-merano-mobile" to "$mobileBase/soluzioniViaggioNew/1700/2216/${tomorrow}T08:00:00"
+        ).forEach { (name, url) ->
+            val path = url
             // The production fetcher only allows the board/run endpoints: follow its redirect rule by hand.
             val sample = runCatching {
-                var target = "https://www.viaggiatreno.it/infomobilita/resteasy/viaggiatreno/$path"
+                var target = path
                 val hops = mutableListOf<String>()
                 var result = ""
                 for (hop in 0 until 4) {
