@@ -200,6 +200,16 @@ class VerifyAndroidAppBundlesTest(unittest.TestCase):
         self.assertTrue(any("obbligatori assenti" in problem for problem in problems))
         self.assertTrue(any("DEX base assente" in problem for problem in problems))
 
+    def test_rejects_personal_build_timetable_packs(self) -> None:
+        entries = self.valid_entries()
+        entries.update({
+            "base/assets/gtfs-transit/milano-atm-gtfs.zip": b"open data, every build",
+            "base/assets/gtfs-personal/gtt-gtfs.zip": b"non-commercial licence",
+        })
+        self.write_bundle(entries)
+        problems = POLICY.verify_bundle(self.path)
+        self.assertEqual(["pack orario solo per build personali nel bundle: base/assets/gtfs-personal/gtt-gtfs.zip"], problems)
+
     def test_rejects_jar_signature_in_unsigned_bundle(self) -> None:
         entries = self.valid_entries()
         entries.update(

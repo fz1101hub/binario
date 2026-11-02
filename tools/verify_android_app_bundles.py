@@ -30,6 +30,9 @@ MAX_MEMBERS = 100_000
 MAX_UNCOMPRESSED_BYTES = 1024 * 1024 * 1024
 MAX_MANIFEST_BYTES = 4 * 1024 * 1024
 REQUIRED_FILES = {"BundleConfig.pb", MANIFEST_PATH}
+# Timetable packs whose licence allows personal use only (app/src/personal/assets, -Pbinario.personalSources):
+# never in a bundle meant for Play.
+PERSONAL_ASSET_PREFIX = "base/assets/gtfs-personal/"
 SIGNATURE_SUFFIXES = (".RSA", ".DSA", ".EC", ".SF")
 SIGNATURE_BLOCK_SUFFIXES = (".RSA", ".DSA", ".EC")
 JAR_MANIFEST_PATH = "META-INF/MANIFEST.MF"
@@ -386,6 +389,8 @@ def verify_bundle(
                     manifest_info = member
                 if NATIVE_LIBRARY.fullmatch(name):
                     native_libraries.append(member)
+                if name.startswith(PERSONAL_ASSET_PREFIX):
+                    problems.append(f"pack orario solo per build personali nel bundle: {name}")
                 upper_name = name.upper()
                 if not signed and upper_name.startswith("META-INF/") and upper_name.endswith(SIGNATURE_SUFFIXES):
                     problems.append(f"firma JAR inattesa nel bundle unsigned: {name}")

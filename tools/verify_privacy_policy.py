@@ -12,6 +12,12 @@ HOST_SOURCE_FILES = (
     "app/src/main/assets/gtfs/manifest.json",
     "app/src/main/assets/stations/manifest.json",
 )
+# Manifests of the regional-railway and city-network packs (every build) and of the personal-build packs: read when
+# present, since a build may ship none of them.
+OPTIONAL_HOST_SOURCE_FILES = (
+    "app/src/main/assets/gtfs-transit/manifest.json",
+    "app/src/personal/assets/gtfs-personal/manifest.json",
+)
 # XML parser feature and namespace URIs are not network endpoints.
 NON_NETWORK_URI_PREFIXES = (
     "http://apache.org/xml/",
@@ -137,6 +143,7 @@ def code_hosts(root: Path = ROOT) -> set[str]:
     """Every network host referenced by the Android sources and asset manifests."""
     paths = [path for pattern in HOST_SOURCE_GLOBS for path in root.glob(pattern)]
     paths += [root / relative for relative in HOST_SOURCE_FILES]
+    paths += [root / relative for relative in OPTIONAL_HOST_SOURCE_FILES if (root / relative).is_file()]
     hosts: set[str] = set()
     for path in paths:
         for match in URL_PATTERN.finditer(path.read_text(encoding="utf-8")):

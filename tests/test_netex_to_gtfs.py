@@ -3,6 +3,7 @@ from __future__ import annotations
 import csv
 import gzip
 import io
+import json
 import subprocess
 import sys
 import tempfile
@@ -246,6 +247,54 @@ class CompareGtfsTest(unittest.TestCase):
         self.assertEqual(0.5, result["referenceRunsFoundShare"])
         # Two weeks from Monday 2 November: the 4 weekend days are found, the 10 weekdays are not.
         self.assertEqual(round(4 / 14, 4), result["referenceDayRunsFoundShare"])
+
+
+class TransitRegistryTest(unittest.TestCase):
+    """tools/acquire_transit_sources.py: what the registry of the transit packs may declare."""
+
+    @staticmethod
+    def registry(**changes: object) -> Path:
+        pack = {
+            "sourceId": "demo-gtfs", "directory": "gtfs-transit", "distribution": "all", "kind": "urban",
+            "format": "gtfs", "sourceUrl": "https://example.test/demo.zip", "licence": "CC BY 4.0",
+            "attribution": "Demo", "notes": "fixture",
+        }
+        pack.update(changes)
+        path = Path(tempfile.mkdtemp()) / "transit_packs.json"
+        path.write_text(json.dumps({"schemaVersion": 1, "packs": [pack]}), encoding="utf-8")
+        return path
+
+    def test_shipped_registry_is_valid_and_personal_packs_stay_personal(self) -> None:
+        import acquire_transit_sources as acquire
+
+        packs = acquire.load_registry()
+        self.assertTrue(packs)
+        for pack in packs:
+            self.assertEqual(pack["directory"] == "gtfs-personal", pack["distribution"] == "personal", pack["sourceId"])
+
+    def test_http_needs_an_https_mirror_or_a_personal_reason(self) -> None:
+        import acquire_transit_sources as acquire
+
+        acquire.load_registry(self.registry())
+        with self.assertRaises(acquire.AcquisitionError):
+            acquire.load_registry(self.registry(sourceUrl="http://example.test/demo.zip"))
+        with self.assertRaises(acquire.AcquisitionError):
+            acquire.load_registry(self.registry(sourceUrl="http://example.test/demo.zip", transport="http"))
+        with self.assertRaises(acquire.AcquisitionError):
+            acquire.load_registry(self.registry(sourceUrl="http://example.test/demo.zip", transport="http", corroborateWith="http://mirror.test/demo.zip"))
+        acquire.load_registry(self.registry(sourceUrl="http://example.test/demo.zip", transport="http", corroborateWith="https://mirror.test/demo.zip"))
+        # Without a mirror only a personal-build pack, with the reason written down.
+        with self.assertRaises(acquire.AcquisitionError):
+            acquire.load_registry(self.registry(sourceUrl="http://example.test/demo.zip", transport="http", httpReason="no HTTPS"))
+        acquire.load_registry(self.registry(sourceUrl="http://example.test/demo.zip", transport="http", httpReason="no HTTPS",
+                                            directory="gtfs-personal", distribution="personal"))
+
+    def test_directory_distribution_and_licence_are_required(self) -> None:
+        import acquire_transit_sources as acquire
+
+        for changes in ({"directory": "gtfs"}, {"distribution": "personal"}, {"format": "pdf"}, {"licence": " "}):
+            with self.subTest(changes=changes), self.assertRaises(acquire.AcquisitionError):
+                acquire.load_registry(self.registry(**changes))
 
 
 if __name__ == "__main__":

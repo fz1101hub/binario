@@ -140,6 +140,20 @@
       "notes": "Metrocagliari (linee 1-3 e 2-3) e Metrosassari (route_type 0) dallo stesso GTFS ARST del pack ferroviario arst-gtfs; autobus esclusi."
     },
     {
+      "sourceId": "venezia-actv-gtfs",
+      "directory": "gtfs-transit",
+      "distribution": "all",
+      "kind": "urban",
+      "format": "netex",
+      "operator": "ACTV",
+      "sourceUrl": "https://www.cciss.it/nap/mmtis/public/api/v1/download/blob/Asset/6961/checkedResource",
+      "licence": "NAP CCISS: no licence - no contract (dati aperti per default, art. 52 c. 2 CAD; Reg. UE 2017/1926)",
+      "licenceEvidence": "https://www.cciss.it/nap/mmtis/public/it/catalog/Organisation/2040 (RAP Veneto, asset IT-ITH3-ACTVs.p.a 6961, licence no_licence_no_contract)",
+      "attribution": "ACTV S.p.A. via RAP Veneto / NAP CCISS (NeTEx, conversione Binario)",
+      "notes": "Tram di Mestre (T1, T2) dall'orario ACTV del Regional Access Point Veneto, NeTEx convertito da tools/netex_to_gtfs.py; autobus e navigazione esclusi. Dataset mensile: refresh mensile.",
+      "minValidDays": 14
+    },
+    {
       "sourceId": "roma-mobilita-gtfs",
       "directory": "gtfs-personal",
       "distribution": "personal",
@@ -165,6 +179,20 @@
       "licenceEvidence": "Catalogo fonti Binario gtt-gtfs (licenza non commerciale); gtt.to.it non risponde ai runner, copia del Mobility Database (mdb-2687) del feed ufficiale gtt_gtfs.zip",
       "attribution": "GTT S.p.A. (feed ufficiale via Mobility Database mdb-2687)",
       "notes": "Metropolitana M1, tram e cremagliera Sassi - Superga GTT; autobus esclusi. Uso non commerciale: solo build personali. Il sito gtt.to.it non risponde dai runner GitHub, quindi il feed ufficiale è letto dalla copia del Mobility Database."
+    },
+    {
+      "sourceId": "napoli-anm-gtfs",
+      "directory": "gtfs-personal",
+      "distribution": "personal",
+      "kind": "urban",
+      "format": "gtfs",
+      "operator": "ANM Napoli",
+      "sourceUrl": "https://www.anm.it/google/google-transit.zip",
+      "licence": "Non verificabile sul sito ufficiale: la pagina open data ANM richiede l'accesso; IODL 2.0 secondo Transitland",
+      "licenceEvidence": "https://www.anm.it/opendata/ reindirizza al login (2 novembre 2026); Transitland: IODL 2.0. Il NeTEx ANM del RAP Campania (asset 647946) non si scarica completo dai runner (si interrompe a 8 MB)",
+      "attribution": "ANM - Azienda Napoletana Mobilità",
+      "notes": "Metropolitana Linea 1 e Linea 6, funicolari e tram ANM dal GTFS pubblicato da ANM; autobus e Linea 2 (agency FS, treni Trenitalia) esclusi. Solo build personali finché la licenza non è verificabile.",
+      "minValidDays": 14
     },
     {
       "sourceId": "cotral-ferro-gtfs",
