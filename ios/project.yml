@@ -3,7 +3,8 @@ options:
   bundleIdPrefix: it.binario
   createIntermediateGroups: true
   # Italian is the development region and the fallback for unsupported device languages,
-  # as on Android; the five .lproj folders declare the localisations.
+  # as on Android; the seventeen .lproj folders in Resources declare the localisations and
+  # XcodeGen derives knownRegions from them (docs/l10n/LOCALES.md).
   developmentLanguage: it
 settings:
   base:

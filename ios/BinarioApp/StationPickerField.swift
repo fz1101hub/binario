@@ -21,7 +21,8 @@ struct StationPickerField: View {
                         .foregroundStyle(selection == nil ? .secondary : .primary)
                 }
                 Spacer()
-                Image(systemName: "chevron.right")
+                // "forward" follows the layout direction: it points left in Arabic.
+                Image(systemName: "chevron.forward")
                     .foregroundStyle(.secondary)
             }
             .contentShape(Rectangle())
