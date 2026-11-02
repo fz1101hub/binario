@@ -87,7 +87,8 @@ def _fetch_once(url: str, *, limit: int, method: str, accept: str, destination: 
             if method == "HEAD":
                 return status, final, headers, b"", None
             if offset and status != 206:
-                return status, final, headers, None, f"resume non supportato (HTTP {status})"
+                # No Range support: start again from the first byte.
+                offset = 0
             total = offset
             chunks: list[bytes] = []
             sink = destination.open("ab" if offset else "wb") if destination else None
@@ -360,6 +361,30 @@ def probe_netexinfo(url: str, out: Path, *, keep: bool) -> None:
         target.unlink()
 
 
+def probe_netexgtfs(url: str, out: Path) -> None:
+    """Download a NeTEx asset, convert it with tools/netex_to_gtfs.py and summarize the GTFS (route types, dates)."""
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import netex_to_gtfs
+
+    folder = out / "archives"
+    folder.mkdir(parents=True, exist_ok=True)
+    name = hashlib.sha256(url.encode()).hexdigest()[:12]
+    target = folder / f"{name}.netex"
+    status, final, headers, body, error = fetch(url, limit=ARCHIVE_LIMIT, destination=target)
+    size = target.stat().st_size if target.exists() else 0
+    emit(f"NETEXGTFS {url} status={status} size={size} error={error}")
+    if error is not None or not target.exists():
+        return
+    try:
+        report = netex_to_gtfs.convert(target, folder / f"{name}.gtfs.zip", source_label=name)
+    except Exception as problem:  # noqa: BLE001 - untrusted input, report and go on
+        emit(f"  conversion-error {type(problem).__name__}: {problem}")
+        return
+    emit(f"  conversion {json.dumps(report, ensure_ascii=False, sort_keys=True)}")
+    summarize_gtfs(folder / f"{name}.gtfs.zip")
+    target.unlink()
+
+
 def summarize_netex(path: Path) -> None:
     import xml.etree.ElementTree as ET
 
@@ -401,7 +426,12 @@ def summarize_netex(path: Path) -> None:
                            "TimetabledPassingTime", "Authority", "ResourceFrame", "ServiceFrame", "TimetableFrame",
                            "ServiceCalendarFrame", "SiteFrame", "CompositeFrame", "Quay", "StopPointInJourneyPattern",
                            "TypeOfProductCategory", "DestinationDisplay", "OperatingDay", "Codespace"} and tag not in samples:
-                    samples[tag] = ET.tostring(element, encoding="unicode")[:1800]
+                    if tag in {"ServiceJourney", "ServiceJourneyPattern"}:
+                        shallow = ET.Element(element.tag, element.attrib)
+                        shallow.extend(item for item in element if local(item.tag) not in {"passingTimes", "pointsInSequence"})
+                        samples[tag] = ET.tostring(shallow, encoding="unicode")[:1800]
+                    else:
+                        samples[tag] = ET.tostring(element, encoding="unicode")[:1800]
                 if tag in {"ServiceJourney", "StopPlace", "Line", "DayType", "UicOperatingPeriod", "DayTypeAssignment",
                            "ScheduledStopPoint", "PassengerStopAssignment", "ServiceJourneyPattern", "Quay", "Operator"}:
                     element.clear()
@@ -480,8 +510,9 @@ def run(tokens: list[str], out: Path, keep: bool) -> None:
             scan_mdb(out)
         elif token == "atlas":
             scan_atlas(out)
-        elif kind in {"page", "json", "gtfs", "head", "jsgrep", "netexinfo", "nextdata", "text"} and url.startswith(("http://", "https://")):
+        elif kind in {"page", "json", "gtfs", "head", "jsgrep", "netexinfo", "nextdata", "text", "netexgtfs"} and url.startswith(("http://", "https://")):
             {
+                "netexgtfs": lambda: probe_netexgtfs(url, out),
                 "text": lambda: probe_text(url),
                 "nextdata": lambda: probe_nextdata(url),
                 "page": lambda: probe_page(url),

@@ -69,7 +69,9 @@ MAX_ARCHIVE_ENTRIES = 128
 MAX_ARCHIVE_UNCOMPRESSED_BYTES = 1024 * 1024 * 1024
 MAX_ARCHIVE_MEMBER_BYTES = 512 * 1024 * 1024
 MAX_COMPRESSION_RATIO = 200
-MAX_TABLE_ROWS = 2_000_000
+# Rows read from one source table (only the rows a filter keeps are retained, see MAX_RETAINED_*). City feeds are
+# mostly buses: Rome's stop_times.txt has 5.1 million rows, of which the metro and tram pack keeps a fraction.
+MAX_TABLE_ROWS = 8_000_000
 MAX_RETAINED_TABLE_ROWS = 750_000
 MAX_RETAINED_BUILD_ROWS = 1_000_000
 MAX_CSV_COLUMNS = 32
@@ -120,10 +122,47 @@ SCHEDULED_COACH_SOURCES = frozenset({"trenitalia-gtfs", "italo-gtfs"})
 # Exceptional source-specific selectors are reviewed identifiers, not fuzzy
 # keywords.  A changed upstream ID fails the build and requires review.
 EXCLUSIVE_ROUTE_IDS: Mapping[str, frozenset[str]] = {
-    "amt-genova-casella-gtfs": frozenset({"FGC-164"}),
+    # Genova Manin - Casella; AMT renumbered the route from FGC-164 to FGC-191 (reviewed 2 November 2026).
+    "amt-genova-casella-gtfs": frozenset({"FGC-191"}),
     # TFT labels its two railway lines as route_type=3 (bus).
     "toscana-tft-gtfs": frozenset({"1028056267", "2272465657"}),
 }
+
+# City networks (assets under gtfs-transit/ and gtfs-personal/): metro (1, 400-499), tram (0, 900-999), funiculars,
+# cable cars and lifts (5, 6, 7, 1300-1499) and monorail (12). Never a bus: a city feed is mostly buses, which
+# Binario does not plan with. Each source names the agencies left out because another pack already carries their
+# lines (Naples' Linea 2 is a Trenitalia service of trenitalia-gtfs).
+URBAN_ROUTE_TYPES = frozenset({
+    "0", "1", "5", "6", "7", "12",
+    *(str(value) for value in range(400, 500)),
+    *(str(value) for value in range(900, 1000)),
+    *(str(value) for value in range(1300, 1500)),
+})
+URBAN_SOURCES: Mapping[str, frozenset[str]] = {
+    "milano-atm-gtfs": frozenset(),
+    "roma-mobilita-gtfs": frozenset(),
+    "napoli-anm-gtfs": frozenset({"FS"}),
+    "firenze-gest-gtfs": frozenset(),
+    "venezia-actv-gtfs": frozenset(),
+    "genova-amt-gtfs": frozenset(),
+    "arst-metro-gtfs": frozenset(),
+    "torino-gtt-gtfs": frozenset(),
+}
+# One letter per mode for the stop search badges of the city packs ("M" metro, "T" tram, "F" funicular or lift,
+# "R" railway), written to binario_stop_modes.txt next to the GTFS tables.
+STOP_MODES_MEMBER = "binario_stop_modes.txt"
+ASSET_DIRECTORIES = ("gtfs/", "gtfs-transit/", "gtfs-personal/")
+
+
+def mode_letter(route_type: str) -> str:
+    value = int(route_type) if route_type.strip().isdigit() else -1
+    if value in (1, 12) or 400 <= value < 500:
+        return "M"
+    if value == 0 or 900 <= value < 1000:
+        return "T"
+    if value in (5, 6, 7) or 1300 <= value < 1500:
+        return "F"
+    return "R"
 
 CORE_TABLES = (
     "agency.txt",
@@ -278,9 +317,10 @@ def canonical_content_sha256(member_digests: Mapping[str, str]) -> str:
 def safe_asset_name(asset: str) -> str:
     """Return the filename for a manifest asset and reject path traversal."""
     normalized = asset.replace("\\", "/")
-    if not normalized.startswith("gtfs/"):
-        raise BuildError(f"asset fuori da gtfs/: {asset}")
-    name = normalized.removeprefix("gtfs/")
+    directory = next((prefix for prefix in ASSET_DIRECTORIES if normalized.startswith(prefix)), None)
+    if directory is None:
+        raise BuildError(f"asset fuori da {', '.join(ASSET_DIRECTORIES)}: {asset}")
+    name = normalized.removeprefix(directory)
     if not name or Path(name).name != name or not name.endswith(".zip"):
         raise BuildError(f"nome asset non valido: {asset}")
     return name
@@ -594,6 +634,21 @@ def selected_routes(source_id: str, routes: CsvTable) -> tuple[tuple[dict[str, s
             "description": "Selettore revisionato specifico della fonte; nessun matching per nome.",
             "routeIds": sorted(explicit),
         }
+    elif source_id in URBAN_SOURCES:
+        excluded = URBAN_SOURCES[source_id]
+        selected = tuple(
+            row for row in routes.rows
+            if row.get("route_type", "").strip() in URBAN_ROUTE_TYPES and row.get("agency_id", "").strip() not in excluded
+        )
+        metadata = {
+            "kind": "gtfs-urban-route-types",
+            "description": (
+                "Rete urbana: metropolitana (1, 400-499), tram (0, 900-999), funicolari, cremagliere e ascensori "
+                "(5, 6, 7, 1300-1499) e monorotaia (12); mai autobus."
+            ),
+            "routeTypes": sorted(URBAN_ROUTE_TYPES, key=int),
+            **({"excludedAgencies": sorted(excluded)} if excluded else {}),
+        }
     elif source_id in SCHEDULED_COACH_SOURCES:
         allowed = RAIL_ROUTE_TYPES | SCHEDULED_COACH_ROUTE_TYPES
         selected = tuple(row for row in routes.rows if row.get("route_type", "").strip() in allowed)
@@ -615,6 +670,33 @@ def selected_routes(source_id: str, routes: CsvTable) -> tuple[tuple[dict[str, s
     if not selected:
         raise BuildError(f"{source_id}: nessuna route ammessa dal filtro")
     return selected, metadata
+
+
+def stop_modes_table(
+    routes: Sequence[Mapping[str, str]],
+    trips: Sequence[Mapping[str, str]],
+    stop_times: Sequence[Mapping[str, str]],
+    stops: Sequence[Mapping[str, str]],
+) -> CsvTable:
+    """The modes serving each stop of a city pack (and its parent station), for the "M"/"T" search badges."""
+    letter_by_route = {row.get("route_id", ""): mode_letter(row.get("route_type", "")) for row in routes}
+    letter_by_trip = {row.get("trip_id", ""): letter_by_route.get(row.get("route_id", ""), "R") for row in trips}
+    parents = {row.get("stop_id", ""): row.get("parent_station", "").strip() for row in stops}
+    modes: dict[str, set[str]] = {}
+    for row in stop_times:
+        letter = letter_by_trip.get(row.get("trip_id", ""))
+        stop = row.get("stop_id", "")
+        if not letter or not stop:
+            continue
+        modes.setdefault(stop, set()).add(letter)
+        parent = parents.get(stop, "")
+        if parent:
+            modes.setdefault(parent, set()).add(letter)
+    order = "MTFR"
+    return CsvTable(
+        ("stop_id", "modes"),
+        tuple({"stop_id": stop, "modes": "".join(sorted(letters, key=order.index))} for stop, letters in sorted(modes.items())),
+    )
 
 
 def original_archive_sha256(archive: zipfile.ZipFile, source_id: str, fallback: str) -> str:
@@ -794,6 +876,9 @@ def filter_archive(source: Path, destination: Path, source_id: str) -> FilterRes
             table = read_table(archive, table_name, budget=budget)
             if table is not None:
                 tables[table_name] = table
+
+        if source_id in URBAN_SOURCES:
+            tables[STOP_MODES_MEMBER] = stop_modes_table(kept_routes, kept_trips, kept_stop_times, kept_stops)
 
     counts = {
         "agency": len(tables["agency.txt"].rows),
@@ -1108,6 +1193,16 @@ def verify_filter_from_asset(path: Path, source_id: str) -> str:
         return canonical_content_sha256(declared_digests)
 
 
+def pack_min_valid_days(pack: Mapping[str, Any], default: int) -> int:
+    """The release threshold of a pack: its own minValidDays (1..default) when declared, else the default."""
+    declared = pack.get("minValidDays")
+    if declared is None:
+        return default
+    if not isinstance(declared, int) or isinstance(declared, bool) or not 1 <= declared <= default:
+        raise BuildError(f"{pack.get('sourceId')}: minValidDays non valido: {declared!r}")
+    return declared
+
+
 def verify_assets(
     asset_dir: Path,
     *,
@@ -1128,6 +1223,8 @@ def verify_assets(
     for pack in packs:
         source_id = pack["sourceId"]
         name = safe_asset_name(pack["asset"])
+        if asset_dir.name + "/" in ASSET_DIRECTORIES and not str(pack["asset"]).startswith(asset_dir.name + "/"):
+            problems.append(f"{source_id}: asset {pack['asset']} fuori dalla directory {asset_dir.name}/ del manifest")
         path = asset_dir / name
         if not path.is_file():
             continue
@@ -1164,10 +1261,13 @@ def verify_assets(
         if declared_end != actual_end:
             problems.append(f"lastServiceDate incoerente per {name}: {declared_end} != {actual_end}")
         if as_of is not None and min_valid_days is not None:
-            threshold = as_of + timedelta(days=min_valid_days)
+            # A city feed published a few weeks ahead declares its own shorter release threshold (minValidDays,
+            # documented in GTFS_PACK_REFRESH.md with its weekly refresh); no pack can ask for a longer one here.
+            days = pack_min_valid_days(pack, min_valid_days)
+            threshold = as_of + timedelta(days=days)
             if actual_end <= threshold:
                 problems.append(
-                    f"pack scaduto o in scadenza entro {min_valid_days} giorni: "
+                    f"pack scaduto o in scadenza entro {days} giorni: "
                     f"{source_id} termina {actual_end} (soglia {threshold})"
                 )
     if problems:

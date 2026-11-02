@@ -29,6 +29,11 @@ on:
         required: false
         type: string
         default: ""
+      transit_packs:
+        description: "Pack ferrovie regionali e reti urbane: 'validate-netex' e/o 'build=all' o 'build=id1,id2' (stampa i pack nel log)"
+        required: false
+        type: string
+        default: ""
 
 concurrency:
   group: gtfs-assets-ci-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name == 'workflow_dispatch' && github.run_id || 'checks' }}
@@ -39,7 +44,7 @@ permissions:
 
 jobs:
   gtfs-assets:
-    if: ${{ github.event_name != 'workflow_dispatch' || inputs.transit_discovery == '' }}
+    if: ${{ github.event_name != 'workflow_dispatch' || (inputs.transit_discovery == '' && inputs.transit_packs == '') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -113,3 +118,66 @@ jobs:
           retention-days: 3
           if-no-files-found: error
           overwrite: true
+
+  # Manual acquisition and build of the regional-railway and city-network packs registered in
+  # tools/transit_packs.json (gtfs-transit/ for every build, gtfs-personal/ for personal builds). NeTEx from the
+  # National Access Point is converted by tools/netex_to_gtfs.py; 'validate-netex' first converts Trenitalia's
+  # NAP dataset and compares it with the embedded trenitalia-gtfs pack. The built directories are printed in the
+  # log as base64 (BINARIO_FILE/BINARIO_B64/BINARIO_END) for review and commit; nothing is pushed from here.
+  transit-packs:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.transit_packs != '' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Python 3
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12.10"
+
+      - name: Read the selection
+        id: selection
+        env:
+          TRANSIT_PACKS: ${{ inputs.transit_packs }}
+        run: |
+          python3 -I tools/acquire_transit_sources.py --selection "$TRANSIT_PACKS" | tee "$RUNNER_TEMP/selection.json"
+          python3 -I - "$RUNNER_TEMP/selection.json" >> "$GITHUB_OUTPUT" <<'PY'
+          import json, sys
+          selection = json.load(open(sys.argv[1], encoding="utf-8"))
+          print(f"validate={'true' if selection['validate'] else 'false'}")
+          print(f"build={'' if selection['build'] is None else ('all' if not selection['build'] else ' '.join(selection['build']))}")
+          PY
+
+      - name: Validate the NeTEx converter on Trenitalia's NAP dataset
+        if: ${{ steps.selection.outputs.validate == 'true' }}
+        run: >-
+          python3 -I tools/acquire_transit_sources.py --validate-netex 1080596
+          --reference app/src/main/assets/gtfs/trenitalia-gtfs.zip
+          --out "$RUNNER_TEMP/netex-validation" --generated-at "$(date --utc +%F)"
+
+      - name: Acquire, convert and build the transit packs
+        if: ${{ steps.selection.outputs.build != '' }}
+        env:
+          BUILD_SELECTION: ${{ steps.selection.outputs.build }}
+        run: |
+          OUT="$RUNNER_TEMP/transit"
+          TODAY="$(date --utc +%F)"
+          ONLY=()
+          if [ "$BUILD_SELECTION" != "all" ]; then
+            for id in $BUILD_SELECTION; do ONLY+=(--only "$id"); done
+          fi
+          python3 -I tools/acquire_transit_sources.py --out "$OUT" --generated-at "$TODAY" "${ONLY[@]}"
+          for manifest in "$OUT"/manifests/*.json; do
+            directory="$(basename "$manifest" .json)"
+            python3 -I tools/build_gtfs_packs.py --input-dir "$OUT/input" --manifest "$manifest" \
+              --output-dir "$OUT/publish/$directory" --generated-at "$TODAY"
+            python3 -I tools/build_gtfs_packs.py --check --integrity-only --input-dir "$OUT/publish/$directory"
+          done
+          cp "$OUT/acquisition.json" "$OUT/publish/acquisition.json"
+          ls -l "$OUT"/publish/*
+
+      - name: Print the built packs
+        if: ${{ steps.selection.outputs.build != '' }}
+        run: python3 -I tools/acquire_transit_sources.py --print-dir "$RUNNER_TEMP/transit/publish"

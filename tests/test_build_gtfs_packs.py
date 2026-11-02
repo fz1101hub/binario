@@ -199,14 +199,14 @@ class BuildGtfsPacksTest(unittest.TestCase):
 
         # The lone RAIL exception on 2027-01-15 does not extend the coverage past the calendar year.
         self.assertEqual("2026-12-31", manifest["packs"][0]["lastServiceDate"])
-        self.assertEqual(["FGC-164"], manifest["packs"][0]["filter"]["routeIds"])
+        self.assertEqual(["FGC-191"], manifest["packs"][0]["filter"]["routeIds"])
         with zipfile.ZipFile(output_dir / "amt-genova-casella-gtfs.zip") as archive:
             routes = builder.read_table(archive, "routes.txt", required=True)
             trips = builder.read_table(archive, "trips.txt", required=True)
             stops = builder.read_table(archive, "stops.txt", required=True)
             frequencies = builder.read_table(archive, "frequencies.txt", required=True)
             assert routes and trips and stops and frequencies
-            self.assertEqual(["FGC-164"], [row["route_id"] for row in routes.rows])
+            self.assertEqual(["FGC-191"], [row["route_id"] for row in routes.rows])
             self.assertEqual(["rail-trip"], [row["trip_id"] for row in trips.rows])
             self.assertEqual({"PARENT", "A"}, {row["stop_id"] for row in stops.rows})
             self.assertEqual(["rail-trip"], [row["trip_id"] for row in frequencies.rows])
@@ -322,7 +322,7 @@ class BuildGtfsPacksTest(unittest.TestCase):
                     continue
                 payload = source.read(entry.filename)
                 if entry.filename == "routes.txt":
-                    payload = payload.replace(b"FGC-164", b"FGC-165")
+                    payload = payload.replace(b"FGC-191", b"FGC-192")
                 target.writestr(entry.filename, payload)
         changed.replace(original)
 
