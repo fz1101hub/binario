@@ -28,7 +28,9 @@ class BinarioVoiceRequestActivity : Activity() {
   private fun touchTargetPx() = (48 * resources.displayMetrics.density).toInt()
   private fun resolvedLocale(): Locale {
     val configured = resources.configuration.locales[0]
-    return configured.takeIf { it.language.lowercase(Locale.ROOT) in setOf("it", "en", "de", "fr", "es") } ?: Locale.ITALIAN
+    val language = configured.language.lowercase(Locale.ROOT)
+    val traditionalChinese = language == "zh" && configured.script != "Hans" && (configured.script == "Hant" || configured.country in setOf("TW", "HK", "MO"))
+    return configured.takeIf { !traditionalChinese && language in setOf("it", "en", "de", "fr", "es", "ar", "hi", "in", "id", "ja", "ko", "my", "pt", "ru", "th", "tr", "vi", "zh") } ?: Locale.ITALIAN
   }
   private val replyReceiver = object : BroadcastReceiver() {
     override fun onReceive(context: Context?, intent: Intent?) {

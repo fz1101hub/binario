@@ -1,8 +1,26 @@
 import { useMemo } from "react";
 import { getLocales, useLocales } from "expo-localization";
+import { ar } from "@/lib/locales/ar";
+import { hi } from "@/lib/locales/hi";
+import { id } from "@/lib/locales/id";
+import { ja } from "@/lib/locales/ja";
+import { ko } from "@/lib/locales/ko";
+import { my } from "@/lib/locales/my";
+import { pt } from "@/lib/locales/pt";
+import { ru } from "@/lib/locales/ru";
+import { th } from "@/lib/locales/th";
+import { tr } from "@/lib/locales/tr";
+import { vi } from "@/lib/locales/vi";
+import { zh } from "@/lib/locales/zh";
 
-/** Supported Companion locales. Italian is always the safe fallback. */
-export const supportedLocales = ["it", "en", "de", "fr", "es"] as const;
+/**
+ * Supported Companion locales, as primary language subtags ("pt" is neutral Brazilian
+ * Portuguese, "zh" Simplified Chinese). Italian is always the safe fallback.
+ */
+export const supportedLocales = [
+  "it", "en", "de", "fr", "es",
+  "ar", "hi", "id", "ja", "ko", "my", "pt", "ru", "th", "tr", "vi", "zh",
+] as const;
 export type CompanionLocale = (typeof supportedLocales)[number];
 type InterpolationValues = Record<string, string | number>;
 
@@ -509,7 +527,7 @@ const it = {
 } as const;
 
 export type TranslationKey = keyof typeof it;
-type Dictionary = Record<TranslationKey, string>;
+export type Dictionary = Record<TranslationKey, string>;
 
 const en: Dictionary = {
   "app.notFound.title": "Screen not found",
@@ -2519,7 +2537,18 @@ const es: Dictionary = {
   "settings.diagnosticData": "Ninguna ruta, token, ubicación, audio o dato ferroviario incluido",
 };
 
-const dictionaries: Record<CompanionLocale, Dictionary> = { it, en, de, fr, es };
+const dictionaries: Record<CompanionLocale, Dictionary> = {
+  it, en, de, fr, es, ar, hi, id, ja, ko, my, pt, ru, th, tr, vi, zh,
+};
+
+/** Legacy Android tags that name a supported language. */
+const languageAliases: Readonly<Record<string, CompanionLocale>> = { in: "id" };
+
+/** Traditional-script Chinese is not served the Simplified dictionary silently. */
+function isTraditionalChinese(subtags: readonly string[]) {
+  return subtags[0] === "zh" && !subtags.includes("hans")
+    && subtags.some(tag => tag === "hant" || tag === "tw" || tag === "hk" || tag === "mo");
+}
 
 /** Resolve BCP-47 preferences in order, retaining Italian for unknown or malformed input. */
 export function resolveCompanionLocale(input?: string | readonly string[] | null): CompanionLocale {
@@ -2532,7 +2561,9 @@ export function resolveCompanionLocale(input?: string | readonly string[] | null
     // but reject malformed subtags instead of accepting arbitrary prefixes.
     const match = /^([A-Za-z]{2,8})(?:-[A-Za-z0-9]{1,8})*$/.exec(normalized);
     if (!match) continue;
-    const language = match[1].toLowerCase();
+    const subtags = normalized.toLowerCase().split("-");
+    if (isTraditionalChinese(subtags)) continue;
+    const language = languageAliases[subtags[0]!] ?? subtags[0]!;
     if ((supportedLocales as readonly string[]).includes(language)) return language as CompanionLocale;
   }
   return "it";
@@ -2551,14 +2582,60 @@ export function deviceCompanionLocale(): CompanionLocale {
   return resolveCompanionLocale(webPreferences);
 }
 
-function interpolate(template: string, values: InterpolationValues): string {
-  const plural = /\{(\w+),\s*plural,\s*one\s*\{([^{}]*)\}\s*other\s*\{([^{}]*)\}\}/g;
-  const withPlural = template.replace(plural, (_match, key: string, one: string, other: string) => Number(values[key]) === 1 ? one : other);
+type PluralCategory = "zero" | "one" | "two" | "few" | "many" | "other";
+
+/**
+ * CLDR cardinal plural category. Hermes may lack Intl.PluralRules, so the rules of the served
+ * languages are spelled out; the five original languages keep "one" for exactly 1.
+ */
+export function pluralCategory(locale: CompanionLocale, count: number): PluralCategory {
+  const n = Math.abs(count);
+  const integer = Number.isInteger(n);
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  switch (locale) {
+    case "ar":
+      if (n === 0) return "zero";
+      if (n === 1) return "one";
+      if (n === 2) return "two";
+      if (integer && mod100 >= 3 && mod100 <= 10) return "few";
+      if (integer && mod100 >= 11) return "many";
+      return "other";
+    case "ru":
+      if (!integer) return "other";
+      if (mod10 === 1 && mod100 !== 11) return "one";
+      if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return "few";
+      return "many";
+    case "hi":
+      return Math.trunc(n) === 0 || n === 1 ? "one" : "other";
+    case "pt":
+      return Math.trunc(n) <= 1 ? "one" : "other";
+    case "id": case "ja": case "ko": case "my": case "th": case "vi": case "zh":
+      return "other";
+    default:
+      return n === 1 ? "one" : "other";
+  }
+}
+
+const pluralBlock = /\{(\w+),\s*plural,((?:\s*(?:zero|one|two|few|many|other)\s*\{[^{}]*\})+)\s*\}/g;
+const pluralOption = /(zero|one|two|few|many|other)\s*\{([^{}]*)\}/g;
+
+function interpolate(locale: CompanionLocale, template: string, values: InterpolationValues): string {
+  const withPlural = template.replace(pluralBlock, (_match, key: string, options: string) => {
+    const forms = new Map([...options.matchAll(pluralOption)].map(option => [option[1]!, option[2]!]));
+    return forms.get(pluralCategory(locale, Number(values[key]))) ?? forms.get("other") ?? "";
+  });
   return withPlural.replace(/\{(\w+)\}/g, (_match, key: string) => values[key] === undefined ? "{" + key + "}" : String(values[key]));
 }
 
 export function translate(locale: CompanionLocale, key: TranslationKey, values: InterpolationValues = {}): string {
-  return interpolate(dictionaries[locale]?.[key] ?? it[key], values);
+  const dictionary = dictionaries[locale];
+  return dictionary ? interpolate(locale, dictionary[key] ?? it[key], values) : interpolate("it", it[key], values);
+}
+
+/** Arabic is the only right-to-left language served; React Native mirrors the layout itself. */
+export function isRightToLeft(locale: CompanionLocale) {
+  return locale === "ar";
 }
 
 export function createTranslator(locale: CompanionLocale = "it") {
