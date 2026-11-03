@@ -784,7 +784,7 @@
     <string name="refresh_success">حُدّثت البيانات</string>
     <string name="refresh_error">تعذّر التحديث</string>
     <string name="freshness_fresh">البيانات محدّثة</string>
-    <string name="freshness_aging">البيانات قيد التحديث</string>
+    <string name="freshness_aging">البيانات ليست حديثة</string>
     <string name="freshness_stale">آخر بيانات متاحة</string>
     <string name="freshness_unavailable">البيانات المباشرة غير متاحة</string>
     <string name="service_status_on_time">في الموعد</string>
@@ -841,7 +841,7 @@
     <string name="widget_confidence_cached">CACHE</string>
     <string name="widget_confidence_demonstration">DEMO</string>
     <string name="widget_freshness_fresh">محدّث</string>
-    <string name="widget_freshness_aging">قيد التحديث</string>
+    <string name="widget_freshness_aging">غير حديثة</string>
     <string name="widget_freshness_stale">آخر بيانات</string>
     <string name="widget_freshness_unavailable">المباشر غير متاح</string>
     <string name="widget_warning_source_conflict">تعارض المصادر</string>
@@ -906,7 +906,7 @@
     <string name="share_category_metropolitano">قطار الضواحي</string>
     <string name="share_category_other">قطار</string>
     <string name="share_freshness_fresh">البيانات محدّثة</string>
-    <string name="share_freshness_aging">البيانات قيد التحديث</string>
+    <string name="share_freshness_aging">البيانات ليست حديثة</string>
     <string name="share_freshness_stale">آخر بيانات متاحة</string>
     <string name="share_freshness_unavailable">البيانات المباشرة غير متاحة</string>
     <string name="planned_journey_ics_event_description">الرحلة: %1$s → %2$s، المغادرة %3$s الساعة %4$s (%5$s)</string>
@@ -1485,4 +1485,21 @@
         <item quantity="many">قطارات مباشرة أخفتها تفضيلات السفر: %d</item>
         <item quantity="other">قطارات مباشرة أخفتها تفضيلات السفر: %d</item>
     </plurals>
+    <!-- Data states and provider descriptors (audit A3-01, A3-15) -->
+    <string name="data_status_scheduled">مواعيد مجدولة، دون بيانات مباشرة</string>
+    <string name="data_chip_live">مباشر</string>
+    <string name="data_chip_saved_copy">نسخة محفوظة</string>
+    <string name="provider_descriptor_scheduled">مواعيد مجدولة</string>
+    <string name="provider_descriptor_rfi_programmed">جدول المواعيد المخطط</string>
+    <string name="provider_descriptor_rail_source">مصدر سكك حديدية</string>
+    <string name="provider_descriptor_fallback">مصدر احتياطي دون ضمان</string>
+    <string name="provider_descriptor_best_effort">دون ضمان</string>
+    <string name="provider_descriptor_public_board">اللوحة العامة</string>
+    <string name="provider_descriptor_rfi_monitor_live">شاشة الوصول/المغادرة المباشرة</string>
+    <string name="provider_descriptor_rfi_monitor">شاشة الوصول/المغادرة</string>
+    <string name="provider_descriptor_swiss_boards">لوحات المحطات السويسرية</string>
+    <!-- Time context of Partenze (audit A3-02) -->
+    <string name="departures_back_to_now">العودة إلى الآن</string>
+    <string name="departures_route_from_search">بحث من التخطيط</string>
+    <string name="departures_first_departure">أول رحلة</string>
 </resources>

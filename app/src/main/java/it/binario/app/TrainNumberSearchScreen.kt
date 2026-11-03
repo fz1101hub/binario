@@ -14,6 +14,7 @@ import androidx.compose.ui.unit.dp
 import it.binario.app.data.RailTime
 import it.binario.app.data.repository.TrainNumberMatch
 import it.binario.app.data.repository.TrainNumberQuery
+import it.binario.app.ui.common.localizedProviderName
 import it.binario.app.ui.common.ltrUnit
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -56,7 +57,7 @@ internal fun TrainNumberResultsScreen(modifier: Modifier, viewModel: TrainViewMo
                 Text(stringResource(R.string.train_number_run_date,
                     (match.service.scheduledDepartureDateTime?.toLocalDate() ?: viewModel.trainNumberSearchDate).format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))),
                     modifier = Modifier.padding(horizontal = 20.dp), style = MaterialTheme.typography.bodySmall)
-                Text(match.snapshot.providerName, modifier = Modifier.padding(horizontal = 20.dp), style = MaterialTheme.typography.labelSmall,
+                Text(localizedProviderName(match.snapshot.providerName), modifier = Modifier.padding(horizontal = 20.dp), style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
                 DepartureListRow(match.service, onOpen = { onOpen(match) })
             }

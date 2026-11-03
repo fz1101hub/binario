@@ -40,6 +40,8 @@ L’italiano (`values/`) è la lingua di riferimento: ogni testo nasce in italia
 - Non si traducono: Binario, Trenitalia, Italo, Frecciarossa, Frecciargento, Frecciabianca, Frecce, Intercity, ViaggiaTreno, RFI, Trenord, ItaloBus, FrecciaLink, OpenStreetMap, OpenFreeMap, MIT, Wear OS, Apple Watch, Alexa, GTFS. Nomi di stazioni e testi degli avvisi degli operatori sono dati, non stringhe.
 - Testi brevi dove lo spazio è poco: chip, colonne dei widget (`widget_column_*`, stati da 52–56 dp), barra di navigazione, Wear OS. Preferire abbreviazioni d’uso comune nella lingua.
 - Tono: interfaccia di un’app di trasporti, frasi brevi, imperativo cortese dove l’italiano usa l’imperativo, nessun registro colloquiale.
+- «Programmato» (`service_status_scheduled_*`, `service_scheduled_lowercase`, `widget_status_scheduled`) vuol dire «solo orario, nessun dato in tempo reale» e non deve mai leggersi come «in orario»: niente 定時/時刻表どおり, «По расписанию», 按计划, ตามตาราง o «Theo lịch», che sui tabelloni significano puntuale. Allo stesso modo `freshness_aging` è «dati non recenti», non «in aggiornamento».
+- I descrittori delle fonti (`provider_descriptor_*`, per esempio «orario programmato», «Quadro orario programmato») si traducono; i nomi di operatori e servizi intorno a loro (Trenitalia, RFI, ViaggiaTreno, Italo in Viaggio) restano dati.
 
 ## Testo da destra a sinistra (arabo)
 

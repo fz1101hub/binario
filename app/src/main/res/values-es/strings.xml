@@ -757,7 +757,7 @@
     <string name="refresh_success">Datos actualizados</string>
     <string name="refresh_error">Error de actualización</string>
     <string name="freshness_fresh">Datos actualizados</string>
-    <string name="freshness_aging">Datos en actualización</string>
+    <string name="freshness_aging">Datos no recientes</string>
     <string name="freshness_stale">Último dato disponible</string>
     <string name="freshness_unavailable">Datos en tiempo real no disponibles</string>
     <string name="service_status_on_time">En hora</string>
@@ -816,7 +816,7 @@
     <string name="widget_confidence_cached">CACHÉ</string>
     <string name="widget_confidence_demonstration">DEMO</string>
     <string name="widget_freshness_fresh">ACTUALIZADO</string>
-    <string name="widget_freshness_aging">ACTUALIZANDO</string>
+    <string name="widget_freshness_aging">NO RECIENTE</string>
     <string name="widget_freshness_stale">ÚLTIMO DATO</string>
     <string name="widget_freshness_unavailable">TIEMPO REAL NO DISPONIBLE</string>
     <string name="widget_warning_source_conflict">CONFLICTO DE FUENTES</string>
@@ -878,7 +878,7 @@
     <string name="share_category_metropolitano">Tren metropolitano</string>
     <string name="share_category_other">Tren</string>
     <string name="share_freshness_fresh">Datos actualizados</string>
-    <string name="share_freshness_aging">Actualizando datos</string>
+    <string name="share_freshness_aging">Datos no recientes</string>
     <string name="share_freshness_stale">Últimos datos disponibles</string>
     <string name="share_freshness_unavailable">Datos en tiempo real no disponibles</string>
     <string name="planned_journey_ics_event_description">Viaje: %1$s → %2$s, salida %3$s a las %4$s (%5$s)</string>
@@ -1412,4 +1412,21 @@
         <item quantity="many">%d trenes directos ocultos por las preferencias de viaje</item>
         <item quantity="other">%d trenes directos ocultos por las preferencias de viaje</item>
     </plurals>
+    <!-- Data states and provider descriptors (audit A3-01, A3-15) -->
+    <string name="data_status_scheduled">Horario programado, sin datos en tiempo real</string>
+    <string name="data_chip_live">En directo</string>
+    <string name="data_chip_saved_copy">Copia guardada</string>
+    <string name="provider_descriptor_scheduled">horario programado</string>
+    <string name="provider_descriptor_rfi_programmed">Cuadro horario programado</string>
+    <string name="provider_descriptor_rail_source">fuente ferroviaria</string>
+    <string name="provider_descriptor_fallback">alternativa sin garantía</string>
+    <string name="provider_descriptor_best_effort">sin garantía</string>
+    <string name="provider_descriptor_public_board">panel público</string>
+    <string name="provider_descriptor_rfi_monitor_live">Monitor de llegadas/salidas en directo</string>
+    <string name="provider_descriptor_rfi_monitor">Monitor de llegadas/salidas</string>
+    <string name="provider_descriptor_swiss_boards">paneles suizos</string>
+    <!-- Time context of Partenze (audit A3-02) -->
+    <string name="departures_back_to_now">Volver a ahora</string>
+    <string name="departures_route_from_search">Búsqueda de Planificar</string>
+    <string name="departures_first_departure">Primera salida</string>
 </resources>

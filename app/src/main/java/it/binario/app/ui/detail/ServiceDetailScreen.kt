@@ -91,6 +91,7 @@ import it.binario.app.notifications.TrainAlertToggle
 import it.binario.app.openExternalLink
 import it.binario.app.timetables.TimetableShareFormatter
 import it.binario.app.ui.common.BinarioCard
+import it.binario.app.ui.common.DataState
 import it.binario.app.ui.common.HeaderBlock
 import it.binario.app.ui.common.HeaderOverlapBox
 import it.binario.app.ui.common.HeaderOverline
@@ -209,11 +210,19 @@ internal fun ServiceDetailScreen(
     showShareButton: Boolean = false,
     /** The catalogue station of a published name, for the short city form of the header ("Roma → Torino"). */
     stationLookup: (String) -> Station? = { null },
-    sourceSections: @Composable () -> Unit = {}
+    sourceSections: @Composable () -> Unit = {},
+    /** Live, scheduled timetable or saved copy for this run ([DataState]); null falls back to the freshness. */
+    dataState: DataState? = null
 ) {
     // Demonstration data shows the timetable only: no delay, expected time, platform or progress as if real.
     val shown = if (isDemonstration) service.presentedAsDemonstration() else service
-    val dataLabel = if (isDemonstration) stringResource(R.string.data_status_demo) else freshness?.localizedLabel() ?: stringResource(R.string.data_status_unavailable)
+    val dataLabel = when {
+        isDemonstration -> stringResource(R.string.data_status_demo)
+        dataState == DataState.LIVE -> stringResource(R.string.data_status_live, (freshness ?: Freshness.FRESH).localizedLabel())
+        dataState == DataState.SCHEDULED -> stringResource(R.string.data_status_scheduled)
+        dataState == DataState.SAVED_COPY -> stringResource(R.string.data_chip_saved_copy)
+        else -> freshness?.takeIf { dataState != DataState.UNAVAILABLE }?.localizedLabel() ?: stringResource(R.string.data_status_unavailable)
+    }
     val isThisTrip = activeTrip?.trainNumber == service.number
     val progress = RouteMapPlanner.progress(shown.stops)
     // Another train opens on Percorso again; the same train keeps its tab across recreation.

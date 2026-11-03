@@ -426,7 +426,7 @@
     <string name="action_direction">ဦးတည်ရာ</string>
     <string name="action_change_route">လမ်းကြောင်း ပြောင်းရန်</string>
     <string name="monitored_routes_title">စောင့်ကြည့်ထားသော လမ်းကြောင်းများ</string>
-    <string name="service_scheduled_lowercase">အချိန်ဇယားအတိုင်း</string>
+    <string name="service_scheduled_lowercase">အချိန်ဇယားသာ</string>
     <string name="service_on_time_lowercase">အချိန်မှန်</string>
     <string name="today_empty_description">လက်ရှိ လမ်းကြောင်းကို ပြန်ယူပါ သို့မဟုတ် သိမ်းထားသော အခြား လမ်းကြောင်းတစ်ခု ရွေးပါ။ မရနိုင်သော ဒေတာကို ခန့်မှန်းအချိန်ဖြင့် အစားမထိုးပါ။</string>
     <string name="action_refresh">ပြန်ယူရန်</string>
@@ -662,7 +662,7 @@
     <string name="update_time_never">အပ်ဒိတ် မလုပ်ရသေးပါ</string>
     <string name="accessibility_optional_message"> %1$s</string>
     <string name="platform_short">ပလက်ဖောင်း %1$s</string>
-    <string name="service_status_scheduled_badge">အချိန်ဇယားအတိုင်း</string>
+    <string name="service_status_scheduled_badge">အချိန်ဇယားသာ</string>
     <string name="service_status_cancelled">ဖျက်သိမ်းပြီး</string>
     <string name="service_status_scheduled_compact">ဇယား</string>
     <!-- Widget configuration and theme picker. -->
@@ -709,7 +709,7 @@
     <string name="refresh_success">ဒေတာ အပ်ဒိတ်ဖြစ်ပြီ</string>
     <string name="refresh_error">ပြန်ယူ၍ မရပါ</string>
     <string name="freshness_fresh">ဒေတာ အပ်ဒိတ်ဖြစ်ပြီ</string>
-    <string name="freshness_aging">ဒေတာ အပ်ဒိတ်လုပ်နေသည်</string>
+    <string name="freshness_aging">နောက်ဆုံးရ ဒေတာ မဟုတ်ပါ</string>
     <string name="freshness_stale">နောက်ဆုံးရ ဒေတာ</string>
     <string name="freshness_unavailable">အချိန်နှင့်တပြေးညီ ဒေတာ မရနိုင်ပါ</string>
     <string name="service_status_on_time">အချိန်မှန်</string>
@@ -766,7 +766,7 @@
     <string name="widget_confidence_cached">ကက်ရှ်</string>
     <string name="widget_confidence_demonstration">နမူနာ</string>
     <string name="widget_freshness_fresh">အပ်ဒိတ်ဖြစ်ပြီ</string>
-    <string name="widget_freshness_aging">အပ်ဒိတ်လုပ်နေသည်</string>
+    <string name="widget_freshness_aging">နောက်ဆုံးရ မဟုတ်</string>
     <string name="widget_freshness_stale">နောက်ဆုံးရ ဒေတာ</string>
     <string name="widget_freshness_unavailable">အချိန်နှင့်တပြေးညီ မရပါ</string>
     <string name="widget_warning_source_conflict">ရင်းမြစ် မကိုက်ညီ</string>
@@ -821,7 +821,7 @@
     <string name="share_category_metropolitano">မြို့ပြ ရထား</string>
     <string name="share_category_other">ရထား</string>
     <string name="share_freshness_fresh">ဒေတာ အပ်ဒိတ်ဖြစ်ပြီ</string>
-    <string name="share_freshness_aging">ဒေတာ အပ်ဒိတ်လုပ်နေသည်</string>
+    <string name="share_freshness_aging">နောက်ဆုံးရ ဒေတာ မဟုတ်ပါ</string>
     <string name="share_freshness_stale">နောက်ဆုံးရ ဒေတာ</string>
     <string name="share_freshness_unavailable">အချိန်နှင့်တပြေးညီ ဒေတာ မရနိုင်ပါ</string>
     <string name="planned_journey_ics_event_description">ခရီးစဉ်- %1$s → %2$s၊ ထွက်ခွာမှု %3$s %4$s (%5$s)</string>
@@ -1325,4 +1325,21 @@
     <plurals name="results_hidden_by_preferences">
         <item quantity="other">ခရီးသွား ဦးစားပေးချက်များကြောင့် တိုက်ရိုက်ရထား %d စီး ဖျောက်ထားသည်</item>
     </plurals>
+    <!-- Data states and provider descriptors (audit A3-01, A3-15) -->
+    <string name="data_status_scheduled">အချိန်ဇယားသာ၊ တိုက်ရိုက်ဒေတာ မရှိပါ</string>
+    <string name="data_chip_live">တိုက်ရိုက်</string>
+    <string name="data_chip_saved_copy">သိမ်းထားသော မိတ္တူ</string>
+    <string name="provider_descriptor_scheduled">အချိန်ဇယား</string>
+    <string name="provider_descriptor_rfi_programmed">စီစဉ်ထားသော အချိန်ဇယား</string>
+    <string name="provider_descriptor_rail_source">ရထား ရင်းမြစ်</string>
+    <string name="provider_descriptor_fallback">အရန် ရင်းမြစ် (အာမခံချက်မရှိ)</string>
+    <string name="provider_descriptor_best_effort">အာမခံချက်မရှိ</string>
+    <string name="provider_descriptor_public_board">အများသုံး ဘုတ်</string>
+    <string name="provider_descriptor_rfi_monitor_live">တိုက်ရိုက် ဆိုက်ရောက်/ထွက်ခွာ မော်နီတာ</string>
+    <string name="provider_descriptor_rfi_monitor">ဆိုက်ရောက်/ထွက်ခွာ မော်နီတာ</string>
+    <string name="provider_descriptor_swiss_boards">ဆွစ် ဘူတာ ဘုတ်များ</string>
+    <!-- Time context of Partenze (audit A3-02) -->
+    <string name="departures_back_to_now">ယခုအချိန်သို့ ပြန်သွားရန်</string>
+    <string name="departures_route_from_search">စီစဉ်ရန်မှ ရှာဖွေမှု</string>
+    <string name="departures_first_departure">ပထမ ထွက်ခွာမှု</string>
 </resources>

@@ -158,7 +158,7 @@
     <string name="data_status_unavailable">ไม่มีข้อมูลเรียลไทม์</string>
     <string name="accessibility_data_status">สถานะข้อมูล: %1$s แหล่งข้อมูล %2$s คุณภาพ %3$s %4$s%5$s</string>
     <string name="accessibility_open_service">เปิดรายละเอียด %1$s %2$s</string>
-    <string name="service_state_scheduled">เวลาตามตาราง ไม่มีสถานะเรียลไทม์</string>
+    <string name="service_state_scheduled">เวลาในตารางเวลา ไม่มีสถานะเรียลไทม์</string>
     <string name="service_state_live">สถานะเรียลไทม์: %1$s</string>
     <string name="station_board_departure_to">ไป %1$s</string>
     <string name="station_board_arrival_from">จาก %1$s</string>
@@ -437,7 +437,7 @@
     <string name="action_direction">ทิศทาง</string>
     <string name="action_change_route">เปลี่ยนเส้นทาง</string>
     <string name="monitored_routes_title">เส้นทางที่ติดตาม</string>
-    <string name="service_scheduled_lowercase">ตามตาราง</string>
+    <string name="service_scheduled_lowercase">ตารางเวลา</string>
     <string name="service_on_time_lowercase">ตรงเวลา</string>
     <string name="today_empty_description">รีเฟรชเส้นทางปัจจุบันหรือเลือกเส้นทางอื่นที่บันทึกไว้ ข้อมูลที่ไม่มีจะไม่ถูกแทนที่ด้วยเวลาโดยประมาณ</string>
     <string name="action_refresh">รีเฟรช</string>
@@ -676,9 +676,9 @@
     <string name="update_time_never">ยังไม่เคยอัปเดต</string>
     <string name="accessibility_optional_message"> %1$s</string>
     <string name="platform_short">ชานชาลา %1$s</string>
-    <string name="service_status_scheduled_badge">ตามตาราง</string>
+    <string name="service_status_scheduled_badge">ตารางเวลาเท่านั้น</string>
     <string name="service_status_cancelled">ยกเลิก</string>
-    <string name="service_status_scheduled_compact">ตามตาราง</string>
+    <string name="service_status_scheduled_compact">ตารางเวลา</string>
 
     <!-- Widget configuration and theme picker. -->
     <string name="widget_configure_title">กำหนดค่าวิดเจ็ต</string>
@@ -727,7 +727,7 @@
     <string name="refresh_success">อัปเดตข้อมูลแล้ว</string>
     <string name="refresh_error">รีเฟรชไม่สำเร็จ</string>
     <string name="freshness_fresh">ข้อมูลเป็นปัจจุบัน</string>
-    <string name="freshness_aging">กำลังอัปเดตข้อมูล</string>
+    <string name="freshness_aging">ข้อมูลไม่ใช่ล่าสุด</string>
     <string name="freshness_stale">ข้อมูลล่าสุดที่มี</string>
     <string name="freshness_unavailable">ไม่มีข้อมูลเรียลไทม์</string>
     <string name="service_status_on_time">ตรงเวลา</string>
@@ -776,7 +776,7 @@
     <string name="widget_status_delayed">+%1$d</string>
     <string name="widget_status_cancelled">ยกเลิก</string>
     <string name="widget_status_demo">ตัวอย่าง</string>
-    <string name="widget_status_scheduled">ตามตาราง</string>
+    <string name="widget_status_scheduled">ตารางเวลา</string>
     <string name="widget_quality_score">Q%1$d</string>
     <string name="widget_confidence_operator_primary">ผู้ให้บริการ</string>
     <string name="widget_confidence_infrastructure_primary">โครงสร้างพื้นฐาน</string>
@@ -786,7 +786,7 @@
     <string name="widget_confidence_cached">แคช</string>
     <string name="widget_confidence_demonstration">ตัวอย่าง</string>
     <string name="widget_freshness_fresh">อัปเดตแล้ว</string>
-    <string name="widget_freshness_aging">กำลังอัปเดต</string>
+    <string name="widget_freshness_aging">ไม่ใช่ล่าสุด</string>
     <string name="widget_freshness_stale">ข้อมูลล่าสุด</string>
     <string name="widget_freshness_unavailable">ไม่มีข้อมูลเรียลไทม์</string>
     <string name="widget_warning_source_conflict">แหล่งข้อมูลขัดแย้ง</string>
@@ -844,7 +844,7 @@
     <string name="share_category_metropolitano">รถไฟชานเมือง</string>
     <string name="share_category_other">รถไฟ</string>
     <string name="share_freshness_fresh">ข้อมูลเป็นปัจจุบัน</string>
-    <string name="share_freshness_aging">กำลังอัปเดตข้อมูล</string>
+    <string name="share_freshness_aging">ข้อมูลไม่ใช่ล่าสุด</string>
     <string name="share_freshness_stale">ข้อมูลล่าสุดที่มี</string>
     <string name="share_freshness_unavailable">ไม่มีข้อมูลเรียลไทม์</string>
     <string name="planned_journey_ics_event_description">การเดินทาง: %1$s → %2$s ออกเดินทาง %3$s เวลา %4$s (%5$s)</string>
@@ -1348,4 +1348,21 @@
     <plurals name="results_hidden_by_preferences">
         <item quantity="other">ซ่อนรถไฟเที่ยวตรง %d ขบวนตามการตั้งค่าการเดินทาง</item>
     </plurals>
+    <!-- Data states and provider descriptors (audit A3-01, A3-15) -->
+    <string name="data_status_scheduled">ตารางเวลาตามแผน ไม่มีข้อมูลเรียลไทม์</string>
+    <string name="data_chip_live">เรียลไทม์</string>
+    <string name="data_chip_saved_copy">สำเนาที่บันทึกไว้</string>
+    <string name="provider_descriptor_scheduled">ตารางเวลาตามแผน</string>
+    <string name="provider_descriptor_rfi_programmed">ตารางเวลาที่วางแผนไว้</string>
+    <string name="provider_descriptor_rail_source">แหล่งข้อมูลรถไฟ</string>
+    <string name="provider_descriptor_fallback">แหล่งสำรอง ไม่รับประกัน</string>
+    <string name="provider_descriptor_best_effort">ไม่รับประกัน</string>
+    <string name="provider_descriptor_public_board">กระดานสาธารณะ</string>
+    <string name="provider_descriptor_rfi_monitor_live">จอแสดงขบวนเข้า/ออกแบบเรียลไทม์</string>
+    <string name="provider_descriptor_rfi_monitor">จอแสดงขบวนเข้า/ออก</string>
+    <string name="provider_descriptor_swiss_boards">กระดานสถานีสวิส</string>
+    <!-- Time context of Partenze (audit A3-02) -->
+    <string name="departures_back_to_now">กลับไปที่ตอนนี้</string>
+    <string name="departures_route_from_search">การค้นหาจากวางแผน</string>
+    <string name="departures_first_departure">ขบวนแรก</string>
 </resources>

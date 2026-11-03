@@ -299,9 +299,9 @@
     <string name="for_you_alarms">अलार्म और अलर्ट</string>
     <string name="for_you_stop_alarm_hint">ठहराव अलार्म, GPS वाले भी, ट्रेन के विवरण में किसी ठहराव से सेट होते हैं।</string>
     <string name="for_you_credits">श्रेय और लाइसेंस</string>
-    <string name="action_follow_trip">यात्रा का पालन करें</string>
+    <string name="action_follow_trip">यात्रा ट्रैक करें</string>
     <string name="action_share">साझा करें</string>
-    <string name="detail_save_hint">«सहेजें» ट्रेन को «आपके लिए» में निगरानी वाली ट्रेनों में जोड़ता है; «यात्रा का पालन करें» अगला ठहराव केवल इसी डिवाइस पर रखता है।</string>
+    <string name="detail_save_hint">«सहेजें» ट्रेन को «आपके लिए» में निगरानी वाली ट्रेनों में जोड़ता है; «यात्रा ट्रैक करें» अगला ठहराव केवल इसी डिवाइस पर रखता है।</string>
     <string name="stop_position_passed">ठहराव निकल गया</string>
     <string name="detail_pane_placeholder">विवरण यहाँ देखने के लिए कोई ट्रेन चुनें।</string>
     <!-- Journeys with changes (November 2026) -->
@@ -724,7 +724,7 @@
     <string name="refresh_success">डेटा अपडेट हुआ</string>
     <string name="refresh_error">अपडेट नहीं हो सका</string>
     <string name="freshness_fresh">डेटा अपडेट है</string>
-    <string name="freshness_aging">डेटा अपडेट हो रहा है</string>
+    <string name="freshness_aging">डेटा हाल का नहीं है</string>
     <string name="freshness_stale">अंतिम उपलब्ध डेटा</string>
     <string name="freshness_unavailable">लाइव डेटा उपलब्ध नहीं</string>
     <string name="service_status_on_time">समय पर</string>
@@ -781,7 +781,7 @@
     <string name="widget_confidence_cached">CACHE</string>
     <string name="widget_confidence_demonstration">DEMO</string>
     <string name="widget_freshness_fresh">अपडेट</string>
-    <string name="widget_freshness_aging">अपडेट हो रहा</string>
+    <string name="widget_freshness_aging">पुराना डेटा</string>
     <string name="widget_freshness_stale">अंतिम डेटा</string>
     <string name="widget_freshness_unavailable">लाइव उपलब्ध नहीं</string>
     <string name="widget_warning_source_conflict">स्रोतों में टकराव</string>
@@ -838,7 +838,7 @@
     <string name="share_category_metropolitano">उपनगरीय ट्रेन</string>
     <string name="share_category_other">ट्रेन</string>
     <string name="share_freshness_fresh">डेटा अपडेट है</string>
-    <string name="share_freshness_aging">डेटा अपडेट हो रहा है</string>
+    <string name="share_freshness_aging">डेटा हाल का नहीं है</string>
     <string name="share_freshness_stale">अंतिम उपलब्ध डेटा</string>
     <string name="share_freshness_unavailable">लाइव डेटा उपलब्ध नहीं</string>
     <string name="planned_journey_ics_event_description">यात्रा: %1$s → %2$s, प्रस्थान %3$s को %4$s बजे (%5$s)</string>
@@ -1059,7 +1059,7 @@
         <item quantity="other">इस डिवाइस पर %d अवलोकन दर्ज</item>
     </plurals>
     <!-- Notifiche in tempo reale: viaggio seguito, avvisi sui treni, scioperi MIT, coincidenze e puntualità (novembre 2026). -->
-    <string name="followed_trip_channel_name">पालन की जा रही यात्रा</string>
+    <string name="followed_trip_channel_name">ट्रैक की जा रही यात्रा</string>
     <string name="followed_trip_channel_description">आपकी यात्रा की लाइव स्थिति: देरी, अगला ठहराव और प्लेटफ़ॉर्म, बिना आवाज़ के।</string>
     <string name="followed_trip_notification_toggle">यात्रा की स्थिति वाली सूचना</string>
     <string name="followed_trip_notification_toggle_description">प्रस्थान से 30 मिनट पहले से आगमन के 30 मिनट बाद तक: देरी, अगला ठहराव और प्लेटफ़ॉर्म, हर 15 मिनट में अपडेट। अंत में अपने-आप बंद हो जाती है।</string>
@@ -1074,13 +1074,13 @@
     <string name="followed_trip_updated_at">%1$s बजे अपडेट हुआ</string>
     <string name="followed_trip_stale">स्थिति उपलब्ध नहीं, अंतिम अपडेट %1$s बजे</string>
     <string name="followed_trip_action_stop">रोकें</string>
-    <string name="followed_trip_journey_follow">सूचना के साथ पालन करें</string>
+    <string name="followed_trip_journey_follow">सूचना के साथ ट्रैक करें</string>
     <string name="followed_trip_journey_description">एक चालू सूचना इस यात्रा की ट्रेनों पर नज़र रखती है: देरी, अगला ठहराव, प्लेटफ़ॉर्म और जोखिम वाले कनेक्शन, प्रस्थान से 30 मिनट पहले से आगमन के 30 मिनट बाद तक।</string>
     <string name="train_alerts_channel_name">ट्रेन सूचनाएँ</string>
-    <string name="train_alerts_channel_description">घंटी चालू वाली पालन की जा रही या पसंदीदा ट्रेनों के लिए ViaggiaTreno की नई सूचनाएँ।</string>
+    <string name="train_alerts_channel_description">घंटी चालू वाली ट्रैक की जा रही या पसंदीदा ट्रेनों के लिए ViaggiaTreno की नई सूचनाएँ।</string>
     <string name="train_alerts_toggle">इस ट्रेन की नई सूचनाओं के बारे में बताएँ</string>
     <string name="train_alerts_toggle_description">यात्रा के दिन हर 15 मिनट में ViaggiaTreno की सूचनाएँ जाँचता है, रात 22 से सुबह 7 के बीच कभी नहीं। सेटिंग → सूचनाएँ और अलार्म का स्विच इन सभी को बंद करता है।</string>
-    <string name="settings_train_alerts_title">पालन की जा रही और पसंदीदा ट्रेनों की सूचनाएँ</string>
+    <string name="settings_train_alerts_title">ट्रैक की जा रही और पसंदीदा ट्रेनों की सूचनाएँ</string>
     <string name="settings_train_alerts_description">विवरण में घंटी चालू वाली ट्रेनों की ViaggiaTreno की नई सूचनाएँ बताता है: यात्रा के दिन हर 15 मिनट, रात 22 से सुबह 7 के बीच कभी नहीं। ट्रेन नंबर ViaggiaTreno को भेजा जाता है।</string>
     <string name="commuter_alert_status_unavailable">स्थिति उपलब्ध नहीं</string>
     <string name="commuter_alert_status_on_time">समय पर</string>
@@ -1159,11 +1159,11 @@
     <string name="detail_not_monitored_state">सहेजी नहीं गई: ऊपर का दिल इसे «आपके लिए» की निगरानी वाली ट्रेनों में जोड़ता है।</string>
     <string name="detail_stop_alarm_title">ठहराव अलार्म</string>
     <string name="accessibility_stop_alarm_at">ठहराव %1$s के लिए अलार्म सेट करें, समय %2$s</string>
-    <string name="action_follow_this_trip">इस यात्रा का पालन करें</string>
+    <string name="action_follow_this_trip">इस यात्रा को ट्रैक करें</string>
     <string name="detail_departure_time">प्रस्थान %1$s</string>
     <string name="detail_tab_route">मार्ग</string>
     <string name="detail_tab_info">जानकारी</string>
-    <string name="detail_tab_services">सुविधाएँ</string>
+    <string name="detail_tab_services">सेवाएँ</string>
     <string name="stop_role_departure">प्रस्थान</string>
     <string name="stop_role_arrival">आगमन</string>
     <string name="stop_role_intermediate">बीच का ठहराव</string>
@@ -1357,4 +1357,21 @@
         <item quantity="one">यात्रा प्राथमिकताओं के कारण %d सीधी ट्रेन छिपी है</item>
         <item quantity="other">यात्रा प्राथमिकताओं के कारण %d सीधी ट्रेनें छिपी हैं</item>
     </plurals>
+    <!-- Data states and provider descriptors (audit A3-01, A3-15) -->
+    <string name="data_status_scheduled">निर्धारित समय-सारणी, लाइव डेटा नहीं</string>
+    <string name="data_chip_live">लाइव</string>
+    <string name="data_chip_saved_copy">सहेजी गई प्रति</string>
+    <string name="provider_descriptor_scheduled">निर्धारित समय-सारणी</string>
+    <string name="provider_descriptor_rfi_programmed">नियोजित समय-सारणी</string>
+    <string name="provider_descriptor_rail_source">रेल स्रोत</string>
+    <string name="provider_descriptor_fallback">वैकल्पिक स्रोत, बिना गारंटी</string>
+    <string name="provider_descriptor_best_effort">बिना गारंटी</string>
+    <string name="provider_descriptor_public_board">सार्वजनिक बोर्ड</string>
+    <string name="provider_descriptor_rfi_monitor_live">लाइव आगमन/प्रस्थान मॉनिटर</string>
+    <string name="provider_descriptor_rfi_monitor">आगमन/प्रस्थान मॉनिटर</string>
+    <string name="provider_descriptor_swiss_boards">स्विस स्टेशन बोर्ड</string>
+    <!-- Time context of Partenze (audit A3-02) -->
+    <string name="departures_back_to_now">अभी पर लौटें</string>
+    <string name="departures_route_from_search">योजना से खोज</string>
+    <string name="departures_first_departure">पहला प्रस्थान</string>
 </resources>

@@ -78,7 +78,9 @@ import it.binario.app.ui.common.SearchInfoState
 import it.binario.app.ui.common.SectionTitle
 import it.binario.app.ui.common.StationShortNames
 import it.binario.app.ui.common.TonalButton
-import it.binario.app.ui.common.isCachedCopy
+import it.binario.app.ui.common.DataState
+import it.binario.app.ui.common.dataState
+import it.binario.app.ui.common.localizedProviderLabel
 import it.binario.app.ui.common.localizedDisplayName
 import it.binario.app.ui.common.localizedLabel
 import it.binario.app.ui.common.localizedQualityLabel
@@ -152,6 +154,9 @@ internal fun RouteResultsScreen(
     val counts = ResultsMerge.counts(entries + returnEntries)
     val journeysShown = entries.any { it is ResultEntry.Journey }
     val isDemonstration = viewModel.isDemonstrationData()
+    // Live, scheduled timetable or saved copy, for the status card and the chip of every card.
+    val listState = viewModel.dataState()
+    val returnListState = viewModel.returnSnapshot?.let { DataState.of(it.freshness, it.confidence, it.services, isDemonstration) } ?: listState
     val resultSummary = if (roundTrip) {
         stringResource(
             R.string.planner_round_trip_results,
@@ -165,7 +170,7 @@ internal fun RouteResultsScreen(
     val headline = if (viewModel.hasActiveRoute) StationShortNames.route(route.origin(primaryDirection), route.destination(primaryDirection)) else null
     // "Salva orario" and "Condividi": the list on screen as plain rows (labels in the app language, demonstration
     // data as timetable only), saved on this device or shared as text.
-    val providerLabel = viewModel.currentProviderLabel() ?: stringResource(R.string.provider_unavailable)
+    val providerLabel = viewModel.localizedProviderLabel()
     val journeysFetchedAt = journeyResult?.generatedAt?.toEpochMilli() ?: 0L
     val outboundRows = timetableRows(shown, isDemonstration, providerLabel, viewModel.lastRefreshEpochMillis(), journeysFetchedAt)
     val returnRows = if (roundTrip) timetableRows(returnShown, isDemonstration, providerLabel, viewModel.lastRefreshEpochMillis(), journeysFetchedAt) else emptyList()
@@ -219,12 +224,11 @@ internal fun RouteResultsScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 DataStatusLine(
+                    state = listState,
                     freshness = viewModel.snapshot?.freshness,
-                    provider = viewModel.currentProviderLabel() ?: stringResource(R.string.provider_unavailable),
+                    provider = providerLabel,
                     confidence = viewModel.localizedQualityLabel(),
                     refreshedAt = viewModel.lastRefreshEpochMillis(),
-                    isDemonstration = isDemonstration,
-                    isCachedCopy = viewModel.isCachedCopy(),
                     message = null
                 )
                 TravelPreferencesLine(
@@ -283,6 +287,7 @@ internal fun RouteResultsScreen(
             hasSnapshot = viewModel.snapshot != null,
             states = outboundStates,
             isDemonstration = isDemonstration,
+            listState = listState,
             selectedServiceId = selectedServiceId,
             selectedJourneyId = selectedJourneyId,
             openDetails = openDetails,
@@ -321,6 +326,7 @@ internal fun RouteResultsScreen(
                 hasSnapshot = viewModel.returnSnapshot != null,
                 states = returnStates,
                 isDemonstration = isDemonstration,
+                listState = returnListState,
                 selectedServiceId = selectedServiceId,
                 selectedJourneyId = null,
                 openDetails = openDetails,
@@ -378,6 +384,7 @@ private fun LazyListScope.resultItems(
     hasSnapshot: Boolean,
     states: ResultStates,
     isDemonstration: Boolean,
+    listState: DataState,
     selectedServiceId: String?,
     selectedJourneyId: String?,
     openDetails: (TrainService) -> Unit,
@@ -401,7 +408,8 @@ private fun LazyListScope.resultItems(
                     modifier = itemModifier.testTag("result-card"),
                     selected = entry.service.id == selectedServiceId,
                     co2 = rememberCo2(entry.service, stationIndex),
-                    lastOfDay = entry.lastOfDay
+                    lastOfDay = entry.lastOfDay,
+                    dataState = DataState.ofService(entry.service, listState)
                 )
                 is ResultEntry.Journey -> JourneyResultCard(
                     row = entry.row,

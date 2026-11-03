@@ -274,14 +274,18 @@ internal fun PlannerScreen(
                 selectedReturnTime
             )
         )
-    val search: () -> Unit = {
+    /** Searches [from] → [to] with the date and time of the form; "Oggi · Adesso" follows the current time. */
+    fun searchRoute(from: Station?, to: Station?) {
         // "Adesso" and "Oggi" mean the moment of the search, not the moment the screen was opened.
-        val departureDate = if (dateChosen) selectedDepartureDate else LocalDate.now(RailTime.defaultZone)
+        val today = LocalDate.now(RailTime.defaultZone)
+        val departureDate = if (dateChosen) selectedDepartureDate else today
         val departureTime = if (timeChosen) selectedDepartureTime else LocalTime.now(RailTime.defaultZone).withSecond(0).withNano(0)
+        // Without a chosen time the results (and Partenze) keep showing the next trains from now.
+        val followsNow = !timeChosen && departureDate == today
         val searched = if (
-            origin != null &&
-            destination != null &&
-            origin != destination &&
+            from != null &&
+            to != null &&
+            from != to &&
             departureDate != null &&
             departureTime != null
         ) {
@@ -291,13 +295,14 @@ internal fun PlannerScreen(
                 selectedReturnTime != null &&
                 PlannerDateTime.isReturnAfterDeparture(departureDate, departureTime, selectedReturnDate, selectedReturnTime)
             ) {
-                viewModel.searchRoundTrip(origin, destination, departureDate, departureTime, selectedReturnDate, selectedReturnTime)
+                viewModel.searchRoundTrip(from, to, departureDate, departureTime, selectedReturnDate, selectedReturnTime, outboundFollowsCurrentTime = followsNow)
             } else if (!returnJourney) {
-                viewModel.searchRoute(origin, destination, departureDate, departureTime)
+                if (followsNow) viewModel.searchRoute(from, to) else viewModel.searchRoute(from, to, departureDate, departureTime)
             } else false
         } else false
         if (searched) showResults()
     }
+    val search: () -> Unit = { searchRoute(origin, destination) }
     val today = LocalDate.now(RailTime.defaultZone)
     val shownDepartureDate = if (dateChosen) selectedDepartureDate else today
     val outboundDateLabel = shortDateLabel(shownDepartureDate, today, locale, dateUnselected)
@@ -504,7 +509,12 @@ internal fun PlannerScreen(
                 detail = stringResource(R.string.planner_recent_search),
                 icon = Icons.Default.History,
                 actionDescription = stringResource(R.string.accessibility_repeat_search, recent.label),
-                onClick = { if (viewModel.useRecentRoute(recent)) { originText = recent.origin.name; destinationText = recent.destination.name } }
+                // "Ripeti ricerca": the route with the date and time of the form, then its results.
+                onClick = {
+                    originText = recent.origin.name
+                    destinationText = recent.destination.name
+                    searchRoute(recent.origin, recent.destination)
+                }
             )
         }
         items(viewModel.savedRoutes.filter { it.isPinned }.take(4), key = { it.id }) { route ->
@@ -513,7 +523,8 @@ internal fun PlannerScreen(
                 detail = route.localizedName(),
                 icon = Icons.Default.Star,
                 actionDescription = stringResource(R.string.accessibility_use_route, route.localizedName()),
-                onClick = { viewModel.activateRoute(route); originText = route.outwardOrigin.name; destinationText = route.outwardDestination.name }
+                // "Usa tratta": fills the form; Partenze keeps its active route until a search.
+                onClick = { originText = route.outwardOrigin.name; destinationText = route.outwardDestination.name }
             )
         }
         item { Spacer(Modifier.height(24.dp)) }

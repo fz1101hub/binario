@@ -285,6 +285,12 @@ class TrainViewModel @JvmOverloads constructor(
     /** True when the results are the next departures from now rather than a planned date and time. */
     val journeyFollowsCurrentTime: Boolean get() = journeyQueryState.followsCurrentTime
     val hasReturnJourney: Boolean get() = returnJourneyQuery != null
+    /**
+     * True while the active route is a route searched in Pianifica that is not one of the saved routes: Partenze says
+     * so, and the watch keeps the commuter's route instead of the search.
+     */
+    var activeRouteIsSearch by mutableStateOf(false)
+        private set
     val hasStationBoardProviders: Boolean get() = stationBoardService.hasProviders
 
     fun plannerOriginText(): String = activeRoute.takeIf { hasActiveRoute }?.outwardOrigin?.name.orEmpty()
@@ -465,6 +471,7 @@ class TrainViewModel @JvmOverloads constructor(
     fun activateRoute(route: SavedRoute, selectedDirection: Direction = direction) {
         clearReturnJourneyState()
         journeyQueryState.resetForRouteActivation()
+        activeRouteIsSearch = false
         activeRoute = route
         routeStore.saveActiveRoute(route.id)
         direction = selectedDirection
@@ -476,11 +483,16 @@ class TrainViewModel @JvmOverloads constructor(
         refresh()
     }
 
+    /**
+     * Searches the direct trains of [origin] → [destination]. Without a date and a time ("Oggi · Adesso") the results
+     * follow the current railway time, so Partenze keeps showing the next trains from now; a chosen date or time is a
+     * planned search that stays at that moment until the user goes back to now ([followCurrentTime]).
+     */
     fun searchRoute(
         origin: Station,
         destination: Station,
-        serviceDate: LocalDate = LocalDate.now(RailTime.defaultZone),
-        departureTime: LocalTime = LocalTime.now(RailTime.defaultZone).withSecond(0).withNano(0)
+        serviceDate: LocalDate? = null,
+        departureTime: LocalTime? = null
     ): Boolean {
         val rememberedOrigin = rememberStation(canonicalStation(origin))
         val rememberedDestination = rememberStation(canonicalStation(destination))
@@ -493,6 +505,7 @@ class TrainViewModel @JvmOverloads constructor(
         val storedRoute = savedRoutes.firstOrNull {
             it.outwardOrigin.id == rememberedOrigin.id && it.outwardDestination.id == rememberedDestination.id
         }
+        activeRouteIsSearch = storedRoute == null
         activeRoute = storedRoute ?: SavedRoute(
             id = searchedRouteId(rememberedOrigin, rememberedDestination),
             name = "${rememberedOrigin.city} – ${rememberedDestination.city}",
@@ -500,7 +513,14 @@ class TrainViewModel @JvmOverloads constructor(
             outwardDestination = rememberedDestination
         )
         direction = Direction.OUTBOUND
-        journeyQueryState.selectPlanned(serviceDate, departureTime)
+        if (serviceDate == null && departureTime == null) {
+            journeyQueryState.resetForRouteActivation()
+        } else {
+            journeyQueryState.selectPlanned(
+                serviceDate ?: LocalDate.now(RailTime.defaultZone),
+                departureTime ?: LocalTime.now(RailTime.defaultZone).withSecond(0).withNano(0)
+            )
+        }
         routeStore.saveDirection(direction)
         recentRoutes = routeStore.recordRecent(rememberedOrigin, rememberedDestination, stations)
         clearSelectedService()
@@ -518,14 +538,18 @@ class TrainViewModel @JvmOverloads constructor(
         departureDate: LocalDate,
         departureTime: LocalTime,
         returnDate: LocalDate,
-        returnTime: LocalTime
+        returnTime: LocalTime,
+        /** The outbound leg is "Adesso": it follows the current time ([departureDate]/[departureTime] are now). */
+        outboundFollowsCurrentTime: Boolean = false
     ): Boolean {
         if (!PlannerDateTime.isReturnAfterDeparture(departureDate, departureTime, returnDate, returnTime)) {
             refreshMessage = UiMessage(UiMessageKey.ROUND_TRIP_RETURN_MUST_FOLLOW_DEPARTURE)
             refreshState = RefreshState.ERROR
             return false
         }
-        if (!searchRoute(origin, destination, departureDate, departureTime)) return false
+        val searched = if (outboundFollowsCurrentTime) searchRoute(origin, destination)
+        else searchRoute(origin, destination, departureDate, departureTime)
+        if (!searched) return false
 
         returnJourneyQuery = JourneyQuery(returnDate, returnTime)
         refreshReturn()
@@ -542,6 +566,20 @@ class TrainViewModel @JvmOverloads constructor(
         primarySnapshot = null
         rebuildServicePresentations()
         operatorFilter = null
+        refresh()
+    }
+
+    /**
+     * "Torna ad adesso" of Partenze: the board (and the route results) show the next trains from the current railway
+     * time again instead of a planned date and time. The planned return leg of a round trip ends with it.
+     */
+    fun followCurrentTime() {
+        if (journeyQueryState.followsCurrentTime) return
+        clearReturnJourneyState()
+        journeyQueryState.resetForRouteActivation()
+        clearSelectedService()
+        primarySnapshot = null
+        rebuildServicePresentations()
         refresh()
     }
 
@@ -656,6 +694,7 @@ class TrainViewModel @JvmOverloads constructor(
         )
         savedRoutes = pinnedFirst(listOf(route) + savedRoutes.filterNot { it.outwardOrigin == origin && it.outwardDestination == destination })
         routeStore.saveRoutes(savedRoutes)
+        activeRouteIsSearch = false
         activeRoute = route
         routeStore.saveActiveRoute(route.id)
         direction = Direction.OUTBOUND
@@ -694,6 +733,7 @@ class TrainViewModel @JvmOverloads constructor(
         if (activeRoute.id == route.id) {
             clearReturnJourneyState()
             journeyQueryState.resetForRouteActivation()
+            activeRouteIsSearch = false
             activeRoute = savedRoutes.firstOrNull() ?: unconfiguredRoute()
             if (hasActiveRoute) routeStore.saveActiveRoute(activeRoute.id) else routeStore.clearActiveRoute()
             clearSelectedService()
@@ -734,8 +774,10 @@ class TrainViewModel @JvmOverloads constructor(
         val directionAtRequest = direction
         val queryAtRequest = journeyQueryState.value
         // Widgets and Wear present their snapshot as the next trains of the route; a planned
-        // search for another date or time must stay inside the app.
+        // search for another date or time must stay inside the app, and the watch never shows a route
+        // only searched in Pianifica as the commuter's route.
         val publishesCurrentDepartures = journeyQueryState.followsCurrentTime
+        val publishesToWear = publishesCurrentDepartures && !activeRouteIsSearch
         val requestId = ++refreshRequestId
         viewModelScope.launch {
             val result = dataSource.loadRoute(routeAtRequest, directionAtRequest, queryAtRequest)
@@ -743,7 +785,7 @@ class TrainViewModel @JvmOverloads constructor(
             when (result) {
                 is DataResult.Success -> {
                     primarySnapshot = result.snapshot
-                    primarySnapshotIsCurrent = publishesCurrentDepartures
+                    primarySnapshotIsCurrent = publishesToWear
                     rebuildServicePresentations()
                     reconcileSelectedService(result.snapshot, directionAtRequest)
                     notePunctuality(result.snapshot.services.filter(::isMonitoring), result.snapshot)
@@ -753,7 +795,7 @@ class TrainViewModel @JvmOverloads constructor(
                         RouteWidgetProvider.saveSnapshotForMatchingRoutes(getApplication(), result.snapshot)
                         RouteWidgetProvider.refreshAll(getApplication())
                     }
-                    if (publishesCurrentDepartures && integrationSettings.wearSnapshotSharingEnabled) {
+                    if (publishesToWear && integrationSettings.wearSnapshotSharingEnabled) {
                         if (WearSnapshotPublisher.enable(getApplication())) {
                             if (
                                 integrationSettings.wearSnapshotSharingEnabled &&
@@ -776,7 +818,7 @@ class TrainViewModel @JvmOverloads constructor(
                         RouteWidgetProvider.markMatchingRouteDirectionUnavailable(getApplication(), routeAtRequest, directionAtRequest, result.reason.uiMessage())
                         RouteWidgetProvider.refreshAll(getApplication())
                     }
-                    if (publishesCurrentDepartures && integrationSettings.wearSnapshotSharingEnabled) {
+                    if (publishesToWear && integrationSettings.wearSnapshotSharingEnabled) {
                         if (WearSnapshotPublisher.enable(getApplication())) {
                             if (
                                 integrationSettings.wearSnapshotSharingEnabled &&
@@ -987,6 +1029,7 @@ class TrainViewModel @JvmOverloads constructor(
 
     fun currentRouteLabel(): String = activeRoute.displayName(direction)
 
+    /** A recent route searched again from now (Per te › Recenti). */
     fun useRecentRoute(recent: RecentRoute): Boolean = searchRoute(recent.origin, recent.destination)
 
     fun isMonitoring(service: TrainService): Boolean = monitoredServices.any { it.number.equals(service.number, ignoreCase = true) }
@@ -1086,6 +1129,7 @@ class TrainViewModel @JvmOverloads constructor(
             val backup = result.backup
             restoreBackupStations(backup)
             savedRoutes = pinnedFirst(routeStore.replaceRoutes(backup.routes))
+            activeRouteIsSearch = false
             activeRoute = savedRoutes.firstOrNull() ?: unconfiguredRoute()
             clearSelectedService()
             primarySnapshot = null

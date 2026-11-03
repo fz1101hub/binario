@@ -48,7 +48,7 @@ class WidgetStringsResourceTest {
     @Test fun `the Italian resources render the original meta line and TalkBack texts`() {
         val strings = widgetStrings(locale = null)
 
-        assertEquals("RFI · INFRASTRUTTURA · Q84 · IN AGGIORNAMENTO · CONFLITTO FONTI · PAG 1/1", state.compactMeta(strings, "PAG 1/1"))
+        assertEquals("RFI · INFRASTRUTTURA · Q84 · NON RECENTE · CONFLITTO FONTI · PAG 1/1", state.compactMeta(strings, "PAG 1/1"))
         assertEquals(
             "Provider RFI. Dati in aggiornamento. Fonte primaria del gestore dell’infrastruttura. Dato affidabile, punteggio qualità 84 su 100. Avvisi: Fonti in conflitto",
             state.accessibleDataSummary(strings)
@@ -59,7 +59,7 @@ class WidgetStringsResourceTest {
     @Test fun `the English resources render the same texts in English`() {
         val strings = widgetStrings("en")
 
-        assertEquals("RFI · INFRASTRUCTURE · Q84 · UPDATING · SOURCE CONFLICT · PAGE 1/1", state.compactMeta(strings, "PAGE 1/1"))
+        assertEquals("RFI · INFRASTRUCTURE · Q84 · NOT RECENT · SOURCE CONFLICT · PAGE 1/1", state.compactMeta(strings, "PAGE 1/1"))
         assertEquals(
             "Source RFI. Data updating. Infrastructure manager primary source. Reliable data, quality score out of 100: 84. Warnings: Sources in conflict",
             state.accessibleDataSummary(strings)

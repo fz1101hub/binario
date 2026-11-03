@@ -709,7 +709,7 @@
     <string name="refresh_success">Data diperbarui</string>
     <string name="refresh_error">Pembaruan gagal</string>
     <string name="freshness_fresh">Data terbaru</string>
-    <string name="freshness_aging">Data sedang diperbarui</string>
+    <string name="freshness_aging">Data tidak terbaru</string>
     <string name="freshness_stale">Data terakhir yang tersedia</string>
     <string name="freshness_unavailable">Data langsung tidak tersedia</string>
     <string name="service_status_on_time">Tepat waktu</string>
@@ -766,7 +766,7 @@
     <string name="widget_confidence_cached">CACHE</string>
     <string name="widget_confidence_demonstration">DEMO</string>
     <string name="widget_freshness_fresh">TERBARU</string>
-    <string name="widget_freshness_aging">DIPERBARUI</string>
+    <string name="widget_freshness_aging">TIDAK TERBARU</string>
     <string name="widget_freshness_stale">DATA TERAKHIR</string>
     <string name="widget_freshness_unavailable">LANGSUNG TAK TERSEDIA</string>
     <string name="widget_warning_source_conflict">SUMBER BERBEDA</string>
@@ -821,7 +821,7 @@
     <string name="share_category_metropolitano">Kereta komuter</string>
     <string name="share_category_other">Kereta</string>
     <string name="share_freshness_fresh">Data terbaru</string>
-    <string name="share_freshness_aging">Data sedang diperbarui</string>
+    <string name="share_freshness_aging">Data tidak terbaru</string>
     <string name="share_freshness_stale">Data terakhir yang tersedia</string>
     <string name="share_freshness_unavailable">Data langsung tidak tersedia</string>
     <string name="planned_journey_ics_event_description">Perjalanan: %1$s → %2$s, berangkat %3$s pukul %4$s (%5$s)</string>
@@ -1325,4 +1325,21 @@
     <plurals name="results_hidden_by_preferences">
         <item quantity="other">%d kereta langsung disembunyikan oleh preferensi perjalanan</item>
     </plurals>
+    <!-- Data states and provider descriptors (audit A3-01, A3-15) -->
+    <string name="data_status_scheduled">Jadwal terencana, tanpa data langsung</string>
+    <string name="data_chip_live">Langsung</string>
+    <string name="data_chip_saved_copy">Salinan tersimpan</string>
+    <string name="provider_descriptor_scheduled">jadwal terencana</string>
+    <string name="provider_descriptor_rfi_programmed">Jadwal terencana</string>
+    <string name="provider_descriptor_rail_source">sumber kereta</string>
+    <string name="provider_descriptor_fallback">cadangan tanpa jaminan</string>
+    <string name="provider_descriptor_best_effort">tanpa jaminan</string>
+    <string name="provider_descriptor_public_board">papan publik</string>
+    <string name="provider_descriptor_rfi_monitor_live">Monitor kedatangan/keberangkatan langsung</string>
+    <string name="provider_descriptor_rfi_monitor">Monitor kedatangan/keberangkatan</string>
+    <string name="provider_descriptor_swiss_boards">papan stasiun Swiss</string>
+    <!-- Time context of Partenze (audit A3-02) -->
+    <string name="departures_back_to_now">Kembali ke sekarang</string>
+    <string name="departures_route_from_search">Pencarian dari Rencana</string>
+    <string name="departures_first_departure">Keberangkatan pertama</string>
 </resources>

@@ -742,7 +742,7 @@
     <string name="refresh_success">Veriler güncellendi</string>
     <string name="refresh_error">Yenileme başarısız</string>
     <string name="freshness_fresh">Veriler güncel</string>
-    <string name="freshness_aging">Veriler güncelleniyor</string>
+    <string name="freshness_aging">Veriler güncel değil</string>
     <string name="freshness_stale">Mevcut son veri</string>
     <string name="freshness_unavailable">Canlı veri yok</string>
     <string name="service_status_on_time">Zamanında</string>
@@ -801,7 +801,7 @@
     <string name="widget_confidence_cached">ÖNBELLEK</string>
     <string name="widget_confidence_demonstration">DEMO</string>
     <string name="widget_freshness_fresh">GÜNCEL</string>
-    <string name="widget_freshness_aging">GÜNCELLENİYOR</string>
+    <string name="widget_freshness_aging">GÜNCEL DEĞİL</string>
     <string name="widget_freshness_stale">SON VERİ</string>
     <string name="widget_freshness_unavailable">CANLI VERİ YOK</string>
     <string name="widget_warning_source_conflict">KAYNAK ÇELİŞKİSİ</string>
@@ -861,7 +861,7 @@
     <string name="share_category_metropolitano">Banliyö treni</string>
     <string name="share_category_other">Tren</string>
     <string name="share_freshness_fresh">Veriler güncel</string>
-    <string name="share_freshness_aging">Veriler güncelleniyor</string>
+    <string name="share_freshness_aging">Veriler güncel değil</string>
     <string name="share_freshness_stale">Mevcut son veri</string>
     <string name="share_freshness_unavailable">Canlı veri yok</string>
     <string name="planned_journey_ics_event_description">Yolculuk: %1$s → %2$s, kalkış %3$s, saat %4$s (%5$s)</string>
@@ -1380,4 +1380,21 @@
         <item quantity="one">Seyahat tercihleri nedeniyle %d aktarmasız tren gizlendi</item>
         <item quantity="other">Seyahat tercihleri nedeniyle %d aktarmasız tren gizlendi</item>
     </plurals>
+    <!-- Data states and provider descriptors (audit A3-01, A3-15) -->
+    <string name="data_status_scheduled">Planlanan tarife, canlı veri yok</string>
+    <string name="data_chip_live">Canlı</string>
+    <string name="data_chip_saved_copy">Kayıtlı kopya</string>
+    <string name="provider_descriptor_scheduled">planlanan tarife</string>
+    <string name="provider_descriptor_rfi_programmed">Planlı tarife</string>
+    <string name="provider_descriptor_rail_source">demiryolu kaynağı</string>
+    <string name="provider_descriptor_fallback">garantisiz yedek kaynak</string>
+    <string name="provider_descriptor_best_effort">garantisiz</string>
+    <string name="provider_descriptor_public_board">herkese açık pano</string>
+    <string name="provider_descriptor_rfi_monitor_live">Canlı varış/kalkış monitörü</string>
+    <string name="provider_descriptor_rfi_monitor">Varış/kalkış monitörü</string>
+    <string name="provider_descriptor_swiss_boards">İsviçre istasyon panoları</string>
+    <!-- Time context of Partenze (audit A3-02) -->
+    <string name="departures_back_to_now">Şimdiye dön</string>
+    <string name="departures_route_from_search">Planla’dan arama</string>
+    <string name="departures_first_departure">İlk kalkış</string>
 </resources>

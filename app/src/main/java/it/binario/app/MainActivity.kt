@@ -97,6 +97,9 @@ import it.binario.app.ui.common.DetailPlaceholder
 import it.binario.app.ui.common.HeaderOverlapBox
 import it.binario.app.ui.common.LocalWideLayout
 import it.binario.app.ui.common.ScreenHeader
+import it.binario.app.ui.common.DataState
+import it.binario.app.ui.common.dataState
+import it.binario.app.ui.common.localizedProviderLabel
 import it.binario.app.ui.common.localizedQualityLabel
 import it.binario.app.ui.departures.DeparturesScreen
 import it.binario.app.ui.departures.OperationsSection
@@ -465,7 +468,7 @@ internal fun BinarioApp(
         }, onDismiss = { showThemePicker = false })
     }
 
-    val detailProviderLabel = viewModel.currentProviderLabel() ?: stringResource(R.string.provider_unavailable)
+    val detailProviderLabel = viewModel.localizedProviderLabel()
     val detailConfidenceLabel = viewModel.localizedQualityLabel()
     val shareSelectedService: () -> Unit = {
         viewModel.selectedService?.let { service ->
@@ -657,7 +660,10 @@ internal fun BinarioApp(
                     stationLookup = viewModel::stationFromName,
                     sourceSections = { TrainDetailSourceSections(service, viewModel.stations) },
                     onShare = shareSelectedService,
-                    showShareButton = inSidePane
+                    showShareButton = inSidePane,
+                    dataState = viewModel.dataState().let { list ->
+                        if (list == DataState.DEMONSTRATION || list == DataState.UNAVAILABLE) list else DataState.ofService(service, list)
+                    }
                 )
             }
         }

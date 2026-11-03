@@ -742,7 +742,7 @@
     <string name="refresh_success">Data updated</string>
     <string name="refresh_error">Refresh failed</string>
     <string name="freshness_fresh">Data updated</string>
-    <string name="freshness_aging">Data updating</string>
+    <string name="freshness_aging">Data not recent</string>
     <string name="freshness_stale">Last available data</string>
     <string name="freshness_unavailable">Live data unavailable</string>
     <string name="service_status_on_time">On time</string>
@@ -801,7 +801,7 @@
     <string name="widget_confidence_cached">CACHE</string>
     <string name="widget_confidence_demonstration">DEMO</string>
     <string name="widget_freshness_fresh">UPDATED</string>
-    <string name="widget_freshness_aging">UPDATING</string>
+    <string name="widget_freshness_aging">NOT RECENT</string>
     <string name="widget_freshness_stale">LAST DATA</string>
     <string name="widget_freshness_unavailable">LIVE UNAVAILABLE</string>
     <string name="widget_warning_source_conflict">SOURCE CONFLICT</string>
@@ -861,7 +861,7 @@
     <string name="share_category_metropolitano">Metropolitan train</string>
     <string name="share_category_other">Train</string>
     <string name="share_freshness_fresh">Data updated</string>
-    <string name="share_freshness_aging">Data updating</string>
+    <string name="share_freshness_aging">Data not recent</string>
     <string name="share_freshness_stale">Latest available data</string>
     <string name="share_freshness_unavailable">Live data unavailable</string>
     <string name="planned_journey_ics_event_description">Journey: %1$s → %2$s, departure %3$s at %4$s (%5$s)</string>
@@ -1380,4 +1380,21 @@
         <item quantity="one">%d direct train hidden by your travel preferences</item>
         <item quantity="other">%d direct trains hidden by your travel preferences</item>
     </plurals>
+    <!-- Data states and provider descriptors (audit A3-01, A3-15) -->
+    <string name="data_status_scheduled">Scheduled timetable, no live data</string>
+    <string name="data_chip_live">Live</string>
+    <string name="data_chip_saved_copy">Saved copy</string>
+    <string name="provider_descriptor_scheduled">scheduled timetable</string>
+    <string name="provider_descriptor_rfi_programmed">Planned timetable</string>
+    <string name="provider_descriptor_rail_source">rail source</string>
+    <string name="provider_descriptor_fallback">best-effort fallback</string>
+    <string name="provider_descriptor_best_effort">best effort</string>
+    <string name="provider_descriptor_public_board">public board</string>
+    <string name="provider_descriptor_rfi_monitor_live">Live arrivals/departures monitor</string>
+    <string name="provider_descriptor_rfi_monitor">Arrivals/departures monitor</string>
+    <string name="provider_descriptor_swiss_boards">Swiss station boards</string>
+    <!-- Time context of Partenze (audit A3-02) -->
+    <string name="departures_back_to_now">Back to now</string>
+    <string name="departures_route_from_search">Search from Plan</string>
+    <string name="departures_first_departure">First departure</string>
 </resources>

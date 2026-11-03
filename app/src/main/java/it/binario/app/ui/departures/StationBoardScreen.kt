@@ -93,6 +93,7 @@ import it.binario.app.ui.common.ScreenMargin
 import it.binario.app.ui.common.SearchInfoState
 import it.binario.app.ui.common.StationField
 import it.binario.app.ui.common.localizedLabel
+import it.binario.app.ui.common.localizedProviderName
 import it.binario.app.ui.common.ltrUnit
 import it.binario.app.ui.detail.StopTimelinePosition
 import it.binario.app.ui.detail.StopTimelineRow
@@ -316,7 +317,7 @@ internal fun StationBoardScreen(modifier: Modifier, viewModel: TrainViewModel, r
                                 fontWeight = FontWeight.Bold
                             )
                             Text(
-                                board.providerNames.joinToString(" · "),
+                                board.providerNames.map { localizedProviderName(it) }.joinToString(" · "),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -632,8 +633,8 @@ private fun StationBoardRunDetailsContent(
                 if (details != null) {
                     Text(ltrUnit("${details.origin} → ${details.destination}"), style = MaterialTheme.typography.bodyLarge)
                     Text(details.observedAt?.let {
-                        stringResource(R.string.provider_updated_at, details.providerName, updateTimeMessage(it.toEpochMilli()).localized())
-                    } ?: details.providerName, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        stringResource(R.string.provider_updated_at, localizedProviderName(details.providerName), updateTimeMessage(it.toEpochMilli()).localized())
+                    } ?: localizedProviderName(details.providerName), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
             StationBoardEntryRow(entry, kind)

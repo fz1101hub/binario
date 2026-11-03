@@ -18,7 +18,9 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.SyncAlt
 import androidx.compose.material.icons.filled.Train
 import androidx.compose.material3.Icon
@@ -100,37 +102,33 @@ internal fun TrainService.presentedAsDemonstration(): TrainService = copy(
 )
 
 /**
- * Provenance of the departures above the rows: demonstration, unavailable, live or saved copy, always as
- * text (the icon colour only repeats it), with source, update time and quality visible.
+ * Provenance of the departures above the rows: live, scheduled timetable, saved copy, demonstration or unavailable
+ * ([DataState], never "live" for a timetable), always as text (the icon colour only repeats it), with source,
+ * update time and quality visible.
  */
 @Composable
 internal fun DataStatusLine(
+    state: DataState,
     freshness: Freshness?,
     provider: String,
     confidence: String,
     refreshedAt: Long,
-    isDemonstration: Boolean,
-    isCachedCopy: Boolean,
     message: UiMessage?
 ) {
     val messageText = message?.localized()
-    val label = when {
-        isDemonstration -> stringResource(R.string.data_status_demo)
-        freshness == Freshness.UNAVAILABLE || freshness == null -> stringResource(R.string.data_status_unavailable)
-        else -> stringResource(R.string.data_status_live, freshness.localizedLabel())
-    }
-    val color = when {
-        isDemonstration -> MaterialTheme.colorScheme.tertiary
-        freshness == Freshness.UNAVAILABLE || freshness == null -> MaterialTheme.colorScheme.error
-        else -> MaterialTheme.colorScheme.secondary
-    }
     val updated = updateTimeMessage(refreshedAt).localized()
+    val label = state.statusLabel(freshness, updated)
+    val color = state.accentColor()
+    val icon = when (state) {
+        DataState.SCHEDULED -> Icons.Default.Schedule
+        DataState.SAVED_COPY -> Icons.Default.History
+        else -> Icons.Default.Info
+    }
     val sourceLine = if (refreshedAt > 0L) stringResource(R.string.provider_updated_at, provider, updated) else provider
     val qualityLine = stringResource(R.string.data_status_quality, confidence)
-    val cachedLine = if (isCachedCopy && !isDemonstration) stringResource(R.string.data_status_cached, updated) else null
     val statusContentDescription = stringResource(
         R.string.accessibility_data_status,
-        listOfNotNull(label, cachedLine).joinToString(". "),
+        label,
         provider,
         confidence,
         updated,
@@ -147,11 +145,10 @@ internal fun DataStatusLine(
             .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.Top
     ) {
-        Icon(Icons.Default.Info, contentDescription = null, tint = color, modifier = Modifier.padding(top = 2.dp).size(18.dp))
+        Icon(icon, contentDescription = null, tint = color, modifier = Modifier.padding(top = 2.dp).size(18.dp))
         Spacer(Modifier.width(8.dp))
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(label, style = MaterialTheme.typography.labelLarge, color = color, fontWeight = FontWeight.Bold)
-            cachedLine?.let { Text(it, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold) }
             Text(sourceLine, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text(qualityLine, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             messageText?.takeIf { it.isNotBlank() }?.let {
@@ -209,9 +206,12 @@ internal fun DepartureListRow(
     selected: Boolean = false,
     /** "Ultimo di oggi" from the static timetable. */
     lastOfDay: Boolean = false,
+    /** The state of the list the row belongs to: a saved copy says so instead of "programmato". */
+    listState: DataState? = null,
     onOpen: () -> Unit
 ) {
     val shown = if (isDemonstration) service.presentedAsDemonstration() else service
+    val savedCopy = listState == DataState.SAVED_COPY && !shown.operationalStatusVerified
     val serviceState = if (shown.operationalStatusVerified) {
         stringResource(R.string.service_state_live, shown.status.localizedLabel())
     } else {
@@ -220,6 +220,7 @@ internal fun DepartureListRow(
     val lastOfDayLabel = if (lastOfDay) stringResource(R.string.journey_last_of_day) else null
     val serviceContentDescription = listOfNotNull(
         stringResource(R.string.accessibility_open_service, shown.localizedAccessibleSummary(), serviceState),
+        if (savedCopy) stringResource(R.string.data_chip_saved_copy) else null,
         lastOfDayLabel
     ).joinToString(". ")
     val selectedState = if (selected) stringResource(R.string.accessibility_row_selected) else null
@@ -244,6 +245,7 @@ internal fun DepartureListRow(
         Column(Modifier.widthIn(min = TIME_COLUMN).padding(end = 10.dp)) {
             Text(shown.scheduledDeparture, style = MaterialTheme.typography.titleMedium.copy(fontFeatureSettings = TabularFigures), fontWeight = FontWeight.Bold)
             when {
+                savedCopy -> Text(stringResource(R.string.data_chip_saved_copy), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.tertiary)
                 !shown.operationalStatusVerified -> Text(stringResource(R.string.service_scheduled_lowercase), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 shown.status == ServiceStatus.CANCELLED -> Text(stringResource(R.string.service_status_cancelled), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
                 shown.delayMinutes > 0 -> Text(stringResource(R.string.delay_minutes, shown.delayMinutes), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.tertiary, fontWeight = FontWeight.Bold)
@@ -294,7 +296,9 @@ internal fun ResultCard(
     /** Estimated CO2 of the trip, shown as a small line; null without station positions. */
     co2: Co2Estimate? = null,
     /** "Ultimo di oggi" from the static timetable. */
-    lastOfDay: Boolean = false
+    lastOfDay: Boolean = false,
+    /** Live, scheduled or saved copy, as the chip of the card; null shows no chip. */
+    dataState: DataState? = null
 ) {
     val shown = if (isDemonstration) service.presentedAsDemonstration() else service
     val locale = LocalConfiguration.current.locales[0]
@@ -309,6 +313,7 @@ internal fun ResultCard(
         stringResource(R.string.accessibility_open_service, shown.localizedAccessibleSummary(), serviceState),
         arrival?.let { stringResource(R.string.service_scheduled_arrival, it) },
         duration?.let { durationAccessibleLabel(it) },
+        if (dataState == DataState.SAVED_COPY) stringResource(R.string.data_chip_saved_copy) else null,
         if (lastOfDay) stringResource(R.string.journey_last_of_day) else null,
         co2?.let { co2Spoken(it) },
         if (selected) stringResource(R.string.accessibility_row_selected) else null
@@ -338,12 +343,17 @@ internal fun ResultCard(
                     Text(JourneyTimes.durationLabel(it), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
-            Text(
-                stringResource(R.string.service_category_number, shown.trainCategory.localizedLabel(), shown.number).uppercase(locale),
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                letterSpacing = 0.5.sp
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    stringResource(R.string.service_category_number, shown.trainCategory.localizedLabel(), shown.number).uppercase(locale),
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    letterSpacing = 0.5.sp
+                )
+                // Unverified runs say "Programmato": a timetable card never looks like a live on-time one.
+                dataState?.let { DataStateChip(it, Modifier.padding(start = 8.dp)) }
+            }
             if (shown.operationalStatusVerified && shown.status != ServiceStatus.ON_TIME) {
                 Text(
                     compactStatusLabel(shown),
