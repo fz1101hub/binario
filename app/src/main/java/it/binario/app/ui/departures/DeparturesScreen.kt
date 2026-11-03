@@ -622,7 +622,7 @@ private fun RoutePickerSheet(
                     RadioButton(selected = active, onClick = null)
                     Column(Modifier.weight(1f).padding(start = 12.dp)) {
                         Text(route.localizedName(), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                        Text(route.localizedDisplayName(Direction.OUTBOUND), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(ltrUnit(route.localizedDisplayName(Direction.OUTBOUND)), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         val labels = listOfNotNull(
                             if (active) stringResource(R.string.shortcut_active_route) else null,
                             if (route.isPinned) stringResource(R.string.route_pinned) else null

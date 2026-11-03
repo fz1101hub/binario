@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -551,14 +552,15 @@ internal fun UrbanStopBadgeMark(badge: UrbanStopBadge) {
             UrbanStopBadge.FUNICULAR -> R.string.station_badge_funicular
         }
     )
+    // At least 20 dp, growing with the font so the letter is never clipped at large font sizes.
     Surface(
-        modifier = Modifier.size(20.dp).semantics { contentDescription = description },
+        modifier = Modifier.sizeIn(minWidth = 20.dp, minHeight = 20.dp).semantics { contentDescription = description },
         shape = RoundedCornerShape(5.dp),
         color = MaterialTheme.colorScheme.primary,
         contentColor = MaterialTheme.colorScheme.onPrimary
     ) {
         Box(contentAlignment = Alignment.Center) {
-            Text(badge.letter, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+            Text(badge.letter, modifier = Modifier.padding(horizontal = 3.dp), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
         }
     }
 }

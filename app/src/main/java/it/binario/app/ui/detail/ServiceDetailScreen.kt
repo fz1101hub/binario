@@ -686,7 +686,8 @@ internal fun StopTimelineRow(
                 if (!isLast) drawLine(lineColor, Offset(x, dotCenter), Offset(x, size.height), stroke)
             }
             .padding(start = TIMELINE_START, end = 16.dp, top = TIMELINE_TOP, bottom = TIMELINE_TOP)
-            .semantics { contentDescription = accessibilityLabel },
+            // One stop is one TalkBack item (its full label); the alarm and share buttons stay their own controls.
+            .semantics(mergeDescendants = true) { contentDescription = accessibilityLabel },
         verticalAlignment = Alignment.Top
     ) {
         Box(Modifier.width(TIMELINE_WIDTH).height(TIMELINE_DOT_SLOT), contentAlignment = Alignment.Center) {
@@ -805,7 +806,7 @@ private fun RouteChangeBanner(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp, vertical = 10.dp)
-            .semantics { contentDescription = accessibilityLabel },
+            .semantics(mergeDescendants = true) { contentDescription = accessibilityLabel },
         color = container,
         contentColor = foreground,
         shape = RoundedCornerShape(14.dp)

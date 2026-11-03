@@ -102,6 +102,7 @@ import it.binario.app.ui.detail.StopTimelineRow
 import it.binario.app.updateTimeMessage
 import it.binario.app.journeys.LastOfDayMarks
 import it.binario.app.ui.common.InfoNoticeCard
+import it.binario.app.ui.common.OperatorNames
 import it.binario.app.ui.common.LastOfDayChip
 import it.binario.app.ui.common.WheelchairMark
 import it.binario.app.ui.common.rememberStaticDayDepartures
@@ -537,7 +538,7 @@ internal fun StationBoardEntryRow(
                 listOfNotNull(
                     entry.lineLabel?.takeIf(String::isNotBlank),
                     entry.publicNumber?.takeIf(String::isNotBlank)?.let { stringResource(R.string.station_board_train_number, it) },
-                    entry.operatorId?.value?.takeIf(String::isNotBlank),
+                    entry.operatorId?.value?.let(OperatorNames::displayName),
                     entry.status?.value?.stationBoardLabel()
                 ).joinToString(" · "),
                 style = MaterialTheme.typography.bodySmall,
