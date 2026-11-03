@@ -13,6 +13,7 @@ Il companion è predisposto, ma intenzionalmente **non attivo** quando `ALEXA_EN
 | Console Alexa     | Valore Binario                                        |
 | ----------------- | ----------------------------------------------------- |
 | Tipo skill        | Custom Skill, locale principale italiano (`it-IT`); `skill-package/` dichiara anche `en-US`, `en-GB`, `de-DE`, `fr-FR`, `es-ES`, `ar-SA`, `hi-IN`, `ja-JP`, `pt-BR` (vedi `docs/l10n/LOCALES.md`) |
+| Invocation name   | `it-IT` «binario treni» (due parole, come «binario trains», «binario züge», «binario trenes» negli altri locale); vedi sotto |
 | Endpoint HTTPS    | `https://{dominio-binario}/api/alexa/webhook`         |
 | Account linking   | OAuth 2.0, authorization code grant                   |
 | Authorization URI | `https://{dominio-binario}/api/alexa/oauth/authorize` |
@@ -32,6 +33,8 @@ L’endpoint webhook mantiene l’ASK SDK ufficiale per gli intent. Prima del di
 L’adapter Express precedente è stato rimosso perché trascinava `node-forge` vulnerabile senza patch disponibile (GHSA-86w9-cpqp-85rv). Nessuna eccezione è stata aggiunta al gate di audit Alexa. I test includono firme e certificati con DigestInfo PKCS#1 alterato, oltre a certificati non attendibili, scaduti e con SAN errato. Amazon richiede HTTPS e la convalida delle richieste per una Custom Skill ospitata come web service.[1] Il certificato della pubblicazione deve essere firmato da una CA attendibile; un certificato autofirmato è ammesso solo nei test.[1]
 
 ## Modello di interazione da creare
+
+**Nome di invocazione italiano — decisione del titolare.** Amazon non ammette un nome di una sola parola comune senza prova di marchio, e «binario» è una parola d'uso quotidiano («binario 3»). Il modello `it-IT` usa quindi «binario treni», coerente con gli altri locale; nome della skill, frasi d'esempio di `skill.json` e suggerimenti Echo Show sono allineati. Se il titolare dispone di un marchio registrato «Binario» e preferisce l'invocazione di una parola, deve ripristinarla in `it-IT.json`, `skill.json` e `shared/i18n.ts` e allegare la prova del marchio alla certificazione. `server/voice/alexaSkill.test.ts` verifica per tutti i locale che il nome abbia almeno due parole minuscole e che ogni frase d'esempio e ogni suggerimento Echo Show, tolti invocazione e connettore («chiedi a … », «ask … for»), corrisponda a un sample dell'intent.
 
 | Intent              | Esempi di utterance italiane                                         | Slot                      |
 | ------------------- | -------------------------------------------------------------------- | ------------------------- |

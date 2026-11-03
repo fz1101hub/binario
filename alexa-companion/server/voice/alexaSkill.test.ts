@@ -1,4 +1,4 @@
-import { messagesForLocale, SUPPORTED_LOCALES } from "@shared/i18n";
+import { formatMessage, messagesForLocale, SUPPORTED_LOCALES } from "@shared/i18n";
 import { DrizzleQueryError } from "drizzle-orm";
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -584,6 +584,88 @@ describe("versioned interaction models", () => {
         screen.hintMyRoutes,
       ])
         expect(phrase.toLocaleLowerCase(locale), `${locale}: ${phrase}`).toContain(invocation);
+    }
+  });
+
+  /**
+   * How each locale wraps an utterance in a one-shot request: "Alexa, ask {invocation} for X".
+   * The part after the launch phrase and its connector must be a sample, or Alexa may not reach
+   * the intent and certification rejects the example phrase.
+   */
+  const PHRASE_GRAMMAR: Record<(typeof LOCALES)[number], { open: string; ask: string }> = {
+    "it-IT": { open: "^alexa, apri INV$", ask: "^alexa, chiedi a INV (?:di |se )?(.+)$" },
+    "en-US": { open: "^alexa, open INV$", ask: "^alexa, ask INV (?:for |to |about |if |whether )?(.+)$" },
+    "en-GB": { open: "^alexa, open INV$", ask: "^alexa, ask INV (?:for |to |about |if |whether )?(.+)$" },
+    "de-DE": { open: "^alexa, öffne INV$", ask: "^alexa, frage INV (?:nach |ob )?(.+)$" },
+    "fr-FR": { open: "^alexa, ouvre INV$", ask: "^alexa, demande à INV (?:de |si )?(.+)$" },
+    "es-ES": { open: "^alexa, abre INV$", ask: "^alexa, pregunta a INV (?:por |si )?(.+)$" },
+    "ar-SA": { open: "^أليكسا، افتح INV$", ask: "^أليكسا، اسأل INV (?:عن )?(.+)$" },
+    "hi-IN": { open: "^अलेक्सा, INV खोलो$", ask: "^अलेक्सा, INV से (.+) पूछो$" },
+    "ja-JP": { open: "^アレクサ、INVを開いて$", ask: "^アレクサ、INVで(.+)$" },
+    "pt-BR": { open: "^alexa, abra INV$", ask: "^alexa, pergunte ao INV (.+)$" },
+  };
+  const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const plain = (locale: string, value: string) => {
+    const text = value.replace(/[«»“”„"「」]/g, "").trim().toLocaleLowerCase(locale).replace(/\s+/g, " ");
+    return locale === "ja-JP" ? text.replace(/ /g, "") : text;
+  };
+  function utteranceOf(locale: (typeof LOCALES)[number], phrase: string) {
+    const invocation = escapeRegExp(model(locale).interactionModel.languageModel.invocationName);
+    const grammar = PHRASE_GRAMMAR[locale];
+    const text = plain(locale, phrase);
+    if (new RegExp(grammar.open.replace("INV", invocation)).test(text)) return null;
+    const ask = new RegExp(grammar.ask.replace("INV", invocation)).exec(text);
+    if (!ask) throw new Error(`${locale}: "${phrase}" does not follow the invocation grammar`);
+    return plain(locale, ask[1]);
+  }
+  function sampleMatches(locale: string, sample: string, utterance: string) {
+    const pattern = escapeRegExp(plain(locale, sample)).replace(/\\\{[A-Za-z]+\\\}/g, ".+");
+    return new RegExp(`^${pattern}$`).test(utterance);
+  }
+
+  it("uses an invocation name of at least two lower-case words in every locale", () => {
+    for (const locale of LOCALES) {
+      const invocation = model(locale).interactionModel.languageModel.invocationName;
+      expect(invocation, locale).toBe(invocation.toLocaleLowerCase(locale));
+      expect(invocation, locale).not.toMatch(/[^\p{L}\p{M} ]/u);
+      if (locale === "ja-JP") expect(invocation).toMatch(/^ビナリオ.+$/);
+      else expect(invocation.split(" ").length, locale).toBeGreaterThanOrEqual(2);
+    }
+  });
+
+  it("makes every example phrase and Echo Show hint reach a sample utterance of its intent", () => {
+    const published = manifest().manifest.publishingInformation.locales as Record<string, { examplePhrases: string[] }>;
+    const problems: string[] = [];
+    for (const locale of LOCALES) {
+      const intents = model(locale).interactionModel.languageModel.intents;
+      const samplesOf = (name?: string) =>
+        intents.filter(item => !item.name.startsWith("AMAZON.") && (!name || item.name === name)).flatMap(item => item.samples);
+      const screen = messagesForLocale(locale).screen;
+      const phrases: Array<[string, string | undefined]> = [
+        ...published[locale].examplePhrases.map(phrase => [phrase, undefined] as [string, undefined]),
+        [screen.hintNextTrains, "NextTrainsIntent"],
+        [screen.hintTrainStatus, "TrainStatusIntent"],
+        [screen.hintMyRoutes, "MyRoutesIntent"],
+      ];
+      for (const [phrase, intentName] of phrases) {
+        const utterance = utteranceOf(locale, phrase);
+        if (utterance === null) continue;
+        if (!samplesOf(intentName).some(sample => sampleMatches(locale, sample, utterance)))
+          problems.push(`${locale}: "${utterance}" (${phrase})`);
+      }
+      expect(utteranceOf(locale, published[locale].examplePhrases[0]), `${locale}: the first example phrase opens the skill`).toBeNull();
+    }
+    expect(problems).toEqual([]);
+  });
+
+  it("asks which route with a phrase the locale's NextTrainsIntent understands", () => {
+    for (const locale of LOCALES) {
+      const choice = plain(locale, formatMessage(messagesForLocale(locale).voice.routeChoice, { example: "mare" }));
+      const samples = model(locale).interactionModel.languageModel.intents.find(item => item.name === "NextTrainsIntent")!.samples;
+      expect(
+        samples.some(sample => sample.includes("{routeName}") && choice.includes(plain(locale, sample.replace("{routeName}", "mare")))),
+        `${locale}: ${choice}`
+      ).toBe(true);
     }
   });
 

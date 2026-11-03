@@ -8,8 +8,8 @@
         { "name": "AMAZON.StopIntent", "samples": [] },
         { "name": "AMAZON.NavigateHomeIntent", "samples": [] },
         { "name": "AMAZON.FallbackIntent", "samples": [] },
-        { "name": "NextTrainsIntent", "slots": [{ "name": "routeName", "type": "AMAZON.SearchQuery" }], "samples": ["cuáles son los próximos trenes", "próximos trenes", "próximos trenes para {routeName}", "cuándo sale el próximo tren para {routeName}"] },
-        { "name": "TrainStatusIntent", "slots": [{ "name": "trainNumber", "type": "AMAZON.NUMBER" }], "samples": ["estado del tren {trainNumber}", "el tren {trainNumber} llega a tiempo", "cómo va el tren {trainNumber}", "retraso del tren {trainNumber}"] },
+        { "name": "NextTrainsIntent", "slots": [{ "name": "routeName", "type": "AMAZON.SearchQuery" }], "samples": ["cuáles son los próximos trenes", "próximos trenes", "los próximos trenes", "próximos trenes para {routeName}", "cuándo sale el próximo tren para {routeName}"] },
+        { "name": "TrainStatusIntent", "slots": [{ "name": "trainNumber", "type": "AMAZON.NUMBER" }], "samples": ["estado del tren {trainNumber}", "el estado del tren {trainNumber}", "el tren {trainNumber} llega a tiempo", "cómo va el tren {trainNumber}", "retraso del tren {trainNumber}"] },
         { "name": "MyRoutesIntent", "slots": [], "samples": ["mis rutas", "enumera mis rutas guardadas", "qué rutas he guardado", "rutas guardadas"] }
       ],
       "types": []

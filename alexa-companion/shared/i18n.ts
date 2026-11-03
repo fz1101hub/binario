@@ -300,9 +300,9 @@ const it: LocaleMessages = {
     nextTrainsAction: "Prossimi treni",
     myRoutesAction: "Le mie tratte",
     hintsTitle: "Prova a chiedere",
-    hintNextTrains: "«Alexa, chiedi a Binario i prossimi treni»",
-    hintTrainStatus: "«Alexa, chiedi a Binario lo stato del treno 9512»",
-    hintMyRoutes: "«Alexa, chiedi a Binario le mie tratte»",
+    hintNextTrains: "«Alexa, chiedi a Binario Treni i prossimi treni»",
+    hintTrainStatus: "«Alexa, chiedi a Binario Treni lo stato del treno 9512»",
+    hintMyRoutes: "«Alexa, chiedi a Binario Treni le mie tratte»",
   },
 };
 

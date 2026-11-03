@@ -1,7 +1,7 @@
 {
   "interactionModel": {
     "languageModel": {
-      "invocationName": "binario",
+      "invocationName": "binario treni",
       "intents": [
         {
           "name": "AMAZON.CancelIntent",
@@ -50,7 +50,8 @@
             "stato del treno {trainNumber}",
             "il treno {trainNumber} è puntuale",
             "com'è messo il treno {trainNumber}",
-            "ritardo del treno {trainNumber}"
+            "ritardo del treno {trainNumber}",
+            "lo stato del treno {trainNumber}"
           ]
         },
         {
