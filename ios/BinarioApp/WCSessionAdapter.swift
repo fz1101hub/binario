@@ -9,6 +9,8 @@ final class WCSessionAdapter: NSObject, WatchSnapshotSession, WCSessionDelegate 
     private let session: WCSession
 
     var activationHandler: (@MainActor (WatchSessionActivationState) -> Void)?
+    var watchStateHandler: (@MainActor () -> Void)?
+    var refreshRequestHandler: (@MainActor () -> Void)?
 
     var isSupported: Bool {
         WCSession.isSupported()
@@ -83,6 +85,29 @@ final class WCSessionAdapter: NSObject, WatchSnapshotSession, WCSessionDelegate 
         Task { @MainActor [weak self] in
             self?.activationHandler?(.inactive)
             self?.activate()
+        }
+    }
+
+    /// Pairing or the installation of the Watch app changed: activation does not complete again,
+    /// so this is what delivers a snapshot held back while no Watch app could receive it.
+    nonisolated func sessionWatchStateDidChange(_ session: WCSession) {
+        Task { @MainActor [weak self] in
+            self?.watchStateHandler?()
+        }
+    }
+
+    /// "Aggiorna" on the Watch. The reply only acknowledges receipt and is sent at once, from this
+    /// Watch Connectivity queue; the refreshed snapshot follows as a new application context.
+    nonisolated func session(
+        _ session: WCSession,
+        didReceiveMessage message: [String: Any],
+        replyHandler: @escaping ([String: Any]) -> Void
+    ) {
+        let isRefreshRequest = WatchRefreshRequest.isRefreshRequest(message)
+        replyHandler([WatchRefreshRequest.messageKey: isRefreshRequest])
+        guard isRefreshRequest else { return }
+        Task { @MainActor [weak self] in
+            self?.refreshRequestHandler?()
         }
     }
 }

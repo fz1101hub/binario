@@ -7,6 +7,7 @@
 "planner.origin" = "الانطلاق";
 "planner.destination" = "الوجهة";
 "planner.departure" = "التاريخ والوقت";
+"planner.departure.italian_time" = "الأوقات بتوقيت إيطاليا";
 "planner.choose_station" = "اختر محطة";
 "planner.search_station" = "ابحث عن محطة";
 "planner.swap" = "اعكس المسار";
@@ -64,6 +65,7 @@
 "accessibility.selected_station" = "اختر المحطة";
 "accessibility.swap_route" = "بدِّل الانطلاق والوجهة";
 "accessibility.saved_route" = "مسار محفوظ";
+"accessibility.open_saved_route" = "يبحث عن القطارات التالية على هذا المسار";
 "accessibility.delete_route" = "احذف المسار";
 "action.ok" = "حسنًا";
 "catalog.loading" = "جارٍ تحميل كتالوج المحطات…";

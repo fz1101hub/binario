@@ -7,6 +7,7 @@
 "planner.origin" = "Ga đi";
 "planner.destination" = "Ga đến";
 "planner.departure" = "Ngày và giờ";
+"planner.departure.italian_time" = "Giờ theo giờ Ý";
 "planner.choose_station" = "Chọn ga";
 "planner.search_station" = "Tìm ga";
 "planner.swap" = "Đảo chiều tuyến";
@@ -64,6 +65,7 @@
 "accessibility.selected_station" = "Chọn ga";
 "accessibility.swap_route" = "Đổi chỗ ga đi và ga đến";
 "accessibility.saved_route" = "Tuyến đã lưu";
+"accessibility.open_saved_route" = "Tìm các chuyến tàu tiếp theo trên tuyến này";
 "accessibility.delete_route" = "Xóa tuyến";
 "action.ok" = "OK";
 "catalog.loading" = "Đang tải danh mục ga…";

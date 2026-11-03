@@ -7,6 +7,7 @@
 "planner.origin" = "出発";
 "planner.destination" = "到着";
 "planner.departure" = "日時";
+"planner.departure.italian_time" = "時刻はイタリア時間です";
 "planner.choose_station" = "駅を選択";
 "planner.search_station" = "駅を検索";
 "planner.swap" = "ルートを反転";
@@ -64,6 +65,7 @@
 "accessibility.selected_station" = "駅を選択";
 "accessibility.swap_route" = "出発駅と到着駅を入れ替える";
 "accessibility.saved_route" = "保存したルート";
+"accessibility.open_saved_route" = "このルートの次の列車を検索します";
 "accessibility.delete_route" = "ルートを削除";
 "action.ok" = "OK";
 "catalog.loading" = "駅カタログを読み込んでいます…";

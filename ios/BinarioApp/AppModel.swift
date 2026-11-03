@@ -17,6 +17,29 @@ final class AppModel: ObservableObject {
         case unavailable
     }
 
+    enum Tab: Hashable {
+        case planner
+        case saved
+        case settings
+    }
+
+    /// A saved route tapped in its tab: the planner takes it over and searches it from now.
+    struct PlannerRequest: Equatable, Identifiable {
+        let id = UUID()
+        let origin: StationIdentity
+        let destination: StationIdentity
+    }
+
+    /// A listed train with the instant it departs, resolved from its "HH:mm" time.
+    struct WatchDeparture: Equatable {
+        let service: TrainService
+        let departure: Date
+    }
+
+    /// The bundled timetables print times in their agency zone; every agency they include keeps
+    /// Central European time, as Rome does.
+    static let timetableTimeZone = TimeZone(identifier: "Europe/Rome") ?? .current
+
     @Published private(set) var catalogState: CatalogState
     @Published private(set) var savedRoutes: [SavedRoute]
     @Published private(set) var watchSharingEnabled: Bool
@@ -29,9 +52,13 @@ final class AppModel: ObservableObject {
     @Published private(set) var coveredStationIDs: Set<String>?
     @Published private(set) var latestSnapshot: JourneySnapshot?
     @Published var persistenceMessageKey: String?
+    @Published var selectedTab: Tab = .planner
+    @Published private(set) var plannerRequest: PlannerRequest?
 
     private(set) var repository: any JourneyRepository
     private var searchRequestID = 0
+    /// The last search that was for now, whose route the Watch shows; nil once the input changes.
+    private var watchRouteQuery: JourneyQuery?
     let versionDisplay: String
 
     private let savedRouteStore: SavedRouteStore
@@ -65,6 +92,10 @@ final class AppModel: ObservableObject {
         watchPublisher?.statusDidChange = { [weak self] status in
             guard let self else { return }
             self.watchSyncStatus = status
+        }
+        watchPublisher?.refreshRequested = { [weak self] in
+            guard let self else { return }
+            Task { await self.refreshWatchSnapshot() }
         }
         watchPublisher?.bootstrap()
         if !watchSharingEnabled {
@@ -207,18 +238,20 @@ final class AppModel: ObservableObject {
         let requestID = searchRequestID
         let result = await repository.journeys(for: query)
         guard requestID == searchRequestID else { return }
+        let isForNow = Self.isCurrent(query, now: Date())
+        watchRouteQuery = isForNow ? query : nil
         switch result {
         case let .available(snapshot):
             searchState = .idle
             latestSnapshot = snapshot
-            publishAvailableSnapshot(snapshot)
+            if isForNow { publishAvailableSnapshot(snapshot) }
         case let .unavailable(reason):
             searchState = .unavailable(reason)
             latestSnapshot = nil
             if reason == .noAuthorizedProvider || reason == .providerInvalid {
                 scheduleState = .unavailable
             }
-            publishUnavailableSnapshot(for: query)
+            if isForNow { publishUnavailableSnapshot(for: query) }
         }
     }
 
@@ -226,9 +259,52 @@ final class AppModel: ObservableObject {
         searchRequestID &+= 1
         searchState = .idle
         latestSnapshot = nil
+        watchRouteQuery = nil
         if watchSharingEnabled {
             revokeWatchSnapshot()
         }
+    }
+
+    /// The Watch asked for fresh trains ("Aggiorna"): search the route of the last search for now
+    /// again and publish the result, without touching what the planner shows.
+    func refreshWatchSnapshot(now: Date = Date()) async {
+        guard watchSharingEnabled, scheduleState == .available, let route = watchRouteQuery,
+              let query = try? JourneyQuery(
+                  origin: route.origin,
+                  destination: route.destination,
+                  departure: now,
+                  direction: route.direction
+              )
+        else { return }
+        let requestID = searchRequestID
+        let result = await repository.journeys(for: query)
+        // A search or an edit since the request decides what the Watch shows.
+        guard requestID == searchRequestID, watchSharingEnabled, watchRouteQuery != nil else { return }
+        switch result {
+        case let .available(snapshot):
+            publishAvailableSnapshot(snapshot)
+        case .unavailable:
+            publishUnavailableSnapshot(for: query)
+        }
+    }
+
+    func openPlanner(for route: SavedRoute) {
+        plannerRequest = PlannerRequest(origin: route.origin, destination: route.destination)
+        selectedTab = .planner
+    }
+
+    func takePlannerRequest() -> PlannerRequest? {
+        defer { plannerRequest = nil }
+        return plannerRequest
+    }
+
+    /// The catalogue entry of a saved station, or the saved identity itself while the catalogue
+    /// is not loaded: a query needs only the identity.
+    func station(for identity: StationIdentity) -> Station {
+        if case let .available(catalog) = catalogState, let station = catalog.station(id: identity.id) {
+            return station
+        }
+        return Station(id: identity.id, name: identity.name, railwayCode: identity.railwayCode)
     }
 
     /// What Settings shows: a switched-off toggle reads as off, whatever the session reports.
@@ -242,6 +318,7 @@ final class AppModel: ObservableObject {
         watchSharingEnabled = enabled
         if enabled {
             watchSyncStatus = watchPublisher?.status ?? .unsupported
+            republishLatestSearch()
         } else {
             revokeWatchSnapshot()
         }
@@ -305,12 +382,23 @@ final class AppModel: ObservableObject {
         }
     }
 
+    /// Turning sharing on sends the Watch the search already on screen, if it was for now.
+    private func republishLatestSearch() {
+        guard let route = watchRouteQuery else { return }
+        if let snapshot = latestSnapshot {
+            publishAvailableSnapshot(snapshot)
+        } else if case .unavailable = searchState {
+            publishUnavailableSnapshot(for: route)
+        }
+    }
+
+    /// Callers publish only searches for now (isCurrent at completion).
     private func publishUnavailableSnapshot(for query: JourneyQuery) {
-        guard watchSharingEnabled, let watchPublisher, Self.isCurrent(query, now: Date()) else { return }
+        guard watchSharingEnabled, let watchPublisher else { return }
         let now = Int64(Date().timeIntervalSince1970 * 1_000)
         let snapshot = WearSnapshotV1.unavailable(
             routeId: SavedRoute.routeIdentifier(origin: query.origin, destination: query.destination),
-            routeLabel: WatchRouteLabelFormatter.format(origin: query.origin, destination: query.destination),
+            routeLabel: watchRouteLabel(origin: query.origin, destination: query.destination),
             direction: query.direction,
             generatedAtEpochMillis: now,
             sourceLabel: String(localized: "watch.source.unavailable"),
@@ -323,13 +411,21 @@ final class AppModel: ObservableObject {
         }
     }
 
+    /// The Watch lists the next trains: only those that have not left are sent, so a result
+    /// searched a while ago never shows departed trains as upcoming. Without any, the Watch gets
+    /// the unavailable state for the route.
     private func publishAvailableSnapshot(_ journey: JourneySnapshot) {
         let nowDate = Date()
-        guard watchSharingEnabled, let watchPublisher, Self.isCurrent(journey.query, now: nowDate) else { return }
+        guard watchSharingEnabled, let watchPublisher else { return }
+        let departures = Array(Self.upcomingDepartures(in: journey, now: nowDate).prefix(WearSnapshotV1.maximumServices))
+        guard !departures.isEmpty else {
+            publishUnavailableSnapshot(for: journey.query)
+            return
+        }
+        let services = departures.map(\.service)
         let now = Int64(nowDate.timeIntervalSince1970 * 1_000)
-        let services = Array(journey.services.prefix(WearSnapshotV1.maximumServices))
         let generatedAt = Int64(journey.generatedAt.timeIntervalSince1970 * 1_000)
-        let expiresAt = Int64(Self.watchExpiry(for: journey, services: services, now: nowDate).timeIntervalSince1970 * 1_000)
+        let expiresAt = Int64(Self.watchExpiry(for: journey, departures: departures, now: nowDate).timeIntervalSince1970 * 1_000)
         let snapshot = WearSnapshotV1(
             generatedAtEpochMillis: generatedAt,
             expiresAtEpochMillis: expiresAt,
@@ -347,10 +443,7 @@ final class AppModel: ObservableObject {
                 origin: journey.query.origin,
                 destination: journey.query.destination
             ),
-            routeLabel: WatchRouteLabelFormatter.format(
-                origin: journey.query.origin,
-                destination: journey.query.destination
-            ),
+            routeLabel: watchRouteLabel(origin: journey.query.origin, destination: journey.query.destination),
             direction: journey.query.direction,
             notice: String(localized: "watch.notice.programmed"),
             services: services.map { service in
@@ -375,30 +468,63 @@ final class AppModel: ObservableObject {
     }
 
     /// The Watch presents its snapshot as the next trains of the route, so only a search for
-    /// now is published: a search for another day or time stays on the iPhone. The window
-    /// tolerates a planner opened a while ago with its default time.
+    /// now is published: a search for another day or time stays on the iPhone. The planner
+    /// searches from the current time unless the user picked one, so a few minutes cover a time
+    /// picked at minute precision; the trains that have left are dropped before publishing.
     static func isCurrent(_ query: JourneyQuery, now: Date) -> Bool {
         let offset = query.departure.timeIntervalSince(now)
-        return offset >= -30 * 60 && offset <= 15 * 60
+        return offset >= -5 * 60 && offset <= 15 * 60
+    }
+
+    /// The listed trains that have not left at `now`, with their departure instants, up to the
+    /// repository's expiry. The Watch resolves the same "HH:mm" times after the snapshot's
+    /// generation (apple-watch/Shared/WatchDepartures.swift), unambiguous within that window.
+    static func upcomingDepartures(in journey: JourneySnapshot, now: Date) -> [WatchDeparture] {
+        let calendar = timetableCalendar
+        // The repository lists trains from the query time on; "HH:mm" drops the seconds.
+        var cursor = journey.query.departure.addingTimeInterval(-60)
+        var upcoming: [WatchDeparture] = []
+        for service in journey.services {
+            guard let departure = nextOccurrence(of: service.expectedDeparture, after: cursor, calendar: calendar) else {
+                // A train that cannot be placed in time cannot be shown as the next one.
+                continue
+            }
+            // Two trains at the same minute must resolve to the same day.
+            cursor = departure.addingTimeInterval(-1)
+            guard departure >= now, departure < journey.expiresAt else { continue }
+            upcoming.append(WatchDeparture(service: service, departure: departure))
+        }
+        return upcoming
     }
 
     /// The snapshot must not outlive the last train it lists; the repository's 12-hour expiry
     /// would keep departed trains on the Watch as upcoming ones.
-    static func watchExpiry(for journey: JourneySnapshot, services: [TrainService], now: Date) -> Date {
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = TimeZone(identifier: "Europe/Rome") ?? .current
-        var cursor = journey.query.departure.addingTimeInterval(-60)
-        var lastDeparture: Date?
-        for service in services {
-            guard let departure = nextOccurrence(of: service.expectedDeparture, after: cursor, calendar: calendar) else {
-                return journey.expiresAt
-            }
-            lastDeparture = departure
-            // Two trains at the same minute must resolve to the same day.
-            cursor = departure.addingTimeInterval(-1)
-        }
-        guard let lastDeparture else { return journey.expiresAt }
+    static func watchExpiry(for journey: JourneySnapshot, departures: [WatchDeparture], now: Date) -> Date {
+        guard let lastDeparture = departures.last?.departure else { return journey.expiresAt }
         return min(journey.expiresAt, max(now.addingTimeInterval(60), lastDeparture.addingTimeInterval(2 * 60)))
+    }
+
+    /// The planner shows and picks times in the timetable zone; a caption says so when the
+    /// device clock reads differently at that moment.
+    static func needsTimetableZoneCaption(at date: Date, deviceTimeZone: TimeZone = .current) -> Bool {
+        deviceTimeZone.secondsFromGMT(for: date) != timetableTimeZone.secondsFromGMT(for: date)
+    }
+
+    private static var timetableCalendar: Calendar {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = timetableTimeZone
+        return calendar
+    }
+
+    /// The route title of the Watch is the station names; the route identifier is added only
+    /// when another catalogue station shares a name, the one way two routes read the same (no
+    /// two catalogue names share the 45-character prefix kept when a long label is shortened).
+    private func watchRouteLabel(origin: StationIdentity, destination: StationIdentity) -> String {
+        var disambiguate = false
+        if case let .available(catalog) = catalogState {
+            disambiguate = catalog.hasNamesake(origin) || catalog.hasNamesake(destination)
+        }
+        return WatchRouteLabelFormatter.format(origin: origin, destination: destination, disambiguate: disambiguate)
     }
 
     private static func nextOccurrence(of time: String, after start: Date, calendar: Calendar) -> Date? {

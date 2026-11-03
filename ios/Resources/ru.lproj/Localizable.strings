@@ -7,6 +7,7 @@
 "planner.origin" = "Отправление";
 "planner.destination" = "Назначение";
 "planner.departure" = "Дата и время";
+"planner.departure.italian_time" = "Время указано по итальянскому времени";
 "planner.choose_station" = "Выберите станцию";
 "planner.search_station" = "Поиск станции";
 "planner.swap" = "Поменять направление";
@@ -64,6 +65,7 @@
 "accessibility.selected_station" = "Выбрать станцию";
 "accessibility.swap_route" = "Поменять местами отправление и назначение";
 "accessibility.saved_route" = "Сохранённый маршрут";
+"accessibility.open_saved_route" = "Ищет ближайшие поезда по этому маршруту";
 "accessibility.delete_route" = "Удалить маршрут";
 "action.ok" = "ОК";
 "catalog.loading" = "Загрузка каталога станций…";

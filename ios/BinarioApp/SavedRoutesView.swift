@@ -16,15 +16,24 @@ struct SavedRoutesView: View {
                 List {
                     Section {
                         ForEach(model.savedRoutes) { route in
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(route.name)
-                                    .font(.headline)
-                                Text("\(route.origin.name) → \(route.destination.name)")
-                                    .font(.subheadline)
-                                    .foregroundStyle(.secondary)
+                            // One tap opens the planner on this route and searches it from now.
+                            Button {
+                                model.openPlanner(for: route)
+                            } label: {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(route.name)
+                                        .font(.headline)
+                                        .foregroundStyle(.primary)
+                                    Text("\(route.origin.name) → \(route.destination.name)")
+                                        .font(.subheadline)
+                                        .foregroundStyle(.secondary)
+                                }
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .contentShape(Rectangle())
                             }
-                            .accessibilityElement(children: .combine)
+                            // A button is one element already; the label replaces its two lines.
                             .accessibilityLabel(Text("\(String(localized: "accessibility.saved_route")): \(route.name)"))
+                            .accessibilityHint(Text("accessibility.open_saved_route"))
                             .accessibilityAction(named: Text("accessibility.delete_route")) {
                                 if let index = model.savedRoutes.firstIndex(where: { $0.id == route.id }) {
                                     model.deleteRoutes(at: IndexSet(integer: index))

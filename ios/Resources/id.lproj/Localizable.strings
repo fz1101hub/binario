@@ -7,6 +7,7 @@
 "planner.origin" = "Asal";
 "planner.destination" = "Tujuan";
 "planner.departure" = "Tanggal dan waktu";
+"planner.departure.italian_time" = "Waktu menurut waktu Italia";
 "planner.choose_station" = "Pilih stasiun";
 "planner.search_station" = "Cari stasiun";
 "planner.swap" = "Tukar rute";
@@ -64,6 +65,7 @@
 "accessibility.selected_station" = "Pilih stasiun";
 "accessibility.swap_route" = "Tukar asal dan tujuan";
 "accessibility.saved_route" = "Rute tersimpan";
+"accessibility.open_saved_route" = "Mencari kereta berikutnya di rute ini";
 "accessibility.delete_route" = "Hapus rute";
 "action.ok" = "OK";
 "catalog.loading" = "Memuat katalog stasiun…";

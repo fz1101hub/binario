@@ -7,6 +7,7 @@
 "planner.origin" = "Origen";
 "planner.destination" = "Destino";
 "planner.departure" = "Fecha y hora";
+"planner.departure.italian_time" = "Horarios en hora italiana";
 "planner.choose_station" = "Elegir una estación";
 "planner.search_station" = "Buscar estación";
 "planner.swap" = "Invertir ruta";
@@ -64,6 +65,7 @@
 "accessibility.selected_station" = "Seleccionar estación";
 "accessibility.swap_route" = "Intercambiar origen y destino";
 "accessibility.saved_route" = "Ruta guardada";
+"accessibility.open_saved_route" = "Busca los próximos trenes de esta ruta";
 "accessibility.delete_route" = "Eliminar ruta";
 "action.ok" = "Aceptar";
 "catalog.loading" = "Cargando el catálogo de estaciones…";

@@ -7,6 +7,7 @@
 "planner.origin" = "Partenza";
 "planner.destination" = "Destinazione";
 "planner.departure" = "Data e ora";
+"planner.departure.italian_time" = "Orari in ora italiana";
 "planner.choose_station" = "Scegli una stazione";
 "planner.search_station" = "Cerca stazione";
 "planner.swap" = "Inverti tratta";
@@ -64,6 +65,7 @@
 "accessibility.selected_station" = "Seleziona stazione";
 "accessibility.swap_route" = "Inverti partenza e destinazione";
 "accessibility.saved_route" = "Tratta salvata";
+"accessibility.open_saved_route" = "Cerca i prossimi treni di questa tratta";
 "accessibility.delete_route" = "Elimina tratta";
 "action.ok" = "OK";
 "catalog.loading" = "Caricamento del catalogo stazioni…";

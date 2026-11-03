@@ -7,6 +7,7 @@
 "planner.origin" = "출발";
 "planner.destination" = "도착";
 "planner.departure" = "날짜 및 시간";
+"planner.departure.italian_time" = "시간은 이탈리아 시간 기준";
 "planner.choose_station" = "역 선택";
 "planner.search_station" = "역 검색";
 "planner.swap" = "경로 바꾸기";
@@ -64,6 +65,7 @@
 "accessibility.selected_station" = "역 선택";
 "accessibility.swap_route" = "출발역과 도착역 바꾸기";
 "accessibility.saved_route" = "저장된 경로";
+"accessibility.open_saved_route" = "이 경로의 다음 열차를 검색합니다";
 "accessibility.delete_route" = "경로 삭제";
 "action.ok" = "확인";
 "catalog.loading" = "역 카탈로그를 불러오는 중…";

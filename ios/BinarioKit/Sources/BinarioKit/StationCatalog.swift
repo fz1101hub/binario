@@ -123,6 +123,16 @@ public struct CuratedStationCatalog: Decodable, Equatable, Sendable {
             .map(\.station)
     }
 
+    /// True when the search also offers another station with exactly this name, so a label made of
+    /// station names alone would not tell the two apart. Co-located duplicate entries of one station
+    /// are hidden by the search (isShadowedDuplicate) and are not namesakes.
+    public func hasNamesake(_ identity: StationIdentity) -> Bool {
+        let sameName = stations.filter { $0.name == identity.name }
+        return sameName.contains { station in
+            station.id != identity.id && !Self.isShadowedDuplicate(station, among: sameName)
+        }
+    }
+
     /// Some stations have several catalogue entries (an RFI and a Ferrovienord code for Varese
     /// Nord). The timetable index binds them all to the preferred entry, so only that one is
     /// offered: choosing another would find no trains. Mirrors CO_LOCATED_DUPLICATE_KM and

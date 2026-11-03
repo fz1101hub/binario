@@ -137,6 +137,57 @@ final class WearSnapshotV1Tests: XCTestCase {
         XCTAssertEqual(publisher.status, .contextUpdated)
     }
 
+    func testWatchStateChangeDeliversTheOperationHeldForAMissingWatch() throws {
+        let session = FakeSession(activationState: .activated)
+        session.isWatchAppInstalled = false
+        let publisher = WatchSnapshotPublisher(session: session)
+        publisher.bootstrap()
+        let data = try publisher.publish(operationalFixture(), nowEpochMillis: now)
+        XCTAssertEqual(publisher.status, .notPaired)
+
+        // Still no Watch app: the operation stays pending and nothing is sent.
+        session.changeWatchState()
+        XCTAssertTrue(session.contexts.isEmpty)
+        XCTAssertEqual(publisher.status, .notPaired)
+
+        // The user installs the Watch app: activation does not complete again, the state does.
+        session.isWatchAppInstalled = true
+        session.changeWatchState()
+        XCTAssertEqual(session.contexts, [[WatchSnapshotPublisher.contextKey: data]])
+        XCTAssertEqual(publisher.status, .contextUpdated)
+
+        // Nothing is pending any more: a later change sends nothing twice.
+        session.changeWatchState()
+        XCTAssertEqual(session.contexts.count, 1)
+    }
+
+    func testWatchStateChangeBeforeActivationSendsNothing() throws {
+        let session = FakeSession()
+        let publisher = WatchSnapshotPublisher(session: session)
+        publisher.bootstrap()
+        _ = try publisher.publish(operationalFixture(), nowEpochMillis: now)
+
+        session.changeWatchState()
+
+        XCTAssertTrue(session.contexts.isEmpty)
+        XCTAssertEqual(publisher.status, .pending)
+    }
+
+    func testRefreshRequestFromTheWatchReachesThePublisherClient() {
+        let session = FakeSession(activationState: .activated)
+        let publisher = WatchSnapshotPublisher(session: session)
+        let counter = RequestCounter()
+        publisher.refreshRequested = { counter.count += 1 }
+
+        session.refreshRequestHandler?()
+
+        XCTAssertEqual(counter.count, 1)
+        XCTAssertTrue(WatchRefreshRequest.isRefreshRequest([WatchRefreshRequest.messageKey: true]))
+        XCTAssertFalse(WatchRefreshRequest.isRefreshRequest([WatchRefreshRequest.messageKey: false]))
+        XCTAssertFalse(WatchRefreshRequest.isRefreshRequest(["other": true]))
+        XCTAssertEqual(WatchRefreshRequest.messageKey, "binario_refresh_request")
+    }
+
     func testClearSignalReplacesPendingSnapshotOutsideV1JSONContract() throws {
         let session = FakeSession()
         let publisher = WatchSnapshotPublisher(session: session)
@@ -150,7 +201,15 @@ final class WearSnapshotV1Tests: XCTestCase {
         XCTAssertNil(session.contexts.first?[WatchSnapshotPublisher.contextKey])
     }
 
-    func testUnicodeSafeRouteFormatterIsDeterministicBoundedAndKeepsRouteIdentity() {
+    func testRouteFormatterShowsNamesOnlyAndTheRouteIdOnlyToDisambiguate() {
+        let roma = StationIdentity(id: "S08409", name: "Roma Termini")
+        let napoli = StationIdentity(id: "S09218", name: "Napoli Centrale")
+        XCTAssertEqual(WatchRouteLabelFormatter.format(origin: roma, destination: napoli), "Roma Termini → Napoli Centrale")
+        XCTAssertEqual(
+            WatchRouteLabelFormatter.format(origin: roma, destination: napoli, disambiguate: true),
+            "Roma Termini → Napoli Centrale · S08409--S09218"
+        )
+
         let origin = StationIdentity(
             id: "NC001752",
             name: "Boscotrecase - Porta Di Accesso Al Cratere Del Vesuvio"
@@ -162,13 +221,17 @@ final class WearSnapshotV1Tests: XCTestCase {
         let routeId = SavedRoute.routeIdentifier(origin: origin, destination: destination)
         let first = WatchRouteLabelFormatter.format(origin: origin, destination: destination)
         let second = WatchRouteLabelFormatter.format(origin: origin, destination: destination)
+        let disambiguated = WatchRouteLabelFormatter.format(origin: origin, destination: destination, disambiguate: true)
 
         XCTAssertEqual(first, second)
         XCTAssertLessThanOrEqual(first.count, WearSnapshotV1.maximumRouteLabelCharacters)
-        XCTAssertTrue(first.hasSuffix(routeId))
+        XCTAssertFalse(first.contains(routeId))
         XCTAssertTrue(first.contains("Boscotrecase"))
         XCTAssertTrue(first.contains("Morciano"))
         XCTAssertFalse(first.unicodeScalars.contains("\u{FFFD}"))
+        XCTAssertLessThanOrEqual(disambiguated.count, WearSnapshotV1.maximumRouteLabelCharacters)
+        XCTAssertTrue(disambiguated.hasSuffix(routeId))
+        XCTAssertTrue(disambiguated.contains("Boscotrecase"))
     }
 
     private var service: WearServiceV1 {
@@ -249,12 +312,19 @@ private enum TestError: Error {
 }
 
 @MainActor
+private final class RequestCounter {
+    var count = 0
+}
+
+@MainActor
 private final class FakeSession: WatchSnapshotSession {
     let isSupported: Bool
     var isPaired = true
     var isWatchAppInstalled = true
     private(set) var activationState: WatchSessionActivationState
     var activationHandler: (@MainActor (WatchSessionActivationState) -> Void)?
+    var watchStateHandler: (@MainActor () -> Void)?
+    var refreshRequestHandler: (@MainActor () -> Void)?
     var activationCount = 0
     var contexts: [[String: Data]] = []
     var error: Error?
@@ -277,5 +347,9 @@ private final class FakeSession: WatchSnapshotSession {
     func completeActivation(_ state: WatchSessionActivationState) {
         activationState = state
         activationHandler?(state)
+    }
+
+    func changeWatchState() {
+        watchStateHandler?()
     }
 }

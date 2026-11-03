@@ -7,6 +7,7 @@
 "planner.origin" = "Start";
 "planner.destination" = "Ziel";
 "planner.departure" = "Datum und Uhrzeit";
+"planner.departure.italian_time" = "Zeiten in italienischer Zeit";
 "planner.choose_station" = "Bahnhof auswählen";
 "planner.search_station" = "Bahnhof suchen";
 "planner.swap" = "Strecke umkehren";
@@ -64,6 +65,7 @@
 "accessibility.selected_station" = "Bahnhof auswählen";
 "accessibility.swap_route" = "Start und Ziel vertauschen";
 "accessibility.saved_route" = "Gespeicherte Strecke";
+"accessibility.open_saved_route" = "Sucht die nächsten Züge auf dieser Strecke";
 "accessibility.delete_route" = "Strecke löschen";
 "action.ok" = "OK";
 "catalog.loading" = "Bahnhofskatalog wird geladen…";
