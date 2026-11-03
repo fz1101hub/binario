@@ -17,8 +17,15 @@ Il companion è predisposto, ma intenzionalmente **non attivo** quando `ALEXA_EN
 | Account linking   | OAuth 2.0, authorization code grant                   |
 | Authorization URI | `https://{dominio-binario}/api/alexa/oauth/authorize` |
 | Access token URI  | `https://{dominio-binario}/api/alexa/oauth/token`     |
+| Your Client ID    | Lo stesso valore di `ALEXA_OAUTH_CLIENT_ID`           |
+| Your Secret       | Lo stesso valore di `ALEXA_OAUTH_CLIENT_SECRET`       |
+| Your Authentication Scheme | **HTTP Basic (Recommended)**, il default della console; anche *Credentials in request body* funziona |
 | Scope             | `routes.read`                                         |
 | Skill ID          | Da inserire come `ALEXA_SKILL_ID` nei segreti server  |
+
+Il token endpoint accetta le credenziali del client in uno solo dei due modi previsti da RFC 6749 §2.3.1: nell'header `Authorization: Basic` (id e secret form-URL-encoded, poi base64) oppure come `client_id` e `client_secret` nel corpo. Una richiesta che li usa entrambi, o con credenziali errate, riceve `401 invalid_client` con `WWW-Authenticate: Basic`. Ogni risposta del token endpoint porta `Cache-Control: no-store` e `Pragma: no-cache`.
+
+Amazon chiama webhook e token endpoint da pochi indirizzi condivisi: per IP si contano soltanto le richieste che falliscono la verifica della firma (webhook, 60 al minuto) o l'autenticazione del client (token, 30 al minuto). Il traffico verificato ha budget propri: 60 richieste al minuto per utente Alexa firmato (chiave: digest di skill ID e user ID) e 1.200 richieste token al minuto per il client OAuth autenticato. Le pagine aperte dal browser (consenso Alexa, login dashboard) restano limitate a 30 richieste al minuto per IP.
 
 L’endpoint webhook mantiene l’ASK SDK ufficiale per gli intent. Prima del dispatch, `server/voice/alexaWebhook.ts` verifica il corpo originale con `Signature-256` (RSA-SHA256 tramite Node/OpenSSL), la catena X.509 con PKIjs/WebCrypto e le CA pubbliche incorporate in Node, il SAN esatto `echo-api.amazon.com`, la validità dei certificati, il timestamp entro 150 secondi e lo Skill ID. Sono rifiutati anche timestamp futuri oltre la stessa tolleranza e ID discordanti fra sessione e contesto. Il download ammette soltanto HTTPS da `s3.amazonaws.com/echo.api/`, senza redirect, con timeout e dimensione limitati; la cache è limitata a 64 catene e cinque minuti, senza superare la scadenza dei certificati. Come l’adapter precedente, non viene effettuato un controllo online CRL/OCSP.
 

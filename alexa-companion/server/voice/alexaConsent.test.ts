@@ -30,7 +30,7 @@ const sdkMocks = vi.hoisted(() => ({ authenticateRequest: vi.fn() }));
 vi.mock("../db", () => dbMocks);
 vi.mock("../_core/sdk", () => ({ sdk: sdkMocks }));
 
-import { registerAlexaRoutes, resolveLinkedUser } from "./alexa";
+import { readClientCredentials, registerAlexaRoutes, resolveLinkedUser } from "./alexa";
 import {
   AUTHORIZATION_REQUEST_COOKIE,
   CONSENT_COOKIE,
@@ -53,7 +53,7 @@ beforeEach(async () => {
   });
   dbMocks.recordAlexaVerification.mockResolvedValue(undefined);
   const app = express();
-  registerAlexaRoutes(app);
+  registerAlexaRoutes(app, { tokenRequestsPerClientPerMinute: 25 });
   server = app.listen(0);
   await new Promise<void>(resolve =>
     server!.once("listening", () => resolve())
@@ -313,6 +313,94 @@ describe("authorize Alexa con consenso esplicito", () => {
     expect(location.searchParams.get("error")).toBe("access_denied");
     expect(location.searchParams.get("code")).toBeNull();
     expect(dbMocks.createAuthorizationCode).not.toHaveBeenCalled();
+  });
+});
+
+function basic(id: string, secret: string) {
+  const encode = (value: string) => encodeURIComponent(value).replace(/%20/g, "+");
+  return `Basic ${Buffer.from(`${encode(id)}:${encode(secret)}`).toString("base64")}`;
+}
+
+function tokenRequest(fields: Record<string, string>, authorization?: string) {
+  return fetch(`${baseUrl}/api/alexa/oauth/token`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/x-www-form-urlencoded",
+      ...(authorization ? { authorization } : {}),
+    },
+    body: new URLSearchParams(fields).toString(),
+  });
+}
+
+describe("autenticazione del client sul token endpoint", () => {
+  it("decodifica HTTP Basic con id e secret form-URL-encoded (RFC 6749 §2.3.1)", () => {
+    expect(readClientCredentials(basic("alexa client:1", "s3cr+t:é"), {})).toEqual({
+      clientId: "alexa client:1",
+      clientSecret: "s3cr+t:é",
+    });
+    expect(readClientCredentials(`basic ${Buffer.from("id:").toString("base64")}`, {})).toEqual({ clientId: "id", clientSecret: "" });
+    expect(readClientCredentials(undefined, { client_id: "id", client_secret: "secret" })).toEqual({ clientId: "id", clientSecret: "secret" });
+    // Two methods at once, a different body client_id, malformed or undecodable Basic.
+    expect(readClientCredentials(basic("id", "secret"), { client_secret: "secret" })).toBeNull();
+    expect(readClientCredentials(basic("id", "secret"), { client_id: "other" })).toBeNull();
+    expect(readClientCredentials("Basic", {})).toBeNull();
+    expect(readClientCredentials("Basic bm8tc2VwYXJhdG9y", {})).toBeNull();
+    expect(readClientCredentials(`Basic ${Buffer.from("%E0%A4%A:x").toString("base64")}`, {})).toBeNull();
+    expect(readClientCredentials(undefined, { client_id: "id" })).toBeNull();
+  });
+
+  it("accetta HTTP Basic, lo schema raccomandato dalla console Alexa, e non rende cacheabile la risposta", async () => {
+    dbMocks.rotateRefreshToken.mockResolvedValue({ userId: 7, credentialVersion: 3 });
+    const response = await tokenRequest(
+      { grant_type: "refresh_token", refresh_token: "old-refresh-token", client_id: "alexa-client" },
+      basic("alexa-client", "alexa-secret")
+    );
+    expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(response.headers.get("pragma")).toBe("no-cache");
+    const body = await response.json();
+    expect(body).toMatchObject({ token_type: "Bearer", expires_in: 3600 });
+    expect(dbMocks.rotateRefreshToken).toHaveBeenCalledWith(expect.objectContaining({ clientId: "alexa-client" }));
+  });
+
+  it("anche la risposta con le credenziali nel body non è cacheabile", async () => {
+    dbMocks.exchangeAuthorizationCode.mockResolvedValue({ userId: 7, credentialVersion: 3 });
+    const response = await tokenRequest({
+      grant_type: "authorization_code",
+      client_id: "alexa-client",
+      client_secret: "alexa-secret",
+      code: "raw-code",
+      redirect_uri: REDIRECT,
+    });
+    expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(response.headers.get("pragma")).toBe("no-cache");
+  });
+
+  it.each([
+    ["Basic con secret errato", { grant_type: "refresh_token" }, basic("alexa-client", "wrong")],
+    ["Basic e client_secret insieme", { grant_type: "refresh_token", client_secret: "alexa-secret" }, basic("alexa-client", "alexa-secret")],
+    ["client_id del body diverso da Basic", { grant_type: "refresh_token", client_id: "other" }, basic("alexa-client", "alexa-secret")],
+    ["nessuna credenziale", { grant_type: "refresh_token" }, undefined],
+  ] as const)("rifiuta %s con 401 invalid_client e WWW-Authenticate", async (_label, fields, authorization) => {
+    const response = await tokenRequest({ ...fields, refresh_token: "old-refresh-token" }, authorization);
+    expect(response.status).toBe(401);
+    expect(await response.json()).toEqual({ error: "invalid_client" });
+    expect(response.headers.get("www-authenticate")).toMatch(/^Basic realm="binario-alexa"/);
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(dbMocks.rotateRefreshToken).not.toHaveBeenCalled();
+  });
+
+  it("limita le richieste del client autenticato in un proprio bucket, non per IP", async () => {
+    const statuses: number[] = [];
+    for (let attempt = 0; attempt < 25; attempt++)
+      statuses.push((await tokenRequest({ grant_type: "device_code" }, basic("alexa-client", "alexa-secret"))).status);
+    expect(new Set(statuses)).toEqual(new Set([400]));
+    const limited = await tokenRequest({ grant_type: "device_code" }, basic("alexa-client", "alexa-secret"));
+    expect(limited.status).toBe(429);
+    expect(Number(limited.headers.get("retry-after"))).toBeGreaterThan(0);
+    // A failed authentication is not spent from the authenticated client's budget.
+    expect((await tokenRequest({ grant_type: "device_code" }, basic("alexa-client", "wrong"))).status).toBe(401);
   });
 });
 

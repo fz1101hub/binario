@@ -28,6 +28,7 @@ import {
 import { ENV } from "../_core/env";
 import { isSecureRequest } from "../_core/cookies";
 import { describeErrorForLog } from "../_core/logRedaction";
+import { createWindowCounter } from "../_core/rateLimit";
 import {
   createOpaqueSecret,
   hashVoiceSecret,
@@ -435,6 +436,47 @@ function oauthError(res: Response, status: number, error: string) {
   return res.status(status).json({ error });
 }
 
+/** Token requests per minute for the one authenticated OAuth client (Amazon), all users together. */
+export const ALEXA_TOKEN_REQUESTS_PER_CLIENT_PER_MINUTE = 1_200;
+
+type ClientCredentials = { clientId: string; clientSecret: string };
+
+function formUrlDecode(value: string) {
+  return decodeURIComponent(value.replace(/\+/g, " "));
+}
+
+/**
+ * Client authentication for the token endpoint (RFC 6749 §2.3.1): HTTP Basic, which the Alexa
+ * console recommends, with the id and secret form-URL-encoded before base64, or client_id and
+ * client_secret in the body. Using both at once is refused; a body client_id next to Basic is
+ * allowed only when it names the same client. Null means no acceptable credentials.
+ */
+export function readClientCredentials(
+  authorization: string | undefined,
+  body: Record<string, unknown>
+): ClientCredentials | null {
+  const bodyId = typeof body.client_id === "string" ? body.client_id : undefined;
+  const bodySecret = typeof body.client_secret === "string" ? body.client_secret : undefined;
+  if (authorization !== undefined && /^basic(?:\s|$)/i.test(authorization)) {
+    const encoded = /^basic\s+([A-Za-z0-9+/]+={0,2})\s*$/i.exec(authorization)?.[1];
+    if (!encoded || bodySecret !== undefined) return null;
+    const decoded = Buffer.from(encoded, "base64").toString("utf8");
+    const separator = decoded.indexOf(":");
+    if (separator < 0) return null;
+    try {
+      const clientId = formUrlDecode(decoded.slice(0, separator));
+      const clientSecret = formUrlDecode(decoded.slice(separator + 1));
+      if (bodyId !== undefined && bodyId !== clientId) return null;
+      return { clientId, clientSecret };
+    } catch {
+      return null;
+    }
+  }
+  return bodyId !== undefined && bodySecret !== undefined
+    ? { clientId: bodyId, clientSecret: bodySecret }
+    : null;
+}
+
 // Express 4 does not forward rejected async route handlers to its error layer.
 function safeOAuthRoute(handler: (req: Request, res: Response) => Promise<unknown>) {
   return (req: Request, res: Response, next: NextFunction) => {
@@ -523,7 +565,13 @@ async function tokenPairResponse(
   };
 }
 
-export function registerAlexaRoutes(app: Express) {
+export function registerAlexaRoutes(
+  app: Express,
+  options: { tokenRequestsPerClientPerMinute?: number } = {}
+) {
+  const tokenRequestsPerClient = createWindowCounter({
+    limit: options.tokenRequestsPerClientPerMinute ?? ALEXA_TOKEN_REQUESTS_PER_CLIENT_PER_MINUTE,
+  });
   // GET only shows an authenticated consent page: the code is created by the
   // CSRF-protected POST below, so a cross-site navigation cannot link a
   // victim's Binario account to someone else's Alexa.
@@ -618,19 +666,29 @@ export function registerAlexaRoutes(app: Express) {
     express.urlencoded({ extended: false }),
     express.json({ strict: true }),
     safeOAuthRoute(async (req, res) => {
+      // RFC 6749 §5.1: token responses, errors included, are never cached.
+      res.set({ "Cache-Control": "no-store", Pragma: "no-cache" });
       if (!isAlexaConfigured())
         return oauthError(res, 503, "alexa_not_configured");
-      const clientId =
-        typeof req.body?.client_id === "string" ? req.body.client_id : "";
-      const clientSecret =
-        typeof req.body?.client_secret === "string"
-          ? req.body.client_secret
-          : "";
+      const credentials = readClientCredentials(
+        req.get("authorization"),
+        (req.body ?? {}) as Record<string, unknown>
+      );
       if (
-        !secureStringEquals(clientId, ENV.alexaOAuthClientId) ||
-        !secureStringEquals(clientSecret, ENV.alexaOAuthClientSecret)
-      )
+        !credentials ||
+        !secureStringEquals(credentials.clientId, ENV.alexaOAuthClientId) ||
+        !secureStringEquals(credentials.clientSecret, ENV.alexaOAuthClientSecret)
+      ) {
+        res.set("WWW-Authenticate", 'Basic realm="binario-alexa", charset="UTF-8"');
         return oauthError(res, 401, "invalid_client");
+      }
+      const { clientId } = credentials;
+      // Amazon refreshes every linked user from a few shared addresses: the budget belongs
+      // to the authenticated client, not to an IP (failed authentication is limited per IP).
+      if (!tokenRequestsPerClient.hit(clientId)) {
+        res.set("Retry-After", String(tokenRequestsPerClient.retryAfterSeconds(clientId)));
+        return oauthError(res, 429, "too_many_requests");
+      }
 
       if (req.body?.grant_type === "authorization_code") {
         const code = typeof req.body.code === "string" ? req.body.code : "";

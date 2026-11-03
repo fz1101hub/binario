@@ -580,6 +580,44 @@ describe("Alexa HTTP dispatch", () => {
     expect(invoke).toHaveBeenCalledTimes(1);
   });
 
+  it("limits verified traffic per signed Alexa user, not per address", async () => {
+    let now = NOW;
+    const invoke = vi.fn(async () => ({ version: "1.0", response: {} }));
+    const app = express();
+    app.post(
+      "/webhook",
+      createAlexaWebhookHandler({ invoke }, SKILL_ID, verifier(undefined, () => now).verify, {
+        requestsPerUserPerMinute: 2,
+        now: () => now,
+      })
+    );
+    server = app.listen(0);
+    await new Promise<void>(resolve => server!.once("listening", () => resolve()));
+    const url = `http://127.0.0.1:${(server.address() as AddressInfo).port}/webhook`;
+    const signedBy = (userId: string) => {
+      const data = body({
+        context: { System: { application: { applicationId: SKILL_ID }, user: { userId } } },
+        request: { type: "LaunchRequest", requestId: `request-${userId}`, timestamp: new Date(now).toISOString() },
+      });
+      const signed = headers(data);
+      return fetch(url, {
+        method: "POST",
+        body: data,
+        headers: { "content-type": "application/json", "Signature-256": signed.signature, SignatureCertChainUrl: signed.certificateUrl },
+      });
+    };
+    expect((await signedBy("amzn1.ask.account.A")).status).toBe(200);
+    expect((await signedBy("amzn1.ask.account.A")).status).toBe(200);
+    const limited = await signedBy("amzn1.ask.account.A");
+    expect(limited.status).toBe(429);
+    expect(limited.headers.get("retry-after")).toBe("60");
+    // Another user behind the same Amazon address keeps its own budget.
+    expect((await signedBy("amzn1.ask.account.B")).status).toBe(200);
+    expect(invoke).toHaveBeenCalledTimes(3);
+    now += 60_000;
+    expect((await signedBy("amzn1.ask.account.A")).status).toBe(200);
+  });
+
   it("rejects pre-parsed bodies before dispatch", async () => {
     const { invoke, post } = await start(true);
     expect((await post()).status).toBe(400);
