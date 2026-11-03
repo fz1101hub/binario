@@ -11,7 +11,7 @@ export function StationAutocompleteInput({ label, value, stationCode, onChange, 
   const suggestions = useMemo(() => searchCanonicalOfflineStations(value), [value]);
   const showSuggestions = focused && value.trim().length >= 2 && !stationCode;
 
-  return <View accessible accessibilityLabel={`${label}. ${description ?? ""}`} style={styles.container}>
+  return <View style={styles.container}>
     <Text style={[styles.label, { color: colors.foreground }]}>{label}</Text>
     <View style={styles.inputRow}><TextInput ref={inputRef} accessibilityLabel={`${label}${error ? ". " + error : ""}`} accessibilityHint={error ?? t("station.searchHint")} value={value} onChangeText={text => onChange(text)} onFocus={() => setFocused(true)} onBlur={() => setTimeout(() => setFocused(false), 160)} placeholder={label} placeholderTextColor={colors.muted} returnKeyType="next" style={[styles.input, styles.inputGrow, { color: colors.foreground, borderColor: error ? colors.danger : stationCode ? colors.primary : colors.border }]} />{onUseNearestStation ? <Pressable accessibilityRole="button" accessibilityState={{ disabled: locatingNearby, busy: locatingNearby }} accessibilityLabel={t("station.nearby")} accessibilityHint={t("station.nearbyHint")} disabled={locatingNearby} onPress={onUseNearestStation} style={({ pressed }) => [styles.nearbyButton, { borderColor: colors.primary, opacity: pressed || locatingNearby ? 0.65 : 1 }]}><Text style={[styles.nearbyButtonText, { color: colors.primary }]}>{locatingNearby ? t("station.searching") : t("station.nearby")}</Text></Pressable> : null}</View>
     {description ? <Text style={[styles.description, { color: colors.muted }]}>{description}</Text> : null}
