@@ -651,6 +651,12 @@
     <string name="accessibility_cancel_stop_alarm">取消 %1$s 的闹钟</string>
     <string name="exact_alarm_note">Android 未允许 Binario 使用精确闹钟：到站闹钟和通勤提醒可能会延迟。</string>
     <string name="exact_alarm_action">允许精确闹钟</string>
+    <string name="background_status_title">后台活动</string>
+    <string name="background_status_notifications_on">已允许通知</string>
+    <string name="background_status_notifications_off">未允许通知：闹钟、提醒和实时通知无法显示。</string>
+    <string name="background_status_exact_on">已允许精确闹钟</string>
+    <string name="background_status_battery_optimized">Binario 的电池优化已开启：Android 可能会推迟后台检查。</string>
+    <string name="background_status_battery_unrestricted">Binario 的电池优化已关闭</string>
     <string name="commuter_alert_quiet_hours_feedback">提醒已保存但未安排：提醒时间落在 22:00–07:00 静默时段内。</string>
     <string name="commuter_alert_invalid_time_feedback">提醒已保存但未安排：时间无效。</string>
     <string name="commuter_alert_disabled_feedback">提醒已保存，但已停用。</string>

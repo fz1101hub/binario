@@ -652,6 +652,12 @@
     <string name="accessibility_cancel_stop_alarm">%1$s का अलार्म रद्द करें</string>
     <string name="exact_alarm_note">Android, Binario को सटीक अलार्म की अनुमति नहीं देता: ठहराव अलार्म और दैनिक यात्री अलर्ट देर से आ सकते हैं।</string>
     <string name="exact_alarm_action">सटीक अलार्म की अनुमति दें</string>
+    <string name="background_status_title">बैकग्राउंड गतिविधि</string>
+    <string name="background_status_notifications_on">सूचनाओं की अनुमति है</string>
+    <string name="background_status_notifications_off">सूचनाओं की अनुमति नहीं है: अलार्म, अलर्ट और लाइव सूचनाएँ नहीं दिख सकतीं।</string>
+    <string name="background_status_exact_on">सटीक अलार्म की अनुमति है</string>
+    <string name="background_status_battery_optimized">Binario के लिए बैटरी ऑप्टिमाइज़ेशन चालू है: Android बैकग्राउंड जाँच टाल सकता है।</string>
+    <string name="background_status_battery_unrestricted">Binario के लिए बैटरी ऑप्टिमाइज़ेशन बंद है</string>
     <string name="commuter_alert_quiet_hours_feedback">अलर्ट सहेजा गया पर शेड्यूल नहीं हुआ: उसका समय शांत अवधि 22:00–07:00 में आता है।</string>
     <string name="commuter_alert_invalid_time_feedback">अलर्ट सहेजा गया पर शेड्यूल नहीं हुआ: समय मान्य नहीं है।</string>
     <string name="commuter_alert_disabled_feedback">अलर्ट सहेजा गया पर बंद है।</string>

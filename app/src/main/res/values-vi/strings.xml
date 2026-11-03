@@ -651,6 +651,12 @@
     <string name="accessibility_cancel_stop_alarm">Hủy báo thức cho %1$s</string>
     <string name="exact_alarm_note">Android không cho phép Binario dùng báo thức chính xác: báo thức điểm dừng và cảnh báo đi làm có thể đến trễ.</string>
     <string name="exact_alarm_action">Cho phép báo thức chính xác</string>
+    <string name="background_status_title">Hoạt động nền</string>
+    <string name="background_status_notifications_on">Đã cho phép thông báo</string>
+    <string name="background_status_notifications_off">Chưa cho phép thông báo: báo thức, cảnh báo và thông báo trực tiếp không thể hiển thị.</string>
+    <string name="background_status_exact_on">Đã cho phép báo thức chính xác</string>
+    <string name="background_status_battery_optimized">Tối ưu hóa pin đang bật cho Binario: Android có thể hoãn các lần kiểm tra nền.</string>
+    <string name="background_status_battery_unrestricted">Tối ưu hóa pin đang tắt cho Binario</string>
     <string name="commuter_alert_quiet_hours_feedback">Đã lưu cảnh báo nhưng chưa lên lịch: thời điểm báo trước rơi vào giờ yên tĩnh 22:00–07:00.</string>
     <string name="commuter_alert_invalid_time_feedback">Đã lưu cảnh báo nhưng chưa lên lịch: giờ không hợp lệ.</string>
     <string name="commuter_alert_disabled_feedback">Đã lưu cảnh báo nhưng đang tắt.</string>

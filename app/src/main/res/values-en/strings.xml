@@ -666,6 +666,12 @@
     <string name="accessibility_cancel_stop_alarm">Cancel the alarm for %1$s</string>
     <string name="exact_alarm_note">Android does not allow Binario to set exact alarms: stop alarms and commuter alerts may arrive late.</string>
     <string name="exact_alarm_action">Allow exact alarms</string>
+    <string name="background_status_title">Background activity</string>
+    <string name="background_status_notifications_on">Notifications allowed</string>
+    <string name="background_status_notifications_off">Notifications not allowed: alarms, alerts and live notifications cannot appear.</string>
+    <string name="background_status_exact_on">Exact alarms allowed</string>
+    <string name="background_status_battery_optimized">Battery optimisation on for Binario: Android may postpone background checks.</string>
+    <string name="background_status_battery_unrestricted">Battery optimisation off for Binario</string>
     <string name="commuter_alert_quiet_hours_feedback">Alert saved but not scheduled: the lead time falls in the quiet period 22:00–07:00.</string>
     <string name="commuter_alert_invalid_time_feedback">Alert saved but not scheduled: the time is invalid.</string>
     <string name="commuter_alert_disabled_feedback">Alert saved but disabled.</string>

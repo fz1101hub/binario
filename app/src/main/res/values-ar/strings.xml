@@ -712,6 +712,12 @@
     <string name="accessibility_cancel_stop_alarm">إلغاء منبّه %1$s</string>
     <string name="exact_alarm_note">لا يسمح Android لتطبيق Binario بالمنبّهات الدقيقة: قد تصل منبّهات المحطات وتنبيهات التنقل اليومي متأخرة.</string>
     <string name="exact_alarm_action">السماح بالمنبّهات الدقيقة</string>
+    <string name="background_status_title">النشاط في الخلفية</string>
+    <string name="background_status_notifications_on">الإشعارات مسموح بها</string>
+    <string name="background_status_notifications_off">الإشعارات غير مسموح بها: لا يمكن ظهور المنبّهات والتنبيهات والإشعارات الفورية.</string>
+    <string name="background_status_exact_on">المنبّهات الدقيقة مسموح بها</string>
+    <string name="background_status_battery_optimized">تحسين البطارية مفعّل لتطبيق Binario: قد يؤجل Android عمليات التحقق في الخلفية.</string>
+    <string name="background_status_battery_unrestricted">تحسين البطارية غير مفعّل لتطبيق Binario</string>
     <string name="commuter_alert_quiet_hours_feedback">حُفظ التنبيه ولم يُجدول: يقع وقته ضمن فترة الهدوء 22:00–07:00.</string>
     <string name="commuter_alert_invalid_time_feedback">حُفظ التنبيه ولم يُجدول: الوقت غير صالح.</string>
     <string name="commuter_alert_disabled_feedback">حُفظ التنبيه لكنه متوقف.</string>

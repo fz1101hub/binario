@@ -637,6 +637,12 @@
     <string name="accessibility_cancel_stop_alarm">%1$s 알람 취소</string>
     <string name="exact_alarm_note">Android가 Binario의 정확한 알람을 허용하지 않아 정차역 알람과 통근 알림이 늦게 울릴 수 있습니다.</string>
     <string name="exact_alarm_action">정확한 알람 허용</string>
+    <string name="background_status_title">백그라운드 활동</string>
+    <string name="background_status_notifications_on">알림 허용됨</string>
+    <string name="background_status_notifications_off">알림이 허용되지 않아 알람, 알림, 실시간 알림을 표시할 수 없습니다.</string>
+    <string name="background_status_exact_on">정확한 알람 허용됨</string>
+    <string name="background_status_battery_optimized">Binario의 배터리 최적화가 켜져 있어 Android가 백그라운드 확인을 미룰 수 있습니다.</string>
+    <string name="background_status_battery_unrestricted">Binario의 배터리 최적화가 꺼져 있음</string>
     <string name="commuter_alert_quiet_hours_feedback">알림이 저장되었지만 예약되지 않았습니다. 알림 시각이 방해 금지 시간(22:00–07:00)에 해당합니다.</string>
     <string name="commuter_alert_invalid_time_feedback">알림이 저장되었지만 예약되지 않았습니다. 시각이 올바르지 않습니다.</string>
     <string name="commuter_alert_disabled_feedback">알림이 저장되었지만 꺼져 있습니다.</string>

@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
+import android.os.PowerManager
 import android.provider.Settings
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -27,6 +28,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -40,7 +42,7 @@ internal fun canScheduleExactAlarms(context: Context): Boolean =
 
 /**
  * The stop alarms still to ring ("Sveglie fermata attive"), each with "Annulla": all of them, or only those of
- * [trainNumber] in a train detail. Nothing is shown when there is none.
+ * [trainNumber] in a train detail, where the exact-alarm note follows them. Nothing is shown when there is none.
  */
 @Composable
 internal fun ActiveStopAlarmsPanel(trainNumber: String? = null, modifier: Modifier = Modifier) {
@@ -72,8 +74,40 @@ internal fun ActiveStopAlarmsPanel(trainNumber: String? = null, modifier: Modifi
                 ) { Text(stringResource(R.string.action_cancel)) }
             }
         }
-        ExactAlarmAccessNote()
+        if (trainNumber != null) ExactAlarmAccessNote()
     }
+}
+
+/**
+ * "Attività in background" (read-only): whether Binario may notify, set exact alarms (with "Consenti sveglie
+ * esatte" when not) and run unrestricted by the battery optimisation, so that a missing alert can be explained.
+ */
+@Composable
+internal fun BackgroundStatusPanel(modifier: Modifier = Modifier) {
+    val context = LocalContext.current
+    var resumed by remember { mutableIntStateOf(0) }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { resumed += 1 }
+    val notifications = remember(resumed) { it.binario.app.notifications.LiveNotifications.allowed(context) }
+    val exact = remember(resumed) { canScheduleExactAlarms(context) }
+    val unrestricted = remember(resumed) {
+        context.getSystemService(PowerManager::class.java)?.isIgnoringBatteryOptimizations(context.packageName) == true
+    }
+    Column(modifier.fillMaxWidth().testTag("background-status"), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(
+            stringResource(R.string.background_status_title),
+            modifier = Modifier.semantics { heading() },
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.Bold
+        )
+        StatusLine(stringResource(if (notifications) R.string.background_status_notifications_on else R.string.background_status_notifications_off))
+        if (exact) StatusLine(stringResource(R.string.background_status_exact_on)) else ExactAlarmAccessNote()
+        StatusLine(stringResource(if (unrestricted) R.string.background_status_battery_unrestricted else R.string.background_status_battery_optimized))
+    }
+}
+
+@Composable
+private fun StatusLine(text: String) {
+    Text(text, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
 }
 
 /**
