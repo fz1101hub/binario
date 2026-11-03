@@ -8,6 +8,10 @@ import it.binario.app.data.gtfs.GtfsArtifactDownloader
 import it.binario.app.data.gtfs.BoundedGtfsZipScanner
 import it.binario.app.data.gtfs.GtfsCompactIndexLimits
 import it.binario.app.data.sources.InternationalSourceCatalog
+import it.binario.app.data.urban.UrbanRealtimeFetcher
+import it.binario.app.data.urban.UrbanGtfsRealtimeAdapter
+import it.binario.app.data.urban.UrbanStopBoardAdapter
+import it.binario.app.data.gtfs.EmbeddedGtfsRouteAdapter
 import it.binario.app.data.bikesharing.BikeSharingResult
 import it.binario.app.data.bikesharing.BikeSharingSystems
 import it.binario.app.data.bikesharing.BikeSharingService
@@ -53,7 +57,7 @@ class LiveProviderNetworkTest {
             assertEquals("Mendrisio native identity changed", "S13143", stops.singleOrNull { it.optString("stazione").equals("MENDRISIO", true) }?.optString("id"))
         }
         val assets = listOf(File("src/main/assets"), File("app/src/main/assets")).first { it.isDirectory }
-        val static = it.binario.app.data.gtfs.EmbeddedGtfsRouteAdapter({ File(assets, it).inputStream() },
+        val static = EmbeddedGtfsRouteAdapter({ File(assets, it).inputStream() },
             packs = it.binario.app.data.gtfs.EmbeddedGtfsPacks.all.filter { it.sourceId.value == "lombardia-trenord-gtfs" })
         val route = it.binario.app.data.SavedRoute("cross-border-probe", "Milano–Mendrisio",
             it.binario.app.data.Station("S01700", "Milano Centrale", "Milano", railwayCode = "S01700"),
@@ -355,6 +359,22 @@ class LiveProviderNetworkTest {
             matched.take(3).forEach { trip ->
                 println("LIVE_ACCEPTANCE urban ${feed.sourceId.value} trip=${trip.tripId} route=${tripRoutes[trip.tripId]} start=${trip.startDate} " +
                     "stops=${trip.stops.take(4).map { "${it.stopSequence}/${it.stopId}:${it.departure ?: it.arrival}:${it.departureDelaySeconds ?: it.arrivalDelaySeconds}" }}")
+            }
+            // The board of the stop with most updates, through the app's own adapters.
+            val busiest = matched.flatMap { trip -> trip.stops.mapNotNull { it.stopId } }.groupingBy { it }.eachCount().maxByOrNull { it.value }?.key
+            if (busiest != null) {
+                val bytesOfPack = asset.readBytes()
+                val routeAdapter = EmbeddedGtfsRouteAdapter(openAsset = { java.io.ByteArrayInputStream(bytesOfPack) }, packs = listOf(pack))
+                val board = UrbanStopBoardAdapter(
+                    pack, routeAdapter,
+                    UrbanGtfsRealtimeAdapter(feed, UrbanRealtimeFetcher { bytes }, clock, packRoutes = { routes })
+                )
+                val now = clock.instant()
+                val result = board.getStationBoard(StationBoardRequest(StationId("gtfs:${pack.sourceId.value}:$busiest"), from = now.minusSeconds(600), to = now.plusSeconds(6 * 3600), kind = BoardKind.DEPARTURES))
+                val entries = (result as? ProviderResult.Success)?.value?.entries ?: (result as? ProviderResult.Partial)?.value?.entries.orEmpty()
+                println("LIVE_ACCEPTANCE urban ${feed.sourceId.value} board stop=$busiest result=${result.javaClass.simpleName} entries=${entries.size} " +
+                    "live=${entries.count { it.expectedTime != null }} cancelled=${entries.count { it.status?.value == RunStatus.CANCELLED }} " +
+                    "first=${entries.take(5).map { "${it.lineLabel}>${it.destinationOrOriginLabel} ${it.scheduledTime.toLocalTime()}/${it.expectedTime?.value?.toLocalTime()}" }}")
             }
         }
     }
