@@ -1,2 +1,2 @@
 # Runtime dependency for tools/verify_live_sources.py.
-beautifulsoup4>=4.12,<5
+beautifulsoup4>=4.15.0,<5
