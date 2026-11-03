@@ -36,6 +36,7 @@ import it.binario.app.R
 import it.binario.app.TabularFigures
 import it.binario.app.co2.Co2Estimate
 import it.binario.app.data.core.LegMode
+import it.binario.app.journeys.JourneyContinuationRow
 import it.binario.app.journeys.JourneyLegRow
 import it.binario.app.journeys.JourneyLegVehicle
 import it.binario.app.journeys.JourneyOptionRow
@@ -43,6 +44,8 @@ import it.binario.app.journeys.JourneySourceLabel
 import it.binario.app.journeys.TransferRiskLevel
 import it.binario.app.ui.common.ChangesBadge
 import it.binario.app.ui.common.JourneyTimes
+import it.binario.app.ui.common.LastOfDayChip
+import it.binario.app.ui.common.WheelchairMark
 import it.binario.app.ui.common.changesLabel
 import it.binario.app.ui.common.co2Line
 import it.binario.app.ui.common.co2Spoken
@@ -126,6 +129,14 @@ internal fun journeyLegLabel(leg: JourneyLegRow): String {
     }
 }
 
+/** "REX 1826": the run a vehicle continues as ("Resta a bordo"), labelled like a train leg. */
+@Composable
+internal fun journeyContinuationLabel(continuation: JourneyContinuationRow): String {
+    val line = continuation.lineLabel?.trim()?.takeIf(String::isNotEmpty)
+    val number = continuation.number?.trim()?.takeIf(String::isNotEmpty)
+    return listOfNotNull(line ?: continuation.trainCategory.localizedLabel(), number).joinToString(" ")
+}
+
 /** True when a city line's published name is only the mode ("METRO", "Metropolitana", "tram") in any language. */
 internal fun urbanLineRepeatsMode(line: String, label: String): Boolean {
     val compact = line.replace(" ", "").lowercase()
@@ -178,6 +189,8 @@ internal fun JourneyResultCard(
         trains,
         source,
         transferRiskLabel(row.transferRisk, rowLevel = true),
+        if (row.wheelchairAccessible) stringResource(R.string.wheelchair_journey) else null,
+        if (row.lastOfDay) stringResource(R.string.journey_last_of_day) else null,
         co2?.let { co2Spoken(it) },
         if (selected) stringResource(R.string.accessibility_row_selected) else null
     ).joinToString(". ")
@@ -218,6 +231,12 @@ internal fun JourneyResultCard(
             )
             Text(source, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             TransferRiskChip(row.transferRisk, rowLevel = true)
+            if (row.lastOfDay || row.wheelchairAccessible) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    if (row.lastOfDay) LastOfDayChip()
+                    if (row.wheelchairAccessible) WheelchairMark(stringResource(R.string.wheelchair_journey))
+                }
+            }
             Row(Modifier.padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                 ChangesBadge(row.changes, Modifier.weight(1f))
                 Text(

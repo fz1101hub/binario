@@ -5,9 +5,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import it.binario.app.TravelPreferencesRepository
 import it.binario.app.UiMessage
 import it.binario.app.UiMessageKey
 import it.binario.app.data.Station
+import it.binario.app.data.provider.JourneyPreferences
 import it.binario.app.data.repository.BinarioDataGraph
 import it.binario.app.data.repository.JourneySearchQuery
 import it.binario.app.data.repository.JourneySearchResult
@@ -19,6 +21,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -45,12 +48,24 @@ data class JourneySearchUiState(
 class JourneySearchViewModel(
     private val service: JourneySearchService,
     /** Live lookup of the legs for "Coincidenza a rischio"; null keeps the scheduled times only. */
-    private val liveLookup: JourneyLiveLookup? = null
+    private val liveLookup: JourneyLiveLookup? = null,
+    /** "Preferenze di viaggio" sent with every search; a change searches the shown journeys again. Null: none. */
+    private val preferences: StateFlow<JourneyPreferences>? = null
 ) : ViewModel() {
     private val mutableState = MutableStateFlow(JourneySearchUiState())
     val state: StateFlow<JourneySearchUiState> = mutableState.asStateFlow()
     private var searchJob: Job? = null
     private var searchGeneration = 0L
+
+    init {
+        preferences?.let { flow ->
+            viewModelScope.launch {
+                flow.drop(1).collect { changed ->
+                    state.value.query?.takeIf { it.preferences != changed }?.let { start(it.copy(preferences = changed)) }
+                }
+            }
+        }
+    }
 
     /** Starts a search; false (with [JourneySearchUiState.validationMessage]) when origin and destination coincide. */
     fun searchJourneys(
@@ -68,7 +83,8 @@ class JourneySearchViewModel(
             origin = origin,
             destination = destination,
             departure = LocalDateTime.of(serviceDate, departureTime.withSecond(0).withNano(0)),
-            maxTransfers = maxTransfers.coerceIn(0, 6)
+            maxTransfers = maxTransfers.coerceIn(0, 6),
+            preferences = preferences?.value
         )
         start(query)
         return true
@@ -118,7 +134,8 @@ class JourneySearchViewModel(
                 val app = context.applicationContext
                 JourneySearchViewModel(
                     BinarioDataGraph.journeySearchService(app),
-                    JourneyLiveLookup(BinarioDataGraph.trainNumberSearchService(app))
+                    JourneyLiveLookup(BinarioDataGraph.trainNumberSearchService(app)),
+                    TravelPreferencesRepository.state(app)
                 )
             }
         }

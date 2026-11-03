@@ -1237,4 +1237,37 @@
         <item quantity="other">ခရီးစဉ် %d ခု</item>
     </plurals>
     <!-- End of platform changes, Partenze train types, saved timetables, sharing, tickets and assistance, CO2 estimate -->
+    <!-- Journey planner: in-seat continuations, travel preferences, wheelchair access, last train of the day -->
+    <string name="journey_in_seat_continuation">ရထားပေါ်တွင် ဆက်နေပါ- ရထားသည် %1$s အဖြစ် ဆက်ပြေးသည်</string>
+    <string name="journey_last_of_day">ယနေ့ နောက်ဆုံး</string>
+    <string name="journey_no_more_today">ယနေ့ ရထား မရှိတော့ပါ- မနက်ဖြန် ပထမ %1$s</string>
+    <string name="journey_accessibility_unavailable">ဤဒေသအတွက် လက်လှမ်းမီမှု ဒေတာ မရှိပါ</string>
+    <string name="journey_filter_least_walking">လမ်းလျှောက် နည်းသည်</string>
+    <string name="wheelchair_station">ဘီးတပ်ကုလားထိုင်ဖြင့် အသုံးပြုနိုင်သော ဘူတာ</string>
+    <string name="wheelchair_trip">ဘီးတပ်ကုလားထိုင်ဖြင့် စီးနိုင်သော ရထား</string>
+    <string name="wheelchair_journey">ဘီးတပ်ကုလားထိုင်ဖြင့် သွားနိုင်သော ခရီးစဉ်</string>
+    <string name="settings_section_travel">ခရီးသွား ဦးစားပေးချက်များ</string>
+    <string name="settings_section_travel_detail">လမ်းလျှောက်နှုန်း၊ ရထားပြောင်းခြင်း၊ ရထားအမျိုးအစားနှင့် လက်လှမ်းမီမှု</string>
+    <string name="travel_preferences_description">ဤစက်ပေါ်တွင်သာ သိမ်းထားပြီး အော့ဖ်လိုင်း အချိန်ဇယားဖြင့် တွက်သော ခရီးစဉ်များတွင် သက်ရောက်သည်။</string>
+    <string name="travel_walking_speed">လမ်းလျှောက်နှုန်း</string>
+    <string name="travel_walking_slow">နှေး · 3.5 km/h</string>
+    <string name="travel_walking_normal">ပုံမှန် · 4.5 km/h</string>
+    <string name="travel_walking_fast">မြန် · 5.5 km/h</string>
+    <string name="travel_max_walk">အပိုင်းတစ်ခုလျှင် အများဆုံး လမ်းလျှောက်ချိန်</string>
+    <string name="travel_ranking">ဦးစားပေး</string>
+    <string name="travel_ranking_fastest">အမြန်ဆုံး လမ်းကြောင်း</string>
+    <string name="travel_ranking_least_walking">လမ်းလျှောက် အနည်းဆုံး</string>
+    <string name="travel_modes">ဝန်ဆောင်မှု အမျိုးအစားများ</string>
+    <string name="travel_modes_description">ဦးစားပေးရန် တစ်ချက်၊ ရှောင်ရန် နှစ်ချက်၊ ဖယ်ရန် သုံးချက် နှိပ်ပါ။</string>
+    <string name="travel_mode_state_any">မည်သည့်အရာမဆို</string>
+    <string name="travel_mode_state_prefer">ဦးစားပေးထားသည်</string>
+    <string name="travel_mode_state_avoid">ရှောင်ရန်</string>
+    <string name="travel_mode_high_speed">အမြန်ရထားများ</string>
+    <string name="travel_mode_funicular">တောင်တက်ကြိုးဆွဲရထားများ</string>
+    <string name="travel_mode_operator_bus">ကုမ္ပဏီ ဘတ်စ်ကားများ</string>
+    <string name="travel_wheelchair_only">ဘီးတပ်ကုလားထိုင်ဖြင့် သွားနိုင်သော ခရီးစဉ်များသာ</string>
+    <string name="travel_wheelchair_note">အချိန်ဇယားတွင် ရထားနှင့် ရပ်နားဘူတာ၏ လက်လှမ်းမီမှုကို ဖော်ပြထားမှသာ သက်ရောက်သည်။ ဒေတာ မရှိလျှင် အသုံးပြုနိုင်သည်ဟု မယူဆပါ။</string>
+    <plurals name="results_hidden_by_preferences">
+        <item quantity="other">ခရီးသွား ဦးစားပေးချက်များကြောင့် တိုက်ရိုက်ရထား %d စီး ဖျောက်ထားသည်</item>
+    </plurals>
 </resources>

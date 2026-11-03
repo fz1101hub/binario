@@ -1260,4 +1260,37 @@
         <item quantity="other">%d ตัวเลือก</item>
     </plurals>
     <!-- End of platform changes, Partenze train types, saved timetables, sharing, tickets and assistance, CO2 estimate -->
+    <!-- Journey planner: in-seat continuations, travel preferences, wheelchair access, last train of the day -->
+    <string name="journey_in_seat_continuation">นั่งต่อได้เลย: ขบวนนี้วิ่งต่อเป็น %1$s</string>
+    <string name="journey_last_of_day">เที่ยวสุดท้ายวันนี้</string>
+    <string name="journey_no_more_today">วันนี้ไม่มีขบวนแล้ว: ขบวนแรกพรุ่งนี้ %1$s</string>
+    <string name="journey_accessibility_unavailable">ไม่มีข้อมูลการเข้าถึงสำหรับพื้นที่นี้</string>
+    <string name="journey_filter_least_walking">เดินน้อยกว่า</string>
+    <string name="wheelchair_station">สถานีที่รถเข็นเข้าถึงได้</string>
+    <string name="wheelchair_trip">เที่ยวรถที่รถเข็นเข้าถึงได้</string>
+    <string name="wheelchair_journey">การเดินทางที่รถเข็นเข้าถึงได้</string>
+    <string name="settings_section_travel">การตั้งค่าการเดินทาง</string>
+    <string name="settings_section_travel_detail">ความเร็วในการเดิน การเปลี่ยนขบวน ประเภทรถไฟ และการเข้าถึง</string>
+    <string name="travel_preferences_description">เก็บไว้ในอุปกรณ์นี้และใช้กับการเดินทางที่คำนวณจากตารางเวลาออฟไลน์</string>
+    <string name="travel_walking_speed">ความเร็วในการเดิน</string>
+    <string name="travel_walking_slow">ช้า · 3.5 กม./ชม.</string>
+    <string name="travel_walking_normal">ปกติ · 4.5 กม./ชม.</string>
+    <string name="travel_walking_fast">เร็ว · 5.5 กม./ชม.</string>
+    <string name="travel_max_walk">เวลาเดินนานที่สุดต่อช่วง</string>
+    <string name="travel_ranking">ให้ความสำคัญกับ</string>
+    <string name="travel_ranking_fastest">เส้นทางที่เร็วที่สุด</string>
+    <string name="travel_ranking_least_walking">เดินน้อยที่สุด</string>
+    <string name="travel_modes">ประเภทบริการ</string>
+    <string name="travel_modes_description">แตะหนึ่งครั้งเพื่อเลือกเป็นพิเศษ สองครั้งเพื่อหลีกเลี่ยง สามครั้งเพื่อล้าง</string>
+    <string name="travel_mode_state_any">ไม่ระบุ</string>
+    <string name="travel_mode_state_prefer">ต้องการ</string>
+    <string name="travel_mode_state_avoid">หลีกเลี่ยง</string>
+    <string name="travel_mode_high_speed">รถไฟความเร็วสูง</string>
+    <string name="travel_mode_funicular">รถรางไต่เขา</string>
+    <string name="travel_mode_operator_bus">รถบัสของผู้ให้บริการ</string>
+    <string name="travel_wheelchair_only">เฉพาะการเดินทางที่รถเข็นเข้าถึงได้</string>
+    <string name="travel_wheelchair_note">ใช้เฉพาะเมื่อตารางเวลาระบุการเข้าถึงของขบวนและจุดจอด: หากไม่มีข้อมูลจะไม่ถือว่าเข้าถึงได้</string>
+    <plurals name="results_hidden_by_preferences">
+        <item quantity="other">ซ่อนรถไฟเที่ยวตรง %d ขบวนตามการตั้งค่าการเดินทาง</item>
+    </plurals>
 </resources>

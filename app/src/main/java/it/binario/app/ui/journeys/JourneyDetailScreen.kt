@@ -17,6 +17,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
+import androidx.compose.material.icons.filled.EventSeat
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.SyncAlt
 import androidx.compose.material3.Icon
@@ -41,6 +42,7 @@ import it.binario.app.R
 import it.binario.app.TabularFigures
 import it.binario.app.data.Station
 import it.binario.app.data.StopRouteChange
+import it.binario.app.journeys.JourneyContinuationRow
 import it.binario.app.journeys.JourneyLegRow
 import it.binario.app.journeys.JourneyOptionRow
 import it.binario.app.journeys.JourneySourceLabel
@@ -60,6 +62,7 @@ import it.binario.app.ui.common.ScreenHeader
 import it.binario.app.ui.common.ScreenMargin
 import it.binario.app.ui.common.StationShortNames
 import it.binario.app.ui.common.TonalButton
+import it.binario.app.ui.common.WheelchairMark
 import it.binario.app.ui.common.changesLabel
 import it.binario.app.ui.common.co2Line
 import it.binario.app.ui.common.ltrUnit
@@ -131,6 +134,7 @@ internal fun JourneyDetailScreen(
                         row.legs.forEachIndexed { index, leg ->
                             LegHeader(leg)
                             LegStop(time = leg.departureTime, station = leg.fromLabel, isFirst = true)
+                            leg.continuations.forEach { InSeatNote(it) }
                             LegStop(time = leg.arrivalTime, station = leg.toLabel, isFirst = false)
                             row.transfers.firstOrNull { it.afterLegIndex == index }?.let { TransferBlock(it) }
                         }
@@ -212,8 +216,32 @@ private fun LegHeader(leg: JourneyLegRow) {
                 Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
+        if (leg.wheelchairTrip) {
+            WheelchairMark(stringResource(R.string.wheelchair_trip), Modifier.padding(end = 8.dp))
+        }
         Text(
             JourneyTimes.durationLabel(leg.durationMinutes.toInt()),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+/** "Brennero · Resta a bordo: il treno prosegue come REX 1826": no change, the same vehicle goes on. */
+@Composable
+private fun InSeatNote(continuation: JourneyContinuationRow) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .padding(start = 44.dp, end = 16.dp, top = 2.dp, bottom = 2.dp)
+            .semantics(mergeDescendants = true) {}
+            .testTag("journey-in-seat"),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(Icons.Default.EventSeat, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
+        Spacer(Modifier.width(8.dp))
+        Text(
+            continuation.stationLabel + " · " + stringResource(R.string.journey_in_seat_continuation, journeyContinuationLabel(continuation)),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )

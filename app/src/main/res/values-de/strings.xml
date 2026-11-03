@@ -1289,4 +1289,38 @@
         <item quantity="other">%d Verbindungen</item>
     </plurals>
     <!-- End of platform changes, Partenze train types, saved timetables, sharing, tickets and assistance, CO2 estimate -->
+    <!-- Journey planner: in-seat continuations, travel preferences, wheelchair access, last train of the day -->
+    <string name="journey_in_seat_continuation">Im Zug bleiben: Der Zug fährt weiter als %1$s</string>
+    <string name="journey_last_of_day">Letzter heute</string>
+    <string name="journey_no_more_today">Heute keine Züge mehr: erster morgen um %1$s</string>
+    <string name="journey_accessibility_unavailable">Für diese Gegend sind keine Daten zur Barrierefreiheit verfügbar</string>
+    <string name="journey_filter_least_walking">Weniger Fußweg</string>
+    <string name="wheelchair_station">Rollstuhlgerechter Bahnhof</string>
+    <string name="wheelchair_trip">Rollstuhlgerechte Fahrt</string>
+    <string name="wheelchair_journey">Rollstuhlgerechte Verbindung</string>
+    <string name="settings_section_travel">Reiseeinstellungen</string>
+    <string name="settings_section_travel_detail">Gehtempo, Umstiege, Zugarten und Barrierefreiheit</string>
+    <string name="travel_preferences_description">Bleiben auf diesem Gerät und gelten für Verbindungen aus den Offline-Fahrplänen.</string>
+    <string name="travel_walking_speed">Gehtempo</string>
+    <string name="travel_walking_slow">Langsam · 3,5 km/h</string>
+    <string name="travel_walking_normal">Normal · 4,5 km/h</string>
+    <string name="travel_walking_fast">Schnell · 5,5 km/h</string>
+    <string name="travel_max_walk">Längster Fußweg pro Abschnitt</string>
+    <string name="travel_ranking">Bevorzugen</string>
+    <string name="travel_ranking_fastest">Schnellste Verbindung</string>
+    <string name="travel_ranking_least_walking">Wenig Fußweg</string>
+    <string name="travel_modes">Verkehrsmittel</string>
+    <string name="travel_modes_description">Einmal tippen zum Bevorzugen, zweimal zum Meiden, dreimal zum Zurücksetzen.</string>
+    <string name="travel_mode_state_any">Egal</string>
+    <string name="travel_mode_state_prefer">Bevorzugt</string>
+    <string name="travel_mode_state_avoid">Meiden</string>
+    <string name="travel_mode_high_speed">Hochgeschwindigkeitszüge</string>
+    <string name="travel_mode_funicular">Standseilbahnen</string>
+    <string name="travel_mode_operator_bus">Busse des Betreibers</string>
+    <string name="travel_wheelchair_only">Nur rollstuhlgerechte Verbindungen</string>
+    <string name="travel_wheelchair_note">Gilt nur, wo die Fahrpläne die Barrierefreiheit von Zügen und Haltestellen angeben: Fehlende Angaben zählen nie als barrierefrei.</string>
+    <plurals name="results_hidden_by_preferences">
+        <item quantity="one">%d Direktzug durch die Reiseeinstellungen ausgeblendet</item>
+        <item quantity="other">%d Direktzüge durch die Reiseeinstellungen ausgeblendet</item>
+    </plurals>
 </resources>

@@ -1062,6 +1062,7 @@ class TrainViewModel @JvmOverloads constructor(
                 mobilityPreferences = mobilityPreferences,
                 punctualityHistory = punctualityHistory,
                 savedTimetables = SavedTimetableStore.all(getApplication()),
+                travelPreferences = TravelPreferencesRepository.current(getApplication()),
                 stations = (
                     savedRoutes.flatMap { listOf(it.outwardOrigin, it.outwardDestination) } +
                         stations.filter { it.id in favouriteIds || it.id in monitoredStationIds }
@@ -1095,6 +1096,7 @@ class TrainViewModel @JvmOverloads constructor(
             updateMobilityPreferences(backup.mobilityPreferences)
             backup.punctualityHistory?.let { punctualityHistory = punctualityStore.replace(it) }
             backup.savedTimetables?.let { SavedTimetableStore.replace(getApplication(), it) }
+            backup.travelPreferences?.let { TravelPreferencesRepository.update(getApplication(), it) }
             if (hasActiveRoute) refresh() else {
                 refreshRequestId += 1
                 primarySnapshot = null

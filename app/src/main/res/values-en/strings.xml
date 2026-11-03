@@ -1289,4 +1289,38 @@
         <item quantity="other">%d options</item>
     </plurals>
     <!-- End of platform changes, Partenze train types, saved timetables, sharing, tickets and assistance, CO2 estimate -->
+    <!-- Journey planner: in-seat continuations, travel preferences, wheelchair access, last train of the day -->
+    <string name="journey_in_seat_continuation">Stay on board: the train continues as %1$s</string>
+    <string name="journey_last_of_day">Last today</string>
+    <string name="journey_no_more_today">No more trains today: first tomorrow at %1$s</string>
+    <string name="journey_accessibility_unavailable">Accessibility data not available for this area</string>
+    <string name="journey_filter_least_walking">Less walking</string>
+    <string name="wheelchair_station">Wheelchair-accessible station</string>
+    <string name="wheelchair_trip">Wheelchair-accessible service</string>
+    <string name="wheelchair_journey">Wheelchair-accessible journey</string>
+    <string name="settings_section_travel">Travel preferences</string>
+    <string name="settings_section_travel_detail">Walking speed, changes, train types and accessibility</string>
+    <string name="travel_preferences_description">Kept on this device; they apply to journeys computed from the offline timetables.</string>
+    <string name="travel_walking_speed">Walking speed</string>
+    <string name="travel_walking_slow">Slow · 3.5 km/h</string>
+    <string name="travel_walking_normal">Normal · 4.5 km/h</string>
+    <string name="travel_walking_fast">Fast · 5.5 km/h</string>
+    <string name="travel_max_walk">Longest walk per leg</string>
+    <string name="travel_ranking">Prefer</string>
+    <string name="travel_ranking_fastest">Fastest route</string>
+    <string name="travel_ranking_least_walking">Least walking</string>
+    <string name="travel_modes">Service types</string>
+    <string name="travel_modes_description">Tap once to prefer, twice to avoid, three times to clear.</string>
+    <string name="travel_mode_state_any">No preference</string>
+    <string name="travel_mode_state_prefer">Preferred</string>
+    <string name="travel_mode_state_avoid">Avoid</string>
+    <string name="travel_mode_high_speed">High-speed trains</string>
+    <string name="travel_mode_funicular">Funiculars</string>
+    <string name="travel_mode_operator_bus">Operator buses</string>
+    <string name="travel_wheelchair_only">Wheelchair-accessible journeys only</string>
+    <string name="travel_wheelchair_note">Applies only where the timetables state the accessibility of trains and stops: missing data never counts as accessible.</string>
+    <plurals name="results_hidden_by_preferences">
+        <item quantity="one">%d direct train hidden by your travel preferences</item>
+        <item quantity="other">%d direct trains hidden by your travel preferences</item>
+    </plurals>
 </resources>

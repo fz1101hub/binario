@@ -1237,4 +1237,37 @@
         <item quantity="other">여정 %d개</item>
     </plurals>
     <!-- End of platform changes, Partenze train types, saved timetables, sharing, tickets and assistance, CO2 estimate -->
+    <!-- Journey planner: in-seat continuations, travel preferences, wheelchair access, last train of the day -->
+    <string name="journey_in_seat_continuation">그대로 탑승: 열차가 %1$s(으)로 계속 운행합니다</string>
+    <string name="journey_last_of_day">오늘 마지막</string>
+    <string name="journey_no_more_today">오늘은 더 이상 열차가 없습니다: 내일 첫차 %1$s</string>
+    <string name="journey_accessibility_unavailable">이 지역의 접근성 정보가 없습니다</string>
+    <string name="journey_filter_least_walking">도보 적은 순</string>
+    <string name="wheelchair_station">휠체어 이용 가능 역</string>
+    <string name="wheelchair_trip">휠체어 이용 가능 운행편</string>
+    <string name="wheelchair_journey">휠체어 이용 가능 경로</string>
+    <string name="settings_section_travel">이동 설정</string>
+    <string name="settings_section_travel_detail">도보 속도, 환승, 열차 종류, 접근성</string>
+    <string name="travel_preferences_description">이 기기에만 저장되며 오프라인 시간표로 계산한 여정에 적용됩니다.</string>
+    <string name="travel_walking_speed">도보 속도</string>
+    <string name="travel_walking_slow">느림 · 3.5km/h</string>
+    <string name="travel_walking_normal">보통 · 4.5km/h</string>
+    <string name="travel_walking_fast">빠름 · 5.5km/h</string>
+    <string name="travel_max_walk">구간별 최대 도보 시간</string>
+    <string name="travel_ranking">우선</string>
+    <string name="travel_ranking_fastest">가장 빠른 경로</string>
+    <string name="travel_ranking_least_walking">도보 최소</string>
+    <string name="travel_modes">교통수단 종류</string>
+    <string name="travel_modes_description">한 번 누르면 선호, 두 번 누르면 피하기, 세 번 누르면 해제됩니다.</string>
+    <string name="travel_mode_state_any">상관없음</string>
+    <string name="travel_mode_state_prefer">선호</string>
+    <string name="travel_mode_state_avoid">피하기</string>
+    <string name="travel_mode_high_speed">고속열차</string>
+    <string name="travel_mode_funicular">푸니쿨라</string>
+    <string name="travel_mode_operator_bus">운영사 버스</string>
+    <string name="travel_wheelchair_only">휠체어 이용 가능 경로만</string>
+    <string name="travel_wheelchair_note">시간표에 열차와 정차역의 접근성이 표시된 경우에만 적용됩니다. 정보가 없으면 이용 가능으로 보지 않습니다.</string>
+    <plurals name="results_hidden_by_preferences">
+        <item quantity="other">이동 설정으로 직통 열차 %d편 숨김</item>
+    </plurals>
 </resources>

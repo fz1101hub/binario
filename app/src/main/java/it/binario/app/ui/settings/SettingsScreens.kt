@@ -31,6 +31,7 @@ import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.Widgets
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -105,7 +106,7 @@ import kotlinx.coroutines.withContext
 // Impostazioni: the theme and the existing settings grouped in the rows of the approved render.
 
 /** The groups of "Impostazioni"; "Suggerisci una stazione" is a link row of the screen, not a group. */
-internal enum class SettingsSection { ALERTS, WIDGETS, DATA, LANGUAGE, TICKETS, ABOUT }
+internal enum class SettingsSection { ALERTS, WIDGETS, DATA, LANGUAGE, TRAVEL, TICKETS, ABOUT }
 
 /** A row of "Impostazioni": a group of settings, or the station suggestion that opens in the browser. */
 internal sealed interface SettingsRow {
@@ -116,6 +117,8 @@ internal sealed interface SettingsRow {
 /** The cards of "Impostazioni" below the theme, as in the render: the four groups, then the suggestion and "Informazioni". */
 internal val SETTINGS_CARDS: List<List<SettingsRow>> = listOf(
     listOf(SettingsSection.ALERTS, SettingsSection.WIDGETS, SettingsSection.DATA, SettingsSection.LANGUAGE).map { SettingsRow.Group(it) },
+    // "Preferenze di viaggio": walks, ranking, kinds of service and wheelchair access (see TravelPreferencesSettings.kt).
+    listOf(SettingsRow.Group(SettingsSection.TRAVEL)),
     // "Biglietti e assistenza": official links of the operators (see TicketsAssistance.kt).
     listOf(SettingsRow.Group(SettingsSection.TICKETS)),
     listOf(SettingsRow.SuggestStation, SettingsRow.Group(SettingsSection.ABOUT))
@@ -128,6 +131,7 @@ internal fun SettingsSection.title(): String = stringResource(
         SettingsSection.WIDGETS -> R.string.settings_section_widgets
         SettingsSection.DATA -> R.string.settings_section_data
         SettingsSection.LANGUAGE -> R.string.settings_section_language
+        SettingsSection.TRAVEL -> R.string.settings_section_travel
         SettingsSection.TICKETS -> R.string.settings_section_tickets
         SettingsSection.ABOUT -> R.string.settings_section_about
     }
@@ -140,6 +144,7 @@ private fun SettingsSection.detail(): String = stringResource(
         SettingsSection.WIDGETS -> R.string.settings_section_widgets_detail
         SettingsSection.DATA -> R.string.settings_section_data_detail
         SettingsSection.LANGUAGE -> R.string.settings_section_language_detail
+        SettingsSection.TRAVEL -> R.string.settings_section_travel_detail
         SettingsSection.TICKETS -> R.string.settings_section_tickets_detail
         SettingsSection.ABOUT -> R.string.settings_section_about_detail
     }
@@ -151,6 +156,7 @@ private val SettingsSection.icon: ImageVector
         SettingsSection.WIDGETS -> Icons.Default.Widgets
         SettingsSection.DATA -> Icons.Default.Sync
         SettingsSection.LANGUAGE -> Icons.Default.Language
+        SettingsSection.TRAVEL -> Icons.Default.Tune
         SettingsSection.TICKETS -> Icons.Default.ConfirmationNumber
         SettingsSection.ABOUT -> Icons.Default.Info
     }
@@ -237,6 +243,7 @@ internal fun SettingsSectionScreen(
                             SettingsSection.WIDGETS -> WidgetSettings(viewModel)
                             SettingsSection.DATA -> DataSettings(viewModel)
                             SettingsSection.LANGUAGE -> LanguageSettings(viewModel, onThemeClick)
+                            SettingsSection.TRAVEL -> TravelPreferencesSettings()
                             SettingsSection.TICKETS -> TicketsAssistanceSettings()
                             SettingsSection.ABOUT -> AboutSettings()
                         }

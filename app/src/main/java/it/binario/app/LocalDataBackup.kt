@@ -3,6 +3,7 @@ package it.binario.app
 import it.binario.app.data.SavedRoute
 import it.binario.app.data.SavedRouteOrdering
 import it.binario.app.data.Station
+import it.binario.app.data.provider.JourneyPreferences
 import it.binario.app.timetables.SavedTimetable
 import it.binario.app.timetables.SavedTimetableCodec
 import org.json.JSONArray
@@ -30,7 +31,9 @@ data class LocalDataBackup(
      */
     val punctualityHistory: List<PunctualityObservation>? = null,
     /** "Orari salvati". Null when the file has none (older versions), so an import keeps this device's list. */
-    val savedTimetables: List<SavedTimetable>? = null
+    val savedTimetables: List<SavedTimetable>? = null,
+    /** "Preferenze di viaggio". Null when the file has none (older versions), so an import keeps this device's. */
+    val travelPreferences: JourneyPreferences? = null
 )
 
 sealed interface LocalBackupResult {
@@ -70,6 +73,8 @@ object LocalDataBackupCodec {
         backup.punctualityHistory?.let { put("punctualityHistory", PunctualityHistory.toJson(it)) }
         // Optional, like "punctualityHistory": older readers ignore it.
         backup.savedTimetables?.let { put("savedTimetables", SavedTimetableCodec.toJson(it)) }
+        // Optional, like "savedTimetables": older readers ignore it.
+        backup.travelPreferences?.let { put("travel", TravelPreferencesCodec.toJson(it)) }
         put("mobility", JSONObject().apply { put("maxChanges", backup.mobilityPreferences.maxChanges); put("transferMarginMinutes", backup.mobilityPreferences.transferMarginMinutes); put("stepFreePreferred", backup.mobilityPreferences.stepFreePreferred); put("compactTimetablePreferred", backup.mobilityPreferences.compactTimetablePreferred) })
     }.toString(2)
 
@@ -156,7 +161,11 @@ object LocalDataBackupCodec {
             favouriteIds + stationMonitors.map { it.stationId }
         val punctuality = root.optJSONArray("punctualityHistory")?.let(PunctualityHistory::fromJson)
         val savedTimetables = root.optJSONArray("savedTimetables")?.let(SavedTimetableCodec::fromJson)
-        LocalDataBackup(routes, favouriteIds, services, stationMonitors, alerts, mobility, restoredStations.values.filter { it.id in usedIds }, punctuality, savedTimetables)
+        val travel = root.optJSONObject("travel")?.let(TravelPreferencesCodec::fromJson)
+        LocalDataBackup(
+            routes, favouriteIds, services, stationMonitors, alerts, mobility, restoredStations.values.filter { it.id in usedIds },
+            punctuality, savedTimetables, travel
+        )
     }.fold({ LocalBackupResult.Success(it) }, { LocalBackupResult.Failure(it.message ?: "Backup non leggibile.") })
 
     private fun encodeStation(station: Station): JSONObject = JSONObject().apply {

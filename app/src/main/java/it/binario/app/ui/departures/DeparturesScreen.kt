@@ -72,10 +72,15 @@ import it.binario.app.RefreshState
 import it.binario.app.TrainViewModel
 import it.binario.app.UiMessage
 import it.binario.app.data.Direction
+import it.binario.app.data.RailTime
 import it.binario.app.data.SavedRoute
 import it.binario.app.data.TrainService
 import it.binario.app.localized
+import it.binario.app.journeys.LastOfDayMarks
 import it.binario.app.ui.common.DataStatusLine
+import it.binario.app.ui.common.InfoNoticeCard
+import it.binario.app.ui.common.LastOfDayChip
+import it.binario.app.ui.common.rememberStaticDayDepartures
 import it.binario.app.ui.common.DepartureListRow
 import it.binario.app.ui.common.HeaderBlock
 import it.binario.app.ui.common.HeaderOverlapBox
@@ -97,6 +102,11 @@ import it.binario.app.ui.common.localizedQualityLabel
 import it.binario.app.ui.common.platformColor
 import it.binario.app.ui.common.platformText
 import it.binario.app.ui.common.presentedAsDemonstration
+import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.LocalTime
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 // Partenze: the active route board and the switch to the station boards.
 
@@ -210,6 +220,15 @@ private fun RouteBoard(
     val groups = ServiceGroup.chipsFor(laterServices)
     val group = groupName?.let { name -> ServiceGroup.entries.firstOrNull { it.name == name } }?.takeIf { it in groups }
     val shownLater = JourneyTimes.filtered(laterServices, group)
+    // "Ultimo di oggi" and "Non ci sono più treni oggi" from the static timetable of the packs, never from live data.
+    val today = LocalDate.now(RailTime.defaultZone)
+    val boardDestination = viewModel.activeRoute.destination(viewModel.direction).takeIf { viewModel.hasActiveRoute }
+    val staticDay by rememberStaticDayDepartures(boardStation, boardDestination, today)
+    fun lastOfDay(service: TrainService): Boolean = LastOfDayMarks.isLast(
+        staticDay, service.number,
+        service.scheduledDepartureDateTime ?: runCatching { LocalDateTime.of(today, LocalTime.parse(service.scheduledDeparture.trim())) }.getOrNull()
+    )
+    val firstTomorrow = LastOfDayMarks.firstNextDay(staticDay, LocalDateTime.now(RailTime.defaultZone))
     LazyColumn(
         modifier = modifier.fillMaxSize().testTag("route-board"),
         verticalArrangement = Arrangement.spacedBy(0.dp)
@@ -231,7 +250,8 @@ private fun RouteBoard(
                         isDemonstration,
                         onOpen = { openDetails(nextService) },
                         modifier = Modifier.padding(horizontal = ScreenMargin),
-                        selected = nextService.id == selectedServiceId
+                        selected = nextService.id == selectedServiceId,
+                        lastOfDay = lastOfDay(nextService)
                     )
                 }
             }
@@ -246,6 +266,14 @@ private fun RouteBoard(
                 isCachedCopy = viewModel.isCachedCopy(),
                 message = viewModel.refreshMessage
             )
+        }
+        firstTomorrow?.let { first ->
+            item(key = "no-more-today") {
+                InfoNoticeCard(
+                    text = stringResource(R.string.journey_no_more_today, first.departure.format(DateTimeFormatter.ofPattern("HH:mm", Locale.ROOT))),
+                    modifier = Modifier.testTag("route-board-no-more-today")
+                )
+            }
         }
         if (boardStation != null && allServices.isNotEmpty()) {
             item(key = "train-types") {
@@ -266,7 +294,10 @@ private fun RouteBoard(
                     }
                 }
                 items(shownLater, key = { it.id }) { service ->
-                    DepartureListRow(service, isDemonstration = isDemonstration, selected = service.id == selectedServiceId, onOpen = { openDetails(service) })
+                    DepartureListRow(
+                        service, isDemonstration = isDemonstration, selected = service.id == selectedServiceId,
+                        lastOfDay = lastOfDay(service), onOpen = { openDetails(service) }
+                    )
                 }
             }
         } else {
@@ -330,7 +361,9 @@ internal fun HeroDepartureCard(
     isDemonstration: Boolean,
     onOpen: () -> Unit,
     modifier: Modifier = Modifier,
-    selected: Boolean = false
+    selected: Boolean = false,
+    /** "Ultimo di oggi" from the static timetable. */
+    lastOfDay: Boolean = false
 ) {
     val shown = if (isDemonstration) service.presentedAsDemonstration() else service
     val heading = stringResource(R.string.departures_next_departure)
@@ -344,6 +377,7 @@ internal fun HeroDepartureCard(
         heading,
         if (isDemonstration) stringResource(R.string.data_status_demo) else null,
         summary,
+        if (lastOfDay) stringResource(R.string.journey_last_of_day) else null,
         if (selected) stringResource(R.string.accessibility_row_selected) else null
     ).joinToString(". ")
     Surface(
@@ -372,6 +406,7 @@ internal fun HeroDepartureCard(
                 Text(stringResource(R.string.expected_time, shown.expectedDeparture), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
             }
             Text(shown.destination, style = MaterialTheme.typography.titleLarge)
+            if (lastOfDay) LastOfDayChip()
             Text(
                 stringResource(R.string.service_operator_category_number, shown.displayOperator, shown.trainCategory.localizedLabel(), shown.number),
                 style = MaterialTheme.typography.bodyMedium,

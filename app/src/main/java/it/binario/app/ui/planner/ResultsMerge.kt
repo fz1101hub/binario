@@ -7,6 +7,10 @@ import it.binario.app.data.core.LegMode
 import it.binario.app.data.repository.JourneySearchQuery
 import it.binario.app.journeys.JourneyOptionRow
 import it.binario.app.journeys.JourneyResultsFilter
+import it.binario.app.journeys.JourneySourceLabel
+import it.binario.app.data.provider.JourneyPreferences
+import it.binario.app.data.provider.JourneyRanking
+import it.binario.app.data.provider.TravelMode
 import it.binario.app.ui.common.JourneyTimes
 import java.time.Duration
 import java.time.LocalDate
@@ -26,15 +30,24 @@ internal sealed interface ResultEntry {
     val arrival: LocalDateTime?
     val durationMinutes: Long?
     val changes: Int
+    /** Minutes on foot ("Meno a piedi"); a direct train has none. */
+    val walkMinutes: Long
+    /** Kinds of service used, for the preferred kinds of the travel preferences. */
+    val modes: Set<TravelMode>
+    /** "Ultimo di oggi": the last departure of the static timetable's day for this origin and destination. */
+    val lastOfDay: Boolean
 
     data class Train(
         val service: TrainService,
         override val departure: LocalDateTime?,
         override val arrival: LocalDateTime?,
-        override val durationMinutes: Long?
+        override val durationMinutes: Long?,
+        override val lastOfDay: Boolean = false
     ) : ResultEntry {
         override val key: String get() = "train-${service.id}"
         override val changes: Int get() = service.transferCount
+        override val walkMinutes: Long get() = 0
+        override val modes: Set<TravelMode> get() = setOfNotNull(TravelMode.ofTrain(service.trainCategory, service.scheduledBus))
     }
 
     data class Journey(val row: JourneyOptionRow) : ResultEntry {
@@ -43,6 +56,9 @@ internal sealed interface ResultEntry {
         override val arrival: LocalDateTime get() = row.arrival.toLocalDateTime()
         override val durationMinutes: Long get() = row.durationMinutes
         override val changes: Int get() = row.changes
+        override val walkMinutes: Long get() = row.walkMinutes
+        override val modes: Set<TravelMode> get() = row.modes
+        override val lastOfDay: Boolean get() = row.lastOfDay
     }
 }
 
@@ -57,20 +73,90 @@ internal object ResultsMerge {
      * (same departure minute and same train number, or same departure and arrival when a number is missing) is
      * dropped, so the live or catalogue row with its train detail is the one shown.
      */
-    fun entries(services: List<TrainService>, journeys: List<JourneyOptionRow>, serviceDate: LocalDate): List<ResultEntry> {
-        val trains = services.map { train(it, serviceDate) }
-        val extra = journeys.filterNot { row -> trains.any { sameTrain(it, row) } }.map { ResultEntry.Journey(it) }
-        return apply(trains + extra, JourneyResultsFilter.ALL)
+    fun entries(
+        services: List<TrainService>,
+        journeys: List<JourneyOptionRow>,
+        serviceDate: LocalDate,
+        /**
+         * Travel preferences: an avoided kind hides its direct trains (a train of unknown kind always stays), and "Solo
+         * percorsi accessibili" hides every direct train, which carries no wheelchair data.
+         */
+        preferences: JourneyPreferences? = null
+    ): List<ResultEntry> {
+        val trains = shownServices(services, preferences).map { train(it, serviceDate) }
+        val (duplicates, extra) = journeys.partition { row -> trains.any { sameTrain(it, row) } }
+        // A last-of-day journey shown as its direct train passes the mark on to it.
+        val marked = trains.map { train ->
+            if (duplicates.any { it.lastOfDay && sameTrain(train, it) }) train.copy(lastOfDay = true) else train
+        }
+        val merged = marked + extra.map { ResultEntry.Journey(it) }
+        return apply(confirmLastOfDay(merged, serviceDate), JourneyResultsFilter.ALL)
     }
 
-    fun apply(entries: List<ResultEntry>, filter: JourneyResultsFilter): List<ResultEntry> {
+    /** The direct trains the travel preferences leave in the results. */
+    fun shownServices(services: List<TrainService>, preferences: JourneyPreferences?): List<TrainService> {
+        if (preferences == null) return services
+        if (preferences.wheelchairOnly) return emptyList()
+        if (preferences.avoidedModes.isEmpty()) return services
+        return services.filter { service -> TravelMode.ofTrain(service.trainCategory, service.scheduledBus)?.let { it in preferences.avoidedModes } != true }
+    }
+
+    /**
+     * The mark stays only on the latest entry of the day: a direct train of another source leaving later the same day
+     * (not in the offline timetable) takes it away, because the static timetable cannot confirm that train.
+     */
+    private fun confirmLastOfDay(entries: List<ResultEntry>, serviceDate: LocalDate): List<ResultEntry> {
+        val marked = entries.filter { it.lastOfDay }
+        if (marked.isEmpty()) return entries
+        val keep = marked.singleOrNull()?.takeIf { last ->
+            val departure = last.departure ?: return@takeIf false
+            entries.none { it !== last && dayOf(it, serviceDate) <= serviceDate && it.departure?.isAfter(departure) == true }
+        }
+        return entries.map { entry ->
+            when {
+                !entry.lastOfDay || entry === keep -> entry
+                entry is ResultEntry.Train -> entry.copy(lastOfDay = false)
+                entry is ResultEntry.Journey -> ResultEntry.Journey(entry.row.copy(lastOfDay = false))
+                else -> entry
+            }
+        }
+    }
+
+    /**
+     * "Non ci sono più treni oggi: primo domani alle …": nothing of [serviceDate] is left in the results while the
+     * offline timetable lists the next day; the earliest entry shown, or null.
+     */
+    fun firstDepartureNextDay(entries: List<ResultEntry>, journeys: List<JourneyOptionRow>, serviceDate: LocalDate): LocalDateTime? {
+        val offline = journeys.filter { it.sourceLabel == JourneySourceLabel.OFFLINE_TIMETABLE }
+        if (offline.none { (it.serviceDate ?: it.departure.toLocalDate()) > serviceDate }) return null
+        if (entries.any { dayOf(it, serviceDate) <= serviceDate }) return null
+        return entries.mapNotNull { it.departure }.minOrNull()
+    }
+
+    /** The service day of an entry: the GTFS day of a journey or of a timetable train, else its departure date. */
+    private fun dayOf(entry: ResultEntry, serviceDate: LocalDate): LocalDate = when (entry) {
+        is ResultEntry.Journey -> entry.row.serviceDate ?: entry.row.departure.toLocalDate()
+        // A train without a readable time is listed last and never counts as one of the day.
+        is ResultEntry.Train -> entry.service.gtfsIdentity?.serviceDate ?: entry.departure?.toLocalDate() ?: serviceDate.plusDays(1)
+    }
+
+    fun apply(entries: List<ResultEntry>, filter: JourneyResultsFilter, preferences: JourneyPreferences? = null): List<ResultEntry> {
         val byDeparture = compareBy<ResultEntry, Long?>(nullsLast()) { it.departure?.toEpochSecond(ZoneOffset.UTC) }
             .thenBy(nullsLast()) { it.arrival?.toEpochSecond(ZoneOffset.UTC) }
+        val preferred = preferences?.preferredModes.orEmpty()
+        val byPreferred = compareByDescending<ResultEntry> { entry -> entry.modes.count { it in preferred } }
+        val ranking = when (preferences?.ranking ?: JourneyRanking.FASTEST) {
+            JourneyRanking.FASTEST -> byPreferred.thenBy(nullsLast()) { it.durationMinutes }
+            JourneyRanking.FEWEST_CHANGES -> byPreferred.thenBy { it.changes }
+            JourneyRanking.LEAST_WALKING -> byPreferred.thenBy { it.walkMinutes }
+        }
+        val ties = ranking.then(byDeparture)
         return when (filter) {
             JourneyResultsFilter.ALL -> entries.sortedWith(byDeparture)
             JourneyResultsFilter.DIRECT -> entries.filter { it.changes == 0 }.sortedWith(byDeparture)
-            JourneyResultsFilter.FEWEST_CHANGES -> entries.sortedWith(compareBy<ResultEntry> { it.changes }.then(byDeparture))
-            JourneyResultsFilter.FASTEST -> entries.sortedWith(compareBy<ResultEntry, Long?>(nullsLast()) { it.durationMinutes }.then(byDeparture))
+            JourneyResultsFilter.FEWEST_CHANGES -> entries.sortedWith(compareBy<ResultEntry> { it.changes }.then(ties))
+            JourneyResultsFilter.FASTEST -> entries.sortedWith(compareBy<ResultEntry, Long?>(nullsLast()) { it.durationMinutes }.then(ties))
+            JourneyResultsFilter.LEAST_WALKING -> entries.sortedWith(compareBy<ResultEntry> { it.walkMinutes }.then(ties))
         }
     }
 

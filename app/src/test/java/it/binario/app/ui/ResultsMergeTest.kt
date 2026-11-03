@@ -110,7 +110,10 @@ class ResultsMergeTest {
         )
         assertEquals(365L, merged.single { it.key == "journey-j2" }.durationMinutes)
         assertEquals(
-            mapOf(JourneyResultsFilter.ALL to 4, JourneyResultsFilter.DIRECT to 2, JourneyResultsFilter.FEWEST_CHANGES to 4, JourneyResultsFilter.FASTEST to 4),
+            mapOf(
+                JourneyResultsFilter.ALL to 4, JourneyResultsFilter.DIRECT to 2, JourneyResultsFilter.FEWEST_CHANGES to 4,
+                JourneyResultsFilter.FASTEST to 4, JourneyResultsFilter.LEAST_WALKING to 4
+            ),
             ResultsMerge.counts(merged)
         )
     }
