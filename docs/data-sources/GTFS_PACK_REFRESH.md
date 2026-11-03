@@ -29,6 +29,16 @@ Cosa controllare prima del commit:
 3. **Test Android**: `EmbeddedGtfsAssetIntegrityTest` (date Kotlin), `EmbeddedGtfsJourneyRealPacksTest` ed `EmbeddedGtfsTransitPacksTest` (corse attese): aggiornare le attese solo se l'orario è davvero cambiato, mai per far passare un pack sospetto.
 4. **Commit** `data(gtfs): refresh timetables AAAA-MM-GG`, poi Android CI con le schermate di design (`-f 'inputs[capture_design_screens]=true'`) e Apple Watch CI se l'indice iOS è cambiato.
 
+**Statistiche di puntualità.** Sullo stesso ramo, un secondo dispatch stampa le statistiche aggregate degli ultimi 30 giorni e l'helper le applica con gli stessi controlli su run, step e blocco ([PUNCTUALITY_STATS.md](PUNCTUALITY_STATS.md#applicazione-con-laggiornamento-settimanale)):
+
+```sh
+gh api -X POST repos/fz1101hub/binario/actions/workflows/punctuality.yml/dispatches \
+  -f ref=<ramo> -f 'inputs[print_stats]=true'
+python3 tools/apply_ci_punctuality.py --run <run_id>     # id da: gh run list --workflow punctuality.yml --branch <ramo>
+```
+
+`app/src/main/assets/punctuality/stats_v1.json.gz` entra nello stesso commit degli orari; un file senza treni o con una finestra più vecchia di quella inclusa è rifiutato.
+
 **Trenitalia e Italo (revisione del pin).** Il job risolve l'ultimo commit di [deryclem/trenitalia-gtfs](https://github.com/deryclem/trenitalia-gtfs) e [deryclem/italo-gtfs](https://github.com/deryclem/italo-gtfs) che ha toccato l'archivio, lo scarica e, se differisce da quello fissato, ricostruisce il pack con il pin proposto (`commit`, `archiveSha256`, `sourceUrl`). Il log e l'helper mostrano il blocco proposto con `feed_info.txt` e `attributions.txt` del nuovo archivio: controllare le date di validità (`feed_start_date`, `feed_end_date`) e che l'attribuzione sia ancora Trenitalia o Italo via NAP CCISS con la conversione CC BY 4.0 di Clément Desouche. Se cambiano licenza o attribuzione non adottare il pin (`--skip trenitalia-gtfs` o `--skip italo-gtfs`) finché `SOURCE_POLICY.md` e il campo `attribution` non sono rivisti. L'adozione è sempre un commit esplicito.
 
 **ÖBB (manuale).** Il portale ÖBB richiede che il titolare accetti di persona le condizioni d'uso: nessun job lo scarica. Scaricare lo ZIP dalla pagina dei dati aperti ÖBB (`OEBB_GTFS_ACCESS.md`), poi:
