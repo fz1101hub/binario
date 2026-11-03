@@ -9,12 +9,13 @@
     "verify:build": "node scripts/verify-production-build.mjs",
     "test:production-install": "node scripts/test-production-install.mjs",
     "start": "NODE_ENV=production node dist/index.js",
-    "check": "tsc --noEmit",
+    "check": "tsc --noEmit && tsc --noEmit -p tsconfig.test.json",
     "format": "prettier --write .",
     "test": "vitest run",
     "test:db-migrations": "vitest run server/db.migrations.integration.test.ts",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate"
+    "db:check-engine": "tsx scripts/check-db-engine.ts",
+    "db:migrate": "tsx scripts/check-db-engine.ts && drizzle-kit migrate"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

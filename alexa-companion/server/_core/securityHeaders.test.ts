@@ -9,7 +9,7 @@ function fakeResponse() {
 describe("security headers", () => {
   it("forbids framing through both CSP and X-Frame-Options", () => {
     const res = fakeResponse();
-    applySecurityHeaders(res);
+    applySecurityHeaders(res as unknown as Parameters<typeof applySecurityHeaders>[0]);
     expect(res.headers.get("Content-Security-Policy")).toBe("frame-ancestors 'none'");
     expect(res.headers.get("X-Frame-Options")).toBe("DENY");
     expect(res.headers.get("X-Content-Type-Options")).toBe("nosniff");

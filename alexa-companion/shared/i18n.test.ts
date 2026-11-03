@@ -146,9 +146,12 @@ describe("typed locale dictionaries", () => {
   });
 
   it("contains no blank translations or unresolved replacement markers", () => {
+    // Thai closes a sentence without punctuation: its list terminator is deliberately empty.
+    const deliberatelyEmpty = new Set(["th:voice.listTerminator"]);
     for (const [language, dictionary] of Object.entries(LOCALE_MESSAGES)) {
       for (const [path, translation] of stringLeaves(dictionary)) {
-        expect(translation.trim(), `${language}:${path}`).not.toBe("");
+        if (!deliberatelyEmpty.has(`${language}:${path}`))
+          expect(translation.trim(), `${language}:${path}`).not.toBe("");
         expect(translation, `${language}:${path}`).not.toContain("REPLACE_WITH");
       }
     }
@@ -192,9 +195,11 @@ describe("typed locale dictionaries", () => {
       "it-IT",
       "en-US",
       "en-GB",
+      "en-IN",
       "de-DE",
       "fr-FR",
       "es-ES",
+      "es-US",
       "ar-SA",
       "hi-IN",
       "ja-JP",

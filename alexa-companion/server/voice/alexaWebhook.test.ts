@@ -75,7 +75,8 @@ async function issue(options: {
   cert.issuer = options.issuer?.subject ?? cert.subject;
   cert.notBefore.value = new Date(options.from ?? NOW - 60_000);
   cert.notAfter.value = new Date(options.until ?? NOW + 86_400_000);
-  await cert.subjectPublicKeyInfo.importKey(options.keys.publicKey, engine);
+  // Node's webcrypto key and the DOM CryptoKey PKIjs is typed against are the same object.
+  await cert.subjectPublicKeyInfo.importKey(options.keys.publicKey as unknown as CryptoKey, engine);
   cert.extensions = [
     new Extension({
       extnID: "2.5.29.19",
@@ -142,7 +143,7 @@ async function issue(options: {
       })
     );
   await cert.sign(
-    options.issuerKeys?.privateKey ?? options.keys.privateKey,
+    (options.issuerKeys?.privateKey ?? options.keys.privateKey) as unknown as CryptoKey,
     "SHA-256",
     engine
   );
@@ -551,7 +552,7 @@ describe("Alexa HTTP dispatch", () => {
       post: (data: string | Buffer = body()) =>
         fetch(url, {
           method: "POST",
-          body: data,
+          body: typeof data === "string" ? data : new Uint8Array(data),
           headers: {
             "content-type": "application/json",
             "Signature-256": signed.signature,
@@ -580,17 +581,66 @@ describe("Alexa HTTP dispatch", () => {
     expect(invoke).toHaveBeenCalledTimes(1);
   });
 
+  it("limits verified traffic per signed Alexa user, not per address", async () => {
+    let now = NOW;
+    const invoke = vi.fn(async () => ({ version: "1.0", response: {} }));
+    const app = express();
+    app.post(
+      "/webhook",
+      createAlexaWebhookHandler({ invoke }, SKILL_ID, verifier(undefined, () => now).verify, {
+        requestsPerUserPerMinute: 2,
+        now: () => now,
+      })
+    );
+    server = app.listen(0);
+    await new Promise<void>(resolve => server!.once("listening", () => resolve()));
+    const url = `http://127.0.0.1:${(server.address() as AddressInfo).port}/webhook`;
+    const signedBy = (userId: string) => {
+      const data = body({
+        context: { System: { application: { applicationId: SKILL_ID }, user: { userId } } },
+        request: { type: "LaunchRequest", requestId: `request-${userId}`, timestamp: new Date(now).toISOString() },
+      });
+      const signed = headers(data);
+      return fetch(url, {
+        method: "POST",
+        body: data,
+        headers: { "content-type": "application/json", "Signature-256": signed.signature, SignatureCertChainUrl: signed.certificateUrl },
+      });
+    };
+    expect((await signedBy("amzn1.ask.account.A")).status).toBe(200);
+    expect((await signedBy("amzn1.ask.account.A")).status).toBe(200);
+    const limited = await signedBy("amzn1.ask.account.A");
+    expect(limited.status).toBe(429);
+    expect(limited.headers.get("retry-after")).toBe("60");
+    // Another user behind the same Amazon address keeps its own budget.
+    expect((await signedBy("amzn1.ask.account.B")).status).toBe(200);
+    expect(invoke).toHaveBeenCalledTimes(3);
+    now += 60_000;
+    expect((await signedBy("amzn1.ask.account.A")).status).toBe(200);
+  });
+
   it("rejects pre-parsed bodies before dispatch", async () => {
     const { invoke, post } = await start(true);
     expect((await post()).status).toBe(400);
     expect(invoke).not.toHaveBeenCalled();
   });
 
-  it("keeps unexpected skill errors out of HTTP responses", async () => {
+  it("keeps unexpected skill errors out of HTTP responses and logs them without details", async () => {
+    const errors = vi.spyOn(console, "error").mockImplementation(() => undefined);
     const { invoke, post } = await start();
-    invoke.mockRejectedValueOnce(new Error("private database detail"));
+    invoke.mockRejectedValueOnce(Object.assign(new Error("private database detail"), { code: "ER_LOCK_WAIT_TIMEOUT", sql: "select 'Casa di Mario'" }));
     const response = await post();
     expect(response.status).toBe(500);
     expect(await response.json()).toEqual({ error: "server_error" });
+    expect(errors).toHaveBeenCalledWith("[Alexa] skill invocation failed", {
+      requestType: "LaunchRequest",
+      intent: undefined,
+      locale: undefined,
+      requestRef: expect.stringMatching(/^[0-9a-f]{16}$/),
+      error: { name: "Error", code: "ER_LOCK_WAIT_TIMEOUT" },
+    });
+    expect(JSON.stringify(errors.mock.calls)).not.toContain("Casa di Mario");
+    expect(JSON.stringify(errors.mock.calls)).not.toContain("private database detail");
+    errors.mockRestore();
   });
 });

@@ -516,14 +516,14 @@ const BINARIO_APL_DOCUMENT: Record<string, unknown> = {
               minHeight: "@binarioTouchTarget",
               ...padding("@binarioSpacing", "8dp"),
               items: [
-                { type: "Text", text: "${route.text}", grow: 1, shrink: 1, maxLines: 2, color: "@binarioOnSurface", fontSize: "@binarioBodySize", fontWeight: "500" },
+                { type: "Text", text: "${route.text}", grow: 1, shrink: 1, maxLines: 2, color: "@binarioOnSurface", fontSize: "@binarioBodySize", fontWeight: "500", textAlign: "@binarioTextAlign" },
                 {
                   type: "Frame",
                   when: "${route.pinnedText != ''}",
                   spacing: "@binarioSpacing",
                   backgroundColor: "@binarioPrimaryContainer",
                   borderRadius: "@binarioRadius",
-                  item: { type: "Text", text: "${route.pinnedText}", color: "@binarioOnPrimaryContainer", fontSize: "@binarioLabelSize", ...padding("12dp", "4dp") },
+                  item: { type: "Text", text: "${route.pinnedText}", color: "@binarioOnPrimaryContainer", fontSize: "@binarioLabelSize", textAlign: "center", ...padding("12dp", "4dp") },
                 },
               ],
             },
@@ -642,11 +642,11 @@ const BINARIO_APL_DOCUMENT: Record<string, unknown> = {
                     display: "@binarioHintsDisplay",
                     spacing: "@binarioGap",
                     items: [
-                      { type: "Text", text: "${payload.binario.hints.title}", color: "@binarioOnBackground", fontSize: "@binarioLabelSize", fontWeight: "700" },
+                      { type: "Text", text: "${payload.binario.hints.title}", color: "@binarioOnBackground", fontSize: "@binarioLabelSize", fontWeight: "700", textAlign: "@binarioTextAlign" },
                       {
                         type: "Container",
                         data: "${payload.binario.hints.items}",
-                        items: [{ type: "Text", text: "${data}", color: "@binarioOnSurfaceVariant", fontSize: "@binarioLabelSize", spacing: "8dp" }],
+                        items: [{ type: "Text", text: "${data}", color: "@binarioOnSurfaceVariant", fontSize: "@binarioLabelSize", textAlign: "@binarioTextAlign", spacing: "8dp" }],
                       },
                     ],
                   },

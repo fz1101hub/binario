@@ -11,6 +11,7 @@ import {
   users,
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
+import { describeErrorForLog } from "./_core/logRedaction";
 import {
   normalizePersonalRouteDraft,
   type PersonalRouteDraft,
@@ -32,7 +33,7 @@ export async function getDb() {
     try {
       _db = drizzle(process.env.DATABASE_URL);
     } catch (error) {
-      console.warn("[Database] Failed to connect:", error);
+      console.warn("[Database] Failed to connect:", describeErrorForLog(error));
       _db = null;
     }
   }
@@ -93,10 +94,8 @@ export async function upsertUser(user: InsertUser): Promise<void> {
       set: updateSet,
     });
   } catch (error) {
-    console.error(
-      "[Database] Failed to upsert user:",
-      error instanceof Error ? error.message : String(error)
-    );
+    // The failed statement carries openId, name and email as parameters.
+    console.error("[Database] Failed to upsert user:", describeErrorForLog(error));
     throw error;
   }
 }
@@ -401,6 +400,36 @@ export async function exchangeAuthorizationCode(input: {
   });
 }
 
+/**
+ * A rotated refresh token presented again shortly after its rotation is a retry, not a theft:
+ * Amazon resends the same request when the response is lost, and two refreshes can race.
+ */
+export const REFRESH_TOKEN_REUSE_GRACE_MS = 60_000;
+
+/**
+ * True when a revoked refresh token may still be exchanged: it was rotated (its successor,
+ * created at the instant of the revocation, is still live) no longer ago than the grace window.
+ * A token revoked by unlink, re-link or a family revocation has no live successor.
+ */
+export function isRefreshRetry(input: {
+  revokedAt: Date;
+  now: Date;
+  successorIsLive: boolean;
+}) {
+  return (
+    input.successorIsLive &&
+    input.now.getTime() - input.revokedAt.getTime() <= REFRESH_TOKEN_REUSE_GRACE_MS
+  );
+}
+
+/**
+ * Rotates a refresh token inside its family. Reuse of an already rotated token escalates to
+ * revoking the whole family (and the voice credential generation) only outside the grace
+ * window; inside it, the retry gets a fresh token of the same family and nothing is revoked.
+ * Each successor is stored with `createdAt` equal to its predecessor's `revokedAt`, which
+ * identifies the "immediately previous" token without a schema change. Siblings handed out
+ * to retries that the client did not keep expire at the next regular rotation.
+ */
 export async function rotateRefreshToken(input: {
   currentTokenHash: string;
   clientId: string;
@@ -450,6 +479,39 @@ export async function rotateRefreshToken(input: {
     const current = rows[0];
     if (!current) return null;
     if (current.revokedAt) {
+      const successors = await tx
+        .select({ id: oauthRefreshTokens.id })
+        .from(oauthRefreshTokens)
+        .where(
+          and(
+            eq(oauthRefreshTokens.familyId, current.familyId),
+            eq(oauthRefreshTokens.createdAt, current.revokedAt),
+            isNull(oauthRefreshTokens.revokedAt),
+            gt(oauthRefreshTokens.expiresAt, now)
+          )
+        )
+        .limit(1)
+        .for("update");
+      if (
+        isRefreshRetry({
+          revokedAt: current.revokedAt,
+          now,
+          successorIsLive: Boolean(successors[0]),
+        })
+      ) {
+        await tx.insert(oauthRefreshTokens).values({
+          userId: current.userId,
+          clientId: input.clientId,
+          tokenHash: input.nextTokenHash,
+          familyId: current.familyId,
+          expiresAt: input.nextTokenExpiresAt,
+          createdAt: now,
+        });
+        return {
+          ...current,
+          credentialVersion: links[0].credentialVersion,
+        };
+      }
       const familyRevocation = await tx
         .update(oauthRefreshTokens)
         .set({ revokedAt: now })
@@ -478,12 +540,27 @@ export async function rotateRefreshToken(input: {
         )
       );
     if (Number(update[0].affectedRows) !== 1) return null;
+    // Tokens a grace-window retry issued and the client never used: the client has just
+    // shown which token it kept, so the others stop working (without a family revocation).
+    await tx
+      .update(oauthRefreshTokens)
+      .set({ expiresAt: now })
+      .where(
+        and(
+          eq(oauthRefreshTokens.familyId, current.familyId),
+          ne(oauthRefreshTokens.id, current.id),
+          isNull(oauthRefreshTokens.revokedAt),
+          gt(oauthRefreshTokens.expiresAt, now)
+        )
+      );
     await tx.insert(oauthRefreshTokens).values({
       userId: current.userId,
       clientId: input.clientId,
       tokenHash: input.nextTokenHash,
       familyId: current.familyId,
       expiresAt: input.nextTokenExpiresAt,
+      // Equal to the predecessor's revokedAt: marks this row as its direct successor.
+      createdAt: now,
     });
     return {
       ...current,

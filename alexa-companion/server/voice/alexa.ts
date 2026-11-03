@@ -10,6 +10,7 @@ import {
   type RequestHandler,
 } from "ask-sdk-core";
 import {
+  formatList,
   formatMessage,
   formatPlural,
   messagesForLocale,
@@ -27,6 +28,8 @@ import {
 } from "../db";
 import { ENV } from "../_core/env";
 import { isSecureRequest } from "../_core/cookies";
+import { describeErrorForLog } from "../_core/logRedaction";
+import { createWindowCounter } from "../_core/rateLimit";
 import {
   createOpaqueSecret,
   hashVoiceSecret,
@@ -53,6 +56,8 @@ import { needsAccountLink } from "./guards";
 import { parseOAuthAuthorizationParameters } from "./oauthContract";
 import { escapeSsmlText, liveDataUnavailableSpeech, plainSpeechText } from "./speech";
 import { parseScreenEvent, screenResponseInterceptor, setScreen } from "./presentation";
+import { alexaRequestLogContext } from "./requestLog";
+import { matchRouteByName } from "./routeMatching";
 
 /** Intent names the skill handles; the interaction model in skill-package/ must declare all of them. */
 export const HANDLED_INTENTS = [
@@ -147,7 +152,8 @@ const launchHandler: RequestHandler = {
     setScreen(input, { kind: "home", message: messages.launch });
     return input.responseBuilder
       .speak(messages.launch)
-      .reprompt(messages.unsupported)
+      // After a silent launch the user said nothing: ask again, never "I didn't understand".
+      .reprompt(messages.launchReprompt)
       .withSimpleCard(messages.cardTitle, messages.launch)
       .withShouldEndSession(false)
       .getResponse();
@@ -157,13 +163,20 @@ const launchHandler: RequestHandler = {
 type PersonalRoute = Awaited<ReturnType<typeof listPersonalRoutesForAlexa>>[number];
 type SkillResponse = ReturnType<HandlerInput["responseBuilder"]["getResponse"]>;
 
+type RouteSelection =
+  | PersonalRoute
+  | { notFound: string }
+  | { ambiguous: PersonalRoute[] }
+  | undefined;
+
 /**
- * Speaks the live-data caveat for one saved route. `select` picks the route among the named ones;
- * undefined means none matched. Only reached after the account link has been verified.
+ * Speaks the live-data caveat for one saved route. `select` picks the route among the named ones:
+ * undefined means none matched, `notFound` a spoken name that matched nothing and `ambiguous`
+ * several candidates. Only reached after the account link has been verified.
  */
 async function respondNextTrains(
   input: HandlerInput,
-  select: (namedRoutes: PersonalRoute[], locale: SupportedLocale) => PersonalRoute | undefined,
+  select: (namedRoutes: PersonalRoute[], locale: SupportedLocale) => RouteSelection,
   onMissing?: () => Promise<SkillResponse>
 ) {
   const locale = getAlexaLocale(input);
@@ -175,16 +188,15 @@ async function respondNextTrains(
     principal.credentialVersion
   );
   const namedRoutes = routes.filter(item => item.name.trim().length > 0);
-  const route = select(namedRoutes, locale);
+  const selection = select(namedRoutes, locale);
+  if (selection && "ambiguous" in selection) return askWhichRoute(input, selection.ambiguous);
+  if (selection && "notFound" in selection)
+    return namedRoutes.length
+      ? askWhichRoute(input, namedRoutes, selection.notFound)
+      : noRoutesResponse(input);
+  const route = selection;
   if (!route && onMissing && namedRoutes.length) return onMissing();
-  if (!route) {
-    setScreen(input, { kind: "myRoutes", routes: [], remainingCount: 0 });
-    return input.responseBuilder
-      .speak(messages.noRoutes)
-      .withSimpleCard(messages.cardTitle, messages.noRoutes)
-      .withShouldEndSession(true)
-      .getResponse();
-  }
+  if (!route) return noRoutesResponse(input);
   // SSML needs escaped text; the companion-app card is plain text and must
   // show the route name as typed, not XML entities.
   const speech = liveDataUnavailableSpeech(
@@ -203,23 +215,80 @@ async function respondNextTrains(
     .getResponse();
 }
 
+/** Spoken and card forms of a route list, joined the way the locale writes lists. */
+function spokenRouteList(locale: SupportedLocale, routes: readonly PersonalRoute[]) {
+  return {
+    speech: formatList(locale, routes.map(route => escapeSsmlText(route.name))),
+    card: formatList(locale, routes.map(route => plainSpeechText(route.name))),
+  };
+}
+
+function noRoutesResponse(input: HandlerInput) {
+  const messages = voiceMessages(input);
+  setScreen(input, { kind: "myRoutes", routes: [], remainingCount: 0 });
+  return input.responseBuilder
+    .speak(messages.noRoutes)
+    .withSimpleCard(messages.cardTitle, messages.noRoutes)
+    .withShouldEndSession(true)
+    .getResponse();
+}
+
+const SPOKEN_ROUTE_LIMIT = 5;
+
+/**
+ * The spoken name matched several routes, or (with `notFound`) none: say so, read the
+ * candidates (at most five, like "my routes") and keep listening for the user's choice.
+ */
+function askWhichRoute(
+  input: HandlerInput,
+  candidates: readonly PersonalRoute[],
+  notFound?: string
+) {
+  const locale = getAlexaLocale(input);
+  const messages = messagesForLocale(locale).voice;
+  const spoken = candidates.slice(0, SPOKEN_ROUTE_LIMIT);
+  const remainingCount = Math.max(candidates.length - SPOKEN_ROUTE_LIMIT, 0);
+  const list = spokenRouteList(locale, spoken);
+  const suffix = remainingCount > 0
+    ? formatPlural(locale, remainingCount, messages.moreRoutes)
+    : messages.listTerminator;
+  const sentence = (routes: string, name: string, example: string) =>
+    [
+      notFound
+        ? `${formatMessage(messages.routeNotFound, { routeName: name })} ${formatMessage(messages.routesSaved, { routes, suffix })}`
+        : formatMessage(messages.routeAmbiguous, { routes }),
+      formatMessage(messages.routeChoice, { example }),
+    ].join(" ");
+  const choice = formatMessage(messages.routeChoice, { example: escapeSsmlText(spoken[0].name) });
+  setScreen(input, {
+    kind: "myRoutes",
+    routes: spoken.map(route => ({ name: route.name, isPinned: route.isPinned })),
+    remainingCount,
+  });
+  return input.responseBuilder
+    .speak(sentence(list.speech, escapeSsmlText(notFound ?? ""), escapeSsmlText(spoken[0].name)))
+    .reprompt(choice)
+    .withSimpleCard(
+      messages.cardTitle,
+      sentence(list.card, plainSpeechText(notFound ?? ""), plainSpeechText(spoken[0].name))
+    )
+    .withShouldEndSession(false)
+    .getResponse();
+}
+
 const nextTrainsHandler: RequestHandler = {
   canHandle: input =>
     getRequestType(input.requestEnvelope) === "IntentRequest" &&
     getIntentName(input.requestEnvelope) === "NextTrainsIntent",
   handle: input =>
     respondNextTrains(input, (namedRoutes, locale) => {
-      const requestedName = intentSlot(
-        input,
-        "routeName",
-        "route",
-        "tratta"
-      )?.toLocaleLowerCase(locale);
-      return requestedName
-        ? namedRoutes.find(
-            item => item.name.toLocaleLowerCase(locale) === requestedName
-          )
-        : (namedRoutes.find(item => item.isPinned) ?? namedRoutes[0]);
+      const requestedName = intentSlot(input, "routeName", "route", "tratta");
+      if (!requestedName)
+        return namedRoutes.find(item => item.isPinned) ?? namedRoutes[0];
+      const match = matchRouteByName(namedRoutes, requestedName, locale);
+      if (match.kind === "match") return match.route;
+      if (match.kind === "ambiguous") return { ambiguous: match.routes };
+      return { notFound: requestedName };
     }),
 };
 
@@ -264,28 +333,16 @@ async function respondMyRoutes(input: HandlerInput) {
     principal.userId,
     principal.credentialVersion
   );
-  if (!routes.length) {
-    setScreen(input, { kind: "myRoutes", routes: [], remainingCount: 0 });
-    return input.responseBuilder
-      .speak(messages.noRoutes)
-      .withSimpleCard(messages.cardTitle, messages.noRoutes)
-      .withShouldEndSession(true)
-      .getResponse();
-  }
-  const spoken = routes.slice(0, 5);
-  const remainingRouteCount = Math.max(routes.length - 5, 0);
+  if (!routes.length) return noRoutesResponse(input);
+  const spoken = routes.slice(0, SPOKEN_ROUTE_LIMIT);
+  const remainingRouteCount = Math.max(routes.length - SPOKEN_ROUTE_LIMIT, 0);
   const suffix =
     remainingRouteCount > 0
       ? formatPlural(locale, remainingRouteCount, messages.moreRoutes)
-      : ".";
-  const speech = formatMessage(messages.routesSaved, {
-    routes: spoken.map(route => escapeSsmlText(route.name)).join(", "),
-    suffix,
-  });
-  const card = formatMessage(messages.routesSaved, {
-    routes: spoken.map(route => plainSpeechText(route.name)).join(", "),
-    suffix,
-  });
+      : messages.listTerminator;
+  const list = spokenRouteList(locale, spoken);
+  const speech = formatMessage(messages.routesSaved, { routes: list.speech, suffix });
+  const card = formatMessage(messages.routesSaved, { routes: list.card, suffix });
   // The screen shows the same five names the voice reads, and nothing else about them.
   setScreen(input, {
     kind: "myRoutes",
@@ -392,7 +449,12 @@ const fallbackHandler: RequestHandler = {
 
 const errorHandler = {
   canHandle: () => true,
-  handle: (input: HandlerInput) => {
+  handle: (input: HandlerInput, error: unknown) => {
+    // Request type, intent, locale and error class only: no slot values, user or device ids.
+    console.error("[Alexa] request failed", {
+      ...alexaRequestLogContext(input.requestEnvelope),
+      error: describeErrorForLog(error),
+    });
     const messages = voiceMessages(input);
     // A handler may have described its screen before failing. The SDK skips response
     // interceptors on this path today; clearing keeps an error from ever rendering it.
@@ -426,6 +488,54 @@ export function createAlexaSkill() {
 
 function oauthError(res: Response, status: number, error: string) {
   return res.status(status).json({ error });
+}
+
+/**
+ * Refresh tokens last a year and slide with every rotation, so a user who does not speak to
+ * the skill for a few weeks stays linked; unlink, re-link, account deletion and replay
+ * detection still revoke them server-side.
+ */
+export const REFRESH_TOKEN_TTL_MS = 365 * 24 * 60 * 60 * 1000;
+
+/** Token requests per minute for the one authenticated OAuth client (Amazon), all users together. */
+export const ALEXA_TOKEN_REQUESTS_PER_CLIENT_PER_MINUTE = 1_200;
+
+type ClientCredentials = { clientId: string; clientSecret: string };
+
+function formUrlDecode(value: string) {
+  return decodeURIComponent(value.replace(/\+/g, " "));
+}
+
+/**
+ * Client authentication for the token endpoint (RFC 6749 §2.3.1): HTTP Basic, which the Alexa
+ * console recommends, with the id and secret form-URL-encoded before base64, or client_id and
+ * client_secret in the body. Using both at once is refused; a body client_id next to Basic is
+ * allowed only when it names the same client. Null means no acceptable credentials.
+ */
+export function readClientCredentials(
+  authorization: string | undefined,
+  body: Record<string, unknown>
+): ClientCredentials | null {
+  const bodyId = typeof body.client_id === "string" ? body.client_id : undefined;
+  const bodySecret = typeof body.client_secret === "string" ? body.client_secret : undefined;
+  if (authorization !== undefined && /^basic(?:\s|$)/i.test(authorization)) {
+    const encoded = /^basic\s+([A-Za-z0-9+/]+={0,2})\s*$/i.exec(authorization)?.[1];
+    if (!encoded || bodySecret !== undefined) return null;
+    const decoded = Buffer.from(encoded, "base64").toString("utf8");
+    const separator = decoded.indexOf(":");
+    if (separator < 0) return null;
+    try {
+      const clientId = formUrlDecode(decoded.slice(0, separator));
+      const clientSecret = formUrlDecode(decoded.slice(separator + 1));
+      if (bodyId !== undefined && bodyId !== clientId) return null;
+      return { clientId, clientSecret };
+    } catch {
+      return null;
+    }
+  }
+  return bodyId !== undefined && bodySecret !== undefined
+    ? { clientId: bodyId, clientSecret: bodySecret }
+    : null;
 }
 
 // Express 4 does not forward rejected async route handlers to its error layer.
@@ -516,7 +626,13 @@ async function tokenPairResponse(
   };
 }
 
-export function registerAlexaRoutes(app: Express) {
+export function registerAlexaRoutes(
+  app: Express,
+  options: { tokenRequestsPerClientPerMinute?: number } = {}
+) {
+  const tokenRequestsPerClient = createWindowCounter({
+    limit: options.tokenRequestsPerClientPerMinute ?? ALEXA_TOKEN_REQUESTS_PER_CLIENT_PER_MINUTE,
+  });
   // GET only shows an authenticated consent page: the code is created by the
   // CSRF-protected POST below, so a cross-site navigation cannot link a
   // victim's Binario account to someone else's Alexa.
@@ -611,19 +727,29 @@ export function registerAlexaRoutes(app: Express) {
     express.urlencoded({ extended: false }),
     express.json({ strict: true }),
     safeOAuthRoute(async (req, res) => {
+      // RFC 6749 §5.1: token responses, errors included, are never cached.
+      res.set({ "Cache-Control": "no-store", Pragma: "no-cache" });
       if (!isAlexaConfigured())
         return oauthError(res, 503, "alexa_not_configured");
-      const clientId =
-        typeof req.body?.client_id === "string" ? req.body.client_id : "";
-      const clientSecret =
-        typeof req.body?.client_secret === "string"
-          ? req.body.client_secret
-          : "";
+      const credentials = readClientCredentials(
+        req.get("authorization"),
+        (req.body ?? {}) as Record<string, unknown>
+      );
       if (
-        !secureStringEquals(clientId, ENV.alexaOAuthClientId) ||
-        !secureStringEquals(clientSecret, ENV.alexaOAuthClientSecret)
-      )
+        !credentials ||
+        !secureStringEquals(credentials.clientId, ENV.alexaOAuthClientId) ||
+        !secureStringEquals(credentials.clientSecret, ENV.alexaOAuthClientSecret)
+      ) {
+        res.set("WWW-Authenticate", 'Basic realm="binario-alexa", charset="UTF-8"');
         return oauthError(res, 401, "invalid_client");
+      }
+      const { clientId } = credentials;
+      // Amazon refreshes every linked user from a few shared addresses: the budget belongs
+      // to the authenticated client, not to an IP (failed authentication is limited per IP).
+      if (!tokenRequestsPerClient.hit(clientId)) {
+        res.set("Retry-After", String(tokenRequestsPerClient.retryAfterSeconds(clientId)));
+        return oauthError(res, 429, "too_many_requests");
+      }
 
       if (req.body?.grant_type === "authorization_code") {
         const code = typeof req.body.code === "string" ? req.body.code : "";
@@ -639,9 +765,7 @@ export function registerAlexaRoutes(app: Express) {
                 clientId,
                 redirectUri,
                 refreshTokenHash: hashVoiceSecret(refreshToken),
-                refreshTokenExpiresAt: new Date(
-                  Date.now() + 30 * 24 * 60 * 60 * 1000
-                ),
+                refreshTokenExpiresAt: new Date(Date.now() + REFRESH_TOKEN_TTL_MS),
               })
             : null;
         if (!record) return oauthError(res, 400, "invalid_grant");
@@ -666,9 +790,7 @@ export function registerAlexaRoutes(app: Express) {
               currentTokenHash: tokenHash,
               clientId,
               nextTokenHash: hashVoiceSecret(nextRefreshToken),
-              nextTokenExpiresAt: new Date(
-                Date.now() + 30 * 24 * 60 * 60 * 1000
-              ),
+              nextTokenExpiresAt: new Date(Date.now() + REFRESH_TOKEN_TTL_MS),
             })
           : null;
         if (!record) return oauthError(res, 400, "invalid_grant");
@@ -696,12 +818,15 @@ export function registerAlexaRoutes(app: Express) {
     createAlexaWebhookHandler(createAlexaSkill(), ENV.alexaSkillId)
   );
 
-  app.use("/api/alexa/oauth", (error: unknown, _req: Request, res: Response, next: NextFunction) => {
+  app.use("/api/alexa/oauth", (error: unknown, req: Request, res: Response, next: NextFunction) => {
     if (res.headersSent) return next(error);
-    // Keep database errors and tokens out of the response and logs.
+    // Keep database errors and tokens out of the response; the log gets only the
+    // redacted description (no request body, no bound SQL values).
     const status = typeof error === "object" && error !== null && "status" in error &&
       typeof error.status === "number" && error.status >= 400 && error.status < 500
       ? error.status : 500;
+    if (status === 500)
+      console.error("[Alexa OAuth] request failed", { path: req.path, error: describeErrorForLog(error) });
     res.setHeader("Cache-Control", "no-store");
     return oauthError(res, status, status === 500 ? "server_error" : "invalid_request");
   });

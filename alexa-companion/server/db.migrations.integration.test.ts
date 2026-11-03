@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { createConnection, type ConnectionOptions } from "mysql2/promise";
+import { createConnection, type ConnectionOptions, type RowDataPacket } from "mysql2/promise";
 import { drizzle } from "drizzle-orm/mysql2";
 import { migrate } from "drizzle-orm/mysql2/migrator";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -16,6 +16,9 @@ import {
   rotateRefreshToken,
   touchExistingUserSession,
 } from "./db";
+
+/** mysql2 types SELECT results as RowDataPacket rows. */
+type Rows<T> = Array<T & RowDataPacket>;
 
 const runDatabaseMigrationTests = process.env.RUN_DB_MIGRATION_TESTS === "1";
 const drizzleDir = path.resolve(import.meta.dirname, "..", "drizzle");
@@ -69,7 +72,7 @@ async function applyMigrations(
 async function tableNames(
   connection: Awaited<ReturnType<typeof createConnection>>
 ) {
-  const [rows] = await connection.query<Array<{ tableName: string }>>(
+  const [rows] = await connection.query<Rows<{ tableName: string }>>(
     "SELECT table_name AS tableName FROM information_schema.tables WHERE table_schema = DATABASE() ORDER BY table_name"
   );
   return rows.map(row => row.tableName);
@@ -131,15 +134,15 @@ describeDatabase("migrazioni MariaDB reali", () => {
         "station_preferences",
         "users",
       ]);
-      const [columns] = await connection.query<Array<{ Field: string }>>(
+      const [columns] = await connection.query<Rows<{ Field: string }>>(
         "SHOW COLUMNS FROM oauth_authorization_codes WHERE Field = 'revokedAt'"
       );
       expect(columns).toHaveLength(1);
-      const [linkColumns] = await connection.query<Array<{ Field: string }>>(
+      const [linkColumns] = await connection.query<Rows<{ Field: string }>>(
         "SHOW COLUMNS FROM alexa_account_links WHERE Field = 'credentialVersion'"
       );
       expect(linkColumns).toHaveLength(1);
-      const [familyColumns] = await connection.query<Array<{ Field: string }>>(
+      const [familyColumns] = await connection.query<Rows<{ Field: string }>>(
         "SHOW COLUMNS FROM oauth_refresh_tokens WHERE Field = 'familyId'"
       );
       expect(familyColumns).toHaveLength(1);
@@ -169,11 +172,11 @@ describeDatabase("migrazioni MariaDB reali", () => {
         "INSERT INTO oauth_refresh_tokens (`userId`, `tokenHash`, `clientId`, `expiresAt`, `revokedAt`) VALUES (?, ?, 'legacy-client', DATE_ADD(CURRENT_TIMESTAMP, INTERVAL 1 DAY), CURRENT_TIMESTAMP), (?, ?, 'legacy-client', DATE_ADD(CURRENT_TIMESTAMP, INTERVAL 1 DAY), NULL)",
         [historicalUserId, "a".repeat(64), historicalUserId, "b".repeat(64)]
       );
-      const [before] = await connection.query<Array<{ Field: string }>>(
+      const [before] = await connection.query<Rows<{ Field: string }>>(
         "SHOW COLUMNS FROM oauth_authorization_codes WHERE Field = 'revokedAt'"
       );
       expect(before).toHaveLength(0);
-      const [linkBefore] = await connection.query<Array<{ Field: string }>>(
+      const [linkBefore] = await connection.query<Rows<{ Field: string }>>(
         "SHOW COLUMNS FROM alexa_account_links WHERE Field = 'credentialVersion'"
       );
       expect(linkBefore).toHaveLength(0);
@@ -184,21 +187,21 @@ describeDatabase("migrazioni MariaDB reali", () => {
         "INSERT INTO `__drizzle_migrations` (`hash`, `created_at`) VALUES ('historical-webdev-0011', 1788377861523)"
       );
       await migrate(drizzle(connection), { migrationsFolder: drizzleDir });
-      const [after] = await connection.query<Array<{ Field: string }>>(
+      const [after] = await connection.query<Rows<{ Field: string }>>(
         "SHOW COLUMNS FROM oauth_authorization_codes WHERE Field = 'revokedAt'"
       );
       expect(after).toHaveLength(1);
-      const [linkAfter] = await connection.query<Array<{ Field: string }>>(
+      const [linkAfter] = await connection.query<Rows<{ Field: string }>>(
         "SHOW COLUMNS FROM alexa_account_links WHERE Field = 'credentialVersion'"
       );
       expect(linkAfter).toHaveLength(1);
-      const [preserved] = await connection.query<Array<{ stationName: string }>>(
+      const [preserved] = await connection.query<Rows<{ stationName: string }>>(
         "SELECT stationName FROM station_preferences WHERE userId = ?",
         [historicalUserId]
       );
       expect(preserved).toEqual([{ stationName: "Roma Termini" }]);
       const [families] = await connection.query<
-        Array<{ tokenHash: string; familyId: string; isRevoked: number }>
+        Rows<{ tokenHash: string; familyId: string; isRevoked: number }>
       >(
         "SELECT tokenHash, familyId, revokedAt IS NOT NULL AS isRevoked FROM oauth_refresh_tokens WHERE userId = ? ORDER BY id",
         [historicalUserId]
@@ -218,7 +221,7 @@ describeDatabase("migrazioni MariaDB reali", () => {
       // reliable lineage to reconstruct, so migration must not let replay of an
       // old revoked grant revoke an unrelated currently-active grant.
       expect(families[1]?.familyId).not.toBe(families[0]?.familyId);
-      const [applied] = await connection.query<Array<{ createdAt: string }>>(
+      const [applied] = await connection.query<Rows<{ createdAt: string }>>(
         "SELECT CAST(created_at AS CHAR) AS createdAt FROM __drizzle_migrations ORDER BY created_at"
       );
       expect(applied.map(row => row.createdAt)).toEqual([
@@ -268,12 +271,12 @@ describeDatabase("migrazioni MariaDB reali", () => {
           "station_preferences",
         ])
       );
-      const [route] = await connection.query<Array<{ name: string }>>(
+      const [route] = await connection.query<Rows<{ name: string }>>(
         "SELECT name FROM railway_routes WHERE userId = ?",
         [userId]
       );
       expect(route).toEqual([{ name: "Preservata" }]);
-      const [columns] = await connection.query<Array<{ Field: string }>>(
+      const [columns] = await connection.query<Rows<{ Field: string }>>(
         "SHOW COLUMNS FROM railway_routes"
       );
       expect(columns.map(column => column.Field)).toEqual(
@@ -327,7 +330,7 @@ describeDatabase("migrazioni MariaDB reali", () => {
         })
       ).resolves.toBeNull();
       const [legacyAfterReplay] = await connection.query<
-        Array<{ revokedAt: Date | null; credentialVersion: number }>
+        Rows<{ revokedAt: Date | null; credentialVersion: number }>
       >(
         "SELECT token.revokedAt, link.credentialVersion FROM oauth_refresh_tokens token JOIN alexa_account_links link ON link.userId = token.userId WHERE token.tokenHash = ?",
         [activeLegacyHash]
@@ -472,22 +475,60 @@ describeDatabase("migrazioni MariaDB reali", () => {
         userId,
         credentialVersion: relinked?.credentialVersion,
       });
-      await expect(
+      const rotate = (current: string, next: string) =>
         rotateRefreshToken({
-          currentTokenHash: "8".repeat(64),
+          currentTokenHash: current,
           clientId: "alexa-client",
-          nextTokenHash: "3".repeat(64),
+          nextTokenHash: next,
           nextTokenExpiresAt: new Date(Date.now() + 60_000),
-        })
-      ).resolves.toBeNull();
+        });
+      const liveTokenCount = async () => {
+        const [rows] = await connection.query<Rows<{ count: number }>>(
+          "SELECT COUNT(*) AS count FROM oauth_refresh_tokens WHERE userId = ? AND revokedAt IS NULL AND expiresAt > UTC_TIMESTAMP()",
+          [userId]
+        );
+        return Number(rows[0]?.count);
+      };
+      // Lost response: Amazon never received "4" and retries with "8". Inside the grace
+      // window that is a retry: a fresh token of the same family, nothing revoked.
+      await expect(rotate("8".repeat(64), "3".repeat(64))).resolves.toMatchObject({
+        userId,
+        credentialVersion: relinked?.credentialVersion,
+      });
       await expect(
-        rotateRefreshToken({
-          currentTokenHash: "4".repeat(64),
-          clientId: "alexa-client",
-          nextTokenHash: "2".repeat(64),
-          nextTokenExpiresAt: new Date(Date.now() + 60_000),
-        })
-      ).resolves.toBeNull();
+        listPersonalRoutesForAlexa(userId, relinked?.credentialVersion ?? 0)
+      ).resolves.toHaveLength(1);
+      expect(await liveTokenCount()).toBe(2);
+      // Two concurrent refreshes with the same token both succeed: the second waits on the
+      // link row lock, then finds the token just rotated by the first.
+      const [first, second] = await Promise.all([
+        rotate("3".repeat(64), "a1".repeat(32)),
+        rotate("3".repeat(64), "b2".repeat(32)),
+      ]);
+      expect(first).toMatchObject({ credentialVersion: relinked?.credentialVersion });
+      expect(second).toMatchObject({ credentialVersion: relinked?.credentialVersion });
+      // The client keeps one answer; its next regular rotation expires the siblings it dropped,
+      // which then fail as invalid_grant without revoking the family.
+      const [kept, dropped] = ["a1".repeat(32), "b2".repeat(32)];
+      await expect(rotate(kept, "c3".repeat(32))).resolves.not.toBeNull();
+      expect(await liveTokenCount()).toBe(1);
+      await expect(rotate(dropped, "d4".repeat(32))).resolves.toBeNull();
+      await expect(rotate("4".repeat(64), "d4".repeat(32))).resolves.toBeNull();
+      await expect(
+        listPersonalRoutesForAlexa(userId, relinked?.credentialVersion ?? 0)
+      ).resolves.toHaveLength(1);
+      // Outside the grace window a replay is still theft: the family and the voice credential
+      // generation are revoked. Move the rotation of `kept` two minutes into the past.
+      await connection.query(
+        "UPDATE oauth_refresh_tokens SET revokedAt = revokedAt - INTERVAL 2 MINUTE WHERE tokenHash = ?",
+        [kept]
+      );
+      await connection.query(
+        "UPDATE oauth_refresh_tokens SET createdAt = createdAt - INTERVAL 2 MINUTE WHERE tokenHash = ?",
+        ["c3".repeat(32)]
+      );
+      await expect(rotate(kept, "e5".repeat(32))).resolves.toBeNull();
+      expect(await liveTokenCount()).toBe(0);
       await expect(
         listPersonalRoutesForAlexa(userId, relinked?.credentialVersion ?? 0)
       ).resolves.toEqual([]);
@@ -533,12 +574,12 @@ describeDatabase("migrazioni MariaDB reali", () => {
         }),
         revokeAllVoiceCredentialsForUser(userId),
       ]);
-      const [activeRefresh] = await connection.query<Array<{ count: number }>>(
+      const [activeRefresh] = await connection.query<Rows<{ count: number }>>(
         "SELECT COUNT(*) AS count FROM oauth_refresh_tokens WHERE userId = ? AND revokedAt IS NULL",
         [userId]
       );
       expect(Number(activeRefresh[0]?.count)).toBe(0);
-      const [links] = await connection.query<Array<{ revokedAt: Date | null }>>(
+      const [links] = await connection.query<Rows<{ revokedAt: Date | null }>>(
         "SELECT revokedAt FROM alexa_account_links WHERE userId = ?",
         [userId]
       );
@@ -573,7 +614,7 @@ describeDatabase("migrazioni MariaDB reali", () => {
         "companion_devices",
         "companion_pairing_codes",
       ]) {
-        const [remaining] = await connection.query<Array<{ count: number }>>(
+        const [remaining] = await connection.query<Rows<{ count: number }>>(
           `SELECT COUNT(*) AS count FROM \`${table}\` WHERE ${table === "users" ? "id" : "userId"} = ?`,
           [userId]
         );

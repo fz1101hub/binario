@@ -1,11 +1,19 @@
-import { AXIOS_TIMEOUT_MS, COOKIE_NAME, SESSION_TTL_MS, decodeOAuthState } from "@shared/const";
+import {
+  AXIOS_TIMEOUT_MS,
+  COOKIE_NAME,
+  SESSION_MAX_LIFETIME_MS,
+  SESSION_RENEW_AFTER_MS,
+  SESSION_TTL_MS,
+  decodeOAuthState,
+} from "@shared/const";
 import { ForbiddenError } from "@shared/_core/errors";
 import axios, { type AxiosInstance } from "axios";
 import { parse as parseCookieHeader } from "cookie";
-import type { Request } from "express";
+import type { Request, Response } from "express";
 import { SignJWT, jwtVerify } from "jose";
 import type { User } from "../../drizzle/schema";
 import * as db from "../db";
+import { getSessionCookieOptions } from "./cookies";
 import { ENV } from "./env";
 import type {
   ExchangeTokenRequest,
@@ -23,6 +31,18 @@ export type SessionPayload = {
   appId: string;
   name?: string;
 };
+
+type SessionClaims = {
+  openId: string;
+  appId: string;
+  name: string;
+  issuedAtMs?: number;
+  /** When the login that started this chain of renewals happened. */
+  authTimeMs?: number;
+};
+
+// Tolerance for clocks when comparing a token's expiry with the session policy.
+const SESSION_CLOCK_SKEW_MS = 5 * 60 * 1000;
 
 const EXCHANGE_TOKEN_PATH = `/webdev.v1.WebDevAuthPublicService/ExchangeToken`;
 const GET_USER_INFO_PATH = `/webdev.v1.WebDevAuthPublicService/GetUserInfo`;
@@ -179,26 +199,68 @@ class SDKServer {
 
   async signSession(
     payload: SessionPayload,
-    options: { expiresInMs?: number } = {}
+    options: { expiresInMs?: number; authTimeMs?: number } = {}
   ): Promise<string> {
     const issuedAt = Date.now();
+    const authTime = options.authTimeMs ?? issuedAt;
     const expiresInMs = options.expiresInMs ?? SESSION_TTL_MS;
-    const expirationSeconds = Math.floor((issuedAt + expiresInMs) / 1000);
+    // A renewed session never outlives the absolute lifetime of its login.
+    const expiresAt = Math.min(issuedAt + expiresInMs, authTime + SESSION_MAX_LIFETIME_MS);
     const secretKey = this.getSessionSecret();
 
     return new SignJWT({
       openId: payload.openId,
       appId: payload.appId,
       name: payload.name,
+      auth_time: Math.floor(authTime / 1000),
     })
       .setProtectedHeader({ alg: "HS256", typ: "JWT" })
-      .setExpirationTime(expirationSeconds)
+      .setIssuedAt(Math.floor(issuedAt / 1000))
+      .setExpirationTime(Math.floor(expiresAt / 1000))
       .sign(secretKey);
   }
 
   async verifySession(
     cookieValue: string | undefined | null
   ): Promise<{ openId: string; appId: string; name: string } | null> {
+    const claims = await this.verifySessionClaims(cookieValue);
+    return claims ? { openId: claims.openId, appId: claims.appId, name: claims.name } : null;
+  }
+
+  /**
+   * A fresh token for a session last renewed more than SESSION_RENEW_AFTER_MS ago, keeping the
+   * original login time; null when no renewal is due or allowed (cron or pre-policy sessions).
+   */
+  async renewSession(
+    cookieValue: string | undefined | null
+  ): Promise<{ token: string; maxAgeMs: number } | null> {
+    const claims = await this.verifySessionClaims(cookieValue);
+    if (!claims || claims.issuedAtMs === undefined || claims.authTimeMs === undefined) return null;
+    if (claims.openId.startsWith(CRON_OPEN_ID_PREFIX)) return null;
+    const now = Date.now();
+    if (now - claims.issuedAtMs < SESSION_RENEW_AFTER_MS) return null;
+    const remaining = claims.authTimeMs + SESSION_MAX_LIFETIME_MS - now;
+    if (remaining <= 0) return null;
+    const token = await this.signSession(
+      { openId: claims.openId, appId: claims.appId, name: claims.name },
+      { expiresInMs: SESSION_TTL_MS, authTimeMs: claims.authTimeMs }
+    );
+    return { token, maxAgeMs: Math.min(SESSION_TTL_MS, remaining) };
+  }
+
+  /** Slides the dashboard session cookie forward (called by auth.me for a signed-in user). */
+  async renewSessionCookie(req: Request, res: Pick<Response, "cookie">) {
+    const renewed = await this.renewSession(this.parseCookies(req.headers.cookie).get(COOKIE_NAME));
+    if (renewed)
+      res.cookie(COOKIE_NAME, renewed.token, {
+        ...getSessionCookieOptions(req),
+        maxAge: renewed.maxAgeMs,
+      });
+  }
+
+  private async verifySessionClaims(
+    cookieValue: string | undefined | null
+  ): Promise<SessionClaims | null> {
     if (!cookieValue) {
       console.warn("[Auth] Missing session cookie");
       return null;
@@ -209,7 +271,7 @@ class SDKServer {
       const { payload } = await jwtVerify(cookieValue, secretKey, {
         algorithms: ["HS256"],
       });
-      const { openId, appId, name } = payload as Record<string, unknown>;
+      const { openId, appId, name, exp, iat, auth_time: authTime } = payload as Record<string, unknown>;
 
       if (
         !isNonEmptyString(openId) ||
@@ -218,6 +280,21 @@ class SDKServer {
       ) {
         console.warn("[Auth] Session payload missing required fields");
         return null;
+      }
+
+      if (!openId.startsWith(CRON_OPEN_ID_PREFIX)) {
+        // Cookies minted under a longer lifetime (the former 30 days) end at this policy.
+        if (typeof exp !== "number" || exp * 1000 - Date.now() > SESSION_TTL_MS + SESSION_CLOCK_SKEW_MS) {
+          console.warn("[Auth] Session lifetime exceeds the session policy");
+          return null;
+        }
+        if (
+          authTime !== undefined &&
+          (typeof authTime !== "number" || Date.now() - authTime * 1000 > SESSION_MAX_LIFETIME_MS)
+        ) {
+          console.warn("[Auth] Session older than its absolute lifetime");
+          return null;
+        }
       }
 
       // Several apps may share one signing secret: a session minted for another
@@ -233,6 +310,8 @@ class SDKServer {
         // Legacy sessions may not carry a display name. Normalize that optional
         // claim so downstream authentication never mistakes it for a bad token.
         name: name ?? "",
+        issuedAtMs: typeof iat === "number" ? iat * 1000 : undefined,
+        authTimeMs: typeof authTime === "number" ? authTime * 1000 : undefined,
       };
     } catch (error) {
       console.warn("[Auth] Session verification failed", String(error));

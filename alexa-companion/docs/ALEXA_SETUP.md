@@ -12,13 +12,21 @@ Il companion è predisposto, ma intenzionalmente **non attivo** quando `ALEXA_EN
 
 | Console Alexa     | Valore Binario                                        |
 | ----------------- | ----------------------------------------------------- |
-| Tipo skill        | Custom Skill, locale principale italiano (`it-IT`); `skill-package/` dichiara anche `en-US`, `en-GB`, `de-DE`, `fr-FR`, `es-ES`, `ar-SA`, `hi-IN`, `ja-JP`, `pt-BR` (vedi `docs/l10n/LOCALES.md`) |
+| Tipo skill        | Custom Skill, locale principale italiano (`it-IT`); `skill-package/` dichiara anche `en-US`, `en-GB`, `en-IN`, `de-DE`, `fr-FR`, `es-ES`, `es-US`, `ar-SA`, `hi-IN`, `ja-JP`, `pt-BR` (vedi `docs/l10n/LOCALES.md`); `en-IN` ed `es-US` riusano modello, testi e dizionario di `en-US` ed `es-ES` e sono distribuiti in paesi già presenti (IN, US) |
+| Invocation name   | `it-IT` «binario treni» (due parole, come «binario trains», «binario züge», «binario trenes» negli altri locale); vedi sotto |
 | Endpoint HTTPS    | `https://{dominio-binario}/api/alexa/webhook`         |
 | Account linking   | OAuth 2.0, authorization code grant                   |
 | Authorization URI | `https://{dominio-binario}/api/alexa/oauth/authorize` |
 | Access token URI  | `https://{dominio-binario}/api/alexa/oauth/token`     |
+| Your Client ID    | Lo stesso valore di `ALEXA_OAUTH_CLIENT_ID`           |
+| Your Secret       | Lo stesso valore di `ALEXA_OAUTH_CLIENT_SECRET`       |
+| Your Authentication Scheme | **HTTP Basic (Recommended)**, il default della console; anche *Credentials in request body* funziona |
 | Scope             | `routes.read`                                         |
 | Skill ID          | Da inserire come `ALEXA_SKILL_ID` nei segreti server  |
+
+Il token endpoint accetta le credenziali del client in uno solo dei due modi previsti da RFC 6749 §2.3.1: nell'header `Authorization: Basic` (id e secret form-URL-encoded, poi base64) oppure come `client_id` e `client_secret` nel corpo. Una richiesta che li usa entrambi, o con credenziali errate, riceve `401 invalid_client` con `WWW-Authenticate: Basic`. Ogni risposta del token endpoint porta `Cache-Control: no-store` e `Pragma: no-cache`.
+
+Amazon chiama webhook e token endpoint da pochi indirizzi condivisi: per IP si contano soltanto le richieste che falliscono la verifica della firma (webhook, 60 al minuto) o l'autenticazione del client (token, 30 al minuto). Il traffico verificato ha budget propri: 60 richieste al minuto per utente Alexa firmato (chiave: digest di skill ID e user ID) e 1.200 richieste token al minuto per il client OAuth autenticato. Le pagine aperte dal browser (consenso Alexa, login dashboard) restano limitate a 30 richieste al minuto per IP.
 
 L’endpoint webhook mantiene l’ASK SDK ufficiale per gli intent. Prima del dispatch, `server/voice/alexaWebhook.ts` verifica il corpo originale con `Signature-256` (RSA-SHA256 tramite Node/OpenSSL), la catena X.509 con PKIjs/WebCrypto e le CA pubbliche incorporate in Node, il SAN esatto `echo-api.amazon.com`, la validità dei certificati, il timestamp entro 150 secondi e lo Skill ID. Sono rifiutati anche timestamp futuri oltre la stessa tolleranza e ID discordanti fra sessione e contesto. Il download ammette soltanto HTTPS da `s3.amazonaws.com/echo.api/`, senza redirect, con timeout e dimensione limitati; la cache è limitata a 64 catene e cinque minuti, senza superare la scadenza dei certificati. Come l’adapter precedente, non viene effettuato un controllo online CRL/OCSP.
 
@@ -26,15 +34,19 @@ L’adapter Express precedente è stato rimosso perché trascinava `node-forge` 
 
 ## Modello di interazione da creare
 
+**Nome di invocazione italiano — decisione del titolare.** Amazon non ammette un nome di una sola parola comune senza prova di marchio, e «binario» è una parola d'uso quotidiano («binario 3»). Il modello `it-IT` usa quindi «binario treni», coerente con gli altri locale; nome della skill, frasi d'esempio di `skill.json` e suggerimenti Echo Show sono allineati. Se il titolare dispone di un marchio registrato «Binario» e preferisce l'invocazione di una parola, deve ripristinarla in `it-IT.json`, `skill.json` e `shared/i18n.ts` e allegare la prova del marchio alla certificazione. `server/voice/alexaSkill.test.ts` verifica per tutti i locale che il nome abbia almeno due parole minuscole e che ogni frase d'esempio e ogni suggerimento Echo Show, tolti invocazione e connettore («chiedi a … », «ask … for»), corrisponda a un sample dell'intent.
+
 | Intent              | Esempi di utterance italiane                                         | Slot                      |
 | ------------------- | -------------------------------------------------------------------- | ------------------------- |
 | `NextTrainsIntent`  | “quali sono i prossimi treni”, “prossimi treni per {routeName}”      | `routeName` facoltativo   |
 | `TrainStatusIntent` | “stato del treno {trainNumber}”, “il treno {trainNumber} è puntuale” | `trainNumber` facoltativo |
 | `MyRoutesIntent`    | “le mie tratte”, “elenca le tratte salvate”                          | nessuno                   |
 
+Il nome detto per `routeName` (`AMAZON.SearchQuery`, trascritto in minuscolo e spesso senza accenti né punteggiatura) è confrontato con le tratte salvate dopo una normalizzazione (NFKD senza diacritici, punteggiatura come spazio, spazi compattati), poi per parole o prefissi. Se corrisponde a più tratte la skill le elenca e chiede quale; se non corrisponde a nessuna dice di non averla trovata ed elenca le tratte salvate, a sessione aperta, invece di rispondere che non ci sono tratte. Gli elenchi parlati usano `Intl.ListFormat` e il terminatore della lingua («.», «।», «。»).
+
 Tutti gli intent che restituiscono dati personali richiedono un access token valido. Senza account collegato la skill pronuncia le istruzioni di collegamento e restituisce una LinkAccount card. Quando manca una fonte ferroviaria live autorizzata, la skill usa esattamente: **“dati non disponibili in tempo reale”**.
 
-Se Amazon apre l'autorizzazione prima che l'utente abbia una sessione dashboard, il companion conserva **solo** la richiesta già verificata in un cookie firmato `__Host-`, `Secure`, `HttpOnly`, `SameSite=Lax`, con `Path=/` e TTL di dieci minuti. Dopo il callback dashboard la richiesta è verificata di nuovo contro client e callback URI consentiti, quindi viene cancellata e viene mostrata la stessa pagina di consenso CSRF-protetta. Il cookie non contiene credenziali.
+Se Amazon apre l'autorizzazione prima che l'utente abbia una sessione dashboard, il companion conserva **solo** la richiesta già verificata in un cookie firmato `__Host-`, `Secure`, `HttpOnly`, `SameSite=Lax`, con `Path=/` e TTL di dieci minuti. La dashboard mostra allora la schermata di accesso: il login parte solo dal pulsante **Accedi**, mai da solo (un login automatico annullava il logout e, dopo una cancellazione, ricreava l'account passando dal callback OAuth). Dopo il callback dashboard la richiesta è verificata di nuovo contro client e callback URI consentiti, quindi viene cancellata e viene mostrata la stessa pagina di consenso CSRF-protetta. Il cookie non contiene credenziali.
 
 ## Schermate Echo Show (APL) — azione del titolare
 
@@ -54,9 +66,25 @@ Da verificare dal titolare con il simulatore della console e su hardware reale p
 
 ## Privacy, sicurezza e pubblicazione
 
-Il companion conserva tratte e metadati minimi del collegamento; token, authorization code e identificativi Alexa sono memorizzati soltanto come hash HMAC server-side. Non vengono registrati nei log origine, destinazione, nome della tratta, numero treno, token o richiesta vocale. I codici OAuth sono monouso e scadono dopo cinque minuti; gli access token scadono dopo un’ora e i refresh token ruotano e sono revocabili.
+Il companion conserva tratte e metadati minimi del collegamento; token, authorization code e identificativi Alexa sono memorizzati soltanto come hash HMAC server-side. Non vengono registrati nei log origine, destinazione, nome della tratta, numero treno, token o richiesta vocale. I codici OAuth sono monouso e scadono dopo cinque minuti; gli access token scadono dopo un’ora. I refresh token ruotano a ogni uso, durano un anno dall’ultima rotazione e restano revocabili server-side (unlink, nuovo collegamento, cancellazione account). Se Amazon ripresenta entro 60 secondi un refresh token appena ruotato (risposta persa, due refresh concorrenti) riceve un nuovo token della stessa famiglia senza revoche; il riuso fuori da questa finestra revoca l’intera famiglia e invalida la generazione delle credenziali vocali. I token emessi a un retry e mai usati scadono alla rotazione successiva. La sessione della dashboard, che autorizza anche il consenso Alexa, è un cookie `__Host-` HttpOnly che dura 24 ore dall'ultimo rinnovo (al caricamento della dashboard, al più una volta l'ora) e mai più di sette giorni dal login; i cookie emessi con la precedente durata di 30 giorni non sono più accettati e richiedono un nuovo accesso.
 
-Prima della pubblicazione, predisporre pagine HTTPS di privacy policy e termini, indicare con chiarezza quali informazioni usa la skill e fare una beta privata. Amazon richiede tali pagine e account linking conforme a OAuth 2.0 per le skill con dati personalizzati.[2]
+Amazon richiede pagine HTTPS di privacy policy e termini e account linking conforme a OAuth 2.0 per le skill con dati personalizzati.[2] Il server pubblica entrambe le pagine, statiche e senza database, ai percorsi che `skill-package/skill.json` già dichiara:
+
+- `/privacy` riprende la sezione «Alexa Companion» di `PRIVACY.md` con i valori correnti del servizio (refresh token di un anno, sessione di 24 ore, finestra di 60 secondi), più un riassunto in inglese; un riquadro segnala ciò che manca: identità e recapito del titolare, conservazione di log e backup. Il test `server/skillManifestAssets.test.ts` verifica che la pagina segua le sezioni di `PRIVACY.md`: chi modifica l'una aggiorna anche l'altra (`server/legal/pages.ts`).
+- `/terms` è una **bozza da far rivedere al titolare**, dichiarata tale nella pagina, con le parti legali fra parentesi quadre.
+- Le icone `alexa/icon-108.png` e `alexa/icon-512.png` stanno in `client/public/alexa/` e Vite le pubblica in `dist/public/alexa/` (controllato da `pnpm run build`). La 512 è identica a `store/play/icon-512.png`; la 108 è ricavata dal marchio `companion-expo/assets/brand/binario-companion-icon.png` con `convert … -filter Lanczos -resize 108x108 -strip PNG32:icon-108.png` (ImageMagick 6.9).
+- Un percorso sconosciuto risponde 404 (la dashboard mostra comunque la sua pagina «non trovata»); un percorso `/api` sconosciuto risponde `404 {"error":"not_found"}`.
+
+### Account del revisore Amazon — azione del titolare
+
+Le skill con account linking vengono certificate solo se il revisore può collegare un account funzionante. Le credenziali **non entrano mai nel repository**: `skill.json` contiene il segnaposto `REPLACE_WITH_REVIEWER_ACCOUNT_AT_SUBMISSION` nelle `testingInstructions`, da sostituire soltanto nel modulo di invio della console.
+
+1. Creare sul portale di login un account dedicato al revisore, con email e password (non un accesso solo Google/Apple, che il revisore non può usare), e annotarne le credenziali nel gestore di segreti del titolare.
+2. Accedere alla dashboard con quell'account e salvare due o tre tratte d'esempio, una fissata (per esempio «Casa-Lavoro» Roma Termini → Tivoli e «Mare» Roma Ostiense → Ostia). Non collegare Alexa: lo fa il revisore.
+3. Al momento dell'invio, nella console *Distribution → Availability/Testing instructions*, sostituire il segnaposto con email e password e verificare che il resto delle istruzioni corrisponda al comportamento attuale.
+4. Dopo la certificazione cambiare la password o eliminare l'account dalla dashboard (**Elimina account e dati**); ripetere la procedura a ogni nuova certificazione.
+
+Prima della pubblicazione restano da fare anche la beta privata e la verifica dell'invocazione e delle frasi d'esempio con il simulatore della console.
 
 ## Riferimenti
 

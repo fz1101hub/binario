@@ -1,10 +1,11 @@
-import { messagesForLocale, SUPPORTED_LOCALES } from "@shared/i18n";
+import { formatMessage, messagesForLocale, SUPPORTED_LOCALES } from "@shared/i18n";
+import { DrizzleQueryError } from "drizzle-orm";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
 
 const SKILL_ID = "amzn1.ask.skill.test";
-const LOCALES = ["it-IT", "en-US", "en-GB", "de-DE", "fr-FR", "es-ES", "ar-SA", "hi-IN", "ja-JP", "pt-BR"] as const;
+const LOCALES = ["it-IT", "en-US", "en-GB", "en-IN", "de-DE", "fr-FR", "es-ES", "es-US", "ar-SA", "hi-IN", "ja-JP", "pt-BR"] as const;
 
 vi.hoisted(() => {
   Object.assign(process.env, {
@@ -162,7 +163,7 @@ describe("Alexa skill handlers", () => {
   });
 
   it.each([
-    ["it-IT", "Benvenuta in Binario"],
+    ["it-IT", "Ti diamo il benvenuto in Binario"],
     ["en-US", "Welcome to Binario"],
     ["en-GB", "Welcome to Binario"],
     ["de-DE", "Willkommen bei Binario"],
@@ -263,7 +264,7 @@ describe("Alexa skill handlers", () => {
     const response = await createAlexaSkill().invoke(
       envelope({ type: "LaunchRequest" }, "nl-NL")
     );
-    expect(speechText(response)).toContain("Benvenuta in Binario");
+    expect(speechText(response)).toContain("Ti diamo il benvenuto in Binario");
   });
 
   it("rejects requests for another skill", async () => {
@@ -365,11 +366,36 @@ describe("Echo Show screens (APL)", () => {
   });
 
   it("does not render a screen when a personal request fails", async () => {
+    const errors = vi.spyOn(console, "error").mockImplementation(() => undefined);
     const { request } = await linkedRequest(withApl(intent("MyRoutesIntent")));
     vi.mocked(listPersonalRoutesForAlexa).mockRejectedValueOnce(new Error("database down"));
     const response = await createAlexaSkill().invoke(request);
     expect(speechText(response)).toContain("Si è verificato un problema");
     expect(response.response.directives ?? []).toHaveLength(0);
+    errors.mockRestore();
+  });
+
+  it("logs a failed request by type, intent, locale and error class only", async () => {
+    const errors = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const { request, accessToken } = await linkedRequest(intent("NextTrainsIntent", "de-DE", { routeName: "Casa di Mario" }));
+    vi.mocked(listPersonalRoutesForAlexa).mockRejectedValueOnce(
+      new DrizzleQueryError("select `name` from `railway_routes` where `userId` = ?", [7, "Casa di Mario"], new Error("boom"))
+    );
+    await createAlexaSkill().invoke(request);
+    expect(errors).toHaveBeenCalledTimes(1);
+    const [label, context] = errors.mock.calls[0] as [string, Record<string, unknown>];
+    expect(label).toBe("[Alexa] request failed");
+    expect(context).toMatchObject({
+      requestType: "IntentRequest",
+      intent: "NextTrainsIntent",
+      locale: "de-DE",
+      requestRef: expect.stringMatching(/^[0-9a-f]{16}$/),
+      error: { name: "DrizzleQueryError" },
+    });
+    const serialized = JSON.stringify(errors.mock.calls);
+    for (const secret of ["Casa di Mario", accessToken, "amzn1.ask.account", "amzn1.echo-api", "device"])
+      expect(serialized).not.toContain(secret);
+    errors.mockRestore();
   });
 
   it("answers a touched route with that route's screen after re-checking the link", async () => {
@@ -396,6 +422,80 @@ describe("Echo Show screens (APL)", () => {
     const forged = await createAlexaSkill().invoke(withApl(userEvent(["binario.deleteAccount"])));
     expect(speechText(forged)).toContain("Non ho capito la richiesta");
     expect(renderDocument(forged)?.datasources.binario.screen).toBe("home");
+  });
+});
+
+describe("spoken route names and route lists", () => {
+  type SkillResponse = Awaited<ReturnType<ReturnType<typeof createAlexaSkill>["invoke"]>>;
+  async function ask(locale: string, names: string[], slots?: Record<string, string>, intentName = "NextTrainsIntent", apl = false) {
+    vi.mocked(getAlexaLinkStatus).mockResolvedValue({ userId: 7, credentialVersion: 3, revokedAt: null } as Awaited<ReturnType<typeof getAlexaLinkStatus>>);
+    vi.mocked(listPersonalRoutesForAlexa).mockResolvedValue(
+      names.map((name, index) => ({ id: index + 1, name, origin: "Roma", destination: "Tivoli", isPinned: index === 0 })) as Awaited<ReturnType<typeof listPersonalRoutesForAlexa>>
+    );
+    const token = await issueVoiceAccessToken(7, 3);
+    const request = withAccessToken(intent(intentName, locale, slots), token);
+    if (apl) request.context.System.device!.supportedInterfaces["Alexa.Presentation.APL"] = { runtime: { maxVersion: "1.8" } };
+    return createAlexaSkill().invoke(request);
+  }
+  const card = (response: SkillResponse) => (response.response.card as { content?: string } | undefined)?.content ?? "";
+
+  it("matches the ASR form of a saved name: no accents, punctuation or capitals", async () => {
+    const response = await ask("it-IT", ["Casa-Lavoro", "Città Alta"], { routeName: "citta alta" });
+    expect(card(response)).toBe("Per la tratta Città Alta: dati non disponibili in tempo reale");
+    expect((await ask("it-IT", ["Casa-Lavoro", "Mare"], { routeName: "casa lavoro" })).response.card).toMatchObject({
+      content: "Per la tratta Casa-Lavoro: dati non disponibili in tempo reale",
+    });
+  });
+
+  it.each([
+    ["it-IT", "milano", "Non ho trovato la tratta milano. Le tue tratte salvate sono: Casa-Lavoro e Mare. Quale tratta ti interessa? Puoi dire, per esempio: prossimi treni per Casa-Lavoro."],
+    ["en-US", "beach", "I couldn't find the route beach. Your saved routes are: Casa-Lavoro and Mare. Which route would you like? You can say, for example: next trains for Casa-Lavoro."],
+    ["fr-FR", "plage", "Je n’ai pas trouvé le trajet plage. Vos trajets enregistrés sont : Casa-Lavoro et Mare. Quel trajet voulez-vous ? Vous pouvez dire, par exemple : prochains trains pour Casa-Lavoro."],
+  ] as const)("%s: an unmatched name lists the saved routes instead of claiming there are none", async (locale, spoken, expected) => {
+    const response = await ask(locale, ["Casa-Lavoro", "Mare"], { routeName: spoken });
+    expect(card(response)).toBe(expected);
+    expect(speechText(response)).not.toMatch(/Non hai ancora|have not saved/);
+    expect(response.response.shouldEndSession).toBe(false);
+    expect(JSON.stringify(response.response.reprompt)).toContain("Casa-Lavoro");
+  });
+
+  it("asks which route when the spoken name fits several, and shows them on Echo Show", async () => {
+    const response = await ask("de-DE", ["Casa-Lavoro", "Casa-Mare", "Palestra"], { routeName: "casa" }, "NextTrainsIntent", true);
+    expect(card(response)).toBe(
+      "Ich habe mehrere Strecken gefunden: Casa-Lavoro und Casa-Mare. Welche Strecke meinen Sie? Sagen Sie zum Beispiel: nächste Züge für Casa-Lavoro."
+    );
+    expect(response.response.shouldEndSession).toBe(false);
+    const document = response.response.directives?.find(item => item.type === "Alexa.Presentation.APL.RenderDocument") as
+      | { datasources: { binario: { screen: string; routes: Array<{ name: string }> } } }
+      | undefined;
+    expect(document?.datasources.binario.screen).toBe("myRoutes");
+    expect(document?.datasources.binario.routes.map(item => item.name)).toEqual(["Casa-Lavoro", "Casa-Mare"]);
+  });
+
+  it("still says there are no routes when nothing is saved", async () => {
+    const response = await ask("it-IT", [], { routeName: "casa" });
+    expect(card(response)).toBe("Non hai ancora salvato alcuna tratta in Binario.");
+    expect(response.response.shouldEndSession).toBe(true);
+  });
+
+  it.each([
+    ["it-IT", "Le tue tratte salvate sono: Casa, Mare e Lago."],
+    ["en-US", "Your saved routes are: Casa, Mare, and Lago."],
+    ["de-DE", "Ihre gespeicherten Strecken sind: Casa, Mare und Lago."],
+    ["ar-SA", "مساراتك المحفوظة هي: Casa وMare وLago."],
+    ["hi-IN", "आपके सहेजे गए रूट हैं: Casa, Mare, और Lago।"],
+    ["ja-JP", "保存したルートは、Casa、Mare、Lago です。"],
+  ] as const)("%s: joins the route list and ends it the way the language writes it", async (locale, expected) => {
+    expect(card(await ask(locale, ["Casa", "Mare", "Lago"], undefined, "MyRoutesIntent"))).toBe(expected);
+  });
+
+  it.each(LOCALES)("%s: the launch reprompt asks what the user wants, it never claims a misunderstanding", async locale => {
+    const response = await createAlexaSkill().invoke(envelope({ type: "LaunchRequest" }, locale));
+    const voice = messagesForLocale(locale).voice;
+    const reprompt = JSON.stringify(response.response.reprompt);
+    expect(reprompt).toContain(voice.launchReprompt);
+    expect(voice.launchReprompt).not.toBe(voice.unsupported);
+    expect(reprompt).not.toContain(voice.unsupported.split(/[.。।?？]/)[0]);
   });
 });
 
@@ -460,6 +560,19 @@ describe("versioned interaction models", () => {
     }
   });
 
+  it("serves en-IN and es-US with the en-US and es-ES models and dictionaries, unchanged", () => {
+    expect(model("en-IN")).toEqual(model("en-US"));
+    expect(model("es-US")).toEqual(model("es-ES"));
+    const published = manifest().manifest.publishingInformation.locales;
+    expect(published["en-IN"]).toEqual(published["en-US"]);
+    expect(published["es-US"]).toEqual(published["es-ES"]);
+    expect(messagesForLocale("en-IN")).toBe(messagesForLocale("en-US"));
+    expect(messagesForLocale("es-US")).toBe(messagesForLocale("es-ES"));
+    // Both run in countries the skill is already distributed in.
+    const countries = (manifest().manifest.publishingInformation as unknown as { distributionCountries: string[] }).distributionCountries;
+    expect(countries).toEqual(expect.arrayContaining(["IN", "US"]));
+  });
+
   it("keeps model, publishing, privacy, and runtime locale sets identical", () => {
     const skillManifest = manifest().manifest;
     expect([...LOCALES]).toEqual([...SUPPORTED_LOCALES]);
@@ -484,6 +597,90 @@ describe("versioned interaction models", () => {
         screen.hintMyRoutes,
       ])
         expect(phrase.toLocaleLowerCase(locale), `${locale}: ${phrase}`).toContain(invocation);
+    }
+  });
+
+  /**
+   * How each locale wraps an utterance in a one-shot request: "Alexa, ask {invocation} for X".
+   * The part after the launch phrase and its connector must be a sample, or Alexa may not reach
+   * the intent and certification rejects the example phrase.
+   */
+  const PHRASE_GRAMMAR: Record<(typeof LOCALES)[number], { open: string; ask: string }> = {
+    "it-IT": { open: "^alexa, apri INV$", ask: "^alexa, chiedi a INV (?:di |se )?(.+)$" },
+    "en-US": { open: "^alexa, open INV$", ask: "^alexa, ask INV (?:for |to |about |if |whether )?(.+)$" },
+    "en-GB": { open: "^alexa, open INV$", ask: "^alexa, ask INV (?:for |to |about |if |whether )?(.+)$" },
+    "en-IN": { open: "^alexa, open INV$", ask: "^alexa, ask INV (?:for |to |about |if |whether )?(.+)$" },
+    "de-DE": { open: "^alexa, öffne INV$", ask: "^alexa, frage INV (?:nach |ob )?(.+)$" },
+    "fr-FR": { open: "^alexa, ouvre INV$", ask: "^alexa, demande à INV (?:de |si )?(.+)$" },
+    "es-ES": { open: "^alexa, abre INV$", ask: "^alexa, pregunta a INV (?:por |si )?(.+)$" },
+    "es-US": { open: "^alexa, abre INV$", ask: "^alexa, pregunta a INV (?:por |si )?(.+)$" },
+    "ar-SA": { open: "^أليكسا، افتح INV$", ask: "^أليكسا، اسأل INV (?:عن )?(.+)$" },
+    "hi-IN": { open: "^अलेक्सा, INV खोलो$", ask: "^अलेक्सा, INV से (.+) पूछो$" },
+    "ja-JP": { open: "^アレクサ、INVを開いて$", ask: "^アレクサ、INVで(.+)$" },
+    "pt-BR": { open: "^alexa, abra INV$", ask: "^alexa, pergunte ao INV (.+)$" },
+  };
+  const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const plain = (locale: string, value: string) => {
+    const text = value.replace(/[«»“”„"「」]/g, "").trim().toLocaleLowerCase(locale).replace(/\s+/g, " ");
+    return locale === "ja-JP" ? text.replace(/ /g, "") : text;
+  };
+  function utteranceOf(locale: (typeof LOCALES)[number], phrase: string) {
+    const invocation = escapeRegExp(model(locale).interactionModel.languageModel.invocationName);
+    const grammar = PHRASE_GRAMMAR[locale];
+    const text = plain(locale, phrase);
+    if (new RegExp(grammar.open.replace("INV", invocation)).test(text)) return null;
+    const ask = new RegExp(grammar.ask.replace("INV", invocation)).exec(text);
+    if (!ask) throw new Error(`${locale}: "${phrase}" does not follow the invocation grammar`);
+    return plain(locale, ask[1]);
+  }
+  function sampleMatches(locale: string, sample: string, utterance: string) {
+    const pattern = escapeRegExp(plain(locale, sample)).replace(/\\\{[A-Za-z]+\\\}/g, ".+");
+    return new RegExp(`^${pattern}$`).test(utterance);
+  }
+
+  it("uses an invocation name of at least two lower-case words in every locale", () => {
+    for (const locale of LOCALES) {
+      const invocation = model(locale).interactionModel.languageModel.invocationName;
+      expect(invocation, locale).toBe(invocation.toLocaleLowerCase(locale));
+      expect(invocation, locale).not.toMatch(/[^\p{L}\p{M} ]/u);
+      if (locale === "ja-JP") expect(invocation).toMatch(/^ビナリオ.+$/);
+      else expect(invocation.split(" ").length, locale).toBeGreaterThanOrEqual(2);
+    }
+  });
+
+  it("makes every example phrase and Echo Show hint reach a sample utterance of its intent", () => {
+    const published = manifest().manifest.publishingInformation.locales as Record<string, { examplePhrases: string[] }>;
+    const problems: string[] = [];
+    for (const locale of LOCALES) {
+      const intents = model(locale).interactionModel.languageModel.intents;
+      const samplesOf = (name?: string) =>
+        intents.filter(item => !item.name.startsWith("AMAZON.") && (!name || item.name === name)).flatMap(item => item.samples);
+      const screen = messagesForLocale(locale).screen;
+      const phrases: Array<[string, string | undefined]> = [
+        ...published[locale].examplePhrases.map(phrase => [phrase, undefined] as [string, undefined]),
+        [screen.hintNextTrains, "NextTrainsIntent"],
+        [screen.hintTrainStatus, "TrainStatusIntent"],
+        [screen.hintMyRoutes, "MyRoutesIntent"],
+      ];
+      for (const [phrase, intentName] of phrases) {
+        const utterance = utteranceOf(locale, phrase);
+        if (utterance === null) continue;
+        if (!samplesOf(intentName).some(sample => sampleMatches(locale, sample, utterance)))
+          problems.push(`${locale}: "${utterance}" (${phrase})`);
+      }
+      expect(utteranceOf(locale, published[locale].examplePhrases[0]), `${locale}: the first example phrase opens the skill`).toBeNull();
+    }
+    expect(problems).toEqual([]);
+  });
+
+  it("asks which route with a phrase the locale's NextTrainsIntent understands", () => {
+    for (const locale of LOCALES) {
+      const choice = plain(locale, formatMessage(messagesForLocale(locale).voice.routeChoice, { example: "mare" }));
+      const samples = model(locale).interactionModel.languageModel.intents.find(item => item.name === "NextTrainsIntent")!.samples;
+      expect(
+        samples.some(sample => sample.includes("{routeName}") && choice.includes(plain(locale, sample.replace("{routeName}", "mare")))),
+        `${locale}: ${choice}`
+      ).toBe(true);
     }
   });
 

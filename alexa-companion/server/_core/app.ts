@@ -1,6 +1,5 @@
 import express, { type Express, type RequestHandler } from "express";
 import type { Server } from "node:http";
-import { rateLimit } from "express-rate-limit";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerOAuthRoutes } from "./oauth";
 import { appRouter } from "../routers";
@@ -8,17 +7,24 @@ import { createContext } from "./context";
 import { serveStatic } from "./static";
 import { registerAlexaRoutes } from "../voice/alexa";
 import { registerAndroidDeepLinks } from "../voice/deepLinks";
+import { registerLegalPages } from "../legal/pages";
 import { securityHeaders } from "./securityHeaders";
+import { perIpFailureLimiter, perIpLimiter } from "./rateLimit";
 import { ENV } from "./env";
 import { TRPC_MAX_BATCH_SIZE } from "@shared/const";
 
 // No endpoint accepts uploads: a small body limit bounds parser memory.
 export const BODY_LIMIT = "1mb";
+// Browser routes (dashboard login, Alexa consent page): every request counts per IP.
 export const OAUTH_REQUESTS_PER_MINUTE = 30;
 export const API_REQUESTS_PER_MINUTE = 300;
-// Alexa requests reach the ASK SDK raw-body parser and signature verifier.
-// Bound that work separately from dashboard OAuth and tRPC traffic.
-export const ALEXA_WEBHOOK_REQUESTS_PER_MINUTE = 60;
+// Amazon calls the webhook and the token endpoint server-to-server from a small
+// shared pool of addresses, so their successful traffic is never limited per IP:
+// only failed signature verification (webhook) and failed client authentication
+// (token) count per IP. Verified traffic has its own budgets: per signed Alexa
+// user (alexaWebhook.ts) and per authenticated OAuth client (alexa.ts).
+export const ALEXA_WEBHOOK_FAILED_REQUESTS_PER_MINUTE = 60;
+export const ALEXA_TOKEN_FAILED_REQUESTS_PER_MINUTE = 30;
 
 const TRUST_PROXY_NAMED_PRESETS = new Set([
   "loopback",
@@ -76,16 +82,6 @@ export const trpcMutationCsrfGate: RequestHandler = (req, res, next) => {
   next();
 };
 
-function limiter(limit: number) {
-  return rateLimit({
-    windowMs: 60_000,
-    limit,
-    standardHeaders: "draft-8",
-    legacyHeaders: false,
-    message: { error: "too_many_requests" },
-  });
-}
-
 export async function createApp(
   options: { server?: Server; serveClient?: boolean } = {}
 ): Promise<Express> {
@@ -97,15 +93,24 @@ export async function createApp(
     res.setHeader("Cache-Control", "no-store");
     res.json({ status: "ok" });
   });
-  app.use("/api/alexa/oauth", limiter(OAUTH_REQUESTS_PER_MINUTE));
-  app.use("/api/oauth", limiter(OAUTH_REQUESTS_PER_MINUTE));
-  app.use("/api/trpc", limiter(API_REQUESTS_PER_MINUTE));
+  app.use("/api/alexa/oauth/authorize", perIpLimiter(OAUTH_REQUESTS_PER_MINUTE));
+  app.use(
+    "/api/alexa/oauth/token",
+    perIpFailureLimiter(ALEXA_TOKEN_FAILED_REQUESTS_PER_MINUTE, (_req, res) => res.statusCode === 401)
+  );
+  app.use("/api/oauth", perIpLimiter(OAUTH_REQUESTS_PER_MINUTE));
+  app.use("/api/trpc", perIpLimiter(API_REQUESTS_PER_MINUTE));
   app.use("/api/trpc", trpcMutationCsrfGate);
-  app.use("/api/alexa/webhook", limiter(ALEXA_WEBHOOK_REQUESTS_PER_MINUTE));
+  app.use(
+    "/api/alexa/webhook",
+    perIpFailureLimiter(ALEXA_WEBHOOK_FAILED_REQUESTS_PER_MINUTE, (_req, res) => res.statusCode === 400)
+  );
   // Alexa needs the untouched signed body, so its own verifier is registered
   // before the generic JSON parser used by tRPC and the dashboard.
   registerAlexaRoutes(app);
   registerAndroidDeepLinks(app);
+  // Linked from skill.json (privacyPolicyUrl, termsOfUseUrl): served by the server itself.
+  registerLegalPages(app);
   app.use(express.json({ limit: BODY_LIMIT }));
   app.use(express.urlencoded({ limit: BODY_LIMIT, extended: true }));
   registerOAuthRoutes(app);

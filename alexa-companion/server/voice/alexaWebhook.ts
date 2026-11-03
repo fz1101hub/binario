@@ -7,8 +7,11 @@ import {
   CertificateChainValidationEngine,
   CryptoEngine,
 } from "pkijs";
-import { constants, verify, webcrypto, X509Certificate } from "node:crypto";
+import { constants, createHash, verify, webcrypto, X509Certificate } from "node:crypto";
 import { rootCertificates } from "node:tls";
+import { describeErrorForLog } from "../_core/logRedaction";
+import { createWindowCounter } from "../_core/rateLimit";
+import { alexaRequestLogContext } from "./requestLog";
 
 type RequestEnvelope = Parameters<Skill["invoke"]>[0];
 type VerificationHeaders = { certificateUrl?: string; signature?: string };
@@ -253,12 +256,30 @@ export function createAlexaRequestVerifier(
   };
 }
 
+/** Verified requests per minute for one Alexa user of this skill (voice and Echo Show touches). */
+export const ALEXA_WEBHOOK_REQUESTS_PER_USER_PER_MINUTE = 60;
+
+/** Rate-limit key for a verified envelope: the skill and the Alexa user, as a digest only. */
+function verifiedRequesterKey(envelope: RequestEnvelope) {
+  const system = envelope.context?.System;
+  const userId = system?.user?.userId ?? envelope.session?.user?.userId ?? "";
+  return createHash("sha256")
+    .update(`${system?.application?.applicationId ?? ""}\n${userId}`)
+    .digest("hex");
+}
+
 export function createAlexaWebhookHandler(
   skill: Pick<Skill, "invoke">,
   skillId: string,
-  verifyRequest = createAlexaRequestVerifier()
+  verifyRequest = createAlexaRequestVerifier(),
+  options: { requestsPerUserPerMinute?: number; now?: () => number } = {}
 ): RequestHandler {
   const raw = express.raw({ type: "*/*", limit: "1mb", inflate: false });
+  // Keyed only after signature verification: an unsigned request cannot spend a user's budget.
+  const requestsPerUser = createWindowCounter({
+    limit: options.requestsPerUserPerMinute ?? ALEXA_WEBHOOK_REQUESTS_PER_USER_PER_MINUTE,
+    now: options.now,
+  });
   return (req, res) => {
     res.setHeader("Cache-Control", "no-store");
     raw(req, res, error => {
@@ -278,9 +299,19 @@ export function createAlexaWebhookHandler(
           res.status(400).json({ error: "invalid_alexa_request" });
           return;
         }
+        const requester = verifiedRequesterKey(envelope);
+        if (!requestsPerUser.hit(requester)) {
+          res.setHeader("Retry-After", String(requestsPerUser.retryAfterSeconds(requester)));
+          res.status(429).json({ error: "too_many_requests" });
+          return;
+        }
         try {
           res.status(200).json(await skill.invoke(envelope));
-        } catch {
+        } catch (invokeError) {
+          console.error("[Alexa] skill invocation failed", {
+            ...alexaRequestLogContext(envelope),
+            error: describeErrorForLog(invokeError),
+          });
           res.status(500).json({ error: "server_error" });
         }
       })();

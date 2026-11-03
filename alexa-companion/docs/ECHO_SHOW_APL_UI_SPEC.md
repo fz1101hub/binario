@@ -34,9 +34,9 @@ Non classificare in base al nome commerciale in runtime: leggere le capacità de
 
 ## Intent della skill già presenti
 
-- `NextTrainsIntent`: «Alexa, chiedi a Binario quali sono i prossimi treni». In assenza di provider live, rispondere con il messaggio previsto dal progetto anziché una lista fittizia.
-- `TrainStatusIntent`: «Alexa, chiedi a Binario lo stato del treno 9512». Mai inventare ritardi.
-- `MyRoutesIntent`: «Alexa, chiedi a Binario le mie tratte». Restituire solo nomi autorizzati dopo OAuth.
+- `NextTrainsIntent`: «Alexa, chiedi a Binario Treni quali sono i prossimi treni». In assenza di provider live, rispondere con il messaggio previsto dal progetto anziché una lista fittizia.
+- `TrainStatusIntent`: «Alexa, chiedi a Binario Treni lo stato del treno 9512». Mai inventare ritardi.
+- `MyRoutesIntent`: «Alexa, chiedi a Binario Treni le mie tratte». Restituire solo nomi autorizzati dopo OAuth.
 
 Il documento APL è una proiezione del medesimo risultato letto da Alexa; nessuna seconda sorgente non autorizzata. Per tutti gli intent personali rispettare `LinkAccount` quando token assente/scaduto. Non incorporare segreti nella ViewModel APL.
 
@@ -55,7 +55,7 @@ Usare un unico design token repository: `#2E7D32` per componenti con testo bianc
 
 ## Esempio di risposta, se non esiste feed live
 
-**Domanda:** «Alexa, chiedi a Binario i prossimi treni».  
+**Domanda:** «Alexa, chiedi a Binario Treni i prossimi treni».  
 **Voce:** «Per la tua tratta Roma Torino: dati non disponibili in tempo reale».  
 **Echo Show:** pannello della tratta personale con stato «Dati non disponibili in tempo reale», invito ad aprire la ricerca e nessun orario inventato.
 

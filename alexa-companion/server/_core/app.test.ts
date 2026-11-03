@@ -1,9 +1,22 @@
 import type { AddressInfo } from "node:net";
 import type { Server } from "node:http";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { TRPC_MAX_BATCH_SIZE } from "@shared/const";
+
+vi.hoisted(() => {
+  Object.assign(process.env, {
+    ALEXA_ENABLED: "true",
+    ALEXA_SKILL_ID: "amzn1.ask.skill.test",
+    ALEXA_OAUTH_CLIENT_ID: "alexa-client",
+    ALEXA_OAUTH_CLIENT_SECRET: "alexa-secret",
+    ALEXA_OAUTH_REDIRECT_URIS: "https://layla.amazon.com/api/skill/link/M1TEST",
+    VOICE_TOKEN_PEPPER: "test-pepper-with-plenty-of-entropy-0123456789",
+  });
+});
+
 import {
-  ALEXA_WEBHOOK_REQUESTS_PER_MINUTE,
+  ALEXA_TOKEN_FAILED_REQUESTS_PER_MINUTE,
+  ALEXA_WEBHOOK_FAILED_REQUESTS_PER_MINUTE,
   createApp,
   OAUTH_REQUESTS_PER_MINUTE,
   trustProxySetting,
@@ -39,28 +52,49 @@ describe("applicazione HTTP", () => {
     expect(response.headers.get("x-powered-by")).toBeNull();
   });
 
-  it("limita la frequenza delle richieste OAuth per client", async () => {
+  it("limita per IP la pagina di consenso Alexa aperta dal browser", async () => {
     const baseUrl = await start();
     let lastStatus = 0;
-    for (let attempt = 0; attempt <= OAUTH_REQUESTS_PER_MINUTE; attempt++) {
+    for (let attempt = 0; attempt <= OAUTH_REQUESTS_PER_MINUTE; attempt++)
+      lastStatus = (await fetch(`${baseUrl}/api/alexa/oauth/authorize`, { redirect: "manual" })).status;
+    expect(lastStatus).toBe(429);
+  });
+
+  it("limita per IP solo l'autenticazione client fallita sul token endpoint", async () => {
+    const baseUrl = await start();
+    let lastStatus = 0;
+    for (let attempt = 0; attempt <= ALEXA_TOKEN_FAILED_REQUESTS_PER_MINUTE; attempt++) {
       const response = await fetch(`${baseUrl}/api/alexa/oauth/token`, {
         method: "POST",
         headers: { "content-type": "application/x-www-form-urlencoded" },
-        body: "grant_type=authorization_code",
+        body: "grant_type=authorization_code&client_id=alexa-client&client_secret=wrong",
       });
       lastStatus = response.status;
     }
     expect(lastStatus).toBe(429);
   });
 
-  it("limita il webhook Alexa prima che il verificatore elabori il body", async () => {
+  it("non limita per IP il traffico token del client autenticato, che arriva da pochi indirizzi Amazon", async () => {
+    const baseUrl = await start();
+    const statuses = new Set<number>();
+    for (let attempt = 0; attempt <= ALEXA_TOKEN_FAILED_REQUESTS_PER_MINUTE + 10; attempt++) {
+      const response = await fetch(`${baseUrl}/api/alexa/oauth/token`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/x-www-form-urlencoded",
+          authorization: `Basic ${Buffer.from("alexa-client:alexa-secret").toString("base64")}`,
+        },
+        body: "grant_type=device_code",
+      });
+      statuses.add(response.status);
+    }
+    expect([...statuses]).toEqual([400]);
+  });
+
+  it("limita per IP le richieste webhook che non superano la verifica della firma", async () => {
     const baseUrl = await start();
     let lastStatus = 0;
-    for (
-      let attempt = 0;
-      attempt <= ALEXA_WEBHOOK_REQUESTS_PER_MINUTE;
-      attempt++
-    ) {
+    for (let attempt = 0; attempt <= ALEXA_WEBHOOK_FAILED_REQUESTS_PER_MINUTE; attempt++) {
       const response = await fetch(`${baseUrl}/api/alexa/webhook`, {
         method: "POST",
         headers: { "content-type": "application/json" },

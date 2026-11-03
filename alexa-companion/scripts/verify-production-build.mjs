@@ -51,6 +51,14 @@ if (problems.length) {
   process.exit(1);
 }
 
+// skill.json links these icons (smallIconUri, largeIconUri) under the public host.
+for (const icon of ["alexa/icon-108.png", "alexa/icon-512.png"]) {
+  if (!existsSync(path.join(root, icon))) {
+    console.error(`verify-production-build: ${icon} is missing from dist/public.`);
+    process.exit(1);
+  }
+}
+
 const serverBundle = path.join(dist, "index.js");
 if (!existsSync(serverBundle)) {
   console.error(
