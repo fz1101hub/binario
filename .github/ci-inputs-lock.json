@@ -1,6 +1,6 @@
 {
   "schemaVersion": 3,
-  "verifiedAt": "2026-10-25",
+  "verifiedAt": "2026-11-03",
   "workflowTriggerPolicy": {
     "pushBranches": [
       "main",
@@ -35,6 +35,14 @@
     {
       "reference": "actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
       "release": "v7.0.2"
+    },
+    {
+      "reference": "actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9",
+      "release": "v6.1.0"
+    },
+    {
+      "reference": "actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9",
+      "release": "v6.1.0"
     }
   ],
   "containerImages": [

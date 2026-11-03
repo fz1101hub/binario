@@ -36,6 +36,7 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
 
+import ci_log_frames  # noqa: E402
 import netex_to_gtfs  # noqa: E402
 
 REGISTRY = ROOT / "tools" / "transit_packs.json"
@@ -271,30 +272,14 @@ def print_directory(directory: Path, nonce: str | None = None, exclude: frozense
         BINARIO_END path
         BINARIO_DONE <nonce> <files>
 
-    ``tools/apply_ci_gtfs_refresh.py`` accepts exactly one such frame per job log, from this print step only.
-    ``exclude`` names top-level subdirectories left out of the log (``gtfs-personal`` unless the dispatch asks for it:
-    the job logs of this public repository are public, see SOURCE_POLICY.md)."""
-    import base64
-    import secrets
-
-    nonce = nonce or secrets.token_hex(16)
-    files = sorted(
-        item for item in directory.rglob("*")
-        if item.is_file() and item.relative_to(directory).parts[0] not in exclude
-    )
+    ``tools/apply_ci_gtfs_refresh.py`` accepts exactly one such frame per job log, from this print step only (the
+    frame format lives in ``tools/ci_log_frames.py``).  ``exclude`` names top-level subdirectories left out of the log
+    (``gtfs-personal`` unless the dispatch asks for it: the job logs of this public repository are public, see
+    SOURCE_POLICY.md)."""
     for name in sorted(exclude):
         if (directory / name).is_dir():
             print(f"Non stampata: {name}/ (input del workflow print_personal_packs disattivato)", flush=True)
-    print(f"BINARIO_BEGIN {nonce}", flush=True)
-    for path in files:
-        relative = path.relative_to(directory).as_posix()
-        data = path.read_bytes()
-        print(f"BINARIO_FILE {relative} {len(data)} {hashlib.sha256(data).hexdigest()}")
-        encoded = base64.b64encode(data).decode("ascii")
-        for start in range(0, len(encoded), 4000):
-            print(f"BINARIO_B64 {relative} {encoded[start:start + 4000]}")
-        print(f"BINARIO_END {relative}", flush=True)
-    print(f"BINARIO_DONE {nonce} {len(files)}", flush=True)
+    ci_log_frames.print_directory(directory, nonce, exclude)
 
 
 def selection_from(text: str) -> tuple[bool, list[str] | None, list[str] | None]:
