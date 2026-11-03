@@ -29,6 +29,9 @@ import it.binario.app.data.sources.RailInformationCategory
 import it.binario.app.data.sources.RailSourceSelectionPolicy
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.currentCoroutineContext
@@ -58,6 +61,42 @@ class StationBoardEnrichedTrainDataSource(
         loadRoute(route, direction, JourneyQuery.now())
 
     override suspend fun loadRoute(route: SavedRoute, direction: Direction, query: JourneyQuery): DataResult {
+        val live = liveFirst(route, direction, query)
+        live.verified?.let { return it }
+        return afterPlanned(plannedSource.loadRoute(route, direction, query), live.unverified, route, direction, query)
+    }
+
+    /**
+     * [loadRoute] published as it improves: the offline rows (then with their GTFS-Realtime) appear while the live
+     * sources answer; a verified live result still replaces them, and the board reconciliation comes last. The final
+     * emission is exactly what [loadRoute] returns.
+     */
+    override fun observeRoute(route: SavedRoute, direction: Direction, query: JourneyQuery): Flow<DataResult> = channelFlow {
+        val liveWon = java.util.concurrent.atomic.AtomicBoolean(false)
+        val live = async { liveFirst(route, direction, query) }
+        val planned = async {
+            var latest: DataResult? = null
+            plannedSource.observeRoute(route, direction, query).collect { result ->
+                latest = result
+                if (result is DataResult.Success && !liveWon.get()) send(result)
+            }
+            latest
+        }
+        val verdict = live.await()
+        verdict.verified?.let { verified ->
+            liveWon.set(true)
+            planned.cancelAndJoin()
+            send(verified)
+            return@channelFlow
+        }
+        val plannedResult = planned.await() ?: plannedSource.loadRoute(route, direction, query)
+        val final = afterPlanned(plannedResult, verdict.unverified, route, direction, query)
+        if (final !== plannedResult) send(final)
+    }
+
+    private class LiveVerdict(val verified: DataResult.Success?, val unverified: DataResult.Success?)
+
+    private suspend fun liveFirst(route: SavedRoute, direction: Direction, query: JourneyQuery): LiveVerdict {
         val today = clock.instant().atZone(zone).toLocalDate()
         var unverifiedLive: DataResult.Success? = null
         if (query.serviceDate == today) {
@@ -79,10 +118,19 @@ class StationBoardEnrichedTrainDataSource(
                 null
                 } finally { pending.forEach { it.cancel() } }
             }
-            if (verified != null) return verified
+            if (verified != null) return LiveVerdict(verified, unverifiedLive)
         }
-        val planned = plannedSource.loadRoute(route, direction, query)
+        return LiveVerdict(null, unverifiedLive)
+    }
 
+    private suspend fun afterPlanned(
+        planned: DataResult,
+        unverifiedLive: DataResult.Success?,
+        route: SavedRoute,
+        direction: Direction,
+        query: JourneyQuery
+    ): DataResult {
+        val today = clock.instant().atZone(zone).toLocalDate()
         if (planned is DataResult.Success) {
             if (query.serviceDate != today || boardProviders.isEmpty()) return planned
             val snapshot = StationBoardRealtimeReconciler(
@@ -439,7 +487,7 @@ class StationBoardRealtimeReconciler(
     }
 
     private fun displayTime(value: ZonedDateTime): String =
-        "%02d:%02d".format(value.hour, value.minute)
+        String.format(Locale.ROOT, "%02d:%02d", value.hour, value.minute)
 
     private fun normalizeTrainNumber(value: String): String = value
         .uppercase(Locale.ROOT)

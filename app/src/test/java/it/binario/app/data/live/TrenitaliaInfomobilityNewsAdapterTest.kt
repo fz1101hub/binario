@@ -1,5 +1,6 @@
 package it.binario.app.data.live
 
+import it.binario.app.data.notices.NoticeLinks
 import it.binario.app.data.RailOperator
 import it.binario.app.data.core.AlertSeverity
 import it.binario.app.data.core.ServiceAlert
@@ -17,6 +18,7 @@ import java.time.Instant
 import java.time.LocalDate
 import kotlinx.coroutines.runBlocking
 import org.json.JSONArray
+import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -60,6 +62,26 @@ class TrenitaliaInfomobilityNewsAdapterTest {
         val parsed = adapter(RecordingPublicSourceFetcher { "" }).parse(JSONArray().put(hostile).toString()).single()
         assertEquals("Treni & bus", parsed.description)
         assertEquals(null, parsed.link)
+    }
+
+    /** Audit F6: the feed arrives over cleartext HTTP, so only the publisher's own HTTPS links may be tappable. */
+    @Test fun `links outside the official HTTPS domains are kept as plain text only`() {
+        val item = JSONObject()
+            .put("title", "Rimborsi: https://trenitalia-rimborsi.example/login")
+            .put("description", "&lt;p&gt;Dettagli su https://www.trenitalia.com/it/info.html e http://www.trenitalia.com/old " +
+                "oppure https://bit.ly/x e https://user@www.rfi.it/a&lt;/p&gt;")
+            .put("link", "https://evil.example/trenitalia")
+            .put("pubDate", 1_790_000_000_000L)
+        val official = JSONObject().put("title", "Avviso").put("link", "https://www.fsitaliane.it/content/fsitaliane/it/notizie.html")
+        val parsed = adapter(RecordingPublicSourceFetcher { "" }).parse(JSONArray().put(item).put(official).toString())
+
+        val hostile = parsed.first()
+        assertEquals(null, hostile.link)
+        val links = NoticeLinks.segments(hostile.title + " " + hostile.description).filterIsInstance<NoticeLinks.Segment.Link>().map { it.url }
+        assertEquals(listOf("https://www.trenitalia.com/it/info.html"), links)
+        assertTrue(hostile.title.contains("trenitalia-rimborsi.example/login"))
+        assertTrue(hostile.description!!.contains("bit.ly/x"))
+        assertEquals("https://www.fsitaliane.it/content/fsitaliane/it/notizie.html", parsed.last().link)
     }
 
     @Test fun `empty, malformed and failing feeds are typed results`() = runBlocking {

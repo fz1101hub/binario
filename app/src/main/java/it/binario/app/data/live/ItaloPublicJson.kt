@@ -26,7 +26,7 @@ internal fun parseItaloStationCatalog(html: String): List<ItaloPublicStation> {
         stations += ItaloPublicStation(code, name, resolvedSlug)
     }
     fun JSONObject.first(vararg keys: String): String = keys.firstNotNullOfOrNull { key ->
-        optString(key).takeIf { it.isNotBlank() && it != "null" }
+        textOrNull(key)?.takeIf { it != "null" }
     }.orEmpty()
     val document = Jsoup.parse(html)
     val labelsBySlug = document.select("a[href]").mapNotNull { link ->
@@ -98,27 +98,27 @@ internal fun parseItaloStationCatalog(html: String): List<ItaloPublicStation> {
 internal fun parseItaloPublicBoard(json: String, origin: String, route: SavedRoute, direction: Direction, clock: Clock): List<TrainService> {
     val root = JSONObject(json)
     if (root.optBoolean("IsEmpty", false)) return emptyList()
-    val publishedStation = root.optString("DescrizioneLocalita")
+    val publishedStation = root.textOr("DescrizioneLocalita")
     val requestedNames = (listOf(route.origin(direction).name) + route.origin(direction).aliases).map(::italoStationKey).toSet()
     val originNames = requestedNames + ItaloPublicStationFallbacks.all.filter { station ->
         (listOf(station.name) + station.aliases).any { italoStationKey(it) in requestedNames }
     }.flatMap { (listOf(it.name) + it.aliases).map(::italoStationKey) }
     if (publishedStation.isNotBlank() && italoStationKey(publishedStation) !in originNames) return emptyList()
-    val observed = parseItaloObservation(root.optString("LastUpdate"), clock)
+    val observed = parseItaloObservation(root.textOr("LastUpdate"), clock)
     val fresh = observed != null && !observed.isBefore(clock.instant().minusSeconds(300)) && !observed.isAfter(clock.instant().plusSeconds(60))
     val rows = root.optJSONArray("ListaTreniPartenza") ?: return emptyList()
     return (0 until rows.length()).mapNotNull { index ->
         val row = rows.optJSONObject(index) ?: return@mapNotNull null
-        val number = row.optString("Numero").takeIf { it.matches(Regex("\\d{3,5}")) } ?: return@mapNotNull null
-        val destination = row.optString("DescrizioneLocalita").takeIf { it.isNotBlank() && it != "null" } ?: return@mapNotNull null
-        val scheduled = row.optString("OraPassaggio").takeIf { it.matches(Regex("(?:[01]\\d|2[0-3]):[0-5]\\d")) } ?: return@mapNotNull null
-        val delay = row.optString("Ritardo").toIntOrNull()
-        val info = row.optString("Informazioni") + " " + row.optString("Descrizione")
+        val number = row.textOr("Numero").takeIf { it.matches(Regex("\\d{3,5}")) } ?: return@mapNotNull null
+        val destination = row.textOr("DescrizioneLocalita").takeIf { it.isNotBlank() && it != "null" } ?: return@mapNotNull null
+        val scheduled = row.textOr("OraPassaggio").takeIf { it.matches(Regex("(?:[01]\\d|2[0-3]):[0-5]\\d")) } ?: return@mapNotNull null
+        val delay = row.textOr("Ritardo").toIntOrNull()
+        val info = row.textOr("Informazioni") + " " + row.textOr("Descrizione")
         val cancelled = info.hasExplicitCancellationStatus()
         val verified = fresh && (delay != null || cancelled)
-        val publishedExpected = row.optString("NuovoOrario").takeIf { it.matches(Regex("(?:[01]\\d|2[0-3]):[0-5]\\d")) }
+        val publishedExpected = row.textOr("NuovoOrario").takeIf { it.matches(Regex("(?:[01]\\d|2[0-3]):[0-5]\\d")) }
         val expected = if (verified) publishedExpected ?: formatTime(timeToMinutes(scheduled) + (delay ?: 0)) else scheduled
-        val platform = row.optString("Binario").takeIf { it.isNotBlank() && it !in setOf("null", "-", "N/D") }
+        val platform = row.textOr("Binario").takeIf { it.isNotBlank() && it !in setOf("null", "-", "N/D") }
         TrainService(
             id = "italo:${route.id}:${direction.name}:$number:$scheduled", number = number,
             operator = RailOperator.ITALO, trainCategory = TrainCategory.AV_ITALO, origin = origin, destination = destination,
@@ -140,7 +140,7 @@ internal fun parseItaloObservation(value: String, clock: Clock): Instant? {
     val zone = RailTime.defaultZone
     runCatching { LocalDateTime.parse(value).atZone(zone).toInstant() }.getOrNull()?.let { return it }
     for (pattern in listOf("dd/MM/yyyy HH:mm:ss", "dd/MM/yyyy HH:mm", "yyyy-MM-dd'T'HH:mm:ss")) {
-        runCatching { LocalDateTime.parse(value, DateTimeFormatter.ofPattern(pattern)).atZone(zone).toInstant() }.getOrNull()?.let { return it }
+        runCatching { LocalDateTime.parse(value, DateTimeFormatter.ofPattern(pattern, Locale.ROOT)).atZone(zone).toInstant() }.getOrNull()?.let { return it }
     }
     val time = runCatching { LocalTime.parse(value) }.getOrNull() ?: return null
     var instant = clock.instant().atZone(zone).toLocalDate().atTime(time).atZone(zone).toInstant()

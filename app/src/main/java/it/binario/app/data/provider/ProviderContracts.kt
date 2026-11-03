@@ -48,6 +48,11 @@ data class CoverageDescriptor(
     val description: String
 )
 
+/**
+ * How a source may be asked. [minimumRequestInterval] is per resource (the same URL is not asked again sooner; the
+ * adapter's response cache enforces it), [maxConcurrentRequests] per source (the adapter's request permits),
+ * [supportsConditionalRequests] whether the adapter revalidates with `If-None-Match`/`If-Modified-Since`.
+ */
 data class RatePolicy(
     val minimumRequestInterval: Duration,
     val maxConcurrentRequests: Int = 1,
@@ -189,12 +194,37 @@ data class StationBoardRequest(
     /** Curated Trenitalia location id (country prefix + code); Swiss stations carry `85…` here. */
     val trenitaliaLocationId: String? = null,
     /** Catalogue coordinates, used only to verify a provider's own station identity, never sent as user location. */
-    val coordinates: it.binario.app.data.core.GeoPoint? = null
+    val coordinates: it.binario.app.data.core.GeoPoint? = null,
+    /**
+     * Earliest scheduled time of a late train that is still to leave: a row scheduled between this and [from] stays on
+     * the board while its source's expected time is at or after [from]. Null keeps only rows scheduled from [from].
+     */
+    val lateSince: Instant? = null
 ) {
     init {
         require(to.isAfter(from)) { "La finestra del tabellone non è valida" }
         require(Duration.between(from, to) <= Duration.ofHours(24)) { "La finestra del tabellone è troppo ampia" }
+        require(lateSince == null || (!lateSince.isAfter(from) && Duration.between(lateSince, from) <= Duration.ofHours(6))) {
+            "La finestra dei treni in ritardo non è valida"
+        }
     }
+
+    /** Earliest scheduled time a provider has to look at: [lateSince] when set, otherwise [from]. */
+    val earliestScheduled: Instant get() = lateSince ?: from
+
+    /**
+     * Whether a row scheduled at [scheduled] belongs to this board: inside [from]..[to], or a late train scheduled from
+     * [lateSince] whose [expected] time (known only from a live source) has not passed [from] yet.
+     */
+    fun keeps(scheduled: Instant, expected: Instant?): Boolean = boardWindowKeeps(from, to, lateSince, scheduled, expected)
+}
+
+/** [StationBoardRequest.keeps] for a window given by its bounds. */
+fun boardWindowKeeps(from: Instant, to: Instant, lateSince: Instant?, scheduled: Instant, expected: Instant?): Boolean {
+    if (scheduled.isAfter(to)) return false
+    if (!scheduled.isBefore(from)) return true
+    val since = lateSince ?: return false
+    return !scheduled.isBefore(since) && expected != null && !expected.isBefore(from)
 }
 
 data class AlertRequest(

@@ -295,6 +295,7 @@
     <string name="planner_subtitle">Ваша следующая поездка начинается здесь.</string>
     <string name="data_status_quality">Качество данных: %1$s</string>
     <string name="data_status_cached">Сохранённая копия, не в реальном времени: %1$s</string>
+    <string name="data_status_source_paused">%1$s: пауза до %2$s</string>
     <string name="nav_plan">Поиск</string>
     <string name="nav_departures">Отправления</string>
     <string name="nav_for_you">Для вас</string>

@@ -39,11 +39,16 @@ internal object LegacyStationBoardInterop {
         services: List<TrainService>,
         fetchedAt: Instant,
         ttl: Duration,
-        zone: ZoneId = defaultZone
+        zone: ZoneId = defaultZone,
+        /** [it.binario.app.data.provider.StationBoardRequest.lateSince]: late trains scheduled from here stay while still to leave. */
+        lateSince: Instant? = null
     ): StationBoard {
         val entries = services.mapNotNull { service ->
-            val scheduled = resolveBoardDateTime(service.scheduledDeparture, from, to, zone) ?: return@mapNotNull null
-            if (scheduled.toInstant().isBefore(from) || scheduled.toInstant().isAfter(to)) return@mapNotNull null
+            val scheduled = resolveBoardDateTime(service.scheduledDeparture, lateSince ?: from, to, zone) ?: return@mapNotNull null
+            val verifiedTiming = service.stops.firstOrNull()?.operationalStatusVerified ?: service.operationalStatusVerified
+            val expected = if (verifiedTiming) resolveExpectedDateTime(service.expectedDeparture, scheduled, zone) else null
+            // A delayed train scheduled before the window stays until its expected departure, as the source still lists it.
+            if (!it.binario.app.data.provider.boardWindowKeeps(from, to, lateSince, scheduled.toInstant(), expected?.toInstant())) return@mapNotNull null
 
             val source = SourceRef(
                 sourceId = sourceId,
@@ -54,11 +59,6 @@ internal object LegacyStationBoardInterop {
                 confidence = confidence,
                 traceId = "${sourceId.value}:${service.id}"
             )
-            val expected = if (service.stops.firstOrNull()?.operationalStatusVerified ?: service.operationalStatusVerified) {
-                resolveExpectedDateTime(service.expectedDeparture, scheduled, zone)
-            } else {
-                null
-            }
             StationBoardEntry(
                 runId = TrainRunId("${sourceId.value}:${service.number}:${scheduled.toLocalDate()}"),
                 scheduledTime = scheduled,

@@ -292,6 +292,7 @@
     <string name="planner_subtitle">你的下一段旅程从这里开始。</string>
     <string name="data_status_quality">数据质量：%1$s</string>
     <string name="data_status_cached">已保存的副本，非实时：%1$s</string>
+    <string name="data_status_source_paused">%1$s 已暂停，至 %2$s 恢复</string>
     <string name="nav_plan">规划</string>
     <string name="nav_departures">出发</string>
     <string name="nav_for_you">我的</string>

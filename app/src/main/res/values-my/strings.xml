@@ -286,6 +286,7 @@
     <string name="planner_subtitle">သင်၏ နောက်ခရီးစဉ် ဤနေရာမှ စတင်သည်။</string>
     <string name="data_status_quality">ဒေတာ အရည်အသွေး- %1$s</string>
     <string name="data_status_cached">သိမ်းထားသော မိတ္တူ၊ အချိန်နှင့်တပြေးညီ မဟုတ်ပါ- %1$s</string>
+    <string name="data_status_source_paused">%1$s ကို %2$s အထိ ခေတ္တရပ်ထားသည်</string>
     <string name="nav_plan">စီစဉ်ရန်</string>
     <string name="nav_departures">ထွက်ခွာမှု</string>
     <string name="nav_for_you">သင့်အတွက်</string>

@@ -4,6 +4,15 @@ import java.time.Duration
 import java.time.Instant
 import java.time.ZonedDateTime
 
+/**
+ * How long a GTFS-Realtime trip observation stays usable: "osservazioni entro cinque minuti"
+ * (docs/data-sources/LIVE_PROVIDER_PROTOCOLS.md). The window starts at the feed's own observation time, not at the
+ * fetch, and it is the only age rule: the adapters' fetch caches are shorter and never shorten it.
+ */
+object GtfsRealtimeFreshness {
+    val OBSERVATION_WINDOW: Duration = Duration.ofMinutes(5)
+}
+
 /** Indica se il tempo realtime è una previsione o un evento effettivamente osservato dal provider. */
 enum class RealtimeTimeKind {
     PREDICTED,

@@ -301,6 +301,7 @@
     <string name="planner_subtitle">رحلتك القادمة تبدأ من هنا.</string>
     <string name="data_status_quality">جودة البيانات: %1$s</string>
     <string name="data_status_cached">نسخة محفوظة، ليست مباشرة: %1$s</string>
+    <string name="data_status_source_paused">%1$s متوقف مؤقتًا حتى %2$s</string>
     <string name="nav_plan">تخطيط</string>
     <string name="nav_departures">المغادرات</string>
     <string name="nav_for_you">لك</string>

@@ -104,7 +104,7 @@ class ItaloTrainNumberAdapter(
     }
 
     private data class TimedStop(val name: String, val scheduled: ZonedDateTime, val actual: ZonedDateTime?, val platform: String?)
-    private fun hhmm(time: ZonedDateTime) = time.format(java.time.format.DateTimeFormatter.ofPattern("HH:mm"))
+    private fun hhmm(time: ZonedDateTime) = time.format(java.time.format.DateTimeFormatter.ofPattern("HH:mm", java.util.Locale.ROOT))
     private fun dateTime(value: String?, date: LocalDate): ZonedDateTime? {
         if (value == null) return null
         Regex("/Date\\((\\d+)(?:[+-]\\d+)?\\)/").matchEntire(value)?.groupValues?.get(1)?.toLongOrNull()?.let { return Instant.ofEpochMilli(it).atZone(zone) }

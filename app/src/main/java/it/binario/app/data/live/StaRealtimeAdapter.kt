@@ -4,6 +4,7 @@ import it.binario.app.data.core.AlertId
 import it.binario.app.data.core.AlertSeverity
 import it.binario.app.data.core.Confidence
 import it.binario.app.data.core.GeoPoint
+import it.binario.app.data.core.GtfsRealtimeFreshness
 import it.binario.app.data.core.LocalizedText
 import it.binario.app.data.core.PositionKind
 import it.binario.app.data.core.ServiceAlert
@@ -35,8 +36,6 @@ import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.IOException
-import java.net.HttpURLConnection
-import java.net.URL
 import java.security.MessageDigest
 import java.time.Clock
 import java.time.Duration
@@ -53,23 +52,13 @@ enum class StaRealtimeFeed(val path: String) {
     SERVICE_ALERTS("service-alerts")
 }
 
-internal class HttpStaRealtimeFetcher : StaRealtimeFetcher {
-    override suspend fun fetch(feed: StaRealtimeFeed): String = withContext(Dispatchers.IO) {
-        val url = URL("${StaRealtimeAdapter.REALTIME_ROOT}/${feed.path}")
-        val connection = url.openConnection() as? HttpURLConnection
-            ?: throw IOException("STA realtime non usa una connessione HTTP")
-        connection.requestMethod = "GET"
-        connection.connectTimeout = 12_000
-        connection.readTimeout = 20_000
-        connection.setRequestProperty("Accept", "application/json")
-        connection.setRequestProperty("User-Agent", "Binario/0.15 (personal rail information client)")
-        try {
-            if (connection.responseCode !in 200..299) throw IOException("STA realtime ha risposto HTTP ${connection.responseCode}")
-            connection.inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() }
-        } finally {
-            connection.disconnect()
-        }
-    }
+/** HTTPS only, same-host redirects, a byte cap, a total time limit and a request that stops when the caller is cancelled. */
+internal class HttpStaRealtimeFetcher(
+    private val http: PublicSourceFetcher = HttpPublicSourceFetcher(
+        PublicSourceRequestPolicy(maxBytes = 8 * 1024 * 1024, readTimeoutMillis = 15_000, totalTimeoutMillis = 20_000)
+    )
+) : StaRealtimeFetcher {
+    override suspend fun fetch(feed: StaRealtimeFeed): String = http.get("${StaRealtimeAdapter.REALTIME_ROOT}/${feed.path}")
 }
 
 /** Adapter ufficiale Open Data Hub/STA per alert e posizioni GTFS-Realtime. */
@@ -95,6 +84,7 @@ class StaRealtimeAdapter(
     private var alertCache: CachedAlerts? = null
     private var positionCache: CachedPositions? = null
     private var tripUpdateCache: CachedTripUpdates? = null
+    private val tripUpdateGuard = RealtimeFeedGuard(clock, "Open Data Hub Alto Adige")
 
     override suspend fun getAlerts(request: AlertRequest): ProviderResult<List<ServiceAlert>> = alertMutex.withLock {
         val now = clock.instant()
@@ -123,19 +113,20 @@ class StaRealtimeAdapter(
         tripUpdateCache?.takeIf { now.isBefore(it.expiresAt) }?.let { cached ->
             return@withLock ProviderResult.Success(cached.updates, meta(now, cached.observedAt, cached.expiresAt, fromCache = true))
         }
+        tripUpdateGuard.blocked()?.let { return@withLock it }
         try {
             val json = fetcher.fetch(StaRealtimeFeed.TRIP_UPDATES)
-            val observed = observedAt(json, now)
-            val updates = parseTripUpdates(json, observed)
+            val (observed, updates) = withContext(Dispatchers.Default) { observedAt(json, now).let { it to parseTripUpdates(json, it) } }
             val expiresAt = now.plus(cacheTtl)
             tripUpdateCache = CachedTripUpdates(updates, observed, expiresAt)
+            tripUpdateGuard.succeeded()
             ProviderResult.Success(updates, meta(now, observed, expiresAt, fingerprint(json)))
         } catch (error: CancellationException) {
             throw error
         } catch (error: IOException) {
-            ProviderResult.Failure(ProviderError(ProviderErrorKind.NETWORK, "Trip Updates Alto Adige non raggiungibili.", error::class.java.name))
+            tripUpdateGuard.failed(ProviderError(ProviderErrorKind.NETWORK, "Trip Updates Alto Adige non raggiungibili.", error::class.java.name), error)
         } catch (error: Exception) {
-            ProviderResult.Failure(ProviderError(ProviderErrorKind.PARSE_ERROR, "Trip Updates Alto Adige non leggibili.", error::class.java.name))
+            tripUpdateGuard.failed(ProviderError(ProviderErrorKind.PARSE_ERROR, "Trip Updates Alto Adige non leggibili.", error::class.java.name), error)
         }
     }
 
@@ -165,20 +156,20 @@ class StaRealtimeAdapter(
         val observed = observedAt(root, fetchedAt)
         return root.arrayOrEmpty("entity").mapObjects { entity ->
             val alert = entity.optJSONObject("alert") ?: return@mapObjects null
-            val id = entity.optString("id").takeIf(String::isNotBlank) ?: return@mapObjects null
+            val id = entity.textOr("id").takeIf(String::isNotBlank) ?: return@mapObjects null
             val title = translations(alert.optJSONObject("header_text")).firstOrNull { it.languageTag == "it" }
                 ?: translations(alert.optJSONObject("header_text")).firstOrNull()
                 ?: LocalizedText("Avviso di circolazione")
             val description = translations(alert.optJSONObject("description_text")).firstOrNull { it.languageTag == "it" }
                 ?: translations(alert.optJSONObject("description_text")).firstOrNull()
             val stations = alert.arrayOrEmpty("informed_entity").mapObjects { informed ->
-                informed.optString("stop_id").takeIf(String::isNotBlank)?.let { StationId("sta:$it") }
+                informed.textOr("stop_id").takeIf(String::isNotBlank)?.let { StationId("sta:$it") }
             }.toSet()
             ServiceAlert(
                 id = AlertId("sta:$id"),
                 title = title,
                 description = description,
-                severity = severity(alert.optString("effect"), alert.optString("severity_level")),
+                severity = severity(alert.textOr("effect"), alert.textOr("severity_level")),
                 validFrom = activeBoundary(alert, "start"),
                 validUntil = activeBoundary(alert, "end"),
                 affectedStations = stations,
@@ -192,21 +183,21 @@ class StaRealtimeAdapter(
         val observed = observedAt(root, fallbackObservedAt)
         return root.arrayOrEmpty("entity").mapObjects { entity ->
             val update = entity.optJSONObject("trip_update") ?: return@mapObjects null
-            val tripId = update.optJSONObject("trip")?.optString("trip_id").orEmpty()
+            val tripId = update.optJSONObject("trip")?.textOr("trip_id").orEmpty()
             if (tripId.isBlank()) return@mapObjects null
             val trip = update.getJSONObject("trip")
-            if (trip.optString("schedule_relationship", "SCHEDULED") !in setOf("SCHEDULED", "0")) return@mapObjects null
-            val dateString = trip.optString("start_date")
+            if (trip.textOr("schedule_relationship", "SCHEDULED") !in setOf("SCHEDULED", "0")) return@mapObjects null
+            val dateString = trip.textOr("start_date")
             val serviceDate = dateString.takeIf(String::isNotBlank)?.let {
                 runCatching { java.time.LocalDate.parse(it, java.time.format.DateTimeFormatter.BASIC_ISO_DATE) }.getOrNull()
             }
             if (dateString.isNotBlank() && serviceDate == null) return@mapObjects null
-            val nativeEntity = entity.optString("id", tripId)
+            val nativeEntity = entity.textOr("id", tripId)
             val tripObservedAt = update.optLong("timestamp", 0L).takeIf { it > 0 }?.let(Instant::ofEpochSecond) ?: observed
-            val source = sourceRef(nativeEntity, tripObservedAt)
+            val source = sourceRef(nativeEntity, tripObservedAt, GtfsRealtimeFreshness.OBSERVATION_WINDOW)
             update.arrayOrEmpty("stop_time_update").mapObjects { stop ->
-                if (stop.optString("schedule_relationship", "SCHEDULED") !in setOf("SCHEDULED", "0")) return@mapObjects null
-                val stopId = stop.optString("stop_id").takeIf(String::isNotBlank)
+                if (stop.textOr("schedule_relationship", "SCHEDULED") !in setOf("SCHEDULED", "0")) return@mapObjects null
+                val stopId = stop.textOr("stop_id").takeIf(String::isNotBlank)
                 val sequence = stop.optInt("stop_sequence", -1).takeIf { it >= 0 }
                 if (stopId == null && sequence == null) return@mapObjects null
                 val departure = stop.optJSONObject("departure")
@@ -235,7 +226,7 @@ class StaRealtimeAdapter(
         return root.arrayOrEmpty("entity").mapObjects { entity ->
             val vehicle = entity.optJSONObject("vehicle") ?: return@mapObjects null
             val position = vehicle.optJSONObject("position") ?: return@mapObjects null
-            val tripId = vehicle.optJSONObject("trip")?.optString("trip_id").orEmpty()
+            val tripId = vehicle.optJSONObject("trip")?.textOr("trip_id").orEmpty()
             val latitude = position.optDouble("latitude", Double.NaN)
             val longitude = position.optDouble("longitude", Double.NaN)
             if (tripId.isBlank() || !latitude.isFinite() || !longitude.isFinite()) return@mapObjects null
@@ -245,7 +236,7 @@ class StaRealtimeAdapter(
                 point = GeoPoint(latitude, longitude),
                 observedAt = observed,
                 kind = PositionKind.GPS,
-                source = sourceRef(entity.optString("id", tripId), observed)
+                source = sourceRef(entity.textOr("id", tripId), observed)
             )
         }
     }
@@ -261,10 +252,10 @@ class StaRealtimeAdapter(
         level.equals("WARNING", ignoreCase = true) || effect.isNotBlank() -> AlertSeverity.WARNING
         else -> AlertSeverity.INFO
     }
-    private fun sourceRef(nativeId: String, observed: Instant) = SourceRef(SOURCE_ID, nativeId, observed, clock.instant(), observed.plus(cacheTtl), Confidence.OPEN_DATA, licenseId = "CC0-1.0", traceId = "sta:${fingerprint(nativeId).take(16)}")
+    private fun sourceRef(nativeId: String, observed: Instant, validity: Duration = cacheTtl) = SourceRef(SOURCE_ID, nativeId, observed, clock.instant(), observed.plus(validity), Confidence.OPEN_DATA, licenseId = "CC0-1.0", traceId = "sta:${fingerprint(nativeId).take(16)}")
     private fun fingerprint(value: String): String = MessageDigest.getInstance("SHA-256").digest(value.toByteArray()).joinToString("") { "%02x".format(it) }
     private fun translations(value: JSONObject?): List<LocalizedText> = value?.arrayOrEmpty("translation")?.mapObjects { translation ->
-        translation.optString("text").takeIf(String::isNotBlank)?.let { LocalizedText(it, translation.optString("language", "it")) }
+        translation.textOr("text").takeIf(String::isNotBlank)?.let { LocalizedText(it, translation.textOr("language", "it")) }
     }.orEmpty()
     private fun JSONObject.arrayOrEmpty(name: String): JSONArray = optJSONArray(name) ?: JSONArray()
     private fun <T> JSONArray.mapObjects(transform: (JSONObject) -> T?): List<T> = buildList {

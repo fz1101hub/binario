@@ -179,7 +179,11 @@ class RfiStationBoardAdapter(
     private val cache = mutableMapOf<String, CachedSnapshot>()
     private val stationCatalog = RfiStationCatalog(fetcher, clock)
 
-    override suspend fun getStationBoard(request: StationBoardRequest): ProviderResult<it.binario.app.data.core.StationBoard> {
+    /** Catalogue and board parsing (Jsoup/JSON, up to a few MB) never run on the caller's thread, which can be Main. */
+    override suspend fun getStationBoard(request: StationBoardRequest): ProviderResult<it.binario.app.data.core.StationBoard> =
+        withContext(Dispatchers.Default) { stationBoard(request) }
+
+    private suspend fun stationBoard(request: StationBoardRequest): ProviderResult<it.binario.app.data.core.StationBoard> {
         val stationName = request.stationName?.takeIf(String::isNotBlank) ?: request.stationId.value
         val placeId = RfiStationIds.placeId(request.stationId.value, stationName)
             ?: stationCatalog.placeId(listOf(stationName) + request.stationAliases)
@@ -205,7 +209,8 @@ class RfiStationBoardAdapter(
                 to = request.to,
                 services = services,
                 fetchedAt = fetchedAt,
-                ttl = descriptor.ratePolicy.defaultTimeToLive
+                ttl = descriptor.ratePolicy.defaultTimeToLive,
+                lateSince = request.lateSince
             )
             ProviderResult.Success(
                 board,
@@ -229,7 +234,10 @@ class RfiStationBoardAdapter(
         return loadRoute(route, direction, JourneyQuery(now.toLocalDate(), now.toLocalTime().withSecond(0).withNano(0)))
     }
 
-    override suspend fun loadRoute(route: SavedRoute, direction: Direction, query: JourneyQuery): DataResult {
+    override suspend fun loadRoute(route: SavedRoute, direction: Direction, query: JourneyQuery): DataResult =
+        withContext(Dispatchers.Default) { currentRoute(route, direction, query) }
+
+    private suspend fun currentRoute(route: SavedRoute, direction: Direction, query: JourneyQuery): DataResult {
         if (query.serviceDate != clock.instant().atZone(clock.zone).toLocalDate()) {
             return DataResult.Failure("Il monitor RFI espone stato operativo corrente: la fonte live viene usata solo per la data odierna.")
         }

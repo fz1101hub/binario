@@ -97,15 +97,42 @@ internal object ItalianRailServiceCalendar {
     private const val CLAUSE_END = "|"
     private const val RANGE = "-"
 
-    private fun tokenize(periodicity: String): List<String> =
-        Normalizer.normalize(periodicity, Normalizer.Form.NFD)
-            .replace(Regex("\\p{M}+"), "")
-            .uppercase(Locale.ROOT)
-            .replace(Regex("[.;:]"), " $CLAUSE_END ")
-            .replace(RANGE, " $RANGE ")
-            .replace(Regex("[^A-Z0-9|\\- ]"), " ")
-            .split(' ')
-            .filter(String::isNotBlank)
+    /**
+     * Shortened forms written with a dot ("Escl. sab. e fest.", "Lun.-Ven."): that dot belongs to the word and does
+     * not end the clause, so the negation of "Escl." still covers the days after it.
+     */
+    private val abbreviations = setOf(
+        "ESCL", "ESC", "ECC", "LUN", "MAR", "MER", "GIO", "VEN", "SAB", "DOM", "LU", "MA", "ME", "GI", "VE", "SA", "DO",
+        "FEST", "FESTIV", "FER", "FERIAL", "PREFEST", "PREFESTIV", "LAV", "LAVOR", "LAVORAT", "LAVORATIV", "GG"
+    )
+
+    private fun periodicityWord(token: String): Boolean = token in fullDayWords || token in shortDayWords ||
+        token in negationWords || token in abbreviations || token.startsWith("FEST") || token.startsWith("PREFEST") ||
+        token.startsWith("FERIAL") || token.startsWith("LAVORATIV")
+
+    /**
+     * Words, ranges and clause ends of the text. `;` and `:` end a clause; a dot ends it unless it closes an
+     * abbreviation, and even then when a capitalised word that is no day term starts a new sentence
+     * ("Escl. sab. Si effettua dom.").
+     */
+    private fun tokenize(periodicity: String): List<String> {
+        val text = Normalizer.normalize(periodicity, Normalizer.Form.NFD).replace(Regex("\\p{M}+"), "")
+        val raw = Regex("[A-Za-z0-9]+|[.;:]|-").findAll(text).map { it.value }.toList()
+        val tokens = ArrayList<String>(raw.size)
+        raw.forEachIndexed { index, token ->
+            when (token) {
+                ";", ":" -> tokens += CLAUSE_END
+                "." -> {
+                    val previous = raw.getOrNull(index - 1)?.uppercase(Locale.ROOT)
+                    val next = raw.getOrNull(index + 1)
+                    val newSentence = next != null && next.first().isUpperCase() && !periodicityWord(next.uppercase(Locale.ROOT))
+                    if (previous == null || previous !in abbreviations || newSentence) tokens += CLAUSE_END
+                }
+                else -> tokens += token.uppercase(Locale.ROOT)
+            }
+        }
+        return tokens
+    }
 
     private fun parsePeriodicity(periodicity: String): List<Term> {
         val tokens = tokenize(periodicity)
@@ -134,7 +161,8 @@ internal object ItalianRailServiceCalendar {
                     terms += Term(Daily, negated)
                 token.startsWith("PREFEST") -> terms += Term(HolidayEve, negated)
                 token.startsWith("FEST") -> terms += Term(Holiday, negated)
-                token == "FERIALE" || token == "FERIALI" || token.startsWith("LAVORATIV") -> terms += Term(Weekday, negated)
+                token == "FERIALE" || token == "FERIALI" || token == "FER" || token == "FERIAL" || token.startsWith("LAVORATIV") ->
+                    terms += Term(Weekday, negated)
                 (token == "DAL" || token == "DA") && dayAt(index + 1) != null &&
                     tokens.getOrNull(index + 2).let { it == "AL" || it == "A" } && dayAt(index + 3) != null -> {
                     terms += Term(Days(dayRange(dayAt(index + 1)!!, dayAt(index + 3)!!)), negated)

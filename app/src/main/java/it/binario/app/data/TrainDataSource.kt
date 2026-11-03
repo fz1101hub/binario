@@ -271,6 +271,14 @@ interface TrainDataSource {
     /** Query-aware overload. Legacy/live adapters can ignore the schedule query until migrated. */
     suspend fun loadRoute(route: SavedRoute, direction: Direction, query: JourneyQuery): DataResult =
         loadRoute(route, direction)
+
+    /**
+     * The same answer as [loadRoute], published as it improves: a source may first emit its offline result and then
+     * the same result with the optional realtime it waited for. The last emission is the result; source order,
+     * priority and gating are those of [loadRoute].
+     */
+    fun observeRoute(route: SavedRoute, direction: Direction, query: JourneyQuery): kotlinx.coroutines.flow.Flow<DataResult> =
+        kotlinx.coroutines.flow.flow { emit(loadRoute(route, direction, query)) }
 }
 
 /** A current-day route source whose availability follows the provider registry. */
@@ -381,7 +389,8 @@ class RouteSnapshotCache(context: Context) {
 
 fun formatTime(totalMinutes: Int): String {
     val normalized = ((totalMinutes % (24 * 60)) + (24 * 60)) % (24 * 60)
-    return "%02d:%02d".format(normalized / 60, normalized % 60)
+    // Data, not UI text: ASCII digits whatever the app language (Arabic, Burmese…), as the parsers expect.
+    return String.format(java.util.Locale.ROOT, "%02d:%02d", normalized / 60, normalized % 60)
 }
 
 fun timeToMinutes(value: String): Int {

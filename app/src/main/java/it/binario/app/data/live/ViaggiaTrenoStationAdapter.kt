@@ -125,7 +125,8 @@ class ViaggiaTrenoStationAdapter(
                 to = request.to,
                 services = services,
                 fetchedAt = fetchedAt,
-                ttl = descriptor.ratePolicy.defaultTimeToLive
+                ttl = descriptor.ratePolicy.defaultTimeToLive,
+                lateSince = request.lateSince
             )
             ProviderResult.Success(
                 board,

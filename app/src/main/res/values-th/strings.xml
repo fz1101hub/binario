@@ -292,6 +292,7 @@
     <string name="planner_subtitle">การเดินทางครั้งต่อไปของคุณเริ่มต้นที่นี่</string>
     <string name="data_status_quality">คุณภาพข้อมูล: %1$s</string>
     <string name="data_status_cached">สำเนาที่บันทึกไว้ ไม่ใช่เรียลไทม์: %1$s</string>
+    <string name="data_status_source_paused">%1$s หยุดชั่วคราวจนถึง %2$s</string>
     <string name="nav_plan">วางแผน</string>
     <string name="nav_departures">ขบวนออก</string>
     <string name="nav_for_you">สำหรับคุณ</string>

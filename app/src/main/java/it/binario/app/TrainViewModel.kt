@@ -83,6 +83,8 @@ class TrainViewModel @JvmOverloads constructor(
     }
     private val routeStore = RouteStore(application)
     private val cache = RouteSnapshotCache(application)
+    /** Last good route results and boards on the device, shown as a saved copy when a refresh finds no network. */
+    private val lastGood = it.binario.app.data.repository.LastGoodSnapshotStore(application)
     private val integrationStore = IntegrationSettingsStore(application)
     private val stationPreferences = StationPreferences(application)
     private val commuterAlertStore = CommuterAlertStore(application)
@@ -390,12 +392,19 @@ class TrainViewModel @JvmOverloads constructor(
                         stationBoard = result.board
                         stationBoardRefreshState = if (result.isComplete) RefreshState.SUCCESS else RefreshState.LOADING
                         stationBoardMessages = result.board.warnings.map { UiMessage(it.stationBoardWarningKey()) }.distinct()
+                        if (result.isComplete) lastGood.saveBoard(result.board)
                     }
                     is StationBoardAggregateResult.Unavailable -> {
                         // Keep the existing rows during a transient outage, never stale live claims.
                         stationBoard = stationBoard?.withoutExpiredObservations(java.time.Instant.now())
+                        // Nothing on screen: today's last good board, as a saved copy of its timetable.
+                        val saved = if (stationBoard == null) savedBoard(canonical, kind) else null
+                        if (saved != null) stationBoard = saved
                         stationBoardRefreshState = RefreshState.ERROR
-                        stationBoardMessages = listOf(UiMessage(UiMessageKey.STATION_BOARD_UNAVAILABLE))
+                        stationBoardMessages = listOfNotNull(
+                            saved?.let { UiMessage(UiMessageKey.STATION_BOARD_SAVED_COPY, savedTime(it.fetchedAt.toEpochMilli())) },
+                            UiMessage(UiMessageKey.STATION_BOARD_UNAVAILABLE)
+                        )
                     }
                 }
             }
@@ -403,6 +412,19 @@ class TrainViewModel @JvmOverloads constructor(
     }
 
     fun openStationBoard(station: Station, kind: BoardKind = BoardKind.DEPARTURES) = loadStationBoard(station, kind)
+
+    private fun savedToday(epochMillis: Long): Boolean =
+        java.time.Instant.ofEpochMilli(epochMillis).atZone(RailTime.defaultZone).toLocalDate() == java.time.LocalDate.now(RailTime.defaultZone)
+
+    private fun savedTime(epochMillis: Long): String =
+        java.time.format.DateTimeFormatter.ofPattern("HH:mm").withZone(RailTime.defaultZone).format(java.time.Instant.ofEpochMilli(epochMillis))
+
+    /** The saved board of today without the rows that have already left. */
+    private fun savedBoard(station: Station, kind: BoardKind): it.binario.app.data.repository.StationBoardAggregate? {
+        val board = lastGood.board(station, kind)?.takeIf { savedToday(it.fetchedAt.toEpochMilli()) } ?: return null
+        val from = java.time.Instant.now().minusSeconds(600)
+        return board.copy(entries = board.entries.filter { !it.scheduledTime.toInstant().isBefore(from) }).takeIf { it.entries.isNotEmpty() }
+    }
 
     fun refreshStationBoardIfIdle() {
         if (stationBoardJob?.isActive != true) loadStationBoard()
@@ -740,7 +762,11 @@ class TrainViewModel @JvmOverloads constructor(
         val publishesCurrentDepartures = journeyQueryState.followsCurrentTime
         val requestId = ++refreshRequestId
         viewModelScope.launch {
-            val result = dataSource.loadRoute(routeAtRequest, directionAtRequest, queryAtRequest)
+            val result = observeRouteShowingProgress(routeAtRequest, directionAtRequest, queryAtRequest, { requestId == refreshRequestId }) { early ->
+                primarySnapshot = early
+                primarySnapshotIsCurrent = publishesCurrentDepartures
+                rebuildServicePresentations()
+            }
             if (requestId != refreshRequestId) return@launch
             when (result) {
                 is DataResult.Success -> {
@@ -751,6 +777,7 @@ class TrainViewModel @JvmOverloads constructor(
                     notePunctuality(result.snapshot.services.filter(::isMonitoring), result.snapshot)
                     retainAvailableOperatorFilter()
                     cache.save(result.snapshot)
+                    if (publishesCurrentDepartures) lastGood.saveRoute(result.snapshot)
                     if (publishesCurrentDepartures) {
                         RouteWidgetProvider.saveSnapshotForMatchingRoutes(getApplication(), result.snapshot)
                         RouteWidgetProvider.refreshAll(getApplication())
@@ -774,6 +801,14 @@ class TrainViewModel @JvmOverloads constructor(
                 }
                 is DataResult.Failure -> {
                     invalidateSelectedService(directionAtRequest, onlyIfExpired = true)
+                    // Nothing of this route on screen: today's last good result, marked as a saved copy (timetable only).
+                    if (publishesCurrentDepartures && primarySnapshot?.let { it.route.id == routeAtRequest.id && it.direction == directionAtRequest } != true) {
+                        lastGood.route(routeAtRequest, directionAtRequest)?.takeIf { savedToday(it.retrievedAtEpochMillis) }?.let { saved ->
+                            primarySnapshot = saved
+                            primarySnapshotIsCurrent = false
+                            rebuildServicePresentations()
+                        }
+                    }
                     if (publishesCurrentDepartures) {
                         RouteWidgetProvider.markMatchingRouteDirectionUnavailable(getApplication(), routeAtRequest, directionAtRequest, result.reason.uiMessage())
                         RouteWidgetProvider.refreshAll(getApplication())
@@ -835,7 +870,11 @@ class TrainViewModel @JvmOverloads constructor(
         val routeAtRequest = activeRoute
         val requestId = ++returnRefreshRequestId
         viewModelScope.launch {
-            val result = dataSource.loadRoute(routeAtRequest, Direction.RETURN, queryAtRequest)
+            val result = observeRouteShowingProgress(routeAtRequest, Direction.RETURN, queryAtRequest,
+                { requestId == returnRefreshRequestId && returnJourneyQuery == queryAtRequest }) { early ->
+                returnSnapshot = early
+                rebuildServicePresentations()
+            }
             if (requestId != returnRefreshRequestId || returnJourneyQuery != queryAtRequest) return@launch
             when (result) {
                 is DataResult.Success -> {
@@ -858,6 +897,26 @@ class TrainViewModel @JvmOverloads constructor(
                 }
             }
         }
+    }
+
+    /**
+     * The route result, as [TrainDataSource.observeRoute] improves it: every earlier emission (the offline rows before
+     * their optional realtime) is shown at once through [showEarly] while [stillCurrent]; the last one is returned and
+     * handled as before (caches, widgets, Wear, punctuality). Which sources answer, and in which order, is unchanged.
+     */
+    private suspend fun observeRouteShowingProgress(
+        route: SavedRoute,
+        direction: Direction,
+        query: JourneyQuery,
+        stillCurrent: () -> Boolean,
+        showEarly: (RouteSnapshot) -> Unit
+    ): DataResult {
+        var last: DataResult? = null
+        dataSource.observeRoute(route, direction, query).collect { result ->
+            last = result
+            if (result is DataResult.Success && stillCurrent()) showEarly(result.snapshot)
+        }
+        return last ?: DataResult.Failure("Nessun risultato dalla fonte.")
     }
 
     private fun clearReturnJourneyState() {

@@ -58,9 +58,14 @@ class RemoteGtfsFallbackDataSource(
     private val realtimeZone: ZoneId = ZoneId.of("Europe/Rome"),
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
     private val parsingDispatcher: CoroutineDispatcher = Dispatchers.Default,
-    private val onParsing: (() -> Unit)? = null
+    private val onParsing: (() -> Unit)? = null,
+    /** The mirror's archive is a few hundred kB: a larger body is refused instead of being buffered in memory. */
+    private val maxArchiveBytes: Int = 8 * 1024 * 1024,
+    /** After a failed download the fallback is not retried by every search, only after this pause. */
+    private val failureCooldown: Duration = Duration.ofMinutes(5)
 ) : TrainDataSource {
     @Volatile private var cached: CachedFeed? = null
+    @Volatile private var failure: Pair<String, java.time.Instant>? = null
     private val feedMutex = Mutex()
 
     override suspend fun loadRoute(route: SavedRoute, direction: Direction): DataResult =
@@ -68,8 +73,8 @@ class RemoteGtfsFallbackDataSource(
 
     override suspend fun loadRoute(route: SavedRoute, direction: Direction, query: JourneyQuery): DataResult {
         notBefore?.let { if (query.serviceDate < it) return DataResult.Failure("La fonte fallback non è ancora valida per la data selezionata.") }
-        val feed = runCatching { cachedFeed() }.getOrElse {
-            return DataResult.Failure("La fonte GTFS fallback ${source.displayName} non è disponibile: ${it.message.orEmpty()}")
+        val feed = try { cachedFeed() } catch (error: CancellationException) { throw error } catch (error: Exception) {
+            return DataResult.Failure("La fonte GTFS fallback ${source.displayName} non è disponibile: ${error.message.orEmpty()}")
         }
         return when (val result = feed.adapter.loadRoute(route, direction, query)) {
             is DataResult.Success -> {
@@ -227,10 +232,21 @@ class RemoteGtfsFallbackDataSource(
         cached?.takeIf { clock.instant().isBefore(it.expiresAt) }?.let { return it }
         return feedMutex.withLock {
             cached?.takeIf { clock.instant().isBefore(it.expiresAt) }?.let { return@withLock it }
-            val bytes = withContext(ioDispatcher) {
-                downloader.open(source, allowBestEffortFallback = true).use { session -> session.input.readBytes() }
+            failure?.takeIf { clock.instant().isBefore(it.second) }?.let { throw java.io.IOException(it.first) }
+            val bytes = try {
+                // Bounded: the body is never buffered past the cap.
+                withContext(ioDispatcher) {
+                    downloader.open(source, allowBestEffortFallback = true).use { session ->
+                        it.binario.app.data.urban.readBoundedBytes(session.input, null, maxArchiveBytes)
+                    }
+                }.also { require(it.isNotEmpty()) { "Archivio GTFS vuoto" } }
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Exception) {
+                failure = (error.message ?: "download non riuscito") to clock.instant().plus(failureCooldown)
+                throw error
             }
-            require(bytes.isNotEmpty()) { "Archivio GTFS vuoto" }
+            failure = null
             CachedFeed(
                 bytes = bytes,
                 adapter = EmbeddedGtfsRouteAdapter(
@@ -258,7 +274,7 @@ class RemoteGtfsFallbackDataSource(
     )
 
     companion object {
-        private val HH_MM = DateTimeFormatter.ofPattern("HH:mm")
+        private val HH_MM = DateTimeFormatter.ofPattern("HH:mm", java.util.Locale.ROOT)
 
         fun europeanSleeper(clock: Clock = Clock.systemUTC()): RemoteGtfsFallbackDataSource =
             RemoteGtfsFallbackDataSource(

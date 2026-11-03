@@ -17,6 +17,7 @@ import it.binario.app.data.live.ViaggiaTrenoTrainNoticesAdapter
 import it.binario.app.data.planned.RfiProgrammedStationBoardAdapter
 import it.binario.app.data.planned.RfiProgrammedTimetableAdapter
 import it.binario.app.data.planned.RfiSupplementalHubTimetableAdapter
+import it.binario.app.data.planned.RfiTimetablePages
 import it.binario.app.data.repository.TrainNumberSearchProvider
 import it.binario.app.data.repository.StationBoardRunDetailProvider
 import it.binario.app.data.provider.AlertProvider
@@ -33,10 +34,11 @@ import it.binario.app.data.provider.VehiclePositionProvider
  * operator/infrastructure sources and official static data.
  */
 object LocalOnlyRailDataPolicy {
-    private val rfiProgrammed by lazy { RfiProgrammedTimetableAdapter() }
-    private val rfiSupplemental by lazy { RfiSupplementalHubTimetableAdapter() }
+    // One download per RFI "Quadro orario" page, shared by the timetables and the programmed board.
+    private val rfiProgrammed by lazy { RfiProgrammedTimetableAdapter(pages = RfiTimetablePages.shared) }
+    private val rfiSupplemental by lazy { RfiSupplementalHubTimetableAdapter(pages = RfiTimetablePages.shared) }
     private val europeanSleeperFallback by lazy { RemoteGtfsFallbackDataSource.europeanSleeper() }
-    private val rfiProgrammedBoard by lazy { RfiProgrammedStationBoardAdapter() }
+    private val rfiProgrammedBoard by lazy { RfiProgrammedStationBoardAdapter(pages = RfiTimetablePages.shared) }
     private val rfiStationBoard by lazy { RfiStationBoardAdapter() }
     private val rfiLiveRoutes by lazy { RfiLiveRouteDataSource(rfiStationBoard) }
     private val italoStationBoard by lazy { ItaloPublicStationAdapter() }

@@ -286,6 +286,7 @@
     <string name="planner_subtitle">다음 여행이 여기서 시작됩니다.</string>
     <string name="data_status_quality">데이터 품질: %1$s</string>
     <string name="data_status_cached">저장된 사본, 실시간 아님: %1$s</string>
+    <string name="data_status_source_paused">%1$s: %2$s까지 일시 중지됨</string>
     <string name="nav_plan">계획</string>
     <string name="nav_departures">출발</string>
     <string name="nav_for_you">마이</string>

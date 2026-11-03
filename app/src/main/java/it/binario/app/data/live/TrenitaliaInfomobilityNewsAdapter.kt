@@ -8,6 +8,7 @@ import it.binario.app.data.core.OperatorId
 import it.binario.app.data.core.ServiceAlert
 import it.binario.app.data.core.SourceId
 import it.binario.app.data.core.SourceRef
+import it.binario.app.data.notices.CleartextNoticeLinks
 import it.binario.app.data.notices.NoticeText
 import it.binario.app.data.provider.AccessMode
 import it.binario.app.data.provider.AlertProvider
@@ -68,8 +69,9 @@ class TrenitaliaInfomobilityNewsAdapter internal constructor(
     }
 
     private fun parseItem(item: JSONObject): ParsedNews? {
-        val title = NoticeText.decodeEntities(item.text("title"), MAX_TITLE) ?: return null
-        val description = NoticeText.fromDoubleEscapedHtml(item.text("description"), MAX_DESCRIPTION)
+        // Delivered over the cleartext hop: only links to the publisher's own HTTPS domains stay tappable.
+        val title = CleartextNoticeLinks.neutralize(NoticeText.decodeEntities(item.text("title"), MAX_TITLE)) ?: return null
+        val description = CleartextNoticeLinks.neutralize(NoticeText.fromDoubleEscapedHtml(item.text("description"), MAX_DESCRIPTION))
         val published = item.millis("pubDate")?.let(Instant::ofEpochMilli)
         val trainTags = item.optJSONArray("trainTags")?.let { tags ->
             (0 until minOf(tags.length(), 200)).mapNotNull { tags.opt(it)?.toString()?.trim()?.trimStart('0')?.takeIf { tag -> tag.matches(TRAIN_TAG) } }
@@ -78,7 +80,7 @@ class TrenitaliaInfomobilityNewsAdapter internal constructor(
             title = title,
             description = description,
             publishedAt = published,
-            link = item.text("link")?.takeIf { it.startsWith("https://") || it.startsWith("http://") }?.take(500),
+            link = CleartextNoticeLinks.link(item.text("link")?.take(500)),
             trainNumbers = trainTags
         )
     }

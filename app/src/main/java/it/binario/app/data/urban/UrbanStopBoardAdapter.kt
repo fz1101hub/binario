@@ -39,6 +39,7 @@ import it.binario.app.data.provider.ProviderWarning
 import it.binario.app.data.provider.RatePolicy
 import it.binario.app.data.provider.StationBoardProvider
 import it.binario.app.data.provider.StationBoardRequest
+import it.binario.app.data.provider.boardWindowKeeps
 import java.io.IOException
 import java.time.Clock
 import java.time.Duration
@@ -117,10 +118,13 @@ class UrbanStopBoardAdapter(
         val from = maxOf(request.from, now.minus(Duration.ofMinutes(2)))
         val to = minOf(request.to, from.plus(window))
         val departures = request.kind == BoardKind.DEPARTURES
-        val scheduled = scheduledRows(platforms, from, to, departures)
+        // With a realtime feed, runs scheduled a little earlier are read too: a late tram stays until its expected time.
+        val lookFrom = request.lateSince?.takeIf { realtime != null }?.let { maxOf(it, now.minus(LATE_LOOKBACK)) }?.coerceAtMost(from) ?: from
+        val scheduled = scheduledRows(platforms, lookFrom, to, departures)
         val snapshot = realtime?.takeIf { scheduled.isNotEmpty() }?.snapshot()
         val live = snapshot?.takeIf { it.isFresh(now) }
         val entries = scheduled.map { row -> entry(row, live, departures) }
+            .filter { entry -> boardWindowKeeps(from, to, lookFrom, entry.scheduledTime.toInstant(), entry.expectedTime?.value?.toInstant()) }
             .sortedBy { (it.expectedTime?.value ?: it.scheduledTime).toInstant() }
             .take(maxEntries)
         val staticSource = SourceRef(
@@ -268,6 +272,8 @@ class UrbanStopBoardAdapter(
         /** Minutes read before and after the window to see a run's ends: longer than any city line. */
         const val SPAN_MINUTES = 180
         const val MAX_GTFS_MINUTE = 48 * 60
+        /** City runs are rarely this late; earlier rows are not read even when the board asks for a longer look-back. */
+        val LATE_LOOKBACK: Duration = Duration.ofMinutes(30)
     }
 }
 

@@ -23,7 +23,7 @@ Le latenze sono una singola osservazione nel sandbox e non devono essere interpr
 |---|---|---|
 | Tabellone live | Cache 45–60 s, freshness entro 90 s | RFI come fallback di ViaggiaTreno; poi ultimo snapshot etichettato |
 | RSS RFI | Cache 10 min, parser XML difensivo | Nessun avviso inventato; errore distinto da assenza di avvisi |
-| STA realtime | Cache 90 s, timestamp header GTFS-RT conservato | Escludere feed scaduti e mantenere provider/timestamp |
+| STA realtime | Cache 90 s, timestamp header GTFS-RT conservato; un'osservazione resta valida 5 min dal proprio orario (anche SNCF) | Escludere feed scaduti e mantenere provider/timestamp |
 | Feed statici | Hash asset e manifest per release | Mostrare solo pianificazione, mai ritardo derivato |
 | Conflitto fra fonti | Warning e conservazione dei valori osservati | Privilegiare punteggio maggiore, non occultare il conflitto |
 

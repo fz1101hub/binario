@@ -40,8 +40,9 @@ import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import javax.xml.parsers.DocumentBuilderFactory
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import it.binario.app.data.urban.readBoundedBytes
+import kotlinx.coroutines.sync.withPermit
+import kotlinx.coroutines.withTimeoutOrNull
 import org.w3c.dom.Element
 
 interface DbTimetablesFetcher {
@@ -68,29 +69,35 @@ class AuthorizedDbTimetablesFetcher(
 
     override suspend fun fullChanges(eva: String): ByteArray = get("fchg/$eva")
 
-    private suspend fun get(path: String): ByteArray = withContext(Dispatchers.IO) {
+    /**
+     * One bounded GET: no redirects (the credentials stay on the API host), a byte cap, a total time limit and a
+     * request that stops when the caller is cancelled.
+     */
+    private suspend fun get(path: String): ByteArray = withTimeoutOrNull(TOTAL_TIMEOUT_MILLIS) {
         val connection = URL("$BASE_URL/$path").openConnection() as? HttpURLConnection
             ?: throw IOException("DB Timetables non usa una connessione HTTP")
         connection.requestMethod = "GET"
         connection.connectTimeout = 12_000
         connection.readTimeout = 20_000
-        connection.instanceFollowRedirects = true
+        connection.instanceFollowRedirects = false
+        connection.useCaches = false
         connection.setRequestProperty("DB-Client-Id", clientId)
         connection.setRequestProperty("DB-Api-Key", apiKey)
         connection.setRequestProperty("Accept", "application/xml")
         connection.setRequestProperty("User-Agent", "Binario/0.20 authorized DB Timetables client")
-        try {
-            if (connection.responseCode !in 200..299) {
-                throw IOException("DB Timetables HTTP ${connection.responseCode}")
+        withCancellableHttpConnection(connection) {
+            val status = connection.responseCode
+            if (status !in 200..299) {
+                throw PublicSourceHttpException(status, "DB Timetables HTTP $status", retryAfterOf(connection.getHeaderField("Retry-After")))
             }
-            connection.inputStream.use { it.readBytes() }
-        } finally {
-            connection.disconnect()
+            connection.inputStream.use { readBoundedBytes(it, connection.contentLengthLong.takeIf { length -> length >= 0 }, MAX_BYTES) }
         }
-    }
+    } ?: throw java.net.SocketTimeoutException("DB Timetables supera il tempo massimo della richiesta")
 
     companion object {
         const val BASE_URL = "https://apis.deutschebahn.com/db-api-marketplace/apis/timetables/v1"
+        private const val MAX_BYTES = 4 * 1024 * 1024
+        private const val TOTAL_TIMEOUT_MILLIS = 20_000L
     }
 }
 
@@ -121,25 +128,30 @@ class DbTimetablesStationBoardAdapter(
         schemaVersion = 1
     )
 
+    /** [RatePolicy.maxConcurrentRequests] of the descriptor, for every board asked at the same time. */
+    private val requests = kotlinx.coroutines.sync.Semaphore(descriptor.ratePolicy.maxConcurrentRequests)
+    private suspend fun <T> limited(call: suspend () -> T): T = requests.withPermit { call() }
+
     override suspend fun getStationBoard(request: StationBoardRequest): ProviderResult<StationBoard> {
         val stationName = request.stationName?.takeIf(String::isNotBlank)
             ?: return ProviderResult.Failure(ProviderError(ProviderErrorKind.INVALID_REQUEST, "DB Timetables richiede il nome della stazione."))
         return try {
             val eva = resolveEva(stationName)
                 ?: return ProviderResult.Failure(ProviderError(ProviderErrorKind.NOT_FOUND, "Stazione non trovata nel catalogo DB Timetables."))
-            val fromLocal = request.from.atZone(zone)
+            val fromLocal = request.earliestScheduled.atZone(zone)
             val toLocal = request.to.atZone(zone)
             val hourSlices = generateSequence(fromLocal.withMinute(0).withSecond(0).withNano(0)) { it.plusHours(1) }
                 .takeWhile { !it.isAfter(toLocal) }
                 .toList()
             val plannedStops = hourSlices.flatMap { slice ->
                 parseTimetable(
-                    fetcher.planned(eva, "%02d%02d%02d".format(slice.year % 100, slice.monthValue, slice.dayOfMonth), "%02d".format(slice.hour)),
+                    limited { fetcher.planned(eva, String.format(java.util.Locale.ROOT, "%02d%02d%02d", slice.year % 100, slice.monthValue, slice.dayOfMonth),
+                        String.format(java.util.Locale.ROOT, "%02d", slice.hour)) },
                     request.kind,
                     changes = false
                 )
             }.associateBy { it.id }
-            val changes = parseTimetable(fetcher.fullChanges(eva), request.kind, changes = true).associateBy { it.id }
+            val changes = parseTimetable(limited { fetcher.fullChanges(eva) }, request.kind, changes = true).associateBy { it.id }
             val now = clock.instant()
             val source = SourceRef(
                 sourceId = SOURCE_ID,
@@ -155,7 +167,7 @@ class DbTimetablesStationBoardAdapter(
                 val changed = changes[planned.id]
                 val scheduledTime = planned.time ?: return@mapNotNull null
                 val effective = changed?.time ?: scheduledTime
-                if (scheduledTime.toInstant().isBefore(request.from) || scheduledTime.toInstant().isAfter(request.to)) return@mapNotNull null
+                if (!request.keeps(scheduledTime.toInstant(), changed?.time?.toInstant())) return@mapNotNull null
                 val cancelled = changed?.statusCode == "c"
                 val expectedValue = changed?.time?.takeIf { it != scheduledTime }?.let { SourcedValue(it, source.copy(nativeId = planned.id)) }
                 val status = when {
@@ -214,6 +226,8 @@ class DbTimetablesStationBoardAdapter(
                 board,
                 ProviderResponseMeta(SOURCE_ID, now, observedAt = now, expiresAt = now.plusSeconds(30), completeness = Completeness.PARTIAL)
             )
+        } catch (error: kotlinx.coroutines.CancellationException) {
+            throw error
         } catch (error: IOException) {
             ProviderResult.Failure(ProviderError(ProviderErrorKind.NETWORK, "DB Timetables non raggiungibile.", error::class.java.name))
         } catch (error: Exception) {
@@ -234,7 +248,7 @@ class DbTimetablesStationBoardAdapter(
         return candidates.maxByOrNull { it.third }?.takeIf { it.third > 0 }?.first
     }
 
-    private suspend fun resolveEva(name: String): String? = resolveEva(fetcher.findStation(name), name)
+    private suspend fun resolveEva(name: String): String? = resolveEva(limited { fetcher.findStation(name) }, name)
 
     internal fun parseTimetable(xml: ByteArray, kind: BoardKind, changes: Boolean): List<DbStop> {
         val doc = parseXml(xml)
