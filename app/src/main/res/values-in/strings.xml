@@ -1238,7 +1238,7 @@
     </plurals>
     <!-- End of platform changes, Partenze train types, saved timetables, sharing, tickets and assistance, CO2 estimate -->
     <!-- Journey planner: in-seat continuations, travel preferences, wheelchair access, last train of the day -->
-    <string name="journey_in_seat_continuation">Tetap di kereta: kereta berlanjut sebagai %1$s</string>
+    <string name="journey_in_seat_continuation">Tetap di dalam kereta: perjalanan berlanjut sebagai %1$s</string>
     <string name="journey_last_of_day">Terakhir hari ini</string>
     <string name="journey_no_more_today">Tidak ada kereta lagi hari ini: pertama besok pukul %1$s</string>
     <string name="journey_accessibility_unavailable">Data aksesibilitas tidak tersedia untuk area ini</string>

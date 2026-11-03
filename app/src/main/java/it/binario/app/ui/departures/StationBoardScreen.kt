@@ -165,7 +165,9 @@ internal fun StationBoardScreen(modifier: Modifier, viewModel: TrainViewModel, r
     val today = LocalDate.now(BOARD_ZONE)
     val staticDay by rememberStaticDayDepartures(board?.takeIf { it.kind == BoardKind.DEPARTURES }?.station, null, today)
     val firstTomorrow = LastOfDayMarks.firstNextDay(staticDay, LocalDateTime.now(BOARD_ZONE))
-    val accessibleStations = rememberWheelchairAccessibleStations(enabled = selectedStation != null || viewModel.favouriteStations.isNotEmpty())
+    val accessibleStations = rememberWheelchairAccessibleStations(
+        enabled = selectedStation != null || viewModel.favouriteStations.isNotEmpty() || viewModel.nearbyStations.isNotEmpty()
+    )
 
     LazyColumn(
         modifier = modifier.fillMaxSize().testTag("station-board-list"),
@@ -410,6 +412,7 @@ internal fun StationBoardScreen(modifier: Modifier, viewModel: TrainViewModel, r
                 StationPreferenceRow(
                     station = nearby.station,
                     favourite = viewModel.isStationFavourite(nearby.station),
+                    wheelchairAccessible = nearby.station.id in accessibleStations,
                     distanceLabel = stringResource(R.string.distance_kilometers, nearby.distanceKm),
                     onSelect = {
                         stationText = nearby.station.name

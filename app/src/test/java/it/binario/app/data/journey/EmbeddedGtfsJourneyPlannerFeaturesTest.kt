@@ -133,6 +133,21 @@ class EmbeddedGtfsJourneyPlannerFeaturesTest {
         assertTrue(options(provider(mapOf(sta to staFeed, oebb to otherNumber)).searchJourneys(request(alfa, delta))).isEmpty())
     }
 
+    @Test fun `the other pack's copy may start where the first run only stops`() = runBlocking {
+        // STA publishes the run on to Delta; ÖBB publishes it from Beta to Epsilon (its own section): one train.
+        val sta = pack("alto-adige-sta-gtfs")
+        val oebb = pack("oebb-gtfs")
+        val staFeed = feed(listOf(Trip("S186", "186", listOf("A" to "07:44", "B" to "08:46", "D" to "09:36"))))
+        val oebbFeed = feed(listOf(Trip("O186", "RJX 186", listOf("B" to "08:56", "E" to "09:36"))))
+        val option = options(provider(mapOf(sta to staFeed, oebb to oebbFeed)).searchJourneys(request(alfa, epsilon))).single()
+        assertEquals(0, option.transfers)
+        assertEquals("186 Alfa 07:44-09:36 Epsilon", option.summary())
+        assertEquals("RJX 186", option.legs.single().continuations.single().publicNumber)
+        // Staying on the first pack's own section needs no note.
+        val own = options(provider(mapOf(sta to staFeed, oebb to oebbFeed)).searchJourneys(request(alfa, delta))).single()
+        assertTrue(own.legs.single().continuations.isEmpty())
+    }
+
     @Test fun `a continuation never leaves before the first train arrives`() = runBlocking {
         val sta = pack("alto-adige-sta-gtfs")
         val oebb = pack("oebb-gtfs")
@@ -305,21 +320,28 @@ class EmbeddedGtfsJourneyPlannerFeaturesTest {
 
     // --- Last and first departures ---
 
-    @Test fun `a late search whose window ends empty shows the first train of the next service day`() = runBlocking {
+    @Test fun `the last train of the day is marked and a search after it shows the next day's first`() = runBlocking {
         val trips = listOf(
             Trip("T1", "100", listOf("A" to "22:30", "D" to "23:10")),
             Trip("T2", "102", listOf("A" to "07:15", "D" to "08:00"))
         )
         val provider = provider(mapOf(pack() to feed(trips)))
-        // 22:00 + 8 hours ends at 06:00: the 07:15 of the next day follows the window.
+        // 22:00 + 8 hours ends at 06:00, after the last departure of the day (22:30): the 22:30 is the last.
         val late = options(provider.searchJourneys(request(alfa, delta, time = "22:00")))
-        assertEquals(listOf("100" to monday, "102" to monday.plusDays(1)), late.map { it.legs.single().publicNumber to it.legs.single().serviceDate })
-        // After the last train only the next day's first one.
+        assertEquals(listOf("100" to monday), late.map { it.legs.single().publicNumber to it.legs.single().serviceDate })
+        assertTrue(late.single().lastOfServiceDay)
+        // After the last train: nothing in the window, so the next day's first one follows it.
         val afterLast = options(provider.searchJourneys(request(alfa, delta, time = "23:00")))
         assertEquals(listOf(LocalDateTime.of(monday.plusDays(1), LocalTime.of(7, 15))), afterLast.map { it.departure.toLocalDateTime() })
-        // A daytime search is unchanged: nothing follows a window that ends before midnight.
+        assertEquals(monday.plusDays(1), afterLast.single().legs.single().serviceDate)
+        assertFalse(afterLast.single().lastOfServiceDay)
+        // A window that ends before the day's last departure proves nothing; it is otherwise unchanged.
         val day = options(provider.searchJourneys(request(alfa, delta, time = "06:00")))
         assertEquals(listOf("102"), day.map { it.legs.single().publicNumber })
+        assertFalse(day.single().lastOfServiceDay)
+        // With the next day in the window the day's latest option is the last.
+        val evening = options(provider.searchJourneys(request(alfa, delta, time = "21:00", maxResults = 6)))
+        assertEquals(listOf(true), evening.filter { it.legs.single().serviceDate == monday }.map { it.lastOfServiceDay })
     }
 
     @Test fun `the static day departures give the last run per terminus and the next day's first`() = runBlocking {

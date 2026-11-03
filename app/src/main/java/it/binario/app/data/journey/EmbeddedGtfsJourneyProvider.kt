@@ -538,22 +538,26 @@ class EmbeddedGtfsJourneyProvider internal constructor(
         )
         val outcome = scanner.planWithOutcome(query) { job.ensureActive() }
         var journeys = outcome.journeys
-        // Every option of a window that reaches past midnight was found and none leaves on the next service day: the
-        // first one after the window follows (same connections, nothing read again), so that the results show the
-        // first train of the next day and that the last one of this day is known ("Ultimo di oggi").
-        fun serviceDayOf(journey: ScannedJourney): LocalDate = slices[graph.sliceOf[journey.legs.first().boardConnection]].day.serviceDate
-        if (outcome.exhausted && endMinute >= MINUTES_PER_DAY && lastConnectionMinute > endMinute && journeys.size < request.maxResults &&
-            journeys.none { serviceDayOf(it) > serviceDate }
-        ) {
-            journeys = journeys + scanner.plan(
+        // A search after the last train of the day: nothing leaves in a window that reaches past midnight, so the first
+        // option after the window follows (same connections, nothing read again): "primo domani alle …".
+        if (outcome.exhausted && journeys.isEmpty() && endMinute >= MINUTES_PER_DAY && lastConnectionMinute > endMinute) {
+            journeys = scanner.plan(
                 query.copy(
                     departureMinute = endMinute + 1, latestDepartureMinute = lastConnectionMinute, maxResults = 1,
                     maxIterations = FOLLOW_UP_ITERATIONS
                 )
             ) { job.ensureActive() }
         }
+        // "Ultimo di oggi": the latest option of the requested service day is its last when the list holds an option of
+        // a later day (the scan goes in order of departure, so nothing of the day can come after it), or when every
+        // option of the window was found and the window ends after the last departure of that day in these packs.
+        fun serviceDayOf(journey: ScannedJourney): LocalDate = slices[graph.sliceOf[journey.legs.first().boardConnection]].day.serviceDate
+        val dayEnd = slices.filter { it.offset == 0 }.maxOfOrNull { it.day.lastDepartureMinute } ?: Int.MAX_VALUE
+        val dayComplete = journeys.any { serviceDayOf(it) > serviceDate } || (outcome.exhausted && endMinute >= dayEnd)
+        val lastOfDay = if (dayComplete) journeys.filter { serviceDayOf(it) <= serviceDate }.maxByOrNull { it.departureMinute } else null
         val options = journeys.map { journey ->
             toOption(journey, graph, slices, request, origin, destination, serviceDate, fetchedAt, resolver, originAccessible, destinationAccessible)
+                .let { if (journey === lastOfDay) it.copy(lastOfServiceDay = true) else it }
         }
         return SearchOutcome(options, incomplete)
     }
@@ -595,13 +599,17 @@ class EmbeddedGtfsJourneyProvider internal constructor(
         var keys = LongArray(4096)
         var count = 0
         var truncated = false
+        // Trips with a connection in the window: the only ones a continuation can join.
+        val inWindow = BooleanArray(tripCount)
         selection@ for ((sliceIndex, slice) in slices.withIndex()) {
             val day = slice.day
             val allowed = tripAllowed[sliceIndex]
+            val tripOffset = tripOffsets[sliceIndex]
             for (connection in 0 until day.connectionCount) {
                 val departure = day.departureMinute[connection] + slice.offset
                 if (departure < startMinute || departure > lastMinute) continue
                 if (allowed != null && !allowed[day.connectionTrip[connection]]) continue
+                inWindow[tripOffset + day.connectionTrip[connection]] = true
                 if (count == settings.maxSearchConnections) {
                     truncated = true
                     break@selection
@@ -623,8 +631,8 @@ class EmbeddedGtfsJourneyProvider internal constructor(
             }
         }
         val footpaths = footpaths(nodeKeys, slices, resolver, transferMinutes, planner, nodeAccessible)
-        val runs = mergeCrossPackRuns(slices, keys, count, stopNodes, tripOffsets, tripCount)
-        val successor = linkContinuations(slices, stopNodes, tripOffsets, runs, footpaths)
+        val runs = mergeCrossPackRuns(slices, keys, count, stopNodes, tripOffsets, tripCount, inWindow)
+        val continuations = linkContinuations(slices, stopNodes, tripOffsets, runs, footpaths)
         count = runs.keptConnections
         keys.sort(0, count)
 
@@ -676,7 +684,8 @@ class EmbeddedGtfsJourneyProvider internal constructor(
             connectionOf = connectionOf,
             truncated = truncated,
             tripOffsets = tripOffsets,
-            successor = successor,
+            successor = continuations.successor,
+            runGroup = continuations.group,
             nodeAccessible = nodeAccessible
         )
     }
@@ -688,8 +697,8 @@ class EmbeddedGtfsJourneyProvider internal constructor(
      * arrives and at most [MAX_IN_SEAT_WAIT_MINUTES] later, without turning back over A's last section, and either
      * - both are in one pack and service day with the same GTFS block_id, or
      * - they are in two packs and carry the same public number ([runNumberKey]: STA's EC 88 to Brennero, ÖBB's onwards).
-     * Every trip continues at most one trip and is continued by at most one. Returns, per trip, the trip that continues
-     * it (-1: none); [MergedRuns.representative] is updated in place.
+     * Every run (with the copies other packs publish of it) continues at most one run and is continued by at most one.
+     * Returns, per group of copies, the trip that continues it; [MergedRuns.representative] is updated in place.
      */
     private fun linkContinuations(
         slices: List<Slice>,
@@ -697,11 +706,19 @@ class EmbeddedGtfsJourneyProvider internal constructor(
         tripOffsets: IntArray,
         runs: MergedRuns,
         footpaths: Footpaths
-    ): IntArray {
+    ): Continuations {
         val representative = runs.representative
         val tripCount = representative.size
-        val successor = IntArray(tripCount) { -1 }
+        val successor = IntArray(tripCount).also { it.fill(-1) }
+        // The groups of copies of one run the identical-connection merge made, before any continuation joins them.
+        val group = representative.copyOf()
         val candidates = ArrayList<LongArray>()
+        val ends = HashMap<Int, TripEnds>()
+        fun sliceOf(global: Int): Int {
+            var index = tripOffsets.size - 1
+            while (index > 0 && tripOffsets[index] > global) index -= 1
+            return index
+        }
         fun end(sliceIndex: Int, local: Int): TripEnds {
             val day = slices[sliceIndex].day
             val trip = day.trips[local]
@@ -718,67 +735,129 @@ class EmbeddedGtfsJourneyProvider internal constructor(
                 lastArrival = day.arrivalMinute[last] + offset
             )
         }
-        fun consider(before: Int, beforeEnds: TripEnds, after: Int, afterEnds: TripEnds, samePoint: Boolean) {
-            if (!samePoint) return
-            val wait = afterEnds.firstDeparture - beforeEnds.lastArrival
+        /** [before] reaches the first point of [after] at [arrival], coming from [previousNode]. */
+        fun consider(before: Int, arrival: Int, previousNode: Int, after: Int, afterEnds: TripEnds) {
+            val wait = afterEnds.firstDeparture - arrival
             if (wait < 0 || wait > MAX_IN_SEAT_WAIT_MINUTES) return
             // A vehicle that turns back (Mendrisio, a funicular's top station) is not a journey to stay on.
-            if (afterEnds.secondNode == beforeEnds.previousNode) return
+            if (afterEnds.secondNode == previousNode) return
             candidates += longArrayOf(wait.toLong(), before.toLong(), after.toLong())
         }
-        // Blocks: trips of one slice with the same block_id, in order of departure.
+        // Blocks: trips of one slice with the same block_id, in order of departure (kept with the cached day).
         slices.forEachIndexed { sliceIndex, slice ->
-            val byBlock = HashMap<String, MutableList<Int>>()
-            slice.day.trips.forEachIndexed { local, dayTrip ->
-                dayTrip.blockId?.let { byBlock.getOrPut(it) { ArrayList(2) } += local }
-            }
-            for (block in byBlock.values) {
-                if (block.size < 2) continue
-                val ends = block.map { end(sliceIndex, it) }
-                val order = block.indices.sortedBy { ends[it].firstDeparture }
-                for (position in 1 until order.size) {
-                    val before = ends[order[position - 1]]
-                    val after = ends[order[position]]
-                    consider(tripOffsets[sliceIndex] + block[order[position - 1]], before, tripOffsets[sliceIndex] + block[order[position]], after,
-                        before.lastNode == after.firstNode)
+            for (block in slice.day.blockSequences) {
+                var before = end(sliceIndex, block[0])
+                for (position in 1 until block.size) {
+                    val after = end(sliceIndex, block[position])
+                    if (before.lastNode == after.firstNode) {
+                        consider(tripOffsets[sliceIndex] + block[position - 1], before.lastArrival, before.previousNode,
+                            tripOffsets[sliceIndex] + block[position], after)
+                    }
+                    before = after
                 }
             }
         }
-        // Two packs: the same public number continuing at a shared or matching station.
-        for (group in runs.tripsBySharedNumber.values) {
-            if (group.size < 2) continue
-            val ends = group.map { global -> end(runs.sliceOfTrip[global], global - tripOffsets[runs.sliceOfTrip[global]]) }
-            for (i in group.indices) for (j in group.indices) {
+        // Two packs: the same public number going on from a shared or matching station. The second pack's run starts
+        // where the first one ends (STA's EC 88 to Brennero, ÖBB's onwards) or where it stops on its way (a pack that
+        // also publishes the next section under its own stop names, which the identical-connection merge cannot pair).
+        // A true train number is one run per pack and service day: a "number" many more runs share is a line name
+        // (a pack without trip numbers) and links nothing.
+        val maxRunsPerNumber = 2 * slices.size
+        for (numbered in runs.tripsBySharedNumber.values) {
+            if (numbered.size < 2 || numbered.size > maxRunsPerNumber) continue
+            // First departure and last arrival of each run, read before any object is made: most pairs are the same
+            // number on another day, or two packs' copies of one run that the merge already joined.
+            val size = numbered.size
+            val starts = IntArray(size)
+            val finishes = IntArray(size)
+            for (index in 0 until size) {
+                val global = numbered[index]
+                val sliceIndex = runs.sliceOfTrip[global]
+                val slice = slices[sliceIndex]
+                val dayTrip = slice.day.trips[global - tripOffsets[sliceIndex]]
+                starts[index] = slice.day.departureMinute[dayTrip.firstConnection] + slice.offset
+                finishes[index] = slice.day.arrivalMinute[dayTrip.firstConnection + dayTrip.connectionCount - 1] + slice.offset
+            }
+            var tripEnds: Array<TripEnds?>? = null
+            for (i in 0 until size) for (j in 0 until size) {
                 if (i == j) continue
-                val before = group[i]
-                val after = group[j]
-                if (slices[runs.sliceOfTrip[before]].day.sourceId == slices[runs.sliceOfTrip[after]].day.sourceId) continue
-                val from = ends[i].lastNode
-                val to = ends[j].firstNode
-                consider(before, ends[i], after, ends[j], from == to || matchingPoints(from, to, footpaths, slices, runs, before, after, stopNodes))
+                val before = numbered[i]
+                val after = numbered[j]
+                // Only a run leaving while the other one runs, or at most the longest stay on board after it ends.
+                val leaves = starts[j]
+                if (leaves < starts[i] || leaves > finishes[i] + MAX_IN_SEAT_WAIT_MINUTES) continue
+                if (representative[before] == representative[after]) continue
+                val beforeSlice = runs.sliceOfTrip[before]
+                val afterSlice = runs.sliceOfTrip[after]
+                if (slices[beforeSlice].day.sourceId == slices[afterSlice].day.sourceId) continue
+                // A coach and a train never share a vehicle.
+                if (slices[beforeSlice].day.trips[before - tripOffsets[beforeSlice]].mode != slices[afterSlice].day.trips[after - tripOffsets[afterSlice]].mode) continue
+                val known = tripEnds ?: arrayOfNulls<TripEnds>(size).also { tripEnds = it }
+                val beforeEnds = known[i] ?: end(beforeSlice, before - tripOffsets[beforeSlice]).also { known[i] = it }
+                val afterEnds = known[j] ?: end(afterSlice, after - tripOffsets[afterSlice]).also { known[j] = it }
+                val start = afterEnds.firstNode
+                val from = beforeEnds.lastNode
+                if (from == start || matchingPoints(from, start, footpaths, slices, runs, before, after, stopNodes)) {
+                    consider(before, beforeEnds.lastArrival, beforeEnds.previousNode, after, afterEnds)
+                    continue
+                }
+                // A stop on the way: the first connection of `before` arriving at the start of `after`.
+                val day = slices[beforeSlice].day
+                val dayTrip = day.trips[before - tripOffsets[beforeSlice]]
+                val nodes = stopNodes[beforeSlice]
+                for (connection in dayTrip.firstConnection until dayTrip.firstConnection + dayTrip.connectionCount - 1) {
+                    if (nodes[day.arrivalStop[connection]] != start) continue
+                    consider(before, day.arrivalMinute[connection] + slices[beforeSlice].offset, nodes[day.departureStop[connection]], after, afterEnds)
+                    break
+                }
             }
         }
-        if (candidates.isEmpty()) return successor
+        if (candidates.isEmpty()) return Continuations(successor, group)
         fun root(trip: Int): Int {
             var current = trip
             while (representative[current] != current) current = representative[current]
             return current
         }
-        val continued = BooleanArray(tripCount)
-        val continuing = BooleanArray(tripCount)
+        fun dayTrip(global: Int): GtfsDayTrip {
+            val sliceIndex = sliceOf(global)
+            return slices[sliceIndex].day.trips[global - tripOffsets[sliceIndex]]
+        }
+        // Two copies of one run that the identical-connection merge could not pair (STA's and ÖBB's REX 1826 from
+        // Brennero, whose next stops resolve differently): same number, leaving the same point at the same minute, or
+        // arriving at the same point at the same minute.
+        fun sameRun(first: Int, second: Int, atStart: Boolean): Boolean {
+            val a = ends.getOrPut(first) { end(sliceOf(first), first - tripOffsets[sliceOf(first)]) }
+            val b = ends.getOrPut(second) { end(sliceOf(second), second - tripOffsets[sliceOf(second)]) }
+            val samePoint = if (atStart) a.firstNode == b.firstNode && a.firstDeparture == b.firstDeparture
+            else a.lastNode == b.lastNode && a.lastArrival == b.lastArrival
+            return samePoint && runNumberKey(dayTrip(first).publicNumber)?.let { it == runNumberKey(dayTrip(second).publicNumber) } == true
+        }
+        // Keyed by the copies' group: a continuation found for one pack's copy of a run holds for the others.
+        val predecessor = IntArray(tripCount).also { it.fill(-1) }
         for (candidate in candidates.sortedBy { it[0] }) {
             val before = candidate[1].toInt()
             val after = candidate[2].toInt()
+            val beforeGroup = group[before]
+            val afterGroup = group[after]
             val beforeRoot = root(before)
             val afterRoot = root(after)
-            if (beforeRoot == afterRoot || continued[beforeRoot] || continuing[afterRoot]) continue
-            continued[beforeRoot] = true
-            continuing[afterRoot] = true
+            if (beforeRoot == afterRoot) continue
+            val linkedAfter = successor[beforeGroup]
+            val linkedBefore = predecessor[afterGroup]
+            when {
+                linkedAfter < 0 && linkedBefore < 0 -> {
+                    successor[beforeGroup] = after
+                    predecessor[afterGroup] = before
+                }
+                // Another copy of the run already linked: one vehicle, so its copies join the same trip.
+                linkedAfter >= 0 && linkedBefore < 0 && sameRun(linkedAfter, after, atStart = true) -> predecessor[afterGroup] = before
+                linkedBefore >= 0 && linkedAfter < 0 && sameRun(linkedBefore, before, atStart = false) -> successor[beforeGroup] = after
+                else -> continue
+            }
             representative[afterRoot] = beforeRoot
-            successor[before] = after
         }
         for (trip in 0 until tripCount) representative[trip] = root(trip)
-        return successor
+        return Continuations(successor, group)
     }
 
     /** Two transfer points of two packs that are one station under two identities: a footpath joins them and the names agree. */
@@ -905,7 +984,9 @@ class EmbeddedGtfsJourneyProvider internal constructor(
         count: Int,
         stopNodes: List<IntArray>,
         tripOffsets: IntArray,
-        tripCount: Int
+        tripCount: Int,
+        /** Trips with a connection in the search window; null: every trip. */
+        inWindow: BooleanArray? = null
     ): MergedRuns {
         val representative = IntArray(tripCount) { it }
         if (slices.map { it.day.sourceId }.distinct().size < 2) return MergedRuns(representative, count, tripOffsets)
@@ -925,17 +1006,28 @@ class EmbeddedGtfsJourneyProvider internal constructor(
         }
         val shared = sourcesByNumber.filterValues { it.size > 1 }.keys
         if (shared.isEmpty()) return MergedRuns(representative, count, tripOffsets)
+        // One set lookup per trip, not per connection; the trips of every shared number, for the continuations.
+        val sharedTrip = BooleanArray(tripCount)
         val tripsBySharedNumber = HashMap<String, MutableList<Int>>()
         for (trip in 0 until tripCount) {
             val number = numberOfTrip[trip] ?: continue
-            if (number in shared) tripsBySharedNumber.getOrPut(number) { ArrayList(2) } += trip
+            if (number !in shared) continue
+            sharedTrip[trip] = true
+            if (inWindow == null || inWindow[trip]) tripsBySharedNumber.getOrPut(number) { ArrayList(2) } += trip
+        }
+        var sharedConnections = 0
+        for (index in 0 until count) {
+            val key = keys[index]
+            val sliceIndex = ((key ushr 22) and 0x3F).toInt()
+            if (sharedTrip[tripOffsets[sliceIndex] + slices[sliceIndex].day.connectionTrip[(key and 0x3FFFFF).toInt()]]) sharedConnections += 1
         }
         fun root(trip: Int): Int {
             var current = trip
             while (representative[current] != current) current = representative[current]
             return current
         }
-        val owner = HashMap<RunConnection, Int>()
+        // Sized once: the identities of every shared-number connection go in.
+        val owner = HashMap<RunConnection, Int>((sharedConnections / 0.75f).toInt() + 16)
         var kept = 0
         for (index in 0 until count) {
             val key = keys[index]
@@ -944,9 +1036,9 @@ class EmbeddedGtfsJourneyProvider internal constructor(
             val slice = slices[sliceIndex]
             val day = slice.day
             val trip = tripOffsets[sliceIndex] + day.connectionTrip[connection]
-            val number = numberOfTrip[trip]
             var duplicate = false
-            if (number != null && number in shared) {
+            if (sharedTrip[trip]) {
+                val number = numberOfTrip[trip]!!
                 val identity = RunConnection(
                     number,
                     stopNodes[sliceIndex][day.departureStop[connection]],
@@ -1021,8 +1113,9 @@ class EmbeddedGtfsJourneyProvider internal constructor(
             val alightDeparture = graph.timetable.departureMinute[leg.alightConnection]
             val continuations = ArrayList<InSeatContinuation>(0)
             var vehicleAccessible = trip.wheelchairAccessible == WHEELCHAIR_YES
-            var current = boardTrip
-            while (current != alightTrip && continuations.size < MAX_CONTINUATIONS) {
+            var current = graph.runGroup[boardTrip]
+            val target = graph.runGroup[alightTrip]
+            while (current != target && continuations.size < MAX_CONTINUATIONS) {
                 val next = graph.successor[current]
                 if (next < 0) break
                 val nextSlice = sliceOfTrip(next)
@@ -1045,10 +1138,10 @@ class EmbeddedGtfsJourneyProvider internal constructor(
                     serviceKind = serviceKind(nextTrip.mode, nextTrip.category, nextLine)
                 )
                 vehicleAccessible = vehicleAccessible && nextTrip.wheelchairAccessible == WHEELCHAIR_YES
-                current = next
+                current = graph.runGroup[next]
             }
             // Left on another pack's copy of the run (merged, not continued): that copy must be accessible too.
-            if (current != alightTrip) {
+            if (alightTrip != boardTrip) {
                 vehicleAccessible = vehicleAccessible && alightDay.trips[alightDay.connectionTrip[alight]].wheelchairAccessible == WHEELCHAIR_YES
             }
             val wheelchair = LegWheelchairAccess(
@@ -1489,8 +1582,10 @@ class EmbeddedGtfsJourneyProvider internal constructor(
         val truncated: Boolean,
         /** First global trip index of each slice. */
         val tripOffsets: IntArray,
-        /** Per global trip, the trip that continues it with the same vehicle ("Resta a bordo"), or -1. */
+        /** Per group of copies of a run ([runGroup]), the trip that continues it with the same vehicle ("Resta a bordo"), or -1. */
         val successor: IntArray,
+        /** Per global trip, its group of copies (the same run published by several packs). */
+        val runGroup: IntArray,
         /** With "accessible only": the transfer points with a stop published as accessible; null otherwise. */
         val nodeAccessible: BooleanArray?
     )
@@ -1526,6 +1621,9 @@ class EmbeddedGtfsJourneyProvider internal constructor(
         val sliceOfTrip: IntArray = IntArray(0),
         val tripsBySharedNumber: Map<String, List<Int>> = emptyMap()
     )
+
+    /** [EmbeddedGtfsJourneyProvider.linkContinuations]: successors per group of copies, and the groups. */
+    private class Continuations(val successor: IntArray, val group: IntArray)
 
     /** The first and last connection of a trip, in the search's transfer points and minutes. */
     private class TripEnds(
@@ -1588,7 +1686,7 @@ class EmbeddedGtfsJourneyProvider internal constructor(
         /** Longest stop of a vehicle between two trips the traveller can stay on board through. */
         private const val MAX_IN_SEAT_WAIT_MINUTES = 30
         /** Scans of the search for the first option after a window that ends with nothing more to find. */
-        private const val FOLLOW_UP_ITERATIONS = 4
+        private const val FOLLOW_UP_ITERATIONS = 2
         /** Bound on the "Resta a bordo" notes of one leg. */
         private const val MAX_CONTINUATIONS = 8
         /** Upper bound of a walk, whatever the preferences (the planner settings accept up to 2 km). */

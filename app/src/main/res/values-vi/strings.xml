@@ -1261,7 +1261,7 @@
     </plurals>
     <!-- End of platform changes, Partenze train types, saved timetables, sharing, tickets and assistance, CO2 estimate -->
     <!-- Journey planner: in-seat continuations, travel preferences, wheelchair access, last train of the day -->
-    <string name="journey_in_seat_continuation">Ở lại trên tàu: tàu tiếp tục chạy với số hiệu %1$s</string>
+    <string name="journey_in_seat_continuation">Ở lại trên tàu: chuyến tiếp tục chạy với số hiệu %1$s</string>
     <string name="journey_last_of_day">Chuyến cuối hôm nay</string>
     <string name="journey_no_more_today">Hôm nay hết tàu: chuyến đầu tiên ngày mai lúc %1$s</string>
     <string name="journey_accessibility_unavailable">Không có dữ liệu tiếp cận cho khu vực này</string>

@@ -83,11 +83,12 @@ class JourneyPlannerFeaturesPresentationTest {
         continuations = continuations
     )
 
-    private fun option(id: String, vararg legs: JourneyLeg) = SourcedJourneyOption(
+    private fun option(id: String, vararg legs: JourneyLeg, last: Boolean = false) = SourcedJourneyOption(
         option = JourneyOption(
             id = JourneyId(id), origin = legs.first().origin, destination = legs.last().destination,
             departure = legs.first().scheduledDeparture, arrival = legs.last().scheduledArrival, legs = legs.toList(),
-            snapshot = SnapshotMeta(1, now, freshness = Freshness.AGING, completeness = Completeness.STATIC_ONLY, contributingSources = emptySet())
+            snapshot = SnapshotMeta(1, now, freshness = Freshness.AGING, completeness = Completeness.STATIC_ONLY, contributingSources = emptySet()),
+            lastOfServiceDay = last
         ),
         sourceId = EmbeddedGtfsJourneyProvider.SOURCE_ID,
         sourceName = "Offline",
@@ -150,9 +151,12 @@ class JourneyPlannerFeaturesPresentationTest {
         val marked = JourneyResultsPresenter.present(result(evening, night, tomorrow), zone = zone, serviceDate = day)
         assertEquals(listOf("e2"), marked.rows.filter { it.lastOfDay }.map { it.id })
         assertNull(marked.firstDepartureNextDay)
-        // Without an option of the next day nothing proves that no later train leaves.
+        // Without an option of the next day nothing proves that no later train leaves...
         val unproven = JourneyResultsPresenter.present(result(evening, night), zone = zone, serviceDate = day)
         assertTrue(unproven.rows.none { it.lastOfDay })
+        // ...unless the planner checked that its window covers the rest of the day.
+        val checked = JourneyResultsPresenter.present(result(evening, option("e2", leg("102", "R", "23:30", "23:59"), last = true)), zone = zone, serviceDate = day)
+        assertEquals(listOf("e2"), checked.rows.filter { it.lastOfDay }.map { it.id })
         // Without a requested day (another day than today) nothing is marked.
         assertTrue(JourneyResultsPresenter.present(result(evening, night, tomorrow), zone = zone).rows.none { it.lastOfDay })
         // After the last train: "primo domani alle 06:05".

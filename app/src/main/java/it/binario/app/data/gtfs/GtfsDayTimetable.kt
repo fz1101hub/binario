@@ -62,6 +62,20 @@ internal class GtfsDayTimetable private constructor(
     fun pickupAllowed(connection: Int): Boolean = boarding[connection].toInt() and NO_PICKUP == 0
     fun dropOffAllowed(connection: Int): Boolean = boarding[connection].toInt() and NO_DROP_OFF == 0
 
+    /** The latest departure minute of the day (-1 without connections), computed once. */
+    val lastDepartureMinute: Int by lazy(LazyThreadSafetyMode.PUBLICATION) { departureMinute.maxOrNull() ?: -1 }
+
+    /**
+     * The trips of every GTFS block with two trips or more, each in order of first departure: the runs one vehicle makes
+     * one after the other ("Resta a bordo"). Computed once per day and shared by the searches that use it.
+     */
+    val blockSequences: List<IntArray> by lazy(LazyThreadSafetyMode.PUBLICATION) {
+        val byBlock = HashMap<String, MutableList<Int>>()
+        trips.forEachIndexed { index, trip -> trip.blockId?.let { byBlock.getOrPut(it) { ArrayList(2) } += index } }
+        byBlock.values.filter { it.size > 1 }
+            .map { block -> block.sortedBy { departureMinute[trips[it].firstConnection] }.toIntArray() }
+    }
+
     /** Rough retained size, used to bound the planner's cache. */
     fun approximateBytes(): Long = connectionCount * (5L * Int.SIZE_BYTES + 1) + trips.size * 96L + stopIds.size * 96L
 

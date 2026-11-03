@@ -274,7 +274,8 @@ object JourneyResultsPresenter {
         preferences: JourneyPreferences? = null
     ): JourneyResultsPresentation {
         val unmarked = result.options.map { row(it, zone, live) }
-        val bounds = serviceDate?.let { dayBounds(unmarked, it) }
+        val markedLast = result.options.filter { it.option.lastOfServiceDay }.mapTo(HashSet()) { it.option.id.value }
+        val bounds = serviceDate?.let { dayBounds(unmarked, it, markedLast) }
         val all = unmarked.map { if (it.id == bounds?.lastOfDayId) it.copy(lastOfDay = true) else it }
         val rows = apply(all, filter, preferences)
         val emptyReason = when {
@@ -307,20 +308,20 @@ object JourneyResultsPresenter {
     internal class DayBounds(val lastOfDayId: String?, val firstNextDay: JourneyOptionRow?)
 
     /**
-     * "Ultimo di oggi" from the static timetable: the offline planner scans the window in order of departure and, when
-     * nothing more leaves in it, adds the first option of the next service day. An option of the next day in the list
-     * therefore proves that no later option of [serviceDate] exists: the latest one of that day is its last. Without
-     * such an option nothing is marked; live sources are never used for it.
+     * "Ultimo di oggi" from the static timetable: the option the offline planner marked as the last of the service day
+     * ([it.binario.app.data.core.JourneyOption.lastOfServiceDay]), or the latest one of [serviceDate] when the list also
+     * holds an option of a later day (the planner scans in order of departure, so nothing of the day comes after it).
+     * Live sources are never used for it.
      */
-    internal fun dayBounds(rows: List<JourneyOptionRow>, serviceDate: LocalDate): DayBounds {
+    internal fun dayBounds(rows: List<JourneyOptionRow>, serviceDate: LocalDate, markedLast: Set<String> = emptySet()): DayBounds {
         val offline = rows.filter { it.sourceLabel == JourneySourceLabel.OFFLINE_TIMETABLE }
         fun dayOf(row: JourneyOptionRow): LocalDate = row.serviceDate ?: row.departure.toLocalDate()
         val later = offline.filter { dayOf(it) > serviceDate }
-        if (later.isEmpty()) return DayBounds(null, null)
         val today = offline.filter { dayOf(it) <= serviceDate }
+        val latest = today.maxByOrNull { it.departure.toInstant() }
         return DayBounds(
-            lastOfDayId = today.maxByOrNull { it.departure.toInstant() }?.id,
-            firstNextDay = if (today.isEmpty()) later.minBy { it.departure.toInstant() } else null
+            lastOfDayId = latest?.id?.takeIf { later.isNotEmpty() || it in markedLast },
+            firstNextDay = if (today.isEmpty()) later.minByOrNull { it.departure.toInstant() } else null
         )
     }
 
