@@ -472,22 +472,60 @@ describeDatabase("migrazioni MariaDB reali", () => {
         userId,
         credentialVersion: relinked?.credentialVersion,
       });
-      await expect(
+      const rotate = (current: string, next: string) =>
         rotateRefreshToken({
-          currentTokenHash: "8".repeat(64),
+          currentTokenHash: current,
           clientId: "alexa-client",
-          nextTokenHash: "3".repeat(64),
+          nextTokenHash: next,
           nextTokenExpiresAt: new Date(Date.now() + 60_000),
-        })
-      ).resolves.toBeNull();
+        });
+      const liveTokenCount = async () => {
+        const [rows] = await connection.query<Array<{ count: number }>>(
+          "SELECT COUNT(*) AS count FROM oauth_refresh_tokens WHERE userId = ? AND revokedAt IS NULL AND expiresAt > UTC_TIMESTAMP()",
+          [userId]
+        );
+        return Number(rows[0]?.count);
+      };
+      // Lost response: Amazon never received "4" and retries with "8". Inside the grace
+      // window that is a retry: a fresh token of the same family, nothing revoked.
+      await expect(rotate("8".repeat(64), "3".repeat(64))).resolves.toMatchObject({
+        userId,
+        credentialVersion: relinked?.credentialVersion,
+      });
       await expect(
-        rotateRefreshToken({
-          currentTokenHash: "4".repeat(64),
-          clientId: "alexa-client",
-          nextTokenHash: "2".repeat(64),
-          nextTokenExpiresAt: new Date(Date.now() + 60_000),
-        })
-      ).resolves.toBeNull();
+        listPersonalRoutesForAlexa(userId, relinked?.credentialVersion ?? 0)
+      ).resolves.toHaveLength(1);
+      expect(await liveTokenCount()).toBe(2);
+      // Two concurrent refreshes with the same token both succeed: the second waits on the
+      // link row lock, then finds the token just rotated by the first.
+      const [first, second] = await Promise.all([
+        rotate("3".repeat(64), "a1".repeat(32)),
+        rotate("3".repeat(64), "b2".repeat(32)),
+      ]);
+      expect(first).toMatchObject({ credentialVersion: relinked?.credentialVersion });
+      expect(second).toMatchObject({ credentialVersion: relinked?.credentialVersion });
+      // The client keeps one answer; its next regular rotation expires the siblings it dropped,
+      // which then fail as invalid_grant without revoking the family.
+      const [kept, dropped] = ["a1".repeat(32), "b2".repeat(32)];
+      await expect(rotate(kept, "c3".repeat(32))).resolves.not.toBeNull();
+      expect(await liveTokenCount()).toBe(1);
+      await expect(rotate(dropped, "d4".repeat(32))).resolves.toBeNull();
+      await expect(rotate("4".repeat(64), "d4".repeat(32))).resolves.toBeNull();
+      await expect(
+        listPersonalRoutesForAlexa(userId, relinked?.credentialVersion ?? 0)
+      ).resolves.toHaveLength(1);
+      // Outside the grace window a replay is still theft: the family and the voice credential
+      // generation are revoked. Move the rotation of `kept` two minutes into the past.
+      await connection.query(
+        "UPDATE oauth_refresh_tokens SET revokedAt = revokedAt - INTERVAL 2 MINUTE WHERE tokenHash = ?",
+        [kept]
+      );
+      await connection.query(
+        "UPDATE oauth_refresh_tokens SET createdAt = createdAt - INTERVAL 2 MINUTE WHERE tokenHash = ?",
+        ["c3".repeat(32)]
+      );
+      await expect(rotate(kept, "e5".repeat(32))).resolves.toBeNull();
+      expect(await liveTokenCount()).toBe(0);
       await expect(
         listPersonalRoutesForAlexa(userId, relinked?.credentialVersion ?? 0)
       ).resolves.toEqual([]);

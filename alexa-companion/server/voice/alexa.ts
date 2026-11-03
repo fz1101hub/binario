@@ -436,6 +436,13 @@ function oauthError(res: Response, status: number, error: string) {
   return res.status(status).json({ error });
 }
 
+/**
+ * Refresh tokens last a year and slide with every rotation, so a user who does not speak to
+ * the skill for a few weeks stays linked; unlink, re-link, account deletion and replay
+ * detection still revoke them server-side.
+ */
+export const REFRESH_TOKEN_TTL_MS = 365 * 24 * 60 * 60 * 1000;
+
 /** Token requests per minute for the one authenticated OAuth client (Amazon), all users together. */
 export const ALEXA_TOKEN_REQUESTS_PER_CLIENT_PER_MINUTE = 1_200;
 
@@ -704,9 +711,7 @@ export function registerAlexaRoutes(
                 clientId,
                 redirectUri,
                 refreshTokenHash: hashVoiceSecret(refreshToken),
-                refreshTokenExpiresAt: new Date(
-                  Date.now() + 30 * 24 * 60 * 60 * 1000
-                ),
+                refreshTokenExpiresAt: new Date(Date.now() + REFRESH_TOKEN_TTL_MS),
               })
             : null;
         if (!record) return oauthError(res, 400, "invalid_grant");
@@ -731,9 +736,7 @@ export function registerAlexaRoutes(
               currentTokenHash: tokenHash,
               clientId,
               nextTokenHash: hashVoiceSecret(nextRefreshToken),
-              nextTokenExpiresAt: new Date(
-                Date.now() + 30 * 24 * 60 * 60 * 1000
-              ),
+              nextTokenExpiresAt: new Date(Date.now() + REFRESH_TOKEN_TTL_MS),
             })
           : null;
         if (!record) return oauthError(res, 400, "invalid_grant");

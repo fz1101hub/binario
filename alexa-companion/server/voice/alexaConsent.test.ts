@@ -455,6 +455,9 @@ describe("scambio del code e revoca del collegamento", () => {
         refreshTokenHash: expect.stringMatching(/^[0-9a-f]{64}$/),
       })
     );
+    // Long-lived refresh tokens: an idle month must not unlink the user.
+    const { refreshTokenExpiresAt } = dbMocks.exchangeAuthorizationCode.mock.calls[0][0] as { refreshTokenExpiresAt: Date };
+    expect(refreshTokenExpiresAt.getTime() - Date.now()).toBeGreaterThan(364 * 24 * 60 * 60 * 1000);
     expect(
       await resolveLinkedUser(body.access_token, "amzn1.ask.account.TEST")
     ).toEqual({ userId: 7, credentialVersion: 3 });
@@ -510,6 +513,8 @@ describe("scambio del code e revoca del collegamento", () => {
         nextTokenHash: expect.stringMatching(/^[0-9a-f]{64}$/),
       })
     );
+    const { nextTokenExpiresAt } = dbMocks.rotateRefreshToken.mock.calls[0][0] as { nextTokenExpiresAt: Date };
+    expect(nextTokenExpiresAt.getTime() - Date.now()).toBeGreaterThan(364 * 24 * 60 * 60 * 1000);
   });
 
   it("dopo l'unlink un access token ancora valido non legge dati né ripristina il collegamento", async () => {
