@@ -36,6 +36,20 @@ class WearMainActivityTest {
         assertTrue(source.contains("stringResource(emptySnapshotMessageResId(phoneApp))"))
     }
 
+    @Test
+    fun `activity reads the Data Layer on resume and reports what the refresh request did`() {
+        val source = activitySource()
+        val onResume = source.substring(source.indexOf("override fun onResume()"), source.indexOf("private fun requestRefreshFromPhone()"))
+
+        assertTrue(onResume.contains("WearSnapshotStore.bootstrapFromDataLayer(this)"))
+        assertTrue(source.contains("getCapability(PHONE_APP_CAPABILITY, CapabilityClient.FILTER_REACHABLE)"))
+        assertTrue(source.contains(".addOnFailureListener { refreshFeedback.value = WearRefreshFeedback.UNREACHABLE }"))
+        assertTrue(source.contains(".addOnCompleteListener { task -> delivery.record(task.isSuccessful) }"))
+        assertTrue(source.contains("LaunchedEffect(snapshot?.generatedAtEpochMillis) { refreshFeedback.value = null }"))
+        assertTrue(source.contains("liveRegion = LiveRegionMode.Polite"))
+        assertFalse(source.contains("connectedNodes"))
+    }
+
     private fun activitySource(): String = sequenceOf(File("src/main/java"), File("wear/src/main/java"))
         .firstOrNull(File::isDirectory)
         ?.resolve("it/binario/wear/WearMainActivity.kt")

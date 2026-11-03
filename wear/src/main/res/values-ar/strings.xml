@@ -7,6 +7,8 @@
     <string name="empty_snapshot_phone_app_missing">ثبّت Binario على الهاتف المقترن: تتلقى الساعة المسار من تطبيق الهاتف فقط.</string>
     <string name="refresh_phone">تحديث الهاتف</string>
     <string name="refresh_on_phone">التحديث على الهاتف</string>
+    <string name="refresh_request_sent">تم إرسال الطلب إلى الهاتف</string>
+    <string name="refresh_phone_unreachable">تعذّر الوصول إلى الهاتف</string>
     <string name="tile_no_synced_route">لا يوجد مسار متزامن</string>
     <string name="tile_snapshot_unavailable">اللقطة غير متاحة</string>
     <string name="tile_service_details">%1$s · %2$s · %3$s</string>

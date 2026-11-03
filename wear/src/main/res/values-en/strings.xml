@@ -7,6 +7,8 @@
     <string name="empty_snapshot_phone_app_missing">Install Binario on the paired phone: the watch only receives the route from the phone app.</string>
     <string name="refresh_phone">Refresh phone</string>
     <string name="refresh_on_phone">Refresh on phone</string>
+    <string name="refresh_request_sent">Request sent to the phone</string>
+    <string name="refresh_phone_unreachable">Phone not reachable</string>
     <string name="tile_no_synced_route">No synchronized journey</string>
     <string name="tile_snapshot_unavailable">Snapshot unavailable</string>
     <string name="tile_service_details">%1$s · %2$s · %3$s</string>

@@ -7,6 +7,8 @@
     <string name="empty_snapshot_phone_app_missing">Cài Binario trên điện thoại đã ghép nối: đồng hồ chỉ nhận tuyến từ ứng dụng trên điện thoại.</string>
     <string name="refresh_phone">Làm mới điện thoại</string>
     <string name="refresh_on_phone">Làm mới trên điện thoại</string>
+    <string name="refresh_request_sent">Đã gửi yêu cầu đến điện thoại</string>
+    <string name="refresh_phone_unreachable">Không kết nối được với điện thoại</string>
     <string name="tile_no_synced_route">Chưa có tuyến được đồng bộ</string>
     <string name="tile_snapshot_unavailable">Không có ảnh chụp nhanh</string>
     <string name="tile_service_details">%1$s · %2$s · %3$s</string>

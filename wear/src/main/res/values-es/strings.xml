@@ -7,6 +7,8 @@
     <string name="empty_snapshot_phone_app_missing">Instala Binario en el teléfono vinculado: el reloj solo recibe el trayecto desde la aplicación del teléfono.</string>
     <string name="refresh_phone">Actualizar teléfono</string>
     <string name="refresh_on_phone">Actualizar en el teléfono</string>
+    <string name="refresh_request_sent">Solicitud enviada al teléfono</string>
+    <string name="refresh_phone_unreachable">Teléfono no accesible</string>
     <string name="tile_no_synced_route">Ningún trayecto sincronizado</string>
     <string name="tile_snapshot_unavailable">Instantánea no disponible</string>
     <string name="tile_service_details">%1$s · %2$s · %3$s</string>

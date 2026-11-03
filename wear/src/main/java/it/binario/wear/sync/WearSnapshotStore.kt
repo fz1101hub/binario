@@ -4,9 +4,12 @@ import android.content.Context
 import android.os.Handler
 import android.os.Looper
 import androidx.core.content.edit
+import androidx.core.net.toUri
 import androidx.wear.tiles.TileService
 import androidx.wear.watchface.complications.datasource.ComplicationDataSourceUpdateRequester
 import com.google.android.gms.wearable.DataMap
+import com.google.android.gms.wearable.DataMapItem
+import com.google.android.gms.wearable.Wearable
 import it.binario.wear.complication.BinarioComplicationService
 import it.binario.wear.model.WearSnapshot
 import it.binario.wear.model.WearSnapshotCodec
@@ -108,6 +111,23 @@ internal class WearSnapshotRuntime(
         if (notifyExpired) onExpired()
     }
 
+    /**
+     * Applies a value read back from the Data Layer only when it is newer than the cache, so a
+     * bootstrap can fill an empty watch but never rolls back a value the listener already pushed.
+     */
+    fun offer(snapshot: WearSnapshot): Boolean {
+        current()
+        synchronized(lock) {
+            val cached = stateFlow.value
+            if (!isCurrent(snapshot)) return false
+            if (cached != null && cached.generatedAtEpochMillis >= snapshot.generatedAtEpochMillis) return false
+            storage.write(snapshot)
+            stateFlow.value = snapshot
+            scheduleExpiryLocked(snapshot)
+        }
+        return true
+    }
+
     fun clear() {
         synchronized(lock) { invalidateLocked() }
     }
@@ -186,6 +206,15 @@ private class HandlerWearSnapshotExpiryScheduler(
     }
 }
 
+internal const val SNAPSHOT_PATH = "/binario/wear/snapshot"
+
+/** Every node's item on the snapshot path: the phone publishes it under its own node id. */
+internal const val SNAPSHOT_URI = "wear://*$SNAPSHOT_PATH"
+
+/** Several phones may each hold an item; the most recently generated valid one wins. */
+internal fun newestSnapshot(payloads: List<Map<String, Any?>>, nowEpochMillis: Long): WearSnapshot? =
+    payloads.mapNotNull { payload -> WearSnapshotCodec.decode(payload, nowEpochMillis) }.maxByOrNull { it.generatedAtEpochMillis }
+
 /**
  * Cache-first store. Its only scheduled work belongs to an application-context entry and is
  * cancelled on refresh/clear; no Activity, Tile or complication is captured by the callback.
@@ -202,11 +231,27 @@ object WearSnapshotStore {
 
     fun updateFromDataMap(context: Context, dataMap: DataMap) {
         val runtime = entry(context)
-        val payload = buildMap<String, Any?> {
-            dataMap.keySet().forEach { key -> put(key, dataMap.get(key)) }
-        }
         // Decode against the same injected runtime clock that enforces the in-memory TTL.
-        WearSnapshotCodec.decode(payload, runtime.nowEpochMillis())?.let(runtime::update)
+        WearSnapshotCodec.decode(dataMap.payload(), runtime.nowEpochMillis())?.let(runtime::update)
+    }
+
+    /**
+     * Reads the snapshot item already in the Data Layer. An item published before this app was
+     * installed, or before its data was cleared, raises no DATA_CHANGED, so without this read the
+     * watch would stay empty until the phone happened to publish a different item.
+     */
+    fun bootstrapFromDataLayer(context: Context) {
+        val applicationContext = context.applicationContext
+        Wearable.getDataClient(applicationContext).getDataItems(SNAPSHOT_URI.toUri()).addOnSuccessListener { items ->
+            val payloads = try {
+                items.filter { item -> item.uri.path == SNAPSHOT_PATH }.map { item -> DataMapItem.fromDataItem(item).dataMap.payload() }
+            } finally {
+                items.release()
+            }
+            val runtime = entry(applicationContext)
+            val newest = newestSnapshot(payloads, runtime.nowEpochMillis()) ?: return@addOnSuccessListener
+            if (runtime.offer(newest)) requestSurfaceUpdate(applicationContext)
+        }
     }
 
     fun clear(context: Context) {
@@ -226,6 +271,8 @@ object WearSnapshotStore {
             }
         }
     }
+
+    private fun DataMap.payload(): Map<String, Any?> = buildMap { keySet().forEach { key -> put(key, get(key)) } }
 
     private fun requestSurfaceUpdate(context: Context) {
         TileService.getUpdater(context).requestUpdate(BinarioTileService::class.java)

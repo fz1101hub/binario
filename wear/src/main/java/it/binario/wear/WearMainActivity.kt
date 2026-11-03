@@ -9,16 +9,20 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.wear.compose.foundation.lazy.ScalingLazyColumn
+import androidx.wear.compose.foundation.lazy.ScalingLazyListScope
 import androidx.wear.compose.foundation.lazy.itemsIndexed
 import androidx.wear.compose.foundation.lazy.rememberScalingLazyListState
 import androidx.wear.compose.material3.AppScaffold
@@ -35,13 +39,17 @@ import kotlinx.coroutines.flow.MutableStateFlow
 
 class WearMainActivity : ComponentActivity() {
     private val phoneApp = MutableStateFlow(WearPhoneAppPresence.UNKNOWN)
+    private val refreshFeedback = MutableStateFlow<WearRefreshFeedback?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
             val snapshot by WearSnapshotStore.snapshot(this).collectAsState()
             val phoneAppPresence by phoneApp.collectAsState()
-            BinarioWearTheme { AppScaffold { WearHome(snapshot, phoneAppPresence, ::requestRefreshFromPhone) } }
+            val feedback by refreshFeedback.collectAsState()
+            // A newly received snapshot answers the request, so its note is no longer current.
+            LaunchedEffect(snapshot?.generatedAtEpochMillis) { refreshFeedback.value = null }
+            BinarioWearTheme { AppScaffold { WearHome(snapshot, phoneAppPresence, feedback, ::requestRefreshFromPhone) } }
         }
     }
 
@@ -50,17 +58,28 @@ class WearMainActivity : ComponentActivity() {
         // The expiry callback is posted on uptime, which stops while the watch sleeps, so a value
         // that expired meanwhile is still in the StateFlow: revalidate before the screen shows it.
         WearSnapshotStore.current(this)
+        // A snapshot the phone published before this install, or before the watch data was cleared,
+        // is never redelivered as DATA_CHANGED: read it back from the Data Layer.
+        WearSnapshotStore.bootstrapFromDataLayer(this)
         // Without the phone app no setting can help: the empty state must say which one is missing.
         Wearable.getCapabilityClient(this).getCapability(PHONE_APP_CAPABILITY, CapabilityClient.FILTER_ALL)
             .addOnSuccessListener { info -> phoneApp.value = WearPhoneAppPresence.fromNodeCount(info.nodes.size) }
     }
 
+    /** Asks every reachable phone with the Binario app for a new snapshot and reports whether one got the request. */
     private fun requestRefreshFromPhone() {
-        Wearable.getNodeClient(this@WearMainActivity).connectedNodes.addOnSuccessListener { nodes ->
-            nodes.forEach { node ->
-                Wearable.getMessageClient(this@WearMainActivity)
-                    .sendMessage(node.id, "/binario/wear/request-refresh", ByteArray(0))
-            }
+        refreshFeedback.value = null
+        Wearable.getCapabilityClient(this).getCapability(PHONE_APP_CAPABILITY, CapabilityClient.FILTER_REACHABLE)
+            .addOnSuccessListener { info -> sendRefreshRequest(info.nodes.map { node -> node.id }) }
+            .addOnFailureListener { refreshFeedback.value = WearRefreshFeedback.UNREACHABLE }
+    }
+
+    private fun sendRefreshRequest(nodeIds: List<String>) {
+        val delivery = WearRefreshDelivery(nodeIds.size) { feedback -> refreshFeedback.value = feedback }
+        val messages = Wearable.getMessageClient(this)
+        nodeIds.forEach { nodeId ->
+            messages.sendMessage(nodeId, REFRESH_REQUEST_PATH, ByteArray(0))
+                .addOnCompleteListener { task -> delivery.record(task.isSuccessful) }
         }
     }
 }
@@ -70,7 +89,7 @@ class WearMainActivity : ComponentActivity() {
  * ScalingLazyColumn keep the first and last items inside the visible disc of a round screen.
  */
 @Composable
-private fun WearHome(snapshot: WearSnapshot?, phoneApp: WearPhoneAppPresence, onRefreshPhone: () -> Unit) {
+private fun WearHome(snapshot: WearSnapshot?, phoneApp: WearPhoneAppPresence, feedback: WearRefreshFeedback?, onRefreshPhone: () -> Unit) {
     val context = LocalContext.current
     val listState = rememberScalingLazyListState()
     ScreenScaffold(scrollState = listState) { contentPadding ->
@@ -79,6 +98,7 @@ private fun WearHome(snapshot: WearSnapshot?, phoneApp: WearPhoneAppPresence, on
                 item { Text(stringResource(R.string.app_name), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary, textAlign = TextAlign.Center) }
                 item { Text(stringResource(emptySnapshotMessageResId(phoneApp)), style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center) }
                 item { Button(onClick = onRefreshPhone, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.refresh_phone)) } }
+                refreshFeedbackItem(feedback)
             } else {
                 item { Text(snapshot.routeLabel, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary, textAlign = TextAlign.Center) }
                 item {
@@ -103,8 +123,22 @@ private fun WearHome(snapshot: WearSnapshot?, phoneApp: WearPhoneAppPresence, on
                     }
                 }
                 item { Button(onClick = onRefreshPhone, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.refresh_on_phone)) } }
+                refreshFeedbackItem(feedback)
                 if (snapshot.notice.isNotBlank()) item { Text(snapshot.notice, style = MaterialTheme.typography.labelSmall, textAlign = TextAlign.Center) }
             }
         }
+    }
+}
+
+/** The outcome of the last refresh tap; a polite live region so TalkBack reads it without moving focus. */
+private fun ScalingLazyListScope.refreshFeedbackItem(feedback: WearRefreshFeedback?) {
+    if (feedback == null) return
+    item {
+        Text(
+            stringResource(feedback.messageResId),
+            style = MaterialTheme.typography.labelMedium,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+        )
     }
 }

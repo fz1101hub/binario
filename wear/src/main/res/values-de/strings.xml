@@ -7,6 +7,8 @@
     <string name="empty_snapshot_phone_app_missing">Installieren Sie Binario auf dem gekoppelten Telefon: Die Uhr erhält die Verbindung nur von der Telefon-App.</string>
     <string name="refresh_phone">Telefon aktualisieren</string>
     <string name="refresh_on_phone">Auf dem Telefon aktualisieren</string>
+    <string name="refresh_request_sent">Anfrage an das Telefon gesendet</string>
+    <string name="refresh_phone_unreachable">Telefon nicht erreichbar</string>
     <string name="tile_no_synced_route">Keine synchronisierte Verbindung</string>
     <string name="tile_snapshot_unavailable">Snapshot nicht verfügbar</string>
     <string name="tile_service_details">%1$s · %2$s · %3$s</string>

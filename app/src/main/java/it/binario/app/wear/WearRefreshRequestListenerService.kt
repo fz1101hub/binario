@@ -1,34 +1,48 @@
 package it.binario.app.wear
 
+import android.content.Context
+import androidx.work.CoroutineWorker
+import androidx.work.ExistingWorkPolicy
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkManager
+import androidx.work.WorkerParameters
 import com.google.android.gms.wearable.MessageEvent
 import com.google.android.gms.wearable.WearableListenerService
 import it.binario.app.IntegrationSettingsStore
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
-import kotlinx.coroutines.launch
 
 /**
  * Receives an explicit refresh request from a paired Wear node. Play services binds this
  * listener; requests are still constrained to the documented path and bounded per node so
- * repeated taps cannot create an unbounded stream of Data Layer writes.
+ * repeated taps cannot create an unbounded stream of Data Layer writes. The refresh loads the
+ * route from the network, so it runs as work: the listener is unbound, and its scope would be
+ * cancelled, as soon as the message is delivered.
  */
 class WearRefreshRequestListenerService : WearableListenerService() {
-    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val requestGate = WearRefreshRequestGate()
 
     override fun onMessageReceived(messageEvent: MessageEvent) {
         if (!requestGate.accepts(messageEvent.path, messageEvent.sourceNodeId)) return
         if (!IntegrationSettingsStore(applicationContext).read().wearSnapshotSharingEnabled) return
-        serviceScope.launch {
-            WearSnapshotPublisher.republishLastSnapshot(applicationContext)
+        WearRefreshWorker.enqueue(applicationContext)
+    }
+}
+
+/** One refresh for the watch at a time; sharing is checked again because the work can start later. */
+class WearRefreshWorker(appContext: Context, params: WorkerParameters) : CoroutineWorker(appContext, params) {
+    override suspend fun doWork(): Result {
+        if (IntegrationSettingsStore(applicationContext).read().wearSnapshotSharingEnabled) {
+            WearSnapshotPublisher.refreshForWatch(applicationContext)
         }
+        return Result.success()
     }
 
-    override fun onDestroy() {
-        serviceScope.cancel()
-        super.onDestroy()
+    companion object {
+        private const val WORK = "binario-wear-refresh"
+
+        fun enqueue(context: Context) {
+            WorkManager.getInstance(context)
+                .enqueueUniqueWork(WORK, ExistingWorkPolicy.KEEP, OneTimeWorkRequestBuilder<WearRefreshWorker>().build())
+        }
     }
 }
 

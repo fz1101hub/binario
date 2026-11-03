@@ -7,6 +7,8 @@
     <string name="empty_snapshot_phone_app_missing">ติดตั้ง Binario ในโทรศัพท์ที่จับคู่ไว้ นาฬิการับเส้นทางจากแอปในโทรศัพท์เท่านั้น</string>
     <string name="refresh_phone">รีเฟรชโทรศัพท์</string>
     <string name="refresh_on_phone">รีเฟรชในโทรศัพท์</string>
+    <string name="refresh_request_sent">ส่งคำขอไปยังโทรศัพท์แล้ว</string>
+    <string name="refresh_phone_unreachable">เชื่อมต่อโทรศัพท์ไม่ได้</string>
     <string name="tile_no_synced_route">ไม่มีเส้นทางที่ซิงค์</string>
     <string name="tile_snapshot_unavailable">ไม่มีภาพรวม</string>
     <string name="tile_service_details">%1$s · %2$s · %3$s</string>

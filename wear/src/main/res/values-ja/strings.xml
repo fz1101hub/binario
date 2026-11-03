@@ -7,6 +7,8 @@
     <string name="empty_snapshot_phone_app_missing">ペアリングしたスマートフォンに Binario をインストールしてください。ウォッチはスマートフォンのアプリからのみ区間を受け取ります。</string>
     <string name="refresh_phone">スマホを更新</string>
     <string name="refresh_on_phone">スマホで更新</string>
+    <string name="refresh_request_sent">スマートフォンにリクエストを送信しました</string>
+    <string name="refresh_phone_unreachable">スマートフォンに接続できません</string>
     <string name="tile_no_synced_route">同期した区間なし</string>
     <string name="tile_snapshot_unavailable">スナップショットなし</string>
     <string name="tile_service_details">%1$s · %2$s · %3$s</string>

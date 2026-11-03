@@ -7,6 +7,8 @@
     <string name="empty_snapshot_phone_app_missing">Instale o Binario no celular pareado: o relógio só recebe o trajeto pelo app do celular.</string>
     <string name="refresh_phone">Atualizar celular</string>
     <string name="refresh_on_phone">Atualizar no celular</string>
+    <string name="refresh_request_sent">Solicitação enviada ao celular</string>
+    <string name="refresh_phone_unreachable">Celular fora de alcance</string>
     <string name="tile_no_synced_route">Nenhum trajeto sincronizado</string>
     <string name="tile_snapshot_unavailable">Snapshot indisponível</string>
     <string name="tile_service_details">%1$s · %2$s · %3$s</string>

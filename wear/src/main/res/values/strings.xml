@@ -7,6 +7,8 @@
     <string name="empty_snapshot_phone_app_missing">Installa Binario sul telefono abbinato: l’orologio riceve la tratta solo dall’app del telefono.</string>
     <string name="refresh_phone">Aggiorna telefono</string>
     <string name="refresh_on_phone">Aggiorna sul telefono</string>
+    <string name="refresh_request_sent">Richiesta inviata al telefono</string>
+    <string name="refresh_phone_unreachable">Telefono non raggiungibile</string>
     <string name="tile_no_synced_route">Nessuna tratta sincronizzata</string>
     <string name="tile_snapshot_unavailable">Snapshot non disponibile</string>
     <string name="tile_service_details">%1$s · %2$s · %3$s</string>

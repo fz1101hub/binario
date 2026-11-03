@@ -7,6 +7,8 @@
     <string name="empty_snapshot_phone_app_missing">Installez Binario sur le téléphone associé : la montre ne reçoit le trajet que de l’app du téléphone.</string>
     <string name="refresh_phone">Actualiser le téléphone</string>
     <string name="refresh_on_phone">Actualiser sur le téléphone</string>
+    <string name="refresh_request_sent">Demande envoyée au téléphone</string>
+    <string name="refresh_phone_unreachable">Téléphone injoignable</string>
     <string name="tile_no_synced_route">Aucun trajet synchronisé</string>
     <string name="tile_snapshot_unavailable">Instantané indisponible</string>
     <string name="tile_service_details">%1$s · %2$s · %3$s</string>
