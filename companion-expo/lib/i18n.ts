@@ -2586,7 +2586,9 @@ type PluralCategory = "zero" | "one" | "two" | "few" | "many" | "other";
 
 /**
  * CLDR cardinal plural category. Hermes may lack Intl.PluralRules, so the rules of the served
- * languages are spelled out; the five original languages keep "one" for exactly 1.
+ * languages are spelled out. Italian, English, German and Spanish use "one" for exactly 1; French,
+ * like Portuguese, also for 0 ("0 rappel annulé"). The "many" category of large round numbers in
+ * fr/it/es/pt falls back to "other", which is the form those messages use for it.
  */
 export function pluralCategory(locale: CompanionLocale, count: number): PluralCategory {
   const n = Math.abs(count);
@@ -2608,7 +2610,7 @@ export function pluralCategory(locale: CompanionLocale, count: number): PluralCa
       return "many";
     case "hi":
       return Math.trunc(n) === 0 || n === 1 ? "one" : "other";
-    case "pt":
+    case "fr": case "pt":
       return Math.trunc(n) <= 1 ? "one" : "other";
     case "id": case "ja": case "ko": case "my": case "th": case "vi": case "zh":
       return "other";
