@@ -229,7 +229,7 @@ object RailSourceCatalog {
             countryCodes = setOf("IT"),
             coverage = "Treni Italo AV e ItaloBus, orario programmato.",
             landingPage = uri("https://www.cciss.it/nap/mmtis/public/en/catalog/Dataset/1814124"),
-            downloadOrProbeUri = uri("https://raw.githubusercontent.com/deryclem/italo-gtfs/4e96f9067e6adb154c357c366a513c45bc624382/gtfs-italo.zip"),
+            downloadOrProbeUri = uri("https://raw.githubusercontent.com/deryclem/italo-gtfs/7ee9ff77eeab7ba2a26a3464472a2fa15bf959b3/gtfs-italo.zip"),
             attribution = "Italo S.p.A. via NAP CCISS (CAD art. 52, Reg. UE 2017/1926); GTFS © Clément Desouche, CC BY 4.0",
             notes = "Dati MMTIS ufficiali pubblicati in NeTEx sul National Access Point (dataset 1814124), convertiti in GTFS " +
                 "dalla comunità (deryclem/italo-gtfs, CC BY 4.0). Data pack offline fissato a un commit e allo SHA-256 " +
