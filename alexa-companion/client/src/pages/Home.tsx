@@ -1,3 +1,4 @@
+import { useAuth } from "@/_core/hooks/useAuth";
 import DashboardLayout from "@/components/DashboardLayout";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
@@ -7,17 +8,24 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useLocale } from "@/i18n";
+import { forgetPersonalData } from "@/lib/authSession";
 import { trpc } from "@/lib/trpc";
 import { ACCOUNT_DELETION_CONFIRMATION } from "@shared/const";
 import { Bot, ChevronRight, CircleAlert, Link2Off, MapPin, Pin, Plus, Radio, Trash2, TrainFront } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { FormEvent, useState } from "react";
 
 export default function Home() {
   const { format, messages } = useLocale();
   const t = messages.dashboard;
   const utils = trpc.useUtils();
-  const routes = trpc.routes.list.useQuery();
-  const voice = trpc.voice.status.useQuery();
+  const queryClient = useQueryClient();
+  // Protected queries run only for a signed-in user: an UNAUTHORIZED answer after logout or
+  // deletion would otherwise refetch on every focus.
+  const { user } = useAuth();
+  const signedIn = Boolean(user);
+  const routes = trpc.routes.list.useQuery(undefined, { enabled: signedIn });
+  const voice = trpc.voice.status.useQuery(undefined, { enabled: signedIn });
   const [origin, setOrigin] = useState("");
   const [destination, setDestination] = useState("");
   const [name, setName] = useState("");
@@ -29,7 +37,7 @@ export default function Home() {
   const unlink = trpc.voice.unlink.useMutation({ onSuccess: () => voice.refetch() });
   const deleteAccount = trpc.account.delete.useMutation({
     onSuccess: () => {
-      utils.auth.me.setData(undefined, null);
+      forgetPersonalData(queryClient);
       setAccountDeleted(true);
     },
   });
@@ -40,16 +48,18 @@ export default function Home() {
     createRoute.mutate({ origin, destination, name, isPinned });
   }
 
+  // A static confirmation outside DashboardLayout, which would show its sign-in screen now that
+  // there is no user: nothing here queries the server or starts a login.
   if (accountDeleted) {
     return (
-      <DashboardLayout>
-        <Card className="mx-auto mt-12 max-w-xl">
+      <main className="flex min-h-screen items-center justify-center p-4">
+        <Card className="max-w-xl" role="status">
           <CardHeader>
             <CardTitle>{t.accountDeletedTitle}</CardTitle>
             <CardDescription>{t.accountDeletedDescription}</CardDescription>
           </CardHeader>
         </Card>
-      </DashboardLayout>
+      </main>
     );
   }
 
