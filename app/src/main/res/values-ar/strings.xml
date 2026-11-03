@@ -1529,4 +1529,75 @@
     <string name="duration_hours_minutes">%1$d س %2$d د</string>
     <string name="duration_hours">%1$d س</string>
     <string name="duration_minutes">%1$d د</string>
+    <!-- Unofficial network punctuality statistics (embedded file, no request): result lines, «Più affidabili», train detail -->
+    <string name="journey_filter_most_reliable">الأكثر موثوقية</string>
+    <plurals name="reliability_on_time_count">
+        <item quantity="zero">في الموعد %1$d مرة من أصل %2$d</item>
+        <item quantity="one">في الموعد %1$d مرة من أصل %2$d</item>
+        <item quantity="two">في الموعد %1$d مرتين من أصل %2$d</item>
+        <item quantity="few">في الموعد %1$d مرات من أصل %2$d</item>
+        <item quantity="many">في الموعد %1$d مرة من أصل %2$d</item>
+        <item quantity="other">في الموعد %1$d مرة من أصل %2$d</item>
+    </plurals>
+    <plurals name="reliability_leg_on_time_count">
+        <item quantity="zero">%1$s في الموعد %2$d مرة من أصل %3$d</item>
+        <item quantity="one">%1$s في الموعد %2$d مرة من أصل %3$d</item>
+        <item quantity="two">%1$s في الموعد %2$d مرتين من أصل %3$d</item>
+        <item quantity="few">%1$s في الموعد %2$d مرات من أصل %3$d</item>
+        <item quantity="many">%1$s في الموعد %2$d مرة من أصل %3$d</item>
+        <item quantity="other">%1$s في الموعد %2$d مرة من أصل %3$d</item>
+    </plurals>
+    <string name="reliability_mean_delay">متوسط التأخير %1$s</string>
+    <plurals name="reliability_cancelled_count">
+        <item quantity="zero">أُلغي %1$d مرة</item>
+        <item quantity="one">أُلغي %1$d مرة</item>
+        <item quantity="two">أُلغي %1$d مرتين</item>
+        <item quantity="few">أُلغي %1$d مرات</item>
+        <item quantity="many">أُلغي %1$d مرة</item>
+        <item quantity="other">أُلغي %1$d مرة</item>
+    </plurals>
+    <plurals name="reliability_cancelled_share">
+        <item quantity="zero">أُلغي %1$d مرة من أصل %2$d</item>
+        <item quantity="one">أُلغي %1$d مرة من أصل %2$d</item>
+        <item quantity="two">أُلغي %1$d مرتين من أصل %2$d</item>
+        <item quantity="few">أُلغي %1$d مرات من أصل %2$d</item>
+        <item quantity="many">أُلغي %1$d مرة من أصل %2$d</item>
+        <item quantity="other">أُلغي %1$d مرة من أصل %2$d</item>
+    </plurals>
+    <plurals name="reliability_leg_cancelled_share">
+        <item quantity="zero">%1$s أُلغي %2$d مرة من أصل %3$d</item>
+        <item quantity="one">%1$s أُلغي %2$d مرة من أصل %3$d</item>
+        <item quantity="two">%1$s أُلغي %2$d مرتين من أصل %3$d</item>
+        <item quantity="few">%1$s أُلغي %2$d مرات من أصل %3$d</item>
+        <item quantity="many">%1$s أُلغي %2$d مرة من أصل %3$d</item>
+        <item quantity="other">%1$s أُلغي %2$d مرة من أصل %3$d</item>
+    </plurals>
+    <plurals name="reliability_connection_count">
+        <item quantity="zero">نجح تبديل القطار في %1$s %2$d مرة من أصل %3$d</item>
+        <item quantity="one">نجح تبديل القطار في %1$s %2$d مرة من أصل %3$d</item>
+        <item quantity="two">نجح تبديل القطار في %1$s %2$d مرتين من أصل %3$d</item>
+        <item quantity="few">نجح تبديل القطار في %1$s %2$d مرات من أصل %3$d</item>
+        <item quantity="many">نجح تبديل القطار في %1$s %2$d مرة من أصل %3$d</item>
+        <item quantity="other">نجح تبديل القطار في %1$s %2$d مرة من أصل %3$d</item>
+    </plurals>
+    <string name="reliability_spoken">%1$s (إحصاءات غير رسمية)</string>
+    <string name="reliability_attribution">إحصاءات غير رسمية من Binario استنادًا إلى بيانات ViaggiaTreno، محدّثة حتى %1$s</string>
+    <plurals name="reliability_title">
+        <item quantity="zero">الموثوقية خلال آخر %1$d يوم</item>
+        <item quantity="one">الموثوقية خلال آخر %1$d يوم</item>
+        <item quantity="two">الموثوقية خلال آخر %1$d يومين</item>
+        <item quantity="few">الموثوقية خلال آخر %1$d أيام</item>
+        <item quantity="many">الموثوقية خلال آخر %1$d يومًا</item>
+        <item quantity="other">الموثوقية خلال آخر %1$d يوم</item>
+    </plurals>
+    <plurals name="reliability_detail_on_time">
+        <item quantity="zero">الوصول إلى %1$s: في الموعد %2$d مرة من أصل %3$d</item>
+        <item quantity="one">الوصول إلى %1$s: في الموعد %2$d مرة من أصل %3$d</item>
+        <item quantity="two">الوصول إلى %1$s: في الموعد %2$d مرتين من أصل %3$d</item>
+        <item quantity="few">الوصول إلى %1$s: في الموعد %2$d مرات من أصل %3$d</item>
+        <item quantity="many">الوصول إلى %1$s: في الموعد %2$d مرة من أصل %3$d</item>
+        <item quantity="other">الوصول إلى %1$s: في الموعد %2$d مرة من أصل %3$d</item>
+    </plurals>
+    <string name="reliability_detail_days">الأيام المرصودة: %1$d · الإلغاءات: %2$d</string>
+    <string name="reliability_threshold_note">يُعدّ الوصول في الموعد إذا لم يتجاوز التأخير %1$s.</string>
 </resources>

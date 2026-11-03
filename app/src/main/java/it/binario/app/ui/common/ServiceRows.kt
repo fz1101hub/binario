@@ -44,6 +44,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -316,7 +317,9 @@ internal fun ResultCard(
     /** "Ultimo di oggi" from the static timetable. */
     lastOfDay: Boolean = false,
     /** Live, scheduled or saved copy, as the chip of the card; null shows no chip. */
-    dataState: DataState? = null
+    dataState: DataState? = null,
+    /** «In orario 27 volte su 30 · ritardo medio 3 min» from the network statistics; null shows nothing. */
+    reliability: NetworkReliabilityText? = null
 ) {
     val shown = if (isDemonstration) service.presentedAsDemonstration() else service
     val locale = LocalConfiguration.current.locales[0]
@@ -333,6 +336,7 @@ internal fun ResultCard(
         duration?.let { durationAccessibleLabel(it) },
         if (dataState == DataState.SAVED_COPY) stringResource(R.string.data_chip_saved_copy) else null,
         if (lastOfDay) stringResource(R.string.journey_last_of_day) else null,
+        reliability?.spoken,
         co2?.let { co2Spoken(it) },
         if (selected) stringResource(R.string.accessibility_row_selected) else null
     ).joinToString(". ")
@@ -381,6 +385,7 @@ internal fun ResultCard(
                 )
             }
             if (lastOfDay) LastOfDayChip()
+            reliability?.let { NetworkReliabilityLinesText(it.lines, Modifier.padding(top = 2.dp).testTag("result-reliability")) }
             Row(Modifier.padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                 ChangesBadge(shown.transferCount, Modifier.weight(1f))
                 Text(

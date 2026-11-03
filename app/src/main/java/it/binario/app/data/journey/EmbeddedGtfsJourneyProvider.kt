@@ -139,6 +139,10 @@ data class GtfsJourneyPlannerSettings(
     fun walkMinutes(meters: Double): Int =
         Math.ceil(meters / (walkingSpeedKmh * 1000.0 / 60.0)).toInt() + walkMarginMinutes
 
+    /** Minimum change time at a railway station with the catalogue [railwayCode] (null: an ordinary station). */
+    fun railTransferMinutes(railwayCode: String?): Int =
+        if (railwayCode != null && railwayCode in largeHubRailwayCodes) largeHubTransferMinutes else defaultTransferMinutes
+
     companion object {
         val DEFAULT_LARGE_HUB_RAILWAY_CODES: Set<String> =
             RfiProgrammedStationIds.hubRailwayCodes + SupplementalRfiProgrammedStationIds.hubRailwayCodes
@@ -688,7 +692,7 @@ class EmbeddedGtfsJourneyProvider internal constructor(
             when {
                 railwayCode != null && railwayCode in settings.largeHubRailwayCodes -> settings.largeHubTransferMinutes
                 urbanPrefixes.any(key::startsWith) -> settings.urbanTransferMinutes
-                else -> settings.defaultTransferMinutes
+                else -> settings.railTransferMinutes(railwayCode)
             }
         }
         val footpaths = footpaths(nodeKeys, slices, resolver, transferMinutes, planner, nodeAccessible)

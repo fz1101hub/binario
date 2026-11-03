@@ -23,6 +23,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import android.content.res.Resources
 import androidx.compose.ui.platform.LocalResources
@@ -49,6 +50,8 @@ import it.binario.app.journeys.TransferRiskLevel
 import it.binario.app.ui.common.ChangesBadge
 import it.binario.app.ui.common.compactDurationLabel
 import it.binario.app.ui.common.LastOfDayChip
+import it.binario.app.ui.common.NetworkReliabilityLinesText
+import it.binario.app.ui.common.NetworkReliabilityText
 import it.binario.app.ui.common.WheelchairMark
 import it.binario.app.ui.common.changesLabel
 import it.binario.app.ui.common.co2Line
@@ -182,7 +185,9 @@ internal fun JourneyResultCard(
     modifier: Modifier = Modifier,
     selected: Boolean = false,
     /** Estimated CO2 of the journey, shown as a small line; null without station positions. */
-    co2: Co2Estimate? = null
+    co2: Co2Estimate? = null,
+    /** The weakest train and change by the network statistics; null shows nothing. */
+    reliability: NetworkReliabilityText? = null
 ) {
     val locale = LocalConfiguration.current.locales[0]
     val from = row.legs.firstOrNull()?.fromLabel.orEmpty()
@@ -204,6 +209,7 @@ internal fun JourneyResultCard(
         transferRiskLabel(row.transferRisk, rowLevel = true),
         if (row.wheelchairAccessible) stringResource(R.string.wheelchair_journey) else null,
         if (row.lastOfDay) stringResource(R.string.journey_last_of_day) else null,
+        reliability?.spoken,
         co2?.let { co2Spoken(it) },
         if (selected) stringResource(R.string.accessibility_row_selected) else null
     ).joinToString(". ")
@@ -251,6 +257,7 @@ internal fun JourneyResultCard(
                     if (row.wheelchairAccessible) WheelchairMark(stringResource(R.string.wheelchair_journey))
                 }
             }
+            reliability?.let { NetworkReliabilityLinesText(it.lines, Modifier.padding(top = 2.dp).testTag("journey-reliability")) }
             Row(Modifier.padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                 ChangesBadge(row.changes, Modifier.weight(1f))
                 Text(

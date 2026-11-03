@@ -94,6 +94,13 @@ import it.binario.app.ui.common.localizedQualityLabel
 import it.binario.app.ui.common.ltrUnit
 import it.binario.app.ui.common.rememberCo2
 import it.binario.app.ui.journeys.JourneyResultCard
+import it.binario.app.ui.journeys.journeyLegLabel
+import it.binario.app.ui.common.NetworkReliabilityLines
+import it.binario.app.ui.common.NetworkReliabilityText
+import it.binario.app.ui.common.networkReliabilityAttribution
+import it.binario.app.ui.common.rememberNetworkReliability
+import it.binario.app.ui.common.rememberNetworkReliabilityStrings
+import it.binario.app.data.reliability.NetworkReliabilityStations
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -106,7 +113,8 @@ import java.util.UUID
  * route search (live or catalogue, unchanged) and the options of the separate journeys-with-changes search, each
  * with its badge ("Diretto", "1 cambio", "2 cambi") and source. A journey without changes that is the same train as
  * a direct-train result is shown once, as the direct train. The chips are the render's: Tutti, Diretti, Meno cambi,
- * Più veloce, over everything shown. The notices of the journeys search (in progress, scheduled times only, coverage,
+ * Più veloce, over everything shown, and «Più affidabili» with the embedded network statistics, which also add a
+ * reliability line to the cards they measure. The notices of the journeys search (in progress, scheduled times only, coverage,
  * why it found nothing) follow the outbound list, so the top of the screen stays the render's.
  *
  * @param journeys state of the journeys-with-changes search; its options appear only when they answer this route,
@@ -136,9 +144,14 @@ internal fun RouteResultsScreen(
     val route = viewModel.activeRoute
     val context = LocalContext.current
     val travelPreferences by TravelPreferencesRepository.state(context).collectAsState()
+    // The embedded network statistics ("Più affidabili", the reliability lines); never on demonstration data.
+    val reliabilityStats = rememberNetworkReliability().takeUnless { viewModel.isDemonstrationData() }
     // "Preferisci" chooses the chip the results open on; a chip tapped afterwards stays until it changes.
     var filterName by rememberSaveable(travelPreferences.ranking) { mutableStateOf(JourneyResultsFilter.forRanking(travelPreferences.ranking).name) }
-    val filter = JourneyResultsFilter.valueOf(filterName)
+    val filter = JourneyResultsFilter.valueOf(filterName).let {
+        if (it == JourneyResultsFilter.MOST_RELIABLE && reliabilityStats == null) JourneyResultsFilter.ALL else it
+    }
+    val availableFilters = JourneyResultsFilter.entries.filter { it != JourneyResultsFilter.MOST_RELIABLE || reliabilityStats != null }
     val journeysMatch = JourneyRequest.of(viewModel)?.isAnsweredBy(journeys.query) == true
     val journeyResult = journeys.result.takeIf { journeysMatch }
     // "Ultimo di oggi" and "primo domani" only for a search of today.
@@ -163,8 +176,18 @@ internal fun RouteResultsScreen(
     val hiddenTrains = allServices.size + allReturnServices.size -
         ResultsMerge.shownServices(allServices, travelPreferences).size - ResultsMerge.shownServices(allReturnServices, travelPreferences).size
     val firstNextDay = markedDay?.let { ResultsMerge.firstDepartureNextDay(entries, journeyRows, it) }
-    val shown = ResultsMerge.apply(entries, filter, travelPreferences)
-    val returnShown = ResultsMerge.apply(returnEntries, filter, travelPreferences)
+    // Each row measured at the stop the user leaves it: the destination of the search, or each change.
+    val reliabilityStations = remember(viewModel.stations, route) {
+        NetworkReliabilityStations(viewModel.stations + listOf(route.outwardOrigin, route.outwardDestination))
+    }
+    val reliability = remember(entries, reliabilityStats, reliabilityStations, route, primaryDirection) {
+        reliabilityStats?.let { ResultsReliability.assess(entries, it, route.origin(primaryDirection), route.destination(primaryDirection), reliabilityStations) }.orEmpty()
+    }
+    val returnReliability = remember(returnEntries, reliabilityStats, reliabilityStations, route) {
+        reliabilityStats?.let { ResultsReliability.assess(returnEntries, it, route.origin(Direction.RETURN), route.destination(Direction.RETURN), reliabilityStations) }.orEmpty()
+    }
+    val shown = ResultsMerge.apply(entries, filter, travelPreferences, reliability)
+    val returnShown = ResultsMerge.apply(returnEntries, filter, travelPreferences, returnReliability)
     val counts = ResultsMerge.counts(entries + returnEntries)
     val firstShownTrain = shown.firstNotNullOfOrNull { (it as? ResultEntry.Train)?.service }
     LaunchedEffect(firstShownTrain?.id) { onFirstShownService(firstShownTrain) }
@@ -236,7 +259,7 @@ internal fun RouteResultsScreen(
         }
         item {
             HeaderSheetTop {
-                ResultFilterChips(selected = filter, counts = counts, onSelect = { filterName = it.name })
+                ResultFilterChips(filters = availableFilters, selected = filter, counts = counts, onSelect = { filterName = it.name })
                 if (changeFilter != JourneyChangeFilter.ANY) {
                     ActiveChangeFilterChip(changeFilter, onClear = { viewModel.selectJourneyChangeFilter(JourneyChangeFilter.ANY) })
                 }
@@ -259,6 +282,14 @@ internal fun RouteResultsScreen(
                     hiddenTrains = hiddenTrains,
                     onOpen = openTravelPreferences
                 )
+                if (reliabilityStats != null && (reliability.isNotEmpty() || returnReliability.isNotEmpty())) {
+                    Text(
+                        networkReliabilityAttribution(reliabilityStats.windowEnd),
+                        modifier = Modifier.padding(horizontal = ScreenMargin, vertical = 4.dp).testTag("results-reliability-note"),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
                 if (viewModel.hasActiveRoute && (shown.isNotEmpty() || (roundTrip && returnShown.isNotEmpty()))) {
                     ResultsActions(
                         saved = savedTimetableId != null,
@@ -315,7 +346,8 @@ internal fun RouteResultsScreen(
             selectedJourneyId = selectedJourneyId,
             openDetails = openDetails,
             openJourney = openJourney,
-            stationIndex = stationIndex
+            stationIndex = stationIndex,
+            reliability = reliability
         )
         if (journeysMatch) {
             item(key = "journey-notices") {
@@ -354,7 +386,8 @@ internal fun RouteResultsScreen(
                 selectedJourneyId = null,
                 openDetails = openDetails,
                 openJourney = openJourney,
-                stationIndex = stationIndex
+                stationIndex = stationIndex,
+                reliability = returnReliability
             )
         }
         item { Spacer(Modifier.height(24.dp)) }
@@ -412,7 +445,8 @@ private fun LazyListScope.resultItems(
     selectedJourneyId: String?,
     openDetails: (TrainService) -> Unit,
     openJourney: (JourneyOptionRow) -> Unit,
-    stationIndex: OpenMapStationIndex
+    stationIndex: OpenMapStationIndex,
+    reliability: Map<String, EntryReliability>
 ) {
     when {
         state == RefreshState.LOADING && !hasSnapshot ->
@@ -432,14 +466,16 @@ private fun LazyListScope.resultItems(
                     selected = entry.service.id == selectedServiceId,
                     co2 = rememberCo2(entry.service, stationIndex),
                     lastOfDay = entry.lastOfDay,
-                    dataState = DataState.ofService(entry.service, listState)
+                    dataState = DataState.ofService(entry.service, listState),
+                    reliability = rememberEntryReliabilityText(reliability[entry.key], null)
                 )
                 is ResultEntry.Journey -> JourneyResultCard(
                     row = entry.row,
                     onOpen = { openJourney(entry.row) },
                     modifier = itemModifier.testTag("journey-result-card"),
                     selected = entry.row.id == selectedJourneyId,
-                    co2 = rememberCo2(entry.row, stationIndex)
+                    co2 = rememberCo2(entry.row, stationIndex),
+                    reliability = rememberEntryReliabilityText(reliability[entry.key], entry.row)
                 )
             }
         }
@@ -503,9 +539,39 @@ internal fun JourneyEmptyReason.messageRes(): Int = when (this) {
     JourneyEmptyReason.NO_DIRECT -> R.string.journey_empty_no_direct
 }
 
-/** The four chips of the render; each announces whether it is selected and how many options it shows. */
+/**
+ * The line of a result card from its network statistics ([EntryReliability]): the train at the destination, or the
+ * weakest train of a journey (named by [row]'s leg label when it has several) and its weakest change.
+ */
 @Composable
-private fun ResultFilterChips(selected: JourneyResultsFilter, counts: Map<JourneyResultsFilter, Int>, onSelect: (JourneyResultsFilter) -> Unit) {
+private fun rememberEntryReliabilityText(assessment: EntryReliability?, row: JourneyOptionRow?): NetworkReliabilityText? {
+    assessment ?: return null
+    val strings = rememberNetworkReliabilityStrings()
+    val resources = LocalResources.current
+    return remember(assessment, row, strings) {
+        val lines = when (assessment) {
+            is EntryReliability.Train -> listOf(NetworkReliabilityLines.train(assessment.stop, strings))
+            is EntryReliability.Journey -> NetworkReliabilityLines.journey(
+                assessment.journey,
+                legLabel = { index -> row?.legs?.getOrNull(index)?.let { journeyLegLabel(it, resources) }.orEmpty() },
+                strings = strings
+            )
+        }
+        NetworkReliabilityLines.text(lines, strings)
+    }
+}
+
+/**
+ * The chips of the render, and «Più affidabili» when the network statistics are available ([filters]); each
+ * announces whether it is selected and how many options it shows.
+ */
+@Composable
+private fun ResultFilterChips(
+    filters: List<JourneyResultsFilter>,
+    selected: JourneyResultsFilter,
+    counts: Map<JourneyResultsFilter, Int>,
+    onSelect: (JourneyResultsFilter) -> Unit
+) {
     val colors = BinarioTheme.colors
     val chipColors = FilterChipDefaults.filterChipColors(
         containerColor = colors.segmentTrack,
@@ -518,7 +584,7 @@ private fun ResultFilterChips(selected: JourneyResultsFilter, counts: Map<Journe
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         contentPadding = PaddingValues(horizontal = ScreenMargin)
     ) {
-        items(JourneyResultsFilter.entries) { filter ->
+        items(filters) { filter ->
             val label = stringResource(filter.labelRes())
             val count = counts[filter] ?: 0
             val description = label + ", " + pluralStringResource(R.plurals.search_results_count, count, count)
@@ -542,6 +608,7 @@ private fun JourneyResultsFilter.labelRes(): Int = when (this) {
     JourneyResultsFilter.FEWEST_CHANGES -> R.string.journey_filter_fewest_changes
     JourneyResultsFilter.FASTEST -> R.string.journey_filter_fastest
     JourneyResultsFilter.LEAST_WALKING -> R.string.journey_filter_least_walking
+    JourneyResultsFilter.MOST_RELIABLE -> R.string.journey_filter_most_reliable
 }
 
 /** The changes filter chosen in the planner ("Diretto", "Max 1 cambio"), shown on the results; a tap removes it. */

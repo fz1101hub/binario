@@ -33,6 +33,17 @@ val binarioVersionName = providers.gradleProperty("BINARIO_VERSION_NAME").get()
 fun personalTransitSources(buildType: String): Boolean =
     providers.gradleProperty("binario.personalSources").orNull?.toBooleanStrict() ?: (buildType == "debug")
 
+/**
+ * Unofficial network punctuality statistics (`src/main/assets/punctuality/`, aggregated from ViaggiaTreno observations
+ * by the CI pipeline): `-Pbinario.punctualityStats=false` leaves the file out of every APK and bundle and hides the
+ * feature (BuildConfig.NETWORK_PUNCTUALITY_STATS), so it can be withdrawn with one release. Unset, every build type
+ * includes it.
+ */
+val binarioPunctualityStats = providers.gradleProperty("binario.punctualityStats").orElse("true").get()
+val punctualityStatsIncluded = binarioPunctualityStats.toBooleanStrict()
+/** aapt's default ignore list, restated so that adding a pattern never drops the defaults. */
+val defaultIgnoredAssets = listOf("!.svn", "!.git", "!.ds_store", "!*.scc", ".*", "<dir>_*", "!CVS", "!thumbs.db", "!picasa.ini", "!*~")
+
 android {
     namespace = "it.binario.app"
     compileSdk = 36
@@ -44,7 +55,13 @@ android {
         versionCode = binarioVersionCode
         versionName = binarioVersionName
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        // The embedded network statistics and their screens; false with -Pbinario.punctualityStats=false.
+        buildConfigField("boolean", "NETWORK_PUNCTUALITY_STATS", binarioPunctualityStats)
+    }
 
+    androidResources {
+        // Without the statistics their asset directory (punctuality/) is not packaged in any build type.
+        if (!punctualityStatsIncluded) ignoreAssetsPatterns += defaultIgnoredAssets + "!punctuality"
     }
 
     buildFeatures {

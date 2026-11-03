@@ -105,8 +105,10 @@ class JourneyResultsPresenterTest {
         assertEquals(listOf("b", "a", "c"), ids(JourneyResultsFilter.FEWEST_CHANGES))
         assertEquals(listOf("b", "c", "a"), ids(JourneyResultsFilter.FASTEST))
         val presentation = JourneyResultsPresenter.present(result, JourneyResultsFilter.DIRECT, zone)
-        assertEquals(listOf(3, 1, 3, 3, 3), presentation.filters.map { it.count })
-        assertEquals(listOf(false, true, false, false, false), presentation.filters.map { it.selected })
+        // "Più affidabili" lists every option too (the statistics order them in the route results).
+        assertEquals(listOf(3, 1, 3, 3, 3, 3), presentation.filters.map { it.count })
+        assertEquals(listOf(false, true, false, false, false, false), presentation.filters.map { it.selected })
+        assertEquals(listOf("a", "c", "b"), ids(JourneyResultsFilter.MOST_RELIABLE))
         assertNull(presentation.emptyReason)
         assertTrue(presentation.showScheduledOnlyNotice)
         assertTrue(presentation.showCoverageNotice)

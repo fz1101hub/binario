@@ -1465,4 +1465,59 @@
     <string name="duration_hours_minutes">%1$d ч %2$d мин</string>
     <string name="duration_hours">%1$d ч</string>
     <string name="duration_minutes">%1$d мин</string>
+    <!-- Unofficial network punctuality statistics (embedded file, no request): result lines, «Più affidabili», train detail -->
+    <string name="journey_filter_most_reliable">Самые надёжные</string>
+    <plurals name="reliability_on_time_count">
+        <item quantity="one">Вовремя %1$d раз из %2$d</item>
+        <item quantity="few">Вовремя %1$d раза из %2$d</item>
+        <item quantity="many">Вовремя %1$d раз из %2$d</item>
+        <item quantity="other">Вовремя %1$d раза из %2$d</item>
+    </plurals>
+    <plurals name="reliability_leg_on_time_count">
+        <item quantity="one">%1$s вовремя %2$d раз из %3$d</item>
+        <item quantity="few">%1$s вовремя %2$d раза из %3$d</item>
+        <item quantity="many">%1$s вовремя %2$d раз из %3$d</item>
+        <item quantity="other">%1$s вовремя %2$d раза из %3$d</item>
+    </plurals>
+    <string name="reliability_mean_delay">среднее опоздание %1$s</string>
+    <plurals name="reliability_cancelled_count">
+        <item quantity="one">отменён %1$d раз</item>
+        <item quantity="few">отменён %1$d раза</item>
+        <item quantity="many">отменён %1$d раз</item>
+        <item quantity="other">отменён %1$d раза</item>
+    </plurals>
+    <plurals name="reliability_cancelled_share">
+        <item quantity="one">Отменён %1$d раз из %2$d</item>
+        <item quantity="few">Отменён %1$d раза из %2$d</item>
+        <item quantity="many">Отменён %1$d раз из %2$d</item>
+        <item quantity="other">Отменён %1$d раза из %2$d</item>
+    </plurals>
+    <plurals name="reliability_leg_cancelled_share">
+        <item quantity="one">%1$s отменён %2$d раз из %3$d</item>
+        <item quantity="few">%1$s отменён %2$d раза из %3$d</item>
+        <item quantity="many">%1$s отменён %2$d раз из %3$d</item>
+        <item quantity="other">%1$s отменён %2$d раза из %3$d</item>
+    </plurals>
+    <plurals name="reliability_connection_count">
+        <item quantity="one">Пересадка в %1$s удалась %2$d раз из %3$d</item>
+        <item quantity="few">Пересадка в %1$s удалась %2$d раза из %3$d</item>
+        <item quantity="many">Пересадка в %1$s удалась %2$d раз из %3$d</item>
+        <item quantity="other">Пересадка в %1$s удалась %2$d раза из %3$d</item>
+    </plurals>
+    <string name="reliability_spoken">%1$s (неофициальная статистика)</string>
+    <string name="reliability_attribution">Неофициальная статистика Binario по данным ViaggiaTreno, данные на %1$s</string>
+    <plurals name="reliability_title">
+        <item quantity="one">Надёжность за последний %1$d день</item>
+        <item quantity="few">Надёжность за последние %1$d дня</item>
+        <item quantity="many">Надёжность за последние %1$d дней</item>
+        <item quantity="other">Надёжность за последние %1$d дня</item>
+    </plurals>
+    <plurals name="reliability_detail_on_time">
+        <item quantity="one">Прибытие в %1$s: вовремя %2$d раз из %3$d</item>
+        <item quantity="few">Прибытие в %1$s: вовремя %2$d раза из %3$d</item>
+        <item quantity="many">Прибытие в %1$s: вовремя %2$d раз из %3$d</item>
+        <item quantity="other">Прибытие в %1$s: вовремя %2$d раза из %3$d</item>
+    </plurals>
+    <string name="reliability_detail_days">Дней под наблюдением: %1$d · отмен: %2$d</string>
+    <string name="reliability_threshold_note">Вовремя считается прибытие с опозданием не более %1$s.</string>
 </resources>
