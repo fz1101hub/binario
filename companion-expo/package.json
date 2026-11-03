@@ -47,7 +47,7 @@
     "react-native-web": "^0.21.2"
   },
   "devDependencies": {
-    "@expo/config-plugins": "54.0.5",
+    "@expo/config-plugins": "58.0.11",
     "@types/react": "~19.1.17",
     "typescript": "~5.9.3",
     "vitest": "^3.2.6"
