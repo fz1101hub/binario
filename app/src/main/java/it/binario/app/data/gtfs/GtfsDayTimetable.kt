@@ -18,8 +18,24 @@ internal class GtfsDayTrip(
     val operator: RailOperator,
     val mode: LegMode,
     val firstConnection: Int,
-    val connectionCount: Int
+    val connectionCount: Int,
+    /** GTFS block_id: trips of one block and service day run with the same vehicle one after the other; null if none. */
+    val blockId: String? = null,
+    /** GTFS wheelchair_accessible: [WHEELCHAIR_YES], [WHEELCHAIR_NO] or [WHEELCHAIR_UNKNOWN] (0 or empty). */
+    val wheelchairAccessible: Byte = WHEELCHAIR_UNKNOWN
 )
+
+/** GTFS wheelchair_boarding / wheelchair_accessible values; anything but 1 is never treated as accessible. */
+internal const val WHEELCHAIR_UNKNOWN: Byte = 0
+internal const val WHEELCHAIR_YES: Byte = 1
+internal const val WHEELCHAIR_NO: Byte = 2
+
+/** "1" and "2" as published; 0, empty and anything else are unknown. */
+internal fun wheelchairValue(raw: String?): Byte = when (raw?.trim()) {
+    "1" -> WHEELCHAIR_YES
+    "2" -> WHEELCHAIR_NO
+    else -> WHEELCHAIR_UNKNOWN
+}
 
 /**
  * The connections of one embedded pack on one GTFS service day, in trip order: connection `c` leaves
@@ -45,6 +61,20 @@ internal class GtfsDayTimetable private constructor(
 
     fun pickupAllowed(connection: Int): Boolean = boarding[connection].toInt() and NO_PICKUP == 0
     fun dropOffAllowed(connection: Int): Boolean = boarding[connection].toInt() and NO_DROP_OFF == 0
+
+    /** The latest departure minute of the day (-1 without connections), computed once. */
+    val lastDepartureMinute: Int by lazy(LazyThreadSafetyMode.PUBLICATION) { departureMinute.maxOrNull() ?: -1 }
+
+    /**
+     * The trips of every GTFS block with two trips or more, each in order of first departure: the runs one vehicle makes
+     * one after the other ("Resta a bordo"). Computed once per day and shared by the searches that use it.
+     */
+    val blockSequences: List<IntArray> by lazy(LazyThreadSafetyMode.PUBLICATION) {
+        val byBlock = HashMap<String, MutableList<Int>>()
+        trips.forEachIndexed { index, trip -> trip.blockId?.let { byBlock.getOrPut(it) { ArrayList(2) } += index } }
+        byBlock.values.filter { it.size > 1 }
+            .map { block -> block.sortedBy { departureMinute[trips[it].firstConnection] }.toIntArray() }
+    }
 
     /** Rough retained size, used to bound the planner's cache. */
     fun approximateBytes(): Long = connectionCount * (5L * Int.SIZE_BYTES + 1) + trips.size * 96L + stopIds.size * 96L
@@ -76,10 +106,12 @@ internal class GtfsDayTimetable private constructor(
             operatorName: String?,
             category: TrainCategory,
             operator: RailOperator,
-            mode: LegMode
+            mode: LegMode,
+            blockId: String? = null,
+            wheelchairAccessible: Byte = WHEELCHAIR_UNKNOWN
         ) {
             check(pending == null) { "Trip precedente non chiuso" }
-            pending = PendingTrip(tripId, publicNumber, lineLabel, operatorName, category, operator, mode, count)
+            pending = PendingTrip(tripId, publicNumber, lineLabel, operatorName, category, operator, mode, count, blockId, wheelchairAccessible)
         }
 
         fun connection(
@@ -116,7 +148,9 @@ internal class GtfsDayTimetable private constructor(
                 operator = trip.operator,
                 mode = trip.mode,
                 firstConnection = trip.firstConnection,
-                connectionCount = trip.connections
+                connectionCount = trip.connections,
+                blockId = trip.blockId,
+                wheelchairAccessible = trip.wheelchairAccessible
             )
         }
 
@@ -167,6 +201,8 @@ internal class GtfsDayTimetable private constructor(
             val operator: RailOperator,
             val mode: LegMode,
             val firstConnection: Int,
+            val blockId: String?,
+            val wheelchairAccessible: Byte,
             var connections: Int = 0
         )
     }
@@ -179,7 +215,8 @@ internal class GtfsDayTimetable private constructor(
 
 /**
  * stops.txt of one pack: stop_id, stop_name, parent_station (blank when the stop has no parent), stop_code (blank
- * when absent) and stop_lat/stop_lon (NaN when absent or unreadable).
+ * when absent), stop_lat/stop_lon (NaN when absent or unreadable) and wheelchair_boarding ([WHEELCHAIR_UNKNOWN] when
+ * absent; a platform without its own value takes its parent station's, as the GTFS reference says).
  */
 internal class GtfsStopDirectory(
     val ids: Array<String>,
@@ -187,11 +224,28 @@ internal class GtfsStopDirectory(
     val parents: Array<String>,
     val codes: Array<String> = Array(ids.size) { "" },
     val latitudes: DoubleArray = DoubleArray(ids.size) { Double.NaN },
-    val longitudes: DoubleArray = DoubleArray(ids.size) { Double.NaN }
+    val longitudes: DoubleArray = DoubleArray(ids.size) { Double.NaN },
+    val wheelchair: ByteArray = ByteArray(ids.size)
 ) {
     init {
         require(ids.size == names.size && ids.size == parents.size)
-        require(ids.size == codes.size && ids.size == latitudes.size && ids.size == longitudes.size)
+        require(ids.size == codes.size && ids.size == latitudes.size && ids.size == longitudes.size && ids.size == wheelchair.size)
+    }
+
+    companion object {
+        /**
+         * The wheelchair_boarding of every stop: its own 1 or 2, else (0 or empty) its parent station's. Only one level
+         * is followed (platform → station), like the GTFS reference.
+         */
+        fun inheritWheelchair(ids: Array<String>, parents: Array<String>, own: ByteArray): ByteArray {
+            val indexById = HashMap<String, Int>(ids.size * 2)
+            ids.forEachIndexed { index, id -> indexById.putIfAbsent(id, index) }
+            return ByteArray(ids.size) { index ->
+                val value = own[index]
+                if (value != WHEELCHAIR_UNKNOWN || parents[index].isEmpty()) value
+                else indexById[parents[index]]?.let { own[it] } ?: WHEELCHAIR_UNKNOWN
+            }
+        }
     }
 
     val size: Int get() = ids.size

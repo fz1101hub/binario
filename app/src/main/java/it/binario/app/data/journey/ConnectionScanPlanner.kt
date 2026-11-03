@@ -78,7 +78,18 @@ internal data class ScannedJourney(
     val egressWalk: ScannedWalk? = null
 ) {
     val transfers: Int get() = legs.size - 1
+
+    /** Minutes spent walking: from the origin, between vehicles and to the destination. */
+    val walkMinutes: Int get() =
+        (accessWalk?.minutes ?: 0) + transferWalks.sumOf { it?.minutes ?: 0 } + (egressWalk?.minutes ?: 0)
 }
+
+/**
+ * The journeys of [ConnectionScanPlanner.planWithOutcome]. [exhausted]: every scan of the window was made (the last one
+ * found nothing or the window ended) and nothing was cut by `maxResults`, so no other Pareto-optimal option leaves
+ * inside the window.
+ */
+internal data class PlanOutcome(val journeys: List<ScannedJourney>, val exhausted: Boolean)
 
 internal data class ConnectionScanQuery(
     /** Origin nodes: the journey may board there with no walk. */
@@ -104,7 +115,12 @@ internal data class ConnectionScanQuery(
      */
     val originWalkMinutes: IntArray? = null,
     /** Minutes of walking from a node to the destination (-1: none). Destination nodes need no walk. */
-    val destinationWalkMinutes: IntArray? = null
+    val destinationWalkMinutes: IntArray? = null,
+    /**
+     * "Preferisci: meno camminate": of two options with the same trains, or the same departure, arrival and changes,
+     * the one that walks less is kept (otherwise the first found). Ranking only, never another journey.
+     */
+    val preferLessWalking: Boolean = false
 ) {
     init {
         require(maxTransfers in 0..6) { "Numero di cambi non supportato" }
@@ -140,32 +156,45 @@ internal data class ConnectionScanQuery(
  */
 internal class ConnectionScanPlanner(private val timetable: ConnectionScanTimetable) {
 
-    fun plan(query: ConnectionScanQuery, ensureActive: () -> Unit = {}): List<ScannedJourney> {
+    fun plan(query: ConnectionScanQuery, ensureActive: () -> Unit = {}): List<ScannedJourney> =
+        planWithOutcome(query, ensureActive).journeys
+
+    fun planWithOutcome(query: ConnectionScanQuery, ensureActive: () -> Unit = {}): PlanOutcome {
         require(query.origins.size == timetable.nodeCount && query.destinations.size == timetable.nodeCount) {
             "Origini e destinazioni devono coprire tutti i nodi"
         }
         val access = walkTimes(query.origins, query.originWalkMinutes)
         val egress = walkTimes(query.destinations, query.destinationWalkMinutes)
-        if (access.none { it >= 0 } || egress.none { it >= 0 }) return emptyList()
-        if ((0 until timetable.nodeCount).any { query.origins[it] && query.destinations[it] }) return emptyList()
+        if (access.none { it >= 0 } || egress.none { it >= 0 }) return PlanOutcome(emptyList(), exhausted = true)
+        if ((0 until timetable.nodeCount).any { query.origins[it] && query.destinations[it] }) return PlanOutcome(emptyList(), exhausted = true)
 
         val state = ScanState(query.maxTransfers + 1, timetable.nodeCount, timetable.tripCount, access, egress)
         val found = ArrayList<ScannedJourney>()
         var from = query.departureMinute
         var iterations = 0
-        while (from <= query.latestDepartureMinute && iterations < query.maxIterations) {
+        var exhausted = false
+        while (true) {
+            if (from > query.latestDepartureMinute) {
+                exhausted = true
+                break
+            }
+            if (iterations >= query.maxIterations) break
             iterations += 1
             ensureActive()
             val run = scan(from, query, state, ensureActive)
-            if (run.isEmpty()) break
+            if (run.isEmpty()) {
+                exhausted = true
+                break
+            }
             found += run
             from = run.minOf { it.departureMinute } + 1
-            val selected = select(found)
+            val selected = select(found, query.preferLessWalking)
             // A later scan only finds options leaving at or after `from`, which can never dominate an option
             // that already arrived before `from`: once the first maxResults options all did, they are final.
             if (selected.size >= query.maxResults && selected.take(query.maxResults).all { it.arrivalMinute < from }) break
         }
-        return select(found).take(query.maxResults)
+        val selected = select(found, query.preferLessWalking)
+        return PlanOutcome(selected.take(query.maxResults), exhausted && selected.size <= query.maxResults)
     }
 
     private fun scan(
@@ -333,14 +362,18 @@ internal class ConnectionScanPlanner(private val timetable: ConnectionScanTimeta
         return low
     }
 
-    private fun select(found: List<ScannedJourney>): List<ScannedJourney> {
+    private fun select(found: List<ScannedJourney>, preferLessWalking: Boolean = false): List<ScannedJourney> {
+        fun <K> MutableMap<K, ScannedJourney>.offer(key: K, journey: ScannedJourney) {
+            val kept = putIfAbsent(key, journey) ?: return
+            if (preferLessWalking && journey.walkMinutes < kept.walkMinutes) put(key, journey)
+        }
         val byTrains = LinkedHashMap<List<Int>, ScannedJourney>()
         for (journey in found) {
-            byTrains.putIfAbsent(journey.legs.map { timetable.trip[it.boardConnection] }, journey)
+            byTrains.offer(journey.legs.map { timetable.trip[it.boardConnection] }, journey)
         }
         val byCriteria = LinkedHashMap<Triple<Int, Int, Int>, ScannedJourney>()
         for (journey in byTrains.values) {
-            byCriteria.putIfAbsent(Triple(journey.departureMinute, journey.arrivalMinute, journey.transfers), journey)
+            byCriteria.offer(Triple(journey.departureMinute, journey.arrivalMinute, journey.transfers), journey)
         }
         val candidates = byCriteria.values.toList()
         return candidates

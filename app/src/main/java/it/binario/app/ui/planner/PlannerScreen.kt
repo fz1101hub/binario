@@ -38,6 +38,7 @@ import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.SwapVert
 import androidx.compose.material.icons.filled.ToggleOff
 import androidx.compose.material.icons.filled.ToggleOn
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.FilterChip
@@ -116,7 +117,9 @@ internal fun PlannerScreen(
     showResults: () -> Unit,
     showTrainResults: () -> Unit,
     openMore: () -> Unit,
-    openStations: (Station?) -> Unit
+    openStations: (Station?) -> Unit,
+    /** Impostazioni › Preferenze di viaggio, from the filters. */
+    openTravelPreferences: () -> Unit = {}
 ) {
     var originText by rememberSaveable { mutableStateOf(viewModel.plannerOriginText()) }
     var destinationText by rememberSaveable { mutableStateOf(viewModel.plannerDestinationText()) }
@@ -430,6 +433,11 @@ internal fun PlannerScreen(
                                     JourneyChangeFilterBar(viewModel.journeyChangeFilter, viewModel::selectJourneyChangeFilter)
                                     OperatorFilterBar(viewModel.operatorFilter, viewModel.operatorFilterOptions(), viewModel::selectOperatorFilter)
                                     Text(stringResource(R.string.planner_filter_disclosure), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    TextButton(onClick = openTravelPreferences, modifier = Modifier.testTag("planner-travel-preferences")) {
+                                        Icon(Icons.Default.Tune, contentDescription = null)
+                                        Spacer(Modifier.width(8.dp))
+                                        Text(stringResource(R.string.settings_section_travel))
+                                    }
                                 }
                                 Button(
                                     onClick = search,

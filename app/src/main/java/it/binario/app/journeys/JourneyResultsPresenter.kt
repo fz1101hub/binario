@@ -9,7 +9,11 @@ import it.binario.app.data.journey.EmbeddedGtfsJourneyProvider
 import it.binario.app.data.repository.JourneySearchResult
 import it.binario.app.data.repository.JourneySearchStatus
 import it.binario.app.data.repository.SourcedJourneyOption
+import it.binario.app.data.provider.JourneyPreferences
+import it.binario.app.data.provider.JourneyRanking
+import it.binario.app.data.provider.TravelMode
 import java.time.Duration
+import java.time.LocalDate
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
@@ -17,8 +21,8 @@ import java.time.temporal.ChronoUnit
 import java.util.Locale
 
 /**
- * Filters and sorts of the results screen: "Tutti", "Diretti", "Meno cambi", "Più veloce". [resourceName] is the
- * string resource of the chip label.
+ * Filters and sorts of the results screen: "Tutti", "Diretti", "Meno cambi", "Più veloce", "Meno a piedi".
+ * [resourceName] is the string resource of the chip label.
  */
 enum class JourneyResultsFilter(val resourceName: String) {
     /** Every option, by departure. */
@@ -28,7 +32,21 @@ enum class JourneyResultsFilter(val resourceName: String) {
     /** Every option, fewest changes first, then by departure. */
     FEWEST_CHANGES("journey_filter_fewest_changes"),
     /** Every option, shortest total duration first, then by departure. */
-    FASTEST("journey_filter_fastest")
+    FASTEST("journey_filter_fastest"),
+    /** Every option, least walking first, then by departure. */
+    LEAST_WALKING("journey_filter_least_walking");
+
+    companion object {
+        /**
+         * The chip the results open on for "Preferisci" ([JourneyPreferences.ranking]): the default ("percorso più
+         * rapido") keeps "Tutti", the planner's earliest arrivals in order of departure.
+         */
+        fun forRanking(ranking: JourneyRanking): JourneyResultsFilter = when (ranking) {
+            JourneyRanking.FASTEST -> ALL
+            JourneyRanking.FEWEST_CHANGES -> FEWEST_CHANGES
+            JourneyRanking.LEAST_WALKING -> LEAST_WALKING
+        }
+    }
 }
 
 /** "Diretto" ([directResourceName]) or "N cambi" ([changesPluralName] with quantity and argument [Changes.count]). */
@@ -140,10 +158,25 @@ data class JourneyLegRow(
     val departureDelayMinutes: Int = 0,
     val arrivalDelayMinutes: Int = 0,
     /** "HH:mm" of the city realtime observation shown next to [JourneyLegLive.sourceLabel]. */
-    val liveObservedTime: String? = null
+    val liveObservedTime: String? = null,
+    /** The trip is published as wheelchair accessible (GTFS 1); false when unknown or not accessible. */
+    val wheelchairTrip: Boolean = false,
+    /** The whole leg (trip and the two stops, or both ends of a walk) is published as wheelchair accessible. */
+    val wheelchairAccessible: Boolean = false,
+    /** "Resta a bordo: il treno prosegue come …", only where the vehicle goes on under another label. */
+    val continuations: List<JourneyContinuationRow> = emptyList()
 ) {
     val isBus: Boolean get() = vehicle.isBus
 }
+
+/** The vehicle of a leg going on as another run at [stationLabel] ("Resta a bordo"), labelled like a leg. */
+data class JourneyContinuationRow(
+    val stationLabel: String,
+    val lineLabel: String?,
+    val number: String?,
+    val operatorName: String?,
+    val trainCategory: TrainCategory
+)
 
 /**
  * A change between two vehicles: where the next one leaves, when the traveller gets there (the first vehicle's
@@ -186,7 +219,17 @@ data class JourneyOptionRow(
     /** Scheduled times only: no delay, platform or cancellation checked (`journey_scheduled_only_notice`). */
     val scheduledOnly: Boolean,
     /** The worst change of the option with live data (see [TransferRiskLevel]); UNKNOWN without live data. */
-    val transferRisk: TransferRiskLevel = TransferRiskLevel.UNKNOWN
+    val transferRisk: TransferRiskLevel = TransferRiskLevel.UNKNOWN,
+    /** Minutes on foot (to the metro, between stations): the "Meno a piedi" order. */
+    val walkMinutes: Long = 0,
+    /** Every leg published as wheelchair accessible (trips, boarding and alighting stops, both ends of each walk). */
+    val wheelchairAccessible: Boolean = false,
+    /** GTFS service day of the first vehicle; null when the source does not say. */
+    val serviceDate: LocalDate? = null,
+    /** The kinds of service the option uses ([TravelMode]), for the preferred kinds. */
+    val modes: Set<TravelMode> = emptySet(),
+    /** The last departure of the static timetable's service day for this origin and destination ("Ultimo di oggi"). */
+    val lastOfDay: Boolean = false
 ) {
     /** Some leg is a bus (scheduled coach or replacement): for a bus icon on the row or a "no bus" filter. */
     val hasBusLeg: Boolean get() = legs.any(JourneyLegRow::isBus)
@@ -212,7 +255,14 @@ data class JourneyResultsPresentation(
     /** An offline-timetable option is shown: show `journey_coverage_notice` (the networks the packs cover). */
     val showCoverageNotice: Boolean,
     /** Part of the source data could not be read: show `journey_incomplete_notice`. */
-    val showIncompleteNotice: Boolean
+    val showIncompleteNotice: Boolean,
+    /**
+     * "Non ci sono più treni oggi: primo domani alle HH:mm": no option of the requested service day is left and this is
+     * the first of the next one ("HH:mm"); null otherwise or without a requested day.
+     */
+    val firstDepartureNextDay: String? = null,
+    /** "Solo accessibili" found nothing and there is no wheelchair data around the two ends (`journey_accessibility_unavailable`). */
+    val accessibilityDataUnavailable: Boolean = false
 )
 
 /** Plain, resource-free presentation of a [JourneySearchResult] for the results screen. */
@@ -224,10 +274,20 @@ object JourneyResultsPresenter {
         filter: JourneyResultsFilter = JourneyResultsFilter.ALL,
         zone: ZoneId = RailTime.defaultZone,
         /** Live data of the legs ([TransferRiskCalculator.legKey]), from [JourneyLiveLookup]; empty on the timetable only. */
-        live: Map<String, JourneyLegLive> = emptyMap()
+        live: Map<String, JourneyLegLive> = emptyMap(),
+        /**
+         * The requested day, for "Ultimo di oggi" and "primo domani": pass it only when the search is for today. Null
+         * marks nothing.
+         */
+        serviceDate: LocalDate? = null,
+        /** Travel preferences: the preferred kinds and "Preferisci" break the ties of the sorted chips. */
+        preferences: JourneyPreferences? = null
     ): JourneyResultsPresentation {
-        val all = result.options.map { row(it, zone, live) }
-        val rows = apply(all, filter)
+        val unmarked = result.options.map { row(it, zone, live) }
+        val markedLast = result.options.filter { it.option.lastOfServiceDay }.mapTo(HashSet()) { it.option.id.value }
+        val bounds = serviceDate?.let { dayBounds(unmarked, it, markedLast) }
+        val all = unmarked.map { if (it.id == bounds?.lastOfDayId) it.copy(lastOfDay = true) else it }
+        val rows = apply(all, filter, preferences)
         val emptyReason = when {
             rows.isNotEmpty() -> null
             all.isNotEmpty() -> JourneyEmptyReason.NO_DIRECT
@@ -248,17 +308,56 @@ object JourneyResultsPresenter {
             emptyReason = emptyReason,
             showScheduledOnlyNotice = all.any { it.scheduledOnly },
             showCoverageNotice = all.any { it.sourceLabel == JourneySourceLabel.OFFLINE_TIMETABLE },
-            showIncompleteNotice = result.incompleteCoverage
+            showIncompleteNotice = result.incompleteCoverage,
+            firstDepartureNextDay = bounds?.firstNextDay?.departureTime,
+            accessibilityDataUnavailable = result.accessibilityDataUnavailable
         )
     }
 
-    fun apply(rows: List<JourneyOptionRow>, filter: JourneyResultsFilter): List<JourneyOptionRow> {
+    /** The last option of [serviceDate] and, when none is left, the first of the next day. */
+    internal class DayBounds(val lastOfDayId: String?, val firstNextDay: JourneyOptionRow?)
+
+    /**
+     * "Ultimo di oggi" from the static timetable: the option the offline planner marked as the last of the service day
+     * ([it.binario.app.data.core.JourneyOption.lastOfServiceDay]), or the latest one of [serviceDate] when the list also
+     * holds an option of a later day (the planner scans in order of departure, so nothing of the day comes after it).
+     * Live sources are never used for it.
+     */
+    internal fun dayBounds(rows: List<JourneyOptionRow>, serviceDate: LocalDate, markedLast: Set<String> = emptySet()): DayBounds {
+        val offline = rows.filter { it.sourceLabel == JourneySourceLabel.OFFLINE_TIMETABLE }
+        fun dayOf(row: JourneyOptionRow): LocalDate = row.serviceDate ?: row.departure.toLocalDate()
+        val later = offline.filter { dayOf(it) > serviceDate }
+        val today = offline.filter { dayOf(it) <= serviceDate }
+        val latest = today.maxByOrNull { it.departure.toInstant() }
+        return DayBounds(
+            lastOfDayId = latest?.id?.takeIf { later.isNotEmpty() || it in markedLast },
+            firstNextDay = if (today.isEmpty()) later.minByOrNull { it.departure.toInstant() } else null
+        )
+    }
+
+    /**
+     * The order of a chip. "Tutti" and "Diretti" stay in order of departure; the sorted chips keep their own key first,
+     * then the options with a preferred kind of service, then the "Preferisci" key, then the departure.
+     */
+    fun apply(rows: List<JourneyOptionRow>, filter: JourneyResultsFilter, preferences: JourneyPreferences? = null): List<JourneyOptionRow> {
         val byDeparture = compareBy<JourneyOptionRow> { it.departure.toInstant() }.thenBy { it.arrival.toInstant() }
+        val ties = tieBreak(preferences).then(byDeparture)
         return when (filter) {
             JourneyResultsFilter.ALL -> rows.sortedWith(byDeparture)
             JourneyResultsFilter.DIRECT -> rows.filter { it.changes == 0 }.sortedWith(byDeparture)
-            JourneyResultsFilter.FEWEST_CHANGES -> rows.sortedWith(compareBy<JourneyOptionRow> { it.changes }.then(byDeparture))
-            JourneyResultsFilter.FASTEST -> rows.sortedWith(compareBy<JourneyOptionRow> { it.durationMinutes }.then(byDeparture))
+            JourneyResultsFilter.FEWEST_CHANGES -> rows.sortedWith(compareBy<JourneyOptionRow> { it.changes }.then(ties))
+            JourneyResultsFilter.FASTEST -> rows.sortedWith(compareBy<JourneyOptionRow> { it.durationMinutes }.then(ties))
+            JourneyResultsFilter.LEAST_WALKING -> rows.sortedWith(compareBy<JourneyOptionRow> { it.walkMinutes }.then(ties))
+        }
+    }
+
+    private fun tieBreak(preferences: JourneyPreferences?): Comparator<JourneyOptionRow> {
+        val preferred = preferences?.preferredModes.orEmpty()
+        val byPreferred = compareByDescending<JourneyOptionRow> { row -> row.modes.count { it in preferred } }
+        return when (preferences?.ranking ?: JourneyRanking.FASTEST) {
+            JourneyRanking.FASTEST -> byPreferred.thenBy { it.durationMinutes }
+            JourneyRanking.FEWEST_CHANGES -> byPreferred.thenBy { it.changes }
+            JourneyRanking.LEAST_WALKING -> byPreferred.thenBy { it.walkMinutes }
         }
     }
 
@@ -291,6 +390,7 @@ object JourneyResultsPresenter {
         val departure = option.departure.withZoneSameInstant(zone)
         val arrival = option.arrival.withZoneSameInstant(zone)
         val duration = Duration.between(option.departure, option.arrival).toMinutes().coerceAtLeast(0)
+        val vehicles = option.legs.filter { it.mode != LegMode.WALK }
         return JourneyOptionRow(
             id = option.id.value,
             departure = departure,
@@ -309,7 +409,13 @@ object JourneyResultsPresenter {
             sourceLabel = if (sourced.sourceId == EmbeddedGtfsJourneyProvider.SOURCE_ID) JourneySourceLabel.OFFLINE_TIMETABLE else JourneySourceLabel.OTHER,
             sourceName = sourced.sourceName,
             scheduledOnly = sourced.scheduledOnly,
-            transferRisk = TransferRiskLevel.worst(transfers.map { it.risk })
+            transferRisk = TransferRiskLevel.worst(transfers.map { it.risk }),
+            walkMinutes = legs.filter { it.mode == LegMode.WALK }.sumOf { it.durationMinutes },
+            wheelchairAccessible = option.legs.isNotEmpty() && option.legs.all { it.wheelchair?.accessible == true },
+            serviceDate = vehicles.firstOrNull()?.serviceDate,
+            modes = vehicles.mapNotNullTo(linkedSetOf()) { leg ->
+                TravelMode.of(leg.mode, leg.serviceKind, leg.operatorName)
+            } + vehicles.flatMap { leg -> leg.continuations.mapNotNull { TravelMode.of(leg.mode, it.serviceKind, it.operatorName) } }
         )
     }
 
@@ -335,12 +441,42 @@ object JourneyResultsPresenter {
         expectedArrivalTime = live?.expectedArrival?.takeIf { !live.cancelled }?.let { time(it.atZone(zone), zone) },
         departureDelayMinutes = live?.expectedDeparture?.takeIf { !live.cancelled }?.let { delayMinutes(leg.scheduledDeparture, it) } ?: 0,
         arrivalDelayMinutes = live?.expectedArrival?.takeIf { !live.cancelled }?.let { delayMinutes(leg.scheduledArrival, it) } ?: 0,
-        liveObservedTime = live?.takeIf { it.sourceLabel != null }?.observedAt?.let { time(it.atZone(zone), zone) }
+        liveObservedTime = live?.takeIf { it.sourceLabel != null }?.observedAt?.let { time(it.atZone(zone), zone) },
+        wheelchairTrip = leg.mode != LegMode.WALK && leg.wheelchair?.vehicle == true,
+        wheelchairAccessible = leg.wheelchair?.accessible == true,
+        continuations = continuations(leg)
     )
 
     /** Whole minutes late, rounded down like the boards (a run 59 seconds late is on time). */
     private fun delayMinutes(scheduled: ZonedDateTime, expected: java.time.Instant): Int =
         Math.floorDiv(Duration.between(scheduled.toInstant(), expected).seconds, 60L).toInt()
+
+    /**
+     * The "Resta a bordo" notes of a leg: one per change of label (line, number or operator) on the way. A run that
+     * goes on under the very same label in another pack is still one train and needs no note.
+     */
+    private fun continuations(leg: JourneyLeg): List<JourneyContinuationRow> {
+        var line = leg.lineLabel
+        var number = leg.publicNumber
+        var operator = leg.operatorName
+        return leg.continuations.mapNotNull { next ->
+            val same = sameLabel(line, next.lineLabel) && sameLabel(number, next.publicNumber) && sameLabel(operator, next.operatorName)
+            line = next.lineLabel
+            number = next.publicNumber
+            operator = next.operatorName
+            if (same) null
+            else JourneyContinuationRow(
+                stationLabel = next.stationLabel ?: next.station.value,
+                lineLabel = next.lineLabel,
+                number = next.publicNumber,
+                operatorName = next.operatorName,
+                trainCategory = trainCategory(leg.copy(lineLabel = next.lineLabel, operatorName = next.operatorName, serviceKind = next.serviceKind))
+            )
+        }
+    }
+
+    private fun sameLabel(first: String?, second: String?): Boolean =
+        first.orEmpty().replace(" ", "").equals(second.orEmpty().replace(" ", ""), ignoreCase = true)
 
     /** The app's category for a leg; a foreign high-speed train is never called a "Freccia", a bus is never a train. */
     internal fun trainCategory(leg: JourneyLeg): TrainCategory {

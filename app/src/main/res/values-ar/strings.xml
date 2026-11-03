@@ -1447,4 +1447,42 @@
     <string name="trip_estimate_active_title">التقدير من الموقع نشط للقطار %1$s</string>
     <string name="trip_estimate_privacy_short">يبقى موقعك على الهاتف: لا يُحفظ ولا يُرسل.</string>
     <string name="action_trip_estimate_stop">إيقاف التقدير</string>
+    <!-- Journey planner: in-seat continuations, travel preferences, wheelchair access, last train of the day -->
+    <string name="journey_in_seat_continuation">ابقَ في القطار: يواصل القطار باسم %1$s</string>
+    <string name="journey_last_of_day">الأخير اليوم</string>
+    <string name="journey_no_more_today">لا مزيد من القطارات اليوم: أول قطار غدًا الساعة %1$s</string>
+    <string name="journey_accessibility_unavailable">بيانات إمكانية الوصول غير متاحة لهذه المنطقة</string>
+    <string name="journey_filter_least_walking">مشي أقل</string>
+    <string name="wheelchair_station">محطة مهيأة للكراسي المتحركة</string>
+    <string name="wheelchair_trip">خدمة مهيأة للكراسي المتحركة</string>
+    <string name="wheelchair_journey">رحلة مهيأة للكراسي المتحركة</string>
+    <string name="settings_section_travel">تفضيلات السفر</string>
+    <string name="settings_section_travel_detail">سرعة المشي والتبديلات وأنواع القطارات وإمكانية الوصول</string>
+    <string name="travel_preferences_description">تبقى على هذا الجهاز وتنطبق على الرحلات المحسوبة من الجداول دون اتصال.</string>
+    <string name="travel_walking_speed">سرعة المشي</string>
+    <string name="travel_walking_slow">بطيئة · 3,5 كم/س</string>
+    <string name="travel_walking_normal">عادية · 4,5 كم/س</string>
+    <string name="travel_walking_fast">سريعة · 5,5 كم/س</string>
+    <string name="travel_max_walk">أطول مشي لكل مقطع</string>
+    <string name="travel_ranking">التفضيل</string>
+    <string name="travel_ranking_fastest">أسرع مسار</string>
+    <string name="travel_ranking_least_walking">أقل مشي</string>
+    <string name="travel_modes">أنواع الخدمة</string>
+    <string name="travel_modes_description">انقر مرة للتفضيل، ومرتين للتجنب، وثلاث مرات للإلغاء.</string>
+    <string name="travel_mode_state_any">بلا تفضيل</string>
+    <string name="travel_mode_state_prefer">مفضّل</string>
+    <string name="travel_mode_state_avoid">تجنّب</string>
+    <string name="travel_mode_high_speed">قطارات فائقة السرعة</string>
+    <string name="travel_mode_funicular">قطارات جبلية مائلة</string>
+    <string name="travel_mode_operator_bus">حافلات المشغّل</string>
+    <string name="travel_wheelchair_only">الرحلات المهيأة للكراسي المتحركة فقط</string>
+    <string name="travel_wheelchair_note">ينطبق فقط حيث تذكر الجداول إمكانية وصول القطارات والمحطات: البيانات الناقصة لا تُعدّ أبدًا مهيأة.</string>
+    <plurals name="results_hidden_by_preferences">
+        <item quantity="zero">قطارات مباشرة أخفتها تفضيلات السفر: %d</item>
+        <item quantity="one">قطارات مباشرة أخفتها تفضيلات السفر: %d</item>
+        <item quantity="two">قطارات مباشرة أخفتها تفضيلات السفر: %d</item>
+        <item quantity="few">قطارات مباشرة أخفتها تفضيلات السفر: %d</item>
+        <item quantity="many">قطارات مباشرة أخفتها تفضيلات السفر: %d</item>
+        <item quantity="other">قطارات مباشرة أخفتها تفضيلات السفر: %d</item>
+    </plurals>
 </resources>

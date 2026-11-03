@@ -155,7 +155,9 @@ data class JourneySearchRequest(
     val originEndpoint: JourneyEndpoint? = null,
     val destinationEndpoint: JourneyEndpoint? = null,
     /** At most this many options, sorted by departure. */
-    val maxResults: Int = 6
+    val maxResults: Int = 6,
+    /** "Preferenze di viaggio"; null keeps the provider's own defaults (walks of at most 400 m at 4.5 km/h). */
+    val preferences: JourneyPreferences? = null
 ) {
     init {
         require(origin != destination) { "Origine e destinazione devono essere diverse" }

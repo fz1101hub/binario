@@ -223,6 +223,8 @@ internal fun BinarioApp(
     var plannerSearchRequestId by rememberSaveable { mutableIntStateOf(0) }
     var showThemePicker by rememberSaveable { mutableStateOf(false) }
     var settingsSectionName by rememberSaveable { mutableStateOf(SettingsSection.ALERTS.name) }
+    // Where Back leaves a settings section: "Impostazioni", or the planner or results that opened the travel preferences.
+    var settingsReturnScreen by rememberSaveable { mutableStateOf(AppScreen.SETTINGS) }
     var pendingStopAlarm by rememberSaveable(stateSaver = stopAlarmPlanSaver) {
         mutableStateOf<StopAlarmPlan?>(null)
     }
@@ -358,6 +360,12 @@ internal fun BinarioApp(
             journeyViewModel.searchJourneys(request.origin, request.destination, request.departure.toLocalDate(), request.departure.toLocalTime())
         }
     }
+    /** Impostazioni › Preferenze di viaggio, from the planner's and the results' filters. */
+    fun openTravelPreferences() {
+        settingsSectionName = SettingsSection.TRAVEL.name
+        settingsReturnScreen = screen.takeIf { it == AppScreen.PLANNER || it == AppScreen.RESULTS } ?: AppScreen.SETTINGS
+        showScreen(AppScreen.SETTINGS_SECTION)
+    }
     fun openJourney(row: JourneyOptionRow) {
         selectedJourneyId = row.id
         showScreen(AppScreen.JOURNEY_DETAIL)
@@ -445,7 +453,7 @@ internal fun BinarioApp(
     }
     val plannerSearchMode = SearchMode.valueOf(plannerSearchModeName)
     val operationsSection = OperationsSection.valueOf(operationsSectionName)
-    val backTarget = AppNavigation.back(screen, detailReturnScreen)
+    val backTarget = if (screen == AppScreen.SETTINGS_SECTION) settingsReturnScreen else AppNavigation.back(screen, detailReturnScreen)
     val navigateBack: () -> Unit = { backTarget?.let(::showScreen) }
     BackHandler(enabled = backTarget != null, onBack = navigateBack)
     val selectedDestination = AppNavigation.destinationOf(screen, detailReturnScreen)
@@ -496,7 +504,8 @@ internal fun BinarioApp(
                 openStations = { station ->
                     station?.let(viewModel::openStationBoard)
                     showDepartures(OperationsSection.STATIONS)
-                }
+                },
+                openTravelPreferences = ::openTravelPreferences
             )
             AppScreen.DEPARTURES -> DeparturesScreen(
                 modifier = modifier,
@@ -541,6 +550,7 @@ internal fun BinarioApp(
                 onThemeModeChange = onThemeModeChange,
                 openSection = { section ->
                     settingsSectionName = section.name
+                    settingsReturnScreen = AppScreen.SETTINGS
                     showScreen(AppScreen.SETTINGS_SECTION)
                 }
             )
@@ -585,7 +595,8 @@ internal fun BinarioApp(
                     viewModel.selectedService?.id.takeIf { screen == AppScreen.DETAIL }
                         ?: viewModel.currentServices().firstOrNull()?.id.takeIf { screen != AppScreen.JOURNEY_DETAIL }
                 } else null,
-                selectedJourneyId = selectedJourneyId.takeIf { inSidePane && screen == AppScreen.JOURNEY_DETAIL }
+                selectedJourneyId = selectedJourneyId.takeIf { inSidePane && screen == AppScreen.JOURNEY_DETAIL },
+                openTravelPreferences = ::openTravelPreferences
             )
             AppScreen.JOURNEY_DETAIL -> {
                 val row = remember(journeyState.result, journeyState.liveLegs, selectedJourneyId) {

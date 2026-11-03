@@ -8,6 +8,8 @@ import it.binario.app.data.core.JourneyOption
 import it.binario.app.data.core.SourceId
 import it.binario.app.data.core.StationId
 import it.binario.app.data.provider.JourneyEndpoint
+import it.binario.app.data.provider.JourneyPreferences
+import it.binario.app.data.provider.WheelchairDataAware
 import it.binario.app.data.provider.JourneyProvider
 import it.binario.app.data.provider.JourneySearchRequest
 import it.binario.app.data.provider.ProviderErrorKind
@@ -28,7 +30,9 @@ data class JourneySearchQuery(
     val destination: Station,
     val departure: LocalDateTime,
     val maxTransfers: Int = 2,
-    val maxResults: Int = 6
+    val maxResults: Int = 6,
+    /** "Preferenze di viaggio" (walks, ranking, service kinds, wheelchair access); null: the planner's defaults. */
+    val preferences: JourneyPreferences? = null
 )
 
 enum class JourneySearchStatus {
@@ -61,7 +65,12 @@ data class JourneySearchResult(
     val consultedSources: List<SourceId>,
     /** The answering source reported that part of its data could not be read. */
     val incompleteCoverage: Boolean,
-    val generatedAt: Instant
+    val generatedAt: Instant,
+    /**
+     * An "accessible only" search found nothing and the timetables have no wheelchair data around its two ends:
+     * "Dati di accessibilità non disponibili per questa zona".
+     */
+    val accessibilityDataUnavailable: Boolean = false
 )
 
 /**
@@ -93,7 +102,8 @@ class JourneySearchService(
                 maxTransfers = query.maxTransfers,
                 originEndpoint = query.origin.endpoint(),
                 destinationEndpoint = query.destination.endpoint(),
-                maxResults = query.maxResults
+                maxResults = query.maxResults,
+                preferences = query.preferences
             )
         } catch (_: IllegalArgumentException) {
             return JourneySearchResult(JourneySearchStatus.UNAVAILABLE, emptyList(), emptyList(), false, clock.instant())
@@ -102,6 +112,7 @@ class JourneySearchService(
         var searchedWithoutResult = false
         var expired = false
         var notCovered = false
+        var accessibilityDataUnavailable = false
         for (provider in providers) {
             consulted += provider.descriptor.id
             val result = try {
@@ -137,6 +148,9 @@ class JourneySearchService(
                         )
                     }
                     if (ProviderWarning.STALE_SOURCE in warnings) expired = true else searchedWithoutResult = true
+                    if (query.preferences?.wheelchairOnly == true && provider is WheelchairDataAware &&
+                        !provider.hasWheelchairData(request)
+                    ) accessibilityDataUnavailable = true
                 }
             }
         }
@@ -146,7 +160,10 @@ class JourneySearchService(
             notCovered -> JourneySearchStatus.NOT_COVERED
             else -> JourneySearchStatus.UNAVAILABLE
         }
-        return JourneySearchResult(status, emptyList(), consulted.toList(), false, clock.instant())
+        return JourneySearchResult(
+            status, emptyList(), consulted.toList(), false, clock.instant(),
+            accessibilityDataUnavailable = accessibilityDataUnavailable && status == JourneySearchStatus.NO_SOLUTION
+        )
     }
 
     private fun Station.endpoint(): JourneyEndpoint? = name.takeIf(String::isNotBlank)?.let {

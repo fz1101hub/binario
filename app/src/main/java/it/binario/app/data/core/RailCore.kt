@@ -287,7 +287,33 @@ data class JourneyLeg(
     val destinationLabel: String? = null,
     val serviceKind: ServiceKind = ServiceKind.UNKNOWN,
     /** Operator brand as published ("Trenord", "SBB"), display only. */
-    val operatorName: String? = null
+    val operatorName: String? = null,
+    /** GTFS service day of [runId] (a run after midnight keeps the day it started); null when the source does not say. */
+    val serviceDate: LocalDate? = null,
+    /** Wheelchair access as the timetable publishes it; null when the source has no such data. Never assumed. */
+    val wheelchair: LegWheelchairAccess? = null,
+    /** The same vehicle going on under another number or line: no change, the traveller stays on board. */
+    val continuations: List<InSeatContinuation> = emptyList()
+)
+
+/**
+ * GTFS wheelchair data of a leg, true only where the timetable says "accessible" (value 1): for a vehicle leg its
+ * trip(s) ([vehicle]) and the stops where it is boarded and left; for a walk [vehicle] is true and the two ends must be
+ * accessible stations or stops.
+ */
+data class LegWheelchairAccess(val vehicle: Boolean, val boarding: Boolean, val alighting: Boolean) {
+    val accessible: Boolean get() = vehicle && boarding && alighting
+}
+
+/** "Resta a bordo": at [station] the vehicle of the leg continues as another run (GTFS block, or the next pack's copy). */
+data class InSeatContinuation(
+    val station: StationId,
+    val stationLabel: String?,
+    val runId: TrainRunId?,
+    val publicNumber: String?,
+    val lineLabel: String?,
+    val operatorName: String?,
+    val serviceKind: ServiceKind = ServiceKind.UNKNOWN
 )
 
 data class JourneyOption(
@@ -297,7 +323,12 @@ data class JourneyOption(
     val departure: ZonedDateTime,
     val arrival: ZonedDateTime,
     val legs: List<JourneyLeg>,
-    val snapshot: SnapshotMeta
+    val snapshot: SnapshotMeta,
+    /**
+     * The source checked that no later option of the requested service day exists: this is the day's last ("Ultimo
+     * di oggi"). False when unknown.
+     */
+    val lastOfServiceDay: Boolean = false
 ) {
     /** Changes between vehicles: a replacement bus between two trains is a change too; walking is not a vehicle. */
     val transfers: Int get() = (legs.count { it.mode != LegMode.WALK } - 1).coerceAtLeast(0)

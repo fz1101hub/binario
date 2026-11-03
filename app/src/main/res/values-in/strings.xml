@@ -1292,4 +1292,37 @@
     <string name="trip_estimate_active_title">Perkiraan dari lokasi aktif untuk kereta %1$s</string>
     <string name="trip_estimate_privacy_short">Lokasi Anda tetap di ponsel: tidak disimpan atau dikirim.</string>
     <string name="action_trip_estimate_stop">Hentikan perkiraan</string>
+    <!-- Journey planner: in-seat continuations, travel preferences, wheelchair access, last train of the day -->
+    <string name="journey_in_seat_continuation">Tetap di dalam kereta: perjalanan berlanjut sebagai %1$s</string>
+    <string name="journey_last_of_day">Terakhir hari ini</string>
+    <string name="journey_no_more_today">Tidak ada kereta lagi hari ini: pertama besok pukul %1$s</string>
+    <string name="journey_accessibility_unavailable">Data aksesibilitas tidak tersedia untuk area ini</string>
+    <string name="journey_filter_least_walking">Lebih sedikit jalan kaki</string>
+    <string name="wheelchair_station">Stasiun ramah kursi roda</string>
+    <string name="wheelchair_trip">Layanan ramah kursi roda</string>
+    <string name="wheelchair_journey">Rute ramah kursi roda</string>
+    <string name="settings_section_travel">Preferensi perjalanan</string>
+    <string name="settings_section_travel_detail">Kecepatan jalan kaki, transit, jenis kereta, dan aksesibilitas</string>
+    <string name="travel_preferences_description">Disimpan di perangkat ini dan berlaku untuk perjalanan yang dihitung dari jadwal offline.</string>
+    <string name="travel_walking_speed">Kecepatan jalan kaki</string>
+    <string name="travel_walking_slow">Lambat · 3,5 km/jam</string>
+    <string name="travel_walking_normal">Normal · 4,5 km/jam</string>
+    <string name="travel_walking_fast">Cepat · 5,5 km/jam</string>
+    <string name="travel_max_walk">Jalan kaki terlama per bagian</string>
+    <string name="travel_ranking">Utamakan</string>
+    <string name="travel_ranking_fastest">Rute tercepat</string>
+    <string name="travel_ranking_least_walking">Paling sedikit jalan kaki</string>
+    <string name="travel_modes">Jenis layanan</string>
+    <string name="travel_modes_description">Ketuk sekali untuk mengutamakan, dua kali untuk menghindari, tiga kali untuk menghapus.</string>
+    <string name="travel_mode_state_any">Bebas</string>
+    <string name="travel_mode_state_prefer">Diutamakan</string>
+    <string name="travel_mode_state_avoid">Dihindari</string>
+    <string name="travel_mode_high_speed">Kereta cepat</string>
+    <string name="travel_mode_funicular">Funikular</string>
+    <string name="travel_mode_operator_bus">Bus operator</string>
+    <string name="travel_wheelchair_only">Hanya rute ramah kursi roda</string>
+    <string name="travel_wheelchair_note">Hanya berlaku jika jadwal menyebutkan aksesibilitas kereta dan perhentian: data yang tidak ada tidak pernah dianggap dapat diakses.</string>
+    <plurals name="results_hidden_by_preferences">
+        <item quantity="other">%d kereta langsung disembunyikan oleh preferensi perjalanan</item>
+    </plurals>
 </resources>

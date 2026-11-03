@@ -432,6 +432,7 @@ class EmbeddedGtfsRouteAdapter(
         val codes = ArrayList<String>()
         val latitudes = ArrayList<Double>()
         val longitudes = ArrayList<Double>()
+        val wheelchair = ArrayList<Byte>()
         BoundedGtfsZipScanner(compactIndexLimits).scan(stream, setOf("stops.txt")) { _, rows ->
             val idIndex = rows.header.indexOf("stop_id")
             val nameIndex = rows.header.indexOf("stop_name")
@@ -439,6 +440,7 @@ class EmbeddedGtfsRouteAdapter(
             val codeIndex = rows.header.indexOf("stop_code")
             val latitudeIndex = rows.header.indexOf("stop_lat")
             val longitudeIndex = rows.header.indexOf("stop_lon")
+            val wheelchairIndex = rows.header.indexOf("wheelchair_boarding")
             if (idIndex >= 0 && nameIndex >= 0) {
                 rows.forEachRow(compactIndexLimits.maxStops) { row ->
                     val id = row.gtfsRawValue(idIndex)
@@ -449,13 +451,17 @@ class EmbeddedGtfsRouteAdapter(
                         codes += row.gtfsValue(codeIndex)
                         latitudes += row.gtfsValue(latitudeIndex).toDoubleOrNull() ?: Double.NaN
                         longitudes += row.gtfsValue(longitudeIndex).toDoubleOrNull() ?: Double.NaN
+                        wheelchair += wheelchairValue(row.getOrNull(wheelchairIndex))
                     }
                 }
             }
         }
+        val idArray = ids.toTypedArray()
+        val parentArray = parents.toTypedArray()
         return GtfsStopDirectory(
-            ids.toTypedArray(), names.toTypedArray(), parents.toTypedArray(), codes.toTypedArray(),
-            latitudes.toDoubleArray(), longitudes.toDoubleArray()
+            idArray, names.toTypedArray(), parentArray, codes.toTypedArray(),
+            latitudes.toDoubleArray(), longitudes.toDoubleArray(),
+            GtfsStopDirectory.inheritWheelchair(idArray, parentArray, wheelchair.toByteArray())
         )
     }
 
@@ -562,8 +568,12 @@ class EmbeddedGtfsRouteAdapter(
             val tripIndex = rows.header.indexOf("trip_id")
             val shortNameIndex = rows.header.indexOf("trip_short_name")
             val headsignIndex = rows.header.indexOf("trip_headsign")
+            val blockIndex = rows.header.indexOf("block_id")
+            val wheelchairIndex = rows.header.indexOf("wheelchair_accessible")
             // Route ids repeat on every trip: keep the instance already held by the routes table.
             val routeIds = routes.keys.associateBy { it }
+            // So do block ids (a block is several trips): one instance per block.
+            val blockIds = HashMap<String, String>()
             rows.forEachRow(limits.maxTrips) { row ->
                 val tripId = row.gtfsRawValue(tripIndex)
                 val shortName = row.getOrNull(shortNameIndex)
@@ -577,7 +587,9 @@ class EmbeddedGtfsRouteAdapter(
                     routeId = routeIds[routeId] ?: routeId,
                     serviceId = serviceId(row.gtfsRawValue(serviceIndex)),
                     shortName = shortName,
-                    numericHeadsign = numericHeadsign
+                    numericHeadsign = numericHeadsign,
+                    blockId = row.getOrNull(blockIndex)?.trim()?.takeIf(String::isNotEmpty)?.let { blockIds.getOrPut(it) { it } },
+                    wheelchair = wheelchairValue(row.getOrNull(wheelchairIndex))
                 )
             }
         }
@@ -994,7 +1006,9 @@ class EmbeddedGtfsRouteAdapter(
                     operatorName = canonicalAgencyLabel(agency, sourceId.value),
                     category = if (mode == LegMode.BUS) TrainCategory.OTHER else category(route?.type, route, agency),
                     operator = legacyOperator(sourceId.value, agency, route),
-                    mode = mode
+                    mode = mode,
+                    blockId = trip.blockId,
+                    wheelchairAccessible = trip.wheelchair
                 )
                 var previous = -1
                 var lastArrival = Int.MIN_VALUE
@@ -1084,12 +1098,22 @@ class EmbeddedGtfsRouteAdapter(
 
             fun indexIfDeclared(id: String): Int? = indexById[id]?.takeIf { items[it].declared }
 
-            fun configure(tripId: String, routeId: String, serviceId: String, shortName: String?, numericHeadsign: String?) {
+            fun configure(
+                tripId: String,
+                routeId: String,
+                serviceId: String,
+                shortName: String?,
+                numericHeadsign: String?,
+                blockId: String? = null,
+                wheelchair: Byte = WHEELCHAIR_UNKNOWN
+            ) {
                 val trip = items[indexFor(tripId)]
                 trip.routeId = routeId
                 trip.serviceId = serviceId
                 trip.shortName = shortName
                 trip.numericHeadsign = numericHeadsign
+                trip.blockId = blockId
+                trip.wheelchair = wheelchair
                 trip.declared = true
             }
 
@@ -1117,6 +1141,9 @@ class EmbeddedGtfsRouteAdapter(
             var serviceId: String = ""
             var shortName: String? = null
             var numericHeadsign: String? = null
+            /** block_id, for the trips the same vehicle runs one after the other ("Resta a bordo"). */
+            var blockId: String? = null
+            var wheelchair: Byte = WHEELCHAIR_UNKNOWN
             var declared: Boolean = false
         }
 

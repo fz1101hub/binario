@@ -203,18 +203,25 @@ internal fun InfoNoticeCard(
  * state, destination and train, platform. [selected] tints the row whose detail is open beside the list.
  */
 @Composable
-internal fun DepartureListRow(service: TrainService, isDemonstration: Boolean = false, selected: Boolean = false, onOpen: () -> Unit) {
+internal fun DepartureListRow(
+    service: TrainService,
+    isDemonstration: Boolean = false,
+    selected: Boolean = false,
+    /** "Ultimo di oggi" from the static timetable. */
+    lastOfDay: Boolean = false,
+    onOpen: () -> Unit
+) {
     val shown = if (isDemonstration) service.presentedAsDemonstration() else service
     val serviceState = if (shown.operationalStatusVerified) {
         stringResource(R.string.service_state_live, shown.status.localizedLabel())
     } else {
         stringResource(R.string.service_state_scheduled)
     }
-    val serviceContentDescription = stringResource(
-        R.string.accessibility_open_service,
-        shown.localizedAccessibleSummary(),
-        serviceState
-    )
+    val lastOfDayLabel = if (lastOfDay) stringResource(R.string.journey_last_of_day) else null
+    val serviceContentDescription = listOfNotNull(
+        stringResource(R.string.accessibility_open_service, shown.localizedAccessibleSummary(), serviceState),
+        lastOfDayLabel
+    ).joinToString(". ")
     val selectedState = if (selected) stringResource(R.string.accessibility_row_selected) else null
     Row(
         modifier = Modifier
@@ -249,6 +256,7 @@ internal fun DepartureListRow(service: TrainService, isDemonstration: Boolean = 
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(shown.destination, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
             Text(stringResource(R.string.service_category_number, shown.trainCategory.localizedLabel(), shown.number), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (lastOfDay) LastOfDayChip(Modifier.padding(top = 2.dp))
             shown.routeChange?.let {
                 Text(
                     routeChangeLabel(it),
@@ -284,7 +292,9 @@ internal fun ResultCard(
     modifier: Modifier = Modifier,
     selected: Boolean = false,
     /** Estimated CO2 of the trip, shown as a small line; null without station positions. */
-    co2: Co2Estimate? = null
+    co2: Co2Estimate? = null,
+    /** "Ultimo di oggi" from the static timetable. */
+    lastOfDay: Boolean = false
 ) {
     val shown = if (isDemonstration) service.presentedAsDemonstration() else service
     val locale = LocalConfiguration.current.locales[0]
@@ -299,6 +309,7 @@ internal fun ResultCard(
         stringResource(R.string.accessibility_open_service, shown.localizedAccessibleSummary(), serviceState),
         arrival?.let { stringResource(R.string.service_scheduled_arrival, it) },
         duration?.let { durationAccessibleLabel(it) },
+        if (lastOfDay) stringResource(R.string.journey_last_of_day) else null,
         co2?.let { co2Spoken(it) },
         if (selected) stringResource(R.string.accessibility_row_selected) else null
     ).joinToString(". ")
@@ -341,6 +352,7 @@ internal fun ResultCard(
                     color = if (shown.status == ServiceStatus.CANCELLED) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.tertiary
                 )
             }
+            if (lastOfDay) LastOfDayChip()
             Row(Modifier.padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                 ChangesBadge(shown.transferCount, Modifier.weight(1f))
                 Text(
@@ -424,7 +436,10 @@ internal fun StationField(
                 disabledIndicatorColor = Color.Transparent
             )
         )
-        if (matches.isNotEmpty() && (matches.none { it.name.equals(value, ignoreCase = true) } || matches.any { it.id.startsWith("manual:") })) {
+        val suggesting = matches.isNotEmpty() && (matches.none { it.name.equals(value, ignoreCase = true) } || matches.any { it.id.startsWith("manual:") })
+        // Read in the background the first time suggestions appear; empty (no marks) until then.
+        val accessibleStations = rememberWheelchairAccessibleStations(enabled = suggesting)
+        if (suggesting) {
             val urbanStops = BinarioDataGraph.urbanStopIndex(LocalContext.current)
             matches.take(5).forEach { station ->
                 TextButton(onClick = { onSelect(station) }, modifier = Modifier.fillMaxWidth()) {
@@ -442,6 +457,9 @@ internal fun StationField(
                     if (badge != null) UrbanStopBadgeMark(badge) else Icon(Icons.Default.Train, contentDescription = null, modifier = Modifier.size(20.dp))
                     Spacer(Modifier.width(10.dp))
                     Text(stationLabel, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    if (station.id in accessibleStations) {
+                        WheelchairMark(stringResource(R.string.wheelchair_station), Modifier.padding(start = 6.dp))
+                    }
                 }
             }
         }

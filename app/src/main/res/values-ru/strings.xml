@@ -1385,4 +1385,40 @@
     <string name="trip_estimate_active_title">Оценка по местоположению включена: поезд %1$s</string>
     <string name="trip_estimate_privacy_short">Местоположение остаётся на телефоне: оно не сохраняется и не отправляется.</string>
     <string name="action_trip_estimate_stop">Остановить оценку</string>
+    <!-- Journey planner: in-seat continuations, travel preferences, wheelchair access, last train of the day -->
+    <string name="journey_in_seat_continuation">Оставайтесь в поезде: он продолжает путь как %1$s</string>
+    <string name="journey_last_of_day">Последний сегодня</string>
+    <string name="journey_no_more_today">Сегодня поездов больше нет: первый завтра в %1$s</string>
+    <string name="journey_accessibility_unavailable">Для этого района нет данных о доступности</string>
+    <string name="journey_filter_least_walking">Меньше пешком</string>
+    <string name="wheelchair_station">Станция доступна для инвалидных колясок</string>
+    <string name="wheelchair_trip">Рейс доступен для инвалидных колясок</string>
+    <string name="wheelchair_journey">Маршрут доступен для инвалидных колясок</string>
+    <string name="settings_section_travel">Настройки поездки</string>
+    <string name="settings_section_travel_detail">Скорость ходьбы, пересадки, типы поездов и доступность</string>
+    <string name="travel_preferences_description">Хранятся на этом устройстве и применяются к поездкам по офлайн-расписаниям.</string>
+    <string name="travel_walking_speed">Скорость ходьбы</string>
+    <string name="travel_walking_slow">Медленно · 3,5 км/ч</string>
+    <string name="travel_walking_normal">Обычно · 4,5 км/ч</string>
+    <string name="travel_walking_fast">Быстро · 5,5 км/ч</string>
+    <string name="travel_max_walk">Самый долгий пеший участок</string>
+    <string name="travel_ranking">Предпочитать</string>
+    <string name="travel_ranking_fastest">Самый быстрый маршрут</string>
+    <string name="travel_ranking_least_walking">Меньше ходьбы</string>
+    <string name="travel_modes">Виды транспорта</string>
+    <string name="travel_modes_description">Нажмите один раз, чтобы предпочесть, два — чтобы избегать, три — чтобы сбросить.</string>
+    <string name="travel_mode_state_any">Без разницы</string>
+    <string name="travel_mode_state_prefer">Предпочтительно</string>
+    <string name="travel_mode_state_avoid">Избегать</string>
+    <string name="travel_mode_high_speed">Скоростные поезда</string>
+    <string name="travel_mode_funicular">Фуникулёры</string>
+    <string name="travel_mode_operator_bus">Автобусы перевозчика</string>
+    <string name="travel_wheelchair_only">Только маршруты, доступные для инвалидных колясок</string>
+    <string name="travel_wheelchair_note">Действует только там, где расписание указывает доступность поездов и остановок: отсутствие данных никогда не считается доступностью.</string>
+    <plurals name="results_hidden_by_preferences">
+        <item quantity="one">%d прямой поезд скрыт настройками поездки</item>
+        <item quantity="few">%d прямых поезда скрыты настройками поездки</item>
+        <item quantity="many">%d прямых поездов скрыто настройками поездки</item>
+        <item quantity="other">%d прямого поезда скрыто настройками поездки</item>
+    </plurals>
 </resources>

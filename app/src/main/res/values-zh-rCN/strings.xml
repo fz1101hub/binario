@@ -1315,4 +1315,37 @@
     <string name="trip_estimate_active_title">车次 %1$s 的位置估算已开启</string>
     <string name="trip_estimate_privacy_short">位置只保留在手机上：不会保存或发送。</string>
     <string name="action_trip_estimate_stop">停止估算</string>
+    <!-- Journey planner: in-seat continuations, travel preferences, wheelchair access, last train of the day -->
+    <string name="journey_in_seat_continuation">无需下车：本次列车继续以 %1$s 运行</string>
+    <string name="journey_last_of_day">今日末班</string>
+    <string name="journey_no_more_today">今天已无列车：明天首班 %1$s</string>
+    <string name="journey_accessibility_unavailable">该地区没有无障碍信息</string>
+    <string name="journey_filter_least_walking">步行较少</string>
+    <string name="wheelchair_station">轮椅无障碍车站</string>
+    <string name="wheelchair_trip">轮椅无障碍班次</string>
+    <string name="wheelchair_journey">轮椅无障碍行程</string>
+    <string name="settings_section_travel">出行偏好</string>
+    <string name="settings_section_travel_detail">步行速度、换乘、列车类型和无障碍</string>
+    <string name="travel_preferences_description">仅保存在本设备上，适用于根据离线时刻表计算的行程。</string>
+    <string name="travel_walking_speed">步行速度</string>
+    <string name="travel_walking_slow">慢 · 3.5 公里/小时</string>
+    <string name="travel_walking_normal">正常 · 4.5 公里/小时</string>
+    <string name="travel_walking_fast">快 · 5.5 公里/小时</string>
+    <string name="travel_max_walk">每段最长步行时间</string>
+    <string name="travel_ranking">优先</string>
+    <string name="travel_ranking_fastest">最快路线</string>
+    <string name="travel_ranking_least_walking">步行最少</string>
+    <string name="travel_modes">服务类型</string>
+    <string name="travel_modes_description">点一次设为偏好，点两次设为避免，点三次取消。</string>
+    <string name="travel_mode_state_any">无偏好</string>
+    <string name="travel_mode_state_prefer">偏好</string>
+    <string name="travel_mode_state_avoid">避免</string>
+    <string name="travel_mode_high_speed">高速列车</string>
+    <string name="travel_mode_funicular">缆索铁路</string>
+    <string name="travel_mode_operator_bus">运营商巴士</string>
+    <string name="travel_wheelchair_only">仅显示轮椅无障碍行程</string>
+    <string name="travel_wheelchair_note">仅在时刻表注明列车和停靠站的无障碍信息时有效：缺少数据时一律不视为无障碍。</string>
+    <plurals name="results_hidden_by_preferences">
+        <item quantity="other">已按出行偏好隐藏 %d 趟直达车次</item>
+    </plurals>
 </resources>

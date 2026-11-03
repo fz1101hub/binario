@@ -1323,4 +1323,38 @@
     <string name="trip_estimate_active_title">ट्रेन %1$s के लिए लोकेशन से अनुमान चालू</string>
     <string name="trip_estimate_privacy_short">आपकी लोकेशन फ़ोन पर ही रहती है: न सहेजी जाती है, न भेजी जाती है।</string>
     <string name="action_trip_estimate_stop">अनुमान रोकें</string>
+    <!-- Journey planner: in-seat continuations, travel preferences, wheelchair access, last train of the day -->
+    <string name="journey_in_seat_continuation">ट्रेन में ही रहें: ट्रेन %1$s के रूप में आगे जाती है</string>
+    <string name="journey_last_of_day">आज की आख़िरी</string>
+    <string name="journey_no_more_today">आज और ट्रेनें नहीं: पहली कल %1$s बजे</string>
+    <string name="journey_accessibility_unavailable">इस क्षेत्र के लिए सुलभता डेटा उपलब्ध नहीं</string>
+    <string name="journey_filter_least_walking">कम पैदल</string>
+    <string name="wheelchair_station">व्हीलचेयर-सुलभ स्टेशन</string>
+    <string name="wheelchair_trip">व्हीलचेयर-सुलभ सेवा</string>
+    <string name="wheelchair_journey">व्हीलचेयर-सुलभ यात्रा</string>
+    <string name="settings_section_travel">यात्रा प्राथमिकताएँ</string>
+    <string name="settings_section_travel_detail">पैदल गति, ट्रेन बदलना, ट्रेन के प्रकार और सुलभता</string>
+    <string name="travel_preferences_description">ये इसी डिवाइस पर रहती हैं और ऑफ़लाइन समय-सारणी से निकाली गई यात्राओं पर लागू होती हैं।</string>
+    <string name="travel_walking_speed">पैदल चलने की गति</string>
+    <string name="travel_walking_slow">धीमी · 3.5 किमी/घं</string>
+    <string name="travel_walking_normal">सामान्य · 4.5 किमी/घं</string>
+    <string name="travel_walking_fast">तेज़ · 5.5 किमी/घं</string>
+    <string name="travel_max_walk">प्रति हिस्सा अधिकतम पैदल समय</string>
+    <string name="travel_ranking">प्राथमिकता</string>
+    <string name="travel_ranking_fastest">सबसे तेज़ मार्ग</string>
+    <string name="travel_ranking_least_walking">सबसे कम पैदल</string>
+    <string name="travel_modes">सेवा के प्रकार</string>
+    <string name="travel_modes_description">पसंद करने के लिए एक बार, टालने के लिए दो बार, हटाने के लिए तीन बार टैप करें।</string>
+    <string name="travel_mode_state_any">कोई फ़र्क नहीं</string>
+    <string name="travel_mode_state_prefer">पसंदीदा</string>
+    <string name="travel_mode_state_avoid">टालें</string>
+    <string name="travel_mode_high_speed">हाई-स्पीड ट्रेनें</string>
+    <string name="travel_mode_funicular">फ़्यूनिक्युलर</string>
+    <string name="travel_mode_operator_bus">ऑपरेटर की बसें</string>
+    <string name="travel_wheelchair_only">केवल व्हीलचेयर-सुलभ यात्राएँ</string>
+    <string name="travel_wheelchair_note">केवल वहीं लागू जहाँ समय-सारणी ट्रेनों और ठहरावों की सुलभता बताती है: अनुपलब्ध डेटा कभी सुलभ नहीं माना जाता।</string>
+    <plurals name="results_hidden_by_preferences">
+        <item quantity="one">यात्रा प्राथमिकताओं के कारण %d सीधी ट्रेन छिपी है</item>
+        <item quantity="other">यात्रा प्राथमिकताओं के कारण %d सीधी ट्रेनें छिपी हैं</item>
+    </plurals>
 </resources>

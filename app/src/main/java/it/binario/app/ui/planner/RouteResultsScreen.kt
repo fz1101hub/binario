@@ -20,12 +20,14 @@ import androidx.compose.material.icons.filled.BookmarkAdd
 import androidx.compose.material.icons.filled.BookmarkAdded
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -47,6 +49,8 @@ import it.binario.app.BinarioTheme
 import it.binario.app.R
 import it.binario.app.RefreshState
 import it.binario.app.TrainViewModel
+import it.binario.app.TravelPreferencesRepository
+import it.binario.app.data.provider.JourneyPreferences
 import it.binario.app.data.Direction
 import it.binario.app.data.JourneyQuery
 import it.binario.app.data.RailTime
@@ -110,26 +114,41 @@ internal fun RouteResultsScreen(
     retryJourneys: () -> Unit,
     editSearch: () -> Unit,
     selectedServiceId: String? = null,
-    selectedJourneyId: String? = null
+    selectedJourneyId: String? = null,
+    /** "Filtri": Impostazioni › Preferenze di viaggio. */
+    openTravelPreferences: () -> Unit = {}
 ) {
     val roundTrip = viewModel.hasReturnJourney
     val primaryDirection = viewModel.direction
     val locale = LocalConfiguration.current.locales[0]
     val query = viewModel.journeyQuery
     val route = viewModel.activeRoute
-    var filterName by rememberSaveable { mutableStateOf(JourneyResultsFilter.ALL.name) }
+    val context = LocalContext.current
+    val travelPreferences by TravelPreferencesRepository.state(context).collectAsState()
+    // "Preferisci" chooses the chip the results open on; a chip tapped afterwards stays until it changes.
+    var filterName by rememberSaveable(travelPreferences.ranking) { mutableStateOf(JourneyResultsFilter.forRanking(travelPreferences.ranking).name) }
     val filter = JourneyResultsFilter.valueOf(filterName)
     val journeysMatch = JourneyRequest.of(viewModel)?.isAnsweredBy(journeys.query) == true
     val journeyResult = journeys.result.takeIf { journeysMatch }
+    // "Ultimo di oggi" and "primo domani" only for a search of today.
+    val today = LocalDate.now(RailTime.defaultZone)
+    val markedDay = query.serviceDate.takeIf { it == today }
     // Always the unfiltered options: the chips below filter the merged list.
-    val presentation = remember(journeyResult) { journeyResult?.let { JourneyResultsPresenter.present(it) } }
+    val presentation = remember(journeyResult, markedDay) { journeyResult?.let { JourneyResultsPresenter.present(it, serviceDate = markedDay) } }
     val journeyRows = presentation?.rows.orEmpty()
     val allServices = viewModel.currentServices()
     val allReturnServices = viewModel.currentReturnServices()
-    val entries = remember(allServices, journeyRows, query.serviceDate) { ResultsMerge.entries(allServices, journeyRows, query.serviceDate) }
-    val returnEntries = remember(allReturnServices, query.serviceDate) { ResultsMerge.entries(allReturnServices, emptyList(), query.serviceDate) }
-    val shown = ResultsMerge.apply(entries, filter)
-    val returnShown = ResultsMerge.apply(returnEntries, filter)
+    val entries = remember(allServices, journeyRows, query.serviceDate, travelPreferences) {
+        ResultsMerge.entries(allServices, journeyRows, query.serviceDate, travelPreferences)
+    }
+    val returnEntries = remember(allReturnServices, query.serviceDate, travelPreferences) {
+        ResultsMerge.entries(allReturnServices, emptyList(), query.serviceDate, travelPreferences)
+    }
+    val hiddenTrains = allServices.size + allReturnServices.size -
+        ResultsMerge.shownServices(allServices, travelPreferences).size - ResultsMerge.shownServices(allReturnServices, travelPreferences).size
+    val firstNextDay = markedDay?.let { ResultsMerge.firstDepartureNextDay(entries, journeyRows, it) }
+    val shown = ResultsMerge.apply(entries, filter, travelPreferences)
+    val returnShown = ResultsMerge.apply(returnEntries, filter, travelPreferences)
     val counts = ResultsMerge.counts(entries + returnEntries)
     val journeysShown = entries.any { it is ResultEntry.Journey }
     val isDemonstration = viewModel.isDemonstrationData()
@@ -146,7 +165,6 @@ internal fun RouteResultsScreen(
     val headline = if (viewModel.hasActiveRoute) StationShortNames.route(route.origin(primaryDirection), route.destination(primaryDirection)) else null
     // "Salva orario" and "Condividi": the list on screen as plain rows (labels in the app language, demonstration
     // data as timetable only), saved on this device or shared as text.
-    val context = LocalContext.current
     val providerLabel = viewModel.currentProviderLabel() ?: stringResource(R.string.provider_unavailable)
     val journeysFetchedAt = journeyResult?.generatedAt?.toEpochMilli() ?: 0L
     val outboundRows = timetableRows(shown, isDemonstration, providerLabel, viewModel.lastRefreshEpochMillis(), journeysFetchedAt)
@@ -209,6 +227,11 @@ internal fun RouteResultsScreen(
                     isCachedCopy = viewModel.isCachedCopy(),
                     message = null
                 )
+                TravelPreferencesLine(
+                    preferences = travelPreferences,
+                    hiddenTrains = hiddenTrains,
+                    onOpen = openTravelPreferences
+                )
                 if (viewModel.hasActiveRoute && (outboundRows.isNotEmpty() || returnRows.isNotEmpty())) {
                     ResultsActions(
                         saved = savedTimetableId != null,
@@ -243,6 +266,14 @@ internal fun RouteResultsScreen(
         }
         if (roundTrip) {
             item { SectionTitle(stringResource(R.string.planner_outbound) + " · " + route.localizedDisplayName(primaryDirection)) }
+        }
+        firstNextDay?.let { first ->
+            item(key = "no-more-today") {
+                InfoNoticeCard(
+                    text = stringResource(R.string.journey_no_more_today, first.format(DateTimeFormatter.ofPattern("HH:mm", Locale.ROOT))),
+                    modifier = Modifier.padding(top = 6.dp).testTag("results-no-more-today")
+                )
+            }
         }
         resultItems(
             keyPrefix = "out",
@@ -369,7 +400,8 @@ private fun LazyListScope.resultItems(
                     onOpen = { openDetails(entry.service) },
                     modifier = itemModifier.testTag("result-card"),
                     selected = entry.service.id == selectedServiceId,
-                    co2 = rememberCo2(entry.service, stationIndex)
+                    co2 = rememberCo2(entry.service, stationIndex),
+                    lastOfDay = entry.lastOfDay
                 )
                 is ResultEntry.Journey -> JourneyResultCard(
                     row = entry.row,
@@ -416,6 +448,9 @@ private fun JourneyNotices(
     }
     if (presentation.showIncompleteNotice) {
         InfoNoticeCard(text = stringResource(R.string.journey_incomplete_notice))
+    }
+    if (presentation.accessibilityDataUnavailable) {
+        InfoNoticeCard(text = stringResource(R.string.journey_accessibility_unavailable), modifier = Modifier.testTag("journeys-accessibility-unavailable"))
     }
     if (presentation.status != JourneySearchStatus.FOUND) {
         val reason = presentation.emptyReason ?: JourneyEmptyReason.UNAVAILABLE
@@ -475,6 +510,37 @@ private fun JourneyResultsFilter.labelRes(): Int = when (this) {
     JourneyResultsFilter.DIRECT -> R.string.journey_filter_direct
     JourneyResultsFilter.FEWEST_CHANGES -> R.string.journey_filter_fewest_changes
     JourneyResultsFilter.FASTEST -> R.string.journey_filter_fastest
+    JourneyResultsFilter.LEAST_WALKING -> R.string.journey_filter_least_walking
+}
+
+/**
+ * "Filtri": opens Impostazioni › Preferenze di viaggio; with "Solo percorsi accessibili" on it says so, and it counts
+ * the direct trains the preferences hide.
+ */
+@Composable
+private fun TravelPreferencesLine(preferences: JourneyPreferences, hiddenTrains: Int, onOpen: () -> Unit) {
+    Column(Modifier.fillMaxWidth().padding(horizontal = ScreenMargin, vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        TonalButton(
+            text = stringResource(R.string.planner_filters),
+            onClick = onOpen,
+            leadingIcon = Icons.Default.Tune,
+            modifier = Modifier.testTag("results-travel-preferences")
+        )
+        if (preferences.wheelchairOnly) {
+            Text(
+                stringResource(R.string.travel_wheelchair_only),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        if (hiddenTrains > 0) {
+            Text(
+                pluralStringResource(R.plurals.results_hidden_by_preferences, hiddenTrains, hiddenTrains),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
 }
 
 /** "Oggi, 21 nov · dalle 17:00" for the date and time the results answer. */

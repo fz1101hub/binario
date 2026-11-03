@@ -97,6 +97,14 @@ import it.binario.app.ui.common.ltrUnit
 import it.binario.app.ui.detail.StopTimelinePosition
 import it.binario.app.ui.detail.StopTimelineRow
 import it.binario.app.updateTimeMessage
+import it.binario.app.journeys.LastOfDayMarks
+import it.binario.app.ui.common.InfoNoticeCard
+import it.binario.app.ui.common.LastOfDayChip
+import it.binario.app.ui.common.WheelchairMark
+import it.binario.app.ui.common.rememberStaticDayDepartures
+import it.binario.app.ui.common.rememberWheelchairAccessibleStations
+import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -156,6 +164,13 @@ internal fun StationBoardScreen(modifier: Modifier, viewModel: TrainViewModel, r
     // Train types hidden at this station (on this device); a train of unknown type is never hidden.
     val (excludedTypes, setExcludedTypes) = rememberTrainTypeExclusions(board?.station?.id)
     val shownEntries = board?.entries.orEmpty().let { entries -> PartenzeTrainTypes.visible(entries, excludedTypes, PartenzeTrainTypes::groupOf) }
+    // "Ultimo di oggi" per direction and "Non ci sono più treni oggi" from the static timetable (departures only).
+    val today = LocalDate.now(BOARD_ZONE)
+    val staticDay by rememberStaticDayDepartures(board?.takeIf { it.kind == BoardKind.DEPARTURES }?.station, null, today)
+    val firstTomorrow = LastOfDayMarks.firstNextDay(staticDay, LocalDateTime.now(BOARD_ZONE))
+    val accessibleStations = rememberWheelchairAccessibleStations(
+        enabled = selectedStation != null || viewModel.favouriteStations.isNotEmpty() || viewModel.nearbyStations.isNotEmpty()
+    )
 
     LazyColumn(
         modifier = modifier.fillMaxSize().testTag("station-board-list"),
@@ -182,6 +197,7 @@ internal fun StationBoardScreen(modifier: Modifier, viewModel: TrainViewModel, r
                     StationPreferenceRow(
                         station = station,
                         favourite = viewModel.isStationFavourite(station),
+                        wheelchairAccessible = station.id in accessibleStations,
                         onSelect = {
                             stationText = station.name
                             viewModel.selectStationBoardStation(station)
@@ -322,6 +338,14 @@ internal fun StationBoardScreen(modifier: Modifier, viewModel: TrainViewModel, r
                             }
                         }
                     }
+                    firstTomorrow?.let { first ->
+                        item(key = "no-more-today") {
+                            InfoNoticeCard(
+                                text = stringResource(R.string.journey_no_more_today, first.departure.format(BOARD_TIME_FORMATTER)),
+                                modifier = Modifier.testTag("station-board-no-more-today")
+                            )
+                        }
+                    }
                     item { StationLineNoticesSection(board.station) }
                     item(key = "train-types") {
                         TrainTypeFilterControl(
@@ -352,9 +376,16 @@ internal fun StationBoardScreen(modifier: Modifier, viewModel: TrainViewModel, r
                                 )
                         ) {
                             // A metro or tram run has no run details source: its row shows everything known.
-                            StationBoardEntryRow(entry, board.kind, onOpen = if (entry.serviceKind == ServiceKind.URBAN) null else {
-                                { viewModel.openStationBoardRun(entry) }
-                            }, selected = selected)
+                            StationBoardEntryRow(
+                                entry, board.kind,
+                                onOpen = if (entry.serviceKind == ServiceKind.URBAN) null else {
+                                    { viewModel.openStationBoardRun(entry) }
+                                },
+                                selected = selected,
+                                lastOfDay = board.kind == BoardKind.DEPARTURES && LastOfDayMarks.isLast(
+                                    staticDay, entry.publicNumber, entry.scheduledTime.withZoneSameInstant(BOARD_ZONE).toLocalDateTime()
+                                )
+                            )
                         }
                     }
                 }
@@ -374,6 +405,7 @@ internal fun StationBoardScreen(modifier: Modifier, viewModel: TrainViewModel, r
                 StationPreferenceRow(
                     station = station,
                     favourite = true,
+                    wheelchairAccessible = station.id in accessibleStations,
                     onSelect = {
                         stationText = station.name
                         viewModel.selectStationBoardStation(station)
@@ -402,6 +434,7 @@ internal fun StationBoardScreen(modifier: Modifier, viewModel: TrainViewModel, r
                 StationPreferenceRow(
                     station = nearby.station,
                     favourite = viewModel.isStationFavourite(nearby.station),
+                    wheelchairAccessible = nearby.station.id in accessibleStations,
                     distanceLabel = stringResource(R.string.distance_kilometers, nearby.distanceKm),
                     onSelect = {
                         stationText = nearby.station.name
@@ -415,7 +448,14 @@ internal fun StationBoardScreen(modifier: Modifier, viewModel: TrainViewModel, r
 }
 
 @Composable
-internal fun StationBoardEntryRow(entry: StationBoardEntry, kind: BoardKind, onOpen: (() -> Unit)? = null, selected: Boolean = false) {
+internal fun StationBoardEntryRow(
+    entry: StationBoardEntry,
+    kind: BoardKind,
+    onOpen: (() -> Unit)? = null,
+    selected: Boolean = false,
+    /** "Ultimo di oggi" for its direction, from the static timetable. */
+    lastOfDay: Boolean = false
+) {
     val scheduled = entry.scheduledTime.withZoneSameInstant(BOARD_ZONE)
     val expected = entry.expectedTime?.value?.withZoneSameInstant(BOARD_ZONE)
     val delayedMinutes = expected?.let {
@@ -448,7 +488,7 @@ internal fun StationBoardEntryRow(entry: StationBoardEntry, kind: BoardKind, onO
         statusLabel,
         platformLabel,
         trainLabel
-    )
+    ) + if (lastOfDay) ". " + stringResource(R.string.journey_last_of_day) else ""
     val selectedState = if (selected) stringResource(R.string.accessibility_row_selected) else null
 
     Row(
@@ -498,6 +538,7 @@ internal fun StationBoardEntryRow(entry: StationBoardEntry, kind: BoardKind, onO
             if (delayedMinutes > 0) {
                 Text(stringResource(R.string.delay_minutes, delayedMinutes), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.error)
             }
+            if (lastOfDay) LastOfDayChip(Modifier.padding(top = 2.dp))
             entry.routeChange?.value?.let { change ->
                 Text(
                     stringResource(R.string.station_board_route_change, change.summary),
@@ -662,7 +703,9 @@ internal fun StationPreferenceRow(
     favourite: Boolean,
     onSelect: () -> Unit,
     onToggleFavourite: () -> Unit,
-    distanceLabel: String? = null
+    distanceLabel: String? = null,
+    /** The packs publish the station as wheelchair accessible: the wheelchair mark, read with the name. */
+    wheelchairAccessible: Boolean = false
 ) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         TextButton(onClick = onSelect, modifier = Modifier.weight(1f)) {
@@ -670,6 +713,7 @@ internal fun StationPreferenceRow(
                 Text(station.name, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(listOfNotNull(station.city, distanceLabel).joinToString(" · "), style = MaterialTheme.typography.bodySmall)
             }
+            if (wheelchairAccessible) WheelchairMark(stringResource(R.string.wheelchair_station), Modifier.padding(start = 6.dp))
         }
         IconButton(onClick = onToggleFavourite) {
             Icon(

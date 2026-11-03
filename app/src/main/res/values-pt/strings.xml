@@ -1354,4 +1354,39 @@
     <string name="trip_estimate_active_title">Estimativa pela localização ativa para o trem %1$s</string>
     <string name="trip_estimate_privacy_short">A localização fica no celular: não é salva nem enviada.</string>
     <string name="action_trip_estimate_stop">Interromper estimativa</string>
+    <!-- Journey planner: in-seat continuations, travel preferences, wheelchair access, last train of the day -->
+    <string name="journey_in_seat_continuation">Permaneça a bordo: o trem continua como %1$s</string>
+    <string name="journey_last_of_day">Último de hoje</string>
+    <string name="journey_no_more_today">Não há mais trens hoje: o primeiro amanhã às %1$s</string>
+    <string name="journey_accessibility_unavailable">Dados de acessibilidade indisponíveis para esta região</string>
+    <string name="journey_filter_least_walking">Menos caminhada</string>
+    <string name="wheelchair_station">Estação acessível para cadeira de rodas</string>
+    <string name="wheelchair_trip">Serviço acessível para cadeira de rodas</string>
+    <string name="wheelchair_journey">Trajeto acessível para cadeira de rodas</string>
+    <string name="settings_section_travel">Preferências de viagem</string>
+    <string name="settings_section_travel_detail">Velocidade a pé, baldeações, tipos de trem e acessibilidade</string>
+    <string name="travel_preferences_description">Ficam neste dispositivo e valem para os trajetos calculados com os horários offline.</string>
+    <string name="travel_walking_speed">Velocidade a pé</string>
+    <string name="travel_walking_slow">Baixa · 3,5 km/h</string>
+    <string name="travel_walking_normal">Média · 4,5 km/h</string>
+    <string name="travel_walking_fast">Alta · 5,5 km/h</string>
+    <string name="travel_max_walk">Caminhada máxima por trecho</string>
+    <string name="travel_ranking">Preferir</string>
+    <string name="travel_ranking_fastest">Rota mais rápida</string>
+    <string name="travel_ranking_least_walking">Caminhar menos</string>
+    <string name="travel_modes">Tipos de serviço</string>
+    <string name="travel_modes_description">Toque uma vez para preferir, duas para evitar e três para limpar.</string>
+    <string name="travel_mode_state_any">Indiferente</string>
+    <string name="travel_mode_state_prefer">Preferido</string>
+    <string name="travel_mode_state_avoid">Evitar</string>
+    <string name="travel_mode_high_speed">Trens de alta velocidade</string>
+    <string name="travel_mode_funicular">Funiculares</string>
+    <string name="travel_mode_operator_bus">Ônibus da operadora</string>
+    <string name="travel_wheelchair_only">Só trajetos acessíveis para cadeira de rodas</string>
+    <string name="travel_wheelchair_note">Vale só onde os horários informam a acessibilidade de trens e paradas: um dado ausente nunca conta como acessível.</string>
+    <plurals name="results_hidden_by_preferences">
+        <item quantity="one">%d trem direto oculto pelas preferências de viagem</item>
+        <item quantity="many">%d trens diretos ocultos pelas preferências de viagem</item>
+        <item quantity="other">%d trens diretos ocultos pelas preferências de viagem</item>
+    </plurals>
 </resources>

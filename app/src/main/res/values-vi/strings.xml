@@ -1315,4 +1315,37 @@
     <string name="trip_estimate_active_title">Đang bật ước tính theo vị trí cho tàu %1$s</string>
     <string name="trip_estimate_privacy_short">Vị trí chỉ ở trên điện thoại: không được lưu hay gửi đi.</string>
     <string name="action_trip_estimate_stop">Dừng ước tính</string>
+    <!-- Journey planner: in-seat continuations, travel preferences, wheelchair access, last train of the day -->
+    <string name="journey_in_seat_continuation">Ở lại trên tàu: chuyến tiếp tục chạy với số hiệu %1$s</string>
+    <string name="journey_last_of_day">Chuyến cuối hôm nay</string>
+    <string name="journey_no_more_today">Hôm nay hết tàu: chuyến đầu tiên ngày mai lúc %1$s</string>
+    <string name="journey_accessibility_unavailable">Không có dữ liệu tiếp cận cho khu vực này</string>
+    <string name="journey_filter_least_walking">Ít đi bộ hơn</string>
+    <string name="wheelchair_station">Ga dành cho xe lăn</string>
+    <string name="wheelchair_trip">Chuyến dành cho xe lăn</string>
+    <string name="wheelchair_journey">Hành trình dành cho xe lăn</string>
+    <string name="settings_section_travel">Tùy chọn hành trình</string>
+    <string name="settings_section_travel_detail">Tốc độ đi bộ, đổi tàu, loại tàu và khả năng tiếp cận</string>
+    <string name="travel_preferences_description">Được lưu trên thiết bị này và áp dụng cho các hành trình tính từ lịch tàu ngoại tuyến.</string>
+    <string name="travel_walking_speed">Tốc độ đi bộ</string>
+    <string name="travel_walking_slow">Chậm · 3,5 km/h</string>
+    <string name="travel_walking_normal">Bình thường · 4,5 km/h</string>
+    <string name="travel_walking_fast">Nhanh · 5,5 km/h</string>
+    <string name="travel_max_walk">Đi bộ tối đa mỗi chặng</string>
+    <string name="travel_ranking">Ưu tiên</string>
+    <string name="travel_ranking_fastest">Lộ trình nhanh nhất</string>
+    <string name="travel_ranking_least_walking">Ít đi bộ nhất</string>
+    <string name="travel_modes">Loại dịch vụ</string>
+    <string name="travel_modes_description">Chạm một lần để ưu tiên, hai lần để tránh, ba lần để bỏ chọn.</string>
+    <string name="travel_mode_state_any">Không quan trọng</string>
+    <string name="travel_mode_state_prefer">Được ưu tiên</string>
+    <string name="travel_mode_state_avoid">Tránh</string>
+    <string name="travel_mode_high_speed">Tàu cao tốc</string>
+    <string name="travel_mode_funicular">Tàu leo núi</string>
+    <string name="travel_mode_operator_bus">Xe buýt của nhà vận hành</string>
+    <string name="travel_wheelchair_only">Chỉ hành trình dành cho xe lăn</string>
+    <string name="travel_wheelchair_note">Chỉ áp dụng nơi lịch tàu ghi rõ khả năng tiếp cận của tàu và điểm dừng: thiếu dữ liệu không bao giờ được coi là tiếp cận được.</string>
+    <plurals name="results_hidden_by_preferences">
+        <item quantity="other">Đã ẩn %d chuyến tàu đi thẳng theo tùy chọn hành trình</item>
+    </plurals>
 </resources>

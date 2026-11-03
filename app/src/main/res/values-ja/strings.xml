@@ -1292,4 +1292,37 @@
     <string name="trip_estimate_active_title">列車 %1$s の現在地からの推定が有効</string>
     <string name="trip_estimate_privacy_short">位置情報はスマートフォンに残り、保存も送信もされません。</string>
     <string name="action_trip_estimate_stop">推定を停止</string>
+    <!-- Journey planner: in-seat continuations, travel preferences, wheelchair access, last train of the day -->
+    <string name="journey_in_seat_continuation">そのまま乗車：この列車は%1$sとして運行を続けます</string>
+    <string name="journey_last_of_day">本日の最終</string>
+    <string name="journey_no_more_today">本日の列車は終了：明日の始発は%1$s</string>
+    <string name="journey_accessibility_unavailable">この地域のバリアフリー情報はありません</string>
+    <string name="journey_filter_least_walking">徒歩が少ない順</string>
+    <string name="wheelchair_station">車椅子対応の駅</string>
+    <string name="wheelchair_trip">車椅子対応の便</string>
+    <string name="wheelchair_journey">車椅子対応の経路</string>
+    <string name="settings_section_travel">移動の設定</string>
+    <string name="settings_section_travel_detail">歩く速さ、乗り換え、列車の種類、バリアフリー</string>
+    <string name="travel_preferences_description">この端末に保存され、オフライン時刻表で計算する経路に適用されます。</string>
+    <string name="travel_walking_speed">歩く速さ</string>
+    <string name="travel_walking_slow">ゆっくり · 3.5 km/h</string>
+    <string name="travel_walking_normal">ふつう · 4.5 km/h</string>
+    <string name="travel_walking_fast">速い · 5.5 km/h</string>
+    <string name="travel_max_walk">1区間の最長徒歩時間</string>
+    <string name="travel_ranking">優先</string>
+    <string name="travel_ranking_fastest">最速の経路</string>
+    <string name="travel_ranking_least_walking">徒歩が少ない経路</string>
+    <string name="travel_modes">交通手段の種類</string>
+    <string name="travel_modes_description">1回タップで優先、2回で回避、3回で解除します。</string>
+    <string name="travel_mode_state_any">指定なし</string>
+    <string name="travel_mode_state_prefer">優先する</string>
+    <string name="travel_mode_state_avoid">避ける</string>
+    <string name="travel_mode_high_speed">高速列車</string>
+    <string name="travel_mode_funicular">ケーブルカー</string>
+    <string name="travel_mode_operator_bus">事業者のバス</string>
+    <string name="travel_wheelchair_only">車椅子対応の経路のみ</string>
+    <string name="travel_wheelchair_note">時刻表に列車と停車駅のバリアフリー情報がある場合のみ有効です。情報がない場合は対応とみなしません。</string>
+    <plurals name="results_hidden_by_preferences">
+        <item quantity="other">移動の設定により直通列車%d本を非表示</item>
+    </plurals>
 </resources>
