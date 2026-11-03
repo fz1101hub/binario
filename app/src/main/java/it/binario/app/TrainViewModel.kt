@@ -291,6 +291,38 @@ class TrainViewModel @JvmOverloads constructor(
      */
     var activeRouteIsSearch by mutableStateOf(false)
         private set
+    /** The planned return of a round trip, for the planner form opened with "Modifica". */
+    val returnQuery: JourneyQuery? get() = returnJourneyQuery
+
+    /**
+     * The planner search the route results answer, encoded for the saved instance state ([RouteSearchRecord]); null
+     * once the active route or its time changed elsewhere (Partenze, Per te, a backup).
+     */
+    var routeSearchRecord by mutableStateOf<String?>(null)
+        private set
+    /** False until the active route, its direction or its time is changed in this view model (not by the bootstrap). */
+    var routeChangedInSession by mutableStateOf(false)
+        private set
+
+    /** Repeats a planner search after the process was recreated; false when its stations are no longer known. */
+    fun repeatRouteSearch(encoded: String): Boolean {
+        val record = RouteSearchRecord.decode(encoded) ?: return false
+        val origin = stations.firstOrNull { it.id == record.originId } ?: return false
+        val destination = stations.firstOrNull { it.id == record.destinationId } ?: return false
+        val departure = record.departure
+        val returnAt = record.returnAt
+        return when {
+            returnAt != null -> {
+                val outbound = departure ?: java.time.LocalDateTime.of(JourneyQuery.now().serviceDate, JourneyQuery.now().departureTime)
+                searchRoundTrip(
+                    origin, destination, outbound.toLocalDate(), outbound.toLocalTime(), returnAt.toLocalDate(), returnAt.toLocalTime(),
+                    outboundFollowsCurrentTime = departure == null
+                )
+            }
+            departure != null -> searchRoute(origin, destination, departure.toLocalDate(), departure.toLocalTime())
+            else -> searchRoute(origin, destination)
+        }
+    }
     val hasStationBoardProviders: Boolean get() = stationBoardService.hasProviders
 
     fun plannerOriginText(): String = activeRoute.takeIf { hasActiveRoute }?.outwardOrigin?.name.orEmpty()
@@ -472,6 +504,8 @@ class TrainViewModel @JvmOverloads constructor(
         clearReturnJourneyState()
         journeyQueryState.resetForRouteActivation()
         activeRouteIsSearch = false
+        routeChangedInSession = true
+        routeSearchRecord = null
         activeRoute = route
         routeStore.saveActiveRoute(route.id)
         direction = selectedDirection
@@ -513,13 +547,16 @@ class TrainViewModel @JvmOverloads constructor(
             outwardDestination = rememberedDestination
         )
         direction = Direction.OUTBOUND
+        routeChangedInSession = true
+        routeSearchRecord = RouteSearchRecord(
+            rememberedOrigin.id,
+            rememberedDestination.id,
+            if (serviceDate == null && departureTime == null) null else journeyQueryValue(serviceDate, departureTime).requestedAt
+        ).encode()
         if (serviceDate == null && departureTime == null) {
             journeyQueryState.resetForRouteActivation()
         } else {
-            journeyQueryState.selectPlanned(
-                serviceDate ?: LocalDate.now(RailTime.defaultZone),
-                departureTime ?: LocalTime.now(RailTime.defaultZone).withSecond(0).withNano(0)
-            )
+            journeyQueryValue(serviceDate, departureTime).let { journeyQueryState.selectPlanned(it.serviceDate, it.departureTime) }
         }
         routeStore.saveDirection(direction)
         recentRoutes = routeStore.recordRecent(rememberedOrigin, rememberedDestination, stations)
@@ -551,6 +588,7 @@ class TrainViewModel @JvmOverloads constructor(
         else searchRoute(origin, destination, departureDate, departureTime)
         if (!searched) return false
 
+        routeSearchRecord = RouteSearchRecord.decode(routeSearchRecord)?.copy(returnAt = java.time.LocalDateTime.of(returnDate, returnTime))?.encode()
         returnJourneyQuery = JourneyQuery(returnDate, returnTime)
         refreshReturn()
         return true
@@ -560,6 +598,8 @@ class TrainViewModel @JvmOverloads constructor(
         clearReturnJourneyState()
         // È ancora la stessa consultazione: una ricerca pianificata deve poter
         // mostrare anche la direzione opposta alla data/ora scelta dall'utente.
+        routeChangedInSession = true
+        routeSearchRecord = null
         direction = if (direction == Direction.OUTBOUND) Direction.RETURN else Direction.OUTBOUND
         routeStore.saveDirection(direction)
         clearSelectedService()
@@ -575,6 +615,8 @@ class TrainViewModel @JvmOverloads constructor(
      */
     fun followCurrentTime() {
         if (journeyQueryState.followsCurrentTime) return
+        routeChangedInSession = true
+        routeSearchRecord = RouteSearchRecord.decode(routeSearchRecord)?.copy(departure = null, returnAt = null)?.encode()
         clearReturnJourneyState()
         journeyQueryState.resetForRouteActivation()
         clearSelectedService()
@@ -695,6 +737,8 @@ class TrainViewModel @JvmOverloads constructor(
         savedRoutes = pinnedFirst(listOf(route) + savedRoutes.filterNot { it.outwardOrigin == origin && it.outwardDestination == destination })
         routeStore.saveRoutes(savedRoutes)
         activeRouteIsSearch = false
+        routeChangedInSession = true
+        routeSearchRecord = null
         activeRoute = route
         routeStore.saveActiveRoute(route.id)
         direction = Direction.OUTBOUND
@@ -734,6 +778,8 @@ class TrainViewModel @JvmOverloads constructor(
             clearReturnJourneyState()
             journeyQueryState.resetForRouteActivation()
             activeRouteIsSearch = false
+            routeChangedInSession = true
+            routeSearchRecord = null
             activeRoute = savedRoutes.firstOrNull() ?: unconfiguredRoute()
             if (hasActiveRoute) routeStore.saveActiveRoute(activeRoute.id) else routeStore.clearActiveRoute()
             clearSelectedService()
@@ -1130,6 +1176,8 @@ class TrainViewModel @JvmOverloads constructor(
             restoreBackupStations(backup)
             savedRoutes = pinnedFirst(routeStore.replaceRoutes(backup.routes))
             activeRouteIsSearch = false
+            routeChangedInSession = true
+            routeSearchRecord = null
             activeRoute = savedRoutes.firstOrNull() ?: unconfiguredRoute()
             clearSelectedService()
             primarySnapshot = null
@@ -1322,6 +1370,12 @@ private class ServicePresentation private constructor(
 }
 
 private fun pinnedFirst(routes: List<SavedRoute>): List<SavedRoute> = SavedRouteOrdering.ordered(routes)
+
+/** The planned query of a search with a date and/or a time; a missing one is today or now. */
+private fun journeyQueryValue(serviceDate: LocalDate?, departureTime: LocalTime?): JourneyQuery = JourneyQuery(
+    serviceDate ?: LocalDate.now(RailTime.defaultZone),
+    departureTime ?: LocalTime.now(RailTime.defaultZone).withSecond(0).withNano(0)
+)
 
 private class RouteStore(context: Context) {
     private val preferences = context.getSharedPreferences("binario_routes_v3", Context.MODE_PRIVATE)

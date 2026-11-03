@@ -56,6 +56,40 @@ class AppNavigationTest {
     }
 
     @Test
+    fun `results opened from Per te stay in Per te and go back there`() {
+        assertEquals(TopDestination.FOR_YOU, AppNavigation.destinationOf(AppScreen.NUMBER_RESULTS, AppScreen.PLANNER, AppScreen.FOR_YOU))
+        assertEquals(TopDestination.FOR_YOU, AppNavigation.destinationOf(AppScreen.RESULTS, AppScreen.PLANNER, AppScreen.FOR_YOU))
+        assertEquals(TopDestination.FOR_YOU, AppNavigation.destinationOf(AppScreen.DETAIL, AppScreen.NUMBER_RESULTS, AppScreen.FOR_YOU))
+        assertEquals(TopDestination.FOR_YOU, AppNavigation.destinationOf(AppScreen.JOURNEY_DETAIL, AppScreen.RESULTS, AppScreen.FOR_YOU))
+        assertEquals(AppScreen.FOR_YOU, AppNavigation.back(AppScreen.NUMBER_RESULTS, AppScreen.PLANNER, AppScreen.FOR_YOU))
+        assertEquals(AppScreen.FOR_YOU, AppNavigation.back(AppScreen.RESULTS, AppScreen.PLANNER, AppScreen.FOR_YOU))
+        assertEquals(AppScreen.NUMBER_RESULTS, AppNavigation.back(AppScreen.DETAIL, AppScreen.NUMBER_RESULTS, AppScreen.FOR_YOU))
+        // Only the planner and Per te open results; anything else falls back to the planner.
+        assertEquals(AppScreen.PLANNER, AppNavigation.back(AppScreen.RESULTS, AppScreen.PLANNER, AppScreen.DEPARTURES))
+        assertEquals(TopDestination.PLAN, AppNavigation.destinationOf(AppScreen.RESULTS, AppScreen.PLANNER, AppScreen.DEPARTURES))
+    }
+
+    @Test
+    fun `a tab reopens on its last screen but never on a closed train detail`() {
+        assertEquals(AppScreen.RESULTS, AppNavigation.resumeScreenOf(AppScreen.RESULTS, AppScreen.PLANNER))
+        assertEquals(AppScreen.RESULTS, AppNavigation.resumeScreenOf(AppScreen.DETAIL, AppScreen.RESULTS))
+        assertEquals(AppScreen.DEPARTURES, AppNavigation.resumeScreenOf(AppScreen.DETAIL, AppScreen.DEPARTURES))
+        assertEquals(AppScreen.PLANNER, AppNavigation.resumeScreenOf(AppScreen.DETAIL, AppScreen.DETAIL))
+        assertEquals(AppScreen.SETTINGS_SECTION, AppNavigation.resumeScreenOf(AppScreen.SETTINGS_SECTION, AppScreen.PLANNER))
+    }
+
+    @Test
+    fun `the tab screens survive as one saved string`() {
+        var encoded = TabScreens.with("", TopDestination.PLAN, AppScreen.RESULTS)
+        encoded = TabScreens.with(encoded, TopDestination.FOR_YOU, AppScreen.SETTINGS)
+        encoded = TabScreens.with(encoded, TopDestination.PLAN, AppScreen.JOURNEY_DETAIL)
+        assertEquals(AppScreen.JOURNEY_DETAIL, TabScreens.of(encoded, TopDestination.PLAN))
+        assertEquals(AppScreen.SETTINGS, TabScreens.of(encoded, TopDestination.FOR_YOU))
+        assertNull(TabScreens.of(encoded, TopDestination.DEPARTURES))
+        assertNull(TabScreens.of("PLAN=GONE", TopDestination.PLAN))
+    }
+
+    @Test
     fun `phones hide the bottom bar only in the train detail while the side navigation stays from 600 dp`() {
         val details = setOf(AppScreen.DETAIL, AppScreen.JOURNEY_DETAIL)
         AppScreen.entries.filter { it !in details }.forEach {

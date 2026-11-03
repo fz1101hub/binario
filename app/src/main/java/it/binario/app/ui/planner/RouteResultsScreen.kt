@@ -27,6 +27,7 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -118,7 +119,9 @@ internal fun RouteResultsScreen(
     selectedServiceId: String? = null,
     selectedJourneyId: String? = null,
     /** "Filtri": Impostazioni › Preferenze di viaggio. */
-    openTravelPreferences: () -> Unit = {}
+    openTravelPreferences: () -> Unit = {},
+    /** The first direct train as listed (after merge, chips and preferences), previewed beside the list from 840 dp. */
+    onFirstShownService: (TrainService?) -> Unit = {}
 ) {
     val roundTrip = viewModel.hasReturnJourney
     val primaryDirection = viewModel.direction
@@ -152,6 +155,8 @@ internal fun RouteResultsScreen(
     val shown = ResultsMerge.apply(entries, filter, travelPreferences)
     val returnShown = ResultsMerge.apply(returnEntries, filter, travelPreferences)
     val counts = ResultsMerge.counts(entries + returnEntries)
+    val firstShownTrain = shown.firstNotNullOfOrNull { (it as? ResultEntry.Train)?.service }
+    LaunchedEffect(firstShownTrain?.id) { onFirstShownService(firstShownTrain) }
     val journeysShown = entries.any { it is ResultEntry.Journey }
     val isDemonstration = viewModel.isDemonstrationData()
     // Live, scheduled timetable or saved copy, for the status card and the chip of every card.
@@ -180,7 +185,8 @@ internal fun RouteResultsScreen(
     val shareStrings = timetableShareStrings()
     val searchLabel = searchDateLabel(query.serviceDate, query.departureTime)
     val shareChooser = stringResource(R.string.share_timetable_chooser)
-    var savedTimetableId by rememberSaveable(route.id, primaryDirection, query) { mutableStateOf<String?>(null) }
+    // A search from now keeps its saved copy while the clock moves on.
+    var savedTimetableId by rememberSaveable(route.id, primaryDirection, if (viewModel.journeyFollowsCurrentTime) null else query) { mutableStateOf<String?>(null) }
     val stationIndex = rememberOpenMapStationIndex(viewModel.stations, viewModel::stationFromName)
 
     val outboundStates = ResultStates(

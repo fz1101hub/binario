@@ -50,6 +50,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -114,6 +115,8 @@ internal fun PlannerScreen(
     viewModel: TrainViewModel,
     initialMode: SearchMode,
     modeRequestId: Int,
+    /** Incremented by "Modifica" of the results: the form takes the search on screen. */
+    editRequestId: Int = 0,
     showResults: () -> Unit,
     showTrainResults: () -> Unit,
     openMore: () -> Unit,
@@ -145,7 +148,36 @@ internal fun PlannerScreen(
     val resources = LocalResources.current
     val dateUnselected = stringResource(R.string.planner_date_unselected)
     val timeUnselected = stringResource(R.string.planner_time_unselected)
-    LaunchedEffect(modeRequestId) { mode = initialMode }
+    // Each request (a deep link, "Modifica") applies once: coming back to the planner keeps what the user set.
+    var handledModeRequest by rememberSaveable { mutableIntStateOf(0) }
+    LaunchedEffect(modeRequestId) {
+        if (modeRequestId != handledModeRequest) {
+            mode = initialMode
+            handledModeRequest = modeRequestId
+        }
+    }
+    var handledEditRequest by rememberSaveable { mutableIntStateOf(0) }
+    LaunchedEffect(editRequestId) {
+        if (editRequestId == handledEditRequest) return@LaunchedEffect
+        handledEditRequest = editRequestId
+        if (!viewModel.hasActiveRoute) return@LaunchedEffect
+        mode = SearchMode.ROUTE
+        originText = viewModel.activeRoute.origin(viewModel.direction).name
+        destinationText = viewModel.activeRoute.destination(viewModel.direction).name
+        val query = viewModel.journeyQuery
+        dateChosen = !viewModel.journeyFollowsCurrentTime
+        timeChosen = !viewModel.journeyFollowsCurrentTime
+        if (!viewModel.journeyFollowsCurrentTime) {
+            travelDate = query.serviceDate.toString()
+            travelTime = query.departureTime.toString()
+        }
+        val planned = viewModel.returnQuery
+        returnJourney = planned != null
+        planned?.let {
+            returnDate = it.serviceDate.toString()
+            returnTime = it.departureTime.toString()
+        }
+    }
     val voiceLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         val voiceTarget = SearchMode.valueOf(voiceTargetName)
         val spoken = if (result.resultCode == Activity.RESULT_OK) {

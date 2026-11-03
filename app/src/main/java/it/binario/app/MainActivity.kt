@@ -53,6 +53,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -88,6 +89,7 @@ import it.binario.app.plannedjourney.PlannedJourneyTransferContract
 import it.binario.app.plannedjourney.PlannedJourneyViewModel
 import it.binario.app.ui.AppNavigation
 import it.binario.app.ui.AppScreen
+import it.binario.app.ui.TabScreens
 import it.binario.app.ui.TopDestination
 import it.binario.app.ui.WidthClass
 import it.binario.app.ui.common.BinarioNavigationBar
@@ -221,6 +223,17 @@ internal fun BinarioApp(
     var selectedJourneyId by rememberSaveable { mutableStateOf<String?>(null) }
     var savedTimetableId by rememberSaveable { mutableStateOf<String?>(null) }
     var detailReturnScreen by rememberSaveable { mutableStateOf(AppScreen.RESULTS) }
+    // Where the route and train-number results go back to: the planner, or Per te (favourite trains, recent routes).
+    var resultsReturnScreen by rememberSaveable { mutableStateOf(AppScreen.PLANNER) }
+    // The screen each tab reopens on ("PLAN=RESULTS;FOR_YOU=SETTINGS"): a tab switch keeps the planner's results.
+    var tabScreens by rememberSaveable { mutableStateOf("") }
+    // The planner search the results show, and the train number of the number results, for a recreated process.
+    var restoredRouteSearch by rememberSaveable { mutableStateOf<String?>(null) }
+    var restoredTrainNumber by rememberSaveable { mutableStateOf("") }
+    // "Modifica" of the results: the planner fills its form from the search on screen.
+    var plannerEditRequestId by rememberSaveable { mutableIntStateOf(0) }
+    // The state of every screen (the planner form, list positions) survives navigation and tab switches.
+    val saveableStateHolder = rememberSaveableStateHolder()
     var operationsSectionName by rememberSaveable { mutableStateOf(OperationsSection.TRAINS.name) }
     var plannerSearchModeName by rememberSaveable { mutableStateOf(SearchMode.ROUTE.name) }
     var plannerSearchRequestId by rememberSaveable { mutableIntStateOf(0) }
@@ -350,6 +363,24 @@ internal fun BinarioApp(
         if (screen == AppScreen.DETAIL && target != AppScreen.DETAIL) viewModel.closeService()
         screen = target
     }
+    /** The route or train-number results, opened from the planner or from Per te ([parent]). */
+    fun showResults(target: AppScreen, parent: AppScreen) {
+        resultsReturnScreen = AppNavigation.resultsParentOf(parent)
+        showScreen(target)
+    }
+    // Every screen shown becomes the one its tab reopens on (a settings section reached from the planner does not).
+    LaunchedEffect(screen, detailReturnScreen, resultsReturnScreen, settingsReturnScreen) {
+        if (screen == AppScreen.SETTINGS_SECTION && settingsReturnScreen != AppScreen.SETTINGS) return@LaunchedEffect
+        val tab = AppNavigation.destinationOf(screen, detailReturnScreen, resultsReturnScreen)
+        tabScreens = TabScreens.with(tabScreens, tab, AppNavigation.resumeScreenOf(screen, detailReturnScreen))
+    }
+    // The searches the results answer, kept in the saved state while this process changes them.
+    LaunchedEffect(viewModel.routeSearchRecord, viewModel.routeChangedInSession) {
+        if (viewModel.routeChangedInSession) restoredRouteSearch = viewModel.routeSearchRecord
+    }
+    LaunchedEffect(viewModel.trainNumberQuery) {
+        if (viewModel.trainNumberQuery.isNotBlank()) restoredTrainNumber = viewModel.trainNumberQuery
+    }
     val journeyState by journeyViewModel.state.collectAsState()
     // The journeys with changes are searched next to the direct trains whenever the route results are on screen
     // (alone, beside a detail, or under a detail opened from them), from any path that leads there: planner, recent
@@ -403,6 +434,8 @@ internal fun BinarioApp(
             plannerSearchModeName = mode.name
             plannerSearchRequestId += 1
         }
+        // A tap on the "I miei treni" widget belongs to Per te, like the list it mirrors.
+        if (target.screen == AppScreen.NUMBER_RESULTS) resultsReturnScreen = AppScreen.FOR_YOU
         showScreen(target.screen)
         // Clear the event only after applying it. Subsequent recompositions and
         // lifecycle restores therefore cannot replay the same external navigation.
@@ -434,7 +467,7 @@ internal fun BinarioApp(
         viewModel.updateTrainNumberQuery(monitor.number)
         viewModel.searchTrainNumber()
         pendingFavouriteTrain = monitor.number + FAVOURITE_SEPARATOR + monitor.origin
-        showScreen(AppScreen.NUMBER_RESULTS)
+        showResults(AppScreen.NUMBER_RESULTS, AppScreen.FOR_YOU)
     }
     namingFavouriteTrain?.let { number ->
         val monitor = viewModel.monitoredServices.firstOrNull { it.number.equals(number, ignoreCase = true) }
@@ -456,11 +489,19 @@ internal fun BinarioApp(
     }
     val plannerSearchMode = SearchMode.valueOf(plannerSearchModeName)
     val operationsSection = OperationsSection.valueOf(operationsSectionName)
-    val backTarget = if (screen == AppScreen.SETTINGS_SECTION) settingsReturnScreen else AppNavigation.back(screen, detailReturnScreen)
+    val backTarget = if (screen == AppScreen.SETTINGS_SECTION) settingsReturnScreen else AppNavigation.back(screen, detailReturnScreen, resultsReturnScreen)
     val navigateBack: () -> Unit = { backTarget?.let(::showScreen) }
     BackHandler(enabled = backTarget != null, onBack = navigateBack)
-    val selectedDestination = AppNavigation.destinationOf(screen, detailReturnScreen)
-    val selectDestination: (TopDestination) -> Unit = { destination -> showScreen(AppNavigation.rootOf(destination)) }
+    val selectedDestination = AppNavigation.destinationOf(screen, detailReturnScreen, resultsReturnScreen)
+    // Another tab reopens where it was left; the tab already selected goes back to its first screen.
+    val selectDestination: (TopDestination) -> Unit = { destination ->
+        val resumed = TabScreens.of(tabScreens, destination).takeIf { destination != selectedDestination }
+        when (resumed) {
+            AppScreen.RESULTS, AppScreen.NUMBER_RESULTS, AppScreen.JOURNEY_DETAIL -> resultsReturnScreen = AppNavigation.rootOf(destination)
+            else -> Unit
+        }
+        showScreen(resumed ?: AppNavigation.rootOf(destination))
+    }
     if (showThemePicker) {
         ThemePickerSheet(currentMode = themeMode, onModeSelected = {
             onThemeModeChange(it)
@@ -493,16 +534,20 @@ internal fun BinarioApp(
         }
     }
 
+    // The first train of the results as they are listed, previewed beside them from 840 dp.
+    var resultsPreview by remember { mutableStateOf<TrainService?>(null) }
     // inSidePane: from 840 dp a list shares the window with the detail pane (station run details included).
     val screenContent: @Composable (AppScreen, Modifier, Boolean) -> Unit = { shown, modifier, inSidePane ->
+        saveableStateHolder.SaveableStateProvider(shown.name) {
         when (shown) {
             AppScreen.PLANNER -> PlannerScreen(
                 modifier = modifier,
                 viewModel = viewModel,
                 initialMode = plannerSearchMode,
                 modeRequestId = plannerSearchRequestId,
-                showResults = { showScreen(AppScreen.RESULTS) },
-                showTrainResults = { showScreen(AppScreen.NUMBER_RESULTS) },
+                editRequestId = plannerEditRequestId,
+                showResults = { showResults(AppScreen.RESULTS, AppScreen.PLANNER) },
+                showTrainResults = { showResults(AppScreen.NUMBER_RESULTS, AppScreen.PLANNER) },
                 openMore = { showScreen(AppScreen.FOR_YOU) },
                 openStations = { station ->
                     station?.let(viewModel::openStationBoard)
@@ -531,7 +576,7 @@ internal fun BinarioApp(
                     viewModel.activateRoute(it)
                     showDepartures(OperationsSection.TRAINS)
                 },
-                openRecent = { recent -> if (viewModel.useRecentRoute(recent)) showScreen(AppScreen.RESULTS) },
+                openRecent = { recent -> if (viewModel.useRecentRoute(recent)) showResults(AppScreen.RESULTS, AppScreen.FOR_YOU) },
                 openAgenda = { showScreen(AppScreen.AGENDA) },
                 openStationBoard = { station ->
                     viewModel.openStationBoard(station)
@@ -586,21 +631,34 @@ internal fun BinarioApp(
                     plannedJourneyImportLauncher.launch(arrayOf("application/json", "text/calendar", "text/plain"))
                 }
             ) }
-            AppScreen.RESULTS -> RouteResultsScreen(
-                modifier = modifier,
-                viewModel = viewModel,
-                journeys = journeyState,
-                openDetails = { service -> openDetail(AppScreen.RESULTS) { viewModel.openService(service) } },
-                openJourney = ::openJourney,
-                retryJourneys = journeyViewModel::retry,
-                editSearch = { showScreen(AppScreen.PLANNER) },
-                selectedServiceId = if (inSidePane) {
-                    viewModel.selectedService?.id.takeIf { screen == AppScreen.DETAIL }
-                        ?: viewModel.currentServices().firstOrNull()?.id.takeIf { screen != AppScreen.JOURNEY_DETAIL }
-                } else null,
-                selectedJourneyId = selectedJourneyId.takeIf { inSidePane && screen == AppScreen.JOURNEY_DETAIL },
-                openTravelPreferences = ::openTravelPreferences
-            )
+            AppScreen.RESULTS -> when {
+                // A recreated process has a new view model: repeat the planner search instead of showing the saved
+                // route from now (or nothing); without a search to repeat, go back to the planner and its form.
+                !viewModel.routeChangedInSession && viewModel.routeSearchRecord == null -> LaunchedEffect(restoredRouteSearch) {
+                    val repeated = restoredRouteSearch?.let(viewModel::repeatRouteSearch) == true
+                    if (!repeated) screen = AppNavigation.resultsParentOf(resultsReturnScreen)
+                }
+                !viewModel.hasActiveRoute -> LaunchedEffect(Unit) { screen = AppNavigation.resultsParentOf(resultsReturnScreen) }
+                else -> RouteResultsScreen(
+                    modifier = modifier,
+                    viewModel = viewModel,
+                    journeys = journeyState,
+                    openDetails = { service -> openDetail(AppScreen.RESULTS) { viewModel.openService(service) } },
+                    openJourney = ::openJourney,
+                    retryJourneys = journeyViewModel::retry,
+                    editSearch = {
+                        plannerEditRequestId += 1
+                        showScreen(AppScreen.PLANNER)
+                    },
+                    selectedServiceId = if (inSidePane) {
+                        viewModel.selectedService?.id.takeIf { screen == AppScreen.DETAIL }
+                            ?: resultsPreview?.id.takeIf { screen != AppScreen.JOURNEY_DETAIL }
+                    } else null,
+                    selectedJourneyId = selectedJourneyId.takeIf { inSidePane && screen == AppScreen.JOURNEY_DETAIL },
+                    openTravelPreferences = ::openTravelPreferences,
+                    onFirstShownService = { resultsPreview = it }
+                )
+            }
             AppScreen.JOURNEY_DETAIL -> {
                 val row = remember(journeyState.result, journeyState.liveLegs, selectedJourneyId) {
                     journeyState.result?.let { result -> JourneyResultsPresenter.present(result, live = journeyState.liveLegs).rows.firstOrNull { it.id == selectedJourneyId } }
@@ -616,7 +674,15 @@ internal fun BinarioApp(
                     stationIndex = rememberOpenMapStationIndex(viewModel.stations, viewModel::stationFromName)
                 )
             }
-            AppScreen.NUMBER_RESULTS -> HeaderedPane(
+            // A recreated process lost the number: search it again, or go back when there is none.
+            AppScreen.NUMBER_RESULTS -> if (viewModel.trainNumberQuery.isBlank()) {
+                LaunchedEffect(restoredTrainNumber) {
+                    if (restoredTrainNumber.isNotBlank()) {
+                        viewModel.updateTrainNumberQuery(restoredTrainNumber)
+                        viewModel.searchTrainNumber()
+                    } else screen = AppNavigation.resultsParentOf(resultsReturnScreen)
+                }
+            } else HeaderedPane(
                 modifier = modifier,
                 title = stringResource(R.string.train_number_results_title),
                 subtitle = stringResource(R.string.train_number_results_subtitle)
@@ -667,6 +733,7 @@ internal fun BinarioApp(
                 )
             }
         }
+        }
     }
 
     val navigationIcon: @Composable () -> Unit = {
@@ -676,7 +743,8 @@ internal fun BinarioApp(
             }
         }
     }
-    val actions: @Composable RowScope.() -> Unit = {
+    // detailBesideList: from 840 dp the detail pane has its own "Condividi" beside the follow button.
+    fun topBarActions(detailBesideList: Boolean): @Composable RowScope.() -> Unit = {
         when (screen) {
             AppScreen.PLANNER -> IconButton(onClick = { showThemePicker = true }) {
                 Icon(Icons.Default.Palette, contentDescription = stringResource(R.string.action_choose_theme, themeMode.localizedLabel()))
@@ -705,8 +773,10 @@ internal fun BinarioApp(
                         contentDescription = stringResource(if (monitored) R.string.accessibility_saved_monitored else R.string.accessibility_save_monitored)
                     )
                 }
-                IconButton(onClick = shareSelectedService, modifier = Modifier.testTag("detail-share")) {
-                    Icon(Icons.Default.Share, contentDescription = stringResource(R.string.action_share))
+                if (!detailBesideList) {
+                    IconButton(onClick = shareSelectedService, modifier = Modifier.testTag("detail-share")) {
+                        Icon(Icons.Default.Share, contentDescription = stringResource(R.string.action_share))
+                    }
                 }
             }
             AppScreen.AGENDA, AppScreen.SETTINGS, AppScreen.SETTINGS_SECTION, AppScreen.JOURNEY_DETAIL, AppScreen.SAVED_TIMETABLE -> Unit
@@ -726,7 +796,7 @@ internal fun BinarioApp(
         CompositionLocalProvider(LocalWideLayout provides wide) {
             if (!wide) {
                 Scaffold(
-                    topBar = { BinarioTopBar(brand = screen == AppScreen.PLANNER, navigationIcon = navigationIcon, actions = actions) },
+                    topBar = { BinarioTopBar(brand = screen == AppScreen.PLANNER, navigationIcon = navigationIcon, actions = topBarActions(false)) },
                     bottomBar = {
                         if (AppNavigation.showsNavigation(screen, widthClass)) {
                             BinarioNavigationBar(selected = selectedDestination, onSelect = selectDestination, containerColor = navigationBarColor)
@@ -737,6 +807,10 @@ internal fun BinarioApp(
                     screenContent(screen, Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding), false)
                 }
             } else {
+                // The run details of a station board entry beside the board: Back closes them, as the sheet does on phones.
+                BackHandler(enabled = listPane == AppScreen.DEPARTURES && operationsSection == OperationsSection.STATIONS && viewModel.selectedBoardEntry != null) {
+                    viewModel.closeStationBoardRun()
+                }
                 Row(Modifier.fillMaxSize()) {
                     // The green side navigation reaches behind the status bar, as in the tablet render.
                     BinarioNavigationRail(
@@ -750,7 +824,7 @@ internal fun BinarioApp(
                             .fillMaxHeight()
                             .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.End + WindowInsetsSides.Bottom))
                     ) {
-                        BinarioTopBar(brand = false, navigationIcon = navigationIcon, actions = actions)
+                        BinarioTopBar(brand = false, navigationIcon = navigationIcon, actions = topBarActions(listPane != null))
                         Row(Modifier.weight(1f).fillMaxWidth()) {
                             when {
                                 listPane != null -> {
@@ -758,7 +832,7 @@ internal fun BinarioApp(
                                     screenContent(listPane, Modifier.weight(1f).fillMaxHeight(), true)
                                     VerticalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                                     Box(Modifier.weight(1.2f).fillMaxHeight().testTag("detail-pane")) {
-                                        val previewService = viewModel.currentServices().firstOrNull()
+                                        val previewService = resultsPreview ?: viewModel.currentServices().firstOrNull()
                                         when {
                                             screen == AppScreen.DETAIL -> screenContent(AppScreen.DETAIL, Modifier.fillMaxSize(), true)
                                             screen == AppScreen.JOURNEY_DETAIL -> screenContent(AppScreen.JOURNEY_DETAIL, Modifier.fillMaxSize(), true)

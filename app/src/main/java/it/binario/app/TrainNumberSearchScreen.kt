@@ -37,7 +37,6 @@ internal fun TrainNumberResultsScreen(modifier: Modifier, viewModel: TrainViewMo
         item {
             Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(stringResource(R.string.train_number_results_heading, viewModel.trainNumberQuery), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                Text(stringResource(R.string.train_number_results_subtitle), style = MaterialTheme.typography.bodyMedium)
                 if (viewModel.trainNumberSearchState == RefreshState.LOADING) {
                     LinearProgressIndicator(Modifier.fillMaxWidth())
                     Text(stringResource(R.string.train_number_loading), style = MaterialTheme.typography.bodySmall)
