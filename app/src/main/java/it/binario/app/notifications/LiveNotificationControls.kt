@@ -7,11 +7,17 @@ import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.selection.toggleable
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Switch
@@ -26,19 +32,27 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import it.binario.app.FavouriteTrainStore
 import it.binario.app.R
 import it.binario.app.data.RailTime
+import it.binario.app.data.StopRouteChange
 import it.binario.app.data.TrainService
+import it.binario.app.data.TrainStop
 import it.binario.app.data.notices.TrainNoticeContext
 import it.binario.app.data.repository.BinarioDataGraph
+import it.binario.app.gpsalarm.GpsAlarmStation
+import it.binario.app.gpsalarm.TripPositionEstimateToggle
 import it.binario.app.journeys.JourneyOptionRow
+import it.binario.app.journeys.LiveStopTimes
 import it.binario.app.ui.common.localizedLabel
 import it.binario.app.ui.journeys.journeyLegLabel
 import java.time.Instant
@@ -94,7 +108,12 @@ private val clock: DateTimeFormatter = DateTimeFormatter.ofPattern("H:mm", Local
  * to 30 minutes after the arrival, refreshed every 15 minutes, with "Aggiorna" and "Interrompi".
  */
 @Composable
-internal fun FollowedTripNotificationToggle(service: TrainService, modifier: Modifier = Modifier) {
+internal fun FollowedTripNotificationToggle(
+    service: TrainService,
+    modifier: Modifier = Modifier,
+    /** Catalogue coordinates of a stop name; with it the toggle offers "Stima dalla tua posizione". */
+    locate: ((String) -> GpsAlarmStation?)? = null
+) {
     val context = LocalContext.current
     val resources = LocalResources.current
     val label = stringResource(R.string.service_category_number, service.trainCategory.localizedLabel(), service.number)
@@ -128,6 +147,8 @@ internal fun FollowedTripNotificationToggle(service: TrainService, modifier: Mod
             modifier = Modifier.testTag("detail-follow-notification")
         )
         feedback?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        val leg = remember(active) { FollowedTripScheduler.current(context)?.legs?.singleOrNull()?.takeIf { active } }
+        if (locate != null && leg != null) TripPositionEstimateToggle(service, leg, locate)
     }
 }
 
@@ -214,6 +235,98 @@ internal fun TrainAlertToggle(service: TrainService, eligible: Boolean, modifier
             },
             modifier = Modifier.testTag("detail-train-alerts")
         )
+        feedback?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+    }
+}
+
+/**
+ * "Avvisami quando sta arrivando" for a favourite train (Info tab of the detail): a notification [ApproachAlert.leadMinutes]
+ * before the train's expected time at a station of its route, by default the favourite's saved origin. The
+ * notification permission is asked only when the user turns it on.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+internal fun ApproachAlertControl(service: TrainService, eligible: Boolean, modifier: Modifier = Modifier) {
+    if (!eligible) return
+    val context = LocalContext.current
+    val resources = LocalResources.current
+    val store = remember(context) { ApproachAlertStore(context) }
+    val stops = remember(service.id, service.stops) {
+        service.stops.filter { it.routeChange != StopRouteChange.SKIPPED && LiveStopTimes.parse(it.scheduled) != null }
+    }
+    if (stops.isEmpty()) return
+    val label = stringResource(R.string.service_category_number, service.trainCategory.localizedLabel(), service.number)
+    var alert by remember(service.number) { mutableStateOf(store.alert(service.number)) }
+    var choosing by remember(service.number) { mutableStateOf(false) }
+    var feedback by remember(service.number) { mutableStateOf<String?>(null) }
+    val withPermission = rememberWithNotificationPermission { feedback = resources.getString(R.string.settings_live_updates_permission) }
+    val defaultStop = remember(service.number, stops) {
+        val origin = FavouriteTrainStore(context).all().firstOrNull { it.number.equals(service.number, ignoreCase = true) }?.origin.orEmpty()
+        stops.firstOrNull { origin.isNotBlank() && LiveStopTimes.namesMatch(it.station, origin) } ?: stops.first()
+    }
+    val save = { stop: TrainStop, lead: Int ->
+        val updated = ApproachAlert(
+            number = service.number.trim(),
+            label = label,
+            station = stop.station,
+            stationTime = stop.scheduled.trim(),
+            departure = service.scheduledDeparture.trim().takeIf { LiveStopTimes.parse(it) != null } ?: stops.first().scheduled.trim(),
+            leadMinutes = lead,
+            createdAt = Instant.now()
+        )
+        store.save(updated)
+        alert = updated
+        feedback = null
+        ApproachAlertScheduler.reschedule(context)
+    }
+    Column(modifier.testTag("detail-approach-alert"), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        ToggleRow(
+            title = stringResource(R.string.approach_alert_toggle),
+            description = stringResource(R.string.approach_alert_toggle_description),
+            checked = alert != null,
+            onChange = { enable ->
+                if (!enable) {
+                    store.remove(service.number)
+                    alert = null
+                    feedback = null
+                    ApproachAlertScheduler.reschedule(context)
+                } else withPermission { save(defaultStop, ApproachAlertPlanner.DEFAULT_LEAD) }
+            }
+        )
+        alert?.let { current ->
+            val stationDescription = stringResource(R.string.accessibility_approach_alert_station, current.station)
+            Box {
+                OutlinedButton(onClick = { choosing = true }, modifier = Modifier.semantics { contentDescription = stationDescription }) {
+                    Text(stringResource(R.string.approach_alert_station, current.station))
+                }
+                DropdownMenu(expanded = choosing, onDismissRequest = { choosing = false }) {
+                    stops.forEach { stop ->
+                        DropdownMenuItem(
+                            text = { Text("${stop.station} · ${stop.scheduled.trim()}") },
+                            onClick = {
+                                choosing = false
+                                save(stop, current.leadMinutes)
+                            }
+                        )
+                    }
+                }
+            }
+            Text(stringResource(R.string.approach_alert_lead), style = MaterialTheme.typography.labelLarge)
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                ApproachAlertPlanner.LEAD_OPTIONS.forEach { lead ->
+                    FilterChip(
+                        selected = current.leadMinutes == lead,
+                        onClick = { save(stops.firstOrNull { it.station == current.station } ?: defaultStop, lead) },
+                        label = { Text(pluralStringResource(R.plurals.minutes_short, lead, lead)) }
+                    )
+                }
+            }
+            Text(
+                stringResource(R.string.approach_alert_summary, pluralStringResource(R.plurals.minutes_short, current.leadMinutes, current.leadMinutes), current.station),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
         feedback?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
     }
 }

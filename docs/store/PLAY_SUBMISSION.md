@@ -12,7 +12,7 @@
 | Keystore di upload e iscrizione a Play App Signing | Procedura in `RELEASE_BUILD.md` | Generare il keystore, caricare i quattro secret, eseguire il dispatch con `sign_release=true`. |
 | `versionCode` mai riusati | Garantito da `tools/verify_android_release_config.py` | Incrementare `BINARIO_APP_VERSION_CODE` a ogni upload; Wear deriva automaticamente `1000000 + codice telefono`. |
 | Risposte Sicurezza dei dati coerenti con il codice | `PLAY_DATA_SAFETY.md`, verificato da `tools/verify_privacy_policy.py` | Trascrivere le risposte nella Console e confermarle. |
-| Dichiarazione del servizio in primo piano di tipo `location` (sveglia GPS) | Manifest: `ACCESS_FINE_LOCATION`, `FOREGROUND_SERVICE_LOCATION`, servizio non esportato di tipo `location`; nessuna posizione in background | **OWNER ACTION**: compilare *Autorizzazioni dei servizi in primo piano* con la descrizione e un video dimostrativo come indicato in `PLAY_DATA_SAFETY.md`; senza la dichiarazione la Console non accetta il bundle. |
+| Dichiarazione del servizio in primo piano di tipo `location` (sveglia GPS e «Stima dalla tua posizione») | Manifest: `ACCESS_FINE_LOCATION`, `FOREGROUND_SERVICE_LOCATION`, servizio non esportato di tipo `location`; nessuna posizione in background | **OWNER ACTION**: compilare *Autorizzazioni dei servizi in primo piano* con la descrizione e un video dimostrativo come indicato in `PLAY_DATA_SAFETY.md`; senza la dichiarazione la Console non accetta il bundle. |
 
 ## 1. Creazione dell'app nella Console
 
@@ -25,7 +25,7 @@
    - *Pubblico di destinazione e contenuti*: fasce *13-15*, *16-17* e *18 e oltre*; l'app non è pensata per bambini e non deve attrarli involontariamente. Selezionare una fascia sotto i 13 anni attiverebbe le norme Famiglie, non richieste.
    - *App di notizie*: no. *App di monitoraggio e tracciamento dei contatti COVID-19*: no.
    - *Sicurezza dei dati*: copiare le risposte di `PLAY_DATA_SAFETY.md`, sezione «Risposte proposte al modulo».
-   - *Autorizzazioni dei servizi in primo piano*: dichiarare il tipo *Posizione* per la sveglia GPS con descrizione e link al video, come in `PLAY_DATA_SAFETY.md` («OWNER ACTION — dichiarazione del servizio in primo piano»). La spiegazione del permesso è già mostrata nell'app prima della richiesta di sistema.
+   - *Autorizzazioni dei servizi in primo piano*: dichiarare il tipo *Posizione* per la sveglia GPS e la «Stima dalla tua posizione» con descrizione e link al video, come in `PLAY_DATA_SAFETY.md` («OWNER ACTION — dichiarazione del servizio in primo piano»). La spiegazione del permesso è già mostrata nell'app prima della richiesta di sistema.
    - *Autorizzazioni per la posizione*: solo accesso in primo piano; nessuna dichiarazione di posizione in background.
    - *App governative*: no. *Funzionalità finanziarie*: nessuna. *Salute*: nessuna funzionalità sanitaria.
    - *Categoria dell'app e dettagli di contatto*: categoria *Mappe e navigazione* (alternativa: *Viaggi e info locali*), tag *Treni* e *Trasporto pubblico*; email di contatto pubblica; sito web facoltativo.

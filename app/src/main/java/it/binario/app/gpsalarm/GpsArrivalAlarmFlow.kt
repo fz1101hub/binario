@@ -27,6 +27,8 @@ import it.binario.app.StopAlarmScheduler
 import it.binario.app.data.Station
 import it.binario.app.data.TrainService
 import it.binario.app.data.TrainStop
+import it.binario.app.journeys.LiveStopTimes
+import java.time.Instant
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -38,7 +40,9 @@ internal data class StopAlarmOffer(
     val trainClass: GpsAlarmTrainClass,
     val station: GpsAlarmStation?,
     val availability: GpsAlarmAvailability,
-    val initialRadiusMeters: Int
+    val initialRadiusMeters: Int,
+    /** The train's stops up to this one, for the countdown on the way; catalogue and timetable data only. */
+    val route: GpsTrainRoute? = null
 ) {
     val locationAvailable: Boolean get() = station != null && availability == GpsAlarmAvailability.AVAILABLE
 }
@@ -77,9 +81,20 @@ internal class GpsArrivalAlarmFlow(
         val trainClass = GpsArrivalAlarmPolicy.trainClass(service.trainCategory, service.operator)
         val radius = GpsArrivalAlarmPolicy.initialRadiusMeters(trainClass, store.rememberedRadiusMeters(trainClass))
         scope.launch {
-            val station = withContext(Dispatchers.Default) { GpsArrivalAlarmStations.resolve(stop.station, stations) }
+            val (station, route) = withContext(Dispatchers.Default) {
+                val target = service.stops.indexOf(stop).takeIf { it >= 0 } ?: LiveStopTimes.stopNamed(service.stops, stop.station)
+                val located = GpsArrivalAlarmStations.resolveAll(service.stops.map { it.station }, stations)
+                val station = located.getOrNull(target) ?: GpsArrivalAlarmStations.resolve(stop.station, stations)
+                // The whole route up to the stop: the traveller may have boarded anywhere before it.
+                val route = if (target > 0) {
+                    GpsTrainRoutes.build(service.number, service.stops, 0, target, target, Instant.ofEpochMilli(plan.expectedAtEpochMillis), { name ->
+                        located.getOrNull(service.stops.indexOfFirst { it.station == name })
+                    })
+                } else null
+                station to route
+            }
             val availability = GpsArrivalAlarmPolicy.availability(System.currentTimeMillis(), plan.expectedAtEpochMillis, station != null)
-            offerState.value = StopAlarmOffer(plan, trainClass, station, availability, radius)
+            offerState.value = StopAlarmOffer(plan, trainClass, station, availability, radius, route)
         }
     }
 
@@ -95,7 +110,7 @@ internal class GpsArrivalAlarmFlow(
         val station = current.station
         pendingState.value = if (useLocation && current.locationAvailable && station != null && GpsArrivalAlarmPolicy.isRadiusOption(radiusMeters)) {
             store.rememberRadius(current.trainClass, radiusMeters)
-            GpsArrivalAlarmTargetCodec.encode(GpsArrivalAlarmTarget.from(current.plan, station, radiusMeters))
+            GpsArrivalAlarmTargetCodec.encode(GpsArrivalAlarmTarget.from(current.plan, station, radiusMeters).copy(route = current.route))
         } else {
             null
         }
@@ -235,7 +250,8 @@ private val stopAlarmOfferSaver = listSaver<StopAlarmOffer?, Any>(
                 plan.trainNumber, plan.destination, plan.station, plan.expectedTime, plan.triggerAtEpochMillis,
                 plan.expectedAtEpochMillis, offer.trainClass.name, offer.availability.name, offer.initialRadiusMeters,
                 offer.station?.id.orEmpty(), offer.station?.name.orEmpty(),
-                offer.station?.latitude ?: Double.NaN, offer.station?.longitude ?: Double.NaN
+                offer.station?.latitude ?: Double.NaN, offer.station?.longitude ?: Double.NaN,
+                offer.route?.let(GpsTrainRoutes::encode).orEmpty()
             )
         }
     },
@@ -256,7 +272,8 @@ private val stopAlarmOfferSaver = listSaver<StopAlarmOffer?, Any>(
                 trainClass = GpsAlarmTrainClass.valueOf(values[6] as String),
                 station = station,
                 availability = GpsAlarmAvailability.valueOf(values[7] as String),
-                initialRadiusMeters = values[8] as Int
+                initialRadiusMeters = values[8] as Int,
+                route = GpsTrainRoutes.decode(values.getOrNull(13) as? String)
             )
         }.getOrNull()
     }

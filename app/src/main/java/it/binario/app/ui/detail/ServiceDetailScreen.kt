@@ -79,10 +79,13 @@ import it.binario.app.data.core.RouteChangeKind
 import it.binario.app.links.OfficialLinks
 import it.binario.app.links.OperatorLinkKind
 import it.binario.app.localized
+import it.binario.app.gpsalarm.GpsAlarmStation
 import it.binario.app.maps.OpenMapStationIndex
 import it.binario.app.maps.RouteMapCard
 import it.binario.app.maps.RouteMapPlanner
 import it.binario.app.maps.RouteProgress
+import it.binario.app.maps.mapPoint
+import it.binario.app.notifications.ApproachAlertControl
 import it.binario.app.notifications.FollowedTripNotificationToggle
 import it.binario.app.notifications.TrainAlertToggle
 import it.binario.app.openExternalLink
@@ -307,6 +310,7 @@ internal fun ServiceDetailScreen(
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                     if (!isDemonstration) TrainAlertToggle(service, eligible = isMonitored || isThisTrip)
+                                    if (!isDemonstration) ApproachAlertControl(service, eligible = isMonitored)
                                     co2?.let { estimate ->
                                         Column(Modifier.testTag("detail-co2"), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                                             InfoRow(stringResource(R.string.co2_estimate_title), co2Line(estimate))
@@ -385,7 +389,8 @@ internal fun ServiceDetailScreen(
             onAdvanceActiveTrip = onAdvanceActiveTrip,
             onEndActiveTrip = onEndActiveTrip,
             onShare = onShare.takeIf { showShareButton },
-            followedService = service.takeIf { !isDemonstration }
+            followedService = service.takeIf { !isDemonstration },
+            locateStop = { name -> mapStationIndex.locate(name)?.let { it.mapPoint()?.let { point -> GpsAlarmStation(it.id, it.name, point.latitude, point.longitude) } } }
         )
     }
 }
@@ -401,7 +406,9 @@ private fun DetailBottomBar(
     onEndActiveTrip: () -> Unit,
     onShare: (() -> Unit)?,
     /** The train whose opt-in ongoing notification is offered while it is followed; null offers none. */
-    followedService: TrainService? = null
+    followedService: TrainService? = null,
+    /** Catalogue coordinates of a stop, for "Stima dalla tua posizione". */
+    locateStop: ((String) -> GpsAlarmStation?)? = null
 ) {
     Surface(color = MaterialTheme.colorScheme.background, modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(horizontal = ScreenMargin, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -421,7 +428,7 @@ private fun DetailBottomBar(
                             OutlinedButton(onClick = onAdvanceActiveTrip, enabled = activeTrip?.isComplete == false) { Text(stringResource(R.string.action_stop_reached)) }
                             TextButton(onClick = onEndActiveTrip) { Text(stringResource(R.string.action_end)) }
                         }
-                        followedService?.let { FollowedTripNotificationToggle(it) }
+                        followedService?.let { FollowedTripNotificationToggle(it, locate = locateStop) }
                     }
                 }
             }

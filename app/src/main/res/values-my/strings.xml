@@ -1255,4 +1255,41 @@
     <string name="bike_sharing_source">%1$s ၏ GBFS ဒေတာ (%2$s အချိန်)</string>
     <string name="bike_sharing_open">%1$s ကိုဖွင့်ရန်</string>
     <string name="distance_meters">%1$d m</string>
+    <!-- Stop countdown, approach alerts of favourite trains and the position estimate (Android only) -->
+    <plurals name="stop_countdown_stops">
+        <item quantity="other">ရပ်နားဘူတာ %d ခု အကြာတွင် ဆင်းပါ</item>
+    </plurals>
+    <string name="stop_countdown_alight_next">နောက် ရပ်နားဘူတာတွင် ဆင်းပါ- %1$s၊ %2$s</string>
+    <string name="stop_countdown_alight_next_untimed">နောက် ရပ်နားဘူတာတွင် ဆင်းပါ- %1$s</string>
+    <string name="approach_alert_toggle">ဆိုက်ရောက်ခါနီးတွင် အသိပေးပါ</string>
+    <string name="approach_alert_toggle_description">ရွေးထားသော ဘူတာသို့ ရထား ဆိုက်ရောက်မီ မိနစ်အနည်းငယ်အလိုတွင် အချိန်နှင့်တပြေးညီ နောက်ကျမှုနှင့်အတူ အသိပေးချက်တစ်ခု ပို့ပါမည်- အချိန်နီးလာလျှင် အခြေအနေကို 15 မိနစ်တိုင်း စစ်ဆေးပြီး 22:00 မှ 07:00 အတွင်း မစစ်ဆေးပါ။ အသေးစိတ်ကို ဖွင့်သကဲ့သို့ ရထားနံပါတ်ကို အခြေအနေ ရင်းမြစ်များသို့ ပို့သည်။</string>
+    <string name="approach_alert_station">ဘူတာ- %1$s</string>
+    <string name="accessibility_approach_alert_station">သတိပေးချက် ဘူတာကို ပြောင်းရန်၊ လက်ရှိ %1$s</string>
+    <string name="approach_alert_lead">မည်မျှ စောစော</string>
+    <string name="approach_alert_summary">%2$s သို့ မရောက်မီ %1$s အလိုတွင် အသိပေးမည်။</string>
+    <string name="approach_alert_title">%1$s သည် ~%3$s အတွင်း %2$s သို့ ရောက်မည်</string>
+    <string name="approach_alert_title_now">%1$s သည် %2$s သို့ ဆိုက်ရောက်နေပြီ</string>
+    <string name="approach_alert_channel_name">ဆိုက်ရောက်လာမည့် ရထားများ</string>
+    <string name="approach_alert_channel_description">အကြိုက်ဆုံး ရထားများ ရွေးထားသော ဘူတာသို့ မရောက်မီ မိနစ်အနည်းငယ်အလို သတိပေးချက်များ။</string>
+    <string name="trip_estimate_toggle">သင့်တည်နေရာမှ ခန့်မှန်းချက်</string>
+    <string name="trip_estimate_toggle_description">ခရီးအတွင်း ဖုန်း၏ တည်နေရာကို ရထားလမ်းကြောင်းနှင့် နှိုင်းယှဉ်၍ နောက်ကျမှုကို ခန့်မှန်းပြီး တရားဝင် ဒေတာဘေးတွင် ခန့်မှန်းချက်အဖြစ် ပြသည်။ တိကျသော တည်နေရာကို ဖုန်းပေါ်တွင်သာ သုံးပြီး မသိမ်း၊ မပို့ပါ၊ ရပ်နိုင်သော အမြဲပြ အသိပေးချက် ပါသည်၊ ဆိုက်ရောက်ပြီး 10 မိနစ်အကြာ သို့မဟုတ် ခရီးပြီးဆုံးချိန်တွင် ရပ်သည်။</string>
+    <string name="trip_estimate_unavailable_time">ထွက်ခွာချိန် 10 မိနစ်အလိုမှ ဆိုက်ရောက်ချိန်အထိ ရနိုင်သည်။</string>
+    <string name="trip_estimate_unavailable_route">ဤရထားအတွက် ခန့်မှန်း၍ မရပါ- ရပ်နားဘူတာများ၏ ကိုဩဒိနိတ် သို့မဟုတ် အချိန်များ မရှိပါ။</string>
+    <string name="trip_estimate_precise_required">ခန့်မှန်းချက်အတွက် တိကျသော တည်နေရာ လိုသည်- Android ဆက်တင်တွင် ခွင့်ပြုနိုင်သည်။</string>
+    <string name="trip_estimate_location_disabled">ဖုန်း၏ တည်နေရာ ပိတ်ထားသည်- တည်နေရာမှ ခန့်မှန်းရန် ဖွင့်ပါ။</string>
+    <string name="trip_estimate_start_failed">တည်နေရာမှ ခန့်မှန်းချက် စတင်ရန် Android က ခွင့်မပြုပါ။</string>
+    <string name="trip_estimate_via_alarm">ဤရထားအတွက် ဖွင့်ထားသော GPS နှိုးစက်က ခန့်မှန်းချက်ကို ပေးနေပြီ။</string>
+    <string name="trip_estimate_line">သင့်တည်နေရာမှ ခန့်မှန်းချက်- ခန့်မှန်း +%1$s၊ ဆိုက်ရောက် ~%2$s</string>
+    <string name="trip_estimate_line_on_time">သင့်တည်နေရာမှ ခန့်မှန်းချက်- အချိန်မှန်လုနီး၊ ဆိုက်ရောက် ~%1$s</string>
+    <string name="trip_estimate_official">(တရားဝင် ရင်းမြစ်- %1$s)</string>
+    <string name="trip_estimate_age">%1$s က ခန့်မှန်းချက်</string>
+    <string name="trip_estimate_off_route">တည်နေရာ လမ်းကြောင်းပြင်ပတွင်- ခန့်မှန်းချက် မရှိ</string>
+    <string name="trip_estimate_waiting">သင့်တည်နေရာမှ ခန့်မှန်းချက်- လမ်းကြောင်းပေါ်ရှိ တိကျသော တည်နေရာကို စောင့်နေသည်</string>
+    <plurals name="trip_estimate_accessible">
+        <item quantity="other">သင့်တည်နေရာမှ ခန့်မှန်းချက်- %1$d မိနစ်ခန့် နောက်ကျ၊ %2$s ခန့်တွင် ဆိုက်ရောက်</item>
+    </plurals>
+    <string name="trip_estimate_on_time_accessible">သင့်တည်နေရာမှ ခန့်မှန်းချက်- အချိန်မှန်လုနီး၊ %1$s ခန့်တွင် ဆိုက်ရောက်</string>
+    <string name="trip_estimate_active_title">ရထား %1$s အတွက် တည်နေရာ ခန့်မှန်းချက် ဖွင့်ထားသည်</string>
+    <string name="trip_estimate_privacy_short">တည်နေရာသည် ဖုန်းပေါ်တွင်သာ ရှိပြီး မသိမ်း၊ မပို့ပါ။</string>
+    <string name="action_trip_estimate_stop">ခန့်မှန်းချက် ရပ်ရန်</string>
 </resources>

@@ -13,9 +13,12 @@ import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import it.binario.app.R
 import it.binario.app.data.RailTime
+import it.binario.app.data.ServiceStatus
 import it.binario.app.data.TrainService
 import it.binario.app.data.repository.BinarioDataGraph
 import it.binario.app.data.repository.TrainNumberQuery
+import it.binario.app.gpsalarm.GpsArrivalAlarmController
+import it.binario.app.gpsalarm.GpsArrivalAlarmRuntime
 import it.binario.app.journeys.TransferRiskLevel
 import java.time.Duration
 import java.time.Instant
@@ -49,6 +52,7 @@ internal class FollowedTripStore(context: Context) {
     val lastText: String? get() = preferences.getString(KEY_TEXT, null)
     val lastUpdatedAt: Long get() = preferences.getLong(KEY_UPDATED, 0L)
 
+    /** Records the official status only: an estimate from the device position is never written here. */
     fun recordShown(delayMinutes: Int?, title: String, text: String, at: Long) = preferences.edit {
         if (delayMinutes != null) putInt(KEY_DELAY, delayMinutes)
         putString(KEY_TITLE, title)
@@ -62,6 +66,30 @@ internal class FollowedTripStore(context: Context) {
         const val KEY_TITLE = "last_title"
         const val KEY_TEXT = "last_text"
         const val KEY_UPDATED = "last_updated"
+    }
+}
+
+/**
+ * The trains the last refresh read, in memory only, so that the GPS session can update the countdown and its estimate
+ * in the notification without asking the sources again. It never outlives the process.
+ */
+internal object FollowedTripLiveCache {
+    private val MAX_AGE: Duration = Duration.ofMinutes(20)
+
+    private data class Entry(val tripId: String, val services: List<TrainService?>, val at: Instant)
+
+    @Volatile
+    private var entry: Entry? = null
+
+    fun record(tripId: String, services: List<TrainService?>, at: Instant) {
+        if (services.any { it != null }) entry = Entry(tripId, services, at)
+    }
+
+    fun services(tripId: String, now: Instant): Pair<List<TrainService?>, Instant>? =
+        entry?.takeIf { it.tripId == tripId && Duration.between(it.at, now) <= MAX_AGE }?.let { it.services to it.at }
+
+    fun clear() {
+        entry = null
     }
 }
 
@@ -86,9 +114,45 @@ object FollowedTripScheduler {
     fun stop(context: Context) {
         val app = context.applicationContext
         FollowedTripStore(app).clear()
+        FollowedTripLiveCache.clear()
         WorkManager.getInstance(app).cancelUniqueWork(WORK)
         LiveNotifications.cancel(app, LiveNotifications.FOLLOWED_TRIP_ID)
+        // The position estimate exists only for a followed trip: it ends with it (a GPS alarm keeps running).
+        runCatching { GpsArrivalAlarmController.stopEstimate(app) }
         runCatching { TrainAlertScheduler.reschedule(app) }
+    }
+
+    /** Whether the followed trip includes [trainNumber]. */
+    internal fun follows(context: Context, trainNumber: String): Boolean =
+        TrainAlertWatch.key(trainNumber) in current(context)?.trainNumbers.orEmpty()
+
+    /**
+     * The official delay of [trainNumber] the last refresh read, for the "(fonte ufficiale: +4 min)" next to an
+     * estimate; null when that train had no live data.
+     */
+    internal fun officialDelayMinutes(context: Context, trainNumber: String): Int? {
+        val trip = current(context) ?: return null
+        val (services, _) = FollowedTripLiveCache.services(trip.id, Instant.now()) ?: return null
+        val index = trip.legs.indexOfFirst { TrainAlertWatch.key(it.number) == TrainAlertWatch.key(trainNumber) }
+        val service = services.getOrNull(index)?.takeIf { it.operationalStatusVerified && it.status != ServiceStatus.CANCELLED } ?: return null
+        return (service.officialDelayMinutes ?: service.delayMinutes).coerceAtLeast(0)
+    }
+
+    /**
+     * Shows the notification again from the trains read by the last refresh, with the current GPS progress: no source
+     * is asked. Nothing happens without a recent refresh in this process.
+     */
+    internal fun repaint(context: Context) {
+        val app = context.applicationContext
+        val store = FollowedTripStore(app)
+        val trip = store.trip() ?: return
+        val now = Instant.now()
+        val (services, readAt) = FollowedTripLiveCache.services(trip.id, now) ?: return
+        if (!LiveNotifications.allowed(app)) return
+        val view = FollowedTripStatus.view(trip, services, now, position = GpsArrivalAlarmRuntime.currentTrack())
+        val content = FollowedTripText.content(app, trip, view, answered = true, updatedAt = FollowedTripNotification.time(readAt))
+        val end = FollowedTripPlanner.windowEnd(trip, store.lastDelayMinutes)
+        LiveNotifications.post(app, LiveNotifications.FOLLOWED_TRIP_ID, FollowedTripNotification.build(app, content, now, end))
     }
 
     /**
@@ -140,11 +204,16 @@ class FollowedTripWorker(appContext: Context, params: WorkerParameters) : Corout
                 FollowedTripPlanner.Step.Finish -> FollowedTripScheduler.stop(context)
                 is FollowedTripPlanner.Step.WaitUntil -> FollowedTripScheduler.enqueue(context, step.at, ExistingWorkPolicy.APPEND_OR_REPLACE)
                 is FollowedTripPlanner.Step.Refresh -> {
-                    val delay = if (LiveNotifications.allowed(context)) refresh(context, store, trip) else store.lastDelayMinutes
-                    val next = FollowedTripPlanner.step(trip, Instant.now(), delay)
+                    val result = if (LiveNotifications.allowed(context)) refresh(context, store, trip) else RefreshResult(store.lastDelayMinutes, null)
+                    val now = Instant.now()
+                    val next = FollowedTripPlanner.step(trip, now, result.delayMinutes)
                     if (!isStopped && FollowedTripStore(context).trip()?.id == trip.id) {
                         when (next) {
-                            is FollowedTripPlanner.Step.Refresh -> FollowedTripScheduler.enqueue(context, next.nextAt, ExistingWorkPolicy.APPEND_OR_REPLACE)
+                            is FollowedTripPlanner.Step.Refresh -> FollowedTripScheduler.enqueue(
+                                context,
+                                FollowedTripPlanner.nextRefreshAt(next.nextAt, now, result.countdown),
+                                ExistingWorkPolicy.APPEND_OR_REPLACE
+                            )
                             is FollowedTripPlanner.Step.WaitUntil -> FollowedTripScheduler.enqueue(context, next.at, ExistingWorkPolicy.APPEND_OR_REPLACE)
                             FollowedTripPlanner.Step.Finish -> FollowedTripScheduler.stop(context)
                         }
@@ -160,45 +229,32 @@ class FollowedTripWorker(appContext: Context, params: WorkerParameters) : Corout
         Result.success()
     }
 
+    private data class RefreshResult(val delayMinutes: Int?, val countdown: StopCountdown?)
+
     /** Looks the running trains up, posts the notification and returns the arrival delay that stretches the window. */
-    private suspend fun refresh(context: Context, store: FollowedTripStore, trip: FollowedTrip): Int? {
+    private suspend fun refresh(context: Context, store: FollowedTripStore, trip: FollowedTrip): RefreshResult {
         val now = Instant.now()
         val services = lookUp(context, trip, now)
+        FollowedTripLiveCache.record(trip.id, services, now)
         val delay = FollowedTripStatus.arrivalDelayMinutes(trip, services)
         // The window end (and the notification's timeout) follows the delay just read, not the previous one.
         val end = FollowedTripPlanner.windowEnd(trip, delay ?: store.lastDelayMinutes)
+        val view = FollowedTripStatus.view(trip, services, now, position = GpsArrivalAlarmRuntime.currentTrack())
         val content = if (services.all { it == null } && store.lastTitle != null) {
             // Nothing answered: the last status stays, saying how old it is.
-            val stale = context.getString(R.string.followed_trip_stale, time(Instant.ofEpochMilli(store.lastUpdatedAt)))
-            FollowedTripContent(store.lastTitle.orEmpty(), stale, stale + "\n" + store.lastText.orEmpty())
+            val stale = context.getString(R.string.followed_trip_stale, FollowedTripNotification.time(Instant.ofEpochMilli(store.lastUpdatedAt)))
+            val last = stale + "\n" + store.lastText.orEmpty()
+            FollowedTripContent(store.lastTitle.orEmpty(), stale, last, last)
         } else {
-            FollowedTripText.content(context, trip, FollowedTripStatus.view(trip, services, now), services.any { it != null }, time(now))
+            FollowedTripText.content(context, trip, view, services.any { it != null }, FollowedTripNotification.time(now))
         }
-        val notification = NotificationCompat.Builder(context, LiveChannel.FOLLOWED_TRIP.ensure(context))
-            .setSmallIcon(R.drawable.ic_binario)
-            .setContentTitle(content.title)
-            .setContentText(content.text)
-            .setStyle(NotificationCompat.BigTextStyle().bigText(content.bigText))
-            .setPriority(NotificationCompat.PRIORITY_LOW)
-            .setCategory(NotificationCompat.CATEGORY_STATUS)
-            .setOngoing(true)
-            .setOnlyAlertOnce(true)
-            .setSilent(true)
-            .setShowWhen(true)
-            .setWhen(now.toEpochMilli())
-            // Removed by the system at the end of the window even if no later run happens (offline, Doze).
-            .setTimeoutAfter(Duration.between(now, end).toMillis().coerceAtLeast(60_000L))
-            .setContentIntent(LiveNotifications.openApp(context, REQUEST_OPEN))
-            .setDeleteIntent(FollowedTripActionReceiver.intent(context, FollowedTripActionReceiver.ACTION_STOP))
-            .addAction(0, context.getString(R.string.action_refresh), FollowedTripActionReceiver.intent(context, FollowedTripActionReceiver.ACTION_REFRESH))
-            .addAction(0, context.getString(R.string.followed_trip_action_stop), FollowedTripActionReceiver.intent(context, FollowedTripActionReceiver.ACTION_STOP))
-            .build()
+        val notification = FollowedTripNotification.build(context, content, now, end)
         // A stop requested while the trains were being looked up wins over this refresh.
-        if (FollowedTripStore(context).trip()?.id != trip.id) return null
+        if (FollowedTripStore(context).trip()?.id != trip.id) return RefreshResult(null, null)
         if (LiveNotifications.post(context, LiveNotifications.FOLLOWED_TRIP_ID, notification) && services.any { it != null }) {
-            store.recordShown(delay, content.title, content.bigText, now.toEpochMilli())
+            store.recordShown(delay, content.title, content.recordedText, now.toEpochMilli())
         }
-        return delay ?: store.lastDelayMinutes
+        return RefreshResult(delay ?: store.lastDelayMinutes, view.countdown.takeIf { services.any { it != null } })
     }
 
     /** Only the trains of the trip that run now or soon are asked, at most two (the current one and the next). */
@@ -228,17 +284,43 @@ class FollowedTripWorker(appContext: Context, params: WorkerParameters) : Corout
         }
     }
 
-    private fun time(instant: Instant): String = instant.atZone(RailTime.defaultZone).format(DateTimeFormatter.ofPattern("H:mm", Locale.ROOT))
-
     private companion object {
-        const val REQUEST_OPEN = 0x5EA1
         const val LOOKUP_TIMEOUT_MILLIS = 30_000L
         val LOOKAHEAD: Duration = Duration.ofHours(2)
         val LOOKBACK: Duration = Duration.ofHours(3)
     }
 }
 
-internal data class FollowedTripContent(val title: String, val text: String, val bigText: String)
+/** [recordedText] is [bigText] without the position estimate: what the store may keep for an offline refresh. */
+internal data class FollowedTripContent(val title: String, val text: String, val bigText: String, val recordedText: String = bigText)
+
+/** The ongoing notification itself, for a refresh and for a repaint from the GPS session. */
+internal object FollowedTripNotification {
+    private const val REQUEST_OPEN = 0x5EA1
+
+    fun time(instant: Instant): String = instant.atZone(RailTime.defaultZone).format(DateTimeFormatter.ofPattern("H:mm", Locale.ROOT))
+
+    fun build(context: Context, content: FollowedTripContent, now: Instant, end: Instant): android.app.Notification =
+        NotificationCompat.Builder(context, LiveChannel.FOLLOWED_TRIP.ensure(context))
+            .setSmallIcon(R.drawable.ic_binario)
+            .setContentTitle(content.title)
+            .setContentText(content.text)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(content.bigText))
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setCategory(NotificationCompat.CATEGORY_STATUS)
+            .setOngoing(true)
+            .setOnlyAlertOnce(true)
+            .setSilent(true)
+            .setShowWhen(true)
+            .setWhen(now.toEpochMilli())
+            // Removed by the system at the end of the window even if no later run happens (offline, Doze).
+            .setTimeoutAfter(Duration.between(now, end).toMillis().coerceAtLeast(60_000L))
+            .setContentIntent(LiveNotifications.openApp(context, REQUEST_OPEN))
+            .setDeleteIntent(FollowedTripActionReceiver.intent(context, FollowedTripActionReceiver.ACTION_STOP))
+            .addAction(0, context.getString(R.string.action_refresh), FollowedTripActionReceiver.intent(context, FollowedTripActionReceiver.ACTION_REFRESH))
+            .addAction(0, context.getString(R.string.followed_trip_action_stop), FollowedTripActionReceiver.intent(context, FollowedTripActionReceiver.ACTION_STOP))
+            .build()
+}
 
 /** Localized text of the ongoing notification. */
 internal object FollowedTripText {
@@ -256,11 +338,17 @@ internal object FollowedTripText {
         }
         val stop = view.nextStop
         val time = view.nextStopTime
+        val countdown = view.countdown
         val text = when {
+            // At the last stop before getting off the countdown line names it, with time and platform.
+            countdown?.alightAtNextStop == true -> TripLiveText.countdown(context.resources, countdown, view.platform)
             stop != null && time != null && view.platform != null -> context.getString(R.string.personal_travel_next_stop_platform, stop, time, view.platform)
             stop != null && time != null -> context.getString(R.string.personal_travel_next_stop, stop, time)
             else -> trip.title
         }
+        val countdownHead = countdown?.takeUnless { it.alightAtNextStop }?.let { TripLiveText.countdown(context.resources, it) }
+        val official = if (view.live && !view.cancelled) view.delayMinutes ?: 0 else null
+        val estimate = TripLiveText.position(context.resources, view.estimate, view.trackStatus, official, System.currentTimeMillis())
         val transfer = view.transfer?.let { assessment ->
             val risk = when (assessment.level) {
                 TransferRiskLevel.MISSED -> R.string.journey_transfer_missed
@@ -270,8 +358,16 @@ internal object FollowedTripText {
             }
             context.getString(R.string.followed_trip_transfer, view.transferStation.orEmpty(), view.nextLegLabel.orEmpty()) + " · " + context.getString(risk)
         }
-        val big = listOfNotNull(text, transfer, context.getString(R.string.followed_trip_updated_at, updatedAt)).joinToString("\n")
-        return FollowedTripContent(title, transfer ?: text, big)
+        val updated = context.getString(R.string.followed_trip_updated_at, updatedAt)
+        val big = listOfNotNull(countdownHead, text, estimate, transfer, updated).joinToString("\n")
+        val recorded = listOfNotNull(countdownHead, text, transfer, updated).joinToString("\n")
+        val collapsed = when {
+            countdown?.alightAtNextStop == true -> text
+            transfer != null -> transfer
+            countdownHead != null -> "$countdownHead · $text"
+            else -> text
+        }
+        return FollowedTripContent(title, collapsed, big, recorded)
     }
 }
 

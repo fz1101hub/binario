@@ -20,7 +20,8 @@ internal enum class GpsArrivalAlarmEndReason {
 
 internal sealed interface GpsArrivalAlarmState {
     data object Idle : GpsArrivalAlarmState
-    data class Active(val target: GpsArrivalAlarmTarget, val precise: Boolean) : GpsArrivalAlarmState
+    /** [track] is the train's progress from the device position, when the target has a route: in memory only. */
+    data class Active(val target: GpsArrivalAlarmTarget, val precise: Boolean, val track: GpsTrainTrack? = null) : GpsArrivalAlarmState
     data class Ended(val target: GpsArrivalAlarmTarget?, val reason: GpsArrivalAlarmEndReason) : GpsArrivalAlarmState
 }
 
@@ -38,6 +39,15 @@ internal object GpsArrivalAlarmRuntime {
     fun markActive(target: GpsArrivalAlarmTarget, precise: Boolean) {
         mutableState.value = GpsArrivalAlarmState.Active(target, precise)
     }
+
+    /** The latest progress of the running session; ignored once the session has ended. */
+    fun updateTrack(track: GpsTrainTrack) {
+        val active = mutableState.value as? GpsArrivalAlarmState.Active ?: return
+        if (active.target.route?.isFor(track.trainNumber) == true) mutableState.value = active.copy(track = track)
+    }
+
+    /** The progress of the running session, if it follows a train with a route. */
+    fun currentTrack(): GpsTrainTrack? = (mutableState.value as? GpsArrivalAlarmState.Active)?.track
 
     fun markEnded(target: GpsArrivalAlarmTarget?, reason: GpsArrivalAlarmEndReason) {
         mutableState.value = GpsArrivalAlarmState.Ended(target, reason)
@@ -57,7 +67,8 @@ internal object GpsArrivalAlarmRuntime {
 
 /**
  * Private preferences of the GPS alarm: the active target (timetable and catalogue data only,
- * never a user position) and the last radius chosen for each train class. Backup and device
+ * never a user position) and the last radius chosen for each train class. A position estimate
+ * session is never stored here: it ends with the process. Backup and device
  * transfer exclude every preference file of the app.
  */
 internal class GpsArrivalAlarmStore(context: Context) {
@@ -116,12 +127,37 @@ internal object GpsArrivalAlarmController {
         }
     }
 
+    /**
+     * Starts the position estimate of a followed trip. Like [start] it must be called while the app is
+     * visible. A running GPS alarm is never replaced by an estimate: it already provides one.
+     */
+    fun startEstimate(context: Context, target: GpsArrivalAlarmTarget): Boolean {
+        if (!target.isEstimate) return false
+        val running = (GpsArrivalAlarmRuntime.state.value as? GpsArrivalAlarmState.Active)?.target
+        if (running != null && !running.isEstimate) return false
+        return start(context, target)
+    }
+
+    /** Ends the position estimate (the trip ended or was stopped); a GPS alarm is left running. */
+    fun stopEstimate(context: Context) {
+        val running = (GpsArrivalAlarmRuntime.state.value as? GpsArrivalAlarmState.Active)?.target ?: return
+        if (!running.isEstimate) return
+        // The estimate is never persisted, so an interrupted alarm's stored target stays untouched.
+        GpsArrivalAlarmRuntime.requestStopReason(GpsArrivalAlarmEndReason.CANCELLED)
+        context.stopService(Intent(context, GpsArrivalAlarmService::class.java))
+    }
+
     /** The time-based alarm for this stop rang first: the GPS part has nothing left to do. */
     fun onTimeAlarmFired(context: Context, trainNumber: String, stopName: String) {
-        val running = (GpsArrivalAlarmRuntime.state.value as? GpsArrivalAlarmState.Active)?.target
-        val stored = GpsArrivalAlarmStore(context).activeTarget()
-        if (running?.isFor(trainNumber, stopName) == true || stored?.isFor(trainNumber, stopName) == true) {
-            stop(context, GpsArrivalAlarmEndReason.TIME_ALARM_FIRED)
+        val active = (GpsArrivalAlarmRuntime.state.value as? GpsArrivalAlarmState.Active)?.target
+        val store = GpsArrivalAlarmStore(context)
+        val stored = store.activeTarget()
+        when {
+            // A position estimate is not an alarm: it goes on until shortly after the arrival, and
+            // only an interrupted alarm stored for this stop is dropped.
+            active?.isEstimate == true -> if (stored?.isFor(trainNumber, stopName) == true) store.clearActiveTarget()
+            active?.isFor(trainNumber, stopName) == true || stored?.isFor(trainNumber, stopName) == true ->
+                stop(context, GpsArrivalAlarmEndReason.TIME_ALARM_FIRED)
         }
     }
 }

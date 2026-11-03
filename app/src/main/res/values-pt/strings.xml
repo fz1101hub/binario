@@ -1313,4 +1313,45 @@
     <string name="bike_sharing_source">Dados GBFS de %1$s às %2$s</string>
     <string name="bike_sharing_open">Abrir %1$s</string>
     <string name="distance_meters">%1$d m</string>
+    <!-- Stop countdown, approach alerts of favourite trains and the position estimate (Android only) -->
+    <plurals name="stop_countdown_stops">
+        <item quantity="one">Desça em %d parada</item>
+        <item quantity="many">Desça em %d paradas</item>
+        <item quantity="other">Desça em %d paradas</item>
+    </plurals>
+    <string name="stop_countdown_alight_next">Desça na próxima parada: %1$s às %2$s</string>
+    <string name="stop_countdown_alight_next_untimed">Desça na próxima parada: %1$s</string>
+    <string name="approach_alert_toggle">Avise-me quando estiver chegando</string>
+    <string name="approach_alert_toggle_description">Uma notificação poucos minutos antes de o trem chegar à estação escolhida, com o atraso em tempo real: perto do horário, o status é verificado a cada 15 minutos, nunca entre 22h e 7h. O número do trem é enviado às fontes do status, como quando você abre o detalhe.</string>
+    <string name="approach_alert_station">Estação: %1$s</string>
+    <string name="accessibility_approach_alert_station">Mudar a estação do aviso, agora %1$s</string>
+    <string name="approach_alert_lead">Com quanta antecedência</string>
+    <string name="approach_alert_summary">Avisa você %1$s antes da chegada a %2$s.</string>
+    <string name="approach_alert_title">%1$s chega a %2$s em ~%3$s</string>
+    <string name="approach_alert_title_now">%1$s está chegando a %2$s</string>
+    <string name="approach_alert_channel_name">Trens chegando</string>
+    <string name="approach_alert_channel_description">Avisos dos trens favoritos poucos minutos antes de chegarem à estação escolhida.</string>
+    <string name="trip_estimate_toggle">Estimativa pela sua localização</string>
+    <string name="trip_estimate_toggle_description">Durante a viagem, compara a localização do celular com o trajeto do trem para estimar o atraso, mostrado como estimativa ao lado do dado oficial. Usa a localização precisa só no celular, sem salvá-la nem enviá-la, com uma notificação fixa que você pode interromper; termina 10 minutos após a chegada ou com o fim da viagem.</string>
+    <string name="trip_estimate_unavailable_time">Disponível de 10 minutos antes da partida até a chegada.</string>
+    <string name="trip_estimate_unavailable_route">Sem estimativa para este trem: faltam as coordenadas ou os horários das paradas.</string>
+    <string name="trip_estimate_precise_required">A estimativa precisa da localização precisa: você pode concedê-la nas configurações do Android.</string>
+    <string name="trip_estimate_location_disabled">A localização do celular está desativada: ative-a para a estimativa pela sua localização.</string>
+    <string name="trip_estimate_start_failed">O Android não permitiu iniciar a estimativa pela sua localização.</string>
+    <string name="trip_estimate_via_alarm">O alarme por GPS ativo para este trem já fornece a estimativa.</string>
+    <string name="trip_estimate_line">Estimativa pela sua localização: cerca de +%1$s, chegada ~%2$s</string>
+    <string name="trip_estimate_line_on_time">Estimativa pela sua localização: mais ou menos no horário, chegada ~%1$s</string>
+    <string name="trip_estimate_official">(fonte oficial: %1$s)</string>
+    <string name="trip_estimate_age">estimativa das %1$s</string>
+    <string name="trip_estimate_off_route">Localização fora do trajeto: sem estimativa</string>
+    <string name="trip_estimate_waiting">Estimativa pela sua localização: aguardando uma localização precisa no trajeto</string>
+    <plurals name="trip_estimate_accessible">
+        <item quantity="one">Estimativa pela sua localização: cerca de %1$d minuto de atraso, chegada por volta das %2$s</item>
+        <item quantity="many">Estimativa pela sua localização: cerca de %1$d minutos de atraso, chegada por volta das %2$s</item>
+        <item quantity="other">Estimativa pela sua localização: cerca de %1$d minutos de atraso, chegada por volta das %2$s</item>
+    </plurals>
+    <string name="trip_estimate_on_time_accessible">Estimativa pela sua localização: mais ou menos no horário, chegada por volta das %1$s</string>
+    <string name="trip_estimate_active_title">Estimativa pela localização ativa para o trem %1$s</string>
+    <string name="trip_estimate_privacy_short">A localização fica no celular: não é salva nem enviada.</string>
+    <string name="action_trip_estimate_stop">Interromper estimativa</string>
 </resources>

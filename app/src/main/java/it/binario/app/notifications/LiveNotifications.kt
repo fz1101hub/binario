@@ -15,12 +15,15 @@ import androidx.core.content.edit
 import it.binario.app.MainActivity
 import it.binario.app.R
 
-/** The three channels of the live features; importance is fixed at creation, as Android requires. */
+/** The channels of the live features; importance is fixed at creation, as Android requires. */
 internal enum class LiveChannel(val id: String, val nameRes: Int, val descriptionRes: Int, val importance: Int) {
     /** The ongoing notification of the followed trip: low importance, so its updates never make a sound. */
     FOLLOWED_TRIP("binario_followed_trip", R.string.followed_trip_channel_name, R.string.followed_trip_channel_description, NotificationManager.IMPORTANCE_LOW),
     TRAIN_ALERTS("binario_train_alerts", R.string.train_alerts_channel_name, R.string.train_alerts_channel_description, NotificationManager.IMPORTANCE_DEFAULT),
-    STRIKES("binario_strikes", R.string.strike_reminder_channel_name, R.string.strike_reminder_channel_description, NotificationManager.IMPORTANCE_DEFAULT);
+    STRIKES("binario_strikes", R.string.strike_reminder_channel_name, R.string.strike_reminder_channel_description, NotificationManager.IMPORTANCE_DEFAULT),
+
+    /** "Il treno sta arrivando": time-sensitive, like the commuter alerts. */
+    APPROACH("binario_approach_alerts", R.string.approach_alert_channel_name, R.string.approach_alert_channel_description, NotificationManager.IMPORTANCE_HIGH);
 
     fun ensure(context: Context): String {
         context.getSystemService(NotificationManager::class.java)?.createNotificationChannel(
@@ -104,11 +107,13 @@ object LiveNotificationScheduling {
         runCatching { TrainAlertScheduler.reschedule(app) }
         runCatching { StrikeReminderScheduler.reschedule(app, keepPending = true) }
         runCatching { PunctualityRecorderScheduler.reschedule(app) }
+        runCatching { ApproachAlertScheduler.reschedule(app) }
     }
 
     fun onFavouritesChanged(context: Context) {
         val app = context.applicationContext
         runCatching { TrainAlertScheduler.reschedule(app) }
         runCatching { PunctualityRecorderScheduler.reschedule(app) }
+        runCatching { ApproachAlertScheduler.reschedule(app) }
     }
 }

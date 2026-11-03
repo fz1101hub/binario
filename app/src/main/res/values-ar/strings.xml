@@ -1400,4 +1400,51 @@
     <string name="bike_sharing_source">بيانات GBFS من %1$s الساعة %2$s</string>
     <string name="bike_sharing_open">فتح %1$s</string>
     <string name="distance_meters">%1$d م</string>
+    <!-- Stop countdown, approach alerts of favourite trains and the position estimate (Android only) -->
+    <plurals name="stop_countdown_stops">
+        <item quantity="zero">انزل بعد %d محطة</item>
+        <item quantity="one">انزل بعد %d محطة</item>
+        <item quantity="two">انزل بعد %d محطتين</item>
+        <item quantity="few">انزل بعد %d محطات</item>
+        <item quantity="many">انزل بعد %d محطة</item>
+        <item quantity="other">انزل بعد %d محطة</item>
+    </plurals>
+    <string name="stop_countdown_alight_next">انزل في المحطة التالية: %1$s الساعة %2$s</string>
+    <string name="stop_countdown_alight_next_untimed">انزل في المحطة التالية: %1$s</string>
+    <string name="approach_alert_toggle">أعلمني عندما يقترب من الوصول</string>
+    <string name="approach_alert_toggle_description">إشعار قبل دقائق من وصول القطار إلى المحطة المختارة، مع التأخير الفوري: قرب الموعد تُفحص الحالة كل 15 دقيقة، ولا يحدث ذلك أبدًا بين 22 و7. يُرسل رقم القطار إلى مصادر الحالة، كما عند فتح التفاصيل.</string>
+    <string name="approach_alert_station">المحطة: %1$s</string>
+    <string name="accessibility_approach_alert_station">تغيير محطة التنبيه، الحالية %1$s</string>
+    <string name="approach_alert_lead">قبل كم من الوقت</string>
+    <string name="approach_alert_summary">ينبّهك قبل %1$s من وصوله إلى %2$s.</string>
+    <string name="approach_alert_title">%1$s يصل إلى %2$s بعد ~%3$s</string>
+    <string name="approach_alert_title_now">%1$s يصل الآن إلى %2$s</string>
+    <string name="approach_alert_channel_name">قطارات تقترب</string>
+    <string name="approach_alert_channel_description">تنبيهات القطارات المفضلة قبل دقائق من وصولها إلى المحطة المختارة.</string>
+    <string name="trip_estimate_toggle">تقدير من موقعك</string>
+    <string name="trip_estimate_toggle_description">أثناء الرحلة يقارن موقع الهاتف بمسار القطار لتقدير تأخيره، ويُعرض كتقدير بجانب البيانات الرسمية. يستخدم الموقع الدقيق على الهاتف فقط، دون حفظه أو إرساله، مع إشعار ثابت يمكنك إيقافه؛ ويتوقف بعد 10 دقائق من الوصول أو بانتهاء الرحلة.</string>
+    <string name="trip_estimate_unavailable_time">متاح من قبل المغادرة بعشر دقائق حتى الوصول.</string>
+    <string name="trip_estimate_unavailable_route">لا يتوفر تقدير لهذا القطار: تنقص إحداثيات المحطات أو مواعيدها.</string>
+    <string name="trip_estimate_precise_required">يحتاج التقدير إلى الموقع الدقيق: يمكنك منحه من إعدادات Android.</string>
+    <string name="trip_estimate_location_disabled">خدمة الموقع في الهاتف متوقفة: شغّلها للحصول على التقدير من موقعك.</string>
+    <string name="trip_estimate_start_failed">لم يسمح Android ببدء التقدير من موقعك.</string>
+    <string name="trip_estimate_via_alarm">منبّه GPS النشط لهذا القطار يوفر التقدير بالفعل.</string>
+    <string name="trip_estimate_line">تقدير من موقعك: نحو +%1$s، الوصول ~%2$s</string>
+    <string name="trip_estimate_line_on_time">تقدير من موقعك: في الموعد تقريبًا، الوصول ~%1$s</string>
+    <string name="trip_estimate_official">(المصدر الرسمي: %1$s)</string>
+    <string name="trip_estimate_age">تقدير الساعة %1$s</string>
+    <string name="trip_estimate_off_route">الموقع خارج المسار: لا يوجد تقدير</string>
+    <string name="trip_estimate_waiting">تقدير من موقعك: بانتظار موقع دقيق على المسار</string>
+    <plurals name="trip_estimate_accessible">
+        <item quantity="zero">تقدير من موقعك: تأخير نحو %1$d دقيقة، الوصول نحو الساعة %2$s</item>
+        <item quantity="one">تقدير من موقعك: تأخير نحو %1$d دقيقة، الوصول نحو الساعة %2$s</item>
+        <item quantity="two">تقدير من موقعك: تأخير نحو %1$d دقيقتين، الوصول نحو الساعة %2$s</item>
+        <item quantity="few">تقدير من موقعك: تأخير نحو %1$d دقائق، الوصول نحو الساعة %2$s</item>
+        <item quantity="many">تقدير من موقعك: تأخير نحو %1$d دقيقة، الوصول نحو الساعة %2$s</item>
+        <item quantity="other">تقدير من موقعك: تأخير نحو %1$d دقيقة، الوصول نحو الساعة %2$s</item>
+    </plurals>
+    <string name="trip_estimate_on_time_accessible">تقدير من موقعك: في الموعد تقريبًا، الوصول نحو الساعة %1$s</string>
+    <string name="trip_estimate_active_title">التقدير من الموقع نشط للقطار %1$s</string>
+    <string name="trip_estimate_privacy_short">يبقى موقعك على الهاتف: لا يُحفظ ولا يُرسل.</string>
+    <string name="action_trip_estimate_stop">إيقاف التقدير</string>
 </resources>

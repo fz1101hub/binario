@@ -1307,4 +1307,43 @@
     <string name="bike_sharing_source">GBFS-Daten von %1$s, Stand %2$s</string>
     <string name="bike_sharing_open">%1$s öffnen</string>
     <string name="distance_meters">%1$d m</string>
+    <!-- Stop countdown, approach alerts of favourite trains and the position estimate (Android only) -->
+    <plurals name="stop_countdown_stops">
+        <item quantity="one">Aussteigen in %d Halt</item>
+        <item quantity="other">Aussteigen in %d Halten</item>
+    </plurals>
+    <string name="stop_countdown_alight_next">Am nächsten Halt aussteigen: %1$s um %2$s</string>
+    <string name="stop_countdown_alight_next_untimed">Am nächsten Halt aussteigen: %1$s</string>
+    <string name="approach_alert_toggle">Benachrichtigen, wenn er ankommt</string>
+    <string name="approach_alert_toggle_description">Eine Benachrichtigung wenige Minuten bevor der Zug den gewählten Bahnhof erreicht, mit der Echtzeitverspätung: In der Nähe der Uhrzeit wird der Status alle 15 Minuten geprüft, nie zwischen 22 und 7 Uhr. Die Zugnummer wird an die Statusquellen gesendet, wie beim Öffnen der Details.</string>
+    <string name="approach_alert_station">Bahnhof: %1$s</string>
+    <string name="accessibility_approach_alert_station">Bahnhof der Benachrichtigung ändern, derzeit %1$s</string>
+    <string name="approach_alert_lead">Wie früh</string>
+    <string name="approach_alert_summary">Benachrichtigt dich %1$s vor der Ankunft in %2$s.</string>
+    <string name="approach_alert_title">%1$s erreicht %2$s in ~%3$s</string>
+    <string name="approach_alert_title_now">%1$s fährt gleich in %2$s ein</string>
+    <string name="approach_alert_channel_name">Ankommende Züge</string>
+    <string name="approach_alert_channel_description">Benachrichtigungen für Lieblingszüge wenige Minuten bevor sie den gewählten Bahnhof erreichen.</string>
+    <string name="trip_estimate_toggle">Schätzung aus deinem Standort</string>
+    <string name="trip_estimate_toggle_description">Vergleicht während der Fahrt den Standort des Telefons mit der Strecke des Zuges, um seine Verspätung zu schätzen; sie erscheint als Schätzung neben den offiziellen Daten. Nutzt den genauen Standort nur auf dem Telefon, ohne ihn zu speichern oder zu senden, mit einer dauerhaften Benachrichtigung, die du beenden kannst; endet 10 Minuten nach der Ankunft oder mit dem Ende der Fahrt.</string>
+    <string name="trip_estimate_unavailable_time">Verfügbar ab 10 Minuten vor der Abfahrt bis zur Ankunft.</string>
+    <string name="trip_estimate_unavailable_route">Für diesen Zug keine Schätzung möglich: Koordinaten oder Zeiten der Halte fehlen.</string>
+    <string name="trip_estimate_precise_required">Die Schätzung braucht den genauen Standort: Du kannst ihn in den Android-Einstellungen erlauben.</string>
+    <string name="trip_estimate_location_disabled">Die Standortermittlung des Telefons ist aus: Schalte sie für die Schätzung aus dem Standort ein.</string>
+    <string name="trip_estimate_start_failed">Android hat den Start der Schätzung aus dem Standort nicht erlaubt.</string>
+    <string name="trip_estimate_via_alarm">Der aktive GPS-Wecker für diesen Zug liefert die Schätzung bereits.</string>
+    <string name="trip_estimate_line">Schätzung aus deinem Standort: etwa +%1$s, Ankunft ~%2$s</string>
+    <string name="trip_estimate_line_on_time">Schätzung aus deinem Standort: etwa pünktlich, Ankunft ~%1$s</string>
+    <string name="trip_estimate_official">(offizielle Quelle: %1$s)</string>
+    <string name="trip_estimate_age">Schätzung von %1$s</string>
+    <string name="trip_estimate_off_route">Standort außerhalb der Strecke: keine Schätzung</string>
+    <string name="trip_estimate_waiting">Schätzung aus deinem Standort: warte auf einen genauen Standort auf der Strecke</string>
+    <plurals name="trip_estimate_accessible">
+        <item quantity="one">Schätzung aus deinem Standort: etwa %1$d Minute Verspätung, Ankunft gegen %2$s</item>
+        <item quantity="other">Schätzung aus deinem Standort: etwa %1$d Minuten Verspätung, Ankunft gegen %2$s</item>
+    </plurals>
+    <string name="trip_estimate_on_time_accessible">Schätzung aus deinem Standort: etwa pünktlich, Ankunft gegen %1$s</string>
+    <string name="trip_estimate_active_title">Standortschätzung aktiv für Zug %1$s</string>
+    <string name="trip_estimate_privacy_short">Der Standort bleibt auf dem Telefon: Er wird weder gespeichert noch gesendet.</string>
+    <string name="action_trip_estimate_stop">Schätzung beenden</string>
 </resources>

@@ -1307,4 +1307,43 @@
     <string name="bike_sharing_source">%1$s GBFS verileri, saat %2$s</string>
     <string name="bike_sharing_open">%1$s sitesini aç</string>
     <string name="distance_meters">%1$d m</string>
+    <!-- Stop countdown, approach alerts of favourite trains and the position estimate (Android only) -->
+    <plurals name="stop_countdown_stops">
+        <item quantity="one">%d durak sonra inin</item>
+        <item quantity="other">%d durak sonra inin</item>
+    </plurals>
+    <string name="stop_countdown_alight_next">Sonraki durakta inin: %1$s, saat %2$s</string>
+    <string name="stop_countdown_alight_next_untimed">Sonraki durakta inin: %1$s</string>
+    <string name="approach_alert_toggle">Varmak üzereyken bana bildir</string>
+    <string name="approach_alert_toggle_description">Tren seçilen istasyona varmadan birkaç dakika önce, gerçek zamanlı gecikmeyle birlikte bir bildirim: saate yakın durum 15 dakikada bir kontrol edilir, 22:00 ile 07:00 arasında asla. Tren numarası, ayrıntıyı açtığınızda olduğu gibi durum kaynaklarına gönderilir.</string>
+    <string name="approach_alert_station">İstasyon: %1$s</string>
+    <string name="accessibility_approach_alert_station">Uyarının istasyonunu değiştir, şu an %1$s</string>
+    <string name="approach_alert_lead">Ne kadar önce</string>
+    <string name="approach_alert_summary">%2$s varışından %1$s önce bildirir.</string>
+    <string name="approach_alert_title">%1$s ~%3$s içinde %2$s istasyonuna varıyor</string>
+    <string name="approach_alert_title_now">%1$s %2$s istasyonuna varmak üzere</string>
+    <string name="approach_alert_channel_name">Yaklaşan trenler</string>
+    <string name="approach_alert_channel_description">Favori trenler seçilen istasyona varmadan birkaç dakika önceki uyarılar.</string>
+    <string name="trip_estimate_toggle">Konumunuza göre tahmin</string>
+    <string name="trip_estimate_toggle_description">Yolculuk sırasında telefonun konumunu trenin güzergâhıyla karşılaştırarak gecikmeyi tahmin eder; tahmin, resmî verinin yanında gösterilir. Hassas konumu yalnızca telefonda, kaydetmeden ve göndermeden, durdurabileceğiniz kalıcı bir bildirimle kullanır; varıştan 10 dakika sonra ya da yolculuk bitince durur.</string>
+    <string name="trip_estimate_unavailable_time">Kalkıştan 10 dakika önceden varışa kadar kullanılabilir.</string>
+    <string name="trip_estimate_unavailable_route">Bu tren için tahmin yok: durakların koordinatları veya saatleri eksik.</string>
+    <string name="trip_estimate_precise_required">Tahmin için hassas konum gerekir: Android ayarlarından izin verebilirsiniz.</string>
+    <string name="trip_estimate_location_disabled">Telefonun konumu kapalı: konuma göre tahmin için açın.</string>
+    <string name="trip_estimate_start_failed">Android konuma göre tahminin başlatılmasına izin vermedi.</string>
+    <string name="trip_estimate_via_alarm">Bu tren için açık olan GPS alarmı tahmini zaten sağlıyor.</string>
+    <string name="trip_estimate_line">Konumunuza göre tahmin: yaklaşık +%1$s, varış ~%2$s</string>
+    <string name="trip_estimate_line_on_time">Konumunuza göre tahmin: yaklaşık zamanında, varış ~%1$s</string>
+    <string name="trip_estimate_official">(resmî kaynak: %1$s)</string>
+    <string name="trip_estimate_age">%1$s tarihli tahmin</string>
+    <string name="trip_estimate_off_route">Konum güzergâhın dışında: tahmin yok</string>
+    <string name="trip_estimate_waiting">Konumunuza göre tahmin: güzergâh üzerinde hassas bir konum bekleniyor</string>
+    <plurals name="trip_estimate_accessible">
+        <item quantity="one">Konumunuza göre tahmin: yaklaşık %1$d dakika gecikme, varış %2$s civarında</item>
+        <item quantity="other">Konumunuza göre tahmin: yaklaşık %1$d dakika gecikme, varış %2$s civarında</item>
+    </plurals>
+    <string name="trip_estimate_on_time_accessible">Konumunuza göre tahmin: yaklaşık zamanında, varış %1$s civarında</string>
+    <string name="trip_estimate_active_title">%1$s treni için konuma göre tahmin açık</string>
+    <string name="trip_estimate_privacy_short">Konum telefonda kalır: kaydedilmez ve gönderilmez.</string>
+    <string name="action_trip_estimate_stop">Tahmini durdur</string>
 </resources>
