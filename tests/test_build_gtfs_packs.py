@@ -15,6 +15,7 @@ import unittest
 import zipfile
 from datetime import date
 from pathlib import Path
+from typing import Mapping
 from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -743,6 +744,25 @@ def registry_entry(source_id: str, archive_sha256: str, commit: str = "a" * 40) 
     }
 
 
+def write_forged_archive(target: Path, member: str, provenance: Mapping[str, str]) -> None:
+    """The archive of the audit proof of concept (A7-01): any valid GTFS plus a filter manifest it chose itself."""
+    tables = {
+        "agency.txt": "agency_id,agency_name,agency_url,agency_timezone\nA,Attacker Rail,https://x.invalid,Europe/Rome\n",
+        "stops.txt": "stop_id,stop_name,stop_lat,stop_lon\nS1,Fake One,45.0,9.0\nS2,Fake Two,45.1,9.1\n",
+        "routes.txt": "route_id,agency_id,route_short_name,route_type\nR1,A,X,2\n",
+        "trips.txt": "route_id,service_id,trip_id\nR1,SV,T1\n",
+        "stop_times.txt": "trip_id,arrival_time,departure_time,stop_id,stop_sequence\n"
+        "T1,08:00:00,08:00:00,S1,1\nT1,09:00:00,09:00:00,S2,2\n",
+        "calendar.txt": "service_id,monday,tuesday,wednesday,thursday,friday,saturday,sunday,start_date,end_date\n"
+        "SV,1,1,1,1,1,1,1,20261101,20271231\n",
+        "calendar_dates.txt": "service_id,date,exception_type\n",
+        member: json.dumps(dict(provenance)),
+    }
+    with zipfile.ZipFile(target, "w", zipfile.ZIP_DEFLATED) as archive:
+        for name, text in tables.items():
+            archive.writestr(name, text)
+
+
 def table(archive: zipfile.ZipFile, name: str) -> list[dict[str, str]]:
     return list(csv.DictReader(io.StringIO(archive.read(name).decode("utf-8"))))
 
@@ -810,6 +830,38 @@ class NationalPackTest(unittest.TestCase):
         with self.assertRaisesRegex(builder.BuildError, "diverso da quello fissato"):
             builder.build_packs(self.temp, self.temp / "out", manifest_path=registry, generated_at="2026-11-02", input_overrides=archives)
         self.assertFalse((self.temp / "out").exists())
+
+    def test_an_archive_cannot_forge_the_pinned_provenance(self) -> None:
+        # Audit A7-01 proof of concept: a fabricated feed carrying a nested binario_filter_manifest.json that names the
+        # pinned digest. The pin is checked against the bytes on disk, so the forged archive is refused.
+        registry, archives = self.build(("italo-gtfs",))
+        output = self.temp / "out"
+        builder.build_packs(self.temp, output, manifest_path=registry, generated_at="2026-11-02", input_overrides=archives)
+        before = {path.name: path.read_bytes() for path in output.iterdir()}
+        pinned = json.loads(registry.read_text(encoding="utf-8"))["packs"][0]["upstream"]["archiveSha256"]
+        for member in ("nested/binario_filter_manifest.json", "binario_filter_manifest.json"):
+            with self.subTest(member=member):
+                forged = self.temp / "forged.zip"
+                write_forged_archive(forged, member, {"sourceId": "italo-gtfs", "sourceArchiveSha256": pinned})
+                with self.assertRaisesRegex(builder.BuildError, "diverso da quello fissato"):
+                    builder.build_packs(
+                        self.temp, output, manifest_path=registry, generated_at="2026-11-03",
+                        input_overrides={"italo-gtfs": forged}, only=["italo-gtfs"],
+                    )
+                self.assertEqual(before, {path.name: path.read_bytes() for path in output.iterdir()})
+                # Outside a pinned source the forged digest is not recorded either: the input's own hash is.
+                filtered = self.temp / "forged-filtered.zip"
+                result = builder.filter_archive(forged, filtered, "italo-gtfs")
+                self.assertEqual(builder.sha256_file(forged), result.source_archive_sha256)
+
+    def test_a_published_pack_rebuilt_in_place_keeps_its_recorded_provenance(self) -> None:
+        registry, archives = self.build(("italo-gtfs",))
+        output = self.temp / "out"
+        built = builder.build_packs(self.temp, output, manifest_path=registry, generated_at="2026-11-02", input_overrides=archives)
+        recorded = built["packs"][0]["sourceArchiveSha256"]
+        rebuilt = builder.build_packs(output, output, generated_at="2026-11-03")
+        self.assertEqual(recorded, rebuilt["packs"][0]["sourceArchiveSha256"])
+        builder.verify_assets(output, as_of=None, min_valid_days=None)
 
     def test_the_source_url_must_be_the_pinned_commit(self) -> None:
         registry, _ = self.build(("italo-gtfs",))

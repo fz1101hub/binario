@@ -169,7 +169,7 @@ def pack_counts(path: Path) -> dict[str, Any]:
     """Row counts recorded in a built pack (``binario_filter_manifest.json``).  Its ``lastServiceDate`` is not used:
     the manifest's value is the one ``--check`` derives again from the calendar."""
     with zipfile.ZipFile(path) as archive:
-        entry = builder.find_entry(archive, builder.FILTER_MANIFEST_MEMBER)
+        entry = builder.filter_manifest_entry(archive)
         if entry is None:
             return {}
         metadata = json.loads(archive.read(entry).decode("utf-8"))

@@ -401,6 +401,11 @@ def require_pinned_archive(pack: Mapping[str, Any], source_archive_sha256: str) 
         )
 
 
+def filter_manifest_entry(archive: zipfile.ZipFile) -> str | None:
+    """The filter manifest this tool writes: only the exact top-level member counts, never a nested copy."""
+    return FILTER_MANIFEST_MEMBER if FILTER_MANIFEST_MEMBER in archive.namelist() else None
+
+
 def find_entry(archive: zipfile.ZipFile, basename: str) -> str | None:
     names = [name for name in archive.namelist() if not name.endswith("/")]
     exact = [name for name in names if name == basename]
@@ -700,39 +705,65 @@ def stop_modes_table(
     )
 
 
-def original_archive_sha256(archive: zipfile.ZipFile, source_id: str, fallback: str) -> str:
-    """Preserve provenance when a filtered release pack is rebuilt.
+def published_provenance(entries: Iterable[Mapping[str, Any] | None], input_hash: str) -> str | None:
+    """The recorded upstream digest when the input *is* an already published pack, else ``None``.
 
-    The usual release invocation has a distinct raw input directory.  The
-    convenient default also permits rebuilding from the embedded assets
-    themselves; in that case this function keeps the original source digest so
-    a byte-different DEFLATE rebuild still has stable upstream provenance rather
-    than treating the first filtered ZIP as a new upstream download.  Canonical
-    member hashes, not compressed ZIP bytes, prove that content identity.
+    A rebuild from the embedded assets (the convenient default, or ``--input-dir`` pointing at a published
+    directory) must keep the original source digest: the input is then a filtered ZIP, not an upstream download.
+    That case is recognised only by the bytes on disk: the input's SHA-256 equals the ``sha256`` of the same source
+    in a published release manifest.  Any other input, whatever it carries inside, is its own provenance, so an
+    archive cannot choose the digest that the upstream pin is checked against.
     """
-    entry = find_entry(archive, "binario_filter_manifest.json")
+    for entry in entries:
+        if not isinstance(entry, Mapping) or entry.get("sha256") != input_hash:
+            continue
+        recorded = entry.get("sourceArchiveSha256")
+        if _is_hex(recorded, 64):
+            return str(recorded)
+    return None
+
+
+def original_archive_sha256(archive: zipfile.ZipFile, source_id: str, input_hash: str, provenance: str | None) -> str:
+    """The upstream digest recorded for this build: ``input_hash`` unless the input is a published pack.
+
+    For a published pack (``provenance`` from :func:`published_provenance`) its own top-level filter manifest must
+    agree with the release manifest; an input without one is not a filtered pack and keeps ``input_hash``.  A nested
+    ``*/binario_filter_manifest.json`` is never read.
+    """
+    if provenance is None:
+        return input_hash
+    entry = filter_manifest_entry(archive)
     if entry is None:
-        return fallback
+        return input_hash
     try:
         payload = json.loads(archive.read(entry).decode("utf-8"))
     except (KeyError, UnicodeDecodeError, json.JSONDecodeError, zipfile.BadZipFile) as error:
-        raise BuildError(f"{source_id}: binario_filter_manifest.json non valido") from error
-    value = payload.get("sourceArchiveSha256")
-    if payload.get("sourceId") == source_id and isinstance(value, str) and len(value) == 64 and all(
-        character in "0123456789abcdef" for character in value
-    ):
-        return value
-    return fallback
+        raise BuildError(f"{source_id}: {FILTER_MANIFEST_MEMBER} non valido") from error
+    if not isinstance(payload, dict) or payload.get("sourceId") != source_id or payload.get("sourceArchiveSha256") != provenance:
+        raise BuildError(f"{source_id}: provenienza del pack pubblicato incoerente con il manifest di release")
+    return provenance
 
 
-def filter_archive(source: Path, destination: Path, source_id: str) -> FilterResult:
-    """Filter one complete GTFS archive and write a deterministic ZIP."""
+def filter_archive(
+    source: Path,
+    destination: Path,
+    source_id: str,
+    *,
+    published_entries: Iterable[Mapping[str, Any] | None] = (),
+) -> FilterResult:
+    """Filter one complete GTFS archive and write a deterministic ZIP.
+
+    ``published_entries`` are the release-manifest entries of this source the input may be a byte-identical copy of
+    (see :func:`published_provenance`); without a match the input's own SHA-256 is its provenance.
+    """
     if not source.is_file() or not zipfile.is_zipfile(source):
         raise BuildError(f"{source_id}: archivio ZIP GTFS non valido: {source}")
     input_hash = sha256_file(source)
     with zipfile.ZipFile(source) as archive:
         validate_archive_limits(archive, omit_geometry=True)
-        source_hash = original_archive_sha256(archive, source_id, input_hash)
+        source_hash = original_archive_sha256(
+            archive, source_id, input_hash, published_provenance(published_entries, input_hash)
+        )
         budget = RetentionBudget()
         routes = read_table(archive, "routes.txt", required=True, budget=budget)
         assert routes
@@ -1054,11 +1085,13 @@ def _build_packs_locked(
     overrides = input_overrides or {}
     published_assets: dict[str, Path] = {}
     published_manifest_path = output_dir / "manifest.json"
-    if (overrides or only) and output_dir != input_dir and published_manifest_path.is_file():
-        published_manifest = read_manifest(published_manifest_path)
+    published_by_id: dict[str, Mapping[str, Any]] = {}
+    if published_manifest_path.is_file():
+        published_by_id = {pack["sourceId"]: pack for pack in read_manifest(published_manifest_path)["packs"]}
+    if (overrides or only) and output_dir != input_dir and published_by_id:
         published_assets = {
-            pack["sourceId"]: output_dir / safe_asset_name(pack["asset"])
-            for pack in published_manifest["packs"]
+            source_id: output_dir / safe_asset_name(pack["asset"])
+            for source_id, pack in published_by_id.items()
         }
     selected = set(only or ())
     registered = {pack["sourceId"] for pack in source_manifest["packs"]}
@@ -1088,7 +1121,11 @@ def _build_packs_locked(
                 shutil.copyfile(output_dir / name, staging / name)
                 continue
             source = overrides.get(source_id) or published_assets.get(source_id) or input_dir / name
-            results[source_id] = filter_archive(source, staging / name, source_id)
+            # The registry entry and the published entry name the bytes of a published pack; only a byte-identical
+            # input keeps their recorded upstream digest (A7-01).
+            results[source_id] = filter_archive(
+                source, staging / name, source_id, published_entries=(pack, published_by_id.get(source_id)),
+            )
         output_manifest = manifest_for_build(source_manifest, results, generated_at, kept_entries)
         for pack in output_manifest["packs"]:
             if pack["sourceId"] in kept_entries:
@@ -1159,7 +1196,7 @@ def verify_filter_from_asset(path: Path, source_id: str) -> str:
     """Require a release ZIP to prove filter policy and canonical content identity."""
     with zipfile.ZipFile(path) as archive:
         validate_archive_limits(archive)
-        entry = find_entry(archive, FILTER_MANIFEST_MEMBER)
+        entry = filter_manifest_entry(archive)
         if entry is None:
             raise BuildError(f"{source_id}: asset non filtrato ({FILTER_MANIFEST_MEMBER} mancante)")
         try:

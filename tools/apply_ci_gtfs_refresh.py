@@ -224,7 +224,7 @@ def default_repo() -> str:
 
 def zip_metadata(data: bytes) -> dict[str, Any]:
     with zipfile.ZipFile(io.BytesIO(data)) as archive:
-        entry = builder.find_entry(archive, builder.FILTER_MANIFEST_MEMBER)
+        entry = builder.filter_manifest_entry(archive)
         if entry is None:
             raise ApplyError("pack senza binario_filter_manifest.json")
         return json.loads(archive.read(entry).decode("utf-8"))
