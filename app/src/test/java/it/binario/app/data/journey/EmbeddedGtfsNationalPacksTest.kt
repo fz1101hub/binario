@@ -148,8 +148,13 @@ class EmbeddedGtfsNationalPacksTest {
                 "FR 9627 Milano Centrale 11:58-16:33 Napoli Centrale",
             found.first().summary()
         )
-        val withoutHorizon = provider(settings = GtfsJourneyPlannerSettings(journeyHorizonMinutes = 0))
-        assertTrue(options(withoutHorizon.searchJourneys(request("Merano Meran", "Napoli Centrale", "07:00"))).isEmpty())
+        // The horizon bounds the changes, not the ride: without it the Frecciarossa boarded at 11:58 still reaches Napoli,
+        // and no train is boarded after the window.
+        val withoutHorizon = options(
+            provider(settings = GtfsJourneyPlannerSettings(journeyHorizonMinutes = 0)).searchJourneys(request("Merano Meran", "Napoli Centrale", "07:00"))
+        )
+        assertEquals(found.first().summary(), withoutHorizon.first().summary())
+        assertTrue(withoutHorizon.all { option -> option.legs.all { it.scheduledDeparture.toLocalTime() <= LocalTime.of(15, 0) } })
     }
 
     @Test fun `Trenitalia and Italo trains share the catalogue stations`() = runBlocking {

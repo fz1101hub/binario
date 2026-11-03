@@ -88,8 +88,9 @@ data class GtfsJourneyPlannerSettings(
     /** Departures are searched from the requested time up to this many minutes later. */
     val searchWindowMinutes: Int = 8 * 60,
     /**
-     * Connections leaving up to this long after the window are scanned too, so that a journey leaving inside the
-     * window can still arrive (Merano → Roma takes seven hours): only its first departure must be in the window.
+     * Vehicles leaving up to this long after the window can still be boarded at a change, so that a journey leaving
+     * inside the window can still arrive (Merano → Roma takes seven hours): only its first departure must be in the
+     * window. A vehicle boarded by then is followed to its end, however late (Milano → Palermo by night train).
      */
     val journeyHorizonMinutes: Int = 10 * 60,
     val maxPacksPerSearch: Int = 3,
@@ -104,9 +105,10 @@ data class GtfsJourneyPlannerSettings(
     val maxCachedBytes: Long = 24L * 1024L * 1024L,
     /**
      * Walking transfers: two transfer points at most this far apart (straight line) are joined by a walk, and so are
-     * the requested stations and the stops near them (Milano Centrale and the Centrale M2/M3 stops).
+     * the requested stations and the stops near them (Milano Centrale and the Centrale M2/M3 stops). The default is
+     * what the default travel preferences give (ten minutes at normal speed, [JourneyPreferences.maxWalkMinutes]).
      */
-    val maxWalkMeters: Int = 400,
+    val maxWalkMeters: Int = 600,
     /** Walking speed of those transfers. */
     val walkingSpeedKmh: Double = 4.5,
     /** Added to every walk (finding the way, stairs, ticket barriers). */
@@ -114,7 +116,13 @@ data class GtfsJourneyPlannerSettings(
     /** Minimum change time at a stop of a city network (metro, tram, funicular). */
     val urbanTransferMinutes: Int = 3,
     /** City packs loaded for one search besides the [maxPacksPerSearch] railway packs: the city of each end. */
-    val maxUrbanPacksPerSearch: Int = 2
+    val maxUrbanPacksPerSearch: Int = 2,
+    /**
+     * A wait between two vehicles longer than this is a long wait: such an option is left out when another one
+     * arrives no later than its arrival plus the extra wait (a night in a station before the first train of the
+     * morning), and it is never "Ultimo di oggi".
+     */
+    val maxChangeWaitMinutes: Int = 120
 ) {
     init {
         require(defaultTransferMinutes in 0..60 && largeHubTransferMinutes in 0..60) { "Tempo di cambio non valido" }
@@ -124,6 +132,7 @@ data class GtfsJourneyPlannerSettings(
         require(maxIterations > 0 && maxSearchConnections > 0 && maxCachedDays > 0 && maxCachedBytes > 0)
         require(maxWalkMeters in 0..2_000 && walkingSpeedKmh > 0 && walkMarginMinutes in 0..30) { "Percorsi a piedi non validi" }
         require(urbanTransferMinutes in 0..60 && maxUrbanPacksPerSearch in 0..4) { "Reti urbane non valide" }
+        require(maxChangeWaitMinutes in 0..24 * 60) { "Attesa massima non valida" }
     }
 
     /** Minutes of a walk of [meters]: the distance at [walkingSpeedKmh], rounded up, plus [walkMarginMinutes]. */
@@ -469,10 +478,80 @@ class EmbeddedGtfsJourneyProvider internal constructor(
         resolver: GtfsStopStationResolver,
         planner: GtfsJourneyPlannerSettings
     ): SearchOutcome {
-        var incomplete = false
-        // The previous service day only matters past its midnight, so it is cached as a partial day; the requested
-        // day is cached whole for later searches, and so is the next one when the horizon reaches it.
         val lastConnectionMinute = endMinute + settings.journeyHorizonMinutes
+        val filter = SearchFilter.of(request.preferences)
+        val job = currentCoroutineContext().job
+        val window = scanWindow(selection, request, serviceDate, startMinute, lastConnectionMinute, resolver, planner, filter)
+        var incomplete = window.incomplete
+        val query = window.query(request, filter, startMinute, endMinute, lastConnectionMinute)
+        val scanner = ConnectionScanPlanner(window.graph.timetable)
+        val outcome = scanner.planWithOutcome(query) { job.ensureActive() }
+        var journeys = outcome.journeys
+        var found = window
+        var foundScanner = scanner
+        // Nothing leaves in the window (after the last train of the day, or on a line with few trains): the first option
+        // after it follows, "primo domani alle …". First on the connections already read, up to the horizon, then, when
+        // that ends before the next morning, on a window of its own up to the next day's noon.
+        if (outcome.exhausted && journeys.isEmpty()) {
+            if (lastConnectionMinute > endMinute) {
+                journeys = scanner.plan(
+                    query.copy(
+                        departureMinute = endMinute + 1, latestDepartureMinute = lastConnectionMinute, maxResults = 1,
+                        maxIterations = FOLLOW_UP_ITERATIONS
+                    )
+                ) { job.ensureActive() }
+            }
+            val nextNoon = MINUTES_PER_DAY + NEXT_DAY_FOLLOW_UP_MINUTES
+            if (journeys.isEmpty() && lastConnectionMinute < nextNoon) {
+                val from = lastConnectionMinute + 1
+                val horizon = nextNoon + settings.journeyHorizonMinutes
+                val later = scanWindow(selection, request, serviceDate, from, horizon, resolver, planner, filter)
+                incomplete = incomplete || later.incomplete
+                val laterScanner = ConnectionScanPlanner(later.graph.timetable)
+                journeys = laterScanner.plan(
+                    later.query(request, filter, from, nextNoon, horizon).copy(maxResults = 1, maxIterations = FOLLOW_UP_ITERATIONS)
+                ) { job.ensureActive() }
+                found = later
+                foundScanner = laterScanner
+            }
+        }
+        val slices = found.slices
+        val graph = found.graph
+        // "Ultimo di oggi": the latest option of the requested service day is its last when the list holds an option of
+        // a later day (the scan goes in order of departure, so nothing of the day can come after it), or when every
+        // option of the window was found and the window ends after the last departure of that day in these packs. An
+        // option that waits for hours at a change (a night in a station) is never announced as the last of the day.
+        fun serviceDayOf(journey: ScannedJourney): LocalDate = slices[graph.sliceOf[journey.legs.first().boardConnection]].day.serviceDate
+        val dayEnd = window.slices.filter { it.offset == 0 }.maxOfOrNull { it.day.lastDepartureMinute } ?: Int.MAX_VALUE
+        val dayComplete = journeys.any { serviceDayOf(it) > serviceDate } || (outcome.exhausted && endMinute >= dayEnd)
+        val lastOfDay = if (dayComplete) {
+            journeys.filter { serviceDayOf(it) <= serviceDate }.maxByOrNull { it.departureMinute }
+                ?.takeIf { foundScanner.excessWait(it, settings.maxChangeWaitMinutes) == 0 }
+        } else null
+        val options = journeys.map { journey ->
+            toOption(journey, graph, slices, request, origin, destination, serviceDate, fetchedAt, resolver, found.originAccessible, found.destinationAccessible)
+                .let { if (journey === lastOfDay) it.copy(lastOfServiceDay = true) else it }
+        }
+        return SearchOutcome(options, incomplete)
+    }
+
+    /**
+     * The connections of [selection] leaving from [startMinute] (minutes of [serviceDate]) whose vehicles can be boarded
+     * up to [lastConnectionMinute], with the origin and destination points marked. The previous service day only
+     * matters past its midnight, so it is cached as a partial day; the requested day is cached whole for later searches,
+     * and so is the next one when the horizon reaches it.
+     */
+    private suspend fun scanWindow(
+        selection: List<PackCoverage>,
+        request: JourneySearchRequest,
+        serviceDate: LocalDate,
+        startMinute: Int,
+        lastConnectionMinute: Int,
+        resolver: GtfsStopStationResolver,
+        planner: GtfsJourneyPlannerSettings,
+        filter: SearchFilter
+    ): ScanWindow {
+        var incomplete = false
         val parts = buildList {
             add(DayPart(serviceDate.minusDays(1), MINUTES_PER_DAY, Int.MAX_VALUE))
             add(DayPart(serviceDate, 0, Int.MAX_VALUE))
@@ -494,9 +573,7 @@ class EmbeddedGtfsJourneyProvider internal constructor(
                 }
             }
         }
-        val filter = SearchFilter.of(request.preferences)
         val graph = buildGraph(slices, startMinute, lastConnectionMinute, resolver, planner, filter)
-        incomplete = incomplete || graph.truncated
         val nodeCount = graph.timetable.nodeCount
         val origins = BooleanArray(nodeCount)
         val destinations = BooleanArray(nodeCount)
@@ -521,45 +598,10 @@ class EmbeddedGtfsJourneyProvider internal constructor(
             mark(coverage.originNodes, origins, originWalk, originAccessible)
             mark(coverage.destinationNodes, destinations, destinationWalk, destinationAccessible)
         }
-        val job = currentCoroutineContext().job
-        val scanner = ConnectionScanPlanner(graph.timetable)
-        val query = ConnectionScanQuery(
-            origins = origins,
-            destinations = destinations,
-            departureMinute = startMinute,
-            latestDepartureMinute = endMinute,
-            maxTransfers = request.maxTransfers,
-            maxResults = request.maxResults,
-            maxIterations = settings.maxIterations,
-            lastConnectionMinute = lastConnectionMinute,
-            originWalkMinutes = originWalk,
-            destinationWalkMinutes = destinationWalk,
-            preferLessWalking = filter.preferLessWalking
+        return ScanWindow(
+            slices, graph, incomplete || graph.truncated, origins, destinations, originWalk, destinationWalk,
+            originAccessible, destinationAccessible, settings.maxIterations, settings.maxChangeWaitMinutes
         )
-        val outcome = scanner.planWithOutcome(query) { job.ensureActive() }
-        var journeys = outcome.journeys
-        // A search after the last train of the day: nothing leaves in a window that reaches past midnight, so the first
-        // option after the window follows (same connections, nothing read again): "primo domani alle …".
-        if (outcome.exhausted && journeys.isEmpty() && endMinute >= MINUTES_PER_DAY && lastConnectionMinute > endMinute) {
-            journeys = scanner.plan(
-                query.copy(
-                    departureMinute = endMinute + 1, latestDepartureMinute = lastConnectionMinute, maxResults = 1,
-                    maxIterations = FOLLOW_UP_ITERATIONS
-                )
-            ) { job.ensureActive() }
-        }
-        // "Ultimo di oggi": the latest option of the requested service day is its last when the list holds an option of
-        // a later day (the scan goes in order of departure, so nothing of the day can come after it), or when every
-        // option of the window was found and the window ends after the last departure of that day in these packs.
-        fun serviceDayOf(journey: ScannedJourney): LocalDate = slices[graph.sliceOf[journey.legs.first().boardConnection]].day.serviceDate
-        val dayEnd = slices.filter { it.offset == 0 }.maxOfOrNull { it.day.lastDepartureMinute } ?: Int.MAX_VALUE
-        val dayComplete = journeys.any { serviceDayOf(it) > serviceDate } || (outcome.exhausted && endMinute >= dayEnd)
-        val lastOfDay = if (dayComplete) journeys.filter { serviceDayOf(it) <= serviceDate }.maxByOrNull { it.departureMinute } else null
-        val options = journeys.map { journey ->
-            toOption(journey, graph, slices, request, origin, destination, serviceDate, fetchedAt, resolver, originAccessible, destinationAccessible)
-                .let { if (journey === lastOfDay) it.copy(lastOfServiceDay = true) else it }
-        }
-        return SearchOutcome(options, incomplete)
     }
 
     private fun buildGraph(
@@ -599,6 +641,17 @@ class EmbeddedGtfsJourneyProvider internal constructor(
         var keys = LongArray(4096)
         var count = 0
         var truncated = false
+        fun add(sliceIndex: Int, connection: Int, departure: Int): Boolean {
+            if (count == settings.maxSearchConnections) {
+                truncated = true
+                return false
+            }
+            if (count == keys.size) keys = keys.copyOf(minOf(keys.size * 2, settings.maxSearchConnections))
+            val day = slices[sliceIndex].day
+            val duration = (day.arrivalMinute[connection] - day.departureMinute[connection]).coerceAtMost(MAX_ENCODED_DURATION)
+            keys[count++] = (departure.toLong() shl 42) or (duration.toLong() shl 28) or (sliceIndex.toLong() shl 22) or connection.toLong()
+            return true
+        }
         // Trips with a connection in the window: the only ones a continuation can join.
         val inWindow = BooleanArray(tripCount)
         selection@ for ((sliceIndex, slice) in slices.withIndex()) {
@@ -610,14 +663,22 @@ class EmbeddedGtfsJourneyProvider internal constructor(
                 if (departure < startMinute || departure > lastMinute) continue
                 if (allowed != null && !allowed[day.connectionTrip[connection]]) continue
                 inWindow[tripOffset + day.connectionTrip[connection]] = true
-                if (count == settings.maxSearchConnections) {
-                    truncated = true
-                    break@selection
+                if (!add(sliceIndex, connection, departure)) break@selection
+            }
+        }
+        // The rest of every trip that can be boarded by then: a night train boarded inside the horizon is followed to
+        // its end (Milano 18:45 → Palermo 16:55 the next day), while nothing else is boarded after the horizon.
+        tail@ for ((sliceIndex, slice) in slices.withIndex()) {
+            if (truncated) break
+            val day = slice.day
+            val tripOffset = tripOffsets[sliceIndex]
+            for (local in day.trips.indices) {
+                if (!inWindow[tripOffset + local]) continue
+                val dayTrip = day.trips[local]
+                for (connection in dayTrip.firstConnection until dayTrip.firstConnection + dayTrip.connectionCount) {
+                    val departure = day.departureMinute[connection] + slice.offset
+                    if (departure > lastMinute && !add(sliceIndex, connection, departure)) break@tail
                 }
-                if (count == keys.size) keys = keys.copyOf(minOf(keys.size * 2, settings.maxSearchConnections))
-                val duration = (day.arrivalMinute[connection] - day.departureMinute[connection]).coerceAtMost(MAX_ENCODED_DURATION)
-                keys[count++] = (departure.toLong() shl 42) or (duration.toLong() shl 28) or
-                    (sliceIndex.toLong() shl 22) or connection.toLong()
             }
         }
         val urbanPrefixes = slices.filter { it.coverage.pack.isUrban }.mapTo(HashSet()) { it.coverage.pack.sourceId.value + ":" }
@@ -632,7 +693,7 @@ class EmbeddedGtfsJourneyProvider internal constructor(
         }
         val footpaths = footpaths(nodeKeys, slices, resolver, transferMinutes, planner, nodeAccessible)
         val runs = mergeCrossPackRuns(slices, keys, count, stopNodes, tripOffsets, tripCount, inWindow)
-        val continuations = linkContinuations(slices, stopNodes, tripOffsets, runs, footpaths)
+        val continuations = linkContinuations(slices, stopNodes, tripOffsets, runs, footpaths, tripAllowed)
         count = runs.keptConnections
         keys.sort(0, count)
 
@@ -663,6 +724,7 @@ class EmbeddedGtfsJourneyProvider internal constructor(
             sliceOf[index] = sliceIndex
             connectionOf[index] = connection
         }
+        val inSeat = inSeatContinuations(continuations.links, runs.representative, trip, arrivalNode, arrivalMinute)
         return SearchGraph(
             timetable = ConnectionScanTimetable(
                 nodeCount = nodeKeys.size,
@@ -676,7 +738,10 @@ class EmbeddedGtfsJourneyProvider internal constructor(
                 boarding = boarding,
                 footStart = footpaths.start,
                 footTarget = footpaths.target,
-                footMinutes = footpaths.minutes
+                footMinutes = footpaths.minutes,
+                continuationStart = inSeat?.start,
+                continuationTrip = inSeat?.trip ?: IntArray(0),
+                continuationNext = inSeat?.next ?: IntArray(0)
             ),
             nodeKeys = nodeKeys,
             nodeIndex = nodeIndex,
@@ -691,27 +756,31 @@ class EmbeddedGtfsJourneyProvider internal constructor(
     }
 
     /**
-     * "Resta a bordo": the trips the same vehicle runs one after the other become one trip of the scan, so that staying
-     * on board is no change and needs no change time. Trip B continues trip A when B leaves the station where A ends
-     * (the same transfer point, or for two packs a point a footpath joins under the same name), no earlier than A
-     * arrives and at most [MAX_IN_SEAT_WAIT_MINUTES] later, without turning back over A's last section, and either
+     * "Resta a bordo": the trips the same vehicle runs one after the other, so that staying on board is no change and
+     * needs no change time. Trip B continues trip A when B leaves the station where A arrives (the same transfer point,
+     * or for two packs a point a footpath joins under the same name), no earlier than A arrives and at most
+     * [MAX_IN_SEAT_WAIT_MINUTES] later, without turning back over A's last section, and either
      * - both are in one pack and service day with the same GTFS block_id, or
-     * - they are in two packs and carry the same public number ([runNumberKey]: STA's EC 88 to Brennero, ÖBB's onwards).
-     * Every run (with the copies other packs publish of it) continues at most one run and is continued by at most one.
-     * Returns, per group of copies, the trip that continues it; [MergedRuns.representative] is updated in place.
+     * - they are in two packs and carry the same public number ([runNumberKey]: STA's EC 88, ÖBB's RJ 88) of no
+     *   conflicting kind ([brand]: a EuroCity never goes on as a regional), and B starts where A ends, or where A only
+     *   stops when B is the same train: it leaves there when A does and goes on the way A goes ([sameWayOn]: STA's
+     *   RJX 186 on from Brennero in the ÖBB pack, not the Centovallina 41 that leaves Domodossola after the EuroCity 41).
+     * A trip a travel preference leaves out links nothing. Every run (with the copies other packs publish of it)
+     * continues at most one run and is continued by at most one. The trips keep their own identity: the scan puts a
+     * traveller who rode A up to the junction on board of B ([ConnectionScanTimetable.continuationStart]), so a
+     * traveller who boards A after the junction never rides B.
      */
     private fun linkContinuations(
         slices: List<Slice>,
         stopNodes: List<IntArray>,
         tripOffsets: IntArray,
         runs: MergedRuns,
-        footpaths: Footpaths
+        footpaths: Footpaths,
+        tripAllowed: List<BooleanArray?> = emptyList()
     ): Continuations {
         val representative = runs.representative
         val tripCount = representative.size
         val successor = IntArray(tripCount).also { it.fill(-1) }
-        // The groups of copies of one run the identical-connection merge made, before any continuation joins them.
-        val group = representative.copyOf()
         val candidates = ArrayList<LongArray>()
         val ends = HashMap<Int, TripEnds>()
         fun sliceOf(global: Int): Int {
@@ -735,13 +804,19 @@ class EmbeddedGtfsJourneyProvider internal constructor(
                 lastArrival = day.arrivalMinute[last] + offset
             )
         }
-        /** [before] reaches the first point of [after] at [arrival], coming from [previousNode]. */
-        fun consider(before: Int, arrival: Int, previousNode: Int, after: Int, afterEnds: TripEnds) {
+        fun allowed(global: Int): Boolean {
+            val sliceIndex = sliceOf(global)
+            return tripAllowed.getOrNull(sliceIndex)?.get(global - tripOffsets[sliceIndex]) != false
+        }
+        /** [before] reaches [junction], the first point of [after], at [arrival], coming from [previousNode]. */
+        fun consider(before: Int, arrival: Int, previousNode: Int, junction: Int, after: Int, afterEnds: TripEnds) {
             val wait = afterEnds.firstDeparture - arrival
             if (wait < 0 || wait > MAX_IN_SEAT_WAIT_MINUTES) return
             // A vehicle that turns back (Mendrisio, a funicular's top station) is not a journey to stay on.
             if (afterEnds.secondNode == previousNode) return
-            candidates += longArrayOf(wait.toLong(), before.toLong(), after.toLong())
+            // An avoided kind of train, or one not accessible, is never ridden through.
+            if (!allowed(before) || !allowed(after)) return
+            candidates += longArrayOf(wait.toLong(), before.toLong(), after.toLong(), junction.toLong(), arrival.toLong())
         }
         // Blocks: trips of one slice with the same block_id, in order of departure (kept with the cached day).
         slices.forEachIndexed { sliceIndex, slice ->
@@ -751,15 +826,15 @@ class EmbeddedGtfsJourneyProvider internal constructor(
                     val after = end(sliceIndex, block[position])
                     if (before.lastNode == after.firstNode) {
                         consider(tripOffsets[sliceIndex] + block[position - 1], before.lastArrival, before.previousNode,
-                            tripOffsets[sliceIndex] + block[position], after)
+                            before.lastNode, tripOffsets[sliceIndex] + block[position], after)
                     }
                     before = after
                 }
             }
         }
         // Two packs: the same public number going on from a shared or matching station. The second pack's run starts
-        // where the first one ends (STA's EC 88 to Brennero, ÖBB's onwards) or where it stops on its way (a pack that
-        // also publishes the next section under its own stop names, which the identical-connection merge cannot pair).
+        // where the first one ends (a pack that stops at the border) or where it stops on its way (a pack that also
+        // publishes the next section under its own stop names, which the identical-connection merge cannot pair).
         // A true train number is one run per pack and service day: a "number" many more runs share is a line name
         // (a pack without trip numbers) and links nothing.
         val maxRunsPerNumber = 2 * slices.size
@@ -790,34 +865,34 @@ class EmbeddedGtfsJourneyProvider internal constructor(
                 val beforeSlice = runs.sliceOfTrip[before]
                 val afterSlice = runs.sliceOfTrip[after]
                 if (slices[beforeSlice].day.sourceId == slices[afterSlice].day.sourceId) continue
-                // A coach and a train never share a vehicle.
-                if (slices[beforeSlice].day.trips[before - tripOffsets[beforeSlice]].mode != slices[afterSlice].day.trips[after - tripOffsets[afterSlice]].mode) continue
+                val beforeTrip = slices[beforeSlice].day.trips[before - tripOffsets[beforeSlice]]
+                val afterTrip = slices[afterSlice].day.trips[after - tripOffsets[afterSlice]]
+                // A coach and a train never share a vehicle, nor a EuroCity and a regional train.
+                if (beforeTrip.mode != afterTrip.mode) continue
+                if (!brandsAgree(brand(beforeTrip), brand(afterTrip))) continue
                 val known = tripEnds ?: arrayOfNulls<TripEnds>(size).also { tripEnds = it }
                 val beforeEnds = known[i] ?: end(beforeSlice, before - tripOffsets[beforeSlice]).also { known[i] = it }
                 val afterEnds = known[j] ?: end(afterSlice, after - tripOffsets[afterSlice]).also { known[j] = it }
                 val start = afterEnds.firstNode
                 val from = beforeEnds.lastNode
                 if (from == start || matchingPoints(from, start, footpaths, slices, runs, before, after, stopNodes)) {
-                    consider(before, beforeEnds.lastArrival, beforeEnds.previousNode, after, afterEnds)
+                    consider(before, beforeEnds.lastArrival, beforeEnds.previousNode, from, after, afterEnds)
                     continue
                 }
                 // A stop on the way: the first connection of `before` arriving at the start of `after`.
                 val day = slices[beforeSlice].day
-                val dayTrip = day.trips[before - tripOffsets[beforeSlice]]
                 val nodes = stopNodes[beforeSlice]
-                for (connection in dayTrip.firstConnection until dayTrip.firstConnection + dayTrip.connectionCount - 1) {
+                for (connection in beforeTrip.firstConnection until beforeTrip.firstConnection + beforeTrip.connectionCount - 1) {
                     if (nodes[day.arrivalStop[connection]] != start) continue
-                    consider(before, day.arrivalMinute[connection] + slices[beforeSlice].offset, nodes[day.departureStop[connection]], after, afterEnds)
+                    if (sameWayOn(slices, stopNodes, footpaths, beforeSlice, beforeTrip, connection, afterSlice, afterTrip)) {
+                        consider(before, day.arrivalMinute[connection] + slices[beforeSlice].offset, nodes[day.departureStop[connection]],
+                            start, after, afterEnds)
+                    }
                     break
                 }
             }
         }
-        if (candidates.isEmpty()) return Continuations(successor, group)
-        fun root(trip: Int): Int {
-            var current = trip
-            while (representative[current] != current) current = representative[current]
-            return current
-        }
+        if (candidates.isEmpty()) return Continuations(successor, representative, emptyList())
         fun dayTrip(global: Int): GtfsDayTrip {
             val sliceIndex = sliceOf(global)
             return slices[sliceIndex].day.trips[global - tripOffsets[sliceIndex]]
@@ -834,14 +909,13 @@ class EmbeddedGtfsJourneyProvider internal constructor(
         }
         // Keyed by the copies' group: a continuation found for one pack's copy of a run holds for the others.
         val predecessor = IntArray(tripCount).also { it.fill(-1) }
+        val links = ArrayList<InSeatLink>()
         for (candidate in candidates.sortedBy { it[0] }) {
             val before = candidate[1].toInt()
             val after = candidate[2].toInt()
-            val beforeGroup = group[before]
-            val afterGroup = group[after]
-            val beforeRoot = root(before)
-            val afterRoot = root(after)
-            if (beforeRoot == afterRoot) continue
+            val beforeGroup = representative[before]
+            val afterGroup = representative[after]
+            if (beforeGroup == afterGroup) continue
             val linkedAfter = successor[beforeGroup]
             val linkedBefore = predecessor[afterGroup]
             when {
@@ -849,15 +923,99 @@ class EmbeddedGtfsJourneyProvider internal constructor(
                     successor[beforeGroup] = after
                     predecessor[afterGroup] = before
                 }
-                // Another copy of the run already linked: one vehicle, so its copies join the same trip.
+                // Another copy of the run already linked: one vehicle, so its copies go on as well.
                 linkedAfter >= 0 && linkedBefore < 0 && sameRun(linkedAfter, after, atStart = true) -> predecessor[afterGroup] = before
                 linkedBefore >= 0 && linkedAfter < 0 && sameRun(linkedBefore, before, atStart = false) -> successor[beforeGroup] = after
                 else -> continue
             }
-            representative[afterRoot] = beforeRoot
+            links += InSeatLink(before, after, junctionNode = candidate[3].toInt(), junctionArrival = candidate[4].toInt())
         }
-        for (trip in 0 until tripCount) representative[trip] = root(trip)
-        return Continuations(successor, group)
+        return Continuations(successor, representative, links)
+    }
+
+    /**
+     * [after] (another pack) is the same train as [before] going on from where connection [arrival] of [before]
+     * arrives: it leaves there within [MAX_COPY_SKEW_MINUTES] of [before]'s own departure, and one of its next
+     * [ONWARD_STOPS] stops is a stop [before] reaches afterwards (the same transfer point or one a footpath joins),
+     * within [MAX_COPY_SKEW_MINUTES] of the same time. Two trains that only share the digits of their number fail it.
+     */
+    private fun sameWayOn(
+        slices: List<Slice>,
+        stopNodes: List<IntArray>,
+        footpaths: Footpaths,
+        beforeSlice: Int,
+        before: GtfsDayTrip,
+        arrival: Int,
+        afterSlice: Int,
+        after: GtfsDayTrip
+    ): Boolean {
+        val day = slices[beforeSlice].day
+        val offset = slices[beforeSlice].offset
+        val afterDay = slices[afterSlice].day
+        val afterOffset = slices[afterSlice].offset
+        val beforeEnd = before.firstConnection + before.connectionCount
+        val leaves = day.departureMinute[arrival + 1] + offset
+        if (Math.abs(afterDay.departureMinute[after.firstConnection] + afterOffset - leaves) > MAX_COPY_SKEW_MINUTES) return false
+        val beforeNodes = stopNodes[beforeSlice]
+        val afterNodes = stopNodes[afterSlice]
+        fun joined(from: Int, to: Int): Boolean {
+            if (from == to) return true
+            for (index in footpaths.start[from] until footpaths.start[from + 1]) if (footpaths.target[index] == to) return true
+            return false
+        }
+        val lastOnward = minOf(after.firstConnection + ONWARD_STOPS, after.firstConnection + after.connectionCount)
+        for (next in after.firstConnection until lastOnward) {
+            val node = afterNodes[afterDay.arrivalStop[next]]
+            val reaches = afterDay.arrivalMinute[next] + afterOffset
+            for (onward in arrival + 1 until beforeEnd) {
+                if (Math.abs(day.arrivalMinute[onward] + offset - reaches) > MAX_COPY_SKEW_MINUTES) continue
+                if (joined(beforeNodes[day.arrivalStop[onward]], node)) return true
+            }
+        }
+        return false
+    }
+
+    /**
+     * The scan's in-seat links: per sorted connection, the trips the vehicle goes on as after it. A link of
+     * [EmbeddedGtfsJourneyProvider.linkContinuations] holds after the connection of the first trip's scan identity
+     * (its copies share one) that arrives at the junction at the junction minute. Null without links.
+     */
+    private fun inSeatContinuations(
+        links: List<InSeatLink>,
+        representative: IntArray,
+        trip: IntArray,
+        arrivalNode: IntArray,
+        arrivalMinute: IntArray
+    ): InSeatArrays? {
+        if (links.isEmpty()) return null
+        val byTrip = HashMap<Int, MutableList<InSeatLink>>()
+        val linked = BooleanArray(representative.size)
+        for (link in links) {
+            byTrip.getOrPut(representative[link.before]) { ArrayList(1) } += link
+            linked[representative[link.before]] = true
+        }
+        val start = IntArray(trip.size).also { it.fill(-1) }
+        val nextTrip = IntArrayList()
+        val next = IntArrayList()
+        for (connection in trip.indices) {
+            if (!linked[trip[connection]]) continue
+            val candidates = byTrip[trip[connection]] ?: continue
+            for (link in candidates) {
+                if (link.junctionNode != arrivalNode[connection] || link.junctionArrival != arrivalMinute[connection]) continue
+                val target = representative[link.after]
+                var existing = start[connection]
+                var duplicate = false
+                while (existing >= 0) {
+                    if (nextTrip[existing] == target) duplicate = true
+                    existing = next[existing]
+                }
+                if (duplicate) continue
+                next.add(start[connection])
+                nextTrip.add(target)
+                start[connection] = nextTrip.size - 1
+            }
+        }
+        return InSeatArrays(start, nextTrip.toIntArray(), next.toIntArray())
     }
 
     /** Two transfer points of two packs that are one station under two identities: a footpath joins them and the names agree. */
@@ -891,7 +1049,8 @@ class EmbeddedGtfsJourneyProvider internal constructor(
     /**
      * Walking transfers between the transfer points of one search at most [GtfsJourneyPlannerSettings.maxWalkMeters]
      * apart (two stations, a station and a metro or tram stop, stops of two networks): minutes are the walk
-     * ([GtfsJourneyPlannerSettings.walkMinutes]) and never less than the change time of the node walked to. Points
+     * ([GtfsJourneyPlannerSettings.walkMinutes]) and never less than the change time of either end, so that leaving a
+     * large hub on foot takes its ten minutes as a change there does. Points
      * come from the catalogue station or, for a stop the catalogue does not know, from its pack; a node without
      * coordinates has no footpath. Nodes are bucketed on a grid of cells about [maxWalkMeters] wide.
      */
@@ -948,7 +1107,7 @@ class EmbeddedGtfsJourneyProvider internal constructor(
                     val meters = GtfsStationCodeIndex.distanceKm(latitude, longitude, latitudes[other], longitudes[other]) * 1000.0
                     if (meters > maxMeters) continue
                     targets[node].add(other)
-                    minutes[node].add(maxOf(planner.walkMinutes(meters), transferMinutes[other]))
+                    minutes[node].add(maxOf(planner.walkMinutes(meters), transferMinutes[node], transferMinutes[other]))
                     total += 1
                 }
             }
@@ -1474,8 +1633,9 @@ class EmbeddedGtfsJourneyProvider internal constructor(
 
             /**
              * A stop's transfer point is the catalogue station it resolves to (by the station code the pack
-             * publishes, if any, else by name); the platforms of one parent_station share the station any of them
-             * resolves to (when they agree). Stops the catalogue does not know stay points of their own pack:
+             * publishes, if any, else by name, else by its coordinates and name: [GtfsStopStationResolver.nearbyStation],
+             * so that STA's "Verona" is Verona Porta Nuova, with its change time and no walk between two names of one
+             * station); the platforms of one parent_station share the station any of them resolves to (when they agree). Stops the catalogue does not know stay points of their own pack:
              * grouped by parent_station, or by identical name when they have none. The stops of a city network
              * ([EmbeddedGtfsPack.isUrban]) never resolve to a catalogue station: they reach stations by walking.
              */
@@ -1491,7 +1651,7 @@ class EmbeddedGtfsJourneyProvider internal constructor(
                     byCode ?: resolvedByName.getOrPut(name) {
                         // "Matera Centrale" of the FAL pack is the catalogue's "Matera Centrale FAL" when it exists.
                         pack.catalogueNameSuffixes.firstNotNullOfOrNull { suffix -> resolver.resolve("$name $suffix") } ?: resolver.resolve(name)
-                    }
+                    } ?: resolver.nearbyStation(name, directory.latitude(index), directory.longitude(index))
                 }
                 val referencedParents = directory.parents.filter(String::isNotEmpty).toHashSet()
                 val groupOf = Array(size) { index -> directory.parents[index].ifEmpty { directory.ids[index] } }
@@ -1592,6 +1752,37 @@ class EmbeddedGtfsJourneyProvider internal constructor(
 
     private class SearchOutcome(val options: List<JourneyOption>, val incomplete: Boolean)
 
+    /** The graph of one scan window with its ends marked ([EmbeddedGtfsJourneyProvider.scanWindow]). */
+    private class ScanWindow(
+        val slices: List<Slice>,
+        val graph: SearchGraph,
+        val incomplete: Boolean,
+        private val origins: BooleanArray,
+        private val destinations: BooleanArray,
+        private val originWalk: IntArray,
+        private val destinationWalk: IntArray,
+        val originAccessible: Boolean,
+        val destinationAccessible: Boolean,
+        private val maxIterations: Int,
+        private val maxChangeWaitMinutes: Int
+    ) {
+        fun query(request: JourneySearchRequest, filter: SearchFilter, departureMinute: Int, latestDepartureMinute: Int, lastConnectionMinute: Int) =
+            ConnectionScanQuery(
+                origins = origins,
+                destinations = destinations,
+                departureMinute = departureMinute,
+                latestDepartureMinute = latestDepartureMinute,
+                maxTransfers = request.maxTransfers,
+                maxResults = request.maxResults,
+                maxIterations = maxIterations,
+                lastConnectionMinute = lastConnectionMinute,
+                originWalkMinutes = originWalk,
+                destinationWalkMinutes = destinationWalk,
+                preferLessWalking = filter.preferLessWalking,
+                maxChangeWaitMinutes = maxChangeWaitMinutes
+            )
+    }
+
     /** Footpaths in the [ConnectionScanTimetable] layout. */
     private class Footpaths(val start: IntArray, val target: IntArray, val minutes: IntArray)
 
@@ -1607,6 +1798,8 @@ class EmbeddedGtfsJourneyProvider internal constructor(
         }
 
         operator fun get(index: Int): Int = values[index]
+
+        fun toIntArray(): IntArray = values.copyOf(size)
     }
 
     /**
@@ -1622,8 +1815,17 @@ class EmbeddedGtfsJourneyProvider internal constructor(
         val tripsBySharedNumber: Map<String, List<Int>> = emptyMap()
     )
 
-    /** [EmbeddedGtfsJourneyProvider.linkContinuations]: successors per group of copies, and the groups. */
-    private class Continuations(val successor: IntArray, val group: IntArray)
+    /**
+     * [EmbeddedGtfsJourneyProvider.linkContinuations]: successors per group of copies (for the "Resta a bordo" notes),
+     * the groups, and every link the scan follows.
+     */
+    private class Continuations(val successor: IntArray, val group: IntArray, val links: List<InSeatLink>)
+
+    /** Trip [after] (global index) goes on from [junctionNode], where trip [before] arrives at [junctionArrival]. */
+    private class InSeatLink(val before: Int, val after: Int, val junctionNode: Int, val junctionArrival: Int)
+
+    /** [ConnectionScanTimetable.continuationStart] and its lists. */
+    private class InSeatArrays(val start: IntArray, val trip: IntArray, val next: IntArray)
 
     /** The first and last connection of a trip, in the search's transfer points and minutes. */
     private class TripEnds(
@@ -1685,8 +1887,14 @@ class EmbeddedGtfsJourneyProvider internal constructor(
         private const val MINUTES_PER_DAY = 24 * 60
         /** Longest stop of a vehicle between two trips the traveller can stay on board through. */
         private const val MAX_IN_SEAT_WAIT_MINUTES = 30
+        /** Two packs' copies of one train leave and reach a station within this many minutes of each other. */
+        private const val MAX_COPY_SKEW_MINUTES = 5
+        /** Stops of the other pack's copy compared with the first pack's onward stops ([sameWayOn]). */
+        private const val ONWARD_STOPS = 3
         /** Scans of the search for the first option after a window that ends with nothing more to find. */
         private const val FOLLOW_UP_ITERATIONS = 2
+        /** That search reaches this far into the next service day: the first train of the next morning. */
+        private const val NEXT_DAY_FOLLOW_UP_MINUTES = 12 * 60
         /** Bound on the "Resta a bordo" notes of one leg. */
         private const val MAX_CONTINUATIONS = 8
         /** Upper bound of a walk, whatever the preferences (the planner settings accept up to 2 km). */
@@ -1736,6 +1944,36 @@ class EmbeddedGtfsJourneyProvider internal constructor(
             val key = digits.ifEmpty { shown.uppercase(Locale.ROOT).filter(Char::isLetterOrDigit) }
             return key.takeIf { it.isNotEmpty() && it.length <= 8 }
         }
+
+        /** What a train is by the codes it publishes, for the in-seat continuations between packs ([brandsAgree]). */
+        internal enum class Brand { LONG_DISTANCE, LOCAL, UNKNOWN }
+
+        /**
+         * The kind of a train from its explicit codes only: the letters before the number ("RJ 80", "REX 1826", "S 1835")
+         * or else the line ("EC", "REG", "S10"). The packs' categories are no help here (ÖBB and STA publish their
+         * Railjets and EuroCity trains as regional), and a line without a known code ("72", "A1") says nothing.
+         */
+        internal fun brand(trip: GtfsDayTrip): Brand {
+            val prefix = displayNumber(trip.publicNumber)?.takeWhile { !it.isDigit() }
+            for (code in listOf(prefix, trip.lineLabel)) {
+                val normalized = code?.uppercase(Locale.ROOT)?.filter(Char::isLetterOrDigit).orEmpty()
+                if (normalized.isEmpty()) continue
+                when {
+                    normalized in LONG_DISTANCE_CODES -> return Brand.LONG_DISTANCE
+                    LOCAL_CODE.matches(normalized) -> return Brand.LOCAL
+                }
+            }
+            return Brand.UNKNOWN
+        }
+
+        /** Two trains of two packs may be one vehicle unless one is long-distance and the other local. */
+        internal fun brandsAgree(first: Brand, second: Brand): Boolean =
+            first == second || first == Brand.UNKNOWN || second == Brand.UNKNOWN
+
+        private val LONG_DISTANCE_CODES = setOf(
+            "EC", "IC", "ICN", "EN", "NJ", "FR", "FA", "FB", "AV", "RJ", "RJX", "ICE", "TGV", "ES", "ITALO", "EUROCITY", "RAILJET"
+        )
+        private val LOCAL_CODE = Regex("(S|R|RE|REX|RV|REG|RB|TER)\\d{0,3}")
 
         internal fun serviceKind(mode: LegMode, category: TrainCategory, line: String?): ServiceKind {
             if (mode == LegMode.REPLACEMENT_BUS) return ServiceKind.REPLACEMENT_BUS

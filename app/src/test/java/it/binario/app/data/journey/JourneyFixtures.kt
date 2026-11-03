@@ -18,7 +18,10 @@ import java.time.ZonedDateTime
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 
-/** Hand-built GTFS packs for the journey planner tests. Times are "HH:MM" (GTFS, 24:00+ allowed). */
+/**
+ * Hand-built GTFS packs for the journey planner tests. Times are "HH:MM" (GTFS, 24:00+ allowed), or "HH:MM/HH:MM" for
+ * a stop with its arrival and its departure.
+ */
 internal object JourneyFixtures {
     val zone: ZoneId = ZoneId.of("Europe/Rome")
     /** A Monday. */
@@ -53,6 +56,8 @@ internal object JourneyFixtures {
         parents: Map<String, String> = emptyMap(),
         /** wheelchair_boarding per stop id as published (blank when missing). */
         stopWheelchair: Map<String, String> = emptyMap(),
+        /** stop_lat and stop_lon per stop id (blank when missing). */
+        stopPoints: Map<String, Pair<Double, Double>> = emptyMap(),
         calendar: String = "service_id,monday,tuesday,wednesday,thursday,friday,saturday,sunday,start_date,end_date\n" +
             "ALL,1,1,1,1,1,1,1,20260101,20261231\nWEEKDAY,1,1,1,1,1,0,0,20260101,20261231\n",
         calendarDates: String = "service_id,date,exception_type\n",
@@ -64,14 +69,19 @@ internal object JourneyFixtures {
                 trip.stops.forEachIndexed { index, (stop, time) ->
                     val pickup = if (stop in trip.noPickup) "1" else "0"
                     val dropOff = if (stop in trip.noDropOff) "1" else "0"
-                    append("${trip.id},$time:00,$time:00,$stop,${index + 1},$pickup,$dropOff\n")
+                    val arrival = time.substringBefore('/')
+                    val departure = time.substringAfter('/')
+                    append("${trip.id},$arrival:00,$departure:00,$stop,${index + 1},$pickup,$dropOff\n")
                 }
             }
         }
         val content = linkedMapOf(
             "agency.txt" to "agency_id,agency_name,agency_url,agency_timezone\nT,Ferrovie di Prova,https://example.test,Europe/Rome\n",
-            "stops.txt" to "stop_id,stop_name,parent_station,wheelchair_boarding\n" +
-                stopNames.entries.joinToString("") { (id, name) -> "$id,$name,${parents[id].orEmpty()},${stopWheelchair[id].orEmpty()}\n" },
+            "stops.txt" to "stop_id,stop_name,parent_station,wheelchair_boarding,stop_lat,stop_lon\n" +
+                stopNames.entries.joinToString("") { (id, name) ->
+                    val point = stopPoints[id]
+                    "$id,$name,${parents[id].orEmpty()},${stopWheelchair[id].orEmpty()},${point?.first ?: ""},${point?.second ?: ""}\n"
+                },
             "routes.txt" to routes,
             "trips.txt" to "route_id,service_id,trip_id,trip_short_name,block_id,wheelchair_accessible\n" +
                 trips.joinToString("") { "${it.route},${it.service},${it.id},${it.number},${it.block},${it.wheelchair}\n" },

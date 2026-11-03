@@ -134,18 +134,61 @@ class EmbeddedGtfsJourneyPlannerFeaturesTest {
     }
 
     @Test fun `the other pack's copy may start where the first run only stops`() = runBlocking {
-        // STA publishes the run on to Delta; ÖBB publishes it from Beta to Epsilon (its own section): one train.
+        // STA publishes the run on to Delta; ÖBB publishes it from Beta to Epsilon (its own section, with a stop at Zeta
+        // that STA leaves out): one train, leaving Beta at the same minute and reaching Gamma at the same minute.
         val sta = pack("alto-adige-sta-gtfs")
         val oebb = pack("oebb-gtfs")
-        val staFeed = feed(listOf(Trip("S186", "186", listOf("A" to "07:44", "B" to "08:46", "D" to "09:36"))))
-        val oebbFeed = feed(listOf(Trip("O186", "RJX 186", listOf("B" to "08:56", "E" to "09:36"))))
+        val railjet = "route_id,agency_id,route_short_name,route_long_name,route_type\nRJX,T,RJX,Railjet Xpress,2\n"
+        val staFeed = feed(listOf(Trip("S186", "186", listOf("A" to "07:44", "B" to "08:46/08:56", "C" to "09:20", "D" to "09:36"), route = "RJX")), routes = railjet)
+        val oebbFeed = feed(listOf(Trip("O186", "RJX 186", listOf("B" to "08:56", "Z" to "09:05", "C" to "09:20", "E" to "09:50"))))
         val option = options(provider(mapOf(sta to staFeed, oebb to oebbFeed)).searchJourneys(request(alfa, epsilon))).single()
         assertEquals(0, option.transfers)
-        assertEquals("186 Alfa 07:44-09:36 Epsilon", option.summary())
+        assertEquals("186 Alfa 07:44-09:50 Epsilon", option.summary())
         assertEquals("RJX 186", option.legs.single().continuations.single().publicNumber)
         // Staying on the first pack's own section needs no note.
         val own = options(provider(mapOf(sta to staFeed, oebb to oebbFeed)).searchJourneys(request(alfa, delta))).single()
         assertTrue(own.legs.single().continuations.isEmpty())
+    }
+
+    @Test fun `a train of another pack that only shares the digits of the number is no continuation`() = runBlocking {
+        // EuroCity 41 passes Beta; the other pack's line-72 train "41" leaves Beta nine minutes after it towards Zeta.
+        // Gamma is only on the EuroCity and Epsilon only on the other train, which left Beta before the EuroCity
+        // reached Gamma: no journey exists (the planner used to offer a direct "EC 41 Gamma 09:30 → Epsilon 10:20").
+        val national = pack("trenitalia-gtfs")
+        val swiss = pack("ch-otd-gtfs")
+        val nationalFeed = feed(
+            listOf(Trip("EC41", "41", listOf("A" to "08:00", "B" to "08:30/08:31", "C" to "09:30", "D" to "10:00"), route = "EC")),
+            routes = "route_id,agency_id,route_short_name,route_long_name,route_type\nEC,T,EC,EuroCity,2\n"
+        )
+        val swissFeed = feed(
+            listOf(Trip("L72", "41", listOf("B" to "08:40", "Z" to "09:50", "E" to "10:20"), route = "72")),
+            routes = "route_id,agency_id,route_short_name,route_long_name,route_type\n72,T,72,Centovallina,2\n"
+        )
+        val provider = provider(mapOf(national to nationalFeed, swiss to swissFeed))
+        assertTrue(options(provider.searchJourneys(request(gamma, epsilon, time = "09:00"))).isEmpty())
+        // From Alfa the other train is a change at Beta (nine minutes, more than the five a change needs), never a
+        // "stay on board".
+        val fromAlfa = options(provider.searchJourneys(request(alfa, epsilon, time = "07:30"))).single()
+        assertEquals(1, fromAlfa.transfers)
+        assertTrue(fromAlfa.legs.all { it.continuations.isEmpty() })
+        // The same, leaving Beta at the EuroCity's own minute but going elsewhere: still two trains.
+        val sameMinute = feed(
+            listOf(Trip("L72", "41", listOf("B" to "08:31", "Z" to "09:50", "E" to "10:20"), route = "72")),
+            routes = "route_id,agency_id,route_short_name,route_long_name,route_type\n72,T,72,Centovallina,2\n"
+        )
+        val elsewhere = provider(mapOf(national to nationalFeed, swiss to sameMinute))
+        assertTrue(options(elsewhere.searchJourneys(request(alfa, epsilon, time = "07:30"))).isEmpty())
+    }
+
+    @Test fun `a EuroCity never goes on as a regional train of another pack`() = runBlocking {
+        val sta = pack("alto-adige-sta-gtfs")
+        val oebb = pack("oebb-gtfs")
+        val staFeed = feed(
+            listOf(Trip("S88", "88", listOf("A" to "08:00", "B" to "08:30"), route = "EC")),
+            routes = "route_id,agency_id,route_short_name,route_long_name,route_type\nEC,T,EC,EuroCity,2\n"
+        )
+        val regional = feed(listOf(Trip("O88", "S 88", listOf("B" to "08:32", "D" to "09:40"))))
+        assertTrue(options(provider(mapOf(sta to staFeed, oebb to regional)).searchJourneys(request(alfa, delta))).isEmpty())
     }
 
     @Test fun `a continuation never leaves before the first train arrives`() = runBlocking {
@@ -203,8 +246,9 @@ class EmbeddedGtfsJourneyPlannerFeaturesTest {
 
     @Test fun `the walking speed and the longest walk decide the walks between stations`() = runBlocking {
         val provider = walkingProvider()
-        // Without preferences the planner keeps its 400 m: Città and Borgo are 500 m apart.
-        assertTrue(options(provider.searchJourneys(walkRequest(null))).isEmpty())
+        // Without preferences the planner keeps the default 600 m: Città and Borgo are 500 m apart.
+        assertEquals(9L, options(provider.searchJourneys(walkRequest(null))).single().legs.single { it.mode == LegMode.WALK }
+            .let { java.time.Duration.between(it.scheduledDeparture, it.scheduledArrival).toMinutes() })
         // Normal speed, 10 minutes: up to 600 m; 500 m take ceil(500 / 75) + 2 = 9 minutes.
         val normal = options(provider.searchJourneys(walkRequest(JourneyPreferences()))).single()
         val walk = normal.legs.single { it.mode == LegMode.WALK }

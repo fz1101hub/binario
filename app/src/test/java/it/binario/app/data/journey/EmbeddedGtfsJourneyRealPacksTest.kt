@@ -107,14 +107,19 @@ class EmbeddedGtfsJourneyRealPacksTest {
             found[0].summary()
         )
         assertEquals(6, found.size)
-        // A walk has no run: the EuroCity's pack calls its stop "Verona", a name the catalogue does not know, a few
-        // hundred metres from Verona Porta Nuova; walking there takes the large hub's 10 minutes of change time.
         val sources = found.flatMap { it.legs }.filter { it.mode != LegMode.WALK }.map { it.runId!!.value.substringBefore(':') }.toSet()
         assertTrue(sources.containsAll(listOf("alto-adige-sta-gtfs", "trenitalia-gtfs", "italo-gtfs")))
         assertTrue(found.all { it.transfers <= 2 })
-        val walk = found.flatMap { it.legs }.single { it.mode == LegMode.WALK }
-        assertEquals("Verona" to "Verona Porta Nuova", walk.originLabel to walk.destinationLabel)
-        assertEquals(10L, java.time.Duration.between(walk.scheduledDeparture, walk.scheduledArrival).toMinutes())
+        // The EuroCity's pack calls its stop "Verona", a name the catalogue does not know, 14 m from Verona Porta
+        // Nuova: it is that station, so there is no walk between two names of it and the change keeps the large hub's
+        // 10 minutes.
+        assertTrue(found.flatMap { it.legs }.none { it.mode == LegMode.WALK })
+        val viaVerona = found.single { option -> option.legs.any { it.publicNumber == "81" } }
+        assertEquals(
+            "REG 17118 Merano Meran 10:46-11:26 Bolzano Bozen | EC 81 Bolzano Bozen 11:31-12:59 Verona Porta Nuova | " +
+                "Italo 8959 Verona Porta Nuova 14:22-17:40 Roma Termini",
+            viaVerona.summary()
+        )
     }
 
     @Test fun `Venezia to Cortina takes the ItaloBus from Mestre`() = runBlocking {
