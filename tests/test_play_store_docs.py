@@ -130,6 +130,8 @@ class PlayStoreDocsTest(unittest.TestCase):
             "`1000000 + codice telefono`",
             "rapporto 1:1",
             "com.google.android.wearable.standalone=false",
+            "Licenze dei pack orari confermate",
+            "python3 tools/build_android_gtfs_credits.py",
         ):
             with self.subTest(fragment=fragment):
                 self.assertIn(fragment, text)

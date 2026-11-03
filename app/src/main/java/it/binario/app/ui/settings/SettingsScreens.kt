@@ -431,8 +431,9 @@ private fun AboutSettings() {
         val creditStyle = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)
         LinkifiedText(stringResource(R.string.settings_credits_trenitalia), style = creditStyle)
         LinkifiedText(stringResource(R.string.settings_credits_italo), style = creditStyle)
-        // Regional railways and city networks of this build (gtfs-transit/, and gtfs-personal/ in a personal build).
-        val transitCredits = remember { it.binario.app.data.gtfs.EmbeddedGtfsPacks.transitCredits() }
+        // Every other timetable pack of this build (gtfs/, gtfs-transit/, and gtfs-personal/ in a personal build):
+        // licensor, licence and source page, generated from the manifests (GtfsPackCredits.kt, audit A7-03).
+        val transitCredits = remember { it.binario.app.data.gtfs.GtfsPackCredits.lines() }
         if (transitCredits.isNotEmpty()) {
             Text(stringResource(R.string.settings_credits_transit), style = creditStyle)
             transitCredits.forEach { credit -> LinkifiedText(credit, style = creditStyle) }

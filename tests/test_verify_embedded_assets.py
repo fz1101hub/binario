@@ -66,6 +66,7 @@ class GateAgreementTest(unittest.TestCase):
         (source / "manifest.json").write_text(json.dumps({"generatedAt": "2026-01-01", "packs": [{
             "sourceId": "amt-genova-casella-gtfs", "asset": "gtfs/amt-genova-casella-gtfs.zip",
             "sourceUrl": "https://example.test/amt.zip", "accessMode": "OPEN_DIRECT", "attribution": "fixture",
+            "licence": "CC BY 4.0", "licenceEvidence": "https://example.test/licence",
         }]}), encoding="utf-8")
         self.assets = self.temp / "assets"
         self.manifest = builder.build_packs(source, self.assets / "gtfs", generated_at="2026-01-01")
@@ -96,6 +97,42 @@ class GateAgreementTest(unittest.TestCase):
         VERIFIER.verify_gtfs_directory(self.assets, "gtfs", self.end, 30, failures)
         self.assertTrue(any("but its calendar ends" in failure for failure in failures), failures)
         self.assertTrue(any("expire" in failure for failure in failures), failures)
+
+
+class LicenceFieldsTest(unittest.TestCase):
+    """Audit A7-03 / P3: every pack carries licensor, licence and evidence; undeclared ones stay personal."""
+
+    def check(self, directory: str, **fields: object) -> tuple[list[str], list[str]]:
+        pack = {"attribution": "Operator", "licence": "CC BY 4.0", "licenceEvidence": "https://example.test", **fields}
+        pack = {key: value for key, value in pack.items() if value is not None or key == "licence" and "licence" in fields}
+        failures: list[str] = []
+        warnings: list[str] = []
+        VERIFIER.verify_licence(directory, pack, "x", failures, warnings)
+        return failures, warnings
+
+    def test_licence_rules(self) -> None:
+        self.assertEqual(([], []), self.check("gtfs"))
+        failures, _ = self.check("gtfs", licenceEvidence=None)
+        self.assertTrue(failures and "licenceEvidence" in failures[0])
+        failures, _ = self.check("gtfs-transit", licence=None)
+        self.assertTrue(failures)
+        failures, warnings = self.check("gtfs", licence="Da confermare dal titolare")
+        self.assertEqual([], failures)
+        self.assertTrue(warnings and "confirmed by the owner" in warnings[0])
+        failures, _ = self.check("gtfs-transit", licence="Non dichiarata dall'operatore")
+        self.assertTrue(failures and "undeclared" in failures[0])
+        self.assertEqual(([], []), self.check("gtfs-personal", licence="Non dichiarata dall'operatore"))
+
+    def test_the_shipped_manifests_record_a_licence_for_every_pack(self) -> None:
+        failures: list[str] = []
+        warnings: list[str] = []
+        for asset_root, directory, _ in VERIFIER.GTFS_DIRECTORIES:
+            path = asset_root / directory / "manifest.json"
+            if not path.is_file():
+                continue
+            for pack in json.loads(path.read_text(encoding="utf-8"))["packs"]:
+                VERIFIER.verify_licence(directory, pack, pack["sourceId"], failures, warnings)
+        self.assertEqual([], failures)
 
 
 if __name__ == "__main__":

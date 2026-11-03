@@ -32,6 +32,13 @@ GTFS_DIRECTORIES = (
     (PERSONAL_ASSET_ROOT, "gtfs-personal", False),
 )
 REQUIRED_GTFS_FILES = {"agency.txt", "stops.txt", "routes.txt", "trips.txt", "stop_times.txt"}
+# Every pack names its licensor, licence and the evidence for it (audit A7-03, proposal P3): the Android credits are
+# generated from these fields (tools/build_android_gtfs_credits.py). A licence the owner has still to confirm is a
+# warning, not a failure; a missing or undeclared one may only ship in personal builds (gtfs-personal/).
+LICENCE_FIELDS = ("attribution", "licence", "licenceEvidence")
+OWNER_TO_CONFIRM = "da confermare dal titolare"
+UNDECLARED_LICENCE_PREFIXES = ("non dichiarata", "non verificabile", "nessuna licenza", "sconosciuta")
+PERSONAL_DIRECTORY = "gtfs-personal"
 DEFAULT_MIN_VALID_DAYS = builder.DEFAULT_MIN_VALID_DAYS
 
 
@@ -85,19 +92,38 @@ def read_checksum_file(path: Path, failures: list[str]) -> dict[str, str]:
     return entries
 
 
+def verify_licence(directory: str, pack: dict[str, Any], source_id: object, failures: list[str], warnings: list[str]) -> None:
+    """Licence fields of one manifest entry: present everywhere, declared outside personal builds."""
+    missing = [field for field in LICENCE_FIELDS if not isinstance(pack.get(field), str) or not pack[field].strip()]
+    licence = pack.get("licence")
+    if missing:
+        if directory == PERSONAL_DIRECTORY and missing == ["licence"] and licence is None:
+            warnings.append(f"GTFS pack {source_id} ({directory}/) has no licence: personal builds only")
+        else:
+            failures.append(f"GTFS pack {source_id} ({directory}/) has no {', '.join(missing)}")
+        return
+    text = str(licence).strip().lower()
+    if OWNER_TO_CONFIRM in text:
+        warnings.append(f"GTFS pack {source_id} ({directory}/): licence to be confirmed by the owner ({pack['licenceEvidence'][:160]})")
+    elif text.startswith(UNDECLARED_LICENCE_PREFIXES) and directory != PERSONAL_DIRECTORY:
+        failures.append(f"GTFS pack {source_id} ({directory}/) ships with an undeclared licence outside personal builds: {licence}")
+
+
 def verify_gtfs(
     today: date,
     minimum_valid_days: int,
     failures: list[str],
     *,
     enforce_freshness: bool = True,
+    warnings: list[str] | None = None,
 ) -> dict[str, int]:
     totals = {"gtfs_packs": 0, "gtfs_expiring_or_expired": 0}
     for asset_root, directory, required in GTFS_DIRECTORIES:
         if not (asset_root / directory).is_dir() and not required:
             continue
         result = verify_gtfs_directory(
-            asset_root, directory, today, minimum_valid_days, failures, enforce_freshness=enforce_freshness
+            asset_root, directory, today, minimum_valid_days, failures, enforce_freshness=enforce_freshness,
+            warnings=warnings,
         )
         for key in totals:
             totals[key] += result[key]
@@ -112,7 +138,9 @@ def verify_gtfs_directory(
     failures: list[str],
     *,
     enforce_freshness: bool = True,
+    warnings: list[str] | None = None,
 ) -> dict[str, int]:
+    warnings = warnings if warnings is not None else []
     gtfs_root = asset_root / directory
     manifest_path = gtfs_root / "manifest.json"
     manifest = load_json(manifest_path, failures)
@@ -133,6 +161,7 @@ def verify_gtfs_directory(
         if not isinstance(source_id, str) or not source_id:
             failures.append(f"{label} has no sourceId")
             source_id = f"#{index}"
+        verify_licence(directory, pack, source_id, failures, warnings)
         if not str(pack.get("asset", "")).startswith(directory + "/"):
             failures.append(f"GTFS pack {source_id} asset is outside {directory}/: {pack.get('asset')}")
         asset = safe_asset_path(pack.get("asset"), failures, f"GTFS pack {source_id} asset", asset_root)
@@ -217,7 +246,7 @@ def verify_gtfs_directory(
     return {"gtfs_packs": len(packs), "gtfs_expiring_or_expired": expiring_or_expired}
 
 
-def verify_stations(failures: list[str]) -> dict[str, int]:
+def verify_stations(failures: list[str], warnings: list[str] | None = None) -> dict[str, int]:
     manifest_path = STATION_ROOT / "manifest.json"
     manifest = load_json(manifest_path, failures)
     if not isinstance(manifest, dict) or not isinstance(manifest.get("catalogs"), list):
@@ -291,6 +320,7 @@ def main() -> int:
     args = parse_args()
 
     failures: list[str] = []
+    warnings: list[str] = []
     summary = {
         "today": args.today.isoformat(),
         "min_valid_days": args.min_valid_days,
@@ -302,11 +332,15 @@ def main() -> int:
             args.min_valid_days,
             failures,
             enforce_freshness=not args.integrity_only,
+            warnings=warnings,
         )
     )
-    summary.update(verify_stations(failures))
+    summary.update(verify_stations(failures, warnings))
     summary["failures"] = len(failures)
+    summary["warnings"] = len(warnings)
     print(json.dumps(summary, ensure_ascii=False, sort_keys=True))
+    for warning in warnings:
+        print(f"WARNING: {warning}", file=sys.stderr)
     for failure in failures:
         print(f"ERROR: {failure}", file=sys.stderr)
     return 1 if failures else 0

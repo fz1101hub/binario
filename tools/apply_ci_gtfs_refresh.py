@@ -50,6 +50,7 @@ from typing import Any, Callable, Iterable, Mapping, Sequence
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
 
+import build_android_gtfs_credits as android_credits  # noqa: E402
 import build_gtfs_packs as builder  # noqa: E402
 
 DESTINATIONS: Mapping[str, Path] = {
@@ -648,6 +649,12 @@ def planned_edits(root: Path, directories: Sequence[MergedDirectory], pins: Sequ
     missing = sorted(set(dates) - found)
     if missing:
         raise ApplyError(f"pack senza voce in EmbeddedGtfsPacks.kt/TransitGtfsPacks.kt: {', '.join(missing)}")
+    # The Android credits are generated from the manifests' attribution and licence (tools/build_android_gtfs_credits.py).
+    credits_path = root / android_credits.OUTPUT
+    if credits_path.is_file():
+        credits = android_credits.render(android_credits.load_manifests(root, manifests))
+        if credits != credits_path.read_text(encoding="utf-8"):
+            edits[credits_path] = credits
     for relative in PIN_MIRRORS:
         if not pins:
             break

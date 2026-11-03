@@ -5,6 +5,7 @@ on:
     paths:
       - "app/src/main/assets/**"
       - "app/src/personal/assets/**"
+      - "app/src/main/java/it/binario/app/data/gtfs/GtfsPackCredits.kt"
       - "gradle/verification-metadata.xml"
       - "requirements-ci.txt"
       - "tools/**"
@@ -18,6 +19,7 @@ on:
     paths:
       - "app/src/main/assets/**"
       - "app/src/personal/assets/**"
+      - "app/src/main/java/it/binario/app/data/gtfs/GtfsPackCredits.kt"
       - "gradle/verification-metadata.xml"
       - "requirements-ci.txt"
       - "tools/**"
@@ -83,6 +85,7 @@ jobs:
           tests/test_build_store_assets.py
           tests/test_play_store_docs.py
           tests/test_app_store_docs.py
+          tests/test_build_android_gtfs_credits.py
 
       - name: Verify immutable CI inputs
         run: |
@@ -93,6 +96,8 @@ jobs:
       - name: Verify GTFS asset integrity
         run: |
           python3 tools/build_gtfs_packs.py --check --integrity-only
+          python3 tools/verify_embedded_assets.py --integrity-only
+          python3 tools/build_android_gtfs_credits.py --check
           for directory in app/src/main/assets/gtfs-transit app/src/personal/assets/gtfs-personal; do
             if [ -f "$directory/manifest.json" ]; then
               python3 tools/build_gtfs_packs.py --check --integrity-only --input-dir "$directory"
