@@ -5,7 +5,7 @@ import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
 
 const SKILL_ID = "amzn1.ask.skill.test";
-const LOCALES = ["it-IT", "en-US", "en-GB", "de-DE", "fr-FR", "es-ES", "ar-SA", "hi-IN", "ja-JP", "pt-BR"] as const;
+const LOCALES = ["it-IT", "en-US", "en-GB", "en-IN", "de-DE", "fr-FR", "es-ES", "es-US", "ar-SA", "hi-IN", "ja-JP", "pt-BR"] as const;
 
 vi.hoisted(() => {
   Object.assign(process.env, {
@@ -560,6 +560,19 @@ describe("versioned interaction models", () => {
     }
   });
 
+  it("serves en-IN and es-US with the en-US and es-ES models and dictionaries, unchanged", () => {
+    expect(model("en-IN")).toEqual(model("en-US"));
+    expect(model("es-US")).toEqual(model("es-ES"));
+    const published = manifest().manifest.publishingInformation.locales;
+    expect(published["en-IN"]).toEqual(published["en-US"]);
+    expect(published["es-US"]).toEqual(published["es-ES"]);
+    expect(messagesForLocale("en-IN")).toBe(messagesForLocale("en-US"));
+    expect(messagesForLocale("es-US")).toBe(messagesForLocale("es-ES"));
+    // Both run in countries the skill is already distributed in.
+    const countries = (manifest().manifest.publishingInformation as unknown as { distributionCountries: string[] }).distributionCountries;
+    expect(countries).toEqual(expect.arrayContaining(["IN", "US"]));
+  });
+
   it("keeps model, publishing, privacy, and runtime locale sets identical", () => {
     const skillManifest = manifest().manifest;
     expect([...LOCALES]).toEqual([...SUPPORTED_LOCALES]);
@@ -596,9 +609,11 @@ describe("versioned interaction models", () => {
     "it-IT": { open: "^alexa, apri INV$", ask: "^alexa, chiedi a INV (?:di |se )?(.+)$" },
     "en-US": { open: "^alexa, open INV$", ask: "^alexa, ask INV (?:for |to |about |if |whether )?(.+)$" },
     "en-GB": { open: "^alexa, open INV$", ask: "^alexa, ask INV (?:for |to |about |if |whether )?(.+)$" },
+    "en-IN": { open: "^alexa, open INV$", ask: "^alexa, ask INV (?:for |to |about |if |whether )?(.+)$" },
     "de-DE": { open: "^alexa, öffne INV$", ask: "^alexa, frage INV (?:nach |ob )?(.+)$" },
     "fr-FR": { open: "^alexa, ouvre INV$", ask: "^alexa, demande à INV (?:de |si )?(.+)$" },
     "es-ES": { open: "^alexa, abre INV$", ask: "^alexa, pregunta a INV (?:por |si )?(.+)$" },
+    "es-US": { open: "^alexa, abre INV$", ask: "^alexa, pregunta a INV (?:por |si )?(.+)$" },
     "ar-SA": { open: "^أليكسا، افتح INV$", ask: "^أليكسا، اسأل INV (?:عن )?(.+)$" },
     "hi-IN": { open: "^अलेक्सा, INV खोलो$", ask: "^अलेक्सा, INV से (.+) पूछो$" },
     "ja-JP": { open: "^アレクサ、INVを開いて$", ask: "^アレクサ、INVで(.+)$" },

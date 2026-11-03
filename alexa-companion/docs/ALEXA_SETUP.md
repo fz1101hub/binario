@@ -12,7 +12,7 @@ Il companion è predisposto, ma intenzionalmente **non attivo** quando `ALEXA_EN
 
 | Console Alexa     | Valore Binario                                        |
 | ----------------- | ----------------------------------------------------- |
-| Tipo skill        | Custom Skill, locale principale italiano (`it-IT`); `skill-package/` dichiara anche `en-US`, `en-GB`, `de-DE`, `fr-FR`, `es-ES`, `ar-SA`, `hi-IN`, `ja-JP`, `pt-BR` (vedi `docs/l10n/LOCALES.md`) |
+| Tipo skill        | Custom Skill, locale principale italiano (`it-IT`); `skill-package/` dichiara anche `en-US`, `en-GB`, `en-IN`, `de-DE`, `fr-FR`, `es-ES`, `es-US`, `ar-SA`, `hi-IN`, `ja-JP`, `pt-BR` (vedi `docs/l10n/LOCALES.md`); `en-IN` ed `es-US` riusano modello, testi e dizionario di `en-US` ed `es-ES` e sono distribuiti in paesi già presenti (IN, US) |
 | Invocation name   | `it-IT` «binario treni» (due parole, come «binario trains», «binario züge», «binario trenes» negli altri locale); vedi sotto |
 | Endpoint HTTPS    | `https://{dominio-binario}/api/alexa/webhook`         |
 | Account linking   | OAuth 2.0, authorization code grant                   |
