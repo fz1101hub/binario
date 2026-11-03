@@ -286,6 +286,7 @@
     <string name="planner_subtitle">次の旅はここから。</string>
     <string name="data_status_quality">データの品質：%1$s</string>
     <string name="data_status_cached">保存されたコピー（リアルタイムではありません）：%1$s</string>
+    <string name="data_status_source_paused">%1$s は %2$s まで一時停止中</string>
     <string name="nav_plan">経路検索</string>
     <string name="nav_departures">発車案内</string>
     <string name="nav_for_you">マイページ</string>

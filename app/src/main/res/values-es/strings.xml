@@ -298,6 +298,7 @@
     <string name="planner_subtitle">Tu próximo viaje empieza aquí.</string>
     <string name="data_status_quality">Calidad del dato: %1$s</string>
     <string name="data_status_cached">Copia guardada, no en tiempo real: %1$s</string>
+    <string name="data_status_source_paused">%1$s en pausa hasta las %2$s</string>
     <string name="nav_plan">Planificar</string>
     <string name="nav_departures">Salidas</string>
     <string name="nav_for_you">Para ti</string>

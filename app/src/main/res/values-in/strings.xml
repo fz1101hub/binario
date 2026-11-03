@@ -286,6 +286,7 @@
     <string name="planner_subtitle">Perjalanan Anda berikutnya dimulai di sini.</string>
     <string name="data_status_quality">Kualitas data: %1$s</string>
     <string name="data_status_cached">Salinan tersimpan, bukan real-time: %1$s</string>
+    <string name="data_status_source_paused">%1$s dijeda hingga %2$s</string>
     <string name="nav_plan">Rencana</string>
     <string name="nav_departures">Keberangkatan</string>
     <string name="nav_for_you">Untuk Anda</string>

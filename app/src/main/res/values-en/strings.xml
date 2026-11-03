@@ -295,6 +295,7 @@
     <string name="planner_subtitle">Your next journey starts here.</string>
     <string name="data_status_quality">Data quality: %1$s</string>
     <string name="data_status_cached">Saved copy, not real time: %1$s</string>
+    <string name="data_status_source_paused">%1$s paused until %2$s</string>
     <string name="nav_plan">Plan</string>
     <string name="nav_departures">Departures</string>
     <string name="nav_for_you">For you</string>

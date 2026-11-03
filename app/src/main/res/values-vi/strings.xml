@@ -292,6 +292,7 @@
     <string name="planner_subtitle">Chuyến đi tiếp theo của bạn bắt đầu từ đây.</string>
     <string name="data_status_quality">Chất lượng dữ liệu: %1$s</string>
     <string name="data_status_cached">Bản sao đã lưu, không theo thời gian thực: %1$s</string>
+    <string name="data_status_source_paused">%1$s tạm dừng đến %2$s</string>
     <string name="nav_plan">Lên kế hoạch</string>
     <string name="nav_departures">Tàu đi</string>
     <string name="nav_for_you">Dành cho bạn</string>

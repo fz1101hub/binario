@@ -48,6 +48,8 @@ enum class UiMessageKey(val resourceName: String) {
     ROUTE_COVERAGE_FALLBACK("route_coverage_fallback"),
     ROUTE_SOURCE_CONFLICT("route_source_conflict"),
     STATION_BOARD_UNAVAILABLE("station_board_unavailable_generic"),
+    /** The board shown is the last one saved on the device ("Copia salvata, non in tempo reale: 10:42"). */
+    STATION_BOARD_SAVED_COPY("data_status_cached"),
     STATION_BOARD_SOURCE_CONFLICT("station_board_warning_source_conflict"),
     STATION_BOARD_REALTIME_UNAVAILABLE("station_board_warning_realtime_unavailable"),
     STATION_BOARD_STALE_SOURCE("station_board_warning_stale_source"),

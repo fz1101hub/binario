@@ -30,6 +30,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -49,6 +50,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import it.binario.app.data.live.SourcePauses
 import it.binario.app.R
 import it.binario.app.TabularFigures
 import it.binario.app.UiMessage
@@ -128,9 +130,15 @@ internal fun DataStatusLine(
     val sourceLine = if (refreshedAt > 0L) stringResource(R.string.provider_updated_at, provider, updated) else provider
     val qualityLine = stringResource(R.string.data_status_quality, confidence)
     val cachedLine = if (isCachedCopy && !isDemonstration) stringResource(R.string.data_status_cached, updated) else null
+    // A source that asked for a pause (Retry-After) or failed repeatedly: when it will be asked again.
+    val pauses = remember(refreshedAt, message) { SourcePauses.active() }
+    val pausedLine = pauses.takeIf { it.isNotEmpty() && !isDemonstration }?.let { paused ->
+        stringResource(R.string.data_status_source_paused, paused.joinToString(", ") { it.first },
+            java.time.format.DateTimeFormatter.ofPattern("HH:mm").withZone(it.binario.app.data.RailTime.defaultZone).format(paused.maxOf { it.second }))
+    }
     val statusContentDescription = stringResource(
         R.string.accessibility_data_status,
-        listOfNotNull(label, cachedLine).joinToString(". "),
+        listOfNotNull(label, cachedLine, pausedLine).joinToString(". "),
         provider,
         confidence,
         updated,
@@ -152,6 +160,7 @@ internal fun DataStatusLine(
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(label, style = MaterialTheme.typography.labelLarge, color = color, fontWeight = FontWeight.Bold)
             cachedLine?.let { Text(it, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold) }
+            pausedLine?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
             Text(sourceLine, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text(qualityLine, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             messageText?.takeIf { it.isNotBlank() }?.let {

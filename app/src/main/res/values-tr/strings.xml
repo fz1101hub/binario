@@ -295,6 +295,7 @@
     <string name="planner_subtitle">Bir sonraki yolculuğunuz burada başlıyor.</string>
     <string name="data_status_quality">Veri kalitesi: %1$s</string>
     <string name="data_status_cached">Kayıtlı kopya, gerçek zamanlı değil: %1$s</string>
+    <string name="data_status_source_paused">%1$s %2$s saatine kadar duraklatıldı</string>
     <string name="nav_plan">Planla</string>
     <string name="nav_departures">Kalkışlar</string>
     <string name="nav_for_you">Sana özel</string>

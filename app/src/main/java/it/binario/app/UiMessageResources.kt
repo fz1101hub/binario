@@ -40,6 +40,7 @@ internal fun UiMessageKey.resourceId(): Int = when (this) {
     UiMessageKey.ROUTE_COVERAGE_FALLBACK -> R.string.route_coverage_fallback
     UiMessageKey.ROUTE_SOURCE_CONFLICT -> R.string.route_source_conflict
     UiMessageKey.STATION_BOARD_UNAVAILABLE -> R.string.station_board_unavailable_generic
+    UiMessageKey.STATION_BOARD_SAVED_COPY -> R.string.data_status_cached
     UiMessageKey.STATION_BOARD_SOURCE_CONFLICT -> R.string.station_board_warning_source_conflict
     UiMessageKey.STATION_BOARD_REALTIME_UNAVAILABLE -> R.string.station_board_warning_realtime_unavailable
     UiMessageKey.STATION_BOARD_STALE_SOURCE -> R.string.station_board_warning_stale_source
