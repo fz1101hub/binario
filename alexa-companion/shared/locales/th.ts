@@ -102,6 +102,11 @@ export const th: LocaleMessages = {
     routesSaved: "เส้นทางที่คุณบันทึกไว้คือ: {routes}{suffix}",
     moreRoutes: { one: " และยังมีอีก 1 เส้นทางในแดชบอร์ด Binario", other: " และยังมีอีก {count} เส้นทางในแดชบอร์ด Binario" },
     error: "เกิดปัญหาขึ้น โปรดลองอีกครั้งในภายหลัง",
+    launchReprompt: "คุณอยากทราบอะไร คุณสามารถถามถึงรถไฟขบวนถัดไป สถานะของรถไฟ หรือเส้นทางของคุณ",
+    listTerminator: "",
+    routeNotFound: "ไม่พบเส้นทาง {routeName}",
+    routeAmbiguous: "พบเส้นทางมากกว่าหนึ่งเส้นทาง: {routes}",
+    routeChoice: "คุณต้องการเส้นทางใด ตัวอย่างเช่น พูดว่า next trains for {example}",
   },
   screen: {
     homeTitle: "สิ่งที่คุณถามได้",

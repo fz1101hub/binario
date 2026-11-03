@@ -102,6 +102,11 @@ export const zh: LocaleMessages = {
     routesSaved: "你保存的路线有：{routes}{suffix}",
     moreRoutes: { one: "。Binario 控制台中还有另外 1 条路线。", other: "。Binario 控制台中还有另外 {count} 条路线。" },
     error: "出现问题。请稍后再试。",
+    launchReprompt: "你想了解什么？你可以问接下来的列车、某趟列车的状态或你的路线。",
+    listTerminator: "。",
+    routeNotFound: "没有找到路线 {routeName}。",
+    routeAmbiguous: "找到多条路线：{routes}。",
+    routeChoice: "你要哪条路线？例如，你可以说：next trains for {example}。",
   },
   screen: {
     homeTitle: "你可以这样问",

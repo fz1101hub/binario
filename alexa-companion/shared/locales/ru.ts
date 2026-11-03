@@ -102,6 +102,11 @@ export const ru: LocaleMessages = {
     routesSaved: "Ваши сохранённые маршруты: {routes}{suffix}",
     moreRoutes: { one: ". В панели Binario есть ещё один маршрут.", few: ". В панели Binario есть ещё {count} маршрута.", many: ". В панели Binario есть ещё {count} маршрутов.", other: ". В панели Binario есть ещё {count} маршрута." },
     error: "Возникла проблема. Повторите попытку позже.",
+    launchReprompt: "Что вы хотите узнать? Можно спросить о ближайших поездах, статусе поезда или ваших маршрутах.",
+    listTerminator: ".",
+    routeNotFound: "Я не нашла маршрут {routeName}.",
+    routeAmbiguous: "Я нашла несколько маршрутов: {routes}.",
+    routeChoice: "Какой маршрут вам нужен? Скажите, например: next trains for {example}.",
   },
   screen: {
     homeTitle: "О чём можно спросить",

@@ -39,6 +39,8 @@ L’adapter Express precedente è stato rimosso perché trascinava `node-forge` 
 | `TrainStatusIntent` | “stato del treno {trainNumber}”, “il treno {trainNumber} è puntuale” | `trainNumber` facoltativo |
 | `MyRoutesIntent`    | “le mie tratte”, “elenca le tratte salvate”                          | nessuno                   |
 
+Il nome detto per `routeName` (`AMAZON.SearchQuery`, trascritto in minuscolo e spesso senza accenti né punteggiatura) è confrontato con le tratte salvate dopo una normalizzazione (NFKD senza diacritici, punteggiatura come spazio, spazi compattati), poi per parole o prefissi. Se corrisponde a più tratte la skill le elenca e chiede quale; se non corrisponde a nessuna dice di non averla trovata ed elenca le tratte salvate, a sessione aperta, invece di rispondere che non ci sono tratte. Gli elenchi parlati usano `Intl.ListFormat` e il terminatore della lingua («.», «।», «。»).
+
 Tutti gli intent che restituiscono dati personali richiedono un access token valido. Senza account collegato la skill pronuncia le istruzioni di collegamento e restituisce una LinkAccount card. Quando manca una fonte ferroviaria live autorizzata, la skill usa esattamente: **“dati non disponibili in tempo reale”**.
 
 Se Amazon apre l'autorizzazione prima che l'utente abbia una sessione dashboard, il companion conserva **solo** la richiesta già verificata in un cookie firmato `__Host-`, `Secure`, `HttpOnly`, `SameSite=Lax`, con `Path=/` e TTL di dieci minuti. Dopo il callback dashboard la richiesta è verificata di nuovo contro client e callback URI consentiti, quindi viene cancellata e viene mostrata la stessa pagina di consenso CSRF-protetta. Il cookie non contiene credenziali.

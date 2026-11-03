@@ -102,6 +102,11 @@ export const pt: LocaleMessages = {
     routesSaved: "Seus trajetos salvos são: {routes}{suffix}",
     moreRoutes: { one: ". Há mais um trajeto no painel do Binario.", other: ". Há mais {count} trajetos no painel do Binario." },
     error: "Ocorreu um problema. Tente novamente mais tarde.",
+    launchReprompt: "O que você quer saber? Você pode perguntar os próximos trens, a situação de um trem ou os seus trajetos.",
+    listTerminator: ".",
+    routeNotFound: "Não encontrei o trajeto {routeName}.",
+    routeAmbiguous: "Encontrei mais de um trajeto: {routes}.",
+    routeChoice: "Qual trajeto você quer? Você pode dizer, por exemplo: próximos trens para {example}.",
   },
   screen: {
     homeTitle: "O que você pode perguntar",

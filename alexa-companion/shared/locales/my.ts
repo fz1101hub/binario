@@ -102,6 +102,11 @@ export const my: LocaleMessages = {
     routesSaved: "သင်သိမ်းထားသော လမ်းကြောင်းများ- {routes}{suffix}",
     moreRoutes: { one: "။ Binario ဒက်ရှ်ဘုတ်တွင် နောက်ထပ် လမ်းကြောင်းတစ်ခု ရှိသည်။", other: "။ Binario ဒက်ရှ်ဘုတ်တွင် နောက်ထပ် လမ်းကြောင်း {count} ခု ရှိသည်။" },
     error: "ပြဿနာတစ်ခု ဖြစ်ပွားခဲ့သည်။ နောက်မှ ထပ်စမ်းကြည့်ပါ။",
+    launchReprompt: "ဘာသိချင်ပါသလဲ။ နောက်ထပ်ရထားများ၊ ရထားတစ်စင်း၏ အခြေအနေ သို့မဟုတ် သင့်လမ်းကြောင်းများကို မေးနိုင်သည်။",
+    listTerminator: "။",
+    routeNotFound: "လမ်းကြောင်း {routeName} ကို ရှာမတွေ့ပါ။",
+    routeAmbiguous: "လမ်းကြောင်း တစ်ခုထက်ပို၍ တွေ့ရှိသည်- {routes}။",
+    routeChoice: "မည်သည့် လမ်းကြောင်းကို လိုချင်ပါသလဲ။ ဥပမာ next trains for {example} ဟု ပြောပါ။",
   },
   screen: {
     homeTitle: "မေးနိုင်သည်များ",

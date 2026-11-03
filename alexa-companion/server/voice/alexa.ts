@@ -10,6 +10,7 @@ import {
   type RequestHandler,
 } from "ask-sdk-core";
 import {
+  formatList,
   formatMessage,
   formatPlural,
   messagesForLocale,
@@ -56,6 +57,7 @@ import { parseOAuthAuthorizationParameters } from "./oauthContract";
 import { escapeSsmlText, liveDataUnavailableSpeech, plainSpeechText } from "./speech";
 import { parseScreenEvent, screenResponseInterceptor, setScreen } from "./presentation";
 import { alexaRequestLogContext } from "./requestLog";
+import { matchRouteByName } from "./routeMatching";
 
 /** Intent names the skill handles; the interaction model in skill-package/ must declare all of them. */
 export const HANDLED_INTENTS = [
@@ -150,7 +152,8 @@ const launchHandler: RequestHandler = {
     setScreen(input, { kind: "home", message: messages.launch });
     return input.responseBuilder
       .speak(messages.launch)
-      .reprompt(messages.unsupported)
+      // After a silent launch the user said nothing: ask again, never "I didn't understand".
+      .reprompt(messages.launchReprompt)
       .withSimpleCard(messages.cardTitle, messages.launch)
       .withShouldEndSession(false)
       .getResponse();
@@ -160,13 +163,20 @@ const launchHandler: RequestHandler = {
 type PersonalRoute = Awaited<ReturnType<typeof listPersonalRoutesForAlexa>>[number];
 type SkillResponse = ReturnType<HandlerInput["responseBuilder"]["getResponse"]>;
 
+type RouteSelection =
+  | PersonalRoute
+  | { notFound: string }
+  | { ambiguous: PersonalRoute[] }
+  | undefined;
+
 /**
- * Speaks the live-data caveat for one saved route. `select` picks the route among the named ones;
- * undefined means none matched. Only reached after the account link has been verified.
+ * Speaks the live-data caveat for one saved route. `select` picks the route among the named ones:
+ * undefined means none matched, `notFound` a spoken name that matched nothing and `ambiguous`
+ * several candidates. Only reached after the account link has been verified.
  */
 async function respondNextTrains(
   input: HandlerInput,
-  select: (namedRoutes: PersonalRoute[], locale: SupportedLocale) => PersonalRoute | undefined,
+  select: (namedRoutes: PersonalRoute[], locale: SupportedLocale) => RouteSelection,
   onMissing?: () => Promise<SkillResponse>
 ) {
   const locale = getAlexaLocale(input);
@@ -178,16 +188,15 @@ async function respondNextTrains(
     principal.credentialVersion
   );
   const namedRoutes = routes.filter(item => item.name.trim().length > 0);
-  const route = select(namedRoutes, locale);
+  const selection = select(namedRoutes, locale);
+  if (selection && "ambiguous" in selection) return askWhichRoute(input, selection.ambiguous);
+  if (selection && "notFound" in selection)
+    return namedRoutes.length
+      ? askWhichRoute(input, namedRoutes, selection.notFound)
+      : noRoutesResponse(input);
+  const route = selection;
   if (!route && onMissing && namedRoutes.length) return onMissing();
-  if (!route) {
-    setScreen(input, { kind: "myRoutes", routes: [], remainingCount: 0 });
-    return input.responseBuilder
-      .speak(messages.noRoutes)
-      .withSimpleCard(messages.cardTitle, messages.noRoutes)
-      .withShouldEndSession(true)
-      .getResponse();
-  }
+  if (!route) return noRoutesResponse(input);
   // SSML needs escaped text; the companion-app card is plain text and must
   // show the route name as typed, not XML entities.
   const speech = liveDataUnavailableSpeech(
@@ -206,23 +215,80 @@ async function respondNextTrains(
     .getResponse();
 }
 
+/** Spoken and card forms of a route list, joined the way the locale writes lists. */
+function spokenRouteList(locale: SupportedLocale, routes: readonly PersonalRoute[]) {
+  return {
+    speech: formatList(locale, routes.map(route => escapeSsmlText(route.name))),
+    card: formatList(locale, routes.map(route => plainSpeechText(route.name))),
+  };
+}
+
+function noRoutesResponse(input: HandlerInput) {
+  const messages = voiceMessages(input);
+  setScreen(input, { kind: "myRoutes", routes: [], remainingCount: 0 });
+  return input.responseBuilder
+    .speak(messages.noRoutes)
+    .withSimpleCard(messages.cardTitle, messages.noRoutes)
+    .withShouldEndSession(true)
+    .getResponse();
+}
+
+const SPOKEN_ROUTE_LIMIT = 5;
+
+/**
+ * The spoken name matched several routes, or (with `notFound`) none: say so, read the
+ * candidates (at most five, like "my routes") and keep listening for the user's choice.
+ */
+function askWhichRoute(
+  input: HandlerInput,
+  candidates: readonly PersonalRoute[],
+  notFound?: string
+) {
+  const locale = getAlexaLocale(input);
+  const messages = messagesForLocale(locale).voice;
+  const spoken = candidates.slice(0, SPOKEN_ROUTE_LIMIT);
+  const remainingCount = Math.max(candidates.length - SPOKEN_ROUTE_LIMIT, 0);
+  const list = spokenRouteList(locale, spoken);
+  const suffix = remainingCount > 0
+    ? formatPlural(locale, remainingCount, messages.moreRoutes)
+    : messages.listTerminator;
+  const sentence = (routes: string, name: string, example: string) =>
+    [
+      notFound
+        ? `${formatMessage(messages.routeNotFound, { routeName: name })} ${formatMessage(messages.routesSaved, { routes, suffix })}`
+        : formatMessage(messages.routeAmbiguous, { routes }),
+      formatMessage(messages.routeChoice, { example }),
+    ].join(" ");
+  const choice = formatMessage(messages.routeChoice, { example: escapeSsmlText(spoken[0].name) });
+  setScreen(input, {
+    kind: "myRoutes",
+    routes: spoken.map(route => ({ name: route.name, isPinned: route.isPinned })),
+    remainingCount,
+  });
+  return input.responseBuilder
+    .speak(sentence(list.speech, escapeSsmlText(notFound ?? ""), escapeSsmlText(spoken[0].name)))
+    .reprompt(choice)
+    .withSimpleCard(
+      messages.cardTitle,
+      sentence(list.card, plainSpeechText(notFound ?? ""), plainSpeechText(spoken[0].name))
+    )
+    .withShouldEndSession(false)
+    .getResponse();
+}
+
 const nextTrainsHandler: RequestHandler = {
   canHandle: input =>
     getRequestType(input.requestEnvelope) === "IntentRequest" &&
     getIntentName(input.requestEnvelope) === "NextTrainsIntent",
   handle: input =>
     respondNextTrains(input, (namedRoutes, locale) => {
-      const requestedName = intentSlot(
-        input,
-        "routeName",
-        "route",
-        "tratta"
-      )?.toLocaleLowerCase(locale);
-      return requestedName
-        ? namedRoutes.find(
-            item => item.name.toLocaleLowerCase(locale) === requestedName
-          )
-        : (namedRoutes.find(item => item.isPinned) ?? namedRoutes[0]);
+      const requestedName = intentSlot(input, "routeName", "route", "tratta");
+      if (!requestedName)
+        return namedRoutes.find(item => item.isPinned) ?? namedRoutes[0];
+      const match = matchRouteByName(namedRoutes, requestedName, locale);
+      if (match.kind === "match") return match.route;
+      if (match.kind === "ambiguous") return { ambiguous: match.routes };
+      return { notFound: requestedName };
     }),
 };
 
@@ -267,28 +333,16 @@ async function respondMyRoutes(input: HandlerInput) {
     principal.userId,
     principal.credentialVersion
   );
-  if (!routes.length) {
-    setScreen(input, { kind: "myRoutes", routes: [], remainingCount: 0 });
-    return input.responseBuilder
-      .speak(messages.noRoutes)
-      .withSimpleCard(messages.cardTitle, messages.noRoutes)
-      .withShouldEndSession(true)
-      .getResponse();
-  }
-  const spoken = routes.slice(0, 5);
-  const remainingRouteCount = Math.max(routes.length - 5, 0);
+  if (!routes.length) return noRoutesResponse(input);
+  const spoken = routes.slice(0, SPOKEN_ROUTE_LIMIT);
+  const remainingRouteCount = Math.max(routes.length - SPOKEN_ROUTE_LIMIT, 0);
   const suffix =
     remainingRouteCount > 0
       ? formatPlural(locale, remainingRouteCount, messages.moreRoutes)
-      : ".";
-  const speech = formatMessage(messages.routesSaved, {
-    routes: spoken.map(route => escapeSsmlText(route.name)).join(", "),
-    suffix,
-  });
-  const card = formatMessage(messages.routesSaved, {
-    routes: spoken.map(route => plainSpeechText(route.name)).join(", "),
-    suffix,
-  });
+      : messages.listTerminator;
+  const list = spokenRouteList(locale, spoken);
+  const speech = formatMessage(messages.routesSaved, { routes: list.speech, suffix });
+  const card = formatMessage(messages.routesSaved, { routes: list.card, suffix });
   // The screen shows the same five names the voice reads, and nothing else about them.
   setScreen(input, {
     kind: "myRoutes",

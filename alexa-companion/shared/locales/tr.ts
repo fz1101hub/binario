@@ -102,6 +102,11 @@ export const tr: LocaleMessages = {
     routesSaved: "Kayıtlı güzergâhlarınız: {routes}{suffix}",
     moreRoutes: { one: ". Binario panelinde bir güzergâh daha var.", other: ". Binario panelinde {count} güzergâh daha var." },
     error: "Bir sorun oluştu. Lütfen daha sonra tekrar deneyin.",
+    launchReprompt: "Ne öğrenmek istersiniz? Sonraki trenleri, bir trenin durumunu veya güzergâhlarınızı sorabilirsiniz.",
+    listTerminator: ".",
+    routeNotFound: "{routeName} güzergâhını bulamadım.",
+    routeAmbiguous: "Birden fazla güzergâh buldum: {routes}.",
+    routeChoice: "Hangi güzergâhı istiyorsunuz? Örneğin şöyle diyebilirsiniz: next trains for {example}.",
   },
   screen: {
     homeTitle: "Neler sorabilirsiniz",

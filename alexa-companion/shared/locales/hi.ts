@@ -102,6 +102,11 @@ export const hi: LocaleMessages = {
     routesSaved: "आपके सहेजे गए रूट हैं: {routes}{suffix}",
     moreRoutes: { one: "। बिनारियो डैशबोर्ड में एक और रूट है।", other: "। बिनारियो डैशबोर्ड में {count} और रूट हैं।" },
     error: "कोई समस्या हुई। कृपया बाद में फिर से कोशिश करें।",
+    launchReprompt: "आप क्या जानना चाहते हैं? आप अगली ट्रेनें, किसी ट्रेन की स्थिति या अपने रूट पूछ सकते हैं।",
+    listTerminator: "।",
+    routeNotFound: "मुझे {routeName} रूट नहीं मिला।",
+    routeAmbiguous: "मुझे एक से ज़्यादा रूट मिले: {routes}।",
+    routeChoice: "आप कौन सा रूट चाहते हैं? उदाहरण के लिए कहें: {example} के लिए अगली ट्रेनें।",
   },
   screen: {
     homeTitle: "आप क्या पूछ सकते हैं",

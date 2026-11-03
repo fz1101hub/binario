@@ -102,6 +102,11 @@ export const ja: LocaleMessages = {
     routesSaved: "保存したルートは、{routes} です{suffix}",
     moreRoutes: { one: "。ビナリオのダッシュボードには、ほかにもう1件ルートがあります。", other: "。ビナリオのダッシュボードには、ほかに {count} 件のルートがあります。" },
     error: "問題が発生しました。しばらくしてからもう一度お試しください。",
+    launchReprompt: "何を知りたいですか？次の電車、列車の運行状況、保存したルートを聞くことができます。",
+    listTerminator: "。",
+    routeNotFound: "ルート「{routeName}」が見つかりませんでした。",
+    routeAmbiguous: "複数のルートが見つかりました：{routes}。",
+    routeChoice: "どのルートですか？たとえば「{example}の次の電車」と言ってください。",
   },
   screen: {
     homeTitle: "聞けること",

@@ -163,7 +163,7 @@ describe("Alexa skill handlers", () => {
   });
 
   it.each([
-    ["it-IT", "Benvenuta in Binario"],
+    ["it-IT", "Ti diamo il benvenuto in Binario"],
     ["en-US", "Welcome to Binario"],
     ["en-GB", "Welcome to Binario"],
     ["de-DE", "Willkommen bei Binario"],
@@ -264,7 +264,7 @@ describe("Alexa skill handlers", () => {
     const response = await createAlexaSkill().invoke(
       envelope({ type: "LaunchRequest" }, "nl-NL")
     );
-    expect(speechText(response)).toContain("Benvenuta in Binario");
+    expect(speechText(response)).toContain("Ti diamo il benvenuto in Binario");
   });
 
   it("rejects requests for another skill", async () => {
@@ -422,6 +422,80 @@ describe("Echo Show screens (APL)", () => {
     const forged = await createAlexaSkill().invoke(withApl(userEvent(["binario.deleteAccount"])));
     expect(speechText(forged)).toContain("Non ho capito la richiesta");
     expect(renderDocument(forged)?.datasources.binario.screen).toBe("home");
+  });
+});
+
+describe("spoken route names and route lists", () => {
+  type SkillResponse = Awaited<ReturnType<ReturnType<typeof createAlexaSkill>["invoke"]>>;
+  async function ask(locale: string, names: string[], slots?: Record<string, string>, intentName = "NextTrainsIntent", apl = false) {
+    vi.mocked(getAlexaLinkStatus).mockResolvedValue({ userId: 7, credentialVersion: 3, revokedAt: null } as Awaited<ReturnType<typeof getAlexaLinkStatus>>);
+    vi.mocked(listPersonalRoutesForAlexa).mockResolvedValue(
+      names.map((name, index) => ({ id: index + 1, name, origin: "Roma", destination: "Tivoli", isPinned: index === 0 })) as Awaited<ReturnType<typeof listPersonalRoutesForAlexa>>
+    );
+    const token = await issueVoiceAccessToken(7, 3);
+    const request = withAccessToken(intent(intentName, locale, slots), token);
+    if (apl) request.context.System.device!.supportedInterfaces["Alexa.Presentation.APL"] = { runtime: { maxVersion: "1.8" } };
+    return createAlexaSkill().invoke(request);
+  }
+  const card = (response: SkillResponse) => (response.response.card as { content?: string } | undefined)?.content ?? "";
+
+  it("matches the ASR form of a saved name: no accents, punctuation or capitals", async () => {
+    const response = await ask("it-IT", ["Casa-Lavoro", "Città Alta"], { routeName: "citta alta" });
+    expect(card(response)).toBe("Per la tratta Città Alta: dati non disponibili in tempo reale");
+    expect((await ask("it-IT", ["Casa-Lavoro", "Mare"], { routeName: "casa lavoro" })).response.card).toMatchObject({
+      content: "Per la tratta Casa-Lavoro: dati non disponibili in tempo reale",
+    });
+  });
+
+  it.each([
+    ["it-IT", "milano", "Non ho trovato la tratta milano. Le tue tratte salvate sono: Casa-Lavoro e Mare. Quale tratta ti interessa? Puoi dire, per esempio: prossimi treni per Casa-Lavoro."],
+    ["en-US", "beach", "I couldn't find the route beach. Your saved routes are: Casa-Lavoro and Mare. Which route would you like? You can say, for example: next trains for Casa-Lavoro."],
+    ["fr-FR", "plage", "Je n’ai pas trouvé le trajet plage. Vos trajets enregistrés sont : Casa-Lavoro et Mare. Quel trajet voulez-vous ? Vous pouvez dire, par exemple : prochains trains pour Casa-Lavoro."],
+  ] as const)("%s: an unmatched name lists the saved routes instead of claiming there are none", async (locale, spoken, expected) => {
+    const response = await ask(locale, ["Casa-Lavoro", "Mare"], { routeName: spoken });
+    expect(card(response)).toBe(expected);
+    expect(speechText(response)).not.toMatch(/Non hai ancora|have not saved/);
+    expect(response.response.shouldEndSession).toBe(false);
+    expect(JSON.stringify(response.response.reprompt)).toContain("Casa-Lavoro");
+  });
+
+  it("asks which route when the spoken name fits several, and shows them on Echo Show", async () => {
+    const response = await ask("de-DE", ["Casa-Lavoro", "Casa-Mare", "Palestra"], { routeName: "casa" }, "NextTrainsIntent", true);
+    expect(card(response)).toBe(
+      "Ich habe mehrere Strecken gefunden: Casa-Lavoro und Casa-Mare. Welche Strecke meinen Sie? Sagen Sie zum Beispiel: nächste Züge für Casa-Lavoro."
+    );
+    expect(response.response.shouldEndSession).toBe(false);
+    const document = response.response.directives?.find(item => item.type === "Alexa.Presentation.APL.RenderDocument") as
+      | { datasources: { binario: { screen: string; routes: Array<{ name: string }> } } }
+      | undefined;
+    expect(document?.datasources.binario.screen).toBe("myRoutes");
+    expect(document?.datasources.binario.routes.map(item => item.name)).toEqual(["Casa-Lavoro", "Casa-Mare"]);
+  });
+
+  it("still says there are no routes when nothing is saved", async () => {
+    const response = await ask("it-IT", [], { routeName: "casa" });
+    expect(card(response)).toBe("Non hai ancora salvato alcuna tratta in Binario.");
+    expect(response.response.shouldEndSession).toBe(true);
+  });
+
+  it.each([
+    ["it-IT", "Le tue tratte salvate sono: Casa, Mare e Lago."],
+    ["en-US", "Your saved routes are: Casa, Mare, and Lago."],
+    ["de-DE", "Ihre gespeicherten Strecken sind: Casa, Mare und Lago."],
+    ["ar-SA", "مساراتك المحفوظة هي: Casa وMare وLago."],
+    ["hi-IN", "आपके सहेजे गए रूट हैं: Casa, Mare, और Lago।"],
+    ["ja-JP", "保存したルートは、Casa、Mare、Lago です。"],
+  ] as const)("%s: joins the route list and ends it the way the language writes it", async (locale, expected) => {
+    expect(card(await ask(locale, ["Casa", "Mare", "Lago"], undefined, "MyRoutesIntent"))).toBe(expected);
+  });
+
+  it.each(LOCALES)("%s: the launch reprompt asks what the user wants, it never claims a misunderstanding", async locale => {
+    const response = await createAlexaSkill().invoke(envelope({ type: "LaunchRequest" }, locale));
+    const voice = messagesForLocale(locale).voice;
+    const reprompt = JSON.stringify(response.response.reprompt);
+    expect(reprompt).toContain(voice.launchReprompt);
+    expect(voice.launchReprompt).not.toBe(voice.unsupported);
+    expect(reprompt).not.toContain(voice.unsupported.split(/[.。।?？]/)[0]);
   });
 });
 

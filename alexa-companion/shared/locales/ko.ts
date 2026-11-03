@@ -102,6 +102,11 @@ export const ko: LocaleMessages = {
     routesSaved: "저장된 경로: {routes}{suffix}",
     moreRoutes: { one: ". Binario 대시보드에 경로가 하나 더 있습니다.", other: ". Binario 대시보드에 경로가 {count}개 더 있습니다." },
     error: "문제가 발생했습니다. 나중에 다시 시도하세요.",
+    launchReprompt: "무엇이 궁금하신가요? 다음 열차, 열차 운행 상태 또는 저장한 경로를 물어볼 수 있습니다.",
+    listTerminator: ".",
+    routeNotFound: "{routeName} 경로를 찾지 못했습니다.",
+    routeAmbiguous: "경로가 여러 개 있습니다: {routes}.",
+    routeChoice: "어느 경로를 원하시나요? 예를 들어 next trains for {example} 라고 말해 보세요.",
   },
   screen: {
     homeTitle: "이렇게 물어볼 수 있어요",

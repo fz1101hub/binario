@@ -102,6 +102,11 @@ export const vi: LocaleMessages = {
     routesSaved: "Các tuyến bạn đã lưu: {routes}{suffix}",
     moreRoutes: { one: ". Còn một tuyến nữa trong bảng điều khiển Binario.", other: ". Còn {count} tuyến nữa trong bảng điều khiển Binario." },
     error: "Đã xảy ra sự cố. Vui lòng thử lại sau.",
+    launchReprompt: "Bạn muốn biết gì? Bạn có thể hỏi các chuyến tàu tiếp theo, trạng thái một chuyến tàu hoặc các tuyến của bạn.",
+    listTerminator: ".",
+    routeNotFound: "Tôi không tìm thấy tuyến {routeName}.",
+    routeAmbiguous: "Tôi tìm thấy nhiều tuyến: {routes}.",
+    routeChoice: "Bạn muốn tuyến nào? Ví dụ, hãy nói: next trains for {example}.",
   },
   screen: {
     homeTitle: "Bạn có thể hỏi gì",

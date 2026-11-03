@@ -102,6 +102,11 @@ export const id: LocaleMessages = {
     routesSaved: "Rute tersimpan Anda: {routes}{suffix}",
     moreRoutes: { one: ". Ada satu rute lagi di dasbor Binario.", other: ". Ada {count} rute lagi di dasbor Binario." },
     error: "Terjadi masalah. Coba lagi nanti.",
+    launchReprompt: "Apa yang ingin Anda ketahui? Anda dapat menanyakan kereta berikutnya, status kereta, atau rute Anda.",
+    listTerminator: ".",
+    routeNotFound: "Saya tidak menemukan rute {routeName}.",
+    routeAmbiguous: "Saya menemukan lebih dari satu rute: {routes}.",
+    routeChoice: "Rute mana yang Anda maksud? Misalnya, ucapkan: next trains for {example}.",
   },
   screen: {
     homeTitle: "Yang dapat Anda tanyakan",
