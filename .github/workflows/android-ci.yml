@@ -108,6 +108,14 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Free runner disk space
+        # The API 35 emulator needs about 7.4 GB for its userdata partition and the Expo release bundle
+        # several more; preinstalled toolchains this job never uses (.NET, Haskell, Boost, CodeQL) take ~10 GB.
+        run: |
+          df -h /
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/.ghcup /usr/local/share/boost /opt/hostedtoolcache/CodeQL
+          df -h /
+
       - name: Validate Gradle wrappers
         uses: gradle/actions/wrapper-validation@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
         with:

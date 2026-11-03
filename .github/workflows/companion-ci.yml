@@ -47,6 +47,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
+      - name: Free runner disk space
+        # The API 35 emulator needs about 7.4 GB for its userdata partition and the Expo release bundle
+        # several more; preinstalled toolchains this job never uses (.NET, Haskell, Boost, CodeQL) take ~10 GB.
+        run: |
+          df -h /
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/.ghcup /usr/local/share/boost /opt/hostedtoolcache/CodeQL
+          df -h /
+
       - name: pnpm
         uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
         with:
