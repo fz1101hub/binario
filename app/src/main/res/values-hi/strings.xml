@@ -1378,4 +1378,9 @@
     <string name="planner_use_location">प्रस्थान के लिए स्थान का उपयोग करें</string>
     <string name="planner_location_origin">सबसे पास के स्टेशन से प्रस्थान: %1$s. स्थान सहेजा नहीं गया।</string>
     <string name="planner_location_none">मौजूदा स्थान के पास कोई स्टेशन नहीं।</string>
+    <!-- Snackbars with Undo (audit proposal 4) -->
+    <string name="action_undo">पूर्ववत करें</string>
+    <string name="snackbar_route_deleted">मार्ग «%1$s» हटाया गया</string>
+    <string name="snackbar_favourite_train_removed">%1$s मेरी ट्रेनें से हटाई गई</string>
+    <string name="snackbar_timetable_deleted">समय-सारणी «%1$s» हटाई गई</string>
 </resources>

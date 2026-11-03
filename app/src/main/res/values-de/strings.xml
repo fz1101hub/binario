@@ -1401,4 +1401,9 @@
     <string name="planner_use_location">Standort als Abfahrt verwenden</string>
     <string name="planner_location_origin">Abfahrt vom nächstgelegenen Bahnhof: %1$s. Der Standort wurde nicht gespeichert.</string>
     <string name="planner_location_none">Kein Bahnhof in der Nähe des aktuellen Standorts.</string>
+    <!-- Snackbars with Undo (audit proposal 4) -->
+    <string name="action_undo">Rückgängig</string>
+    <string name="snackbar_route_deleted">Strecke „%1$s“ gelöscht</string>
+    <string name="snackbar_favourite_train_removed">%1$s aus „Meine Züge“ entfernt</string>
+    <string name="snackbar_timetable_deleted">Fahrplan „%1$s“ gelöscht</string>
 </resources>

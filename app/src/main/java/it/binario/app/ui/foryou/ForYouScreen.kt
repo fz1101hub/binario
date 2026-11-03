@@ -44,6 +44,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.res.stringResource
@@ -61,6 +62,7 @@ import it.binario.app.data.Station
 import it.binario.app.timetables.SavedTimetable
 import it.binario.app.ui.common.BinarioCard
 import it.binario.app.ui.common.HeaderOverlapBox
+import it.binario.app.ui.common.LocalAppSnackbar
 import it.binario.app.ui.common.NavigationRow
 import it.binario.app.ui.common.RowDivider
 import it.binario.app.ui.common.RowIcon
@@ -73,6 +75,7 @@ import it.binario.app.ui.common.TonalButton
 import it.binario.app.ui.common.localizedDisplayName
 import it.binario.app.ui.common.localizedName
 import it.binario.app.ui.common.localizedSummary
+import it.binario.app.ui.common.ltrUnit
 import it.binario.app.ui.departures.StationPreferenceRow
 
 // Per te: "Le tue tratte" (favourite and recent routes), the agenda, favourite stations, the trip being
@@ -98,6 +101,8 @@ internal fun ForYouScreen(
 ) {
     var showComposer by rememberSaveable { mutableStateOf(false) }
     var tabName by rememberSaveable { mutableStateOf(RoutesTab.FAVOURITES.name) }
+    val snackbar = LocalAppSnackbar.current
+    val resources = LocalResources.current
     val tab = RoutesTab.valueOf(tabName)
     if (showComposer) {
         RouteComposerSheet(viewModel = viewModel, onDismiss = { showComposer = false })
@@ -137,7 +142,15 @@ internal fun ForYouScreen(
                                         onMove = { delta -> viewModel.moveRoute(route, delta) },
                                         canMoveUp = viewModel.canMoveRoute(route, -1),
                                         canMoveDown = viewModel.canMoveRoute(route, 1),
-                                        onRemove = { viewModel.removeRoute(route) },
+                                        onRemove = {
+                                            // Deleted at once, with "Annulla" in the snackbar.
+                                            val wasActive = route.id == viewModel.activeRoute.id
+                                            val name = route.name
+                                            viewModel.removeRoute(route)
+                                            snackbar?.show(resources.getString(R.string.snackbar_route_deleted, name), resources.getString(R.string.action_undo)) {
+                                                viewModel.restoreRoute(route, index, wasActive)
+                                            }
+                                        },
                                         canRemove = viewModel.savedRoutes.size > 1
                                     )
                                 }
@@ -154,7 +167,7 @@ internal fun ForYouScreen(
                                 viewModel.recentRoutes.forEachIndexed { index, recent ->
                                     if (index > 0) RowDivider()
                                     NavigationRow(
-                                        title = recent.label,
+                                        title = ltrUnit(recent.label),
                                         detail = stringResource(R.string.planner_recent_search),
                                         icon = Icons.Default.History,
                                         onClick = { openRecent(recent) }
@@ -225,7 +238,14 @@ internal fun ForYouScreen(
                 monitors = viewModel.monitoredServices,
                 onOpen = openFavouriteTrain,
                 onRename = { monitor, name -> viewModel.renameServiceMonitor(monitor.number, name) },
-                onRemove = { monitor -> viewModel.removeServiceMonitoring(monitor.number) }
+                onRemove = { monitor ->
+                    val before = viewModel.monitoredServices
+                    viewModel.removeServiceMonitoring(monitor.number)
+                    snackbar?.show(
+                        resources.getString(R.string.snackbar_favourite_train_removed, monitor.displayName ?: resources.getString(R.string.train_number_label, monitor.number)),
+                        resources.getString(R.string.action_undo)
+                    ) { viewModel.replaceServiceMonitors(before) }
+                }
             )
         }
         item { Spacer(Modifier.height(24.dp)) }
@@ -251,7 +271,7 @@ private fun SavedRouteRow(
     var menuOpen by remember { mutableStateOf(false) }
     val name = route.localizedName()
     val detail = listOfNotNull(
-        route.localizedDisplayName(Direction.OUTBOUND).takeIf { it != name },
+        route.localizedDisplayName(Direction.OUTBOUND).takeIf { it != name }?.let { ltrUnit(it) },
         if (isActive) stringResource(R.string.shortcut_active_route) else null,
         if (route.isPinned) stringResource(R.string.route_pinned) else null
     ).joinToString(" · ")

@@ -771,6 +771,14 @@ class TrainViewModel @JvmOverloads constructor(
         routeStore.saveRoutes(savedRoutes)
     }
 
+    /** "Annulla" after [removeRoute]: the route back at [index], active again when it was. */
+    fun restoreRoute(route: SavedRoute, index: Int, reactivate: Boolean) {
+        if (savedRoutes.any { it.id == route.id }) return
+        savedRoutes = pinnedFirst(savedRoutes.toMutableList().apply { add(index.coerceIn(0, size), route) })
+        routeStore.saveRoutes(savedRoutes)
+        if (reactivate) activateRoute(route)
+    }
+
     fun removeRoute(route: SavedRoute) {
         savedRoutes = savedRoutes.filterNot { it.id == route.id }
         routeStore.saveRoutes(savedRoutes)

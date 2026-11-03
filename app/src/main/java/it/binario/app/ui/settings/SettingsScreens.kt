@@ -62,8 +62,10 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -506,7 +508,7 @@ private fun CommuterAlertsPanel(
         Text(stringResource(R.string.commuter_alerts_description), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Button(onClick = onAdd, enabled = canAdd, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.commuter_alerts_create)) }
         if (!canAdd) Text(stringResource(R.string.commuter_alerts_route_required), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        feedback?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        feedback?.let { AnnouncedText(it) }
         alerts.forEach { alert ->
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
@@ -593,8 +595,19 @@ private fun LocalBackupPanel(feedback: String?, onExport: () -> Unit, onImport: 
             OutlinedButton(onClick = onExport, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.action_export)) }
             Button(onClick = onImport, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.action_import)) }
         }
-        feedback?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        feedback?.let { AnnouncedText(it) }
     }
+}
+
+/** A confirmation or error after an action (alert saved, backup imported): TalkBack announces it. */
+@Composable
+private fun AnnouncedText(text: String) {
+    Text(
+        text,
+        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant
+    )
 }
 
 @Composable

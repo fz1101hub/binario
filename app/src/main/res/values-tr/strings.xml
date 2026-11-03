@@ -1401,4 +1401,9 @@
     <string name="planner_use_location">Kalkış için konumu kullan</string>
     <string name="planner_location_origin">En yakın istasyondan kalkış: %1$s. Konum kaydedilmedi.</string>
     <string name="planner_location_none">Mevcut konumun yakınında istasyon yok.</string>
+    <!-- Snackbars with Undo (audit proposal 4) -->
+    <string name="action_undo">Geri al</string>
+    <string name="snackbar_route_deleted">“%1$s” güzergâhı silindi</string>
+    <string name="snackbar_favourite_train_removed">%1$s Trenlerim listesinden kaldırıldı</string>
+    <string name="snackbar_timetable_deleted">“%1$s” tarifesi silindi</string>
 </resources>

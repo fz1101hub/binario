@@ -41,6 +41,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -51,6 +53,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
@@ -92,7 +95,9 @@ import it.binario.app.ui.AppScreen
 import it.binario.app.ui.TabScreens
 import it.binario.app.ui.TopDestination
 import it.binario.app.ui.WidthClass
+import it.binario.app.ui.common.AppSnackbar
 import it.binario.app.ui.common.BinarioNavigationBar
+import it.binario.app.ui.common.LocalAppSnackbar
 import it.binario.app.ui.common.BinarioNavigationRail
 import it.binario.app.ui.common.BinarioTopBar
 import it.binario.app.ui.common.DetailPlaceholder
@@ -245,6 +250,11 @@ internal fun BinarioApp(
         mutableStateOf<StopAlarmPlan?>(null)
     }
     var stopAlarmFeedback by rememberSaveable { mutableStateOf<String?>(null) }
+    // The train the feedback belongs to: another train's "Servizi" never shows it.
+    var stopAlarmFeedbackTrain by rememberSaveable { mutableStateOf<String?>(null) }
+    val snackbarHostState = remember { SnackbarHostState() }
+    val snackbarScope = rememberCoroutineScope()
+    val appSnackbar = remember(snackbarHostState, snackbarScope) { AppSnackbar(snackbarHostState, snackbarScope) }
     val gpsArrivalAlarm = rememberGpsArrivalAlarmFlow()
     // The stop chosen with the last stop alarm: the detail of that train looks for connections there.
     var stopAlarmTrain by rememberSaveable { mutableStateOf<String?>(null) }
@@ -324,15 +334,21 @@ internal fun BinarioApp(
             }
         }
     }
+    /** The outcome of a stop alarm, kept on its train's "Servizi" and shown (and announced) in the snackbar. */
+    fun noteStopAlarm(trainNumber: String?, message: String) {
+        stopAlarmFeedback = message
+        stopAlarmFeedbackTrain = trainNumber
+        appSnackbar.show(message)
+    }
     val notificationPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         val plan = pendingStopAlarm
         pendingStopAlarm = null
         if (granted && plan != null) {
-            stopAlarmFeedback = stopAlarmScheduleFeedback(resources, StopAlarmScheduler.schedule(context, plan), plan)
+            noteStopAlarm(plan.trainNumber, stopAlarmScheduleFeedback(resources, StopAlarmScheduler.schedule(context, plan), plan))
             gpsArrivalAlarm.onTimeAlarmScheduled(plan)
         } else {
             gpsArrivalAlarm.onTimeAlarmRefused()
-            stopAlarmFeedback = resources.getString(R.string.stop_alarm_permission_required)
+            noteStopAlarm(plan?.trainNumber, resources.getString(R.string.stop_alarm_permission_required))
         }
     }
     val confirmStopAlarm: (StopAlarmPlan) -> Unit = { plan ->
@@ -340,7 +356,7 @@ internal fun BinarioApp(
             pendingStopAlarm = plan
             notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
         } else {
-            stopAlarmFeedback = stopAlarmScheduleFeedback(resources, StopAlarmScheduler.schedule(context, plan), plan)
+            noteStopAlarm(plan.trainNumber, stopAlarmScheduleFeedback(resources, StopAlarmScheduler.schedule(context, plan), plan))
             gpsArrivalAlarm.onTimeAlarmScheduled(plan)
         }
     }
@@ -351,8 +367,8 @@ internal fun BinarioApp(
             stopAlarmStation = stop.station
         }
         when {
-            stop.completed -> stopAlarmFeedback = resources.getString(R.string.stop_alarm_completed, stop.station)
-            plan == null -> stopAlarmFeedback = resources.getString(R.string.stop_alarm_unavailable)
+            stop.completed -> noteStopAlarm(service.number, resources.getString(R.string.stop_alarm_completed, stop.station))
+            plan == null -> noteStopAlarm(service.number, resources.getString(R.string.stop_alarm_unavailable))
             // The options dialog adds the optional GPS part; confirming it schedules the time-based alarm.
             else -> gpsArrivalAlarm.offer(service, stop, plan, viewModel.stations)
         }
@@ -710,7 +726,7 @@ internal fun BinarioApp(
                     onRefresh = viewModel::refresh,
                     isMonitored = viewModel.isMonitoring(service),
                     onScheduleStopAlarm = scheduleStopAlarm,
-                    alarmFeedback = stopAlarmFeedback,
+                    alarmFeedback = stopAlarmFeedback.takeIf { stopAlarmFeedbackTrain == service.number },
                     gpsAlarmPanel = { GpsArrivalAlarmPanel(gpsArrivalAlarm) },
                     activeTrip = viewModel.activeTrip,
                     onStartActiveTrip = { viewModel.startActiveTrip(service) },
@@ -793,7 +809,7 @@ internal fun BinarioApp(
         SideEffect {
             onSystemBarsAppearance(statusBarColor.luminance() > 0.5f, navigationBarColor.luminance() > 0.5f)
         }
-        CompositionLocalProvider(LocalWideLayout provides wide) {
+        CompositionLocalProvider(LocalWideLayout provides wide, LocalAppSnackbar provides appSnackbar) {
             if (!wide) {
                 Scaffold(
                     topBar = { BinarioTopBar(brand = screen == AppScreen.PLANNER, navigationIcon = navigationIcon, actions = topBarActions(false)) },
@@ -802,6 +818,7 @@ internal fun BinarioApp(
                             BinarioNavigationBar(selected = selectedDestination, onSelect = selectDestination, containerColor = navigationBarColor)
                         }
                     },
+                    snackbarHost = { SnackbarHost(snackbarHostState) },
                     containerColor = MaterialTheme.colorScheme.background
                 ) { padding ->
                     screenContent(screen, Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding), false)
@@ -856,6 +873,10 @@ internal fun BinarioApp(
                         }
                     }
                 }
+                SnackbarHost(
+                    snackbarHostState,
+                    Modifier.align(Alignment.BottomCenter).windowInsetsPadding(WindowInsets.safeDrawing).widthIn(max = SINGLE_PANE_MAX_WIDTH)
+                )
             }
         }
     }

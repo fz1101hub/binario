@@ -1442,4 +1442,9 @@
     <string name="planner_use_location">Использовать местоположение для отправления</string>
     <string name="planner_location_origin">Отправление с ближайшей станции: %1$s. Местоположение не сохранено.</string>
     <string name="planner_location_none">Рядом с текущим местоположением нет станций.</string>
+    <!-- Snackbars with Undo (audit proposal 4) -->
+    <string name="action_undo">Отменить</string>
+    <string name="snackbar_route_deleted">Маршрут «%1$s» удалён</string>
+    <string name="snackbar_favourite_train_removed">%1$s удалён из списка «Мои поезда»</string>
+    <string name="snackbar_timetable_deleted">Расписание «%1$s» удалено</string>
 </resources>

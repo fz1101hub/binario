@@ -1369,4 +1369,9 @@
     <string name="planner_use_location">Dùng vị trí làm ga đi</string>
     <string name="planner_location_origin">Đi từ ga gần nhất: %1$s. Vị trí không được lưu.</string>
     <string name="planner_location_none">Không có ga nào gần vị trí hiện tại.</string>
+    <!-- Snackbars with Undo (audit proposal 4) -->
+    <string name="action_undo">Hoàn tác</string>
+    <string name="snackbar_route_deleted">Đã xóa tuyến “%1$s”</string>
+    <string name="snackbar_favourite_train_removed">Đã xóa %1$s khỏi Tàu của tôi</string>
+    <string name="snackbar_timetable_deleted">Đã xóa lịch “%1$s”</string>
 </resources>

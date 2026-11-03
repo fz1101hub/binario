@@ -1346,4 +1346,9 @@
     <string name="planner_use_location">ထွက်ခွာရန် တည်နေရာကို အသုံးပြုပါ</string>
     <string name="planner_location_origin">အနီးဆုံးဘူတာမှ ထွက်ခွာမည်- %1$s။ တည်နေရာကို မသိမ်းထားပါ။</string>
     <string name="planner_location_none">လက်ရှိတည်နေရာအနီးတွင် ဘူတာ မရှိပါ။</string>
+    <!-- Snackbars with Undo (audit proposal 4) -->
+    <string name="action_undo">ပြန်ဖျက်ရန်</string>
+    <string name="snackbar_route_deleted">လမ်းကြောင်း «%1$s» ကို ဖျက်လိုက်ပါပြီ</string>
+    <string name="snackbar_favourite_train_removed">%1$s ကို ကျွန်ုပ်၏ ရထားများမှ ဖယ်ရှားလိုက်ပါပြီ</string>
+    <string name="snackbar_timetable_deleted">အချိန်ဇယား «%1$s» ကို ဖျက်လိုက်ပါပြီ</string>
 </resources>

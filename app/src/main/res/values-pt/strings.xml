@@ -1410,4 +1410,9 @@
     <string name="planner_use_location">Usar a localização para a partida</string>
     <string name="planner_location_origin">Partida da estação mais próxima: %1$s. A localização não foi salva.</string>
     <string name="planner_location_none">Nenhuma estação perto da localização atual.</string>
+    <!-- Snackbars with Undo (audit proposal 4) -->
+    <string name="action_undo">Desfazer</string>
+    <string name="snackbar_route_deleted">Trajeto “%1$s” excluído</string>
+    <string name="snackbar_favourite_train_removed">%1$s removido de Meus trens</string>
+    <string name="snackbar_timetable_deleted">Horário “%1$s” excluído</string>
 </resources>

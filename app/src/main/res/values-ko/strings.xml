@@ -1346,4 +1346,9 @@
     <string name="planner_use_location">현재 위치를 출발역으로 사용</string>
     <string name="planner_location_origin">가장 가까운 역에서 출발: %1$s. 위치는 저장되지 않았습니다.</string>
     <string name="planner_location_none">현재 위치 근처에 역이 없습니다.</string>
+    <!-- Snackbars with Undo (audit proposal 4) -->
+    <string name="action_undo">실행 취소</string>
+    <string name="snackbar_route_deleted">구간 「%1$s」 삭제됨</string>
+    <string name="snackbar_favourite_train_removed">내 열차에서 %1$s 삭제됨</string>
+    <string name="snackbar_timetable_deleted">시간표 「%1$s」 삭제됨</string>
 </resources>

@@ -1346,4 +1346,9 @@
     <string name="planner_use_location">現在地を出発駅に使う</string>
     <string name="planner_location_origin">最寄り駅から出発: %1$s。位置情報は保存されていません。</string>
     <string name="planner_location_none">現在地の近くに駅がありません。</string>
+    <!-- Snackbars with Undo (audit proposal 4) -->
+    <string name="action_undo">元に戻す</string>
+    <string name="snackbar_route_deleted">区間「%1$s」を削除しました</string>
+    <string name="snackbar_favourite_train_removed">%1$sをマイ列車から削除しました</string>
+    <string name="snackbar_timetable_deleted">時刻表「%1$s」を削除しました</string>
 </resources>

@@ -1369,4 +1369,9 @@
     <string name="planner_use_location">使用位置作为出发站</string>
     <string name="planner_location_origin">从最近的车站出发：%1$s。未保存位置。</string>
     <string name="planner_location_none">当前位置附近没有车站。</string>
+    <!-- Snackbars with Undo (audit proposal 4) -->
+    <string name="action_undo">撤销</string>
+    <string name="snackbar_route_deleted">已删除路线“%1$s”</string>
+    <string name="snackbar_favourite_train_removed">已从我的列车中移除 %1$s</string>
+    <string name="snackbar_timetable_deleted">已删除时刻表“%1$s”</string>
 </resources>

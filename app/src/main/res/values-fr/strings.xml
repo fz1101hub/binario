@@ -1433,4 +1433,9 @@
     <string name="planner_use_location">Utiliser la position pour le départ</string>
     <string name="planner_location_origin">Départ de la gare la plus proche : %1$s. La position n’a pas été enregistrée.</string>
     <string name="planner_location_none">Aucune gare près de la position actuelle.</string>
+    <!-- Snackbars with Undo (audit proposal 4) -->
+    <string name="action_undo">Annuler</string>
+    <string name="snackbar_route_deleted">Trajet « %1$s » supprimé</string>
+    <string name="snackbar_favourite_train_removed">%1$s retiré de Mes trains</string>
+    <string name="snackbar_timetable_deleted">Horaire « %1$s » supprimé</string>
 </resources>

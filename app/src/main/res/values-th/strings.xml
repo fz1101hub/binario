@@ -1369,4 +1369,9 @@
     <string name="planner_use_location">ใช้ตำแหน่งเป็นสถานีต้นทาง</string>
     <string name="planner_location_origin">ออกจากสถานีที่ใกล้ที่สุด: %1$s ไม่ได้บันทึกตำแหน่ง</string>
     <string name="planner_location_none">ไม่มีสถานีใกล้ตำแหน่งปัจจุบัน</string>
+    <!-- Snackbars with Undo (audit proposal 4) -->
+    <string name="action_undo">เลิกทำ</string>
+    <string name="snackbar_route_deleted">ลบเส้นทาง “%1$s” แล้ว</string>
+    <string name="snackbar_favourite_train_removed">นำ %1$s ออกจากรถไฟของฉันแล้ว</string>
+    <string name="snackbar_timetable_deleted">ลบตารางเวลา “%1$s” แล้ว</string>
 </resources>

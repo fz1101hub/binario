@@ -1346,4 +1346,9 @@
     <string name="planner_use_location">Gunakan lokasi untuk keberangkatan</string>
     <string name="planner_location_origin">Berangkat dari stasiun terdekat: %1$s. Lokasi tidak disimpan.</string>
     <string name="planner_location_none">Tidak ada stasiun di dekat lokasi saat ini.</string>
+    <!-- Snackbars with Undo (audit proposal 4) -->
+    <string name="action_undo">Urungkan</string>
+    <string name="snackbar_route_deleted">Rute “%1$s” dihapus</string>
+    <string name="snackbar_favourite_train_removed">%1$s dihapus dari Kereta saya</string>
+    <string name="snackbar_timetable_deleted">Jadwal “%1$s” dihapus</string>
 </resources>

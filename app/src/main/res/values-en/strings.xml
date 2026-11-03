@@ -1401,4 +1401,9 @@
     <string name="planner_use_location">Use location for departure</string>
     <string name="planner_location_origin">Departure from the nearest station: %1$s. The location was not saved.</string>
     <string name="planner_location_none">No station near the current location.</string>
+    <!-- Snackbars with Undo (audit proposal 4) -->
+    <string name="action_undo">Undo</string>
+    <string name="snackbar_route_deleted">Route “%1$s” deleted</string>
+    <string name="snackbar_favourite_train_removed">%1$s removed from My trains</string>
+    <string name="snackbar_timetable_deleted">Timetable “%1$s” deleted</string>
 </resources>
