@@ -114,6 +114,17 @@ class ParseLogTest(unittest.TestCase):
         with self.assertRaisesRegex(apply.ApplyError, "fuori dallo step di stampa"):
             apply.parse_printed_files(self.log, window=late)
 
+    def test_personal_packs_are_left_out_of_the_print_unless_asked(self) -> None:
+        (self.temp / "printed/gtfs-personal").mkdir()
+        (self.temp / "printed/gtfs-personal/manifest.json").write_text('{"packs": []}\n', encoding="utf-8")
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            acquire.print_directory(self.temp / "printed", exclude=frozenset({"gtfs-personal"}))
+        files = apply.parse_printed_files(output.getvalue())
+        self.assertEqual({"gtfs/manifest.json", "gtfs/demo.zip"}, set(files))
+        self.assertIn("Non stampata: gtfs-personal/", output.getvalue())
+        self.assertIn("gtfs-personal/manifest.json", apply.parse_printed_files(job_log(self.temp / "printed")))
+
     def run_api(self, run: dict[str, Any], jobs: list[dict[str, Any]], calls: list[str]):
         def api(path: str) -> bytes:
             calls.append(path)

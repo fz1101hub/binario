@@ -261,7 +261,7 @@ def validate_netex(asset: str, reference: Path, out: Path, start: str) -> dict[s
     return {"download": download_record, "conversion": conversion, "comparison": comparison}
 
 
-def print_directory(directory: Path, nonce: str | None = None) -> None:
+def print_directory(directory: Path, nonce: str | None = None, exclude: frozenset[str] = frozenset()) -> None:
     """Every file under ``directory`` as base64 lines in the job log (artifact downloads are not reachable from the
     development container), framed by a random nonce that no earlier step can know (audit A7-02, P1)::
 
@@ -271,12 +271,20 @@ def print_directory(directory: Path, nonce: str | None = None) -> None:
         BINARIO_END path
         BINARIO_DONE <nonce> <files>
 
-    ``tools/apply_ci_gtfs_refresh.py`` accepts exactly one such frame per job log, from this print step only."""
+    ``tools/apply_ci_gtfs_refresh.py`` accepts exactly one such frame per job log, from this print step only.
+    ``exclude`` names top-level subdirectories left out of the log (``gtfs-personal`` unless the dispatch asks for it:
+    the job logs of this public repository are public, see SOURCE_POLICY.md)."""
     import base64
     import secrets
 
     nonce = nonce or secrets.token_hex(16)
-    files = sorted(item for item in directory.rglob("*") if item.is_file())
+    files = sorted(
+        item for item in directory.rglob("*")
+        if item.is_file() and item.relative_to(directory).parts[0] not in exclude
+    )
+    for name in sorted(exclude):
+        if (directory / name).is_dir():
+            print(f"Non stampata: {name}/ (input del workflow print_personal_packs disattivato)", flush=True)
     print(f"BINARIO_BEGIN {nonce}", flush=True)
     for path in files:
         relative = path.relative_to(directory).as_posix()
@@ -321,13 +329,15 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--validate-netex", metavar="ASSET", help="converte un asset NAP e lo confronta con --reference")
     parser.add_argument("--reference", type=Path)
     parser.add_argument("--print-dir", type=Path, help="stampa i file della directory in base64 nel log")
+    parser.add_argument("--exclude", action="append", default=[], metavar="SUBDIR",
+                        help="con --print-dir: sottodirectory di primo livello da non stampare (ripetibile)")
     parser.add_argument(
         "--selection",
         help="testo dell'input del workflow: 'validate-netex', 'build=all' o 'build=id,id', 'refresh-core=all' o 'refresh-core=id,id'",
     )
     args = parser.parse_args(argv)
     if args.print_dir:
-        print_directory(args.print_dir)
+        print_directory(args.print_dir, exclude=frozenset(args.exclude))
         return 0
     if args.selection is not None:
         try:

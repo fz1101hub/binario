@@ -41,6 +41,11 @@ on:
         required: false
         type: string
         default: ""
+      print_personal_packs:
+        description: "Stampa nel log (pubblico) anche i pack gtfs-personal/ (licenza non commerciale o non dichiarata); predefinito: no"
+        required: false
+        type: boolean
+        default: false
 
 concurrency:
   group: gtfs-assets-ci-${{ github.event.pull_request.number || github.ref }}-${{ (github.event_name == 'workflow_dispatch' || github.event_name == 'schedule') && github.run_id || 'checks' }}
@@ -256,9 +261,18 @@ jobs:
           cp "$OUT/acquisition.json" "$OUT/publish/acquisition.json"
           ls -l "$OUT"/publish/*
 
+      # The logs of this public repository are public: the personal-use packs (non-commercial or unstated licences,
+      # SOURCE_POLICY.md) are printed only when the dispatch asks for them explicitly (audit A7-04, owner decision).
       - name: Print the built packs
         if: ${{ steps.selection.outputs.build != '' }}
-        run: python3 -I tools/acquire_transit_sources.py --print-dir "$RUNNER_TEMP/transit/publish"
+        env:
+          PRINT_PERSONAL_PACKS: ${{ inputs.print_personal_packs }}
+        run: |
+          if [ "$PRINT_PERSONAL_PACKS" = "true" ]; then
+            python3 -I tools/acquire_transit_sources.py --print-dir "$RUNNER_TEMP/transit/publish"
+          else
+            python3 -I tools/acquire_transit_sources.py --print-dir "$RUNNER_TEMP/transit/publish" --exclude gtfs-personal
+          fi
 
       - name: Report the validity of the transit packs
         if: ${{ always() && steps.selection.outputs.build != '' }}
