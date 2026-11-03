@@ -143,7 +143,7 @@ I quattro pack del NAP sono convertiti da NeTEx (vedi sotto): il RAP Puglia scri
 
 Nessun file è stato spostato o cancellato e il contenuto dell'APK debug non è cambiato: è una scelta del titolare fra due strade.
 
-- **(a) Rendere privato il repository.** Le vie 1–3 smettono di essere pubbliche (artifact e log restano visibili ai soli collaboratori); i fork pubblici e le copie già scaricate restano fuori controllo.
+- **(a) Rendere privato il repository.** Le vie 1–3 smettono di essere pubbliche (artifact e log restano visibili ai soli collaboratori); i fork pubblici e le copie già scaricate restano fuori controllo. Costo: col piano gratuito un repository privato ha 2.000 minuti di Actions al mese (i minuti macOS contano dieci volte), che le CI Android e Apple di questo progetto esaurirebbero in pochi giorni; per un repository pubblico i minuti sono illimitati. Per questo la via (b) con un secondo repository privato è quella consigliata.
 - **(b) Tenere i pack personali fuori dall'albero pubblico.** Un sottomodulo privato per `app/src/personal/assets/`, oppure l'acquisizione locale con `tools/acquire_transit_sources.py --only <sourceId>` e `tools/build_gtfs_packs.py` in una directory ignorata da git; l'APK di test di CI costruito con `-Pbinario.personalSources=false` (o caricato solo da run non-PR in una destinazione privata); `print_personal_packs` lasciato a `false`. La cronologia git già pubblicata resta consultabile finché non viene riscritta.
 
 Fino alla decisione, `print_personal_packs` resta `false` nei dispatch ordinari.
