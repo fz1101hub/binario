@@ -24,6 +24,9 @@ on:
       - "tests/**"
       - ".github/ci-inputs-lock.json"
       - ".github/workflows/**"
+  # Weekly freshness watch (Monday): packs ending within 45 days become warnings, never failures (job freshness-watch).
+  schedule:
+    - cron: "23 4 * * 1"
   workflow_dispatch:
     inputs:
       transit_discovery:
@@ -38,7 +41,7 @@ on:
         default: ""
 
 concurrency:
-  group: gtfs-assets-ci-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name == 'workflow_dispatch' && github.run_id || 'checks' }}
+  group: gtfs-assets-ci-${{ github.event.pull_request.number || github.ref }}-${{ (github.event_name == 'workflow_dispatch' || github.event_name == 'schedule') && github.run_id || 'checks' }}
   cancel-in-progress: true
 
 permissions:
@@ -46,7 +49,7 @@ permissions:
 
 jobs:
   gtfs-assets:
-    if: ${{ github.event_name != 'workflow_dispatch' || (inputs.transit_discovery == '' && inputs.transit_packs == '') }}
+    if: ${{ github.event_name == 'pull_request' || github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.transit_discovery == '' && inputs.transit_packs == '') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -86,22 +89,58 @@ jobs:
           python3 tools/verify_ci_pinning.py
           python3 tools/verify_gradle_dependency_metadata.py
 
+      # Regional railways and city networks (every build) and the personal-build packs get the same structural check.
       - name: Verify GTFS asset integrity
-        run: python3 tools/build_gtfs_packs.py --check --integrity-only
-
-      - name: Gate GTFS freshness for at least 30 days
-        run: python3 tools/build_gtfs_packs.py --check --min-valid-days 30
-
-      # Regional railways and city networks (every build) and the personal-build packs: same checks, each pack's own
-      # minValidDays (a city feed published a few weeks at a time) capped at 30.
-      - name: Verify the transit and personal GTFS packs
         run: |
+          python3 tools/build_gtfs_packs.py --check --integrity-only
           for directory in app/src/main/assets/gtfs-transit app/src/personal/assets/gtfs-personal; do
             if [ -f "$directory/manifest.json" ]; then
               python3 tools/build_gtfs_packs.py --check --integrity-only --input-dir "$directory"
+            fi
+          done
+
+      # Release freshness is a release gate, not a correctness check (audit A7-06): it blocks pull requests into a
+      # stabilization branch (and release-sign in android-ci.yml, the archive in apple-watch-ci.yml). Every pack uses
+      # its own minValidDays (a city feed published a few weeks at a time), capped at 30.
+      - name: Gate GTFS freshness for at least 30 days
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.base_ref, 'stabilization/') }}
+        run: |
+          python3 tools/build_gtfs_packs.py --check --min-valid-days 30
+          for directory in app/src/main/assets/gtfs-transit app/src/personal/assets/gtfs-personal; do
+            if [ -f "$directory/manifest.json" ]; then
               python3 tools/build_gtfs_packs.py --check --min-valid-days 30 --input-dir "$directory"
             fi
           done
+
+      - name: Report GTFS freshness without failing
+        if: ${{ !(github.event_name == 'pull_request' && startsWith(github.base_ref, 'stabilization/')) }}
+        run: >-
+          python3 -I tools/refresh_core_gtfs.py --as-of "$(date --utc +%F)" --summary "$GITHUB_STEP_SUMMARY"
+          --min-valid-days 30 --warn
+          --freshness app/src/main/assets/gtfs app/src/main/assets/gtfs-transit app/src/personal/assets/gtfs-personal
+
+  # Weekly reminder: every pack running less than 45 more days (its own minValidDays when shorter) is a warning in the
+  # run summary, well before the 30-day gate blocks a stabilization pull request or release-sign. Never fails.
+  freshness-watch:
+    if: ${{ github.event_name == 'schedule' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Python 3
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12.10"
+
+      - name: Report the packs ending within 45 days
+        run: >-
+          python3 -I tools/refresh_core_gtfs.py --as-of "$(date --utc +%F)" --summary "$GITHUB_STEP_SUMMARY"
+          --min-valid-days 45 --warn
+          --freshness app/src/main/assets/gtfs app/src/main/assets/gtfs-transit app/src/personal/assets/gtfs-personal
 
   # Manual, read-only discovery of public timetable sources (GTFS, NeTEx on the Italian National Access Point).
   # The development container cannot reach most open-data hosts; the runner can. Everything downloaded is

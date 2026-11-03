@@ -287,6 +287,48 @@ def _check_release_signing(
         problems.append(f"{path.name}: release-sign deve firmare telefono e Wear insieme")
 
 
+STABILIZATION_PULL_REQUEST = "${{ github.event_name == 'pull_request' && startsWith(github.base_ref, 'stabilization/') }}"
+# Where the 30-day release-freshness gate must run (audit A7-06, proposal P2): (workflow, job) -> step condition, None
+# for a job that only runs on a release path. Anywhere else the gate would hide correctness signal behind data age.
+FRESHNESS_GATES: Mapping[tuple[str, str], str | None] = {
+    ("android-ci.yml", "android"): STABILIZATION_PULL_REQUEST,
+    ("android-ci.yml", "release-sign"): None,
+    ("gtfs-assets-ci.yml", "gtfs-assets"): STABILIZATION_PULL_REQUEST,
+}
+
+
+def _freshness_gate_lines(command: str) -> list[str]:
+    return [
+        line for line in command.splitlines()
+        if ("verify_embedded_assets.py" in line or "build_gtfs_packs.py --check" in line)
+        and "--min-valid-days" in line and "--integrity-only" not in line
+    ]
+
+
+def _check_freshness_gates(path: Path, workflow: Mapping[str, Any], problems: list[str]) -> None:
+    """The release-freshness gate runs only on release paths and is present on each of them."""
+    jobs = _mapping(workflow.get("jobs")) or {}
+    found: set[tuple[str, str]] = set()
+    for job_name, raw_job in jobs.items():
+        job = _mapping(raw_job) or {}
+        steps = job.get("steps")
+        for raw_step in steps if isinstance(steps, list) else []:
+            step = _mapping(raw_step) or {}
+            if not _freshness_gate_lines(_commands(step.get("run"))):
+                continue
+            key = (path.name, str(job_name))
+            if key not in FRESHNESS_GATES and path.name != "apple-watch-ci.yml":
+                problems.append(f"{path.name}:{job_name}: gate di freshness GTFS fuori dai percorsi di release")
+                continue
+            expected = FRESHNESS_GATES.get(key)
+            if expected is not None and step.get("if") != expected:
+                problems.append(f"{path.name}:{job_name}: il gate di freshness GTFS deve valere solo per le PR di stabilizzazione")
+            found.add(key)
+    for key in FRESHNESS_GATES:
+        if key[0] == path.name and key not in found:
+            problems.append(f"{path.name}:{key[1]}: gate di freshness GTFS a 30 giorni assente")
+
+
 def _check_apple_paths(
     path: Path,
     workflow: Mapping[str, Any],
@@ -643,6 +685,8 @@ def _check_apple_toolchain(
                 '[ "$top_level" = "Binario.app" ]',
                 "WKCompanionAppBundleIdentifier",
                 '[ "$value" = "it.binario.ios" ]',
+                # Release freshness of the packs behind the iOS index (audit A7-06, P2), reported as a layout failure.
+                "python3 ../tools/build_gtfs_packs.py --check --input-dir ../app/src/main/assets/gtfs --min-valid-days 30",
             )
             # Each check records a failure instead of exiting, so the step must end on the tally.
             if any(marker not in archive for marker in archive_markers) or not archive.rstrip().endswith('test "$failures" -eq 0'):
@@ -738,6 +782,7 @@ def workflow_problems(
                     _check_upload_artifact(step, location=f"{location}.steps[{index}]", problems=problems)
 
     _check_linux_trigger_budget(path, root or {}, lock, problems)
+    _check_freshness_gates(path, root or {}, problems)
     if path.name == "android-ci.yml":
         _check_release_signing(path, root or {}, problems)
     if path.name == "apple-watch-ci.yml":

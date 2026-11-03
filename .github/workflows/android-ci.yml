@@ -20,6 +20,7 @@ on:
       - "tools/verify_android_app_bundles.py"
       - "tools/verify_android_release_config.py"
       - "tools/verify_embedded_assets.py"
+      - "tools/build_gtfs_packs.py"
       - "tools/verify_gradle_dependency_metadata.py"
       - "tools/verify_privacy_policy.py"
       - "tests/test_wear_compose_gradle_dependency_suppressions.py"
@@ -48,6 +49,7 @@ on:
       - "tools/verify_android_app_bundles.py"
       - "tools/verify_android_release_config.py"
       - "tools/verify_embedded_assets.py"
+      - "tools/build_gtfs_packs.py"
       - "tools/verify_gradle_dependency_metadata.py"
       - "tools/verify_privacy_policy.py"
       - "tests/test_wear_compose_gradle_dependency_suppressions.py"
@@ -126,9 +128,6 @@ jobs:
 
       - name: Verify embedded asset integrity
         run: python3 tools/verify_embedded_assets.py --integrity-only
-
-      - name: Gate embedded GTFS freshness for at least 30 days
-        run: python3 tools/verify_embedded_assets.py --min-valid-days 30
 
       - name: Verify privacy-policy disclosures
         run: python3 tools/verify_privacy_policy.py
@@ -235,6 +234,13 @@ jobs:
           --reference-phone "$RUNNER_TEMP/binario-app-reference.aab"
           --reference-wear "$RUNNER_TEMP/binario-wear-reference.aab"
 
+      # Release freshness is a release gate, not a correctness check (audit A7-06): tests, lint, builds and the bundle
+      # checks above run whatever the age of the data; only a pull request into a stabilization branch (and
+      # release-sign) needs every embedded pack to run for at least 30 more days.
+      - name: Gate embedded GTFS freshness for at least 30 days
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.base_ref, 'stabilization/') }}
+        run: python3 tools/verify_embedded_assets.py --min-valid-days 30
+
   release-sign:
     needs: android
     if: ${{ github.event_name == 'workflow_dispatch' && inputs.sign_release }}
@@ -264,6 +270,9 @@ jobs:
 
       - name: Enable Gradle wrapper
         run: chmod +x gradlew
+
+      - name: Gate embedded GTFS freshness for at least 30 days
+        run: python3 tools/verify_embedded_assets.py --min-valid-days 30
 
       - name: Decode the upload keystore into RUNNER_TEMP
         env:

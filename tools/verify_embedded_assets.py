@@ -16,6 +16,10 @@ from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "tools"))
+
+import build_gtfs_packs as builder  # noqa: E402  (one freshness rule and one derived service end for every check)
+
 ASSET_ROOT = ROOT / "app" / "src" / "main" / "assets"
 GTFS_ROOT = ASSET_ROOT / "gtfs"
 STATION_ROOT = ASSET_ROOT / "stations"
@@ -28,7 +32,7 @@ GTFS_DIRECTORIES = (
     (PERSONAL_ASSET_ROOT, "gtfs-personal", False),
 )
 REQUIRED_GTFS_FILES = {"agency.txt", "stops.txt", "routes.txt", "trips.txt", "stop_times.txt"}
-DEFAULT_MIN_VALID_DAYS = 30
+DEFAULT_MIN_VALID_DAYS = builder.DEFAULT_MIN_VALID_DAYS
 
 
 def sha256(path: Path) -> str:
@@ -133,14 +137,13 @@ def verify_gtfs_directory(
             failures.append(f"GTFS pack {source_id} asset is outside {directory}/: {pack.get('asset')}")
         asset = safe_asset_path(pack.get("asset"), failures, f"GTFS pack {source_id} asset", asset_root)
         # A city feed published a few weeks ahead declares a shorter release window (minValidDays, at most the default).
-        declared_days = pack.get("minValidDays")
-        window = minimum_valid_days
-        if declared_days is not None:
-            if isinstance(declared_days, int) and not isinstance(declared_days, bool) and 1 <= declared_days <= minimum_valid_days:
-                window = declared_days
-            elif not (isinstance(declared_days, int) and declared_days > minimum_valid_days):
-                failures.append(f"GTFS pack {source_id} has an invalid minValidDays: {declared_days!r}")
-        cutoff = today + timedelta(days=window)
+        try:
+            window = builder.pack_min_valid_days(pack, minimum_valid_days)
+        except builder.BuildError:
+            failures.append(f"GTFS pack {source_id} has an invalid minValidDays: {pack.get('minValidDays')!r}")
+            window = minimum_valid_days
+        cutoff = builder.release_freshness_cutoff(today, window)
+        derived_end: date | None = None
         expected_hash = pack.get("sha256")
         if not isinstance(expected_hash, str) or len(expected_hash) != 64:
             failures.append(f"GTFS pack {source_id} has no valid sha256")
@@ -163,6 +166,12 @@ def verify_gtfs_directory(
                             failures.append(f"GTFS pack {source_id} is missing required files: {', '.join(missing)}")
                 except (OSError, zipfile.BadZipFile) as exc:
                     failures.append(f"GTFS pack {source_id} is not a readable ZIP archive: {exc}")
+                else:
+                    # Freshness is judged on the service end derived from the calendar, as build_gtfs_packs.py does.
+                    try:
+                        derived_end = builder.service_end_from_asset(asset, str(source_id))
+                    except builder.BuildError as exc:
+                        failures.append(f"GTFS pack {source_id}: service end not derivable: {builder.log_safe(exc)}")
 
         value = pack.get("lastServiceDate")
         try:
@@ -171,12 +180,19 @@ def verify_gtfs_directory(
             last_service_date = None
         if last_service_date is None:
             failures.append(f"GTFS pack {source_id} has no ISO-8601 lastServiceDate")
-        elif last_service_date < cutoff:
+            continue
+        if derived_end is not None and derived_end != last_service_date:
+            failures.append(
+                f"GTFS pack {source_id} declares lastServiceDate {last_service_date.isoformat()} "
+                f"but its calendar ends {derived_end.isoformat()}"
+            )
+        end = derived_end or last_service_date
+        if not builder.is_release_fresh(end, today, window):
             expiring_or_expired += 1
             if enforce_freshness:
-                relation = "expired" if last_service_date < today else "expires before the required freshness window"
+                relation = "expired" if end < today else "expires before the required freshness window"
                 failures.append(
-                    f"GTFS pack {source_id} {relation}: lastServiceDate {last_service_date.isoformat()}, "
+                    f"GTFS pack {source_id} {relation}: service ends {end.isoformat()}, "
                     f"required through {cutoff.isoformat()}"
                 )
 

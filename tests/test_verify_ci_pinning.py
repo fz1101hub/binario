@@ -221,6 +221,30 @@ class VerifyCiPinningTest(unittest.TestCase):
                 problems = policy.workflow_problems(workflow_path, mutated, LOCK)
                 self.assertTrue(any(expected in problem for problem in problems), problems)
 
+    def test_release_freshness_gate_runs_only_on_release_paths(self) -> None:
+        # Audit A7-06 / P2: data age must not hide tests, lint and builds; release paths keep the 30-day gate.
+        condition = "        if: ${{ github.event_name == 'pull_request' && startsWith(github.base_ref, 'stabilization/') }}\n"
+        android = ROOT / ".github/workflows/android-ci.yml"
+        text = android.read_text(encoding="utf-8")
+        gate = "      - name: Gate embedded GTFS freshness for at least 30 days\n"
+        ungated = text.replace(gate + condition, gate, 1)
+        self.assertNotEqual(text, ungated)
+        self.assertTrue(any("solo per le PR di stabilizzazione" in problem for problem in policy.workflow_problems(android, ungated, LOCK)))
+        release_gate = gate + "        run: python3 tools/verify_embedded_assets.py --min-valid-days 30\n\n      - name: Decode"
+        without_release_gate = text.replace(release_gate, "      - name: Decode", 1)
+        self.assertNotEqual(text, without_release_gate)
+        problems = policy.workflow_problems(android, without_release_gate, LOCK)
+        self.assertTrue(any("release-sign: gate di freshness GTFS a 30 giorni assente" in problem for problem in problems), problems)
+        gtfs = ROOT / ".github/workflows/gtfs-assets-ci.yml"
+        text = gtfs.read_text(encoding="utf-8")
+        early = text.replace(
+            "        run: python3 -I tools/acquire_transit_sources.py --print-dir",
+            "        run: python3 tools/build_gtfs_packs.py --check --min-valid-days 30 && python3 -I tools/acquire_transit_sources.py --print-dir",
+            1,
+        )
+        self.assertNotEqual(text, early)
+        self.assertTrue(any("fuori dai percorsi di release" in problem for problem in policy.workflow_problems(gtfs, early, LOCK)))
+
     def test_apple_rejects_bash_env_and_run_step_mutations(self) -> None:
         workflow_path = ROOT / ".github/workflows/apple-watch-ci.yml"
         original = workflow_path.read_text(encoding="utf-8")

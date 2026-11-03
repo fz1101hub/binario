@@ -1248,14 +1248,30 @@ def verify_filter_from_asset(path: Path, source_id: str) -> str:
         return canonical_content_sha256(declared_digests)
 
 
+DEFAULT_MIN_VALID_DAYS = 30
+
+
 def pack_min_valid_days(pack: Mapping[str, Any], default: int) -> int:
-    """The release threshold of a pack: its own minValidDays (1..default) when declared, else the default."""
+    """The release window of a pack: its own minValidDays when declared (a city feed published a few weeks at a time),
+    never longer than ``default``; else ``default``.  Shared by every freshness check (audit A7-06)."""
     declared = pack.get("minValidDays")
     if declared is None:
         return default
-    if not isinstance(declared, int) or isinstance(declared, bool) or not 1 <= declared <= default:
+    if not isinstance(declared, int) or isinstance(declared, bool) or declared < 1:
         raise BuildError(f"{pack.get('sourceId')}: minValidDays non valido: {declared!r}")
-    return declared
+    return min(declared, default)
+
+
+def release_freshness_cutoff(as_of: date, window_days: int) -> date:
+    """The first service day a pack must still run on: ``as_of`` plus its window."""
+    return as_of + timedelta(days=window_days)
+
+
+def is_release_fresh(last_service_date: date, as_of: date, window_days: int) -> bool:
+    """The one release-freshness rule of the repository: the pack runs at least ``window_days`` days past ``as_of``
+    (BRANCH_AND_RELEASE_POLICY.md: «almeno 30 giorni oltre la data del gate»).  ``build_gtfs_packs.py --check``,
+    ``verify_embedded_assets.py`` and the refresh report all use it, on the date derived from the calendar."""
+    return last_service_date >= release_freshness_cutoff(as_of, window_days)
 
 
 def verify_assets(
@@ -1319,11 +1335,10 @@ def verify_assets(
             # A city feed published a few weeks ahead declares its own shorter release threshold (minValidDays,
             # documented in GTFS_PACK_REFRESH.md with its weekly refresh); no pack can ask for a longer one here.
             days = pack_min_valid_days(pack, min_valid_days)
-            threshold = as_of + timedelta(days=days)
-            if actual_end <= threshold:
+            if not is_release_fresh(actual_end, as_of, days):
                 problems.append(
                     f"pack scaduto o in scadenza entro {days} giorni: "
-                    f"{source_id} termina {actual_end} (soglia {threshold})"
+                    f"{source_id} termina {actual_end} (richiesto almeno fino al {release_freshness_cutoff(as_of, days)})"
                 )
     if problems:
         raise BuildError("\n".join(problems))
@@ -1474,7 +1489,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--max-download-bytes", type=int, default=DEFAULT_MAX_DOWNLOAD_BYTES, help="cap hard per ogni download")
     parser.add_argument("--check", action="store_true", help="verifica asset, hash e validita release senza rete")
     parser.add_argument("--as-of", type=parse_date, default=date.today(), help="data di riferimento per --check")
-    parser.add_argument("--min-valid-days", type=int, default=30, help="giorni minimi residui richiesti da --check")
+    parser.add_argument("--min-valid-days", type=int, default=DEFAULT_MIN_VALID_DAYS, help="giorni minimi residui richiesti da --check")
     parser.add_argument(
         "--integrity-only",
         action="store_true",

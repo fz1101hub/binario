@@ -74,7 +74,7 @@ MAX_UPSTREAM_METADATA_BYTES = 64 * 1024
 GITHUB_API = "https://api.github.com"
 MAX_API_RESPONSE_BYTES = 1024 * 1024
 PINNED_NOTE = re.compile(r"Pinned to the upstream commit of \d{4}-\d{2}-\d{2}")
-DEFAULT_MIN_VALID_DAYS = 30
+DEFAULT_MIN_VALID_DAYS = builder.DEFAULT_MIN_VALID_DAYS
 
 Fetch = Callable[[str, Path], dict[str, Any]]
 Resolve = Callable[[Mapping[str, Any]], dict[str, Any]]
@@ -418,11 +418,12 @@ def freshness_rows(directories: Sequence[Path], as_of: date, default_min_valid_d
             threshold = builder.pack_min_valid_days(pack, default_min_valid_days)
             days_left = (last - as_of).days
             source_id = pack["sourceId"]
+            fresh = builder.is_release_fresh(last, as_of, threshold)
             if source_id in MANUAL_SOURCES:
-                state = "manuale" + (" - SOTTO SOGLIA" if days_left <= threshold else "")
+                state = "manuale" + ("" if fresh else " - SOTTO SOGLIA")
             elif days_left < 0:
                 state = "SCADUTO"
-            elif days_left <= threshold:
+            elif not fresh:
                 state = "SOTTO SOGLIA"
             else:
                 state = "ok"
@@ -473,11 +474,25 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--summary", type=Path, help="file Markdown a cui aggiungere il riepilogo (GITHUB_STEP_SUMMARY)")
     parser.add_argument("--freshness", type=Path, nargs="+", metavar="DIR", help="directory con manifest.json da riportare")
     parser.add_argument("--as-of", type=date.fromisoformat, default=date.today())
+    parser.add_argument("--min-valid-days", type=int, default=DEFAULT_MIN_VALID_DAYS,
+                        help="con --freshness: finestra predefinita dei pack (ogni pack ne dichiara al più una più corta)")
+    parser.add_argument("--warn", action="store_true",
+                        help="con --freshness: un'annotazione ::warning per ogni pack sotto la finestra (esce sempre con 0)")
     parser.add_argument("--fail-on-report", type=Path, metavar="REPORT", help="esce con 1 se il report elenca fonti non aggiornate")
     args = parser.parse_args(argv)
 
     if args.freshness:
-        append_summary(args.summary, freshness_markdown(freshness_rows(args.freshness, args.as_of), args.as_of))
+        rows = freshness_rows(args.freshness, args.as_of, args.min_valid_days)
+        append_summary(args.summary, freshness_markdown(rows, args.as_of))
+        if args.warn:
+            # The weekly watch (gtfs-assets-ci.yml, schedule): a reminder well before the 30-day release gate fails.
+            for row in sorted(rows, key=lambda item: (item["daysLeft"], item["sourceId"])):
+                if row["state"] != "ok":
+                    print(
+                        f"::warning title=GTFS in scadenza::{builder.log_safe(row['sourceId'])} "
+                        f"({builder.log_safe(row['asset'])}) termina {row['lastServiceDate']}: "
+                        f"{row['daysLeft']} giorni residui, finestra {row['minValidDays']} ({builder.log_safe(row['state'])})"
+                    )
         return 0
     if args.fail_on_report:
         report = json.loads(args.fail_on_report.read_text(encoding="utf-8"))
