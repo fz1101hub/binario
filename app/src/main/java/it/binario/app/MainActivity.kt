@@ -283,11 +283,12 @@ internal fun BinarioApp(
         }
     }
     val locale = LocalConfiguration.current.locales[0]
-    val trainShareStrings = trainShareStrings(locale)
+    val resources = LocalResources.current
+    // About 35 templates: resolved once per language, not at every recomposition of the app.
+    val trainShareStrings = remember(resources, locale) { trainShareStrings(resources, locale) }
     val plannedJourneyViewModel: PlannedJourneyViewModel = viewModel(
         factory = PlannedJourneyViewModel.factory(context.applicationContext)
     )
-    val resources = LocalResources.current
     val plannedJourneyExportLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("application/octet-stream")
     ) { uri ->

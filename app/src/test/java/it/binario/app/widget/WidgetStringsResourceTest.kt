@@ -50,7 +50,7 @@ class WidgetStringsResourceTest {
 
         assertEquals("RFI · INFRASTRUTTURA · Q84 · NON RECENTE · CONFLITTO FONTI · PAG 1/1", state.compactMeta(strings, "PAG 1/1"))
         assertEquals(
-            "Provider RFI. Dati in aggiornamento. Fonte primaria del gestore dell’infrastruttura. Dato affidabile, punteggio qualità 84 su 100. Avvisi: Fonti in conflitto",
+            "Provider RFI. Dati non recenti. Fonte primaria del gestore dell’infrastruttura. Dato affidabile, punteggio qualità 84 su 100. Avvisi: Fonti in conflitto",
             state.accessibleDataSummary(strings)
         )
         assertEquals("Operatore Trenitalia Regionale. Regionale 123 verso Roma. Partenza prevista 12:04. In ritardo +4 min. Binario 7.", delayed.accessibleLabel(strings))
@@ -61,7 +61,7 @@ class WidgetStringsResourceTest {
 
         assertEquals("RFI · INFRASTRUCTURE · Q84 · NOT RECENT · SOURCE CONFLICT · PAGE 1/1", state.compactMeta(strings, "PAGE 1/1"))
         assertEquals(
-            "Source RFI. Data updating. Infrastructure manager primary source. Reliable data, quality score out of 100: 84. Warnings: Sources in conflict",
+            "Source RFI. Data not recent. Infrastructure manager primary source. Reliable data, quality score out of 100: 84. Warnings: Sources in conflict",
             state.accessibleDataSummary(strings)
         )
         assertEquals("Operator Trenitalia Regionale. Regional 123 to Roma. Expected departure 12:04. Delayed +4 min. Platform 7.", delayed.accessibleLabel(strings))

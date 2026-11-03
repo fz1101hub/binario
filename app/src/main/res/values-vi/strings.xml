@@ -1374,4 +1374,8 @@
     <string name="snackbar_route_deleted">Đã xóa tuyến “%1$s”</string>
     <string name="snackbar_favourite_train_removed">Đã xóa %1$s khỏi Tàu của tôi</string>
     <string name="snackbar_timetable_deleted">Đã xóa lịch “%1$s”</string>
+    <!-- Compact durations of the result cards (audit A3-16) -->
+    <string name="duration_hours_minutes">%1$d giờ %2$d phút</string>
+    <string name="duration_hours">%1$d giờ</string>
+    <string name="duration_minutes">%1$d phút</string>
 </resources>

@@ -1374,4 +1374,8 @@
     <string name="snackbar_route_deleted">已删除路线“%1$s”</string>
     <string name="snackbar_favourite_train_removed">已从我的列车中移除 %1$s</string>
     <string name="snackbar_timetable_deleted">已删除时刻表“%1$s”</string>
+    <!-- Compact durations of the result cards (audit A3-16) -->
+    <string name="duration_hours_minutes">%1$d小时%2$d分</string>
+    <string name="duration_hours">%1$d小时</string>
+    <string name="duration_minutes">%1$d分钟</string>
 </resources>

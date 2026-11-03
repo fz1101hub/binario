@@ -1351,4 +1351,8 @@
     <string name="snackbar_route_deleted">구간 「%1$s」 삭제됨</string>
     <string name="snackbar_favourite_train_removed">내 열차에서 %1$s 삭제됨</string>
     <string name="snackbar_timetable_deleted">시간표 「%1$s」 삭제됨</string>
+    <!-- Compact durations of the result cards (audit A3-16) -->
+    <string name="duration_hours_minutes">%1$d시간 %2$d분</string>
+    <string name="duration_hours">%1$d시간</string>
+    <string name="duration_minutes">%1$d분</string>
 </resources>

@@ -2,8 +2,12 @@ package it.binario.app.ui.common
 
 import it.binario.app.data.TrainCategory
 import it.binario.app.data.TrainService
+import android.content.res.Resources
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.ReadOnlyComposable
+import androidx.compose.ui.platform.LocalResources
+import it.binario.app.R
 import java.time.LocalTime
-import java.util.Locale
 
 /**
  * Category groups of the filter chips ("Regionali / Intercity / Frecce"). Italo high-speed trains are a group
@@ -49,11 +53,22 @@ internal object JourneyTimes {
         return minutes.takeIf { it in 1 until DAY_MINUTES }
     }
 
-    /** "4h 25min", "45min" as in the render: hour and minute symbols read the same in the five app languages. */
-    fun durationLabel(minutes: Int): String = when {
-        minutes < 60 -> String.format(Locale.ROOT, "%dmin", minutes)
-        minutes % 60 == 0 -> String.format(Locale.ROOT, "%dh", minutes / 60)
-        else -> String.format(Locale.ROOT, "%dh %dmin", minutes / 60, minutes % 60)
+    /**
+     * The compact duration of the cards in the app language: "4h 25min" (Italian, as in the render), "4 ч 25 мин",
+     * "4時間25分", "4 घं 25 मि", from the duration_* resources.
+     */
+    fun durationLabel(minutes: Int, resources: Resources): String = durationLabel(
+        minutes,
+        hoursMinutes = { hours, rest -> resources.getString(R.string.duration_hours_minutes, hours, rest) },
+        hoursOnly = { hours -> resources.getString(R.string.duration_hours, hours) },
+        minutesOnly = { rest -> resources.getString(R.string.duration_minutes, rest) }
+    )
+
+    /** [minutes] as hours and minutes, whole hours or minutes alone, with the given templates. */
+    fun durationLabel(minutes: Int, hoursMinutes: (Int, Int) -> String, hoursOnly: (Int) -> String, minutesOnly: (Int) -> String): String = when {
+        minutes < 60 -> minutesOnly(minutes)
+        minutes % 60 == 0 -> hoursOnly(minutes / 60)
+        else -> hoursMinutes(minutes / 60, minutes % 60)
     }
 
     fun filtered(services: List<TrainService>, group: ServiceGroup?): List<TrainService> =
@@ -63,3 +78,8 @@ internal object JourneyTimes {
         LocalTime.parse(value.trim()).let { it.hour * 60 + it.minute }
     }.getOrNull()
 }
+
+/** [JourneyTimes.durationLabel] in the app language of the composition. */
+@Composable
+@ReadOnlyComposable
+internal fun compactDurationLabel(minutes: Int): String = JourneyTimes.durationLabel(minutes, LocalResources.current)

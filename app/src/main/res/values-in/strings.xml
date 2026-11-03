@@ -1351,4 +1351,8 @@
     <string name="snackbar_route_deleted">Rute “%1$s” dihapus</string>
     <string name="snackbar_favourite_train_removed">%1$s dihapus dari Kereta saya</string>
     <string name="snackbar_timetable_deleted">Jadwal “%1$s” dihapus</string>
+    <!-- Compact durations of the result cards (audit A3-16) -->
+    <string name="duration_hours_minutes">%1$d j %2$d mnt</string>
+    <string name="duration_hours">%1$d j</string>
+    <string name="duration_minutes">%1$d mnt</string>
 </resources>

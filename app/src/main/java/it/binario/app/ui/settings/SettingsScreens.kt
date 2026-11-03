@@ -104,6 +104,7 @@ import it.binario.app.ui.common.co2Credits
 import it.binario.app.ui.common.localizedLabel
 import it.binario.app.ui.common.localizedSummary
 import java.time.LocalTime
+import java.util.Locale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -549,7 +550,7 @@ private fun CommuterAlertSheet(
             OutlinedTextField(value = station, onValueChange = { station = it }, modifier = Modifier.fillMaxWidth(), singleLine = true, label = { Text(stringResource(R.string.commuter_alert_station)) })
             OutlinedButton(onClick = {
                 val parsed = runCatching { LocalTime.parse(time) }.getOrDefault(LocalTime.of(8, 0))
-                TimePickerDialog(context, { _, hour, minute -> time = "%02d:%02d".format(hour, minute) }, parsed.hour, parsed.minute, true).show()
+                TimePickerDialog(context, { _, hour, minute -> time = commuterAlertTime(hour, minute) }, parsed.hour, parsed.minute, true).show()
             }, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.commuter_alert_time, time)) }
             Text(stringResource(R.string.commuter_alert_lead), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -572,6 +573,9 @@ private fun CommuterAlertSheet(
         }
     }
 }
+
+/** The stored "HH:mm" of a commuter alert, in ASCII digits whatever the app language (Arabic, Hindi, Burmese). */
+internal fun commuterAlertTime(hour: Int, minute: Int): String = String.format(Locale.ROOT, "%02d:%02d", hour, minute)
 
 @Composable
 private fun MobilityPreferencesPanel(value: MobilityPreferences, onChange: (MobilityPreferences) -> Unit) {

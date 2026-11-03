@@ -41,6 +41,7 @@ L’italiano (`values/`) è la lingua di riferimento: ogni testo nasce in italia
 - Testi brevi dove lo spazio è poco: chip, colonne dei widget (`widget_column_*`, stati da 52–56 dp), barra di navigazione, Wear OS. Preferire abbreviazioni d’uso comune nella lingua.
 - Tono: interfaccia di un’app di trasporti, frasi brevi, imperativo cortese dove l’italiano usa l’imperativo, nessun registro colloquiale.
 - «Programmato» (`service_status_scheduled_*`, `service_scheduled_lowercase`, `widget_status_scheduled`) vuol dire «solo orario, nessun dato in tempo reale» e non deve mai leggersi come «in orario»: niente 定時/時刻表どおり, «По расписанию», 按计划, ตามตาราง o «Theo lịch», che sui tabelloni significano puntuale. Allo stesso modo `freshness_aging` è «dati non recenti», non «in aggiornamento».
+- Le durate compatte delle schede (`duration_hours_minutes`, `duration_hours`, `duration_minutes`: «4h 25min» in italiano come nel render) usano le abbreviazioni d’uso della lingua («4 ч 25 мин», «4時間25分», «4 घं 25 मि»), invariabili, quindi senza plurali; le date passano da `LocalizedDates`, che per cinese, giapponese e coreano mette il mese prima del giorno.
 - I descrittori delle fonti (`provider_descriptor_*`, per esempio «orario programmato», «Quadro orario programmato») si traducono; i nomi di operatori e servizi intorno a loro (Trenitalia, RFI, ViaggiaTreno, Italo in Viaggio) restano dati.
 
 ## Testo da destra a sinistra (arabo)

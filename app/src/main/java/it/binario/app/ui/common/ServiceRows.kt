@@ -350,7 +350,7 @@ internal fun ResultCard(
                     style = MaterialTheme.typography.titleLarge.copy(fontFeatureSettings = TabularFigures)
                 )
                 duration?.let {
-                    Text(JourneyTimes.durationLabel(it), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(compactDurationLabel(it), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
             Row(verticalAlignment = Alignment.CenterVertically) {

@@ -183,7 +183,9 @@ class AndroidStringResourceParityTest {
             "nav_agenda", "screen_title_agenda", "planned_journey_checklist", "planned_journey_checklist_item",
             "mobility_changes_max", "route_change_via", "alert_repeat_weekdays", "commuter_alert_lead", "integration_wear_title",
             "expected_time_short", "theme_system_label", "settings_theme", "settings_section_widgets",
-            "journey_leg_metro", "journey_leg_tram", "journey_leg_funicular", "journey_leg_bus_trenitalia"
+            "journey_leg_metro", "journey_leg_tram", "journey_leg_funicular", "journey_leg_bus_trenitalia",
+            // The hour symbol of the compact durations ("4h"), shared with English.
+            "duration_hours"
         )
         private val LATIN_SCRIPT_LOCALES = setOf("en", "de", "fr", "es", "id", "pt", "tr", "vi")
         private val IDENTICAL_PLURAL_KEYS = setOf("minutes_short", "gps_alarm_radius_km")

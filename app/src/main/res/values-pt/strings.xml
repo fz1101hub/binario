@@ -1415,4 +1415,8 @@
     <string name="snackbar_route_deleted">Trajeto “%1$s” excluído</string>
     <string name="snackbar_favourite_train_removed">%1$s removido de Meus trens</string>
     <string name="snackbar_timetable_deleted">Horário “%1$s” excluído</string>
+    <!-- Compact durations of the result cards (audit A3-16) -->
+    <string name="duration_hours_minutes">%1$d h %2$d min</string>
+    <string name="duration_hours">%1$d h</string>
+    <string name="duration_minutes">%1$d min</string>
 </resources>

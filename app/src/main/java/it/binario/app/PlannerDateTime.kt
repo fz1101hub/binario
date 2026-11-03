@@ -1,6 +1,7 @@
 package it.binario.app
 
 import it.binario.app.data.RailTime
+import it.binario.app.ui.common.LocalizedDates
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
@@ -10,7 +11,7 @@ import java.util.Locale
 internal object PlannerDateTime {
     fun dateLabel(value: String, locale: Locale, fallback: String): String =
         runCatching {
-            LocalDate.parse(value).format(DateTimeFormatter.ofPattern("EEEE d MMMM", locale))
+            LocalDate.parse(value).format(LocalizedDates.weekdayDayMonthLong(locale))
         }.getOrDefault(fallback)
 
     fun timeLabel(value: String, locale: Locale, fallback: String): String =

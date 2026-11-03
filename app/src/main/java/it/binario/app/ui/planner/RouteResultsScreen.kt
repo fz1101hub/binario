@@ -41,6 +41,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -186,8 +187,11 @@ internal fun RouteResultsScreen(
     // data as timetable only), saved on this device or shared as text.
     val providerLabel = viewModel.localizedProviderLabel()
     val journeysFetchedAt = journeyResult?.generatedAt?.toEpochMilli() ?: 0L
-    val outboundRows = timetableRows(shown, isDemonstration, providerLabel, viewModel.lastRefreshEpochMillis(), journeysFetchedAt)
-    val returnRows = if (roundTrip) timetableRows(returnShown, isDemonstration, providerLabel, viewModel.lastRefreshEpochMillis(), journeysFetchedAt) else emptyList()
+    // The plain rows are built only when "Salva orario" or "Condividi" is tapped, from the list shown at that moment.
+    val resources = LocalResources.current
+    val refreshedAt = viewModel.lastRefreshEpochMillis()
+    fun outboundRows() = timetableRows(shown, isDemonstration, providerLabel, refreshedAt, journeysFetchedAt, resources)
+    fun returnRows() = if (roundTrip) timetableRows(returnShown, isDemonstration, providerLabel, refreshedAt, journeysFetchedAt, resources) else emptyList()
     val originName = route.origin(primaryDirection).name
     val destinationName = route.destination(primaryDirection).name
     val defaultTimetableName = stringResource(R.string.share_route, originName, destinationName)
@@ -254,7 +258,7 @@ internal fun RouteResultsScreen(
                     hiddenTrains = hiddenTrains,
                     onOpen = openTravelPreferences
                 )
-                if (viewModel.hasActiveRoute && (outboundRows.isNotEmpty() || returnRows.isNotEmpty())) {
+                if (viewModel.hasActiveRoute && (shown.isNotEmpty() || (roundTrip && returnShown.isNotEmpty()))) {
                     ResultsActions(
                         saved = savedTimetableId != null,
                         onSave = {
@@ -269,8 +273,8 @@ internal fun RouteResultsScreen(
                                     serviceDate = query.serviceDate,
                                     fromTime = query.departureTime.format(DateTimeFormatter.ofPattern("HH:mm", Locale.ROOT)),
                                     savedAtEpochMillis = System.currentTimeMillis(),
-                                    rows = outboundRows,
-                                    returnRows = returnRows
+                                    rows = outboundRows(),
+                                    returnRows = returnRows()
                                 )
                             )
                             savedTimetableId = id
@@ -278,7 +282,7 @@ internal fun RouteResultsScreen(
                         onShare = {
                             startTextShare(
                                 context,
-                                TimetableShareFormatter.list(originName, destinationName, searchLabel, outboundRows, returnRows, shareStrings),
+                                TimetableShareFormatter.list(originName, destinationName, searchLabel, outboundRows(), returnRows(), shareStrings),
                                 shareChooser
                             )
                         }

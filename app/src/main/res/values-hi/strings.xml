@@ -1383,4 +1383,8 @@
     <string name="snackbar_route_deleted">मार्ग «%1$s» हटाया गया</string>
     <string name="snackbar_favourite_train_removed">%1$s मेरी ट्रेनें से हटाई गई</string>
     <string name="snackbar_timetable_deleted">समय-सारणी «%1$s» हटाई गई</string>
+    <!-- Compact durations of the result cards (audit A3-16) -->
+    <string name="duration_hours_minutes">%1$d घं %2$d मि</string>
+    <string name="duration_hours">%1$d घं</string>
+    <string name="duration_minutes">%1$d मि</string>
 </resources>

@@ -1438,4 +1438,8 @@
     <string name="snackbar_route_deleted">Tratta «%1$s» eliminata</string>
     <string name="snackbar_favourite_train_removed">%1$s rimosso da I miei treni</string>
     <string name="snackbar_timetable_deleted">Orario «%1$s» eliminato</string>
+    <!-- Compact durations of the result cards (audit A3-16) -->
+    <string name="duration_hours_minutes">%1$dh %2$dmin</string>
+    <string name="duration_hours">%1$dh</string>
+    <string name="duration_minutes">%1$dmin</string>
 </resources>

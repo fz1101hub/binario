@@ -1447,4 +1447,8 @@
     <string name="snackbar_route_deleted">Маршрут «%1$s» удалён</string>
     <string name="snackbar_favourite_train_removed">%1$s удалён из списка «Мои поезда»</string>
     <string name="snackbar_timetable_deleted">Расписание «%1$s» удалено</string>
+    <!-- Compact durations of the result cards (audit A3-16) -->
+    <string name="duration_hours_minutes">%1$d ч %2$d мин</string>
+    <string name="duration_hours">%1$d ч</string>
+    <string name="duration_minutes">%1$d мин</string>
 </resources>

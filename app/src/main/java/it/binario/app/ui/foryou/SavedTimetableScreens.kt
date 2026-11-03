@@ -65,6 +65,7 @@ import it.binario.app.ui.common.AppSnackbar
 import it.binario.app.ui.common.BinarioCard
 import it.binario.app.ui.common.LocalAppSnackbar
 import it.binario.app.ui.common.ChangesBadge
+import it.binario.app.ui.common.compactDurationLabel
 import it.binario.app.ui.common.HeaderOverlapBox
 import it.binario.app.ui.common.InfoNoticeCard
 import it.binario.app.ui.common.Pill
@@ -295,7 +296,7 @@ private fun SavedTimetableRowCard(row: TimetableRow) {
                     style = MaterialTheme.typography.titleLarge.copy(fontFeatureSettings = TabularFigures)
                 )
                 row.durationMinutes?.let {
-                    Text(TimetableShareFormatter.duration(it), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(compactDurationLabel(it), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
             if (row.arrivalDayOffset > 0) {

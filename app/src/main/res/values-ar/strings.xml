@@ -1511,4 +1511,8 @@
     <string name="snackbar_route_deleted">تم حذف المسار «%1$s»</string>
     <string name="snackbar_favourite_train_removed">تمت إزالة %1$s من قطاراتي</string>
     <string name="snackbar_timetable_deleted">تم حذف المواعيد «%1$s»</string>
+    <!-- Compact durations of the result cards (audit A3-16) -->
+    <string name="duration_hours_minutes">%1$d س %2$d د</string>
+    <string name="duration_hours">%1$d س</string>
+    <string name="duration_minutes">%1$d د</string>
 </resources>

@@ -42,6 +42,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.produceState
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalFocusManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -60,7 +61,7 @@ import androidx.compose.ui.unit.dp
 import it.binario.app.R
 import it.binario.app.UiMessage
 import it.binario.app.localized
-import java.time.format.DateTimeFormatter
+import it.binario.app.ui.common.LocalizedDates
 
 @Composable
 @OptIn(ExperimentalLayoutApi::class)
@@ -222,7 +223,7 @@ private fun AgendaEntryCard(
     val first = entry.occurrence.itinerary.segments.first()
     val last = entry.occurrence.itinerary.segments.last()
     val zone = first.departure.timeZone
-    val time = DateTimeFormatter.ofPattern("EEE d MMM, HH:mm").withZone(zone).format(entry.occurrence.scheduledAt)
+    val time = LocalizedDates.weekdayDayMonthTime(LocalConfiguration.current.locales[0]).withZone(zone).format(entry.occurrence.scheduledAt)
     val routeLabel = stringResource(
         R.string.planned_journey_route,
         first.origin.displayName,

@@ -1374,4 +1374,8 @@
     <string name="snackbar_route_deleted">ลบเส้นทาง “%1$s” แล้ว</string>
     <string name="snackbar_favourite_train_removed">นำ %1$s ออกจากรถไฟของฉันแล้ว</string>
     <string name="snackbar_timetable_deleted">ลบตารางเวลา “%1$s” แล้ว</string>
+    <!-- Compact durations of the result cards (audit A3-16) -->
+    <string name="duration_hours_minutes">%1$d ชม. %2$d นาที</string>
+    <string name="duration_hours">%1$d ชม.</string>
+    <string name="duration_minutes">%1$d นาที</string>
 </resources>

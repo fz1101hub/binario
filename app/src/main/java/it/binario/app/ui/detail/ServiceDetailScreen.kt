@@ -1,5 +1,6 @@
 package it.binario.app.ui.detail
 
+import android.content.res.Resources
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -119,50 +120,50 @@ import java.util.Locale
 
 // Train detail: header, actions, stop timeline, alarms, map and share.
 
-@Composable
-internal fun trainShareStrings(locale: Locale): TrainShareStrings = TrainShareStrings(
+/** The share templates in the app language, resolved once per language (remember them with [resources]). */
+internal fun trainShareStrings(resources: Resources, locale: Locale): TrainShareStrings = TrainShareStrings(
     locale = locale,
-    title = stringResource(R.string.share_train_title),
-    detailTitle = stringResource(R.string.share_detail_title),
-    operatorCategory = stringResource(R.string.share_operator_category),
-    route = stringResource(R.string.share_route),
-    expectedDeparture = stringResource(R.string.share_expected_departure),
-    scheduledDeparture = stringResource(R.string.share_scheduled_departure),
-    platform = stringResource(R.string.share_platform),
-    platformToConfirm = stringResource(R.string.platform_to_confirm),
-    status = stringResource(R.string.share_status),
-    stopsTitle = stringResource(R.string.service_stops_title),
-    stop = stringResource(R.string.share_stop),
-    stopPlatform = stringResource(R.string.share_stop_platform),
-    stopDelay = stringResource(R.string.share_stop_delay),
-    data = stringResource(R.string.share_data),
-    source = stringResource(R.string.share_source),
-    updated = stringResource(R.string.share_updated),
-    neverUpdated = stringResource(R.string.share_never_updated),
-    demonstrationData = stringResource(R.string.data_status_demo),
-    scheduledData = stringResource(R.string.share_scheduled_data),
-    unavailableData = stringResource(R.string.data_status_unavailable),
-    liveData = stringResource(R.string.share_live_data),
+    title = resources.getString(R.string.share_train_title),
+    detailTitle = resources.getString(R.string.share_detail_title),
+    operatorCategory = resources.getString(R.string.share_operator_category),
+    route = resources.getString(R.string.share_route),
+    expectedDeparture = resources.getString(R.string.share_expected_departure),
+    scheduledDeparture = resources.getString(R.string.share_scheduled_departure),
+    platform = resources.getString(R.string.share_platform),
+    platformToConfirm = resources.getString(R.string.platform_to_confirm),
+    status = resources.getString(R.string.share_status),
+    stopsTitle = resources.getString(R.string.service_stops_title),
+    stop = resources.getString(R.string.share_stop),
+    stopPlatform = resources.getString(R.string.share_stop_platform),
+    stopDelay = resources.getString(R.string.share_stop_delay),
+    data = resources.getString(R.string.share_data),
+    source = resources.getString(R.string.share_source),
+    updated = resources.getString(R.string.share_updated),
+    neverUpdated = resources.getString(R.string.share_never_updated),
+    demonstrationData = resources.getString(R.string.data_status_demo),
+    scheduledData = resources.getString(R.string.share_scheduled_data),
+    unavailableData = resources.getString(R.string.data_status_unavailable),
+    liveData = resources.getString(R.string.share_live_data),
     statusLabels = mapOf(
-        ServiceStatus.ON_TIME to stringResource(R.string.share_status_on_time),
-        ServiceStatus.DELAYED to stringResource(R.string.share_status_delayed),
-        ServiceStatus.CANCELLED to stringResource(R.string.share_status_cancelled)
+        ServiceStatus.ON_TIME to resources.getString(R.string.share_status_on_time),
+        ServiceStatus.DELAYED to resources.getString(R.string.share_status_delayed),
+        ServiceStatus.CANCELLED to resources.getString(R.string.share_status_cancelled)
     ),
     categoryLabels = mapOf(
-        TrainCategory.REGIONALE to stringResource(R.string.share_category_regionale),
-        TrainCategory.REGIONALE_VELOCE to stringResource(R.string.share_category_regionale_veloce),
-        TrainCategory.INTERCITY to stringResource(R.string.share_category_intercity),
-        TrainCategory.FRECCE to stringResource(R.string.share_category_frecce),
-        TrainCategory.AV_ITALO to stringResource(R.string.share_category_av_italo),
-        TrainCategory.TRENORD_REGIO to stringResource(R.string.share_category_trenord_regio),
-        TrainCategory.METROPOLITANO to stringResource(R.string.share_category_metropolitano),
-        TrainCategory.OTHER to stringResource(R.string.share_category_other)
+        TrainCategory.REGIONALE to resources.getString(R.string.share_category_regionale),
+        TrainCategory.REGIONALE_VELOCE to resources.getString(R.string.share_category_regionale_veloce),
+        TrainCategory.INTERCITY to resources.getString(R.string.share_category_intercity),
+        TrainCategory.FRECCE to resources.getString(R.string.share_category_frecce),
+        TrainCategory.AV_ITALO to resources.getString(R.string.share_category_av_italo),
+        TrainCategory.TRENORD_REGIO to resources.getString(R.string.share_category_trenord_regio),
+        TrainCategory.METROPOLITANO to resources.getString(R.string.share_category_metropolitano),
+        TrainCategory.OTHER to resources.getString(R.string.share_category_other)
     ),
     freshnessLabels = mapOf(
-        Freshness.FRESH to stringResource(R.string.share_freshness_fresh),
-        Freshness.AGING to stringResource(R.string.share_freshness_aging),
-        Freshness.STALE to stringResource(R.string.share_freshness_stale),
-        Freshness.UNAVAILABLE to stringResource(R.string.share_freshness_unavailable)
+        Freshness.FRESH to resources.getString(R.string.share_freshness_fresh),
+        Freshness.AGING to resources.getString(R.string.share_freshness_aging),
+        Freshness.STALE to resources.getString(R.string.share_freshness_stale),
+        Freshness.UNAVAILABLE to resources.getString(R.string.share_freshness_unavailable)
     )
 )
 

@@ -2,13 +2,14 @@ package it.binario.app.ui.planner
 
 import it.binario.app.ui.common.LocalizedDates
 import android.content.Context
+import android.content.res.Resources
 import android.content.Intent
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalResources
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import it.binario.app.R
+import it.binario.app.labelRes
 import it.binario.app.data.RailTime
 import it.binario.app.data.TrainService
 import it.binario.app.journeys.JourneyOptionRow
@@ -16,7 +17,6 @@ import it.binario.app.timetables.ShareText
 import it.binario.app.timetables.TimetableRow
 import it.binario.app.timetables.TimetableShareStrings
 import it.binario.app.ui.common.JourneyTimes
-import it.binario.app.ui.common.localizedLabel
 import it.binario.app.ui.common.presentedAsDemonstration
 import it.binario.app.ui.journeys.journeySourceLabel
 import it.binario.app.ui.journeys.journeyTrainsLabel
@@ -53,7 +53,8 @@ internal fun timetableShareStrings(): TimetableShareStrings {
         stopDeparture = stringResource(R.string.share_stop_departure),
         stopExpected = stringResource(R.string.share_stop_expected),
         stopPlatform = stringResource(R.string.share_stop_platform_short),
-        stopPlatformChanged = stringResource(R.string.share_stop_platform_changed)
+        stopPlatformChanged = stringResource(R.string.share_stop_platform_changed),
+        duration = { minutes -> JourneyTimes.durationLabel(minutes, resources) }
     )
 }
 
@@ -68,35 +69,37 @@ internal fun searchDateLabel(date: LocalDate, from: LocalTime): String {
     )
 }
 
-/** "2 nov 2026, 17:32": when a timetable was saved. */
+/** "2 nov 2026, 17:32" ("2026年11月2日 17:32"): when a timetable was saved. */
 internal fun savedAtLabel(epochMillis: Long, locale: Locale): String =
-    DateTimeFormatter.ofPattern("d MMM yyyy, HH:mm", locale)
+    LocalizedDates.dateTime(locale)
         .withZone(RailTime.defaultZone)
         .format(Instant.ofEpochMilli(epochMillis))
 
-/** The rows of [entries] as they are listed; demonstration data keeps the timetable only. */
-@Composable
+/**
+ * The rows of [entries] as they are listed; demonstration data keeps the timetable only. Built from [resources] only
+ * when the list is saved or shared, not at every recomposition of the results.
+ */
 internal fun timetableRows(
     entries: List<ResultEntry>,
     isDemonstration: Boolean,
     provider: String,
     fetchedAt: Long,
-    journeysFetchedAt: Long
+    journeysFetchedAt: Long,
+    resources: Resources
 ): List<TimetableRow> = entries.map { entry ->
     when (entry) {
-        is ResultEntry.Train -> trainTimetableRow(entry.service, isDemonstration, provider, fetchedAt)
-        is ResultEntry.Journey -> journeyTimetableRow(entry.row, journeysFetchedAt)
+        is ResultEntry.Train -> trainTimetableRow(entry.service, isDemonstration, provider, fetchedAt, resources)
+        is ResultEntry.Journey -> journeyTimetableRow(entry.row, journeysFetchedAt, resources)
     }
 }
 
-@Composable
-internal fun trainTimetableRow(service: TrainService, isDemonstration: Boolean, provider: String, fetchedAt: Long): TimetableRow {
+internal fun trainTimetableRow(service: TrainService, isDemonstration: Boolean, provider: String, fetchedAt: Long, resources: Resources): TimetableRow {
     val shown = if (isDemonstration) service.presentedAsDemonstration() else service
     return TimetableRow(
         departure = shown.scheduledDeparture,
         arrival = JourneyTimes.arrival(shown),
         durationMinutes = JourneyTimes.durationMinutes(shown),
-        trains = stringResource(R.string.service_category_number, shown.trainCategory.localizedLabel(), shown.number),
+        trains = resources.getString(R.string.service_category_number, resources.getString(shown.trainCategory.labelRes()), shown.number),
         changes = shown.transferCount,
         platform = shown.platform,
         scheduledPlatform = shown.scheduledPlatform?.takeIf { shown.platform != null },
@@ -106,19 +109,18 @@ internal fun trainTimetableRow(service: TrainService, isDemonstration: Boolean, 
     )
 }
 
-@Composable
-internal fun journeyTimetableRow(row: JourneyOptionRow, fetchedAt: Long): TimetableRow = TimetableRow(
+internal fun journeyTimetableRow(row: JourneyOptionRow, fetchedAt: Long, resources: Resources): TimetableRow = TimetableRow(
     departure = row.departureTime,
     arrival = row.arrivalTime,
     arrivalDayOffset = row.arrivalDayOffset,
     durationMinutes = row.durationMinutes.toInt(),
-    trains = journeyTrainsLabel(row),
+    trains = journeyTrainsLabel(row, resources),
     changes = row.changes,
     transfers = row.transfers.map { transfer ->
         val wait = transfer.waitMinutes.coerceAtLeast(0).toInt()
-        stringResource(R.string.journey_transfer_at, transfer.stationLabel) + " · " + pluralStringResource(R.plurals.journey_transfer_wait, wait, wait)
+        resources.getString(R.string.journey_transfer_at, transfer.stationLabel) + " · " + resources.getQuantityString(R.plurals.journey_transfer_wait, wait, wait)
     },
-    source = journeySourceLabel(row),
+    source = journeySourceLabel(row, resources),
     fetchedAtEpochMillis = fetchedAt,
     scheduledOnly = row.scheduledOnly
 )
