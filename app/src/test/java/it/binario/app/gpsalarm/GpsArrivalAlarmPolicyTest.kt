@@ -3,6 +3,7 @@ package it.binario.app.gpsalarm
 import it.binario.app.data.RailOperator
 import it.binario.app.data.TrainCategory
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -245,4 +246,27 @@ class GpsArrivalAlarmPolicyTest {
         timeAlarmTriggerEpochMillis = expires - GpsArrivalAlarmPolicy.AFTER_ARRIVAL_MILLIS - 300_000L,
         expiresAtEpochMillis = expires
     )
+
+    @Test
+    fun `far from the stop or before the departure the alarm listens with less power, near it with high accuracy`() {
+        val now = 1_800_000_000_000L
+        val arrival = now + 3 * 60 * 60_000L
+        val departure = now + 30 * 60_000L
+
+        // Before the train leaves its first stop: low power whatever the distance.
+        assertTrue(GpsArrivalAlarmPolicy.lowPower(true, false, 5_000.0, now, departure, arrival))
+        assertTrue(GpsArrivalAlarmPolicy.lowPower(true, false, null, now, departure, arrival))
+        // On the way: low power only beyond 30 km from the boundary.
+        assertTrue(GpsArrivalAlarmPolicy.lowPower(true, false, 45_000.0, departure + 1, null, arrival))
+        assertFalse(GpsArrivalAlarmPolicy.lowPower(true, false, 25_000.0, departure + 1, departure, arrival))
+        assertFalse(GpsArrivalAlarmPolicy.lowPower(true, false, null, departure + 1, departure, arrival))
+        // Never in the last half hour before the arrival, with approximate access only, or while estimating a delay.
+        assertFalse(GpsArrivalAlarmPolicy.lowPower(true, false, 45_000.0, arrival - 20 * 60_000L, departure, arrival))
+        assertFalse(GpsArrivalAlarmPolicy.lowPower(false, false, 45_000.0, now, departure, arrival))
+        assertFalse(GpsArrivalAlarmPolicy.lowPower(true, true, 45_000.0, now, departure, arrival))
+        // The cadence rule is the same, with a longer cap only when far.
+        assertEquals(120_000L, GpsArrivalAlarmPolicy.nextIntervalMillis(45_000.0))
+        assertEquals(270_000L, GpsArrivalAlarmPolicy.nextIntervalMillis(45_000.0, GpsArrivalAlarmPolicy.LOW_POWER_MAX_INTERVAL_MILLIS))
+        assertEquals(GpsArrivalAlarmPolicy.nextIntervalMillis(5_000.0), GpsArrivalAlarmPolicy.nextIntervalMillis(5_000.0, GpsArrivalAlarmPolicy.LOW_POWER_MAX_INTERVAL_MILLIS))
+    }
 }
