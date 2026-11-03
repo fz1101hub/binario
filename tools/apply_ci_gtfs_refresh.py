@@ -10,7 +10,8 @@ not reachable from the development container).  This helper:
 2. merges each printed directory into ``app/src/main/assets/gtfs/``, ``gtfs-transit/`` or
    ``app/src/personal/assets/gtfs-personal/``: a pack whose canonical content (``contentSha256``) is unchanged keeps
    its published bytes and entry, a pack missing from the print (partial build) stays as it is, and a pack that would
-   shrink by more than half (trips or stop times) or end earlier than before is refused unless ``--accept ID``;
+   shrink by more than half (trips or stop times), end earlier than before, or claim a lastServiceDate more than a
+   month after its last full-service day (a trickle of trips kept for years) is refused unless ``--accept ID``;
 3. carries the reviewed Trenitalia/Italo pins (``core-refresh.json``) into the iOS source policy and
    ``RailSourceCatalog.kt``, and aligns ``lastServiceDate`` in ``EmbeddedGtfsPacks.kt`` and ``TransitGtfsPacks.kt``;
 4. runs ``build_gtfs_packs.py --check`` (integrity and the 30-day release gate) for each directory,
@@ -38,7 +39,7 @@ import sys
 import tempfile
 import zipfile
 from dataclasses import dataclass, field
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 from typing import Any, Callable, Iterable, Mapping, Sequence
 
@@ -72,13 +73,16 @@ KOTLIN_PACK = re.compile(
     r'(SourceId\("(?P<id>[^"]+)"\),\s*"(?P<asset>[^"]+)",\s*LocalDate\.of\()(?P<y>\d+), (?P<m>\d+), (?P<d>\d+)(\))'
 )
 SHRINK_LIMIT = 0.5
+# Coverage is "full" on a day running at least this share of the busiest day's trips; a pack whose lastServiceDate lies
+# more than THIN_TAIL_DAYS after its last full day (a feed keeping one trip a day for years) overstates its validity.
+FULL_SERVICE_SHARE = 0.25
+THIN_TAIL_DAYS = 31
 # Entry fields naming where the archive comes from: a change is a new pack even when the timetable is identical.
 SOURCE_FIELDS = ("sourceUrl", "accessMode", "upstream")
 # Reviewed registry text (tools/transit_packs.json) carried into the manifest even when the timetable is identical.
 DESCRIPTIVE_FIELDS = ("attribution", "licence", "licenceEvidence", "notes", "kind", "distribution", "minValidDays")
 
 STATUS_NOTES = {
-    "changed": "aggiornato dal job",
     "content-unchanged": "archivio nuovo, orario filtrato identico",
     "unchanged": "archivio identico",
     "manual": "manuale (ÖBB: caricare lo ZIP e usare --source-archive)",
@@ -226,8 +230,76 @@ def zip_metadata(data: bytes) -> dict[str, Any]:
         return json.loads(archive.read(entry).decode("utf-8"))
 
 
-def suspicious(old_counts: Mapping[str, Any], new_counts: Mapping[str, Any], old_end: object, new_end: object) -> list[str]:
-    """Why a rebuilt pack needs a human look: it lost more than half of its trips or stop times, or ends earlier.
+def daily_trips(data: bytes) -> dict[date, int]:
+    """Trips running on each service day of a pack (calendar.txt by weekday, then calendar_dates.txt exceptions)."""
+    with zipfile.ZipFile(io.BytesIO(data)) as archive:
+        calendar = builder.read_table(archive, "calendar.txt") or builder.empty_calendar()
+        exceptions = builder.read_table(archive, "calendar_dates.txt") or builder.empty_calendar_dates()
+        trips = builder.read_table(archive, "trips.txt", required=True)
+    assert trips is not None
+    per_service: dict[str, int] = {}
+    for trip in trips.rows:
+        per_service[trip.get("service_id", "")] = per_service.get(trip.get("service_id", ""), 0) + 1
+    patterns: dict[str, tuple[date, date, tuple[bool, ...]]] = {}
+    grouped: dict[tuple[date, date, tuple[bool, ...]], int] = {}
+    for row in calendar.rows:
+        service = row.get("service_id", "")
+        pattern = (
+            builder.parse_gtfs_date(row.get("start_date", ""), service),
+            builder.parse_gtfs_date(row.get("end_date", ""), service),
+            tuple(row.get(column, "0").strip() == "1" for column in builder.WEEKDAY_COLUMNS),
+        )
+        patterns[service] = pattern
+        grouped[pattern] = grouped.get(pattern, 0) + per_service.get(service, 0)
+    days: dict[date, int] = {}
+    for (start, end, weekdays), count in grouped.items():
+        day = start
+        while count and day <= end:
+            if weekdays[day.weekday()]:
+                days[day] = days.get(day, 0) + count
+            day += timedelta(days=1)
+    for row in exceptions.rows:
+        service = row.get("service_id", "")
+        count = per_service.get(service, 0)
+        if not count:
+            continue
+        day = builder.parse_gtfs_date(row.get("date", ""), service)
+        pattern = patterns.get(service)
+        scheduled = pattern is not None and pattern[0] <= day <= pattern[1] and pattern[2][day.weekday()]
+        if row.get("exception_type", "").strip() == "1" and not scheduled:
+            days[day] = days.get(day, 0) + count
+        elif row.get("exception_type", "").strip() == "2" and scheduled:
+            days[day] = days.get(day, 0) - count
+    return {day: count for day, count in days.items() if count > 0}
+
+
+def thin_tail(data: bytes, last_service_date: object) -> str | None:
+    """A lastServiceDate kept alive by a trickle of trips long after the timetable's last full day, or None."""
+    try:
+        last = date.fromisoformat(str(last_service_date))
+    except ValueError:
+        return None
+    days = {day: count for day, count in daily_trips(data).items() if day <= last}
+    if not days:
+        return None
+    peak = max(days.values())
+    full_end = max(day for day, count in days.items() if count >= peak * FULL_SERVICE_SHARE)
+    if (last - full_end).days <= THIN_TAIL_DAYS:
+        return None
+    tail = max(count for day, count in days.items() if day > full_end)
+    return (f"copertura gonfiata: orario completo fino al {full_end.isoformat()} (picco {peak} corse al giorno), "
+            f"poi non più di {tail} al giorno fino al {last.isoformat()}")
+
+
+def suspicious(
+    old_counts: Mapping[str, Any],
+    new_counts: Mapping[str, Any],
+    old_end: object,
+    new_end: object,
+    new_data: bytes | None = None,
+) -> list[str]:
+    """Why a rebuilt pack needs a human look: it lost more than half of its trips or stop times, ends earlier, or its
+    lastServiceDate rests on a thin tail of trips (``thin_tail``).
 
     Counts come from each ZIP's filter manifest; the dates from the manifests (the ZIP's own lastServiceDate may
     predate a later, stricter derivation that ``--check`` applies to the manifest)."""
@@ -238,6 +310,9 @@ def suspicious(old_counts: Mapping[str, Any], new_counts: Mapping[str, Any], old
             reasons.append(f"{key} {before} -> {after} (meno della metà)")
     if str(new_end or "") < str(old_end or ""):
         reasons.append(f"termina prima: {old_end} -> {new_end}")
+    tail = thin_tail(new_data, new_end) if new_data is not None else None
+    if tail:
+        reasons.append(tail)
     return reasons
 
 
@@ -320,7 +395,9 @@ def merge_directory(
         new_meta = zip_metadata(data)
         old_meta = zip_metadata((target / asset).read_bytes())
         row.new_trips = new_meta.get("counts", {}).get("trips")
-        reasons = suspicious(old_meta.get("counts", {}), new_meta.get("counts", {}), old.get("lastServiceDate"), pack.get("lastServiceDate"))
+        reasons = suspicious(
+            old_meta.get("counts", {}), new_meta.get("counts", {}), old.get("lastServiceDate"), pack.get("lastServiceDate"), data
+        )
         if reasons and source_id not in accept:
             row.failure = f"sospetto, non applicato (rivedere e rilanciare con --accept {source_id}): " + "; ".join(reasons)
             row.new_trips = row.old_trips
@@ -452,27 +529,28 @@ def run_checks(root: Path, *, ios: bool, runner: Callable[..., Any] = subprocess
             commands.append([python, "tools/build_gtfs_packs.py", "--check", "--integrity-only", "--input-dir", str(relative)])
             commands.append([python, "tools/build_gtfs_packs.py", "--check", "--min-valid-days", "30", "--input-dir", str(relative)])
     commands.append([python, "tools/verify_embedded_assets.py"])
-    rebuild = Path(tempfile.mkdtemp(prefix="binario-ios-rebuild-"))
+    # The second build sits next to the canonical index, as in Apple Watch CI: its metadata records the input paths
+    # relative to the output, so a rebuild elsewhere could never compare equal.
+    rebuild_zlib = Path("ios/Resources/.apply-rebuild.sqlite.zlib")
+    rebuild_metadata = Path("ios/Resources/.apply-rebuild.metadata.json")
     if ios:
         commands += [
             [python, "tools/build_ios_gtfs_schedule.py"],
             [python, "tools/verify_ios_gtfs_schedule.py"],
-            [python, "tools/build_ios_gtfs_schedule.py", "--output", str(rebuild / "rebuild.sqlite.zlib"),
-             "--metadata", str(rebuild / "rebuild.metadata.json")],
-            [python, "tools/verify_ios_gtfs_rebuild.py", "--rebuild", str(rebuild / "rebuild.sqlite.zlib"),
-             "--rebuild-metadata", str(rebuild / "rebuild.metadata.json")],
+            [python, "tools/build_ios_gtfs_schedule.py", "--output", str(rebuild_zlib), "--metadata", str(rebuild_metadata)],
+            [python, "tools/verify_ios_gtfs_rebuild.py", "--rebuild", str(rebuild_zlib), "--rebuild-metadata", str(rebuild_metadata)],
         ]
     results = []
     try:
         for command in commands:
             completed = runner(command, cwd=root, capture_output=True, text=True, check=False)
             output = ((completed.stdout or "") + (completed.stderr or "")).strip()
-            label = " ".join(part if not part.startswith(str(rebuild)) else Path(part).name for part in command[1:])
-            results.append((label, completed.returncode == 0, output[-600:]))
+            results.append((" ".join(command[1:]), completed.returncode == 0, output[-600:]))
             if ios and command[1] == "tools/build_ios_gtfs_schedule.py" and completed.returncode != 0:
                 break
     finally:
-        shutil.rmtree(rebuild, ignore_errors=True)
+        for path in (rebuild_zlib, rebuild_metadata):
+            (root / path).unlink(missing_ok=True)
     return results
 
 

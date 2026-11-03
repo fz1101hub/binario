@@ -225,6 +225,50 @@ class ApplyTest(unittest.TestCase):
         self.assertRegex(output, r"pinned-gtfs .*non ricostruito in questa run")
         builder.verify_assets(self.assets, as_of=None, min_valid_days=None)
 
+    def test_a_coverage_kept_alive_by_a_trickle_of_trips_is_refused(self) -> None:
+        """A feed that keeps one trip a day for years after its timetable ends (EAV, November 2026)."""
+        source = self.temp / "trickle-source.zip"
+        gtfs_zip(self.temp / "base.zip", end="20271231")
+        with zipfile.ZipFile(self.temp / "base.zip") as base, zipfile.ZipFile(source, "w") as output:
+            for name in base.namelist():
+                data = base.read(name).decode("utf-8")
+                if name == "trips.txt":
+                    data += "R1,TAIL,tail,999\n"
+                elif name == "stop_times.txt":
+                    data += "tail,12:00:00,12:00:00,S1,1\ntail,13:00:00,13:00:00,S2,2\n"
+                elif name == "calendar.txt":
+                    data += "TAIL,1,1,1,1,1,1,1,20260101,20311231\n"
+                output.writestr(name, data)
+        trickle = builder.filter_archive(source, self.temp / "trickle.zip", "plain-gtfs")
+        self.assertEqual("2031-12-31", trickle.last_service_date.isoformat())
+        reason = apply.thin_tail((self.temp / "trickle.zip").read_bytes(), "2031-12-31")
+        self.assertIn("orario completo fino al 2027-12-31 (picco 5 corse al giorno), poi non più di 1 al giorno fino al 2031-12-31", reason)
+        self.assertIsNone(apply.thin_tail((self.assets / "plain-gtfs.zip").read_bytes(), "2027-12-31"))
+        # Every shipped pack passes the guard.
+        for directory in apply.DESTINATIONS.values():
+            manifest = json.loads((ROOT / directory / "manifest.json").read_text(encoding="utf-8"))
+            for pack in manifest["packs"]:
+                data = (ROOT / directory / builder.safe_asset_name(pack["asset"])).read_bytes()
+                with self.subTest(pack=pack["sourceId"]):
+                    self.assertIsNone(apply.thin_tail(data, pack["lastServiceDate"]))
+
+    def test_checks_rebuild_the_ios_index_next_to_the_canonical_one(self) -> None:
+        commands: list[list[str]] = []
+
+        def runner(command: list[str], **_: object) -> Any:
+            commands.append(command)
+            return type("Completed", (), {"returncode": 0, "stdout": "", "stderr": ""})()
+
+        results = apply.run_checks(self.root, ios=True, runner=runner)
+        self.assertTrue(all(ok for _, ok, _ in results))
+        scripts = [command[1] for command in commands]
+        self.assertEqual(2, scripts.count("tools/build_gtfs_packs.py"))  # only gtfs/ exists in this copy
+        self.assertEqual(["tools/build_ios_gtfs_schedule.py", "tools/verify_ios_gtfs_schedule.py",
+                          "tools/build_ios_gtfs_schedule.py", "tools/verify_ios_gtfs_rebuild.py"], scripts[-4:])
+        self.assertIn("ios/Resources/.apply-rebuild.sqlite.zlib", commands[-1])
+        apply.run_checks(self.root, ios=False, runner=runner)
+        self.assertNotIn("tools/build_ios_gtfs_schedule.py", [command[1] for command in commands[len(scripts):]])
+
     def test_the_shipped_kotlin_registries_match_the_manifests(self) -> None:
         self.assertEqual({}, apply.planned_edits(ROOT, [], []))
 
