@@ -151,7 +151,7 @@ describe("sessioni dashboard", () => {
       alexaOAuthClientId: "client",
       alexaOAuthClientSecret: "secret",
       voiceTokenPepper: "pepper",
-      alexaOAuthRedirectUris: ["https://layla.amazon.com/api/skill/link/test"],
+      alexaOAuthRedirectUris: ["https://layla.amazon.com/api/skill/link/test"] as string[],
     } as const;
     const dashboard = { oAuthPortalUrl: "https://portal.example" } as const;
     expect(
@@ -218,7 +218,7 @@ describe("sessioni dashboard", () => {
       alexaOAuthClientId: "",
       alexaOAuthClientSecret: "",
       voiceTokenPepper: "",
-      alexaOAuthRedirectUris: [],
+      alexaOAuthRedirectUris: [] as string[],
     } as const;
     expect(
       environmentProblems({

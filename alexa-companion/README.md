@@ -37,17 +37,22 @@ pnpm run build
 
 Il comando di build verifica anche che il bundle di produzione non contenga runtime o token di anteprima Manus.
 
+`pnpm run check` controlla i tipi sia del codice sia dei test (`tsconfig.test.json`): Vitest da solo non li controlla.
+
+Il database è **MariaDB** (verificato in CI) o **TiDB**; MySQL 8 non è supportato dalle migrazioni e `pnpm db:migrate` lo rifiuta prima di iniziare (vedi [`docs/DATABASE_MIGRATIONS.md`](docs/DATABASE_MIGRATIONS.md)).
+
 La suite standard non richiede un database locale. La verifica reale delle migrazioni, eseguita dal workflow CI con MariaDB, è opt-in anche in locale:
 
 ```bash
 RUN_DB_MIGRATION_TESTS=1 DATABASE_URL=... pnpm run test:db-migrations
 ```
 
-Il test crea database effimeri, verifica una catena da database vuoto e un upgrade da `0001` a `0002`, poi li elimina.
+Il test crea database effimeri, applica la catena 0000→0013 a un database vuoto, adotta un database storico 0000→0011 e la breve catena Alexa 0000→0003, verifica revoca e rotazione dei token OAuth, poi li elimina.
 
 ## Documentazione
 
 - [`docs/ALEXA_SETUP.md`](docs/ALEXA_SETUP.md): configurazione e pubblicazione Alexa.
+- [`docs/DATABASE_MIGRATIONS.md`](docs/DATABASE_MIGRATIONS.md): motori supportati e catena delle migrazioni.
 - [`docs/ECHO_SHOW_APL_UI_SPEC.md`](docs/ECHO_SHOW_APL_UI_SPEC.md): schermate Echo Show (APL), implementate ma attive solo dopo l’abilitazione dell’interfaccia APL da parte del titolare (vedi `ALEXA_SETUP.md`).
 - [`docs/ANDROID_COMPANION_CONTRACT.md`](docs/ANDROID_COMPANION_CONTRACT.md): relazione tra app principale e companion.
 - [`docs/REMOTE_PROFILE_SYNC.md`](docs/REMOTE_PROFILE_SYNC.md): contratto del profilo vocale remoto.

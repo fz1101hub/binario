@@ -35,6 +35,9 @@ describe("contratto profilo remoto", () => {
     const dto = toRemoteProfileDto({
       ...validDraft,
       monitoredTrainNumbersJson: JSON.stringify(["9512"]),
+      wearSnapshotSharingEnabled: true,
+      voiceProfileSyncRequested: false,
+      appleWatchSetupRequested: false,
       revision: 4,
       lastMutationId: validDraft.clientMutationId,
       updatedAt: new Date("2026-08-13T19:00:00Z"),
