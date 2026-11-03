@@ -7,6 +7,7 @@ import { createContext } from "./context";
 import { serveStatic } from "./static";
 import { registerAlexaRoutes } from "../voice/alexa";
 import { registerAndroidDeepLinks } from "../voice/deepLinks";
+import { registerLegalPages } from "../legal/pages";
 import { securityHeaders } from "./securityHeaders";
 import { perIpFailureLimiter, perIpLimiter } from "./rateLimit";
 import { ENV } from "./env";
@@ -108,6 +109,8 @@ export async function createApp(
   // before the generic JSON parser used by tRPC and the dashboard.
   registerAlexaRoutes(app);
   registerAndroidDeepLinks(app);
+  // Linked from skill.json (privacyPolicyUrl, termsOfUseUrl): served by the server itself.
+  registerLegalPages(app);
   app.use(express.json({ limit: BODY_LIMIT }));
   app.use(express.urlencoded({ limit: BODY_LIMIT, extended: true }));
   registerOAuthRoutes(app);

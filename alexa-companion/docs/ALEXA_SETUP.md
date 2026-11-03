@@ -68,7 +68,23 @@ Da verificare dal titolare con il simulatore della console e su hardware reale p
 
 Il companion conserva tratte e metadati minimi del collegamento; token, authorization code e identificativi Alexa sono memorizzati soltanto come hash HMAC server-side. Non vengono registrati nei log origine, destinazione, nome della tratta, numero treno, token o richiesta vocale. I codici OAuth sono monouso e scadono dopo cinque minuti; gli access token scadono dopo un’ora. I refresh token ruotano a ogni uso, durano un anno dall’ultima rotazione e restano revocabili server-side (unlink, nuovo collegamento, cancellazione account). Se Amazon ripresenta entro 60 secondi un refresh token appena ruotato (risposta persa, due refresh concorrenti) riceve un nuovo token della stessa famiglia senza revoche; il riuso fuori da questa finestra revoca l’intera famiglia e invalida la generazione delle credenziali vocali. I token emessi a un retry e mai usati scadono alla rotazione successiva. La sessione della dashboard, che autorizza anche il consenso Alexa, è un cookie `__Host-` HttpOnly che dura 24 ore dall'ultimo rinnovo (al caricamento della dashboard, al più una volta l'ora) e mai più di sette giorni dal login; i cookie emessi con la precedente durata di 30 giorni non sono più accettati e richiedono un nuovo accesso.
 
-Prima della pubblicazione, predisporre pagine HTTPS di privacy policy e termini, indicare con chiarezza quali informazioni usa la skill e fare una beta privata. Amazon richiede tali pagine e account linking conforme a OAuth 2.0 per le skill con dati personalizzati.[2]
+Amazon richiede pagine HTTPS di privacy policy e termini e account linking conforme a OAuth 2.0 per le skill con dati personalizzati.[2] Il server pubblica entrambe le pagine, statiche e senza database, ai percorsi che `skill-package/skill.json` già dichiara:
+
+- `/privacy` riprende la sezione «Alexa Companion» di `PRIVACY.md` con i valori correnti del servizio (refresh token di un anno, sessione di 24 ore, finestra di 60 secondi), più un riassunto in inglese; un riquadro segnala ciò che manca: identità e recapito del titolare, conservazione di log e backup. Il test `server/skillManifestAssets.test.ts` verifica che la pagina segua le sezioni di `PRIVACY.md`: chi modifica l'una aggiorna anche l'altra (`server/legal/pages.ts`).
+- `/terms` è una **bozza da far rivedere al titolare**, dichiarata tale nella pagina, con le parti legali fra parentesi quadre.
+- Le icone `alexa/icon-108.png` e `alexa/icon-512.png` stanno in `client/public/alexa/` e Vite le pubblica in `dist/public/alexa/` (controllato da `pnpm run build`). La 512 è identica a `store/play/icon-512.png`; la 108 è ricavata dal marchio `companion-expo/assets/brand/binario-companion-icon.png` con `convert … -filter Lanczos -resize 108x108 -strip PNG32:icon-108.png` (ImageMagick 6.9).
+- Un percorso sconosciuto risponde 404 (la dashboard mostra comunque la sua pagina «non trovata»); un percorso `/api` sconosciuto risponde `404 {"error":"not_found"}`.
+
+### Account del revisore Amazon — azione del titolare
+
+Le skill con account linking vengono certificate solo se il revisore può collegare un account funzionante. Le credenziali **non entrano mai nel repository**: `skill.json` contiene il segnaposto `REPLACE_WITH_REVIEWER_ACCOUNT_AT_SUBMISSION` nelle `testingInstructions`, da sostituire soltanto nel modulo di invio della console.
+
+1. Creare sul portale di login un account dedicato al revisore, con email e password (non un accesso solo Google/Apple, che il revisore non può usare), e annotarne le credenziali nel gestore di segreti del titolare.
+2. Accedere alla dashboard con quell'account e salvare due o tre tratte d'esempio, una fissata (per esempio «Casa-Lavoro» Roma Termini → Tivoli e «Mare» Roma Ostiense → Ostia). Non collegare Alexa: lo fa il revisore.
+3. Al momento dell'invio, nella console *Distribution → Availability/Testing instructions*, sostituire il segnaposto con email e password e verificare che il resto delle istruzioni corrisponda al comportamento attuale.
+4. Dopo la certificazione cambiare la password o eliminare l'account dalla dashboard (**Elimina account e dati**); ripetere la procedura a ogni nuova certificazione.
+
+Prima della pubblicazione restano da fare anche la beta privata e la verifica dell'invocazione e delle frasi d'esempio con il simulatore della console.
 
 ## Riferimenti
 
