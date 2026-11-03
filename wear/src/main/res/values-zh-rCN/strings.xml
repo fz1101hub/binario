@@ -1,0 +1,29 @@
+<resources>
+    <string name="app_name">Binario</string>
+    <string name="tile_label">Binario：下一趟行程</string>
+    <string name="tile_description">显示手机上的 Binario 应用共享的下一趟行程。</string>
+    <string name="complication_label">Binario</string>
+    <string name="empty_snapshot_message">请在手机上的 Binario 中开启“Android 智能手表”（Binario 集成），然后刷新路线。</string>
+    <string name="empty_snapshot_phone_app_missing">请在已配对的手机上安装 Binario：手表只能从手机应用接收路线。</string>
+    <string name="refresh_phone">刷新手机</string>
+    <string name="refresh_on_phone">在手机上刷新</string>
+    <string name="refresh_request_sent">已向手机发送请求</string>
+    <string name="refresh_phone_unreachable">无法连接手机</string>
+    <string name="tile_no_synced_route">没有已同步的路线</string>
+    <string name="tile_snapshot_unavailable">快照不可用</string>
+    <string name="tile_service_details">%1$s · %2$s · %3$s</string>
+    <string name="status_programmed">计划时刻</string>
+    <string name="status_received_from_phone">已从手机接收状态</string>
+    <string name="status_updating">数据更新中</string>
+    <string name="status_local_snapshot">最近的本地快照</string>
+    <string name="status_live_unavailable">暂无实时数据</string>
+    <string name="accessibility_data_status">数据状态：%1$s</string>
+    <string name="accessibility_scheduled_departure">计划出发 %1$s</string>
+    <string name="accessibility_expected_departure">预计出发 %1$s</string>
+    <string name="accessibility_train">车次 %1$s</string>
+    <string name="accessibility_platform">站台 %1$s</string>
+    <string name="service_time_number">%1$s · %2$s</string>
+    <string name="service_destination_status">%1$s · %2$s</string>
+    <string name="service_operator_category">%1$s · %2$s</string>
+    <string name="service_operator_category_platform">%1$s · %2$s · 站台 %3$s</string>
+</resources>

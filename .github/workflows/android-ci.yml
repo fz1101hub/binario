@@ -1,0 +1,380 @@
+name: Android CI
+
+on:
+  pull_request:
+    paths:
+      - "app/**"
+      - "wear/**"
+      - "contracts/wear-snapshot/**"
+      - "gradle/**"
+      - "gradlew"
+      - "gradlew.bat"
+      - "build.gradle.kts"
+      - "settings.gradle.kts"
+      - "gradle.properties"
+      - "PRIVACY.md"
+      - "docs/store/PLAY_DATA_SAFETY.md"
+      - "README.md"
+      - "CHANGELOG.md"
+      - "docs/PIANO_STABILIZZAZIONE_v0.20.4.md"
+      - "tools/verify_android_app_bundles.py"
+      - "tools/verify_android_release_config.py"
+      - "tools/verify_embedded_assets.py"
+      - "tools/build_gtfs_packs.py"
+      - "tools/verify_gradle_dependency_metadata.py"
+      - "tools/verify_privacy_policy.py"
+      - "tests/test_wear_compose_gradle_dependency_suppressions.py"
+      - "tools/run_android_ui_tests.sh"
+      - ".github/ci-inputs-lock.json"
+      - ".github/workflows/android-ci.yml"
+  push:
+    branches:
+      - main
+      - "stabilization/**"
+    paths:
+      - "app/**"
+      - "wear/**"
+      - "contracts/wear-snapshot/**"
+      - "gradle/**"
+      - "gradlew"
+      - "gradlew.bat"
+      - "build.gradle.kts"
+      - "settings.gradle.kts"
+      - "gradle.properties"
+      - "PRIVACY.md"
+      - "docs/store/PLAY_DATA_SAFETY.md"
+      - "README.md"
+      - "CHANGELOG.md"
+      - "docs/PIANO_STABILIZZAZIONE_v0.20.4.md"
+      - "tools/verify_android_app_bundles.py"
+      - "tools/verify_android_release_config.py"
+      - "tools/verify_embedded_assets.py"
+      - "tools/build_gtfs_packs.py"
+      - "tools/verify_gradle_dependency_metadata.py"
+      - "tools/verify_privacy_policy.py"
+      - "tests/test_wear_compose_gradle_dependency_suppressions.py"
+      - "tools/run_android_ui_tests.sh"
+      - ".github/ci-inputs-lock.json"
+      - ".github/workflows/android-ci.yml"
+  workflow_dispatch:
+    inputs:
+      verify_reproducibility:
+        description: "Esegui due full rebuild e confronta gli AAB unsigned"
+        required: false
+        type: boolean
+        default: false
+      sign_release:
+        description: "Firma gli AAB con l'upload key dai secret e pubblica gli artifact firmati"
+        required: false
+        type: boolean
+        default: false
+      verify_live_route:
+        description: "Verifica ViaggiaTreno Appiano → Roma Ostiense con HTTPS reale su Android"
+        required: false
+        type: boolean
+        default: false
+      verify_rfi_route:
+        description: "Verifica Appiano → Roma Ostiense con le fonti reali sull’emulatore"
+        required: false
+        type: boolean
+        default: false
+      capture_design_screens:
+        description: "Cattura le schermate di design sull’emulatore e stampale in base64 nel log (confronto con il render approvato)"
+        required: false
+        type: boolean
+        default: false
+      refresh_dependency_metadata:
+        description: "Rigenera i checksum SHA-256 di gradle/verification-metadata.xml e stampa il diff da revisionare (non esegue il gate)"
+        required: false
+        type: boolean
+        default: false
+
+concurrency:
+  group: android-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  android:
+    if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.refresh_dependency_metadata) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Free runner disk space
+        # The API 35 emulator needs about 7.4 GB for its userdata partition and the Expo release bundle
+        # several more; preinstalled toolchains this job never uses (.NET, Haskell, Boost, CodeQL) take ~10 GB.
+        run: |
+          df -h /
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/.ghcup /usr/local/share/boost /opt/hostedtoolcache/CodeQL
+          df -h /
+
+      - name: Validate Gradle wrappers
+        uses: gradle/actions/wrapper-validation@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
+        with:
+          min-wrapper-count: "2"
+
+      - name: Java 17
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version: "17.0.20+101"
+          cache: gradle
+
+      - name: Python 3.12.10
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12.10"
+
+      - name: Enable Gradle wrapper
+        run: chmod +x gradlew
+
+      - name: Verify embedded asset integrity
+        run: python3 tools/verify_embedded_assets.py --integrity-only
+
+      - name: Verify privacy-policy disclosures
+        run: python3 tools/verify_privacy_policy.py
+
+      - name: Verify release-engineering configuration
+        run: |
+          python3 tools/verify_android_release_config.py
+          python3 tools/verify_gradle_dependency_metadata.py
+          python3 -m unittest tests.test_wear_compose_gradle_dependency_suppressions
+
+      - name: Android UI and notification tests on API 35
+        timeout-minutes: 25
+        env:
+          BINARIO_VERIFY_LIVE_ROUTE: ${{ github.event_name == 'workflow_dispatch' && inputs.verify_live_route || false }}
+          BINARIO_VERIFY_RFI_ROUTE: ${{ github.event_name == 'workflow_dispatch' && inputs.verify_rfi_route || false }}
+          BINARIO_CAPTURE_SCREENS: ${{ github.event_name == 'workflow_dispatch' && inputs.capture_design_screens || false }}
+        run: bash tools/run_android_ui_tests.sh
+
+      - name: Unit tests, lint, debug and unsigned release builds
+        run: >-
+          ./gradlew --no-daemon --dependency-verification=strict
+          :app:testDebugUnitTest :wear:testDebugUnitTest
+          :app:lintDebug :wear:lintDebug
+          :app:assembleDebug :wear:assembleDebug
+          :app:assembleRelease :wear:assembleRelease
+          :app:bundleRelease :wear:bundleRelease
+          :app:lintVitalRelease :wear:lintVitalRelease
+          :app:lintRelease :wear:lintRelease
+
+      - name: Verify unsigned Google Play bundles
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/play-bundles-unsigned"
+          python3 tools/verify_android_app_bundles.py | tee "$RUNNER_TEMP/play-bundles-unsigned/verify-android-app-bundles.log"
+          cp app/build/outputs/bundle/release/app-release.aab wear/build/outputs/bundle/release/wear-release.aab "$RUNNER_TEMP/play-bundles-unsigned/"
+
+      - name: Upload unsigned Google Play bundles
+        if: ${{ github.event_name != 'pull_request' }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: binario-play-bundles-unsigned
+          path: ${{ runner.temp }}/play-bundles-unsigned
+          if-no-files-found: error
+          retention-days: 14
+          overwrite: true
+
+      - name: Prepare installable test APK
+        env:
+          SOURCE_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/binario-test-apk"
+          cp app/build/outputs/apk/debug/app-debug.apk "$RUNNER_TEMP/binario-test-apk/binario-agenda-test.apk"
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$RUNNER_TEMP/binario-test-apk/binario-agenda-test.apk" > "$RUNNER_TEMP/binario-test-apk/signature.txt"
+          printf 'Source commit: %s\nAndroid 8.0 or later. Debug build for manual testing.\n' "$SOURCE_COMMIT" > "$RUNNER_TEMP/binario-test-apk/README.txt"
+          cd "$RUNNER_TEMP/binario-test-apk"
+          sha256sum binario-agenda-test.apk > SHA256SUMS
+
+      - name: Upload test APK
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: binario-agenda-test-apk
+          path: ${{ runner.temp }}/binario-test-apk/
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
+          overwrite: true
+
+      - name: Upload Android UI reports
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: android-ui-test-reports
+          path: |
+            app/build/reports/androidTests/
+            app/build/outputs/androidTest-results/
+            ${{ runner.temp }}/binario-ui-*.log
+            ${{ runner.temp }}/binario-design-screens/design-screens/
+          retention-days: 14
+          if-no-files-found: error
+          overwrite: true
+
+      - name: First reproducibility rebuild
+        if: ${{ (github.event_name == 'workflow_dispatch' && inputs.verify_reproducibility) || (github.event_name == 'pull_request' && startsWith(github.base_ref, 'stabilization/')) }}
+        run: >-
+          ./gradlew --no-daemon --rerun-tasks --dependency-verification=strict
+          :app:bundleRelease :wear:bundleRelease
+
+      - name: Capture reproducibility references
+        if: ${{ (github.event_name == 'workflow_dispatch' && inputs.verify_reproducibility) || (github.event_name == 'pull_request' && startsWith(github.base_ref, 'stabilization/')) }}
+        run: |
+          cp app/build/outputs/bundle/release/app-release.aab "$RUNNER_TEMP/binario-app-reference.aab"
+          cp wear/build/outputs/bundle/release/wear-release.aab "$RUNNER_TEMP/binario-wear-reference.aab"
+
+      - name: Second reproducibility rebuild
+        if: ${{ (github.event_name == 'workflow_dispatch' && inputs.verify_reproducibility) || (github.event_name == 'pull_request' && startsWith(github.base_ref, 'stabilization/')) }}
+        run: >-
+          ./gradlew --no-daemon --rerun-tasks --dependency-verification=strict
+          :app:bundleRelease :wear:bundleRelease
+
+      - name: Verify reproducible Google Play bundles
+        if: ${{ (github.event_name == 'workflow_dispatch' && inputs.verify_reproducibility) || (github.event_name == 'pull_request' && startsWith(github.base_ref, 'stabilization/')) }}
+        run: >-
+          python3 tools/verify_android_app_bundles.py
+          --reference-phone "$RUNNER_TEMP/binario-app-reference.aab"
+          --reference-wear "$RUNNER_TEMP/binario-wear-reference.aab"
+
+      # Release freshness is a release gate, not a correctness check (audit A7-06): tests, lint, builds and the bundle
+      # checks above run whatever the age of the data; only a pull request into a stabilization branch (and
+      # release-sign) needs every embedded pack to run for at least 30 more days.
+      - name: Gate embedded GTFS freshness for at least 30 days
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.base_ref, 'stabilization/') }}
+        run: python3 tools/verify_embedded_assets.py --min-valid-days 30
+
+  release-sign:
+    needs: android
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.sign_release }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Validate Gradle wrappers
+        uses: gradle/actions/wrapper-validation@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
+        with:
+          min-wrapper-count: "2"
+
+      - name: Java 17
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version: "17.0.20+101"
+          # No cache: restored transforms and build outputs are not covered by dependency verification (P4).
+
+      - name: Python 3.12.10
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12.10"
+
+      - name: Enable Gradle wrapper
+        run: chmod +x gradlew
+
+      - name: Gate embedded GTFS freshness for at least 30 days
+        run: python3 tools/verify_embedded_assets.py --min-valid-days 30
+
+      - name: Decode the upload keystore into RUNNER_TEMP
+        env:
+          BINARIO_RELEASE_KEYSTORE_BASE64: ${{ secrets.BINARIO_RELEASE_KEYSTORE_BASE64 }}
+        run: |
+          test -n "$BINARIO_RELEASE_KEYSTORE_BASE64"
+          printf '%s' "$BINARIO_RELEASE_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/binario-upload.jks"
+          test -s "$RUNNER_TEMP/binario-upload.jks"
+
+      - name: Signed Google Play bundles
+        env:
+          BINARIO_RELEASE_STORE_FILE: ${{ runner.temp }}/binario-upload.jks
+          BINARIO_RELEASE_STORE_PASSWORD: ${{ secrets.BINARIO_RELEASE_STORE_PASSWORD }}
+          BINARIO_RELEASE_KEY_ALIAS: ${{ secrets.BINARIO_RELEASE_KEY_ALIAS }}
+          BINARIO_RELEASE_KEY_PASSWORD: ${{ secrets.BINARIO_RELEASE_KEY_PASSWORD }}
+        run: |
+          test -n "$BINARIO_RELEASE_STORE_PASSWORD"
+          test -n "$BINARIO_RELEASE_KEY_ALIAS"
+          test -n "$BINARIO_RELEASE_KEY_PASSWORD"
+          # The store values, explicit (audit A7-05): best-effort realtime sources on (the release default, described
+          # by PLAY_DATA_SAFETY.md and the listing), personal-use timetable packs off. Changing either is an owner
+          # decision that rewrites those documents in the same change (tools/verify_android_release_config.py).
+          ./gradlew --no-daemon --dependency-verification=strict -PBINARIO_PERSONAL_REALTIME_SOURCES=true -Pbinario.personalSources=false :app:bundleRelease :wear:bundleRelease
+
+      - name: Verify signed Google Play bundles
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/play-bundles-signed"
+          python3 tools/verify_android_app_bundles.py --signed | tee "$RUNNER_TEMP/play-bundles-signed/verify-android-app-bundles.log"
+          cp app/build/outputs/bundle/release/app-release.aab wear/build/outputs/bundle/release/wear-release.aab "$RUNNER_TEMP/play-bundles-signed/"
+
+      - name: Upload signed Google Play bundles
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: binario-play-bundles-signed
+          path: ${{ runner.temp }}/play-bundles-signed
+          if-no-files-found: error
+          retention-days: 14
+          overwrite: true
+
+      - name: Remove the upload keystore
+        if: ${{ always() }}
+        run: rm -f "$RUNNER_TEMP/binario-upload.jks"
+
+  # Manual helper for dependency changes. Gradle cannot run in the development container (Google Maven and
+  # the Android SDK are unreachable), so a dependency change gets its checksums here: the CI task set runs
+  # with --write-verification-metadata sha256 and the diff is printed (gzip + base64) for review. The job
+  # never commits; the reviewed diff is applied in the change that adds the dependency.
+  dependency-metadata:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.refresh_dependency_metadata }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Validate Gradle wrappers
+        uses: gradle/actions/wrapper-validation@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
+        with:
+          min-wrapper-count: "2"
+
+      - name: Java 17
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version: "17.0.20+101"
+
+      - name: Enable Gradle wrapper
+        run: chmod +x gradlew
+
+      - name: Regenerate SHA-256 verification metadata
+        # --continue: a failing lint or test task must not stop the resolution of later configurations.
+        run: >-
+          ./gradlew --no-daemon --continue --write-verification-metadata sha256
+          :app:testDebugUnitTest :wear:testDebugUnitTest
+          :app:lintDebug :wear:lintDebug
+          :app:assembleDebug :wear:assembleDebug
+          :app:assembleDebugAndroidTest
+          :app:assembleRelease :wear:assembleRelease
+          :app:bundleRelease :wear:bundleRelease
+          :app:lintVitalRelease :wear:lintVitalRelease
+          :app:lintRelease :wear:lintRelease
+
+      - name: Print the metadata diff for review
+        if: always()
+        run: |
+          git diff --stat -- gradle/verification-metadata.xml
+          git diff -- gradle/verification-metadata.xml > "$RUNNER_TEMP/metadata.diff"
+          sha256sum "$RUNNER_TEMP/metadata.diff"
+          gzip -9 -c "$RUNNER_TEMP/metadata.diff" | base64 -w 0 | fold -w 4000 | sed 's/^/METADATA_DIFF /'
+          echo
+          echo "METADATA_DIFF_END"

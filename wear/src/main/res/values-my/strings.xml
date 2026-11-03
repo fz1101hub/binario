@@ -1,0 +1,29 @@
+<resources>
+    <string name="app_name">Binario</string>
+    <string name="tile_label">Binario- နောက် လမ်းကြောင်း</string>
+    <string name="tile_description">ဖုန်းပေါ်ရှိ Binario အက်ပ်က မျှဝေထားသော နောက် လမ်းကြောင်းကို ပြသည်။</string>
+    <string name="complication_label">Binario</string>
+    <string name="empty_snapshot_message">ဖုန်းပေါ်ရှိ Binario တွင် Android စမတ်နာရီကို ဖွင့်ပြီး (Binario ချိတ်ဆက်မှုများ) လမ်းကြောင်းကို ပြန်ယူပါ။</string>
+    <string name="empty_snapshot_phone_app_missing">တွဲချိတ်ထားသော ဖုန်းတွင် Binario ကို ထည့်သွင်းပါ။ နာရီသည် ဖုန်းအက်ပ်မှသာ လမ်းကြောင်းကို ရယူသည်။</string>
+    <string name="refresh_phone">ဖုန်း ပြန်ယူရန်</string>
+    <string name="refresh_on_phone">ဖုန်းတွင် ပြန်ယူရန်</string>
+    <string name="refresh_request_sent">ဖုန်းသို့ တောင်းဆိုချက် ပို့ပြီးပါပြီ</string>
+    <string name="refresh_phone_unreachable">ဖုန်းနှင့် ချိတ်ဆက်၍ မရပါ</string>
+    <string name="tile_no_synced_route">စင့်ခ်လုပ်ထားသော လမ်းကြောင်း မရှိပါ</string>
+    <string name="tile_snapshot_unavailable">Snapshot မရနိုင်ပါ</string>
+    <string name="tile_service_details">%1$s · %2$s · %3$s</string>
+    <string name="status_programmed">အချိန်ဇယားပါ အချိန်</string>
+    <string name="status_received_from_phone">ဖုန်းမှ ရရှိသော အခြေအနေ</string>
+    <string name="status_updating">ဒေတာ အပ်ဒိတ်လုပ်နေသည်</string>
+    <string name="status_local_snapshot">နောက်ဆုံး စက်တွင်း snapshot</string>
+    <string name="status_live_unavailable">အချိန်နှင့်တပြေးညီ ဒေတာ မရနိုင်ပါ</string>
+    <string name="accessibility_data_status">ဒေတာ အခြေအနေ- %1$s</string>
+    <string name="accessibility_scheduled_departure">အချိန်ဇယားပါ ထွက်ခွာချိန် %1$s</string>
+    <string name="accessibility_expected_departure">ခန့်မှန်း ထွက်ခွာချိန် %1$s</string>
+    <string name="accessibility_train">ရထား %1$s</string>
+    <string name="accessibility_platform">ပလက်ဖောင်း %1$s</string>
+    <string name="service_time_number">%1$s · %2$s</string>
+    <string name="service_destination_status">%1$s · %2$s</string>
+    <string name="service_operator_category">%1$s · %2$s</string>
+    <string name="service_operator_category_platform">%1$s · %2$s · ပလက်ဖောင်း %3$s</string>
+</resources>

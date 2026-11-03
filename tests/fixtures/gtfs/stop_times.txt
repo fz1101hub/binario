@@ -1,0 +1,4 @@
+trip_id,arrival_time,departure_time,stop_id,stop_sequence
+rail-trip,08:00:00,08:00:00,PARENT,1
+rail-trip,08:30:00,08:30:00,A,2
+bus-trip,09:00:00,09:00:00,B,1

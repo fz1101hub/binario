@@ -1,0 +1,110 @@
+[
+  {
+    "source_id": "alto-adige-sta-gtfs",
+    "asset": "gtfs/alto-adige-sta-gtfs.zip",
+    "bytes": 383213,
+    "sha256_valid": true,
+    "required_files_valid": true,
+    "rail_routes": 175,
+    "error": null
+  },
+  {
+    "source_id": "arst-gtfs",
+    "asset": "gtfs/arst-gtfs.zip",
+    "bytes": 14661,
+    "sha256_valid": true,
+    "required_files_valid": true,
+    "rail_routes": 4,
+    "error": null
+  },
+  {
+    "source_id": "ch-otd-gtfs",
+    "asset": "gtfs/ch-otd-gtfs.zip",
+    "bytes": 3423246,
+    "sha256_valid": true,
+    "required_files_valid": true,
+    "rail_routes": 407,
+    "error": null
+  },
+  {
+    "source_id": "eav-gtfs",
+    "asset": "gtfs/eav-gtfs.zip",
+    "bytes": 66715,
+    "sha256_valid": true,
+    "required_files_valid": true,
+    "rail_routes": 16,
+    "error": null
+  },
+  {
+    "source_id": "hzpp-gtfs",
+    "asset": "gtfs/hzpp-gtfs.zip",
+    "bytes": 1991974,
+    "sha256_valid": true,
+    "required_files_valid": true,
+    "rail_routes": 136,
+    "error": null
+  },
+  {
+    "source_id": "italo-gtfs",
+    "asset": "gtfs/italo-gtfs.zip",
+    "bytes": 48808,
+    "sha256_valid": true,
+    "required_files_valid": true,
+    "rail_routes": 216,
+    "error": null
+  },
+  {
+    "source_id": "lombardia-trenord-gtfs",
+    "asset": "gtfs/lombardia-trenord-gtfs.zip",
+    "bytes": 1415518,
+    "sha256_valid": true,
+    "required_files_valid": true,
+    "rail_routes": 60,
+    "error": null
+  },
+  {
+    "source_id": "oebb-gtfs",
+    "asset": "gtfs/oebb-gtfs.zip",
+    "bytes": 2499108,
+    "sha256_valid": true,
+    "required_files_valid": true,
+    "rail_routes": 259,
+    "error": null
+  },
+  {
+    "source_id": "sncf-gtfs",
+    "asset": "gtfs/sncf-gtfs.zip",
+    "bytes": 5181986,
+    "sha256_valid": true,
+    "required_files_valid": true,
+    "rail_routes": 604,
+    "error": null
+  },
+  {
+    "source_id": "toscana-tft-gtfs",
+    "asset": "gtfs/toscana-tft-gtfs.zip",
+    "bytes": 15814,
+    "sha256_valid": true,
+    "required_files_valid": true,
+    "rail_routes": 0,
+    "error": null
+  },
+  {
+    "source_id": "trenitalia-gtfs",
+    "asset": "gtfs/trenitalia-gtfs.zip",
+    "bytes": 4844661,
+    "sha256_valid": true,
+    "required_files_valid": true,
+    "rail_routes": 12,
+    "error": null
+  },
+  {
+    "source_id": "trentino-gtfs",
+    "asset": "gtfs/trentino-extraurban-gtfs.zip",
+    "bytes": 18150,
+    "sha256_valid": true,
+    "required_files_valid": true,
+    "rail_routes": 1,
+    "error": null
+  }
+]

@@ -1,0 +1,32 @@
+source_id,display_name,test_mode,outcome,http_status,bytes,content_type,final_url,detail,disposition
+alto-adige-sta-gtfs,Open Data Hub Alto Adige — STA GTFS,gtfs_import,FAIL,200,786432,application/zip,https://gtfs.api.opendatahub.com/v1/dataset/sta-time-tables/raw,response is not a ZIP,BLOCKED
+amt-genova-casella-gtfs,AMT Genova–Casella — GTFS,gtfs_import,FAIL,200,786432,application/x-zip,http://opendatagoogletransit.comune.genova.it/downloads/google_transit.zip,response is not a ZIP,BLOCKED
+arenaways,Arenaways,landing_page,FAIL,403,0,text/html,https://arenaways.it/orari-e-tariffe/orari-treni,HTTPError,BLOCKED
+arst-gtfs,ARST Sardegna — GTFS,gtfs_import,FAIL,200,524288,application/zip,https://www.arstspa.info/arst-cagliari-it.zip,response is not a ZIP,BLOCKED
+ch-otd-gtfs,Open Data Platform Mobility Switzerland — GTFS,landing_page,PASS,200,456758,text/html,https://data.opentransportdata.swiss/dataset/timetable-2026-gtfs2020,title=Fahrplan 2026 (GTFS2020) - Datensatz - opentransportdata.swiss - CKAN data catalog,CATALOG_ONLY
+ch-otd-gtfs-rt,Open Data Platform Mobility Switzerland — GTFS-RT,landing_page,PASS,200,144392,text/html,https://opentransportdata.swiss/en/cookbook/realtime-prediction-cookbook/gtfs-rt/,title=GTFS Realtime (GTFS-RT) &#8211; Open data platform mobility Switzerland,CATALOG_ONLY
+cotral-ferro-gtfs,Cotral/ASTRAL — GTFS Ferro,gtfs_import,PASS,200,90765,application/zip,http://travel.mob.cotralspa.it:7777/GTFS/GTFS_FERRO.zip,agency=1;stops=35;routes=3;trips=1066;rail_signal=mixed_or_unknown,OFFLINE_GATEWAY
+eav-gtfs,EAV Campania — Open Data,landing_page,PASS,200,154010,text/html,https://www.eavsrl.it/open-data/,title=Open Data - EAV srl,CATALOG_ONLY
+european-sleeper,European Sleeper verso Milano,landing_page,PASS,200,146753,text/html,https://www.europeansleeper.eu/,title=Discover Europe by Night Train with European Sleeper | European Sleeper,CATALOG_ONLY
+fal-basilicata-puglia,Ferrovie Appulo Lucane,landing_page,PASS,200,368514,text/html,https://ferrovieappulolucane.it/tratta/orari/,title=Quadri Orari e Tariffe - Ferrovie Appulo Lucane,CATALOG_ONLY
+fce-circumetnea,Ferrovia Circumetnea,landing_page,PASS,200,263248,text/html,https://www.circumetnea.it/category/news/,title=News Archivi - Ferrovia Circumetnea,CATALOG_ONLY
+fdc-calabria,Ferrovie della Calabria,landing_page,PASS,200,146974,text/html,https://web.ferroviedellacalabria.it/orari-dei-trasporti/,title=Orari dei Trasporti &#8211; Ferrovie della Calabria Srl,CATALOG_ONLY
+ferrotramviaria-bari-barletta,Ferrotramviaria,landing_page,PASS,200,100696,text/html,https://www.ferrotramviaria.it/web/guest/avvisi,title=Avvisi - Ferrotramviaria SPA,CATALOG_ONLY
+fs-tourist-trains,FS Treni Turistici Italiani / Fondazione FS,landing_page,PASS,200,244074,text/html,https://www.fstrenituristici.it/,title=homepage,CATALOG_ONLY
+fse-puglia,Ferrovie del Sud Est,landing_page,PASS,200,72929,text/html,https://www.fssudest.it/s/?language=it,title=FS SUD EST,CATALOG_ONLY
+fuc-udine-cividale,Ferrovie Udine–Cividale,landing_page,PASS,200,103895,text/html,https://www.ferrovieudinecividale.it/orari-fuc-udine-cividale/,title=Orari UDINE &ndash; CIVIDALE DEL FRIULI | Ferrovie Udine Cividale,CATALOG_ONLY
+hzpp-gtfs,HŽ Putnički prijevoz — GTFS,gtfs_import,FAIL,200,524288,application/zip,https://www.hzpp.hr/GTFS_files.zip,response is not a ZIP,BLOCKED
+italo-status,Italo in Viaggio,landing_page,PASS,200,294928,text/html,https://italoinviaggio.italotreno.com/,title=Italo In Viaggio: Binario e Orari dei treni in tempo reale – Italo,CATALOG_ONLY
+lombardia-trenord-gtfs,Regione Lombardia — GTFS ferroviario,metadata_probe,PASS,200,3383,application/json,https://www.dati.lombardia.it/api/views/3z4k-mxz9,page reachable,CATALOG_ONLY
+oebb-gtfs,ÖBB — GTFS Fahrplan,gtfs_import,FAIL,200,524288,application/zip,https://static.web.oebb.at/open-data/soll-fahrplan-gtfs/GTFS_Fahrplan_2026.zip,response is not a ZIP,BLOCKED
+rfi-infomobility,RFI — Infomobilità,landing_page,PASS,200,158663,text/html,https://www.rfi.it/it/news-e-media/infomobilita.html,title=Infomobilità,CATALOG_ONLY
+rfi-station-board,RFI — Monitor Arrivi/Partenze,landing_page,PASS,200,103568,text/html,https://www.rfi.it/it/stazioni/pagine-stazioni/servizi-di-qualita/informazioni-al-pubblico/monitor-arrivi-partenze-live.html,title=Monitor Arrivi Partenze live,CATALOG_ONLY
+sncf-gtfs,SNCF — GTFS statico,gtfs_import,FAIL,200,786432,application/zip,https://eu.ftp.opendatasoft.com/sncf/plandata/Export_OpenData_SNCF_GTFS_NewTripId.zip,response is not a ZIP,BLOCKED
+sncf-gtfs-rt-alerts,SNCF — GTFS-RT Service Alerts,gtfs_rt_probe,PASS,200,786432,application/x-protobuf,https://proxy.transport.data.gouv.fr/resource/sncf-gtfs-rt-service-alerts,protobuf payload sampled,PROTOCOL_READY
+sncf-gtfs-rt-trip-updates,SNCF — GTFS-RT Trip Updates,gtfs_rt_probe,PASS,200,524288,application/x-protobuf,https://proxy.transport.data.gouv.fr/resource/sncf-gtfs-rt-trip-updates,protobuf payload sampled,PROTOCOL_READY
+sz-passenger,SŽ Potniški promet — Italia,landing_page,FAIL,403,0,text/html,https://potniski.sz.si/en/international-travel/italy-i/trieste-trieste-airport-palmanova-udine/,HTTPError,BLOCKED
+toscana-tft-gtfs,Regione Toscana / TFT — GTFS,landing_page,PASS,200,70372,text/html,https://dati.toscana.it/dataset/rt-oraritb,title=Regione Toscana - Orari trasporto pubblico - Dataset - OpenData - Regione Toscana,CATALOG_ONLY
+trenord-realtime,Trenord — tempo reale e avvisi,landing_page,PASS,200,434236,text/html,https://www.trenord.it/linee-e-orari/circolazione/tempo-reale/,title=Circolazione treni in tempo reale - cerca treno e cerca stazione,CATALOG_ONLY
+trentino-gtfs,Trentino Trasporti — GTFS,gtfs_import,FAIL,200,524288,application/zip,https://www.trentinotrasporti.it/opendata/google_transit_extraurbano_tte.zip,response is not a ZIP,BLOCKED
+tua-abruzzo,TUA Abruzzo,landing_page,PASS,200,42858,text/html,https://www.tuabruzzo.it/comunicazioni/25.html,title=&raquo; Comunicazioni Autobus - TUA SpA,CATALOG_ONLY
+viaggiatreno,ViaggiaTreno — stato corse,landing_page,PASS,200,19850,text/html,http://www.viaggiatreno.it/infomobilitamobile/pages/info/info.jsp?title=info,title=Trenitalia - ViaggiaTrenoMobile,CATALOG_ONLY

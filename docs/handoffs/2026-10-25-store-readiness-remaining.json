@@ -1,0 +1,1902 @@
+{
+ "generated": "2026-10-25",
+ "branch": "claude/git-repo-audit-cdcsm6",
+ "packages": [
+  {
+   "id": "android-vm",
+   "area": "Android ViewModel/MainActivity/widget: routes, limits, backup, widget security, startup",
+   "status": "not started",
+   "items": [
+    {
+     "id": "RD-9",
+     "text": "Station canonicalizer indexes are built twice on the Main thread at catalog load, roughly doubling startup main-thread index work — `app/TrainViewModel.kt`",
+     "fix_summary": "The station indexes for the curated catalog are built off the main thread, so cold start no longer stalls the interactive planner.",
+     "files": [
+      "app/src/main/java/it/binario/app/TrainViewModel.kt"
+     ],
+     "also_closes": [
+      "AND-NEW-7"
+     ]
+    },
+    {
+     "id": "RD-10",
+     "text": "Saved routes, recents and favourites referencing a custom station that the catalog canonicalizes are dropped and later deleted permanently — `app/TrainViewModel.kt`",
+     "fix_summary": "Saved routes, recents, favourites and monitors that point at a custom station the catalog now covers are moved to the catalog station instead of being dropped and deleted.",
+     "files": [
+      "app/src/main/java/it/binario/app/data/CatalogStationMigration.kt",
+      "app/src/main/java/it/binario/app/TrainViewModel.kt",
+      "app/src/test/java/it/binario/app/data/CatalogStationMigrationTest.kt"
+     ],
+     "also_closes": [
+      "VT-06"
+     ]
+    },
+    {
+     "id": "E2E-11",
+     "text": "Backup import replaces all routes, favourites, monitors, alerts and preferences immediately, without preview, confirmation or undo — `app/MainActivity.kt`",
+     "fix_summary": "Choosing a backup first shows what it contains and that it will replace the current local data; nothing changes until the user confirms.",
+     "files": [
+      "app/src/main/java/it/binario/app/MainActivity.kt",
+      "app/src/main/res/values*/strings.xml"
+     ],
+     "also_closes": []
+    },
+    {
+     "id": "E2E-13",
+     "text": "Pinning/unpinning any saved route while a searched (ad-hoc) or widget route is active switches the app to 'no route selected' while still showing the old departures — `app/TrainViewModel.kt`",
+     "fix_summary": "Pinning or unpinning a saved route keeps the current searched or widget route active.",
+     "files": [
+      "app/src/main/java/it/binario/app/TrainViewModel.kt",
+      "app/src/test/java/it/binario/app/ActiveRouteReconciliationTest.kt"
+     ],
+     "also_closes": []
+    },
+    {
+     "id": "E2E-14",
+     "text": "Widget refresh is gated on network even for routes served entirely by embedded offline GTFS: new widgets and direction toggles stay 'data unavailable' offline — `app/widget/RouteWidgetProvider.kt`",
+     "fix_summary": "User-initiated widget refreshes (configure, direction tap, refresh button) run offline and are answered from the embedded timetables, while periodic background refreshes keep their network constraint.",
+     "files": [
+      "app/src/main/java/it/binario/app/widget/RouteWidgetProvider.kt"
+     ],
+     "also_closes": []
+    },
+    {
+     "id": "E2E-15",
+     "text": "Stop-alarm confirmation persists for the whole session and is shown on every other train's detail screen — `app/MainActivity.kt`",
+     "fix_summary": "The stop-alarm confirmation appears only on the detail screen of the train it was set for.",
+     "files": [
+      "app/src/main/java/it/binario/app/MainActivity.kt"
+     ],
+     "also_closes": []
+    },
+    {
+     "id": "E2E-16",
+     "text": "Creating a route when 32 routes exist silently deletes the last existing route — `app/data/SavedRouteOrdering.kt`",
+     "fix_summary": "Creating a route at the 32-route limit is refused with a message instead of silently deleting an existing route.",
+     "files": [
+      "app/src/main/java/it/binario/app/data/SavedRouteOrdering.kt",
+      "app/src/main/java/it/binario/app/TrainViewModel.kt",
+      "app/src/main/java/it/binario/app/UiMessage.kt",
+      "app/src/main/java/it/binario/app/UiMessageResources.kt",
+      "app/src/main/res/values*/strings.xml"
+     ],
+     "also_closes": [
+      "PU-8"
+     ]
+    },
+    {
+     "id": "TB-4",
+     "text": "Android: v0.16.3 backups import the preset route 'default-roma-torino' as a success, which RouteStore then silently drops on the next launch — `app/LocalDataBackup.kt`",
+     "fix_summary": "Backups from v0.16.3 no longer import the retired Roma–Torino preset as a route that then disappears on the next launch; import counts match what is kept.",
+     "files": [
+      "app/src/main/java/it/binario/app/LocalDataBackup.kt",
+      "app/src/main/java/it/binario/app/TrainViewModel.kt",
+      "app/src/test/java/it/binario/app/LocalDataBackupCodecTest.kt"
+     ],
+     "also_closes": []
+    },
+    {
+     "id": "TB-6",
+     "text": "Android: exported MainActivity trusts EXTRA_APPWIDGET_ID from any caller and persists the corresponding route as active — `app/MainActivity.kt`",
+     "fix_summary": "Only taps on the app's own widgets can switch and persist the active route; another app sending a widget id to MainActivity no longer can.",
+     "files": [
+      "app/src/main/java/it/binario/app/widget/RouteWidgetProvider.kt",
+      "app/src/main/java/it/binario/app/MainActivity.kt",
+      "app/src/test/java/it/binario/app/widget/WidgetLaunchTokenTest.kt"
+     ],
+     "also_closes": [
+      "MS-7"
+     ]
+    },
+    {
+     "id": "MS-6",
+     "text": "Native launcher shortcuts use implicit intents on an unverified custom scheme (no targetPackage/targetClass), so other apps can intercept them — `app/src/main/res/xml/shortcuts.xml`",
+     "fix_summary": "Launcher shortcuts always open Binario's own MainActivity (explicit targetPackage/targetClass) and can no longer be intercepted by another app registering the binario:// scheme.",
+     "files": [
+      "app/src/main/res/xml/shortcuts.xml",
+      "app/src/test/java/it/binario/app/LauncherShortcutsTest.kt"
+     ],
+     "also_closes": []
+    },
+    {
+     "id": "PU-7",
+     "text": "Android: opening the app from a widget persists a synthetic active-route id ('route:<o>:<d>') that RouteStore can never resolve; next cold start opens another route and pinning resets to no route — `app/widget/WidgetConfigureActivity.kt`",
+     "fix_summary": "Opening the app from a widget activates the matching saved route when one exists, and no longer persists an id that the next cold start cannot resolve.",
+     "files": [
+      "app/src/main/java/it/binario/app/TrainViewModel.kt",
+      "app/src/test/java/it/binario/app/ActiveRouteReconciliationTest.kt"
+     ],
+     "also_closes": []
+    },
+    {
+     "id": "AND-NEW-1",
+     "text": "Picking a station by name still resolves to the first catalog match: 122 stations cannot be selected; some map silently to another town and are saved that way — `app/data/StationAutocompleteEngine.kt`",
+     "fix_summary": "The station the user taps in a suggestion list is the one saved and searched, even when another station has the same name.",
+     "files": [
+      "app/src/main/java/it/binario/app/MainActivity.kt",
+      "app/src/main/java/it/binario/app/TrainViewModel.kt",
+      "app/src/main/java/it/binario/app/data/StationSelection.kt",
+      "app/src/main/java/it/binario/app/widget/WidgetConfigureActivity.kt"
+     ],
+     "also_closes": []
+    },
+    {
+     "id": "FS-3",
+     "text": "M-6 regression guard is textual: re-introducing the original watch false success (show 'Checklist aperta sul telefono' as soon as the request is sent) keeps all 25 native-surface contract tests green — `companion-expo/tests/native-surface-contract.test.ts`",
+     "fix_summary": "Restoring a backup waits for the station catalogue to load, so old backups are no longer rejected or imported in part after the app was killed while the catalogue was loading.",
+     "files": [
+      "app/src/main/java/it/binario/app/TrainViewModel.kt",
+      "app/src/main/java/it/binario/app/MainActivity.kt",
+      "app/src/test/java/it/binario/app/LocalDataBackupCodecTest.kt"
+     ],
+     "also_closes": []
+    },
+    {
+     "id": "FSKB-1",
+     "text": "PR#34 removed the 'pending export missing' feedback, so a second Agenda export result leaves a 0-byte file silently — `app/MainActivity.kt`",
+     "fix_summary": "A double tap on Esporta JSON/ICS opens only one picker; any orphan result is reported as a failure and its empty file deleted.",
+     "files": [
+      "app/src/main/java/it/binario/app/MainActivity.kt",
+      "app/src/main/java/it/binario/app/plannedjourney/PlannedJourneyViewModel.kt"
+     ],
+     "also_closes": []
+    },
+    {
+     "id": "VT-13",
+     "text": "Android instrumented Compose accessibility tests are never compiled or run by CI and assert Italian strings without pinning a locale — `app/MainScreenAccessibilityTest.kt`",
+     "fix_summary": "CI compiles the instrumented accessibility tests, and those tests take their expected text from string resources, so they hold in any device language (static only: no SDK).",
+     "files": [
+      ".github/workflows/android-ci.yml",
+      "tools/verify_android_release_config.py",
+      "app/src/androidTest/java/it/binario/app/MainScreenAccessibilityTest.kt"
+     ],
+     "also_closes": []
+    }
+   ]
+  },
+  {
+   "id": "play-app",
+   "area": "Android phone app Play readiness (settings, privacy link, icons, widget metadata, alarms, locales)",
+   "status": "not started",
+   "items": [
+    {
+     "id": "SR-play-app-1",
+     "text": "Google Play blocker: no public privacy-policy URL and no in-app privacy link; PRIVACY.md declares controller/contact/URL missing; settings_privacy_wear string says 'non esiste ancora un link pubblico nell'app'.",
+     "fix_summary": "Read gradle property BINARIO_PRIVACY_POLICY_URL (default empty) into BuildConfig.PRIVACY_POLICY_URL; in the Settings privacy section add an 'Informativa privacy' action row (5 locales) that opens the URL with ACTION_VIEW inside runCatching, hidden when empty; replace the 'non esiste ancora un link pubblico' sentence in all 5 locales with neutral wording; make tools/verify_android_release_config.py require an https URL when a RELEASE gate env is set (document it in android-ci.yml); add a 'Titolare del trattamento e contatto' section with explicit placeholders to PRIVACY.md.",
+     "files": [
+      "app/build.gradle.kts",
+      "app/src/main/java/it/binario/app/MainActivity.kt",
+      "app/src/main/res/values*/strings.xml",
+      "tools/verify_android_release_config.py",
+      "PRIVACY.md",
+      ".github/workflows/android-ci.yml"
+     ],
+     "also_closes": []
+    },
+    {
+     "id": "SR-play-app-8",
+     "text": "Placeholder 'Apple Watch' and 'Comandi vocali e Alexa' toggles in Settings do nothing and say so (Play 'broken functionality' exposure).",
+     "fix_summary": "Gate the Alexa and Apple Watch IntegrationChoice rows and integration_alexa_note behind BuildConfig.EXPERIMENTAL_INTEGRATIONS fed by gradle property BINARIO_EXPERIMENTAL_INTEGRATIONS (default false); keep IntegrationSettings keys and UnifiedProfile fields for forward compatibility; add a unit test for the setting default.",
+     "files": [
+      "app/build.gradle.kts",
+      "app/src/main/java/it/binario/app/MainActivity.kt",
+      "app/src/main/java/it/binario/app/IntegrationSettings.kt"
+     ],
+     "also_closes": []
+    },
+    {
+     "id": "SR-play-app-9",
+     "text": "Home-screen widget has no preview metadata and its configuration activity lacks the APPWIDGET_CONFIGURE intent filter / export.",
+     "fix_summary": "route_widget_info.xml: add previewLayout=@layout/route_widget, targetCellWidth/Height (3x2), minResizeWidth/Height, widgetFeatures=reconfigurable (keep API 26 compatibility: previewLayout/targetCell attrs are ignored below 31, previewImage optional); AndroidManifest: give WidgetConfigureActivity the android.appwidget.action.APPWIDGET_CONFIGURE intent-filter with exported=true as the platform requires, keeping it safe (no extras trusted beyond the widget id).",
+     "files": [
+      "app/src/main/res/xml/route_widget_info.xml",
+      "app/src/main/AndroidManifest.xml"
+     ],
+     "also_closes": []
+    },
+    {
+     "id": "SR-play-app-6",
+     "text": "Launcher icon is a plain opaque vector reused as the notification small icon (renders as a white square); no adaptive icon.",
+     "fix_summary": "Add mipmap-anydpi-v26/ic_launcher.xml and ic_launcher_round.xml (<adaptive-icon> with background colour #005A52 drawable, foreground = the train glyph scaled into the 66/108 safe zone, monochrome layer); point manifest icon/roundIcon to @mipmap/ic_launcher; add a dedicated white-on-transparent notification small icon drawable ic_stat_binario and use it for every notification (stop alarm, commuter alert, checklist); keep legacy mipmap PNG fallbacks only if required by minSdk 26 (adaptive icons exist since 26, so none needed).",
+     "files": [
+      "app/src/main/res/mipmap-anydpi-v26/",
+      "app/src/main/res/drawable/",
+      "app/src/main/AndroidManifest.xml",
+      "app/src/main/java/it/binario/app/CommuterAlerts.kt",
+      "app/src/main/java/it/binario/app/StopAlarm.kt"
+     ],
+     "also_closes": []
+    },
+    {
+     "id": "SR-play-app-11",
+     "text": "No localeFilters/resourceConfigurations: all library locales are packaged although localeConfig lists five; Jetifier enabled without need.",
+     "fix_summary": "In app/ and wear/ build.gradle.kts add androidResources { localeFilters += listOf(\"it\",\"en\",\"de\",\"fr\",\"es\") }; remove android.enableJetifier=true from gradle.properties (keep useAndroidX); mention the filter in tools/verify_android_release_config.py and its test.",
+     "files": [
+      "app/build.gradle.kts",
+      "wear/build.gradle.kts",
+      "gradle.properties",
+      "tools/verify_android_release_config.py"
+     ],
+     "also_closes": []
+    },
+    {
+     "id": "SR-play-app-13",
+     "text": "SCHEDULE_EXACT_ALARM is declared but never requested: on Android 14+ every stop alarm and commuter alert is inexact and the UI offers no path to grant it (R4:M-3).",
+     "fix_summary": "When !alarmManager.canScheduleExactAlarms() show an action (settings and the alarm creation flows) that launches Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM with the package URI; re-arm alarms on AlarmManager.ACTION_SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED via a receiver; strings in 5 locales; unit-test the decision logic (JVM-testable helper).",
+     "files": [
+      "app/src/main/java/it/binario/app/AlarmScheduling.kt",
+      "app/src/main/java/it/binario/app/CommuterAlerts.kt",
+      "app/src/main/java/it/binario/app/MainActivity.kt",
+      "app/src/main/AndroidManifest.xml",
+      "app/src/main/res/values*/strings.xml"
+     ],
+     "also_closes": []
+    },
+    {
+     "id": "SR-play-app-20",
+     "text": "Community mirror jbb.ghsq.de contacted by the store build is not disclosed in the in-app privacy text (R4:M-14).",
+     "fix_summary": "Add the European Sleeper/JBB community-mirror sentence to the in-app privacy strings in all five locales, consistent with PRIVACY.md and tools/verify_privacy_policy.py.",
+     "files": [
+      "app/src/main/res/values*/strings.xml",
+      "PRIVACY.md"
+     ],
+     "also_closes": []
+    }
+   ]
+  },
+  {
+   "id": "wear",
+   "area": "Wear OS module Play readiness",
+   "status": "implemented, unreviewed, branch fix/r2-wear",
+   "items": [
+    {
+     "id": "SR-play-wear-1",
+     "text": "Wear UI and Tile use phone-style layouts with no round-screen handling (Wear OS review criterion).",
+     "fix_summary": "WearMainActivity: wrap content in Wear Compose Material3 AppScaffold/ScreenScaffold with TimeText and a scroll indicator; use TransformingLazyColumn (or ScalingLazyColumn with responsive content padding) so first/last items are not clipped on round screens; Tile: use primaryLayout with the ProtoLayout material responsive helpers; keep accessibility labels; the wear unit tests must stay green and the module must compile in android-check.sh wear (if the harness cannot compile Wear Compose, say so and keep changes minimal and static-reviewed).",
+     "files": [
+      "wear/src/main/java/it/binario/wear/",
+      "wear/build.gradle.kts",
+      "gradle/verification-metadata.xml (only if a new artifact is unavoidable; prefer existing dependencies)"
+     ],
+     "also_closes": []
+    },
+    {
+     "id": "SR-play-wear-5",
+     "text": "First-run path on the watch cannot succeed without an undocumented phone setting and gives no feedback when the phone app is absent.",
+     "fix_summary": "Reword empty_snapshot_message in wear/src/main/res/values{,-en,-de,-es,-fr}/strings.xml to say sharing must be enabled in the phone app's settings ('Smartwatch Android'), keeping key parity (WearStringResourceParityTest); declare a phone capability in app/src/main/res/values/wear.xml (android_wear_capabilities) so the watch can detect the phone app via CapabilityClient and show a specific message when absent.",
+     "files": [
+      "wear/src/main/res/values*/strings.xml",
+      "app/src/main/res/values/wear.xml",
+      "wear/src/main/java/it/binario/wear/"
+     ],
+     "also_closes": []
+    },
+    {
+     "id": "SR-play-wear-6",
+     "text": "Complication polls every 5 minutes although data is push-driven, and SHORT_TEXT carries a 32-char string (RD-11).",
+     "fix_summary": "Set UPDATE_PERIOD_SECONDS to 0 (push only, request update on snapshot change); for SHORT_TEXT use the expected departure as text and the train number as title; bound validity with setValidTimeRange to the snapshot expiry.",
+     "files": [
+      "wear/src/main/AndroidManifest.xml",
+      "wear/src/main/java/it/binario/wear/"
+     ],
+     "also_closes": []
+    },
+    {
+     "id": "SR-play-wear-7",
+     "text": "Wear launcher icon is a square 48dp vector with opaque square background, not adaptive.",
+     "fix_summary": "Add wear/src/main/res/mipmap-anydpi-v26/ic_launcher.xml adaptive icon (background layer + foreground glyph inset to the safe zone), point icon/roundIcon to it, keep ic_binario_wear for tile/complication service icons.",
+     "files": [
+      "wear/src/main/res/",
+      "wear/src/main/AndroidManifest.xml"
+     ],
+     "also_closes": []
+    },
+    {
+     "id": "SR-play-wear-8",
+     "text": "Watch Activity never re-validates the snapshot on resume, so an expired snapshot is shown until the next push (FSK-WEAR-ACTIVITY-UPTIME).",
+     "fix_summary": "Re-read WearSnapshotStore.current(this) in onResume (or observe ON_RESUME) so the expired value is revoked before the screen is shown; unit-test the expiry decision.",
+     "files": [
+      "wear/src/main/java/it/binario/wear/"
+     ],
+     "also_closes": []
+    },
+    {
+     "id": "SR-play-wear-11",
+     "text": "PRIVACY.md 'Interrompere Wear' row contradicts the implemented watch-side revocation (WC-N7).",
+     "fix_summary": "Align PRIVACY.md line ~116 with line ~64 (watch-side revocation is implemented).",
+     "files": [
+      "PRIVACY.md"
+     ],
+     "also_closes": []
+    },
+    {
+     "id": "SR-play-wear-13",
+     "text": "Tile fallback layout hard-codes 'Binario' and the production tile layout is untested (RD-13).",
+     "fix_summary": "Make the timeline builder take the layout function from the service and test the production layout through a string-provider seam; move compose-ui-tooling to debugImplementation and update the suppression test accordingly.",
+     "files": [
+      "wear/src/main/java/it/binario/wear/",
+      "wear/build.gradle.kts",
+      "tests/test_wear_compose_gradle_dependency_suppressions.py"
+     ],
+     "also_closes": []
+    }
+   ]
+  }
+ ],
+ "previous_findings_to_recheck": [
+  {
+   "id": "RT-5",
+   "text": "Stop alarm ignores the service date: set from a future-date service it fires today at the same clock time; after-midnight stops cannot be set before 18:00 — `app/StopAlarm.kt`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "TW-12",
+   "text": "DST 2026-10-25: Android (naive midnight) and iOS (GTFS noon-12h) display 147 early-morning departures one hour apart (RE_2 2247 Milano Centrale: Android 00:05, iOS 01:05) — `app/data/gtfs/EmbeddedGtfsRouteAdapter.kt`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "N-A1-ANDROID-UI-REGRESSION",
+   "text": "PR#34 drops the actionable expired-timetable message from the Android app screen (R2:A1 in-app warning regressed) — `app/TrainViewModel.kt`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "R4:H-1",
+   "text": "Station canonicalization uses substring 'first match wins' over catalog order: 3,321/5,23…. First-match name resolution (122 stations; 15 resolve to a place more than 5 km away) is reported as AND-NEW-1. The substring destination matching is…",
+   "file": "app/data/StationCanonicalizer.kt",
+   "severity": "High",
+   "status": "parziale"
+  },
+  {
+   "id": "R2:A1",
+   "text": "Three embedded GTFS packs already expired (cotral-ferro 2026-09-06, trentino-extraurban 0…. See new findings N-A1-ANDROID-UI-REGRESSION (PR#34) and N-A1-IOS-TWIN (PR#32); timing per R4:L-G-6.",
+   "file": "app/src/main/assets/gtfs/manifest.json",
+   "severity": "Medium",
+   "status": "parziale"
+  },
+  {
+   "id": "R2:A5",
+   "text": "Quality band conflates source authority with operational verification (scheduled-only RFI…. The unscored live fallback affects only the opt-in BINARIO_PERSONAL_REALTIME_SOURCES build. After PR#34 the phone UI no longer shows the band at all …",
+   "file": "app/data/DataQuality.kt",
+   "severity": "Low/Medium",
+   "status": "parziale"
+  },
+  {
+   "id": "R2:B3",
+   "text": "Empty detail after process death (selectedService/journeyQuery/filters not saved); pendin…. Low UX issue after process death.",
+   "file": "app/MainActivity.kt",
+   "severity": "Medium",
+   "status": "parziale"
+  },
+  {
+   "id": "R3:N-D4",
+   "text": "'FESTIVO' periodicity returns true on non-holiday weekdays; periodicity logic duplicated …. Negations are still evaluated as positives (see R4:L-A-2). / FIX SKEPTIC: Only the three literal words FEST/FESTIVO/FESTIVI are now limited to Sunday…",
+   "file": "app/data/planned/ItalianRailServiceCalendar.kt",
+   "severity": "Medium",
+   "status": "parziale ⚠fix contestato"
+  },
+  {
+   "id": "R4:M-14",
+   "text": "Privacy: distributed build contacts undeclared third-party community host jbb.ghsq.de (Eu…. The user-facing disclosure is still missing, and the README contradicts the code. The periodic background requests via the widget are not described. …",
+   "file": "PRIVACY.md",
+   "severity": "Medium",
+   "status": "parziale"
+  },
+  {
+   "id": "R4:M-2",
+   "text": "EmbeddedGtfsRealtimeScheduleResolver throws IllegalArgumentException/NumberFormatExceptio…. A malformed third-party ZIP still crashes the app. Reported as AND-NEW-4.",
+   "file": "app/data/gtfs/EmbeddedGtfsRealtimeScheduleResolver.kt",
+   "severity": "Medium",
+   "status": "parziale"
+  },
+  {
+   "id": "R4:M-3",
+   "text": "SCHEDULE_EXACT_ALARM declared but never requested: on Android 13+ stop alarms and commute…. On Android 14+ with targetSdk 36 the permission is denied by default, so every alarm is inexact.",
+   "file": "app/src/main/AndroidManifest.xml",
+   "severity": "Medium",
+   "status": "aperto"
+  },
+  {
+   "id": "R1:ARCH-1",
+   "text": "MainActivity.kt ~2,500-line monolith (30+ composables, manual navigation); TrainViewModel…. Maintainability debt that grew in PR#34.",
+   "file": "app/MainActivity.kt",
+   "severity": "Low",
+   "status": "aperto"
+  },
+  {
+   "id": "R1:ARCH-2",
+   "text": "Dead code introduced by provenance fixes: refreshSelectedService() and currentFreshness()…. Dead code.",
+   "file": "app/TrainViewModel.kt",
+   "severity": "Low",
+   "status": "aperto"
+  },
+  {
+   "id": "R1:ARCH-6",
+   "text": "Android dead code: SnapshotReconciler/ServiceConflict (tests only), AuthorizedLiveDataBou…. Dead code.",
+   "file": "app/data/DataReconciliation.kt",
+   "severity": "Low",
+   "status": "aperto"
+  },
+  {
+   "id": "R1:PERF-3",
+   "text": "gradle.properties org.gradle.workers.max=1 serializes builds and tests. Root build still fully serialized with no documented rationale; docs/RELEASE_BUILD.md:39 justifies single-worker only for Companion AAB member-order …",
+   "file": "gradle.properties",
+   "severity": "Low",
+   "status": "aperto"
+  },
+  {
+   "id": "R1:S11-1",
+   "text": "Backup without valid routes rejected by require(routes.isNotEmpty()) in LocalDataBackup.d…. The dead branch remains, and PR#34 localized its string backup_imported_without_route in 5 locales.",
+   "file": "app/LocalDataBackup.kt",
+   "severity": "Low",
+   "status": "aperto"
+  },
+  {
+   "id": "R1:T-1",
+   "text": "gtfs-realtime-bindings 0.0.4 pulls old protobuf lineage with known DoS CVEs (CVE-2021-225…. verification-metadata also lists protobuf-java 3.24.4 and 3.25.5, which are probably build tooling. Whether the runtime classpath is upgraded could n…",
+   "file": "app/build.gradle.kts",
+   "severity": "Low",
+   "status": "aperto"
+  },
+  {
+   "id": "R2:B-TEST",
+   "text": "Weak tests: StopAlarmPlannerTest never asserts 5-minute offset and mixes fixed 2024 now w…. The widget and alert codecs have no JVM test; the R4:L-A-21 crash path is untested.",
+   "file": "app/StopAlarmPlannerTest.kt",
+   "severity": "Low",
+   "status": "parziale"
+  },
+  {
+   "id": "R2:B12",
+   "text": "Backup: unbounded URI read parsed on main thread, alert.time not validated, last saved ro…. The last route cannot be removed from the UI. This contradicts PRIVACY.md:58, which says each route can be removed with its command.",
+   "file": "app/MainActivity.kt",
+   "severity": "Low",
+   "status": "parziale"
+  },
+  {
+   "id": "R2:B14",
+   "text": "Fixed-width columns wrap/clip at font scale 2.0. The expected wrap/clip at font scale 2.0 was not verified on a device.",
+   "file": "app/MainActivity.kt",
+   "severity": "Low",
+   "status": "aperto"
+  },
+  {
+   "id": "R3:LOW-13",
+   "text": "Android: heap-bounded GTFS stress test not run with -Xmx256m in CI; 'noise' rows not inde…. The heap bound is not exercised in CI.",
+   "file": "app/build.gradle.kts",
+   "severity": "Low",
+   "status": "aperto"
+  },
+  {
+   "id": "R3:LOW-14",
+   "text": "Android: realtime schedule resolver re-decompresses stop_times per trip.",
+   "file": "app/data/gtfs/EmbeddedGtfsRealtimeScheduleResolver.kt",
+   "severity": "Low",
+   "status": "aperto"
+  },
+  {
+   "id": "R3:LOW-17",
+   "text": "Android: voice parser compiles one Regex per value (thousands); numericDatePattern can ne….",
+   "file": "app/PlannerVoiceParser.kt",
+   "severity": "Low",
+   "status": "aperto"
+  },
+  {
+   "id": "R3:LOW-19",
+   "text": "Android: PlannedJourney import on main thread.",
+   "file": "app/MainActivity.kt",
+   "severity": "Low",
+   "status": "aperto"
+  },
+  {
+   "id": "R3:LOW-22",
+   "text": "Android: GTFS normalize compiles two Regex per call. The per-call regex compile remains in the GTFS route adapter. It runs on the Default dispatcher, so the cost is performance only.",
+   "file": "app/data/gtfs/EmbeddedGtfsStationSearchIndex.kt",
+   "severity": "Low",
+   "status": "parziale"
+  },
+  {
+   "id": "R3:LOW-23",
+   "text": "Android: serviceDirection still not passed by openService call sites.",
+   "file": "app/MainActivity.kt",
+   "severity": "Low",
+   "status": "aperto"
+  },
+  {
+   "id": "R3:LOW-28",
+   "text": "governance: clone is 95 MiB due to pre-LFS blobs in history. History bloat persists and now grows ~7 MiB per iOS index regeneration plus GTFS zips.",
+   "file": ".gitattributes",
+   "severity": "Low",
+   "status": "aperto"
+  },
+  {
+   "id": "R4:L-A-1",
+   "text": "Station board HTML (Jsoup) parsed on main thread: RFI programmed board always, RFI monito….",
+   "file": "app/data/planned/RfiProgrammedStationBoardAdapter.kt",
+   "severity": "Low",
+   "status": "aperto"
+  },
+  {
+   "id": "R4:L-A-10",
+   "text": "Agenda editor filters 5,239 stations in composition on every recomposition; MainActivity ….",
+   "file": "app/plannedjourney/PlannedJourneyAgendaScreen.kt",
+   "severity": "Low",
+   "status": "aperto"
+  },
+  {
+   "id": "R4:L-A-11",
+   "text": "Stop alarms not persisted/restored: reboot or force-stop before trigger loses them silent….",
+   "file": "app/StopAlarm.kt",
+   "severity": "Low",
+   "status": "aperto"
+  },
+  {
+   "id": "R4:L-A-12",
+   "text": "Watch refresh request republishes same payload (same generatedAt/expiresAt), no fetch (F2).",
+   "file": "app/wear/WearRefreshRequestListenerService.kt",
+   "severity": "Low",
+   "status": "aperto"
+  },
+  {
+   "id": "R4:L-A-13",
+   "text": "Periodic widget worker never cancelled: onDeleted re-enqueues, onDisabled not overridden.",
+   "file": "app/widget/RouteWidgetProvider.kt",
+   "severity": "Low",
+   "status": "aperto"
+  },
+  {
+   "id": "R4:L-A-14",
+   "text": "Commuter reminder time formatted with default locale ('%02d:%02d'.format): non-Latin digi….",
+   "file": "app/MainActivity.kt",
+   "severity": "Low",
+   "status": "aperto"
+  },
+  {
+   "id": "R4:L-A-15",
+   "text": "In-app 'Scuro' theme does not update system bar icon appearance (enableEdgeToEdge follows….",
+   "file": "app/MainActivity.kt",
+   "severity": "Low",
+   "status": "aperto"
+  },
+  {
+   "id": "R4:L-A-16",
+   "text": "PRIVACY.md overstates backup and widget contents (no widget surface in exported JSON). Overstatement unchanged.",
+   "file": "PRIVACY.md",
+   "severity": "Low",
+   "status": "aperto"
+  },
+  {
+   "id": "R4:L-A-17",
+   "text": "-PBINARIO_VERSION_CODE assigns same versionCode to phone and Wear sharing an applicationI….",
+   "file": "app/build.gradle.kts",
+   "severity": "Low",
+   "status": "aperto"
+  },
+  {
+   "id": "R4:L-A-18",
+   "text": "Synchronous SharedPreferences.commit on main thread at ViewModel creation and on each suc….",
+   "file": "app/TrainViewModel.kt",
+   "severity": "Low",
+   "status": "aperto"
+  },
+  {
+   "id": "R4:L-A-19",
+   "text": "Upgrade v0.16.3 -> v0.20.4 loses/degrades favorites, recent routes and all widget configu….",
+   "file": "app/StationPreferences.kt",
+   "severity": "Low",
+   "status": "aperto"
+  },
+  {
+   "id": "R4:L-A-2",
+   "text": "RFI periodicity grammar: ranges other than LUN-VEN, 'escluso' negations, 'Sab e festivi' ….",
+   "file": "app/data/planned/ItalianRailServiceCalendar.kt",
+   "severity": "Low",
+   "status": "aperto"
+  },
+  {
+   "id": "R4:L-A-20",
+   "text": "WidgetConfigureActivity form kept in non-saveable remember.",
+   "file": "app/widget/WidgetConfigureActivity.kt",
+   "severity": "Low",
+   "status": "aperto"
+  },
+  {
+   "id": "R4:L-A-21",
+   "text": "WidgetStateStore.read decodes Base64 outside runCatching: a corrupt value crashes the rec….",
+   "file": "app/widget/RouteWidgetProvider.kt",
+   "severity": "Low",
+   "status": "aperto"
+  },
+  {
+   "id": "R4:L-A-22",
+   "text": "PlannedJourneyRepository contract (unreadable payload left intact and exportable) not hon….",
+   "file": "app/plannedjourney/PlannedJourneyRepository.kt",
+   "severity": "Low",
+   "status": "aperto"
+  },
+  {
+   "id": "R4:L-A-23",
+   "text": "Hard-coded obsolete User-Agents (Binario/0.15, Binario/0.20) vs versionName 0.20.4.",
+   "file": "app/data/live/StaRealtimeAdapter.kt",
+   "severity": "Low",
+   "status": "aperto"
+  },
+  {
+   "id": "R4:L-A-3",
+   "text": "Live fetchers (ViaggiaTreno, Italo, RSS) read without byte limit; only RFI programmed is …. The European Sleeper realtime fetch is live by default; the others are opt-in or unwired.",
+   "file": "app/data/live/ViaggiaTrenoStationAdapter.kt",
+   "severity": "Low",
+   "status": "aperto"
+  },
+  {
+   "id": "R4:L-A-4",
+   "text": "European Sleeper fallback readBytes() up to 256 MiB into heap ByteArray on every primary-….",
+   "file": "app/data/gtfs/RemoteGtfsFallbackDataSource.kt",
+   "severity": "Low",
+   "status": "aperto"
+  },
+  {
+   "id": "R4:L-A-5",
+   "text": "Compact index LRU = 2: saved routes on >2 packs re-parse whole packs each load; no negati….",
+   "file": "app/data/gtfs/EmbeddedGtfsRouteAdapter.kt",
+   "severity": "Low",
+   "status": "aperto"
+  },
+  {
+   "id": "R4:L-A-6",
+   "text": "RFI timetable cached per route id: same hub page downloaded once per route/direction and ….",
+   "file": "app/data/planned/RfiProgrammedTimetableAdapter.kt",
+   "severity": "Low",
+   "status": "aperto"
+  },
+  {
+   "id": "R4:L-A-7",
+   "text": "Widget rows sorted by expectedDeparture string: after-midnight runs jump to top.",
+   "file": "app/widget/RouteWidgetProvider.kt",
+   "severity": "Low",
+   "status": "aperto"
+  },
+  {
+   "id": "R4:L-A-8",
+   "text": "GtfsStationSearchIndex and RealtimeEnrichmentService wired in BinarioDataGraph but never ….",
+   "file": "app/data/repository/BinarioDataGraph.kt",
+   "severity": "Low",
+   "status": "aperto"
+  },
+  {
+   "id": "R4:L-A-9",
+   "text": "A8 still open: RFI timetable resolves only with hub as origin; with hub as destination fa…. The PR#34 generic-message change is recorded as AND-NEW-5.",
+   "file": "app/data/planned/RfiProgrammedTimetableAdapter.kt",
+   "severity": "Low",
+   "status": "aperto"
+  },
+  {
+   "id": "R4:INFO-1",
+   "text": "Empty departure_time classified INVALID instead of MISSING. Unchanged. Info.",
+   "file": "app/data/gtfs/EmbeddedGtfsRouteAdapter.kt",
+   "severity": "Info",
+   "status": "aperto"
+  },
+  {
+   "id": "R4:INFO-2",
+   "text": "Route adapter uses naive LocalDateTime without the 'noon minus 12h' service-day rule used…. Unchanged. Info.",
+   "file": "app/data/gtfs/EmbeddedGtfsRouteAdapter.kt",
+   "severity": "Info",
+   "status": "aperto"
+  },
+  {
+   "id": "R4:INFO-3",
+   "text": "CustomStationStore persists every searched station, catalog stations included. Unchanged. Info.",
+   "file": "app/TrainViewModel.kt",
+   "severity": "Info",
+   "status": "aperto"
+  },
+  {
+   "id": "R4:INFO-6",
+   "text": "Gradle dependency verification is checksum-only (verify-signatures=false). Checksum-only verification by design.",
+   "file": "gradle/verification-metadata.xml",
+   "severity": "Info",
+   "status": "aperto"
+  },
+  {
+   "id": "RD-6",
+   "text": "Corrupt-archive protection: one bad record makes the whole archive silently read-only; UI reports false success and 'delete' cancels the reminder but keeps the trip — `companion-expo/lib/local-routes.ts`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "LOC-6",
+   "text": "Companion dictation grammars misparse common localized time/date forms: English am/pm ignored, French '8h30' and German '8.30 Uhr' lose minutes, Spanish 'de la mañana' sets tomorrow — `companion-expo/lib/local-dictation.ts`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "LOC-8",
+   "text": "Companion native 'binario_reminder' trailing space is trimmed by aapt2 in en/de/fr/es (only Italian is quoted): widget shows 'Reminder 15 min ·Scheduled time…' — `companion-expo/plugins/with-binario-android-widget.cjs`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "LOC-9",
+   "text": "Companion Wear voice: German saved-journey keywords 'meine Fahrt'/'meine Reise' can never match (keywords not lowercased, transcript lowercased) — `companion/wear/BinarioVoiceRequestActivity.kt`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "LOC-10",
+   "text": "Companion Wear voice (Italian): realtime keyword 'binari' matches the product name 'Binario', so any request mentioning Binario is routed to the always-unavailable realtime stub — `companion/wear/BinarioVoiceRequestActivity.kt`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "TB-5",
+   "text": "Companion ICS import ignores the UTC 'Z' designator and RFC 5545 line folding: Binario/Android calendar exports are imported 1-2 hours off — `companion-expo/lib/local-calendar.ts`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "RT-7",
+   "text": "Companion dictation maps every evening time 20:00-23:59 to 02:00 in all five locales; English 'pm' ignored — `companion-expo/lib/local-dictation.ts`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "RT-8",
+   "text": "Companion ICS import ignores 'Z' and TZID: UTC calendar times (including Binario Android's own export) are imported as local wall-clock, shifted 1-2 h — `companion-expo/lib/local-calendar.ts`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "RT-11",
+   "text": "Companion interprets Italian timetable times in the device time zone (reminders, countdown, widget, Wear expiry, ICS export) — `companion-expo/lib/planned-reminder-service.ts`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "VT-03",
+   "text": "Companion dependency-audit gate is fail-open on audit/registry errors; its only test checks a one-line predicate; the real gate is red at HEAD — `companion-expo/scripts/verify-dependency-audit.mjs`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "VT-04",
+   "text": "Companion Vitest suite only passes when the process time zone is UTC and cannot detect local-vs-UTC time bugs (CI runs in UTC) — `companion-expo/tests/companion-wear-contract.test.ts`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "VT-05",
+   "text": "After PR#34 the Glance widget countdown tests target a dead Italian duplicate; the localized production countdown is untested and a grep test keeps the dead code alive — `companion/binario/BinarioStatusWidget.kt`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "TW-14",
+   "text": "Wear contract 'normalised text' is defined differently by each implementation; concrete break: a Companion route name ending in U+001C-U+001F passes the TS validator but is rejected by the Companion'… — `companion-expo/lib/companion-wear-contract.ts`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "MS-5",
+   "text": "Companion 'Cancella archivio locale' leaves commute data behind: journey templates, the deleted journey on the home-screen widget and watch, and full export/import copies in the cache — `companion-expo/app/(tabs)/settings.tsx`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "MS-4",
+   "text": "Companion Expo does not disable device-to-device transfer (no dataExtractionRules), although PRIVACY.md says it does and the release gate checks only allowBackup — `companion-expo/android/app/src/main/AndroidManifest.xml`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "F-CHK-03",
+   "text": "Plain `expo prebuild` / `pnpm prebuild` is not idempotent: expo-localization appends a duplicate resourceConfigurations line on every run — `companion-expo/app.config.ts`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "F-CHK-04",
+   "text": "`pnpm prebuild` depends on undeclared Python package Pillow — `companion-expo/scripts/generate-binario-brand-assets.py`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "NEW-COMP-2",
+   "text": "Companion dependency-audit gate fails at HEAD on brace-expansion high advisories published 2026-09-29, blocking the whole Companion CI job — `companion-expo/pnpm-lock.yaml`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "NEW-COMP-4",
+   "text": "Read-only archive mode introduced by the M-9 fix produces false-success UI (delete, template save/delete) and misleading errors on add — `companion-expo/app/(tabs)/alerts.tsx`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "NEW-COMP-5",
+   "text": "Widget countdown tests exercise a dead Italian-only twin; the production localized countdown is untested — `companion/binario/BinarioStatusWidget.kt`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "NEW-COMP-6",
+   "text": "Translated widget reminder prefix loses its trailing separator space (unquoted Android string resources) — `companion-expo/android/app/src/main/res/values-en/strings.xml`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "FSK-M7-GLANCE-SESSION",
+   "text": "Companion widget: updateAll issued while a Glance session is alive is a no-op for this widget, so the claimed immediate refresh after a JS sync can be lost until the next worker tick — `companion/binario/BinarioStatusWidget.kt`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "FSK-I18N-REMINDER-SPACE",
+   "text": "Companion widget reminder line loses its separator space in en/de/fr/es because aapt2 trims the unquoted trailing space — `companion-expo/plugins/with-binario-android-widget.cjs`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "LOC-7",
+   "text": "Companion error feedback announced with polite live region in en/de/es/fr: reminderFeedbackPoliteness classifies localized messages by Italian keywords — `companion-expo/lib/reminder-accessibility.ts`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "MS-8",
+   "text": "Companion ships an unused, unconfigured Firebase Cloud Messaging, Installations and Datatransport stack through expo-notifications, which is not mentioned in the privacy or permission inventory — `companion-expo/package.json`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "R3:N-C2",
+   "text": "Companion Wear applicationId mismatch not fixed (im.binario.companion vs .wear): v1 paylo…. The applicationId mismatch is gone, but PR#34 regressed the same-signature half of Data Layer pairing: phone debug is signed with the template debug.…",
+   "file": "companion-expo/android/app/build.gradle",
+   "severity": "Medium",
+   "status": "parziale ⚠fix contestato"
+  },
+  {
+   "id": "R3:N-CI",
+   "text": "GitHub Actions minutes exhausted by ~110 Android + ~110 companion runs (triggers on every…. No SHA of this stack has been validated remotely; billing/minutes cause is inferred (not visible via API).",
+   "file": ".github/workflows/",
+   "severity": "Medium",
+   "status": "aperto"
+  },
+  {
+   "id": "R4:M-15",
+   "text": "Companion verify:dependency-audit gate fails at HEAD: image-size allowlist invalidated (p…. The gate is red again at HEAD, so Companion CI stops at 'Audit high and critical vulnerabilities' (companion-ci.yml:71-72) before TypeScript, tests, …",
+   "file": "companion-expo/pnpm-workspace.yaml",
+   "severity": "Medium",
+   "status": "parziale"
+  },
+  {
+   "id": "R4:M-7",
+   "text": "Companion Glance widget (countdown, next trip) rendered once and never updated (no update…. Countdown can be stale by the WorkManager period (≥15 min, more under Doze/standby buckets). The production localized countdown (BinarioStatusWidget.…",
+   "file": "companion/binario/BinarioStatusWidget.kt",
+   "severity": "Medium",
+   "status": "parziale ⚠fix contestato"
+  },
+  {
+   "id": "R1:ARCH-5",
+   "text": "Companion 'contract' tests are grep-based readFileSync+toContain string checks that misse…. String-presence tests did not catch the PR#34 regressions (missing signingConfigs.release definition — NEW-COMP-1; dead-twin countdown under test — N…",
+   "file": "companion-expo/tests/native-surface-contract.test.ts",
+   "severity": "Low",
+   "status": "parziale"
+  },
+  {
+   "id": "R1:ARCH-7",
+   "text": "Companion dead code: components/local-station-board-card.tsx imported by nothing; declare…. Overlaps R4:L-C-6 (component) and R4:L-C-9 (expo-secure-store); expo-network is tracked only here.",
+   "file": "companion-expo/components/local-station-board-card.tsx",
+   "severity": "Low",
+   "status": "aperto"
+  },
+  {
+   "id": "R4:L-C-1",
+   "text": "Home shows 'Promemoria previsto N minuti prima' even when no native reminder is scheduled. Twin on the Glance widget: BinarioStatusWidget.kt:62 prints \"Promemoria N min ·\" from the same preference, regardless of any scheduled notification.",
+   "file": "companion-expo/app/(tabs)/index.tsx",
+   "severity": "Low",
+   "status": "aperto"
+  },
+  {
+   "id": "R4:L-C-10",
+   "text": "Station catalog asset checksum 58b44188 (Android source SHA-256) differs from script-comp….",
+   "file": "companion-expo/assets/data/stazioni-canoniche-v2.json",
+   "severity": "Low",
+   "status": "aperto"
+  },
+  {
+   "id": "R4:L-C-2",
+   "text": "Notification permission never rechecked after scheduling: with POST_NOTIFICATIONS revoked….",
+   "file": "companion-expo/lib/planned-reminder-service.ts",
+   "severity": "Low",
+   "status": "aperto"
+  },
+  {
+   "id": "R4:L-C-3",
+   "text": "Agenda confuses 'no reminder' (null) with 'at departure time' (0).",
+   "file": "companion-expo/app/(tabs)/alerts.tsx",
+   "severity": "Low",
+   "status": "aperto"
+  },
+  {
+   "id": "R4:L-C-4",
+   "text": "Batch import uses Date.now() as id: two additions in same millisecond lose a route.",
+   "file": "companion-expo/lib/local-routes.ts",
+   "severity": "Low",
+   "status": "aperto"
+  },
+  {
+   "id": "R4:L-C-5",
+   "text": "Unhandled async paths in Settings/Theme/Template.",
+   "file": "companion-expo/app/(tabs)/settings.tsx",
+   "severity": "Low",
+   "status": "aperto"
+  },
+  {
+   "id": "R4:L-C-6",
+   "text": "Dead station-board component and recent-stations store; privacy inventory diverges.",
+   "file": "companion-expo/components/local-station-board-card.tsx",
+   "severity": "Low",
+   "status": "aperto"
+  },
+  {
+   "id": "R4:L-C-7",
+   "text": "Autocomplete re-normalizes 5,239 names and 2,813 aliases (NFD + regex) per keystroke on J….",
+   "file": "companion-expo/lib/offline-station-index.ts",
+   "severity": "Low",
+   "status": "aperto"
+  },
+  {
+   "id": "R4:L-C-8",
+   "text": "Guided import keeps bidi control characters (U+202E, U+2066-2069) in names.",
+   "file": "companion-expo/lib/local-journey-itineraries.ts",
+   "severity": "Low",
+   "status": "aperto"
+  },
+  {
+   "id": "R4:L-C-9",
+   "text": "Dead dependencies/inputs: expo-secure-store never imported, parse-binario-api-url.cjs orp….",
+   "file": "companion-expo/package.json",
+   "severity": "Low",
+   "status": "aperto"
+  },
+  {
+   "id": "R4:L-W-2",
+   "text": "Companion Kotlin tests (phone and Wear) use hard-coded goldens instead of contracts/wear-…. Fixture drift in the companion Kotlin decoders or producer can go undetected.",
+   "file": "companion/wear/BinarioWearSnapshotV1Test.kt",
+   "severity": "Low",
+   "status": "aperto"
+  },
+  {
+   "id": "R4:L-W-4",
+   "text": "Companion Wear voice flow is a stub: phone always answers 'Dati non disponibili in tempo …. The voice flow remains a stub.",
+   "file": "companion-expo/plugins/with-binario-android-widget.cjs",
+   "severity": "Low",
+   "status": "aperto"
+  },
+  {
+   "id": "R4:L-W-5",
+   "text": "Companion Wear checklist unreachable (plannedChecklistRemaining fixed at 0) while PRIVACY…. The checklist is unreachable, and PRIVACY.md describes a stored count that does not exist.",
+   "file": "companion/wear/BinarioWearData.kt",
+   "severity": "Low",
+   "status": "aperto"
+  },
+  {
+   "id": "R4:L-W-6",
+   "text": "Companion Wear module has no android:icon nor mipmap resources (to verify on merged APK). The merged APK cannot be built here; libraries do not contribute an application icon.",
+   "file": "companion-expo/android/wear/src/main/AndroidManifest.xml",
+   "severity": "Low",
+   "status": "aperto"
+  },
+  {
+   "id": "RD-7",
+   "text": "Alexa Simple cards display XML entities (&apos; &amp;) because PR#34 reuses the SSML-escaped speech string as card text — `alexa-companion/server/voice/alexa.ts`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "RD-8",
+   "text": "SSML escaping is incomplete: XML-illegal control characters pass through and ask-sdk's pre-unescape bug turns \"&apos;]\" into \"undefined\" — `alexa-companion/server/voice/speech.ts`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "LOC-12",
+   "text": "Alexa Simple cards added by PR#34 contain SSML-escaped entities ('Casa &amp; lavoro', 'L&apos;Aquila') shown literally in the Alexa app — `alexa-companion/server/voice/alexa.ts`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "LOC-13",
+   "text": "Alexa example phrases in en-US/en-GB/de-DE/fr-FR/es-ES reference utterances absent from the interaction models (6 of 15 non-Italian phrases) — `alexa-companion/skill-package/skill.json`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "TB-7",
+   "text": "Alexa companion Android deep-link endpoints emit URIs that the Android parser rejects (documented contract dead) — `alexa-companion/server/voice/deepLinks.ts`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "TB-8",
+   "text": "Alexa: SSML-escaped speech reused as card content, so the Alexa app card shows '&amp;', '&apos;' literally — `alexa-companion/server/voice/alexa.ts`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "PU-5",
+   "text": "Alexa migrations depend on server defaults: nullable TIMESTAMPs lack explicit NULL and tables lack a charset, so on MariaDB <=10.9/MySQL 5.7 linking is always refused and on latin1 servers non-cp1252… — `alexa-companion/drizzle/0001_shallow_shadow_king.sql`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "PU-9",
+   "text": "Alexa migration 0013 is not rollback-safe: familyId NOT NULL without default breaks every token insert of the previous server build — `alexa-companion/drizzle/0013_complete_shiva.sql`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "CL-5",
+   "text": "Drizzle migrations create all tables with no explicit CHARACTER SET; on a latin1-default server 4-byte UTF-8 content is rejected (and crashes via CL-1) — `alexa-companion/drizzle/0000_flimsy_raza.sql`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "VT-08",
+   "text": "Alexa cards added by PR#34 show XML-escaped route names and train numbers (&amp;, &lt;); SSML tests inspect only outputSpeech and their negative assertion can never fail — `alexa-companion/server/voice/alexa.ts`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "VT-09",
+   "text": "CSRF regression test sends a form content type together with a cross-site Origin/Sec-Fetch-Site, so either guard can be deleted with all tests green — `alexa-companion/server/_core/app.test.ts`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "AD-3",
+   "text": "Simple cards added by PR#34 show SSML-escaped entities (&amp;, &apos;) and newly persist route names in the Alexa card history — `alexa-companion/server/voice/alexa.ts`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "AD-4",
+   "text": "SSML escaping still incomplete: route names accept XML-invalid code points (U+0000-U+0008, U+000E-U+001F, U+FFFE/U+FFFF) that make the whole SSML response ill-formed — `alexa-companion/server/routes/contract.ts`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "AD-5",
+   "text": "Dashboard login logs openId, full name and e-mail in clear on any DB error (DrizzleQueryError.message with params logged twice) — `alexa-companion/server/db.ts`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "AD-6",
+   "text": "Migrations never pin utf8mb4: on a latin1-default server users with non-cp1252 names cannot log in and emoji route names fail (and AD-1 becomes user-triggerable) — `alexa-companion/drizzle/0000_flimsy_raza.sql`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "AD-7",
+   "text": "Localized example phrases (PR#34) do not match any sample utterance in en-US, en-GB, de-DE, fr-FR and es-ES — `alexa-companion/skill-package/skill.json`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "AD-8",
+   "text": "tRPC CSRF gate compares Origin with req.protocol + raw Host: behind a proxy that does not forward X-Forwarded-Proto or rewrites Host, every dashboard mutation fails with 415 — `alexa-companion/server/_core/app.ts`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "AD-9",
+   "text": "After logout or account deletion the dashboard auto-navigates to the OAuth portal on the next window focus; with a live IdP session the erased account is silently re-provisioned — `alexa-companion/client/src/main.tsx`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "AD-10",
+   "text": "Companion deep-link bridge emits URIs the Android allowlist parser rejects (/app/next-departures?route=..., non-alphanumeric or >12-char train numbers) — `alexa-companion/server/voice/deepLinks.ts`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "AD-11",
+   "text": "Dashboard login config is baked at build time while the server validates VITE_OAUTH_PORTAL_URL at runtime (never used server-side): a build without VITE_* yields new URL('undefined/app-auth') — `alexa-companion/client/src/const.ts`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "AD-12",
+   "text": "Stale alexaUserHash survives re-link: another Binario user's verification revokes a legitimately re-linked account — `alexa-companion/server/db.ts`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "AD-13",
+   "text": "Session cookie app_session_id is not __Host- prefixed although the code treats sibling-subdomain cookie tossing as a threat — `alexa-companion/shared/const.ts`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "AD-14",
+   "text": "skill.json privacy/terms/icon URLs point to paths the companion never serves (SPA catch-all returns index.html 200) — `alexa-companion/skill-package/skill.json`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "AD-17",
+   "text": "PRIVACY.md says deletion is confirmed 'con la parola ELIMINA' but the UI is a one-click dialog that auto-sends the constant; PR#34 now shows this implementation detail to users in 5 languages — `PRIVACY.md`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "F-CHK-05",
+   "text": "Alexa skill example phrases in 5 new locales are not sample utterances (certification validation failure) — `alexa-companion/skill-package/skill.json`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "F-CHK-09",
+   "text": "Template boilerplate comment 'BLOCK TO BE DELETED' ships in the production dashboard HTML — `alexa-companion/client/index.html`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "F-CHK-10",
+   "text": "localizeHtmlLang() is dead code; server-served dashboard HTML always declares lang=\"it\" until JS runs — `alexa-companion/shared/i18n.ts`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "ALEXA-REG-NF1",
+   "text": "Alexa Simple cards show XML-escaped entities because the card reuses the SSML-escaped speech string — `alexa-companion/server/voice/alexa.ts`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "ALEXA-REG-NF2",
+   "text": "XML-invalid code points in route names still yield non-well-formed SSML (incomplete M-12 escaping) — `alexa-companion/server/voice/speech.ts`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "FS-M10-1",
+   "text": "The session JWT still embeds the display name: an overlong upstream name produces a session cookie over 4096 B that the browser drops, reproducing the M-10 login loop — `alexa-companion/server/_core/sdk.ts`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "FS-M11-NF1",
+   "text": "alexa-companion: the production-only install that PR#33 validates cannot run the mandated DB migration (`pnpm db:migrate`: drizzle-kit not found; the artifact has no drizzle/ folder) — `alexa-companion/package.json`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "AD-16",
+   "text": "Italian launch prompt addresses every user in the feminine ('Benvenuta in Binario') while other locales are neutral — `alexa-companion/shared/i18n.ts`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "R2:C6",
+   "text": "Voice Bridge not operable outside Manus: findAvailablePort silently changes port, dashboa…. The Manus OAuth identity-provider dependency is an owner decision. Missing Dockerfile/engines. Logging of DB errors is tracked in R4:L-X-16.",
+   "file": "alexa-companion/server/_core/index.ts",
+   "severity": "Medium",
+   "status": "parziale"
+  },
+  {
+   "id": "R4:M-12",
+   "text": "alexa: route names and slot values interpolated into SSML without escaping: & or < break …. C0 control characters, U+FFFE/U+FFFF and lone surrogates in route names still produce malformed SSML. This breaks MyRoutes and NextTrains for that us…",
+   "file": "alexa-companion/server/voice/speech.ts",
+   "severity": "Medium",
+   "status": "parziale"
+  },
+  {
+   "id": "R2:C10",
+   "text": "Governance leftovers: PR #1 open since 14/08, Manus template.json and placeholder pnpm-wo…. PR #1 hygiene and stale VERIFICA_RELEASE.md numbers/locale.",
+   "file": "alexa-companion/VERIFICA_RELEASE.md",
+   "severity": "Low",
+   "status": "parziale"
+  },
+  {
+   "id": "R4:L-X-1",
+   "text": "Refresh-token reuse detection has no tolerance window and does not mark link revoked: a r…. A single retried or concurrent Amazon refresh breaks the link until the user re-links, while the dashboard shows 'Collegato e verificato'.",
+   "file": "alexa-companion/server/db.ts",
+   "severity": "Low",
+   "status": "aperto"
+  },
+  {
+   "id": "R4:L-X-10",
+   "text": "Nine open advisories with fixes (6 moderate, 3 low) incl. qs/body-parser in ask-sdk-expre…. Nine advisories with fixes remain. Runtime impact is bounded by the 1mb limit and the 1000-parameter limit.",
+   "file": "alexa-companion/pnpm-lock.yaml",
+   "severity": "Low",
+   "status": "aperto"
+  },
+  {
+   "id": "R4:L-X-11",
+   "text": "Operational documentation obsolete vs code (docs/DATABASE_MIGRATIONS.md and others). The operational and privacy documentation still disagrees with the code, and PR#34 added more drift.",
+   "file": "alexa-companion/docs/DATABASE_MIGRATIONS.md",
+   "severity": "Low",
+   "status": "aperto"
+  },
+  {
+   "id": "R4:L-X-12",
+   "text": "pnpm check does not type-check tests (tsconfig excludes **/*.test.ts). Test type errors are invisible to CI.",
+   "file": "alexa-companion/tsconfig.json",
+   "severity": "Low",
+   "status": "aperto"
+  },
+  {
+   "id": "R4:L-X-13",
+   "text": "wouter patch exposes route table on window.__WOUTER_ROUTES__ in production. The route table is exposed on window in production (currently '/' and '/404').",
+   "file": "alexa-companion/patches/wouter@3.7.1.patch",
+   "severity": "Low",
+   "status": "aperto"
+  },
+  {
+   "id": "R4:L-X-14",
+   "text": "NextTrainsIntent answers 'Non hai ancora salvato alcuna tratta' when spoken name merely d…. The user is told they have no routes when the spoken name merely does not match.",
+   "file": "alexa-companion/server/voice/alexa.ts",
+   "severity": "Low",
+   "status": "aperto"
+  },
+  {
+   "id": "R4:L-X-15",
+   "text": "Route contract validation errors not distinguishable for the user. Validation errors are indistinguishable from server errors.",
+   "file": "alexa-companion/server/routes/contract.ts",
+   "severity": "Low",
+   "status": "aperto"
+  },
+  {
+   "id": "R4:L-X-16",
+   "text": "On DB error the tRPC formatter logs full Drizzle query with parameters (origin, destinati…. Personal data reaches server logs on any DB error, contradicting ALEXA_SETUP.md:39.",
+   "file": "alexa-companion/server/_core/trpc.ts",
+   "severity": "Low",
+   "status": "aperto"
+  },
+  {
+   "id": "R4:L-X-17",
+   "text": "'Account eliminato' confirmation unreachable: after account.delete the page shows login. The 'Account eliminato' confirmation is unreachable. The page may auto-redirect to the OAuth portal on refetch; what the upstream portal then does is…",
+   "file": "alexa-companion/client/src/pages/Home.tsx",
+   "severity": "Low",
+   "status": "aperto"
+  },
+  {
+   "id": "R4:L-X-18",
+   "text": "Dashboard shows 'Non attivo. Manca la configurazione...' also on 429/5xx of voice.status. The dashboard shows a misleading 'not configured' state on transport errors.",
+   "file": "alexa-companion/client/src/pages/Home.tsx",
+   "severity": "Low",
+   "status": "aperto"
+  },
+  {
+   "id": "R4:L-X-19",
+   "text": "Profile idempotency limited to last clientMutationId per user. Only the last mutation id is idempotent.",
+   "file": "alexa-companion/server/profile/contract.ts",
+   "severity": "Low",
+   "status": "aperto"
+  },
+  {
+   "id": "R4:L-X-2",
+   "text": "No length/entropy check for VOICE_TOKEN_PEPPER and ALEXA_OAUTH_CLIENT_SECRET. A weak pepper or client secret is accepted at boot.",
+   "file": "alexa-companion/server/voice/config.ts",
+   "severity": "Low",
+   "status": "aperto"
+  },
+  {
+   "id": "R4:L-X-20",
+   "text": "No per-user cap nor uniqueness for personal routes (previous Low). There is no per-user cap and no uniqueness.",
+   "file": "alexa-companion/server/db.ts",
+   "severity": "Low",
+   "status": "aperto"
+  },
+  {
+   "id": "R4:L-X-21",
+   "text": "Skill error handler swallows exceptions without server log. Skill failures are silent server-side.",
+   "file": "alexa-companion/server/voice/alexa.ts",
+   "severity": "Low",
+   "status": "aperto"
+  },
+  {
+   "id": "R4:L-X-22",
+   "text": "Manus/WebDev residues: wired RPC paths, dead cron_ path forwarding JWT upstream, ManusDia…. Template residues remain. The skill.json host placeholder waits on the owner choosing a hosting domain.",
+   "file": "alexa-companion/server/_core/sdk.ts",
+   "severity": "Low",
+   "status": "aperto"
+  },
+  {
+   "id": "R4:L-X-3",
+   "text": "Token endpoint without Cache-Control: no-store, HTML page on malformed JSON, client auth …. The item is unchanged.",
+   "file": "alexa-companion/server/voice/alexa.ts",
+   "severity": "Low",
+   "status": "aperto"
+  },
+  {
+   "id": "R4:L-X-4",
+   "text": "No HSTS and no content CSP (only frame-ancestors). No HSTS and no script/content CSP.",
+   "file": "alexa-companion/server/_core/securityHeaders.ts",
+   "severity": "Low",
+   "status": "aperto"
+  },
+  {
+   "id": "R4:L-X-5",
+   "text": "Webhook rate limit per IP with 429 JSON despite shared Amazon egress IPs (kept by choice). This was kept by choice. Amazon's shared egress IPs can hit the webhook limit (60/min) and the token-refresh limit (30/min).",
+   "file": "alexa-companion/server/_core/app.ts",
+   "severity": "Low",
+   "status": "aperto"
+  },
+  {
+   "id": "R4:L-X-6",
+   "text": "Session JWT bearer valid 30 days without iat/jti: logout/unlink/re-login do not invalidat…. The session stays valid for 30 days after logout, unlink or re-login (only account deletion invalidates it).",
+   "file": "alexa-companion/shared/const.ts",
+   "severity": "Low",
+   "status": "aperto"
+  },
+  {
+   "id": "R4:L-X-7",
+   "text": "MariaDB-only DDL (ADD COLUMN IF NOT EXISTS, CREATE INDEX IF NOT EXISTS) in 0007/0008/0012…. A fresh migrate on MySQL 8 fails at 0007 statement 2.",
+   "file": "alexa-companion/drizzle/0007_next_bloodstrike.sql",
+   "severity": "Low",
+   "status": "aperto"
+  },
+  {
+   "id": "R4:L-X-8",
+   "text": "Migration 0013 rewritten at same tag/timestamp (c08ec76 -> 0042f22): DBs migrated with fi…. Databases that ran the first 0013 keep shared legacy families. Whether any such database exists is not verifiable.",
+   "file": "alexa-companion/drizzle/0013_complete_shiva.sql",
+   "severity": "Low",
+   "status": "aperto"
+  },
+  {
+   "id": "R4:L-X-9",
+   "text": "No session time_zone on MySQL pool: default timestamps read back shifted if server not in…. DB-default timestamps are shifted by the DB time-zone offset (for example binario_profiles.updatedAt is returned in the profile DTO). With a DST-obse…",
+   "file": "alexa-companion/server/db.ts",
+   "severity": "Low",
+   "status": "aperto"
+  },
+  {
+   "id": "R4:INFO-4",
+   "text": "Consent CSRF token replayable and not bound to the request (same user only). Replay is possible by the same user within the 10-minute TTL.",
+   "file": "alexa-companion/server/voice/consent.ts",
+   "severity": "Info",
+   "status": "aperto"
+  },
+  {
+   "id": "R4:INFO-5",
+   "text": "Migrations not resumable after partial failure (DDL auto-commit). Migrations cannot be resumed after a partial failure.",
+   "file": "alexa-companion/drizzle/0013_complete_shiva.sql",
+   "severity": "Info",
+   "status": "aperto"
+  },
+  {
+   "id": "R4:INFO-9",
+   "text": "Alexa skill test suite does not exercise linked users, slots, SSML, LaunchRequest or Fall…. Fallback, routeName matching, plural suffix and card-content cases are untested.",
+   "file": "alexa-companion/server/voice/alexaSkill.test.ts",
+   "severity": "Info",
+   "status": "parziale"
+  },
+  {
+   "id": "IOSGTFS-09",
+   "text": "No cross-pack de-duplication or reconciliation: the same train appears twice (SBB and Trenord feeds), sometimes with conflicting times, consuming the 8 result and 2 Watch slots — `ios/BinarioKit/Sources/BinarioKit/SQLiteGTFSJourneyRepository.swift`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "IOSGTFS-10",
+   "text": "One per-query provider failure disables search for the whole session; candidate LIMIT applied before service-day filtering can silently truncate later departures — `ios/BinarioApp/AppModel.swift`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "IOSGTFS-11",
+   "text": "Saved routes are display-only: they cannot be opened, searched or sent to the Watch — `ios/BinarioApp/SavedRoutesView.swift`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "IOSGTFS-15",
+   "text": "SavedRouteStore is all-or-nothing: one undecodable element drops the whole list and the next save overwrites UserDefaults (latent data loss) — `ios/BinarioApp/AppModel.swift`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "PU-10",
+   "text": "iOS GTFS installer leaks hidden 24.5 MB staged databases after an interrupted first-launch install; cleanup skips hidden files and never runs on the fast path — `ios/BinarioKit/Sources/BinarioKit/BundledGTFSScheduleInstaller.swift`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "RT-6",
+   "text": "iOS applies GTFS 'noon minus 12h' to feeds that encode wall-clock times: on 2026-10-25 Trenord's 00:02/00:05/00:32 departures are shown one hour late (Android shows the real time) — `ios/BinarioKit/Sources/BinarioKit/SQLiteGTFSJourneyRepository.swift`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "RT-10",
+   "text": "iOS never uses the stored last_service_date: after 2026-12-13, 490 of 534 indexed stations return a generic 'no service' instead of an expiry notice — `ios/BinarioKit/Sources/BinarioKit/SQLiteGTFSJourneyRepository.swift`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "VT-07",
+   "text": "iOS DST tests cannot distinguish GTFS noon-minus-12h from midnight origin; a regression would shift every train on 2026-10-25 by one hour with tests green — `ios/BinarioKit/Tests/BinarioKitTests/SQLiteGTFSJourneyRepositoryTests.swift`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "VT-14",
+   "text": "iOS installer tests derive expected hashes from the hand-rolled SHA-256 under test; nothing ties Swift hashing to the Python-generated metadata — `ios/BinarioKit/Sources/BinarioKit/BundledGTFSScheduleInstaller.swift`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "F-CHK-08",
+   "text": "7.37 MB derived binary (iOS GTFS index) committed outside LFS — `ios/Resources/binario_gtfs_schedule_v1.sqlite.zlib`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "N-A1-IOS-TWIN",
+   "text": "iOS offline GTFS twin has no expired-timetable notice and the iOS CI rail has no freshness gate — `ios/BinarioKit/Sources/BinarioKit/SQLiteGTFSJourneyRepository.swift`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "FSK-IOS-UNAVAILABLE-TTL",
+   "text": "iOS→Apple Watch twin of N-D3: UNAVAILABLE snapshots have a 15-minute TTL but travel over non-urgent WatchConnectivity context. When the Watch applies them late, it rejects them as expired and keeps s… — `ios/BinarioKit/Sources/BinarioKit/WearSnapshotV1.swift`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "FSK-M9-IOS-SAVEDROUTES",
+   "text": "iOS app: SavedRouteStore turns any undecodable or invalid saved-route payload into [] and the next save or delete overwrites the whole archive (M-9 twin) — `ios/BinarioApp/AppModel.swift`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "R4:L-I-1",
+   "text": "Station NC001521 ('Ercolano - Miglio D'Oro', double space) rejected by JourneyQuery/Saved…. Selecting NC001521 as origin or destination always shows 'select origin and destination', and the route cannot be saved. Fix by normalizing names in …",
+   "file": "ios/BinarioKit/Sources/BinarioKit/JourneyModels.swift",
+   "severity": "Low",
+   "status": "aperto"
+  },
+  {
+   "id": "R4:L-I-2",
+   "text": "Snapshot whose publication failed kept as 'pending' and republished on re-enable even aft…. A failed publish, then a successful clear or newer publish, then a WCSession re-activation (watch switch) re-sends a stale route after the user revok…",
+   "file": "ios/BinarioKit/Sources/BinarioKit/WearSnapshotV1.swift",
+   "severity": "Low",
+   "status": "aperto"
+  },
+  {
+   "id": "R4:L-I-4",
+   "text": "ios CI job never runs BinarioWatchTests: Swift 6 watch code only compiled (PR #32). Add `xcodebuild -scheme BinarioWatch -destination <watchOS sim> test` to the ios job. This would also have surfaced AI-NF-3 if paired with a localiza…",
+   "file": ".github/workflows/apple-watch-ci.yml",
+   "severity": "Low",
+   "status": "aperto"
+  },
+  {
+   "id": "R4:L-I-5",
+   "text": "Station search re-normalizes 5,239 names on main thread at every body evaluation (PR #32). Pre-normalize the catalog once (for example at load, off-main) and compute suggestions once per query change.",
+   "file": "ios/BinarioApp/StationPickerField.swift",
+   "severity": "Low",
+   "status": "aperto"
+  },
+  {
+   "id": "IOSGTFS-13",
+   "text": "Watch activates WCSession only in WatchHomeView.onAppear and has no .backgroundTask(.watchConnectivity): complication/widget and revocation update only when the user opens the Watch app — `apple-watch/BinarioWatch/BinarioWatchApp.swift`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "WC-N4",
+   "text": "Apple Watch widget and app enforce expiry only at load (Swift twin of R4:M-5) — `apple-watch/BinarioWatchWidgets/BinarioWatchWidgets.swift`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "WC-N5",
+   "text": "Apple Watch service identity (number-expectedDeparture) collides on real iOS GTFS data (Swift twin of R1:C4) — `apple-watch/Shared/WatchModels.swift`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "FSK-1",
+   "text": "The H-2 regression guard checks only RefreshBinarioIntent.title/description and runs only on the macOS rail: a stored static var anywhere else in the shared Watch sources brings back the Swift 6 comp… — `tests/test_verify_apple_watch_project.py`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "R3:N-W1",
+   "text": "Apple Watch project.yml still not reliably generable/installable (no scheme, no INFOPLIST…. The project generates but cannot be built or installed until AI-NF-1 and AI-NF-4 are fixed. No macOS run has ever validated the current spec, because…",
+   "file": "apple-watch/project.yml",
+   "severity": "Medium",
+   "status": "parziale"
+  },
+  {
+   "id": "R4:L-I-6",
+   "text": "Apple Watch UI hard-coded in Italian while iOS app has 5 localizations. The shipped companion Watch UI shows raw localization keys instead of any language (AI-NF-3, Medium).",
+   "file": "apple-watch/BinarioWatch/WatchHomeView.swift",
+   "severity": "Low",
+   "status": "parziale"
+  },
+  {
+   "id": "R4:L-I-8",
+   "text": "Same bundle id it.binario.watch defined by two contradictory project.yml (watch-only vs i…. The identity conflict is unresolved. The integrated id also breaks the parent-prefix rule (AI-NF-2), which forces a rename of the integrated Watch id…",
+   "file": "apple-watch/project.yml",
+   "severity": "Info",
+   "status": "aperto"
+  },
+  {
+   "id": "RD-11",
+   "text": "Root Wear complication has no validity range, so it can show an expired departure after process death (the M-5 fix covered only the tile) — `wear/complication/BinarioComplicationService.kt`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "RD-13",
+   "text": "PR#34 made the PR#33 tile regression test exercise a test-only layout instead of the production one — `wear/tile/BinarioTileService.kt`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "TW-8",
+   "text": "Android -> Wear OS payload carries hard-coded Italian labels (status, category, operator enum label, notices, fallbacks) that the localized Wear UI renders verbatim: mixed-language watch in en/de/fr/… — `app/wear/AndroidWearSnapshotContract.kt`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "TW-13",
+   "text": "Android Wear encoder emits payloads its own Wear decoder rejects when provenanceObservedAt is more than 60 s after generatedAt (remote GTFS-RT header timestamp ahead of the phone clock) — `app/wear/AndroidWearSnapshotContract.kt`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "TW-15",
+   "text": "UNAVAILABLE coherence rule enforced differently: Wear OS root decoder and Apple Watch accept operationalState=UNAVAILABLE with provenanceDataNature PROGRAMMED/OPERATIONAL/UNKNOWN, while TS, Companion… — `wear/model/WearSnapshot.kt`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "WC-N6",
+   "text": "Android→Wear payload carries Italian-only display strings, rendered verbatim by the now-localized Wear app and Tile — `app/wear/AndroidWearSnapshotContract.kt`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "FSK-WEAR-ACTIVITY-UPTIME",
+   "text": "The Wear app screen can show an expired snapshot as fresh after deep sleep. TTL revocation runs in-process on an uptime timer (Handler.postDelayed), and WearMainActivity never re-validates on resume. — `wear/sync/WearSnapshotStore.kt`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "VT-15",
+   "text": "Wear tile timeline test compares the test-only fallback layout with itself; the production tile layout is never exercised — `wear/tile/BinarioTileTimelineTest.kt`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "VT-16",
+   "text": "Wear codec 'payload oltre budget' test cannot fail if the 8 KB budget check is removed — `wear/model/WearSnapshotCodecTest.kt`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "R4:L-W-3",
+   "text": "provenanceObservedAtEpochMillis bounds differ between decoders and are unspecified in the…. The contract still does not specify the bound, and the decoders still disagree.",
+   "file": "wear/model/WearSnapshot.kt",
+   "severity": "Low",
+   "status": "aperto"
+  },
+  {
+   "id": "RD-12",
+   "text": "DEPENDENCY_AUDIT.md still documents the removed image-size allowlist and omits the new metro patch and forced major overrides — `docs/security/DEPENDENCY_AUDIT.md`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "IOSGTFS-12",
+   "text": "iOS GTFS pipeline hard-codes exactly 10 packs and the documented pack-refresh procedure omits the iOS rebuild; the iOS artifact is verified only in the macOS job — `tools/build_ios_gtfs_schedule.py`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "VT-10",
+   "text": "PR#33 test_wear_compose_gradle_dependency_suppressions.py is not executed by any workflow — `tests/test_wear_compose_gradle_dependency_suppressions.py`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "VB-1",
+   "text": "verify_ci_pinning.py content-locks only the Apple job run-steps; Linux release-rail run-step shell is unreviewed and freely editable — `tools/verify_ci_pinning.py`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "F-CHK-06",
+   "text": "The two GTFS freshness release gates disagree by one day; all current packs trip them on 2026-11-12/13 — `tools/build_gtfs_packs.py`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "WC-N7",
+   "text": "PRIVACY.md still says disabling Wear sharing does not remove the watch copy, contradicting the implemented revocation — `PRIVACY.md`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "WC-N8",
+   "text": "v1 contract does not define the whitespace class or character unit of 'caratteri normalizzati'; decoders disagree — `contracts/wear-snapshot/v1/README.md`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "N-G1-PATHS",
+   "text": "Privacy verifier input docs/data-sources/SOURCE_POLICY.md matches no workflow path filter — `tools/verify_privacy_policy.py`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "N-CI-ORPHAN-TEST",
+   "text": "tests/test_wear_compose_gradle_dependency_suppressions.py (PR#33 lint-policy guard) runs in no workflow — `tests/test_wear_compose_gradle_dependency_suppressions.py`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "FSKB-3",
+   "text": "The JBB disclosure gate requires docs/data-sources/SOURCE_POLICY.md, but no workflow that runs the privacy verifier triggers on that file — `tools/verify_privacy_policy.py`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "FS-NG1-LOC",
+   "text": "Privacy verifier checks only the Italian catalogs; the en/de/fr/es in-app privacy disclosures shipped by PR#34 are never verified — `tools/verify_privacy_policy.py`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "FS-NG1-GUARD",
+   "text": "Android half of the privacy-gate wiring is not regression-guarded: removing the android-ci privacy step and its privacy path filters passes every verifier and all 101 Python tests — `tools/verify_ci_pinning.py`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "VT-17",
+   "text": "tests/test_verify_ios_project.py asserts the presence of Swift test names and source substrings instead of behaviour — `tests/test_verify_ios_project.py`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "F-CHK-11",
+   "text": "git diff --check reports trailing whitespace in the stack (docs markdown only) — `docs/CONTROVERIFICA_AUDIT_CLAUDE_2026-09-29.md`",
+   "file": "",
+   "severity": "",
+   "status": ""
+  },
+  {
+   "id": "R2:C3",
+   "text": "README untruthful: cites 4 nonexistent docs (BUILD_SPEC.md, SECURITY.md, AI_FEATURE_GATE.…. README drift listed above (PR#32/PR#34 made parts worse).",
+   "file": "README.md",
+   "severity": "Medium",
+   "status": "parziale"
+  },
+  {
+   "id": "R3:N-C3",
+   "text": "Companion generated Kotlin JUnit tests never compiled or executed (CI runs only lint/asse…. Gradle/AGP not executable here. BinarioWidgetStateTest now exercises a dead twin (NEW-COMP-5). The Gradle step is currently never reached because the…",
+   "file": ".github/workflows/companion-ci.yml",
+   "severity": "Medium",
+   "status": "parziale ⚠fix contestato"
+  },
+  {
+   "id": "R4:M-13",
+   "text": "CI: all workflows limit push to main but origin/main (v0.16.3) has no .github/: no push r…. Dependabot and main push path inert until owner promotes the line to main; RELEASE_BUILD.md:64 trigger table omits push on stabilization/**; no run e…",
+   "file": ".github/workflows/",
+   "severity": "Medium",
+   "status": "parziale"
+  },
+  {
+   "id": "R2:A4",
+   "text": "GTFS pack pipeline not reproducible: only 3/12 packs filtered offline, no script generate…. Remaining sub-items overlap R4:L-G-9 (legacy tools, generatedAt) and R4:INFO-7 (http://); bs4 unpinned and unhashed.",
+   "file": "tools/build_gtfs_packs.py",
+   "severity": "Low",
+   "status": "parziale"
+  },
+  {
+   "id": "R3:LOW-24",
+   "text": "governance: 4 broken relative links in historical documents. 56 md files excluded by the independence rule (docs/verifiche, docs/releases, docs/handoffs, named claim docs, CHANGELOG) were not checked; the other…",
+   "file": "docs/benchmarks/BENCHMARK_GAP_BINARIO_2026-09-03.md",
+   "severity": "Low",
+   "status": "aperto"
+  },
+  {
+   "id": "R4:L-G-1",
+   "text": "main stuck at v0.16.3 and no 0.20.4 tag while BRANCH_AND_RELEASE_POLICY describes main as…. Needs owner promotion/tagging or a policy rewrite; gate table :17-28 also omits the Apple/iOS and Alexa rails.",
+   "file": "docs/governance/BRANCH_AND_RELEASE_POLICY.md",
+   "severity": "Low",
+   "status": "aperto"
+  },
+  {
+   "id": "R4:L-G-3",
+   "text": "AAB reproducibility gate proves only same-runner determinism (two --rerun-tasks builds in…. Same-runner determinism only; the steps never executed remotely (R3:N-CI).",
+   "file": ".github/workflows/android-ci.yml",
+   "severity": "Low",
+   "status": "aperto"
+  },
+  {
+   "id": "R4:L-G-4",
+   "text": "verify_ci_pinning.py checks neither permissions block nor pull_request_target/workflow_ru…. Unknown workflow file names also bypass all trigger-budget checks.",
+   "file": "tools/verify_ci_pinning.py",
+   "severity": "Low",
+   "status": "aperto"
+  },
+  {
+   "id": "R4:L-G-5",
+   "text": "Toolchain doc drift: README says OpenJDK 21 vs CI Temurin 17.0.20; RELEASE_BUILD/DEPENDEN…. Unchanged drift.",
+   "file": "README.md",
+   "severity": "Low",
+   "status": "aperto"
+  },
+  {
+   "id": "R4:L-G-8",
+   "text": "Data-source docs present ViaggiaTreno/RFI Monitor/Italo as active though excluded from di…. All three sub-items unchanged.",
+   "file": "docs/data-sources/SOURCE_POLICY.md",
+   "severity": "Low",
+   "status": "aperto"
+  },
+  {
+   "id": "R4:L-G-9",
+   "text": "verify_embedded_gtfs_coverage.py without CLI writes unconditionally into a tracked doc; b…. Unchanged; tracked doc is also stale vs current packs.",
+   "file": "tools/verify_embedded_gtfs_coverage.py",
+   "severity": "Low",
+   "status": "aperto"
+  },
+  {
+   "id": "R4:L-I-7",
+   "text": "tests/test_verify_ios_project.py hard-codes 5,239 stations and catalog hash; README still…. Any catalog refresh breaks three test suites. The README contradicts the existing iOS app (PR#32).",
+   "file": "tests/test_verify_ios_project.py",
+   "severity": "Low",
+   "status": "aperto"
+  },
+  {
+   "id": "R4:INFO-10",
+   "text": "PR #32 adds a second macOS CI job (x10 minutes multiplier). Intentional; cost multiplier grew with the broader path filters.",
+   "file": ".github/workflows/apple-watch-ci.yml",
+   "severity": "Info",
+   "status": "aperto"
+  },
+  {
+   "id": "R4:INFO-7",
+   "text": "http:// URLs in tools and legacy catalog entries. Unchanged legacy URLs.",
+   "file": "tools/quality_smoke_test.py",
+   "severity": "Info",
+   "status": "aperto"
+  },
+  {
+   "id": "R4:INFO-8",
+   "text": "Wording drift in architecture documents. Wording drift persists and widened by PR#32.",
+   "file": "docs/architecture/GTFS_SOURCE_ADAPTERS.md",
+   "severity": "Info",
+   "status": "aperto"
+  }
+ ]
+}

@@ -1,0 +1,292 @@
+name: Apple Watch CI
+
+on:
+  pull_request:
+    paths:
+      - "ios/**"
+      - "apple-watch/**"
+      - "app/src/main/assets/gtfs/**"
+      - "app/src/main/assets/stations/curated_it_rail_stations.json"
+      - "contracts/wear-snapshot/**"
+      - "tools/build_ios_gtfs_schedule.py"
+      - "tools/verify_ios_gtfs_schedule.py"
+      - "tools/verify_ios_gtfs_rebuild.py"
+      - "tools/install_xcodegen.py"
+      - "tools/verify_ci_pinning.py"
+      - "tests/test_ios_gtfs_schedule.py"
+      - "tests/test_install_xcodegen.py"
+      - "tests/test_verify_ios_project.py"
+      - "tests/test_verify_apple_watch_project.py"
+      - "tests/test_verify_ci_pinning.py"
+      - "tests/test_requirements_ci.py"
+      - "requirements-ci.txt"
+      - ".github/ci-inputs-lock.json"
+      - ".github/workflows/apple-watch-ci.yml"
+  push:
+    branches:
+      - main
+      - "stabilization/**"
+    paths:
+      - "ios/**"
+      - "apple-watch/**"
+      - "app/src/main/assets/gtfs/**"
+      - "app/src/main/assets/stations/curated_it_rail_stations.json"
+      - "contracts/wear-snapshot/**"
+      - "tools/build_ios_gtfs_schedule.py"
+      - "tools/verify_ios_gtfs_schedule.py"
+      - "tools/verify_ios_gtfs_rebuild.py"
+      - "tools/install_xcodegen.py"
+      - "tools/verify_ci_pinning.py"
+      - "tests/test_ios_gtfs_schedule.py"
+      - "tests/test_install_xcodegen.py"
+      - "tests/test_verify_ios_project.py"
+      - "tests/test_verify_apple_watch_project.py"
+      - "tests/test_verify_ci_pinning.py"
+      - "tests/test_requirements_ci.py"
+      - "requirements-ci.txt"
+      - ".github/ci-inputs-lock.json"
+      - ".github/workflows/apple-watch-ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: apple-watch-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  watchos:
+    runs-on: macos-15
+    timeout-minutes: 30
+    env:
+      XCODE_VERSION: "16.4"
+      XCODE_BUILD: "16F6"
+      XCODEGEN_VERSION: "2.46.0"
+      XCODEGEN_URL: "https://github.com/yonaskolb/XcodeGen/releases/download/2.46.0/xcodegen.zip"
+      XCODEGEN_SHA256: "4d9e34b62172d645eed6457cac13fc222569974098ef4ee9c3368bedf0196806"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Python 3.12.10
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12.10"
+      - name: Verify CI trust chain
+        run: |
+          python3 -m pip install --require-hashes -r requirements-ci.txt
+          python3 -m unittest -v tests/test_install_xcodegen.py tests/test_verify_apple_watch_project.py tests/test_verify_ci_pinning.py tests/test_requirements_ci.py
+          python3 tools/verify_ci_pinning.py
+      - name: Select pinned Xcode
+        run: |
+          sudo xcode-select --switch "/Applications/Xcode_${XCODE_VERSION}.app/Contents/Developer"
+          test "$(xcodebuild -version | sed -n '1p')" = "Xcode $XCODE_VERSION"
+          test "$(xcodebuild -version | sed -n '2p')" = "Build version $XCODE_BUILD"
+      - name: Install XcodeGen
+        run: |
+          destination="$RUNNER_TEMP/xcodegen-bin/xcodegen"
+          python3 "$GITHUB_WORKSPACE/tools/install_xcodegen.py" \
+            --version "$XCODEGEN_VERSION" \
+            --url "$XCODEGEN_URL" \
+            --sha256 "$XCODEGEN_SHA256" \
+            --destination "$destination"
+          echo "$(dirname "$destination")" >> "$GITHUB_PATH"
+          "$destination" --version
+      - name: Generate Xcode project
+        working-directory: apple-watch
+        run: xcodegen generate
+      - name: Select an available watchOS simulator
+        id: simulator
+        run: |
+          xcrun simctl list devices available -j > "$RUNNER_TEMP/simulators.json"
+          cat > "$RUNNER_TEMP/select_watch.py" <<'PY'
+          import json
+          import os
+
+          with open(os.environ["RUNNER_TEMP"] + "/simulators.json", encoding="utf-8") as source:
+              devices = json.load(source)["devices"]
+          for runtime, candidates in devices.items():
+              if "watchOS" not in runtime:
+                  continue
+              for device in candidates:
+                  if device.get("isAvailable"):
+                      with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+                          output.write(f"udid={device['udid']}\n")
+                      raise SystemExit(0)
+          raise SystemExit("Nessun simulatore watchOS disponibile")
+          PY
+          python3 "$RUNNER_TEMP/select_watch.py"
+      - name: Build and test Apple Watch
+        working-directory: apple-watch
+        run: |
+          xcodebuild \
+            -project BinarioWatch.xcodeproj \
+            -scheme BinarioWatch \
+            -destination "id=${{ steps.simulator.outputs.udid }}" \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+          xcodebuild \
+            -project BinarioWatch.xcodeproj \
+            -scheme BinarioWatch \
+            -destination "id=${{ steps.simulator.outputs.udid }}" \
+            CODE_SIGNING_ALLOWED=NO \
+            test
+
+  ios:
+    runs-on: macos-15
+    timeout-minutes: 60
+    env:
+      XCODE_VERSION: "16.4"
+      XCODE_BUILD: "16F6"
+      XCODEGEN_VERSION: "2.46.0"
+      XCODEGEN_URL: "https://github.com/yonaskolb/XcodeGen/releases/download/2.46.0/xcodegen.zip"
+      XCODEGEN_SHA256: "4d9e34b62172d645eed6457cac13fc222569974098ef4ee9c3368bedf0196806"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Python 3.12.10
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12.10"
+      - name: Verify iOS trust chain
+        run: |
+          python3 -m pip install --require-hashes -r requirements-ci.txt
+          python3 -m unittest -v tests/test_install_xcodegen.py tests/test_verify_ios_project.py tests/test_verify_apple_watch_project.py tests/test_verify_ci_pinning.py tests/test_requirements_ci.py tests/test_ios_gtfs_schedule.py
+          python3 tools/verify_ios_gtfs_schedule.py
+          rebuild_zlib="ios/Resources/.ci-rebuild.sqlite.zlib"
+          rebuild_metadata="ios/Resources/.ci-rebuild.metadata.json"
+          trap 'rm -f "$rebuild_zlib" "$rebuild_metadata"' EXIT
+          python3 tools/build_ios_gtfs_schedule.py --output "$rebuild_zlib" --metadata "$rebuild_metadata"
+          python3 tools/verify_ios_gtfs_rebuild.py --rebuild "$rebuild_zlib" --rebuild-metadata "$rebuild_metadata"
+          python3 tools/verify_ci_pinning.py
+      - name: Select pinned Xcode for iOS
+        run: |
+          sudo xcode-select --switch "/Applications/Xcode_${XCODE_VERSION}.app/Contents/Developer"
+          test "$(xcodebuild -version | sed -n '1p')" = "Xcode $XCODE_VERSION"
+          test "$(xcodebuild -version | sed -n '2p')" = "Build version $XCODE_BUILD"
+      - name: Install XcodeGen for iOS
+        run: |
+          destination="$RUNNER_TEMP/xcodegen-bin/xcodegen"
+          python3 "$GITHUB_WORKSPACE/tools/install_xcodegen.py" \
+            --version "$XCODEGEN_VERSION" \
+            --url "$XCODEGEN_URL" \
+            --sha256 "$XCODEGEN_SHA256" \
+            --destination "$destination"
+          echo "$(dirname "$destination")" >> "$GITHUB_PATH"
+          "$destination" --version
+      - name: Test BinarioKit with Swift 6
+        run: swift test --package-path ios/BinarioKit
+      - name: Verify and generate integrated iOS project
+        run: |
+          python3 ios/Scripts/verify-deterministic-generation.py --xcodegen "$(command -v xcodegen)"
+          cd ios
+          xcodegen generate --spec project.yml
+      - name: Select an available iOS simulator
+        id: ios-simulator
+        run: |
+          xcrun simctl list devices available -j > "$RUNNER_TEMP/simulators.json"
+          cat > "$RUNNER_TEMP/select_ios.py" <<'PY'
+          import json
+          import os
+
+          with open(os.environ["RUNNER_TEMP"] + "/simulators.json", encoding="utf-8") as source:
+              devices = json.load(source)["devices"]
+          selected = {}
+          for runtime, candidates in devices.items():
+              platform = "phone" if "SimRuntime.iOS-" in runtime else "watch" if "SimRuntime.watchOS-" in runtime else None
+              if platform is None or platform in selected:
+                  continue
+              for device in candidates:
+                  if device.get("isAvailable"):
+                      selected[platform] = device["udid"]
+                      break
+          if set(selected) != {"phone", "watch"}:
+              raise SystemExit("Serve una coppia di simulatori iOS/watchOS disponibili")
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+              output.write(f"udid={selected['phone']}\n")
+              output.write(f"watch_udid={selected['watch']}\n")
+          PY
+          python3 "$RUNNER_TEMP/select_ios.py"
+          watch_udid="$(sed -n 's/^watch_udid=//p' "$GITHUB_OUTPUT")"
+          phone_udid="$(sed -n 's/^udid=//p' "$GITHUB_OUTPUT")"
+          test -n "$watch_udid" && test -n "$phone_udid"
+          xcrun simctl pair "$watch_udid" "$phone_udid"
+          xcrun simctl boot "$phone_udid"
+          xcrun simctl boot "$watch_udid"
+          xcrun simctl bootstatus "$phone_udid" -b
+          xcrun simctl bootstatus "$watch_udid" -b
+      - name: Build and test integrated iPhone and Watch app
+        working-directory: ios
+        run: |
+          cat Binario.xcodeproj/xcshareddata/xcschemes/Binario.xcscheme
+          for target in Binario BinarioAppTests BinarioKitTests BinarioWatch; do
+            echo "--- $target platform settings ---"
+            xcodebuild -project Binario.xcodeproj -target "$target" -showBuildSettings \
+              | grep -E '^ *(SDKROOT|SUPPORTED_PLATFORMS|IPHONEOS_DEPLOYMENT_TARGET|WATCHOS_DEPLOYMENT_TARGET|TARGETED_DEVICE_FAMILY|SUPPORTS_MACCATALYST|PRODUCT_TYPE|PRODUCT_NAME) ='
+          done
+          xcodebuild -project Binario.xcodeproj -scheme Binario -showdestinations
+          xcrun simctl list pairs
+          xcodebuild \
+            -project Binario.xcodeproj \
+            -scheme Binario \
+            -destination "id=${{ steps.ios-simulator.outputs.udid }}" \
+            CODE_SIGNING_ALLOWED=NO \
+            test
+          xcodebuild \
+            -project Binario.xcodeproj \
+            -scheme BinarioWatch \
+            -destination "id=${{ steps.ios-simulator.outputs.watch_udid }}" \
+            CODE_SIGNING_ALLOWED=NO \
+            test
+      - name: Archive Release build and check the App Store bundle layout
+        working-directory: ios
+        run: |
+          xcodebuild \
+            -project Binario.xcodeproj \
+            -scheme Binario \
+            -configuration Release \
+            -destination "generic/platform=iOS" \
+            -archivePath "$RUNNER_TEMP/Binario.xcarchive" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            archive
+          app="$RUNNER_TEMP/Binario.xcarchive/Products/Applications/Binario.app"
+          watch="$app/Watch/BinarioWatch.app"
+          widget="$watch/PlugIns/BinarioWatchWidgets.appex"
+          # Every check reports what it found, so a failing layout names the bundle and the key.
+          failures=0
+          fail() { echo "::error title=App Store bundle layout::$1"; failures=$((failures + 1)); }
+          info() { plutil -extract "$2" raw -o - "$1/Info.plist" 2>/dev/null || echo "<missing>"; }
+          find "$RUNNER_TEMP/Binario.xcarchive/Products" \( -name "*.app" -o -name "*.appex" \) -print
+          # App Store Connect only receives an archive whose single top-level product is the iPhone app.
+          top_level="$(ls "$RUNNER_TEMP/Binario.xcarchive/Products/Applications")"
+          [ "$top_level" = "Binario.app" ] || fail "archive must contain only Binario.app at top level, found: $(echo $top_level)"
+          # actool records the icon either at the top level or under CFBundleIcons.CFBundlePrimaryIcon.
+          icon() { for key in CFBundleIconName CFBundleIcons.CFBundlePrimaryIcon.CFBundleIconName; do v="$(plutil -extract "$key" raw -o - "$1/Info.plist" 2>/dev/null)" && { echo "$v"; return; }; done; echo "<missing>"; }
+          [ -d "$watch" ] || fail "embedded Watch app missing: Watch/BinarioWatch.app"
+          [ -d "$widget" ] || fail "Watch widget extension missing: PlugIns/BinarioWatchWidgets.appex"
+          for bundle in "$app" "$watch" "$widget"; do
+            [ -f "$bundle/PrivacyInfo.xcprivacy" ] || fail "${bundle##*/}: PrivacyInfo.xcprivacy missing"
+            value="$(plutil -extract ITSAppUsesNonExemptEncryption raw -o - "$bundle/Info.plist" 2>/dev/null || echo "<missing>")"
+            [ "$value" = "false" ] || fail "${bundle##*/}: ITSAppUsesNonExemptEncryption is $value, expected false"
+          done
+          for bundle in "$app" "$watch"; do
+            value="$(icon "$bundle")"
+            [ "$value" = "AppIcon" ] || { plutil -p "$bundle/Info.plist" | grep -i icon || true; fail "${bundle##*/}: CFBundleIconName is $value, expected AppIcon"; }
+            [ -f "$bundle/Assets.car" ] || fail "${bundle##*/}: compiled asset catalog Assets.car missing"
+          done
+          value="$(info "$app" CFBundleDevelopmentRegion)"
+          [ "$value" = "it" ] || fail "Binario.app: CFBundleDevelopmentRegion is $value, expected it"
+          value="$(info "$watch" WKCompanionAppBundleIdentifier)"
+          [ "$value" = "it.binario.ios" ] || fail "BinarioWatch.app: WKCompanionAppBundleIdentifier is $value, expected it.binario.ios"
+          # The archive is what App Store Connect receives: the packs of its timetable index must run 30 more days.
+          python3 ../tools/build_gtfs_packs.py --check --input-dir ../app/src/main/assets/gtfs --min-valid-days 30 \
+            || fail "GTFS packs of the iOS timetable index end within 30 days (tools/build_gtfs_packs.py --check)"
+          test "$failures" -eq 0
+      - name: Upload unsigned Release archive
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: binario-ios-unsigned-xcarchive
+          path: ${{ runner.temp }}/Binario.xcarchive
+          retention-days: 14
+          if-no-files-found: error
+          overwrite: true

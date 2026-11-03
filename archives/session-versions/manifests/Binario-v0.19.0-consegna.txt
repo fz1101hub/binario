@@ -1,0 +1,14 @@
+consegna_binario_v019/
+consegna_binario_v019/Binario-v0.19.0-debug.apk
+consegna_binario_v019/CHANGELOG.md
+consegna_binario_v019/OSM_ATTRIBUTION.md
+consegna_binario_v019/README.md
+consegna_binario_v019/RELEASE.txt
+consegna_binario_v019/SHA256SUMS.txt
+consegna_binario_v019/STATION_CATALOG_MANIFEST.json
+consegna_binario_v019/STATION_CATALOG_SOURCE_RESEARCH.md
+consegna_binario_v019/VERIFICA-v0.19.0.md
+consegna_binario_v019/sorgenti/
+consegna_binario_v019/sorgenti/build_osm_station_catalog.py
+consegna_binario_v019/sorgenti/catalog/
+consegna_binario_v019/sorgenti/catalog/EmbeddedNationalRailStationCatalog.kt

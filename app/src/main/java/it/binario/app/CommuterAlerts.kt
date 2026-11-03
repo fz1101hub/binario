@@ -15,6 +15,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.edit
+import it.binario.app.data.RailTime
 import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
@@ -23,11 +24,15 @@ import java.time.LocalTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.UUID
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 
-enum class AlertRepeat(val label: String, val days: Set<DayOfWeek>) {
-    ONCE("Una volta", emptySet()),
-    WEEKDAYS("Lun–ven", setOf(DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY, DayOfWeek.THURSDAY, DayOfWeek.FRIDAY)),
-    DAILY("Ogni giorno", DayOfWeek.entries.toSet())
+enum class AlertRepeat(val days: Set<DayOfWeek>) {
+    ONCE(emptySet()),
+    WEEKDAYS(setOf(DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY, DayOfWeek.THURSDAY, DayOfWeek.FRIDAY)),
+    DAILY(DayOfWeek.entries.toSet())
 }
 
 data class CommuterAlert(
@@ -39,21 +44,39 @@ data class CommuterAlert(
     val repeat: AlertRepeat,
     val quietHoursEnabled: Boolean,
     val enabled: Boolean = true
-) {
-    val accessibleSummary: String
-        get() = "$routeLabel, fermata $stationName alle $time, avviso $leadMinutes minuti prima, ${repeat.label}${if (quietHoursEnabled) ", fascia silenziosa 22:00–07:00" else ""}${if (!enabled) ", disattivato" else ""}."
+)
+
+sealed interface CommuterAlertTriggerResult {
+    data class TriggerAt(val epochMillis: Long) : CommuterAlertTriggerResult
+    data object Disabled : CommuterAlertTriggerResult
+    data object InvalidTime : CommuterAlertTriggerResult
+    data object QuietHours : CommuterAlertTriggerResult
+    data object NoUpcomingTrigger : CommuterAlertTriggerResult
+}
+
+sealed interface CommuterAlertScheduleResult {
+    data class Scheduled(val triggerAtEpochMillis: Long, val isExact: Boolean) : CommuterAlertScheduleResult
+    data object Disabled : CommuterAlertScheduleResult
+    data object InvalidTime : CommuterAlertScheduleResult
+    data object QuietHours : CommuterAlertScheduleResult
+    data object NoUpcomingTrigger : CommuterAlertScheduleResult
 }
 
 object CommuterAlertPlanner {
-    private val formatter = DateTimeFormatter.ofPattern("H:mm")
-
     fun nextTrigger(
         alert: CommuterAlert,
         nowEpochMillis: Long = System.currentTimeMillis(),
-        zone: ZoneId = ZoneId.systemDefault()
-    ): Long? {
-        if (!alert.enabled) return null
-        val time = runCatching { LocalTime.parse(alert.time, formatter) }.getOrNull() ?: return null
+        zone: ZoneId = RailTime.defaultZone
+    ): Long? = (nextTriggerResult(alert, nowEpochMillis, zone) as? CommuterAlertTriggerResult.TriggerAt)?.epochMillis
+
+    fun nextTriggerResult(
+        alert: CommuterAlert,
+        nowEpochMillis: Long = System.currentTimeMillis(),
+        zone: ZoneId = RailTime.defaultZone
+    ): CommuterAlertTriggerResult {
+        if (!alert.enabled) return CommuterAlertTriggerResult.Disabled
+        val time = runCatching { LocalTime.parse(alert.time) }.getOrNull()
+            ?: return CommuterAlertTriggerResult.InvalidTime
         val now = Instant.ofEpochMilli(nowEpochMillis).atZone(zone)
         for (offset in 0..7) {
             val date = now.toLocalDate().plusDays(offset.toLong())
@@ -61,13 +84,81 @@ object CommuterAlertPlanner {
             val scheduled = LocalDateTime.of(date, time).atZone(zone).toInstant().toEpochMilli()
             val trigger = scheduled - alert.leadMinutes.coerceIn(1, 60) * 60_000L
             if (trigger <= nowEpochMillis) continue
-            if (alert.quietHoursEnabled && isQuiet(Instant.ofEpochMilli(trigger).atZone(zone).toLocalTime())) continue
-            return trigger
+            if (alert.quietHoursEnabled && isQuiet(Instant.ofEpochMilli(trigger).atZone(zone).toLocalTime())) {
+                return CommuterAlertTriggerResult.QuietHours
+            }
+            return CommuterAlertTriggerResult.TriggerAt(trigger)
         }
-        return null
+        return CommuterAlertTriggerResult.NoUpcomingTrigger
     }
 
     fun isQuiet(time: LocalTime): Boolean = time >= LocalTime.of(22, 0) || time < LocalTime.of(7, 0)
+
+    /**
+     * How long after its trigger a reminder that has not rung yet is still delivered: an inexact alarm may come late,
+     * and a reboot or a force stop clears it, but the reminder of a train leaving now is still worth showing.
+     */
+    const val LATE_DELIVERY_MILLIS = 60 * 60_000L
+
+    /**
+     * What a restore (app start, boot, update, exact-alarm access granted) does with [alert], given the trigger
+     * scheduled for it and not delivered yet ([scheduledTrigger], null when none is recorded).
+     */
+    fun restore(alert: CommuterAlert, scheduledTrigger: Long?, nowEpochMillis: Long): CommuterAlertRestore = when {
+        !alert.enabled || scheduledTrigger == null -> CommuterAlertRestore.Reschedule
+        // Still pending, or just passed and not delivered yet: the same trigger, which Android delivers at once if past.
+        nowEpochMillis - scheduledTrigger <= LATE_DELIVERY_MILLIS -> CommuterAlertRestore.Arm(scheduledTrigger)
+        // The only occurrence of a "once" reminder was missed (the phone was off): it does not move to another day.
+        alert.repeat == AlertRepeat.ONCE -> CommuterAlertRestore.Expire
+        else -> CommuterAlertRestore.Reschedule
+    }
+
+    /**
+     * Whether an alarm that fired for [firedTrigger] is the one still scheduled ([scheduledTrigger]): an alarm set
+     * again after it was already delivered must not notify twice. Alarms of earlier versions carry no trigger (0).
+     */
+    fun isScheduledDelivery(scheduledTrigger: Long?, firedTrigger: Long): Boolean =
+        firedTrigger == 0L || scheduledTrigger == firedTrigger
+
+    /** The alerts of the device that an imported list no longer contains: their alarms must be cancelled. */
+    fun removedBy(current: List<CommuterAlert>, imported: List<CommuterAlert>): List<String> {
+        val kept = imported.mapTo(hashSetOf()) { it.id }
+        return current.map { it.id }.filterNot { it in kept }
+    }
+}
+
+sealed interface CommuterAlertRestore {
+    /** Keep (or deliver now, when past) the trigger already scheduled. */
+    data class Arm(val triggerAtEpochMillis: Long) : CommuterAlertRestore
+    /** Plan the next occurrence from now. */
+    data object Reschedule : CommuterAlertRestore
+    /** A "once" reminder whose occurrence passed: it is disabled. */
+    data object Expire : CommuterAlertRestore
+}
+
+/**
+ * The trigger scheduled for each reminder and not delivered yet, so that a restore keeps it instead of skipping to the
+ * next day. Local preferences only, never in the backup.
+ */
+internal class CommuterAlertTriggerStore(context: Context) {
+    private val prefs = context.getSharedPreferences("binario_commuter_alert_triggers", Context.MODE_PRIVATE)
+
+    fun scheduled(alertId: String): Long? = prefs.getLong(alertId, 0L).takeIf { it > 0L }
+
+    fun save(alertId: String, triggerAtEpochMillis: Long) = prefs.edit { putLong(alertId, triggerAtEpochMillis) }
+
+    fun clear(alertId: String) = prefs.edit { remove(alertId) }
+
+    /** Takes the delivery of [firedTrigger] once: false for an alarm that is no longer the scheduled one. */
+    fun claim(alertId: String, firedTrigger: Long): Boolean = synchronized(lock) {
+        if (!CommuterAlertPlanner.isScheduledDelivery(scheduled(alertId), firedTrigger)) return false
+        clear(alertId)
+        true
+    }
+
+    private companion object {
+        val lock = Any()
+    }
 }
 
 class CommuterAlertStore(context: Context) {
@@ -86,6 +177,12 @@ class CommuterAlertStore(context: Context) {
 
     fun remove(id: String): List<CommuterAlert> {
         val updated = alerts().filterNot { it.id == id }
+        persist(updated)
+        return updated
+    }
+
+    fun disable(id: String): List<CommuterAlert> {
+        val updated = alerts().map { alert -> if (alert.id == id) alert.copy(enabled = false) else alert }
         persist(updated)
         return updated
     }
@@ -128,59 +225,184 @@ class CommuterAlertStore(context: Context) {
 object CommuterAlertScheduler {
     private const val ACTION = "it.binario.app.COMMUTER_ALERT"
     private const val EXTRA_ID = "alert_id"
+    private const val EXTRA_TRIGGER = "trigger"
     private const val CHANNEL_ID = "binario_commuter_alerts"
+    /** AlarmManager.ACTION_SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED (API 31), sent when the access is granted. */
+    internal const val ACTION_EXACT_ALARM_PERMISSION_CHANGED = "android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED"
 
-    fun schedule(context: Context, alert: CommuterAlert) {
-        val trigger = CommuterAlertPlanner.nextTrigger(alert) ?: return
-        val pending = pendingIntent(context, alert.id)
-        context.getSystemService(AlarmManager::class.java)
-            .setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, trigger, pending)
+    internal fun acceptsRestoreAction(action: String?): Boolean =
+        action == Intent.ACTION_BOOT_COMPLETED || action == Intent.ACTION_MY_PACKAGE_REPLACED ||
+            action == ACTION_EXACT_ALARM_PERMISSION_CHANGED
+
+    fun schedule(context: Context, alert: CommuterAlert): CommuterAlertScheduleResult {
+        val triggerResult = CommuterAlertPlanner.nextTriggerResult(alert)
+        val trigger = (triggerResult as? CommuterAlertTriggerResult.TriggerAt)?.epochMillis
+        if (trigger == null) {
+            cancel(context, alert.id)
+            return when (triggerResult) {
+                CommuterAlertTriggerResult.Disabled -> CommuterAlertScheduleResult.Disabled
+                CommuterAlertTriggerResult.InvalidTime -> CommuterAlertScheduleResult.InvalidTime
+                CommuterAlertTriggerResult.QuietHours -> CommuterAlertScheduleResult.QuietHours
+                CommuterAlertTriggerResult.NoUpcomingTrigger -> CommuterAlertScheduleResult.NoUpcomingTrigger
+                is CommuterAlertTriggerResult.TriggerAt -> error("Trigger result without trigger")
+            }
+        }
+        return arm(context, alert.id, trigger)
+    }
+
+    /** Sets the alarm of [alertId] at [trigger] (at once when past) and records it as the scheduled one. */
+    private fun arm(context: Context, alertId: String, trigger: Long): CommuterAlertScheduleResult.Scheduled {
+        CommuterAlertTriggerStore(context).save(alertId, trigger)
+        val result = scheduleWakeupAlarm(
+            context = context,
+            alarmManager = context.getSystemService(AlarmManager::class.java),
+            triggerAtEpochMillis = trigger,
+            pendingIntent = pendingIntent(context, alertId, trigger)
+        )
+        return CommuterAlertScheduleResult.Scheduled(result.triggerAtEpochMillis, result.isExact)
     }
 
     fun cancel(context: Context, alertId: String) {
         val manager = context.getSystemService(AlarmManager::class.java)
-        val pending = pendingIntent(context, alertId)
+        val pending = pendingIntent(context, alertId, 0L)
         manager.cancel(pending)
         pending.cancel()
+        CommuterAlertTriggerStore(context).clear(alertId)
     }
 
-    fun notifyAndReschedule(context: Context, alertId: String) {
-        val alert = CommuterAlertStore(context).find(alertId) ?: return
+    /**
+     * Re-arms every reminder after an app start, a boot, an update or a change of the exact-alarm access. A trigger
+     * still pending, or passed by less than [CommuterAlertPlanner.LATE_DELIVERY_MILLIS] without being delivered, is
+     * kept (and rings at once when past) instead of moving to the next day; a missed "once" reminder is disabled.
+     */
+    fun rescheduleAll(context: Context): List<CommuterAlertScheduleResult> {
+        val store = CommuterAlertStore(context)
+        val triggers = CommuterAlertTriggerStore(context)
+        val now = System.currentTimeMillis()
+        return store.alerts().map { alert ->
+            when (val decision = CommuterAlertPlanner.restore(alert, triggers.scheduled(alert.id), now)) {
+                is CommuterAlertRestore.Arm -> arm(context, alert.id, decision.triggerAtEpochMillis)
+                CommuterAlertRestore.Reschedule -> schedule(context, alert)
+                CommuterAlertRestore.Expire -> {
+                    store.disable(alert.id)
+                    cancel(context, alert.id)
+                    CommuterAlertScheduleResult.NoUpcomingTrigger
+                }
+            }
+        }
+    }
+
+    /**
+     * Replaces the reminders with [imported] (a backup): the alarms of the reminders it no longer contains, and the
+     * recorded triggers of the ones it changes, are cancelled first, so that no orphaned alarm wakes the phone.
+     */
+    fun replaceAll(context: Context, store: CommuterAlertStore, imported: List<CommuterAlert>): List<CommuterAlert> {
+        val current = store.alerts()
+        CommuterAlertPlanner.removedBy(current, imported).forEach { cancel(context, it) }
+        current.filter { existing -> imported.any { it.id == existing.id && it != existing } }.forEach { cancel(context, it.id) }
+        store.replace(imported)
+        rescheduleAll(context)
+        // A missed "once" reminder of the file is disabled by the restore.
+        return store.alerts()
+    }
+
+    /**
+     * Shows the reminder with the train's current status (delay, platform, cancellation) when the route sources answer
+     * within [CommuterAlertStatusLookup.TIMEOUT_MILLIS], else with "stato non disponibile". The next alarm is set
+     * before the lookup, so a slow or failing source never costs a recurring reminder.
+     */
+    suspend fun notifyAndReschedule(context: Context, alertId: String, firedTrigger: Long = 0L) {
+        val store = CommuterAlertStore(context)
+        val triggers = CommuterAlertTriggerStore(context)
+        val alert = store.find(alertId) ?: run {
+            triggers.clear(alertId)
+            return
+        }
+        // A disabled reminder never rings; an alarm set again after its delivery does not ring twice.
+        if (!alert.enabled || !triggers.claim(alertId, firedTrigger)) return
+        if (alert.repeat == AlertRepeat.ONCE) {
+            store.disable(alert.id)
+            cancel(context, alert.id)
+        }
+        // Recurring reminders must survive a permission denial or revocation at fire time.
+        if (alert.repeat != AlertRepeat.ONCE) schedule(context, alert)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
             ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
         ) return
+        val status = CommuterAlertStatusLookup.fetch(context, alert)
+        val statusText = CommuterAlertStatusRules.format(status, CommuterAlertStatusLookup.strings(context))
+        val statusSentence = context.getString(R.string.commuter_alert_notification_status, statusText)
         val manager = context.getSystemService(NotificationManager::class.java)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            manager.createNotificationChannel(
-                NotificationChannel(CHANNEL_ID, "Avvisi pendolare Binario", NotificationManager.IMPORTANCE_HIGH).apply {
-                    description = "Promemoria locali ricorrenti configurati dall’utente."
-                }
-            )
-        }
+        manager.createNotificationChannel(
+            NotificationChannel(CHANNEL_ID, context.getString(R.string.commuter_alert_channel_name), NotificationManager.IMPORTANCE_HIGH).apply {
+                description = context.getString(R.string.commuter_alert_channel_description)
+            }
+        )
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_binario)
-            .setContentTitle("Promemoria: ${alert.stationName}")
-            .setContentText("${alert.routeLabel}. Fermata prevista alle ${alert.time}.")
-            .setStyle(NotificationCompat.BigTextStyle().bigText("${alert.routeLabel}: la fermata ${alert.stationName} è prevista alle ${alert.time}. L’avviso è locale e non segue i ritardi senza una fonte autorizzata."))
+            .setContentTitle(context.getString(R.string.commuter_alert_notification_title, alert.stationName))
+            .setContentText(context.getString(R.string.commuter_alert_notification_text, alert.routeLabel, alert.time) + " " + statusSentence)
+            .setStyle(
+                NotificationCompat.BigTextStyle().bigText(
+                    context.getString(
+                        if (status != null) R.string.commuter_alert_notification_big_text_live else R.string.commuter_alert_notification_big_text,
+                        alert.routeLabel, alert.stationName, alert.time
+                    ) + " " + statusSentence
+                )
+            )
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
+            .setContentIntent(contentIntent(context, alert.id))
             .build()
         NotificationManagerCompat.from(context).notify(alert.id.hashCode(), notification)
-        if (alert.repeat != AlertRepeat.ONCE) schedule(context, alert)
     }
 
-    private fun pendingIntent(context: Context, alertId: String): PendingIntent = PendingIntent.getBroadcast(
+    /** One alarm per reminder; the extras say which trigger it was set for (FLAG_UPDATE_CURRENT keeps them current). */
+    private fun pendingIntent(context: Context, alertId: String, trigger: Long): PendingIntent = PendingIntent.getBroadcast(
         context,
         alertId.hashCode(),
-        Intent(context, CommuterAlertReceiver::class.java).setAction(ACTION).putExtra(EXTRA_ID, alertId),
+        Intent(context, CommuterAlertReceiver::class.java).setAction(ACTION).putExtra(EXTRA_ID, alertId).putExtra(EXTRA_TRIGGER, trigger),
+        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+    )
+
+    private fun contentIntent(context: Context, alertId: String): PendingIntent = PendingIntent.getActivity(
+        context,
+        alertId.hashCode(),
+        Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+        },
         PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
     )
 
     internal fun alertId(intent: Intent): String = intent.getStringExtra(EXTRA_ID).orEmpty()
+    internal fun firedTrigger(intent: Intent): Long = intent.getLongExtra(EXTRA_TRIGGER, 0L)
 }
 
 class CommuterAlertReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-        CommuterAlertScheduler.notifyAndReschedule(context, CommuterAlertScheduler.alertId(intent))
+        val pending = goAsync()
+        val appContext = context.applicationContext
+        val alertId = CommuterAlertScheduler.alertId(intent)
+        val firedTrigger = CommuterAlertScheduler.firedTrigger(intent)
+        // The status lookup is bounded well inside the time Android gives a receiver that went asynchronous.
+        CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
+            try {
+                CommuterAlertScheduler.notifyAndReschedule(appContext, alertId, firedTrigger)
+            } finally {
+                pending.finish()
+            }
+        }
+    }
+}
+
+/**
+ * Reinstates persisted reminders and stop alarms after a reboot or an app update, when Android has cleared alarms, and
+ * when exact-alarm access is granted, so that the alarms already set become exact.
+ */
+class CommuterAlertRestoreReceiver : BroadcastReceiver() {
+    override fun onReceive(context: Context, intent: Intent) {
+        if (!CommuterAlertScheduler.acceptsRestoreAction(intent.action)) return
+        CommuterAlertScheduler.rescheduleAll(context)
+        StopAlarmScheduler.restoreAll(context)
     }
 }

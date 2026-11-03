@@ -8,20 +8,19 @@ data class MobilityPreferences(
     val transferMarginMinutes: Int = 10,
     val stepFreePreferred: Boolean = false,
     val compactTimetablePreferred: Boolean = false
-) {
-    val accessibleSummary: String
-        get() = "${maxChanges?.let { "Massimo $it cambi" } ?: "Numero cambi libero"}, margine di interscambio $transferMarginMinutes minuti${if (stepFreePreferred) ", priorità percorsi senza barriere" else ""}${if (compactTimetablePreferred) ", tabellone compatto" else ""}."
-}
+)
 
 class MobilityPreferencesStore(context: Context) {
     private val prefs = context.getSharedPreferences("binario_mobility_preferences", Context.MODE_PRIVATE)
 
-    fun read(): MobilityPreferences = MobilityPreferences(
-        maxChanges = prefs.getInt(KEY_MAX_CHANGES, -1).takeIf { it >= 0 },
-        transferMarginMinutes = prefs.getInt(KEY_MARGIN, 10).coerceIn(0, 45),
-        stepFreePreferred = prefs.getBoolean(KEY_STEP_FREE, false),
-        compactTimetablePreferred = prefs.getBoolean(KEY_COMPACT, false)
-    )
+    fun read(): MobilityPreferences = runCatching {
+        MobilityPreferences(
+            maxChanges = prefs.getInt(KEY_MAX_CHANGES, -1).takeIf { it >= 0 },
+            transferMarginMinutes = prefs.getInt(KEY_MARGIN, 10).coerceIn(0, 45),
+            stepFreePreferred = prefs.getBoolean(KEY_STEP_FREE, false),
+            compactTimetablePreferred = prefs.getBoolean(KEY_COMPACT, false)
+        )
+    }.getOrDefault(MobilityPreferences())
 
     fun save(value: MobilityPreferences) {
         prefs.edit {

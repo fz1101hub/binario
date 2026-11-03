@@ -1,0 +1,116 @@
+{
+ "workflow_run": "wf_7417754c-2de",
+ "entries": [
+  {
+   "key": "v2:1e8407beda865718a97192af194f7c5f677046c9f85855e4dc73af596870eb08",
+   "result": {
+    "branch": "fix/r2-wear",
+    "worktree": "/tmp/claude-0/-home-user-binario/ec2338fa-afae-5418-81d9-da7d3b962a13/scratchpad/fix/wt-wear",
+    "commits": [
+     {
+      "sha": "812908c",
+      "subject": "docs(privacy): describe the implemented watch-side revocation in the Wear choices row",
+      "items": [
+       "SR-play-wear-11"
+      ]
+     },
+     {
+      "sha": "bed4598",
+      "subject": "fix(wear): ship an adaptive launcher icon instead of the opaque square glyph",
+      "items": [
+       "SR-play-wear-7"
+      ]
+     },
+     {
+      "sha": "563d922",
+      "subject": "fix(wear): make the complication push-driven and readable in a short slot",
+      "items": [
+       "SR-play-wear-6"
+      ]
+     },
+     {
+      "sha": "f321f8d",
+      "subject": "fix(wear): test the production Tile layout and drop the hard-coded fallback",
+      "items": [
+       "SR-play-wear-13"
+      ]
+     },
+     {
+      "sha": "5a4f6be",
+      "subject": "fix(wear): lay the watch screen and the Tile out for round displays",
+      "items": [
+       "SR-play-wear-1"
+      ]
+     },
+     {
+      "sha": "a127c16",
+      "subject": "fix(wear): revalidate the snapshot when the watch screen resumes",
+      "items": [
+       "SR-play-wear-8"
+      ]
+     },
+     {
+      "sha": "6c37a63",
+      "subject": "fix(wear): tell the watch user how to enable sharing and when the phone app is missing",
+      "items": [
+       "SR-play-wear-5"
+      ]
+     }
+    ],
+    "items": [
+     {
+      "id": "SR-play-wear-1",
+      "outcome": "fixed",
+      "what_changed": "HEAD still composed a phone-style LazyColumn with fixed 10dp padding and no scaffold, and the Tile stacked left-aligned full-width lines. WearMainActivity now wraps the home screen in MaterialTheme > AppScaffold > ScreenScaffold(scrollState) and scrolls a ScalingLazyColumn with the scaffold's responsive contentPadding (time text, scroll indicator, first/last item kept off the bezel); the empty state scrolls in the same list and text lines are centred. BinarioTileService reads requestParams.deviceConfiguration and binarioTileLayout(snapshot, device, strings) centres its column inside an expand() Box inset by tileInsetFraction (14% of the screen width on SCREEN_SHAPE_ROUND, 6% otherwise) with TEXT_ALIGN_CENTER multi-line text. Deviation from the plan: the Tile uses the ProtoLayout core builders already in the dependency set rather than protolayout-material3's primaryLayout, because no compiler for the real artifact is available here and its Kotlin DSL would have had to be stubbed from memory; the core builders give the round-screen behaviour the criterion asks for. Accessibility labels are unchanged.",
+      "tests": "wear/src/test/java/it/binario/wear/tile/BinarioTileTimelineTest.kt `round screens inset the centred column more than square ones` (inset per shape, vertical centring, text centring; cannot compile against the old signature, so it fails without the fix at compile level). Activity: static only — wear/src/test/java/it/binario/wear/WearMainActivityTest.kt `home screen scrolls in a scaffolded scaling list sized for round screens` string-checks the source (verified failing against the old LazyColumn source via a single-class rerun). Compose for Wear cannot run on the JVM; owner must open app and Tile on a round and a square emulator.",
+      "reason_if_not_fixed": ""
+     },
+     {
+      "id": "SR-play-wear-5",
+      "outcome": "fixed",
+      "what_changed": "HEAD still said only \"Apri Binario sul telefono per sincronizzare\". empty_snapshot_message now names the phone setting and its section in it/en/de/fr/es (\"Attiva Smartwatch Android in Binario sul telefono (Integrazioni Binario) e aggiorna la tratta.\" etc.) and a new key empty_snapshot_phone_app_missing (\"Installa Binario sul telefono abbinato: ...\") exists in all five files (typographic apostrophes, no escaping needed, XML parsed). app/src/main/res/values/wear.xml declares string-array android_wear_capabilities = binario_phone_app (translatable=false, tools:keep so the shrinker and lint keep a resource referenced only by name). New wear/src/main/java/it/binario/wear/WearPhoneApp.kt holds PHONE_APP_CAPABILITY and WearPhoneAppPresence {UNKNOWN, PRESENT, ABSENT} with fromNodeCount(); WearSnapshotText.kt adds emptySnapshotMessageResId(presence). WearMainActivity.onResume asks Wearable.getCapabilityClient(this).getCapability(PHONE_APP_CAPABILITY, CapabilityClient.FILTER_ALL) (offline phone still counts as present) into a MutableStateFlow that WearHome renders. The Tile keeps using empty_snapshot_message (its first two lines carry the setting name).",
+      "tests": "wear/src/test/java/it/binario/wear/WearSnapshotTextTest.kt (presence from node count; message id per presence — new API, so it does not compile without the fix); WearMainActivityTest `empty state tells a missing phone app apart from disabled sharing` (static source check, verified failing without the Activity probe); app/src/test/java/it/binario/app/wear/WearDataLayerConfigurationTest.kt `phone advertises the capability the watch probes for its first run message` ties wear.xml, the Kotlin constant and the string key together (verified failing with those sources stashed). WearStringResourceParityTest covers key parity of the new string.",
+      "reason_if_not_fixed": ""
+     },
+     {
+      "id": "SR-play-wear-6",
+      "outcome": "fixed",
+      "what_changed": "HEAD still had UPDATE_PERIOD_SECONDS=300 and a 32-char combined SHORT_TEXT. Manifest period is now 0 (push only; WearDataLayerListenerService and WearSnapshotStore.onExpired already call requestUpdateAll). BinarioComplicationService delegates to internal binarioComplicationData(type, snapshot, strings): SHORT_TEXT text = expectedDeparture, title = train number, contentDescription = accessible label (without a service: text = app name, description = data status); LONG_TEXT keeps \"HH:MM · number\" (or status) with the route as title; both set setValidTimeRange(TimeRange.before(Instant.ofEpochMilli(expiresAtEpochMillis))). A WearStringProvider fun interface (Context.wearStrings(), accessibleLabel(strings) overload) in WearSnapshotText.kt is the seam shared with the Tile.",
+      "tests": "wear/src/test/java/it/binario/wear/complication/BinarioComplicationDataTest.kt (4 tests: split texts, no-service texts, long texts, validTimeRange.endDateTimeMillis == expiry and NO_DATA without snapshot/for other types) through the test helper wear/src/test/java/it/binario/wear/ResourceNameStrings.kt (resolves ids to resource names via reflection on R.string) — seam-only functions, so they fail to compile without the fix; WearDataLayerConfigurationTest `complication is push driven by the data layer listener instead of polling` (verified failing with the old manifest value via single-class rerun).",
+      "reason_if_not_fixed": ""
+     },
+     {
+      "id": "SR-play-wear-7",
+      "outcome": "fixed",
+      "what_changed": "HEAD still pointed android:icon at the 48dp opaque square vector. Added wear/src/main/res/mipmap-anydpi/ic_launcher.xml (adaptive-icon), drawable/ic_launcher_background.xml (solid #005A52, 108dp) and drawable/ic_launcher_foreground.xml (the train glyph scaled 1.4x and centred so it stays inside the 66dp safe zone); manifest android:icon and android:roundIcon point to @mipmap/ic_launcher while the Tile and complication services keep @drawable/ic_binario_wear. The folder is mipmap-anydpi (not -v26) because minSdk is 30 and lint's ObsoleteSdkInt would fail the warningsAsErrors gate; XML parse checked.",
+      "tests": "WearDataLayerConfigurationTest `watch launcher icon is adaptive while tile and complication keep the service glyph` (manifest references, adaptive layers, the three resource files; verified failing with the manifest and resources stashed). Rendering itself is static only (no aapt/emulator here).",
+      "reason_if_not_fixed": ""
+     },
+     {
+      "id": "SR-play-wear-8",
+      "outcome": "fixed",
+      "what_changed": "HEAD still relied on the Handler.postDelayed expiry callback (uptime-based, stalls while the watch sleeps) so an expired snapshot stayed in the StateFlow after wake-up. WearMainActivity now overrides onResume and calls WearSnapshotStore.current(this), which revokes an expired value and its persisted copy before the screen shows it (Tile/complication already read through this accessor).",
+      "tests": "Expiry decision: already covered by the existing WearSnapshotRuntimeTest `accessor fails closed past expiry even before a delayed scheduler callback runs` (unchanged). Activity hook: static only — WearMainActivityTest `activity revalidates the snapshot on resume because the expiry callback runs on uptime` asserts the onResume override via reflection and the current(this) call in the source; verified failing (NoSuchMethodException) with the override stashed.",
+      "reason_if_not_fixed": ""
+     },
+     {
+      "id": "SR-play-wear-11",
+      "outcome": "fixed",
+      "what_changed": "HEAD still had the stale row (line 142). The \"Interrompere Wear\" row in PRIVACY.md now says: disable sharing in the Android app, the phone requests Data Item deletion and the watch clears its cache when the revocation arrives, offline watches get it on the next Data Layer delivery, clearing data/uninstalling removes the copy directly; the closing note now lists \"un percorso di cancellazione Wear diverso dalla revoca descritta\" instead of a hypothetical Wear deletion path. tools/verify_privacy_policy.py requires the corrected row fragment.",
+      "tests": "tests/test_verify_privacy_policy.py `test_wear_choice_row_describes_the_implemented_watch_side_revocation` (substitutes the old row and expects the verifier error; verified failing with PRIVACY.md and the verifier stashed). python3 tools/verify_privacy_policy.py passes.",
+      "reason_if_not_fixed": ""
+     },
+     {
+      "id": "SR-play-wear-13",
+      "outcome": "fixed",
+      "what_changed": "Partly fixed at HEAD: binarioTileTimeline already took the layout function from the service, but the hard-coded \"Binario\" fallbackBinarioTileLayout was still in production code as the default (used only by tests) and the production layout was untested; compose-ui-tooling was implementation. Now the timeline requires the layout function (no default), the fallback is deleted, binarioTileLayout is a top-level internal function resolving texts through WearStringProvider (device parameters added in SR-play-wear-1), and androidx.wear.compose:compose-ui-tooling:1.6.2 is debugImplementation (nothing in the module references it); tests/test_wear_compose_gradle_dependency_suppressions.py EXPECTED_DEPENDENCIES updated in the same commit.",
+      "tests": "BinarioTileTimelineTest: existing two timeline tests now use the production layout; new `production layout without a snapshot uses the localized unavailable texts` and `production layout renders route first service and data status from the snapshot` assert every line by resource name (seam-only, so they do not compile without the fix); the Python suppression test verified failing with the build file change stashed.",
+      "reason_if_not_fixed": ""
+     }
+    ],
+    "verification": "REPO=$PWD /tmp/claude-0/-home-user-binario/ec2338fa-afae-5418-81d9-da7d3b962a13/scratchpad/kt/android-check.sh all -> ui compile rc=0 errors=0; app tests compile rc=0 errors=0; app tests rc=0 run=542 fail=0 ignored=0 classes=99; wear compile rc=0 errors=0; wear tests compile rc=0 errors=0; wear tests rc=0 run=25 fail=0 ignored=0 classes=7; all: app rc=0 wear rc=0 (baseline before the package: app 539, wear 13). python3 -m unittest discover -s tests -> Ran 161 tests, OK. python3 tools/verify_privacy_policy.py -> passed. XML parse (minidom) OK for the five wear strings.xml files, app/src/main/res/values/wear.xml, the manifest and the three icon resources. git status clean; git log claude/git-repo-audit-cdcsm6..HEAD = 7 commits; merge-base 1ed84d0; diff 1ed84d0..HEAD = 26 files, +571/-88.",
+    "concerns": "1) Harness stubs were extended (real signatures kept) under /tmp/claude-0/-home-user-binario/ec2338fa-afae-5418-81d9-da7d3b962a13/scratchpad/kt/stubs/: common/HarnessGmsWearable.kt (CapabilityInfo, CapabilityClient with getCapability/getAllCapabilities and FILTER_REACHABLE=0/FILTER_ALL=1, Wearable.getCapabilityClient); wear/HarnessWearComplicationsData.kt (TimeRange ALWAYS/between/before/after with start/endDateTimeMillis, ComplicationData.validTimeRange, setValidTimeRange on Short/LongText builders); wear/HarnessWearProtolayout.kt (TypeBuilders.StringProp/Int32Prop getters, DeviceParametersBuilders, ModifiersBuilders Padding/Modifiers, DimensionBuilders.expand()/ContainerDimension, Box/Column setWidth/setHeight/alignment/setModifiers with HorizontalAlignmentProp/VerticalAlignmentProp/TextAlignmentProp getters, Text.setMultilineAlignment, alignment constants); wear/HarnessWearTiles.kt (TileRequest.deviceConfiguration); wear/HarnessWearComposeMaterial3.kt (AppScaffold, ScreenScaffold for ScalingLazyListState with content: (PaddingValues) -> Unit, ScreenScaffoldDefaults, TimeText, ScrollIndicator); new wear/HarnessWearComposeFoundation.kt (ScalingLazyColumn, ScalingLazyListState, rememberScalingLazyListState, ScalingLazyListScope/ItemScope, items/itemsIndexed, AutoCenteringParams; flingBehavior/scalingParams/anchorType/rotaryScrollableBehavior omitted). These APIs are therefore compiled only against hand-written models: the owner must run the real Gradle build (:wear:assembleRelease, :wear:lintRelease) before upload; call sites use named arguments only, so extra defaulted parameters in the real libraries do not matter, but a renamed parameter would surface there. 2) Lint assumptions to confirm in the real run: tools:keep on values/wear.xml is relied on for UnusedResources and the resource shrinker; mipmap-anydpi (no -v26) avoids ObsoleteSdkInt with minSdk 30. 3) Tile round-screen handling uses ProtoLayout core builders (centred Box, 14%/6% insets, centred text) instead of protolayout-material3 primaryLayout; verify on a round and a square emulator and keep the screenshots for the listing (owner action from the finding). 4) Compose cannot execute on the JVM: the Activity-side checks (scaffold list, resume revalidation, capability probe) are static source/reflection tests; the runtime expiry decision has real unit coverage. 5) The base branch gained 9 commits (f815148..a2e2f9c) while this package ran; none touch the 26 files of this branch, so a merge should be clean, but the suites were run on the pre-merge state. 6) CHANGELOG.md was not updated (not requested by the package); the Italian/English/German/French/Spanish empty-state copy names the phone setting exactly as the phone app labels it and should be glanced at by the owner. 7) SHORT_TEXT without a service now shows the app name with the data status only in the content description (a 7-character slot cannot carry the status text)."
+   }
+  }
+ ]
+}

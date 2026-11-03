@@ -1,0 +1,32 @@
+source_id,display_name,outcome,disposition,test_mode,access_mode,detail,landing_page
+arst-gtfs,ARST Sardegna — GTFS,LIMITED,OFFLINE_RETRY,gtfs_import,OPEN_DIRECT,download_timeout,https://www.arst.sardegna.it/open-data/
+trentino-gtfs,Trentino Trasporti — GTFS,LIMITED,OFFLINE_RETRY,gtfs_import,OPEN_DIRECT,download_timeout,https://www.trentinotrasporti.it/it/opendata-it
+alto-adige-sta-gtfs,Open Data Hub Alto Adige — STA GTFS,LIMITED,OFFLINE_RETRY,gtfs_import,OPEN_DIRECT,download_timeout,https://gtfs.api.opendatahub.com/v1/dataset/sta-time-tables
+amt-genova-casella-gtfs,AMT Genova–Casella — GTFS,PASS,OFFLINE_GATEWAY,gtfs_import,GATEWAY_ONLY,agency=1;stops=2754;routes=164;trips=67522,https://www.ferroviagenovacasella.it/geca/
+cotral-ferro-gtfs,Cotral/ASTRAL — GTFS Ferro,PASS,OFFLINE_GATEWAY,gtfs_import,GATEWAY_ONLY,agency=1;stops=35;routes=3;trips=1066,https://infomobilita.astralspa.it/
+lombardia-trenord-gtfs,Regione Lombardia — GTFS ferroviario,PASS,CATALOG_ONLY,metadata_probe,OPEN_DIRECT,page reachable,https://www.dati.lombardia.it/Mobilit-e-trasporti/Orario-Ferroviario-Regionale-Gtfs/3z4k-mxz9
+eav-gtfs,EAV Campania — Open Data,PASS,CATALOG_ONLY,landing_page,OPEN_DIRECT,title=Open Data - EAV srl,https://www.eavsrl.it/open-data/
+toscana-tft-gtfs,Regione Toscana / TFT — GTFS,PASS,CATALOG_ONLY,landing_page,OPEN_DIRECT,title=Regione Toscana - Orari trasporto pubblico - Dataset - OpenData - Regione Toscana,https://dati.toscana.it/dataset/rt-oraritb
+hzpp-gtfs,HŽ Putnički prijevoz — GTFS,PASS,DATA_PACK_READY,gtfs_import,OPEN_DIRECT,agency=1;stops=460;routes=141;trips=44888,https://www.hzpp.hr/en/timetable
+sncf-gtfs,SNCF — GTFS statico,PASS,DATA_PACK_READY,gtfs_import,OPEN_DIRECT,agency=6;stops=8912;routes=728;trips=49065,https://ressources.data.sncf.com/pages/accueil/
+sncf-gtfs-rt-trip-updates,SNCF — GTFS-RT Trip Updates,PASS,PROTOCOL_READY,gtfs_rt_probe,OPEN_DIRECT,protobuf payload sampled,https://www.data.gouv.fr/datasets/horaires-sncf
+sncf-gtfs-rt-alerts,SNCF — GTFS-RT Service Alerts,PASS,PROTOCOL_READY,gtfs_rt_probe,OPEN_DIRECT,protobuf payload sampled,https://www.data.gouv.fr/datasets/horaires-sncf
+ch-otd-gtfs,Open Data Platform Mobility Switzerland — GTFS,PASS,CATALOG_ONLY,landing_page,OPEN_DIRECT,title=Fahrplan 2026 (GTFS2020) - Datensatz - opentransportdata.swiss - CKAN data catalog,https://data.opentransportdata.swiss/dataset/timetable-2026-gtfs2020
+ch-otd-gtfs-rt,Open Data Platform Mobility Switzerland — GTFS-RT,PASS,CATALOG_ONLY,landing_page,GATEWAY_ONLY,title=GTFS Realtime (GTFS-RT) &#8211; Open data platform mobility Switzerland,https://opentransportdata.swiss/en/cookbook/realtime-prediction-cookbook/gtfs-rt/
+oebb-gtfs,ÖBB — GTFS Fahrplan,LIMITED,OFFLINE_RETRY,gtfs_import,OPEN_DIRECT,download_timeout,https://data.oebb.at/de/datensaetze~soll-fahrplan-gtfs~
+viaggiatreno,ViaggiaTreno — stato corse,PASS,APP_LIVE_ENABLED,landing_page,PUBLIC_BEST_EFFORT,Tabellone stazione importato e parser live attivo,http://www.viaggiatreno.it/viaggiatrenomobile/pages/info/info.jsp?title=info
+rfi-station-board,RFI — Monitor Arrivi/Partenze,PASS,APP_LIVE_ENABLED,landing_page,PUBLIC_BEST_EFFORT,Tabellone stazione importato e parser live attivo,https://www.rfi.it/it/stazioni/pagine-stazioni/servizi-di-qualita/informazioni-al-pubblico/monitor-arrivi-partenze-live.html
+rfi-infomobility,RFI — Infomobilità,LIMITED,GATEWAY_REVIEW,landing_page,PUBLIC_BEST_EFFORT,RSS/avvisi verificati; richiede parser e classificazione avvisi,https://www.rfi.it/it/news-e-media/infomobilita.html
+italo-status,Italo in Viaggio,LIMITED,GATEWAY_REVIEW,landing_page,PUBLIC_BEST_EFFORT,Tabella browser verificata; il contenuto Android richiede rendering dinamico o canale stabilizzato,https://italoinviaggio.italotreno.com/
+trenord-realtime,Trenord — tempo reale e avvisi,LIMITED,GATEWAY_REVIEW,landing_page,PUBLIC_BEST_EFFORT,Modulo pubblico verificato; record live non confermato senza interazione dinamica,https://www.trenord.it/linee-e-orari/circolazione/tempo-reale/
+sz-passenger,SŽ Potniški promet — Italia,FAIL,BLOCKED,landing_page,AGREEMENT_REQUIRED,HTTPError,https://potniski.sz.si/en/international-travel/italy-i/trieste-trieste-airport-palmanova-udine/
+fuc-udine-cividale,Ferrovie Udine–Cividale,PASS,CATALOG_ONLY,landing_page,AGREEMENT_REQUIRED,title=Orari UDINE &ndash; CIVIDALE DEL FRIULI | Ferrovie Udine Cividale,https://www.ferrovieudinecividale.it/orari-fuc-udine-cividale/
+fse-puglia,Ferrovie del Sud Est,PASS,CATALOG_ONLY,landing_page,AGREEMENT_REQUIRED,title=FS SUD EST,https://www.fseonline.it/
+fal-basilicata-puglia,Ferrovie Appulo Lucane,PASS,CATALOG_ONLY,landing_page,AGREEMENT_REQUIRED,title=Quadri Orari e Tariffe - Ferrovie Appulo Lucane,https://ferrovieappulolucane.it/tratta/orari/
+ferrotramviaria-bari-barletta,Ferrotramviaria,PASS,CATALOG_ONLY,landing_page,AGREEMENT_REQUIRED,title=Avvisi - Ferrotramviaria SPA,https://www.ferrotramviaria.it/web/guest/avvisi
+fce-circumetnea,Ferrovia Circumetnea,PASS,CATALOG_ONLY,landing_page,AGREEMENT_REQUIRED,title=News Archivi - Ferrovia Circumetnea,https://www.circumetnea.it/category/news/
+fdc-calabria,Ferrovie della Calabria,PASS,CATALOG_ONLY,landing_page,AGREEMENT_REQUIRED,title=Orari dei Trasporti &#8211; Ferrovie della Calabria Srl,https://web.ferroviedellacalabria.it/orari-dei-trasporti/
+tua-abruzzo,TUA Abruzzo,PASS,CATALOG_ONLY,landing_page,AGREEMENT_REQUIRED,title=&raquo; Comunicazioni Autobus - TUA SpA,https://www.tuabruzzo.it/comunicazioni/25.html
+arenaways,Arenaways,FAIL,BLOCKED,landing_page,AGREEMENT_REQUIRED,HTTPError,https://arenaways.it/orari-e-tariffe/orari-treni
+fs-tourist-trains,FS Treni Turistici Italiani / Fondazione FS,PASS,CATALOG_ONLY,landing_page,AGREEMENT_REQUIRED,title=homepage,https://www.fstrenituristici.it/
+european-sleeper,European Sleeper verso Milano,PASS,CATALOG_ONLY,landing_page,AGREEMENT_REQUIRED,title=Discover Europe by Night Train with European Sleeper | European Sleeper,https://www.europeansleeper.eu/

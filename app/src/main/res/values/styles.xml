@@ -5,7 +5,16 @@
         <item name="android:windowLightStatusBar">true</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/white</item>
-        <item name="android:colorAccent">#005A52</item>
+        <item name="android:colorAccent">@color/brand_action_green</item>
+    </style>
+
+    <!-- The "Più vicina" activity of the station widget: no window of its own until it shows a message. -->
+    <style name="Theme.Binario.Translucent" parent="android:style/Theme.Material.Light.Dialog.NoActionBar">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:backgroundDimEnabled">false</item>
+        <item name="android:windowCloseOnTouchOutside">true</item>
     </style>
 
     <style name="Binario.Widget.Action" parent="">
@@ -17,7 +26,7 @@
         <item name="android:gravity">center</item>
         <item name="android:paddingLeft">8dp</item>
         <item name="android:paddingRight">8dp</item>
-        <item name="android:textColor">@color/widget_accent</item>
+        <item name="android:textColor">@color/widget_on_surface</item>
         <item name="android:textSize">14sp</item>
         <item name="android:textStyle">bold</item>
     </style>

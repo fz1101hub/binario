@@ -1,0 +1,154 @@
+package it.binario.app.data
+
+import it.binario.app.BuildConfig
+import it.binario.app.data.gtfs.RemoteGtfsFallbackDataSource
+import it.binario.app.data.live.ItaloTrainNumberAdapter
+import it.binario.app.data.live.ItaloPublicStationAdapter
+import it.binario.app.data.live.RfiInfomobilityRssAdapter
+import it.binario.app.data.live.RfiStationBoardAdapter
+import it.binario.app.data.live.RfiLiveRouteDataSource
+import it.binario.app.data.live.SncfGtfsRealtimeAdapter
+import it.binario.app.data.live.StaRealtimeAdapter
+import it.binario.app.data.live.SwissOpenTransportStationBoardAdapter
+import it.binario.app.data.live.TrenitaliaInfomobilityNewsAdapter
+import it.binario.app.data.live.TrenordLineNoticesAdapter
+import it.binario.app.data.live.ViaggiaTrenoRealtimeAdapter
+import it.binario.app.data.live.ViaggiaTrenoTrainNoticesAdapter
+import it.binario.app.data.planned.RfiProgrammedStationBoardAdapter
+import it.binario.app.data.planned.RfiProgrammedTimetableAdapter
+import it.binario.app.data.planned.RfiSupplementalHubTimetableAdapter
+import it.binario.app.data.planned.RfiTimetablePages
+import it.binario.app.data.repository.TrainNumberSearchProvider
+import it.binario.app.data.repository.StationBoardRunDetailProvider
+import it.binario.app.data.provider.AlertProvider
+import it.binario.app.data.provider.StationBoardProvider
+import it.binario.app.data.provider.TrainNoticeProvider
+import it.binario.app.data.provider.TripUpdateProvider
+import it.binario.app.data.provider.VehiclePositionProvider
+
+/**
+ * Runtime source policy.
+ *
+ * Current-day operator observations precede static timetables when personal
+ * realtime is enabled. Community coverage fallbacks remain below primary
+ * operator/infrastructure sources and official static data.
+ */
+object LocalOnlyRailDataPolicy {
+    // One download per RFI "Quadro orario" page, shared by the timetables and the programmed board.
+    private val rfiProgrammed by lazy { RfiProgrammedTimetableAdapter(pages = RfiTimetablePages.shared) }
+    private val rfiSupplemental by lazy { RfiSupplementalHubTimetableAdapter(pages = RfiTimetablePages.shared) }
+    private val europeanSleeperFallback by lazy { RemoteGtfsFallbackDataSource.europeanSleeper() }
+    private val rfiProgrammedBoard by lazy { RfiProgrammedStationBoardAdapter(pages = RfiTimetablePages.shared) }
+    private val rfiStationBoard by lazy { RfiStationBoardAdapter() }
+    private val rfiLiveRoutes by lazy { RfiLiveRouteDataSource(rfiStationBoard) }
+    private val italoStationBoard by lazy { ItaloPublicStationAdapter() }
+    private val italoNumber by lazy { ItaloTrainNumberAdapter() }
+    private val viaggiaTrenoBoard by lazy { ViaggiaTrenoRealtimeAdapter() }
+    private val rfiAlerts by lazy { RfiInfomobilityRssAdapter() }
+    private val staRealtime by lazy { StaRealtimeAdapter() }
+    private val sncfRealtime by lazy { SncfGtfsRealtimeAdapter() }
+    private val swissOpenTransportBoard by lazy { SwissOpenTransportStationBoardAdapter() }
+    private val viaggiaTrenoTrainNotices by lazy { ViaggiaTrenoTrainNoticesAdapter() }
+    private val trenitaliaNews by lazy { TrenitaliaInfomobilityNewsAdapter() }
+    private val trenordNotices by lazy { TrenordLineNoticesAdapter() }
+    private val openMeteo by lazy { it.binario.app.data.weather.OpenMeteoForecastAdapter() }
+    private val mitStrikes by lazy { it.binario.app.data.live.MitStrikeRssAdapter() }
+
+    /** Official programmed sources only. */
+    fun routeSources(): List<TrainDataSource> = listOf(
+        rfiProgrammed,
+        rfiSupplemental
+    )
+
+    /** Current-day operator data is queried before waiting for programmed timetables. */
+    fun liveRouteSources(routeCandidateSource: TrainDataSource? = null): List<RealtimeRouteDataSource> =
+        if (BuildConfig.PERSONAL_REALTIME_SOURCES) listOf(
+            if (routeCandidateSource == null) viaggiaTrenoBoard else ViaggiaTrenoRealtimeAdapter(routeCandidateSource = routeCandidateSource),
+            rfiLiveRoutes
+        ) else emptyList()
+
+    /** Last-resort route coverage. These sources must never outrank official GTFS/RFI data. */
+    fun coverageRouteFallbacks(): List<TrainDataSource> = listOf(
+        // European Sleeper owns its realtime reconciliation internally and only
+        // after this exact fallback static feed produced the requested route.
+        europeanSleeperFallback
+    )
+
+    /** Realtime/operational boards used to enrich planned route snapshots. */
+    fun stationBoardProviders(): List<StationBoardProvider> =
+        if (BuildConfig.PERSONAL_REALTIME_SOURCES) {
+            listOf(
+                rfiStationBoard,
+                italoStationBoard,
+                viaggiaTrenoBoard,
+                // Best effort as well; returns NOT_SUPPORTED without network for non-Swiss stations.
+                swissOpenTransportBoard
+            )
+        } else {
+            emptyList()
+        }
+
+    /**
+     * User-facing station board: always starts from the official RFI programmed
+     * departure board and overlays explicitly enabled operational providers.
+     */
+    fun stationBoardDisplayProviders(): List<StationBoardProvider> =
+        listOf(rfiProgrammedBoard) + stationBoardProviders()
+
+    fun trainNumberSearchProviders(): List<TrainNumberSearchProvider> =
+        if (BuildConfig.PERSONAL_REALTIME_SOURCES) listOf(viaggiaTrenoBoard, italoNumber) else emptyList()
+
+    fun stationBoardRunDetailProviders(): List<StationBoardRunDetailProvider> =
+        if (BuildConfig.PERSONAL_REALTIME_SOURCES) listOf(viaggiaTrenoBoard) else emptyList()
+
+    fun alertProviders(): List<AlertProvider> = listOf(
+        rfiAlerts,
+        staRealtime,
+        sncfRealtime
+    ) + personalNoticeProviders() + trenordLineNoticeProviders()
+
+    /** Network notices for the notices area: official RFI feed always, best-effort operator notices if enabled. */
+    fun networkNoticeProviders(): List<AlertProvider> = listOf(rfiAlerts) + personalNoticeProviders()
+
+    /** Trenord line notices, grouped by line in the notices area; best effort, personal sources only. */
+    fun trenordLineNoticeProviders(): List<TrenordLineNoticesAdapter> =
+        if (BuildConfig.PERSONAL_REALTIME_SOURCES) listOf(trenordNotices) else emptyList()
+
+    private fun personalNoticeProviders(): List<AlertProvider> =
+        if (BuildConfig.PERSONAL_REALTIME_SOURCES) listOf(trenitaliaNews) else emptyList()
+
+    /** Per-train notices: ViaggiaTreno family, best effort, so only with the personal realtime sources. */
+    fun trainNoticeProviders(): List<TrainNoticeProvider> =
+        if (BuildConfig.PERSONAL_REALTIME_SOURCES) listOf(viaggiaTrenoTrainNotices) else emptyList()
+
+    /**
+     * Destination weather: open data (CC BY 4.0), not a best-effort rail source, so not tied to the personal
+     * realtime flag; the user switches it off in the settings ("Meteo a destinazione").
+     */
+    fun weatherForecastProvider(): it.binario.app.data.weather.OpenMeteoForecastAdapter = openMeteo
+
+    /**
+     * MIT strike calendar: a public institutional RSS feed (HTTPS), not a best-effort rail source, so not tied to the
+     * personal realtime flag. It is not a network notice provider: the notices area and the 18:00 reminder read it.
+     */
+    fun strikeCalendarProvider(): it.binario.app.data.live.MitStrikeRssAdapter = mitStrikes
+
+    fun vehiclePositionProviders(): List<VehiclePositionProvider> = listOf(
+        staRealtime
+    )
+
+    /**
+     * Only realtime feeds that can currently be reconciled against a trusted
+     * static schedule are queried globally.
+     */
+    fun tripUpdateProviders(): List<TripUpdateProvider> = listOf(
+        staRealtime,
+        sncfRealtime
+    )
+
+    /**
+     * No coverage realtime provider is global. Each fallback must reconcile its
+     * realtime against the exact static bytes that produced the route.
+     */
+    fun coverageTripUpdateProviders(): List<TripUpdateProvider> = emptyList()
+}

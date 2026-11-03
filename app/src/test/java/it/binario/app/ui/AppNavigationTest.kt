@@ -1,0 +1,148 @@
+package it.binario.app.ui
+
+import it.binario.app.BinarioDeepLink
+import it.binario.app.data.Direction
+import it.binario.app.data.SavedRoute
+import it.binario.app.data.Station
+import it.binario.app.ui.departures.OperationsSection
+import it.binario.app.ui.planner.SearchMode
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+class AppNavigationTest {
+    @Test
+    fun `width classes follow the 600 and 840 dp breakpoints`() {
+        assertEquals(WidthClass.COMPACT, WidthClass.fromWidthDp(411f))
+        assertEquals(WidthClass.COMPACT, WidthClass.fromWidthDp(599.9f))
+        assertEquals(WidthClass.MEDIUM, WidthClass.fromWidthDp(600f))
+        assertEquals(WidthClass.MEDIUM, WidthClass.fromWidthDp(839f))
+        assertEquals(WidthClass.EXPANDED, WidthClass.fromWidthDp(840f))
+        assertEquals(WidthClass.EXPANDED, WidthClass.fromWidthDp(1280f))
+    }
+
+    @Test
+    fun `every screen belongs to one of the three destinations`() {
+        assertEquals(TopDestination.PLAN, AppNavigation.destinationOf(AppScreen.RESULTS, AppScreen.PLANNER))
+        assertEquals(TopDestination.PLAN, AppNavigation.destinationOf(AppScreen.NUMBER_RESULTS, AppScreen.PLANNER))
+        assertEquals(TopDestination.FOR_YOU, AppNavigation.destinationOf(AppScreen.AGENDA, AppScreen.PLANNER))
+        assertEquals(TopDestination.FOR_YOU, AppNavigation.destinationOf(AppScreen.SETTINGS, AppScreen.PLANNER))
+        assertEquals(TopDestination.PLAN, AppNavigation.destinationOf(AppScreen.JOURNEY_DETAIL, AppScreen.DEPARTURES))
+        assertEquals(TopDestination.FOR_YOU, AppNavigation.destinationOf(AppScreen.SETTINGS_SECTION, AppScreen.PLANNER))
+        assertEquals(TopDestination.FOR_YOU, AppNavigation.destinationOf(AppScreen.SAVED_TIMETABLE, AppScreen.PLANNER))
+        assertEquals(TopDestination.DEPARTURES, AppNavigation.destinationOf(AppScreen.DETAIL, AppScreen.DEPARTURES))
+        assertEquals(TopDestination.PLAN, AppNavigation.destinationOf(AppScreen.DETAIL, AppScreen.NUMBER_RESULTS))
+        TopDestination.entries.forEach { destination ->
+            assertEquals(destination, AppNavigation.rootOf(destination).destination)
+        }
+    }
+
+    @Test
+    fun `back returns to the parent and leaves the app only from a top-level screen`() {
+        assertEquals(AppScreen.DEPARTURES, AppNavigation.back(AppScreen.DETAIL, AppScreen.DEPARTURES))
+        assertEquals(AppScreen.RESULTS, AppNavigation.back(AppScreen.DETAIL, AppScreen.RESULTS))
+        assertEquals(AppScreen.PLANNER, AppNavigation.back(AppScreen.RESULTS, AppScreen.PLANNER))
+        assertEquals(AppScreen.PLANNER, AppNavigation.back(AppScreen.NUMBER_RESULTS, AppScreen.PLANNER))
+        assertEquals(AppScreen.FOR_YOU, AppNavigation.back(AppScreen.AGENDA, AppScreen.PLANNER))
+        assertEquals(AppScreen.FOR_YOU, AppNavigation.back(AppScreen.SETTINGS, AppScreen.PLANNER))
+        assertEquals(AppScreen.SETTINGS, AppNavigation.back(AppScreen.SETTINGS_SECTION, AppScreen.PLANNER))
+        assertEquals(AppScreen.RESULTS, AppNavigation.back(AppScreen.JOURNEY_DETAIL, AppScreen.DEPARTURES))
+        assertEquals(AppScreen.FOR_YOU, AppNavigation.back(AppScreen.SAVED_TIMETABLE, AppScreen.PLANNER))
+        assertNull(AppNavigation.back(AppScreen.PLANNER, AppScreen.PLANNER))
+        assertNull(AppNavigation.back(AppScreen.DEPARTURES, AppScreen.PLANNER))
+        assertNull(AppNavigation.back(AppScreen.FOR_YOU, AppScreen.PLANNER))
+    }
+
+    @Test
+    fun `results opened from Per te stay in Per te and go back there`() {
+        assertEquals(TopDestination.FOR_YOU, AppNavigation.destinationOf(AppScreen.NUMBER_RESULTS, AppScreen.PLANNER, AppScreen.FOR_YOU))
+        assertEquals(TopDestination.FOR_YOU, AppNavigation.destinationOf(AppScreen.RESULTS, AppScreen.PLANNER, AppScreen.FOR_YOU))
+        assertEquals(TopDestination.FOR_YOU, AppNavigation.destinationOf(AppScreen.DETAIL, AppScreen.NUMBER_RESULTS, AppScreen.FOR_YOU))
+        assertEquals(TopDestination.FOR_YOU, AppNavigation.destinationOf(AppScreen.JOURNEY_DETAIL, AppScreen.RESULTS, AppScreen.FOR_YOU))
+        assertEquals(AppScreen.FOR_YOU, AppNavigation.back(AppScreen.NUMBER_RESULTS, AppScreen.PLANNER, AppScreen.FOR_YOU))
+        assertEquals(AppScreen.FOR_YOU, AppNavigation.back(AppScreen.RESULTS, AppScreen.PLANNER, AppScreen.FOR_YOU))
+        assertEquals(AppScreen.NUMBER_RESULTS, AppNavigation.back(AppScreen.DETAIL, AppScreen.NUMBER_RESULTS, AppScreen.FOR_YOU))
+        // Only the planner and Per te open results; anything else falls back to the planner.
+        assertEquals(AppScreen.PLANNER, AppNavigation.back(AppScreen.RESULTS, AppScreen.PLANNER, AppScreen.DEPARTURES))
+        assertEquals(TopDestination.PLAN, AppNavigation.destinationOf(AppScreen.RESULTS, AppScreen.PLANNER, AppScreen.DEPARTURES))
+    }
+
+    @Test
+    fun `a tab reopens on its last screen but never on a closed train detail`() {
+        assertEquals(AppScreen.RESULTS, AppNavigation.resumeScreenOf(AppScreen.RESULTS, AppScreen.PLANNER))
+        assertEquals(AppScreen.RESULTS, AppNavigation.resumeScreenOf(AppScreen.DETAIL, AppScreen.RESULTS))
+        assertEquals(AppScreen.DEPARTURES, AppNavigation.resumeScreenOf(AppScreen.DETAIL, AppScreen.DEPARTURES))
+        assertEquals(AppScreen.PLANNER, AppNavigation.resumeScreenOf(AppScreen.DETAIL, AppScreen.DETAIL))
+        assertEquals(AppScreen.SETTINGS_SECTION, AppNavigation.resumeScreenOf(AppScreen.SETTINGS_SECTION, AppScreen.PLANNER))
+    }
+
+    @Test
+    fun `the tab screens survive as one saved string`() {
+        var encoded = TabScreens.with("", TopDestination.PLAN, AppScreen.RESULTS)
+        encoded = TabScreens.with(encoded, TopDestination.FOR_YOU, AppScreen.SETTINGS)
+        encoded = TabScreens.with(encoded, TopDestination.PLAN, AppScreen.JOURNEY_DETAIL)
+        assertEquals(AppScreen.JOURNEY_DETAIL, TabScreens.of(encoded, TopDestination.PLAN))
+        assertEquals(AppScreen.SETTINGS, TabScreens.of(encoded, TopDestination.FOR_YOU))
+        assertNull(TabScreens.of(encoded, TopDestination.DEPARTURES))
+        assertNull(TabScreens.of("PLAN=GONE", TopDestination.PLAN))
+    }
+
+    @Test
+    fun `phones hide the bottom bar only in the train detail while the side navigation stays from 600 dp`() {
+        val details = setOf(AppScreen.DETAIL, AppScreen.JOURNEY_DETAIL)
+        AppScreen.entries.filter { it !in details }.forEach {
+            assertTrue(AppNavigation.showsNavigation(it, WidthClass.COMPACT))
+        }
+        details.forEach { assertFalse(AppNavigation.showsNavigation(it, WidthClass.COMPACT)) }
+        AppScreen.entries.forEach {
+            assertTrue(AppNavigation.showsNavigation(it, WidthClass.MEDIUM))
+            assertTrue(AppNavigation.showsNavigation(it, WidthClass.EXPANDED))
+        }
+    }
+
+    @Test
+    fun `lists and detail share the window only from 840 dp`() {
+        assertNull(AppNavigation.listPaneOf(AppScreen.DETAIL, AppScreen.DEPARTURES, WidthClass.COMPACT))
+        assertNull(AppNavigation.listPaneOf(AppScreen.DETAIL, AppScreen.DEPARTURES, WidthClass.MEDIUM))
+        assertEquals(AppScreen.DEPARTURES, AppNavigation.listPaneOf(AppScreen.DEPARTURES, AppScreen.PLANNER, WidthClass.EXPANDED))
+        assertEquals(AppScreen.DEPARTURES, AppNavigation.listPaneOf(AppScreen.DETAIL, AppScreen.DEPARTURES, WidthClass.EXPANDED))
+        assertEquals(AppScreen.RESULTS, AppNavigation.listPaneOf(AppScreen.DETAIL, AppScreen.RESULTS, WidthClass.EXPANDED))
+        assertEquals(AppScreen.RESULTS, AppNavigation.listPaneOf(AppScreen.JOURNEY_DETAIL, AppScreen.PLANNER, WidthClass.EXPANDED))
+        assertNull(AppNavigation.listPaneOf(AppScreen.JOURNEY_DETAIL, AppScreen.PLANNER, WidthClass.MEDIUM))
+        assertEquals(AppScreen.NUMBER_RESULTS, AppNavigation.listPaneOf(AppScreen.NUMBER_RESULTS, AppScreen.PLANNER, WidthClass.EXPANDED))
+        assertNull(AppNavigation.listPaneOf(AppScreen.PLANNER, AppScreen.PLANNER, WidthClass.EXPANDED))
+        assertNull(AppNavigation.listPaneOf(AppScreen.FOR_YOU, AppScreen.PLANNER, WidthClass.EXPANDED))
+        assertNull(AppNavigation.listPaneOf(AppScreen.AGENDA, AppScreen.PLANNER, WidthClass.EXPANDED))
+        assertNull(AppNavigation.listPaneOf(AppScreen.SETTINGS, AppScreen.PLANNER, WidthClass.EXPANDED))
+    }
+
+    @Test
+    fun `existing deep links land on the new destinations`() {
+        val departures = NavigationTarget(AppScreen.DEPARTURES, departuresSection = OperationsSection.TRAINS)
+        assertEquals(departures, AppNavigation.targetOf(BinarioDeepLink.ActiveRoute))
+        assertEquals(departures, AppNavigation.targetOf(BinarioDeepLink.NextDepartures))
+        val route = SavedRoute("r", "Roma – Napoli", Station("roma", "Roma Termini", "Roma"), Station("napoli", "Napoli Centrale", "Napoli"))
+        assertEquals(departures, AppNavigation.targetOf(BinarioDeepLink.WidgetRoute(route, Direction.RETURN)))
+        assertEquals(NavigationTarget(AppScreen.AGENDA), AppNavigation.targetOf(BinarioDeepLink.Agenda))
+        assertEquals(
+            NavigationTarget(AppScreen.PLANNER, plannerMode = SearchMode.TRAIN),
+            AppNavigation.targetOf(BinarioDeepLink.TrainSearch("9920"))
+        )
+        assertEquals(AppScreen.PLANNER, AppNavigation.targetOf(BinarioDeepLink.TrainSearch(null)).screen)
+    }
+
+    @Test
+    fun `only visible boards and the detail poll for updates`() {
+        assertTrue(AppNavigation.refreshesPeriodically(AppScreen.DEPARTURES))
+        assertTrue(AppNavigation.refreshesPeriodically(AppScreen.DETAIL))
+        assertTrue(AppNavigation.refreshesPeriodically(AppScreen.RESULTS))
+        assertTrue(AppNavigation.refreshesPeriodically(AppScreen.NUMBER_RESULTS))
+        assertFalse(AppNavigation.refreshesPeriodically(AppScreen.PLANNER))
+        assertFalse(AppNavigation.refreshesPeriodically(AppScreen.FOR_YOU))
+        assertFalse(AppNavigation.refreshesPeriodically(AppScreen.AGENDA))
+        assertFalse(AppNavigation.refreshesPeriodically(AppScreen.SETTINGS))
+        assertFalse(AppNavigation.refreshesPeriodically(AppScreen.JOURNEY_DETAIL))
+    }
+}

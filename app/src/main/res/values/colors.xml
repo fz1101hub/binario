@@ -1,11 +1,24 @@
 <resources>
-    <color name="widget_surface">#004B3A</color>
-    <color name="widget_on_surface">#F5FBF5</color>
-    <color name="widget_on_surface_muted">#C5D9CF</color>
-    <color name="widget_accent">#4FE0AE</color>
-    <color name="widget_warning">#FFB870</color>
-    <color name="widget_error">#FFB4AB</color>
-    <color name="widget_divider">#4E796A</color>
-    <color name="widget_header">#C5D9CF</color>
-    <color name="widget_header_text">#003527</color>
+    <!-- Binario 2.0 palette of the approved render (design/BINARIO_2_DESIGN_SYSTEM.md): deep forest green header
+         #003A28, filled actions #00703E, light cards #FCFCFC on the #F4F7F6 page. Every pair below meets WCAG AA:
+         white on the header 12.8:1, mint details 8.5:1, row text 15.6:1, muted 8.1:1, delay text 6.6:1 and
+         error text 6.4:1 on the rows (5.8:1 and 5.6:1 on a highlighted row), white on the actions 6.2:1;
+         boundaries keep at least 3:1 against the page. -->
+    <color name="brand_action_green">#00703E</color>
+    <color name="widget_surface">#F4F7F6</color>
+    <color name="widget_header_green">#003A28</color>
+    <color name="widget_on_header">#FFFFFF</color>
+    <color name="widget_on_header_muted">#8FE3C0</color>
+    <color name="widget_row">#FCFCFC</color>
+    <color name="widget_on_surface">#17241F</color>
+    <color name="widget_on_surface_muted">#3F5249</color>
+    <color name="widget_warning">#8A4B12</color>
+    <color name="widget_error">#B3261E</color>
+    <!-- Early trains in the "I miei treni" widget: the action green, 6.1:1 on the rows. -->
+    <color name="widget_early">#00703E</color>
+    <color name="widget_divider">#6F7F78</color>
+    <color name="widget_header">#E2EEEA</color>
+    <color name="widget_header_text">#003A28</color>
+    <color name="widget_variation">#FFE9D1</color>
+    <color name="widget_variation_stroke">#99571B</color>
 </resources>

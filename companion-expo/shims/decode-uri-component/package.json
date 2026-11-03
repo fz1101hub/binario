@@ -1,0 +1,9 @@
+{
+  "name": "decode-uri-component",
+  "version": "0.2.2-binario.1",
+  "description": "Binario's linear-time replacement for decode-uri-component@0.2.2 (GHSA-qr28-fpjm-wq7f), same CommonJS API.",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "license": "MIT",
+  "private": true
+}

@@ -1,0 +1,1 @@
+/tmp/claude-0/-home-user-binario/ec2338fa-afae-5418-81d9-da7d3b962a13/scratchpad/kt/lib/org.robolectric/android-all-16-robolectric-13921718.jar

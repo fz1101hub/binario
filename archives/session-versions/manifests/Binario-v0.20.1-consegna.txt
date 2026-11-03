@@ -1,0 +1,6 @@
+consegna_binario_v0201/
+consegna_binario_v0201/Binario-v0.20.1-debug.apk
+consegna_binario_v0201/CHANGELOG.md
+consegna_binario_v0201/RELEASE.txt
+consegna_binario_v0201/SHA256SUMS.txt
+consegna_binario_v0201/VERIFICA-v0.20.1.md

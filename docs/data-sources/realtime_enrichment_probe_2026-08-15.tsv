@@ -1,0 +1,4 @@
+source	http_status	content_type	bytes
+sncf_trip_updates	200	application/x-protobuf; charset=UTF-8	138430
+sncf_service_alerts	200	application/x-protobuf; charset=UTF-8	749998
+sta_trip_updates	200	application/json; charset=utf-8	25837

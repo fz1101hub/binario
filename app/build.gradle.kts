@@ -4,6 +4,46 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
+val releaseSigningPropertyNames = listOf(
+    "BINARIO_RELEASE_STORE_FILE",
+    "BINARIO_RELEASE_STORE_PASSWORD",
+    "BINARIO_RELEASE_KEY_ALIAS",
+    "BINARIO_RELEASE_KEY_PASSWORD",
+)
+val releaseSigningProperties = releaseSigningPropertyNames.associateWith { propertyName ->
+    providers.gradleProperty(propertyName)
+        .orElse(providers.environmentVariable(propertyName))
+}
+val releaseSigningConfigured = releaseSigningProperties.values.all { it.isPresent }
+if (releaseSigningProperties.values.any { it.isPresent } && !releaseSigningConfigured) {
+    logger.warn("Release signing is only enabled when all BINARIO_RELEASE_* properties are set; building unsigned.")
+}
+
+val binarioVersionCode = providers.gradleProperty("BINARIO_VERSION_CODE")
+    .orElse(providers.gradleProperty("BINARIO_APP_VERSION_CODE"))
+    .get()
+    .toInt()
+val binarioVersionName = providers.gradleProperty("BINARIO_VERSION_NAME").get()
+
+/**
+ * Timetable packs licensed for personal use only (non-commercial or unstated reuse terms, see
+ * docs/data-sources/SOURCE_POLICY.md): `-Pbinario.personalSources=true|false` decides for every build type; unset,
+ * the debug test APK includes them and release builds and Play bundles do not.
+ */
+fun personalTransitSources(buildType: String): Boolean =
+    providers.gradleProperty("binario.personalSources").orNull?.toBooleanStrict() ?: (buildType == "debug")
+
+/**
+ * Unofficial network punctuality statistics (`src/main/assets/punctuality/`, aggregated from ViaggiaTreno observations
+ * by the CI pipeline): `-Pbinario.punctualityStats=false` leaves the file out of every APK and bundle and hides the
+ * feature (BuildConfig.NETWORK_PUNCTUALITY_STATS), so it can be withdrawn with one release. Unset, every build type
+ * includes it.
+ */
+val binarioPunctualityStats = providers.gradleProperty("binario.punctualityStats").orElse("true").get()
+val punctualityStatsIncluded = binarioPunctualityStats.toBooleanStrict()
+/** aapt's default ignore list, restated so that adding a pattern never drops the defaults. */
+val defaultIgnoredAssets = listOf("!.svn", "!.git", "!.ds_store", "!*.scc", ".*", "<dir>_*", "!CVS", "!thumbs.db", "!picasa.ini", "!*~")
+
 android {
     namespace = "it.binario.app"
     compileSdk = 36
@@ -12,8 +52,16 @@ android {
         applicationId = "it.binario.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 25
-        versionName = "0.16.3"
+        versionCode = binarioVersionCode
+        versionName = binarioVersionName
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        // The embedded network statistics and their screens; false with -Pbinario.punctualityStats=false.
+        buildConfigField("boolean", "NETWORK_PUNCTUALITY_STATS", binarioPunctualityStats)
+    }
+
+    androidResources {
+        // Without the statistics their asset directory (punctuality/) is not packaged in any build type.
+        if (!punctualityStatsIncluded) ignoreAssetsPatterns += defaultIgnoredAssets + "!punctuality"
     }
 
     buildFeatures {
@@ -30,15 +78,76 @@ android {
         jvmTarget = "17"
     }
 
+    signingConfigs {
+        if (releaseSigningConfigured) {
+            create("release") {
+                storeFile = rootProject.file(releaseSigningProperties.getValue("BINARIO_RELEASE_STORE_FILE").get())
+                storePassword = releaseSigningProperties.getValue("BINARIO_RELEASE_STORE_PASSWORD").get()
+                keyAlias = releaseSigningProperties.getValue("BINARIO_RELEASE_KEY_ALIAS").get()
+                keyPassword = releaseSigningProperties.getValue("BINARIO_RELEASE_KEY_PASSWORD").get()
+            }
+        }
+    }
+
+    buildTypes {
+        getByName("debug") {
+            // Device-test builds are personal builds and must exercise realtime.
+            buildConfigField("boolean", "PERSONAL_REALTIME_SOURCES",
+                providers.gradleProperty("BINARIO_PERSONAL_REALTIME_SOURCES").orElse("true").get())
+            // Timetable packs whose licence allows personal use only (src/personal/assets): in the debug test APK.
+            buildConfigField("boolean", "PERSONAL_TRANSIT_SOURCES",
+                providers.gradleProperty("binario.personalSources").orElse("true").get())
+        }
+        getByName("release") {
+            buildConfigField("boolean", "PERSONAL_REALTIME_SOURCES",
+                providers.gradleProperty("BINARIO_PERSONAL_REALTIME_SOURCES").orElse("true").get())
+            // Never in a release or Play bundle unless the owner builds one for personal use with -Pbinario.personalSources=true.
+            buildConfigField("boolean", "PERSONAL_TRANSIT_SOURCES",
+                providers.gradleProperty("binario.personalSources").orElse("false").get())
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
+            if (releaseSigningConfigured) {
+                signingConfig = signingConfigs.getByName("release")
+            }
+        }
+    }
+
     packaging {
         resources.excludes += "/META-INF/{AL2.0,LGPL2.1}"
     }
 
     lint {
         abortOnError = true
+        warningsAsErrors = true
         checkReleaseBuilds = true
         checkDependencies = true
+        // The app dependency set is upgraded as a coordinated Android toolchain change;
+        // several currently suggested releases require AGP 9.1 / compileSdk 37.
         disable += "GradleDependency"
+        // The same family of checks reports the Gradle wrapper as soon as a newer
+        // patch release exists. Wrapper bumps are deliberate and checksum-pinned;
+        // Gradle's release day must not turn the release gate red.
+        disable += "AndroidGradlePluginVersion"
+        // Newer remote lint flags targetSdk 36 as old while this pinned AGP/SDK
+        // toolchain is on API 36. Revisit with a tested API 37 migration; do not
+        // silently change the target or disable other security/correctness checks.
+        disable += "OldTargetApi"
+        // Timber reaches the classpath only as a MapLibre dependency and ships its own lint checks;
+        // Binario does not use Timber, so its "use Timber instead of Log" rule does not apply.
+        disable += "LogNotTimber"
+    }
+
+    sourceSets {
+        getByName("test").resources.srcDir(rootProject.file("contracts/wear-snapshot/v1"))
+        // Personal-use timetable packs (gtfs-personal/): the same default as PERSONAL_TRANSIT_SOURCES above, so the
+        // assets are in an APK exactly when its BuildConfig enables them.
+        for (buildType in listOf("debug", "release")) {
+            if (personalTransitSources(buildType)) getByName(buildType).assets.srcDir("src/personal/assets")
+        }
     }
 }
 
@@ -51,12 +160,34 @@ dependencies {
     implementation("androidx.activity:activity-compose:1.10.0")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
     implementation("androidx.work:work-runtime-ktx:2.10.0")
+    implementation("org.jsoup:jsoup:1.18.3")
+    implementation("org.mobilitydata:gtfs-realtime-bindings:0.0.8")
     implementation("com.google.android.gms:play-services-wearable:20.0.1")
+    // Open maps (MapLibre Native, BSD-2-Clause) on OpenFreeMap tiles. 13.0.2 is the newest release whose
+    // closure keeps kotlin-stdlib at 2.0.x (13.1+ needs Kotlin 2.2 metadata) and androidx below the
+    // compileSdk 37 line; its arm64-v8a/x86_64 libmaplibre.so are 16 KB aligned. Since 13.0 the plain
+    // `android-sdk` coordinate is the Vulkan build: the OpenGL ES 3 build runs on every API 26+ device.
+    implementation("org.maplibre.gl:android-sdk-opengl:13.0.2")
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material-icons-extended")
     debugImplementation("androidx.compose.ui:ui-tooling")
     testImplementation("junit:junit:4.13.2")
-    testImplementation("org.json:json:20240303")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")
+    // Android supplies org.json at runtime; this artifact is only the JVM unit-test implementation.
+    testImplementation("org.json:json:20260814")
+    androidTestImplementation(platform("androidx.compose:compose-bom:2026.06.01"))
+    androidTestImplementation("androidx.compose.ui:ui-test-junit4")
+    androidTestImplementation("androidx.test.ext:junit:1.2.1")
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
+}
+
+// Reproduction profile for the large embedded-GTFS regression. The property
+// limits the forked JUnit VM, not only the Gradle daemon.
+tasks.withType<org.gradle.api.tasks.testing.Test>().configureEach {
+    providers.gradleProperty("BINARIO_TEST_MAX_HEAP").orNull?.let { maxHeapSize = it }
+    val liveSources = providers.gradleProperty("BINARIO_LIVE_SOURCE_ACCEPTANCE").orNull
+    if (liveSources == null) exclude("**/LiveProviderNetworkTest*")
+    else systemProperty("binario.live.sources", liveSources)
 }

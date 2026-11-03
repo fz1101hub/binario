@@ -1,0 +1,6 @@
+route_id,service_id,trip_headsign,trip_short_name,shape_id,trip_id,wheelchair_accessible,bikes_allowed
+IT::Line:BUS-VEM-CDZ-a0541b,IT::DayType:9947-1080-1-1-1,Cortina D'Ampezzo BUS,1060,shp_3_4,IT::ServiceJourney:8900-1060-1-1-1_bus,,
+IT::Line:RAIL-BSC-RMT-c858fe,IT::DayType:8907-9977-1-1-1,Roma Termini,8959,shp_2_22,IT::ServiceJourney:8959-1-1-1,1,1
+IT::Line:RAIL-MC--NAC-4146cd,IT::DayType:8907-9977-1-1-1,Napoli Centrale,9967,shp_2_148,IT::ServiceJourney:9967-8111-1-1-1_rail1,1,1
+IT::Line:RAIL-NAC-RCE-c1ac16,IT::DayType:8907-9977-1-1-1,Reggio Calabria,9967,shp_2_131,IT::ServiceJourney:9967-8111-1-1-1_rail2,1,1
+IT::Line:RAIL-RMT-NAC-e401ba,IT::DayType:8907-9977-1-1-1,Napoli Centrale,8959,shp_2_132,IT::ServiceJourney:8959-9987-1-2-1_rail2,1,1

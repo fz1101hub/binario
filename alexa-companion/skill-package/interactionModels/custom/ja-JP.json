@@ -1,0 +1,73 @@
+{
+  "interactionModel": {
+    "languageModel": {
+      "invocationName": "ビナリオトレイン",
+      "intents": [
+        {
+          "name": "AMAZON.CancelIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.HelpIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.StopIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.NavigateHomeIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.FallbackIntent",
+          "samples": []
+        },
+        {
+          "name": "NextTrainsIntent",
+          "slots": [
+            {
+              "name": "routeName",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "次の電車は何",
+            "次の電車",
+            "次の電車を教えて",
+            "{routeName}の次の電車",
+            "{routeName}の次の電車はいつ出る"
+          ]
+        },
+        {
+          "name": "TrainStatusIntent",
+          "slots": [
+            {
+              "name": "trainNumber",
+              "type": "AMAZON.NUMBER"
+            }
+          ],
+          "samples": [
+            "{trainNumber}号の運行状況",
+            "{trainNumber}号の運行状況を教えて",
+            "{trainNumber}号は時間通り",
+            "{trainNumber}号はどうなってる",
+            "{trainNumber}号の遅れ"
+          ]
+        },
+        {
+          "name": "MyRoutesIntent",
+          "slots": [],
+          "samples": [
+            "マイルート",
+            "マイルートを教えて",
+            "保存したルートを教えて",
+            "保存したルートは何",
+            "保存したルート"
+          ]
+        }
+      ],
+      "types": []
+    }
+  }
+}

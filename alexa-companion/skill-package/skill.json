@@ -1,0 +1,77 @@
+{
+  "manifest": {
+    "manifestVersion": "1.0",
+    "publishingInformation": {
+      "locales": {
+        "it-IT": {
+          "name": "Binario Treni", "summary": "Le tue tratte ferroviarie salvate in Binario, a voce.", "description": "Binario legge le tratte che hai salvato nell'app e ti dice quando i dati in tempo reale non sono disponibili. Non inventa mai ritardi, binari o soppressioni.", "examplePhrases": ["Alexa, apri binario treni", "Alexa, chiedi a binario treni le mie tratte", "Alexa, chiedi a binario treni i prossimi treni"], "keywords": ["treni", "tratte", "pendolari"], "smallIconUri": "https://REPLACE_WITH_HTTPS_HOST/alexa/icon-108.png", "largeIconUri": "https://REPLACE_WITH_HTTPS_HOST/alexa/icon-512.png"
+        },
+        "en-US": {
+          "name": "Binario Trains", "summary": "Your saved Binario rail routes, by voice.", "description": "Binario reads the routes you saved in the app and tells you when real-time data is not available. It never invents delays, platforms, or cancellations.", "examplePhrases": ["Alexa, open binario trains", "Alexa, ask binario trains for my routes", "Alexa, ask binario trains for the next trains"], "keywords": ["trains", "routes", "commute"], "smallIconUri": "https://REPLACE_WITH_HTTPS_HOST/alexa/icon-108.png", "largeIconUri": "https://REPLACE_WITH_HTTPS_HOST/alexa/icon-512.png"
+        },
+        "en-GB": {
+          "name": "Binario Trains", "summary": "Your saved Binario rail routes, by voice.", "description": "Binario reads the routes you saved in the app and tells you when real-time data is not available. It never invents delays, platforms, or cancellations.", "examplePhrases": ["Alexa, open binario trains", "Alexa, ask binario trains for my routes", "Alexa, ask binario trains for the next trains"], "keywords": ["trains", "routes", "commute"], "smallIconUri": "https://REPLACE_WITH_HTTPS_HOST/alexa/icon-108.png", "largeIconUri": "https://REPLACE_WITH_HTTPS_HOST/alexa/icon-512.png"
+        },
+        "en-IN": {
+          "name": "Binario Trains", "summary": "Your saved Binario rail routes, by voice.", "description": "Binario reads the routes you saved in the app and tells you when real-time data is not available. It never invents delays, platforms, or cancellations.", "examplePhrases": ["Alexa, open binario trains", "Alexa, ask binario trains for my routes", "Alexa, ask binario trains for the next trains"], "keywords": ["trains", "routes", "commute"], "smallIconUri": "https://REPLACE_WITH_HTTPS_HOST/alexa/icon-108.png", "largeIconUri": "https://REPLACE_WITH_HTTPS_HOST/alexa/icon-512.png"
+        },
+        "de-DE": {
+          "name": "Binario Züge", "summary": "Deine gespeicherten Bahnstrecken in Binario per Sprache.", "description": "Binario liest die in der App gespeicherten Strecken und weist darauf hin, wenn Echtzeitdaten nicht verfügbar sind. Es erfindet niemals Verspätungen, Bahnsteige oder Ausfälle.", "examplePhrases": ["Alexa, öffne binario züge", "Alexa, frage binario züge nach meinen strecken", "Alexa, frage binario züge nach den nächsten zügen"], "keywords": ["züge", "strecken", "pendeln"], "smallIconUri": "https://REPLACE_WITH_HTTPS_HOST/alexa/icon-108.png", "largeIconUri": "https://REPLACE_WITH_HTTPS_HOST/alexa/icon-512.png"
+        },
+        "fr-FR": {
+          "name": "Binario Trains", "summary": "Vos trajets ferroviaires Binario enregistrés, à la voix.", "description": "Binario lit les trajets enregistrés dans l’application et indique lorsque les données en temps réel ne sont pas disponibles. Il n’invente jamais de retards, de quais ou de suppressions.", "examplePhrases": ["Alexa, ouvre binario trains", "Alexa, demande à binario trains mes trajets", "Alexa, demande à binario trains les prochains trains"], "keywords": ["trains", "trajets", "navetteurs"], "smallIconUri": "https://REPLACE_WITH_HTTPS_HOST/alexa/icon-108.png", "largeIconUri": "https://REPLACE_WITH_HTTPS_HOST/alexa/icon-512.png"
+        },
+        "es-ES": {
+          "name": "Binario Trenes", "summary": "Tus rutas ferroviarias guardadas en Binario, por voz.", "description": "Binario lee las rutas guardadas en la aplicación y avisa cuando los datos en tiempo real no están disponibles. Nunca inventa retrasos, andenes o cancelaciones.", "examplePhrases": ["Alexa, abre binario trenes", "Alexa, pregunta a binario trenes por mis rutas", "Alexa, pregunta a binario trenes por los próximos trenes"], "keywords": ["trenes", "rutas", "viajes"], "smallIconUri": "https://REPLACE_WITH_HTTPS_HOST/alexa/icon-108.png", "largeIconUri": "https://REPLACE_WITH_HTTPS_HOST/alexa/icon-512.png"
+        },
+        "es-US": {
+          "name": "Binario Trenes", "summary": "Tus rutas ferroviarias guardadas en Binario, por voz.", "description": "Binario lee las rutas guardadas en la aplicación y avisa cuando los datos en tiempo real no están disponibles. Nunca inventa retrasos, andenes o cancelaciones.", "examplePhrases": ["Alexa, abre binario trenes", "Alexa, pregunta a binario trenes por mis rutas", "Alexa, pregunta a binario trenes por los próximos trenes"], "keywords": ["trenes", "rutas", "viajes"], "smallIconUri": "https://REPLACE_WITH_HTTPS_HOST/alexa/icon-108.png", "largeIconUri": "https://REPLACE_WITH_HTTPS_HOST/alexa/icon-512.png"
+        },
+        "ar-SA": {
+          "name": "قطارات Binario", "summary": "مسارات القطارات التي حفظتها في Binario، بصوتك.", "description": "يقرأ Binario المسارات التي حفظتها في التطبيق ويخبرك عندما لا تتوفر بيانات في الوقت الفعلي. لا يختلق أبدًا تأخيرات أو أرصفة أو إلغاءات.", "examplePhrases": ["أليكسا، افتح قطارات بيناريو", "أليكسا، اسأل قطارات بيناريو عن مساراتي", "أليكسا، اسأل قطارات بيناريو عن القطارات التالية"], "keywords": ["قطارات", "مسارات", "تنقل"], "smallIconUri": "https://REPLACE_WITH_HTTPS_HOST/alexa/icon-108.png", "largeIconUri": "https://REPLACE_WITH_HTTPS_HOST/alexa/icon-512.png"
+        },
+        "hi-IN": {
+          "name": "Binario ट्रेन", "summary": "Binario में सहेजे गए आपके रेल रूट, आवाज़ से।", "description": "Binario ऐप में सहेजे गए आपके रूट पढ़ता है और बताता है जब रीयल-टाइम डेटा उपलब्ध नहीं होता। यह कभी देरी, प्लेटफ़ॉर्म या रद्दीकरण नहीं गढ़ता।", "examplePhrases": ["अलेक्सा, बिनारियो ट्रेन खोलो", "अलेक्सा, बिनारियो ट्रेन से मेरे रूट पूछो", "अलेक्सा, बिनारियो ट्रेन से अगली ट्रेनें पूछो"], "keywords": ["ट्रेन", "रूट", "यात्रा"], "smallIconUri": "https://REPLACE_WITH_HTTPS_HOST/alexa/icon-108.png", "largeIconUri": "https://REPLACE_WITH_HTTPS_HOST/alexa/icon-512.png"
+        },
+        "ja-JP": {
+          "name": "Binario トレイン", "summary": "Binario に保存した鉄道ルートを音声で。", "description": "Binario はアプリに保存したルートを読み上げ、リアルタイムデータが利用できないときはそのことをお知らせします。遅延、番線、運休を作り出すことはありません。", "examplePhrases": ["アレクサ、ビナリオトレインを開いて", "アレクサ、ビナリオトレインでマイルートを教えて", "アレクサ、ビナリオトレインで次の電車を教えて"], "keywords": ["電車", "ルート", "通勤"], "smallIconUri": "https://REPLACE_WITH_HTTPS_HOST/alexa/icon-108.png", "largeIconUri": "https://REPLACE_WITH_HTTPS_HOST/alexa/icon-512.png"
+        },
+        "pt-BR": {
+          "name": "Binario Trens", "summary": "Seus trajetos de trem salvos no Binario, por voz.", "description": "O Binario lê os trajetos salvos no app e avisa quando os dados em tempo real não estão disponíveis. Nunca inventa atrasos, plataformas ou cancelamentos.", "examplePhrases": ["Alexa, abra binario trens", "Alexa, pergunte ao binario trens quais são meus trajetos", "Alexa, pergunte ao binario trens quais são os próximos trens"], "keywords": ["trens", "trajetos", "deslocamento"], "smallIconUri": "https://REPLACE_WITH_HTTPS_HOST/alexa/icon-108.png", "largeIconUri": "https://REPLACE_WITH_HTTPS_HOST/alexa/icon-512.png"
+        }
+      },
+      "isAvailableWorldwide": false,
+      "distributionCountries": ["IT", "US", "GB", "DE", "FR", "ES", "SA", "IN", "JP", "BR"],
+      "testingInstructions": "Account linking is required for personal answers. Reviewer account for the Binario dashboard login: REPLACE_WITH_REVIEWER_ACCOUNT_AT_SUBMISSION (credentials are given only here at submission, never stored in the repository). The account already has saved routes, one of them pinned. 1) Enable the skill and link the account in the Alexa app (sign in with the reviewer account, then choose Link). 2) Ask for my routes, then for the next trains of one route by name. 3) Real-time rail data is deliberately not provided: the skill says that real-time data is not available and never invents times, delays or platforms. Without linking, personal intents answer with the account-linking card.",
+      "category": "PUBLIC_TRANSPORTATION"
+    },
+    "apis": {
+      "custom": {
+        "endpoint": { "uri": "https://REPLACE_WITH_HTTPS_HOST/api/alexa/webhook", "sslCertificateType": "Trusted" },
+        "interfaces": [{ "type": "ALEXA_PRESENTATION_APL", "supportedViewports": [{ "mode": "HUB", "shape": "RECTANGLE", "minWidth": 320, "maxWidth": 2560, "minHeight": 240, "maxHeight": 1600 }, { "mode": "HUB", "shape": "ROUND", "minWidth": 320, "maxWidth": 960, "minHeight": 320, "maxHeight": 960 }] }]
+      }
+    },
+    "permissions": [],
+    "privacyAndCompliance": {
+      "allowsPurchases": false,
+      "usesPersonalInfo": true,
+      "isChildDirected": false,
+      "isExportCompliant": true,
+      "containsAds": false,
+      "locales": {
+        "it-IT": { "privacyPolicyUrl": "https://REPLACE_WITH_HTTPS_HOST/privacy", "termsOfUseUrl": "https://REPLACE_WITH_HTTPS_HOST/terms" },
+        "en-US": { "privacyPolicyUrl": "https://REPLACE_WITH_HTTPS_HOST/privacy", "termsOfUseUrl": "https://REPLACE_WITH_HTTPS_HOST/terms" },
+        "en-GB": { "privacyPolicyUrl": "https://REPLACE_WITH_HTTPS_HOST/privacy", "termsOfUseUrl": "https://REPLACE_WITH_HTTPS_HOST/terms" },
+        "en-IN": { "privacyPolicyUrl": "https://REPLACE_WITH_HTTPS_HOST/privacy", "termsOfUseUrl": "https://REPLACE_WITH_HTTPS_HOST/terms" },
+        "de-DE": { "privacyPolicyUrl": "https://REPLACE_WITH_HTTPS_HOST/privacy", "termsOfUseUrl": "https://REPLACE_WITH_HTTPS_HOST/terms" },
+        "fr-FR": { "privacyPolicyUrl": "https://REPLACE_WITH_HTTPS_HOST/privacy", "termsOfUseUrl": "https://REPLACE_WITH_HTTPS_HOST/terms" },
+        "es-ES": { "privacyPolicyUrl": "https://REPLACE_WITH_HTTPS_HOST/privacy", "termsOfUseUrl": "https://REPLACE_WITH_HTTPS_HOST/terms" },
+        "es-US": { "privacyPolicyUrl": "https://REPLACE_WITH_HTTPS_HOST/privacy", "termsOfUseUrl": "https://REPLACE_WITH_HTTPS_HOST/terms" },
+        "ar-SA": { "privacyPolicyUrl": "https://REPLACE_WITH_HTTPS_HOST/privacy", "termsOfUseUrl": "https://REPLACE_WITH_HTTPS_HOST/terms" },
+        "hi-IN": { "privacyPolicyUrl": "https://REPLACE_WITH_HTTPS_HOST/privacy", "termsOfUseUrl": "https://REPLACE_WITH_HTTPS_HOST/terms" },
+        "ja-JP": { "privacyPolicyUrl": "https://REPLACE_WITH_HTTPS_HOST/privacy", "termsOfUseUrl": "https://REPLACE_WITH_HTTPS_HOST/terms" },
+        "pt-BR": { "privacyPolicyUrl": "https://REPLACE_WITH_HTTPS_HOST/privacy", "termsOfUseUrl": "https://REPLACE_WITH_HTTPS_HOST/terms" }
+      }
+    }
+  }
+}

@@ -1,0 +1,29 @@
+<resources>
+    <string name="app_name">Binario</string>
+    <string name="tile_label">Binario: perjalanan berikutnya</string>
+    <string name="tile_description">Menampilkan perjalanan berikutnya yang dibagikan aplikasi Binario di ponsel.</string>
+    <string name="complication_label">Binario</string>
+    <string name="empty_snapshot_message">Aktifkan Jam tangan pintar Android di Binario pada ponsel (Integrasi Binario), lalu perbarui rute.</string>
+    <string name="empty_snapshot_phone_app_missing">Instal Binario di ponsel yang tersambung: jam hanya menerima rute dari aplikasi ponsel.</string>
+    <string name="refresh_phone">Perbarui ponsel</string>
+    <string name="refresh_on_phone">Perbarui di ponsel</string>
+    <string name="refresh_request_sent">Permintaan dikirim ke ponsel</string>
+    <string name="refresh_phone_unreachable">Ponsel tidak terjangkau</string>
+    <string name="tile_no_synced_route">Tidak ada rute tersinkron</string>
+    <string name="tile_snapshot_unavailable">Snapshot tidak tersedia</string>
+    <string name="tile_service_details">%1$s · %2$s · %3$s</string>
+    <string name="status_programmed">Jadwal</string>
+    <string name="status_received_from_phone">Status diterima dari ponsel</string>
+    <string name="status_updating">Data sedang diperbarui</string>
+    <string name="status_local_snapshot">Snapshot lokal terakhir</string>
+    <string name="status_live_unavailable">Data real-time tidak tersedia</string>
+    <string name="accessibility_data_status">Status data: %1$s</string>
+    <string name="accessibility_scheduled_departure">Jadwal berangkat %1$s</string>
+    <string name="accessibility_expected_departure">Perkiraan berangkat %1$s</string>
+    <string name="accessibility_train">Kereta %1$s</string>
+    <string name="accessibility_platform">Peron %1$s</string>
+    <string name="service_time_number">%1$s · %2$s</string>
+    <string name="service_destination_status">%1$s · %2$s</string>
+    <string name="service_operator_category">%1$s · %2$s</string>
+    <string name="service_operator_category_platform">%1$s · %2$s · Peron %3$s</string>
+</resources>

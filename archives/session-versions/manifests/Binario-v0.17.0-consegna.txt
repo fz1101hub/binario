@@ -1,0 +1,12 @@
+consegna_binario_v170/
+consegna_binario_v170/Binario-v0.17.0-debug.apk
+consegna_binario_v170/Binario-v0.17.0-sorgenti.tar.gz
+consegna_binario_v170/CHANGELOG.md
+consegna_binario_v170/DATA_BASELINE_RECONCILIATION_V17.md
+consegna_binario_v170/DATA_LAYER_HANDOFF.md
+consegna_binario_v170/FULL_COVERAGE_EVIDENCE.md
+consegna_binario_v170/README.md
+consegna_binario_v170/REALTIME_ACCESS_GAPS.md
+consegna_binario_v170/REALTIME_COVERAGE_VERIFICATION.md
+consegna_binario_v170/SHA256SUMS.txt
+consegna_binario_v170/VERIFICA-v0.17.0.md

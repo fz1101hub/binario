@@ -6,8 +6,7 @@ enum WatchSnapshotStorage {
 
     static func load() -> BinarioWatchSnapshot {
         guard let data = UserDefaults(suiteName: appGroup)?.data(forKey: snapshotKey),
-              let snapshot = try? JSONDecoder().decode(BinarioWatchSnapshot.self, from: data),
-              snapshot.isCompatible else {
+              let snapshot = BinarioWatchSnapshot.decodeContract(data) else {
             return .unavailable
         }
         return snapshot
@@ -19,5 +18,9 @@ enum WatchSnapshotStorage {
         }
         let data = try JSONEncoder().encode(snapshot)
         UserDefaults(suiteName: appGroup)?.set(data, forKey: snapshotKey)
+    }
+
+    static func clear() {
+        UserDefaults(suiteName: appGroup)?.removeObject(forKey: snapshotKey)
     }
 }

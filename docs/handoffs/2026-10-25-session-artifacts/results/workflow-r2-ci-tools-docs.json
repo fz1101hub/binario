@@ -1,0 +1,314 @@
+{
+ "workflow_run": "wf_1138c069-a9a",
+ "entries": [
+  {
+   "key": "v2:b8f1d15655f3bc86d81d2f9dbde7d3e6c4438faaf158b860414550c5a3d9741a",
+   "result": {
+    "branch": "fix/r2-ci-tools-docs",
+    "worktree": "/tmp/claude-0/-home-user-binario/ec2338fa-afae-5418-81d9-da7d3b962a13/scratchpad/fix/wt-ci-tools-docs",
+    "commits": [
+     {
+      "sha": "658ec35",
+      "subject": "test(ci): run the Wear Gradle dependency-suppression test in Android CI",
+      "items": [
+       "SR-play-wear-12"
+      ]
+     },
+     {
+      "sha": "bd5171b",
+      "subject": "fix(ci): lint both release variants and apply the OldTargetApi exception to Wear",
+      "items": [
+       "SR-play-app-10"
+      ]
+     },
+     {
+      "sha": "b642137",
+      "subject": "fix(android): keep phone and Wear versionCodes in disjoint Play ranges",
+      "items": [
+       "SR-play-app-3"
+      ]
+     },
+     {
+      "sha": "3cbab12",
+      "subject": "fix(release): verify 16 KB page-size alignment of native libraries in the AABs",
+      "items": [
+       "SR-play-app-7"
+      ]
+     },
+     {
+      "sha": "a241e08",
+      "subject": "fix(ci): keep the Play bundles as artifacts and add a dispatch-only signing job",
+      "items": [
+       "SR-play-app-2"
+      ]
+     },
+     {
+      "sha": "d0a9847",
+      "subject": "docs(store): derive the Play Data safety answers and guard the host inventory",
+      "items": [
+       "SR-play-app-5"
+      ]
+     },
+     {
+      "sha": "0a5de1a",
+      "subject": "docs(store): add the Play icon generator, listing texts and submission checklist",
+      "items": [
+       "SR-play-app-4"
+      ]
+     },
+     {
+      "sha": "1cf5d04",
+      "subject": "docs(store): document the Wear OS form-factor steps for Google Play",
+      "items": [
+       "SR-play-wear-2"
+      ]
+     }
+    ],
+    "items": [
+     {
+      "id": "SR-play-wear-12",
+      "outcome": "fixed",
+      "what_changed": ".github/workflows/android-ci.yml: the 'Verify release-engineering configuration' step now runs `python3 -m unittest tests.test_wear_compose_gradle_dependency_suppressions`, and the pull_request/push path filters include that test file. tools/verify_android_release_config.py requires the CI line and was given an injectable reader (`verify(read_file=read)`, `main()` unchanged for CLI) so its invariants can be unit-tested.",
+      "tests": "New tests/test_verify_android_release_config.py: repository passes; workflow without the unittest line raises. Red check: with the workflow change stashed the suite failed (1 failure); green after.",
+      "reason_if_not_fixed": ""
+     },
+     {
+      "id": "SR-play-app-10",
+      "outcome": "fixed",
+      "what_changed": "wear/build.gradle.kts lint {} gains the identical documented `disable += \"OldTargetApi\"` exception; tests/test_wear_compose_gradle_dependency_suppressions.py now expects exactly one such exception with the rationale in each module; android-ci.yml adds `:app:lintRelease :wear:lintRelease` to the Gradle invocation; verify_android_release_config.py requires both tasks; RELEASE_BUILD.md and BRANCH_AND_RELEASE_POLICY.md updated.",
+      "tests": "test_wear_compose_gradle_dependency_suppressions (red with the Wear edit stashed: 1 failure) and new test_ci_must_lint_both_release_variants (red with the workflow edit stashed). Gradle lint itself is static only (no Android SDK here).",
+      "reason_if_not_fixed": ""
+     },
+     {
+      "id": "SR-play-app-3",
+      "outcome": "fixed",
+      "what_changed": "wear/build.gradle.kts derives versionCode = (BINARIO_VERSION_CODE override or BINARIO_APP_VERSION_CODE) + wearVersionCodeOffset (1_000_000), so the shared override can never give identical codes; BINARIO_WEAR_VERSION_CODE removed from gradle.properties (Wear is now 1000035 for v0.20.4). verify_android_release_config.py asserts the phone code is in 1..999999, rejects a residual BINARIO_WEAR_VERSION_CODE in gradle.properties or the Wear build, requires the exact offset constant and a regex-matched override chain that adds the offset. verify_android_app_bundles.py expects the derived Wear code in the compiled manifest (WEAR_VERSION_CODE_OFFSET). RELEASE_BUILD.md documents ranges and 'never pass -PBINARIO_VERSION_CODE for a Play upload'.",
+      "tests": "test_verify_android_release_config: stale property, override without offset, phone code inside the Wear range (red with wear/gradle edits stashed: 4 failures); test_verify_android_app_bundles.test_root_profile_moves_wear_version_code_into_its_own_range (errors without the tool change). Gradle evaluation itself static only.",
+      "reason_if_not_fixed": ""
+     },
+     {
+      "id": "SR-play-app-7",
+      "outcome": "fixed",
+      "what_changed": "tools/verify_android_app_bundles.py enumerates `*/lib/<abi>/*.so` members, parses ELF headers and program-header tables in pure Python (ELF32/ELF64, LE/BE, bounded reads, fail-closed on malformed headers, no PT_LOAD, PN_XNUM) and fails when any PT_LOAD of a 64-bit ABI (arm64-v8a, x86_64) has p_align < 0x4000 or not a power of two; 32-bit ABIs are parsed but exempt because 16 KB page devices run 64-bit code only (deviation from 'every PT_LOAD', explained in concerns). PASS output lists the native ABIs. RELEASE_BUILD.md/BRANCH_AND_RELEASE_POLICY.md document it with the Android 16 KB reference.",
+      "tests": "tests/test_verify_android_app_bundles.py: synthetic ELF fixtures (aligned arm64/x86_64 + misaligned armeabi-v7a accepted and ABIs listed; big-endian ELF32 parse; 4 KB and 0x6000 64-bit segments rejected naming the member; not-ELF, truncated, no-PT_LOAD, empty table and bad class rejected). Red without the tool change: 3 errors.",
+      "reason_if_not_fixed": ""
+     },
+     {
+      "id": "SR-play-app-2",
+      "outcome": "fixed",
+      "what_changed": "android-ci.yml: the unsigned verify step tees the verifier log and stages app-release.aab + wear-release.aab in RUNNER_TEMP; a pinned actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 (v5) uploads `binario-play-bundles-unsigned` with retention-days 14 (push/dispatch only, not pull_request). New `sign_release` boolean dispatch input (default false) and job `release-sign` (needs: android, if dispatch && sign_release): decodes secret BINARIO_RELEASE_KEYSTORE_BASE64 into RUNNER_TEMP, sets the four BINARIO_RELEASE_* env vars from secrets, builds both bundles, runs `verify_android_app_bundles.py --signed`, uploads `binario-play-bundles-signed` (14 d), removes the keystore. verify_android_app_bundles.py `--signed` requires META-INF/MANIFEST.MF, *.SF and *.RSA|DSA|EC instead of rejecting them. .github/ci-inputs-lock.json adds the action (verifiedAt 2026-10-25). verify_ci_pinning.py: every upload-artifact step must have retention-days <= 14 and if-no-files-found: error; android-ci.yml must have the fail-closed sign_release input and a release-sign job with needs/if, no continue-on-error, no `secrets.` in run scripts, keystore decoded into RUNNER_TEMP, `--signed` verification and both bundleRelease tasks. docs/RELEASE_BUILD.md: new sections 'Artifact CI e firma su GitHub Actions' (secrets table, dispatch/download commands, keytool generation) and 'Google Play App Signing' (upload vs app signing key, same upload key for both AABs, continuity with the sideloaded v0.1.1 APK, keystore backup).",
+      "tests": "test_verify_android_app_bundles.test_signed_mode_requires_a_complete_jar_signature; test_verify_ci_pinning.test_release_signing_job_is_dispatch_only_and_fail_closed with 9 workflow mutations (string input, missing if/needs, interpolated secret, keystore outside RUNNER_TEMP, missing --signed, continue-on-error, retention 90, missing if-no-files-found) — red without the verifier change (9 failures); test_repository_workflows_are_fully_pinned covers the lock. The workflow itself is static only (no runner).",
+      "reason_if_not_fixed": ""
+     },
+     {
+      "id": "SR-play-app-5",
+      "outcome": "fixed",
+      "what_changed": "New docs/store/PLAY_DATA_SAFETY.md: verifiable facts (no backend/SDK/account, permissions, HTTPS-only, Wear has no INTERNET), the three runtime flows of the distributed build (prm.rfi.it with the public station id, jbb.ghsq.de fallback with no user data, Play Services Data Layer), proposed form answers with rationale plus a conservative alternative, the data-type table, permission declarations (coarse location foreground only, SCHEDULE_EXACT_ALARM note, privacy URL blocker) and a table of all 53 http(s) hosts in app/wear Kotlin and asset manifests classified A distributed / B personal build / C unwired adapter / D pack provenance / E catalogue metadata. tools/verify_privacy_policy.py gains code_hosts() (scans those sources, skips XML parser namespace URIs, strips ports) and host_inventory_errors() failing on any code host missing from the table or any table host no longer in code; required disclosure fragments for the new doc and the PRIVACY.md link; PRIVACY.md references the doc; android-ci.yml paths include it.",
+      "tests": "tests/test_verify_privacy_policy.py: inventory covers runtime endpoints and skips namespaces; injected extra host → 'missing', removed host → 'stale', de-backticked row → 'missing'. Red without the verifier change (2 errors); CLI red when a row loses its backticked host (checked manually, then restored).",
+      "reason_if_not_fixed": ""
+     },
+     {
+      "id": "SR-play-app-4",
+      "outcome": "fixed",
+      "what_changed": "New tools/build_store_assets.py (stdlib only): decodes the 1024x1024 RGBA brand PNG (CRC-checked, filters 0-4), requires full opacity, box-filters 2x2 to RGB and writes store/play/icon-512.png (2784 bytes, deterministic) plus store/play/README.md listing the remaining assets (feature graphic 1024x500, 2-8 phone screenshots, optional tablet, 1-8 Wear 1:1 screenshots) with Play constraints. Both generated files are committed. New docs/store/PLAY_SUBMISSION.md: blocking prerequisites (identity verification, closed test of 12 testers for 14 days for personal accounts created after 13 Nov 2023, public privacy URL, keystore, versionCodes, Data safety), Console steps in order (app access, ads, IARC inputs, target audience 13+/no Families, Data safety, category), listing texts in it/en/de/fr/es (title, short, full, release notes) derived from README/app strings with no real-time claims, graphics, release channels and post-publication rules.",
+      "tests": "tests/test_build_store_assets.py (decoder round-trips every filter type, rejects bad signature/CRC/16-bit, box averaging values, opaque-alpha drop and translucent rejection, non-square rejection, committed icon/README equal the generator output and the icon is 512x512 RGB with the expected corner/centre pixels); tests/test_play_store_docs.py (all 4 kinds x 5 languages present, within 30/80/4000/500, scheduled-data markers per language, checklist links). Decoder output was cross-checked once against an ImageMagick RGB dump (identical at 1024; ±1 rounding at 512).",
+      "reason_if_not_fixed": ""
+     },
+     {
+      "id": "SR-play-wear-2",
+      "outcome": "fixed",
+      "what_changed": "docs/store/PLAY_SUBMISSION.md section 5 'Pubblicazione Wear OS su Google Play': form-factor opt-in under Advanced settings, wear-release.aab to the Wear OS channel and app-release.aab to the phone channel of the same listing, same upload key, derived 1000000 + phone versionCode never reused across channels, standalone=false phone dependency for listing and testers, 1:1 Wear screenshot format, Wear review criteria and the effect of a Wear-only rejection, Wear release notes. RELEASE_BUILD.md points to the section.",
+      "tests": "tests/test_play_store_docs.py checks the section heading and key fragments. Static only (documentation).",
+      "reason_if_not_fixed": ""
+     }
+    ],
+    "verification": "Run in /tmp/claude-0/-home-user-binario/ec2338fa-afae-5418-81d9-da7d3b962a13/scratchpad/fix/wt-ci-tools-docs on HEAD 1cf5d04:\n- python3 -m unittest discover -s tests → \"Ran 137 tests in 2.503s / OK\" (base branch had 117)\n- python3 tools/verify_ci_pinning.py → \"CI pinning verification passed: semantic YAML matches the reviewed CI input lock.\"\n- python3 tools/verify_android_release_config.py → \"Android release configuration: PASS\"\n- python3 tools/verify_privacy_policy.py → \"Privacy-policy static verification passed.\"\n- python3 -c \"yaml.safe_load(android-ci.yml)\" → parses\n- git status --short → empty (clean); git -C /home/user/binario status → untouched, still on claude/git-repo-audit-cdcsm6\n- grep of the branch diff for model/tool names → none outside the mandated trailers",
+    "concerns": "1) SR-play-app-7 deviation: the 16 KB rule is enforced for 64-bit ABIs only (arm64-v8a, x86_64); 32-bit libraries are parsed but exempt because 16 KB page-size devices run 64-bit code only. Enforcing it on armeabi-v7a/x86 would risk false CI failures for a non-requirement. No real AAB could be built here (no Android SDK), so the check has not yet run against the actual graphics-path libraries; if a 64-bit .so in the bundle is 4 KB aligned the next CI run will fail, which is the intended signal.\n2) SR-play-app-2 choices: the signing job is workflow_dispatch-only (no `tags: v*` trigger) so the reviewed push-trigger policy in the lock stays unchanged; the owner dispatches on the release ref with -f sign_release=true. Unsigned artifact upload is skipped on pull_request to bound artifact storage on a private repo. The upload-artifact SHA (v5.0.0 = 330a01c490aca151604b8cf639adc76d48f6c5d4) was read via `git ls-remote` through the proxy because the GitHub API was blocked for this session; the owner should confirm it against the release page before relying on it. The lock's verifiedAt was bumped to 2026-10-25. The release-sign job and the new lintRelease tasks are static only: no runner/SDK here, so the first real run may surface lint findings on wear (warningsAsErrors) that the plan accepted as a risk.\n3) SR-play-app-3: the Wear versionCode jumps from 1 to 1000035; it was never uploaded to Play and any sideloaded Wear install sees an increase. The Companion line (im.binario.companion, codes 3/4) is untouched. Owner action unchanged: never pass -PBINARIO_VERSION_CODE for a Play upload; bump BINARIO_APP_VERSION_CODE per release.\n4) SR-play-app-5: the 'No collection/sharing' Data safety answer is a documented judgment (user-initiated, ephemeral request of a public station id to RFI; no developer backend); a conservative alternative declaration is written down for the owner/reviewer. The public privacy-policy URL remains a pre-existing blocker. The new host guard means any http(s) host added to app/wear Kotlin or the asset manifests now fails verify_privacy_policy.py until the table is updated (intended).\n5) SR-play-app-4: the Play icon derives from companion-expo/assets/brand/binario-companion-icon.png, which is the same teal (#005A52) train mark as the app's ic_binario vector and fully opaque (verified). Listing texts and release notes are proposals in five languages; the owner must still produce the feature graphic and screenshots and confirm the 12-tester/14-day closed-testing rule in the Console, as Play thresholds change.\n6) CHANGELOG.md was not updated, matching the other fix commits on this branch. The kt/android-check.sh harness named in the task does not exist in the scratchpad (only mariadb-up.sh), but no Kotlin source was changed, only wear/build.gradle.kts."
+   }
+  },
+  {
+   "key": "v2:9a43326fc6081c1664f96b040ba12c84b4e5187f23d64221782d6ab49858a32a",
+   "result": {
+    "verdict": "changes_required",
+    "findings": [
+     {
+      "item": "SR-play-app-3",
+      "severity": "major",
+      "file": "/tmp/claude-0/-home-user-binario/ec2338fa-afae-5418-81d9-da7d3b962a13/scratchpad/fix/wt-ci-tools-docs/tests/test_verify_android_release_config.py",
+      "description": "test_wear_version_code_is_derived_from_the_phone_code_in_a_disjoint_range hard-codes the literal \"BINARIO_APP_VERSION_CODE=35\\n\" in two replacing() mutations. The very owner action this branch documents for every release (bump BINARIO_APP_VERSION_CODE in gradle.properties) therefore turns the regression suite red with a misleading message. Verified in a scratch copy: with BINARIO_APP_VERSION_CODE=36 the verifier itself prints PASS but `python3 -m unittest tests.test_verify_android_release_config` fails with `AssertionError: BINARIO_APP_VERSION_CODE=35` coming from the `assert old in text` guard. The package's own gate is `python3 -m unittest discover -s tests`, so the next release breaks it.",
+      "suggested_fix": "Derive the current line instead of hard-coding it, e.g. `current = re.search(r\"^BINARIO_APP_VERSION_CODE=\\d+\\n\", POLICY.read(\"gradle.properties\"), re.M).group(0)` and use `replacing(\"gradle.properties\", current, current + \"BINARIO_WEAR_VERSION_CODE=35\\n\")` and `replacing(\"gradle.properties\", current, f\"BINARIO_APP_VERSION_CODE={POLICY.WEAR_VERSION_CODE_OFFSET}\\n\")`. Re-run the suite with a temporarily bumped code to confirm it stays green."
+     },
+     {
+      "item": "SR-play-app-4",
+      "severity": "minor",
+      "file": "/tmp/claude-0/-home-user-binario/ec2338fa-afae-5418-81d9-da7d3b962a13/scratchpad/fix/wt-ci-tools-docs/tests/test_build_store_assets.py",
+      "description": "test_committed_play_icon_and_readme_match_the_generator asserts byte identity between the committed store/play/icon-512.png and a fresh zlib.compress(raw, 9) output. The compressed stream is deterministic only for one zlib implementation; Python builds linked against zlib-ng or a different zlib release can emit a different stream for the same pixels, so the test can fail on another machine even though the icon is unchanged. (Local check: Python 3.11.17 / zlib 1.3 here; CI pins Python 3.12.10 on ubuntu-24.04.)",
+      "suggested_fix": "Compare decoded content rather than bytes: `self.assertEqual(BUILDER.read_png(committed), BUILDER.read_png(icon))` (width, height, channels, pixels) plus the README text equality; keep the size/colour assertions on the decoded pixels."
+     },
+     {
+      "item": "SR-play-app-4",
+      "severity": "minor",
+      "file": "/tmp/claude-0/-home-user-binario/ec2338fa-afae-5418-81d9-da7d3b962a13/scratchpad/fix/wt-ci-tools-docs/tools/build_store_assets.py",
+      "description": "The README text embedded in the generator (and the committed store/play/README.md) says the icon is \"PNG 512×512 a 32 bit\", but write_png emits colour type 2, i.e. a 24-bit RGB PNG without alpha (verified from the IHDR of the committed file: (512, 512, 8, 2, 0, 0, 0)). Play accepts both, so this is a documentation/artifact mismatch, not a submission blocker.",
+      "suggested_fix": "Either state \"PNG RGB a 24 bit, senza trasparenza\" in the README template, or emit RGBA with an opaque alpha channel (channels=4, COLOR_TYPE 6) so the text matches Google's wording."
+     },
+     {
+      "item": "SR-play-app-10",
+      "severity": "minor",
+      "file": "/tmp/claude-0/-home-user-binario/ec2338fa-afae-5418-81d9-da7d3b962a13/scratchpad/fix/wt-ci-tools-docs/docs/governance/BRANCH_AND_RELEASE_POLICY.md",
+      "description": "The new sentence \"L'unica eccezione lint ammessa è `OldTargetApi`\" is inaccurate: app/build.gradle.kts also carries `disable += \"GradleDependency\"` (lint block line 98) and wear/build.gradle.kts has six `//noinspection GradleDependency` suppressions, all policed by tests/test_wear_compose_gradle_dependency_suppressions.py.",
+      "suggested_fix": "Reword to: \"Le sole eccezioni lint ammesse sono `OldTargetApi` (identica nei due moduli) e la policy `GradleDependency` documentata e verificata da `tests/test_wear_compose_gradle_dependency_suppressions.py`\"."
+     },
+     {
+      "item": "SR-play-app-3",
+      "severity": "minor",
+      "file": "/tmp/claude-0/-home-user-binario/ec2338fa-afae-5418-81d9-da7d3b962a13/scratchpad/fix/wt-ci-tools-docs/tools/verify_android_release_config.py",
+      "description": "The `wear_version_code > MAX_PLAY_VERSION_CODE` branch is unreachable: the preceding check forces app_version_code < 1_000_000, so the derived Wear code is at most 1_999_999. Harmless dead code.",
+      "suggested_fix": "Drop the branch and the constant, or turn it into a comment stating the derived maximum."
+     },
+     {
+      "item": "SR-play-wear-12",
+      "severity": "minor",
+      "file": "/tmp/claude-0/-home-user-binario/ec2338fa-afae-5418-81d9-da7d3b962a13/scratchpad/fix/wt-ci-tools-docs/.github/workflows/gtfs-assets-ci.yml",
+      "description": "The new tests tests/test_verify_android_release_config.py, tests/test_build_store_assets.py and tests/test_play_store_docs.py run in no workflow: gtfs-assets-ci.yml and apple-watch-ci.yml list test modules explicitly and android-ci.yml runs only the Wear suppression module. Drift between the generator and store/play/*, or between the Console limits and the listing texts, is caught only locally.",
+      "suggested_fix": "Append the three modules to the \"Offline pipeline tests\" invocation in gtfs-assets-ci.yml (its path filters already include tools/** and tests/**); no lock change needed."
+     },
+     {
+      "item": "SR-play-app-2",
+      "severity": "minor",
+      "file": "/tmp/claude-0/-home-user-binario/ec2338fa-afae-5418-81d9-da7d3b962a13/scratchpad/fix/wt-ci-tools-docs/.github/workflows/android-ci.yml",
+      "description": "actions/upload-artifact v4+/v5 refuses a second artifact with the same name inside one workflow run. If the android job uploads binario-play-bundles-unsigned and a later step fails (e.g. the reproducibility rebuild), \"Re-run failed jobs\" re-executes the upload step and fails with a name conflict, forcing a full re-run.",
+      "suggested_fix": "Add `overwrite: true` to both upload-artifact steps (verify_ci_pinning's retention/if-no-files-found checks are unaffected), or accept and document the full re-run."
+     }
+    ],
+    "verification": "All run in /tmp/claude-0/-home-user-binario/ec2338fa-afae-5418-81d9-da7d3b962a13/scratchpad/fix/wt-ci-tools-docs at HEAD 1cf5d04 (read-only; scratch probes in /tmp/claude-0/-home-user-binario/ec2338fa-afae-5418-81d9-da7d3b962a13/scratchpad/fix/review-ci-tools-docs/copy built with `git archive HEAD | tar -x`):\n- `python3 -m unittest discover -s tests` -> Ran 137 tests, OK (matches the report).\n- `python3 tools/verify_ci_pinning.py` -> \"CI pinning verification passed\" exit 0; `python3 tools/verify_android_release_config.py` -> \"Android release configuration: PASS\" exit 0; `python3 tools/verify_privacy_policy.py` -> \"Privacy-policy static verification passed.\" exit 0; yaml.safe_load(android-ci.yml) parses; `python3 -m unittest tests.test_wear_compose_gradle_dependency_suppressions` resolves from the repo root (namespace package, no tests/__init__.py) -> 2 tests OK.\n- `git status --short` empty; main checkout /home/user/binario untouched, still on claude/git-repo-audit-cdcsm6.\n- Red checks in the scratch copy: MIN_LOAD_ALIGNMENT relaxed to 0x1000 -> test_verify_android_app_bundles 1 failure (2 != 1), green again after restoring (a stale __pycache__ with identical size/mtime masked the restore until cleared); base verify_ci_pinning.py with the new workflow -> test_release_signing_job_is_dispatch_only_and_fail_closed fails for all 9 mutations; base wear/build.gradle.kts + gradle.properties with the new verifier -> verifier FAIL on BINARIO_WEAR_VERSION_CODE and 5 test failures across test_verify_android_release_config / test_wear_compose_gradle_dependency_suppressions.\n- Simulated owner release bump (BINARIO_APP_VERSION_CODE=36 in the copy): verifier PASS, but test_wear_version_code_is_derived_from_the_phone_code_in_a_disjoint_range fails with `AssertionError: BINARIO_APP_VERSION_CODE=35` (basis of the major finding).\n- `git ls-remote https://github.com/actions/upload-artifact refs/tags/v5 refs/tags/v5.0.0` -> both 330a01c490aca151604b8cf639adc76d48f6c5d4, matching the lock and the workflow pins.\n- ELF layouts checked by hand: ELF32 header 52 bytes / phdr 32 bytes (\"HHIIIIIHHHHHH\", \"IIIIIIII\"), ELF64 64 / 56 (\"HHIQQQIHHHHHH\", \"IIQQQQQQ\"), phoff/ehsize/phentsize/phnum indices 4/7/8/9 and p_align index 7 are correct for both classes; fixtures in the test pack p_flags in the right slot per class.\n- Host classification spot-checks: `alertProviders()`, `tripUpdateProviders()`, `vehiclePositionProviders()` and `realtimeEnrichmentService()` have no callers outside BinarioDataGraph/LocalOnlyRailDataPolicy (grep of app/src/main), so www.rfi.it, gtfs.api.opendatahub.com and proxy.transport.data.gouv.fr are indeed unwired in the distributed build; iechub/italo/viaggiatreno adapters are gated by BuildConfig.PERSONAL_REALTIME_SOURCES; jbb.ghsq.de is wired through coverageRouteFallbacks(); no dynamic `\"https://\" + host`, HttpUrl.Builder or bare-host constants exist that the scanner would miss; no non-namespace URLs in res/ or manifests. Manifest permissions, `<queries>` RECOGNIZE_SPEECH, allowBackup=false, Wear manifest without INTERNET and with standalone=false, RFI `lin=it` query, 6-hour JBB cache TTL, minSdk 26/30, 5239 stations and 10 GTFS packs all match the documents.\n- Brand PNG decoded with the new decoder: 1024x1024 RGBA, fully opaque, 90% #005A52 + white, corners teal, same colours as app/src/main/res/drawable/ic_binario.xml; committed icon IHDR = 512x512, 8-bit, colour type 2 (RGB).\n- Both `tee` steps declare `shell: bash` explicitly, so pipefail is active and a verifier failure is not masked by tee.\n- All 8 commits carry the two required trailers; `git diff base...branch | grep -i claude|anthropic|copilot|gpt|...` finds nothing outside trailers; CHANGELOG.md untouched as stated.",
+    "notes": "The approach is sound for all eight items and every colleague claim I could check holds (test counts, verifier output, red checks, the upload-artifact SHA the colleague asked the owner to confirm, and the Data-safety host classification). The single major finding is a self-inflicted trap in the new tests/test_verify_android_release_config.py: it hard-codes `BINARIO_APP_VERSION_CODE=35`, so the per-release bump that docs/RELEASE_BUILD.md and docs/store/PLAY_SUBMISSION.md now mandate turns the package's own gate (`python3 -m unittest discover -s tests`) red with a misleading assertion. The fix is three lines and should land as a `test(release): ...` commit on this branch. Everything else is advisory. Documented deviations I accept: the 16 KB rule applied to arm64-v8a/x86_64 only (correct for Play, 16 KB devices are 64-bit only; 32-bit ELF is still parsed fail-closed); release-sign on workflow_dispatch only instead of also `tags: v*` (keeps the reviewed trigger policy in the lock unchanged); unsigned artifacts skipped on pull_request. Static-only items by nature: Gradle lintRelease on both modules, the release-sign job, and the Wear versionCode evaluation (no SDK/runner here; the ELF check has not yet seen a real AAB, so the first CI run is the real signal, as the colleague says). Nit not worth a finding: in PLAY_DATA_SAFETY.md the \"Dove nel codice\" cell for jbb.ghsq.de names RemoteGtfsFallbackDataSource.kt and GtfsArtifactDownloader.kt, which hold no literal of the host (it comes from InternationalSourceCatalog.kt and EuropeanSleeperGtfsRealtimeAdapter.kt); the runtime description is right."
+   }
+  },
+  {
+   "key": "v2:e766c75aefdd7d31c49b6fdd8604afbe15fbeedd669144db8ce7c91fa60f5c75",
+   "result": {
+    "branch": "fix/r2-ci-tools-docs",
+    "worktree": "/tmp/claude-0/-home-user-binario/ec2338fa-afae-5418-81d9-da7d3b962a13/scratchpad/fix/wt-ci-tools-docs",
+    "commits": [
+     {
+      "sha": "8b96d83",
+      "subject": "test(release): keep the versionCode test green across release bumps",
+      "items": [
+       "SR-play-app-3 (major: hard-coded BINARIO_APP_VERSION_CODE=35)"
+      ]
+     },
+     {
+      "sha": "67d7b6e",
+      "subject": "fix(release): drop the unreachable Play versionCode limit check",
+      "items": [
+       "SR-play-app-3 (minor: dead MAX_PLAY_VERSION_CODE branch)"
+      ]
+     },
+     {
+      "sha": "f274232",
+      "subject": "test(store): compare the committed Play icon by pixels, not by zlib stream",
+      "items": [
+       "SR-play-app-4 (minor: zlib byte identity)"
+      ]
+     },
+     {
+      "sha": "94c52aa",
+      "subject": "fix(store): write the Play icon as the 32-bit RGBA PNG the README describes",
+      "items": [
+       "SR-play-app-4 (minor: 32-bit wording vs 24-bit file)"
+      ]
+     },
+     {
+      "sha": "e570b1e",
+      "subject": "docs(release): list every admitted lint exception in the release policy",
+      "items": [
+       "SR-play-app-10 (minor)"
+      ]
+     },
+     {
+      "sha": "55dbbff",
+      "subject": "docs(store): name the files that hold the jbb.ghsq.de host literal",
+      "items": [
+       "SR-play-app-5 (reviewer nit, not a finding)"
+      ]
+     },
+     {
+      "sha": "5b8856a",
+      "subject": "test(ci): run the store, release-config and listing tests in the GTFS workflow",
+      "items": [
+       "SR-play-wear-12 (minor)"
+      ]
+     },
+     {
+      "sha": "e970bee",
+      "subject": "fix(ci): let a re-run of the Android workflow re-upload the Play bundles",
+      "items": [
+       "SR-play-app-2 (minor)"
+      ]
+     }
+    ],
+    "items": [
+     {
+      "id": "SR-play-app-3 / major: test hard-codes BINARIO_APP_VERSION_CODE=35",
+      "outcome": "fixed",
+      "what_changed": "tests/test_verify_android_release_config.py now reads the current `BINARIO_APP_VERSION_CODE=<n>\\n` line from gradle.properties with a regex (re.MULTILINE) and builds both mutations from it: the stale-Wear-property mutation appends the same line with BINARIO_APP_ replaced by BINARIO_WEAR_, and the phone-code-inside-Wear-range mutation replaces the current line with the offset value. No literal version number remains in the test.",
+      "tests": "Verified in the worktree with gradle.properties temporarily set to 36: the verifier printed PASS, the new test passed (4 tests OK) and the previous test version (taken from HEAD into a scratch module) failed with `AssertionError: BINARIO_APP_VERSION_CODE=35`; gradle.properties restored afterwards. The suite also passes at the committed value 35.",
+      "reason_if_not_fixed": ""
+     },
+     {
+      "id": "SR-play-app-3 / minor: unreachable MAX_PLAY_VERSION_CODE branch",
+      "outcome": "fixed",
+      "what_changed": "tools/verify_android_release_config.py: removed the `wear_version_code > MAX_PLAY_VERSION_CODE` branch, the constant and the now-unused `wear_version_code` local; the comment above WEAR_VERSION_CODE_OFFSET states that the derived Wear code is at most 1_999_999, far below Play's 2_100_000_000, so no upper bound is needed. Behaviour is unchanged because the branch could never fire.",
+      "tests": "Dead-code removal; covered by the existing tests/test_verify_android_release_config.py (4 tests OK) and `python3 tools/verify_android_release_config.py` -> PASS. No red check is possible for an unreachable branch.",
+      "reason_if_not_fixed": ""
+     },
+     {
+      "id": "SR-play-app-4 / minor: byte identity with zlib.compress output",
+      "outcome": "fixed",
+      "what_changed": "tests/test_build_store_assets.py: test_committed_play_icon_and_readme_match_the_generator now decodes both the committed store/play/icon-512.png and the freshly generated icon with BUILDER.read_png and compares (width, height, channels, pixels); the README text equality, the < 1024 KB size check and the corner/centre pixel checks are kept and applied to the committed file. The compressed stream is no longer compared, so a different zlib implementation on the CI runner cannot fail the test with an unchanged icon.",
+      "tests": "Robustness change: the test still passes (5 tests OK) and still fails on any pixel divergence between generator and committed file. Could not exercise a second zlib implementation locally (Python 3.11.17 / zlib 1.3 here), so the portability itself is reasoned, not executed.",
+      "reason_if_not_fixed": ""
+     },
+     {
+      "id": "SR-play-app-4 / minor: README says 32 bit, file was 24-bit RGB",
+      "outcome": "fixed",
+      "what_changed": "tools/build_store_assets.py: new helper with_opaque_alpha() appends 0xFF to every RGB pixel after the box filter and build_play_icon writes channels=4 (PNG colour type 6), matching Google's '32-bit PNG' wording; the docstring and the README template's Stato cell now say 'PNG RGBA a 32 bit con canale alfa interamente opaco, nessuna trasparenza'. store/play/icon-512.png (now 3201 bytes, IHDR 512x512/8/6) and store/play/README.md regenerated and committed; the RGB values are identical to the previous icon and every alpha byte is 255 (checked). Test updated to expect 4 channels, all-opaque alpha and RGBA corner/centre pixels, plus a unit check of with_opaque_alpha.",
+      "tests": "tests/test_build_store_assets.py (5 tests OK). Red check: with the generator and store/play changes stashed the test failed (`(512, 512, 4) != (512, 512, 3)`, 1 failure + 1 error). Generator idempotence confirmed: running it again changes nothing.",
+      "reason_if_not_fixed": ""
+     },
+     {
+      "id": "SR-play-app-10 / minor: policy sentence names a single lint exception",
+      "outcome": "fixed",
+      "what_changed": "docs/governance/BRANCH_AND_RELEASE_POLICY.md: the sentence now reads that the admitted lint exceptions are `OldTargetApi` (identical in both modules while the toolchain stays on API 36) and the `GradleDependency` policy (disabled in app's lint block with a rationale, suppressed line by line in wear on the toolchain-bound Compose dependencies only), both verified by tests/test_wear_compose_gradle_dependency_suppressions.py.",
+      "tests": "static only (documentation; no test references that sentence).",
+      "reason_if_not_fixed": ""
+     },
+     {
+      "id": "SR-play-wear-12 / minor: new test modules run in no workflow",
+      "outcome": "fixed",
+      "what_changed": ".github/workflows/gtfs-assets-ci.yml 'Offline pipeline tests' now also runs tests/test_verify_android_release_config.py, tests/test_build_store_assets.py and tests/test_play_store_docs.py (path filters already cover tools/** and tests/**; the lock does not hash that workflow's run steps, so .github/ci-inputs-lock.json is unchanged and verify_ci_pinning.py still passes). New test tests/test_verify_ci_pinning.py::test_every_offline_test_module_runs_in_a_workflow parses every workflow with PyYAML, collects the `run` scripts of all steps (path filters deliberately do not count) and fails for any tests/test_*.py module not named there.",
+      "tests": "Red check: with the gtfs-assets-ci.yml change stashed the new test failed with 3 subtest failures naming the three modules; green after. The three modules also pass when invoked by path exactly as the workflow does. The workflow run itself is static only (no runner).",
+      "reason_if_not_fixed": ""
+     },
+     {
+      "id": "SR-play-app-2 / minor: upload-artifact name conflict on re-run",
+      "outcome": "fixed",
+      "what_changed": ".github/workflows/android-ci.yml: both upload-artifact steps (binario-play-bundles-unsigned, binario-play-bundles-signed) gain `overwrite: true`. tools/verify_ci_pinning.py _check_upload_artifact requires `overwrite` to be exactly true on every upload-artifact step (message: 'upload artifact deve sovrascrivere l'artifact omonimo di un re-run'); tests/test_verify_ci_pinning.py adds the mutation `overwrite: false`. docs/RELEASE_BUILD.md explains the v4+ same-name refusal and the re-run scenario and lists the new rule among the verifier's blocks.",
+      "tests": "Red checks: (a) verifier change stashed -> the mutation subtest 'deve sovrascrivere l'artifact omonimo' fails; (b) workflow change stashed, verifier kept -> `python3 tools/verify_ci_pinning.py` reports both steps (jobs.android.steps[11], jobs.release-sign.steps[8]). Green: verifier passes, test file OK. The runner behaviour of `overwrite` is static only (no runner here); the input exists since upload-artifact v4.3.0 and is present in the pinned v5.",
+      "reason_if_not_fixed": ""
+     },
+     {
+      "id": "SR-play-app-5 / reviewer nit: jbb.ghsq.de 'Dove nel codice' cell",
+      "outcome": "fixed",
+      "what_changed": "docs/store/PLAY_DATA_SAFETY.md: the row now names data/sources/InternationalSourceCatalog.kt (catalogue URLs, downloaded by data/gtfs/GtfsArtifactDownloader.kt for RemoteGtfsFallbackDataSource.kt) and data/live/EuropeanSleeperGtfsRealtimeAdapter.kt, the two files that hold the host literal (confirmed by grep). The host cell itself is untouched so the HOST_ROW inventory guard is unaffected.",
+      "tests": "static only (documentation); `python3 tools/verify_privacy_policy.py` passed and tests/test_verify_privacy_policy.py OK after the edit.",
+      "reason_if_not_fixed": ""
+     }
+    ],
+    "verification": "Run in /tmp/claude-0/-home-user-binario/ec2338fa-afae-5418-81d9-da7d3b962a13/scratchpad/fix/wt-ci-tools-docs on HEAD e970bee:\n- python3 -m unittest discover -s tests -> \"Ran 138 tests in 2.836s / OK\" (137 before this round; +1 workflow-coverage test)\n- python3 tools/verify_ci_pinning.py -> \"CI pinning verification passed: semantic YAML matches the reviewed CI input lock.\"\n- python3 tools/verify_android_release_config.py -> \"Android release configuration: PASS\"\n- python3 tools/verify_privacy_policy.py -> \"Privacy-policy static verification passed.\"\n- yaml.safe_load over every .github/workflows/*.yml -> all parse\n- git status --short -> empty (clean); git -C /home/user/binario status --short -> empty, still on claude/git-repo-audit-cdcsm6 (main checkout untouched)\n- grep of the branch diff vs claude/git-repo-audit-cdcsm6 for model/tool names -> none outside the mandated trailers\n- Red checks per item as listed above (version bump to 36, generator stash, workflow stash, verifier stash)",
+    "concerns": "1) SR-play-app-4: the committed Play icon changed bytes (2784 -> 3201, colour type 2 -> 6). The RGB content is unchanged and alpha is fully opaque, but anyone who already uploaded the old 24-bit file to the Console will see a different file hash; Play accepts both. 2) SR-play-app-2: `overwrite: true` deletes and re-creates the same-named artifact on a re-run, so an unsigned/signed artifact from the first attempt of a run is replaced, not kept side by side; that is the intended behaviour. The option's runtime effect is static only here. 3) SR-play-wear-12: the new coverage test treats a module as covered when a `run` script names `tests/<file>.py` or `tests.<module>`; a workflow that only lists the file in `paths:` does not count (companion-ci.yml names tests/test_verify_android_app_bundles.py only in paths; it is covered by gtfs-assets-ci.yml). Adding a new tests/test_*.py without wiring it into a workflow now fails `python3 -m unittest discover -s tests` and the apple/gtfs workflows that run test_verify_ci_pinning.py (intended). 4) Commit author for the eight new commits is the same name/email as the existing commits on the branch (taken from git log), with the two mandated trailers. 5) CHANGELOG.md still not updated, consistent with the rest of this branch. 6) The two SR-play-app-3 findings and the two SR-play-app-4 findings were committed separately (test fix vs. verifier cleanup; test robustness vs. RGBA output) so each commit stays single-purpose."
+   }
+  }
+ ]
+}

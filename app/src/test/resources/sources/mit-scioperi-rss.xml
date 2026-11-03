@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Test fixture in the shape of an RSS 2.0 strike calendar. The live MIT feed (scioperi.mit.gov.it/mit2/public/scioperi/rss)
+     could not be reached from the build infrastructure, so this is NOT a copy of it: it mimics the fields the ministry page
+     shows (sector, start and end, unions, relevance) to exercise the parser and the rail filter. -->
+<rss version="2.0">
+  <channel>
+    <title>Scioperi - Ministero delle Infrastrutture e dei Trasporti</title>
+    <link>https://scioperi.mit.gov.it/mit2/public/scioperi</link>
+    <description>Calendario degli scioperi nel settore dei trasporti</description>
+    <language>it</language>
+    <item>
+      <title>Ferroviario - Sciopero nazionale del personale del Gruppo FS Italiane</title>
+      <link>https://scioperi.mit.gov.it/mit2/public/scioperi/dettaglio?id=12001</link>
+      <description><![CDATA[<p>Settore: <b>Ferroviario</b></p><p>Data inizio: 03/11/2026 ore 21:00<br/>Data fine: 04/11/2026 ore 21:00</p><p>Sindacati: USB Lavoro Privato &amp; CUB Trasporti</p><p>Rilevanza: Nazionale</p>]]></description>
+      <pubDate>Mon, 19 Oct 2026 10:15:00 +0200</pubDate>
+      <guid isPermaLink="false">mit-sciopero-12001</guid>
+    </item>
+    <item>
+      <title>Trasporto aereo - Sciopero del personale di terra dell'aeroporto di Fiumicino</title>
+      <link>https://scioperi.mit.gov.it/mit2/public/scioperi/dettaglio?id=12002</link>
+      <description>Settore: Trasporto aereo. Data inizio: 03/11/2026 Data fine: 03/11/2026. Rilevanza: Locale - Lazio</description>
+      <pubDate>Tue, 20 Oct 2026 09:00:00 +0200</pubDate>
+      <guid isPermaLink="false">mit-sciopero-12002</guid>
+    </item>
+    <item>
+      <title>Trasporto pubblico locale - Autoferrotranvieri ATM Milano</title>
+      <link>https://scioperi.mit.gov.it/mit2/public/scioperi/dettaglio?id=12003</link>
+      <description>Settore: Trasporto pubblico locale. Data inizio: 07/11/2026 Data fine: 07/11/2026. Rilevanza: Locale - Lombardia</description>
+      <pubDate>Wed, 21 Oct 2026 12:30:00 +0200</pubDate>
+      <guid isPermaLink="false">mit-sciopero-12003</guid>
+    </item>
+    <item>
+      <title>Sciopero regionale Trenord: dalle ore 21:00 del 21/11/2026 alle ore 20:59 del 22/11/2026</title>
+      <link>https://scioperi.mit.gov.it/mit2/public/scioperi/dettaglio?id=12004</link>
+      <description>Personale di macchina e di bordo. Rilevanza: Regionale - Lombardia</description>
+      <pubDate>Thu, 22 Oct 2026 08:00:00 +0200</pubDate>
+      <guid isPermaLink="false">mit-sciopero-12004</guid>
+    </item>
+    <item>
+      <title>Marittimo - Sciopero dei porti di Genova e La Spezia</title>
+      <link>https://scioperi.mit.gov.it/mit2/public/scioperi/dettaglio?id=12005</link>
+      <description>Settore: Marittimo. Data inizio: 10/11/2026. Rilevanza: Locale - Liguria</description>
+      <pubDate>Thu, 22 Oct 2026 09:00:00 +0200</pubDate>
+      <guid isPermaLink="false">mit-sciopero-12005</guid>
+    </item>
+    <item>
+      <title>Sciopero del personale di Italo NTV il 3 dicembre 2026</title>
+      <link>https://scioperi.mit.gov.it/mit2/public/scioperi/dettaglio?id=12006</link>
+      <description>Settore: FERROVIARIO - Alta velocità. Modalità: intera giornata.</description>
+      <pubDate>Fri, 23 Oct 2026 16:45:00 +0200</pubDate>
+      <guid isPermaLink="false">mit-sciopero-12006</guid>
+    </item>
+    <item>
+      <title>Generale - Sciopero di tutti i settori pubblici e privati</title>
+      <link>https://scioperi.mit.gov.it/mit2/public/scioperi/dettaglio?id=12007</link>
+      <description>Settore: Generale. Data inizio: 14/11/2026 Data fine: 14/11/2026. Rilevanza: Nazionale</description>
+      <pubDate>Sat, 24 Oct 2026 10:00:00 +0200</pubDate>
+      <guid isPermaLink="false">mit-sciopero-12007</guid>
+    </item>
+    <item>
+      <title>Sciopero RFI - manutenzione infrastruttura Toscana</title>
+      <link>https://scioperi.mit.gov.it/mit2/public/scioperi/dettaglio?id=12008</link>
+      <description>Settore: Ferroviario. Data inizio: 01/10/2026 Data fine: 02/10/2026.</description>
+      <pubDate>Mon, 14 Sep 2026 10:00:00 +0200</pubDate>
+      <guid isPermaLink="false">mit-sciopero-12008</guid>
+    </item>
+    <item>
+      <title>Treni regionali Trenitalia Campania: sciopero in corso di definizione</title>
+      <link>https://scioperi.mit.gov.it/mit2/public/scioperi/dettaglio?id=12009</link>
+      <description>Data da confermare.</description>
+      <pubDate>Fri, 30 Oct 2026 18:00:00 +0100</pubDate>
+      <guid isPermaLink="false">mit-sciopero-12009</guid>
+    </item>
+  </channel>
+</rss>

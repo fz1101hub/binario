@@ -3,7 +3,7 @@ package it.binario.app
 import it.binario.app.data.Direction
 
 /**
- * Envelope di dominio per una futura sincronizzazione autenticata con Voice Bridge.
+ * Envelope locale dell'app principale da cui derivano payload separati per ciascun companion.
  * Non contiene token, coordinate, biglietti, audio o storico delle interrogazioni.
  */
 data class UnifiedBinarioProfile(

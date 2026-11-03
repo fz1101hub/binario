@@ -1,0 +1,11 @@
+consegna_binario_v172/
+consegna_binario_v172/Binario-v0.17.2-debug.apk
+consegna_binario_v172/CHANGELOG.md
+consegna_binario_v172/DATA_BASELINE_RECONCILIATION_V17.md
+consegna_binario_v172/DATA_LAYER_HANDOFF.md
+consegna_binario_v172/README.md
+consegna_binario_v172/SHA256SUMS.txt
+consegna_binario_v172/VERIFICA-v0.17.2.md
+consegna_binario_v172/sorgenti/
+consegna_binario_v172/sorgenti/Binario-v0.17.2-sorgenti.tar.gz
+consegna_binario_v172/todo.md

@@ -1,0 +1,87 @@
+package it.binario.app
+
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.unit.Density
+import androidx.test.ext.junit.runners.AndroidJUnit4
+import it.binario.app.data.core.BoardKind
+import it.binario.app.data.core.StationBoardEntry
+import it.binario.app.data.core.StationId
+import it.binario.app.data.core.TrainRunId
+import it.binario.app.data.StopRouteChange
+import it.binario.app.ui.departures.OperationsSection
+import it.binario.app.ui.departures.OperationsSectionCard
+import it.binario.app.ui.departures.StationBoardEntryRow
+import it.binario.app.ui.detail.StopTimelinePosition
+import it.binario.app.ui.detail.StopTimelineRow
+import java.time.ZoneId
+import java.time.ZonedDateTime
+import org.junit.Rule
+import org.junit.Test
+import org.junit.runner.RunWith
+
+@RunWith(AndroidJUnit4::class)
+class MainScreenAccessibilityTest {
+    @get:Rule
+    val composeRule = createComposeRule()
+
+    @Test
+    fun aStopWithoutLiveTimingIsNotAnnouncedAsOnTime() {
+        composeRule.setContent {
+            BinarioTheme {
+                StopTimelineRow("Roma Ostiense", "14:30", "14:30", 0, null, false,
+                    operationalStatusVerified = false, routeChange = StopRouteChange.NONE, onSetAlarm = {})
+            }
+        }
+        composeRule.onNodeWithText("Stato operativo non verificato").fetchSemanticsNode()
+        composeRule.onNodeWithContentDescription("Roma Ostiense. Programmato 14:30. Stato operativo non verificato. Binario non disponibile.")
+            .fetchSemanticsNode()
+    }
+
+    @Test
+    fun theNextStopOfTheTimelineIsNamedInTextNotOnlyByColour() {
+        composeRule.setContent {
+            BinarioTheme {
+                StopTimelineRow("Roma Ostiense", "14:30", "14:30", 0, null, false,
+                    operationalStatusVerified = false, routeChange = StopRouteChange.NONE, onSetAlarm = {},
+                    position = StopTimelinePosition.NEXT, isFirst = false, isLast = true)
+            }
+        }
+        composeRule.onNodeWithText("Prossima fermata").fetchSemanticsNode()
+        composeRule.onNodeWithContentDescription("Prossima fermata. Roma Ostiense. Programmato 14:30. Stato operativo non verificato. Binario non disponibile.")
+            .fetchSemanticsNode()
+    }
+
+    @Test
+    fun primaryControlsAndPlannedBoardStateRemainAccessibleAtLargeFontScale() {
+        composeRule.setContent {
+            CompositionLocalProvider(LocalDensity provides Density(density = 1f, fontScale = 2f)) {
+                BinarioTheme {
+                    OperationsSectionCard(
+                        modifier = androidx.compose.ui.Modifier,
+                        section = OperationsSection.TRAINS,
+                        selected = true,
+                        onClick = {}
+                    )
+                    StationBoardEntryRow(
+                        entry = StationBoardEntry(
+                            runId = TrainRunId("test-run"),
+                            scheduledTime = ZonedDateTime.of(2026, 9, 23, 9, 30, 0, 0, ZoneId.of("Europe/Rome")),
+                            destinationOrOrigin = StationId("destination"),
+                            destinationOrOriginLabel = "Milano Centrale",
+                            publicNumber = "1234"
+                        ),
+                        kind = BoardKind.DEPARTURES
+                    )
+                }
+            }
+        }
+
+        composeRule.onNodeWithText("Treni").fetchSemanticsNode()
+        composeRule.onNodeWithContentDescription("Per Milano Centrale. Orario programmato 09:30. Orario programmato; stato live non disponibile. Binario non disponibile. Treno 1234.")
+            .fetchSemanticsNode()
+    }
+}

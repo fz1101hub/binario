@@ -3,7 +3,19 @@
     xmlns:tools="http://schemas.android.com/tools">
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <!-- GPS arrival alarm: precise location only while its foreground service runs, started from
+         the visible app (while-in-use). The background location permission is deliberately absent. -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- MapLibre's AAR also declares ACCESS_WIFI_STATE, which the SDK never uses: removed. Its
+         ACCESS_NETWORK_STATE stays (the renderer's connectivity check needs it; install-time, reveals nothing
+         about the user). Its ACCESS_COARSE/FINE_LOCATION merge into the declarations above, which the app
+         makes for its own features; the maps never enable MapLibre's LocationComponent. -->
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" tools:node="remove" />
 
     <queries>
         <intent>
@@ -17,16 +29,18 @@
         android:fullBackupContent="@xml/backup_rules"
         android:icon="@drawable/ic_binario"
         android:label="@string/app_name"
+        android:localeConfig="@xml/locale_config"
         android:networkSecurityConfig="@xml/network_security_config"
         android:roundIcon="@drawable/ic_binario"
         android:supportsRtl="true"
         android:theme="@style/Theme.Binario"
         android:usesCleartextTraffic="false"
-        tools:targetApi="s">
+        tools:targetApi="tiramisu">
 
         <activity
             android:name=".MainActivity"
-            android:exported="true">
+            android:exported="true"
+            android:launchMode="singleTop">
             <meta-data
                 android:name="android.app.shortcuts"
                 android:resource="@xml/shortcuts" />
@@ -46,6 +60,34 @@
             android:name=".widget.WidgetConfigureActivity"
             android:exported="false" />
 
+        <activity
+            android:name=".widget.StationWidgetConfigureActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".widget.TrainsWidgetConfigureActivity"
+            android:exported="false" />
+
+        <!-- "Più vicina" of the station widget: one foreground location fix on tap, then it finishes. -->
+        <activity
+            android:name=".widget.StationWidgetNearestActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:taskAffinity=""
+            android:theme="@style/Theme.Binario.Translucent" />
+
+        <service
+            android:name=".wear.WearRefreshRequestListenerService"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.google.android.gms.wearable.MESSAGE_RECEIVED" />
+                <data
+                    android:host="*"
+                    android:pathPrefix="/binario/wear/request-refresh"
+                    android:scheme="wear" />
+            </intent-filter>
+        </service>
+
         <receiver
             android:name=".widget.RouteWidgetProvider"
             android:exported="false"
@@ -63,11 +105,69 @@
         </receiver>
 
         <receiver
+            android:name=".widget.StationWidgetProvider"
+            android:exported="false"
+            android:label="@string/station_widget_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="it.binario.app.widget.STATION_REFRESH" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/station_widget_info" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.TrainsWidgetProvider"
+            android:exported="false"
+            android:label="@string/trains_widget_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="it.binario.app.widget.TRAINS_REFRESH" />
+                <action android:name="it.binario.app.widget.TRAINS_NEXT_PAGE" />
+                <action android:name="it.binario.app.widget.TRAINS_PREVIOUS_PAGE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/trains_widget_info" />
+        </receiver>
+
+        <receiver
             android:name=".StopAlarmReceiver"
             android:exported="false" />
+
+        <service
+            android:name=".gpsalarm.GpsArrivalAlarmService"
+            android:exported="false"
+            android:foregroundServiceType="location" />
+
+        <receiver android:name=".plannedjourney.PlannedJourneyReminderReceiver" android:exported="false" />
+        <receiver android:name=".plannedjourney.PlannedJourneyReminderRestoreReceiver" android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED" />
+            </intent-filter>
+        </receiver>
 
         <receiver
             android:name=".CommuterAlertReceiver"
             android:exported="false" />
+        <!-- "Aggiorna" / "Interrompi" and the dismissal of the followed-trip notification; app-internal only. -->
+        <receiver
+            android:name=".notifications.FollowedTripActionReceiver"
+            android:exported="false" />
+        <receiver
+            android:name=".CommuterAlertRestoreReceiver"
+            android:exported="true">
+            <!-- Also restores the stop alarms; the exact-alarm action makes alarms already set exact once granted. -->
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED" />
+            </intent-filter>
+        </receiver>
     </application>
 </manifest>

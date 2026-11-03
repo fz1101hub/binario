@@ -1,0 +1,21 @@
+# Migrazioni database Alexa Companion
+
+## Motori supportati
+
+Le migrazioni richiedono **MariaDB** (il CI le applica a MariaDB 11.4; sono state applicate anche a MariaDB 10.11) oppure **TiDB**, che accetta la stessa sintassi ma non è esercitato dal CI. **MySQL 8 non è supportato**: `0007`, `0008`, `0009` e `0012` usano `ALTER TABLE … ADD COLUMN IF NOT EXISTS` e `CREATE INDEX IF NOT EXISTS`, che MySQL rifiuta. Su MySQL una catena nuova si fermerebbe a metà di `0007`: il DDL fa commit implicito, la riga del journal non viene scritta e ogni nuovo tentativo fallisce con «Duplicate column», con riparazione manuale.
+
+Le migrazioni già distribuite non vengono riscritte, perché i database già provisionati dipendono dalla loro storia esatta. `pnpm db:migrate` esegue prima `scripts/check-db-engine.ts`, che legge `SELECT VERSION()` e interrompe la migrazione se il motore non è MariaDB né TiDB (`pnpm db:check-engine` esegue solo il controllo). Un operatore che abbia verificato un database MySQL già completamente migrato può proseguire consapevolmente con `ALLOW_UNSUPPORTED_DATABASE_ENGINE=1`, che riduce il blocco a un avviso.
+
+## Discendenza canonica
+
+La catena Drizzle canonica di questo companion è **0000–0013**. Le migrazioni **0000–0011** mantengono i tag, gli snapshot e i timestamp del journal WebDev storico; `0007` contiene soltanto una correzione del separatore tra due statement che il test MariaDB esegue separatamente. Non devono essere rinumerate o ricreate: un database già provisionato da WebDev contiene dati e oggetti introdotti da quella storia, inclusi tratte personali, preferenze stazione e record di pairing.
+
+La migrazione **0012_alexa_credential_revocation_adoption** è intenzionalmente solo additiva. Usa `IF NOT EXISTS` per introdurre `credentialVersion`, `revokedAt` e gli oggetti storici mancanti senza eliminare o riscrivere dati. Questo consente di adottare sia un database WebDev arrivato a `0011`, sia la breve catena Alexa `0000–0003` distribuita prima dell’unificazione.
+
+La migrazione **0013_complete_shiva** aggiunge `familyId` ai refresh token: le righe esistenti ricevono una famiglia propria derivata da id e hash (`SHA2(CONCAT('legacy:', id, ':', tokenHash), 256)`), poi la colonna diventa `NOT NULL` e viene creato l’indice `oauth_refresh_tokens_family_revoked_idx`. Su quella famiglia si basano la rotazione, la finestra di 60 secondi per i nuovi tentativi e la revoca dell’intera famiglia in caso di riuso.
+
+## Procedura operativa
+
+Usare sempre il normale comando `pnpm db:migrate` contro un backup verificato del database target. Non inserire manualmente righe in `__drizzle_migrations` e non eseguire selettivamente i file SQL. Su un database proveniente dalla catena 0000–0011 o dalla breve 0000–0003, Drizzle applica soltanto 0012 e 0013; su un database vuoto applica tutta la catena nell’ordine del journal. Il test MariaDB `pnpm test:db-migrations` esercita tutti e tre i percorsi, applica 0000→0013 e verifica la conservazione di righe storiche e la rotazione dei refresh token.
+
+Questa procedura non esprime alcuna scelta di hosting o credenziale: il `DATABASE_URL` resta un input dell'ambiente di deploy.

@@ -8,16 +8,18 @@ class StationPreferences(context: Context) {
     private val preferences = context.getSharedPreferences("binario_station_preferences_v1", Context.MODE_PRIVATE)
 
     fun favourites(stations: List<Station>): List<Station> {
-        val ids = preferences.getStringSet(KEY_FAVOURITES, emptySet()).orEmpty()
+        val ids = favouriteIds()
         return stations.filter { it.id in ids }
     }
 
-    fun isFavourite(station: Station): Boolean = station.id in preferences.getStringSet(KEY_FAVOURITES, emptySet()).orEmpty()
+    fun isFavourite(station: Station): Boolean = station.id in favouriteIds()
 
-    fun favouriteIds(): Set<String> = preferences.getStringSet(KEY_FAVOURITES, emptySet()).orEmpty().toSet()
+    fun favouriteIds(): Set<String> = runCatching {
+        preferences.getStringSet(KEY_FAVOURITES, emptySet()).orEmpty().toSet()
+    }.getOrDefault(emptySet())
 
     fun toggle(station: Station) {
-        val updated = preferences.getStringSet(KEY_FAVOURITES, emptySet()).orEmpty().toMutableSet()
+        val updated = favouriteIds().toMutableSet()
         if (!updated.add(station.id)) updated.remove(station.id)
         preferences.edit { putStringSet(KEY_FAVOURITES, updated) }
     }

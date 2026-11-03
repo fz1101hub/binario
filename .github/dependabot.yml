@@ -1,0 +1,74 @@
+version: 2
+
+updates:
+  - package-ecosystem: npm
+    directory: /alexa-companion
+    schedule:
+      interval: weekly
+      day: tuesday
+      time: "06:00"
+      timezone: Europe/Rome
+    versioning-strategy: increase-if-necessary
+    open-pull-requests-limit: 5
+    groups:
+      non-major:
+        update-types:
+          - minor
+          - patch
+
+  - package-ecosystem: npm
+    directory: /companion-expo
+    schedule:
+      interval: weekly
+      day: tuesday
+      time: "06:15"
+      timezone: Europe/Rome
+    versioning-strategy: increase-if-necessary
+    open-pull-requests-limit: 5
+    groups:
+      non-major:
+        update-types:
+          - minor
+          - patch
+
+  - package-ecosystem: gradle
+    directory: /
+    schedule:
+      interval: weekly
+      day: tuesday
+      time: "06:30"
+      timezone: Europe/Rome
+    open-pull-requests-limit: 5
+    groups:
+      non-major:
+        update-types:
+          - minor
+          - patch
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: tuesday
+      time: "06:45"
+      timezone: Europe/Rome
+    open-pull-requests-limit: 5
+    groups:
+      non-major:
+        update-types:
+          - minor
+          - patch
+
+  - package-ecosystem: pip
+    directory: /
+    schedule:
+      interval: weekly
+      day: tuesday
+      time: "07:00"
+      timezone: Europe/Rome
+    open-pull-requests-limit: 5
+    groups:
+      non-major:
+        update-types:
+          - minor
+          - patch

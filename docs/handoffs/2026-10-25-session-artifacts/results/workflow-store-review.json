@@ -1,0 +1,324 @@
+{
+ "workflow_run": "wf_c401820d-09b",
+ "entries": [
+  {
+   "key": "v2:97233aff8abc93004eac74f916eaf7811ab24d8f64bcdfa4d858446dff908f7d",
+   "result": {
+    "summary": "App Store readiness of ios/ (it.binario.ios) + embedded BinarioWatch (it.binario.ios.watchkitapp) + BinarioWatchWidgets, HEAD e970bee. Positive: the Swift sources at HEAD are byte-identical to commit dd70ab87 that passed the 'Apple Watch CI' workflow on 2026-10-18 (Xcode 16.4, Swift 6 language mode, both the ios and watchos jobs green: XcodeGen generation, iOS+watchOS simulator build and tests) - only the GTFS artifact/metadata/manifest changed since, and tools/verify_ios_gtfs_schedule.py passes locally on HEAD; so no compile-level Swift 6 defect was found by static reading. Localizable.strings: 75/75 keys in it/en/de/fr/es, identical to BinarioLocalizationKeys.required, placeholders consistent; Localizable.xcstrings: 45 keys x 5 locales complete (incl. the %lld plural). Privacy manifests match the APIs actually called (UserDefaults.standard -> CA92.1 in the app; app-group suite -> 1C8F.1 in watch app and widget; no file-timestamp, disk-space or boot-time APIs; no networking at all). Entitlements (group.it.binario.watch) consistent between watch app and widget; WKCompanionAppBundleIdentifier/bundle-id prefix rule/shared MARKETING_VERSION 0.1.0 (1) correct; iOS AppIcon is the valid single-size 1024 universal/ios form, opaque RGB; UILaunchScreen generated; TEST_HOST values correct. Blocking/required gaps: (1) BLOCKER - the embedded Watch app has no app icon at all (no asset catalog, no ASSETCATALOG_COMPILER_APPICON_NAME) -> App Store Connect rejects the upload (ITMS-90713 CFBundleIconName missing for the watchkitapp). (2) no signing/team configuration survives `xcodegen generate` (xcodeproj is git-ignored). (3) ITSAppUsesNonExemptEncryption absent from all three Info.plists -> 'Missing Compliance' on every build. (4) the planner offers all 5,239 catalog stations but the bundled timetable serves only 610 of them (Roma Termini, Napoli Centrale, Venezia S. Lucia, Palermo Centrale: zero departures; no Trenitalia/Italo feed) - an App Review 2.1/4.2 trap. (5) 7 of 10 packs expire 2026-12-12/13 (48 days) with no expiry notice. (6) privacy policy does not cover iOS/watchOS and has no public URL. (7) no App Store metadata/screenshot/age-rating/review-notes package exists in the repository. Recommended: in-app data-source attribution/licence screen, Watch 'Update failed' status shown on iPhones without a paired Watch, raw PROGRAMMED status on the Watch, display-only saved routes, CI that never archives a Release build, and clarifying that apple-watch/project.yml is a test harness (Swift 5.10, watch-only app with no data path) and not a store product. Full result also written to /tmp/claude-0/-home-user-binario/ec2338fa-afae-5418-81d9-da7d3b962a13/scratchpad/store/review-appstore-ios.json.",
+    "findings": [
+     {
+      "id": "SR-appstore-ios-1",
+      "title": "Embedded Apple Watch app has no app icon: App Store Connect upload validation will fail (ITMS-90713)",
+      "severity": "blocker",
+      "store": "appstore",
+      "evidence": "ios/project.yml:97-125 (BinarioWatch target) lists sources ../apple-watch/BinarioWatch, ../apple-watch/Shared, ../apple-watch/Resources and sets no ASSETCATALOG_COMPILER_APPICON_NAME; `find apple-watch -name '*.xcassets' -o -name '*.png'` returns nothing; apple-watch/project.yml:10-33 likewise. Only the iPhone target has ios/Resources/Assets.xcassets/AppIcon.appiconset (ios/project.yml:48 ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon). A watchOS app bundle without CFBundleIconName/1024 icon is rejected at upload ('Missing Info.plist value ... CFBundleIconName ... in the bundle it.binario.ios.watchkitapp'). The simulator-only CI (CODE_SIGNING_ALLOWED=NO, no archive) cannot catch this.",
+      "fix_in_repo": "Add apple-watch/BinarioWatch/Assets.xcassets/Contents.json ({\"info\":{\"author\":\"xcode\",\"version\":1}}) and apple-watch/BinarioWatch/Assets.xcassets/AppIcon.appiconset/Contents.json with a single image {\"filename\":\"AppIcon-1024.png\",\"idiom\":\"universal\",\"platform\":\"watchos\",\"size\":\"1024x1024\"} plus an opaque 1024x1024 RGB PNG (no alpha, no rounded corners; e.g. generated from the same brand source as ios/Resources/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png by extending tools/build_store_assets.py). Put it under BinarioWatch/ (not Resources/) so the widget target does not carry it. Add `ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon` to BinarioWatch settings.base in BOTH ios/project.yml and apple-watch/project.yml. Extend tests/test_verify_ios_project.py and tests/test_verify_apple_watch_project.py to assert the appiconset exists, Contents.json has platform watchos/size 1024x1024, and the PNG is 1024x1024 colour type 2 or 6 with fully opaque alpha.",
+      "files": [
+       "ios/project.yml",
+       "apple-watch/project.yml",
+       "apple-watch/BinarioWatch/Assets.xcassets/AppIcon.appiconset/Contents.json",
+       "apple-watch/BinarioWatch/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png",
+       "tools/build_store_assets.py",
+       "tests/test_verify_ios_project.py",
+       "tests/test_verify_apple_watch_project.py"
+      ],
+      "owner_action": "None beyond the upload itself; on macOS run `xcodebuild archive` and 'Validate App' in Xcode Organizer to confirm the watch icon is accepted.",
+      "verification": "Static: python3 -I check that Contents.json parses and the PNG header reads 1024x1024 without transparency; python3 -m unittest tests.test_verify_ios_project tests.test_verify_apple_watch_project. Real proof only via xcodebuild archive + App Store validation on macOS.",
+      "effort": "S",
+      "duplicate_of": ""
+     },
+     {
+      "id": "SR-appstore-ios-2",
+      "title": "No signing/team configuration is persisted: every regenerated Xcode project is unsigned and the three App IDs + App Group must be re-selected by hand",
+      "severity": "required",
+      "store": "appstore",
+      "evidence": ".gitignore:37 ignores ios/Binario.xcodeproj/, so the project exists only after `xcodegen generate` (ios/Scripts/generate-project.sh). ios/project.yml contains no DEVELOPMENT_TEAM, CODE_SIGN_STYLE or CODE_SIGN_IDENTITY for Binario (lines 37-50), BinarioWatch (112-121) or BinarioWatchWidgets (154-162); ios/APPLE_PLATFORM_READINESS.md:60 confirms 'No signing configuration is checked in'. Archiving for App Store requires a team on all three targets plus the App Groups capability on it.binario.ios.watchkitapp and it.binario.ios.watchkitapp.widgets (apple-watch/BinarioWatch/BinarioWatch.entitlements: group.it.binario.watch).",
+      "fix_in_repo": "In ios/project.yml settings.base add `CODE_SIGN_STYLE: Automatic` and `DEVELOPMENT_TEAM: ${BINARIO_APPLE_TEAM_ID}` (XcodeGen substitutes environment variables), or add `configFiles: { Release: Signing.xcconfig }` with an untracked ios/Signing.xcconfig and a committed ios/Signing.xcconfig.example; document the variable in ios/Scripts/generate-project.sh and ios/APPLE_PLATFORM_READINESS.md. Keep CODE_SIGNING_ALLOWED=NO in CI unchanged.",
+      "files": [
+       "ios/project.yml",
+       "ios/Scripts/generate-project.sh",
+       "ios/APPLE_PLATFORM_READINESS.md",
+       ".gitignore"
+      ],
+      "owner_action": "Apple Developer Program membership; in the developer portal register App IDs it.binario.ios, it.binario.ios.watchkitapp, it.binario.ios.watchkitapp.widgets, create App Group group.it.binario.watch and enable the App Groups capability on the two watch App IDs (automatic signing can do this once a team is set); create the App Store Connect app record for it.binario.ios; export the Team ID into BINARIO_APPLE_TEAM_ID before `xcodegen generate`.",
+      "verification": "Static only (macOS: xcodegen generate then `xcodebuild -showBuildSettings -target Binario | grep DEVELOPMENT_TEAM`).",
+      "effort": "S",
+      "duplicate_of": ""
+     },
+     {
+      "id": "SR-appstore-ios-3",
+      "title": "ITSAppUsesNonExemptEncryption missing from all three Info.plists: every uploaded build is held as 'Missing Compliance'",
+      "severity": "required",
+      "store": "appstore",
+      "evidence": "ios/project.yml:37-50 (Binario) and :112-121 (BinarioWatch) generate Info.plist via GENERATE_INFOPLIST_FILE with no INFOPLIST_KEY_ITSAppUsesNonExemptEncryption; apple-watch/BinarioWatchWidgets/Info.plist has no ITSAppUsesNonExemptEncryption key. grep for URLSession/Network/CryptoKit/CommonCrypto/Security in ios/BinarioApp, ios/BinarioKit/Sources and apple-watch returns nothing: the app performs no networking and uses only a pure-Swift SHA-256 for integrity (BundledGTFSScheduleInstaller.swift:225), so the correct answer is NO (exempt). Without the key App Store Connect asks the export-compliance question after each upload and blocks TestFlight until answered.",
+      "fix_in_repo": "Add `INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: NO` to settings.base of Binario and BinarioWatch in ios/project.yml (Xcode injects every INFOPLIST_KEY_* build setting into the generated plist, as it already does for WKApplication/WKWatchOnly) and `<key>ITSAppUsesNonExemptEncryption</key><false/>` to apple-watch/BinarioWatchWidgets/Info.plist; mirror in apple-watch/project.yml. Assert the setting in tests/test_verify_ios_project.py (test_app_identity_version_and_swift6_phone_deployment_are_explicit) and the plist key in tests/test_verify_apple_watch_project.py.",
+      "files": [
+       "ios/project.yml",
+       "apple-watch/project.yml",
+       "apple-watch/BinarioWatchWidgets/Info.plist",
+       "tests/test_verify_ios_project.py",
+       "tests/test_verify_apple_watch_project.py"
+      ],
+      "owner_action": "None once the key ships (otherwise answer 'No' to 'Does your app use encryption?' in App Store Connect for every build).",
+      "verification": "Static (yaml/plist assertions in the Python tests); on macOS `plutil -p <archive>/Products/Applications/Binario.app/Info.plist | grep ITSApp`.",
+      "effort": "S",
+      "duplicate_of": ""
+     },
+     {
+      "id": "SR-appstore-ios-4",
+      "title": "Planner offers 5,239 stations but the bundled timetable serves only 610 (no Trenitalia/Italo): Roma Termini and Napoli Centrale return 'no data' - App Review 2.1/4.2 trap",
+      "severity": "required",
+      "store": "appstore",
+      "evidence": "Decompressing ios/Resources/binario_gtfs_schedule_v1.sqlite.zlib and running `select count(distinct catalog_station_id) from stop join stop_time ...` gives 610 of the 5,239 catalog stations (11.6%). Roma Termini S08409, Napoli Centrale S09218, Venezia Santa Lucia NC001358, Palermo Centrale S12002: 0 stop_times; Torino Porta Nuova: 5 (SNCF only); Bologna Centrale: 3 (SBB only). Packs (metadata.json packRowCounts): STA, ARST, SBB ch-otd, EAV, HZPP (0 trips), Trenord, OeBB, SNCF, TFT, Trentino - no national operator. StationPickerField.swift:265 `model.suggestions(for:)` -> CuratedStationCatalog.search over the whole catalog with no coverage marking; PlannerView.swift:16-19 intro and it.lproj/Localizable.strings `settings.data.provider_programmed` = '10 fonti GTFS incluse · dati programmati' never say which operators are included. A reviewer testing the two most famous Italian stations sees result.unavailable ('Dati non disponibili') and may file 'app does not work' (Guideline 2.1) or minimum functionality (4.2).",
+      "fix_in_repo": "In SQLiteGTFSJourneyRepository add `coveredCatalogStationIDs() throws -> Set<String>` (SELECT DISTINCT catalog_station_id FROM stop WHERE catalog_station_id IS NOT NULL - 610 rows) executed once in AppModel.loadSchedule and published as `coveredStationIDs`; in StationSearchView show a secondary label (new key e.g. `planner.station.no_timetable` = 'Orari non inclusi') for uncovered stations and sort covered ones first (or filter them when scheduleState == .available); add a planner footer listing the included feeds (read from the bundled binario_gtfs_source_policy_v1.json / SQLite pack table); rewrite `planner.intro.body` and `settings.data.provider_programmed` in all five .lproj files to state that only the listed regional/foreign feeds are included and that Trenitalia/Italo are not. Add a BinarioKit test for coveredCatalogStationIDs against the committed artifact.",
+      "files": [
+       "ios/BinarioKit/Sources/BinarioKit/SQLiteGTFSJourneyRepository.swift",
+       "ios/BinarioApp/AppModel.swift",
+       "ios/BinarioApp/StationPickerField.swift",
+       "ios/BinarioApp/PlannerView.swift",
+       "ios/BinarioKit/Sources/BinarioKit/LocalizationKeys.swift",
+       "ios/Resources/it.lproj/Localizable.strings",
+       "ios/Resources/en.lproj/Localizable.strings",
+       "ios/Resources/de.lproj/Localizable.strings",
+       "ios/Resources/fr.lproj/Localizable.strings",
+       "ios/Resources/es.lproj/Localizable.strings"
+      ],
+      "owner_action": "In App Store Connect 'Notes for Review' give a covered test route (e.g. Milano Centrale -> Bergamo, Trenord; Bolzano -> Merano, STA) and state the coverage; write the description honestly ('orari programmati offline di 9 feed GTFS regionali ed esteri; Trenitalia/Italo non inclusi').",
+      "verification": "python3 -I script over the decompressed artifact (kept at /tmp/claude-0/-home-user-binario/ec2338fa-afae-5418-81d9-da7d3b962a13/scratchpad/store/appstore-ios/gtfs.sqlite) to recount covered stations; `swift test --package-path ios/BinarioKit` on a Swift host; Python localisation parity tests.",
+      "effort": "M",
+      "duplicate_of": ""
+     },
+     {
+      "id": "SR-appstore-ios-5",
+      "title": "Bundled timetables expire 48 days after today and iOS shows no expiry notice: a build submitted now goes dark for most routes in mid-December",
+      "severity": "required",
+      "store": "appstore",
+      "evidence": "app/src/main/assets/gtfs/manifest.json lastServiceDate: 7 packs 2026-12-12/13 (48-49 days from 2026-10-25), ARST 2026-12-31; ios/Resources/binario_gtfs_schedule_v1.metadata.json sourceGeneratedAt 2026-09-23. SQLiteGTFSJourneyRepository.swift:105-114 raises scheduleExpired only when packsEnded(...) for the queried stations; stations never served fall to .noJourney (RT-10). The artifact is rebuilt only by hand (tools/build_ios_gtfs_schedule.py; IOSGTFS-12).",
+      "fix_in_repo": "Before the submission build: refresh the GTFS packs, run python3 tools/build_ios_gtfs_schedule.py and tools/verify_ios_gtfs_schedule.py, commit the new artifact; implement the expired-timetable notice (RT-10/N-A1-IOS-TWIN) so the planner shows result.expired for any query after the index's last service date, and surface the last service date in Settings (settings.data section).",
+      "files": [
+       "ios/Resources/binario_gtfs_schedule_v1.sqlite.zlib",
+       "ios/Resources/binario_gtfs_schedule_v1.metadata.json",
+       "ios/BinarioKit/Sources/BinarioKit/SQLiteGTFSJourneyRepository.swift",
+       "ios/BinarioApp/SettingsView.swift"
+      ],
+      "owner_action": "Plan a data-refresh/app-update cadence (monthly) and schedule the first App Store update before 2026-12-12.",
+      "verification": "python3 tools/verify_ios_gtfs_schedule.py; python3 -m unittest tests.test_ios_gtfs_schedule; BinarioKit tests for the expiry path.",
+      "effort": "M",
+      "duplicate_of": "R4:L-G-6"
+     },
+     {
+      "id": "SR-appstore-ios-6",
+      "title": "Privacy policy has no public URL and explicitly excludes iOS and Apple Watch, but App Store Connect requires one for the app being submitted",
+      "severity": "required",
+      "store": "appstore",
+      "evidence": "PRIVACY.md 'Ambito e superfici interessate' lists only Binario Android, Wear OS, Companion Expo and Alexa Companion; its header declares 'Blocco per una distribuzione pubblica ... non identifica il titolare ... né un URL pubblico'. The iOS Settings privacy section (SettingsView.swift:21-40, keys settings.privacy.*) makes claims (no account/analytics/location/network; routes in local UserDefaults; Watch gets only contract snapshots; backups may include routes) that the policy must mirror. App Store Connect refuses submission without a Privacy Policy URL.",
+      "fix_in_repo": "Add an 'App iPhone e Apple Watch' section to PRIVACY.md: saved routes and the watch-sharing preference in UserDefaults.standard (keys it.binario.ios.saved-routes.v1, it.binario.ios.watch-sharing-enabled.v1), GTFS cache in Application Support excluded from backup, no network access, Watch Connectivity application context (two services max) and the Watch App Group cache group.it.binario.watch with its clear-on-disable behaviour, iCloud/iTunes backups may include saved routes; add it/en/de/fr/es short versions or at least an English one.",
+      "files": [
+       "PRIVACY.md"
+      ],
+      "owner_action": "Identify the data controller and contact, host PRIVACY.md at a stable public URL, enter it as Privacy Policy URL in App Store Connect and answer App Privacy as 'Data Not Collected'.",
+      "verification": "Static only (python3 tools/verify_privacy_policy.py does not cover iOS).",
+      "effort": "S",
+      "duplicate_of": "R4:L-G-7"
+     },
+     {
+      "id": "SR-appstore-ios-7",
+      "title": "No App Store submission package in the repository (listing texts, screenshots plan, age rating, review notes, support URL, content-rights answer)",
+      "severity": "required",
+      "store": "appstore",
+      "evidence": "docs/store/ contains only PLAY_SUBMISSION.md and PLAY_DATA_SAFETY.md; store/ contains only play/ (icon-512.png + README); grep for 'App Store'/'TestFlight' across *.md finds only ios/APPLE_PLATFORM_READINESS.md:64, a one-sentence reminder. App Store Connect requires: name/subtitle, description and keywords per locale (it/en/de/fr/es are shipped), support URL, category, age-rating questionnaire, App Privacy answers, 'content rights' declaration for the bundled third-party GTFS feeds, iPhone screenshots (6.9\" and 6.5\"/6.7\" sets) and Apple Watch screenshots (mandatory because a watch app is embedded), review notes.",
+      "fix_in_repo": "Write docs/store/APP_STORE_SUBMISSION.md mirroring PLAY_SUBMISSION.md: listing texts in the five languages derived from the shipped strings (no realtime claims; state the offline programmed-data nature and the covered feeds), expected age rating 4+ with the questionnaire answers (no objectionable content, no web access, no gambling, no user-generated content), App Privacy 'Data Not Collected', content-rights 'yes, open-data licences (see attribution list)', screenshot list (planner, result with source line, saved routes, settings/privacy, Watch home, Watch detail, complication), review notes with a covered test route, export-compliance answer NO. Extend tools/build_store_assets.py to emit the iOS/watchOS 1024 icons from the same brand source.",
+      "files": [
+       "docs/store/APP_STORE_SUBMISSION.md",
+       "tools/build_store_assets.py",
+       "store/appstore/README.md"
+      ],
+      "owner_action": "Create the App Store Connect record (name 'Binario' availability must be checked - the name may be taken in some storefronts, prepare a fallback such as 'Binario Orari'), capture screenshots on iPhone + Apple Watch simulators or devices, provide support URL/email, choose primary category (Travel) and territories, complete age rating and App Privacy, upload via Xcode Organizer or Transporter.",
+      "verification": "Static only.",
+      "effort": "M",
+      "duplicate_of": ""
+     },
+     {
+      "id": "SR-appstore-ios-8",
+      "title": "Third-party GTFS attribution and licences are not surfaced in-app (Guideline 5.2.2 / CC BY obligations)",
+      "severity": "recommended",
+      "store": "appstore",
+      "evidence": "The only attribution shown is the per-result line PlannerView.swift:178 (`result.source_label` + snapshot.provenance.sourceLabel, bounded to 96 chars by SQLiteGTFSJourneyRepository.boundedSourceLabel). Settings (SettingsView.swift:8-19) shows no feed list. manifest.json attributions include 'OeBB Personenverkehr AG — CC BY 4.0', 'Open Data Hub Alto Adige / STA — CC0'; the other eight carry no licence string, and ios/Resources/binario_gtfs_source_policy_v1.json stores only sourceId/sourceUrl/accessMode. CC BY 4.0 requires attribution plus a licence link; App Review 5.2.2 requires demonstrable rights to third-party content.",
+      "fix_in_repo": "Add a 'Fonti dati' section/screen in SettingsView listing every pack from the SQLite `pack` table (attribution, last_service_date) joined with the bundled policy JSON (sourceUrl) and a new `licence` field added to app/src/main/assets/gtfs/manifest.json + binario_gtfs_source_policy_v1.json (verified by tools/verify_ios_gtfs_schedule.py); localise the section title in the five .strings files and BinarioLocalizationKeys.",
+      "files": [
+       "ios/BinarioApp/SettingsView.swift",
+       "ios/BinarioKit/Sources/BinarioKit/SQLiteGTFSJourneyRepository.swift",
+       "ios/Resources/binario_gtfs_source_policy_v1.json",
+       "app/src/main/assets/gtfs/manifest.json",
+       "tools/build_ios_gtfs_schedule.py",
+       "tools/verify_ios_gtfs_schedule.py"
+      ],
+      "owner_action": "Confirm each feed's licence allows redistribution inside an app (SNCF/ETALAB or ODbL, opentransportdata.swiss, Regione Lombardia/Trenord, ARST, EAV, HZPP, Regione Toscana, Trentino Trasporti) and record the licence names; answer 'content rights' accordingly in App Store Connect.",
+      "verification": "python3 tools/verify_ios_gtfs_schedule.py after adding the field; static review of the Settings view.",
+      "effort": "M",
+      "duplicate_of": ""
+     },
+     {
+      "id": "SR-appstore-ios-9",
+      "title": "Settings shows 'Aggiornamento non riuscito' on every iPhone without a paired Watch, even with sharing OFF",
+      "severity": "recommended",
+      "store": "appstore",
+      "evidence": "AppModel.swift:73-80: statusDidChange is wired, bootstrap() activates WCSession and, with sharing disabled, revokeWatchSnapshot() enqueues a clear. On an iPhone with no paired Watch the activation completes and WCSession.updateApplicationContext throws (device not paired / watch app not installed); WearSnapshotV1.swift:525-529 and 493-495 set status .failed, so SettingsView.swift:36-39 renders watch.status.failed under a toggle that is off. No isPaired/isWatchAppInstalled check exists (grep). A reviewer on a plain iPhone sees a red-flag 'update failed'.",
+      "fix_in_repo": "Expose `isPaired`/`isWatchAppInstalled` on WatchSnapshotSession (WCSessionAdapter: WCSession.default.isPaired / isWatchAppInstalled; FakeAppSession in tests), skip publish/clear and report a new neutral status (`watch.status.not_paired`, 'Nessun Apple Watch abbinato') when unpaired; show .disabled whenever !watchSharingEnabled (R4:L-I-3).",
+      "files": [
+       "ios/BinarioApp/AppModel.swift",
+       "ios/BinarioApp/WCSessionAdapter.swift",
+       "ios/BinarioKit/Sources/BinarioKit/WearSnapshotV1.swift",
+       "ios/BinarioApp/SettingsView.swift",
+       "ios/BinarioAppTests/BinarioAppTests.swift"
+      ],
+      "owner_action": "",
+      "verification": "BinarioAppTests with a FakeAppSession reporting isPaired=false; manual check on an iPhone without Watch.",
+      "effort": "S",
+      "duplicate_of": "R4:L-I-3"
+     },
+     {
+      "id": "SR-appstore-ios-10",
+      "title": "Watch detail shows raw 'PROGRAMMED' status and the headline is red 'Dati non disponibili in tempo reale' for every programmed snapshot",
+      "severity": "recommended",
+      "store": "appstore",
+      "evidence": "SQLiteGTFSJourneyRepository.swift:335 sets status: OperationalState.programmed.rawValue; AppModel.swift:297 publishes freshness .unknown; WatchHomeView.swift:41-43 colours BinarioFreshness.unknown red with watch.freshness.unavailable, WatchHomeView.swift:126 prints service.status verbatim.",
+      "fix_in_repo": "Map status/freshness to catalogue keys on the Watch (WatchModels.swift) and publish a freshness value that means 'scheduled' instead of unknown.",
+      "files": [
+       "apple-watch/BinarioWatch/WatchHomeView.swift",
+       "apple-watch/Shared/WatchModels.swift",
+       "ios/BinarioApp/AppModel.swift"
+      ],
+      "owner_action": "",
+      "verification": "BinarioWatchTests + static.",
+      "effort": "S",
+      "duplicate_of": "TW-9"
+     },
+     {
+      "id": "SR-appstore-ios-11",
+      "title": "Saved routes tab is display-only (cannot open, search or send a saved route)",
+      "severity": "recommended",
+      "store": "appstore",
+      "evidence": "SavedRoutesView.swift:76-91 rows have no action except delete; nothing routes back to PlannerView. A reviewer tapping a saved route gets no response (minimum-functionality perception).",
+      "fix_in_repo": "Make a row select origin/destination in the planner (shared selection state in AppModel) and switch tab.",
+      "files": [
+       "ios/BinarioApp/SavedRoutesView.swift",
+       "ios/BinarioApp/PlannerView.swift",
+       "ios/BinarioApp/AppModel.swift",
+       "ios/BinarioApp/RootView.swift"
+      ],
+      "owner_action": "",
+      "verification": "BinarioAppTests + static.",
+      "effort": "M",
+      "duplicate_of": "IOSGTFS-11"
+     },
+     {
+      "id": "SR-appstore-ios-12",
+      "title": "Apple Watch CI never archives a Release build, so the product App Store Connect receives is unverified",
+      "severity": "recommended",
+      "store": "appstore",
+      "evidence": ".github/workflows/apple-watch-ci.yml: watchos job runs `xcodebuild ... build` / `test` on the standalone project; ios job runs only `xcodebuild -scheme Binario -destination id=<iOS sim> CODE_SIGNING_ALLOWED=NO test` (Debug, simulator). No `xcodebuild archive -configuration Release -destination generic/platform=iOS`, no exportArchive, no validation; thus Release optimisation, the generated Info.plists (icons, export-compliance key), embedding of Watch/BinarioWatch.app and PlugIns/BinarioWatchWidgets.appex, and PrivacyInfo.xcprivacy placement are never checked. Latest green run 39152547601 (2026-10-18) confirms only Debug simulator builds/tests.",
+      "fix_in_repo": "Add a step to the ios job: `xcodebuild archive -project Binario.xcodeproj -scheme Binario -configuration Release -destination 'generic/platform=iOS' -archivePath \"$RUNNER_TEMP/Binario.xcarchive\" CODE_SIGNING_ALLOWED=NO` followed by assertions (`plutil -p` CFBundleIconName in Products/Applications/Binario.app/Info.plist and Watch/BinarioWatch.app/Info.plist, ITSAppUsesNonExemptEncryption, existence of PlugIns/BinarioWatchWidgets.appex and of PrivacyInfo.xcprivacy in all three bundles) and `actions/upload-artifact` of the xcarchive; update .github/ci-inputs-lock.json appleIosRunSteps and tools/verify_ci_pinning.py expectations; optionally add the BinarioWatch test run on the integrated project (R4:L-I-4).",
+      "files": [
+       ".github/workflows/apple-watch-ci.yml",
+       ".github/ci-inputs-lock.json",
+       "tools/verify_ci_pinning.py",
+       "tests/test_verify_ci_pinning.py"
+      ],
+      "owner_action": "For a signed export in CI add App Store Connect API key secrets (ASC_KEY_ID, ASC_ISSUER_ID, ASC_API_KEY_P8) and an ExportOptions.plist (method app-store-connect); otherwise archive and upload from Xcode Organizer on a Mac.",
+      "verification": "python3 tools/verify_ci_pinning.py; python3 -m unittest tests.test_verify_ci_pinning; real run needs a GitHub macOS runner.",
+      "effort": "M",
+      "duplicate_of": ""
+     },
+     {
+      "id": "SR-appstore-ios-13",
+      "title": "Standalone apple-watch/project.yml is a Swift 5.10 watch-only app with no data path: fine as a test harness, must never be submitted, and it is the only place the Watch tests run",
+      "severity": "recommended",
+      "store": "appstore",
+      "evidence": "apple-watch/project.yml:6 SWIFT_VERSION 5.10 vs ios/project.yml:7 SWIFT_VERSION 6.0; :21-22 WKWatchOnly: YES with bundle it.binario.watch; PhoneConnectivity.swift:208-229 only receives WCSession application contexts from an iPhone companion that a watch-only app does not have, so the standalone app can only ever show BinarioWatchSnapshot.unavailable (4.2 minimum functionality if submitted). The CI watchos job is the only job executing BinarioWatchTests (Swift 5 mode); the integrated Swift 6 watch build is compiled but never tested (R4:L-I-4).",
+      "fix_in_repo": "Set SWIFT_VERSION 6.0 in apple-watch/project.yml (update tests/test_verify_apple_watch_project.py), state in apple-watch/APPLE_WATCH_IMPLEMENTATION.md and README.md that the standalone project is a CI/test harness and that the store product is the embedded target of ios/project.yml, and run `xcodebuild -project Binario.xcodeproj -scheme BinarioWatch -destination id=<watch sim> test` in the ios job.",
+      "files": [
+       "apple-watch/project.yml",
+       "apple-watch/APPLE_WATCH_IMPLEMENTATION.md",
+       "README.md",
+       ".github/workflows/apple-watch-ci.yml",
+       "tests/test_verify_apple_watch_project.py"
+      ],
+      "owner_action": "Do not create an App Store record for it.binario.watch.",
+      "verification": "python3 -m unittest tests.test_verify_apple_watch_project; CI run on macOS.",
+      "effort": "S",
+      "duplicate_of": ""
+     },
+     {
+      "id": "SR-appstore-ios-14",
+      "title": "INFOPLIST_KEY_CFBundleDevelopmentRegion / CFBundleLocalizations conflict with XcodeGen's default development language",
+      "severity": "info",
+      "store": "appstore",
+      "evidence": "ios/project.yml:43-44 set INFOPLIST_KEY_CFBundleDevelopmentRegion: it and INFOPLIST_KEY_CFBundleLocalizations: [it, en, de, fr, es], while options: (lines 2-4) has no developmentLanguage, so XcodeGen writes developmentRegion/knownRegions 'en' and DEVELOPMENT_LANGUAGE=en into the project; CFBundleLocalizations is redundant with the five .lproj folders and, as a list build setting, may not serialise as a plist array.",
+      "fix_in_repo": "Remove both INFOPLIST_KEY_ entries and set `options.developmentLanguage: it` (fallback for unsupported device languages = Italian, like Android) or `en`; adjust tests/test_verify_ios_project.py accordingly.",
+      "files": [
+       "ios/project.yml",
+       "tests/test_verify_ios_project.py"
+      ],
+      "owner_action": "",
+      "verification": "python3 -m unittest tests.test_verify_ios_project; macOS: `plutil -p Binario.app/Info.plist | grep CFBundle`.",
+      "effort": "S",
+      "duplicate_of": "AI-NF-6"
+     },
+     {
+      "id": "SR-appstore-ios-15",
+      "title": "App will be offered on Apple silicon Macs and Apple Vision Pro ('Designed for iPhone') by default, where Watch Connectivity is unsupported and nothing was tested",
+      "severity": "info",
+      "store": "appstore",
+      "evidence": "ios/project.yml:49-50 sets TARGETED_DEVICE_FAMILY \"1\" and SUPPORTS_MACCATALYST NO but not SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD / SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD; App Store Connect then lists the iPhone app for Mac and visionOS unless the owner opts out. WCSession.isSupported() is false there (AppModel/WCSessionAdapter handle it as .unsupported) but the UI was never exercised on those platforms.",
+      "fix_in_repo": "Add `SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: NO` and `SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD: NO` to the Binario target settings (or decide to support them and test).",
+      "files": [
+       "ios/project.yml"
+      ],
+      "owner_action": "Alternatively uncheck 'Make this app available on Mac / Apple Vision' in App Store Connect Pricing and Availability.",
+      "verification": "Static only.",
+      "effort": "S",
+      "duplicate_of": ""
+     },
+     {
+      "id": "SR-appstore-ios-16",
+      "title": "Settings hard-codes data identity strings that will drift ('stazioni-ferroviarie-curato-v4', '10 fonti GTFS incluse' while HZPP contributes 0 trips) and two required localisation keys are unused",
+      "severity": "info",
+      "store": "appstore",
+      "evidence": "SettingsView.swift:10 `Text(\"stazioni-ferroviarie-curato-v4\")` literal (resolved as a LocalizedStringKey, not from the loaded catalog's sourceDatabaseName); it/en/de/fr/es `settings.data.provider_programmed` embed the number 10 although metadata.json packRowCounts shows hzpp-gtfs with pack:1 and no trips (9 feeds with data) and the count changes on every refresh. BinarioLocalizationKeys.required contains `app.name` and `planner.route_accessibility` which no view references (grep over ios/BinarioApp).",
+      "fix_in_repo": "Read CuratedStationCatalog.sourceDatabaseName and the SQLite pack count (packs with trips) in AppModel and format `settings.data.provider_programmed` with a %lld placeholder; drop or use the two unused keys.",
+      "files": [
+       "ios/BinarioApp/SettingsView.swift",
+       "ios/BinarioApp/AppModel.swift",
+       "ios/BinarioKit/Sources/BinarioKit/LocalizationKeys.swift",
+       "ios/Resources/it.lproj/Localizable.strings",
+       "ios/Resources/en.lproj/Localizable.strings",
+       "ios/Resources/de.lproj/Localizable.strings",
+       "ios/Resources/fr.lproj/Localizable.strings",
+       "ios/Resources/es.lproj/Localizable.strings"
+      ],
+      "owner_action": "",
+      "verification": "python3 -m unittest tests.test_verify_ios_project; BinarioKit LocalizationTests.",
+      "effort": "S",
+      "duplicate_of": ""
+     },
+     {
+      "id": "SR-appstore-ios-17",
+      "title": "Every launch re-hashes the 24.5 MB timetable with pure-Swift SHA-256 while the planner shows a spinner and disables search",
+      "severity": "info",
+      "store": "appstore",
+      "evidence": "BundledGTFSScheduleInstaller.swift:33-41 fast path calls hashFile(destination) (Array(data) copy + Swift SHA-256, lines 194-287) on each launch; PlannerView.swift:37-43 and :67-69 keep 'Preparazione degli orari programmati…' and the disabled search button until it finishes. Reviewer-visible delay on older iPhones.",
+      "fix_in_repo": "Trust the stored sha256 + size + fingerprint on the fast path (or hash with CryptoKit off-main only on first install).",
+      "files": [
+       "ios/BinarioKit/Sources/BinarioKit/BundledGTFSScheduleInstaller.swift"
+      ],
+      "owner_action": "",
+      "verification": "BinarioKit SQLiteGTFSJourneyRepositoryTests.",
+      "effort": "S",
+      "duplicate_of": "IOSGTFS-16"
+     }
+    ]
+   }
+  }
+ ]
+}

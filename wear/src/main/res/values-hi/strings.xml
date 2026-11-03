@@ -1,0 +1,29 @@
+<resources>
+    <string name="app_name">Binario</string>
+    <string name="tile_label">Binario: अगली यात्रा</string>
+    <string name="tile_description">फ़ोन पर Binario ऐप से साझा की गई अगली यात्रा दिखाता है।</string>
+    <string name="complication_label">Binario</string>
+    <string name="empty_snapshot_message">फ़ोन पर Binario में Android स्मार्टवॉच चालू करें (Binario इंटीग्रेशन) और मार्ग अपडेट करें।</string>
+    <string name="empty_snapshot_phone_app_missing">जोड़े गए फ़ोन पर Binario इंस्टॉल करें: घड़ी को मार्ग सिर्फ़ फ़ोन ऐप से मिलता है।</string>
+    <string name="refresh_phone">फ़ोन अपडेट करें</string>
+    <string name="refresh_on_phone">फ़ोन पर अपडेट करें</string>
+    <string name="refresh_request_sent">फ़ोन को अनुरोध भेजा गया</string>
+    <string name="refresh_phone_unreachable">फ़ोन से संपर्क नहीं हो पा रहा</string>
+    <string name="tile_no_synced_route">कोई सिंक किया गया मार्ग नहीं</string>
+    <string name="tile_snapshot_unavailable">स्नैपशॉट उपलब्ध नहीं</string>
+    <string name="tile_service_details">%1$s · %2$s · %3$s</string>
+    <string name="status_programmed">निर्धारित समय</string>
+    <string name="status_received_from_phone">फ़ोन से मिली स्थिति</string>
+    <string name="status_updating">डेटा अपडेट हो रहा है</string>
+    <string name="status_local_snapshot">अंतिम स्थानीय स्नैपशॉट</string>
+    <string name="status_live_unavailable">रीयल-टाइम डेटा उपलब्ध नहीं</string>
+    <string name="accessibility_data_status">डेटा स्थिति: %1$s</string>
+    <string name="accessibility_scheduled_departure">निर्धारित प्रस्थान %1$s</string>
+    <string name="accessibility_expected_departure">अनुमानित प्रस्थान %1$s</string>
+    <string name="accessibility_train">ट्रेन %1$s</string>
+    <string name="accessibility_platform">प्लेटफ़ॉर्म %1$s</string>
+    <string name="service_time_number">%1$s · %2$s</string>
+    <string name="service_destination_status">%1$s · %2$s</string>
+    <string name="service_operator_category">%1$s · %2$s</string>
+    <string name="service_operator_category_platform">%1$s · %2$s · PF %3$s</string>
+</resources>

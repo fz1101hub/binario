@@ -1,0 +1,179 @@
+package it.binario.app.data.live
+
+import it.binario.app.data.RailOperator
+import it.binario.app.data.ServiceStatus
+import it.binario.app.data.TrainCategory
+import it.binario.app.data.TrainService
+import it.binario.app.data.core.BoardKind
+import it.binario.app.data.core.Completeness
+import it.binario.app.data.core.Confidence
+import it.binario.app.data.core.Freshness
+import it.binario.app.data.core.OperatorId
+import it.binario.app.data.core.RunStatus
+import it.binario.app.data.core.ServiceKind
+import it.binario.app.data.core.SnapshotMeta
+import it.binario.app.data.core.SourceId
+import it.binario.app.data.core.SourceRef
+import it.binario.app.data.core.SourcedValue
+import it.binario.app.data.core.StationBoard
+import it.binario.app.data.core.StationBoardEntry
+import it.binario.app.data.core.StationId
+import it.binario.app.data.core.TrainRunId
+import java.time.Duration
+import java.time.Instant
+import java.time.LocalTime
+import java.time.ZoneId
+import java.time.ZonedDateTime
+import java.util.Locale
+
+internal object LegacyStationBoardInterop {
+    private val defaultZone: ZoneId = ZoneId.of("Europe/Rome")
+
+    fun build(
+        sourceId: SourceId,
+        confidence: Confidence,
+        stationId: StationId,
+        kind: BoardKind,
+        from: Instant,
+        to: Instant,
+        services: List<TrainService>,
+        fetchedAt: Instant,
+        ttl: Duration,
+        zone: ZoneId = defaultZone,
+        /** [it.binario.app.data.provider.StationBoardRequest.lateSince]: late trains scheduled from here stay while still to leave. */
+        lateSince: Instant? = null
+    ): StationBoard {
+        val entries = services.mapNotNull { service ->
+            val scheduled = resolveBoardDateTime(service.scheduledDeparture, lateSince ?: from, to, zone) ?: return@mapNotNull null
+            val verifiedTiming = service.stops.firstOrNull()?.operationalStatusVerified ?: service.operationalStatusVerified
+            val expected = if (verifiedTiming) resolveExpectedDateTime(service.expectedDeparture, scheduled, zone) else null
+            // A delayed train scheduled before the window stays until its expected departure, as the source still lists it.
+            if (!it.binario.app.data.provider.boardWindowKeeps(from, to, lateSince, scheduled.toInstant(), expected?.toInstant())) return@mapNotNull null
+
+            val source = SourceRef(
+                sourceId = sourceId,
+                nativeId = service.id,
+                observedAt = service.operationalObservedAtEpochMillis?.let(Instant::ofEpochMilli) ?: fetchedAt,
+                fetchedAt = fetchedAt,
+                expiresAt = fetchedAt.plus(ttl),
+                confidence = confidence,
+                traceId = "${sourceId.value}:${service.id}"
+            )
+            StationBoardEntry(
+                runId = TrainRunId("${sourceId.value}:${service.number}:${scheduled.toLocalDate()}"),
+                scheduledTime = scheduled,
+                expectedTime = expected?.let { SourcedValue(it, source) },
+                destinationOrOrigin = StationId("published:${normalizeStation(service.destination)}"),
+                destinationOrOriginLabel = service.destination,
+                publicNumber = service.number,
+                operatorId = operatorId(service.operator),
+                platform = service.platform?.let { SourcedValue(it, source) },
+                scheduledPlatform = service.scheduledPlatform?.takeIf { service.platform != null }?.let { SourcedValue(it, source) },
+                status = if (service.operationalStatusVerified) SourcedValue(runStatus(service.status), source) else null,
+                routeChange = service.routeChange?.let { SourcedValue(it, source) },
+                serviceKind = serviceKind(service.trainCategory)
+            )
+        }
+
+        val boardSource = SourceRef(
+            sourceId = sourceId,
+            observedAt = fetchedAt,
+            fetchedAt = fetchedAt,
+            expiresAt = fetchedAt.plus(ttl),
+            confidence = confidence,
+            traceId = "${sourceId.value}:board:${stationId.value}:${fetchedAt.toEpochMilli()}"
+        )
+        return StationBoard(
+            stationId = stationId,
+            kind = kind,
+            from = from,
+            to = to,
+            entries = entries,
+            snapshot = SnapshotMeta(
+                schemaVersion = 1,
+                generatedAt = fetchedAt,
+                validUntil = fetchedAt.plus(ttl),
+                freshness = Freshness.FRESH,
+                completeness = Completeness.PARTIAL,
+                contributingSources = setOf(boardSource)
+            )
+        )
+    }
+
+    private fun resolveBoardDateTime(
+        value: String,
+        from: Instant,
+        to: Instant,
+        zone: ZoneId
+    ): ZonedDateTime? {
+        val time = parseTime(value) ?: return null
+        val baseDate = from.atZone(zone).toLocalDate()
+        val candidates = listOf(baseDate.minusDays(1), baseDate, baseDate.plusDays(1))
+            .map { it.atTime(time).atZone(zone) }
+        return candidates.firstOrNull { candidate ->
+            !candidate.toInstant().isBefore(from) && !candidate.toInstant().isAfter(to)
+        } ?: candidates.minByOrNull { candidate ->
+            kotlin.math.abs(Duration.between(from, candidate.toInstant()).toMillis())
+        }
+    }
+
+    private fun resolveExpectedDateTime(
+        value: String,
+        scheduled: ZonedDateTime,
+        zone: ZoneId
+    ): ZonedDateTime? {
+        val time = parseTime(value) ?: return null
+        var expected = scheduled.toLocalDate().atTime(time).atZone(zone)
+        if (expected.isBefore(scheduled.minusHours(12))) expected = expected.plusDays(1)
+        if (expected.isAfter(scheduled.plusHours(12))) expected = expected.minusDays(1)
+        return expected
+    }
+
+    private fun parseTime(value: String): LocalTime? {
+        val parts = value.split(':')
+        val hour = parts.getOrNull(0)?.toIntOrNull() ?: return null
+        val minute = parts.getOrNull(1)?.toIntOrNull() ?: return null
+        if (hour !in 0..23 || minute !in 0..59) return null
+        return LocalTime.of(hour, minute)
+    }
+
+    private fun runStatus(status: ServiceStatus): RunStatus = when (status) {
+        ServiceStatus.ON_TIME -> RunStatus.ON_TIME
+        ServiceStatus.DELAYED -> RunStatus.DELAYED
+        ServiceStatus.CANCELLED -> RunStatus.CANCELLED
+    }
+
+    /** The category the legacy sources already publish, kept for display and the widget's type filters. */
+    private fun serviceKind(category: TrainCategory): ServiceKind = when (category) {
+        TrainCategory.FRECCE, TrainCategory.AV_ITALO -> ServiceKind.HIGH_SPEED
+        TrainCategory.INTERCITY -> ServiceKind.INTERCITY
+        TrainCategory.REGIONALE, TrainCategory.REGIONALE_VELOCE, TrainCategory.TRENORD_REGIO -> ServiceKind.REGIONAL
+        TrainCategory.METROPOLITANO -> ServiceKind.SUBURBAN
+        TrainCategory.OTHER -> ServiceKind.UNKNOWN
+    }
+
+    private fun operatorId(operator: RailOperator): OperatorId? = when (operator) {
+        RailOperator.TRENITALIA_REGIONALE,
+        RailOperator.TRENITALIA_LONG_DISTANCE,
+        RailOperator.TRENITALIA_AV -> OperatorId("trenitalia")
+        RailOperator.ITALO -> OperatorId("italo")
+        RailOperator.TRENORD -> OperatorId("trenord")
+        RailOperator.SBB -> OperatorId("sbb")
+        RailOperator.TILO -> OperatorId("tilo")
+        RailOperator.BLS -> OperatorId("bls")
+        RailOperator.RHB -> OperatorId("rhb")
+        RailOperator.FART_SSIF -> OperatorId("fart-ssif")
+        RailOperator.SNCF -> OperatorId("sncf")
+        RailOperator.OEBB -> OperatorId("oebb")
+        RailOperator.DB -> OperatorId("db")
+        RailOperator.WESTBAHN -> OperatorId("westbahn")
+        RailOperator.EUROPEAN_SLEEPER -> OperatorId("european-sleeper")
+        RailOperator.OTHER -> null
+    }
+
+    private fun normalizeStation(value: String): String = value
+        .uppercase(Locale.ROOT)
+        .replace("S. ", "SAN ")
+        .replace(Regex("[^A-Z0-9]"), "")
+        .lowercase(Locale.ROOT)
+}
