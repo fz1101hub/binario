@@ -152,32 +152,32 @@ android {
 }
 
 dependencies {
-    implementation(platform("androidx.compose:compose-bom:2026.06.01"))
-    implementation("androidx.core:core-ktx:1.15.0")
+    implementation(platform("androidx.compose:compose-bom:2026.09.00"))
+    implementation("androidx.core:core-ktx:1.19.1")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.7")
     implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.7")
     implementation("androidx.activity:activity-compose:1.10.0")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
-    implementation("androidx.work:work-runtime-ktx:2.10.0")
-    implementation("org.jsoup:jsoup:1.18.3")
-    implementation("org.mobilitydata:gtfs-realtime-bindings:0.0.8")
+    implementation("androidx.work:work-runtime-ktx:2.12.0")
+    implementation("org.jsoup:jsoup:1.23.2")
+    implementation("org.mobilitydata:gtfs-realtime-bindings:0.2.0")
     implementation("com.google.android.gms:play-services-wearable:20.0.1")
     // Open maps (MapLibre Native, BSD-2-Clause) on OpenFreeMap tiles. 13.0.2 is the newest release whose
     // closure keeps kotlin-stdlib at 2.0.x (13.1+ needs Kotlin 2.2 metadata) and androidx below the
     // compileSdk 37 line; its arm64-v8a/x86_64 libmaplibre.so are 16 KB aligned. Since 13.0 the plain
     // `android-sdk` coordinate is the Vulkan build: the OpenGL ES 3 build runs on every API 26+ device.
-    implementation("org.maplibre.gl:android-sdk-opengl:13.0.2")
+    implementation("org.maplibre.gl:android-sdk-opengl:13.7.1")
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material-icons-extended")
     debugImplementation("androidx.compose.ui:ui-tooling")
     testImplementation("junit:junit:4.13.2")
-    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.11.0")
     // Android supplies org.json at runtime; this artifact is only the JVM unit-test implementation.
     testImplementation("org.json:json:20260814")
-    androidTestImplementation(platform("androidx.compose:compose-bom:2026.06.01"))
+    androidTestImplementation(platform("androidx.compose:compose-bom:2026.09.00"))
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
