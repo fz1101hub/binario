@@ -165,76 +165,30 @@ class LiveProviderNetworkTest {
         val catalog = RfiStationCatalog(fetcher, clock)
         assertNotNull("RFI official catalogue: Appiano", catalog.placeId(listOf("Appiano")))
         assertNotNull("RFI official catalogue: Bressanone", catalog.placeId(listOf("Bressanone")))
+        // The regional checks reach Monza's board through the catalogue (LiveRouteChecks.regionalRoutes).
+        assertNotNull("RFI official catalogue: Monza", catalog.placeId(listOf("Monza")))
         board(RfiStationBoardAdapter(fetcher = fetcher), "milano-centrale", "Milano Centrale")
         board(RfiStationBoardAdapter(fetcher = fetcher), "milano-centrale", "Milano Centrale", kind = BoardKind.ARRIVALS)
     }
 
+    /** Appiano → Roma Ostiense, then the other [LiveRouteChecks.regionalRoutes] while the boards publish nothing to verify. */
     @Test fun rfiRegionalJourney() = runBlocking {
         selected("rfi")
-        val route = it.binario.app.data.SavedRoute("live-regional", "Appiano → Roma Ostiense",
-            it.binario.app.data.Station("curated:S08328", "Appiano Proba Petronia", "Roma", railwayCode = "S08328", aliases = listOf("APPIANO")),
-            it.binario.app.data.Station("curated:S08406", "Roma Ostiense", "Roma", railwayCode = "S08406"))
-        val query = it.binario.app.data.JourneyQuery.now(clock)
-        val boardSummary = java.util.concurrent.ConcurrentHashMap<String, String>()
-        val boardRows = java.util.concurrent.ConcurrentHashMap<String, List<LiveAcceptanceEvidence.RfiRow>>()
-        val fetcher = diagnosticRfiFetcher()
-        val boardProvider = RfiStationBoardAdapter(fetcher = RfiMonitorFetcher { url ->
-            val html = fetcher.fetch(url)
-            if (url.contains("/Monitor?")) {
-                val kind = if (url.endsWith("True")) "arrivals" else "departures"
-                val rows = LiveAcceptanceEvidence.rfiRows(html)
-                boardRows[kind] = rows
-                boardSummary[kind] = "rows=${rows.size}, formats=${LiveAcceptanceEvidence.rfiFormats(rows)}, sample=" +
-                    rows.take(3).map { row -> "${row.number}@${row.time}:${row.visible}|${row.aria}" }
-            }
-            html
-        })
-        val source = RfiLiveRouteDataSource(boardProvider)
-        val result = source.loadRoute(route, it.binario.app.data.Direction.OUTBOUND, query)
-        // What the two boards publish that the route source has to verify: empty means no train listed on both carries a
-        // delay in minutes or a cancellation at this moment (only placeholders such as "Nessuno" or a bare RITARDO).
-        val reconcilable = { LiveAcceptanceEvidence.rfiReconcilableRuns(boardRows["departures"].orEmpty(), boardRows["arrivals"].orEmpty(), query.departureTime) }
-        if (result !is it.binario.app.data.DataResult.Success) fail("RFI regional journey: $result; reconcilable=${reconcilable()}; boards=$boardSummary")
-        val services = (result as it.binario.app.data.DataResult.Success).snapshot.services
-        assertTrue("RFI regional journey: no verified live departures; programmed=${services.take(3).map { it.number + ":" + it.scheduledDeparture }}; reconcilable=${reconcilable()}; board=$boardSummary", services.any {
-            it.operationalStatusVerified && "rfi-station-board" in it.operationalSourceIds
-        })
-        println("LIVE_ACCEPTANCE RFI regional journey: matchedLiveDepartures=${services.count { it.operationalStatusVerified }}")
+        val passed = LiveRouteChecks.rfiRegional(diagnosticRfiFetcher(), LiveRouteChecks.regionalRoutes, it.binario.app.data.JourneyQuery.now(clock), clock)
+        val services = passed.services
+        println("LIVE_ACCEPTANCE RFI regional journey: route=${passed.route.name}, matchedLiveDepartures=${services.count { it.operationalStatusVerified }}")
         println("LIVE_ACCEPTANCE RFI 23263 paired boards: " + (services.singleOrNull { it.number == "23263" }?.let {
             "departure=${it.scheduledDeparture}, delay=${it.officialDelayMinutes}, arrival=${it.stops.last().scheduled}, arrivalDelay=${it.stops.last().delayMinutes}, arrivalVerified=${it.stops.last().operationalStatusVerified}"
         } ?: "not matched on both current boards"))
     }
 
+    /** Every delay in minutes Appiano's departures publish, or (when they publish none) Roma Termini's or Milano Centrale's. */
     @Test fun rfiPublishedDelayAccuracy() = runBlocking {
         selected("rfi")
         val fetcher = diagnosticRfiFetcher()
-        val place = RfiStationCatalog(fetcher, clock).placeId(listOf("Appiano"))
-        assertNotNull("RFI accuracy: Appiano not resolved", place)
-        val html = fetcher.fetch("https://iechub.rfi.it/ArriviPartenze/ArrivalsDepartures/Monitor?placeId=$place&arrivals=False")
-        val route = it.binario.app.data.SavedRoute("accuracy", "Appiano", it.binario.app.data.Station("origin", "Appiano", "Roma"),
-            it.binario.app.data.Station("destination", "Roma Ostiense", "Roma"))
-        val services = RfiStationBoardAdapter().parseDepartures(html, "Appiano", "", route, it.binario.app.data.Direction.OUTBOUND)
-        var compared = 0
-        val mismatches = mutableListOf<String>()
-        var reportedTrain = "23263 not present on the current board"
-        org.jsoup.Jsoup.parse(html).select("tr[name=treno]").forEach { row ->
-            val number = row.selectFirst("#RTreno")?.text()?.trim().orEmpty()
-            val visible = row.selectFirst("#RRitardo")?.text()?.trim().orEmpty()
-            val delay = Regex("^\\+?(\\d{1,3})\\s*(?:min(?:uti)?|['′])?$", RegexOption.IGNORE_CASE)
-                .matchEntire(visible)?.groupValues?.get(1)?.toIntOrNull()
-            val service = services.singleOrNull { it.number == number }
-            if (number == "23263") reportedTrain = "23263 scheduled=${service?.scheduledDeparture}, visible=$visible, aria=${row.selectFirst("#RRitardo")?.attr("aria-label")}, parsed=${service?.officialDelayMinutes}, verified=${service?.operationalStatusVerified}"
-            if (delay != null) {
-                compared++
-                if (service == null || service.officialDelayMinutes != delay || !service.operationalStatusVerified) {
-                    mismatches += "$number: visible=$delay, parsed=${service?.officialDelayMinutes}"
-                }
-            }
-        }
-        val formats = LiveAcceptanceEvidence.rfiFormats(LiveAcceptanceEvidence.rfiRows(html))
-        println("LIVE_ACCEPTANCE RFI exact published delay: compared=$compared; $reportedTrain; mismatches=${mismatches.take(10)}; formats=$formats")
-        assertTrue("RFI accuracy: no numeric published delays to compare; formats=$formats", compared > 0)
-        assertTrue("RFI delay mismatch against visible station board: ${mismatches.take(10)}", mismatches.isEmpty())
+        val place = RfiStationCatalog(fetcher, clock).placeId(listOf("Appiano")) ?: throw AssertionError("RFI accuracy: Appiano not resolved")
+        val passed = LiveRouteChecks.rfiAccuracy(fetcher, LiveRouteChecks.rfiAccuracyBoards(place))
+        println("LIVE_ACCEPTANCE RFI exact published delay: board=${passed.board}, compared=${passed.compared}; ${passed.reportedTrain}; mismatches=[]; formats=${passed.formats}")
     }
 
     @Test fun italo() = runBlocking {
@@ -268,41 +222,13 @@ class LiveProviderNetworkTest {
         board(ViaggiaTrenoRealtimeAdapter(diagnosticViaggiaTrenoFetcher()), "S01700", "Milano Centrale", "S01700")
     }
 
+    /** Appiano → Roma Ostiense, then the other [LiveRouteChecks.regionalRoutes] while no run has a recent detection. */
     @Test fun viaggiatrenoRegionalDelayAccuracy() = runBlocking {
         selected("viaggiatreno")
-        val upstream = diagnosticViaggiaTrenoFetcher()
-        val details = java.util.concurrent.ConcurrentHashMap<String, org.json.JSONObject>()
-        val boards = java.util.concurrent.ConcurrentLinkedQueue<String>()
-        val adapter = ViaggiaTrenoRealtimeAdapter(ViaggiaTrenoRealtimeFetcher { path ->
-            upstream.fetch(path).also {
-                if (path.startsWith("andamentoTreno/") && it.trim().startsWith("{")) details[path] = org.json.JSONObject(it)
-                if (path.startsWith("partenze/")) boards += it
-            }
-        })
-        val route = it.binario.app.data.SavedRoute("vt-regional", "Appiano → Roma Ostiense",
-            it.binario.app.data.Station("curated:S08328", "Appiano Proba Petronia", "Roma", railwayCode = "S08328"),
-            it.binario.app.data.Station("curated:S08406", "Roma Ostiense", "Roma", railwayCode = "S08406"))
-        val query = it.binario.app.data.JourneyQuery.now(clock)
-        val started = clock.instant()
-        val result = adapter.loadRoute(route, it.binario.app.data.Direction.OUTBOUND, query)
-        // What the source published that the adapter has to verify (empty: no run between the two stations had left
-        // with a detection of the last five minutes), and each fetched run's detection age.
-        val evidence = {
-            val requested = query.requestedAt.atZone(zone).toInstant()
-            "boardRuns=${LiveAcceptanceEvidence.viaggiaTrenoUpcomingRuns(boards, requested)}; verifiable=" +
-                LiveAcceptanceEvidence.viaggiaTrenoVerifiableRuns(details, "S08328", "S08406", requested, started.minusSeconds(270), started.plusSeconds(60)) +
-                "; runs=${LiveAcceptanceEvidence.viaggiaTrenoRunSummary(details, "S08328", started)}"
-        }
-        if (result !is it.binario.app.data.DataResult.Success) fail("ViaggiaTreno regional: $result; ${evidence()}")
-        val services = (result as it.binario.app.data.DataResult.Success).snapshot.services
-        val verified = services.filter { it.operationalStatusVerified && it.status != ServiceStatus.CANCELLED }
-        assertTrue("ViaggiaTreno regional: no verified operational train; ${evidence()}", verified.isNotEmpty())
-        verified.forEach { service ->
-            val id = service.id.split(':')
-            val raw = requireNotNull(details["andamentoTreno/${id[1]}/${id[2]}/${id[3]}"])
-            assertEquals("Published ViaggiaTreno delay differs for ${service.number}", raw.getInt("ritardo"), service.officialDelayMinutes)
-        }
-        println("LIVE_ACCEPTANCE ViaggiaTreno exact regional delay: verified=${verified.size}; " +
+        val passed = LiveRouteChecks.viaggiaTrenoRegional(diagnosticViaggiaTrenoFetcher(), LiveRouteChecks.regionalRoutes,
+            it.binario.app.data.JourneyQuery.now(clock), Clock.system(zone))
+        val services = passed.services
+        println("LIVE_ACCEPTANCE ViaggiaTreno exact regional delay: route=${passed.route.name}, verified=${services.count { it.operationalStatusVerified && it.status != ServiceStatus.CANCELLED }}; " +
             (services.singleOrNull { it.number == "23263" }?.let { "23263 delay=${it.officialDelayMinutes}, verified=${it.operationalStatusVerified}, expected=${it.expectedDeparture}, observed=${it.operationalObservedAtEpochMillis}" }
                 ?: "23263 not present in current source results"))
     }

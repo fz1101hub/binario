@@ -3,8 +3,10 @@ package it.binario.app.data.live
 import it.binario.app.data.DataResult
 import it.binario.app.data.Direction
 import it.binario.app.data.JourneyQuery
+import it.binario.app.data.RealtimeRouteDataSource
 import it.binario.app.data.SavedRoute
 import it.binario.app.data.Station
+import it.binario.app.data.TrainService
 import it.binario.app.data.core.Confidence
 import it.binario.app.data.core.RealtimeStopUpdate
 import it.binario.app.data.core.SourceId
@@ -17,8 +19,10 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
+import org.junit.AssumptionViolatedException
 import org.junit.Test
 import java.io.File
+import java.io.IOException
 import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
@@ -77,7 +81,7 @@ class LiveAcceptanceEvidenceTest {
     @Test fun `RFI boards with placeholders only reconcile nothing and the evidence agrees`() = runBlocking {
         val result = rfiRoute(departures())
         assertTrue("$result", result is DataResult.Failure)
-        assertEquals(emptyList<String>(), LiveAcceptanceEvidence.rfiReconcilableRuns(
+        assertEquals(emptyList<LiveAcceptanceEvidence.RfiRun>(), LiveAcceptanceEvidence.rfiReconcilableRuns(
             LiveAcceptanceEvidence.rfiRows(departures()), LiveAcceptanceEvidence.rfiRows(arrivals), query.departureTime))
         assertEquals(mapOf("label:$placeholder" to 4, "minutes" to 1), LiveAcceptanceEvidence.rfiFormats(LiveAcceptanceEvidence.rfiRows(departures())))
         assertEquals(mapOf("text:RITARDO" to 3, "label:$placeholder" to 4), LiveAcceptanceEvidence.rfiFormats(LiveAcceptanceEvidence.rfiRows(arrivals)))
@@ -87,7 +91,7 @@ class LiveAcceptanceEvidenceTest {
         for (cell in listOf("4" to null, "" to "\"6\"", "RITARDO" to "7", "0" to null)) {
             val html = departures(cell)
             val evidence = LiveAcceptanceEvidence.rfiReconcilableRuns(LiveAcceptanceEvidence.rfiRows(html), LiveAcceptanceEvidence.rfiRows(arrivals), query.departureTime)
-            assertEquals("$cell", listOf("20383"), evidence.map { it.substringBefore(' ') })
+            assertEquals("$cell", listOf("20383"), evidence.map { it.number })
             assertEquals("$cell", listOf("20383"), rfiRoute(html).verifiedNumbers())
         }
         val cancelled = departures(info2383 = "Treno soppresso")
@@ -188,5 +192,176 @@ class LiveAcceptanceEvidenceTest {
         assertEquals(1, LiveAcceptanceEvidence.onPackNetwork(listOf(update(renamed, "it:22021:1376:0:1443")), pack,
             LiveAcceptanceEvidence::staRouteOfTrip).size)
         assertEquals(routeId, LiveAcceptanceEvidence.staRouteOfTrip(renamed))
+    }
+
+    // The multi-route checks of LiveRouteChecks, on the same synthetic shapes: what each branch does.
+
+    /** A route source that returns what the real one does, with [change] applied to every service: an adapter gone wrong. */
+    private class Altered(private val real: RealtimeRouteDataSource, private val change: (TrainService) -> TrainService) : RealtimeRouteDataSource by real {
+        override suspend fun loadRoute(route: SavedRoute, direction: Direction, query: JourneyQuery): DataResult =
+            when (val result = real.loadRoute(route, direction, query)) {
+                is DataResult.Success -> result.copy(snapshot = result.snapshot.copy(services = result.snapshot.services.map(change)))
+                else -> result
+            }
+    }
+    private val unverified: (TrainService) -> TrainService = { it.copy(operationalStatusVerified = false, operationalSourceIds = emptySet()) }
+    private val oneMinuteOff: (TrainService) -> TrainService = { if (it.operationalStatusVerified) it.copy(officialDelayMinutes = (it.officialDelayMinutes ?: 0) + 1) else it }
+
+    /** What [block] throws, which has to be a [T]: any other outcome (a skip included) fails the test. */
+    private inline fun <reified T : Throwable> thrown(block: () -> Unit): T {
+        try {
+            block()
+        } catch (error: Throwable) {
+            if (error is T) return error
+            throw AssertionError("expected ${T::class.java.simpleName}, got $error", error)
+        }
+        throw AssertionError("expected ${T::class.java.simpleName}, the check passed")
+    }
+
+    // RFI place ids: Appiano and Monza from the (synthetic) catalogue, the others from the adapter's own map.
+    private val rfiCatalogue = "<select id='ElencoLocalita'><option value='3162'>Appiano</option><option value='1325'>Monza</option></select>"
+    private class RfiPages(private val catalogue: String, private val pages: Map<Pair<String, Boolean>, String>) {
+        val asked = java.util.concurrent.ConcurrentLinkedQueue<String>()
+        val fetcher = RfiMonitorFetcher { url ->
+            if (url == RfiStationCatalog.URL) return@RfiMonitorFetcher catalogue
+            val place = Regex("placeId=(\\d+)").find(url)!!.groupValues[1]
+            asked += place
+            pages[place to url.endsWith("arrivals=True")] ?: throw IOException("no page for $url")
+        }
+    }
+    private fun rfiPages(appianoDepartures: String = departures(), ciampinoDepartures: String = board(), monzaDepartures: String = board()) =
+        RfiPages(rfiCatalogue, mapOf(("3162" to false) to appianoDepartures, ("2379" to true) to arrivals,
+            ("1106" to false) to ciampinoDepartures, ("2416" to true) to board(row("4400", "20:58", "", placeholder)),
+            ("1325" to false) to monzaDepartures, ("1728" to true) to board(row("2534", "21:02", "", placeholder))))
+
+    private fun rfiRegional(pages: RfiPages, log: MutableList<String> = mutableListOf(), change: ((TrainService) -> TrainService)? = null) = runBlocking {
+        LiveRouteChecks.rfiRegional(pages.fetcher, LiveRouteChecks.regionalRoutes, query, clock, log::add) { provider ->
+            RfiLiveRouteDataSource(provider, clock).let { real -> change?.let { Altered(real, it) } ?: real }
+        }
+    }
+
+    @Test fun `RFI regional check is skipped only after every route publishes nothing to reconcile`() {
+        val pages = rfiPages()
+        val log = mutableListOf<String>()
+        val skipped = thrown<AssumptionViolatedException> { rfiRegional(pages, log) }
+        assertTrue(skipped.message!!, skipped.message!!.contains("label:$placeholder=4"))
+        assertTrue("Every route sampled: ${pages.asked}", pages.asked.containsAll(listOf("3162", "2379", "1106", "2416", "1325", "1728")))
+        assertTrue(log.single(), log.single().startsWith("LIVE_ACCEPTANCE skipped: RFI regional journey"))
+    }
+
+    @Test fun `RFI regional check passes on the first route whose boards publish a delay the source verifies`() {
+        val passed = rfiRegional(rfiPages(ciampinoDepartures = board(row("4400", "20:40", "5", null))))
+        assertEquals("live-ciampino", passed.route.id)
+        assertEquals(listOf("4400+5"), passed.services.filter { it.operationalStatusVerified }.map { it.number + "+" + it.officialDelayMinutes })
+    }
+
+    @Test fun `RFI regional check fails when the boards publish a delay the source does not verify or changes`() {
+        val pages = rfiPages(appianoDepartures = departures("4" to null), ciampinoDepartures = board(row("4400", "20:40", "5", null)))
+        val missed = thrown<AssertionError> { rfiRegional(pages, change = unverified) }
+        assertTrue(missed.message!!, missed.message!!.contains("[20383 20:34+4 → 20:48] but the route source verified none"))
+        assertFalse("A deciding route ends the sampling", "1106" in pages.asked)
+        val differing = thrown<AssertionError> { rfiRegional(rfiPages(appianoDepartures = departures("4" to null)), change = oneMinuteOff) }
+        assertTrue(differing.message!!, differing.message!!.contains("delays differ"))
+    }
+
+    @Test fun `RFI regional check fails on numbers it cannot read and on a board it could not read`() {
+        val unread = thrown<AssertionError> { rfiRegional(rfiPages(appianoDepartures = departures("ca. 5'" to null))) }
+        assertTrue(unread.message!!, unread.message!!.contains("cannot read as minutes"))
+        val pages = RfiPages(rfiCatalogue, mapOf(("3162" to false) to departures()))
+        val missing = thrown<AssertionError> { rfiRegional(pages) }
+        assertTrue(missing.message!!, missing.message!!.contains("NetworkUnavailable"))
+    }
+
+    // ViaggiaTreno: each origin's board and each run's detail by number.
+    private fun vtRun(number: Int, from: Pair<String, String>, to: Pair<String, String>, departure: String, delay: Int?, detectedSecondsAgo: Long?,
+        nonPartito: Boolean = false, reversed: Boolean = false): JSONObject {
+        val first = stop(from.first, from.second, at(departure))
+        val second = stop(to.first, to.second, at(departure) + 14 * 60_000L)
+        return JSONObject().put("numeroTreno", number).put("idOrigine", "S08001").put("dataPartenzaTreno", runDate).put("categoria", "REG")
+            .put("ritardo", delay ?: JSONObject.NULL).put("nonPartito", nonPartito)
+            .put("oraUltimoRilevamento", detectedSecondsAgo?.let { now.minusSeconds(it).toEpochMilli() } ?: JSONObject.NULL)
+            .put("fermate", JSONArray().put(stop("S08001", "ORIGINE", at("19:05"))).put(if (reversed) second else first).put(if (reversed) first else second))
+    }
+    private val appiano = "S08328" to "APPIANO"
+    private val ostiense = "S08406" to "ROMA OSTIENSE"
+    private val ciampino = "S08650" to "CIAMPINO"
+    private val termini = "S08409" to "ROMA TERMINI"
+
+    private fun vtFetcher(runsByOrigin: Map<String, List<JSONObject>>, details: (JSONObject) -> String = JSONObject::toString): ViaggiaTrenoRealtimeFetcher {
+        val byNumber = runsByOrigin.values.flatten().associateBy { it.getInt("numeroTreno").toString() }
+        return ViaggiaTrenoRealtimeFetcher { path ->
+            if (path.startsWith("partenze/")) JSONArray().apply {
+                runsByOrigin[path.split('/')[1]].orEmpty().forEach { run ->
+                    val boarding = (0 until run.getJSONArray("fermate").length()).map(run.getJSONArray("fermate")::getJSONObject)
+                        .first { it.getString("id") == path.split('/')[1] }
+                    put(JSONObject().put("numeroTreno", run.getInt("numeroTreno")).put("codOrigine", "S08001").put("dataPartenzaTreno", runDate)
+                        .put("orarioPartenza", boarding.getLong("partenza_teorica")).put("ritardo", run.opt("ritardo")))
+                }
+            }.toString() else details(byNumber.getValue(path.split('/')[2]))
+        }
+    }
+    private fun viaggiaTrenoRegional(fetcher: ViaggiaTrenoRealtimeFetcher, log: MutableList<String> = mutableListOf(),
+        change: ((TrainService) -> TrainService)? = null) = runBlocking {
+        LiveRouteChecks.viaggiaTrenoRegional(fetcher, LiveRouteChecks.regionalRoutes, query, clock, log::add) { capturing ->
+            ViaggiaTrenoRealtimeAdapter(capturing, clock).let { real -> change?.let { Altered(real, it) } ?: real }
+        }
+    }
+    // As at 21:20 on 2026-11-03: the next run not yet left its first station, another one detected but going the other way.
+    private val appianoEvening = listOf(vtRun(20388, appiano, ostiense, "20:53", null, null, nonPartito = true),
+        vtRun(23274, appiano, ostiense, "20:41", -1, 98, reversed = true))
+
+    @Test fun `ViaggiaTreno regional check is skipped only after every route has no run that left with a recent detection`() {
+        val log = mutableListOf<String>()
+        val skipped = thrown<AssumptionViolatedException> {
+            viaggiaTrenoRegional(vtFetcher(mapOf("S08328" to appianoEvening, "S08650" to listOf(vtRun(4400, ciampino, termini, "20:40", 2, 480)))), log)
+        }
+        assertTrue(skipped.message!!, skipped.message!!.contains("20388@20:53 ritardo=null detectedAgoSeconds=null nonPartito=true"))
+        assertTrue(skipped.message!!, skipped.message!!.contains("Monza → Milano Centrale: boardRuns=0"))
+        assertTrue(log.single(), log.single().startsWith("LIVE_ACCEPTANCE skipped: ViaggiaTreno regional"))
+    }
+
+    @Test fun `ViaggiaTreno regional check passes on the first route with a run the source verifies`() {
+        val passed = viaggiaTrenoRegional(vtFetcher(mapOf("S08328" to appianoEvening, "S08650" to listOf(vtRun(4400, ciampino, termini, "20:40", 2, 60)))))
+        assertEquals("live-ciampino", passed.route.id)
+        assertEquals(listOf("4400+2"), passed.services.filter { it.operationalStatusVerified }.map { it.number + "+" + it.officialDelayMinutes })
+    }
+
+    @Test fun `ViaggiaTreno regional check fails when a run that left with a recent detection is not verified or gets another delay`() {
+        val recent = mapOf("S08328" to appianoEvening + vtRun(20383, appiano, ostiense, "20:34", 3, 60))
+        val missed = thrown<AssertionError> { viaggiaTrenoRegional(vtFetcher(recent), change = unverified) }
+        assertTrue(missed.message!!, missed.message!!.contains("were not verified: [20383 20:34+3"))
+        val differing = thrown<AssertionError> { viaggiaTrenoRegional(vtFetcher(recent), change = oneMinuteOff) }
+        assertTrue(differing.message!!, differing.message!!.contains("published delay 3 differs for 20383: 4"))
+        val unreadable = thrown<AssertionError> { viaggiaTrenoRegional(vtFetcher(recent) { "<html>" }) }
+        assertTrue(unreadable.message!!, unreadable.message!!.contains("no run detail was read"))
+    }
+
+    private fun accuracy(pages: RfiPages, log: MutableList<String> = mutableListOf(),
+        parse: ((String, String) -> List<TrainService>)? = null) = runBlocking {
+        val boards = LiveRouteChecks.rfiAccuracyBoards(3162)
+        if (parse == null) LiveRouteChecks.rfiAccuracy(pages.fetcher, boards, log::add) else LiveRouteChecks.rfiAccuracy(pages.fetcher, boards, log::add, parse)
+    }
+    private fun accuracyPages(termini: String = board(row("9601", "20:45", "", placeholder))) =
+        RfiPages(rfiCatalogue, mapOf(("3162" to false) to departures().replace(">2</td><td id=\"RBinario\">", "></td><td id=\"RBinario\">"),
+            ("2416" to false) to termini, ("1728" to true) to board(row("9532", "20:50", "", placeholder))))
+
+    @Test fun `RFI accuracy is skipped only after every sampled board publishes no minutes and passes on the first that does`() {
+        val log = mutableListOf<String>()
+        val skipped = thrown<AssumptionViolatedException> { accuracy(accuracyPages(), log) }
+        assertTrue(skipped.message!!, skipped.message!!.contains("Milano Centrale arrivi: rows=1"))
+        assertTrue(log.single(), log.single().startsWith("LIVE_ACCEPTANCE skipped: RFI accuracy"))
+        val passed = accuracy(accuracyPages(termini = board(row("9601", "20:45", "7", null))))
+        assertEquals("Roma Termini partenze", passed.board)
+        assertEquals(1, passed.compared)
+    }
+
+    @Test fun `RFI accuracy fails when the parser misses a published delay or a number cannot be read`() {
+        val withMinutes = accuracyPages(termini = board(row("9601", "20:45", "7", null)))
+        val missed = thrown<AssertionError> { accuracy(withMinutes) { html, name ->
+            RfiStationBoardAdapter().parseDepartures(html.replace(">7</td>", "></td>"), name, "", route, Direction.OUTBOUND)
+        } }
+        assertTrue(missed.message!!, missed.message!!.contains("9601: published=7, parsed=null"))
+        val unread = thrown<AssertionError> { accuracy(accuracyPages(termini = board(row("9601", "20:45", "ca. 7'", null)))) }
+        assertTrue(unread.message!!, unread.message!!.contains("cannot read as minutes"))
     }
 }

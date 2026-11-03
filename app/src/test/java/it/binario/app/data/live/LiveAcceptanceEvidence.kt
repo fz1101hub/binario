@@ -12,15 +12,14 @@ import java.time.LocalTime
 import java.time.ZoneId
 
 /**
- * What a live acceptance check reads straight from a source's own payload, without the adapter under test, so that a
- * failure says whether the source published anything to verify at that moment (RFI, ViaggiaTreno: diagnostics only,
- * their assertions are unchanged) and so that the STA identity check looks only at the part of the feed the rail-only
- * pack covers. Every rule is a sufficient condition: whatever it finds, the adapter must verify as well (offline cases
- * in LiveAcceptanceEvidenceTest).
+ * What a live acceptance check reads straight from a source's own payload, without the adapter under test: whether the
+ * source published anything the adapter has to verify at that moment (the precondition of the RFI and ViaggiaTreno
+ * checks in [LiveRouteChecks]) and which part of the STA feed the rail-only pack covers. Every rule is a sufficient
+ * condition: whatever it finds, the adapter must verify as well (offline cases in LiveAcceptanceEvidenceTest).
  */
 internal object LiveAcceptanceEvidence {
-    /** Minutes as passengers read them in an RFI delay cell: `5`, `+5`, `5'`, `5 min`, `Ritardo 5`. */
-    private val MINUTES = Regex("^(?:ritardo\\s*)?\\+?(\\d{1,3})\\s*(?:min(?:uti)?\\.?|['′])?$", RegexOption.IGNORE_CASE)
+    /** Minutes as passengers read them in an RFI delay cell: `5`, `+5`, `-1`, `5'`, `5 min`, `Ritardo 5`, `Ritardo di 5 minuti`. */
+    private val MINUTES = Regex("^(?:ritardo(?:\\s+di)?\\s*[:=]?\\s*)?([+-]?\\d{1,3})\\s*(?:min(?:uti)?\\.?|['′])?$", RegexOption.IGNORE_CASE)
     private val CANCELLED = Regex("\\b(?:soppress\\w*|cancellat\\w*)\\b", RegexOption.IGNORE_CASE)
     /** The carriers whose run identity the RFI route source reconciles (it drops rows of any other carrier). */
     private val RECONCILED_CARRIER = Regex("trenitalia|italo|ntv|trenord|frecc", RegexOption.IGNORE_CASE)
@@ -58,25 +57,29 @@ internal object LiveAcceptanceEvidence {
 
     fun rfiFormats(rows: List<RfiRow>): Map<String, Int> = rows.groupingBy { it.format }.eachCount()
 
+    /** A train both RFI boards list, with the published delay of its departure (null when it is cancelled). */
+    data class RfiRun(val number: String, val departure: LocalTime, val delay: Int?, val cancelled: Boolean, val arrival: LocalTime) {
+        override fun toString(): String = "$number $departure${if (cancelled) " soppresso" else "+$delay"} → $arrival"
+    }
+
     /**
-     * Departures the RFI route source has to reconcile: a published delay in minutes or a cancellation on the origin's
-     * departures, the same train of the same reconciled carrier exactly once on the destination's arrivals within ten
-     * hours, and an expected departure from [requested] to eight hours after it (a train already gone is not offered).
+     * Departures the RFI route source has to reconcile. It offers the twelve earliest trains of a reconciled carrier
+     * that the origin's departures and the destination's arrivals both list (the arrival exactly once, within ten
+     * hours) and that leave from [requested] on (a train already gone is not offered); of those, the ones whose
+     * departure publishes a delay in minutes or a cancellation.
      */
-    fun rfiReconcilableRuns(departures: List<RfiRow>, arrivals: List<RfiRow>, requested: LocalTime): List<String> =
+    fun rfiReconcilableRuns(departures: List<RfiRow>, arrivals: List<RfiRow>, requested: LocalTime): List<RfiRun> =
         departures.mapNotNull { departure ->
             val time = departure.time ?: return@mapNotNull null
-            val delay = departure.publishedDelay
-            if (delay == null && !departure.cancelled) return@mapNotNull null
             if (!RECONCILED_CARRIER.containsMatchIn(departure.carrier)) return@mapNotNull null
-            val expected = if (departure.cancelled || delay == null) time else time.plusMinutes(delay.toLong())
-            if (minutesForward(requested, expected) > 8 * 60) return@mapNotNull null
+            val delay = departure.publishedDelay.takeUnless { departure.cancelled }
+            if (minutesForward(requested, if (delay == null) time else time.plusMinutes(delay.toLong())) > 8 * 60) return@mapNotNull null
             val arrival = arrivals.singleOrNull { it.number == departure.number && it.carrier.equals(departure.carrier, ignoreCase = true) }
                 ?: return@mapNotNull null
             val arrivalTime = arrival.time ?: return@mapNotNull null
             if (minutesForward(time, arrivalTime) !in 1..10 * 60) return@mapNotNull null
-            "${departure.number} $time${if (departure.cancelled) " soppresso" else "+$delay"} → $arrivalTime"
-        }
+            RfiRun(departure.number, time, delay, departure.cancelled, arrivalTime)
+        }.sortedBy { minutesForward(requested.minusHours(2), it.departure) }.take(12).filter { it.delay != null || it.cancelled }
 
     /**
      * Run details (`andamentoTreno/<origin>/<number>/<date>` → JSON) that the ViaggiaTreno route source has to verify:
