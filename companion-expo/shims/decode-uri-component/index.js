@@ -7,6 +7,13 @@
  * Same contract as 0.2.2: decode like decodeURIComponent, but never throw on malformed escapes; keep a
  * sequence that is not valid UTF-8 as written. Every run of %XX escapes is decoded in a single pass,
  * so the work is linear in the input length instead of quadratic.
+ *
+ * Two deliberate differences from 0.2.2, neither observable through query-string@7:
+ * 1. "+" is not turned into a space. query-string.parse replaces "+" before it decodes a key or a
+ *    value, and its only other decode, of the fragment, needs parseFragmentIdentifier, which React
+ *    Navigation's queryString.parse(query) never sets.
+ * 2. A lone %C2 that is not part of a valid sequence stays "%C2" instead of becoming U+FFFD, like
+ *    every other invalid byte.
  */
 
 const ESCAPE_RUN = /(?:%[a-f0-9]{2})+/gi;
