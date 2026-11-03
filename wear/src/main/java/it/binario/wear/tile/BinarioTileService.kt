@@ -1,6 +1,7 @@
 package it.binario.wear.tile
 
 import androidx.concurrent.futures.CallbackToFutureAdapter
+import androidx.wear.protolayout.ActionBuilders
 import androidx.wear.protolayout.ColorBuilders
 import androidx.wear.protolayout.DeviceParametersBuilders
 import androidx.wear.protolayout.DimensionBuilders
@@ -14,6 +15,7 @@ import androidx.wear.tiles.TileService
 import com.google.common.util.concurrent.ListenableFuture
 import it.binario.wear.BinarioWearPalette
 import it.binario.wear.R
+import it.binario.wear.WearMainActivity
 import it.binario.wear.WearStringProvider
 import it.binario.wear.dataStatusResId
 import it.binario.wear.model.WearSnapshot
@@ -30,7 +32,7 @@ class BinarioTileService : TileService() {
             TileBuilders.Tile.Builder()
                 .setResourcesVersion(RESOURCES_VERSION)
                 .setFreshnessIntervalMillis(30L * 60L * 1000L)
-                .setTileTimeline(binarioTileTimeline(snapshot) { entry -> binarioTileLayout(entry, device, strings) })
+                .setTileTimeline(binarioTileTimeline(snapshot) { entry -> binarioTileLayout(entry, device, strings, packageName) })
                 .build()
         )
     }
@@ -88,6 +90,7 @@ internal fun binarioTileLayout(
     snapshot: WearSnapshot?,
     device: DeviceParametersBuilders.DeviceParameters,
     strings: WearStringProvider,
+    packageName: String,
 ): LayoutElementBuilders.LayoutElement {
     val details = snapshot?.services?.firstOrNull()
     val inset = DimensionBuilders.dp(device.screenWidthDp * tileInsetFraction(device))
@@ -107,11 +110,30 @@ internal fun binarioTileLayout(
         .setModifiers(
             ModifiersBuilders.Modifiers.Builder()
                 .setPadding(ModifiersBuilders.Padding.Builder().setStart(inset).setEnd(inset).build())
+                .setClickable(openAppClickable(packageName))
                 .build()
         )
         .addContent(column)
         .build()
 }
+
+/** A tap anywhere on the Tile opens the watch app, with the services, the status and the refresh. */
+internal fun openAppClickable(packageName: String): ModifiersBuilders.Clickable =
+    ModifiersBuilders.Clickable.Builder()
+        .setId(OPEN_APP_CLICKABLE_ID)
+        .setOnClick(
+            ActionBuilders.LaunchAction.Builder()
+                .setAndroidActivity(
+                    ActionBuilders.AndroidActivity.Builder()
+                        .setPackageName(packageName)
+                        .setClassName(WearMainActivity::class.java.name)
+                        .build()
+                )
+                .build()
+        )
+        .build()
+
+internal const val OPEN_APP_CLICKABLE_ID = "open_binario"
 
 /** Share of the screen width kept free on each side; the disc of a round screen needs the larger one. */
 internal fun tileInsetFraction(device: DeviceParametersBuilders.DeviceParameters): Float =

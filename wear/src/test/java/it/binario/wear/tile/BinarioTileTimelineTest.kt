@@ -1,8 +1,10 @@
 package it.binario.wear.tile
 
+import androidx.wear.protolayout.ActionBuilders
 import androidx.wear.protolayout.DeviceParametersBuilders
 import androidx.wear.protolayout.LayoutElementBuilders
 import it.binario.wear.ResourceNameStrings
+import it.binario.wear.WearMainActivity
 import it.binario.wear.model.WearConfidence
 import it.binario.wear.model.WearDataNature
 import it.binario.wear.model.WearDirection
@@ -68,8 +70,8 @@ class BinarioTileTimelineTest {
 
     @Test
     fun `round screens inset the centred column more than square ones`() {
-        val round = binarioTileLayout(null, device(DeviceParametersBuilders.SCREEN_SHAPE_ROUND), ResourceNameStrings) as LayoutElementBuilders.Box
-        val square = binarioTileLayout(null, device(DeviceParametersBuilders.SCREEN_SHAPE_RECT), ResourceNameStrings) as LayoutElementBuilders.Box
+        val round = binarioTileLayout(null, device(DeviceParametersBuilders.SCREEN_SHAPE_ROUND), ResourceNameStrings, PACKAGE) as LayoutElementBuilders.Box
+        val square = binarioTileLayout(null, device(DeviceParametersBuilders.SCREEN_SHAPE_RECT), ResourceNameStrings, PACKAGE) as LayoutElementBuilders.Box
 
         assertTrue(tileInsetFraction(device(DeviceParametersBuilders.SCREEN_SHAPE_ROUND)) > tileInsetFraction(device(DeviceParametersBuilders.SCREEN_SHAPE_RECT)))
         assertEquals(192f * tileInsetFraction(device(DeviceParametersBuilders.SCREEN_SHAPE_ROUND)), sidePadding(round), 0.001f)
@@ -80,8 +82,20 @@ class BinarioTileTimelineTest {
         }
     }
 
+    @Test
+    fun `a tap on the Tile opens the watch app with or without a snapshot`() {
+        for (layout in listOf(productionLayout(null), productionLayout(snapshot(1_893_485_700_000L, services = listOf(service))))) {
+            val clickable = requireNotNull(requireNotNull((layout as LayoutElementBuilders.Box).modifiers).clickable)
+            val activity = requireNotNull((clickable.onClick as ActionBuilders.LaunchAction).androidActivity)
+
+            assertEquals(OPEN_APP_CLICKABLE_ID, clickable.id)
+            assertEquals(PACKAGE, activity.packageName)
+            assertEquals(WearMainActivity::class.java.name, activity.className)
+        }
+    }
+
     private fun productionLayout(snapshot: WearSnapshot?): LayoutElementBuilders.LayoutElement =
-        binarioTileLayout(snapshot, device(DeviceParametersBuilders.SCREEN_SHAPE_ROUND), ResourceNameStrings)
+        binarioTileLayout(snapshot, device(DeviceParametersBuilders.SCREEN_SHAPE_ROUND), ResourceNameStrings, PACKAGE)
 
     private fun device(shape: Int): DeviceParametersBuilders.DeviceParameters =
         DeviceParametersBuilders.DeviceParameters.Builder().setScreenWidthDp(192).setScreenHeightDp(192).setScreenShape(shape).build()
@@ -129,4 +143,8 @@ class BinarioTileTimelineTest {
         notice = "",
         services = services,
     )
+
+    private companion object {
+        const val PACKAGE = "it.binario.app"
+    }
 }
