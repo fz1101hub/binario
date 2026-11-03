@@ -528,6 +528,13 @@ class HttpFetcherTest(unittest.TestCase):
         with self.assertRaises(collector.CollectorError):
             collector.HttpFetcher(rate=3)
 
+    def test_user_agent_names_binario_and_carries_no_address(self) -> None:
+        # The form with a URL was refused (HTTP 403) by ViaggiaTreno; the identity must stay honest.
+        self.assertTrue(collector.USER_AGENT.startswith("Binario-punctuality/"))
+        self.assertIn("read-only", collector.USER_AGENT)
+        self.assertNotIn("http", collector.USER_AGENT.lower())
+        self.assertNotIn("mozilla", collector.USER_AGENT.lower())
+
     def test_redirects_stay_on_the_same_resource(self) -> None:
         base = collector.BASE_URL
         path = base + "andamentoTreno/S08409/9558/1793746800000"

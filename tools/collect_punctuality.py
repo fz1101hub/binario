@@ -61,7 +61,10 @@ ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_GTFS = ROOT / "app/src/main/assets/gtfs/trenitalia-gtfs.zip"
 DEFAULT_STATIONS = ROOT / "app/src/main/assets/stations/curated_it_rail_stations.json"
 BASE_URL = "http://www.viaggiatreno.it/infomobilita/resteasy/viaggiatreno/"
-USER_AGENT = "Binario-punctuality/1.0 (+https://github.com/fz1101hub/binario)"
+# Honest, in the style of the app ("Binario/0.20 (personal realtime client)") and of the discovery tool.  The
+# first form carried a URL and ViaggiaTreno answered 403 to it while answering 200 to these from the same
+# runners; the collector still stops at the first 403/429 and never poses as a browser.
+USER_AGENT = "Binario-punctuality/1.0 (personal timetable app; read-only)"
 
 LOOKBACK = timedelta(hours=4)
 MIN_AGE = timedelta(minutes=20)
