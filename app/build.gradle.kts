@@ -106,10 +106,6 @@ android {
     lint {
         abortOnError = true
         warningsAsErrors = true
-        // Every finding in the build log: the Gradle error names only the first one and CI artifacts are not
-        // always reachable.
-        textReport = true
-        textOutput = file("stdout")
         checkReleaseBuilds = true
         checkDependencies = true
         // The app dependency set is upgraded as a coordinated Android toolchain change;

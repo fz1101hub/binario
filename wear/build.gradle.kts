@@ -70,10 +70,6 @@ android {
     lint {
         abortOnError = true
         warningsAsErrors = true
-        // Every finding in the build log: the Gradle error names only the first one and CI artifacts are not
-        // always reachable.
-        textReport = true
-        textOutput = file("stdout")
         checkReleaseBuilds = true
         // The wrapper-version check reports the Gradle wrapper as soon as a newer
         // patch release exists. Wrapper bumps are deliberate and checksum-pinned;
