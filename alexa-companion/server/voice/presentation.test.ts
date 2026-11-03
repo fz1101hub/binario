@@ -107,6 +107,23 @@ describe("screen datasource", () => {
     expect(alignments("it-IT")).toEqual(["left", "center"]);
   });
 
+  it("aligns every Text of the document, so Arabic route rows and hints are right-aligned too", () => {
+    const texts: Array<Record<string, unknown>> = [];
+    const walk = (node: unknown): void => {
+      if (Array.isArray(node)) return node.forEach(walk);
+      if (!node || typeof node !== "object") return;
+      const record = node as Record<string, unknown>;
+      if (record.type === "Text") texts.push(record);
+      Object.values(record).forEach(walk);
+    };
+    walk(buildRenderDocumentDirective(departures, { locale: "ar-SA", checkedAt: CHECKED_AT }).document);
+    expect(texts.length).toBeGreaterThan(10);
+    for (const text of texts)
+      expect(["@binarioTextAlign", "center"], String(text.text)).toContain(text.textAlign);
+    for (const bound of ["${route.text}", "${payload.binario.hints.title}", "${data}"])
+      expect(texts.find(text => text.text === bound)?.textAlign, bound).toBe("@binarioTextAlign");
+  });
+
   it("labels a demo catalogue explicitly instead of presenting it as live", () => {
     const data = buildScreenDatasource(departures, { locale: "it-IT", checkedAt: CHECKED_AT, quality: "demo" });
     expect(data.quality.state).toBe("demo");
