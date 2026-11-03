@@ -86,4 +86,28 @@ class WidgetAutoRefreshPlannerTest {
         assertEquals(Duration.ofMinutes(1), WidgetAutoRefreshPlanner.delayUntil(at(8, 0), at(8, 0), WidgetAutoRefreshPlanner.MIN_RESCHEDULE))
         assertEquals(Duration.ZERO, WidgetAutoRefreshPlanner.delayUntil(at(7, 0), at(8, 0)))
     }
+
+    @Test
+    fun `a manual refresh retries only temporary failures, at most twice and only inside the widget's windows`() {
+        val off = AutoRefreshSettings()
+        val failed = mapOf(1 to morning, 2 to off, 3 to AutoRefreshSettings.LEGACY)
+
+        val first = WidgetRefreshRetryPolicy.retry(failed, attempt = 1, now = at(7, 0))!!
+        assertEquals(setOf(1, 3), first.widgetIds)
+        assertEquals(Duration.ofMinutes(15), first.delay)
+        val second = WidgetRefreshRetryPolicy.retry(failed, attempt = 2, now = at(7, 15))!!
+        assertEquals(Duration.ofMinutes(30), second.delay)
+        assertNull(WidgetRefreshRetryPolicy.retry(failed, attempt = WidgetRefreshRetryPolicy.MAX_ATTEMPTS, now = at(7, 45)))
+        // The retry at 9:40 falls after the 7:00 - 9:30 window: only the widget refreshed always is asked again.
+        assertEquals(setOf(3), WidgetRefreshRetryPolicy.retry(failed, attempt = 1, now = at(9, 25))!!.widgetIds)
+        // Automatic refresh off: a failed tap is never retried in the background.
+        assertNull(WidgetRefreshRetryPolicy.retry(mapOf(2 to off), attempt = 1, now = at(8, 0)))
+
+        assertEquals(setOf(1, 3), WidgetRefreshRetryPolicy.decodeIds(WidgetRefreshRetryPolicy.encodeIds(first.widgetIds)))
+        assertNull(WidgetRefreshRetryPolicy.decodeIds(null))
+        assertTrue(WidgetRefreshRetryPolicy.isTransient(it.binario.app.data.RouteFailureReason.NetworkUnavailable))
+        assertTrue(WidgetRefreshRetryPolicy.isTransient(it.binario.app.data.RouteFailureReason.Unavailable))
+        assertTrue(!WidgetRefreshRetryPolicy.isTransient(it.binario.app.data.RouteFailureReason.RouteNotCovered))
+        assertTrue(!WidgetRefreshRetryPolicy.isTransient(it.binario.app.data.RouteFailureReason.ScheduleExpired(LocalDate.of(2026, 12, 12))))
+    }
 }

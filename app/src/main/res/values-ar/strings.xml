@@ -707,6 +707,17 @@
     <string name="stop_alarm_inexact">ضُبط المنبّه على %1$s، لكن قد يؤخره Android لأن المنبّهات الدقيقة غير مسموح بها.</string>
     <string name="commuter_alert_scheduled">حُفظ التنبيه وجُدول على الجهاز.</string>
     <string name="commuter_alert_scheduled_inexact">حُفظ التنبيه وجُدول بوضع تقريبي: قد يؤخره Android لأن المنبّهات الدقيقة غير مسموح بها.</string>
+    <string name="stop_alarms_active_title">منبّهات المحطات النشطة</string>
+    <string name="stop_alarm_active_row">%1$s · القطار %2$s · الوصول المتوقع %3$s</string>
+    <string name="accessibility_cancel_stop_alarm">إلغاء منبّه %1$s</string>
+    <string name="exact_alarm_note">لا يسمح Android لتطبيق Binario بالمنبّهات الدقيقة: قد تصل منبّهات المحطات وتنبيهات التنقل اليومي متأخرة.</string>
+    <string name="exact_alarm_action">السماح بالمنبّهات الدقيقة</string>
+    <string name="background_status_title">النشاط في الخلفية</string>
+    <string name="background_status_notifications_on">الإشعارات مسموح بها</string>
+    <string name="background_status_notifications_off">الإشعارات غير مسموح بها: لا يمكن ظهور المنبّهات والتنبيهات والإشعارات الفورية.</string>
+    <string name="background_status_exact_on">المنبّهات الدقيقة مسموح بها</string>
+    <string name="background_status_battery_optimized">تحسين البطارية مفعّل لتطبيق Binario: قد يؤجل Android عمليات التحقق في الخلفية.</string>
+    <string name="background_status_battery_unrestricted">تحسين البطارية غير مفعّل لتطبيق Binario</string>
     <string name="commuter_alert_quiet_hours_feedback">حُفظ التنبيه ولم يُجدول: يقع وقته ضمن فترة الهدوء 22:00–07:00.</string>
     <string name="commuter_alert_invalid_time_feedback">حُفظ التنبيه ولم يُجدول: الوقت غير صالح.</string>
     <string name="commuter_alert_disabled_feedback">حُفظ التنبيه لكنه متوقف.</string>
@@ -1157,6 +1168,8 @@
     <!-- Notifiche in tempo reale: viaggio seguito, avvisi sui treni, scioperi MIT, coincidenze e puntualità (novembre 2026). -->
     <string name="followed_trip_channel_name">الرحلة المتابَعة</string>
     <string name="followed_trip_channel_description">الحالة المباشرة للرحلة التي تتابعها: التأخير والمحطة التالية والرصيف، دون صوت.</string>
+    <string name="followed_trip_alerts_channel_name">تغييرات الرحلة المتابَعة</string>
+    <string name="followed_trip_alerts_channel_description">تنبيه بصوت عند إلغاء القطار المتابَع أو تغيير رصيف المغادرة أو تعرّض الاتصال للخطر. بين الساعة 22 و7 يصل دون صوت.</string>
     <string name="followed_trip_notification_toggle">إشعار بحالة الرحلة</string>
     <string name="followed_trip_notification_toggle_description">من 30 دقيقة قبل المغادرة إلى 30 دقيقة بعد الوصول: التأخير والمحطة التالية والرصيف، مع تحديث كل 15 دقيقة. يُغلق تلقائيًا في النهاية.</string>
     <string name="followed_trip_notification_pending">سيظهر الإشعار الساعة %1$s.</string>

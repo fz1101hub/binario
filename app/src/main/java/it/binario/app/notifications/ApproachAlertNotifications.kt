@@ -96,7 +96,8 @@ object ApproachAlertScheduler {
         val store = ApproachAlertStore(context)
         val now = Instant.now()
         val today = now.atZone(RailTime.defaultZone).toLocalDate()
-        val next = alerts.mapNotNull { alert ->
+        // Without the permission to notify the checks could show nothing: no lookup runs, the next app start plans again.
+        val next = if (!LiveNotifications.allowed(context)) null else alerts.mapNotNull { alert ->
             val state = store.state(alert.key)
             ApproachAlertPlanner.nextRun(alert, state.doneOn, state.notifiedOn, state.observation.takeIf { state.date == today }, now)
         }.minOrNull()
@@ -132,7 +133,7 @@ class ApproachAlertWorker(appContext: Context, params: WorkerParameters) : Corou
 
     private suspend fun check(context: Context) {
         val (alerts, favourites) = ApproachAlertScheduler.active(context)
-        if (alerts.isEmpty()) return
+        if (alerts.isEmpty() || !LiveNotifications.allowed(context)) return
         val store = ApproachAlertStore(context)
         val zone = RailTime.defaultZone
         alerts.forEach { alert ->

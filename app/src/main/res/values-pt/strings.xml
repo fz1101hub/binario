@@ -662,6 +662,17 @@
     <string name="stop_alarm_inexact">Alarme definido para %1$s, mas o Android pode entregá-lo com atraso porque alarmes exatos não são permitidos.</string>
     <string name="commuter_alert_scheduled">Alerta salvo e programado no dispositivo.</string>
     <string name="commuter_alert_scheduled_inexact">Alerta salvo e programado em modo aproximado: o Android pode entregá-lo com atraso porque alarmes exatos não são permitidos.</string>
+    <string name="stop_alarms_active_title">Alarmes de parada ativos</string>
+    <string name="stop_alarm_active_row">%1$s · trem %2$s · chegada prevista %3$s</string>
+    <string name="accessibility_cancel_stop_alarm">Cancelar o alarme de %1$s</string>
+    <string name="exact_alarm_note">O Android não permite que o Binario use alarmes exatos: alarmes de parada e alertas de trajeto diário podem chegar com atraso.</string>
+    <string name="exact_alarm_action">Permitir alarmes exatos</string>
+    <string name="background_status_title">Atividade em segundo plano</string>
+    <string name="background_status_notifications_on">Notificações permitidas</string>
+    <string name="background_status_notifications_off">Notificações não permitidas: alarmes, alertas e notificações em tempo real não podem aparecer.</string>
+    <string name="background_status_exact_on">Alarmes exatos permitidos</string>
+    <string name="background_status_battery_optimized">Otimização de bateria ativa para o Binario: o Android pode adiar as verificações em segundo plano.</string>
+    <string name="background_status_battery_unrestricted">Otimização de bateria desativada para o Binario</string>
     <string name="commuter_alert_quiet_hours_feedback">Alerta salvo, mas não programado: a antecedência cai no período silencioso 22:00–07:00.</string>
     <string name="commuter_alert_invalid_time_feedback">Alerta salvo, mas não programado: o horário não é válido.</string>
     <string name="commuter_alert_disabled_feedback">Alerta salvo, mas desativado.</string>
@@ -1085,6 +1096,8 @@
     <!-- Notifiche in tempo reale: viaggio seguito, avvisi sui treni, scioperi MIT, coincidenze e puntualità (novembre 2026). -->
     <string name="followed_trip_channel_name">Viagem acompanhada</string>
     <string name="followed_trip_channel_description">Status em tempo real da viagem que você acompanha: atraso, próxima parada e plataforma, sem som.</string>
+    <string name="followed_trip_alerts_channel_name">Mudanças da viagem acompanhada</string>
+    <string name="followed_trip_alerts_channel_description">Um alerta com som quando o trem acompanhado é cancelado, muda a plataforma de partida ou a conexão está em risco. Entre 22h e 7h ele chega sem som.</string>
     <string name="followed_trip_notification_toggle">Notificação com o status da viagem</string>
     <string name="followed_trip_notification_toggle_description">De 30 minutos antes da partida até 30 minutos após a chegada: atraso, próxima parada e plataforma, atualizados a cada 15 minutos. Fecha sozinha no fim.</string>
     <string name="followed_trip_notification_pending">A notificação vai aparecer às %1$s.</string>

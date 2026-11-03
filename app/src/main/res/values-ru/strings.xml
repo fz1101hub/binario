@@ -677,6 +677,17 @@
     <string name="stop_alarm_inexact">Будильник установлен для %1$s, но Android может сработать с задержкой, поскольку точные будильники не разрешены.</string>
     <string name="commuter_alert_scheduled">Оповещение сохранено и запланировано на устройстве.</string>
     <string name="commuter_alert_scheduled_inexact">Оповещение сохранено и запланировано в приблизительном режиме: Android может доставить его с задержкой, поскольку точные будильники не разрешены.</string>
+    <string name="stop_alarms_active_title">Активные будильники на остановку</string>
+    <string name="stop_alarm_active_row">%1$s · поезд %2$s · ожидаемое прибытие %3$s</string>
+    <string name="accessibility_cancel_stop_alarm">Отменить будильник для %1$s</string>
+    <string name="exact_alarm_note">Android не разрешает Binario точные будильники: будильники на остановку и оповещения о поездках могут приходить с задержкой.</string>
+    <string name="exact_alarm_action">Разрешить точные будильники</string>
+    <string name="background_status_title">Фоновая активность</string>
+    <string name="background_status_notifications_on">Уведомления разрешены</string>
+    <string name="background_status_notifications_off">Уведомления не разрешены: будильники, оповещения и уведомления в реальном времени не могут появиться.</string>
+    <string name="background_status_exact_on">Точные будильники разрешены</string>
+    <string name="background_status_battery_optimized">Оптимизация батареи для Binario включена: Android может откладывать фоновые проверки.</string>
+    <string name="background_status_battery_unrestricted">Оптимизация батареи для Binario выключена</string>
     <string name="commuter_alert_quiet_hours_feedback">Оповещение сохранено, но не запланировано: время оповещения попадает в тихие часы 22:00–07:00.</string>
     <string name="commuter_alert_invalid_time_feedback">Оповещение сохранено, но не запланировано: неверное время.</string>
     <string name="commuter_alert_disabled_feedback">Оповещение сохранено, но выключено.</string>
@@ -1109,6 +1120,8 @@
     <!-- Notifiche in tempo reale: viaggio seguito, avvisi sui treni, scioperi MIT, coincidenze e puntualità (novembre 2026). -->
     <string name="followed_trip_channel_name">Отслеживаемая поездка</string>
     <string name="followed_trip_channel_description">Статус вашей поездки в реальном времени: опоздание, следующая остановка и путь, без звука.</string>
+    <string name="followed_trip_alerts_channel_name">Изменения отслеживаемой поездки</string>
+    <string name="followed_trip_alerts_channel_description">Оповещение со звуком, когда отслеживаемый поезд отменён, меняет платформу отправления или пересадка под угрозой. С 22 до 7 часов оно приходит без звука.</string>
     <string name="followed_trip_notification_toggle">Уведомление со статусом поездки</string>
     <string name="followed_trip_notification_toggle_description">С 30 минут до отправления и до 30 минут после прибытия: опоздание, следующая остановка и путь, с обновлением каждые 15 минут. В конце закрывается само.</string>
     <string name="followed_trip_notification_pending">Уведомление появится в %1$s.</string>

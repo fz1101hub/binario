@@ -256,6 +256,7 @@ internal object TrainsWidgetRefresher {
     private const val PARALLEL_LOOKUPS = 3
 
     suspend fun refresh(context: Context, widgetIds: Set<Int>?): Boolean {
+        if (widgetIds == null) WidgetInstances.pruneOrphans(context)
         val widgets = TrainsWidgetConfigurationStore(context).all().filter { (widgetId, _) -> widgetIds == null || widgetId in widgetIds }
         if (widgets.isEmpty()) return true
         val attemptAt = System.currentTimeMillis()

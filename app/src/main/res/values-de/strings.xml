@@ -661,6 +661,17 @@
     <string name="stop_alarm_inexact">Wecker für %1$s eingestellt, aber Android kann ihn verspätet ausliefern, da exakte Wecker nicht erlaubt sind.</string>
     <string name="commuter_alert_scheduled">Warnung gespeichert und auf dem Gerät geplant.</string>
     <string name="commuter_alert_scheduled_inexact">Warnung gespeichert und ungenau geplant: Android kann sie verspätet ausliefern, da exakte Wecker nicht erlaubt sind.</string>
+    <string name="stop_alarms_active_title">Aktive Haltwecker</string>
+    <string name="stop_alarm_active_row">%1$s · Zug %2$s · erwartete Ankunft %3$s</string>
+    <string name="accessibility_cancel_stop_alarm">Wecker für %1$s abbrechen</string>
+    <string name="exact_alarm_note">Android erlaubt Binario keine exakten Wecker: Haltwecker und Pendlerwarnungen können verspätet kommen.</string>
+    <string name="exact_alarm_action">Exakte Wecker erlauben</string>
+    <string name="background_status_title">Hintergrundaktivität</string>
+    <string name="background_status_notifications_on">Benachrichtigungen erlaubt</string>
+    <string name="background_status_notifications_off">Benachrichtigungen nicht erlaubt: Wecker, Hinweise und Live-Benachrichtigungen können nicht erscheinen.</string>
+    <string name="background_status_exact_on">Exakte Wecker erlaubt</string>
+    <string name="background_status_battery_optimized">Akkuoptimierung für Binario aktiv: Android kann Prüfungen im Hintergrund aufschieben.</string>
+    <string name="background_status_battery_unrestricted">Akkuoptimierung für Binario nicht aktiv</string>
     <string name="commuter_alert_quiet_hours_feedback">Warnung gespeichert, aber nicht geplant: Die Vorlaufzeit liegt in der Ruhezeit 22:00–07:00.</string>
     <string name="commuter_alert_invalid_time_feedback">Warnung gespeichert, aber nicht geplant: Die Zeit ist ungültig.</string>
     <string name="commuter_alert_disabled_feedback">Warnung gespeichert, aber deaktiviert.</string>
@@ -1084,6 +1095,8 @@
     <!-- Live-Benachrichtigungen: verfolgte Reise, Zughinweise, MIT-Streiks, Anschlüsse und Pünktlichkeit (November 2026). -->
     <string name="followed_trip_channel_name">Verfolgte Reise</string>
     <string name="followed_trip_channel_description">Live-Status der verfolgten Reise: Verspätung, nächster Halt und Gleis, ohne Ton.</string>
+    <string name="followed_trip_alerts_channel_name">Änderungen der verfolgten Reise</string>
+    <string name="followed_trip_alerts_channel_description">Ein Hinweis mit Ton, wenn der verfolgte Zug ausfällt, das Abfahrtsgleis wechselt oder der Anschluss gefährdet ist. Zwischen 22 und 7 Uhr kommt er ohne Ton.</string>
     <string name="followed_trip_notification_toggle">Benachrichtigung mit dem Reisestatus</string>
     <string name="followed_trip_notification_toggle_description">Von 30 Minuten vor der Abfahrt bis 30 Minuten nach der Ankunft: Verspätung, nächster Halt und Gleis, alle 15 Minuten aktualisiert. Sie schließt sich am Ende von selbst.</string>
     <string name="followed_trip_notification_pending">Die Benachrichtigung erscheint um %1$s.</string>

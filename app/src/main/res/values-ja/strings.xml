@@ -632,6 +632,17 @@
     <string name="stop_alarm_inexact">%1$s にアラームを設定しましたが、正確なアラームが許可されていないため、Android の通知が遅れることがあります。</string>
     <string name="commuter_alert_scheduled">通知を保存し、端末で予定しました。</string>
     <string name="commuter_alert_scheduled_inexact">通知を保存し、おおよその時刻で予定しました。正確なアラームが許可されていないため、Android の通知が遅れることがあります。</string>
+    <string name="stop_alarms_active_title">設定中の停車駅アラーム</string>
+    <string name="stop_alarm_active_row">%1$s · 列車 %2$s · 到着見込み %3$s</string>
+    <string name="accessibility_cancel_stop_alarm">%1$s のアラームをキャンセル</string>
+    <string name="exact_alarm_note">Android が Binario に正確なアラームを許可していないため、停車駅アラームと通勤通知が遅れることがあります。</string>
+    <string name="exact_alarm_action">正確なアラームを許可</string>
+    <string name="background_status_title">バックグラウンドの動作</string>
+    <string name="background_status_notifications_on">通知は許可されています</string>
+    <string name="background_status_notifications_off">通知が許可されていないため、アラーム、通知、リアルタイム通知を表示できません。</string>
+    <string name="background_status_exact_on">正確なアラームは許可されています</string>
+    <string name="background_status_battery_optimized">Binario のバッテリー最適化がオンです。Android がバックグラウンドの確認を遅らせることがあります。</string>
+    <string name="background_status_battery_unrestricted">Binario のバッテリー最適化はオフです</string>
     <string name="commuter_alert_quiet_hours_feedback">通知を保存しましたが予定していません。通知の時刻が通知しない時間帯（22:00–07:00）です。</string>
     <string name="commuter_alert_invalid_time_feedback">通知を保存しましたが予定していません。時刻が正しくありません。</string>
     <string name="commuter_alert_disabled_feedback">通知を保存しましたが、オフになっています。</string>
@@ -1037,6 +1048,8 @@
     <!-- Notifiche in tempo reale: viaggio seguito, avvisi sui treni, scioperi MIT, coincidenze e puntualità (novembre 2026). -->
     <string name="followed_trip_channel_name">追跡中の旅程</string>
     <string name="followed_trip_channel_description">追跡中の旅程のリアルタイムの状況（遅れ、次の停車駅、番線）を音なしで表示します。</string>
+    <string name="followed_trip_alerts_channel_name">追跡中の旅程の変更</string>
+    <string name="followed_trip_alerts_channel_description">追跡中の列車の運休、発車番線の変更、乗り継ぎの危険があるときに音で知らせます。22 時から 7 時までは音なしで届きます。</string>
     <string name="followed_trip_notification_toggle">旅程の状況を通知</string>
     <string name="followed_trip_notification_toggle_description">出発 30 分前から到着 30 分後まで、遅れ、次の停車駅、番線を 15 分ごとに更新します。終了すると自動で閉じます。</string>
     <string name="followed_trip_notification_pending">通知は %1$s に表示されます。</string>

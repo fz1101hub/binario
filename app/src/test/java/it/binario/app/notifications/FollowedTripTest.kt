@@ -125,6 +125,40 @@ class FollowedTripTest {
         assertEquals(Duration.ZERO, trip.copy(transferMinutes = emptyList()).walkBefore(1))
     }
 
+    @Test fun `a platform change before boarding, a cancellation and a connection at risk are notified once each`() {
+        val board = { platform: String, scheduled: String? -> TrainStop("MILANO CENTRALE", "08:30", "08:30", platform, 0, false, operationalStatusVerified = true, scheduledPlatform = scheduled) }
+        val onTime = service("2153", listOf(board("14", null), stop("MONZA", "08:50", "08:50", 0)), 0)
+        val moved = service("2153", listOf(board("7", "14"), stop("MONZA", "08:50", "08:50", 0)), 0)
+
+        val quiet = FollowedTripStatus.view(trip, listOf(onTime, null), at("08:10"), zone)
+        val boarding = FollowedTripAlerts.boardingPlatform(trip, quiet, listOf(onTime, null))
+        assertEquals("14", boarding!!.platform)
+        assertTrue(FollowedTripAlerts.changes(trip, quiet, listOf(onTime, null), null, emptySet()).isEmpty())
+
+        // Published by the source next to the timetable platform...
+        val view = FollowedTripStatus.view(trip, listOf(moved, null), at("08:15"), zone)
+        val change = FollowedTripAlerts.changes(trip, view, listOf(moved, null), boarding, emptySet()).single() as FollowedTripChange.PlatformChanged
+        assertEquals("7" to "14", change.platform to change.previous)
+        // ...and notified once: the next refresh with the same platform is quiet.
+        assertTrue(FollowedTripAlerts.changes(trip, view, listOf(moved, null), boarding, setOf(change.key)).isEmpty())
+        // A change the source does not mark is noticed against the platform the previous refresh read.
+        val observed = FollowedTripAlerts.changes(trip, quiet, listOf(onTime, null), boarding.copy(platform = "12"), emptySet()).single()
+        assertEquals("14" to "12", (observed as FollowedTripChange.PlatformChanged).platform to observed.previous)
+
+        // Once the train has left the boarding stop its platform no longer matters.
+        val departed = service("2153", listOf(stop("MILANO CENTRALE", "08:30", "08:36", 6, platform = "7", completed = true), stop("SESTO S. GIOVANNI", "08:40", "08:46", 6, platform = "2"), stop("MONZA", "08:50", "08:56", 6, platform = "3")), 6)
+        val running = FollowedTripStatus.view(trip, listOf(departed, null), at("08:41"), zone)
+        assertNull(FollowedTripAlerts.boardingPlatform(trip, running, listOf(departed, null)))
+        val risk = FollowedTripAlerts.changes(trip, running, listOf(departed, null), boarding, emptySet()).single() as FollowedTripChange.ConnectionAtRisk
+        assertEquals(TransferRiskLevel.AT_RISK, risk.level)
+
+        val cancelled = service("2153", listOf(board("14", null), stop("MONZA", "08:50", "08:50", 0)), 0, status = ServiceStatus.CANCELLED)
+        val cancelledView = FollowedTripStatus.view(trip, listOf(cancelled, null), at("08:15"), zone)
+        assertTrue(FollowedTripAlerts.changes(trip, cancelledView, listOf(cancelled, null), null, emptySet()).single() is FollowedTripChange.Cancelled)
+        assertTrue(FollowedTripAlerts.isQuiet(at("06:30"), zone))
+        assertFalse(FollowedTripAlerts.isQuiet(at("08:15"), zone))
+    }
+
     private fun stop(station: String, scheduled: String, expected: String, delay: Int, platform: String? = null, completed: Boolean = false) =
         TrainStop(station, scheduled, expected, platform, delay, completed, operationalStatusVerified = true)
 

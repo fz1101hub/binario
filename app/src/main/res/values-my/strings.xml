@@ -632,6 +632,17 @@
     <string name="stop_alarm_inexact">%1$s အတွက် နှိုးစက် သတ်မှတ်ထားသော်လည်း အချိန်တိကျ နှိုးစက်များကို ခွင့်မပြုထားသဖြင့် Android က နောက်ကျ၍ မြည်နိုင်သည်။</string>
     <string name="commuter_alert_scheduled">သတိပေးချက်ကို သိမ်းပြီး စက်ပေါ်တွင် အချိန်သတ်မှတ်ထားသည်။</string>
     <string name="commuter_alert_scheduled_inexact">သတိပေးချက်ကို သိမ်းပြီး ခန့်မှန်းအချိန်ဖြင့် သတ်မှတ်ထားသည်- အချိန်တိကျ နှိုးစက်များကို ခွင့်မပြုထားသဖြင့် Android က နောက်ကျ၍ ပို့နိုင်သည်။</string>
+    <string name="stop_alarms_active_title">ဖွင့်ထားသော ရပ်နားဘူတာ နှိုးစက်များ</string>
+    <string name="stop_alarm_active_row">%1$s · ရထား %2$s · ခန့်မှန်းရောက်ချိန် %3$s</string>
+    <string name="accessibility_cancel_stop_alarm">%1$s အတွက် နှိုးစက်ကို ပယ်ဖျက်ရန်</string>
+    <string name="exact_alarm_note">Android က Binario ကို အချိန်တိကျ နှိုးစက်များ ခွင့်မပြုထားသဖြင့် ရပ်နားဘူတာ နှိုးစက်နှင့် နေ့စဉ်ခရီး သတိပေးချက်များ နောက်ကျနိုင်သည်။</string>
+    <string name="exact_alarm_action">အချိန်တိကျ နှိုးစက်များ ခွင့်ပြုရန်</string>
+    <string name="background_status_title">နောက်ခံ လုပ်ဆောင်ချက်</string>
+    <string name="background_status_notifications_on">အသိပေးချက်များ ခွင့်ပြုထားသည်</string>
+    <string name="background_status_notifications_off">အသိပေးချက်များ ခွင့်မပြုထားပါ - နှိုးစက်၊ သတိပေးချက်နှင့် တိုက်ရိုက် အသိပေးချက်များ မပေါ်နိုင်ပါ။</string>
+    <string name="background_status_exact_on">အချိန်တိကျ နှိုးစက်များ ခွင့်ပြုထားသည်</string>
+    <string name="background_status_battery_optimized">Binario အတွက် ဘက်ထရီ အကောင်းဆုံးဖြစ်အောင် ပြုလုပ်ခြင်း ဖွင့်ထားသည် - Android က နောက်ခံ စစ်ဆေးမှုများကို ရွှေ့ဆိုင်းနိုင်သည်။</string>
+    <string name="background_status_battery_unrestricted">Binario အတွက် ဘက်ထရီ အကောင်းဆုံးဖြစ်အောင် ပြုလုပ်ခြင်း ပိတ်ထားသည်</string>
     <string name="commuter_alert_quiet_hours_feedback">သတိပေးချက်ကို သိမ်းသော်လည်း အချိန် မသတ်မှတ်ရပါ- ကြိုတင်သတိပေးချိန်သည် အသံတိတ်ချိန် 22:00–07:00 အတွင်း ကျနေသည်။</string>
     <string name="commuter_alert_invalid_time_feedback">သတိပေးချက်ကို သိမ်းသော်လည်း အချိန် မသတ်မှတ်ရပါ- အချိန် မမှန်ကန်ပါ။</string>
     <string name="commuter_alert_disabled_feedback">သတိပေးချက်ကို သိမ်းသော်လည်း ပိတ်ထားသည်။</string>
@@ -1037,6 +1048,8 @@
     <!-- Notifiche in tempo reale: viaggio seguito, avvisi sui treni, scioperi MIT, coincidenze e puntualità (novembre 2026). -->
     <string name="followed_trip_channel_name">လိုက်ကြည့်နေသော ခရီးစဉ်</string>
     <string name="followed_trip_channel_description">သင်လိုက်ကြည့်နေသော ခရီးစဉ်၏ အချိန်နှင့်တပြေးညီ အခြေအနေ- နောက်ကျမှု၊ နောက် ရပ်နားဘူတာနှင့် ပလက်ဖောင်း၊ အသံမပါ။</string>
+    <string name="followed_trip_alerts_channel_name">လိုက်ကြည့်နေသော ခရီးစဉ် ပြောင်းလဲမှုများ</string>
+    <string name="followed_trip_alerts_channel_description">လိုက်ကြည့်နေသော ရထား ဖျက်သိမ်းခံရခြင်း၊ ထွက်ခွာမည့် စင်္ကြံ ပြောင်းခြင်း သို့မဟုတ် ဆက်သွယ်ရထား အန္တရာယ်ရှိခြင်း ဖြစ်ပါက အသံဖြင့် သတိပေးသည်။ ည 22 နာရီမှ နံနက် 7 နာရီအထိ အသံမပါဘဲ ရောက်ရှိသည်။</string>
     <string name="followed_trip_notification_toggle">ခရီးစဉ် အခြေအနေပါ အသိပေးချက်</string>
     <string name="followed_trip_notification_toggle_description">ထွက်ခွာချိန် မတိုင်မီ 30 မိနစ်မှ ဆိုက်ရောက်ပြီး 30 မိနစ်အထိ- နောက်ကျမှု၊ နောက် ရပ်နားဘူတာနှင့် ပလက်ဖောင်းကို 15 မိနစ်တိုင်း အပ်ဒိတ်လုပ်သည်။ အဆုံးတွင် အလိုအလျောက် ပိတ်သည်။</string>
     <string name="followed_trip_notification_pending">အသိပေးချက်သည် %1$s တွင် ပေါ်လာမည်။</string>

@@ -3,6 +3,7 @@ package it.binario.app.widget
 import it.binario.app.data.DataConfidence
 import it.binario.app.data.Direction
 import it.binario.app.data.RailOperator
+import it.binario.app.data.SavedRoute
 import it.binario.app.data.ServiceStatus
 import it.binario.app.data.Station
 import it.binario.app.data.TrainCategory
@@ -15,6 +16,7 @@ import java.util.Base64
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /** Configurations and rows saved by earlier versions keep working, with the previous behaviour, until edited. */
@@ -123,5 +125,45 @@ class WidgetConfigurationMigrationTest {
     @Test
     fun `a direction swap setting does not touch widgets that have none`() {
         assertEquals(Direction.RETURN, WidgetDirectionSchedule.effectiveDirection(RouteWidgetSettings.LEGACY.returnFrom, Direction.RETURN, null, 0L, ZonedDateTime.now()))
+    }
+
+    @Test
+    fun `a route widget of the first versions without stations is never planned, so the scheduler cannot loop`() {
+        // A 3-field record: the refresher can load no route for it and never records an attempt.
+        val legacy = WidgetConfigurationCodec.decode(record("ROUTE", "roma-torino", "Roma → Torino"))!!
+        val now = ZonedDateTime.of(LocalDate.of(2026, 11, 3), LocalTime.of(10, 0), ZoneId.of("Europe/Rome"))
+
+        assertNull(legacy.routeTarget())
+        val candidate = WidgetAutoRefreshRegistry.routeCandidate(7, legacy, 0L, null, null)
+        assertNull(candidate)
+        assertNull(WidgetAutoRefreshPlanner.nextRun(listOfNotNull(candidate), now))
+        assertTrue(WidgetAutoRefreshPlanner.due(listOfNotNull(candidate), now).isEmpty())
+    }
+
+    @Test
+    fun `a legacy route widget takes the stations of the saved route with its id, else it stays to be reconfigured`() {
+        val roma = Station("roma", "Roma Termini", "Roma")
+        val torino = Station("torino", "Torino Porta Nuova", "Torino")
+        val saved = listOf(SavedRoute("roma-torino", "Roma → Torino", roma, torino), SavedRoute("other", "Altro", torino, roma))
+        val four = WidgetConfigurationCodec.decode(record("ROUTE", "roma-torino", "Roma → Torino", "Pendolare"))!!
+        val unknown = WidgetConfigurationCodec.decode(record("ROUTE", "deleted-route", "Roma → Napoli"))!!
+
+        val migrated = WidgetConfigurationMigration.resolve(four, saved)!!
+
+        assertEquals(roma, migrated.routeOrigin)
+        assertEquals(torino, migrated.routeDestination)
+        assertEquals("Pendolare", migrated.displayName)
+        assertEquals(RouteWidgetSettings.LEGACY, migrated.settings)
+        assertEquals(migrated, WidgetConfigurationCodec.decode(WidgetConfigurationCodec.encode(migrated)))
+        assertNotNull(WidgetAutoRefreshRegistry.routeCandidate(7, migrated, 0L, null, null))
+        assertNull(WidgetConfigurationMigration.resolve(unknown, saved))
+        // A configuration that already has its stations needs nothing.
+        assertNull(WidgetConfigurationMigration.resolve(migrated, saved))
+    }
+
+    @Test
+    fun `configurations of widgets the launcher no longer shows are orphans`() {
+        assertEquals(setOf(3, 9), WidgetInstances.orphans(listOf(1, 3, 9), intArrayOf(1, 4)))
+        assertTrue(WidgetInstances.orphans(listOf(1), intArrayOf(1, 2)).isEmpty())
     }
 }

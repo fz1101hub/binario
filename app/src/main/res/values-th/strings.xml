@@ -646,6 +646,17 @@
     <string name="stop_alarm_inexact">ตั้งปลุกสำหรับ %1$s แล้ว แต่ Android อาจแจ้งช้าเพราะไม่อนุญาตการปลุกแบบตรงเวลา</string>
     <string name="commuter_alert_scheduled">บันทึกและตั้งเวลาการแจ้งเตือนในอุปกรณ์แล้ว</string>
     <string name="commuter_alert_scheduled_inexact">บันทึกและตั้งเวลาการแจ้งเตือนแบบโดยประมาณแล้ว Android อาจแจ้งช้าเพราะไม่อนุญาตการปลุกแบบตรงเวลา</string>
+    <string name="stop_alarms_active_title">การปลุกที่จุดจอดที่ตั้งไว้</string>
+    <string name="stop_alarm_active_row">%1$s · รถไฟ %2$s · คาดว่าถึง %3$s</string>
+    <string name="accessibility_cancel_stop_alarm">ยกเลิกการปลุกสำหรับ %1$s</string>
+    <string name="exact_alarm_note">Android ไม่อนุญาตให้ Binario ตั้งปลุกแบบตรงเวลา การปลุกที่จุดจอดและการแจ้งเตือนเดินทางประจำจึงอาจมาช้า</string>
+    <string name="exact_alarm_action">อนุญาตการปลุกแบบตรงเวลา</string>
+    <string name="background_status_title">กิจกรรมเบื้องหลัง</string>
+    <string name="background_status_notifications_on">อนุญาตการแจ้งเตือนแล้ว</string>
+    <string name="background_status_notifications_off">ไม่ได้อนุญาตการแจ้งเตือน การปลุก การแจ้งเตือน และการแจ้งเตือนแบบเรียลไทม์จึงแสดงไม่ได้</string>
+    <string name="background_status_exact_on">อนุญาตการปลุกแบบตรงเวลาแล้ว</string>
+    <string name="background_status_battery_optimized">การเพิ่มประสิทธิภาพแบตเตอรี่เปิดอยู่สำหรับ Binario Android อาจเลื่อนการตรวจสอบเบื้องหลัง</string>
+    <string name="background_status_battery_unrestricted">การเพิ่มประสิทธิภาพแบตเตอรี่ปิดอยู่สำหรับ Binario</string>
     <string name="commuter_alert_quiet_hours_feedback">บันทึกการแจ้งเตือนแล้วแต่ยังไม่ได้ตั้งเวลา เวลาแจ้งล่วงหน้าอยู่ในช่วงเวลาเงียบ 22:00–07:00</string>
     <string name="commuter_alert_invalid_time_feedback">บันทึกการแจ้งเตือนแล้วแต่ยังไม่ได้ตั้งเวลา เวลาไม่ถูกต้อง</string>
     <string name="commuter_alert_disabled_feedback">บันทึกการแจ้งเตือนแล้วแต่ปิดอยู่</string>
@@ -1060,6 +1071,8 @@
     <!-- Live notifications: followed trip, train notices, MIT strikes, connections and punctuality (November 2026). -->
     <string name="followed_trip_channel_name">การเดินทางที่ติดตาม</string>
     <string name="followed_trip_channel_description">สถานะเรียลไทม์ของการเดินทางที่คุณติดตาม ได้แก่ ความล่าช้า จุดจอดถัดไป และชานชาลา โดยไม่มีเสียง</string>
+    <string name="followed_trip_alerts_channel_name">การเปลี่ยนแปลงของการเดินทางที่ติดตาม</string>
+    <string name="followed_trip_alerts_channel_description">แจ้งเตือนพร้อมเสียงเมื่อรถไฟที่ติดตามถูกยกเลิก เปลี่ยนชานชาลาออกเดินทาง หรือการต่อรถมีความเสี่ยง ระหว่าง 22:00 ถึง 07:00 จะแจ้งแบบไม่มีเสียง</string>
     <string name="followed_trip_notification_toggle">แจ้งเตือนสถานะการเดินทาง</string>
     <string name="followed_trip_notification_toggle_description">ตั้งแต่ 30 นาทีก่อนออกจนถึง 30 นาทีหลังถึง: ความล่าช้า จุดจอดถัดไป และชานชาลา อัปเดตทุก 15 นาที และปิดเองเมื่อสิ้นสุด</string>
     <string name="followed_trip_notification_pending">การแจ้งเตือนจะแสดงเวลา %1$s</string>

@@ -248,6 +248,8 @@ class TrainViewModel @JvmOverloads constructor(
                     stationAutocomplete = StationAutocompleteEngine(stations)
                     stationCanonicalizer = StationCanonicalizer(stations)
                     savedRoutes = pinnedFirst(routeStore.routes(stations).map(::canonicalRoute))
+                    // Route widgets of the first versions saved only the route id: they take its stations now.
+                    RouteWidgetProvider.migrateLegacyConfigurations(getApplication(), savedRoutes)
                     recentRoutes = routeStore.recentRoutes(stations).map { recent ->
                         RecentRoute(canonicalStation(recent.origin), canonicalStation(recent.destination))
                     }
@@ -1095,8 +1097,8 @@ class TrainViewModel @JvmOverloads constructor(
             favouriteStations = stationPreferences.favourites(stations)
             replaceServiceMonitors(backup.monitoredServices)
             replaceStationMonitors(backup.stationMonitors)
-            commuterAlerts = commuterAlertStore.replace(backup.commuterAlerts)
-            CommuterAlertScheduler.rescheduleAll(getApplication())
+            // The alarms of the reminders the file does not contain are cancelled with them.
+            commuterAlerts = CommuterAlertScheduler.replaceAll(getApplication(), commuterAlertStore, backup.commuterAlerts)
             updateMobilityPreferences(backup.mobilityPreferences)
             backup.punctualityHistory?.let { punctualityHistory = punctualityStore.replace(it) }
             backup.savedTimetables?.let { SavedTimetableStore.replace(getApplication(), it) }

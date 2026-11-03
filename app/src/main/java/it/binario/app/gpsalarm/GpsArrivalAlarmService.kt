@@ -47,6 +47,7 @@ class GpsArrivalAlarmService : Service() {
     private val watchdog = object : Runnable {
         override fun run() {
             checkStillAllowed()
+            if (!finished) checkPowerMode(System.currentTimeMillis())
             if (!finished) {
                 target?.let { current -> refreshTracked(current, System.currentTimeMillis()) }
                 handler.postDelayed(this, WATCHDOG_INTERVAL_MILLIS)
@@ -56,7 +57,13 @@ class GpsArrivalAlarmService : Service() {
     private var target: GpsArrivalAlarmTarget? = null
     private var precise = false
     private var providers: List<String> = emptyList()
+    private var availableProviders: Collection<String> = emptyList()
     private var intervalMillis = 0L
+    /** Network fixes and a longer cadence far from the stop or before the departure ([GpsArrivalAlarmPolicy.lowPower]). */
+    private var lowPower = false
+    private var lowPowerSince = 0L
+    private var lastAcceptedFixAt = 0L
+    private var lastRemainingMeters: Double? = null
     private var finished = true
     private var tracker: GpsTrainTracking.Tracker? = null
     /** Whether the followed trip includes this train: only then is the delay estimated in alarm mode. */
@@ -124,9 +131,11 @@ class GpsArrivalAlarmService : Service() {
             return
         }
         val locationManager = getSystemService(LocationManager::class.java)
-        providers = locationManager?.let {
-            GpsArrivalAlarmPolicy.locationProviders(precise, Build.VERSION.SDK_INT, it.allProviders)
-        }.orEmpty()
+        availableProviders = locationManager?.allProviders.orEmpty()
+        providers = GpsArrivalAlarmPolicy.locationProviders(precise, Build.VERSION.SDK_INT, availableProviders)
+        lowPower = false
+        lastAcceptedFixAt = 0L
+        lastRemainingMeters = null
         if (locationManager == null || providers.isEmpty() || !LocationManagerCompat.isLocationEnabled(locationManager)) {
             finish(GpsArrivalAlarmEndReason.LOCATION_UNAVAILABLE)
             return
@@ -134,7 +143,7 @@ class GpsArrivalAlarmService : Service() {
         // An estimate is never persisted: it is not offered again after a restart.
         if (!newTarget.isEstimate) GpsArrivalAlarmStore(this).saveActiveTarget(newTarget)
         GpsArrivalAlarmRuntime.markActive(newTarget, precise)
-        requestUpdates(GpsArrivalAlarmPolicy.nextIntervalMillis(null))
+        requestUpdates(GpsArrivalAlarmPolicy.nextIntervalMillis(null), wantsLowPower(newTarget, null, System.currentTimeMillis()))
         if (!finished) handler.postDelayed(watchdog, WATCHDOG_INTERVAL_MILLIS)
     }
 
@@ -186,10 +195,37 @@ class GpsArrivalAlarmService : Service() {
         when (val decision = GpsArrivalAlarmPolicy.evaluate(fix, current.latitude, current.longitude, radius)) {
             is GpsFixDecision.Arrived -> ring(current)
             is GpsFixDecision.Approaching -> {
-                val next = GpsArrivalAlarmPolicy.nextIntervalMillis(decision.remainingMeters)
-                if (next != intervalMillis) requestUpdates(next)
+                lastAcceptedFixAt = now
+                lastRemainingMeters = decision.remainingMeters
+                val low = wantsLowPower(current, decision.remainingMeters, now)
+                val maxInterval = if (low) GpsArrivalAlarmPolicy.LOW_POWER_MAX_INTERVAL_MILLIS else GpsArrivalAlarmPolicy.MAX_INTERVAL_MILLIS
+                val next = GpsArrivalAlarmPolicy.nextIntervalMillis(decision.remainingMeters, maxInterval)
+                if (next != intervalMillis || low != lowPower) requestUpdates(next, low)
             }
             is GpsFixDecision.Rejected -> Unit
+        }
+    }
+
+    /** Whether the alarm may listen with less power now; the train's first stop on the route gives its departure. */
+    private fun wantsLowPower(current: GpsArrivalAlarmTarget, remainingMeters: Double?, now: Long): Boolean = GpsArrivalAlarmPolicy.lowPower(
+        precise = precise,
+        estimating = current.isEstimate || followed,
+        remainingMeters = remainingMeters,
+        nowEpochMillis = now,
+        departureEpochMillis = current.route?.stops?.firstOrNull()?.scheduledEpochMillis,
+        arrivalEpochMillis = current.arrivalEpochMillis
+    )
+
+    /**
+     * Back to high accuracy when low power no longer applies (the train left, the arrival is near, the trip is now
+     * followed) or when the network gave no usable fix for [GpsArrivalAlarmPolicy.LOW_POWER_FIX_TIMEOUT_MILLIS].
+     */
+    private fun checkPowerMode(now: Long) {
+        val current = target ?: return
+        if (!lowPower || current.isEstimate) return
+        val starved = now - maxOf(lastAcceptedFixAt, lowPowerSince) > GpsArrivalAlarmPolicy.LOW_POWER_FIX_TIMEOUT_MILLIS
+        if (starved || !wantsLowPower(current, lastRemainingMeters, now)) {
+            requestUpdates(GpsArrivalAlarmPolicy.nextIntervalMillis(lastRemainingMeters), lowPower = false)
         }
     }
 
@@ -250,7 +286,7 @@ class GpsArrivalAlarmService : Service() {
         }
     }
 
-    private fun requestUpdates(nextIntervalMillis: Long) {
+    private fun requestUpdates(nextIntervalMillis: Long, lowPower: Boolean = this.lowPower) {
         val current = target ?: return
         val locationManager = getSystemService(LocationManager::class.java) ?: return
         val permitted = listOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION).any {
@@ -261,8 +297,18 @@ class GpsArrivalAlarmService : Service() {
             return
         }
         val remaining = (current.expiresAtEpochMillis - System.currentTimeMillis()).coerceAtLeast(1L)
+        // Low power listens to the network provider like approximate access does; without one, to the usual providers.
+        val wanted = GpsArrivalAlarmPolicy.locationProviders(precise && !lowPower, Build.VERSION.SDK_INT, availableProviders)
+            .ifEmpty { GpsArrivalAlarmPolicy.locationProviders(precise, Build.VERSION.SDK_INT, availableProviders) }
+        if (wanted != providers) {
+            // A provider left out keeps its registration otherwise.
+            releaseLocation()
+            providers = wanted
+        }
         val request = LocationRequestCompat.Builder(nextIntervalMillis)
-            .setQuality(if (precise) LocationRequestCompat.QUALITY_HIGH_ACCURACY else LocationRequestCompat.QUALITY_BALANCED_POWER_ACCURACY)
+            .setQuality(
+                if (precise && !lowPower) LocationRequestCompat.QUALITY_HIGH_ACCURACY else LocationRequestCompat.QUALITY_BALANCED_POWER_ACCURACY
+            )
             .setMinUpdateIntervalMillis(nextIntervalMillis)
             // Android itself ends the request at the expiry even if this service misbehaves.
             .setDurationMillis(remaining)
@@ -282,7 +328,13 @@ class GpsArrivalAlarmService : Service() {
             finish(GpsArrivalAlarmEndReason.PERMISSION_REVOKED)
             return
         }
-        if (registered == 0) finish(GpsArrivalAlarmEndReason.LOCATION_UNAVAILABLE) else intervalMillis = nextIntervalMillis
+        if (registered == 0) {
+            finish(GpsArrivalAlarmEndReason.LOCATION_UNAVAILABLE)
+        } else {
+            intervalMillis = nextIntervalMillis
+            if (lowPower && !this.lowPower) lowPowerSince = System.currentTimeMillis()
+            this.lowPower = lowPower
+        }
     }
 
     // Removing a listener must also work after the permission was revoked, so it is not guarded

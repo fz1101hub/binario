@@ -22,6 +22,14 @@ internal enum class LiveChannel(val id: String, val nameRes: Int, val descriptio
     TRAIN_ALERTS("binario_train_alerts", R.string.train_alerts_channel_name, R.string.train_alerts_channel_description, NotificationManager.IMPORTANCE_DEFAULT),
     STRIKES("binario_strikes", R.string.strike_reminder_channel_name, R.string.strike_reminder_channel_description, NotificationManager.IMPORTANCE_DEFAULT),
 
+    /** Cancellation, platform change or connection at risk on the followed trip: with sound, once per change. */
+    FOLLOWED_TRIP_ALERTS(
+        "binario_followed_trip_alerts",
+        R.string.followed_trip_alerts_channel_name,
+        R.string.followed_trip_alerts_channel_description,
+        NotificationManager.IMPORTANCE_HIGH
+    ),
+
     /** "Il treno sta arrivando": time-sensitive, like the commuter alerts. */
     APPROACH("binario_approach_alerts", R.string.approach_alert_channel_name, R.string.approach_alert_channel_description, NotificationManager.IMPORTANCE_HIGH);
 
@@ -39,6 +47,7 @@ internal enum class LiveChannel(val id: String, val nameRes: Int, val descriptio
 internal object LiveNotifications {
     const val FOLLOWED_TRIP_ID = 0x5EA1
     const val STRIKE_ID = 0x5EA2
+    const val FOLLOWED_TRIP_ALERT_ID = 0x5EA3
 
     /** Whether Binario may post now: the runtime permission (Android 13+) and the app's notification switch. */
     fun allowed(context: Context): Boolean {
@@ -104,7 +113,7 @@ object LiveNotificationScheduling {
     fun onAppStart(context: Context) {
         val app = context.applicationContext
         runCatching { FollowedTripScheduler.reschedule(app) }
-        runCatching { TrainAlertScheduler.reschedule(app) }
+        runCatching { TrainAlertScheduler.reschedule(app, keepPending = true) }
         runCatching { StrikeReminderScheduler.reschedule(app, keepPending = true) }
         runCatching { PunctualityRecorderScheduler.reschedule(app) }
         runCatching { ApproachAlertScheduler.reschedule(app) }

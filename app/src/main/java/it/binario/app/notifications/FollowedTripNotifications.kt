@@ -12,6 +12,7 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import it.binario.app.R
+import it.binario.app.StopAlarmScheduler
 import it.binario.app.data.RailTime
 import it.binario.app.data.ServiceStatus
 import it.binario.app.data.TrainService
@@ -60,8 +61,35 @@ internal class FollowedTripStore(context: Context) {
         putLong(KEY_UPDATED, at)
     }
 
+    /** The changes already notified with sound for this trip ([FollowedTripAlerts]); cleared with the trip. */
+    fun alertedKeys(): Set<String> = preferences.getStringSet(KEY_ALERTED, null)?.toSet().orEmpty()
+
+    fun recordAlerted(keys: Collection<String>) = preferences.edit { putStringSet(KEY_ALERTED, alertedKeys() + keys) }
+
+    /** The boarding platform the last refresh read, to notice a change the source does not mark itself. */
+    fun lastBoarding(): FollowedTripAlerts.BoardingPlatform? {
+        val platform = preferences.getString(KEY_BOARD_PLATFORM, null) ?: return null
+        return FollowedTripAlerts.BoardingPlatform(preferences.getInt(KEY_BOARD_LEG, 0), preferences.getString(KEY_BOARD_STATION, null).orEmpty(), platform, null)
+    }
+
+    fun recordBoarding(boarding: FollowedTripAlerts.BoardingPlatform?) = preferences.edit {
+        if (boarding == null) {
+            remove(KEY_BOARD_LEG)
+            remove(KEY_BOARD_STATION)
+            remove(KEY_BOARD_PLATFORM)
+        } else {
+            putInt(KEY_BOARD_LEG, boarding.legIndex)
+            putString(KEY_BOARD_STATION, boarding.station)
+            putString(KEY_BOARD_PLATFORM, boarding.platform)
+        }
+    }
+
     private companion object {
         const val KEY_TRIP = "trip"
+        const val KEY_ALERTED = "alerted"
+        const val KEY_BOARD_LEG = "board_leg"
+        const val KEY_BOARD_STATION = "board_station"
+        const val KEY_BOARD_PLATFORM = "board_platform"
         const val KEY_DELAY = "last_delay"
         const val KEY_TITLE = "last_title"
         const val KEY_TEXT = "last_text"
@@ -236,6 +264,8 @@ class FollowedTripWorker(appContext: Context, params: WorkerParameters) : Corout
         val now = Instant.now()
         val services = lookUp(context, trip, now)
         FollowedTripLiveCache.record(trip.id, services, now)
+        // A stop alarm on one of these trains follows its expected time: a late train does not ring early.
+        runCatching { StopAlarmScheduler.follow(context, services, now.toEpochMilli()) }
         val delay = FollowedTripStatus.arrivalDelayMinutes(trip, services)
         // The window end (and the notification's timeout) follows the delay just read, not the previous one.
         val end = FollowedTripPlanner.windowEnd(trip, delay ?: store.lastDelayMinutes)
@@ -254,6 +284,8 @@ class FollowedTripWorker(appContext: Context, params: WorkerParameters) : Corout
         if (LiveNotifications.post(context, LiveNotifications.FOLLOWED_TRIP_ID, notification) && services.any { it != null }) {
             store.recordShown(delay, content.title, content.recordedText, now.toEpochMilli())
         }
+        // A cancellation, a platform change or a connection at risk also gets one notification with sound.
+        if (services.any { it != null }) runCatching { FollowedTripAlertNotifier.notify(context, store, trip, view, services, now) }
         return RefreshResult(delay ?: store.lastDelayMinutes, view.countdown.takeIf { services.any { it != null } })
     }
 

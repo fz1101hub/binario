@@ -646,6 +646,17 @@
     <string name="stop_alarm_inexact">已为 %1$s 设置闹钟，但由于未允许精确闹钟，Android 可能会延迟提醒。</string>
     <string name="commuter_alert_scheduled">提醒已保存，并已在设备上安排。</string>
     <string name="commuter_alert_scheduled_inexact">提醒已保存，并以非精确模式安排：由于未允许精确闹钟，Android 可能会延迟提醒。</string>
+    <string name="stop_alarms_active_title">已设置的到站闹钟</string>
+    <string name="stop_alarm_active_row">%1$s · 列车 %2$s · 预计到达 %3$s</string>
+    <string name="accessibility_cancel_stop_alarm">取消 %1$s 的闹钟</string>
+    <string name="exact_alarm_note">Android 未允许 Binario 使用精确闹钟：到站闹钟和通勤提醒可能会延迟。</string>
+    <string name="exact_alarm_action">允许精确闹钟</string>
+    <string name="background_status_title">后台活动</string>
+    <string name="background_status_notifications_on">已允许通知</string>
+    <string name="background_status_notifications_off">未允许通知：闹钟、提醒和实时通知无法显示。</string>
+    <string name="background_status_exact_on">已允许精确闹钟</string>
+    <string name="background_status_battery_optimized">Binario 的电池优化已开启：Android 可能会推迟后台检查。</string>
+    <string name="background_status_battery_unrestricted">Binario 的电池优化已关闭</string>
     <string name="commuter_alert_quiet_hours_feedback">提醒已保存但未安排：提醒时间落在 22:00–07:00 静默时段内。</string>
     <string name="commuter_alert_invalid_time_feedback">提醒已保存但未安排：时间无效。</string>
     <string name="commuter_alert_disabled_feedback">提醒已保存，但已停用。</string>
@@ -1060,6 +1071,8 @@
     <!-- Live notifications: followed trip, train notices, MIT strikes, connections and punctuality (November 2026). -->
     <string name="followed_trip_channel_name">跟踪的行程</string>
     <string name="followed_trip_channel_description">你跟踪的行程的实时状态：晚点、下一停靠站和站台，无提示音。</string>
+    <string name="followed_trip_alerts_channel_name">跟踪行程的变化</string>
+    <string name="followed_trip_alerts_channel_description">跟踪的列车停运、出发站台变更或换乘有风险时发出有声提醒。22 点至 7 点之间提醒静音送达。</string>
     <string name="followed_trip_notification_toggle">显示行程状态通知</string>
     <string name="followed_trip_notification_toggle_description">从出发前 30 分钟到到达后 30 分钟：显示晚点、下一停靠站和站台，每 15 分钟更新一次。结束时自动关闭。</string>
     <string name="followed_trip_notification_pending">通知将于 %1$s 显示。</string>

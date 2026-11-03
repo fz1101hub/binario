@@ -661,6 +661,17 @@
     <string name="stop_alarm_inexact">Alarm set for %1$s, but Android may deliver it late because exact alarms are not allowed.</string>
     <string name="commuter_alert_scheduled">Alert saved and scheduled on the device.</string>
     <string name="commuter_alert_scheduled_inexact">Alert saved and scheduled in inexact mode: Android may deliver it late because exact alarms are not allowed.</string>
+    <string name="stop_alarms_active_title">Active stop alarms</string>
+    <string name="stop_alarm_active_row">%1$s · train %2$s · expected arrival %3$s</string>
+    <string name="accessibility_cancel_stop_alarm">Cancel the alarm for %1$s</string>
+    <string name="exact_alarm_note">Android does not allow Binario to set exact alarms: stop alarms and commuter alerts may arrive late.</string>
+    <string name="exact_alarm_action">Allow exact alarms</string>
+    <string name="background_status_title">Background activity</string>
+    <string name="background_status_notifications_on">Notifications allowed</string>
+    <string name="background_status_notifications_off">Notifications not allowed: alarms, alerts and live notifications cannot appear.</string>
+    <string name="background_status_exact_on">Exact alarms allowed</string>
+    <string name="background_status_battery_optimized">Battery optimisation on for Binario: Android may postpone background checks.</string>
+    <string name="background_status_battery_unrestricted">Battery optimisation off for Binario</string>
     <string name="commuter_alert_quiet_hours_feedback">Alert saved but not scheduled: the lead time falls in the quiet period 22:00–07:00.</string>
     <string name="commuter_alert_invalid_time_feedback">Alert saved but not scheduled: the time is invalid.</string>
     <string name="commuter_alert_disabled_feedback">Alert saved but disabled.</string>
@@ -1084,6 +1095,8 @@
     <!-- Live notifications: followed trip, train notices, MIT strikes, connections and punctuality (November 2026). -->
     <string name="followed_trip_channel_name">Followed trip</string>
     <string name="followed_trip_channel_description">Live status of the trip you follow: delay, next stop and platform, without sound.</string>
+    <string name="followed_trip_alerts_channel_name">Followed trip changes</string>
+    <string name="followed_trip_alerts_channel_description">An alert with sound when the followed train is cancelled, changes its departure platform or the connection is at risk. Between 22:00 and 07:00 it arrives silently.</string>
     <string name="followed_trip_notification_toggle">Notification with the trip status</string>
     <string name="followed_trip_notification_toggle_description">From 30 minutes before departure to 30 minutes after arrival: delay, next stop and platform, updated every 15 minutes. It closes by itself at the end.</string>
     <string name="followed_trip_notification_pending">The notification will appear at %1$s.</string>

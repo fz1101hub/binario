@@ -99,10 +99,20 @@ object TrainAlertWatch {
         return subscriptions.filter { subscription -> window(subscription, today, followed, zone)?.contains(now) == true }
     }
 
-    /** The next check: in [INTERVAL] while a window is open, else the next window opening today or tomorrow. */
-    fun nextRun(subscriptions: List<TrainAlertSubscription>, followed: List<FollowedTrainTimes>, now: Instant, zone: ZoneId = RailTime.defaultZone): Instant? {
+    /**
+     * The next check: [INTERVAL] after the last one ([lastCheckAt], at once when none is recorded or it is older)
+     * while a window is open, else the next window opening today or tomorrow. Planning from the recorded check, not
+     * from now, means that opening the app often never postpones the checks.
+     */
+    fun nextRun(
+        subscriptions: List<TrainAlertSubscription>,
+        followed: List<FollowedTrainTimes>,
+        now: Instant,
+        zone: ZoneId = RailTime.defaultZone,
+        lastCheckAt: Instant? = now
+    ): Instant? {
         if (subscriptions.isEmpty()) return null
-        if (due(subscriptions, followed, now, zone).isNotEmpty()) return now.plus(INTERVAL)
+        if (due(subscriptions, followed, now, zone).isNotEmpty()) return lastCheckAt?.plus(INTERVAL)?.takeIf { it.isAfter(now) } ?: now
         val today = now.atZone(zone).toLocalDate()
         return (0L..1L).asSequence().flatMap { offset ->
             subscriptions.asSequence().mapNotNull { window(it, today.plusDays(offset), followed, zone)?.start }
@@ -124,6 +134,33 @@ object TrainAlertWatch {
             .sortedByDescending { it.value }
             .take(MAX_SEEN)
             .associate { it.key to it.value }
+    }
+
+    /** The keys of the trains that may be watched now: the favourites and the trains of the followed trip. */
+    fun watchedKeys(favouriteNumbers: Collection<String>, followedNumbers: Collection<String>): Set<String> =
+        (favouriteNumbers + followedNumbers).mapTo(linkedSetOf(), ::key)
+
+    /**
+     * The bells after the favourites or the followed trip changed. A train that was watched ([previouslyWatched]) and
+     * is now neither favourite nor followed loses its bell, so it never switches back on by itself; one that becomes
+     * watched again starts at [now], so the notices published meanwhile are not notified all at once. Without a
+     * previous state (the first run of this version) nothing changes.
+     */
+    fun prune(
+        subscriptions: List<TrainAlertSubscription>,
+        previouslyWatched: Set<String>?,
+        watched: Set<String>,
+        now: Instant
+    ): List<TrainAlertSubscription> {
+        if (previouslyWatched == null) return subscriptions
+        return subscriptions.mapNotNull { subscription ->
+            when {
+                subscription.key in previouslyWatched && subscription.key !in watched -> null
+                subscription.key !in previouslyWatched && subscription.key in watched ->
+                    subscription.copy(subscribedAt = maxOf(subscription.subscribedAt, now))
+                else -> subscription
+            }
+        }
     }
 
     /** Only the trains still favourite or in the followed trip are watched. */

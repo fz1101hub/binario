@@ -132,7 +132,8 @@ class StationBoardAggregateService(
         }
         val boards = returnedBoards - invalidBoards.toSet()
         if (boards.isEmpty()) {
-            val details = attempts.filterIsInstance<ProviderAttempt.Failure>()
+            val failures = attempts.filterIsInstance<ProviderAttempt.Failure>()
+            val details = failures
                 .map { attempt ->
                     listOf(attempt.providerName, attempt.message.trim())
                         .filter { it.isNotBlank() }
@@ -147,7 +148,8 @@ class StationBoardAggregateService(
                     "Le fonti tabellone hanno restituito dati con identità stazione o tipo di tabellone incoerenti; il risultato è stato scartato."
                 } else {
                     details.ifBlank { "Le fonti tabellone non hanno restituito dati utilizzabili." }
-                }
+                },
+                allUnsupported = invalidBoards.isEmpty() && failures.isNotEmpty() && failures.all { it.unsupported }
             )
         }
 
@@ -418,7 +420,8 @@ fun StationBoardEntry.withoutExpiredObservations(now: Instant): StationBoardEntr
 
 sealed interface StationBoardAggregateResult {
     data class Success(val board: StationBoardAggregate, val isComplete: Boolean = true) : StationBoardAggregateResult
-    data class Unavailable(val message: String) : StationBoardAggregateResult
+    /** [allUnsupported]: every source answered that it does not cover the station, so asking again cannot help. */
+    data class Unavailable(val message: String, val allUnsupported: Boolean = false) : StationBoardAggregateResult
 }
 
 private sealed interface ProviderAttempt {

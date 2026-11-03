@@ -38,6 +38,19 @@ data class WidgetDisplayConfiguration(
 
 fun WidgetDisplayConfiguration.widgetTitle(fallback: String = targetLabel): String = displayName.trim().ifBlank { fallback }
 
+/**
+ * The first versions saved only the id of a saved route (3 or 4 fields, no stations). Such a widget can neither load
+ * nor match a snapshot: it takes the stations of the saved route with that id, or asks to be configured again.
+ */
+internal object WidgetConfigurationMigration {
+    /** The configuration with the stations of its saved route; null when it needs none or no saved route matches. */
+    fun resolve(configuration: WidgetDisplayConfiguration, savedRoutes: List<SavedRoute>): WidgetDisplayConfiguration? {
+        if (configuration.routeTarget() != null) return null
+        val route = savedRoutes.firstOrNull { it.id == configuration.targetId } ?: return null
+        return configuration.copy(routeOrigin = route.outwardOrigin, routeDestination = route.outwardDestination)
+    }
+}
+
 class WidgetConfigurationStore(context: Context) {
     private val preferences = context.getSharedPreferences("binario_widget_configuration_v1", Context.MODE_PRIVATE)
 

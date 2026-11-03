@@ -11,7 +11,6 @@ import android.view.View
 import android.widget.RemoteViews
 import androidx.core.content.ContextCompat
 import androidx.core.content.edit
-import androidx.work.BackoffPolicy
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
 import androidx.work.Data
@@ -24,6 +23,7 @@ import it.binario.app.MainActivity
 import it.binario.app.R
 import it.binario.app.UiMessage
 import it.binario.app.UiMessageKey
+import it.binario.app.data.RailTime
 import it.binario.app.data.Station
 import it.binario.app.data.core.BoardKind
 import it.binario.app.data.repository.BinarioDataGraph
@@ -32,6 +32,7 @@ import it.binario.app.data.repository.StationBoardAggregateService
 import it.binario.app.resolve
 import it.binario.app.updateTimeMessage
 import java.time.Instant
+import java.time.ZonedDateTime
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -231,13 +232,14 @@ class StationWidgetProvider : AppWidgetProvider() {
 
 /** Loads the board once per configured station; widgets showing the same station share the request. */
 internal object StationWidgetRefresher {
-    /** Refreshes the station widgets in [widgetIds], all of them when null. False when a retry may help. */
-    suspend fun refresh(context: Context, widgetIds: Set<Int>?): Boolean {
+    /** Refreshes the station widgets in [widgetIds], all of them when null. Returns the widgets a retry may help. */
+    suspend fun refresh(context: Context, widgetIds: Set<Int>?): Set<Int> {
+        if (widgetIds == null) WidgetInstances.pruneOrphans(context)
         val widgets = StationWidgetConfigurationStore(context).all().filter { (widgetId, _) -> widgetIds == null || widgetId in widgetIds }
-        if (widgets.isEmpty()) return true
+        if (widgets.isEmpty()) return emptySet()
         val service = StationBoardAggregateService(BinarioDataGraph.stationBoardDisplayProviders())
         val attemptAt = System.currentTimeMillis()
-        var failed = false
+        val failed = mutableSetOf<Int>()
         widgets.groupBy { (_, configuration) -> configuration.station.id }.values.forEach { group ->
             val station = group.first().second.station
             group.forEach { (widgetId, _) -> WidgetAutoRefreshStore.recordAttempt(context, WidgetKind.STATION, widgetId, attemptAt) }
@@ -246,45 +248,77 @@ internal object StationWidgetRefresher {
                 val snapshot = StationWidgetSnapshot.fromBoard(result.board, Instant.now())
                 group.forEach { (widgetId, _) -> StationWidgetStateStore.save(context, widgetId, snapshot) }
             } else {
-                // Without any active board source a retry cannot help; a failed request can.
-                if (service.hasProviders) failed = true
+                // Without any active board source, or when every source says the station is not covered, a retry
+                // cannot help; a failed request can.
+                val final = result == null || (result as? StationBoardAggregateResult.Unavailable)?.allUnsupported == true
+                if (!final) group.forEach { (widgetId, _) -> failed += widgetId }
                 group.forEach { (widgetId, _) ->
                     StationWidgetStateStore.markUnavailable(context, widgetId, UiMessage(UiMessageKey.STATION_BOARD_UNAVAILABLE))
                 }
             }
         }
         StationWidgetProvider.refreshAll(context)
-        return !failed
+        return failed
     }
 }
 
-/** The refresh button of the station widget (and its periodic refresh before the settings existed). */
+/** The refresh button of the station widget; a temporary failure is retried as [WidgetRefreshRetryPolicy] says. */
 class StationWidgetRefreshWorker(appContext: Context, params: WorkerParameters) : CoroutineWorker(appContext, params) {
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
-        val ids = inputData.getInt(KEY_WIDGET_ID, AppWidgetManager.INVALID_APPWIDGET_ID)
+        val context = applicationContext
+        val single = inputData.getInt(KEY_WIDGET_ID, AppWidgetManager.INVALID_APPWIDGET_ID)
             .takeIf { it != AppWidgetManager.INVALID_APPWIDGET_ID }?.let { setOf(it) }
-        if (StationWidgetRefresher.refresh(applicationContext, ids)) Result.success() else Result.retry()
+        val attempt = inputData.getInt(KEY_ATTEMPT, 1)
+        val failed = StationWidgetRefresher.refresh(context, WidgetRefreshRetryPolicy.decodeIds(inputData.getString(KEY_WIDGET_IDS)) ?: single)
+        if (failed.isNotEmpty() && !isStopped) {
+            val settings = StationWidgetConfigurationStore(context).all()
+                .filter { (widgetId, _) -> widgetId in failed }
+                .associate { (widgetId, configuration) -> widgetId to configuration.settings.autoRefresh }
+            WidgetRefreshRetryPolicy.retry(settings, attempt, ZonedDateTime.now(RailTime.defaultZone))?.let { retry ->
+                // Chained after this run, under the same name: a new tap replaces it.
+                enqueue(
+                    context,
+                    inputData.getString(KEY_WORK) ?: ONE_TIME_WORK,
+                    retry.widgetIds,
+                    attempt + 1,
+                    retry.delay.toMillis(),
+                    ExistingWorkPolicy.APPEND_OR_REPLACE
+                )
+            }
+        }
+        Result.success()
     }
 
     companion object {
         private const val ONE_TIME_WORK = "binario-station-widget-refresh"
         private const val KEY_WIDGET_ID = "widget_id"
+        private const val KEY_WIDGET_IDS = "widget_ids"
+        private const val KEY_ATTEMPT = "attempt"
+        private const val KEY_WORK = "work"
         private val networkConnected = Constraints.Builder()
             .setRequiredNetworkType(NetworkType.CONNECTED)
             .build()
 
         /** Refreshes every station widget, or only [widgetId] (after the nearest station was chosen). */
-        fun enqueue(context: Context, widgetId: Int? = null) {
+        fun enqueue(context: Context, widgetId: Int? = null) = enqueue(
+            context,
+            if (widgetId == null) ONE_TIME_WORK else "$ONE_TIME_WORK-$widgetId",
+            widgetId?.let { setOf(it) },
+            1,
+            0L,
+            ExistingWorkPolicy.REPLACE
+        )
+
+        private fun enqueue(context: Context, work: String, widgetIds: Set<Int>?, attempt: Int, delayMillis: Long, policy: ExistingWorkPolicy) {
+            val input = Data.Builder().putInt(KEY_ATTEMPT, attempt).putString(KEY_WORK, work)
+                .apply { widgetIds?.let { putString(KEY_WIDGET_IDS, WidgetRefreshRetryPolicy.encodeIds(it)) } }
+                .build()
             val request = OneTimeWorkRequestBuilder<StationWidgetRefreshWorker>()
                 .setConstraints(networkConnected)
-                .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 15, TimeUnit.MINUTES)
-                .apply { widgetId?.let { setInputData(Data.Builder().putInt(KEY_WIDGET_ID, it).build()) } }
+                .setInitialDelay(delayMillis, TimeUnit.MILLISECONDS)
+                .setInputData(input)
                 .build()
-            WorkManager.getInstance(context).enqueueUniqueWork(
-                if (widgetId == null) ONE_TIME_WORK else "$ONE_TIME_WORK-$widgetId",
-                ExistingWorkPolicy.REPLACE,
-                request
-            )
+            WorkManager.getInstance(context).enqueueUniqueWork(work, policy, request)
         }
 
         /** Kept for callers of the earlier API: the scheduler decides now whether any refresh is due. */

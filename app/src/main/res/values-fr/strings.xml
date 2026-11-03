@@ -676,6 +676,17 @@
     <string name="stop_alarm_inexact">Alarme réglée à %1$s, mais Android peut la déclencher en retard car les alarmes exactes ne sont pas autorisées.</string>
     <string name="commuter_alert_scheduled">Alerte enregistrée et planifiée sur l’appareil.</string>
     <string name="commuter_alert_scheduled_inexact">Alerte enregistrée et planifiée en mode approximatif : Android peut la déclencher en retard car les alarmes exactes ne sont pas autorisées.</string>
+    <string name="stop_alarms_active_title">Alarmes d’arrêt actives</string>
+    <string name="stop_alarm_active_row">%1$s · train %2$s · arrivée prévue %3$s</string>
+    <string name="accessibility_cancel_stop_alarm">Annuler l’alarme pour %1$s</string>
+    <string name="exact_alarm_note">Android n’autorise pas Binario à régler des alarmes exactes : les alarmes d’arrêt et les alertes de navetteur peuvent arriver en retard.</string>
+    <string name="exact_alarm_action">Autoriser les alarmes exactes</string>
+    <string name="background_status_title">Activité en arrière-plan</string>
+    <string name="background_status_notifications_on">Notifications autorisées</string>
+    <string name="background_status_notifications_off">Notifications non autorisées : les alarmes, alertes et notifications en temps réel ne peuvent pas s’afficher.</string>
+    <string name="background_status_exact_on">Alarmes exactes autorisées</string>
+    <string name="background_status_battery_optimized">Optimisation de la batterie active pour Binario : Android peut différer les vérifications en arrière-plan.</string>
+    <string name="background_status_battery_unrestricted">Optimisation de la batterie désactivée pour Binario</string>
     <string name="commuter_alert_quiet_hours_feedback">Alerte enregistrée mais non planifiée : l’anticipation tombe dans la plage silencieuse 22:00–07:00.</string>
     <string name="commuter_alert_invalid_time_feedback">Alerte enregistrée mais non planifiée : l’heure n’est pas valide.</string>
     <string name="commuter_alert_disabled_feedback">Alerte enregistrée mais désactivée.</string>
@@ -1108,6 +1119,8 @@
     <!-- Notifications en temps réel : trajet suivi, avis sur les trains, grèves du MIT, correspondances et ponctualité (novembre 2026). -->
     <string name="followed_trip_channel_name">Trajet suivi</string>
     <string name="followed_trip_channel_description">État en temps réel du trajet suivi : retard, prochain arrêt et voie, sans son.</string>
+    <string name="followed_trip_alerts_channel_name">Changements du trajet suivi</string>
+    <string name="followed_trip_alerts_channel_description">Une alerte sonore quand le train suivi est supprimé, change de voie de départ ou que la correspondance est compromise. Entre 22 h et 7 h, elle arrive sans son.</string>
     <string name="followed_trip_notification_toggle">Notification avec l’état du trajet</string>
     <string name="followed_trip_notification_toggle_description">De 30 minutes avant le départ à 30 minutes après l’arrivée : retard, prochain arrêt et voie, mis à jour toutes les 15 minutes. Elle se ferme seule à la fin.</string>
     <string name="followed_trip_notification_pending">La notification apparaîtra à %1$s.</string>

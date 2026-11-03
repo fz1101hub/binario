@@ -646,6 +646,17 @@
     <string name="stop_alarm_inexact">Đã đặt báo thức cho %1$s, nhưng Android có thể báo trễ vì báo thức chính xác không được phép.</string>
     <string name="commuter_alert_scheduled">Đã lưu và lên lịch cảnh báo trên thiết bị.</string>
     <string name="commuter_alert_scheduled_inexact">Đã lưu và lên lịch cảnh báo ở chế độ gần đúng: Android có thể báo trễ vì báo thức chính xác không được phép.</string>
+    <string name="stop_alarms_active_title">Báo thức điểm dừng đang bật</string>
+    <string name="stop_alarm_active_row">%1$s · tàu %2$s · dự kiến đến %3$s</string>
+    <string name="accessibility_cancel_stop_alarm">Hủy báo thức cho %1$s</string>
+    <string name="exact_alarm_note">Android không cho phép Binario dùng báo thức chính xác: báo thức điểm dừng và cảnh báo đi làm có thể đến trễ.</string>
+    <string name="exact_alarm_action">Cho phép báo thức chính xác</string>
+    <string name="background_status_title">Hoạt động nền</string>
+    <string name="background_status_notifications_on">Đã cho phép thông báo</string>
+    <string name="background_status_notifications_off">Chưa cho phép thông báo: báo thức, cảnh báo và thông báo trực tiếp không thể hiển thị.</string>
+    <string name="background_status_exact_on">Đã cho phép báo thức chính xác</string>
+    <string name="background_status_battery_optimized">Tối ưu hóa pin đang bật cho Binario: Android có thể hoãn các lần kiểm tra nền.</string>
+    <string name="background_status_battery_unrestricted">Tối ưu hóa pin đang tắt cho Binario</string>
     <string name="commuter_alert_quiet_hours_feedback">Đã lưu cảnh báo nhưng chưa lên lịch: thời điểm báo trước rơi vào giờ yên tĩnh 22:00–07:00.</string>
     <string name="commuter_alert_invalid_time_feedback">Đã lưu cảnh báo nhưng chưa lên lịch: giờ không hợp lệ.</string>
     <string name="commuter_alert_disabled_feedback">Đã lưu cảnh báo nhưng đang tắt.</string>
@@ -1060,6 +1071,8 @@
     <!-- Live notifications: followed trip, train notices, MIT strikes, connections and punctuality (November 2026). -->
     <string name="followed_trip_channel_name">Chuyến đi đang theo dõi</string>
     <string name="followed_trip_channel_description">Trạng thái trực tiếp của chuyến đi bạn theo dõi: mức trễ, điểm dừng tiếp theo và sân ga, không phát âm thanh.</string>
+    <string name="followed_trip_alerts_channel_name">Thay đổi của chuyến đi đang theo dõi</string>
+    <string name="followed_trip_alerts_channel_description">Cảnh báo có âm thanh khi tàu đang theo dõi bị hủy, đổi sân ga khởi hành hoặc chuyến nối có nguy cơ lỡ. Từ 22 giờ đến 7 giờ cảnh báo đến không có âm thanh.</string>
     <string name="followed_trip_notification_toggle">Thông báo trạng thái chuyến đi</string>
     <string name="followed_trip_notification_toggle_description">Từ 30 phút trước giờ khởi hành đến 30 phút sau khi đến: mức trễ, điểm dừng tiếp theo và sân ga, cập nhật mỗi 15 phút. Tự đóng khi kết thúc.</string>
     <string name="followed_trip_notification_pending">Thông báo sẽ xuất hiện lúc %1$s.</string>

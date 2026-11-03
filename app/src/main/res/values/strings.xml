@@ -676,6 +676,17 @@
     <string name="stop_alarm_inexact">Sveglia impostata per %1$s, ma Android può consegnarla in ritardo perché gli allarmi esatti non sono consentiti.</string>
     <string name="commuter_alert_scheduled">Avviso salvato e pianificato sul dispositivo.</string>
     <string name="commuter_alert_scheduled_inexact">Avviso salvato e pianificato in modalità approssimata: Android può consegnarlo in ritardo perché gli allarmi esatti non sono consentiti.</string>
+    <string name="stop_alarms_active_title">Sveglie fermata attive</string>
+    <string name="stop_alarm_active_row">%1$s · treno %2$s · arrivo previsto %3$s</string>
+    <string name="accessibility_cancel_stop_alarm">Annulla la sveglia per %1$s</string>
+    <string name="exact_alarm_note">Android non consente a Binario le sveglie esatte: sveglie fermata e avvisi pendolare possono arrivare in ritardo.</string>
+    <string name="exact_alarm_action">Consenti sveglie esatte</string>
+    <string name="background_status_title">Attività in background</string>
+    <string name="background_status_notifications_on">Notifiche consentite</string>
+    <string name="background_status_notifications_off">Notifiche non consentite: sveglie, avvisi e notifiche in tempo reale non possono comparire.</string>
+    <string name="background_status_exact_on">Sveglie esatte consentite</string>
+    <string name="background_status_battery_optimized">Ottimizzazione batteria attiva per Binario: Android può rinviare i controlli in background.</string>
+    <string name="background_status_battery_unrestricted">Ottimizzazione batteria non attiva per Binario</string>
     <string name="commuter_alert_quiet_hours_feedback">Avviso salvato ma non pianificato: l’anticipo cade nella fascia silenziosa 22:00–07:00.</string>
     <string name="commuter_alert_invalid_time_feedback">Avviso salvato ma non pianificato: l’orario non è valido.</string>
     <string name="commuter_alert_disabled_feedback">Avviso salvato ma disattivato.</string>
@@ -1108,6 +1119,8 @@
     <!-- Notifiche in tempo reale: viaggio seguito, avvisi sui treni, scioperi MIT, coincidenze e puntualità (novembre 2026). -->
     <string name="followed_trip_channel_name">Viaggio seguito</string>
     <string name="followed_trip_channel_description">Stato in tempo reale del viaggio che segui: ritardo, prossima fermata e binario, senza suono.</string>
+    <string name="followed_trip_alerts_channel_name">Cambi del viaggio seguito</string>
+    <string name="followed_trip_alerts_channel_description">Un avviso con suono quando il treno seguito viene soppresso, cambia binario di partenza o la coincidenza è a rischio. Tra le 22 e le 7 arriva senza suono.</string>
     <string name="followed_trip_notification_toggle">Notifica con lo stato del viaggio</string>
     <string name="followed_trip_notification_toggle_description">Da 30 minuti prima della partenza a 30 minuti dopo l’arrivo: ritardo, prossima fermata e binario, aggiornati ogni 15 minuti. Si chiude da sola alla fine.</string>
     <string name="followed_trip_notification_pending">La notifica comparirà alle %1$s.</string>

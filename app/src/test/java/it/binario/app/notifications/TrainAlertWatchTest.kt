@@ -119,4 +119,35 @@ class TrainAlertWatchTest {
         status = ServiceStatus.ON_TIME,
         stops = emptyList()
     )
+
+    @Test fun `opening the app inside a window never postpones the next check`() {
+        val morning = subscription("2153", "08:30")
+
+        // Last check at 9:00: an app start at 9:05, 9:10 or 9:14 still plans it for 9:15, not 15 minutes later.
+        listOf("09:05", "09:10", "09:14").forEach { opened ->
+            assertEquals(at("09:15"), TrainAlertWatch.nextRun(listOf(morning), emptyList(), at(opened), zone, lastCheckAt = at("09:00")))
+        }
+        // A check overdue, or none recorded yet: at once.
+        assertEquals(at("09:40"), TrainAlertWatch.nextRun(listOf(morning), emptyList(), at("09:40"), zone, lastCheckAt = at("09:00")))
+        assertEquals(at("09:05"), TrainAlertWatch.nextRun(listOf(morning), emptyList(), at("09:05"), zone, lastCheckAt = null))
+    }
+
+    @Test fun `a bell is dropped when its train is no longer favourite or followed, and restarts when it comes back`() {
+        val kept = subscription("2153", "08:30")
+        val removed = subscription("2399", "21:15")
+        val back = subscription("4011", "12:00")
+        val now = at("10:00")
+        val previous = setOf(kept.key, removed.key)
+        val watched = TrainAlertWatch.watchedKeys(listOf("REG 2153"), listOf("4011"))
+
+        val pruned = TrainAlertWatch.prune(listOf(kept, removed, back), previous, watched, now)
+
+        assertEquals(listOf(kept.key, back.key), pruned.map { it.key })
+        assertEquals(subscribed, pruned.first().subscribedAt)
+        // The train watched again starts now: the notices published while it was not watched are not new.
+        assertEquals(now, pruned.last().subscribedAt)
+        assertTrue(TrainAlertWatch.newNotices(listOf(WatchedNotice("n1", "Sciopero", at("09:00"))), emptyMap(), pruned.last().subscribedAt).isEmpty())
+        // Without a recorded state (first run of this version) nothing is dropped.
+        assertEquals(listOf(kept, removed, back), TrainAlertWatch.prune(listOf(kept, removed, back), null, watched, now))
+    }
 }

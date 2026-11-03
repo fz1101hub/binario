@@ -36,6 +36,18 @@ internal class TrainAlertStore(context: Context) {
 
     fun unsubscribe(number: String) = saveSubscriptions(subscriptions().filterNot { it.key == TrainAlertWatch.key(number) })
 
+    fun replaceSubscriptions(subscriptions: List<TrainAlertSubscription>) = saveSubscriptions(subscriptions)
+
+    /** The keys of the favourite and followed trains at the last planning, to tell which ones left; null before any. */
+    fun watchedKeys(): Set<String>? = preferences.getStringSet(KEY_WATCHED, null)?.toSet()
+
+    fun saveWatchedKeys(keys: Set<String>) = preferences.edit { putStringSet(KEY_WATCHED, keys) }
+
+    /** When the last check started: the next one is planned from it. */
+    fun lastCheckAt(): Instant? = preferences.getLong(KEY_LAST_CHECK, 0L).takeIf { it > 0L }?.let(Instant::ofEpochMilli)
+
+    fun recordCheck(at: Instant) = preferences.edit { putLong(KEY_LAST_CHECK, at.toEpochMilli()) }
+
     fun seen(): Map<String, Long> = TrainAlertCodec.decodeSeen(preferences.getString(KEY_SEEN, null))
 
     fun saveSeen(seen: Map<String, Long>) = preferences.edit { putString(KEY_SEEN, TrainAlertCodec.encodeSeen(seen)) }
@@ -47,6 +59,8 @@ internal class TrainAlertStore(context: Context) {
     private companion object {
         const val KEY_SUBSCRIPTIONS = "subscriptions"
         const val KEY_SEEN = "seen"
+        const val KEY_WATCHED = "watched_keys"
+        const val KEY_LAST_CHECK = "last_check"
     }
 }
 
@@ -58,24 +72,33 @@ object TrainAlertScheduler {
     internal const val WORK = "binario-train-alerts"
     private val networkConnected = Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()
 
+    /**
+     * The subscriptions to check and the followed trains. The bells of trains that are no longer favourite or followed
+     * are removed here, whatever made them leave (the heart, a backup import, the end of the followed trip).
+     */
     internal fun watched(context: Context): Pair<List<TrainAlertSubscription>, List<FollowedTrainTimes>> {
+        val store = TrainAlertStore(context)
         val followed = FollowedTripStore(context).trip()?.legs.orEmpty().map { FollowedTrainTimes(it.number, it.departure, it.arrival) }
-        val active = TrainAlertWatch.active(
-            TrainAlertStore(context).subscriptions(),
-            FavouriteTrainStore(context).all().map { it.number },
-            followed.map { it.number }
-        )
-        return active to followed
+        val favourites = FavouriteTrainStore(context).all().map { it.number }
+        val keys = TrainAlertWatch.watchedKeys(favourites, followed.map { it.number })
+        val stored = store.subscriptions()
+        val previous = store.watchedKeys()
+        val subscriptions = TrainAlertWatch.prune(stored, previous, keys, Instant.now())
+        if (subscriptions != stored) store.replaceSubscriptions(subscriptions)
+        if (previous != keys) store.saveWatchedKeys(keys)
+        return TrainAlertWatch.active(subscriptions, favourites, followed.map { it.number }) to followed
     }
 
-    fun reschedule(context: Context) = schedule(context, fromWorker = false)
+    /** [keepPending] (an app start) leaves a planned or running check alone instead of re-planning it. */
+    fun reschedule(context: Context, keepPending: Boolean = false) = schedule(context, fromWorker = false, keepPending = keepPending)
 
-    internal fun schedule(context: Context, fromWorker: Boolean) {
+    internal fun schedule(context: Context, fromWorker: Boolean, keepPending: Boolean = false) {
         val workManager = WorkManager.getInstance(context)
         val (subscriptions, followed) = watched(context)
         val now = Instant.now()
-        val next = if (LiveNotificationSettings(context).trainAlertsEnabled) {
-            TrainAlertWatch.nextRun(subscriptions, followed, now, RailTime.defaultZone)
+        // Nothing runs while notifications are not allowed: the next app start plans again.
+        val next = if (LiveNotificationSettings(context).trainAlertsEnabled && LiveNotifications.allowed(context)) {
+            TrainAlertWatch.nextRun(subscriptions, followed, now, RailTime.defaultZone, TrainAlertStore(context).lastCheckAt())
         } else null
         if (next == null) {
             if (!fromWorker) workManager.cancelUniqueWork(WORK)
@@ -88,7 +111,12 @@ object TrainAlertScheduler {
             .setInitialDelay(delay.toMillis(), TimeUnit.MILLISECONDS)
             .addTag(WORK)
             .build()
-        workManager.enqueueUniqueWork(WORK, if (fromWorker) ExistingWorkPolicy.APPEND_OR_REPLACE else ExistingWorkPolicy.REPLACE, request)
+        val policy = when {
+            fromWorker -> ExistingWorkPolicy.APPEND_OR_REPLACE
+            keepPending -> ExistingWorkPolicy.KEEP
+            else -> ExistingWorkPolicy.REPLACE
+        }
+        workManager.enqueueUniqueWork(WORK, policy, request)
     }
 }
 
@@ -113,6 +141,7 @@ class TrainAlertWorker(appContext: Context, params: WorkerParameters) : Coroutin
         val due = TrainAlertWatch.due(subscriptions, followed, now, RailTime.defaultZone)
         if (due.isEmpty()) return
         val store = TrainAlertStore(context)
+        store.recordCheck(now)
         var seen = store.seen()
         val today = now.atZone(RailTime.defaultZone).toLocalDate()
         val service = BinarioDataGraph.trainAlertNoticesService()
@@ -124,8 +153,10 @@ class TrainAlertWorker(appContext: Context, params: WorkerParameters) : Coroutin
             val fresh = TrainAlertWatch.newNotices(watched, seen, subscription.subscribedAt)
             if (fresh.isNotEmpty()) notify(context, subscription, fresh)
             seen = TrainAlertWatch.remember(seen, watched, today)
+            // Saved with each train, right after its notification: a run stopped half-way (network lost, a new
+            // plan) never posts the same notices again.
+            store.saveSeen(seen)
         }
-        store.saveSeen(seen)
     }
 
     private fun notify(context: Context, subscription: TrainAlertSubscription, fresh: List<WatchedNotice>) {
@@ -137,6 +168,7 @@ class TrainAlertWorker(appContext: Context, params: WorkerParameters) : Coroutin
             .setContentText(fresh.first().text)
             .setStyle(NotificationCompat.BigTextStyle().bigText(fresh.joinToString("\n\n") { it.text }))
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setOnlyAlertOnce(true)
             .setAutoCancel(true)
             .setContentIntent(LiveNotifications.openApp(context, subscription.key.hashCode()))
             .build()

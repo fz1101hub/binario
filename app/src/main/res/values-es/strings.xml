@@ -676,6 +676,17 @@
     <string name="stop_alarm_inexact">Alarma configurada para %1$s, pero Android puede entregarla con retraso porque no se permiten las alarmas exactas.</string>
     <string name="commuter_alert_scheduled">Alerta guardada y programada en el dispositivo.</string>
     <string name="commuter_alert_scheduled_inexact">Alerta guardada y programada de forma aproximada: Android puede entregarla con retraso porque no se permiten las alarmas exactas.</string>
+    <string name="stop_alarms_active_title">Alarmas de parada activas</string>
+    <string name="stop_alarm_active_row">%1$s · tren %2$s · llegada prevista %3$s</string>
+    <string name="accessibility_cancel_stop_alarm">Cancelar la alarma de %1$s</string>
+    <string name="exact_alarm_note">Android no permite a Binario usar alarmas exactas: las alarmas de parada y las alertas de viajeros pueden llegar con retraso.</string>
+    <string name="exact_alarm_action">Permitir alarmas exactas</string>
+    <string name="background_status_title">Actividad en segundo plano</string>
+    <string name="background_status_notifications_on">Notificaciones permitidas</string>
+    <string name="background_status_notifications_off">Notificaciones no permitidas: las alarmas, los avisos y las notificaciones en tiempo real no pueden aparecer.</string>
+    <string name="background_status_exact_on">Alarmas exactas permitidas</string>
+    <string name="background_status_battery_optimized">Optimización de batería activa para Binario: Android puede aplazar las comprobaciones en segundo plano.</string>
+    <string name="background_status_battery_unrestricted">Optimización de batería desactivada para Binario</string>
     <string name="commuter_alert_quiet_hours_feedback">Alerta guardada, pero no programada: el anticipo cae en el periodo de silencio 22:00–07:00.</string>
     <string name="commuter_alert_invalid_time_feedback">Alerta guardada, pero no programada: la hora no es válida.</string>
     <string name="commuter_alert_disabled_feedback">Alerta guardada, pero desactivada.</string>
@@ -1108,6 +1119,8 @@
     <!-- Notificaciones en tiempo real: viaje seguido, avisos de trenes, huelgas del MIT, transbordos y puntualidad (noviembre de 2026). -->
     <string name="followed_trip_channel_name">Viaje seguido</string>
     <string name="followed_trip_channel_description">Estado en tiempo real del viaje que sigues: retraso, próxima parada y vía, sin sonido.</string>
+    <string name="followed_trip_alerts_channel_name">Cambios del viaje seguido</string>
+    <string name="followed_trip_alerts_channel_description">Un aviso con sonido cuando el tren seguido se suprime, cambia de vía de salida o el enlace está en riesgo. Entre las 22 y las 7 llega sin sonido.</string>
     <string name="followed_trip_notification_toggle">Notificación con el estado del viaje</string>
     <string name="followed_trip_notification_toggle_description">Desde 30 minutos antes de la salida hasta 30 minutos después de la llegada: retraso, próxima parada y vía, actualizados cada 15 minutos. Se cierra sola al final.</string>
     <string name="followed_trip_notification_pending">La notificación aparecerá a las %1$s.</string>

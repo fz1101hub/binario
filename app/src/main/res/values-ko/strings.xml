@@ -632,6 +632,17 @@
     <string name="stop_alarm_inexact">%1$s 알람을 설정했지만, 정확한 알람이 허용되지 않아 Android가 늦게 울릴 수 있습니다.</string>
     <string name="commuter_alert_scheduled">알림이 저장되어 기기에 예약되었습니다.</string>
     <string name="commuter_alert_scheduled_inexact">알림이 저장되어 대략적인 시각으로 예약되었습니다. 정확한 알람이 허용되지 않아 Android가 늦게 전달할 수 있습니다.</string>
+    <string name="stop_alarms_active_title">설정된 정차역 알람</string>
+    <string name="stop_alarm_active_row">%1$s · 열차 %2$s · 예상 도착 %3$s</string>
+    <string name="accessibility_cancel_stop_alarm">%1$s 알람 취소</string>
+    <string name="exact_alarm_note">Android가 Binario의 정확한 알람을 허용하지 않아 정차역 알람과 통근 알림이 늦게 울릴 수 있습니다.</string>
+    <string name="exact_alarm_action">정확한 알람 허용</string>
+    <string name="background_status_title">백그라운드 활동</string>
+    <string name="background_status_notifications_on">알림 허용됨</string>
+    <string name="background_status_notifications_off">알림이 허용되지 않아 알람, 알림, 실시간 알림을 표시할 수 없습니다.</string>
+    <string name="background_status_exact_on">정확한 알람 허용됨</string>
+    <string name="background_status_battery_optimized">Binario의 배터리 최적화가 켜져 있어 Android가 백그라운드 확인을 미룰 수 있습니다.</string>
+    <string name="background_status_battery_unrestricted">Binario의 배터리 최적화가 꺼져 있음</string>
     <string name="commuter_alert_quiet_hours_feedback">알림이 저장되었지만 예약되지 않았습니다. 알림 시각이 방해 금지 시간(22:00–07:00)에 해당합니다.</string>
     <string name="commuter_alert_invalid_time_feedback">알림이 저장되었지만 예약되지 않았습니다. 시각이 올바르지 않습니다.</string>
     <string name="commuter_alert_disabled_feedback">알림이 저장되었지만 꺼져 있습니다.</string>
@@ -1037,6 +1048,8 @@
     <!-- Notifiche in tempo reale: viaggio seguito, avvisi sui treni, scioperi MIT, coincidenze e puntualità (novembre 2026). -->
     <string name="followed_trip_channel_name">따라가는 여정</string>
     <string name="followed_trip_channel_description">따라가는 여정의 실시간 상태(지연, 다음 정차역, 승강장)를 소리 없이 표시합니다.</string>
+    <string name="followed_trip_alerts_channel_name">따라가는 여정의 변경</string>
+    <string name="followed_trip_alerts_channel_description">따라가는 열차가 운휴되거나 출발 승강장이 바뀌거나 환승이 위험할 때 소리로 알립니다. 22시부터 7시까지는 소리 없이 표시됩니다.</string>
     <string name="followed_trip_notification_toggle">여정 상태 알림</string>
     <string name="followed_trip_notification_toggle_description">출발 30분 전부터 도착 30분 후까지 지연, 다음 정차역, 승강장을 15분마다 업데이트합니다. 끝나면 자동으로 닫힙니다.</string>
     <string name="followed_trip_notification_pending">알림은 %1$s에 표시됩니다.</string>

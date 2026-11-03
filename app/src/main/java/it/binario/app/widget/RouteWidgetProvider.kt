@@ -11,9 +11,9 @@ import android.view.View
 import android.widget.RemoteViews
 import androidx.core.content.ContextCompat
 import androidx.core.content.edit
-import androidx.work.BackoffPolicy
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
+import androidx.work.Data
 import androidx.work.ExistingWorkPolicy
 import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
@@ -130,6 +130,21 @@ class RouteWidgetProvider : AppWidgetProvider() {
             }
         }
 
+        /**
+         * Gives the configurations of the first versions (a saved route id without stations) the stations of that
+         * saved route, so that the widget loads again; the others stay as they are until reconfigured.
+         */
+        fun migrateLegacyConfigurations(context: Context, savedRoutes: List<SavedRoute>) {
+            val store = WidgetConfigurationStore(context)
+            val migrated = store.all().mapNotNull { (widgetId, configuration) ->
+                WidgetConfigurationMigration.resolve(configuration, savedRoutes)?.let { widgetId to it }
+            }
+            if (migrated.isEmpty()) return
+            migrated.forEach { (widgetId, configuration) -> store.save(widgetId, configuration) }
+            refreshAll(context)
+            WidgetAutoRefreshScheduler.reschedule(context)
+        }
+
         fun markMatchingRouteDirectionUnavailable(context: Context, route: SavedRoute, direction: Direction, failure: UiMessage) {
             WidgetConfigurationStore(context).all().forEach { (widgetId, configuration) ->
                 if (configuration.matchesRouteDirection(route, direction, WidgetStateStore.displayedDirection(context, widgetId))) {
@@ -154,7 +169,8 @@ class RouteWidgetProvider : AppWidgetProvider() {
             views.setViewVisibility(R.id.widget_actions_container, if (mode == WidgetLayoutMode.COMPACT) View.GONE else View.VISIBLE)
             views.setViewVisibility(R.id.widget_empty, View.GONE)
             val configuration = WidgetConfigurationStore(context).read(widgetId)
-            if (configuration == null) {
+            // A configuration of the first versions that no saved route resolves cannot load: it asks to be set up again.
+            if (configuration == null || configuration.routeTarget() == null) {
                 renderConfigurationRequired(context, manager, widgetId, views)
                 return
             }
@@ -366,27 +382,47 @@ internal fun updatedAtHeader(context: Context, retrievedAt: Long): String = if (
 }
 
 /**
- * The refresh requested by the widget's button (and, in versions before the settings, its periodic
- * refresh). It refreshes every route widget, as before; automatic refreshes go through
- * [WidgetAutoRefreshWorker], which refreshes only the widgets that are due.
+ * The refresh requested by the widget's button or by a saved configuration. It refreshes every route widget, as
+ * before; automatic refreshes go through [WidgetAutoRefreshWorker], which refreshes only the widgets that are due.
+ * A temporary failure is retried by [WidgetRefreshRetryPolicy] for the widgets that failed only.
  */
 class WidgetRefreshWorker(appContext: Context, params: WorkerParameters) : CoroutineWorker(appContext, params) {
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
-        if (RouteWidgetRefresher.refresh(applicationContext, null)) Result.success() else Result.retry()
+        val context = applicationContext
+        val attempt = inputData.getInt(KEY_ATTEMPT, 1)
+        val failed = RouteWidgetRefresher.refresh(context, WidgetRefreshRetryPolicy.decodeIds(inputData.getString(KEY_WIDGET_IDS)))
+        if (failed.isNotEmpty() && !isStopped) {
+            val settings = WidgetConfigurationStore(context).all()
+                .filter { (widgetId, _) -> widgetId in failed }
+                .associate { (widgetId, configuration) -> widgetId to configuration.settings.autoRefresh }
+            WidgetRefreshRetryPolicy.retry(settings, attempt, ZonedDateTime.now(RailTime.defaultZone))?.let { retry ->
+                // Chained after this run, under the same name: a tap on the button replaces it.
+                enqueue(context, retry.widgetIds, attempt + 1, retry.delay.toMillis(), ExistingWorkPolicy.APPEND_OR_REPLACE)
+            }
+        }
+        Result.success()
     }
 
     companion object {
         private const val ONE_TIME_WORK = "binario-widget-refresh"
+        private const val KEY_WIDGET_IDS = "widget_ids"
+        private const val KEY_ATTEMPT = "attempt"
         private val networkConnected = Constraints.Builder()
             .setRequiredNetworkType(NetworkType.CONNECTED)
             .build()
 
-        fun enqueue(context: Context) {
+        fun enqueue(context: Context) = enqueue(context, null, 1, 0L, ExistingWorkPolicy.REPLACE)
+
+        private fun enqueue(context: Context, widgetIds: Set<Int>?, attempt: Int, delayMillis: Long, policy: ExistingWorkPolicy) {
+            val input = Data.Builder().putInt(KEY_ATTEMPT, attempt)
+                .apply { widgetIds?.let { putString(KEY_WIDGET_IDS, WidgetRefreshRetryPolicy.encodeIds(it)) } }
+                .build()
             val request = OneTimeWorkRequestBuilder<WidgetRefreshWorker>()
                 .setConstraints(networkConnected)
-                .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 15, TimeUnit.MINUTES)
+                .setInitialDelay(delayMillis, TimeUnit.MILLISECONDS)
+                .setInputData(input)
                 .build()
-            WorkManager.getInstance(context).enqueueUniqueWork(ONE_TIME_WORK, ExistingWorkPolicy.REPLACE, request)
+            WorkManager.getInstance(context).enqueueUniqueWork(ONE_TIME_WORK, policy, request)
         }
 
         /** Kept for callers of the earlier API: the scheduler decides now whether any refresh is due. */
@@ -402,16 +438,17 @@ internal sealed interface RouteWidgetFetch {
 
 /** Loads route widgets through the app's route source, with its order, priority and gating unchanged. */
 internal object RouteWidgetRefresher {
-    /** Refreshes the route widgets in [widgetIds], all of them when null. True when every request succeeded. */
-    suspend fun refresh(context: Context, widgetIds: Set<Int>?): Boolean {
+    /** Refreshes the route widgets in [widgetIds], all of them when null. Returns the widgets that failed temporarily. */
+    suspend fun refresh(context: Context, widgetIds: Set<Int>?): Set<Int> {
         val now = ZonedDateTime.now(RailTime.defaultZone)
+        if (widgetIds == null) WidgetInstances.pruneOrphans(context)
         val widgets = WidgetConfigurationStore(context).all()
             .filter { (widgetId, _) -> widgetIds == null || widgetId in widgetIds }
             .mapNotNull { (widgetId, configuration) -> configuration.routeTarget()?.let { Triple(widgetId, configuration, it) } }
-        if (widgets.isEmpty()) return true
+        if (widgets.isEmpty()) return emptySet()
         val source = BinarioDataGraph.routeDataSource(context)
         val fetched = mutableMapOf<String, RouteWidgetFetch>()
-        var failed = false
+        val failed = mutableSetOf<Int>()
         widgets.forEach { (widgetId, configuration, route) ->
             WidgetAutoRefreshStore.recordAttempt(context, WidgetKind.ROUTE, widgetId, now.toInstant().toEpochMilli())
             val direction = WidgetStateStore.syncDirection(context, widgetId, now)
@@ -426,13 +463,13 @@ internal object RouteWidgetRefresher {
                 is RouteWidgetFetch.Loaded ->
                     WidgetStateStore.saveRows(context, widgetId, result.snapshot, result.rows, configuration.settings, previous?.rowOffset ?: 0)
                 is RouteWidgetFetch.Failed -> {
-                    failed = true
+                    if (WidgetRefreshRetryPolicy.isTransient(result.reason)) failed += widgetId
                     WidgetStateStore.markUnavailable(context, widgetId, result.reason.uiMessage())
                 }
             }
         }
         RouteWidgetProvider.refreshAll(context)
-        return !failed
+        return failed
     }
 
     suspend fun fetch(

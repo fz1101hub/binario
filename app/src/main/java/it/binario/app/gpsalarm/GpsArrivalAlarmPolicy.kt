@@ -156,11 +156,42 @@ internal object GpsArrivalAlarmPolicy {
      * on the boundary instead of the station means a large radius is never overshot between two
      * fixes. Without a usable fix yet the shortest interval is used.
      */
-    fun nextIntervalMillis(remainingMeters: Double?): Long {
+    fun nextIntervalMillis(remainingMeters: Double?, maxIntervalMillis: Long = MAX_INTERVAL_MILLIS): Long {
         if (remainingMeters == null || remainingMeters.isNaN()) return MIN_INTERVAL_MILLIS
         val seconds = remainingMeters.coerceAtLeast(0.0) / MAX_TRAIN_SPEED_METERS_PER_SECOND * INTERVAL_SAFETY_FACTOR
-        val millis = min(seconds * 1_000.0, MAX_INTERVAL_MILLIS.toDouble()).toLong()
-        return (millis / INTERVAL_STEP_MILLIS * INTERVAL_STEP_MILLIS).coerceIn(MIN_INTERVAL_MILLIS, MAX_INTERVAL_MILLIS)
+        val millis = min(seconds * 1_000.0, maxIntervalMillis.toDouble()).toLong()
+        return (millis / INTERVAL_STEP_MILLIS * INTERVAL_STEP_MILLIS).coerceIn(MIN_INTERVAL_MILLIS, maxIntervalMillis)
+    }
+
+    /** Far from the boundary the alarm listens with less power: network fixes, at most every [LOW_POWER_MAX_INTERVAL_MILLIS]. */
+    const val LOW_POWER_DISTANCE_METERS = 30_000.0
+    const val LOW_POWER_MAX_INTERVAL_MILLIS = 300_000L
+
+    /** High accuracy anyway from this long before the expected arrival, whatever the distance. */
+    const val HIGH_ACCURACY_BEFORE_ARRIVAL_MILLIS = 30 * 60_000L
+
+    /** Without an accepted fix for this long in low power (no network location), the next request uses GPS again. */
+    const val LOW_POWER_FIX_TIMEOUT_MILLIS = 5 * 60_000L
+
+    /**
+     * Whether the alarm may listen with less power: precise access (approximate fixes are already low power), not
+     * estimating a delay (that needs precise fixes), not within [HIGH_ACCURACY_BEFORE_ARRIVAL_MILLIS] of the arrival,
+     * and either before the train's departure or more than [LOW_POWER_DISTANCE_METERS] from the boundary. The cadence
+     * rule stays the same, so the boundary is never overshot between two fixes.
+     */
+    fun lowPower(
+        precise: Boolean,
+        estimating: Boolean,
+        remainingMeters: Double?,
+        nowEpochMillis: Long,
+        departureEpochMillis: Long?,
+        arrivalEpochMillis: Long
+    ): Boolean = when {
+        !precise || estimating -> false
+        arrivalEpochMillis - nowEpochMillis <= HIGH_ACCURACY_BEFORE_ARRIVAL_MILLIS -> false
+        departureEpochMillis != null && nowEpochMillis < departureEpochMillis -> true
+        remainingMeters != null && !remainingMeters.isNaN() -> remainingMeters > LOW_POWER_DISTANCE_METERS
+        else -> false
     }
 
     /** When the service must stop: two hours after the expected arrival, capped at eight hours from the start. */
