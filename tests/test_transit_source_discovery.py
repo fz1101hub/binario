@@ -159,5 +159,22 @@ class CkanProbeTest(unittest.TestCase):
         self.assertIn("resource PB | trip updates | https://x/tu.pb", output.getvalue())
 
 
+class NextJsonProbeTest(unittest.TestCase):
+    def test_prints_the_whole_page_props_in_numbered_escaped_parts(self) -> None:
+        page = {"props": {"pageProps": {"__namespaces": {"x": "drop me"}, "enumerations": {"DATA_CATEGORY": ["a" * 4000, "::warning::x\nline"]}}},
+                "query": {"type": "Dataset"}}
+        html = ('<html><script id="__NEXT_DATA__" type="application/json">' + __import__("json").dumps(page) + "</script></html>").encode()
+        output = io.StringIO()
+        with redirect_stdout(output):
+            DISCOVERY.probe_nextjson("https://x/it/catalog/Dataset", fetch_page=lambda url: (200, url, {}, html, None))
+        lines = output.getvalue().splitlines()
+        parts = [line[len("  NJ 001 "):] for line in lines if line.startswith("  NJ ")]
+        self.assertIn("parts=2", output.getvalue())
+        joined = "".join(parts)
+        self.assertNotIn("drop me", joined)
+        self.assertIn('"query": {"type": "Dataset"}', joined)
+        self.assertTrue(all(not line.startswith("::") for line in lines))
+
+
 if __name__ == "__main__":
     unittest.main()

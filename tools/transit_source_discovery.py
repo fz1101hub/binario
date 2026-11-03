@@ -5,7 +5,8 @@ Run on a CI runner (the development container cannot reach most open-data hosts)
 ``python3 -I`` from the repository root.  Everything fetched is *untrusted data*: it is written to
 ``--out`` and parsed only by this file (standard library); nothing downloaded is executed.
 
-Probes are tokens ``KIND:URL`` (``page``, ``json``, ``gtfs``, ``head``, ``jsgrep``, ``netexinfo``)
+Probes are tokens ``KIND:URL`` (``page``, ``json``, ``gtfs``, ``head``, ``jsgrep``, ``netexinfo``, ``nextdata``,
+``nextjson``)
 plus the named catalogue scans ``mdb`` (Mobility Database catalogue, Italian rows) and ``atlas``
 (Transitland Atlas DMFR records for Italy).  The report is printed and saved as ``report.txt``.
 
@@ -224,6 +225,39 @@ def probe_nextdata(url: str, *, excerpt: int = 40000) -> None:
             )
         return
     emit("  " + json.dumps(props, ensure_ascii=False)[:excerpt])
+
+
+NEXTJSON_CHUNK = 3000
+NEXTJSON_LIMIT = 300_000
+
+
+def probe_nextjson(url: str, *, fetch_page=None) -> None:
+    """A Next.js page in full: its ``pageProps`` (translations dropped) as JSON in numbered lines of
+    ``NEXTJSON_CHUNK`` characters, up to ``NEXTJSON_LIMIT``, so catalogue enumerations, filters and paging that
+    ``nextdata`` truncates can be read from the log and joined back."""
+    status, final, headers, body, error = (fetch_page or (lambda u: fetch(u, limit=PAGE_LIMIT, accept="text/html")))(url)
+    emit(f"NEXTJSON {url} status={status} final={final} error={error}")
+    if not isinstance(body, bytes):
+        return
+    match = re.search(r'<script id="__NEXT_DATA__" type="application/json"[^>]*>(.*?)</script>', body.decode("utf-8", errors="replace"), re.S)
+    if not match:
+        emit("  no __NEXT_DATA__")
+        return
+    try:
+        payload = json.loads(match.group(1))
+    except json.JSONDecodeError as problem:
+        emit(f"  invalid __NEXT_DATA__: {problem}")
+        return
+    props = payload.get("props", payload) if isinstance(payload, dict) else payload
+    page = props.get("pageProps", props) if isinstance(props, dict) else props
+    if isinstance(page, dict):
+        page = {key: value for key, value in page.items() if key != "__namespaces"}
+    text = json.dumps({"query": payload.get("query") if isinstance(payload, dict) else None, "pageProps": page}, ensure_ascii=False)
+    shown = text[:NEXTJSON_LIMIT]
+    parts = [shown[start:start + NEXTJSON_CHUNK] for start in range(0, len(shown), NEXTJSON_CHUNK)] or [""]
+    emit(f"  length={len(text)} parts={len(parts)}" + (" truncated" if len(text) > NEXTJSON_LIMIT else ""))
+    for index, part in enumerate(parts, 1):
+        emit(f"  NJ {index:03d} {part}")
 
 
 def probe_text(url: str, *, excerpt: int = 60000) -> None:
@@ -1171,7 +1205,7 @@ def run(tokens: list[str], out: Path, keep: bool) -> None:
             scan_mdb(out)
         elif token == "atlas":
             scan_atlas(out)
-        elif kind in {"page", "json", "gtfs", "head", "jsgrep", "netexinfo", "nextdata", "text", "netexgtfs", "gtfsrt", "rtstatic", "gbfs", "ckan"} and url.startswith(("http://", "https://")):
+        elif kind in {"page", "json", "gtfs", "head", "jsgrep", "netexinfo", "nextdata", "nextjson", "text", "netexgtfs", "gtfsrt", "rtstatic", "gbfs", "ckan"} and url.startswith(("http://", "https://")):
             {
                 "gtfsrt": lambda: probe_gtfsrt(url),
                 "rtstatic": lambda: probe_rtstatic(url, out),
@@ -1180,6 +1214,7 @@ def run(tokens: list[str], out: Path, keep: bool) -> None:
                 "netexgtfs": lambda: probe_netexgtfs(url, out),
                 "text": lambda: probe_text(url),
                 "nextdata": lambda: probe_nextdata(url),
+                "nextjson": lambda: probe_nextjson(url),
                 "page": lambda: probe_page(url),
                 "json": lambda: probe_json(url),
                 "gtfs": lambda: probe_gtfs(url, out, keep=keep),
