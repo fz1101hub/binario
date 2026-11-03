@@ -7,6 +7,7 @@
 "planner.origin" = "ต้นทาง";
 "planner.destination" = "ปลายทาง";
 "planner.departure" = "วันที่และเวลา";
+"planner.departure.italian_time" = "เวลาตามเวลาอิตาลี";
 "planner.choose_station" = "เลือกสถานี";
 "planner.search_station" = "ค้นหาสถานี";
 "planner.swap" = "สลับเส้นทาง";
@@ -64,6 +65,7 @@
 "accessibility.selected_station" = "เลือกสถานี";
 "accessibility.swap_route" = "สลับต้นทางและปลายทาง";
 "accessibility.saved_route" = "เส้นทางที่บันทึก";
+"accessibility.open_saved_route" = "ค้นหารถไฟขบวนถัดไปของเส้นทางนี้";
 "accessibility.delete_route" = "ลบเส้นทาง";
 "action.ok" = "ตกลง";
 "catalog.loading" = "กำลังโหลดแค็ตตาล็อกสถานี…";

@@ -7,6 +7,7 @@
 "planner.origin" = "प्रस्थान";
 "planner.destination" = "गंतव्य";
 "planner.departure" = "तारीख और समय";
+"planner.departure.italian_time" = "समय इटली के समय के अनुसार";
 "planner.choose_station" = "स्टेशन चुनें";
 "planner.search_station" = "स्टेशन खोजें";
 "planner.swap" = "रूट उलटें";
@@ -64,6 +65,7 @@
 "accessibility.selected_station" = "स्टेशन चुनें";
 "accessibility.swap_route" = "प्रस्थान और गंतव्य आपस में बदलें";
 "accessibility.saved_route" = "सहेजा गया रूट";
+"accessibility.open_saved_route" = "इस रूट की अगली ट्रेनें खोजता है";
 "accessibility.delete_route" = "रूट हटाएँ";
 "action.ok" = "ठीक है";
 "catalog.loading" = "स्टेशन कैटलॉग लोड हो रहा है…";

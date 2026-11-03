@@ -432,6 +432,67 @@ class IOSProjectTests(unittest.TestCase):
         self.assertIn('clearKey = "binario_snapshot_clear"', receiver)
         self.assertIn("store.clear()", receiver)
 
+    def test_watch_receives_only_trains_still_to_come_from_a_planner_that_follows_now(self) -> None:
+        model = (IOS / "BinarioApp/AppModel.swift").read_text(encoding="utf-8")
+        planner = (IOS / "BinarioApp/PlannerView.swift").read_text(encoding="utf-8")
+        model_tests = (IOS / "BinarioAppTests/BinarioAppTests.swift").read_text(encoding="utf-8")
+        publish = model.split("private func publishAvailableSnapshot(", 1)[1].split("static func isCurrent(", 1)[0]
+        self.assertIn("Self.upcomingDepartures(in: journey, now: nowDate).prefix(WearSnapshotV1.maximumServices)", publish)
+        self.assertIn("Self.watchExpiry(for: journey, departures: departures, now: nowDate)", publish)
+        self.assertNotIn("journey.services.prefix(", model)
+        self.assertIn("offset >= -5 * 60 && offset <= 15 * 60", model)
+        # Only the user's edits invalidate a result: the planner moves its own time to now.
+        self.assertNotIn(".onChange(of: departure)", planner)
+        self.assertIn("if !departureEdited { departure = Date() }", planner)
+        self.assertIn("if phase == .active { followCurrentTime() }", planner)
+        self.assertIn("testDepartedTrainsAreDroppedAndTheFollowingOnesListed", model_tests)
+        self.assertIn("testOnlyTrainsStillToComeArePublishedToTheWatch", model_tests)
+
+    def test_planner_picks_times_in_the_timetable_zone_and_says_so(self) -> None:
+        model = (IOS / "BinarioApp/AppModel.swift").read_text(encoding="utf-8")
+        planner = (IOS / "BinarioApp/PlannerView.swift").read_text(encoding="utf-8")
+        self.assertIn('static let timetableTimeZone = TimeZone(identifier: "Europe/Rome")', model)
+        self.assertIn(".environment(\\.timeZone, AppModel.timetableTimeZone)", planner)
+        self.assertIn('Text("planner.departure.italian_time")', planner)
+        self.assertIn("AppModel.needsTimetableZoneCaption(at: departure)", planner)
+
+    def test_watch_route_label_and_refresh_request_match_the_watch(self) -> None:
+        snapshot = (IOS / "BinarioKit/Sources/BinarioKit/WearSnapshotV1.swift").read_text(encoding="utf-8")
+        model = (IOS / "BinarioApp/AppModel.swift").read_text(encoding="utf-8")
+        adapter = (IOS / "BinarioApp/WCSessionAdapter.swift").read_text(encoding="utf-8")
+        receiver = (ROOT / "apple-watch/BinarioWatch/PhoneConnectivity.swift").read_text(encoding="utf-8")
+        kit_tests = (IOS / "BinarioKit/Tests/BinarioKitTests/WearSnapshotV1Tests.swift").read_text(encoding="utf-8")
+        # The route title is the station names; the identifier only tells namesakes apart.
+        self.assertIn('let suffix = disambiguate ? identifierSeparator + normalizedRouteId : ""', snapshot)
+        self.assertIn("catalog.hasNamesake(origin) || catalog.hasNamesake(destination)", model)
+        self.assertNotIn("WatchRouteLabelFormatter.format(origin: query.origin, destination: query.destination)", model)
+        # A Watch installed or paired after the search still gets the held snapshot.
+        self.assertIn("nonisolated func sessionWatchStateDidChange(_ session: WCSession)", adapter)
+        self.assertIn("public mutating func watchStateDidChange() -> WatchSyncDirective", snapshot)
+        self.assertIn("republishLatestSearch()", model.split("func setWatchSharingEnabled", 1)[1].split("func save(query:", 1)[0])
+        # "Aggiorna" on the Watch: same message key on both sides, acknowledged at once.
+        self.assertIn('public static let messageKey = "binario_refresh_request"', snapshot)
+        self.assertIn('static let requestKey = "binario_refresh_request"', receiver)
+        self.assertIn("didReceiveMessage message: [String: Any],", adapter)
+        self.assertIn("replyHandler([WatchRefreshRequest.messageKey: isRefreshRequest])", adapter)
+        self.assertIn("Task { await self.refreshWatchSnapshot() }", model)
+        self.assertIn("testWatchStateChangeDeliversTheOperationHeldForAMissingWatch", kit_tests)
+        self.assertIn("testRouteFormatterShowsNamesOnlyAndTheRouteIdOnlyToDisambiguate", kit_tests)
+
+    def test_saved_routes_open_the_planner_and_search_from_now(self) -> None:
+        saved = (IOS / "BinarioApp/SavedRoutesView.swift").read_text(encoding="utf-8")
+        root = (IOS / "BinarioApp/RootView.swift").read_text(encoding="utf-8")
+        planner = (IOS / "BinarioApp/PlannerView.swift").read_text(encoding="utf-8")
+        self.assertIn("model.openPlanner(for: route)", saved)
+        self.assertIn('.accessibilityHint(Text("accessibility.open_saved_route"))', saved)
+        self.assertIn("TabView(selection: $model.selectedTab)", root)
+        for tab in ("planner", "saved", "settings"):
+            self.assertIn(f".tag(AppModel.Tab.{tab})", root)
+        self.assertIn(".task(id: model.plannerRequest?.id) { applyPlannerRequest() }", planner)
+        apply = planner.split("private func applyPlannerRequest()", 1)[1].split("private func ", 1)[0]
+        self.assertIn("departureEdited = false", apply)
+        self.assertIn("search()", apply)
+
     def test_settings_data_rows_describe_the_loaded_catalog_and_index(self) -> None:
         settings = (IOS / "BinarioApp/SettingsView.swift").read_text(encoding="utf-8")
         # A literal catalogue name and a literal feed count drift at every data refresh.

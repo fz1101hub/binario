@@ -125,8 +125,8 @@ final class BinarioAppTests: XCTestCase {
                 operatorName: "Trenitalia",
                 category: "Frecciarossa",
                 destination: "Milano Centrale",
-                scheduledDeparture: "10:00",
-                expectedDeparture: "10:00",
+                scheduledDeparture: romeTime(now.addingTimeInterval(30 * 60)),
+                expectedDeparture: romeTime(now.addingTimeInterval(30 * 60)),
                 status: "PROGRAMMED",
                 platform: nil,
                 delayMinutes: 0
@@ -315,9 +315,199 @@ final class BinarioAppTests: XCTestCase {
         }
 
         XCTAssertTrue(AppModel.isCurrent(try query(0), now: now))
-        XCTAssertTrue(AppModel.isCurrent(try query(-20 * 60), now: now))
+        // A time picked at minute precision a moment ago, or a few minutes ahead.
+        XCTAssertTrue(AppModel.isCurrent(try query(-4 * 60), now: now))
+        XCTAssertTrue(AppModel.isCurrent(try query(10 * 60), now: now))
+        // The planner now searches from the current time unless a time is picked: a query 20
+        // minutes in the past is a question about the past, not the next trains.
+        XCTAssertFalse(AppModel.isCurrent(try query(-20 * 60), now: now))
         XCTAssertFalse(AppModel.isCurrent(try query(2 * 60 * 60), now: now))
         XCTAssertFalse(AppModel.isCurrent(try query(3 * 24 * 60 * 60), now: now))
+    }
+
+    func testDepartedTrainsAreDroppedAndTheFollowingOnesListed() throws {
+        // Opened at 08:00, searched at 08:25: the 08:05 and 08:20 trains have left.
+        let opened = try rome(2026, 10, 6, 8, 0)
+        let query = try JourneyQuery(
+            origin: StationIdentity(id: "S08409", name: "Roma Termini"),
+            destination: StationIdentity(id: "S01700", name: "Milano Centrale"),
+            departure: opened
+        )
+        let journey = programmedJourney(query: query, generatedAt: opened, times: ["08:05", "08:20", "08:40", "09:10"])
+        let now = try rome(2026, 10, 6, 8, 25)
+
+        let upcoming = AppModel.upcomingDepartures(in: journey, now: now)
+
+        XCTAssertEqual(upcoming.map(\.service.expectedDeparture), ["08:40", "09:10"])
+        XCTAssertEqual(upcoming.map(\.departure), [try rome(2026, 10, 6, 8, 40), try rome(2026, 10, 6, 9, 10)])
+        // The expiry follows the trains that are sent, not the ones that left.
+        XCTAssertEqual(
+            AppModel.watchExpiry(for: journey, departures: Array(upcoming.prefix(2)), now: now),
+            try rome(2026, 10, 6, 9, 12)
+        )
+        XCTAssertTrue(AppModel.upcomingDepartures(in: journey, now: try rome(2026, 10, 6, 9, 11)).isEmpty)
+        // Trains beyond the timetable window are never sent: the Watch places times within it.
+        let bounded = JourneySnapshot(
+            query: query,
+            generatedAt: opened,
+            expiresAt: try rome(2026, 10, 6, 8, 30),
+            operationalState: journey.operationalState,
+            provenance: journey.provenance,
+            services: journey.services
+        )
+        XCTAssertEqual(AppModel.upcomingDepartures(in: bounded, now: opened).map(\.service.expectedDeparture), ["08:05", "08:20"])
+    }
+
+    func testOnlyTrainsStillToComeArePublishedToTheWatch() async throws {
+        let defaults = try makeDefaults()
+        defer { clear(defaults) }
+        WatchSharingPreferenceStore(defaults: defaults).save(true)
+        let session = FakeAppSession()
+        let now = Date()
+        let query = try JourneyQuery(
+            origin: StationIdentity(id: "S08409", name: "Roma Termini"),
+            destination: StationIdentity(id: "S01700", name: "Milano Centrale"),
+            departure: now.addingTimeInterval(-4 * 60)
+        )
+        let journey = programmedJourney(query: query, generatedAt: now, times: [
+            romeTime(now.addingTimeInterval(-2 * 60)),
+            romeTime(now.addingTimeInterval(20 * 60)),
+            romeTime(now.addingTimeInterval(40 * 60)),
+        ])
+        let model = makeModel(
+            defaults: defaults,
+            publisher: WatchSnapshotPublisher(session: session),
+            repository: StubJourneyRepository(result: .available(journey))
+        )
+        session.completeActivation(.activated)
+
+        await model.run(query: query)
+
+        // The iPhone still lists every result; the Watch gets only what has not left.
+        XCTAssertEqual(model.latestSnapshot?.services.count, 3)
+        let object = try publishedObject(session)
+        XCTAssertEqual(object["serviceCount"] as? Int, 2)
+        XCTAssertEqual(object["service0Expected"] as? String, romeTime(now.addingTimeInterval(20 * 60)))
+        XCTAssertEqual(object["service1Expected"] as? String, romeTime(now.addingTimeInterval(40 * 60)))
+    }
+
+    func testEnablingSharingPublishesTheSearchAlreadyOnScreen() async throws {
+        let defaults = try makeDefaults()
+        defer { clear(defaults) }
+        let session = FakeAppSession()
+        let query = try JourneyQuery(
+            origin: StationIdentity(id: "S08409", name: "Roma Termini"),
+            destination: StationIdentity(id: "S01700", name: "Milano Centrale"),
+            departure: Date()
+        )
+        let model = makeModel(
+            defaults: defaults,
+            publisher: WatchSnapshotPublisher(session: session),
+            repository: StubJourneyRepository(result: .available(fixtureSnapshot(query: query, serviceNumber: "FR 1")))
+        )
+        session.completeActivation(.activated)
+        await model.run(query: query)
+        XCTAssertEqual(session.contexts, [[WatchSnapshotPublisher.clearContextKey: Data()]])
+
+        model.setWatchSharingEnabled(true)
+
+        XCTAssertEqual(try publishedObject(session)["service0Number"] as? String, "FR 1")
+    }
+
+    func testWatchRefreshRepeatsTheLastSearchForNowAndStopsAfterAnEdit() async throws {
+        let defaults = try makeDefaults()
+        defer { clear(defaults) }
+        WatchSharingPreferenceStore(defaults: defaults).save(true)
+        let session = FakeAppSession()
+        let searchedAt = Date().addingTimeInterval(-3 * 60)
+        let query = try JourneyQuery(
+            origin: StationIdentity(id: "S08409", name: "Roma Termini"),
+            destination: StationIdentity(id: "S01700", name: "Milano Centrale"),
+            departure: searchedAt
+        )
+        let repository = RecordingJourneyRepository(result: .available(fixtureSnapshot(query: query, serviceNumber: "FR 2")))
+        let model = makeModel(defaults: defaults, publisher: WatchSnapshotPublisher(session: session), repository: repository)
+        session.completeActivation(.activated)
+        await model.run(query: query)
+        let published = session.contexts.count
+
+        let refreshedAt = Date()
+        await model.refreshWatchSnapshot(now: refreshedAt)
+
+        let queries = await repository.queries
+        XCTAssertEqual(queries.count, 2)
+        XCTAssertEqual(queries.last?.departure, refreshedAt)
+        XCTAssertEqual(queries.last?.origin, query.origin)
+        XCTAssertEqual(queries.last?.destination, query.destination)
+        XCTAssertEqual(session.contexts.count, published + 1)
+        XCTAssertNotNil(session.contexts.last?[WatchSnapshotPublisher.contextKey])
+
+        // Once the input changes, the Watch was revoked and a refresh must not bring it back.
+        model.invalidateSearchResult()
+        await model.refreshWatchSnapshot()
+        let queriesAfterEdit = await repository.queries
+        XCTAssertEqual(queriesAfterEdit.count, 2)
+        XCTAssertEqual(session.contexts.last, [WatchSnapshotPublisher.clearContextKey: Data()])
+    }
+
+    func testWatchRouteLabelNamesTheStationsAndAddsTheIdOnlyForNamesakes() async throws {
+        let defaults = try makeDefaults()
+        defer { clear(defaults) }
+        WatchSharingPreferenceStore(defaults: defaults).save(true)
+        let session = FakeAppSession()
+        let data = try Data(contentsOf: repositoryRoot
+            .appendingPathComponent("app/src/main/assets/stations/curated_it_rail_stations.json"))
+        let roma = StationIdentity(id: "S08409", name: "Roma Termini")
+        let napoli = StationIdentity(id: "S09218", name: "Napoli Centrale")
+        let acerra = StationIdentity(id: "S09215", name: "Acerra")
+        let plain = try JourneyQuery(origin: roma, destination: napoli, departure: Date())
+        let namesake = try JourneyQuery(origin: acerra, destination: napoli, departure: Date())
+
+        for (query, expected) in [
+            (plain, "Roma Termini → Napoli Centrale"),
+            (namesake, "Acerra → Napoli Centrale · S09215--S09218"),
+        ] {
+            let model = makeModel(
+                defaults: defaults,
+                publisher: WatchSnapshotPublisher(session: session),
+                repository: StubJourneyRepository(result: .available(fixtureSnapshot(query: query, serviceNumber: "R 1")))
+            )
+            await model.loadCatalog { data }
+            session.completeActivation(.activated)
+            await model.run(query: query)
+            XCTAssertEqual(try publishedObject(session)["routeLabel"] as? String, expected)
+        }
+    }
+
+    func testSavedRouteOpensThePlannerWithItsStations() throws {
+        let defaults = try makeDefaults()
+        defer { clear(defaults) }
+        let model = makeModel(defaults: defaults, publisher: nil)
+        let route = try fixtureRoute()
+        model.selectedTab = .saved
+
+        model.openPlanner(for: route)
+
+        XCTAssertEqual(model.selectedTab, .planner)
+        let request = try XCTUnwrap(model.takePlannerRequest())
+        XCTAssertEqual(request.origin, route.origin)
+        XCTAssertEqual(request.destination, route.destination)
+        XCTAssertNil(model.plannerRequest)
+        XCTAssertNil(model.takePlannerRequest())
+        // Without the catalogue the saved identity is enough to search.
+        XCTAssertEqual(StationIdentity(model.station(for: route.origin)), route.origin)
+    }
+
+    func testPlannerCaptionAppearsOnlyWhenTheDeviceClockDiffersFromTimetables() throws {
+        let summer = try rome(2026, 7, 1, 9, 0)
+        let winter = try rome(2026, 12, 1, 9, 0)
+        let london = try XCTUnwrap(TimeZone(identifier: "Europe/London"))
+
+        XCTAssertTrue(AppModel.needsTimetableZoneCaption(at: summer, deviceTimeZone: london))
+        XCTAssertTrue(AppModel.needsTimetableZoneCaption(at: winter, deviceTimeZone: london))
+        XCTAssertFalse(AppModel.needsTimetableZoneCaption(at: summer, deviceTimeZone: try XCTUnwrap(TimeZone(identifier: "Europe/Rome"))))
+        XCTAssertFalse(AppModel.needsTimetableZoneCaption(at: winter, deviceTimeZone: try XCTUnwrap(TimeZone(identifier: "Europe/Berlin"))))
+        XCTAssertEqual(AppModel.timetableTimeZone.identifier, "Europe/Rome")
     }
 
     func testWatchSnapshotExpiresWithTheLastListedTrain() throws {
@@ -329,21 +519,10 @@ final class BinarioAppTests: XCTestCase {
             destination: StationIdentity(id: "S01700", name: "Milano Centrale"),
             departure: departure
         )
-        let fixture = fixtureSnapshot(query: query, serviceNumber: "FR 1")
-        let services = [
-            fixture.services[0].withDeparture("23:50"),
-            fixture.services[0].withDeparture("00:10")
-        ]
-        let journey = JourneySnapshot(
-            query: query,
-            generatedAt: departure,
-            expiresAt: departure.addingTimeInterval(12 * 60 * 60),
-            operationalState: fixture.operationalState,
-            provenance: fixture.provenance,
-            services: services
-        )
+        let journey = programmedJourney(query: query, generatedAt: departure, times: ["23:50", "00:10"])
 
-        let expiry = AppModel.watchExpiry(for: journey, services: services, now: departure)
+        let departures = AppModel.upcomingDepartures(in: journey, now: departure)
+        let expiry = AppModel.watchExpiry(for: journey, departures: departures, now: departure)
 
         // 00:10 is the next day; the snapshot lasts two minutes past that departure, not 12 hours.
         let lastDeparture = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 10, day: 7, hour: 0, minute: 10)))
@@ -399,8 +578,42 @@ final class BinarioAppTests: XCTestCase {
         )
     }
 
+    /// A programmed result whose trains depart at `times` ("HH:mm", Rome), valid 12 hours.
+    private func programmedJourney(query: JourneyQuery, generatedAt: Date, times: [String]) -> JourneySnapshot {
+        let fixture = fixtureSnapshot(query: query, serviceNumber: "FR 1")
+        return JourneySnapshot(
+            query: query,
+            generatedAt: generatedAt,
+            expiresAt: generatedAt.addingTimeInterval(12 * 60 * 60),
+            operationalState: fixture.operationalState,
+            provenance: fixture.provenance,
+            services: times.map { fixture.services[0].withDeparture($0) }
+        )
+    }
+
+    private func publishedObject(_ session: FakeAppSession) throws -> [String: Any] {
+        let payload = try XCTUnwrap(session.contexts.last?[WatchSnapshotPublisher.contextKey])
+        return try XCTUnwrap(JSONSerialization.jsonObject(with: payload) as? [String: Any])
+    }
+
+    private func romeTime(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone(identifier: "Europe/Rome")
+        formatter.dateFormat = "HH:mm"
+        return formatter.string(from: date)
+    }
+
+    private func rome(_ year: Int, _ month: Int, _ day: Int, _ hour: Int, _ minute: Int) throws -> Date {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = try XCTUnwrap(TimeZone(identifier: "Europe/Rome"))
+        return try XCTUnwrap(calendar.date(from: DateComponents(year: year, month: month, day: day, hour: hour, minute: minute)))
+    }
+
+    /// A programmed result with one train half an hour from now, so the Watch receives it.
     private func fixtureSnapshot(query: JourneyQuery, serviceNumber: String) -> JourneySnapshot {
         let now = Date()
+        let departure = romeTime(now.addingTimeInterval(30 * 60))
         return JourneySnapshot(
             query: query,
             generatedAt: now,
@@ -420,8 +633,8 @@ final class BinarioAppTests: XCTestCase {
                 operatorName: "Operator",
                 category: "Rail",
                 destination: query.destination.name,
-                scheduledDeparture: "10:00",
-                expectedDeparture: "10:00",
+                scheduledDeparture: departure,
+                expectedDeparture: departure,
                 status: "PROGRAMMED",
                 platform: nil,
                 delayMinutes: 0
@@ -485,6 +698,20 @@ private struct StubJourneyRepository: JourneyRepository {
     func journeys(for query: JourneyQuery) async -> JourneyResult { result }
 }
 
+private actor RecordingJourneyRepository: JourneyRepository {
+    private(set) var queries: [JourneyQuery] = []
+    private let result: JourneyResult
+
+    init(result: JourneyResult) {
+        self.result = result
+    }
+
+    func journeys(for query: JourneyQuery) async -> JourneyResult {
+        queries.append(query)
+        return result
+    }
+}
+
 private actor ControlledJourneyRepository: JourneyRepository {
     private var pending: [String: CheckedContinuation<JourneyResult, Never>] = [:]
 
@@ -512,6 +739,8 @@ private final class FakeAppSession: WatchSnapshotSession {
     var isWatchAppInstalled = true
     private(set) var activationState: WatchSessionActivationState = .notActivated
     var activationHandler: (@MainActor (WatchSessionActivationState) -> Void)?
+    var watchStateHandler: (@MainActor () -> Void)?
+    var refreshRequestHandler: (@MainActor () -> Void)?
     var contexts: [[String: Data]] = []
 
     func activate() {}

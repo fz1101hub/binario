@@ -4,6 +4,14 @@ import SwiftUI
 struct BinarioTimelineEntry: TimelineEntry {
     let date: Date
     let snapshot: BinarioWatchSnapshot
+    /// When the train shown first departs, for the countdown.
+    let nextDeparture: Date?
+
+    init(date: Date, snapshot: BinarioWatchSnapshot) {
+        self.date = date
+        self.snapshot = snapshot
+        nextDeparture = snapshot.nextDeparture
+    }
 }
 
 struct BinarioTimelineProvider: TimelineProvider {
@@ -12,12 +20,18 @@ struct BinarioTimelineProvider: TimelineProvider {
     }
 
     func getSnapshot(in context: Context, completion: @escaping (BinarioTimelineEntry) -> Void) {
-        completion(BinarioTimelineEntry(date: .now, snapshot: WatchSnapshotStorage.load()))
+        let now = Date()
+        completion(BinarioTimelineEntry(date: now, snapshot: WatchSnapshotStorage.load().revalidated(at: now)))
     }
 
+    /// One entry now, one at each listed departure (the next train takes over) and one at the
+    /// expiry (unavailable); WidgetKit asks again once the last entry is reached. A new snapshot
+    /// from the iPhone reloads the timeline straight away (WatchSnapshotStore.accept).
     func getTimeline(in context: Context, completion: @escaping (Timeline<BinarioTimelineEntry>) -> Void) {
-        let entry = BinarioTimelineEntry(date: .now, snapshot: WatchSnapshotStorage.load())
-        completion(Timeline(entries: [entry], policy: .after(.now.addingTimeInterval(15 * 60))))
+        let entries = WatchSnapshotStorage.load()
+            .timeline(from: Date())
+            .map { BinarioTimelineEntry(date: $0.date, snapshot: $0.snapshot) }
+        completion(Timeline(entries: entries, policy: .atEnd))
     }
 }
 
@@ -39,15 +53,28 @@ private struct BinarioWatchWidgetView: View {
     @Environment(\.widgetFamily) private var family
 
     var body: some View {
+        // watchOS 10 replaces a widget without a container background with a placeholder.
+        familyContent
+            .containerBackground(for: .widget) { widgetBackground }
+    }
+
+    @ViewBuilder
+    private var widgetBackground: some View {
+        if family == .accessoryCircular {
+            AccessoryWidgetBackground()
+        } else {
+            Color.clear
+        }
+    }
+
+    @ViewBuilder
+    private var familyContent: some View {
         let next = entry.snapshot.services.first
         switch family {
         case .accessoryCircular:
-            ZStack {
-                AccessoryWidgetBackground()
-                VStack(spacing: 0) {
-                    Text(next?.expectedDeparture ?? "—").font(.headline)
-                    Text(next?.number ?? WatchLocalization.text("watch.widget.compactName")).font(.caption2)
-                }
+            VStack(spacing: 0) {
+                Text(next?.expectedDeparture ?? "—").font(.headline)
+                Text(next?.number ?? WatchLocalization.text("watch.widget.compactName")).font(.caption2)
             }
         case .accessoryInline:
             Text(next.map { "\($0.expectedDeparture) · \($0.destination)" } ?? WatchLocalization.text("watch.widget.noData"))
@@ -57,6 +84,12 @@ private struct BinarioWatchWidgetView: View {
                 Text(next.map { "\($0.expectedDeparture)  \($0.destination)" } ?? WatchLocalization.text("watch.widget.noData"))
                     .font(.headline)
                     .lineLimit(1)
+                if next != nil, let departure = entry.nextDeparture {
+                    // The system keeps the relative text counting down between timeline entries.
+                    Text("watch.countdown.departsIn \(Text(departure, style: .relative))")
+                        .font(.caption)
+                        .lineLimit(1)
+                }
             }
         }
     }

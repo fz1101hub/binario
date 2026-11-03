@@ -125,8 +125,200 @@ final class WatchSnapshotTests: XCTestCase {
         XCTAssertEqual(events, ["load", "reload:\(BinarioWatchWidgetConfiguration.kind)"])
     }
 
+    func testProgrammedStateOrNatureIsScheduledWhateverTheFreshness() throws {
+        let object = try XCTUnwrap(JSONSerialization.jsonObject(with: fixtureData()) as? [String: Any])
+        func decoded(nature: String, state: String, freshness: String) throws -> BinarioWatchSnapshot {
+            var variant = object
+            variant["provenanceDataNature"] = nature
+            variant["operationalState"] = state
+            variant["freshness"] = freshness
+            return try XCTUnwrap(BinarioWatchSnapshot.decodeContract(
+                try JSONSerialization.data(withJSONObject: variant),
+                nowEpochMillis: fixtureNow
+            ))
+        }
+
+        // The Companion and Android producers send PROGRAMMED with FRESH: still not realtime.
+        XCTAssertTrue(try decoded(nature: "PROGRAMMED", state: "PROGRAMMED", freshness: "FRESH").isScheduledOnly)
+        XCTAssertTrue(try decoded(nature: "UNKNOWN", state: "PROGRAMMED", freshness: "FRESH").isScheduledOnly)
+        XCTAssertTrue(try decoded(nature: "PROGRAMMED", state: "UNKNOWN", freshness: "AGING").isScheduledOnly)
+        XCTAssertFalse(try decoded(nature: "OPERATIONAL", state: "OPERATIONAL", freshness: "FRESH").isScheduledOnly)
+        let scheduled = try decoded(nature: "PROGRAMMED", state: "PROGRAMMED", freshness: "FRESH")
+        XCTAssertEqual(scheduled.displayFreshnessLabel, WatchLocalization.text("watch.freshness.scheduled"))
+    }
+
+    func testDeparturesResolveInRomeAfterGenerationAcrossMidnight() throws {
+        let generatedAt = try rome(2026, 10, 6, 23, 40)
+        let departures = WatchDepartureClock.departures(
+            of: ["23:50", "23:50", "00:10", "8:05", "25:00", "0a:10"],
+            after: generatedAt.addingTimeInterval(-60)
+        )
+
+        XCTAssertEqual(departures[0], try rome(2026, 10, 6, 23, 50))
+        // Two trains in the same minute share the day; after midnight is the next day.
+        XCTAssertEqual(departures[1], try rome(2026, 10, 6, 23, 50))
+        XCTAssertEqual(departures[2], try rome(2026, 10, 7, 0, 10))
+        XCTAssertEqual(Array(departures[3...]), [nil, nil, nil])
+    }
+
+    func testRevalidationDropsTrainsThatLeftAndExpiresToUnavailable() throws {
+        let snapshot = try programmedSnapshot(times: ["23:50", "00:10"])
+
+        let before = snapshot.revalidated(at: try rome(2026, 10, 6, 23, 45))
+        XCTAssertEqual(before.services.map(\.expectedDeparture), ["23:50", "00:10"])
+        XCTAssertEqual(before.nextDeparture, try rome(2026, 10, 6, 23, 50))
+
+        let afterFirst = snapshot.revalidated(at: try rome(2026, 10, 6, 23, 50))
+        XCTAssertEqual(afterFirst.services.map(\.expectedDeparture), ["00:10"])
+        XCTAssertEqual(afterFirst.nextDeparture, try rome(2026, 10, 7, 0, 10))
+        XCTAssertEqual(afterFirst.routeLabel, snapshot.routeLabel)
+        XCTAssertTrue(afterFirst.isScheduledOnly)
+
+        XCTAssertTrue(snapshot.revalidated(at: try rome(2026, 10, 7, 0, 11)).services.isEmpty)
+        let expired = snapshot.revalidated(at: try rome(2026, 10, 7, 0, 12))
+        XCTAssertEqual(expired.freshness, .unavailable)
+        XCTAssertEqual(expired.operationalState, .unavailable)
+        XCTAssertTrue(expired.services.isEmpty)
+
+        // A time that cannot be read is never dropped as departed: only the expiry removes it.
+        let unreadable = try programmedSnapshot(times: ["--:--"])
+        XCTAssertEqual(unreadable.revalidated(at: try rome(2026, 10, 7, 0, 11)).services.count, 1)
+        XCTAssertNil(unreadable.nextDeparture)
+    }
+
+    func testWidgetTimelineHasAnEntryPerDepartureAndEndsUnavailableAtExpiry() throws {
+        let snapshot = try programmedSnapshot(times: ["23:50", "00:10"])
+        let now = try rome(2026, 10, 6, 23, 45)
+
+        let timeline = snapshot.timeline(from: now)
+
+        XCTAssertEqual(timeline.map { $0.date }, [
+            now,
+            try rome(2026, 10, 6, 23, 50),
+            try rome(2026, 10, 7, 0, 10),
+            try rome(2026, 10, 7, 0, 12),
+        ])
+        XCTAssertEqual(timeline.map { $0.snapshot.services.first?.expectedDeparture }, ["23:50", "00:10", nil, nil])
+        XCTAssertEqual(timeline.last?.snapshot.freshness, .unavailable)
+        XCTAssertEqual(snapshot.nextChange(after: now), try rome(2026, 10, 6, 23, 50))
+
+        // Trains in the same minute make one entry; past departures make none.
+        let sameMinute = try programmedSnapshot(times: ["23:50", "23:50"])
+        XCTAssertEqual(sameMinute.timelineDates(from: try rome(2026, 10, 6, 23, 55)), [
+            try rome(2026, 10, 6, 23, 55),
+            try rome(2026, 10, 7, 0, 12),
+        ])
+        let expiredNow = try rome(2026, 10, 7, 1, 0)
+        XCTAssertEqual(snapshot.timelineDates(from: expiredNow), [expiredNow])
+        XCTAssertNil(snapshot.nextChange(after: expiredNow))
+    }
+
+    @MainActor
+    func testStoreRevalidatesTheCachedSnapshotAgainstTheClock() throws {
+        let clock = TestClock(now: try rome(2026, 10, 6, 23, 45))
+        let store = WatchSnapshotStore(snapshot: try programmedSnapshot(times: ["23:50", "00:10"]), clock: { clock.now })
+        XCTAssertEqual(store.snapshot.services.count, 2)
+
+        // Back from the wrist-down suspension: the 23:50 train has left.
+        clock.now = try rome(2026, 10, 6, 23, 55)
+        store.revalidate()
+        XCTAssertEqual(store.snapshot.services.map(\.expectedDeparture), ["00:10"])
+
+        clock.now = try rome(2026, 10, 7, 0, 13)
+        store.revalidate()
+        XCTAssertEqual(store.snapshot.freshness, .unavailable)
+        XCTAssertTrue(store.snapshot.services.isEmpty)
+    }
+
+    @MainActor
+    func testRefreshTellsWhetherTheIPhoneReceivedTheRequest() async {
+        let reachable = StubPhoneRefresher(outcome: .sent)
+        let store = WatchSnapshotStore(snapshot: .unavailable, refresher: reachable)
+        await store.requestPhoneRefresh()
+        XCTAssertEqual(store.refreshFeedback, .sent)
+        XCTAssertEqual(reachable.requests, 1)
+
+        let unreachable = WatchSnapshotStore(snapshot: .unavailable, refresher: StubPhoneRefresher(outcome: .unreachable))
+        await unreachable.requestPhoneRefresh()
+        XCTAssertEqual(unreachable.refreshFeedback, .unreachable)
+
+        let withoutPhone = WatchSnapshotStore(snapshot: .unavailable)
+        await withoutPhone.requestPhoneRefresh()
+        XCTAssertEqual(withoutPhone.refreshFeedback, .unreachable)
+
+        store.sceneDidBecomeActive()
+        XCTAssertEqual(store.refreshFeedback, .idle)
+    }
+
+    /// A programmed snapshot generated at 23:40 Rome time that expires two minutes after its last
+    /// listed train, as the iPhone producer publishes it.
+    private func programmedSnapshot(times: [String]) throws -> BinarioWatchSnapshot {
+        let generatedAt = Int64(try rome(2026, 10, 6, 23, 40).timeIntervalSince1970 * 1_000)
+        let expiresAt = Int64(try rome(2026, 10, 7, 0, 12).timeIntervalSince1970 * 1_000)
+        return BinarioWatchSnapshot(
+            schemaVersion: 1,
+            generatedAtEpochMillis: generatedAt,
+            expiresAtEpochMillis: expiresAt,
+            ttlMillis: expiresAt - generatedAt,
+            provenanceProducer: .iosApp,
+            provenanceDataNature: .programmed,
+            provenanceSourceLabel: "Official GTFS",
+            provenanceObservedAtEpochMillis: generatedAt - 86_400_000,
+            operationalState: .programmed,
+            freshness: .unknown,
+            confidence: .staticOnly,
+            routeId: "S08409--S09218",
+            routeLabel: "Roma Termini → Napoli Centrale",
+            direction: .outbound,
+            notice: nil,
+            services: times.enumerated().map { index, time in
+                WatchService(
+                    number: "R \(index + 1)",
+                    operatorName: "Trenitalia",
+                    category: "Regionale",
+                    destination: "Napoli Centrale",
+                    scheduledDeparture: time,
+                    expectedDeparture: time,
+                    platform: nil,
+                    delayMinutes: 0,
+                    status: "PROGRAMMED"
+                )
+            }
+        )
+    }
+
+    private func rome(_ year: Int, _ month: Int, _ day: Int, _ hour: Int, _ minute: Int) throws -> Date {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = try XCTUnwrap(TimeZone(identifier: "Europe/Rome"))
+        return try XCTUnwrap(calendar.date(from: DateComponents(year: year, month: month, day: day, hour: hour, minute: minute)))
+    }
+
     private func fixtureData() throws -> Data {
         let url = try XCTUnwrap(Bundle(for: Self.self).url(forResource: "ios-to-apple-watch-v1", withExtension: "json"))
         return try Data(contentsOf: url)
+    }
+}
+
+@MainActor
+private final class TestClock {
+    var now: Date
+
+    init(now: Date) {
+        self.now = now
+    }
+}
+
+@MainActor
+private final class StubPhoneRefresher: PhoneRefreshRequesting {
+    let outcome: PhoneRefreshOutcome
+    private(set) var requests = 0
+
+    init(outcome: PhoneRefreshOutcome) {
+        self.outcome = outcome
+    }
+
+    func requestRefresh() async -> PhoneRefreshOutcome {
+        requests += 1
+        return outcome
     }
 }

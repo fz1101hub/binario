@@ -3,7 +3,7 @@ public enum BinarioLocalizationKeys {
         "action.ok",
         "tab.planner", "tab.saved", "tab.settings",
         "planner.title", "planner.intro.title", "planner.intro.body",
-        "planner.origin", "planner.destination", "planner.departure",
+        "planner.origin", "planner.destination", "planner.departure", "planner.departure.italian_time",
         "planner.choose_station", "planner.search_station",
         "planner.swap", "planner.search", "planner.save", "planner.same_station",
         "planner.selection_required",
@@ -32,6 +32,7 @@ public enum BinarioLocalizationKeys {
         "watch.status.context_updated", "watch.status.cleared",
         "watch.status.unsupported", "watch.status.not_paired", "watch.status.failed",
         "accessibility.station_suggestions", "accessibility.selected_station",
-        "accessibility.swap_route", "accessibility.saved_route", "accessibility.delete_route"
+        "accessibility.swap_route", "accessibility.saved_route", "accessibility.open_saved_route",
+        "accessibility.delete_route"
     ]
 }

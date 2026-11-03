@@ -7,6 +7,7 @@
 "planner.origin" = "စထွက်ရာ";
 "planner.destination" = "ဦးတည်ရာ";
 "planner.departure" = "ရက်စွဲနှင့် အချိန်";
+"planner.departure.italian_time" = "အချိန်များကို အီတလီစံတော်ချိန်ဖြင့် ပြသသည်";
 "planner.choose_station" = "ဘူတာ ရွေးပါ";
 "planner.search_station" = "ဘူတာ ရှာပါ";
 "planner.swap" = "လမ်းကြောင်း ပြောင်းပြန်လှန်ရန်";
@@ -64,6 +65,7 @@
 "accessibility.selected_station" = "ဘူတာ ရွေးပါ";
 "accessibility.swap_route" = "စထွက်ရာနှင့် ဦးတည်ရာကို လဲလှယ်ရန်";
 "accessibility.saved_route" = "သိမ်းထားသော လမ်းကြောင်း";
+"accessibility.open_saved_route" = "ဤလမ်းကြောင်းရှိ နောက်ရထားများကို ရှာဖွေသည်";
 "accessibility.delete_route" = "လမ်းကြောင်း ဖျက်ရန်";
 "action.ok" = "အိုကေ";
 "catalog.loading" = "ဘူတာစာရင်းကို ဖွင့်နေသည်…";

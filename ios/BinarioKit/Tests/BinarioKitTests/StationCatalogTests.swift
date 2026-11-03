@@ -15,6 +15,19 @@ final class StationCatalogTests: XCTestCase {
         XCTAssertEqual(catalog.station(id: "NC001477")?.name, "Morciano - Barbarano - Castrignano - Giuliano")
     }
 
+    func testNamesakesAreDistinctStationsWithTheSameNameNotHiddenDuplicates() throws {
+        let data = try Data(contentsOf: repositoryRoot
+            .appendingPathComponent("app/src/main/assets/stations/curated_it_rail_stations.json"))
+        let catalog = try CuratedStationCatalog(data: data)
+
+        XCTAssertFalse(catalog.hasNamesake(StationIdentity(id: "S08409", name: "Roma Termini")))
+        // Two Acerra stations 1.6 km apart: the Watch label needs the route identifier.
+        XCTAssertTrue(catalog.hasNamesake(StationIdentity(id: "S09215", name: "Acerra")))
+        XCTAssertTrue(catalog.hasNamesake(StationIdentity(id: "S09042", name: "Acerra")))
+        // One station with two co-located entries: the search offers only N00018.
+        XCTAssertFalse(catalog.hasNamesake(StationIdentity(id: "N00018", name: "Abbiate Guazzone")))
+    }
+
     func testAsyncLoaderTransfersAvailableCatalog() async throws {
         let data = try Data(contentsOf: repositoryRoot
             .appendingPathComponent("app/src/main/assets/stations/curated_it_rail_stations.json"))

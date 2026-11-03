@@ -239,24 +239,37 @@ public struct WearSnapshotEncoder: Sendable {
     }
 }
 
+/// The route title of the Watch: the station names only, as the user chose them. `routeId` is a
+/// contract field of its own, so the internal identifier is appended only when the caller reports
+/// that the names alone would collide with another route (stations that share a name).
 public enum WatchRouteLabelFormatter {
     public static let maximumCharacters = WearSnapshotV1.maximumRouteLabelCharacters
     private static let separator = " → "
     private static let identifierSeparator = " · "
 
-    public static func format(origin: StationIdentity, destination: StationIdentity) -> String {
+    public static func format(
+        origin: StationIdentity,
+        destination: StationIdentity,
+        disambiguate: Bool = false
+    ) -> String {
         format(
             originName: origin.name,
             destinationName: destination.name,
-            routeId: SavedRoute.routeIdentifier(origin: origin, destination: destination)
+            routeId: SavedRoute.routeIdentifier(origin: origin, destination: destination),
+            disambiguate: disambiguate
         )
     }
 
-    public static func format(originName: String, destinationName: String, routeId: String) -> String {
+    public static func format(
+        originName: String,
+        destinationName: String,
+        routeId: String,
+        disambiguate: Bool = false
+    ) -> String {
         let normalizedOrigin = normalize(originName)
         let normalizedDestination = normalize(destinationName)
         let normalizedRouteId = normalize(routeId)
-        let suffix = identifierSeparator + normalizedRouteId
+        let suffix = disambiguate ? identifierSeparator + normalizedRouteId : ""
         let availableNames = maximumCharacters - suffix.count
         guard availableNames > separator.count + 1 else {
             return String((normalizedRouteId.isEmpty ? "route" : normalizedRouteId).prefix(maximumCharacters))
@@ -314,6 +327,16 @@ public enum WatchSyncStatus: Equatable, Sendable {
     case failed
 }
 
+/// "Aggiorna" on the Watch: a Watch Connectivity message asking the iPhone to repeat its last
+/// search for now. Same key as PhoneRefreshMessage.requestKey on the Watch.
+public enum WatchRefreshRequest {
+    public static let messageKey = "binario_refresh_request"
+
+    public static func isRefreshRequest(_ message: [String: Any]) -> Bool {
+        message[messageKey] as? Bool == true
+    }
+}
+
 public enum WatchSyncDirective: Equatable, Sendable {
     case none
     case activate
@@ -357,6 +380,14 @@ public struct WatchSyncStateMachine: Sendable {
         return .publish(pending)
     }
 
+    /// The paired Watch, or the Binario app on it, changed: an operation held back because no
+    /// Watch could receive it is delivered now. Activation does not complete again for this.
+    public mutating func watchStateDidChange() -> WatchSyncDirective {
+        guard activationState == .activated, let pending = latestPendingOperation else { return .none }
+        latestPendingOperation = nil
+        return .publish(pending)
+    }
+
     public mutating func publicationFailed(_ operation: WatchSyncOperation) {
         latestPendingOperation = operation
     }
@@ -370,6 +401,10 @@ public protocol WatchSnapshotSession: AnyObject {
     var isPaired: Bool { get }
     var isWatchAppInstalled: Bool { get }
     var activationHandler: (@MainActor (WatchSessionActivationState) -> Void)? { get set }
+    /// Called when pairing or the installation of the Watch app changes (sessionWatchStateDidChange).
+    var watchStateHandler: (@MainActor () -> Void)? { get set }
+    /// Called when the Watch asks for a refresh (WatchRefreshRequest).
+    var refreshRequestHandler: (@MainActor () -> Void)? { get set }
     func activate()
     func updateApplicationContext(_ context: [String: Data]) throws
 }
@@ -380,6 +415,8 @@ public final class WatchSnapshotPublisher {
     public static let clearContextKey = "binario_snapshot_clear"
 
     public var statusDidChange: (@MainActor (WatchSyncStatus) -> Void)?
+    /// The Watch asked for its snapshot to be refreshed.
+    public var refreshRequested: (@MainActor () -> Void)?
     public private(set) var status: WatchSyncStatus = .disabled {
         didSet { statusDidChange?(status) }
     }
@@ -393,6 +430,12 @@ public final class WatchSnapshotPublisher {
         self.encoder = encoder
         self.session.activationHandler = { [weak self] state in
             self?.activationDidComplete(state)
+        }
+        self.session.watchStateHandler = { [weak self] in
+            self?.watchStateDidChange()
+        }
+        self.session.refreshRequestHandler = { [weak self] in
+            self?.refreshRequested?()
         }
     }
 
@@ -445,6 +488,15 @@ public final class WatchSnapshotPublisher {
             case .inactive, .notActivated:
                 status = .activating
             }
+        } catch {
+            status = .failed
+        }
+    }
+
+    private func watchStateDidChange() {
+        // A failed delivery is already reported through the status and kept pending.
+        do {
+            try executeThrowing(stateMachine.watchStateDidChange())
         } catch {
             status = .failed
         }

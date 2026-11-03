@@ -7,6 +7,7 @@
 "planner.origin" = "Kalkış";
 "planner.destination" = "Varış";
 "planner.departure" = "Tarih ve saat";
+"planner.departure.italian_time" = "Saatler İtalya saatine göre";
 "planner.choose_station" = "İstasyon seçin";
 "planner.search_station" = "İstasyon ara";
 "planner.swap" = "Yönü değiştir";
@@ -64,6 +65,7 @@
 "accessibility.selected_station" = "İstasyon seç";
 "accessibility.swap_route" = "Kalkış ve varışı değiştir";
 "accessibility.saved_route" = "Kayıtlı güzergâh";
+"accessibility.open_saved_route" = "Bu güzergâhtaki sonraki trenleri arar";
 "accessibility.delete_route" = "Güzergâhı sil";
 "action.ok" = "Tamam";
 "catalog.loading" = "İstasyon kataloğu yükleniyor…";

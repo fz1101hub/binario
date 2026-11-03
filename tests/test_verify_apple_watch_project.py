@@ -170,6 +170,9 @@ class AppleWatchProjectTests(unittest.TestCase):
             '"Dati non disponibili in tempo reale"',
             '"Prossime corse"',
             '"Rileggi cache"',
+            '"Aggiorna"',
+            '"Richiesta inviata"',
+            '"iPhone non raggiungibile"',
             '"Aggiorna Binario"',
             '"Andata"',
             '"Ritorno"',
@@ -232,12 +235,62 @@ class AppleWatchProjectTests(unittest.TestCase):
         self.assertNotIn("value: service.status)", home_source)
         self.assertIn("testProgrammedSnapshotIsPresentedAsScheduledNotAsMissingRealtime", tests_source)
 
-    def test_circular_widget_uses_background_without_an_unsupported_closure(self) -> None:
+    def test_every_widget_family_adopts_the_widget_container_background(self) -> None:
+        # watchOS 10 shows "Please adopt containerBackground API" instead of a widget without one.
         source = (APPLE_WATCH / "BinarioWatchWidgets" / "BinarioWatchWidgets.swift").read_text(encoding="utf-8")
-        circular = source.split("case .accessoryCircular:", 1)[1].split("case .accessoryInline:", 1)[0]
-        self.assertIn("ZStack {", circular)
-        self.assertIn("AccessoryWidgetBackground()", circular)
-        self.assertNotRegex(circular, r"AccessoryWidgetBackground\s*\{")
+        body = source.split("var body: some View {", 1)[1].split("@ViewBuilder", 1)[0]
+        self.assertIn(".containerBackground(for: .widget) { widgetBackground }", body)
+        self.assertEqual(1, source.count(".containerBackground(for: .widget)"))
+        background = source.split("private var widgetBackground: some View {", 1)[1].split("@ViewBuilder", 1)[0]
+        self.assertIn("if family == .accessoryCircular {", background)
+        self.assertIn("AccessoryWidgetBackground()", background)
+        self.assertIn("Color.clear", background)
+        # The background is drawn once, by the container, never inline in a family's content.
+        self.assertEqual(1, source.count("AccessoryWidgetBackground()"))
+        self.assertNotIn("ZStack", source)
+        self.assertNotRegex(source, r"AccessoryWidgetBackground\s*\{")
+
+    def test_widget_timeline_follows_each_departure_and_ends_at_the_expiry(self) -> None:
+        widget = (APPLE_WATCH / "BinarioWatchWidgets" / "BinarioWatchWidgets.swift").read_text(encoding="utf-8")
+        departures = (APPLE_WATCH / "Shared" / "WatchDepartures.swift").read_text(encoding="utf-8")
+        tests = (APPLE_WATCH / "BinarioWatchTests" / "WatchSnapshotTests.swift").read_text(encoding="utf-8")
+        timeline = widget.split("func getTimeline(", 1)[1].split("struct BinarioWatchWidget:", 1)[0]
+        self.assertIn(".timeline(from: Date())", timeline)
+        self.assertIn("policy: .atEnd", timeline)
+        self.assertNotIn(".after(", widget)
+        self.assertIn('Text("watch.countdown.departsIn \\(Text(departure, style: .relative))")', widget)
+        self.assertIn('TimeZone(identifier: "Europe/Rome")', departures)
+        self.assertIn("func revalidated(at date: Date) -> BinarioWatchSnapshot", departures)
+        self.assertIn("testWidgetTimelineHasAnEntryPerDepartureAndEndsUnavailableAtExpiry", tests)
+        self.assertIn("testRevalidationDropsTrainsThatLeftAndExpiresToUnavailable", tests)
+
+    def test_watch_app_revalidates_on_activation_and_at_each_change(self) -> None:
+        home = (APPLE_WATCH / "BinarioWatch" / "WatchHomeView.swift").read_text(encoding="utf-8")
+        store = (APPLE_WATCH / "BinarioWatch" / "WatchSnapshotStore.swift").read_text(encoding="utf-8")
+        tests = (APPLE_WATCH / "BinarioWatchTests" / "WatchSnapshotTests.swift").read_text(encoding="utf-8")
+        self.assertIn("@Environment(\\.scenePhase) private var scenePhase", home)
+        self.assertIn("if phase == .active { store.sceneDidBecomeActive() }", home)
+        self.assertIn("snapshot = stored.revalidated(at: clock())", store)
+        self.assertIn("stored.nextChange(after: now)", store)
+        self.assertIn("Task.sleep(for: .seconds(delay))", store)
+        self.assertIn("testStoreRevalidatesTheCachedSnapshotAgainstTheClock", tests)
+
+    def test_refresh_button_asks_the_iphone_and_reports_the_outcome(self) -> None:
+        home = (APPLE_WATCH / "BinarioWatch" / "WatchHomeView.swift").read_text(encoding="utf-8")
+        connectivity = (APPLE_WATCH / "BinarioWatch" / "PhoneConnectivity.swift").read_text(encoding="utf-8")
+        app = (APPLE_WATCH / "BinarioWatch" / "BinarioWatchApp.swift").read_text(encoding="utf-8")
+        tests = (APPLE_WATCH / "BinarioWatchTests" / "WatchSnapshotTests.swift").read_text(encoding="utf-8")
+        self.assertIn('WatchLocalization.text("watch.action.refresh")', home)
+        self.assertIn("await store.requestPhoneRefresh()", home)
+        self.assertIn('WatchLocalization.text("watch.refresh.sent")', home)
+        self.assertIn('WatchLocalization.text("watch.refresh.unreachable")', home)
+        self.assertIn('static let requestKey = "binario_refresh_request"', connectivity)
+        self.assertIn("session.isReachable", connectivity)
+        self.assertIn("WCSession.default.sendMessage(", connectivity)
+        # The handlers run on a Watch Connectivity queue: they must not be main-actor closures.
+        self.assertIn("nonisolated private static func send(", connectivity)
+        self.assertIn("WatchSnapshotStore(refresher: WCSessionRefreshRequester())", app)
+        self.assertIn("testRefreshTellsWhetherTheIPhoneReceivedTheRequest", tests)
 
     def test_every_watch_localization_key_exists_in_the_catalog(self) -> None:
         catalog = json.loads((APPLE_WATCH / "Resources" / "Localizable.xcstrings").read_text(encoding="utf-8"))
@@ -247,6 +300,9 @@ class AppleWatchProjectTests(unittest.TestCase):
             APPLE_WATCH / "BinarioWatch" / "RefreshBinarioIntent.swift",
             APPLE_WATCH / "BinarioWatchWidgets" / "BinarioWatchWidgets.swift",
             APPLE_WATCH / "Shared" / "WatchModels.swift",
+            APPLE_WATCH / "Shared" / "WatchDepartures.swift",
+            APPLE_WATCH / "BinarioWatch" / "WatchSnapshotStore.swift",
+            APPLE_WATCH / "BinarioWatch" / "PhoneConnectivity.swift",
         ]
         referenced_bases = {
             match.group(1)

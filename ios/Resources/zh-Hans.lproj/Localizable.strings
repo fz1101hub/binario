@@ -7,6 +7,7 @@
 "planner.origin" = "出发";
 "planner.destination" = "到达";
 "planner.departure" = "日期和时间";
+"planner.departure.italian_time" = "时间为意大利时间";
 "planner.choose_station" = "选择车站";
 "planner.search_station" = "搜索车站";
 "planner.swap" = "交换路线方向";
@@ -64,6 +65,7 @@
 "accessibility.selected_station" = "选择车站";
 "accessibility.swap_route" = "交换出发站和到达站";
 "accessibility.saved_route" = "已保存的路线";
+"accessibility.open_saved_route" = "搜索此路线的下一班列车";
 "accessibility.delete_route" = "删除路线";
 "action.ok" = "好";
 "catalog.loading" = "正在加载车站目录…";
