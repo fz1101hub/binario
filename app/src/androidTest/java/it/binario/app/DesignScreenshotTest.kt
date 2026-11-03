@@ -29,11 +29,13 @@ import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.captureToImage
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performScrollToIndex
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
@@ -165,7 +167,8 @@ class DesignScreenshotTest {
         capture("09-per-te-recenti")
         click("top-bar-settings")
         waitForTag("settings-screen")
-        waitForTag("settings-suggest-station")
+        waitForTagIn("settings-screen", "settings-suggest-station")
+        scrollToTop("settings-screen")
         capture("10-impostazioni")
         click("settings-alerts")
         waitForTag("settings-section-alerts")
@@ -235,7 +238,8 @@ class DesignScreenshotTest {
         capture("19-pianifica-ar")
         click("planner-search")
         waitForTag("result-card")
-        waitForTag("journey-result-card")
+        waitForTagIn("route-results", "journey-result-card")
+        scrollToTop("route-results")
         capture("20-risultati-ar")
     }
 
@@ -386,6 +390,24 @@ class DesignScreenshotTest {
 
     private fun waitForTag(tag: String) {
         composeRule.waitUntil(DATA_TIMEOUT_MILLIS) { composeRule.onAllNodesWithTag(tag).fetchSemanticsNodes().isNotEmpty() }
+        composeRule.waitForIdle()
+    }
+
+    /**
+     * [tag] inside the lazy list [listTag]: items below the fold are not composed, so the list is scrolled until the
+     * node exists (it may also still be loading). Longer layouts, such as Arabic text or an extra settings card, then
+     * still find it.
+     */
+    private fun waitForTagIn(listTag: String, tag: String) {
+        composeRule.waitUntil(DATA_TIMEOUT_MILLIS) {
+            runCatching { composeRule.onNodeWithTag(listTag).performScrollToNode(hasTestTag(tag)) }.isSuccess
+        }
+        composeRule.waitForIdle()
+    }
+
+    /** Back to the first item of the lazy list [listTag], so the capture shows the top of the screen. */
+    private fun scrollToTop(listTag: String) {
+        composeRule.onNodeWithTag(listTag).performScrollToIndex(0)
         composeRule.waitForIdle()
     }
 
