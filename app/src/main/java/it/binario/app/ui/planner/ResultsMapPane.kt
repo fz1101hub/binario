@@ -41,6 +41,7 @@ import it.binario.app.maps.OpenMapStationIndex
 import it.binario.app.maps.RouteOverviewMap
 import it.binario.app.ui.common.BinarioCard
 import it.binario.app.ui.common.JourneyTimes
+import it.binario.app.ui.common.compactDurationLabel
 import it.binario.app.ui.common.Pill
 import it.binario.app.ui.common.localizedLabel
 import it.binario.app.ui.common.ltrUnit
@@ -113,7 +114,7 @@ internal fun ResultsMapPane(
                 Text(
                     listOfNotNull(
                         ltrUnit(listOfNotNull(shown.scheduledDeparture, arrival).joinToString(" → ")),
-                        duration?.let { "(" + JourneyTimes.durationLabel(it) + ")" }
+                        duration?.let { "(" + compactDurationLabel(it) + ")" }
                     ).joinToString("  "),
                     style = MaterialTheme.typography.titleMedium.copy(fontFeatureSettings = TabularFigures)
                 )

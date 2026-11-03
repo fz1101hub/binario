@@ -438,12 +438,11 @@
     <string name="action_direction">方向</string>
     <string name="action_change_route">更换路线</string>
     <string name="monitored_routes_title">关注的路线</string>
-    <string name="service_scheduled_lowercase">按计划</string>
+    <string name="service_scheduled_lowercase">计划</string>
     <string name="service_on_time_lowercase">准点</string>
     <string name="today_empty_description">请刷新当前路线，或选择其他已保存的路线。不可用的数据不会用估算时刻代替。</string>
     <string name="action_refresh">刷新</string>
     <string name="action_open_routes">打开我的路线</string>
-    <string name="filter_all">全部</string>
     <string name="journey_changes_uppercase">换乘</string>
     <string name="accessibility_system_voice_input">%1$s（使用系统语音识别器）</string>
     <string name="accessibility_title_detail">%1$s。%2$s</string>
@@ -688,7 +687,7 @@
     <string name="update_time_never">从未更新</string>
     <string name="accessibility_optional_message"> %1$s</string>
     <string name="platform_short">站台 %1$s</string>
-    <string name="service_status_scheduled_badge">按计划</string>
+    <string name="service_status_scheduled_badge">仅时刻表</string>
     <string name="service_status_cancelled">停运</string>
     <string name="service_status_scheduled_compact">计划</string>
 
@@ -739,7 +738,7 @@
     <string name="refresh_success">数据已更新</string>
     <string name="refresh_error">刷新失败</string>
     <string name="freshness_fresh">数据已更新</string>
-    <string name="freshness_aging">数据更新中</string>
+    <string name="freshness_aging">数据不是最新</string>
     <string name="freshness_stale">最近可用数据</string>
     <string name="freshness_unavailable">暂无实时数据</string>
     <string name="service_status_on_time">准点</string>
@@ -798,7 +797,7 @@
     <string name="widget_confidence_cached">缓存</string>
     <string name="widget_confidence_demonstration">演示</string>
     <string name="widget_freshness_fresh">已更新</string>
-    <string name="widget_freshness_aging">更新中</string>
+    <string name="widget_freshness_aging">非最新</string>
     <string name="widget_freshness_stale">最近数据</string>
     <string name="widget_freshness_unavailable">无实时数据</string>
     <string name="widget_warning_source_conflict">数据源冲突</string>
@@ -856,7 +855,7 @@
     <string name="share_category_metropolitano">市域列车</string>
     <string name="share_category_other">列车</string>
     <string name="share_freshness_fresh">数据已更新</string>
-    <string name="share_freshness_aging">数据更新中</string>
+    <string name="share_freshness_aging">数据不是最新</string>
     <string name="share_freshness_stale">最近可用数据</string>
     <string name="share_freshness_unavailable">暂无实时数据</string>
     <string name="planned_journey_ics_event_description">行程：%1$s → %2$s，%3$s %4$s 出发（%5$s）</string>
@@ -1151,7 +1150,6 @@
     <string name="results_date_today">今天，%1$s</string>
     <string name="results_date_from_time">%1$s · %2$s 起</string>
     <string name="planner_time_now">现在</string>
-    <string name="accessibility_trip_kind">行程类型：%1$s。点按可在单程和往返之间切换</string>
     <string name="planner_filters">筛选</string>
     <string name="planner_return_short">返程 %1$s</string>
     <string name="planner_date_today">今天 %1$s</string>
@@ -1362,4 +1360,36 @@
     <plurals name="results_hidden_by_preferences">
         <item quantity="other">已按出行偏好隐藏 %d 趟直达车次</item>
     </plurals>
+    <!-- Data states and provider descriptors (audit A3-01, A3-15) -->
+    <string name="data_status_scheduled">计划时刻表，无实时数据</string>
+    <string name="data_chip_live">实时</string>
+    <string name="data_chip_saved_copy">已保存副本</string>
+    <string name="provider_descriptor_scheduled">计划时刻表</string>
+    <string name="provider_descriptor_rfi_programmed">计划运行图</string>
+    <string name="provider_descriptor_rail_source">铁路来源</string>
+    <string name="provider_descriptor_fallback">备用来源（不保证）</string>
+    <string name="provider_descriptor_best_effort">不保证</string>
+    <string name="provider_descriptor_public_board">公开信息屏</string>
+    <string name="provider_descriptor_rfi_monitor_live">实时到发显示屏</string>
+    <string name="provider_descriptor_rfi_monitor">到发显示屏</string>
+    <string name="provider_descriptor_swiss_boards">瑞士车站信息屏</string>
+    <!-- Time context of Partenze (audit A3-02) -->
+    <string name="departures_back_to_now">回到现在</string>
+    <string name="departures_route_from_search">来自规划的搜索</string>
+    <string name="departures_first_departure">首班车次</string>
+    <!-- Planner filters and station entry (audit A3-06, proposal 5) -->
+    <string name="planner_filters_active">筛选 · %1$s</string>
+    <string name="results_change_filter_remove">换乘筛选：%1$s。点按即可移除</string>
+    <string name="planner_use_location">使用位置作为出发站</string>
+    <string name="planner_location_origin">从最近的车站出发：%1$s。未保存位置。</string>
+    <string name="planner_location_none">当前位置附近没有车站。</string>
+    <!-- Snackbars with Undo (audit proposal 4) -->
+    <string name="action_undo">撤销</string>
+    <string name="snackbar_route_deleted">已删除路线“%1$s”</string>
+    <string name="snackbar_favourite_train_removed">已从我的列车中移除 %1$s</string>
+    <string name="snackbar_timetable_deleted">已删除时刻表“%1$s”</string>
+    <!-- Compact durations of the result cards (audit A3-16) -->
+    <string name="duration_hours_minutes">%1$d小时%2$d分</string>
+    <string name="duration_hours">%1$d小时</string>
+    <string name="duration_minutes">%1$d分钟</string>
 </resources>

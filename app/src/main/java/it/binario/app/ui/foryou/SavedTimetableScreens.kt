@@ -43,6 +43,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -58,8 +59,13 @@ import it.binario.app.timetables.SavedTimetableCodec
 import it.binario.app.timetables.SavedTimetableStore
 import it.binario.app.timetables.TimetableRow
 import it.binario.app.timetables.TimetableShareFormatter
+import android.content.Context
+import android.content.res.Resources
+import it.binario.app.ui.common.AppSnackbar
 import it.binario.app.ui.common.BinarioCard
+import it.binario.app.ui.common.LocalAppSnackbar
 import it.binario.app.ui.common.ChangesBadge
+import it.binario.app.ui.common.compactDurationLabel
 import it.binario.app.ui.common.HeaderOverlapBox
 import it.binario.app.ui.common.InfoNoticeCard
 import it.binario.app.ui.common.Pill
@@ -85,6 +91,8 @@ import java.time.LocalTime
 internal fun SavedTimetablesSection(onOpen: (SavedTimetable) -> Unit) {
     val context = LocalContext.current
     val timetables = SavedTimetableStore.all(context)
+    val snackbar = LocalAppSnackbar.current
+    val resources = LocalResources.current
     var renaming by rememberSaveable { mutableStateOf<String?>(null) }
     renaming?.let { id ->
         timetables.firstOrNull { it.id == id }?.let { timetable ->
@@ -112,7 +120,7 @@ internal fun SavedTimetablesSection(onOpen: (SavedTimetable) -> Unit) {
                     timetable = timetable,
                     onOpen = { onOpen(timetable) },
                     onRename = { renaming = timetable.id },
-                    onDelete = { SavedTimetableStore.delete(context, timetable.id) }
+                    onDelete = { deleteWithUndo(context, timetable, snackbar, resources) }
                 )
             }
         }
@@ -199,6 +207,8 @@ internal fun SavedTimetableScreen(modifier: Modifier, id: String, onGone: () -> 
         return
     }
     val locale = LocalConfiguration.current.locales[0]
+    val snackbar = LocalAppSnackbar.current
+    val resources = LocalResources.current
     var renaming by rememberSaveable { mutableStateOf(false) }
     if (renaming) {
         SavedTimetableNameDialog(
@@ -243,7 +253,7 @@ internal fun SavedTimetableScreen(modifier: Modifier, id: String, onGone: () -> 
                         TonalButton(text = stringResource(R.string.favourite_train_rename), onClick = { renaming = true }, leadingIcon = Icons.Default.Edit)
                         TonalButton(
                             text = stringResource(R.string.saved_timetable_delete),
-                            onClick = { SavedTimetableStore.delete(context, id) },
+                            onClick = { deleteWithUndo(context, timetable, snackbar, resources) },
                             leadingIcon = Icons.Default.DeleteOutline,
                             modifier = Modifier.testTag("saved-timetable-delete")
                         )
@@ -286,7 +296,7 @@ private fun SavedTimetableRowCard(row: TimetableRow) {
                     style = MaterialTheme.typography.titleLarge.copy(fontFeatureSettings = TabularFigures)
                 )
                 row.durationMinutes?.let {
-                    Text(TimetableShareFormatter.duration(it), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(compactDurationLabel(it), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
             if (row.arrivalDayOffset > 0) {
@@ -308,6 +318,15 @@ private fun SavedTimetableRowCard(row: TimetableRow) {
                 )
             }
         }
+    }
+}
+
+/** Deletes [timetable] at once; "Annulla" in the snackbar puts the list back as it was. */
+private fun deleteWithUndo(context: Context, timetable: SavedTimetable, snackbar: AppSnackbar?, resources: Resources) {
+    val before = SavedTimetableStore.all(context)
+    SavedTimetableStore.delete(context, timetable.id)
+    snackbar?.show(resources.getString(R.string.snackbar_timetable_deleted, timetable.name), resources.getString(R.string.action_undo)) {
+        SavedTimetableStore.replace(context, before)
     }
 }
 

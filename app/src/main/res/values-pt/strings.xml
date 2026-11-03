@@ -444,7 +444,6 @@
     <string name="today_empty_description">Atualize o trajeto ativo ou escolha outro trajeto salvo. Dados indisponíveis não são substituídos por horários estimados.</string>
     <string name="action_refresh">Atualizar</string>
     <string name="action_open_routes">Abrir meus trajetos</string>
-    <string name="filter_all">Todos</string>
     <string name="journey_changes_uppercase">BALDEAÇÕES</string>
     <string name="accessibility_system_voice_input">%1$s pelo reconhecedor de voz do sistema</string>
     <string name="accessibility_title_detail">%1$s. %2$s</string>
@@ -751,7 +750,7 @@
     <string name="refresh_success">Dados atualizados</string>
     <string name="refresh_error">Falha na atualização</string>
     <string name="freshness_fresh">Dados atualizados</string>
-    <string name="freshness_aging">Dados em atualização</string>
+    <string name="freshness_aging">Dados não recentes</string>
     <string name="freshness_stale">Último dado disponível</string>
     <string name="freshness_unavailable">Dados em tempo real indisponíveis</string>
     <string name="service_status_on_time">No horário</string>
@@ -808,7 +807,7 @@
     <string name="widget_confidence_cached">CACHE</string>
     <string name="widget_confidence_demonstration">DEMO</string>
     <string name="widget_freshness_fresh">ATUALIZADO</string>
-    <string name="widget_freshness_aging">ATUALIZANDO</string>
+    <string name="widget_freshness_aging">NÃO RECENTE</string>
     <string name="widget_freshness_stale">ÚLTIMO DADO</string>
     <string name="widget_freshness_unavailable">TEMPO REAL INDISPONÍVEL</string>
     <string name="widget_warning_source_conflict">FONTES EM CONFLITO</string>
@@ -867,7 +866,7 @@
     <string name="share_category_metropolitano">Trem metropolitano</string>
     <string name="share_category_other">Trem</string>
     <string name="share_freshness_fresh">Dados atualizados</string>
-    <string name="share_freshness_aging">Dados em atualização</string>
+    <string name="share_freshness_aging">Dados não recentes</string>
     <string name="share_freshness_stale">Último dado disponível</string>
     <string name="share_freshness_unavailable">Dados em tempo real indisponíveis</string>
     <string name="planned_journey_ics_event_description">Viagem: %1$s → %2$s, partida %3$s às %4$s (%5$s)</string>
@@ -1182,7 +1181,6 @@
     <string name="results_date_today">Hoje, %1$s</string>
     <string name="results_date_from_time">%1$s · a partir das %2$s</string>
     <string name="planner_time_now">Agora</string>
-    <string name="accessibility_trip_kind">Tipo de viagem: %1$s. Toque para alternar entre só ida e ida e volta</string>
     <string name="planner_filters">Filtros</string>
     <string name="planner_return_short">Volta %1$s</string>
     <string name="planner_date_today">Hoje %1$s</string>
@@ -1403,4 +1401,36 @@
         <item quantity="many">%d trens diretos ocultos pelas preferências de viagem</item>
         <item quantity="other">%d trens diretos ocultos pelas preferências de viagem</item>
     </plurals>
+    <!-- Data states and provider descriptors (audit A3-01, A3-15) -->
+    <string name="data_status_scheduled">Horário programado, sem dados em tempo real</string>
+    <string name="data_chip_live">Ao vivo</string>
+    <string name="data_chip_saved_copy">Cópia salva</string>
+    <string name="provider_descriptor_scheduled">horário programado</string>
+    <string name="provider_descriptor_rfi_programmed">Quadro de horários programado</string>
+    <string name="provider_descriptor_rail_source">fonte ferroviária</string>
+    <string name="provider_descriptor_fallback">alternativa sem garantia</string>
+    <string name="provider_descriptor_best_effort">sem garantia</string>
+    <string name="provider_descriptor_public_board">painel público</string>
+    <string name="provider_descriptor_rfi_monitor_live">Monitor de chegadas/partidas ao vivo</string>
+    <string name="provider_descriptor_rfi_monitor">Monitor de chegadas/partidas</string>
+    <string name="provider_descriptor_swiss_boards">painéis suíços</string>
+    <!-- Time context of Partenze (audit A3-02) -->
+    <string name="departures_back_to_now">Voltar para agora</string>
+    <string name="departures_route_from_search">Busca de Planejar</string>
+    <string name="departures_first_departure">Primeira partida</string>
+    <!-- Planner filters and station entry (audit A3-06, proposal 5) -->
+    <string name="planner_filters_active">Filtros · %1$s</string>
+    <string name="results_change_filter_remove">Filtro de baldeações: %1$s. Toque para remover</string>
+    <string name="planner_use_location">Usar a localização para a partida</string>
+    <string name="planner_location_origin">Partida da estação mais próxima: %1$s. A localização não foi salva.</string>
+    <string name="planner_location_none">Nenhuma estação perto da localização atual.</string>
+    <!-- Snackbars with Undo (audit proposal 4) -->
+    <string name="action_undo">Desfazer</string>
+    <string name="snackbar_route_deleted">Trajeto “%1$s” excluído</string>
+    <string name="snackbar_favourite_train_removed">%1$s removido de Meus trens</string>
+    <string name="snackbar_timetable_deleted">Horário “%1$s” excluído</string>
+    <!-- Compact durations of the result cards (audit A3-16) -->
+    <string name="duration_hours_minutes">%1$d h %2$d min</string>
+    <string name="duration_hours">%1$d h</string>
+    <string name="duration_minutes">%1$d min</string>
 </resources>

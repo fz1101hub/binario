@@ -61,9 +61,14 @@ internal fun DataConfidence.localizedLabel(): String = stringResource(labelRes()
 @Composable
 internal fun DataQualityBand.localizedLabel(): String = stringResource(labelRes())
 
-/** A copy kept from an earlier refresh (cache or expired source): the UI shows its snapshot time. */
-internal fun TrainViewModel.isCachedCopy(): Boolean =
-    currentConfidence() == DataConfidence.CACHED || currentFreshness() == Freshness.STALE
+/** Live, scheduled, saved copy, demonstration or unavailable: what the route data on screen are ([DataState]). */
+internal fun TrainViewModel.dataState(): DataState =
+    DataState.of(currentFreshness(), currentConfidence(), snapshot?.services.orEmpty(), isDemonstrationData())
+
+/** The provider of the data on screen with its descriptors in the app language, or "unavailable". */
+@Composable
+internal fun TrainViewModel.localizedProviderLabel(): String =
+    currentProviderLabel()?.let { localizedProviderName(it) } ?: stringResource(R.string.provider_unavailable)
 
 /** Quality band and score precede the confidence, as promised for every published snapshot. */
 @Composable

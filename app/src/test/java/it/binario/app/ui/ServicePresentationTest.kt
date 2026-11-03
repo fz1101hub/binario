@@ -1,5 +1,6 @@
 package it.binario.app.ui
 
+import it.binario.app.TestStringCatalogue
 import it.binario.app.data.RailOperator
 import it.binario.app.data.ServiceStatus
 import it.binario.app.data.TrainCategory
@@ -11,6 +12,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.util.Locale
 
 class ServicePresentationTest {
     private fun service(number: String, category: TrainCategory, departure: String, arrival: String?) = TrainService(
@@ -33,11 +35,26 @@ class ServicePresentationTest {
         assertNull(JourneyTimes.durationMinutes(service("3", TrainCategory.REGIONALE, "--", "18:00")))
     }
 
+    /** [JourneyTimes.durationLabel] with the duration_* templates of [locale], formatted as Android would. */
+    private fun duration(minutes: Int, locale: String?, javaLocale: Locale): String {
+        val strings = TestStringCatalogue.of(locale)
+        return JourneyTimes.durationLabel(
+            minutes,
+            hoursMinutes = { hours, rest -> strings.getValue("duration_hours_minutes").format(javaLocale, hours, rest) },
+            hoursOnly = { hours -> strings.getValue("duration_hours").format(javaLocale, hours) },
+            minutesOnly = { rest -> strings.getValue("duration_minutes").format(javaLocale, rest) }
+        )
+    }
+
     @Test
-    fun `duration labels use hour and minute symbols`() {
-        assertEquals("4h 25min", JourneyTimes.durationLabel(265))
-        assertEquals("45min", JourneyTimes.durationLabel(45))
-        assertEquals("2h", JourneyTimes.durationLabel(120))
+    fun `duration labels keep the render in Italian and follow each language elsewhere`() {
+        assertEquals("4h 25min", duration(265, null, Locale.ITALIAN))
+        assertEquals("45min", duration(45, null, Locale.ITALIAN))
+        assertEquals("2h", duration(120, null, Locale.ITALIAN))
+        assertEquals("4h 25m", duration(265, "en", Locale.ENGLISH))
+        assertEquals("4 ч 25 мин", duration(265, "ru", Locale.forLanguageTag("ru")))
+        assertEquals("4時間25分", duration(265, "ja", Locale.JAPANESE))
+        assertEquals("4시간 25분", duration(265, "ko", Locale.KOREAN))
     }
 
     @Test

@@ -1,7 +1,9 @@
 package it.binario.app.ui.planner
 
 import it.binario.app.ui.common.LocalizedDates
+import android.Manifest
 import android.app.Activity
+import android.content.pm.PackageManager
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
 import android.content.Intent
@@ -32,6 +34,7 @@ import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
@@ -43,6 +46,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -50,30 +54,47 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import it.binario.app.DictationReviewStatus
 import it.binario.app.DictationTarget
 import it.binario.app.JourneyChangeFilter
+import it.binario.app.NearestStationPicker
 import it.binario.app.PlannerDateTime
 import it.binario.app.PlannerVoiceParser
 import it.binario.app.R
 import it.binario.app.TrainNumberSearchForm
 import it.binario.app.TrainViewModel
+import it.binario.app.requestSingleLocationFix
 import it.binario.app.data.Direction
 import it.binario.app.data.RailTime
 import it.binario.app.data.Station
@@ -91,6 +112,7 @@ import it.binario.app.ui.common.localizedAccessibleLabel
 import it.binario.app.ui.common.localizedDisplayName
 import it.binario.app.ui.common.localizedLabel
 import it.binario.app.ui.common.localizedName
+import it.binario.app.ui.common.ltrUnit
 import java.time.LocalDate
 import java.time.LocalTime
 import java.util.Locale
@@ -114,6 +136,8 @@ internal fun PlannerScreen(
     viewModel: TrainViewModel,
     initialMode: SearchMode,
     modeRequestId: Int,
+    /** Incremented by "Modifica" of the results: the form takes the search on screen. */
+    editRequestId: Int = 0,
     showResults: () -> Unit,
     showTrainResults: () -> Unit,
     openMore: () -> Unit,
@@ -145,7 +169,36 @@ internal fun PlannerScreen(
     val resources = LocalResources.current
     val dateUnselected = stringResource(R.string.planner_date_unselected)
     val timeUnselected = stringResource(R.string.planner_time_unselected)
-    LaunchedEffect(modeRequestId) { mode = initialMode }
+    // Each request (a deep link, "Modifica") applies once: coming back to the planner keeps what the user set.
+    var handledModeRequest by rememberSaveable { mutableIntStateOf(0) }
+    LaunchedEffect(modeRequestId) {
+        if (modeRequestId != handledModeRequest) {
+            mode = initialMode
+            handledModeRequest = modeRequestId
+        }
+    }
+    var handledEditRequest by rememberSaveable { mutableIntStateOf(0) }
+    LaunchedEffect(editRequestId) {
+        if (editRequestId == handledEditRequest) return@LaunchedEffect
+        handledEditRequest = editRequestId
+        if (!viewModel.hasActiveRoute) return@LaunchedEffect
+        mode = SearchMode.ROUTE
+        originText = viewModel.activeRoute.origin(viewModel.direction).name
+        destinationText = viewModel.activeRoute.destination(viewModel.direction).name
+        val query = viewModel.journeyQuery
+        dateChosen = !viewModel.journeyFollowsCurrentTime
+        timeChosen = !viewModel.journeyFollowsCurrentTime
+        if (!viewModel.journeyFollowsCurrentTime) {
+            travelDate = query.serviceDate.toString()
+            travelTime = query.departureTime.toString()
+        }
+        val planned = viewModel.returnQuery
+        returnJourney = planned != null
+        planned?.let {
+            returnDate = it.serviceDate.toString()
+            returnTime = it.departureTime.toString()
+        }
+    }
     val voiceLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         val voiceTarget = SearchMode.valueOf(voiceTargetName)
         val spoken = if (result.resultCode == Activity.RESULT_OK) {
@@ -274,14 +327,53 @@ internal fun PlannerScreen(
                 selectedReturnTime
             )
         )
-    val search: () -> Unit = {
+    val searchEnabled = origin != null &&
+        destination != null &&
+        origin != destination &&
+        selectedDepartureDate != null &&
+        selectedDepartureTime != null &&
+        roundTripChronologyValid
+    val destinationFocus = remember { FocusRequester() }
+    val keyboard = LocalSoftwareKeyboardController.current
+    // Offered in an empty station field: favourite stations, then those of the recent searches.
+    val knownStations = remember(viewModel.favouriteStations, viewModel.recentRoutes) {
+        (viewModel.favouriteStations + viewModel.recentRoutes.flatMap { listOf(it.origin, it.destination) }).distinctBy { it.id }.take(5)
+    }
+    // "Usa posizione" of the origin: one approximate fix, the nearest catalogue station, nothing stored.
+    var locationMessage by rememberSaveable { mutableStateOf<String?>(null) }
+    fun locateOrigin() {
+        requestSingleLocationFix(context) { location ->
+            val nearest = location?.let { NearestStationPicker.pick(viewModel.stations, it.latitude, it.longitude) }
+            locationMessage = when {
+                location == null -> resources.getString(R.string.location_unavailable)
+                nearest == null -> resources.getString(R.string.planner_location_none)
+                else -> {
+                    originText = nearest.station.name
+                    viewModel.clearStationSuggestions("planner-origin")
+                    resources.getString(R.string.planner_location_origin, nearest.station.name)
+                }
+            }
+        }
+    }
+    val locationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) locateOrigin() else locationMessage = resources.getString(R.string.location_permission_denied)
+    }
+    fun useLocationForOrigin() {
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) locateOrigin()
+        else locationPermission.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
+    }
+    /** Searches [from] → [to] with the date and time of the form; "Oggi · Adesso" follows the current time. */
+    fun searchRoute(from: Station?, to: Station?) {
         // "Adesso" and "Oggi" mean the moment of the search, not the moment the screen was opened.
-        val departureDate = if (dateChosen) selectedDepartureDate else LocalDate.now(RailTime.defaultZone)
+        val today = LocalDate.now(RailTime.defaultZone)
+        val departureDate = if (dateChosen) selectedDepartureDate else today
         val departureTime = if (timeChosen) selectedDepartureTime else LocalTime.now(RailTime.defaultZone).withSecond(0).withNano(0)
+        // Without a chosen time the results (and Partenze) keep showing the next trains from now.
+        val followsNow = !timeChosen && departureDate == today
         val searched = if (
-            origin != null &&
-            destination != null &&
-            origin != destination &&
+            from != null &&
+            to != null &&
+            from != to &&
             departureDate != null &&
             departureTime != null
         ) {
@@ -291,13 +383,14 @@ internal fun PlannerScreen(
                 selectedReturnTime != null &&
                 PlannerDateTime.isReturnAfterDeparture(departureDate, departureTime, selectedReturnDate, selectedReturnTime)
             ) {
-                viewModel.searchRoundTrip(origin, destination, departureDate, departureTime, selectedReturnDate, selectedReturnTime)
+                viewModel.searchRoundTrip(from, to, departureDate, departureTime, selectedReturnDate, selectedReturnTime, outboundFollowsCurrentTime = followsNow)
             } else if (!returnJourney) {
-                viewModel.searchRoute(origin, destination, departureDate, departureTime)
+                if (followsNow) viewModel.searchRoute(from, to) else viewModel.searchRoute(from, to, departureDate, departureTime)
             } else false
         } else false
         if (searched) showResults()
     }
+    val search: () -> Unit = { searchRoute(origin, destination) }
     val today = LocalDate.now(RailTime.defaultZone)
     val shownDepartureDate = if (dateChosen) selectedDepartureDate else today
     val outboundDateLabel = shortDateLabel(shownDepartureDate, today, locale, dateUnselected)
@@ -339,14 +432,36 @@ internal fun PlannerScreen(
                                             value = originText,
                                             onValueChange = { originText = it; viewModel.updateStationSuggestions("planner-origin", it) },
                                             matches = viewModel.stationSuggestions("planner-origin"),
-                                            onSelect = { originText = it.name; viewModel.clearStationSuggestions("planner-origin") }
+                                            onSelect = {
+                                                originText = it.name
+                                                viewModel.clearStationSuggestions("planner-origin")
+                                                // The next field to fill: the destination.
+                                                if (destinationText.isBlank()) runCatching { destinationFocus.requestFocus() }
+                                            },
+                                            imeAction = ImeAction.Next,
+                                            onImeAction = { runCatching { destinationFocus.requestFocus() } },
+                                            emptySuggestions = knownStations,
+                                            trailingIcon = {
+                                                IconButton(onClick = { useLocationForOrigin() }, modifier = Modifier.testTag("planner-origin-location")) {
+                                                    Icon(Icons.Default.MyLocation, contentDescription = stringResource(R.string.planner_use_location))
+                                                }
+                                            }
                                         )
                                         StationField(
                                             label = stringResource(R.string.planner_destination),
                                             value = destinationText,
                                             onValueChange = { destinationText = it; viewModel.updateStationSuggestions("planner-destination", it) },
                                             matches = viewModel.stationSuggestions("planner-destination"),
-                                            onSelect = { destinationText = it.name; viewModel.clearStationSuggestions("planner-destination") }
+                                            onSelect = { destinationText = it.name; viewModel.clearStationSuggestions("planner-destination") },
+                                            modifier = Modifier.focusRequester(destinationFocus),
+                                            imeAction = ImeAction.Search,
+                                            onImeAction = {
+                                                if (searchEnabled) {
+                                                    keyboard?.hide()
+                                                    search()
+                                                }
+                                            },
+                                            emptySuggestions = knownStations
                                         )
                                     }
                                     FilledTonalIconButton(
@@ -374,12 +489,13 @@ internal fun PlannerScreen(
                                 }
                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                                     val tripLabel = stringResource(if (returnJourney) R.string.planner_round_trip else R.string.planner_one_way)
-                                    PlannerChoiceButton(
-                                        icon = if (returnJourney) Icons.Default.ToggleOn else Icons.Default.ToggleOff,
+                                    // A switch named "Andata e ritorno": TalkBack announces on or off, whatever the state.
+                                    PlannerToggleButton(
+                                        checked = returnJourney,
                                         text = tripLabel,
-                                        description = stringResource(R.string.accessibility_trip_kind, tripLabel),
-                                        onClick = {
-                                            returnJourney = !returnJourney
+                                        description = stringResource(R.string.planner_round_trip),
+                                        onCheckedChange = { checked ->
+                                            returnJourney = checked
                                             if (returnJourney) {
                                                 val outboundDate = PlannerDateTime.dateOrToday(travelDate)
                                                 val outboundTime = PlannerDateTime.timeOrNow(travelTime)
@@ -393,10 +509,17 @@ internal fun PlannerScreen(
                                         },
                                         modifier = Modifier.weight(1f).testTag("planner-trip-kind")
                                     )
+                                    // The button says which filter is on, to the eye and to TalkBack.
+                                    val changeFilter = viewModel.journeyChangeFilter
+                                    val filtersText = if (changeFilter == JourneyChangeFilter.ANY) stringResource(R.string.planner_filters)
+                                        else stringResource(R.string.planner_filters_active, changeFilter.localizedLabel())
+                                    val filtersDescription = if (changeFilter == JourneyChangeFilter.ANY) stringResource(R.string.planner_filters_all_trains)
+                                        else stringResource(R.string.planner_filters_active, changeFilter.localizedAccessibleLabel())
                                     PlannerChoiceButton(
                                         icon = Icons.Default.FilterList,
-                                        text = stringResource(R.string.planner_filters),
-                                        description = stringResource(if (showFilters) R.string.planner_filters_open else R.string.planner_filters_all_trains),
+                                        text = filtersText,
+                                        description = filtersDescription,
+                                        stateDescription = if (showFilters) stringResource(R.string.planner_filters_open) else null,
                                         onClick = { showFilters = !showFilters },
                                         trailingIcon = if (showFilters) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
                                         modifier = Modifier.weight(1f).testTag("planner-filters")
@@ -430,8 +553,8 @@ internal fun PlannerScreen(
                                     }
                                 }
                                 if (showFilters) {
+                                    // The operators of the previous search are not those of the next one: no operator chips here.
                                     JourneyChangeFilterBar(viewModel.journeyChangeFilter, viewModel::selectJourneyChangeFilter)
-                                    OperatorFilterBar(viewModel.operatorFilter, viewModel.operatorFilterOptions(), viewModel::selectOperatorFilter)
                                     Text(stringResource(R.string.planner_filter_disclosure), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                     TextButton(onClick = openTravelPreferences, modifier = Modifier.testTag("planner-travel-preferences")) {
                                         Icon(Icons.Default.Tune, contentDescription = null)
@@ -439,14 +562,10 @@ internal fun PlannerScreen(
                                         Text(stringResource(R.string.settings_section_travel))
                                     }
                                 }
+                                locationMessage?.let { message -> StatusText(message, Modifier.testTag("planner-location-message")) }
                                 Button(
                                     onClick = search,
-                                    enabled = origin != null &&
-                                        destination != null &&
-                                        origin != destination &&
-                                        selectedDepartureDate != null &&
-                                        selectedDepartureTime != null &&
-                                        roundTripChronologyValid,
+                                    enabled = searchEnabled,
                                     modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp).testTag("planner-search"),
                                     shape = RoundedCornerShape(16.dp)
                                 ) {
@@ -455,7 +574,7 @@ internal fun PlannerScreen(
                                     Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null)
                                 }
                                 VoiceInputButton(onClick = { startVoiceInput(SearchMode.ROUTE) }, label = stringResource(R.string.planner_voice_route))
-                                speechMessage?.let { message -> Text(message, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                                speechMessage?.let { message -> StatusText(message) }
                             }
                             SearchMode.TRAIN -> {
                                 TrainNumberSearchForm(
@@ -464,7 +583,7 @@ internal fun PlannerScreen(
                                     onSearch = { viewModel.searchTrainNumber(); showTrainResults() }
                                 )
                                 VoiceInputButton(onClick = { startVoiceInput(SearchMode.TRAIN) }, label = stringResource(R.string.planner_voice_train))
-                                speechMessage?.let { message -> Text(message, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                                speechMessage?.let { message -> StatusText(message) }
                             }
                             SearchMode.STATION -> {
                                 StationField(
@@ -472,7 +591,10 @@ internal fun PlannerScreen(
                                     value = stationText,
                                     onValueChange = { stationText = it; viewModel.updateStationSuggestions("planner-station", it) },
                                     matches = viewModel.stationSuggestions("planner-station"),
-                                    onSelect = { stationText = it.name; viewModel.clearStationSuggestions("planner-station") }
+                                    onSelect = { stationText = it.name; viewModel.clearStationSuggestions("planner-station") },
+                                    imeAction = ImeAction.Search,
+                                    onImeAction = { viewModel.stationFromName(stationText)?.let { keyboard?.hide(); openStations(it) } },
+                                    emptySuggestions = viewModel.favouriteStations.take(5)
                                 )
                                 Button(
                                     onClick = { openStations(viewModel.stationFromName(stationText)) },
@@ -485,7 +607,7 @@ internal fun PlannerScreen(
                                     Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null)
                                 }
                                 VoiceInputButton(onClick = { startVoiceInput(SearchMode.STATION) }, label = stringResource(R.string.planner_voice_station))
-                                speechMessage?.let { message -> Text(message, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                                speechMessage?.let { message -> StatusText(message) }
                             }
                         }
                     }
@@ -500,20 +622,26 @@ internal fun PlannerScreen(
         }
         items(viewModel.recentRoutes.take(4), key = { "recent-${it.origin.id}-${it.destination.id}" }) { recent ->
             PlannerRouteRow(
-                title = recent.label,
+                title = ltrUnit(recent.label),
                 detail = stringResource(R.string.planner_recent_search),
                 icon = Icons.Default.History,
                 actionDescription = stringResource(R.string.accessibility_repeat_search, recent.label),
-                onClick = { if (viewModel.useRecentRoute(recent)) { originText = recent.origin.name; destinationText = recent.destination.name } }
+                // "Ripeti ricerca": the route with the date and time of the form, then its results.
+                onClick = {
+                    originText = recent.origin.name
+                    destinationText = recent.destination.name
+                    searchRoute(recent.origin, recent.destination)
+                }
             )
         }
         items(viewModel.savedRoutes.filter { it.isPinned }.take(4), key = { it.id }) { route ->
             PlannerRouteRow(
-                title = route.localizedDisplayName(Direction.OUTBOUND),
+                title = ltrUnit(route.localizedDisplayName(Direction.OUTBOUND)),
                 detail = route.localizedName(),
                 icon = Icons.Default.Star,
                 actionDescription = stringResource(R.string.accessibility_use_route, route.localizedName()),
-                onClick = { viewModel.activateRoute(route); originText = route.outwardOrigin.name; destinationText = route.outwardDestination.name }
+                // "Usa tratta": fills the form; Partenze keeps its active route until a search.
+                onClick = { originText = route.outwardOrigin.name; destinationText = route.outwardDestination.name }
             )
         }
         item { Spacer(Modifier.height(24.dp)) }
@@ -528,11 +656,15 @@ private fun PlannerChoiceButton(
     description: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    trailingIcon: ImageVector? = null
+    trailingIcon: ImageVector? = null,
+    stateDescription: String? = null
 ) {
     Surface(
         onClick = onClick,
-        modifier = modifier.heightIn(min = 56.dp).semantics { contentDescription = description },
+        modifier = modifier.heightIn(min = 56.dp).semantics {
+            contentDescription = description
+            stateDescription?.let { this.stateDescription = it }
+        },
         color = MaterialTheme.colorScheme.surfaceContainerLow,
         shape = RoundedCornerShape(16.dp)
     ) {
@@ -543,6 +675,53 @@ private fun PlannerChoiceButton(
             trailingIcon?.let { Icon(it, contentDescription = null, modifier = Modifier.size(20.dp)) }
         }
     }
+}
+
+/**
+ * "Sola andata / Andata e ritorno" as a switch in the box of [PlannerChoiceButton]: [description] names the switch
+ * without its state, which TalkBack reads as on or off; the toggle glyph follows the reading direction.
+ */
+@Composable
+private fun PlannerToggleButton(
+    checked: Boolean,
+    text: String,
+    description: String,
+    onCheckedChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val rightToLeft = LocalLayoutDirection.current == LayoutDirection.Rtl
+    Surface(
+        checked = checked,
+        onCheckedChange = onCheckedChange,
+        modifier = modifier.heightIn(min = 56.dp).semantics {
+            contentDescription = description
+            role = Role.Switch
+        },
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Row(Modifier.padding(horizontal = 14.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                if (checked) Icons.Default.ToggleOn else Icons.Default.ToggleOff,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(22.dp).graphicsLayer { if (rightToLeft) scaleX = -1f }
+            )
+            Spacer(Modifier.width(10.dp))
+            Text(text, modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+/** A status line of the planner (dictation, location): announced by TalkBack when it appears or changes. */
+@Composable
+private fun StatusText(message: String, modifier: Modifier = Modifier) {
+    Text(
+        message,
+        modifier = modifier.semantics { liveRegion = LiveRegionMode.Polite },
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant
+    )
 }
 
 /** A recent search or pinned route under the planner card, as a white row of the render. */
@@ -575,28 +754,6 @@ private fun shortDateLabel(date: LocalDate?, today: LocalDate, locale: Locale, f
     null -> fallback
     today -> stringResource(R.string.planner_date_today, date.format(LocalizedDates.dayMonth(locale)))
     else -> date.format(LocalizedDates.weekdayDayMonth(locale))
-}
-
-@Composable
-private fun OperatorFilterBar(
-    selected: String?,
-    operators: List<String>,
-    onSelected: (String?) -> Unit
-) {
-    LazyRow(
-        modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 20.dp)
-    ) {
-        item { FilterChip(selected = selected == null, onClick = { onSelected(null) }, label = { Text(stringResource(R.string.filter_all)) }) }
-        items(operators, key = { it.lowercase(Locale.ROOT) }) { operator ->
-            FilterChip(
-                selected = selected?.equals(operator, ignoreCase = true) == true,
-                onClick = { onSelected(operator) },
-                label = { Text(operator) }
-            )
-        }
-    }
 }
 
 @Composable

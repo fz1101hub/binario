@@ -29,6 +29,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
@@ -57,7 +58,7 @@ import it.binario.app.timetables.TimetableShareFormatter
 import it.binario.app.ui.common.BinarioCard
 import it.binario.app.ui.common.HeaderOverlapBox
 import it.binario.app.ui.common.InfoNoticeCard
-import it.binario.app.ui.common.JourneyTimes
+import it.binario.app.ui.common.compactDurationLabel
 import it.binario.app.ui.common.Pill
 import it.binario.app.ui.common.ScreenHeader
 import it.binario.app.ui.common.ScreenMargin
@@ -99,7 +100,7 @@ internal fun JourneyDetailScreen(
     val uriHandler = LocalUriHandler.current
     val shareStrings = timetableShareStrings()
     val shareChooser = stringResource(R.string.share_solution_chooser)
-    val solution = journeyTimetableRow(row, fetchedAt = 0L)
+    val solution = journeyTimetableRow(row, fetchedAt = 0L, resources = LocalResources.current)
     val originName = origin?.name ?: row.legs.firstOrNull()?.fromLabel.orEmpty()
     val destinationName = destination?.name ?: row.legs.lastOrNull()?.toLabel.orEmpty()
     val dateLabel = row.departure.format(LocalizedDates.weekdayDayMonth(locale))
@@ -114,7 +115,7 @@ internal fun JourneyDetailScreen(
     val times = listOfNotNull(
         ltrUnit("${row.departureTime} → ${row.arrivalTime}"),
         if (row.arrivalDayOffset > 0) stringResource(R.string.journey_arrival_next_day) else null,
-        JourneyTimes.durationLabel(row.durationMinutes.toInt())
+        compactDurationLabel(row.durationMinutes.toInt())
     ).joinToString(" · ")
     LazyColumn(modifier.fillMaxSize().testTag("journey-detail")) {
         item {
@@ -238,7 +239,7 @@ private fun LegHeader(leg: JourneyLegRow) {
             WheelchairMark(stringResource(R.string.wheelchair_trip), Modifier.padding(end = 8.dp))
         }
         Text(
-            JourneyTimes.durationLabel(leg.durationMinutes.toInt()),
+            compactDurationLabel(leg.durationMinutes.toInt()),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )

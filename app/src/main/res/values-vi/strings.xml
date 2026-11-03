@@ -158,7 +158,7 @@
     <string name="data_status_unavailable">Không có dữ liệu thời gian thực</string>
     <string name="accessibility_data_status">Trạng thái dữ liệu: %1$s. Nguồn %2$s. Chất lượng %3$s. %4$s%5$s</string>
     <string name="accessibility_open_service">Mở chi tiết. %1$s. %2$s</string>
-    <string name="service_state_scheduled">Giờ theo lịch; không có trạng thái trực tiếp</string>
+    <string name="service_state_scheduled">Giờ trong lịch trình; không có trạng thái trực tiếp</string>
     <string name="service_state_live">Trạng thái trực tiếp: %1$s</string>
     <string name="station_board_departure_to">Đi %1$s</string>
     <string name="station_board_arrival_from">Từ %1$s</string>
@@ -438,12 +438,11 @@
     <string name="action_direction">Chiều</string>
     <string name="action_change_route">Đổi tuyến</string>
     <string name="monitored_routes_title">Tuyến đang theo dõi</string>
-    <string name="service_scheduled_lowercase">theo lịch</string>
+    <string name="service_scheduled_lowercase">lịch trình</string>
     <string name="service_on_time_lowercase">đúng giờ</string>
     <string name="today_empty_description">Làm mới tuyến đang dùng hoặc chọn một tuyến đã lưu khác. Dữ liệu không khả dụng sẽ không bị thay bằng giờ ước tính.</string>
     <string name="action_refresh">Làm mới</string>
     <string name="action_open_routes">Mở các tuyến của tôi</string>
-    <string name="filter_all">Tất cả</string>
     <string name="journey_changes_uppercase">ĐỔI TÀU</string>
     <string name="accessibility_system_voice_input">%1$s bằng trình nhận dạng giọng nói của hệ thống</string>
     <string name="accessibility_title_detail">%1$s. %2$s</string>
@@ -688,9 +687,9 @@
     <string name="update_time_never">chưa từng cập nhật</string>
     <string name="accessibility_optional_message"> %1$s</string>
     <string name="platform_short">Sân ga %1$s</string>
-    <string name="service_status_scheduled_badge">Theo lịch</string>
+    <string name="service_status_scheduled_badge">Chỉ có lịch</string>
     <string name="service_status_cancelled">Đã hủy</string>
-    <string name="service_status_scheduled_compact">Theo lịch</string>
+    <string name="service_status_scheduled_compact">Lịch trình</string>
 
     <!-- Widget configuration and theme picker. -->
     <string name="widget_configure_title">Cấu hình tiện ích</string>
@@ -739,7 +738,7 @@
     <string name="refresh_success">Đã cập nhật dữ liệu</string>
     <string name="refresh_error">Làm mới thất bại</string>
     <string name="freshness_fresh">Dữ liệu mới nhất</string>
-    <string name="freshness_aging">Dữ liệu đang cập nhật</string>
+    <string name="freshness_aging">Dữ liệu không mới</string>
     <string name="freshness_stale">Dữ liệu cuối cùng hiện có</string>
     <string name="freshness_unavailable">Không có dữ liệu trực tiếp</string>
     <string name="service_status_on_time">Đúng giờ</string>
@@ -788,7 +787,7 @@
     <string name="widget_status_delayed">+%1$d</string>
     <string name="widget_status_cancelled">HỦY</string>
     <string name="widget_status_demo">DEMO</string>
-    <string name="widget_status_scheduled">THEO LỊCH</string>
+    <string name="widget_status_scheduled">LỊCH</string>
     <string name="widget_quality_score">Q%1$d</string>
     <string name="widget_confidence_operator_primary">NHÀ VẬN HÀNH</string>
     <string name="widget_confidence_infrastructure_primary">HẠ TẦNG</string>
@@ -798,7 +797,7 @@
     <string name="widget_confidence_cached">BỘ NHỚ ĐỆM</string>
     <string name="widget_confidence_demonstration">DEMO</string>
     <string name="widget_freshness_fresh">MỚI CẬP NHẬT</string>
-    <string name="widget_freshness_aging">ĐANG CẬP NHẬT</string>
+    <string name="widget_freshness_aging">KHÔNG MỚI</string>
     <string name="widget_freshness_stale">DỮ LIỆU CŨ</string>
     <string name="widget_freshness_unavailable">KHÔNG CÓ TRỰC TIẾP</string>
     <string name="widget_warning_source_conflict">NGUỒN MÂU THUẪN</string>
@@ -856,7 +855,7 @@
     <string name="share_category_metropolitano">Tàu đô thị</string>
     <string name="share_category_other">Tàu</string>
     <string name="share_freshness_fresh">Dữ liệu mới nhất</string>
-    <string name="share_freshness_aging">Dữ liệu đang cập nhật</string>
+    <string name="share_freshness_aging">Dữ liệu không mới</string>
     <string name="share_freshness_stale">Dữ liệu cuối cùng hiện có</string>
     <string name="share_freshness_unavailable">Không có dữ liệu trực tiếp</string>
     <string name="planned_journey_ics_event_description">Hành trình: %1$s → %2$s, khởi hành %3$s lúc %4$s (%5$s)</string>
@@ -1151,7 +1150,6 @@
     <string name="results_date_today">Hôm nay, %1$s</string>
     <string name="results_date_from_time">%1$s · từ %2$s</string>
     <string name="planner_time_now">Bây giờ</string>
-    <string name="accessibility_trip_kind">Loại chuyến đi: %1$s. Nhấn để chuyển giữa một chiều và khứ hồi</string>
     <string name="planner_filters">Bộ lọc</string>
     <string name="planner_return_short">Chiều về %1$s</string>
     <string name="planner_date_today">Hôm nay %1$s</string>
@@ -1362,4 +1360,36 @@
     <plurals name="results_hidden_by_preferences">
         <item quantity="other">Đã ẩn %d chuyến tàu đi thẳng theo tùy chọn hành trình</item>
     </plurals>
+    <!-- Data states and provider descriptors (audit A3-01, A3-15) -->
+    <string name="data_status_scheduled">Lịch theo kế hoạch, không có dữ liệu trực tiếp</string>
+    <string name="data_chip_live">Trực tiếp</string>
+    <string name="data_chip_saved_copy">Bản đã lưu</string>
+    <string name="provider_descriptor_scheduled">lịch theo kế hoạch</string>
+    <string name="provider_descriptor_rfi_programmed">Bảng giờ theo kế hoạch</string>
+    <string name="provider_descriptor_rail_source">nguồn đường sắt</string>
+    <string name="provider_descriptor_fallback">nguồn dự phòng, không bảo đảm</string>
+    <string name="provider_descriptor_best_effort">không bảo đảm</string>
+    <string name="provider_descriptor_public_board">bảng thông tin công khai</string>
+    <string name="provider_descriptor_rfi_monitor_live">Bảng đến/đi trực tiếp</string>
+    <string name="provider_descriptor_rfi_monitor">Bảng đến/đi</string>
+    <string name="provider_descriptor_swiss_boards">bảng ga Thụy Sĩ</string>
+    <!-- Time context of Partenze (audit A3-02) -->
+    <string name="departures_back_to_now">Về hiện tại</string>
+    <string name="departures_route_from_search">Tìm từ Lên kế hoạch</string>
+    <string name="departures_first_departure">Chuyến đầu tiên</string>
+    <!-- Planner filters and station entry (audit A3-06, proposal 5) -->
+    <string name="planner_filters_active">Bộ lọc · %1$s</string>
+    <string name="results_change_filter_remove">Bộ lọc đổi tàu: %1$s. Nhấn để bỏ</string>
+    <string name="planner_use_location">Dùng vị trí làm ga đi</string>
+    <string name="planner_location_origin">Đi từ ga gần nhất: %1$s. Vị trí không được lưu.</string>
+    <string name="planner_location_none">Không có ga nào gần vị trí hiện tại.</string>
+    <!-- Snackbars with Undo (audit proposal 4) -->
+    <string name="action_undo">Hoàn tác</string>
+    <string name="snackbar_route_deleted">Đã xóa tuyến “%1$s”</string>
+    <string name="snackbar_favourite_train_removed">Đã xóa %1$s khỏi Tàu của tôi</string>
+    <string name="snackbar_timetable_deleted">Đã xóa lịch “%1$s”</string>
+    <!-- Compact durations of the result cards (audit A3-16) -->
+    <string name="duration_hours_minutes">%1$d giờ %2$d phút</string>
+    <string name="duration_hours">%1$d giờ</string>
+    <string name="duration_minutes">%1$d phút</string>
 </resources>

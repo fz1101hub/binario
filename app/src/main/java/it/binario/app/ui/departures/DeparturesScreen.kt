@@ -27,6 +27,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Route
+import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.Update
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.Train
@@ -87,13 +89,19 @@ import it.binario.app.ui.common.HeaderOverlapBox
 import it.binario.app.ui.common.HeaderOverline
 import it.binario.app.ui.common.JourneyTimes
 import it.binario.app.ui.common.LocalWideLayout
+import it.binario.app.ui.common.Pill
+import it.binario.app.ui.common.ltrUnit
+import it.binario.app.ui.planner.journeyLabel
 import it.binario.app.ui.common.ScreenHeader
 import it.binario.app.ui.common.ScreenMargin
 import it.binario.app.ui.common.SectionTitle
 import it.binario.app.ui.common.ServiceGroup
 import it.binario.app.ui.common.ServiceStatusBadge
 import it.binario.app.ui.common.TonalButton
-import it.binario.app.ui.common.isCachedCopy
+import it.binario.app.ui.common.DataState
+import it.binario.app.ui.common.DataStateChip
+import it.binario.app.ui.common.dataState
+import it.binario.app.ui.common.localizedProviderLabel
 import it.binario.app.ui.common.localizedAccessibleSummary
 import it.binario.app.ui.common.localizedDisplayName
 import it.binario.app.ui.common.localizedLabel
@@ -210,6 +218,8 @@ private fun RouteBoard(
         )
     }
     val isDemonstration = viewModel.isDemonstrationData()
+    val listState = viewModel.dataState()
+    val locale = LocalConfiguration.current.locales[0]
     // Train types hidden at the departure station of the route (Partenze only; unknown types always stay).
     val boardStation = viewModel.activeRoute.origin(viewModel.direction).takeIf { viewModel.hasActiveRoute }
     val (excludedTypes, setExcludedTypes) = rememberTrainTypeExclusions(boardStation?.id)
@@ -239,7 +249,11 @@ private fun RouteBoard(
                 direction = viewModel.direction,
                 onSwitchDirection = viewModel::switchDirection,
                 onChooseRoute = { showRoutePicker = true },
-                bottomPadding = if (nextService != null) 12.dp else 20.dp
+                bottomPadding = if (nextService != null) 12.dp else 20.dp,
+                fromSearch = viewModel.activeRouteIsSearch,
+                // A planned search shows its date and time, with the way back to the next trains from now.
+                plannedFrom = if (viewModel.journeyFollowsCurrentTime) null else journeyLabel(viewModel.journeyQuery, locale),
+                onBackToNow = viewModel::followCurrentTime
             )
         }
         if (nextService != null) {
@@ -248,22 +262,23 @@ private fun RouteBoard(
                     HeroDepartureCard(
                         nextService,
                         isDemonstration,
+                        heading = if (viewModel.journeyFollowsCurrentTime) null else stringResource(R.string.departures_first_departure),
                         onOpen = { openDetails(nextService) },
                         modifier = Modifier.padding(horizontal = ScreenMargin),
                         selected = nextService.id == selectedServiceId,
-                        lastOfDay = lastOfDay(nextService)
+                        lastOfDay = lastOfDay(nextService),
+                        listState = listState
                     )
                 }
             }
         }
         item {
             DataStatusLine(
+                state = listState,
                 freshness = viewModel.snapshot?.freshness,
-                provider = viewModel.currentProviderLabel() ?: stringResource(R.string.provider_unavailable),
+                provider = viewModel.localizedProviderLabel(),
                 confidence = viewModel.localizedQualityLabel(),
                 refreshedAt = viewModel.lastRefreshEpochMillis(),
-                isDemonstration = isDemonstration,
-                isCachedCopy = viewModel.isCachedCopy(),
                 message = viewModel.refreshMessage
             )
         }
@@ -296,7 +311,7 @@ private fun RouteBoard(
                 items(shownLater, key = { it.id }) { service ->
                     DepartureListRow(
                         service, isDemonstration = isDemonstration, selected = service.id == selectedServiceId,
-                        lastOfDay = lastOfDay(service), onOpen = { openDetails(service) }
+                        lastOfDay = lastOfDay(service), listState = listState, onOpen = { openDetails(service) }
                     )
                 }
             }
@@ -361,12 +376,17 @@ internal fun HeroDepartureCard(
     isDemonstration: Boolean,
     onOpen: () -> Unit,
     modifier: Modifier = Modifier,
+    /** "Prossima corsa" by default; a planned board starts with "Prima corsa" of its date and time. */
+    heading: String? = null,
     selected: Boolean = false,
     /** "Ultimo di oggi" from the static timetable. */
-    lastOfDay: Boolean = false
+    lastOfDay: Boolean = false,
+    /** The state of the board: a run of a saved copy is labelled as such, not as a timetable. */
+    listState: DataState? = null
 ) {
     val shown = if (isDemonstration) service.presentedAsDemonstration() else service
-    val heading = stringResource(R.string.departures_next_departure)
+    val savedCopy = listState == DataState.SAVED_COPY && !shown.operationalStatusVerified
+    val heading = heading ?: stringResource(R.string.departures_next_departure)
     val serviceState = if (shown.operationalStatusVerified) {
         stringResource(R.string.service_state_live, shown.status.localizedLabel())
     } else {
@@ -377,6 +397,7 @@ internal fun HeroDepartureCard(
         heading,
         if (isDemonstration) stringResource(R.string.data_status_demo) else null,
         summary,
+        if (savedCopy) stringResource(R.string.data_chip_saved_copy) else null,
         if (lastOfDay) stringResource(R.string.journey_last_of_day) else null,
         if (selected) stringResource(R.string.accessibility_row_selected) else null
     ).joinToString(". ")
@@ -399,7 +420,7 @@ internal fun HeroDepartureCard(
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(heading, modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                ServiceStatusBadge(shown)
+                if (savedCopy) DataStateChip(DataState.SAVED_COPY) else ServiceStatusBadge(shown)
             }
             Text(shown.scheduledDeparture, style = MaterialTheme.typography.displaySmall)
             if (shown.operationalStatusVerified && shown.expectedDeparture != shown.scheduledDeparture) {
@@ -500,7 +521,11 @@ internal fun OperationsSectionCard(
     }
 }
 
-/** "TRATTA ATTIVA", the route and its two commands, continuing the green header of Partenze. */
+/**
+ * "TRATTA ATTIVA" (or "RICERCA DA PIANIFICA" for a route only searched in the planner), the route, the time the board
+ * starts from ("Adesso", or the planned "mar 4 nov · dalle 07:30" with "Torna ad adesso") and the two commands,
+ * continuing the green header of Partenze.
+ */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun BoardRouteHeader(
@@ -508,12 +533,31 @@ private fun BoardRouteHeader(
     direction: Direction,
     onSwitchDirection: () -> Unit,
     onChooseRoute: () -> Unit,
-    bottomPadding: androidx.compose.ui.unit.Dp
+    bottomPadding: androidx.compose.ui.unit.Dp,
+    fromSearch: Boolean = false,
+    plannedFrom: String? = null,
+    onBackToNow: () -> Unit = {}
 ) {
     val locale = LocalConfiguration.current.locales[0]
     HeaderBlock(topPadding = 8.dp, bottomPadding = bottomPadding) {
-        HeaderOverline(stringResource(R.string.shortcut_active_route).uppercase(locale))
-        Text(route.localizedDisplayName(direction), modifier = Modifier.semantics { heading() }, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        HeaderOverline(stringResource(if (fromSearch) R.string.departures_route_from_search else R.string.shortcut_active_route).uppercase(locale))
+        Text(ltrUnit(route.localizedDisplayName(direction)), modifier = Modifier.semantics { heading() }, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.padding(top = 4.dp).testTag("departures-time-context")
+        ) {
+            Pill(plannedFrom ?: stringResource(R.string.planner_time_now), icon = Icons.Default.Schedule)
+            if (plannedFrom != null) {
+                TonalButton(
+                    text = stringResource(R.string.departures_back_to_now),
+                    onClick = onBackToNow,
+                    leadingIcon = Icons.Default.Update,
+                    onHeader = true,
+                    modifier = Modifier.testTag("departures-back-to-now")
+                )
+            }
+        }
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 4.dp)) {
             TonalButton(
                 text = stringResource(R.string.action_direction),
@@ -578,7 +622,7 @@ private fun RoutePickerSheet(
                     RadioButton(selected = active, onClick = null)
                     Column(Modifier.weight(1f).padding(start = 12.dp)) {
                         Text(route.localizedName(), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                        Text(route.localizedDisplayName(Direction.OUTBOUND), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(ltrUnit(route.localizedDisplayName(Direction.OUTBOUND)), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         val labels = listOfNotNull(
                             if (active) stringResource(R.string.shortcut_active_route) else null,
                             if (route.isPinned) stringResource(R.string.route_pinned) else null

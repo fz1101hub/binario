@@ -157,7 +157,7 @@
     <string name="data_status_unavailable">Данные в реальном времени недоступны</string>
     <string name="accessibility_data_status">Состояние данных: %1$s. Источник %2$s. Качество %3$s. %4$s%5$s</string>
     <string name="accessibility_open_service">Открыть сведения. %1$s. %2$s</string>
-    <string name="service_state_scheduled">Время по расписанию; статус в реальном времени недоступен</string>
+    <string name="service_state_scheduled">Плановое время; статус в реальном времени недоступен</string>
     <string name="service_state_live">Статус в реальном времени: %1$s</string>
     <string name="station_board_departure_to">До %1$s</string>
     <string name="station_board_arrival_from">Из %1$s</string>
@@ -317,7 +317,7 @@
     <string name="journey_filter_all">Все</string>
     <string name="journey_filter_direct">Прямые</string>
     <string name="journey_filter_fewest_changes">Меньше пересадок</string>
-    <string name="journey_filter_fastest">Быстрее</string>
+    <string name="journey_filter_fastest">Самые быстрые</string>
     <string name="journey_direct">Прямой</string>
     <plurals name="journey_changes">
         <item quantity="one">%d пересадка</item>
@@ -445,12 +445,11 @@
     <string name="action_direction">Направление</string>
     <string name="action_change_route">Сменить маршрут</string>
     <string name="monitored_routes_title">Отслеживаемые маршруты</string>
-    <string name="service_scheduled_lowercase">по расписанию</string>
+    <string name="service_scheduled_lowercase">плановое</string>
     <string name="service_on_time_lowercase">вовремя</string>
     <string name="today_empty_description">Обновите активный маршрут или выберите другой сохранённый маршрут. Недоступные данные не заменяются расчётным временем.</string>
     <string name="action_refresh">Обновить</string>
     <string name="action_open_routes">Открыть мои маршруты</string>
-    <string name="filter_all">Все</string>
     <string name="journey_changes_uppercase">ПЕРЕСАДКИ</string>
     <string name="accessibility_system_voice_input">%1$s с помощью системного распознавания речи</string>
     <string name="accessibility_title_detail">%1$s. %2$s</string>
@@ -719,9 +718,9 @@
     <string name="update_time_never">не обновлялось</string>
     <string name="accessibility_optional_message"> %1$s</string>
     <string name="platform_short">Путь %1$s</string>
-    <string name="service_status_scheduled_badge">По расписанию</string>
+    <string name="service_status_scheduled_badge">Только расписание</string>
     <string name="service_status_cancelled">Отменён</string>
-    <string name="service_status_scheduled_compact">По распис.</string>
+    <string name="service_status_scheduled_compact">Плановое</string>
     <!-- Widget configuration and theme picker. -->
     <string name="widget_configure_title">Настройка виджета</string>
     <string name="widget_configure_description">Каждый экземпляр независим: укажите маршрут, не сохраняя его сначала в приложении. Виджет показывает только данные, полученные от источника, и не обещает обновлений в реальном времени.</string>
@@ -766,7 +765,7 @@
     <string name="refresh_success">Данные обновлены</string>
     <string name="refresh_error">Не удалось обновить</string>
     <string name="freshness_fresh">Данные обновлены</string>
-    <string name="freshness_aging">Данные обновляются</string>
+    <string name="freshness_aging">Данные не самые свежие</string>
     <string name="freshness_stale">Последние доступные данные</string>
     <string name="freshness_unavailable">Данные в реальном времени недоступны</string>
     <string name="service_status_on_time">Вовремя</string>
@@ -823,7 +822,7 @@
     <string name="widget_confidence_cached">КЕШ</string>
     <string name="widget_confidence_demonstration">ДЕМО</string>
     <string name="widget_freshness_fresh">ОБНОВЛЕНО</string>
-    <string name="widget_freshness_aging">ОБНОВЛЯЕТСЯ</string>
+    <string name="widget_freshness_aging">НЕ СВЕЖИЕ</string>
     <string name="widget_freshness_stale">ПОСЛЕДНИЕ ДАННЫЕ</string>
     <string name="widget_freshness_unavailable">НЕТ ДАННЫХ ОНЛАЙН</string>
     <string name="widget_warning_source_conflict">ИСТОЧНИКИ РАСХОДЯТСЯ</string>
@@ -884,7 +883,7 @@
     <string name="share_category_metropolitano">Городской поезд</string>
     <string name="share_category_other">Поезд</string>
     <string name="share_freshness_fresh">Данные обновлены</string>
-    <string name="share_freshness_aging">Данные обновляются</string>
+    <string name="share_freshness_aging">Данные не самые свежие</string>
     <string name="share_freshness_stale">Последние доступные данные</string>
     <string name="share_freshness_unavailable">Данные в реальном времени недоступны</string>
     <string name="planned_journey_ics_event_description">Поездка: %1$s → %2$s, отправление %3$s в %4$s (%5$s)</string>
@@ -1209,7 +1208,6 @@
     <string name="results_date_today">Сегодня, %1$s</string>
     <string name="results_date_from_time">%1$s · с %2$s</string>
     <string name="planner_time_now">Сейчас</string>
-    <string name="accessibility_trip_kind">Тип поездки: %1$s. Нажмите, чтобы переключиться между «в одну сторону» и «туда и обратно»</string>
     <string name="planner_filters">Фильтры</string>
     <string name="planner_return_short">Обратно %1$s</string>
     <string name="planner_date_today">Сегодня %1$s</string>
@@ -1435,4 +1433,36 @@
         <item quantity="many">%d прямых поездов скрыто настройками поездки</item>
         <item quantity="other">%d прямого поезда скрыто настройками поездки</item>
     </plurals>
+    <!-- Data states and provider descriptors (audit A3-01, A3-15) -->
+    <string name="data_status_scheduled">Плановое расписание, без данных в реальном времени</string>
+    <string name="data_chip_live">Онлайн</string>
+    <string name="data_chip_saved_copy">Сохранённая копия</string>
+    <string name="provider_descriptor_scheduled">плановое расписание</string>
+    <string name="provider_descriptor_rfi_programmed">Плановое расписание</string>
+    <string name="provider_descriptor_rail_source">железнодорожный источник</string>
+    <string name="provider_descriptor_fallback">резервный источник без гарантий</string>
+    <string name="provider_descriptor_best_effort">без гарантий</string>
+    <string name="provider_descriptor_public_board">публичное табло</string>
+    <string name="provider_descriptor_rfi_monitor_live">Табло прибытия/отправления онлайн</string>
+    <string name="provider_descriptor_rfi_monitor">Табло прибытия/отправления</string>
+    <string name="provider_descriptor_swiss_boards">швейцарские табло</string>
+    <!-- Time context of Partenze (audit A3-02) -->
+    <string name="departures_back_to_now">Вернуться к текущему времени</string>
+    <string name="departures_route_from_search">Поиск из раздела «Поиск»</string>
+    <string name="departures_first_departure">Первый поезд</string>
+    <!-- Planner filters and station entry (audit A3-06, proposal 5) -->
+    <string name="planner_filters_active">Фильтры · %1$s</string>
+    <string name="results_change_filter_remove">Фильтр пересадок: %1$s. Нажмите, чтобы убрать</string>
+    <string name="planner_use_location">Использовать местоположение для отправления</string>
+    <string name="planner_location_origin">Отправление с ближайшей станции: %1$s. Местоположение не сохранено.</string>
+    <string name="planner_location_none">Рядом с текущим местоположением нет станций.</string>
+    <!-- Snackbars with Undo (audit proposal 4) -->
+    <string name="action_undo">Отменить</string>
+    <string name="snackbar_route_deleted">Маршрут «%1$s» удалён</string>
+    <string name="snackbar_favourite_train_removed">%1$s удалён из списка «Мои поезда»</string>
+    <string name="snackbar_timetable_deleted">Расписание «%1$s» удалено</string>
+    <!-- Compact durations of the result cards (audit A3-16) -->
+    <string name="duration_hours_minutes">%1$d ч %2$d мин</string>
+    <string name="duration_hours">%1$d ч</string>
+    <string name="duration_minutes">%1$d мин</string>
 </resources>

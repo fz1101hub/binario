@@ -24,7 +24,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.pluralStringResource
+import android.content.res.Resources
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
+import it.binario.app.labelRes
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -44,7 +47,7 @@ import it.binario.app.journeys.JourneyOptionRow
 import it.binario.app.journeys.JourneySourceLabel
 import it.binario.app.journeys.TransferRiskLevel
 import it.binario.app.ui.common.ChangesBadge
-import it.binario.app.ui.common.JourneyTimes
+import it.binario.app.ui.common.compactDurationLabel
 import it.binario.app.ui.common.LastOfDayChip
 import it.binario.app.ui.common.WheelchairMark
 import it.binario.app.ui.common.changesLabel
@@ -93,14 +96,17 @@ internal val JourneyLegKind.icon: ImageVector
  * published line or category and the number of a leg; never empty.
  */
 @Composable
-internal fun journeyLegLabel(leg: JourneyLegRow): String {
+internal fun journeyLegLabel(leg: JourneyLegRow): String = journeyLegLabel(leg, LocalResources.current)
+
+/** [journeyLegLabel] from [resources], for the rows built only when a list is saved or shared. */
+internal fun journeyLegLabel(leg: JourneyLegRow, resources: Resources): String {
     val line = leg.lineLabel?.trim()?.takeIf(String::isNotEmpty)
     val number = leg.number?.trim()?.takeIf(String::isNotEmpty)
     return when (val kind = JourneyLegKind.of(leg.mode)) {
-        JourneyLegKind.TRAIN -> listOfNotNull(line ?: leg.trainCategory.localizedLabel(), number).joinToString(" ")
-        JourneyLegKind.REPLACEMENT_BUS -> listOfNotNull(stringResource(R.string.journey_leg_replacement_bus), line, number).joinToString(" ")
+        JourneyLegKind.TRAIN -> listOfNotNull(line ?: resources.getString(leg.trainCategory.labelRes()), number).joinToString(" ")
+        JourneyLegKind.REPLACEMENT_BUS -> listOfNotNull(resources.getString(R.string.journey_leg_replacement_bus), line, number).joinToString(" ")
         JourneyLegKind.BUS -> {
-            val label = stringResource(
+            val label = resources.getString(
                 when (leg.vehicle) {
                     JourneyLegVehicle.BUS_TRENITALIA -> R.string.journey_leg_bus_trenitalia
                     JourneyLegVehicle.FRECCIALINK -> R.string.journey_leg_freccialink
@@ -113,7 +119,7 @@ internal fun journeyLegLabel(leg: JourneyLegRow): String {
             listOfNotNull(label, extraLine, number).joinToString(" ")
         }
         JourneyLegKind.METRO, JourneyLegKind.TRAM, JourneyLegKind.FUNICULAR -> {
-            val label = stringResource(
+            val label = resources.getString(
                 when (kind) {
                     JourneyLegKind.METRO -> R.string.journey_leg_metro
                     JourneyLegKind.TRAM -> R.string.journey_leg_tram
@@ -125,8 +131,8 @@ internal fun journeyLegLabel(leg: JourneyLegRow): String {
             val extraLine = line?.takeUnless { urbanLineRepeatsMode(it, label) }
             listOfNotNull(label, extraLine).joinToString(" ")
         }
-        JourneyLegKind.WALK -> stringResource(R.string.journey_leg_walk)
-        JourneyLegKind.OTHER -> listOfNotNull(line, number).joinToString(" ").ifEmpty { leg.trainCategory.localizedLabel() }
+        JourneyLegKind.WALK -> resources.getString(R.string.journey_leg_walk)
+        JourneyLegKind.OTHER -> listOfNotNull(line, number).joinToString(" ").ifEmpty { resources.getString(leg.trainCategory.labelRes()) }
     }
 }
 
@@ -151,15 +157,18 @@ private val URBAN_MODE_WORDS = setOf(
 
 /** "REGIONALE 2153 › RE 24617": every leg on board, in order (walks between stations are left out). */
 @Composable
-internal fun journeyTrainsLabel(row: JourneyOptionRow): String = row.legs
+internal fun journeyTrainsLabel(row: JourneyOptionRow): String = journeyTrainsLabel(row, LocalResources.current)
+
+internal fun journeyTrainsLabel(row: JourneyOptionRow, resources: Resources): String = row.legs
     .filter { JourneyLegKind.of(it.mode) != JourneyLegKind.WALK }
-    .map { journeyLegLabel(it) }
-    .joinToString(" › ")
+    .joinToString(" › ") { journeyLegLabel(it, resources) }
 
 /** The localized source of a journey option: the offline timetable label, or the provider's own name. */
 @Composable
-internal fun journeySourceLabel(row: JourneyOptionRow): String =
-    if (row.sourceLabel == JourneySourceLabel.OFFLINE_TIMETABLE) stringResource(R.string.journey_source_offline) else row.sourceName
+internal fun journeySourceLabel(row: JourneyOptionRow): String = journeySourceLabel(row, LocalResources.current)
+
+internal fun journeySourceLabel(row: JourneyOptionRow, resources: Resources): String =
+    if (row.sourceLabel == JourneySourceLabel.OFFLINE_TIMETABLE) resources.getString(R.string.journey_source_offline) else row.sourceName
 
 /**
  * An option of the journeys-with-changes search, in the same card as the direct trains: times, scheduled duration,
@@ -220,7 +229,7 @@ internal fun JourneyResultCard(
                     style = MaterialTheme.typography.titleLarge.copy(fontFeatureSettings = TabularFigures)
                 )
                 Text(
-                    JourneyTimes.durationLabel(row.durationMinutes.toInt()),
+                    compactDurationLabel(row.durationMinutes.toInt()),
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant

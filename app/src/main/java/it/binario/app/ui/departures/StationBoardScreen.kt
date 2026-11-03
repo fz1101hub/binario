@@ -54,10 +54,12 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
@@ -93,12 +95,14 @@ import it.binario.app.ui.common.ScreenMargin
 import it.binario.app.ui.common.SearchInfoState
 import it.binario.app.ui.common.StationField
 import it.binario.app.ui.common.localizedLabel
+import it.binario.app.ui.common.localizedProviderName
 import it.binario.app.ui.common.ltrUnit
 import it.binario.app.ui.detail.StopTimelinePosition
 import it.binario.app.ui.detail.StopTimelineRow
 import it.binario.app.updateTimeMessage
 import it.binario.app.journeys.LastOfDayMarks
 import it.binario.app.ui.common.InfoNoticeCard
+import it.binario.app.ui.common.OperatorNames
 import it.binario.app.ui.common.LastOfDayChip
 import it.binario.app.ui.common.WheelchairMark
 import it.binario.app.ui.common.rememberStaticDayDepartures
@@ -268,7 +272,12 @@ internal fun StationBoardScreen(modifier: Modifier, viewModel: TrainViewModel, r
                 }
 
                 locationMessage?.let { message ->
-                    Text(message, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(
+                        message,
+                        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
             }
@@ -316,7 +325,7 @@ internal fun StationBoardScreen(modifier: Modifier, viewModel: TrainViewModel, r
                                 fontWeight = FontWeight.Bold
                             )
                             Text(
-                                board.providerNames.joinToString(" · "),
+                                board.providerNames.map { localizedProviderName(it) }.joinToString(" · "),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -529,7 +538,7 @@ internal fun StationBoardEntryRow(
                 listOfNotNull(
                     entry.lineLabel?.takeIf(String::isNotBlank),
                     entry.publicNumber?.takeIf(String::isNotBlank)?.let { stringResource(R.string.station_board_train_number, it) },
-                    entry.operatorId?.value?.takeIf(String::isNotBlank),
+                    entry.operatorId?.value?.let(OperatorNames::displayName),
                     entry.status?.value?.stationBoardLabel()
                 ).joinToString(" · "),
                 style = MaterialTheme.typography.bodySmall,
@@ -632,8 +641,8 @@ private fun StationBoardRunDetailsContent(
                 if (details != null) {
                     Text(ltrUnit("${details.origin} → ${details.destination}"), style = MaterialTheme.typography.bodyLarge)
                     Text(details.observedAt?.let {
-                        stringResource(R.string.provider_updated_at, details.providerName, updateTimeMessage(it.toEpochMilli()).localized())
-                    } ?: details.providerName, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        stringResource(R.string.provider_updated_at, localizedProviderName(details.providerName), updateTimeMessage(it.toEpochMilli()).localized())
+                    } ?: localizedProviderName(details.providerName), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
             StationBoardEntryRow(entry, kind)

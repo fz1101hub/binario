@@ -16,11 +16,14 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.AddLocationAlt
@@ -62,8 +65,10 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -101,6 +106,7 @@ import it.binario.app.ui.common.co2Credits
 import it.binario.app.ui.common.localizedLabel
 import it.binario.app.ui.common.localizedSummary
 import java.time.LocalTime
+import java.util.Locale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -511,7 +517,7 @@ private fun CommuterAlertsPanel(
         Text(stringResource(R.string.commuter_alerts_description), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Button(onClick = onAdd, enabled = canAdd, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.commuter_alerts_create)) }
         if (!canAdd) Text(stringResource(R.string.commuter_alerts_route_required), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        feedback?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        feedback?.let { AnnouncedText(it) }
         alerts.forEach { alert ->
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
@@ -539,13 +545,17 @@ private fun CommuterAlertSheet(
     var quietHours by rememberSaveable { mutableStateOf(false) }
     val context = LocalContext.current
     ModalBottomSheet(onDismissRequest = onDismiss) {
-        Column(Modifier.padding(horizontal = 20.dp).padding(bottom = 32.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        // Scrolls at 200 % font size or above the keyboard, so "Salva" is never cut off.
+        Column(
+            Modifier.imePadding().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp).padding(bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
             Text(stringResource(R.string.commuter_alert_sheet_title), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
             Text(routeLabel, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             OutlinedTextField(value = station, onValueChange = { station = it }, modifier = Modifier.fillMaxWidth(), singleLine = true, label = { Text(stringResource(R.string.commuter_alert_station)) })
             OutlinedButton(onClick = {
                 val parsed = runCatching { LocalTime.parse(time) }.getOrDefault(LocalTime.of(8, 0))
-                TimePickerDialog(context, { _, hour, minute -> time = "%02d:%02d".format(hour, minute) }, parsed.hour, parsed.minute, true).show()
+                TimePickerDialog(context, { _, hour, minute -> time = commuterAlertTime(hour, minute) }, parsed.hour, parsed.minute, true).show()
             }, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.commuter_alert_time, time)) }
             Text(stringResource(R.string.commuter_alert_lead), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -568,6 +578,9 @@ private fun CommuterAlertSheet(
         }
     }
 }
+
+/** The stored "HH:mm" of a commuter alert, in ASCII digits whatever the app language (Arabic, Hindi, Burmese). */
+internal fun commuterAlertTime(hour: Int, minute: Int): String = String.format(Locale.ROOT, "%02d:%02d", hour, minute)
 
 @Composable
 private fun MobilityPreferencesPanel(value: MobilityPreferences, onChange: (MobilityPreferences) -> Unit) {
@@ -598,8 +611,19 @@ private fun LocalBackupPanel(feedback: String?, onExport: () -> Unit, onImport: 
             OutlinedButton(onClick = onExport, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.action_export)) }
             Button(onClick = onImport, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.action_import)) }
         }
-        feedback?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        feedback?.let { AnnouncedText(it) }
     }
+}
+
+/** A confirmation or error after an action (alert saved, backup imported): TalkBack announces it. */
+@Composable
+private fun AnnouncedText(text: String) {
+    Text(
+        text,
+        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant
+    )
 }
 
 @Composable
@@ -644,8 +668,9 @@ private fun IntegrationsPanel(
 @Composable
 private fun IntegrationChoice(title: String, detail: String, selected: Boolean, onClick: () -> Unit) {
     val accessibilityLabel = stringResource(R.string.accessibility_title_detail, title, detail)
+    // Title and detail are read once, as the label; the chip stays its own control.
     Row(
-        modifier = Modifier.fillMaxWidth().semantics { contentDescription = accessibilityLabel },
+        modifier = Modifier.fillMaxWidth().semantics(mergeDescendants = true) { contentDescription = accessibilityLabel },
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {

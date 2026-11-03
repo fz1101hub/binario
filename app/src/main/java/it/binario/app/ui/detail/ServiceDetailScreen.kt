@@ -1,5 +1,6 @@
 package it.binario.app.ui.detail
 
+import android.content.res.Resources
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -91,6 +92,7 @@ import it.binario.app.notifications.TrainAlertToggle
 import it.binario.app.openExternalLink
 import it.binario.app.timetables.TimetableShareFormatter
 import it.binario.app.ui.common.BinarioCard
+import it.binario.app.ui.common.DataState
 import it.binario.app.ui.common.HeaderBlock
 import it.binario.app.ui.common.HeaderOverlapBox
 import it.binario.app.ui.common.HeaderOverline
@@ -118,50 +120,50 @@ import java.util.Locale
 
 // Train detail: header, actions, stop timeline, alarms, map and share.
 
-@Composable
-internal fun trainShareStrings(locale: Locale): TrainShareStrings = TrainShareStrings(
+/** The share templates in the app language, resolved once per language (remember them with [resources]). */
+internal fun trainShareStrings(resources: Resources, locale: Locale): TrainShareStrings = TrainShareStrings(
     locale = locale,
-    title = stringResource(R.string.share_train_title),
-    detailTitle = stringResource(R.string.share_detail_title),
-    operatorCategory = stringResource(R.string.share_operator_category),
-    route = stringResource(R.string.share_route),
-    expectedDeparture = stringResource(R.string.share_expected_departure),
-    scheduledDeparture = stringResource(R.string.share_scheduled_departure),
-    platform = stringResource(R.string.share_platform),
-    platformToConfirm = stringResource(R.string.platform_to_confirm),
-    status = stringResource(R.string.share_status),
-    stopsTitle = stringResource(R.string.service_stops_title),
-    stop = stringResource(R.string.share_stop),
-    stopPlatform = stringResource(R.string.share_stop_platform),
-    stopDelay = stringResource(R.string.share_stop_delay),
-    data = stringResource(R.string.share_data),
-    source = stringResource(R.string.share_source),
-    updated = stringResource(R.string.share_updated),
-    neverUpdated = stringResource(R.string.share_never_updated),
-    demonstrationData = stringResource(R.string.data_status_demo),
-    scheduledData = stringResource(R.string.share_scheduled_data),
-    unavailableData = stringResource(R.string.data_status_unavailable),
-    liveData = stringResource(R.string.share_live_data),
+    title = resources.getString(R.string.share_train_title),
+    detailTitle = resources.getString(R.string.share_detail_title),
+    operatorCategory = resources.getString(R.string.share_operator_category),
+    route = resources.getString(R.string.share_route),
+    expectedDeparture = resources.getString(R.string.share_expected_departure),
+    scheduledDeparture = resources.getString(R.string.share_scheduled_departure),
+    platform = resources.getString(R.string.share_platform),
+    platformToConfirm = resources.getString(R.string.platform_to_confirm),
+    status = resources.getString(R.string.share_status),
+    stopsTitle = resources.getString(R.string.service_stops_title),
+    stop = resources.getString(R.string.share_stop),
+    stopPlatform = resources.getString(R.string.share_stop_platform),
+    stopDelay = resources.getString(R.string.share_stop_delay),
+    data = resources.getString(R.string.share_data),
+    source = resources.getString(R.string.share_source),
+    updated = resources.getString(R.string.share_updated),
+    neverUpdated = resources.getString(R.string.share_never_updated),
+    demonstrationData = resources.getString(R.string.data_status_demo),
+    scheduledData = resources.getString(R.string.share_scheduled_data),
+    unavailableData = resources.getString(R.string.data_status_unavailable),
+    liveData = resources.getString(R.string.share_live_data),
     statusLabels = mapOf(
-        ServiceStatus.ON_TIME to stringResource(R.string.share_status_on_time),
-        ServiceStatus.DELAYED to stringResource(R.string.share_status_delayed),
-        ServiceStatus.CANCELLED to stringResource(R.string.share_status_cancelled)
+        ServiceStatus.ON_TIME to resources.getString(R.string.share_status_on_time),
+        ServiceStatus.DELAYED to resources.getString(R.string.share_status_delayed),
+        ServiceStatus.CANCELLED to resources.getString(R.string.share_status_cancelled)
     ),
     categoryLabels = mapOf(
-        TrainCategory.REGIONALE to stringResource(R.string.share_category_regionale),
-        TrainCategory.REGIONALE_VELOCE to stringResource(R.string.share_category_regionale_veloce),
-        TrainCategory.INTERCITY to stringResource(R.string.share_category_intercity),
-        TrainCategory.FRECCE to stringResource(R.string.share_category_frecce),
-        TrainCategory.AV_ITALO to stringResource(R.string.share_category_av_italo),
-        TrainCategory.TRENORD_REGIO to stringResource(R.string.share_category_trenord_regio),
-        TrainCategory.METROPOLITANO to stringResource(R.string.share_category_metropolitano),
-        TrainCategory.OTHER to stringResource(R.string.share_category_other)
+        TrainCategory.REGIONALE to resources.getString(R.string.share_category_regionale),
+        TrainCategory.REGIONALE_VELOCE to resources.getString(R.string.share_category_regionale_veloce),
+        TrainCategory.INTERCITY to resources.getString(R.string.share_category_intercity),
+        TrainCategory.FRECCE to resources.getString(R.string.share_category_frecce),
+        TrainCategory.AV_ITALO to resources.getString(R.string.share_category_av_italo),
+        TrainCategory.TRENORD_REGIO to resources.getString(R.string.share_category_trenord_regio),
+        TrainCategory.METROPOLITANO to resources.getString(R.string.share_category_metropolitano),
+        TrainCategory.OTHER to resources.getString(R.string.share_category_other)
     ),
     freshnessLabels = mapOf(
-        Freshness.FRESH to stringResource(R.string.share_freshness_fresh),
-        Freshness.AGING to stringResource(R.string.share_freshness_aging),
-        Freshness.STALE to stringResource(R.string.share_freshness_stale),
-        Freshness.UNAVAILABLE to stringResource(R.string.share_freshness_unavailable)
+        Freshness.FRESH to resources.getString(R.string.share_freshness_fresh),
+        Freshness.AGING to resources.getString(R.string.share_freshness_aging),
+        Freshness.STALE to resources.getString(R.string.share_freshness_stale),
+        Freshness.UNAVAILABLE to resources.getString(R.string.share_freshness_unavailable)
     )
 )
 
@@ -209,11 +211,19 @@ internal fun ServiceDetailScreen(
     showShareButton: Boolean = false,
     /** The catalogue station of a published name, for the short city form of the header ("Roma → Torino"). */
     stationLookup: (String) -> Station? = { null },
-    sourceSections: @Composable () -> Unit = {}
+    sourceSections: @Composable () -> Unit = {},
+    /** Live, scheduled timetable or saved copy for this run ([DataState]); null falls back to the freshness. */
+    dataState: DataState? = null
 ) {
     // Demonstration data shows the timetable only: no delay, expected time, platform or progress as if real.
     val shown = if (isDemonstration) service.presentedAsDemonstration() else service
-    val dataLabel = if (isDemonstration) stringResource(R.string.data_status_demo) else freshness?.localizedLabel() ?: stringResource(R.string.data_status_unavailable)
+    val dataLabel = when {
+        isDemonstration -> stringResource(R.string.data_status_demo)
+        dataState == DataState.LIVE -> stringResource(R.string.data_status_live, (freshness ?: Freshness.FRESH).localizedLabel())
+        dataState == DataState.SCHEDULED -> stringResource(R.string.data_status_scheduled)
+        dataState == DataState.SAVED_COPY -> stringResource(R.string.data_chip_saved_copy)
+        else -> freshness?.takeIf { dataState != DataState.UNAVAILABLE }?.localizedLabel() ?: stringResource(R.string.data_status_unavailable)
+    }
     val isThisTrip = activeTrip?.trainNumber == service.number
     val progress = RouteMapPlanner.progress(shown.stops)
     // Another train opens on Percorso again; the same train keeps its tab across recreation.
@@ -677,7 +687,8 @@ internal fun StopTimelineRow(
                 if (!isLast) drawLine(lineColor, Offset(x, dotCenter), Offset(x, size.height), stroke)
             }
             .padding(start = TIMELINE_START, end = 16.dp, top = TIMELINE_TOP, bottom = TIMELINE_TOP)
-            .semantics { contentDescription = accessibilityLabel },
+            // One stop is one TalkBack item (its full label); the alarm and share buttons stay their own controls.
+            .semantics(mergeDescendants = true) { contentDescription = accessibilityLabel },
         verticalAlignment = Alignment.Top
     ) {
         Box(Modifier.width(TIMELINE_WIDTH).height(TIMELINE_DOT_SLOT), contentAlignment = Alignment.Center) {
@@ -796,7 +807,7 @@ private fun RouteChangeBanner(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp, vertical = 10.dp)
-            .semantics { contentDescription = accessibilityLabel },
+            .semantics(mergeDescendants = true) { contentDescription = accessibilityLabel },
         color = container,
         contentColor = foreground,
         shape = RoundedCornerShape(14.dp)

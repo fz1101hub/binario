@@ -7,6 +7,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -14,9 +15,10 @@ import androidx.compose.ui.unit.dp
 import it.binario.app.data.RailTime
 import it.binario.app.data.repository.TrainNumberMatch
 import it.binario.app.data.repository.TrainNumberQuery
+import it.binario.app.ui.common.LocalizedDates
+import it.binario.app.ui.common.localizedProviderName
 import it.binario.app.ui.common.ltrUnit
 import java.time.LocalDate
-import java.time.format.DateTimeFormatter
 
 @Composable
 internal fun TrainNumberSearchForm(query: String, onQueryChange: (String) -> Unit, onSearch: () -> Unit) {
@@ -32,11 +34,11 @@ internal fun TrainNumberSearchForm(query: String, onQueryChange: (String) -> Uni
 
 @Composable
 internal fun TrainNumberResultsScreen(modifier: Modifier, viewModel: TrainViewModel, onOpen: (TrainNumberMatch) -> Unit) {
+    val locale = LocalConfiguration.current.locales[0]
     LazyColumn(modifier.fillMaxSize().testTag("train-number-results")) {
         item {
             Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(stringResource(R.string.train_number_results_heading, viewModel.trainNumberQuery), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                Text(stringResource(R.string.train_number_results_subtitle), style = MaterialTheme.typography.bodyMedium)
                 if (viewModel.trainNumberSearchState == RefreshState.LOADING) {
                     LinearProgressIndicator(Modifier.fillMaxWidth())
                     Text(stringResource(R.string.train_number_loading), style = MaterialTheme.typography.bodySmall)
@@ -54,9 +56,9 @@ internal fun TrainNumberResultsScreen(modifier: Modifier, viewModel: TrainViewMo
                 Text(ltrUnit("${match.service.origin} → ${match.service.destination}"), modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp),
                     style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                 Text(stringResource(R.string.train_number_run_date,
-                    (match.service.scheduledDepartureDateTime?.toLocalDate() ?: viewModel.trainNumberSearchDate).format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))),
+                    (match.service.scheduledDepartureDateTime?.toLocalDate() ?: viewModel.trainNumberSearchDate).format(LocalizedDates.shortDate(locale))),
                     modifier = Modifier.padding(horizontal = 20.dp), style = MaterialTheme.typography.bodySmall)
-                Text(match.snapshot.providerName, modifier = Modifier.padding(horizontal = 20.dp), style = MaterialTheme.typography.labelSmall,
+                Text(localizedProviderName(match.snapshot.providerName), modifier = Modifier.padding(horizontal = 20.dp), style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
                 DepartureListRow(match.service, onOpen = { onOpen(match) })
             }

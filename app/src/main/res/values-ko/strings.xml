@@ -432,7 +432,6 @@
     <string name="today_empty_description">활성 구간을 새로고침하거나 다른 저장된 구간을 선택하세요. 이용할 수 없는 데이터를 추정 시각으로 대체하지 않습니다.</string>
     <string name="action_refresh">새로고침</string>
     <string name="action_open_routes">내 구간 열기</string>
-    <string name="filter_all">전체</string>
     <string name="journey_changes_uppercase">환승</string>
     <string name="accessibility_system_voice_input">시스템 음성 인식기를 통한 %1$s</string>
     <string name="accessibility_title_detail">%1$s. %2$s</string>
@@ -721,7 +720,7 @@
     <string name="refresh_success">데이터 업데이트됨</string>
     <string name="refresh_error">새로고침 실패</string>
     <string name="freshness_fresh">데이터 업데이트됨</string>
-    <string name="freshness_aging">데이터 업데이트 중</string>
+    <string name="freshness_aging">최신 데이터 아님</string>
     <string name="freshness_stale">마지막으로 받은 데이터</string>
     <string name="freshness_unavailable">실시간 데이터 없음</string>
     <string name="service_status_on_time">정시</string>
@@ -778,7 +777,7 @@
     <string name="widget_confidence_cached">캐시</string>
     <string name="widget_confidence_demonstration">데모</string>
     <string name="widget_freshness_fresh">업데이트됨</string>
-    <string name="widget_freshness_aging">업데이트 중</string>
+    <string name="widget_freshness_aging">최신 아님</string>
     <string name="widget_freshness_stale">마지막 데이터</string>
     <string name="widget_freshness_unavailable">실시간 정보 없음</string>
     <string name="widget_warning_source_conflict">출처 불일치</string>
@@ -833,7 +832,7 @@
     <string name="share_category_metropolitano">광역 열차</string>
     <string name="share_category_other">열차</string>
     <string name="share_freshness_fresh">데이터 업데이트됨</string>
-    <string name="share_freshness_aging">데이터 업데이트 중</string>
+    <string name="share_freshness_aging">최신 데이터 아님</string>
     <string name="share_freshness_stale">마지막으로 받은 데이터</string>
     <string name="share_freshness_unavailable">실시간 데이터 없음</string>
     <string name="planned_journey_ics_event_description">여정: %1$s → %2$s, 출발 %3$s %4$s (%5$s)</string>
@@ -1128,7 +1127,6 @@
     <string name="results_date_today">오늘, %1$s</string>
     <string name="results_date_from_time">%1$s · %2$s부터</string>
     <string name="planner_time_now">지금</string>
-    <string name="accessibility_trip_kind">여정 유형: %1$s. 탭하여 편도와 왕복 간 전환</string>
     <string name="planner_filters">필터</string>
     <string name="planner_return_short">오는 편 %1$s</string>
     <string name="planner_date_today">오늘 %1$s</string>
@@ -1150,7 +1148,7 @@
     <string name="detail_departure_time">출발 %1$s</string>
     <string name="detail_tab_route">경로</string>
     <string name="detail_tab_info">정보</string>
-    <string name="detail_tab_services">편의 시설</string>
+    <string name="detail_tab_services">도구</string>
     <string name="stop_role_departure">출발</string>
     <string name="stop_role_arrival">도착</string>
     <string name="stop_role_intermediate">중간 정차역</string>
@@ -1339,4 +1337,36 @@
     <plurals name="results_hidden_by_preferences">
         <item quantity="other">이동 설정으로 직통 열차 %d편 숨김</item>
     </plurals>
+    <!-- Data states and provider descriptors (audit A3-01, A3-15) -->
+    <string name="data_status_scheduled">예정 시간표, 실시간 데이터 없음</string>
+    <string name="data_chip_live">실시간</string>
+    <string name="data_chip_saved_copy">저장된 사본</string>
+    <string name="provider_descriptor_scheduled">예정 시간표</string>
+    <string name="provider_descriptor_rfi_programmed">계획 시간표</string>
+    <string name="provider_descriptor_rail_source">철도 출처</string>
+    <string name="provider_descriptor_fallback">보조 출처(보장 없음)</string>
+    <string name="provider_descriptor_best_effort">보장 없음</string>
+    <string name="provider_descriptor_public_board">공개 안내판</string>
+    <string name="provider_descriptor_rfi_monitor_live">실시간 도착/출발 모니터</string>
+    <string name="provider_descriptor_rfi_monitor">도착/출발 모니터</string>
+    <string name="provider_descriptor_swiss_boards">스위스 역 안내판</string>
+    <!-- Time context of Partenze (audit A3-02) -->
+    <string name="departures_back_to_now">지금으로 돌아가기</string>
+    <string name="departures_route_from_search">계획에서 검색</string>
+    <string name="departures_first_departure">첫 열차</string>
+    <!-- Planner filters and station entry (audit A3-06, proposal 5) -->
+    <string name="planner_filters_active">필터 · %1$s</string>
+    <string name="results_change_filter_remove">환승 필터: %1$s. 탭하여 해제</string>
+    <string name="planner_use_location">현재 위치를 출발역으로 사용</string>
+    <string name="planner_location_origin">가장 가까운 역에서 출발: %1$s. 위치는 저장되지 않았습니다.</string>
+    <string name="planner_location_none">현재 위치 근처에 역이 없습니다.</string>
+    <!-- Snackbars with Undo (audit proposal 4) -->
+    <string name="action_undo">실행 취소</string>
+    <string name="snackbar_route_deleted">구간 「%1$s」 삭제됨</string>
+    <string name="snackbar_favourite_train_removed">내 열차에서 %1$s 삭제됨</string>
+    <string name="snackbar_timetable_deleted">시간표 「%1$s」 삭제됨</string>
+    <!-- Compact durations of the result cards (audit A3-16) -->
+    <string name="duration_hours_minutes">%1$d시간 %2$d분</string>
+    <string name="duration_hours">%1$d시간</string>
+    <string name="duration_minutes">%1$d분</string>
 </resources>

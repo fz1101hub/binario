@@ -57,14 +57,22 @@ internal object AppNavigation {
         TopDestination.FOR_YOU -> AppScreen.FOR_YOU
     }
 
-    /** The tab highlighted for [screen]; the detail highlights the tab of the screen it returns to. */
-    fun destinationOf(screen: AppScreen, detailParent: AppScreen): TopDestination =
-        screen.destination ?: detailParent.destination ?: TopDestination.PLAN
+    /**
+     * The tab highlighted for [screen]; the detail highlights the tab of the screen it returns to, and the results
+     * (route, train number, journey) the tab they were opened from ([resultsParent]: Pianifica or Per te).
+     */
+    fun destinationOf(screen: AppScreen, detailParent: AppScreen, resultsParent: AppScreen = AppScreen.PLANNER): TopDestination {
+        val shown = if (screen == AppScreen.DETAIL) detailParent else screen
+        return when (shown) {
+            in RESULT_SCREENS -> resultsParentOf(resultsParent).destination
+            else -> shown.destination
+        } ?: TopDestination.PLAN
+    }
 
     /** Screen shown by Back, or null when Back leaves the app (top-level screens, as before). */
-    fun back(screen: AppScreen, detailParent: AppScreen): AppScreen? = when (screen) {
+    fun back(screen: AppScreen, detailParent: AppScreen, resultsParent: AppScreen = AppScreen.PLANNER): AppScreen? = when (screen) {
         AppScreen.DETAIL -> detailParent.takeIf { it != AppScreen.DETAIL } ?: AppScreen.PLANNER
-        AppScreen.RESULTS, AppScreen.NUMBER_RESULTS -> AppScreen.PLANNER
+        AppScreen.RESULTS, AppScreen.NUMBER_RESULTS -> resultsParentOf(resultsParent)
         AppScreen.JOURNEY_DETAIL -> AppScreen.RESULTS
         AppScreen.AGENDA, AppScreen.SETTINGS, AppScreen.SAVED_TIMETABLE -> AppScreen.FOR_YOU
         AppScreen.SETTINGS_SECTION -> AppScreen.SETTINGS
@@ -104,7 +112,31 @@ internal object AppNavigation {
         is BinarioDeepLink.FavouriteTrain -> NavigationTarget(AppScreen.NUMBER_RESULTS)
     }
 
+    /** Where the results go back to: the planner, or "Per te" for a favourite train or a recent route opened there. */
+    fun resultsParentOf(parent: AppScreen): AppScreen = parent.takeIf { it == AppScreen.FOR_YOU } ?: AppScreen.PLANNER
+
+    /**
+     * The screen a tab reopens on: the last one shown in it (the planner keeps its results, Per te its settings),
+     * except a train detail, whose pinned run is gone once it is left; its parent list is shown instead.
+     */
+    fun resumeScreenOf(screen: AppScreen, detailParent: AppScreen): AppScreen =
+        if (screen == AppScreen.DETAIL) detailParent.takeIf { it != AppScreen.DETAIL } ?: AppScreen.PLANNER else screen
+
+    private val RESULT_SCREENS = setOf(AppScreen.RESULTS, AppScreen.NUMBER_RESULTS, AppScreen.JOURNEY_DETAIL)
+
     private val DETAIL_SCREENS = setOf(AppScreen.DETAIL, AppScreen.JOURNEY_DETAIL)
 
     private val TWO_PANE_LISTS = setOf(AppScreen.DEPARTURES, AppScreen.RESULTS, AppScreen.NUMBER_RESULTS)
+}
+
+/** The screen each tab reopens on, kept as "PLAN=RESULTS;FOR_YOU=SETTINGS" in the saved state. */
+internal object TabScreens {
+    fun of(encoded: String, tab: TopDestination): AppScreen? = encoded.split(';')
+        .firstNotNullOfOrNull { entry ->
+            entry.split('=').takeIf { it.size == 2 && it[0] == tab.name }?.let { parts -> AppScreen.entries.firstOrNull { it.name == parts[1] } }
+        }
+
+    fun with(encoded: String, tab: TopDestination, screen: AppScreen): String =
+        (TopDestination.entries.mapNotNull { other -> (if (other == tab) screen else of(encoded, other))?.let { "${other.name}=${it.name}" } })
+            .joinToString(";")
 }

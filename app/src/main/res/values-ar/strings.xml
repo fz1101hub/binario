@@ -462,7 +462,6 @@
     <string name="today_empty_description">حدّث المسار النشط أو اختر مسارًا محفوظًا آخر. لا تُستبدل البيانات غير المتاحة بمواعيد تقديرية.</string>
     <string name="action_refresh">تحديث</string>
     <string name="action_open_routes">فتح مساراتي</string>
-    <string name="filter_all">الكل</string>
     <string name="journey_changes_uppercase">التبديلات</string>
     <string name="accessibility_system_voice_input">%1$s عبر أداة التعرّف على الكلام في النظام</string>
     <string name="accessibility_title_detail">%1$s. %2$s</string>
@@ -796,7 +795,7 @@
     <string name="refresh_success">حُدّثت البيانات</string>
     <string name="refresh_error">تعذّر التحديث</string>
     <string name="freshness_fresh">البيانات محدّثة</string>
-    <string name="freshness_aging">البيانات قيد التحديث</string>
+    <string name="freshness_aging">البيانات ليست حديثة</string>
     <string name="freshness_stale">آخر بيانات متاحة</string>
     <string name="freshness_unavailable">البيانات المباشرة غير متاحة</string>
     <string name="service_status_on_time">في الموعد</string>
@@ -853,7 +852,7 @@
     <string name="widget_confidence_cached">CACHE</string>
     <string name="widget_confidence_demonstration">DEMO</string>
     <string name="widget_freshness_fresh">محدّث</string>
-    <string name="widget_freshness_aging">قيد التحديث</string>
+    <string name="widget_freshness_aging">غير حديثة</string>
     <string name="widget_freshness_stale">آخر بيانات</string>
     <string name="widget_freshness_unavailable">المباشر غير متاح</string>
     <string name="widget_warning_source_conflict">تعارض المصادر</string>
@@ -918,7 +917,7 @@
     <string name="share_category_metropolitano">قطار الضواحي</string>
     <string name="share_category_other">قطار</string>
     <string name="share_freshness_fresh">البيانات محدّثة</string>
-    <string name="share_freshness_aging">البيانات قيد التحديث</string>
+    <string name="share_freshness_aging">البيانات ليست حديثة</string>
     <string name="share_freshness_stale">آخر بيانات متاحة</string>
     <string name="share_freshness_unavailable">البيانات المباشرة غير متاحة</string>
     <string name="planned_journey_ics_event_description">الرحلة: %1$s → %2$s، المغادرة %3$s الساعة %4$s (%5$s)</string>
@@ -1263,7 +1262,6 @@
     <string name="results_date_today">اليوم، %1$s</string>
     <string name="results_date_from_time">%1$s · من %2$s</string>
     <string name="planner_time_now">الآن</string>
-    <string name="accessibility_trip_kind">نوع الرحلة: %1$s. المس للتبديل بين ذهاب فقط وذهاب وعودة</string>
     <string name="planner_filters">الفلاتر</string>
     <string name="planner_return_short">العودة %1$s</string>
     <string name="planner_date_today">اليوم %1$s</string>
@@ -1499,4 +1497,36 @@
         <item quantity="many">قطارات مباشرة أخفتها تفضيلات السفر: %d</item>
         <item quantity="other">قطارات مباشرة أخفتها تفضيلات السفر: %d</item>
     </plurals>
+    <!-- Data states and provider descriptors (audit A3-01, A3-15) -->
+    <string name="data_status_scheduled">مواعيد مجدولة، دون بيانات مباشرة</string>
+    <string name="data_chip_live">مباشر</string>
+    <string name="data_chip_saved_copy">نسخة محفوظة</string>
+    <string name="provider_descriptor_scheduled">مواعيد مجدولة</string>
+    <string name="provider_descriptor_rfi_programmed">جدول المواعيد المخطط</string>
+    <string name="provider_descriptor_rail_source">مصدر سكك حديدية</string>
+    <string name="provider_descriptor_fallback">مصدر احتياطي دون ضمان</string>
+    <string name="provider_descriptor_best_effort">دون ضمان</string>
+    <string name="provider_descriptor_public_board">اللوحة العامة</string>
+    <string name="provider_descriptor_rfi_monitor_live">شاشة الوصول/المغادرة المباشرة</string>
+    <string name="provider_descriptor_rfi_monitor">شاشة الوصول/المغادرة</string>
+    <string name="provider_descriptor_swiss_boards">لوحات المحطات السويسرية</string>
+    <!-- Time context of Partenze (audit A3-02) -->
+    <string name="departures_back_to_now">العودة إلى الآن</string>
+    <string name="departures_route_from_search">بحث من التخطيط</string>
+    <string name="departures_first_departure">أول رحلة</string>
+    <!-- Planner filters and station entry (audit A3-06, proposal 5) -->
+    <string name="planner_filters_active">الفلاتر · %1$s</string>
+    <string name="results_change_filter_remove">عامل تصفية التبديلات: %1$s. انقر لإزالته</string>
+    <string name="planner_use_location">استخدم الموقع لمحطة المغادرة</string>
+    <string name="planner_location_origin">المغادرة من أقرب محطة: %1$s. لم يُحفظ الموقع.</string>
+    <string name="planner_location_none">لا توجد محطة قريبة من الموقع الحالي.</string>
+    <!-- Snackbars with Undo (audit proposal 4) -->
+    <string name="action_undo">تراجع</string>
+    <string name="snackbar_route_deleted">تم حذف المسار «%1$s»</string>
+    <string name="snackbar_favourite_train_removed">تمت إزالة %1$s من قطاراتي</string>
+    <string name="snackbar_timetable_deleted">تم حذف المواعيد «%1$s»</string>
+    <!-- Compact durations of the result cards (audit A3-16) -->
+    <string name="duration_hours_minutes">%1$d س %2$d د</string>
+    <string name="duration_hours">%1$d س</string>
+    <string name="duration_minutes">%1$d د</string>
 </resources>

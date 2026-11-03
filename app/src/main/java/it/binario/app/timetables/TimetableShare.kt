@@ -39,7 +39,9 @@ data class TimetableShareStrings(
     /** "prevista %1$s". */
     val stopExpected: String,
     val stopPlatform: String,
-    val stopPlatformChanged: String
+    val stopPlatformChanged: String,
+    /** The compact duration in the app language ("3h 20min", "3 ч 20 мин"). */
+    val duration: (Int) -> String = TimetableShareFormatter::duration
 ) {
     fun format(template: String, vararg values: Any): String = template.format(locale, *values)
 }
@@ -136,7 +138,7 @@ object TimetableShareFormatter {
     private fun times(row: TimetableRow, strings: TimetableShareStrings): String = listOfNotNull(
         row.arrival?.let { strings.format(strings.route, row.departure, it) + if (row.arrivalDayOffset > 0) " (${strings.nextDay})" else "" }
             ?: row.departure,
-        row.durationMinutes?.let(::duration),
+        row.durationMinutes?.let(strings.duration),
         strings.changes(row.changes)
     ).joinToString(" · ")
 
@@ -146,7 +148,7 @@ object TimetableShareFormatter {
         return if (change != null) strings.format(strings.platformChanged, change.actual, change.scheduled) else strings.format(strings.platform, shown)
     }
 
-    /** "3h 20min", the compact form of the result cards. */
+    /** "3h 20min": the language-neutral fallback of [TimetableShareStrings.duration]. */
     internal fun duration(minutes: Int): String = when {
         minutes < 60 -> String.format(Locale.ROOT, "%dmin", minutes)
         minutes % 60 == 0 -> String.format(Locale.ROOT, "%dh", minutes / 60)

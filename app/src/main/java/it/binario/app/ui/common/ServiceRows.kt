@@ -13,12 +13,15 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.SyncAlt
 import androidx.compose.material.icons.filled.Train
 import androidx.compose.material3.Icon
@@ -29,10 +32,16 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
@@ -46,6 +55,8 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -102,43 +113,39 @@ internal fun TrainService.presentedAsDemonstration(): TrainService = copy(
 )
 
 /**
- * Provenance of the departures above the rows: demonstration, unavailable, live or saved copy, always as
- * text (the icon colour only repeats it), with source, update time and quality visible.
+ * Provenance of the departures above the rows: live, scheduled timetable, saved copy, demonstration or unavailable
+ * ([DataState], never "live" for a timetable), always as text (the icon colour only repeats it), with source,
+ * update time and quality visible.
  */
 @Composable
 internal fun DataStatusLine(
+    state: DataState,
     freshness: Freshness?,
     provider: String,
     confidence: String,
     refreshedAt: Long,
-    isDemonstration: Boolean,
-    isCachedCopy: Boolean,
     message: UiMessage?
 ) {
     val messageText = message?.localized()
-    val label = when {
-        isDemonstration -> stringResource(R.string.data_status_demo)
-        freshness == Freshness.UNAVAILABLE || freshness == null -> stringResource(R.string.data_status_unavailable)
-        else -> stringResource(R.string.data_status_live, freshness.localizedLabel())
-    }
-    val color = when {
-        isDemonstration -> MaterialTheme.colorScheme.tertiary
-        freshness == Freshness.UNAVAILABLE || freshness == null -> MaterialTheme.colorScheme.error
-        else -> MaterialTheme.colorScheme.secondary
-    }
     val updated = updateTimeMessage(refreshedAt).localized()
+    val label = state.statusLabel(freshness, updated)
+    val color = state.accentColor()
+    val icon = when (state) {
+        DataState.SCHEDULED -> Icons.Default.Schedule
+        DataState.SAVED_COPY -> Icons.Default.History
+        else -> Icons.Default.Info
+    }
     val sourceLine = if (refreshedAt > 0L) stringResource(R.string.provider_updated_at, provider, updated) else provider
     val qualityLine = stringResource(R.string.data_status_quality, confidence)
-    val cachedLine = if (isCachedCopy && !isDemonstration) stringResource(R.string.data_status_cached, updated) else null
     // A source that asked for a pause (Retry-After) or failed repeatedly: when it will be asked again.
     val pauses = remember(refreshedAt, message) { SourcePauses.active() }
-    val pausedLine = pauses.takeIf { it.isNotEmpty() && !isDemonstration }?.let { paused ->
+    val pausedLine = pauses.takeIf { it.isNotEmpty() && state != DataState.DEMONSTRATION }?.let { paused ->
         stringResource(R.string.data_status_source_paused, paused.joinToString(", ") { it.first },
-            java.time.format.DateTimeFormatter.ofPattern("HH:mm").withZone(it.binario.app.data.RailTime.defaultZone).format(paused.maxOf { it.second }))
+            java.time.format.DateTimeFormatter.ofPattern("HH:mm", java.util.Locale.ROOT).withZone(it.binario.app.data.RailTime.defaultZone).format(paused.maxOf { it.second }))
     }
     val statusContentDescription = stringResource(
         R.string.accessibility_data_status,
-        listOfNotNull(label, cachedLine, pausedLine).joinToString(". "),
+        listOfNotNull(label, pausedLine).joinToString(". "),
         provider,
         confidence,
         updated,
@@ -155,11 +162,10 @@ internal fun DataStatusLine(
             .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.Top
     ) {
-        Icon(Icons.Default.Info, contentDescription = null, tint = color, modifier = Modifier.padding(top = 2.dp).size(18.dp))
+        Icon(icon, contentDescription = null, tint = color, modifier = Modifier.padding(top = 2.dp).size(18.dp))
         Spacer(Modifier.width(8.dp))
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(label, style = MaterialTheme.typography.labelLarge, color = color, fontWeight = FontWeight.Bold)
-            cachedLine?.let { Text(it, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold) }
             pausedLine?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
             Text(sourceLine, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text(qualityLine, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -218,9 +224,12 @@ internal fun DepartureListRow(
     selected: Boolean = false,
     /** "Ultimo di oggi" from the static timetable. */
     lastOfDay: Boolean = false,
+    /** The state of the list the row belongs to: a saved copy says so instead of "programmato". */
+    listState: DataState? = null,
     onOpen: () -> Unit
 ) {
     val shown = if (isDemonstration) service.presentedAsDemonstration() else service
+    val savedCopy = listState == DataState.SAVED_COPY && !shown.operationalStatusVerified
     val serviceState = if (shown.operationalStatusVerified) {
         stringResource(R.string.service_state_live, shown.status.localizedLabel())
     } else {
@@ -229,6 +238,7 @@ internal fun DepartureListRow(
     val lastOfDayLabel = if (lastOfDay) stringResource(R.string.journey_last_of_day) else null
     val serviceContentDescription = listOfNotNull(
         stringResource(R.string.accessibility_open_service, shown.localizedAccessibleSummary(), serviceState),
+        if (savedCopy) stringResource(R.string.data_chip_saved_copy) else null,
         lastOfDayLabel
     ).joinToString(". ")
     val selectedState = if (selected) stringResource(R.string.accessibility_row_selected) else null
@@ -253,6 +263,7 @@ internal fun DepartureListRow(
         Column(Modifier.widthIn(min = TIME_COLUMN).padding(end = 10.dp)) {
             Text(shown.scheduledDeparture, style = MaterialTheme.typography.titleMedium.copy(fontFeatureSettings = TabularFigures), fontWeight = FontWeight.Bold)
             when {
+                savedCopy -> Text(stringResource(R.string.data_chip_saved_copy), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.tertiary)
                 !shown.operationalStatusVerified -> Text(stringResource(R.string.service_scheduled_lowercase), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 shown.status == ServiceStatus.CANCELLED -> Text(stringResource(R.string.service_status_cancelled), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
                 shown.delayMinutes > 0 -> Text(stringResource(R.string.delay_minutes, shown.delayMinutes), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.tertiary, fontWeight = FontWeight.Bold)
@@ -303,7 +314,9 @@ internal fun ResultCard(
     /** Estimated CO2 of the trip, shown as a small line; null without station positions. */
     co2: Co2Estimate? = null,
     /** "Ultimo di oggi" from the static timetable. */
-    lastOfDay: Boolean = false
+    lastOfDay: Boolean = false,
+    /** Live, scheduled or saved copy, as the chip of the card; null shows no chip. */
+    dataState: DataState? = null
 ) {
     val shown = if (isDemonstration) service.presentedAsDemonstration() else service
     val locale = LocalConfiguration.current.locales[0]
@@ -318,6 +331,7 @@ internal fun ResultCard(
         stringResource(R.string.accessibility_open_service, shown.localizedAccessibleSummary(), serviceState),
         arrival?.let { stringResource(R.string.service_scheduled_arrival, it) },
         duration?.let { durationAccessibleLabel(it) },
+        if (dataState == DataState.SAVED_COPY) stringResource(R.string.data_chip_saved_copy) else null,
         if (lastOfDay) stringResource(R.string.journey_last_of_day) else null,
         co2?.let { co2Spoken(it) },
         if (selected) stringResource(R.string.accessibility_row_selected) else null
@@ -344,15 +358,20 @@ internal fun ResultCard(
                     style = MaterialTheme.typography.titleLarge.copy(fontFeatureSettings = TabularFigures)
                 )
                 duration?.let {
-                    Text(JourneyTimes.durationLabel(it), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(compactDurationLabel(it), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
-            Text(
-                stringResource(R.string.service_category_number, shown.trainCategory.localizedLabel(), shown.number).uppercase(locale),
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                letterSpacing = 0.5.sp
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    stringResource(R.string.service_category_number, shown.trainCategory.localizedLabel(), shown.number).uppercase(locale),
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    letterSpacing = 0.5.sp
+                )
+                // Unverified runs say "Programmato": a timetable card never looks like a live on-time one.
+                dataState?.let { DataStateChip(it, Modifier.padding(start = 8.dp)) }
+            }
             if (shown.operationalStatusVerified && shown.status != ServiceStatus.ON_TIME) {
                 Text(
                     compactStatusLabel(shown),
@@ -420,21 +439,35 @@ internal fun SearchInfoState(title: String, message: String, openRoutes: (() -> 
     }
 }
 
+/**
+ * A station field with its suggestions. [imeAction] and [onImeAction] move on from the keyboard ("Avanti" to the
+ * next field, "Cerca"); [emptySuggestions] (favourite and recent stations) are offered while the field is focused
+ * and empty; [trailingIcon] holds an extra command such as "Usa posizione".
+ */
 @Composable
 internal fun StationField(
     label: String,
     value: String,
     onValueChange: (String) -> Unit,
     matches: List<Station>,
-    onSelect: (Station) -> Unit
+    onSelect: (Station) -> Unit,
+    modifier: Modifier = Modifier,
+    imeAction: ImeAction = ImeAction.Default,
+    onImeAction: (() -> Unit)? = null,
+    emptySuggestions: List<Station> = emptyList(),
+    trailingIcon: (@Composable () -> Unit)? = null
 ) {
+    var focused by remember { mutableStateOf(false) }
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         TextField(
             value = value,
             onValueChange = onValueChange,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = modifier.fillMaxWidth().onFocusChanged { focused = it.isFocused },
             singleLine = true,
             label = { Text(label) },
+            trailingIcon = trailingIcon,
+            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = imeAction),
+            keyboardActions = onImeAction?.let { action -> KeyboardActions(onAny = { action() }) } ?: KeyboardActions.Default,
             textStyle = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
             shape = RoundedCornerShape(16.dp),
             colors = TextFieldDefaults.colors(
@@ -445,12 +478,14 @@ internal fun StationField(
                 disabledIndicatorColor = Color.Transparent
             )
         )
-        val suggesting = matches.isNotEmpty() && (matches.none { it.name.equals(value, ignoreCase = true) } || matches.any { it.id.startsWith("manual:") })
+        val known = emptySuggestions.takeIf { focused && value.isBlank() }.orEmpty()
+        val typed = matches.isNotEmpty() && (matches.none { it.name.equals(value, ignoreCase = true) } || matches.any { it.id.startsWith("manual:") })
+        val suggesting = typed || known.isNotEmpty()
         // Read in the background the first time suggestions appear; empty (no marks) until then.
         val accessibleStations = rememberWheelchairAccessibleStations(enabled = suggesting)
         if (suggesting) {
             val urbanStops = BinarioDataGraph.urbanStopIndex(LocalContext.current)
-            matches.take(5).forEach { station ->
+            (if (typed) matches else known).take(5).forEach { station ->
                 TextButton(onClick = { onSelect(station) }, modifier = Modifier.fillMaxWidth()) {
                     // A metro or tram stop of a city pack: "M"/"T" badge and the city instead of a railway code.
                     val badge = urbanStops.badgeOf(station.id)
@@ -525,14 +560,15 @@ internal fun UrbanStopBadgeMark(badge: UrbanStopBadge) {
             UrbanStopBadge.FUNICULAR -> R.string.station_badge_funicular
         }
     )
+    // At least 20 dp, growing with the font so the letter is never clipped at large font sizes.
     Surface(
-        modifier = Modifier.size(20.dp).semantics { contentDescription = description },
+        modifier = Modifier.sizeIn(minWidth = 20.dp, minHeight = 20.dp).semantics { contentDescription = description },
         shape = RoundedCornerShape(5.dp),
         color = MaterialTheme.colorScheme.primary,
         contentColor = MaterialTheme.colorScheme.onPrimary
     ) {
         Box(contentAlignment = Alignment.Center) {
-            Text(badge.letter, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+            Text(badge.letter, modifier = Modifier.padding(horizontal = 3.dp), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
         }
     }
 }

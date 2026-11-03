@@ -50,6 +50,7 @@ import it.binario.app.data.TrainService
 import it.binario.app.data.core.RunStatus
 import it.binario.app.data.repository.StationBoardAggregate
 import it.binario.app.data.repository.StationBoardAggregateResult
+import it.binario.app.ui.common.localizedProviderName
 import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
@@ -212,7 +213,7 @@ private fun ConnectionsBody(
             ConnectionRiskClassifier.connections(arrival, loaded.entries, service.number, Instant.now())
         )
         Text(
-            listOf(stringResource(R.string.connections_sources, loaded.providerNames.joinToString(" · ")), updateTimeMessage(loaded.fetchedAt.toEpochMilli()).localized())
+            listOf(stringResource(R.string.connections_sources, loaded.providerNames.map { localizedProviderName(it) }.joinToString(" · ")), updateTimeMessage(loaded.fetchedAt.toEpochMilli()).localized())
                 .joinToString(" · "),
             style = MaterialTheme.typography.labelSmall,
             color = muted
