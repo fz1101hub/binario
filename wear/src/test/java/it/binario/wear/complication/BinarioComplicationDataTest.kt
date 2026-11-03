@@ -105,13 +105,13 @@ class BinarioComplicationDataTest {
         val long = binarioComplicationData(ComplicationType.LONG_TEXT, snapshot, ResourceNameStrings, now)
 
         assertEquals(ComplicationType.SHORT_TEXT, short.type)
-        assertEquals(expiresAt, short.validTimeRange.endDateTimeMillis)
+        assertEquals(expiresAt, short.validTimeRange.endDateTimeMillis.toEpochMilli())
         assertNotNull((short as ShortTextComplicationData).title)
-        assertEquals(TimeUnit.MINUTES, (short.text as TimeDifferenceComplicationText).minimumTimeUnit)
+        assertEquals(TimeUnit.MINUTES, (short.text as TimeDifferenceComplicationText).getMinimumTimeUnit())
         assertEquals(ComplicationType.LONG_TEXT, long.type)
-        assertEquals(expiresAt, long.validTimeRange.endDateTimeMillis)
+        assertEquals(expiresAt, long.validTimeRange.endDateTimeMillis.toEpochMilli())
         assertNotNull((long as LongTextComplicationData).title)
-        assertEquals(TimeUnit.MINUTES, (long.text as TimeDifferenceComplicationText).minimumTimeUnit)
+        assertEquals(TimeUnit.MINUTES, (long.text as TimeDifferenceComplicationText).getMinimumTimeUnit())
         assertEquals(ComplicationType.NO_DATA, binarioComplicationData(ComplicationType.SHORT_TEXT, null, ResourceNameStrings, now).type)
         assertEquals(ComplicationType.NO_DATA, binarioComplicationData(ComplicationType.RANGED_VALUE, snapshot, ResourceNameStrings, now).type)
     }
