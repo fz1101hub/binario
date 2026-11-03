@@ -46,19 +46,34 @@ data class UrbanRealtimeFeed(
 /** The city realtime feeds verified from CI (see SOURCE_POLICY.md, «Tempo reale di metro e tram»). */
 object UrbanRealtimeFeeds {
     /**
-     * Roma Servizi per la Mobilità, Trip Updates of the ATAC network (buses, trams, metro): the same trip_id and
-     * stop_id as the static GTFS the `roma-mobilita-gtfs` pack is built from. Personal builds only, like the pack.
+     * Roma Servizi per la Mobilità, Trip Updates of the ATAC network: buses and trams with AVM, no metro (CI runs
+     * 41564222536 and 41583916012); the same trip_id and stop_id as the static GTFS the `roma-mobilita-gtfs` pack is
+     * built from. Personal builds only, like the pack.
      */
     val ROMA = UrbanRealtimeFeed(
         sourceId = SourceId("roma-mobilita-gtfs-rt"),
         staticSourceId = SourceId("roma-mobilita-gtfs"),
         displayName = "Roma Servizi per la Mobilità",
         tripUpdatesUrl = "https://romamobilita.it/sites/default/files/rome_rtgtfs_trip_updates_feed.pb",
-        licence = "Non dichiarata sulla pagina open data ufficiale (CC BY 3.0 secondo Transitland e Mobility Database)",
+        licence = "CC BY-SA su dati.comune.roma.it, CC BY 4.0 su dati.gov.it, nessuna sulla pagina ufficiale",
         personalOnly = true
     )
 
-    val all: List<UrbanRealtimeFeed> = listOf(ROMA)
+    /**
+     * ACTV automobilistico, Trip Updates of the Mestre trams T1 and T2 (and the buses, dropped): trip_id and stop_id of
+     * the `actv_aut` GTFS the `venezia-actv-gtfs` pack is built from. Licence not stated (ACTV data catalogue, art. 53
+     * CAD), like the pack: personal builds only.
+     */
+    val ACTV = UrbanRealtimeFeed(
+        sourceId = SourceId("venezia-actv-gtfs-rt"),
+        staticSourceId = SourceId("venezia-actv-gtfs"),
+        displayName = "ACTV",
+        tripUpdatesUrl = "https://tpl.actv.it/aut/GTFSRT/tripUpdates",
+        licence = "Non dichiarata (catalogo dei dati ACTV, art. 53 CAD)",
+        personalOnly = true
+    )
+
+    val all: List<UrbanRealtimeFeed> = listOf(ROMA, ACTV)
 
     /** The feeds of this build whose city pack is in [packs]. */
     fun forBuild(personalSources: Boolean, packs: List<EmbeddedGtfsPack>): List<UrbanRealtimeFeed> =

@@ -808,13 +808,29 @@ object RailSourceCatalog {
             accessMode = AccessMode.OPEN_DIRECT,
             readiness = SourceReadiness.READY_FOR_PROTOCOL_TEST,
             countryCodes = setOf("IT"),
-            coverage = "Corse ATAC con AVM (autobus, tram e metropolitane quando pubblicate) con trip_id e stop_id del GTFS statico romano.",
+            coverage = "Corse ATAC con AVM: autobus e tram (tram 8 verificato il 3 novembre 2026), nessuna metropolitana; trip_id e stop_id del GTFS statico romano.",
             landingPage = uri("https://romamobilita.it/sistemi-e-tecnologie/open-data/"),
             downloadOrProbeUri = uri("https://romamobilita.it/sites/default/files/rome_rtgtfs_trip_updates_feed.pb"),
             attribution = "Roma Servizi per la Mobilità (dati ATAC)",
-            notes = "Verificato dal CI (run 41561359450): HTTP 200, FeedMessage 2.0, trip_id identici al GTFS statico, cache 30 s. " +
+            notes = "Verificato dal CI (run 41561359450 di notte, 41583916012 alle 06:26: 1.129 corse, tram 8 con i trip_id del pack), cache 30 s. " +
                 "Licenza: CC BY-SA sul portale dati.comune.roma.it (dataset c_h501-d-9000), CC BY 4.0 nel catalogo dati.gov.it, " +
                 "nessuna sulla pagina ufficiale: usato solo con il pack roma-mobilita-gtfs, quindi solo nelle build personali."
+        ),
+        RailSourceDefinition(
+            id = SourceId("venezia-actv-gtfs-rt"),
+            displayName = "ACTV automobilistico — GTFS-Realtime Trip Updates",
+            operatorOrAuthority = "ACTV S.p.A. (Gruppo AVM)",
+            formats = setOf(SourceFormat.GTFS_REALTIME_PROTOBUF),
+            capabilities = setOf(ProviderCapability.TRAIN_RUN_REALTIME),
+            accessMode = AccessMode.PUBLIC_BEST_EFFORT,
+            readiness = SourceReadiness.READY_FOR_PROTOCOL_TEST,
+            countryCodes = setOf("IT"),
+            coverage = "Tram T1 e T2 di Mestre (e autobus, scartati) con trip_id e stop_id del GTFS actv_aut.",
+            landingPage = uri("https://actv.avmspa.it/it/content/catalogo-dei-dati-metadati-e-banche-dati-actv"),
+            downloadOrProbeUri = uri("https://tpl.actv.it/aut/GTFSRT/tripUpdates"),
+            attribution = "ACTV S.p.A.",
+            notes = "Verificato dal CI (run 41583916012 alle 06:26: 169 corse, 4 tram con i trip_id del pack venezia-actv-gtfs). " +
+                "Nessuna licenza dichiarata nel catalogo dei dati ACTV (art. 53 CAD): solo build personali, come il pack."
         ),
         RailSourceDefinition(
             id = SourceId("gbfs-nextbike-bergamo"),
