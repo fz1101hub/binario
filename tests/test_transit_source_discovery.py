@@ -58,6 +58,19 @@ class GtfsRealtimeProbeTest(unittest.TestCase):
             {"70001", "70002"},
         )
 
+    def test_netex_summary_uses_the_converter_guard_and_escapes_feed_text(self) -> None:
+        import tempfile
+
+        directory = Path(tempfile.mkdtemp(prefix="discovery-netex-"))
+        hostile = directory / "hostile.xml"
+        hostile.write_text('<?xml version="1.0"?><!--' + " " * 70000 + '--><!DOCTYPE x [<!ENTITY a "A">]><r>&a;</r>', encoding="utf-8")
+        with redirect_stdout(io.StringIO()), self.assertRaisesRegex(Exception, "DOCTYPE/ENTITY"):
+            DISCOVERY.summarize_netex(hostile)
+        output = io.StringIO()
+        with redirect_stdout(output):
+            DISCOVERY.emit("agency x\n::warning::injected\rBINARIO_FILE a 1 b")
+        self.assertEqual(1, len(output.getvalue().splitlines()))
+
     def test_decodes_header_trip_updates_and_negative_delays(self) -> None:
         payload = feed(
             trip_update_entity("e1", "1#100-1", "", [(3, "70001", -45), (4, "70002", 60)]),

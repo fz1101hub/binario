@@ -413,6 +413,10 @@ def probe_netexgtfs(url: str, out: Path) -> None:
 def summarize_netex(path: Path) -> None:
     import xml.etree.ElementTree as ET
 
+    # The converter's guard (tools/netex_to_gtfs.py): DOCTYPE/ENTITY refused at parser level, decompressed bytes capped.
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from netex_to_gtfs import GuardedStream
+
     def local(tag: str) -> str:
         return tag.rsplit("}", 1)[-1]
 
@@ -440,7 +444,8 @@ def summarize_netex(path: Path) -> None:
         samples: dict[str, str] = {}
         started = time.monotonic()
         with opener() as stream:  # type: ignore[operator]
-            for event, element in ET.iterparse(stream, events=("end",)):
+            guarded = io.BufferedReader(GuardedStream(stream), 1 << 20)
+            for event, element in ET.iterparse(guarded, events=("end",)):
                 if time.monotonic() - started > NETEX_SUMMARY_SECONDS:
                     emit(f"  file {name} summary stopped after {NETEX_SUMMARY_SECONDS} s (partial counts)")
                     break

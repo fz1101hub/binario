@@ -134,7 +134,7 @@ Il refresh è quello settimanale descritto in testa (`build=all`; `build=id1,id2
 
 `minValidDays` del pack abbassa la soglia per i feed urbani pubblicati poche settimane alla volta (Milano circa cinque settimane): 14 giorni per Milano, Genova, Firenze, Roma, Napoli e Mestre, 30 per gli altri. Un pack nuovo nel registro non è applicato dall'helper: va aggiunto a mano a `TransitGtfsPacks.kt` (lo controlla `EmbeddedGtfsAssetIntegrityTest`) con le sue corse attese in `EmbeddedGtfsTransitPacksTest`.
 
-Il convertitore NeTEx (profilo italiano livello 1) legge `ServiceJourney`, `TimetabledPassingTime` con `DayOffset`, `ServiceJourneyPattern` con salita e discesa ammesse, `DayType`/`UicOperatingPeriod`/`DayTypeAssignment`, `StopPlace`/`Quay`/`ScheduledStopPoint`/`PassengerStopAssignment`, `Line` e `Operator`; rifiuta `DOCTYPE` ed entità, ignora le geometrie dei `ServiceLink` e scrive un GTFS con `feed_info.txt`. Le corse senza giorni di servizio sono contate e scartate.
+Il convertitore NeTEx (profilo italiano livello 1) legge `ServiceJourney`, `TimetabledPassingTime` con `DayOffset`, `ServiceJourneyPattern` con salita e discesa ammesse, `DayType`/`UicOperatingPeriod`/`DayTypeAssignment`, `StopPlace`/`Quay`/`ScheduledStopPoint`/`PassengerStopAssignment`, `Line` e `Operator`; rifiuta `DOCTYPE` ed entità a livello di parser expat (in qualunque codifica e in qualunque punto prima dell'elemento radice), limita i byte decompressi di ogni XML (anche `.xml.gz`) e il numero di corse e passaggi convertiti, ignora le geometrie dei `ServiceLink` e scrive un GTFS con `feed_info.txt`. Le corse senza giorni di servizio sono contate e scartate.
 
 ## Sorgenti temporaneamente escluse dalla release
 
