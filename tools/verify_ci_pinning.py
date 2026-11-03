@@ -276,6 +276,9 @@ def _check_release_signing(
     for index, step in enumerate(step_list):
         if "continue-on-error" in step:
             problems.append(f"{path.name}: release-sign step {index} non può usare continue-on-error")
+        if "cache" in (_mapping(step.get("with")) or {}) or _action_name(str(step.get("uses", ""))) == "actions/cache":
+            # Restored transforms and build outputs are not covered by dependency verification.
+            problems.append(f"{path.name}: release-sign step {index} non può ripristinare una cache")
         if "secrets." in str(step.get("run", "")):
             problems.append(f"{path.name}: release-sign step {index} interpola un secret nello script invece di env")
     commands = "\n".join(_commands(step.get("run")) for step in step_list)
@@ -327,6 +330,122 @@ def _check_freshness_gates(path: Path, workflow: Mapping[str, Any], problems: li
     for key in FRESHNESS_GATES:
         if key[0] == path.name and key not in found:
             problems.append(f"{path.name}:{key[1]}: gate di freshness GTFS a 30 giorni assente")
+
+
+# Write scopes a workflow or job may hold after review: (workflow, job or "*" for the top level, scope). None today:
+# no workflow pushes, comments or publishes (audit A7-10, proposal P4).
+REVIEWED_WRITE_SCOPES: frozenset[tuple[str, str, str]] = frozenset()
+# Expressions a run: script may interpolate. Anything an outsider can shape (dispatch inputs, event payloads, step
+# outputs, the head ref) goes through env: instead; the Apple jobs interpolate simulator UDIDs the runner reports.
+UNTRUSTED_RUN_EXPRESSION = re.compile(r"\b(?:inputs\.|github\.event\.|github\.head_ref\b|steps\.[\w-]+\.outputs\.|needs\.[\w-]+\.outputs\.)")
+ALLOWED_RUN_EXPRESSIONS: Mapping[str, frozenset[str]] = {
+    "apple-watch-ci.yml": frozenset({
+        "steps.simulator.outputs.udid",
+        "steps.ios-simulator.outputs.udid",
+        "steps.ios-simulator.outputs.watch_udid",
+    }),
+}
+# Jobs that download and parse third-party data: their checkout must not leave the job token in .git/config.
+THIRD_PARTY_DATA_JOBS: frozenset[tuple[str, str]] = frozenset({
+    ("android-ci.yml", "android"),  # dispatch-only live route checks against ViaggiaTreno and RFI
+    ("gtfs-assets-ci.yml", "transit-discovery"),
+    ("gtfs-assets-ci.yml", "transit-packs"),
+    ("gtfs-assets-ci.yml", "core-packs"),
+    ("live-sources.yml", "live"),
+})
+# Commands that mark a job as downloading third-party data even when it is not listed above.
+THIRD_PARTY_DATA_MARKERS = (
+    "tools/transit_source_discovery.py",
+    "tools/acquire_transit_sources.py --out",
+    "tools/acquire_transit_sources.py --validate-netex",
+    "tools/refresh_core_gtfs.py --selection",
+    "tools/build_gtfs_packs.py --refresh",
+    "LiveProviderNetworkTest",
+)
+# Steps that print text read from downloads: they must run with workflow commands stopped (audit A7-02).
+UNTRUSTED_LOG_MARKERS = (
+    "tools/transit_source_discovery.py",
+    "tools/acquire_transit_sources.py --out",
+    "tools/acquire_transit_sources.py --validate-netex",
+)
+
+
+def _check_permissions(path: Path, workflow: Mapping[str, Any], problems: list[str]) -> None:
+    """An explicit top-level permissions mapping, and only read/none scopes unless a write scope was reviewed."""
+
+    def scopes(owner: str, value: object) -> None:
+        if not isinstance(value, Mapping):
+            problems.append(f"{path.name}:{owner}: permissions deve essere una mappa di scope (mai read-all/write-all)")
+            return
+        for scope, level in value.items():
+            if level in ("read", "none"):
+                continue
+            if level == "write" and (path.name, owner, str(scope)) in REVIEWED_WRITE_SCOPES:
+                continue
+            problems.append(f"{path.name}:{owner}: permesso {scope}: {level!r} non revisionato")
+
+    if "permissions" not in workflow:
+        problems.append(f"{path.name}: blocco permissions di primo livello assente")
+    else:
+        scopes("*", workflow.get("permissions"))
+    jobs = _mapping(workflow.get("jobs")) or {}
+    for job_name, raw_job in jobs.items():
+        job = _mapping(raw_job) or {}
+        if "permissions" in job:
+            scopes(str(job_name), job.get("permissions"))
+
+
+def _check_run_hygiene(path: Path, workflow: Mapping[str, Any], problems: list[str]) -> None:
+    """No untrusted expression inside run:, no persisted token where third-party data is read, and workflow commands
+    stopped around the steps that print downloaded text."""
+    allowed = ALLOWED_RUN_EXPRESSIONS.get(path.name, frozenset())
+    jobs = _mapping(workflow.get("jobs")) or {}
+    for job_name, raw_job in jobs.items():
+        job = _mapping(raw_job) or {}
+        steps = [step for raw in (job.get("steps") if isinstance(job.get("steps"), list) else []) for step in [_mapping(raw)] if step]
+        location = f"{path.name}:{job_name}"
+        commands = ""
+        for index, step in enumerate(steps):
+            run = step.get("run")
+            if not isinstance(run, str):
+                continue
+            commands += "\n" + run
+            # GitHub expands expressions before the shell runs, comments included: the raw script is checked.
+            for expression in re.findall(r"\$\{\{(.*?)\}\}", run, flags=re.DOTALL):
+                expression = expression.strip()
+                if UNTRUSTED_RUN_EXPRESSION.search(expression) and expression not in allowed:
+                    problems.append(f"{location}: step {index} interpola {expression!r} in run: (usare env:)")
+            if any(marker in run for marker in UNTRUSTED_LOG_MARKERS) and (
+                "::stop-commands::" not in run or "trap " not in run
+            ):
+                problems.append(f"{location}: step {index} stampa dati scaricati senza ::stop-commands:: con trap")
+        downloads = (path.name, str(job_name)) in THIRD_PARTY_DATA_JOBS or any(
+            marker in commands for marker in THIRD_PARTY_DATA_MARKERS
+        )
+        if not downloads:
+            continue
+        for index, step in enumerate(steps):
+            if _action_name(str(step.get("uses", ""))) != "actions/checkout":
+                continue
+            inputs = _mapping(step.get("with")) or {}
+            if inputs.get("persist-credentials") is not False:
+                problems.append(f"{location}: checkout senza persist-credentials: false in un job che scarica dati di terzi")
+
+
+def _check_push_branches(path: Path, workflow: Mapping[str, Any], lock: Mapping[str, Any], problems: list[str]) -> None:
+    """Every push trigger follows the release branch policy of the lock (audit A7-10)."""
+    triggers = workflow.get("on")
+    if isinstance(triggers, str):
+        triggers = {triggers: None}
+    elif isinstance(triggers, list):
+        triggers = {str(item): None for item in triggers}
+    triggers = _mapping(triggers) or {}
+    if "push" not in triggers:
+        return
+    push = _mapping(triggers.get("push"))
+    expected = lock["workflowTriggerPolicy"]["pushBranches"]
+    if push is None or push.get("branches") != expected or any(key in push for key in ("branches-ignore", "tags", "tags-ignore")):
+        problems.append(f"{path.name}: push branches deve coincidere con la policy release nel lock")
 
 
 def _check_apple_paths(
@@ -783,6 +902,11 @@ def workflow_problems(
 
     _check_linux_trigger_budget(path, root or {}, lock, problems)
     _check_freshness_gates(path, root or {}, problems)
+    _check_permissions(path, root or {}, problems)
+    _check_run_hygiene(path, root or {}, problems)
+    if path.name not in {"alexa-companion-ci.yml", "android-ci.yml", "companion-ci.yml", "gtfs-assets-ci.yml", "apple-watch-ci.yml"}:
+        # The named workflows check the same policy with their own messages above.
+        _check_push_branches(path, root or {}, lock, problems)
     if path.name == "android-ci.yml":
         _check_release_signing(path, root or {}, problems)
     if path.name == "apple-watch-ci.yml":
