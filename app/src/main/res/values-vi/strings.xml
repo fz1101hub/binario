@@ -1065,6 +1065,8 @@
     <!-- Live notifications: followed trip, train notices, MIT strikes, connections and punctuality (November 2026). -->
     <string name="followed_trip_channel_name">Chuyến đi đang theo dõi</string>
     <string name="followed_trip_channel_description">Trạng thái trực tiếp của chuyến đi bạn theo dõi: mức trễ, điểm dừng tiếp theo và sân ga, không phát âm thanh.</string>
+    <string name="followed_trip_alerts_channel_name">Thay đổi của chuyến đi đang theo dõi</string>
+    <string name="followed_trip_alerts_channel_description">Cảnh báo có âm thanh khi tàu đang theo dõi bị hủy, đổi sân ga khởi hành hoặc chuyến nối có nguy cơ lỡ. Từ 22 giờ đến 7 giờ cảnh báo đến không có âm thanh.</string>
     <string name="followed_trip_notification_toggle">Thông báo trạng thái chuyến đi</string>
     <string name="followed_trip_notification_toggle_description">Từ 30 phút trước giờ khởi hành đến 30 phút sau khi đến: mức trễ, điểm dừng tiếp theo và sân ga, cập nhật mỗi 15 phút. Tự đóng khi kết thúc.</string>
     <string name="followed_trip_notification_pending">Thông báo sẽ xuất hiện lúc %1$s.</string>

@@ -1066,6 +1066,8 @@
     <!-- Notifiche in tempo reale: viaggio seguito, avvisi sui treni, scioperi MIT, coincidenze e puntualità (novembre 2026). -->
     <string name="followed_trip_channel_name">पालन की जा रही यात्रा</string>
     <string name="followed_trip_channel_description">आपकी यात्रा की लाइव स्थिति: देरी, अगला ठहराव और प्लेटफ़ॉर्म, बिना आवाज़ के।</string>
+    <string name="followed_trip_alerts_channel_name">पालन की जा रही यात्रा में बदलाव</string>
+    <string name="followed_trip_alerts_channel_description">जब पालन की जा रही ट्रेन रद्द हो, उसका प्रस्थान प्लेटफ़ॉर्म बदले या कनेक्शन जोखिम में हो, तो ध्वनि वाला अलर्ट। रात 22 से सुबह 7 बजे तक यह बिना ध्वनि के आता है।</string>
     <string name="followed_trip_notification_toggle">यात्रा की स्थिति वाली सूचना</string>
     <string name="followed_trip_notification_toggle_description">प्रस्थान से 30 मिनट पहले से आगमन के 30 मिनट बाद तक: देरी, अगला ठहराव और प्लेटफ़ॉर्म, हर 15 मिनट में अपडेट। अंत में अपने-आप बंद हो जाती है।</string>
     <string name="followed_trip_notification_pending">सूचना %1$s बजे दिखेगी।</string>

@@ -1113,6 +1113,8 @@
     <!-- Notifications en temps réel : trajet suivi, avis sur les trains, grèves du MIT, correspondances et ponctualité (novembre 2026). -->
     <string name="followed_trip_channel_name">Trajet suivi</string>
     <string name="followed_trip_channel_description">État en temps réel du trajet suivi : retard, prochain arrêt et voie, sans son.</string>
+    <string name="followed_trip_alerts_channel_name">Changements du trajet suivi</string>
+    <string name="followed_trip_alerts_channel_description">Une alerte sonore quand le train suivi est supprimé, change de voie de départ ou que la correspondance est compromise. Entre 22 h et 7 h, elle arrive sans son.</string>
     <string name="followed_trip_notification_toggle">Notification avec l’état du trajet</string>
     <string name="followed_trip_notification_toggle_description">De 30 minutes avant le départ à 30 minutes après l’arrivée : retard, prochain arrêt et voie, mis à jour toutes les 15 minutes. Elle se ferme seule à la fin.</string>
     <string name="followed_trip_notification_pending">La notification apparaîtra à %1$s.</string>

@@ -1065,6 +1065,8 @@
     <!-- Live notifications: followed trip, train notices, MIT strikes, connections and punctuality (November 2026). -->
     <string name="followed_trip_channel_name">跟踪的行程</string>
     <string name="followed_trip_channel_description">你跟踪的行程的实时状态：晚点、下一停靠站和站台，无提示音。</string>
+    <string name="followed_trip_alerts_channel_name">跟踪行程的变化</string>
+    <string name="followed_trip_alerts_channel_description">跟踪的列车停运、出发站台变更或换乘有风险时发出有声提醒。22 点至 7 点之间提醒静音送达。</string>
     <string name="followed_trip_notification_toggle">显示行程状态通知</string>
     <string name="followed_trip_notification_toggle_description">从出发前 30 分钟到到达后 30 分钟：显示晚点、下一停靠站和站台，每 15 分钟更新一次。结束时自动关闭。</string>
     <string name="followed_trip_notification_pending">通知将于 %1$s 显示。</string>

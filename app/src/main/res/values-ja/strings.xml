@@ -1042,6 +1042,8 @@
     <!-- Notifiche in tempo reale: viaggio seguito, avvisi sui treni, scioperi MIT, coincidenze e puntualità (novembre 2026). -->
     <string name="followed_trip_channel_name">追跡中の旅程</string>
     <string name="followed_trip_channel_description">追跡中の旅程のリアルタイムの状況（遅れ、次の停車駅、番線）を音なしで表示します。</string>
+    <string name="followed_trip_alerts_channel_name">追跡中の旅程の変更</string>
+    <string name="followed_trip_alerts_channel_description">追跡中の列車の運休、発車番線の変更、乗り継ぎの危険があるときに音で知らせます。22 時から 7 時までは音なしで届きます。</string>
     <string name="followed_trip_notification_toggle">旅程の状況を通知</string>
     <string name="followed_trip_notification_toggle_description">出発 30 分前から到着 30 分後まで、遅れ、次の停車駅、番線を 15 分ごとに更新します。終了すると自動で閉じます。</string>
     <string name="followed_trip_notification_pending">通知は %1$s に表示されます。</string>

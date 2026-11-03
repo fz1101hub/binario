@@ -61,8 +61,35 @@ internal class FollowedTripStore(context: Context) {
         putLong(KEY_UPDATED, at)
     }
 
+    /** The changes already notified with sound for this trip ([FollowedTripAlerts]); cleared with the trip. */
+    fun alertedKeys(): Set<String> = preferences.getStringSet(KEY_ALERTED, null)?.toSet().orEmpty()
+
+    fun recordAlerted(keys: Collection<String>) = preferences.edit { putStringSet(KEY_ALERTED, alertedKeys() + keys) }
+
+    /** The boarding platform the last refresh read, to notice a change the source does not mark itself. */
+    fun lastBoarding(): FollowedTripAlerts.BoardingPlatform? {
+        val platform = preferences.getString(KEY_BOARD_PLATFORM, null) ?: return null
+        return FollowedTripAlerts.BoardingPlatform(preferences.getInt(KEY_BOARD_LEG, 0), preferences.getString(KEY_BOARD_STATION, null).orEmpty(), platform, null)
+    }
+
+    fun recordBoarding(boarding: FollowedTripAlerts.BoardingPlatform?) = preferences.edit {
+        if (boarding == null) {
+            remove(KEY_BOARD_LEG)
+            remove(KEY_BOARD_STATION)
+            remove(KEY_BOARD_PLATFORM)
+        } else {
+            putInt(KEY_BOARD_LEG, boarding.legIndex)
+            putString(KEY_BOARD_STATION, boarding.station)
+            putString(KEY_BOARD_PLATFORM, boarding.platform)
+        }
+    }
+
     private companion object {
         const val KEY_TRIP = "trip"
+        const val KEY_ALERTED = "alerted"
+        const val KEY_BOARD_LEG = "board_leg"
+        const val KEY_BOARD_STATION = "board_station"
+        const val KEY_BOARD_PLATFORM = "board_platform"
         const val KEY_DELAY = "last_delay"
         const val KEY_TITLE = "last_title"
         const val KEY_TEXT = "last_text"
@@ -257,6 +284,8 @@ class FollowedTripWorker(appContext: Context, params: WorkerParameters) : Corout
         if (LiveNotifications.post(context, LiveNotifications.FOLLOWED_TRIP_ID, notification) && services.any { it != null }) {
             store.recordShown(delay, content.title, content.recordedText, now.toEpochMilli())
         }
+        // A cancellation, a platform change or a connection at risk also gets one notification with sound.
+        if (services.any { it != null }) runCatching { FollowedTripAlertNotifier.notify(context, store, trip, view, services, now) }
         return RefreshResult(delay ?: store.lastDelayMinutes, view.countdown.takeIf { services.any { it != null } })
     }
 

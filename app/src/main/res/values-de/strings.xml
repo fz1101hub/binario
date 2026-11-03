@@ -1089,6 +1089,8 @@
     <!-- Live-Benachrichtigungen: verfolgte Reise, Zughinweise, MIT-Streiks, Anschlüsse und Pünktlichkeit (November 2026). -->
     <string name="followed_trip_channel_name">Verfolgte Reise</string>
     <string name="followed_trip_channel_description">Live-Status der verfolgten Reise: Verspätung, nächster Halt und Gleis, ohne Ton.</string>
+    <string name="followed_trip_alerts_channel_name">Änderungen der verfolgten Reise</string>
+    <string name="followed_trip_alerts_channel_description">Ein Hinweis mit Ton, wenn der verfolgte Zug ausfällt, das Abfahrtsgleis wechselt oder der Anschluss gefährdet ist. Zwischen 22 und 7 Uhr kommt er ohne Ton.</string>
     <string name="followed_trip_notification_toggle">Benachrichtigung mit dem Reisestatus</string>
     <string name="followed_trip_notification_toggle_description">Von 30 Minuten vor der Abfahrt bis 30 Minuten nach der Ankunft: Verspätung, nächster Halt und Gleis, alle 15 Minuten aktualisiert. Sie schließt sich am Ende von selbst.</string>
     <string name="followed_trip_notification_pending">Die Benachrichtigung erscheint um %1$s.</string>

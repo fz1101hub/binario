@@ -1113,6 +1113,8 @@
     <!-- Notifiche in tempo reale: viaggio seguito, avvisi sui treni, scioperi MIT, coincidenze e puntualità (novembre 2026). -->
     <string name="followed_trip_channel_name">Viaggio seguito</string>
     <string name="followed_trip_channel_description">Stato in tempo reale del viaggio che segui: ritardo, prossima fermata e binario, senza suono.</string>
+    <string name="followed_trip_alerts_channel_name">Cambi del viaggio seguito</string>
+    <string name="followed_trip_alerts_channel_description">Un avviso con suono quando il treno seguito viene soppresso, cambia binario di partenza o la coincidenza è a rischio. Tra le 22 e le 7 arriva senza suono.</string>
     <string name="followed_trip_notification_toggle">Notifica con lo stato del viaggio</string>
     <string name="followed_trip_notification_toggle_description">Da 30 minuti prima della partenza a 30 minuti dopo l’arrivo: ritardo, prossima fermata e binario, aggiornati ogni 15 minuti. Si chiude da sola alla fine.</string>
     <string name="followed_trip_notification_pending">La notifica comparirà alle %1$s.</string>

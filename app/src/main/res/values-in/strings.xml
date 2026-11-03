@@ -1042,6 +1042,8 @@
     <!-- Notifiche in tempo reale: viaggio seguito, avvisi sui treni, scioperi MIT, coincidenze e puntualità (novembre 2026). -->
     <string name="followed_trip_channel_name">Perjalanan yang diikuti</string>
     <string name="followed_trip_channel_description">Status langsung perjalanan yang Anda ikuti: keterlambatan, pemberhentian berikutnya, dan peron, tanpa suara.</string>
+    <string name="followed_trip_alerts_channel_name">Perubahan perjalanan yang diikuti</string>
+    <string name="followed_trip_alerts_channel_description">Peringatan bersuara saat kereta yang diikuti dibatalkan, berganti peron keberangkatan, atau sambungan berisiko. Antara pukul 22 dan 7 peringatan datang tanpa suara.</string>
     <string name="followed_trip_notification_toggle">Notifikasi dengan status perjalanan</string>
     <string name="followed_trip_notification_toggle_description">Dari 30 menit sebelum berangkat hingga 30 menit setelah tiba: keterlambatan, pemberhentian berikutnya, dan peron, diperbarui setiap 15 menit. Tertutup sendiri di akhir.</string>
     <string name="followed_trip_notification_pending">Notifikasi akan muncul pukul %1$s.</string>

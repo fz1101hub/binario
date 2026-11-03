@@ -1089,6 +1089,8 @@
     <!-- Live notifications: followed trip, train notices, MIT strikes, connections and punctuality (November 2026). -->
     <string name="followed_trip_channel_name">Takip edilen yolculuk</string>
     <string name="followed_trip_channel_description">Takip ettiğiniz yolculuğun canlı durumu: gecikme, sonraki durak ve peron, sessiz.</string>
+    <string name="followed_trip_alerts_channel_name">Takip edilen yolculuktaki değişiklikler</string>
+    <string name="followed_trip_alerts_channel_description">Takip edilen tren iptal edildiğinde, kalkış peronu değiştiğinde veya aktarma risk altındayken sesli bir uyarı. Saat 22 ile 7 arasında sessiz gelir.</string>
     <string name="followed_trip_notification_toggle">Yolculuk durumunu bildirimle göster</string>
     <string name="followed_trip_notification_toggle_description">Kalkıştan 30 dakika önceden varıştan 30 dakika sonrasına kadar: gecikme, sonraki durak ve peron, 15 dakikada bir güncellenir. Sonunda kendiliğinden kapanır.</string>
     <string name="followed_trip_notification_pending">Bildirim saat %1$s itibarıyla görünecek.</string>

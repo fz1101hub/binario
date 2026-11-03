@@ -1065,6 +1065,8 @@
     <!-- Live notifications: followed trip, train notices, MIT strikes, connections and punctuality (November 2026). -->
     <string name="followed_trip_channel_name">การเดินทางที่ติดตาม</string>
     <string name="followed_trip_channel_description">สถานะเรียลไทม์ของการเดินทางที่คุณติดตาม ได้แก่ ความล่าช้า จุดจอดถัดไป และชานชาลา โดยไม่มีเสียง</string>
+    <string name="followed_trip_alerts_channel_name">การเปลี่ยนแปลงของการเดินทางที่ติดตาม</string>
+    <string name="followed_trip_alerts_channel_description">แจ้งเตือนพร้อมเสียงเมื่อรถไฟที่ติดตามถูกยกเลิก เปลี่ยนชานชาลาออกเดินทาง หรือการต่อรถมีความเสี่ยง ระหว่าง 22:00 ถึง 07:00 จะแจ้งแบบไม่มีเสียง</string>
     <string name="followed_trip_notification_toggle">แจ้งเตือนสถานะการเดินทาง</string>
     <string name="followed_trip_notification_toggle_description">ตั้งแต่ 30 นาทีก่อนออกจนถึง 30 นาทีหลังถึง: ความล่าช้า จุดจอดถัดไป และชานชาลา อัปเดตทุก 15 นาที และปิดเองเมื่อสิ้นสุด</string>
     <string name="followed_trip_notification_pending">การแจ้งเตือนจะแสดงเวลา %1$s</string>

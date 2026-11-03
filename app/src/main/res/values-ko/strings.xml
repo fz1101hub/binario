@@ -1042,6 +1042,8 @@
     <!-- Notifiche in tempo reale: viaggio seguito, avvisi sui treni, scioperi MIT, coincidenze e puntualità (novembre 2026). -->
     <string name="followed_trip_channel_name">따라가는 여정</string>
     <string name="followed_trip_channel_description">따라가는 여정의 실시간 상태(지연, 다음 정차역, 승강장)를 소리 없이 표시합니다.</string>
+    <string name="followed_trip_alerts_channel_name">따라가는 여정의 변경</string>
+    <string name="followed_trip_alerts_channel_description">따라가는 열차가 운휴되거나 출발 승강장이 바뀌거나 환승이 위험할 때 소리로 알립니다. 22시부터 7시까지는 소리 없이 표시됩니다.</string>
     <string name="followed_trip_notification_toggle">여정 상태 알림</string>
     <string name="followed_trip_notification_toggle_description">출발 30분 전부터 도착 30분 후까지 지연, 다음 정차역, 승강장을 15분마다 업데이트합니다. 끝나면 자동으로 닫힙니다.</string>
     <string name="followed_trip_notification_pending">알림은 %1$s에 표시됩니다.</string>

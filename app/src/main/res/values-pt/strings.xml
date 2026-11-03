@@ -1090,6 +1090,8 @@
     <!-- Notifiche in tempo reale: viaggio seguito, avvisi sui treni, scioperi MIT, coincidenze e puntualità (novembre 2026). -->
     <string name="followed_trip_channel_name">Viagem acompanhada</string>
     <string name="followed_trip_channel_description">Status em tempo real da viagem que você acompanha: atraso, próxima parada e plataforma, sem som.</string>
+    <string name="followed_trip_alerts_channel_name">Mudanças da viagem acompanhada</string>
+    <string name="followed_trip_alerts_channel_description">Um alerta com som quando o trem acompanhado é cancelado, muda a plataforma de partida ou a conexão está em risco. Entre 22h e 7h ele chega sem som.</string>
     <string name="followed_trip_notification_toggle">Notificação com o status da viagem</string>
     <string name="followed_trip_notification_toggle_description">De 30 minutos antes da partida até 30 minutos após a chegada: atraso, próxima parada e plataforma, atualizados a cada 15 minutos. Fecha sozinha no fim.</string>
     <string name="followed_trip_notification_pending">A notificação vai aparecer às %1$s.</string>

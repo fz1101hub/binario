@@ -1042,6 +1042,8 @@
     <!-- Notifiche in tempo reale: viaggio seguito, avvisi sui treni, scioperi MIT, coincidenze e puntualità (novembre 2026). -->
     <string name="followed_trip_channel_name">လိုက်ကြည့်နေသော ခရီးစဉ်</string>
     <string name="followed_trip_channel_description">သင်လိုက်ကြည့်နေသော ခရီးစဉ်၏ အချိန်နှင့်တပြေးညီ အခြေအနေ- နောက်ကျမှု၊ နောက် ရပ်နားဘူတာနှင့် ပလက်ဖောင်း၊ အသံမပါ။</string>
+    <string name="followed_trip_alerts_channel_name">လိုက်ကြည့်နေသော ခရီးစဉ် ပြောင်းလဲမှုများ</string>
+    <string name="followed_trip_alerts_channel_description">လိုက်ကြည့်နေသော ရထား ဖျက်သိမ်းခံရခြင်း၊ ထွက်ခွာမည့် စင်္ကြံ ပြောင်းခြင်း သို့မဟုတ် ဆက်သွယ်ရထား အန္တရာယ်ရှိခြင်း ဖြစ်ပါက အသံဖြင့် သတိပေးသည်။ ည 22 နာရီမှ နံနက် 7 နာရီအထိ အသံမပါဘဲ ရောက်ရှိသည်။</string>
     <string name="followed_trip_notification_toggle">ခရီးစဉ် အခြေအနေပါ အသိပေးချက်</string>
     <string name="followed_trip_notification_toggle_description">ထွက်ခွာချိန် မတိုင်မီ 30 မိနစ်မှ ဆိုက်ရောက်ပြီး 30 မိနစ်အထိ- နောက်ကျမှု၊ နောက် ရပ်နားဘူတာနှင့် ပလက်ဖောင်းကို 15 မိနစ်တိုင်း အပ်ဒိတ်လုပ်သည်။ အဆုံးတွင် အလိုအလျောက် ပိတ်သည်။</string>
     <string name="followed_trip_notification_pending">အသိပေးချက်သည် %1$s တွင် ပေါ်လာမည်။</string>

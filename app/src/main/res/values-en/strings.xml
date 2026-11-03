@@ -1089,6 +1089,8 @@
     <!-- Live notifications: followed trip, train notices, MIT strikes, connections and punctuality (November 2026). -->
     <string name="followed_trip_channel_name">Followed trip</string>
     <string name="followed_trip_channel_description">Live status of the trip you follow: delay, next stop and platform, without sound.</string>
+    <string name="followed_trip_alerts_channel_name">Followed trip changes</string>
+    <string name="followed_trip_alerts_channel_description">An alert with sound when the followed train is cancelled, changes its departure platform or the connection is at risk. Between 22:00 and 07:00 it arrives silently.</string>
     <string name="followed_trip_notification_toggle">Notification with the trip status</string>
     <string name="followed_trip_notification_toggle_description">From 30 minutes before departure to 30 minutes after arrival: delay, next stop and platform, updated every 15 minutes. It closes by itself at the end.</string>
     <string name="followed_trip_notification_pending">The notification will appear at %1$s.</string>

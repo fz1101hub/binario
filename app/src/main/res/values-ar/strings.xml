@@ -1162,6 +1162,8 @@
     <!-- Notifiche in tempo reale: viaggio seguito, avvisi sui treni, scioperi MIT, coincidenze e puntualità (novembre 2026). -->
     <string name="followed_trip_channel_name">الرحلة المتابَعة</string>
     <string name="followed_trip_channel_description">الحالة المباشرة للرحلة التي تتابعها: التأخير والمحطة التالية والرصيف، دون صوت.</string>
+    <string name="followed_trip_alerts_channel_name">تغييرات الرحلة المتابَعة</string>
+    <string name="followed_trip_alerts_channel_description">تنبيه بصوت عند إلغاء القطار المتابَع أو تغيير رصيف المغادرة أو تعرّض الاتصال للخطر. بين الساعة 22 و7 يصل دون صوت.</string>
     <string name="followed_trip_notification_toggle">إشعار بحالة الرحلة</string>
     <string name="followed_trip_notification_toggle_description">من 30 دقيقة قبل المغادرة إلى 30 دقيقة بعد الوصول: التأخير والمحطة التالية والرصيف، مع تحديث كل 15 دقيقة. يُغلق تلقائيًا في النهاية.</string>
     <string name="followed_trip_notification_pending">سيظهر الإشعار الساعة %1$s.</string>

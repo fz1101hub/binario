@@ -1114,6 +1114,8 @@
     <!-- Notifiche in tempo reale: viaggio seguito, avvisi sui treni, scioperi MIT, coincidenze e puntualità (novembre 2026). -->
     <string name="followed_trip_channel_name">Отслеживаемая поездка</string>
     <string name="followed_trip_channel_description">Статус вашей поездки в реальном времени: опоздание, следующая остановка и путь, без звука.</string>
+    <string name="followed_trip_alerts_channel_name">Изменения отслеживаемой поездки</string>
+    <string name="followed_trip_alerts_channel_description">Оповещение со звуком, когда отслеживаемый поезд отменён, меняет платформу отправления или пересадка под угрозой. С 22 до 7 часов оно приходит без звука.</string>
     <string name="followed_trip_notification_toggle">Уведомление со статусом поездки</string>
     <string name="followed_trip_notification_toggle_description">С 30 минут до отправления и до 30 минут после прибытия: опоздание, следующая остановка и путь, с обновлением каждые 15 минут. В конце закрывается само.</string>
     <string name="followed_trip_notification_pending">Уведомление появится в %1$s.</string>

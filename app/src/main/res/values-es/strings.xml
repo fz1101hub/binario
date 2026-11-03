@@ -1113,6 +1113,8 @@
     <!-- Notificaciones en tiempo real: viaje seguido, avisos de trenes, huelgas del MIT, transbordos y puntualidad (noviembre de 2026). -->
     <string name="followed_trip_channel_name">Viaje seguido</string>
     <string name="followed_trip_channel_description">Estado en tiempo real del viaje que sigues: retraso, próxima parada y vía, sin sonido.</string>
+    <string name="followed_trip_alerts_channel_name">Cambios del viaje seguido</string>
+    <string name="followed_trip_alerts_channel_description">Un aviso con sonido cuando el tren seguido se suprime, cambia de vía de salida o el enlace está en riesgo. Entre las 22 y las 7 llega sin sonido.</string>
     <string name="followed_trip_notification_toggle">Notificación con el estado del viaje</string>
     <string name="followed_trip_notification_toggle_description">Desde 30 minutos antes de la salida hasta 30 minutos después de la llegada: retraso, próxima parada y vía, actualizados cada 15 minutos. Se cierra sola al final.</string>
     <string name="followed_trip_notification_pending">La notificación aparecerá a las %1$s.</string>
