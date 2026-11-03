@@ -357,7 +357,7 @@
     <string name="journey_empty_unavailable">Calcolo dei viaggi con cambi non disponibile. Riprova.</string>
     <string name="journey_empty_no_direct">Nessuna soluzione diretta tra quelle trovate.</string>
     <string name="journey_option_accessibility">Partenza alle %1$s da %2$s, arrivo alle %3$s a %4$s, durata %5$s, %6$s.</string>
-    <string name="settings_privacy_osm">Autocompletamento nazionale: © OpenStreetMap contributors, ODbL 1.0. Il catalogo geografico suggerisce nomi di stazioni ma non conferma servizio, orario, binario, ritardo o circolazione.</string>
+    <string name="settings_privacy_osm">Catalogo stazioni: database curato incluso nell’app. Suggerisce nomi di stazioni ma non conferma servizio, orario, binario, ritardo o circolazione.</string>
     <!-- Open maps (October 2026) -->
     <string name="map_attribution">OpenFreeMap © OpenMapTiles, dati © OpenStreetMap contributors</string>
     <string name="map_route_title">Mappa del percorso</string>

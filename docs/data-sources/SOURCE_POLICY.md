@@ -200,7 +200,7 @@ Classe: **Open diretto — fornitore di mappe open**. OpenFreeMap pubblica gratu
 
 Salvaguardie: le mappe partono solo da un'azione esplicita dell'utente (scheda espansa o *Carica la mappa* per le stazioni vicine, con avviso); le richieste HTTPS `GET` non contengono nomi di fermata, orari o coordinate dell'utente, ma l'host vede i normali metadati di rete (indirizzo IP, data e ora, intestazioni) e la zona mostrata; un errore di caricamento mostra un messaggio con *Riprova* e le stesse informazioni restano disponibili come testo; la mappa non è mai l'unico modo di leggere un dato.
 
-Attribuzione obbligatoria: il controllo di attribuzione di MapLibre resta attivo, ogni scheda mappa mostra «OpenFreeMap © OpenMapTiles, dati © OpenStreetMap contributors» e le impostazioni riportano lo stesso credito, con la licenza di MapLibre Native, accanto al credito OpenStreetMap del catalogo stazioni.
+Attribuzione obbligatoria: il controllo di attribuzione di MapLibre resta attivo, ogni scheda mappa mostra «OpenFreeMap © OpenMapTiles, dati © OpenStreetMap contributors» e le impostazioni riportano lo stesso credito, con la licenza di MapLibre Native. La riga del catalogo stazioni non cita più OpenStreetMap: l'asset OSM a cui si riferiva è stato rimosso nel commit 9268bb3 e l'origine del database curato è da confermare dal titolare (`provenance` e `licence` in `app/src/main/assets/stations/manifest.json`, audit A7-09); se deriva da OpenStreetMap va aggiunto l'avviso ODbL.
 
 Esclusi: le tessere di `tile.openstreetmap.org` (la tile usage policy di OSMF non ammette app distribuite senza autorizzazione) e le tessere OpenRailwayMap (la loro policy pone la stessa restrizione). Non vanno introdotti senza un permesso scritto del gestore.
 

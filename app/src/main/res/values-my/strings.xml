@@ -339,7 +339,7 @@
     <string name="journey_empty_unavailable">ရထားပြောင်းစီးရသော ခရီးစဉ်များကို တွက်ချက်၍ မရပါ။ ထပ်စမ်းကြည့်ပါ။</string>
     <string name="journey_empty_no_direct">တွေ့ရှိသော ခရီးစဉ်များထဲတွင် တိုက်ရိုက် ခရီးစဉ် မရှိပါ။</string>
     <string name="journey_option_accessibility">%1$s တွင် %2$s မှ ထွက်ခွာ၊ %3$s တွင် %4$s သို့ ဆိုက်ရောက်၊ ကြာချိန် %5$s၊ %6$s။</string>
-    <string name="settings_privacy_osm">တစ်နိုင်ငံလုံးဆိုင်ရာ အလိုအလျောက်ဖြည့်ခြင်း- © OpenStreetMap contributors, ODbL 1.0။ ပထဝီ ကက်တလောက်သည် ဘူတာအမည်များကို အကြံပြုသော်လည်း ဝန်ဆောင်မှု၊ အချိန်၊ ပလက်ဖောင်း၊ နောက်ကျမှု သို့မဟုတ် ပြေးဆွဲမှုကို အတည်မပြုပါ။</string>
+    <string name="settings_privacy_osm">ဘူတာ ကက်တလောက်- အက်ပ်တွင် ပါဝင်သော စိစစ်ထားသည့် ဒေတာဘေ့စ်။ ဤကက်တလောက်သည် ဘူတာအမည်များကို အကြံပြုသော်လည်း ဝန်ဆောင်မှု၊ အချိန်၊ ပလက်ဖောင်း၊ နောက်ကျမှု သို့မဟုတ် ပြေးဆွဲမှုကို အတည်မပြုပါ။</string>
     <!-- Open maps (October 2026) -->
     <string name="map_attribution">OpenFreeMap © OpenMapTiles၊ ဒေတာ © OpenStreetMap contributors</string>
     <string name="map_route_title">လမ်းကြောင်း မြေပုံ</string>

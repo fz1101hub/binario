@@ -345,7 +345,7 @@
     <string name="journey_empty_unavailable">ट्रेन बदलने वाली यात्राओं की गणना अभी नहीं हो सकती। फिर कोशिश करें।</string>
     <string name="journey_empty_no_direct">मिली यात्राओं में कोई सीधी नहीं है।</string>
     <string name="journey_option_accessibility">%2$s से %1$s बजे प्रस्थान, %4$s में %3$s बजे आगमन, अवधि %5$s, %6$s।</string>
-    <string name="settings_privacy_osm">राष्ट्रीय ऑटो-कम्प्लीट: © OpenStreetMap contributors, ODbL 1.0। भौगोलिक कैटलॉग स्टेशनों के नाम सुझाता है लेकिन सेवा, समय, प्लेटफ़ॉर्म, देरी या परिचालन की पुष्टि नहीं करता।</string>
+    <string name="settings_privacy_osm">स्टेशन कैटलॉग: ऐप में शामिल संकलित डेटाबेस। यह कैटलॉग स्टेशनों के नाम सुझाता है लेकिन सेवा, समय, प्लेटफ़ॉर्म, देरी या परिचालन की पुष्टि नहीं करता।</string>
     <!-- Open maps (October 2026) -->
     <string name="map_attribution">OpenFreeMap © OpenMapTiles, डेटा © OpenStreetMap contributors</string>
     <string name="map_route_title">मार्ग का नक्शा</string>

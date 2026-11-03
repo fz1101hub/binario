@@ -135,5 +135,21 @@ class LicenceFieldsTest(unittest.TestCase):
         self.assertEqual([], failures)
 
 
+class StationCatalogProvenanceTest(unittest.TestCase):
+    """Audit A7-09: the station catalogue's origin and licence are recorded; until the owner does, a warning."""
+
+    def test_unconfirmed_provenance_is_a_warning_not_a_failure(self) -> None:
+        failures: list[str] = []
+        warnings: list[str] = []
+        VERIFIER.verify_stations(failures, warnings)
+        self.assertEqual([], failures)
+        manifest = json.loads((VERIFIER.STATION_ROOT / "manifest.json").read_text(encoding="utf-8"))["catalogs"][0]
+        for field in ("provenance", "licence"):
+            with self.subTest(field=field):
+                self.assertIn(field, manifest)
+                if VERIFIER.OWNER_TO_CONFIRM in manifest[field].lower():
+                    self.assertTrue(any(f"{field} to be confirmed by the owner" in warning for warning in warnings))
+
+
 if __name__ == "__main__":
     unittest.main()

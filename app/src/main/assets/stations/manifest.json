@@ -6,6 +6,8 @@
       "assetPath": "stations/curated_it_rail_stations.json",
       "kind": "curated-rail-station-catalog",
       "source": "Database curato fornito dall’utente",
+      "provenance": "Da confermare dal titolare: il repository non registra da quali fonti derivano nomi, alias e coordinate di stazioni_ferroviarie_curato_v4 (l'asset OpenStreetMap usato in precedenza è stato rimosso nel commit 9268bb3; audit A7-09)",
+      "licence": "Da confermare dal titolare",
       "sourceDatabaseSha256": "2db59242ec45816a73a37c4748dc400dafaba762b6df3105673f63a44c882efe",
       "sourceCreatedAtUtc": "2026-08-16T01:21:36.343197+00:00",
       "stationCount": 5239,

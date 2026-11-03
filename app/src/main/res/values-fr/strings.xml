@@ -357,7 +357,7 @@
     <string name="journey_empty_unavailable">Les trajets avec correspondance ne peuvent pas être calculés pour le moment. Réessayez.</string>
     <string name="journey_empty_no_direct">Aucun des trajets trouvés n’est direct.</string>
     <string name="journey_option_accessibility">Départ à %1$s de %2$s, arrivée à %3$s à %4$s, durée %5$s, %6$s.</string>
-    <string name="settings_privacy_osm">Saisie semi-automatique nationale : © contributeurs OpenStreetMap, ODbL 1.0. Le catalogue géographique suggère des noms de gares mais ne confirme ni le service, ni l’horaire, ni la voie, ni le retard, ni la circulation.</string>
+    <string name="settings_privacy_osm">Catalogue des gares : base de données vérifiée incluse dans l’application. Il suggère des noms de gares mais ne confirme ni le service, ni l’horaire, ni la voie, ni le retard, ni la circulation.</string>
     <!-- Open maps (October 2026) -->
     <string name="map_attribution">OpenFreeMap © OpenMapTiles, données © contributeurs OpenStreetMap</string>
     <string name="map_route_title">Carte du parcours</string>

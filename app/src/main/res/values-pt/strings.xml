@@ -351,7 +351,7 @@
     <string name="journey_empty_unavailable">Não é possível calcular viagens com baldeação. Tente novamente.</string>
     <string name="journey_empty_no_direct">Nenhuma das opções encontradas é direta.</string>
     <string name="journey_option_accessibility">Partida às %1$s de %2$s, chegada às %3$s em %4$s, duração %5$s, %6$s.</string>
-    <string name="settings_privacy_osm">Preenchimento automático nacional: © colaboradores do OpenStreetMap, ODbL 1.0. O catálogo geográfico sugere nomes de estações, mas não confirma serviço, horário, plataforma, atraso ou circulação.</string>
+    <string name="settings_privacy_osm">Catálogo de estações: base de dados revisada incluída no app. Ele sugere nomes de estações, mas não confirma serviço, horário, plataforma, atraso ou circulação.</string>
     <!-- Open maps (October 2026) -->
     <string name="map_attribution">OpenFreeMap © OpenMapTiles, dados © colaboradores do OpenStreetMap</string>
     <string name="map_route_title">Mapa do percurso</string>

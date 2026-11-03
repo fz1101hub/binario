@@ -345,7 +345,7 @@
     <string name="journey_empty_unavailable">暂时无法计算换乘行程。请重试。</string>
     <string name="journey_empty_no_direct">找到的方案中没有直达方案。</string>
     <string name="journey_option_accessibility">%1$s 从 %2$s 出发，%3$s 到达 %4$s，历时 %5$s，%6$s。</string>
-    <string name="settings_privacy_osm">全国自动补全：© OpenStreetMap contributors，ODbL 1.0。地理目录会建议车站名称，但不能确认服务、时刻、站台、晚点或运行情况。</string>
+    <string name="settings_privacy_osm">车站目录：应用内置的整理数据库。该目录会建议车站名称，但不能确认服务、时刻、站台、晚点或运行情况。</string>
     <!-- Open maps (October 2026) -->
     <string name="map_attribution">OpenFreeMap © OpenMapTiles，数据 © OpenStreetMap contributors</string>
     <string name="map_route_title">路线地图</string>

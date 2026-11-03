@@ -279,6 +279,14 @@ def verify_stations(failures: list[str], warnings: list[str] | None = None) -> d
             failures.append(
                 f"Station catalog {catalog_id} stationCount mismatch: manifest={expected_count}, asset={len(stations)}"
             )
+        # Origin and licence of the catalogue (audit A7-09): required fields; "da confermare dal titolare" is a warning
+        # until the owner records them, since the in-app credit and the store content-rights answers depend on them.
+        for field in ("provenance", "licence"):
+            value = catalog.get(field)
+            if not isinstance(value, str) or not value.strip():
+                failures.append(f"Station catalog {catalog_id} has no {field}")
+            elif OWNER_TO_CONFIRM in value.lower() and warnings is not None:
+                warnings.append(f"Station catalog {catalog_id}: {field} to be confirmed by the owner")
         created_at = catalog.get("sourceCreatedAtUtc")
         if isinstance(created_at, str):
             try:

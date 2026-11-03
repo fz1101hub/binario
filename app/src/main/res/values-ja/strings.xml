@@ -339,7 +339,7 @@
     <string name="journey_empty_unavailable">現在、乗り換えを含む経路を計算できません。もう一度お試しください。</string>
     <string name="journey_empty_no_direct">見つかった経路に乗り換えなしのものはありません。</string>
     <string name="journey_option_accessibility">%2$s を %1$s に出発、%4$s に %3$s に到着、所要時間 %5$s、%6$s。</string>
-    <string name="settings_privacy_osm">全国の駅名補完：© OpenStreetMap contributors、ODbL 1.0。地理カタログは駅名の候補を示しますが、運行、時刻、番線、遅れ、運転状況を保証するものではありません。</string>
+    <string name="settings_privacy_osm">駅カタログ：アプリに含まれる精査済みデータベース。このカタログは駅名の候補を示しますが、運行、時刻、番線、遅れ、運転状況を保証するものではありません。</string>
     <!-- Open maps (October 2026) -->
     <string name="map_attribution">OpenFreeMap © OpenMapTiles、データ © OpenStreetMap contributors</string>
     <string name="map_route_title">経路の地図</string>
