@@ -76,5 +76,28 @@ class VerifyAndroidReleaseConfigTest(unittest.TestCase):
             POLICY.verify(without_wear_lint)
 
 
+class StoreSourcesTest(unittest.TestCase):
+    """Audit A7-05: the store value of the best-effort realtime sources is explicit and matches the documents."""
+
+    def test_repository_store_sources_pass(self) -> None:
+        POLICY.verify_store_sources()
+        self.assertEqual("true", POLICY.STORE_PERSONAL_REALTIME_SOURCES)
+
+    def test_implicit_or_different_store_values_are_refused(self) -> None:
+        flag = "-PBINARIO_PERSONAL_REALTIME_SOURCES=true "
+        for mutated, message in (
+            (replacing(".github/workflows/android-ci.yml", flag), "exactly once"),
+            (replacing(".github/workflows/android-ci.yml", flag, flag.replace("true", "false")), "exactly once"),
+            (replacing(".github/workflows/android-ci.yml", "-Pbinario.personalSources=false "), "personalSources=false"),
+            (replacing("app/build.gradle.kts",
+                       'getByName("release") {\n            buildConfigField("boolean", "PERSONAL_REALTIME_SOURCES",\n                providers.gradleProperty("BINARIO_PERSONAL_REALTIME_SOURCES").orElse("true")',
+                       'getByName("release") {\n            buildConfigField("boolean", "PERSONAL_REALTIME_SOURCES",\n                providers.gradleProperty("BINARIO_PERSONAL_REALTIME_SOURCES").orElse("false")'),
+             "release default"),
+            (replacing("docs/store/PLAY_DATA_SAFETY.md", "`-PBINARIO_PERSONAL_REALTIME_SOURCES=true`", "`true`"), "PLAY_DATA_SAFETY"),
+        ):
+            with self.subTest(message=message), self.assertRaisesRegex(AssertionError, message):
+                POLICY.verify_store_sources(mutated)
+
+
 if __name__ == "__main__":
     unittest.main()

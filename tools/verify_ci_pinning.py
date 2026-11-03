@@ -288,6 +288,12 @@ def _check_release_signing(
         problems.append(f"{path.name}: verifica degli AAB firmati assente")
     if ":app:bundleRelease :wear:bundleRelease" not in commands:
         problems.append(f"{path.name}: release-sign deve firmare telefono e Wear insieme")
+    # The store build states its source flags instead of inheriting Gradle defaults (audit A7-05); the value of the
+    # realtime flag is pinned against the store documents by tools/verify_android_release_config.py.
+    if len(re.findall(r"-PBINARIO_PERSONAL_REALTIME_SOURCES=(?:true|false)\b", commands)) != 1:
+        problems.append(f"{path.name}: release-sign deve passare esplicitamente -PBINARIO_PERSONAL_REALTIME_SOURCES")
+    if "-Pbinario.personalSources=false" not in commands or "-Pbinario.personalSources=true" in commands:
+        problems.append(f"{path.name}: release-sign deve escludere i pack personali con -Pbinario.personalSources=false")
 
 
 STABILIZATION_PULL_REQUEST = "${{ github.event_name == 'pull_request' && startsWith(github.base_ref, 'stabilization/') }}"
