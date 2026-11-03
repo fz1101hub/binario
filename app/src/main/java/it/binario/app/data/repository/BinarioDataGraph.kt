@@ -43,6 +43,7 @@ object BinarioDataGraph {
     private val numberSearchByPackage = mutableMapOf<String, TrainNumberSearchService>()
     private val stationIndexesByPackage = mutableMapOf<String, EmbeddedGtfsStationSearchIndex>()
     private val journeySearchByPackage = mutableMapOf<String, JourneySearchService>()
+    private val offlinePlannersByPackage = mutableMapOf<String, EmbeddedGtfsJourneyProvider>()
     private val urbanStopIndexesByPackage = mutableMapOf<String, EmbeddedUrbanStopIndex>()
 
     fun routeDataSource(context: Context): TrainDataSource = synchronized(routeSourcesByPackage) {
@@ -98,12 +99,21 @@ object BinarioDataGraph {
     fun journeySearchService(context: Context): JourneySearchService = synchronized(journeySearchByPackage) {
         val app = context.applicationContext
         journeySearchByPackage.getOrPut(app.packageName) {
-            val offline = EmbeddedGtfsJourneyProvider.create(
+            JourneySearchService(activeProviders(listOf<JourneyProvider>(offlineJourneyPlanner(app)), ProviderCapability.JOURNEY_SEARCH))
+        }
+    }
+
+    /**
+     * The offline planner on the registry-enabled embedded packs (railway packs, then this build's city networks), shared
+     * by the journey search and the static timetable questions of the screens ("Ultimo di oggi", wheelchair marks).
+     */
+    fun offlineJourneyPlanner(context: Context): EmbeddedGtfsJourneyProvider = synchronized(offlinePlannersByPackage) {
+        val app = context.applicationContext
+        offlinePlannersByPackage.getOrPut(app.packageName) {
+            EmbeddedGtfsJourneyProvider.create(
                 openAsset = { assetPath -> app.assets.open(assetPath) },
-                // The railway packs, then the city networks (metro, tram) this build includes.
                 packs = (EmbeddedGtfsPacks.all + EmbeddedGtfsPacks.urban).filter { defaultRegistry.isEnabled(it.sourceId) }
             )
-            JourneySearchService(activeProviders(listOf<JourneyProvider>(offline), ProviderCapability.JOURNEY_SEARCH))
         }
     }
 

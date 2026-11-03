@@ -18,8 +18,24 @@ internal class GtfsDayTrip(
     val operator: RailOperator,
     val mode: LegMode,
     val firstConnection: Int,
-    val connectionCount: Int
+    val connectionCount: Int,
+    /** GTFS block_id: trips of one block and service day run with the same vehicle one after the other; null if none. */
+    val blockId: String? = null,
+    /** GTFS wheelchair_accessible: [WHEELCHAIR_YES], [WHEELCHAIR_NO] or [WHEELCHAIR_UNKNOWN] (0 or empty). */
+    val wheelchairAccessible: Byte = WHEELCHAIR_UNKNOWN
 )
+
+/** GTFS wheelchair_boarding / wheelchair_accessible values; anything but 1 is never treated as accessible. */
+internal const val WHEELCHAIR_UNKNOWN: Byte = 0
+internal const val WHEELCHAIR_YES: Byte = 1
+internal const val WHEELCHAIR_NO: Byte = 2
+
+/** "1" and "2" as published; 0, empty and anything else are unknown. */
+internal fun wheelchairValue(raw: String?): Byte = when (raw?.trim()) {
+    "1" -> WHEELCHAIR_YES
+    "2" -> WHEELCHAIR_NO
+    else -> WHEELCHAIR_UNKNOWN
+}
 
 /**
  * The connections of one embedded pack on one GTFS service day, in trip order: connection `c` leaves
@@ -76,10 +92,12 @@ internal class GtfsDayTimetable private constructor(
             operatorName: String?,
             category: TrainCategory,
             operator: RailOperator,
-            mode: LegMode
+            mode: LegMode,
+            blockId: String? = null,
+            wheelchairAccessible: Byte = WHEELCHAIR_UNKNOWN
         ) {
             check(pending == null) { "Trip precedente non chiuso" }
-            pending = PendingTrip(tripId, publicNumber, lineLabel, operatorName, category, operator, mode, count)
+            pending = PendingTrip(tripId, publicNumber, lineLabel, operatorName, category, operator, mode, count, blockId, wheelchairAccessible)
         }
 
         fun connection(
@@ -116,7 +134,9 @@ internal class GtfsDayTimetable private constructor(
                 operator = trip.operator,
                 mode = trip.mode,
                 firstConnection = trip.firstConnection,
-                connectionCount = trip.connections
+                connectionCount = trip.connections,
+                blockId = trip.blockId,
+                wheelchairAccessible = trip.wheelchairAccessible
             )
         }
 
@@ -167,6 +187,8 @@ internal class GtfsDayTimetable private constructor(
             val operator: RailOperator,
             val mode: LegMode,
             val firstConnection: Int,
+            val blockId: String?,
+            val wheelchairAccessible: Byte,
             var connections: Int = 0
         )
     }
@@ -179,7 +201,8 @@ internal class GtfsDayTimetable private constructor(
 
 /**
  * stops.txt of one pack: stop_id, stop_name, parent_station (blank when the stop has no parent), stop_code (blank
- * when absent) and stop_lat/stop_lon (NaN when absent or unreadable).
+ * when absent), stop_lat/stop_lon (NaN when absent or unreadable) and wheelchair_boarding ([WHEELCHAIR_UNKNOWN] when
+ * absent; a platform without its own value takes its parent station's, as the GTFS reference says).
  */
 internal class GtfsStopDirectory(
     val ids: Array<String>,
@@ -187,11 +210,28 @@ internal class GtfsStopDirectory(
     val parents: Array<String>,
     val codes: Array<String> = Array(ids.size) { "" },
     val latitudes: DoubleArray = DoubleArray(ids.size) { Double.NaN },
-    val longitudes: DoubleArray = DoubleArray(ids.size) { Double.NaN }
+    val longitudes: DoubleArray = DoubleArray(ids.size) { Double.NaN },
+    val wheelchair: ByteArray = ByteArray(ids.size)
 ) {
     init {
         require(ids.size == names.size && ids.size == parents.size)
-        require(ids.size == codes.size && ids.size == latitudes.size && ids.size == longitudes.size)
+        require(ids.size == codes.size && ids.size == latitudes.size && ids.size == longitudes.size && ids.size == wheelchair.size)
+    }
+
+    companion object {
+        /**
+         * The wheelchair_boarding of every stop: its own 1 or 2, else (0 or empty) its parent station's. Only one level
+         * is followed (platform → station), like the GTFS reference.
+         */
+        fun inheritWheelchair(ids: Array<String>, parents: Array<String>, own: ByteArray): ByteArray {
+            val indexById = HashMap<String, Int>(ids.size * 2)
+            ids.forEachIndexed { index, id -> indexById.putIfAbsent(id, index) }
+            return ByteArray(ids.size) { index ->
+                val value = own[index]
+                if (value != WHEELCHAIR_UNKNOWN || parents[index].isEmpty()) value
+                else indexById[parents[index]]?.let { own[it] } ?: WHEELCHAIR_UNKNOWN
+            }
+        }
     }
 
     val size: Int get() = ids.size
