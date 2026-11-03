@@ -448,7 +448,6 @@
     <string name="today_empty_description">Aktualisiere die aktive Strecke oder wähle eine andere gespeicherte Strecke. Nicht verfügbare Daten werden nicht durch geschätzte Zeiten ersetzt.</string>
     <string name="action_refresh">Aktualisieren</string>
     <string name="action_open_routes">Meine Strecken öffnen</string>
-    <string name="filter_all">Alle</string>
     <string name="journey_changes_uppercase">UMSTIEGE</string>
     <string name="accessibility_system_voice_input">%1$s über die System-Spracherkennung</string>
     <string name="accessibility_title_detail">%1$s. %2$s</string>
@@ -1164,7 +1163,6 @@
     <string name="results_date_today">Heute, %1$s</string>
     <string name="results_date_from_time">%1$s · ab %2$s</string>
     <string name="planner_time_now">Jetzt</string>
-    <string name="accessibility_trip_kind">Reiseart: %1$s. Tippen, um zwischen einfacher Fahrt und Hin- und Rückfahrt zu wechseln</string>
     <string name="planner_filters">Filter</string>
     <string name="planner_return_short">Rückfahrt %1$s</string>
     <string name="planner_date_today">Heute %1$s</string>
@@ -1397,4 +1395,10 @@
     <string name="departures_back_to_now">Zurück zu jetzt</string>
     <string name="departures_route_from_search">Suche aus Planen</string>
     <string name="departures_first_departure">Erste Fahrt</string>
+    <!-- Planner filters and station entry (audit A3-06, proposal 5) -->
+    <string name="planner_filters_active">Filter · %1$s</string>
+    <string name="results_change_filter_remove">Umstiegsfilter: %1$s. Zum Entfernen tippen</string>
+    <string name="planner_use_location">Standort als Abfahrt verwenden</string>
+    <string name="planner_location_origin">Abfahrt vom nächstgelegenen Bahnhof: %1$s. Der Standort wurde nicht gespeichert.</string>
+    <string name="planner_location_none">Kein Bahnhof in der Nähe des aktuellen Standorts.</string>
 </resources>

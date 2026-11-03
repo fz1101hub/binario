@@ -431,7 +431,6 @@
     <string name="today_empty_description">Perbarui rute aktif atau pilih rute tersimpan lainnya. Data yang tidak tersedia tidak diganti dengan perkiraan jadwal.</string>
     <string name="action_refresh">Perbarui</string>
     <string name="action_open_routes">Buka rute saya</string>
-    <string name="filter_all">Semua</string>
     <string name="journey_changes_uppercase">TRANSIT</string>
     <string name="accessibility_system_voice_input">%1$s melalui pengenal suara sistem</string>
     <string name="accessibility_title_detail">%1$s. %2$s</string>
@@ -1114,7 +1113,6 @@
     <string name="results_date_today">Hari ini, %1$s</string>
     <string name="results_date_from_time">%1$s · mulai %2$s</string>
     <string name="planner_time_now">Sekarang</string>
-    <string name="accessibility_trip_kind">Jenis perjalanan: %1$s. Ketuk untuk beralih antara sekali jalan dan pulang pergi</string>
     <string name="planner_filters">Filter</string>
     <string name="planner_return_short">Pulang %1$s</string>
     <string name="planner_date_today">Hari ini %1$s</string>
@@ -1342,4 +1340,10 @@
     <string name="departures_back_to_now">Kembali ke sekarang</string>
     <string name="departures_route_from_search">Pencarian dari Rencana</string>
     <string name="departures_first_departure">Keberangkatan pertama</string>
+    <!-- Planner filters and station entry (audit A3-06, proposal 5) -->
+    <string name="planner_filters_active">Filter · %1$s</string>
+    <string name="results_change_filter_remove">Filter transit: %1$s. Ketuk untuk menghapus</string>
+    <string name="planner_use_location">Gunakan lokasi untuk keberangkatan</string>
+    <string name="planner_location_origin">Berangkat dari stasiun terdekat: %1$s. Lokasi tidak disimpan.</string>
+    <string name="planner_location_none">Tidak ada stasiun di dekat lokasi saat ini.</string>
 </resources>

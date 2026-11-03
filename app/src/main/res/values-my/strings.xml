@@ -431,7 +431,6 @@
     <string name="today_empty_description">လက်ရှိ လမ်းကြောင်းကို ပြန်ယူပါ သို့မဟုတ် သိမ်းထားသော အခြား လမ်းကြောင်းတစ်ခု ရွေးပါ။ မရနိုင်သော ဒေတာကို ခန့်မှန်းအချိန်ဖြင့် အစားမထိုးပါ။</string>
     <string name="action_refresh">ပြန်ယူရန်</string>
     <string name="action_open_routes">ကျွန်ုပ်၏ လမ်းကြောင်းများ ဖွင့်ရန်</string>
-    <string name="filter_all">အားလုံး</string>
     <string name="journey_changes_uppercase">ရထားပြောင်းမှု</string>
     <string name="accessibility_system_voice_input">စနစ် အသံမှတ်သားစနစ်မှတစ်ဆင့် %1$s</string>
     <string name="accessibility_title_detail">%1$s။ %2$s</string>
@@ -1114,7 +1113,6 @@
     <string name="results_date_today">ယနေ့၊ %1$s</string>
     <string name="results_date_from_time">%1$s · %2$s မှစ၍</string>
     <string name="planner_time_now">ယခု</string>
-    <string name="accessibility_trip_kind">ခရီး အမျိုးအစား- %1$s။ အသွားသာနှင့် အသွားအပြန်ကြား ပြောင်းရန် တို့ပါ</string>
     <string name="planner_filters">စစ်ထုတ်မှု</string>
     <string name="planner_return_short">အပြန် %1$s</string>
     <string name="planner_date_today">ယနေ့ %1$s</string>
@@ -1342,4 +1340,10 @@
     <string name="departures_back_to_now">ယခုအချိန်သို့ ပြန်သွားရန်</string>
     <string name="departures_route_from_search">စီစဉ်ရန်မှ ရှာဖွေမှု</string>
     <string name="departures_first_departure">ပထမ ထွက်ခွာမှု</string>
+    <!-- Planner filters and station entry (audit A3-06, proposal 5) -->
+    <string name="planner_filters_active">စစ်ထုတ်မှု · %1$s</string>
+    <string name="results_change_filter_remove">ရထားပြောင်းမှု စစ်ထုတ်မှု- %1$s။ ဖယ်ရှားရန် တို့ပါ</string>
+    <string name="planner_use_location">ထွက်ခွာရန် တည်နေရာကို အသုံးပြုပါ</string>
+    <string name="planner_location_origin">အနီးဆုံးဘူတာမှ ထွက်ခွာမည်- %1$s။ တည်နေရာကို မသိမ်းထားပါ။</string>
+    <string name="planner_location_none">လက်ရှိတည်နေရာအနီးတွင် ဘူတာ မရှိပါ။</string>
 </resources>

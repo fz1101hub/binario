@@ -443,7 +443,6 @@
     <string name="today_empty_description">Atualize o trajeto ativo ou escolha outro trajeto salvo. Dados indisponíveis não são substituídos por horários estimados.</string>
     <string name="action_refresh">Atualizar</string>
     <string name="action_open_routes">Abrir meus trajetos</string>
-    <string name="filter_all">Todos</string>
     <string name="journey_changes_uppercase">BALDEAÇÕES</string>
     <string name="accessibility_system_voice_input">%1$s pelo reconhecedor de voz do sistema</string>
     <string name="accessibility_title_detail">%1$s. %2$s</string>
@@ -1168,7 +1167,6 @@
     <string name="results_date_today">Hoje, %1$s</string>
     <string name="results_date_from_time">%1$s · a partir das %2$s</string>
     <string name="planner_time_now">Agora</string>
-    <string name="accessibility_trip_kind">Tipo de viagem: %1$s. Toque para alternar entre só ida e ida e volta</string>
     <string name="planner_filters">Filtros</string>
     <string name="planner_return_short">Volta %1$s</string>
     <string name="planner_date_today">Hoje %1$s</string>
@@ -1406,4 +1404,10 @@
     <string name="departures_back_to_now">Voltar para agora</string>
     <string name="departures_route_from_search">Busca de Planejar</string>
     <string name="departures_first_departure">Primeira partida</string>
+    <!-- Planner filters and station entry (audit A3-06, proposal 5) -->
+    <string name="planner_filters_active">Filtros · %1$s</string>
+    <string name="results_change_filter_remove">Filtro de baldeações: %1$s. Toque para remover</string>
+    <string name="planner_use_location">Usar a localização para a partida</string>
+    <string name="planner_location_origin">Partida da estação mais próxima: %1$s. A localização não foi salva.</string>
+    <string name="planner_location_none">Nenhuma estação perto da localização atual.</string>
 </resources>

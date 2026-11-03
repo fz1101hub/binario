@@ -442,7 +442,6 @@
     <string name="today_empty_description">รีเฟรชเส้นทางปัจจุบันหรือเลือกเส้นทางอื่นที่บันทึกไว้ ข้อมูลที่ไม่มีจะไม่ถูกแทนที่ด้วยเวลาโดยประมาณ</string>
     <string name="action_refresh">รีเฟรช</string>
     <string name="action_open_routes">เปิดเส้นทางของฉัน</string>
-    <string name="filter_all">ทั้งหมด</string>
     <string name="journey_changes_uppercase">การเปลี่ยนขบวน</string>
     <string name="accessibility_system_voice_input">%1$s ผ่านระบบจดจำเสียงของอุปกรณ์</string>
     <string name="accessibility_title_detail">%1$s %2$s</string>
@@ -1137,7 +1136,6 @@
     <string name="results_date_today">วันนี้ %1$s</string>
     <string name="results_date_from_time">%1$s · ตั้งแต่ %2$s</string>
     <string name="planner_time_now">ตอนนี้</string>
-    <string name="accessibility_trip_kind">ประเภทการเดินทาง: %1$s แตะเพื่อสลับระหว่างเที่ยวเดียวและไปกลับ</string>
     <string name="planner_filters">ตัวกรอง</string>
     <string name="planner_return_short">ขากลับ %1$s</string>
     <string name="planner_date_today">วันนี้ %1$s</string>
@@ -1365,4 +1363,10 @@
     <string name="departures_back_to_now">กลับไปที่ตอนนี้</string>
     <string name="departures_route_from_search">การค้นหาจากวางแผน</string>
     <string name="departures_first_departure">ขบวนแรก</string>
+    <!-- Planner filters and station entry (audit A3-06, proposal 5) -->
+    <string name="planner_filters_active">ตัวกรอง · %1$s</string>
+    <string name="results_change_filter_remove">ตัวกรองการเปลี่ยนขบวน: %1$s แตะเพื่อนำออก</string>
+    <string name="planner_use_location">ใช้ตำแหน่งเป็นสถานีต้นทาง</string>
+    <string name="planner_location_origin">ออกจากสถานีที่ใกล้ที่สุด: %1$s ไม่ได้บันทึกตำแหน่ง</string>
+    <string name="planner_location_none">ไม่มีสถานีใกล้ตำแหน่งปัจจุบัน</string>
 </resources>

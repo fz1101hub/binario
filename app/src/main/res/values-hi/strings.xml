@@ -437,7 +437,6 @@
     <string name="today_empty_description">सक्रिय मार्ग अपडेट करें या कोई दूसरा सहेजा गया मार्ग चुनें। अनुपलब्ध डेटा को अनुमानित समय से नहीं बदला जाता।</string>
     <string name="action_refresh">अपडेट करें</string>
     <string name="action_open_routes">मेरे मार्ग खोलें</string>
-    <string name="filter_all">सभी</string>
     <string name="journey_changes_uppercase">बदलाव</string>
     <string name="accessibility_system_voice_input">सिस्टम वाक् पहचानकर्ता से %1$s</string>
     <string name="accessibility_title_detail">%1$s. %2$s</string>
@@ -1141,7 +1140,6 @@
     <string name="results_date_today">आज, %1$s</string>
     <string name="results_date_from_time">%1$s · %2$s से</string>
     <string name="planner_time_now">अभी</string>
-    <string name="accessibility_trip_kind">यात्रा का प्रकार: %1$s। केवल जाना और आना-जाना के बीच बदलने के लिए टैप करें</string>
     <string name="planner_filters">फ़िल्टर</string>
     <string name="planner_return_short">वापसी %1$s</string>
     <string name="planner_date_today">आज %1$s</string>
@@ -1374,4 +1372,10 @@
     <string name="departures_back_to_now">अभी पर लौटें</string>
     <string name="departures_route_from_search">योजना से खोज</string>
     <string name="departures_first_departure">पहला प्रस्थान</string>
+    <!-- Planner filters and station entry (audit A3-06, proposal 5) -->
+    <string name="planner_filters_active">फ़िल्टर · %1$s</string>
+    <string name="results_change_filter_remove">बदलाव फ़िल्टर: %1$s. हटाने के लिए टैप करें</string>
+    <string name="planner_use_location">प्रस्थान के लिए स्थान का उपयोग करें</string>
+    <string name="planner_location_origin">सबसे पास के स्टेशन से प्रस्थान: %1$s. स्थान सहेजा नहीं गया।</string>
+    <string name="planner_location_none">मौजूदा स्थान के पास कोई स्टेशन नहीं।</string>
 </resources>

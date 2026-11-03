@@ -431,7 +431,6 @@
     <string name="today_empty_description">選択中の区間を更新するか、保存した別の区間を選んでください。利用できないデータが推定の時刻で置き換えられることはありません。</string>
     <string name="action_refresh">更新</string>
     <string name="action_open_routes">保存した区間を開く</string>
-    <string name="filter_all">すべて</string>
     <string name="journey_changes_uppercase">乗り換え</string>
     <string name="accessibility_system_voice_input">システムの音声認識による %1$s</string>
     <string name="accessibility_title_detail">%1$s. %2$s</string>
@@ -1114,7 +1113,6 @@
     <string name="results_date_today">今日、%1$s</string>
     <string name="results_date_from_time">%1$s · %2$s 以降</string>
     <string name="planner_time_now">現在</string>
-    <string name="accessibility_trip_kind">旅程の種類：%1$s。タップすると片道と往復を切り替えます</string>
     <string name="planner_filters">フィルタ</string>
     <string name="planner_return_short">復路 %1$s</string>
     <string name="planner_date_today">今日 %1$s</string>
@@ -1342,4 +1340,10 @@
     <string name="departures_back_to_now">現在時刻に戻る</string>
     <string name="departures_route_from_search">経路検索からの検索</string>
     <string name="departures_first_departure">最初の列車</string>
+    <!-- Planner filters and station entry (audit A3-06, proposal 5) -->
+    <string name="planner_filters_active">フィルタ · %1$s</string>
+    <string name="results_change_filter_remove">乗り換えの絞り込み: %1$s。タップで解除</string>
+    <string name="planner_use_location">現在地を出発駅に使う</string>
+    <string name="planner_location_origin">最寄り駅から出発: %1$s。位置情報は保存されていません。</string>
+    <string name="planner_location_none">現在地の近くに駅がありません。</string>
 </resources>

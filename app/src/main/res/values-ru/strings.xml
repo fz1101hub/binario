@@ -449,7 +449,6 @@
     <string name="today_empty_description">Обновите активный маршрут или выберите другой сохранённый маршрут. Недоступные данные не заменяются расчётным временем.</string>
     <string name="action_refresh">Обновить</string>
     <string name="action_open_routes">Открыть мои маршруты</string>
-    <string name="filter_all">Все</string>
     <string name="journey_changes_uppercase">ПЕРЕСАДКИ</string>
     <string name="accessibility_system_voice_input">%1$s с помощью системного распознавания речи</string>
     <string name="accessibility_title_detail">%1$s. %2$s</string>
@@ -1195,7 +1194,6 @@
     <string name="results_date_today">Сегодня, %1$s</string>
     <string name="results_date_from_time">%1$s · с %2$s</string>
     <string name="planner_time_now">Сейчас</string>
-    <string name="accessibility_trip_kind">Тип поездки: %1$s. Нажмите, чтобы переключиться между «в одну сторону» и «туда и обратно»</string>
     <string name="planner_filters">Фильтры</string>
     <string name="planner_return_short">Обратно %1$s</string>
     <string name="planner_date_today">Сегодня %1$s</string>
@@ -1438,4 +1436,10 @@
     <string name="departures_back_to_now">Вернуться к текущему времени</string>
     <string name="departures_route_from_search">Поиск из раздела «Поиск»</string>
     <string name="departures_first_departure">Первый поезд</string>
+    <!-- Planner filters and station entry (audit A3-06, proposal 5) -->
+    <string name="planner_filters_active">Фильтры · %1$s</string>
+    <string name="results_change_filter_remove">Фильтр пересадок: %1$s. Нажмите, чтобы убрать</string>
+    <string name="planner_use_location">Использовать местоположение для отправления</string>
+    <string name="planner_location_origin">Отправление с ближайшей станции: %1$s. Местоположение не сохранено.</string>
+    <string name="planner_location_none">Рядом с текущим местоположением нет станций.</string>
 </resources>

@@ -431,7 +431,6 @@
     <string name="today_empty_description">활성 구간을 새로고침하거나 다른 저장된 구간을 선택하세요. 이용할 수 없는 데이터를 추정 시각으로 대체하지 않습니다.</string>
     <string name="action_refresh">새로고침</string>
     <string name="action_open_routes">내 구간 열기</string>
-    <string name="filter_all">전체</string>
     <string name="journey_changes_uppercase">환승</string>
     <string name="accessibility_system_voice_input">시스템 음성 인식기를 통한 %1$s</string>
     <string name="accessibility_title_detail">%1$s. %2$s</string>
@@ -1114,7 +1113,6 @@
     <string name="results_date_today">오늘, %1$s</string>
     <string name="results_date_from_time">%1$s · %2$s부터</string>
     <string name="planner_time_now">지금</string>
-    <string name="accessibility_trip_kind">여정 유형: %1$s. 탭하여 편도와 왕복 간 전환</string>
     <string name="planner_filters">필터</string>
     <string name="planner_return_short">오는 편 %1$s</string>
     <string name="planner_date_today">오늘 %1$s</string>
@@ -1342,4 +1340,10 @@
     <string name="departures_back_to_now">지금으로 돌아가기</string>
     <string name="departures_route_from_search">계획에서 검색</string>
     <string name="departures_first_departure">첫 열차</string>
+    <!-- Planner filters and station entry (audit A3-06, proposal 5) -->
+    <string name="planner_filters_active">필터 · %1$s</string>
+    <string name="results_change_filter_remove">환승 필터: %1$s. 탭하여 해제</string>
+    <string name="planner_use_location">현재 위치를 출발역으로 사용</string>
+    <string name="planner_location_origin">가장 가까운 역에서 출발: %1$s. 위치는 저장되지 않았습니다.</string>
+    <string name="planner_location_none">현재 위치 근처에 역이 없습니다.</string>
 </resources>

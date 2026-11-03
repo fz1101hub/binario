@@ -454,7 +454,6 @@
     <string name="today_empty_description">Aggiorna la tratta attiva oppure scegli una tratta salvata diversa. I dati non disponibili non vengono sostituiti con orari stimati.</string>
     <string name="action_refresh">Aggiorna</string>
     <string name="action_open_routes">Apri le mie tratte</string>
-    <string name="filter_all">Tutti</string>
     <string name="journey_changes_uppercase">CAMBI</string>
     <string name="accessibility_system_voice_input">%1$s tramite riconoscitore vocale di sistema</string>
     <string name="accessibility_title_detail">%1$s. %2$s</string>
@@ -1191,7 +1190,6 @@
     <string name="results_date_today">Oggi, %1$s</string>
     <string name="results_date_from_time">%1$s · dalle %2$s</string>
     <string name="planner_time_now">Adesso</string>
-    <string name="accessibility_trip_kind">Tipo di viaggio: %1$s. Tocca per passare da sola andata ad andata e ritorno</string>
     <string name="planner_filters">Filtri</string>
     <string name="planner_return_short">Ritorno %1$s</string>
     <string name="planner_date_today">Oggi %1$s</string>
@@ -1429,4 +1427,10 @@
     <string name="departures_back_to_now">Torna ad adesso</string>
     <string name="departures_route_from_search">Ricerca da Pianifica</string>
     <string name="departures_first_departure">Prima corsa</string>
+    <!-- Planner filters and station entry (audit A3-06, proposal 5) -->
+    <string name="planner_filters_active">Filtri · %1$s</string>
+    <string name="results_change_filter_remove">Filtro dei cambi: %1$s. Tocca per rimuoverlo</string>
+    <string name="planner_use_location">Usa la posizione per la partenza</string>
+    <string name="planner_location_origin">Partenza dalla stazione più vicina: %1$s. La posizione non è stata salvata.</string>
+    <string name="planner_location_none">Nessuna stazione vicina alla posizione attuale.</string>
 </resources>

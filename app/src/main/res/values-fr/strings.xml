@@ -454,7 +454,6 @@
     <string name="today_empty_description">Actualisez l’itinéraire actif ou choisissez un autre itinéraire enregistré. Les données non disponibles ne sont pas remplacées par des horaires estimés.</string>
     <string name="action_refresh">Actualiser</string>
     <string name="action_open_routes">Ouvrir mes itinéraires</string>
-    <string name="filter_all">Tous</string>
     <string name="journey_changes_uppercase">CORRESPONDANCES</string>
     <string name="accessibility_system_voice_input">%1$s via le reconnaisseur vocal système</string>
     <string name="accessibility_title_detail">%1$s. %2$s</string>
@@ -1191,7 +1190,6 @@
     <string name="results_date_today">Aujourd’hui, %1$s</string>
     <string name="results_date_from_time">%1$s · dès %2$s</string>
     <string name="planner_time_now">Maintenant</string>
-    <string name="accessibility_trip_kind">Type de trajet : %1$s. Touchez pour passer de l’aller simple à l’aller-retour</string>
     <string name="planner_filters">Filtres</string>
     <string name="planner_return_short">Retour %1$s</string>
     <string name="planner_date_today">Aujourd’hui %1$s</string>
@@ -1429,4 +1427,10 @@
     <string name="departures_back_to_now">Revenir à maintenant</string>
     <string name="departures_route_from_search">Recherche depuis Planifier</string>
     <string name="departures_first_departure">Premier départ</string>
+    <!-- Planner filters and station entry (audit A3-06, proposal 5) -->
+    <string name="planner_filters_active">Filtres · %1$s</string>
+    <string name="results_change_filter_remove">Filtre des correspondances : %1$s. Touchez pour le retirer</string>
+    <string name="planner_use_location">Utiliser la position pour le départ</string>
+    <string name="planner_location_origin">Départ de la gare la plus proche : %1$s. La position n’a pas été enregistrée.</string>
+    <string name="planner_location_none">Aucune gare près de la position actuelle.</string>
 </resources>

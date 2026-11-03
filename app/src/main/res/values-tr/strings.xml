@@ -448,7 +448,6 @@
     <string name="today_empty_description">Etkin güzergâhı yenileyin veya farklı bir kayıtlı güzergâh seçin. Kullanılamayan veriler tahmini saatlerle değiştirilmez.</string>
     <string name="action_refresh">Yenile</string>
     <string name="action_open_routes">Güzergâhlarımı aç</string>
-    <string name="filter_all">Tümü</string>
     <string name="journey_changes_uppercase">AKTARMALAR</string>
     <string name="accessibility_system_voice_input">%1$s (sistem ses tanıyıcısıyla)</string>
     <string name="accessibility_title_detail">%1$s. %2$s</string>
@@ -1164,7 +1163,6 @@
     <string name="results_date_today">Bugün, %1$s</string>
     <string name="results_date_from_time">%1$s · %2$s itibarıyla</string>
     <string name="planner_time_now">Şimdi</string>
-    <string name="accessibility_trip_kind">Yolculuk türü: %1$s. Tek yön ile gidiş-dönüş arasında geçiş yapmak için dokunun</string>
     <string name="planner_filters">Filtreler</string>
     <string name="planner_return_short">Dönüş %1$s</string>
     <string name="planner_date_today">Bugün %1$s</string>
@@ -1397,4 +1395,10 @@
     <string name="departures_back_to_now">Şimdiye dön</string>
     <string name="departures_route_from_search">Planla’dan arama</string>
     <string name="departures_first_departure">İlk kalkış</string>
+    <!-- Planner filters and station entry (audit A3-06, proposal 5) -->
+    <string name="planner_filters_active">Filtreler · %1$s</string>
+    <string name="results_change_filter_remove">Aktarma filtresi: %1$s. Kaldırmak için dokunun</string>
+    <string name="planner_use_location">Kalkış için konumu kullan</string>
+    <string name="planner_location_origin">En yakın istasyondan kalkış: %1$s. Konum kaydedilmedi.</string>
+    <string name="planner_location_none">Mevcut konumun yakınında istasyon yok.</string>
 </resources>

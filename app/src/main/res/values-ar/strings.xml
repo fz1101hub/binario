@@ -461,7 +461,6 @@
     <string name="today_empty_description">حدّث المسار النشط أو اختر مسارًا محفوظًا آخر. لا تُستبدل البيانات غير المتاحة بمواعيد تقديرية.</string>
     <string name="action_refresh">تحديث</string>
     <string name="action_open_routes">فتح مساراتي</string>
-    <string name="filter_all">الكل</string>
     <string name="journey_changes_uppercase">التبديلات</string>
     <string name="accessibility_system_voice_input">%1$s عبر أداة التعرّف على الكلام في النظام</string>
     <string name="accessibility_title_detail">%1$s. %2$s</string>
@@ -1249,7 +1248,6 @@
     <string name="results_date_today">اليوم، %1$s</string>
     <string name="results_date_from_time">%1$s · من %2$s</string>
     <string name="planner_time_now">الآن</string>
-    <string name="accessibility_trip_kind">نوع الرحلة: %1$s. المس للتبديل بين ذهاب فقط وذهاب وعودة</string>
     <string name="planner_filters">الفلاتر</string>
     <string name="planner_return_short">العودة %1$s</string>
     <string name="planner_date_today">اليوم %1$s</string>
@@ -1502,4 +1500,10 @@
     <string name="departures_back_to_now">العودة إلى الآن</string>
     <string name="departures_route_from_search">بحث من التخطيط</string>
     <string name="departures_first_departure">أول رحلة</string>
+    <!-- Planner filters and station entry (audit A3-06, proposal 5) -->
+    <string name="planner_filters_active">الفلاتر · %1$s</string>
+    <string name="results_change_filter_remove">عامل تصفية التبديلات: %1$s. انقر لإزالته</string>
+    <string name="planner_use_location">استخدم الموقع لمحطة المغادرة</string>
+    <string name="planner_location_origin">المغادرة من أقرب محطة: %1$s. لم يُحفظ الموقع.</string>
+    <string name="planner_location_none">لا توجد محطة قريبة من الموقع الحالي.</string>
 </resources>

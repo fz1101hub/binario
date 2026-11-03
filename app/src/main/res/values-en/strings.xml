@@ -448,7 +448,6 @@
     <string name="today_empty_description">Refresh the active route or choose a different saved route. Unavailable data is not replaced with estimated times.</string>
     <string name="action_refresh">Refresh</string>
     <string name="action_open_routes">Open my routes</string>
-    <string name="filter_all">All</string>
     <string name="journey_changes_uppercase">TRANSFERS</string>
     <string name="accessibility_system_voice_input">%1$s through the system voice recogniser</string>
     <string name="accessibility_title_detail">%1$s. %2$s</string>
@@ -1164,7 +1163,6 @@
     <string name="results_date_today">Today, %1$s</string>
     <string name="results_date_from_time">%1$s · from %2$s</string>
     <string name="planner_time_now">Now</string>
-    <string name="accessibility_trip_kind">Trip type: %1$s. Tap to switch between one way and return</string>
     <string name="planner_filters">Filters</string>
     <string name="planner_return_short">Return %1$s</string>
     <string name="planner_date_today">Today %1$s</string>
@@ -1397,4 +1395,10 @@
     <string name="departures_back_to_now">Back to now</string>
     <string name="departures_route_from_search">Search from Plan</string>
     <string name="departures_first_departure">First departure</string>
+    <!-- Planner filters and station entry (audit A3-06, proposal 5) -->
+    <string name="planner_filters_active">Filters · %1$s</string>
+    <string name="results_change_filter_remove">Changes filter: %1$s. Tap to remove it</string>
+    <string name="planner_use_location">Use location for departure</string>
+    <string name="planner_location_origin">Departure from the nearest station: %1$s. The location was not saved.</string>
+    <string name="planner_location_none">No station near the current location.</string>
 </resources>

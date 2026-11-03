@@ -31,9 +31,16 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
@@ -47,6 +54,8 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -421,21 +430,35 @@ internal fun SearchInfoState(title: String, message: String, openRoutes: (() -> 
     }
 }
 
+/**
+ * A station field with its suggestions. [imeAction] and [onImeAction] move on from the keyboard ("Avanti" to the
+ * next field, "Cerca"); [emptySuggestions] (favourite and recent stations) are offered while the field is focused
+ * and empty; [trailingIcon] holds an extra command such as "Usa posizione".
+ */
 @Composable
 internal fun StationField(
     label: String,
     value: String,
     onValueChange: (String) -> Unit,
     matches: List<Station>,
-    onSelect: (Station) -> Unit
+    onSelect: (Station) -> Unit,
+    modifier: Modifier = Modifier,
+    imeAction: ImeAction = ImeAction.Default,
+    onImeAction: (() -> Unit)? = null,
+    emptySuggestions: List<Station> = emptyList(),
+    trailingIcon: (@Composable () -> Unit)? = null
 ) {
+    var focused by remember { mutableStateOf(false) }
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         TextField(
             value = value,
             onValueChange = onValueChange,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = modifier.fillMaxWidth().onFocusChanged { focused = it.isFocused },
             singleLine = true,
             label = { Text(label) },
+            trailingIcon = trailingIcon,
+            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = imeAction),
+            keyboardActions = onImeAction?.let { action -> KeyboardActions(onAny = { action() }) } ?: KeyboardActions.Default,
             textStyle = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
             shape = RoundedCornerShape(16.dp),
             colors = TextFieldDefaults.colors(
@@ -446,12 +469,14 @@ internal fun StationField(
                 disabledIndicatorColor = Color.Transparent
             )
         )
-        val suggesting = matches.isNotEmpty() && (matches.none { it.name.equals(value, ignoreCase = true) } || matches.any { it.id.startsWith("manual:") })
+        val known = emptySuggestions.takeIf { focused && value.isBlank() }.orEmpty()
+        val typed = matches.isNotEmpty() && (matches.none { it.name.equals(value, ignoreCase = true) } || matches.any { it.id.startsWith("manual:") })
+        val suggesting = typed || known.isNotEmpty()
         // Read in the background the first time suggestions appear; empty (no marks) until then.
         val accessibleStations = rememberWheelchairAccessibleStations(enabled = suggesting)
         if (suggesting) {
             val urbanStops = BinarioDataGraph.urbanStopIndex(LocalContext.current)
-            matches.take(5).forEach { station ->
+            (if (typed) matches else known).take(5).forEach { station ->
                 TextButton(onClick = { onSelect(station) }, modifier = Modifier.fillMaxWidth()) {
                     // A metro or tram stop of a city pack: "M"/"T" badge and the city instead of a railway code.
                     val badge = urbanStops.badgeOf(station.id)

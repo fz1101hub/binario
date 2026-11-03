@@ -454,7 +454,6 @@
     <string name="today_empty_description">Actualiza la ruta activa o elige otra ruta guardada. Los datos no disponibles no se sustituyen por horarios estimados.</string>
     <string name="action_refresh">Actualizar</string>
     <string name="action_open_routes">Abrir mis rutas</string>
-    <string name="filter_all">Todos</string>
     <string name="journey_changes_uppercase">TRANSBORDOS</string>
     <string name="accessibility_system_voice_input">%1$s mediante el reconocedor de voz del sistema</string>
     <string name="accessibility_title_detail">%1$s. %2$s</string>
@@ -1191,7 +1190,6 @@
     <string name="results_date_today">Hoy, %1$s</string>
     <string name="results_date_from_time">%1$s · desde las %2$s</string>
     <string name="planner_time_now">Ahora</string>
-    <string name="accessibility_trip_kind">Tipo de viaje: %1$s. Toca para cambiar entre solo ida e ida y vuelta</string>
     <string name="planner_filters">Filtros</string>
     <string name="planner_return_short">Vuelta %1$s</string>
     <string name="planner_date_today">Hoy %1$s</string>
@@ -1429,4 +1427,10 @@
     <string name="departures_back_to_now">Volver a ahora</string>
     <string name="departures_route_from_search">Búsqueda de Planificar</string>
     <string name="departures_first_departure">Primera salida</string>
+    <!-- Planner filters and station entry (audit A3-06, proposal 5) -->
+    <string name="planner_filters_active">Filtros · %1$s</string>
+    <string name="results_change_filter_remove">Filtro de transbordos: %1$s. Toca para quitarlo</string>
+    <string name="planner_use_location">Usar la ubicación para la salida</string>
+    <string name="planner_location_origin">Salida desde la estación más cercana: %1$s. La ubicación no se ha guardado.</string>
+    <string name="planner_location_none">No hay ninguna estación cerca de la ubicación actual.</string>
 </resources>

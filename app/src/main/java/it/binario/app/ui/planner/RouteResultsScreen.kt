@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyRow
@@ -18,11 +19,14 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BookmarkAdd
 import androidx.compose.material.icons.filled.BookmarkAdded
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.InputChip
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -47,6 +51,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import it.binario.app.BinarioTheme
+import it.binario.app.JourneyChangeFilter
 import it.binario.app.R
 import it.binario.app.RefreshState
 import it.binario.app.TrainViewModel
@@ -83,6 +88,7 @@ import it.binario.app.ui.common.DataState
 import it.binario.app.ui.common.dataState
 import it.binario.app.ui.common.localizedProviderLabel
 import it.binario.app.ui.common.localizedDisplayName
+import it.binario.app.ui.common.localizedAccessibleLabel
 import it.binario.app.ui.common.localizedLabel
 import it.binario.app.ui.common.localizedQualityLabel
 import it.binario.app.ui.common.ltrUnit
@@ -141,10 +147,13 @@ internal fun RouteResultsScreen(
     // Always the unfiltered options: the chips below filter the merged list.
     val presentation = remember(journeyResult, markedDay) { journeyResult?.let { JourneyResultsPresenter.present(it, serviceDate = markedDay) } }
     val journeyRows = presentation?.rows.orEmpty()
+    // The changes filter of the planner applies to the journeys with changes as to the direct trains.
+    val changeFilter = viewModel.journeyChangeFilter
+    val filteredJourneyRows = remember(journeyRows, changeFilter) { journeyRows.filter { changeFilter.accepts(it.changes) } }
     val allServices = viewModel.currentServices()
     val allReturnServices = viewModel.currentReturnServices()
-    val entries = remember(allServices, journeyRows, query.serviceDate, travelPreferences) {
-        ResultsMerge.entries(allServices, journeyRows, query.serviceDate, travelPreferences)
+    val entries = remember(allServices, filteredJourneyRows, query.serviceDate, travelPreferences) {
+        ResultsMerge.entries(allServices, filteredJourneyRows, query.serviceDate, travelPreferences)
     }
     val returnEntries = remember(allReturnServices, query.serviceDate, travelPreferences) {
         ResultsMerge.entries(allReturnServices, emptyList(), query.serviceDate, travelPreferences)
@@ -223,6 +232,9 @@ internal fun RouteResultsScreen(
         item {
             HeaderSheetTop {
                 ResultFilterChips(selected = filter, counts = counts, onSelect = { filterName = it.name })
+                if (changeFilter != JourneyChangeFilter.ANY) {
+                    ActiveChangeFilterChip(changeFilter, onClear = { viewModel.selectJourneyChangeFilter(JourneyChangeFilter.ANY) })
+                }
                 Text(
                     listOfNotNull(resultSummary, viewModel.refreshState.localizedLabel(), viewModel.refreshMessage?.localized()).joinToString(" · "),
                     modifier = Modifier.padding(horizontal = ScreenMargin, vertical = 8.dp),
@@ -527,15 +539,31 @@ private fun JourneyResultsFilter.labelRes(): Int = when (this) {
     JourneyResultsFilter.LEAST_WALKING -> R.string.journey_filter_least_walking
 }
 
+/** The changes filter chosen in the planner ("Diretto", "Max 1 cambio"), shown on the results; a tap removes it. */
+@Composable
+private fun ActiveChangeFilterChip(filter: JourneyChangeFilter, onClear: () -> Unit) {
+    val description = stringResource(R.string.results_change_filter_remove, filter.localizedAccessibleLabel())
+    InputChip(
+        selected = true,
+        onClick = onClear,
+        label = { Text(filter.localizedLabel()) },
+        trailingIcon = { Icon(Icons.Default.Close, contentDescription = null, modifier = Modifier.size(18.dp)) },
+        modifier = Modifier
+            .padding(horizontal = ScreenMargin)
+            .semantics { contentDescription = description }
+            .testTag("results-change-filter")
+    )
+}
+
 /**
- * "Filtri": opens Impostazioni › Preferenze di viaggio; with "Solo percorsi accessibili" on it says so, and it counts
- * the direct trains the preferences hide.
+ * "Preferenze di viaggio": opens Impostazioni › Preferenze di viaggio (a different thing from the planner's
+ * filters); with "Solo percorsi accessibili" on it says so, and it counts the direct trains the preferences hide.
  */
 @Composable
 private fun TravelPreferencesLine(preferences: JourneyPreferences, hiddenTrains: Int, onOpen: () -> Unit) {
     Column(Modifier.fillMaxWidth().padding(horizontal = ScreenMargin, vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
         TonalButton(
-            text = stringResource(R.string.planner_filters),
+            text = stringResource(R.string.settings_section_travel),
             onClick = onOpen,
             leadingIcon = Icons.Default.Tune,
             modifier = Modifier.testTag("results-travel-preferences")
