@@ -54,7 +54,7 @@ class BinarioComplicationService : SuspendingComplicationDataSourceService() {
     private fun openAppIntent(): PendingIntent = PendingIntent.getActivity(
         this,
         0,
-        Intent(this, WearMainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+        Intent(this, WearMainActivity::class.java),
         PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
     )
 }
