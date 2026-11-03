@@ -14,6 +14,7 @@ const dbMocks = vi.hoisted(() => ({
 vi.mock("./db", () => dbMocks);
 
 import { appRouter } from "./routers";
+import { RouteValidationError } from "./routes/contract";
 import type { TrpcContext } from "./_core/context";
 
 function authenticatedContext(): TrpcContext {
@@ -55,6 +56,28 @@ describe("procedure protette Binario Alexa Companion", () => {
     expect(dbMocks.listPersonalRoutes).toHaveBeenCalledWith(7);
     expect(dbMocks.setPersonalRoutePinned).toHaveBeenCalledWith(7, 41, true);
     expect(dbMocks.removePersonalRoute).toHaveBeenCalledWith(7, 41);
+  });
+
+  it.each([
+    ["origine e destinazione uguali a meno di maiuscole e spazi", { origin: "Roma", destination: "  roma ", name: "Casa" }],
+    ["un nome di un solo carattere dopo il trim", { origin: "Roma", destination: "Tivoli", name: "  a  " }],
+    ["un'origine fatta di soli spazi", { origin: "     ", destination: "Tivoli", name: "Casa" }],
+  ])("rifiuta come BAD_REQUEST, non come errore interno, %s", async (_label, input) => {
+    const caller = appRouter.createCaller(authenticatedContext());
+    await expect(caller.routes.create(input)).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(dbMocks.createPersonalRoute).not.toHaveBeenCalledWith(7, expect.objectContaining(input));
+  });
+
+  it("salva le etichette ripulite dagli spazi e mappa una validazione dell’archivio su BAD_REQUEST", async () => {
+    dbMocks.createPersonalRoute.mockResolvedValueOnce({ id: 42 });
+    const caller = appRouter.createCaller(authenticatedContext());
+    await caller.routes.create({ origin: "  Roma Termini ", destination: "Tivoli", name: " Casa " });
+    expect(dbMocks.createPersonalRoute).toHaveBeenLastCalledWith(7, { origin: "Roma Termini", destination: "Tivoli", name: "Casa" });
+    dbMocks.createPersonalRoute.mockRejectedValueOnce(new RouteValidationError("Nome tratta non valido"));
+    await expect(caller.routes.create({ origin: "Roma", destination: "Tivoli", name: "Casa" })).rejects.toMatchObject({
+      code: "BAD_REQUEST",
+      message: "Nome tratta non valido",
+    });
   });
 
   it("propaga un errore dell’archivio senza attribuire la tratta ad altri utenti", async () => {

@@ -54,6 +54,8 @@ export const tr: LocaleMessages = {
     cancel: "İptal",
     deletePermanently: "Kalıcı olarak sil",
     deleteFailed: "Silme başarısız. Hiçbir veri silinmiş olarak işaretlenmedi: tekrar deneyin.",
+    routeInvalid: "Güzergâh kaydedilmedi: ad, kalkış ve varış en az 2 karakter olmalı, kalkış ile varış farklı olmalıdır.",
+    routeSaveFailed: "Kaydedilemedi. Tekrar deneyin.",
     notFoundTitle: "Sayfa bulunamadı",
     notFoundDescription: "Aradığınız sayfa mevcut değil.",
     notFoundMoved: "Taşınmış veya silinmiş olabilir.",

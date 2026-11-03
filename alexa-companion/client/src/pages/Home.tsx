@@ -78,6 +78,7 @@ export default function Home() {
                 <div className="space-y-1.5"><Label htmlFor="route-origin">{t.origin}</Label><Input id="route-origin" value={origin} onChange={event => setOrigin(event.target.value)} placeholder={t.originPlaceholder} maxLength={120} required /></div>
                 <div className="space-y-1.5"><Label htmlFor="route-destination">{t.destination}</Label><Input id="route-destination" value={destination} onChange={event => setDestination(event.target.value)} placeholder={t.destinationPlaceholder} maxLength={120} required /></div>
                 <div className="flex items-end justify-between gap-3"><Label htmlFor="route-pin" className="flex cursor-pointer items-center gap-2 pb-2 text-sm font-normal"><Switch id="route-pin" checked={isPinned} onCheckedChange={setIsPinned} /> {t.pinRoute}</Label><Button type="submit" disabled={createRoute.isPending}><Plus className="mr-2 h-4 w-4" />{t.save}</Button></div>
+                {createRoute.error ? <p role="alert" className="text-sm text-red-800 sm:col-span-2">{createRoute.error.data?.code === "BAD_REQUEST" ? t.routeInvalid : t.routeSaveFailed}</p> : null}
               </form>
               <div className="space-y-2" aria-live="polite">
                 {routes.isLoading ? <p className="text-sm text-muted-foreground">{t.loadingRoutes}</p> : null}

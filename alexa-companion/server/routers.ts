@@ -1,17 +1,12 @@
 import { ACCOUNT_DELETION_CONFIRMATION, COOKIE_NAME, LEGACY_COOKIE_NAME } from "@shared/const";
+import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { createPersonalRoute, deleteUserAccount, getAlexaLinkStatus, listPersonalRoutes, removePersonalRoute, revokeAllVoiceCredentialsForUser, setPersonalRoutePinned } from "./db";
 import { createProfileRouter } from "./profile/router";
+import { personalRouteInput, RouteValidationError } from "./routes/contract";
 import { isAlexaConfigured } from "./voice/config";
-
-const routeInput = z.object({
-  origin: z.string().min(2).max(120),
-  destination: z.string().min(2).max(120),
-  name: z.string().min(2).max(120),
-  isPinned: z.boolean().optional(),
-});
 
 export const appRouter = router({
   auth: router({
@@ -38,7 +33,15 @@ export const appRouter = router({
   }),
   routes: router({
     list: protectedProcedure.query(({ ctx }) => listPersonalRoutes(ctx.user.id)),
-    create: protectedProcedure.input(routeInput).mutation(({ ctx, input }) => createPersonalRoute(ctx.user.id, input)),
+    create: protectedProcedure.input(personalRouteInput).mutation(async ({ ctx, input }) => {
+      try {
+        return await createPersonalRoute(ctx.user.id, input);
+      } catch (error) {
+        if (error instanceof RouteValidationError)
+          throw new TRPCError({ code: "BAD_REQUEST", message: error.message, cause: error });
+        throw error;
+      }
+    }),
     setPinned: protectedProcedure
       .input(z.object({ id: z.number().int().positive(), isPinned: z.boolean() }))
       .mutation(async ({ ctx, input }) => {

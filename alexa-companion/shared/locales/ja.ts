@@ -54,6 +54,8 @@ export const ja: LocaleMessages = {
     cancel: "キャンセル",
     deletePermanently: "完全に削除",
     deleteFailed: "削除できませんでした。削除済みとしてマークされたデータはありません。もう一度お試しください。",
+    routeInvalid: "ルートは保存されていません。名前、出発、到着は2文字以上で、出発と到着は別の駅にしてください。",
+    routeSaveFailed: "保存できませんでした。もう一度お試しください。",
     notFoundTitle: "ページが見つかりません",
     notFoundDescription: "お探しのページは存在しません。",
     notFoundMoved: "移動または削除された可能性があります。",

@@ -54,6 +54,8 @@ export const ar: LocaleMessages = {
     cancel: "إلغاء",
     deletePermanently: "حذف نهائي",
     deleteFailed: "تعذّر الحذف. لم يُعلَّم أي بيان بأنه محذوف: أعد المحاولة.",
+    routeInvalid: "لم يُحفظ المسار: يجب أن يتكون الاسم والانطلاق والوجهة من حرفين على الأقل، وأن يختلف الانطلاق عن الوجهة.",
+    routeSaveFailed: "تعذّر الحفظ. أعد المحاولة.",
     notFoundTitle: "الصفحة غير موجودة",
     notFoundDescription: "الصفحة التي تبحث عنها غير موجودة.",
     notFoundMoved: "ربما نُقلت أو حُذفت.",

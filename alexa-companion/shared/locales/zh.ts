@@ -54,6 +54,8 @@ export const zh: LocaleMessages = {
     cancel: "取消",
     deletePermanently: "永久删除",
     deleteFailed: "删除失败。没有任何数据被标记为已删除：请重试。",
+    routeInvalid: "路线未保存：名称、出发站和到达站至少需要 2 个字符，且出发站与到达站不能相同。",
+    routeSaveFailed: "保存失败，请重试。",
     notFoundTitle: "找不到页面",
     notFoundDescription: "你要找的页面不存在。",
     notFoundMoved: "它可能已被移动或删除。",

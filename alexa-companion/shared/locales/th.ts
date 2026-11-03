@@ -54,6 +54,8 @@ export const th: LocaleMessages = {
     cancel: "ยกเลิก",
     deletePermanently: "ลบอย่างถาวร",
     deleteFailed: "ลบไม่สำเร็จ ไม่มีข้อมูลใดถูกระบุว่าลบแล้ว: โปรดลองอีกครั้ง",
+    routeInvalid: "ไม่ได้บันทึกเส้นทาง: ชื่อ ต้นทาง และปลายทางต้องมีอย่างน้อย 2 ตัวอักษร และต้นทางต้องไม่ซ้ำกับปลายทาง",
+    routeSaveFailed: "บันทึกไม่สำเร็จ โปรดลองอีกครั้ง",
     notFoundTitle: "ไม่พบหน้า",
     notFoundDescription: "ไม่มีหน้าที่คุณกำลังค้นหา",
     notFoundMoved: "หน้านี้อาจถูกย้ายหรือลบไปแล้ว",
