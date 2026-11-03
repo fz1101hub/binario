@@ -425,112 +425,6 @@
         }
       }
     },
-    "watch.action.reloadCache": {
-      "localizations": {
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Rileggi cache"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Reload cache"
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cache erneut laden"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Recharger le cache"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Recargar caché"
-          }
-        },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "أعد قراءة الذاكرة المؤقتة"
-          }
-        },
-        "hi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "कैश दोबारा पढ़ें"
-          }
-        },
-        "id": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Muat ulang cache"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "キャッシュを再読み込み"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "캐시 다시 읽기"
-          }
-        },
-        "my": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cache ကို ပြန်ဖတ်ရန်"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Reler cache"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Перечитать кэш"
-          }
-        },
-        "th": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "อ่านแคชอีกครั้ง"
-          }
-        },
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Önbelleği yeniden oku"
-          }
-        },
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Đọc lại bộ nhớ đệm"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "重新读取缓存"
-          }
-        }
-      }
-    },
     "watch.confidence.cached": {
       "localizations": {
         "it": {
@@ -3273,112 +3167,6 @@
         }
       }
     },
-    "watch.hint.reloadCache": {
-      "localizations": {
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Non richiede dati live e ricarica solo l’ultimo snapshot disponibile."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Does not require live data and reloads only the latest available snapshot."
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Benötigt keine Live-Daten und lädt nur den letzten verfügbaren Snapshot erneut."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ne nécessite pas de données en direct et recharge uniquement le dernier instantané disponible."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "No requiere datos en directo y recarga solo la última instantánea disponible."
-          }
-        },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "لا يتطلب بيانات مباشرة، ويعيد تحميل آخر لقطة متاحة فقط."
-          }
-        },
-        "hi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "लाइव डेटा की ज़रूरत नहीं; केवल अंतिम उपलब्ध स्नैपशॉट दोबारा लोड करता है।"
-          }
-        },
-        "id": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tidak memerlukan data langsung dan hanya memuat ulang snapshot terakhir yang tersedia."
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ライブデータは不要で、最新のスナップショットのみを再読み込みします。"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "실시간 데이터가 필요 없으며 마지막 스냅샷만 다시 불러옵니다."
-          }
-        },
-        "my": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "တိုက်ရိုက်ဒေတာ မလိုအပ်ဘဲ နောက်ဆုံး snapshot ကိုသာ ပြန်ဖွင့်သည်။"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Não requer dados ao vivo e recarrega apenas o último instantâneo disponível."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Не требует живых данных и перезагружает только последний доступный снимок."
-          }
-        },
-        "th": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ไม่ต้องใช้ข้อมูลสด และโหลดเฉพาะสแนปช็อตล่าสุดที่มีอยู่ใหม่"
-          }
-        },
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Canlı veri gerektirmez ve yalnızca mevcut son anlık görüntüyü yeniden yükler."
-          }
-        },
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Không cần dữ liệu trực tiếp, chỉ tải lại ảnh chụp mới nhất hiện có."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "无需实时数据，只重新载入最近一次可用的快照。"
-          }
-        }
-      }
-    },
     "watch.intent.refresh.description": {
       "localizations": {
         "it": {
@@ -5177,6 +4965,536 @@
           "stringUnit": {
             "state": "translated",
             "value": "按计划"
+          }
+        }
+      }
+    },
+    "watch.action.refresh": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aggiorna"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Refresh"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aktualisieren"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Actualiser"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Actualizar"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تحديث"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "रीफ़्रेश करें"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Perbarui"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "更新"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "새로고침"
+          }
+        },
+        "my": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ပြန်လည်ရယူရန်"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Atualizar"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Обновить"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "รีเฟรช"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yenile"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Làm mới"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "刷新"
+          }
+        }
+      }
+    },
+    "watch.hint.refresh": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chiede all’iPhone di ripetere da adesso l’ultima ricerca e rilegge lo snapshot salvato."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Asks the iPhone to repeat the last search from now and rereads the saved snapshot."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bittet das iPhone, die letzte Suche ab jetzt zu wiederholen, und liest den gespeicherten Snapshot erneut."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Demande à l’iPhone de relancer la dernière recherche à partir de maintenant et relit l’instantané enregistré."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pide al iPhone que repita la última búsqueda desde ahora y vuelve a leer la instantánea guardada."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "يطلب من iPhone تكرار آخر بحث بدءًا من الآن ويعيد قراءة اللقطة المحفوظة."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iPhone से अभी से अंतिम खोज दोहराने को कहता है और सहेजा गया स्नैपशॉट दोबारा पढ़ता है।"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Meminta iPhone mengulangi pencarian terakhir mulai sekarang dan membaca ulang snapshot yang tersimpan."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iPhone に最後の検索を現在時刻から再実行するよう依頼し、保存済みのスナップショットを再読み込みします。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iPhone에 마지막 검색을 지금부터 다시 실행하도록 요청하고 저장된 스냅샷을 다시 읽습니다."
+          }
+        },
+        "my": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "နောက်ဆုံးရှာဖွေမှုကို ယခုမှစ၍ ပြန်လုပ်ရန် iPhone ကို တောင်းဆိုပြီး သိမ်းထားသော snapshot ကို ပြန်ဖတ်သည်။"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pede ao iPhone para repetir a última busca a partir de agora e relê o instantâneo salvo."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Просит iPhone повторить последний поиск с текущего момента и перечитывает сохранённый снимок."
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ขอให้ iPhone ค้นหาครั้งล่าสุดอีกครั้งโดยเริ่มจากตอนนี้ และอ่านสแนปช็อตที่บันทึกไว้ใหม่"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iPhone’dan son aramayı şu andan itibaren yinelemesini ister ve kayıtlı anlık görüntüyü yeniden okur."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yêu cầu iPhone lặp lại lần tìm kiếm gần nhất từ bây giờ và đọc lại ảnh chụp đã lưu."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请求 iPhone 从现在起重新执行上次搜索，并重新读取已保存的快照。"
+          }
+        }
+      }
+    },
+    "watch.refresh.sent": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Richiesta inviata"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Request sent"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anfrage gesendet"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Demande envoyée"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Solicitud enviada"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تم إرسال الطلب"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "अनुरोध भेजा गया"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Permintaan terkirim"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "リクエストを送信しました"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "요청을 보냈습니다"
+          }
+        },
+        "my": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "တောင်းဆိုချက် ပို့ပြီးပါပြီ"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Solicitação enviada"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Запрос отправлен"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ส่งคำขอแล้ว"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İstek gönderildi"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã gửi yêu cầu"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请求已发送"
+          }
+        }
+      }
+    },
+    "watch.refresh.unreachable": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iPhone non raggiungibile"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iPhone not reachable"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iPhone nicht erreichbar"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iPhone injoignable"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iPhone no accesible"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تعذّر الوصول إلى iPhone"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iPhone से संपर्क नहीं हो सका"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iPhone tidak terjangkau"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iPhone に接続できません"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iPhone에 연결할 수 없음"
+          }
+        },
+        "my": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iPhone ကို ဆက်သွယ်၍ မရပါ"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iPhone inacessível"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iPhone недоступен"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เชื่อมต่อ iPhone ไม่ได้"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iPhone’a ulaşılamıyor"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không kết nối được iPhone"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法连接 iPhone"
+          }
+        }
+      }
+    },
+    "watch.countdown.departsIn %@": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Parte tra %@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Departs in %@"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abfahrt in %@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Départ dans %@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sale en %@"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "يغادر خلال %@"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ में प्रस्थान"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Berangkat dalam %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@後に発車"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ 후 출발"
+          }
+        },
+        "my": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ အတွင်း ထွက်ခွာမည်"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Parte em %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Отправление через %@"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ออกในอีก %@"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ sonra kalkış"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Khởi hành sau %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@后发车"
           }
         }
       }

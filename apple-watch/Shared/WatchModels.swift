@@ -197,10 +197,12 @@ struct BinarioWatchSnapshot: Codable, Equatable {
             : notice
     }
     var confidenceLabel: String { confidence.label }
-    /// A programmed snapshot carries no realtime freshness by contract: present it as scheduled
-    /// data instead of the red "not available in real time" reserved for unavailable data.
+    /// PROGRAMMED alone declares that the data is not realtime (contract README), whatever the
+    /// freshness says: present it as scheduled data, never as fresh live data and never as the
+    /// red "not available in real time" reserved for unavailable data.
     var isScheduledOnly: Bool {
-        provenanceDataNature == .programmed && operationalState == .programmed && freshness == .unknown
+        guard operationalState != .unavailable else { return false }
+        return operationalState == .programmed || provenanceDataNature == .programmed
     }
     var displayFreshnessLabel: String {
         isScheduledOnly ? WatchLocalization.text("watch.freshness.scheduled") : freshness.label

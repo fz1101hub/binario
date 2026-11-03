@@ -2,6 +2,7 @@ import SwiftUI
 
 struct WatchHomeView: View {
     @EnvironmentObject private var store: WatchSnapshotStore
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         NavigationStack {
@@ -33,7 +34,8 @@ struct WatchHomeView: View {
                     }
                 } else {
                     Section(WatchLocalization.text("watch.section.nextServices")) {
-                        ForEach(store.snapshot.services.prefix(2)) { service in
+                        ForEach(store.snapshot.upcomingServices.prefix(2)) { upcoming in
+                            let service = upcoming.service
                             NavigationLink {
                                 WatchServiceDetailView(service: service)
                             } label: {
@@ -43,6 +45,11 @@ struct WatchHomeView: View {
                                         .foregroundStyle(BinarioPalette.brandGreen)
                                     Text("\(service.category) \(service.number) · \(platformText(service))")
                                         .font(.footnote)
+                                    if let departure = upcoming.departure {
+                                        Text("watch.countdown.departsIn \(Text(departure, style: .relative))")
+                                            .font(.footnote)
+                                            .foregroundStyle(.secondary)
+                                    }
                                 }
                             }
                             .accessibilityLabel(service.accessibilitySummary)
@@ -57,13 +64,31 @@ struct WatchHomeView: View {
                         Text(notice)
                             .font(.footnote)
                     }
-                    Button(WatchLocalization.text("watch.action.reloadCache"), systemImage: "arrow.clockwise") {
-                        store.refreshFromCache()
+                    Button(WatchLocalization.text("watch.action.refresh"), systemImage: "arrow.clockwise") {
+                        Task { await store.requestPhoneRefresh() }
                     }
-                    .accessibilityHint(WatchLocalization.text("watch.hint.reloadCache"))
+                    .disabled(store.refreshFeedback == .sending)
+                    .accessibilityHint(WatchLocalization.text("watch.hint.refresh"))
+                    if let feedback = refreshFeedbackText {
+                        Text(feedback)
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
                 }
             }
             .navigationTitle("Binario")
+        }
+        // Suspended apps resume from memory: drop the trains that left meanwhile.
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { store.sceneDidBecomeActive() }
+        }
+    }
+
+    private var refreshFeedbackText: String? {
+        switch store.refreshFeedback {
+        case .idle, .sending: return nil
+        case .sent: return WatchLocalization.text("watch.refresh.sent")
+        case .unreachable: return WatchLocalization.text("watch.refresh.unreachable")
         }
     }
 

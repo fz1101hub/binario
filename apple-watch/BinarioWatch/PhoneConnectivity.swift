@@ -75,3 +75,34 @@ final class PhoneConnectivity: NSObject, ObservableObject, WCSessionDelegate {
         }
     }
 }
+
+enum PhoneRefreshMessage {
+    /// Same key as WatchRefreshRequest.messageKey on the iPhone (BinarioKit).
+    static let requestKey = "binario_refresh_request"
+}
+
+/// "Aggiorna" on the Watch: a Watch Connectivity message that wakes the iPhone app, which repeats
+/// the route of its last search for now and publishes the result as a new application context.
+/// The reply only acknowledges receipt; the message carries no data besides the request flag.
+@MainActor
+final class WCSessionRefreshRequester: PhoneRefreshRequesting {
+    func requestRefresh() async -> PhoneRefreshOutcome {
+        guard WCSession.isSupported() else { return .unreachable }
+        let session = WCSession.default
+        guard session.activationState == .activated, session.isReachable else { return .unreachable }
+        return await withCheckedContinuation { continuation in
+            Self.send(resuming: continuation)
+        }
+    }
+
+    /// Watch Connectivity calls the handlers on its own queue: they are formed outside the main
+    /// actor, so nothing expects them there, and they only resume the continuation. Exactly one
+    /// of them runs, the error handler also on timeout.
+    nonisolated private static func send(resuming continuation: CheckedContinuation<PhoneRefreshOutcome, Never>) {
+        WCSession.default.sendMessage(
+            [PhoneRefreshMessage.requestKey: true],
+            replyHandler: { _ in continuation.resume(returning: .sent) },
+            errorHandler: { _ in continuation.resume(returning: .unreachable) }
+        )
+    }
+}

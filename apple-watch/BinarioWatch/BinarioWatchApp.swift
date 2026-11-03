@@ -6,7 +6,7 @@ struct BinarioWatchApp: App {
     private let connectivity: PhoneConnectivity
 
     init() {
-        let store = WatchSnapshotStore()
+        let store = WatchSnapshotStore(refresher: WCSessionRefreshRequester())
         _snapshotStore = StateObject(wrappedValue: store)
         connectivity = PhoneConnectivity(store: store)
         // Activate at launch, not when the window appears: the system also launches the app in
