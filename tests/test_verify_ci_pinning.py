@@ -352,6 +352,55 @@ class VerifyCiPinningTest(unittest.TestCase):
         self.assertTrue(any("retention-days" in problem for problem in problems))
         self.assertTrue(any(":ios: step action diversi" in problem for problem in problems))
 
+    def test_punctuality_workflow_is_scheduled_read_only_and_prints_only_on_request(self) -> None:
+        workflow_path = ROOT / ".github/workflows/punctuality.yml"
+        original = workflow_path.read_text(encoding="utf-8")
+        self.assertEqual([], policy.workflow_problems(workflow_path, original, LOCK))
+        collect = '          python3 -I tools/collect_punctuality.py --state "$RUNNER_TEMP/punctuality-raw" \\\n'
+        print_if = "        if: ${{ github.event_name == 'workflow_dispatch' && inputs.print_stats }}\n"
+        build, printing = "      - name: Build the statistics\n", "      - name: Print the punctuality statistics\n"
+        upload = (
+            "      - name: Upload\n        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9\n"
+            "        with:\n          name: raw\n          path: x\n          retention-days: 1\n"
+            "          if-no-files-found: error\n          overwrite: true\n\n"
+        )
+        mutations = {
+            "persist-credentials: false": original.replace("        with:\n          persist-credentials: false\n", "", 1),
+            "senza ::stop-commands::": original.replace('          echo "::stop-commands::$marker"\n', "", 1),
+            "interpola 'inputs.print_stats'": original.replace(collect, collect.replace("--state", "--state ${{ inputs.print_stats }}"), 1),
+            "permissions deve essere esattamente contents: read": original.replace("  contents: read\n", "  contents: read\n  actions: read\n", 1),
+            "permesso contents: 'write'": original.replace("  contents: read\n", "  contents: write\n", 1),
+            "solo con un dispatch e print_stats": original.replace(print_if, "", 1),
+            "input booleano print_stats": original.replace("        default: false\n", "        default: true\n", 1),
+            "ogni due ore": original.replace('"41 */2 * * *"', '"41 * * * *"', 1),
+            "trigger ammessi soltanto": original.replace("  workflow_dispatch:\n", "  push:\n    branches: [main, \"stabilization/**\"]\n  workflow_dispatch:\n", 1),
+            "cancel-in-progress: false": original.replace("  cancel-in-progress: false\n", "  cancel-in-progress: true\n", 1),
+            "gruppo fisso": original.replace("  group: punctuality-statistics\n", "  group: punctuality-${{ github.run_id }}\n", 1),
+            "10 minuti sotto timeout-minutes": original.replace("--deadline-seconds 1800", "--deadline-seconds 2400", 1),
+            "oltre 2 richieste": original.replace("--rate 2 ", "--rate 5 ", 1),
+            "prefisso punctuality-raw-": original.replace("          restore-keys: punctuality-raw-\n", "          restore-keys: raw-\n", 1),
+            "chiave e percorso": original.replace(
+                "          key: punctuality-raw-${{ github.run_id }}-${{ github.run_attempt }}\n\n      - name: Build",
+                "          key: punctuality-raw-fixed\n\n      - name: Build", 1),
+            "nessun artifact": original.replace("      - name: Build the statistics\n", upload + "      - name: Build the statistics\n", 1),
+            "verificare il file con --check": original.replace(
+                '          python3 -I tools/build_punctuality_stats.py --check "$RUNNER_TEMP/punctuality/stats_v1.json.gz"\n', "", 1),
+            "ordine richiesto": original[:original.index(build)] + original[original.index(printing):] + "\n" + original[original.index(build):original.index(printing)],
+            "esattamente uno step di raccolta": original.replace("      - name: Python 3\n", "      - name: Early collect\n        run: python3 -I tools/collect_punctuality.py --x\n\n      - name: Python 3\n", 1),
+        }
+        for expected, mutated in mutations.items():
+            with self.subTest(expected=expected):
+                self.assertNotEqual(original, mutated)
+                problems = policy.workflow_problems(workflow_path, mutated, LOCK)
+                self.assertTrue(any(expected in problem for problem in problems), problems)
+        live = ROOT / ".github/workflows/live-sources.yml"
+        live_text = live.read_text(encoding="utf-8")
+        elsewhere = live_text.replace("      - name: Functional source checks\n",
+                                      "      - name: Extra\n        run: python3 -I tools/collect_punctuality.py --state x\n"
+                                      "      - name: Functional source checks\n", 1)
+        self.assertNotEqual(live_text, elsewhere)
+        self.assertTrue(any("solo da punctuality.yml" in problem for problem in policy.workflow_problems(live, elsewhere, LOCK)))
+
     def test_flow_style_mutable_inputs_are_rejected(self) -> None:
         text = """
         permissions: {contents: read}

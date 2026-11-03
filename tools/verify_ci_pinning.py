@@ -358,6 +358,7 @@ THIRD_PARTY_DATA_JOBS: frozenset[tuple[str, str]] = frozenset({
     ("gtfs-assets-ci.yml", "transit-packs"),
     ("gtfs-assets-ci.yml", "core-packs"),
     ("live-sources.yml", "live"),
+    ("punctuality.yml", "punctuality"),  # ViaggiaTreno andamentoTreno for the punctuality statistics
 })
 # Commands that mark a job as downloading third-party data even when it is not listed above.
 THIRD_PARTY_DATA_MARKERS = (
@@ -367,12 +368,14 @@ THIRD_PARTY_DATA_MARKERS = (
     "tools/refresh_core_gtfs.py --selection",
     "tools/build_gtfs_packs.py --refresh",
     "LiveProviderNetworkTest",
+    "tools/collect_punctuality.py",
 )
 # Steps that print text read from downloads: they must run with workflow commands stopped (audit A7-02).
 UNTRUSTED_LOG_MARKERS = (
     "tools/transit_source_discovery.py",
     "tools/acquire_transit_sources.py --out",
     "tools/acquire_transit_sources.py --validate-netex",
+    "tools/collect_punctuality.py",
 )
 
 
@@ -436,6 +439,113 @@ def _check_run_hygiene(path: Path, workflow: Mapping[str, Any], problems: list[s
             inputs = _mapping(step.get("with")) or {}
             if inputs.get("persist-credentials") is not False:
                 problems.append(f"{location}: checkout senza persist-credentials: false in un job che scarica dati di terzi")
+
+
+# The punctuality statistics (docs/data-sources/PUNCTUALITY_STATS.md): ViaggiaTreno is asked only from this workflow,
+# on a two-hour schedule or a dispatch, read-only, one run at a time, with the raw observations kept in the Actions
+# cache under one prefix and only the aggregated file printed, and only when the dispatch asks for it.
+PUNCTUALITY_WORKFLOW = "punctuality.yml"
+PUNCTUALITY_CACHE_PREFIX = "punctuality-raw-"
+PUNCTUALITY_PRINT_CONDITION = "${{ github.event_name == 'workflow_dispatch' && inputs.print_stats }}"
+PUNCTUALITY_ACTIONS = frozenset({"actions/checkout", "actions/setup-python", "actions/cache/restore", "actions/cache/save"})
+# Time the job needs besides the collection itself: checkout, pack loading, cache save, aggregation and print.
+PUNCTUALITY_DEADLINE_MARGIN_SECONDS = 600
+
+
+def _workflow_commands(jobs: Mapping[str, Any]) -> str:
+    commands = []
+    for raw_job in jobs.values():
+        steps = (_mapping(raw_job) or {}).get("steps")
+        for raw_step in steps if isinstance(steps, list) else []:
+            commands.append(_commands((_mapping(raw_step) or {}).get("run")))
+    return "\n".join(commands)
+
+
+def _check_punctuality(path: Path, workflow: Mapping[str, Any], problems: list[str]) -> None:
+    name = path.name
+    triggers = _mapping(workflow.get("on")) or {}
+    if set(triggers) != {"schedule", "workflow_dispatch"}:
+        problems.append(f"{name}: trigger ammessi soltanto schedule e workflow_dispatch")
+    schedule = triggers.get("schedule")
+    crons = [entry.get("cron") for entry in schedule if isinstance(entry, Mapping)] if isinstance(schedule, list) else []
+    if len(crons) != 1 or not isinstance(crons[0], str) or not re.fullmatch(r"[1-5]?\d \*/2 \* \* \*", crons[0]):
+        problems.append(f"{name}: schedule deve essere una sola cron ogni due ore (M */2 * * *)")
+    dispatch_inputs = _mapping((_mapping(triggers.get("workflow_dispatch")) or {}).get("inputs")) or {}
+    print_input = _mapping(dispatch_inputs.get("print_stats"))
+    if (
+        set(dispatch_inputs) != {"print_stats"} or not print_input or print_input.get("type") != "boolean"
+        or print_input.get("required") is not False or print_input.get("default") is not False
+    ):
+        problems.append(f"{name}: serve il solo input booleano print_stats, fail-closed (predefinito false)")
+    if workflow.get("permissions") != {"contents": "read"}:
+        problems.append(f"{name}: permissions deve essere esattamente contents: read")
+    concurrency = _mapping(workflow.get("concurrency")) or {}
+    group = concurrency.get("group")
+    if not isinstance(group, str) or not group or "${{" in group or concurrency.get("cancel-in-progress") is not False:
+        problems.append(f"{name}: concurrency deve avere un gruppo fisso e cancel-in-progress: false (run in coda)")
+    jobs = _mapping(workflow.get("jobs")) or {}
+    job = _mapping(jobs.get("punctuality"))
+    if set(jobs) != {"punctuality"} or not job:
+        problems.append(f"{name}: serve il solo job punctuality")
+        return
+    if "permissions" in job or "env" in job or "container" in job or "services" in job:
+        problems.append(f"{name}: il job non può ridefinire permessi, env, container o servizi")
+    timeout = job.get("timeout-minutes")
+    if not isinstance(timeout, int) or not 0 < timeout <= 60:
+        problems.append(f"{name}: timeout-minutes deve essere fra 1 e 60")
+        timeout = 60
+    steps = [step for raw in (job.get("steps") if isinstance(job.get("steps"), list) else []) for step in [_mapping(raw)] if step]
+
+    def located(label: str, *, action: str | None = None, marker: str | None = None) -> int | None:
+        found = [
+            index for index, step in enumerate(steps)
+            if (action is not None and _action_name(str(step.get("uses", ""))) == action)
+            or (marker is not None and marker in _commands(step.get("run")))
+        ]
+        if len(found) != 1:
+            problems.append(f"{name}: serve esattamente uno step {label} ({len(found)} trovati)")
+            return None
+        return found[0]
+
+    restore = located("actions/cache/restore", action="actions/cache/restore")
+    collect = located("di raccolta", marker="tools/collect_punctuality.py")
+    save = located("actions/cache/save", action="actions/cache/save")
+    build = located("di aggregazione", marker="tools/build_punctuality_stats.py --state")
+    printing = located("di stampa", marker="tools/build_punctuality_stats.py --print")
+    for index, step in enumerate(steps):
+        action = _action_name(str(step.get("uses", ""))) if "uses" in step else None
+        if action is not None and action not in PUNCTUALITY_ACTIONS:
+            problems.append(f"{name}: step {index} usa {action}: nessun artifact o altra action ammessi")
+        if "continue-on-error" in step:
+            problems.append(f"{name}: step {index} non può usare continue-on-error")
+    order = [restore, collect, save, build, printing]
+    if None not in order and order != sorted(order):
+        problems.append(f"{name}: ordine richiesto: ripristino cache, raccolta, salvataggio cache, aggregazione, stampa")
+    if printing is not None:
+        step = steps[printing]
+        if step.get("if") != PUNCTUALITY_PRINT_CONDITION or printing != len(steps) - 1:
+            problems.append(f"{name}: la stampa deve essere l'ultimo step, solo con un dispatch e print_stats")
+    if build is not None and "tools/build_punctuality_stats.py --check" not in _commands(steps[build].get("run")):
+        problems.append(f"{name}: l'aggregazione deve verificare il file con --check")
+    if restore is not None and save is not None:
+        restored = _mapping(steps[restore].get("with")) or {}
+        saved = _mapping(steps[save].get("with")) or {}
+        key = restored.get("key")
+        if (
+            restored.get("restore-keys") != PUNCTUALITY_CACHE_PREFIX or not isinstance(key, str)
+            or not key.startswith(PUNCTUALITY_CACHE_PREFIX) or "${{ github.run_id }}" not in key
+        ):
+            problems.append(f"{name}: cache da ripristinare per prefisso {PUNCTUALITY_CACHE_PREFIX} con chiave unica per run")
+        if saved.get("key") != key or saved.get("path") != restored.get("path") or not restored.get("path"):
+            problems.append(f"{name}: la cache salvata deve avere chiave e percorso di quella ripristinata")
+    if collect is not None:
+        command = _commands(steps[collect].get("run"))
+        deadline = re.search(r"--deadline-seconds (\d+)", command)
+        rate = re.search(r"--rate (\S+)", command)
+        if not deadline or int(deadline.group(1)) + PUNCTUALITY_DEADLINE_MARGIN_SECONDS > timeout * 60:
+            problems.append(f"{name}: --deadline-seconds esplicito e almeno 10 minuti sotto timeout-minutes")
+        if rate and not re.fullmatch(r"(?:[01](?:\.\d+)?|2(?:\.0+)?)", rate.group(1)):
+            problems.append(f"{name}: --rate oltre 2 richieste al secondo")
 
 
 def _check_push_branches(path: Path, workflow: Mapping[str, Any], lock: Mapping[str, Any], problems: list[str]) -> None:
@@ -924,6 +1034,10 @@ def workflow_problems(
         _check_push_branches(path, root or {}, lock, problems)
     if path.name == "android-ci.yml":
         _check_release_signing(path, root or {}, problems)
+    if path.name == PUNCTUALITY_WORKFLOW:
+        _check_punctuality(path, root or {}, problems)
+    elif "tools/collect_punctuality.py" in _workflow_commands(jobs):
+        problems.append(f"{path.name}: ViaggiaTreno per le statistiche di puntualità si interroga solo da {PUNCTUALITY_WORKFLOW}")
     if path.name == "apple-watch-ci.yml":
         _check_apple_paths(path, root or {}, lock, problems)
         _check_apple_toolchain(path, jobs, lock, problems)

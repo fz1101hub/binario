@@ -1,0 +1,76 @@
+name: Punctuality statistics
+
+# Binario's unofficial punctuality statistics (docs/data-sources/PUNCTUALITY_STATS.md, owner decision of 3 November
+# 2026: computed "as Treniamo does", aggregated only, withdrawn if Trenitalia/RFI object). Every two hours, from the
+# default branch only (GitHub runs schedules there), tools/collect_punctuality.py asks ViaggiaTreno once about each
+# Trenitalia train of the embedded pack that arrived in the last hours, at most 2 requests per second. The raw
+# observations stay in the Actions cache (prefix punctuality-raw-, 35 days): never printed, uploaded or committed.
+# A workflow_dispatch with print_stats=true also prints the aggregated stats_v1.json.gz as one nonce frame for
+# tools/apply_ci_punctuality.py; nothing else leaves the job.
+on:
+  schedule:
+    - cron: "41 */2 * * *"
+  workflow_dispatch:
+    inputs:
+      print_stats:
+        description: "Stampa nel log (pubblico) stats_v1.json.gz, solo statistiche aggregate, per tools/apply_ci_punctuality.py"
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+# One run at a time, queued rather than cancelled: two runs would ask ViaggiaTreno twice and race on the cache.
+concurrency:
+  group: punctuality-statistics
+  cancel-in-progress: false
+
+jobs:
+  punctuality:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Python 3
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12.10"
+
+      # The newest cache of this branch or of the default branch; the key itself never exists yet.
+      - name: Restore the raw observations
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/punctuality-raw
+          key: punctuality-raw-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: punctuality-raw-
+
+      - name: Collect ViaggiaTreno observations
+        run: |
+          # The collector prints counts only; workflow commands stay stopped in case a reason label ever carries text.
+          marker="$(python3 -I -c 'import secrets; print(secrets.token_hex(16))')"
+          echo "::stop-commands::$marker"
+          trap 'echo "::$marker::"' EXIT
+          python3 -I tools/collect_punctuality.py --state "$RUNNER_TEMP/punctuality-raw" \
+            --rate 2 --max-requests 3000 --deadline-seconds 1800 --summary "$GITHUB_STEP_SUMMARY"
+
+      - name: Save the raw observations
+        if: ${{ !cancelled() }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/punctuality-raw
+          key: punctuality-raw-${{ github.run_id }}-${{ github.run_attempt }}
+
+      - name: Build the statistics
+        run: |
+          python3 -I tools/build_punctuality_stats.py --state "$RUNNER_TEMP/punctuality-raw" \
+            --output "$RUNNER_TEMP/punctuality/stats_v1.json.gz" --summary "$GITHUB_STEP_SUMMARY"
+          python3 -I tools/build_punctuality_stats.py --check "$RUNNER_TEMP/punctuality/stats_v1.json.gz"
+
+      - name: Print the punctuality statistics
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.print_stats }}
+        run: python3 -I tools/build_punctuality_stats.py --print "$RUNNER_TEMP/punctuality/stats_v1.json.gz"
