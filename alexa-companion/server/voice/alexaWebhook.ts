@@ -9,6 +9,8 @@ import {
 } from "pkijs";
 import { constants, verify, webcrypto, X509Certificate } from "node:crypto";
 import { rootCertificates } from "node:tls";
+import { describeErrorForLog } from "../_core/logRedaction";
+import { alexaRequestLogContext } from "./requestLog";
 
 type RequestEnvelope = Parameters<Skill["invoke"]>[0];
 type VerificationHeaders = { certificateUrl?: string; signature?: string };
@@ -280,7 +282,11 @@ export function createAlexaWebhookHandler(
         }
         try {
           res.status(200).json(await skill.invoke(envelope));
-        } catch {
+        } catch (invokeError) {
+          console.error("[Alexa] skill invocation failed", {
+            ...alexaRequestLogContext(envelope),
+            error: describeErrorForLog(invokeError),
+          });
           res.status(500).json({ error: "server_error" });
         }
       })();

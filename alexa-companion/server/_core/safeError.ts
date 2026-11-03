@@ -1,4 +1,5 @@
 import axios from "axios";
+import { describeErrorForLog } from "./logRedaction";
 
 const SENSITIVE_KEYS = new Set([
   "accesstoken",
@@ -37,11 +38,9 @@ function safeUrl(value: string | undefined) {
  * parameters are removed.
  */
 export function safeErrorDetails(error: unknown) {
-  if (!axios.isAxiosError(error)) {
-    return error instanceof Error
-      ? { message: error.message }
-      : { message: String(error) };
-  }
+  // Anything else (a database failure while provisioning the user, for example)
+  // is described without values: see logRedaction.ts.
+  if (!axios.isAxiosError(error)) return describeErrorForLog(error);
   return {
     code: error.code,
     message: error.message,

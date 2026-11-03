@@ -27,6 +27,7 @@ import {
 } from "../db";
 import { ENV } from "../_core/env";
 import { isSecureRequest } from "../_core/cookies";
+import { describeErrorForLog } from "../_core/logRedaction";
 import {
   createOpaqueSecret,
   hashVoiceSecret,
@@ -53,6 +54,7 @@ import { needsAccountLink } from "./guards";
 import { parseOAuthAuthorizationParameters } from "./oauthContract";
 import { escapeSsmlText, liveDataUnavailableSpeech, plainSpeechText } from "./speech";
 import { parseScreenEvent, screenResponseInterceptor, setScreen } from "./presentation";
+import { alexaRequestLogContext } from "./requestLog";
 
 /** Intent names the skill handles; the interaction model in skill-package/ must declare all of them. */
 export const HANDLED_INTENTS = [
@@ -392,7 +394,12 @@ const fallbackHandler: RequestHandler = {
 
 const errorHandler = {
   canHandle: () => true,
-  handle: (input: HandlerInput) => {
+  handle: (input: HandlerInput, error: unknown) => {
+    // Request type, intent, locale and error class only: no slot values, user or device ids.
+    console.error("[Alexa] request failed", {
+      ...alexaRequestLogContext(input.requestEnvelope),
+      error: describeErrorForLog(error),
+    });
     const messages = voiceMessages(input);
     // A handler may have described its screen before failing. The SDK skips response
     // interceptors on this path today; clearing keeps an error from ever rendering it.
@@ -696,12 +703,15 @@ export function registerAlexaRoutes(app: Express) {
     createAlexaWebhookHandler(createAlexaSkill(), ENV.alexaSkillId)
   );
 
-  app.use("/api/alexa/oauth", (error: unknown, _req: Request, res: Response, next: NextFunction) => {
+  app.use("/api/alexa/oauth", (error: unknown, req: Request, res: Response, next: NextFunction) => {
     if (res.headersSent) return next(error);
-    // Keep database errors and tokens out of the response and logs.
+    // Keep database errors and tokens out of the response; the log gets only the
+    // redacted description (no request body, no bound SQL values).
     const status = typeof error === "object" && error !== null && "status" in error &&
       typeof error.status === "number" && error.status >= 400 && error.status < 500
       ? error.status : 500;
+    if (status === 500)
+      console.error("[Alexa OAuth] request failed", { path: req.path, error: describeErrorForLog(error) });
     res.setHeader("Cache-Control", "no-store");
     return oauthError(res, status, status === 500 ? "server_error" : "invalid_request");
   });

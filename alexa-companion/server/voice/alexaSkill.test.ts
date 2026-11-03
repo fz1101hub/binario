@@ -1,4 +1,5 @@
 import { messagesForLocale, SUPPORTED_LOCALES } from "@shared/i18n";
+import { DrizzleQueryError } from "drizzle-orm";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
@@ -365,11 +366,36 @@ describe("Echo Show screens (APL)", () => {
   });
 
   it("does not render a screen when a personal request fails", async () => {
+    const errors = vi.spyOn(console, "error").mockImplementation(() => undefined);
     const { request } = await linkedRequest(withApl(intent("MyRoutesIntent")));
     vi.mocked(listPersonalRoutesForAlexa).mockRejectedValueOnce(new Error("database down"));
     const response = await createAlexaSkill().invoke(request);
     expect(speechText(response)).toContain("Si è verificato un problema");
     expect(response.response.directives ?? []).toHaveLength(0);
+    errors.mockRestore();
+  });
+
+  it("logs a failed request by type, intent, locale and error class only", async () => {
+    const errors = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const { request, accessToken } = await linkedRequest(intent("NextTrainsIntent", "de-DE", { routeName: "Casa di Mario" }));
+    vi.mocked(listPersonalRoutesForAlexa).mockRejectedValueOnce(
+      new DrizzleQueryError("select `name` from `railway_routes` where `userId` = ?", [7, "Casa di Mario"], new Error("boom"))
+    );
+    await createAlexaSkill().invoke(request);
+    expect(errors).toHaveBeenCalledTimes(1);
+    const [label, context] = errors.mock.calls[0] as [string, Record<string, unknown>];
+    expect(label).toBe("[Alexa] request failed");
+    expect(context).toMatchObject({
+      requestType: "IntentRequest",
+      intent: "NextTrainsIntent",
+      locale: "de-DE",
+      requestRef: expect.stringMatching(/^[0-9a-f]{16}$/),
+      error: { name: "DrizzleQueryError" },
+    });
+    const serialized = JSON.stringify(errors.mock.calls);
+    for (const secret of ["Casa di Mario", accessToken, "amzn1.ask.account", "amzn1.echo-api", "device"])
+      expect(serialized).not.toContain(secret);
+    errors.mockRestore();
   });
 
   it("answers a touched route with that route's screen after re-checking the link", async () => {

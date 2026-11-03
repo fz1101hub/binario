@@ -586,11 +586,22 @@ describe("Alexa HTTP dispatch", () => {
     expect(invoke).not.toHaveBeenCalled();
   });
 
-  it("keeps unexpected skill errors out of HTTP responses", async () => {
+  it("keeps unexpected skill errors out of HTTP responses and logs them without details", async () => {
+    const errors = vi.spyOn(console, "error").mockImplementation(() => undefined);
     const { invoke, post } = await start();
-    invoke.mockRejectedValueOnce(new Error("private database detail"));
+    invoke.mockRejectedValueOnce(Object.assign(new Error("private database detail"), { code: "ER_LOCK_WAIT_TIMEOUT", sql: "select 'Casa di Mario'" }));
     const response = await post();
     expect(response.status).toBe(500);
     expect(await response.json()).toEqual({ error: "server_error" });
+    expect(errors).toHaveBeenCalledWith("[Alexa] skill invocation failed", {
+      requestType: "LaunchRequest",
+      intent: undefined,
+      locale: undefined,
+      requestRef: expect.stringMatching(/^[0-9a-f]{16}$/),
+      error: { name: "Error", code: "ER_LOCK_WAIT_TIMEOUT" },
+    });
+    expect(JSON.stringify(errors.mock.calls)).not.toContain("Casa di Mario");
+    expect(JSON.stringify(errors.mock.calls)).not.toContain("private database detail");
+    errors.mockRestore();
   });
 });

@@ -11,6 +11,7 @@ import {
   users,
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
+import { describeErrorForLog } from "./_core/logRedaction";
 import {
   normalizePersonalRouteDraft,
   type PersonalRouteDraft,
@@ -32,7 +33,7 @@ export async function getDb() {
     try {
       _db = drizzle(process.env.DATABASE_URL);
     } catch (error) {
-      console.warn("[Database] Failed to connect:", error);
+      console.warn("[Database] Failed to connect:", describeErrorForLog(error));
       _db = null;
     }
   }
@@ -93,10 +94,8 @@ export async function upsertUser(user: InsertUser): Promise<void> {
       set: updateSet,
     });
   } catch (error) {
-    console.error(
-      "[Database] Failed to upsert user:",
-      error instanceof Error ? error.message : String(error)
-    );
+    // The failed statement carries openId, name and email as parameters.
+    console.error("[Database] Failed to upsert user:", describeErrorForLog(error));
     throw error;
   }
 }
