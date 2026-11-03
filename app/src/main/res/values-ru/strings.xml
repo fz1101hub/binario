@@ -1324,4 +1324,47 @@
         <item quantity="other">%d варианта</item>
     </plurals>
     <!-- End of platform changes, Partenze train types, saved timetables, sharing, tickets and assistance, CO2 estimate -->
+    <!-- Stop countdown, approach alerts of favourite trains and the position estimate (Android only) -->
+    <plurals name="stop_countdown_stops">
+        <item quantity="one">Выходите через %d остановку</item>
+        <item quantity="few">Выходите через %d остановки</item>
+        <item quantity="many">Выходите через %d остановок</item>
+        <item quantity="other">Выходите через %d остановки</item>
+    </plurals>
+    <string name="stop_countdown_alight_next">Выходите на следующей остановке: %1$s в %2$s</string>
+    <string name="stop_countdown_alight_next_untimed">Выходите на следующей остановке: %1$s</string>
+    <string name="approach_alert_toggle">Сообщить, когда поезд подъезжает</string>
+    <string name="approach_alert_toggle_description">Уведомление за несколько минут до прибытия поезда на выбранную станцию, с опозданием в реальном времени: ближе ко времени статус проверяется каждые 15 минут, но не с 22:00 до 07:00. Номер поезда отправляется источникам статуса, как при открытии подробностей.</string>
+    <string name="approach_alert_station">Станция: %1$s</string>
+    <string name="accessibility_approach_alert_station">Изменить станцию оповещения, сейчас %1$s</string>
+    <string name="approach_alert_lead">За сколько</string>
+    <string name="approach_alert_summary">Сообщит за %1$s до прибытия на станцию %2$s.</string>
+    <string name="approach_alert_title">%1$s прибудет на %2$s через ~%3$s</string>
+    <string name="approach_alert_title_now">%1$s прибывает на %2$s</string>
+    <string name="approach_alert_channel_name">Прибывающие поезда</string>
+    <string name="approach_alert_channel_description">Оповещения об избранных поездах за несколько минут до прибытия на выбранную станцию.</string>
+    <string name="trip_estimate_toggle">Оценка по вашему местоположению</string>
+    <string name="trip_estimate_toggle_description">Во время поездки сравнивает местоположение телефона с маршрутом поезда, чтобы оценить опоздание; оценка показывается рядом с официальными данными. Использует точное местоположение только на телефоне, не сохраняя и не отправляя его, с постоянным уведомлением, которое можно остановить; завершается через 10 минут после прибытия или с окончанием поездки.</string>
+    <string name="trip_estimate_unavailable_time">Доступно за 10 минут до отправления и до прибытия.</string>
+    <string name="trip_estimate_unavailable_route">Для этого поезда оценка недоступна: нет координат или времени остановок.</string>
+    <string name="trip_estimate_precise_required">Для оценки нужно точное местоположение: его можно разрешить в настройках Android.</string>
+    <string name="trip_estimate_location_disabled">Геолокация на телефоне выключена: включите её для оценки по местоположению.</string>
+    <string name="trip_estimate_start_failed">Android не разрешил запустить оценку по местоположению.</string>
+    <string name="trip_estimate_via_alarm">Включённый GPS-будильник для этого поезда уже даёт оценку.</string>
+    <string name="trip_estimate_line">Оценка по вашему местоположению: примерно +%1$s, прибытие ~%2$s</string>
+    <string name="trip_estimate_line_on_time">Оценка по вашему местоположению: примерно вовремя, прибытие ~%1$s</string>
+    <string name="trip_estimate_official">(официальный источник: %1$s)</string>
+    <string name="trip_estimate_age">оценка на %1$s</string>
+    <string name="trip_estimate_off_route">Местоположение вне маршрута: оценки нет</string>
+    <string name="trip_estimate_waiting">Оценка по вашему местоположению: ожидание точного местоположения на маршруте</string>
+    <plurals name="trip_estimate_accessible">
+        <item quantity="one">Оценка по вашему местоположению: опоздание примерно %1$d минута, прибытие около %2$s</item>
+        <item quantity="few">Оценка по вашему местоположению: опоздание примерно %1$d минуты, прибытие около %2$s</item>
+        <item quantity="many">Оценка по вашему местоположению: опоздание примерно %1$d минут, прибытие около %2$s</item>
+        <item quantity="other">Оценка по вашему местоположению: опоздание примерно %1$d минуты, прибытие около %2$s</item>
+    </plurals>
+    <string name="trip_estimate_on_time_accessible">Оценка по вашему местоположению: примерно вовремя, прибытие около %1$s</string>
+    <string name="trip_estimate_active_title">Оценка по местоположению включена: поезд %1$s</string>
+    <string name="trip_estimate_privacy_short">Местоположение остаётся на телефоне: оно не сохраняется и не отправляется.</string>
+    <string name="action_trip_estimate_stop">Остановить оценку</string>
 </resources>

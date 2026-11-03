@@ -1260,4 +1260,41 @@
         <item quantity="other">%d phương án</item>
     </plurals>
     <!-- End of platform changes, Partenze train types, saved timetables, sharing, tickets and assistance, CO2 estimate -->
+    <!-- Stop countdown, approach alerts of favourite trains and the position estimate (Android only) -->
+    <plurals name="stop_countdown_stops">
+        <item quantity="other">Xuống sau %d điểm dừng</item>
+    </plurals>
+    <string name="stop_countdown_alight_next">Xuống ở điểm dừng tiếp theo: %1$s lúc %2$s</string>
+    <string name="stop_countdown_alight_next_untimed">Xuống ở điểm dừng tiếp theo: %1$s</string>
+    <string name="approach_alert_toggle">Báo cho tôi khi tàu sắp đến</string>
+    <string name="approach_alert_toggle_description">Một thông báo vài phút trước khi tàu đến ga đã chọn, kèm độ trễ theo thời gian thực: gần giờ tàu, trạng thái được kiểm tra mỗi 15 phút, không bao giờ trong khoảng 22:00 đến 07:00. Số hiệu tàu được gửi đến các nguồn trạng thái, như khi bạn mở chi tiết.</string>
+    <string name="approach_alert_station">Ga: %1$s</string>
+    <string name="accessibility_approach_alert_station">Đổi ga của cảnh báo, hiện là %1$s</string>
+    <string name="approach_alert_lead">Báo trước bao lâu</string>
+    <string name="approach_alert_summary">Báo cho bạn %1$s trước khi tàu đến %2$s.</string>
+    <string name="approach_alert_title">%1$s đến %2$s sau ~%3$s</string>
+    <string name="approach_alert_title_now">%1$s đang đến %2$s</string>
+    <string name="approach_alert_channel_name">Tàu sắp đến</string>
+    <string name="approach_alert_channel_description">Cảnh báo các tàu yêu thích vài phút trước khi đến ga đã chọn.</string>
+    <string name="trip_estimate_toggle">Ước tính theo vị trí của bạn</string>
+    <string name="trip_estimate_toggle_description">Trong chuyến đi, so sánh vị trí điện thoại với tuyến của tàu để ước tính độ trễ, hiển thị như một ước tính bên cạnh dữ liệu chính thức. Chỉ dùng vị trí chính xác trên điện thoại, không lưu hay gửi đi, kèm một thông báo cố định mà bạn có thể dừng; tự dừng 10 phút sau khi đến hoặc khi chuyến đi kết thúc.</string>
+    <string name="trip_estimate_unavailable_time">Dùng được từ 10 phút trước giờ khởi hành đến khi đến nơi.</string>
+    <string name="trip_estimate_unavailable_route">Không có ước tính cho tàu này: thiếu tọa độ hoặc giờ của các điểm dừng.</string>
+    <string name="trip_estimate_precise_required">Ước tính cần vị trí chính xác: bạn có thể cấp quyền trong cài đặt Android.</string>
+    <string name="trip_estimate_location_disabled">Vị trí của điện thoại đang tắt: hãy bật để ước tính theo vị trí.</string>
+    <string name="trip_estimate_start_failed">Android không cho phép bắt đầu ước tính theo vị trí.</string>
+    <string name="trip_estimate_via_alarm">Báo thức GPS đang bật cho tàu này đã cung cấp ước tính.</string>
+    <string name="trip_estimate_line">Ước tính theo vị trí của bạn: khoảng +%1$s, đến ~%2$s</string>
+    <string name="trip_estimate_line_on_time">Ước tính theo vị trí của bạn: gần như đúng giờ, đến ~%1$s</string>
+    <string name="trip_estimate_official">(nguồn chính thức: %1$s)</string>
+    <string name="trip_estimate_age">ước tính lúc %1$s</string>
+    <string name="trip_estimate_off_route">Vị trí nằm ngoài tuyến: không có ước tính</string>
+    <string name="trip_estimate_waiting">Ước tính theo vị trí của bạn: đang chờ vị trí chính xác trên tuyến</string>
+    <plurals name="trip_estimate_accessible">
+        <item quantity="other">Ước tính theo vị trí của bạn: trễ khoảng %1$d phút, đến vào khoảng %2$s</item>
+    </plurals>
+    <string name="trip_estimate_on_time_accessible">Ước tính theo vị trí của bạn: gần như đúng giờ, đến vào khoảng %1$s</string>
+    <string name="trip_estimate_active_title">Đang bật ước tính theo vị trí cho tàu %1$s</string>
+    <string name="trip_estimate_privacy_short">Vị trí chỉ ở trên điện thoại: không được lưu hay gửi đi.</string>
+    <string name="action_trip_estimate_stop">Dừng ước tính</string>
 </resources>

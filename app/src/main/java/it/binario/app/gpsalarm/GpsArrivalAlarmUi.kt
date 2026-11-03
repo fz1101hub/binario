@@ -29,6 +29,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -36,6 +37,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import it.binario.app.R
 import it.binario.app.StopAlarmPlan
+import it.binario.app.notifications.FollowedTripScheduler
 
 /**
  * Options of the stop alarm ("Sveglia fermata"): the time-based alarm is always set; the GPS
@@ -114,14 +116,21 @@ internal fun StopAlarmOptionsDialog(flow: GpsArrivalAlarmFlow, onScheduleTimeAla
     )
 }
 
-/** Status of the GPS alarm in the train detail: running, interrupted by the system, or just ended. */
+/**
+ * Status of the GPS alarm in the train detail: running (with "Scendi tra N fermate" and, for a followed trip, the
+ * position estimate), interrupted by the system, or just ended. A running position estimate shows here too.
+ */
 @Composable
 internal fun GpsArrivalAlarmPanel(flow: GpsArrivalAlarmFlow, modifier: Modifier = Modifier) {
     val runtime by GpsArrivalAlarmRuntime.state.collectAsState()
     val storeRevision = flow.storeRevision
     val interrupted = remember(runtime, storeRevision) { flow.interruptedTarget(runtime) }
     val active = runtime as? GpsArrivalAlarmState.Active
-    val ended = (runtime as? GpsArrivalAlarmState.Ended)?.takeIf { it.target != null }
+    val context = LocalContext.current
+    // "(fonte ufficiale: +4 min)" next to the estimate, from the followed trip's last refresh.
+    val official = remember(active?.track) { active?.track?.estimate?.let { FollowedTripScheduler.officialDelayMinutes(context, active.target.trainNumber) } }
+    // The end of an estimate needs no message: it ends with the trip.
+    val ended = (runtime as? GpsArrivalAlarmState.Ended)?.takeIf { it.target != null && it.target.isEstimate != true }
     val notice = flow.notice
     if (active == null && interrupted == null && ended == null && notice == null) return
     Surface(
@@ -131,9 +140,15 @@ internal fun GpsArrivalAlarmPanel(flow: GpsArrivalAlarmFlow, modifier: Modifier 
         shape = RoundedCornerShape(8.dp)
     ) {
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            if (active != null) {
+            if (active != null && active.target.isEstimate) {
+                Text(stringResource(R.string.trip_estimate_active_title, active.target.trainNumber), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                GpsTrainProgressLines(active.target, active.track, official)
+                Text(stringResource(R.string.trip_estimate_privacy_short), style = MaterialTheme.typography.bodySmall)
+                OutlinedButton(onClick = { GpsArrivalAlarmController.stopEstimate(context) }) { Text(stringResource(R.string.action_trip_estimate_stop)) }
+            } else if (active != null) {
                 val radius = radiusLabel(GpsArrivalAlarmPolicy.effectiveRadiusMeters(active.target.radiusMeters, active.precise))
                 Text(stringResource(R.string.gps_alarm_active_title, active.target.stopName), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                GpsTrainProgressLines(active.target, active.track, official)
                 Text(
                     stringResource(if (active.precise) R.string.gps_alarm_active_precise else R.string.gps_alarm_active_approximate, radius),
                     style = MaterialTheme.typography.bodySmall

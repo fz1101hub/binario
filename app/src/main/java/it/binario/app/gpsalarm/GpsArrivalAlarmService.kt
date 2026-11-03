@@ -28,12 +28,18 @@ import it.binario.app.MainActivity
 import it.binario.app.R
 import it.binario.app.StopAlarmScheduler
 import it.binario.app.StopAlarmTrigger
+import it.binario.app.notifications.FollowedTripScheduler
+import it.binario.app.notifications.LiveNotifications
+import it.binario.app.notifications.TripLiveText
 
 /**
- * Foreground service of type `location` behind the GPS arrival alarm. It is started only from
- * the visible app, which gives it while-in-use location access without background location; it
- * is never restarted by the system or after a reboot. Fixes are evaluated in memory by
- * [GpsArrivalAlarmPolicy] and dropped: no position is stored, logged or sent anywhere.
+ * Foreground service of type `location` behind the GPS arrival alarm and the position estimate of
+ * a followed trip ("Stima dalla tua posizione"). It is started only from the visible app, which
+ * gives it while-in-use location access without background location; it is never restarted by the
+ * system or after a reboot. Fixes are evaluated in memory by [GpsArrivalAlarmPolicy] and
+ * [GpsTrainTracking] and dropped: no position is stored, logged or sent anywhere. What the session
+ * derives from them (the last stop reached, an estimated delay) lives only in
+ * [GpsArrivalAlarmRuntime] and ends with the session.
  */
 class GpsArrivalAlarmService : Service() {
     private val handler = Handler(Looper.getMainLooper())
@@ -41,7 +47,10 @@ class GpsArrivalAlarmService : Service() {
     private val watchdog = object : Runnable {
         override fun run() {
             checkStillAllowed()
-            if (!finished) handler.postDelayed(this, WATCHDOG_INTERVAL_MILLIS)
+            if (!finished) {
+                target?.let { current -> refreshTracked(current, System.currentTimeMillis()) }
+                handler.postDelayed(this, WATCHDOG_INTERVAL_MILLIS)
+            }
         }
     }
     private var target: GpsArrivalAlarmTarget? = null
@@ -49,6 +58,12 @@ class GpsArrivalAlarmService : Service() {
     private var providers: List<String> = emptyList()
     private var intervalMillis = 0L
     private var finished = true
+    private var tracker: GpsTrainTracking.Tracker? = null
+    /** Whether the followed trip includes this train: only then is the delay estimated in alarm mode. */
+    private var followed = false
+    private var shownText: String? = null
+    private var repaintKey: String? = null
+    private var repaintAtMillis = 0L
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -91,6 +106,10 @@ class GpsArrivalAlarmService : Service() {
         target = newTarget
         finished = false
         intervalMillis = 0L
+        tracker = newTarget?.route?.takeIf { it.usable }?.let { GpsTrainTracking.Tracker(it) }
+        followed = newTarget?.let(::isFollowed) == true
+        shownText = null
+        repaintKey = null
         if (newTarget == null) {
             finish(GpsArrivalAlarmEndReason.START_FAILED)
             return
@@ -99,7 +118,8 @@ class GpsArrivalAlarmService : Service() {
             finish(GpsArrivalAlarmEndReason.EXPIRED)
             return
         }
-        if (!fine && !coarse) {
+        // The estimate needs precise fixes (at most 200 m): with approximate location it could never work.
+        if ((!fine && !coarse) || (newTarget.isEstimate && !fine)) {
             finish(GpsArrivalAlarmEndReason.PERMISSION_REVOKED)
             return
         }
@@ -111,7 +131,8 @@ class GpsArrivalAlarmService : Service() {
             finish(GpsArrivalAlarmEndReason.LOCATION_UNAVAILABLE)
             return
         }
-        GpsArrivalAlarmStore(this).saveActiveTarget(newTarget)
+        // An estimate is never persisted: it is not offered again after a restart.
+        if (!newTarget.isEstimate) GpsArrivalAlarmStore(this).saveActiveTarget(newTarget)
         GpsArrivalAlarmRuntime.markActive(newTarget, precise)
         requestUpdates(GpsArrivalAlarmPolicy.nextIntervalMillis(null))
         if (!finished) handler.postDelayed(watchdog, WATCHDOG_INTERVAL_MILLIS)
@@ -136,7 +157,8 @@ class GpsArrivalAlarmService : Service() {
     private fun onLocation(location: Location) {
         val current = target ?: return
         if (finished) return
-        if (GpsArrivalAlarmPolicy.isExpired(System.currentTimeMillis(), current)) {
+        val now = System.currentTimeMillis()
+        if (GpsArrivalAlarmPolicy.isExpired(now, current)) {
             finish(GpsArrivalAlarmEndReason.EXPIRED)
             return
         }
@@ -146,6 +168,20 @@ class GpsArrivalAlarmService : Service() {
             accuracyMeters = if (location.hasAccuracy()) location.accuracy.toDouble() else null,
             ageMillis = (SystemClock.elapsedRealtimeNanos() - location.elapsedRealtimeNanos) / 1_000_000L
         )
+        tracker?.let { active ->
+            active.onFix(fix, now)
+            refreshTracked(current, now)
+            if (finished) return
+        }
+        if (current.isEstimate) {
+            // No alarm to ring: the same cadence rule, on the distance to the stop where the traveller gets off.
+            val decision = GpsArrivalAlarmPolicy.evaluate(fix, current.latitude, current.longitude, 0)
+            if (decision is GpsFixDecision.Approaching) {
+                val next = GpsArrivalAlarmPolicy.nextIntervalMillis(decision.remainingMeters)
+                if (next != intervalMillis) requestUpdates(next)
+            }
+            return
+        }
         val radius = GpsArrivalAlarmPolicy.effectiveRadiusMeters(current.radiusMeters, precise)
         when (val decision = GpsArrivalAlarmPolicy.evaluate(fix, current.latitude, current.longitude, radius)) {
             is GpsFixDecision.Arrived -> ring(current)
@@ -156,6 +192,36 @@ class GpsArrivalAlarmService : Service() {
             is GpsFixDecision.Rejected -> Unit
         }
     }
+
+    /**
+     * Publishes the train's progress (the delay only for a followed trip or the estimate itself), updates the ongoing
+     * notification when its text changes and, at most once a minute, the followed-trip notification. Ends an estimate
+     * whose trip is over.
+     */
+    private fun refreshTracked(current: GpsArrivalAlarmTarget, now: Long) {
+        val raw = tracker?.track ?: return
+        val track = if (current.isEstimate || followed) raw else raw.copy(estimate = null)
+        GpsArrivalAlarmRuntime.updateTrack(track)
+        if (current.isEstimate) {
+            val official = FollowedTripScheduler.officialDelayMinutes(this, current.trainNumber)
+            if (!followed || now >= GpsTrainTracking.estimateEndsAt(current, track, official)) {
+                finish(if (followed) GpsArrivalAlarmEndReason.EXPIRED else GpsArrivalAlarmEndReason.CANCELLED)
+                return
+            }
+        }
+        val notification = ongoingNotification(current, track, now)
+        val text = notification.extras.getCharSequence(Notification.EXTRA_BIG_TEXT)?.toString()
+        // Same id as the foreground notification: posting it again updates it in place.
+        if (text != shownText && LiveNotifications.post(this, NOTIFICATION_ID, notification)) shownText = text
+        val key = "${track.status}|${track.passedIndex}|${track.estimate?.delayMinutes}"
+        if ((current.isEstimate || followed) && key != repaintKey && now - repaintAtMillis >= REPAINT_INTERVAL_MILLIS) {
+            repaintKey = key
+            repaintAtMillis = now
+            FollowedTripScheduler.repaint(this)
+        }
+    }
+
+    private fun isFollowed(current: GpsArrivalAlarmTarget): Boolean = FollowedTripScheduler.follows(this, current.trainNumber)
 
     private fun ring(current: GpsArrivalAlarmTarget) {
         val posted = StopAlarmScheduler.notify(
@@ -173,6 +239,7 @@ class GpsArrivalAlarmService : Service() {
 
     private fun checkStillAllowed() {
         val current = target ?: return
+        followed = isFollowed(current)
         when {
             finished -> Unit
             GpsArrivalAlarmPolicy.isExpired(System.currentTimeMillis(), current) -> finish(GpsArrivalAlarmEndReason.EXPIRED)
@@ -237,9 +304,13 @@ class GpsArrivalAlarmService : Service() {
         finished = true
         handler.removeCallbacks(watchdog)
         releaseLocation()
-        GpsArrivalAlarmStore(this).clearActiveTarget()
-        GpsArrivalAlarmRuntime.markEnded(target, reason)
+        val ended = target
+        if (ended?.isEstimate != true) GpsArrivalAlarmStore(this).clearActiveTarget()
+        GpsArrivalAlarmRuntime.markEnded(ended, reason)
         target = null
+        tracker = null
+        // The estimate leaves the followed-trip notification with the session.
+        if (ended != null && (ended.isEstimate || followed)) FollowedTripScheduler.repaint(this)
     }
 
     private fun granted(permission: String): Boolean =
@@ -257,7 +328,7 @@ class GpsArrivalAlarmService : Service() {
         )
     }
 
-    private fun ongoingNotification(current: GpsArrivalAlarmTarget?): Notification {
+    private fun ongoingNotification(current: GpsArrivalAlarmTarget?, track: GpsTrainTrack? = null, now: Long = System.currentTimeMillis()): Notification {
         val builder = NotificationCompat.Builder(this, STATUS_CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_binario)
             .setOngoing(true)
@@ -267,12 +338,28 @@ class GpsArrivalAlarmService : Service() {
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
             .setContentIntent(openAppIntent())
-            .addAction(R.drawable.ic_binario, getString(R.string.action_gps_alarm_stop), stopIntent())
+            .addAction(
+                R.drawable.ic_binario,
+                getString(if (current?.isEstimate == true) R.string.action_trip_estimate_stop else R.string.action_gps_alarm_stop),
+                stopIntent()
+            )
         if (current != null) {
-            val effectiveKilometres = GpsArrivalAlarmPolicy.effectiveRadiusMeters(current.radiusMeters, precise) / 1_000
-            val radius = resources.getQuantityString(R.plurals.gps_alarm_radius_km, effectiveKilometres, effectiveKilometres)
-            builder.setContentTitle(getString(R.string.gps_alarm_active_title, current.stopName))
-                .setContentText(getString(if (precise) R.string.gps_alarm_active_precise else R.string.gps_alarm_active_approximate, radius))
+            val countdown = current.route?.let { route -> GpsTrainRoutes.countdown(route, track, now) }?.let { TripLiveText.countdown(resources, it) }
+            val official = if (track?.estimate != null) FollowedTripScheduler.officialDelayMinutes(this, current.trainNumber) else null
+            val position = TripLiveText.position(resources, track, official, now, includeWaiting = current.isEstimate)
+            if (current.isEstimate) {
+                val status = position ?: getString(R.string.trip_estimate_waiting)
+                builder.setContentTitle(getString(R.string.trip_estimate_active_title, current.trainNumber))
+                    .setContentText(status)
+                    .setStyle(NotificationCompat.BigTextStyle().bigText(listOfNotNull(status, countdown, getString(R.string.trip_estimate_privacy_short)).joinToString("\n")))
+            } else {
+                val effectiveKilometres = GpsArrivalAlarmPolicy.effectiveRadiusMeters(current.radiusMeters, precise) / 1_000
+                val radius = resources.getQuantityString(R.plurals.gps_alarm_radius_km, effectiveKilometres, effectiveKilometres)
+                val radiusText = getString(if (precise) R.string.gps_alarm_active_precise else R.string.gps_alarm_active_approximate, radius)
+                builder.setContentTitle(getString(R.string.gps_alarm_active_title, current.stopName))
+                    .setContentText(countdown ?: radiusText)
+                    .setStyle(NotificationCompat.BigTextStyle().bigText(listOfNotNull(countdown, position, radiusText).joinToString("\n")))
+            }
         } else {
             builder.setContentTitle(getString(R.string.gps_alarm_status_channel_name))
         }
@@ -300,6 +387,7 @@ class GpsArrivalAlarmService : Service() {
         private const val STATUS_CHANNEL_ID = "binario_gps_alarm_status"
         private const val NOTIFICATION_ID = 0x6A51
         private const val WATCHDOG_INTERVAL_MILLIS = 60_000L
+        private const val REPAINT_INTERVAL_MILLIS = 60_000L
 
         fun startIntent(context: Context, target: GpsArrivalAlarmTarget): Intent =
             Intent(context, GpsArrivalAlarmService::class.java)

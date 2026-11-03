@@ -1237,4 +1237,41 @@
         <item quantity="other">여정 %d개</item>
     </plurals>
     <!-- End of platform changes, Partenze train types, saved timetables, sharing, tickets and assistance, CO2 estimate -->
+    <!-- Stop countdown, approach alerts of favourite trains and the position estimate (Android only) -->
+    <plurals name="stop_countdown_stops">
+        <item quantity="other">%d개 정차역 뒤 하차</item>
+    </plurals>
+    <string name="stop_countdown_alight_next">다음 정차역에서 하차: %1$s, %2$s</string>
+    <string name="stop_countdown_alight_next_untimed">다음 정차역에서 하차: %1$s</string>
+    <string name="approach_alert_toggle">도착이 가까워지면 알림</string>
+    <string name="approach_alert_toggle_description">열차가 선택한 역에 도착하기 몇 분 전에 실시간 지연과 함께 알려 줍니다. 시각이 가까워지면 15분마다 상태를 확인하며, 22:00~07:00에는 확인하지 않습니다. 열차 번호는 상세 정보를 열 때처럼 상태 출처로 전송됩니다.</string>
+    <string name="approach_alert_station">역: %1$s</string>
+    <string name="accessibility_approach_alert_station">알림 역 변경, 현재 %1$s</string>
+    <string name="approach_alert_lead">얼마나 미리</string>
+    <string name="approach_alert_summary">%2$s 도착 %1$s 전에 알려 줍니다.</string>
+    <string name="approach_alert_title">%1$s, ~%3$s 후 %2$s 도착</string>
+    <string name="approach_alert_title_now">%1$s, 곧 %2$s 도착</string>
+    <string name="approach_alert_channel_name">도착 예정 열차</string>
+    <string name="approach_alert_channel_description">즐겨찾는 열차가 선택한 역에 도착하기 몇 분 전의 알림입니다.</string>
+    <string name="trip_estimate_toggle">내 위치로 추정</string>
+    <string name="trip_estimate_toggle_description">여행 중 휴대전화의 위치를 열차 경로와 비교해 지연을 추정하고, 공식 데이터 옆에 추정치로 표시합니다. 정확한 위치는 휴대전화에서만 사용하며 저장하거나 전송하지 않고, 중지할 수 있는 상시 알림이 표시됩니다. 도착 10분 후 또는 여행이 끝나면 멈춥니다.</string>
+    <string name="trip_estimate_unavailable_time">출발 10분 전부터 도착까지 사용할 수 있습니다.</string>
+    <string name="trip_estimate_unavailable_route">이 열차는 추정할 수 없습니다: 정차역의 좌표나 시각이 없습니다.</string>
+    <string name="trip_estimate_precise_required">추정에는 정확한 위치가 필요합니다. Android 설정에서 허용할 수 있습니다.</string>
+    <string name="trip_estimate_location_disabled">휴대전화의 위치가 꺼져 있습니다. 내 위치로 추정하려면 켜 주세요.</string>
+    <string name="trip_estimate_start_failed">Android가 내 위치로 추정을 시작하도록 허용하지 않았습니다.</string>
+    <string name="trip_estimate_via_alarm">이 열차에 켜진 GPS 알람이 이미 추정을 제공합니다.</string>
+    <string name="trip_estimate_line">내 위치로 추정: 약 +%1$s, 도착 ~%2$s</string>
+    <string name="trip_estimate_line_on_time">내 위치로 추정: 거의 정시, 도착 ~%1$s</string>
+    <string name="trip_estimate_official">(공식 출처: %1$s)</string>
+    <string name="trip_estimate_age">%1$s 기준 추정</string>
+    <string name="trip_estimate_off_route">위치가 경로를 벗어남: 추정 없음</string>
+    <string name="trip_estimate_waiting">내 위치로 추정: 경로 위의 정확한 위치를 기다리는 중</string>
+    <plurals name="trip_estimate_accessible">
+        <item quantity="other">내 위치로 추정: 약 %1$d분 지연, %2$s쯤 도착</item>
+    </plurals>
+    <string name="trip_estimate_on_time_accessible">내 위치로 추정: 거의 정시, %1$s쯤 도착</string>
+    <string name="trip_estimate_active_title">열차 %1$s 위치 추정 켜짐</string>
+    <string name="trip_estimate_privacy_short">위치는 휴대전화에만 남으며 저장되거나 전송되지 않습니다.</string>
+    <string name="action_trip_estimate_stop">추정 중지</string>
 </resources>

@@ -1237,4 +1237,41 @@
         <item quantity="other">%d 件の経路</item>
     </plurals>
     <!-- End of platform changes, Partenze train types, saved timetables, sharing, tickets and assistance, CO2 estimate -->
+    <!-- Stop countdown, approach alerts of favourite trains and the position estimate (Android only) -->
+    <plurals name="stop_countdown_stops">
+        <item quantity="other">あと %d 駅で下車</item>
+    </plurals>
+    <string name="stop_countdown_alight_next">次の停車駅で下車：%1$s（%2$s）</string>
+    <string name="stop_countdown_alight_next_untimed">次の停車駅で下車：%1$s</string>
+    <string name="approach_alert_toggle">到着が近づいたら通知</string>
+    <string name="approach_alert_toggle_description">列車が選んだ駅に着く数分前に、リアルタイムの遅れを含めて通知します。時刻が近づくと 15 分ごとに運行状況を確認します（22 時から 7 時の間は確認しません）。列車番号は詳細を開いたときと同じく運行状況の情報源に送信されます。</string>
+    <string name="approach_alert_station">駅：%1$s</string>
+    <string name="accessibility_approach_alert_station">通知する駅を変更（現在 %1$s）</string>
+    <string name="approach_alert_lead">何分前</string>
+    <string name="approach_alert_summary">%2$s に着く %1$s 前に通知します。</string>
+    <string name="approach_alert_title">%1$s は ~%3$s で %2$s に到着</string>
+    <string name="approach_alert_title_now">%1$s がまもなく %2$s に到着</string>
+    <string name="approach_alert_channel_name">到着が近い列車</string>
+    <string name="approach_alert_channel_description">お気に入りの列車が選んだ駅に着く数分前の通知です。</string>
+    <string name="trip_estimate_toggle">現在地から推定</string>
+    <string name="trip_estimate_toggle_description">乗車中、スマートフォンの位置を列車の経路と比べて遅れを推定し、公式データの横に推定値として表示します。正確な位置情報はスマートフォン上だけで使い、保存も送信もしません。停止できる常駐通知が表示され、到着の 10 分後または旅程の終了時に終わります。</string>
+    <string name="trip_estimate_unavailable_time">出発の 10 分前から到着まで利用できます。</string>
+    <string name="trip_estimate_unavailable_route">この列車は推定できません：停車駅の座標または時刻がありません。</string>
+    <string name="trip_estimate_precise_required">推定には正確な位置情報が必要です。Android の設定で許可できます。</string>
+    <string name="trip_estimate_location_disabled">スマートフォンの位置情報がオフです。現在地から推定するにはオンにしてください。</string>
+    <string name="trip_estimate_start_failed">Android が現在地からの推定の開始を許可しませんでした。</string>
+    <string name="trip_estimate_via_alarm">この列車の GPS アラームがすでに推定を提供しています。</string>
+    <string name="trip_estimate_line">現在地からの推定：約 +%1$s、到着 ~%2$s</string>
+    <string name="trip_estimate_line_on_time">現在地からの推定：ほぼ定刻、到着 ~%1$s</string>
+    <string name="trip_estimate_official">（公式情報：%1$s）</string>
+    <string name="trip_estimate_age">%1$s 時点の推定</string>
+    <string name="trip_estimate_off_route">現在地が経路から外れています：推定なし</string>
+    <string name="trip_estimate_waiting">現在地からの推定：経路上の正確な位置を待っています</string>
+    <plurals name="trip_estimate_accessible">
+        <item quantity="other">現在地からの推定：約 %1$d 分の遅れ、到着は %2$s ごろ</item>
+    </plurals>
+    <string name="trip_estimate_on_time_accessible">現在地からの推定：ほぼ定刻、到着は %1$s ごろ</string>
+    <string name="trip_estimate_active_title">列車 %1$s の現在地からの推定が有効</string>
+    <string name="trip_estimate_privacy_short">位置情報はスマートフォンに残り、保存も送信もされません。</string>
+    <string name="action_trip_estimate_stop">推定を停止</string>
 </resources>

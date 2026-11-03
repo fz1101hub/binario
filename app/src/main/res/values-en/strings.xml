@@ -1289,4 +1289,43 @@
         <item quantity="other">%d options</item>
     </plurals>
     <!-- End of platform changes, Partenze train types, saved timetables, sharing, tickets and assistance, CO2 estimate -->
+    <!-- Stop countdown, approach alerts of favourite trains and the position estimate (Android only) -->
+    <plurals name="stop_countdown_stops">
+        <item quantity="one">Get off in %d stop</item>
+        <item quantity="other">Get off in %d stops</item>
+    </plurals>
+    <string name="stop_countdown_alight_next">Get off at the next stop: %1$s at %2$s</string>
+    <string name="stop_countdown_alight_next_untimed">Get off at the next stop: %1$s</string>
+    <string name="approach_alert_toggle">Alert me when it is arriving</string>
+    <string name="approach_alert_toggle_description">A notification a few minutes before the train reaches the chosen station, with the live delay: close to the time the status is checked every 15 minutes, never between 22:00 and 07:00. The train number is sent to the status sources, as when you open the detail.</string>
+    <string name="approach_alert_station">Station: %1$s</string>
+    <string name="accessibility_approach_alert_station">Change the station of the alert, now %1$s</string>
+    <string name="approach_alert_lead">How early</string>
+    <string name="approach_alert_summary">Alerts you %1$s before it reaches %2$s.</string>
+    <string name="approach_alert_title">%1$s reaches %2$s in ~%3$s</string>
+    <string name="approach_alert_title_now">%1$s is arriving at %2$s</string>
+    <string name="approach_alert_channel_name">Trains arriving</string>
+    <string name="approach_alert_channel_description">Alerts for favourite trains a few minutes before they reach the chosen station.</string>
+    <string name="trip_estimate_toggle">Estimate from your location</string>
+    <string name="trip_estimate_toggle_description">During the trip, compares the phone’s location with the train’s route to estimate its delay, shown as an estimate next to the official data. Uses precise location on the phone only, without storing or sending it, with an ongoing notification you can stop; it ends 10 minutes after arrival or when the trip ends.</string>
+    <string name="trip_estimate_unavailable_time">Available from 10 minutes before departure until arrival.</string>
+    <string name="trip_estimate_unavailable_route">No estimate for this train: the coordinates or times of its stops are missing.</string>
+    <string name="trip_estimate_precise_required">The estimate needs precise location: you can grant it in the Android settings.</string>
+    <string name="trip_estimate_location_disabled">Location is turned off on the phone: turn it on for the estimate from your location.</string>
+    <string name="trip_estimate_start_failed">Android did not allow the estimate from your location to start.</string>
+    <string name="trip_estimate_via_alarm">The GPS alarm on for this train already provides the estimate.</string>
+    <string name="trip_estimate_line">Estimate from your location: about +%1$s, arriving ~%2$s</string>
+    <string name="trip_estimate_line_on_time">Estimate from your location: about on time, arriving ~%1$s</string>
+    <string name="trip_estimate_official">(official source: %1$s)</string>
+    <string name="trip_estimate_age">estimate from %1$s</string>
+    <string name="trip_estimate_off_route">Location off the route: no estimate</string>
+    <string name="trip_estimate_waiting">Estimate from your location: waiting for a precise location on the route</string>
+    <plurals name="trip_estimate_accessible">
+        <item quantity="one">Estimate from your location: about %1$d minute late, arriving around %2$s</item>
+        <item quantity="other">Estimate from your location: about %1$d minutes late, arriving around %2$s</item>
+    </plurals>
+    <string name="trip_estimate_on_time_accessible">Estimate from your location: about on time, arriving around %1$s</string>
+    <string name="trip_estimate_active_title">Location estimate on for train %1$s</string>
+    <string name="trip_estimate_privacy_short">Your location stays on the phone: it is never stored or sent.</string>
+    <string name="action_trip_estimate_stop">Stop estimate</string>
 </resources>

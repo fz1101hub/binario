@@ -1266,4 +1266,43 @@
         <item quantity="other">%d विकल्प</item>
     </plurals>
     <!-- End of platform changes, Partenze train types, saved timetables, sharing, tickets and assistance, CO2 estimate -->
+    <!-- Stop countdown, approach alerts of favourite trains and the position estimate (Android only) -->
+    <plurals name="stop_countdown_stops">
+        <item quantity="one">%d ठहराव बाद उतरें</item>
+        <item quantity="other">%d ठहराव बाद उतरें</item>
+    </plurals>
+    <string name="stop_countdown_alight_next">अगले ठहराव पर उतरें: %1$s, %2$s बजे</string>
+    <string name="stop_countdown_alight_next_untimed">अगले ठहराव पर उतरें: %1$s</string>
+    <string name="approach_alert_toggle">आने से पहले मुझे बताएँ</string>
+    <string name="approach_alert_toggle_description">ट्रेन के चुने गए स्टेशन पर पहुँचने से कुछ मिनट पहले एक सूचना, रियल-टाइम देरी के साथ: समय के आसपास हर 15 मिनट में स्थिति जाँची जाती है, रात 22 से सुबह 7 के बीच कभी नहीं। ट्रेन नंबर स्थिति के स्रोतों को भेजा जाता है, जैसे विवरण खोलने पर।</string>
+    <string name="approach_alert_station">स्टेशन: %1$s</string>
+    <string name="accessibility_approach_alert_station">सूचना का स्टेशन बदलें, अभी %1$s</string>
+    <string name="approach_alert_lead">कितना पहले</string>
+    <string name="approach_alert_summary">%2$s पहुँचने से %1$s पहले बताता है।</string>
+    <string name="approach_alert_title">%1$s ~%3$s में %2$s पहुँचेगी</string>
+    <string name="approach_alert_title_now">%1$s %2$s पहुँच रही है</string>
+    <string name="approach_alert_channel_name">आने वाली ट्रेनें</string>
+    <string name="approach_alert_channel_description">पसंदीदा ट्रेनों के चुने गए स्टेशन पर पहुँचने से कुछ मिनट पहले की सूचनाएँ।</string>
+    <string name="trip_estimate_toggle">आपकी लोकेशन से अनुमान</string>
+    <string name="trip_estimate_toggle_description">यात्रा के दौरान फ़ोन की लोकेशन की तुलना ट्रेन के मार्ग से करके उसकी देरी का अनुमान लगाता है, जो आधिकारिक डेटा के पास अनुमान के रूप में दिखता है। सटीक लोकेशन का उपयोग केवल फ़ोन पर करता है, उसे सहेजे या भेजे बिना, एक स्थायी सूचना के साथ जिसे आप रोक सकते हैं; आगमन के 10 मिनट बाद या यात्रा ख़त्म होने पर रुक जाता है।</string>
+    <string name="trip_estimate_unavailable_time">प्रस्थान से 10 मिनट पहले से आगमन तक उपलब्ध।</string>
+    <string name="trip_estimate_unavailable_route">इस ट्रेन के लिए अनुमान उपलब्ध नहीं: ठहरावों के निर्देशांक या समय नहीं हैं।</string>
+    <string name="trip_estimate_precise_required">अनुमान के लिए सटीक लोकेशन चाहिए: आप इसे Android सेटिंग में दे सकते हैं।</string>
+    <string name="trip_estimate_location_disabled">फ़ोन की लोकेशन बंद है: लोकेशन से अनुमान के लिए इसे चालू करें।</string>
+    <string name="trip_estimate_start_failed">Android ने लोकेशन से अनुमान शुरू करने की अनुमति नहीं दी।</string>
+    <string name="trip_estimate_via_alarm">इस ट्रेन के लिए चालू GPS अलार्म पहले से अनुमान देता है।</string>
+    <string name="trip_estimate_line">आपकी लोकेशन से अनुमान: लगभग +%1$s, आगमन ~%2$s</string>
+    <string name="trip_estimate_line_on_time">आपकी लोकेशन से अनुमान: लगभग समय पर, आगमन ~%1$s</string>
+    <string name="trip_estimate_official">(आधिकारिक स्रोत: %1$s)</string>
+    <string name="trip_estimate_age">%1$s का अनुमान</string>
+    <string name="trip_estimate_off_route">लोकेशन मार्ग से बाहर: कोई अनुमान नहीं</string>
+    <string name="trip_estimate_waiting">आपकी लोकेशन से अनुमान: मार्ग पर सटीक लोकेशन की प्रतीक्षा</string>
+    <plurals name="trip_estimate_accessible">
+        <item quantity="one">आपकी लोकेशन से अनुमान: लगभग %1$d मिनट की देरी, आगमन लगभग %2$s बजे</item>
+        <item quantity="other">आपकी लोकेशन से अनुमान: लगभग %1$d मिनट की देरी, आगमन लगभग %2$s बजे</item>
+    </plurals>
+    <string name="trip_estimate_on_time_accessible">आपकी लोकेशन से अनुमान: लगभग समय पर, आगमन लगभग %1$s बजे</string>
+    <string name="trip_estimate_active_title">ट्रेन %1$s के लिए लोकेशन से अनुमान चालू</string>
+    <string name="trip_estimate_privacy_short">आपकी लोकेशन फ़ोन पर ही रहती है: न सहेजी जाती है, न भेजी जाती है।</string>
+    <string name="action_trip_estimate_stop">अनुमान रोकें</string>
 </resources>

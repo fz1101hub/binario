@@ -1260,4 +1260,41 @@
         <item quantity="other">%d ตัวเลือก</item>
     </plurals>
     <!-- End of platform changes, Partenze train types, saved timetables, sharing, tickets and assistance, CO2 estimate -->
+    <!-- Stop countdown, approach alerts of favourite trains and the position estimate (Android only) -->
+    <plurals name="stop_countdown_stops">
+        <item quantity="other">ลงในอีก %d จุดจอด</item>
+    </plurals>
+    <string name="stop_countdown_alight_next">ลงที่จุดจอดถัดไป: %1$s เวลา %2$s</string>
+    <string name="stop_countdown_alight_next_untimed">ลงที่จุดจอดถัดไป: %1$s</string>
+    <string name="approach_alert_toggle">แจ้งฉันเมื่อใกล้ถึง</string>
+    <string name="approach_alert_toggle_description">การแจ้งเตือนไม่กี่นาทีก่อนขบวนรถถึงสถานีที่เลือก พร้อมความล่าช้าแบบเรียลไทม์ เมื่อใกล้ถึงเวลาจะตรวจสอบสถานะทุก 15 นาที แต่ไม่ตรวจระหว่าง 22:00 ถึง 07:00 หมายเลขขบวนจะถูกส่งไปยังแหล่งข้อมูลสถานะ เหมือนตอนที่คุณเปิดรายละเอียด</string>
+    <string name="approach_alert_station">สถานี: %1$s</string>
+    <string name="accessibility_approach_alert_station">เปลี่ยนสถานีของการแจ้งเตือน ขณะนี้คือ %1$s</string>
+    <string name="approach_alert_lead">ล่วงหน้าเท่าใด</string>
+    <string name="approach_alert_summary">แจ้งเตือนคุณ %1$s ก่อนถึง %2$s</string>
+    <string name="approach_alert_title">%1$s จะถึง %2$s ในอีก ~%3$s</string>
+    <string name="approach_alert_title_now">%1$s กำลังจะถึง %2$s</string>
+    <string name="approach_alert_channel_name">ขบวนที่ใกล้ถึง</string>
+    <string name="approach_alert_channel_description">การแจ้งเตือนของขบวนโปรดไม่กี่นาทีก่อนถึงสถานีที่เลือก</string>
+    <string name="trip_estimate_toggle">ประมาณจากตำแหน่งของคุณ</string>
+    <string name="trip_estimate_toggle_description">ระหว่างการเดินทาง จะเทียบตำแหน่งของโทรศัพท์กับเส้นทางของขบวนรถเพื่อประมาณความล่าช้า และแสดงเป็นค่าประมาณข้างข้อมูลทางการ ใช้ตำแหน่งที่แม่นยำบนโทรศัพท์เท่านั้น โดยไม่บันทึกหรือส่งออกไป พร้อมการแจ้งเตือนค้างไว้ที่คุณหยุดได้ และจะหยุดเอง 10 นาทีหลังถึงปลายทางหรือเมื่อการเดินทางสิ้นสุด</string>
+    <string name="trip_estimate_unavailable_time">ใช้ได้ตั้งแต่ 10 นาทีก่อนออกเดินทางจนถึงปลายทาง</string>
+    <string name="trip_estimate_unavailable_route">ไม่มีค่าประมาณสำหรับขบวนนี้: ไม่มีพิกัดหรือเวลาของจุดจอด</string>
+    <string name="trip_estimate_precise_required">การประมาณต้องใช้ตำแหน่งที่แม่นยำ คุณอนุญาตได้ในการตั้งค่า Android</string>
+    <string name="trip_estimate_location_disabled">ตำแหน่งของโทรศัพท์ปิดอยู่ โปรดเปิดเพื่อประมาณจากตำแหน่งของคุณ</string>
+    <string name="trip_estimate_start_failed">Android ไม่อนุญาตให้เริ่มการประมาณจากตำแหน่งของคุณ</string>
+    <string name="trip_estimate_via_alarm">การปลุกด้วย GPS ที่เปิดอยู่สำหรับขบวนนี้ให้ค่าประมาณอยู่แล้ว</string>
+    <string name="trip_estimate_line">ประมาณจากตำแหน่งของคุณ: ราว +%1$s ถึง ~%2$s</string>
+    <string name="trip_estimate_line_on_time">ประมาณจากตำแหน่งของคุณ: เกือบตรงเวลา ถึงราว ~%1$s</string>
+    <string name="trip_estimate_official">(แหล่งข้อมูลทางการ: %1$s)</string>
+    <string name="trip_estimate_age">ค่าประมาณเมื่อ %1$s</string>
+    <string name="trip_estimate_off_route">ตำแหน่งอยู่นอกเส้นทาง: ไม่มีค่าประมาณ</string>
+    <string name="trip_estimate_waiting">ประมาณจากตำแหน่งของคุณ: กำลังรอตำแหน่งที่แม่นยำบนเส้นทาง</string>
+    <plurals name="trip_estimate_accessible">
+        <item quantity="other">ประมาณจากตำแหน่งของคุณ: ล่าช้าราว %1$d นาที ถึงประมาณ %2$s</item>
+    </plurals>
+    <string name="trip_estimate_on_time_accessible">ประมาณจากตำแหน่งของคุณ: เกือบตรงเวลา ถึงประมาณ %1$s</string>
+    <string name="trip_estimate_active_title">เปิดการประมาณจากตำแหน่งสำหรับขบวน %1$s</string>
+    <string name="trip_estimate_privacy_short">ตำแหน่งอยู่บนโทรศัพท์เท่านั้น ไม่มีการบันทึกหรือส่งออกไป</string>
+    <string name="action_trip_estimate_stop">หยุดการประมาณ</string>
 </resources>

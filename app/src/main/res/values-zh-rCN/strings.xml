@@ -1260,4 +1260,41 @@
         <item quantity="other">%d 个方案</item>
     </plurals>
     <!-- End of platform changes, Partenze train types, saved timetables, sharing, tickets and assistance, CO2 estimate -->
+    <!-- Stop countdown, approach alerts of favourite trains and the position estimate (Android only) -->
+    <plurals name="stop_countdown_stops">
+        <item quantity="other">再过 %d 站下车</item>
+    </plurals>
+    <string name="stop_countdown_alight_next">下一站下车：%1$s，%2$s</string>
+    <string name="stop_countdown_alight_next_untimed">下一站下车：%1$s</string>
+    <string name="approach_alert_toggle">即将到站时提醒我</string>
+    <string name="approach_alert_toggle_description">在列车到达所选车站前几分钟发出通知，并附上实时晚点信息：临近时刻每 15 分钟检查一次状态，22:00 至 7:00 之间不检查。车次号会发送给状态数据来源，与打开详情时相同。</string>
+    <string name="approach_alert_station">车站：%1$s</string>
+    <string name="accessibility_approach_alert_station">更改提醒车站，当前为 %1$s</string>
+    <string name="approach_alert_lead">提前多久</string>
+    <string name="approach_alert_summary">在到达%2$s前 %1$s 提醒你。</string>
+    <string name="approach_alert_title">%1$s ~%3$s 后到达 %2$s</string>
+    <string name="approach_alert_title_now">%1$s 即将到达 %2$s</string>
+    <string name="approach_alert_channel_name">即将到站的列车</string>
+    <string name="approach_alert_channel_description">收藏的列车到达所选车站前几分钟的提醒。</string>
+    <string name="trip_estimate_toggle">根据你的位置估算</string>
+    <string name="trip_estimate_toggle_description">行程中将手机位置与列车线路比较以估算晚点，并作为估算值显示在官方数据旁边。精确位置只在手机上使用，不会保存或发送，期间会显示一条可随时停止的常驻通知；到达 10 分钟后或行程结束时自动停止。</string>
+    <string name="trip_estimate_unavailable_time">从出发前 10 分钟到到达期间可用。</string>
+    <string name="trip_estimate_unavailable_route">无法估算此车次：缺少停靠站的坐标或时刻。</string>
+    <string name="trip_estimate_precise_required">估算需要精确位置：你可以在 Android 设置中授予。</string>
+    <string name="trip_estimate_location_disabled">手机定位已关闭：请打开定位以根据位置估算。</string>
+    <string name="trip_estimate_start_failed">Android 不允许启动根据位置的估算。</string>
+    <string name="trip_estimate_via_alarm">此车次已开启的 GPS 闹钟已经提供估算。</string>
+    <string name="trip_estimate_line">根据你的位置估算：约 +%1$s，预计 ~%2$s 到达</string>
+    <string name="trip_estimate_line_on_time">根据你的位置估算：基本准点，预计 ~%1$s 到达</string>
+    <string name="trip_estimate_official">（官方来源：%1$s）</string>
+    <string name="trip_estimate_age">%1$s 的估算</string>
+    <string name="trip_estimate_off_route">位置不在线路上：无估算</string>
+    <string name="trip_estimate_waiting">根据你的位置估算：正在等待线路上的精确位置</string>
+    <plurals name="trip_estimate_accessible">
+        <item quantity="other">根据你的位置估算：晚点约 %1$d 分钟，约 %2$s 到达</item>
+    </plurals>
+    <string name="trip_estimate_on_time_accessible">根据你的位置估算：基本准点，约 %1$s 到达</string>
+    <string name="trip_estimate_active_title">车次 %1$s 的位置估算已开启</string>
+    <string name="trip_estimate_privacy_short">位置只保留在手机上：不会保存或发送。</string>
+    <string name="action_trip_estimate_stop">停止估算</string>
 </resources>

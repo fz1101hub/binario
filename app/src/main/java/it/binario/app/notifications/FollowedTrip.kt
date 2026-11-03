@@ -3,8 +3,12 @@ package it.binario.app.notifications
 import it.binario.app.ConnectionRiskClassifier
 import it.binario.app.data.RailTime
 import it.binario.app.data.ServiceStatus
+import it.binario.app.data.StopRouteChange
 import it.binario.app.data.TrainService
 import it.binario.app.data.core.LegMode
+import it.binario.app.gpsalarm.GpsDelayEstimate
+import it.binario.app.gpsalarm.GpsTrackStatus
+import it.binario.app.gpsalarm.GpsTrainTrack
 import it.binario.app.data.repository.TrainNumberQuery
 import it.binario.app.journeys.JourneyLegLive
 import it.binario.app.journeys.JourneyOptionRow
@@ -142,6 +146,21 @@ object FollowedTripPlanner {
 
     /** True while the window is open or still ahead: the toggle is offered only for such trips. */
     fun isUpcomingOrRunning(trip: FollowedTrip, now: Instant): Boolean = !now.isAfter(windowEnd(trip, null))
+
+    /** In the last [NEAR_ALIGHT_STOPS] stops before getting off, the refresh follows the stops. */
+    const val NEAR_ALIGHT_STOPS = 3
+    val NEAR_ALIGHT_DELAY: Duration = Duration.ofSeconds(30)
+    val MIN_REFRESH: Duration = Duration.ofMinutes(2)
+
+    /**
+     * The next refresh: the regular one, or, in the last stops before the traveller gets off, just after the next
+     * stop's expected time (never sooner than [MIN_REFRESH]) so that "Scendi alla prossima fermata" comes in time.
+     */
+    fun nextRefreshAt(regular: Instant, now: Instant, countdown: StopCountdown?): Instant {
+        val nextStop = countdown?.takeIf { it.stopsLeft <= NEAR_ALIGHT_STOPS }?.nextStopAt ?: return regular
+        val sooner = maxOf(nextStop.plus(NEAR_ALIGHT_DELAY), now.plus(MIN_REFRESH))
+        return minOf(regular, sooner)
+    }
 }
 
 /** What the notification shows for one refresh. Pure, so the content is the same in tests and on the phone. */
@@ -159,7 +178,13 @@ data class FollowedTripView(
     /** The next change of a journey with changes, with live data or without (UNKNOWN). */
     val transfer: TransferAssessment? = null,
     val transferStation: String? = null,
-    val nextLegLabel: String? = null
+    val nextLegLabel: String? = null,
+    /** "Scendi tra N fermate" for the current train, when the progress is known and the traveller is on board. */
+    val countdown: StopCountdown? = null,
+    /** The delay estimated from the device position for the current train: an estimate, never official. */
+    val estimate: GpsDelayEstimate? = null,
+    /** Where the device position stands for the current train, when a GPS session follows it. */
+    val trackStatus: GpsTrackStatus? = null
 )
 
 object FollowedTripStatus {
@@ -183,7 +208,17 @@ object FollowedTripStatus {
             arrival.isAfter(now)
         } ?: trip.legs.lastIndex
 
-    fun view(trip: FollowedTrip, services: List<TrainService?>, now: Instant, zone: ZoneId = RailTime.defaultZone): FollowedTripView {
+    /**
+     * @param position the progress a GPS session (alarm or estimate) derived from the device position; used only when
+     * it follows the current train.
+     */
+    fun view(
+        trip: FollowedTrip,
+        services: List<TrainService?>,
+        now: Instant,
+        zone: ZoneId = RailTime.defaultZone,
+        position: GpsTrainTrack? = null
+    ): FollowedTripView {
         val lives = trip.legs.mapIndexed { index, leg -> liveOf(leg, services.getOrNull(index), zone) }
         val index = currentLegIndex(trip, lives, now)
         val leg = trip.legs[index]
@@ -194,7 +229,9 @@ object FollowedTripStatus {
         val board = LiveStopTimes.stopNamed(stops, leg.boardStation).takeIf { it >= 0 } ?: 0
         val alight = LiveStopTimes.stopNamed(stops, leg.alightStation).takeIf { it >= board } ?: stops.lastIndex
         val window = if (stops.isEmpty()) emptyList() else stops.subList(board, alight + 1)
-        val next = window.firstOrNull { !it.completed } ?: window.lastOrNull()
+        val track = position?.takeIf { it.isFor(leg.number) }
+        val countdown = if (service != null && !cancelled) countdown(service, board, alight, leg.departure, now, zone, track) else null
+        val next = countdown?.let { stops[it.nextIndex] } ?: window.firstOrNull { !it.completed } ?: window.lastOrNull()
         val nextVerified = next != null && service != null && LiveStopTimes.isVerified(service, next)
         val transfer = if (index < trip.legs.lastIndex) {
             val following = trip.legs[index + 1]
@@ -212,8 +249,35 @@ object FollowedTripStatus {
                 ?: service?.platform?.takeIf { it.isNotBlank() && (next == null || window.indexOf(next) == 0) },
             transfer = transfer,
             transferStation = transfer?.let { leg.alightStation },
-            nextLegLabel = transfer?.let { trip.legs[index + 1].label }
+            nextLegLabel = transfer?.let { trip.legs[index + 1].label },
+            countdown = countdown,
+            estimate = track?.estimate?.takeIf { !cancelled },
+            trackStatus = track?.status
         )
+    }
+
+    /**
+     * The countdown to [alight] of [service]: live progress (the last confirmed stop or the last detected station),
+     * the device position when a fresh one follows this train, else the expected or scheduled times against [now].
+     * Clock times are placed next to [reference] (the scheduled departure), then to each other across midnight.
+     */
+    fun countdown(service: TrainService, board: Int, alight: Int, reference: Instant, now: Instant, zone: ZoneId = RailTime.defaultZone, track: GpsTrainTrack? = null): StopCountdown? {
+        val stops = service.stops
+        if (alight <= board || alight > stops.lastIndex) return null
+        var previous = reference
+        val timeline = stops.map { stop ->
+            val verified = LiveStopTimes.isVerified(service, stop)
+            val label = listOf(if (verified) stop.expected else stop.scheduled, stop.scheduled)
+                .map(String::trim)
+                .firstOrNull { LiveStopTimes.parse(it) != null }
+            val at = label?.let(LiveStopTimes::parse)?.let { LiveStopTimes.nearest(previous, it, zone) }?.also { previous = it }
+            CountdownStop(stop.station, label, at, stop.routeChange == StopRouteChange.SKIPPED)
+        }
+        val completed = stops.indices.lastOrNull { stops[it].completed && LiveStopTimes.isVerified(service, stops[it]) }
+        val detected = service.lastOperationalDetection?.locationLabel?.let { LiveStopTimes.stopNamed(stops, it) }?.takeIf { it >= 0 }
+        val livePassed = listOfNotNull(completed, detected).maxOrNull()
+        val positionPassed = track?.freshPassedIndex(now.toEpochMilli())?.let { track.passedStop }?.let { LiveStopTimes.stopNamed(stops, it) }?.takeIf { it >= 0 }
+        return StopCountdownCalculator.countdown(timeline, board, alight, now, livePassed, positionPassed)
     }
 
     /** The arrival delay that stretches the window: the last train's, once known. */

@@ -1237,4 +1237,41 @@
         <item quantity="other">%d pilihan perjalanan</item>
     </plurals>
     <!-- End of platform changes, Partenze train types, saved timetables, sharing, tickets and assistance, CO2 estimate -->
+    <!-- Stop countdown, approach alerts of favourite trains and the position estimate (Android only) -->
+    <plurals name="stop_countdown_stops">
+        <item quantity="other">Turun dalam %d pemberhentian</item>
+    </plurals>
+    <string name="stop_countdown_alight_next">Turun di pemberhentian berikutnya: %1$s pukul %2$s</string>
+    <string name="stop_countdown_alight_next_untimed">Turun di pemberhentian berikutnya: %1$s</string>
+    <string name="approach_alert_toggle">Beri tahu saya saat kereta akan tiba</string>
+    <string name="approach_alert_toggle_description">Notifikasi beberapa menit sebelum kereta tiba di stasiun yang dipilih, dengan keterlambatan real-time: menjelang waktunya status diperiksa setiap 15 menit, tidak pernah antara pukul 22 dan 7. Nomor kereta dikirim ke sumber status, seperti saat Anda membuka detail.</string>
+    <string name="approach_alert_station">Stasiun: %1$s</string>
+    <string name="accessibility_approach_alert_station">Ubah stasiun peringatan, saat ini %1$s</string>
+    <string name="approach_alert_lead">Berapa lama sebelumnya</string>
+    <string name="approach_alert_summary">Memberi tahu Anda %1$s sebelum tiba di %2$s.</string>
+    <string name="approach_alert_title">%1$s tiba di %2$s dalam ~%3$s</string>
+    <string name="approach_alert_title_now">%1$s sedang tiba di %2$s</string>
+    <string name="approach_alert_channel_name">Kereta yang akan tiba</string>
+    <string name="approach_alert_channel_description">Peringatan kereta favorit beberapa menit sebelum tiba di stasiun yang dipilih.</string>
+    <string name="trip_estimate_toggle">Perkiraan dari lokasi Anda</string>
+    <string name="trip_estimate_toggle_description">Selama perjalanan, membandingkan lokasi ponsel dengan rute kereta untuk memperkirakan keterlambatannya, yang ditampilkan sebagai perkiraan di samping data resmi. Menggunakan lokasi akurat hanya di ponsel, tanpa menyimpan atau mengirimnya, dengan notifikasi tetap yang dapat Anda hentikan; berhenti 10 menit setelah tiba atau saat perjalanan berakhir.</string>
+    <string name="trip_estimate_unavailable_time">Tersedia dari 10 menit sebelum keberangkatan hingga kedatangan.</string>
+    <string name="trip_estimate_unavailable_route">Tidak ada perkiraan untuk kereta ini: koordinat atau jadwal pemberhentian tidak tersedia.</string>
+    <string name="trip_estimate_precise_required">Perkiraan memerlukan lokasi akurat: Anda dapat mengizinkannya di setelan Android.</string>
+    <string name="trip_estimate_location_disabled">Lokasi ponsel nonaktif: aktifkan untuk perkiraan dari lokasi Anda.</string>
+    <string name="trip_estimate_start_failed">Android tidak mengizinkan perkiraan dari lokasi Anda dimulai.</string>
+    <string name="trip_estimate_via_alarm">Alarm GPS yang aktif untuk kereta ini sudah memberikan perkiraan.</string>
+    <string name="trip_estimate_line">Perkiraan dari lokasi Anda: sekitar +%1$s, tiba ~%2$s</string>
+    <string name="trip_estimate_line_on_time">Perkiraan dari lokasi Anda: kira-kira tepat waktu, tiba ~%1$s</string>
+    <string name="trip_estimate_official">(sumber resmi: %1$s)</string>
+    <string name="trip_estimate_age">perkiraan pukul %1$s</string>
+    <string name="trip_estimate_off_route">Lokasi di luar rute: tidak ada perkiraan</string>
+    <string name="trip_estimate_waiting">Perkiraan dari lokasi Anda: menunggu lokasi akurat di rute</string>
+    <plurals name="trip_estimate_accessible">
+        <item quantity="other">Perkiraan dari lokasi Anda: terlambat sekitar %1$d menit, tiba sekitar pukul %2$s</item>
+    </plurals>
+    <string name="trip_estimate_on_time_accessible">Perkiraan dari lokasi Anda: kira-kira tepat waktu, tiba sekitar pukul %1$s</string>
+    <string name="trip_estimate_active_title">Perkiraan dari lokasi aktif untuk kereta %1$s</string>
+    <string name="trip_estimate_privacy_short">Lokasi Anda tetap di ponsel: tidak disimpan atau dikirim.</string>
+    <string name="action_trip_estimate_stop">Hentikan perkiraan</string>
 </resources>
