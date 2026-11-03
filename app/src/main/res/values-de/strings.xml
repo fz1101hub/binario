@@ -661,6 +661,11 @@
     <string name="stop_alarm_inexact">Wecker für %1$s eingestellt, aber Android kann ihn verspätet ausliefern, da exakte Wecker nicht erlaubt sind.</string>
     <string name="commuter_alert_scheduled">Warnung gespeichert und auf dem Gerät geplant.</string>
     <string name="commuter_alert_scheduled_inexact">Warnung gespeichert und ungenau geplant: Android kann sie verspätet ausliefern, da exakte Wecker nicht erlaubt sind.</string>
+    <string name="stop_alarms_active_title">Aktive Haltwecker</string>
+    <string name="stop_alarm_active_row">%1$s · Zug %2$s · erwartete Ankunft %3$s</string>
+    <string name="accessibility_cancel_stop_alarm">Wecker für %1$s abbrechen</string>
+    <string name="exact_alarm_note">Android erlaubt Binario keine exakten Wecker: Haltwecker und Pendlerwarnungen können verspätet kommen.</string>
+    <string name="exact_alarm_action">Exakte Wecker erlauben</string>
     <string name="commuter_alert_quiet_hours_feedback">Warnung gespeichert, aber nicht geplant: Die Vorlaufzeit liegt in der Ruhezeit 22:00–07:00.</string>
     <string name="commuter_alert_invalid_time_feedback">Warnung gespeichert, aber nicht geplant: Die Zeit ist ungültig.</string>
     <string name="commuter_alert_disabled_feedback">Warnung gespeichert, aber deaktiviert.</string>

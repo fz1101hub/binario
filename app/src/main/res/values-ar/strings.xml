@@ -707,6 +707,11 @@
     <string name="stop_alarm_inexact">ضُبط المنبّه على %1$s، لكن قد يؤخره Android لأن المنبّهات الدقيقة غير مسموح بها.</string>
     <string name="commuter_alert_scheduled">حُفظ التنبيه وجُدول على الجهاز.</string>
     <string name="commuter_alert_scheduled_inexact">حُفظ التنبيه وجُدول بوضع تقريبي: قد يؤخره Android لأن المنبّهات الدقيقة غير مسموح بها.</string>
+    <string name="stop_alarms_active_title">منبّهات المحطات النشطة</string>
+    <string name="stop_alarm_active_row">%1$s · القطار %2$s · الوصول المتوقع %3$s</string>
+    <string name="accessibility_cancel_stop_alarm">إلغاء منبّه %1$s</string>
+    <string name="exact_alarm_note">لا يسمح Android لتطبيق Binario بالمنبّهات الدقيقة: قد تصل منبّهات المحطات وتنبيهات التنقل اليومي متأخرة.</string>
+    <string name="exact_alarm_action">السماح بالمنبّهات الدقيقة</string>
     <string name="commuter_alert_quiet_hours_feedback">حُفظ التنبيه ولم يُجدول: يقع وقته ضمن فترة الهدوء 22:00–07:00.</string>
     <string name="commuter_alert_invalid_time_feedback">حُفظ التنبيه ولم يُجدول: الوقت غير صالح.</string>
     <string name="commuter_alert_disabled_feedback">حُفظ التنبيه لكنه متوقف.</string>

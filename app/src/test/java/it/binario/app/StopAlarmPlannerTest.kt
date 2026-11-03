@@ -111,4 +111,66 @@ class StopAlarmPlannerTest {
             StopAlarmPlanner.plan(night, night.stops.last(), now, zone)?.triggerAtEpochMillis
         )
     }
+
+    private fun millis(hour: Int, minute: Int) = LocalDateTime.of(2026, 11, 3, hour, minute).atZone(zone).toInstant().toEpochMilli()
+    private fun alarm(expected: String, trigger: Long, arrival: Long, train: String = "2153", station: String = "Orte") =
+        StopAlarmPlan(train, "Roma Termini", station, expected, trigger, arrival)
+
+    @Test
+    fun `one alarm per train and stop, whatever its trigger, and a new plan replaces it`() {
+        val first = alarm("11:00", millis(10, 55), millis(11, 0))
+        val late = alarm("11:20", millis(11, 15), millis(11, 20))
+        val other = alarm("12:00", millis(11, 55), millis(12, 0), station = "Orvieto")
+
+        assertEquals(StopAlarmScheduler.requestCode("2153", "Orte"), StopAlarmScheduler.requestCode(" 2153", "Orte "))
+        assertTrue(StopAlarmScheduler.requestCode("2153", "Orte") != StopAlarmScheduler.requestCode("2153", "Orvieto"))
+        val plans = StopAlarmPlanner.upsert(StopAlarmPlanner.upsert(listOf(first), other, millis(10, 0)), late, millis(10, 0))
+        assertEquals(listOf(late, other), plans)
+        // Two hours after the arrival a plan that never rang is dropped.
+        assertTrue(StopAlarmPlanner.isOver(first, millis(13, 1)))
+        assertEquals(listOf(other), StopAlarmPlanner.upsert(listOf(first), other, millis(13, 1)))
+    }
+
+    @Test
+    fun `a restored stop alarm rings at its trigger, at once when the trigger passed before the stop, never after it`() {
+        val plan = alarm("11:00", millis(10, 55), millis(11, 0))
+
+        assertEquals(millis(10, 55), StopAlarmPlanner.restoreTrigger(plan, millis(10, 0)))
+        assertEquals(millis(10, 57), StopAlarmPlanner.restoreTrigger(plan, millis(10, 57)))
+        assertNull(StopAlarmPlanner.restoreTrigger(plan, millis(11, 1)))
+    }
+
+    @Test
+    fun `stored stop alarms survive the codec and damaged entries are skipped`() {
+        val plans = listOf(alarm("11:00", millis(10, 55), millis(11, 0)), alarm("12:00", millis(11, 55), millis(12, 0), station = "Orvieto"))
+
+        assertEquals(plans, StopAlarmCodec.decode(StopAlarmCodec.encode(plans)))
+        assertEquals(1, StopAlarmCodec.decode("""[{"train":"","station":"Orte","trigger":1,"arrival":2},{"train":"2153","station":"Orte","trigger":1,"arrival":2}]""").size)
+        assertTrue(StopAlarmCodec.decode("not json").isEmpty())
+    }
+
+    @Test
+    fun `a followed-trip refresh moves the alarm of a late train, not of an unchanged or unverified one`() {
+        val stored = alarm("11:00", millis(10, 55), millis(11, 0))
+        fun service(expected: String, verified: Boolean = true) = it.binario.app.data.TrainService(
+            id = "2153", number = "2153", operator = it.binario.app.data.RailOperator.TRENITALIA_REGIONALE,
+            trainCategory = it.binario.app.data.TrainCategory.REGIONALE, origin = "Firenze", destination = "Roma Termini",
+            scheduledDeparture = "09:00", expectedDeparture = "09:00", platform = null, delayMinutes = 0,
+            status = it.binario.app.data.ServiceStatus.DELAYED,
+            stops = listOf(
+                it.binario.app.data.TrainStop("Firenze", "09:00", "09:00", null, 0, completed = true),
+                it.binario.app.data.TrainStop("Orte", "11:00", expected, null, 20, completed = false)
+            ),
+            operationalStatusVerified = verified,
+            scheduledDepartureDateTime = LocalDateTime.of(2026, 11, 3, 9, 0)
+        )
+
+        val moved = StopAlarmPlanner.replanned(listOf(stored), listOf(service("11:20")), millis(10, 0), zone).single()
+        assertEquals(millis(11, 15), moved.triggerAtEpochMillis)
+        assertEquals(millis(11, 20), moved.expectedAtEpochMillis)
+        assertEquals("Orte", moved.station)
+        assertEquals("Roma Termini", moved.destination)
+        assertTrue(StopAlarmPlanner.replanned(listOf(stored), listOf(service("11:00")), millis(10, 0), zone).isEmpty())
+        assertTrue(StopAlarmPlanner.replanned(listOf(stored), listOf(service("11:20", verified = false)), millis(10, 0), zone).isEmpty())
+    }
 }

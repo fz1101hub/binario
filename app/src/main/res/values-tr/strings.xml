@@ -661,6 +661,11 @@
     <string name="stop_alarm_inexact">%1$s için alarm kuruldu, ancak tam zamanlı alarmlara izin verilmediğinden Android alarmı geç iletebilir.</string>
     <string name="commuter_alert_scheduled">Uyarı kaydedildi ve cihazda zamanlandı.</string>
     <string name="commuter_alert_scheduled_inexact">Uyarı kaydedildi ve yaklaşık modda zamanlandı: tam zamanlı alarmlara izin verilmediğinden Android uyarıyı geç iletebilir.</string>
+    <string name="stop_alarms_active_title">Etkin durak alarmları</string>
+    <string name="stop_alarm_active_row">%1$s · tren %2$s · tahmini varış %3$s</string>
+    <string name="accessibility_cancel_stop_alarm">%1$s alarmını iptal et</string>
+    <string name="exact_alarm_note">Android, Binario için tam zamanlı alarmlara izin vermiyor: durak alarmları ve düzenli yolculuk uyarıları geç gelebilir.</string>
+    <string name="exact_alarm_action">Tam zamanlı alarmlara izin ver</string>
     <string name="commuter_alert_quiet_hours_feedback">Uyarı kaydedildi ancak zamanlanmadı: uyarı zamanı 22:00–07:00 sessiz saatlerine denk geliyor.</string>
     <string name="commuter_alert_invalid_time_feedback">Uyarı kaydedildi ancak zamanlanmadı: saat geçersiz.</string>
     <string name="commuter_alert_disabled_feedback">Uyarı kaydedildi ancak kapalı.</string>

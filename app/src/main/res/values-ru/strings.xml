@@ -677,6 +677,11 @@
     <string name="stop_alarm_inexact">Будильник установлен для %1$s, но Android может сработать с задержкой, поскольку точные будильники не разрешены.</string>
     <string name="commuter_alert_scheduled">Оповещение сохранено и запланировано на устройстве.</string>
     <string name="commuter_alert_scheduled_inexact">Оповещение сохранено и запланировано в приблизительном режиме: Android может доставить его с задержкой, поскольку точные будильники не разрешены.</string>
+    <string name="stop_alarms_active_title">Активные будильники на остановку</string>
+    <string name="stop_alarm_active_row">%1$s · поезд %2$s · ожидаемое прибытие %3$s</string>
+    <string name="accessibility_cancel_stop_alarm">Отменить будильник для %1$s</string>
+    <string name="exact_alarm_note">Android не разрешает Binario точные будильники: будильники на остановку и оповещения о поездках могут приходить с задержкой.</string>
+    <string name="exact_alarm_action">Разрешить точные будильники</string>
     <string name="commuter_alert_quiet_hours_feedback">Оповещение сохранено, но не запланировано: время оповещения попадает в тихие часы 22:00–07:00.</string>
     <string name="commuter_alert_invalid_time_feedback">Оповещение сохранено, но не запланировано: неверное время.</string>
     <string name="commuter_alert_disabled_feedback">Оповещение сохранено, но выключено.</string>

@@ -646,6 +646,11 @@
     <string name="stop_alarm_inexact">已为 %1$s 设置闹钟，但由于未允许精确闹钟，Android 可能会延迟提醒。</string>
     <string name="commuter_alert_scheduled">提醒已保存，并已在设备上安排。</string>
     <string name="commuter_alert_scheduled_inexact">提醒已保存，并以非精确模式安排：由于未允许精确闹钟，Android 可能会延迟提醒。</string>
+    <string name="stop_alarms_active_title">已设置的到站闹钟</string>
+    <string name="stop_alarm_active_row">%1$s · 列车 %2$s · 预计到达 %3$s</string>
+    <string name="accessibility_cancel_stop_alarm">取消 %1$s 的闹钟</string>
+    <string name="exact_alarm_note">Android 未允许 Binario 使用精确闹钟：到站闹钟和通勤提醒可能会延迟。</string>
+    <string name="exact_alarm_action">允许精确闹钟</string>
     <string name="commuter_alert_quiet_hours_feedback">提醒已保存但未安排：提醒时间落在 22:00–07:00 静默时段内。</string>
     <string name="commuter_alert_invalid_time_feedback">提醒已保存但未安排：时间无效。</string>
     <string name="commuter_alert_disabled_feedback">提醒已保存，但已停用。</string>

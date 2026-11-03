@@ -646,6 +646,11 @@
     <string name="stop_alarm_inexact">Đã đặt báo thức cho %1$s, nhưng Android có thể báo trễ vì báo thức chính xác không được phép.</string>
     <string name="commuter_alert_scheduled">Đã lưu và lên lịch cảnh báo trên thiết bị.</string>
     <string name="commuter_alert_scheduled_inexact">Đã lưu và lên lịch cảnh báo ở chế độ gần đúng: Android có thể báo trễ vì báo thức chính xác không được phép.</string>
+    <string name="stop_alarms_active_title">Báo thức điểm dừng đang bật</string>
+    <string name="stop_alarm_active_row">%1$s · tàu %2$s · dự kiến đến %3$s</string>
+    <string name="accessibility_cancel_stop_alarm">Hủy báo thức cho %1$s</string>
+    <string name="exact_alarm_note">Android không cho phép Binario dùng báo thức chính xác: báo thức điểm dừng và cảnh báo đi làm có thể đến trễ.</string>
+    <string name="exact_alarm_action">Cho phép báo thức chính xác</string>
     <string name="commuter_alert_quiet_hours_feedback">Đã lưu cảnh báo nhưng chưa lên lịch: thời điểm báo trước rơi vào giờ yên tĩnh 22:00–07:00.</string>
     <string name="commuter_alert_invalid_time_feedback">Đã lưu cảnh báo nhưng chưa lên lịch: giờ không hợp lệ.</string>
     <string name="commuter_alert_disabled_feedback">Đã lưu cảnh báo nhưng đang tắt.</string>

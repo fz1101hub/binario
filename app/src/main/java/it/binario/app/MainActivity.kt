@@ -147,8 +147,13 @@ class MainActivity : ComponentActivity() {
         // An Activity recreated from saved state must restore its UI, not replay the
         // launch Intent and navigate away from the screen the user was using.
         if (savedInstanceState == null) receiveDeepLinkIntent(intent)
-        CommuterAlertScheduler.rescheduleAll(applicationContext)
-        it.binario.app.notifications.LiveNotificationScheduling.onAppStart(applicationContext)
+        // Only a fresh start (also after a force stop, which clears alarms and works) plans again: a rotation or
+        // another configuration change must not move a reminder that is due but not delivered yet.
+        if (savedInstanceState == null) {
+            CommuterAlertScheduler.rescheduleAll(applicationContext)
+            StopAlarmScheduler.restoreAll(applicationContext)
+            it.binario.app.notifications.LiveNotificationScheduling.onAppStart(applicationContext)
+        }
         enableEdgeToEdge()
         setContent {
             val themeSettings = remember { ThemeSettings(applicationContext) }
@@ -642,7 +647,12 @@ internal fun BinarioApp(
                     isMonitored = viewModel.isMonitoring(service),
                     onScheduleStopAlarm = scheduleStopAlarm,
                     alarmFeedback = stopAlarmFeedback,
-                    gpsAlarmPanel = { GpsArrivalAlarmPanel(gpsArrivalAlarm) },
+                    gpsAlarmPanel = {
+                        Column {
+                            ActiveStopAlarmsPanel(trainNumber = service.number)
+                            GpsArrivalAlarmPanel(gpsArrivalAlarm)
+                        }
+                    },
                     activeTrip = viewModel.activeTrip,
                     onStartActiveTrip = { viewModel.startActiveTrip(service) },
                     onAdvanceActiveTrip = viewModel::advanceActiveTrip,

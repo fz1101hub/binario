@@ -632,6 +632,11 @@
     <string name="stop_alarm_inexact">Alarm disetel untuk %1$s, tetapi Android mungkin terlambat menyampaikannya karena alarm tepat tidak diizinkan.</string>
     <string name="commuter_alert_scheduled">Peringatan disimpan dan dijadwalkan di perangkat.</string>
     <string name="commuter_alert_scheduled_inexact">Peringatan disimpan dan dijadwalkan dalam mode perkiraan: Android mungkin terlambat menyampaikannya karena alarm tepat tidak diizinkan.</string>
+    <string name="stop_alarms_active_title">Alarm pemberhentian aktif</string>
+    <string name="stop_alarm_active_row">%1$s · kereta %2$s · perkiraan tiba %3$s</string>
+    <string name="accessibility_cancel_stop_alarm">Batalkan alarm untuk %1$s</string>
+    <string name="exact_alarm_note">Android tidak mengizinkan Binario memakai alarm tepat: alarm pemberhentian dan peringatan komuter bisa terlambat.</string>
+    <string name="exact_alarm_action">Izinkan alarm tepat</string>
     <string name="commuter_alert_quiet_hours_feedback">Peringatan disimpan tetapi tidak dijadwalkan: waktunya jatuh pada jam tenang 22:00–07:00.</string>
     <string name="commuter_alert_invalid_time_feedback">Peringatan disimpan tetapi tidak dijadwalkan: waktunya tidak valid.</string>
     <string name="commuter_alert_disabled_feedback">Peringatan disimpan tetapi nonaktif.</string>

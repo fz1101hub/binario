@@ -12,6 +12,7 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import it.binario.app.R
+import it.binario.app.StopAlarmScheduler
 import it.binario.app.data.RailTime
 import it.binario.app.data.ServiceStatus
 import it.binario.app.data.TrainService
@@ -236,6 +237,8 @@ class FollowedTripWorker(appContext: Context, params: WorkerParameters) : Corout
         val now = Instant.now()
         val services = lookUp(context, trip, now)
         FollowedTripLiveCache.record(trip.id, services, now)
+        // A stop alarm on one of these trains follows its expected time: a late train does not ring early.
+        runCatching { StopAlarmScheduler.follow(context, services, now.toEpochMilli()) }
         val delay = FollowedTripStatus.arrivalDelayMinutes(trip, services)
         // The window end (and the notification's timeout) follows the delay just read, not the previous one.
         val end = FollowedTripPlanner.windowEnd(trip, delay ?: store.lastDelayMinutes)

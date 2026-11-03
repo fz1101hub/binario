@@ -662,6 +662,11 @@
     <string name="stop_alarm_inexact">Alarme definido para %1$s, mas o Android pode entregá-lo com atraso porque alarmes exatos não são permitidos.</string>
     <string name="commuter_alert_scheduled">Alerta salvo e programado no dispositivo.</string>
     <string name="commuter_alert_scheduled_inexact">Alerta salvo e programado em modo aproximado: o Android pode entregá-lo com atraso porque alarmes exatos não são permitidos.</string>
+    <string name="stop_alarms_active_title">Alarmes de parada ativos</string>
+    <string name="stop_alarm_active_row">%1$s · trem %2$s · chegada prevista %3$s</string>
+    <string name="accessibility_cancel_stop_alarm">Cancelar o alarme de %1$s</string>
+    <string name="exact_alarm_note">O Android não permite que o Binario use alarmes exatos: alarmes de parada e alertas de trajeto diário podem chegar com atraso.</string>
+    <string name="exact_alarm_action">Permitir alarmes exatos</string>
     <string name="commuter_alert_quiet_hours_feedback">Alerta salvo, mas não programado: a antecedência cai no período silencioso 22:00–07:00.</string>
     <string name="commuter_alert_invalid_time_feedback">Alerta salvo, mas não programado: o horário não é válido.</string>
     <string name="commuter_alert_disabled_feedback">Alerta salvo, mas desativado.</string>

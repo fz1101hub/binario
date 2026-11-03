@@ -676,6 +676,11 @@
     <string name="stop_alarm_inexact">Sveglia impostata per %1$s, ma Android può consegnarla in ritardo perché gli allarmi esatti non sono consentiti.</string>
     <string name="commuter_alert_scheduled">Avviso salvato e pianificato sul dispositivo.</string>
     <string name="commuter_alert_scheduled_inexact">Avviso salvato e pianificato in modalità approssimata: Android può consegnarlo in ritardo perché gli allarmi esatti non sono consentiti.</string>
+    <string name="stop_alarms_active_title">Sveglie fermata attive</string>
+    <string name="stop_alarm_active_row">%1$s · treno %2$s · arrivo previsto %3$s</string>
+    <string name="accessibility_cancel_stop_alarm">Annulla la sveglia per %1$s</string>
+    <string name="exact_alarm_note">Android non consente a Binario le sveglie esatte: sveglie fermata e avvisi pendolare possono arrivare in ritardo.</string>
+    <string name="exact_alarm_action">Consenti sveglie esatte</string>
     <string name="commuter_alert_quiet_hours_feedback">Avviso salvato ma non pianificato: l’anticipo cade nella fascia silenziosa 22:00–07:00.</string>
     <string name="commuter_alert_invalid_time_feedback">Avviso salvato ma non pianificato: l’orario non è valido.</string>
     <string name="commuter_alert_disabled_feedback">Avviso salvato ma disattivato.</string>

@@ -632,6 +632,11 @@
     <string name="stop_alarm_inexact">%1$s အတွက် နှိုးစက် သတ်မှတ်ထားသော်လည်း အချိန်တိကျ နှိုးစက်များကို ခွင့်မပြုထားသဖြင့် Android က နောက်ကျ၍ မြည်နိုင်သည်။</string>
     <string name="commuter_alert_scheduled">သတိပေးချက်ကို သိမ်းပြီး စက်ပေါ်တွင် အချိန်သတ်မှတ်ထားသည်။</string>
     <string name="commuter_alert_scheduled_inexact">သတိပေးချက်ကို သိမ်းပြီး ခန့်မှန်းအချိန်ဖြင့် သတ်မှတ်ထားသည်- အချိန်တိကျ နှိုးစက်များကို ခွင့်မပြုထားသဖြင့် Android က နောက်ကျ၍ ပို့နိုင်သည်။</string>
+    <string name="stop_alarms_active_title">ဖွင့်ထားသော ရပ်နားဘူတာ နှိုးစက်များ</string>
+    <string name="stop_alarm_active_row">%1$s · ရထား %2$s · ခန့်မှန်းရောက်ချိန် %3$s</string>
+    <string name="accessibility_cancel_stop_alarm">%1$s အတွက် နှိုးစက်ကို ပယ်ဖျက်ရန်</string>
+    <string name="exact_alarm_note">Android က Binario ကို အချိန်တိကျ နှိုးစက်များ ခွင့်မပြုထားသဖြင့် ရပ်နားဘူတာ နှိုးစက်နှင့် နေ့စဉ်ခရီး သတိပေးချက်များ နောက်ကျနိုင်သည်။</string>
+    <string name="exact_alarm_action">အချိန်တိကျ နှိုးစက်များ ခွင့်ပြုရန်</string>
     <string name="commuter_alert_quiet_hours_feedback">သတိပေးချက်ကို သိမ်းသော်လည်း အချိန် မသတ်မှတ်ရပါ- ကြိုတင်သတိပေးချိန်သည် အသံတိတ်ချိန် 22:00–07:00 အတွင်း ကျနေသည်။</string>
     <string name="commuter_alert_invalid_time_feedback">သတိပေးချက်ကို သိမ်းသော်လည်း အချိန် မသတ်မှတ်ရပါ- အချိန် မမှန်ကန်ပါ။</string>
     <string name="commuter_alert_disabled_feedback">သတိပေးချက်ကို သိမ်းသော်လည်း ပိတ်ထားသည်။</string>

@@ -3,11 +3,14 @@ package it.binario.app
 import it.binario.app.data.RailTime
 import it.binario.app.data.TrainService
 import it.binario.app.data.TrainStop
+import it.binario.app.journeys.LiveStopTimes
+import it.binario.app.notifications.TrainAlertWatch
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import kotlin.math.abs
 
 data class StopAlarmPlan(
     val trainNumber: String,
@@ -81,4 +84,52 @@ object StopAlarmPlanner {
     }
 
     private fun parse(value: String): LocalTime? = runCatching { LocalTime.parse(value, timeFormatter) }.getOrNull()
+
+    const val MAX_ALARMS = 8
+
+    /** A plan is kept this long after its expected arrival, then dropped even if it never rang. */
+    const val KEEP_AFTER_ARRIVAL_MILLIS = 2 * 60 * 60_000L
+
+    /** A fired alarm whose stored trigger is later than this was planned again meanwhile and stays active. */
+    const val REPLANNED_MARGIN_MILLIS = 60_000L
+
+    /** Below this difference a new expected time does not move the alarm. */
+    const val REPLAN_THRESHOLD_MILLIS = 60_000L
+
+    /** One stop alarm per train and stop, whatever its expected time. */
+    fun key(trainNumber: String, station: String): String = "${trainNumber.trim()}|${station.trim()}"
+
+    fun isOver(plan: StopAlarmPlan, nowEpochMillis: Long): Boolean = nowEpochMillis > plan.expectedAtEpochMillis + KEEP_AFTER_ARRIVAL_MILLIS
+
+    /** [plans] with [plan] replacing the alarm of the same train and stop, without plans that are over, soonest kept. */
+    fun upsert(plans: List<StopAlarmPlan>, plan: StopAlarmPlan, nowEpochMillis: Long): List<StopAlarmPlan> {
+        val key = key(plan.trainNumber, plan.station)
+        return (listOf(plan) + plans.filterNot { key(it.trainNumber, it.station) == key || isOver(it, nowEpochMillis) })
+            .sortedBy { it.triggerAtEpochMillis }
+            .take(MAX_ALARMS)
+    }
+
+    /**
+     * When a restored alarm rings: at its trigger while that is ahead; at once when the trigger passed (the phone was
+     * off or the app force-stopped) but the train has not reached the stop yet; never once the stop is behind.
+     */
+    fun restoreTrigger(plan: StopAlarmPlan, nowEpochMillis: Long): Long? = when {
+        plan.triggerAtEpochMillis > nowEpochMillis -> plan.triggerAtEpochMillis
+        nowEpochMillis < plan.expectedAtEpochMillis -> nowEpochMillis
+        else -> null
+    }
+
+    /**
+     * The stored alarms that [services] (the trains a followed-trip refresh read) move: a verified expected time at
+     * the stop that changes the trigger by at least [REPLAN_THRESHOLD_MILLIS]. Each keeps its train and stop.
+     */
+    fun replanned(stored: List<StopAlarmPlan>, services: List<TrainService>, nowEpochMillis: Long, zoneId: ZoneId = RailTime.defaultZone): List<StopAlarmPlan> =
+        stored.mapNotNull { alarm ->
+            val service = services.firstOrNull { TrainAlertWatch.key(it.number) == TrainAlertWatch.key(alarm.trainNumber) } ?: return@mapNotNull null
+            val stop = service.stops.getOrNull(LiveStopTimes.stopNamed(service.stops, alarm.station)) ?: return@mapNotNull null
+            if (stop.completed || !LiveStopTimes.isVerified(service, stop)) return@mapNotNull null
+            val updated = plan(service, stop, nowEpochMillis, zoneId) ?: return@mapNotNull null
+            if (abs(updated.triggerAtEpochMillis - alarm.triggerAtEpochMillis) < REPLAN_THRESHOLD_MILLIS) return@mapNotNull null
+            updated.copy(trainNumber = alarm.trainNumber, station = alarm.station, destination = alarm.destination)
+        }
 }

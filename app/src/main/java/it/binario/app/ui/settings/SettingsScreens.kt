@@ -71,9 +71,11 @@ import androidx.core.content.ContextCompat
 import it.binario.app.AlertRepeat
 import it.binario.app.AppThemeMode
 import it.binario.app.BuildConfig
+import it.binario.app.ActiveStopAlarmsPanel
 import it.binario.app.CommuterAlert
 import it.binario.app.CommuterAlertScheduleResult
 import it.binario.app.CommuterAlertScheduler
+import it.binario.app.ExactAlarmAccessNote
 import it.binario.app.IntegrationSettings
 import it.binario.app.LinkifiedText
 import it.binario.app.LocalDataBackupCodec
@@ -302,7 +304,9 @@ private fun AlertsSettings(viewModel: TrainViewModel, gpsArrivalAlarm: GpsArriva
     Column(Modifier.padding(horizontal = 20.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         SectionHeading(stringResource(R.string.for_you_alarms))
         Text(stringResource(R.string.for_you_stop_alarm_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        ExactAlarmAccessNote()
     }
+    ActiveStopAlarmsPanel()
     GpsArrivalAlarmPanel(gpsArrivalAlarm)
     CommuterAlertsPanel(
         alerts = viewModel.commuterAlerts,

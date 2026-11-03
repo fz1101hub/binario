@@ -172,8 +172,9 @@ internal class GpsArrivalAlarmFlow(
         }
         // The persisted target stays until the service runs again (it then rewrites it), so a
         // refused permission or a disabled location keeps the offer to re-enable visible.
-        // Same request code as the original alarm: scheduling again replaces it if it survived.
-        if (target.timeAlarmTriggerEpochMillis > System.currentTimeMillis()) StopAlarmScheduler.schedule(context, target.timeAlarmPlan())
+        // A stored stop alarm is restored at app start and may follow the train: only a missing one is set again.
+        val stored = StopAlarmScheduler.active(context).any { it.trainNumber == target.trainNumber && it.station == target.stopName }
+        if (!stored && target.timeAlarmTriggerEpochMillis > System.currentTimeMillis()) StopAlarmScheduler.schedule(context, target.timeAlarmPlan())
         pendingState.value = GpsArrivalAlarmTargetCodec.encode(target)
         continueWithLocation(target)
     }

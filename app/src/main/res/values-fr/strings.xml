@@ -676,6 +676,11 @@
     <string name="stop_alarm_inexact">Alarme réglée à %1$s, mais Android peut la déclencher en retard car les alarmes exactes ne sont pas autorisées.</string>
     <string name="commuter_alert_scheduled">Alerte enregistrée et planifiée sur l’appareil.</string>
     <string name="commuter_alert_scheduled_inexact">Alerte enregistrée et planifiée en mode approximatif : Android peut la déclencher en retard car les alarmes exactes ne sont pas autorisées.</string>
+    <string name="stop_alarms_active_title">Alarmes d’arrêt actives</string>
+    <string name="stop_alarm_active_row">%1$s · train %2$s · arrivée prévue %3$s</string>
+    <string name="accessibility_cancel_stop_alarm">Annuler l’alarme pour %1$s</string>
+    <string name="exact_alarm_note">Android n’autorise pas Binario à régler des alarmes exactes : les alarmes d’arrêt et les alertes de navetteur peuvent arriver en retard.</string>
+    <string name="exact_alarm_action">Autoriser les alarmes exactes</string>
     <string name="commuter_alert_quiet_hours_feedback">Alerte enregistrée mais non planifiée : l’anticipation tombe dans la plage silencieuse 22:00–07:00.</string>
     <string name="commuter_alert_invalid_time_feedback">Alerte enregistrée mais non planifiée : l’heure n’est pas valide.</string>
     <string name="commuter_alert_disabled_feedback">Alerte enregistrée mais désactivée.</string>

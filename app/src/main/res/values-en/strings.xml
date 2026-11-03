@@ -661,6 +661,11 @@
     <string name="stop_alarm_inexact">Alarm set for %1$s, but Android may deliver it late because exact alarms are not allowed.</string>
     <string name="commuter_alert_scheduled">Alert saved and scheduled on the device.</string>
     <string name="commuter_alert_scheduled_inexact">Alert saved and scheduled in inexact mode: Android may deliver it late because exact alarms are not allowed.</string>
+    <string name="stop_alarms_active_title">Active stop alarms</string>
+    <string name="stop_alarm_active_row">%1$s · train %2$s · expected arrival %3$s</string>
+    <string name="accessibility_cancel_stop_alarm">Cancel the alarm for %1$s</string>
+    <string name="exact_alarm_note">Android does not allow Binario to set exact alarms: stop alarms and commuter alerts may arrive late.</string>
+    <string name="exact_alarm_action">Allow exact alarms</string>
     <string name="commuter_alert_quiet_hours_feedback">Alert saved but not scheduled: the lead time falls in the quiet period 22:00–07:00.</string>
     <string name="commuter_alert_invalid_time_feedback">Alert saved but not scheduled: the time is invalid.</string>
     <string name="commuter_alert_disabled_feedback">Alert saved but disabled.</string>

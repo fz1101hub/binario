@@ -1097,8 +1097,8 @@ class TrainViewModel @JvmOverloads constructor(
             favouriteStations = stationPreferences.favourites(stations)
             replaceServiceMonitors(backup.monitoredServices)
             replaceStationMonitors(backup.stationMonitors)
-            commuterAlerts = commuterAlertStore.replace(backup.commuterAlerts)
-            CommuterAlertScheduler.rescheduleAll(getApplication())
+            // The alarms of the reminders the file does not contain are cancelled with them.
+            commuterAlerts = CommuterAlertScheduler.replaceAll(getApplication(), commuterAlertStore, backup.commuterAlerts)
             updateMobilityPreferences(backup.mobilityPreferences)
             backup.punctualityHistory?.let { punctualityHistory = punctualityStore.replace(it) }
             backup.savedTimetables?.let { SavedTimetableStore.replace(getApplication(), it) }

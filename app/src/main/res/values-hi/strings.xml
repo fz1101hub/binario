@@ -647,6 +647,11 @@
     <string name="stop_alarm_inexact">%1$s के लिए अलार्म सेट, लेकिन सटीक अलार्म की अनुमति न होने से Android इसे देर से दे सकता है।</string>
     <string name="commuter_alert_scheduled">अलर्ट सहेजा गया और डिवाइस पर शेड्यूल किया गया।</string>
     <string name="commuter_alert_scheduled_inexact">अलर्ट सहेजा गया और अनुमानित मोड में शेड्यूल किया गया: सटीक अलार्म की अनुमति न होने से Android इसे देर से दे सकता है।</string>
+    <string name="stop_alarms_active_title">सक्रिय ठहराव अलार्म</string>
+    <string name="stop_alarm_active_row">%1$s · ट्रेन %2$s · अनुमानित आगमन %3$s</string>
+    <string name="accessibility_cancel_stop_alarm">%1$s का अलार्म रद्द करें</string>
+    <string name="exact_alarm_note">Android, Binario को सटीक अलार्म की अनुमति नहीं देता: ठहराव अलार्म और दैनिक यात्री अलर्ट देर से आ सकते हैं।</string>
+    <string name="exact_alarm_action">सटीक अलार्म की अनुमति दें</string>
     <string name="commuter_alert_quiet_hours_feedback">अलर्ट सहेजा गया पर शेड्यूल नहीं हुआ: उसका समय शांत अवधि 22:00–07:00 में आता है।</string>
     <string name="commuter_alert_invalid_time_feedback">अलर्ट सहेजा गया पर शेड्यूल नहीं हुआ: समय मान्य नहीं है।</string>
     <string name="commuter_alert_disabled_feedback">अलर्ट सहेजा गया पर बंद है।</string>

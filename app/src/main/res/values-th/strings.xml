@@ -646,6 +646,11 @@
     <string name="stop_alarm_inexact">ตั้งปลุกสำหรับ %1$s แล้ว แต่ Android อาจแจ้งช้าเพราะไม่อนุญาตการปลุกแบบตรงเวลา</string>
     <string name="commuter_alert_scheduled">บันทึกและตั้งเวลาการแจ้งเตือนในอุปกรณ์แล้ว</string>
     <string name="commuter_alert_scheduled_inexact">บันทึกและตั้งเวลาการแจ้งเตือนแบบโดยประมาณแล้ว Android อาจแจ้งช้าเพราะไม่อนุญาตการปลุกแบบตรงเวลา</string>
+    <string name="stop_alarms_active_title">การปลุกที่จุดจอดที่ตั้งไว้</string>
+    <string name="stop_alarm_active_row">%1$s · รถไฟ %2$s · คาดว่าถึง %3$s</string>
+    <string name="accessibility_cancel_stop_alarm">ยกเลิกการปลุกสำหรับ %1$s</string>
+    <string name="exact_alarm_note">Android ไม่อนุญาตให้ Binario ตั้งปลุกแบบตรงเวลา การปลุกที่จุดจอดและการแจ้งเตือนเดินทางประจำจึงอาจมาช้า</string>
+    <string name="exact_alarm_action">อนุญาตการปลุกแบบตรงเวลา</string>
     <string name="commuter_alert_quiet_hours_feedback">บันทึกการแจ้งเตือนแล้วแต่ยังไม่ได้ตั้งเวลา เวลาแจ้งล่วงหน้าอยู่ในช่วงเวลาเงียบ 22:00–07:00</string>
     <string name="commuter_alert_invalid_time_feedback">บันทึกการแจ้งเตือนแล้วแต่ยังไม่ได้ตั้งเวลา เวลาไม่ถูกต้อง</string>
     <string name="commuter_alert_disabled_feedback">บันทึกการแจ้งเตือนแล้วแต่ปิดอยู่</string>
