@@ -424,13 +424,24 @@ def valid_record(record: object, day: str) -> bool:
             or stop[2] not in (0, 1) or isinstance(stop[2], bool)
         ):
             return False
+    if len({stop[0] for stop in record["s"]}) != len(record["s"]):
+        return False
     return record["st"] == "ok" or not record["s"]
+
+
+def _iso_day(value: object) -> bool:
+    if not isinstance(value, str) or not re.fullmatch(r"\d{4}-\d{2}-\d{2}", value):
+        return False
+    try:
+        date.fromisoformat(value)
+    except ValueError:
+        return False
+    return True
 
 
 def valid_pending(entry: object) -> bool:
     return (
-        isinstance(entry, dict) and set(entry) == {"d", "o", "n", "c", "a", "k"}
-        and isinstance(entry["d"], str) and re.fullmatch(r"\d{4}-\d{2}-\d{2}", entry["d"]) is not None
+        isinstance(entry, dict) and set(entry) == {"d", "o", "n", "c", "a", "k"} and _iso_day(entry["d"])
         and isinstance(entry["o"], str) and CODE.fullmatch(entry["o"]) is not None
         and isinstance(entry["n"], str) and NUMBER.fullmatch(entry["n"]) is not None
         and isinstance(entry["c"], str) and CATEGORY.fullmatch(entry["c"]) is not None

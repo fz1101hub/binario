@@ -339,14 +339,20 @@ class StateTest(Base):
             collector.encode(dict(self.record(number="2003"), d="2026-11-05")),  # wrong file
             collector.encode(dict(self.record(number="2005"), s=[["S08409", "3", 0]])),
             collector.encode(dict(self.record(number="2007"), extra=1)),
+            collector.encode(self.record(number="2009", s=[["S08409", 3, 0], ["S08409", 4, 0]])),
             "{not json", '{"d": NaN}',
         ]
         (directory / "obs-2026-11-04.jsonl.gz").write_bytes(gzip.compress("\n".join(lines).encode()))
         (directory / "pending.jsonl.gz").write_bytes(b"not gzip")
+        good_pending = {"d": "2026-11-04", "o": "S08409", "n": "2003", "c": "REG", "a": 1, "k": 0}
+        self.assertTrue(collector.valid_pending(good_pending))
+        for change in ({"d": "2026-13-45"}, {"k": True}, {"o": "../x"}, {"n": "0123"}, {"extra": 1}):
+            with self.subTest(change=change):
+                self.assertFalse(collector.valid_pending(dict(good_pending, **change)))
         counters: dict[str, int] = {}
         records = collector.load_observations(directory, "2026-11-04", counters)
         self.assertEqual([("S08235", "2001")], list(records))
-        self.assertEqual(5, counters["state_invalid_lines"])
+        self.assertEqual(6, counters["state_invalid_lines"])
         state = collector.State(directory)
         self.assertEqual({}, state.pending)
         self.assertEqual(1, state.counters["state_unreadable_files"])
