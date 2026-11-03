@@ -233,6 +233,7 @@ class StationWidgetProvider : AppWidgetProvider() {
 internal object StationWidgetRefresher {
     /** Refreshes the station widgets in [widgetIds], all of them when null. False when a retry may help. */
     suspend fun refresh(context: Context, widgetIds: Set<Int>?): Boolean {
+        if (widgetIds == null) WidgetInstances.pruneOrphans(context)
         val widgets = StationWidgetConfigurationStore(context).all().filter { (widgetId, _) -> widgetIds == null || widgetId in widgetIds }
         if (widgets.isEmpty()) return true
         val service = StationBoardAggregateService(BinarioDataGraph.stationBoardDisplayProviders())

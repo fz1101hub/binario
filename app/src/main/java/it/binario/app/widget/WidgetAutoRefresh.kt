@@ -1,5 +1,7 @@
 package it.binario.app.widget
 
+import android.appwidget.AppWidgetManager
+import android.content.ComponentName
 import android.content.Context
 import androidx.core.content.edit
 import androidx.work.Constraints
@@ -93,9 +95,61 @@ object WidgetAutoRefreshStore {
     private fun key(kind: WidgetKind, widgetId: Int) = "${kind.name.lowercase()}_$widgetId"
 }
 
+/**
+ * The widget instances the launcher still shows. A configuration whose widget is gone (removed while the app could
+ * not receive onDeleted, a launcher reset) is dropped, so that no refresh is planned or made for it.
+ */
+internal object WidgetInstances {
+    fun orphans(stored: Collection<Int>, present: IntArray): Set<Int> = stored.toSet() - present.toSet()
+
+    /** Removes the records of widgets the launcher no longer has; nothing is removed when Android cannot tell. */
+    fun pruneOrphans(context: Context) {
+        val manager = runCatching { AppWidgetManager.getInstance(context) }.getOrNull() ?: return
+        fun present(provider: Class<*>): IntArray? = runCatching { manager.getAppWidgetIds(ComponentName(context, provider)) }.getOrNull()
+        present(RouteWidgetProvider::class.java)?.let { ids ->
+            val store = WidgetConfigurationStore(context)
+            orphans(store.all().map { it.first }, ids).forEach { widgetId ->
+                store.remove(widgetId)
+                WidgetStateStore.clear(context, widgetId)
+                WidgetAutoRefreshStore.clear(context, WidgetKind.ROUTE, widgetId)
+            }
+        }
+        present(StationWidgetProvider::class.java)?.let { ids ->
+            val store = StationWidgetConfigurationStore(context)
+            orphans(store.all().map { it.first }, ids).forEach { widgetId ->
+                store.remove(widgetId)
+                StationWidgetStateStore.clear(context, widgetId)
+                WidgetAutoRefreshStore.clear(context, WidgetKind.STATION, widgetId)
+            }
+        }
+        present(TrainsWidgetProvider::class.java)?.let { ids ->
+            val store = TrainsWidgetConfigurationStore(context)
+            orphans(store.all().map { it.first }, ids).forEach { widgetId ->
+                store.remove(widgetId)
+                WidgetAutoRefreshStore.clear(context, WidgetKind.TRAINS, widgetId)
+            }
+        }
+    }
+}
+
 /** Reads the three widget configuration stores into scheduler candidates. */
 internal object WidgetAutoRefreshRegistry {
+    /**
+     * A route widget the scheduler may refresh: one without stations (a configuration of the first versions that no
+     * saved route resolves) is never loaded by the refresher, so planning it would re-run the scheduler every minute.
+     */
+    fun routeCandidate(
+        widgetId: Int,
+        configuration: WidgetDisplayConfiguration,
+        lastRefreshEpochMillis: Long,
+        nextDirectionBoundary: ZonedDateTime?,
+        pendingDirection: Direction?
+    ): AutoRefreshCandidate? = configuration.routeTarget()?.let {
+        AutoRefreshCandidate(WidgetKind.ROUTE, widgetId, configuration.settings.autoRefresh, lastRefreshEpochMillis, nextDirectionBoundary, pendingDirection)
+    }
+
     fun candidates(context: Context, now: ZonedDateTime): List<AutoRefreshCandidate> = buildList {
+        WidgetInstances.pruneOrphans(context)
         WidgetConfigurationStore(context).all().forEach { (widgetId, configuration) ->
             val settings = configuration.settings
             val state = WidgetStateStore.readMetadata(context, widgetId)
@@ -104,16 +158,13 @@ internal object WidgetAutoRefreshRegistry {
                 val effective = WidgetStateStore.effectiveDirection(context, widgetId, settings, now)
                 effective.takeIf { direction -> direction != (WidgetStateStore.displayedDirection(context, widgetId) ?: Direction.OUTBOUND) }
             }
-            add(
-                AutoRefreshCandidate(
-                    kind = WidgetKind.ROUTE,
-                    widgetId = widgetId,
-                    settings = settings.autoRefresh,
-                    lastRefreshEpochMillis = maxOf(state, WidgetAutoRefreshStore.lastAttempt(context, WidgetKind.ROUTE, widgetId)),
-                    nextDirectionBoundary = returnFrom?.let { WidgetDirectionSchedule.nextBoundary(it, now) },
-                    pendingDirection = pending
-                )
-            )
+            routeCandidate(
+                widgetId = widgetId,
+                configuration = configuration,
+                lastRefreshEpochMillis = maxOf(state, WidgetAutoRefreshStore.lastAttempt(context, WidgetKind.ROUTE, widgetId)),
+                nextDirectionBoundary = returnFrom?.let { WidgetDirectionSchedule.nextBoundary(it, now) },
+                pendingDirection = pending
+            )?.let(::add)
         }
         StationWidgetConfigurationStore(context).all().forEach { (widgetId, configuration) ->
             val retrieved = StationWidgetStateStore.retrievedAt(context, widgetId)

@@ -248,6 +248,8 @@ class TrainViewModel @JvmOverloads constructor(
                     stationAutocomplete = StationAutocompleteEngine(stations)
                     stationCanonicalizer = StationCanonicalizer(stations)
                     savedRoutes = pinnedFirst(routeStore.routes(stations).map(::canonicalRoute))
+                    // Route widgets of the first versions saved only the route id: they take its stations now.
+                    RouteWidgetProvider.migrateLegacyConfigurations(getApplication(), savedRoutes)
                     recentRoutes = routeStore.recentRoutes(stations).map { recent ->
                         RecentRoute(canonicalStation(recent.origin), canonicalStation(recent.destination))
                     }

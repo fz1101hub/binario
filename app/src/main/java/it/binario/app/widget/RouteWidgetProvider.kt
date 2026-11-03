@@ -130,6 +130,21 @@ class RouteWidgetProvider : AppWidgetProvider() {
             }
         }
 
+        /**
+         * Gives the configurations of the first versions (a saved route id without stations) the stations of that
+         * saved route, so that the widget loads again; the others stay as they are until reconfigured.
+         */
+        fun migrateLegacyConfigurations(context: Context, savedRoutes: List<SavedRoute>) {
+            val store = WidgetConfigurationStore(context)
+            val migrated = store.all().mapNotNull { (widgetId, configuration) ->
+                WidgetConfigurationMigration.resolve(configuration, savedRoutes)?.let { widgetId to it }
+            }
+            if (migrated.isEmpty()) return
+            migrated.forEach { (widgetId, configuration) -> store.save(widgetId, configuration) }
+            refreshAll(context)
+            WidgetAutoRefreshScheduler.reschedule(context)
+        }
+
         fun markMatchingRouteDirectionUnavailable(context: Context, route: SavedRoute, direction: Direction, failure: UiMessage) {
             WidgetConfigurationStore(context).all().forEach { (widgetId, configuration) ->
                 if (configuration.matchesRouteDirection(route, direction, WidgetStateStore.displayedDirection(context, widgetId))) {
@@ -154,7 +169,8 @@ class RouteWidgetProvider : AppWidgetProvider() {
             views.setViewVisibility(R.id.widget_actions_container, if (mode == WidgetLayoutMode.COMPACT) View.GONE else View.VISIBLE)
             views.setViewVisibility(R.id.widget_empty, View.GONE)
             val configuration = WidgetConfigurationStore(context).read(widgetId)
-            if (configuration == null) {
+            // A configuration of the first versions that no saved route resolves cannot load: it asks to be set up again.
+            if (configuration == null || configuration.routeTarget() == null) {
                 renderConfigurationRequired(context, manager, widgetId, views)
                 return
             }
@@ -405,6 +421,7 @@ internal object RouteWidgetRefresher {
     /** Refreshes the route widgets in [widgetIds], all of them when null. True when every request succeeded. */
     suspend fun refresh(context: Context, widgetIds: Set<Int>?): Boolean {
         val now = ZonedDateTime.now(RailTime.defaultZone)
+        if (widgetIds == null) WidgetInstances.pruneOrphans(context)
         val widgets = WidgetConfigurationStore(context).all()
             .filter { (widgetId, _) -> widgetIds == null || widgetId in widgetIds }
             .mapNotNull { (widgetId, configuration) -> configuration.routeTarget()?.let { Triple(widgetId, configuration, it) } }
