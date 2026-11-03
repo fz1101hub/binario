@@ -229,8 +229,13 @@ data class JourneyOptionRow(
     /** The kinds of service the option uses ([TravelMode]), for the preferred kinds. */
     val modes: Set<TravelMode> = emptySet(),
     /** The last departure of the static timetable's service day for this origin and destination ("Ultimo di oggi"). */
-    val lastOfDay: Boolean = false
+    val lastOfDay: Boolean = false,
+    /** The longest scheduled wait at one of its changes, in minutes (0 without changes): long ones are named on the card. */
+    val longestWaitMinutes: Long = 0
 ) {
+    /** A wait the result card names ("Attesa di 278 minuti"): the planner offers it only when nothing spares it. */
+    val hasLongWait: Boolean get() = longestWaitMinutes >= JourneyResultsPresenter.LONG_WAIT_MINUTES
+
     /** Some leg is a bus (scheduled coach or replacement): for a bus icon on the row or a "no bus" filter. */
     val hasBusLeg: Boolean get() = legs.any(JourneyLegRow::isBus)
 }
@@ -268,6 +273,9 @@ data class JourneyResultsPresentation(
 /** Plain, resource-free presentation of a [JourneySearchResult] for the results screen. */
 object JourneyResultsPresenter {
     private val timeFormat = DateTimeFormatter.ofPattern("HH:mm", Locale.ROOT)
+
+    /** From this wait at a change on, the card says how long it is (the offline planner's long wait, two hours). */
+    const val LONG_WAIT_MINUTES = 120L
 
     fun present(
         result: JourneySearchResult,
@@ -415,7 +423,8 @@ object JourneyResultsPresenter {
             serviceDate = vehicles.firstOrNull()?.serviceDate,
             modes = vehicles.mapNotNullTo(linkedSetOf()) { leg ->
                 TravelMode.of(leg.mode, leg.serviceKind, leg.operatorName)
-            } + vehicles.flatMap { leg -> leg.continuations.mapNotNull { TravelMode.of(leg.mode, it.serviceKind, it.operatorName) } }
+            } + vehicles.flatMap { leg -> leg.continuations.mapNotNull { TravelMode.of(leg.mode, it.serviceKind, it.operatorName) } },
+            longestWaitMinutes = transfers.maxOfOrNull { it.waitMinutes }?.coerceAtLeast(0L) ?: 0L
         )
     }
 

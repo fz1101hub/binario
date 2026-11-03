@@ -10,6 +10,7 @@ import it.binario.app.data.repository.TrainNumberSearchService
 import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.ZoneId
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
@@ -45,16 +46,59 @@ object JourneyLiveCandidates {
         .distinct()
         .take(MAX_TRAINS)
 
-    /** The live data of [leg] among the runs found for its number, or null when none is its run or none is live. */
+    /**
+     * Runs of one number further apart than this at the boarding stop are two runs: the number search also returns
+     * yesterday's run of a night train, still running today, which is 24 hours from the leg.
+     */
+    val SAME_RUN_TOLERANCE: Duration = Duration.ofHours(2)
+
+    /**
+     * The live data of [leg] among the runs found for its number, or null when none is its run or none is live. The run
+     * is one that stops at both ends in order and, when its date is known, is scheduled at the boarding stop near the
+     * leg's departure (today's run, not yesterday's still on its way); of those, one with verified live data first,
+     * then the nearest in time. A single run whose stops cannot be matched is taken only when it starts on the leg's
+     * service day or the day after.
+     */
     fun liveFor(leg: JourneyLeg, services: List<TrainService>, zone: ZoneId = RailTime.defaultZone): JourneyLegLive? {
         val from = leg.originLabel ?: leg.origin.value
         val to = leg.destinationLabel ?: leg.destination.value
-        val run = services.firstOrNull { service ->
+        val departure = leg.scheduledDeparture.toInstant()
+        class Candidate(val service: TrainService, val board: Int, val offset: Duration?) {
+            val otherRun: Boolean get() = offset != null && offset.abs() > SAME_RUN_TOLERANCE
+        }
+        fun candidate(service: TrainService): Candidate {
             val board = LiveStopTimes.stopNamed(service.stops, from)
-            val alight = LiveStopTimes.stopNamed(service.stops, to)
-            board >= 0 && alight > board
-        } ?: services.singleOrNull() ?: return null
-        return LiveStopTimes.live(run, from, to, leg.scheduledDeparture.toInstant(), leg.scheduledArrival.toInstant(), zone)
+            val offset = if (board < 0) null else boardingTime(service, board, zone)?.let { Duration.between(departure, it) }
+            return Candidate(service, board, offset)
+        }
+        val runs = services.map(::candidate).filter { it.board >= 0 && LiveStopTimes.stopNamed(it.service.stops, to) > it.board && !it.otherRun }
+        val run = runs.minWithOrNull(
+            compareByDescending<Candidate> { LiveStopTimes.isVerified(it.service, it.service.stops.getOrNull(it.board)) }
+                .thenBy { it.offset == null }
+                .thenBy { it.offset?.abs() ?: Duration.ZERO }
+        )?.service ?: services.singleOrNull()?.takeIf { single ->
+            !candidate(single).otherRun && startsOnServiceDay(single, leg)
+        } ?: return null
+        return LiveStopTimes.live(run, from, to, departure, leg.scheduledArrival.toInstant(), zone)
+    }
+
+    /**
+     * The scheduled time of [service] at its stop [board]: the stop's clock time on the run's start date, or the day
+     * after for a stop past the midnight the run crosses. Null when the run has no date or the stop no readable time.
+     */
+    private fun boardingTime(service: TrainService, board: Int, zone: ZoneId): Instant? {
+        val start = service.scheduledDepartureDateTime ?: return null
+        val time = LiveStopTimes.parse(service.stops[board].scheduled) ?: return null
+        var at = LocalDateTime.of(start.toLocalDate(), time)
+        if (at.isBefore(start)) at = at.plusDays(1)
+        return at.atZone(zone).toInstant()
+    }
+
+    /** The run starts on the leg's service day (or just after its midnight); true when either date is unknown. */
+    private fun startsOnServiceDay(service: TrainService, leg: JourneyLeg): Boolean {
+        val start = service.scheduledDepartureDateTime?.toLocalDate() ?: return true
+        val day = leg.serviceDate ?: return true
+        return !start.isBefore(day) && !start.isAfter(day.plusDays(1))
     }
 }
 

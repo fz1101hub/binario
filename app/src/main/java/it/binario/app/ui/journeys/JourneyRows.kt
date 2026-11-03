@@ -23,6 +23,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -180,6 +181,8 @@ internal fun JourneyResultCard(
     val source = journeySourceLabel(row)
     val trains = journeyTrainsLabel(row)
     val nextDay = if (row.arrivalDayOffset > 0) stringResource(R.string.journey_arrival_next_day) else null
+    // A change with hours of waiting, offered only when no other journey spares it: said on the card, not only in the detail.
+    val longWait = if (row.hasLongWait) row.longestWaitMinutes.toInt().let { pluralStringResource(R.plurals.journey_transfer_wait, it, it) } else null
     val description = listOfNotNull(
         stringResource(
             R.string.journey_option_accessibility,
@@ -187,6 +190,7 @@ internal fun JourneyResultCard(
         ),
         nextDay,
         trains,
+        longWait,
         source,
         transferRiskLabel(row.transferRisk, rowLevel = true),
         if (row.wheelchairAccessible) stringResource(R.string.wheelchair_journey) else null,
@@ -229,6 +233,7 @@ internal fun JourneyResultCard(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 letterSpacing = 0.5.sp
             )
+            longWait?.let { Text(it, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.error) }
             Text(source, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             TransferRiskChip(row.transferRisk, rowLevel = true)
             if (row.lastOfDay || row.wheelchairAccessible) {

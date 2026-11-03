@@ -96,6 +96,22 @@ class ResultsMergeTest {
     }
 
     @Test
+    fun `a direct journey that walks to the same train first is shown once as the train`() {
+        // Another pack's name for the departure station is a few minutes' walk away: the option leaves three minutes
+        // before its train, which is the direct train of the list.
+        val walk = leg(null, "Roma Termini", "Roma Termini Est", at("17:37"), at("17:40")).copy(mode = LegMode.WALK, lineLabel = null)
+        val ride = leg("9558", "Roma Termini Est", "Torino Porta Nuova", at("17:40"), at("22:05"))
+        val walking = journey("j6", walk, ride).copy(changes = 0, changesLabel = JourneyChangesLabel.Direct, transfers = emptyList(), walkMinutes = 3)
+        val direct = ResultsMerge.entries(listOf(fr9558), emptyList(), day).single() as ResultEntry.Train
+        assertTrue(ResultsMerge.sameTrain(direct, walking))
+        assertEquals(listOf("train-train:9558"), ResultsMerge.entries(listOf(fr9558), listOf(walking), day).map { it.key })
+        // A long walk to it is another way to travel, and another train at that minute is another train.
+        assertFalse(ResultsMerge.sameTrain(direct, walking.copy(walkMinutes = 15)))
+        assertFalse(ResultsMerge.sameTrain(direct, journey("j7", walk, leg("9560", "Roma Termini Est", "Torino Porta Nuova", at("17:40"), at("22:05")))
+            .copy(changes = 0, changesLabel = JourneyChangesLabel.Direct, transfers = emptyList(), walkMinutes = 3)))
+    }
+
+    @Test
     fun `the four chips follow the presenter rules and count their options`() {
         val merged = ResultsMerge.entries(listOf(fr9558, ic597), listOf(oneChange, twoChanges), day)
         assertEquals(listOf("train-train:9558", "train-train:597"), ResultsMerge.apply(merged, JourneyResultsFilter.DIRECT).map { it.key })

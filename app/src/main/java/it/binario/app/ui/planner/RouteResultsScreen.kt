@@ -60,7 +60,6 @@ import it.binario.app.journeys.JourneyEmptyReason
 import it.binario.app.journeys.JourneyOptionRow
 import it.binario.app.journeys.JourneyResultsFilter
 import it.binario.app.journeys.JourneyResultsPresentation
-import it.binario.app.journeys.JourneyResultsPresenter
 import it.binario.app.journeys.JourneySearchUiState
 import it.binario.app.localized
 import it.binario.app.maps.OpenMapStationIndex
@@ -133,8 +132,10 @@ internal fun RouteResultsScreen(
     // "Ultimo di oggi" and "primo domani" only for a search of today.
     val today = LocalDate.now(RailTime.defaultZone)
     val markedDay = query.serviceDate.takeIf { it == today }
-    // Always the unfiltered options: the chips below filter the merged list.
-    val presentation = remember(journeyResult, markedDay) { journeyResult?.let { JourneyResultsPresenter.present(it, serviceDate = markedDay) } }
+    // Always the unfiltered options: the chips below filter the merged list. The live check of the changes, when it
+    // answers, marks the cards too ("Coincidenza a rischio"), not only the detail.
+    val liveLegs = journeys.liveLegs
+    val presentation = remember(journeyResult, markedDay, liveLegs) { journeyResult?.let { ResultsMerge.journeys(it, markedDay, liveLegs) } }
     val journeyRows = presentation?.rows.orEmpty()
     val allServices = viewModel.currentServices()
     val allReturnServices = viewModel.currentReturnServices()
