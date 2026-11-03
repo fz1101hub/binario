@@ -221,6 +221,78 @@ class VerifyCiPinningTest(unittest.TestCase):
                 problems = policy.workflow_problems(workflow_path, mutated, LOCK)
                 self.assertTrue(any(expected in problem for problem in problems), problems)
 
+    def test_release_freshness_gate_runs_only_on_release_paths(self) -> None:
+        # Audit A7-06 / P2: data age must not hide tests, lint and builds; release paths keep the 30-day gate.
+        condition = "        if: ${{ github.event_name == 'pull_request' && startsWith(github.base_ref, 'stabilization/') }}\n"
+        android = ROOT / ".github/workflows/android-ci.yml"
+        text = android.read_text(encoding="utf-8")
+        gate = "      - name: Gate embedded GTFS freshness for at least 30 days\n"
+        ungated = text.replace(gate + condition, gate, 1)
+        self.assertNotEqual(text, ungated)
+        self.assertTrue(any("solo per le PR di stabilizzazione" in problem for problem in policy.workflow_problems(android, ungated, LOCK)))
+        release_gate = gate + "        run: python3 tools/verify_embedded_assets.py --min-valid-days 30\n\n      - name: Decode"
+        without_release_gate = text.replace(release_gate, "      - name: Decode", 1)
+        self.assertNotEqual(text, without_release_gate)
+        problems = policy.workflow_problems(android, without_release_gate, LOCK)
+        self.assertTrue(any("release-sign: gate di freshness GTFS a 30 giorni assente" in problem for problem in problems), problems)
+        gtfs = ROOT / ".github/workflows/gtfs-assets-ci.yml"
+        text = gtfs.read_text(encoding="utf-8")
+        early = text.replace(
+            "        run: python3 -I tools/acquire_transit_sources.py --print-dir",
+            "        run: python3 tools/build_gtfs_packs.py --check --min-valid-days 30 && python3 -I tools/acquire_transit_sources.py --print-dir",
+            1,
+        )
+        self.assertNotEqual(text, early)
+        self.assertTrue(any("fuori dai percorsi di release" in problem for problem in policy.workflow_problems(gtfs, early, LOCK)))
+
+    def test_permissions_run_expressions_credentials_and_push_policy_are_gated(self) -> None:
+        # Audit A7-10 / proposal P4.
+        gtfs = ROOT / ".github/workflows/gtfs-assets-ci.yml"
+        live = ROOT / ".github/workflows/live-sources.yml"
+        android = ROOT / ".github/workflows/android-ci.yml"
+        texts = {path: path.read_text(encoding="utf-8") for path in (gtfs, live, android)}
+        for path, text in texts.items():
+            self.assertEqual([], policy.workflow_problems(path, text, LOCK), path.name)
+        top = "permissions:\n  contents: read\n"
+        discovery = '          python3 -I tools/transit_source_discovery.py --out "$RUNNER_TEMP/discovery" --tokens-env DISCOVERY_TOKENS\n'
+        core_checkout = "  core-packs:\n"
+        mutations = [
+            (gtfs, "permissions di primo livello assente", texts[gtfs].replace(top, "", 1)),
+            (gtfs, "mappa di scope", texts[gtfs].replace(top, "permissions: write-all\n", 1)),
+            (gtfs, "permesso contents: 'write' non revisionato",
+             texts[gtfs].replace("    timeout-minutes: 60\n", "    timeout-minutes: 60\n    permissions:\n      contents: write\n", 1)),
+            (gtfs, "interpola 'inputs.transit_discovery'",
+             texts[gtfs].replace(discovery, discovery + '          echo "${{ inputs.transit_discovery }}"\n', 1)),
+            (gtfs, "interpola 'github.event.pull_request.title'",
+             texts[gtfs].replace(discovery, discovery + '          # ${{ github.event.pull_request.title }}\n', 1)),
+            (gtfs, "senza ::stop-commands::", texts[gtfs].replace('          echo "::stop-commands::$marker"\n', "", 1)),
+            (gtfs, "persist-credentials: false",
+             texts[gtfs][:texts[gtfs].index(core_checkout)] + texts[gtfs][texts[gtfs].index(core_checkout):].replace(
+                 "        with:\n          persist-credentials: false\n", "", 1)),
+            (live, "persist-credentials: false", texts[live].replace("        with:\n          persist-credentials: false\n", "", 1)),
+            (live, "push branches", texts[live].replace("  workflow_dispatch:\n", "  push:\n    branches: [\"fix/x\"]\n  workflow_dispatch:\n", 1)),
+            (android, "release-sign step 2 non può ripristinare una cache",
+             texts[android].replace("          # No cache: restored transforms", "          cache: gradle\n          # No cache: restored transforms", 1)),
+        ]
+        for path, expected, mutated in mutations:
+            with self.subTest(workflow=path.name, expected=expected):
+                self.assertNotEqual(texts[path], mutated)
+                problems = policy.workflow_problems(path, mutated, LOCK)
+                self.assertTrue(any(expected in problem for problem in problems), problems)
+        apple = ROOT / ".github/workflows/apple-watch-ci.yml"
+        self.assertEqual([], policy.workflow_problems(apple, apple.read_text(encoding="utf-8"), LOCK))
+
+    def test_document_gates_run_when_their_documents_change(self) -> None:
+        # Audit A7-11: store-doc tests and the SOURCE_POLICY privacy gate ran on no change to those documents.
+        workflow_path = ROOT / ".github/workflows/gtfs-assets-ci.yml"
+        original = workflow_path.read_text(encoding="utf-8")
+        for path in ('      - "docs/store/**"\n', '      - "docs/data-sources/SOURCE_POLICY.md"\n'):
+            with self.subTest(path=path):
+                mutated = original.replace(path, "", 1)
+                self.assertNotEqual(original, mutated)
+                problems = policy.workflow_problems(workflow_path, mutated, LOCK)
+                self.assertTrue(any("non copre input condivisi" in problem for problem in problems), problems)
+
     def test_apple_rejects_bash_env_and_run_step_mutations(self) -> None:
         workflow_path = ROOT / ".github/workflows/apple-watch-ci.yml"
         original = workflow_path.read_text(encoding="utf-8")
@@ -282,6 +354,7 @@ class VerifyCiPinningTest(unittest.TestCase):
 
     def test_flow_style_mutable_inputs_are_rejected(self) -> None:
         text = """
+        permissions: {contents: read}
         jobs: {build: {runs-on: ubuntu-latest, services: {db: {image: mariadb:latest}}, steps: [{uses: actions/checkout@v4}]}}
         """
         problems = policy.workflow_problems(Path("unsafe.yml"), text, LOCK)
@@ -292,6 +365,7 @@ class VerifyCiPinningTest(unittest.TestCase):
 
     def test_reviewed_refs_are_allowed(self) -> None:
         text = f"""
+        permissions: {{contents: read}}
         jobs:
           test:
             runs-on: ubuntu-24.04
@@ -316,6 +390,7 @@ class VerifyCiPinningTest(unittest.TestCase):
 
     def test_unreviewed_well_formed_sha_and_digest_are_rejected(self) -> None:
         text = f"""
+        permissions: {{contents: read}}
         jobs:
           test:
             runs-on: ubuntu-24.04

@@ -88,21 +88,99 @@ class ParseLogTest(unittest.TestCase):
         with self.assertRaisesRegex(apply.ApplyError, "manifest"):
             apply.split_by_directory({"gtfs/demo.zip": b"x"})
 
-    def test_a_run_reads_the_core_and_transit_jobs(self) -> None:
-        listing = {"jobs": [
-            {"id": 1, "name": "core-packs", "conclusion": "failure"},
-            {"id": 2, "name": "transit-packs", "conclusion": "success"},
-            {"id": 3, "name": "gtfs-assets", "conclusion": "skipped"},
-        ]}
-        calls: list[str] = []
+    def test_only_the_single_nonce_frame_is_read(self) -> None:
+        # Audit A7-02: a feed field printed in an earlier step's error message carried BINARIO_* lines.
+        injected = (
+            "2026-11-03T07:59:59.0000000Z ERRORE GTFS: campo CSV multilinea in stops.txt.x\n"
+            "2026-11-03T07:59:59.0000000Z BINARIO_FILE gtfs/manifest.json 2 "
+            "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a\n"
+            "2026-11-03T07:59:59.0000000Z BINARIO_B64 gtfs/manifest.json e30=\n"
+            "2026-11-03T07:59:59.0000000Z BINARIO_END gtfs/manifest.json\n"
+        )
+        with self.assertRaisesRegex(apply.ApplyError, "fuori dal blocco"):
+            apply.parse_printed_files(injected + self.log)
+        forged_frame = job_log(self.temp / "printed").replace("2026-11-03T08:00", "2026-11-03T07:59")
+        with self.assertRaisesRegex(apply.ApplyError, "più di un blocco"):
+            apply.parse_printed_files(forged_frame + self.log)
+        # A line separator inside one runner line is not a line break for the runner, nor here.
+        hidden = "2026-11-03T07:59:59.0000000Z x\u2028BINARIO_FILE gtfs/manifest.json 2 " + "0" * 64 + "\n"
+        self.assertEqual({"gtfs/manifest.json", "gtfs/demo.zip"}, set(apply.parse_printed_files(hidden + self.log)))
+        unframed = "\n".join(line for line in self.log.splitlines() if "BINARIO_BEGIN" not in line and "BINARIO_DONE" not in line)
+        with self.assertRaisesRegex(apply.ApplyError, "fuori dal blocco"):
+            apply.parse_printed_files(unframed)
+        window = (apply._log_time("2026-11-03T08:00:01"), apply._log_time("2026-11-03T08:00:01"))
+        self.assertEqual(2, len(apply.parse_printed_files(self.log, window=window)))
+        late = (apply._log_time("2026-11-03T08:00:05"), apply._log_time("2026-11-03T08:00:09"))
+        with self.assertRaisesRegex(apply.ApplyError, "fuori dallo step di stampa"):
+            apply.parse_printed_files(self.log, window=late)
 
+    def test_personal_packs_are_left_out_of_the_print_unless_asked(self) -> None:
+        (self.temp / "printed/gtfs-personal").mkdir()
+        (self.temp / "printed/gtfs-personal/manifest.json").write_text('{"packs": []}\n', encoding="utf-8")
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            acquire.print_directory(self.temp / "printed", exclude=frozenset({"gtfs-personal"}))
+        files = apply.parse_printed_files(output.getvalue())
+        self.assertEqual({"gtfs/manifest.json", "gtfs/demo.zip"}, set(files))
+        self.assertIn("Non stampata: gtfs-personal/", output.getvalue())
+        self.assertIn("gtfs-personal/manifest.json", apply.parse_printed_files(job_log(self.temp / "printed")))
+
+    def run_api(self, run: dict[str, Any], jobs: list[dict[str, Any]], calls: list[str]):
         def api(path: str) -> bytes:
             calls.append(path)
-            return json.dumps(listing).encode() if path.endswith("/jobs?per_page=100") else self.log.encode()
+            if path.endswith("/jobs?per_page=100"):
+                return json.dumps({"jobs": jobs}).encode()
+            if path.endswith("/logs"):
+                return self.log.encode()
+            if "/actions/jobs/" in path:
+                return json.dumps(next(job for job in jobs if path.endswith(f"/jobs/{job['id']}"))).encode()
+            return json.dumps(run).encode()
+        return api
 
-        logs = apply.fetch_logs("owner/repo", "99", [], api=api)
-        self.assertEqual(["1", "2"], [job for job, _ in logs])
+    @staticmethod
+    def steps(print_name: str, print_conclusion: str = "success", after: str = "success") -> list[dict[str, Any]]:
+        return [
+            {"number": 1, "name": "Set up job", "conclusion": "success", "started_at": "2026-11-03T07:58:00Z", "completed_at": "2026-11-03T07:58:01Z"},
+            {"number": 2, "name": "Build", "conclusion": "success", "started_at": "2026-11-03T07:58:01Z", "completed_at": "2026-11-03T08:00:00Z"},
+            {"number": 3, "name": print_name, "conclusion": print_conclusion, "started_at": "2026-11-03T08:00:00Z", "completed_at": "2026-11-03T08:00:02Z"},
+            {"number": 4, "name": "Fail when a core source could not be refreshed", "conclusion": after,
+             "started_at": "2026-11-03T08:00:02Z", "completed_at": "2026-11-03T08:00:03Z"},
+        ]
+
+    def test_a_run_reads_the_print_steps_of_the_core_and_transit_jobs(self) -> None:
+        jobs = [
+            {"id": 1, "run_id": 99, "name": "core-packs", "conclusion": "failure", "steps": self.steps("Print the changed core packs", after="failure")},
+            {"id": 2, "run_id": 99, "name": "transit-packs", "conclusion": "success", "steps": self.steps("Print the built packs")},
+            {"id": 3, "run_id": 99, "name": "gtfs-assets", "conclusion": "skipped", "steps": []},
+        ]
+        run = {"id": 99, "path": ".github/workflows/gtfs-assets-ci.yml", "event": "workflow_dispatch",
+               "head_branch": "data/refresh", "head_sha": "c" * 40}
+        git = apply.LocalGit("data/refresh", "d" * 40, lambda sha: sha in {"c" * 40, "d" * 40})
+        calls: list[str] = []
+        logs = apply.fetch_logs("owner/repo", "99", [], api=self.run_api(run, jobs, calls), git=git)
+        self.assertEqual(["1", "2"], [job for job, _, _ in logs])
         self.assertEqual("repos/owner/repo/actions/jobs/2/logs", calls[-1])
+        self.assertEqual(2, len(apply.merge_printed((text, window) for _, text, window in logs)))
+        # --job reads the job, then binds its run the same way.
+        logs = apply.fetch_logs("owner/repo", None, ["2"], api=self.run_api(run, jobs, []), git=git)
+        self.assertEqual(["2"], [job for job, _, _ in logs])
+
+        refusals = {
+            "workflow": dict(run, path=".github/workflows/android-ci.yml"),
+            "workflow_dispatch": dict(run, event="push"),
+            "branch": dict(run, head_branch="main"),
+            "antenato": dict(run, head_sha="e" * 40),
+        }
+        for message, bad_run in refusals.items():
+            with self.subTest(message=message), self.assertRaisesRegex(apply.ApplyError, message):
+                apply.fetch_logs("owner/repo", "99", [], api=self.run_api(bad_run, jobs, []), git=git)
+        failed_build = [dict(jobs[1], steps=[dict(step, conclusion="failure") if step["name"] == "Build" else step
+                                             for step in jobs[1]["steps"]])]
+        with self.assertRaisesRegex(apply.ApplyError, "prima della stampa"):
+            apply.fetch_logs("owner/repo", "99", [], api=self.run_api(run, failed_build, []), git=git)
+        skipped = [dict(jobs[1], steps=self.steps("Print the built packs", print_conclusion="skipped"))]
+        with self.assertRaisesRegex(apply.ApplyError, "nessuno step di stampa"):
+            apply.fetch_logs("owner/repo", "99", [], api=self.run_api(run, skipped, []), git=git)
 
 
 class ApplyTest(unittest.TestCase):

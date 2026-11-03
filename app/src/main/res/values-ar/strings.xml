@@ -369,7 +369,7 @@
     <string name="journey_empty_unavailable">تعذّر حساب الرحلات بتبديل القطار. أعد المحاولة.</string>
     <string name="journey_empty_no_direct">لا توجد رحلة مباشرة بين الرحلات التي عُثر عليها.</string>
     <string name="journey_option_accessibility">المغادرة الساعة %1$s من %2$s، والوصول الساعة %3$s إلى %4$s، المدة %5$s، %6$s.</string>
-    <string name="settings_privacy_osm">الإكمال التلقائي الوطني: © OpenStreetMap contributors، ODbL 1.0. يقترح الكتالوج الجغرافي أسماء محطات لكنه لا يؤكد الخدمة أو الموعد أو الرصيف أو التأخير أو حركة القطارات.</string>
+    <string name="settings_privacy_osm">كتالوج المحطات: قاعدة بيانات منقّحة مضمّنة في التطبيق. يقترح الكتالوج أسماء محطات لكنه لا يؤكد الخدمة أو الموعد أو الرصيف أو التأخير أو حركة القطارات.</string>
     <!-- Open maps (October 2026) -->
     <string name="map_attribution">OpenFreeMap © OpenMapTiles، البيانات © OpenStreetMap contributors</string>
     <string name="map_route_title">خريطة المسار</string>

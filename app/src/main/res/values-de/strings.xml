@@ -351,7 +351,7 @@
     <string name="journey_empty_unavailable">Verbindungen mit Umstieg können gerade nicht berechnet werden. Bitte erneut versuchen.</string>
     <string name="journey_empty_no_direct">Keine der gefundenen Verbindungen ist direkt.</string>
     <string name="journey_option_accessibility">Abfahrt um %1$s ab %2$s, Ankunft um %3$s in %4$s, Dauer %5$s, %6$s.</string>
-    <string name="settings_privacy_osm">Nationale Autovervollständigung: © OpenStreetMap contributors, ODbL 1.0. Der geografische Katalog schlägt Bahnhofsnamen vor, bestätigt jedoch weder Verkehr, Fahrzeit, Gleis, Verspätung noch Betrieb.</string>
+    <string name="settings_privacy_osm">Bahnhofskatalog: kuratierte Datenbank in der App. Er schlägt Bahnhofsnamen vor, bestätigt jedoch weder Verkehr, Fahrzeit, Gleis, Verspätung noch Betrieb.</string>
     <!-- Open maps (October 2026) -->
     <string name="map_attribution">OpenFreeMap © OpenMapTiles, Daten © OpenStreetMap contributors</string>
     <string name="map_route_title">Streckenkarte</string>

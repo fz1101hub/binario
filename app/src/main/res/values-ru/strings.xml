@@ -357,7 +357,7 @@
     <string name="journey_empty_unavailable">Расчёт поездок с пересадками недоступен. Повторите попытку.</string>
     <string name="journey_empty_no_direct">Среди найденных вариантов нет прямых.</string>
     <string name="journey_option_accessibility">Отправление в %1$s из %2$s, прибытие в %3$s в %4$s, в пути %5$s, %6$s.</string>
-    <string name="settings_privacy_osm">Автодополнение по всей стране: © участники OpenStreetMap, ODbL 1.0. Географический каталог подсказывает названия станций, но не подтверждает рейсы, время, путь, опоздание или движение.</string>
+    <string name="settings_privacy_osm">Каталог станций: проверенная база данных в составе приложения. Он подсказывает названия станций, но не подтверждает рейсы, время, путь, опоздание или движение.</string>
     <!-- Open maps (October 2026) -->
     <string name="map_attribution">OpenFreeMap © OpenMapTiles, данные © участники OpenStreetMap</string>
     <string name="map_route_title">Карта маршрута</string>

@@ -2,11 +2,15 @@
 """Apply the GTFS packs printed by a ``GTFS Asset Integrity`` dispatch to the repository.
 
 The jobs ``transit-packs`` and ``core-packs`` of ``.github/workflows/gtfs-assets-ci.yml`` print every file they built
-in the log as ``BINARIO_FILE path bytes sha256``, ``BINARIO_B64 path chunk``… and ``BINARIO_END path`` (artifacts are
-not reachable from the development container).  This helper:
+in the log as ``BINARIO_FILE path bytes sha256``, ``BINARIO_B64 path chunk``… and ``BINARIO_END path``, framed by
+``BINARIO_BEGIN <nonce>`` and ``BINARIO_DONE <nonce> <files>`` (artifacts are not reachable from the development
+container).  This helper:
 
 1. reads the logs (``--run RUN_ID``: every such job of the run; ``--job JOB_ID``; or ``--log FILE`` saved before) and
-   rebuilds each file, verifying its size and SHA-256;
+   rebuilds each file, verifying its size and SHA-256.  Only one nonce frame per log is accepted and no ``BINARIO_*``
+   line outside it; with ``--run``/``--job`` the run must be a ``workflow_dispatch`` of ``gtfs-assets-ci.yml`` on the
+   current branch whose ``head_sha`` is ``HEAD`` or one of its ancestors, every step up to the print step must have
+   succeeded, and the frame must lie inside the print step's time window (audit A7-02, P1);
 2. merges each printed directory into ``app/src/main/assets/gtfs/``, ``gtfs-transit/`` or
    ``app/src/personal/assets/gtfs-personal/``: a pack whose canonical content (``contentSha256``) is unchanged keeps
    its published bytes and entry, a pack missing from the print (partial build) stays as it is, and a pack that would
@@ -39,13 +43,14 @@ import sys
 import tempfile
 import zipfile
 from dataclasses import dataclass, field
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any, Callable, Iterable, Mapping, Sequence
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
 
+import build_android_gtfs_credits as android_credits  # noqa: E402
 import build_gtfs_packs as builder  # noqa: E402
 
 DESTINATIONS: Mapping[str, Path] = {
@@ -65,9 +70,16 @@ PIN_MIRRORS = (
 )
 IOS_INPUTS = (Path("app/src/main/assets/gtfs/manifest.json"), Path("ios/Resources/binario_gtfs_source_policy_v1.json"))
 JOB_NAMES = ("core-packs", "transit-packs")
+# The step of each job that prints its files; only its frame is read (.github/workflows/gtfs-assets-ci.yml).
+PRINT_STEPS: Mapping[str, str] = {"core-packs": "Print the changed core packs", "transit-packs": "Print the built packs"}
+WORKFLOW_PATH = ".github/workflows/gtfs-assets-ci.yml"
 LOG_LINE = re.compile(
-    r"^﻿?(?:\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z )?(BINARIO_FILE|BINARIO_B64|BINARIO_END) (.*)$"
+    r"^﻿?(?:(?P<time>\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(?:\.\d+)?Z )?"
+    r"(?P<kind>BINARIO_BEGIN|BINARIO_FILE|BINARIO_B64|BINARIO_END|BINARIO_DONE) (?P<rest>.*)$"
 )
+NONCE = re.compile(r"[0-9a-f]{32}")
+# Step times from the API are whole seconds; the frame may start or end within the same second.
+WINDOW_SLACK = timedelta(seconds=1)
 ASSET_FILE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*\.zip")
 KOTLIN_PACK = re.compile(
     r'(SourceId\("(?P<id>[^"]+)"\),\s*"(?P<asset>[^"]+)",\s*LocalDate\.of\()(?P<y>\d+), (?P<m>\d+), (?P<d>\d+)(\))'
@@ -111,32 +123,73 @@ class Row:
 # --- Logs ---------------------------------------------------------------------------------------------------------
 
 
-def parse_printed_files(text: str) -> dict[str, bytes]:
-    """Every file printed in a job log, checked against its declared size and SHA-256."""
+Window = tuple[datetime, datetime]
+
+
+def _log_time(value: str) -> datetime:
+    return datetime.strptime(value[:19], "%Y-%m-%dT%H:%M:%S")
+
+
+def parse_printed_files(text: str, *, window: Window | None = None) -> dict[str, bytes]:
+    """The files of the single ``BINARIO_BEGIN``/``BINARIO_DONE`` frame of a job log, checked against their declared
+    size and SHA-256.
+
+    A second frame, or any ``BINARIO_*`` line outside the frame, refuses the whole log: text an earlier step printed
+    from a downloaded feed cannot add or replace a file.  With ``window`` (the print step's start and end) every
+    ``BINARIO_*`` line must carry a runner timestamp inside it.  Lines are split on ``\\n`` only, as the runner
+    splits them: a U+2028 or U+0085 inside a line never starts a new one here.
+    """
     open_files: dict[str, tuple[int, str, list[str]]] = {}
     files: dict[str, bytes] = {}
-    for raw in text.splitlines():
-        match = LOG_LINE.match(raw)
+    nonce: str | None = None
+    frames = 0
+    for raw in text.split("\n"):
+        match = LOG_LINE.match(raw.rstrip("\r"))
         if not match:
             continue
-        kind, rest = match.groups()
-        if kind == "BINARIO_FILE":
+        kind, rest, stamp = match.group("kind"), match.group("rest"), match.group("time")
+        if window is not None:
+            if stamp is None:
+                raise ApplyError(f"riga {kind} senza orario del runner: log non attribuibile allo step di stampa")
+            moment = _log_time(stamp)
+            if not window[0] - WINDOW_SLACK <= moment <= window[1] + WINDOW_SLACK:
+                raise ApplyError(f"riga {kind} delle {stamp} fuori dallo step di stampa: log rifiutato")
+        if kind == "BINARIO_BEGIN":
+            if nonce is not None or frames:
+                raise ApplyError("più di un blocco BINARIO_BEGIN nel log: stampa non attribuibile, log rifiutato")
+            if not NONCE.fullmatch(rest.strip()):
+                raise ApplyError(f"BINARIO_BEGIN senza nonce valido: {rest[:80]!r}")
+            nonce = rest.strip()
+            continue
+        if nonce is None:
+            raise ApplyError(f"riga {kind} fuori dal blocco BINARIO_BEGIN/BINARIO_DONE: log rifiutato")
+        if kind == "BINARIO_DONE":
+            pieces = rest.split(" ")
+            if len(pieces) != 2 or pieces[0] != nonce or not pieces[1].isdigit():
+                raise ApplyError(f"BINARIO_DONE non corrisponde al BINARIO_BEGIN: {rest[:80]!r}")
+            if open_files:
+                raise ApplyError(f"file incompleti nel log (log troncato?): {', '.join(sorted(open_files))}")
+            if int(pieces[1]) != len(files):
+                raise ApplyError(f"BINARIO_DONE dichiara {pieces[1]} file, il blocco ne contiene {len(files)}")
+            nonce = None
+            frames += 1
+        elif kind == "BINARIO_FILE":
             pieces = rest.split(" ")
             if len(pieces) != 3 or not pieces[1].isdigit() or not re.fullmatch(r"[0-9a-f]{64}", pieces[2]):
                 raise ApplyError(f"riga BINARIO_FILE non valida: {rest[:120]!r}")
             path = pieces[0]
             if path in open_files or path in files:
-                raise ApplyError(f"file stampato due volte: {path}")
+                raise ApplyError(f"file stampato due volte: {path!r}")
             open_files[path] = (int(pieces[1]), pieces[2], [])
         elif kind == "BINARIO_B64":
             path, _, chunk = rest.partition(" ")
             if path not in open_files:
-                raise ApplyError(f"blocco base64 fuori da un file: {path}")
+                raise ApplyError(f"blocco base64 fuori da un file: {path!r}")
             open_files[path][2].append(chunk.strip())
         else:
             path = rest.strip()
             if path not in open_files:
-                raise ApplyError(f"BINARIO_END senza BINARIO_FILE: {path}")
+                raise ApplyError(f"BINARIO_END senza BINARIO_FILE: {path!r}")
             size, digest, chunks = open_files.pop(path)
             try:
                 data = base64.b64decode("".join(chunks), validate=True)
@@ -147,15 +200,15 @@ def parse_printed_files(text: str) -> dict[str, bytes]:
             if hashlib.sha256(data).hexdigest() != digest:
                 raise ApplyError(f"{path}: SHA-256 diverso da quello stampato")
             files[path] = data
-    if open_files:
-        raise ApplyError(f"file incompleti nel log (log troncato?): {', '.join(sorted(open_files))}")
+    if nonce is not None or open_files:
+        raise ApplyError("blocco BINARIO_BEGIN senza BINARIO_DONE (log troncato?)")
     return files
 
 
-def merge_printed(logs: Iterable[str]) -> dict[str, bytes]:
+def merge_printed(logs: Iterable[tuple[str, Window | None]]) -> dict[str, bytes]:
     files: dict[str, bytes] = {}
-    for text in logs:
-        for path, data in parse_printed_files(text).items():
+    for text, window in logs:
+        for path, data in parse_printed_files(text, window=window).items():
             if path in files and files[path] != data:
                 raise ApplyError(f"{path} stampato da due job con contenuti diversi")
             files[path] = data
@@ -195,16 +248,106 @@ def gh_api(path: str) -> bytes:
         raise ApplyError(f"gh api {path} fallito: {error} {detail.decode('utf-8', 'replace')[:300]}") from error
 
 
-def fetch_logs(repo: str, run_id: str | None, job_ids: Sequence[str], api: Callable[[str], bytes] = gh_api) -> list[tuple[str, str]]:
-    jobs = list(job_ids)
+@dataclass(frozen=True)
+class LocalGit:
+    """The branch and commit the printed files are applied to."""
+
+    branch: str
+    head: str
+    contains: Callable[[str], bool]  # True when the commit is HEAD or one of its ancestors
+
+
+def local_git(root: Path) -> LocalGit:
+    def git(*arguments: str) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(["git", "-C", str(root), *arguments], capture_output=True, text=True, timeout=60)
+
+    try:
+        branch = git("rev-parse", "--abbrev-ref", "HEAD").stdout.strip()
+        head = git("rev-parse", "HEAD").stdout.strip()
+    except (OSError, subprocess.SubprocessError) as error:
+        raise ApplyError(f"git non disponibile in {root}: {error}") from error
+    if not branch or branch == "HEAD" or not re.fullmatch(r"[0-9a-f]{40}", head):
+        raise ApplyError("serve una branch locale (HEAD non staccato) per verificare la run")
+    return LocalGit(branch, head, lambda sha: git("merge-base", "--is-ancestor", sha, "HEAD").returncode == 0)
+
+
+def check_run(run: Mapping[str, Any], git: LocalGit) -> None:
+    """The run is a dispatch of the GTFS workflow on this branch, at HEAD or an ancestor of it."""
+    run_id = run.get("id")
+    path = str(run.get("path") or "").split("@", 1)[0]
+    if path != WORKFLOW_PATH:
+        raise ApplyError(f"run {run_id}: workflow {path or '?'} invece di {WORKFLOW_PATH}")
+    if run.get("event") != "workflow_dispatch":
+        raise ApplyError(f"run {run_id}: evento {run.get('event')!r}, serve un workflow_dispatch")
+    if run.get("head_branch") != git.branch:
+        raise ApplyError(f"run {run_id}: branch {run.get('head_branch')!r}, quella locale è {git.branch!r}")
+    sha = str(run.get("head_sha") or "")
+    if not re.fullmatch(r"[0-9a-f]{40}", sha) or not git.contains(sha):
+        raise ApplyError(f"run {run_id}: commit {sha[:12] or '?'} non è HEAD né un suo antenato (git fetch?)")
+
+
+def _api_time(value: object, label: str) -> datetime:
+    if not isinstance(value, str) or not re.match(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}", value):
+        raise ApplyError(f"orario dello step non valido ({label}): {value!r}")
+    return _log_time(value)
+
+
+def print_window(job: Mapping[str, Any]) -> Window | None:
+    """Start and end of the job's print step; ``None`` when that step was skipped (nothing printed).  Every step
+    before it must have succeeded: a print after a failed step is not applied."""
+    name = job.get("name")
+    expected = PRINT_STEPS.get(str(name))
+    if expected is None:
+        raise ApplyError(f"job {job.get('id')}: {name!r} non è un job di stampa ({', '.join(JOB_NAMES)})")
+    for step in sorted(job.get("steps") or [], key=lambda item: item.get("number", 0)):
+        conclusion = step.get("conclusion")
+        if step.get("name") == expected:
+            if conclusion == "skipped":
+                return None
+            if conclusion != "success":
+                raise ApplyError(f"job {name}: step di stampa con esito {conclusion!r}")
+            return _api_time(step.get("started_at"), expected), _api_time(step.get("completed_at"), expected)
+        if conclusion not in ("success", "skipped"):
+            raise ApplyError(f"job {name}: step {step.get('name')!r} con esito {conclusion!r} prima della stampa")
+    raise ApplyError(f"job {name}: step {expected!r} assente")
+
+
+def fetch_logs(
+    repo: str,
+    run_id: str | None,
+    job_ids: Sequence[str],
+    api: Callable[[str], bytes] = gh_api,
+    git: LocalGit | None = None,
+) -> list[tuple[str, str, Window | None]]:
+    """The log of every print job of the run (or of the named jobs) with its print-step window, after binding the
+    run to this branch and commit."""
+    jobs: list[Mapping[str, Any]] = []
+    runs: dict[str, Mapping[str, Any]] = {}
     if run_id:
         listing = json.loads(api(f"repos/{repo}/actions/runs/{run_id}/jobs?per_page=100"))
-        for job in listing.get("jobs", []):
-            if job.get("name") in JOB_NAMES and job.get("conclusion") in ("success", "failure"):
-                jobs.append(str(job["id"]))
+        jobs += [job for job in listing.get("jobs", []) if job.get("name") in JOB_NAMES
+                 and job.get("conclusion") in ("success", "failure")]
         if not jobs:
             raise ApplyError(f"nessun job {' o '.join(JOB_NAMES)} completato nella run {run_id}")
-    return [(job, api(f"repos/{repo}/actions/jobs/{job}/logs").decode("utf-8", "replace")) for job in jobs]
+    for job_id in job_ids:
+        jobs.append(json.loads(api(f"repos/{repo}/actions/jobs/{job_id}")))
+    git = git or local_git(ROOT)
+    logs: list[tuple[str, str, Window | None]] = []
+    for job in jobs:
+        owner_run = str(job.get("run_id") or run_id or "")
+        if not owner_run:
+            raise ApplyError(f"job {job.get('id')}: run sconosciuta")
+        if owner_run not in runs:
+            runs[owner_run] = json.loads(api(f"repos/{repo}/actions/runs/{owner_run}"))
+            check_run(runs[owner_run], git)
+        window = print_window(job)
+        if window is None:
+            continue
+        job_id = str(job["id"])
+        logs.append((job_id, api(f"repos/{repo}/actions/jobs/{job_id}/logs").decode("utf-8", "replace"), window))
+    if not logs:
+        raise ApplyError("nessuno step di stampa eseguito nei job indicati")
+    return logs
 
 
 def default_repo() -> str:
@@ -224,7 +367,7 @@ def default_repo() -> str:
 
 def zip_metadata(data: bytes) -> dict[str, Any]:
     with zipfile.ZipFile(io.BytesIO(data)) as archive:
-        entry = builder.find_entry(archive, builder.FILTER_MANIFEST_MEMBER)
+        entry = builder.filter_manifest_entry(archive)
         if entry is None:
             raise ApplyError("pack senza binario_filter_manifest.json")
         return json.loads(archive.read(entry).decode("utf-8"))
@@ -506,6 +649,12 @@ def planned_edits(root: Path, directories: Sequence[MergedDirectory], pins: Sequ
     missing = sorted(set(dates) - found)
     if missing:
         raise ApplyError(f"pack senza voce in EmbeddedGtfsPacks.kt/TransitGtfsPacks.kt: {', '.join(missing)}")
+    # The Android credits are generated from the manifests' attribution and licence (tools/build_android_gtfs_credits.py).
+    credits_path = root / android_credits.OUTPUT
+    if credits_path.is_file():
+        credits = android_credits.render(android_credits.load_manifests(root, manifests))
+        if credits != credits_path.read_text(encoding="utf-8"):
+            edits[credits_path] = credits
     for relative in PIN_MIRRORS:
         if not pins:
             break
@@ -593,7 +742,7 @@ def upstream_review(report: Mapping[str, Any] | None) -> str:
         if entry.get("status") == "changed":
             for name, text in (entry.get("upstreamMetadata") or {}).items():
                 blocks.append(f"  {name}:")
-                blocks.extend(f"    {line}" for line in (text if text is not None else "(assente)").splitlines()[:40])
+                blocks.extend(f"    {builder.log_safe(line)}" for line in (text if text is not None else "(assente)").splitlines()[:40])
     return "\n".join(blocks)
 
 
@@ -616,14 +765,16 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     try:
         if args.log:
-            logs = [(str(path), path.read_text(encoding="utf-8", errors="replace")) for path in args.log]
+            # A saved log carries no run or step metadata: only the single-frame rule applies.
+            logs = [(str(path), path.read_text(encoding="utf-8", errors="replace"), None) for path in args.log]
+            print("Log salvati: run, branch e step di stampa non verificabili (usare --run per il controllo completo).")
         else:
-            logs = fetch_logs(args.repo or default_repo(), args.run, args.job or [])
+            logs = fetch_logs(args.repo or default_repo(), args.run, args.job or [], git=local_git(root))
             if args.save_logs:
                 args.save_logs.mkdir(parents=True, exist_ok=True)
-                for job, text in logs:
+                for job, text, _ in logs:
                     (args.save_logs / f"job-{job}.log").write_text(text, encoding="utf-8")
-        files = merge_printed(text for _, text in logs)
+        files = merge_printed((text, window) for _, text, window in logs)
         directories, reports = split_by_directory(files)
         if not directories and not reports:
             raise ApplyError("nessun file BINARIO_FILE nei log indicati")
@@ -675,7 +826,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         finally:
             shutil.rmtree(work, ignore_errors=True)
     except (ApplyError, builder.BuildError, OSError, json.JSONDecodeError, zipfile.BadZipFile) as error:
-        print(f"ERRORE: {error}", file=sys.stderr)
+        builder.print_error_lines("ERRORE: ", error)
         return 1
 
     changed = [item.name for item in merged if item.staged is not None]

@@ -351,7 +351,7 @@
     <string name="journey_empty_unavailable">Aktarmalı yolculuklar şu anda hesaplanamıyor. Tekrar deneyin.</string>
     <string name="journey_empty_no_direct">Bulunan seçeneklerin hiçbiri aktarmasız değil.</string>
     <string name="journey_option_accessibility">Kalkış %1$s, %2$s; varış %3$s, %4$s; süre %5$s, %6$s.</string>
-    <string name="settings_privacy_osm">Ülke geneli otomatik tamamlama: © OpenStreetMap contributors, ODbL 1.0. Coğrafi katalog istasyon adları önerir ancak hizmeti, saati, peronu, gecikmeyi veya işletmeyi doğrulamaz.</string>
+    <string name="settings_privacy_osm">İstasyon kataloğu: uygulamaya dahil, düzenlenmiş veritabanı. İstasyon adları önerir ancak hizmeti, saati, peronu, gecikmeyi veya işletmeyi doğrulamaz.</string>
     <!-- Open maps (October 2026) -->
     <string name="map_attribution">OpenFreeMap © OpenMapTiles, veriler © OpenStreetMap contributors</string>
     <string name="map_route_title">Güzergâh haritası</string>

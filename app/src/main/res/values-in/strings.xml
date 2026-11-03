@@ -339,7 +339,7 @@
     <string name="journey_empty_unavailable">Perjalanan dengan transit tidak dapat dihitung saat ini. Coba lagi.</string>
     <string name="journey_empty_no_direct">Tidak ada perjalanan langsung di antara yang ditemukan.</string>
     <string name="journey_option_accessibility">Berangkat pukul %1$s dari %2$s, tiba pukul %3$s di %4$s, durasi %5$s, %6$s.</string>
-    <string name="settings_privacy_osm">Pelengkapan otomatis nasional: © OpenStreetMap contributors, ODbL 1.0. Katalog geografis menyarankan nama stasiun tetapi tidak mengonfirmasi layanan, jadwal, peron, keterlambatan, atau operasional.</string>
+    <string name="settings_privacy_osm">Katalog stasiun: basis data terkurasi yang disertakan dalam aplikasi. Katalog ini menyarankan nama stasiun tetapi tidak mengonfirmasi layanan, jadwal, peron, keterlambatan, atau operasional.</string>
     <!-- Open maps (October 2026) -->
     <string name="map_attribution">OpenFreeMap © OpenMapTiles, data © OpenStreetMap contributors</string>
     <string name="map_route_title">Peta rute</string>

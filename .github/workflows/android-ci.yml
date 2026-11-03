@@ -20,6 +20,7 @@ on:
       - "tools/verify_android_app_bundles.py"
       - "tools/verify_android_release_config.py"
       - "tools/verify_embedded_assets.py"
+      - "tools/build_gtfs_packs.py"
       - "tools/verify_gradle_dependency_metadata.py"
       - "tools/verify_privacy_policy.py"
       - "tests/test_wear_compose_gradle_dependency_suppressions.py"
@@ -48,6 +49,7 @@ on:
       - "tools/verify_android_app_bundles.py"
       - "tools/verify_android_release_config.py"
       - "tools/verify_embedded_assets.py"
+      - "tools/build_gtfs_packs.py"
       - "tools/verify_gradle_dependency_metadata.py"
       - "tools/verify_privacy_policy.py"
       - "tests/test_wear_compose_gradle_dependency_suppressions.py"
@@ -103,6 +105,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
 
       - name: Validate Gradle wrappers
         uses: gradle/actions/wrapper-validation@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
@@ -126,9 +130,6 @@ jobs:
 
       - name: Verify embedded asset integrity
         run: python3 tools/verify_embedded_assets.py --integrity-only
-
-      - name: Gate embedded GTFS freshness for at least 30 days
-        run: python3 tools/verify_embedded_assets.py --min-valid-days 30
 
       - name: Verify privacy-policy disclosures
         run: python3 tools/verify_privacy_policy.py
@@ -235,6 +236,13 @@ jobs:
           --reference-phone "$RUNNER_TEMP/binario-app-reference.aab"
           --reference-wear "$RUNNER_TEMP/binario-wear-reference.aab"
 
+      # Release freshness is a release gate, not a correctness check (audit A7-06): tests, lint, builds and the bundle
+      # checks above run whatever the age of the data; only a pull request into a stabilization branch (and
+      # release-sign) needs every embedded pack to run for at least 30 more days.
+      - name: Gate embedded GTFS freshness for at least 30 days
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.base_ref, 'stabilization/') }}
+        run: python3 tools/verify_embedded_assets.py --min-valid-days 30
+
   release-sign:
     needs: android
     if: ${{ github.event_name == 'workflow_dispatch' && inputs.sign_release }}
@@ -244,6 +252,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
 
       - name: Validate Gradle wrappers
         uses: gradle/actions/wrapper-validation@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
@@ -255,7 +265,7 @@ jobs:
         with:
           distribution: temurin
           java-version: "17.0.20+101"
-          cache: gradle
+          # No cache: restored transforms and build outputs are not covered by dependency verification (P4).
 
       - name: Python 3.12.10
         uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
@@ -264,6 +274,9 @@ jobs:
 
       - name: Enable Gradle wrapper
         run: chmod +x gradlew
+
+      - name: Gate embedded GTFS freshness for at least 30 days
+        run: python3 tools/verify_embedded_assets.py --min-valid-days 30
 
       - name: Decode the upload keystore into RUNNER_TEMP
         env:
@@ -283,7 +296,10 @@ jobs:
           test -n "$BINARIO_RELEASE_STORE_PASSWORD"
           test -n "$BINARIO_RELEASE_KEY_ALIAS"
           test -n "$BINARIO_RELEASE_KEY_PASSWORD"
-          ./gradlew --no-daemon --dependency-verification=strict :app:bundleRelease :wear:bundleRelease
+          # The store values, explicit (audit A7-05): best-effort realtime sources on (the release default, described
+          # by PLAY_DATA_SAFETY.md and the listing), personal-use timetable packs off. Changing either is an owner
+          # decision that rewrites those documents in the same change (tools/verify_android_release_config.py).
+          ./gradlew --no-daemon --dependency-verification=strict -PBINARIO_PERSONAL_REALTIME_SOURCES=true -Pbinario.personalSources=false :app:bundleRelease :wear:bundleRelease
 
       - name: Verify signed Google Play bundles
         shell: bash

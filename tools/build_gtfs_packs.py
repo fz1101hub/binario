@@ -185,6 +185,22 @@ class DownloadError(BuildError):
     """Raised when a registered source cannot be acquired safely."""
 
 
+def log_safe(value: object) -> str:
+    """``value`` on one line, control characters escaped: text read from an archive or a server never starts a log
+    line of its own, so it cannot become a workflow command or a ``BINARIO_*`` block in a CI log (audit A7-02)."""
+    return "".join(
+        character if character.isprintable() or character == " " else character.encode("unicode_escape").decode("ascii")
+        for character in str(value)
+    )
+
+
+def print_error_lines(prefix: str, message: object, *, file: Any = None) -> None:
+    """Every line of ``message`` behind ``prefix``, escaped: a multi-problem report stays readable and no line of it
+    can start with text taken from the data."""
+    for line in str(message).split("\n"):
+        print(prefix + log_safe(line), file=file if file is not None else sys.stderr)
+
+
 def require_https_url(url: str, *, context: str) -> None:
     try:
         parsed = urllib.parse.urlparse(url)
@@ -304,7 +320,7 @@ def declared_member_digests(metadata: Mapping[str, Any], source_id: str) -> dict
             or len(digest) != 64
             or any(character not in "0123456789abcdef" for character in digest)
         ):
-            raise BuildError(f"{source_id}: SHA-256 canonico non valido per {name}")
+            raise BuildError(f"{source_id}: SHA-256 canonico non valido per {name!r}")
         normalized[name] = digest
     return normalized
 
@@ -401,6 +417,11 @@ def require_pinned_archive(pack: Mapping[str, Any], source_archive_sha256: str) 
         )
 
 
+def filter_manifest_entry(archive: zipfile.ZipFile) -> str | None:
+    """The filter manifest this tool writes: only the exact top-level member counts, never a nested copy."""
+    return FILTER_MANIFEST_MEMBER if FILTER_MANIFEST_MEMBER in archive.namelist() else None
+
+
 def find_entry(archive: zipfile.ZipFile, basename: str) -> str | None:
     names = [name for name in archive.namelist() if not name.endswith("/")]
     exact = [name for name in names if name == basename]
@@ -427,12 +448,12 @@ def validate_archive_limits(archive: zipfile.ZipFile, *, omit_geometry: bool = F
         ignored_shape = omit_geometry and entry.filename.rsplit("/", 1)[-1] == "shapes.txt"
         if entry.file_size > MAX_ARCHIVE_MEMBER_BYTES and not ignored_shape:
             raise BuildError(
-                f"membro GTFS oltre limite: {entry.filename} {entry.file_size} > {MAX_ARCHIVE_MEMBER_BYTES} bytes"
+                f"membro GTFS oltre limite: {entry.filename!r} {entry.file_size} > {MAX_ARCHIVE_MEMBER_BYTES} bytes"
             )
         ratio = entry.file_size / max(entry.compress_size, 1)
         if ratio > MAX_COMPRESSION_RATIO:
             raise BuildError(
-                f"rapporto di compressione GTFS sospetto: {entry.filename} {ratio:.1f} > {MAX_COMPRESSION_RATIO}"
+                f"rapporto di compressione GTFS sospetto: {entry.filename!r} {ratio:.1f} > {MAX_COMPRESSION_RATIO}"
             )
 
 
@@ -519,7 +540,7 @@ def read_table(
                 )
                 if multiline_field is not None:
                     raise BuildError(
-                        f"campo CSV multilinea non supportato dal runtime in {basename}.{multiline_field}"
+                        f"campo CSV multilinea non supportato dal runtime in {basename}, colonna {multiline_field!r}"
                     )
                 oversized_field = next(
                     (key for key, value in normalized.items() if len(value.encode("utf-8")) > MAX_CSV_FIELD_UTF8_BYTES),
@@ -527,7 +548,7 @@ def read_table(
                 )
                 if oversized_field is not None:
                     raise BuildError(
-                        f"campo oltre limite UTF-8 in {basename}.{oversized_field}: {MAX_CSV_FIELD_UTF8_BYTES} bytes"
+                        f"campo oltre limite UTF-8 in {basename}, colonna {oversized_field!r}: {MAX_CSV_FIELD_UTF8_BYTES} bytes"
                     )
                 if predicate is not None and not predicate(normalized):
                     continue
@@ -543,7 +564,7 @@ def read_table(
     except UnicodeDecodeError as error:
         raise BuildError(f"codifica CSV non valida in {basename}") from error
     except (csv.Error, zipfile.BadZipFile) as error:
-        raise BuildError(f"tabella ZIP/CSV non valida in {basename}: {error}") from error
+        raise BuildError(f"tabella ZIP/CSV non valida in {basename}: {log_safe(error)}") from error
 
 
 def require_columns(table: CsvTable, name: str, *columns: str) -> None:
@@ -565,11 +586,11 @@ def empty_calendar_dates() -> CsvTable:
 
 def parse_gtfs_date(value: str, context: str) -> date:
     if len(value) != 8 or not value.isdigit():
-        raise BuildError(f"data GTFS non valida ({context}): {value!r}")
+        raise BuildError(f"data GTFS non valida ({context!r}): {value!r}")
     try:
         return date(int(value[0:4]), int(value[4:6]), int(value[6:8]))
     except ValueError as error:
-        raise BuildError(f"data GTFS non valida ({context}): {value!r}") from error
+        raise BuildError(f"data GTFS non valida ({context!r}): {value!r}") from error
 
 
 def service_dates(calendar: CsvTable, calendar_dates: CsvTable, source_id: str) -> set[date]:
@@ -700,39 +721,65 @@ def stop_modes_table(
     )
 
 
-def original_archive_sha256(archive: zipfile.ZipFile, source_id: str, fallback: str) -> str:
-    """Preserve provenance when a filtered release pack is rebuilt.
+def published_provenance(entries: Iterable[Mapping[str, Any] | None], input_hash: str) -> str | None:
+    """The recorded upstream digest when the input *is* an already published pack, else ``None``.
 
-    The usual release invocation has a distinct raw input directory.  The
-    convenient default also permits rebuilding from the embedded assets
-    themselves; in that case this function keeps the original source digest so
-    a byte-different DEFLATE rebuild still has stable upstream provenance rather
-    than treating the first filtered ZIP as a new upstream download.  Canonical
-    member hashes, not compressed ZIP bytes, prove that content identity.
+    A rebuild from the embedded assets (the convenient default, or ``--input-dir`` pointing at a published
+    directory) must keep the original source digest: the input is then a filtered ZIP, not an upstream download.
+    That case is recognised only by the bytes on disk: the input's SHA-256 equals the ``sha256`` of the same source
+    in a published release manifest.  Any other input, whatever it carries inside, is its own provenance, so an
+    archive cannot choose the digest that the upstream pin is checked against.
     """
-    entry = find_entry(archive, "binario_filter_manifest.json")
+    for entry in entries:
+        if not isinstance(entry, Mapping) or entry.get("sha256") != input_hash:
+            continue
+        recorded = entry.get("sourceArchiveSha256")
+        if _is_hex(recorded, 64):
+            return str(recorded)
+    return None
+
+
+def original_archive_sha256(archive: zipfile.ZipFile, source_id: str, input_hash: str, provenance: str | None) -> str:
+    """The upstream digest recorded for this build: ``input_hash`` unless the input is a published pack.
+
+    For a published pack (``provenance`` from :func:`published_provenance`) its own top-level filter manifest must
+    agree with the release manifest; an input without one is not a filtered pack and keeps ``input_hash``.  A nested
+    ``*/binario_filter_manifest.json`` is never read.
+    """
+    if provenance is None:
+        return input_hash
+    entry = filter_manifest_entry(archive)
     if entry is None:
-        return fallback
+        return input_hash
     try:
         payload = json.loads(archive.read(entry).decode("utf-8"))
     except (KeyError, UnicodeDecodeError, json.JSONDecodeError, zipfile.BadZipFile) as error:
-        raise BuildError(f"{source_id}: binario_filter_manifest.json non valido") from error
-    value = payload.get("sourceArchiveSha256")
-    if payload.get("sourceId") == source_id and isinstance(value, str) and len(value) == 64 and all(
-        character in "0123456789abcdef" for character in value
-    ):
-        return value
-    return fallback
+        raise BuildError(f"{source_id}: {FILTER_MANIFEST_MEMBER} non valido") from error
+    if not isinstance(payload, dict) or payload.get("sourceId") != source_id or payload.get("sourceArchiveSha256") != provenance:
+        raise BuildError(f"{source_id}: provenienza del pack pubblicato incoerente con il manifest di release")
+    return provenance
 
 
-def filter_archive(source: Path, destination: Path, source_id: str) -> FilterResult:
-    """Filter one complete GTFS archive and write a deterministic ZIP."""
+def filter_archive(
+    source: Path,
+    destination: Path,
+    source_id: str,
+    *,
+    published_entries: Iterable[Mapping[str, Any] | None] = (),
+) -> FilterResult:
+    """Filter one complete GTFS archive and write a deterministic ZIP.
+
+    ``published_entries`` are the release-manifest entries of this source the input may be a byte-identical copy of
+    (see :func:`published_provenance`); without a match the input's own SHA-256 is its provenance.
+    """
     if not source.is_file() or not zipfile.is_zipfile(source):
         raise BuildError(f"{source_id}: archivio ZIP GTFS non valido: {source}")
     input_hash = sha256_file(source)
     with zipfile.ZipFile(source) as archive:
         validate_archive_limits(archive, omit_geometry=True)
-        source_hash = original_archive_sha256(archive, source_id, input_hash)
+        source_hash = original_archive_sha256(
+            archive, source_id, input_hash, published_provenance(published_entries, input_hash)
+        )
         budget = RetentionBudget()
         routes = read_table(archive, "routes.txt", required=True, budget=budget)
         assert routes
@@ -1054,11 +1101,13 @@ def _build_packs_locked(
     overrides = input_overrides or {}
     published_assets: dict[str, Path] = {}
     published_manifest_path = output_dir / "manifest.json"
-    if (overrides or only) and output_dir != input_dir and published_manifest_path.is_file():
-        published_manifest = read_manifest(published_manifest_path)
+    published_by_id: dict[str, Mapping[str, Any]] = {}
+    if published_manifest_path.is_file():
+        published_by_id = {pack["sourceId"]: pack for pack in read_manifest(published_manifest_path)["packs"]}
+    if (overrides or only) and output_dir != input_dir and published_by_id:
         published_assets = {
-            pack["sourceId"]: output_dir / safe_asset_name(pack["asset"])
-            for pack in published_manifest["packs"]
+            source_id: output_dir / safe_asset_name(pack["asset"])
+            for source_id, pack in published_by_id.items()
         }
     selected = set(only or ())
     registered = {pack["sourceId"] for pack in source_manifest["packs"]}
@@ -1088,7 +1137,11 @@ def _build_packs_locked(
                 shutil.copyfile(output_dir / name, staging / name)
                 continue
             source = overrides.get(source_id) or published_assets.get(source_id) or input_dir / name
-            results[source_id] = filter_archive(source, staging / name, source_id)
+            # The registry entry and the published entry name the bytes of a published pack; only a byte-identical
+            # input keeps their recorded upstream digest (A7-01).
+            results[source_id] = filter_archive(
+                source, staging / name, source_id, published_entries=(pack, published_by_id.get(source_id)),
+            )
         output_manifest = manifest_for_build(source_manifest, results, generated_at, kept_entries)
         for pack in output_manifest["packs"]:
             if pack["sourceId"] in kept_entries:
@@ -1159,7 +1212,7 @@ def verify_filter_from_asset(path: Path, source_id: str) -> str:
     """Require a release ZIP to prove filter policy and canonical content identity."""
     with zipfile.ZipFile(path) as archive:
         validate_archive_limits(archive)
-        entry = find_entry(archive, FILTER_MANIFEST_MEMBER)
+        entry = filter_manifest_entry(archive)
         if entry is None:
             raise BuildError(f"{source_id}: asset non filtrato ({FILTER_MANIFEST_MEMBER} mancante)")
         try:
@@ -1176,7 +1229,7 @@ def verify_filter_from_asset(path: Path, source_id: str) -> str:
                 for name in set(declared_digests) | set(actual_digests)
                 if declared_digests.get(name) != actual_digests.get(name)
             )
-            raise BuildError(f"{source_id}: digest canonici member incoerenti: {', '.join(mismatched[:3])}")
+            raise BuildError(f"{source_id}: digest canonici member incoerenti: {', '.join(log_safe(name) for name in mismatched[:3])}")
         routes = read_table(archive, "routes.txt", required=True)
         assert routes is not None
         selected, policy = selected_routes(source_id, routes)
@@ -1195,14 +1248,30 @@ def verify_filter_from_asset(path: Path, source_id: str) -> str:
         return canonical_content_sha256(declared_digests)
 
 
+DEFAULT_MIN_VALID_DAYS = 30
+
+
 def pack_min_valid_days(pack: Mapping[str, Any], default: int) -> int:
-    """The release threshold of a pack: its own minValidDays (1..default) when declared, else the default."""
+    """The release window of a pack: its own minValidDays when declared (a city feed published a few weeks at a time),
+    never longer than ``default``; else ``default``.  Shared by every freshness check (audit A7-06)."""
     declared = pack.get("minValidDays")
     if declared is None:
         return default
-    if not isinstance(declared, int) or isinstance(declared, bool) or not 1 <= declared <= default:
+    if not isinstance(declared, int) or isinstance(declared, bool) or declared < 1:
         raise BuildError(f"{pack.get('sourceId')}: minValidDays non valido: {declared!r}")
-    return declared
+    return min(declared, default)
+
+
+def release_freshness_cutoff(as_of: date, window_days: int) -> date:
+    """The first service day a pack must still run on: ``as_of`` plus its window."""
+    return as_of + timedelta(days=window_days)
+
+
+def is_release_fresh(last_service_date: date, as_of: date, window_days: int) -> bool:
+    """The one release-freshness rule of the repository: the pack runs at least ``window_days`` days past ``as_of``
+    (BRANCH_AND_RELEASE_POLICY.md: «almeno 30 giorni oltre la data del gate»).  ``build_gtfs_packs.py --check``,
+    ``verify_embedded_assets.py`` and the refresh report all use it, on the date derived from the calendar."""
+    return last_service_date >= release_freshness_cutoff(as_of, window_days)
 
 
 def verify_assets(
@@ -1266,11 +1335,10 @@ def verify_assets(
             # A city feed published a few weeks ahead declares its own shorter release threshold (minValidDays,
             # documented in GTFS_PACK_REFRESH.md with its weekly refresh); no pack can ask for a longer one here.
             days = pack_min_valid_days(pack, min_valid_days)
-            threshold = as_of + timedelta(days=days)
-            if actual_end <= threshold:
+            if not is_release_fresh(actual_end, as_of, days):
                 problems.append(
                     f"pack scaduto o in scadenza entro {days} giorni: "
-                    f"{source_id} termina {actual_end} (soglia {threshold})"
+                    f"{source_id} termina {actual_end} (richiesto almeno fino al {release_freshness_cutoff(as_of, days)})"
                 )
     if problems:
         raise BuildError("\n".join(problems))
@@ -1421,7 +1489,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--max-download-bytes", type=int, default=DEFAULT_MAX_DOWNLOAD_BYTES, help="cap hard per ogni download")
     parser.add_argument("--check", action="store_true", help="verifica asset, hash e validita release senza rete")
     parser.add_argument("--as-of", type=parse_date, default=date.today(), help="data di riferimento per --check")
-    parser.add_argument("--min-valid-days", type=int, default=30, help="giorni minimi residui richiesti da --check")
+    parser.add_argument("--min-valid-days", type=int, default=DEFAULT_MIN_VALID_DAYS, help="giorni minimi residui richiesti da --check")
     parser.add_argument(
         "--integrity-only",
         action="store_true",
@@ -1485,7 +1553,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(json.dumps({"packs": len(output["packs"]), "outputDir": str(args.output_dir), "generatedAt": output["generatedAt"]}, ensure_ascii=False))
         return 0
     except (BuildError, csv.Error, zipfile.BadZipFile, http.client.HTTPException) as error:
-        print(f"ERRORE GTFS: {error}", file=sys.stderr)
+        print_error_lines("ERRORE GTFS: ", error)
         return 1
 
 

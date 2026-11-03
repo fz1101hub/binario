@@ -1,6 +1,6 @@
 # Pubblicazione su Google Play — checklist di invio per Binario
 
-**Ambito:** app Android `it.binario.app` (telefono) con companion Wear OS nello stesso listing. Le azioni sono del titolare dell'account sviluppatore; questa pagina fissa l'ordine dei passaggi nella Play Console, i testi del listing nelle cinque lingue dell'app e i riferimenti ai documenti che il repository mantiene verificati. Gli artifact da caricare sono quelli prodotti da `release-sign` (vedi [RELEASE_BUILD.md](../RELEASE_BUILD.md)); le risposte del modulo Sicurezza dei dati sono in [PLAY_DATA_SAFETY.md](PLAY_DATA_SAFETY.md); gli asset grafici sono descritti in [store/play/README.md](../../store/play/README.md). Le norme Play cambiano: ogni soglia riportata qui va riletta nella Console al momento dell'invio.
+**Ambito:** app Android `it.binario.app` (telefono) con companion Wear OS nello stesso listing. Le azioni sono del titolare dell'account sviluppatore; questa pagina fissa l'ordine dei passaggi nella Play Console, i testi del listing nelle cinque lingue principali dell'app (che ne ha 17) e i riferimenti ai documenti che il repository mantiene verificati. Gli artifact da caricare sono quelli prodotti da `release-sign` (vedi [RELEASE_BUILD.md](../RELEASE_BUILD.md)); le risposte del modulo Sicurezza dei dati sono in [PLAY_DATA_SAFETY.md](PLAY_DATA_SAFETY.md); gli asset grafici sono descritti in [store/play/README.md](../../store/play/README.md). Le norme Play cambiano: ogni soglia riportata qui va riletta nella Console al momento dell'invio.
 
 ## 0. Prerequisiti che bloccano l'invio
 
@@ -11,6 +11,7 @@
 | URL pubblico dell'informativa privacy con titolare e recapito | **Blocco aperto** dichiarato in `PRIVACY.md` | Pubblicare il contenuto di `PRIVACY.md` a un URL stabile, con titolare e recapito, e collegarlo nell'app e nella Console. |
 | Keystore di upload e iscrizione a Play App Signing | Procedura in `RELEASE_BUILD.md` | Generare il keystore, caricare i quattro secret, eseguire il dispatch con `sign_release=true`. |
 | `versionCode` mai riusati | Garantito da `tools/verify_android_release_config.py` | Incrementare `BINARIO_APP_VERSION_CODE` a ogni upload; Wear deriva automaticamente `1000000 + codice telefono`. |
+| Licenze dei pack orari confermate | Ogni voce di `app/src/main/assets/gtfs/manifest.json` e `gtfs-transit/manifest.json` registra `attribution`, `licence` e `licenceEvidence`; `tools/verify_embedded_assets.py` fallisce se mancano o se una licenza non dichiarata esce da `gtfs-personal/`, e avvisa per i pack ancora «Da confermare dal titolare» (oggi `ch-otd-gtfs`, `hzpp-gtfs`, `lombardia-trenord-gtfs`, `sncf-gtfs`, `trentino-gtfs`). Impostazioni › Info mostra per ogni pack della build licenziante, licenza e pagina della fonte, generati da questi campi (`GtfsPackCredits.kt`) | **OWNER ACTION**: per ogni pack confermare che la licenza consenta la redistribuzione in un'app pubblicata su Google Play e i suoi obblighi di attribuzione (CC BY 4.0 §3(a), IODL), registrarla nel manifest con l'evidenza, poi eseguire `python3 tools/build_android_gtfs_credits.py` e ricostruire l'indice iOS (`tools/build_ios_gtfs_schedule.py`). Un pack la cui licenza non si può confermare va escluso dal bundle prima dell'invio. |
 | Risposte Sicurezza dei dati coerenti con il codice | `PLAY_DATA_SAFETY.md`, verificato da `tools/verify_privacy_policy.py` | Trascrivere le risposte nella Console e confermarle. |
 | Dichiarazione del servizio in primo piano di tipo `location` (sveglia GPS e «Stima dalla tua posizione») | Manifest: `ACCESS_FINE_LOCATION`, `FOREGROUND_SERVICE_LOCATION`, servizio non esportato di tipo `location`; nessuna posizione in background | **OWNER ACTION**: compilare *Autorizzazioni dei servizi in primo piano* con la descrizione e un video dimostrativo come indicato in `PLAY_DATA_SAFETY.md`; senza la dichiarazione la Console non accetta il bundle. |
 
@@ -34,7 +35,7 @@
 
 ## 2. Testi del listing
 
-Limiti Play: titolo 30 caratteri, descrizione breve 80, descrizione completa 4.000, note di rilascio 500 per lingua. Le lingue sono quelle dell'app (`it`, `en`, `de`, `fr`, `es`); nella Console corrispondono a *it-IT*, *en-US* (aggiungere *en-GB* con lo stesso testo), *de-DE*, *fr-FR*, *es-ES*. I testi derivano dal README e dalle stringhe dell'app e **non promettono dati in tempo reale**: la build pubblicata mostra orari programmati e dichiara quando un dato live manca. `tests/test_play_store_docs.py` verifica lunghezze e presenza di tutte le lingue.
+Limiti Play: titolo 30 caratteri, descrizione breve 80, descrizione completa 4.000, note di rilascio 500 per lingua. L'app è in 17 lingue (`app/src/main/res/xml/locale_config.xml`: `it`, `en`, `de`, `fr`, `es`, `ar`, `hi`, `id`, `ja`, `ko`, `my`, `pt`, `ru`, `th`, `tr`, `vi`, `zh-CN`); il listing è tradotto nelle cinque principali, che nella Console corrispondono a *it-IT*, *en-US* (aggiungere *en-GB* con lo stesso testo), *de-DE*, *fr-FR*, *es-ES*. Per le altre dodici la Console mostra il listing predefinito *it-IT* finché il titolare non aggiunge una traduzione. I testi derivano dal README, dalle stringhe dell'app e da [PLAY_DATA_SAFETY.md](PLAY_DATA_SAFETY.md) e **non promettono dati in tempo reale**: la build pubblicata (`release-sign`, che passa `-PBINARIO_PERSONAL_REALTIME_SOURCES=true`, il valore predefinito della release) mostra gli orari programmati e, quando le fonti pubbliche best-effort rispondono, ritardi e binari, e dichiara quando un dato live manca. Le righe sulla privacy descrivono quella build: codici stazione, data e ora e numeri treno alle fonti ferroviarie (ViaggiaTreno in HTTP non cifrato), coordinate arrotondate della stazione di arrivo a Open-Meteo, tessere OpenFreeMap della zona mostrata. Se il titolare decide uno store senza fonti best-effort (`false`), vanno riscritte insieme alle risposte di `PLAY_DATA_SAFETY.md`. `tests/test_play_store_docs.py` verifica lunghezze, presenza delle cinque traduzioni, il numero di lingue dichiarato (da `locale_config.xml`) e il numero di reti (dai manifest dei pack).
 
 #### Titolo (it)
 
@@ -108,7 +109,7 @@ PIANIFICA
 • Dettatura della ricerca tramite il riconoscitore vocale di sistema.
 
 CONSULTA
-• Quadri orario programmati RFI per le stazioni hub coperte e orari GTFS ufficiali inclusi nell'app per dieci reti regionali e transfrontaliere.
+• Quadri orario programmati RFI per le stazioni hub coperte e orari GTFS ufficiali inclusi nell'app per 21 reti: Trenitalia e Italo in tutta Italia, 15 ferrovie regionali e transfrontaliere, metro e tram di Milano, Genova, Firenze e Cagliari.
 • Dettaglio corsa con operatore, categoria, orari programmati e fermate.
 • Tratte salvate, preferiti e monitoraggio locale di un numero treno.
 • Sveglia fermata e avvisi pendolare come notifiche locali; la sveglia può anche avvisarti in base alla posizione, che resta sul telefono.
@@ -118,15 +119,16 @@ WIDGET E WEAR OS
 • Companion Wear OS con la tratta attiva, le prossime due corse, un riquadro (Tile) e una complicazione; l'aggiornamento resta delegato al telefono.
 
 DATI E TRASPARENZA
-• Binario mostra orari programmati. Quando un dato in tempo reale non è disponibile o non è identificabile con certezza, l'app lo dichiara e non inventa ritardi, binari o soppressioni.
+• Binario mostra orari programmati e, quando le fonti pubbliche li forniscono, ritardi e binari in tempo reale. Quando un dato in tempo reale non è disponibile o non è identificabile con certezza, l'app lo dichiara e non inventa ritardi, binari o soppressioni.
 • Ogni risultato indica la fonte, la validità e il livello di confidenza. Se una tratta non è coperta dalle fonti incluse, l'app lo dice invece di mostrare orari fittizi.
 
 PRIVACY
 • Nessun account, nessuna pubblicità, nessun SDK di analisi.
 • Tratte, preferiti e impostazioni restano sul dispositivo; il backup è un file JSON esportato solo su tua scelta.
-• Le ricerche inviano alla fonte ferroviaria soltanto l'identificativo pubblico della stazione richiesta.
+• Ricerche, tabelloni e avvisi interrogano le fonti pubbliche (RFI, ViaggiaTreno, Italo, Trenord, MIT e altre) inviando solo i dati della richiesta: codici delle stazioni, data e ora, numero del treno. Le richieste a ViaggiaTreno viaggiano in HTTP non cifrato quando la fonte lo impone.
+• Meteo a destinazione (disattivabile): a Open-Meteo vanno le coordinate arrotondate della stazione di arrivo. Le mappe scaricano da OpenFreeMap le tessere della zona mostrata, per le stazioni vicine l'area intorno a te; le coordinate del dispositivo restano sul telefono.
 
-Disponibile in italiano, inglese, tedesco, francese e spagnolo. Richiede Android 8.0 o successivo; il companion richiede Wear OS 3 (Android 11) o successivo e l'app installata sul telefono.
+Disponibile in 17 lingue: italiano, inglese, tedesco, francese, spagnolo, arabo, hindi, indonesiano, giapponese, coreano, birmano, portoghese, russo, thai, turco, vietnamita e cinese semplificato. Richiede Android 8.0 o successivo; il companion richiede Wear OS 3 (Android 11) o successivo e l'app installata sul telefono.
 ```
 
 #### Descrizione completa (en)
@@ -141,7 +143,7 @@ PLAN
 • Dictate a search through the system speech recogniser.
 
 BROWSE
-• RFI scheduled departure boards for the covered hub stations and official GTFS timetables bundled in the app for ten regional and cross-border networks.
+• RFI scheduled departure boards for the covered hub stations and official GTFS timetables bundled in the app for 21 networks: Trenitalia and Italo across Italy, 15 regional and cross-border railways, and the metro and tram lines of Milan, Genoa, Florence and Cagliari.
 • Service details with operator, category, scheduled times and all stops.
 • Saved routes, favourites and local monitoring of a train number.
 • Stop alarm and commuter alerts as local notifications; the alarm can also alert you based on your location, which stays on the phone.
@@ -151,15 +153,16 @@ WIDGET AND WEAR OS
 • Wear OS companion with the active route, the next two services, a Tile and a complication; refreshes stay delegated to the phone.
 
 DATA AND TRANSPARENCY
-• Binario shows scheduled times. When real-time data is unavailable or cannot be identified with certainty, the app says so and never invents delays, platforms or cancellations.
+• Binario shows scheduled times and, when the public sources provide them, real-time delays and platforms. When real-time data is unavailable or cannot be identified with certainty, the app says so and never invents delays, platforms or cancellations.
 • Every result states its source, validity and confidence level. If a route is not covered by the bundled sources, the app says so instead of showing made-up times.
 
 PRIVACY
 • No account, no advertising, no analytics SDK.
 • Routes, favourites and settings stay on the device; the backup is a JSON file exported only when you choose to.
-• Searches send the railway source nothing but the public identifier of the requested station.
+• Searches, departure boards and alerts query the public sources (RFI, ViaggiaTreno, Italo, Trenord, MIT and others) with only what the request needs: station codes, date and time, train number. Requests to ViaggiaTreno travel over unencrypted HTTP when the source requires it.
+• Weather at destination (can be turned off): Open-Meteo receives the rounded coordinates of the arrival station. Maps download from OpenFreeMap the tiles of the area shown, for nearby stations the area around you; the device's coordinates stay on the phone.
 
-Available in Italian, English, German, French and Spanish. Requires Android 8.0 or later; the companion requires Wear OS 3 (Android 11) or later and the app installed on the phone.
+Available in 17 languages: Italian, English, German, French, Spanish, Arabic, Hindi, Indonesian, Japanese, Korean, Burmese, Portuguese, Russian, Thai, Turkish, Vietnamese and Simplified Chinese. Requires Android 8.0 or later; the companion requires Wear OS 3 (Android 11) or later and the app installed on the phone.
 ```
 
 #### Descrizione completa (de)
@@ -174,7 +177,7 @@ PLANEN
 • Suche per Diktat über die Spracherkennung des Systems.
 
 ANSEHEN
-• Planmäßige RFI-Abfahrtstafeln für die abgedeckten Knotenbahnhöfe und offizielle GTFS-Fahrpläne in der App für zehn regionale und grenzüberschreitende Netze.
+• Planmäßige RFI-Abfahrtstafeln für die abgedeckten Knotenbahnhöfe und offizielle GTFS-Fahrpläne in der App für 21 Netze: Trenitalia und Italo in ganz Italien, 15 regionale und grenzüberschreitende Bahnen sowie U-Bahn und Tram in Mailand, Genua, Florenz und Cagliari.
 • Verbindungsdetails mit Betreiber, Kategorie, Planzeiten und allen Halten.
 • Gespeicherte Strecken, Favoriten und lokale Überwachung einer Zugnummer.
 • Haltwecker und Pendlerwarnungen als lokale Benachrichtigungen; der Wecker kann dich auch anhand deines Standorts warnen, der auf dem Telefon bleibt.
@@ -184,15 +187,16 @@ WIDGET UND WEAR OS
 • Wear-OS-Begleiter mit aktiver Strecke, den nächsten zwei Verbindungen, einer Kachel (Tile) und einer Komplikation; die Aktualisierung bleibt beim Telefon.
 
 DATEN UND TRANSPARENZ
-• Binario zeigt Planzeiten. Wenn Echtzeitdaten fehlen oder nicht eindeutig zuzuordnen sind, sagt die App das und erfindet keine Verspätungen, Gleise oder Ausfälle.
+• Binario zeigt Planzeiten und, wenn die öffentlichen Quellen sie liefern, Verspätungen und Gleise in Echtzeit. Wenn Echtzeitdaten fehlen oder nicht eindeutig zuzuordnen sind, sagt die App das und erfindet keine Verspätungen, Gleise oder Ausfälle.
 • Jedes Ergebnis nennt Quelle, Gültigkeit und Vertrauensstufe. Deckt keine enthaltene Quelle eine Strecke ab, sagt die App das, statt erfundene Zeiten zu zeigen.
 
 DATENSCHUTZ
 • Kein Konto, keine Werbung, kein Analyse-SDK.
 • Strecken, Favoriten und Einstellungen bleiben auf dem Gerät; das Backup ist eine JSON-Datei, die nur auf deinen Wunsch exportiert wird.
-• Suchen senden der Bahnquelle nur die öffentliche Kennung des angefragten Bahnhofs.
+• Suchen, Abfahrtstafeln und Warnungen fragen die öffentlichen Quellen ab (RFI, ViaggiaTreno, Italo, Trenord, MIT und andere) und senden nur, was die Anfrage braucht: Bahnhofscodes, Datum und Uhrzeit, Zugnummer. Anfragen an ViaggiaTreno laufen unverschlüsselt über HTTP, wenn die Quelle es verlangt.
+• Wetter am Ziel (abschaltbar): Open-Meteo erhält die gerundeten Koordinaten des Zielbahnhofs. Karten laden bei OpenFreeMap die Kacheln des gezeigten Gebiets, bei Bahnhöfen in der Nähe die Umgebung deines Standorts; die Koordinaten des Geräts bleiben auf dem Telefon.
 
-Verfügbar auf Italienisch, Englisch, Deutsch, Französisch und Spanisch. Erfordert Android 8.0 oder neuer; der Begleiter erfordert Wear OS 3 (Android 11) oder neuer und die auf dem Telefon installierte App.
+Verfügbar in 17 Sprachen: Italienisch, Englisch, Deutsch, Französisch, Spanisch, Arabisch, Hindi, Indonesisch, Japanisch, Koreanisch, Birmanisch, Portugiesisch, Russisch, Thai, Türkisch, Vietnamesisch und vereinfachtes Chinesisch. Erfordert Android 8.0 oder neuer; der Begleiter erfordert Wear OS 3 (Android 11) oder neuer und die auf dem Telefon installierte App.
 ```
 
 #### Descrizione completa (fr)
@@ -207,7 +211,7 @@ PLANIFIER
 • Dictée de la recherche via la reconnaissance vocale du système.
 
 CONSULTER
-• Tableaux des départs programmés RFI pour les gares principales couvertes et horaires GTFS officiels intégrés à l'application pour dix réseaux régionaux et transfrontaliers.
+• Tableaux des départs programmés RFI pour les gares principales couvertes et horaires GTFS officiels intégrés à l'application pour 21 réseaux : Trenitalia et Italo dans toute l'Italie, 15 lignes ferroviaires régionales et transfrontalières, métro et tram de Milan, Gênes, Florence et Cagliari.
 • Détail du train avec opérateur, catégorie, horaires programmés et tous les arrêts.
 • Trajets enregistrés, favoris et suivi local d'un numéro de train.
 • Réveil à l'arrêt et alertes pendulaires sous forme de notifications locales ; le réveil peut aussi vous avertir selon votre position, qui reste sur le téléphone.
@@ -217,15 +221,16 @@ WIDGET ET WEAR OS
 • Compagnon Wear OS avec le trajet actif, les deux prochains trains, une tuile (Tile) et une complication ; l'actualisation reste déléguée au téléphone.
 
 DONNÉES ET TRANSPARENCE
-• Binario affiche des horaires programmés. Quand une donnée en temps réel est indisponible ou ne peut pas être identifiée avec certitude, l'application le dit et n'invente ni retards, ni voies, ni suppressions.
+• Binario affiche des horaires programmés et, quand les sources publiques les fournissent, retards et voies en temps réel. Quand une donnée en temps réel est indisponible ou ne peut pas être identifiée avec certitude, l'application le dit et n'invente ni retards, ni voies, ni suppressions.
 • Chaque résultat indique sa source, sa validité et son niveau de confiance. Si un trajet n'est pas couvert par les sources intégrées, l'application le dit au lieu d'afficher des horaires fictifs.
 
 CONFIDENTIALITÉ
 • Pas de compte, pas de publicité, pas de SDK d'analyse.
 • Trajets, favoris et réglages restent sur l'appareil ; la sauvegarde est un fichier JSON exporté uniquement à votre demande.
-• Les recherches n'envoient à la source ferroviaire que l'identifiant public de la gare demandée.
+• Recherches, tableaux et alertes interrogent les sources publiques (RFI, ViaggiaTreno, Italo, Trenord, MIT et d'autres) en n'envoyant que les données de la demande : codes des gares, date et heure, numéro de train. Les requêtes vers ViaggiaTreno passent en HTTP non chiffré quand la source l'impose.
+• Météo à destination (désactivable) : Open-Meteo reçoit les coordonnées arrondies de la gare d'arrivée. Les cartes téléchargent depuis OpenFreeMap les tuiles de la zone affichée, pour les gares proches la zone autour de vous ; les coordonnées de l'appareil restent sur le téléphone.
 
-Disponible en italien, anglais, allemand, français et espagnol. Nécessite Android 8.0 ou version ultérieure ; le compagnon nécessite Wear OS 3 (Android 11) ou version ultérieure et l'application installée sur le téléphone.
+Disponible en 17 langues : italien, anglais, allemand, français, espagnol, arabe, hindi, indonésien, japonais, coréen, birman, portugais, russe, thaï, turc, vietnamien et chinois simplifié. Nécessite Android 8.0 ou version ultérieure ; le compagnon nécessite Wear OS 3 (Android 11) ou version ultérieure et l'application installée sur le téléphone.
 ```
 
 #### Descrizione completa (es)
@@ -240,7 +245,7 @@ PLANIFICAR
 • Dictado de la búsqueda mediante el reconocimiento de voz del sistema.
 
 CONSULTAR
-• Cuadros de salidas programadas de RFI para las estaciones principales cubiertas y horarios GTFS oficiales incluidos en la app para diez redes regionales y transfronterizas.
+• Cuadros de salidas programadas de RFI para las estaciones principales cubiertas y horarios GTFS oficiales incluidos en la app para 21 redes: Trenitalia e Italo en toda Italia, 15 ferrocarriles regionales y transfronterizos, y metro y tranvía de Milán, Génova, Florencia y Cagliari.
 • Detalle del tren con operador, categoría, horarios programados y todas las paradas.
 • Rutas guardadas, favoritos y seguimiento local de un número de tren.
 • Alarma de parada y avisos para viajeros habituales como notificaciones locales; la alarma también puede avisarte según tu ubicación, que se queda en el teléfono.
@@ -250,15 +255,16 @@ WIDGET Y WEAR OS
 • Complemento para Wear OS con la ruta activa, los dos próximos trenes, un mosaico (Tile) y una complicación; la actualización sigue delegada al teléfono.
 
 DATOS Y TRANSPARENCIA
-• Binario muestra horarios programados. Cuando un dato en tiempo real no está disponible o no puede identificarse con certeza, la app lo indica y no inventa retrasos, vías ni cancelaciones.
+• Binario muestra horarios programados y, cuando las fuentes públicas los ofrecen, retrasos y vías en tiempo real. Cuando un dato en tiempo real no está disponible o no puede identificarse con certeza, la app lo indica y no inventa retrasos, vías ni cancelaciones.
 • Cada resultado indica su fuente, su validez y su nivel de confianza. Si una ruta no está cubierta por las fuentes incluidas, la app lo dice en lugar de mostrar horarios ficticios.
 
 PRIVACIDAD
 • Sin cuenta, sin publicidad, sin SDK de análisis.
 • Rutas, favoritos y ajustes permanecen en el dispositivo; la copia de seguridad es un archivo JSON que se exporta solo si tú lo decides.
-• Las búsquedas envían a la fuente ferroviaria únicamente el identificador público de la estación solicitada.
+• Búsquedas, paneles y avisos consultan las fuentes públicas (RFI, ViaggiaTreno, Italo, Trenord, MIT y otras) enviando solo los datos de la petición: códigos de estación, fecha y hora, número de tren. Las peticiones a ViaggiaTreno van por HTTP sin cifrar cuando la fuente lo exige.
+• Tiempo en el destino (desactivable): Open-Meteo recibe las coordenadas redondeadas de la estación de llegada. Los mapas descargan de OpenFreeMap las teselas de la zona mostrada, para las estaciones cercanas la zona a tu alrededor; las coordenadas del dispositivo se quedan en el teléfono.
 
-Disponible en italiano, inglés, alemán, francés y español. Requiere Android 8.0 o posterior; el complemento requiere Wear OS 3 (Android 11) o posterior y la app instalada en el teléfono.
+Disponible en 17 idiomas: italiano, inglés, alemán, francés, español, árabe, hindi, indonesio, japonés, coreano, birmano, portugués, ruso, tailandés, turco, vietnamita y chino simplificado. Requiere Android 8.0 o posterior; el complemento requiere Wear OS 3 (Android 11) o posterior y la app instalada en el teléfono.
 ```
 
 #### Note di rilascio (it)

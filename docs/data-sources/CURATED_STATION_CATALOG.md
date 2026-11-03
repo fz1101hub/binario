@@ -2,7 +2,7 @@
 
 ## Scopo
 
-Il file utente `stazioni_ferroviarie_curato_v4.sqlite` è l’unica sorgente del catalogo stazioni di Binario dalla versione 0.20.0. L’app non usa più l’asset geografico OpenStreetMap né i `stops.txt` GTFS per popolare l’autocompletamento. Il database viene convertito in un asset JSON offline, privo di dati di circolazione, tramite `tools/build_curated_station_catalog.py`.
+Il file utente `stazioni_ferroviarie_curato_v4.sqlite` è l’unica sorgente del catalogo stazioni di Binario dalla versione 0.20.0. L’app non usa più l’asset geografico OpenStreetMap né i `stops.txt` GTFS per popolare l’autocompletamento. Il database viene convertito in un asset JSON offline, privo di dati di circolazione, tramite `tools/build_curated_station_catalog.py`. **Provenienza e licenza da confermare dal titolare** (audit A7-09): il repository non registra da quali fonti derivano nomi, alias e coordinate del database; il manifest `app/src/main/assets/stations/manifest.json` lo dichiara nei campi `provenance` e `licence`, che `tools/verify_embedded_assets.py` segnala come avviso finché non sono compilati. Il credito in app (Impostazioni › Info) descrive il catalogo come database curato, senza attribuzione OpenStreetMap: se la conferma indica dati OSM, vanno aggiunti l'avviso ODbL 1.0 e la licenza del JSON distribuito.
 
 ## Evidenza dell’importazione
 

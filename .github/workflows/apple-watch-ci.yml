@@ -278,6 +278,9 @@ jobs:
           [ "$value" = "it" ] || fail "Binario.app: CFBundleDevelopmentRegion is $value, expected it"
           value="$(info "$watch" WKCompanionAppBundleIdentifier)"
           [ "$value" = "it.binario.ios" ] || fail "BinarioWatch.app: WKCompanionAppBundleIdentifier is $value, expected it.binario.ios"
+          # The archive is what App Store Connect receives: the packs of its timetable index must run 30 more days.
+          python3 ../tools/build_gtfs_packs.py --check --input-dir ../app/src/main/assets/gtfs --min-valid-days 30 \
+            || fail "GTFS packs of the iOS timetable index end within 30 days (tools/build_gtfs_packs.py --check)"
           test "$failures" -eq 0
       - name: Upload unsigned Release archive
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

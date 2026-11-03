@@ -357,7 +357,7 @@
     <string name="journey_empty_unavailable">Ahora no se pueden calcular los viajes con transbordo. Inténtalo de nuevo.</string>
     <string name="journey_empty_no_direct">Ninguno de los viajes encontrados es directo.</string>
     <string name="journey_option_accessibility">Salida a las %1$s desde %2$s, llegada a las %3$s a %4$s, duración %5$s, %6$s.</string>
-    <string name="settings_privacy_osm">Autocompletado nacional: © OpenStreetMap contributors, ODbL 1.0. El catálogo geográfico sugiere nombres de estaciones, pero no confirma servicio, horario, andén, retraso ni circulación.</string>
+    <string name="settings_privacy_osm">Catálogo de estaciones: base de datos revisada incluida en la app. Sugiere nombres de estaciones, pero no confirma servicio, horario, andén, retraso ni circulación.</string>
     <!-- Open maps (October 2026) -->
     <string name="map_attribution">OpenFreeMap © OpenMapTiles, datos © colaboradores de OpenStreetMap</string>
     <string name="map_route_title">Mapa del recorrido</string>

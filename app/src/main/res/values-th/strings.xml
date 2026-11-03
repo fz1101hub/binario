@@ -345,7 +345,7 @@
     <string name="journey_empty_unavailable">ขณะนี้คำนวณการเดินทางที่มีการเปลี่ยนขบวนไม่ได้ โปรดลองอีกครั้ง</string>
     <string name="journey_empty_no_direct">ไม่มีเที่ยวตรงในตัวเลือกที่พบ</string>
     <string name="journey_option_accessibility">ออกเวลา %1$s จาก %2$s ถึงเวลา %3$s ที่ %4$s ใช้เวลา %5$s, %6$s</string>
-    <string name="settings_privacy_osm">การเติมคำอัตโนมัติทั่วประเทศ: © OpenStreetMap contributors, ODbL 1.0 แคตตาล็อกภูมิศาสตร์แนะนำชื่อสถานี แต่ไม่ได้ยืนยันบริการ เวลา ชานชาลา ความล่าช้า หรือการเดินรถ</string>
+    <string name="settings_privacy_osm">แคตตาล็อกสถานี: ฐานข้อมูลที่คัดสรรซึ่งรวมอยู่ในแอป แคตตาล็อกนี้แนะนำชื่อสถานี แต่ไม่ได้ยืนยันบริการ เวลา ชานชาลา ความล่าช้า หรือการเดินรถ</string>
     <!-- Open maps (October 2026) -->
     <string name="map_attribution">OpenFreeMap © OpenMapTiles, ข้อมูล © OpenStreetMap contributors</string>
     <string name="map_route_title">แผนที่เส้นทาง</string>

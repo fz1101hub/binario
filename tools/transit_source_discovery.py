@@ -60,8 +60,18 @@ DEFAULT_PROBES = [
 _report_path: Path | None = None
 
 
+def log_safe(value: object) -> str:
+    """``value`` on one line with control characters escaped: fetched text never starts a log line (audit A7-02)."""
+    return "".join(
+        character if character.isprintable() or character == " " else character.encode("unicode_escape").decode("ascii")
+        for character in str(value)
+    )
+
+
 def emit(line: str = "") -> None:
-    """Print and append to the report at once, so a run stopped by its time limit still leaves the report."""
+    """Print and append to the report at once, so a run stopped by its time limit still leaves the report.  Every
+    line is escaped: member names, agency names and XML samples come from the downloads."""
+    line = log_safe(line)
     print(line, flush=True)
     if _report_path is not None:
         with _report_path.open("a", encoding="utf-8") as report:
@@ -403,6 +413,10 @@ def probe_netexgtfs(url: str, out: Path) -> None:
 def summarize_netex(path: Path) -> None:
     import xml.etree.ElementTree as ET
 
+    # The converter's guard (tools/netex_to_gtfs.py): DOCTYPE/ENTITY refused at parser level, decompressed bytes capped.
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from netex_to_gtfs import GuardedStream
+
     def local(tag: str) -> str:
         return tag.rsplit("}", 1)[-1]
 
@@ -430,7 +444,8 @@ def summarize_netex(path: Path) -> None:
         samples: dict[str, str] = {}
         started = time.monotonic()
         with opener() as stream:  # type: ignore[operator]
-            for event, element in ET.iterparse(stream, events=("end",)):
+            guarded = io.BufferedReader(GuardedStream(stream), 1 << 20)
+            for event, element in ET.iterparse(guarded, events=("end",)):
                 if time.monotonic() - started > NETEX_SUMMARY_SECONDS:
                     emit(f"  file {name} summary stopped after {NETEX_SUMMARY_SECONDS} s (partial counts)")
                     break

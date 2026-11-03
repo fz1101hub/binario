@@ -278,6 +278,22 @@ class FreshnessTest(unittest.TestCase):
         self.assertIn("| city | gtfs-transit | 2026-11-10 | 7 | 14 | SOTTO SOGLIA |", markdown)
         self.assertIn("Sotto soglia o scaduti: city.", markdown)
 
+    def test_the_weekly_watch_warns_within_its_window_and_never_fails(self) -> None:
+        temp = Path(tempfile.mkdtemp(prefix="freshness-watch-"))
+        self.addCleanup(shutil.rmtree, temp, ignore_errors=True)
+        entries = [{"sourceId": "a", "asset": "gtfs/a.zip", "lastServiceDate": "2026-12-12"},
+                   {"sourceId": "b", "asset": "gtfs/b.zip", "lastServiceDate": "2027-06-30"},
+                   {"sourceId": "city", "asset": "gtfs-transit/city.zip", "lastServiceDate": "2026-11-30", "minValidDays": 14}]
+        (temp / "manifest.json").write_text(json.dumps({"packs": entries}), encoding="utf-8")
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            code = refresh.main(["--freshness", str(temp), "--as-of", "2026-11-03", "--min-valid-days", "45", "--warn"])
+        self.assertEqual(0, code)
+        warnings = [line for line in output.getvalue().splitlines() if line.startswith("::warning")]
+        # 39 days left is under the 45-day watch; the city pack keeps its own 14-day window (27 days left: ok).
+        self.assertEqual(1, len(warnings), warnings)
+        self.assertIn("a (gtfs/a.zip) termina 2026-12-12: 39 giorni residui, finestra 45", warnings[0])
+
     def test_shipped_packs_are_reported(self) -> None:
         rows = refresh.freshness_rows([refresh.CORE_DIR, refresh.TRANSIT_DIR, refresh.PERSONAL_DIR], date(2026, 11, 3))
         ids = {row["sourceId"] for row in rows}

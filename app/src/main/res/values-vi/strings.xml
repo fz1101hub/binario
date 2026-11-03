@@ -345,7 +345,7 @@
     <string name="journey_empty_unavailable">Hiện không thể tính hành trình có đổi tàu. Hãy thử lại.</string>
     <string name="journey_empty_no_direct">Không có phương án đi thẳng nào trong số các phương án tìm được.</string>
     <string name="journey_option_accessibility">Khởi hành lúc %1$s từ %2$s, đến lúc %3$s tại %4$s, thời gian %5$s, %6$s.</string>
-    <string name="settings_privacy_osm">Tự động hoàn thành toàn quốc: © OpenStreetMap contributors, ODbL 1.0. Danh mục địa lý gợi ý tên ga nhưng không xác nhận dịch vụ, giờ, sân ga, mức trễ hay tình trạng chạy tàu.</string>
+    <string name="settings_privacy_osm">Danh mục ga: cơ sở dữ liệu được tuyển chọn, có sẵn trong ứng dụng. Danh mục này gợi ý tên ga nhưng không xác nhận dịch vụ, giờ, sân ga, mức trễ hay tình trạng chạy tàu.</string>
     <!-- Open maps (October 2026) -->
     <string name="map_attribution">OpenFreeMap © OpenMapTiles, dữ liệu © OpenStreetMap contributors</string>
     <string name="map_route_title">Bản đồ lộ trình</string>

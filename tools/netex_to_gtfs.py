@@ -6,7 +6,10 @@ The Italian National Access Point (CCISS, https://www.cciss.it/nap/) publishes o
 the subset of NeTEx a journey planner needs into GTFS tables; ``tools/build_gtfs_packs.py`` then filters the result
 like any other GTFS source.  The input is untrusted data: run with ``python3 -I`` from the repository root, outside
 the directory that holds the download.  Nothing in the input is executed and no entity is resolved (the parser of
-``xml.etree`` never fetches external DTDs or entities, and DOCTYPEs are rejected outright).
+``xml.etree`` never fetches external DTDs or entities, and a DOCTYPE is rejected outright: a second expat parser reads
+the same bytes up to the root element, in whatever encoding the document declares, so an internal DTD after a long
+comment or in UTF-16 is refused like any other).  Each XML stream is capped at ``MAX_UNCOMPRESSED_BYTES`` of
+decompressed input (gzip included) and the output at ``MAX_TRIPS`` trips and ``MAX_STOP_TIMES`` stop times.
 
 Mapping (NeTEx element -> GTFS):
 
@@ -45,9 +48,14 @@ from datetime import date, timedelta
 from pathlib import Path
 from typing import Callable, Iterable, Iterator
 import xml.etree.ElementTree as ET
+from xml.parsers import expat
 
 MAX_INPUT_MEMBERS = 4096
 MAX_UNCOMPRESSED_BYTES = 6 * 1024 * 1024 * 1024
+# The GTFS the conversion writes is read again by tools/build_gtfs_packs.py, which refuses a table of more than
+# MAX_TABLE_ROWS (8 000 000) rows: a larger output is never a usable pack, so the conversion stops there.
+MAX_TRIPS = 1_000_000
+MAX_STOP_TIMES = 8_000_000
 MAX_DAYS = 3 * 366
 TIMEZONE = "Europe/Rome"
 
@@ -152,26 +160,60 @@ def xml_streams(path: Path) -> Callable[[], Iterator[tuple[str, io.BufferedIOBas
     return plain
 
 
-class GuardedStream(io.RawIOBase):
-    """Reject a DOCTYPE before the parser sees it: NeTEx needs none, and entities could expand the input."""
+def log_safe(value: object) -> str:
+    """``value`` on one log line with control characters escaped: XML text never starts a CI log line (A7-02)."""
+    return "".join(
+        character if character.isprintable() or character == " " else character.encode("unicode_escape").decode("ascii")
+        for character in str(value)
+    )
 
-    def __init__(self, raw: io.BufferedIOBase) -> None:
+
+class GuardedStream(io.RawIOBase):
+    """Reject a DTD before the tree parser builds anything from it, and cap the decompressed bytes of the stream.
+
+    NeTEx needs no DTD, and entity declarations (only possible inside one) could expand the input.  A dedicated expat
+    parser is fed the same bytes until the root element starts: a DOCTYPE can only precede the root, and expat detects
+    the document encoding itself (BOM, UTF-16, encoding declaration), so neither a long comment before the DTD nor
+    another encoding gets past it.  Any byte beyond ``limit`` (a gzip stream has no size in advance) is refused.
+    """
+
+    def __init__(self, raw: io.BufferedIOBase, *, limit: int | None = None) -> None:
         self.raw = raw
-        self.head = b""
-        self.checked = False
+        self.limit = MAX_UNCOMPRESSED_BYTES if limit is None else limit
+        self.consumed = 0
+        self.root_started = False
+        self.guard = expat.ParserCreate()
+        self.guard.StartDoctypeDeclHandler = self._refuse
+        self.guard.EntityDeclHandler = self._refuse
+        self.guard.UnparsedEntityDeclHandler = self._refuse
+        self.guard.StartElementHandler = self._root
+        # Expat 2.6 defers a large token until more data arrives; the guard must decide on each chunk before the
+        # tree parser receives it (Python 3.12.3+ and the 3.11.9 security release expose the switch).
+        disable_deferral = getattr(self.guard, "SetReparseDeferralEnabled", None)
+        if disable_deferral is not None:
+            disable_deferral(False)
+
+    @staticmethod
+    def _refuse(*_: object) -> None:
+        raise ConversionError("NeTEx con DOCTYPE/ENTITY non ammesso")
+
+    def _root(self, *_: object) -> None:
+        self.root_started = True
 
     def readable(self) -> bool:
         return True
 
     def readinto(self, buffer) -> int:  # type: ignore[override]
         data = self.raw.read(len(buffer))
-        if not self.checked:
-            self.head += data
-            if b"<!DOCTYPE" in self.head.upper() or b"<!ENTITY" in self.head.upper():
-                raise ConversionError("NeTEx con DOCTYPE/ENTITY non ammesso")
-            if len(self.head) > 65536:
-                self.checked = True
-                self.head = b""
+        self.consumed += len(data)
+        if self.consumed > self.limit:
+            raise ConversionError(f"XML NeTEx decompresso oltre il limite di {self.limit} byte")
+        if not self.root_started:
+            try:
+                # The end of the stream is final for the guard too: a deferred DOCTYPE is decided here at the latest.
+                self.guard.Parse(data, not data)
+            except expat.ExpatError as error:
+                raise ConversionError(f"XML NeTEx non valido prima dell'elemento radice: {log_safe(error)}") from error
         size = len(data)
         buffer[:size] = data
         return size
@@ -450,6 +492,8 @@ def _journey(identifier: str, element: ET.Element, records, model: Model, dates:
     service = output.services.setdefault(key, f"S{len(output.services) + 1}")
     output.used_lines.add(line)
     number = journey_number(element)
+    if len(output.trips) >= MAX_TRIPS or len(output.stop_times) + len(rows) > MAX_STOP_TIMES:
+        raise ConversionError(f"NeTEx oltre i limiti di conversione: {MAX_TRIPS} corse o {MAX_STOP_TIMES} passaggi")
     output.trips.append({
         "route_id": line, "service_id": service, "trip_id": identifier,
         "trip_short_name": number, "trip_headsign": "",
@@ -641,7 +685,8 @@ def main(argv: list[str] | None = None) -> int:
     try:
         report = convert(args.input, args.output, source_label=args.source_label)
     except (ConversionError, ET.ParseError, OSError, zipfile.BadZipFile) as error:
-        print(f"ERRORE NeTEx: {error}", file=sys.stderr)
+        for line in str(error).split("\n"):
+            print("ERRORE NeTEx: " + log_safe(line), file=sys.stderr)
         return 1
     print(json.dumps(report, ensure_ascii=False, sort_keys=True))
     return 0

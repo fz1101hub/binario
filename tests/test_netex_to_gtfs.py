@@ -11,6 +11,7 @@ import unittest
 import zipfile
 from datetime import date
 from pathlib import Path
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
@@ -193,6 +194,30 @@ class NetexToGtfsTest(unittest.TestCase):
         hostile = NETEX.replace('<?xml version="1.0" encoding="UTF-8"?>', '<?xml version="1.0"?><!DOCTYPE x [<!ENTITY a "aaaa">]>')
         with self.assertRaises(netex_to_gtfs.ConversionError):
             self.convert(hostile.encode("utf-8"), suffix=".xml")
+
+    def test_a_dtd_is_refused_in_any_encoding_and_after_a_long_comment(self) -> None:
+        # Audit A7-08 proofs of concept: the byte-pattern guard only looked for ASCII "<!DOCTYPE" in the first read.
+        dtd = '<!DOCTYPE x [<!ENTITY a "AAAA">]>'
+        hostile = NETEX.replace('<?xml version="1.0" encoding="UTF-8"?>', '<?xml version="1.0" encoding="UTF-16"?>' + dtd)
+        late = NETEX.replace('<?xml version="1.0" encoding="UTF-8"?>', '<?xml version="1.0"?><!--' + " " * (2 * 1024 * 1024) + "-->" + dtd)
+        for label, payload in (("utf-16", hostile.encode("utf-16")), ("late", late.encode("utf-8")),
+                               ("gzip", gzip.compress(late.encode("utf-8")))):
+            with self.subTest(label=label), self.assertRaisesRegex(netex_to_gtfs.ConversionError, "DOCTYPE/ENTITY"):
+                self.convert(payload, suffix=".xml.gz" if label == "gzip" else ".xml")
+        # A plain UTF-16 document without a DTD still converts.
+        report, _ = self.convert(NETEX.replace('encoding="UTF-8"', 'encoding="UTF-16"').encode("utf-16"), suffix=".xml")
+        self.assertEqual(2, report["counts"]["trips"])
+
+    def test_decompressed_input_and_output_are_capped(self) -> None:
+        with mock.patch.object(netex_to_gtfs, "MAX_UNCOMPRESSED_BYTES", 1024):
+            with self.assertRaisesRegex(netex_to_gtfs.ConversionError, "decompresso oltre il limite"):
+                self.convert(gzip.compress(NETEX.encode("utf-8")), suffix=".xml.gz")
+        with mock.patch.object(netex_to_gtfs, "MAX_TRIPS", 1):
+            with self.assertRaisesRegex(netex_to_gtfs.ConversionError, "oltre i limiti di conversione"):
+                self.convert(NETEX.encode("utf-8"), suffix=".xml")
+        with mock.patch.object(netex_to_gtfs, "MAX_STOP_TIMES", 3):
+            with self.assertRaisesRegex(netex_to_gtfs.ConversionError, "oltre i limiti di conversione"):
+                self.convert(NETEX.encode("utf-8"), suffix=".xml")
 
     def test_command_line_reports_counts(self) -> None:
         directory = Path(tempfile.mkdtemp())

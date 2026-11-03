@@ -5,6 +5,12 @@ on:
     paths:
       - "app/src/main/assets/**"
       - "app/src/personal/assets/**"
+      - "app/src/main/java/it/binario/app/data/gtfs/GtfsPackCredits.kt"
+      # Documents the offline tests check (store listings, privacy and source policy) and the language list they read.
+      - "docs/store/**"
+      - "docs/data-sources/SOURCE_POLICY.md"
+      - "PRIVACY.md"
+      - "app/src/main/res/xml/locale_config.xml"
       - "gradle/verification-metadata.xml"
       - "requirements-ci.txt"
       - "tools/**"
@@ -18,12 +24,21 @@ on:
     paths:
       - "app/src/main/assets/**"
       - "app/src/personal/assets/**"
+      - "app/src/main/java/it/binario/app/data/gtfs/GtfsPackCredits.kt"
+      # Documents the offline tests check (store listings, privacy and source policy) and the language list they read.
+      - "docs/store/**"
+      - "docs/data-sources/SOURCE_POLICY.md"
+      - "PRIVACY.md"
+      - "app/src/main/res/xml/locale_config.xml"
       - "gradle/verification-metadata.xml"
       - "requirements-ci.txt"
       - "tools/**"
       - "tests/**"
       - ".github/ci-inputs-lock.json"
       - ".github/workflows/**"
+  # Weekly freshness watch (Monday): packs ending within 45 days become warnings, never failures (job freshness-watch).
+  schedule:
+    - cron: "23 4 * * 1"
   workflow_dispatch:
     inputs:
       transit_discovery:
@@ -36,9 +51,14 @@ on:
         required: false
         type: string
         default: ""
+      print_personal_packs:
+        description: "Stampa nel log (pubblico) anche i pack gtfs-personal/ (licenza non commerciale o non dichiarata); predefinito: no"
+        required: false
+        type: boolean
+        default: false
 
 concurrency:
-  group: gtfs-assets-ci-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name == 'workflow_dispatch' && github.run_id || 'checks' }}
+  group: gtfs-assets-ci-${{ github.event.pull_request.number || github.ref }}-${{ (github.event_name == 'workflow_dispatch' || github.event_name == 'schedule') && github.run_id || 'checks' }}
   cancel-in-progress: true
 
 permissions:
@@ -46,7 +66,7 @@ permissions:
 
 jobs:
   gtfs-assets:
-    if: ${{ github.event_name != 'workflow_dispatch' || (inputs.transit_discovery == '' && inputs.transit_packs == '') }}
+    if: ${{ github.event_name == 'pull_request' || github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.transit_discovery == '' && inputs.transit_packs == '') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -80,28 +100,67 @@ jobs:
           tests/test_build_store_assets.py
           tests/test_play_store_docs.py
           tests/test_app_store_docs.py
+          tests/test_build_android_gtfs_credits.py
 
       - name: Verify immutable CI inputs
         run: |
           python3 tools/verify_ci_pinning.py
           python3 tools/verify_gradle_dependency_metadata.py
 
+      # Regional railways and city networks (every build) and the personal-build packs get the same structural check.
       - name: Verify GTFS asset integrity
-        run: python3 tools/build_gtfs_packs.py --check --integrity-only
-
-      - name: Gate GTFS freshness for at least 30 days
-        run: python3 tools/build_gtfs_packs.py --check --min-valid-days 30
-
-      # Regional railways and city networks (every build) and the personal-build packs: same checks, each pack's own
-      # minValidDays (a city feed published a few weeks at a time) capped at 30.
-      - name: Verify the transit and personal GTFS packs
         run: |
+          python3 tools/build_gtfs_packs.py --check --integrity-only
+          python3 tools/verify_embedded_assets.py --integrity-only
+          python3 tools/build_android_gtfs_credits.py --check
           for directory in app/src/main/assets/gtfs-transit app/src/personal/assets/gtfs-personal; do
             if [ -f "$directory/manifest.json" ]; then
               python3 tools/build_gtfs_packs.py --check --integrity-only --input-dir "$directory"
+            fi
+          done
+
+      # Release freshness is a release gate, not a correctness check (audit A7-06): it blocks pull requests into a
+      # stabilization branch (and release-sign in android-ci.yml, the archive in apple-watch-ci.yml). Every pack uses
+      # its own minValidDays (a city feed published a few weeks at a time), capped at 30.
+      - name: Gate GTFS freshness for at least 30 days
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.base_ref, 'stabilization/') }}
+        run: |
+          python3 tools/build_gtfs_packs.py --check --min-valid-days 30
+          for directory in app/src/main/assets/gtfs-transit app/src/personal/assets/gtfs-personal; do
+            if [ -f "$directory/manifest.json" ]; then
               python3 tools/build_gtfs_packs.py --check --min-valid-days 30 --input-dir "$directory"
             fi
           done
+
+      - name: Report GTFS freshness without failing
+        if: ${{ !(github.event_name == 'pull_request' && startsWith(github.base_ref, 'stabilization/')) }}
+        run: >-
+          python3 -I tools/refresh_core_gtfs.py --as-of "$(date --utc +%F)" --summary "$GITHUB_STEP_SUMMARY"
+          --min-valid-days 30 --warn
+          --freshness app/src/main/assets/gtfs app/src/main/assets/gtfs-transit app/src/personal/assets/gtfs-personal
+
+  # Weekly reminder: every pack running less than 45 more days (its own minValidDays when shorter) is a warning in the
+  # run summary, well before the 30-day gate blocks a stabilization pull request or release-sign. Never fails.
+  freshness-watch:
+    if: ${{ github.event_name == 'schedule' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Python 3
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12.10"
+
+      - name: Report the packs ending within 45 days
+        run: >-
+          python3 -I tools/refresh_core_gtfs.py --as-of "$(date --utc +%F)" --summary "$GITHUB_STEP_SUMMARY"
+          --min-valid-days 45 --warn
+          --freshness app/src/main/assets/gtfs app/src/main/assets/gtfs-transit app/src/personal/assets/gtfs-personal
 
   # Manual, read-only discovery of public timetable sources (GTFS, NeTEx on the Italian National Access Point).
   # The development container cannot reach most open-data hosts; the runner can. Everything downloaded is
@@ -113,6 +172,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
 
       - name: Python 3
         uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
@@ -123,6 +184,10 @@ jobs:
         env:
           DISCOVERY_TOKENS: ${{ inputs.transit_discovery }}
         run: |
+          # Downloaded feeds reach this log (error messages, report lines): no line of it may run as a workflow command.
+          marker="$(python3 -I -c 'import secrets; print(secrets.token_hex(16))')"
+          echo "::stop-commands::$marker"
+          trap 'echo "::$marker::"' EXIT
           mkdir -p "$RUNNER_TEMP/discovery"
           python3 -I tools/transit_source_discovery.py --out "$RUNNER_TEMP/discovery" --tokens-env DISCOVERY_TOKENS
 
@@ -140,7 +205,8 @@ jobs:
   # tools/transit_packs.json (gtfs-transit/ for every build, gtfs-personal/ for personal builds). NeTEx from the
   # National Access Point is converted by tools/netex_to_gtfs.py; 'validate-netex' first converts Trenitalia's
   # NAP dataset and compares it with the embedded trenitalia-gtfs pack. The built directories are printed in the
-  # log as base64 (BINARIO_FILE/BINARIO_B64/BINARIO_END) for review and commit; nothing is pushed from here.
+  # log as base64 (BINARIO_FILE/BINARIO_B64/BINARIO_END inside one BINARIO_BEGIN/BINARIO_DONE nonce frame) for review
+  # and commit; nothing is pushed from here. Steps reading downloaded feeds run with workflow commands stopped.
   transit-packs:
     if: ${{ github.event_name == 'workflow_dispatch' && inputs.transit_packs != '' }}
     runs-on: ubuntu-24.04
@@ -148,6 +214,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
 
       - name: Python 3
         uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
@@ -169,16 +237,24 @@ jobs:
 
       - name: Validate the NeTEx converter on Trenitalia's NAP dataset
         if: ${{ steps.selection.outputs.validate == 'true' }}
-        run: >-
-          python3 -I tools/acquire_transit_sources.py --validate-netex 1080596
-          --reference app/src/main/assets/gtfs/trenitalia-gtfs.zip
-          --out "$RUNNER_TEMP/netex-validation" --generated-at "$(date --utc +%F)"
+        run: |
+          # Downloaded feeds reach this log (error messages, report lines): no line of it may run as a workflow command.
+          marker="$(python3 -I -c 'import secrets; print(secrets.token_hex(16))')"
+          echo "::stop-commands::$marker"
+          trap 'echo "::$marker::"' EXIT
+          python3 -I tools/acquire_transit_sources.py --validate-netex 1080596 \
+            --reference app/src/main/assets/gtfs/trenitalia-gtfs.zip \
+            --out "$RUNNER_TEMP/netex-validation" --generated-at "$(date --utc +%F)"
 
       - name: Acquire, convert and build the transit packs
         if: ${{ steps.selection.outputs.build != '' }}
         env:
           BUILD_SELECTION: ${{ steps.selection.outputs.build }}
         run: |
+          # Downloaded feeds reach this log (error messages, report lines): no line of it may run as a workflow command.
+          marker="$(python3 -I -c 'import secrets; print(secrets.token_hex(16))')"
+          echo "::stop-commands::$marker"
+          trap 'echo "::$marker::"' EXIT
           OUT="$RUNNER_TEMP/transit"
           TODAY="$(date --utc +%F)"
           ONLY=()
@@ -195,9 +271,18 @@ jobs:
           cp "$OUT/acquisition.json" "$OUT/publish/acquisition.json"
           ls -l "$OUT"/publish/*
 
+      # The logs of this public repository are public: the personal-use packs (non-commercial or unstated licences,
+      # SOURCE_POLICY.md) are printed only when the dispatch asks for them explicitly (audit A7-04, owner decision).
       - name: Print the built packs
         if: ${{ steps.selection.outputs.build != '' }}
-        run: python3 -I tools/acquire_transit_sources.py --print-dir "$RUNNER_TEMP/transit/publish"
+        env:
+          PRINT_PERSONAL_PACKS: ${{ inputs.print_personal_packs }}
+        run: |
+          if [ "$PRINT_PERSONAL_PACKS" = "true" ]; then
+            python3 -I tools/acquire_transit_sources.py --print-dir "$RUNNER_TEMP/transit/publish"
+          else
+            python3 -I tools/acquire_transit_sources.py --print-dir "$RUNNER_TEMP/transit/publish" --exclude gtfs-personal
+          fi
 
       - name: Report the validity of the transit packs
         if: ${{ always() && steps.selection.outputs.build != '' }}
@@ -211,7 +296,7 @@ jobs:
   # downloaded from its registered HTTPS URL; Trenitalia and Italo from the latest commit of their upstream repository,
   # printed as a proposed pin for review. ÖBB is never downloaded (its portal needs the owner's acceptance). Unchanged
   # packs stay byte for byte, a failing source keeps its previous pack; the changed files are printed in the log
-  # (BINARIO_FILE/BINARIO_B64/BINARIO_END) for tools/apply_ci_gtfs_refresh.py. Nothing is pushed from here.
+  # (one BINARIO_BEGIN/BINARIO_DONE nonce frame) for tools/apply_ci_gtfs_refresh.py. Nothing is pushed from here.
   core-packs:
     if: ${{ github.event_name == 'workflow_dispatch' && contains(inputs.transit_packs, 'refresh-core=') }}
     runs-on: ubuntu-24.04
@@ -219,6 +304,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
 
       - name: Python 3
         uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
