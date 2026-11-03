@@ -21,8 +21,8 @@ import java.time.temporal.ChronoUnit
 import java.util.Locale
 
 /**
- * Filters and sorts of the results screen: "Tutti", "Diretti", "Meno cambi", "Più veloce", "Meno a piedi".
- * [resourceName] is the string resource of the chip label.
+ * Filters and sorts of the results screen: "Tutti", "Diretti", "Meno cambi", "Più veloce", "Meno a piedi" and, with
+ * the network statistics, "Più affidabili". [resourceName] is the string resource of the chip label.
  */
 enum class JourneyResultsFilter(val resourceName: String) {
     /** Every option, by departure. */
@@ -34,7 +34,12 @@ enum class JourneyResultsFilter(val resourceName: String) {
     /** Every option, shortest total duration first, then by departure. */
     FASTEST("journey_filter_fastest"),
     /** Every option, least walking first, then by departure. */
-    LEAST_WALKING("journey_filter_least_walking");
+    LEAST_WALKING("journey_filter_least_walking"),
+    /**
+     * Every option, the most likely to arrive on time first by the embedded network statistics, then by departure
+     * ([it.binario.app.ui.planner.ResultsReliability]); offered only when the statistics are available.
+     */
+    MOST_RELIABLE("journey_filter_most_reliable");
 
     companion object {
         /**
@@ -345,7 +350,9 @@ object JourneyResultsPresenter {
 
     /**
      * The order of a chip. "Tutti" and "Diretti" stay in order of departure; the sorted chips keep their own key first,
-     * then the options with a preferred kind of service, then the "Preferisci" key, then the departure.
+     * then the options with a preferred kind of service, then the "Preferisci" key, then the departure. "Più affidabili"
+     * needs the network statistics, which the route results apply ([it.binario.app.ui.planner.ResultsMerge]); here it
+     * keeps the order of departure.
      */
     fun apply(rows: List<JourneyOptionRow>, filter: JourneyResultsFilter, preferences: JourneyPreferences? = null): List<JourneyOptionRow> {
         val byDeparture = compareBy<JourneyOptionRow> { it.departure.toInstant() }.thenBy { it.arrival.toInstant() }
@@ -356,6 +363,7 @@ object JourneyResultsPresenter {
             JourneyResultsFilter.FEWEST_CHANGES -> rows.sortedWith(compareBy<JourneyOptionRow> { it.changes }.then(ties))
             JourneyResultsFilter.FASTEST -> rows.sortedWith(compareBy<JourneyOptionRow> { it.durationMinutes }.then(ties))
             JourneyResultsFilter.LEAST_WALKING -> rows.sortedWith(compareBy<JourneyOptionRow> { it.walkMinutes }.then(ties))
+            JourneyResultsFilter.MOST_RELIABLE -> rows.sortedWith(byDeparture)
         }
     }
 

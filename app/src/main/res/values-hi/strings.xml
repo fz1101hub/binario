@@ -1401,4 +1401,43 @@
     <string name="duration_hours_minutes">%1$d घं %2$d मि</string>
     <string name="duration_hours">%1$d घं</string>
     <string name="duration_minutes">%1$d मि</string>
+    <!-- Unofficial network punctuality statistics (embedded file, no request): result lines, «Più affidabili», train detail -->
+    <string name="journey_filter_most_reliable">सबसे विश्वसनीय</string>
+    <plurals name="reliability_on_time_count">
+        <item quantity="one">%2$d में से %1$d बार समय पर</item>
+        <item quantity="other">%2$d में से %1$d बार समय पर</item>
+    </plurals>
+    <plurals name="reliability_leg_on_time_count">
+        <item quantity="one">%1$s %3$d में से %2$d बार समय पर</item>
+        <item quantity="other">%1$s %3$d में से %2$d बार समय पर</item>
+    </plurals>
+    <string name="reliability_mean_delay">औसत देरी %1$s</string>
+    <plurals name="reliability_cancelled_count">
+        <item quantity="one">%1$d बार रद्द</item>
+        <item quantity="other">%1$d बार रद्द</item>
+    </plurals>
+    <plurals name="reliability_cancelled_share">
+        <item quantity="one">%2$d में से %1$d बार रद्द</item>
+        <item quantity="other">%2$d में से %1$d बार रद्द</item>
+    </plurals>
+    <plurals name="reliability_leg_cancelled_share">
+        <item quantity="one">%1$s %3$d में से %2$d बार रद्द</item>
+        <item quantity="other">%1$s %3$d में से %2$d बार रद्द</item>
+    </plurals>
+    <plurals name="reliability_connection_count">
+        <item quantity="one">%1$s पर कनेक्शन %3$d में से %2$d बार सफल</item>
+        <item quantity="other">%1$s पर कनेक्शन %3$d में से %2$d बार सफल</item>
+    </plurals>
+    <string name="reliability_spoken">%1$s (अनौपचारिक आँकड़े)</string>
+    <string name="reliability_attribution">ViaggiaTreno डेटा पर आधारित Binario के अनौपचारिक आँकड़े, %1$s तक अपडेट</string>
+    <plurals name="reliability_title">
+        <item quantity="one">विश्वसनीयता, पिछला %1$d दिन</item>
+        <item quantity="other">विश्वसनीयता, पिछले %1$d दिन</item>
+    </plurals>
+    <plurals name="reliability_detail_on_time">
+        <item quantity="one">%1$s पर आगमन: %3$d में से %2$d बार समय पर</item>
+        <item quantity="other">%1$s पर आगमन: %3$d में से %2$d बार समय पर</item>
+    </plurals>
+    <string name="reliability_detail_days">देखे गए दिन: %1$d · रद्द: %2$d</string>
+    <string name="reliability_threshold_note">अधिकतम %1$s की देरी वाला आगमन समय पर माना जाता है।</string>
 </resources>

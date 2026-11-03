@@ -1456,4 +1456,51 @@
     <string name="duration_hours_minutes">%1$d h %2$d min</string>
     <string name="duration_hours">%1$d h</string>
     <string name="duration_minutes">%1$d min</string>
+    <!-- Unofficial network punctuality statistics (embedded file, no request): result lines, «Più affidabili», train detail -->
+    <string name="journey_filter_most_reliable">Plus fiables</string>
+    <plurals name="reliability_on_time_count">
+        <item quantity="one">À l’heure %1$d fois sur %2$d</item>
+        <item quantity="many">À l’heure %1$d fois sur %2$d</item>
+        <item quantity="other">À l’heure %1$d fois sur %2$d</item>
+    </plurals>
+    <plurals name="reliability_leg_on_time_count">
+        <item quantity="one">%1$s à l’heure %2$d fois sur %3$d</item>
+        <item quantity="many">%1$s à l’heure %2$d fois sur %3$d</item>
+        <item quantity="other">%1$s à l’heure %2$d fois sur %3$d</item>
+    </plurals>
+    <string name="reliability_mean_delay">retard moyen %1$s</string>
+    <plurals name="reliability_cancelled_count">
+        <item quantity="one">supprimé %1$d fois</item>
+        <item quantity="many">supprimé %1$d fois</item>
+        <item quantity="other">supprimé %1$d fois</item>
+    </plurals>
+    <plurals name="reliability_cancelled_share">
+        <item quantity="one">Supprimé %1$d fois sur %2$d</item>
+        <item quantity="many">Supprimé %1$d fois sur %2$d</item>
+        <item quantity="other">Supprimé %1$d fois sur %2$d</item>
+    </plurals>
+    <plurals name="reliability_leg_cancelled_share">
+        <item quantity="one">%1$s supprimé %2$d fois sur %3$d</item>
+        <item quantity="many">%1$s supprimé %2$d fois sur %3$d</item>
+        <item quantity="other">%1$s supprimé %2$d fois sur %3$d</item>
+    </plurals>
+    <plurals name="reliability_connection_count">
+        <item quantity="one">Correspondance à %1$s réussie %2$d fois sur %3$d</item>
+        <item quantity="many">Correspondance à %1$s réussie %2$d fois sur %3$d</item>
+        <item quantity="other">Correspondance à %1$s réussie %2$d fois sur %3$d</item>
+    </plurals>
+    <string name="reliability_spoken">%1$s (statistiques non officielles)</string>
+    <string name="reliability_attribution">Statistiques non officielles de Binario sur données ViaggiaTreno, mises à jour au %1$s</string>
+    <plurals name="reliability_title">
+        <item quantity="one">Fiabilité, dernier %1$d jour</item>
+        <item quantity="many">Fiabilité, %1$d derniers jours</item>
+        <item quantity="other">Fiabilité, %1$d derniers jours</item>
+    </plurals>
+    <plurals name="reliability_detail_on_time">
+        <item quantity="one">Arrivée à %1$s : à l’heure %2$d fois sur %3$d</item>
+        <item quantity="many">Arrivée à %1$s : à l’heure %2$d fois sur %3$d</item>
+        <item quantity="other">Arrivée à %1$s : à l’heure %2$d fois sur %3$d</item>
+    </plurals>
+    <string name="reliability_detail_days">Jours observés : %1$d · suppressions : %2$d</string>
+    <string name="reliability_threshold_note">Une arrivée compte comme à l’heure avec au plus %1$s de retard.</string>
 </resources>

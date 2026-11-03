@@ -63,6 +63,7 @@ import it.binario.app.ArrivalConnectionsSection
 import it.binario.app.BinarioTheme
 import it.binario.app.PunctualityCard
 import it.binario.app.PunctualityStats
+import it.binario.app.data.reliability.NetworkReliabilityDetail
 import it.binario.app.R
 import it.binario.app.TabularFigures
 import it.binario.app.TrainCalendarAction
@@ -175,7 +176,8 @@ internal enum class DetailTab { ROUTE, INFO, SERVICES }
  * Train detail as in the approved render: a green header with the train name, the route, the timetable state
  * and the tabs Percorso / Info / Servizi, and "Segui questo viaggio" at the bottom. Percorso is the stop
  * timeline (passed, last confirmed and next stops named in text, not only by colour) with the route map;
- * Info carries operator, platform, status, data source and quality, notices, weather and punctuality;
+ * Info carries operator, platform, status, data source and quality, notices, weather, the unofficial network
+ * reliability statistics and the device's own punctuality history;
  * Servizi groups the actions the app really has: stop and GPS alarms, calendar, connections at arrival.
  * Save (the heart) and share live in the top bar.
  *
@@ -213,7 +215,9 @@ internal fun ServiceDetailScreen(
     stationLookup: (String) -> Station? = { null },
     sourceSections: @Composable () -> Unit = {},
     /** Live, scheduled timetable or saved copy for this run ([DataState]); null falls back to the freshness. */
-    dataState: DataState? = null
+    dataState: DataState? = null,
+    /** «Affidabilità ultimi N giorni» from the embedded network statistics; null shows no card. */
+    networkReliability: NetworkReliabilityDetail? = null
 ) {
     // Demonstration data shows the timetable only: no delay, expected time, platform or progress as if real.
     val shown = if (isDemonstration) service.presentedAsDemonstration() else service
@@ -348,6 +352,9 @@ internal fun ServiceDetailScreen(
                         item { RouteChangeBanner(routeChange = routeChange, sourceIds = shown.routeChangeSourceIds) }
                     }
                     item { sourceSections() }
+                    networkReliability?.let { detail ->
+                        item(key = "network-reliability-${service.id}") { NetworkReliabilityCard(detail) }
+                    }
                     punctuality?.let { stats ->
                         item { PunctualityCard(stats = stats, onClear = onClearPunctuality) }
                     }

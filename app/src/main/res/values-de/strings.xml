@@ -1424,4 +1424,43 @@
     <string name="duration_hours_minutes">%1$d Std. %2$d Min.</string>
     <string name="duration_hours">%1$d Std.</string>
     <string name="duration_minutes">%1$d Min.</string>
+    <!-- Unofficial network punctuality statistics (embedded file, no request): result lines, «Più affidabili», train detail -->
+    <string name="journey_filter_most_reliable">Zuverlässigste</string>
+    <plurals name="reliability_on_time_count">
+        <item quantity="one">%1$d von %2$d Mal pünktlich</item>
+        <item quantity="other">%1$d von %2$d Mal pünktlich</item>
+    </plurals>
+    <plurals name="reliability_leg_on_time_count">
+        <item quantity="one">%1$s %2$d von %3$d Mal pünktlich</item>
+        <item quantity="other">%1$s %2$d von %3$d Mal pünktlich</item>
+    </plurals>
+    <string name="reliability_mean_delay">mittlere Verspätung %1$s</string>
+    <plurals name="reliability_cancelled_count">
+        <item quantity="one">%1$d Mal ausgefallen</item>
+        <item quantity="other">%1$d Mal ausgefallen</item>
+    </plurals>
+    <plurals name="reliability_cancelled_share">
+        <item quantity="one">%1$d von %2$d Mal ausgefallen</item>
+        <item quantity="other">%1$d von %2$d Mal ausgefallen</item>
+    </plurals>
+    <plurals name="reliability_leg_cancelled_share">
+        <item quantity="one">%1$s %2$d von %3$d Mal ausgefallen</item>
+        <item quantity="other">%1$s %2$d von %3$d Mal ausgefallen</item>
+    </plurals>
+    <plurals name="reliability_connection_count">
+        <item quantity="one">Anschluss in %1$s %2$d von %3$d Mal erreicht</item>
+        <item quantity="other">Anschluss in %1$s %2$d von %3$d Mal erreicht</item>
+    </plurals>
+    <string name="reliability_spoken">%1$s (inoffizielle Statistik)</string>
+    <string name="reliability_attribution">Inoffizielle Binario-Statistik aus ViaggiaTreno-Daten, Stand %1$s</string>
+    <plurals name="reliability_title">
+        <item quantity="one">Zuverlässigkeit, letzter %1$d Tag</item>
+        <item quantity="other">Zuverlässigkeit, letzte %1$d Tage</item>
+    </plurals>
+    <plurals name="reliability_detail_on_time">
+        <item quantity="one">Ankunft in %1$s: %2$d von %3$d Mal pünktlich</item>
+        <item quantity="other">Ankunft in %1$s: %2$d von %3$d Mal pünktlich</item>
+    </plurals>
+    <string name="reliability_detail_days">Beobachtete Tage: %1$d · Ausfälle: %2$d</string>
+    <string name="reliability_threshold_note">Als pünktlich gilt eine Ankunft mit höchstens %1$s Verspätung.</string>
 </resources>

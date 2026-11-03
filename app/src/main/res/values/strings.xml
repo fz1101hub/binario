@@ -1456,4 +1456,51 @@
     <string name="duration_hours_minutes">%1$dh %2$dmin</string>
     <string name="duration_hours">%1$dh</string>
     <string name="duration_minutes">%1$dmin</string>
+    <!-- Unofficial network punctuality statistics (embedded file, no request): result lines, «Più affidabili», train detail -->
+    <string name="journey_filter_most_reliable">Più affidabili</string>
+    <plurals name="reliability_on_time_count">
+        <item quantity="one">In orario %1$d volta su %2$d</item>
+        <item quantity="many">In orario %1$d volte su %2$d</item>
+        <item quantity="other">In orario %1$d volte su %2$d</item>
+    </plurals>
+    <plurals name="reliability_leg_on_time_count">
+        <item quantity="one">%1$s in orario %2$d volta su %3$d</item>
+        <item quantity="many">%1$s in orario %2$d volte su %3$d</item>
+        <item quantity="other">%1$s in orario %2$d volte su %3$d</item>
+    </plurals>
+    <string name="reliability_mean_delay">ritardo medio %1$s</string>
+    <plurals name="reliability_cancelled_count">
+        <item quantity="one">soppresso %1$d volta</item>
+        <item quantity="many">soppresso %1$d volte</item>
+        <item quantity="other">soppresso %1$d volte</item>
+    </plurals>
+    <plurals name="reliability_cancelled_share">
+        <item quantity="one">Soppresso %1$d volta su %2$d</item>
+        <item quantity="many">Soppresso %1$d volte su %2$d</item>
+        <item quantity="other">Soppresso %1$d volte su %2$d</item>
+    </plurals>
+    <plurals name="reliability_leg_cancelled_share">
+        <item quantity="one">%1$s soppresso %2$d volta su %3$d</item>
+        <item quantity="many">%1$s soppresso %2$d volte su %3$d</item>
+        <item quantity="other">%1$s soppresso %2$d volte su %3$d</item>
+    </plurals>
+    <plurals name="reliability_connection_count">
+        <item quantity="one">Coincidenza a %1$s riuscita %2$d volta su %3$d</item>
+        <item quantity="many">Coincidenza a %1$s riuscita %2$d volte su %3$d</item>
+        <item quantity="other">Coincidenza a %1$s riuscita %2$d volte su %3$d</item>
+    </plurals>
+    <string name="reliability_spoken">%1$s (statistiche non ufficiali)</string>
+    <string name="reliability_attribution">Statistiche non ufficiali di Binario su dati ViaggiaTreno, aggiornate al %1$s</string>
+    <plurals name="reliability_title">
+        <item quantity="one">Affidabilità ultimo %1$d giorno</item>
+        <item quantity="many">Affidabilità ultimi %1$d giorni</item>
+        <item quantity="other">Affidabilità ultimi %1$d giorni</item>
+    </plurals>
+    <plurals name="reliability_detail_on_time">
+        <item quantity="one">Arrivo a %1$s: in orario %2$d volta su %3$d</item>
+        <item quantity="many">Arrivo a %1$s: in orario %2$d volte su %3$d</item>
+        <item quantity="other">Arrivo a %1$s: in orario %2$d volte su %3$d</item>
+    </plurals>
+    <string name="reliability_detail_days">Giorni osservati: %1$d · soppressioni: %2$d</string>
+    <string name="reliability_threshold_note">Conta come in orario un arrivo con al massimo %1$s di ritardo.</string>
 </resources>

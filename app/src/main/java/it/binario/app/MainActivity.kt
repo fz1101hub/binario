@@ -112,6 +112,7 @@ import it.binario.app.ui.departures.DeparturesScreen
 import it.binario.app.ui.departures.OperationsSection
 import it.binario.app.ui.departures.StationBoardRunDetailsPane
 import it.binario.app.ui.detail.ServiceDetailScreen
+import it.binario.app.ui.detail.rememberNetworkReliabilityDetail
 import it.binario.app.ui.detail.trainShareStrings
 import it.binario.app.ui.foryou.ForYouScreen
 import it.binario.app.ui.foryou.SavedTimetableScreen
@@ -756,7 +757,8 @@ internal fun BinarioApp(
                     showShareButton = inSidePane,
                     dataState = viewModel.dataState().let { list ->
                         if (list == DataState.DEMONSTRATION || list == DataState.UNAVAILABLE) list else DataState.ofService(service, list)
-                    }
+                    },
+                    networkReliability = rememberNetworkReliabilityDetail(service, viewModel.stations, viewModel::stationFromName, viewModel.isDemonstrationData())
                 )
             }
         }

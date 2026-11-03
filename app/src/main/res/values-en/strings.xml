@@ -1424,4 +1424,43 @@
     <string name="duration_hours_minutes">%1$dh %2$dm</string>
     <string name="duration_hours">%1$dh</string>
     <string name="duration_minutes">%1$dm</string>
+    <!-- Unofficial network punctuality statistics (embedded file, no request): result lines, «Più affidabili», train detail -->
+    <string name="journey_filter_most_reliable">Most reliable</string>
+    <plurals name="reliability_on_time_count">
+        <item quantity="one">On time %1$d time out of %2$d</item>
+        <item quantity="other">On time %1$d times out of %2$d</item>
+    </plurals>
+    <plurals name="reliability_leg_on_time_count">
+        <item quantity="one">%1$s on time %2$d time out of %3$d</item>
+        <item quantity="other">%1$s on time %2$d times out of %3$d</item>
+    </plurals>
+    <string name="reliability_mean_delay">average delay %1$s</string>
+    <plurals name="reliability_cancelled_count">
+        <item quantity="one">cancelled %1$d time</item>
+        <item quantity="other">cancelled %1$d times</item>
+    </plurals>
+    <plurals name="reliability_cancelled_share">
+        <item quantity="one">Cancelled %1$d time out of %2$d</item>
+        <item quantity="other">Cancelled %1$d times out of %2$d</item>
+    </plurals>
+    <plurals name="reliability_leg_cancelled_share">
+        <item quantity="one">%1$s cancelled %2$d time out of %3$d</item>
+        <item quantity="other">%1$s cancelled %2$d times out of %3$d</item>
+    </plurals>
+    <plurals name="reliability_connection_count">
+        <item quantity="one">Connection at %1$s made %2$d time out of %3$d</item>
+        <item quantity="other">Connection at %1$s made %2$d times out of %3$d</item>
+    </plurals>
+    <string name="reliability_spoken">%1$s (unofficial statistics)</string>
+    <string name="reliability_attribution">Unofficial Binario statistics from ViaggiaTreno data, updated to %1$s</string>
+    <plurals name="reliability_title">
+        <item quantity="one">Reliability, last %1$d day</item>
+        <item quantity="other">Reliability, last %1$d days</item>
+    </plurals>
+    <plurals name="reliability_detail_on_time">
+        <item quantity="one">Arrival at %1$s: on time %2$d time out of %3$d</item>
+        <item quantity="other">Arrival at %1$s: on time %2$d times out of %3$d</item>
+    </plurals>
+    <string name="reliability_detail_days">Days observed: %1$d · cancellations: %2$d</string>
+    <string name="reliability_threshold_note">An arrival counts as on time when it is at most %1$s late.</string>
 </resources>

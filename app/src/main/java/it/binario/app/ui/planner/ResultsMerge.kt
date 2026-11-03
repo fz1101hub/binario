@@ -69,7 +69,8 @@ internal sealed interface ResultEntry {
 /**
  * Merges the direct-train results with the journeys with changes and applies the four chips of the render with the
  * rules of [it.binario.app.journeys.JourneyResultsPresenter]: "Tutti" by departure, "Diretti" only options without
- * changes, "Meno cambi" fewest changes first, "Più veloce" shortest scheduled duration first (then by departure).
+ * changes, "Meno cambi" fewest changes first, "Più veloce" shortest scheduled duration first (then by departure), and
+ * "Più affidabili" by the network statistics ([ResultsReliability.mostReliableFirst], then by departure).
  */
 internal object ResultsMerge {
     /**
@@ -153,7 +154,13 @@ internal object ResultsMerge {
         is ResultEntry.Train -> entry.service.gtfsIdentity?.serviceDate ?: entry.departure?.toLocalDate() ?: serviceDate.plusDays(1)
     }
 
-    fun apply(entries: List<ResultEntry>, filter: JourneyResultsFilter, preferences: JourneyPreferences? = null): List<ResultEntry> {
+    fun apply(
+        entries: List<ResultEntry>,
+        filter: JourneyResultsFilter,
+        preferences: JourneyPreferences? = null,
+        /** The network statistics of the rows ([ResultsReliability.assess]), for "Più affidabili". */
+        reliability: Map<String, EntryReliability> = emptyMap()
+    ): List<ResultEntry> {
         val byDeparture = compareBy<ResultEntry, Long?>(nullsLast()) { it.departure?.toEpochSecond(ZoneOffset.UTC) }
             .thenBy(nullsLast()) { it.arrival?.toEpochSecond(ZoneOffset.UTC) }
         val preferred = preferences?.preferredModes.orEmpty()
@@ -170,6 +177,7 @@ internal object ResultsMerge {
             JourneyResultsFilter.FEWEST_CHANGES -> entries.sortedWith(compareBy<ResultEntry> { it.changes }.then(ties))
             JourneyResultsFilter.FASTEST -> entries.sortedWith(compareBy<ResultEntry, Long?>(nullsLast()) { it.durationMinutes }.then(ties))
             JourneyResultsFilter.LEAST_WALKING -> entries.sortedWith(compareBy<ResultEntry> { it.walkMinutes }.then(ties))
+            JourneyResultsFilter.MOST_RELIABLE -> entries.sortedWith(ResultsReliability.mostReliableFirst(reliability).then(byDeparture))
         }
     }
 

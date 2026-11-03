@@ -128,7 +128,7 @@ class ResultsMergeTest {
         assertEquals(
             mapOf(
                 JourneyResultsFilter.ALL to 4, JourneyResultsFilter.DIRECT to 2, JourneyResultsFilter.FEWEST_CHANGES to 4,
-                JourneyResultsFilter.FASTEST to 4, JourneyResultsFilter.LEAST_WALKING to 4
+                JourneyResultsFilter.FASTEST to 4, JourneyResultsFilter.LEAST_WALKING to 4, JourneyResultsFilter.MOST_RELIABLE to 4
             ),
             ResultsMerge.counts(merged)
         )

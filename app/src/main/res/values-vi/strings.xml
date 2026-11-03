@@ -1392,4 +1392,35 @@
     <string name="duration_hours_minutes">%1$d giờ %2$d phút</string>
     <string name="duration_hours">%1$d giờ</string>
     <string name="duration_minutes">%1$d phút</string>
+    <!-- Unofficial network punctuality statistics (embedded file, no request): result lines, «Più affidabili», train detail -->
+    <string name="journey_filter_most_reliable">Đáng tin cậy nhất</string>
+    <plurals name="reliability_on_time_count">
+        <item quantity="other">Đúng giờ %1$d trên %2$d lần</item>
+    </plurals>
+    <plurals name="reliability_leg_on_time_count">
+        <item quantity="other">%1$s đúng giờ %2$d trên %3$d lần</item>
+    </plurals>
+    <string name="reliability_mean_delay">trễ trung bình %1$s</string>
+    <plurals name="reliability_cancelled_count">
+        <item quantity="other">bị hủy %1$d lần</item>
+    </plurals>
+    <plurals name="reliability_cancelled_share">
+        <item quantity="other">Bị hủy %1$d trên %2$d lần</item>
+    </plurals>
+    <plurals name="reliability_leg_cancelled_share">
+        <item quantity="other">%1$s bị hủy %2$d trên %3$d lần</item>
+    </plurals>
+    <plurals name="reliability_connection_count">
+        <item quantity="other">Đổi tàu tại %1$s thành công %2$d trên %3$d lần</item>
+    </plurals>
+    <string name="reliability_spoken">%1$s (thống kê không chính thức)</string>
+    <string name="reliability_attribution">Thống kê không chính thức của Binario từ dữ liệu ViaggiaTreno, cập nhật đến %1$s</string>
+    <plurals name="reliability_title">
+        <item quantity="other">Độ tin cậy %1$d ngày gần nhất</item>
+    </plurals>
+    <plurals name="reliability_detail_on_time">
+        <item quantity="other">Đến %1$s: đúng giờ %2$d trên %3$d lần</item>
+    </plurals>
+    <string name="reliability_detail_days">Số ngày quan sát: %1$d · số lần hủy: %2$d</string>
+    <string name="reliability_threshold_note">Chuyến đến trễ tối đa %1$s được tính là đúng giờ.</string>
 </resources>

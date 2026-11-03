@@ -1369,4 +1369,35 @@
     <string name="duration_hours_minutes">%1$d နာရီ %2$d မိနစ်</string>
     <string name="duration_hours">%1$d နာရီ</string>
     <string name="duration_minutes">%1$d မိနစ်</string>
+    <!-- Unofficial network punctuality statistics (embedded file, no request): result lines, «Più affidabili», train detail -->
+    <string name="journey_filter_most_reliable">အယုံကြည်ရဆုံး</string>
+    <plurals name="reliability_on_time_count">
+        <item quantity="other">%2$d ကြိမ်တွင် %1$d ကြိမ် အချိန်မှန်</item>
+    </plurals>
+    <plurals name="reliability_leg_on_time_count">
+        <item quantity="other">%1$s - %3$d ကြိမ်တွင် %2$d ကြိမ် အချိန်မှန်</item>
+    </plurals>
+    <string name="reliability_mean_delay">ပျမ်းမျှ နောက်ကျမှု %1$s</string>
+    <plurals name="reliability_cancelled_count">
+        <item quantity="other">%1$d ကြိမ် ဖျက်သိမ်း</item>
+    </plurals>
+    <plurals name="reliability_cancelled_share">
+        <item quantity="other">%2$d ကြိမ်တွင် %1$d ကြိမ် ဖျက်သိမ်း</item>
+    </plurals>
+    <plurals name="reliability_leg_cancelled_share">
+        <item quantity="other">%1$s - %3$d ကြိမ်တွင် %2$d ကြိမ် ဖျက်သိမ်း</item>
+    </plurals>
+    <plurals name="reliability_connection_count">
+        <item quantity="other">%1$s တွင် ရထားပြောင်းစီးမှု %3$d ကြိမ်တွင် %2$d ကြိမ် အောင်မြင်</item>
+    </plurals>
+    <string name="reliability_spoken">%1$s (တရားဝင်မဟုတ်သော စာရင်းအင်း)</string>
+    <string name="reliability_attribution">ViaggiaTreno ဒေတာအပေါ် အခြေခံသည့် Binario ၏ တရားဝင်မဟုတ်သော စာရင်းအင်း၊ %1$s အထိ အပ်ဒိတ်</string>
+    <plurals name="reliability_title">
+        <item quantity="other">နောက်ဆုံး %1$d ရက်အတွင်း ယုံကြည်စိတ်ချရမှု</item>
+    </plurals>
+    <plurals name="reliability_detail_on_time">
+        <item quantity="other">%1$s သို့ ဆိုက်ရောက်မှု- %3$d ကြိမ်တွင် %2$d ကြိမ် အချိန်မှန်</item>
+    </plurals>
+    <string name="reliability_detail_days">စောင့်ကြည့်ခဲ့သည့် ရက်- %1$d · ဖျက်သိမ်းမှု- %2$d</string>
+    <string name="reliability_threshold_note">နောက်ကျမှု %1$s အထိသာ ရှိသော ဆိုက်ရောက်မှုကို အချိန်မှန်ဟု သတ်မှတ်သည်။</string>
 </resources>

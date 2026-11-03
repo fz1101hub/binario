@@ -1392,4 +1392,35 @@
     <string name="duration_hours_minutes">%1$d小时%2$d分</string>
     <string name="duration_hours">%1$d小时</string>
     <string name="duration_minutes">%1$d分钟</string>
+    <!-- Unofficial network punctuality statistics (embedded file, no request): result lines, «Più affidabili», train detail -->
+    <string name="journey_filter_most_reliable">最可靠</string>
+    <plurals name="reliability_on_time_count">
+        <item quantity="other">%2$d 次中准点 %1$d 次</item>
+    </plurals>
+    <plurals name="reliability_leg_on_time_count">
+        <item quantity="other">%1$s %3$d 次中准点 %2$d 次</item>
+    </plurals>
+    <string name="reliability_mean_delay">平均晚点 %1$s</string>
+    <plurals name="reliability_cancelled_count">
+        <item quantity="other">停运 %1$d 次</item>
+    </plurals>
+    <plurals name="reliability_cancelled_share">
+        <item quantity="other">%2$d 次中停运 %1$d 次</item>
+    </plurals>
+    <plurals name="reliability_leg_cancelled_share">
+        <item quantity="other">%1$s %3$d 次中停运 %2$d 次</item>
+    </plurals>
+    <plurals name="reliability_connection_count">
+        <item quantity="other">在 %1$s 换乘 %3$d 次中成功 %2$d 次</item>
+    </plurals>
+    <string name="reliability_spoken">%1$s（非官方统计）</string>
+    <string name="reliability_attribution">Binario 基于 ViaggiaTreno 数据的非官方统计，更新至 %1$s</string>
+    <plurals name="reliability_title">
+        <item quantity="other">最近 %1$d 天的可靠性</item>
+    </plurals>
+    <plurals name="reliability_detail_on_time">
+        <item quantity="other">到达 %1$s：%3$d 次中准点 %2$d 次</item>
+    </plurals>
+    <string name="reliability_detail_days">观测天数：%1$d · 停运：%2$d</string>
+    <string name="reliability_threshold_note">晚点不超过 %1$s 的到达计为准点。</string>
 </resources>
