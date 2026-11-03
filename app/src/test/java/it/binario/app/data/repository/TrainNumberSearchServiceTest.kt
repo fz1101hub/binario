@@ -50,6 +50,20 @@ class TrainNumberSearchServiceTest {
         assertFalse(TrainNumberQuery("23263/", date).valid)
         assertTrue(TrainNumberQuery("RE 42", date).valid)
     }
+
+    @Test fun `digits only find the OeBB categories without matching station codes`() {
+        // ÖBB pack trip_short_name values (Nightjet Roma/Milano–Wien/München is NJ 40235/40295).
+        listOf("NJ 40235" to "40235", "IR 2063" to "2063", "REX 1505" to "1505", "S 2590" to "2590", "CJX 9109" to "9109",
+            "D 1130" to "1130", "CAT 9056" to "9056", "ECE 51" to "51", "IRE 3233" to "3233", "ES 9501" to "9501")
+            .forEach { (published, digits) -> assertTrue(published, TrainNumberQuery(digits, date).matches(published)) }
+        // Trenitalia pack codes are not train numbers; neither are unknown prefixes or substrings.
+        assertFalse(TrainNumberQuery("545", date).matches("VE545"))
+        assertFalse(TrainNumberQuery("246", date).matches("TO246"))
+        assertFalse(TrainNumberQuery("4023", date).matches("NJ 40235"))
+        assertFalse(TrainNumberQuery("40235", date).matches("NJ 402350"))
+        // The prefixed query still finds the train.
+        assertTrue(TrainNumberQuery("NJ40235", date).matches("NJ 40235"))
+    }
     @Test fun `same public number can identify multiple independent runs`() = runBlocking {
         val source = TrainNumberSearchService(listOf(provider("a") { result(match("a")) }, provider("b") { result(match("b")) }))
         assertEquals(setOf("a", "b"), source.search(query).last().matches.map { it.id }.toSet())

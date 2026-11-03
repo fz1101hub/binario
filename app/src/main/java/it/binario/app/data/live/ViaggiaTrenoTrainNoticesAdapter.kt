@@ -1,5 +1,6 @@
 package it.binario.app.data.live
 
+import it.binario.app.data.notices.CleartextNoticeLinks
 import it.binario.app.data.RailTime
 import it.binario.app.data.core.Confidence
 import it.binario.app.data.core.SourceId
@@ -75,7 +76,8 @@ class ViaggiaTrenoTrainNoticesAdapter internal constructor(
 
     private fun parseNote(item: JSONObject): RawNote? {
         val id = item.text("id") ?: return null
-        val text = item.text("infoNote")?.take(MAX_TEXT) ?: return null
+        // Cleartext hop: URLs outside the publisher's HTTPS domains are kept as plain text only.
+        val text = CleartextNoticeLinks.neutralize(item.text("infoNote")?.take(MAX_TEXT)) ?: return null
         val start = item.millis("startValidity") ?: return null
         val end = item.millis("endValidity") ?: start
         val trains = item.optJSONArray("trains") ?: return null
@@ -88,7 +90,7 @@ class ViaggiaTrenoTrainNoticesAdapter internal constructor(
         return RawNote(
             id = id,
             text = text,
-            englishText = item.text("infoNoteEn")?.take(MAX_TEXT),
+            englishText = CleartextNoticeLinks.neutralize(item.text("infoNoteEn")?.take(MAX_TEXT)),
             validFrom = Instant.ofEpochMilli(start).atZone(RailTime.defaultZone).toLocalDate(),
             validUntil = Instant.ofEpochMilli(maxOf(start, end)).atZone(RailTime.defaultZone).toLocalDate(),
             insertedAt = item.millis("insertTimestamp")?.let(Instant::ofEpochMilli),

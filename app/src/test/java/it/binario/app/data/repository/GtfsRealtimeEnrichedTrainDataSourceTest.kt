@@ -126,6 +126,67 @@ class GtfsRealtimeEnrichedTrainDataSourceTest {
         assertEquals("12:35", result.stops.last().expected)
     }
 
+    /** Audit F2: the documented rule is "osservazioni entro cinque minuti", from the feed's own timestamp. */
+    @Test fun `STA and SNCF observations stay usable for five minutes after the feed time`() = runBlocking {
+        for (age in listOf(60L, 120L, 240L, 299L, 360L)) {
+            val observed = now.minusSeconds(age)
+            val json = """{"header":{"gtfs_realtime_version":"2.0","timestamp":${observed.epochSecond}},"entity":[{"id":"e1","trip_update":{
+                "trip":{"trip_id":"T1","start_date":"20260904","schedule_relationship":"SCHEDULED"},"timestamp":${observed.epochSecond},
+                "stop_time_update":[{"stop_id":"A","stop_sequence":1,"departure":{"delay":300}}]}}]}"""
+            val staUpdates = it.binario.app.data.live.StaRealtimeAdapter(fetcher = { json }, clock = clock).parseTripUpdates(json, now)
+            val feed = com.google.transit.realtime.GtfsRealtime.FeedMessage.newBuilder()
+                .setHeader(com.google.transit.realtime.GtfsRealtime.FeedHeader.newBuilder().setGtfsRealtimeVersion("2.0").setTimestamp(observed.epochSecond))
+                .addEntity(com.google.transit.realtime.GtfsRealtime.FeedEntity.newBuilder().setId("e1").setTripUpdate(
+                    com.google.transit.realtime.GtfsRealtime.TripUpdate.newBuilder()
+                        .setTrip(com.google.transit.realtime.GtfsRealtime.TripDescriptor.newBuilder().setTripId("T1").setStartDate("20260904"))
+                        .setTimestamp(observed.epochSecond)
+                        .addStopTimeUpdate(com.google.transit.realtime.GtfsRealtime.TripUpdate.StopTimeUpdate.newBuilder().setStopId("A").setStopSequence(1)
+                            .setDeparture(com.google.transit.realtime.GtfsRealtime.TripUpdate.StopTimeEvent.newBuilder().setDelay(300)))))
+                .build()
+            val sncfUpdates = it.binario.app.data.live.SncfGtfsRealtimeAdapter(clock = clock).parseTripUpdates(feed, now)
+            val result = load(listOf(service("alto-adige-sta-gtfs"), service("sncf-gtfs")), listOf(provider(sta, staUpdates), provider(sncf, sncfUpdates)))
+            val usable = age < 300
+            assertEquals("age=$age", listOf(usable, usable), result.services.map { it.operationalStatusVerified })
+            assertEquals("age=$age", if (usable) listOf(5, 5) else listOf(0, 0), result.services.map { it.delayMinutes })
+            assertEquals("age=$age", observed.plus(GtfsRealtimeFreshness.OBSERVATION_WINDOW), staUpdates.single().source.expiresAt)
+        }
+    }
+
+    /** Audit F3 and proposal 4: optional trip updates never hold the offline result; they arrive as an update. */
+    @Test fun `slow trip updates do not hold the offline result and arrive as a second emission`() = runBlocking {
+        val release = kotlinx.coroutines.CompletableDeferred<Unit>()
+        val slow = object : TripUpdateProvider {
+            override val descriptor = ProviderDescriptor(SourceId(sta), sta, setOf(ProviderCapability.TRAIN_RUN_REALTIME),
+                CoverageDescriptor(description = "test"), AccessMode.OPEN_DIRECT, RatePolicy(Duration.ZERO, defaultTimeToLive = Duration.ofSeconds(90)), 1)
+            override suspend fun getTripUpdates(): ProviderResult<List<RealtimeStopUpdate>> {
+                release.await()
+                return ProviderResult.Success(listOf(update(sta, 300)), ProviderResponseMeta(SourceId(sta), now))
+            }
+        }
+        val snapshot = RouteSnapshot(route, Direction.OUTBOUND, listOf(service()), "GTFS", now.toEpochMilli(), now.plusSeconds(3600).toEpochMilli(),
+            it.binario.app.data.Freshness.AGING, confidence = DataConfidence.STATIC_ONLY)
+        val planned = object : TrainDataSource { override suspend fun loadRoute(route: SavedRoute, direction: Direction) = DataResult.Success(snapshot) }
+        val resolver = EmbeddedGtfsRealtimeScheduleResolver({ ByteArrayInputStream(feed()) }, listOf(EmbeddedGtfsPack(SourceId("alto-adige-sta-gtfs"), "test")))
+        val enriched = GtfsRealtimeEnrichedTrainDataSource(planned, RealtimeEnrichmentService(listOf(slow), resolver), clock, zone,
+            realtimeDeadlineMillis = 100, observedRealtimeDeadlineMillis = 10_000)
+
+        val started = System.nanoTime()
+        val single = enriched.loadRoute(route, Direction.OUTBOUND, query) as DataResult.Success
+        assertTrue((System.nanoTime() - started) / 1_000_000 < 2_000)
+        assertFalse(single.snapshot.services.single().operationalStatusVerified)
+
+        val emissions = mutableListOf<DataResult>()
+        enriched.observeRoute(route, Direction.OUTBOUND, query).collect { result ->
+            emissions += result
+            if (emissions.size == 1) release.complete(Unit)
+        }
+        assertEquals(2, emissions.size)
+        assertFalse((emissions.first() as DataResult.Success).snapshot.services.single().operationalStatusVerified)
+        val live = (emissions.last() as DataResult.Success).snapshot.services.single()
+        assertTrue(live.operationalStatusVerified)
+        assertEquals(5, live.delayMinutes)
+    }
+
     private suspend fun load(services: List<TrainService>, providers: List<TripUpdateProvider>, requested: JourneyQuery = query): RouteSnapshot {
         val snapshot = RouteSnapshot(route, Direction.OUTBOUND, services, "GTFS", now.toEpochMilli(),
             now.plusSeconds(3600).toEpochMilli(), it.binario.app.data.Freshness.AGING, confidence = DataConfidence.STATIC_ONLY,

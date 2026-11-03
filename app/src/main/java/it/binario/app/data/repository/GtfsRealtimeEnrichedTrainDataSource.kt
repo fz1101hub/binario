@@ -2,8 +2,14 @@ package it.binario.app.data.repository
 
 import it.binario.app.data.*
 import it.binario.app.data.core.EnrichedRealtimeStop
+import it.binario.app.data.core.GtfsRealtimeFreshness
+import it.binario.app.data.planned.BoundedSingleFlightCache
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import java.time.Clock
 import java.time.Duration
 import java.time.ZoneId
@@ -14,8 +20,18 @@ class GtfsRealtimeEnrichedTrainDataSource(
     private val plannedSource: TrainDataSource,
     private val realtime: RealtimeEnrichmentService,
     private val clock: Clock = Clock.systemUTC(),
-    private val zone: ZoneId = RailTime.defaultZone
+    private val zone: ZoneId = RailTime.defaultZone,
+    /** [loadRoute] waits at most this long for the optional realtime, then answers with the offline result. */
+    private val realtimeDeadlineMillis: Long = DEFAULT_DEADLINE_MILLIS,
+    /** [observeRoute] has already shown the offline result, so it may wait longer for the realtime update. */
+    private val observedRealtimeDeadlineMillis: Long = OBSERVED_DEADLINE_MILLIS
 ) : TrainDataSource {
+    /**
+     * Realtime collected for one set of trips, shared by concurrent searches. A collection outlives a caller that
+     * stopped waiting at its deadline, so the feeds and the timetable index it warmed are ready for the next refresh.
+     */
+    private val collected = BoundedSingleFlightCache<RealtimeEnrichmentSnapshot>(16, 15_000L, clock::millis)
+
     override suspend fun loadRoute(route: SavedRoute, direction: Direction): DataResult =
         loadRoute(route, direction, JourneyQuery.now(clock))
 
@@ -23,12 +39,37 @@ class GtfsRealtimeEnrichedTrainDataSource(
         return enrich(plannedSource.loadRoute(route, direction, query), query)
     }
 
-    suspend fun enrich(result: DataResult, query: JourneyQuery, useLatestStopForService: Boolean = false): DataResult {
+    /** The offline result at once, then the same result with the trip updates once they arrive (or the deadline passes). */
+    override fun observeRoute(route: SavedRoute, direction: Direction, query: JourneyQuery): Flow<DataResult> = flow {
+        val planned = plannedSource.loadRoute(route, direction, query)
+        emit(planned)
+        if (wantsRealtime(planned, query)) emit(enrich(planned, query, deadlineMillis = observedRealtimeDeadlineMillis))
+    }
+
+    private fun wantsRealtime(result: DataResult, query: JourneyQuery): Boolean =
+        result is DataResult.Success && query.serviceDate == clock.instant().atZone(zone).toLocalDate() &&
+            result.snapshot.services.any { it.gtfsIdentity != null }
+
+    suspend fun enrich(
+        result: DataResult,
+        query: JourneyQuery,
+        useLatestStopForService: Boolean = false,
+        deadlineMillis: Long = realtimeDeadlineMillis
+    ): DataResult {
         if (result !is DataResult.Success || query.serviceDate != clock.instant().atZone(zone).toLocalDate()) return result
         val identities = result.snapshot.services.mapNotNull { it.gtfsIdentity }
         if (identities.isEmpty()) return result
+        val key = identities.joinToString("|") { "${it.sourceId}:${it.tripId}:${it.serviceDate}" }
+        // Optional data: past the deadline the offline result is the answer, never a blank screen.
+        val snapshot = try {
+            withTimeoutOrNull(deadlineMillis) { collected.getOrLoad(key) { realtime.collectFor(identities, zone) }.value }
+        } catch (error: CancellationException) {
+            throw error
+        } catch (_: Exception) {
+            null
+        } ?: return result
         return withContext(Dispatchers.Default) {
-            val updates = realtime.collectFor(identities, zone).stops.filter(::fresh)
+            val updates = snapshot.stops.filter(::fresh)
             val used = mutableListOf<EnrichedRealtimeStop>()
             val services = result.snapshot.services.map { service ->
                 val identity = service.gtfsIdentity ?: return@map service
@@ -101,9 +142,14 @@ class GtfsRealtimeEnrichedTrainDataSource(
         }
     }
 
+    companion object {
+        const val DEFAULT_DEADLINE_MILLIS = 3_000L
+        const val OBSERVED_DEADLINE_MILLIS = 20_000L
+    }
+
     private fun fresh(stop: EnrichedRealtimeStop): Boolean {
         val now = clock.instant()
-        return !stop.update.observedAt.isBefore(now.minusSeconds(300)) &&
+        return !stop.update.observedAt.isBefore(now.minus(GtfsRealtimeFreshness.OBSERVATION_WINDOW)) &&
             !stop.update.observedAt.isAfter(now.plusSeconds(60)) &&
             stop.update.source.expiresAt?.isAfter(now) != false
     }
@@ -115,5 +161,5 @@ class GtfsRealtimeEnrichedTrainDataSource(
 
     private fun expected(stop: EnrichedRealtimeStop): String =
         (stop.update.predictedAt?.value ?: stop.scheduledStop.scheduledAt.plusMinutes(delay(stop)!!.toLong()))
-            .format(DateTimeFormatter.ofPattern("HH:mm"))
+            .format(DateTimeFormatter.ofPattern("HH:mm", java.util.Locale.ROOT))
 }

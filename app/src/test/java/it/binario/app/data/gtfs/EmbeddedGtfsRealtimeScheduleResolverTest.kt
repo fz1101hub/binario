@@ -109,6 +109,41 @@ class EmbeddedGtfsRealtimeScheduleResolverTest {
         }
     }
 
+    /** Audit F4: one index per pack and service day, with only the trips that run that day. */
+    @Test
+    fun `indexes the stop times of the trips running that day once`() {
+        var opened = 0
+        val content = mapOf(
+            "calendar.txt" to "service_id,monday,tuesday,wednesday,thursday,friday,saturday,sunday,start_date,end_date\nWEEKDAY,1,1,1,1,1,0,0,20260101,20261231\n",
+            "calendar_dates.txt" to "service_id,date,exception_type\nWEEKDAY,20260817,2\nHOLIDAY,20260815,1\n",
+            "trips.txt" to "route_id,service_id,trip_id\nR,WEEKDAY,T1\nR,HOLIDAY,H1\n",
+            "stops.txt" to "stop_id,stop_name\nMI,Milano Centrale\nMO,Monza\n",
+            "stop_times.txt" to "trip_id,arrival_time,departure_time,stop_id,stop_sequence\nT1,08:05:00,08:05:00,MI,1\nT1,08:22:00,08:23:00,MO,2\nH1,09:00:00,09:00:00,MI,1\n"
+        )
+        val resolver = EmbeddedGtfsRealtimeScheduleResolver(openAsset = { opened++; ByteArrayInputStream(zip(content)) }, packs = listOf(pack))
+        val zone = ZoneId.of("Europe/Rome")
+        val friday = LocalDate.of(2026, 8, 14)
+        val t1 = update("T1").copy(sourceStopId = "MO", stopSequence = 2)
+        assertEquals("08:23", resolver.resolve(sourceId, t1, friday, zone)?.scheduledAt?.toLocalTime()?.toString())
+        val afterFirst = opened
+        assertNotNull(resolver.resolve(sourceId, update("T1"), friday, zone))
+        assertEquals("a second trip of the same day reads nothing", afterFirst, opened)
+        // Saturday 15 August: T1 does not run (weekdays only), H1 does (calendar_dates addition).
+        val saturday = LocalDate.of(2026, 8, 15)
+        assertNull(resolver.resolve(sourceId, t1, saturday, zone))
+        assertNotNull(resolver.resolve(sourceId, update("H1"), saturday, zone))
+        // Monday 17 August is removed for T1 by calendar_dates.
+        assertNull(resolver.resolve(sourceId, t1, LocalDate.of(2026, 8, 17), zone))
+    }
+
+    private fun zip(content: Map<String, String>): ByteArray {
+        val output = ByteArrayOutputStream()
+        ZipOutputStream(output).use { zip ->
+            content.forEach { (name, value) -> zip.putNextEntry(ZipEntry(name)); zip.write(value.toByteArray()); zip.closeEntry() }
+        }
+        return output.toByteArray()
+    }
+
     private fun resolveDstStop(serviceDate: LocalDate): ResolvedScheduledStop? {
         val resolver = EmbeddedGtfsRealtimeScheduleResolver(
             openAsset = { ByteArrayInputStream(feed()) },

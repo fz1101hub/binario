@@ -48,7 +48,8 @@ class RfiProgrammedStationBoardAdapter(
     private val fetcher: RfiProgrammedTimetableFetcher = HttpRfiProgrammedTimetableFetcher(),
     private val clock: Clock = Clock.systemUTC(),
     private val zone: ZoneId = ZoneId.of("Europe/Rome"),
-    private val cacheTtl: Duration = Duration.ofHours(6)
+    private val cacheTtl: Duration = Duration.ofHours(6),
+    private val pages: RfiTimetablePageCache = RfiTimetablePageCache(fetcher, clock)
 ) : StationBoardProvider {
     override val descriptor = ProviderDescriptor(
         id = SOURCE_ID,
@@ -211,7 +212,9 @@ class RfiProgrammedStationBoardAdapter(
 
         val url = "https://prm.rfi.it/qo_prm/QO_Partenze_SiPMR.aspx?Id=$timetableId&lin=it&dalle=00.00&alle=23.59&ora=00.00"
         val html = try {
-            fetcher.fetch(url)
+            pages.page(url)
+        } catch (error: kotlinx.coroutines.CancellationException) {
+            throw error
         } catch (error: IOException) {
             return TimetableLoad.Failure(
                 ProviderErrorKind.NETWORK,
@@ -233,7 +236,9 @@ class RfiProgrammedStationBoardAdapter(
             outwardDestination = Station("station-board-destination", "Destinazione", "")
         )
         val parsed = try {
-            parser.parseTimetable(html, station, syntheticRoute, Direction.OUTBOUND)
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) { parser.parseTimetable(html, station, syntheticRoute, Direction.OUTBOUND) }
+        } catch (error: kotlinx.coroutines.CancellationException) {
+            throw error
         } catch (error: Exception) {
             return TimetableLoad.Failure(
                 ProviderErrorKind.PARSE_ERROR,

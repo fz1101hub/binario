@@ -26,7 +26,14 @@ data class TrainNumberQuery(val number: String, val date: LocalDate) {
 
     companion object {
         private fun normalize(value: String) = value.trim().uppercase(Locale.ROOT).replace(Regex("[\\s-]+"), "")
-        private fun numeric(value: String): String? = Regex("(?:(?:FRECCIAROSSA|FRECCIARGENTO|FRECCIABIANCA|REGIONALE|ITALO|REG|RJX|ICE|ICN|TGV|TER|FR|FA|FB|AV|RV|RE|IC|EC|EN|RJ|R))?([0-9]+)")
+        /**
+         * Public train categories that prefix a train number in the packs (ÖBB "NJ 40235", "REX 1824", "S 2590", "CJX 9109",
+         * "IR 884", "D 1130", "CAT 9056"). An explicit list, not any letters: the Trenitalia pack also has codes such as
+         * "VE545" or "TO246" that are not train 545 or 246.
+         */
+        private val NUMBER = Regex("(?:(?:FRECCIAROSSA|FRECCIARGENTO|FRECCIABIANCA|REGIONALE|ITALO|REG|RJX|ICE|ICN|TGV|TER|" +
+            "REX|CJX|IRE|ECE|CAT|NJ|IR|ES|FR|FA|FB|AV|RV|RE|IC|EC|EN|RJ|R|S|D))?([0-9]+)")
+        private fun numeric(value: String): String? = NUMBER
             .matchEntire(value)?.groupValues?.get(1)?.trimStart('0')?.ifEmpty { "0" }
     }
 }

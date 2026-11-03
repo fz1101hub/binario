@@ -20,8 +20,11 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
+import it.binario.app.data.live.textOr
 
 /**
  * One bike or scooter sharing system that publishes a GBFS auto-discovery file, with the evidence of its terms
@@ -186,8 +189,8 @@ internal object GbfsParser {
             ?: data.keys().asSequence().firstNotNullOfOrNull { data.optJSONObject(it)?.optJSONArray("feeds") }
             ?: return emptyMap()
         return objects(list).mapNotNull { feed ->
-            val name = feed.optString("name").takeIf(String::isNotBlank) ?: return@mapNotNull null
-            val url = feed.optString("url").takeIf(String::isNotBlank) ?: return@mapNotNull null
+            val name = feed.textOr("name").takeIf(String::isNotBlank) ?: return@mapNotNull null
+            val url = feed.textOr("url").takeIf(String::isNotBlank) ?: return@mapNotNull null
             name to url
         }.toMap()
     }
@@ -195,9 +198,9 @@ internal object GbfsParser {
     /** vehicle_type_id → kind, from `vehicle_types` (form_factor and propulsion_type). */
     fun vehicleTypes(json: String): Map<String, SharedVehicleKind> =
         objects(JSONObject(json).optJSONObject("data")?.optJSONArray("vehicle_types")).mapNotNull { type ->
-            val id = type.optString("vehicle_type_id").takeIf(String::isNotBlank) ?: return@mapNotNull null
-            val form = type.optString("form_factor").lowercase()
-            val propulsion = type.optString("propulsion_type").lowercase()
+            val id = type.textOr("vehicle_type_id").takeIf(String::isNotBlank) ?: return@mapNotNull null
+            val form = type.textOr("form_factor").lowercase()
+            val propulsion = type.textOr("propulsion_type").lowercase()
             id to when {
                 form == "bicycle" && propulsion in setOf("electric_assist", "electric") -> SharedVehicleKind.EBIKE
                 form == "bicycle" || form == "cargo_bicycle" -> SharedVehicleKind.BIKE
@@ -208,16 +211,16 @@ internal object GbfsParser {
 
     fun stations(informationJson: String, statusJson: String, types: Map<String, SharedVehicleKind>): List<GbfsStation> {
         val status = objects(JSONObject(statusJson).optJSONObject("data")?.optJSONArray("stations"))
-            .associateBy { it.optString("station_id") }
+            .associateBy { it.textOr("station_id") }
         return objects(JSONObject(informationJson).optJSONObject("data")?.optJSONArray("stations")).mapNotNull { station ->
-            val id = station.optString("station_id").takeIf(String::isNotBlank) ?: return@mapNotNull null
+            val id = station.textOr("station_id").takeIf(String::isNotBlank) ?: return@mapNotNull null
             val point = coordinates(station) ?: return@mapNotNull null
             val state = status[id] ?: return@mapNotNull null
             if (!flag(state, "is_installed", true) || !flag(state, "is_renting", true)) return@mapNotNull null
             val bikes = count(state, "num_bikes_available") ?: count(state, "num_vehicles_available") ?: 0
             val perType = objects(state.optJSONArray("vehicle_types_available"))
             val ebikes = if (perType.isEmpty() || types.isEmpty()) null else perType.sumOf { item ->
-                if (types[item.optString("vehicle_type_id")] == SharedVehicleKind.EBIKE) count(item, "count") ?: 0 else 0
+                if (types[item.textOr("vehicle_type_id")] == SharedVehicleKind.EBIKE) count(item, "count") ?: 0 else 0
             }
             GbfsStation(id, name(station), point.first, point.second, bikes, ebikes, count(state, "num_docks_available"), renting = true)
         }
@@ -227,12 +230,12 @@ internal object GbfsParser {
         val data = JSONObject(json).optJSONObject("data") ?: return emptyList()
         return objects(data.optJSONArray("bikes") ?: data.optJSONArray("vehicles")).mapNotNull { vehicle ->
             if (flag(vehicle, "is_disabled", false) || flag(vehicle, "is_reserved", false)) return@mapNotNull null
-            if (vehicle.optString("station_id").isNotBlank()) return@mapNotNull null
+            if (vehicle.textOr("station_id").isNotBlank()) return@mapNotNull null
             val point = coordinates(vehicle) ?: return@mapNotNull null
             val fuel = vehicle.optDouble("current_fuel_percent", Double.NaN).takeIf { it.isFinite() && it in 0.0..1.0 }
             GbfsVehicle(
                 point.first, point.second,
-                types[vehicle.optString("vehicle_type_id")] ?: SharedVehicleKind.OTHER,
+                types[vehicle.textOr("vehicle_type_id")] ?: SharedVehicleKind.OTHER,
                 fuel?.let { Math.round(it * 100).toInt() }
             )
         }
@@ -270,9 +273,9 @@ internal object GbfsParser {
     private fun name(item: JSONObject): String {
         item.optJSONArray("name")?.let { names ->
             val list = objects(names)
-            return (list.firstOrNull { it.optString("language").startsWith("it") } ?: list.firstOrNull())?.optString("text").orEmpty()
+            return (list.firstOrNull { it.textOr("language").startsWith("it") } ?: list.firstOrNull())?.textOr("text").orEmpty()
         }
-        return item.optString("name")
+        return item.textOr("name")
     }
 }
 
@@ -290,14 +293,20 @@ class BikeSharingService(
     private val maxDocks: Int = 4,
     private val maxVehicles: Int = 4
 ) {
-    private val staticCache = ResilientSourceCache<String>(ttl = Duration.ofHours(6), maxStale = Duration.ofHours(24), clock = clock, maxEntries = 64)
-    private val statusCache = ResilientSourceCache<String>(ttl = Duration.ofSeconds(60), maxStale = Duration.ofMinutes(5), clock = clock, maxEntries = 32)
+    // One circuit breaker per operator host: an outage of one system must not pause the others.
+    private val staticCache = ResilientSourceCache<String>(ttl = Duration.ofHours(6), maxStale = Duration.ofHours(24), clock = clock, maxEntries = 64,
+        breakerPerHost = true)
+    private val statusCache = ResilientSourceCache<String>(ttl = Duration.ofSeconds(60), maxStale = Duration.ofMinutes(5), clock = clock, maxEntries = 32,
+        breakerPerHost = true)
 
     val hasSystems: Boolean get() = systems.isNotEmpty()
 
     fun serves(point: GeoPoint): Boolean = systems.any { it.serves(point) }
 
-    suspend fun nearby(point: GeoPoint): BikeSharingResult {
+    /** GBFS documents (up to about 1 MB for a citywide vehicle list) are parsed off the caller's thread, which is Main. */
+    suspend fun nearby(point: GeoPoint): BikeSharingResult = withContext(Dispatchers.Default) { nearbyNow(point) }
+
+    private suspend fun nearbyNow(point: GeoPoint): BikeSharingResult {
         val serving = systems.filter { it.serves(point) }
         if (serving.isEmpty()) return BikeSharingResult.NotCovered
         val answers = coroutineScope { serving.map { system -> async { nearbyIn(system, point) } }.awaitAll() }.filterNotNull()

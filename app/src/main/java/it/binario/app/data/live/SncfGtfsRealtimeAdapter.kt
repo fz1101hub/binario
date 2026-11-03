@@ -4,6 +4,7 @@ import com.google.transit.realtime.GtfsRealtime
 import it.binario.app.data.core.AlertId
 import it.binario.app.data.core.AlertSeverity
 import it.binario.app.data.core.Confidence
+import it.binario.app.data.core.GtfsRealtimeFreshness
 import it.binario.app.data.core.LocalizedText
 import it.binario.app.data.core.OperatorId
 import it.binario.app.data.core.ServiceAlert
@@ -30,9 +31,8 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import it.binario.app.data.urban.HttpsBytesFetcher
 import java.io.IOException
-import java.net.HttpURLConnection
-import java.net.URL
 import java.security.MessageDigest
 import java.time.Clock
 import java.time.Duration
@@ -48,22 +48,14 @@ enum class SncfRealtimeFeed(val url: String) {
     TRIP_UPDATES("https://proxy.transport.data.gouv.fr/resource/sncf-gtfs-rt-trip-updates")
 }
 
-internal class HttpSncfRealtimeFetcher : SncfRealtimeFetcher {
-    override suspend fun fetch(feed: SncfRealtimeFeed): ByteArray = withContext(Dispatchers.IO) {
-        val connection = URL(feed.url).openConnection() as? HttpURLConnection
-            ?: throw IOException("SNCF realtime non usa una connessione HTTP")
-        connection.requestMethod = "GET"
-        connection.connectTimeout = 12_000
-        connection.readTimeout = 20_000
-        connection.setRequestProperty("Accept", "application/x-protobuf, application/octet-stream")
-        connection.setRequestProperty("User-Agent", "Binario/0.15 (personal rail information client)")
-        try {
-            if (connection.responseCode !in 200..299) throw IOException("SNCF realtime ha risposto HTTP ${connection.responseCode}")
-            connection.inputStream.use { it.readBytes() }
-        } finally {
-            connection.disconnect()
-        }
-    }
+/**
+ * The national feeds through [HttpsBytesFetcher]: HTTPS on the same host, a byte cap (the national Trip Updates are a
+ * few MB), a total time limit and a request that stops when the caller is cancelled.
+ */
+internal class HttpSncfRealtimeFetcher(
+    private val http: HttpsBytesFetcher = HttpsBytesFetcher(maxBytes = 16 * 1024 * 1024, readTimeoutMillis = 15_000, totalTimeoutMillis = 25_000)
+) : SncfRealtimeFetcher {
+    override suspend fun fetch(feed: SncfRealtimeFeed): ByteArray = http.fetch(feed.url)
 }
 
 /** Adapter open-data SNCF per gli avvisi GTFS-Realtime; gli aggiornamenti corsa restano disponibili al decoder ma richiedono matching con il GTFS statico. */
@@ -87,6 +79,7 @@ class SncfGtfsRealtimeAdapter(
 
     private var cachedAlerts: CachedAlerts? = null
     private var cachedTripUpdates: CachedTripUpdates? = null
+    private val tripUpdatesGuard = RealtimeFeedGuard(clock, "SNCF Open Data")
 
     override suspend fun getAlerts(request: AlertRequest): ProviderResult<List<ServiceAlert>> = alertsMutex.withLock {
         val now = clock.instant()
@@ -116,21 +109,26 @@ class SncfGtfsRealtimeAdapter(
         cachedTripUpdates?.takeIf { now.isBefore(it.expiresAt) }?.let { cache ->
             return@withLock ProviderResult.Success(cache.updates, meta(now, cache.observedAt, cache.expiresAt, true, cache.fingerprint))
         }
+        tripUpdatesGuard.blocked()?.let { return@withLock it }
         try {
             val payload = fetcher.fetch(SncfRealtimeFeed.TRIP_UPDATES)
-            val feed = GtfsRealtime.FeedMessage.parseFrom(payload)
-            val observed = feed.header.timestamp.takeIf { it > 0 }?.let(Instant::ofEpochSecond) ?: now
-            val updates = parseTripUpdates(feed, observed)
+            // The national feed is decoded off the caller's thread.
+            val (observed, updates) = withContext(Dispatchers.Default) {
+                val feed = GtfsRealtime.FeedMessage.parseFrom(payload)
+                val observed = feed.header.timestamp.takeIf { it > 0 }?.let(Instant::ofEpochSecond) ?: now
+                observed to parseTripUpdates(feed, observed)
+            }
             val expires = now.plus(cacheTtl)
             val fingerprint = fingerprint(payload)
             cachedTripUpdates = CachedTripUpdates(updates, observed, expires, fingerprint)
+            tripUpdatesGuard.succeeded()
             ProviderResult.Success(updates, meta(now, observed, expires, false, fingerprint))
         } catch (error: CancellationException) {
             throw error
         } catch (error: IOException) {
-            ProviderResult.Failure(ProviderError(ProviderErrorKind.NETWORK, "Aggiornamenti corsa SNCF non raggiungibili.", error::class.java.name))
+            tripUpdatesGuard.failed(ProviderError(ProviderErrorKind.NETWORK, "Aggiornamenti corsa SNCF non raggiungibili.", error::class.java.name), error)
         } catch (error: Exception) {
-            ProviderResult.Failure(ProviderError(ProviderErrorKind.PARSE_ERROR, "Aggiornamenti corsa SNCF non leggibili.", error::class.java.name))
+            tripUpdatesGuard.failed(ProviderError(ProviderErrorKind.PARSE_ERROR, "Aggiornamenti corsa SNCF non leggibili.", error::class.java.name), error)
         }
     }
 
@@ -146,7 +144,7 @@ class SncfGtfsRealtimeAdapter(
         if (dateString.isNotBlank() && serviceDate == null) return@flatMap emptyList()
         val nativeEntity = entity.id.takeIf(String::isNotBlank) ?: tripId
         val tripObservedAt = update.timestamp.takeIf { it > 0 }?.let(Instant::ofEpochSecond) ?: observedAt
-        val source = sourceRef(nativeEntity, tripObservedAt)
+        val source = sourceRef(nativeEntity, tripObservedAt, GtfsRealtimeFreshness.OBSERVATION_WINDOW)
         update.stopTimeUpdateList.mapNotNull { stop ->
             if (stop.scheduleRelationship != GtfsRealtime.TripUpdate.StopTimeUpdate.ScheduleRelationship.SCHEDULED) return@mapNotNull null
             val stopId = stop.stopId.takeIf(String::isNotBlank)
@@ -216,12 +214,12 @@ class SncfGtfsRealtimeAdapter(
     private fun meta(fetched: Instant, observed: Instant, expires: Instant, fromCache: Boolean, fingerprint: String) =
         ProviderResponseMeta(SOURCE_ID, fetched, observedAt = observed, expiresAt = expires, fromCache = fromCache, responseFingerprint = fingerprint)
 
-    private fun sourceRef(nativeId: String, observed: Instant) = SourceRef(
+    private fun sourceRef(nativeId: String, observed: Instant, validity: Duration = cacheTtl) = SourceRef(
         sourceId = SOURCE_ID,
         nativeId = nativeId,
         observedAt = observed,
         fetchedAt = clock.instant(),
-        expiresAt = observed.plus(cacheTtl),
+        expiresAt = observed.plus(validity),
         confidence = Confidence.OPEN_DATA,
         licenseId = "Licence Ouverte / Etalab",
         traceId = "sncf:${fingerprint(nativeId.toByteArray()).take(16)}"

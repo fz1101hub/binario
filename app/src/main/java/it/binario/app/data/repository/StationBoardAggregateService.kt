@@ -55,7 +55,9 @@ class StationBoardAggregateService(
      */
     private val stopProviders: List<StopScopedBoardProvider> = emptyList(),
     /** A city board reads its pack's timetable on first use, which can take longer than a network board. */
-    private val stopProviderTimeoutMillis: Long = 30_000L
+    private val stopProviderTimeoutMillis: Long = 30_000L,
+    /** How far back a late train may be scheduled and still be shown while its expected time is ahead. */
+    private val lateLookback: Duration = Duration.ofHours(2)
 ) {
     val hasProviders: Boolean get() = providers.isNotEmpty()
 
@@ -82,7 +84,9 @@ class StationBoardAggregateService(
             stationId = StationId(station.id), stationName = station.name,
             stationAliases = station.aliases, railwayCode = station.railwayCode,
             from = from.minus(Duration.ofMinutes(10)), to = from.plus(window), kind = kind,
-            trenitaliaLocationId = station.trenitaliaLocationId, coordinates = station.catalogueCoordinates()
+            trenitaliaLocationId = station.trenitaliaLocationId, coordinates = station.catalogueCoordinates(),
+            // Delayed trains stay on the board until their expected time, as on the station's own monitor.
+            lateSince = from.minus(lateLookback)
         )
         coroutineScope {
             val completed = Channel<Pair<Int, ProviderAttempt>>(active.size)
@@ -163,7 +167,10 @@ class StationBoardAggregateService(
         val entries = clusters.map { group ->
             if (hasConflict(group)) sourceConflict = true
             merge(group)
-        }.sortedBy { it.expectedTime?.value?.toInstant() ?: it.scheduledTime.toInstant() }
+        }
+            // A late row stays only while the expected time chosen across the sources is still ahead.
+            .filter { request.keeps(it.scheduledTime.toInstant(), it.expectedTime?.value?.toInstant()) }
+            .sortedBy { it.expectedTime?.value?.toInstant() ?: it.scheduledTime.toInstant() }
 
         val warnings = buildSet {
             boards.flatMapTo(this) { it.warnings }

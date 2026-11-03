@@ -35,7 +35,8 @@ class RfiSupplementalHubTimetableAdapter(
     private val cacheMaxEntries: Int = 8,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
     private val parsingDispatcher: CoroutineDispatcher = Dispatchers.Default,
-    private val onParsing: (() -> Unit)? = null
+    private val onParsing: (() -> Unit)? = null,
+    private val pages: RfiTimetablePageCache = RfiTimetablePageCache(fetcher, clock)
 ) : TrainDataSource {
     private val parser = RfiProgrammedTimetableAdapter(
         fetcher = RfiProgrammedTimetableFetcher { "" },
@@ -66,7 +67,7 @@ class RfiSupplementalHubTimetableAdapter(
             cache.getOrLoad(cacheKey) {
                 val url = "https://prm.rfi.it/qo_prm/QO_Partenze_SiPMR.aspx?Id=$timetableId&lin=it&dalle=00.00&alle=23.59&ora=00.00"
                 val html = try {
-                    withContext(ioDispatcher) { fetcher.fetch(url) }
+                    pages.page(url, ioDispatcher)
                 } catch (error: CancellationException) {
                     throw error
                 } catch (error: Exception) {

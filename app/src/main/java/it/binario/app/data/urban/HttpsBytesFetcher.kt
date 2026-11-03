@@ -2,6 +2,7 @@ package it.binario.app.data.urban
 
 import it.binario.app.data.live.BINARIO_PUBLIC_SOURCE_USER_AGENT
 import it.binario.app.data.live.PublicSourceHttpException
+import it.binario.app.data.live.retryAfterOf
 import it.binario.app.data.live.withCancellableHttpConnection
 import java.io.ByteArrayOutputStream
 import java.io.IOException
@@ -46,7 +47,8 @@ class HttpsBytesFetcher(
                     in 200..299 -> Response(null, connection.inputStream.use {
                         readBoundedBytes(it, connection.contentLengthLong.takeIf { length -> length >= 0 }, maxBytes)
                     })
-                    else -> throw PublicSourceHttpException(status, "Il feed ha risposto HTTP $status")
+                    else -> throw PublicSourceHttpException(status, "Il feed ha risposto HTTP $status",
+                        retryAfterOf(connection.getHeaderField("Retry-After")))
                 }
             }
             response.body?.let { return@withTimeoutOrNull it }

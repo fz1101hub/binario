@@ -132,7 +132,11 @@ class ItaloPublicStationAdapter(
     private val mutex = Mutex()
     private val cache = mutableMapOf<String, CachedSnapshot>()
 
-    override suspend fun getStationBoard(request: StationBoardRequest): ProviderResult<it.binario.app.data.core.StationBoard> {
+    /** Catalogue and board parsing (Jsoup/JSON, up to a few MB) never run on the caller's thread, which can be Main. */
+    override suspend fun getStationBoard(request: StationBoardRequest): ProviderResult<it.binario.app.data.core.StationBoard> =
+        withContext(Dispatchers.Default) { stationBoard(request) }
+
+    private suspend fun stationBoard(request: StationBoardRequest): ProviderResult<it.binario.app.data.core.StationBoard> {
         if (request.kind != BoardKind.DEPARTURES) {
             return ProviderResult.Failure(ProviderError(ProviderErrorKind.NOT_SUPPORTED, "Italo: sono supportate solo le partenze."))
         }
@@ -159,7 +163,8 @@ class ItaloPublicStationAdapter(
                 to = request.to,
                 services = services,
                 fetchedAt = fetchedAt,
-                ttl = descriptor.ratePolicy.defaultTimeToLive
+                ttl = descriptor.ratePolicy.defaultTimeToLive,
+                lateSince = request.lateSince
             )
             ProviderResult.Success(
                 board,
@@ -183,7 +188,10 @@ class ItaloPublicStationAdapter(
         return loadRoute(route, direction, JourneyQuery(now.toLocalDate(), now.toLocalTime().withSecond(0).withNano(0)))
     }
 
-    override suspend fun loadRoute(route: SavedRoute, direction: Direction, query: JourneyQuery): DataResult {
+    override suspend fun loadRoute(route: SavedRoute, direction: Direction, query: JourneyQuery): DataResult =
+        withContext(Dispatchers.Default) { currentRoute(route, direction, query) }
+
+    private suspend fun currentRoute(route: SavedRoute, direction: Direction, query: JourneyQuery): DataResult {
         if (query.serviceDate != clock.instant().atZone(clock.zone).toLocalDate()) {
             return DataResult.Failure("Italo in Viaggio espone stato operativo corrente: la fonte live viene usata solo per la data odierna.")
         }

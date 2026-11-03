@@ -29,7 +29,9 @@ class EmbeddedTrainNumberSearchSource(
             val matches = static.searchByNumber(query) { send(result(it)) }
             send(result(matches))
             val enrichedMatches = if (!withRealtime) matches else matches.map { match ->
-                val enriched = realtime.enrich(DataResult.Success(match.snapshot), JourneyQuery(query.date, LocalTime.MIN), useLatestStopForService = true)
+                // The offline rows are already shown: wait for the realtime as long as a route search would.
+                val enriched = realtime.enrich(DataResult.Success(match.snapshot), JourneyQuery(query.date, LocalTime.MIN), useLatestStopForService = true,
+                    deadlineMillis = GtfsRealtimeEnrichedTrainDataSource.OBSERVED_DEADLINE_MILLIS)
                 if (enriched is DataResult.Success) TrainNumberMatch(enriched.snapshot.services.single(), enriched.snapshot) else match
             }
             if (withRealtime) send(result(enrichedMatches))

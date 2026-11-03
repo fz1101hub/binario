@@ -328,6 +328,13 @@ class LegacyTrainDataSourceFacade(
         query: it.binario.app.data.JourneyQuery
     ): it.binario.app.data.DataResult = assessed(legacySource.loadRoute(route, direction, query))
 
+    override fun observeRoute(
+        route: it.binario.app.data.SavedRoute,
+        direction: it.binario.app.data.Direction,
+        query: it.binario.app.data.JourneyQuery
+    ): kotlinx.coroutines.flow.Flow<it.binario.app.data.DataResult> =
+        kotlinx.coroutines.flow.flow { legacySource.observeRoute(route, direction, query).collect { emit(assessed(it)) } }
+
     private fun assessed(result: it.binario.app.data.DataResult): it.binario.app.data.DataResult {
         if (result !is it.binario.app.data.DataResult.Success) return result
         val original = result.snapshot

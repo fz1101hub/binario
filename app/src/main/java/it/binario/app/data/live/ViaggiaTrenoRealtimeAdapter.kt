@@ -109,14 +109,17 @@ class ViaggiaTrenoRealtimeAdapter(
         capabilities = setOf(ProviderCapability.STATION_BOARD, ProviderCapability.TRAIN_RUN_REALTIME),
         coverage = CoverageDescriptor(countryCodes = setOf("IT"), description = "Corse Trenitalia con codici stazione e fermate pubblicate"),
         accessMode = AccessMode.PUBLIC_BEST_EFFORT,
-        ratePolicy = RatePolicy(Duration.ofSeconds(30), defaultTimeToLive = Duration.ofSeconds(30)), schemaVersion = 1
+        // Enforced below: one request per resource every 30 s (the response cache) and at most
+        // DISCOVERY_PERMITS + DETAIL_PERMITS requests at a time.
+        ratePolicy = RatePolicy(Duration.ofSeconds(30), maxConcurrentRequests = DISCOVERY_PERMITS + DETAIL_PERMITS,
+            defaultTimeToLive = Duration.ofSeconds(30)), schemaVersion = 1
     )
     private val zone = RailTime.defaultZone
     // Cache failures for the cooldown too, without representing them as an empty board.
-    private val cache = BoundedSingleFlightCache<Result<String>>(128, 30_000, clock::millis)
+    private val cache = BoundedSingleFlightCache<Result<String>>(128, descriptor.ratePolicy.minimumRequestInterval.toMillis(), clock::millis)
     // Boards and number discovery must not queue behind an entire batch of optional run details.
-    private val discoveryRequests = Semaphore(2)
-    private val detailRequests = Semaphore(3)
+    private val discoveryRequests = Semaphore(DISCOVERY_PERMITS)
+    private val detailRequests = Semaphore(DETAIL_PERMITS)
 
     private suspend fun json(path: String): String = cache.getOrLoad(path, expireFromLoadStart = true, cancelWhenUnused = true) {
         try { Result.success((if (path.startsWith("andamentoTreno/")) detailRequests else discoveryRequests).withPermit { fetcher.fetch(path) }) }
@@ -205,7 +208,15 @@ class ViaggiaTrenoRealtimeAdapter(
         val fetched = clock.instant()
         return try {
             val arrival = request.kind == BoardKind.ARRIVALS
-            val rows = movements(stationCode, request.from, request.kind)
+            // The board from the window start, then (optional, short) from [lateSince] for trains still late to leave,
+            // as the route search does: an earlier board alone could hide the upcoming trains of a busy station.
+            val rows = movements(stationCode, request.from, request.kind).toMutableList()
+            request.lateSince?.takeIf { it.isBefore(request.from) }?.let { since ->
+                try { withTimeoutOrNull(2_000) { movements(stationCode, since, request.kind) }?.let(rows::addAll) }
+                catch (error: CancellationException) { throw error }
+                catch (_: IOException) { }
+                catch (_: org.json.JSONException) { }
+            }
             val services = rows.mapNotNull { row ->
                 val scheduled = row.millis(if (arrival) "orarioArrivo" else "orarioPartenza")?.let(Instant::ofEpochMilli) ?: return@mapNotNull null
                 val number = row.text("numeroTreno") ?: return@mapNotNull null
@@ -234,7 +245,7 @@ class ViaggiaTrenoRealtimeAdapter(
                 "$number:$scheduled" to "$origin:$number:$date"
             }.toMap()
             val board = LegacyStationBoardInterop.build(descriptor.id, Confidence.OPERATOR_PRIMARY, request.stationId, request.kind,
-                request.from, request.to, services, fetched, Duration.ofSeconds(30))
+                request.from, request.to, services.distinctBy { it.id }, fetched, Duration.ofSeconds(30), lateSince = request.lateSince)
             ProviderResult.Success(
                 board.copy(entries = board.entries.map { entry ->
                     entry.copy(nativeRunIds = identities["${entry.publicNumber}:${entry.scheduledTime.toInstant().toEpochMilli()}"]
@@ -465,4 +476,10 @@ class ViaggiaTrenoRealtimeAdapter(
     private fun JSONObject.text(key: String): String? = opt(key)?.takeIf { it != JSONObject.NULL }?.toString()?.takeIf { it.isNotBlank() }
     private fun JSONObject.millis(key: String): Long? = text(key)?.toLongOrNull()?.takeIf { it > 0 }
     private fun JSONObject.intOrNull(key: String): Int? = text(key)?.toIntOrNull()
+
+    private companion object {
+        /** Boards and number discovery, which must not queue behind a batch of run details. */
+        const val DISCOVERY_PERMITS = 2
+        const val DETAIL_PERMITS = 3
+    }
 }

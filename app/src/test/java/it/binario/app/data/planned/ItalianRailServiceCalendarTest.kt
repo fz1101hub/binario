@@ -93,6 +93,21 @@ class ItalianRailServiceCalendarTest {
     }
 
     @Test
+    fun `dotted abbreviations keep their clause and their negation`() {
+        //                                    Mon    Tue    Wed    Fri    Sat    Sun    HolTue EastMon
+        val weekdaysOnly = listOf(true, true, true, true, false, false, false, false)
+        assertEquals(weekdaysOnly, week("Escl. sab. e fest."))
+        assertEquals(weekdaysOnly, week("Escl. Sab. e Fest."))
+        assertEquals(weekdaysOnly, week("Non si effettua sab. e fest."))
+        assertEquals(listOf(true, true, true, true, false, false, true, true), week("Lun.-Ven."))
+        assertEquals(listOf(true, true, true, true, true, false, true, true), week("Dal lun. al sab."))
+        assertEquals(listOf(true, true, true, true, true, false, false, false), week("Fer. escl. fest."))
+        // A dot after a full word, or before a new sentence, still ends the clause.
+        assertEquals(listOf(false, false, false, false, false, true, false, false), week("Escl. sab. Si effettua dom."))
+        assertEquals(listOf(true, true, true, true, false, false, true, true), week("Escluso sabato. Lun-Ven"))
+    }
+
+    @Test
     fun `two-letter abbreviations count only inside a day list`() {
         // "ma" is the Italian conjunction here, not Tuesday.
         assertEquals(listOf(true, true, true, true, true, false, false, false), week("Feriale ma non festivo"))

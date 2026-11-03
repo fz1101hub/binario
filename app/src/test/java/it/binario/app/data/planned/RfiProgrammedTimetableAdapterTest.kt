@@ -327,6 +327,34 @@ class RfiProgrammedTimetableAdapterTest {
         assertTrue(outsideValidity is DataResult.Failure)
     }
 
+    /** Audit proposal 2: pages are cached by URL, shared by routes and the board, and revalidated with their ETag. */
+    @Test
+    fun `routes from one hub and its board share one download revalidated with the ETag`() = runBlocking {
+        val time = it.binario.app.data.live.MutablePublicSourceClock(Instant.parse("2026-09-04T06:00:00Z"))
+        val asked = mutableListOf<String?>()
+        val fetcher = object : ConditionalRfiTimetableFetcher {
+            override suspend fun fetch(url: String): String = (fetchConditional(url, null) as RfiPage.Body).html
+            override suspend fun fetchConditional(url: String, previous: RfiPageValidators?): RfiPage {
+                asked += previous?.etag
+                return if (previous?.etag == "\"v1\"") RfiPage.NotModified else RfiPage.Body(fixture(), RfiPageValidators("\"v1\"", null))
+            }
+        }
+        val pages = RfiTimetablePageCache(fetcher, time, ttlMillis = 60_000)
+        val timetable = RfiProgrammedTimetableAdapter(fetcher = fetcher, clock = time, pages = pages)
+        val board = RfiProgrammedStationBoardAdapter(fetcher = fetcher, clock = time, pages = pages)
+        val query = JourneyQuery(LocalDate.of(2026, 9, 4), LocalTime.of(8, 0))
+        assertTrue(timetable.loadRoute(route(roma, milano), Direction.OUTBOUND, query) is DataResult.Success)
+        assertTrue(timetable.loadRoute(route(roma, firenze), Direction.OUTBOUND, query) is DataResult.Success)
+        board.getStationBoard(it.binario.app.data.provider.StationBoardRequest(it.binario.app.data.core.StationId("roma-termini"), "Roma Termini",
+            from = time.instant(), to = time.instant().plusSeconds(3600), kind = it.binario.app.data.core.BoardKind.DEPARTURES))
+        assertEquals(listOf<String?>(null), asked)
+
+        time.advance(java.time.Duration.ofMinutes(2))
+        val url = "https://prm.rfi.it/qo_prm/QO_Partenze_SiPMR.aspx?Id=2247&lin=it&dalle=00.00&alle=23.59&ora=00.00"
+        assertEquals(fixture(), pages.page(url))
+        assertEquals(listOf(null, "\"v1\""), asked)
+    }
+
     // Synthetic published-format fixture: these times are deliberately not evidence of a live service.
     private fun arrivalsFixture(periodicity: String = "Giornaliero") = """
         <html><body><div>ORARIO PROGRAMMATO 14 Giugno 2026 - 12 Dicembre 2026</div>

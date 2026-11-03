@@ -115,5 +115,5 @@ class RfiLiveRouteDataSource(
         "italo" -> RailOperator.ITALO
         else -> RailOperator.OTHER
     }
-    companion object { private val HH_MM = DateTimeFormatter.ofPattern("HH:mm") }
+    companion object { private val HH_MM = DateTimeFormatter.ofPattern("HH:mm", java.util.Locale.ROOT) }
 }

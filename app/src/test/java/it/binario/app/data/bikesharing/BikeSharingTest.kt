@@ -78,6 +78,21 @@ class BikeSharingTest {
         assertFalse(nearby.stale)
     }
 
+    /** Audit F9: three failures of one operator (Bird) must not pause another (BikeMi). */
+    @Test
+    fun `one failing system does not open the breaker of the others`() = runBlocking {
+        val fetcher = RecordingPublicSourceFetcher { url ->
+            if ("bird.co" in url) throw it.binario.app.data.live.PublicSourceHttpException(503, "HTTP 503")
+            bikemiDocs[url] ?: throw IOException("404 $url")
+        }
+        val service = BikeSharingService(listOf(BikeSharingSystems.BIRD_ROMA, BikeSharingSystems.BIKEMI), fetcher, MutablePublicSourceClock(now))
+        repeat(3) { assertEquals(BikeSharingResult.Unavailable, service.nearby(GeoPoint(41.9010, 12.5016))) }
+        val before = fetcher.urls.count { "bikemi" in it }
+        val milan = service.nearby(nearSantaSofia)
+        assertTrue(milan is BikeSharingResult.Loaded)
+        assertTrue(fetcher.urls.count { "bikemi" in it } > before)
+    }
+
     @Test
     fun `free-floating scooters with battery, reserved and disabled ones left out, other hosts refused`() = runBlocking {
         val (service, fetcher) = service(birdDocs, listOf(BikeSharingSystems.BIRD_ROMA))

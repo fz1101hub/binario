@@ -103,7 +103,8 @@ class SwissOpenTransportStationBoardAdapter internal constructor(
         schemaVersion = 1
     )
 
-    private val boards = ResilientSourceCache<ParsedBoard>(BOARD_TTL, Duration.ofMinutes(10), clock, maxEntries = 24, retryDelayMillis = retryDelayMillis)
+    private val boards = ResilientSourceCache<ParsedBoard>(BOARD_TTL, Duration.ofMinutes(10), clock, maxEntries = 24,
+        breaker = SourceCircuitBreaker(clock, pauseLabel = "transport.opendata.ch"), retryDelayMillis = retryDelayMillis)
     private val locations = ResilientSourceCache<List<SwissLocation>>(Duration.ofDays(7), Duration.ofDays(7), clock, maxEntries = 64, retryDelayMillis = retryDelayMillis)
 
     override suspend fun getStationBoard(request: StationBoardRequest): ProviderResult<StationBoard> =
@@ -229,7 +230,8 @@ class SwissOpenTransportStationBoardAdapter internal constructor(
             confidence = Confidence.OPEN_DATA, licenseId = LICENSE, traceId = "${SOURCE_ID.value}:board:$uic:${fetchedAt.toEpochMilli()}"
         )
         val entries = rows.asSequence()
-            .filter { !it.scheduled.toInstant().isBefore(request.from) && !it.scheduled.toInstant().isAfter(request.to) }
+            // A row with a prognosis stays while the train is still to leave, even if scheduled before the window.
+            .filter { request.keeps(it.scheduled.toInstant(), it.expected?.toInstant()) }
             .map { row ->
                 val source = boardSource.copy(nativeId = "$uic:${row.journeyNumber}:${row.scheduled.toEpochSecond()}",
                     traceId = "${SOURCE_ID.value}:$uic:${row.journeyNumber}:${row.scheduled.toEpochSecond()}")

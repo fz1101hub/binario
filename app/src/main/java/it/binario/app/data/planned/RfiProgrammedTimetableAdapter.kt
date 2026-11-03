@@ -63,11 +63,26 @@ internal fun readBoundedRfiHtml(
     return output.toString(Charsets.UTF_8.name())
 }
 
+/** `ETag` / `Last-Modified` of a page, sent back as `If-None-Match` / `If-Modified-Since` to revalidate it. */
+internal data class RfiPageValidators(val etag: String?, val lastModified: String?)
+
+internal sealed interface RfiPage {
+    data class Body(val html: String, val validators: RfiPageValidators?) : RfiPage
+    data object NotModified : RfiPage
+}
+
+/** A fetcher that can revalidate a page it already holds (HTTP 304), when the server publishes validators. */
+internal interface ConditionalRfiTimetableFetcher : RfiProgrammedTimetableFetcher {
+    suspend fun fetchConditional(url: String, previous: RfiPageValidators?): RfiPage
+}
+
 internal class HttpRfiProgrammedTimetableFetcher(
     private val timeoutMillis: Long = 10_000,
     private val openConnection: (URL) -> HttpURLConnection = { it.openConnection() as HttpURLConnection }
-) : RfiProgrammedTimetableFetcher {
-    override suspend fun fetch(url: String): String = kotlinx.coroutines.withTimeoutOrNull(timeoutMillis) {
+) : ConditionalRfiTimetableFetcher {
+    override suspend fun fetch(url: String): String = (fetchConditional(url, null) as RfiPage.Body).html
+
+    override suspend fun fetchConditional(url: String, previous: RfiPageValidators?): RfiPage = kotlinx.coroutines.withTimeoutOrNull(timeoutMillis) {
         val connection = openConnection(URL(url))
         connection.requestMethod = "GET"
         connection.connectTimeout = 12_000
@@ -75,13 +90,59 @@ internal class HttpRfiProgrammedTimetableFetcher(
         connection.instanceFollowRedirects = false
         connection.setRequestProperty("Accept", "text/html,application/xhtml+xml")
         connection.setRequestProperty("User-Agent", "Binario/0.20 (personal rail timetable client)")
+        previous?.etag?.let { connection.setRequestProperty("If-None-Match", it) }
+        previous?.lastModified?.let { connection.setRequestProperty("If-Modified-Since", it) }
         it.binario.app.data.live.withCancellableHttpConnection(connection) {
             val status = connection.responseCode
+            if (status == 304 && previous != null) return@withCancellableHttpConnection RfiPage.NotModified
             if (status !in 200..299) throw IOException("RFI ha risposto HTTP $status")
             val declaredLength = connection.contentLengthLong.takeIf { it >= 0L }
-            connection.inputStream.use { readBoundedRfiHtml(it, declaredLength) }
+            val html = connection.inputStream.use { readBoundedRfiHtml(it, declaredLength) }
+            val etag = connection.getHeaderField("ETag")?.takeIf(String::isNotBlank)
+            val lastModified = connection.getHeaderField("Last-Modified")?.takeIf(String::isNotBlank)
+            RfiPage.Body(html, if (etag != null || lastModified != null) RfiPageValidators(etag, lastModified) else null)
         }
     } ?: throw java.net.SocketTimeoutException("Il quadro orario RFI supera il tempo massimo della richiesta")
+}
+
+/**
+ * RFI "Quadro orario" pages by URL, shared by the programmed timetable, the supplemental hubs and the programmed
+ * board: several saved routes from one hub, and that hub's board, download its page once. A page is kept for
+ * [ttlMillis]; after that, when RFI published an `ETag` or `Last-Modified`, it is revalidated with a conditional
+ * request and reused on HTTP 304. At most [maxEntries] pages (up to 2 MB each) stay in memory.
+ */
+class RfiTimetablePageCache internal constructor(
+    private val fetcher: RfiProgrammedTimetableFetcher,
+    clock: Clock,
+    ttlMillis: Long = 30L * 60L * 1000L,
+    private val maxEntries: Int = 3
+) {
+    private val pages = BoundedSingleFlightCache<String>(maxEntries, ttlMillis, clock::millis)
+    private val revalidation = object : java.util.LinkedHashMap<String, Pair<RfiPageValidators, String>>(maxEntries, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Pair<RfiPageValidators, String>>?): Boolean = size > maxEntries
+    }
+
+    /** The page of [url]; a download runs on [ioDispatcher]. */
+    internal suspend fun page(url: String, ioDispatcher: CoroutineDispatcher = Dispatchers.IO): String =
+        pages.getOrLoad(url) { withContext(ioDispatcher) { load(url) } }.value
+
+    private suspend fun load(url: String): String {
+        val conditional = fetcher as? ConditionalRfiTimetableFetcher ?: return fetcher.fetch(url)
+        val previous = synchronized(revalidation) { revalidation[url] }
+        return when (val page = conditional.fetchConditional(url, previous?.first)) {
+            RfiPage.NotModified -> previous?.second ?: conditional.fetch(url)
+            is RfiPage.Body -> page.html.also { html ->
+                synchronized(revalidation) {
+                    if (page.validators != null) revalidation[url] = page.validators to html else revalidation.remove(url)
+                }
+            }
+        }
+    }
+}
+
+internal object RfiTimetablePages {
+    /** The process-wide page cache of the app's RFI adapters (the default HTTPS fetcher); tests build their own. */
+    val shared: RfiTimetablePageCache by lazy { RfiTimetablePageCache(HttpRfiProgrammedTimetableFetcher(), Clock.systemUTC()) }
 }
 
 internal object RfiProgrammedStationIds {
@@ -168,7 +229,8 @@ class RfiProgrammedTimetableAdapter(
     private val cacheMaxEntries: Int = 16,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
     private val parsingDispatcher: CoroutineDispatcher = Dispatchers.Default,
-    private val onParsing: (() -> Unit)? = null
+    private val onParsing: (() -> Unit)? = null,
+    private val pages: RfiTimetablePageCache = RfiTimetablePageCache(fetcher, clock)
 ) : TrainDataSource {
     private val cache = BoundedSingleFlightCache<ParsedTimetable>(
         maxEntries = cacheMaxEntries,
@@ -199,7 +261,7 @@ class RfiProgrammedTimetableAdapter(
             cache.getOrLoad(key) {
                 val url = "https://prm.rfi.it/qo_prm/QO_${board}_SiPMR.aspx?Id=$stationId&lin=it&dalle=00.00&alle=23.59&ora=00.00"
                 val html = try {
-                    withContext(ioDispatcher) { fetcher.fetch(url) }
+                    pages.page(url, ioDispatcher)
                 } catch (error: CancellationException) {
                     throw error
                 } catch (error: IOException) {

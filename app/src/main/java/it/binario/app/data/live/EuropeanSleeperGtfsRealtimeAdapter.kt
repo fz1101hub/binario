@@ -18,36 +18,24 @@ import it.binario.app.data.provider.ProviderResult
 import it.binario.app.data.provider.RatePolicy
 import it.binario.app.data.provider.TripUpdateProvider
 import java.io.IOException
-import java.net.HttpURLConnection
-import java.net.URL
 import java.time.Clock
 import java.time.Duration
 import java.time.LocalDate
 import java.time.ZoneId
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import it.binario.app.data.urban.HttpsBytesFetcher
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 fun interface EuropeanSleeperRealtimeFetcher {
     suspend fun fetch(): ByteArray
 }
 
-internal class HttpEuropeanSleeperRealtimeFetcher : EuropeanSleeperRealtimeFetcher {
-    override suspend fun fetch(): ByteArray = withContext(Dispatchers.IO) {
-        val connection = URL(FEED_URL).openConnection() as? HttpURLConnection
-            ?: throw IOException("European Sleeper realtime non usa HTTP")
-        connection.requestMethod = "GET"
-        connection.connectTimeout = 12_000
-        connection.readTimeout = 20_000
-        connection.instanceFollowRedirects = true
-        connection.setRequestProperty("Accept", "application/x-protobuf, application/octet-stream")
-        connection.setRequestProperty("User-Agent", "Binario/0.20 personal best-effort rail client")
-        try {
-            if (connection.responseCode !in 200..299) throw IOException("European Sleeper realtime HTTP ${connection.responseCode}")
-            connection.inputStream.use { it.readBytes() }
-        } finally {
-            connection.disconnect()
-        }
-    }
+/** A small community feed: HTTPS on the same host, at most 4 MB, a total time limit and cancellable. */
+internal class HttpEuropeanSleeperRealtimeFetcher(
+    private val http: HttpsBytesFetcher = HttpsBytesFetcher(maxBytes = 4 * 1024 * 1024, readTimeoutMillis = 15_000, totalTimeoutMillis = 20_000)
+) : EuropeanSleeperRealtimeFetcher {
+    override suspend fun fetch(): ByteArray = http.fetch(FEED_URL)
 
     companion object {
         const val FEED_URL = "https://jbb.ghsq.de/gtfs/european-sleeper/TripUpdates"
@@ -78,22 +66,32 @@ class EuropeanSleeperGtfsRealtimeAdapter(
         schemaVersion = 1
     )
 
+    private val mutex = Mutex()
+    private var cached: ProviderResult.Success<List<RealtimeStopUpdate>>? = null
+    private val guard = RealtimeFeedGuard(clock, "European Sleeper")
+
     override suspend fun getTripUpdates(): ProviderResult<List<RealtimeStopUpdate>> {
         val now = clock.instant()
         if (now.atZone(ZoneId.of("Europe/Rome")).toLocalDate() < launchDate) {
             return ProviderResult.Success(emptyList(), ProviderResponseMeta(SOURCE_ID, now, observedAt = now, expiresAt = now.plus(ttl)))
         }
-        return try {
-            val feed = GtfsRealtime.FeedMessage.parseFrom(fetcher.fetch())
-            val observed = epochSecondOrNull(feed.header.timestamp) ?: now
-            ProviderResult.Success(
-                parse(feed, observed),
-                ProviderResponseMeta(SOURCE_ID, now, observedAt = observed, expiresAt = now.plus(ttl))
-            )
-        } catch (error: IOException) {
-            ProviderResult.Failure(ProviderError(ProviderErrorKind.NETWORK, "Realtime European Sleeper non raggiungibile.", error::class.java.name))
-        } catch (error: Exception) {
-            ProviderResult.Failure(ProviderError(ProviderErrorKind.PARSE_ERROR, "Realtime European Sleeper non leggibile.", error::class.java.name))
+        return mutex.withLock {
+            cached?.takeIf { it.meta.expiresAt?.isAfter(now) == true }?.let { return@withLock it.copy(meta = it.meta.copy(fromCache = true)) }
+            guard.blocked()?.let { return@withLock it }
+            try {
+                val feed = GtfsRealtime.FeedMessage.parseFrom(fetcher.fetch())
+                val observed = epochSecondOrNull(feed.header.timestamp) ?: now
+                ProviderResult.Success(
+                    parse(feed, observed),
+                    ProviderResponseMeta(SOURCE_ID, now, observedAt = observed, expiresAt = now.plus(ttl))
+                ).also { cached = it; guard.succeeded() }
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: IOException) {
+                guard.failed(ProviderError(ProviderErrorKind.NETWORK, "Realtime European Sleeper non raggiungibile.", error::class.java.name), error)
+            } catch (error: Exception) {
+                guard.failed(ProviderError(ProviderErrorKind.PARSE_ERROR, "Realtime European Sleeper non leggibile.", error::class.java.name), error)
+            }
         }
     }
 

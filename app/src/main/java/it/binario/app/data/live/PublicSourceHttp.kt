@@ -13,8 +13,11 @@ import kotlinx.coroutines.withTimeoutOrNull
 /** User-Agent shared by the public notice, board and weather clients, in the style of the other adapters. */
 internal const val BINARIO_PUBLIC_SOURCE_USER_AGENT = "Binario/0.20 (personal rail information client)"
 
-/** A public source answered with a non-success HTTP status. Never retried by [ResilientSourceCache]. */
-internal class PublicSourceHttpException(val status: Int, message: String) : IOException(message)
+/**
+ * A public source answered with a non-success HTTP status. Never retried by [ResilientSourceCache]; a [retryAfter]
+ * the source sent (429, 503) pauses it for that long.
+ */
+internal class PublicSourceHttpException(val status: Int, message: String, val retryAfter: java.time.Duration? = null) : IOException(message)
 
 /** A public source answered, but not with the expected shape. Never retried. */
 internal class PublicSourceFormatException(message: String) : Exception(message)
@@ -69,7 +72,7 @@ internal class HttpPublicSourceFetcher(
                     in 200..299 -> Response(status, null, if (status == 204) "" else connection.inputStream.use {
                         readBoundedUtf8(it, connection.contentLengthLong.takeIf { length -> length >= 0 }, policy.maxBytes)
                     })
-                    else -> Response(status, null, null)
+                    else -> Response(status, null, null, connection.getHeaderField("Retry-After"))
                 }
             }
             when (response.status) {
@@ -84,7 +87,7 @@ internal class HttpPublicSourceFetcher(
                     current = target
                 }
                 in 200..299 -> return@withTimeoutOrNull response.body.orEmpty()
-                else -> throw PublicSourceHttpException(response.status, "La fonte ha risposto HTTP ${response.status}")
+                else -> throw PublicSourceHttpException(response.status, "La fonte ha risposto HTTP ${response.status}", retryAfterOf(response.retryAfter))
             }
         }
         throw IOException("Troppi reindirizzamenti")
@@ -102,7 +105,7 @@ internal class HttpPublicSourceFetcher(
         return sameHttpsHost || viaggiaTrenoCleartext
     }
 
-    private data class Response(val status: Int, val location: String?, val body: String?)
+    private data class Response(val status: Int, val location: String?, val body: String?, val retryAfter: String? = null)
 
     private companion object {
         const val MAX_HOPS = 3
