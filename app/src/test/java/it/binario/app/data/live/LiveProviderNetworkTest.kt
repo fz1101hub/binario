@@ -176,23 +176,27 @@ class LiveProviderNetworkTest {
             it.binario.app.data.Station("curated:S08406", "Roma Ostiense", "Roma", railwayCode = "S08406"))
         val query = it.binario.app.data.JourneyQuery.now(clock)
         val boardSummary = java.util.concurrent.ConcurrentHashMap<String, String>()
+        val boardRows = java.util.concurrent.ConcurrentHashMap<String, List<LiveAcceptanceEvidence.RfiRow>>()
         val fetcher = diagnosticRfiFetcher()
         val boardProvider = RfiStationBoardAdapter(fetcher = RfiMonitorFetcher { url ->
             val html = fetcher.fetch(url)
             if (url.contains("/Monitor?")) {
-                val doc = org.jsoup.Jsoup.parse(html)
-                val rows = doc.select("tr[name=treno]")
-                boardSummary[if (url.endsWith("True")) "arrivals" else "departures"] = "rows=${rows.size}, sample=" + rows.take(3).map { row ->
-                    listOf("RTreno", "ROrario", "RRitardo").associateWith { id -> row.selectFirst("#$id")?.let { it.text() + "|" + it.attr("aria-label") } }
-                }
+                val kind = if (url.endsWith("True")) "arrivals" else "departures"
+                val rows = LiveAcceptanceEvidence.rfiRows(html)
+                boardRows[kind] = rows
+                boardSummary[kind] = "rows=${rows.size}, formats=${LiveAcceptanceEvidence.rfiFormats(rows)}, sample=" +
+                    rows.take(3).map { row -> "${row.number}@${row.time}:${row.visible}|${row.aria}" }
             }
             html
         })
         val source = RfiLiveRouteDataSource(boardProvider)
         val result = source.loadRoute(route, it.binario.app.data.Direction.OUTBOUND, query)
-        if (result !is it.binario.app.data.DataResult.Success) fail("RFI regional journey: $result; boards=$boardSummary")
+        // What the two boards publish that the route source has to verify: empty means no train listed on both carries a
+        // delay in minutes or a cancellation at this moment (only placeholders such as "Nessuno" or a bare RITARDO).
+        val reconcilable = { LiveAcceptanceEvidence.rfiReconcilableRuns(boardRows["departures"].orEmpty(), boardRows["arrivals"].orEmpty(), query.departureTime) }
+        if (result !is it.binario.app.data.DataResult.Success) fail("RFI regional journey: $result; reconcilable=${reconcilable()}; boards=$boardSummary")
         val services = (result as it.binario.app.data.DataResult.Success).snapshot.services
-        assertTrue("RFI regional journey: no verified live departures; programmed=${services.take(3).map { it.number + ":" + it.scheduledDeparture }}; board=$boardSummary", services.any {
+        assertTrue("RFI regional journey: no verified live departures; programmed=${services.take(3).map { it.number + ":" + it.scheduledDeparture }}; reconcilable=${reconcilable()}; board=$boardSummary", services.any {
             it.operationalStatusVerified && "rfi-station-board" in it.operationalSourceIds
         })
         println("LIVE_ACCEPTANCE RFI regional journey: matchedLiveDepartures=${services.count { it.operationalStatusVerified }}")
@@ -227,8 +231,9 @@ class LiveProviderNetworkTest {
                 }
             }
         }
-        println("LIVE_ACCEPTANCE RFI exact published delay: compared=$compared; $reportedTrain; mismatches=${mismatches.take(10)}")
-        assertTrue("RFI accuracy: no numeric published delays to compare", compared > 0)
+        val formats = LiveAcceptanceEvidence.rfiFormats(LiveAcceptanceEvidence.rfiRows(html))
+        println("LIVE_ACCEPTANCE RFI exact published delay: compared=$compared; $reportedTrain; mismatches=${mismatches.take(10)}; formats=$formats")
+        assertTrue("RFI accuracy: no numeric published delays to compare; formats=$formats", compared > 0)
         assertTrue("RFI delay mismatch against visible station board: ${mismatches.take(10)}", mismatches.isEmpty())
     }
 
@@ -267,17 +272,31 @@ class LiveProviderNetworkTest {
         selected("viaggiatreno")
         val upstream = diagnosticViaggiaTrenoFetcher()
         val details = java.util.concurrent.ConcurrentHashMap<String, org.json.JSONObject>()
+        val boards = java.util.concurrent.ConcurrentLinkedQueue<String>()
         val adapter = ViaggiaTrenoRealtimeAdapter(ViaggiaTrenoRealtimeFetcher { path ->
-            upstream.fetch(path).also { if (path.startsWith("andamentoTreno/") && it.trim().startsWith("{")) details[path] = org.json.JSONObject(it) }
+            upstream.fetch(path).also {
+                if (path.startsWith("andamentoTreno/") && it.trim().startsWith("{")) details[path] = org.json.JSONObject(it)
+                if (path.startsWith("partenze/")) boards += it
+            }
         })
         val route = it.binario.app.data.SavedRoute("vt-regional", "Appiano → Roma Ostiense",
             it.binario.app.data.Station("curated:S08328", "Appiano Proba Petronia", "Roma", railwayCode = "S08328"),
             it.binario.app.data.Station("curated:S08406", "Roma Ostiense", "Roma", railwayCode = "S08406"))
-        val result = adapter.loadRoute(route, it.binario.app.data.Direction.OUTBOUND, it.binario.app.data.JourneyQuery.now(clock))
-        if (result !is it.binario.app.data.DataResult.Success) fail("ViaggiaTreno regional: $result")
+        val query = it.binario.app.data.JourneyQuery.now(clock)
+        val started = clock.instant()
+        val result = adapter.loadRoute(route, it.binario.app.data.Direction.OUTBOUND, query)
+        // What the source published that the adapter has to verify (empty: no run between the two stations had left
+        // with a detection of the last five minutes), and each fetched run's detection age.
+        val evidence = {
+            val requested = query.requestedAt.atZone(zone).toInstant()
+            "boardRuns=${LiveAcceptanceEvidence.viaggiaTrenoUpcomingRuns(boards, requested)}; verifiable=" +
+                LiveAcceptanceEvidence.viaggiaTrenoVerifiableRuns(details, "S08328", "S08406", requested, started.minusSeconds(270), started.plusSeconds(60)) +
+                "; runs=${LiveAcceptanceEvidence.viaggiaTrenoRunSummary(details, "S08328", started)}"
+        }
+        if (result !is it.binario.app.data.DataResult.Success) fail("ViaggiaTreno regional: $result; ${evidence()}")
         val services = (result as it.binario.app.data.DataResult.Success).snapshot.services
         val verified = services.filter { it.operationalStatusVerified && it.status != ServiceStatus.CANCELLED }
-        assertTrue("ViaggiaTreno regional: no verified operational train", verified.isNotEmpty())
+        assertTrue("ViaggiaTreno regional: no verified operational train; ${evidence()}", verified.isNotEmpty())
         verified.forEach { service ->
             val id = service.id.split(':')
             val raw = requireNotNull(details["andamentoTreno/${id[1]}/${id[2]}/${id[3]}"])
@@ -301,7 +320,8 @@ class LiveProviderNetworkTest {
 
     @Test fun sta() = runBlocking {
         selected("sta")
-        tripUpdates(StaRealtimeAdapter(), "alto-adige-sta-gtfs")
+        // The embedded STA pack is rail only (route_type 2 and 100-199) while the feed also carries the STA buses.
+        tripUpdates(StaRealtimeAdapter(), "alto-adige-sta-gtfs", packSubsetRoute = LiveAcceptanceEvidence::staRouteOfTrip)
     }
 
     @Test fun sncf() = runBlocking {
@@ -315,7 +335,7 @@ class LiveProviderNetworkTest {
         val bytes = GtfsArtifactDownloader().open(source, allowBestEffortFallback = true).use { it.input.readBytes() }
         val resolver = EmbeddedGtfsRealtimeScheduleResolver({ java.io.ByteArrayInputStream(bytes) },
             listOf(EmbeddedGtfsPack(SourceId("european-sleeper"), "remote.zip")))
-        tripUpdates(EuropeanSleeperGtfsRealtimeAdapter(), "european-sleeper", resolver, tripIds(bytes))
+        tripUpdates(EuropeanSleeperGtfsRealtimeAdapter(), "european-sleeper", resolver, bytes)
     }
 
     /**
@@ -588,35 +608,41 @@ class LiveProviderNetworkTest {
         println("LIVE_ACCEPTANCE ${provider.descriptor.id.value}: departures=${entries.size}, operational=${entries.count { it.expectedTime != null || it.status != null }}")
     }
 
-    private suspend fun tripUpdates(provider: TripUpdateProvider, staticSource: String, customResolver: EmbeddedGtfsRealtimeScheduleResolver? = null, customTripIds: Set<String>? = null) {
+    /**
+     * Fresh trip updates with published timing whose trip and stop resolve in the static pack. [packSubsetRoute] is set
+     * when the pack holds only part of the feed's network (STA: rail only, beside the feed's buses) and tells which
+     * route a trip id names: identity is then checked on the updates of the pack's own routes or stops, and the check
+     * is skipped while the feed has none of them. Without it every fresh update has to be the pack's.
+     */
+    private suspend fun tripUpdates(provider: TripUpdateProvider, staticSource: String, customResolver: EmbeddedGtfsRealtimeScheduleResolver? = null,
+        customPack: ByteArray? = null, packSubsetRoute: ((String) -> String?)? = null) {
         val now = clock.instant()
+        val id = provider.descriptor.id.value
         val result = provider.getTripUpdates()
-        if (result !is ProviderResult.Success) fail("${provider.descriptor.id.value}: $result")
+        if (result !is ProviderResult.Success) fail("$id: $result")
         val updates = (result as ProviderResult.Success).value
         val fresh = updates.filter { !it.observedAt.isBefore(now.minusSeconds(300)) && !it.observedAt.isAfter(now.plusSeconds(60)) }
-        assertTrue("${provider.descriptor.id.value}: no fresh updates with published timing", fresh.any { it.officialDelay != null || it.predictedAt != null })
-        var ids = customTripIds.orEmpty()
-        val resolver = customResolver ?: run {
-            val assets = listOf(File("src/main/assets"), File("app/src/main/assets")).first { it.isDirectory }
-            ids = tripIds(File(assets, "gtfs/$staticSource.zip").readBytes())
-            EmbeddedGtfsRealtimeScheduleResolver({ File(assets, it).inputStream() })
-        }
+        assertTrue("$id: no fresh updates with published timing", fresh.any { it.officialDelay != null || it.predictedAt != null })
+        val assets by lazy { listOf(File("src/main/assets"), File("app/src/main/assets")).first { it.isDirectory } }
+        val pack = LiveAcceptanceEvidence.GtfsPackIdentity.read(customPack ?: File(assets, "gtfs/$staticSource.zip").readBytes())
+        val resolver = customResolver ?: EmbeddedGtfsRealtimeScheduleResolver({ File(assets, it).inputStream() })
+        val timed = fresh.filter { it.officialDelay != null || it.predictedAt != null }
+        val checked = if (packSubsetRoute == null) timed
+            else (LiveAcceptanceEvidence.onPackNetwork(timed, pack, packSubsetRoute) + timed.filter { it.sourceTripId in pack.tripIds }).distinct()
         val dates = listOf(now.atZone(zone).toLocalDate(), now.atZone(zone).toLocalDate().minusDays(1))
-        val candidates = fresh.filter { it.sourceTripId in ids && (it.officialDelay != null || it.predictedAt != null) }
+        val candidates = checked.filter { it.sourceTripId in pack.tripIds }
         val matched = candidates.distinctBy { it.sourceTripId }.take(5).any { update ->
             (update.serviceDate?.let(::listOf) ?: dates).any { date ->
                 resolver.resolve(SourceId(staticSource), update, date, zone) != null
             }
         }
-        assertTrue("${provider.descriptor.id.value}: live trip/stop IDs do not match GTFS; fresh=${fresh.size}; matchingTripUpdates=${candidates.size}; liveSample=${fresh.take(2).map { it.sourceTripId + ":" + it.sourceStopId }}; staticSample=${ids.take(2)}", matched)
-        println("LIVE_ACCEPTANCE ${provider.descriptor.id.value}: freshUpdates=${fresh.size}, staticIdentityMatch=true")
-    }
-
-    private fun tripIds(bytes: ByteArray): Set<String> = buildSet {
-        val limits = GtfsCompactIndexLimits()
-        BoundedGtfsZipScanner(limits).scan(java.io.ByteArrayInputStream(bytes), setOf("trips.txt")) { _, rows ->
-            val index = rows.header.indexOf("trip_id")
-            rows.forEachRow(limits.maxTrips) { row -> row.getOrNull(index)?.let(::add) }
-        }
+        val routes = packSubsetRoute?.let { routeOf -> timed.mapNotNull { routeOf(it.sourceTripId)?.substringBefore('-') }.groupingBy { it }.eachCount() }
+        val summary = "fresh=${fresh.size}; checkedUpdates=${checked.size}; matchingTripUpdates=${candidates.size}; " +
+            "liveSample=${fresh.take(2).map { it.sourceTripId + ":" + it.sourceStopId }}; checkedSample=${checked.take(2).map { it.sourceTripId + ":" + it.sourceStopId }}; " +
+            "staticSample=${pack.tripIds.take(2)}" + (routes?.let { "; liveRoutePrefixes=$it; packRoutePrefixes=${pack.routeIds.map { route -> route.substringBefore('-') }.toSortedSet()}" } ?: "")
+        if (checked.isEmpty()) println("LIVE_ACCEPTANCE $id: skipped, no fresh update on a route or stop of the static pack; $summary")
+        assumeTrue("$id: the feed has no fresh update on a route or stop of the static pack at this moment; $summary", checked.isNotEmpty())
+        assertTrue("$id: live trip/stop IDs do not match GTFS; $summary", matched)
+        println("LIVE_ACCEPTANCE $id: freshUpdates=${fresh.size}, checkedUpdates=${checked.size}, staticIdentityMatch=true")
     }
 }
