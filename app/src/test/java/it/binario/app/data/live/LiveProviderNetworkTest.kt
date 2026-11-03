@@ -8,6 +8,15 @@ import it.binario.app.data.gtfs.GtfsArtifactDownloader
 import it.binario.app.data.gtfs.BoundedGtfsZipScanner
 import it.binario.app.data.gtfs.GtfsCompactIndexLimits
 import it.binario.app.data.sources.InternationalSourceCatalog
+import it.binario.app.data.bikesharing.BikeSharingResult
+import it.binario.app.data.bikesharing.BikeSharingSystems
+import it.binario.app.data.bikesharing.BikeSharingService
+import it.binario.app.data.urban.UrbanGtfsRealtimeDecoder
+import it.binario.app.data.urban.HttpsBytesFetcher
+import it.binario.app.data.urban.UrbanPackRoutes
+import it.binario.app.data.gtfs.TransitGtfsPacks
+import it.binario.app.data.urban.UrbanRealtimeFeed
+import it.binario.app.data.urban.UrbanRealtimeFeeds
 import it.binario.app.data.provider.*
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
@@ -303,6 +312,73 @@ class LiveProviderNetworkTest {
         val resolver = EmbeddedGtfsRealtimeScheduleResolver({ java.io.ByteArrayInputStream(bytes) },
             listOf(EmbeddedGtfsPack(SourceId("european-sleeper"), "remote.zip")))
         tripUpdates(EuropeanSleeperGtfsRealtimeAdapter(), "european-sleeper", resolver, tripIds(bytes))
+    }
+
+    /**
+     * City realtime through the app's own adapters: each feed of [UrbanRealtimeFeeds] read with
+     * [HttpsBytesFetcher], filtered to its pack's routes and matched to the pack's trips; then
+     * the board of a stop whose trips have updates. Prints counts, lines and a few matched rows only.
+     */
+    @Test fun urbanRealtime() = runBlocking {
+        selected("urban")
+        // Candidates still to be verified by day (SOURCE_POLICY.md, «Altre reti»): read like the configured feeds.
+        val candidates = listOf(
+            UrbanRealtimeFeed(SourceId("gtt-gtfs-rt"), SourceId("gtt-gtfs"), "GTT", "https://percorsieorari.gtt.to.it/das_gtfsrt/trip_update.aspx", "CC BY 4.0", personalOnly = true),
+            UrbanRealtimeFeed(SourceId("venezia-actv-gtfs-rt"), SourceId("venezia-actv-gtfs"), "ACTV", "https://tpl.actv.it/aut/GTFSRT/tripUpdates", "non dichiarata", personalOnly = true),
+            UrbanRealtimeFeed(SourceId("toscana-gtfs-rt"), SourceId("firenze-gest-gtfs"), "Regione Toscana", "https://regionetoscana.smartregion.toscana.it/mobility/artifacts/gtfs-rt/trip-updates", "CC BY 4.0", personalOnly = false)
+        ).filter { candidate -> UrbanRealtimeFeeds.all.none { it.sourceId == candidate.sourceId } }
+        (UrbanRealtimeFeeds.all + candidates).forEach { feed ->
+            val pack = TransitGtfsPacks.all.first { it.sourceId == feed.staticSourceId }
+            val asset = listOf(File("src/main/assets", pack.assetPath), File("src/personal/assets", pack.assetPath)).first(File::isFile)
+            val routes = UrbanPackRoutes.read(asset.inputStream())
+            val tripRoutes = HashMap<String, String>()
+            BoundedGtfsZipScanner(GtfsCompactIndexLimits()).scan(asset.inputStream(), setOf("trips.txt")) { _, rows ->
+                val trip = rows.header.indexOf("trip_id")
+                val route = rows.header.indexOf("route_id")
+                rows.forEachRow(500_000) { row -> tripRoutes[row[trip]] = row[route] }
+            }
+            val started = System.nanoTime()
+            val bytes = try {
+                HttpsBytesFetcher().fetch(feed.tripUpdatesUrl)
+            } catch (error: java.io.IOException) {
+                println("LIVE_ACCEPTANCE urban ${feed.sourceId.value}: ${error::class.java.simpleName} ${error.message}")
+                return@forEach
+            }
+            val all = UrbanGtfsRealtimeDecoder.decode(bytes, feed, clock.instant())
+            val kept = UrbanGtfsRealtimeDecoder.decode(bytes, feed, clock.instant()) { it in routes }
+            val matched = kept.trips.values.flatten().filter { it.tripId in tripRoutes }
+            println("LIVE_ACCEPTANCE urban ${feed.sourceId.value}: bytes=${bytes.size} millis=${(System.nanoTime() - started) / 1_000_000} " +
+                "age=${Duration.between(all.observedAt, clock.instant()).seconds}s trips=${all.trips.size} packRouteTrips=${kept.trips.size} " +
+                "matchedPackTrips=${matched.size} cancelled=${matched.count { it.cancelled }} " +
+                "routes=${matched.groupingBy { tripRoutes.getValue(it.tripId) }.eachCount()} " +
+                "unmatchedRoutes=${kept.trips.values.flatten().filter { it.tripId !in tripRoutes }.groupingBy { it.routeId }.eachCount()}")
+            matched.take(3).forEach { trip ->
+                println("LIVE_ACCEPTANCE urban ${feed.sourceId.value} trip=${trip.tripId} route=${tripRoutes[trip.tripId]} start=${trip.startDate} " +
+                    "stops=${trip.stops.take(4).map { "${it.stopSequence}/${it.stopId}:${it.departure ?: it.arrival}:${it.departureDelaySeconds ?: it.arrivalDelaySeconds}" }}")
+            }
+        }
+    }
+
+    /** Shared bikes through [BikeSharingService] near one railway station per system. */
+    @Test fun bikeSharing() = runBlocking {
+        selected("gbfs")
+        val service = BikeSharingService(
+            BikeSharingSystems.all,
+            HttpPublicSourceFetcher(PublicSourceRequestPolicy(maxBytes = 4 * 1024 * 1024, readTimeoutMillis = 15_000, totalTimeoutMillis = 20_000))
+        )
+        listOf(
+            "Milano Centrale" to GeoPoint(45.4859, 9.2036), "Milano Porta Genova" to GeoPoint(45.4531, 9.1700),
+            "Verona Porta Nuova" to GeoPoint(45.4290, 10.9823), "Bergamo" to GeoPoint(45.6905, 9.6752),
+            "Senigallia" to GeoPoint(43.7157, 13.2172), "Roma Termini" to GeoPoint(41.9009, 12.5018)
+        ).forEach { (name, point) ->
+            when (val result = service.nearby(point)) {
+                is BikeSharingResult.Loaded -> result.systems.forEach { nearby ->
+                    println("LIVE_ACCEPTANCE gbfs $name ${nearby.system.id.value}: docks=${nearby.docks.map { "${it.name}@${it.distanceMeters}m bikes=${it.bikesAvailable} e=${it.ebikesAvailable} free=${it.docksAvailable}" }} " +
+                        "vehicles=${nearby.vehicles.map { "${it.kind}@${it.distanceMeters}m ${it.batteryPercent}%" }} age=${Duration.between(nearby.observedAt, clock.instant()).seconds}s stale=${nearby.stale}")
+                }
+                else -> println("LIVE_ACCEPTANCE gbfs $name: $result")
+            }
+        }
     }
 
     @Test fun swissOpenTransport() = runBlocking {
