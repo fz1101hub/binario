@@ -48,6 +48,14 @@ RETRYABLE_STATUS = {500, 502, 503, 504}
 RETRY_DELAY_SECONDS = 20
 
 
+def log_safe(value: object) -> str:
+    """``value`` on one log line with control characters escaped (same rule as ``build_gtfs_packs.log_safe``)."""
+    return "".join(
+        character if character.isprintable() or character == " " else character.encode("unicode_escape").decode("ascii")
+        for character in str(value)
+    )
+
+
 class AcquisitionError(RuntimeError):
     """A registered source could not be acquired completely and safely."""
 
@@ -253,12 +261,24 @@ def validate_netex(asset: str, reference: Path, out: Path, start: str) -> dict[s
     return {"download": download_record, "conversion": conversion, "comparison": comparison}
 
 
-def print_directory(directory: Path) -> None:
+def print_directory(directory: Path, nonce: str | None = None) -> None:
     """Every file under ``directory`` as base64 lines in the job log (artifact downloads are not reachable from the
-    development container): ``BINARIO_FILE path size sha256``, ``BINARIO_B64 path chunk``…, ``BINARIO_END path``."""
-    import base64
+    development container), framed by a random nonce that no earlier step can know (audit A7-02, P1)::
 
-    for path in sorted(item for item in directory.rglob("*") if item.is_file()):
+        BINARIO_BEGIN <nonce>
+        BINARIO_FILE path size sha256
+        BINARIO_B64 path chunk
+        BINARIO_END path
+        BINARIO_DONE <nonce> <files>
+
+    ``tools/apply_ci_gtfs_refresh.py`` accepts exactly one such frame per job log, from this print step only."""
+    import base64
+    import secrets
+
+    nonce = nonce or secrets.token_hex(16)
+    files = sorted(item for item in directory.rglob("*") if item.is_file())
+    print(f"BINARIO_BEGIN {nonce}", flush=True)
+    for path in files:
         relative = path.relative_to(directory).as_posix()
         data = path.read_bytes()
         print(f"BINARIO_FILE {relative} {len(data)} {hashlib.sha256(data).hexdigest()}")
@@ -266,6 +286,7 @@ def print_directory(directory: Path) -> None:
         for start in range(0, len(encoded), 4000):
             print(f"BINARIO_B64 {relative} {encoded[start:start + 4000]}")
         print(f"BINARIO_END {relative}", flush=True)
+    print(f"BINARIO_DONE {nonce} {len(files)}", flush=True)
 
 
 def selection_from(text: str) -> tuple[bool, list[str] | None, list[str] | None]:
@@ -312,7 +333,7 @@ def main(argv: list[str] | None = None) -> int:
         try:
             validate, build, refresh_core = selection_from(args.selection)
         except AcquisitionError as error:
-            print(f"ERRORE selezione: {error}", file=sys.stderr)
+            print("ERRORE selezione: " + log_safe(error), file=sys.stderr)
             return 1
         print(json.dumps({"validate": validate, "build": build, "refreshCore": refresh_core}))
         return 0
@@ -341,7 +362,8 @@ def main(argv: list[str] | None = None) -> int:
                 json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
             )
     except (AcquisitionError, netex_to_gtfs.ConversionError, OSError, zipfile.BadZipFile) as error:
-        print(f"ERRORE acquisizione: {error}", file=sys.stderr)
+        for line in str(error).split("\n"):
+            print("ERRORE acquisizione: " + log_safe(line), file=sys.stderr)
         return 1
     print(json.dumps({"packs": len(selected), "directories": sorted(manifests)}, ensure_ascii=False))
     return 0

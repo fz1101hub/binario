@@ -152,6 +152,14 @@ def xml_streams(path: Path) -> Callable[[], Iterator[tuple[str, io.BufferedIOBas
     return plain
 
 
+def log_safe(value: object) -> str:
+    """``value`` on one log line with control characters escaped: XML text never starts a CI log line (A7-02)."""
+    return "".join(
+        character if character.isprintable() or character == " " else character.encode("unicode_escape").decode("ascii")
+        for character in str(value)
+    )
+
+
 class GuardedStream(io.RawIOBase):
     """Reject a DOCTYPE before the parser sees it: NeTEx needs none, and entities could expand the input."""
 
@@ -641,7 +649,8 @@ def main(argv: list[str] | None = None) -> int:
     try:
         report = convert(args.input, args.output, source_label=args.source_label)
     except (ConversionError, ET.ParseError, OSError, zipfile.BadZipFile) as error:
-        print(f"ERRORE NeTEx: {error}", file=sys.stderr)
+        for line in str(error).split("\n"):
+            print("ERRORE NeTEx: " + log_safe(line), file=sys.stderr)
         return 1
     print(json.dumps(report, ensure_ascii=False, sort_keys=True))
     return 0

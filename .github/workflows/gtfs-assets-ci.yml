@@ -123,6 +123,10 @@ jobs:
         env:
           DISCOVERY_TOKENS: ${{ inputs.transit_discovery }}
         run: |
+          # Downloaded feeds reach this log (error messages, report lines): no line of it may run as a workflow command.
+          marker="$(python3 -I -c 'import secrets; print(secrets.token_hex(16))')"
+          echo "::stop-commands::$marker"
+          trap 'echo "::$marker::"' EXIT
           mkdir -p "$RUNNER_TEMP/discovery"
           python3 -I tools/transit_source_discovery.py --out "$RUNNER_TEMP/discovery" --tokens-env DISCOVERY_TOKENS
 
@@ -140,7 +144,8 @@ jobs:
   # tools/transit_packs.json (gtfs-transit/ for every build, gtfs-personal/ for personal builds). NeTEx from the
   # National Access Point is converted by tools/netex_to_gtfs.py; 'validate-netex' first converts Trenitalia's
   # NAP dataset and compares it with the embedded trenitalia-gtfs pack. The built directories are printed in the
-  # log as base64 (BINARIO_FILE/BINARIO_B64/BINARIO_END) for review and commit; nothing is pushed from here.
+  # log as base64 (BINARIO_FILE/BINARIO_B64/BINARIO_END inside one BINARIO_BEGIN/BINARIO_DONE nonce frame) for review
+  # and commit; nothing is pushed from here. Steps reading downloaded feeds run with workflow commands stopped.
   transit-packs:
     if: ${{ github.event_name == 'workflow_dispatch' && inputs.transit_packs != '' }}
     runs-on: ubuntu-24.04
@@ -169,16 +174,24 @@ jobs:
 
       - name: Validate the NeTEx converter on Trenitalia's NAP dataset
         if: ${{ steps.selection.outputs.validate == 'true' }}
-        run: >-
-          python3 -I tools/acquire_transit_sources.py --validate-netex 1080596
-          --reference app/src/main/assets/gtfs/trenitalia-gtfs.zip
-          --out "$RUNNER_TEMP/netex-validation" --generated-at "$(date --utc +%F)"
+        run: |
+          # Downloaded feeds reach this log (error messages, report lines): no line of it may run as a workflow command.
+          marker="$(python3 -I -c 'import secrets; print(secrets.token_hex(16))')"
+          echo "::stop-commands::$marker"
+          trap 'echo "::$marker::"' EXIT
+          python3 -I tools/acquire_transit_sources.py --validate-netex 1080596 \
+            --reference app/src/main/assets/gtfs/trenitalia-gtfs.zip \
+            --out "$RUNNER_TEMP/netex-validation" --generated-at "$(date --utc +%F)"
 
       - name: Acquire, convert and build the transit packs
         if: ${{ steps.selection.outputs.build != '' }}
         env:
           BUILD_SELECTION: ${{ steps.selection.outputs.build }}
         run: |
+          # Downloaded feeds reach this log (error messages, report lines): no line of it may run as a workflow command.
+          marker="$(python3 -I -c 'import secrets; print(secrets.token_hex(16))')"
+          echo "::stop-commands::$marker"
+          trap 'echo "::$marker::"' EXIT
           OUT="$RUNNER_TEMP/transit"
           TODAY="$(date --utc +%F)"
           ONLY=()
@@ -211,7 +224,7 @@ jobs:
   # downloaded from its registered HTTPS URL; Trenitalia and Italo from the latest commit of their upstream repository,
   # printed as a proposed pin for review. ÖBB is never downloaded (its portal needs the owner's acceptance). Unchanged
   # packs stay byte for byte, a failing source keeps its previous pack; the changed files are printed in the log
-  # (BINARIO_FILE/BINARIO_B64/BINARIO_END) for tools/apply_ci_gtfs_refresh.py. Nothing is pushed from here.
+  # (one BINARIO_BEGIN/BINARIO_DONE nonce frame) for tools/apply_ci_gtfs_refresh.py. Nothing is pushed from here.
   core-packs:
     if: ${{ github.event_name == 'workflow_dispatch' && contains(inputs.transit_packs, 'refresh-core=') }}
     runs-on: ubuntu-24.04

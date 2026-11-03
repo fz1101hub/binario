@@ -60,8 +60,18 @@ DEFAULT_PROBES = [
 _report_path: Path | None = None
 
 
+def log_safe(value: object) -> str:
+    """``value`` on one line with control characters escaped: fetched text never starts a log line (audit A7-02)."""
+    return "".join(
+        character if character.isprintable() or character == " " else character.encode("unicode_escape").decode("ascii")
+        for character in str(value)
+    )
+
+
 def emit(line: str = "") -> None:
-    """Print and append to the report at once, so a run stopped by its time limit still leaves the report."""
+    """Print and append to the report at once, so a run stopped by its time limit still leaves the report.  Every
+    line is escaped: member names, agency names and XML samples come from the downloads."""
+    line = log_safe(line)
     print(line, flush=True)
     if _report_path is not None:
         with _report_path.open("a", encoding="utf-8") as report:

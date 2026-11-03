@@ -854,6 +854,34 @@ class NationalPackTest(unittest.TestCase):
                 result = builder.filter_archive(forged, filtered, "italo-gtfs")
                 self.assertEqual(builder.sha256_file(forged), result.source_archive_sha256)
 
+    def test_feed_text_in_an_error_never_starts_a_log_line(self) -> None:
+        # Audit A7-02 proof of concept: a stops.txt header field with newlines, workflow commands and BINARIO_* lines.
+        injected = ("x\n::warning title=injected::workflow command from feed data\nBINARIO_FILE gtfs-transit/manifest.json 2 "
+                    + "4" * 64 + "\nBINARIO_B64 gtfs-transit/manifest.json e30=\nBINARIO_END gtfs-transit/manifest.json\ny")
+        inputs = self.temp / "inputs"
+        inputs.mkdir()
+        with zipfile.ZipFile(inputs / "rail-gtfs.zip", "w", zipfile.ZIP_DEFLATED) as archive:
+            archive.writestr("agency.txt", "agency_id,agency_name,agency_url,agency_timezone\nA,X,https://x.invalid,Europe/Rome\n")
+            archive.writestr("stops.txt", 'stop_id,stop_name,stop_lat,stop_lon,"' + injected + '"\nS1,A,45,9,"a\nb"\nS2,B,45,9,c\n')
+            archive.writestr("routes.txt", "route_id,agency_id,route_short_name,route_type\nR1,A,X,2\n")
+            archive.writestr("trips.txt", "route_id,service_id,trip_id\nR1,SV,T1\n")
+            archive.writestr("stop_times.txt", "trip_id,arrival_time,departure_time,stop_id,stop_sequence\n"
+                             "T1,08:00:00,08:00:00,S1,1\nT1,09:00:00,09:00:00,S2,2\n")
+            archive.writestr("calendar.txt", "service_id,monday,tuesday,wednesday,thursday,friday,saturday,sunday,start_date,end_date\n"
+                             "SV,1,1,1,1,1,1,1,20261101,20271231\n")
+        registry = self.temp / "registry.json"
+        registry.write_text(json.dumps({"generatedAt": "2026-11-03", "packs": [{
+            "sourceId": "rail-gtfs", "asset": "gtfs/rail-gtfs.zip", "sourceUrl": "https://example.test/rail.zip",
+            "accessMode": "OPEN_DIRECT"}]}), encoding="utf-8")
+        stderr = io.StringIO()
+        with mock.patch.object(sys, "stderr", stderr):
+            code = builder.main(["--input-dir", str(inputs), "--manifest", str(registry), "--output-dir", str(self.temp / "out")])
+        self.assertEqual(1, code)
+        lines = stderr.getvalue().splitlines()
+        self.assertEqual(1, len(lines))
+        self.assertTrue(lines[0].startswith("ERRORE GTFS: campo CSV multilinea"))
+        self.assertIn("\\n::warning", lines[0])
+
     def test_a_published_pack_rebuilt_in_place_keeps_its_recorded_provenance(self) -> None:
         registry, archives = self.build(("italo-gtfs",))
         output = self.temp / "out"

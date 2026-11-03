@@ -185,6 +185,22 @@ class DownloadError(BuildError):
     """Raised when a registered source cannot be acquired safely."""
 
 
+def log_safe(value: object) -> str:
+    """``value`` on one line, control characters escaped: text read from an archive or a server never starts a log
+    line of its own, so it cannot become a workflow command or a ``BINARIO_*`` block in a CI log (audit A7-02)."""
+    return "".join(
+        character if character.isprintable() or character == " " else character.encode("unicode_escape").decode("ascii")
+        for character in str(value)
+    )
+
+
+def print_error_lines(prefix: str, message: object, *, file: Any = None) -> None:
+    """Every line of ``message`` behind ``prefix``, escaped: a multi-problem report stays readable and no line of it
+    can start with text taken from the data."""
+    for line in str(message).split("\n"):
+        print(prefix + log_safe(line), file=file if file is not None else sys.stderr)
+
+
 def require_https_url(url: str, *, context: str) -> None:
     try:
         parsed = urllib.parse.urlparse(url)
@@ -304,7 +320,7 @@ def declared_member_digests(metadata: Mapping[str, Any], source_id: str) -> dict
             or len(digest) != 64
             or any(character not in "0123456789abcdef" for character in digest)
         ):
-            raise BuildError(f"{source_id}: SHA-256 canonico non valido per {name}")
+            raise BuildError(f"{source_id}: SHA-256 canonico non valido per {name!r}")
         normalized[name] = digest
     return normalized
 
@@ -432,12 +448,12 @@ def validate_archive_limits(archive: zipfile.ZipFile, *, omit_geometry: bool = F
         ignored_shape = omit_geometry and entry.filename.rsplit("/", 1)[-1] == "shapes.txt"
         if entry.file_size > MAX_ARCHIVE_MEMBER_BYTES and not ignored_shape:
             raise BuildError(
-                f"membro GTFS oltre limite: {entry.filename} {entry.file_size} > {MAX_ARCHIVE_MEMBER_BYTES} bytes"
+                f"membro GTFS oltre limite: {entry.filename!r} {entry.file_size} > {MAX_ARCHIVE_MEMBER_BYTES} bytes"
             )
         ratio = entry.file_size / max(entry.compress_size, 1)
         if ratio > MAX_COMPRESSION_RATIO:
             raise BuildError(
-                f"rapporto di compressione GTFS sospetto: {entry.filename} {ratio:.1f} > {MAX_COMPRESSION_RATIO}"
+                f"rapporto di compressione GTFS sospetto: {entry.filename!r} {ratio:.1f} > {MAX_COMPRESSION_RATIO}"
             )
 
 
@@ -524,7 +540,7 @@ def read_table(
                 )
                 if multiline_field is not None:
                     raise BuildError(
-                        f"campo CSV multilinea non supportato dal runtime in {basename}.{multiline_field}"
+                        f"campo CSV multilinea non supportato dal runtime in {basename}, colonna {multiline_field!r}"
                     )
                 oversized_field = next(
                     (key for key, value in normalized.items() if len(value.encode("utf-8")) > MAX_CSV_FIELD_UTF8_BYTES),
@@ -532,7 +548,7 @@ def read_table(
                 )
                 if oversized_field is not None:
                     raise BuildError(
-                        f"campo oltre limite UTF-8 in {basename}.{oversized_field}: {MAX_CSV_FIELD_UTF8_BYTES} bytes"
+                        f"campo oltre limite UTF-8 in {basename}, colonna {oversized_field!r}: {MAX_CSV_FIELD_UTF8_BYTES} bytes"
                     )
                 if predicate is not None and not predicate(normalized):
                     continue
@@ -548,7 +564,7 @@ def read_table(
     except UnicodeDecodeError as error:
         raise BuildError(f"codifica CSV non valida in {basename}") from error
     except (csv.Error, zipfile.BadZipFile) as error:
-        raise BuildError(f"tabella ZIP/CSV non valida in {basename}: {error}") from error
+        raise BuildError(f"tabella ZIP/CSV non valida in {basename}: {log_safe(error)}") from error
 
 
 def require_columns(table: CsvTable, name: str, *columns: str) -> None:
@@ -570,11 +586,11 @@ def empty_calendar_dates() -> CsvTable:
 
 def parse_gtfs_date(value: str, context: str) -> date:
     if len(value) != 8 or not value.isdigit():
-        raise BuildError(f"data GTFS non valida ({context}): {value!r}")
+        raise BuildError(f"data GTFS non valida ({context!r}): {value!r}")
     try:
         return date(int(value[0:4]), int(value[4:6]), int(value[6:8]))
     except ValueError as error:
-        raise BuildError(f"data GTFS non valida ({context}): {value!r}") from error
+        raise BuildError(f"data GTFS non valida ({context!r}): {value!r}") from error
 
 
 def service_dates(calendar: CsvTable, calendar_dates: CsvTable, source_id: str) -> set[date]:
@@ -1213,7 +1229,7 @@ def verify_filter_from_asset(path: Path, source_id: str) -> str:
                 for name in set(declared_digests) | set(actual_digests)
                 if declared_digests.get(name) != actual_digests.get(name)
             )
-            raise BuildError(f"{source_id}: digest canonici member incoerenti: {', '.join(mismatched[:3])}")
+            raise BuildError(f"{source_id}: digest canonici member incoerenti: {', '.join(log_safe(name) for name in mismatched[:3])}")
         routes = read_table(archive, "routes.txt", required=True)
         assert routes is not None
         selected, policy = selected_routes(source_id, routes)
@@ -1522,7 +1538,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(json.dumps({"packs": len(output["packs"]), "outputDir": str(args.output_dir), "generatedAt": output["generatedAt"]}, ensure_ascii=False))
         return 0
     except (BuildError, csv.Error, zipfile.BadZipFile, http.client.HTTPException) as error:
-        print(f"ERRORE GTFS: {error}", file=sys.stderr)
+        print_error_lines("ERRORE GTFS: ", error)
         return 1
 
 

@@ -304,7 +304,7 @@ def refresh(
                     "sourceUrl": url,
                     "previousCommit": upstream.get("commit"),
                 }
-            print(f"ACQUIRE {source_id} {url}", flush=True)
+            print(f"ACQUIRE {source_id} {builder.log_safe(url)}", flush=True)
             target = downloads / f"{source_id}.zip"
             record = fetch(url, target)
             entry["download"] = record
@@ -325,7 +325,7 @@ def refresh(
         except Exception as error:  # noqa: BLE001 - one source failing must not stop the others
             entry["status"] = "failed"
             entry["error"] = f"{type(error).__name__}: {error}"
-            print(f"  {source_id}: NON aggiornato ({entry['error']})", flush=True)
+            print(f"  {source_id}: NON aggiornato ({builder.log_safe(entry['error'])})", flush=True)
         finally:
             (downloads / f"{source_id}.zip").unlink(missing_ok=True)
     builder.verify_assets(staging, as_of=None, min_valid_days=None)
@@ -402,7 +402,7 @@ def print_upstream_review(report: Mapping[str, Any]) -> None:
         for name, text in entry.get("upstreamMetadata", {}).items():
             print(f"UPSTREAM {source_id} {name}:")
             for line in (text if text is not None else "(assente)").splitlines()[:200]:
-                print(f"UPSTREAM {source_id} | {line}")
+                print(f"UPSTREAM {source_id} | {builder.log_safe(line)}")
 
 
 def freshness_rows(directories: Sequence[Path], as_of: date, default_min_valid_days: int = DEFAULT_MIN_VALID_DAYS) -> list[dict[str, Any]]:
@@ -500,7 +500,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         print_upstream_review(report)
         append_summary(args.summary, report_markdown(report))
     except (RefreshError, builder.BuildError, acquire.AcquisitionError, OSError) as error:
-        print(f"ERRORE refresh: {error}", file=sys.stderr)
+        builder.print_error_lines("ERRORE refresh: ", error)
         return 1
     finally:
         print(f"::{marker}::", flush=True)
