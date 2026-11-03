@@ -40,7 +40,11 @@ enum class TransferRiskLevel {
 data class JourneyLegLive(
     val expectedDeparture: Instant? = null,
     val expectedArrival: Instant? = null,
-    val cancelled: Boolean = false
+    val cancelled: Boolean = false,
+    /** Publisher of a city network's realtime feed ("Roma Servizi per la Mobilità"), shown with [observedAt]. */
+    val sourceLabel: String? = null,
+    /** When that feed observed the run; null for the train lookups, which carry their own freshness. */
+    val observedAt: Instant? = null
 ) {
     val hasData: Boolean get() = expectedDeparture != null || expectedArrival != null || cancelled
 }

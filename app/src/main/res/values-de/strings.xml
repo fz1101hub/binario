@@ -1289,4 +1289,22 @@
         <item quantity="other">%d Verbindungen</item>
     </plurals>
     <!-- End of platform changes, Partenze train types, saved timetables, sharing, tickets and assistance, CO2 estimate -->
+    <!-- City realtime (metro and tram) and shared bikes near stations -->
+    <string name="urban_realtime_source">Echtzeit von %1$s, aktualisiert um %2$s</string>
+    <string name="bike_sharing_title">Leihräder in der Nähe von %1$s</string>
+    <string name="bike_sharing_show">Räder und E-Scooter im Umkreis von 300 m anzeigen</string>
+    <string name="bike_sharing_loading">Räder und E-Scooter werden gesucht…</string>
+    <string name="bike_sharing_none">Im Umkreis von 300 m sind keine Räder oder E-Scooter verfügbar.</string>
+    <string name="bike_sharing_unavailable">Die Bikesharing-Daten sind gerade nicht verfügbar.</string>
+    <string name="bike_sharing_dock_bikes">Räder: %1$d</string>
+    <string name="bike_sharing_dock_ebikes">E-Bikes: %1$d</string>
+    <string name="bike_sharing_dock_free">freie Plätze: %1$d</string>
+    <string name="bike_sharing_type_bike">Fahrrad</string>
+    <string name="bike_sharing_type_ebike">E-Bike</string>
+    <string name="bike_sharing_type_scooter">E-Scooter</string>
+    <string name="bike_sharing_type_other">Sharing-Fahrzeug</string>
+    <string name="bike_sharing_battery">Akku %1$d%%</string>
+    <string name="bike_sharing_source">GBFS-Daten von %1$s, Stand %2$s</string>
+    <string name="bike_sharing_open">%1$s öffnen</string>
+    <string name="distance_meters">%1$d m</string>
 </resources>

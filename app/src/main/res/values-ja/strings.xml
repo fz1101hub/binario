@@ -1237,4 +1237,22 @@
         <item quantity="other">%d 件の経路</item>
     </plurals>
     <!-- End of platform changes, Partenze train types, saved timetables, sharing, tickets and assistance, CO2 estimate -->
+    <!-- City realtime (metro and tram) and shared bikes near stations -->
+    <string name="urban_realtime_source">%1$sのリアルタイム情報（%2$s更新）</string>
+    <string name="bike_sharing_title">%1$s付近のシェアサイクル</string>
+    <string name="bike_sharing_show">300 m以内の自転車とキックボードを表示</string>
+    <string name="bike_sharing_loading">自転車とキックボードを検索中…</string>
+    <string name="bike_sharing_none">300 m以内に利用できる自転車やキックボードはありません。</string>
+    <string name="bike_sharing_unavailable">シェアサイクルのデータは現在利用できません。</string>
+    <string name="bike_sharing_dock_bikes">自転車: %1$d</string>
+    <string name="bike_sharing_dock_ebikes">電動: %1$d</string>
+    <string name="bike_sharing_dock_free">空きラック: %1$d</string>
+    <string name="bike_sharing_type_bike">自転車</string>
+    <string name="bike_sharing_type_ebike">電動自転車</string>
+    <string name="bike_sharing_type_scooter">電動キックボード</string>
+    <string name="bike_sharing_type_other">シェア車両</string>
+    <string name="bike_sharing_battery">バッテリー %1$d%%</string>
+    <string name="bike_sharing_source">%1$sのGBFSデータ（%2$s時点）</string>
+    <string name="bike_sharing_open">%1$sを開く</string>
+    <string name="distance_meters">%1$d m</string>
 </resources>

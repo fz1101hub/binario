@@ -1,5 +1,13 @@
 # Changelog
 
+## In sviluppo — Tempo reale di metro e tram, bici in condivisione vicino alle stazioni
+
+- **Tabellone delle fermate di metro e tram**: una fermata scelta con il badge «M», «T» o «F» mostra partenze e arrivi del pack della sua rete (tutti i binari con lo stesso nome entro 400 m), con la linea e il capolinea; un tabellone di stazione ferroviaria usa esattamente le fonti di prima.
+- **Tempo reale di Roma** (solo build personali, come il pack): Trip Updates GTFS-Realtime di Roma Servizi per la Mobilità sui tabelloni delle fermate e sui tratti in metro e tram dei viaggi con cambi: orario previsto, ritardo, soppressioni, «Tempo reale Roma Servizi per la Mobilità, aggiornato alle …». Solo identità esatte (pack, `trip_id`, giorno, `stop_id`); feed letto solo con una fermata o un tratto della rete a schermo, cache di 30 secondi e circuit breaker.
+- **Bici in condivisione vicino a <stazione>** nel tabellone di una stazione e nel dettaglio di un viaggio (partenza e arrivo), su richiesta: stazioni di bike sharing con bici, e-bike e posti liberi o mezzi liberi con tipo e batteria entro 300 m dalle coordinate della stazione (mai la posizione del dispositivo), ora dei dati, licenza e collegamento al gestore. GBFS di BikeMi e Verona Bike (NLOD 2.0), nextbike Bergamo e Fa.Mo.Se Senigallia (CC0) in ogni build; Bird Roma solo nelle build personali.
+- Strumento di scoperta (`tools/transit_source_discovery.py`): token `gtfsrt:`, `rtstatic:`, `gbfs:` e `ckan:` per verificare dal CI feed GTFS-Realtime (decoder protobuf a libreria standard), GBFS e portali open data; campioni ridotti per i test.
+- Fonti, verifiche CI, licenze e feed non utilizzabili in [SOURCE_POLICY.md](docs/data-sources/SOURCE_POLICY.md); host e richieste nell'[informativa privacy](PRIVACY.md) e in `docs/store/PLAY_DATA_SAFETY.md`.
+
 ## In sviluppo — 17 lingue su Android e Wear
 
 - **Dodici nuove lingue** per l’app Android e Wear OS: arabo, hindi, indonesiano, giapponese, coreano, birmano, portoghese, russo, thai, turco, vietnamita e cinese semplificato, accanto a italiano, inglese, tedesco, francese e spagnolo. Tutte le stringhe e i plurali hanno le quantità CLDR richieste dal lint (arabo zero/one/two/few/many/other, russo one/few/many/other, portoghese one/many/other, lingue senza plurale solo other). Le traduzioni diverse dall’italiano sono scritte automaticamente e non sono ancora revisionate da madrelingua; l’italiano resta il riferimento.

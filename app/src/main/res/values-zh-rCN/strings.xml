@@ -1260,4 +1260,22 @@
         <item quantity="other">%d 个方案</item>
     </plurals>
     <!-- End of platform changes, Partenze train types, saved timetables, sharing, tickets and assistance, CO2 estimate -->
+    <!-- City realtime (metro and tram) and shared bikes near stations -->
+    <string name="urban_realtime_source">%1$s 实时数据，更新于 %2$s</string>
+    <string name="bike_sharing_title">%1$s 附近的共享单车</string>
+    <string name="bike_sharing_show">显示 300 米内的单车和滑板车</string>
+    <string name="bike_sharing_loading">正在查找单车和滑板车…</string>
+    <string name="bike_sharing_none">300 米内没有可用的单车或滑板车。</string>
+    <string name="bike_sharing_unavailable">共享单车数据暂时不可用。</string>
+    <string name="bike_sharing_dock_bikes">单车：%1$d</string>
+    <string name="bike_sharing_dock_ebikes">电动：%1$d</string>
+    <string name="bike_sharing_dock_free">空闲车位：%1$d</string>
+    <string name="bike_sharing_type_bike">单车</string>
+    <string name="bike_sharing_type_ebike">电动单车</string>
+    <string name="bike_sharing_type_scooter">电动滑板车</string>
+    <string name="bike_sharing_type_other">共享交通工具</string>
+    <string name="bike_sharing_battery">电量 %1$d%%</string>
+    <string name="bike_sharing_source">%1$s 的 GBFS 数据（%2$s）</string>
+    <string name="bike_sharing_open">打开 %1$s</string>
+    <string name="distance_meters">%1$d 米</string>
 </resources>

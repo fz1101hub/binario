@@ -1266,4 +1266,22 @@
         <item quantity="other">%d विकल्प</item>
     </plurals>
     <!-- End of platform changes, Partenze train types, saved timetables, sharing, tickets and assistance, CO2 estimate -->
+    <!-- City realtime (metro and tram) and shared bikes near stations -->
+    <string name="urban_realtime_source">%1$s से रीयल-टाइम जानकारी, %2$s बजे अपडेट की गई</string>
+    <string name="bike_sharing_title">%1$s के पास साझा साइकिलें</string>
+    <string name="bike_sharing_show">300 मीटर के भीतर साइकिलें और स्कूटर दिखाएँ</string>
+    <string name="bike_sharing_loading">साइकिलें और स्कूटर खोजे जा रहे हैं…</string>
+    <string name="bike_sharing_none">300 मीटर के भीतर कोई साइकिल या स्कूटर उपलब्ध नहीं है।</string>
+    <string name="bike_sharing_unavailable">साइकिल शेयरिंग का डेटा अभी उपलब्ध नहीं है।</string>
+    <string name="bike_sharing_dock_bikes">साइकिलें: %1$d</string>
+    <string name="bike_sharing_dock_ebikes">इलेक्ट्रिक: %1$d</string>
+    <string name="bike_sharing_dock_free">खाली स्टैंड: %1$d</string>
+    <string name="bike_sharing_type_bike">साइकिल</string>
+    <string name="bike_sharing_type_ebike">इलेक्ट्रिक साइकिल</string>
+    <string name="bike_sharing_type_scooter">ई-स्कूटर</string>
+    <string name="bike_sharing_type_other">साझा वाहन</string>
+    <string name="bike_sharing_battery">बैटरी %1$d%%</string>
+    <string name="bike_sharing_source">%1$s का GBFS डेटा, %2$s बजे का</string>
+    <string name="bike_sharing_open">%1$s खोलें</string>
+    <string name="distance_meters">%1$d मी</string>
 </resources>

@@ -130,7 +130,17 @@ data class JourneyLegRow(
     /** Source identity of the run (for example `lombardia-trenord-gtfs:<trip>:<service day>`). */
     val runId: String?,
     /** Vehicle icon and label: a bus leg ([JourneyLegVehicle.isBus]) shows a bus and its label, never a train. */
-    val vehicle: JourneyLegVehicle = JourneyLegVehicle.of(mode, operatorName, lineLabel)
+    val vehicle: JourneyLegVehicle = JourneyLegVehicle.of(mode, operatorName, lineLabel),
+    /** Live times of the leg (train lookup or city realtime feed); null on the timetable only. */
+    val live: JourneyLegLive? = null,
+    /** "HH:mm" expected departure and arrival from [live], set only when they differ from nothing scheduled. */
+    val expectedDepartureTime: String? = null,
+    val expectedArrivalTime: String? = null,
+    /** Minutes from the scheduled to the expected time (negative when early), 0 without live data. */
+    val departureDelayMinutes: Int = 0,
+    val arrivalDelayMinutes: Int = 0,
+    /** "HH:mm" of the city realtime observation shown next to [JourneyLegLive.sourceLabel]. */
+    val liveObservedTime: String? = null
 ) {
     val isBus: Boolean get() = vehicle.isBus
 }
@@ -254,7 +264,7 @@ object JourneyResultsPresenter {
 
     fun row(sourced: SourcedJourneyOption, zone: ZoneId = RailTime.defaultZone, live: Map<String, JourneyLegLive> = emptyMap()): JourneyOptionRow {
         val option = sourced.option
-        val legs = option.legs.map { leg(it, zone) }
+        val legs = option.legs.map { leg(it, zone, TransferRiskCalculator.liveOf(it, live)) }
         // A change joins two vehicles; a walk between them (to the metro, to another station) is its own leg and the
         // change follows it, at the place where the next vehicle leaves.
         val transfers = option.legs.indices.zipWithNext().mapNotNull { (arrivingIndex, leavingIndex) ->
@@ -303,7 +313,7 @@ object JourneyResultsPresenter {
         )
     }
 
-    private fun leg(leg: JourneyLeg, zone: ZoneId): JourneyLegRow = JourneyLegRow(
+    private fun leg(leg: JourneyLeg, zone: ZoneId, live: JourneyLegLive? = null): JourneyLegRow = JourneyLegRow(
         mode = leg.mode,
         lineLabel = leg.lineLabel,
         number = leg.publicNumber,
@@ -319,8 +329,18 @@ object JourneyResultsPresenter {
         departureTime = time(leg.scheduledDeparture, zone),
         arrivalTime = time(leg.scheduledArrival, zone),
         durationMinutes = Duration.between(leg.scheduledDeparture, leg.scheduledArrival).toMinutes().coerceAtLeast(0),
-        runId = leg.runId?.value
+        runId = leg.runId?.value,
+        live = live,
+        expectedDepartureTime = live?.expectedDeparture?.takeIf { !live.cancelled }?.let { time(it.atZone(zone), zone) },
+        expectedArrivalTime = live?.expectedArrival?.takeIf { !live.cancelled }?.let { time(it.atZone(zone), zone) },
+        departureDelayMinutes = live?.expectedDeparture?.takeIf { !live.cancelled }?.let { delayMinutes(leg.scheduledDeparture, it) } ?: 0,
+        arrivalDelayMinutes = live?.expectedArrival?.takeIf { !live.cancelled }?.let { delayMinutes(leg.scheduledArrival, it) } ?: 0,
+        liveObservedTime = live?.takeIf { it.sourceLabel != null }?.observedAt?.let { time(it.atZone(zone), zone) }
     )
+
+    /** Whole minutes late, rounded down like the boards (a run 59 seconds late is on time). */
+    private fun delayMinutes(scheduled: ZonedDateTime, expected: java.time.Instant): Int =
+        Math.floorDiv(Duration.between(scheduled.toInstant(), expected).seconds, 60L).toInt()
 
     /** The app's category for a leg; a foreign high-speed train is never called a "Freccia", a bus is never a train. */
     internal fun trainCategory(leg: JourneyLeg): TrainCategory {

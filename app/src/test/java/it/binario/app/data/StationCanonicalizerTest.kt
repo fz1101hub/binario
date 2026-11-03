@@ -28,6 +28,14 @@ class StationCanonicalizerTest {
     }
 
     @Test
+    fun `a metro or tram stop keeps its identity even when its name is a station's`() {
+        val metro = Station("gtfs:roma-mobilita-gtfs:70948", "Roma Termini", "Roma")
+        assertSame(metro, canonicalizer.canonicalize(metro))
+        // A stop of a railway pack still resolves to its catalogue station by name.
+        assertEquals("Roma Termini", canonicalizer.canonicalize(Station("gtfs:trenitalia-gtfs:x", "Roma Termini", "Roma")).name)
+    }
+
+    @Test
     fun `legacy values resolve only by exact normalized name or alias`() {
         assertCanonical("legacy:roma-termini", "Roma Termini", "Roma Termini")
         assertCanonical("legacy:milano-centrale", "  MILANO---CENTRALE  ", "Milano Centrale")

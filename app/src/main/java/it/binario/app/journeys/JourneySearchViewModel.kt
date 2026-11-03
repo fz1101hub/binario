@@ -16,6 +16,8 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -45,7 +47,9 @@ data class JourneySearchUiState(
 class JourneySearchViewModel(
     private val service: JourneySearchService,
     /** Live lookup of the legs for "Coincidenza a rischio"; null keeps the scheduled times only. */
-    private val liveLookup: JourneyLiveLookup? = null
+    private val liveLookup: JourneyLiveLookup? = null,
+    /** Live times of the metro and tram legs from their city's open realtime feed; null keeps them scheduled. */
+    private val urbanLiveLookup: UrbanJourneyLiveLookup? = null
 ) : ViewModel() {
     private val mutableState = MutableStateFlow(JourneySearchUiState())
     val state: StateFlow<JourneySearchUiState> = mutableState.asStateFlow()
@@ -103,8 +107,13 @@ class JourneySearchViewModel(
             mutableState.update { current ->
                 current.copy(loading = false, result = result, presentation = JourneyResultsPresenter.present(result, current.filter))
             }
-            // The scheduled results are shown first; the live check of the changes follows when it answers.
-            val live = liveLookup?.takeIf { result.options.any { it.option.transfers > 0 } }?.lookup(result.options).orEmpty()
+            // The scheduled results are shown first; the live check of the changes follows when it answers. The metro
+            // and tram legs of the city networks with an open realtime feed are checked at the same time.
+            val live = coroutineScope {
+                val trains = async { liveLookup?.takeIf { result.options.any { it.option.transfers > 0 } }?.lookup(result.options).orEmpty() }
+                val urban = async { urbanLiveLookup?.takeIf { it.wants(result.options) }?.lookup(result.options).orEmpty() }
+                trains.await() + urban.await()
+            }
             if (generation != searchGeneration || live.isEmpty()) return@launch
             mutableState.update { current ->
                 current.copy(liveLegs = live, presentation = JourneyResultsPresenter.present(result, current.filter, live = live))
@@ -118,7 +127,8 @@ class JourneySearchViewModel(
                 val app = context.applicationContext
                 JourneySearchViewModel(
                     BinarioDataGraph.journeySearchService(app),
-                    JourneyLiveLookup(BinarioDataGraph.trainNumberSearchService(app))
+                    JourneyLiveLookup(BinarioDataGraph.trainNumberSearchService(app)),
+                    BinarioDataGraph.urbanRealtimeFeeds(app).takeIf { it.isNotEmpty() }?.let(::UrbanJourneyLiveLookup)
                 )
             }
         }

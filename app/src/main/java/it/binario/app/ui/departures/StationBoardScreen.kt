@@ -66,6 +66,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import it.binario.app.BikeSharingNearbySection
 import it.binario.app.R
 import it.binario.app.RefreshState
 import it.binario.app.StationLineNoticesSection
@@ -75,7 +76,9 @@ import it.binario.app.data.PlatformChange
 import it.binario.app.data.Station
 import it.binario.app.data.core.BoardKind
 import it.binario.app.data.core.RunStatus
+import it.binario.app.data.core.ServiceKind
 import it.binario.app.data.core.StationBoardEntry
+import it.binario.app.data.urban.UrbanRealtimeFeeds
 import it.binario.app.data.repository.StationBoardRunDetails
 import it.binario.app.localized
 import it.binario.app.requestSingleLocationFix
@@ -256,6 +259,11 @@ internal fun StationBoardScreen(modifier: Modifier, viewModel: TrainViewModel, r
             }
         }
 
+        // Shared bikes near the chosen station, on request only (GBFS of the systems serving that place).
+        selectedStation?.let { station ->
+            item(key = "bike-sharing-${station.id}") { BikeSharingNearbySection(station) }
+        }
+
         if (!viewModel.hasStationBoardProviders) {
             item {
                 SearchInfoState(
@@ -296,6 +304,15 @@ internal fun StationBoardScreen(modifier: Modifier, viewModel: TrainViewModel, r
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
+                            // A metro or tram stop: the city network's realtime feed and when it last observed the runs.
+                            UrbanRealtimeFeeds.observation(board.entries)?.let { (source, observedAt) ->
+                                Text(
+                                    stringResource(R.string.urban_realtime_source, source, observedAt.atZone(BOARD_ZONE).format(BOARD_TIME_FORMATTER)),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.testTag("station-board-urban-realtime")
+                                )
+                            }
                             viewModel.stationBoardMessages.forEach { message ->
                                 Text(
                                     message.localized(),
@@ -334,7 +351,10 @@ internal fun StationBoardScreen(modifier: Modifier, viewModel: TrainViewModel, r
                                     RoundedCornerShape(16.dp)
                                 )
                         ) {
-                            StationBoardEntryRow(entry, board.kind, onOpen = { viewModel.openStationBoardRun(entry) }, selected = selected)
+                            // A metro or tram run has no run details source: its row shows everything known.
+                            StationBoardEntryRow(entry, board.kind, onOpen = if (entry.serviceKind == ServiceKind.URBAN) null else {
+                                { viewModel.openStationBoardRun(entry) }
+                            }, selected = selected)
                         }
                     }
                 }

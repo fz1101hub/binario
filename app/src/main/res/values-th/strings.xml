@@ -1260,4 +1260,22 @@
         <item quantity="other">%d ตัวเลือก</item>
     </plurals>
     <!-- End of platform changes, Partenze train types, saved timetables, sharing, tickets and assistance, CO2 estimate -->
+    <!-- City realtime (metro and tram) and shared bikes near stations -->
+    <string name="urban_realtime_source">ข้อมูลเรียลไทม์จาก %1$s อัปเดตเมื่อ %2$s</string>
+    <string name="bike_sharing_title">จักรยานให้เช่าใกล้ %1$s</string>
+    <string name="bike_sharing_show">แสดงจักรยานและสกูตเตอร์ในระยะ 300 ม.</string>
+    <string name="bike_sharing_loading">กำลังค้นหาจักรยานและสกูตเตอร์…</string>
+    <string name="bike_sharing_none">ไม่มีจักรยานหรือสกูตเตอร์ว่างในระยะ 300 ม.</string>
+    <string name="bike_sharing_unavailable">ขณะนี้ไม่มีข้อมูลจักรยานให้เช่า</string>
+    <string name="bike_sharing_dock_bikes">จักรยาน: %1$d</string>
+    <string name="bike_sharing_dock_ebikes">ไฟฟ้า: %1$d</string>
+    <string name="bike_sharing_dock_free">ช่องจอดว่าง: %1$d</string>
+    <string name="bike_sharing_type_bike">จักรยาน</string>
+    <string name="bike_sharing_type_ebike">จักรยานไฟฟ้า</string>
+    <string name="bike_sharing_type_scooter">สกูตเตอร์ไฟฟ้า</string>
+    <string name="bike_sharing_type_other">ยานพาหนะให้เช่า</string>
+    <string name="bike_sharing_battery">แบตเตอรี่ %1$d%%</string>
+    <string name="bike_sharing_source">ข้อมูล GBFS จาก %1$s เวลา %2$s</string>
+    <string name="bike_sharing_open">เปิด %1$s</string>
+    <string name="distance_meters">%1$d ม.</string>
 </resources>

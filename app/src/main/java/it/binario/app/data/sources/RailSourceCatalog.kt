@@ -800,6 +800,102 @@ object RailSourceCatalog {
             notes = "Feed pubblico; licenza CC BY 3.0 riportata dai cataloghi Transitland e Mobility Database ma non verificabile sul sito ufficiale (pagina open data 404 al 2 novembre 2026): data pack solo nelle build personali (gtfs-personal/)."
         ),
         RailSourceDefinition(
+            id = SourceId("roma-mobilita-gtfs-rt"),
+            displayName = "Roma Servizi per la Mobilità — GTFS-Realtime Trip Updates",
+            operatorOrAuthority = "Roma Servizi per la Mobilità / ATAC",
+            formats = setOf(SourceFormat.GTFS_REALTIME_PROTOBUF),
+            capabilities = setOf(ProviderCapability.TRAIN_RUN_REALTIME),
+            accessMode = AccessMode.OPEN_DIRECT,
+            readiness = SourceReadiness.READY_FOR_PROTOCOL_TEST,
+            countryCodes = setOf("IT"),
+            coverage = "Corse ATAC con AVM (autobus, tram e metropolitane quando pubblicate) con trip_id e stop_id del GTFS statico romano.",
+            landingPage = uri("https://romamobilita.it/sistemi-e-tecnologie/open-data/"),
+            downloadOrProbeUri = uri("https://romamobilita.it/sites/default/files/rome_rtgtfs_trip_updates_feed.pb"),
+            attribution = "Roma Servizi per la Mobilità (dati ATAC)",
+            notes = "Verificato dal CI (run 41561359450): HTTP 200, FeedMessage 2.0, trip_id identici al GTFS statico, cache 30 s. " +
+                "Licenza: CC BY-SA sul portale dati.comune.roma.it (dataset c_h501-d-9000), CC BY 4.0 nel catalogo dati.gov.it, " +
+                "nessuna sulla pagina ufficiale: usato solo con il pack roma-mobilita-gtfs, quindi solo nelle build personali."
+        ),
+        RailSourceDefinition(
+            id = SourceId("gbfs-nextbike-bergamo"),
+            displayName = "nextbike Bergamo — GBFS",
+            operatorOrAuthority = "nextbike GmbH",
+            formats = setOf(SourceFormat.JSON_API),
+            capabilities = setOf(ProviderCapability.BIKE_SHARING),
+            accessMode = AccessMode.OPEN_DIRECT,
+            readiness = SourceReadiness.READY_FOR_PROTOCOL_TEST,
+            countryCodes = setOf("IT"),
+            coverage = "Stazioni e bici del bike sharing di Bergamo (75 stazioni; Bergamo e Bergamo Ospedale entro 300 m).",
+            landingPage = uri("https://www.nextbike.it/bergamo/"),
+            downloadOrProbeUri = uri("https://gbfs.nextbike.net/maps/gbfs/v2/nextbike_ib/gbfs.json"),
+            attribution = "nextbike GmbH — CC0-1.0",
+            notes = "GBFS 2.3 verificato dal CI (run 41561372909); system_information dichiara license_id CC0-1.0: ogni build."
+        ),
+        RailSourceDefinition(
+            id = SourceId("gbfs-famose-senigallia"),
+            displayName = "Fa.Mo.Se Senigallia — GBFS",
+            operatorOrAuthority = "Comune di Senigallia / TIER Mobility / nextbike",
+            formats = setOf(SourceFormat.JSON_API),
+            capabilities = setOf(ProviderCapability.BIKE_SHARING),
+            accessMode = AccessMode.OPEN_DIRECT,
+            readiness = SourceReadiness.READY_FOR_PROTOCOL_TEST,
+            countryCodes = setOf("IT"),
+            coverage = "Bike sharing di Senigallia (25 stazioni; Senigallia, Marzocca, Marotta-Mondolfo, Lungomare Sud entro 300 m).",
+            landingPage = uri("https://www.comune.senigallia.an.it/aree-tematiche/mobilita/bike-sharing-fa-mo-se/"),
+            downloadOrProbeUri = uri("https://gbfs.nextbike.net/maps/gbfs/v2/nextbike_fa/gbfs.json"),
+            attribution = "Fa.Mo.Se / nextbike — CC0-1.0",
+            notes = "GBFS 2.3 verificato dal CI (run 41561372909); system_information dichiara license_id CC0-1.0: ogni build."
+        ),
+        RailSourceDefinition(
+            id = SourceId("gbfs-bikemi"),
+            displayName = "BikeMi Milano — GBFS",
+            operatorOrAuthority = "IGPDecaux S.p.A. / Comune di Milano",
+            formats = setOf(SourceFormat.JSON_API),
+            capabilities = setOf(ProviderCapability.BIKE_SHARING),
+            accessMode = AccessMode.OPEN_DIRECT,
+            readiness = SourceReadiness.READY_FOR_PROTOCOL_TEST,
+            countryCodes = setOf("IT"),
+            coverage = "321 stazioni BikeMi con bici ed e-bike per stazione; 21 stazioni ferroviarie milanesi entro 300 m.",
+            landingPage = uri("https://bikemi.com/"),
+            downloadOrProbeUri = uri("https://gbfs.urbansharing.com/bikemi.com/gbfs.json"),
+            attribution = "BikeMi — NLOD 2.0",
+            notes = "GBFS 2.3 verificato dal CI (run 41561372909). Il feed non ha license_url, ma la pagina bikemi.com/it/open-data " +
+                "(run 41564222536) dichiara i feed in tempo reale pubblicati con la Norwegian Licence for Open Government Data " +
+                "(NLOD) 2.0 e ne invita l'integrazione nelle app: ogni build, con attribuzione."
+        ),
+        RailSourceDefinition(
+            id = SourceId("gbfs-verona-bike"),
+            displayName = "Verona Bike — GBFS",
+            operatorOrAuthority = "IGPDecaux S.p.A. / Comune di Verona",
+            formats = setOf(SourceFormat.JSON_API),
+            capabilities = setOf(ProviderCapability.BIKE_SHARING),
+            accessMode = AccessMode.OPEN_DIRECT,
+            readiness = SourceReadiness.READY_FOR_PROTOCOL_TEST,
+            countryCodes = setOf("IT"),
+            coverage = "40 stazioni Verona Bike; Verona Porta Nuova e Porta Vescovo entro 300 m.",
+            landingPage = uri("https://bikeverona.it/"),
+            downloadOrProbeUri = uri("https://gbfs.urbansharing.com/bikeverona.it/gbfs.json"),
+            attribution = "Verona Bike — NLOD 2.0",
+            notes = "GBFS 2.3 verificato dal CI (run 41561372909); la pagina bikeverona.it/en/open-data (run 41564222536) dichiara " +
+                "la NLOD 2.0 per i feed in tempo reale: ogni build, con attribuzione."
+        ),
+        RailSourceDefinition(
+            id = SourceId("gbfs-bird-roma"),
+            displayName = "Bird Roma — GBFS",
+            operatorOrAuthority = "Bird Rides, Inc.",
+            formats = setOf(SourceFormat.JSON_API),
+            capabilities = setOf(ProviderCapability.BIKE_SHARING),
+            accessMode = AccessMode.PUBLIC_BEST_EFFORT,
+            readiness = SourceReadiness.READY_FOR_PROTOCOL_TEST,
+            countryCodes = setOf("IT"),
+            coverage = "Monopattini Bird a Roma (circa 4.300 con batteria e autonomia); 39 stazioni ferroviarie romane entro 300 m.",
+            landingPage = uri("https://www.bird.co/"),
+            downloadOrProbeUri = uri("https://mds.bird.co/gbfs/v2/public/rome/gbfs.json"),
+            attribution = "Bird Rides, Inc.",
+            notes = "GBFS 2.3 verificato dal CI (run 41561372909); license_url rimanda al Bird GBFS Data License Agreement (PDF) " +
+                "non riesaminato: solo build personali. Milano e Firenze pubblicano feed vuoti, Torino risponde 404."
+        ),
+        RailSourceDefinition(
             id = SourceId("arenaways"),
             displayName = "Arenaways",
             operatorOrAuthority = "Arenaways / Longitude Holding",

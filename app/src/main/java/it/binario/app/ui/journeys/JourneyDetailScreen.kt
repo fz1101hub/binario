@@ -37,6 +37,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import it.binario.app.BikeSharingNearbySection
 import it.binario.app.R
 import it.binario.app.TabularFigures
 import it.binario.app.data.Station
@@ -130,13 +131,19 @@ internal fun JourneyDetailScreen(
                     Column(Modifier.padding(vertical = 12.dp).testTag("journey-timeline")) {
                         row.legs.forEachIndexed { index, leg ->
                             LegHeader(leg)
-                            LegStop(time = leg.departureTime, station = leg.fromLabel, isFirst = true)
-                            LegStop(time = leg.arrivalTime, station = leg.toLabel, isFirst = false)
+                            LegStop(time = leg.departureTime, station = leg.fromLabel, isFirst = true,
+                                expected = leg.expectedDepartureTime, delay = leg.departureDelayMinutes, cancelled = leg.live?.cancelled == true)
+                            LegStop(time = leg.arrivalTime, station = leg.toLabel, isFirst = false,
+                                expected = leg.expectedArrivalTime, delay = leg.arrivalDelayMinutes, cancelled = leg.live?.cancelled == true)
                             row.transfers.firstOrNull { it.afterLegIndex == index }?.let { TransferBlock(it) }
                         }
                     }
                 }
             }
+        }
+        // Shared bikes at the start and at the end of the journey, on request only.
+        listOfNotNull(origin, destination).distinctBy { it.id }.forEach { station ->
+            item(key = "bike-sharing-${station.id}") { BikeSharingNearbySection(station, Modifier.padding(top = 8.dp)) }
         }
         item {
             FlowRow(
@@ -211,6 +218,17 @@ private fun LegHeader(leg: JourneyLegRow) {
             leg.operatorName?.takeIf { it.isNotBlank() && kind != JourneyLegKind.WALK }?.let {
                 Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
+            if (leg.live?.cancelled == true) {
+                Text(stringResource(R.string.run_status_cancelled), style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
+            }
+            // The city network's own realtime feed and when it observed the run.
+            val liveSource = leg.live?.sourceLabel
+            val observed = leg.liveObservedTime
+            if (liveSource != null && observed != null) {
+                Text(stringResource(R.string.urban_realtime_source, liveSource, observed), style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.testTag("journey-leg-realtime"))
+            }
         }
         Text(
             JourneyTimes.durationLabel(leg.durationMinutes.toInt()),
@@ -220,18 +238,21 @@ private fun LegHeader(leg: JourneyLegRow) {
     }
 }
 
-/** The departure ("Partenza") or arrival ("Arrivo") of a leg on the timeline of the train detail; times are scheduled. */
+/**
+ * The departure ("Partenza") or arrival ("Arrivo") of a leg on the timeline of the train detail: the scheduled time,
+ * and the expected one only when a live source published it for this stop (a cancelled run shows the stop as skipped).
+ */
 @Composable
-private fun LegStop(time: String, station: String, isFirst: Boolean) {
+private fun LegStop(time: String, station: String, isFirst: Boolean, expected: String? = null, delay: Int = 0, cancelled: Boolean = false) {
     StopTimelineRow(
         station = station,
-        expected = time,
+        expected = expected ?: time,
         scheduled = time,
-        delay = 0,
+        delay = delay.coerceAtLeast(0),
         platform = null,
         completed = false,
-        operationalStatusVerified = false,
-        routeChange = StopRouteChange.NONE,
+        operationalStatusVerified = expected != null,
+        routeChange = if (cancelled) StopRouteChange.SKIPPED else StopRouteChange.NONE,
         onSetAlarm = null,
         isFirst = isFirst,
         isLast = !isFirst

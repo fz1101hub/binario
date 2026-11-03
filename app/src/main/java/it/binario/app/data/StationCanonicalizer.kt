@@ -21,6 +21,8 @@ internal class StationCanonicalizer(stations: List<Station>) {
 
     fun canonicalize(station: Station): Station {
         stationsById[station.id]?.let { return it }
+        // A metro or tram stop stays that stop: "Termini" of the Rome metro is not Roma Termini by name.
+        if (it.binario.app.data.gtfs.EmbeddedGtfsPacks.isUrbanStopId(station.id)) return station
 
         val matches = station.identityNames()
             .asSequence()

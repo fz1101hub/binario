@@ -1289,4 +1289,22 @@
         <item quantity="other">%d seçenek</item>
     </plurals>
     <!-- End of platform changes, Partenze train types, saved timetables, sharing, tickets and assistance, CO2 estimate -->
+    <!-- City realtime (metro and tram) and shared bikes near stations -->
+    <string name="urban_realtime_source">%1$s gerçek zamanlı verileri, %2$s itibarıyla</string>
+    <string name="bike_sharing_title">%1$s yakınındaki paylaşımlı bisikletler</string>
+    <string name="bike_sharing_show">300 m içindeki bisiklet ve scooterları göster</string>
+    <string name="bike_sharing_loading">Bisiklet ve scooter aranıyor…</string>
+    <string name="bike_sharing_none">300 m içinde kullanılabilir bisiklet veya scooter yok.</string>
+    <string name="bike_sharing_unavailable">Bisiklet paylaşım verileri şu anda kullanılamıyor.</string>
+    <string name="bike_sharing_dock_bikes">bisiklet: %1$d</string>
+    <string name="bike_sharing_dock_ebikes">elektrikli: %1$d</string>
+    <string name="bike_sharing_dock_free">boş park yeri: %1$d</string>
+    <string name="bike_sharing_type_bike">Bisiklet</string>
+    <string name="bike_sharing_type_ebike">Elektrikli bisiklet</string>
+    <string name="bike_sharing_type_scooter">Elektrikli scooter</string>
+    <string name="bike_sharing_type_other">Paylaşımlı araç</string>
+    <string name="bike_sharing_battery">pil %%%1$d</string>
+    <string name="bike_sharing_source">%1$s GBFS verileri, saat %2$s</string>
+    <string name="bike_sharing_open">%1$s sitesini aç</string>
+    <string name="distance_meters">%1$d m</string>
 </resources>

@@ -66,7 +66,11 @@ class TrainViewModel @JvmOverloads constructor(
     application: Application,
     /** Widget configuration needs local catalog/search only, never startup refresh or Wear publication. */
     private val enableStartupEffects: Boolean = true,
-    private val stationBoardService: StationBoardAggregateService = StationBoardAggregateService(BinarioDataGraph.stationBoardDisplayProviders()),
+    private val stationBoardService: StationBoardAggregateService = StationBoardAggregateService(
+        BinarioDataGraph.stationBoardDisplayProviders(),
+        // Metro and tram stops get their city pack's board (and realtime feed); railway stations keep the same sources.
+        stopProviders = BinarioDataGraph.urbanStopBoardProviders(application)
+    ),
     private val stationBoardDetailsService: StationBoardRunDetailService = BinarioDataGraph.stationBoardRunDetailService(),
     private val trainNumberSearchService: TrainNumberSearchService = BinarioDataGraph.trainNumberSearchService(application),
     /** Route source; null uses the application data graph. Instrumented tests pass a fixed local catalogue. */

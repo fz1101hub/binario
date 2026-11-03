@@ -35,6 +35,10 @@ Le fonti best-effort (categoria B) dipendono da `BuildConfig.PERSONAL_REALTIME_S
 8. **`scioperi.mit.gov.it` — calendario scioperi del MIT (RSS).** Quando l'utente apre l'area «Avvisi e infomobilità» e, con «Scioperi del giorno dopo» attivo (predefinito) e le notifiche consentite, una volta al giorno verso le 18 in background: `GET` HTTPS del feed RSS, senza parametri utente; cache di sei ore. Solo metadati di rete.
 9. **Richieste in background delle notifiche in tempo reale.** Il viaggio seguito (ogni 15 minuti nella finestra del viaggio), la puntualità dei treni preferiti (una volta al giorno) e la campanella degli avvisi (ogni 15 minuti nel giorno del viaggio, 7–22) ripetono con WorkManager le stesse richieste della ricerca per numero treno e degli avvisi per treno: numero del treno e giorno di servizio verso gli host A/B già elencati. L'utente le attiva o le spegne nell'app; nessun dato nuovo.
 
+10. **`gbfs.nextbike.net` e `gbfs.urbansharing.com` — bici in condivisione (GBFS).** Solo quando l'utente tocca «Mostra bici e monopattini entro 300 m» nel tabellone di una stazione o nel dettaglio di un viaggio, e solo per le stazioni di Bergamo e Senigallia (nextbike) o di Milano e Verona (BikeMi, Verona Bike): `GET` HTTPS dei file GBFS dell'intero sistema (auto-discovery, stazioni, disponibilità, mezzi liberi), senza coordinate o altri parametri dell'utente; la distanza è calcolata sul dispositivo dalle coordinate della stazione, mai dalla posizione del dispositivo. Cache di un minuto per la disponibilità e di sei ore per l'elenco delle stazioni. Licenze: CC0-1.0 dichiarata nel feed nextbike, NLOD 2.0 dichiarata sulle pagine open data di BikeMi e Verona Bike.
+
+Le build personali (`-Pbinario.personalSources=true`, predefinito per l'APK debug, mai per la release e il bundle Play) aggiungono gli host P della tabella finale: i Trip Updates GTFS-Realtime di Roma Servizi per la Mobilità (`romamobilita.it`) per i tabelloni delle fermate di metro e tram di Roma e i tratti romani dei viaggi con cambi (cache di 30 secondi, nessun parametro dell'utente) e il GBFS di Bird Roma (`mds.bird.co`), con le stesse regole del punto 10.
+
 Con le fonti personali attive si aggiungono gli host B della tabella finale: tabelloni e tratte live RFI, Italo e ViaggiaTreno, tabelloni svizzeri `transport.opendata.ch`, avvisi per treno e infomobilità Trenitalia su `www.viaggiatreno.it`, avvisi Trenord su `www.trenord.it`. Tutti gli altri host presenti nel codice sono classificati nella tabella finale: adapter non collegati ad alcuna superficie, provenienza offline dei data pack, soli metadati del catalogo fonti o collegamenti aperti nel browser su tocco.
 
 ## Risposte proposte al modulo
@@ -114,6 +118,7 @@ La tabella copre ogni host `http(s)://` trovato in `app/src/main/java`, `wear/sr
 - **D — provenienza dei data pack:** URL da cui `tools/build_gtfs_packs.py` ha scaricato offline i GTFS embedded; l'app legge solo gli asset inclusi.
 - **E — catalogo fonti:** `landingPage` o `downloadOrProbeUri` del censimento fonti; nessun adapter, nessun traffico.
 - **F — collegamento esterno:** pagina aperta nel browser di sistema solo quando l'utente tocca il collegamento; l'app non contatta l'host.
+- **P — build personali:** contattato solo nelle build con `binario.personalSources` (APK debug; mai la release e il bundle Play), per fonti con licenza non dichiarata o non verificabile.
 
 ### Host contattabili a runtime (A, B, C)
 
@@ -132,6 +137,9 @@ La tabella copre ogni host `http(s)://` trovato in `app/src/main/java`, `wear/sr
 | `scioperi.mit.gov.it` | A | `data/live/MitStrikeRssAdapter.kt`, catalogo; la pagina del calendario resta anche un collegamento aperto su tocco (`data/notices/RailExternalLinks.kt`) | Area avvisi aperta dall'utente; con «Scioperi del giorno dopo» attivo e le notifiche consentite, una volta al giorno verso le 18 | `GET` HTTPS del feed RSS, nessun dato utente |
 | `gtfs.api.opendatahub.com` | A, D | `data/live/StaRealtimeAdapter.kt`, catalogo, provenienza del pack `alto-adige-sta-gtfs` | Ricerca tratta con corse del pack STA (Trip Updates); posizioni e avvisi STA non hanno chiamanti; il pack è scaricato offline | Feed GTFS-Realtime JSON, nessun dato utente |
 | `proxy.transport.data.gouv.fr` | A | `data/live/SncfGtfsRealtimeAdapter.kt`, catalogo | Ricerca tratta con corse del pack SNCF (Trip Updates); gli avvisi SNCF non hanno chiamanti | Feed GTFS-Realtime protobuf, nessun dato utente |
+| `gbfs.nextbike.net` | A | `data/bikesharing/BikeSharing.kt` | Solo dopo il tocco su «Mostra bici e monopattini entro 300 m» per una stazione di Bergamo o Senigallia | `GET` HTTPS dei file GBFS del sistema, senza parametri utente |
+| `gbfs.urbansharing.com` | A | `data/bikesharing/BikeSharing.kt` | Solo dopo il tocco su «Mostra bici e monopattini entro 300 m» per una stazione di Milano o Verona | `GET` HTTPS dei file GBFS di BikeMi e Verona Bike, senza parametri utente |
+| `mds.bird.co` | P | `data/bikesharing/BikeSharing.kt` | Build personali: tocco su «Mostra bici e monopattini entro 300 m» per una stazione di Roma | `GET` HTTPS del GBFS Bird Roma (monopattini), senza parametri utente |
 | `api.opentransportdata.swiss` | C | `data/live/SwissGtfsRealtimeAdapter.kt` | Mai: richiede un token `ExternalRailCredentials` che nessun chiamante fornisce | — |
 | `apis.deutschebahn.com` | C | `data/live/DbTimetablesStationBoardAdapter.kt` | Mai: richiede `DB-Client-Id`/`DB-Api-Key` custoditi fuori dall'APK; nessun chiamante | — |
 
@@ -149,7 +157,7 @@ La tabella copre ogni host `http(s)://` trovato in `app/src/main/java`, `wear/sr
 | `files.mobilitydatabase.org` | D | Manifest `gtfs-transit/` e `gtfs-personal/`: copia HTTPS del Mobility Database con cui il CI verifica i byte del feed AMT Genova (solo HTTP all'origine) e da cui legge il feed ufficiale GTT (`gtt-gtfs`, solo build personali) |
 | `opendatagoogletransit.comune.genova.it` | D | Provenienza (solo HTTP, verificata in CI contro la copia HTTPS del Mobility Database) dei pack `amt-genova-casella-gtfs` e `genova-amt-gtfs`; anche nel catalogo |
 | `raw.githubusercontent.com` | D | Provenienza dei pack `trenitalia-gtfs` e `italo-gtfs` (archivio GTFS a un commit fissato); anche nel catalogo |
-| `romamobilita.it` | D | Provenienza del pack `roma-mobilita-gtfs`, incluso solo nelle build personali; anche nel catalogo |
+| `romamobilita.it` | D, P | Provenienza del pack `roma-mobilita-gtfs`, incluso solo nelle build personali; anche nel catalogo. Nelle build personali, Trip Updates GTFS-Realtime (`data/urban/UrbanRealtime.kt`) letti solo con il tabellone di una fermata di metro o tram di Roma o un tratto romano di un viaggio entro due ore: `GET` HTTPS senza parametri utente, cache di 30 secondi |
 | `static.web.oebb.at` | D | Provenienza del pack `oebb-gtfs`; anche nel catalogo |
 | `travel.mob.cotralspa.it` | D | Provenienza (solo HTTP) del pack `cotral-ferro-gtfs`, incluso solo nelle build personali; anche nel catalogo |
 | `www.anm.it` | D | Provenienza del pack `napoli-anm-gtfs`, incluso solo nelle build personali; anche nel catalogo |
@@ -206,6 +214,11 @@ La tabella copre ogni host `http(s)://` trovato in `app/src/main/java`, `wear/sr
 | `www.fsnews.it` | F | Bollettino FS News («Ascolta il bollettino FS News») dall'area avvisi (`links/OfficialLinks.kt`); nessun audio riprodotto nell'app |
 | `www.italotreno.com` | F | Pagine ufficiali Italo (acquisto, tariffe e cambi, carnet, assistenza, reclami) in Biglietti e assistenza e «Apri sul sito ufficiale» (`links/OfficialLinks.kt`) |
 | `www.sad.it` | F | Pagina dei treni SAD in Biglietti e assistenza (`links/OfficialLinks.kt`) |
+| `bikemi.com` | F | Sito di BikeMi aperto su tocco dalla sezione «Bici in condivisione» (`data/bikesharing/BikeSharing.kt`); anche nel catalogo |
+| `bikeverona.it` | F | Sito di Verona Bike aperto su tocco dalla sezione «Bici in condivisione»; anche nel catalogo |
+| `www.bird.co` | F | Sito di Bird aperto su tocco dalla sezione «Bici in condivisione», solo nelle build personali |
+| `www.comune.senigallia.an.it` | F | Pagina del bike sharing Fa.Mo.Se aperta su tocco dalla sezione «Bici in condivisione» |
+| `www.nextbike.it` | F | Pagina di nextbike Bergamo aperta su tocco dalla sezione «Bici in condivisione» |
 | `www.trasportoferroviariotoscano.it` | F | Sito ufficiale TFT in Biglietti e assistenza (`links/OfficialLinks.kt`) |
 
 Nessun SDK di terze parti aggiunge host propri: le uniche librerie con accesso alla rete sono quelle AndroidX/Play Services elencate sopra e MapLibre Native, che contatta soltanto gli host dello stile configurato dall'app (`tiles.openfreemap.org`) e non ha telemetria; Play Services Wearable comunica solo con l'infrastruttura Google del dispositivo associato.

@@ -28,7 +28,9 @@ enum class ProviderCapability {
     SERVICE_ALERTS,
     VEHICLE_POSITIONS,
     /** Not railway data: forecast for a station's place, shown next to the journey. */
-    WEATHER_FORECAST
+    WEATHER_FORECAST,
+    /** Not railway data: shared bikes and scooters (GBFS) near a station, shown on request. */
+    BIKE_SHARING
 }
 
 enum class AccessMode {

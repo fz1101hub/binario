@@ -1237,4 +1237,22 @@
         <item quantity="other">여정 %d개</item>
     </plurals>
     <!-- End of platform changes, Partenze train types, saved timetables, sharing, tickets and assistance, CO2 estimate -->
+    <!-- City realtime (metro and tram) and shared bikes near stations -->
+    <string name="urban_realtime_source">%1$s 실시간 정보, %2$s 업데이트</string>
+    <string name="bike_sharing_title">%1$s 근처 공유 자전거</string>
+    <string name="bike_sharing_show">300m 이내 자전거와 킥보드 보기</string>
+    <string name="bike_sharing_loading">자전거와 킥보드를 찾는 중…</string>
+    <string name="bike_sharing_none">300m 이내에 이용 가능한 자전거나 킥보드가 없습니다.</string>
+    <string name="bike_sharing_unavailable">공유 자전거 데이터를 지금은 사용할 수 없습니다.</string>
+    <string name="bike_sharing_dock_bikes">자전거: %1$d</string>
+    <string name="bike_sharing_dock_ebikes">전기: %1$d</string>
+    <string name="bike_sharing_dock_free">빈 거치대: %1$d</string>
+    <string name="bike_sharing_type_bike">자전거</string>
+    <string name="bike_sharing_type_ebike">전기 자전거</string>
+    <string name="bike_sharing_type_scooter">전동 킥보드</string>
+    <string name="bike_sharing_type_other">공유 이동수단</string>
+    <string name="bike_sharing_battery">배터리 %1$d%%</string>
+    <string name="bike_sharing_source">%1$s GBFS 데이터 (%2$s 기준)</string>
+    <string name="bike_sharing_open">%1$s 열기</string>
+    <string name="distance_meters">%1$d m</string>
 </resources>

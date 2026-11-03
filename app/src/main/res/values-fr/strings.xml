@@ -1318,4 +1318,22 @@
         <item quantity="other">%d solutions</item>
     </plurals>
     <!-- End of platform changes, Partenze train types, saved timetables, sharing, tickets and assistance, CO2 estimate -->
+    <!-- City realtime (metro and tram) and shared bikes near stations -->
+    <string name="urban_realtime_source">Temps réel %1$s, mis à jour à %2$s</string>
+    <string name="bike_sharing_title">Vélos en libre-service près de %1$s</string>
+    <string name="bike_sharing_show">Afficher vélos et trottinettes à moins de 300 m</string>
+    <string name="bike_sharing_loading">Recherche de vélos et de trottinettes…</string>
+    <string name="bike_sharing_none">Aucun vélo ni trottinette disponible à moins de 300 m.</string>
+    <string name="bike_sharing_unavailable">Les données du vélo en libre-service sont indisponibles pour le moment.</string>
+    <string name="bike_sharing_dock_bikes">vélos : %1$d</string>
+    <string name="bike_sharing_dock_ebikes">électriques : %1$d</string>
+    <string name="bike_sharing_dock_free">places libres : %1$d</string>
+    <string name="bike_sharing_type_bike">Vélo</string>
+    <string name="bike_sharing_type_ebike">Vélo électrique</string>
+    <string name="bike_sharing_type_scooter">Trottinette</string>
+    <string name="bike_sharing_type_other">Véhicule partagé</string>
+    <string name="bike_sharing_battery">batterie %1$d%%</string>
+    <string name="bike_sharing_source">Données GBFS de %1$s à %2$s</string>
+    <string name="bike_sharing_open">Ouvrir %1$s</string>
+    <string name="distance_meters">%1$d m</string>
 </resources>

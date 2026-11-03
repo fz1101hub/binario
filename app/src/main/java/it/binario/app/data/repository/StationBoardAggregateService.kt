@@ -15,6 +15,7 @@ import it.binario.app.data.provider.StationBoardProvider
 import it.binario.app.data.provider.StationBoardRequest
 import it.binario.app.data.sources.RailInformationCategory
 import it.binario.app.data.sources.RailSourceSelectionPolicy
+import it.binario.app.data.urban.StopScopedBoardProvider
 import java.time.Clock
 import java.time.Duration
 import java.time.Instant
@@ -47,7 +48,14 @@ class StationBoardAggregateService(
     private val identityTolerance: Duration = Duration.ofMinutes(5),
     private val conflictTolerance: Duration = Duration.ofMinutes(5),
     private val providerTimeoutMillis: Long = 12_000L,
-    private val providerDispatcher: CoroutineDispatcher = Dispatchers.IO
+    private val providerDispatcher: CoroutineDispatcher = Dispatchers.IO,
+    /**
+     * Boards of city stops (metro, tram: `gtfs:<city pack>:<stop>`). For a stop one of them serves, they are asked
+     * instead of [providers]; every other station gets exactly the [providers] board as before.
+     */
+    private val stopProviders: List<StopScopedBoardProvider> = emptyList(),
+    /** A city board reads its pack's timetable on first use, which can take longer than a network board. */
+    private val stopProviderTimeoutMillis: Long = 30_000L
 ) {
     val hasProviders: Boolean get() = providers.isNotEmpty()
 
@@ -63,7 +71,10 @@ class StationBoardAggregateService(
         kind: BoardKind = BoardKind.DEPARTURES,
         from: Instant = clock.instant()
     ): Flow<StationBoardAggregateResult> = flow {
-        if (providers.isEmpty()) {
+        val scoped = stopProviders.filter { it.servesStation(StationId(station.id)) }
+        val active: List<StationBoardProvider> = scoped.ifEmpty { providers }
+        val timeoutMillis = if (scoped.isNotEmpty()) stopProviderTimeoutMillis else providerTimeoutMillis
+        if (active.isEmpty()) {
             emit(StationBoardAggregateResult.Unavailable("Nessuna fonte tabellone autorizzata è attiva in questa build."))
             return@flow
         }
@@ -74,16 +85,16 @@ class StationBoardAggregateService(
             trenitaliaLocationId = station.trenitaliaLocationId, coordinates = station.catalogueCoordinates()
         )
         coroutineScope {
-            val completed = Channel<Pair<Int, ProviderAttempt>>(providers.size)
-            providers.forEachIndexed { index, provider ->
-                launch(providerDispatcher) { completed.send(index to query(provider, request)) }
+            val completed = Channel<Pair<Int, ProviderAttempt>>(active.size)
+            active.forEachIndexed { index, provider ->
+                launch(providerDispatcher) { completed.send(index to query(provider, request, timeoutMillis)) }
             }
-            val attempts = arrayOfNulls<ProviderAttempt>(providers.size)
-            repeat(providers.size) { completedCount ->
+            val attempts = arrayOfNulls<ProviderAttempt>(active.size)
+            repeat(active.size) { completedCount ->
                 val (index, attempt) = completed.receive()
                 attempts[index] = attempt
                 val result = aggregate(station, request, attempts.filterNotNull())
-                val complete = completedCount == providers.lastIndex
+                val complete = completedCount == active.lastIndex
                 if (result is StationBoardAggregateResult.Success) {
                     emit(result.copy(isComplete = complete))
                 } else if (complete) emit(result)
@@ -91,9 +102,9 @@ class StationBoardAggregateService(
         }
     }.flowOn(providerDispatcher)
 
-    private suspend fun query(provider: StationBoardProvider, request: StationBoardRequest): ProviderAttempt {
+    private suspend fun query(provider: StationBoardProvider, request: StationBoardRequest, timeoutMillis: Long): ProviderAttempt {
         return try {
-            withTimeout(providerTimeoutMillis) {
+            withTimeout(timeoutMillis) {
                 when (val result = provider.getStationBoard(request)) {
                     is ProviderResult.Success -> ProviderAttempt.Board(provider.descriptor.displayName, result.value, emptySet())
                     is ProviderResult.Partial -> ProviderAttempt.Board(provider.descriptor.displayName, result.value, result.warnings)

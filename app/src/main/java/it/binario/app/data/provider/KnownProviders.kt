@@ -6,6 +6,10 @@ import it.binario.app.data.core.SourceId
 import it.binario.app.data.gtfs.EmbeddedGtfsPacks
 import it.binario.app.data.journey.EmbeddedGtfsJourneyProvider
 import it.binario.app.data.sources.RailSourceCatalog
+import it.binario.app.data.bikesharing.BikeSharingService
+import it.binario.app.data.bikesharing.BikeSharingSystems
+import it.binario.app.data.urban.UrbanGtfsRealtimeAdapter
+import it.binario.app.data.urban.UrbanRealtimeFeeds
 import java.time.Duration
 
 object KnownProviderIds {
@@ -319,6 +323,24 @@ object KnownProviders {
             enabled = true,
             priorityByCapability = mapOf(ProviderCapability.SERVICE_ALERTS to 90)
         ),
+    ) + UrbanRealtimeFeeds.all.map { feed ->
+        // Metro and tram realtime of a city network: read only by the stop boards and the journey results of that
+        // city, never by the railway enrichment; active only where the city pack is in the build (personal builds
+        // for a personal-only pack or feed).
+        ProviderPolicy(
+            descriptor = UrbanGtfsRealtimeAdapter.descriptor(feed),
+            enabled = feed in UrbanRealtimeFeeds.forBuild(EmbeddedGtfsPacks.personalSourcesIncluded, EmbeddedGtfsPacks.urban),
+            priorityByCapability = mapOf(ProviderCapability.TRAIN_RUN_REALTIME to 60)
+        )
+    } + BikeSharingSystems.all.map { system ->
+        // Shared bikes and scooters near a station (GBFS): not railway data, asked only when the user opens the
+        // section; personal-only systems (terms unclear) only in personal builds.
+        ProviderPolicy(
+            descriptor = BikeSharingService.descriptor(system),
+            enabled = system in BikeSharingSystems.forBuild(EmbeddedGtfsPacks.personalSourcesIncluded),
+            priorityByCapability = mapOf(ProviderCapability.BIKE_SHARING to 10)
+        )
+    } + listOf(
         ProviderPolicy(
             // Offline calculation on the embedded open-data packs: no request leaves the device. It only feeds the
             // journeys-with-changes search; direct-train searches, boards and enrichment never consult it.

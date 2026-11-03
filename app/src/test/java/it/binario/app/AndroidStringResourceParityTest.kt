@@ -167,7 +167,7 @@ class AndroidStringResourceParityTest {
         private val IDENTICAL_EVERYWHERE = setOf(
             "app_name", "app_brand", "integration_apple_watch_title",
             "widget_previous_symbol", "widget_next_symbol", "widget_refresh_symbol",
-            "delay_minutes", "share_stop_delay", "distance_kilometers", "quality_band_score",
+            "delay_minutes", "share_stop_delay", "distance_kilometers", "distance_meters", "quality_band_score",
             "widget_status_on_time", "widget_status_delayed", "widget_status_demo", "widget_quality_score",
             "widget_confidence_open_data", "widget_confidence_cached", "widget_confidence_demonstration",
             "widget_warning_demonstration", "trains_widget_status_early",

@@ -1295,4 +1295,22 @@
         <item quantity="other">%d opções</item>
     </plurals>
     <!-- End of platform changes, Partenze train types, saved timetables, sharing, tickets and assistance, CO2 estimate -->
+    <!-- City realtime (metro and tram) and shared bikes near stations -->
+    <string name="urban_realtime_source">Tempo real de %1$s, atualizado às %2$s</string>
+    <string name="bike_sharing_title">Bicicletas compartilhadas perto de %1$s</string>
+    <string name="bike_sharing_show">Mostrar bicicletas e patinetes a até 300 m</string>
+    <string name="bike_sharing_loading">Procurando bicicletas e patinetes…</string>
+    <string name="bike_sharing_none">Nenhuma bicicleta ou patinete disponível a até 300 m.</string>
+    <string name="bike_sharing_unavailable">Os dados de bicicletas compartilhadas não estão disponíveis agora.</string>
+    <string name="bike_sharing_dock_bikes">bicicletas: %1$d</string>
+    <string name="bike_sharing_dock_ebikes">elétricas: %1$d</string>
+    <string name="bike_sharing_dock_free">vagas livres: %1$d</string>
+    <string name="bike_sharing_type_bike">Bicicleta</string>
+    <string name="bike_sharing_type_ebike">Bicicleta elétrica</string>
+    <string name="bike_sharing_type_scooter">Patinete elétrico</string>
+    <string name="bike_sharing_type_other">Veículo compartilhado</string>
+    <string name="bike_sharing_battery">bateria %1$d%%</string>
+    <string name="bike_sharing_source">Dados GBFS de %1$s às %2$s</string>
+    <string name="bike_sharing_open">Abrir %1$s</string>
+    <string name="distance_meters">%1$d m</string>
 </resources>

@@ -1237,4 +1237,22 @@
         <item quantity="other">ခရီးစဉ် %d ခု</item>
     </plurals>
     <!-- End of platform changes, Partenze train types, saved timetables, sharing, tickets and assistance, CO2 estimate -->
+    <!-- City realtime (metro and tram) and shared bikes near stations -->
+    <string name="urban_realtime_source">%1$s မှ အချိန်နှင့်တပြေးညီ အချက်အလက်၊ %2$s တွင် အပ်ဒိတ်လုပ်ထားသည်</string>
+    <string name="bike_sharing_title">%1$s အနီးရှိ မျှဝေစက်ဘီးများ</string>
+    <string name="bike_sharing_show">300 m အတွင်း စက်ဘီးနှင့် စကူတာများကို ပြရန်</string>
+    <string name="bike_sharing_loading">စက်ဘီးနှင့် စကူတာများကို ရှာနေသည်…</string>
+    <string name="bike_sharing_none">300 m အတွင်း အသုံးပြုနိုင်သော စက်ဘီး သို့မဟုတ် စကူတာ မရှိပါ။</string>
+    <string name="bike_sharing_unavailable">စက်ဘီးမျှဝေမှု ဒေတာကို ယခု မရရှိနိုင်ပါ။</string>
+    <string name="bike_sharing_dock_bikes">စက်ဘီး: %1$d</string>
+    <string name="bike_sharing_dock_ebikes">လျှပ်စစ်: %1$d</string>
+    <string name="bike_sharing_dock_free">နေရာလွတ်: %1$d</string>
+    <string name="bike_sharing_type_bike">စက်ဘီး</string>
+    <string name="bike_sharing_type_ebike">လျှပ်စစ်စက်ဘီး</string>
+    <string name="bike_sharing_type_scooter">လျှပ်စစ်စကူတာ</string>
+    <string name="bike_sharing_type_other">မျှဝေယာဉ်</string>
+    <string name="bike_sharing_battery">ဘက်ထရီ %1$d%%</string>
+    <string name="bike_sharing_source">%1$s ၏ GBFS ဒေတာ (%2$s အချိန်)</string>
+    <string name="bike_sharing_open">%1$s ကိုဖွင့်ရန်</string>
+    <string name="distance_meters">%1$d m</string>
 </resources>

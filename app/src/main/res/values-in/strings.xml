@@ -1237,4 +1237,22 @@
         <item quantity="other">%d pilihan perjalanan</item>
     </plurals>
     <!-- End of platform changes, Partenze train types, saved timetables, sharing, tickets and assistance, CO2 estimate -->
+    <!-- City realtime (metro and tram) and shared bikes near stations -->
+    <string name="urban_realtime_source">Waktu nyata dari %1$s, diperbarui pukul %2$s</string>
+    <string name="bike_sharing_title">Sepeda sewa di dekat %1$s</string>
+    <string name="bike_sharing_show">Tampilkan sepeda dan skuter dalam radius 300 m</string>
+    <string name="bike_sharing_loading">Mencari sepeda dan skuter…</string>
+    <string name="bike_sharing_none">Tidak ada sepeda atau skuter dalam radius 300 m.</string>
+    <string name="bike_sharing_unavailable">Data sepeda sewa sedang tidak tersedia.</string>
+    <string name="bike_sharing_dock_bikes">sepeda: %1$d</string>
+    <string name="bike_sharing_dock_ebikes">listrik: %1$d</string>
+    <string name="bike_sharing_dock_free">slot kosong: %1$d</string>
+    <string name="bike_sharing_type_bike">Sepeda</string>
+    <string name="bike_sharing_type_ebike">Sepeda listrik</string>
+    <string name="bike_sharing_type_scooter">Skuter listrik</string>
+    <string name="bike_sharing_type_other">Kendaraan sewa</string>
+    <string name="bike_sharing_battery">baterai %1$d%%</string>
+    <string name="bike_sharing_source">Data GBFS dari %1$s pukul %2$s</string>
+    <string name="bike_sharing_open">Buka %1$s</string>
+    <string name="distance_meters">%1$d m</string>
 </resources>

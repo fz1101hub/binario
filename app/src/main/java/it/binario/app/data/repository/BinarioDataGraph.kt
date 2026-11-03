@@ -23,6 +23,17 @@ import it.binario.app.data.provider.ProviderRegistry
 import it.binario.app.data.provider.StationBoardProvider
 import it.binario.app.data.provider.TripUpdateProvider
 import it.binario.app.data.provider.VehiclePositionProvider
+import it.binario.app.data.core.SourceId
+import it.binario.app.data.bikesharing.BikeSharingService
+import it.binario.app.data.bikesharing.BikeSharingSystems
+import it.binario.app.data.live.HttpPublicSourceFetcher
+import it.binario.app.data.live.PublicSourceRequestPolicy
+import it.binario.app.data.sources.RailSourceCatalog
+import it.binario.app.data.urban.StopScopedBoardProvider
+import it.binario.app.data.urban.UrbanGtfsRealtimeAdapter
+import it.binario.app.data.urban.UrbanPackRoutes
+import it.binario.app.data.urban.UrbanRealtimeFeeds
+import it.binario.app.data.urban.UrbanStopBoardAdapter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -44,6 +55,8 @@ object BinarioDataGraph {
     private val stationIndexesByPackage = mutableMapOf<String, EmbeddedGtfsStationSearchIndex>()
     private val journeySearchByPackage = mutableMapOf<String, JourneySearchService>()
     private val urbanStopIndexesByPackage = mutableMapOf<String, EmbeddedUrbanStopIndex>()
+    private val urbanRealtimeByPackage = mutableMapOf<String, Map<SourceId, UrbanGtfsRealtimeAdapter>>()
+    private val urbanBoardsByPackage = mutableMapOf<String, List<StopScopedBoardProvider>>()
 
     fun routeDataSource(context: Context): TrainDataSource = synchronized(routeSourcesByPackage) {
         val applicationContext = context.applicationContext
@@ -120,6 +133,46 @@ object BinarioDataGraph {
         }
     }
 
+    /**
+     * The open GTFS-Realtime feeds of this build's city packs, by city pack: one adapter (and one 30-second cache) per
+     * feed, shared by the stop boards and the journey results. A feed is used only when its city pack is in the build
+     * and both are registry-enabled; nothing is fetched until a board or a journey of that city asks.
+     */
+    fun urbanRealtimeFeeds(context: Context): Map<SourceId, UrbanGtfsRealtimeAdapter> = synchronized(urbanRealtimeByPackage) {
+        val app = context.applicationContext
+        urbanRealtimeByPackage.getOrPut(app.packageName) {
+            val packs = EmbeddedGtfsPacks.urban.filter { defaultRegistry.isEnabled(it.sourceId) }
+            UrbanRealtimeFeeds.forBuild(EmbeddedGtfsPacks.personalSourcesIncluded, packs)
+                .filter { defaultRegistry.isEnabled(it.sourceId) }
+                .associate { feed ->
+                    val pack = packs.first { it.sourceId == feed.staticSourceId }
+                    feed.staticSourceId to UrbanGtfsRealtimeAdapter(
+                        feed = feed,
+                        packRoutes = { withContext(Dispatchers.IO) { UrbanPackRoutes.read(app.assets.open(pack.assetPath)) } }
+                    )
+                }
+        }
+    }
+
+    /** Boards of the metro, tram and funicular stops of this build's city packs, with their network's realtime feed. */
+    fun urbanStopBoardProviders(context: Context): List<StopScopedBoardProvider> = synchronized(urbanBoardsByPackage) {
+        val app = context.applicationContext
+        urbanBoardsByPackage.getOrPut(app.packageName) {
+            val packs = EmbeddedGtfsPacks.urban.filter { defaultRegistry.isEnabled(it.sourceId) }
+            if (packs.isEmpty()) return@getOrPut emptyList()
+            val adapter = EmbeddedGtfsRouteAdapter(openAsset = { app.assets.open(it) }, packs = packs, indexCacheCapacity = 1)
+            val realtime = urbanRealtimeFeeds(app)
+            packs.map { pack ->
+                UrbanStopBoardAdapter(
+                    pack = pack,
+                    adapter = adapter,
+                    realtime = realtime[pack.sourceId],
+                    networkName = RailSourceCatalog.byId(pack.sourceId)?.displayName ?: pack.sourceId.value
+                )
+            }
+        }
+    }
+
     fun stationSearchIndex(context: Context): EmbeddedGtfsStationSearchIndex = synchronized(stationIndexesByPackage) {
         val applicationContext = context.applicationContext
         stationIndexesByPackage.getOrPut(applicationContext.packageName) {
@@ -169,6 +222,17 @@ object BinarioDataGraph {
     /** The MIT strike calendar (RSS), when the registry enables it. */
     fun strikeCalendar(): it.binario.app.data.live.MitStrikeRssAdapter? =
         activeProviders(listOf(localOnlyPolicy.strikeCalendarProvider()), ProviderCapability.SERVICE_ALERTS).firstOrNull()
+
+    private val bikeSharing: BikeSharingService by lazy {
+        BikeSharingService(
+            systems = BikeSharingSystems.forBuild(EmbeddedGtfsPacks.personalSourcesIncluded).filter { defaultRegistry.isEnabled(it.id) },
+            // A citywide vehicle list (Bird Rome, about 4,300 scooters) is near 1 MB of JSON.
+            fetcher = HttpPublicSourceFetcher(PublicSourceRequestPolicy(maxBytes = 4 * 1024 * 1024, readTimeoutMillis = 15_000, totalTimeoutMillis = 20_000))
+        )
+    }
+
+    /** Shared bikes and scooters near a station (GBFS), from the registry-enabled systems of this build. */
+    fun bikeSharingService(): BikeSharingService = bikeSharing
 
     fun weatherForecastProvider(): it.binario.app.data.weather.OpenMeteoForecastAdapter? =
         activeProviders(listOf(localOnlyPolicy.weatherForecastProvider()), ProviderCapability.WEATHER_FORECAST).firstOrNull()

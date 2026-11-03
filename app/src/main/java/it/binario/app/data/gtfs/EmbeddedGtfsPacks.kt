@@ -126,8 +126,13 @@ object EmbeddedGtfsPacks {
     /** The railway packs of this build: route search, train-number search, boards and journeys. */
     val all: List<EmbeddedGtfsPack> = included.filterNot(EmbeddedGtfsPack::isUrban)
 
-    /** The city packs (metro, tram, funicular) of this build: journeys with changes and the stop search only. */
+    /** The city packs (metro, tram, funicular) of this build: journeys with changes, the stop search and stop boards. */
     val urban: List<EmbeddedGtfsPack> = included.filter(EmbeddedGtfsPack::isUrban)
+
+    private val urbanStopPrefixes: List<String> = transit.filter(EmbeddedGtfsPack::isUrban).map { "gtfs:${it.sourceId.value}:" }
+
+    /** True for the id of a city-pack stop (`gtfs:<city pack>:<stop>`), whatever the build. */
+    fun isUrbanStopId(id: String): Boolean = urbanStopPrefixes.any { id.startsWith(it) && id.length > it.length }
 
     /** Every pack of this build, railway then urban: what the registry enables. */
     val sourceIds: Set<SourceId> = included.mapTo(linkedSetOf()) { it.sourceId }

@@ -1260,4 +1260,22 @@
         <item quantity="other">%d phương án</item>
     </plurals>
     <!-- End of platform changes, Partenze train types, saved timetables, sharing, tickets and assistance, CO2 estimate -->
+    <!-- City realtime (metro and tram) and shared bikes near stations -->
+    <string name="urban_realtime_source">Thời gian thực từ %1$s, cập nhật lúc %2$s</string>
+    <string name="bike_sharing_title">Xe đạp chia sẻ gần %1$s</string>
+    <string name="bike_sharing_show">Hiện xe đạp và xe scooter trong bán kính 300 m</string>
+    <string name="bike_sharing_loading">Đang tìm xe đạp và xe scooter…</string>
+    <string name="bike_sharing_none">Không có xe đạp hoặc xe scooter nào trong bán kính 300 m.</string>
+    <string name="bike_sharing_unavailable">Hiện không có dữ liệu xe đạp chia sẻ.</string>
+    <string name="bike_sharing_dock_bikes">xe đạp: %1$d</string>
+    <string name="bike_sharing_dock_ebikes">điện: %1$d</string>
+    <string name="bike_sharing_dock_free">chỗ trống: %1$d</string>
+    <string name="bike_sharing_type_bike">Xe đạp</string>
+    <string name="bike_sharing_type_ebike">Xe đạp điện</string>
+    <string name="bike_sharing_type_scooter">Xe scooter điện</string>
+    <string name="bike_sharing_type_other">Phương tiện chia sẻ</string>
+    <string name="bike_sharing_battery">pin %1$d%%</string>
+    <string name="bike_sharing_source">Dữ liệu GBFS của %1$s lúc %2$s</string>
+    <string name="bike_sharing_open">Mở %1$s</string>
+    <string name="distance_meters">%1$d m</string>
 </resources>

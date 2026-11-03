@@ -1324,4 +1324,22 @@
         <item quantity="other">%d варианта</item>
     </plurals>
     <!-- End of platform changes, Partenze train types, saved timetables, sharing, tickets and assistance, CO2 estimate -->
+    <!-- City realtime (metro and tram) and shared bikes near stations -->
+    <string name="urban_realtime_source">Данные в реальном времени: %1$s, обновлено в %2$s</string>
+    <string name="bike_sharing_title">Прокатные велосипеды рядом: %1$s</string>
+    <string name="bike_sharing_show">Показать велосипеды и самокаты в радиусе 300 м</string>
+    <string name="bike_sharing_loading">Поиск велосипедов и самокатов…</string>
+    <string name="bike_sharing_none">В радиусе 300 м нет доступных велосипедов и самокатов.</string>
+    <string name="bike_sharing_unavailable">Данные проката велосипедов сейчас недоступны.</string>
+    <string name="bike_sharing_dock_bikes">велосипеды: %1$d</string>
+    <string name="bike_sharing_dock_ebikes">электрические: %1$d</string>
+    <string name="bike_sharing_dock_free">свободные места: %1$d</string>
+    <string name="bike_sharing_type_bike">Велосипед</string>
+    <string name="bike_sharing_type_ebike">Электровелосипед</string>
+    <string name="bike_sharing_type_scooter">Электросамокат</string>
+    <string name="bike_sharing_type_other">Транспорт напрокат</string>
+    <string name="bike_sharing_battery">заряд %1$d%%</string>
+    <string name="bike_sharing_source">Данные GBFS: %1$s, на %2$s</string>
+    <string name="bike_sharing_open">Открыть %1$s</string>
+    <string name="distance_meters">%1$d м</string>
 </resources>

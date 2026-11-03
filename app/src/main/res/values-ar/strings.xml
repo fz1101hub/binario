@@ -1382,4 +1382,22 @@
         <item quantity="other">%d رحلة</item>
     </plurals>
     <!-- End of platform changes, Partenze train types, saved timetables, sharing, tickets and assistance, CO2 estimate -->
+    <!-- City realtime (metro and tram) and shared bikes near stations -->
+    <string name="urban_realtime_source">بيانات فورية من %1$s، حُدّثت الساعة %2$s</string>
+    <string name="bike_sharing_title">دراجات مشتركة بالقرب من %1$s</string>
+    <string name="bike_sharing_show">عرض الدراجات والسكوترات ضمن 300 م</string>
+    <string name="bike_sharing_loading">جارٍ البحث عن دراجات وسكوترات…</string>
+    <string name="bike_sharing_none">لا توجد دراجات أو سكوترات متاحة ضمن 300 م.</string>
+    <string name="bike_sharing_unavailable">بيانات مشاركة الدراجات غير متاحة حاليًا.</string>
+    <string name="bike_sharing_dock_bikes">الدراجات: %1$d</string>
+    <string name="bike_sharing_dock_ebikes">الكهربائية: %1$d</string>
+    <string name="bike_sharing_dock_free">الأماكن الشاغرة: %1$d</string>
+    <string name="bike_sharing_type_bike">دراجة</string>
+    <string name="bike_sharing_type_ebike">دراجة كهربائية</string>
+    <string name="bike_sharing_type_scooter">سكوتر كهربائي</string>
+    <string name="bike_sharing_type_other">مركبة مشتركة</string>
+    <string name="bike_sharing_battery">البطارية %1$d%%</string>
+    <string name="bike_sharing_source">بيانات GBFS من %1$s الساعة %2$s</string>
+    <string name="bike_sharing_open">فتح %1$s</string>
+    <string name="distance_meters">%1$d م</string>
 </resources>
