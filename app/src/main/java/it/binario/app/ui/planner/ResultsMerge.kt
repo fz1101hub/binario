@@ -5,7 +5,11 @@ import it.binario.app.data.Station
 import it.binario.app.data.TrainService
 import it.binario.app.data.core.LegMode
 import it.binario.app.data.repository.JourneySearchQuery
+import it.binario.app.data.repository.JourneySearchResult
+import it.binario.app.journeys.JourneyLegLive
 import it.binario.app.journeys.JourneyOptionRow
+import it.binario.app.journeys.JourneyResultsPresentation
+import it.binario.app.journeys.JourneyResultsPresenter
 import it.binario.app.journeys.JourneyResultsFilter
 import it.binario.app.journeys.JourneySourceLabel
 import it.binario.app.data.provider.JourneyPreferences
@@ -70,8 +74,9 @@ internal sealed interface ResultEntry {
 internal object ResultsMerge {
     /**
      * Direct trains first in identity: a journey without changes that is the same train as a direct-train result
-     * (same departure minute and same train number, or same departure and arrival when a number is missing) is
-     * dropped, so the live or catalogue row with its train detail is the one shown.
+     * (its train leaves at the same minute with the same number, or leaves and arrives at the same minutes when a
+     * number is missing; a short walk before or after it does not make it another option) is dropped, so the live or
+     * catalogue row with its train detail is the one shown.
      */
     fun entries(
         services: List<TrainService>,
@@ -92,6 +97,14 @@ internal object ResultsMerge {
         val merged = marked + extra.map { ResultEntry.Journey(it) }
         return apply(confirmLastOfDay(merged, serviceDate), JourneyResultsFilter.ALL)
     }
+
+    /**
+     * The journeys of the merged list: every option (the chips filter the merged list), with "Ultimo di oggi" and
+     * "primo domani" only for a search of today ([markedDay]), and the live data of the changes ([live]) once it
+     * answers, so that the cards say "Coincidenza a rischio" as the detail does.
+     */
+    fun journeys(result: JourneySearchResult, markedDay: LocalDate?, live: Map<String, JourneyLegLive>): JourneyResultsPresentation =
+        JourneyResultsPresenter.present(result, serviceDate = markedDay, live = live)
 
     /** The direct trains the travel preferences leave in the results. */
     fun shownServices(services: List<TrainService>, preferences: JourneyPreferences?): List<TrainService> {
@@ -168,12 +181,18 @@ internal object ResultsMerge {
         if (row.changes != 0) return false
         val legs = row.legs.filter { it.mode != LegMode.WALK }
         if (legs.size != 1) return false
-        if (train.departure == null || train.departure != row.departure.toLocalDateTime()) return false
+        val vehicle = legs.single()
+        // The train's own times: an option that walks to it first leaves a few minutes earlier than the train.
+        if (train.departure == null || train.departure != vehicle.departure.toLocalDateTime()) return false
+        if (row.walkMinutes > MAX_DUPLICATE_WALK_MINUTES) return false
         val trainNumber = normalizedNumber(train.service.number)
-        val legNumber = normalizedNumber(legs.single().number)
+        val legNumber = normalizedNumber(vehicle.number)
         return if (trainNumber != null && legNumber != null) trainNumber == legNumber
-        else train.arrival != null && train.arrival == row.arrival.toLocalDateTime()
+        else train.arrival != null && train.arrival == vehicle.arrival.toLocalDateTime()
     }
+
+    /** Longer walks around the same train make an option of its own (another station, the metro). */
+    private const val MAX_DUPLICATE_WALK_MINUTES = 10L
 
     private fun train(service: TrainService, serviceDate: LocalDate): ResultEntry.Train {
         val departure = service.scheduledDepartureDateTime

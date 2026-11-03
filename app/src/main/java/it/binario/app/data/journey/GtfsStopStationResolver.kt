@@ -21,7 +21,9 @@ import java.util.Locale
  *    packs only the Italian half: the published words must be the leading words of exactly one station inside
  *    the province (the one with the fewest extra words), so "Verona" never becomes "Verona Parona";
  * 3. the strict whole-name matcher of the timetables ([RailStopNameMatcher]: "Bologna C.le", "S. Vitale").
- * Anything else stays a station of its own pack (never merged across packs by a guess).
+ * Anything else stays a station of its own pack (never merged across packs by a guess), unless [nearbyStation] places
+ * it, by its coordinates, at a catalogue station under the same name ("Verona" of the STA pack, 14 m from Verona
+ * Porta Nuova).
  *
  * The stops of a pack that publishes station codes ([GtfsStopCodeScheme]: Trenitalia, Italo) are first resolved by
  * their code ([resolveStop], [GtfsStationCodeIndex]); the name rules above only see the stops no code binds.
@@ -33,6 +35,10 @@ internal class GtfsStopStationResolver(stations: List<Station>) {
     private val bilingualByPrefix: Map<String, List<Pair<Station, Int>>>
     private val byToken: Map<String, List<Station>>
     private val codes = GtfsStationCodeIndex(stations)
+    /** Catalogue stations with coordinates on a grid of [SNAP_CELL_DEGREES], for [nearbyStation]. */
+    private val grid: Map<Long, List<Station>> = stations
+        .filter { it.latitude != null && it.longitude != null }
+        .groupBy { cell(it.latitude!!, it.longitude!!) }
 
     init {
         val keyed = HashMap<String, MutableSet<String>>()
@@ -91,6 +97,33 @@ internal class GtfsStopStationResolver(stations: List<Station>) {
         return null
     }
 
+    /**
+     * The catalogue station a stop no name or code binds is part of: the only one within [maxMeters] of the stop whose
+     * name starts with the stop's first word, when the rest of the stop's name only says that it is a station
+     * ("Verona" for Verona Porta Nuova; "Innsbruck, Stazione di Innsbruck Centrale" for Innsbruck Hbf.; "Caserta RFI").
+     * A stop that names something more ("Locarno FART", "Lugano FLP", "Brig Bahnhofplatz": another railway's station
+     * next door), or two candidates, stays a point of its own pack and is reached by walking.
+     */
+    fun nearbyStation(stopName: String, latitude: Double?, longitude: Double?, maxMeters: Double = SNAP_METERS): Station? {
+        if (latitude == null || longitude == null || latitude.isNaN() || longitude.isNaN()) return null
+        val words = RailStopNameMatcher.tokens(displayName(stopName))
+        val first = words.firstOrNull { it.length >= 4 } ?: return null
+        if (words.dropWhile { it != first }.drop(1).any { it.length >= 3 && it !in STATION_WORDS }) return null
+        val row = Math.floor(latitude / SNAP_CELL_DEGREES).toLong()
+        val column = Math.floor(longitude / SNAP_CELL_DEGREES).toLong()
+        var match: Station? = null
+        for (deltaRow in -1L..1L) for (deltaColumn in -1L..1L) {
+            for (station in grid[key(row + deltaRow, column + deltaColumn)] ?: continue) {
+                val meters = GtfsStationCodeIndex.distanceKm(latitude, longitude, station.latitude!!, station.longitude!!) * 1000.0
+                if (meters > maxMeters) continue
+                if (RailStopNameMatcher.tokens(station.name).firstOrNull { it.length >= 4 } != first) continue
+                if (match != null && match.id != station.id) return null
+                match = station
+            }
+        }
+        return match
+    }
+
     /** Normalized keys of the published name and its variants, compared with [candidateKeys] of an endpoint. */
     fun matchKeys(stopName: String): List<String> = variants(stopName).map(::normalize).filter(String::isNotEmpty).distinct()
 
@@ -102,6 +135,21 @@ internal class GtfsStopStationResolver(stations: List<Station>) {
     }
 
     companion object {
+        /** How far a stop can be from the catalogue station it is placed at ([nearbyStation]). */
+        const val SNAP_METERS = 150.0
+        /** About 1.1 km of latitude: [nearbyStation] reads the 3 x 3 cells around a stop. */
+        private const val SNAP_CELL_DEGREES = 0.01
+        /** Words that only say "station" in a stop name ([nearbyStation]): uppercase, as [RailStopNameMatcher.tokens]. */
+        private val STATION_WORDS = setOf(
+            "STAZIONE", "STAZ", "CENTRALE", "FS", "RFI", "FERROVIA", "FTM", "BAHNHOF", "HBF", "HAUPTBAHNHOF", "BF",
+            "GARE", "STATION", "CENTRAL"
+        )
+
+        private fun key(row: Long, column: Long): Long = (row shl 32) xor (column and 0xFFFFFFFFL)
+
+        private fun cell(latitude: Double, longitude: Double): Long =
+            key(Math.floor(latitude / SNAP_CELL_DEGREES).toLong(), Math.floor(longitude / SNAP_CELL_DEGREES).toLong())
+
         private val combiningMarks = Regex("\\p{M}+")
         private val nonAlphanumeric = Regex("[^a-z0-9]")
         private val STATION_OF = Regex("(?i)\\bstazione(?:\\s+di)?\\s+(.+)$")

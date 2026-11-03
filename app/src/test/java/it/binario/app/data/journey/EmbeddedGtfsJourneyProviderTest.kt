@@ -176,8 +176,8 @@ class EmbeddedGtfsJourneyProviderTest {
     @Test fun `no solution is an empty success and an unknown station is not covered`() = runBlocking {
         val provider = provider(mapOf(pack() to feed(listOf(
             Trip("T1", "100", listOf("A" to "08:00", "D" to "09:00")),
-            // Zeta is served only before the requested time.
-            Trip("T9", "900", listOf("A" to "06:00", "Z" to "06:30"))
+            // No train goes to Zeta: one only leaves from it.
+            Trip("T9", "900", listOf("Z" to "06:00", "A" to "06:30"))
         ), stopNames = mapOf("A" to "Alfa", "D" to "Delta", "Z" to "Zeta"))))
         val none = provider.searchJourneys(request(alfa, zeta))
         assertTrue(none is ProviderResult.Success)
@@ -331,10 +331,14 @@ class EmbeddedGtfsJourneyProviderTest {
     }
 
     @Test fun `the search window bounds departures`() = runBlocking {
-        val provider = provider(mapOf(pack() to feed(listOf(Trip("T1", "100", listOf("A" to "17:00", "D" to "18:00"))))),
-            GtfsJourneyPlannerSettings(searchWindowMinutes = 120, largeHubRailwayCodes = emptySet()))
-        assertTrue(options(provider.searchJourneys(request(alfa, delta, time = "08:00"))).isEmpty())
-        assertEquals(1, options(provider.searchJourneys(request(alfa, delta, time = "15:30"))).size)
+        val provider = provider(mapOf(pack() to feed(listOf(
+            Trip("T0", "90", listOf("A" to "08:30", "D" to "09:30")),
+            Trip("T1", "100", listOf("A" to "17:00", "D" to "18:00"))
+        ))), GtfsJourneyPlannerSettings(searchWindowMinutes = 120, largeHubRailwayCodes = emptySet()))
+        assertEquals(listOf("90"), options(provider.searchJourneys(request(alfa, delta, time = "08:00"))).map { it.legs.single().publicNumber })
+        assertEquals(listOf("100"), options(provider.searchJourneys(request(alfa, delta, time = "15:30"))).map { it.legs.single().publicNumber })
+        // Nothing in the window: the first train after it follows, alone.
+        assertEquals(listOf("100"), options(provider.searchJourneys(request(alfa, delta, time = "10:00"))).map { it.legs.single().publicNumber })
     }
 
     @Test fun `day connection arrays are cached and bounded`() = runBlocking {

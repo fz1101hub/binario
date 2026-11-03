@@ -5,6 +5,11 @@ package it.binario.app.data.journey
  * leaves [departureNode] at [departureMinute] and reaches [arrivalNode] at [arrivalMinute] on [trip]. A node is a
  * transfer point (one catalogue station, or one station of a pack that the catalogue does not know); changing
  * trains at node `n` needs [transferMinutes]`[n]` between the arrival and the next departure.
+ *
+ * "Resta a bordo": a traveller still on board after connection `c` is on board of every trip
+ * `continuationTrip[i]` for `i` = [continuationStart]`[c]`, then [continuationNext]`[i]`, until -1. The vehicle goes on
+ * as that trip from where `c` arrives (a GTFS block, or the same train in another pack): no change and no change time,
+ * and only for a traveller who rode `c`, so boarding the first trip after that point never rides the second one.
  */
 internal class ConnectionScanTimetable(
     val nodeCount: Int,
@@ -23,7 +28,12 @@ internal class ConnectionScanTimetable(
      */
     val footStart: IntArray = IntArray(nodeCount + 1),
     val footTarget: IntArray = IntArray(0),
-    val footMinutes: IntArray = IntArray(0)
+    val footMinutes: IntArray = IntArray(0),
+    /** Per connection, the first in-seat continuation after it (an index of [continuationTrip]) or -1; null: none. */
+    val continuationStart: IntArray? = null,
+    val continuationTrip: IntArray = IntArray(0),
+    /** The next continuation of the same connection, or -1. */
+    val continuationNext: IntArray = IntArray(0)
 ) {
     init {
         val size = departureNode.size
@@ -32,6 +42,9 @@ internal class ConnectionScanTimetable(
         require(transferMinutes.size == nodeCount) { "Un tempo di cambio per nodo" }
         require(footStart.size == nodeCount + 1 && footTarget.size == footMinutes.size &&
             footStart[nodeCount] == footTarget.size) { "Percorsi a piedi non coerenti" }
+        require((continuationStart == null || continuationStart.size == size) && continuationTrip.size == continuationNext.size) {
+            "Proseguimenti a bordo non coerenti"
+        }
         for (index in 1 until size) {
             require(departureMinute[index - 1] <= departureMinute[index]) { "Connessioni non ordinate per partenza" }
         }
@@ -57,7 +70,10 @@ internal class ConnectionScanTimetable(
     }
 }
 
-/** One vehicle of a journey: boarded on [boardConnection], left after [alightConnection] (same trip). */
+/**
+ * One vehicle of a journey: boarded on [boardConnection], left after [alightConnection] (the same trip, or a trip the
+ * vehicle goes on as: [ConnectionScanTimetable.continuationStart]).
+ */
 internal data class ScannedLeg(val boardConnection: Int, val alightConnection: Int)
 
 /**
@@ -105,8 +121,8 @@ internal data class ConnectionScanQuery(
     /** Bound on the earliest-arrival scans of one search (each one starts after the previous best departure). */
     val maxIterations: Int,
     /**
-     * No connection departing after this minute is used: a journey that leaves inside the window can go on with
-     * connections up to here, so a long trip leaving near the end of the window still arrives.
+     * No vehicle is boarded after this minute (the horizon of the changes). A traveller already on board stays on
+     * board after it: a night train boarded inside the horizon reaches Palermo the next afternoon.
      */
     val lastConnectionMinute: Int = latestDepartureMinute,
     /**
@@ -120,7 +136,13 @@ internal data class ConnectionScanQuery(
      * "Preferisci: meno camminate": of two options with the same trains, or the same departure, arrival and changes,
      * the one that walks less is kept (otherwise the first found). Ranking only, never another journey.
      */
-    val preferLessWalking: Boolean = false
+    val preferLessWalking: Boolean = false,
+    /**
+     * Longest wait between two vehicles before an option counts as one with a long wait: an option that makes the
+     * traveller wait longer is dropped when another one arrives no later than its arrival plus the extra wait
+     * ([ConnectionScanPlanner.excessWait]), and kept otherwise (it may be the only way to get there).
+     */
+    val maxChangeWaitMinutes: Int = Int.MAX_VALUE
 ) {
     init {
         require(maxTransfers in 0..6) { "Numero di cambi non supportato" }
@@ -130,6 +152,7 @@ internal data class ConnectionScanQuery(
         require(maxIterations > 0) { "Serve almeno una scansione" }
         require(latestDepartureMinute >= departureMinute) { "Finestra di ricerca non valida" }
         require(lastConnectionMinute >= latestDepartureMinute) { "Orizzonte delle connessioni non valido" }
+        require(maxChangeWaitMinutes >= 0) { "Attesa massima non valida" }
     }
 }
 
@@ -151,8 +174,9 @@ internal data class ConnectionScanQuery(
  *
  * [plan] repeats the scan from one minute after the earliest departure found so far, so options leaving later are
  * found too; afterwards it removes dominated options (leaving no later, arriving no earlier, with no fewer
- * changes), keeps one option per train sequence and per (departure, arrival, changes) and returns at most
- * maxResults options sorted by departure. Memory is O(rounds × (nodes + trips)), allocated once per search.
+ * changes) and options with a needless long wait ([ConnectionScanQuery.maxChangeWaitMinutes]), keeps one option per
+ * train sequence and per (departure, arrival, changes) and returns at most maxResults options sorted by departure.
+ * Memory is O(rounds × (nodes + trips)), allocated once per search.
  */
 internal class ConnectionScanPlanner(private val timetable: ConnectionScanTimetable) {
 
@@ -188,12 +212,15 @@ internal class ConnectionScanPlanner(private val timetable: ConnectionScanTimeta
             }
             found += run
             from = run.minOf { it.departureMinute } + 1
-            val selected = select(found, query.preferLessWalking)
+            val selected = select(found, query)
             // A later scan only finds options leaving at or after `from`, which can never dominate an option
-            // that already arrived before `from`: once the first maxResults options all did, they are final.
-            if (selected.size >= query.maxResults && selected.take(query.maxResults).all { it.arrivalMinute < from }) break
+            // that already arrived before `from` (with its extra wait): once the first maxResults options all did, they
+            // are final.
+            if (selected.size >= query.maxResults &&
+                selected.take(query.maxResults).all { it.arrivalMinute + excessWait(it, query.maxChangeWaitMinutes) < from }
+            ) break
         }
-        val selected = select(found, query.preferLessWalking)
+        val selected = select(found, query)
         return PlanOutcome(selected.take(query.maxResults), exhausted && selected.size <= query.maxResults)
     }
 
@@ -226,14 +253,18 @@ internal class ConnectionScanPlanner(private val timetable: ConnectionScanTimeta
         val footStart = timetable.footStart
         val footTarget = timetable.footTarget
         val footMinutes = timetable.footMinutes
+        val continuationStart = timetable.continuationStart
+        val continuationTrip = timetable.continuationTrip
+        val continuationNext = timetable.continuationNext
 
         var connection = firstDepartingAtOrAfter(from)
         val size = timetable.size
         while (connection < size) {
             val departure = departureMinute[connection]
-            if (departure > query.lastConnectionMinute) break
             // Nothing leaving at or after the best direct arrival can improve any round (see class comment).
             if (departure >= bestAtDestination[1]) break
+            // After the horizon only the vehicles already boarded go on.
+            val boardingOpen = departure <= query.lastConnectionMinute
             if (connection and 4095 == 0) ensureActive()
             val trip = tripOf[connection]
             val boardNode = departureNode[connection]
@@ -244,7 +275,7 @@ internal class ConnectionScanPlanner(private val timetable: ConnectionScanTimeta
             for (round in 1..rounds) {
                 val slot = (round - 1) * trips + trip
                 var boarded = boardedAt[slot]
-                if (boarded < 0 && pickup) {
+                if (boarded < 0 && pickup && boardingOpen) {
                     val reachable = if (round == 1) {
                         val walk = access[boardNode]
                         // The journey leaves the origin `walk` minutes before this departure, inside the window.
@@ -257,7 +288,17 @@ internal class ConnectionScanPlanner(private val timetable: ConnectionScanTimeta
                         boarded = connection
                     }
                 }
-                if (boarded >= 0 && dropOff) {
+                if (boarded < 0) continue
+                // Still on board here: on board of the trips the vehicle goes on as, boarded where this one was.
+                if (continuationStart != null) {
+                    var link = continuationStart[connection]
+                    while (link >= 0) {
+                        val next = (round - 1) * trips + continuationTrip[link]
+                        if (boardedAt[next] < 0) boardedAt[next] = boarded
+                        link = continuationNext[link]
+                    }
+                }
+                if (dropOff) {
                     val cell = round * nodes + alightNode
                     if (arrives < arrival[cell]) {
                         arrival[cell] = arrives
@@ -362,13 +403,41 @@ internal class ConnectionScanPlanner(private val timetable: ConnectionScanTimeta
         return low
     }
 
-    private fun select(found: List<ScannedJourney>, preferLessWalking: Boolean = false): List<ScannedJourney> {
+    /**
+     * Minutes of the longest wait between two vehicles of [journey] (from the arrival of one to the departure of the
+     * next, a walk between them included); 0 without changes.
+     */
+    fun longestWait(journey: ScannedJourney): Int {
+        var longest = 0
+        for (index in 1 until journey.legs.size) {
+            val wait = timetable.departureMinute[journey.legs[index].boardConnection] -
+                timetable.arrivalMinute[journey.legs[index - 1].alightConnection]
+            if (wait > longest) longest = wait
+        }
+        return longest
+    }
+
+    /** How much the longest wait of [journey] exceeds [maxWaitMinutes]; 0 when it does not. */
+    fun excessWait(journey: ScannedJourney, maxWaitMinutes: Int): Int =
+        if (maxWaitMinutes == Int.MAX_VALUE) 0 else (longestWait(journey) - maxWaitMinutes).coerceAtLeast(0)
+
+    private fun select(found: List<ScannedJourney>, query: ConnectionScanQuery): List<ScannedJourney> {
+        val preferLessWalking = query.preferLessWalking
         fun <K> MutableMap<K, ScannedJourney>.offer(key: K, journey: ScannedJourney) {
             val kept = putIfAbsent(key, journey) ?: return
             if (preferLessWalking && journey.walkMinutes < kept.walkMinutes) put(key, journey)
         }
+        // A long wait at a change is worth avoiding when another option, with a shorter one, arrives no later than this
+        // option's arrival plus its extra wait (the night in Milano Porta Garibaldi before the 05:22 to Lecco, when the
+        // first train of the morning gets there half an hour later): a later train spares the wait in a station.
+        val excess = IntArray(found.size) { excessWait(found[it], query.maxChangeWaitMinutes) }
+        val patient = found.filterIndexed { index, journey ->
+            excess[index] == 0 || found.indices.none { other ->
+                excess[other] < excess[index] && found[other].arrivalMinute + excess[other] <= journey.arrivalMinute + excess[index]
+            }
+        }
         val byTrains = LinkedHashMap<List<Int>, ScannedJourney>()
-        for (journey in found) {
+        for (journey in patient) {
             byTrains.offer(journey.legs.map { timetable.trip[it.boardConnection] }, journey)
         }
         val byCriteria = LinkedHashMap<Triple<Int, Int, Int>, ScannedJourney>()
