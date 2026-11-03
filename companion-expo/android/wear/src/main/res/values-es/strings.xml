@@ -6,7 +6,7 @@
   <string name="binario_unavailable">Datos en tiempo real no disponibles.</string>
   <string name="binario_next_journey">PRÓXIMO VIAJE · PLANIFICADO</string>
   <string name="binario_open_binario">Abrir Binario y dictar</string>
-  <string name="binario_reminder">Recordatorio %1$d min · </string>
+  <string name="binario_reminder_and_status">Recordatorio %1$d min · %2$s</string>
   <string name="binario_scheduled_not_realtime">Hora programada, no en tiempo real</string>
   <string name="binario_countdown_minutes">En %1$d min</string>
   <string name="binario_countdown_hours">En %1$d h</string>

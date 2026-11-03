@@ -10,7 +10,7 @@
   <string name="binario_unavailable">Không có dữ liệu thời gian thực.</string>
   <string name="binario_next_journey">HÀNH TRÌNH TIẾP THEO · THEO KẾ HOẠCH</string>
   <string name="binario_open_binario">Mở Binario và đọc</string>
-  <string name="binario_reminder">Nhắc trước %1$d phút ·</string>
+  <string name="binario_reminder_and_status">Nhắc trước %1$d phút · %2$s</string>
   <string name="binario_scheduled_not_realtime">Giờ theo kế hoạch, không theo thời gian thực</string>
   <string name="binario_countdown_minutes">Còn %1$d phút</string>
   <string name="binario_countdown_hours">Còn %1$d giờ</string>

@@ -10,7 +10,7 @@
   <string name="binario_unavailable">रीयल-टाइम डेटा उपलब्ध नहीं।</string>
   <string name="binario_next_journey">अगली यात्रा · निर्धारित</string>
   <string name="binario_open_binario">Binario खोलें और बोलें</string>
-  <string name="binario_reminder">रिमाइंडर %1$d मि ·</string>
+  <string name="binario_reminder_and_status">रिमाइंडर %1$d मि · %2$s</string>
   <string name="binario_scheduled_not_realtime">निर्धारित समय, रीयल-टाइम नहीं</string>
   <string name="binario_countdown_minutes">%1$d मि में</string>
   <string name="binario_countdown_hours">%1$d घं में</string>

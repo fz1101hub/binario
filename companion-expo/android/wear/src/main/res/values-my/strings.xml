@@ -6,7 +6,7 @@
   <string name="binario_unavailable">အချိန်နှင့်တပြေးညီ ဒေတာ မရရှိနိုင်ပါ။</string>
   <string name="binario_next_journey">နောက်ခရီးစဉ် · စီစဉ်ထားသည်</string>
   <string name="binario_open_binario">Binario ကို ဖွင့်ပြီး အသံဖြင့်ရေးပါ</string>
-  <string name="binario_reminder">သတိပေးချက် %1$d မိနစ် ·</string>
+  <string name="binario_reminder_and_status">သတိပေးချက် %1$d မိနစ် · %2$s</string>
   <string name="binario_scheduled_not_realtime">စီစဉ်ထားသော အချိန်၊ အချိန်နှင့်တပြေးညီ မဟုတ်ပါ</string>
   <string name="binario_countdown_minutes">%1$d မိနစ်အတွင်း</string>
   <string name="binario_countdown_hours">%1$d နာရီအတွင်း</string>

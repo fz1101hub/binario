@@ -6,7 +6,7 @@
   <string name="binario_unavailable">ไม่มีข้อมูลเรียลไทม์</string>
   <string name="binario_next_journey">การเดินทางครั้งถัดไป · ตามแผน</string>
   <string name="binario_open_binario">เปิด Binario แล้วพูด</string>
-  <string name="binario_reminder">เตือนก่อน %1$d นาที ·</string>
+  <string name="binario_reminder_and_status">เตือนก่อน %1$d นาที · %2$s</string>
   <string name="binario_scheduled_not_realtime">เวลาตามแผน ไม่ใช่เรียลไทม์</string>
   <string name="binario_countdown_minutes">อีก %1$d นาที</string>
   <string name="binario_countdown_hours">อีก %1$d ชม.</string>

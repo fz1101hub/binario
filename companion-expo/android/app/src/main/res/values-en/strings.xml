@@ -10,7 +10,7 @@
   <string name="binario_unavailable">Real-time data unavailable.</string>
   <string name="binario_next_journey">NEXT JOURNEY · SCHEDULED</string>
   <string name="binario_open_binario">Open Binario and dictate</string>
-  <string name="binario_reminder">Reminder %1$d min · </string>
+  <string name="binario_reminder_and_status">Reminder %1$d min · %2$s</string>
   <string name="binario_scheduled_not_realtime">Scheduled time, not real-time</string>
   <string name="binario_countdown_minutes">In %1$d min</string>
   <string name="binario_countdown_hours">In %1$d h</string>

@@ -10,7 +10,7 @@
   <string name="binario_unavailable">البيانات في الوقت الفعلي غير متاحة.</string>
   <string name="binario_next_journey">الرحلة التالية · مجدولة</string>
   <string name="binario_open_binario">افتح Binario وأملِ</string>
-  <string name="binario_reminder">تذكير %1$d د ·</string>
+  <string name="binario_reminder_and_status">تذكير %1$d د · %2$s</string>
   <string name="binario_scheduled_not_realtime">موعد مجدول، وليس في الوقت الفعلي</string>
   <string name="binario_countdown_minutes">بعد %1$d د</string>
   <string name="binario_countdown_hours">بعد %1$d س</string>

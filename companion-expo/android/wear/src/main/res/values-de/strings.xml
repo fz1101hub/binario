@@ -6,7 +6,7 @@
   <string name="binario_unavailable">Echtzeitdaten nicht verfügbar.</string>
   <string name="binario_next_journey">NÄCHSTE FAHRT · GEPLANT</string>
   <string name="binario_open_binario">Binario öffnen und sprechen</string>
-  <string name="binario_reminder">Erinnerung %1$d Min. · </string>
+  <string name="binario_reminder_and_status">Erinnerung %1$d Min. · %2$s</string>
   <string name="binario_scheduled_not_realtime">Geplante Zeit, nicht in Echtzeit</string>
   <string name="binario_countdown_minutes">In %1$d Min.</string>
   <string name="binario_countdown_hours">In %1$d Std.</string>

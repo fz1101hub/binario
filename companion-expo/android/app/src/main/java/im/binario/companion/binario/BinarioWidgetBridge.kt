@@ -50,6 +50,7 @@ class BinarioWidgetBridgeModule(private val context: ReactApplicationContext) : 
     val plannedAt = if (planned != null && planned.hasKey("scheduledAtUtcMs") && !planned.isNull("scheduledAtUtcMs")) planned.getDouble("scheduledAtUtcMs").toLong() else null
     val plannedReminder = if (planned != null && planned.hasKey("reminderMinutes") && !planned.isNull("reminderMinutes")) planned.getDouble("reminderMinutes").toInt() else null
     BinarioWidgetStore.write(context, BinarioWidgetState(title, subtitle, status, updatedAt, expiresAt, plannedTitle, plannedAt, plannedReminder))
+    BinarioWidgetRefreshWorker.scheduleTransition(context, plannedAt, expiresAt)
     syncWearPayload(watch)
     scope.launch { BinarioStatusWidget().updateAll(context) }
   }

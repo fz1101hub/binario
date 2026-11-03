@@ -10,7 +10,7 @@
   <string name="binario_unavailable">リアルタイムデータは利用できません。</string>
   <string name="binario_next_journey">次の移動 · 計画</string>
   <string name="binario_open_binario">Binario を開いて音声入力</string>
-  <string name="binario_reminder">リマインダー %1$d 分前 ·</string>
+  <string name="binario_reminder_and_status">リマインダー %1$d 分前 · %2$s</string>
   <string name="binario_scheduled_not_realtime">計画時刻（リアルタイムではありません）</string>
   <string name="binario_countdown_minutes">あと %1$d 分</string>
   <string name="binario_countdown_hours">あと %1$d 時間</string>

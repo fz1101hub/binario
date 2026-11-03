@@ -6,7 +6,7 @@
   <string name="binario_unavailable">Gerçek zamanlı veri yok.</string>
   <string name="binario_next_journey">SONRAKİ YOLCULUK · PLANLI</string>
   <string name="binario_open_binario">Binario\'yu aç ve dikte et</string>
-  <string name="binario_reminder">Hatırlatıcı %1$d dk ·</string>
+  <string name="binario_reminder_and_status">Hatırlatıcı %1$d dk · %2$s</string>
   <string name="binario_scheduled_not_realtime">Planlı saat, gerçek zamanlı değil</string>
   <string name="binario_countdown_minutes">%1$d dk sonra</string>
   <string name="binario_countdown_hours">%1$d sa sonra</string>
