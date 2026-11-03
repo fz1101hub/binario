@@ -197,7 +197,7 @@ final class SQLiteGTFSJourneyRepositoryTests: XCTestCase {
         XCTAssertEqual(try Data(contentsOf: installed), database)
 
         #if os(iOS) || os(macOS) || os(watchOS) || os(tvOS) || os(visionOS)
-        XCTAssertEqual(try installed.resourceValues(forKeys: [.isExcludedFromBackupKey]).isExcludedFromBackup, true)
+        XCTAssertTrue(BundledGTFSScheduleInstaller.isExcludedFromBackupOnDisk(installed))
         var values = URLResourceValues()
         values.isExcludedFromBackup = false
         var mutableInstalled = installed
@@ -213,7 +213,7 @@ final class SQLiteGTFSJourneyRepositoryTests: XCTestCase {
         XCTAssertEqual(reused, installed)
         XCTAssertEqual(try Data(contentsOf: reused), database)
         #if os(iOS) || os(macOS) || os(watchOS) || os(tvOS) || os(visionOS)
-        XCTAssertEqual(try reused.resourceValues(forKeys: [.isExcludedFromBackupKey]).isExcludedFromBackup, true)
+        XCTAssertTrue(BundledGTFSScheduleInstaller.isExcludedFromBackupOnDisk(reused))
         #endif
 
         try compressed.write(to: compressedURL)

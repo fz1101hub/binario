@@ -200,12 +200,28 @@ public struct BundledGTFSScheduleInstaller: Sendable {
         #if os(iOS) || os(macOS) || os(watchOS) || os(tvOS) || os(visionOS)
         // Write through a fresh URL with an empty cache: a cached "already excluded" value
         // from an earlier read must not let the flag be skipped after someone cleared it.
-        var mutableURL = URL(fileURLWithPath: url.path, isDirectory: false)
-        mutableURL.removeAllCachedResourceValues()
-        var values = URLResourceValues()
-        values.isExcludedFromBackup = true
-        try mutableURL.setResourceValues(values)
-        mutableURL.removeAllCachedResourceValues()
+        // The flag is then read back from disk through another fresh URL and written again
+        // if it did not stick (seen on CI right after the flag had been cleared).
+        for attempt in 0..<3 {
+            var mutableURL = URL(fileURLWithPath: url.path, isDirectory: false)
+            mutableURL.removeAllCachedResourceValues()
+            var values = URLResourceValues()
+            values.isExcludedFromBackup = true
+            try mutableURL.setResourceValues(values)
+            if isExcludedFromBackupOnDisk(url) { return }
+            if attempt < 2 { Thread.sleep(forTimeInterval: 0.05) }
+        }
+        #endif
+    }
+
+    /// The backup flag as stored now, read through a new URL instance with no cached values.
+    static func isExcludedFromBackupOnDisk(_ url: URL) -> Bool {
+        #if os(iOS) || os(macOS) || os(watchOS) || os(tvOS) || os(visionOS)
+        var fresh = URL(fileURLWithPath: url.path, isDirectory: false)
+        fresh.removeAllCachedResourceValues()
+        return (try? fresh.resourceValues(forKeys: [.isExcludedFromBackupKey]).isExcludedFromBackup) == true
+        #else
+        return false
         #endif
     }
 
