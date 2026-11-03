@@ -90,6 +90,8 @@ jobs:
           tests/test_transit_source_discovery.py
           tests/test_refresh_core_gtfs.py
           tests/test_apply_ci_gtfs_refresh.py
+          tests/test_collect_punctuality.py
+          tests/test_build_punctuality_stats.py
           tests/test_verify_gradle_dependency_metadata.py
           tests/test_install_xcodegen.py
           tests/test_verify_ci_pinning.py
