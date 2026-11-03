@@ -50,6 +50,16 @@ class WearMainActivityTest {
         assertFalse(source.contains("connectedNodes"))
     }
 
+    @Test
+    fun `service rows are plain containers with one spoken label, not clickable cards without an action`() {
+        val source = activitySource()
+
+        assertFalse(source.contains("onClick = {}"))
+        assertFalse(source.contains("import androidx.wear.compose.material3.Card"))
+        assertTrue(source.contains(".background(MaterialTheme.colorScheme.surfaceContainer, MaterialTheme.shapes.large)"))
+        assertTrue(source.contains(".clearAndSetSemantics { contentDescription = service.accessibleLabel(context) }"))
+    }
+
     private fun activitySource(): String = sequenceOf(File("src/main/java"), File("wear/src/main/java"))
         .firstOrNull(File::isDirectory)
         ?.resolve("it/binario/wear/WearMainActivity.kt")
