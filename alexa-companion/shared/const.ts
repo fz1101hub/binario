@@ -8,8 +8,12 @@ export const LEGACY_COOKIE_NAME = "app_session_id";
 // Upper bound for procedures in one batched tRPC HTTP request (client and server).
 export const TRPC_MAX_BATCH_SIZE = 10;
 export const ONE_YEAR_MS = 1000 * 60 * 60 * 24 * 365;
-// Dashboard sessions are not revocable server-side, so they must stay short.
-export const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 30;
+// Dashboard sessions are not revocable server-side, so they stay short: a session
+// lasts a day from its last renewal (auth.me renews it at most hourly while the
+// dashboard is used) and never more than a week from the login that created it.
+export const SESSION_TTL_MS = 1000 * 60 * 60 * 24;
+export const SESSION_MAX_LIFETIME_MS = 1000 * 60 * 60 * 24 * 7;
+export const SESSION_RENEW_AFTER_MS = 1000 * 60 * 60;
 export const AXIOS_TIMEOUT_MS = 30_000;
 export const UNAUTHED_ERR_MSG = 'Please login (10001)';
 export const NOT_ADMIN_ERR_MSG = 'You do not have required permission (10002)';

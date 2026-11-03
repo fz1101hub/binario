@@ -2,6 +2,7 @@ import { ACCOUNT_DELETION_CONFIRMATION, COOKIE_NAME, LEGACY_COOKIE_NAME } from "
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { getSessionCookieOptions } from "./_core/cookies";
+import { sdk } from "./_core/sdk";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { createPersonalRoute, deleteUserAccount, getAlexaLinkStatus, listPersonalRoutes, removePersonalRoute, revokeAllVoiceCredentialsForUser, setPersonalRoutePinned } from "./db";
 import { createProfileRouter } from "./profile/router";
@@ -10,7 +11,12 @@ import { isAlexaConfigured } from "./voice/config";
 
 export const appRouter = router({
   auth: router({
-    me: publicProcedure.query(opts => opts.ctx.user),
+    // The dashboard asks for `me` on every load: that is where a used session slides forward.
+    me: publicProcedure.query(async ({ ctx }) => {
+      if (ctx.user && !(ctx.user as { isCron?: boolean }).isCron)
+        await sdk.renewSessionCookie(ctx.req, ctx.res);
+      return ctx.user;
+    }),
     logout: publicProcedure.mutation(({ ctx }) => {
       const cookieOptions = getSessionCookieOptions(ctx.req);
       ctx.res.clearCookie(COOKIE_NAME, cookieOptions);

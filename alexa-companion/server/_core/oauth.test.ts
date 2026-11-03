@@ -90,13 +90,14 @@ describe("callback dashboard OAuth", () => {
     );
     expect(sdkMocks.createSessionToken).toHaveBeenCalledWith("empty-name-user", {
       name: "",
-      expiresInMs: 1000 * 60 * 60 * 24 * 30,
+      expiresInMs: 1000 * 60 * 60 * 24,
     });
     const setCookie = response.headers.get("set-cookie") ?? "";
     expect(setCookie).toContain("__Host-app_session_id=dashboard-session");
     expect(setCookie).toMatch(
       /__Host-app_session_id=dashboard-session; Max-Age=\d+; Path=\/; Expires=[^;]+; HttpOnly; Secure; SameSite=Lax/
     );
+    expect(setCookie).toContain("Max-Age=86400;");
     expect(setCookie).not.toContain("Domain=");
     // The pre-prefix cookie is expired so a stale or tossed copy cannot linger.
     expect(setCookie).toMatch(/(^|,\s*)app_session_id=;/);

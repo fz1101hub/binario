@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { SignJWT } from "jose";
 import type { Request } from "express";
-import { COOKIE_NAME } from "../../shared/const";
+import { COOKIE_NAME, SESSION_TTL_MS } from "../../shared/const";
 
 vi.hoisted(() => {
   Object.assign(process.env, {
@@ -14,6 +14,8 @@ vi.hoisted(() => {
 import { sdk } from "./sdk";
 import * as db from "../db";
 import { environmentProblems } from "./envCheck";
+import { appRouter } from "../routers";
+import type { TrpcContext } from "./context";
 
 describe("sessioni dashboard", () => {
   it("accetta solo sessioni emesse per questa app", async () => {
@@ -234,5 +236,77 @@ describe("sessioni dashboard", () => {
         "DATABASE_URL deve essere un URL mysql valido",
       ])
     );
+  });
+});
+
+describe("durata delle sessioni dashboard", () => {
+  const HOUR = 60 * 60 * 1000;
+  const DAY = 24 * HOUR;
+  const secret = () => new TextEncoder().encode(process.env.JWT_SECRET as string);
+  const seconds = (ms: number) => Math.floor(ms / 1000);
+  async function token(claims: { iat?: number; exp: number; auth_time?: number }) {
+    const jwt = new SignJWT({
+      openId: "user-1",
+      appId: "binario-app",
+      name: "Utente",
+      ...(claims.auth_time !== undefined ? { auth_time: seconds(claims.auth_time) } : {}),
+    })
+      .setProtectedHeader({ alg: "HS256", typ: "JWT" })
+      .setExpirationTime(seconds(claims.exp));
+    if (claims.iat !== undefined) jwt.setIssuedAt(seconds(claims.iat));
+    return jwt.sign(secret());
+  }
+  const payload = (jwt: string) => JSON.parse(Buffer.from(jwt.split(".")[1], "base64url").toString()) as Record<string, number>;
+
+  it("emette sessioni di 24 ore con l'ora del login", async () => {
+    const now = Date.now();
+    const claims = payload(await sdk.createSessionToken("user-1", { name: "Utente", expiresInMs: SESSION_TTL_MS }));
+    expect(SESSION_TTL_MS).toBe(DAY);
+    expect(claims.exp * 1000 - now).toBeGreaterThan(DAY - 5_000);
+    expect(claims.exp * 1000 - now).toBeLessThanOrEqual(DAY);
+    expect(Math.abs(claims.auth_time * 1000 - now)).toBeLessThan(5_000);
+  });
+
+  it("rifiuta i cookie emessi con la vecchia durata di 30 giorni e le sessioni oltre la vita massima", async () => {
+    const now = Date.now();
+    expect(await sdk.verifySession(await token({ exp: now + 29 * DAY }))).toBeNull();
+    expect(await sdk.verifySession(await token({ iat: now - 2 * HOUR, exp: now + HOUR, auth_time: now - 8 * DAY }))).toBeNull();
+    expect(await sdk.verifySession(await token({ iat: now - 2 * HOUR, exp: now + HOUR, auth_time: now - 6 * DAY }))).toMatchObject({ openId: "user-1" });
+  });
+
+  it("fa scorrere una sessione usata, al massimo una volta l'ora e mai oltre i sette giorni dal login", async () => {
+    const now = Date.now();
+    expect(await sdk.renewSession(await sdk.createSessionToken("user-1", { name: "Utente" }))).toBeNull();
+    // Sessions from before this policy carry no login time and simply expire.
+    expect(await sdk.renewSession(await token({ iat: now - 2 * HOUR, exp: now + HOUR }))).toBeNull();
+
+    const renewed = await sdk.renewSession(await token({ iat: now - 2 * HOUR, exp: now + HOUR, auth_time: now - 2 * DAY }));
+    expect(renewed?.maxAgeMs).toBe(SESSION_TTL_MS);
+    const claims = payload(renewed!.token);
+    expect(claims.auth_time).toBe(seconds(now - 2 * DAY));
+    expect(claims.exp * 1000 - now).toBeGreaterThan(DAY - 5_000);
+
+    const nearCap = await sdk.renewSession(await token({ iat: now - 2 * HOUR, exp: now + HOUR, auth_time: now - (7 * DAY - 3 * HOUR) }));
+    expect(nearCap!.maxAgeMs).toBeLessThanOrEqual(3 * HOUR);
+    expect(payload(nearCap!.token).exp * 1000).toBeLessThanOrEqual(now - (7 * DAY - 3 * HOUR) + 7 * DAY + 1_000);
+  });
+
+  it("auth.me rinnova il cookie __Host- di un utente autenticato", async () => {
+    const now = Date.now();
+    const cookie = vi.fn();
+    const ctx = {
+      user: { id: 7, openId: "user-1", name: "Utente" },
+      req: { protocol: "https", headers: { cookie: `${COOKIE_NAME}=${await token({ iat: now - 2 * HOUR, exp: now + HOUR, auth_time: now - DAY })}` } },
+      res: { cookie },
+    } as unknown as TrpcContext;
+    await expect(appRouter.createCaller(ctx).auth.me()).resolves.toMatchObject({ id: 7 });
+    expect(cookie).toHaveBeenCalledWith(
+      COOKIE_NAME,
+      expect.any(String),
+      expect.objectContaining({ httpOnly: true, secure: true, path: "/", maxAge: SESSION_TTL_MS })
+    );
+    cookie.mockClear();
+    await appRouter.createCaller({ ...ctx, user: null }).auth.me();
+    expect(cookie).not.toHaveBeenCalled();
   });
 });
