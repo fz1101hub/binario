@@ -104,7 +104,7 @@ object LiveNotificationScheduling {
     fun onAppStart(context: Context) {
         val app = context.applicationContext
         runCatching { FollowedTripScheduler.reschedule(app) }
-        runCatching { TrainAlertScheduler.reschedule(app) }
+        runCatching { TrainAlertScheduler.reschedule(app, keepPending = true) }
         runCatching { StrikeReminderScheduler.reschedule(app, keepPending = true) }
         runCatching { PunctualityRecorderScheduler.reschedule(app) }
         runCatching { ApproachAlertScheduler.reschedule(app) }
