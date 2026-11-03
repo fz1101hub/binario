@@ -32,13 +32,13 @@ Note sui codici:
 
 ## Alexa: lingue disponibili e limiti
 
-Le risposte vocali, gli schermi Echo Show e i modelli di interazione esistono solo per i locale offerti da Alexa per le skill personalizzate. Fra le lingue richieste lo sono **`ar-SA`, `hi-IN`, `ja-JP` e `pt-BR`**, aggiunti con modello di interazione (stessi intent e slot di `it-IT`), dati di pubblicazione in `skill.json` (nome, descrizione, frasi d'esempio, parole chiave), paesi di distribuzione SA, IN, JP, BR e risposte localizzate. La documentazione Amazon non era raggiungibile dalla sessione che ha fatto il lavoro: la lista va riverificata nella console Alexa prima della certificazione.
+Le risposte vocali, gli schermi Echo Show e i modelli di interazione esistono solo per i locale offerti da Alexa per le skill personalizzate. Fra le lingue richieste lo sono **`ar-SA`, `hi-IN`, `ja-JP` e `pt-BR`**, aggiunti con modello di interazione (stessi intent e slot di `it-IT`), dati di pubblicazione in `skill.json` (nome, descrizione, frasi d'esempio, parole chiave), paesi di distribuzione SA, IN, JP, BR e risposte localizzate. La documentazione Amazon non era raggiungibile dalla sessione che ha fatto il lavoro: la lista va riverificata nella console Alexa prima della certificazione. Sono pubblicati anche **`en-IN`** ed **`es-US`**, che riusano senza modifiche modelli, testi e dizionari di `en-US` ed `es-ES` (un test mantiene identiche le copie); i paesi IN e US erano già fra quelli di distribuzione. Restano da decidere `en-CA`, `en-AU`, `es-MX` e `fr-CA`, che richiedono i nuovi paesi CA, AU e MX.
 
 Indonesiano, coreano, birmano, russo, thai, turco, vietnamita e cinese **non sono locale delle skill Alexa**: per queste lingue sono tradotte la dashboard web e le pagine di consenso OAuth (che sono pagine web, non risposte di Alexa), mentre la skill resta raggiungibile solo in una lingua che Alexa offre. Per questo i suggerimenti «Prova a chiedere» di queste lingue citano l'invocazione inglese «Binario Trains».
 
 Scelte da verificare in certificazione:
 
-- **Invocazioni.** `ar-SA` «قطارات بيناريو», `hi-IN` «बिनारियो ट्रेन», `ja-JP` «ビナリオトレイン», `pt-BR` «binario trens». Le frasi d'esempio di `skill.json` e i suggerimenti APL contengono l'invocazione esatta (test in `server/voice/alexaSkill.test.ts`).
+- **Invocazioni.** `it-IT` «binario treni» (due parole, come richiesto per le invocazioni non legate a un marchio registrato; tornare a «binario» richiede la prova del marchio), `ar-SA` «قطارات بيناريو», `hi-IN` «बिनारियो ट्रेन», `ja-JP` «ビナリオトレイン», `pt-BR` «binario trens». Le frasi d'esempio di `skill.json` e i suggerimenti APL contengono l'invocazione esatta (test in `server/voice/alexaSkill.test.ts`).
 - **Pronuncia del marchio.** Nelle risposte vocali arabe, hindi e giapponesi il nome è traslitterato (بيناريو, बिनारियो, ビナリオ) perché la sintesi lo pronunci; nei testi a schermo e nei nomi della skill resta «Binario».
 - `SUPPORTED_LOCALES` (skill) e `WEB_LOCALES` (web) in `shared/i18n.ts` sono distinti: il test che allinea modelli, `skill.json` e runtime vale solo per i primi.
 
