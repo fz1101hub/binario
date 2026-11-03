@@ -13,6 +13,7 @@ import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import it.binario.app.data.Direction
 import it.binario.app.data.RailTime
+import it.binario.app.data.RouteFailureReason
 import java.time.Duration
 import java.time.ZonedDateTime
 import java.util.concurrent.TimeUnit
@@ -74,6 +75,36 @@ object WidgetAutoRefreshPlanner {
     fun delayUntil(next: ZonedDateTime, now: ZonedDateTime, minimum: Duration = Duration.ZERO): Duration {
         val delay = Duration.between(now, next)
         return if (delay < minimum) minimum else delay
+    }
+}
+
+/**
+ * Retries of a refresh the user asked for (the button, a saved configuration): only temporary failures are asked
+ * again, only for the widgets that failed, at most [MAX_ATTEMPTS] runs in all, and only when the retry falls inside
+ * the widget's automatic refresh windows. With automatic refresh off nothing is retried in the background.
+ */
+internal object WidgetRefreshRetryPolicy {
+    const val MAX_ATTEMPTS = 3
+    val FIRST_DELAY: Duration = Duration.ofMinutes(15)
+
+    data class Retry(val widgetIds: Set<Int>, val delay: Duration)
+
+    /** A route that is not covered, or a timetable that expired, fails again however often it is asked. */
+    fun isTransient(reason: RouteFailureReason): Boolean =
+        reason == RouteFailureReason.NetworkUnavailable || reason == RouteFailureReason.Unavailable
+
+    /** The widget ids of a retry in the work's input; null (every widget) when absent or unreadable. */
+    fun encodeIds(widgetIds: Set<Int>): String = widgetIds.sorted().joinToString(",")
+
+    fun decodeIds(raw: String?): Set<Int>? = raw?.split(",")?.mapNotNull { it.trim().toIntOrNull() }?.toSet()?.takeIf { it.isNotEmpty() }
+
+    /** What follows run number [attempt] (from 1) whose [failed] widgets, with their settings, failed temporarily. */
+    fun retry(failed: Map<Int, AutoRefreshSettings>, attempt: Int, now: ZonedDateTime): Retry? {
+        if (attempt < 1 || attempt >= MAX_ATTEMPTS) return null
+        val delay = FIRST_DELAY.multipliedBy(1L shl (attempt - 1))
+        val at = now.plus(delay)
+        val ids = failed.filterValues { it.isActiveAt(at) }.keys
+        return if (ids.isEmpty()) null else Retry(ids, delay)
     }
 }
 

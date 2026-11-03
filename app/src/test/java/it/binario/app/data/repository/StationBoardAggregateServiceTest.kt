@@ -289,6 +289,24 @@ class StationBoardAggregateServiceTest {
         assertTrue(result is StationBoardAggregateResult.Unavailable)
     }
 
+    @Test
+    fun `a station every source says it does not cover is final, a source failure is not`() = kotlinx.coroutines.runBlocking {
+        val source = source("rfi-station-board", Confidence.INFRASTRUCTURE_PRIMARY)
+        val fast = provider("rfi-station-board", "RFI", board(source, 6, "4", RunStatus.DELAYED))
+        fun failing(kind: it.binario.app.data.provider.ProviderErrorKind) = object : StationBoardProvider by fast {
+            override suspend fun getStationBoard(request: StationBoardRequest): ProviderResult<StationBoard> =
+                ProviderResult.Failure(it.binario.app.data.provider.ProviderError(kind, "test"))
+        }
+        val unsupported = it.binario.app.data.provider.ProviderErrorKind.NOT_SUPPORTED
+        val network = it.binario.app.data.provider.ProviderErrorKind.NETWORK
+
+        val uncovered = StationBoardAggregateService(listOf(failing(unsupported), failing(unsupported)), Clock.fixed(now, ZoneId.of("UTC"))).load(station)
+        val mixed = StationBoardAggregateService(listOf(failing(unsupported), failing(network)), Clock.fixed(now, ZoneId.of("UTC"))).load(station)
+
+        assertTrue((uncovered as StationBoardAggregateResult.Unavailable).allUnsupported)
+        assertTrue(!(mixed as StationBoardAggregateResult.Unavailable).allUnsupported)
+    }
+
     private fun board(
         source: SourceRef,
         expectedMinutes: Long,
