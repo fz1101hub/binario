@@ -3,7 +3,8 @@
     <string name="tile_label">Binario: próximo trayecto</string>
     <string name="tile_description">Muestra el próximo trayecto compartido por la aplicación Binario de tu teléfono.</string>
     <string name="complication_label">Binario</string>
-    <string name="empty_snapshot_message">Abre Binario en tu teléfono para sincronizar el trayecto activo.</string>
+    <string name="empty_snapshot_message">Activa Smartwatch Android en Binario en tu teléfono (Integraciones de Binario) y actualiza el trayecto.</string>
+    <string name="empty_snapshot_phone_app_missing">Instala Binario en el teléfono vinculado: el reloj solo recibe el trayecto desde la aplicación del teléfono.</string>
     <string name="refresh_phone">Actualizar teléfono</string>
     <string name="refresh_on_phone">Actualizar en el teléfono</string>
     <string name="tile_no_synced_route">Ningún trayecto sincronizado</string>

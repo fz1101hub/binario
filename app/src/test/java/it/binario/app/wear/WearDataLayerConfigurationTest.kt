@@ -49,6 +49,30 @@ class WearDataLayerConfigurationTest {
     }
 
     @Test
+    fun `watch launcher icon is adaptive while tile and complication keep the service glyph`() {
+        val manifest = File(repositoryRoot, "wear/src/main/AndroidManifest.xml").readText()
+        val launcherIcon = File(repositoryRoot, "wear/src/main/res/mipmap-anydpi/ic_launcher.xml").readText()
+
+        assertTrue(manifest.contains("android:icon=\"@mipmap/ic_launcher\""))
+        assertTrue(manifest.contains("android:roundIcon=\"@mipmap/ic_launcher\""))
+        assertEquals(2, Regex("android:icon=\"@drawable/ic_binario_wear\"").findAll(manifest).count())
+        assertTrue(launcherIcon.contains("<adaptive-icon"))
+        assertTrue(launcherIcon.contains("<background android:drawable=\"@drawable/ic_launcher_background\""))
+        assertTrue(launcherIcon.contains("<foreground android:drawable=\"@drawable/ic_launcher_foreground\""))
+        assertTrue(File(repositoryRoot, "wear/src/main/res/drawable/ic_launcher_background.xml").isFile)
+        assertTrue(File(repositoryRoot, "wear/src/main/res/drawable/ic_launcher_foreground.xml").isFile)
+    }
+
+    @Test
+    fun `complication is push driven by the data layer listener instead of polling`() {
+        val manifest = File(repositoryRoot, "wear/src/main/AndroidManifest.xml").readText()
+        val listener = File(repositoryRoot, "wear/src/main/java/it/binario/wear/sync/WearDataLayerListenerService.kt").readText()
+
+        assertTrue(manifest.contains("android.support.wearable.complications.UPDATE_PERIOD_SECONDS\" android:value=\"0\""))
+        assertTrue(listener.contains("ComplicationDataSourceUpdateRequester.create(applicationContext, ComponentName(applicationContext, BinarioComplicationService::class.java)).requestUpdateAll()"))
+    }
+
+    @Test
     fun `privacy copy describes fail closed watch revocation`() {
         val strings = File(repositoryRoot, "app/src/main/res/values/strings.xml").readText()
 
@@ -93,6 +117,20 @@ class WearDataLayerConfigurationTest {
         assertTrue(configurator.contains("TrainViewModel(application, enableStartupEffects = false)"))
         assertTrue(viewModel.contains("if (enableStartupEffects)"))
         assertTrue(viewModel.contains("if (enableStartupEffects && refreshRequestId == 0L && hasActiveRoute) refresh()"))
+    }
+
+    @Test
+    fun `phone advertises the capability the watch probes for its first run message`() {
+        val capabilities = File(repositoryRoot, "app/src/main/res/values/wear.xml").readText()
+        val watch = File(repositoryRoot, "wear/src/main/java/it/binario/wear/WearPhoneApp.kt").readText()
+        val watchStrings = File(repositoryRoot, "wear/src/main/res/values/strings.xml").readText()
+
+        assertTrue(capabilities.contains("<string-array name=\"android_wear_capabilities\" translatable=\"false\">"))
+        assertTrue(capabilities.contains("<item>binario_phone_app</item>"))
+        assertTrue(capabilities.contains("tools:keep=\"@array/android_wear_capabilities\""))
+        assertTrue(watch.contains("const val PHONE_APP_CAPABILITY = \"binario_phone_app\""))
+        assertTrue(watchStrings.contains("name=\"empty_snapshot_phone_app_missing\""))
+        assertTrue(watchStrings.contains("Attiva Smartwatch Android in Binario sul telefono"))
     }
 
     @Test

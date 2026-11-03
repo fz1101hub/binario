@@ -3,7 +3,8 @@
     <string name="tile_label">Binario: próximo trajeto</string>
     <string name="tile_description">Mostra o próximo trajeto compartilhado pelo app Binario no celular.</string>
     <string name="complication_label">Binario</string>
-    <string name="empty_snapshot_message">Abra o Binario no celular para sincronizar o trajeto ativo.</string>
+    <string name="empty_snapshot_message">Ative Smartwatch Android no Binario do celular (Integrações do Binario) e atualize o trajeto.</string>
+    <string name="empty_snapshot_phone_app_missing">Instale o Binario no celular pareado: o relógio só recebe o trajeto pelo app do celular.</string>
     <string name="refresh_phone">Atualizar celular</string>
     <string name="refresh_on_phone">Atualizar no celular</string>
     <string name="tile_no_synced_route">Nenhum trajeto sincronizado</string>

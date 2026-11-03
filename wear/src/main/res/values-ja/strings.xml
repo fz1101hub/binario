@@ -3,7 +3,8 @@
     <string name="tile_label">Binario：次の区間</string>
     <string name="tile_description">スマートフォンの Binario アプリから共有された次の区間を表示します。</string>
     <string name="complication_label">Binario</string>
-    <string name="empty_snapshot_message">選択中の区間を同期するには、スマートフォンで Binario を開いてください。</string>
+    <string name="empty_snapshot_message">スマートフォンの Binario で「Android スマートウォッチ」をオンにして（Binario の連携）、区間を更新してください。</string>
+    <string name="empty_snapshot_phone_app_missing">ペアリングしたスマートフォンに Binario をインストールしてください。ウォッチはスマートフォンのアプリからのみ区間を受け取ります。</string>
     <string name="refresh_phone">スマホを更新</string>
     <string name="refresh_on_phone">スマホで更新</string>
     <string name="tile_no_synced_route">同期した区間なし</string>

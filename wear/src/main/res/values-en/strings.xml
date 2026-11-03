@@ -3,7 +3,8 @@
     <string name="tile_label">Binario: next journey</string>
     <string name="tile_description">Shows the next journey shared by the Binario app on your phone.</string>
     <string name="complication_label">Binario</string>
-    <string name="empty_snapshot_message">Open Binario on your phone to synchronize the active journey.</string>
+    <string name="empty_snapshot_message">Turn on Android smartwatch in Binario on your phone (Binario integrations) and refresh the route.</string>
+    <string name="empty_snapshot_phone_app_missing">Install Binario on the paired phone: the watch only receives the route from the phone app.</string>
     <string name="refresh_phone">Refresh phone</string>
     <string name="refresh_on_phone">Refresh on phone</string>
     <string name="tile_no_synced_route">No synchronized journey</string>

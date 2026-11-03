@@ -3,7 +3,8 @@
     <string name="tile_label">Binario：下一趟行程</string>
     <string name="tile_description">显示手机上的 Binario 应用共享的下一趟行程。</string>
     <string name="complication_label">Binario</string>
-    <string name="empty_snapshot_message">请在手机上打开 Binario 以同步当前路线。</string>
+    <string name="empty_snapshot_message">请在手机上的 Binario 中开启“Android 智能手表”（Binario 集成），然后刷新路线。</string>
+    <string name="empty_snapshot_phone_app_missing">请在已配对的手机上安装 Binario：手表只能从手机应用接收路线。</string>
     <string name="refresh_phone">刷新手机</string>
     <string name="refresh_on_phone">在手机上刷新</string>
     <string name="tile_no_synced_route">没有已同步的路线</string>

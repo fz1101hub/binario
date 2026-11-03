@@ -31,7 +31,7 @@ L’italiano (`values/`) è la lingua di riferimento: ogni testo nasce in italia
 - **Cinese semplificato in `values-zh-rCN/`** con tag `zh-CN`: da Android 7 la corrispondenza delle risorse considera anche la scrittura, quindi la cartella vale anche per `zh-Hans` e `zh-SG`; il cinese tradizionale (`zh-TW`, `zh-HK`) ricade sull’italiano.
 - **Portoghese in `values-pt/`**: lessico neutro con preferenza brasiliana (per esempio «trem», «plataforma»), senza forme solo europee.
 - **Plurali**: le quantità sono quelle richieste dal lint del progetto (`MissingQuantity`/`UnusedQuantity` con warning trattati come errori), cioè CLDR 42 o successivo. Per questo italiano, francese, spagnolo **e portoghese** hanno anche `many` (milioni, «1 milhão de»), e il russo ha `one/few/many/other`. Ogni voce di un plurale tradotto conserva gli stessi segnaposto della voce italiana `other` (o della voce omonima), anche `one`, `zero` e `two`.
-- **Wear OS** usa le stesse cartelle per le sue 24 stringhe; non ha un `locale_config.xml` (Wear OS non offre la scelta della lingua per app) e segue la lingua dell’orologio.
+- **Wear OS** usa le stesse cartelle per le sue 25 stringhe; non ha un `locale_config.xml` (Wear OS non offre la scelta della lingua per app) e segue la lingua dell’orologio.
 
 ## Regole per i traduttori
 

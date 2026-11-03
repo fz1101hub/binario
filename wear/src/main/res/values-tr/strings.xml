@@ -3,7 +3,8 @@
     <string name="tile_label">Binario: sonraki yolculuk</string>
     <string name="tile_description">Telefondaki Binario uygulamasının paylaştığı sonraki yolculuğu gösterir.</string>
     <string name="complication_label">Binario</string>
-    <string name="empty_snapshot_message">Etkin güzergâhı senkronize etmek için telefonda Binario\'yu açın.</string>
+    <string name="empty_snapshot_message">Telefondaki Binario\'da Android akıllı saati açın (Binario entegrasyonları) ve güzergâhı yenileyin.</string>
+    <string name="empty_snapshot_phone_app_missing">Eşlenen telefona Binario\'yu yükleyin: saat güzergâhı yalnızca telefon uygulamasından alır.</string>
     <string name="refresh_phone">Telefonu yenile</string>
     <string name="refresh_on_phone">Telefonda yenile</string>
     <string name="tile_no_synced_route">Senkronize güzergâh yok</string>

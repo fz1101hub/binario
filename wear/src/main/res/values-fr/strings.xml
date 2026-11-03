@@ -3,7 +3,8 @@
     <string name="tile_label">Binario : prochain trajet</string>
     <string name="tile_description">Affiche le prochain trajet partagé par l’app Binario sur votre téléphone.</string>
     <string name="complication_label">Binario</string>
-    <string name="empty_snapshot_message">Ouvrez Binario sur votre téléphone pour synchroniser le trajet actif.</string>
+    <string name="empty_snapshot_message">Activez Montre connectée Android dans Binario sur votre téléphone (Intégrations Binario) et actualisez le trajet.</string>
+    <string name="empty_snapshot_phone_app_missing">Installez Binario sur le téléphone associé : la montre ne reçoit le trajet que de l’app du téléphone.</string>
     <string name="refresh_phone">Actualiser le téléphone</string>
     <string name="refresh_on_phone">Actualiser sur le téléphone</string>
     <string name="tile_no_synced_route">Aucun trajet synchronisé</string>

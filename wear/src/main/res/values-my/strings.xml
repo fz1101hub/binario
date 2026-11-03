@@ -3,7 +3,8 @@
     <string name="tile_label">Binario- နောက် လမ်းကြောင်း</string>
     <string name="tile_description">ဖုန်းပေါ်ရှိ Binario အက်ပ်က မျှဝေထားသော နောက် လမ်းကြောင်းကို ပြသည်။</string>
     <string name="complication_label">Binario</string>
-    <string name="empty_snapshot_message">လက်ရှိ လမ်းကြောင်းကို စင့်ခ်လုပ်ရန် ဖုန်းပေါ်တွင် Binario ကို ဖွင့်ပါ။</string>
+    <string name="empty_snapshot_message">ဖုန်းပေါ်ရှိ Binario တွင် Android စမတ်နာရီကို ဖွင့်ပြီး (Binario ချိတ်ဆက်မှုများ) လမ်းကြောင်းကို ပြန်ယူပါ။</string>
+    <string name="empty_snapshot_phone_app_missing">တွဲချိတ်ထားသော ဖုန်းတွင် Binario ကို ထည့်သွင်းပါ။ နာရီသည် ဖုန်းအက်ပ်မှသာ လမ်းကြောင်းကို ရယူသည်။</string>
     <string name="refresh_phone">ဖုန်း ပြန်ယူရန်</string>
     <string name="refresh_on_phone">ဖုန်းတွင် ပြန်ယူရန်</string>
     <string name="tile_no_synced_route">စင့်ခ်လုပ်ထားသော လမ်းကြောင်း မရှိပါ</string>
