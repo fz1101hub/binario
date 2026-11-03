@@ -45,7 +45,7 @@ internal fun canScheduleExactAlarms(context: Context): Boolean =
  * [trainNumber] in a train detail, where the exact-alarm note follows them. Nothing is shown when there is none.
  */
 @Composable
-internal fun ActiveStopAlarmsPanel(trainNumber: String? = null, modifier: Modifier = Modifier) {
+internal fun ActiveStopAlarmsPanel(modifier: Modifier = Modifier, trainNumber: String? = null) {
     val context = LocalContext.current
     val revision by StopAlarmRegistry.revision.collectAsState()
     // An alarm that rang while the app was in the background leaves the list when the app comes back.

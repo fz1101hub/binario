@@ -1,6 +1,7 @@
 package it.binario.app.data.repository
 
 import android.content.Context
+import androidx.core.content.edit
 import it.binario.app.data.DataConfidence
 import it.binario.app.data.Direction
 import it.binario.app.data.Freshness
@@ -54,9 +55,11 @@ class LastGoodSnapshotStore(context: Context, private val maxEntries: Int = 8) {
         val order = preferences.getString(ORDER, "").orEmpty().split('\n').filter { it.isNotBlank() && it != key } + key
         val kept = order.filter { it.startsWith(key.substringBefore(':')) }.takeLast(maxEntries).toSet()
         val dropped = order.filter { it.startsWith(key.substringBefore(':')) && it !in kept }
-        val editor = preferences.edit().putString(key, value)
-        dropped.forEach(editor::remove)
-        editor.putString(ORDER, (order - dropped.toSet()).joinToString("\n")).apply()
+        preferences.edit {
+            putString(key, value)
+            dropped.forEach { remove(it) }
+            putString(ORDER, (order - dropped.toSet()).joinToString("\n"))
+        }
     }
 
     private fun routeKey(route: SavedRoute, direction: Direction) =
