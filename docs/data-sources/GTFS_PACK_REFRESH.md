@@ -2,6 +2,46 @@
 
 I pack GTFS sono **artefatti di release offline**: l'app non scarica mai dati di orario. Il comando `tools/build_gtfs_packs.py` acquisisce solo le URL registrate in `manifest.json`, applica un limite di byte anche alle risposte chunked, filtra ogni feed, e pubblica ZIP, manifest e checksum con un singolo replace atomico della directory di output. Nessun download incompleto, feed inventato o precedente asset viene presentato come aggiornamento riuscito.
 
+## Aggiornamento settimanale
+
+Un solo dispatch aggiorna tutti i pack scaricabili liberamente (tutti tranne ÖBB), sul ramo su cui poi si applica il risultato:
+
+```sh
+gh api -X POST repos/fz1101hub/binario/actions/workflows/gtfs-assets-ci.yml/dispatches \
+  -f ref=<ramo> -f 'inputs[transit_packs]=build=all refresh-core=all'
+gh run list --workflow gtfs-assets-ci.yml --branch <ramo> --event workflow_dispatch --limit 1   # id della run
+```
+
+Il workflow `GTFS Asset Integrity` avvia due job sui runner GitHub (il container di sviluppo non raggiunge gli editori): `transit-packs` ricostruisce le ferrovie regionali e le reti urbane di `gtfs-transit/` e `gtfs-personal/`, `core-packs` i dodici pack di `gtfs/` (`refresh-core=id1,id2` per alcuni soltanto). I file cambiati sono stampati nel log; il riepilogo della run elenca ogni pack con `lastServiceDate`, giorni residui e soglia (`minValidDays`, 30 se non dichiarata), con `SOTTO SOGLIA` o `SCADUTO` dove serve un intervento e ÖBB come `manuale`. Un job `core-packs` rosso con le altre fonti aggiornate significa che una fonte non ha risposto o non ha superato i controlli: il suo pack precedente resta valido, la run va ripetuta più avanti.
+
+Poi, in locale, sullo stesso ramo:
+
+```sh
+python3 tools/apply_ci_gtfs_refresh.py --run <run_id>     # --dry-run per vedere solo la tabella
+```
+
+L'helper ricostruisce i file dai log verificandone dimensione e SHA-256, li copia in `app/src/main/assets/gtfs/`, `gtfs-transit/` e `app/src/personal/assets/gtfs-personal/` lasciando byte per byte i pack con orario invariato, aggiorna i pin Trenitalia/Italo (manifest, `ios/Resources/binario_gtfs_source_policy_v1.json`, `RailSourceCatalog.kt`) e `lastServiceDate` in `EmbeddedGtfsPacks.kt` e `TransitGtfsPacks.kt`, esegue i due `--check` per directory, `verify_embedded_assets.py` e, se il manifest principale è cambiato, ricostruisce l'indice iOS e lo verifica (`verify_ios_gtfs_schedule.py`, `verify_ios_gtfs_rebuild.py`). Stampa una tabella: pack, `lastServiceDate` vecchia → nuova, viaggi, cambiato sì/no, note ed errori. Non esegue commit.
+
+Cosa controllare prima del commit:
+
+1. **Tabella.** Le date devono andare avanti; un pack che perderebbe più di metà dei viaggi o delle fermate servite, o che terminerebbe prima di quello pubblicato, è `RIFIUTATO` e resta quello precedente: guardare la fonte e, solo se il calo è reale (fine di un servizio, nuovo orario ridotto), rilanciare con `--accept <sourceId>`. `NON AGGIORNATO dal job` indica una fonte non raggiungibile o rifiutata dalla pipeline; `--skip <sourceId>` esclude un pack dall'applicazione.
+2. **Verifiche** tutte `ok`. Un `--check --min-valid-days 30` in errore vuol dire che un pack è sotto soglia: blocca la CI ordinaria (`gtfs-assets`) e la release.
+3. **Test Android**: `EmbeddedGtfsAssetIntegrityTest` (date Kotlin), `EmbeddedGtfsJourneyRealPacksTest` ed `EmbeddedGtfsTransitPacksTest` (corse attese): aggiornare le attese solo se l'orario è davvero cambiato, mai per far passare un pack sospetto.
+4. **Commit** `data(gtfs): refresh timetables AAAA-MM-GG`, poi Android CI con le schermate di design (`-f 'inputs[capture_design_screens]=true'`) e Apple Watch CI se l'indice iOS è cambiato.
+
+**Trenitalia e Italo (revisione del pin).** Il job risolve l'ultimo commit di [deryclem/trenitalia-gtfs](https://github.com/deryclem/trenitalia-gtfs) e [deryclem/italo-gtfs](https://github.com/deryclem/italo-gtfs) che ha toccato l'archivio, lo scarica e, se differisce da quello fissato, ricostruisce il pack con il pin proposto (`commit`, `archiveSha256`, `sourceUrl`). Il log e l'helper mostrano il blocco proposto con `feed_info.txt` e `attributions.txt` del nuovo archivio: controllare le date di validità (`feed_start_date`, `feed_end_date`) e che l'attribuzione sia ancora Trenitalia o Italo via NAP CCISS con la conversione CC BY 4.0 di Clément Desouche. Se cambiano licenza o attribuzione non adottare il pin (`--skip trenitalia-gtfs` o `--skip italo-gtfs`) finché `SOURCE_POLICY.md` e il campo `attribution` non sono rivisti. L'adozione è sempre un commit esplicito.
+
+**ÖBB (manuale).** Il portale ÖBB richiede che il titolare accetti di persona le condizioni d'uso: nessun job lo scarica. Scaricare lo ZIP dalla pagina dei dati aperti ÖBB (`OEBB_GTFS_ACCESS.md`), poi:
+
+```sh
+python3 tools/build_gtfs_packs.py --only oebb-gtfs \
+  --source-archive oebb-gtfs=/percorso/GTFS_Fahrplan_2027.zip --generated-at "$(date --utc +%F)"
+```
+
+Se il file ha un nuovo nome (un archivio per anno orario), aggiornare prima `sourceUrl` di `oebb-gtfs` nel manifest, nella policy iOS e in `RailSourceCatalog.kt`; poi la data in `EmbeddedGtfsPacks.kt`, i controlli e l'indice iOS come sopra.
+
+**Cambio orario del 13 dicembre 2026.** STA, Svizzera, ÖBB, Trenord, TFT, HŽPP, Italo e Mi.Co.Tra. terminano il 12 dicembre 2026: dal 12 novembre 2026 il gate a 30 giorni li blocca (ARST, EAV e gran parte delle reti urbane dal 1° dicembre). Ripetere il dispatch ogni settimana finché gli editori pubblicano l'orario 2027 e la tabella li mostra aggiornati. Il pack svizzero è registrato su un file datato (`gtfs_fp2026_2025-08-14.zip`): il job riscarica sempre lo stesso archivio, quindi per l'orario 2027 serve un nuovo URL rivisto (manifest, policy iOS e `RailSourceCatalog.kt`), come per ÖBB.
+
 ## Cadenza e verifica
 
 Il refresh va eseguito **a ogni cambio orario**, prima della release. La CI ordinaria verifica sempre struttura, filtri, hash e coerenza delle date dichiarate, anche mentre una sorgente esterna è temporaneamente bloccata:
@@ -46,63 +86,53 @@ python3 tools/build_gtfs_packs.py --refresh --source-id toscana-tft-gtfs \
 
 Le sorgenti `GATEWAY_ONLY`, inclusi **AMT Genova–Casella** e **Cotral Ferro**, non vengono scaricate da endpoint non verificabili. Al 23 settembre 2026, Transitland conferma un feed AMT aggiornato fino al 6 novembre 2026, ma l'origine pubblicata è solo HTTP e il mirror HTTPS richiede credenziali; l'URL Cotral usa invece un certificato valido per `*.cotralspa.it` ma non per il nome a tre livelli `travel.mob.cotralspa.it`, quindi fallisce la verifica TLS. Servono un gateway HTTPS approvato o un nuovo endpoint ufficiale con certificato valido e un archivio GTFS completo. Il filtro AMT è volutamente stretto: mantiene solo l'identificatore revisionato `FGC-191` (Manin–Casella, `FGC-164` fino al feed di settembre 2026); non usa un matching fuzzy sul nome e fallisce se la route cambia identificatore, imponendo una nuova revisione. Da novembre 2026 entrambi sono di nuovo inclusi dalla pipeline `transit-packs` (sezione «Ferrovie regionali e reti urbane»): AMT dall'origine HTTP verificata contro la copia HTTPS del Mobility Database, Cotral solo nelle build personali.
 
+## Pack principali (`gtfs/`, job `core-packs`)
+
+`tools/refresh_core_gtfs.py` gira solo sul runner (`python3 -I`), per ogni pack selezionato del manifest principale:
+
+- `oebb-gtfs` non è mai scaricato (`manuale` nel report);
+- un pack con `upstream` (Trenitalia, Italo) è scaricato dall'URL raw dell'ultimo commit upstream, come descritto sotto;
+- ogni altro pack `OPEN_DIRECT` è scaricato dal suo `sourceUrl` HTTPS con lo stesso downloader della pipeline `transit-packs` (limite di 400 MiB, ripresa con `Range`, nuovi tentativi sui 5xx) e deve essere uno ZIP.
+
+Un archivio identico a quello registrato (`sourceArchiveSha256`) non è ricostruito. Ogni archivio nuovo è filtrato da solo con `build_gtfs_packs.py --only <id>` su una copia della directory: se il download o la build falliscono, il pack e la sua voce di manifest restano quelli precedenti e il report registra l'errore; se l'orario filtrato non cambia (`contentSha256` uguale, per esempio quando cambiano solo gli autobus), il pack pubblicato è rimesso byte per byte. La directory risultante supera `--check --integrity-only`; nel log sono stampati solo `manifest.json`, `SHA256SUMS`, gli ZIP cambiati e `core-refresh.json` (esito per pack, conteggi, pin proposti con `feed_info.txt` e `attributions.txt`). Il testo letto dagli archivi è stampato con i comandi del workflow sospesi (`::stop-commands::`). Il job fallisce, dopo aver stampato i pack riusciti, se una fonte non è stata aggiornata.
+
 ## Pack nazionali Trenitalia e Italo (fissati a un commit)
 
 `trenitalia-gtfs` e `italo-gtfs` derivano dagli orari ufficiali NeTEx pubblicati sul National Access Point italiano (CCISS, dataset [1077621](https://www.cciss.it/nap/mmtis/public/en/catalog/Dataset/1077621) e [1814124](https://www.cciss.it/nap/mmtis/public/en/catalog/Dataset/1814124)), convertiti in GTFS ogni settimana da [deryclem/trenitalia-gtfs](https://github.com/deryclem/trenitalia-gtfs) e [deryclem/italo-gtfs](https://github.com/deryclem/italo-gtfs) (CC BY 4.0). Nel manifest ogni pack porta `upstream` con repository, commit, percorso e `archiveSha256`; `sourceUrl` è l'URL raw di quel commit. La build rifiuta qualsiasi archivio con un digest diverso, quindi un aggiornamento è sempre una scelta esplicita e rivista.
 
 Il filtro tiene treni e bus dell'operatore (`gtfs-rail-and-operator-coach-route-types`: `route_type` 2, 100–199 e 3) e non apre né distribuisce `shapes.txt`.
 
-Passi di refresh (azione del titolare, almeno a ogni cambio orario):
+Il refresh avviene con il job `core-packs` (sezione «Aggiornamento settimanale»): il commit proposto è l'ultimo che ha toccato `upstream.path`, letto dall'API GitHub con il token del job (inviato solo ad `api.github.com`, mai sui redirect) o, in mancanza, da `git ls-remote`; l'archivio è scaricato dall'URL raw di quel commit e trattato come dato non fidato. La nota `Pinned to the upstream commit of …` del manifest prende la data del commit. Il job non modifica il ramo: il pin entra solo con il commit dei file applicati da `tools/apply_ci_gtfs_refresh.py`, che verifica che manifest e blocco stampato coincidano.
 
-1. Scegliere il nuovo commit upstream e verificarne `feed_info.txt` (date di validità) e `attributions.txt`; trattare l'archivio come dato non fidato (`python3 -I`, fuori dalla sua directory).
-2. Aggiornare nel manifest `upstream.commit`, `upstream.archiveSha256` (lo SHA-256 dell'archivio scaricato) e `sourceUrl` (`https://raw.githubusercontent.com/<repo>/<commit>/<file>`), poi ricostruire **solo** quei pack; gli altri restano invariati byte per byte:
+A mano, da un archivio già scaricato e rivisto (`python3 -I`, fuori dalla sua directory): aggiornare nel manifest `upstream.commit`, `upstream.archiveSha256` e `sourceUrl` (`https://raw.githubusercontent.com/<repo>/<commit>/<file>`), poi ricostruire **solo** quei pack; gli altri restano invariati byte per byte:
 
-   ```sh
-   python3 tools/build_gtfs_packs.py --only trenitalia-gtfs --only italo-gtfs \
-     --source-archive trenitalia-gtfs=/percorso/gtfs-trenitalia.zip \
-     --source-archive italo-gtfs=/percorso/gtfs-italo.zip \
-     --generated-at "$(date --utc +%F)"
-   ```
+```sh
+python3 tools/build_gtfs_packs.py --only trenitalia-gtfs --only italo-gtfs \
+  --source-archive trenitalia-gtfs=/percorso/gtfs-trenitalia.zip \
+  --source-archive italo-gtfs=/percorso/gtfs-italo.zip \
+  --generated-at "$(date --utc +%F)"
+```
 
-   In alternativa `--refresh --source-id trenitalia-gtfs --only trenitalia-gtfs` scarica l'archivio dall'URL fissato.
-3. Allineare `lastServiceDate` in `EmbeddedGtfsPacks.all`, eseguire i due controlli `--check` sopra, i test e rigenerare l'indice iOS (`tools/build_ios_gtfs_schedule.py`, che legge il manifest anche se i due pack sono `androidOnlySources`), poi `tools/verify_ios_gtfs_schedule.py`.
-4. Aggiornare in `EmbeddedGtfsJourneyRealPacksTest` i treni attesi se l'orario è cambiato.
+In alternativa `--refresh --source-id trenitalia-gtfs --only trenitalia-gtfs` scarica l'archivio dall'URL fissato. Restano da allineare `lastServiceDate` in `EmbeddedGtfsPacks.all`, l'URL in `RailSourceCatalog.kt` e in `androidOnlySources` della policy iOS, e l'indice iOS (`tools/build_ios_gtfs_schedule.py` legge il manifest anche se i due pack sono `androidOnlySources`).
 
-**Italo: scadenza il 12 dicembre 2026.** Il calendario Italo del commit fissato (`calendar.txt` fino al 12 dicembre 2026, poche date sparse fino al 2 febbraio 2027) termina con il cambio orario: il gate a 30 giorni lo blocca dal 12 novembre 2026, come gli altri pack che terminano lo stesso giorno (STA, svizzero, ÖBB, Trenord, TFT, HŽPP). Il pack va rinnovato appena l'upstream pubblica l'orario dal 13 dicembre 2026, prima della release successiva. Trenitalia è valido fino all'11 dicembre 2027.
+**Italo: scadenza il 12 dicembre 2026.** Il calendario Italo del commit fissato al 1° novembre 2026 (`calendar.txt` fino al 12 dicembre 2026, poche date sparse fino al 2 febbraio 2027) termina con il cambio orario: va rinnovato appena l'upstream pubblica l'orario dal 13 dicembre 2026 (vedi «Cambio orario» sopra). Trenitalia è valido fino all'11 dicembre 2027.
 
 ## Ferrovie regionali e reti urbane (`gtfs-transit/`, `gtfs-personal/`)
 
-Dal novembre 2026 le ferrovie regionali pubblicate sul National Access Point e le reti di metropolitane, tram e funicolari sono pack separati dai dodici del primo rilascio, che restano invariati byte per byte:
+Dal novembre 2026 le ferrovie regionali pubblicate sul National Access Point e le reti di metropolitane, tram e funicolari sono pack separati dai dodici del primo rilascio (`gtfs/`, job `core-packs`):
 
 - `app/src/main/assets/gtfs-transit/`: dati aperti, in ogni build;
 - `app/src/personal/assets/gtfs-personal/`: licenza non commerciale o non dichiarata, solo nelle build personali (`-Pbinario.personalSources=true`; predefinito `true` per debug e `false` per release, vedi `SOURCE_POLICY.md`).
 
 Il registro delle sorgenti è `tools/transit_packs.json` (per ogni pack: `sourceId`, directory, distribuzione, `kind` `rail` o `urban`, formato `gtfs` o `netex`, URL, licenza con la sua evidenza, attribuzione, `minValidDays`; per un'origine solo HTTP la copia HTTPS da confrontare, `corroborateWith`, oppure, per un pack personale, il motivo `httpReason`). Il container di sviluppo non raggiunge questi host: acquisizione e build avvengono **solo sui runner GitHub**, nel job `transit-packs` del workflow `GTFS Asset Integrity`. Nessun codice di terzi è eseguito: i file scaricati (ZIP GTFS, XML NeTEx compresso) sono dati non fidati letti da `tools/acquire_transit_sources.py`, `tools/netex_to_gtfs.py` e `tools/build_gtfs_packs.py` (libreria standard, `python3 -I`).
 
-Passi di refresh (azione del titolare, settimanale per le reti urbane, a ogni cambio orario per le ferrovie):
+Il refresh è quello settimanale descritto in testa (`build=all`; `build=id1,id2` ricostruisce solo alcuni pack e l'helper lascia invariati gli altri; `validate-netex` ripete la validazione del convertitore sul dataset Trenitalia del NAP contro il pack `trenitalia-gtfs`). Il job `transit-packs`:
 
-1. Avviare il job sul ramo di lavoro:
+- scarica ogni sorgente (resume e riavvio da zero se il server non supporta `Range`; un 500/502/503/504, che il NAP restituisce a volte per decine di minuti, è ritentato con pause crescenti e, se persiste, il job fallisce senza pubblicare nulla e va rilanciato più tardi; un'origine HTTP deve coincidere byte per byte con la copia HTTPS indicata);
+- converte i NeTEx, scrive un manifest per directory e costruisce i pack con `build_gtfs_packs.py` (filtro ferroviario per i pack `rail`, `gtfs-urban-route-types` per quelli `urban`: metro, tram, funicolari e ascensori, autobus esclusi, nessun `shapes.txt`), verificati con `--check --integrity-only`;
+- stampa ogni file nel log come righe `BINARIO_FILE percorso byte sha256`, `BINARIO_B64 percorso blocco`, `BINARIO_END percorso` (gli artifact non sono scaricabili dal container di sviluppo) e riporta nel riepilogo la validità di ogni pack.
 
-   ```sh
-   gh api -X POST repos/<owner>/binario/actions/workflows/gtfs-assets-ci.yml/dispatches \
-     -f ref=<ramo> -f 'inputs[transit_packs]=build=all'
-   ```
-
-   `build=id1,id2` ricostruisce solo alcuni pack (la directory pubblicata contiene allora solo quelli: unire a mano con il manifest esistente); aggiungere `validate-netex` (`'inputs[transit_packs]=validate-netex build=all'`) per ripetere la validazione del convertitore sul dataset Trenitalia del NAP contro il pack `trenitalia-gtfs`.
-2. Il job scarica ogni sorgente (resume e riavvio da zero se il server non supporta `Range`; un 500/502/503/504, che il NAP restituisce a volte per decine di minuti, è ritentato con pause crescenti e, se persiste, il job fallisce senza pubblicare nulla e va rilanciato più tardi; un'origine HTTP deve coincidere byte per byte con la copia HTTPS indicata), converte i NeTEx, scrive un manifest per directory, costruisce i pack con `build_gtfs_packs.py` (filtro ferroviario per i pack `rail`, `gtfs-urban-route-types` per quelli `urban`: metro, tram, funicolari e ascensori, autobus esclusi, nessun `shapes.txt`), li verifica con `--check --integrity-only` e stampa ogni file nel log come righe `BINARIO_FILE percorso byte sha256`, `BINARIO_B64 percorso blocco`, `BINARIO_END percorso`, perché gli artifact non sono scaricabili dal container di sviluppo.
-3. Ricostruire i file dal log (`gh api repos/<owner>/binario/actions/jobs/<job_id>/logs`), verificando dimensione e SHA-256 di ciascuno, e copiarli in `app/src/main/assets/gtfs-transit/` e `app/src/personal/assets/gtfs-personal/` (ZIP, `manifest.json`, `SHA256SUMS`).
-4. Verificare offline:
-
-   ```sh
-   for d in app/src/main/assets/gtfs-transit app/src/personal/assets/gtfs-personal; do
-     python3 tools/build_gtfs_packs.py --check --integrity-only --input-dir "$d"
-     python3 tools/build_gtfs_packs.py --check --min-valid-days 30 --input-dir "$d"
-   done
-   python3 tools/verify_embedded_assets.py
-   ```
-
-   `minValidDays` del pack abbassa la soglia per i feed urbani pubblicati poche settimane alla volta (Milano circa cinque settimane): 14 giorni per Milano, Genova, Firenze, Roma, Napoli e Mestre, 30 per gli altri.
-5. Allineare `lastServiceDate` in `TransitGtfsPacks.kt` (lo controlla `EmbeddedGtfsAssetIntegrityTest`), aggiornare in `EmbeddedGtfsTransitPacksTest` le corse attese se l'orario è cambiato, poi i test Android e Python.
+`minValidDays` del pack abbassa la soglia per i feed urbani pubblicati poche settimane alla volta (Milano circa cinque settimane): 14 giorni per Milano, Genova, Firenze, Roma, Napoli e Mestre, 30 per gli altri. Un pack nuovo nel registro non è applicato dall'helper: va aggiunto a mano a `TransitGtfsPacks.kt` (lo controlla `EmbeddedGtfsAssetIntegrityTest`) con le sue corse attese in `EmbeddedGtfsTransitPacksTest`.
 
 Il convertitore NeTEx (profilo italiano livello 1) legge `ServiceJourney`, `TimetabledPassingTime` con `DayOffset`, `ServiceJourneyPattern` con salita e discesa ammesse, `DayType`/`UicOperatingPeriod`/`DayTypeAssignment`, `StopPlace`/`Quay`/`ScheduledStopPoint`/`PassengerStopAssignment`, `Line` e `Operator`; rifiuta `DOCTYPE` ed entità, ignora le geometrie dei `ServiceLink` e scrive un GTFS con `feed_info.txt`. Le corse senza giorni di servizio sono contate e scartate.
 
@@ -120,6 +150,6 @@ La voce di catalogo e la provenienza storica restano documentate per facilitarne
 
 ## Controparti statiche dei feed live
 
-`Refresh static counterparts of live feeds` scarica soltanto STA e SNCF dagli URL HTTPS `OPEN_DIRECT` registrati, ricostruisce i pack con la stessa pipeline e ne controlla integrità e validità minima. Salva asset, date Kotlin e provenienza su un ramo `data/refresh-live-gtfs-*` separato da main. Il ramo va verificato e incorporato nel candidato APK prima della consegna.
+Il refresh settimanale (`core-packs`) copre anche STA e SNCF. Il workflow separato `Refresh static counterparts of live feeds` resta disponibile: scarica soltanto STA e SNCF dagli URL HTTPS `OPEN_DIRECT` registrati, ricostruisce i pack con la stessa pipeline e ne controlla integrità e validità minima. Salva asset, date Kotlin e provenienza su un ramo `data/refresh-live-gtfs-*` separato da main. Il ramo va verificato e incorporato nel candidato APK prima della consegna.
 
 I pack dell'app contengono orari e coordinate delle fermate. La pipeline non apre né include `shapes.txt` e rimuove i riferimenti opzionali `shape_id`: il dataset attuale può contenere oltre 512 MiB di geometrie che il runtime non utilizza. Per questo solo quel membro ignorato non è soggetto al limite per singolo file; restano i limiti complessivi dell'archivio, delle entry, del rapporto di compressione e di tutte le tabelle lette. Il digest dell'archivio sorgente completo rimane registrato e i member effettivamente distribuiti sono attestati separatamente.

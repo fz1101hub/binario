@@ -268,19 +268,27 @@ def print_directory(directory: Path) -> None:
         print(f"BINARIO_END {relative}", flush=True)
 
 
-def selection_from(text: str) -> tuple[bool, list[str] | None]:
-    """``validate-netex`` and ``build=all`` or ``build=id1,id2`` from the workflow input."""
+def selection_from(text: str) -> tuple[bool, list[str] | None, list[str] | None]:
+    """``validate-netex``, ``build=all`` or ``build=id1,id2`` (the packs of this registry) and ``refresh-core=all`` or
+    ``refresh-core=id1,id2`` (the core packs of ``app/src/main/assets/gtfs/``, ``tools/refresh_core_gtfs.py``) from the
+    workflow input; an empty list means every pack."""
     validate = False
     build: list[str] | None = None
+    refresh_core: list[str] | None = None
     for token in text.replace(";", " ").split():
         if token == "validate-netex":
             validate = True
         elif token.startswith("build="):
             value = token.removeprefix("build=")
             build = [] if value == "all" else [item for item in value.split(",") if item]
+        elif token.startswith("refresh-core="):
+            value = token.removeprefix("refresh-core=")
+            refresh_core = [] if value == "all" else [item for item in value.split(",") if item]
+            if not value or (value != "all" and not refresh_core):
+                raise AcquisitionError(f"refresh-core senza pack: {token!r}")
         else:
             raise AcquisitionError(f"token non riconosciuto: {token!r}")
-    return validate, build
+    return validate, build, refresh_core
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -292,14 +300,21 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--validate-netex", metavar="ASSET", help="converte un asset NAP e lo confronta con --reference")
     parser.add_argument("--reference", type=Path)
     parser.add_argument("--print-dir", type=Path, help="stampa i file della directory in base64 nel log")
-    parser.add_argument("--selection", help="testo dell'input del workflow: 'validate-netex', 'build=all' o 'build=id,id'")
+    parser.add_argument(
+        "--selection",
+        help="testo dell'input del workflow: 'validate-netex', 'build=all' o 'build=id,id', 'refresh-core=all' o 'refresh-core=id,id'",
+    )
     args = parser.parse_args(argv)
     if args.print_dir:
         print_directory(args.print_dir)
         return 0
     if args.selection is not None:
-        validate, build = selection_from(args.selection)
-        print(json.dumps({"validate": validate, "build": build}))
+        try:
+            validate, build, refresh_core = selection_from(args.selection)
+        except AcquisitionError as error:
+            print(f"ERRORE selezione: {error}", file=sys.stderr)
+            return 1
+        print(json.dumps({"validate": validate, "build": build, "refreshCore": refresh_core}))
         return 0
     if args.out is None or args.generated_at is None:
         parser.error("--out e --generated-at sono obbligatori")

@@ -32,7 +32,7 @@ on:
         type: string
         default: ""
       transit_packs:
-        description: "Pack ferrovie regionali e reti urbane: 'validate-netex' e/o 'build=all' o 'build=id1,id2' (stampa i pack nel log)"
+        description: "Pack: 'build=all' o 'build=id1,id2' (ferrovie regionali e reti urbane), 'refresh-core=all' o 'refresh-core=id1,id2' (pack principali, ÖBB escluso), 'validate-netex'; i pack sono stampati nel log"
         required: false
         type: string
         default: ""
@@ -67,6 +67,8 @@ jobs:
           tests/test_verify_android_app_bundles.py
           tests/test_build_gtfs_packs.py
           tests/test_netex_to_gtfs.py
+          tests/test_refresh_core_gtfs.py
+          tests/test_apply_ci_gtfs_refresh.py
           tests/test_verify_gradle_dependency_metadata.py
           tests/test_install_xcodegen.py
           tests/test_verify_ci_pinning.py
@@ -195,3 +197,53 @@ jobs:
       - name: Print the built packs
         if: ${{ steps.selection.outputs.build != '' }}
         run: python3 -I tools/acquire_transit_sources.py --print-dir "$RUNNER_TEMP/transit/publish"
+
+      - name: Report the validity of the transit packs
+        if: ${{ always() && steps.selection.outputs.build != '' }}
+        run: >-
+          python3 -I tools/refresh_core_gtfs.py --as-of "$(date --utc +%F)" --summary "$GITHUB_STEP_SUMMARY"
+          --freshness app/src/main/assets/gtfs-transit app/src/personal/assets/gtfs-personal
+          "$RUNNER_TEMP/transit/publish/gtfs-transit" "$RUNNER_TEMP/transit/publish/gtfs-personal"
+
+  # Manual refresh of the core packs of app/src/main/assets/gtfs/ ('refresh-core=all' or 'refresh-core=id1,id2' in
+  # transit_packs, together with 'build=all' for one dispatch that refreshes every pack). Each OPEN_DIRECT source is
+  # downloaded from its registered HTTPS URL; Trenitalia and Italo from the latest commit of their upstream repository,
+  # printed as a proposed pin for review. ÖBB is never downloaded (its portal needs the owner's acceptance). Unchanged
+  # packs stay byte for byte, a failing source keeps its previous pack; the changed files are printed in the log
+  # (BINARIO_FILE/BINARIO_B64/BINARIO_END) for tools/apply_ci_gtfs_refresh.py. Nothing is pushed from here.
+  core-packs:
+    if: ${{ github.event_name == 'workflow_dispatch' && contains(inputs.transit_packs, 'refresh-core=') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Python 3
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12.10"
+
+      - name: Download and rebuild the core packs
+        env:
+          TRANSIT_PACKS: ${{ inputs.transit_packs }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: >-
+          python3 -I tools/refresh_core_gtfs.py --selection "$TRANSIT_PACKS" --out "$RUNNER_TEMP/core"
+          --generated-at "$(date --utc +%F)" --summary "$GITHUB_STEP_SUMMARY"
+
+      - name: Verify the refreshed core directory
+        run: python3 -I tools/build_gtfs_packs.py --check --integrity-only --input-dir "$RUNNER_TEMP/core/staging/gtfs"
+
+      - name: Print the changed core packs
+        run: python3 -I tools/acquire_transit_sources.py --print-dir "$RUNNER_TEMP/core/publish"
+
+      - name: Report the validity of every pack
+        if: always()
+        run: >-
+          python3 -I tools/refresh_core_gtfs.py --as-of "$(date --utc +%F)" --summary "$GITHUB_STEP_SUMMARY"
+          --freshness app/src/main/assets/gtfs "$RUNNER_TEMP/core/staging/gtfs"
+          app/src/main/assets/gtfs-transit app/src/personal/assets/gtfs-personal
+
+      - name: Fail when a core source could not be refreshed
+        run: python3 -I tools/refresh_core_gtfs.py --fail-on-report "$RUNNER_TEMP/core/publish/core-refresh.json"

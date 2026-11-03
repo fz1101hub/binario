@@ -843,21 +843,28 @@ class NationalPackTest(unittest.TestCase):
             builder.build_packs(self.temp, output, manifest_path=registry, only=["missing-gtfs"])
 
     def test_shipped_national_packs_are_pinned_and_current(self) -> None:
+        # The pins move with each reviewed refresh (tools/apply_ci_gtfs_refresh.py); what must hold is that each
+        # names one commit and one archive of the reviewed repository and dataset, and that the pack came from it.
         manifest = builder.read_manifest(ASSETS / "manifest.json")
         packs = {pack["sourceId"]: pack for pack in manifest["packs"]}
-        self.assertEqual("15350b3047d009b8a07e7e800f6ba9736ced0990e6fa6875f87d1190767c9461", packs["trenitalia-gtfs"]["sourceArchiveSha256"])
-        self.assertEqual("6c907245537b84a705265905dd41b62ef854bf29", packs["trenitalia-gtfs"]["upstream"]["commit"])
-        self.assertEqual("2a74f21478812e191b15cc2d7648cbdeb91b933867461df5c64f3a51b0c68662", packs["italo-gtfs"]["sourceArchiveSha256"])
-        self.assertEqual("4e96f9067e6adb154c357c366a513c45bc624382", packs["italo-gtfs"]["upstream"]["commit"])
-        self.assertEqual("https://www.cciss.it/nap/mmtis/public/en/catalog/Dataset/1077621", packs["trenitalia-gtfs"]["upstream"]["officialDataset"])
-        self.assertEqual("https://www.cciss.it/nap/mmtis/public/en/catalog/Dataset/1814124", packs["italo-gtfs"]["upstream"]["officialDataset"])
-        for source_id in ("trenitalia-gtfs", "italo-gtfs"):
+        expected = {
+            "trenitalia-gtfs": ("https://github.com/deryclem/trenitalia-gtfs", "gtfs-trenitalia.zip", "1077621"),
+            "italo-gtfs": ("https://github.com/deryclem/italo-gtfs", "gtfs-italo.zip", "1814124"),
+        }
+        for source_id, (repository, path, dataset) in expected.items():
+            pack = packs[source_id]
+            upstream = pack["upstream"]
+            self.assertEqual((repository, path), (upstream["repository"], upstream["path"]))
+            self.assertEqual(f"https://www.cciss.it/nap/mmtis/public/en/catalog/Dataset/{dataset}", upstream["officialDataset"])
+            self.assertRegex(upstream["commit"], r"^[0-9a-f]{40}$")
+            self.assertEqual(upstream["archiveSha256"], pack["sourceArchiveSha256"])
+            self.assertEqual(f"https://raw.githubusercontent.com/{repository.removeprefix('https://github.com/')}/{upstream['commit']}/{path}", pack["sourceUrl"])
+            self.assertEqual("gtfs-rail-and-operator-coach-route-types", pack["filter"]["kind"])
             with zipfile.ZipFile(ASSETS / f"{source_id}.zip") as archive:
                 self.assertNotIn("shapes.txt", archive.namelist())
-        self.assertEqual(date(2027, 12, 11), date.fromisoformat(packs["trenitalia-gtfs"]["lastServiceDate"]))
-        # Italo's calendar ends with the December 2026 timetable change: refresh before then (GTFS_PACK_REFRESH.md).
-        self.assertEqual(date(2026, 12, 12), date.fromisoformat(packs["italo-gtfs"]["lastServiceDate"]))
-
+                metadata = json.loads(archive.read(builder.FILTER_MANIFEST_MEMBER))
+            self.assertEqual(pack["sourceArchiveSha256"], metadata["sourceArchiveSha256"])
+            self.assertEqual(pack["lastServiceDate"], metadata["lastServiceDate"])
 
 if __name__ == "__main__":
     unittest.main()
