@@ -282,6 +282,17 @@ class VerifyCiPinningTest(unittest.TestCase):
         apple = ROOT / ".github/workflows/apple-watch-ci.yml"
         self.assertEqual([], policy.workflow_problems(apple, apple.read_text(encoding="utf-8"), LOCK))
 
+    def test_document_gates_run_when_their_documents_change(self) -> None:
+        # Audit A7-11: store-doc tests and the SOURCE_POLICY privacy gate ran on no change to those documents.
+        workflow_path = ROOT / ".github/workflows/gtfs-assets-ci.yml"
+        original = workflow_path.read_text(encoding="utf-8")
+        for path in ('      - "docs/store/**"\n', '      - "docs/data-sources/SOURCE_POLICY.md"\n'):
+            with self.subTest(path=path):
+                mutated = original.replace(path, "", 1)
+                self.assertNotEqual(original, mutated)
+                problems = policy.workflow_problems(workflow_path, mutated, LOCK)
+                self.assertTrue(any("non copre input condivisi" in problem for problem in problems), problems)
+
     def test_apple_rejects_bash_env_and_run_step_mutations(self) -> None:
         workflow_path = ROOT / ".github/workflows/apple-watch-ci.yml"
         original = workflow_path.read_text(encoding="utf-8")

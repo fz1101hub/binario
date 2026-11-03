@@ -6,6 +6,11 @@ on:
       - "app/src/main/assets/**"
       - "app/src/personal/assets/**"
       - "app/src/main/java/it/binario/app/data/gtfs/GtfsPackCredits.kt"
+      # Documents the offline tests check (store listings, privacy and source policy) and the language list they read.
+      - "docs/store/**"
+      - "docs/data-sources/SOURCE_POLICY.md"
+      - "PRIVACY.md"
+      - "app/src/main/res/xml/locale_config.xml"
       - "gradle/verification-metadata.xml"
       - "requirements-ci.txt"
       - "tools/**"
@@ -20,6 +25,11 @@ on:
       - "app/src/main/assets/**"
       - "app/src/personal/assets/**"
       - "app/src/main/java/it/binario/app/data/gtfs/GtfsPackCredits.kt"
+      # Documents the offline tests check (store listings, privacy and source policy) and the language list they read.
+      - "docs/store/**"
+      - "docs/data-sources/SOURCE_POLICY.md"
+      - "PRIVACY.md"
+      - "app/src/main/res/xml/locale_config.xml"
       - "gradle/verification-metadata.xml"
       - "requirements-ci.txt"
       - "tools/**"

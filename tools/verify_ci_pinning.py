@@ -526,6 +526,15 @@ def _check_linux_trigger_budget(
         problems.append(f"{path.name}: push branches deve coincidere con la policy release nel lock")
     required_paths = {
         "android-ci.yml": {"app/**", "wear/**", "contracts/wear-snapshot/**"},
+        # The document gates of the offline tests must run when their documents change (audit A7-11).
+        "gtfs-assets-ci.yml": {
+            "docs/store/**",
+            "docs/data-sources/SOURCE_POLICY.md",
+            "PRIVACY.md",
+            "app/src/main/res/xml/locale_config.xml",
+            "tools/**",
+            "tests/**",
+        },
         "companion-ci.yml": {
             "companion-expo/**",
             "contracts/wear-snapshot/**",
