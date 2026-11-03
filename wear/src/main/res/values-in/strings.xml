@@ -3,9 +3,12 @@
     <string name="tile_label">Binario: perjalanan berikutnya</string>
     <string name="tile_description">Menampilkan perjalanan berikutnya yang dibagikan aplikasi Binario di ponsel.</string>
     <string name="complication_label">Binario</string>
-    <string name="empty_snapshot_message">Buka Binario di ponsel untuk menyinkronkan rute aktif.</string>
+    <string name="empty_snapshot_message">Aktifkan Jam tangan pintar Android di Binario pada ponsel (Integrasi Binario), lalu perbarui rute.</string>
+    <string name="empty_snapshot_phone_app_missing">Instal Binario di ponsel yang tersambung: jam hanya menerima rute dari aplikasi ponsel.</string>
     <string name="refresh_phone">Perbarui ponsel</string>
     <string name="refresh_on_phone">Perbarui di ponsel</string>
+    <string name="refresh_request_sent">Permintaan dikirim ke ponsel</string>
+    <string name="refresh_phone_unreachable">Ponsel tidak terjangkau</string>
     <string name="tile_no_synced_route">Tidak ada rute tersinkron</string>
     <string name="tile_snapshot_unavailable">Snapshot tidak tersedia</string>
     <string name="tile_service_details">%1$s · %2$s · %3$s</string>

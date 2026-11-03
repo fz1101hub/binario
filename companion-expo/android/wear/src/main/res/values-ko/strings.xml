@@ -6,7 +6,7 @@
   <string name="binario_unavailable">실시간 데이터를 사용할 수 없습니다.</string>
   <string name="binario_next_journey">다음 여정 · 계획됨</string>
   <string name="binario_open_binario">Binario를 열고 받아쓰기</string>
-  <string name="binario_reminder">리마인더 %1$d분 전 ·</string>
+  <string name="binario_reminder_and_status">리마인더 %1$d분 전 · %2$s</string>
   <string name="binario_scheduled_not_realtime">계획 시각, 실시간 아님</string>
   <string name="binario_countdown_minutes">%1$d분 후</string>
   <string name="binario_countdown_hours">%1$d시간 후</string>

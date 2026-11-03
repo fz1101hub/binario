@@ -2,6 +2,7 @@ package im.binario.companion.binario
 
 import android.content.Context
 import android.content.ComponentName
+import android.text.format.DateUtils
 import im.binario.companion.R
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.graphics.Color
@@ -23,6 +24,8 @@ import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.ExistingWorkPolicy
+import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
@@ -37,16 +40,25 @@ internal object BinarioWidgetPresentation {
     val remainder = minutes % 60
     return if (remainder == 0L) "Tra $hours h" else "Tra $hours h $remainder min"
   }
+
+  /**
+   * Delay until the widget's state next changes: the departure, after which the journey is no
+   * longer shown, or the payload expiry, whichever comes first. Null when neither is ahead.
+   */
+  fun nextTransitionDelayMillis(plannedJourneyAtUtcMs: Long?, expiresAtUtcMs: Long?, now: Long = System.currentTimeMillis()): Long? =
+    listOfNotNull(plannedJourneyAtUtcMs, expiresAtUtcMs).filter { it > now }.minOrNull()?.let { it - now }
 }
 
 class BinarioStatusWidget : GlanceAppWidget() {
-  private fun countdownLabel(context: Context, scheduledAt: Long, now: Long = System.currentTimeMillis()): String {
+  /**
+   * The departure as a local clock time (with the date when it is not today). A widget is redrawn
+   * only by the app or by WorkManager, so a relative "in 10 min" would stay frozen between redraws.
+   */
+  private fun departureLabel(context: Context, scheduledAt: Long, now: Long = System.currentTimeMillis()): String {
     if (scheduledAt <= now) return context.getString(R.string.binario_unavailable)
-    val minutes = kotlin.math.ceil((scheduledAt - now).toDouble() / 60_000).toInt()
-    if (minutes < 60) return context.getString(R.string.binario_countdown_minutes, minutes)
-    val hours = minutes / 60
-    val remainder = minutes % 60
-    return if (remainder == 0) context.getString(R.string.binario_countdown_hours, hours) else context.getString(R.string.binario_countdown_hours_minutes, hours, remainder)
+    val flags = if (DateUtils.isToday(scheduledAt)) DateUtils.FORMAT_SHOW_TIME
+    else DateUtils.FORMAT_SHOW_TIME or DateUtils.FORMAT_SHOW_DATE or DateUtils.FORMAT_ABBREV_MONTH or DateUtils.FORMAT_SHOW_WEEKDAY or DateUtils.FORMAT_ABBREV_WEEKDAY
+    return DateUtils.formatDateTime(context, scheduledAt, flags)
   }
   override suspend fun provideGlance(context: Context, id: GlanceId) {
     val state = BinarioWidgetStore.read(context)
@@ -58,8 +70,9 @@ class BinarioStatusWidget : GlanceAppWidget() {
       ) {
         Text(if (state.plannedJourneyTitle != null) context.getString(R.string.binario_next_journey) else "BINARIO", style = TextStyle(color = ColorProvider(Color(0xFF9EDBFF))))
         Text(state.plannedJourneyTitle ?: state.title, style = TextStyle(color = ColorProvider(Color.White)))
-        Text(if (state.plannedJourneyAtUtcMs != null) countdownLabel(context, state.plannedJourneyAtUtcMs) else state.subtitle, style = TextStyle(color = ColorProvider(Color(0xFFD5E4F1))))
-        if (state.plannedJourneyTitle != null) Text("${state.plannedReminderMinutes?.let { context.getString(R.string.binario_reminder, it) } ?: ""}${context.getString(R.string.binario_scheduled_not_realtime)}", style = TextStyle(color = ColorProvider(Color(0xFFD5E4F1))))
+        Text(if (state.plannedJourneyAtUtcMs != null) departureLabel(context, state.plannedJourneyAtUtcMs) else state.subtitle, style = TextStyle(color = ColorProvider(Color(0xFFD5E4F1))))
+        // One format string per language keeps the separator spacing: Android trims a trailing space of an unquoted resource.
+        if (state.plannedJourneyTitle != null) Text(state.plannedReminderMinutes?.let { context.getString(R.string.binario_reminder_and_status, it, context.getString(R.string.binario_scheduled_not_realtime)) } ?: context.getString(R.string.binario_scheduled_not_realtime), style = TextStyle(color = ColorProvider(Color(0xFFD5E4F1))))
         Text(context.getString(R.string.binario_open_binario), style = TextStyle(color = ColorProvider(Color(0xFF9EDBFF))), modifier = GlanceModifier.clickable(onClick = actionStartActivity(voiceActivity)))
       }
     }
@@ -74,7 +87,20 @@ class BinarioWidgetRefreshWorker(context: Context, params: WorkerParameters) : C
 
   companion object {
     private const val uniqueWorkName = "binario-widget-refresh-v1"
+    private const val transitionWorkName = "binario-widget-transition-v1"
     private const val refreshMinutes = 15L
+
+    /** One redraw at the next state change, so the departed journey does not wait for the periodic refresh. */
+    fun scheduleTransition(context: Context, plannedJourneyAtUtcMs: Long?, expiresAtUtcMs: Long?) {
+      val workManager = WorkManager.getInstance(context.applicationContext)
+      val delay = BinarioWidgetPresentation.nextTransitionDelayMillis(plannedJourneyAtUtcMs, expiresAtUtcMs)
+      if (delay == null) {
+        workManager.cancelUniqueWork(transitionWorkName)
+        return
+      }
+      val request = OneTimeWorkRequestBuilder<BinarioWidgetRefreshWorker>().setInitialDelay(delay, TimeUnit.MILLISECONDS).build()
+      workManager.enqueueUniqueWork(transitionWorkName, ExistingWorkPolicy.REPLACE, request)
+    }
 
     fun schedule(context: Context) {
       val request = PeriodicWorkRequestBuilder<BinarioWidgetRefreshWorker>(refreshMinutes, TimeUnit.MINUTES).build()
@@ -87,6 +113,7 @@ class BinarioWidgetRefreshWorker(context: Context, params: WorkerParameters) : C
 
     fun cancel(context: Context) {
       WorkManager.getInstance(context.applicationContext).cancelUniqueWork(uniqueWorkName)
+      WorkManager.getInstance(context.applicationContext).cancelUniqueWork(transitionWorkName)
     }
   }
 }

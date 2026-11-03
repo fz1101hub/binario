@@ -31,6 +31,15 @@ class BinarioWidgetStateTest {
   }
 
   @Test
+  fun widgetIsRedrawnAtTheEarlierOfDepartureAndExpiry() {
+    assertEquals(60_000L, BinarioWidgetPresentation.nextTransitionDelayMillis(now + 60_000L, now + 3_600_000L, now))
+    assertEquals(30_000L, BinarioWidgetPresentation.nextTransitionDelayMillis(now + 60_000L, now + 30_000L, now))
+    assertEquals(60_000L, BinarioWidgetPresentation.nextTransitionDelayMillis(now + 60_000L, now - 1L, now))
+    assertEquals(null, BinarioWidgetPresentation.nextTransitionDelayMillis(now, null, now))
+    assertEquals(null, BinarioWidgetPresentation.nextTransitionDelayMillis(null, null, now))
+  }
+
+  @Test
   fun futureJourneyRemainsAvailableWhileSnapshotIsFresh() {
     assertEquals(available(), BinarioWidgetStore.accepted(available(), now))
   }

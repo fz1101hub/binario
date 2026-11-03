@@ -49,11 +49,22 @@ if (!explicitPermissions.has("POST_NOTIFICATIONS")) {
 }
 
 const plugins = config.plugins ?? [];
-const hasLocation = plugins.some((plugin) =>
-  Array.isArray(plugin) ? plugin[0] === "expo-location" : plugin === "expo-location",
-);
-if (hasLocation) {
-  fail("expo-location must not be explicitly configured: the companion only needs approximate location and blocks fine location.");
+// Expo applies expo-location even when it is not listed, with English default purpose strings
+// and the iOS "Always" keys. It is listed to replace them; fine location stays blocked above.
+const location = plugins.find((plugin) => (Array.isArray(plugin) ? plugin[0] : plugin) === "expo-location");
+const locationProps = Array.isArray(location) ? location[1] ?? {} : {};
+if (!location) {
+  fail("expo-location must be configured explicitly with a specific purpose string and without the Always keys.");
+}
+if (locationProps.locationAlwaysPermission !== false || locationProps.locationAlwaysAndWhenInUsePermission !== false) {
+  fail("expo-location must delete the iOS Always purpose strings: the nearest-station lookup is foreground only.");
+}
+const whenInUse = locationProps.locationWhenInUsePermission;
+if (typeof whenInUse !== "string" || whenInUse.length < 40 || whenInUse.includes("$(PRODUCT_NAME)")) {
+  fail("expo-location needs a specific when-in-use purpose string instead of the Expo default.");
+}
+for (const flag of ["isIosBackgroundLocationEnabled", "isAndroidBackgroundLocationEnabled", "isAndroidForegroundServiceEnabled"]) {
+  if (locationProps[flag]) fail(`expo-location must not enable ${flag}.`);
 }
 
 const pluginNames = plugins.map((plugin) => (Array.isArray(plugin) ? plugin[0] : plugin));

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import {
   alertsRailwayStatusSemantics,
@@ -58,4 +58,43 @@ describe("semantica dei controlli Companion", () => {
     expect(layout).toContain("shouldShowList: true");
     expect(layout).toContain("shouldPlaySound: true");
   });
+
+  it("non rende un contenitore con controlli un unico elemento accessibile", () => {
+    // `accessible` turns a View into one element: on iOS VoiceOver can no longer reach the
+    // fields and buttons inside it. Only summaries without controls may be grouped.
+    const root = path.resolve(import.meta.dirname, "..");
+    const sources = ["app", "components"].flatMap(folder => tsxFiles(path.join(root, folder)));
+    const offending = sources.flatMap(file => {
+      const source = readFileSync(file, "utf8");
+      return [...source.matchAll(/<View accessible\b/g)].flatMap(match => {
+        const body = viewElement(source, match.index ?? 0);
+        return /<(Pressable|TextInput|Switch|DateTimePicker|StationAutocompleteInput)\b/.test(body)
+          ? [`${path.relative(root, file)}:${source.slice(0, match.index).split("\n").length}`]
+          : [];
+      });
+    });
+    expect(sources.length).toBeGreaterThan(5);
+    expect(offending).toEqual([]);
+  });
 });
+
+function tsxFiles(folder: string): string[] {
+  return readdirSync(folder, { withFileTypes: true }).flatMap(entry => {
+    const full = path.join(folder, entry.name);
+    if (entry.isDirectory()) return tsxFiles(full);
+    return entry.name.endsWith(".tsx") ? [full] : [];
+  });
+}
+
+/** The View element that starts at `start`, up to its matching closing tag. */
+function viewElement(source: string, start: number): string {
+  const tags = /<View\b[^>]*?(\/?)>|<\/View>/g;
+  tags.lastIndex = start;
+  let depth = 0;
+  for (let tag = tags.exec(source); tag; tag = tags.exec(source)) {
+    if (tag[0].startsWith("</")) depth -= 1;
+    else if (tag[1] !== "/") depth += 1;
+    if (depth === 0) return source.slice(start, tags.lastIndex);
+  }
+  return source.slice(start);
+}

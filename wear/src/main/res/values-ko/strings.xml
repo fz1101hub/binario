@@ -3,9 +3,12 @@
     <string name="tile_label">Binario: 다음 구간</string>
     <string name="tile_description">휴대전화의 Binario 앱에서 공유한 다음 구간을 표시합니다.</string>
     <string name="complication_label">Binario</string>
-    <string name="empty_snapshot_message">활성 구간을 동기화하려면 휴대전화에서 Binario를 여세요.</string>
+    <string name="empty_snapshot_message">휴대전화의 Binario에서 Android 스마트워치를 켜고(Binario 연동) 구간을 새로고침하세요.</string>
+    <string name="empty_snapshot_phone_app_missing">페어링된 휴대전화에 Binario를 설치하세요. 시계는 휴대전화 앱에서만 구간을 받습니다.</string>
     <string name="refresh_phone">휴대전화 새로고침</string>
     <string name="refresh_on_phone">휴대전화에서 새로고침</string>
+    <string name="refresh_request_sent">휴대전화로 요청을 보냈습니다</string>
+    <string name="refresh_phone_unreachable">휴대전화에 연결할 수 없음</string>
     <string name="tile_no_synced_route">동기화된 구간 없음</string>
     <string name="tile_snapshot_unavailable">스냅샷 없음</string>
     <string name="tile_service_details">%1$s · %2$s · %3$s</string>

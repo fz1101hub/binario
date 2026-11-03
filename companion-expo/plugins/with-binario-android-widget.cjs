@@ -177,6 +177,7 @@ const widgetKt = `package ${packageName}
 
 import android.content.Context
 import android.content.ComponentName
+import android.text.format.DateUtils
 import im.binario.companion.R
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.graphics.Color
@@ -198,6 +199,8 @@ import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.ExistingWorkPolicy
+import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
@@ -212,16 +215,25 @@ internal object BinarioWidgetPresentation {
     val remainder = minutes % 60
     return if (remainder == 0L) "Tra ${'$'}hours h" else "Tra ${'$'}hours h ${'$'}remainder min"
   }
+
+  /**
+   * Delay until the widget's state next changes: the departure, after which the journey is no
+   * longer shown, or the payload expiry, whichever comes first. Null when neither is ahead.
+   */
+  fun nextTransitionDelayMillis(plannedJourneyAtUtcMs: Long?, expiresAtUtcMs: Long?, now: Long = System.currentTimeMillis()): Long? =
+    listOfNotNull(plannedJourneyAtUtcMs, expiresAtUtcMs).filter { it > now }.minOrNull()?.let { it - now }
 }
 
 class BinarioStatusWidget : GlanceAppWidget() {
-  private fun countdownLabel(context: Context, scheduledAt: Long, now: Long = System.currentTimeMillis()): String {
+  /**
+   * The departure as a local clock time (with the date when it is not today). A widget is redrawn
+   * only by the app or by WorkManager, so a relative "in 10 min" would stay frozen between redraws.
+   */
+  private fun departureLabel(context: Context, scheduledAt: Long, now: Long = System.currentTimeMillis()): String {
     if (scheduledAt <= now) return context.getString(R.string.binario_unavailable)
-    val minutes = kotlin.math.ceil((scheduledAt - now).toDouble() / 60_000).toInt()
-    if (minutes < 60) return context.getString(R.string.binario_countdown_minutes, minutes)
-    val hours = minutes / 60
-    val remainder = minutes % 60
-    return if (remainder == 0) context.getString(R.string.binario_countdown_hours, hours) else context.getString(R.string.binario_countdown_hours_minutes, hours, remainder)
+    val flags = if (DateUtils.isToday(scheduledAt)) DateUtils.FORMAT_SHOW_TIME
+    else DateUtils.FORMAT_SHOW_TIME or DateUtils.FORMAT_SHOW_DATE or DateUtils.FORMAT_ABBREV_MONTH or DateUtils.FORMAT_SHOW_WEEKDAY or DateUtils.FORMAT_ABBREV_WEEKDAY
+    return DateUtils.formatDateTime(context, scheduledAt, flags)
   }
   override suspend fun provideGlance(context: Context, id: GlanceId) {
     val state = BinarioWidgetStore.read(context)
@@ -233,8 +245,9 @@ class BinarioStatusWidget : GlanceAppWidget() {
       ) {
         Text(if (state.plannedJourneyTitle != null) context.getString(R.string.binario_next_journey) else "BINARIO", style = TextStyle(color = ColorProvider(Color(0xFF9EDBFF))))
         Text(state.plannedJourneyTitle ?: state.title, style = TextStyle(color = ColorProvider(Color.White)))
-        Text(if (state.plannedJourneyAtUtcMs != null) countdownLabel(context, state.plannedJourneyAtUtcMs) else state.subtitle, style = TextStyle(color = ColorProvider(Color(0xFFD5E4F1))))
-        if (state.plannedJourneyTitle != null) Text("${'$'}{state.plannedReminderMinutes?.let { context.getString(R.string.binario_reminder, it) } ?: ""}${'$'}{context.getString(R.string.binario_scheduled_not_realtime)}", style = TextStyle(color = ColorProvider(Color(0xFFD5E4F1))))
+        Text(if (state.plannedJourneyAtUtcMs != null) departureLabel(context, state.plannedJourneyAtUtcMs) else state.subtitle, style = TextStyle(color = ColorProvider(Color(0xFFD5E4F1))))
+        // One format string per language keeps the separator spacing: Android trims a trailing space of an unquoted resource.
+        if (state.plannedJourneyTitle != null) Text(state.plannedReminderMinutes?.let { context.getString(R.string.binario_reminder_and_status, it, context.getString(R.string.binario_scheduled_not_realtime)) } ?: context.getString(R.string.binario_scheduled_not_realtime), style = TextStyle(color = ColorProvider(Color(0xFFD5E4F1))))
         Text(context.getString(R.string.binario_open_binario), style = TextStyle(color = ColorProvider(Color(0xFF9EDBFF))), modifier = GlanceModifier.clickable(onClick = actionStartActivity(voiceActivity)))
       }
     }
@@ -249,7 +262,20 @@ class BinarioWidgetRefreshWorker(context: Context, params: WorkerParameters) : C
 
   companion object {
     private const val uniqueWorkName = "binario-widget-refresh-v1"
+    private const val transitionWorkName = "binario-widget-transition-v1"
     private const val refreshMinutes = 15L
+
+    /** One redraw at the next state change, so the departed journey does not wait for the periodic refresh. */
+    fun scheduleTransition(context: Context, plannedJourneyAtUtcMs: Long?, expiresAtUtcMs: Long?) {
+      val workManager = WorkManager.getInstance(context.applicationContext)
+      val delay = BinarioWidgetPresentation.nextTransitionDelayMillis(plannedJourneyAtUtcMs, expiresAtUtcMs)
+      if (delay == null) {
+        workManager.cancelUniqueWork(transitionWorkName)
+        return
+      }
+      val request = OneTimeWorkRequestBuilder<BinarioWidgetRefreshWorker>().setInitialDelay(delay, TimeUnit.MILLISECONDS).build()
+      workManager.enqueueUniqueWork(transitionWorkName, ExistingWorkPolicy.REPLACE, request)
+    }
 
     fun schedule(context: Context) {
       val request = PeriodicWorkRequestBuilder<BinarioWidgetRefreshWorker>(refreshMinutes, TimeUnit.MINUTES).build()
@@ -262,6 +288,7 @@ class BinarioWidgetRefreshWorker(context: Context, params: WorkerParameters) : C
 
     fun cancel(context: Context) {
       WorkManager.getInstance(context.applicationContext).cancelUniqueWork(uniqueWorkName)
+      WorkManager.getInstance(context.applicationContext).cancelUniqueWork(transitionWorkName)
     }
   }
 }
@@ -338,6 +365,7 @@ class BinarioWidgetBridgeModule(private val context: ReactApplicationContext) : 
     val plannedAt = if (planned != null && planned.hasKey("scheduledAtUtcMs") && !planned.isNull("scheduledAtUtcMs")) planned.getDouble("scheduledAtUtcMs").toLong() else null
     val plannedReminder = if (planned != null && planned.hasKey("reminderMinutes") && !planned.isNull("reminderMinutes")) planned.getDouble("reminderMinutes").toInt() else null
     BinarioWidgetStore.write(context, BinarioWidgetState(title, subtitle, status, updatedAt, expiresAt, plannedTitle, plannedAt, plannedReminder))
+    BinarioWidgetRefreshWorker.scheduleTransition(context, plannedAt, expiresAt)
     syncWearPayload(watch)
     scope.launch { BinarioStatusWidget().updateAll(context) }
   }
@@ -731,7 +759,7 @@ const localizedNativeStrings = {
     "unavailable": "Dati non disponibili in tempo reale.",
     "next_journey": "PROSSIMA TRATTA · PROGRAMMATA",
     "open_binario": "Apri Binario e detta",
-    "reminder": "Promemoria %1$d min · ",
+    "reminder_and_status": "Promemoria %1$d min · %2$s",
     "scheduled_not_realtime": "Orario programmato, non realtime",
     "countdown_minutes": "Tra %1$d min",
     "countdown_hours": "Tra %1$d h",
@@ -788,7 +816,7 @@ const localizedNativeStrings = {
     "unavailable": "Real-time data unavailable.",
     "next_journey": "NEXT JOURNEY · SCHEDULED",
     "open_binario": "Open Binario and dictate",
-    "reminder": "Reminder %1$d min · ",
+    "reminder_and_status": "Reminder %1$d min · %2$s",
     "scheduled_not_realtime": "Scheduled time, not real-time",
     "countdown_minutes": "In %1$d min",
     "countdown_hours": "In %1$d h",
@@ -845,7 +873,7 @@ const localizedNativeStrings = {
     "unavailable": "Echtzeitdaten nicht verfügbar.",
     "next_journey": "NÄCHSTE FAHRT · GEPLANT",
     "open_binario": "Binario öffnen und sprechen",
-    "reminder": "Erinnerung %1$d Min. · ",
+    "reminder_and_status": "Erinnerung %1$d Min. · %2$s",
     "scheduled_not_realtime": "Geplante Zeit, nicht in Echtzeit",
     "countdown_minutes": "In %1$d Min.",
     "countdown_hours": "In %1$d Std.",
@@ -902,7 +930,7 @@ const localizedNativeStrings = {
     "unavailable": "Données en temps réel indisponibles.",
     "next_journey": "PROCHAIN TRAJET · PLANIFIÉ",
     "open_binario": "Ouvrir Binario et dicter",
-    "reminder": "Rappel %1$d min · ",
+    "reminder_and_status": "Rappel %1$d min · %2$s",
     "scheduled_not_realtime": "Horaire planifié, pas en temps réel",
     "countdown_minutes": "Dans %1$d min",
     "countdown_hours": "Dans %1$d h",
@@ -959,7 +987,7 @@ const localizedNativeStrings = {
     "unavailable": "Datos en tiempo real no disponibles.",
     "next_journey": "PRÓXIMO VIAJE · PLANIFICADO",
     "open_binario": "Abrir Binario y dictar",
-    "reminder": "Recordatorio %1$d min · ",
+    "reminder_and_status": "Recordatorio %1$d min · %2$s",
     "scheduled_not_realtime": "Hora programada, no en tiempo real",
     "countdown_minutes": "En %1$d min",
     "countdown_hours": "En %1$d h",
@@ -1016,7 +1044,7 @@ const localizedNativeStrings = {
     "unavailable": "البيانات في الوقت الفعلي غير متاحة.",
     "next_journey": "الرحلة التالية · مجدولة",
     "open_binario": "افتح Binario وأملِ",
-    "reminder": "تذكير %1$d د ·",
+    "reminder_and_status": "تذكير %1$d د · %2$s",
     "scheduled_not_realtime": "موعد مجدول، وليس في الوقت الفعلي",
     "countdown_minutes": "بعد %1$d د",
     "countdown_hours": "بعد %1$d س",
@@ -1073,7 +1101,7 @@ const localizedNativeStrings = {
     "unavailable": "रीयल-टाइम डेटा उपलब्ध नहीं।",
     "next_journey": "अगली यात्रा · निर्धारित",
     "open_binario": "Binario खोलें और बोलें",
-    "reminder": "रिमाइंडर %1$d मि ·",
+    "reminder_and_status": "रिमाइंडर %1$d मि · %2$s",
     "scheduled_not_realtime": "निर्धारित समय, रीयल-टाइम नहीं",
     "countdown_minutes": "%1$d मि में",
     "countdown_hours": "%1$d घं में",
@@ -1130,7 +1158,7 @@ const localizedNativeStrings = {
     "unavailable": "Data waktu nyata tidak tersedia.",
     "next_journey": "PERJALANAN BERIKUTNYA · TERJADWAL",
     "open_binario": "Buka Binario dan dikte",
-    "reminder": "Pengingat %1$d mnt ·",
+    "reminder_and_status": "Pengingat %1$d mnt · %2$s",
     "scheduled_not_realtime": "Jadwal terencana, bukan waktu nyata",
     "countdown_minutes": "Dalam %1$d mnt",
     "countdown_hours": "Dalam %1$d jam",
@@ -1187,7 +1215,7 @@ const localizedNativeStrings = {
     "unavailable": "リアルタイムデータは利用できません。",
     "next_journey": "次の移動 · 計画",
     "open_binario": "Binario を開いて音声入力",
-    "reminder": "リマインダー %1$d 分前 ·",
+    "reminder_and_status": "リマインダー %1$d 分前 · %2$s",
     "scheduled_not_realtime": "計画時刻（リアルタイムではありません）",
     "countdown_minutes": "あと %1$d 分",
     "countdown_hours": "あと %1$d 時間",
@@ -1244,7 +1272,7 @@ const localizedNativeStrings = {
     "unavailable": "실시간 데이터를 사용할 수 없습니다.",
     "next_journey": "다음 여정 · 계획됨",
     "open_binario": "Binario를 열고 받아쓰기",
-    "reminder": "리마인더 %1$d분 전 ·",
+    "reminder_and_status": "리마인더 %1$d분 전 · %2$s",
     "scheduled_not_realtime": "계획 시각, 실시간 아님",
     "countdown_minutes": "%1$d분 후",
     "countdown_hours": "%1$d시간 후",
@@ -1301,7 +1329,7 @@ const localizedNativeStrings = {
     "unavailable": "အချိန်နှင့်တပြေးညီ ဒေတာ မရရှိနိုင်ပါ။",
     "next_journey": "နောက်ခရီးစဉ် · စီစဉ်ထားသည်",
     "open_binario": "Binario ကို ဖွင့်ပြီး အသံဖြင့်ရေးပါ",
-    "reminder": "သတိပေးချက် %1$d မိနစ် ·",
+    "reminder_and_status": "သတိပေးချက် %1$d မိနစ် · %2$s",
     "scheduled_not_realtime": "စီစဉ်ထားသော အချိန်၊ အချိန်နှင့်တပြေးညီ မဟုတ်ပါ",
     "countdown_minutes": "%1$d မိနစ်အတွင်း",
     "countdown_hours": "%1$d နာရီအတွင်း",
@@ -1358,7 +1386,7 @@ const localizedNativeStrings = {
     "unavailable": "Dados em tempo real indisponíveis.",
     "next_journey": "PRÓXIMA VIAGEM · PROGRAMADA",
     "open_binario": "Abra o Binario e dite",
-    "reminder": "Lembrete %1$d min ·",
+    "reminder_and_status": "Lembrete %1$d min · %2$s",
     "scheduled_not_realtime": "Horário programado, não em tempo real",
     "countdown_minutes": "Em %1$d min",
     "countdown_hours": "Em %1$d h",
@@ -1415,7 +1443,7 @@ const localizedNativeStrings = {
     "unavailable": "Данные в реальном времени недоступны.",
     "next_journey": "СЛЕДУЮЩАЯ ПОЕЗДКА · ПО ПЛАНУ",
     "open_binario": "Откройте Binario и продиктуйте",
-    "reminder": "Напоминание за %1$d мин ·",
+    "reminder_and_status": "Напоминание за %1$d мин · %2$s",
     "scheduled_not_realtime": "Плановое время, не в реальном времени",
     "countdown_minutes": "Через %1$d мин",
     "countdown_hours": "Через %1$d ч",
@@ -1472,7 +1500,7 @@ const localizedNativeStrings = {
     "unavailable": "ไม่มีข้อมูลเรียลไทม์",
     "next_journey": "การเดินทางครั้งถัดไป · ตามแผน",
     "open_binario": "เปิด Binario แล้วพูด",
-    "reminder": "เตือนก่อน %1$d นาที ·",
+    "reminder_and_status": "เตือนก่อน %1$d นาที · %2$s",
     "scheduled_not_realtime": "เวลาตามแผน ไม่ใช่เรียลไทม์",
     "countdown_minutes": "อีก %1$d นาที",
     "countdown_hours": "อีก %1$d ชม.",
@@ -1529,7 +1557,7 @@ const localizedNativeStrings = {
     "unavailable": "Gerçek zamanlı veri yok.",
     "next_journey": "SONRAKİ YOLCULUK · PLANLI",
     "open_binario": "Binario'yu aç ve dikte et",
-    "reminder": "Hatırlatıcı %1$d dk ·",
+    "reminder_and_status": "Hatırlatıcı %1$d dk · %2$s",
     "scheduled_not_realtime": "Planlı saat, gerçek zamanlı değil",
     "countdown_minutes": "%1$d dk sonra",
     "countdown_hours": "%1$d sa sonra",
@@ -1586,7 +1614,7 @@ const localizedNativeStrings = {
     "unavailable": "Không có dữ liệu thời gian thực.",
     "next_journey": "HÀNH TRÌNH TIẾP THEO · THEO KẾ HOẠCH",
     "open_binario": "Mở Binario và đọc",
-    "reminder": "Nhắc trước %1$d phút ·",
+    "reminder_and_status": "Nhắc trước %1$d phút · %2$s",
     "scheduled_not_realtime": "Giờ theo kế hoạch, không theo thời gian thực",
     "countdown_minutes": "Còn %1$d phút",
     "countdown_hours": "Còn %1$d giờ",
@@ -1643,7 +1671,7 @@ const localizedNativeStrings = {
     "unavailable": "无实时数据。",
     "next_journey": "下一个行程 · 计划",
     "open_binario": "打开 Binario 并听写",
-    "reminder": "提前 %1$d 分钟提醒 ·",
+    "reminder_and_status": "提前 %1$d 分钟提醒 · %2$s",
     "scheduled_not_realtime": "计划时刻，非实时",
     "countdown_minutes": "%1$d 分钟后",
     "countdown_hours": "%1$d 小时后",
@@ -1694,6 +1722,30 @@ for (const locale of nativeLocales) {
     throw new Error(`Native localization key parity failed for ${locale}.`);
   }
 }
+
+const binarioGlyphPath = "M12,8c-2.2,0 -4,1.8 -4,4v20c0,2.2 1.8,4 4,4h4l-3,4v2h5l3,-4h6l3,4h5v-2l-3,-4h4c2.2,0 4,-1.8 4,-4v-20c0,-2.2 -1.8,-4 -4,-4zM16,13h7v7h-7zM25,13h7v7h-7zM14,25h20v4h-20zM16,32a3,3 0,1 1,0 -6a3,3 0,0 1,0 6zM32,32a3,3 0,1 1,0 -6a3,3 0,0 1,0 6z";
+
+const wearIconXml = `<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="48dp" android:height="48dp" android:viewportWidth="48" android:viewportHeight="48">
+  <path android:fillColor="#005A52" android:pathData="M24,0a24,24 0,1 1,0 48a24,24 0,1 1,0 -48z" />
+  <group android:scaleX="0.7" android:scaleY="0.7" android:translateX="7.2" android:translateY="6.5">
+    <path android:fillColor="#FFFFFF" android:pathData="${binarioGlyphPath}" />
+  </group>
+</vector>
+`;
+
+const wearTilePreviewXml = `<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="200dp" android:height="200dp" android:viewportWidth="320" android:viewportHeight="320">
+  <path android:fillColor="#000000" android:pathData="M0,0h320v320h-320z" />
+  <path android:fillColor="#005A52" android:pathData="M24,24h272v272h-272z" />
+  <group android:scaleX="2" android:scaleY="2" android:translateX="112" android:translateY="48">
+    <path android:fillColor="#FFFFFF" android:pathData="${binarioGlyphPath}" />
+  </group>
+  <path android:fillColor="#FFFFFF" android:pathData="M64,170h192v18h-192z" />
+  <path android:fillColor="#D5E4F1" android:pathData="M64,204h148v14h-148z" />
+  <path android:fillColor="#D5E4F1" android:pathData="M64,234h176v14h-176z" />
+</vector>
+`;
 
 function nativeStringsXml(strings, wear = false) {
   const runtimeEntries = Object.fromEntries(Object.entries(strings)
@@ -1886,10 +1938,11 @@ dependencies {
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
   <uses-feature android:name="android.hardware.type.watch" />
   <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
-  <application android:label="@string/app_name" android:allowBackup="false" android:usesCleartextTraffic="false" android:supportsRtl="true" android:theme="@android:style/Theme.DeviceDefault">
+  <application android:label="@string/app_name" android:icon="@drawable/ic_binario_companion_wear" android:allowBackup="false" android:usesCleartextTraffic="false" android:supportsRtl="true" android:theme="@android:style/Theme.DeviceDefault">
     <meta-data android:name="com.google.android.wearable.standalone" android:value="false" />
-    <service android:name=".BinarioTileService" android:exported="true" android:label="@string/tile_name" android:permission="com.google.android.wearable.permission.BIND_TILE_PROVIDER">
+    <service android:name=".BinarioTileService" android:exported="true" android:icon="@drawable/ic_binario_companion_wear" android:label="@string/tile_name" android:permission="com.google.android.wearable.permission.BIND_TILE_PROVIDER">
       <intent-filter><action android:name="androidx.wear.tiles.action.BIND_TILE_PROVIDER" /></intent-filter>
+      <meta-data android:name="androidx.wear.tiles.PREVIEW" android:resource="@drawable/binario_tile_preview" />
     </service>
     <service android:name=".BinarioWearDataService" android:exported="true">
       <intent-filter>
@@ -1905,6 +1958,12 @@ dependencies {
   </application>
 </manifest>
 `);
+    // The app list and the tile picker show these instead of the generic placeholder: the Binario
+    // mark on the Companion colour, and a preview of the tile's layout (title, route, status).
+    const wearDrawableRoot = path.join(wearRoot, "src", "main", "res", "drawable");
+    fs.mkdirSync(wearDrawableRoot, { recursive: true });
+    fs.writeFileSync(path.join(wearDrawableRoot, "ic_binario_companion_wear.xml"), wearIconXml);
+    fs.writeFileSync(path.join(wearDrawableRoot, "binario_tile_preview.xml"), wearTilePreviewXml);
     for (const [locale, strings] of Object.entries(localizedNativeStrings)) {
       const valuesDirectory = path.join(wearRoot, "src", "main", "res", locale === "it" ? "values" : `values-${locale}`);
       fs.mkdirSync(valuesDirectory, { recursive: true });
@@ -2390,4 +2449,4 @@ class BinarioVoiceRequestActivity : Activity() {
 }
 
 module.exports = withBinarioAndroidWidget;
-module.exports.__test = { localizedNativeStrings, nativeLocales, nativeStringKeys, nativeStringsXml };
+module.exports.__test = { localizedNativeStrings, nativeLocales, nativeStringKeys, nativeStringsXml, wearIconXml, wearTilePreviewXml };

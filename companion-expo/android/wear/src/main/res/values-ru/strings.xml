@@ -6,7 +6,7 @@
   <string name="binario_unavailable">Данные в реальном времени недоступны.</string>
   <string name="binario_next_journey">СЛЕДУЮЩАЯ ПОЕЗДКА · ПО ПЛАНУ</string>
   <string name="binario_open_binario">Откройте Binario и продиктуйте</string>
-  <string name="binario_reminder">Напоминание за %1$d мин ·</string>
+  <string name="binario_reminder_and_status">Напоминание за %1$d мин · %2$s</string>
   <string name="binario_scheduled_not_realtime">Плановое время, не в реальном времени</string>
   <string name="binario_countdown_minutes">Через %1$d мин</string>
   <string name="binario_countdown_hours">Через %1$d ч</string>

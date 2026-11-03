@@ -30,8 +30,4 @@ class WearDataLayerListenerService : WearableListenerService() {
             ComplicationDataSourceUpdateRequester.create(applicationContext, ComponentName(applicationContext, BinarioComplicationService::class.java)).requestUpdateAll()
         }
     }
-
-    private companion object {
-        const val SNAPSHOT_PATH = "/binario/wear/snapshot"
-    }
 }

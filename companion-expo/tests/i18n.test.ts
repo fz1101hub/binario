@@ -135,8 +135,11 @@ describe("cataloghi localizzati Companion", () => {
     expect([0, 1, 2].map(count => pluralCategory("pt", count))).toEqual(["one", "one", "other"]);
     expect([0, 1, 2].map(count => pluralCategory("hi", count))).toEqual(["one", "one", "other"]);
     expect([1, 2].map(count => pluralCategory("ja", count))).toEqual(["other", "other"]);
-    // The five original languages keep their behaviour: "one" only for exactly 1.
-    expect([0, 1, 2].map(count => pluralCategory("fr", count))).toEqual(["other", "one", "other"]);
+    // CLDR French: "one" for an integer part of 0 or 1, unlike Italian, English, German and Spanish.
+    expect([0, 1, 1.5, 2].map(count => pluralCategory("fr", count))).toEqual(["one", "one", "one", "other"]);
+    expect([0, 1, 2].map(count => pluralCategory("it", count))).toEqual(["other", "one", "other"]);
+    expect(translate("fr", "settings.cleared", { count: 0 })).toContain("0 rappel annulé");
+    expect(translate("fr", "settings.cleared", { count: 2 })).toContain("2 rappels annulés");
     expect(translate("ru", "settings.cleared", { count: 3 })).toContain("3 напоминания");
     expect(translate("ru", "settings.cleared", { count: 5 })).toContain("5 напоминаний");
     expect(translate("ar", "alerts.futureCopies", { count: 4 })).toContain("4 نسخ");

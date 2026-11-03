@@ -16,7 +16,7 @@ EXPECTED_DEPENDENCIES = (
     'implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")',
     'implementation("androidx.wear.compose:compose-material3:1.6.2")',
     'implementation("androidx.wear.compose:compose-foundation:1.6.2")',
-    'implementation("androidx.wear.compose:compose-ui-tooling:1.6.2")',
+    'debugImplementation("androidx.wear.compose:compose-ui-tooling:1.6.2")',
 )
 REQUIRED_RATIONALE = "AGP >= 9.1 and compileSdk >= 37"
 

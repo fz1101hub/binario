@@ -1,0 +1,22 @@
+{
+  "_comment": "iOS purpose string for the one-shot nearest-station lookup, keyed by the lproj names of expo-localization's supportedLocales.ios. Italian is the Info.plist default; the iOS plugin writes the others to <lang>.lproj/InfoPlist.strings. No double quotes: InfoPlist.strings values are written unescaped.",
+  "NSLocationWhenInUseUsageDescription": {
+    "it": "Binario Companion usa la tua posizione una sola volta, quando chiedi la stazione più vicina, per trovarla nell’elenco delle stazioni salvato sul telefono. La posizione non viene salvata né inviata.",
+    "en": "Binario Companion uses your location once, when you ask for the nearest station, to find it in the station list stored on your phone. Your location is not saved or sent.",
+    "de": "Binario Companion verwendet Ihren Standort nur einmal, wenn Sie den nächstgelegenen Bahnhof suchen, um ihn in der auf dem Telefon gespeicherten Bahnhofsliste zu finden. Der Standort wird weder gespeichert noch gesendet.",
+    "fr": "Binario Companion utilise votre position une seule fois, lorsque vous demandez la gare la plus proche, pour la trouver dans la liste des gares enregistrée sur le téléphone. La position n’est ni enregistrée ni envoyée.",
+    "es": "Binario Companion usa tu ubicación una sola vez, cuando pides la estación más cercana, para encontrarla en la lista de estaciones guardada en el teléfono. La ubicación no se guarda ni se envía.",
+    "ar": "يستخدم Binario Companion موقعك مرة واحدة فقط عندما تطلب أقرب محطة، للعثور عليها في قائمة المحطات المحفوظة على الهاتف. لا يُحفَظ الموقع ولا يُرسَل.",
+    "hi": "जब आप सबसे नज़दीकी स्टेशन पूछते हैं, तब Binario Companion आपकी लोकेशन सिर्फ़ एक बार इस्तेमाल करता है, ताकि फ़ोन में सहेजी गई स्टेशन सूची में उसे ढूँढ सके। लोकेशन न सहेजी जाती है, न भेजी जाती है।",
+    "id": "Binario Companion memakai lokasi Anda sekali saja, saat Anda meminta stasiun terdekat, untuk mencarinya di daftar stasiun yang tersimpan di ponsel. Lokasi tidak disimpan atau dikirim.",
+    "ja": "Binario Companion は、最寄り駅を調べるときに一度だけ位置情報を使い、スマートフォンに保存された駅一覧から探します。位置情報は保存も送信もされません。",
+    "ko": "Binario Companion은 가장 가까운 역을 찾을 때 한 번만 위치를 사용해 휴대전화에 저장된 역 목록에서 찾습니다. 위치는 저장되거나 전송되지 않습니다.",
+    "my": "အနီးဆုံး ဘူတာကို ရှာသည့်အခါ Binario Companion သည် သင့်တည်နေရာကို တစ်ကြိမ်သာ အသုံးပြုပြီး ဖုန်းတွင် သိမ်းထားသော ဘူတာစာရင်းမှ ရှာပေးသည်။ တည်နေရာကို မသိမ်းဆည်းပါ၊ မပို့ပါ။",
+    "pt-BR": "O Binario Companion usa sua localização uma única vez, quando você pede a estação mais próxima, para encontrá-la na lista de estações salva no celular. A localização não é salva nem enviada.",
+    "ru": "Binario Companion использует ваше местоположение один раз, когда вы ищете ближайшую станцию, чтобы найти её в списке станций, сохранённом на телефоне. Местоположение не сохраняется и не отправляется.",
+    "th": "Binario Companion ใช้ตำแหน่งของคุณเพียงครั้งเดียวเมื่อคุณขอสถานีที่ใกล้ที่สุด เพื่อค้นหาจากรายชื่อสถานีที่บันทึกไว้ในโทรศัพท์ ตำแหน่งจะไม่ถูกบันทึกหรือส่งออกไป",
+    "tr": "Binario Companion, en yakın istasyonu istediğinizde konumunuzu yalnızca bir kez, telefonda kayıtlı istasyon listesinde bulmak için kullanır. Konum kaydedilmez veya gönderilmez.",
+    "vi": "Binario Companion chỉ dùng vị trí của bạn một lần khi bạn tìm ga gần nhất, để tìm ga đó trong danh sách ga lưu trên điện thoại. Vị trí không được lưu hay gửi đi.",
+    "zh-Hans": "Binario Companion 仅在你查找最近的车站时使用一次你的位置，在手机上保存的车站列表中查找。位置不会被保存或发送。"
+  }
+}

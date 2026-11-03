@@ -3,9 +3,12 @@
     <string name="tile_label">Binario: следующий маршрут</string>
     <string name="tile_description">Показывает следующий маршрут, переданный приложением Binario на телефоне.</string>
     <string name="complication_label">Binario</string>
-    <string name="empty_snapshot_message">Откройте Binario на телефоне, чтобы синхронизировать активный маршрут.</string>
+    <string name="empty_snapshot_message">Включите «Смарт-часы Android» в Binario на телефоне (Интеграции Binario) и обновите маршрут.</string>
+    <string name="empty_snapshot_phone_app_missing">Установите Binario на сопряжённый телефон: часы получают маршрут только из приложения на телефоне.</string>
     <string name="refresh_phone">Обновить телефон</string>
     <string name="refresh_on_phone">Обновить на телефоне</string>
+    <string name="refresh_request_sent">Запрос отправлен на телефон</string>
+    <string name="refresh_phone_unreachable">Телефон недоступен</string>
     <string name="tile_no_synced_route">Нет синхронизированного маршрута</string>
     <string name="tile_snapshot_unavailable">Снимок недоступен</string>
     <string name="tile_service_details">%1$s · %2$s · %3$s</string>

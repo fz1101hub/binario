@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { createLocalScheduledSnapshot, createUnavailableSnapshot } from "@/lib/companion-snapshot";
@@ -29,6 +30,18 @@ function kotlinFunctionBody(name: string) {
 /** Estrae ogni lettura `ricevitore.getX("chiave")` dal corpo Kotlin, così un rinomina lato Kotlin fa fallire il contratto. */
 function kotlinReads(body: string) {
   return Array.from(body.matchAll(/\b(\w+)\??\.(getString|getDouble|getInt|getBoolean|getMap)\("(\w+)"\)/g), match => ({ receiver: match[1]!, accessor: match[2]!, key: match[3]! }));
+}
+
+/** The plugin's own tables and writers, so generated files are compared with what the plugin produces. */
+function pluginInternals() {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  return createRequire(import.meta.url)("../plugins/with-binario-android-widget.cjs").__test as {
+    localizedNativeStrings: Record<string, Record<string, string>>;
+    nativeLocales: string[];
+    nativeStringsXml: (strings: Record<string, string>, wear?: boolean) => string;
+    wearIconXml: string;
+    wearTilePreviewXml: string;
+  };
 }
 
 function kotlinModuleNames() {
@@ -188,6 +201,57 @@ describe("contratti delle superfici native Binario", () => {
     expect(test).toContain("countdownRoundsUpAndRecomputesAgainstCurrentTime");
     expect(test).toContain("countdownAndStateBecomeUnavailableAtDeparture");
     expect(widgetPlugin).toContain('path.join(testKotlinRoot, "BinarioWidgetStateTest.kt")');
+  });
+
+  it("mostra l'orario di partenza assoluto e ridisegna il widget alla transizione successiva", () => {
+    const widget = source("android/app/src/main/java/im/binario/companion/binario/BinarioStatusWidget.kt");
+    const bridge = source("android/app/src/main/java/im/binario/companion/binario/BinarioWidgetBridge.kt");
+    const test = source("android/app/src/test/java/im/binario/companion/binario/BinarioWidgetStateTest.kt");
+    for (const generated of [widgetPlugin, widget]) {
+      // A relative "Tra 10 min" froze between WorkManager redraws; the clock time stays true.
+      expect(generated).toContain("DateUtils.formatDateTime(context, scheduledAt, flags)");
+      expect(generated).not.toContain("countdownLabel(context, state.plannedJourneyAtUtcMs)");
+      expect(generated).toContain("OneTimeWorkRequestBuilder<BinarioWidgetRefreshWorker>().setInitialDelay(delay, TimeUnit.MILLISECONDS).build()");
+      expect(generated).toContain("workManager.enqueueUniqueWork(transitionWorkName, ExistingWorkPolicy.REPLACE, request)");
+      expect(generated).toContain("cancelUniqueWork(transitionWorkName)");
+    }
+    for (const generated of [widgetPlugin, bridge]) {
+      expect(generated).toContain("BinarioWidgetRefreshWorker.scheduleTransition(context, plannedAt, expiresAt)");
+    }
+    expect(test).toContain("widgetIsRedrawnAtTheEarlierOfDepartureAndExpiry");
+  });
+
+  it("unisce promemoria e stato in una stringa per lingua, senza spazi che Android taglierebbe", () => {
+    const widget = source("android/app/src/main/java/im/binario/companion/binario/BinarioStatusWidget.kt");
+    for (const generated of [widgetPlugin, widget]) {
+      expect(generated).toContain("context.getString(R.string.binario_reminder_and_status, it, context.getString(R.string.binario_scheduled_not_realtime))");
+      expect(generated).not.toContain("R.string.binario_reminder,");
+    }
+    const { localizedNativeStrings, nativeLocales, nativeStringsXml } = pluginInternals();
+    expect(nativeLocales).toHaveLength(17);
+    for (const locale of nativeLocales) {
+      const joined = localizedNativeStrings[locale].reminder_and_status;
+      expect(joined, locale).toMatch(/^\S.*%1\$d.* · %2\$s$/);
+      const folder = locale === "it" ? "values" : `values-${locale}`;
+      const generated = source(`android/app/src/main/res/${folder}/strings.xml`);
+      expect(generated).toContain(nativeStringsXml(localizedNativeStrings[locale]).split("\n").find((line: string) => line.includes("binario_reminder_and_status")));
+      for (const value of nativeStringsXml(localizedNativeStrings[locale]).matchAll(/<string name="[^"]+">([^<]*)<\/string>/g)) {
+        expect(value[1], `${locale}: ${value[1]}`).toBe(value[1]!.trim());
+      }
+    }
+  });
+
+  it("dà al Wear del Companion un'icona e un'anteprima della Tile", () => {
+    const manifest = source("android/wear/src/main/AndroidManifest.xml");
+    const { wearIconXml, wearTilePreviewXml } = pluginInternals();
+    for (const generated of [widgetPlugin, manifest]) {
+      expect(generated).toContain('<application android:label="@string/app_name" android:icon="@drawable/ic_binario_companion_wear"');
+      expect(generated).toContain('android:name=".BinarioTileService" android:exported="true" android:icon="@drawable/ic_binario_companion_wear"');
+      expect(generated).toContain('<meta-data android:name="androidx.wear.tiles.PREVIEW" android:resource="@drawable/binario_tile_preview" />');
+    }
+    expect(source("android/wear/src/main/res/drawable/ic_binario_companion_wear.xml")).toBe(wearIconXml);
+    expect(source("android/wear/src/main/res/drawable/binario_tile_preview.xml")).toBe(wearTilePreviewXml);
+    expect(wearIconXml).toContain('android:fillColor="#005A52"');
   });
 
   it("conserva la provenienza e il riepilogo accessibile dello snapshot", () => {

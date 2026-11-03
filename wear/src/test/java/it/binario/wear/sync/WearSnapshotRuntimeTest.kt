@@ -8,8 +8,11 @@ import it.binario.wear.model.WearOperationalState
 import it.binario.wear.model.WearProvenance
 import it.binario.wear.model.WearProvenanceProducer
 import it.binario.wear.model.WearSnapshot
+import it.binario.wear.model.WearSnapshotCodec
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class WearSnapshotRuntimeTest {
@@ -86,6 +89,50 @@ class WearSnapshotRuntimeTest {
         assertNull(storage.value)
         assertEquals(1, storage.clears)
         assertEquals(1, expiryNotifications)
+    }
+
+    @Test
+    fun `a Data Layer bootstrap fills an empty watch but never rolls back a newer pushed value`() {
+        val clock = MutableClock(1_000L)
+        val storage = InMemoryStorage()
+        val runtime = WearSnapshotRuntime(storage, clock, ControlledScheduler())
+
+        assertTrue(runtime.offer(snapshot(routeLabel = "Dal Data Layer", expiresAt = 2_000L)))
+        assertEquals("Dal Data Layer", runtime.current()?.routeLabel)
+        assertEquals(1, storage.writes)
+
+        runtime.update(snapshot(routeLabel = "Spinta", expiresAt = 3_000L))
+        assertFalse(runtime.offer(snapshot(routeLabel = "Più vecchia", expiresAt = 2_500L)))
+        assertFalse(runtime.offer(snapshot(routeLabel = "Stessa generazione", expiresAt = 3_000L)))
+        assertEquals("Spinta", runtime.current()?.routeLabel)
+
+        assertTrue(runtime.offer(snapshot(routeLabel = "Più recente", expiresAt = 4_000L)))
+        assertEquals("Più recente", runtime.state().value?.routeLabel)
+    }
+
+    @Test
+    fun `a bootstrap value already past its deadline is not offered`() {
+        val clock = MutableClock(5_000L)
+        val storage = InMemoryStorage()
+        val runtime = WearSnapshotRuntime(storage, clock, ControlledScheduler())
+
+        assertFalse(runtime.offer(snapshot(expiresAt = 5_000L)))
+        assertNull(runtime.current())
+        assertEquals(0, storage.writes)
+    }
+
+    @Test
+    fun `the newest valid item wins when several phones hold one`() {
+        val now = 1_893_484_800_000L
+        val older = WearSnapshotCodec.encode(snapshot(routeLabel = "Telefono A", expiresAt = now + 30_000L))
+        val newer = WearSnapshotCodec.encode(snapshot(routeLabel = "Telefono B", expiresAt = now + 50_000L))
+        val malformed = newer + ("unexpected" to "value")
+
+        assertEquals("Telefono B", newestSnapshot(listOf(older, malformed, newer), now)?.routeLabel)
+        assertEquals("Telefono A", newestSnapshot(listOf(older, malformed), now)?.routeLabel)
+        assertNull(newestSnapshot(listOf(malformed), now))
+        assertNull(newestSnapshot(emptyList(), now))
+        assertEquals("wear://*/binario/wear/snapshot", SNAPSHOT_URI)
     }
 
     private fun snapshot(routeLabel: String = "Rossa", expiresAt: Long): WearSnapshot = WearSnapshot(

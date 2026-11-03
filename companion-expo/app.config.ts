@@ -1,5 +1,6 @@
 import type { ExpoConfig } from "expo/config";
 import releaseIdentity from "./native/android/release-identity.json";
+import locationUsage from "./native/ios/location-usage.json";
 
 const config: ExpoConfig = {
   // Keep the phone companion visibly distinct from the primary Binario app.
@@ -34,6 +35,16 @@ const config: ExpoConfig = {
       },
     ],
     "@react-native-community/datetimepicker",
+    [
+      "expo-location",
+      {
+        // Foreground, one-shot nearest-station lookup only. The Italian text is the Info.plist
+        // default; the iOS plugin localizes it. `false` deletes the Always keys Expo would add.
+        locationWhenInUsePermission: locationUsage.NSLocationWhenInUseUsageDescription.it,
+        locationAlwaysPermission: false,
+        locationAlwaysAndWhenInUsePermission: false,
+      },
+    ],
     "./plugins/with-binario-wear-manifest.cjs",
     "./plugins/with-binario-android-widget.cjs",
     "./plugins/with-binario-ios-local-surfaces.cjs",
