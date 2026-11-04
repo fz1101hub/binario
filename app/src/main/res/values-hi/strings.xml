@@ -1134,6 +1134,18 @@
     <string name="punctuality_history_show_all">सभी तारीखें दिखाएँ</string>
     <string name="settings_punctuality_recording_title">पसंदीदा ट्रेनों का समय-पालन</string>
     <string name="settings_punctuality_recording_description">दिन में एक बार, निर्धारित आगमन के बाद, ट्रेन की स्थिति पूछता है और केवल इसी फ़ोन पर अंतिम देरी और ठहरावों पर देरी दर्ज करता है, अधिकतम 365 दिनों तक।</string>
+    <string name="settings_weekly_digest_title">पसंदीदा ट्रेनों का साप्ताहिक सारांश</string>
+    <string name="settings_weekly_digest_description">रविवार शाम लगभग 19 बजे एक सूचना इस फ़ोन पर दर्ज पसंदीदा ट्रेनों के सप्ताह भर के समय-पालन का सारांश देती है और उपलब्ध होने पर पिछले 30 दिनों में नेटवर्क पर उनकी विश्वसनीयता भी बताती है, साथ ही उस ट्रेन का नाम बताती है जिसका प्रदर्शन बिगड़ा। कोई नेटवर्क अनुरोध नहीं; 22 से 7 बजे के बीच कभी नहीं।</string>
+    <string name="weekly_digest_channel_name">साप्ताहिक सारांश</string>
+    <string name="weekly_digest_channel_description">रविवार शाम, पसंदीदा ट्रेनों का सप्ताह भर का समय-पालन।</string>
+    <string name="weekly_digest_title">इस सप्ताह आपकी ट्रेनें</string>
+    <string name="weekly_digest_train_line">%1$s: %2$s</string>
+    <string name="weekly_digest_no_runs">कोई यात्रा दर्ज नहीं</string>
+    <plurals name="weekly_digest_network">
+        <item quantity="one">नेटवर्क पर पिछला %1$d दिन: %2$d%% समय पर</item>
+        <item quantity="other">नेटवर्क पर पिछले %1$d दिन: %2$d%% समय पर</item>
+    </plurals>
+    <string name="weekly_digest_worse">प्रदर्शन बिगड़ा: %1$s, इस सप्ताह %2$d%% बार समय पर (आमतौर पर %3$d%%)</string>
     <string name="settings_live_updates_title">लाइव सूचनाएँ</string>
     <string name="settings_live_updates_permission">ये सूचनाएँ पाने के लिए Android सेटिंग में Binario की सूचनाओं की अनुमति दें।</string>
     <string name="settings_live_updates_privacy">ये जाँचें केवल बताई गई समय-सीमाओं में बैकग्राउंड में चलती हैं। MIT को आपके किसी डेटा के बिना अनुरोध मिलता है; ट्रेन-स्थिति के स्रोतों को ट्रेन नंबर और दिन मिलता है, जैसे विवरण खोलने पर। फ़ोन के बाहर कुछ भी सहेजा नहीं जाता।</string>

@@ -1181,6 +1181,19 @@
     <string name="punctuality_history_show_all">Mostra tutte le date</string>
     <string name="settings_punctuality_recording_title">Puntualità dei treni preferiti</string>
     <string name="settings_punctuality_recording_description">Una volta al giorno, dopo l’arrivo previsto, chiede lo stato del treno e registra solo su questo telefono il ritardo finale e quello alle fermate, per al massimo 365 giorni.</string>
+    <string name="settings_weekly_digest_title">Riepilogo settimanale dei treni preferiti</string>
+    <string name="settings_weekly_digest_description">La domenica verso le 19 una notifica riassume la puntualità della settimana registrata su questo telefono per i treni preferiti e, quando disponibile, la loro affidabilità sulla rete negli ultimi 30 giorni, e indica quello peggiorato. Nessuna richiesta di rete; mai tra le 22 e le 7.</string>
+    <string name="weekly_digest_channel_name">Riepilogo settimanale</string>
+    <string name="weekly_digest_channel_description">La domenica sera, la puntualità della settimana dei treni preferiti.</string>
+    <string name="weekly_digest_title">I tuoi treni questa settimana</string>
+    <string name="weekly_digest_train_line">%1$s: %2$s</string>
+    <string name="weekly_digest_no_runs">nessuna corsa registrata</string>
+    <plurals name="weekly_digest_network">
+        <item quantity="one">ultimo %1$d giorno sulla rete: %2$d%% in orario</item>
+        <item quantity="many">ultimi %1$d giorni sulla rete: %2$d%% in orario</item>
+        <item quantity="other">ultimi %1$d giorni sulla rete: %2$d%% in orario</item>
+    </plurals>
+    <string name="weekly_digest_worse">Peggiorato: %1$s, %2$d%% in orario questa settimana (di solito %3$d%%)</string>
     <string name="settings_live_updates_title">Notifiche in tempo reale</string>
     <string name="settings_live_updates_permission">Per ricevere queste notifiche consenti le notifiche di Binario nelle impostazioni Android.</string>
     <string name="settings_live_updates_privacy">Questi controlli girano in background solo nelle finestre indicate. Il MIT riceve una richiesta senza dati tuoi; le fonti dello stato dei treni ricevono il numero del treno e il giorno, come quando apri il dettaglio. Nulla viene salvato fuori dal telefono.</string>

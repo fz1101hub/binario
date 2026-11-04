@@ -1110,6 +1110,17 @@
     <string name="punctuality_history_show_all">すべての日付を表示</string>
     <string name="settings_punctuality_recording_title">お気に入りの列車の定時運行</string>
     <string name="settings_punctuality_recording_description">1 日 1 回、到着予定時刻の後に列車の状況を取得し、最終的な遅れと各停車駅での遅れをこのスマートフォンにのみ最長 365 日間記録します。</string>
+    <string name="settings_weekly_digest_title">お気に入りの列車の週間まとめ</string>
+    <string name="settings_weekly_digest_description">日曜日の 19 時ごろ、このスマートフォンに記録されたお気に入りの列車の 1 週間の定時運行と、利用できる場合は過去 30 日間のネットワーク上の信頼性を通知でまとめ、悪化した列車を示します。ネットワークへのリクエストはありません。22 時から 7 時までは通知しません。</string>
+    <string name="weekly_digest_channel_name">週間まとめ</string>
+    <string name="weekly_digest_channel_description">日曜日の夜に、お気に入りの列車の 1 週間の定時運行をお知らせします。</string>
+    <string name="weekly_digest_title">今週のあなたの列車</string>
+    <string name="weekly_digest_train_line">%1$s：%2$s</string>
+    <string name="weekly_digest_no_runs">記録された運行なし</string>
+    <plurals name="weekly_digest_network">
+        <item quantity="other">ネットワークの過去 %1$d 日間：定時 %2$d%%</item>
+    </plurals>
+    <string name="weekly_digest_worse">悪化：%1$s、今週の定時率 %2$d%%（通常は %3$d%%）</string>
     <string name="settings_live_updates_title">リアルタイム通知</string>
     <string name="settings_live_updates_permission">これらの通知を受け取るには、Android の設定で Binario の通知を許可してください。</string>
     <string name="settings_live_updates_privacy">これらの確認は、表示されている時間帯にのみバックグラウンドで行われます。MIT にはあなたのデータを含まないリクエストが送られ、列車の状況の情報源には、詳細を開いたときと同じく列車番号と日付が送られます。スマートフォンの外には何も保存されません。</string>

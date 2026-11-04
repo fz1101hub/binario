@@ -1110,6 +1110,17 @@
     <string name="punctuality_history_show_all">ရက်စွဲအားလုံး ပြရန်</string>
     <string name="settings_punctuality_recording_title">အကြိုက်ဆုံး ရထားများ၏ အချိန်မှန်မှု</string>
     <string name="settings_punctuality_recording_description">တစ်နေ့တစ်ကြိမ် ခန့်မှန်း ဆိုက်ရောက်ချိန်ပြီးနောက် ရထား အခြေအနေကို မေးပြီး နောက်ဆုံး နောက်ကျမှုနှင့် ရပ်နားဘူတာများရှိ နောက်ကျမှုကို ဤဖုန်းပေါ်တွင်သာ ရက် 365 အထိ မှတ်တမ်းတင်သည်။</string>
+    <string name="settings_weekly_digest_title">အကြိုက်ဆုံး ရထားများ၏ အပတ်စဉ် အနှစ်ချုပ်</string>
+    <string name="settings_weekly_digest_description">တနင်္ဂနွေနေ့ ည 19 နာရီခန့်တွင် ဤဖုန်းတွင် မှတ်တမ်းတင်ထားသော အကြိုက်ဆုံး ရထားများ၏ တစ်ပတ်တာ အချိန်မှန်မှုကို အသိပေးချက်ဖြင့် အနှစ်ချုပ်ပြီး ရရှိနိုင်လျှင် ပြီးခဲ့သော ရက် 30 အတွင်း ကွန်ရက်ပေါ်ရှိ ယုံကြည်စိတ်ချရမှုကိုလည်း ပြကာ ပိုဆိုးလာသည့် ရထားကို ဖော်ပြသည်။ ကွန်ရက် တောင်းဆိုမှု မရှိပါ။ 22 နာရီမှ 7 နာရီကြား ဘယ်တော့မှ မပြပါ။</string>
+    <string name="weekly_digest_channel_name">အပတ်စဉ် အနှစ်ချုပ်</string>
+    <string name="weekly_digest_channel_description">တနင်္ဂနွေ ညနေတွင် အကြိုက်ဆုံး ရထားများ၏ တစ်ပတ်တာ အချိန်မှန်မှု။</string>
+    <string name="weekly_digest_title">ဤအပတ် သင်၏ ရထားများ</string>
+    <string name="weekly_digest_train_line">%1$s: %2$s</string>
+    <string name="weekly_digest_no_runs">မှတ်တမ်းတင်ထားသော ခရီးစဉ် မရှိ</string>
+    <plurals name="weekly_digest_network">
+        <item quantity="other">ကွန်ရက်ပေါ်တွင် ပြီးခဲ့သော ရက် %1$d: အချိန်မှန် %2$d%%</item>
+    </plurals>
+    <string name="weekly_digest_worse">ပိုဆိုးလာသည်- %1$s၊ ဤအပတ် အချိန်မှန် %2$d%% (ပုံမှန် %3$d%%)</string>
     <string name="settings_live_updates_title">အချိန်နှင့်တပြေးညီ အသိပေးချက်များ</string>
     <string name="settings_live_updates_permission">ဤအသိပေးချက်များကို ရရှိရန် Android ဆက်တင်တွင် Binario အသိပေးချက်များကို ခွင့်ပြုပါ။</string>
     <string name="settings_live_updates_privacy">ဤစစ်ဆေးမှုများသည် ပြထားသော အချိန်ပိုင်းများတွင်သာ နောက်ခံတွင် လုပ်ဆောင်သည်။ MIT သည် သင့်ဒေတာ မပါသော တောင်းဆိုမှုကို ရရှိသည်၊ ရထား အခြေအနေ ရင်းမြစ်များသည် အသေးစိတ်ကို ဖွင့်သည့်အခါကဲ့သို့ ရထားနံပါတ်နှင့် ရက်ကို ရရှိသည်။ ဖုန်းပြင်ပတွင် မည်သည့်အရာမျှ မသိမ်းပါ။</string>

@@ -25,6 +25,7 @@ enum class BackgroundCheck(val uniqueWork: String, val labelRes: Int) {
     APPROACH_ALERTS(ApproachAlertScheduler.WORK, R.string.approach_alert_channel_name),
     PUNCTUALITY(PunctualityRecorderScheduler.WORK, R.string.settings_punctuality_recording_title),
     STRIKES(StrikeReminderScheduler.WORK, R.string.settings_strike_reminder_title),
+    WEEKLY_DIGEST(WeeklyDigestScheduler.WORK, R.string.settings_weekly_digest_title),
     WIDGETS(WidgetAutoRefreshScheduler.WORK, R.string.settings_widgets_title)
 }
 

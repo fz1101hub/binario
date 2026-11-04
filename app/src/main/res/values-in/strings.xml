@@ -1110,6 +1110,17 @@
     <string name="punctuality_history_show_all">Tampilkan semua tanggal</string>
     <string name="settings_punctuality_recording_title">Ketepatan waktu kereta favorit</string>
     <string name="settings_punctuality_recording_description">Sekali sehari, setelah jadwal tiba, menanyakan status kereta dan mencatat hanya di ponsel ini keterlambatan akhir dan keterlambatan di pemberhentian, paling lama 365 hari.</string>
+    <string name="settings_weekly_digest_title">Ringkasan mingguan kereta favorit</string>
+    <string name="settings_weekly_digest_description">Setiap Minggu sekitar pukul 19.00 sebuah notifikasi merangkum ketepatan waktu minggu itu yang tercatat di ponsel ini untuk kereta favorit dan, jika tersedia, keandalannya di jaringan selama 30 hari terakhir, serta menyebut kereta yang memburuk. Tanpa permintaan jaringan; tidak pernah antara pukul 22.00 dan 07.00.</string>
+    <string name="weekly_digest_channel_name">Ringkasan mingguan</string>
+    <string name="weekly_digest_channel_description">Pada Minggu malam, ketepatan waktu kereta favorit selama seminggu.</string>
+    <string name="weekly_digest_title">Kereta Anda minggu ini</string>
+    <string name="weekly_digest_train_line">%1$s: %2$s</string>
+    <string name="weekly_digest_no_runs">tidak ada perjalanan tercatat</string>
+    <plurals name="weekly_digest_network">
+        <item quantity="other">%1$d hari terakhir di jaringan: %2$d%% tepat waktu</item>
+    </plurals>
+    <string name="weekly_digest_worse">Memburuk: %1$s, tepat waktu %2$d%% minggu ini (biasanya %3$d%%)</string>
     <string name="settings_live_updates_title">Notifikasi langsung</string>
     <string name="settings_live_updates_permission">Untuk menerima notifikasi ini, izinkan notifikasi Binario di setelan Android.</string>
     <string name="settings_live_updates_privacy">Pemeriksaan ini berjalan di latar belakang hanya pada rentang yang ditampilkan. MIT menerima permintaan tanpa data Anda; sumber status kereta menerima nomor kereta dan harinya, sama seperti saat Anda membuka detail. Tidak ada yang disimpan di luar ponsel.</string>

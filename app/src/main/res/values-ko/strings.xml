@@ -1110,6 +1110,17 @@
     <string name="punctuality_history_show_all">모든 날짜 보기</string>
     <string name="settings_punctuality_recording_title">즐겨찾는 열차의 정시성</string>
     <string name="settings_punctuality_recording_description">하루 한 번 도착 예정 시각 이후 열차 상태를 조회하여 최종 지연과 정차역별 지연을 이 휴대전화에만 최대 365일 동안 기록합니다.</string>
+    <string name="settings_weekly_digest_title">즐겨찾는 열차 주간 요약</string>
+    <string name="settings_weekly_digest_description">일요일 19시쯤 이 휴대전화에 기록된 즐겨찾는 열차의 한 주 정시성과, 가능한 경우 최근 30일 동안의 네트워크 신뢰도를 알림으로 요약하고 나빠진 열차를 알려 줍니다. 네트워크 요청은 없으며 22시부터 7시 사이에는 알리지 않습니다.</string>
+    <string name="weekly_digest_channel_name">주간 요약</string>
+    <string name="weekly_digest_channel_description">일요일 저녁에 즐겨찾는 열차의 한 주 정시성을 알려 줍니다.</string>
+    <string name="weekly_digest_title">이번 주 내 열차</string>
+    <string name="weekly_digest_train_line">%1$s: %2$s</string>
+    <string name="weekly_digest_no_runs">기록된 운행 없음</string>
+    <plurals name="weekly_digest_network">
+        <item quantity="other">네트워크 최근 %1$d일: 정시 %2$d%%</item>
+    </plurals>
+    <string name="weekly_digest_worse">나빠짐: %1$s, 이번 주 정시율 %2$d%% (평소 %3$d%%)</string>
     <string name="settings_live_updates_title">실시간 알림</string>
     <string name="settings_live_updates_permission">이 알림을 받으려면 Android 설정에서 Binario 알림을 허용하세요.</string>
     <string name="settings_live_updates_privacy">이 확인 작업은 표시된 시간대에만 백그라운드에서 실행됩니다. MIT는 사용자 데이터가 없는 요청을 받고, 열차 상태 출처는 상세 정보를 열 때와 마찬가지로 열차 번호와 날짜를 받습니다. 휴대전화 외부에는 아무것도 저장되지 않습니다.</string>

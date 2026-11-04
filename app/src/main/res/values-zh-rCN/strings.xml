@@ -1133,6 +1133,17 @@
     <string name="punctuality_history_show_all">显示所有日期</string>
     <string name="settings_punctuality_recording_title">收藏列车的准点率</string>
     <string name="settings_punctuality_recording_description">每天在计划到达后查询一次列车状态，并仅在本手机上记录最终晚点和各停靠站的晚点，最多保存 365 天。</string>
+    <string name="settings_weekly_digest_title">收藏列车每周摘要</string>
+    <string name="settings_weekly_digest_description">每周日 19:00 左右，一条通知会汇总本手机记录的收藏列车本周的准点情况，以及在可用时它们最近 30 天在路网上的可靠性，并指出表现变差的列车。不发出网络请求；22:00 至 7:00 之间从不通知。</string>
+    <string name="weekly_digest_channel_name">每周摘要</string>
+    <string name="weekly_digest_channel_description">周日晚上，收藏列车本周的准点情况。</string>
+    <string name="weekly_digest_title">你本周的列车</string>
+    <string name="weekly_digest_train_line">%1$s：%2$s</string>
+    <string name="weekly_digest_no_runs">没有记录的车次</string>
+    <plurals name="weekly_digest_network">
+        <item quantity="other">路网最近 %1$d 天：准点 %2$d%%</item>
+    </plurals>
+    <string name="weekly_digest_worse">变差：%1$s，本周准点率 %2$d%%（通常为 %3$d%%）</string>
     <string name="settings_live_updates_title">实时通知</string>
     <string name="settings_live_updates_permission">如需接收这些通知，请在 Android 设置中允许 Binario 发送通知。</string>
     <string name="settings_live_updates_privacy">这些检查仅在所示时段内于后台运行。MIT 收到的请求不包含你的任何数据；列车状态数据源会收到车次号和日期，与你打开详情时相同。任何数据都不会保存在手机以外。</string>

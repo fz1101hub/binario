@@ -1157,6 +1157,18 @@
     <string name="punctuality_history_show_all">Show all dates</string>
     <string name="settings_punctuality_recording_title">Punctuality of favourite trains</string>
     <string name="settings_punctuality_recording_description">Once a day, after the scheduled arrival, asks for the train status and records only on this phone the final delay and the delays at the stops, for up to 365 days.</string>
+    <string name="settings_weekly_digest_title">Weekly summary of favourite trains</string>
+    <string name="settings_weekly_digest_description">On Sunday around 19:00 a notification sums up the week’s punctuality recorded on this phone for your favourite trains and, when available, their network reliability over the last 30 days, and names the one that got worse. No network request; never between 22:00 and 7:00.</string>
+    <string name="weekly_digest_channel_name">Weekly summary</string>
+    <string name="weekly_digest_channel_description">On Sunday evening, the week’s punctuality of your favourite trains.</string>
+    <string name="weekly_digest_title">Your trains this week</string>
+    <string name="weekly_digest_train_line">%1$s: %2$s</string>
+    <string name="weekly_digest_no_runs">no run recorded</string>
+    <plurals name="weekly_digest_network">
+        <item quantity="one">last %1$d day on the network: %2$d%% on time</item>
+        <item quantity="other">last %1$d days on the network: %2$d%% on time</item>
+    </plurals>
+    <string name="weekly_digest_worse">Got worse: %1$s, on time %2$d%% of the time this week (usually %3$d%%)</string>
     <string name="settings_live_updates_title">Live notifications</string>
     <string name="settings_live_updates_permission">To receive these notifications, allow Binario notifications in Android settings.</string>
     <string name="settings_live_updates_privacy">These checks run in the background only in the windows shown. The MIT receives a request with no data of yours; the train-status sources receive the train number and the day, as when you open the detail. Nothing is stored outside the phone.</string>

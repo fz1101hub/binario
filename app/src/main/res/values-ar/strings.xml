@@ -1230,6 +1230,22 @@
     <string name="punctuality_history_show_all">عرض كل التواريخ</string>
     <string name="settings_punctuality_recording_title">الالتزام بالمواعيد للقطارات المفضّلة</string>
     <string name="settings_punctuality_recording_description">مرة يوميًا، بعد الوصول المتوقع، يطلب حالة القطار ويسجّل على هذا الهاتف فقط التأخير النهائي والتأخير في المحطات، لمدة أقصاها 365 يومًا.</string>
+    <string name="settings_weekly_digest_title">ملخص أسبوعي للقطارات المفضّلة</string>
+    <string name="settings_weekly_digest_description">يوم الأحد نحو الساعة 19 يلخّص إشعار الالتزام بالمواعيد خلال الأسبوع المسجّل على هذا الهاتف للقطارات المفضّلة، وموثوقيتها على الشبكة خلال آخر 30 يومًا عند توفرها، ويذكر القطار الذي تراجع أداؤه. لا يرسل أي طلب عبر الشبكة؛ ولا يظهر أبدًا بين 22 و7.</string>
+    <string name="weekly_digest_channel_name">ملخص أسبوعي</string>
+    <string name="weekly_digest_channel_description">مساء الأحد، الالتزام بالمواعيد خلال الأسبوع للقطارات المفضّلة.</string>
+    <string name="weekly_digest_title">قطاراتك هذا الأسبوع</string>
+    <string name="weekly_digest_train_line">%1$s: %2$s</string>
+    <string name="weekly_digest_no_runs">لم تُسجَّل أي رحلة</string>
+    <plurals name="weekly_digest_network">
+        <item quantity="zero">آخر %1$d يوم على الشبكة: %2$d%% في الموعد</item>
+        <item quantity="one">آخر %1$d يوم على الشبكة: %2$d%% في الموعد</item>
+        <item quantity="two">آخر %1$d يومين على الشبكة: %2$d%% في الموعد</item>
+        <item quantity="few">آخر %1$d أيام على الشبكة: %2$d%% في الموعد</item>
+        <item quantity="many">آخر %1$d يومًا على الشبكة: %2$d%% في الموعد</item>
+        <item quantity="other">آخر %1$d يوم على الشبكة: %2$d%% في الموعد</item>
+    </plurals>
+    <string name="weekly_digest_worse">تراجع: %1$s، في الموعد %2$d%% من المرات هذا الأسبوع (عادةً %3$d%%)</string>
     <string name="settings_live_updates_title">إشعارات مباشرة</string>
     <string name="settings_live_updates_permission">لتلقّي هذه الإشعارات، اسمح بإشعارات Binario في إعدادات Android.</string>
     <string name="settings_live_updates_privacy">تعمل هذه الفحوصات في الخلفية فقط في الفترات المبيّنة. يتلقى MIT طلبًا دون أي بيانات عنك؛ وتتلقى مصادر حالة القطارات رقم القطار واليوم، كما عند فتح التفاصيل. لا يُحفظ شيء خارج الهاتف.</string>

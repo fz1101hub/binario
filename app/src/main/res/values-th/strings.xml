@@ -1133,6 +1133,17 @@
     <string name="punctuality_history_show_all">แสดงทุกวันที่</string>
     <string name="settings_punctuality_recording_title">ความตรงต่อเวลาของขบวนโปรด</string>
     <string name="settings_punctuality_recording_description">วันละครั้งหลังเวลาถึงตามตาราง จะขอสถานะของขบวนรถ และบันทึกความล่าช้าสุดท้ายรวมถึงความล่าช้าที่จุดจอดต่างๆ ไว้ในโทรศัพท์เครื่องนี้เท่านั้น ไม่เกิน 365 วัน</string>
+    <string name="settings_weekly_digest_title">สรุปรายสัปดาห์ของขบวนโปรด</string>
+    <string name="settings_weekly_digest_description">ทุกวันอาทิตย์ราว 19:00 น. การแจ้งเตือนจะสรุปความตรงต่อเวลาของขบวนโปรดในสัปดาห์นั้นที่บันทึกไว้ในโทรศัพท์เครื่องนี้ และหากมีข้อมูล ความน่าเชื่อถือบนเครือข่ายใน 30 วันล่าสุด พร้อมระบุขบวนที่แย่ลง ไม่มีการส่งคำขอทางเครือข่าย และไม่แจ้งระหว่าง 22:00 ถึง 7:00 น.</string>
+    <string name="weekly_digest_channel_name">สรุปรายสัปดาห์</string>
+    <string name="weekly_digest_channel_description">เย็นวันอาทิตย์ แจ้งความตรงต่อเวลาของขบวนโปรดตลอดสัปดาห์</string>
+    <string name="weekly_digest_title">รถไฟของคุณสัปดาห์นี้</string>
+    <string name="weekly_digest_train_line">%1$s: %2$s</string>
+    <string name="weekly_digest_no_runs">ไม่มีเที่ยวที่บันทึกไว้</string>
+    <plurals name="weekly_digest_network">
+        <item quantity="other">%1$d วันล่าสุดบนเครือข่าย: ตรงเวลา %2$d%%</item>
+    </plurals>
+    <string name="weekly_digest_worse">แย่ลง: %1$s ตรงเวลา %2$d%% ในสัปดาห์นี้ (ปกติ %3$d%%)</string>
     <string name="settings_live_updates_title">การแจ้งเตือนแบบเรียลไทม์</string>
     <string name="settings_live_updates_permission">หากต้องการรับการแจ้งเตือนเหล่านี้ ให้อนุญาตการแจ้งเตือนของ Binario ในการตั้งค่า Android</string>
     <string name="settings_live_updates_privacy">การตรวจสอบเหล่านี้ทำงานในเบื้องหลังเฉพาะในช่วงเวลาที่ระบุ MIT จะได้รับคำขอที่ไม่มีข้อมูลของคุณ แหล่งข้อมูลสถานะขบวนรถจะได้รับหมายเลขขบวนและวันที่ เช่นเดียวกับเมื่อคุณเปิดรายละเอียด ไม่มีสิ่งใดถูกเก็บไว้นอกโทรศัพท์</string>

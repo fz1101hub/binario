@@ -1133,6 +1133,17 @@
     <string name="punctuality_history_show_all">Xem tất cả các ngày</string>
     <string name="settings_punctuality_recording_title">Mức đúng giờ của tàu yêu thích</string>
     <string name="settings_punctuality_recording_description">Mỗi ngày một lần, sau giờ đến theo lịch, ứng dụng hỏi trạng thái tàu và chỉ ghi trên điện thoại này mức trễ cuối cùng và mức trễ tại các điểm dừng, tối đa 365 ngày.</string>
+    <string name="settings_weekly_digest_title">Tóm tắt hằng tuần của tàu yêu thích</string>
+    <string name="settings_weekly_digest_description">Chủ nhật khoảng 19:00, một thông báo tóm tắt mức đúng giờ trong tuần của các tàu yêu thích được ghi lại trên điện thoại này và, nếu có, độ tin cậy của chúng trên mạng lưới trong 30 ngày qua, đồng thời nêu tàu kém đi. Không gửi yêu cầu mạng; không bao giờ trong khoảng 22:00 đến 7:00.</string>
+    <string name="weekly_digest_channel_name">Tóm tắt hằng tuần</string>
+    <string name="weekly_digest_channel_description">Tối Chủ nhật, mức đúng giờ trong tuần của các tàu yêu thích.</string>
+    <string name="weekly_digest_title">Tàu của bạn tuần này</string>
+    <string name="weekly_digest_train_line">%1$s: %2$s</string>
+    <string name="weekly_digest_no_runs">chưa ghi lại chuyến nào</string>
+    <plurals name="weekly_digest_network">
+        <item quantity="other">%1$d ngày qua trên mạng lưới: %2$d%% đúng giờ</item>
+    </plurals>
+    <string name="weekly_digest_worse">Kém đi: %1$s, đúng giờ %2$d%% số lần trong tuần này (thường là %3$d%%)</string>
     <string name="settings_live_updates_title">Thông báo thời gian thực</string>
     <string name="settings_live_updates_permission">Để nhận các thông báo này, hãy cho phép thông báo của Binario trong phần cài đặt Android.</string>
     <string name="settings_live_updates_privacy">Các lần kiểm tra này chỉ chạy nền trong các khung giờ đã nêu. MIT nhận một yêu cầu không chứa dữ liệu nào của bạn; các nguồn trạng thái tàu nhận số hiệu tàu và ngày, giống như khi bạn mở chi tiết. Không có gì được lưu bên ngoài điện thoại.</string>

@@ -1157,6 +1157,18 @@
     <string name="punctuality_history_show_all">Tüm tarihleri göster</string>
     <string name="settings_punctuality_recording_title">Favori trenlerin dakikliği</string>
     <string name="settings_punctuality_recording_description">Günde bir kez, planlanan varıştan sonra trenin durumunu sorgular ve son gecikmeyi ve duraklardaki gecikmeleri yalnızca bu telefonda, en fazla 365 gün boyunca kaydeder.</string>
+    <string name="settings_weekly_digest_title">Favori trenlerin haftalık özeti</string>
+    <string name="settings_weekly_digest_description">Pazar günleri saat 19:00 civarında bir bildirim, bu telefonda kaydedilen favori trenlerin haftalık dakikliğini ve varsa son 30 gündeki ağ güvenilirliğini özetler ve kötüleşen treni belirtir. Ağ isteği yapılmaz; 22:00 ile 07:00 arasında asla gösterilmez.</string>
+    <string name="weekly_digest_channel_name">Haftalık özet</string>
+    <string name="weekly_digest_channel_description">Pazar akşamı favori trenlerin haftalık dakikliği.</string>
+    <string name="weekly_digest_title">Bu hafta trenleriniz</string>
+    <string name="weekly_digest_train_line">%1$s: %2$s</string>
+    <string name="weekly_digest_no_runs">kayıtlı sefer yok</string>
+    <plurals name="weekly_digest_network">
+        <item quantity="one">ağda son %1$d gün: %%%2$d zamanında</item>
+        <item quantity="other">ağda son %1$d gün: %%%2$d zamanında</item>
+    </plurals>
+    <string name="weekly_digest_worse">Kötüleşti: %1$s, bu hafta seferlerin %%%2$d kadarında zamanında (genellikle %%%3$d)</string>
     <string name="settings_live_updates_title">Canlı bildirimler</string>
     <string name="settings_live_updates_permission">Bu bildirimleri almak için Android ayarlarında Binario bildirimlerine izin verin.</string>
     <string name="settings_live_updates_privacy">Bu kontroller yalnızca belirtilen aralıklarda arka planda çalışır. MIT, sizden hiçbir veri içermeyen bir istek alır; tren durumu kaynakları, ayrıntıyı açtığınızdaki gibi tren numarasını ve günü alır. Telefon dışında hiçbir şey saklanmaz.</string>

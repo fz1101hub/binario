@@ -1157,6 +1157,18 @@
     <string name="punctuality_history_show_all">Alle Daten anzeigen</string>
     <string name="settings_punctuality_recording_title">Pünktlichkeit der favorisierten Züge</string>
     <string name="settings_punctuality_recording_description">Fragt einmal am Tag nach der planmäßigen Ankunft den Zugstatus ab und speichert nur auf diesem Telefon die Endverspätung und die Verspätungen an den Halten, höchstens 365 Tage lang.</string>
+    <string name="settings_weekly_digest_title">Wochenübersicht der favorisierten Züge</string>
+    <string name="settings_weekly_digest_description">Sonntags gegen 19 Uhr fasst eine Benachrichtigung die auf diesem Telefon erfasste Pünktlichkeit der Woche deiner favorisierten Züge zusammen, dazu, wenn verfügbar, ihre Zuverlässigkeit im Netz in den letzten 30 Tagen, und nennt den Zug, der sich verschlechtert hat. Keine Netzanfrage; nie zwischen 22 und 7 Uhr.</string>
+    <string name="weekly_digest_channel_name">Wochenübersicht</string>
+    <string name="weekly_digest_channel_description">Sonntagabends die Pünktlichkeit der Woche deiner favorisierten Züge.</string>
+    <string name="weekly_digest_title">Deine Züge diese Woche</string>
+    <string name="weekly_digest_train_line">%1$s: %2$s</string>
+    <string name="weekly_digest_no_runs">keine Fahrt erfasst</string>
+    <plurals name="weekly_digest_network">
+        <item quantity="one">letzter %1$d Tag im Netz: %2$d%% pünktlich</item>
+        <item quantity="other">letzte %1$d Tage im Netz: %2$d%% pünktlich</item>
+    </plurals>
+    <string name="weekly_digest_worse">Verschlechtert: %1$s, diese Woche zu %2$d%% pünktlich (sonst zu %3$d%%)</string>
     <string name="settings_live_updates_title">Live-Benachrichtigungen</string>
     <string name="settings_live_updates_permission">Um diese Benachrichtigungen zu erhalten, erlaube Binario-Benachrichtigungen in den Android-Einstellungen.</string>
     <string name="settings_live_updates_privacy">Diese Prüfungen laufen im Hintergrund nur in den angegebenen Zeitfenstern. Das MIT erhält eine Anfrage ohne Daten von dir; die Quellen des Zugstatus erhalten Zugnummer und Tag, wie beim Öffnen des Details. Nichts wird außerhalb des Telefons gespeichert.</string>

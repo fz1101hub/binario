@@ -1182,6 +1182,20 @@
     <string name="punctuality_history_show_all">Показать все даты</string>
     <string name="settings_punctuality_recording_title">Пунктуальность избранных поездов</string>
     <string name="settings_punctuality_recording_description">Раз в день после ожидаемого прибытия запрашивает статус поезда и записывает только на этом телефоне итоговое опоздание и опоздания на остановках, не более 365 дней.</string>
+    <string name="settings_weekly_digest_title">Еженедельная сводка по избранным поездам</string>
+    <string name="settings_weekly_digest_description">По воскресеньям около 19:00 уведомление подводит итоги пунктуальности избранных поездов за неделю, записанной на этом телефоне, и, если есть данные, их надёжности в сети за последние 30 дней, а также называет поезд, который стал хуже. Без сетевых запросов; никогда с 22:00 до 7:00.</string>
+    <string name="weekly_digest_channel_name">Еженедельная сводка</string>
+    <string name="weekly_digest_channel_description">В воскресенье вечером — пунктуальность избранных поездов за неделю.</string>
+    <string name="weekly_digest_title">Ваши поезда на этой неделе</string>
+    <string name="weekly_digest_train_line">%1$s: %2$s</string>
+    <string name="weekly_digest_no_runs">поездок не записано</string>
+    <plurals name="weekly_digest_network">
+        <item quantity="one">последний %1$d день в сети: вовремя %2$d%%</item>
+        <item quantity="few">последние %1$d дня в сети: вовремя %2$d%%</item>
+        <item quantity="many">последние %1$d дней в сети: вовремя %2$d%%</item>
+        <item quantity="other">последние %1$d дня в сети: вовремя %2$d%%</item>
+    </plurals>
+    <string name="weekly_digest_worse">Стало хуже: %1$s, на этой неделе вовремя в %2$d%% случаев (обычно %3$d%%)</string>
     <string name="settings_live_updates_title">Уведомления в реальном времени</string>
     <string name="settings_live_updates_permission">Чтобы получать эти уведомления, разрешите уведомления Binario в настройках Android.</string>
     <string name="settings_live_updates_privacy">Эти проверки выполняются в фоне только в указанные интервалы. MIT получает запрос без ваших данных; источники статуса поездов получают номер поезда и дату, как при открытии карточки. За пределами телефона ничего не сохраняется.</string>
