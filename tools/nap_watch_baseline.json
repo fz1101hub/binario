@@ -1,0 +1,106 @@
+{
+  "schema": "binario-nap-watch-v1",
+  "verifiedAt": "2026-11-02",
+  "catalogue": "https://www.cciss.it/nap/mmtis/public/it/catalog/",
+  "note": "Organisations and datasets seen on the Italian NAP by the transit-discovery run of 2 November 2026 (Organisation lists in both orders, organisation and dataset pages): Trenitalia and Italo publish only their NeTEx timetables. tools/nap_watch.py reports anything else; update after review.",
+  "organisations": [
+    {
+      "id": 1077484,
+      "name": "OAP Trenitalia",
+      "watch": true,
+      "datasets": [
+        {
+          "id": 1077621,
+          "name": "OAP Trenitalia - NeTEx Livello 1"
+        }
+      ]
+    },
+    {
+      "id": 1813930,
+      "name": "OAP Italo",
+      "watch": true,
+      "datasets": [
+        {
+          "id": 1813935,
+          "name": "OAP Italo - NeTEx Livello 1"
+        },
+        {
+          "id": 1813963,
+          "name": "OAP Italo - NeTEx Livello 2"
+        }
+      ]
+    },
+    {
+      "id": 1845536,
+      "name": "OAP FlixBus"
+    },
+    {
+      "id": 1321,
+      "name": "RAP Abruzzo"
+    },
+    {
+      "id": 1491783,
+      "name": "RAP Calabria"
+    },
+    {
+      "id": 1460,
+      "name": "RAP Campania"
+    },
+    {
+      "id": 1537,
+      "name": "RAP Emilia-Romagna"
+    },
+    {
+      "id": 203990,
+      "name": "RAP Friuli Venezia Giulia"
+    },
+    {
+      "id": 1590,
+      "name": "RAP Lazio"
+    },
+    {
+      "id": 1648,
+      "name": "RAP Liguria"
+    },
+    {
+      "id": 1781,
+      "name": "RAP Marche"
+    },
+    {
+      "id": 1181653,
+      "name": "RAP Molise"
+    },
+    {
+      "id": 1,
+      "name": "RAP Piemonte"
+    },
+    {
+      "id": 1845,
+      "name": "RAP Puglia"
+    },
+    {
+      "id": 396549,
+      "name": "RAP Sardegna"
+    },
+    {
+      "id": 1972,
+      "name": "RAP Toscana"
+    },
+    {
+      "id": 1381,
+      "name": "RAP Trentino Alto Adige - Provincia autonoma di Bolzano"
+    },
+    {
+      "id": 2008,
+      "name": "RAP Trentino Alto Adige - Provincia autonoma di Trento"
+    },
+    {
+      "id": 1425003,
+      "name": "RAP Valle d'Aosta"
+    },
+    {
+      "id": 2040,
+      "name": "RAP Veneto"
+    }
+  ]
+}

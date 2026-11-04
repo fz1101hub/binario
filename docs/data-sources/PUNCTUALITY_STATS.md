@@ -104,6 +104,15 @@ Il dispatch esegue anche una normale raccolta (in coda dietro a quella pianifica
 
 Nelle prime settimane la finestra di 30 giorni è solo in parte coperta: `d` dice quanti giorni sono davvero osservati e la soglia dei 5 campioni tiene nascosti i treni con pochi dati.
 
+## Sorveglianza settimanale del National Access Point
+
+Le statistiche si stimano da ViaggiaTreno perché nessun operatore pubblica ritardi, soppressioni o orari osservati come dati aperti: sul National Access Point italiano (catalogo CCISS) Trenitalia ([1077484](https://www.cciss.it/nap/mmtis/public/it/catalog/Organisation/1077484)) e Italo ([1813930](https://www.cciss.it/nap/mmtis/public/it/catalog/Organisation/1813930)) hanno solo gli orari NeTEx («NeTEx Livello 1», e «Livello 2» per Italo). Ogni lunedì il job `freshness-watch` di `gtfs-assets-ci.yml` esegue `python3 -I tools/nap_watch.py`, che legge quattro pagine del catalogo (le due organizzazioni e l'elenco delle organizzazioni in ordine crescente e decrescente, dieci voci ciascuno: un nuovo fornitore «OAP …» o «RFI …» compare in uno dei due) dal JSON `__NEXT_DATA__` di Next.js e le confronta con `tools/nap_watch_baseline.json` (verificata con la scoperta del 2 novembre 2026).
+
+- Un dataset nuovo, rinominato o scomparso di un'organizzazione osservata, e un'organizzazione che la baseline non conosce, compaiono nel riepilogo del job e come annotazione `::warning`; un dataset il cui nome, descrizione, formato o tag parlano di ritardi, soppressioni, cancellazioni, SIRI, GTFS-Realtime, tempo reale, dati osservati o storici è segnalato come «possibili dati di ritardi o tempo reale» (non basta «servizio di informazioni dinamiche», con cui il NAP classifica anche gli orari NeTEx).
+- Una pagina non leggibile è un'unica annotazione, mai un errore del job; il job fallisce solo se la baseline non è valida (`--check-baseline` la verifica senza rete).
+- Con una novità il riepilogo propone la baseline aggiornata (JSON con caratteri ASCII escapati): si verifica la pagina del dataset, si valuta se sostituisce ViaggiaTreno (licenza, contenuto, frequenza) e si committa la baseline.
+- Le pagine sono dati non attendibili: solo HTTPS verso `www.cciss.it/nap/` (anche nei reindirizzamenti), 4 MB e 30 s per pagina, due tentativi e 4 minuti in tutto, JSON rigoroso, identità dell'organizzazione controllata; testo nel log con `log_safe`, nel riepilogo escapato per Markdown, nelle annotazioni escapato come dato dei comandi del workflow (`%`, CR, LF). Lo step gira con i comandi sospesi (`::stop-commands::`) e stampa le annotazioni solo dopo averli ripristinati.
+
 ## Limiti noti
 
 - `actualFermataType` 2 è trattato come fermata straordinaria (non prevista): l'app lo mostra come fermata saltata insieme al 3, ma il significato non è documentato da Trenitalia.

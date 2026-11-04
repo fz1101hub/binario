@@ -369,6 +369,7 @@ THIRD_PARTY_DATA_MARKERS = (
     "tools/build_gtfs_packs.py --refresh",
     "LiveProviderNetworkTest",
     "tools/collect_punctuality.py",
+    "tools/nap_watch.py",
 )
 # Steps that print text read from downloads: they must run with workflow commands stopped (audit A7-02).
 UNTRUSTED_LOG_MARKERS = (
@@ -376,6 +377,7 @@ UNTRUSTED_LOG_MARKERS = (
     "tools/acquire_transit_sources.py --out",
     "tools/acquire_transit_sources.py --validate-netex",
     "tools/collect_punctuality.py",
+    "tools/nap_watch.py",
 )
 
 
