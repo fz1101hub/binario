@@ -6,6 +6,7 @@ import java.io.IOException
 import java.io.InputStream
 import java.io.InputStreamReader
 import java.io.Reader
+import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
 import java.time.temporal.ChronoUnit
@@ -70,7 +71,16 @@ class NetworkReliabilityTrain internal constructor(
     /** Largest delay per stop, [ABSENT] where an older file does not publish it. */
     private val maxDelays: ShortArray = ShortArray(codes.size) { ABSENT },
     /** Scheduled minute of the day per stop (may pass 1439 after midnight), [ABSENT] where not published. */
-    private val scheduledMinutes: ShortArray = ShortArray(codes.size) { ABSENT }
+    private val scheduledMinutes: ShortArray = ShortArray(codes.size) { ABSENT },
+    /** The most frequent platform per stop, null where the file publishes none (extension 2). */
+    private val platformNames: Array<String?> = arrayOfNulls(codes.size),
+    /** Per stop the days on that platform and the days with any platform ([platformNames] set only). */
+    private val platformCounts: ShortArray = ShortArray(codes.size * 2),
+    /**
+     * Per stop seven `[samples, ≤5, ≤15]` triples, Monday to Sunday ([WEEKDAY_VALUES] values), with [ABSENT] as the
+     * first value where the file publishes none; null when no stop of the train has them.
+     */
+    private val weekdayCounts: ShortArray? = null
 ) {
     val stopCount: Int get() = codes.size
 
@@ -95,6 +105,27 @@ class NetworkReliabilityTrain internal constructor(
      * recent day observed; past 1439 for a stop reached after midnight. Null when the file does not say.
      */
     fun scheduledMinuteOfDay(index: Int): Int? = scheduledMinutes[index].toInt().takeIf { it >= 0 }
+
+    /**
+     * The most frequent actual platform at the stop (departure platform at the origin), how many observed days used it
+     * and how many had any platform; null when the file does not publish one. No threshold applied: see
+     * [NetworkReliability.usualPlatform].
+     */
+    fun platform(index: Int): UsualPlatform? {
+        val name = platformNames[index] ?: return null
+        return UsualPlatform(name, platformCounts[index * 2].toInt(), platformCounts[index * 2 + 1].toInt())
+    }
+
+    /** The delays at the stop by ISO weekday, Monday first, or null when the file does not publish them. */
+    fun weekdays(index: Int): List<WeekdayDelays>? {
+        val counts = weekdayCounts ?: return null
+        val base = index * WEEKDAY_VALUES
+        if (counts[base] == ABSENT) return null
+        return DayOfWeek.entries.map { day ->
+            val at = base + day.ordinal * 3
+            WeekdayDelays(day, counts[at].toInt(), counts[at + 1].toInt(), counts[at + 2].toInt())
+        }
+    }
 
     /** Samples at the stop with a delay of at most [limit] minutes when [limit] is one of the bucket limits, else null. */
     fun cumulativeAtLimit(index: Int, limit: Int): Int? {
@@ -126,8 +157,31 @@ class NetworkReliabilityTrain internal constructor(
 
     internal companion object {
         const val ABSENT: Short = -1
+        /** Seven weekdays of three counts each. */
+        const val WEEKDAY_VALUES = 21
     }
 }
+
+/**
+ * The most frequent platform of a train at a stop: [count] of the [observed] days that published a platform there
+ * (statistics, never the platform of today's run).
+ */
+data class UsualPlatform(val name: String, val count: Int, val observed: Int) {
+    val share: Double get() = if (observed > 0) count.toDouble() / observed else 0.0
+}
+
+/** The delays of one ISO weekday at a stop: [samples] days, [within5] and [within15] of them at most 5 and 15 minutes late. */
+data class WeekdayDelays(val weekday: DayOfWeek, val samples: Int, val within5: Int, val within15: Int) {
+    /** The days on time against the train's own limit (5 or 15 minutes, [NetworkReliability.onTimeLimitMinutes]). */
+    fun onTime(limitMinutes: Int): Int = if (limitMinutes <= NetworkReliability.HIGH_SPEED_ON_TIME_MINUTES) within5 else within15
+}
+
+/**
+ * «Il venerdì è in orario 2 volte su 5, peggio della media»: one weekday whose on-time share differs from the overall
+ * one by at least [NetworkReliability.MIN_WEEKDAY_GAP_POINTS] points, on at least [NetworkReliability.MIN_WEEKDAY_SAMPLES]
+ * samples.
+ */
+data class WeekdayRemark(val weekday: DayOfWeek, val samples: Int, val onTime: Int, val better: Boolean, val gapPoints: Double)
 
 /**
  * Reliability of one train at one stop: the delays of the [samples] days it reached the stop, measured against the
@@ -174,6 +228,15 @@ object NetworkReliability {
     const val MIN_SAMPLES = 5
     const val HIGH_SPEED_ON_TIME_MINUTES = 5
     const val OTHER_ON_TIME_MINUTES = 15
+
+    /** «Di solito al binario …» needs at least this many days on the platform … */
+    const val MIN_PLATFORM_DAYS = 5
+    /** … and at least this share of the days that published a platform. */
+    const val MIN_PLATFORM_SHARE = 0.6
+    /** A weekday is remarked on with at least this many samples … */
+    const val MIN_WEEKDAY_SAMPLES = 4
+    /** … and an on-time share at least this many points from the overall one. */
+    const val MIN_WEEKDAY_GAP_POINTS = 15
 
     /** Categories measured at 5 minutes, as the operators and Treniamo do; every other category at 15. */
     private val HIGH_SPEED_CATEGORIES = setOf("FR", "FA", "FB", "EC", "ES", "ESC", "EN", "ITALO")
@@ -263,6 +326,50 @@ object NetworkReliability {
         val train = stats.trainsNumbered(number).firstOrNull { it.stopCount == 0 && it.originCode == originCode && it.daysObserved >= MIN_SAMPLES }
             ?: return null
         return StopReliability(originCode, 0, 0, onTimeLimitMinutes(train.category), 0.0, train.daysObserved, train.daysCancelled)
+    }
+
+    /**
+     * «Di solito al binario 12 (8 volte su 10)»: the most frequent platform of [train] at its stop [index], with at least
+     * [MIN_PLATFORM_DAYS] days on it and at least [MIN_PLATFORM_SHARE] of the days that published a platform; else null.
+     */
+    fun usualPlatform(train: NetworkReliabilityTrain, index: Int): UsualPlatform? {
+        if (index !in 0 until train.stopCount) return null
+        val platform = train.platform(index) ?: return null
+        if (platform.count < MIN_PLATFORM_DAYS || platform.share + 1e-9 < MIN_PLATFORM_SHARE) return null
+        return platform
+    }
+
+    /**
+     * The usual platform to show next to a run, or null as soon as a platform of the run itself is known: a live or
+     * announced platform (or the timetable's) always wins over the statistics.
+     */
+    fun usualPlatformShown(usual: UsualPlatform?, vararg runPlatforms: String?): UsualPlatform? =
+        usual?.takeIf { runPlatforms.all { it.isNullOrBlank() } }
+
+    /**
+     * The weekdays of [weekdays] whose on-time share (against [limitMinutes]) is at least [MIN_WEEKDAY_GAP_POINTS]
+     * points from [overallShare], with at least [MIN_WEEKDAY_SAMPLES] samples, in weekday order.
+     */
+    fun weekdayRemarks(weekdays: List<WeekdayDelays>, limitMinutes: Int, overallShare: Double): List<WeekdayRemark> =
+        weekdays.mapNotNull { day ->
+            if (day.samples < MIN_WEEKDAY_SAMPLES) return@mapNotNull null
+            val onTime = day.onTime(limitMinutes).coerceIn(0, day.samples)
+            val gap = (onTime.toDouble() / day.samples - overallShare) * 100
+            if (kotlin.math.abs(gap) + 1e-9 < MIN_WEEKDAY_GAP_POINTS) null
+            else WeekdayRemark(day.weekday, day.samples, onTime, better = gap > 0, gapPoints = gap)
+        }
+
+    /**
+     * The weekday remark of [train] at its stop [index], measured against the stop's own on-time share ([stop]): the
+     * remark for [preferred] (the day of the run shown) when it has one, else the weekday furthest from the overall share
+     * (the earlier weekday on a tie); null without weekday counts or when no weekday qualifies.
+     */
+    fun weekdayRemark(train: NetworkReliabilityTrain, index: Int, stop: StopReliability, preferred: DayOfWeek? = null): WeekdayRemark? {
+        if (index !in 0 until train.stopCount || stop.samples <= 0) return null
+        val weekdays = train.weekdays(index) ?: return null
+        val remarks = weekdayRemarks(weekdays, stop.onTimeLimitMinutes, stop.onTimeShare)
+        return remarks.firstOrNull { it.weekday == preferred }
+            ?: remarks.maxWithOrNull(compareBy<WeekdayRemark> { kotlin.math.abs(it.gapPoints) }.thenByDescending { it.weekday.ordinal })
     }
 
     /**
@@ -473,6 +580,9 @@ object NetworkReliabilityParser {
         // Optional since the 4 Nov 2026 extension: a value that is not a plausible integer is left out, not the stop.
         val maxDelay = (if (json.hasNext()) json.optInt() else null)?.takeIf { it in 0..MAX_DELAY_MINUTES.toInt() }
         val scheduledMinute = (if (json.hasNext()) json.optInt() else null)?.takeIf { it in 0 until MAX_SCHEDULED_MINUTE }
+        // Optional since extension 2 (usual platform, weekdays), each may be null: a malformed one is left out, not the stop.
+        val platform = if (json.hasNext()) platform(json, limits) else null
+        val weekdays = if (json.hasNext()) weekdays(json, samples, limits) else null
         // Later fields of a newer pipeline are ignored.
         while (json.hasNext()) json.skipValue()
         json.endArray()
@@ -480,7 +590,52 @@ object NetworkReliabilityParser {
         if (mean == null || !mean.isFinite() || mean < -MAX_DELAY_MINUTES || mean > MAX_DELAY_MINUTES) return null
         if (cumulative == null || suppressed == null || suppressed !in 0..limits.maxCount) return null
         if (cumulative.any { it !in 0..samples } || (1 until cumulative.size).any { cumulative[it] < cumulative[it - 1] }) return null
-        return RawStop(codes.getOrPut(code) { code }, samples, (mean * 10).roundToInt(), cumulative, suppressed, maxDelay, scheduledMinute)
+        return RawStop(
+            codes.getOrPut(code) { code }, samples, (mean * 10).roundToInt(), cumulative, suppressed, maxDelay, scheduledMinute,
+            platform, weekdays?.takeIf { days -> days.indices.step(3).all { days[it] <= samples } }
+        )
+    }
+
+    /**
+     * `[name, count, observedWithPlatform]`: a trimmed name of at most [MAX_PLATFORM_NAME] characters, used on [count]
+     * of the observed days that published a platform; null for JSON null or anything else.
+     */
+    private fun platform(json: JsonPullReader, limits: Limits): UsualPlatform? {
+        if (json.peek() != JsonPullReader.Token.BEGIN_ARRAY) return null.also { json.skipValue() }
+        json.beginArray()
+        val name = if (json.hasNext()) json.optString()?.trim() else null
+        val count = if (json.hasNext()) json.optInt() else null
+        val observed = if (json.hasNext()) json.optInt() else null
+        while (json.hasNext()) json.skipValue()
+        json.endArray()
+        if (name.isNullOrEmpty() || name.length > MAX_PLATFORM_NAME || name.any { it.isISOControl() }) return null
+        if (count == null || observed == null || observed !in 1..limits.maxCount || count !in 1..observed) return null
+        return UsualPlatform(name, count, observed)
+    }
+
+    /**
+     * Seven `[samples, ≤5, ≤15]` triples, Monday to Sunday, as 21 counts; null for JSON null, another length or counts
+     * that do not add up (each weekday within the stop's samples is checked by the caller).
+     */
+    private fun weekdays(json: JsonPullReader, samples: Int?, limits: Limits): IntArray? {
+        if (json.peek() != JsonPullReader.Token.BEGIN_ARRAY) return null.also { json.skipValue() }
+        val counts = IntArray(NetworkReliabilityTrain.WEEKDAY_VALUES)
+        var days = 0
+        var valid = samples != null
+        json.beginArray()
+        while (json.hasNext()) {
+            val triple = intArray(json, 3)
+            if (triple == null || triple.size != 3 || days == 7) {
+                valid = false
+                continue
+            }
+            val (total, within5, within15) = triple.toList()
+            if (total !in 0..limits.maxCount || within5 !in 0..within15 || within15 > total) valid = false
+            triple.copyInto(counts, days * 3)
+            days += 1
+        }
+        json.endArray()
+        return counts.takeIf { valid && days == 7 }
     }
 
     private class RawStop(
@@ -490,7 +645,9 @@ object NetworkReliabilityParser {
         val cumulative: IntArray,
         val suppressed: Int,
         val maxDelay: Int?,
-        val scheduledMinute: Int?
+        val scheduledMinute: Int?,
+        val platform: UsualPlatform?,
+        val weekdays: IntArray?
     )
 
     private class RawTrain(
@@ -520,12 +677,25 @@ object NetworkReliabilityParser {
                 suppressed = ShortArray(stops.size) { stops[it].suppressed.toShort() },
                 buckets = buckets,
                 maxDelays = ShortArray(stops.size) { stops[it].maxDelay?.toShort() ?: NetworkReliabilityTrain.ABSENT },
-                scheduledMinutes = ShortArray(stops.size) { stops[it].scheduledMinute?.toShort() ?: NetworkReliabilityTrain.ABSENT }
+                scheduledMinutes = ShortArray(stops.size) { stops[it].scheduledMinute?.toShort() ?: NetworkReliabilityTrain.ABSENT },
+                platformNames = Array(stops.size) { stops[it].platform?.name },
+                platformCounts = ShortArray(stops.size * 2) { value ->
+                    stops[value / 2].platform?.let { if (value % 2 == 0) it.count else it.observed }?.toShort() ?: 0
+                },
+                weekdayCounts = if (stops.none { it.weekdays != null }) null else {
+                    ShortArray(stops.size * NetworkReliabilityTrain.WEEKDAY_VALUES) { value ->
+                        val days = stops[value / NetworkReliabilityTrain.WEEKDAY_VALUES].weekdays
+                        val at = value % NetworkReliabilityTrain.WEEKDAY_VALUES
+                        if (days == null) (if (at == 0) NetworkReliabilityTrain.ABSENT else 0) else days[at].toShort()
+                    }
+                }
             )
         }
     }
 
     private const val MAX_TEXT = 16
+    /** Platform names are published trimmed, at most 12 characters ("3 Ovest", "I"). */
+    private const val MAX_PLATFORM_NAME = 12
     private const val MAX_DELAY_MINUTES = 24.0 * 60
     private const val MAX_WINDOW_DAYS = 366
     /** A run that reaches a stop up to two days after its service day's midnight still names its minute. */

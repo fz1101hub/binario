@@ -79,12 +79,33 @@ data class RoutePunctuality(
     val days: Int,
     val bands: List<HourBandPunctuality>,
     val bestBand: HourBand?,
-    val worstBand: HourBand?
+    val worstBand: HourBand?,
+    /**
+     * The arrivals by ISO weekday, Monday first, of the trains whose file publishes them (each against its own limit);
+     * empty when none does.
+     */
+    val weekdays: List<WeekdayPunctuality> = emptyList()
 ) {
     val onTimeShare: Double get() = if (samples > 0) onTime.toDouble() / samples else 0.0
     val onTimePercent: Int get() = (onTimeShare * 100).roundToInt()
     val shownMeanDelayMinutes: Int get() = meanDelayMinutes.roundToInt().coerceAtLeast(0)
+
+    /**
+     * «Il venerdì è in orario …, peggio della media» for [day] (the day searched), when it differs from the route by the
+     * spec rule ([NetworkReliability.weekdayRemarks]); the overall share is that of the same weekday counts.
+     */
+    fun weekdayRemark(day: java.time.DayOfWeek): WeekdayRemark? {
+        val total = weekdays.sumOf { it.samples }
+        if (total <= 0) return null
+        val overall = weekdays.sumOf { it.onTime }.toDouble() / total
+        // The counts are already on time against each train's own limit: measure them as "within 15" of themselves.
+        val days = weekdays.map { WeekdayDelays(it.weekday, it.samples, it.onTime, it.onTime) }
+        return NetworkReliability.weekdayRemarks(days, NetworkReliability.OTHER_ON_TIME_MINUTES, overall).firstOrNull { it.weekday == day }
+    }
 }
+
+/** The arrivals of a route on one ISO weekday: [onTime] of [samples] within each train's own limit. */
+data class WeekdayPunctuality(val weekday: java.time.DayOfWeek, val samples: Int, val onTime: Int)
 
 /** A train often late at a station: [late] of [samples] arrivals beyond its own on-time limit. */
 data class LateTrain(
@@ -156,6 +177,9 @@ object NetworkReliabilityAggregates {
         var delaySum = 0.0
         val bandSamples = IntArray(HourBand.entries.size)
         val bandOnTime = IntArray(HourBand.entries.size)
+        val weekdaySamples = IntArray(7)
+        val weekdayOnTime = IntArray(7)
+        var withWeekdays = false
         for (train in stats.trains) {
             val boarding = train.indexOf(originCode!!)
             if (boarding < 0) continue
@@ -173,12 +197,23 @@ object NetworkReliabilityAggregates {
                 bandSamples[band] += count
                 bandOnTime[band] += inTime
             }
+            train.weekdays(alighting)?.let { days ->
+                val limit = NetworkReliability.onTimeLimitMinutes(train.category)
+                withWeekdays = true
+                days.forEach { day ->
+                    weekdaySamples[day.weekday.ordinal] += day.samples
+                    weekdayOnTime[day.weekday.ordinal] += day.onTime(limit).coerceIn(0, day.samples)
+                }
+            }
         }
         if (samples < MIN_AGGREGATE_SAMPLES) return null
         val bands = HourBand.entries.filter { bandSamples[it.ordinal] > 0 }
             .map { HourBandPunctuality(it, bandSamples[it.ordinal], bandOnTime[it.ordinal]) }
         val (best, worst) = bestAndWorst(bands)
-        return RoutePunctuality(trains, samples, onTime, delaySum / samples, stats.coveredDays, bands, best, worst)
+        val weekdays = if (!withWeekdays) emptyList() else java.time.DayOfWeek.entries.map {
+            WeekdayPunctuality(it, weekdaySamples[it.ordinal], weekdayOnTime[it.ordinal])
+        }
+        return RoutePunctuality(trains, samples, onTime, delaySum / samples, stats.coveredDays, bands, best, worst, weekdays)
     }
 
     /**

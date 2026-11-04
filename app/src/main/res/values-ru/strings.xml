@@ -1563,6 +1563,39 @@
         <item quantity="other">%1$s: опоздал %2$d раза из %3$d</item>
     </plurals>
     <string name="reliability_threshold_mixed_note">Вовремя считается прибытие с опозданием не более 5 минут для поездов Frecce, Italo, EuroCity, Eurostar и EuroNight и не более 15 минут для остальных поездов.</string>
+    <!-- Usual platform and weekday punctuality of the network statistics (stop elements 7 and 8) -->
+    <plurals name="reliability_usual_platform">
+        <item quantity="one">Обычно путь %1$s (%2$d раз из %3$d)</item>
+        <item quantity="few">Обычно путь %1$s (%2$d раза из %3$d)</item>
+        <item quantity="many">Обычно путь %1$s (%2$d раз из %3$d)</item>
+        <item quantity="other">Обычно путь %1$s (%2$d раза из %3$d)</item>
+    </plurals>
+    <string name="reliability_weekday_monday">По понедельникам</string>
+    <string name="reliability_weekday_tuesday">По вторникам</string>
+    <string name="reliability_weekday_wednesday">По средам</string>
+    <string name="reliability_weekday_thursday">По четвергам</string>
+    <string name="reliability_weekday_friday">По пятницам</string>
+    <string name="reliability_weekday_saturday">По субботам</string>
+    <string name="reliability_weekday_sunday">По воскресеньям</string>
+    <plurals name="reliability_weekday_worse">
+        <item quantity="one">%1$s вовремя %2$d раз из %3$d, хуже среднего</item>
+        <item quantity="few">%1$s вовремя %2$d раза из %3$d, хуже среднего</item>
+        <item quantity="many">%1$s вовремя %2$d раз из %3$d, хуже среднего</item>
+        <item quantity="other">%1$s вовремя %2$d раза из %3$d, хуже среднего</item>
+    </plurals>
+    <plurals name="reliability_weekday_better">
+        <item quantity="one">%1$s вовремя %2$d раз из %3$d, лучше среднего</item>
+        <item quantity="few">%1$s вовремя %2$d раза из %3$d, лучше среднего</item>
+        <item quantity="many">%1$s вовремя %2$d раз из %3$d, лучше среднего</item>
+        <item quantity="other">%1$s вовремя %2$d раза из %3$d, лучше среднего</item>
+    </plurals>
+    <!-- Route results: «Più presto» / «Più tardi», empty searched window, RFI «RITARDO» without minutes -->
+    <string name="results_earlier">Раньше</string>
+    <string name="results_later">Позже</string>
+    <string name="results_no_more_earlier">Более ранних вариантов нет</string>
+    <string name="results_no_more_later">Более поздних вариантов нет</string>
+    <string name="results_no_trains_until">Поездов нет до %1$s</string>
+    <string name="service_late_minutes_unpublished">Опаздывает (минуты не опубликованы)</string>
     <string name="bikes_allowed">Велосипеды разрешены</string>
     <string name="bikes_not_allowed">Велосипеды не разрешены</string>
     <string name="bikes_conditions_link">Велосипеды в поезде: условия %1$s</string>

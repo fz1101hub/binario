@@ -40,6 +40,8 @@ import it.binario.app.data.core.BoardKind
 import it.binario.app.data.provider.ProviderWarning
 import it.binario.app.data.catalog.EmbeddedCuratedRailStationCatalog
 import it.binario.app.data.orderServicesForDisplay
+import it.binario.app.journeys.ResultsPageState
+import it.binario.app.journeys.ResultsPaging
 import it.binario.app.timetables.SavedTimetableStore
 import it.binario.app.widget.RouteWidgetProvider
 import it.binario.app.widget.TrainsWidgetProvider
@@ -203,6 +205,8 @@ class TrainViewModel @JvmOverloads constructor(
     private var visiblePrimaryServices by mutableStateOf<List<TrainService>>(emptyList())
     private var visibleReturnServices by mutableStateOf<List<TrainService>>(emptyList())
     private var availableOperatorNames by mutableStateOf<List<String>>(emptyList())
+    /** «Più presto» / «Più tardi» of the route results: windows of direct trains loaded around the primary search. */
+    private var servicePages by mutableStateOf(ServicePages.EMPTY)
 
     private val journeyQueryState = JourneyQueryState()
     private var returnJourneyQuery: JourneyQuery? = null
@@ -1046,7 +1050,11 @@ class TrainViewModel @JvmOverloads constructor(
             selectedService = refreshed
             selectedServiceSnapshot = updated
             notePunctuality(listOf(refreshed), updated)
-        } ?: invalidateSelectedService(updatedDirection)
+        } ?: run {
+            // A train of «Più presto» / «Più tardi» keeps the page it came from: the primary search never held it.
+            if (servicePages.snapshots.any { it === selectedServiceSnapshot }) return
+            invalidateSelectedService(updatedDirection)
+        }
     }
 
     private fun invalidateSelectedService(updatedDirection: Direction, onlyIfExpired: Boolean = false) {
@@ -1079,10 +1087,13 @@ class TrainViewModel @JvmOverloads constructor(
         }
         selectedServiceDirection = resolvedDirection
         selectedService = service
-        selectedServiceSnapshot = if (resolvedDirection == Direction.RETURN && returnJourneyQuery != null) {
-            returnSnapshot
-        } else {
-            primarySnapshot
+        val page = if (belongsToPrimary || belongsToReturn) null else currentServicePages()?.snapshots?.firstOrNull { snapshot ->
+            snapshot.services.any { candidate -> candidate === service || candidate.id == service.id }
+        }
+        selectedServiceSnapshot = when {
+            page != null -> page
+            resolvedDirection == Direction.RETURN && returnJourneyQuery != null -> returnSnapshot
+            else -> primarySnapshot
         }
         notePunctuality(listOf(service), selectedServiceSnapshot)
     }
@@ -1116,11 +1127,85 @@ class TrainViewModel @JvmOverloads constructor(
 
     fun currentReturnServices(): List<TrainService> = visibleReturnServices
 
+    /**
+     * The direct trains «Più presto» and «Più tardi» loaded for the search on screen, with the operator and changes
+     * filters of the list and without the trains the primary search now holds itself.
+     */
+    fun pagedServices(): List<TrainService> {
+        val pages = currentServicePages() ?: return emptyList()
+        if (pages.snapshots.isEmpty()) return emptyList()
+        val fresh = ResultsPaging.newServices(primarySnapshot?.services.orEmpty(), pages.services, journeyQueryState.value.serviceDate)
+        return ServicePresentation.fromServices(fresh).filtered(operator = operatorFilter, numberQuery = "", journeyChangeFilter = journeyChangeFilter)
+    }
+
+    fun earlierServicesPage(): ResultsPageState = currentServicePages()?.earlier ?: ResultsPageState()
+
+    fun laterServicesPage(): ResultsPageState = currentServicePages()?.later ?: ResultsPageState()
+
+    /** «Più tardi»: the direct trains of the window from the last departure shown, from the same sources as the search. */
+    fun loadLaterServices() = loadServicePage(later = true)
+
+    /** «Più presto»: the direct trains leaving before the first departure shown ([ResultsPaging.earlier]). */
+    fun loadEarlierServices() = loadServicePage(later = false)
+
+    /** The search the pages belong to: route, direction and planned moment ("now" while it follows the clock). */
+    private fun servicePagingKey(): String = listOf(
+        activeRoute.id,
+        direction.name,
+        if (journeyQueryState.followsCurrentTime) "now" else journeyQueryState.value.requestedAt.toString()
+    ).joinToString("|")
+
+    private fun currentServicePages(): ServicePages? = servicePages.takeIf { it.key == servicePagingKey() }
+
+    private fun loadServicePage(later: Boolean) {
+        if (!hasActiveRoute) return
+        val key = servicePagingKey()
+        val pages = currentServicePages() ?: ServicePages(key)
+        if (pages.earlier.loading || pages.later.loading) return
+        val serviceDate = journeyQueryState.value.serviceDate
+        val departures = (primarySnapshot?.services.orEmpty() + pages.services).mapNotNull { ResultsPaging.departureOf(it, serviceDate) }
+        val anchor = (if (later) departures.maxOrNull() else departures.minOrNull()) ?: return
+        val routeAtRequest = activeRoute
+        val directionAtRequest = direction
+        servicePages = if (later) pages.copy(later = ResultsPageState.LOADING) else pages.copy(earlier = ResultsPageState.LOADING)
+        viewModelScope.launch {
+            var answered: RouteSnapshot? = null
+            val load: suspend (java.time.LocalDateTime) -> List<TrainService>? = { from ->
+                routePage(routeAtRequest, directionAtRequest, from)?.also { answered = it }?.services?.map { service ->
+                    // Each page keeps its own day, so a train of the next morning stays after the evening ones.
+                    if (service.scheduledDepartureDateTime != null) service
+                    else service.copy(scheduledDepartureDateTime = ResultsPaging.departureOf(service, from.toLocalDate()))
+                }
+            }
+            val departureOf = { service: TrainService -> ResultsPaging.departureOf(service, serviceDate) }
+            val loaded = if (later) ResultsPaging.later(anchor, departureOf, load)
+            else ResultsPaging.earlier(anchor, departureOf, notBefore = serviceDate.atStartOfDay(), load = load)
+            val current = currentServicePages()?.takeIf { it.key == key } ?: return@launch
+            val fresh = ResultsPaging.newServices(primarySnapshot?.services.orEmpty() + current.services, loaded.orEmpty(), serviceDate)
+            val page = answered?.takeIf { fresh.isNotEmpty() }?.copy(services = fresh)
+            val state = ResultsPageState(nothingNew = page == null)
+            servicePages = current.copy(
+                snapshots = current.snapshots + listOfNotNull(page),
+                earlier = if (later) current.earlier else state,
+                later = if (later) state else current.later
+            )
+        }
+    }
+
+    /** The last answer of the route sources for [route] from [from], or null when they found nothing. */
+    private suspend fun routePage(route: SavedRoute, direction: Direction, from: java.time.LocalDateTime): RouteSnapshot? {
+        var last: DataResult? = null
+        dataSource.observeRoute(route, direction, JourneyQuery(from.toLocalDate(), from.toLocalTime().withSecond(0).withNano(0))).collect { last = it }
+        return (last as? DataResult.Success)?.snapshot
+    }
+
     fun homeServices(): List<TrainService> = primaryServicePresentation.ordered
 
     fun quickServices(): List<TrainService> = primaryServicePresentation.ordered.take(2)
 
     private fun rebuildServicePresentations() {
+        // A new search (no primary result yet) starts without the pages of the previous one.
+        if (primarySnapshot == null) servicePages = ServicePages.EMPTY
         primaryServicePresentation = ServicePresentation.fromServices(primarySnapshot?.services.orEmpty())
         returnServicePresentation = ServicePresentation.fromServices(returnSnapshot?.services.orEmpty())
         availableOperatorNames = publishedOperatorNames(
@@ -1409,6 +1494,20 @@ internal fun serviceWithoutCurrentObservation(service: TrainService): TrainServi
     officialDelayMinutes = null,
     stops = service.stops.map { it.copy(operationalStatusVerified = false) }
 )
+
+/** The windows «Più presto» / «Più tardi» loaded for the search [key]: their snapshots (new trains only) and states. */
+private data class ServicePages(
+    val key: String,
+    val snapshots: List<RouteSnapshot> = emptyList(),
+    val earlier: ResultsPageState = ResultsPageState(),
+    val later: ResultsPageState = ResultsPageState()
+) {
+    val services: List<TrainService> get() = snapshots.flatMap { it.services }
+
+    companion object {
+        val EMPTY = ServicePages("")
+    }
+}
 
 /**
  * Snapshot immutabile già ordinato. Filtri e UI leggono questa struttura invece

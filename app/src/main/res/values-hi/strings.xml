@@ -1473,6 +1473,33 @@
         <item quantity="other">%1$s: %3$d में से %2$d बार देर से</item>
     </plurals>
     <string name="reliability_threshold_mixed_note">Frecce, Italo, EuroCity, Eurostar और EuroNight ट्रेनों के लिए अधिकतम 5 मिनट और अन्य ट्रेनों के लिए 15 मिनट की देरी वाला आगमन समय पर माना जाता है।</string>
+    <!-- Usual platform and weekday punctuality of the network statistics (stop elements 7 and 8) -->
+    <plurals name="reliability_usual_platform">
+        <item quantity="one">आमतौर पर प्लेटफ़ॉर्म %1$s (%3$d में से %2$d बार)</item>
+        <item quantity="other">आमतौर पर प्लेटफ़ॉर्म %1$s (%3$d में से %2$d बार)</item>
+    </plurals>
+    <string name="reliability_weekday_monday">सोमवार को</string>
+    <string name="reliability_weekday_tuesday">मंगलवार को</string>
+    <string name="reliability_weekday_wednesday">बुधवार को</string>
+    <string name="reliability_weekday_thursday">गुरुवार को</string>
+    <string name="reliability_weekday_friday">शुक्रवार को</string>
+    <string name="reliability_weekday_saturday">शनिवार को</string>
+    <string name="reliability_weekday_sunday">रविवार को</string>
+    <plurals name="reliability_weekday_worse">
+        <item quantity="one">%1$s %3$d में से %2$d बार समय पर, औसत से खराब</item>
+        <item quantity="other">%1$s %3$d में से %2$d बार समय पर, औसत से खराब</item>
+    </plurals>
+    <plurals name="reliability_weekday_better">
+        <item quantity="one">%1$s %3$d में से %2$d बार समय पर, औसत से बेहतर</item>
+        <item quantity="other">%1$s %3$d में से %2$d बार समय पर, औसत से बेहतर</item>
+    </plurals>
+    <!-- Route results: «Più presto» / «Più tardi», empty searched window, RFI «RITARDO» without minutes -->
+    <string name="results_earlier">पहले के</string>
+    <string name="results_later">बाद के</string>
+    <string name="results_no_more_earlier">इससे पहले कोई और विकल्प नहीं</string>
+    <string name="results_no_more_later">इसके बाद कोई और विकल्प नहीं</string>
+    <string name="results_no_trains_until">%1$s बजे तक कोई ट्रेन नहीं</string>
+    <string name="service_late_minutes_unpublished">देरी से (मिनट प्रकाशित नहीं)</string>
     <string name="bikes_allowed">साइकिल ले जाने की अनुमति है</string>
     <string name="bikes_not_allowed">साइकिल ले जाने की अनुमति नहीं है</string>
     <string name="bikes_conditions_link">ट्रेन में साइकिल: %1$s की शर्तें</string>

@@ -1428,6 +1428,30 @@
         <item quantity="other">%1$s- %3$d ကြိမ်တွင် %2$d ကြိမ် နောက်ကျ</item>
     </plurals>
     <string name="reliability_threshold_mixed_note">Frecce၊ Italo၊ EuroCity၊ Eurostar နှင့် EuroNight အတွက် နောက်ကျမှု 5 မိနစ်အထိ၊ အခြားရထားများအတွက် 15 မိနစ်အထိ ဆိုက်ရောက်မှုကို အချိန်မှန်ဟု သတ်မှတ်သည်။</string>
+    <!-- Usual platform and weekday punctuality of the network statistics (stop elements 7 and 8) -->
+    <plurals name="reliability_usual_platform">
+        <item quantity="other">များသောအားဖြင့် ပလက်ဖောင်း %1$s (%3$d ကြိမ်တွင် %2$d ကြိမ်)</item>
+    </plurals>
+    <string name="reliability_weekday_monday">တနင်္လာနေ့များတွင်</string>
+    <string name="reliability_weekday_tuesday">အင်္ဂါနေ့များတွင်</string>
+    <string name="reliability_weekday_wednesday">ဗုဒ္ဓဟူးနေ့များတွင်</string>
+    <string name="reliability_weekday_thursday">ကြာသပတေးနေ့များတွင်</string>
+    <string name="reliability_weekday_friday">သောကြာနေ့များတွင်</string>
+    <string name="reliability_weekday_saturday">စနေနေ့များတွင်</string>
+    <string name="reliability_weekday_sunday">တနင်္ဂနွေနေ့များတွင်</string>
+    <plurals name="reliability_weekday_worse">
+        <item quantity="other">%1$s %3$d ကြိမ်တွင် %2$d ကြိမ် အချိန်မှန်၊ ပျမ်းမျှထက် ဆိုး</item>
+    </plurals>
+    <plurals name="reliability_weekday_better">
+        <item quantity="other">%1$s %3$d ကြိမ်တွင် %2$d ကြိမ် အချိန်မှန်၊ ပျမ်းမျှထက် ကောင်း</item>
+    </plurals>
+    <!-- Route results: «Più presto» / «Più tardi», empty searched window, RFI «RITARDO» without minutes -->
+    <string name="results_earlier">အစောပိုင်း</string>
+    <string name="results_later">နောက်ပိုင်း</string>
+    <string name="results_no_more_earlier">ပိုစောသော ရွေးချယ်စရာ မရှိပါ</string>
+    <string name="results_no_more_later">ပိုနောက်ကျသော ရွေးချယ်စရာ မရှိပါ</string>
+    <string name="results_no_trains_until">%1$s အထိ ရထား မရှိပါ</string>
+    <string name="service_late_minutes_unpublished">နောက်ကျ (မိနစ် မထုတ်ပြန်ပါ)</string>
     <string name="bikes_allowed">စက်ဘီး ယူဆောင်ခွင့်ရှိ</string>
     <string name="bikes_not_allowed">စက်ဘီး ယူဆောင်ခွင့်မရှိ</string>
     <string name="bikes_conditions_link">ရထားပေါ်တွင် စက်ဘီး- %1$s ၏ စည်းကမ်းချက်များ</string>

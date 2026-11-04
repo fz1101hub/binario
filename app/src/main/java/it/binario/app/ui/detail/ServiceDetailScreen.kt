@@ -64,7 +64,9 @@ import it.binario.app.ArrivalConnectionsSection
 import it.binario.app.BinarioTheme
 import it.binario.app.PunctualityCard
 import it.binario.app.PunctualityStats
-import it.binario.app.data.reliability.NetworkReliabilityDetail
+import it.binario.app.data.reliability.NetworkReliability
+import it.binario.app.data.reliability.TrainNetworkStatistics
+import it.binario.app.data.reliability.UsualPlatform
 import it.binario.app.R
 import it.binario.app.TabularFigures
 import it.binario.app.TrainCalendarAction
@@ -221,11 +223,18 @@ internal fun ServiceDetailScreen(
     sourceSections: @Composable () -> Unit = {},
     /** Live, scheduled timetable or saved copy for this run ([DataState]); null falls back to the freshness. */
     dataState: DataState? = null,
-    /** «Affidabilità ultimi N giorni» from the embedded network statistics; null shows no card. */
-    networkReliability: NetworkReliabilityDetail? = null
+    /**
+     * «Affidabilità ultimi N giorni» and the usual platform where the train is boarded, from the embedded network
+     * statistics; null shows neither.
+     */
+    networkReliability: TrainNetworkStatistics? = null
 ) {
     // Demonstration data shows the timetable only: no delay, expected time, platform or progress as if real.
     val shown = if (isDemonstration) service.presentedAsDemonstration() else service
+    // «Di solito al binario 12»: only while no platform of this run is known, live, announced or in the timetable.
+    val usualPlatform = networkReliability?.takeUnless { isDemonstration }?.let { stats ->
+        NetworkReliability.usualPlatformShown(stats.usualPlatform, shown.platform, shown.scheduledPlatform, shown.stops.firstOrNull()?.platform, shown.stops.firstOrNull()?.scheduledPlatform)
+    }
     val dataLabel = when {
         isDemonstration -> stringResource(R.string.data_status_demo)
         dataState == DataState.LIVE -> stringResource(R.string.data_status_live, (freshness ?: Freshness.FRESH).localizedLabel())
@@ -275,6 +284,7 @@ internal fun ServiceDetailScreen(
                                             isFirst = index == 0,
                                             isLast = index == shown.stops.lastIndex,
                                             scheduledPlatform = stop.scheduledPlatform,
+                                            usualPlatform = usualPlatform.takeIf { index == 0 },
                                             onShare = {
                                                 val verified = stop.operationalStatusVerified ?: shown.operationalStatusVerified
                                                 startTextShare(
@@ -322,6 +332,9 @@ internal fun ServiceDetailScreen(
                                             else -> stringResource(R.string.platform_to_confirm)
                                         }
                                     )
+                                    usualPlatform?.let { platform ->
+                                        UsualPlatformNote(platform, networkReliability?.windowEnd, Modifier.testTag("detail-usual-platform"))
+                                    }
                                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                                         Text(stringResource(R.string.detail_info_status), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                         ServiceStatusBadge(shown)
@@ -378,7 +391,7 @@ internal fun ServiceDetailScreen(
                         item { RouteChangeBanner(routeChange = routeChange, sourceIds = shown.routeChangeSourceIds) }
                     }
                     item { sourceSections() }
-                    networkReliability?.let { detail ->
+                    networkReliability?.card?.let { detail ->
                         item(key = "network-reliability-${service.id}") { NetworkReliabilityCard(detail) }
                     }
                     punctuality?.let { stats ->
@@ -662,7 +675,9 @@ internal fun StopTimelineRow(
     /** Timetable platform when the source moved the train ("Binario 7 (era 5)"). */
     scheduledPlatform: String? = null,
     /** Shares this stop as text ("Treno X, fermata Y: arr. 10:05, bin. 3"); null hides the command. */
-    onShare: (() -> Unit)? = null
+    onShare: (() -> Unit)? = null,
+    /** «Di solito al binario 12 (8 volte su 10)» at the stop where the train is boarded, shown without a platform. */
+    usualPlatform: UsualPlatform? = null
 ) {
     val changeLabel = when (routeChange) {
         StopRouteChange.NONE -> ""
@@ -776,6 +791,7 @@ internal fun StopTimelineRow(
                     fontWeight = if (changed) FontWeight.Bold else null
                 )
             }
+            if (platform.isNullOrBlank()) usualPlatform?.let { UsualPlatformNote(it, windowEnd = null, modifier = Modifier.testTag("detail-stop-usual-platform")) }
             if (!operationalStatusVerified) {
                 Text(stringResource(R.string.operational_status_unverified), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }

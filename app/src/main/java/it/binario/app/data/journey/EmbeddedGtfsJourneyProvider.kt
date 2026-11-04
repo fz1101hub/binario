@@ -497,9 +497,10 @@ class EmbeddedGtfsJourneyProvider internal constructor(
         var found = window
         var foundScanner = scanner
         // Nothing leaves in the window (after the last train of the day, or on a line with few trains): the first option
-        // after it follows, "primo domani alle …". First on the connections already read, up to the horizon, then, when
-        // that ends before the next morning, on a window of its own up to the next day's noon.
-        if (outcome.exhausted && journeys.isEmpty()) {
+        // after it follows, "primo domani alle …" or «Nessun treno fino alle …». First on the connections already read, up
+        // to the horizon, then, when that ends before the next morning, on a window of its own up to the next day's noon.
+        val emptyWindow = outcome.exhausted && journeys.isEmpty()
+        if (emptyWindow) {
             if (lastConnectionMinute > endMinute) {
                 journeys = scanner.plan(
                     query.copy(
@@ -538,6 +539,7 @@ class EmbeddedGtfsJourneyProvider internal constructor(
         val options = journeys.map { journey ->
             toOption(journey, graph, slices, request, origin, destination, serviceDate, fetchedAt, resolver, found.originAccessible, found.destinationAccessible)
                 .let { if (journey === lastOfDay) it.copy(lastOfServiceDay = true) else it }
+                .let { if (emptyWindow) it.copy(firstAfterEmptyWindow = true) else it }
         }
         return SearchOutcome(options, incomplete)
     }

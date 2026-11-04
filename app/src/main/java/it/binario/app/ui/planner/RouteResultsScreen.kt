@@ -21,6 +21,8 @@ import androidx.compose.material.icons.filled.BookmarkAdd
 import androidx.compose.material.icons.filled.BookmarkAdded
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.FilterChip
@@ -39,6 +41,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
@@ -103,6 +106,9 @@ import it.binario.app.ui.common.networkReliabilityAttribution
 import it.binario.app.ui.common.rememberNetworkReliability
 import it.binario.app.ui.common.rememberReliabilityAggregateStrings
 import it.binario.app.ui.common.rememberNetworkReliabilityStrings
+import it.binario.app.ui.common.UsualPlatformLines
+import it.binario.app.ui.common.rememberUsualPlatformStrings
+import it.binario.app.data.reliability.UsualPlatform
 import it.binario.app.data.reliability.NetworkReliabilityStations
 import it.binario.app.data.reliability.NetworkReliability
 import it.binario.app.data.reliability.NetworkReliabilityAggregates
@@ -140,7 +146,10 @@ internal fun RouteResultsScreen(
     /** "Filtri": Impostazioni › Preferenze di viaggio. */
     openTravelPreferences: () -> Unit = {},
     /** The first direct train as listed (after merge, chips and preferences), previewed beside the list from 840 dp. */
-    onFirstShownService: (TrainService?) -> Unit = {}
+    onFirstShownService: (TrainService?) -> Unit = {},
+    /** «Più tardi» / «Più presto» of the journeys with changes ([it.binario.app.journeys.JourneySearchViewModel.loadLater]). */
+    loadLaterJourneys: () -> Unit = {},
+    loadEarlierJourneys: () -> Unit = {}
 ) {
     val roundTrip = viewModel.hasReturnJourney
     val primaryDirection = viewModel.direction
@@ -170,7 +179,8 @@ internal fun RouteResultsScreen(
     // The changes filter of the planner applies to the journeys with changes as to the direct trains.
     val changeFilter = viewModel.journeyChangeFilter
     val filteredJourneyRows = remember(journeyRows, changeFilter) { journeyRows.filter { changeFilter.accepts(it.changes) } }
-    val allServices = viewModel.currentServices()
+    // The direct trains of the search, then those «Più presto» / «Più tardi» loaded around it (same filters).
+    val allServices = viewModel.currentServices() + viewModel.pagedServices()
     val allReturnServices = viewModel.currentReturnServices()
     val entries = remember(allServices, filteredJourneyRows, query.serviceDate, travelPreferences) {
         ResultsMerge.entries(allServices, filteredJourneyRows, query.serviceDate, travelPreferences)
@@ -181,6 +191,10 @@ internal fun RouteResultsScreen(
     val hiddenTrains = allServices.size + allReturnServices.size -
         ResultsMerge.shownServices(allServices, travelPreferences).size - ResultsMerge.shownServices(allReturnServices, travelPreferences).size
     val firstNextDay = markedDay?.let { ResultsMerge.firstDepartureNextDay(entries, journeyRows, it) }
+    // «Nessun treno fino alle HH:mm»: the planner's window was empty and the next train leaves later the same day.
+    val noTrainsUntil = remember(entries, journeyRows, query, firstNextDay) {
+        ResultsMerge.noTrainsUntil(entries, journeyRows, query.requestedAt, firstNextDay)
+    }
     // Each row measured at the stop the user leaves it: the destination of the search, or each change.
     val reliabilityStations = remember(viewModel.stations, route) {
         NetworkReliabilityStations(viewModel.stations + listOf(route.outwardOrigin, route.outwardDestination))
@@ -190,6 +204,13 @@ internal fun RouteResultsScreen(
     }
     val returnReliability = remember(returnEntries, reliabilityStats, reliabilityStations, route) {
         reliabilityStats?.let { ResultsReliability.assess(returnEntries, it, route.origin(Direction.RETURN), route.destination(Direction.RETURN), reliabilityStations) }.orEmpty()
+    }
+    // «Di solito al binario 12 (8 volte su 10)» where each row is boarded, while its own platform is not known.
+    val usualPlatforms = remember(entries, reliabilityStats, reliabilityStations, route, primaryDirection) {
+        reliabilityStats?.let { ResultsReliability.usualPlatforms(entries, it, route.origin(primaryDirection), route.destination(primaryDirection), reliabilityStations) }.orEmpty()
+    }
+    val returnUsualPlatforms = remember(returnEntries, reliabilityStats, reliabilityStations, route) {
+        reliabilityStats?.let { ResultsReliability.usualPlatforms(returnEntries, it, route.origin(Direction.RETURN), route.destination(Direction.RETURN), reliabilityStations) }.orEmpty()
     }
     // «Questa tratta: …»: every observed train from the origin to the destination, with the departure hours.
     val routePunctuality = remember(reliabilityStats, route, primaryDirection, viewModel.hasActiveRoute) {
@@ -202,13 +223,33 @@ internal fun RouteResultsScreen(
         }
     }
     val aggregateStrings = rememberReliabilityAggregateStrings()
-    val routePunctualityText = remember(routePunctuality, aggregateStrings) { routePunctuality?.let { ReliabilityAggregateLines.route(it, aggregateStrings) } }
+    val platformStrings = rememberUsualPlatformStrings()
+    // The weekday of the day searched (today for a search from now), when the route runs differently on it.
+    val routePunctualityText = remember(routePunctuality, aggregateStrings, platformStrings, query.serviceDate) {
+        routePunctuality?.let { punctuality ->
+            val weekday = punctuality.weekdayRemark(query.serviceDate.dayOfWeek)?.let { UsualPlatformLines.weekday(it, platformStrings) }
+            ReliabilityAggregateLines.route(punctuality, aggregateStrings, listOfNotNull(weekday))
+        }
+    }
     val shown = ResultsMerge.apply(entries, filter, travelPreferences, reliability)
     val returnShown = ResultsMerge.apply(returnEntries, filter, travelPreferences, returnReliability)
     val counts = ResultsMerge.counts(entries + returnEntries)
     val firstShownTrain = shown.firstNotNullOfOrNull { (it as? ResultEntry.Train)?.service }
     LaunchedEffect(firstShownTrain?.id) { onFirstShownService(firstShownTrain) }
     val journeysShown = entries.any { it is ResultEntry.Journey }
+    // «Più presto» / «Più tardi»: each source pages from its own first and last departure, the chips keep their order.
+    val servicesCanPage = allServices.isNotEmpty()
+    val journeysCanPage = journeysMatch && !journeys.loading && journeyResult?.options?.isNotEmpty() == true
+    val pagingAvailable = viewModel.hasActiveRoute && entries.isNotEmpty() && (servicesCanPage || journeysCanPage)
+    val serviceEarlier = viewModel.earlierServicesPage()
+    val serviceLater = viewModel.laterServicesPage()
+    val earlierLoading = serviceEarlier.loading || (journeysCanPage && journeys.earlier.loading)
+    val laterLoading = serviceLater.loading || (journeysCanPage && journeys.later.loading)
+    // "Nothing new" once every source that can page has looked and found nothing.
+    val earlierNothingNew = !earlierLoading && (serviceEarlier.nothingNew || journeys.earlier.nothingNew) &&
+        (!servicesCanPage || serviceEarlier.nothingNew) && (!journeysCanPage || journeys.earlier.nothingNew)
+    val laterNothingNew = !laterLoading && (serviceLater.nothingNew || journeys.later.nothingNew) &&
+        (!servicesCanPage || serviceLater.nothingNew) && (!journeysCanPage || journeys.later.nothingNew)
     val isDemonstration = viewModel.isDemonstrationData()
     // Live, scheduled timetable or saved copy, for the status card and the chip of every card.
     val listState = viewModel.dataState()
@@ -306,7 +347,9 @@ internal fun RouteResultsScreen(
                         modifier = Modifier.padding(horizontal = ScreenMargin, vertical = 4.dp).testTag("results-route-punctuality")
                     )
                 }
-                if (reliabilityStats != null && (reliability.isNotEmpty() || returnReliability.isNotEmpty() || routePunctualityText != null)) {
+                if (reliabilityStats != null && (reliability.isNotEmpty() || returnReliability.isNotEmpty() || routePunctualityText != null ||
+                        usualPlatforms.isNotEmpty() || returnUsualPlatforms.isNotEmpty())
+                ) {
                     Text(
                         networkReliabilityAttribution(reliabilityStats.windowEnd),
                         modifier = Modifier.padding(horizontal = ScreenMargin, vertical = 4.dp).testTag("results-reliability-note"),
@@ -357,6 +400,29 @@ internal fun RouteResultsScreen(
                 )
             }
         }
+        noTrainsUntil?.let { first ->
+            item(key = "no-trains-until") {
+                InfoNoticeCard(
+                    text = stringResource(R.string.results_no_trains_until, first.format(DateTimeFormatter.ofPattern("HH:mm", Locale.ROOT))),
+                    modifier = Modifier.padding(top = 6.dp).testTag("results-no-trains-until")
+                )
+            }
+        }
+        if (pagingAvailable) {
+            item(key = "out-earlier") {
+                ResultsPageControl(
+                    label = stringResource(R.string.results_earlier),
+                    icon = Icons.Default.ExpandLess,
+                    loading = earlierLoading,
+                    nothingNew = earlierNothingNew.takeIf { it }?.let { stringResource(R.string.results_no_more_earlier) },
+                    onClick = {
+                        viewModel.loadEarlierServices()
+                        if (journeysCanPage) loadEarlierJourneys()
+                    },
+                    modifier = Modifier.testTag("results-earlier")
+                )
+            }
+        }
         resultItems(
             keyPrefix = "out",
             entries = shown,
@@ -371,8 +437,24 @@ internal fun RouteResultsScreen(
             openDetails = openDetails,
             openJourney = openJourney,
             stationIndex = stationIndex,
-            reliability = reliability
+            reliability = reliability,
+            usualPlatforms = usualPlatforms
         )
+        if (pagingAvailable) {
+            item(key = "out-later") {
+                ResultsPageControl(
+                    label = stringResource(R.string.results_later),
+                    icon = Icons.Default.ExpandMore,
+                    loading = laterLoading,
+                    nothingNew = laterNothingNew.takeIf { it }?.let { stringResource(R.string.results_no_more_later) },
+                    onClick = {
+                        viewModel.loadLaterServices()
+                        if (journeysCanPage) loadLaterJourneys()
+                    },
+                    modifier = Modifier.testTag("results-later")
+                )
+            }
+        }
         if (journeysMatch) {
             item(key = "journey-notices") {
                 Column(Modifier.padding(top = 6.dp).testTag("journey-notices")) {
@@ -411,7 +493,8 @@ internal fun RouteResultsScreen(
                 openDetails = openDetails,
                 openJourney = openJourney,
                 stationIndex = stationIndex,
-                reliability = returnReliability
+                reliability = returnReliability,
+                usualPlatforms = returnUsualPlatforms
             )
         }
         item { Spacer(Modifier.height(24.dp)) }
@@ -470,7 +553,8 @@ private fun LazyListScope.resultItems(
     openDetails: (TrainService) -> Unit,
     openJourney: (JourneyOptionRow) -> Unit,
     stationIndex: OpenMapStationIndex,
-    reliability: Map<String, EntryReliability>
+    reliability: Map<String, EntryReliability>,
+    usualPlatforms: Map<String, UsualPlatform> = emptyMap()
 ) {
     when {
         state == RefreshState.LOADING && !hasSnapshot ->
@@ -491,7 +575,7 @@ private fun LazyListScope.resultItems(
                     co2 = rememberCo2(entry.service, stationIndex),
                     lastOfDay = entry.lastOfDay,
                     dataState = DataState.ofService(entry.service, listState),
-                    reliability = rememberEntryReliabilityText(reliability[entry.key], null)
+                    reliability = rememberEntryReliabilityText(reliability[entry.key], null, usualPlatforms[entry.key])
                 )
                 is ResultEntry.Journey -> JourneyResultCard(
                     row = entry.row,
@@ -499,7 +583,7 @@ private fun LazyListScope.resultItems(
                     modifier = itemModifier.testTag("journey-result-card"),
                     selected = entry.row.id == selectedJourneyId,
                     co2 = rememberCo2(entry.row, stationIndex),
-                    reliability = rememberEntryReliabilityText(reliability[entry.key], entry.row)
+                    reliability = rememberEntryReliabilityText(reliability[entry.key], entry.row, usualPlatforms[entry.key])
                 )
             }
         }
@@ -565,23 +649,56 @@ internal fun JourneyEmptyReason.messageRes(): Int = when (this) {
 
 /**
  * The line of a result card from its network statistics ([EntryReliability]): the train at the destination, or the
- * weakest train of a journey (named by [row]'s leg label when it has several) and its weakest change.
+ * weakest train of a journey (named by [row]'s leg label when it has several) and its weakest change; then the usual
+ * platform where it is boarded ([usualPlatform]), while its own platform is not known.
  */
 @Composable
-private fun rememberEntryReliabilityText(assessment: EntryReliability?, row: JourneyOptionRow?): NetworkReliabilityText? {
-    assessment ?: return null
+private fun rememberEntryReliabilityText(assessment: EntryReliability?, row: JourneyOptionRow?, usualPlatform: UsualPlatform? = null): NetworkReliabilityText? {
+    if (assessment == null && usualPlatform == null) return null
     val strings = rememberNetworkReliabilityStrings()
+    val platformStrings = rememberUsualPlatformStrings()
     val resources = LocalResources.current
-    return remember(assessment, row, strings) {
+    return remember(assessment, row, usualPlatform, strings, platformStrings) {
         val lines = when (assessment) {
+            null -> emptyList()
             is EntryReliability.Train -> listOf(NetworkReliabilityLines.train(assessment.stop, strings))
             is EntryReliability.Journey -> NetworkReliabilityLines.journey(
                 assessment.journey,
                 legLabel = { index -> row?.legs?.getOrNull(index)?.let { journeyLegLabel(it, resources) }.orEmpty() },
                 strings = strings
             )
-        }
+        } + listOfNotNull(usualPlatform?.let { UsualPlatformLines.usualPlatform(it, platformStrings) })
         NetworkReliabilityLines.text(lines, strings)
+    }
+}
+
+/**
+ * «Più presto» / «Più tardi» under or above the list: the button, a progress bar while the window loads, and
+ * «Nessun'altra soluzione …» when it found nothing new (announced politely).
+ */
+@Composable
+private fun ResultsPageControl(
+    label: String,
+    icon: ImageVector,
+    loading: Boolean,
+    nothingNew: String?,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier.fillMaxWidth().padding(horizontal = ScreenMargin, vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        if (loading) {
+            LinearProgressIndicator(Modifier.fillMaxWidth().padding(vertical = 22.dp))
+        } else {
+            TonalButton(text = label, onClick = onClick, leadingIcon = icon, modifier = Modifier.fillMaxWidth())
+        }
+        nothingNew?.let {
+            Text(
+                it,
+                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
 }
 

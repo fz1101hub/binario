@@ -330,7 +330,12 @@ data class JourneyOption(
      * The source checked that no later option of the requested service day exists: this is the day's last ("Ultimo
      * di oggi"). False when unknown.
      */
-    val lastOfServiceDay: Boolean = false
+    val lastOfServiceDay: Boolean = false,
+    /**
+     * Nothing leaves in the window the source searched: this is the first option it found after it («Nessun treno
+     * fino alle …»). False when the window had options or the source does not say.
+     */
+    val firstAfterEmptyWindow: Boolean = false
 ) {
     /** Changes between vehicles: a replacement bus between two trains is a change too; walking is not a vehicle. */
     val transfers: Int get() = (legs.count { it.mode != LegMode.WALK } - 1).coerceAtLeast(0)

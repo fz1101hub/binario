@@ -1428,6 +1428,30 @@
         <item quantity="other">%1$s: %3$d회 중 %2$d회 지연</item>
     </plurals>
     <string name="reliability_threshold_mixed_note">Frecce, Italo, EuroCity, Eurostar, EuroNight는 지연 5분 이하, 그 밖의 열차는 15분 이하인 도착을 정시로 봅니다.</string>
+    <!-- Usual platform and weekday punctuality of the network statistics (stop elements 7 and 8) -->
+    <plurals name="reliability_usual_platform">
+        <item quantity="other">보통 승강장 %1$s (%3$d회 중 %2$d회)</item>
+    </plurals>
+    <string name="reliability_weekday_monday">월요일에는</string>
+    <string name="reliability_weekday_tuesday">화요일에는</string>
+    <string name="reliability_weekday_wednesday">수요일에는</string>
+    <string name="reliability_weekday_thursday">목요일에는</string>
+    <string name="reliability_weekday_friday">금요일에는</string>
+    <string name="reliability_weekday_saturday">토요일에는</string>
+    <string name="reliability_weekday_sunday">일요일에는</string>
+    <plurals name="reliability_weekday_worse">
+        <item quantity="other">%1$s %3$d회 중 %2$d회 정시, 평균보다 나쁨</item>
+    </plurals>
+    <plurals name="reliability_weekday_better">
+        <item quantity="other">%1$s %3$d회 중 %2$d회 정시, 평균보다 좋음</item>
+    </plurals>
+    <!-- Route results: «Più presto» / «Più tardi», empty searched window, RFI «RITARDO» without minutes -->
+    <string name="results_earlier">이전 시간</string>
+    <string name="results_later">이후 시간</string>
+    <string name="results_no_more_earlier">더 이른 경로가 없습니다</string>
+    <string name="results_no_more_later">더 늦은 경로가 없습니다</string>
+    <string name="results_no_trains_until">%1$s까지 열차가 없습니다</string>
+    <string name="service_late_minutes_unpublished">지연 (분 단위 미공개)</string>
     <string name="bikes_allowed">자전거 휴대 가능</string>
     <string name="bikes_not_allowed">자전거 휴대 불가</string>
     <string name="bikes_conditions_link">자전거 휴대 승차: %1$s 이용 조건</string>

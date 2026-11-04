@@ -69,7 +69,12 @@ internal object LegacyStationBoardInterop {
                 operatorId = operatorId(service.operator),
                 platform = service.platform?.let { SourcedValue(it, source) },
                 scheduledPlatform = service.scheduledPlatform?.takeIf { service.platform != null }?.let { SourcedValue(it, source) },
-                status = if (service.operationalStatusVerified) SourcedValue(runStatus(service.status), source) else null,
+                // A train shown late without minutes («RITARDO») is late on the board, with no expected time.
+                status = when {
+                    service.operationalStatusVerified -> SourcedValue(runStatus(service.status), source)
+                    service.delayMinutesUnpublished -> SourcedValue(RunStatus.DELAYED, source)
+                    else -> null
+                },
                 routeChange = service.routeChange?.let { SourcedValue(it, source) },
                 serviceKind = serviceKind(service.trainCategory)
             )

@@ -1451,6 +1451,30 @@
         <item quantity="other">%1$s：%3$d 次中晚点 %2$d 次</item>
     </plurals>
     <string name="reliability_threshold_mixed_note">Frecce、Italo、EuroCity、Eurostar 和 EuroNight 晚点不超过 5 分钟、其他列车晚点不超过 15 分钟的到达计为准点。</string>
+    <!-- Usual platform and weekday punctuality of the network statistics (stop elements 7 and 8) -->
+    <plurals name="reliability_usual_platform">
+        <item quantity="other">通常在站台 %1$s（%3$d 次中 %2$d 次）</item>
+    </plurals>
+    <string name="reliability_weekday_monday">每周一</string>
+    <string name="reliability_weekday_tuesday">每周二</string>
+    <string name="reliability_weekday_wednesday">每周三</string>
+    <string name="reliability_weekday_thursday">每周四</string>
+    <string name="reliability_weekday_friday">每周五</string>
+    <string name="reliability_weekday_saturday">每周六</string>
+    <string name="reliability_weekday_sunday">每周日</string>
+    <plurals name="reliability_weekday_worse">
+        <item quantity="other">%1$s %3$d 次中准点 %2$d 次，低于平均水平</item>
+    </plurals>
+    <plurals name="reliability_weekday_better">
+        <item quantity="other">%1$s %3$d 次中准点 %2$d 次，高于平均水平</item>
+    </plurals>
+    <!-- Route results: «Più presto» / «Più tardi», empty searched window, RFI «RITARDO» without minutes -->
+    <string name="results_earlier">更早</string>
+    <string name="results_later">更晚</string>
+    <string name="results_no_more_earlier">没有更早的方案</string>
+    <string name="results_no_more_later">没有更晚的方案</string>
+    <string name="results_no_trains_until">%1$s 前没有列车</string>
+    <string name="service_late_minutes_unpublished">晚点（未公布分钟数）</string>
     <string name="bikes_allowed">可携带自行车</string>
     <string name="bikes_not_allowed">不可携带自行车</string>
     <string name="bikes_conditions_link">携带自行车：%1$s 的规定</string>

@@ -679,7 +679,9 @@ internal fun BinarioApp(
                     } else null,
                     selectedJourneyId = selectedJourneyId.takeIf { inSidePane && screen == AppScreen.JOURNEY_DETAIL },
                     openTravelPreferences = ::openTravelPreferences,
-                    onFirstShownService = { resultsPreview = it }
+                    onFirstShownService = { resultsPreview = it },
+                    loadLaterJourneys = journeyViewModel::loadLater,
+                    loadEarlierJourneys = journeyViewModel::loadEarlier
                 )
             }
             AppScreen.JOURNEY_DETAIL -> {

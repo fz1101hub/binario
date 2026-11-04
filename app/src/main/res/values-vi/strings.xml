@@ -1451,6 +1451,30 @@
         <item quantity="other">%1$s: trễ %2$d trên %3$d lần</item>
     </plurals>
     <string name="reliability_threshold_mixed_note">Chuyến đến trễ tối đa 5 phút với Frecce, Italo, EuroCity, Eurostar và EuroNight, tối đa 15 phút với các tàu khác được tính là đúng giờ.</string>
+    <!-- Usual platform and weekday punctuality of the network statistics (stop elements 7 and 8) -->
+    <plurals name="reliability_usual_platform">
+        <item quantity="other">Thường ở sân ga %1$s (%2$d trên %3$d lần)</item>
+    </plurals>
+    <string name="reliability_weekday_monday">Vào thứ Hai</string>
+    <string name="reliability_weekday_tuesday">Vào thứ Ba</string>
+    <string name="reliability_weekday_wednesday">Vào thứ Tư</string>
+    <string name="reliability_weekday_thursday">Vào thứ Năm</string>
+    <string name="reliability_weekday_friday">Vào thứ Sáu</string>
+    <string name="reliability_weekday_saturday">Vào thứ Bảy</string>
+    <string name="reliability_weekday_sunday">Vào Chủ nhật</string>
+    <plurals name="reliability_weekday_worse">
+        <item quantity="other">%1$s đúng giờ %2$d trên %3$d lần, kém hơn mức trung bình</item>
+    </plurals>
+    <plurals name="reliability_weekday_better">
+        <item quantity="other">%1$s đúng giờ %2$d trên %3$d lần, tốt hơn mức trung bình</item>
+    </plurals>
+    <!-- Route results: «Più presto» / «Più tardi», empty searched window, RFI «RITARDO» without minutes -->
+    <string name="results_earlier">Sớm hơn</string>
+    <string name="results_later">Muộn hơn</string>
+    <string name="results_no_more_earlier">Không có lựa chọn nào sớm hơn</string>
+    <string name="results_no_more_later">Không có lựa chọn nào muộn hơn</string>
+    <string name="results_no_trains_until">Không có tàu cho đến %1$s</string>
+    <string name="service_late_minutes_unpublished">Trễ (chưa công bố số phút)</string>
     <string name="bikes_allowed">Được mang xe đạp</string>
     <string name="bikes_not_allowed">Không được mang xe đạp</string>
     <string name="bikes_conditions_link">Mang xe đạp lên tàu: điều kiện của %1$s</string>

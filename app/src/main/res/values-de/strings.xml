@@ -1496,6 +1496,33 @@
         <item quantity="other">%1$s: %2$d von %3$d Mal verspätet</item>
     </plurals>
     <string name="reliability_threshold_mixed_note">Als pünktlich gilt eine Ankunft mit höchstens 5 Minuten Verspätung bei Frecce, Italo, EuroCity, Eurostar und EuroNight, 15 Minuten bei den übrigen Zügen.</string>
+    <!-- Usual platform and weekday punctuality of the network statistics (stop elements 7 and 8) -->
+    <plurals name="reliability_usual_platform">
+        <item quantity="one">Meist Gleis %1$s (%2$d von %3$d Mal)</item>
+        <item quantity="other">Meist Gleis %1$s (%2$d von %3$d Mal)</item>
+    </plurals>
+    <string name="reliability_weekday_monday">Montags</string>
+    <string name="reliability_weekday_tuesday">Dienstags</string>
+    <string name="reliability_weekday_wednesday">Mittwochs</string>
+    <string name="reliability_weekday_thursday">Donnerstags</string>
+    <string name="reliability_weekday_friday">Freitags</string>
+    <string name="reliability_weekday_saturday">Samstags</string>
+    <string name="reliability_weekday_sunday">Sonntags</string>
+    <plurals name="reliability_weekday_worse">
+        <item quantity="one">%1$s %2$d von %3$d Mal pünktlich, schlechter als im Schnitt</item>
+        <item quantity="other">%1$s %2$d von %3$d Mal pünktlich, schlechter als im Schnitt</item>
+    </plurals>
+    <plurals name="reliability_weekday_better">
+        <item quantity="one">%1$s %2$d von %3$d Mal pünktlich, besser als im Schnitt</item>
+        <item quantity="other">%1$s %2$d von %3$d Mal pünktlich, besser als im Schnitt</item>
+    </plurals>
+    <!-- Route results: «Più presto» / «Più tardi», empty searched window, RFI «RITARDO» without minutes -->
+    <string name="results_earlier">Früher</string>
+    <string name="results_later">Später</string>
+    <string name="results_no_more_earlier">Keine weiteren Verbindungen früher</string>
+    <string name="results_no_more_later">Keine weiteren Verbindungen später</string>
+    <string name="results_no_trains_until">Keine Züge bis %1$s</string>
+    <string name="service_late_minutes_unpublished">Verspätet (Minuten nicht veröffentlicht)</string>
     <string name="bikes_allowed">Fahrradmitnahme möglich</string>
     <string name="bikes_not_allowed">Keine Fahrradmitnahme</string>
     <string name="bikes_conditions_link">Fahrradmitnahme: Bedingungen von %1$s</string>
