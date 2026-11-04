@@ -75,7 +75,7 @@
     <string name="station_badge_metro">Station de métro</string>
     <string name="station_badge_tram">Arrêt de tram</string>
     <string name="station_badge_funicular">Funiculaire ou ascenseur</string>
-    <string name="settings_privacy_new_sources">Lorsqu’elles sont actives, les sources supplémentaires ne reçoivent que ce dont la requête a besoin, sans compte ni position : transport.opendata.ch le numéro UIC de la gare suisse (ou, une fois, le nom d’une gare frontalière) ; ViaggiaTreno le numéro du train pour ses avis, en HTTP non chiffré comme son API publique ; RFI, Trenitalia et Trenord aucune donnée vous concernant pour leurs listes d’avis, téléchargées seulement quand vous ouvrez la zone des avis, un détail ou un tableau concerné ; Open-Meteo les coordonnées arrondies de la gare d’arrivée. Les liens externes ne s’ouvrent dans le navigateur que si vous les touchez.</string>
+    <string name="settings_privacy_new_sources">Lorsqu’elles sont actives, les sources supplémentaires ne reçoivent que ce dont la requête a besoin, sans compte ni position : transport.opendata.ch le numéro UIC de la gare suisse (ou, une fois, le nom d’une gare frontalière) ; ViaggiaTreno le numéro du train pour ses avis, en HTTP non chiffré comme son API publique ; RFI, Trenitalia et Trenord aucune donnée vous concernant pour leurs listes d’avis, téléchargées seulement quand vous ouvrez la zone des avis, un détail, un tableau concerné ou la section des travaux sur vos trajets ; Open-Meteo les coordonnées arrondies de la gare d’arrivée. Les liens externes ne s’ouvrent dans le navigateur que si vous les touchez.</string>
 
     <string name="app_name">Binario</string>
     <string name="widget_description">Affiche les prochains services de votre itinéraire Binario.</string>
@@ -1603,4 +1603,48 @@
     <string name="compensation_notice_quarter">Arrivé à %1$s avec %2$s de retard : selon le règlement (UE) 2021/782, vous pourriez avoir droit à une indemnisation de 25%% du prix du billet (50%% à partir de 120 minutes).</string>
     <string name="compensation_notice_half">Arrivé à %1$s avec %2$s de retard : selon le règlement (UE) 2021/782, vous pourriez avoir droit à une indemnisation de 50%% du prix du billet.</string>
     <string name="compensation_notice_conditions">L’entreprise ferroviaire peut refuser les montants inférieurs à 4 € et les retards dus à des causes extérieures, comme des conditions météorologiques extrêmes ou des personnes sur les voies ; une grève de son personnel n’est pas une cause extérieure. Dans les trains régionaux, les conditions dépendent aussi du contrat de service avec la région.</string>
+    <!-- Station board: RFI Sala Blu assistance (links only) -->
+    <string name="station_sala_blu_title">Assistance Sala Blu</string>
+    <string name="station_sala_blu_description">RFI assiste gratuitement en gare, sur réservation, les personnes handicapées ou à mobilité réduite.</string>
+    <string name="station_sala_blu_page">Page d’assistance de RFI</string>
+    <string name="station_sala_blu_call_toll_free">Appeler le %1$s (gratuit depuis un fixe)</string>
+    <string name="station_sala_blu_call_national">Appeler le %1$s (aussi depuis un mobile)</string>
+    <!-- Station board: direct connections from the station (embedded timetables) -->
+    <string name="direct_connections_title">Liaisons directes</string>
+    <string name="direct_connections_from">Depuis %1$s, sans correspondance</string>
+    <string name="direct_connections_note">D’après les horaires prévus inclus dans l’app, sans retards ni suppressions. Touchez une destination pour chercher les trains.</string>
+    <string name="direct_connections_filter">Filtrer les destinations</string>
+    <string name="direct_connections_loading">Lecture des horaires…</string>
+    <string name="direct_connections_empty">Les horaires inclus n’ont aucune liaison directe depuis cette gare ce jour-là.</string>
+    <string name="direct_connections_no_match">Aucune destination ne contient « %1$s ».</string>
+    <string name="direct_connections_trains">Trains</string>
+    <string name="direct_connections_urban">Métro, tram et funiculaires</string>
+    <plurals name="direct_connections_train_count">
+        <item quantity="one">%d train</item>
+        <item quantity="many">%d trains</item>
+        <item quantity="other">%d trains</item>
+    </plurals>
+    <plurals name="direct_connections_runs">
+        <item quantity="one">%d passage</item>
+        <item quantity="many">%d passages</item>
+        <item quantity="other">%d passages</item>
+    </plurals>
+    <string name="direct_connections_first_last">premier %1$s, dernier %2$s</string>
+    <string name="direct_connections_fastest">le plus rapide %1$s</string>
+    <string name="direct_connections_from_stop">depuis l’arrêt %1$s, à quelques pas</string>
+    <!-- Per te and route board: works and interruptions named by the network notices on the saved routes -->
+    <string name="route_works_title">Travaux et interruptions sur vos trajets</string>
+    <string name="route_works_title_route">Travaux et interruptions sur ce trajet</string>
+    <string name="route_works_none">Aucun avis de travaux ou d’interruption ne cite actuellement les gares de vos trajets.</string>
+    <string name="route_works_names">L’avis cite : %1$s</string>
+    <string name="route_works_route_names">%1$s — l’avis cite : %2$s</string>
+    <string name="route_works_line">la ligne %1$s</string>
+    <string name="route_works_date">Date indiquée : %1$s</string>
+    <string name="route_works_dates">Dates indiquées : du %1$s au %2$s</string>
+    <string name="route_works_note">Les avis sont associés aux trajets par les noms de gares et de lignes qu’ils contiennent : lisez toujours le texte complet.</string>
+    <plurals name="route_works_show_more">
+        <item quantity="one">Afficher %d autre avis</item>
+        <item quantity="many">Afficher %d autres avis</item>
+        <item quantity="other">Afficher %d autres avis</item>
+    </plurals>
 </resources>

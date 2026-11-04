@@ -75,7 +75,7 @@
     <string name="station_badge_metro">Halte metro</string>
     <string name="station_badge_tram">Halte trem</string>
     <string name="station_badge_funicular">Funikular atau lift</string>
-    <string name="settings_privacy_new_sources">Jika aktif, sumber tambahan hanya menerima yang diperlukan untuk permintaan, tanpa akun atau lokasi: transport.opendata.ch menerima nomor UIC stasiun Swiss (atau, satu kali, nama stasiun perbatasan); ViaggiaTreno menerima nomor kereta untuk pemberitahuannya, melalui HTTP tanpa enkripsi seperti API publiknya; RFI, Trenitalia, dan Trenord tidak menerima data Anda untuk daftar pemberitahuan mereka, yang hanya diunduh saat Anda membuka area pemberitahuan, detail, atau papan yang relevan; Open-Meteo menerima koordinat stasiun kedatangan yang dibulatkan. Tautan eksternal hanya terbuka di browser jika Anda mengetuknya.</string>
+    <string name="settings_privacy_new_sources">Jika aktif, sumber tambahan hanya menerima yang diperlukan untuk permintaan, tanpa akun atau lokasi: transport.opendata.ch menerima nomor UIC stasiun Swiss (atau, satu kali, nama stasiun perbatasan); ViaggiaTreno menerima nomor kereta untuk pemberitahuannya, melalui HTTP tanpa enkripsi seperti API publiknya; RFI, Trenitalia, dan Trenord tidak menerima data Anda untuk daftar pemberitahuan mereka, yang hanya diunduh saat Anda membuka area pemberitahuan, detail, papan yang relevan, atau bagian pekerjaan di rute Anda; Open-Meteo menerima koordinat stasiun kedatangan yang dibulatkan. Tautan eksternal hanya terbuka di browser jika Anda mengetuknya.</string>
     <string name="app_name">Binario</string>
     <string name="widget_description">Menampilkan perjalanan berikutnya di rute Binario Anda.</string>
     <string name="widget_refresh">Perbarui perjalanan</string>
@@ -1480,4 +1480,42 @@
     <string name="compensation_notice_quarter">Tiba di %1$s terlambat %2$s: menurut Peraturan (UE) 2021/782 Anda mungkin berhak atas kompensasi 25%% dari harga tiket (50%% mulai 120 menit).</string>
     <string name="compensation_notice_half">Tiba di %1$s terlambat %2$s: menurut Peraturan (UE) 2021/782 Anda mungkin berhak atas kompensasi 50%% dari harga tiket.</string>
     <string name="compensation_notice_conditions">Perusahaan kereta dapat menolak jumlah di bawah €4 dan keterlambatan akibat sebab eksternal, seperti cuaca ekstrem atau orang di rel; mogok kerja stafnya sendiri bukan sebab eksternal. Pada kereta regional, ketentuannya juga bergantung pada kontrak layanan dengan wilayah.</string>
+    <!-- Station board: RFI Sala Blu assistance (links only) -->
+    <string name="station_sala_blu_title">Bantuan Sala Blu</string>
+    <string name="station_sala_blu_description">RFI membantu penumpang penyandang disabilitas atau dengan mobilitas terbatas di stasiun secara gratis, dengan pemesanan.</string>
+    <string name="station_sala_blu_page">Halaman bantuan RFI</string>
+    <string name="station_sala_blu_call_toll_free">Telepon %1$s (gratis dari telepon rumah)</string>
+    <string name="station_sala_blu_call_national">Telepon %1$s (juga dari ponsel)</string>
+    <!-- Station board: direct connections from the station (embedded timetables) -->
+    <string name="direct_connections_title">Koneksi langsung</string>
+    <string name="direct_connections_from">Dari %1$s, tanpa ganti</string>
+    <string name="direct_connections_note">Dari jadwal terencana yang ada di aplikasi, tanpa keterlambatan atau pembatalan. Ketuk tujuan untuk mencari kereta.</string>
+    <string name="direct_connections_filter">Saring tujuan</string>
+    <string name="direct_connections_loading">Membaca jadwal…</string>
+    <string name="direct_connections_empty">Jadwal yang disertakan tidak memiliki koneksi langsung dari stasiun ini pada hari ini.</string>
+    <string name="direct_connections_no_match">Tidak ada tujuan yang memuat “%1$s”.</string>
+    <string name="direct_connections_trains">Kereta</string>
+    <string name="direct_connections_urban">Metro, trem, dan funikular</string>
+    <plurals name="direct_connections_train_count">
+        <item quantity="other">%d kereta</item>
+    </plurals>
+    <plurals name="direct_connections_runs">
+        <item quantity="other">%d perjalanan</item>
+    </plurals>
+    <string name="direct_connections_first_last">pertama %1$s, terakhir %2$s</string>
+    <string name="direct_connections_fastest">tercepat %1$s</string>
+    <string name="direct_connections_from_stop">dari halte %1$s, beberapa langkah saja</string>
+    <!-- Per te and route board: works and interruptions named by the network notices on the saved routes -->
+    <string name="route_works_title">Pekerjaan dan gangguan di rute Anda</string>
+    <string name="route_works_title_route">Pekerjaan dan gangguan di rute ini</string>
+    <string name="route_works_none">Saat ini tidak ada pemberitahuan pekerjaan atau gangguan yang menyebut stasiun di rute Anda.</string>
+    <string name="route_works_names">Pemberitahuan menyebut: %1$s</string>
+    <string name="route_works_route_names">%1$s — pemberitahuan menyebut: %2$s</string>
+    <string name="route_works_line">jalur %1$s</string>
+    <string name="route_works_date">Tanggal yang disebut: %1$s</string>
+    <string name="route_works_dates">Tanggal yang disebut: %1$s sampai %2$s</string>
+    <string name="route_works_note">Pemberitahuan dicocokkan dengan rute dari nama stasiun dan jalur yang dimuatnya: selalu baca teks lengkapnya.</string>
+    <plurals name="route_works_show_more">
+        <item quantity="other">Tampilkan %d pemberitahuan lagi</item>
+    </plurals>
 </resources>

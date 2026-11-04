@@ -75,7 +75,7 @@
     <string name="station_badge_metro">Điểm dừng tàu điện ngầm</string>
     <string name="station_badge_tram">Điểm dừng tàu điện mặt đất</string>
     <string name="station_badge_funicular">Tàu leo núi hoặc thang máy</string>
-    <string name="settings_privacy_new_sources">Khi được bật, các nguồn bổ sung chỉ nhận những gì yêu cầu cần, không có tài khoản hay vị trí: transport.opendata.ch nhận số UIC của ga Thụy Sĩ (hoặc, một lần, tên của một ga biên giới); ViaggiaTreno nhận số hiệu tàu để lấy thông báo, qua HTTP không mã hóa như API công khai của họ; RFI, Trenitalia và Trenord không nhận dữ liệu nào của bạn cho danh sách thông báo, chỉ được tải xuống khi bạn mở khu vực thông báo, một trang chi tiết hoặc một bảng giờ tàu liên quan; Open-Meteo nhận tọa độ đã làm tròn của ga đến. Liên kết ngoài chỉ mở trong trình duyệt khi bạn nhấn vào.</string>
+    <string name="settings_privacy_new_sources">Khi được bật, các nguồn bổ sung chỉ nhận những gì yêu cầu cần, không có tài khoản hay vị trí: transport.opendata.ch nhận số UIC của ga Thụy Sĩ (hoặc, một lần, tên của một ga biên giới); ViaggiaTreno nhận số hiệu tàu để lấy thông báo, qua HTTP không mã hóa như API công khai của họ; RFI, Trenitalia và Trenord không nhận dữ liệu nào của bạn cho danh sách thông báo, chỉ được tải xuống khi bạn mở khu vực thông báo, một trang chi tiết, một bảng giờ tàu liên quan hoặc mục thi công trên tuyến của bạn; Open-Meteo nhận tọa độ đã làm tròn của ga đến. Liên kết ngoài chỉ mở trong trình duyệt khi bạn nhấn vào.</string>
 
     <string name="app_name">Binario</string>
     <string name="widget_description">Hiển thị các chuyến tiếp theo trên tuyến Binario của bạn.</string>
@@ -1503,4 +1503,42 @@
     <string name="compensation_notice_quarter">Đến %1$s trễ %2$s: theo Quy định (EU) 2021/782, bạn có thể được bồi thường 25%% giá vé (50%% từ 120 phút).</string>
     <string name="compensation_notice_half">Đến %1$s trễ %2$s: theo Quy định (EU) 2021/782, bạn có thể được bồi thường 50%% giá vé.</string>
     <string name="compensation_notice_conditions">Công ty đường sắt có thể từ chối khoản dưới 4 € và các trường hợp trễ do nguyên nhân bên ngoài như thời tiết khắc nghiệt hoặc có người trên đường ray; đình công của chính nhân viên công ty không phải là nguyên nhân bên ngoài. Với tàu khu vực, điều kiện còn phụ thuộc vào hợp đồng dịch vụ với vùng.</string>
+    <!-- Station board: RFI Sala Blu assistance (links only) -->
+    <string name="station_sala_blu_title">Hỗ trợ Sala Blu</string>
+    <string name="station_sala_blu_description">RFI hỗ trợ miễn phí tại nhà ga, theo đặt trước, cho người khuyết tật hoặc người hạn chế khả năng di chuyển.</string>
+    <string name="station_sala_blu_page">Trang hỗ trợ của RFI</string>
+    <string name="station_sala_blu_call_toll_free">Gọi %1$s (miễn phí từ điện thoại bàn)</string>
+    <string name="station_sala_blu_call_national">Gọi %1$s (cả từ di động)</string>
+    <!-- Station board: direct connections from the station (embedded timetables) -->
+    <string name="direct_connections_title">Chuyến đi thẳng</string>
+    <string name="direct_connections_from">Từ %1$s, không đổi chuyến</string>
+    <string name="direct_connections_note">Theo lịch trình dự kiến có trong ứng dụng, không tính chậm trễ hay hủy chuyến. Chạm vào một điểm đến để tìm tàu.</string>
+    <string name="direct_connections_filter">Lọc điểm đến</string>
+    <string name="direct_connections_loading">Đang đọc lịch trình…</string>
+    <string name="direct_connections_empty">Lịch trình có trong ứng dụng không có chuyến đi thẳng từ ga này vào ngày này.</string>
+    <string name="direct_connections_no_match">Không có điểm đến nào chứa “%1$s”.</string>
+    <string name="direct_connections_trains">Tàu hỏa</string>
+    <string name="direct_connections_urban">Tàu điện ngầm, tàu điện và tàu leo núi</string>
+    <plurals name="direct_connections_train_count">
+        <item quantity="other">%d chuyến tàu</item>
+    </plurals>
+    <plurals name="direct_connections_runs">
+        <item quantity="other">%d chuyến</item>
+    </plurals>
+    <string name="direct_connections_first_last">chuyến đầu %1$s, chuyến cuối %2$s</string>
+    <string name="direct_connections_fastest">nhanh nhất %1$s</string>
+    <string name="direct_connections_from_stop">từ trạm %1$s, cách vài bước</string>
+    <!-- Per te and route board: works and interruptions named by the network notices on the saved routes -->
+    <string name="route_works_title">Thi công và gián đoạn trên tuyến của bạn</string>
+    <string name="route_works_title_route">Thi công và gián đoạn trên tuyến này</string>
+    <string name="route_works_none">Hiện không có thông báo thi công hay gián đoạn nào nêu tên các ga trên tuyến của bạn.</string>
+    <string name="route_works_names">Thông báo nêu: %1$s</string>
+    <string name="route_works_route_names">%1$s — thông báo nêu: %2$s</string>
+    <string name="route_works_line">tuyến %1$s</string>
+    <string name="route_works_date">Ngày được nêu: %1$s</string>
+    <string name="route_works_dates">Các ngày được nêu: từ %1$s đến %2$s</string>
+    <string name="route_works_note">Thông báo được ghép với tuyến theo tên ga và tên tuyến có trong nội dung: hãy luôn đọc toàn văn.</string>
+    <plurals name="route_works_show_more">
+        <item quantity="other">Hiện thêm %d thông báo</item>
+    </plurals>
 </resources>

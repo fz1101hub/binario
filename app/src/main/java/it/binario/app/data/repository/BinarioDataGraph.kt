@@ -11,10 +11,6 @@ import it.binario.app.data.gtfs.EmbeddedGtfsRouteAdapter
 import it.binario.app.data.gtfs.EmbeddedGtfsStationSearchIndex
 import it.binario.app.data.gtfs.EmbeddedUrbanStopIndex
 import it.binario.app.data.journey.EmbeddedGtfsJourneyProvider
-import it.binario.app.data.provider.AlertProvider
-import it.binario.app.data.provider.AuthorizedExternalProviderFactory
-import it.binario.app.data.provider.AuthorizedExternalProviders
-import it.binario.app.data.provider.ExternalRailCredentials
 import it.binario.app.data.provider.JourneyProvider
 import it.binario.app.data.provider.KnownProviders
 import it.binario.app.data.provider.ProviderCapability
@@ -22,7 +18,6 @@ import it.binario.app.data.provider.RailProvider
 import it.binario.app.data.provider.ProviderRegistry
 import it.binario.app.data.provider.StationBoardProvider
 import it.binario.app.data.provider.TripUpdateProvider
-import it.binario.app.data.provider.VehiclePositionProvider
 import it.binario.app.data.core.SourceId
 import it.binario.app.data.bikesharing.BikeSharingService
 import it.binario.app.data.bikesharing.BikeSharingSystems
@@ -207,9 +202,6 @@ object BinarioDataGraph {
         activeProviders(localOnlyPolicy.stationBoardRunDetailProviders(), ProviderCapability.TRAIN_RUN_REALTIME)
     )
 
-    fun alertProviders(): List<AlertProvider> =
-        activeProviders(localOnlyPolicy.alertProviders(), ProviderCapability.SERVICE_ALERTS)
-
     /** Notices for the train detail and the notices area, from the registry-enabled public sources only. */
     fun railNoticesService(): it.binario.app.data.notices.RailNoticesService = it.binario.app.data.notices.RailNoticesService(
         trainNoticeProviders = activeProviders(localOnlyPolicy.trainNoticeProviders(), ProviderCapability.SERVICE_ALERTS),
@@ -247,30 +239,8 @@ object BinarioDataGraph {
     fun weatherForecastProvider(): it.binario.app.data.weather.OpenMeteoForecastAdapter? =
         activeProviders(listOf(localOnlyPolicy.weatherForecastProvider()), ProviderCapability.WEATHER_FORECAST).firstOrNull()
 
-    fun vehiclePositionProviders(): List<VehiclePositionProvider> =
-        activeProviders(localOnlyPolicy.vehiclePositionProviders(), ProviderCapability.VEHICLE_POSITIONS)
-
     fun tripUpdateProviders(): List<TripUpdateProvider> =
         activeProviders(localOnlyPolicy.tripUpdateProviders(), ProviderCapability.TRAIN_RUN_REALTIME)
-
-    /**
-     * Costruisce provider con credenziali soltanto per la durata del riferimento
-     * restituito. Il graph non li cachea e non conserva le credenziali.
-     */
-    fun authorizedExternalProviders(credentials: ExternalRailCredentials): AuthorizedExternalProviders =
-        AuthorizedExternalProviderFactory.create(credentials)
-
-    fun stationBoardProviders(credentials: ExternalRailCredentials): List<StationBoardProvider> =
-        stationBoardProviders() + authorizedExternalProviders(credentials).stationBoards
-
-    fun stationBoardDisplayProviders(credentials: ExternalRailCredentials): List<StationBoardProvider> =
-        stationBoardDisplayProviders() + authorizedExternalProviders(credentials).stationBoards
-
-    fun alertProviders(credentials: ExternalRailCredentials): List<AlertProvider> =
-        alertProviders() + authorizedExternalProviders(credentials).alerts
-
-    fun tripUpdateProviders(credentials: ExternalRailCredentials): List<TripUpdateProvider> =
-        tripUpdateProviders() + authorizedExternalProviders(credentials).tripUpdates
 
     fun realtimeScheduleResolver(context: Context): EmbeddedGtfsRealtimeScheduleResolver = synchronized(realtimeResolversByPackage) {
         val applicationContext = context.applicationContext
@@ -281,18 +251,6 @@ object BinarioDataGraph {
 
     fun realtimeEnrichmentService(context: Context): RealtimeEnrichmentService =
         RealtimeEnrichmentService(tripUpdateProviders(), realtimeScheduleResolver(context))
-
-    /**
-     * Versione autorizzata: Swiss GTFS-RT viene riconciliato contro il GTFS
-     * svizzero embedded; nessun token viene copiato nel resolver o persistito.
-     */
-    fun realtimeEnrichmentService(
-        context: Context,
-        credentials: ExternalRailCredentials
-    ): RealtimeEnrichmentService = RealtimeEnrichmentService(
-        tripUpdateProviders(credentials),
-        realtimeScheduleResolver(context)
-    )
 
     private fun <T : RailProvider> activeProviders(
         candidates: List<T>,

@@ -75,7 +75,7 @@
     <string name="station_badge_metro">ป้ายรถไฟใต้ดิน</string>
     <string name="station_badge_tram">ป้ายรถราง</string>
     <string name="station_badge_funicular">รถรางไต่เขาหรือลิฟต์</string>
-    <string name="settings_privacy_new_sources">เมื่อเปิดใช้ แหล่งข้อมูลเพิ่มเติมจะได้รับเฉพาะสิ่งที่คำขอต้องใช้ โดยไม่มีบัญชีหรือตำแหน่ง: transport.opendata.ch ได้รับหมายเลข UIC ของสถานีในสวิตเซอร์แลนด์ (หรือชื่อสถานีชายแดนหนึ่งครั้ง); ViaggiaTreno ได้รับหมายเลขขบวนเพื่อดูประกาศ ผ่าน HTTP ที่ไม่เข้ารหัสเช่นเดียวกับ API สาธารณะของบริการ; RFI, Trenitalia และ Trenord ไม่ได้รับข้อมูลใดของคุณสำหรับรายการประกาศ ซึ่งจะดาวน์โหลดเมื่อคุณเปิดส่วนประกาศ รายละเอียด หรือกระดานขบวนรถที่เกี่ยวข้องเท่านั้น; Open-Meteo ได้รับพิกัดที่ปัดเศษของสถานีปลายทาง ลิงก์ภายนอกจะเปิดในเบราว์เซอร์เมื่อคุณแตะเท่านั้น</string>
+    <string name="settings_privacy_new_sources">เมื่อเปิดใช้ แหล่งข้อมูลเพิ่มเติมจะได้รับเฉพาะสิ่งที่คำขอต้องใช้ โดยไม่มีบัญชีหรือตำแหน่ง: transport.opendata.ch ได้รับหมายเลข UIC ของสถานีในสวิตเซอร์แลนด์ (หรือชื่อสถานีชายแดนหนึ่งครั้ง); ViaggiaTreno ได้รับหมายเลขขบวนเพื่อดูประกาศ ผ่าน HTTP ที่ไม่เข้ารหัสเช่นเดียวกับ API สาธารณะของบริการ; RFI, Trenitalia และ Trenord ไม่ได้รับข้อมูลใดของคุณสำหรับรายการประกาศ ซึ่งจะดาวน์โหลดเมื่อคุณเปิดส่วนประกาศ รายละเอียด กระดานขบวนรถที่เกี่ยวข้อง หรือส่วนงานซ่อมบำรุงในเส้นทางของคุณเท่านั้น; Open-Meteo ได้รับพิกัดที่ปัดเศษของสถานีปลายทาง ลิงก์ภายนอกจะเปิดในเบราว์เซอร์เมื่อคุณแตะเท่านั้น</string>
 
     <string name="app_name">Binario</string>
     <string name="widget_description">แสดงขบวนถัดไปบนเส้นทาง Binario ของคุณ</string>
@@ -1503,4 +1503,42 @@
     <string name="compensation_notice_quarter">มาถึง %1$s ช้า %2$s: ตามข้อบังคับ (EU) 2021/782 คุณอาจมีสิทธิ์ได้รับค่าชดเชย 25%% ของราคาตั๋ว (50%% ตั้งแต่ 120 นาที)</string>
     <string name="compensation_notice_half">มาถึง %1$s ช้า %2$s: ตามข้อบังคับ (EU) 2021/782 คุณอาจมีสิทธิ์ได้รับค่าชดเชย 50%% ของราคาตั๋ว</string>
     <string name="compensation_notice_conditions">บริษัทรถไฟอาจปฏิเสธจำนวนเงินที่ต่ำกว่า 4 ยูโร และความล่าช้าจากสาเหตุภายนอก เช่น สภาพอากาศรุนแรงหรือมีคนอยู่บนราง ส่วนการนัดหยุดงานของพนักงานของบริษัทเองไม่ถือเป็นสาเหตุภายนอก สำหรับรถไฟภูมิภาค เงื่อนไขยังขึ้นอยู่กับสัญญาบริการกับภูมิภาคด้วย</string>
+    <!-- Station board: RFI Sala Blu assistance (links only) -->
+    <string name="station_sala_blu_title">ความช่วยเหลือ Sala Blu</string>
+    <string name="station_sala_blu_description">RFI ให้ความช่วยเหลือฟรีที่สถานีแก่ผู้พิการหรือผู้ที่เคลื่อนไหวลำบาก โดยต้องจองล่วงหน้า</string>
+    <string name="station_sala_blu_page">หน้าความช่วยเหลือของ RFI</string>
+    <string name="station_sala_blu_call_toll_free">โทร %1$s (ฟรีจากโทรศัพท์บ้าน)</string>
+    <string name="station_sala_blu_call_national">โทร %1$s (โทรจากมือถือได้ด้วย)</string>
+    <!-- Station board: direct connections from the station (embedded timetables) -->
+    <string name="direct_connections_title">เส้นทางตรง</string>
+    <string name="direct_connections_from">จาก %1$s โดยไม่ต้องเปลี่ยน</string>
+    <string name="direct_connections_note">จากตารางเวลาตามแผนที่มีในแอป ไม่รวมความล่าช้าหรือการยกเลิก แตะปลายทางเพื่อค้นหารถไฟ</string>
+    <string name="direct_connections_filter">กรองปลายทาง</string>
+    <string name="direct_connections_loading">กำลังอ่านตารางเวลา…</string>
+    <string name="direct_connections_empty">ตารางเวลาที่มีในแอปไม่มีเส้นทางตรงจากสถานีนี้ในวันนี้</string>
+    <string name="direct_connections_no_match">ไม่มีปลายทางที่มี “%1$s”</string>
+    <string name="direct_connections_trains">รถไฟ</string>
+    <string name="direct_connections_urban">รถไฟใต้ดิน รถราง และรถกระเช้าราง</string>
+    <plurals name="direct_connections_train_count">
+        <item quantity="other">รถไฟ %d ขบวน</item>
+    </plurals>
+    <plurals name="direct_connections_runs">
+        <item quantity="other">%d เที่ยว</item>
+    </plurals>
+    <string name="direct_connections_first_last">เที่ยวแรก %1$s เที่ยวสุดท้าย %2$s</string>
+    <string name="direct_connections_fastest">เร็วที่สุด %1$s</string>
+    <string name="direct_connections_from_stop">จากป้าย %1$s ที่อยู่ใกล้ๆ</string>
+    <!-- Per te and route board: works and interruptions named by the network notices on the saved routes -->
+    <string name="route_works_title">งานซ่อมบำรุงและการหยุดเดินรถในเส้นทางของคุณ</string>
+    <string name="route_works_title_route">งานซ่อมบำรุงและการหยุดเดินรถในเส้นทางนี้</string>
+    <string name="route_works_none">ขณะนี้ไม่มีประกาศงานซ่อมบำรุงหรือการหยุดเดินรถที่ระบุสถานีในเส้นทางของคุณ</string>
+    <string name="route_works_names">ประกาศระบุถึง: %1$s</string>
+    <string name="route_works_route_names">%1$s — ประกาศระบุถึง: %2$s</string>
+    <string name="route_works_line">สาย %1$s</string>
+    <string name="route_works_date">วันที่ที่ระบุ: %1$s</string>
+    <string name="route_works_dates">วันที่ที่ระบุ: %1$s ถึง %2$s</string>
+    <string name="route_works_note">ประกาศถูกจับคู่กับเส้นทางจากชื่อสถานีและสายที่อยู่ในข้อความ โปรดอ่านข้อความฉบับเต็มเสมอ</string>
+    <plurals name="route_works_show_more">
+        <item quantity="other">แสดงประกาศอีก %d รายการ</item>
+    </plurals>
 </resources>

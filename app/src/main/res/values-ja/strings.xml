@@ -75,7 +75,7 @@
     <string name="station_badge_metro">地下鉄の駅</string>
     <string name="station_badge_tram">路面電車の停留所</string>
     <string name="station_badge_funicular">ケーブルカーまたはエレベーター</string>
-    <string name="settings_privacy_new_sources">追加の情報源を有効にしても、受け取るのはリクエストに必要な情報だけで、アカウントや位置情報は送信されません。transport.opendata.ch にはスイスの駅の UIC 番号（または一度だけ国境駅の名前）、ViaggiaTreno にはお知らせ用の列車番号（公開 API と同じく暗号化されていない HTTP）を送信します。RFI、Trenitalia、Trenord のお知らせ一覧にはあなたのデータを送らず、お知らせエリア、詳細、関連する発車案内を開いたときにのみダウンロードします。Open-Meteo には到着駅の丸めた座標を送信します。外部リンクはタップしたときにのみブラウザで開きます。</string>
+    <string name="settings_privacy_new_sources">追加の情報源を有効にしても、受け取るのはリクエストに必要な情報だけで、アカウントや位置情報は送信されません。transport.opendata.ch にはスイスの駅の UIC 番号（または一度だけ国境駅の名前）、ViaggiaTreno にはお知らせ用の列車番号（公開 API と同じく暗号化されていない HTTP）を送信します。RFI、Trenitalia、Trenord のお知らせ一覧にはあなたのデータを送らず、お知らせエリア、詳細、関連する発車案内、あなたの区間の工事のセクションを開いたときにのみダウンロードします。Open-Meteo には到着駅の丸めた座標を送信します。外部リンクはタップしたときにのみブラウザで開きます。</string>
     <string name="app_name">Binario</string>
     <string name="widget_description">Binario の区間の次の列車を表示します。</string>
     <string name="widget_refresh">列車を更新</string>
@@ -1480,4 +1480,42 @@
     <string name="compensation_notice_quarter">%1$s に %2$s 遅れて到着：規則 (EU) 2021/782 により、運賃の 25%% の補償を受けられる場合があります（120 分以上は 50%%）。</string>
     <string name="compensation_notice_half">%1$s に %2$s 遅れて到着：規則 (EU) 2021/782 により、運賃の 50%% の補償を受けられる場合があります。</string>
     <string name="compensation_notice_conditions">鉄道会社は 4 ユーロ未満の金額や、異常気象や線路内の人など外部要因による遅れについては支払いを拒否できます。自社職員のストライキは外部要因に当たりません。地域列車の条件は州との運行契約にもよります。</string>
+    <!-- Station board: RFI Sala Blu assistance (links only) -->
+    <string name="station_sala_blu_title">Sala Blu のサポート</string>
+    <string name="station_sala_blu_description">RFI は駅で、障害のある方や移動に制約のある方を予約制で無料サポートします。</string>
+    <string name="station_sala_blu_page">RFI のサポートページ</string>
+    <string name="station_sala_blu_call_toll_free">%1$s に電話（固定電話から無料）</string>
+    <string name="station_sala_blu_call_national">%1$s に電話（携帯電話からも可）</string>
+    <!-- Station board: direct connections from the station (embedded timetables) -->
+    <string name="direct_connections_title">直通の行き先</string>
+    <string name="direct_connections_from">%1$s から乗り換えなし</string>
+    <string name="direct_connections_note">アプリ内の時刻表による予定時刻で、遅延や運休は含みません。行き先をタップすると列車を検索します。</string>
+    <string name="direct_connections_filter">行き先を絞り込む</string>
+    <string name="direct_connections_loading">時刻表を読み込み中…</string>
+    <string name="direct_connections_empty">この日は、アプリ内の時刻表にこの駅からの直通便がありません。</string>
+    <string name="direct_connections_no_match">「%1$s」を含む行き先はありません。</string>
+    <string name="direct_connections_trains">列車</string>
+    <string name="direct_connections_urban">地下鉄・路面電車・ケーブルカー</string>
+    <plurals name="direct_connections_train_count">
+        <item quantity="other">%d 本</item>
+    </plurals>
+    <plurals name="direct_connections_runs">
+        <item quantity="other">%d 本</item>
+    </plurals>
+    <string name="direct_connections_first_last">始発 %1$s・最終 %2$s</string>
+    <string name="direct_connections_fastest">最速 %1$s</string>
+    <string name="direct_connections_from_stop">徒歩すぐの %1$s 停留所から</string>
+    <!-- Per te and route board: works and interruptions named by the network notices on the saved routes -->
+    <string name="route_works_title">あなたの区間の工事と運転見合わせ</string>
+    <string name="route_works_title_route">この区間の工事と運転見合わせ</string>
+    <string name="route_works_none">現在、あなたの区間の駅に触れている工事や運転見合わせのお知らせはありません。</string>
+    <string name="route_works_names">お知らせに記載：%1$s</string>
+    <string name="route_works_route_names">%1$s：お知らせに記載 %2$s</string>
+    <string name="route_works_line">%1$s 線</string>
+    <string name="route_works_date">記載の日付：%1$s</string>
+    <string name="route_works_dates">記載の日付：%1$s〜%2$s</string>
+    <string name="route_works_note">お知らせは、含まれる駅名や路線名で区間と照合しています。必ず全文をお読みください。</string>
+    <plurals name="route_works_show_more">
+        <item quantity="other">ほかのお知らせ %d 件を表示</item>
+    </plurals>
 </resources>

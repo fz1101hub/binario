@@ -75,7 +75,7 @@
     <string name="station_badge_metro">मेट्रो स्टॉप</string>
     <string name="station_badge_tram">ट्राम स्टॉप</string>
     <string name="station_badge_funicular">फ़्यूनिक्युलर या लिफ़्ट</string>
-    <string name="settings_privacy_new_sources">चालू होने पर अतिरिक्त स्रोतों को केवल वही मिलता है जो अनुरोध के लिए ज़रूरी है, बिना खाते या लोकेशन के: transport.opendata.ch को स्विस स्टेशन का UIC नंबर (या एक बार किसी सीमा स्टेशन का नाम); ViaggiaTreno को उसकी सूचनाओं के लिए ट्रेन नंबर, उसके सार्वजनिक API की तरह बिना एन्क्रिप्शन वाले HTTP पर; RFI, Trenitalia और Trenord को उनकी सूचना-सूचियों के लिए आपका कोई डेटा नहीं, जो केवल सूचना क्षेत्र, कोई विवरण या संबंधित बोर्ड खोलने पर डाउनलोड होती हैं; Open-Meteo को आगमन स्टेशन के पूर्णांकित निर्देशांक। बाहरी लिंक केवल टैप करने पर ब्राउज़र में खुलते हैं।</string>
+    <string name="settings_privacy_new_sources">चालू होने पर अतिरिक्त स्रोतों को केवल वही मिलता है जो अनुरोध के लिए ज़रूरी है, बिना खाते या लोकेशन के: transport.opendata.ch को स्विस स्टेशन का UIC नंबर (या एक बार किसी सीमा स्टेशन का नाम); ViaggiaTreno को उसकी सूचनाओं के लिए ट्रेन नंबर, उसके सार्वजनिक API की तरह बिना एन्क्रिप्शन वाले HTTP पर; RFI, Trenitalia और Trenord को उनकी सूचना-सूचियों के लिए आपका कोई डेटा नहीं, जो केवल सूचना क्षेत्र, कोई विवरण, संबंधित बोर्ड या आपके रूटों पर काम वाला भाग खोलने पर डाउनलोड होती हैं; Open-Meteo को आगमन स्टेशन के पूर्णांकित निर्देशांक। बाहरी लिंक केवल टैप करने पर ब्राउज़र में खुलते हैं।</string>
     <string name="app_name">Binario</string>
     <string name="widget_description">आपके Binario मार्ग की अगली ट्रेनें दिखाता है।</string>
     <string name="widget_refresh">ट्रेनें अपडेट करें</string>
@@ -1530,4 +1530,45 @@
     <string name="compensation_notice_quarter">%1$s पर %2$s की देरी से पहुँची: विनियम (EU) 2021/782 के अनुसार आप टिकट मूल्य के 25%% के मुआवज़े के हक़दार हो सकते हैं (120 मिनट से 50%%)।</string>
     <string name="compensation_notice_half">%1$s पर %2$s की देरी से पहुँची: विनियम (EU) 2021/782 के अनुसार आप टिकट मूल्य के 50%% के मुआवज़े के हक़दार हो सकते हैं।</string>
     <string name="compensation_notice_conditions">रेल कंपनी 4 € से कम राशि और बाहरी कारणों, जैसे चरम मौसम या पटरियों पर लोगों, से हुई देरी का भुगतान करने से मना कर सकती है; उसके अपने कर्मचारियों की हड़ताल बाहरी कारण नहीं है। क्षेत्रीय ट्रेनों पर शर्तें क्षेत्र के साथ सेवा अनुबंध पर भी निर्भर करती हैं।</string>
+    <!-- Station board: RFI Sala Blu assistance (links only) -->
+    <string name="station_sala_blu_title">Sala Blu सहायता</string>
+    <string name="station_sala_blu_description">RFI स्टेशनों पर दिव्यांग या सीमित गतिशीलता वाले यात्रियों को बुकिंग पर निःशुल्क सहायता देता है।</string>
+    <string name="station_sala_blu_page">RFI का सहायता पेज</string>
+    <string name="station_sala_blu_call_toll_free">%1$s पर कॉल करें (लैंडलाइन से निःशुल्क)</string>
+    <string name="station_sala_blu_call_national">%1$s पर कॉल करें (मोबाइल से भी)</string>
+    <!-- Station board: direct connections from the station (embedded timetables) -->
+    <string name="direct_connections_title">सीधी कनेक्शन</string>
+    <string name="direct_connections_from">%1$s से, बिना बदले</string>
+    <string name="direct_connections_note">ऐप में शामिल निर्धारित समय-सारणी से, देरी या रद्दीकरण के बिना। ट्रेनें खोजने के लिए किसी गंतव्य पर टैप करें।</string>
+    <string name="direct_connections_filter">गंतव्य फ़िल्टर करें</string>
+    <string name="direct_connections_loading">समय-सारणी पढ़ी जा रही है…</string>
+    <string name="direct_connections_empty">शामिल समय-सारणी में इस दिन इस स्टेशन से कोई सीधी कनेक्शन नहीं है।</string>
+    <string name="direct_connections_no_match">किसी गंतव्य में “%1$s” नहीं है।</string>
+    <string name="direct_connections_trains">ट्रेनें</string>
+    <string name="direct_connections_urban">मेट्रो, ट्राम और फ़्यूनिकुलर</string>
+    <plurals name="direct_connections_train_count">
+        <item quantity="one">%d ट्रेन</item>
+        <item quantity="other">%d ट्रेनें</item>
+    </plurals>
+    <plurals name="direct_connections_runs">
+        <item quantity="one">%d फेरा</item>
+        <item quantity="other">%d फेरे</item>
+    </plurals>
+    <string name="direct_connections_first_last">पहली %1$s, आख़िरी %2$s</string>
+    <string name="direct_connections_fastest">सबसे तेज़ %1$s</string>
+    <string name="direct_connections_from_stop">%1$s स्टॉप से, थोड़ी दूरी पर</string>
+    <!-- Per te and route board: works and interruptions named by the network notices on the saved routes -->
+    <string name="route_works_title">आपके रूटों पर काम और रुकावटें</string>
+    <string name="route_works_title_route">इस रूट पर काम और रुकावटें</string>
+    <string name="route_works_none">फ़िलहाल काम या रुकावट की कोई सूचना आपके रूटों के स्टेशनों का नाम नहीं लेती।</string>
+    <string name="route_works_names">सूचना में उल्लेख: %1$s</string>
+    <string name="route_works_route_names">%1$s — सूचना में उल्लेख: %2$s</string>
+    <string name="route_works_line">%1$s लाइन</string>
+    <string name="route_works_date">उल्लिखित तारीख़: %1$s</string>
+    <string name="route_works_dates">उल्लिखित तारीख़ें: %1$s से %2$s तक</string>
+    <string name="route_works_note">सूचनाएँ उनमें दिए स्टेशनों और लाइनों के नामों से रूटों से जोड़ी जाती हैं: हमेशा पूरा पाठ पढ़ें।</string>
+    <plurals name="route_works_show_more">
+        <item quantity="one">%d और सूचना दिखाएँ</item>
+        <item quantity="other">%d और सूचनाएँ दिखाएँ</item>
+    </plurals>
 </resources>

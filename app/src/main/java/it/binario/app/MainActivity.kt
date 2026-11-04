@@ -598,7 +598,8 @@ internal fun BinarioApp(
                 manageRoutes = { showScreen(AppScreen.FOR_YOU) },
                 stationRunDetailsInSheet = !inSidePane,
                 selectedServiceId = viewModel.selectedService?.id.takeIf { inSidePane && screen == AppScreen.DETAIL },
-                openTrainNumber = ::openTrainFromMap
+                openTrainNumber = ::openTrainFromMap,
+                openRouteResults = { showResults(AppScreen.RESULTS, AppScreen.PLANNER) }
             )
             AppScreen.FOR_YOU -> ForYouScreen(
                 modifier = modifier,

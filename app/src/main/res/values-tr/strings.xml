@@ -75,7 +75,7 @@
     <string name="station_badge_metro">Metro durağı</string>
     <string name="station_badge_tram">Tramvay durağı</string>
     <string name="station_badge_funicular">Füniküler veya asansör</string>
-    <string name="settings_privacy_new_sources">Etkin olduklarında ek kaynaklar, hesap veya konum olmadan yalnızca isteğin gerektirdiğini alır: transport.opendata.ch, İsviçre istasyonunun UIC numarasını (ya da bir kez, bir sınır istasyonunun adını); ViaggiaTreno, duyurular için tren numarasını, herkese açık API\'si gibi şifrelenmemiş HTTP üzerinden; RFI, Trenitalia ve Trenord, duyuru listeleri için sizden hiçbir veri almaz ve listeler yalnızca duyuru alanını, bir ayrıntıyı veya ilgili bir panoyu açtığınızda indirilir; Open-Meteo, varış istasyonunun yuvarlanmış koordinatlarını. Harici bağlantılar yalnızca dokunduğunuzda tarayıcıda açılır.</string>
+    <string name="settings_privacy_new_sources">Etkin olduklarında ek kaynaklar, hesap veya konum olmadan yalnızca isteğin gerektirdiğini alır: transport.opendata.ch, İsviçre istasyonunun UIC numarasını (ya da bir kez, bir sınır istasyonunun adını); ViaggiaTreno, duyurular için tren numarasını, herkese açık API\'si gibi şifrelenmemiş HTTP üzerinden; RFI, Trenitalia ve Trenord, duyuru listeleri için sizden hiçbir veri almaz ve listeler yalnızca duyuru alanını, bir ayrıntıyı, ilgili bir panoyu veya hatlarınızdaki çalışmalar bölümünü açtığınızda indirilir; Open-Meteo, varış istasyonunun yuvarlanmış koordinatlarını. Harici bağlantılar yalnızca dokunduğunuzda tarayıcıda açılır.</string>
 
     <string name="app_name">Binario</string>
     <string name="widget_description">Binario güzergâhınızdaki sonraki seferleri gösterir.</string>
@@ -1553,4 +1553,45 @@
     <string name="compensation_notice_quarter">%1$s istasyonuna %2$s gecikmeyle vardı: (AB) 2021/782 sayılı Tüzük uyarınca bilet fiyatının %%25’i kadar tazminat hakkınız olabilir (120 dakikadan itibaren %%50).</string>
     <string name="compensation_notice_half">%1$s istasyonuna %2$s gecikmeyle vardı: (AB) 2021/782 sayılı Tüzük uyarınca bilet fiyatının %%50’si kadar tazminat hakkınız olabilir.</string>
     <string name="compensation_notice_conditions">Demiryolu şirketi 4 €’nun altındaki tutarları ve aşırı hava koşulları ya da raylarda insan bulunması gibi dış nedenlerden kaynaklanan gecikmeleri ödemeyi reddedebilir; kendi personelinin grevi dış neden sayılmaz. Bölgesel trenlerde koşullar bölgeyle yapılan hizmet sözleşmesine de bağlıdır.</string>
+    <!-- Station board: RFI Sala Blu assistance (links only) -->
+    <string name="station_sala_blu_title">Sala Blu yardımı</string>
+    <string name="station_sala_blu_description">RFI, engelli veya hareket kısıtlılığı olan yolculara istasyonlarda rezervasyonla ücretsiz yardım sağlar.</string>
+    <string name="station_sala_blu_page">RFI yardım sayfası</string>
+    <string name="station_sala_blu_call_toll_free">%1$s numarasını ara (sabit hattan ücretsiz)</string>
+    <string name="station_sala_blu_call_national">%1$s numarasını ara (cep telefonundan da)</string>
+    <!-- Station board: direct connections from the station (embedded timetables) -->
+    <string name="direct_connections_title">Aktarmasız bağlantılar</string>
+    <string name="direct_connections_from">%1$s çıkışlı, aktarmasız</string>
+    <string name="direct_connections_note">Uygulamadaki planlı tarifelere göre, gecikme ve iptaller hariç. Tren aramak için bir varış noktasına dokunun.</string>
+    <string name="direct_connections_filter">Varış noktalarını filtrele</string>
+    <string name="direct_connections_loading">Tarifeler okunuyor…</string>
+    <string name="direct_connections_empty">Dahil edilen tarifelerde bu gün bu istasyondan aktarmasız bağlantı yok.</string>
+    <string name="direct_connections_no_match">“%1$s” içeren varış noktası yok.</string>
+    <string name="direct_connections_trains">Trenler</string>
+    <string name="direct_connections_urban">Metro, tramvay ve füniküler</string>
+    <plurals name="direct_connections_train_count">
+        <item quantity="one">%d tren</item>
+        <item quantity="other">%d tren</item>
+    </plurals>
+    <plurals name="direct_connections_runs">
+        <item quantity="one">%d sefer</item>
+        <item quantity="other">%d sefer</item>
+    </plurals>
+    <string name="direct_connections_first_last">ilk %1$s, son %2$s</string>
+    <string name="direct_connections_fastest">en hızlı %1$s</string>
+    <string name="direct_connections_from_stop">birkaç adım ötedeki %1$s durağından</string>
+    <!-- Per te and route board: works and interruptions named by the network notices on the saved routes -->
+    <string name="route_works_title">Hatlarınızdaki çalışmalar ve kesintiler</string>
+    <string name="route_works_title_route">Bu hattaki çalışmalar ve kesintiler</string>
+    <string name="route_works_none">Şu anda hiçbir çalışma veya kesinti duyurusu hatlarınızdaki istasyonları anmıyor.</string>
+    <string name="route_works_names">Duyuruda geçenler: %1$s</string>
+    <string name="route_works_route_names">%1$s — duyuruda geçenler: %2$s</string>
+    <string name="route_works_line">%1$s hattı</string>
+    <string name="route_works_date">Belirtilen tarih: %1$s</string>
+    <string name="route_works_dates">Belirtilen tarihler: %1$s – %2$s</string>
+    <string name="route_works_note">Duyurular, içerdikleri istasyon ve hat adlarıyla hatlarınızla eşleştirilir: her zaman metnin tamamını okuyun.</string>
+    <plurals name="route_works_show_more">
+        <item quantity="one">%d duyuru daha göster</item>
+        <item quantity="other">%d duyuru daha göster</item>
+    </plurals>
 </resources>

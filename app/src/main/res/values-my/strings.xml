@@ -75,7 +75,7 @@
     <string name="station_badge_metro">မြေအောက်ရထား ဘူတာ</string>
     <string name="station_badge_tram">ဓာတ်ရထား မှတ်တိုင်</string>
     <string name="station_badge_funicular">ကေဘယ်ရထား သို့မဟုတ် ဓာတ်လှေကား</string>
-    <string name="settings_privacy_new_sources">ဖွင့်ထားသောအခါ ထပ်ဆောင်း ရင်းမြစ်များသည် အကောင့် သို့မဟုတ် တည်နေရာ မပါဘဲ တောင်းဆိုမှုအတွက် လိုအပ်သည်ကိုသာ ရရှိသည်- transport.opendata.ch သည် ဆွစ်ဇာလန် ဘူတာ၏ UIC နံပါတ် (သို့မဟုတ် တစ်ကြိမ်တွင် နယ်စပ်ဘူတာ အမည်)၊ ViaggiaTreno သည် ကြေညာချက်များအတွက် ရထားနံပါတ်ကို ၎င်း၏ အများသုံး API ကဲ့သို့ပင် ကုဒ်မပြောင်းထားသော HTTP ဖြင့်၊ RFI၊ Trenitalia နှင့် Trenord တို့သည် ကြေညာချက်စာရင်းများအတွက် သင့်ဒေတာ လုံးဝမရရှိဘဲ ကြေညာချက်ကဏ္ဍ၊ အသေးစိတ် သို့မဟုတ် သက်ဆိုင်ရာ အချိန်ပြဘုတ်ကို ဖွင့်မှသာ ဒေါင်းလုဒ်လုပ်သည်၊ Open-Meteo သည် ဆိုက်ရောက်မည့်ဘူတာ၏ ပတ်ချထားသော ကိုဩဒိနိတ်ကို ရရှိသည်။ ပြင်ပလင့်ခ်များကို သင် နှိပ်မှသာ ဘရောက်ဇာတွင် ဖွင့်သည်။</string>
+    <string name="settings_privacy_new_sources">ဖွင့်ထားသောအခါ ထပ်ဆောင်း ရင်းမြစ်များသည် အကောင့် သို့မဟုတ် တည်နေရာ မပါဘဲ တောင်းဆိုမှုအတွက် လိုအပ်သည်ကိုသာ ရရှိသည်- transport.opendata.ch သည် ဆွစ်ဇာလန် ဘူတာ၏ UIC နံပါတ် (သို့မဟုတ် တစ်ကြိမ်တွင် နယ်စပ်ဘူတာ အမည်)၊ ViaggiaTreno သည် ကြေညာချက်များအတွက် ရထားနံပါတ်ကို ၎င်း၏ အများသုံး API ကဲ့သို့ပင် ကုဒ်မပြောင်းထားသော HTTP ဖြင့်၊ RFI၊ Trenitalia နှင့် Trenord တို့သည် ကြေညာချက်စာရင်းများအတွက် သင့်ဒေတာ လုံးဝမရရှိဘဲ ကြေညာချက်ကဏ္ဍ၊ အသေးစိတ်၊ သက်ဆိုင်ရာ အချိန်ပြဘုတ် သို့မဟုတ် သင့်ခရီးစဉ်များ၏ ပြုပြင်ရေးကဏ္ဍကို ဖွင့်မှသာ ဒေါင်းလုဒ်လုပ်သည်၊ Open-Meteo သည် ဆိုက်ရောက်မည့်ဘူတာ၏ ပတ်ချထားသော ကိုဩဒိနိတ်ကို ရရှိသည်။ ပြင်ပလင့်ခ်များကို သင် နှိပ်မှသာ ဘရောက်ဇာတွင် ဖွင့်သည်။</string>
     <string name="app_name">Binario</string>
     <string name="widget_description">သင်၏ Binario လမ်းကြောင်းပေါ်ရှိ နောက်ရထားများကို ပြသည်။</string>
     <string name="widget_refresh">ရထားများ ပြန်ယူရန်</string>
@@ -1480,4 +1480,42 @@
     <string name="compensation_notice_quarter">%1$s သို့ %2$s နောက်ကျ၍ ဆိုက်ရောက်သည်- စည်းမျဉ်း (EU) 2021/782 အရ လက်မှတ်ခ၏ 25%% လျော်ကြေး ရနိုင်သည် (မိနစ် 120 မှစ၍ 50%%)။</string>
     <string name="compensation_notice_half">%1$s သို့ %2$s နောက်ကျ၍ ဆိုက်ရောက်သည်- စည်းမျဉ်း (EU) 2021/782 အရ လက်မှတ်ခ၏ 50%% လျော်ကြေး ရနိုင်သည်။</string>
     <string name="compensation_notice_conditions">ရထားကုမ္ပဏီသည် 4 ယူရိုအောက် ပမာဏနှင့် ပြင်းထန်သော ရာသီဥတု သို့မဟုတ် သံလမ်းပေါ်ရှိ လူများကဲ့သို့ ပြင်ပအကြောင်းရင်းကြောင့် နောက်ကျမှုများကို ငြင်းပယ်နိုင်သည်။ ၎င်း၏ ဝန်ထမ်းများ သပိတ်မှောက်ခြင်းသည် ပြင်ပအကြောင်းရင်း မဟုတ်ပါ။ ဒေသတွင်းရထားများတွင် စည်းကမ်းချက်များသည် ဒေသနှင့် ချုပ်ဆိုထားသော ဝန်ဆောင်မှုစာချုပ်အပေါ်လည်း မူတည်သည်။</string>
+    <!-- Station board: RFI Sala Blu assistance (links only) -->
+    <string name="station_sala_blu_title">Sala Blu အကူအညီ</string>
+    <string name="station_sala_blu_description">RFI သည် မသန်စွမ်းသူများနှင့် လှုပ်ရှားသွားလာရန် ခက်ခဲသူများကို ဘူတာများတွင် ကြိုတင်စာရင်းပေးပြီး အခမဲ့ ကူညီပေးသည်။</string>
+    <string name="station_sala_blu_page">RFI အကူအညီ စာမျက်နှာ</string>
+    <string name="station_sala_blu_call_toll_free">%1$s ကို ခေါ်ဆိုရန် (ကြိုးဖုန်းမှ အခမဲ့)</string>
+    <string name="station_sala_blu_call_national">%1$s ကို ခေါ်ဆိုရန် (မိုဘိုင်းဖုန်းမှလည်း ရသည်)</string>
+    <!-- Station board: direct connections from the station (embedded timetables) -->
+    <string name="direct_connections_title">တိုက်ရိုက် ချိတ်ဆက်မှုများ</string>
+    <string name="direct_connections_from">%1$s မှ ပြောင်းစီးစရာမလိုဘဲ</string>
+    <string name="direct_connections_note">အက်ပ်တွင်ပါသော စီစဉ်ထားသည့် အချိန်ဇယားများအရ ဖြစ်ပြီး နောက်ကျမှု သို့မဟုတ် ဖျက်သိမ်းမှု မပါဝင်ပါ။ ရထားရှာရန် ခရီးဆုံးကို တို့ပါ။</string>
+    <string name="direct_connections_filter">ခရီးဆုံးများကို စစ်ထုတ်ရန်</string>
+    <string name="direct_connections_loading">အချိန်ဇယားများကို ဖတ်နေသည်…</string>
+    <string name="direct_connections_empty">ပါဝင်သော အချိန်ဇယားများတွင် ဤနေ့၌ ဤဘူတာမှ တိုက်ရိုက် ချိတ်ဆက်မှု မရှိပါ။</string>
+    <string name="direct_connections_no_match">“%1$s” ပါသော ခရီးဆုံး မရှိပါ။</string>
+    <string name="direct_connections_trains">ရထားများ</string>
+    <string name="direct_connections_urban">မြေအောက်ရထား၊ ဓာတ်ရထားနှင့် ကေဘယ်ရထား</string>
+    <plurals name="direct_connections_train_count">
+        <item quantity="other">ရထား %d စင်း</item>
+    </plurals>
+    <plurals name="direct_connections_runs">
+        <item quantity="other">%d ကြိမ်</item>
+    </plurals>
+    <string name="direct_connections_first_last">ပထမ %1$s၊ နောက်ဆုံး %2$s</string>
+    <string name="direct_connections_fastest">အမြန်ဆုံး %1$s</string>
+    <string name="direct_connections_from_stop">အနီးရှိ %1$s မှတ်တိုင်မှ</string>
+    <!-- Per te and route board: works and interruptions named by the network notices on the saved routes -->
+    <string name="route_works_title">သင့်ခရီးစဉ်များပေါ်ရှိ ပြုပြင်ရေးလုပ်ငန်းနှင့် ရပ်ဆိုင်းမှုများ</string>
+    <string name="route_works_title_route">ဤခရီးစဉ်ပေါ်ရှိ ပြုပြင်ရေးလုပ်ငန်းနှင့် ရပ်ဆိုင်းမှုများ</string>
+    <string name="route_works_none">ယခုအချိန်တွင် သင့်ခရီးစဉ်များ၏ ဘူတာများကို ဖော်ပြသော ပြုပြင်ရေး သို့မဟုတ် ရပ်ဆိုင်းမှု အသိပေးချက် မရှိပါ။</string>
+    <string name="route_works_names">အသိပေးချက်တွင် ဖော်ပြထားသည်- %1$s</string>
+    <string name="route_works_route_names">%1$s — အသိပေးချက်တွင် ဖော်ပြထားသည်- %2$s</string>
+    <string name="route_works_line">%1$s လိုင်း</string>
+    <string name="route_works_date">ဖော်ပြထားသော ရက်စွဲ- %1$s</string>
+    <string name="route_works_dates">ဖော်ပြထားသော ရက်စွဲများ- %1$s မှ %2$s အထိ</string>
+    <string name="route_works_note">အသိပေးချက်များကို ၎င်းတို့တွင်ပါသော ဘူတာနှင့် လိုင်းအမည်များဖြင့် ခရီးစဉ်များနှင့် တွဲထားသည်- စာသားအပြည့်အစုံကို အမြဲဖတ်ပါ။</string>
+    <plurals name="route_works_show_more">
+        <item quantity="other">နောက်ထပ် အသိပေးချက် %d ခု ပြရန်</item>
+    </plurals>
 </resources>

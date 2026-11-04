@@ -99,6 +99,42 @@ object OfficialLinks {
     const val FS_NEWS = "https://www.fsnews.it/"
     val FS_NEWS_DOMAINS = setOf("fsnews.it")
 
+    /**
+     * Sala Blu: RFI's free assistance, on booking, for passengers with a disability or reduced mobility in the stations
+     * of the Italian network. [PAGE] is RFI's accessibility page (Sale Blu, accessibility of each station, how to book);
+     * the two numbers are those of the national Sala Blu, [TOLL_FREE] free from landlines and [NATIONAL] from any phone
+     * at the ordinary rate. Like the operators' pages, they were checked against a search index of rfi.it (its
+     * accessibility pages and the Sala Blu press releases of 2025 and 2026) in November 2026, not fetched from the build
+     * machine. Opened only on a tap: the page in the browser, a number in the phone's dialer, which Binario never calls.
+     */
+    object SalaBlu {
+        const val PAGE = "https://www.rfi.it/it/stazioni/pagine-stazioni/accessibilita.html"
+        val DOMAINS = setOf("rfi.it")
+        const val TOLL_FREE = "800 90 60 60"
+        const val NATIONAL = "02 32 32 32"
+
+        /** "tel:800906060": the number for the dialer, digits only. */
+        fun dialUri(number: String): String = "tel:" + number.filter(Char::isDigit)
+
+        /**
+         * True for a station of the Italian network RFI manages: an RFI station code ("S01700") without a foreign
+         * Trenitalia location id (Bellinzona is "85…"), and, when the catalogue places it, inside Italy's borders as
+         * far as a rough box tells (Modane, Matrei, Stuttgart and Sankt Veit carry RFI codes but are abroad). City stops
+         * and stations of other networks have no RFI code and show nothing.
+         */
+        fun appliesTo(station: it.binario.app.data.Station): Boolean {
+            if (station.railwayCode?.let(RFI_STATION_CODE::matches) != true) return false
+            if (station.trenitaliaLocationId?.startsWith("83") == false) return false
+            val latitude = station.latitude ?: return true
+            val longitude = station.longitude ?: return true
+            if (latitude !in 35.4..47.05 || longitude !in 6.68..18.6) return false
+            // North-east of San Candido the border runs south: Carinthia, not Friuli.
+            return !(latitude > 46.6 && longitude > 12.45)
+        }
+
+        private val RFI_STATION_CODE = Regex("S\\d{5}")
+    }
+
     /** The operator whose official site sells a journey run by [operator]; null for the others. */
     fun purchaseSiteOf(operator: RailOperator, operatorName: String? = null): OperatorLinks? {
         // The published operator name wins: several sources file every regional train (Trenord, Tper...) under the

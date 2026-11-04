@@ -75,7 +75,7 @@
     <string name="station_badge_metro">지하철역</string>
     <string name="station_badge_tram">트램 정류장</string>
     <string name="station_badge_funicular">푸니쿨라 또는 엘리베이터</string>
-    <string name="settings_privacy_new_sources">추가 출처를 켜면 각 출처는 요청에 필요한 정보만 받으며 계정이나 위치는 받지 않습니다. transport.opendata.ch는 스위스 역의 UIC 번호(한 번은 국경역 이름)를 받습니다. ViaggiaTreno는 공지 조회를 위해 열차 번호를 받으며, 공개 API와 마찬가지로 암호화되지 않은 HTTP를 사용합니다. RFI, Trenitalia, Trenord는 공지 목록에 대해 사용자 데이터를 전혀 받지 않으며, 목록은 공지 영역, 상세 정보 또는 관련 전광판을 열 때만 다운로드됩니다. Open-Meteo는 도착역의 반올림된 좌표를 받습니다. 외부 링크는 탭할 때만 브라우저에서 열립니다.</string>
+    <string name="settings_privacy_new_sources">추가 출처를 켜면 각 출처는 요청에 필요한 정보만 받으며 계정이나 위치는 받지 않습니다. transport.opendata.ch는 스위스 역의 UIC 번호(한 번은 국경역 이름)를 받습니다. ViaggiaTreno는 공지 조회를 위해 열차 번호를 받으며, 공개 API와 마찬가지로 암호화되지 않은 HTTP를 사용합니다. RFI, Trenitalia, Trenord는 공지 목록에 대해 사용자 데이터를 전혀 받지 않으며, 목록은 공지 영역, 상세 정보, 관련 전광판 또는 내 구간의 공사 섹션을 열 때만 다운로드됩니다. Open-Meteo는 도착역의 반올림된 좌표를 받습니다. 외부 링크는 탭할 때만 브라우저에서 열립니다.</string>
     <string name="app_name">Binario</string>
     <string name="widget_description">Binario 구간의 다음 열차를 표시합니다.</string>
     <string name="widget_refresh">열차 새로고침</string>
@@ -1480,4 +1480,42 @@
     <string name="compensation_notice_quarter">%1$s에 %2$s 늦게 도착: 규정 (EU) 2021/782에 따라 승차권 가격의 25%%를 보상받을 수 있습니다(120분부터 50%%).</string>
     <string name="compensation_notice_half">%1$s에 %2$s 늦게 도착: 규정 (EU) 2021/782에 따라 승차권 가격의 50%%를 보상받을 수 있습니다.</string>
     <string name="compensation_notice_conditions">철도 회사는 4유로 미만의 금액과 극한 기상이나 선로 위의 사람 등 외부 요인으로 인한 지연에 대해서는 지급을 거부할 수 있습니다. 자사 직원의 파업은 외부 요인이 아닙니다. 지역 열차의 조건은 주와 맺은 운행 계약에 따라서도 달라집니다.</string>
+    <!-- Station board: RFI Sala Blu assistance (links only) -->
+    <string name="station_sala_blu_title">Sala Blu 지원</string>
+    <string name="station_sala_blu_description">RFI는 장애가 있거나 이동이 불편한 승객을 역에서 예약제로 무료 지원합니다.</string>
+    <string name="station_sala_blu_page">RFI 지원 페이지</string>
+    <string name="station_sala_blu_call_toll_free">%1$s로 전화(유선 전화는 무료)</string>
+    <string name="station_sala_blu_call_national">%1$s로 전화(휴대전화로도 가능)</string>
+    <!-- Station board: direct connections from the station (embedded timetables) -->
+    <string name="direct_connections_title">직통 연결</string>
+    <string name="direct_connections_from">%1$s에서 환승 없이</string>
+    <string name="direct_connections_note">앱에 포함된 정규 시간표 기준이며 지연이나 운휴는 반영되지 않습니다. 목적지를 누르면 열차를 검색합니다.</string>
+    <string name="direct_connections_filter">목적지 필터</string>
+    <string name="direct_connections_loading">시간표를 읽는 중…</string>
+    <string name="direct_connections_empty">포함된 시간표에는 이날 이 역에서 출발하는 직통 연결이 없습니다.</string>
+    <string name="direct_connections_no_match">‘%1$s’이(가) 포함된 목적지가 없습니다.</string>
+    <string name="direct_connections_trains">열차</string>
+    <string name="direct_connections_urban">지하철, 트램, 푸니쿨라</string>
+    <plurals name="direct_connections_train_count">
+        <item quantity="other">열차 %d편</item>
+    </plurals>
+    <plurals name="direct_connections_runs">
+        <item quantity="other">%d회 운행</item>
+    </plurals>
+    <string name="direct_connections_first_last">첫차 %1$s, 막차 %2$s</string>
+    <string name="direct_connections_fastest">최단 %1$s</string>
+    <string name="direct_connections_from_stop">가까운 %1$s 정류장에서</string>
+    <!-- Per te and route board: works and interruptions named by the network notices on the saved routes -->
+    <string name="route_works_title">내 구간의 공사 및 운행 중단</string>
+    <string name="route_works_title_route">이 구간의 공사 및 운행 중단</string>
+    <string name="route_works_none">현재 내 구간의 역을 언급한 공사 또는 운행 중단 공지가 없습니다.</string>
+    <string name="route_works_names">공지에 언급됨: %1$s</string>
+    <string name="route_works_route_names">%1$s — 공지에 언급됨: %2$s</string>
+    <string name="route_works_line">%1$s 노선</string>
+    <string name="route_works_date">언급된 날짜: %1$s</string>
+    <string name="route_works_dates">언급된 날짜: %1$s~%2$s</string>
+    <string name="route_works_note">공지는 포함된 역 이름과 노선 이름으로 구간과 연결됩니다. 항상 전체 내용을 읽어 주세요.</string>
+    <plurals name="route_works_show_more">
+        <item quantity="other">공지 %d개 더 보기</item>
+    </plurals>
 </resources>

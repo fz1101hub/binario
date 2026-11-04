@@ -152,7 +152,9 @@ internal fun DeparturesScreen(
     stationRunDetailsInSheet: Boolean = true,
     selectedServiceId: String? = null,
     /** Opens the train-number search for a train of the map of trains in motion that no board row lists. */
-    openTrainNumber: (number: String, origin: String) -> Unit = { _, _ -> }
+    openTrainNumber: (number: String, origin: String) -> Unit = { _, _ -> },
+    /** Shows the route results after a search started here («Collegamenti diretti»). */
+    openRouteResults: () -> Unit = {}
 ) {
     Column(modifier = modifier.fillMaxSize().testTag("departures-screen")) {
         ScreenHeader(
@@ -196,7 +198,8 @@ internal fun DeparturesScreen(
                 modifier = Modifier.weight(1f),
                 viewModel = viewModel,
                 runDetailsInSheet = stationRunDetailsInSheet,
-                openTrainNumber = openTrainNumber
+                openTrainNumber = openTrainNumber,
+                openRouteResults = openRouteResults
             )
         }
     }
@@ -371,6 +374,15 @@ private fun RouteBoard(
         }
         if (viewModel.savedRoutes.size > 1) {
             item { MonitoredRoutesStrip(viewModel.savedRoutes, viewModel.activeRoute.id, viewModel::activateRoute, manageRoutes) }
+        }
+        // Works and interruptions the network notices name on this saved route (none: nothing shown).
+        if (viewModel.hasActiveRoute && !viewModel.activeRouteIsSearch) item(key = "route-works") {
+            RouteWorksSection(
+                routes = listOf(viewModel.activeRoute),
+                catalogue = viewModel.stations,
+                title = R.string.route_works_title_route,
+                showWhenNone = false
+            )
         }
         item { RailNoticesArea() }
         item {

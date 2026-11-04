@@ -27,6 +27,7 @@ import it.binario.app.data.gtfs.EmbeddedGtfsRouteAdapter
 import it.binario.app.data.gtfs.GtfsCompactIndexLimitException
 import it.binario.app.data.gtfs.GtfsDayTimetable
 import it.binario.app.data.gtfs.GtfsDayTrip
+import it.binario.app.data.gtfs.GtfsStationDay
 import it.binario.app.data.gtfs.GtfsStationCodeIndex
 import it.binario.app.data.gtfs.StopNameCase
 import it.binario.app.data.gtfs.GtfsStopCodeScheme
@@ -416,6 +417,50 @@ class EmbeddedGtfsJourneyProvider internal constructor(
             }
         }
         return result
+    }
+
+    /**
+     * Every pack's service day [date] as seen from [origin] (and from [destination], when given), for the read-only
+     * station questions of the screens ([it.binario.app.data.gtfs.directConnections],
+     * [it.binario.app.data.gtfs.directRunStations]): the railway packs that serve the station, then the city packs with
+     * the stop itself or a stop at most [urbanWalkMeters] away. The day arrays, stop identities and cache are those of
+     * the journey search; a pack over its reading limits or unreadable is left out.
+     */
+    internal suspend fun stationDays(
+        origin: StationId,
+        originEndpoint: JourneyEndpoint?,
+        destination: StationId?,
+        destinationEndpoint: JourneyEndpoint?,
+        date: LocalDate,
+        urbanWalkMeters: Int,
+        visit: (GtfsStationDay) -> Unit
+    ): Unit = withContext(dispatcher) {
+        val resolver = resolver()
+        val from = endpoint(origin, originEndpoint, resolver) ?: return@withContext
+        val to = destination?.let { endpoint(it, destinationEndpoint, resolver) ?: return@withContext }
+        locateStop(from, resolver)
+        val walks = settings.copy(maxWalkMeters = urbanWalkMeters.coerceIn(0, MAX_WALK_METERS))
+        for (pack in packs) {
+            currentCoroutineContext().ensureActive()
+            if (pack.lastServiceDate?.isBefore(date) == true) continue
+            if (pack.isUrban && from.gtfsStop?.first != pack.sourceId.value &&
+                (urbanWalkMeters <= 0 || !urbanCandidate(pack, from, to ?: from))
+            ) continue
+            try {
+                val stops = packStops(pack, resolver)
+                val originNodes = if (pack.isUrban) stops.accessFor(from, walks) else stops.nodesFor(from).associateWith { 0 }
+                if (originNodes.isEmpty()) continue
+                val destinationNodes = to?.let { stops.nodesFor(it) }.orEmpty()
+                if (to != null && destinationNodes.isEmpty()) continue
+                val day = day(pack, DayPart(date, 0, Int.MAX_VALUE))
+                val nodeOfStop = Array(day.stopIds.size) { stops.nodeKey(day.stopIds[it]) }
+                visit(GtfsStationDay(day, pack.isUrban, nodeOfStop, originNodes, destinationNodes, { node, stop -> place(node, day, stop, resolver) }, resolver::station))
+            } catch (_: GtfsCompactIndexLimitException) {
+                continue
+            } catch (_: IOException) {
+                continue
+            }
+        }
     }
 
     /** Diagnostics for tests: cached service days and their approximate size. */

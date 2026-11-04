@@ -75,7 +75,7 @@
     <string name="station_badge_metro">محطة مترو</string>
     <string name="station_badge_tram">محطة ترام</string>
     <string name="station_badge_funicular">قطار جبلي أو مصعد</string>
-    <string name="settings_privacy_new_sources">عند تفعيلها، لا تتلقى المصادر الإضافية إلا ما يلزم للطلب، دون حساب أو موقع: يتلقى transport.opendata.ch رقم UIC للمحطة السويسرية (أو اسم محطة حدودية مرة واحدة)؛ ويتلقى ViaggiaTreno رقم القطار لتنبيهاته، عبر HTTP غير مشفّر مثل واجهته البرمجية العامة؛ ولا تتلقى RFI وTrenitalia وTrenord أي بيانات عنك لقوائم تنبيهاتها، التي لا تُنزَّل إلا عند فتح منطقة التنبيهات أو تفاصيل أو لوحة ذات صلة؛ ويتلقى Open-Meteo الإحداثيات المقرّبة لمحطة الوصول. لا تُفتح الروابط الخارجية في المتصفح إلا عند لمسها.</string>
+    <string name="settings_privacy_new_sources">عند تفعيلها، لا تتلقى المصادر الإضافية إلا ما يلزم للطلب، دون حساب أو موقع: يتلقى transport.opendata.ch رقم UIC للمحطة السويسرية (أو اسم محطة حدودية مرة واحدة)؛ ويتلقى ViaggiaTreno رقم القطار لتنبيهاته، عبر HTTP غير مشفّر مثل واجهته البرمجية العامة؛ ولا تتلقى RFI وTrenitalia وTrenord أي بيانات عنك لقوائم تنبيهاتها، التي لا تُنزَّل إلا عند فتح منطقة التنبيهات أو تفاصيل أو لوحة ذات صلة أو قسم الأعمال على مساراتك؛ ويتلقى Open-Meteo الإحداثيات المقرّبة لمحطة الوصول. لا تُفتح الروابط الخارجية في المتصفح إلا عند لمسها.</string>
     <string name="app_name">Binario</string>
     <string name="widget_description">يعرض الرحلات التالية على مسارك في Binario.</string>
     <string name="widget_refresh">تحديث الرحلات</string>
@@ -1730,4 +1730,57 @@
     <string name="compensation_notice_quarter">وصل إلى %1$s بتأخير %2$s: وفق اللائحة (الاتحاد الأوروبي) 2021/782 قد يحق لك تعويض بنسبة 25%% من سعر التذكرة (50%% ابتداءً من 120 دقيقة).</string>
     <string name="compensation_notice_half">وصل إلى %1$s بتأخير %2$s: وفق اللائحة (الاتحاد الأوروبي) 2021/782 قد يحق لك تعويض بنسبة 50%% من سعر التذكرة.</string>
     <string name="compensation_notice_conditions">يجوز لشركة السكك الحديدية رفض المبالغ التي تقل عن 4 يورو والتأخيرات الناجمة عن أسباب خارجية، مثل الطقس القاسي أو وجود أشخاص على السكة؛ ولا يُعدّ إضراب موظفيها سببًا خارجيًا. في القطارات الإقليمية تتوقف الشروط أيضًا على عقد الخدمة مع الإقليم.</string>
+    <!-- Station board: RFI Sala Blu assistance (links only) -->
+    <string name="station_sala_blu_title">مساعدة Sala Blu</string>
+    <string name="station_sala_blu_description">تقدّم RFI مساعدة مجانية في المحطات، بحجز مسبق، للأشخاص ذوي الإعاقة أو محدودي الحركة.</string>
+    <string name="station_sala_blu_page">صفحة المساعدة لدى RFI</string>
+    <string name="station_sala_blu_call_toll_free">اتصل بالرقم %1$s (مجاني من الهاتف الثابت)</string>
+    <string name="station_sala_blu_call_national">اتصل بالرقم %1$s (من الهاتف المحمول أيضًا)</string>
+    <!-- Station board: direct connections from the station (embedded timetables) -->
+    <string name="direct_connections_title">الرحلات المباشرة</string>
+    <string name="direct_connections_from">من %1$s، بدون تبديل</string>
+    <string name="direct_connections_note">من الجداول المبرمجة المضمّنة في التطبيق، دون تأخيرات أو إلغاءات. المس وجهة للبحث عن القطارات.</string>
+    <string name="direct_connections_filter">تصفية الوجهات</string>
+    <string name="direct_connections_loading">جارٍ قراءة الجداول…</string>
+    <string name="direct_connections_empty">لا تتضمن الجداول المضمّنة رحلات مباشرة من هذه المحطة في هذا اليوم.</string>
+    <string name="direct_connections_no_match">لا توجد وجهة تحتوي على «%1$s».</string>
+    <string name="direct_connections_trains">القطارات</string>
+    <string name="direct_connections_urban">المترو والترام والقطارات الجبلية</string>
+    <plurals name="direct_connections_train_count">
+        <item quantity="zero">%d قطار</item>
+        <item quantity="one">%d قطار</item>
+        <item quantity="two">%d قطاران</item>
+        <item quantity="few">%d قطارات</item>
+        <item quantity="many">%d قطارًا</item>
+        <item quantity="other">%d قطار</item>
+    </plurals>
+    <plurals name="direct_connections_runs">
+        <item quantity="zero">%d رحلة</item>
+        <item quantity="one">%d رحلة</item>
+        <item quantity="two">%d رحلتان</item>
+        <item quantity="few">%d رحلات</item>
+        <item quantity="many">%d رحلة</item>
+        <item quantity="other">%d رحلة</item>
+    </plurals>
+    <string name="direct_connections_first_last">الأول %1$s، الأخير %2$s</string>
+    <string name="direct_connections_fastest">الأسرع %1$s</string>
+    <string name="direct_connections_from_stop">من محطة %1$s، على بُعد خطوات</string>
+    <!-- Per te and route board: works and interruptions named by the network notices on the saved routes -->
+    <string name="route_works_title">الأعمال والانقطاعات على مساراتك</string>
+    <string name="route_works_title_route">الأعمال والانقطاعات على هذا المسار</string>
+    <string name="route_works_none">لا يذكر أي إشعار عن أعمال أو انقطاعات محطات مساراتك حاليًا.</string>
+    <string name="route_works_names">يذكر الإشعار: %1$s</string>
+    <string name="route_works_route_names">%1$s — يذكر الإشعار: %2$s</string>
+    <string name="route_works_line">الخط %1$s</string>
+    <string name="route_works_date">التاريخ المذكور: %1$s</string>
+    <string name="route_works_dates">التواريخ المذكورة: من %1$s إلى %2$s</string>
+    <string name="route_works_note">تُربط الإشعارات بالمسارات من خلال أسماء المحطات والخطوط الواردة فيها: اقرأ النص الكامل دائمًا.</string>
+    <plurals name="route_works_show_more">
+        <item quantity="zero">عرض %d إشعار آخر</item>
+        <item quantity="one">عرض %d إشعار آخر</item>
+        <item quantity="two">عرض %d إشعارين آخرين</item>
+        <item quantity="few">عرض %d إشعارات أخرى</item>
+        <item quantity="many">عرض %d إشعارًا آخر</item>
+        <item quantity="other">عرض %d إشعار آخر</item>
+    </plurals>
 </resources>

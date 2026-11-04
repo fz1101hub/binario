@@ -82,6 +82,7 @@ import it.binario.app.data.core.ServiceKind
 import it.binario.app.data.core.StationBoardEntry
 import it.binario.app.data.urban.UrbanRealtimeFeeds
 import it.binario.app.data.repository.StationBoardRunDetails
+import it.binario.app.links.OfficialLinks
 import it.binario.app.localized
 import it.binario.app.requestSingleLocationFix
 import it.binario.app.maps.GeoPoint
@@ -127,7 +128,9 @@ internal fun StationBoardScreen(
     viewModel: TrainViewModel,
     runDetailsInSheet: Boolean = true,
     /** Opens the train-number search for a train of the map of trains in motion that the board does not list. */
-    openTrainNumber: (number: String, origin: String) -> Unit = { _, _ -> }
+    openTrainNumber: (number: String, origin: String) -> Unit = { _, _ -> },
+    /** Shows the route results of a search to a destination of «Collegamenti diretti». */
+    openRouteResults: () -> Unit = {}
 ) {
     LaunchedEffect(Unit) { viewModel.refreshStationBoardIfIdle() }
     // From 840 dp the run details sit in the side pane instead (StationBoardRunDetailsPane).
@@ -150,6 +153,7 @@ internal fun StationBoardScreen(
     var nearbyPosition by remember { mutableStateOf<GeoPoint?>(null) }
     val mapStationIndex = rememberOpenMapStationIndex(viewModel.stations, viewModel::stationFromName)
     var monitorMode by rememberSaveable { mutableStateOf(StationMonitorMode.BOTH.name) }
+    var directConnectionsOf by rememberSaveable { mutableStateOf<String?>(null) }
     val context = LocalContext.current
     val resources = LocalResources.current
 
@@ -193,6 +197,21 @@ internal fun StationBoardScreen(
     val accessibleStations = rememberWheelchairAccessibleStations(
         enabled = selectedStation != null || viewModel.favouriteStations.isNotEmpty() || viewModel.nearbyStations.isNotEmpty()
     )
+
+    // «Collegamenti diretti» of the chosen station; a destination searches the route from it, today from now.
+    selectedStation?.takeIf { it.id == directConnectionsOf }?.let { origin ->
+        DirectConnectionsSheet(
+            station = origin,
+            onSearch = { destination, date ->
+                directConnectionsOf = null
+                val target = viewModel.stations.firstOrNull { it.id == destination.stationId }
+                    ?: Station(id = destination.stationId, name = destination.name, city = destination.name)
+                val (day, time) = DirectConnectionSearch.departure(date, destination.firstDepartureMinute, today)
+                if (viewModel.searchRoute(origin, target, day, time)) openRouteResults()
+            },
+            onDismiss = { directConnectionsOf = null }
+        )
+    }
 
     LazyColumn(
         modifier = modifier.fillMaxSize().testTag("station-board-list"),
@@ -268,6 +287,12 @@ internal fun StationBoardScreen(
                     ) {
                         Text(stringResource(if (viewModel.isStationMonitored(station)) R.string.station_board_stop_monitoring else R.string.station_board_start_monitoring))
                     }
+                    OutlinedButton(
+                        onClick = { directConnectionsOf = station.id },
+                        modifier = Modifier.fillMaxWidth().testTag("station-direct-connections")
+                    ) {
+                        Text(stringResource(R.string.direct_connections_title))
+                    }
                     StationMapCard(station, mapStationIndex, onOpenStation = {
                         stationText = it.name
                         viewModel.selectStationBoardStation(it)
@@ -306,6 +331,8 @@ internal fun StationBoardScreen(
         // Shared bikes near the chosen station, on request only (GBFS of the systems serving that place).
         selectedStation?.let { station ->
             item(key = "bike-sharing-${station.id}") { BikeSharingNearbySection(station) }
+            // RFI's Sala Blu: its accessibility page and national numbers, for the stations of the Italian network.
+            if (OfficialLinks.SalaBlu.appliesTo(station)) item(key = "sala-blu-${station.id}") { SalaBluAssistanceSection(station) }
             if (reliabilityStats != null && stationPunctuality != null) {
                 item(key = "station-punctuality-${station.id}") {
                     StationPunctualityCard(stationPunctuality, reliabilityStats.windowEnd, originName = reliabilityStations::name)
