@@ -33,9 +33,10 @@ internal fun emptySnapshotMessageResId(phoneApp: WearPhoneAppPresence): Int = wh
     WearPhoneAppPresence.PRESENT, WearPhoneAppPresence.UNKNOWN -> R.string.empty_snapshot_message
 }
 
-internal fun WearService.accessibleLabel(context: Context): String = accessibleLabel(context.wearStrings())
+/** [reliability] is the spoken reliability line of the watch screen; the tile and the complication have none. */
+internal fun WearService.accessibleLabel(context: Context, reliability: String? = null): String = accessibleLabel(context.wearStrings(), reliability)
 
-internal fun WearService.accessibleLabel(strings: WearStringProvider): String = listOfNotNull(
+internal fun WearService.accessibleLabel(strings: WearStringProvider, reliability: String? = null): String = listOfNotNull(
     strings.string(R.string.accessibility_scheduled_departure, scheduledDeparture),
     strings.string(R.string.accessibility_expected_departure, expectedDeparture),
     strings.string(R.string.accessibility_train, number),
@@ -44,4 +45,5 @@ internal fun WearService.accessibleLabel(strings: WearStringProvider): String = 
     category.takeIf { it.isNotBlank() },
     platform?.let { strings.string(R.string.accessibility_platform, it) },
     status.takeIf { it.isNotBlank() },
+    reliability?.let { strings.string(R.string.accessibility_reliability, it) },
 ).joinToString(". ")

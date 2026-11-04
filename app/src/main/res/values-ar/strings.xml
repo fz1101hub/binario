@@ -94,6 +94,12 @@
     <string name="shortcut_active_route">المسار النشط</string>
     <string name="shortcut_next_departures">المغادرات التالية</string>
     <string name="shortcut_train_search">البحث عن قطار</string>
+    <string name="shortcut_route_removed">لم يعد المسار محفوظًا في Binario</string>
+    <string name="tile_next_train_label">القطار التالي</string>
+    <string name="tile_next_train_no_route">لا يوجد مسار نشط</string>
+    <string name="tile_next_train_none">لا مزيد من القطارات اليوم</string>
+    <string name="tile_next_train_departure">%1$s · %2$s</string>
+    <string name="tile_next_train_description">القطار التالي حسب الجدول المبرمج: %1$s في الساعة %2$s، %3$s</string>
     <!-- Main app shell and primary journey planner. -->
     <string name="app_brand">BINARIO</string>
     <string name="screen_title_detail">تفاصيل الرحلة</string>
@@ -748,6 +754,14 @@
     <string name="background_status_exact_on">المنبّهات الدقيقة مسموح بها</string>
     <string name="background_status_battery_optimized">تحسين البطارية مفعّل لتطبيق Binario: قد يؤجل Android عمليات التحقق في الخلفية.</string>
     <string name="background_status_battery_unrestricted">تحسين البطارية غير مفعّل لتطبيق Binario</string>
+    <string name="background_runs_title">عمليات التحقق التالية في الخلفية</string>
+    <string name="background_runs_none">لا توجد عملية تحقق مجدولة في الخلفية.</string>
+    <string name="background_runs_running">%1$s: قيد التشغيل</string>
+    <string name="background_runs_soon">%1$s: قريبًا</string>
+    <string name="background_runs_today">%1$s: اليوم الساعة %2$s</string>
+    <string name="background_runs_tomorrow">%1$s: غدًا الساعة %2$s</string>
+    <string name="background_runs_later">%1$s: %2$s الساعة %3$s</string>
+    <string name="background_runs_note">أوقات تقريبية: قد يؤجلها Android لتوفير البطارية أو أثناء انتظار الشبكة.</string>
     <string name="commuter_alert_quiet_hours_feedback">حُفظ التنبيه ولم يُجدول: يقع وقته ضمن فترة الهدوء 22:00–07:00.</string>
     <string name="commuter_alert_invalid_time_feedback">حُفظ التنبيه ولم يُجدول: الوقت غير صالح.</string>
     <string name="commuter_alert_disabled_feedback">حُفظ التنبيه لكنه متوقف.</string>
@@ -1072,6 +1086,9 @@
     <string name="widget_settings_until_arrival_description">يبقى القطار الذي غادر في القائمة، موسومًا «في الطريق»، حتى وصوله المتوقع إلى الوجهة.</string>
     <string name="widget_settings_show_platform">عرض الرصيف</string>
     <string name="widget_settings_show_train_name">عرض اسم القطار وفئته</string>
+    <string name="widget_settings_show_reliability">إظهار الموثوقية</string>
+    <string name="widget_settings_show_reliability_description">بعد كل قطار، نسبة الأيام التي كان فيها في الموعد خلال آخر 30 يومًا: إحصاءات غير رسمية من Binario مبنية على بيانات ViaggiaTreno، مضمّنة في التطبيق ولا تظهر إلا مع 5 رصدات على الأقل.</string>
+    <string name="widget_reliability_mark">%1$d%% في الموعد</string>
     <string name="station_widget_display_name_description">يحل محل اسم المحطة في الترويسة ويبقى محليًا لهذه الأداة.</string>
     <string name="station_widget_settings_nearest">زر «📍 الأقرب»</string>
     <string name="station_widget_settings_nearest_description">عند لمسه تطلب الأداة موقعك التقريبي مرة واحدة وتنتقل إلى أقرب محطة في الكتالوج. لا يُحفظ الموقع ولا يُرسل؛ وتستخدم التحديثات التلقائية دائمًا آخر محطة مختارة.</string>
@@ -1252,6 +1269,22 @@
     <string name="punctuality_history_show_all">عرض كل التواريخ</string>
     <string name="settings_punctuality_recording_title">الالتزام بالمواعيد للقطارات المفضّلة</string>
     <string name="settings_punctuality_recording_description">مرة يوميًا، بعد الوصول المتوقع، يطلب حالة القطار ويسجّل على هذا الهاتف فقط التأخير النهائي والتأخير في المحطات، لمدة أقصاها 365 يومًا.</string>
+    <string name="settings_weekly_digest_title">ملخص أسبوعي للقطارات المفضّلة</string>
+    <string name="settings_weekly_digest_description">يوم الأحد نحو الساعة 19 يلخّص إشعار الالتزام بالمواعيد خلال الأسبوع المسجّل على هذا الهاتف للقطارات المفضّلة، وموثوقيتها على الشبكة خلال آخر 30 يومًا عند توفرها، ويذكر القطار الذي تراجع أداؤه. لا يرسل أي طلب عبر الشبكة؛ ولا يظهر أبدًا بين 22 و7.</string>
+    <string name="weekly_digest_channel_name">ملخص أسبوعي</string>
+    <string name="weekly_digest_channel_description">مساء الأحد، الالتزام بالمواعيد خلال الأسبوع للقطارات المفضّلة.</string>
+    <string name="weekly_digest_title">قطاراتك هذا الأسبوع</string>
+    <string name="weekly_digest_train_line">%1$s: %2$s</string>
+    <string name="weekly_digest_no_runs">لم تُسجَّل أي رحلة</string>
+    <plurals name="weekly_digest_network">
+        <item quantity="zero">آخر %1$d يوم على الشبكة: %2$d%% في الموعد</item>
+        <item quantity="one">آخر %1$d يوم على الشبكة: %2$d%% في الموعد</item>
+        <item quantity="two">آخر %1$d يومين على الشبكة: %2$d%% في الموعد</item>
+        <item quantity="few">آخر %1$d أيام على الشبكة: %2$d%% في الموعد</item>
+        <item quantity="many">آخر %1$d يومًا على الشبكة: %2$d%% في الموعد</item>
+        <item quantity="other">آخر %1$d يوم على الشبكة: %2$d%% في الموعد</item>
+    </plurals>
+    <string name="weekly_digest_worse">تراجع: %1$s، في الموعد %2$d%% من المرات هذا الأسبوع (عادةً %3$d%%)</string>
     <string name="settings_live_updates_title">إشعارات مباشرة</string>
     <string name="settings_live_updates_permission">لتلقّي هذه الإشعارات، اسمح بإشعارات Binario في إعدادات Android.</string>
     <string name="settings_live_updates_privacy">تعمل هذه الفحوصات في الخلفية فقط في الفترات المبيّنة. يتلقى MIT طلبًا دون أي بيانات عنك؛ وتتلقى مصادر حالة القطارات رقم القطار واليوم، كما عند فتح التفاصيل. لا يُحفظ شيء خارج الهاتف.</string>

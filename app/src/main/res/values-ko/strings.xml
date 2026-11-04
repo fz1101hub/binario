@@ -94,6 +94,12 @@
     <string name="shortcut_active_route">활성 구간</string>
     <string name="shortcut_next_departures">다음 출발</string>
     <string name="shortcut_train_search">열차 검색</string>
+    <string name="shortcut_route_removed">Binario에 더 이상 저장되지 않은 구간</string>
+    <string name="tile_next_train_label">다음 열차</string>
+    <string name="tile_next_train_no_route">활성 구간 없음</string>
+    <string name="tile_next_train_none">오늘은 더 이상 열차가 없습니다</string>
+    <string name="tile_next_train_departure">%1$s · %2$s</string>
+    <string name="tile_next_train_description">예정 시간표 기준 다음 열차: %1$s, %2$s 출발, %3$s</string>
     <!-- Main app shell and primary journey planner. -->
     <string name="app_brand">BINARIO</string>
     <string name="screen_title_detail">열차 상세 정보</string>
@@ -663,6 +669,14 @@
     <string name="background_status_exact_on">정확한 알람 허용됨</string>
     <string name="background_status_battery_optimized">Binario의 배터리 최적화가 켜져 있어 Android가 백그라운드 확인을 미룰 수 있습니다.</string>
     <string name="background_status_battery_unrestricted">Binario의 배터리 최적화가 꺼져 있음</string>
+    <string name="background_runs_title">다음 백그라운드 확인</string>
+    <string name="background_runs_none">예약된 백그라운드 확인이 없습니다.</string>
+    <string name="background_runs_running">%1$s: 실행 중</string>
+    <string name="background_runs_soon">%1$s: 곧</string>
+    <string name="background_runs_today">%1$s: 오늘 %2$s</string>
+    <string name="background_runs_tomorrow">%1$s: 내일 %2$s</string>
+    <string name="background_runs_later">%1$s: %2$s %3$s</string>
+    <string name="background_runs_note">대략적인 시간입니다. Android가 배터리를 아끼거나 네트워크를 기다리느라 시간을 옮길 수 있습니다.</string>
     <string name="commuter_alert_quiet_hours_feedback">알림이 저장되었지만 예약되지 않았습니다. 알림 시각이 방해 금지 시간(22:00–07:00)에 해당합니다.</string>
     <string name="commuter_alert_invalid_time_feedback">알림이 저장되었지만 예약되지 않았습니다. 시각이 올바르지 않습니다.</string>
     <string name="commuter_alert_disabled_feedback">알림이 저장되었지만 꺼져 있습니다.</string>
@@ -972,6 +986,9 @@
     <string name="widget_settings_until_arrival_description">출발한 열차는 목적지 도착 예정 시각까지 ‘운행 중’으로 표시되어 목록에 남습니다.</string>
     <string name="widget_settings_show_platform">승강장 표시</string>
     <string name="widget_settings_show_train_name">열차 이름 및 종류 표시</string>
+    <string name="widget_settings_show_reliability">신뢰도 표시</string>
+    <string name="widget_settings_show_reliability_description">각 열차 뒤에 최근 30일 중 정시였던 날의 비율을 표시합니다. ViaggiaTreno 데이터에 기반한 Binario의 비공식 통계로, 앱에 포함되어 있으며 관측이 5회 이상일 때만 표시됩니다.</string>
+    <string name="widget_reliability_mark">정시 %1$d%%</string>
     <string name="station_widget_display_name_description">머리글의 역 이름을 대신하며 이 위젯에만 저장됩니다.</string>
     <string name="station_widget_settings_nearest">‘📍 가까운 역’ 버튼</string>
     <string name="station_widget_settings_nearest_description">탭하면 위젯이 대략적인 위치를 한 번만 요청하여 카탈로그에서 가장 가까운 역으로 전환합니다. 위치는 저장되거나 전송되지 않으며, 자동 업데이트는 항상 마지막으로 선택한 역을 사용합니다.</string>
@@ -1122,6 +1139,17 @@
     <string name="punctuality_history_show_all">모든 날짜 보기</string>
     <string name="settings_punctuality_recording_title">즐겨찾는 열차의 정시성</string>
     <string name="settings_punctuality_recording_description">하루 한 번 도착 예정 시각 이후 열차 상태를 조회하여 최종 지연과 정차역별 지연을 이 휴대전화에만 최대 365일 동안 기록합니다.</string>
+    <string name="settings_weekly_digest_title">즐겨찾는 열차 주간 요약</string>
+    <string name="settings_weekly_digest_description">일요일 19시쯤 이 휴대전화에 기록된 즐겨찾는 열차의 한 주 정시성과, 가능한 경우 최근 30일 동안의 네트워크 신뢰도를 알림으로 요약하고 나빠진 열차를 알려 줍니다. 네트워크 요청은 없으며 22시부터 7시 사이에는 알리지 않습니다.</string>
+    <string name="weekly_digest_channel_name">주간 요약</string>
+    <string name="weekly_digest_channel_description">일요일 저녁에 즐겨찾는 열차의 한 주 정시성을 알려 줍니다.</string>
+    <string name="weekly_digest_title">이번 주 내 열차</string>
+    <string name="weekly_digest_train_line">%1$s: %2$s</string>
+    <string name="weekly_digest_no_runs">기록된 운행 없음</string>
+    <plurals name="weekly_digest_network">
+        <item quantity="other">네트워크 최근 %1$d일: 정시 %2$d%%</item>
+    </plurals>
+    <string name="weekly_digest_worse">나빠짐: %1$s, 이번 주 정시율 %2$d%% (평소 %3$d%%)</string>
     <string name="settings_live_updates_title">실시간 알림</string>
     <string name="settings_live_updates_permission">이 알림을 받으려면 Android 설정에서 Binario 알림을 허용하세요.</string>
     <string name="settings_live_updates_privacy">이 확인 작업은 표시된 시간대에만 백그라운드에서 실행됩니다. MIT는 사용자 데이터가 없는 요청을 받고, 열차 상태 출처는 상세 정보를 열 때와 마찬가지로 열차 번호와 날짜를 받습니다. 휴대전화 외부에는 아무것도 저장되지 않습니다.</string>

@@ -95,6 +95,12 @@
     <string name="shortcut_active_route">Tuyến đang dùng</string>
     <string name="shortcut_next_departures">Chuyến đi sắp tới</string>
     <string name="shortcut_train_search">Tìm tàu</string>
+    <string name="shortcut_route_removed">Tuyến không còn được lưu trong Binario</string>
+    <string name="tile_next_train_label">Chuyến tàu tiếp theo</string>
+    <string name="tile_next_train_no_route">Không có tuyến đang dùng</string>
+    <string name="tile_next_train_none">Hôm nay không còn chuyến tàu nào</string>
+    <string name="tile_next_train_departure">%1$s · %2$s</string>
+    <string name="tile_next_train_description">Chuyến tàu tiếp theo, dựa trên lịch trình: %1$s lúc %2$s, %3$s</string>
 
     <!-- Main app shell and primary journey planner. -->
     <string name="app_brand">BINARIO</string>
@@ -677,6 +683,14 @@
     <string name="background_status_exact_on">Đã cho phép báo thức chính xác</string>
     <string name="background_status_battery_optimized">Tối ưu hóa pin đang bật cho Binario: Android có thể hoãn các lần kiểm tra nền.</string>
     <string name="background_status_battery_unrestricted">Tối ưu hóa pin đang tắt cho Binario</string>
+    <string name="background_runs_title">Các lần kiểm tra nền tiếp theo</string>
+    <string name="background_runs_none">Không có lần kiểm tra nền nào được lên lịch.</string>
+    <string name="background_runs_running">%1$s: đang chạy</string>
+    <string name="background_runs_soon">%1$s: sắp diễn ra</string>
+    <string name="background_runs_today">%1$s: hôm nay lúc %2$s</string>
+    <string name="background_runs_tomorrow">%1$s: ngày mai lúc %2$s</string>
+    <string name="background_runs_later">%1$s: %2$s lúc %3$s</string>
+    <string name="background_runs_note">Thời gian ước tính: Android có thể dời lại để tiết kiệm pin hoặc trong khi chờ mạng.</string>
     <string name="commuter_alert_quiet_hours_feedback">Đã lưu cảnh báo nhưng chưa lên lịch: thời điểm báo trước rơi vào giờ yên tĩnh 22:00–07:00.</string>
     <string name="commuter_alert_invalid_time_feedback">Đã lưu cảnh báo nhưng chưa lên lịch: giờ không hợp lệ.</string>
     <string name="commuter_alert_disabled_feedback">Đã lưu cảnh báo nhưng đang tắt.</string>
@@ -995,6 +1009,9 @@
     <string name="widget_settings_until_arrival_description">Tàu đã khởi hành vẫn nằm trong danh sách, được đánh dấu “Đang chạy”, cho đến giờ dự kiến đến ga cuối.</string>
     <string name="widget_settings_show_platform">Hiển thị sân ga</string>
     <string name="widget_settings_show_train_name">Hiển thị tên và loại tàu</string>
+    <string name="widget_settings_show_reliability">Hiển thị độ tin cậy</string>
+    <string name="widget_settings_show_reliability_description">Sau mỗi tàu, tỷ lệ ngày đúng giờ trong 30 ngày qua: thống kê không chính thức của Binario từ dữ liệu ViaggiaTreno, có sẵn trong ứng dụng và chỉ hiển thị khi có ít nhất 5 lần ghi nhận.</string>
+    <string name="widget_reliability_mark">%1$d%% đúng giờ</string>
     <string name="station_widget_display_name_description">Thay cho tên ga ở tiêu đề và chỉ áp dụng cho tiện ích này.</string>
     <string name="station_widget_settings_nearest">Nút “📍 Gần nhất”</string>
     <string name="station_widget_settings_nearest_description">Khi bạn nhấn, tiện ích sẽ yêu cầu vị trí gần đúng một lần và chuyển sang ga gần nhất trong danh mục. Vị trí không được lưu hay gửi đi; các lần cập nhật tự động luôn dùng ga được chọn gần nhất.</string>
@@ -1145,6 +1162,17 @@
     <string name="punctuality_history_show_all">Xem tất cả các ngày</string>
     <string name="settings_punctuality_recording_title">Mức đúng giờ của tàu yêu thích</string>
     <string name="settings_punctuality_recording_description">Mỗi ngày một lần, sau giờ đến theo lịch, ứng dụng hỏi trạng thái tàu và chỉ ghi trên điện thoại này mức trễ cuối cùng và mức trễ tại các điểm dừng, tối đa 365 ngày.</string>
+    <string name="settings_weekly_digest_title">Tóm tắt hằng tuần của tàu yêu thích</string>
+    <string name="settings_weekly_digest_description">Chủ nhật khoảng 19:00, một thông báo tóm tắt mức đúng giờ trong tuần của các tàu yêu thích được ghi lại trên điện thoại này và, nếu có, độ tin cậy của chúng trên mạng lưới trong 30 ngày qua, đồng thời nêu tàu kém đi. Không gửi yêu cầu mạng; không bao giờ trong khoảng 22:00 đến 7:00.</string>
+    <string name="weekly_digest_channel_name">Tóm tắt hằng tuần</string>
+    <string name="weekly_digest_channel_description">Tối Chủ nhật, mức đúng giờ trong tuần của các tàu yêu thích.</string>
+    <string name="weekly_digest_title">Tàu của bạn tuần này</string>
+    <string name="weekly_digest_train_line">%1$s: %2$s</string>
+    <string name="weekly_digest_no_runs">chưa ghi lại chuyến nào</string>
+    <plurals name="weekly_digest_network">
+        <item quantity="other">%1$d ngày qua trên mạng lưới: %2$d%% đúng giờ</item>
+    </plurals>
+    <string name="weekly_digest_worse">Kém đi: %1$s, đúng giờ %2$d%% số lần trong tuần này (thường là %3$d%%)</string>
     <string name="settings_live_updates_title">Thông báo thời gian thực</string>
     <string name="settings_live_updates_permission">Để nhận các thông báo này, hãy cho phép thông báo của Binario trong phần cài đặt Android.</string>
     <string name="settings_live_updates_privacy">Các lần kiểm tra này chỉ chạy nền trong các khung giờ đã nêu. MIT nhận một yêu cầu không chứa dữ liệu nào của bạn; các nguồn trạng thái tàu nhận số hiệu tàu và ngày, giống như khi bạn mở chi tiết. Không có gì được lưu bên ngoài điện thoại.</string>

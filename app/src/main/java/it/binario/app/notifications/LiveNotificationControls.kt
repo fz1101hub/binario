@@ -331,7 +331,7 @@ internal fun ApproachAlertControl(service: TrainService, eligible: Boolean, modi
     }
 }
 
-/** "Notifiche in tempo reale" in Impostazioni → Avvisi: the three switches of the live features. */
+/** "Notifiche in tempo reale" in Impostazioni → Notifiche e sveglie: the switches of the live features and the weekly digest. */
 @Composable
 fun LiveUpdatesSettingsPanel() {
     val context = LocalContext.current
@@ -340,6 +340,7 @@ fun LiveUpdatesSettingsPanel() {
     var trainAlerts by remember { mutableStateOf(settings.trainAlertsEnabled) }
     var strikes by remember { mutableStateOf(settings.strikeReminderEnabled) }
     var punctuality by remember { mutableStateOf(settings.punctualityRecordingEnabled) }
+    var digest by remember { mutableStateOf(settings.weeklyDigestEnabled) }
     var feedback by remember { mutableStateOf<String?>(null) }
     val withPermission = rememberWithNotificationPermission { feedback = resources.getString(R.string.settings_live_updates_permission) }
     Column(Modifier.padding(horizontal = 20.dp, vertical = 10.dp).testTag("settings-live-updates"), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -387,8 +388,22 @@ fun LiveUpdatesSettingsPanel() {
                 PunctualityRecorderScheduler.reschedule(context)
             }
         )
+        ToggleRow(
+            title = stringResource(R.string.settings_weekly_digest_title),
+            description = stringResource(R.string.settings_weekly_digest_description),
+            checked = digest,
+            onChange = { enable ->
+                val apply = {
+                    settings.weeklyDigestEnabled = enable
+                    digest = enable
+                    WeeklyDigestScheduler.reschedule(context)
+                }
+                if (enable) withPermission(apply) else apply()
+            },
+            modifier = Modifier.testTag("settings-weekly-digest")
+        )
         Text(stringResource(R.string.settings_live_updates_privacy), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        if (strikes && needsPermission(context)) {
+        if ((strikes || digest) && needsPermission(context)) {
             Text(stringResource(R.string.settings_live_updates_permission), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         feedback?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }

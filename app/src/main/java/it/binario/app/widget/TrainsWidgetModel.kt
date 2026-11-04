@@ -239,26 +239,32 @@ object TrainsWidgetPresenter {
             .filter { !settings.hideNotRunning || isRunning(statuses[it.number.uppercase(Locale.ROOT)], nowEpochMillis) }
     }
 
+    /**
+     * The row of [monitor]. [reliability] (the network statistics of the train, «83% in orario») closes the detail line
+     * and the spoken label when [TrainsWidgetSettings.showReliability] is on.
+     */
     fun row(
         monitor: ServiceMonitor,
         status: FavouriteTrainStatus?,
         settings: TrainsWidgetSettings,
         nowEpochMillis: Long,
-        strings: TrainsWidgetStrings
+        strings: TrainsWidgetStrings,
+        reliability: WidgetReliabilityText? = null
     ): TrainsWidgetRow {
         val trainLabel = status?.category?.let { strings.format(strings.categoryNumber, strings.categoryLabels.getValue(it), monitor.number) }
             ?: strings.format(strings.trainNumber, monitor.number)
         val title = monitor.displayName ?: trainLabel
+        val shownReliability = reliability?.takeIf { settings.showReliability }
         if (status == null) {
             return TrainsWidgetRow(
                 number = monitor.number,
                 origin = monitor.origin,
                 title = title,
-                detail = listOfNotNull(trainLabel.takeIf { monitor.displayName != null }, strings.waiting).joinToString(" · "),
+                detail = listOfNotNull(trainLabel.takeIf { monitor.displayName != null }, strings.waiting, shownReliability?.shown).joinToString(" · "),
                 status = "—",
                 emphasis = TrainsRowEmphasis.MUTED,
                 platform = "—",
-                accessibility = listOfNotNull(title, trainLabel.takeIf { monitor.displayName != null }, strings.waiting).joinToString(". ")
+                accessibility = listOfNotNull(title, trainLabel.takeIf { monitor.displayName != null }, strings.waiting, shownReliability?.spoken).joinToString(". ")
             )
         }
         val live = isLive(status, nowEpochMillis)
@@ -289,7 +295,8 @@ object TrainsWidgetPresenter {
         val detail = listOfNotNull(
             trainLabel.takeIf { monitor.displayName != null },
             staleMarker,
-            info
+            info,
+            shownReliability?.shown
         ).joinToString(" · ")
         return TrainsWidgetRow(
             number = monitor.number,
@@ -312,7 +319,8 @@ object TrainsWidgetPresenter {
                     platformChange?.takeIf { strings.platformChangedSpoken.isNotBlank() }
                         ?.let { strings.format(strings.platformChangedSpoken, it.actual, it.scheduled) }
                         ?: status.platform?.let { strings.format(strings.platform, it) } ?: strings.platformUnavailable
-                } else null
+                } else null,
+                shownReliability?.spoken
             ).joinToString(". ")
         )
     }

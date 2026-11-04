@@ -90,6 +90,8 @@ import it.binario.app.plannedjourney.PlannedJourneyIcsText
 import it.binario.app.plannedjourney.PlannedJourneyStation
 import it.binario.app.plannedjourney.PlannedJourneyTransferContract
 import it.binario.app.plannedjourney.PlannedJourneyViewModel
+import it.binario.app.shortcuts.RouteShortcuts
+import it.binario.app.shortcuts.RouteSurfacesEffects
 import it.binario.app.ui.AppNavigation
 import it.binario.app.ui.AppScreen
 import it.binario.app.ui.TabScreens
@@ -170,6 +172,8 @@ class MainActivity : ComponentActivity() {
             val themeSettings = remember { ThemeSettings(applicationContext) }
             BinarioTheme(themeSettings.mode) {
                 val viewModel: TrainViewModel = viewModel()
+                // Launcher shortcuts of the saved routes and the Quick Settings tile follow the app's routes.
+                RouteSurfacesEffects(viewModel)
                 BinarioApp(
                     viewModel = viewModel,
                     themeMode = themeSettings.mode,
@@ -194,7 +198,9 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun receiveDeepLinkIntent(intent: Intent?) {
-        val widgetDeepLink = parseFavouriteTrainDeepLink(intent) ?: parseWidgetDeepLink(intent, applicationContext)
+        val widgetDeepLink = parseFavouriteTrainDeepLink(intent)
+            ?: RouteShortcuts.deepLink(intent, applicationContext)
+            ?: parseWidgetDeepLink(intent, applicationContext)
         deepLinkRequest = if (widgetDeepLink != null) {
             deepLinkDispatcher.receive(widgetDeepLink)
         } else {

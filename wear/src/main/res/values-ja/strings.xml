@@ -26,4 +26,8 @@
     <string name="service_destination_status">%1$s · %2$s</string>
     <string name="service_operator_category">%1$s · %2$s</string>
     <string name="service_operator_category_platform">%1$s · %2$s · %3$s 番線</string>
+    <string name="accessibility_reliability">%1$s（非公式の統計）</string>
+    <plurals name="service_reliability_on_time">
+        <item quantity="other">%2$d 回中 %1$d 回定刻</item>
+    </plurals>
 </resources>

@@ -95,6 +95,12 @@
     <string name="shortcut_active_route">Aktive Strecke</string>
     <string name="shortcut_next_departures">Nächste Abfahrten</string>
     <string name="shortcut_train_search">Zugsuche</string>
+    <string name="shortcut_route_removed">Strecke nicht mehr in Binario gespeichert</string>
+    <string name="tile_next_train_label">Nächster Zug</string>
+    <string name="tile_next_train_no_route">Keine aktive Strecke</string>
+    <string name="tile_next_train_none">Heute keine weiteren Züge</string>
+    <string name="tile_next_train_departure">%1$s · %2$s</string>
+    <string name="tile_next_train_description">Nächster Zug laut Fahrplan: %1$s um %2$s, %3$s</string>
 
     <!-- Main app shell and primary journey planner. -->
     <string name="app_brand">BINARIO</string>
@@ -694,6 +700,14 @@
     <string name="background_status_exact_on">Exakte Wecker erlaubt</string>
     <string name="background_status_battery_optimized">Akkuoptimierung für Binario aktiv: Android kann Prüfungen im Hintergrund aufschieben.</string>
     <string name="background_status_battery_unrestricted">Akkuoptimierung für Binario nicht aktiv</string>
+    <string name="background_runs_title">Nächste Prüfungen im Hintergrund</string>
+    <string name="background_runs_none">Keine Prüfung im Hintergrund geplant.</string>
+    <string name="background_runs_running">%1$s: läuft</string>
+    <string name="background_runs_soon">%1$s: in Kürze</string>
+    <string name="background_runs_today">%1$s: heute um %2$s</string>
+    <string name="background_runs_tomorrow">%1$s: morgen um %2$s</string>
+    <string name="background_runs_later">%1$s: %2$s um %3$s</string>
+    <string name="background_runs_note">Ungefähre Zeiten: Android kann sie verschieben, um Akku zu sparen oder auf ein Netz zu warten.</string>
     <string name="commuter_alert_quiet_hours_feedback">Warnung gespeichert, aber nicht geplant: Die Vorlaufzeit liegt in der Ruhezeit 22:00–07:00.</string>
     <string name="commuter_alert_invalid_time_feedback">Warnung gespeichert, aber nicht geplant: Die Zeit ist ungültig.</string>
     <string name="commuter_alert_disabled_feedback">Warnung gespeichert, aber deaktiviert.</string>
@@ -1015,6 +1029,9 @@
     <string name="widget_settings_until_arrival_description">Ein abgefahrener Zug bleibt in der Liste, markiert mit „Unterwegs“, bis zur erwarteten Ankunft am Ziel.</string>
     <string name="widget_settings_show_platform">Gleis zeigen</string>
     <string name="widget_settings_show_train_name">Zugname und Zugart zeigen</string>
+    <string name="widget_settings_show_reliability">Zuverlässigkeit anzeigen</string>
+    <string name="widget_settings_show_reliability_description">Nach jedem Zug der Anteil pünktlicher Tage der letzten 30 Tage: inoffizielle Binario-Statistik aus ViaggiaTreno-Daten, in der App enthalten und erst ab 5 Erfassungen angezeigt.</string>
+    <string name="widget_reliability_mark">%1$d%% pünktlich</string>
     <string name="station_widget_display_name_description">Ersetzt den Bahnhofsnamen in der Kopfzeile und bleibt lokal für dieses Widget.</string>
     <string name="station_widget_settings_nearest">Schaltfläche „📍 Nächster“</string>
     <string name="station_widget_settings_nearest_description">Tippst du darauf, fragt das Widget einmalig nach deinem ungefähren Standort und wechselt zum nächsten Bahnhof des Katalogs. Der Standort wird weder gespeichert noch gesendet; automatische Aktualisierungen verwenden immer den zuletzt gewählten Bahnhof.</string>
@@ -1171,6 +1188,18 @@
     <string name="punctuality_history_show_all">Alle Daten anzeigen</string>
     <string name="settings_punctuality_recording_title">Pünktlichkeit der favorisierten Züge</string>
     <string name="settings_punctuality_recording_description">Fragt einmal am Tag nach der planmäßigen Ankunft den Zugstatus ab und speichert nur auf diesem Telefon die Endverspätung und die Verspätungen an den Halten, höchstens 365 Tage lang.</string>
+    <string name="settings_weekly_digest_title">Wochenübersicht der favorisierten Züge</string>
+    <string name="settings_weekly_digest_description">Sonntags gegen 19 Uhr fasst eine Benachrichtigung die auf diesem Telefon erfasste Pünktlichkeit der Woche deiner favorisierten Züge zusammen, dazu, wenn verfügbar, ihre Zuverlässigkeit im Netz in den letzten 30 Tagen, und nennt den Zug, der sich verschlechtert hat. Keine Netzanfrage; nie zwischen 22 und 7 Uhr.</string>
+    <string name="weekly_digest_channel_name">Wochenübersicht</string>
+    <string name="weekly_digest_channel_description">Sonntagabends die Pünktlichkeit der Woche deiner favorisierten Züge.</string>
+    <string name="weekly_digest_title">Deine Züge diese Woche</string>
+    <string name="weekly_digest_train_line">%1$s: %2$s</string>
+    <string name="weekly_digest_no_runs">keine Fahrt erfasst</string>
+    <plurals name="weekly_digest_network">
+        <item quantity="one">letzter %1$d Tag im Netz: %2$d%% pünktlich</item>
+        <item quantity="other">letzte %1$d Tage im Netz: %2$d%% pünktlich</item>
+    </plurals>
+    <string name="weekly_digest_worse">Verschlechtert: %1$s, diese Woche zu %2$d%% pünktlich (sonst zu %3$d%%)</string>
     <string name="settings_live_updates_title">Live-Benachrichtigungen</string>
     <string name="settings_live_updates_permission">Um diese Benachrichtigungen zu erhalten, erlaube Binario-Benachrichtigungen in den Android-Einstellungen.</string>
     <string name="settings_live_updates_privacy">Diese Prüfungen laufen im Hintergrund nur in den angegebenen Zeitfenstern. Das MIT erhält eine Anfrage ohne Daten von dir; die Quellen des Zugstatus erhalten Zugnummer und Tag, wie beim Öffnen des Details. Nichts wird außerhalb des Telefons gespeichert.</string>

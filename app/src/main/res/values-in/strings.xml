@@ -94,6 +94,12 @@
     <string name="shortcut_active_route">Rute aktif</string>
     <string name="shortcut_next_departures">Keberangkatan berikutnya</string>
     <string name="shortcut_train_search">Cari kereta</string>
+    <string name="shortcut_route_removed">Rute tidak lagi tersimpan di Binario</string>
+    <string name="tile_next_train_label">Kereta berikutnya</string>
+    <string name="tile_next_train_no_route">Tidak ada rute aktif</string>
+    <string name="tile_next_train_none">Tidak ada kereta lagi hari ini</string>
+    <string name="tile_next_train_departure">%1$s · %2$s</string>
+    <string name="tile_next_train_description">Kereta berikutnya menurut jadwal: %1$s pukul %2$s, %3$s</string>
     <!-- Main app shell and primary journey planner. -->
     <string name="app_brand">BINARIO</string>
     <string name="screen_title_detail">Detail perjalanan</string>
@@ -663,6 +669,14 @@
     <string name="background_status_exact_on">Alarm tepat diizinkan</string>
     <string name="background_status_battery_optimized">Pengoptimalan baterai aktif untuk Binario: Android bisa menunda pemeriksaan latar belakang.</string>
     <string name="background_status_battery_unrestricted">Pengoptimalan baterai nonaktif untuk Binario</string>
+    <string name="background_runs_title">Pemeriksaan latar belakang berikutnya</string>
+    <string name="background_runs_none">Tidak ada pemeriksaan latar belakang yang dijadwalkan.</string>
+    <string name="background_runs_running">%1$s: sedang berjalan</string>
+    <string name="background_runs_soon">%1$s: sebentar lagi</string>
+    <string name="background_runs_today">%1$s: hari ini pukul %2$s</string>
+    <string name="background_runs_tomorrow">%1$s: besok pukul %2$s</string>
+    <string name="background_runs_later">%1$s: %2$s pukul %3$s</string>
+    <string name="background_runs_note">Waktu perkiraan: Android dapat menggesernya untuk menghemat baterai atau saat menunggu jaringan.</string>
     <string name="commuter_alert_quiet_hours_feedback">Peringatan disimpan tetapi tidak dijadwalkan: waktunya jatuh pada jam tenang 22:00–07:00.</string>
     <string name="commuter_alert_invalid_time_feedback">Peringatan disimpan tetapi tidak dijadwalkan: waktunya tidak valid.</string>
     <string name="commuter_alert_disabled_feedback">Peringatan disimpan tetapi nonaktif.</string>
@@ -972,6 +986,9 @@
     <string name="widget_settings_until_arrival_description">Kereta yang sudah berangkat tetap di daftar, ditandai «Dalam perjalanan», sampai perkiraan tiba di tujuan.</string>
     <string name="widget_settings_show_platform">Tampilkan peron</string>
     <string name="widget_settings_show_train_name">Tampilkan nama dan kategori kereta</string>
+    <string name="widget_settings_show_reliability">Tampilkan keandalan</string>
+    <string name="widget_settings_show_reliability_description">Setelah setiap kereta, persentase hari tepat waktu dalam 30 hari terakhir: statistik tidak resmi Binario dari data ViaggiaTreno, disertakan dalam aplikasi dan hanya ditampilkan dengan minimal 5 pengamatan.</string>
+    <string name="widget_reliability_mark">%1$d%% tepat waktu</string>
     <string name="station_widget_display_name_description">Menggantikan nama stasiun di judul dan tetap lokal untuk widget ini.</string>
     <string name="station_widget_settings_nearest">Tombol «📍 Terdekat»</string>
     <string name="station_widget_settings_nearest_description">Saat diketuk, widget meminta lokasi perkiraan Anda sekali dan beralih ke stasiun terdekat di katalog. Lokasi tidak disimpan atau dikirim; pembaruan otomatis selalu memakai stasiun terakhir yang dipilih.</string>
@@ -1122,6 +1139,17 @@
     <string name="punctuality_history_show_all">Tampilkan semua tanggal</string>
     <string name="settings_punctuality_recording_title">Ketepatan waktu kereta favorit</string>
     <string name="settings_punctuality_recording_description">Sekali sehari, setelah jadwal tiba, menanyakan status kereta dan mencatat hanya di ponsel ini keterlambatan akhir dan keterlambatan di pemberhentian, paling lama 365 hari.</string>
+    <string name="settings_weekly_digest_title">Ringkasan mingguan kereta favorit</string>
+    <string name="settings_weekly_digest_description">Setiap Minggu sekitar pukul 19.00 sebuah notifikasi merangkum ketepatan waktu minggu itu yang tercatat di ponsel ini untuk kereta favorit dan, jika tersedia, keandalannya di jaringan selama 30 hari terakhir, serta menyebut kereta yang memburuk. Tanpa permintaan jaringan; tidak pernah antara pukul 22.00 dan 07.00.</string>
+    <string name="weekly_digest_channel_name">Ringkasan mingguan</string>
+    <string name="weekly_digest_channel_description">Pada Minggu malam, ketepatan waktu kereta favorit selama seminggu.</string>
+    <string name="weekly_digest_title">Kereta Anda minggu ini</string>
+    <string name="weekly_digest_train_line">%1$s: %2$s</string>
+    <string name="weekly_digest_no_runs">tidak ada perjalanan tercatat</string>
+    <plurals name="weekly_digest_network">
+        <item quantity="other">%1$d hari terakhir di jaringan: %2$d%% tepat waktu</item>
+    </plurals>
+    <string name="weekly_digest_worse">Memburuk: %1$s, tepat waktu %2$d%% minggu ini (biasanya %3$d%%)</string>
     <string name="settings_live_updates_title">Notifikasi langsung</string>
     <string name="settings_live_updates_permission">Untuk menerima notifikasi ini, izinkan notifikasi Binario di setelan Android.</string>
     <string name="settings_live_updates_privacy">Pemeriksaan ini berjalan di latar belakang hanya pada rentang yang ditampilkan. MIT menerima permintaan tanpa data Anda; sumber status kereta menerima nomor kereta dan harinya, sama seperti saat Anda membuka detail. Tidak ada yang disimpan di luar ponsel.</string>

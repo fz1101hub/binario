@@ -95,6 +95,12 @@
     <string name="shortcut_active_route">Active route</string>
     <string name="shortcut_next_departures">Next departures</string>
     <string name="shortcut_train_search">Train search</string>
+    <string name="shortcut_route_removed">Route no longer saved in Binario</string>
+    <string name="tile_next_train_label">Next train</string>
+    <string name="tile_next_train_no_route">No active route</string>
+    <string name="tile_next_train_none">No more trains today</string>
+    <string name="tile_next_train_departure">%1$s · %2$s</string>
+    <string name="tile_next_train_description">Next train from the scheduled timetable: %1$s at %2$s, %3$s</string>
 
     <!-- Main app shell and primary journey planner. -->
     <string name="app_brand">BINARIO</string>
@@ -694,6 +700,14 @@
     <string name="background_status_exact_on">Exact alarms allowed</string>
     <string name="background_status_battery_optimized">Battery optimisation on for Binario: Android may postpone background checks.</string>
     <string name="background_status_battery_unrestricted">Battery optimisation off for Binario</string>
+    <string name="background_runs_title">Next background checks</string>
+    <string name="background_runs_none">No background check is scheduled.</string>
+    <string name="background_runs_running">%1$s: running</string>
+    <string name="background_runs_soon">%1$s: soon</string>
+    <string name="background_runs_today">%1$s: today at %2$s</string>
+    <string name="background_runs_tomorrow">%1$s: tomorrow at %2$s</string>
+    <string name="background_runs_later">%1$s: %2$s at %3$s</string>
+    <string name="background_runs_note">Approximate times: Android may move them to save battery or while it waits for a network.</string>
     <string name="commuter_alert_quiet_hours_feedback">Alert saved but not scheduled: the lead time falls in the quiet period 22:00–07:00.</string>
     <string name="commuter_alert_invalid_time_feedback">Alert saved but not scheduled: the time is invalid.</string>
     <string name="commuter_alert_disabled_feedback">Alert saved but disabled.</string>
@@ -1015,6 +1029,9 @@
     <string name="widget_settings_until_arrival_description">A train that has left stays on the list, marked “En route”, until its expected arrival at the destination.</string>
     <string name="widget_settings_show_platform">Show the platform</string>
     <string name="widget_settings_show_train_name">Show train name and category</string>
+    <string name="widget_settings_show_reliability">Show reliability</string>
+    <string name="widget_settings_show_reliability_description">After each train, the share of on-time days over the last 30 days: unofficial Binario statistics from ViaggiaTreno data, included in the app and shown only with at least 5 observations.</string>
+    <string name="widget_reliability_mark">%1$d%% on time</string>
     <string name="station_widget_display_name_description">Replaces the station name in the header and stays local to this widget.</string>
     <string name="station_widget_settings_nearest">“📍 Nearest” button</string>
     <string name="station_widget_settings_nearest_description">When you tap it, the widget asks for your approximate location once and switches to the nearest station in the catalogue. The location is neither stored nor sent; automatic refreshes always use the last chosen station.</string>
@@ -1171,6 +1188,18 @@
     <string name="punctuality_history_show_all">Show all dates</string>
     <string name="settings_punctuality_recording_title">Punctuality of favourite trains</string>
     <string name="settings_punctuality_recording_description">Once a day, after the scheduled arrival, asks for the train status and records only on this phone the final delay and the delays at the stops, for up to 365 days.</string>
+    <string name="settings_weekly_digest_title">Weekly summary of favourite trains</string>
+    <string name="settings_weekly_digest_description">On Sunday around 19:00 a notification sums up the week’s punctuality recorded on this phone for your favourite trains and, when available, their network reliability over the last 30 days, and names the one that got worse. No network request; never between 22:00 and 7:00.</string>
+    <string name="weekly_digest_channel_name">Weekly summary</string>
+    <string name="weekly_digest_channel_description">On Sunday evening, the week’s punctuality of your favourite trains.</string>
+    <string name="weekly_digest_title">Your trains this week</string>
+    <string name="weekly_digest_train_line">%1$s: %2$s</string>
+    <string name="weekly_digest_no_runs">no run recorded</string>
+    <plurals name="weekly_digest_network">
+        <item quantity="one">last %1$d day on the network: %2$d%% on time</item>
+        <item quantity="other">last %1$d days on the network: %2$d%% on time</item>
+    </plurals>
+    <string name="weekly_digest_worse">Got worse: %1$s, on time %2$d%% of the time this week (usually %3$d%%)</string>
     <string name="settings_live_updates_title">Live notifications</string>
     <string name="settings_live_updates_permission">To receive these notifications, allow Binario notifications in Android settings.</string>
     <string name="settings_live_updates_privacy">These checks run in the background only in the windows shown. The MIT receives a request with no data of yours; the train-status sources receive the train number and the day, as when you open the detail. Nothing is stored outside the phone.</string>

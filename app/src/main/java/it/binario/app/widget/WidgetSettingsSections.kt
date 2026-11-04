@@ -34,6 +34,7 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import it.binario.app.R
+import it.binario.app.data.reliability.NetworkReliabilityRepository
 import java.time.DayOfWeek
 import java.time.LocalTime
 import java.time.format.TextStyle
@@ -101,6 +102,21 @@ internal fun WidgetSwitchRow(label: String, checked: Boolean, onCheckedChange: (
         }
         Switch(checked = checked, onCheckedChange = null)
     }
+}
+
+/**
+ * «Mostra l'affidabilità»: the on-time share of the embedded network statistics after each train. Absent from builds
+ * without the statistics (`-Pbinario.punctualityStats=false`).
+ */
+@Composable
+internal fun WidgetReliabilitySwitchRow(checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
+    if (!NetworkReliabilityRepository.enabled) return
+    WidgetSwitchRow(
+        stringResource(R.string.widget_settings_show_reliability),
+        checked,
+        onCheckedChange,
+        stringResource(R.string.widget_settings_show_reliability_description)
+    )
 }
 
 /** A time shown as a button that opens the system time picker (24-hour, as railway times). */

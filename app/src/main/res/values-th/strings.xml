@@ -95,6 +95,12 @@
     <string name="shortcut_active_route">เส้นทางปัจจุบัน</string>
     <string name="shortcut_next_departures">ขบวนที่จะออกถัดไป</string>
     <string name="shortcut_train_search">ค้นหาขบวนรถ</string>
+    <string name="shortcut_route_removed">ไม่ได้บันทึกเส้นทางนี้ใน Binario แล้ว</string>
+    <string name="tile_next_train_label">รถไฟขบวนถัดไป</string>
+    <string name="tile_next_train_no_route">ไม่มีเส้นทางที่ใช้งานอยู่</string>
+    <string name="tile_next_train_none">วันนี้ไม่มีรถไฟแล้ว</string>
+    <string name="tile_next_train_departure">%1$s · %2$s</string>
+    <string name="tile_next_train_description">รถไฟขบวนถัดไปตามตารางเวลา: %1$s เวลา %2$s, %3$s</string>
 
     <!-- Main app shell and primary journey planner. -->
     <string name="app_brand">BINARIO</string>
@@ -677,6 +683,14 @@
     <string name="background_status_exact_on">อนุญาตการปลุกแบบตรงเวลาแล้ว</string>
     <string name="background_status_battery_optimized">การเพิ่มประสิทธิภาพแบตเตอรี่เปิดอยู่สำหรับ Binario Android อาจเลื่อนการตรวจสอบเบื้องหลัง</string>
     <string name="background_status_battery_unrestricted">การเพิ่มประสิทธิภาพแบตเตอรี่ปิดอยู่สำหรับ Binario</string>
+    <string name="background_runs_title">การตรวจสอบเบื้องหลังครั้งถัดไป</string>
+    <string name="background_runs_none">ไม่มีการตรวจสอบเบื้องหลังที่ตั้งเวลาไว้</string>
+    <string name="background_runs_running">%1$s: กำลังทำงาน</string>
+    <string name="background_runs_soon">%1$s: อีกสักครู่</string>
+    <string name="background_runs_today">%1$s: วันนี้ เวลา %2$s</string>
+    <string name="background_runs_tomorrow">%1$s: พรุ่งนี้ เวลา %2$s</string>
+    <string name="background_runs_later">%1$s: %2$s เวลา %3$s</string>
+    <string name="background_runs_note">เวลาโดยประมาณ: Android อาจเลื่อนเวลาเพื่อประหยัดแบตเตอรี่หรือระหว่างรอเครือข่าย</string>
     <string name="commuter_alert_quiet_hours_feedback">บันทึกการแจ้งเตือนแล้วแต่ยังไม่ได้ตั้งเวลา เวลาแจ้งล่วงหน้าอยู่ในช่วงเวลาเงียบ 22:00–07:00</string>
     <string name="commuter_alert_invalid_time_feedback">บันทึกการแจ้งเตือนแล้วแต่ยังไม่ได้ตั้งเวลา เวลาไม่ถูกต้อง</string>
     <string name="commuter_alert_disabled_feedback">บันทึกการแจ้งเตือนแล้วแต่ปิดอยู่</string>
@@ -995,6 +1009,9 @@
     <string name="widget_settings_until_arrival_description">ขบวนที่ออกไปแล้วจะยังอยู่ในรายการ โดยทำเครื่องหมายว่า “กำลังเดินทาง” จนถึงเวลาที่คาดว่าจะถึงปลายทาง</string>
     <string name="widget_settings_show_platform">แสดงชานชาลา</string>
     <string name="widget_settings_show_train_name">แสดงชื่อและประเภทขบวนรถ</string>
+    <string name="widget_settings_show_reliability">แสดงความน่าเชื่อถือ</string>
+    <string name="widget_settings_show_reliability_description">หลังรถไฟแต่ละขบวน แสดงสัดส่วนวันที่ตรงเวลาใน 30 วันล่าสุด: สถิติไม่เป็นทางการของ Binario จากข้อมูล ViaggiaTreno ซึ่งรวมอยู่ในแอปและแสดงเฉพาะเมื่อมีการสังเกตอย่างน้อย 5 ครั้ง</string>
+    <string name="widget_reliability_mark">ตรงเวลา %1$d%%</string>
     <string name="station_widget_display_name_description">แทนที่ชื่อสถานีในส่วนหัว และใช้กับวิดเจ็ตนี้เท่านั้น</string>
     <string name="station_widget_settings_nearest">ปุ่ม “📍 ใกล้ที่สุด”</string>
     <string name="station_widget_settings_nearest_description">เมื่อคุณแตะ วิดเจ็ตจะขอตำแหน่งโดยประมาณหนึ่งครั้งและสลับไปยังสถานีที่ใกล้ที่สุดในแคตตาล็อก ตำแหน่งจะไม่ถูกบันทึกหรือส่งไป การอัปเดตอัตโนมัติจะใช้สถานีที่เลือกล่าสุดเสมอ</string>
@@ -1145,6 +1162,17 @@
     <string name="punctuality_history_show_all">แสดงทุกวันที่</string>
     <string name="settings_punctuality_recording_title">ความตรงต่อเวลาของขบวนโปรด</string>
     <string name="settings_punctuality_recording_description">วันละครั้งหลังเวลาถึงตามตาราง จะขอสถานะของขบวนรถ และบันทึกความล่าช้าสุดท้ายรวมถึงความล่าช้าที่จุดจอดต่างๆ ไว้ในโทรศัพท์เครื่องนี้เท่านั้น ไม่เกิน 365 วัน</string>
+    <string name="settings_weekly_digest_title">สรุปรายสัปดาห์ของขบวนโปรด</string>
+    <string name="settings_weekly_digest_description">ทุกวันอาทิตย์ราว 19:00 น. การแจ้งเตือนจะสรุปความตรงต่อเวลาของขบวนโปรดในสัปดาห์นั้นที่บันทึกไว้ในโทรศัพท์เครื่องนี้ และหากมีข้อมูล ความน่าเชื่อถือบนเครือข่ายใน 30 วันล่าสุด พร้อมระบุขบวนที่แย่ลง ไม่มีการส่งคำขอทางเครือข่าย และไม่แจ้งระหว่าง 22:00 ถึง 7:00 น.</string>
+    <string name="weekly_digest_channel_name">สรุปรายสัปดาห์</string>
+    <string name="weekly_digest_channel_description">เย็นวันอาทิตย์ แจ้งความตรงต่อเวลาของขบวนโปรดตลอดสัปดาห์</string>
+    <string name="weekly_digest_title">รถไฟของคุณสัปดาห์นี้</string>
+    <string name="weekly_digest_train_line">%1$s: %2$s</string>
+    <string name="weekly_digest_no_runs">ไม่มีเที่ยวที่บันทึกไว้</string>
+    <plurals name="weekly_digest_network">
+        <item quantity="other">%1$d วันล่าสุดบนเครือข่าย: ตรงเวลา %2$d%%</item>
+    </plurals>
+    <string name="weekly_digest_worse">แย่ลง: %1$s ตรงเวลา %2$d%% ในสัปดาห์นี้ (ปกติ %3$d%%)</string>
     <string name="settings_live_updates_title">การแจ้งเตือนแบบเรียลไทม์</string>
     <string name="settings_live_updates_permission">หากต้องการรับการแจ้งเตือนเหล่านี้ ให้อนุญาตการแจ้งเตือนของ Binario ในการตั้งค่า Android</string>
     <string name="settings_live_updates_privacy">การตรวจสอบเหล่านี้ทำงานในเบื้องหลังเฉพาะในช่วงเวลาที่ระบุ MIT จะได้รับคำขอที่ไม่มีข้อมูลของคุณ แหล่งข้อมูลสถานะขบวนรถจะได้รับหมายเลขขบวนและวันที่ เช่นเดียวกับเมื่อคุณเปิดรายละเอียด ไม่มีสิ่งใดถูกเก็บไว้นอกโทรศัพท์</string>

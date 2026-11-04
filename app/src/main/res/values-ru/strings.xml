@@ -94,6 +94,12 @@
     <string name="shortcut_active_route">Активный маршрут</string>
     <string name="shortcut_next_departures">Ближайшие отправления</string>
     <string name="shortcut_train_search">Поиск поезда</string>
+    <string name="shortcut_route_removed">Маршрут больше не сохранён в Binario</string>
+    <string name="tile_next_train_label">Следующий поезд</string>
+    <string name="tile_next_train_no_route">Нет активного маршрута</string>
+    <string name="tile_next_train_none">Сегодня поездов больше нет</string>
+    <string name="tile_next_train_departure">%1$s · %2$s</string>
+    <string name="tile_next_train_description">Следующий поезд по расписанию: %1$s в %2$s, %3$s</string>
     <!-- Main app shell and primary journey planner. -->
     <string name="app_brand">BINARIO</string>
     <string name="screen_title_detail">Сведения о поезде</string>
@@ -714,6 +720,14 @@
     <string name="background_status_exact_on">Точные будильники разрешены</string>
     <string name="background_status_battery_optimized">Оптимизация батареи для Binario включена: Android может откладывать фоновые проверки.</string>
     <string name="background_status_battery_unrestricted">Оптимизация батареи для Binario выключена</string>
+    <string name="background_runs_title">Следующие проверки в фоне</string>
+    <string name="background_runs_none">Проверок в фоне не запланировано.</string>
+    <string name="background_runs_running">%1$s: выполняется</string>
+    <string name="background_runs_soon">%1$s: скоро</string>
+    <string name="background_runs_today">%1$s: сегодня в %2$s</string>
+    <string name="background_runs_tomorrow">%1$s: завтра в %2$s</string>
+    <string name="background_runs_later">%1$s: %2$s в %3$s</string>
+    <string name="background_runs_note">Время примерное: Android может сдвинуть проверки ради экономии батареи или в ожидании сети.</string>
     <string name="commuter_alert_quiet_hours_feedback">Оповещение сохранено, но не запланировано: время оповещения попадает в тихие часы 22:00–07:00.</string>
     <string name="commuter_alert_invalid_time_feedback">Оповещение сохранено, но не запланировано: неверное время.</string>
     <string name="commuter_alert_disabled_feedback">Оповещение сохранено, но выключено.</string>
@@ -1032,6 +1046,9 @@
     <string name="widget_settings_until_arrival_description">Отправившийся поезд остаётся в списке с пометкой «В пути» до ожидаемого прибытия в пункт назначения.</string>
     <string name="widget_settings_show_platform">Показывать путь</string>
     <string name="widget_settings_show_train_name">Показывать название и категорию поезда</string>
+    <string name="widget_settings_show_reliability">Показывать надёжность</string>
+    <string name="widget_settings_show_reliability_description">После каждого поезда — доля дней без опоздания за последние 30 дней: неофициальная статистика Binario по данным ViaggiaTreno, встроенная в приложение и показываемая только при наличии не менее 5 наблюдений.</string>
+    <string name="widget_reliability_mark">вовремя %1$d%%</string>
     <string name="station_widget_display_name_description">Заменяет название станции в заголовке и хранится только для этого виджета.</string>
     <string name="station_widget_settings_nearest">Кнопка «📍 Ближайшая»</string>
     <string name="station_widget_settings_nearest_description">При нажатии виджет один раз запрашивает приблизительное местоположение и переключается на ближайшую станцию из каталога. Местоположение не сохраняется и не передаётся; автообновления всегда используют последнюю выбранную станцию.</string>
@@ -1200,6 +1217,20 @@
     <string name="punctuality_history_show_all">Показать все даты</string>
     <string name="settings_punctuality_recording_title">Пунктуальность избранных поездов</string>
     <string name="settings_punctuality_recording_description">Раз в день после ожидаемого прибытия запрашивает статус поезда и записывает только на этом телефоне итоговое опоздание и опоздания на остановках, не более 365 дней.</string>
+    <string name="settings_weekly_digest_title">Еженедельная сводка по избранным поездам</string>
+    <string name="settings_weekly_digest_description">По воскресеньям около 19:00 уведомление подводит итоги пунктуальности избранных поездов за неделю, записанной на этом телефоне, и, если есть данные, их надёжности в сети за последние 30 дней, а также называет поезд, который стал хуже. Без сетевых запросов; никогда с 22:00 до 7:00.</string>
+    <string name="weekly_digest_channel_name">Еженедельная сводка</string>
+    <string name="weekly_digest_channel_description">В воскресенье вечером — пунктуальность избранных поездов за неделю.</string>
+    <string name="weekly_digest_title">Ваши поезда на этой неделе</string>
+    <string name="weekly_digest_train_line">%1$s: %2$s</string>
+    <string name="weekly_digest_no_runs">поездок не записано</string>
+    <plurals name="weekly_digest_network">
+        <item quantity="one">последний %1$d день в сети: вовремя %2$d%%</item>
+        <item quantity="few">последние %1$d дня в сети: вовремя %2$d%%</item>
+        <item quantity="many">последние %1$d дней в сети: вовремя %2$d%%</item>
+        <item quantity="other">последние %1$d дня в сети: вовремя %2$d%%</item>
+    </plurals>
+    <string name="weekly_digest_worse">Стало хуже: %1$s, на этой неделе вовремя в %2$d%% случаев (обычно %3$d%%)</string>
     <string name="settings_live_updates_title">Уведомления в реальном времени</string>
     <string name="settings_live_updates_permission">Чтобы получать эти уведомления, разрешите уведомления Binario в настройках Android.</string>
     <string name="settings_live_updates_privacy">Эти проверки выполняются в фоне только в указанные интервалы. MIT получает запрос без ваших данных; источники статуса поездов получают номер поезда и дату, как при открытии карточки. За пределами телефона ничего не сохраняется.</string>
