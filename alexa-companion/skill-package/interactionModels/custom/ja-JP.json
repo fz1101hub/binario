@@ -65,6 +65,37 @@
             "保存したルートは何",
             "保存したルート"
           ]
+        },
+        {
+          "name": "TrainPunctualityIntent",
+          "slots": [
+            {
+              "name": "trainNumber",
+              "type": "AMAZON.NUMBER"
+            }
+          ],
+          "samples": [
+            "{trainNumber}号の定時運行率",
+            "{trainNumber}号の定時運行率を教えて",
+            "{trainNumber}号はどれくらい定刻に着く",
+            "{trainNumber}号の定時率"
+          ]
+        },
+        {
+          "name": "RoutePunctualityIntent",
+          "slots": [
+            {
+              "name": "routeName",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "マイルートの定時運行率",
+            "マイルートの定時運行率を教えて",
+            "マイルート{routeName}の定時運行率",
+            "マイルート{routeName}の定時運行率を教えて",
+            "ルート{routeName}の定時運行率"
+          ]
         }
       ],
       "types": []

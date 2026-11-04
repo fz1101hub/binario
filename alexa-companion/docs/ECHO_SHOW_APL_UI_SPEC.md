@@ -25,7 +25,7 @@ Non classificare in base al nome commerciale in runtime: leggere le capacità de
 
 ## Sei schermate
 
-1. **Home**: saluto breve, tratte preferite, le tre intenzioni supportate, stato account e stato dati.
+1. **Home**: saluto breve, tratte preferite, le intenzioni supportate, stato account e stato dati.
 2. **Partenze**: tratta selezionata, treni ordinati per partenza, numero/categoria/binario, qualità della fonte. Se il provider non è live, **nessun tabellone simulato come operativo**.
 3. **Stato treno**: numero treno richiesto, esito voce e disponibilità della fonte; nessuna puntualità ipotetica.
 4. **Dettaglio corsa**: origine, destinazione, orari previsti/programmatici, fermate e azioni secondarie solo se arrivano dati autorizzati.
@@ -37,6 +37,8 @@ Non classificare in base al nome commerciale in runtime: leggere le capacità de
 - `NextTrainsIntent`: «Alexa, chiedi a Binario Treni quali sono i prossimi treni». In assenza di provider live, rispondere con il messaggio previsto dal progetto anziché una lista fittizia.
 - `TrainStatusIntent`: «Alexa, chiedi a Binario Treni lo stato del treno 9512». Mai inventare ritardi.
 - `MyRoutesIntent`: «Alexa, chiedi a Binario Treni le mie tratte». Restituire solo nomi autorizzati dopo OAuth.
+- `TrainPunctualityIntent`: «Alexa, chiedi a Binario Treni quanto è puntuale il treno 9558». Statistiche non ufficiali di Binario su dati ViaggiaTreno, mai presentate come dato in tempo reale.
+- `RoutePunctualityIntent`: «Alexa, chiedi a Binario Treni quanto è puntuale la mia tratta casa lavoro». Dopo OAuth, solo il nome della tratta sullo schermo.
 
 Il documento APL è una proiezione del medesimo risultato letto da Alexa; nessuna seconda sorgente non autorizzata. Per tutti gli intent personali rispettare `LinkAccount` quando token assente/scaduto. Non incorporare segreti nella ViewModel APL.
 
@@ -85,19 +87,20 @@ Stato sul branch `feat/ux2-clients` (fase 4 della roadmap del [design system](..
 | Home (non personale) | avvio, `AMAZON.HelpIntent`, richieste non riconosciute | testo pronunciato, stato del dato, pulsanti «Prossimi treni» e «Le mie tratte», esempi di richiesta |
 | Partenze | `NextTrainsIntent`, tocco su una tratta | nome della tratta, «Dati non disponibili in tempo reale», fonte, ora della verifica, nessun orario |
 | Stato treno | `TrainStatusIntent` | numero richiesto (o «Numero treno non indicato»), stesso stato del dato, nessuna puntualità |
-| Le mie tratte | `MyRoutesIntent`, tocco «Le mie tratte», tratta toccata non più esistente | le stesse cinque tratte lette a voce con l’etichetta «Fissata» testuale, il resto rimandato alla dashboard; stato vuoto se non ci sono tratte |
+| Le mie tratte | `MyRoutesIntent`, tocco «Le mie tratte», tratta toccata non più esistente, domanda su una tratta non trovata o ambigua | le stesse cinque tratte lette a voce con l’etichetta «Fissata» testuale, il resto rimandato alla dashboard; stato vuoto se non ci sono tratte. Dopo una domanda di puntualità il tocco su una tratta chiede la sua puntualità, altrimenti i prossimi treni |
+| Puntualità | `TrainPunctualityIntent`, `RoutePunctualityIntent`, tocco su una tratta dopo una domanda di puntualità | «Treno 9558» o il nome della tratta, riquadri con quota in orario, ritardo medio, giorni osservati (e treni per la tratta), la frase pronunciata senza l’attribuzione; banner «Statistiche non ufficiali di Binario su dati ViaggiaTreno», «Statistiche, non dati in tempo reale», «Dati fino al …» (ultimo giorno della finestra) |
 
 **Non implementate:** *Dettaglio corsa* (nessun dato autorizzato su orari e fermate da mostrare), *Account* (senza collegamento la skill resta voce + card LinkAccount, nessun documento), *RouteSelector* separato (la lista «Le mie tratte» ne fa le veci), icona/immagine del marchio (il documento non carica risorse remote).
 
-**Componenti.** `BinarioQualityBanner` (stato, fonte, ora: sempre testo), `BinarioRouteRow` e `BinarioAction` (`TouchWrapper` con `role: button`, etichetta VoiceView, `SendEvent`), testata con marchio testuale e titolo, suggerimenti vocali. Tutti i valori arrivano dal datasource; i testi dell’utente sono resi letterali (`&`, `<`, `>` codificati, caratteri non XML rimossi), mai concatenati nel documento.
+**Componenti.** `BinarioQualityBanner` (stato, fonte, ora: sempre testo), `BinarioStat` (un valore grande e la sua etichetta, letti insieme da VoiceView), `BinarioRouteRow` e `BinarioAction` (`TouchWrapper` con `role: button`, etichetta VoiceView, `SendEvent`), testata con marchio testuale e titolo, suggerimenti vocali. Tutti i valori arrivano dal datasource; i testi dell’utente sono resi letterali (`&`, `<`, `>` codificati, caratteri non XML rimossi), mai concatenati nel documento.
 
-**Stati obbligatori.** Lo stato prodotto oggi è «non disponibile»: etichetta «Dati non disponibili in tempo reale» (la stessa frase della voce, in ogni locale della skill; in arabo il testo è allineato a destra), «Fonte: nessun provider ferroviario in tempo reale collegato», «Verificato alle HH:MM» in ora italiana con fuso. Il builder supporta anche lo stato *demo* («Catalogo dimostrativo locale — non live», fonte «dati dimostrativi, non operativi») per un futuro catalogo dimostrativo; lo stato *live* non esiste finché non c’è un provider autorizzato.
+**Stati obbligatori.** Lo stato prodotto oggi è «non disponibile»: etichetta «Dati non disponibili in tempo reale» (la stessa frase della voce, in ogni locale della skill; in arabo il testo è allineato a destra), «Fonte: nessun provider ferroviario in tempo reale collegato», «Verificato alle HH:MM» in ora italiana con fuso. Il builder supporta anche lo stato *demo* («Catalogo dimostrativo locale — non live», fonte «dati dimostrativi, non operativi») per un futuro catalogo dimostrativo; lo stato *live* non esiste finché non c’è un provider autorizzato. Le schermate di puntualità hanno lo stato *statistiche*: l’attribuzione al posto dello stato, «Statistiche, non dati in tempo reale» come fonte e la data di fine della finestra (calendario gregoriano in ogni locale) al posto dell’ora di verifica.
 
 **Viewport.** Classi lette dal viewport del dispositivo, mai dal nome commerciale: *small* (Echo Show 5, 960×480 dp e inferiori: una colonna), *medium* (≥ 960×540 dp: Echo Show 8, prima generazione, Hub; una colonna con suggerimenti), *large* (≥ 1280×720 dp: Echo Show 10; stato | contenuto), *xlarge* (≥ 1920×1000 dp: Echo Show 15/21; stato | contenuto | suggerimenti), *round* (Echo Spot 2017: una colonna centrata, niente suggerimenti). Il corpo scorre (`ScrollView`) per testi lunghi.
 
 **Token e accessibilità.** Token Binario 2.0 scuri (default dei dispositivi Echo) e chiari (`theme: light`), testata sul token `#205B2A` (≈ `#205E2B` del concept), pulsanti primari `#9BDD9E`/`#0D1710` al buio e `#2E7D32`/bianco al chiaro; tutti i testi ≥ 4,5:1, bordi e focus ≥ 3:1 (verificato nei test). Target touch 64 dp (80 dp su xlarge), stato focus visibile per telecomando/tastiera.
 
-**Sessione e tocchi.** Con un documento a schermo `shouldEndSession` viene omesso: la sessione resta aperta a microfono chiuso, così il documento resta leggibile e i tocchi arrivano alla skill. Ogni `Alexa.Presentation.APL.UserEvent` è accettato solo per `binario.nextTrains` (con il nome tratta mostrato) e `binario.myRoutes`, e ripassa dalla verifica dell’account linking come una richiesta vocale; senza collegamento valido la risposta è la card LinkAccount, senza documento.
+**Sessione e tocchi.** Con un documento a schermo `shouldEndSession` viene omesso: la sessione resta aperta a microfono chiuso, così il documento resta leggibile e i tocchi arrivano alla skill. Ogni `Alexa.Presentation.APL.UserEvent` è accettato solo per `binario.nextTrains` e `binario.punctuality` (con il nome tratta mostrato) e `binario.myRoutes`, e ripassa dalla verifica dell’account linking come una richiesta vocale; senza collegamento valido la risposta è la card LinkAccount, senza documento.
 
 **Privacy.** Nessun documento personale prima del collegamento verificato, dopo Stop/Annulla/Home, su `SessionEndedRequest` o dopo un errore; il datasource non contiene token, identificativi Alexa/Binario, origini o destinazioni (verificato nei test).
 
