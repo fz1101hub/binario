@@ -12,9 +12,11 @@ Ne derivano tre regole di progetto:
 2. **Attribuzione onesta.** Il file dichiara `"source": "ViaggiaTreno, elaborazione Binario (non ufficiale)"`; l'app mostra «Statistiche non ufficiali di Binario su dati ViaggiaTreno».
 3. **Ritiro rapido.** Su richiesta di Trenitalia/RFI, o se ViaggiaTreno cambia condizioni:
    1. disattivare subito il workflow (`gh workflow disable punctuality.yml`, poi rimuovere `.github/workflows/punctuality.yml`): le richieste cessano;
-   2. pubblicare una release con la proprietà Gradle `binario.punctualityStats=false` (asset escluso dall'APK, interfaccia nascosta) e rimuovere `app/src/main/assets/punctuality/`;
+   2. pubblicare una release con la proprietà Gradle `binario.punctualityStats=false` (asset escluso dall'APK, interfaccia nascosta) e rimuovere `app/src/main/assets/punctuality/`; in `release-sign` il comando Gradle riceve `-Pbinario.punctualityStats=false` e la verifica dei bundle firmati `--punctuality-stats absent` (`tools/verify_ci_pinning.py` richiede l'uno con l'altro);
    3. cancellare le cache `punctuality-raw-*` (`gh cache list --key punctuality-raw- --json id -q '.[].id' | xargs -n1 gh cache delete`, o dalla pagina Actions → Caches);
    4. aggiornare questo documento e la riga in `SOURCE_POLICY.md`.
+
+   L'interruttore è provato a ogni run del job `android` di `android-ci.yml`: dopo le build normali (il cui bundle telefono deve contenere `punctuality/stats_v1.json.gz`, identico all'albero, quando l'albero ha il file: `tools/verify_android_app_bundles.py --punctuality-stats auto`, predefinito) lo step «Verify the punctuality switch leaves the statistics out» ricostruisce la release del telefono con `-Pbinario.punctualityStats=false` e verifica con `--apk … --punctuality-stats absent` che l'APK non abbia nulla sotto `assets/punctuality/`. Finché l'albero non ha il file delle statistiche, lo step crea per la durata della build un file sonda in `app/src/main/assets/punctuality/` (poi rimosso), così l'esclusione è dimostrata comunque. Costa un `assembleRelease` in più (lint vital escluso, già eseguito dalla build normale).
 
 ## Cosa si raccoglie e da dove
 

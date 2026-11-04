@@ -429,6 +429,38 @@ class VerifyCiPinningTest(unittest.TestCase):
                 problems = policy.workflow_problems(workflow_path, mutated, LOCK)
                 self.assertTrue(any(expected in problem and "freshness-watch" in problem for problem in problems), problems)
 
+    def test_the_punctuality_switch_is_proved_on_every_android_run(self) -> None:
+        workflow_path = ROOT / ".github/workflows/android-ci.yml"
+        original = workflow_path.read_text(encoding="utf-8")
+        self.assertEqual([], policy.workflow_problems(workflow_path, original, LOCK))
+        name = "      - name: Verify the punctuality switch leaves the statistics out\n"
+        start = original.index(name)
+        end = original.index("      - name: First reproducibility rebuild\n")
+        signed = "-Pbinario.personalSources=false :app:bundleRelease :wear:bundleRelease"
+        mutations = {
+            "serve uno step android che costruisca": original[:start] + original[end:],
+            "deve girare sempre": original.replace(name, name + "        if: ${{ github.event_name != 'pull_request' }}\n", 1),
+            "release del telefono": original.replace(
+                "            :app:assembleRelease -x :app:lintVitalRelease\n", "            :app:assembleDebug\n", 1),
+            "va verificata con --punctuality-stats absent": original.replace(
+                "--punctuality-stats absent \\\n", "--punctuality-stats present \\\n", 1),
+            "controllo ordinario dei bundle": original.replace(
+                "verify_android_app_bundles.py --punctuality-stats auto |", "verify_android_app_bundles.py --punctuality-stats absent |", 1),
+            "release-sign verifica --punctuality-stats absent": original.replace(
+                signed, "-Pbinario.punctualityStats=false " + signed, 1),
+        }
+        for expected, mutated in mutations.items():
+            with self.subTest(expected=expected):
+                self.assertNotEqual(original, mutated)
+                problems = policy.workflow_problems(workflow_path, mutated, LOCK)
+                self.assertTrue(any(expected in problem for problem in problems), problems)
+        # A withdrawal release: the switch off in release-sign, checked for absence, is accepted.
+        withdrawal = original.replace(signed, "-Pbinario.punctualityStats=false " + signed, 1).replace(
+            "python3 tools/verify_android_app_bundles.py --signed |",
+            "python3 tools/verify_android_app_bundles.py --signed --punctuality-stats absent |", 1)
+        self.assertNotEqual(original, withdrawal)
+        self.assertEqual([], policy.workflow_problems(workflow_path, withdrawal, LOCK))
+
     def test_flow_style_mutable_inputs_are_rejected(self) -> None:
         text = """
         permissions: {contents: read}

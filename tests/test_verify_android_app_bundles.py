@@ -210,6 +210,124 @@ class VerifyAndroidAppBundlesTest(unittest.TestCase):
         problems = POLICY.verify_bundle(self.path)
         self.assertEqual(["pack orario solo per build personali nel bundle: base/assets/gtfs-personal/gtt-gtfs.zip"], problems)
 
+    def test_punctuality_statistics_follow_the_switch_and_the_tree(self) -> None:
+        tree = Path(self.temp.name) / "tree" / "stats_v1.json.gz"
+        missing = Path(self.temp.name) / "missing" / "stats_v1.json.gz"
+        tree.parent.mkdir()
+        tree.write_bytes(b"\x1f\x8b statistics")
+        asset = "base/assets/punctuality/stats_v1.json.gz"
+        cases = {
+            # (bundle asset, tree file, expectation) -> problem fragment or None
+            ("same", tree, "auto"): None,
+            ("same", tree, "present"): None,
+            (None, tree, "auto"): "assenti dal pacchetto",
+            (None, tree, "present"): "assenti dal pacchetto",
+            ("other", tree, "auto"): "diverse dal file dell'albero",
+            # No file in the tree yet: nothing is required unless asked.
+            (None, missing, "auto"): None,
+            ("other", missing, "auto"): None,
+            (None, missing, "present"): "richiesto",
+            ("other", missing, "present"): None,
+            # The switch off: nothing under punctuality/, whatever the tree has.
+            (None, tree, "absent"): None,
+            ("same", tree, "absent"): "con -Pbinario.punctualityStats=false",
+            ("probe", missing, "absent"): "base/assets/punctuality/switch-probe.txt",
+            ("same", tree, None): None,
+            (None, tree, None): None,
+        }
+        for (content, tree_asset, expectation), expected in cases.items():
+            with self.subTest(content=content, tree=tree_asset.parent.name, expectation=expectation):
+                entries = self.valid_entries()
+                if content == "probe":
+                    entries["base/assets/punctuality/switch-probe.txt"] = b"switch probe"
+                elif content is not None:
+                    entries[asset] = tree.read_bytes() if content == "same" else b"other statistics"
+                entries["base/assets/punctuality-notes/readme.txt"] = b"not the statistics directory"
+                self.write_bundle(entries)
+                problems = POLICY.verify_bundle(self.path, {}, punctuality=expectation, tree_asset=tree_asset)
+                if expected is None:
+                    self.assertEqual([], problems)
+                else:
+                    self.assertEqual(1, len(problems), problems)
+                    self.assertIn(expected, problems[0])
+        self.assertEqual("statistiche di puntualità presenti e identiche all'albero", POLICY.punctuality_detail("auto", tree))
+        self.assertEqual("statistiche di puntualità non nell'albero: nessun requisito", POLICY.punctuality_detail("auto", missing))
+        self.assertEqual("statistiche di puntualità assenti come richiesto", POLICY.punctuality_detail("absent", tree))
+        self.assertIsNone(POLICY.punctuality_detail(None, tree))
+        self.write_bundle(self.valid_entries())
+        self.assertTrue(any("attesa non valida" in problem for problem in POLICY.verify_bundle(self.path, {}, punctuality="maybe")))
+
+    def test_apk_mode_checks_only_the_punctuality_assets(self) -> None:
+        apk = Path(self.temp.name) / "app-release-unsigned.apk"
+        missing = Path(self.temp.name) / "missing" / "stats_v1.json.gz"
+
+        def write_apk(entries: dict[str, bytes]) -> None:
+            with zipfile.ZipFile(apk, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+                for name, content in {"AndroidManifest.xml": b"binary xml", "classes.dex": b"dex\n035\x00", **entries}.items():
+                    archive.writestr(name, content)
+
+        write_apk({"assets/gtfs/manifest.json": b"{}"})
+        self.assertEqual([], POLICY.verify_apk_punctuality(apk, "absent", missing))
+        write_apk({"assets/punctuality/switch-probe.txt": b"switch probe"})
+        problems = POLICY.verify_apk_punctuality(apk, "absent", missing)
+        self.assertEqual(["statistiche di puntualità nel pacchetto con -Pbinario.punctualityStats=false: "
+                          "assets/punctuality/switch-probe.txt"], problems)
+        write_apk({"assets/punctuality/stats_v1.json.gz": b"statistics"})
+        self.assertEqual([], POLICY.verify_apk_punctuality(apk, "present", missing))
+        # A bundle's base/ prefix does not count in an APK, nor the other way round.
+        write_apk({"base/assets/punctuality/stats_v1.json.gz": b"statistics"})
+        self.assertEqual([], POLICY.verify_apk_punctuality(apk, "absent", missing))
+        self.assertTrue(POLICY.verify_apk_punctuality(apk, "present", missing))
+        write_apk({})
+        with zipfile.ZipFile(apk, "a") as archive:
+            archive.writestr("../escape", b"x")
+        self.assertTrue(any("non sicuro" in problem for problem in POLICY.verify_apk_punctuality(apk, "absent", missing)))
+        with zipfile.ZipFile(apk, "w") as archive:
+            archive.writestr("assets/x", b"x")
+        self.assertTrue(any("senza AndroidManifest.xml o DEX" in problem for problem in POLICY.verify_apk_punctuality(apk, "absent", missing)))
+        apk.write_bytes(b"not a zip")
+        self.assertTrue(any("APK ZIP non valido" in problem for problem in POLICY.verify_apk_punctuality(apk, "absent", missing)))
+        self.assertTrue(any("non leggibile" in problem for problem in POLICY.verify_apk_punctuality(missing, "absent", missing)))
+
+    def test_command_line_punctuality_expectations(self) -> None:
+        apk = Path(self.temp.name) / "app-release-unsigned.apk"
+        with zipfile.ZipFile(apk, "w") as archive:
+            archive.writestr("AndroidManifest.xml", b"binary xml")
+            archive.writestr("classes.dex", b"dex")
+            archive.writestr("assets/punctuality/stats_v1.json.gz", b"statistics")
+        output, errors = io.StringIO(), io.StringIO()
+        with mock.patch("sys.stdout", output), mock.patch("sys.stderr", errors):
+            self.assertEqual(1, POLICY.main(["--apk", str(apk), "--punctuality-stats", "absent"]))
+            self.assertEqual(0, POLICY.main(["--apk", str(apk), "--punctuality-stats", "present"]))
+            with self.assertRaises(SystemExit):
+                POLICY.main(["--apk", str(apk)])
+            with self.assertRaises(SystemExit):
+                POLICY.main(["--profile", "companion", "--punctuality-stats", "absent"])
+        self.assertIn("Android APK: FAIL: statistiche di puntualità nel pacchetto", errors.getvalue())
+        self.assertIn("Android APK: PASS (", output.getvalue())
+
+        # The default (auto) applies to the phone bundle of the root profile only, never to Wear.
+        phone, wear = Path(self.temp.name) / "phone.aab", Path(self.temp.name) / "wear.aab"
+        expected = POLICY.expected_manifests("root")
+        for path, label, extra in ((phone, "phone", {}), (wear, "wear", {"base/assets/punctuality/x.txt": b"x"})):
+            entries = self.valid_entries(manifest_proto(**{
+                "version_code": expected[label]["versionCode"], "version_name": expected[label]["versionName"]}))
+            entries.update(extra)
+            with zipfile.ZipFile(path, "w") as archive:
+                for name, content in entries.items():
+                    archive.writestr(name, content)
+        tree = Path(self.temp.name) / "stats_v1.json.gz"
+        tree.write_bytes(b"statistics")
+        output, errors = io.StringIO(), io.StringIO()
+        with mock.patch("sys.stdout", output), mock.patch("sys.stderr", errors), \
+                mock.patch.object(POLICY, "PUNCTUALITY_TREE_ASSET", tree):
+            self.assertEqual(1, POLICY.main(["--phone", str(phone), "--wear", str(wear)]))
+            self.assertEqual(0, POLICY.main(["--phone", str(phone), "--wear", str(wear), "--punctuality-stats", "absent"]))
+        self.assertIn("Android App Bundle (phone): FAIL: statistiche di puntualità assenti dal pacchetto", errors.getvalue())
+        self.assertNotIn("(wear): FAIL", errors.getvalue())
+        self.assertIn("Android App Bundle (phone): PASS (", output.getvalue())
+        self.assertIn("statistiche di puntualità assenti come richiesto", output.getvalue())
+
     def test_rejects_jar_signature_in_unsigned_bundle(self) -> None:
         entries = self.valid_entries()
         entries.update(

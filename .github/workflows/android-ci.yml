@@ -171,7 +171,8 @@ jobs:
         shell: bash
         run: |
           mkdir -p "$RUNNER_TEMP/play-bundles-unsigned"
-          python3 tools/verify_android_app_bundles.py | tee "$RUNNER_TEMP/play-bundles-unsigned/verify-android-app-bundles.log"
+          # --punctuality-stats auto: the phone bundle carries assets/punctuality/ when the tree has the statistics file.
+          python3 tools/verify_android_app_bundles.py --punctuality-stats auto | tee "$RUNNER_TEMP/play-bundles-unsigned/verify-android-app-bundles.log"
           cp app/build/outputs/bundle/release/app-release.aab wear/build/outputs/bundle/release/wear-release.aab "$RUNNER_TEMP/play-bundles-unsigned/"
 
       - name: Upload unsigned Google Play bundles
@@ -218,6 +219,24 @@ jobs:
           retention-days: 14
           if-no-files-found: error
           overwrite: true
+
+      # The withdrawal switch of the punctuality statistics (docs/data-sources/PUNCTUALITY_STATS.md): a build with
+      # -Pbinario.punctualityStats=false must leave assets/punctuality/ out. While the tree has no statistics file, a
+      # probe file stands in for it, so the exclusion is proved anyway. One extra release assemble of the phone app,
+      # after every artifact above is copied and before the reproducibility rebuilds (which rerun every task).
+      - name: Verify the punctuality switch leaves the statistics out
+        run: |
+          probe=""
+          if [ ! -e app/src/main/assets/punctuality ]; then
+            probe=app/src/main/assets/punctuality
+            mkdir -p "$probe"
+            printf 'switch probe\n' > "$probe/switch-probe.txt"
+          fi
+          trap 'if [ -n "$probe" ]; then rm -rf "$probe"; fi' EXIT
+          ./gradlew --no-daemon --dependency-verification=strict -Pbinario.punctualityStats=false \
+            :app:assembleRelease -x :app:lintVitalRelease
+          python3 tools/verify_android_app_bundles.py --punctuality-stats absent \
+            --apk app/build/outputs/apk/release/app-release-unsigned.apk
 
       - name: First reproducibility rebuild
         if: ${{ (github.event_name == 'workflow_dispatch' && inputs.verify_reproducibility) || (github.event_name == 'pull_request' && startsWith(github.base_ref, 'stabilization/')) }}
