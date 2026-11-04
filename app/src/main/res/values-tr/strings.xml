@@ -1501,4 +1501,7 @@
     <string name="bikes_conditions_link">Trende bisiklet: %1$s koşulları</string>
     <string name="planner_airport_links">Havalimanı bağlantıları</string>
     <string name="planner_airport_search">%1$s → %2$s trenlerini ara</string>
+    <string name="compensation_notice_quarter">%1$s gecikmeyle vardı: (AB) 2021/782 sayılı Tüzük uyarınca bilet fiyatının %%25’i kadar tazminat hakkınız olabilir (120 dakikadan itibaren %%50).</string>
+    <string name="compensation_notice_half">%1$s gecikmeyle vardı: (AB) 2021/782 sayılı Tüzük uyarınca bilet fiyatının %%50’si kadar tazminat hakkınız olabilir.</string>
+    <string name="compensation_notice_conditions">Demiryolu şirketi 4 €’nun altındaki tutarları ve aşırı hava koşulları ya da raylarda insan bulunması gibi dış nedenlerden kaynaklanan gecikmeleri ödemeyi reddedebilir; kendi personelinin grevi dış neden sayılmaz. Bölgesel trenlerde koşullar bölgeyle yapılan hizmet sözleşmesine de bağlıdır.</string>
 </resources>

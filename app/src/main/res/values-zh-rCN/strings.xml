@@ -1456,4 +1456,7 @@
     <string name="bikes_conditions_link">携带自行车：%1$s 的规定</string>
     <string name="planner_airport_links">机场铁路连接</string>
     <string name="planner_airport_search">搜索从 %1$s 到 %2$s 的列车</string>
+    <string name="compensation_notice_quarter">晚点 %1$s 到达：根据欧盟第 2021/782 号条例，你可能有权获得票价 25%% 的赔偿（晚点 120 分钟起为 50%%）。</string>
+    <string name="compensation_notice_half">晚点 %1$s 到达：根据欧盟第 2021/782 号条例，你可能有权获得票价 50%% 的赔偿。</string>
+    <string name="compensation_notice_conditions">铁路公司可拒绝支付低于 4 欧元的金额，以及因极端天气或轨道上有人等外部原因造成的晚点；本公司员工罢工不属于外部原因。地区列车的条件还取决于与大区签订的服务合同。</string>
 </resources>

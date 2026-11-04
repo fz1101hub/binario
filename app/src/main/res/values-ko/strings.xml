@@ -1433,4 +1433,7 @@
     <string name="bikes_conditions_link">자전거 휴대 승차: %1$s 이용 조건</string>
     <string name="planner_airport_links">공항 연결 열차</string>
     <string name="planner_airport_search">%1$s에서 %2$s(으)로 가는 열차 검색</string>
+    <string name="compensation_notice_quarter">%1$s 늦게 도착: 규정 (EU) 2021/782에 따라 승차권 가격의 25%%를 보상받을 수 있습니다(120분부터 50%%).</string>
+    <string name="compensation_notice_half">%1$s 늦게 도착: 규정 (EU) 2021/782에 따라 승차권 가격의 50%%를 보상받을 수 있습니다.</string>
+    <string name="compensation_notice_conditions">철도 회사는 4유로 미만의 금액과 극한 기상이나 선로 위의 사람 등 외부 요인으로 인한 지연에 대해서는 지급을 거부할 수 있습니다. 자사 직원의 파업은 외부 요인이 아닙니다. 지역 열차의 조건은 주와 맺은 운행 계약에 따라서도 달라집니다.</string>
 </resources>

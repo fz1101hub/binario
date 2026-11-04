@@ -1456,4 +1456,7 @@
     <string name="bikes_conditions_link">นำจักรยานขึ้นรถไฟ: เงื่อนไขของ %1$s</string>
     <string name="planner_airport_links">รถไฟเชื่อมสนามบิน</string>
     <string name="planner_airport_search">ค้นหารถไฟจาก %1$s ไป %2$s</string>
+    <string name="compensation_notice_quarter">มาถึงช้า %1$s: ตามข้อบังคับ (EU) 2021/782 คุณอาจมีสิทธิ์ได้รับค่าชดเชย 25%% ของราคาตั๋ว (50%% ตั้งแต่ 120 นาที)</string>
+    <string name="compensation_notice_half">มาถึงช้า %1$s: ตามข้อบังคับ (EU) 2021/782 คุณอาจมีสิทธิ์ได้รับค่าชดเชย 50%% ของราคาตั๋ว</string>
+    <string name="compensation_notice_conditions">บริษัทรถไฟอาจปฏิเสธจำนวนเงินที่ต่ำกว่า 4 ยูโร และความล่าช้าจากสาเหตุภายนอก เช่น สภาพอากาศรุนแรงหรือมีคนอยู่บนราง ส่วนการนัดหยุดงานของพนักงานของบริษัทเองไม่ถือเป็นสาเหตุภายนอก สำหรับรถไฟภูมิภาค เงื่อนไขยังขึ้นอยู่กับสัญญาบริการกับภูมิภาคด้วย</string>
 </resources>

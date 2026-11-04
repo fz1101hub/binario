@@ -1658,4 +1658,7 @@
     <string name="bikes_conditions_link">الدراجات على متن القطار: شروط %1$s</string>
     <string name="planner_airport_links">الربط بالمطارات</string>
     <string name="planner_airport_search">ابحث عن القطارات من %1$s إلى %2$s</string>
+    <string name="compensation_notice_quarter">وصل بتأخير %1$s: وفق اللائحة (الاتحاد الأوروبي) 2021/782 قد يحق لك تعويض بنسبة 25%% من سعر التذكرة (50%% ابتداءً من 120 دقيقة).</string>
+    <string name="compensation_notice_half">وصل بتأخير %1$s: وفق اللائحة (الاتحاد الأوروبي) 2021/782 قد يحق لك تعويض بنسبة 50%% من سعر التذكرة.</string>
+    <string name="compensation_notice_conditions">يجوز لشركة السكك الحديدية رفض المبالغ التي تقل عن 4 يورو والتأخيرات الناجمة عن أسباب خارجية، مثل الطقس القاسي أو وجود أشخاص على السكة؛ ولا يُعدّ إضراب موظفيها سببًا خارجيًا. في القطارات الإقليمية تتوقف الشروط أيضًا على عقد الخدمة مع الإقليم.</string>
 </resources>

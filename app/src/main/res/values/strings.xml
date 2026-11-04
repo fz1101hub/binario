@@ -1549,4 +1549,8 @@
     <!-- Planner: ready routes to the airports -->
     <string name="planner_airport_links">Collegamenti con gli aeroporti</string>
     <string name="planner_airport_search">Cerca i treni da %1$s a %2$s</string>
+    <!-- Delay compensation notice (Regulation (EU) 2021/782 art. 19) in the train detail -->
+    <string name="compensation_notice_quarter">Arrivato con %1$s di ritardo: per il regolamento UE 2021/782 potresti avere diritto a un indennizzo del 25%% del prezzo del biglietto (50%% da 120 minuti).</string>
+    <string name="compensation_notice_half">Arrivato con %1$s di ritardo: per il regolamento UE 2021/782 potresti avere diritto a un indennizzo del 50%% del prezzo del biglietto.</string>
+    <string name="compensation_notice_conditions">L’impresa ferroviaria può non pagare importi inferiori a 4 € e ritardi dovuti a cause esterne, come condizioni meteo estreme o persone sui binari; uno sciopero del suo personale non è una causa esterna. Sui treni regionali le condizioni dipendono anche dal contratto di servizio con la regione.</string>
 </resources>

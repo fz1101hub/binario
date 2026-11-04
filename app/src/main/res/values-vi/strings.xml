@@ -1456,4 +1456,7 @@
     <string name="bikes_conditions_link">Mang xe đạp lên tàu: điều kiện của %1$s</string>
     <string name="planner_airport_links">Tàu đến sân bay</string>
     <string name="planner_airport_search">Tìm tàu từ %1$s đến %2$s</string>
+    <string name="compensation_notice_quarter">Đến trễ %1$s: theo Quy định (EU) 2021/782, bạn có thể được bồi thường 25%% giá vé (50%% từ 120 phút).</string>
+    <string name="compensation_notice_half">Đến trễ %1$s: theo Quy định (EU) 2021/782, bạn có thể được bồi thường 50%% giá vé.</string>
+    <string name="compensation_notice_conditions">Công ty đường sắt có thể từ chối khoản dưới 4 € và các trường hợp trễ do nguyên nhân bên ngoài như thời tiết khắc nghiệt hoặc có người trên đường ray; đình công của chính nhân viên công ty không phải là nguyên nhân bên ngoài. Với tàu khu vực, điều kiện còn phụ thuộc vào hợp đồng dịch vụ với vùng.</string>
 </resources>

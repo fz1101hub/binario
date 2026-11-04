@@ -1546,4 +1546,7 @@
     <string name="bikes_conditions_link">Vélos à bord : conditions de %1$s</string>
     <string name="planner_airport_links">Liaisons avec les aéroports</string>
     <string name="planner_airport_search">Chercher les trains de %1$s à %2$s</string>
+    <string name="compensation_notice_quarter">Arrivé avec %1$s de retard : selon le règlement (UE) 2021/782, vous pourriez avoir droit à une indemnisation de 25%% du prix du billet (50%% à partir de 120 minutes).</string>
+    <string name="compensation_notice_half">Arrivé avec %1$s de retard : selon le règlement (UE) 2021/782, vous pourriez avoir droit à une indemnisation de 50%% du prix du billet.</string>
+    <string name="compensation_notice_conditions">L’entreprise ferroviaire peut refuser les montants inférieurs à 4 € et les retards dus à des causes extérieures, comme des conditions météorologiques extrêmes ou des personnes sur les voies ; une grève de son personnel n’est pas une cause extérieure. Dans les trains régionaux, les conditions dépendent aussi du contrat de service avec la région.</string>
 </resources>

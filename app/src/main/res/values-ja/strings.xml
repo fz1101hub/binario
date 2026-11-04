@@ -1433,4 +1433,7 @@
     <string name="bikes_conditions_link">自転車の持ち込み：%1$s の条件</string>
     <string name="planner_airport_links">空港へのアクセス列車</string>
     <string name="planner_airport_search">%1$s から %2$s への列車を検索</string>
+    <string name="compensation_notice_quarter">%1$s 遅れて到着：規則 (EU) 2021/782 により、運賃の 25%% の補償を受けられる場合があります（120 分以上は 50%%）。</string>
+    <string name="compensation_notice_half">%1$s 遅れて到着：規則 (EU) 2021/782 により、運賃の 50%% の補償を受けられる場合があります。</string>
+    <string name="compensation_notice_conditions">鉄道会社は 4 ユーロ未満の金額や、異常気象や線路内の人など外部要因による遅れについては支払いを拒否できます。自社職員のストライキは外部要因に当たりません。地域列車の条件は州との運行契約にもよります。</string>
 </resources>

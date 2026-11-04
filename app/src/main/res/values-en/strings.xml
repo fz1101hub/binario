@@ -1501,4 +1501,7 @@
     <string name="bikes_conditions_link">Bikes on board: %1$s conditions</string>
     <string name="planner_airport_links">Airport rail links</string>
     <string name="planner_airport_search">Search trains from %1$s to %2$s</string>
+    <string name="compensation_notice_quarter">Arrived %1$s late: under Regulation (EU) 2021/782 you may be entitled to compensation of 25%% of the ticket price (50%% from 120 minutes).</string>
+    <string name="compensation_notice_half">Arrived %1$s late: under Regulation (EU) 2021/782 you may be entitled to compensation of 50%% of the ticket price.</string>
+    <string name="compensation_notice_conditions">The railway company may refuse amounts under €4 and delays due to external causes, such as extreme weather or people on the tracks; a strike by its own staff is not an external cause. On regional trains the conditions also depend on the service contract with the region.</string>
 </resources>

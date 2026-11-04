@@ -69,6 +69,9 @@ import it.binario.app.R
 import it.binario.app.TabularFigures
 import it.binario.app.TrainCalendarAction
 import it.binario.app.TrainShareStrings
+import it.binario.app.data.CompensationShare
+import it.binario.app.data.DelayCompensation
+import it.binario.app.data.DelayCompensationRule
 import it.binario.app.data.Freshness
 import it.binario.app.data.PlatformChange
 import it.binario.app.data.ServiceStatus
@@ -237,9 +240,12 @@ internal fun ServiceDetailScreen(
     val context = LocalContext.current
     val uriHandler = LocalUriHandler.current
     val purchaseSite = OfficialLinks.purchaseSiteOf(service.operator, service.operatorDisplayName)
-    // The operator's official pages of Settings › Biglietti e assistenza (bikes on board).
+    // The operator's official pages of Settings › Biglietti e assistenza (bikes on board, refunds and compensation).
     val operatorLinks = OfficialLinks.operatorOf(service.operator, service.operatorDisplayName)
     val bikesPage = operatorLinks?.let { links -> links.url(OperatorLinkKind.BIKES)?.let { links.name to it } }
+    // Arrived 60 minutes late or more at the destination, on a verified actual arrival: the EU compensation rule.
+    val compensation = DelayCompensationRule.of(service, isDemonstration)
+    val refundsPage = operatorLinks?.url(OperatorLinkKind.REFUNDS)
     val co2 = rememberCo2(service, mapStationIndex)
     val stopShareStrings = timetableShareStrings()
     val stopShareChooser = stringResource(R.string.share_stop_chooser)
@@ -320,6 +326,7 @@ internal fun ServiceDetailScreen(
                                         Text(stringResource(R.string.detail_info_status), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                         ServiceStatusBadge(shown)
                                     }
+                                    compensation?.let { DelayCompensationNotice(it, refundsPage) }
                                     if (isDemonstration) {
                                         Pill(stringResource(R.string.data_status_demo), container = MaterialTheme.colorScheme.tertiaryContainer, content = MaterialTheme.colorScheme.onTertiaryContainer)
                                     }
@@ -862,6 +869,45 @@ private fun RouteChangeBanner(
                 sourceLabel?.let {
                     Text(stringResource(R.string.route_change_source, it), style = MaterialTheme.typography.labelSmall)
                 }
+            }
+        }
+    }
+}
+
+/**
+ * The delay compensation notice of the Info tab: what Regulation (EU) 2021/782 art. 19 grants for the delay at the
+ * destination, its limits, and the operator's official refunds and compensation page when one is known. It states the
+ * rule only; the app knows nothing of the ticket.
+ */
+@Composable
+private fun DelayCompensationNotice(compensation: DelayCompensation, refundsPage: String?) {
+    val uriHandler = LocalUriHandler.current
+    val delay = pluralStringResource(R.plurals.minutes_short, compensation.delayMinutes, compensation.delayMinutes)
+    Surface(
+        color = MaterialTheme.colorScheme.tertiaryContainer,
+        contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+        shape = RoundedCornerShape(12.dp),
+        modifier = Modifier.fillMaxWidth().testTag("detail-delay-compensation")
+    ) {
+        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(
+                stringResource(
+                    if (compensation.share == CompensationShare.HALF) R.string.compensation_notice_half else R.string.compensation_notice_quarter,
+                    delay
+                ),
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Bold
+            )
+            Text(stringResource(R.string.compensation_notice_conditions), style = MaterialTheme.typography.bodySmall)
+            refundsPage?.let { url ->
+                TonalButton(
+                    text = stringResource(R.string.tickets_link_refunds),
+                    onClick = { openExternalLink(uriHandler, url) },
+                    trailingIcon = Icons.AutoMirrored.Filled.OpenInNew,
+                    modifier = Modifier.testTag("detail-delay-compensation-link")
+                )
+                // The official domain the page opens on, as in Biglietti e assistenza.
+                runCatching { java.net.URI(url).host }.getOrNull()?.let { host -> Text(host, style = MaterialTheme.typography.labelSmall) }
             }
         }
     }

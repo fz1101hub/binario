@@ -1501,4 +1501,7 @@
     <string name="bikes_conditions_link">Fahrradmitnahme: Bedingungen von %1$s</string>
     <string name="planner_airport_links">Bahnverbindungen zu den Flughäfen</string>
     <string name="planner_airport_search">Züge von %1$s nach %2$s suchen</string>
+    <string name="compensation_notice_quarter">Mit %1$s Verspätung angekommen: Nach der Verordnung (EU) 2021/782 hast du eventuell Anspruch auf eine Entschädigung von 25%% des Fahrpreises (50%% ab 120 Minuten).</string>
+    <string name="compensation_notice_half">Mit %1$s Verspätung angekommen: Nach der Verordnung (EU) 2021/782 hast du eventuell Anspruch auf eine Entschädigung von 50%% des Fahrpreises.</string>
+    <string name="compensation_notice_conditions">Das Eisenbahnunternehmen kann Beträge unter 4 € und Verspätungen aus äußeren Gründen ablehnen, etwa durch extremes Wetter oder Personen im Gleis; ein Streik des eigenen Personals ist kein äußerer Grund. Bei Regionalzügen hängen die Bedingungen auch vom Verkehrsvertrag mit der Region ab.</string>
 </resources>
