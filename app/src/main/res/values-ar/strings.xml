@@ -1667,4 +1667,33 @@
     <string name="station_sala_blu_page">صفحة المساعدة لدى RFI</string>
     <string name="station_sala_blu_call_toll_free">اتصل بالرقم %1$s (مجاني من الهاتف الثابت)</string>
     <string name="station_sala_blu_call_national">اتصل بالرقم %1$s (من الهاتف المحمول أيضًا)</string>
+    <!-- Station board: direct connections from the station (embedded timetables) -->
+    <string name="direct_connections_title">الرحلات المباشرة</string>
+    <string name="direct_connections_from">من %1$s، بدون تبديل</string>
+    <string name="direct_connections_note">من الجداول المبرمجة المضمّنة في التطبيق، دون تأخيرات أو إلغاءات. المس وجهة للبحث عن القطارات.</string>
+    <string name="direct_connections_filter">تصفية الوجهات</string>
+    <string name="direct_connections_loading">جارٍ قراءة الجداول…</string>
+    <string name="direct_connections_empty">لا تتضمن الجداول المضمّنة رحلات مباشرة من هذه المحطة في هذا اليوم.</string>
+    <string name="direct_connections_no_match">لا توجد وجهة تحتوي على «%1$s».</string>
+    <string name="direct_connections_trains">القطارات</string>
+    <string name="direct_connections_urban">المترو والترام والقطارات الجبلية</string>
+    <plurals name="direct_connections_train_count">
+        <item quantity="zero">%d قطار</item>
+        <item quantity="one">%d قطار</item>
+        <item quantity="two">%d قطاران</item>
+        <item quantity="few">%d قطارات</item>
+        <item quantity="many">%d قطارًا</item>
+        <item quantity="other">%d قطار</item>
+    </plurals>
+    <plurals name="direct_connections_runs">
+        <item quantity="zero">%d رحلة</item>
+        <item quantity="one">%d رحلة</item>
+        <item quantity="two">%d رحلتان</item>
+        <item quantity="few">%d رحلات</item>
+        <item quantity="many">%d رحلة</item>
+        <item quantity="other">%d رحلة</item>
+    </plurals>
+    <string name="direct_connections_first_last">الأول %1$s، الأخير %2$s</string>
+    <string name="direct_connections_fastest">الأسرع %1$s</string>
+    <string name="direct_connections_from_stop">من محطة %1$s، على بُعد خطوات</string>
 </resources>

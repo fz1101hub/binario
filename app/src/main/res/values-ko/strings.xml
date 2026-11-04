@@ -1442,4 +1442,23 @@
     <string name="station_sala_blu_page">RFI 지원 페이지</string>
     <string name="station_sala_blu_call_toll_free">%1$s로 전화(유선 전화는 무료)</string>
     <string name="station_sala_blu_call_national">%1$s로 전화(휴대전화로도 가능)</string>
+    <!-- Station board: direct connections from the station (embedded timetables) -->
+    <string name="direct_connections_title">직통 연결</string>
+    <string name="direct_connections_from">%1$s에서 환승 없이</string>
+    <string name="direct_connections_note">앱에 포함된 정규 시간표 기준이며 지연이나 운휴는 반영되지 않습니다. 목적지를 누르면 열차를 검색합니다.</string>
+    <string name="direct_connections_filter">목적지 필터</string>
+    <string name="direct_connections_loading">시간표를 읽는 중…</string>
+    <string name="direct_connections_empty">포함된 시간표에는 이날 이 역에서 출발하는 직통 연결이 없습니다.</string>
+    <string name="direct_connections_no_match">‘%1$s’이(가) 포함된 목적지가 없습니다.</string>
+    <string name="direct_connections_trains">열차</string>
+    <string name="direct_connections_urban">지하철, 트램, 푸니쿨라</string>
+    <plurals name="direct_connections_train_count">
+        <item quantity="other">열차 %d편</item>
+    </plurals>
+    <plurals name="direct_connections_runs">
+        <item quantity="other">%d회 운행</item>
+    </plurals>
+    <string name="direct_connections_first_last">첫차 %1$s, 막차 %2$s</string>
+    <string name="direct_connections_fastest">최단 %1$s</string>
+    <string name="direct_connections_from_stop">가까운 %1$s 정류장에서</string>
 </resources>

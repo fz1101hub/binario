@@ -590,7 +590,8 @@ internal fun BinarioApp(
                 openDetails = { service -> openDetail(AppScreen.DEPARTURES) { viewModel.openService(service) } },
                 manageRoutes = { showScreen(AppScreen.FOR_YOU) },
                 stationRunDetailsInSheet = !inSidePane,
-                selectedServiceId = viewModel.selectedService?.id.takeIf { inSidePane && screen == AppScreen.DETAIL }
+                selectedServiceId = viewModel.selectedService?.id.takeIf { inSidePane && screen == AppScreen.DETAIL },
+                openRouteResults = { showResults(AppScreen.RESULTS, AppScreen.PLANNER) }
             )
             AppScreen.FOR_YOU -> ForYouScreen(
                 modifier = modifier,

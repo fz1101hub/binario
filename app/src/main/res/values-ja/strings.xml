@@ -1442,4 +1442,23 @@
     <string name="station_sala_blu_page">RFI のサポートページ</string>
     <string name="station_sala_blu_call_toll_free">%1$s に電話（固定電話から無料）</string>
     <string name="station_sala_blu_call_national">%1$s に電話（携帯電話からも可）</string>
+    <!-- Station board: direct connections from the station (embedded timetables) -->
+    <string name="direct_connections_title">直通の行き先</string>
+    <string name="direct_connections_from">%1$s から乗り換えなし</string>
+    <string name="direct_connections_note">アプリ内の時刻表による予定時刻で、遅延や運休は含みません。行き先をタップすると列車を検索します。</string>
+    <string name="direct_connections_filter">行き先を絞り込む</string>
+    <string name="direct_connections_loading">時刻表を読み込み中…</string>
+    <string name="direct_connections_empty">この日は、アプリ内の時刻表にこの駅からの直通便がありません。</string>
+    <string name="direct_connections_no_match">「%1$s」を含む行き先はありません。</string>
+    <string name="direct_connections_trains">列車</string>
+    <string name="direct_connections_urban">地下鉄・路面電車・ケーブルカー</string>
+    <plurals name="direct_connections_train_count">
+        <item quantity="other">%d 本</item>
+    </plurals>
+    <plurals name="direct_connections_runs">
+        <item quantity="other">%d 本</item>
+    </plurals>
+    <string name="direct_connections_first_last">始発 %1$s・最終 %2$s</string>
+    <string name="direct_connections_fastest">最速 %1$s</string>
+    <string name="direct_connections_from_stop">徒歩すぐの %1$s 停留所から</string>
 </resources>

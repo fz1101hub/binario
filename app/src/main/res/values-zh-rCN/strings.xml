@@ -1465,4 +1465,23 @@
     <string name="station_sala_blu_page">RFI 协助服务页面</string>
     <string name="station_sala_blu_call_toll_free">拨打 %1$s（固定电话免费）</string>
     <string name="station_sala_blu_call_national">拨打 %1$s（手机也可拨打）</string>
+    <!-- Station board: direct connections from the station (embedded timetables) -->
+    <string name="direct_connections_title">直达目的地</string>
+    <string name="direct_connections_from">从 %1$s 出发，无需换乘</string>
+    <string name="direct_connections_note">依据应用内置的计划时刻表，不含晚点和停运。点按目的地即可搜索列车。</string>
+    <string name="direct_connections_filter">筛选目的地</string>
+    <string name="direct_connections_loading">正在读取时刻表…</string>
+    <string name="direct_connections_empty">内置时刻表中，这一天没有从本站出发的直达车次。</string>
+    <string name="direct_connections_no_match">没有包含“%1$s”的目的地。</string>
+    <string name="direct_connections_trains">列车</string>
+    <string name="direct_connections_urban">地铁、有轨电车和缆车</string>
+    <plurals name="direct_connections_train_count">
+        <item quantity="other">%d 班列车</item>
+    </plurals>
+    <plurals name="direct_connections_runs">
+        <item quantity="other">%d 班</item>
+    </plurals>
+    <string name="direct_connections_first_last">首班 %1$s，末班 %2$s</string>
+    <string name="direct_connections_fastest">最快 %1$s</string>
+    <string name="direct_connections_from_stop">从步行即到的 %1$s 站出发</string>
 </resources>

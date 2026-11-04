@@ -1465,4 +1465,23 @@
     <string name="station_sala_blu_page">Trang hỗ trợ của RFI</string>
     <string name="station_sala_blu_call_toll_free">Gọi %1$s (miễn phí từ điện thoại bàn)</string>
     <string name="station_sala_blu_call_national">Gọi %1$s (cả từ di động)</string>
+    <!-- Station board: direct connections from the station (embedded timetables) -->
+    <string name="direct_connections_title">Chuyến đi thẳng</string>
+    <string name="direct_connections_from">Từ %1$s, không đổi chuyến</string>
+    <string name="direct_connections_note">Theo lịch trình dự kiến có trong ứng dụng, không tính chậm trễ hay hủy chuyến. Chạm vào một điểm đến để tìm tàu.</string>
+    <string name="direct_connections_filter">Lọc điểm đến</string>
+    <string name="direct_connections_loading">Đang đọc lịch trình…</string>
+    <string name="direct_connections_empty">Lịch trình có trong ứng dụng không có chuyến đi thẳng từ ga này vào ngày này.</string>
+    <string name="direct_connections_no_match">Không có điểm đến nào chứa “%1$s”.</string>
+    <string name="direct_connections_trains">Tàu hỏa</string>
+    <string name="direct_connections_urban">Tàu điện ngầm, tàu điện và tàu leo núi</string>
+    <plurals name="direct_connections_train_count">
+        <item quantity="other">%d chuyến tàu</item>
+    </plurals>
+    <plurals name="direct_connections_runs">
+        <item quantity="other">%d chuyến</item>
+    </plurals>
+    <string name="direct_connections_first_last">chuyến đầu %1$s, chuyến cuối %2$s</string>
+    <string name="direct_connections_fastest">nhanh nhất %1$s</string>
+    <string name="direct_connections_from_stop">từ trạm %1$s, cách vài bước</string>
 </resources>

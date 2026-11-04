@@ -149,7 +149,9 @@ internal fun DeparturesScreen(
     openDetails: (TrainService) -> Unit,
     manageRoutes: () -> Unit,
     stationRunDetailsInSheet: Boolean = true,
-    selectedServiceId: String? = null
+    selectedServiceId: String? = null,
+    /** Shows the route results after a search started here («Collegamenti diretti»). */
+    openRouteResults: () -> Unit = {}
 ) {
     Column(modifier = modifier.fillMaxSize().testTag("departures-screen")) {
         ScreenHeader(
@@ -191,7 +193,8 @@ internal fun DeparturesScreen(
             OperationsSection.STATIONS -> StationBoardScreen(
                 modifier = Modifier.weight(1f),
                 viewModel = viewModel,
-                runDetailsInSheet = stationRunDetailsInSheet
+                runDetailsInSheet = stationRunDetailsInSheet,
+                openRouteResults = openRouteResults
             )
         }
     }

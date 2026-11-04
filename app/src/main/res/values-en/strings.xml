@@ -1510,4 +1510,25 @@
     <string name="station_sala_blu_page">RFI assistance page</string>
     <string name="station_sala_blu_call_toll_free">Call %1$s (toll-free from landlines)</string>
     <string name="station_sala_blu_call_national">Call %1$s (also from mobiles)</string>
+    <!-- Station board: direct connections from the station (embedded timetables) -->
+    <string name="direct_connections_title">Direct connections</string>
+    <string name="direct_connections_from">From %1$s, without changes</string>
+    <string name="direct_connections_note">From the scheduled timetables included in the app, without delays or cancellations. Tap a destination to search for trains.</string>
+    <string name="direct_connections_filter">Filter destinations</string>
+    <string name="direct_connections_loading">Reading the timetables…</string>
+    <string name="direct_connections_empty">The included timetables have no direct connections from this station on this day.</string>
+    <string name="direct_connections_no_match">No destination contains “%1$s”.</string>
+    <string name="direct_connections_trains">Trains</string>
+    <string name="direct_connections_urban">Metro, tram and funiculars</string>
+    <plurals name="direct_connections_train_count">
+        <item quantity="one">%d train</item>
+        <item quantity="other">%d trains</item>
+    </plurals>
+    <plurals name="direct_connections_runs">
+        <item quantity="one">%d run</item>
+        <item quantity="other">%d runs</item>
+    </plurals>
+    <string name="direct_connections_first_last">first %1$s, last %2$s</string>
+    <string name="direct_connections_fastest">fastest %1$s</string>
+    <string name="direct_connections_from_stop">from the %1$s stop, a short walk away</string>
 </resources>

@@ -122,7 +122,13 @@ import java.util.Locale
 // Partenze: departures and arrivals of a station, with the run details of a board entry.
 
 @Composable
-internal fun StationBoardScreen(modifier: Modifier, viewModel: TrainViewModel, runDetailsInSheet: Boolean = true) {
+internal fun StationBoardScreen(
+    modifier: Modifier,
+    viewModel: TrainViewModel,
+    runDetailsInSheet: Boolean = true,
+    /** Shows the route results of a search to a destination of «Collegamenti diretti». */
+    openRouteResults: () -> Unit = {}
+) {
     LaunchedEffect(Unit) { viewModel.refreshStationBoardIfIdle() }
     // From 840 dp the run details sit in the side pane instead (StationBoardRunDetailsPane).
     if (runDetailsInSheet) viewModel.selectedBoardEntry?.let { selected ->
@@ -144,6 +150,7 @@ internal fun StationBoardScreen(modifier: Modifier, viewModel: TrainViewModel, r
     var nearbyPosition by remember { mutableStateOf<GeoPoint?>(null) }
     val mapStationIndex = rememberOpenMapStationIndex(viewModel.stations, viewModel::stationFromName)
     var monitorMode by rememberSaveable { mutableStateOf(StationMonitorMode.BOTH.name) }
+    var directConnectionsOf by rememberSaveable { mutableStateOf<String?>(null) }
     val context = LocalContext.current
     val resources = LocalResources.current
 
@@ -187,6 +194,21 @@ internal fun StationBoardScreen(modifier: Modifier, viewModel: TrainViewModel, r
     val accessibleStations = rememberWheelchairAccessibleStations(
         enabled = selectedStation != null || viewModel.favouriteStations.isNotEmpty() || viewModel.nearbyStations.isNotEmpty()
     )
+
+    // «Collegamenti diretti» of the chosen station; a destination searches the route from it, today from now.
+    selectedStation?.takeIf { it.id == directConnectionsOf }?.let { origin ->
+        DirectConnectionsSheet(
+            station = origin,
+            onSearch = { destination, date ->
+                directConnectionsOf = null
+                val target = viewModel.stations.firstOrNull { it.id == destination.stationId }
+                    ?: Station(id = destination.stationId, name = destination.name, city = destination.name)
+                val (day, time) = DirectConnectionSearch.departure(date, destination.firstDepartureMinute, today)
+                if (viewModel.searchRoute(origin, target, day, time)) openRouteResults()
+            },
+            onDismiss = { directConnectionsOf = null }
+        )
+    }
 
     LazyColumn(
         modifier = modifier.fillMaxSize().testTag("station-board-list"),
@@ -261,6 +283,12 @@ internal fun StationBoardScreen(modifier: Modifier, viewModel: TrainViewModel, r
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text(stringResource(if (viewModel.isStationMonitored(station)) R.string.station_board_stop_monitoring else R.string.station_board_start_monitoring))
+                    }
+                    OutlinedButton(
+                        onClick = { directConnectionsOf = station.id },
+                        modifier = Modifier.fillMaxWidth().testTag("station-direct-connections")
+                    ) {
+                        Text(stringResource(R.string.direct_connections_title))
                     }
                     StationMapCard(station, mapStationIndex, onOpenStation = {
                         stationText = it.name

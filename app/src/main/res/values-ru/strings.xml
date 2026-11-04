@@ -1577,4 +1577,29 @@
     <string name="station_sala_blu_page">Страница помощи RFI</string>
     <string name="station_sala_blu_call_toll_free">Позвонить по номеру %1$s (бесплатно со стационарного)</string>
     <string name="station_sala_blu_call_national">Позвонить по номеру %1$s (в том числе с мобильного)</string>
+    <!-- Station board: direct connections from the station (embedded timetables) -->
+    <string name="direct_connections_title">Прямые поездки</string>
+    <string name="direct_connections_from">Из %1$s без пересадок</string>
+    <string name="direct_connections_note">По плановому расписанию, встроенному в приложение, без задержек и отмен. Нажмите на пункт назначения, чтобы найти поезда.</string>
+    <string name="direct_connections_filter">Фильтр по назначению</string>
+    <string name="direct_connections_loading">Читаю расписание…</string>
+    <string name="direct_connections_empty">Во встроенном расписании на этот день нет прямых поездок с этой станции.</string>
+    <string name="direct_connections_no_match">Нет пунктов назначения с «%1$s».</string>
+    <string name="direct_connections_trains">Поезда</string>
+    <string name="direct_connections_urban">Метро, трамвай и фуникулёры</string>
+    <plurals name="direct_connections_train_count">
+        <item quantity="one">%d поезд</item>
+        <item quantity="few">%d поезда</item>
+        <item quantity="many">%d поездов</item>
+        <item quantity="other">%d поезда</item>
+    </plurals>
+    <plurals name="direct_connections_runs">
+        <item quantity="one">%d рейс</item>
+        <item quantity="few">%d рейса</item>
+        <item quantity="many">%d рейсов</item>
+        <item quantity="other">%d рейса</item>
+    </plurals>
+    <string name="direct_connections_first_last">первый в %1$s, последний в %2$s</string>
+    <string name="direct_connections_fastest">быстрее всего за %1$s</string>
+    <string name="direct_connections_from_stop">от остановки %1$s в нескольких шагах</string>
 </resources>

@@ -1510,4 +1510,25 @@
     <string name="station_sala_blu_page">RFI-Seite zur Assistenz</string>
     <string name="station_sala_blu_call_toll_free">%1$s anrufen (gebührenfrei aus dem Festnetz)</string>
     <string name="station_sala_blu_call_national">%1$s anrufen (auch vom Handy)</string>
+    <!-- Station board: direct connections from the station (embedded timetables) -->
+    <string name="direct_connections_title">Direktverbindungen</string>
+    <string name="direct_connections_from">Ab %1$s, ohne Umstieg</string>
+    <string name="direct_connections_note">Aus den in der App enthaltenen Fahrplänen, ohne Verspätungen oder Ausfälle. Tippe auf ein Ziel, um Züge zu suchen.</string>
+    <string name="direct_connections_filter">Ziele filtern</string>
+    <string name="direct_connections_loading">Fahrpläne werden gelesen…</string>
+    <string name="direct_connections_empty">Die enthaltenen Fahrpläne haben an diesem Tag keine Direktverbindungen ab diesem Bahnhof.</string>
+    <string name="direct_connections_no_match">Kein Ziel enthält „%1$s“.</string>
+    <string name="direct_connections_trains">Züge</string>
+    <string name="direct_connections_urban">U-Bahn, Straßenbahn und Standseilbahnen</string>
+    <plurals name="direct_connections_train_count">
+        <item quantity="one">%d Zug</item>
+        <item quantity="other">%d Züge</item>
+    </plurals>
+    <plurals name="direct_connections_runs">
+        <item quantity="one">%d Fahrt</item>
+        <item quantity="other">%d Fahrten</item>
+    </plurals>
+    <string name="direct_connections_first_last">erste %1$s, letzte %2$s</string>
+    <string name="direct_connections_fastest">schnellste %1$s</string>
+    <string name="direct_connections_from_stop">ab der Haltestelle %1$s, wenige Schritte entfernt</string>
 </resources>

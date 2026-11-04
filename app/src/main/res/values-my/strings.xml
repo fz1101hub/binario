@@ -1442,4 +1442,23 @@
     <string name="station_sala_blu_page">RFI အကူအညီ စာမျက်နှာ</string>
     <string name="station_sala_blu_call_toll_free">%1$s ကို ခေါ်ဆိုရန် (ကြိုးဖုန်းမှ အခမဲ့)</string>
     <string name="station_sala_blu_call_national">%1$s ကို ခေါ်ဆိုရန် (မိုဘိုင်းဖုန်းမှလည်း ရသည်)</string>
+    <!-- Station board: direct connections from the station (embedded timetables) -->
+    <string name="direct_connections_title">တိုက်ရိုက် ချိတ်ဆက်မှုများ</string>
+    <string name="direct_connections_from">%1$s မှ ပြောင်းစီးစရာမလိုဘဲ</string>
+    <string name="direct_connections_note">အက်ပ်တွင်ပါသော စီစဉ်ထားသည့် အချိန်ဇယားများအရ ဖြစ်ပြီး နောက်ကျမှု သို့မဟုတ် ဖျက်သိမ်းမှု မပါဝင်ပါ။ ရထားရှာရန် ခရီးဆုံးကို တို့ပါ။</string>
+    <string name="direct_connections_filter">ခရီးဆုံးများကို စစ်ထုတ်ရန်</string>
+    <string name="direct_connections_loading">အချိန်ဇယားများကို ဖတ်နေသည်…</string>
+    <string name="direct_connections_empty">ပါဝင်သော အချိန်ဇယားများတွင် ဤနေ့၌ ဤဘူတာမှ တိုက်ရိုက် ချိတ်ဆက်မှု မရှိပါ။</string>
+    <string name="direct_connections_no_match">“%1$s” ပါသော ခရီးဆုံး မရှိပါ။</string>
+    <string name="direct_connections_trains">ရထားများ</string>
+    <string name="direct_connections_urban">မြေအောက်ရထား၊ ဓာတ်ရထားနှင့် ကေဘယ်ရထား</string>
+    <plurals name="direct_connections_train_count">
+        <item quantity="other">ရထား %d စင်း</item>
+    </plurals>
+    <plurals name="direct_connections_runs">
+        <item quantity="other">%d ကြိမ်</item>
+    </plurals>
+    <string name="direct_connections_first_last">ပထမ %1$s၊ နောက်ဆုံး %2$s</string>
+    <string name="direct_connections_fastest">အမြန်ဆုံး %1$s</string>
+    <string name="direct_connections_from_stop">အနီးရှိ %1$s မှတ်တိုင်မှ</string>
 </resources>

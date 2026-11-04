@@ -1442,4 +1442,23 @@
     <string name="station_sala_blu_page">Halaman bantuan RFI</string>
     <string name="station_sala_blu_call_toll_free">Telepon %1$s (gratis dari telepon rumah)</string>
     <string name="station_sala_blu_call_national">Telepon %1$s (juga dari ponsel)</string>
+    <!-- Station board: direct connections from the station (embedded timetables) -->
+    <string name="direct_connections_title">Koneksi langsung</string>
+    <string name="direct_connections_from">Dari %1$s, tanpa ganti</string>
+    <string name="direct_connections_note">Dari jadwal terencana yang ada di aplikasi, tanpa keterlambatan atau pembatalan. Ketuk tujuan untuk mencari kereta.</string>
+    <string name="direct_connections_filter">Saring tujuan</string>
+    <string name="direct_connections_loading">Membaca jadwal…</string>
+    <string name="direct_connections_empty">Jadwal yang disertakan tidak memiliki koneksi langsung dari stasiun ini pada hari ini.</string>
+    <string name="direct_connections_no_match">Tidak ada tujuan yang memuat “%1$s”.</string>
+    <string name="direct_connections_trains">Kereta</string>
+    <string name="direct_connections_urban">Metro, trem, dan funikular</string>
+    <plurals name="direct_connections_train_count">
+        <item quantity="other">%d kereta</item>
+    </plurals>
+    <plurals name="direct_connections_runs">
+        <item quantity="other">%d perjalanan</item>
+    </plurals>
+    <string name="direct_connections_first_last">pertama %1$s, terakhir %2$s</string>
+    <string name="direct_connections_fastest">tercepat %1$s</string>
+    <string name="direct_connections_from_stop">dari halte %1$s, beberapa langkah saja</string>
 </resources>

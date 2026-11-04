@@ -1559,4 +1559,27 @@
     <string name="station_sala_blu_page">Pagina RFI sull’assistenza</string>
     <string name="station_sala_blu_call_toll_free">Chiama %1$s (numero verde da rete fissa)</string>
     <string name="station_sala_blu_call_national">Chiama %1$s (anche da cellulare)</string>
+    <!-- Station board: direct connections from the station (embedded timetables) -->
+    <string name="direct_connections_title">Collegamenti diretti</string>
+    <string name="direct_connections_from">Da %1$s, senza cambi</string>
+    <string name="direct_connections_note">Dagli orari programmati inclusi nell’app, senza ritardi né soppressioni. Tocca una destinazione per cercare i treni.</string>
+    <string name="direct_connections_filter">Filtra le destinazioni</string>
+    <string name="direct_connections_loading">Leggo gli orari…</string>
+    <string name="direct_connections_empty">Negli orari inclusi non ci sono collegamenti diretti da questa stazione in questo giorno.</string>
+    <string name="direct_connections_no_match">Nessuna destinazione contiene «%1$s».</string>
+    <string name="direct_connections_trains">Treni</string>
+    <string name="direct_connections_urban">Metro, tram e funicolari</string>
+    <plurals name="direct_connections_train_count">
+        <item quantity="one">%d treno</item>
+        <item quantity="many">%d treni</item>
+        <item quantity="other">%d treni</item>
+    </plurals>
+    <plurals name="direct_connections_runs">
+        <item quantity="one">%d corsa</item>
+        <item quantity="many">%d corse</item>
+        <item quantity="other">%d corse</item>
+    </plurals>
+    <string name="direct_connections_first_last">primo %1$s, ultimo %2$s</string>
+    <string name="direct_connections_fastest">il più veloce %1$s</string>
+    <string name="direct_connections_from_stop">dalla fermata %1$s, a pochi passi</string>
 </resources>

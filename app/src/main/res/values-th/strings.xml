@@ -1465,4 +1465,23 @@
     <string name="station_sala_blu_page">หน้าความช่วยเหลือของ RFI</string>
     <string name="station_sala_blu_call_toll_free">โทร %1$s (ฟรีจากโทรศัพท์บ้าน)</string>
     <string name="station_sala_blu_call_national">โทร %1$s (โทรจากมือถือได้ด้วย)</string>
+    <!-- Station board: direct connections from the station (embedded timetables) -->
+    <string name="direct_connections_title">เส้นทางตรง</string>
+    <string name="direct_connections_from">จาก %1$s โดยไม่ต้องเปลี่ยน</string>
+    <string name="direct_connections_note">จากตารางเวลาตามแผนที่มีในแอป ไม่รวมความล่าช้าหรือการยกเลิก แตะปลายทางเพื่อค้นหารถไฟ</string>
+    <string name="direct_connections_filter">กรองปลายทาง</string>
+    <string name="direct_connections_loading">กำลังอ่านตารางเวลา…</string>
+    <string name="direct_connections_empty">ตารางเวลาที่มีในแอปไม่มีเส้นทางตรงจากสถานีนี้ในวันนี้</string>
+    <string name="direct_connections_no_match">ไม่มีปลายทางที่มี “%1$s”</string>
+    <string name="direct_connections_trains">รถไฟ</string>
+    <string name="direct_connections_urban">รถไฟใต้ดิน รถราง และรถกระเช้าราง</string>
+    <plurals name="direct_connections_train_count">
+        <item quantity="other">รถไฟ %d ขบวน</item>
+    </plurals>
+    <plurals name="direct_connections_runs">
+        <item quantity="other">%d เที่ยว</item>
+    </plurals>
+    <string name="direct_connections_first_last">เที่ยวแรก %1$s เที่ยวสุดท้าย %2$s</string>
+    <string name="direct_connections_fastest">เร็วที่สุด %1$s</string>
+    <string name="direct_connections_from_stop">จากป้าย %1$s ที่อยู่ใกล้ๆ</string>
 </resources>

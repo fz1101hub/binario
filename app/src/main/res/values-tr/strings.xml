@@ -1510,4 +1510,25 @@
     <string name="station_sala_blu_page">RFI yardım sayfası</string>
     <string name="station_sala_blu_call_toll_free">%1$s numarasını ara (sabit hattan ücretsiz)</string>
     <string name="station_sala_blu_call_national">%1$s numarasını ara (cep telefonundan da)</string>
+    <!-- Station board: direct connections from the station (embedded timetables) -->
+    <string name="direct_connections_title">Aktarmasız bağlantılar</string>
+    <string name="direct_connections_from">%1$s çıkışlı, aktarmasız</string>
+    <string name="direct_connections_note">Uygulamadaki planlı tarifelere göre, gecikme ve iptaller hariç. Tren aramak için bir varış noktasına dokunun.</string>
+    <string name="direct_connections_filter">Varış noktalarını filtrele</string>
+    <string name="direct_connections_loading">Tarifeler okunuyor…</string>
+    <string name="direct_connections_empty">Dahil edilen tarifelerde bu gün bu istasyondan aktarmasız bağlantı yok.</string>
+    <string name="direct_connections_no_match">“%1$s” içeren varış noktası yok.</string>
+    <string name="direct_connections_trains">Trenler</string>
+    <string name="direct_connections_urban">Metro, tramvay ve füniküler</string>
+    <plurals name="direct_connections_train_count">
+        <item quantity="one">%d tren</item>
+        <item quantity="other">%d tren</item>
+    </plurals>
+    <plurals name="direct_connections_runs">
+        <item quantity="one">%d sefer</item>
+        <item quantity="other">%d sefer</item>
+    </plurals>
+    <string name="direct_connections_first_last">ilk %1$s, son %2$s</string>
+    <string name="direct_connections_fastest">en hızlı %1$s</string>
+    <string name="direct_connections_from_stop">birkaç adım ötedeki %1$s durağından</string>
 </resources>

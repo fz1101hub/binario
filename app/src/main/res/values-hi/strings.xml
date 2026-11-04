@@ -1487,4 +1487,25 @@
     <string name="station_sala_blu_page">RFI का सहायता पेज</string>
     <string name="station_sala_blu_call_toll_free">%1$s पर कॉल करें (लैंडलाइन से निःशुल्क)</string>
     <string name="station_sala_blu_call_national">%1$s पर कॉल करें (मोबाइल से भी)</string>
+    <!-- Station board: direct connections from the station (embedded timetables) -->
+    <string name="direct_connections_title">सीधी कनेक्शन</string>
+    <string name="direct_connections_from">%1$s से, बिना बदले</string>
+    <string name="direct_connections_note">ऐप में शामिल निर्धारित समय-सारणी से, देरी या रद्दीकरण के बिना। ट्रेनें खोजने के लिए किसी गंतव्य पर टैप करें।</string>
+    <string name="direct_connections_filter">गंतव्य फ़िल्टर करें</string>
+    <string name="direct_connections_loading">समय-सारणी पढ़ी जा रही है…</string>
+    <string name="direct_connections_empty">शामिल समय-सारणी में इस दिन इस स्टेशन से कोई सीधी कनेक्शन नहीं है।</string>
+    <string name="direct_connections_no_match">किसी गंतव्य में “%1$s” नहीं है।</string>
+    <string name="direct_connections_trains">ट्रेनें</string>
+    <string name="direct_connections_urban">मेट्रो, ट्राम और फ़्यूनिकुलर</string>
+    <plurals name="direct_connections_train_count">
+        <item quantity="one">%d ट्रेन</item>
+        <item quantity="other">%d ट्रेनें</item>
+    </plurals>
+    <plurals name="direct_connections_runs">
+        <item quantity="one">%d फेरा</item>
+        <item quantity="other">%d फेरे</item>
+    </plurals>
+    <string name="direct_connections_first_last">पहली %1$s, आख़िरी %2$s</string>
+    <string name="direct_connections_fastest">सबसे तेज़ %1$s</string>
+    <string name="direct_connections_from_stop">%1$s स्टॉप से, थोड़ी दूरी पर</string>
 </resources>
