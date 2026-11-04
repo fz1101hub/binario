@@ -8,7 +8,7 @@ Binario mostra per ogni treno Trenitalia l'affidabilità media degli ultimi 30 g
 
 Ne derivano tre regole di progetto:
 
-1. **Solo aggregati.** Nell'app e in qualunque file pubblico entrano soltanto conteggi, medie e soglie per treno e fermata; mai risposte ViaggiaTreno, orari reali, testi, nomi o binari.
+1. **Solo aggregati.** Nell'app e in qualunque file pubblico entrano soltanto conteggi, medie, massimi e soglie per treno e fermata, con l'orario programmato della fermata; mai risposte ViaggiaTreno, orari reali, testi, nomi o binari.
 2. **Attribuzione onesta.** Il file dichiara `"source": "ViaggiaTreno, elaborazione Binario (non ufficiale)"`; l'app mostra «Statistiche non ufficiali di Binario su dati ViaggiaTreno».
 3. **Ritiro rapido.** Su richiesta di Trenitalia/RFI, o se ViaggiaTreno cambia condizioni:
    1. disattivare subito il workflow (`gh workflow disable punctuality.yml`, poi rimuovere `.github/workflows/punctuality.yml`): le richieste cessano;
@@ -24,7 +24,7 @@ La raccolta gira **solo sui runner GitHub** (`.github/workflows/punctuality.yml`
 - **Origine.** Codice ViaggiaTreno della prima fermata, dal suo `stop_code` (location id Trenitalia, `830008409`): la stazione del catalogo curato con quel `trenitaliaLocationId`, confermata dalla posizione entro 10 km (o da una parola del nome), come `GtfsStationCodeIndex` nell'app; altrimenti `S` + le ultime cinque cifre (`S08409`). Per 100 fermate del pack le due regole divergono (Fidene `830008225` è `S08235`; Torino Porta Susa `830000222` è `S00035`), per circa 600 corse su 18.784. Un codice sbagliato costa una richiesta e diventa «sconosciuto» o «identità diversa», mai un'osservazione sbagliata.
 - **Richiesta.** `http://www.viaggiatreno.it/infomobilita/resteasy/viaggiatreno/andamentoTreno/{origine}/{numero}/{mezzanotte}`, con mezzanotte locale del giorno di partenza in millisecondi; una sola richiesta per treno e run, `User-Agent: Binario-punctuality/1.0 (personal timetable app; read-only)` (nello stile dell'app: la prima versione con un indirizzo web riceveva 403, mentre gli altri client di Binario ricevono risposta dagli stessi runner), nessun cookie o login. Al primo 403 o 429 la run si ferma e rimanda i treni alla successiva; se ViaggiaTreno rifiuta in modo stabile anche questa forma, la raccolta va spenta (decisione del titolare: «se ci dovessero fare problemi la togliamo»), senza travestirsi da browser né cambiare indirizzo. Un reindirizzamento è seguito solo verso la stessa risorsa su `www.viaggiatreno.it` (HTTP) o `(www.)viaggiatreno.it` (HTTPS).
 - **Quando.** Un treno è chiesto quando il suo arrivo programmato all'ultima fermata è fra 4 ore e 20 minuti prima della run. Se non risulta ancora arrivato (nessun orario reale all'ultima fermata servita, `arrivato` non vero, non cancellato) resta in sospeso e le run successive lo richiedono fino a 8 ore dopo l'arrivo programmato; poi è «sconosciuto» e non conta. Un treno noto (arrivato o cancellato) non è più richiesto.
-- **Cosa si tiene.** Per fermata: codice stazione (`fermate[].id`), ritardo in minuti interi, soppressione. Per la corsa: arrivata o cancellata. Nient'altro.
+- **Cosa si tiene.** Per fermata: codice stazione (`fermate[].id`), ritardo in minuti interi, soppressione, orario programmato in minuti dalla mezzanotte del giorno di partenza. Per la corsa: arrivata o cancellata. Nient'altro.
 
 Regole di lettura (dai campi che l'app già usa in `ViaggiaTrenoRealtimeAdapter`):
 
@@ -33,6 +33,7 @@ Regole di lettura (dai campi che l'app già usa in `ViaggiaTrenoRealtimeAdapter`
 | Identità | `numeroTreno`, `idOrigine`, `dataPartenzaTreno` | Devono coincidere con numero, origine e giorno chiesti, altrimenti «identità diversa» |
 | Ritardo all'origine | `partenza_teorica` (o `programmata`), `partenzaReale` | Reale − programmato, troncato verso zero come `Duration.toMinutes` nell'app |
 | Ritardo alle altre fermate | `arrivo_teorico` (o `programmata`), `arrivoReale` | Idem; un anticipo dà un ritardo ≤ 0 |
+| Orario programmato | `partenza_teorica` all'origine, `arrivo_teorico` altrove (o `programmata`) | Minuti dalla mezzanotte locale del giorno di partenza, sull'orologio di Europe/Rome (le 10:00 sono 600 anche nei giorni del cambio d'ora; le 00:10 del giorno dopo sono 1450); fuori da 0–2879 non è tenuto |
 | Fermata soppressa | `actualFermataType` = 3 | Conta nei giorni soppressi, non nei campioni |
 | Fermata straordinaria | `actualFermataType` = 2 | Ignorata: non ha orario programmato con cui confrontarsi |
 | Corsa cancellata | `provvedimento` = 1, `tipoTreno` = `ST`, o tutte le fermate soppresse | Giorno noto e cancellato |
@@ -53,7 +54,7 @@ Ogni risposta è trattata come non attendibile: al più 1 MB, JSON UTF-8 rigoros
 
 ## Conservazione
 
-Le osservazioni grezze (una riga JSON compatta per treno e giorno: codice stazione, minuti, soppressione) restano nella **cache di GitHub Actions** con prefisso `punctuality-raw-`: ogni run ripristina la più recente (del proprio ramo o del ramo predefinito), aggiunge le nuove e salva una nuova voce con chiave unica. I giorni oltre i 35 sono eliminati a ogni run; GitHub elimina inoltre le voci non usate da 7 giorni. Le osservazioni non sono mai stampate nei log, caricate come artifact o committate. Le cache non sono scaricabili da chi visita il repository, ma un workflow eseguito nel repository (anche quello di una pull request, previa approvazione per chi contribuisce la prima volta) può ripristinarle: per questo contengono solo numeri derivati, mai risposte ViaggiaTreno.
+Le osservazioni grezze (una riga JSON compatta per treno e giorno, per fermata `[codice, ritardo, soppressa, minuto programmato]`; le righe scritte prima dell'estensione del 4 novembre 2026 hanno solo i primi tre elementi e restano valide) restano nella **cache di GitHub Actions** con prefisso `punctuality-raw-`: ogni run ripristina la più recente (del proprio ramo o del ramo predefinito), aggiunge le nuove e salva una nuova voce con chiave unica. I giorni oltre i 35 sono eliminati a ogni run; GitHub elimina inoltre le voci non usate da 7 giorni. Le osservazioni non sono mai stampate nei log, caricate come artifact o committate. Le cache non sono scaricabili da chi visita il repository, ma un workflow eseguito nel repository (anche quello di una pull request, previa approvazione per chi contribuisce la prima volta) può ripristinarle: per questo contengono solo numeri derivati, mai risposte ViaggiaTreno.
 
 ## Il file `stats_v1.json.gz`
 
@@ -64,13 +65,21 @@ Le osservazioni grezze (una riga JSON compatta per treno e giorno: codice stazio
  "windowStart": "2026-10-11", "windowEnd": "2026-11-09", "windowDays": 30,
  "source": "ViaggiaTreno, elaborazione Binario (non ufficiale)", "buckets": [0, 2, 5, 10, 15, 20, 30, 60],
  "trains": [{"n": "9558", "o": "S08409", "c": "FR", "d": 28, "x": 1,
-             "s": [["S08409", 27, 0.8, [20, 24, 26, 27, 27, 27, 27, 27], 0],
-                   ["S00219", 26, 4.6, [9, 14, 19, 23, 25, 26, 26, 26], 1]]}]}
+             "s": [["S08409", 27, 0.8, [20, 24, 26, 27, 27, 27, 27, 27], 0, 7, 420],
+                   ["S00219", 26, 4.6, [9, 14, 19, 23, 25, 26, 26, 26], 1, 18, 610]]}]}
 ```
 
 - Un treno è identificato da numero `n` e origine `o` (stesso numero con origini diverse = treni diversi); i treni sono ordinati per numero e origine e compaiono se noti almeno un giorno. `c` è la categoria del pack, `d` i giorni noti (arrivato o cancellato), `x` quelli cancellati.
-- Per fermata, in ordine di corsa e solo con almeno un campione: codice, campioni (giorni in cui il treno ha circolato e la fermata ha un orario reale), ritardo medio con un decimale (gli anticipi contano 0), conteggi cumulati dei campioni con ritardo ≤ ciascuna soglia (non decrescenti; oltre 60 minuti solo nei campioni), giorni di soppressione della fermata con il treno in circolazione.
-- `--check FILE` verifica schema, codifica canonica, gzip deterministico, dimensioni (≤ 3 MB compressi), intervalli, cumulati monotoni e compatibili con la media, ordine e unicità. Con 9.000 treni e 14 fermate ciascuno il file resta sotto 1,5 MB.
+- Per fermata, in ordine di corsa e solo con almeno un campione, `[codice, campioni, media, cumulati, soppressioni, ritardoMassimo, minutoProgrammato]`:
+  1. codice della stazione;
+  2. campioni: giorni in cui il treno ha circolato e la fermata ha un orario reale;
+  3. ritardo medio con un decimale (gli anticipi contano 0);
+  4. conteggi cumulati dei campioni con ritardo ≤ ciascuna soglia (non decrescenti; oltre 60 minuti solo nei campioni);
+  5. giorni di soppressione della fermata con il treno in circolazione;
+  6. ritardo massimo dei campioni della finestra, in minuti interi con lo stesso troncamento (gli anticipi contano 0), sempre presente: sta nella prima soglia che contiene tutti i campioni (oltre la soglia precedente), ed è oltre 60 se qualche campione non è in nessuna soglia;
+  7. orario programmato (partenza all'origine, arrivo altrove) in minuti dalla mezzanotte locale (Europe/Rome) del giorno di partenza del treno, preso dal giorno più recente della finestra che lo ha: 0–1439, oppure 1440–2879 per una fermata raggiunta dopo mezzanotte (1450 = 00:10 del giorno dopo; per la fascia oraria `% 1440`). È `null` finché la fermata è coperta solo da osservazioni scritte prima dell'estensione del 4 novembre 2026, che non hanno l'orario.
+- La forma canonica ha 7 elementi; un file prodotto prima dell'estensione ha fermate di 5 elementi e resta valido (stesso schema `binario-punctuality-v1`): chi legge tratta gli ultimi due come facoltativi. Dai cumulati si ricava la distribuzione come Treniamo: in orario (≤ 0) `c[0]`, 1–5 `c[2] − c[0]`, 6–15 `c[4] − c[2]`, 16–30 `c[6] − c[4]`, oltre 30 `campioni − c[6]`.
+- `--check FILE` verifica schema, codifica canonica, gzip deterministico, dimensioni (≤ 3 MB compressi), intervalli, cumulati monotoni e compatibili con la media, fermate di 5 o 7 elementi, ritardo massimo intero in 0–1440, compatibile con i cumulati, non inferiore alla media e non oltre la somma dei ritardi, minuto programmato `null` o intero in 0–2879, ordine e unicità. Con 9.000 treni e 14 fermate ciascuno il file resta sotto 1,5 MB (circa 1,1 MB nel test sintetico con 7 elementi per fermata).
 
 **Soglie, come Treniamo.** In orario = ritardo ≤ 5 minuti per FR, FA, FB, EC, ES, ESC, EN e Italo; ≤ 15 minuti per tutte le altre categorie (REG, RV, IC, ICN, …). 5 e 15 sono soglie del file, quindi il conteggio è esatto. Sotto 5 campioni alla fermata considerata l'app non mostra nulla; per un margine di coincidenza fra due soglie interpola linearmente i cumulati.
 
