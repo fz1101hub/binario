@@ -64,6 +64,7 @@ import it.binario.app.ui.common.ScreenHeader
 import it.binario.app.ui.common.ScreenMargin
 import it.binario.app.ui.common.StationShortNames
 import it.binario.app.ui.common.TonalButton
+import it.binario.app.ui.common.BikesMark
 import it.binario.app.ui.common.WheelchairMark
 import it.binario.app.ui.common.changesLabel
 import it.binario.app.ui.common.co2Line
@@ -238,6 +239,7 @@ private fun LegHeader(leg: JourneyLegRow) {
         if (leg.wheelchairTrip) {
             WheelchairMark(stringResource(R.string.wheelchair_trip), Modifier.padding(end = 8.dp))
         }
+        leg.bikesAllowed?.let { BikesMark(it, Modifier.padding(end = 8.dp)) }
         Text(
             compactDurationLabel(leg.durationMinutes.toInt()),
             style = MaterialTheme.typography.bodySmall,

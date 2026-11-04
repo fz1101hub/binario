@@ -36,7 +36,8 @@ on:
       - "tests/**"
       - ".github/ci-inputs-lock.json"
       - ".github/workflows/**"
-  # Weekly freshness watch (Monday): packs ending within 45 days become warnings, never failures (job freshness-watch).
+  # Weekly watch (Monday, job freshness-watch): packs ending within 45 days and new datasets of the rail operators on the
+  # National Access Point become warnings, never failures.
   schedule:
     - cron: "23 4 * * 1"
   workflow_dispatch:
@@ -93,6 +94,7 @@ jobs:
           tests/test_collect_punctuality.py
           tests/test_build_punctuality_stats.py
           tests/test_apply_ci_punctuality.py
+          tests/test_nap_watch.py
           tests/test_verify_gradle_dependency_metadata.py
           tests/test_install_xcodegen.py
           tests/test_verify_ci_pinning.py
@@ -143,7 +145,9 @@ jobs:
           --freshness app/src/main/assets/gtfs app/src/main/assets/gtfs-transit app/src/personal/assets/gtfs-personal
 
   # Weekly reminder: every pack running less than 45 more days (its own minValidDays when shorter) is a warning in the
-  # run summary, well before the 30-day gate blocks a stabilization pull request or release-sign. Never fails.
+  # run summary, well before the 30-day gate blocks a stabilization pull request or release-sign; so is any dataset of
+  # Trenitalia or Italo on the National Access Point beyond the NeTEx timetables of tools/nap_watch_baseline.json
+  # (delays, cancellations, SIRI or GTFS-Realtime would replace the ViaggiaTreno estimate). Never fails on data.
   freshness-watch:
     if: ${{ github.event_name == 'schedule' }}
     runs-on: ubuntu-24.04
@@ -164,6 +168,20 @@ jobs:
           python3 -I tools/refresh_core_gtfs.py --as-of "$(date --utc +%F)" --summary "$GITHUB_STEP_SUMMARY"
           --min-valid-days 45 --warn
           --freshness app/src/main/assets/gtfs app/src/main/assets/gtfs-transit app/src/personal/assets/gtfs-personal
+
+      # Read-only, four catalogue pages; the pages are untrusted data parsed by the standard-library tool (python3 -I).
+      - name: Watch the rail operators on the National Access Point
+        run: |
+          # Catalogue text reaches this log: no line of it may run as a workflow command while the tool runs.
+          marker="$(python3 -I -c 'import secrets; print(secrets.token_hex(16))')"
+          echo "::stop-commands::$marker"
+          trap 'echo "::$marker::"' EXIT
+          python3 -I tools/nap_watch.py --baseline tools/nap_watch_baseline.json \
+            --summary "$GITHUB_STEP_SUMMARY" --annotations "$RUNNER_TEMP/nap-watch-annotations.txt"
+          trap - EXIT
+          echo "::$marker::"
+          # One ::warning line per change, its text escaped by the tool as workflow-command data (%, CR, LF).
+          cat "$RUNNER_TEMP/nap-watch-annotations.txt"
 
   # Manual, read-only discovery of public timetable sources (GTFS, NeTEx on the Italian National Access Point).
   # The development container cannot reach most open-data hosts; the runner can. Everything downloaded is

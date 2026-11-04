@@ -66,7 +66,11 @@ class NetworkReliabilityTrain internal constructor(
     private val meanTenths: IntArray,
     private val cumulative: ShortArray,
     private val suppressed: ShortArray,
-    private val buckets: IntArray
+    private val buckets: IntArray,
+    /** Largest delay per stop, [ABSENT] where an older file does not publish it. */
+    private val maxDelays: ShortArray = ShortArray(codes.size) { ABSENT },
+    /** Scheduled minute of the day per stop (may pass 1439 after midnight), [ABSENT] where not published. */
+    private val scheduledMinutes: ShortArray = ShortArray(codes.size) { ABSENT }
 ) {
     val stopCount: Int get() = codes.size
 
@@ -82,6 +86,21 @@ class NetworkReliabilityTrain internal constructor(
 
     /** Samples at the stop with a delay of at most `buckets[bucket]` minutes. */
     fun cumulative(index: Int, bucket: Int): Int = cumulative[index * buckets.size + bucket].toInt()
+
+    /** The largest delay observed at the stop in minutes (early counts as 0), or null when the file does not say. */
+    fun maxDelayMinutes(index: Int): Int? = maxDelays[index].toInt().takeIf { it >= 0 }
+
+    /**
+     * The scheduled arrival (departure at the origin) at the stop in minutes since midnight, Europe/Rome, of the most
+     * recent day observed; past 1439 for a stop reached after midnight. Null when the file does not say.
+     */
+    fun scheduledMinuteOfDay(index: Int): Int? = scheduledMinutes[index].toInt().takeIf { it >= 0 }
+
+    /** Samples at the stop with a delay of at most [limit] minutes when [limit] is one of the bucket limits, else null. */
+    fun cumulativeAtLimit(index: Int, limit: Int): Int? {
+        val bucket = buckets.indexOf(limit)
+        return if (bucket < 0) null else cumulative(index, bucket)
+    }
 
     /** First stop at or after [from] with the code, or -1. */
     fun indexOf(code: String, from: Int = 0): Int {
@@ -103,6 +122,10 @@ class NetworkReliabilityTrain internal constructor(
         val low = cumulative[base + bucket].toDouble()
         val high = cumulative[base + bucket + 1].toDouble()
         return low + (high - low) * (minutes - buckets[bucket]) / (buckets[bucket + 1] - buckets[bucket])
+    }
+
+    internal companion object {
+        const val ABSENT: Short = -1
     }
 }
 
@@ -447,6 +470,9 @@ object NetworkReliabilityParser {
         val mean = if (json.hasNext()) json.optDouble() else null
         val cumulative = if (json.hasNext()) intArray(json, limits.maxBuckets) else null
         val suppressed = if (json.hasNext()) json.optInt() else 0
+        // Optional since the 4 Nov 2026 extension: a value that is not a plausible integer is left out, not the stop.
+        val maxDelay = (if (json.hasNext()) json.optInt() else null)?.takeIf { it in 0..MAX_DELAY_MINUTES.toInt() }
+        val scheduledMinute = (if (json.hasNext()) json.optInt() else null)?.takeIf { it in 0 until MAX_SCHEDULED_MINUTE }
         // Later fields of a newer pipeline are ignored.
         while (json.hasNext()) json.skipValue()
         json.endArray()
@@ -454,10 +480,18 @@ object NetworkReliabilityParser {
         if (mean == null || !mean.isFinite() || mean < -MAX_DELAY_MINUTES || mean > MAX_DELAY_MINUTES) return null
         if (cumulative == null || suppressed == null || suppressed !in 0..limits.maxCount) return null
         if (cumulative.any { it !in 0..samples } || (1 until cumulative.size).any { cumulative[it] < cumulative[it - 1] }) return null
-        return RawStop(codes.getOrPut(code) { code }, samples, (mean * 10).roundToInt(), cumulative, suppressed)
+        return RawStop(codes.getOrPut(code) { code }, samples, (mean * 10).roundToInt(), cumulative, suppressed, maxDelay, scheduledMinute)
     }
 
-    private class RawStop(val code: String, val samples: Int, val meanTenths: Int, val cumulative: IntArray, val suppressed: Int)
+    private class RawStop(
+        val code: String,
+        val samples: Int,
+        val meanTenths: Int,
+        val cumulative: IntArray,
+        val suppressed: Int,
+        val maxDelay: Int?,
+        val scheduledMinute: Int?
+    )
 
     private class RawTrain(
         val number: String,
@@ -484,7 +518,9 @@ object NetworkReliabilityParser {
                 meanTenths = IntArray(stops.size) { stops[it].meanTenths },
                 cumulative = cumulative,
                 suppressed = ShortArray(stops.size) { stops[it].suppressed.toShort() },
-                buckets = buckets
+                buckets = buckets,
+                maxDelays = ShortArray(stops.size) { stops[it].maxDelay?.toShort() ?: NetworkReliabilityTrain.ABSENT },
+                scheduledMinutes = ShortArray(stops.size) { stops[it].scheduledMinute?.toShort() ?: NetworkReliabilityTrain.ABSENT }
             )
         }
     }
@@ -492,4 +528,6 @@ object NetworkReliabilityParser {
     private const val MAX_TEXT = 16
     private const val MAX_DELAY_MINUTES = 24.0 * 60
     private const val MAX_WINDOW_DAYS = 366
+    /** A run that reaches a stop up to two days after its service day's midnight still names its minute. */
+    private const val MAX_SCHEDULED_MINUTE = 3 * 24 * 60
 }

@@ -14,6 +14,10 @@ object ReliabilityFixtures {
     fun stop(code: String, samples: Int, mean: Double, cumulative: List<Int>, suppressed: Int = 0): String =
         "[\"$code\",$samples,$mean,${cumulative.joinToString(",", "[", "]")},$suppressed]"
 
+    /** A stop of the 4 Nov 2026 extension: with the largest delay and the scheduled minute of the day (JSON null allowed). */
+    fun stop7(code: String, samples: Int, mean: Double, cumulative: List<Int>, maxDelay: Int, scheduledMinute: Int?, suppressed: Int = 0): String =
+        "[\"$code\",$samples,$mean,${cumulative.joinToString(",", "[", "]")},$suppressed,$maxDelay,${scheduledMinute ?: "null"}]"
+
     fun train(number: String, origin: String, category: String, days: Int, cancelled: Int, vararg stops: String): String =
         "{\"n\":\"$number\",\"o\":\"$origin\",\"c\":\"$category\",\"d\":$days,\"x\":$cancelled,\"s\":[${stops.joinToString(",")}]}"
 

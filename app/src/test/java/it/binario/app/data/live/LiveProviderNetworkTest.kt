@@ -167,8 +167,9 @@ class LiveProviderNetworkTest {
         assertNotNull("RFI official catalogue: Bressanone", catalog.placeId(listOf("Bressanone")))
         // The regional checks reach Monza's board through the catalogue (LiveRouteChecks.regionalRoutes).
         assertNotNull("RFI official catalogue: Monza", catalog.placeId(listOf("Monza")))
-        board(RfiStationBoardAdapter(fetcher = fetcher), "milano-centrale", "Milano Centrale")
-        board(RfiStationBoardAdapter(fetcher = fetcher), "milano-centrale", "Milano Centrale", kind = BoardKind.ARRIVALS)
+        // Both Milano Centrale boards are always read; an observation is required only where a row publishes minutes.
+        val passed = LiveRouteChecks.rfiBoards(fetcher, clock)
+        println("LIVE_ACCEPTANCE rfi-station-board: board=${passed.board}, departures=${passed.entries}, operational=${passed.operational}")
     }
 
     /** Appiano → Roma Ostiense, then the other [LiveRouteChecks.regionalRoutes] while the boards publish nothing to verify. */

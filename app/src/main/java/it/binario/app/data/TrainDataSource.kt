@@ -184,7 +184,12 @@ data class TrainService(
      */
     val scheduledBus: Boolean = false,
     /** Platform of the timetable when the source publishes it next to the actual [platform] ("era 5"). */
-    val scheduledPlatform: String? = null
+    val scheduledPlatform: String? = null,
+    /**
+     * Bikes on board as the offline timetable publishes them (GTFS bikes_allowed): true allowed, false not allowed,
+     * null unknown (most packs leave it empty). Never inferred from the category.
+     */
+    val bikesAllowed: Boolean? = null
 ) {
     val displayOperator: String get() = operatorDisplayName?.takeIf(String::isNotBlank) ?: operator.shortLabel
     val accessibleOperator: String get() = operatorDisplayName?.takeIf(String::isNotBlank) ?: operator.accessibleLabel

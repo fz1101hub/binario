@@ -1400,4 +1400,40 @@
     </plurals>
     <string name="reliability_detail_days">စောင့်ကြည့်ခဲ့သည့် ရက်- %1$d · ဖျက်သိမ်းမှု- %2$d</string>
     <string name="reliability_threshold_note">နောက်ကျမှု %1$s အထိသာ ရှိသော ဆိုက်ရောက်မှုကို အချိန်မှန်ဟု သတ်မှတ်သည်။</string>
+    <string name="reliability_distribution_title">နောက်ကျမှု ဖြန့်ကျက်ပုံ</string>
+    <string name="reliability_band_no_delay">နောက်ကျမှု မရှိ</string>
+    <string name="reliability_band_range">%1$d–%2$s</string>
+    <string name="reliability_band_over">%1$s ထက်ပို</string>
+    <plurals name="reliability_band_share">
+        <item quantity="other">%1$d%% · %2$d ကြိမ်</item>
+    </plurals>
+    <string name="reliability_max_delay">အများဆုံး နောက်ကျမှု- %1$s</string>
+    <string name="reliability_route_on_time">ဤလမ်းကြောင်း- %1$d%% အချိန်မှန်</string>
+    <string name="reliability_station_on_time">ဤဘူတာသို့ ဆိုက်ရောက်မှု- %1$d%% အချိန်မှန်</string>
+    <plurals name="reliability_trains_count">
+        <item quantity="other">ရထား %1$d စီး</item>
+    </plurals>
+    <plurals name="reliability_runs_observed">
+        <item quantity="other">%2$s အတွင်း ခရီးစဉ် %1$d ကြိမ် စောင့်ကြည့်ခဲ့သည်</item>
+    </plurals>
+    <plurals name="reliability_days">
+        <item quantity="other">%1$d ရက်</item>
+    </plurals>
+    <string name="reliability_route_hours">အချိန်အမှန်ဆုံး ထွက်ခွာချိန်- %1$s · အချိန်မှန်မှု အနည်းဆုံး- %2$s</string>
+    <string name="reliability_hour_band">%1$d–%2$d</string>
+    <string name="reliability_train_from">%2$s မှ %1$s</string>
+    <string name="reliability_station_title">ဆိုက်ရောက်ချိန် တိကျမှု</string>
+    <string name="reliability_station_often_late">ဤနေရာတွင် အများဆုံး နောက်ကျသည့် ရထား-</string>
+    <plurals name="reliability_late_train">
+        <item quantity="other">%1$s- %3$d ကြိမ်တွင် %2$d ကြိမ် နောက်ကျ</item>
+    </plurals>
+    <string name="reliability_threshold_mixed_note">Frecce၊ Italo၊ EuroCity၊ Eurostar နှင့် EuroNight အတွက် နောက်ကျမှု 5 မိနစ်အထိ၊ အခြားရထားများအတွက် 15 မိနစ်အထိ ဆိုက်ရောက်မှုကို အချိန်မှန်ဟု သတ်မှတ်သည်။</string>
+    <string name="bikes_allowed">စက်ဘီး ယူဆောင်ခွင့်ရှိ</string>
+    <string name="bikes_not_allowed">စက်ဘီး ယူဆောင်ခွင့်မရှိ</string>
+    <string name="bikes_conditions_link">ရထားပေါ်တွင် စက်ဘီး- %1$s ၏ စည်းကမ်းချက်များ</string>
+    <string name="planner_airport_links">လေဆိပ်များသို့ ရထားချိတ်ဆက်မှု</string>
+    <string name="planner_airport_search">%1$s မှ %2$s သို့ ရထားများ ရှာရန်</string>
+    <string name="compensation_notice_quarter">%1$s သို့ %2$s နောက်ကျ၍ ဆိုက်ရောက်သည်- စည်းမျဉ်း (EU) 2021/782 အရ လက်မှတ်ခ၏ 25%% လျော်ကြေး ရနိုင်သည် (မိနစ် 120 မှစ၍ 50%%)။</string>
+    <string name="compensation_notice_half">%1$s သို့ %2$s နောက်ကျ၍ ဆိုက်ရောက်သည်- စည်းမျဉ်း (EU) 2021/782 အရ လက်မှတ်ခ၏ 50%% လျော်ကြေး ရနိုင်သည်။</string>
+    <string name="compensation_notice_conditions">ရထားကုမ္ပဏီသည် 4 ယူရိုအောက် ပမာဏနှင့် ပြင်းထန်သော ရာသီဥတု သို့မဟုတ် သံလမ်းပေါ်ရှိ လူများကဲ့သို့ ပြင်ပအကြောင်းရင်းကြောင့် နောက်ကျမှုများကို ငြင်းပယ်နိုင်သည်။ ၎င်း၏ ဝန်ထမ်းများ သပိတ်မှောက်ခြင်းသည် ပြင်ပအကြောင်းရင်း မဟုတ်ပါ။ ဒေသတွင်းရထားများတွင် စည်းကမ်းချက်များသည် ဒေသနှင့် ချုပ်ဆိုထားသော ဝန်ဆောင်မှုစာချုပ်အပေါ်လည်း မူတည်သည်။</string>
 </resources>

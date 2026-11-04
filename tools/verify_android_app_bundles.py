@@ -1,5 +1,16 @@
 #!/usr/bin/env python3
-"""Validate unsigned Android App Bundles before signing or Play upload."""
+"""Validate unsigned Android App Bundles before signing or Play upload.
+
+The phone bundle of the root profile also carries the punctuality statistics switch (``-Pbinario.punctualityStats``,
+docs/data-sources/PUNCTUALITY_STATS.md): ``--punctuality-stats auto`` (default) requires
+``base/assets/punctuality/stats_v1.json.gz``, identical to the tree's, when the tree has that file and nothing
+otherwise; ``present`` always requires it; ``absent`` refuses anything under ``punctuality/``.  ``--apk FILE`` checks
+only that expectation on an APK (``assets/punctuality/``), for the build made with the switch off.
+
+    python3 tools/verify_android_app_bundles.py
+    python3 tools/verify_android_app_bundles.py --apk app/build/outputs/apk/release/app-release-unsigned.apk \\
+        --punctuality-stats absent
+"""
 from __future__ import annotations
 
 import argparse
@@ -33,6 +44,14 @@ REQUIRED_FILES = {"BundleConfig.pb", MANIFEST_PATH}
 # Timetable packs whose licence allows personal use only (app/src/personal/assets, -Pbinario.personalSources):
 # never in a bundle meant for Play.
 PERSONAL_ASSET_PREFIX = "base/assets/gtfs-personal/"
+# Unofficial network punctuality statistics: in every build unless -Pbinario.punctualityStats=false leaves the
+# directory out (app/build.gradle.kts, ignoreAssetsPatterns "!punctuality").
+PUNCTUALITY_DIRECTORY = "punctuality/"
+PUNCTUALITY_ASSET = "punctuality/stats_v1.json.gz"
+PUNCTUALITY_TREE_ASSET = ROOT / "app" / "src" / "main" / "assets" / PUNCTUALITY_ASSET
+PUNCTUALITY_EXPECTATIONS = ("auto", "present", "absent")
+BUNDLE_ASSET_PREFIX = "base/assets/"
+APK_ASSET_PREFIX = "assets/"
 SIGNATURE_SUFFIXES = (".RSA", ".DSA", ".EC", ".SF")
 SIGNATURE_BLOCK_SUFFIXES = (".RSA", ".DSA", ".EC")
 JAR_MANIFEST_PATH = "META-INF/MANIFEST.MF"
@@ -353,10 +372,90 @@ def verify_jar_signature(names: set[str]) -> list[str]:
     return []
 
 
+def punctuality_problems(
+    archive: zipfile.ZipFile,
+    names: set[str],
+    *,
+    asset_prefix: str,
+    expectation: str | None,
+    tree_asset: Path | None = None,
+) -> list[str]:
+    """The punctuality statistics as ``expectation`` wants them (``None``: not checked); ``tree_asset`` defaults to
+    the file of the source tree."""
+    if expectation is None:
+        return []
+    tree_asset = tree_asset or PUNCTUALITY_TREE_ASSET
+    if expectation not in PUNCTUALITY_EXPECTATIONS:
+        return [f"attesa non valida per le statistiche di puntualità: {expectation!r}"]
+    directory = asset_prefix + PUNCTUALITY_DIRECTORY
+    packaged = sorted(name for name in names if name.startswith(directory))
+    if expectation == "absent":
+        if packaged:
+            shown = ", ".join(packaged[:5]) + (f" e altri {len(packaged) - 5}" if len(packaged) > 5 else "")
+            return [f"statistiche di puntualità nel pacchetto con -Pbinario.punctualityStats=false: {shown}"]
+        return []
+    in_tree = tree_asset.is_file()
+    if expectation == "auto" and not in_tree:
+        return []
+    asset = asset_prefix + PUNCTUALITY_ASSET
+    if asset not in names:
+        reason = f"presente in {tree_asset.relative_to(ROOT) if tree_asset.is_relative_to(ROOT) else tree_asset}" if in_tree else "richiesto"
+        return [f"statistiche di puntualità assenti dal pacchetto: {asset} ({reason})"]
+    if in_tree:
+        info = archive.getinfo(asset)
+        expected = tree_asset.read_bytes()
+        if info.file_size != len(expected) or archive.read(info) != expected:
+            return [f"statistiche di puntualità diverse dal file dell'albero: {asset}"]
+    return []
+
+
+def punctuality_detail(expectation: str | None, tree_asset: Path | None = None) -> str | None:
+    """The PASS detail of a punctuality expectation that held."""
+    if expectation is None:
+        return None
+    tree_asset = tree_asset or PUNCTUALITY_TREE_ASSET
+    if expectation == "absent":
+        return "statistiche di puntualità assenti come richiesto"
+    if tree_asset.is_file():
+        return "statistiche di puntualità presenti e identiche all'albero"
+    return "statistiche di puntualità presenti" if expectation == "present" else "statistiche di puntualità non nell'albero: nessun requisito"
+
+
+def verify_apk_punctuality(path: Path, expectation: str, tree_asset: Path | None = None) -> list[str]:
+    """Only the punctuality expectation on an APK (a readable ZIP with safe member names)."""
+    try:
+        size = path.stat().st_size
+    except OSError as error:
+        return [f"APK non leggibile: {error}"]
+    if size <= 0 or size > MAX_BUNDLE_BYTES:
+        return [f"dimensione APK non ammessa: {size} byte"]
+    problems: list[str] = []
+    try:
+        with zipfile.ZipFile(path) as apk:
+            members = apk.infolist()
+            if len(members) > MAX_MEMBERS:
+                return [f"troppi membri ZIP: {len(members)}"]
+            names = set()
+            for member in members:
+                posix = PurePosixPath(member.filename)
+                if not member.filename or posix.is_absolute() or ".." in posix.parts or "\\" in member.filename:
+                    problems.append(f"percorso ZIP non sicuro: {member.filename!r}")
+                names.add(member.filename)
+            if "AndroidManifest.xml" not in names or not any(name.endswith(".dex") for name in names):
+                problems.append("APK senza AndroidManifest.xml o DEX")
+            problems.extend(punctuality_problems(apk, names, asset_prefix=APK_ASSET_PREFIX, expectation=expectation,
+                                                 tree_asset=tree_asset))
+    except (OSError, zipfile.BadZipFile, RuntimeError, zlib.error) as error:
+        problems.append(f"APK ZIP non valido: {error}")
+    return problems
+
+
 def verify_bundle(
     path: Path,
     expected_manifest: Mapping[str, str] | None = None,
     signed: bool = False,
+    punctuality: str | None = None,
+    tree_asset: Path | None = None,
 ) -> list[str]:
     problems: list[str] = []
     try:
@@ -416,6 +515,8 @@ def verify_bundle(
                     problems.extend(verify_manifest(manifest_data, expected_manifest or {}))
             if not limits_exceeded:
                 problems.extend(verify_native_libraries(bundle, native_libraries))
+                problems.extend(punctuality_problems(bundle, names, asset_prefix=BUNDLE_ASSET_PREFIX,
+                                                     expectation=punctuality, tree_asset=tree_asset))
                 bad_member = bundle.testzip()
                 if bad_member:
                     problems.append(f"CRC ZIP non valido: {bad_member}")
@@ -458,7 +559,27 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="richiedi la firma JAR dell'upload key invece di rifiutarla (bundle pronti per Play)",
     )
+    parser.add_argument(
+        "--punctuality-stats",
+        choices=PUNCTUALITY_EXPECTATIONS,
+        help="statistiche di puntualità nel bundle telefono (profilo root, predefinito auto: richieste se l'albero ha "
+             "il file) o nell'APK di --apk; absent per una build con -Pbinario.punctualityStats=false",
+    )
+    parser.add_argument("--apk", type=Path, help="verifica soltanto le statistiche di puntualità di questo APK")
     args = parser.parse_args(argv)
+    if args.apk is not None:
+        if args.punctuality_stats is None:
+            parser.error("--apk richiede --punctuality-stats")
+        problems = verify_apk_punctuality(args.apk, args.punctuality_stats)
+        for problem in problems:
+            print(f"Android APK: FAIL: {problem}", file=sys.stderr)
+        if not problems:
+            print(f"Android APK: PASS ({punctuality_detail(args.punctuality_stats)}, {args.apk.stat().st_size} bytes, "
+                  f"sha256:{sha256_file(args.apk)}).")
+        return 1 if problems else 0
+    if args.profile != "root" and args.punctuality_stats is not None:
+        parser.error("--punctuality-stats vale solo per il profilo root")
+    punctuality = (args.punctuality_stats or "auto") if args.profile == "root" else None
     reference_problems = verify_reference_pair(args.reference_phone, args.reference_wear)
     if reference_problems:
         for problem in reference_problems:
@@ -475,7 +596,8 @@ def main(argv: list[str] | None = None) -> int:
         ("phone", args.phone or DEFAULT_BUNDLES[args.profile]["phone"], args.reference_phone),
         ("wear", args.wear or DEFAULT_BUNDLES[args.profile]["wear"], args.reference_wear),
     ):
-        problems = verify_bundle(path, manifests[label], signed=args.signed)
+        expectation = punctuality if label == "phone" else None
+        problems = verify_bundle(path, manifests[label], signed=args.signed, punctuality=expectation)
         if reference is not None:
             problems.extend(verify_reproducible(path, reference))
         if problems:
@@ -490,6 +612,8 @@ def main(argv: list[str] | None = None) -> int:
                 details.append("byte-riproducibile")
             details.extend((f"{path.stat().st_size} bytes", f"sha256:{sha256_file(path)}"))
             details.append(f"ABI native: {', '.join(native_abis(path)) or 'nessuna'}")
+            if punctuality_detail(expectation):
+                details.append(punctuality_detail(expectation))
             print(f"Android App Bundle ({label}): PASS ({', '.join(details)}).")
     return 1 if failed else 0
 

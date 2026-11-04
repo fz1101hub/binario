@@ -32,6 +32,9 @@ import it.binario.app.data.gtfs.StopNameCase
 import it.binario.app.data.gtfs.GtfsStopCodeScheme
 import it.binario.app.data.gtfs.GtfsStopDirectory
 import it.binario.app.data.gtfs.WHEELCHAIR_NO
+import it.binario.app.data.gtfs.bikesAcrossTrips
+import it.binario.app.data.gtfs.bikesOfCopies
+import it.binario.app.data.gtfs.bikesOnBoard
 import it.binario.app.data.gtfs.WHEELCHAIR_UNKNOWN
 import it.binario.app.data.gtfs.WHEELCHAIR_YES
 import it.binario.app.data.planned.RfiProgrammedStationIds
@@ -1276,6 +1279,7 @@ class EmbeddedGtfsJourneyProvider internal constructor(
             val alightDeparture = graph.timetable.departureMinute[leg.alightConnection]
             val continuations = ArrayList<InSeatContinuation>(0)
             var vehicleAccessible = trip.wheelchairAccessible == WHEELCHAIR_YES
+            var bikes = trip.bikesAllowed
             var current = graph.runGroup[boardTrip]
             val target = graph.runGroup[alightTrip]
             while (current != target && continuations.size < MAX_CONTINUATIONS) {
@@ -1301,11 +1305,15 @@ class EmbeddedGtfsJourneyProvider internal constructor(
                     serviceKind = serviceKind(nextTrip.mode, nextTrip.category, nextLine)
                 )
                 vehicleAccessible = vehicleAccessible && nextTrip.wheelchairAccessible == WHEELCHAIR_YES
+                bikes = bikesAcrossTrips(bikes, nextTrip.bikesAllowed)
                 current = graph.runGroup[next]
             }
             // Left on another pack's copy of the run (merged, not continued): that copy must be accessible too.
             if (alightTrip != boardTrip) {
-                vehicleAccessible = vehicleAccessible && alightDay.trips[alightDay.connectionTrip[alight]].wheelchairAccessible == WHEELCHAIR_YES
+                val alightCopy = alightDay.trips[alightDay.connectionTrip[alight]]
+                vehicleAccessible = vehicleAccessible && alightCopy.wheelchairAccessible == WHEELCHAIR_YES
+                // The same vehicle: the pack that publishes bikes_allowed says it; a continued run follows its own trips.
+                if (continuations.isEmpty()) bikes = bikesOfCopies(bikes, alightCopy.bikesAllowed)
             }
             val wheelchair = LegWheelchairAccess(
                 vehicle = vehicleAccessible,
@@ -1333,6 +1341,7 @@ class EmbeddedGtfsJourneyProvider internal constructor(
                 operatorName = trip.operatorName,
                 serviceDate = day.serviceDate,
                 wheelchair = wheelchair,
+                bikesAllowed = bikesOnBoard(bikes),
                 continuations = continuations
             )
         }

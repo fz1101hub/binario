@@ -11,7 +11,10 @@ import it.binario.app.data.core.Confidence
 import it.binario.app.data.core.RealtimeStopUpdate
 import it.binario.app.data.core.SourceId
 import it.binario.app.data.core.SourceRef
+import it.binario.app.data.core.StationBoard
 import it.binario.app.data.core.TrainRunId
+import it.binario.app.data.provider.ProviderResult
+import it.binario.app.data.provider.StationBoardRequest
 import kotlinx.coroutines.runBlocking
 import org.json.JSONArray
 import org.json.JSONObject
@@ -344,6 +347,48 @@ class LiveAcceptanceEvidenceTest {
     private fun accuracyPages(termini: String = board(row("9601", "20:45", "", placeholder))) =
         RfiPages(rfiCatalogue, mapOf(("3162" to false) to departures().replace(">2</td><td id=\"RBinario\">", "></td><td id=\"RBinario\">"),
             ("2416" to false) to termini, ("1728" to true) to board(row("9532", "20:50", "", placeholder))))
+
+    private fun boardPages(
+        milanoDepartures: String = board(row("9601", "20:45", "", placeholder)),
+        milanoArrivals: String = board(row("9532", "20:50", "", placeholder)),
+        terminiDepartures: String = board(row("9603", "20:55", "", placeholder)),
+        terminiArrivals: String = board(row("9534", "21:05", "", placeholder))
+    ) = RfiPages(rfiCatalogue, mapOf(("1728" to false) to milanoDepartures, ("1728" to true) to milanoArrivals,
+        ("2416" to false) to terminiDepartures, ("2416" to true) to terminiArrivals))
+
+    private fun rfiBoards(pages: RfiPages, log: MutableList<String> = mutableListOf(),
+        read: (suspend (RfiMonitorFetcher, StationBoardRequest) -> ProviderResult<StationBoard>)? = null) = runBlocking {
+        if (read == null) LiveRouteChecks.rfiBoards(pages.fetcher, clock, log = log::add)
+        else LiveRouteChecks.rfiBoards(pages.fetcher, clock, log = log::add, read = read)
+    }
+
+    @Test fun `RFI board check reads both Milano boards, passes on an observation and is skipped while every train is on time`() {
+        val log = mutableListOf<String>()
+        val onTime = boardPages()
+        val skipped = thrown<AssumptionViolatedException> { rfiBoards(onTime, log) }
+        assertTrue(skipped.message!!, skipped.message!!.contains("Roma Termini arrivi: rows=1"))
+        assertEquals(listOf("1728", "1728", "2416", "2416"), onTime.asked.toList())
+        assertTrue(log.single(), log.single().startsWith("LIVE_ACCEPTANCE skipped: RFI board"))
+        val late = boardPages(milanoDepartures = board(row("9601", "20:45", "7", null)))
+        val passed = rfiBoards(late)
+        assertEquals("Milano Centrale partenze", passed.board)
+        assertEquals(1, passed.operational)
+        assertEquals(listOf("1728", "1728"), late.asked.toList())
+    }
+
+    @Test fun `RFI board check fails on a run published with minutes but reported without an observation, or on an empty board`() {
+        val pages = boardPages(terminiDepartures = board(row("9603", "20:55", "7", null)))
+        val missed = thrown<AssertionError> { rfiBoards(pages) { fetcher, request ->
+            when (val result = RfiStationBoardAdapter(fetcher = fetcher, clock = clock).getStationBoard(request)) {
+                is ProviderResult.Success -> ProviderResult.Success(
+                    result.value.copy(entries = result.value.entries.map { it.copy(expectedTime = null, status = null) }), result.meta)
+                else -> result
+            }
+        } }
+        assertTrue(missed.message!!, missed.message!!.contains("9603: visible=7"))
+        val empty = thrown<AssertionError> { rfiBoards(boardPages(milanoArrivals = board())) }
+        assertTrue(empty.message!!, empty.message!!.contains("Milano Centrale arrivi: no parseable runs"))
+    }
 
     @Test fun `RFI accuracy is skipped only after every sampled board publishes no minutes and passes on the first that does`() {
         val log = mutableListOf<String>()

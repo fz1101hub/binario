@@ -6,8 +6,9 @@ import java.time.LocalDate
 
 /**
  * The «Affidabilità ultimi N giorni» card of a train detail: the train at the last stop shown (the destination of a
- * route search, else its terminus), its days observed and cancelled and the stop where its delay grows most. A train
- * cancelled on every day observed has [arrival] without samples ([StopReliability.cancelledEveryDay]).
+ * route search, else its terminus), how its delays there spread and the largest one, its days observed and cancelled
+ * and the stop where its delay grows most. A train cancelled on every day observed has [arrival] without samples
+ * ([StopReliability.cancelledEveryDay]) and no distribution.
  */
 data class NetworkReliabilityDetail(
     /** The days the statistics cover ([NetworkReliabilityStats.coveredDays]): fewer than the window at first. */
@@ -20,7 +21,11 @@ data class NetworkReliabilityDetail(
     val daysCancelled: Int,
     val worstStop: WorstStop?,
     /** Catalogue name of [worstStop]; the stop is left out when the catalogue does not know its code. */
-    val worstStopName: String?
+    val worstStopName: String?,
+    /** No delay, 1–5, 6–15, 16–30 and over 30 minutes at [arrival]; null when the file cannot tell them apart. */
+    val distribution: DelayDistribution? = null,
+    /** The largest delay at [arrival], when the file publishes it. */
+    val maxDelayMinutes: Int? = null
 ) {
     companion object {
         /**
@@ -59,7 +64,9 @@ data class NetworkReliabilityDetail(
                 daysObserved = train.daysObserved,
                 daysCancelled = train.daysCancelled,
                 worstStop = worst.takeIf { worstName != null },
-                worstStopName = worstName
+                worstStopName = worstName,
+                distribution = NetworkReliabilityAggregates.distribution(train, match.alightingIndex),
+                maxDelayMinutes = train.maxDelayMinutes(match.alightingIndex)
             )
         }
     }

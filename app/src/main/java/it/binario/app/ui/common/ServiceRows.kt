@@ -336,6 +336,7 @@ internal fun ResultCard(
         duration?.let { durationAccessibleLabel(it) },
         if (dataState == DataState.SAVED_COPY) stringResource(R.string.data_chip_saved_copy) else null,
         if (lastOfDay) stringResource(R.string.journey_last_of_day) else null,
+        shown.bikesAllowed?.let { stringResource(bikesLabelRes(it)) },
         reliability?.spoken,
         co2?.let { co2Spoken(it) },
         if (selected) stringResource(R.string.accessibility_row_selected) else null
@@ -385,6 +386,7 @@ internal fun ResultCard(
                 )
             }
             if (lastOfDay) LastOfDayChip()
+            shown.bikesAllowed?.let { BikesMark(it, Modifier.testTag("result-bikes")) }
             reliability?.let { NetworkReliabilityLinesText(it.lines, Modifier.padding(top = 2.dp).testTag("result-reliability")) }
             Row(Modifier.padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                 ChangesBadge(shown.transferCount, Modifier.weight(1f))

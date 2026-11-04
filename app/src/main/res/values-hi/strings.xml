@@ -1440,4 +1440,45 @@
     </plurals>
     <string name="reliability_detail_days">देखे गए दिन: %1$d · रद्द: %2$d</string>
     <string name="reliability_threshold_note">अधिकतम %1$s की देरी वाला आगमन समय पर माना जाता है।</string>
+    <string name="reliability_distribution_title">देरी का वितरण</string>
+    <string name="reliability_band_no_delay">बिना देरी</string>
+    <string name="reliability_band_range">%1$d–%2$s</string>
+    <string name="reliability_band_over">%1$s से अधिक</string>
+    <plurals name="reliability_band_share">
+        <item quantity="one">%1$d%% · %2$d बार</item>
+        <item quantity="other">%1$d%% · %2$d बार</item>
+    </plurals>
+    <string name="reliability_max_delay">अधिकतम देरी: %1$s</string>
+    <string name="reliability_route_on_time">यह मार्ग: %1$d%% समय पर</string>
+    <string name="reliability_station_on_time">इस स्टेशन पर आगमन: %1$d%% समय पर</string>
+    <plurals name="reliability_trains_count">
+        <item quantity="one">%1$d ट्रेन</item>
+        <item quantity="other">%1$d ट्रेनें</item>
+    </plurals>
+    <plurals name="reliability_runs_observed">
+        <item quantity="one">%2$s में %1$d यात्रा देखी गई</item>
+        <item quantity="other">%2$s में %1$d यात्राएँ देखी गईं</item>
+    </plurals>
+    <plurals name="reliability_days">
+        <item quantity="one">%1$d दिन</item>
+        <item quantity="other">%1$d दिनों</item>
+    </plurals>
+    <string name="reliability_route_hours">सबसे समय-पाबंद प्रस्थान: %1$s · सबसे कम समय-पाबंद: %2$s</string>
+    <string name="reliability_hour_band">%1$d–%2$d</string>
+    <string name="reliability_train_from">%2$s से %1$s</string>
+    <string name="reliability_station_title">आगमन की समय-पाबंदी</string>
+    <string name="reliability_station_often_late">यहाँ सबसे अधिक बार देर से:</string>
+    <plurals name="reliability_late_train">
+        <item quantity="one">%1$s: %3$d में से %2$d बार देर से</item>
+        <item quantity="other">%1$s: %3$d में से %2$d बार देर से</item>
+    </plurals>
+    <string name="reliability_threshold_mixed_note">Frecce, Italo, EuroCity, Eurostar और EuroNight ट्रेनों के लिए अधिकतम 5 मिनट और अन्य ट्रेनों के लिए 15 मिनट की देरी वाला आगमन समय पर माना जाता है।</string>
+    <string name="bikes_allowed">साइकिल ले जाने की अनुमति है</string>
+    <string name="bikes_not_allowed">साइकिल ले जाने की अनुमति नहीं है</string>
+    <string name="bikes_conditions_link">ट्रेन में साइकिल: %1$s की शर्तें</string>
+    <string name="planner_airport_links">हवाई अड्डों से रेल संपर्क</string>
+    <string name="planner_airport_search">%1$s से %2$s तक की ट्रेनें खोजें</string>
+    <string name="compensation_notice_quarter">%1$s पर %2$s की देरी से पहुँची: विनियम (EU) 2021/782 के अनुसार आप टिकट मूल्य के 25%% के मुआवज़े के हक़दार हो सकते हैं (120 मिनट से 50%%)।</string>
+    <string name="compensation_notice_half">%1$s पर %2$s की देरी से पहुँची: विनियम (EU) 2021/782 के अनुसार आप टिकट मूल्य के 50%% के मुआवज़े के हक़दार हो सकते हैं।</string>
+    <string name="compensation_notice_conditions">रेल कंपनी 4 € से कम राशि और बाहरी कारणों, जैसे चरम मौसम या पटरियों पर लोगों, से हुई देरी का भुगतान करने से मना कर सकती है; उसके अपने कर्मचारियों की हड़ताल बाहरी कारण नहीं है। क्षेत्रीय ट्रेनों पर शर्तें क्षेत्र के साथ सेवा अनुबंध पर भी निर्भर करती हैं।</string>
 </resources>

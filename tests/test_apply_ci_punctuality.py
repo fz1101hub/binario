@@ -78,22 +78,25 @@ class ApplyPunctualityTest(unittest.TestCase):
         code, output = self.run_main("--log", self.save(self.log))
         self.assertIn("File identico", output)
 
-    def test_a_file_with_seven_element_stops_replaces_one_with_five(self) -> None:
-        # An asset built before the extension (5-element stops) stays valid, so the older-window guard still applies to it.
+    def test_a_file_with_nine_element_stops_replaces_one_with_five_or_seven(self) -> None:
+        # An asset built before the extensions (5- or 7-element stops) stays valid, so the older-window guard still
+        # applies to it.
         self.target.parent.mkdir(parents=True)
-        legacy = stats.encode(legacy_payload())
-        self.target.write_bytes(legacy)
-        older = valid_payload()
-        older.update(windowStart="2026-10-04", windowEnd="2026-11-02", generatedAt="2026-11-03T04:00:00Z")
-        code, output = self.run_main("--log", self.save(job_log(stats.encode(older)), "older.log"))
-        self.assertEqual(1, code)
-        self.assertIn("termina prima", output)
-        self.assertEqual(legacy, self.target.read_bytes())
-        code, output = self.run_main("--log", self.save(self.log))
-        self.assertEqual(0, code, output)
-        self.assertIn("Prima: 2 treni, 3 fermate", output)
-        self.assertEqual(self.data, self.target.read_bytes())
-        self.assertEqual(7, len(stats.check_bytes(self.target.read_bytes())["trains"][1]["s"][0]))
+        for length in (5, 7):
+            with self.subTest(length=length):
+                legacy = stats.encode(legacy_payload(length))
+                self.target.write_bytes(legacy)
+                older = valid_payload()
+                older.update(windowStart="2026-10-04", windowEnd="2026-11-02", generatedAt="2026-11-03T04:00:00Z")
+                code, output = self.run_main("--log", self.save(job_log(stats.encode(older)), "older.log"))
+                self.assertEqual(1, code)
+                self.assertIn("termina prima", output)
+                self.assertEqual(legacy, self.target.read_bytes())
+                code, output = self.run_main("--log", self.save(self.log))
+                self.assertEqual(0, code, output)
+                self.assertIn("Prima: 2 treni, 3 fermate", output)
+                self.assertEqual(self.data, self.target.read_bytes())
+                self.assertEqual(9, len(stats.check_bytes(self.target.read_bytes())["trains"][1]["s"][0]))
 
     def test_only_one_frame_with_the_statistics_file_is_accepted(self) -> None:
         injected = ("2026-11-10T07:59:59.0000000Z BINARIO_FILE punctuality/stats_v1.json.gz 2 "
