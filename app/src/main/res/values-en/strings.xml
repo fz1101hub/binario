@@ -1001,6 +1001,9 @@
     <string name="widget_settings_until_arrival_description">A train that has left stays on the list, marked “En route”, until its expected arrival at the destination.</string>
     <string name="widget_settings_show_platform">Show the platform</string>
     <string name="widget_settings_show_train_name">Show train name and category</string>
+    <string name="widget_settings_show_reliability">Show reliability</string>
+    <string name="widget_settings_show_reliability_description">After each train, the share of on-time days over the last 30 days: unofficial Binario statistics from ViaggiaTreno data, included in the app and shown only with at least 5 observations.</string>
+    <string name="widget_reliability_mark">%1$d%% on time</string>
     <string name="station_widget_display_name_description">Replaces the station name in the header and stays local to this widget.</string>
     <string name="station_widget_settings_nearest">“📍 Nearest” button</string>
     <string name="station_widget_settings_nearest_description">When you tap it, the widget asks for your approximate location once and switches to the nearest station in the catalogue. The location is neither stored nor sent; automatic refreshes always use the last chosen station.</string>

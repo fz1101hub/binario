@@ -960,6 +960,9 @@
     <string name="widget_settings_until_arrival_description">Kereta yang sudah berangkat tetap di daftar, ditandai «Dalam perjalanan», sampai perkiraan tiba di tujuan.</string>
     <string name="widget_settings_show_platform">Tampilkan peron</string>
     <string name="widget_settings_show_train_name">Tampilkan nama dan kategori kereta</string>
+    <string name="widget_settings_show_reliability">Tampilkan keandalan</string>
+    <string name="widget_settings_show_reliability_description">Setelah setiap kereta, persentase hari tepat waktu dalam 30 hari terakhir: statistik tidak resmi Binario dari data ViaggiaTreno, disertakan dalam aplikasi dan hanya ditampilkan dengan minimal 5 pengamatan.</string>
+    <string name="widget_reliability_mark">%1$d%% tepat waktu</string>
     <string name="station_widget_display_name_description">Menggantikan nama stasiun di judul dan tetap lokal untuk widget ini.</string>
     <string name="station_widget_settings_nearest">Tombol «📍 Terdekat»</string>
     <string name="station_widget_settings_nearest_description">Saat diketuk, widget meminta lokasi perkiraan Anda sekali dan beralih ke stasiun terdekat di katalog. Lokasi tidak disimpan atau dikirim; pembaruan otomatis selalu memakai stasiun terakhir yang dipilih.</string>

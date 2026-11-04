@@ -1019,6 +1019,9 @@
     <string name="widget_settings_until_arrival_description">Un train parti reste dans la liste, marqué « En route », jusqu’à son arrivée prévue à destination.</string>
     <string name="widget_settings_show_platform">Afficher la voie</string>
     <string name="widget_settings_show_train_name">Afficher le nom et la catégorie du train</string>
+    <string name="widget_settings_show_reliability">Afficher la fiabilité</string>
+    <string name="widget_settings_show_reliability_description">Après chaque train, la part de jours à l’heure sur les 30 derniers jours : statistiques non officielles de Binario sur des données ViaggiaTreno, incluses dans l’app et affichées seulement à partir de 5 relevés.</string>
+    <string name="widget_reliability_mark">%1$d %% à l’heure</string>
     <string name="station_widget_display_name_description">Remplace le nom de la gare dans l’en-tête et reste propre à ce widget.</string>
     <string name="station_widget_settings_nearest">Bouton « 📍 La plus proche »</string>
     <string name="station_widget_settings_nearest_description">Quand vous le touchez, le widget demande une seule fois votre position approximative et passe à la gare la plus proche du catalogue. La position n’est ni enregistrée ni envoyée ; les actualisations automatiques utilisent toujours la dernière gare choisie.</string>

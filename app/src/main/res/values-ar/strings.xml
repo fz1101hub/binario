@@ -1050,6 +1050,9 @@
     <string name="widget_settings_until_arrival_description">يبقى القطار الذي غادر في القائمة، موسومًا «في الطريق»، حتى وصوله المتوقع إلى الوجهة.</string>
     <string name="widget_settings_show_platform">عرض الرصيف</string>
     <string name="widget_settings_show_train_name">عرض اسم القطار وفئته</string>
+    <string name="widget_settings_show_reliability">إظهار الموثوقية</string>
+    <string name="widget_settings_show_reliability_description">بعد كل قطار، نسبة الأيام التي كان فيها في الموعد خلال آخر 30 يومًا: إحصاءات غير رسمية من Binario مبنية على بيانات ViaggiaTreno، مضمّنة في التطبيق ولا تظهر إلا مع 5 رصدات على الأقل.</string>
+    <string name="widget_reliability_mark">%1$d%% في الموعد</string>
     <string name="station_widget_display_name_description">يحل محل اسم المحطة في الترويسة ويبقى محليًا لهذه الأداة.</string>
     <string name="station_widget_settings_nearest">زر «📍 الأقرب»</string>
     <string name="station_widget_settings_nearest_description">عند لمسه تطلب الأداة موقعك التقريبي مرة واحدة وتنتقل إلى أقرب محطة في الكتالوج. لا يُحفظ الموقع ولا يُرسل؛ وتستخدم التحديثات التلقائية دائمًا آخر محطة مختارة.</string>

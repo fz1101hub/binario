@@ -960,6 +960,9 @@
     <string name="widget_settings_until_arrival_description">출발한 열차는 목적지 도착 예정 시각까지 ‘운행 중’으로 표시되어 목록에 남습니다.</string>
     <string name="widget_settings_show_platform">승강장 표시</string>
     <string name="widget_settings_show_train_name">열차 이름 및 종류 표시</string>
+    <string name="widget_settings_show_reliability">신뢰도 표시</string>
+    <string name="widget_settings_show_reliability_description">각 열차 뒤에 최근 30일 중 정시였던 날의 비율을 표시합니다. ViaggiaTreno 데이터에 기반한 Binario의 비공식 통계로, 앱에 포함되어 있으며 관측이 5회 이상일 때만 표시됩니다.</string>
+    <string name="widget_reliability_mark">정시 %1$d%%</string>
     <string name="station_widget_display_name_description">머리글의 역 이름을 대신하며 이 위젯에만 저장됩니다.</string>
     <string name="station_widget_settings_nearest">‘📍 가까운 역’ 버튼</string>
     <string name="station_widget_settings_nearest_description">탭하면 위젯이 대략적인 위치를 한 번만 요청하여 카탈로그에서 가장 가까운 역으로 전환합니다. 위치는 저장되거나 전송되지 않으며, 자동 업데이트는 항상 마지막으로 선택한 역을 사용합니다.</string>

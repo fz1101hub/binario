@@ -1019,6 +1019,9 @@
     <string name="widget_settings_until_arrival_description">Un tren que ha salido sigue en la lista, marcado como “En viaje”, hasta su llegada prevista a destino.</string>
     <string name="widget_settings_show_platform">Mostrar el andén</string>
     <string name="widget_settings_show_train_name">Mostrar nombre y categoría del tren</string>
+    <string name="widget_settings_show_reliability">Mostrar fiabilidad</string>
+    <string name="widget_settings_show_reliability_description">Tras cada tren, la proporción de días puntuales de los últimos 30 días: estadísticas no oficiales de Binario con datos de ViaggiaTreno, incluidas en la app y mostradas solo con al menos 5 observaciones.</string>
+    <string name="widget_reliability_mark">%1$d%% puntual</string>
     <string name="station_widget_display_name_description">Sustituye el nombre de la estación en la cabecera y solo se guarda en este widget.</string>
     <string name="station_widget_settings_nearest">Botón “📍 Más cercana”</string>
     <string name="station_widget_settings_nearest_description">Al tocarlo, el widget pide tu ubicación aproximada una sola vez y cambia a la estación más cercana del catálogo. La ubicación no se guarda ni se envía; las actualizaciones automáticas usan siempre la última estación elegida.</string>

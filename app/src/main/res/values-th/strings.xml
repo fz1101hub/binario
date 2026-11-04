@@ -983,6 +983,9 @@
     <string name="widget_settings_until_arrival_description">ขบวนที่ออกไปแล้วจะยังอยู่ในรายการ โดยทำเครื่องหมายว่า “กำลังเดินทาง” จนถึงเวลาที่คาดว่าจะถึงปลายทาง</string>
     <string name="widget_settings_show_platform">แสดงชานชาลา</string>
     <string name="widget_settings_show_train_name">แสดงชื่อและประเภทขบวนรถ</string>
+    <string name="widget_settings_show_reliability">แสดงความน่าเชื่อถือ</string>
+    <string name="widget_settings_show_reliability_description">หลังรถไฟแต่ละขบวน แสดงสัดส่วนวันที่ตรงเวลาใน 30 วันล่าสุด: สถิติไม่เป็นทางการของ Binario จากข้อมูล ViaggiaTreno ซึ่งรวมอยู่ในแอปและแสดงเฉพาะเมื่อมีการสังเกตอย่างน้อย 5 ครั้ง</string>
+    <string name="widget_reliability_mark">ตรงเวลา %1$d%%</string>
     <string name="station_widget_display_name_description">แทนที่ชื่อสถานีในส่วนหัว และใช้กับวิดเจ็ตนี้เท่านั้น</string>
     <string name="station_widget_settings_nearest">ปุ่ม “📍 ใกล้ที่สุด”</string>
     <string name="station_widget_settings_nearest_description">เมื่อคุณแตะ วิดเจ็ตจะขอตำแหน่งโดยประมาณหนึ่งครั้งและสลับไปยังสถานีที่ใกล้ที่สุดในแคตตาล็อก ตำแหน่งจะไม่ถูกบันทึกหรือส่งไป การอัปเดตอัตโนมัติจะใช้สถานีที่เลือกล่าสุดเสมอ</string>

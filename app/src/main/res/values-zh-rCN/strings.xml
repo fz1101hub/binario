@@ -983,6 +983,9 @@
     <string name="widget_settings_until_arrival_description">已出发的列车会继续留在列表中，标记为“运行中”，直到预计到达终点。</string>
     <string name="widget_settings_show_platform">显示站台</string>
     <string name="widget_settings_show_train_name">显示列车名称和类别</string>
+    <string name="widget_settings_show_reliability">显示可靠性</string>
+    <string name="widget_settings_show_reliability_description">在每趟列车后显示最近 30 天准点天数的占比：基于 ViaggiaTreno 数据的 Binario 非官方统计，内置于应用中，仅在至少有 5 次观测时显示。</string>
+    <string name="widget_reliability_mark">准点 %1$d%%</string>
     <string name="station_widget_display_name_description">替换标题中的车站名称，仅对此小组件生效。</string>
     <string name="station_widget_settings_nearest">“📍 最近”按钮</string>
     <string name="station_widget_settings_nearest_description">点按后，小组件会请求一次大致位置，并切换到目录中最近的车站。位置不会被保存或发送；自动更新始终使用最后选择的车站。</string>

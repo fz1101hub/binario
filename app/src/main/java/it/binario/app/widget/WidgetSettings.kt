@@ -170,7 +170,9 @@ data class RouteWidgetSettings(
     val untilArrival: Boolean = false,
     val showPlatform: Boolean = true,
     val showTrainName: Boolean = true,
-    val timeRange: RouteTimeRange = RouteTimeRange.NEXT
+    val timeRange: RouteTimeRange = RouteTimeRange.NEXT,
+    /** «83% in orario» after the train, from the embedded network statistics (at least five samples). */
+    val showReliability: Boolean = true
 ) {
     companion object {
         val LEGACY = RouteWidgetSettings(autoRefresh = AutoRefreshSettings.LEGACY)
@@ -202,7 +204,9 @@ data class TrainsWidgetSettings(
     val hideNotRunning: Boolean = false,
     val sort: TrainsWidgetSort = TrainsWidgetSort.DEPARTURE,
     val autoRefresh: AutoRefreshSettings = AutoRefreshSettings(),
-    val showPlatform: Boolean = true
+    val showPlatform: Boolean = true,
+    /** «83% in orario» in the detail line, from the embedded network statistics (at least five samples). */
+    val showReliability: Boolean = true
 )
 
 /**
@@ -219,7 +223,8 @@ object WidgetSettingsCodec {
             "ua" to flag(value.untilArrival),
             "sp" to flag(value.showPlatform),
             "sn" to flag(value.showTrainName),
-            "tr" to value.timeRange.name
+            "tr" to value.timeRange.name,
+            "rl" to flag(value.showReliability)
         )
     )
 
@@ -233,7 +238,8 @@ object WidgetSettingsCodec {
             untilArrival = map.flag("ua", defaults.untilArrival),
             showPlatform = map.flag("sp", defaults.showPlatform),
             showTrainName = map.flag("sn", defaults.showTrainName),
-            timeRange = enumOr(map["tr"], defaults.timeRange)
+            timeRange = enumOr(map["tr"], defaults.timeRange),
+            showReliability = map.flag("rl", defaults.showReliability)
         )
     }
 
@@ -265,7 +271,8 @@ object WidgetSettingsCodec {
             "in" to value.info.name,
             "hn" to flag(value.hideNotRunning),
             "so" to value.sort.name,
-            "sp" to flag(value.showPlatform)
+            "sp" to flag(value.showPlatform),
+            "rl" to flag(value.showReliability)
         )
     )
 
@@ -278,7 +285,8 @@ object WidgetSettingsCodec {
             hideNotRunning = map.flag("hn", defaults.hideNotRunning),
             sort = enumOr(map["so"], defaults.sort),
             autoRefresh = autoRefresh(map),
-            showPlatform = map.flag("sp", defaults.showPlatform)
+            showPlatform = map.flag("sp", defaults.showPlatform),
+            showReliability = map.flag("rl", defaults.showReliability)
         )
     }
 

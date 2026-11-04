@@ -1014,6 +1014,9 @@
     <string name="widget_settings_until_arrival_description">Отправившийся поезд остаётся в списке с пометкой «В пути» до ожидаемого прибытия в пункт назначения.</string>
     <string name="widget_settings_show_platform">Показывать путь</string>
     <string name="widget_settings_show_train_name">Показывать название и категорию поезда</string>
+    <string name="widget_settings_show_reliability">Показывать надёжность</string>
+    <string name="widget_settings_show_reliability_description">После каждого поезда — доля дней без опоздания за последние 30 дней: неофициальная статистика Binario по данным ViaggiaTreno, встроенная в приложение и показываемая только при наличии не менее 5 наблюдений.</string>
+    <string name="widget_reliability_mark">вовремя %1$d%%</string>
     <string name="station_widget_display_name_description">Заменяет название станции в заголовке и хранится только для этого виджета.</string>
     <string name="station_widget_settings_nearest">Кнопка «📍 Ближайшая»</string>
     <string name="station_widget_settings_nearest_description">При нажатии виджет один раз запрашивает приблизительное местоположение и переключается на ближайшую станцию из каталога. Местоположение не сохраняется и не передаётся; автообновления всегда используют последнюю выбранную станцию.</string>

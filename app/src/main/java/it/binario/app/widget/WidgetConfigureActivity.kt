@@ -203,6 +203,7 @@ class WidgetConfigureActivity : ComponentActivity() {
                                 )
                                 WidgetSwitchRow(stringResource(R.string.widget_settings_show_platform), settings.showPlatform, { settings = settings.copy(showPlatform = it) })
                                 WidgetSwitchRow(stringResource(R.string.widget_settings_show_train_name), settings.showTrainName, { settings = settings.copy(showTrainName = it) })
+                                WidgetReliabilitySwitchRow(settings.showReliability) { settings = settings.copy(showReliability = it) }
                             }
                         }
                         validationMessage?.let { message ->

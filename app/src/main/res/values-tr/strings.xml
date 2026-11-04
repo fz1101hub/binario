@@ -1001,6 +1001,9 @@
     <string name="widget_settings_until_arrival_description">Kalkmış bir tren, varış noktasına tahmini varışına kadar listede “Yolda” olarak işaretli kalır.</string>
     <string name="widget_settings_show_platform">Peronu göster</string>
     <string name="widget_settings_show_train_name">Tren adını ve kategorisini göster</string>
+    <string name="widget_settings_show_reliability">Güvenilirliği göster</string>
+    <string name="widget_settings_show_reliability_description">Her trenden sonra son 30 günde zamanında olunan günlerin oranı: ViaggiaTreno verilerine dayanan, uygulamaya dahil resmî olmayan Binario istatistikleri; yalnızca en az 5 gözlem varsa gösterilir.</string>
+    <string name="widget_reliability_mark">%%%1$d zamanında</string>
     <string name="station_widget_display_name_description">Başlıktaki istasyon adının yerini alır ve yalnızca bu widget için geçerlidir.</string>
     <string name="station_widget_settings_nearest">“📍 En yakın” düğmesi</string>
     <string name="station_widget_settings_nearest_description">Dokunduğunuzda widget yaklaşık konumu bir kez ister ve katalogdaki en yakın istasyona geçer. Konum kaydedilmez ve gönderilmez; otomatik güncellemeler her zaman en son seçilen istasyonu kullanır.</string>

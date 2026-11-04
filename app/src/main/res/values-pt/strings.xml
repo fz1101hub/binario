@@ -996,6 +996,9 @@
     <string name="widget_settings_until_arrival_description">Um trem que já partiu continua na lista, marcado como “Em viagem”, até a chegada prevista ao destino.</string>
     <string name="widget_settings_show_platform">Mostrar a plataforma</string>
     <string name="widget_settings_show_train_name">Mostrar nome e categoria do trem</string>
+    <string name="widget_settings_show_reliability">Mostrar confiabilidade</string>
+    <string name="widget_settings_show_reliability_description">Depois de cada trem, a parcela de dias no horário nos últimos 30 dias: estatísticas não oficiais do Binario com dados do ViaggiaTreno, incluídas no app e mostradas só com pelo menos 5 observações.</string>
+    <string name="widget_reliability_mark">%1$d%% no horário</string>
     <string name="station_widget_display_name_description">Substitui o nome da estação no cabeçalho e fica apenas nesta instância.</string>
     <string name="station_widget_settings_nearest">Botão “📍 Mais próxima”</string>
     <string name="station_widget_settings_nearest_description">Ao tocar nele, o widget pede a localização aproximada uma única vez e muda para a estação mais próxima do catálogo. A localização não é salva nem enviada; as atualizações automáticas sempre usam a última estação escolhida.</string>

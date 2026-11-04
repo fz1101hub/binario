@@ -978,6 +978,9 @@
     <string name="widget_settings_until_arrival_description">चल चुकी ट्रेन गंतव्य पर अनुमानित आगमन तक सूची में «रास्ते में» के रूप में रहती है।</string>
     <string name="widget_settings_show_platform">प्लेटफ़ॉर्म दिखाएँ</string>
     <string name="widget_settings_show_train_name">ट्रेन का नाम और श्रेणी दिखाएँ</string>
+    <string name="widget_settings_show_reliability">विश्वसनीयता दिखाएँ</string>
+    <string name="widget_settings_show_reliability_description">हर ट्रेन के बाद, पिछले 30 दिनों में समय पर रहे दिनों का हिस्सा: ViaggiaTreno डेटा पर आधारित Binario के अनौपचारिक आँकड़े, ऐप में शामिल और कम से कम 5 अवलोकनों पर ही दिखाए जाते हैं।</string>
+    <string name="widget_reliability_mark">%1$d%% समय पर</string>
     <string name="station_widget_display_name_description">हेडर में स्टेशन के नाम की जगह लेता है और इसी विजेट तक स्थानीय रहता है।</string>
     <string name="station_widget_settings_nearest">«📍 सबसे पास» बटन</string>
     <string name="station_widget_settings_nearest_description">टैप करने पर विजेट एक बार आपकी अनुमानित लोकेशन माँगता है और कैटलॉग के सबसे पास के स्टेशन पर चला जाता है। लोकेशन न सहेजी जाती है न भेजी जाती है; स्वचालित अपडेट हमेशा अंतिम चुने गए स्टेशन का उपयोग करते हैं।</string>

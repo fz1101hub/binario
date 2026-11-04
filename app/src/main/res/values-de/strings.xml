@@ -1001,6 +1001,9 @@
     <string name="widget_settings_until_arrival_description">Ein abgefahrener Zug bleibt in der Liste, markiert mit „Unterwegs“, bis zur erwarteten Ankunft am Ziel.</string>
     <string name="widget_settings_show_platform">Gleis zeigen</string>
     <string name="widget_settings_show_train_name">Zugname und Zugart zeigen</string>
+    <string name="widget_settings_show_reliability">Zuverlässigkeit anzeigen</string>
+    <string name="widget_settings_show_reliability_description">Nach jedem Zug der Anteil pünktlicher Tage der letzten 30 Tage: inoffizielle Binario-Statistik aus ViaggiaTreno-Daten, in der App enthalten und erst ab 5 Erfassungen angezeigt.</string>
+    <string name="widget_reliability_mark">%1$d%% pünktlich</string>
     <string name="station_widget_display_name_description">Ersetzt den Bahnhofsnamen in der Kopfzeile und bleibt lokal für dieses Widget.</string>
     <string name="station_widget_settings_nearest">Schaltfläche „📍 Nächster“</string>
     <string name="station_widget_settings_nearest_description">Tippst du darauf, fragt das Widget einmalig nach deinem ungefähren Standort und wechselt zum nächsten Bahnhof des Katalogs. Der Standort wird weder gespeichert noch gesendet; automatische Aktualisierungen verwenden immer den zuletzt gewählten Bahnhof.</string>

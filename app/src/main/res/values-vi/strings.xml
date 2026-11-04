@@ -983,6 +983,9 @@
     <string name="widget_settings_until_arrival_description">Tàu đã khởi hành vẫn nằm trong danh sách, được đánh dấu “Đang chạy”, cho đến giờ dự kiến đến ga cuối.</string>
     <string name="widget_settings_show_platform">Hiển thị sân ga</string>
     <string name="widget_settings_show_train_name">Hiển thị tên và loại tàu</string>
+    <string name="widget_settings_show_reliability">Hiển thị độ tin cậy</string>
+    <string name="widget_settings_show_reliability_description">Sau mỗi tàu, tỷ lệ ngày đúng giờ trong 30 ngày qua: thống kê không chính thức của Binario từ dữ liệu ViaggiaTreno, có sẵn trong ứng dụng và chỉ hiển thị khi có ít nhất 5 lần ghi nhận.</string>
+    <string name="widget_reliability_mark">%1$d%% đúng giờ</string>
     <string name="station_widget_display_name_description">Thay cho tên ga ở tiêu đề và chỉ áp dụng cho tiện ích này.</string>
     <string name="station_widget_settings_nearest">Nút “📍 Gần nhất”</string>
     <string name="station_widget_settings_nearest_description">Khi bạn nhấn, tiện ích sẽ yêu cầu vị trí gần đúng một lần và chuyển sang ga gần nhất trong danh mục. Vị trí không được lưu hay gửi đi; các lần cập nhật tự động luôn dùng ga được chọn gần nhất.</string>

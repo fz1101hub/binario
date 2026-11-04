@@ -960,6 +960,9 @@
     <string name="widget_settings_until_arrival_description">発車した列車は、終着駅への到着見込みまで「運行中」として一覧に残ります。</string>
     <string name="widget_settings_show_platform">番線を表示</string>
     <string name="widget_settings_show_train_name">列車名と種別を表示</string>
+    <string name="widget_settings_show_reliability">信頼性を表示</string>
+    <string name="widget_settings_show_reliability_description">各列車の後に、過去 30 日間で定時だった日の割合を表示します。ViaggiaTreno のデータに基づく Binario の非公式統計で、アプリに含まれており、観測が 5 回以上ある場合のみ表示されます。</string>
+    <string name="widget_reliability_mark">定時 %1$d%%</string>
     <string name="station_widget_display_name_description">見出しの駅名の代わりに表示され、このウィジェットにのみ保存されます。</string>
     <string name="station_widget_settings_nearest">「📍 最寄り」ボタン</string>
     <string name="station_widget_settings_nearest_description">タップすると、ウィジェットはおおよその位置情報を一度だけ取得し、カタログ内の最寄り駅に切り替えます。位置情報は保存も送信もされません。自動更新では常に最後に選んだ駅を使用します。</string>

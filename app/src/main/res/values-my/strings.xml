@@ -960,6 +960,9 @@
     <string name="widget_settings_until_arrival_description">ထွက်ခွာပြီးသော ရထားသည် ခရီးဆုံးသို့ ခန့်မှန်း ဆိုက်ရောက်ချိန်အထိ “ခရီးသွားနေသည်” ဟု မှတ်သားလျက် စာရင်းထဲတွင် ရှိနေမည်။</string>
     <string name="widget_settings_show_platform">ပလက်ဖောင်း ပြရန်</string>
     <string name="widget_settings_show_train_name">ရထား အမည်နှင့် အမျိုးအစား ပြရန်</string>
+    <string name="widget_settings_show_reliability">ယုံကြည်စိတ်ချရမှုကို ပြရန်</string>
+    <string name="widget_settings_show_reliability_description">ရထားတိုင်း၏ နောက်တွင် ပြီးခဲ့သော ရက် 30 အတွင်း အချိန်မှန်ခဲ့သော ရက်များ၏ အချိုး- ViaggiaTreno ဒေတာအပေါ် အခြေခံသည့် Binario ၏ တရားဝင်မဟုတ်သော စာရင်းအင်းများဖြစ်ပြီး အက်ပ်တွင် ပါဝင်ကာ အနည်းဆုံး လေ့လာမှု 5 ကြိမ်ရှိမှသာ ပြသည်။</string>
+    <string name="widget_reliability_mark">အချိန်မှန် %1$d%%</string>
     <string name="station_widget_display_name_description">ခေါင်းစီးရှိ ဘူတာ အမည်ကို အစားထိုးပြီး ဤဝစ်ဂျက်တွင်သာ သိမ်းသည်။</string>
     <string name="station_widget_settings_nearest">“📍 အနီးဆုံး” ခလုတ်</string>
     <string name="station_widget_settings_nearest_description">၎င်းကို တို့လျှင် ဝစ်ဂျက်သည် ခန့်မှန်း တည်နေရာကို တစ်ကြိမ်သာ တောင်းပြီး ကက်တလောက်ရှိ အနီးဆုံး ဘူတာသို့ ပြောင်းသည်။ တည်နေရာကို မသိမ်း၊ မပို့ပါ၊ အလိုအလျောက် အပ်ဒိတ်များသည် နောက်ဆုံး ရွေးထားသော ဘူတာကို အမြဲ သုံးသည်။</string>

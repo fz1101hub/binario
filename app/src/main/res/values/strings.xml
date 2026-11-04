@@ -1019,6 +1019,9 @@
     <string name="widget_settings_until_arrival_description">Un treno partito resta in elenco, segnato «In viaggio», fino all’arrivo previsto a destinazione.</string>
     <string name="widget_settings_show_platform">Mostra il binario</string>
     <string name="widget_settings_show_train_name">Mostra nome e categoria del treno</string>
+    <string name="widget_settings_show_reliability">Mostra l’affidabilità</string>
+    <string name="widget_settings_show_reliability_description">Dopo ogni treno, la quota di giorni in orario degli ultimi 30 giorni: statistiche non ufficiali di Binario su dati ViaggiaTreno, incluse nell’app e mostrate solo con almeno 5 rilevazioni.</string>
+    <string name="widget_reliability_mark">%1$d%% in orario</string>
     <string name="station_widget_display_name_description">Sostituisce il nome della stazione nella testata e resta locale a questa istanza.</string>
     <string name="station_widget_settings_nearest">Pulsante «📍 Più vicina»</string>
     <string name="station_widget_settings_nearest_description">Se lo tocchi, il widget chiede la posizione approssimativa una sola volta e passa alla stazione più vicina del catalogo. La posizione non viene salvata né inviata; gli aggiornamenti automatici usano sempre l’ultima stazione scelta.</string>
