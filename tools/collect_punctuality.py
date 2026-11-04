@@ -15,10 +15,11 @@ container cannot reach viaggiatreno.it).  Each run:
    day, epoch milliseconds), at most ``--rate`` requests per second (2 by default and at most), within
    ``--max-requests`` and ``--deadline-seconds``, stopping after 20 consecutive failures or at once on HTTP 403/429;
 3. keeps per stop the ViaggiaTreno station code, the delay in whole minutes (actual minus scheduled time, truncated
-   towards zero as the app shows it: departure at the origin, arrival elsewhere; early arrivals are <= 0) and whether
-   the stop was suppressed (``actualFermataType`` 3), and for the run whether it was cancelled (``provvedimento`` 1,
-   ``tipoTreno`` ``ST`` or every stop suppressed).  A train with no actual time at its last served stop (and not
-   cancelled) stays pending and is asked again by later runs up to 8 h after its scheduled arrival, then dropped as
+   towards zero as the app shows it: departure at the origin, arrival elsewhere; early arrivals are <= 0), whether
+   the stop was suppressed (``actualFermataType`` 3) and the scheduled time (same departure/arrival rule) as minutes
+   since local midnight of the departure day (Europe/Rome wall clock, 1440 or more after midnight), and for the run
+   whether it was cancelled (``provvedimento`` 1, ``tipoTreno`` ``ST`` or every stop suppressed).  A train with no
+   actual time at its last served stop (and not cancelled) stays pending and is asked again by later runs up to 8 h after its scheduled arrival, then dropped as
    ``unknown``; a train ViaggiaTreno does not know (HTTP 204/404, ``null``) or whose identity differs (number, origin,
    day) is recorded as ``missing``/``mismatch`` and not asked again;
 4. writes the state directory (``--state``): ``obs-YYYY-MM-DD.jsonl.gz`` (one compact JSON line per train and
@@ -77,6 +78,10 @@ MAX_REDIRECTS = 3
 MAX_STOPS = 400
 # Delays outside this range (minutes) are taken as a clock or data error, not as an observation.
 MIN_DELAY, MAX_DELAY = -60, 720
+MINUTES_PER_DAY = 1440
+# Scheduled times are kept as minutes since local midnight of the departure day, below two days (a stop reached
+# after midnight is 1440 or more); anything else is not kept.
+MAX_SCHEDULED_MINUTE = 2 * MINUTES_PER_DAY  # exclusive
 SUPPRESSED_STOP_TYPE = 3
 # actualFermataType 2 marks a stop the timetable does not have (the app shows 2 and 3 as skipped): it has no
 # scheduled time to compare with, so it is neither a sample nor a suppression.
@@ -125,6 +130,14 @@ def midnight_millis(day: date) -> int:
 
 def rome_date(epoch_seconds: float) -> date:
     return datetime.fromtimestamp(epoch_seconds, ROME).date()
+
+
+def scheduled_minute(day: date, epoch_millis: int) -> int | None:
+    """``epoch_millis`` as minutes since local midnight of ``day`` on the Europe/Rome wall clock (10:00 is 600 also on
+    the days the clocks change; 00:10 of the next day is 1450), ``None`` outside ``0 <= minute < 2880``."""
+    local = datetime.fromtimestamp(epoch_millis // 1000, ROME)
+    minute = (local.date() - day).days * MINUTES_PER_DAY + local.hour * 60 + local.minute
+    return minute if 0 <= minute < MAX_SCHEDULED_MINUTE else None
 
 
 def gtfs_seconds(value: str) -> int | None:
@@ -408,8 +421,14 @@ def _is_int(value: object) -> bool:
     return isinstance(value, int) and not isinstance(value, bool)
 
 
+def valid_scheduled_minute(value: object) -> bool:
+    return value is None or (_is_int(value) and 0 <= value < MAX_SCHEDULED_MINUTE)
+
+
 def valid_record(record: object, day: str) -> bool:
-    """A stored observation line as this tool writes it."""
+    """A stored observation line as this tool writes it.  A stop is ``[code, delay, suppressed, scheduledMinute]``;
+    lines written before the extension of 4 November 2026 have ``[code, delay, suppressed]`` (no scheduled time) and
+    stay valid."""
     if not isinstance(record, dict) or set(record) != {"d", "o", "n", "c", "st", "t", "s"}:
         return False
     if record["d"] != day or not isinstance(record["o"], str) or not CODE.fullmatch(record["o"]):
@@ -422,9 +441,11 @@ def valid_record(record: object, day: str) -> bool:
         return False
     for stop in record["s"]:
         if (
-            not isinstance(stop, list) or len(stop) != 3 or not isinstance(stop[0], str) or not CODE.fullmatch(stop[0])
+            not isinstance(stop, list) or len(stop) not in (3, 4) or not isinstance(stop[0], str)
+            or not CODE.fullmatch(stop[0])
             or not (stop[1] is None or (_is_int(stop[1]) and MIN_DELAY <= stop[1] <= MAX_DELAY))
             or stop[2] not in (0, 1) or isinstance(stop[2], bool)
+            or (len(stop) == 4 and not valid_scheduled_minute(stop[3]))
         ):
             return False
     if len({stop[0] for stop in record["s"]}) != len(record["s"]):
@@ -722,7 +743,7 @@ def _delay_minutes(scheduled: int, actual: int) -> int:
 @dataclass
 class Observation:
     status: str  # "ok", "cancelled", "pending", "missing", "mismatch"
-    stops: list[list[Any]] = field(default_factory=list)
+    stops: list[list[Any]] = field(default_factory=list)  # [code, delay, suppressed, scheduled minute]
     notes: dict[str, int] = field(default_factory=dict)
 
 
@@ -732,7 +753,8 @@ def interpret(payload: Any, due: Due) -> Observation:
         return Observation("missing")
     if not isinstance(payload, dict):
         raise ValueError("risposta non è un oggetto JSON")
-    midnight = midnight_millis(date.fromisoformat(due.day))
+    day = date.fromisoformat(due.day)
+    midnight = midnight_millis(day)
     if _integer(payload.get("numeroTreno")) != int(due.number) or payload.get("idOrigine") != due.origin:
         return Observation("mismatch")
     declared_day = _integer(payload.get("dataPartenzaTreno"))
@@ -786,7 +808,8 @@ def interpret(payload: Any, due: Due) -> Observation:
             if not MIN_DELAY <= delay <= MAX_DELAY:
                 note("ritardi_non_plausibili")
                 delay = None
-        stops.append([code, delay, suppressed])
+        minute = None if scheduled is None else scheduled_minute(day, scheduled)
+        stops.append([code, delay, suppressed, minute])
         actual_at.append(actual is not None and not suppressed)
 
     cancelled = (
