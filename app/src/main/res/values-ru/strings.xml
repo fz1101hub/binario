@@ -94,6 +94,12 @@
     <string name="shortcut_active_route">Активный маршрут</string>
     <string name="shortcut_next_departures">Ближайшие отправления</string>
     <string name="shortcut_train_search">Поиск поезда</string>
+    <string name="shortcut_route_removed">Маршрут больше не сохранён в Binario</string>
+    <string name="tile_next_train_label">Следующий поезд</string>
+    <string name="tile_next_train_no_route">Нет активного маршрута</string>
+    <string name="tile_next_train_none">Сегодня поездов больше нет</string>
+    <string name="tile_next_train_departure">%1$s · %2$s</string>
+    <string name="tile_next_train_description">Следующий поезд по расписанию: %1$s в %2$s, %3$s</string>
     <!-- Main app shell and primary journey planner. -->
     <string name="app_brand">BINARIO</string>
     <string name="screen_title_detail">Сведения о поезде</string>

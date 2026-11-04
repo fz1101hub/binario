@@ -94,6 +94,12 @@
     <string name="shortcut_active_route">Rute aktif</string>
     <string name="shortcut_next_departures">Keberangkatan berikutnya</string>
     <string name="shortcut_train_search">Cari kereta</string>
+    <string name="shortcut_route_removed">Rute tidak lagi tersimpan di Binario</string>
+    <string name="tile_next_train_label">Kereta berikutnya</string>
+    <string name="tile_next_train_no_route">Tidak ada rute aktif</string>
+    <string name="tile_next_train_none">Tidak ada kereta lagi hari ini</string>
+    <string name="tile_next_train_departure">%1$s · %2$s</string>
+    <string name="tile_next_train_description">Kereta berikutnya menurut jadwal: %1$s pukul %2$s, %3$s</string>
     <!-- Main app shell and primary journey planner. -->
     <string name="app_brand">BINARIO</string>
     <string name="screen_title_detail">Detail perjalanan</string>

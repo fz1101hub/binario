@@ -94,6 +94,12 @@
     <string name="shortcut_active_route">المسار النشط</string>
     <string name="shortcut_next_departures">المغادرات التالية</string>
     <string name="shortcut_train_search">البحث عن قطار</string>
+    <string name="shortcut_route_removed">لم يعد المسار محفوظًا في Binario</string>
+    <string name="tile_next_train_label">القطار التالي</string>
+    <string name="tile_next_train_no_route">لا يوجد مسار نشط</string>
+    <string name="tile_next_train_none">لا مزيد من القطارات اليوم</string>
+    <string name="tile_next_train_departure">%1$s · %2$s</string>
+    <string name="tile_next_train_description">القطار التالي حسب الجدول المبرمج: %1$s في الساعة %2$s، %3$s</string>
     <!-- Main app shell and primary journey planner. -->
     <string name="app_brand">BINARIO</string>
     <string name="screen_title_detail">تفاصيل الرحلة</string>

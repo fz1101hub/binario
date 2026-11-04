@@ -95,6 +95,12 @@
     <string name="shortcut_active_route">Etkin güzergâh</string>
     <string name="shortcut_next_departures">Sonraki kalkışlar</string>
     <string name="shortcut_train_search">Tren arama</string>
+    <string name="shortcut_route_removed">Güzergâh artık Binario\'da kayıtlı değil</string>
+    <string name="tile_next_train_label">Sonraki tren</string>
+    <string name="tile_next_train_no_route">Etkin güzergâh yok</string>
+    <string name="tile_next_train_none">Bugün başka tren yok</string>
+    <string name="tile_next_train_departure">%1$s · %2$s</string>
+    <string name="tile_next_train_description">Planlanan tarifeye göre sonraki tren: %1$s, saat %2$s, %3$s</string>
 
     <!-- Main app shell and primary journey planner. -->
     <string name="app_brand">BINARIO</string>

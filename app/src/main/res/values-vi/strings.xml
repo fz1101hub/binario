@@ -95,6 +95,12 @@
     <string name="shortcut_active_route">Tuyến đang dùng</string>
     <string name="shortcut_next_departures">Chuyến đi sắp tới</string>
     <string name="shortcut_train_search">Tìm tàu</string>
+    <string name="shortcut_route_removed">Tuyến không còn được lưu trong Binario</string>
+    <string name="tile_next_train_label">Chuyến tàu tiếp theo</string>
+    <string name="tile_next_train_no_route">Không có tuyến đang dùng</string>
+    <string name="tile_next_train_none">Hôm nay không còn chuyến tàu nào</string>
+    <string name="tile_next_train_departure">%1$s · %2$s</string>
+    <string name="tile_next_train_description">Chuyến tàu tiếp theo theo lịch trình: %1$s lúc %2$s, %3$s</string>
 
     <!-- Main app shell and primary journey planner. -->
     <string name="app_brand">BINARIO</string>

@@ -94,6 +94,12 @@
     <string name="shortcut_active_route">လက်ရှိ လမ်းကြောင်း</string>
     <string name="shortcut_next_departures">နောက် ထွက်ခွာမည့်ရထားများ</string>
     <string name="shortcut_train_search">ရထား ရှာရန်</string>
+    <string name="shortcut_route_removed">Binario တွင် လမ်းကြောင်းကို မသိမ်းထားတော့ပါ</string>
+    <string name="tile_next_train_label">နောက်ရထား</string>
+    <string name="tile_next_train_no_route">အသုံးပြုနေသော လမ်းကြောင်း မရှိ</string>
+    <string name="tile_next_train_none">ယနေ့ နောက်ထပ် ရထား မရှိတော့ပါ</string>
+    <string name="tile_next_train_departure">%1$s · %2$s</string>
+    <string name="tile_next_train_description">စီစဉ်ထားသော အချိန်ဇယားအရ နောက်ရထား- %1$s၊ %2$s တွင်၊ %3$s</string>
     <!-- Main app shell and primary journey planner. -->
     <string name="app_brand">BINARIO</string>
     <string name="screen_title_detail">ရထား အသေးစိတ်</string>

@@ -76,6 +76,18 @@
             android:taskAffinity=""
             android:theme="@style/Theme.Binario.Translucent" />
 
+        <!-- «Prossimo treno» in Quick Settings: reads only the offline timetable stored by the app; a tap opens the app. -->
+        <service
+            android:name=".tile.NextTrainTileService"
+            android:exported="true"
+            android:icon="@drawable/ic_tile_train"
+            android:label="@string/tile_next_train_label"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+
         <service
             android:name=".wear.WearRefreshRequestListenerService"
             android:exported="true">

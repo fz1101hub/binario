@@ -95,6 +95,12 @@
     <string name="shortcut_active_route">Aktive Strecke</string>
     <string name="shortcut_next_departures">Nächste Abfahrten</string>
     <string name="shortcut_train_search">Zugsuche</string>
+    <string name="shortcut_route_removed">Strecke nicht mehr in Binario gespeichert</string>
+    <string name="tile_next_train_label">Nächster Zug</string>
+    <string name="tile_next_train_no_route">Keine aktive Strecke</string>
+    <string name="tile_next_train_none">Heute keine weiteren Züge</string>
+    <string name="tile_next_train_departure">%1$s · %2$s</string>
+    <string name="tile_next_train_description">Nächster Zug laut Fahrplan: %1$s um %2$s, %3$s</string>
 
     <!-- Main app shell and primary journey planner. -->
     <string name="app_brand">BINARIO</string>

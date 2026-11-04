@@ -94,6 +94,12 @@
     <string name="shortcut_active_route">활성 구간</string>
     <string name="shortcut_next_departures">다음 출발</string>
     <string name="shortcut_train_search">열차 검색</string>
+    <string name="shortcut_route_removed">Binario에 더 이상 저장되지 않은 구간</string>
+    <string name="tile_next_train_label">다음 열차</string>
+    <string name="tile_next_train_no_route">활성 구간 없음</string>
+    <string name="tile_next_train_none">오늘은 더 이상 열차가 없습니다</string>
+    <string name="tile_next_train_departure">%1$s · %2$s</string>
+    <string name="tile_next_train_description">예정 시간표 기준 다음 열차: %1$s, %2$s 출발, %3$s</string>
     <!-- Main app shell and primary journey planner. -->
     <string name="app_brand">BINARIO</string>
     <string name="screen_title_detail">열차 상세 정보</string>

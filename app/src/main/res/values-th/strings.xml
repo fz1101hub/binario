@@ -95,6 +95,12 @@
     <string name="shortcut_active_route">เส้นทางปัจจุบัน</string>
     <string name="shortcut_next_departures">ขบวนที่จะออกถัดไป</string>
     <string name="shortcut_train_search">ค้นหาขบวนรถ</string>
+    <string name="shortcut_route_removed">ไม่ได้บันทึกเส้นทางนี้ใน Binario แล้ว</string>
+    <string name="tile_next_train_label">รถไฟขบวนถัดไป</string>
+    <string name="tile_next_train_no_route">ไม่มีเส้นทางที่ใช้งานอยู่</string>
+    <string name="tile_next_train_none">วันนี้ไม่มีรถไฟแล้ว</string>
+    <string name="tile_next_train_departure">%1$s · %2$s</string>
+    <string name="tile_next_train_description">รถไฟขบวนถัดไปตามตารางเวลา: %1$s เวลา %2$s, %3$s</string>
 
     <!-- Main app shell and primary journey planner. -->
     <string name="app_brand">BINARIO</string>

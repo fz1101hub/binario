@@ -94,6 +94,12 @@
     <string name="shortcut_active_route">सक्रिय मार्ग</string>
     <string name="shortcut_next_departures">अगले प्रस्थान</string>
     <string name="shortcut_train_search">ट्रेन खोजें</string>
+    <string name="shortcut_route_removed">मार्ग अब Binario में सहेजा नहीं है</string>
+    <string name="tile_next_train_label">अगली ट्रेन</string>
+    <string name="tile_next_train_no_route">कोई सक्रिय मार्ग नहीं</string>
+    <string name="tile_next_train_none">आज और कोई ट्रेन नहीं</string>
+    <string name="tile_next_train_departure">%1$s · %2$s</string>
+    <string name="tile_next_train_description">निर्धारित समय-सारणी से अगली ट्रेन: %1$s, %2$s बजे, %3$s</string>
     <!-- Main app shell and primary journey planner. -->
     <string name="app_brand">BINARIO</string>
     <string name="screen_title_detail">ट्रेन का विवरण</string>

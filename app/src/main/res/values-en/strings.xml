@@ -95,6 +95,12 @@
     <string name="shortcut_active_route">Active route</string>
     <string name="shortcut_next_departures">Next departures</string>
     <string name="shortcut_train_search">Train search</string>
+    <string name="shortcut_route_removed">Route no longer saved in Binario</string>
+    <string name="tile_next_train_label">Next train</string>
+    <string name="tile_next_train_no_route">No active route</string>
+    <string name="tile_next_train_none">No more trains today</string>
+    <string name="tile_next_train_departure">%1$s · %2$s</string>
+    <string name="tile_next_train_description">Next train from the scheduled timetable: %1$s at %2$s, %3$s</string>
 
     <!-- Main app shell and primary journey planner. -->
     <string name="app_brand">BINARIO</string>

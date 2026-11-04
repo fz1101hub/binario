@@ -94,6 +94,12 @@
     <string name="shortcut_active_route">選択中の区間</string>
     <string name="shortcut_next_departures">次の発車</string>
     <string name="shortcut_train_search">列車を検索</string>
+    <string name="shortcut_route_removed">この区間は Binario に保存されていません</string>
+    <string name="tile_next_train_label">次の列車</string>
+    <string name="tile_next_train_no_route">有効な区間がありません</string>
+    <string name="tile_next_train_none">本日の列車はもうありません</string>
+    <string name="tile_next_train_departure">%1$s · %2$s</string>
+    <string name="tile_next_train_description">時刻表による次の列車：%1$s、%2$s 発、%3$s</string>
     <!-- Main app shell and primary journey planner. -->
     <string name="app_brand">BINARIO</string>
     <string name="screen_title_detail">列車の詳細</string>

@@ -95,6 +95,12 @@
     <string name="shortcut_active_route">当前路线</string>
     <string name="shortcut_next_departures">即将出发</string>
     <string name="shortcut_train_search">查询车次</string>
+    <string name="shortcut_route_removed">该路线已不再保存在 Binario 中</string>
+    <string name="tile_next_train_label">下一班列车</string>
+    <string name="tile_next_train_no_route">没有当前路线</string>
+    <string name="tile_next_train_none">今天没有更多列车</string>
+    <string name="tile_next_train_departure">%1$s · %2$s</string>
+    <string name="tile_next_train_description">按计划时刻表的下一班列车：%1$s，%2$s 出发，%3$s</string>
 
     <!-- Main app shell and primary journey planner. -->
     <string name="app_brand">BINARIO</string>
