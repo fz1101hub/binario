@@ -15,7 +15,8 @@ enum PhoneRefreshFeedback: Equatable, Sendable {
     case unreachable
 }
 
-/// Asks the paired iPhone to repeat its last search for now.
+/// Asks the paired iPhone for the next trains of the route it shows (its last search for now, or
+/// the route pinned with «Mostra su Watch»).
 @MainActor
 protocol PhoneRefreshRequesting: AnyObject {
     func requestRefresh() async -> PhoneRefreshOutcome
@@ -33,6 +34,8 @@ final class WatchSnapshotStore: ObservableObject {
     private let refresher: (any PhoneRefreshRequesting)?
     private let clock: @MainActor () -> Date
     private var revalidation: Task<Void, Never>?
+    /// The request sent on its own when the app opens with nothing to show.
+    private var automaticRequest: Task<Void, Never>?
 
     init(
         snapshot: BinarioWatchSnapshot = WatchSnapshotStorage.load(),
@@ -52,9 +55,22 @@ final class WatchSnapshotStore: ObservableObject {
     }
 
     /// The app is back on screen: it may have been suspended past a departure or the expiry.
+    /// With no train left to show it also asks the iPhone once, without feedback, for the next
+    /// trains of its route: Watch Connectivity wakes the iPhone app in the background, which
+    /// answers with a new application context (the pinned route when no search is on screen).
     func sceneDidBecomeActive() {
         refreshFeedback = .idle
         refreshFromCache()
+        guard snapshot.services.isEmpty, refresher != nil, automaticRequest == nil else { return }
+        automaticRequest = Task { [weak self] in
+            _ = await self?.refresher?.requestRefresh()
+            self?.automaticRequest = nil
+        }
+    }
+
+    /// Waits for the request `sceneDidBecomeActive` sent on its own, if any.
+    func automaticRequestFinished() async {
+        await automaticRequest?.value
     }
 
     /// Drops the trains that have left, switches to unavailable at the expiry and waits for the
@@ -85,7 +101,7 @@ final class WatchSnapshotStore: ObservableObject {
         WidgetCenter.shared.reloadAllTimelines()
     }
 
-    /// "Aggiorna": rereads the cache and asks the iPhone to repeat its last search for now.
+    /// "Aggiorna": rereads the cache and asks the iPhone for the next trains of its route.
     func requestPhoneRefresh() async {
         refreshFromCache()
         guard let refresher else {

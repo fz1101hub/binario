@@ -16,6 +16,7 @@ struct SavedRoutesView: View {
                 List {
                     Section {
                         ForEach(model.savedRoutes) { route in
+                            let pinned = model.pinnedWatchRouteID == route.id
                             // One tap opens the planner on this route and searches it from now.
                             Button {
                                 model.openPlanner(for: route)
@@ -27,6 +28,11 @@ struct SavedRoutesView: View {
                                     Text("\(route.origin.name) → \(route.destination.name)")
                                         .font(.subheadline)
                                         .foregroundStyle(.secondary)
+                                    if pinned {
+                                        Label("saved.watch.pinned", systemImage: "applewatch")
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                    }
                                 }
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .contentShape(Rectangle())
@@ -39,10 +45,27 @@ struct SavedRoutesView: View {
                                     model.deleteRoutes(at: IndexSet(integer: index))
                                 }
                             }
+                            // «Mostra su Watch»: one pinned route, sent to the Watch when the iPhone has
+                            // no search for now to show (sharing on).
+                            .accessibilityAction(named: Text(LocalizedStringKey(pinned ? "saved.watch.stop" : "saved.watch.show"))) {
+                                model.setWatchPin(route, pinned: !pinned)
+                            }
+                            .swipeActions(edge: .leading) {
+                                WatchPinButton(pinned: pinned) { model.setWatchPin(route, pinned: !pinned) }
+                            }
+                            .contextMenu {
+                                WatchPinButton(pinned: pinned) { model.setWatchPin(route, pinned: !pinned) }
+                            }
                         }
                         .onDelete(perform: model.deleteRoutes)
                     } footer: {
-                        Text("saved.local_only")
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("saved.local_only")
+                            Text("saved.watch.footer")
+                            if model.pinnedWatchRouteID != nil, !model.watchSharingEnabled {
+                                Text("saved.watch.sharing_off")
+                            }
+                        }
                     }
 
                     Section {
@@ -63,5 +86,18 @@ struct SavedRoutesView: View {
         ) {
             Button("action.ok", role: .cancel) { model.persistenceMessageKey = nil }
         }
+    }
+}
+
+/// «Mostra su Watch» or «Non mostrare su Watch» for one saved route.
+private struct WatchPinButton: View {
+    let pinned: Bool
+    let toggle: () -> Void
+
+    var body: some View {
+        Button(action: toggle) {
+            Label(LocalizedStringKey(pinned ? "saved.watch.stop" : "saved.watch.show"), systemImage: "applewatch")
+        }
+        .tint(.accentColor)
     }
 }

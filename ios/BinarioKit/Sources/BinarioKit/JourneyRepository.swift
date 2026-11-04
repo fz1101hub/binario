@@ -76,6 +76,9 @@ public struct TrainService: Codable, Equatable, Identifiable, Sendable {
     public let status: String
     public let platform: String?
     public let delayMinutes: Int
+    /// GTFS bikes_allowed of the trip: true allowed, false not allowed, nil when the timetable
+    /// does not say (never inferred from the category).
+    public let bikesAllowed: Bool?
 
     public init(
         id: String,
@@ -87,7 +90,8 @@ public struct TrainService: Codable, Equatable, Identifiable, Sendable {
         expectedDeparture: String,
         status: String,
         platform: String?,
-        delayMinutes: Int
+        delayMinutes: Int,
+        bikesAllowed: Bool? = nil
     ) {
         self.id = id
         self.number = number
@@ -99,6 +103,7 @@ public struct TrainService: Codable, Equatable, Identifiable, Sendable {
         self.status = status
         self.platform = platform
         self.delayMinutes = delayMinutes
+        self.bikesAllowed = bikesAllowed
     }
 }
 

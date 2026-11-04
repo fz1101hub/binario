@@ -450,6 +450,95 @@ final class BinarioAppTests: XCTestCase {
         XCTAssertEqual(session.contexts.last, [WatchSnapshotPublisher.clearContextKey: Data()])
     }
 
+    func testPinnedRouteIsPersistedAndDroppedWithItsRoute() throws {
+        let defaults = try makeDefaults()
+        defer { clear(defaults) }
+        let model = makeModel(defaults: defaults, publisher: nil)
+        model.save(query: try JourneyQuery(origin: roma, destination: napoli, departure: Date()))
+        let route = try XCTUnwrap(model.savedRoutes.first)
+
+        model.setWatchPin(route, pinned: true)
+
+        XCTAssertEqual(model.pinnedWatchRouteID, route.id)
+        XCTAssertEqual(model.pinnedWatchRoute, route)
+        XCTAssertEqual(WatchSharingPreferenceStore(defaults: defaults).loadPinnedRouteID(), route.id)
+        XCTAssertEqual(makeModel(defaults: defaults, publisher: nil).pinnedWatchRouteID, route.id, "kept across a relaunch")
+        // Deleting the route removes its pin; a pin whose route is gone is dropped at launch.
+        model.deleteAllRoutes()
+        XCTAssertNil(model.pinnedWatchRouteID)
+        XCTAssertNil(WatchSharingPreferenceStore(defaults: defaults).loadPinnedRouteID())
+        WatchSharingPreferenceStore(defaults: defaults).savePinnedRouteID("S00001--S00002")
+        XCTAssertNil(makeModel(defaults: defaults, publisher: nil).pinnedWatchRouteID)
+        XCTAssertNil(WatchSharingPreferenceStore(defaults: defaults).loadPinnedRouteID())
+    }
+
+    func testPinnedRouteIsPublishedOnlyWithSharingOnAndYieldsToASearchForNow() async throws {
+        let defaults = try makeDefaults()
+        defer { clear(defaults) }
+        let session = FakeAppSession()
+        let pinnedQuery = try JourneyQuery(origin: roma, destination: napoli, departure: Date())
+        let searchQuery = try JourneyQuery(origin: roma, destination: milano, departure: Date())
+        let repository = RoutingJourneyRepository(results: [
+            napoli.id: .available(fixtureSnapshot(query: pinnedQuery, serviceNumber: "R 9")),
+            milano.id: .available(fixtureSnapshot(query: searchQuery, serviceNumber: "FR 1")),
+        ])
+        let model = makeModel(defaults: defaults, publisher: WatchSnapshotPublisher(session: session), repository: repository)
+        session.completeActivation(.activated)
+        model.save(query: pinnedQuery)
+        let route = try XCTUnwrap(model.savedRoutes.first)
+
+        // Sharing off: the pin is kept, nothing but the initial revocation is sent.
+        model.setWatchPin(route, pinned: true)
+        await model.pinnedPublicationFinished()
+        XCTAssertEqual(session.contexts, [[WatchSnapshotPublisher.clearContextKey: Data()]])
+
+        model.setWatchSharingEnabled(true)
+        await model.pinnedPublicationFinished()
+        XCTAssertEqual(try publishedObject(session)["routeId"] as? String, route.id)
+        XCTAssertEqual(try publishedObject(session)["service0Number"] as? String, "R 9")
+
+        // A search for now owns the Watch; editing the planner gives it back to the pinned route.
+        await model.run(query: searchQuery)
+        XCTAssertEqual(try publishedObject(session)["service0Number"] as? String, "FR 1")
+        await model.publishPinnedRoute()
+        XCTAssertEqual(try publishedObject(session)["service0Number"] as? String, "FR 1", "the search for now wins")
+        model.invalidateSearchResult()
+        await model.pinnedPublicationFinished()
+        XCTAssertEqual(try publishedObject(session)["service0Number"] as? String, "R 9")
+
+        // Removing the pin clears the Watch it was shown on.
+        model.setWatchPin(route, pinned: false)
+        XCTAssertNil(model.pinnedWatchRouteID)
+        XCTAssertEqual(session.contexts.last, [WatchSnapshotPublisher.clearContextKey: Data()])
+    }
+
+    func testWatchRefreshWithoutASearchForNowPublishesThePinnedRoute() async throws {
+        let defaults = try makeDefaults()
+        defer { clear(defaults) }
+        WatchSharingPreferenceStore(defaults: defaults).save(true)
+        let session = FakeAppSession()
+        let pinnedQuery = try JourneyQuery(origin: roma, destination: napoli, departure: Date())
+        let repository = RecordingJourneyRepository(result: .available(fixtureSnapshot(query: pinnedQuery, serviceNumber: "R 9")))
+        let model = makeModel(defaults: defaults, publisher: WatchSnapshotPublisher(session: session), repository: repository)
+        session.completeActivation(.activated)
+        model.save(query: pinnedQuery)
+        model.setWatchPin(try XCTUnwrap(model.savedRoutes.first), pinned: true)
+        await model.pinnedPublicationFinished()
+        let published = session.contexts.count
+
+        // «Aggiorna» from the Watch with the iPhone app just launched in the background: no search
+        // for now is in memory, so the pinned route is searched from now and sent.
+        let refreshedAt = Date()
+        await model.refreshWatchSnapshot(now: refreshedAt)
+
+        let queries = await repository.queries
+        XCTAssertEqual(queries.count, 2)
+        XCTAssertEqual(queries.last?.departure, refreshedAt)
+        XCTAssertEqual(queries.last?.destination, napoli)
+        XCTAssertEqual(session.contexts.count, published + 1)
+        XCTAssertEqual(try publishedObject(session)["service0Number"] as? String, "R 9")
+    }
+
     func testWatchRouteLabelNamesTheStationsAndAddsTheIdOnlyForNamesakes() async throws {
         let defaults = try makeDefaults()
         defer { clear(defaults) }
@@ -550,6 +639,10 @@ final class BinarioAppTests: XCTestCase {
 
         XCTAssertEqual(BundleAppVersionFormatter().displayVersion(bundle: bundle), "1.2.3 (45)")
     }
+
+    private var roma: StationIdentity { StationIdentity(id: "S08409", name: "Roma Termini") }
+    private var napoli: StationIdentity { StationIdentity(id: "S09218", name: "Napoli Centrale") }
+    private var milano: StationIdentity { StationIdentity(id: "S01700", name: "Milano Centrale") }
 
     private func makeModel(
         defaults: UserDefaults,
@@ -652,6 +745,7 @@ final class BinarioAppTests: XCTestCase {
         }
         defaults.removeObject(forKey: SavedRouteStore.storageKey)
         defaults.removeObject(forKey: WatchSharingPreferenceStore.storageKey)
+        defaults.removeObject(forKey: WatchSharingPreferenceStore.pinnedRouteStorageKey)
     }
 
     private func encodedRouteArray(
@@ -696,6 +790,14 @@ private struct StubVersionFormatter: AppVersionFormatting {
 private struct StubJourneyRepository: JourneyRepository {
     let result: JourneyResult
     func journeys(for query: JourneyQuery) async -> JourneyResult { result }
+}
+
+/// A result per destination station.
+private struct RoutingJourneyRepository: JourneyRepository {
+    let results: [String: JourneyResult]
+    func journeys(for query: JourneyQuery) async -> JourneyResult {
+        results[query.destination.id] ?? .unavailable(.noJourney)
+    }
 }
 
 private actor RecordingJourneyRepository: JourneyRepository {
