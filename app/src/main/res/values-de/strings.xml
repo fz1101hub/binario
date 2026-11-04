@@ -1463,4 +1463,45 @@
     </plurals>
     <string name="reliability_detail_days">Beobachtete Tage: %1$d · Ausfälle: %2$d</string>
     <string name="reliability_threshold_note">Als pünktlich gilt eine Ankunft mit höchstens %1$s Verspätung.</string>
+    <string name="reliability_distribution_title">Verteilung der Verspätungen</string>
+    <string name="reliability_band_no_delay">Ohne Verspätung</string>
+    <string name="reliability_band_range">%1$d–%2$s</string>
+    <string name="reliability_band_over">Über %1$s</string>
+    <plurals name="reliability_band_share">
+        <item quantity="one">%1$d%% · %2$d Mal</item>
+        <item quantity="other">%1$d%% · %2$d Mal</item>
+    </plurals>
+    <string name="reliability_max_delay">Größte Verspätung: %1$s</string>
+    <string name="reliability_route_on_time">Diese Strecke: %1$d%% pünktlich</string>
+    <string name="reliability_station_on_time">Ankünfte an diesem Bahnhof: %1$d%% pünktlich</string>
+    <plurals name="reliability_trains_count">
+        <item quantity="one">%1$d Zug</item>
+        <item quantity="other">%1$d Züge</item>
+    </plurals>
+    <plurals name="reliability_runs_observed">
+        <item quantity="one">%1$d Fahrt in %2$s beobachtet</item>
+        <item quantity="other">%1$d Fahrten in %2$s beobachtet</item>
+    </plurals>
+    <plurals name="reliability_days">
+        <item quantity="one">%1$d Tag</item>
+        <item quantity="other">%1$d Tagen</item>
+    </plurals>
+    <string name="reliability_route_hours">Pünktlichste Abfahrten: %1$s · unpünktlichste: %2$s</string>
+    <string name="reliability_hour_band">%1$d–%2$d Uhr</string>
+    <string name="reliability_train_from">%1$s ab %2$s</string>
+    <string name="reliability_station_title">Pünktlichkeit der Ankünfte</string>
+    <string name="reliability_station_often_late">Hier am häufigsten verspätet:</string>
+    <plurals name="reliability_late_train">
+        <item quantity="one">%1$s: %2$d von %3$d Mal verspätet</item>
+        <item quantity="other">%1$s: %2$d von %3$d Mal verspätet</item>
+    </plurals>
+    <string name="reliability_threshold_mixed_note">Als pünktlich gilt eine Ankunft mit höchstens 5 Minuten Verspätung bei Frecce, Italo, EuroCity, Eurostar und EuroNight, 15 Minuten bei den übrigen Zügen.</string>
+    <string name="bikes_allowed">Fahrradmitnahme möglich</string>
+    <string name="bikes_not_allowed">Keine Fahrradmitnahme</string>
+    <string name="bikes_conditions_link">Fahrradmitnahme: Bedingungen von %1$s</string>
+    <string name="planner_airport_links">Bahnverbindungen zu den Flughäfen</string>
+    <string name="planner_airport_search">Züge von %1$s nach %2$s suchen</string>
+    <string name="compensation_notice_quarter">In %1$s mit %2$s Verspätung angekommen: Nach der Verordnung (EU) 2021/782 hast du eventuell Anspruch auf eine Entschädigung von 25%% des Fahrpreises (50%% ab 120 Minuten).</string>
+    <string name="compensation_notice_half">In %1$s mit %2$s Verspätung angekommen: Nach der Verordnung (EU) 2021/782 hast du eventuell Anspruch auf eine Entschädigung von 50%% des Fahrpreises.</string>
+    <string name="compensation_notice_conditions">Das Eisenbahnunternehmen kann Beträge unter 4 € und Verspätungen aus äußeren Gründen ablehnen, etwa durch extremes Wetter oder Personen im Gleis; ein Streik des eigenen Personals ist kein äußerer Grund. Bei Regionalzügen hängen die Bedingungen auch vom Verkehrsvertrag mit der Region ab.</string>
 </resources>

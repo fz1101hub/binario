@@ -1,15 +1,21 @@
 package it.binario.app.ui.common
 
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Accessible
+import androidx.compose.material.icons.automirrored.filled.DirectionsBike
 import androidx.compose.material.icons.filled.NightsStay
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -23,7 +29,7 @@ import it.binario.app.data.repository.BinarioDataGraph
 import java.time.LocalDate
 import kotlinx.coroutines.CancellationException
 
-// Marks taken from the static timetable of the packs: "Ultimo di oggi" and the wheelchair symbol.
+// Marks taken from the static timetable of the packs: "Ultimo di oggi", the wheelchair symbol and bikes on board.
 
 /** "Ultimo di oggi": the last departure of the day in the static timetable (never moved by live delays). */
 @Composable
@@ -49,6 +55,24 @@ internal fun WheelchairMark(description: String, modifier: Modifier = Modifier) 
         tint = MaterialTheme.colorScheme.primary,
         modifier = modifier.size(18.dp)
     )
+}
+
+/** «Bici ammessa» or «Bici non ammessa», the text the bike symbol stands for. */
+internal fun bikesLabelRes(allowed: Boolean): Int = if (allowed) R.string.bikes_allowed else R.string.bikes_not_allowed
+
+/**
+ * The bike symbol with «Bici ammessa» or «Bici non ammessa», only where the timetable publishes it (GTFS
+ * bikes_allowed 1 or 2): an unknown value shows nothing, and nothing is inferred from the category. The words say it,
+ * never the colour.
+ */
+@Composable
+internal fun BikesMark(allowed: Boolean, modifier: Modifier = Modifier) {
+    val color = MaterialTheme.colorScheme.onSurfaceVariant
+    Row(modifier, verticalAlignment = Alignment.CenterVertically) {
+        Icon(Icons.AutoMirrored.Filled.DirectionsBike, contentDescription = null, tint = color, modifier = Modifier.size(16.dp))
+        Spacer(Modifier.width(4.dp))
+        Text(stringResource(bikesLabelRes(allowed)), style = MaterialTheme.typography.labelMedium, color = color)
+    }
 }
 
 /**

@@ -125,6 +125,29 @@ object OfficialLinks {
         return sites.distinct().singleOrNull()
     }
 
+    /**
+     * The operator running a train, for its own pages (bikes on board, refunds and compensation): the published operator
+     * name first ("Trenitalia", "TRENORD", "Italo"), else the national operator constant. Trenitalia Tper is a company of
+     * its own whose pages Binario does not list, and several sources file every regional train under the Trenitalia
+     * regional constant: without a name only Italo, Trenord and the Trenitalia Frecce and Intercity are known.
+     */
+    fun operatorOf(operator: RailOperator, operatorName: String? = null): OperatorLinks? {
+        val name = operatorName?.trim()?.lowercase(Locale.ROOT)?.takeIf(String::isNotEmpty)
+        if (name != null) return when {
+            name.contains("tper") -> null
+            name.contains("italo") || name == "ntv" -> ITALO
+            name.contains("trenord") -> TRENORD
+            name.contains("trenitalia") -> TRENITALIA
+            else -> null
+        }
+        return when (operator) {
+            RailOperator.ITALO -> ITALO
+            RailOperator.TRENORD -> TRENORD
+            in TRENITALIA_LONG_DISTANCE -> TRENITALIA
+            else -> null
+        }
+    }
+
     /** "Treni garantiti" page of the publisher of a strike notice (Trenitalia, Trenord); null when none is known. */
     fun guaranteedTrainsOf(publisherId: String): String? = when (publisherId.lowercase(Locale.ROOT)) {
         "trenitalia" -> TRENITALIA.url(OperatorLinkKind.STRIKES)

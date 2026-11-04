@@ -49,6 +49,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -80,6 +81,12 @@ import it.binario.app.data.TrainService
 import it.binario.app.localized
 import it.binario.app.journeys.LastOfDayMarks
 import it.binario.app.ui.common.DataStatusLine
+import it.binario.app.ui.common.ReliabilityAggregateLines
+import it.binario.app.ui.common.RoutePunctualityLines
+import it.binario.app.ui.common.rememberNetworkReliability
+import it.binario.app.ui.common.rememberReliabilityAggregateStrings
+import it.binario.app.data.reliability.NetworkReliability
+import it.binario.app.data.reliability.NetworkReliabilityAggregates
 import it.binario.app.ui.common.InfoNoticeCard
 import it.binario.app.ui.common.LastOfDayChip
 import it.binario.app.ui.common.rememberStaticDayDepartures
@@ -239,6 +246,15 @@ private fun RouteBoard(
         service.scheduledDepartureDateTime ?: runCatching { LocalDateTime.of(today, LocalTime.parse(service.scheduledDeparture.trim())) }.getOrNull()
     )
     val firstTomorrow = LastOfDayMarks.firstNextDay(staticDay, LocalDateTime.now(RailTime.defaultZone))
+    // «Questa tratta: …» from the embedded network statistics; never on demonstration data.
+    val reliabilityStats = rememberNetworkReliability().takeUnless { isDemonstration }
+    val aggregateStrings = rememberReliabilityAggregateStrings()
+    val routePunctuality = remember(reliabilityStats, boardStation, boardDestination, aggregateStrings) {
+        reliabilityStats?.let { stats ->
+            NetworkReliabilityAggregates.route(stats, NetworkReliability.stationCode(boardStation), NetworkReliability.stationCode(boardDestination))
+                ?.let { ReliabilityAggregateLines.route(it, aggregateStrings) }
+        }
+    }
     LazyColumn(
         modifier = modifier.fillMaxSize().testTag("route-board"),
         verticalArrangement = Arrangement.spacedBy(0.dp)
@@ -281,6 +297,15 @@ private fun RouteBoard(
                 refreshedAt = viewModel.lastRefreshEpochMillis(),
                 message = viewModel.refreshMessage
             )
+        }
+        if (reliabilityStats != null && routePunctuality != null) {
+            item(key = "route-punctuality") {
+                RoutePunctualityLines(
+                    routePunctuality,
+                    windowEnd = reliabilityStats.windowEnd,
+                    modifier = Modifier.padding(horizontal = ScreenMargin, vertical = 6.dp).testTag("route-board-punctuality")
+                )
+            }
         }
         firstTomorrow?.let { first ->
             item(key = "no-more-today") {

@@ -1480,4 +1480,50 @@
     </plurals>
     <string name="reliability_detail_days">Dias observados: %1$d · cancelamentos: %2$d</string>
     <string name="reliability_threshold_note">Conta como no horário uma chegada com no máximo %1$s de atraso.</string>
+    <string name="reliability_distribution_title">Distribuição dos atrasos</string>
+    <string name="reliability_band_no_delay">Sem atraso</string>
+    <string name="reliability_band_range">%1$d–%2$s</string>
+    <string name="reliability_band_over">Mais de %1$s</string>
+    <plurals name="reliability_band_share">
+        <item quantity="one">%1$d%% · %2$d vez</item>
+        <item quantity="many">%1$d%% · %2$d vezes</item>
+        <item quantity="other">%1$d%% · %2$d vezes</item>
+    </plurals>
+    <string name="reliability_max_delay">Atraso máximo: %1$s</string>
+    <string name="reliability_route_on_time">Este trajeto: %1$d%% no horário</string>
+    <string name="reliability_station_on_time">Chegadas a esta estação: %1$d%% no horário</string>
+    <plurals name="reliability_trains_count">
+        <item quantity="one">%1$d trem</item>
+        <item quantity="many">%1$d trens</item>
+        <item quantity="other">%1$d trens</item>
+    </plurals>
+    <plurals name="reliability_runs_observed">
+        <item quantity="one">%1$d viagem observada em %2$s</item>
+        <item quantity="many">%1$d viagens observadas em %2$s</item>
+        <item quantity="other">%1$d viagens observadas em %2$s</item>
+    </plurals>
+    <plurals name="reliability_days">
+        <item quantity="one">%1$d dia</item>
+        <item quantity="many">%1$d dias</item>
+        <item quantity="other">%1$d dias</item>
+    </plurals>
+    <string name="reliability_route_hours">Partidas mais pontuais: %1$s · menos pontuais: %2$s</string>
+    <string name="reliability_hour_band">%1$d–%2$d</string>
+    <string name="reliability_train_from">%1$s de %2$s</string>
+    <string name="reliability_station_title">Pontualidade das chegadas</string>
+    <string name="reliability_station_often_late">Mais vezes atrasados aqui:</string>
+    <plurals name="reliability_late_train">
+        <item quantity="one">%1$s: atrasado %2$d vez de %3$d</item>
+        <item quantity="many">%1$s: atrasado %2$d vezes de %3$d</item>
+        <item quantity="other">%1$s: atrasado %2$d vezes de %3$d</item>
+    </plurals>
+    <string name="reliability_threshold_mixed_note">Conta como no horário uma chegada com no máximo 5 minutos de atraso nos Frecce, Italo, EuroCity, Eurostar e EuroNight e 15 minutos nos demais trens.</string>
+    <string name="bikes_allowed">Bicicletas permitidas</string>
+    <string name="bikes_not_allowed">Bicicletas não permitidas</string>
+    <string name="bikes_conditions_link">Bicicletas a bordo: condições da %1$s</string>
+    <string name="planner_airport_links">Ligações com os aeroportos</string>
+    <string name="planner_airport_search">Procurar trens de %1$s para %2$s</string>
+    <string name="compensation_notice_quarter">Chegou a %1$s com %2$s de atraso: pelo Regulamento (UE) 2021/782 você pode ter direito a uma indenização de 25%% do preço da passagem (50%% a partir de 120 minutos).</string>
+    <string name="compensation_notice_half">Chegou a %1$s com %2$s de atraso: pelo Regulamento (UE) 2021/782 você pode ter direito a uma indenização de 50%% do preço da passagem.</string>
+    <string name="compensation_notice_conditions">A empresa ferroviária pode recusar valores abaixo de 4 € e atrasos por causas externas, como clima extremo ou pessoas nos trilhos; uma greve do próprio pessoal não é causa externa. Nos trens regionais, as condições dependem também do contrato de serviço com a região.</string>
 </resources>

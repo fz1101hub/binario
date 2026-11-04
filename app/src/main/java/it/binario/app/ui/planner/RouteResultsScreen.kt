@@ -97,10 +97,15 @@ import it.binario.app.ui.journeys.JourneyResultCard
 import it.binario.app.ui.journeys.journeyLegLabel
 import it.binario.app.ui.common.NetworkReliabilityLines
 import it.binario.app.ui.common.NetworkReliabilityText
+import it.binario.app.ui.common.ReliabilityAggregateLines
+import it.binario.app.ui.common.RoutePunctualityLines
 import it.binario.app.ui.common.networkReliabilityAttribution
 import it.binario.app.ui.common.rememberNetworkReliability
+import it.binario.app.ui.common.rememberReliabilityAggregateStrings
 import it.binario.app.ui.common.rememberNetworkReliabilityStrings
 import it.binario.app.data.reliability.NetworkReliabilityStations
+import it.binario.app.data.reliability.NetworkReliability
+import it.binario.app.data.reliability.NetworkReliabilityAggregates
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -186,6 +191,18 @@ internal fun RouteResultsScreen(
     val returnReliability = remember(returnEntries, reliabilityStats, reliabilityStations, route) {
         reliabilityStats?.let { ResultsReliability.assess(returnEntries, it, route.origin(Direction.RETURN), route.destination(Direction.RETURN), reliabilityStations) }.orEmpty()
     }
+    // «Questa tratta: …»: every observed train from the origin to the destination, with the departure hours.
+    val routePunctuality = remember(reliabilityStats, route, primaryDirection, viewModel.hasActiveRoute) {
+        reliabilityStats?.takeIf { viewModel.hasActiveRoute }?.let {
+            NetworkReliabilityAggregates.route(
+                it,
+                NetworkReliability.stationCode(route.origin(primaryDirection)),
+                NetworkReliability.stationCode(route.destination(primaryDirection))
+            )
+        }
+    }
+    val aggregateStrings = rememberReliabilityAggregateStrings()
+    val routePunctualityText = remember(routePunctuality, aggregateStrings) { routePunctuality?.let { ReliabilityAggregateLines.route(it, aggregateStrings) } }
     val shown = ResultsMerge.apply(entries, filter, travelPreferences, reliability)
     val returnShown = ResultsMerge.apply(returnEntries, filter, travelPreferences, returnReliability)
     val counts = ResultsMerge.counts(entries + returnEntries)
@@ -282,7 +299,14 @@ internal fun RouteResultsScreen(
                     hiddenTrains = hiddenTrains,
                     onOpen = openTravelPreferences
                 )
-                if (reliabilityStats != null && (reliability.isNotEmpty() || returnReliability.isNotEmpty())) {
+                routePunctualityText?.let { text ->
+                    RoutePunctualityLines(
+                        text,
+                        windowEnd = null,
+                        modifier = Modifier.padding(horizontal = ScreenMargin, vertical = 4.dp).testTag("results-route-punctuality")
+                    )
+                }
+                if (reliabilityStats != null && (reliability.isNotEmpty() || returnReliability.isNotEmpty() || routePunctualityText != null)) {
                     Text(
                         networkReliabilityAttribution(reliabilityStats.windowEnd),
                         modifier = Modifier.padding(horizontal = ScreenMargin, vertical = 4.dp).testTag("results-reliability-note"),

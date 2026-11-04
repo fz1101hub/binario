@@ -104,7 +104,12 @@ import it.binario.app.journeys.LastOfDayMarks
 import it.binario.app.ui.common.InfoNoticeCard
 import it.binario.app.ui.common.OperatorNames
 import it.binario.app.ui.common.LastOfDayChip
+import it.binario.app.ui.common.StationPunctualityCard
 import it.binario.app.ui.common.WheelchairMark
+import it.binario.app.ui.common.rememberNetworkReliability
+import it.binario.app.data.reliability.NetworkReliability
+import it.binario.app.data.reliability.NetworkReliabilityAggregates
+import it.binario.app.data.reliability.NetworkReliabilityStations
 import it.binario.app.ui.common.rememberStaticDayDepartures
 import it.binario.app.ui.common.rememberWheelchairAccessibleStations
 import java.time.LocalDate
@@ -172,6 +177,12 @@ internal fun StationBoardScreen(modifier: Modifier, viewModel: TrainViewModel, r
     val today = LocalDate.now(BOARD_ZONE)
     val staticDay by rememberStaticDayDepartures(board?.takeIf { it.kind == BoardKind.DEPARTURES }?.station, null, today)
     val firstTomorrow = LastOfDayMarks.firstNextDay(staticDay, LocalDateTime.now(BOARD_ZONE))
+    // «Puntualità degli arrivi» from the embedded network statistics: every observed train arriving at the station.
+    val reliabilityStats = rememberNetworkReliability().takeUnless { viewModel.isDemonstrationData() }
+    val reliabilityStations = remember(viewModel.stations) { NetworkReliabilityStations(viewModel.stations) }
+    val stationPunctuality = remember(reliabilityStats, selectedStation?.id) {
+        reliabilityStats?.let { NetworkReliabilityAggregates.station(it, NetworkReliability.stationCode(selectedStation)) }
+    }
     val accessibleStations = rememberWheelchairAccessibleStations(
         enabled = selectedStation != null || viewModel.favouriteStations.isNotEmpty() || viewModel.nearbyStations.isNotEmpty()
     )
@@ -287,6 +298,11 @@ internal fun StationBoardScreen(modifier: Modifier, viewModel: TrainViewModel, r
         // Shared bikes near the chosen station, on request only (GBFS of the systems serving that place).
         selectedStation?.let { station ->
             item(key = "bike-sharing-${station.id}") { BikeSharingNearbySection(station) }
+            if (reliabilityStats != null && stationPunctuality != null) {
+                item(key = "station-punctuality-${station.id}") {
+                    StationPunctualityCard(stationPunctuality, reliabilityStats.windowEnd, originName = reliabilityStations::name)
+                }
+            }
         }
 
         if (!viewModel.hasStationBoardProviders) {

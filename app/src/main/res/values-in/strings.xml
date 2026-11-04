@@ -1400,4 +1400,40 @@
     </plurals>
     <string name="reliability_detail_days">Hari diamati: %1$d · pembatalan: %2$d</string>
     <string name="reliability_threshold_note">Kedatangan dihitung tepat waktu jika terlambat paling lama %1$s.</string>
+    <string name="reliability_distribution_title">Sebaran keterlambatan</string>
+    <string name="reliability_band_no_delay">Tanpa keterlambatan</string>
+    <string name="reliability_band_range">%1$d–%2$s</string>
+    <string name="reliability_band_over">Lebih dari %1$s</string>
+    <plurals name="reliability_band_share">
+        <item quantity="other">%1$d%% · %2$d kali</item>
+    </plurals>
+    <string name="reliability_max_delay">Keterlambatan terlama: %1$s</string>
+    <string name="reliability_route_on_time">Rute ini: %1$d%% tepat waktu</string>
+    <string name="reliability_station_on_time">Kedatangan di stasiun ini: %1$d%% tepat waktu</string>
+    <plurals name="reliability_trains_count">
+        <item quantity="other">%1$d kereta</item>
+    </plurals>
+    <plurals name="reliability_runs_observed">
+        <item quantity="other">%1$d perjalanan diamati dalam %2$s</item>
+    </plurals>
+    <plurals name="reliability_days">
+        <item quantity="other">%1$d hari</item>
+    </plurals>
+    <string name="reliability_route_hours">Keberangkatan paling tepat waktu: %1$s · paling tidak tepat waktu: %2$s</string>
+    <string name="reliability_hour_band">%1$d–%2$d</string>
+    <string name="reliability_train_from">%1$s dari %2$s</string>
+    <string name="reliability_station_title">Ketepatan waktu kedatangan</string>
+    <string name="reliability_station_often_late">Paling sering terlambat di sini:</string>
+    <plurals name="reliability_late_train">
+        <item quantity="other">%1$s: terlambat %2$d dari %3$d kali</item>
+    </plurals>
+    <string name="reliability_threshold_mixed_note">Kedatangan dihitung tepat waktu jika terlambat paling lama 5 menit untuk Frecce, Italo, EuroCity, Eurostar, dan EuroNight, serta 15 menit untuk kereta lain.</string>
+    <string name="bikes_allowed">Sepeda diizinkan</string>
+    <string name="bikes_not_allowed">Sepeda tidak diizinkan</string>
+    <string name="bikes_conditions_link">Sepeda di kereta: ketentuan %1$s</string>
+    <string name="planner_airport_links">Kereta ke bandara</string>
+    <string name="planner_airport_search">Cari kereta dari %1$s ke %2$s</string>
+    <string name="compensation_notice_quarter">Tiba di %1$s terlambat %2$s: menurut Peraturan (UE) 2021/782 Anda mungkin berhak atas kompensasi 25%% dari harga tiket (50%% mulai 120 menit).</string>
+    <string name="compensation_notice_half">Tiba di %1$s terlambat %2$s: menurut Peraturan (UE) 2021/782 Anda mungkin berhak atas kompensasi 50%% dari harga tiket.</string>
+    <string name="compensation_notice_conditions">Perusahaan kereta dapat menolak jumlah di bawah €4 dan keterlambatan akibat sebab eksternal, seperti cuaca ekstrem atau orang di rel; mogok kerja stafnya sendiri bukan sebab eksternal. Pada kereta regional, ketentuannya juga bergantung pada kontrak layanan dengan wilayah.</string>
 </resources>

@@ -1400,4 +1400,40 @@
     </plurals>
     <string name="reliability_detail_days">관측일: %1$d · 운행 취소: %2$d</string>
     <string name="reliability_threshold_note">지연이 %1$s 이하인 도착을 정시로 봅니다.</string>
+    <string name="reliability_distribution_title">지연 분포</string>
+    <string name="reliability_band_no_delay">지연 없음</string>
+    <string name="reliability_band_range">%1$d–%2$s</string>
+    <string name="reliability_band_over">%1$s 초과</string>
+    <plurals name="reliability_band_share">
+        <item quantity="other">%1$d%% · %2$d회</item>
+    </plurals>
+    <string name="reliability_max_delay">최대 지연: %1$s</string>
+    <string name="reliability_route_on_time">이 구간: 정시 %1$d%%</string>
+    <string name="reliability_station_on_time">이 역 도착: 정시 %1$d%%</string>
+    <plurals name="reliability_trains_count">
+        <item quantity="other">열차 %1$d편</item>
+    </plurals>
+    <plurals name="reliability_runs_observed">
+        <item quantity="other">%2$s 동안 운행 %1$d회 관측</item>
+    </plurals>
+    <plurals name="reliability_days">
+        <item quantity="other">%1$d일</item>
+    </plurals>
+    <string name="reliability_route_hours">정시성이 가장 높은 출발: %1$s · 가장 낮은 출발: %2$s</string>
+    <string name="reliability_hour_band">%1$d~%2$d시</string>
+    <string name="reliability_train_from">%2$s 출발 %1$s</string>
+    <string name="reliability_station_title">도착 정시성</string>
+    <string name="reliability_station_often_late">이 역에서 자주 지연되는 열차:</string>
+    <plurals name="reliability_late_train">
+        <item quantity="other">%1$s: %3$d회 중 %2$d회 지연</item>
+    </plurals>
+    <string name="reliability_threshold_mixed_note">Frecce, Italo, EuroCity, Eurostar, EuroNight는 지연 5분 이하, 그 밖의 열차는 15분 이하인 도착을 정시로 봅니다.</string>
+    <string name="bikes_allowed">자전거 휴대 가능</string>
+    <string name="bikes_not_allowed">자전거 휴대 불가</string>
+    <string name="bikes_conditions_link">자전거 휴대 승차: %1$s 이용 조건</string>
+    <string name="planner_airport_links">공항 연결 열차</string>
+    <string name="planner_airport_search">%1$s에서 %2$s(으)로 가는 열차 검색</string>
+    <string name="compensation_notice_quarter">%1$s에 %2$s 늦게 도착: 규정 (EU) 2021/782에 따라 승차권 가격의 25%%를 보상받을 수 있습니다(120분부터 50%%).</string>
+    <string name="compensation_notice_half">%1$s에 %2$s 늦게 도착: 규정 (EU) 2021/782에 따라 승차권 가격의 50%%를 보상받을 수 있습니다.</string>
+    <string name="compensation_notice_conditions">철도 회사는 4유로 미만의 금액과 극한 기상이나 선로 위의 사람 등 외부 요인으로 인한 지연에 대해서는 지급을 거부할 수 있습니다. 자사 직원의 파업은 외부 요인이 아닙니다. 지역 열차의 조건은 주와 맺은 운행 계약에 따라서도 달라집니다.</string>
 </resources>

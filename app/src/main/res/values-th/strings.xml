@@ -1423,4 +1423,40 @@
     </plurals>
     <string name="reliability_detail_days">วันที่สังเกต: %1$d · ยกเลิก: %2$d</string>
     <string name="reliability_threshold_note">การมาถึงที่ล่าช้าไม่เกิน %1$s ถือว่าตรงเวลา</string>
+    <string name="reliability_distribution_title">การกระจายของความล่าช้า</string>
+    <string name="reliability_band_no_delay">ไม่ล่าช้า</string>
+    <string name="reliability_band_range">%1$d–%2$s</string>
+    <string name="reliability_band_over">มากกว่า %1$s</string>
+    <plurals name="reliability_band_share">
+        <item quantity="other">%1$d%% · %2$d ครั้ง</item>
+    </plurals>
+    <string name="reliability_max_delay">ล่าช้าสูงสุด: %1$s</string>
+    <string name="reliability_route_on_time">เส้นทางนี้: ตรงเวลา %1$d%%</string>
+    <string name="reliability_station_on_time">การมาถึงสถานีนี้: ตรงเวลา %1$d%%</string>
+    <plurals name="reliability_trains_count">
+        <item quantity="other">รถไฟ %1$d ขบวน</item>
+    </plurals>
+    <plurals name="reliability_runs_observed">
+        <item quantity="other">สังเกต %1$d เที่ยวใน %2$s</item>
+    </plurals>
+    <plurals name="reliability_days">
+        <item quantity="other">%1$d วัน</item>
+    </plurals>
+    <string name="reliability_route_hours">ช่วงออกที่ตรงเวลาที่สุด: %1$s · ตรงเวลาน้อยที่สุด: %2$s</string>
+    <string name="reliability_hour_band">%1$d–%2$d</string>
+    <string name="reliability_train_from">%1$s จาก %2$s</string>
+    <string name="reliability_station_title">ความตรงเวลาของการมาถึง</string>
+    <string name="reliability_station_often_late">ล่าช้าบ่อยที่สุดที่นี่:</string>
+    <plurals name="reliability_late_train">
+        <item quantity="other">%1$s: ล่าช้า %2$d จาก %3$d ครั้ง</item>
+    </plurals>
+    <string name="reliability_threshold_mixed_note">การมาถึงที่ล่าช้าไม่เกิน 5 นาทีสำหรับ Frecce, Italo, EuroCity, Eurostar และ EuroNight และไม่เกิน 15 นาทีสำหรับรถไฟอื่น ถือว่าตรงเวลา</string>
+    <string name="bikes_allowed">นำจักรยานขึ้นได้</string>
+    <string name="bikes_not_allowed">นำจักรยานขึ้นไม่ได้</string>
+    <string name="bikes_conditions_link">นำจักรยานขึ้นรถไฟ: เงื่อนไขของ %1$s</string>
+    <string name="planner_airport_links">รถไฟเชื่อมสนามบิน</string>
+    <string name="planner_airport_search">ค้นหารถไฟจาก %1$s ไป %2$s</string>
+    <string name="compensation_notice_quarter">มาถึง %1$s ช้า %2$s: ตามข้อบังคับ (EU) 2021/782 คุณอาจมีสิทธิ์ได้รับค่าชดเชย 25%% ของราคาตั๋ว (50%% ตั้งแต่ 120 นาที)</string>
+    <string name="compensation_notice_half">มาถึง %1$s ช้า %2$s: ตามข้อบังคับ (EU) 2021/782 คุณอาจมีสิทธิ์ได้รับค่าชดเชย 50%% ของราคาตั๋ว</string>
+    <string name="compensation_notice_conditions">บริษัทรถไฟอาจปฏิเสธจำนวนเงินที่ต่ำกว่า 4 ยูโร และความล่าช้าจากสาเหตุภายนอก เช่น สภาพอากาศรุนแรงหรือมีคนอยู่บนราง ส่วนการนัดหยุดงานของพนักงานของบริษัทเองไม่ถือเป็นสาเหตุภายนอก สำหรับรถไฟภูมิภาค เงื่อนไขยังขึ้นอยู่กับสัญญาบริการกับภูมิภาคด้วย</string>
 </resources>

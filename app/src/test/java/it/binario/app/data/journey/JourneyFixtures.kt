@@ -46,7 +46,9 @@ internal object JourneyFixtures {
         /** GTFS block_id (blank: none). */
         val block: String = "",
         /** GTFS wheelchair_accessible as published ("1", "2", "0" or blank). */
-        val wheelchair: String = ""
+        val wheelchair: String = "",
+        /** GTFS bikes_allowed as published ("1", "2", "0" or blank). */
+        val bikes: String = ""
     )
 
     /** Stop ids are the station names' initials; [stopNames] can override them (platforms, other spellings). */
@@ -61,7 +63,9 @@ internal object JourneyFixtures {
         calendar: String = "service_id,monday,tuesday,wednesday,thursday,friday,saturday,sunday,start_date,end_date\n" +
             "ALL,1,1,1,1,1,1,1,20260101,20261231\nWEEKDAY,1,1,1,1,1,0,0,20260101,20261231\n",
         calendarDates: String = "service_id,date,exception_type\n",
-        routes: String = "route_id,agency_id,route_short_name,route_long_name,route_type\nR,T,RE11,Linea di prova,2\nBUS,T,B1,Bus sostitutivo,3\n"
+        routes: String = "route_id,agency_id,route_short_name,route_long_name,route_type\nR,T,RE11,Linea di prova,2\nBUS,T,B1,Bus sostitutivo,3\n",
+        /** False writes trips.txt without a bikes_allowed column, as Trenord publishes it. */
+        bikesColumn: Boolean = true
     ): ByteArray {
         val stopTimes = buildString {
             append("trip_id,arrival_time,departure_time,stop_id,stop_sequence,pickup_type,drop_off_type\n")
@@ -83,8 +87,13 @@ internal object JourneyFixtures {
                     "$id,$name,${parents[id].orEmpty()},${stopWheelchair[id].orEmpty()},${point?.first ?: ""},${point?.second ?: ""}\n"
                 },
             "routes.txt" to routes,
-            "trips.txt" to "route_id,service_id,trip_id,trip_short_name,block_id,wheelchair_accessible\n" +
-                trips.joinToString("") { "${it.route},${it.service},${it.id},${it.number},${it.block},${it.wheelchair}\n" },
+            "trips.txt" to if (bikesColumn) {
+                "route_id,service_id,trip_id,trip_short_name,block_id,wheelchair_accessible,bikes_allowed\n" +
+                    trips.joinToString("") { "${it.route},${it.service},${it.id},${it.number},${it.block},${it.wheelchair},${it.bikes}\n" }
+            } else {
+                "route_id,service_id,trip_id,trip_short_name,block_id,wheelchair_accessible\n" +
+                    trips.joinToString("") { "${it.route},${it.service},${it.id},${it.number},${it.block},${it.wheelchair}\n" }
+            },
             "stop_times.txt" to stopTimes,
             "calendar.txt" to calendar,
             "calendar_dates.txt" to calendarDates

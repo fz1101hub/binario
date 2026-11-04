@@ -31,6 +31,7 @@ import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.material.icons.filled.Flight
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Mic
@@ -38,6 +39,7 @@ import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.SwapVert
 import androidx.compose.material.icons.filled.ToggleOff
 import androidx.compose.material.icons.filled.ToggleOn
@@ -97,7 +99,10 @@ import it.binario.app.TrainViewModel
 import it.binario.app.requestSingleLocationFix
 import it.binario.app.data.Direction
 import it.binario.app.data.RailTime
+import it.binario.app.data.AirportLink
+import it.binario.app.data.AirportRoutes
 import it.binario.app.data.Station
+import it.binario.app.data.gtfs.EmbeddedGtfsPacks
 import it.binario.app.feedback
 import it.binario.app.resolve
 import it.binario.app.ui.common.BinarioCard
@@ -391,6 +396,10 @@ internal fun PlannerScreen(
         if (searched) showResults()
     }
     val search: () -> Unit = { searchRoute(origin, destination) }
+    val airportLinks = remember(viewModel.stations) {
+        val byId = viewModel.stations.associateBy(Station::id)
+        AirportRoutes.links(AirportRoutes.forBuild(EmbeddedGtfsPacks.all), byId::get)
+    }
     val today = LocalDate.now(RailTime.defaultZone)
     val shownDepartureDate = if (dateChosen) selectedDepartureDate else today
     val outboundDateLabel = shortDateLabel(shownDepartureDate, today, locale, dateUnselected)
@@ -644,6 +653,18 @@ internal fun PlannerScreen(
                 onClick = { originText = route.outwardOrigin.name; destinationText = route.outwardDestination.name }
             )
         }
+        // «Collegamenti con gli aeroporti»: ready routes, each filling the form and searching at once.
+        if (airportLinks.isNotEmpty()) {
+            item(key = "airport-links") { SectionTitle(stringResource(R.string.planner_airport_links), Modifier.padding(top = 12.dp)) }
+            items(airportLinks, key = { "airport-${it.route.cityStationId}-${it.route.airportStationId}" }) { link ->
+                AirportRouteRow(link) { from, to ->
+                    mode = SearchMode.ROUTE
+                    originText = from.name
+                    destinationText = to.name
+                    searchRoute(from, to)
+                }
+            }
+        }
         item { Spacer(Modifier.height(24.dp)) }
     }
 }
@@ -744,6 +765,41 @@ private fun PlannerRouteRow(title: String, detail: String, icon: ImageVector, ac
                 Text(detail, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             Icon(Icons.Default.Search, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+/**
+ * A route of «Collegamenti con gli aeroporti»: the row searches from the city to the airport, its trailing button the
+ * way back. Both read the stations as the catalogue names them.
+ */
+@Composable
+private fun AirportRouteRow(link: AirportLink, onSearch: (Station, Station) -> Unit) {
+    val toAirport = stringResource(R.string.planner_airport_search, link.city.name, link.airport.name)
+    val toCity = stringResource(R.string.planner_airport_search, link.airport.name, link.city.name)
+    Surface(
+        onClick = { onSearch(link.city, link.airport) },
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = ScreenMargin, vertical = 4.dp)
+            .testTag("planner-airport-${link.route.airportStationId.substringAfter(':').lowercase(Locale.ROOT)}"),
+        color = MaterialTheme.colorScheme.surface,
+        shape = RoundedCornerShape(16.dp),
+        shadowElevation = 1.dp
+    ) {
+        Row(Modifier.heightIn(min = 56.dp).padding(start = 16.dp, end = 4.dp, top = 8.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Default.Flight, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+            Text(
+                ltrUnit("${link.city.name} → ${link.airport.name}"),
+                modifier = Modifier.weight(1f).padding(start = 12.dp).semantics { contentDescription = toAirport },
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+            IconButton(onClick = { onSearch(link.airport, link.city) }) {
+                Icon(Icons.Default.SwapHoriz, contentDescription = toCity)
+            }
         }
     }
 }

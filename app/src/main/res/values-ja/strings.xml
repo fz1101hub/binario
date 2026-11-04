@@ -1400,4 +1400,40 @@
     </plurals>
     <string name="reliability_detail_days">観測日数：%1$d · 運休：%2$d</string>
     <string name="reliability_threshold_note">遅れが %1$s 以内の到着を定刻とみなします。</string>
+    <string name="reliability_distribution_title">遅れの分布</string>
+    <string name="reliability_band_no_delay">遅れなし</string>
+    <string name="reliability_band_range">%1$d–%2$s</string>
+    <string name="reliability_band_over">%1$s 超</string>
+    <plurals name="reliability_band_share">
+        <item quantity="other">%1$d%% · %2$d 回</item>
+    </plurals>
+    <string name="reliability_max_delay">最大の遅れ：%1$s</string>
+    <string name="reliability_route_on_time">この区間：定刻 %1$d%%</string>
+    <string name="reliability_station_on_time">この駅への到着：定刻 %1$d%%</string>
+    <plurals name="reliability_trains_count">
+        <item quantity="other">%1$d 本の列車</item>
+    </plurals>
+    <plurals name="reliability_runs_observed">
+        <item quantity="other">%2$s で %1$d 本を観測</item>
+    </plurals>
+    <plurals name="reliability_days">
+        <item quantity="other">%1$d 日間</item>
+    </plurals>
+    <string name="reliability_route_hours">最も定刻どおりの出発：%1$s · 最も遅れやすい出発：%2$s</string>
+    <string name="reliability_hour_band">%1$d〜%2$d時</string>
+    <string name="reliability_train_from">%2$s 発 %1$s</string>
+    <string name="reliability_station_title">到着の定時性</string>
+    <string name="reliability_station_often_late">ここで遅れることが多い列車：</string>
+    <plurals name="reliability_late_train">
+        <item quantity="other">%1$s：%3$d 回中 %2$d 回遅れ</item>
+    </plurals>
+    <string name="reliability_threshold_mixed_note">Frecce、Italo、EuroCity、Eurostar、EuroNight は遅れ 5 分以内、その他の列車は 15 分以内の到着を定刻とみなします。</string>
+    <string name="bikes_allowed">自転車持ち込み可</string>
+    <string name="bikes_not_allowed">自転車持ち込み不可</string>
+    <string name="bikes_conditions_link">自転車の持ち込み：%1$s の条件</string>
+    <string name="planner_airport_links">空港へのアクセス列車</string>
+    <string name="planner_airport_search">%1$s から %2$s への列車を検索</string>
+    <string name="compensation_notice_quarter">%1$s に %2$s 遅れて到着：規則 (EU) 2021/782 により、運賃の 25%% の補償を受けられる場合があります（120 分以上は 50%%）。</string>
+    <string name="compensation_notice_half">%1$s に %2$s 遅れて到着：規則 (EU) 2021/782 により、運賃の 50%% の補償を受けられる場合があります。</string>
+    <string name="compensation_notice_conditions">鉄道会社は 4 ユーロ未満の金額や、異常気象や線路内の人など外部要因による遅れについては支払いを拒否できます。自社職員のストライキは外部要因に当たりません。地域列車の条件は州との運行契約にもよります。</string>
 </resources>

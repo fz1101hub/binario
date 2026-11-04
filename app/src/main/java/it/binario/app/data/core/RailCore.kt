@@ -292,6 +292,8 @@ data class JourneyLeg(
     val serviceDate: LocalDate? = null,
     /** Wheelchair access as the timetable publishes it; null when the source has no such data. Never assumed. */
     val wheelchair: LegWheelchairAccess? = null,
+    /** Bikes on board as the timetable publishes them (GTFS bikes_allowed); null when unknown. Never assumed. */
+    val bikesAllowed: Boolean? = null,
     /** The same vehicle going on under another number or line: no change, the traveller stays on board. */
     val continuations: List<InSeatContinuation> = emptyList()
 )
