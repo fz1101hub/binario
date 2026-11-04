@@ -9,17 +9,22 @@ cancelled), sorted by number and origin::
     {"schema": "binario-punctuality-v1", "generatedAt": ..., "windowStart": ..., "windowEnd": ..., "windowDays": 30,
      "source": "ViaggiaTreno, elaborazione Binario (non ufficiale)", "buckets": [0, 2, 5, 10, 15, 20, 30, 60],
      "trains": [{"n": "9558", "o": "S08409", "c": "FR", "d": 28, "x": 1,
-                 "s": [["S08409", 27, 0.8, [20, 24, 26, 27, 27, 27, 27, 27], 0], ...]}]}
+                 "s": [["S08409", 27, 0.8, [20, 24, 26, 27, 27, 27, 27, 27], 0, 7, 420], ...]}]}
 
 ``d`` days known, ``x`` of them fully cancelled; per stop (in run order, only stops with at least one sample):
 station code, samples (days the train ran and the stop was served with an actual time), mean delay in minutes with
 one decimal (early arrivals count as 0), cumulative counts of samples with delay <= each bucket (early arrivals are
-<= 0), days the stop was suppressed while the train ran.  The origin stop uses the departure delay, the others the
-arrival delay.  Nothing else from ViaggiaTreno reaches the file: no times, names or texts.
+<= 0), days the stop was suppressed while the train ran, largest delay of the samples in whole minutes (early
+arrivals count as 0) and scheduled time on the most recent day that has one, as minutes since local midnight of the
+departure day (Europe/Rome, 1440 or more after midnight; ``null`` while only observations collected before the
+extension of 4 November 2026 cover the stop).  The origin stop uses the departure delay and time, the others the
+arrival delay and time.  Nothing else from ViaggiaTreno reaches the file: no actual times, names or texts.
 
-``--check FILE`` validates a file (schema, canonical encoding, sizes, bounds, monotonic cumulative counts, sorted
-unique entries) and is used by the tests, by the print step and by ``tools/apply_ci_punctuality.py``.  ``--print FILE``
-checks the file and prints it in the job log as a ``BINARIO_BEGIN``/``BINARIO_DONE`` frame (``tools/ci_log_frames.py``).
+``--check FILE`` validates a file (schema, canonical encoding, sizes, bounds, monotonic cumulative counts, maximum
+delay within the bucket the counts imply and between the mean and the sum, sorted unique entries; stops of 7
+elements, or of 5 as in files built before the extension) and is used by the tests, by the print step and by ``tools/apply_ci_punctuality.py``.
+``--print FILE`` checks the file and prints it in the job log as a ``BINARIO_BEGIN``/``BINARIO_DONE`` frame
+(``tools/ci_log_frames.py``).
 
     python3 -I tools/build_punctuality_stats.py --state DIR --output stats_v1.json.gz
     python3 -I tools/build_punctuality_stats.py --check stats_v1.json.gz
@@ -55,6 +60,11 @@ MAX_JSON_BYTES = 32 * 1024 * 1024
 MAX_TRAINS = 50_000
 MAX_STOPS = collector.MAX_STOPS
 MAX_MEAN = collector.MAX_DELAY
+MAX_DELAY_MINUTES = 1440  # bound of maxDelayMinutes in the format (the collector keeps at most MAX_MEAN)
+MAX_SCHEDULED_MINUTE = collector.MAX_SCHEDULED_MINUTE  # exclusive
+# A stop is [code, samples, mean, cumulative, suppressed, maxDelay, scheduledMinute]; files built before the
+# extension of 4 November 2026 have the first five only.
+STOP_LENGTHS = (5, 7)
 TOP_KEYS = frozenset({"schema", "generatedAt", "windowStart", "windowEnd", "windowDays", "source", "buckets", "trains"})
 TRAIN_KEYS = frozenset({"n", "o", "c", "d", "x", "s"})
 GENERATED_AT = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z")
@@ -104,6 +114,7 @@ def aggregate(records: Iterable[Mapping[str, Any]]) -> list[dict[str, Any]]:
         positions: dict[str, list[float]] = {}
         samples: dict[str, list[int]] = {}
         suppressed: dict[str, int] = {}
+        scheduled: dict[str, tuple[str, int]] = {}  # code -> (most recent day with a scheduled time, minute)
         cancelled = 0
         for record in days.values():
             categories[record["c"]] = categories.get(record["c"], 0) + 1
@@ -111,8 +122,12 @@ def aggregate(records: Iterable[Mapping[str, Any]]) -> list[dict[str, Any]]:
                 cancelled += 1
                 continue
             last = max(1, len(record["s"]) - 1)
-            for index, (code, delay, stop_suppressed) in enumerate(record["s"]):
+            for index, stop in enumerate(record["s"]):
+                code, delay, stop_suppressed = stop[0], stop[1], stop[2]
+                minute = stop[3] if len(stop) > 3 else None  # none in lines collected before the extension
                 positions.setdefault(code, []).append(index / last)
+                if minute is not None and (code not in scheduled or record["d"] > scheduled[code][0]):
+                    scheduled[code] = (record["d"], minute)
                 if stop_suppressed:
                     suppressed[code] = suppressed.get(code, 0) + 1
                 elif delay is not None:
@@ -121,7 +136,9 @@ def aggregate(records: Iterable[Mapping[str, Any]]) -> list[dict[str, Any]]:
         for code, delays in samples.items():
             order = sum(positions[code]) / len(positions[code])
             cumulative = [sum(1 for delay in delays if delay <= bucket) for bucket in BUCKETS]
-            stops.append((order, code, [code, len(delays), _mean_tenths(delays), cumulative, suppressed.get(code, 0)]))
+            minute = scheduled[code][1] if code in scheduled else None
+            stops.append((order, code, [code, len(delays), _mean_tenths(delays), cumulative, suppressed.get(code, 0),
+                                        max(0, max(delays)), minute]))
         stops.sort(key=lambda item: (item[0], item[1]))
         category = min(categories, key=lambda name: (-categories[name], name))
         trains.append({"n": number, "o": origin, "c": category, "d": len(days), "x": cancelled,
@@ -192,11 +209,35 @@ def _date(value: object, label: str) -> date:
         raise CheckError(f"{label} non è una data valida") from error
 
 
+def _check_extension(maximum: object, minute: object, where: str, samples: int, mean: float | None,
+                     cumulative: Sequence[int] | None, problems: list[str]) -> None:
+    """The two trailing elements of a 7-element stop: largest delay and scheduled minute (``null`` when unknown)."""
+    if not _is_int(maximum) or not 0 <= maximum <= MAX_DELAY_MINUTES:
+        problems.append(f"{where}: ritardo massimo fuori da 0..{MAX_DELAY_MINUTES}")
+    else:
+        if cumulative is not None:
+            # The largest delay lies in the first bucket that holds every sample, above 60 when some sample is not
+            # in any bucket: above the previous bucket, at most this one.
+            first = next((index for index, count in enumerate(cumulative) if count == samples), None)
+            above = BUCKETS[-1] if first is None else (BUCKETS[first - 1] if first else -1)
+            at_most = MAX_DELAY_MINUTES if first is None else BUCKETS[first]
+            if not above < maximum <= at_most:
+                problems.append(f"{where}: ritardo massimo incompatibile con i cumulati")
+        # The largest delay is one of the samples: at least the mean, at most their sum (the mean has one decimal).
+        if mean is not None and mean > maximum:
+            problems.append(f"{where}: ritardo medio oltre il ritardo massimo")
+        if mean is not None and maximum > (mean + 0.05) * samples + 1e-6:
+            problems.append(f"{where}: ritardo massimo oltre la somma dei ritardi (media per campioni)")
+    if not collector.valid_scheduled_minute(minute):
+        problems.append(f"{where}: minuto programmato né null né in 0..{MAX_SCHEDULED_MINUTE - 1}")
+
+
 def _check_stop(stop: object, where: str, runs: int, problems: list[str]) -> str | None:
-    if not isinstance(stop, list) or len(stop) != 5:
-        problems.append(f"{where}: fermata non è [codice, campioni, media, cumulati, soppressioni]")
+    if not isinstance(stop, list) or len(stop) not in STOP_LENGTHS:
+        problems.append(f"{where}: fermata non è [codice, campioni, media, cumulati, soppressioni] "
+                        "seguito o no da [ritardo massimo, minuto programmato]")
         return None
-    code, samples, mean, cumulative, suppressed = stop
+    code, samples, mean, cumulative, suppressed = stop[:5]
     if not isinstance(code, str) or not collector.CODE.fullmatch(code):
         problems.append(f"{where}: codice stazione non valido")
         return None
@@ -206,20 +247,26 @@ def _check_stop(stop: object, where: str, runs: int, problems: list[str]) -> str
         return code
     if not _is_int(suppressed) or not 0 <= suppressed <= runs - samples:
         problems.append(f"{where}: giorni soppressi fuori da 0..{runs - samples}")
-    if (
-        not isinstance(mean, (int, float)) or isinstance(mean, bool) or mean != mean
-        or not 0 <= mean <= MAX_MEAN or abs(mean * 10 - round(mean * 10)) > 1e-6
-    ):
+    mean_valid = (
+        isinstance(mean, (int, float)) and not isinstance(mean, bool) and mean == mean
+        and 0 <= mean <= MAX_MEAN and abs(mean * 10 - round(mean * 10)) <= 1e-6
+    )
+    if not mean_valid:
         problems.append(f"{where}: ritardo medio fuori da 0..{MAX_MEAN} o con più di un decimale")
     if (
         not isinstance(cumulative, list) or len(cumulative) != len(BUCKETS)
         or not all(_is_int(count) and 0 <= count <= samples for count in cumulative)
     ):
         problems.append(f"{where}: cumulati non validi (uno per soglia, 0..campioni)")
-        return code
-    if any(later < earlier for earlier, later in zip(cumulative, cumulative[1:])):
+        cumulative = None
+    elif any(later < earlier for earlier, later in zip(cumulative, cumulative[1:])):
         problems.append(f"{where}: cumulati non monotoni")
-    elif isinstance(mean, (int, float)) and not isinstance(mean, bool):
+        cumulative = None
+    if len(stop) == 7:
+        _check_extension(stop[5], stop[6], where, samples, mean if mean_valid else None, cumulative, problems)
+    if cumulative is None:
+        return code
+    if isinstance(mean, (int, float)) and not isinstance(mean, bool):
         # Every sample within a bucket bounds the mean from above, every sample beyond it from below.
         if cumulative[0] == samples and mean != 0:
             problems.append(f"{where}: media positiva con tutti i campioni in orario")

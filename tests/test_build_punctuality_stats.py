@@ -40,16 +40,19 @@ def days_back(count: int) -> list[str]:
 class AggregateTest(unittest.TestCase):
     def test_buckets_are_inclusive_and_cumulative(self) -> None:
         delays = [-3, 0, 1, 2, 3, 5, 6, 10, 15, 16, 20, 29, 30, 60, 61, 300]
-        records = [record(day, stops=[["S08409", 0, 0], ["S01700", delay, 0]]) for day, delay in zip(days_back(16), delays)]
+        records = [record(day, stops=[["S08409", 0, 0, 420], ["S01700", delay, 0, 610]])
+                   for day, delay in zip(days_back(16), delays)]
         train = stats.aggregate(records)[0]
         origin, destination = train["s"]
-        self.assertEqual(["S08409", 16, 0.0, [16] * 8, 0], origin)
+        self.assertEqual(["S08409", 16, 0.0, [16] * 8, 0, 0, 420], origin)
         self.assertEqual("S01700", destination[0])
         self.assertEqual(16, destination[1])
         # <= 0: -3, 0 | <= 2: +1, 2 | <= 5: +3, 5 | <= 10: +6, 10 | <= 15: +15 | <= 20: +16, 20 | <= 30: +29, 30 | <= 60: +60
         self.assertEqual([2, 4, 6, 8, 9, 11, 13, 14], destination[3])
         # Early arrivals count as 0 in the mean: (0+0+1+2+3+5+6+10+15+16+20+29+30+60+61+300) / 16 = 34.875 -> 34.9
         self.assertEqual(34.9, destination[2])
+        self.assertEqual([300, 610], destination[5:])
+        self.assertEqual(7, len(destination))
 
     def test_mean_rounds_half_up_with_one_decimal(self) -> None:
         for delays, expected in (([1, 2], 1.5), ([0, 0, 1], 0.3), ([0, 0, 0, 1], 0.3), ([1, 1, 1, 2, 2, 2, 2, 2], 1.6),
@@ -74,14 +77,38 @@ class AggregateTest(unittest.TestCase):
         self.assertEqual((4, 1), (train["d"], train["x"]))
         self.assertEqual(["S08409", "S08217", "S06421", "S01700"], [stop[0] for stop in train["s"]])
         by_code = {stop[0]: stop for stop in train["s"]}
-        self.assertEqual(["S08217", 2, 2.5, [0, 1, 2, 2, 2, 2, 2, 2], 1], by_code["S08217"])
-        self.assertEqual(["S01700", 2, 4.5, [0, 0, 1, 2, 2, 2, 2, 2], 0], by_code["S01700"])
+        # Lines collected before scheduled minutes existed: largest delay, no scheduled minute.
+        self.assertEqual(["S08217", 2, 2.5, [0, 1, 2, 2, 2, 2, 2, 2], 1, 4, None], by_code["S08217"])
+        self.assertEqual(["S01700", 2, 4.5, [0, 0, 1, 2, 2, 2, 2, 2], 0, 6, None], by_code["S01700"])
         # A stop never sampled (always suppressed) is left out.
         only_suppressed = [record(day, stops=[["S08409", 1, 0], ["S08217", None, 1]]) for day in days[:3]]
         self.assertEqual(["S08409"], [stop[0] for stop in stats.aggregate(only_suppressed)[0]["s"]])
         # A train only ever cancelled keeps its days, without stops; unknown-only trains are not listed.
         listed = stats.aggregate([record(days[0], number="100", status="cancelled"), record(days[1], number="101", status="unknown")])
         self.assertEqual([{"n": "100", "o": "S08409", "c": "FR", "d": 1, "x": 1, "s": []}], listed)
+
+    def test_max_delay_and_the_scheduled_minute_of_the_most_recent_day(self) -> None:
+        days = days_back(5)  # days[0] is the most recent
+        records = [
+            record(days[1], stops=[["S08409", -1, 0, 425], ["S00219", None, 1, 700], ["S01700", 3, 0, 605]]),
+            record(days[4], stops=[["S08409", 2, 0], ["S01700", 12, 0]]),  # collected before scheduled minutes
+            record(days[0], stops=[["S08409", 0, 0, 430], ["S01700", None, 0, None]]),  # no time today at Milano
+            record(days[2], stops=[["S08409", 1, 0, 420], ["S01700", 61, 0, 600]]),
+            record(days[3], status="cancelled"),
+        ]
+        train = stats.aggregate(records)[0]
+        by_code = {stop[0]: stop for stop in train["s"]}
+        self.assertEqual(["S08409", "S01700"], [stop[0] for stop in train["s"]])  # S00219 only suppressed
+        self.assertEqual(["S08409", 4, 0.8, [2, 4, 4, 4, 4, 4, 4, 4], 0, 2, 430], by_code["S08409"])
+        # The latest day with a scheduled time at Milano is days[1]; 61 minutes is beyond every bucket.
+        self.assertEqual(["S01700", 3, 25.3, [0, 0, 1, 1, 2, 2, 2, 2], 0, 61, 605], by_code["S01700"])
+        # Early arrivals only: the largest delay is 0.  A stop reached after midnight keeps minutes beyond 1439.
+        night = [record(day, number="1963", category="ICN", stops=[["S08409", -2, 0, 1320], ["S01700", -1, 0, 2070]])
+                 for day in days[:2]]
+        self.assertEqual([["S08409", 2, 0.0, [2] * 8, 0, 0, 1320], ["S01700", 2, 0.0, [2] * 8, 0, 0, 2070]],
+                         stats.aggregate(night)[0]["s"])
+        payload = dict(valid_payload(), trains=stats.aggregate(records + night))
+        self.assertEqual(payload, stats.check_bytes(stats.encode(payload)))
 
     def test_trains_are_keyed_by_number_and_origin_and_sorted_numerically(self) -> None:
         day = days_back(1)[0]
@@ -115,13 +142,22 @@ def valid_payload() -> dict[str, Any]:
         "schema": stats.SCHEMA, "generatedAt": "2026-11-10T04:00:00Z", "windowStart": "2026-10-11",
         "windowEnd": "2026-11-09", "windowDays": 30, "source": stats.SOURCE, "buckets": list(stats.BUCKETS),
         "trains": [
-            {"n": "2001", "o": "S08235", "c": "REG", "d": 3, "x": 0, "s": [["S08235", 3, 0.3, [2, 3, 3, 3, 3, 3, 3, 3], 0]]},
+            {"n": "2001", "o": "S08235", "c": "REG", "d": 3, "x": 0,
+             "s": [["S08235", 3, 0.3, [2, 3, 3, 3, 3, 3, 3, 3], 0, 1, 540]]},
             {"n": "9558", "o": "S08409", "c": "FR", "d": 28, "x": 1, "s": [
-                ["S08409", 27, 0.8, [20, 24, 26, 27, 27, 27, 27, 27], 0],
-                ["S00219", 26, 4.6, [9, 14, 19, 23, 25, 26, 26, 26], 1],
+                ["S08409", 27, 0.8, [20, 24, 26, 27, 27, 27, 27, 27], 0, 7, 420],
+                ["S00219", 26, 4.6, [9, 14, 19, 23, 25, 26, 26, 26], 1, 18, 610],
             ]},
         ],
     }
+
+
+def legacy_payload() -> dict[str, Any]:
+    """``valid_payload`` as files built before the extension of 4 November 2026 had it: stops of five elements."""
+    payload = valid_payload()
+    for train in payload["trains"]:
+        train["s"] = [stop[:5] for stop in train["s"]]
+    return payload
 
 
 class EncodeAndCheckTest(unittest.TestCase):
@@ -192,6 +228,69 @@ class EncodeAndCheckTest(unittest.TestCase):
                     stats.check_bytes(data)
                 self.assertIn(expected, str(raised.exception))
 
+    def test_check_rejects_bad_max_delays_and_scheduled_minutes(self) -> None:
+        def stop_value(train: int, stop: int, index: int, value: Any) -> bytes:
+            payload = valid_payload()
+            payload["trains"][train]["s"][stop][index] = value
+            return stats.encode(payload)
+
+        def first_stop(values: list[Any]) -> bytes:
+            payload = valid_payload()
+            payload["trains"][0]["s"][0] = values
+            return stats.encode(payload)
+
+        cases: list[tuple[str, str, bytes]] = []
+        for value in (1441, -1, None, True, 7.0, "7"):
+            cases.append(("ritardo massimo fuori", repr(value), stop_value(1, 0, 5, value)))
+        # S08409: 26 of 27 samples <= 5, all <= 10, so its largest delay is 6..10; S00219: all <= 20, not all <= 15.
+        for value in (5, 11):
+            cases.append(("ritardo massimo incompatibile", f"S08409 {value}", stop_value(1, 0, 5, value)))
+        cases.append(("ritardo massimo incompatibile", "S00219 21", stop_value(1, 1, 5, 21)))
+        cases.append(("ritardo massimo incompatibile", "all on time", first_stop(["S08235", 3, 0.0, [3] * 8, 0, 1, 540])))
+        # One sample beyond 60 minutes: the largest delay must be above 60.
+        cases.append(("ritardo massimo incompatibile", "beyond 60", first_stop(["S08235", 3, 21.0, [2] * 8, 0, 60, 540])))
+        cases.append(("ritardo medio oltre il ritardo massimo", "mean 4.5, max 3",
+                      first_stop(["S08235", 2, 4.5, [0, 0, 2, 2, 2, 2, 2, 2], 0, 3, 540])))
+        cases.append(("ritardo massimo oltre la somma", "3 samples of mean 21.0, max 120",
+                      first_stop(["S08235", 3, 21.0, [2] * 8, 0, 120, 540])))
+        for value in (2880, -1, 1439.0, "540", True):
+            cases.append(("minuto programmato", repr(value), stop_value(1, 1, 6, value)))
+        for length in (6, 8):
+            payload = valid_payload()
+            payload["trains"][1]["s"][1] = (payload["trains"][1]["s"][1] + [0])[:length]
+            cases.append(("seguito o no da [ritardo massimo, minuto programmato]", f"{length} elements", stats.encode(payload)))
+        for expected, label, data in cases:
+            with self.subTest(expected=expected, label=label):
+                with self.assertRaises(stats.CheckError) as raised:
+                    stats.check_bytes(data)
+                self.assertIn(expected, str(raised.exception))
+
+    def test_check_accepts_five_and_seven_element_stops(self) -> None:
+        legacy = legacy_payload()
+        self.assertEqual(legacy, stats.check_bytes(stats.encode(legacy)))
+        mixed = valid_payload()
+        mixed["trains"][1]["s"][1] = mixed["trains"][1]["s"][1][:5]
+        self.assertEqual(mixed, stats.check_bytes(stats.encode(mixed)))
+        accepted = {
+            "unknown scheduled minute": ["S08235", 3, 0.3, [2, 3, 3, 3, 3, 3, 3, 3], 0, 1, None],
+            "after midnight": ["S08235", 3, 0.3, [2, 3, 3, 3, 3, 3, 3, 3], 0, 1, 1450],
+            "last minute of the second day": ["S08235", 3, 0.3, [2, 3, 3, 3, 3, 3, 3, 3], 0, 1, 2879],
+            "midnight": ["S08235", 3, 0.3, [2, 3, 3, 3, 3, 3, 3, 3], 0, 1, 0],
+            "all on time": ["S08235", 3, 0.0, [3] * 8, 0, 0, 540],
+            "beyond 60": ["S08235", 3, 21.0, [2] * 8, 0, 63, 540],
+            "the whole sum in one sample": ["S08235", 3, 240.0, [2] * 8, 0, 720, 540],
+            "mean equal to max": ["S08235", 1, 7.0, [0, 0, 0, 1, 1, 1, 1, 1], 0, 7, 540],
+        }
+        for label, stop in accepted.items():
+            with self.subTest(label=label):
+                payload = valid_payload()
+                payload["trains"][0]["s"][0] = stop
+                self.assertEqual(payload, stats.check_bytes(stats.encode(payload)))
+        for value in (6, 10):  # either end of the bucket the counts imply
+            payload = valid_payload()
+            payload["trains"][1]["s"][0][5] = value
+            self.assertEqual(payload, stats.check_bytes(stats.encode(payload)))
+
     def test_a_network_sized_file_stays_under_three_megabytes(self) -> None:
         trains = []
         for index in range(9000):
@@ -202,12 +301,23 @@ class EncodeAndCheckTest(unittest.TestCase):
                 cumulative[-1] = samples - (index % 2)
                 for i in range(1, len(cumulative)):
                     cumulative[i] = max(cumulative[i], cumulative[i - 1])
+                # Largest delay inside the first bucket holding every sample (above 60 when one is beyond).
+                first = next((bucket for bucket, count in enumerate(cumulative) if count == samples), None)
+                if first is None:
+                    maximum = 61 + (index * 13 + position * 7) % 120
+                elif first == 0:
+                    maximum = 0
+                else:
+                    low, high = stats.BUCKETS[first - 1], stats.BUCKETS[first]
+                    maximum = low + 1 + (index + position) % (high - low)
+                minute = (300 + index * 37 + position * 11) % 1500
                 stops.append([f"S{(index * 7 + position * 13) % 100000:05d}", samples, round(3.4 + (index % 50) / 10, 1),
-                              cumulative, position % 2])
+                              cumulative, position % 2, maximum, minute])
             unique = {stop[0]: stop for stop in stops}
             trains.append({"n": str(index + 1), "o": "S08409", "c": "REG", "d": 30, "x": 0, "s": list(unique.values())})
         payload = dict(valid_payload(), trains=trains)
         data = stats.encode(payload)
+        self.assertEqual(7, len(payload["trains"][0]["s"][0]))
         self.assertLess(len(data), stats.MAX_GZIP_BYTES)
 
     def test_command_line_check_build_and_print(self) -> None:
@@ -231,7 +341,7 @@ class EncodeAndCheckTest(unittest.TestCase):
 
         state = temp / "state"
         observations = collector.State(state)
-        observations.add(record("2026-11-09", stops=[["S08409", 2, 0], ["S01700", 7, 0]]))
+        observations.add(record("2026-11-09", stops=[["S08409", 2, 0, 1320], ["S01700", 7, 0, 1450]]))
         observations.save(AS_OF)
         first, second = temp / "first.json.gz", temp / "second/stats_v1.json.gz"
         with contextlib.redirect_stdout(io.StringIO()):
@@ -239,7 +349,8 @@ class EncodeAndCheckTest(unittest.TestCase):
                 self.assertEqual(0, stats.main(["--state", str(state), "--output", str(path), "--as-of", "2026-11-10",
                                                 "--generated-at", "2026-11-10T04:00:00Z"]))
         self.assertEqual(first.read_bytes(), second.read_bytes())
-        self.assertEqual(["S01700", 1, 7.0, [0, 0, 0, 1, 1, 1, 1, 1], 0], stats.check_bytes(first.read_bytes())["trains"][0]["s"][1])
+        self.assertEqual(["S01700", 1, 7.0, [0, 0, 0, 1, 1, 1, 1, 1], 0, 7, 1450],
+                         stats.check_bytes(first.read_bytes())["trains"][0]["s"][1])
 
 
 if __name__ == "__main__":

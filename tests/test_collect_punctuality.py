@@ -213,6 +213,26 @@ class StationAndTimetableTest(Base):
         self.assertEqual(int(datetime(2026, 10, 24, 23, tzinfo=timezone.utc).timestamp()),
                          collector.service_reference(date(2026, 10, 25)))
 
+    def test_scheduled_minutes_follow_the_rome_wall_clock_of_the_departure_day(self) -> None:
+        def at(day: date, hour: int, minute: int, *, next_day: int = 0) -> int:
+            """Epoch milliseconds of ``hour:minute`` on the Rome wall clock, ``next_day`` days after ``day``."""
+            target = day + timedelta(days=next_day)
+            return int(datetime(target.year, target.month, target.day, hour, minute, tzinfo=collector.ROME).timestamp()) * 1000
+
+        self.assertEqual(420, collector.scheduled_minute(DAY, at(DAY, 7, 0)))
+        self.assertEqual(1439, collector.scheduled_minute(DAY, at(DAY, 23, 59)))
+        self.assertEqual(1450, collector.scheduled_minute(DAY, at(DAY, 0, 10, next_day=1)))  # 00:10 of the next day
+        self.assertEqual(2879, collector.scheduled_minute(DAY, at(DAY, 23, 59, next_day=1)))
+        self.assertEqual(420, collector.scheduled_minute(DAY, at(DAY, 7, 0) + 59_999))  # seconds are dropped
+        # The days the clocks change: 10:00 is minute 600, not the 660 or 540 minutes elapsed since midnight.
+        for day in (date(2026, 10, 25), date(2026, 3, 29)):
+            with self.subTest(day=day):
+                self.assertEqual(600, collector.scheduled_minute(day, at(day, 10, 0)))
+        self.assertEqual(1450, collector.scheduled_minute(date(2026, 10, 24), at(date(2026, 10, 24), 0, 10, next_day=1)))
+        for outside in (at(DAY, 0, 0) - 60_000, at(DAY, 0, 0, next_day=2)):
+            with self.subTest(outside=outside):
+                self.assertIsNone(collector.scheduled_minute(DAY, outside))
+
     def test_due_trains_are_those_arrived_between_four_hours_and_twenty_minutes_ago(self) -> None:
         selected = {train.number: train for train in collector.due_trains(self.timetable, NOW)}
         # 2001 arrives 09:40 (08:40 UTC), 2003 at 12:20 (11:20 UTC), 9558 at 10:10, 2011 at 10:00, 1963 (service day
@@ -236,13 +256,29 @@ class InterpretTest(unittest.TestCase):
         train = collector.Due(DAY.isoformat(), "S08409", "9558", "FR", 0)
         observation = collector.interpret(payload, train)
         self.assertEqual("ok", observation.status)
-        # Departure delay at the origin, arrival delay elsewhere, early arrival negative, suppressed stop without sample.
-        self.assertEqual([["S08409", 1, 0], ["S08217", 2, 0], ["S06421", -2, 0], ["S05043", None, 1], ["S01700", 9, 0]],
-                         observation.stops)
+        # Departure delay and time at the origin, arrival delay and time elsewhere, early arrival negative, suppressed
+        # stop without sample but with its scheduled time (07:00, 07:09, 08:40, 09:17, 10:10).
+        self.assertEqual([["S08409", 1, 0, 420], ["S08217", 2, 0, 429], ["S06421", -2, 0, 520], ["S05043", None, 1, 557],
+                          ["S01700", 9, 0, 610]], observation.stops)
 
     def test_delays_truncate_towards_zero_like_the_app(self) -> None:
         stops = [stop("S08235", 540, 59, first=True), stop("S08409", 580, 359), stop("S08217", 590, -59), stop("S08406", 600, -61)]
         self.assertEqual([0, 5, 0, -1], [entry[1] for entry in collector.interpret(run(stops=stops), due()).stops])
+
+    def test_a_stop_reached_after_midnight_keeps_minutes_beyond_a_day(self) -> None:
+        # ICN 1963 leaves Roma at 22:00 of 3 November and reaches Milano at 10:30 of the 4th (GTFS 34:30:00).
+        day = date(2026, 11, 3)
+        midnight = collector.midnight_millis(day)
+        stops = [
+            {"id": "S08409", "actualFermataType": 1, "partenza_teorica": midnight + 22 * 60 * MINUTE,
+             "partenzaReale": midnight + (22 * 60 + 4) * MINUTE},
+            {"id": "S06421", "actualFermataType": 1, "arrivoReale": midnight + 26 * 60 * MINUTE},  # no scheduled time
+            {"id": "S01700", "actualFermataType": 1, "arrivo_teorico": midnight + (34 * 60 + 30) * MINUTE,
+             "arrivoReale": midnight + (34 * 60 + 41) * MINUTE},
+        ]
+        payload = {"numeroTreno": 1963, "idOrigine": "S08409", "dataPartenzaTreno": midnight, "fermate": stops}
+        observation = collector.interpret(payload, collector.Due(day.isoformat(), "S08409", "1963", "ICN", 0))
+        self.assertEqual([["S08409", 4, 0, 1320], ["S06421", None, 0, None], ["S01700", 11, 0, 2070]], observation.stops)
 
     def test_cancellation_and_suppressed_stops(self) -> None:
         for payload in (run(provvedimento=1), run(tipoTreno="ST"), run(provvedimento="1"),
@@ -254,7 +290,7 @@ class InterpretTest(unittest.TestCase):
         partial = run(stops=[stop("S08235", 540, 0, first=True), stop("S08217", 560, 120), stop("S08409", 580, None, kind=3)])
         observation = collector.interpret(partial, due())
         self.assertEqual("ok", observation.status)
-        self.assertEqual([["S08235", 0, 0], ["S08217", 2, 0], ["S08409", None, 1]], observation.stops)
+        self.assertEqual([["S08235", 0, 0, 540], ["S08217", 2, 0, 560], ["S08409", None, 1, 580]], observation.stops)
 
     def test_trains_still_running_stay_pending(self) -> None:
         running = run(stops=[stop("S08235", 540, 60, first=True), stop("S08409", 580, None)])
@@ -269,7 +305,7 @@ class InterpretTest(unittest.TestCase):
             stop("S08409", 575, 60), {"id": "08406", "arrivoReale": 1}, "not a stop", stop("S08406", 580, 0),
         ]
         observation = collector.interpret(run(stops=stops), due())
-        self.assertEqual([["S08235", 1, 0], ["S08409", None, 0], ["S08406", 0, 0]], observation.stops)
+        self.assertEqual([["S08235", 1, 0, 540], ["S08409", None, 0, 570], ["S08406", 0, 0, 580]], observation.stops)
         self.assertEqual({"fermate_straordinarie": 1, "ritardi_non_plausibili": 1, "fermate_ripetute": 1,
                           "fermate_senza_codice": 1, "fermate_non_valide": 1}, observation.notes)
         out_of_day = [stop("S08235", 540, 60, first=True), dict(stop("S08409", 580), arrivoReale=10 ** 15)]
@@ -356,6 +392,32 @@ class StateTest(Base):
         state = collector.State(directory)
         self.assertEqual({}, state.pending)
         self.assertEqual(1, state.counters["state_unreadable_files"])
+
+    def test_lines_collected_before_scheduled_minutes_still_load_and_are_kept(self) -> None:
+        # The Actions cache holds lines whose stops are [code, delay, suppressed]; new lines add the scheduled minute.
+        directory = self.temp / "state"
+        directory.mkdir()
+        old = collector.encode(self.record(number="2001"))
+        new = collector.encode(self.record(number="2003", s=[["S08235", 1, 0, 540], ["S08409", None, 1, None]]))
+        (directory / "obs-2026-11-04.jsonl.gz").write_bytes(gzip.compress((old + "\n" + new + "\n").encode()))
+        counters: dict[str, int] = {}
+        records = collector.load_observations(directory, "2026-11-04", counters)
+        self.assertEqual({}, counters)
+        self.assertEqual([["S08235", 1, 0], ["S08409", 3, 0]], records[("S08235", "2001")]["s"])
+        self.assertEqual([["S08235", 1, 0, 540], ["S08409", None, 1, None]], records[("S08235", "2003")]["s"])
+        state = collector.State(directory)
+        state.add(self.record(number="2005", s=[["S08235", 2, 0, 600], ["S08409", 4, 0, 1450]]))
+        state.save(DAY)
+        lines = gzip.decompress((directory / "obs-2026-11-04.jsonl.gz").read_bytes()).decode().splitlines()
+        self.assertEqual([old, new, collector.encode(self.record(number="2005", s=[["S08235", 2, 0, 600], ["S08409", 4, 0, 1450]]))],
+                         lines)  # the old line is rewritten unchanged, not given an invented time
+        for stops in ([["S08235", 1, 0, -1]], [["S08235", 1, 0, 2880]], [["S08235", 1, 0, "540"]], [["S08235", 1, 0, True]],
+                      [["S08235", 1, 0, 540.0]], [["S08235", 1, 0, 540, 1]], [["S08235", 1]]):
+            with self.subTest(stops=stops):
+                self.assertFalse(collector.valid_record(self.record(s=stops), "2026-11-04"))
+        for minute in (0, 1439, 1440, 2879, None):
+            with self.subTest(minute=minute):
+                self.assertTrue(collector.valid_record(self.record(s=[["S08235", 1, 0, minute]]), "2026-11-04"))
 
 
 class Answers:
@@ -604,12 +666,12 @@ class EndToEndTest(Base):
         trains = {(train["n"], train["o"]): train for train in payload["trains"]}
         self.assertEqual({("2001", "S08235"), ("2003", "S08409"), ("2011", "S08409"), ("9558", "S08409")}, set(trains))
         self.assertEqual({"n": "2003", "o": "S08409", "c": "REG", "d": 1, "x": 1, "s": []}, trains[("2003", "S08409")])
-        self.assertEqual(["S08409", 1, 0.0, [1] * 8, 0], trains[("2011", "S08409")]["s"][0])
-        self.assertEqual(["S08235", 1, 0.0, [1] * 8, 0], trains[("2011", "S08409")]["s"][1])  # 90 s early
+        self.assertEqual(["S08409", 1, 0.0, [1] * 8, 0, 0, 540], trains[("2011", "S08409")]["s"][0])
+        self.assertEqual(["S08235", 1, 0.0, [1] * 8, 0, 0, 600], trains[("2011", "S08409")]["s"][1])  # 90 s early
         fr = trains[("9558", "S08409")]
         self.assertEqual(("FR", 1, 0), (fr["c"], fr["d"], fr["x"]))
         self.assertEqual(["S08409", "S08217", "S06421", "S01700"], [entry[0] for entry in fr["s"]])  # suppressed stop left out
-        self.assertEqual(["S01700", 1, 9.0, [0, 0, 0, 1, 1, 1, 1, 1], 0], fr["s"][-1])
+        self.assertEqual(["S01700", 1, 9.0, [0, 0, 0, 1, 1, 1, 1, 1], 0, 9, 610], fr["s"][-1])
 
 
 if __name__ == "__main__":
