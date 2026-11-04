@@ -1400,4 +1400,32 @@
     </plurals>
     <string name="reliability_detail_days">관측일: %1$d · 운행 취소: %2$d</string>
     <string name="reliability_threshold_note">지연이 %1$s 이하인 도착을 정시로 봅니다.</string>
+    <string name="reliability_distribution_title">지연 분포</string>
+    <string name="reliability_band_on_time">정시</string>
+    <string name="reliability_band_range">%1$d–%2$s</string>
+    <string name="reliability_band_over">%1$s 초과</string>
+    <plurals name="reliability_band_share">
+        <item quantity="other">%1$d%% · %2$d회</item>
+    </plurals>
+    <string name="reliability_max_delay">최대 지연: %1$s</string>
+    <string name="reliability_route_on_time">이 구간: 정시 %1$d%%</string>
+    <string name="reliability_station_on_time">이 역 도착: 정시 %1$d%%</string>
+    <plurals name="reliability_trains_count">
+        <item quantity="other">열차 %1$d편</item>
+    </plurals>
+    <plurals name="reliability_runs_observed">
+        <item quantity="other">%2$s 동안 운행 %1$d회 관측</item>
+    </plurals>
+    <plurals name="reliability_days">
+        <item quantity="other">%1$d일</item>
+    </plurals>
+    <string name="reliability_route_hours">정시성이 가장 높은 출발: %1$s · 가장 낮은 출발: %2$s</string>
+    <string name="reliability_hour_band">%1$d~%2$d시</string>
+    <string name="reliability_train_from">%2$s 출발 %1$s</string>
+    <string name="reliability_station_title">도착 정시성</string>
+    <string name="reliability_station_often_late">이 역에서 자주 지연되는 열차:</string>
+    <plurals name="reliability_late_train">
+        <item quantity="other">%1$s: %3$d회 중 %2$d회 지연</item>
+    </plurals>
+    <string name="reliability_threshold_mixed_note">Frecce, Italo, EuroCity, Eurostar, EuroNight는 지연 5분 이하, 그 밖의 열차는 15분 이하인 도착을 정시로 봅니다.</string>
 </resources>

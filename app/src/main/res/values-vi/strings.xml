@@ -1423,4 +1423,32 @@
     </plurals>
     <string name="reliability_detail_days">Số ngày quan sát: %1$d · số lần hủy: %2$d</string>
     <string name="reliability_threshold_note">Chuyến đến trễ tối đa %1$s được tính là đúng giờ.</string>
+    <string name="reliability_distribution_title">Phân bố độ trễ</string>
+    <string name="reliability_band_on_time">Đúng giờ</string>
+    <string name="reliability_band_range">%1$d–%2$s</string>
+    <string name="reliability_band_over">Trên %1$s</string>
+    <plurals name="reliability_band_share">
+        <item quantity="other">%1$d%% · %2$d lần</item>
+    </plurals>
+    <string name="reliability_max_delay">Trễ nhiều nhất: %1$s</string>
+    <string name="reliability_route_on_time">Tuyến này: %1$d%% đúng giờ</string>
+    <string name="reliability_station_on_time">Chuyến đến ga này: %1$d%% đúng giờ</string>
+    <plurals name="reliability_trains_count">
+        <item quantity="other">%1$d chuyến tàu</item>
+    </plurals>
+    <plurals name="reliability_runs_observed">
+        <item quantity="other">%1$d chuyến được quan sát trong %2$s</item>
+    </plurals>
+    <plurals name="reliability_days">
+        <item quantity="other">%1$d ngày</item>
+    </plurals>
+    <string name="reliability_route_hours">Giờ khởi hành đúng giờ nhất: %1$s · kém đúng giờ nhất: %2$s</string>
+    <string name="reliability_hour_band">%1$d–%2$d</string>
+    <string name="reliability_train_from">%1$s từ %2$s</string>
+    <string name="reliability_station_title">Độ đúng giờ khi đến</string>
+    <string name="reliability_station_often_late">Thường trễ nhất tại đây:</string>
+    <plurals name="reliability_late_train">
+        <item quantity="other">%1$s: trễ %2$d trên %3$d lần</item>
+    </plurals>
+    <string name="reliability_threshold_mixed_note">Chuyến đến trễ tối đa 5 phút với Frecce, Italo, EuroCity, Eurostar và EuroNight, tối đa 15 phút với các tàu khác được tính là đúng giờ.</string>
 </resources>

@@ -1600,4 +1600,57 @@
     </plurals>
     <string name="reliability_detail_days">الأيام المرصودة: %1$d · الإلغاءات: %2$d</string>
     <string name="reliability_threshold_note">يُعدّ الوصول في الموعد إذا لم يتجاوز التأخير %1$s.</string>
+    <string name="reliability_distribution_title">توزيع التأخيرات</string>
+    <string name="reliability_band_on_time">في الموعد</string>
+    <string name="reliability_band_range">%1$d–%2$s</string>
+    <string name="reliability_band_over">أكثر من %1$s</string>
+    <plurals name="reliability_band_share">
+        <item quantity="zero">%1$d%% · %2$d مرة</item>
+        <item quantity="one">%1$d%% · %2$d مرة</item>
+        <item quantity="two">%1$d%% · %2$d مرتين</item>
+        <item quantity="few">%1$d%% · %2$d مرات</item>
+        <item quantity="many">%1$d%% · %2$d مرة</item>
+        <item quantity="other">%1$d%% · %2$d مرة</item>
+    </plurals>
+    <string name="reliability_max_delay">أقصى تأخير: %1$s</string>
+    <string name="reliability_route_on_time">هذا المسار: %1$d%% في الموعد</string>
+    <string name="reliability_station_on_time">الوصول إلى هذه المحطة: %1$d%% في الموعد</string>
+    <plurals name="reliability_trains_count">
+        <item quantity="zero">%1$d قطار</item>
+        <item quantity="one">%1$d قطار</item>
+        <item quantity="two">%1$d قطارين</item>
+        <item quantity="few">%1$d قطارات</item>
+        <item quantity="many">%1$d قطارًا</item>
+        <item quantity="other">%1$d قطار</item>
+    </plurals>
+    <plurals name="reliability_runs_observed">
+        <item quantity="zero">%1$d رحلة مرصودة خلال %2$s</item>
+        <item quantity="one">%1$d رحلة مرصودة خلال %2$s</item>
+        <item quantity="two">%1$d رحلتين مرصودتين خلال %2$s</item>
+        <item quantity="few">%1$d رحلات مرصودة خلال %2$s</item>
+        <item quantity="many">%1$d رحلة مرصودة خلال %2$s</item>
+        <item quantity="other">%1$d رحلة مرصودة خلال %2$s</item>
+    </plurals>
+    <plurals name="reliability_days">
+        <item quantity="zero">%1$d يوم</item>
+        <item quantity="one">%1$d يوم</item>
+        <item quantity="two">%1$d يومين</item>
+        <item quantity="few">%1$d أيام</item>
+        <item quantity="many">%1$d يومًا</item>
+        <item quantity="other">%1$d يوم</item>
+    </plurals>
+    <string name="reliability_route_hours">أكثر المغادرات انضباطًا: %1$s · أقلها انضباطًا: %2$s</string>
+    <string name="reliability_hour_band">%1$d–%2$d</string>
+    <string name="reliability_train_from">%1$s من %2$s</string>
+    <string name="reliability_station_title">انضباط مواعيد الوصول</string>
+    <string name="reliability_station_often_late">الأكثر تأخرًا هنا:</string>
+    <plurals name="reliability_late_train">
+        <item quantity="zero">%1$s: متأخر %2$d مرة من أصل %3$d</item>
+        <item quantity="one">%1$s: متأخر %2$d مرة من أصل %3$d</item>
+        <item quantity="two">%1$s: متأخر %2$d مرتين من أصل %3$d</item>
+        <item quantity="few">%1$s: متأخر %2$d مرات من أصل %3$d</item>
+        <item quantity="many">%1$s: متأخر %2$d مرة من أصل %3$d</item>
+        <item quantity="other">%1$s: متأخر %2$d مرة من أصل %3$d</item>
+    </plurals>
+    <string name="reliability_threshold_mixed_note">يُعدّ الوصول في الموعد إذا لم يتجاوز التأخير 5 دقائق لقطارات Frecce وItalo وEuroCity وEurostar وEuroNight، و15 دقيقة للقطارات الأخرى.</string>
 </resources>

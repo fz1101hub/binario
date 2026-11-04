@@ -1,5 +1,12 @@
 # Changelog
 
+## In sviluppo — Ritardi in dettaglio, puntualità di tratte e stazioni
+
+- **Distribuzione dei ritardi** nella scheda «Affidabilità ultimi N giorni» del dettaglio treno: in orario (nessun ritardo), 1–5, 6–15, 16–30 e oltre 30 minuti alla fermata misurata, con una barra e righe con percentuale e conteggio, più «Ritardo massimo: N min» quando il file lo pubblica; TalkBack legge il blocco in una frase.
+- **Puntualità della tratta** sotto l’intestazione dei risultati e nel tabellone della tratta attiva: «Questa tratta: 83% in orario · ritardo medio 2 min · 12 treni · 109 corse osservate in 30 giorni», su tutti i treni delle statistiche che fermano all’origine e poi alla destinazione, ciascuno con la sua soglia (5 o 15 minuti), ritardo medio pesato sulle rilevazioni. «Partenze più puntuali: 6–9 · meno puntuali: 18–21» per fascia oraria di partenza solo con almeno 20 rilevazioni per fascia e 5 punti di differenza; nulla sotto 20 rilevazioni.
+- **Puntualità degli arrivi** nel tabellone di stazione: quota in orario, ritardo medio e corse osservate di tutti i treni in arrivo, fino a tre treni più spesso in ritardo lì (almeno 5 rilevazioni) e la soglia di «in orario».
+- **File delle statistiche**: ogni fermata può avere due campi in più (ritardo massimo, minuto programmato anche oltre le 24:00 o `null`); i file con 5 campi restano validi e un valore non plausibile è ignorato senza perdere la fermata. Test JVM su bande, tratte con soglie miste, fasce orarie, stazioni e testi in tutte le lingue.
+
 ## In sviluppo — Affidabilità media di ogni treno (statistiche non ufficiali di rete)
 
 - **Nei risultati**: sotto ogni treno diretto «In orario 27 volte su 30 · ritardo medio 3 min» (più «soppresso N volte» quando capita) all’arrivo alla destinazione cercata; per i viaggi con cambi il treno più debole, con il suo nome, e «Coincidenza a Milano Centrale riuscita 25 volte su 30», calcolata dalla distribuzione dei ritardi del treno in arrivo alla stazione del cambio rispetto al margine fra arrivo e partenza programmati meno il tempo di cambio del pianificatore offline (10 minuti nei grandi nodi, 5 altrove, il tratto a piedi quando c’è), con interpolazione lineare fra le soglie. Nulla sotto 5 rilevazioni alla fermata considerata; un treno soppresso in tutti i giorni osservati mostra solo «Soppresso 12 volte su 12» e finisce in fondo a «Più affidabili».

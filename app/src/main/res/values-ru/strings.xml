@@ -1520,4 +1520,47 @@
     </plurals>
     <string name="reliability_detail_days">Дней под наблюдением: %1$d · отмен: %2$d</string>
     <string name="reliability_threshold_note">Вовремя считается прибытие с опозданием не более %1$s.</string>
+    <string name="reliability_distribution_title">Распределение опозданий</string>
+    <string name="reliability_band_on_time">Вовремя</string>
+    <string name="reliability_band_range">%1$d–%2$s</string>
+    <string name="reliability_band_over">Более %1$s</string>
+    <plurals name="reliability_band_share">
+        <item quantity="one">%1$d%% · %2$d раз</item>
+        <item quantity="few">%1$d%% · %2$d раза</item>
+        <item quantity="many">%1$d%% · %2$d раз</item>
+        <item quantity="other">%1$d%% · %2$d раза</item>
+    </plurals>
+    <string name="reliability_max_delay">Наибольшее опоздание: %1$s</string>
+    <string name="reliability_route_on_time">Этот маршрут: вовремя %1$d%%</string>
+    <string name="reliability_station_on_time">Прибытия на эту станцию: вовремя %1$d%%</string>
+    <plurals name="reliability_trains_count">
+        <item quantity="one">%1$d поезд</item>
+        <item quantity="few">%1$d поезда</item>
+        <item quantity="many">%1$d поездов</item>
+        <item quantity="other">%1$d поезда</item>
+    </plurals>
+    <plurals name="reliability_runs_observed">
+        <item quantity="one">%1$d рейс под наблюдением за %2$s</item>
+        <item quantity="few">%1$d рейса под наблюдением за %2$s</item>
+        <item quantity="many">%1$d рейсов под наблюдением за %2$s</item>
+        <item quantity="other">%1$d рейса под наблюдением за %2$s</item>
+    </plurals>
+    <plurals name="reliability_days">
+        <item quantity="one">%1$d день</item>
+        <item quantity="few">%1$d дня</item>
+        <item quantity="many">%1$d дней</item>
+        <item quantity="other">%1$d дня</item>
+    </plurals>
+    <string name="reliability_route_hours">Самые пунктуальные отправления: %1$s · наименее пунктуальные: %2$s</string>
+    <string name="reliability_hour_band">%1$d–%2$d ч</string>
+    <string name="reliability_train_from">%1$s, отправление: %2$s</string>
+    <string name="reliability_station_title">Пунктуальность прибытий</string>
+    <string name="reliability_station_often_late">Чаще всего опаздывают сюда:</string>
+    <plurals name="reliability_late_train">
+        <item quantity="one">%1$s: опоздал %2$d раз из %3$d</item>
+        <item quantity="few">%1$s: опоздал %2$d раза из %3$d</item>
+        <item quantity="many">%1$s: опоздал %2$d раз из %3$d</item>
+        <item quantity="other">%1$s: опоздал %2$d раза из %3$d</item>
+    </plurals>
+    <string name="reliability_threshold_mixed_note">Вовремя считается прибытие с опозданием не более 5 минут для поездов Frecce, Italo, EuroCity, Eurostar и EuroNight и не более 15 минут для остальных поездов.</string>
 </resources>

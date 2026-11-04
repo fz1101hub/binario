@@ -1463,4 +1463,37 @@
     </plurals>
     <string name="reliability_detail_days">Days observed: %1$d · cancellations: %2$d</string>
     <string name="reliability_threshold_note">An arrival counts as on time when it is at most %1$s late.</string>
+    <string name="reliability_distribution_title">Delay distribution</string>
+    <string name="reliability_band_on_time">On time</string>
+    <string name="reliability_band_range">%1$d–%2$s</string>
+    <string name="reliability_band_over">Over %1$s</string>
+    <plurals name="reliability_band_share">
+        <item quantity="one">%1$d%% · %2$d time</item>
+        <item quantity="other">%1$d%% · %2$d times</item>
+    </plurals>
+    <string name="reliability_max_delay">Longest delay: %1$s</string>
+    <string name="reliability_route_on_time">This route: %1$d%% on time</string>
+    <string name="reliability_station_on_time">Arrivals at this station: %1$d%% on time</string>
+    <plurals name="reliability_trains_count">
+        <item quantity="one">%1$d train</item>
+        <item quantity="other">%1$d trains</item>
+    </plurals>
+    <plurals name="reliability_runs_observed">
+        <item quantity="one">%1$d run observed in %2$s</item>
+        <item quantity="other">%1$d runs observed in %2$s</item>
+    </plurals>
+    <plurals name="reliability_days">
+        <item quantity="one">%1$d day</item>
+        <item quantity="other">%1$d days</item>
+    </plurals>
+    <string name="reliability_route_hours">Most punctual departures: %1$s · least punctual: %2$s</string>
+    <string name="reliability_hour_band">%1$d–%2$d</string>
+    <string name="reliability_train_from">%1$s from %2$s</string>
+    <string name="reliability_station_title">Arrival punctuality</string>
+    <string name="reliability_station_often_late">Most often late here:</string>
+    <plurals name="reliability_late_train">
+        <item quantity="one">%1$s: late %2$d time out of %3$d</item>
+        <item quantity="other">%1$s: late %2$d times out of %3$d</item>
+    </plurals>
+    <string name="reliability_threshold_mixed_note">An arrival counts as on time with at most 5 minutes of delay for Frecce, Italo, EuroCity, Eurostar and EuroNight trains, 15 minutes for the other trains.</string>
 </resources>

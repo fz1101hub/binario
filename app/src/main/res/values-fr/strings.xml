@@ -1503,4 +1503,42 @@
     </plurals>
     <string name="reliability_detail_days">Jours observés : %1$d · suppressions : %2$d</string>
     <string name="reliability_threshold_note">Une arrivée compte comme à l’heure avec au plus %1$s de retard.</string>
+    <string name="reliability_distribution_title">Répartition des retards</string>
+    <string name="reliability_band_on_time">À l’heure</string>
+    <string name="reliability_band_range">%1$d–%2$s</string>
+    <string name="reliability_band_over">Plus de %1$s</string>
+    <plurals name="reliability_band_share">
+        <item quantity="one">%1$d%% · %2$d fois</item>
+        <item quantity="many">%1$d%% · %2$d fois</item>
+        <item quantity="other">%1$d%% · %2$d fois</item>
+    </plurals>
+    <string name="reliability_max_delay">Retard maximal : %1$s</string>
+    <string name="reliability_route_on_time">Ce trajet : %1$d%% à l’heure</string>
+    <string name="reliability_station_on_time">Arrivées dans cette gare : %1$d%% à l’heure</string>
+    <plurals name="reliability_trains_count">
+        <item quantity="one">%1$d train</item>
+        <item quantity="many">%1$d trains</item>
+        <item quantity="other">%1$d trains</item>
+    </plurals>
+    <plurals name="reliability_runs_observed">
+        <item quantity="one">%1$d circulation observée en %2$s</item>
+        <item quantity="many">%1$d circulations observées en %2$s</item>
+        <item quantity="other">%1$d circulations observées en %2$s</item>
+    </plurals>
+    <plurals name="reliability_days">
+        <item quantity="one">%1$d jour</item>
+        <item quantity="many">%1$d jours</item>
+        <item quantity="other">%1$d jours</item>
+    </plurals>
+    <string name="reliability_route_hours">Départs les plus ponctuels : %1$s · les moins ponctuels : %2$s</string>
+    <string name="reliability_hour_band">%1$d h–%2$d h</string>
+    <string name="reliability_train_from">%1$s au départ de %2$s</string>
+    <string name="reliability_station_title">Ponctualité des arrivées</string>
+    <string name="reliability_station_often_late">Le plus souvent en retard ici :</string>
+    <plurals name="reliability_late_train">
+        <item quantity="one">%1$s : en retard %2$d fois sur %3$d</item>
+        <item quantity="many">%1$s : en retard %2$d fois sur %3$d</item>
+        <item quantity="other">%1$s : en retard %2$d fois sur %3$d</item>
+    </plurals>
+    <string name="reliability_threshold_mixed_note">Une arrivée compte comme à l’heure avec au plus 5 minutes de retard pour les Frecce, Italo, EuroCity, Eurostar et EuroNight, 15 minutes pour les autres trains.</string>
 </resources>

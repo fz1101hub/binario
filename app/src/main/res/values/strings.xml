@@ -1503,4 +1503,43 @@
     </plurals>
     <string name="reliability_detail_days">Giorni osservati: %1$d · soppressioni: %2$d</string>
     <string name="reliability_threshold_note">Conta come in orario un arrivo con al massimo %1$s di ritardo.</string>
+    <!-- Network statistics aggregates: delay distribution, route and hour bands, station arrivals -->
+    <string name="reliability_distribution_title">Distribuzione dei ritardi</string>
+    <string name="reliability_band_on_time">In orario</string>
+    <string name="reliability_band_range">%1$d–%2$s</string>
+    <string name="reliability_band_over">Oltre %1$s</string>
+    <plurals name="reliability_band_share">
+        <item quantity="one">%1$d%% · %2$d volta</item>
+        <item quantity="many">%1$d%% · %2$d volte</item>
+        <item quantity="other">%1$d%% · %2$d volte</item>
+    </plurals>
+    <string name="reliability_max_delay">Ritardo massimo: %1$s</string>
+    <string name="reliability_route_on_time">Questa tratta: %1$d%% in orario</string>
+    <string name="reliability_station_on_time">Arrivi in questa stazione: %1$d%% in orario</string>
+    <plurals name="reliability_trains_count">
+        <item quantity="one">%1$d treno</item>
+        <item quantity="many">%1$d treni</item>
+        <item quantity="other">%1$d treni</item>
+    </plurals>
+    <plurals name="reliability_runs_observed">
+        <item quantity="one">%1$d corsa osservata in %2$s</item>
+        <item quantity="many">%1$d corse osservate in %2$s</item>
+        <item quantity="other">%1$d corse osservate in %2$s</item>
+    </plurals>
+    <plurals name="reliability_days">
+        <item quantity="one">%1$d giorno</item>
+        <item quantity="many">%1$d giorni</item>
+        <item quantity="other">%1$d giorni</item>
+    </plurals>
+    <string name="reliability_route_hours">Partenze più puntuali: %1$s · meno puntuali: %2$s</string>
+    <string name="reliability_hour_band">%1$d–%2$d</string>
+    <string name="reliability_train_from">%1$s da %2$s</string>
+    <string name="reliability_station_title">Puntualità degli arrivi</string>
+    <string name="reliability_station_often_late">Più spesso in ritardo qui:</string>
+    <plurals name="reliability_late_train">
+        <item quantity="one">%1$s: in ritardo %2$d volta su %3$d</item>
+        <item quantity="many">%1$s: in ritardo %2$d volte su %3$d</item>
+        <item quantity="other">%1$s: in ritardo %2$d volte su %3$d</item>
+    </plurals>
+    <string name="reliability_threshold_mixed_note">Conta come in orario un arrivo con al massimo 5 minuti di ritardo per Frecce, Italo, EuroCity, Eurostar ed EuroNight, 15 minuti per gli altri treni.</string>
 </resources>

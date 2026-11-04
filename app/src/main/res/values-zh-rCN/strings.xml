@@ -1423,4 +1423,32 @@
     </plurals>
     <string name="reliability_detail_days">观测天数：%1$d · 停运：%2$d</string>
     <string name="reliability_threshold_note">晚点不超过 %1$s 的到达计为准点。</string>
+    <string name="reliability_distribution_title">晚点分布</string>
+    <string name="reliability_band_on_time">准点</string>
+    <string name="reliability_band_range">%1$d–%2$s</string>
+    <string name="reliability_band_over">超过 %1$s</string>
+    <plurals name="reliability_band_share">
+        <item quantity="other">%1$d%% · %2$d 次</item>
+    </plurals>
+    <string name="reliability_max_delay">最长晚点：%1$s</string>
+    <string name="reliability_route_on_time">此线路：准点率 %1$d%%</string>
+    <string name="reliability_station_on_time">到达本站：准点率 %1$d%%</string>
+    <plurals name="reliability_trains_count">
+        <item quantity="other">%1$d 趟列车</item>
+    </plurals>
+    <plurals name="reliability_runs_observed">
+        <item quantity="other">%2$s 内观测到 %1$d 趟次</item>
+    </plurals>
+    <plurals name="reliability_days">
+        <item quantity="other">%1$d 天</item>
+    </plurals>
+    <string name="reliability_route_hours">最准点的出发时段：%1$s · 最不准点的出发时段：%2$s</string>
+    <string name="reliability_hour_band">%1$d–%2$d 点</string>
+    <string name="reliability_train_from">%2$s 始发的 %1$s</string>
+    <string name="reliability_station_title">到达准点情况</string>
+    <string name="reliability_station_often_late">在本站最常晚点：</string>
+    <plurals name="reliability_late_train">
+        <item quantity="other">%1$s：%3$d 次中晚点 %2$d 次</item>
+    </plurals>
+    <string name="reliability_threshold_mixed_note">Frecce、Italo、EuroCity、Eurostar 和 EuroNight 晚点不超过 5 分钟、其他列车晚点不超过 15 分钟的到达计为准点。</string>
 </resources>
