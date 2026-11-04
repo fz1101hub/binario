@@ -10,7 +10,12 @@ import it.binario.app.data.SavedRoute
 import it.binario.app.data.ServiceStatus
 import it.binario.app.data.Station
 import it.binario.app.data.TrainService
+import it.binario.app.data.core.BoardKind
+import it.binario.app.data.core.StationBoard
+import it.binario.app.data.core.StationId
+import it.binario.app.data.provider.ProviderResult
 import it.binario.app.data.provider.StationBoardProvider
+import it.binario.app.data.provider.StationBoardRequest
 import org.json.JSONObject
 import org.junit.AssumptionViolatedException
 import java.time.Clock
@@ -197,6 +202,61 @@ internal object LiveRouteChecks {
             seen += summary
         }
         skip("RFI accuracy: no sampled board publishes a delay in minutes at this moment; $reportedTrain; ${seen.joinToString(" | ")}", log)
+    }
+
+    /** One station board of the RFI adapter: label in the diagnostics, station id and name of the request, kind. */
+    data class RfiBoard(val label: String, val stationId: String, val stationName: String, val kind: BoardKind)
+
+    /** Milano Centrale's departures and arrivals, always both read, then Roma Termini's while nothing decided. */
+    val rfiOperationalBoards: List<RfiBoard> = listOf(
+        RfiBoard("Milano Centrale partenze", "milano-centrale", "Milano Centrale", BoardKind.DEPARTURES),
+        RfiBoard("Milano Centrale arrivi", "milano-centrale", "Milano Centrale", BoardKind.ARRIVALS),
+        RfiBoard("Roma Termini partenze", "roma-termini", "Roma Termini", BoardKind.DEPARTURES),
+        RfiBoard("Roma Termini arrivi", "roma-termini", "Roma Termini", BoardKind.ARRIVALS))
+
+    /** The board that decided, with how many runs the adapter listed and how many it reported with an observation. */
+    data class BoardPassed(val board: String, val entries: Int, val operational: Int)
+
+    /**
+     * The station boards of the RFI adapter, each compared with the very payload it parsed. Every sampled board has to
+     * list runs. A run whose row publishes a delay in minutes ([LiveAcceptanceEvidence.RfiRow.publishedDelay]) has to
+     * come out with an expected time or a status, or the check fails. The first board with an observation passes, once
+     * the first [alwaysRead] boards have been read. A board where every train runs on time publishes no minutes at all
+     * (RFI leaves the cell empty or quotes "Nessuno"), so when no sampled board reports anything the check is skipped.
+     */
+    suspend fun rfiBoards(
+        fetcher: RfiMonitorFetcher,
+        clock: Clock,
+        boards: List<RfiBoard> = rfiOperationalBoards,
+        alwaysRead: Int = 2,
+        log: (String) -> Unit = ::println,
+        read: suspend (RfiMonitorFetcher, StationBoardRequest) -> ProviderResult<StationBoard> = { pages, request ->
+            RfiStationBoardAdapter(fetcher = pages, clock = clock).getStationBoard(request)
+        }
+    ): BoardPassed {
+        val seen = mutableListOf<String>()
+        var passed: BoardPassed? = null
+        for ((index, board) in boards.withIndex()) {
+            if (passed != null && index >= alwaysRead) break
+            var html: String? = null
+            val recording = RfiMonitorFetcher { url -> fetcher.fetch(url).also { if ("/Monitor?" in url) html = it } }
+            val now = clock.instant()
+            val result = read(recording, StationBoardRequest(StationId(board.stationId), board.stationName,
+                from = now.minusSeconds(3600), to = now.plusSeconds(20 * 3600), kind = board.kind))
+            val entries = (result as? ProviderResult.Success)?.value?.entries ?: throw AssertionError("RFI board ${board.label}: $result")
+            if (entries.isEmpty()) throw AssertionError("RFI board ${board.label}: no parseable runs")
+            val rows = LiveAcceptanceEvidence.rfiRows(html ?: throw AssertionError("RFI board ${board.label}: the monitor was not read"))
+            val observed = entries.filter { it.expectedTime != null || it.status != null }
+            val summary = "${board.label}: ${rfiSummary(rows)}"
+            val missed = rows.filter { row -> row.publishedDelay != null && entries.any { it.publicNumber == row.number } &&
+                observed.none { it.publicNumber == row.number } }
+            if (missed.isNotEmpty()) throw AssertionError("RFI board $summary: runs published with minutes but reported without an observation: " +
+                missed.take(10).map { "${it.number}: visible=${it.visible}, aria=${it.aria}" })
+            if (observed.isNotEmpty()) passed = passed ?: BoardPassed(board.label, entries.size, observed.size)
+            else unreadNumbers("RFI board", summary, rows)
+            seen += summary
+        }
+        return passed ?: skip("RFI board: no sampled board publishes a delay in minutes and the adapter reports no observation at this moment; ${seen.joinToString(" | ")}", log)
     }
 
     private fun rfiSummary(rows: List<LiveAcceptanceEvidence.RfiRow>) = "rows=${rows.size} formats=${LiveAcceptanceEvidence.rfiFormats(rows)}"
