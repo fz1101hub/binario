@@ -100,7 +100,7 @@
     <string name="tile_next_train_no_route">Không có tuyến đang dùng</string>
     <string name="tile_next_train_none">Hôm nay không còn chuyến tàu nào</string>
     <string name="tile_next_train_departure">%1$s · %2$s</string>
-    <string name="tile_next_train_description">Chuyến tàu tiếp theo theo lịch trình: %1$s lúc %2$s, %3$s</string>
+    <string name="tile_next_train_description">Chuyến tàu tiếp theo, dựa trên lịch trình: %1$s lúc %2$s, %3$s</string>
 
     <!-- Main app shell and primary journey planner. -->
     <string name="app_brand">BINARIO</string>
