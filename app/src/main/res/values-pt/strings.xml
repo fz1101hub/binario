@@ -1518,4 +1518,7 @@
         <item quantity="other">%1$s: atrasado %2$d vezes de %3$d</item>
     </plurals>
     <string name="reliability_threshold_mixed_note">Conta como no horário uma chegada com no máximo 5 minutos de atraso nos Frecce, Italo, EuroCity, Eurostar e EuroNight e 15 minutos nos demais trens.</string>
+    <string name="bikes_allowed">Bicicletas permitidas</string>
+    <string name="bikes_not_allowed">Bicicletas não permitidas</string>
+    <string name="bikes_conditions_link">Bicicletas a bordo: condições da %1$s</string>
 </resources>

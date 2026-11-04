@@ -1541,4 +1541,7 @@
         <item quantity="other">%1$s: con retraso %2$d veces de %3$d</item>
     </plurals>
     <string name="reliability_threshold_mixed_note">Cuenta como puntual una llegada con 5 minutos de retraso como máximo en los Frecce, Italo, EuroCity, Eurostar y EuroNight, y 15 minutos en los demás trenes.</string>
+    <string name="bikes_allowed">Se admiten bicicletas</string>
+    <string name="bikes_not_allowed">No se admiten bicicletas</string>
+    <string name="bikes_conditions_link">Bicicletas a bordo: condiciones de %1$s</string>
 </resources>

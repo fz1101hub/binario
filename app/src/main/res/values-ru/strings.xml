@@ -1563,4 +1563,7 @@
         <item quantity="other">%1$s: опоздал %2$d раза из %3$d</item>
     </plurals>
     <string name="reliability_threshold_mixed_note">Вовремя считается прибытие с опозданием не более 5 минут для поездов Frecce, Italo, EuroCity, Eurostar и EuroNight и не более 15 минут для остальных поездов.</string>
+    <string name="bikes_allowed">Велосипеды разрешены</string>
+    <string name="bikes_not_allowed">Велосипеды не разрешены</string>
+    <string name="bikes_conditions_link">Велосипеды в поезде: условия %1$s</string>
 </resources>

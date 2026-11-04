@@ -1653,4 +1653,7 @@
         <item quantity="other">%1$s: متأخر %2$d مرة من أصل %3$d</item>
     </plurals>
     <string name="reliability_threshold_mixed_note">يُعدّ الوصول في الموعد إذا لم يتجاوز التأخير 5 دقائق لقطارات Frecce وItalo وEuroCity وEurostar وEuroNight، و15 دقيقة للقطارات الأخرى.</string>
+    <string name="bikes_allowed">يُسمح بالدراجات</string>
+    <string name="bikes_not_allowed">لا يُسمح بالدراجات</string>
+    <string name="bikes_conditions_link">الدراجات على متن القطار: شروط %1$s</string>
 </resources>

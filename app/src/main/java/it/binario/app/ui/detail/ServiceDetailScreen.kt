@@ -21,6 +21,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.DirectionsBike
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Alarm
@@ -92,6 +93,7 @@ import it.binario.app.notifications.FollowedTripNotificationToggle
 import it.binario.app.notifications.TrainAlertToggle
 import it.binario.app.openExternalLink
 import it.binario.app.timetables.TimetableShareFormatter
+import it.binario.app.ui.common.BikesMark
 import it.binario.app.ui.common.BinarioCard
 import it.binario.app.ui.common.DataState
 import it.binario.app.ui.common.HeaderBlock
@@ -235,6 +237,9 @@ internal fun ServiceDetailScreen(
     val context = LocalContext.current
     val uriHandler = LocalUriHandler.current
     val purchaseSite = OfficialLinks.purchaseSiteOf(service.operator, service.operatorDisplayName)
+    // The operator's official pages of Settings › Biglietti e assistenza (bikes on board).
+    val operatorLinks = OfficialLinks.operatorOf(service.operator, service.operatorDisplayName)
+    val bikesPage = operatorLinks?.let { links -> links.url(OperatorLinkKind.BIKES)?.let { links.name to it } }
     val co2 = rememberCo2(service, mapStationIndex)
     val stopShareStrings = timetableShareStrings()
     val stopShareChooser = stringResource(R.string.share_stop_chooser)
@@ -325,6 +330,20 @@ internal fun ServiceDetailScreen(
                                     )
                                     if (!isDemonstration) TrainAlertToggle(service, eligible = isMonitored || isThisTrip)
                                     if (!isDemonstration) ApproachAlertControl(service, eligible = isMonitored)
+                                    // Bikes on board as the timetable publishes them; when it does not, the operator's own conditions.
+                                    shown.bikesAllowed?.let { BikesMark(it, Modifier.testTag("detail-bikes")) }
+                                        ?: bikesPage?.takeIf { !isDemonstration }?.let { (operatorName, url) ->
+                                            TextButton(
+                                                onClick = { openExternalLink(uriHandler, url) },
+                                                modifier = Modifier.testTag("detail-bikes-conditions")
+                                            ) {
+                                                Icon(Icons.AutoMirrored.Filled.DirectionsBike, contentDescription = null, modifier = Modifier.size(18.dp))
+                                                Spacer(Modifier.width(8.dp))
+                                                Text(stringResource(R.string.bikes_conditions_link, operatorName), modifier = Modifier.weight(1f, fill = false))
+                                                Spacer(Modifier.width(4.dp))
+                                                Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null, modifier = Modifier.size(16.dp))
+                                            }
+                                        }
                                     co2?.let { estimate ->
                                         Column(Modifier.testTag("detail-co2"), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                                             InfoRow(stringResource(R.string.co2_estimate_title), co2Line(estimate))

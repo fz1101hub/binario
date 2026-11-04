@@ -1451,4 +1451,7 @@
         <item quantity="other">%1$s: trễ %2$d trên %3$d lần</item>
     </plurals>
     <string name="reliability_threshold_mixed_note">Chuyến đến trễ tối đa 5 phút với Frecce, Italo, EuroCity, Eurostar và EuroNight, tối đa 15 phút với các tàu khác được tính là đúng giờ.</string>
+    <string name="bikes_allowed">Được mang xe đạp</string>
+    <string name="bikes_not_allowed">Không được mang xe đạp</string>
+    <string name="bikes_conditions_link">Mang xe đạp lên tàu: điều kiện của %1$s</string>
 </resources>

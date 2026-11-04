@@ -22,7 +22,9 @@ internal class GtfsDayTrip(
     /** GTFS block_id: trips of one block and service day run with the same vehicle one after the other; null if none. */
     val blockId: String? = null,
     /** GTFS wheelchair_accessible: [WHEELCHAIR_YES], [WHEELCHAIR_NO] or [WHEELCHAIR_UNKNOWN] (0 or empty). */
-    val wheelchairAccessible: Byte = WHEELCHAIR_UNKNOWN
+    val wheelchairAccessible: Byte = WHEELCHAIR_UNKNOWN,
+    /** GTFS bikes_allowed: [BIKES_YES], [BIKES_NO] or [BIKES_UNKNOWN] (0, empty or no column). */
+    val bikesAllowed: Byte = BIKES_UNKNOWN
 )
 
 /** GTFS wheelchair_boarding / wheelchair_accessible values; anything but 1 is never treated as accessible. */
@@ -35,6 +37,42 @@ internal fun wheelchairValue(raw: String?): Byte = when (raw?.trim()) {
     "1" -> WHEELCHAIR_YES
     "2" -> WHEELCHAIR_NO
     else -> WHEELCHAIR_UNKNOWN
+}
+
+/** GTFS bikes_allowed values: 1 allowed, 2 not allowed, anything else (0, empty, no column) unknown. */
+internal const val BIKES_UNKNOWN: Byte = 0
+internal const val BIKES_YES: Byte = 1
+internal const val BIKES_NO: Byte = 2
+
+/** "1" and "2" as published; 0, empty, a missing column and anything else are unknown. Never inferred from a category. */
+internal fun bikesValue(raw: String?): Byte = when (raw?.trim()) {
+    "1" -> BIKES_YES
+    "2" -> BIKES_NO
+    else -> BIKES_UNKNOWN
+}
+
+/**
+ * bikes_allowed of one vehicle leg run as several trips one after the other ("Resta a bordo"): allowed only when every
+ * trip allows bikes, not allowed as soon as one does not, unknown otherwise.
+ */
+internal fun bikesAcrossTrips(first: Byte, next: Byte): Byte = when {
+    first == BIKES_NO || next == BIKES_NO -> BIKES_NO
+    first == BIKES_YES && next == BIKES_YES -> BIKES_YES
+    else -> BIKES_UNKNOWN
+}
+
+/** bikes_allowed of two packs' copies of the same run: a published value wins over an unknown one, two different ones are unknown. */
+internal fun bikesOfCopies(first: Byte, second: Byte): Byte = when {
+    first == BIKES_UNKNOWN -> second
+    second == BIKES_UNKNOWN || second == first -> first
+    else -> BIKES_UNKNOWN
+}
+
+/** True for [BIKES_YES], false for [BIKES_NO], null when unknown: what the app shows. */
+internal fun bikesOnBoard(value: Byte): Boolean? = when (value) {
+    BIKES_YES -> true
+    BIKES_NO -> false
+    else -> null
 }
 
 /**
@@ -108,10 +146,11 @@ internal class GtfsDayTimetable private constructor(
             operator: RailOperator,
             mode: LegMode,
             blockId: String? = null,
-            wheelchairAccessible: Byte = WHEELCHAIR_UNKNOWN
+            wheelchairAccessible: Byte = WHEELCHAIR_UNKNOWN,
+            bikesAllowed: Byte = BIKES_UNKNOWN
         ) {
             check(pending == null) { "Trip precedente non chiuso" }
-            pending = PendingTrip(tripId, publicNumber, lineLabel, operatorName, category, operator, mode, count, blockId, wheelchairAccessible)
+            pending = PendingTrip(tripId, publicNumber, lineLabel, operatorName, category, operator, mode, count, blockId, wheelchairAccessible, bikesAllowed)
         }
 
         fun connection(
@@ -150,7 +189,8 @@ internal class GtfsDayTimetable private constructor(
                 firstConnection = trip.firstConnection,
                 connectionCount = trip.connections,
                 blockId = trip.blockId,
-                wheelchairAccessible = trip.wheelchairAccessible
+                wheelchairAccessible = trip.wheelchairAccessible,
+                bikesAllowed = trip.bikesAllowed
             )
         }
 
@@ -203,6 +243,7 @@ internal class GtfsDayTimetable private constructor(
             val firstConnection: Int,
             val blockId: String?,
             val wheelchairAccessible: Byte,
+            val bikesAllowed: Byte,
             var connections: Int = 0
         )
     }

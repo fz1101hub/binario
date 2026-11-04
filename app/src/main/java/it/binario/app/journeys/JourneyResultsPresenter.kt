@@ -168,6 +168,8 @@ data class JourneyLegRow(
     val wheelchairTrip: Boolean = false,
     /** The whole leg (trip and the two stops, or both ends of a walk) is published as wheelchair accessible. */
     val wheelchairAccessible: Boolean = false,
+    /** Bikes on board as the timetable publishes them (true, false); null when unknown and for a walk. */
+    val bikesAllowed: Boolean? = null,
     /** "Resta a bordo: il treno prosegue come …", only where the vehicle goes on under another label. */
     val continuations: List<JourneyContinuationRow> = emptyList()
 ) {
@@ -229,6 +231,8 @@ data class JourneyOptionRow(
     val walkMinutes: Long = 0,
     /** Every leg published as wheelchair accessible (trips, boarding and alighting stops, both ends of each walk). */
     val wheelchairAccessible: Boolean = false,
+    /** Bikes on board for the whole journey ([JourneyBikes.of]): true, false, or null when some leg does not say. */
+    val bikesAllowed: Boolean? = null,
     /** GTFS service day of the first vehicle; null when the source does not say. */
     val serviceDate: LocalDate? = null,
     /** The kinds of service the option uses ([TravelMode]), for the preferred kinds. */
@@ -428,6 +432,7 @@ object JourneyResultsPresenter {
             transferRisk = TransferRiskLevel.worst(transfers.map { it.risk }),
             walkMinutes = legs.filter { it.mode == LegMode.WALK }.sumOf { it.durationMinutes },
             wheelchairAccessible = option.legs.isNotEmpty() && option.legs.all { it.wheelchair?.accessible == true },
+            bikesAllowed = JourneyBikes.of(vehicles.map { it.bikesAllowed }),
             serviceDate = vehicles.firstOrNull()?.serviceDate,
             modes = vehicles.mapNotNullTo(linkedSetOf()) { leg ->
                 TravelMode.of(leg.mode, leg.serviceKind, leg.operatorName)
@@ -461,6 +466,7 @@ object JourneyResultsPresenter {
         liveObservedTime = live?.takeIf { it.sourceLabel != null }?.observedAt?.let { time(it.atZone(zone), zone) },
         wheelchairTrip = leg.mode != LegMode.WALK && leg.wheelchair?.vehicle == true,
         wheelchairAccessible = leg.wheelchair?.accessible == true,
+        bikesAllowed = leg.bikesAllowed.takeIf { leg.mode != LegMode.WALK },
         continuations = continuations(leg)
     )
 
@@ -512,4 +518,15 @@ object JourneyResultsPresenter {
     }
 
     private fun time(value: ZonedDateTime, zone: ZoneId): String = value.withZoneSameInstant(zone).format(timeFormat)
+}
+
+/** Bikes on board for a whole journey, from its vehicle legs as the timetables publish them. */
+object JourneyBikes {
+    /** Not allowed as soon as one vehicle does not take them, allowed only when every vehicle does, else unknown. */
+    fun of(legs: List<Boolean?>): Boolean? = when {
+        legs.isEmpty() -> null
+        legs.any { it == false } -> false
+        legs.all { it == true } -> true
+        else -> null
+    }
 }

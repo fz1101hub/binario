@@ -52,7 +52,9 @@ import it.binario.app.ui.common.compactDurationLabel
 import it.binario.app.ui.common.LastOfDayChip
 import it.binario.app.ui.common.NetworkReliabilityLinesText
 import it.binario.app.ui.common.NetworkReliabilityText
+import it.binario.app.ui.common.BikesMark
 import it.binario.app.ui.common.WheelchairMark
+import it.binario.app.ui.common.bikesLabelRes
 import it.binario.app.ui.common.changesLabel
 import it.binario.app.ui.common.co2Line
 import it.binario.app.ui.common.co2Spoken
@@ -208,6 +210,7 @@ internal fun JourneyResultCard(
         source,
         transferRiskLabel(row.transferRisk, rowLevel = true),
         if (row.wheelchairAccessible) stringResource(R.string.wheelchair_journey) else null,
+        row.bikesAllowed?.let { stringResource(bikesLabelRes(it)) },
         if (row.lastOfDay) stringResource(R.string.journey_last_of_day) else null,
         reliability?.spoken,
         co2?.let { co2Spoken(it) },
@@ -251,10 +254,11 @@ internal fun JourneyResultCard(
             longWait?.let { Text(it, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.error) }
             Text(source, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             TransferRiskChip(row.transferRisk, rowLevel = true)
-            if (row.lastOfDay || row.wheelchairAccessible) {
+            if (row.lastOfDay || row.wheelchairAccessible || row.bikesAllowed != null) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                     if (row.lastOfDay) LastOfDayChip()
                     if (row.wheelchairAccessible) WheelchairMark(stringResource(R.string.wheelchair_journey))
+                    row.bikesAllowed?.let { BikesMark(it, Modifier.testTag("journey-bikes")) }
                 }
             }
             reliability?.let { NetworkReliabilityLinesText(it.lines, Modifier.padding(top = 2.dp).testTag("journey-reliability")) }

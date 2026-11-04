@@ -570,6 +570,8 @@ class EmbeddedGtfsRouteAdapter(
             val headsignIndex = rows.header.indexOf("trip_headsign")
             val blockIndex = rows.header.indexOf("block_id")
             val wheelchairIndex = rows.header.indexOf("wheelchair_accessible")
+            // Trenord's pack has no such column and Trenitalia's leaves it empty: unknown, never guessed.
+            val bikesIndex = rows.header.indexOf("bikes_allowed")
             // Route ids repeat on every trip: keep the instance already held by the routes table.
             val routeIds = routes.keys.associateBy { it }
             // So do block ids (a block is several trips): one instance per block.
@@ -589,7 +591,8 @@ class EmbeddedGtfsRouteAdapter(
                     shortName = shortName,
                     numericHeadsign = numericHeadsign,
                     blockId = row.getOrNull(blockIndex)?.trim()?.takeIf(String::isNotEmpty)?.let { blockIds.getOrPut(it) { it } },
-                    wheelchair = wheelchairValue(row.getOrNull(wheelchairIndex))
+                    wheelchair = wheelchairValue(row.getOrNull(wheelchairIndex)),
+                    bikes = bikesValue(row.getOrNull(bikesIndex))
                 )
             }
         }
@@ -809,6 +812,7 @@ class EmbeddedGtfsRouteAdapter(
                 operatorDisplayName = canonicalAgencyLabel(agencyName, sourceId),
                 trainCategory = if (scheduledBus) TrainCategory.OTHER else category(route?.type, route, agencyName),
                 scheduledBus = scheduledBus,
+                bikesAllowed = bikesOnBoard(trip.bikes),
                 origin = stops.name(stopTimes.stop(segment.originEntry)),
                 destination = stops.name(stopTimes.stop(segment.destinationEntry)),
                 scheduledDeparture = hhmm(departureMinutes),
@@ -1008,7 +1012,8 @@ class EmbeddedGtfsRouteAdapter(
                     operator = legacyOperator(sourceId.value, agency, route),
                     mode = mode,
                     blockId = trip.blockId,
-                    wheelchairAccessible = trip.wheelchair
+                    wheelchairAccessible = trip.wheelchair,
+                    bikesAllowed = trip.bikes
                 )
                 var previous = -1
                 var lastArrival = Int.MIN_VALUE
@@ -1105,7 +1110,8 @@ class EmbeddedGtfsRouteAdapter(
                 shortName: String?,
                 numericHeadsign: String?,
                 blockId: String? = null,
-                wheelchair: Byte = WHEELCHAIR_UNKNOWN
+                wheelchair: Byte = WHEELCHAIR_UNKNOWN,
+                bikes: Byte = BIKES_UNKNOWN
             ) {
                 val trip = items[indexFor(tripId)]
                 trip.routeId = routeId
@@ -1114,6 +1120,7 @@ class EmbeddedGtfsRouteAdapter(
                 trip.numericHeadsign = numericHeadsign
                 trip.blockId = blockId
                 trip.wheelchair = wheelchair
+                trip.bikes = bikes
                 trip.declared = true
             }
 
@@ -1144,6 +1151,8 @@ class EmbeddedGtfsRouteAdapter(
             /** block_id, for the trips the same vehicle runs one after the other ("Resta a bordo"). */
             var blockId: String? = null
             var wheelchair: Byte = WHEELCHAIR_UNKNOWN
+            /** bikes_allowed as published ([BIKES_UNKNOWN] when empty or without the column). */
+            var bikes: Byte = BIKES_UNKNOWN
             var declared: Boolean = false
         }
 

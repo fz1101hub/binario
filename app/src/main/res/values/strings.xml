@@ -1542,4 +1542,8 @@
         <item quantity="other">%1$s: in ritardo %2$d volte su %3$d</item>
     </plurals>
     <string name="reliability_threshold_mixed_note">Conta come in orario un arrivo con al massimo 5 minuti di ritardo per Frecce, Italo, EuroCity, Eurostar ed EuroNight, 15 minuti per gli altri treni.</string>
+    <!-- Bikes on board (GTFS bikes_allowed), only when the timetable publishes it -->
+    <string name="bikes_allowed">Bici ammessa</string>
+    <string name="bikes_not_allowed">Bici non ammessa</string>
+    <string name="bikes_conditions_link">Bici a bordo: condizioni di %1$s</string>
 </resources>
