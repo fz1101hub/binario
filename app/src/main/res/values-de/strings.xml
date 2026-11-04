@@ -672,6 +672,14 @@
     <string name="background_status_exact_on">Exakte Wecker erlaubt</string>
     <string name="background_status_battery_optimized">Akkuoptimierung für Binario aktiv: Android kann Prüfungen im Hintergrund aufschieben.</string>
     <string name="background_status_battery_unrestricted">Akkuoptimierung für Binario nicht aktiv</string>
+    <string name="background_runs_title">Nächste Prüfungen im Hintergrund</string>
+    <string name="background_runs_none">Keine Prüfung im Hintergrund geplant.</string>
+    <string name="background_runs_running">%1$s: läuft</string>
+    <string name="background_runs_soon">%1$s: in Kürze</string>
+    <string name="background_runs_today">%1$s: heute um %2$s</string>
+    <string name="background_runs_tomorrow">%1$s: morgen um %2$s</string>
+    <string name="background_runs_later">%1$s: %2$s um %3$s</string>
+    <string name="background_runs_note">Ungefähre Zeiten: Android kann sie verschieben, um Akku zu sparen oder auf ein Netz zu warten.</string>
     <string name="commuter_alert_quiet_hours_feedback">Warnung gespeichert, aber nicht geplant: Die Vorlaufzeit liegt in der Ruhezeit 22:00–07:00.</string>
     <string name="commuter_alert_invalid_time_feedback">Warnung gespeichert, aber nicht geplant: Die Zeit ist ungültig.</string>
     <string name="commuter_alert_disabled_feedback">Warnung gespeichert, aber deaktiviert.</string>

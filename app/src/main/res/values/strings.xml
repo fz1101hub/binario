@@ -687,6 +687,14 @@
     <string name="background_status_exact_on">Sveglie esatte consentite</string>
     <string name="background_status_battery_optimized">Ottimizzazione batteria attiva per Binario: Android può rinviare i controlli in background.</string>
     <string name="background_status_battery_unrestricted">Ottimizzazione batteria non attiva per Binario</string>
+    <string name="background_runs_title">Prossimi controlli in background</string>
+    <string name="background_runs_none">Nessun controllo in background programmato.</string>
+    <string name="background_runs_running">%1$s: in corso</string>
+    <string name="background_runs_soon">%1$s: a breve</string>
+    <string name="background_runs_today">%1$s: oggi alle %2$s</string>
+    <string name="background_runs_tomorrow">%1$s: domani alle %2$s</string>
+    <string name="background_runs_later">%1$s: %2$s alle %3$s</string>
+    <string name="background_runs_note">Orari indicativi: Android può spostarli per risparmiare batteria o in attesa della rete.</string>
     <string name="commuter_alert_quiet_hours_feedback">Avviso salvato ma non pianificato: l’anticipo cade nella fascia silenziosa 22:00–07:00.</string>
     <string name="commuter_alert_invalid_time_feedback">Avviso salvato ma non pianificato: l’orario non è valido.</string>
     <string name="commuter_alert_disabled_feedback">Avviso salvato ma disattivato.</string>

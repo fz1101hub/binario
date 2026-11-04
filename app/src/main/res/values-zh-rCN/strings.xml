@@ -657,6 +657,14 @@
     <string name="background_status_exact_on">已允许精确闹钟</string>
     <string name="background_status_battery_optimized">Binario 的电池优化已开启：Android 可能会推迟后台检查。</string>
     <string name="background_status_battery_unrestricted">Binario 的电池优化已关闭</string>
+    <string name="background_runs_title">后台下次检查</string>
+    <string name="background_runs_none">没有已安排的后台检查。</string>
+    <string name="background_runs_running">%1$s：正在运行</string>
+    <string name="background_runs_soon">%1$s：即将运行</string>
+    <string name="background_runs_today">%1$s：今天 %2$s</string>
+    <string name="background_runs_tomorrow">%1$s：明天 %2$s</string>
+    <string name="background_runs_later">%1$s：%2$s %3$s</string>
+    <string name="background_runs_note">时间仅供参考：Android 可能为节省电量或等待网络而调整时间。</string>
     <string name="commuter_alert_quiet_hours_feedback">提醒已保存但未安排：提醒时间落在 22:00–07:00 静默时段内。</string>
     <string name="commuter_alert_invalid_time_feedback">提醒已保存但未安排：时间无效。</string>
     <string name="commuter_alert_disabled_feedback">提醒已保存，但已停用。</string>

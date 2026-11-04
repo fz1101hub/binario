@@ -657,6 +657,14 @@
     <string name="background_status_exact_on">อนุญาตการปลุกแบบตรงเวลาแล้ว</string>
     <string name="background_status_battery_optimized">การเพิ่มประสิทธิภาพแบตเตอรี่เปิดอยู่สำหรับ Binario Android อาจเลื่อนการตรวจสอบเบื้องหลัง</string>
     <string name="background_status_battery_unrestricted">การเพิ่มประสิทธิภาพแบตเตอรี่ปิดอยู่สำหรับ Binario</string>
+    <string name="background_runs_title">การตรวจสอบเบื้องหลังครั้งถัดไป</string>
+    <string name="background_runs_none">ไม่มีการตรวจสอบเบื้องหลังที่ตั้งเวลาไว้</string>
+    <string name="background_runs_running">%1$s: กำลังทำงาน</string>
+    <string name="background_runs_soon">%1$s: อีกสักครู่</string>
+    <string name="background_runs_today">%1$s: วันนี้ เวลา %2$s</string>
+    <string name="background_runs_tomorrow">%1$s: พรุ่งนี้ เวลา %2$s</string>
+    <string name="background_runs_later">%1$s: %2$s เวลา %3$s</string>
+    <string name="background_runs_note">เวลาโดยประมาณ: Android อาจเลื่อนเวลาเพื่อประหยัดแบตเตอรี่หรือระหว่างรอเครือข่าย</string>
     <string name="commuter_alert_quiet_hours_feedback">บันทึกการแจ้งเตือนแล้วแต่ยังไม่ได้ตั้งเวลา เวลาแจ้งล่วงหน้าอยู่ในช่วงเวลาเงียบ 22:00–07:00</string>
     <string name="commuter_alert_invalid_time_feedback">บันทึกการแจ้งเตือนแล้วแต่ยังไม่ได้ตั้งเวลา เวลาไม่ถูกต้อง</string>
     <string name="commuter_alert_disabled_feedback">บันทึกการแจ้งเตือนแล้วแต่ปิดอยู่</string>

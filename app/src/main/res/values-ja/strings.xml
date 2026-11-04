@@ -643,6 +643,14 @@
     <string name="background_status_exact_on">正確なアラームは許可されています</string>
     <string name="background_status_battery_optimized">Binario のバッテリー最適化がオンです。Android がバックグラウンドの確認を遅らせることがあります。</string>
     <string name="background_status_battery_unrestricted">Binario のバッテリー最適化はオフです</string>
+    <string name="background_runs_title">次回のバックグラウンド確認</string>
+    <string name="background_runs_none">予定されているバックグラウンド確認はありません。</string>
+    <string name="background_runs_running">%1$s：実行中</string>
+    <string name="background_runs_soon">%1$s：まもなく</string>
+    <string name="background_runs_today">%1$s：今日 %2$s</string>
+    <string name="background_runs_tomorrow">%1$s：明日 %2$s</string>
+    <string name="background_runs_later">%1$s：%2$s %3$s</string>
+    <string name="background_runs_note">目安の時刻です。Android は電池の節約やネットワーク待ちのために時刻をずらすことがあります。</string>
     <string name="commuter_alert_quiet_hours_feedback">通知を保存しましたが予定していません。通知の時刻が通知しない時間帯（22:00–07:00）です。</string>
     <string name="commuter_alert_invalid_time_feedback">通知を保存しましたが予定していません。時刻が正しくありません。</string>
     <string name="commuter_alert_disabled_feedback">通知を保存しましたが、オフになっています。</string>

@@ -657,6 +657,14 @@
     <string name="background_status_exact_on">Đã cho phép báo thức chính xác</string>
     <string name="background_status_battery_optimized">Tối ưu hóa pin đang bật cho Binario: Android có thể hoãn các lần kiểm tra nền.</string>
     <string name="background_status_battery_unrestricted">Tối ưu hóa pin đang tắt cho Binario</string>
+    <string name="background_runs_title">Các lần kiểm tra nền tiếp theo</string>
+    <string name="background_runs_none">Không có lần kiểm tra nền nào được lên lịch.</string>
+    <string name="background_runs_running">%1$s: đang chạy</string>
+    <string name="background_runs_soon">%1$s: sắp diễn ra</string>
+    <string name="background_runs_today">%1$s: hôm nay lúc %2$s</string>
+    <string name="background_runs_tomorrow">%1$s: ngày mai lúc %2$s</string>
+    <string name="background_runs_later">%1$s: %2$s lúc %3$s</string>
+    <string name="background_runs_note">Thời gian ước tính: Android có thể dời lại để tiết kiệm pin hoặc trong khi chờ mạng.</string>
     <string name="commuter_alert_quiet_hours_feedback">Đã lưu cảnh báo nhưng chưa lên lịch: thời điểm báo trước rơi vào giờ yên tĩnh 22:00–07:00.</string>
     <string name="commuter_alert_invalid_time_feedback">Đã lưu cảnh báo nhưng chưa lên lịch: giờ không hợp lệ.</string>
     <string name="commuter_alert_disabled_feedback">Đã lưu cảnh báo nhưng đang tắt.</string>

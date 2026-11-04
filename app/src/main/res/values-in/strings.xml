@@ -643,6 +643,14 @@
     <string name="background_status_exact_on">Alarm tepat diizinkan</string>
     <string name="background_status_battery_optimized">Pengoptimalan baterai aktif untuk Binario: Android bisa menunda pemeriksaan latar belakang.</string>
     <string name="background_status_battery_unrestricted">Pengoptimalan baterai nonaktif untuk Binario</string>
+    <string name="background_runs_title">Pemeriksaan latar belakang berikutnya</string>
+    <string name="background_runs_none">Tidak ada pemeriksaan latar belakang yang dijadwalkan.</string>
+    <string name="background_runs_running">%1$s: sedang berjalan</string>
+    <string name="background_runs_soon">%1$s: sebentar lagi</string>
+    <string name="background_runs_today">%1$s: hari ini pukul %2$s</string>
+    <string name="background_runs_tomorrow">%1$s: besok pukul %2$s</string>
+    <string name="background_runs_later">%1$s: %2$s pukul %3$s</string>
+    <string name="background_runs_note">Waktu perkiraan: Android dapat menggesernya untuk menghemat baterai atau saat menunggu jaringan.</string>
     <string name="commuter_alert_quiet_hours_feedback">Peringatan disimpan tetapi tidak dijadwalkan: waktunya jatuh pada jam tenang 22:00–07:00.</string>
     <string name="commuter_alert_invalid_time_feedback">Peringatan disimpan tetapi tidak dijadwalkan: waktunya tidak valid.</string>
     <string name="commuter_alert_disabled_feedback">Peringatan disimpan tetapi nonaktif.</string>

@@ -688,6 +688,14 @@
     <string name="background_status_exact_on">Точные будильники разрешены</string>
     <string name="background_status_battery_optimized">Оптимизация батареи для Binario включена: Android может откладывать фоновые проверки.</string>
     <string name="background_status_battery_unrestricted">Оптимизация батареи для Binario выключена</string>
+    <string name="background_runs_title">Следующие проверки в фоне</string>
+    <string name="background_runs_none">Проверок в фоне не запланировано.</string>
+    <string name="background_runs_running">%1$s: выполняется</string>
+    <string name="background_runs_soon">%1$s: скоро</string>
+    <string name="background_runs_today">%1$s: сегодня в %2$s</string>
+    <string name="background_runs_tomorrow">%1$s: завтра в %2$s</string>
+    <string name="background_runs_later">%1$s: %2$s в %3$s</string>
+    <string name="background_runs_note">Время примерное: Android может сдвинуть проверки ради экономии батареи или в ожидании сети.</string>
     <string name="commuter_alert_quiet_hours_feedback">Оповещение сохранено, но не запланировано: время оповещения попадает в тихие часы 22:00–07:00.</string>
     <string name="commuter_alert_invalid_time_feedback">Оповещение сохранено, но не запланировано: неверное время.</string>
     <string name="commuter_alert_disabled_feedback">Оповещение сохранено, но выключено.</string>

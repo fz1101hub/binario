@@ -658,6 +658,14 @@
     <string name="background_status_exact_on">सटीक अलार्म की अनुमति है</string>
     <string name="background_status_battery_optimized">Binario के लिए बैटरी ऑप्टिमाइज़ेशन चालू है: Android बैकग्राउंड जाँच टाल सकता है।</string>
     <string name="background_status_battery_unrestricted">Binario के लिए बैटरी ऑप्टिमाइज़ेशन बंद है</string>
+    <string name="background_runs_title">बैकग्राउंड में अगली जाँचें</string>
+    <string name="background_runs_none">बैकग्राउंड में कोई जाँच निर्धारित नहीं है।</string>
+    <string name="background_runs_running">%1$s: चल रही है</string>
+    <string name="background_runs_soon">%1$s: जल्द ही</string>
+    <string name="background_runs_today">%1$s: आज %2$s बजे</string>
+    <string name="background_runs_tomorrow">%1$s: कल %2$s बजे</string>
+    <string name="background_runs_later">%1$s: %2$s को %3$s बजे</string>
+    <string name="background_runs_note">अनुमानित समय: बैटरी बचाने या नेटवर्क की प्रतीक्षा में Android इन्हें आगे-पीछे कर सकता है।</string>
     <string name="commuter_alert_quiet_hours_feedback">अलर्ट सहेजा गया पर शेड्यूल नहीं हुआ: उसका समय शांत अवधि 22:00–07:00 में आता है।</string>
     <string name="commuter_alert_invalid_time_feedback">अलर्ट सहेजा गया पर शेड्यूल नहीं हुआ: समय मान्य नहीं है।</string>
     <string name="commuter_alert_disabled_feedback">अलर्ट सहेजा गया पर बंद है।</string>

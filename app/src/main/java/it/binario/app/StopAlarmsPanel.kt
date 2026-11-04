@@ -20,10 +20,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -34,6 +36,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
+import it.binario.app.data.RailTime
+import it.binario.app.notifications.BackgroundCheck
+import it.binario.app.notifications.BackgroundRun
+import it.binario.app.notifications.BackgroundRunStrings
+import it.binario.app.notifications.BackgroundRuns
+import it.binario.app.notifications.WorkManagerBackgroundWorkQuery
+import java.time.ZonedDateTime
+import java.time.format.DateTimeFormatter
 
 /** Whether Android lets Binario set exact alarms; always true before Android 12. */
 internal fun canScheduleExactAlarms(context: Context): Boolean =
@@ -80,7 +90,8 @@ internal fun ActiveStopAlarmsPanel(modifier: Modifier = Modifier, trainNumber: S
 
 /**
  * "Attività in background" (read-only): whether Binario may notify, set exact alarms (with "Consenti sveglie
- * esatte" when not) and run unrestricted by the battery optimisation, so that a missing alert can be explained.
+ * esatte" when not) and run unrestricted by the battery optimisation, and when each periodic check runs next, so that
+ * a missing alert can be explained.
  */
 @Composable
 internal fun BackgroundStatusPanel(modifier: Modifier = Modifier) {
@@ -102,6 +113,41 @@ internal fun BackgroundStatusPanel(modifier: Modifier = Modifier) {
         StatusLine(stringResource(if (notifications) R.string.background_status_notifications_on else R.string.background_status_notifications_off))
         if (exact) StatusLine(stringResource(R.string.background_status_exact_on)) else ExactAlarmAccessNote()
         StatusLine(stringResource(if (unrestricted) R.string.background_status_battery_unrestricted else R.string.background_status_battery_optimized))
+        NextBackgroundRuns(resumed)
+    }
+}
+
+/**
+ * «Prossimi controlli in background»: the next run of every check WorkManager has planned (notices, arrival alerts,
+ * punctuality, strikes, widgets…), read again whenever the screen comes back; nothing when none is planned.
+ */
+@Composable
+private fun NextBackgroundRuns(refreshKey: Int) {
+    val context = LocalContext.current
+    val locale = LocalConfiguration.current.locales[0]
+    val runs by produceState<List<BackgroundRun>?>(null, refreshKey) {
+        value = BackgroundRuns.planned(WorkManagerBackgroundWorkQuery(context), ZonedDateTime.now(RailTime.defaultZone))
+    }
+    val labels = BackgroundCheck.entries.associateWith { stringResource(it.labelRes) }
+    val strings = BackgroundRunStrings(
+        locale = locale,
+        label = labels::getValue,
+        running = stringResource(R.string.background_runs_running),
+        soon = stringResource(R.string.background_runs_soon),
+        today = stringResource(R.string.background_runs_today),
+        tomorrow = stringResource(R.string.background_runs_tomorrow),
+        later = stringResource(R.string.background_runs_later),
+        timeFormatter = remember(locale) { DateTimeFormatter.ofPattern("HH:mm", locale) },
+        dateFormatter = remember(locale) {
+            DateTimeFormatter.ofPattern(android.text.format.DateFormat.getBestDateTimePattern(locale, "EEEdMMM"), locale)
+        }
+    )
+    val planned = runs ?: return
+    Column(Modifier.fillMaxWidth().padding(top = 4.dp).testTag("background-next-runs"), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Text(stringResource(R.string.background_runs_title), style = MaterialTheme.typography.labelLarge)
+        if (planned.isEmpty()) StatusLine(stringResource(R.string.background_runs_none))
+        planned.forEach { StatusLine(BackgroundRuns.text(it, strings)) }
+        StatusLine(stringResource(R.string.background_runs_note))
     }
 }
 

@@ -643,6 +643,14 @@
     <string name="background_status_exact_on">အချိန်တိကျ နှိုးစက်များ ခွင့်ပြုထားသည်</string>
     <string name="background_status_battery_optimized">Binario အတွက် ဘက်ထရီ အကောင်းဆုံးဖြစ်အောင် ပြုလုပ်ခြင်း ဖွင့်ထားသည် - Android က နောက်ခံ စစ်ဆေးမှုများကို ရွှေ့ဆိုင်းနိုင်သည်။</string>
     <string name="background_status_battery_unrestricted">Binario အတွက် ဘက်ထရီ အကောင်းဆုံးဖြစ်အောင် ပြုလုပ်ခြင်း ပိတ်ထားသည်</string>
+    <string name="background_runs_title">နောက်ခံတွင် နောက်ထပ် စစ်ဆေးမှုများ</string>
+    <string name="background_runs_none">နောက်ခံတွင် စီစဉ်ထားသော စစ်ဆေးမှု မရှိပါ။</string>
+    <string name="background_runs_running">%1$s: လုပ်ဆောင်နေသည်</string>
+    <string name="background_runs_soon">%1$s: မကြာမီ</string>
+    <string name="background_runs_today">%1$s: ယနေ့ %2$s တွင်</string>
+    <string name="background_runs_tomorrow">%1$s: မနက်ဖြန် %2$s တွင်</string>
+    <string name="background_runs_later">%1$s: %2$s %3$s တွင်</string>
+    <string name="background_runs_note">ခန့်မှန်းချိန်များ ဖြစ်သည်- ဘက်ထရီ ချွေတာရန် သို့မဟုတ် ကွန်ရက်ကို စောင့်နေစဉ် Android က ရွှေ့နိုင်သည်။</string>
     <string name="commuter_alert_quiet_hours_feedback">သတိပေးချက်ကို သိမ်းသော်လည်း အချိန် မသတ်မှတ်ရပါ- ကြိုတင်သတိပေးချိန်သည် အသံတိတ်ချိန် 22:00–07:00 အတွင်း ကျနေသည်။</string>
     <string name="commuter_alert_invalid_time_feedback">သတိပေးချက်ကို သိမ်းသော်လည်း အချိန် မသတ်မှတ်ရပါ- အချိန် မမှန်ကန်ပါ။</string>
     <string name="commuter_alert_disabled_feedback">သတိပေးချက်ကို သိမ်းသော်လည်း ပိတ်ထားသည်။</string>

@@ -673,6 +673,14 @@
     <string name="background_status_exact_on">Alarmes exatos permitidos</string>
     <string name="background_status_battery_optimized">Otimização de bateria ativa para o Binario: o Android pode adiar as verificações em segundo plano.</string>
     <string name="background_status_battery_unrestricted">Otimização de bateria desativada para o Binario</string>
+    <string name="background_runs_title">Próximas verificações em segundo plano</string>
+    <string name="background_runs_none">Nenhuma verificação em segundo plano está programada.</string>
+    <string name="background_runs_running">%1$s: em andamento</string>
+    <string name="background_runs_soon">%1$s: em breve</string>
+    <string name="background_runs_today">%1$s: hoje às %2$s</string>
+    <string name="background_runs_tomorrow">%1$s: amanhã às %2$s</string>
+    <string name="background_runs_later">%1$s: %2$s às %3$s</string>
+    <string name="background_runs_note">Horários aproximados: o Android pode mudá-los para economizar bateria ou enquanto espera a rede.</string>
     <string name="commuter_alert_quiet_hours_feedback">Alerta salvo, mas não programado: a antecedência cai no período silencioso 22:00–07:00.</string>
     <string name="commuter_alert_invalid_time_feedback">Alerta salvo, mas não programado: o horário não é válido.</string>
     <string name="commuter_alert_disabled_feedback">Alerta salvo, mas desativado.</string>

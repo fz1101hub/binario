@@ -672,6 +672,14 @@
     <string name="background_status_exact_on">Tam zamanlı alarmlara izin verildi</string>
     <string name="background_status_battery_optimized">Binario için pil optimizasyonu açık: Android arka plan kontrollerini erteleyebilir.</string>
     <string name="background_status_battery_unrestricted">Binario için pil optimizasyonu kapalı</string>
+    <string name="background_runs_title">Arka plandaki sonraki kontroller</string>
+    <string name="background_runs_none">Planlanmış arka plan kontrolü yok.</string>
+    <string name="background_runs_running">%1$s: çalışıyor</string>
+    <string name="background_runs_soon">%1$s: birazdan</string>
+    <string name="background_runs_today">%1$s: bugün %2$s</string>
+    <string name="background_runs_tomorrow">%1$s: yarın %2$s</string>
+    <string name="background_runs_later">%1$s: %2$s %3$s</string>
+    <string name="background_runs_note">Saatler yaklaşıktır: Android pil tasarrufu için veya ağ beklerken bunları kaydırabilir.</string>
     <string name="commuter_alert_quiet_hours_feedback">Uyarı kaydedildi ancak zamanlanmadı: uyarı zamanı 22:00–07:00 sessiz saatlerine denk geliyor.</string>
     <string name="commuter_alert_invalid_time_feedback">Uyarı kaydedildi ancak zamanlanmadı: saat geçersiz.</string>
     <string name="commuter_alert_disabled_feedback">Uyarı kaydedildi ancak kapalı.</string>

@@ -643,6 +643,14 @@
     <string name="background_status_exact_on">정확한 알람 허용됨</string>
     <string name="background_status_battery_optimized">Binario의 배터리 최적화가 켜져 있어 Android가 백그라운드 확인을 미룰 수 있습니다.</string>
     <string name="background_status_battery_unrestricted">Binario의 배터리 최적화가 꺼져 있음</string>
+    <string name="background_runs_title">다음 백그라운드 확인</string>
+    <string name="background_runs_none">예약된 백그라운드 확인이 없습니다.</string>
+    <string name="background_runs_running">%1$s: 실행 중</string>
+    <string name="background_runs_soon">%1$s: 곧</string>
+    <string name="background_runs_today">%1$s: 오늘 %2$s</string>
+    <string name="background_runs_tomorrow">%1$s: 내일 %2$s</string>
+    <string name="background_runs_later">%1$s: %2$s %3$s</string>
+    <string name="background_runs_note">대략적인 시간입니다. Android가 배터리를 아끼거나 네트워크를 기다리느라 시간을 옮길 수 있습니다.</string>
     <string name="commuter_alert_quiet_hours_feedback">알림이 저장되었지만 예약되지 않았습니다. 알림 시각이 방해 금지 시간(22:00–07:00)에 해당합니다.</string>
     <string name="commuter_alert_invalid_time_feedback">알림이 저장되었지만 예약되지 않았습니다. 시각이 올바르지 않습니다.</string>
     <string name="commuter_alert_disabled_feedback">알림이 저장되었지만 꺼져 있습니다.</string>

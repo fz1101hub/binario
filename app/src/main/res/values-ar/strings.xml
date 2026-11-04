@@ -718,6 +718,14 @@
     <string name="background_status_exact_on">المنبّهات الدقيقة مسموح بها</string>
     <string name="background_status_battery_optimized">تحسين البطارية مفعّل لتطبيق Binario: قد يؤجل Android عمليات التحقق في الخلفية.</string>
     <string name="background_status_battery_unrestricted">تحسين البطارية غير مفعّل لتطبيق Binario</string>
+    <string name="background_runs_title">عمليات التحقق التالية في الخلفية</string>
+    <string name="background_runs_none">لا توجد عملية تحقق مجدولة في الخلفية.</string>
+    <string name="background_runs_running">%1$s: قيد التشغيل</string>
+    <string name="background_runs_soon">%1$s: قريبًا</string>
+    <string name="background_runs_today">%1$s: اليوم الساعة %2$s</string>
+    <string name="background_runs_tomorrow">%1$s: غدًا الساعة %2$s</string>
+    <string name="background_runs_later">%1$s: %2$s الساعة %3$s</string>
+    <string name="background_runs_note">أوقات تقريبية: قد يؤجلها Android لتوفير البطارية أو أثناء انتظار الشبكة.</string>
     <string name="commuter_alert_quiet_hours_feedback">حُفظ التنبيه ولم يُجدول: يقع وقته ضمن فترة الهدوء 22:00–07:00.</string>
     <string name="commuter_alert_invalid_time_feedback">حُفظ التنبيه ولم يُجدول: الوقت غير صالح.</string>
     <string name="commuter_alert_disabled_feedback">حُفظ التنبيه لكنه متوقف.</string>
