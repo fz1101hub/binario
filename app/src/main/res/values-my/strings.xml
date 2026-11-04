@@ -372,6 +372,26 @@
     <string name="map_nearby_content_description">အနီးဆုံး ဘူတာများ၏ မြေပုံ။ အလားတူ ဘူတာများကို အကွာအဝေးနှင့်အတူ အောက်တွင် စာရင်းပြုထားသည်။</string>
     <string name="map_nearby_tap_hint">အချိန်ပြဘုတ် ဖွင့်ရန် ဘူတာကို တို့ပါ။</string>
     <string name="map_legend_user_position">ခန့်မှန်း တည်နေရာ၊ မသိမ်းပါ</string>
+    <string name="live_map_title">ပြေးဆွဲနေသော ရထားများ</string>
+    <string name="live_map_area_subtitle">%1$s အနီးတစ်ဝိုက်</string>
+    <string name="live_map_content_description">ပြေးဆွဲနေသော ရထားများ မြေပုံ၊ %1$s။ တည်နေရာများသည် အချိန်ဇယားမှ ခန့်မှန်းထားခြင်းဖြစ်ပြီး GPS တည်နေရာ မဟုတ်ပါ၊ တူညီသော ရထားများကို မြေပုံအောက်ရှိ စာရင်းတွင် ဖော်ပြထားသည်။</string>
+    <string name="live_map_note">ခန့်မှန်းတည်နေရာ၊ GPS မဟုတ်ပါ- Binario သည် အချိန်ဇယားအရ ရထားတစ်စင်းစီ ရှိသင့်သည့်နေရာကို ရပ်နားဘူတာနှစ်ခုကြား မျဉ်းဖြောင့်ပေါ်တွင် တွက်ချက်သည် (သံလမ်းအတိုင်း မဟုတ်ပါ)။ အချိန်ပြဘုတ်တွင် ရထား၏ နောက်ကျမှု ရှိပြီးဖြစ်ပါက ခန့်မှန်းချက်တွင် ထည့်သွင်းသည်။ မြေပုံဖွင့်ထားစဉ် တည်နေရာများကို စက္ကန့် 30 တိုင်း အပ်ဒိတ်လုပ်သည်။</string>
+    <string name="live_map_legend_live">အချိန်ပြဘုတ်၏ နောက်ကျမှုဖြင့် ခန့်မှန်းထားသော တည်နေရာ</string>
+    <string name="live_map_legend_timetable">အချိန်ဇယားမှသာ ခန့်မှန်းထားသော တည်နေရာ</string>
+    <string name="live_map_loading">ခန့်မှန်းတည်နေရာများကို တွက်ချက်နေသည်…</string>
+    <string name="live_map_zoom_in">ပြေးဆွဲနေသော ရထားများကို ကြည့်ရန် မြေပုံကို ချဲ့ပါ။</string>
+    <string name="live_map_none">အချိန်ဇယားအရ ပြသထားသော နေရာတွင် ပြေးဆွဲနေသော ရထား မရှိပါ။</string>
+    <string name="live_map_row_title">%2$s သို့ %1$s</string>
+    <string name="live_map_row_at">%1$s တွင် ရပ်နားနေသည်</string>
+    <string name="live_map_row_between">%1$s နှင့် %2$s ကြား</string>
+    <string name="live_map_row_live">အချိန်ပြဘုတ်၏ ဒေတာဖြင့် ခန့်မှန်းချက်- %1$s</string>
+    <string name="live_map_row_timetable">အချိန်ဇယားမှသာ ခန့်မှန်းချက်</string>
+    <plurals name="live_map_count">
+        <item quantity="other">ပြေးဆွဲနေသော ရထား %d စင်း</item>
+    </plurals>
+    <plurals name="live_map_capped">
+        <item quantity="other">အနီးဆုံး %d စင်းကို ပြသထားသည်။</item>
+    </plurals>
     <string name="settings_privacy_maps">မြေပုံများ- ချဲ့ကြည့်သည့်အခါ သို့မဟုတ် ဖွင့်သည့်အခါမှသာ ပေါ်သည်။ ၎င်းတို့ကို ဆွဲရန် အက်ပ်သည် tiles.openfreemap.org (OpenFreeMap) မှ ပုံစံ၊ အကွက်များ၊ ဖောင့်များနှင့် အိုင်ကွန်များကို ဒေါင်းလုဒ်လုပ်ပြီး ၎င်းသည် IP လိပ်စာနှင့် ပြထားသော ဧရိယာကို မြင်ရသည်- ရထား လမ်းကြောင်း၊ ရွေးထားသော ဘူတာ သို့မဟုတ် အနီးရှိ ဘူတာများအတွက် သင်၏ ခန့်မှန်းတည်နေရာ ပတ်လည် ဧရိယာ။ တည်နေရာကို မပို့ပါ၊ မသိမ်းပါ၊ အကွက်များကို အက်ပ်၏ စက်တွင်း ကက်ရှ်တွင် သိမ်းသည်။</string>
     <string name="settings_credits_maps">မြေပုံများ- OpenFreeMap © OpenMapTiles၊ ဒေတာ © OpenStreetMap contributors (ODbL 1.0)။ MapLibre Native ဖြင့် ပြသည်၊ BSD 2-Clause လိုင်စင်။</string>
     <string name="settings_credits_trenitalia">Trenitalia အချိန်ဇယားများ (ရထားနှင့် ဘတ်စ်ကား)- CAD ပုဒ်မ 52 နှင့် EU စည်းမျဉ်း 2017/1926 အရ အီတလီ National Access Point (CCISS) တွင် ထုတ်ပြန်ထားသော Trenitalia S.p.A. ၏ တရားဝင် ဒေတာ၊ https://www.cciss.it/nap/mmtis/public/en/catalog/Dataset/1077621။ GTFS ပြောင်းလဲမှု © Clément Desouche, CC BY 4.0: https://github.com/deryclem/trenitalia-gtfs (လိုင်စင် https://creativecommons.org/licenses/by/4.0/)။ Binario သည် လမ်းကြောင်း ဂျီဩမေတြီ မပါဘဲ အချိန်ဇယားပါ အချိန်များကိုသာ သုံးပြီး Trenitalia နှင့် ဆက်စပ်မှု မရှိပါ။</string>

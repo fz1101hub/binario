@@ -402,6 +402,36 @@
     <string name="map_nearby_content_description">خريطة أقرب المحطات. المحطات نفسها مع مسافاتها مدرجة أدناه.</string>
     <string name="map_nearby_tap_hint">المس محطة لفتح لوحتها.</string>
     <string name="map_legend_user_position">موقع تقريبي، غير محفوظ</string>
+    <string name="live_map_title">قطارات في الطريق</string>
+    <string name="live_map_area_subtitle">حول %1$s</string>
+    <string name="live_map_content_description">خريطة القطارات في الطريق، %1$s. المواقع تقديرية من الجدول الزمني وليست مواقع GPS؛ القطارات نفسها مدرجة تحت الخريطة.</string>
+    <string name="live_map_note">موقع تقديري وليس GPS: يحسب Binario المكان الذي يُفترض أن يكون فيه كل قطار وفق الجدول الزمني، على خط مستقيم بين محطتين (وليس على امتداد السكة). إذا كانت اللوحة تعرض تأخير القطار، يأخذه التقدير في الحسبان. تتحدّث المواقع كل 30 ثانية ما دامت الخريطة مفتوحة.</string>
+    <string name="live_map_legend_live">موقع مقدّر مع تأخير اللوحة</string>
+    <string name="live_map_legend_timetable">موقع مقدّر من الجدول الزمني فقط</string>
+    <string name="live_map_loading">جارٍ حساب المواقع التقديرية…</string>
+    <string name="live_map_zoom_in">قرّب الخريطة لرؤية القطارات في الطريق.</string>
+    <string name="live_map_none">وفق الجدول الزمني لا يوجد قطار في الطريق في المنطقة المعروضة.</string>
+    <string name="live_map_row_title">%1$s إلى %2$s</string>
+    <string name="live_map_row_at">متوقف في %1$s</string>
+    <string name="live_map_row_between">بين %1$s و%2$s</string>
+    <string name="live_map_row_live">تقدير ببيانات اللوحة: %1$s</string>
+    <string name="live_map_row_timetable">تقدير من الجدول الزمني فقط</string>
+    <plurals name="live_map_count">
+        <item quantity="zero">%d قطار في الطريق</item>
+        <item quantity="one">%d قطار في الطريق</item>
+        <item quantity="two">%d قطاران في الطريق</item>
+        <item quantity="few">%d قطارات في الطريق</item>
+        <item quantity="many">%d قطارًا في الطريق</item>
+        <item quantity="other">%d قطار في الطريق</item>
+    </plurals>
+    <plurals name="live_map_capped">
+        <item quantity="zero">المعروض: أقرب %d قطار.</item>
+        <item quantity="one">المعروض: أقرب %d قطار.</item>
+        <item quantity="two">المعروض: أقرب %d قطارين.</item>
+        <item quantity="few">المعروض: أقرب %d قطارات.</item>
+        <item quantity="many">المعروض: أقرب %d قطارًا.</item>
+        <item quantity="other">المعروض: أقرب %d قطار.</item>
+    </plurals>
     <string name="settings_privacy_maps">الخرائط: لا تُفتح إلا عند توسيعها أو تحميلها. لرسمها ينزّل التطبيق النمط والمربعات والخطوط والأيقونات من tiles.openfreemap.org (OpenFreeMap)، الذي يرى عنوان IP والمنطقة المعروضة: مسار القطار أو المحطة المختارة أو، للمحطات القريبة، المنطقة المحيطة بموقعك التقريبي. لا يُرسل الموقع ولا يُحفظ؛ وتبقى المربعات في ذاكرة تخزين مؤقت محلية للتطبيق.</string>
     <string name="settings_credits_maps">الخرائط: OpenFreeMap © OpenMapTiles، البيانات © OpenStreetMap contributors (ODbL 1.0). العرض باستخدام MapLibre Native، ترخيص BSD 2-Clause.</string>
     <string name="settings_credits_trenitalia">مواعيد Trenitalia (قطارات وحافلات): بيانات رسمية من Trenitalia S.p.A. منشورة على نقطة الوصول الوطنية الإيطالية (CCISS) بموجب المادة 52 من CAD ولائحة الاتحاد الأوروبي 2017/1926، https://www.cciss.it/nap/mmtis/public/en/catalog/Dataset/1077621. تحويل GTFS © Clément Desouche، CC BY 4.0: https://github.com/deryclem/trenitalia-gtfs (الترخيص https://creativecommons.org/licenses/by/4.0/). يستخدم Binario المواعيد المجدولة فقط، دون الأشكال الهندسية للمسارات، وليس تابعًا لـ Trenitalia.</string>

@@ -372,6 +372,26 @@
     <string name="map_nearby_content_description">近くの駅の地図。同じ駅が距離付きで下に一覧表示されます。</string>
     <string name="map_nearby_tap_hint">駅をタップすると発車案内が開きます。</string>
     <string name="map_legend_user_position">おおよその位置（保存されません）</string>
+    <string name="live_map_title">走行中の列車</string>
+    <string name="live_map_area_subtitle">%1$s周辺</string>
+    <string name="live_map_content_description">走行中の列車の地図（%1$s）。位置は時刻表からの推定で、GPSの位置ではありません。同じ列車が地図の下に一覧表示されます。</string>
+    <string name="live_map_note">推定位置（GPSではありません）：Binarioは時刻表に基づき、各列車がいるはずの位置を2つの停車駅の間の直線上に計算します（線路に沿った位置ではありません）。発車案内にすでに遅れが出ている列車は、その遅れを反映します。地図を開いている間、位置は30秒ごとに更新されます。</string>
+    <string name="live_map_legend_live">発車案内の遅れを反映した推定位置</string>
+    <string name="live_map_legend_timetable">時刻表のみによる推定位置</string>
+    <string name="live_map_loading">推定位置を計算しています…</string>
+    <string name="live_map_zoom_in">走行中の列車を見るには地図を拡大してください。</string>
+    <string name="live_map_none">時刻表によると、表示中のエリアに走行中の列車はありません。</string>
+    <string name="live_map_row_title">%1$s（%2$s行き）</string>
+    <string name="live_map_row_at">%1$sに停車中</string>
+    <string name="live_map_row_between">%1$sと%2$sの間</string>
+    <string name="live_map_row_live">発車案内のデータによる推定：%1$s</string>
+    <string name="live_map_row_timetable">時刻表のみによる推定</string>
+    <plurals name="live_map_count">
+        <item quantity="other">走行中の列車 %d本</item>
+    </plurals>
+    <plurals name="live_map_capped">
+        <item quantity="other">近い順に%d本を表示しています。</item>
+    </plurals>
     <string name="settings_privacy_maps">地図：展開するか読み込んだときにのみ開きます。描画のため、アプリは tiles.openfreemap.org（OpenFreeMap）からスタイル、タイル、フォント、アイコンをダウンロードします。提供元には IP アドレスと表示範囲（列車の経路、選んだ駅、近くの駅の場合はおおよその現在地の周辺）がわかります。位置情報は送信も保存もされません。タイルはアプリのローカルキャッシュに保存されます。</string>
     <string name="settings_credits_maps">地図：OpenFreeMap © OpenMapTiles、データ © OpenStreetMap contributors（ODbL 1.0）。MapLibre Native で表示、BSD 2-Clause ライセンス。</string>
     <string name="settings_credits_trenitalia">Trenitalia の時刻表（列車とバス）：CAD 第 52 条および EU 規則 2017/1926 に基づきイタリアのナショナルアクセスポイント（CCISS）で公開されている Trenitalia S.p.A. の公式データ、https://www.cciss.it/nap/mmtis/public/en/catalog/Dataset/1077621。GTFS 変換 © Clément Desouche、CC BY 4.0：https://github.com/deryclem/trenitalia-gtfs（ライセンス https://creativecommons.org/licenses/by/4.0/）。Binario は経路の形状を除く時刻表の時刻のみを使用しており、Trenitalia とは提携していません。</string>

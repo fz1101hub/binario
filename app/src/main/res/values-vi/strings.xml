@@ -378,6 +378,26 @@
     <string name="map_nearby_content_description">Bản đồ các ga gần nhất. Các ga này, kèm khoảng cách, được liệt kê bên dưới.</string>
     <string name="map_nearby_tap_hint">Nhấn vào một ga để mở bảng giờ tàu.</string>
     <string name="map_legend_user_position">Vị trí gần đúng, không được lưu</string>
+    <string name="live_map_title">Tàu đang chạy</string>
+    <string name="live_map_area_subtitle">Quanh %1$s</string>
+    <string name="live_map_content_description">Bản đồ các tàu đang chạy, %1$s. Vị trí là ước tính từ lịch chạy tàu, không phải vị trí GPS; các tàu này cũng được liệt kê bên dưới bản đồ.</string>
+    <string name="live_map_note">Vị trí ước tính, không phải GPS: Binario tính nơi mỗi tàu lẽ ra phải ở theo lịch chạy, trên đường thẳng giữa hai điểm dừng (không theo đường ray). Nếu bảng giờ tàu đã có độ trễ của một tàu, ước tính sẽ tính đến độ trễ đó. Vị trí được cập nhật mỗi 30 giây khi bản đồ đang mở.</string>
+    <string name="live_map_legend_live">Vị trí ước tính theo độ trễ trên bảng giờ tàu</string>
+    <string name="live_map_legend_timetable">Vị trí chỉ ước tính theo lịch chạy</string>
+    <string name="live_map_loading">Đang tính vị trí ước tính…</string>
+    <string name="live_map_zoom_in">Phóng to bản đồ để xem các tàu đang chạy.</string>
+    <string name="live_map_none">Theo lịch chạy, không có tàu nào đang chạy trong khu vực hiển thị.</string>
+    <string name="live_map_row_title">%1$s đi %2$s</string>
+    <string name="live_map_row_at">Đang dừng tại %1$s</string>
+    <string name="live_map_row_between">Giữa %1$s và %2$s</string>
+    <string name="live_map_row_live">Ước tính theo dữ liệu bảng giờ tàu: %1$s</string>
+    <string name="live_map_row_timetable">Chỉ ước tính theo lịch chạy</string>
+    <plurals name="live_map_count">
+        <item quantity="other">%d tàu đang chạy</item>
+    </plurals>
+    <plurals name="live_map_capped">
+        <item quantity="other">Hiển thị %d tàu gần nhất.</item>
+    </plurals>
     <string name="settings_privacy_maps">Bản đồ: chỉ mở khi bạn mở rộng hoặc tải bản đồ. Để vẽ bản đồ, ứng dụng tải kiểu hiển thị, ô bản đồ, phông chữ và biểu tượng từ tiles.openfreemap.org (OpenFreeMap); dịch vụ này thấy địa chỉ IP của bạn và khu vực được hiển thị: lộ trình của tàu, ga đã chọn hoặc, với các ga gần đây, khu vực quanh vị trí gần đúng của bạn. Vị trí không được gửi đi hay lưu lại; các ô bản đồ nằm trong bộ nhớ đệm cục bộ của ứng dụng.</string>
     <string name="settings_credits_maps">Bản đồ: OpenFreeMap © OpenMapTiles, dữ liệu © OpenStreetMap contributors (ODbL 1.0). Hiển thị bằng MapLibre Native, giấy phép BSD 2-Clause.</string>
     <string name="settings_credits_trenitalia">Lịch tàu Trenitalia (tàu và xe buýt): dữ liệu chính thức của Trenitalia S.p.A. được công bố trên Điểm truy cập quốc gia của Ý (CCISS) theo điều 52 CAD và Quy định EU 2017/1926, https://www.cciss.it/nap/mmtis/public/en/catalog/Dataset/1077621. Chuyển đổi GTFS © Clément Desouche, CC BY 4.0: https://github.com/deryclem/trenitalia-gtfs (giấy phép https://creativecommons.org/licenses/by/4.0/). Binario chỉ dùng giờ theo lịch, không có hình học lộ trình, và không liên kết với Trenitalia.</string>

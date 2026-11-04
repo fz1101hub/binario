@@ -384,6 +384,28 @@
     <string name="map_nearby_content_description">En yakın istasyonların haritası. Aynı istasyonlar mesafeleriyle birlikte aşağıda listelenmiştir.</string>
     <string name="map_nearby_tap_hint">Panosunu açmak için bir istasyona dokunun.</string>
     <string name="map_legend_user_position">Yaklaşık konum, kaydedilmez</string>
+    <string name="live_map_title">Hareket hâlindeki trenler</string>
+    <string name="live_map_area_subtitle">%1$s çevresi</string>
+    <string name="live_map_content_description">Hareket hâlindeki trenlerin haritası, %1$s. Konumlar tarifeden tahmindir, GPS konumu değildir; aynı trenler haritanın altındaki listede yer alır.</string>
+    <string name="live_map_note">Tahmini konum, GPS değil: Binario her trenin tarifeye göre nerede olması gerektiğini iki durak arasındaki düz bir çizgi üzerinde hesaplar (raylar boyunca değil). Pano bir trenin gecikmesini zaten biliyorsa tahmin bunu hesaba katar. Harita açık olduğu sürece konumlar her 30 saniyede bir güncellenir.</string>
+    <string name="live_map_legend_live">Panonun gecikmesiyle tahmin edilen konum</string>
+    <string name="live_map_legend_timetable">Yalnızca tarifeden tahmin edilen konum</string>
+    <string name="live_map_loading">Tahmini konumlar hesaplanıyor…</string>
+    <string name="live_map_zoom_in">Hareket hâlindeki trenleri görmek için haritayı yakınlaştırın.</string>
+    <string name="live_map_none">Tarifeye göre gösterilen alanda hareket hâlinde tren yok.</string>
+    <string name="live_map_row_title">%1$s, %2$s yönüne</string>
+    <string name="live_map_row_at">%1$s durağında duruyor</string>
+    <string name="live_map_row_between">%1$s ile %2$s arasında</string>
+    <string name="live_map_row_live">Pano verisiyle tahmin: %1$s</string>
+    <string name="live_map_row_timetable">Yalnızca tarifeden tahmin</string>
+    <plurals name="live_map_count">
+        <item quantity="one">Hareket hâlinde %d tren</item>
+        <item quantity="other">Hareket hâlinde %d tren</item>
+    </plurals>
+    <plurals name="live_map_capped">
+        <item quantity="one">En yakın %d tren gösteriliyor.</item>
+        <item quantity="other">En yakın %d tren gösteriliyor.</item>
+    </plurals>
     <string name="settings_privacy_maps">Haritalar: yalnızca genişlettiğinizde veya yüklediğinizde açılır. Uygulama haritaları çizmek için stil, karo, yazı tipi ve simgeleri tiles.openfreemap.org (OpenFreeMap) adresinden indirir; bu hizmet IP adresinizi ve gösterilen alanı görür: trenin güzergâhı, seçilen istasyon veya yakındaki istasyonlar için yaklaşık konumunuzun çevresi. Konum gönderilmez ve kaydedilmez; karolar uygulamanın yerel önbelleğinde kalır.</string>
     <string name="settings_credits_maps">Haritalar: OpenFreeMap © OpenMapTiles, veriler © OpenStreetMap contributors (ODbL 1.0). MapLibre Native ile görüntülenir, BSD 2-Clause lisansı.</string>
     <string name="settings_credits_trenitalia">Trenitalia tarifeleri (tren ve otobüs): Trenitalia S.p.A.\'nın CAD madde 52 ve AB 2017/1926 sayılı Tüzüğü uyarınca İtalya Ulusal Erişim Noktası\'nda (CCISS) yayımladığı resmî veriler, https://www.cciss.it/nap/mmtis/public/en/catalog/Dataset/1077621. GTFS dönüştürmesi © Clément Desouche, CC BY 4.0: https://github.com/deryclem/trenitalia-gtfs (lisans https://creativecommons.org/licenses/by/4.0/). Binario yalnızca planlanan saatleri, güzergâh geometrisi olmadan kullanır ve Trenitalia ile bağlantılı değildir.</string>

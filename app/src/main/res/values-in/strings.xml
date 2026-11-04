@@ -372,6 +372,26 @@
     <string name="map_nearby_content_description">Peta stasiun terdekat. Stasiun yang sama, dengan jaraknya, tercantum di bawah.</string>
     <string name="map_nearby_tap_hint">Ketuk stasiun untuk membuka papannya.</string>
     <string name="map_legend_user_position">Perkiraan posisi, tidak disimpan</string>
+    <string name="live_map_title">Kereta yang sedang berjalan</string>
+    <string name="live_map_area_subtitle">Sekitar %1$s</string>
+    <string name="live_map_content_description">Peta kereta yang sedang berjalan, %1$s. Posisi adalah perkiraan dari jadwal, bukan posisi GPS; kereta yang sama tercantum di daftar di bawah peta.</string>
+    <string name="live_map_note">Posisi perkiraan, bukan GPS: Binario menghitung di mana setiap kereta seharusnya berada menurut jadwal, pada garis lurus antara dua pemberhentian (bukan mengikuti rel). Jika papan sudah memiliki keterlambatan kereta, perkiraan ikut memperhitungkannya. Posisi diperbarui setiap 30 detik selama peta terbuka.</string>
+    <string name="live_map_legend_live">Posisi diperkirakan dengan keterlambatan dari papan</string>
+    <string name="live_map_legend_timetable">Posisi diperkirakan dari jadwal saja</string>
+    <string name="live_map_loading">Menghitung posisi perkiraan…</string>
+    <string name="live_map_zoom_in">Perbesar peta untuk melihat kereta yang sedang berjalan.</string>
+    <string name="live_map_none">Menurut jadwal, tidak ada kereta yang sedang berjalan di area yang ditampilkan.</string>
+    <string name="live_map_row_title">%1$s ke %2$s</string>
+    <string name="live_map_row_at">Berhenti di %1$s</string>
+    <string name="live_map_row_between">Antara %1$s dan %2$s</string>
+    <string name="live_map_row_live">Perkiraan dengan data papan: %1$s</string>
+    <string name="live_map_row_timetable">Perkiraan dari jadwal saja</string>
+    <plurals name="live_map_count">
+        <item quantity="other">%d kereta sedang berjalan</item>
+    </plurals>
+    <plurals name="live_map_capped">
+        <item quantity="other">Ditampilkan %d yang terdekat.</item>
+    </plurals>
     <string name="settings_privacy_maps">Peta: hanya terbuka saat Anda membentangkan atau memuatnya. Untuk menggambarnya, aplikasi mengunduh gaya, petak, font, dan ikon dari tiles.openfreemap.org (OpenFreeMap), yang melihat alamat IP dan area yang ditampilkan: rute kereta, stasiun yang dipilih, atau, untuk stasiun terdekat, area di sekitar perkiraan posisi Anda. Posisi tidak dikirim atau disimpan; petak tetap berada di cache lokal aplikasi.</string>
     <string name="settings_credits_maps">Peta: OpenFreeMap © OpenMapTiles, data © OpenStreetMap contributors (ODbL 1.0). Ditampilkan dengan MapLibre Native, lisensi BSD 2-Clause.</string>
     <string name="settings_credits_trenitalia">Jadwal Trenitalia (kereta dan bus): data resmi Trenitalia S.p.A. yang diterbitkan di National Access Point Italia (CCISS) berdasarkan pasal 52 CAD dan Peraturan UE 2017/1926, https://www.cciss.it/nap/mmtis/public/en/catalog/Dataset/1077621. Konversi GTFS © Clément Desouche, CC BY 4.0: https://github.com/deryclem/trenitalia-gtfs (lisensi https://creativecommons.org/licenses/by/4.0/). Binario hanya menggunakan jadwal, tanpa geometri rute, dan tidak berafiliasi dengan Trenitalia.</string>

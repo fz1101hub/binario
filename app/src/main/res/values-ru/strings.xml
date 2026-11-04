@@ -390,6 +390,32 @@
     <string name="map_nearby_content_description">Карта ближайших станций. Те же станции с расстоянием перечислены ниже.</string>
     <string name="map_nearby_tap_hint">Нажмите на станцию, чтобы открыть её табло.</string>
     <string name="map_legend_user_position">Приблизительное местоположение, не сохраняется</string>
+    <string name="live_map_title">Поезда в пути</string>
+    <string name="live_map_area_subtitle">Окрестности: %1$s</string>
+    <string name="live_map_content_description">Карта поездов в пути, %1$s. Положения рассчитаны по расписанию, это не данные GPS; те же поезда перечислены под картой.</string>
+    <string name="live_map_note">Расчётное положение, не GPS: Binario вычисляет по расписанию, где должен находиться каждый поезд, на прямой между двумя остановками (не вдоль путей). Если на табло уже есть опоздание поезда, расчёт его учитывает. Пока карта открыта, положения обновляются каждые 30 секунд.</string>
+    <string name="live_map_legend_live">Положение рассчитано с опозданием по табло</string>
+    <string name="live_map_legend_timetable">Положение рассчитано только по расписанию</string>
+    <string name="live_map_loading">Расчёт положений…</string>
+    <string name="live_map_zoom_in">Приблизьте карту, чтобы увидеть поезда в пути.</string>
+    <string name="live_map_none">По расписанию в показанной области нет поездов в пути.</string>
+    <string name="live_map_row_title">%1$s, направление: %2$s</string>
+    <string name="live_map_row_at">Стоянка: %1$s</string>
+    <string name="live_map_row_between">Перегон %1$s — %2$s</string>
+    <string name="live_map_row_live">Расчёт по данным табло: %1$s</string>
+    <string name="live_map_row_timetable">Расчёт только по расписанию</string>
+    <plurals name="live_map_count">
+        <item quantity="one">%d поезд в пути</item>
+        <item quantity="few">%d поезда в пути</item>
+        <item quantity="many">%d поездов в пути</item>
+        <item quantity="other">%d поезда в пути</item>
+    </plurals>
+    <plurals name="live_map_capped">
+        <item quantity="one">Показан %d ближайший.</item>
+        <item quantity="few">Показаны %d ближайших.</item>
+        <item quantity="many">Показаны %d ближайших.</item>
+        <item quantity="other">Показаны %d ближайших.</item>
+    </plurals>
     <string name="settings_privacy_maps">Карты открываются, только когда вы их разворачиваете или загружаете. Чтобы их нарисовать, приложение загружает стиль, тайлы, шрифты и значки с tiles.openfreemap.org (OpenFreeMap), который видит ваш IP-адрес и показанную область: маршрут поезда, выбранную станцию или, для ближайших станций, область вокруг вашего приблизительного местоположения. Местоположение не передаётся и не сохраняется; тайлы хранятся в локальном кеше приложения.</string>
     <string name="settings_credits_maps">Карты: OpenFreeMap © OpenMapTiles, данные © участники OpenStreetMap (ODbL 1.0). Отображение с помощью MapLibre Native, лицензия BSD 2-Clause.</string>
     <string name="settings_credits_trenitalia">Расписания Trenitalia (поезда и автобусы): официальные данные Trenitalia S.p.A., опубликованные в итальянской National Access Point (CCISS) в соответствии со ст. 52 CAD и Регламентом ЕС 2017/1926, https://www.cciss.it/nap/mmtis/public/en/catalog/Dataset/1077621. Преобразование в GTFS © Clément Desouche, CC BY 4.0: https://github.com/deryclem/trenitalia-gtfs (лицензия https://creativecommons.org/licenses/by/4.0/). Binario использует только плановое расписание, без геометрии маршрутов, и не связана с Trenitalia.</string>

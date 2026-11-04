@@ -378,6 +378,26 @@
     <string name="map_nearby_content_description">แผนที่สถานีที่ใกล้ที่สุด สถานีเดียวกันพร้อมระยะทางแสดงอยู่ด้านล่าง</string>
     <string name="map_nearby_tap_hint">แตะสถานีเพื่อเปิดกระดานขบวนรถ</string>
     <string name="map_legend_user_position">ตำแหน่งโดยประมาณ ไม่ถูกบันทึก</string>
+    <string name="live_map_title">ขบวนรถที่กำลังวิ่ง</string>
+    <string name="live_map_area_subtitle">รอบ %1$s</string>
+    <string name="live_map_content_description">แผนที่ขบวนรถที่กำลังวิ่ง %1$s ตำแหน่งเป็นค่าประมาณจากตารางเวลา ไม่ใช่ตำแหน่ง GPS และขบวนรถชุดเดียวกันแสดงอยู่ในรายการใต้แผนที่</string>
+    <string name="live_map_note">ตำแหน่งโดยประมาณ ไม่ใช่ GPS: Binario คำนวณว่าขบวนรถแต่ละขบวนควรอยู่ที่ใดตามตารางเวลา บนเส้นตรงระหว่างสองจุดจอด (ไม่ใช่ตามแนวราง) หากกระดานขบวนรถมีความล่าช้าของขบวนรถอยู่แล้ว การประมาณจะนำมาคิดด้วย ตำแหน่งจะอัปเดตทุก 30 วินาทีขณะที่แผนที่เปิดอยู่</string>
+    <string name="live_map_legend_live">ตำแหน่งประมาณรวมความล่าช้าจากกระดานขบวนรถ</string>
+    <string name="live_map_legend_timetable">ตำแหน่งประมาณจากตารางเวลาเท่านั้น</string>
+    <string name="live_map_loading">กำลังคำนวณตำแหน่งโดยประมาณ…</string>
+    <string name="live_map_zoom_in">ซูมแผนที่เข้าเพื่อดูขบวนรถที่กำลังวิ่ง</string>
+    <string name="live_map_none">ตามตารางเวลา ไม่มีขบวนรถวิ่งอยู่ในพื้นที่ที่แสดง</string>
+    <string name="live_map_row_title">%1$s ไป %2$s</string>
+    <string name="live_map_row_at">จอดอยู่ที่ %1$s</string>
+    <string name="live_map_row_between">ระหว่าง %1$s และ %2$s</string>
+    <string name="live_map_row_live">ประมาณด้วยข้อมูลจากกระดานขบวนรถ: %1$s</string>
+    <string name="live_map_row_timetable">ประมาณจากตารางเวลาเท่านั้น</string>
+    <plurals name="live_map_count">
+        <item quantity="other">ขบวนรถที่กำลังวิ่ง %d ขบวน</item>
+    </plurals>
+    <plurals name="live_map_capped">
+        <item quantity="other">แสดง %d ขบวนที่ใกล้ที่สุด</item>
+    </plurals>
     <string name="settings_privacy_maps">แผนที่: จะเปิดเมื่อคุณขยายหรือโหลดเท่านั้น ในการวาดแผนที่ แอปจะดาวน์โหลดรูปแบบ ไทล์ ฟอนต์ และไอคอนจาก tiles.openfreemap.org (OpenFreeMap) ซึ่งจะเห็นที่อยู่ IP ของคุณและพื้นที่ที่แสดง ได้แก่ เส้นทางของขบวนรถ สถานีที่เลือก หรือพื้นที่รอบตำแหน่งโดยประมาณของคุณสำหรับสถานีใกล้เคียง ตำแหน่งจะไม่ถูกส่งหรือบันทึก ไทล์จะเก็บไว้ในแคชในเครื่องของแอป</string>
     <string name="settings_credits_maps">แผนที่: OpenFreeMap © OpenMapTiles, ข้อมูล © OpenStreetMap contributors (ODbL 1.0) แสดงผลด้วย MapLibre Native สัญญาอนุญาต BSD 2-Clause</string>
     <string name="settings_credits_trenitalia">ตารางเวลา Trenitalia (รถไฟและรถบัส): ข้อมูลทางการของ Trenitalia S.p.A. ที่เผยแพร่บนจุดเข้าถึงแห่งชาติของอิตาลี (CCISS) ตามมาตรา 52 ของ CAD และข้อบังคับ EU 2017/1926 https://www.cciss.it/nap/mmtis/public/en/catalog/Dataset/1077621 การแปลงเป็น GTFS © Clément Desouche, CC BY 4.0: https://github.com/deryclem/trenitalia-gtfs (สัญญาอนุญาต https://creativecommons.org/licenses/by/4.0/) Binario ใช้เฉพาะเวลาตามตาราง ไม่รวมรูปทรงเส้นทาง และไม่มีส่วนเกี่ยวข้องกับ Trenitalia</string>

@@ -79,6 +79,7 @@ import it.binario.app.data.RailTime
 import it.binario.app.data.SavedRoute
 import it.binario.app.data.TrainService
 import it.binario.app.localized
+import it.binario.app.maps.RouteLiveTrainsEntry
 import it.binario.app.journeys.LastOfDayMarks
 import it.binario.app.ui.common.DataStatusLine
 import it.binario.app.ui.common.ReliabilityAggregateLines
@@ -149,7 +150,9 @@ internal fun DeparturesScreen(
     openDetails: (TrainService) -> Unit,
     manageRoutes: () -> Unit,
     stationRunDetailsInSheet: Boolean = true,
-    selectedServiceId: String? = null
+    selectedServiceId: String? = null,
+    /** Opens the train-number search for a train of the map of trains in motion that no board row lists. */
+    openTrainNumber: (number: String, origin: String) -> Unit = { _, _ -> }
 ) {
     Column(modifier = modifier.fillMaxSize().testTag("departures-screen")) {
         ScreenHeader(
@@ -186,12 +189,14 @@ internal fun DeparturesScreen(
                 viewModel = viewModel,
                 openDetails = openDetails,
                 manageRoutes = manageRoutes,
-                selectedServiceId = selectedServiceId
+                selectedServiceId = selectedServiceId,
+                openTrainNumber = openTrainNumber
             )
             OperationsSection.STATIONS -> StationBoardScreen(
                 modifier = Modifier.weight(1f),
                 viewModel = viewModel,
-                runDetailsInSheet = stationRunDetailsInSheet
+                runDetailsInSheet = stationRunDetailsInSheet,
+                openTrainNumber = openTrainNumber
             )
         }
     }
@@ -203,7 +208,8 @@ private fun RouteBoard(
     viewModel: TrainViewModel,
     openDetails: (TrainService) -> Unit,
     manageRoutes: () -> Unit,
-    selectedServiceId: String?
+    selectedServiceId: String?,
+    openTrainNumber: (number: String, origin: String) -> Unit
 ) {
     LaunchedEffect(Unit) { viewModel.reconcileWidgetState() }
     var showRoutePicker by rememberSaveable { mutableStateOf(false) }
@@ -297,6 +303,19 @@ private fun RouteBoard(
                 refreshedAt = viewModel.lastRefreshEpochMillis(),
                 message = viewModel.refreshMessage
             )
+        }
+        // "Treni in movimento": the route's trains on a map, at positions estimated from the timetable.
+        if (boardStation != null && boardDestination != null) {
+            item(key = "live-train-map") {
+                RouteLiveTrainsEntry(
+                    viewModel = viewModel,
+                    origin = boardStation,
+                    destination = boardDestination,
+                    onOpenService = openDetails,
+                    onOpenTrainNumber = openTrainNumber,
+                    modifier = Modifier.padding(horizontal = ScreenMargin, vertical = 4.dp).testTag("route-board-live-map")
+                )
+            }
         }
         if (reliabilityStats != null && routePunctuality != null) {
             item(key = "route-punctuality") {
