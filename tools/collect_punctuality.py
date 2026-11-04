@@ -16,8 +16,11 @@ container cannot reach viaggiatreno.it).  Each run:
    ``--max-requests`` and ``--deadline-seconds``, stopping after 20 consecutive failures or at once on HTTP 403/429;
 3. keeps per stop the ViaggiaTreno station code, the delay in whole minutes (actual minus scheduled time, truncated
    towards zero as the app shows it: departure at the origin, arrival elsewhere; early arrivals are <= 0), whether
-   the stop was suppressed (``actualFermataType`` 3) and the scheduled time (same departure/arrival rule) as minutes
-   since local midnight of the departure day (Europe/Rome wall clock, 1440 or more after midnight), and for the run
+   the stop was suppressed (``actualFermataType`` 3), the scheduled time (same departure/arrival rule) as minutes
+   since local midnight of the departure day (Europe/Rome wall clock, 1440 or more after midnight) and the platform
+   (``binarioEffettivo...Descrizione``, departure at the origin, arrival elsewhere or the departure one of the same
+   stop; the programmed ``binarioProgrammato...Descrizione`` only when no actual one is published, marked as such;
+   a short label of at most 12 characters, anything else dropped), and for the run
    whether it was cancelled (``provvedimento`` 1, ``tipoTreno`` ``ST`` or every stop suppressed).  A train with no
    actual time at its last served stop (and not cancelled) stays pending and is asked again by later runs up to 8 h after its scheduled arrival, then dropped as
    ``unknown``; a train ViaggiaTreno does not know (HTTP 204/404, ``null``) or whose identity differs (number, origin,
@@ -86,6 +89,16 @@ SUPPRESSED_STOP_TYPE = 3
 # actualFermataType 2 marks a stop the timetable does not have (the app shows 2 and 3 as skipped): it has no
 # scheduled time to compare with, so it is neither a sample nor a suppression.
 EXTRA_STOP_TYPE = 2
+# Platforms are short labels as ViaggiaTreno publishes them ("12", "3 Ovest", "I", "1A"): letters, digits and a few
+# separators, trimmed with single spaces, at most 12 characters; anything else is not kept.
+MAX_PLATFORM_CHARS = 12
+_PLATFORM_CHAR = "0-9A-Za-z\u00c0-\u00d6\u00d8-\u00f6\u00f8-\u00ff"
+PLATFORM = re.compile(f"[{_PLATFORM_CHAR}](?:[{_PLATFORM_CHAR} ./'-]*[{_PLATFORM_CHAR}])?")
+# Departure fields at the origin; arrival fields elsewhere, then the departure ones of the same stop (a train arrives
+# and leaves from one track; ViaggiaTreno sometimes fills only one side).
+ORIGIN_PLATFORM_FIELDS = (("binarioEffettivoPartenzaDescrizione",), ("binarioProgrammatoPartenzaDescrizione",))
+STOP_PLATFORM_FIELDS = (("binarioEffettivoArrivoDescrizione", "binarioEffettivoPartenzaDescrizione"),
+                        ("binarioProgrammatoArrivoDescrizione", "binarioProgrammatoPartenzaDescrizione"))
 RAIL_ROUTE_TYPES = frozenset({"2", *map(str, range(100, 200))})
 
 NUMBER = re.compile(r"[1-9][0-9]{0,5}")
@@ -425,10 +438,23 @@ def valid_scheduled_minute(value: object) -> bool:
     return value is None or (_is_int(value) and 0 <= value < MAX_SCHEDULED_MINUTE)
 
 
+def platform_name(value: object) -> str | None:
+    """``value`` as a platform label (whitespace trimmed and collapsed), ``None`` when it is not a short label."""
+    if isinstance(value, bool) or not isinstance(value, (str, int)):
+        return None
+    name = " ".join(str(value).split())
+    return name if len(name) <= MAX_PLATFORM_CHARS and PLATFORM.fullmatch(name) else None
+
+
+def valid_platform(name: object) -> bool:
+    return isinstance(name, str) and platform_name(name) == name
+
+
 def valid_record(record: object, day: str) -> bool:
-    """A stored observation line as this tool writes it.  A stop is ``[code, delay, suppressed, scheduledMinute]``;
-    lines written before the extension of 4 November 2026 have ``[code, delay, suppressed]`` (no scheduled time) and
-    stay valid."""
+    """A stored observation line as this tool writes it.  A stop is ``[code, delay, suppressed, scheduledMinute,
+    platform, platformActual]`` (``platform`` ``null`` or a label, ``platformActual`` 1 for an actual platform, 0 for
+    a programmed one or none); lines written before the extensions of 4 November 2026 have ``[code, delay,
+    suppressed]`` or ``[code, delay, suppressed, scheduledMinute]`` and stay valid."""
     if not isinstance(record, dict) or set(record) != {"d", "o", "n", "c", "st", "t", "s"}:
         return False
     if record["d"] != day or not isinstance(record["o"], str) or not CODE.fullmatch(record["o"]):
@@ -441,11 +467,15 @@ def valid_record(record: object, day: str) -> bool:
         return False
     for stop in record["s"]:
         if (
-            not isinstance(stop, list) or len(stop) not in (3, 4) or not isinstance(stop[0], str)
+            not isinstance(stop, list) or len(stop) not in (3, 4, 6) or not isinstance(stop[0], str)
             or not CODE.fullmatch(stop[0])
             or not (stop[1] is None or (_is_int(stop[1]) and MIN_DELAY <= stop[1] <= MAX_DELAY))
             or stop[2] not in (0, 1) or isinstance(stop[2], bool)
-            or (len(stop) == 4 and not valid_scheduled_minute(stop[3]))
+            or (len(stop) >= 4 and not valid_scheduled_minute(stop[3]))
+            or (len(stop) == 6 and not (
+                stop[5] in (0, 1) and not isinstance(stop[5], bool)
+                and (valid_platform(stop[4]) if stop[4] is not None else stop[5] == 0)
+            ))
         ):
             return False
     if len({stop[0] for stop in record["s"]}) != len(record["s"]):
@@ -743,7 +773,8 @@ def _delay_minutes(scheduled: int, actual: int) -> int:
 @dataclass
 class Observation:
     status: str  # "ok", "cancelled", "pending", "missing", "mismatch"
-    stops: list[list[Any]] = field(default_factory=list)  # [code, delay, suppressed, scheduled minute]
+    # [code, delay, suppressed, scheduled minute, platform, 1 if the platform is the actual one]
+    stops: list[list[Any]] = field(default_factory=list)
     notes: dict[str, int] = field(default_factory=dict)
 
 
@@ -773,6 +804,21 @@ def interpret(payload: Any, due: Due) -> Observation:
             if value is not None and value > 0:
                 return value if low <= value <= high else None
         return None
+
+    def platform(row: Mapping[str, Any], fields: tuple[tuple[str, ...], tuple[str, ...]]) -> tuple[str | None, int]:
+        """The actual platform of the stop (1), else the programmed one (0) when no actual one is published, else
+        none; a published value that is not a short label ends the search (no programmed platform stands in for it)."""
+        for actual, keys in ((1, fields[0]), (0, fields[1])):
+            for key in keys:
+                value = row.get(key)
+                if value is None or (isinstance(value, str) and not value.strip()):
+                    continue
+                name = platform_name(value)
+                if name is None:
+                    note("binari_non_validi")
+                    return None, 0
+                return name, actual
+        return None, 0
 
     calls = payload.get("fermate")
     rows = calls if isinstance(calls, list) else []
@@ -809,7 +855,9 @@ def interpret(payload: Any, due: Due) -> Observation:
                 note("ritardi_non_plausibili")
                 delay = None
         minute = None if scheduled is None else scheduled_minute(day, scheduled)
-        stops.append([code, delay, suppressed, minute])
+        name, actual_platform = (None, 0) if suppressed else platform(
+            row, ORIGIN_PLATFORM_FIELDS if index == 0 else STOP_PLATFORM_FIELDS)
+        stops.append([code, delay, suppressed, minute, name, actual_platform])
         actual_at.append(actual is not None and not suppressed)
 
     cancelled = (
@@ -945,7 +993,7 @@ LABELS = (
     ("mismatch", "Identità diversa"), ("errori", "Errori"), ("rimandati", "Rimandati alla prossima run"),
     ("scaduti_sconosciuti", "Scaduti dopo 8 h (sconosciuti)"), ("in_sospeso_dopo", "In sospeso dopo la run"),
     ("campioni", "Campioni di ritardo"), ("fermate_straordinarie", "Fermate straordinarie ignorate"),
-    ("ritardi_non_plausibili", "Ritardi fuori intervallo scartati"), ("state_invalid_lines", "Righe di stato scartate"),
+    ("ritardi_non_plausibili", "Ritardi fuori intervallo scartati"), ("binari_non_validi", "Binari non validi scartati"), ("state_invalid_lines", "Righe di stato scartate"),
     ("pruned_days", "Giorni eliminati (oltre 35)"),
 )
 

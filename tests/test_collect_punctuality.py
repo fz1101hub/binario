@@ -100,12 +100,16 @@ def write_gtfs(path: Path) -> Path:
     return path
 
 
-def stop(code: str, at: int, actual: int | None = None, *, first: bool = False, kind: int = 1) -> dict[str, Any]:
-    """One ``fermate`` row like the app's fixture: ``at`` minutes after midnight of DAY, ``actual`` seconds late."""
+def stop(code: str, at: int, actual: int | None = None, *, first: bool = False, kind: int = 1, **platforms: Any) -> dict[str, Any]:
+    """One ``fermate`` row like the app's fixture: ``at`` minutes after midnight of DAY, ``actual`` seconds late;
+    ``platforms`` sets ``binario...Descrizione`` fields by their middle part (``EffettivoArrivo="3"``)."""
     midnight = collector.midnight_millis(DAY)
     scheduled = midnight + at * MINUTE
     row: dict[str, Any] = {"id": code, "stazione": code, "actualFermataType": kind, "programmata": scheduled,
                            "partenza_teorica": scheduled, "arrivo_teorico": None if first else scheduled}
+    for side in ("EffettivoArrivo", "ProgrammatoArrivo", "EffettivoPartenza", "ProgrammatoPartenza"):
+        row[f"binario{side}Descrizione"] = platforms.pop(side, None)
+    assert not platforms, platforms
     if actual is not None:
         row["partenzaReale" if first else "arrivoReale"] = scheduled + actual * 1000
     return row
@@ -256,10 +260,12 @@ class InterpretTest(unittest.TestCase):
         train = collector.Due(DAY.isoformat(), "S08409", "9558", "FR", 0)
         observation = collector.interpret(payload, train)
         self.assertEqual("ok", observation.status)
-        # Departure delay and time at the origin, arrival delay and time elsewhere, early arrival negative, suppressed
-        # stop without sample but with its scheduled time (07:00, 07:09, 08:40, 09:17, 10:10).
-        self.assertEqual([["S08409", 1, 0, 420], ["S08217", 2, 0, 429], ["S06421", -2, 0, 520], ["S05043", None, 1, 557],
-                          ["S01700", 9, 0, 610]], observation.stops)
+        # Departure delay, time and platform at the origin, arrival ones elsewhere, early arrival negative, suppressed
+        # stop without sample or platform but with its scheduled time (07:00, 07:09, 08:40, 09:17, 10:10); the
+        # actual platform (Roma 14 for the programmed 12, Milano 21 for 19), the programmed one only where no actual
+        # one is published (Tiburtina 3, marked 0).
+        self.assertEqual([["S08409", 1, 0, 420, "14", 1], ["S08217", 2, 0, 429, "3", 0], ["S06421", -2, 0, 520, "8", 1],
+                          ["S05043", None, 1, 557, None, 0], ["S01700", 9, 0, 610, "21", 1]], observation.stops)
 
     def test_delays_truncate_towards_zero_like_the_app(self) -> None:
         stops = [stop("S08235", 540, 59, first=True), stop("S08409", 580, 359), stop("S08217", 590, -59), stop("S08406", 600, -61)]
@@ -278,7 +284,8 @@ class InterpretTest(unittest.TestCase):
         ]
         payload = {"numeroTreno": 1963, "idOrigine": "S08409", "dataPartenzaTreno": midnight, "fermate": stops}
         observation = collector.interpret(payload, collector.Due(day.isoformat(), "S08409", "1963", "ICN", 0))
-        self.assertEqual([["S08409", 4, 0, 1320], ["S06421", None, 0, None], ["S01700", 11, 0, 2070]], observation.stops)
+        self.assertEqual([["S08409", 4, 0, 1320, None, 0], ["S06421", None, 0, None, None, 0], ["S01700", 11, 0, 2070, None, 0]],
+                         observation.stops)
 
     def test_cancellation_and_suppressed_stops(self) -> None:
         for payload in (run(provvedimento=1), run(tipoTreno="ST"), run(provvedimento="1"),
@@ -290,7 +297,33 @@ class InterpretTest(unittest.TestCase):
         partial = run(stops=[stop("S08235", 540, 0, first=True), stop("S08217", 560, 120), stop("S08409", 580, None, kind=3)])
         observation = collector.interpret(partial, due())
         self.assertEqual("ok", observation.status)
-        self.assertEqual([["S08235", 0, 0, 540], ["S08217", 2, 0, 560], ["S08409", None, 1, 580]], observation.stops)
+        self.assertEqual([["S08235", 0, 0, 540, None, 0], ["S08217", 2, 0, 560, None, 0], ["S08409", None, 1, 580, None, 0]],
+                         observation.stops)
+
+    def test_platforms_actual_first_programmed_only_without_one(self) -> None:
+        stops = [
+            # Origin: the departure fields only (an arrival platform there is ignored).
+            stop("S08235", 540, 60, first=True, EffettivoArrivo="9", EffettivoPartenza=" 3  Ovest ", ProgrammatoPartenza="3"),
+            # Elsewhere the arrival fields, then the departure ones of the same stop; actual before programmed.
+            stop("S08217", 550, 0, ProgrammatoArrivo="2", EffettivoPartenza="4"),
+            stop("S08406", 555, 0, ProgrammatoArrivo="5", ProgrammatoPartenza="6"),
+            stop("S08407", 556, 0, EffettivoArrivo="", ProgrammatoArrivo="  ", ProgrammatoPartenza="I"),
+            # A published value that is not a short label: dropped and counted, the programmed one does not replace it.
+            stop("S08408", 557, 0, EffettivoArrivo="1 Tronco Ovest", ProgrammatoArrivo="1"),
+            stop("S08410", 558, 0, EffettivoArrivo="<b>7</b>", ProgrammatoArrivo="7"),
+            # Numbers become labels; a suppressed stop keeps no platform; booleans and objects are not labels.
+            stop("S08411", 559, 0, EffettivoArrivo=12),
+            stop("S08412", 560, None, kind=3, EffettivoArrivo="8"),
+            stop("S08413", 561, 0, EffettivoArrivo=True),
+            stop("S08409", 580, 200, EffettivoArrivo={"x": 1}, ProgrammatoArrivo="2"),
+        ]
+        observation = collector.interpret(run(stops=stops), due())
+        self.assertEqual("ok", observation.status)
+        self.assertEqual([("3 Ovest", 1), ("4", 1), ("5", 0), ("I", 0), (None, 0), (None, 0), ("12", 1), (None, 0), (None, 0),
+                          (None, 0)], [(entry[4], entry[5]) for entry in observation.stops])
+        self.assertEqual({"binari_non_validi": 4}, observation.notes)
+        record = {"d": DAY.isoformat(), "o": "S08235", "n": "2001", "c": "REG", "st": "ok", "t": 1, "s": observation.stops}
+        self.assertTrue(collector.valid_record(record, DAY.isoformat()))
 
     def test_trains_still_running_stay_pending(self) -> None:
         running = run(stops=[stop("S08235", 540, 60, first=True), stop("S08409", 580, None)])
@@ -305,7 +338,8 @@ class InterpretTest(unittest.TestCase):
             stop("S08409", 575, 60), {"id": "08406", "arrivoReale": 1}, "not a stop", stop("S08406", 580, 0),
         ]
         observation = collector.interpret(run(stops=stops), due())
-        self.assertEqual([["S08235", 1, 0, 540], ["S08409", None, 0, 570], ["S08406", 0, 0, 580]], observation.stops)
+        self.assertEqual([["S08235", 1, 0, 540, None, 0], ["S08409", None, 0, 570, None, 0], ["S08406", 0, 0, 580, None, 0]],
+                         observation.stops)
         self.assertEqual({"fermate_straordinarie": 1, "ritardi_non_plausibili": 1, "fermate_ripetute": 1,
                           "fermate_senza_codice": 1, "fermate_non_valide": 1}, observation.notes)
         out_of_day = [stop("S08235", 540, 60, first=True), dict(stop("S08409", 580), arrivoReale=10 ** 15)]
@@ -412,12 +446,31 @@ class StateTest(Base):
         self.assertEqual([old, new, collector.encode(self.record(number="2005", s=[["S08235", 2, 0, 600], ["S08409", 4, 0, 1450]]))],
                          lines)  # the old line is rewritten unchanged, not given an invented time
         for stops in ([["S08235", 1, 0, -1]], [["S08235", 1, 0, 2880]], [["S08235", 1, 0, "540"]], [["S08235", 1, 0, True]],
-                      [["S08235", 1, 0, 540.0]], [["S08235", 1, 0, 540, 1]], [["S08235", 1]]):
+                      [["S08235", 1, 0, 540.0]], [["S08235", 1, 0, 540, 1]], [["S08235", 1]],
+                      [["S08235", 1, 0, 540, "12", 2]], [["S08235", 1, 0, 540, "12", True]], [["S08235", 1, 0, 540, None, 1]],
+                      [["S08235", 1, 0, 540, " 12", 1]], [["S08235", 1, 0, 540, "1 Tronco Ovest", 1]], [["S08235", 1, 0, 540, 12, 1]],
+                      [["S08235", 1, 0, 540, "", 0]], [["S08235", 1, 0, 540, "12", 1, 0]], [["S08235", 1, 0, 2880, "12", 1]]):
             with self.subTest(stops=stops):
                 self.assertFalse(collector.valid_record(self.record(s=stops), "2026-11-04"))
         for minute in (0, 1439, 1440, 2879, None):
             with self.subTest(minute=minute):
                 self.assertTrue(collector.valid_record(self.record(s=[["S08235", 1, 0, minute]]), "2026-11-04"))
+        for platform in (["12", 1], ["3 Ovest", 0], ["Città", 1], [None, 0]):
+            with self.subTest(platform=platform):
+                self.assertTrue(collector.valid_record(self.record(s=[["S08235", 1, 0, 540, *platform]]), "2026-11-04"))
+
+    def test_lines_of_every_form_load_together(self) -> None:
+        # The Actions cache mixes the three forms after the extensions of 4 November 2026: they all load and are kept.
+        directory = self.temp / "state"
+        directory.mkdir()
+        forms = [[["S08235", 1, 0], ["S08409", 3, 0]], [["S08235", 1, 0, 540], ["S08409", 3, 0, 580]],
+                 [["S08235", 1, 0, 540, "1", 0], ["S08409", 3, 0, 580, "12", 1]]]
+        lines = [collector.encode(self.record(number=str(2001 + 2 * index), s=stops)) for index, stops in enumerate(forms)]
+        (directory / "obs-2026-11-04.jsonl.gz").write_bytes(gzip.compress(("\n".join(lines) + "\n").encode()))
+        counters: dict[str, int] = {}
+        records = collector.load_observations(directory, "2026-11-04", counters)
+        self.assertEqual({}, counters)
+        self.assertEqual(forms, [records[("S08235", number)]["s"] for number in ("2001", "2003", "2005")])
 
 
 class Answers:
@@ -666,12 +719,14 @@ class EndToEndTest(Base):
         trains = {(train["n"], train["o"]): train for train in payload["trains"]}
         self.assertEqual({("2001", "S08235"), ("2003", "S08409"), ("2011", "S08409"), ("9558", "S08409")}, set(trains))
         self.assertEqual({"n": "2003", "o": "S08409", "c": "REG", "d": 1, "x": 1, "s": []}, trains[("2003", "S08409")])
-        self.assertEqual(["S08409", 1, 0.0, [1] * 8, 0, 0, 540], trains[("2011", "S08409")]["s"][0])
-        self.assertEqual(["S08235", 1, 0.0, [1] * 8, 0, 0, 600], trains[("2011", "S08409")]["s"][1])  # 90 s early
+        self.assertEqual(["S08409", 1, 0.0, [1] * 8, 0, 0, 540, None, None], trains[("2011", "S08409")]["s"][0])
+        self.assertEqual(["S08235", 1, 0.0, [1] * 8, 0, 0, 600, None, None], trains[("2011", "S08409")]["s"][1])  # 90 s early
         fr = trains[("9558", "S08409")]
         self.assertEqual(("FR", 1, 0), (fr["c"], fr["d"], fr["x"]))
         self.assertEqual(["S08409", "S08217", "S06421", "S01700"], [entry[0] for entry in fr["s"]])  # suppressed stop left out
-        self.assertEqual(["S01700", 1, 9.0, [0, 0, 0, 1, 1, 1, 1, 1], 0, 9, 610], fr["s"][-1])
+        self.assertEqual(["S01700", 1, 9.0, [0, 0, 0, 1, 1, 1, 1, 1], 0, 9, 610, ["21", 1, 1], None], fr["s"][-1])
+        # The programmed platform of Tiburtina is counted by itself (no actual one there); one day: no weekdays.
+        self.assertEqual([["14", 1, 1], ["3", 1, 1], ["8", 1, 1], ["21", 1, 1]], [entry[7] for entry in fr["s"]])
 
 
 if __name__ == "__main__":
