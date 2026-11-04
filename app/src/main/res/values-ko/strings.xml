@@ -1431,4 +1431,6 @@
     <string name="bikes_allowed">자전거 휴대 가능</string>
     <string name="bikes_not_allowed">자전거 휴대 불가</string>
     <string name="bikes_conditions_link">자전거 휴대 승차: %1$s 이용 조건</string>
+    <string name="planner_airport_links">공항 연결 열차</string>
+    <string name="planner_airport_search">%1$s에서 %2$s(으)로 가는 열차 검색</string>
 </resources>

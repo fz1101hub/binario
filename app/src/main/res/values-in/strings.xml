@@ -1431,4 +1431,6 @@
     <string name="bikes_allowed">Sepeda diizinkan</string>
     <string name="bikes_not_allowed">Sepeda tidak diizinkan</string>
     <string name="bikes_conditions_link">Sepeda di kereta: ketentuan %1$s</string>
+    <string name="planner_airport_links">Kereta ke bandara</string>
+    <string name="planner_airport_search">Cari kereta dari %1$s ke %2$s</string>
 </resources>

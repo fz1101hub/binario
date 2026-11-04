@@ -1544,4 +1544,6 @@
     <string name="bikes_allowed">Se admiten bicicletas</string>
     <string name="bikes_not_allowed">No se admiten bicicletas</string>
     <string name="bikes_conditions_link">Bicicletas a bordo: condiciones de %1$s</string>
+    <string name="planner_airport_links">Conexiones con los aeropuertos</string>
+    <string name="planner_airport_search">Buscar trenes de %1$s a %2$s</string>
 </resources>

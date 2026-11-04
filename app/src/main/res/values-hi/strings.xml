@@ -1476,4 +1476,6 @@
     <string name="bikes_allowed">साइकिल ले जाने की अनुमति है</string>
     <string name="bikes_not_allowed">साइकिल ले जाने की अनुमति नहीं है</string>
     <string name="bikes_conditions_link">ट्रेन में साइकिल: %1$s की शर्तें</string>
+    <string name="planner_airport_links">हवाई अड्डों से रेल संपर्क</string>
+    <string name="planner_airport_search">%1$s से %2$s तक की ट्रेनें खोजें</string>
 </resources>

@@ -1454,4 +1454,6 @@
     <string name="bikes_allowed">Được mang xe đạp</string>
     <string name="bikes_not_allowed">Không được mang xe đạp</string>
     <string name="bikes_conditions_link">Mang xe đạp lên tàu: điều kiện của %1$s</string>
+    <string name="planner_airport_links">Tàu đến sân bay</string>
+    <string name="planner_airport_search">Tìm tàu từ %1$s đến %2$s</string>
 </resources>

@@ -1566,4 +1566,6 @@
     <string name="bikes_allowed">Велосипеды разрешены</string>
     <string name="bikes_not_allowed">Велосипеды не разрешены</string>
     <string name="bikes_conditions_link">Велосипеды в поезде: условия %1$s</string>
+    <string name="planner_airport_links">Поезда в аэропорты</string>
+    <string name="planner_airport_search">Найти поезда: %1$s → %2$s</string>
 </resources>

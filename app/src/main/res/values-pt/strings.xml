@@ -1521,4 +1521,6 @@
     <string name="bikes_allowed">Bicicletas permitidas</string>
     <string name="bikes_not_allowed">Bicicletas não permitidas</string>
     <string name="bikes_conditions_link">Bicicletas a bordo: condições da %1$s</string>
+    <string name="planner_airport_links">Ligações com os aeroportos</string>
+    <string name="planner_airport_search">Procurar trens de %1$s para %2$s</string>
 </resources>

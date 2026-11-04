@@ -1454,4 +1454,6 @@
     <string name="bikes_allowed">นำจักรยานขึ้นได้</string>
     <string name="bikes_not_allowed">นำจักรยานขึ้นไม่ได้</string>
     <string name="bikes_conditions_link">นำจักรยานขึ้นรถไฟ: เงื่อนไขของ %1$s</string>
+    <string name="planner_airport_links">รถไฟเชื่อมสนามบิน</string>
+    <string name="planner_airport_search">ค้นหารถไฟจาก %1$s ไป %2$s</string>
 </resources>

@@ -1656,4 +1656,6 @@
     <string name="bikes_allowed">يُسمح بالدراجات</string>
     <string name="bikes_not_allowed">لا يُسمح بالدراجات</string>
     <string name="bikes_conditions_link">الدراجات على متن القطار: شروط %1$s</string>
+    <string name="planner_airport_links">الربط بالمطارات</string>
+    <string name="planner_airport_search">ابحث عن القطارات من %1$s إلى %2$s</string>
 </resources>

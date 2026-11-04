@@ -1431,4 +1431,6 @@
     <string name="bikes_allowed">စက်ဘီး ယူဆောင်ခွင့်ရှိ</string>
     <string name="bikes_not_allowed">စက်ဘီး ယူဆောင်ခွင့်မရှိ</string>
     <string name="bikes_conditions_link">ရထားပေါ်တွင် စက်ဘီး- %1$s ၏ စည်းကမ်းချက်များ</string>
+    <string name="planner_airport_links">လေဆိပ်များသို့ ရထားချိတ်ဆက်မှု</string>
+    <string name="planner_airport_search">%1$s မှ %2$s သို့ ရထားများ ရှာရန်</string>
 </resources>

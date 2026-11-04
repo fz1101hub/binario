@@ -1499,4 +1499,6 @@
     <string name="bikes_allowed">Bisiklet kabul edilir</string>
     <string name="bikes_not_allowed">Bisiklet kabul edilmez</string>
     <string name="bikes_conditions_link">Trende bisiklet: %1$s koşulları</string>
+    <string name="planner_airport_links">Havalimanı bağlantıları</string>
+    <string name="planner_airport_search">%1$s → %2$s trenlerini ara</string>
 </resources>

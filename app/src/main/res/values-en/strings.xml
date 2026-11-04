@@ -1499,4 +1499,6 @@
     <string name="bikes_allowed">Bikes allowed</string>
     <string name="bikes_not_allowed">No bikes allowed</string>
     <string name="bikes_conditions_link">Bikes on board: %1$s conditions</string>
+    <string name="planner_airport_links">Airport rail links</string>
+    <string name="planner_airport_search">Search trains from %1$s to %2$s</string>
 </resources>

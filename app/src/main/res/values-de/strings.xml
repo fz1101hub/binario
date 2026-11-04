@@ -1499,4 +1499,6 @@
     <string name="bikes_allowed">Fahrradmitnahme möglich</string>
     <string name="bikes_not_allowed">Keine Fahrradmitnahme</string>
     <string name="bikes_conditions_link">Fahrradmitnahme: Bedingungen von %1$s</string>
+    <string name="planner_airport_links">Bahnverbindungen zu den Flughäfen</string>
+    <string name="planner_airport_search">Züge von %1$s nach %2$s suchen</string>
 </resources>

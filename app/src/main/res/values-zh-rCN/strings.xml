@@ -1454,4 +1454,6 @@
     <string name="bikes_allowed">可携带自行车</string>
     <string name="bikes_not_allowed">不可携带自行车</string>
     <string name="bikes_conditions_link">携带自行车：%1$s 的规定</string>
+    <string name="planner_airport_links">机场铁路连接</string>
+    <string name="planner_airport_search">搜索从 %1$s 到 %2$s 的列车</string>
 </resources>
