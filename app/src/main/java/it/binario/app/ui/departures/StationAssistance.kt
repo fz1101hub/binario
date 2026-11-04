@@ -3,7 +3,6 @@ package it.binario.app.ui.departures
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -12,6 +11,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.core.net.toUri
 import it.binario.app.R
 import it.binario.app.SourceSectionCard
 import it.binario.app.SourceSectionNote
@@ -45,7 +45,7 @@ internal fun SalaBluAssistanceSection(station: Station, modifier: Modifier = Mod
 /** Opens the dialer with [number] filled in (no call is placed, no permission needed); a device without one does nothing. */
 private fun dial(context: Context, number: String) {
     try {
-        context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse(OfficialLinks.SalaBlu.dialUri(number))))
+        context.startActivity(Intent(Intent.ACTION_DIAL, OfficialLinks.SalaBlu.dialUri(number).toUri()))
     } catch (_: ActivityNotFoundException) {
         // A tablet without telephony: the number stays readable on the button.
     }
