@@ -26,4 +26,8 @@
     <string name="service_destination_status">%1$s · %2$s</string>
     <string name="service_operator_category">%1$s · %2$s</string>
     <string name="service_operator_category_platform">%1$s · %2$s · Peron %3$s</string>
+    <string name="accessibility_reliability">%1$s (statistik tidak resmi)</string>
+    <plurals name="service_reliability_on_time">
+        <item quantity="other">Tepat waktu %1$d dari %2$d kali</item>
+    </plurals>
 </resources>

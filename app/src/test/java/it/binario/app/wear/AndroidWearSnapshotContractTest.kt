@@ -12,12 +12,16 @@ import it.binario.app.data.SnapshotWarning
 import it.binario.app.data.Station
 import it.binario.app.data.TrainCategory
 import it.binario.app.data.TrainService
+import it.binario.app.data.reliability.ReliabilityFixtures
+import it.binario.app.widget.ReliabilityMark
 import java.io.File
 import java.time.LocalDateTime
 import javax.xml.parsers.DocumentBuilderFactory
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.w3c.dom.Element
 
@@ -51,6 +55,65 @@ class AndroidWearSnapshotContractTest {
         val expected = fixture("android-to-wear-v1.json").normalisedNumbers()
 
         assertEquals(expected, actual)
+    }
+
+    @Test
+    fun `encoder adds the optional reliability pair as in the reliability golden fixture`() {
+        val reliability = { service: TrainService -> if (service.number == "FR 9505") ReliabilityMark(22, 27, 5, 22, 30) else null }
+        val actual = AndroidWearSnapshotContract.operational(goldenSnapshot, generatedAt, strings(locale = null), reliability).normalisedNumbers()
+
+        assertEquals(fixture("android-to-wear-v1-reliability.json").normalisedNumbers(), actual)
+        assertTrue(AndroidWearSnapshotContract.hasReliability(actual))
+        // Stripped for a watch that does not decode it, the payload is the plain golden one again.
+        assertEquals(fixture("android-to-wear-v1.json").normalisedNumbers(), AndroidWearSnapshotContract.withoutReliability(actual))
+        assertFalse(AndroidWearSnapshotContract.hasReliability(fixture("android-to-wear-v1.json")))
+    }
+
+    @Test
+    fun `a pair below five samples or with more days on time than samples stays out`() {
+        fun pairOf(mark: ReliabilityMark) = AndroidWearSnapshotContract.operational(goldenSnapshot, generatedAt, strings(locale = null)) { mark }
+            .filterKeys { it.contains("Reliability") }
+        assertEquals(emptyMap<String, Any>(), pairOf(ReliabilityMark(4, 4, 5, 4, 30)))
+        assertEquals(emptyMap<String, Any>(), pairOf(ReliabilityMark(31, 30, 5, 30, 30)))
+        assertEquals(4, pairOf(ReliabilityMark(5, 5, 15, 3, 30)).size)
+    }
+
+    @Test
+    fun `reliability comes from the statistics for the direct trains of the route only`() {
+        val stats = ReliabilityFixtures.stats(ReliabilityFixtures.FR_9558)
+        val route = SavedRoute(
+            id = "roma-milano",
+            name = "Roma–Milano",
+            outwardOrigin = Station("roma-termini", "Roma Termini", "Roma", railwayCode = "S08409"),
+            outwardDestination = Station("milano-centrale", "Milano Centrale", "Milano", railwayCode = "S01700")
+        )
+        val train = service("fr9558", "9558", RailOperator.TRENITALIA_AV, TrainCategory.FRECCE, "08:00", "08:00", "7", 0, ServiceStatus.ON_TIME)
+        val snapshot = goldenSnapshot.copy(route = route, services = listOf(train))
+
+        val reliability = AndroidWearSnapshotContract.reliabilityOf(stats, snapshot)
+        assertEquals(ReliabilityMark(22, 30, 5, 22, 30), reliability(train))
+        assertNull(reliability(train.copy(scheduledBus = true)))
+        assertNull(reliability(train.copy(transferCount = 1)))
+        // The return direction boards at Milano: the statistics have no FR 9558 from there to Roma.
+        assertNull(AndroidWearSnapshotContract.reliabilityOf(stats, snapshot.copy(direction = Direction.RETURN))(train))
+        assertNull(AndroidWearSnapshotContract.reliabilityOf(stats, snapshot.copy(confidence = DataConfidence.DEMONSTRATION))(train))
+    }
+
+    @Test
+    fun `the pair goes only to a connected watch set that all decode it`() {
+        assertTrue(AndroidWearSnapshotContract.watchesDecodeReliability(setOf("watch"), setOf("watch")))
+        assertTrue(AndroidWearSnapshotContract.watchesDecodeReliability(setOf("watch"), setOf("watch", "other")))
+        assertFalse(AndroidWearSnapshotContract.watchesDecodeReliability(setOf("watch", "old-watch"), setOf("watch")))
+        assertFalse(AndroidWearSnapshotContract.watchesDecodeReliability(emptySet(), setOf("watch")))
+        assertFalse(AndroidWearSnapshotContract.watchesDecodeReliability(setOf("old-watch"), emptySet()))
+    }
+
+    @Test
+    fun `the watch declares the capability the phone checks`() {
+        val repositoryRoot = generateSequence(File(requireNotNull(System.getProperty("user.dir")))) { it.parentFile }
+            .first { File(it, "settings.gradle.kts").isFile }
+        val watch = File(repositoryRoot, "wear/src/main/res/values/wear.xml").readText()
+        assertTrue(watch.contains("<item>${AndroidWearSnapshotContract.RELIABILITY_CAPABILITY}</item>"))
     }
 
     @Test
@@ -192,7 +255,7 @@ class AndroidWearSnapshotContractTest {
         return json.keys().asSequence().associateWith { key -> json.get(key) }
     }
 
-    private fun Map<String, Any>.normalisedNumbers(): Map<String, Any> = mapValues { (_, value) ->
+    private fun <V> Map<String, V>.normalisedNumbers(): Map<String, Any?> = mapValues { (_, value) ->
         if (value is Number) value.toLong() else value
     }
 }

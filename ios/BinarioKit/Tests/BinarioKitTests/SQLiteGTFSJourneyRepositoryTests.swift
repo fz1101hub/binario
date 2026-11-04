@@ -30,6 +30,18 @@ final class SQLiteGTFSJourneyRepositoryTests: XCTestCase {
         XCTAssertEqual(snapshot.services[0].delayMinutes, 0)
     }
 
+    func testBikesAllowedComesOnlyFromThePublishedTripValue() async throws {
+        let fixture = try Fixture()
+        try fixture.insertTrip(id: 1, externalID: "allowed", number: "R 1", seconds: 10 * 3_600, bikesAllowed: 1)
+        try fixture.insertTrip(id: 2, externalID: "refused", number: "R 2", seconds: 10 * 3_600 + 60, bikesAllowed: 2)
+        try fixture.insertTrip(id: 3, externalID: "unknown", number: "R 3", seconds: 10 * 3_600 + 120)
+        let result = await fixture.repository.journeys(for: try query("2024-04-01 09:00"))
+
+        guard case let .available(snapshot) = result else { return XCTFail("Expected a static snapshot") }
+        XCTAssertEqual(snapshot.services.map(\.number), ["R 1", "R 2", "R 3"])
+        XCTAssertEqual(snapshot.services.map(\.bikesAllowed), [true, false, nil])
+    }
+
     func testDateAfterTheLastServiceDayReportsAnExpiredSchedule() async throws {
         let fixture = try Fixture()
         try fixture.insertTrip(id: 1, externalID: "direct", number: "FR 1", originSequence: 1, destinationSequence: 2, seconds: 10 * 3_600)
@@ -367,10 +379,10 @@ final class SQLiteGTFSJourneyRepositoryTests: XCTestCase {
             repository = SQLiteGTFSJourneyRepository(databaseURL: url)
             guard sqlite3_open(url.path, &database) == SQLITE_OK else { throw FixtureError.sqlite }
             try execute(Self.schema)
-            try execute("PRAGMA application_id = \(SQLiteGTFSJourneyRepository.applicationID); PRAGMA user_version = 1;")
+            try execute("PRAGMA application_id = \(SQLiteGTFSJourneyRepository.applicationID); PRAGMA user_version = \(SQLiteGTFSJourneyRepository.userVersion);")
             let bits = Self.bitset(startDate: 20240330, dayCount: 4, activeDates: activeDates)
             try execute("""
-                INSERT INTO metadata VALUES ('schema_version', '1');
+                INSERT INTO metadata VALUES ('schema_version', '\(SQLiteGTFSJourneyRepository.userVersion)');
                 INSERT INTO metadata VALUES ('input_fingerprint_sha256', '\(String(repeating: "a", count: 64))');
                 INSERT INTO metadata VALUES ('source_generated_at', '2024-03-30');
                 INSERT INTO metadata VALUES ('row_counts_json', '{}');
@@ -396,10 +408,12 @@ final class SQLiteGTFSJourneyRepositoryTests: XCTestCase {
             destinationSequence: Int = 2,
             seconds: Int,
             pickupType: Int = 0,
-            dropOffType: Int = 0
+            dropOffType: Int = 0,
+            bikesAllowed: Int? = nil
         ) throws {
+            let bikes = bikesAllowed.map { String($0) } ?? "NULL"
             try execute("""
-                INSERT INTO trip VALUES (\(id), 1, 1, 1, '\(externalID)', NULL, '\(number)', NULL);
+                INSERT INTO trip VALUES (\(id), 1, 1, 1, '\(externalID)', NULL, '\(number)', NULL, \(bikes));
                 INSERT INTO stop_time VALUES (\(id), \(originSequence), 1, \(seconds), \(seconds), \(pickupType), 0);
                 INSERT INTO stop_time VALUES (\(id), \(destinationSequence), 2, \(seconds + 3600), \(seconds + 3600), 0, \(dropOffType));
                 """)
@@ -432,7 +446,7 @@ final class SQLiteGTFSJourneyRepositoryTests: XCTestCase {
             CREATE TABLE agency (id INTEGER PRIMARY KEY, pack_id INTEGER NOT NULL REFERENCES pack(id), external_id TEXT NOT NULL, name TEXT NOT NULL, timezone TEXT NOT NULL, UNIQUE(pack_id, external_id));
             CREATE TABLE route (id INTEGER PRIMARY KEY, pack_id INTEGER NOT NULL REFERENCES pack(id), agency_id INTEGER NOT NULL REFERENCES agency(id), external_id TEXT NOT NULL, short_name TEXT, long_name TEXT, route_type INTEGER NOT NULL, UNIQUE(pack_id, external_id));
             CREATE TABLE service (id INTEGER PRIMARY KEY, pack_id INTEGER NOT NULL REFERENCES pack(id), external_id TEXT NOT NULL, start_date INTEGER NOT NULL, day_count INTEGER NOT NULL CHECK(day_count > 0), active_days BLOB NOT NULL, UNIQUE(pack_id, external_id), CHECK(length(active_days) = (day_count + 7) / 8));
-            CREATE TABLE trip (id INTEGER PRIMARY KEY, pack_id INTEGER NOT NULL REFERENCES pack(id), route_id INTEGER NOT NULL REFERENCES route(id), service_id INTEGER NOT NULL REFERENCES service(id), external_id TEXT NOT NULL, headsign TEXT, short_name TEXT, direction_id INTEGER, UNIQUE(pack_id, external_id));
+            CREATE TABLE trip (id INTEGER PRIMARY KEY, pack_id INTEGER NOT NULL REFERENCES pack(id), route_id INTEGER NOT NULL REFERENCES route(id), service_id INTEGER NOT NULL REFERENCES service(id), external_id TEXT NOT NULL, headsign TEXT, short_name TEXT, direction_id INTEGER, bikes_allowed INTEGER CHECK(bikes_allowed IN (1, 2)), UNIQUE(pack_id, external_id));
             CREATE TABLE stop (id INTEGER PRIMARY KEY, pack_id INTEGER NOT NULL REFERENCES pack(id), external_id TEXT NOT NULL, name TEXT NOT NULL, latitude REAL, longitude REAL, catalog_station_id TEXT, railway_code TEXT, trenitalia_location_id TEXT, UNIQUE(pack_id, external_id));
             CREATE TABLE stop_time (trip_id INTEGER NOT NULL REFERENCES trip(id), stop_sequence INTEGER NOT NULL, stop_id INTEGER NOT NULL REFERENCES stop(id), arrival_seconds INTEGER, departure_seconds INTEGER, pickup_type INTEGER NOT NULL, drop_off_type INTEGER NOT NULL, PRIMARY KEY(trip_id, stop_sequence)) WITHOUT ROWID;
             CREATE UNIQUE INDEX idx_route_pack_external ON route(pack_id, external_id);

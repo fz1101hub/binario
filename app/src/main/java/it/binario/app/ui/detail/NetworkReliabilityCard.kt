@@ -43,12 +43,18 @@ import it.binario.app.data.TrainService
 import it.binario.app.data.reliability.DelayDistribution
 import it.binario.app.data.reliability.NetworkReliabilityDetail
 import it.binario.app.data.reliability.NetworkReliabilityStations
+import it.binario.app.data.reliability.TrainNetworkStatistics
+import it.binario.app.data.reliability.UsualPlatform
+import it.binario.app.ui.common.UsualPlatformLines
 import it.binario.app.ui.common.networkReliabilityAttribution
 import it.binario.app.ui.common.rememberNetworkReliability
+import it.binario.app.ui.common.rememberUsualPlatformStrings
+import java.time.LocalDate
 
 /**
- * The network statistics of [service] for its detail, or null (no statistics, demonstration data, too few samples).
- * [stationLookup] binds the published stop names to the catalogue, whose railway codes the statistics use.
+ * The network statistics of [service] for its detail (the reliability card and the usual platform where it is
+ * boarded), or null (no statistics, demonstration data, too few samples). [stationLookup] binds the published stop
+ * names to the catalogue, whose railway codes the statistics use.
  */
 @Composable
 internal fun rememberNetworkReliabilityDetail(
@@ -56,11 +62,37 @@ internal fun rememberNetworkReliabilityDetail(
     stations: List<Station>,
     stationLookup: (String) -> Station?,
     isDemonstration: Boolean
-): NetworkReliabilityDetail? {
+): TrainNetworkStatistics? {
     val stats = rememberNetworkReliability()
     val codes = remember(stations) { NetworkReliabilityStations(stations) }
     return remember(stats, service, codes, isDemonstration) {
-        if (stats == null || isDemonstration) null else NetworkReliabilityDetail.of(stats, service, stationLookup, codes)
+        if (stats == null || isDemonstration) null else TrainNetworkStatistics.of(stats, service, stationLookup, codes)
+    }
+}
+
+/**
+ * «Di solito al binario 12 (8 volte su 10)» where the train is boarded, while no platform of the run is known: the
+ * statistics icon, the line and the attribution of the unofficial statistics, read by TalkBack as one sentence that
+ * says they are unofficial.
+ */
+@Composable
+internal fun UsualPlatformNote(platform: UsualPlatform, windowEnd: LocalDate?, modifier: Modifier = Modifier) {
+    val strings = rememberUsualPlatformStrings()
+    val line = remember(platform, strings) { UsualPlatformLines.usualPlatform(platform, strings) }
+    val spoken = stringResource(R.string.reliability_spoken, line.spokenText)
+    // Without [windowEnd] (the timeline) the attribution is the one of the Info tab and of the results.
+    val note = windowEnd?.let { networkReliabilityAttribution(it) }
+    val muted = MaterialTheme.colorScheme.onSurfaceVariant
+    Row(
+        modifier.clearAndSetSemantics { contentDescription = listOfNotNull(spoken, note).joinToString(". ") },
+        verticalAlignment = Alignment.Top
+    ) {
+        Icon(Icons.Default.QueryStats, contentDescription = null, tint = muted, modifier = Modifier.padding(top = 1.dp).size(16.dp))
+        Spacer(Modifier.width(6.dp))
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(line.text, style = MaterialTheme.typography.bodySmall, color = muted)
+            note?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = muted) }
+        }
     }
 }
 
@@ -105,6 +137,14 @@ internal fun NetworkReliabilityCard(detail: NetworkReliabilityDetail, modifier: 
                 )
                 Text(stringResource(R.string.punctuality_average_delay, minutes(arrival.shownMeanDelayMinutes)), style = MaterialTheme.typography.bodyMedium)
                 Text(stringResource(R.string.reliability_detail_days, detail.daysObserved, detail.daysCancelled), style = MaterialTheme.typography.bodyMedium)
+                detail.weekdayRemark?.let { remark ->
+                    val strings = rememberUsualPlatformStrings()
+                    Text(
+                        remember(remark, strings) { UsualPlatformLines.weekday(remark, strings).text },
+                        modifier = Modifier.testTag("detail-weekday-remark"),
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
                 detail.distribution?.let { DelayDistributionBlock(it, detail.maxDelayMinutes) }
                     ?: detail.maxDelayMinutes?.let { Text(stringResource(R.string.reliability_max_delay, minutes(it)), style = MaterialTheme.typography.bodyMedium) }
             }

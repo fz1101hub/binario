@@ -189,7 +189,13 @@ data class TrainService(
      * Bikes on board as the offline timetable publishes them (GTFS bikes_allowed): true allowed, false not allowed,
      * null unknown (most packs leave it empty). Never inferred from the category.
      */
-    val bikesAllowed: Boolean? = null
+    val bikesAllowed: Boolean? = null,
+    /**
+     * The source shows the train late without the minutes (the RFI boards' bare «RITARDO»): «In ritardo (minuti non
+     * pubblicati)». Not a verified status: [operationalStatusVerified], [status] and the delays keep what is known, so
+     * nothing reads it as on time and no minutes are invented.
+     */
+    val delayMinutesUnpublished: Boolean = false
 ) {
     val displayOperator: String get() = operatorDisplayName?.takeIf(String::isNotBlank) ?: operator.shortLabel
     val accessibleOperator: String get() = operatorDisplayName?.takeIf(String::isNotBlank) ?: operator.accessibleLabel
@@ -288,24 +294,6 @@ interface TrainDataSource {
 
 /** A current-day route source whose availability follows the provider registry. */
 interface RealtimeRouteDataSource : TrainDataSource, it.binario.app.data.provider.RailProvider
-
-/** A future authorised server-side gateway for Trenitalia operational data. */
-interface AuthorizedRailGateway {
-    suspend fun loadTrenitaliaRoute(route: SavedRoute, direction: Direction): DataResult
-}
-
-/**
- * Reserved adapter for an authorised Trenitalia / ViaggiaTreno integration.
- * With no gateway configured, it deliberately performs no network request.
- */
-class TrenitaliaViaggiaTrenoAdapter(
-    private val gateway: AuthorizedRailGateway? = null
-) : TrainDataSource {
-    override suspend fun loadRoute(route: SavedRoute, direction: Direction): DataResult {
-        return gateway?.loadTrenitaliaRoute(route, direction)
-            ?: DataResult.Failure("Il canale live Trenitalia non è configurato o autorizzato su questo dispositivo.")
-    }
-}
 
 /**
  * Tries only expressly configured, authorised adapters and falls back to a

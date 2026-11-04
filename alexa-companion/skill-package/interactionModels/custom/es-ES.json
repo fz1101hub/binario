@@ -10,7 +10,9 @@
         { "name": "AMAZON.FallbackIntent", "samples": [] },
         { "name": "NextTrainsIntent", "slots": [{ "name": "routeName", "type": "AMAZON.SearchQuery" }], "samples": ["cuáles son los próximos trenes", "próximos trenes", "los próximos trenes", "próximos trenes para {routeName}", "cuándo sale el próximo tren para {routeName}"] },
         { "name": "TrainStatusIntent", "slots": [{ "name": "trainNumber", "type": "AMAZON.NUMBER" }], "samples": ["estado del tren {trainNumber}", "el estado del tren {trainNumber}", "el tren {trainNumber} llega a tiempo", "cómo va el tren {trainNumber}", "retraso del tren {trainNumber}"] },
-        { "name": "MyRoutesIntent", "slots": [], "samples": ["mis rutas", "enumera mis rutas guardadas", "qué rutas he guardado", "rutas guardadas"] }
+        { "name": "MyRoutesIntent", "slots": [], "samples": ["mis rutas", "enumera mis rutas guardadas", "qué rutas he guardado", "rutas guardadas"] },
+        { "name": "TrainPunctualityIntent", "slots": [{ "name": "trainNumber", "type": "AMAZON.NUMBER" }], "samples": ["la puntualidad del tren {trainNumber}", "puntualidad del tren {trainNumber}", "qué tan puntual es el tren {trainNumber}", "cómo de puntual es el tren {trainNumber}", "el tren {trainNumber} suele llegar a tiempo"] },
+        { "name": "RoutePunctualityIntent", "slots": [{ "name": "routeName", "type": "AMAZON.SearchQuery" }], "samples": ["la puntualidad de mi ruta {routeName}", "puntualidad de mi ruta", "puntualidad de mi ruta {routeName}", "qué tan puntual es mi ruta", "qué tan puntual es mi ruta {routeName}", "cómo de puntual es mi ruta {routeName}"] }
       ],
       "types": []
     }

@@ -134,6 +134,9 @@ class RailNoticesService(
 
     val hasNetworkSources: Boolean get() = networkAlertProviders.isNotEmpty() || trenord != null
 
+    /** RFI's feed (and, with the personal sources, Trenitalia's list) is enabled: the works sections can be shown. */
+    val hasNetworkAlertSources: Boolean get() = networkAlertProviders.isNotEmpty()
+
     val hasTrenordSource: Boolean get() = trenord != null
 
     /**
@@ -206,8 +209,9 @@ class RailNoticesService(
         )
     }
 
-    suspend fun general(): GeneralNotices = coroutineScope {
-        val trenordRead = trenord?.let { source -> async { read { source.getLineNotices() } } }
+    /** The notices area; without [includeTrenord] (the works sections) Trenord's line list is not requested. */
+    suspend fun general(includeTrenord: Boolean = true): GeneralNotices = coroutineScope {
+        val trenordRead = trenord?.takeIf { includeTrenord }?.let { source -> async { read { source.getLineNotices() } } }
         val reads = networkAlertProviders.map { provider -> async { provider.descriptor.id to read { provider.getAlerts(AlertRequest()) } } }.awaitAll()
         val lineNotices = trenordRead?.await()
         GeneralNotices(

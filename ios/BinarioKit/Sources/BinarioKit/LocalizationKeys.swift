@@ -8,14 +8,27 @@ public enum BinarioLocalizationKeys {
         "planner.swap", "planner.search", "planner.save", "planner.same_station",
         "planner.selection_required",
         "planner.station.no_timetable", "planner.sources.footer",
+        "planner.airports.title", "planner.airports.search",
         "catalog.loading", "catalog.unavailable.title", "catalog.unavailable.body",
         "schedule.loading", "schedule.unavailable",
         "result.title", "result.unavailable.title", "result.unavailable.body",
         "result.unavailable.disclosure", "result.provider_error.title", "result.provider_error.body",
         "result.expired.title", "result.expired.body",
         "result.source_label", "result.programmed.disclosure",
+        "result.reliability.on_time", "result.reliability.mean_delay", "result.reliability.cancelled",
+        "result.reliability.cancelled_share", "result.reliability.spoken", "result.reliability.attribution",
+        "result.order.title", "result.order.departure", "result.order.most_reliable",
+        "result.route.on_time", "result.route.trains", "result.route.runs_observed", "result.route.days",
+        "result.route.hours", "result.route.hour_band",
+        "result.bikes.allowed", "result.bikes.not_allowed",
+        "result.detail.reliability_title", "result.detail.arrival_on_time", "result.detail.mean_delay",
+        "result.detail.days", "result.detail.distribution_title", "result.detail.band_no_delay",
+        "result.detail.band_range", "result.detail.band_over", "result.detail.band_share",
+        "result.detail.max_delay", "result.detail.worst_stop", "result.detail.usual_platform",
+        "result.detail.weekday", "result.detail.threshold_note",
         "saved.title", "saved.empty.title", "saved.empty.body", "saved.local_only",
         "saved.delete_all", "saved.storage_error", "saved.limit_error",
+        "saved.watch.show", "saved.watch.stop", "saved.watch.pinned", "saved.watch.footer", "saved.watch.sharing_off",
         "settings.title", "settings.data.title", "settings.data.catalog",
         "settings.data.provider", "settings.data.provider_unavailable",
         "settings.data.provider_loading", "settings.data.provider_programmed", "settings.data.valid_until",
@@ -33,6 +46,15 @@ public enum BinarioLocalizationKeys {
         "watch.status.unsupported", "watch.status.not_paired", "watch.status.failed",
         "accessibility.station_suggestions", "accessibility.selected_station",
         "accessibility.swap_route", "accessibility.saved_route", "accessibility.open_saved_route",
-        "accessibility.delete_route"
+        "accessibility.delete_route", "accessibility.open_train_detail"
+    ]
+
+    /// The keys whose texts count something: Localizable.stringsdict holds their CLDR plural forms
+    /// (the counted number is argument 1) and Localizable.strings the "other" form as a fallback.
+    public static let plural: Set<String> = [
+        "result.reliability.on_time", "result.reliability.cancelled", "result.reliability.cancelled_share",
+        "result.route.trains", "result.route.runs_observed", "result.route.days",
+        "result.detail.reliability_title", "result.detail.arrival_on_time", "result.detail.band_share",
+        "result.detail.usual_platform", "result.detail.weekday",
     ]
 }

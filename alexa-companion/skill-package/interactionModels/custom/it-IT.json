@@ -63,6 +63,42 @@
             "quali tratte ho salvato",
             "le tratte salvate"
           ]
+        },
+        {
+          "name": "TrainPunctualityIntent",
+          "slots": [
+            {
+              "name": "trainNumber",
+              "type": "AMAZON.NUMBER"
+            }
+          ],
+          "samples": [
+            "quanto è puntuale il treno {trainNumber}",
+            "la puntualità del treno {trainNumber}",
+            "puntualità del treno {trainNumber}",
+            "quanto è affidabile il treno {trainNumber}",
+            "il treno {trainNumber} di solito è in orario",
+            "quanto ritarda di solito il treno {trainNumber}"
+          ]
+        },
+        {
+          "name": "RoutePunctualityIntent",
+          "slots": [
+            {
+              "name": "routeName",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "quanto è puntuale la mia tratta",
+            "quanto è puntuale la mia tratta {routeName}",
+            "quanto è puntuale la tratta {routeName}",
+            "la puntualità della mia tratta {routeName}",
+            "puntualità della mia tratta",
+            "puntualità della mia tratta {routeName}",
+            "puntualità della tratta {routeName}",
+            "quanto sono puntuali i treni della mia tratta {routeName}"
+          ]
         }
       ],
       "types": []

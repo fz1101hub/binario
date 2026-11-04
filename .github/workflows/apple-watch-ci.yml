@@ -176,6 +176,10 @@ jobs:
         run: swift test --package-path ios/BinarioKit
       - name: Verify and generate integrated iOS project
         run: |
+          # The iPhone copy of the punctuality statistics is not committed: it is taken from the Android asset here
+          # (or removed when there is none), so the weekly refresh updates one file and the app hides the feature
+          # without it.
+          python3 -I ios/Scripts/sync-punctuality-stats.py
           python3 ios/Scripts/verify-deterministic-generation.py --xcodegen "$(command -v xcodegen)"
           cd ios
           xcodegen generate --spec project.yml

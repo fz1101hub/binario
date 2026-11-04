@@ -27,6 +27,7 @@ import it.binario.app.data.gtfs.EmbeddedGtfsRouteAdapter
 import it.binario.app.data.gtfs.GtfsCompactIndexLimitException
 import it.binario.app.data.gtfs.GtfsDayTimetable
 import it.binario.app.data.gtfs.GtfsDayTrip
+import it.binario.app.data.gtfs.GtfsStationDay
 import it.binario.app.data.gtfs.GtfsStationCodeIndex
 import it.binario.app.data.gtfs.StopNameCase
 import it.binario.app.data.gtfs.GtfsStopCodeScheme
@@ -335,6 +336,133 @@ class EmbeddedGtfsJourneyProvider internal constructor(
         return StaticDayDepartures(lastByTerminus.values.sortedBy { it.departure }, firstNextDay)
     }
 
+    /**
+     * The train runs of the railway packs that can be on the move around [request]'s time, for the map of trains in
+     * motion: the runs of the route (the packs serving both ends) or of the packs with the most stops inside the area,
+     * at most [MAX_RUN_PACKS] packs. Read from the same cached service days as the searches (today's whole day, and the
+     * evening of yesterday's service day in the morning); empty when no pack serves the scope or a pack is unreadable.
+     */
+    internal suspend fun scheduledRailRuns(request: ScheduledRunRequest): List<ScheduledRailRun> = withContext(dispatcher) {
+        try {
+            railRuns(request)
+        } catch (error: CancellationException) {
+            throw error
+        } catch (_: GtfsCompactIndexLimitException) {
+            emptyList()
+        } catch (_: IOException) {
+            emptyList()
+        }
+    }
+
+    private suspend fun railRuns(request: ScheduledRunRequest): List<ScheduledRailRun> {
+        val resolver = resolver()
+        val scope = request.scope
+        val ends = (scope as? ScheduledRunScope.Route)?.let { route ->
+            val origin = endpoint(route.origin, route.originEndpoint, resolver) ?: return emptyList()
+            val destination = endpoint(route.destination, route.destinationEndpoint, resolver) ?: return emptyList()
+            origin to destination
+        }
+        val today = request.at.toLocalDate()
+        val candidates = ArrayList<Triple<EmbeddedGtfsPack, PackStops, Int>>()
+        for (pack in packs) {
+            currentCoroutineContext().ensureActive()
+            if (pack.isUrban || pack.lastServiceDate?.isBefore(today.minusDays(1)) == true) continue
+            val stops = try { packStops(pack, resolver) } catch (_: GtfsCompactIndexLimitException) { continue }
+            val weight = when (scope) {
+                is ScheduledRunScope.Route -> ends?.takeIf { (origin, destination) ->
+                    stops.nodesFor(origin).isNotEmpty() && stops.nodesFor(destination).isNotEmpty()
+                }?.let { 1 } ?: 0
+                is ScheduledRunScope.Area -> stops.stopsWithin(scope.north, scope.south, scope.east, scope.west)
+            }
+            if (weight > 0) candidates += Triple(pack, stops, weight)
+        }
+        val minuteOfToday = ChronoUnit.MINUTES.between(today.atStartOfDay(), request.at).toInt()
+        val result = ArrayList<ScheduledRailRun>()
+        for ((pack, stops, _) in candidates.sortedByDescending { it.third }.take(MAX_RUN_PACKS)) {
+            val originNodes = ends?.let { stops.nodesFor(it.first) }.orEmpty()
+            val destinationNodes = ends?.let { stops.nodesFor(it.second) }.orEmpty()
+            val parts = buildList {
+                // Runs of yesterday's service day still on the move this morning (night trains): its evening only.
+                if (minuteOfToday < YESTERDAY_RUNS_UNTIL_MINUTE) {
+                    add(DayPart(today.minusDays(1), (MINUTES_PER_DAY - request.lookBackMinutes - RUN_SEGMENT_MARGIN_MINUTES).coerceAtLeast(0), Int.MAX_VALUE) to MINUTES_PER_DAY)
+                }
+                // Today whole, as the searches and "Ultimo di oggi" cache it.
+                add(DayPart(today, 0, Int.MAX_VALUE) to 0)
+            }
+            for ((part, offset) in parts) {
+                val day = day(pack, part)
+                val nodeOfStop = Array(day.stopIds.size) { stops.nodeKey(day.stopIds[it]) }
+                val names = arrayOfNulls<String>(day.stopIds.size)
+                val minute = minuteOfToday + offset
+                ScheduledRunCollector.collect(
+                    day = day,
+                    sourceId = pack.sourceId.value,
+                    fromMinute = minute - request.lookBackMinutes,
+                    untilMinute = minute + request.lookAheadMinutes,
+                    nodeOf = { nodeOfStop[it] },
+                    nameOf = { stop -> names[stop] ?: place(nodeOfStop[stop], day, stop, resolver).second.also { names[stop] = it } },
+                    pointOf = { stop -> stops.point(nodeOfStop[stop]) },
+                    accept = { nodes, runStops ->
+                        when (scope) {
+                            is ScheduledRunScope.Route -> ScheduledRunCollector.servesInOrder(nodes, originNodes, destinationNodes)
+                            is ScheduledRunScope.Area -> runStops.any { stop ->
+                                val latitude = stop.latitude
+                                val longitude = stop.longitude
+                                latitude != null && longitude != null && scope.contains(latitude, longitude)
+                            }
+                        }
+                    },
+                    into = result
+                )
+            }
+        }
+        return result
+    }
+
+    /**
+     * Every pack's service day [date] as seen from [origin] (and from [destination], when given), for the read-only
+     * station questions of the screens ([it.binario.app.data.gtfs.directConnections],
+     * [it.binario.app.data.gtfs.directRunStations]): the railway packs that serve the station, then the city packs with
+     * the stop itself or a stop at most [urbanWalkMeters] away. The day arrays, stop identities and cache are those of
+     * the journey search; a pack over its reading limits or unreadable is left out.
+     */
+    internal suspend fun stationDays(
+        origin: StationId,
+        originEndpoint: JourneyEndpoint?,
+        destination: StationId?,
+        destinationEndpoint: JourneyEndpoint?,
+        date: LocalDate,
+        urbanWalkMeters: Int,
+        visit: (GtfsStationDay) -> Unit
+    ): Unit = withContext(dispatcher) {
+        val resolver = resolver()
+        val from = endpoint(origin, originEndpoint, resolver) ?: return@withContext
+        val to = destination?.let { endpoint(it, destinationEndpoint, resolver) ?: return@withContext }
+        locateStop(from, resolver)
+        val walks = settings.copy(maxWalkMeters = urbanWalkMeters.coerceIn(0, MAX_WALK_METERS))
+        for (pack in packs) {
+            currentCoroutineContext().ensureActive()
+            if (pack.lastServiceDate?.isBefore(date) == true) continue
+            if (pack.isUrban && from.gtfsStop?.first != pack.sourceId.value &&
+                (urbanWalkMeters <= 0 || !urbanCandidate(pack, from, to ?: from))
+            ) continue
+            try {
+                val stops = packStops(pack, resolver)
+                val originNodes = if (pack.isUrban) stops.accessFor(from, walks) else stops.nodesFor(from).associateWith { 0 }
+                if (originNodes.isEmpty()) continue
+                val destinationNodes = to?.let { stops.nodesFor(it) }.orEmpty()
+                if (to != null && destinationNodes.isEmpty()) continue
+                val day = day(pack, DayPart(date, 0, Int.MAX_VALUE))
+                val nodeOfStop = Array(day.stopIds.size) { stops.nodeKey(day.stopIds[it]) }
+                visit(GtfsStationDay(day, pack.isUrban, nodeOfStop, originNodes, destinationNodes, { node, stop -> place(node, day, stop, resolver) }, resolver::station))
+            } catch (_: GtfsCompactIndexLimitException) {
+                continue
+            } catch (_: IOException) {
+                continue
+            }
+        }
+    }
+
     /** Diagnostics for tests: cached service days and their approximate size. */
     internal fun cachedDaysForTest(): Int = synchronized(dayCache) { dayCache.size }
     internal fun cachedBytesForTest(): Long = synchronized(dayCache) { dayCache.values.sumOf(GtfsDayTimetable::approximateBytes) }
@@ -497,9 +625,10 @@ class EmbeddedGtfsJourneyProvider internal constructor(
         var found = window
         var foundScanner = scanner
         // Nothing leaves in the window (after the last train of the day, or on a line with few trains): the first option
-        // after it follows, "primo domani alle …". First on the connections already read, up to the horizon, then, when
-        // that ends before the next morning, on a window of its own up to the next day's noon.
-        if (outcome.exhausted && journeys.isEmpty()) {
+        // after it follows, "primo domani alle …" or «Nessun treno fino alle …». First on the connections already read, up
+        // to the horizon, then, when that ends before the next morning, on a window of its own up to the next day's noon.
+        val emptyWindow = outcome.exhausted && journeys.isEmpty()
+        if (emptyWindow) {
             if (lastConnectionMinute > endMinute) {
                 journeys = scanner.plan(
                     query.copy(
@@ -538,6 +667,7 @@ class EmbeddedGtfsJourneyProvider internal constructor(
         val options = journeys.map { journey ->
             toOption(journey, graph, slices, request, origin, destination, serviceDate, fetchedAt, resolver, found.originAccessible, found.destinationAccessible)
                 .let { if (journey === lastOfDay) it.copy(lastOfServiceDay = true) else it }
+                .let { if (emptyWindow) it.copy(firstAfterEmptyWindow = true) else it }
         }
         return SearchOutcome(options, incomplete)
     }
@@ -1628,6 +1758,20 @@ class EmbeddedGtfsJourneyProvider internal constructor(
             return null
         }
 
+        /**
+         * How many stops of this pack lie inside the box (their own coordinates, else their catalogue station's): the map
+         * of trains in motion reads the packs with the most.
+         */
+        fun stopsWithin(north: Double, south: Double, east: Double, west: Double): Int {
+            var count = 0
+            for (index in latitudes.indices) {
+                val own = !latitudes[index].isNaN() && !longitudes[index].isNaN()
+                val point = if (own) latitudes[index] to longitudes[index] else cataloguePoints[nodeKeys[index]] ?: continue
+                if (point.first in south..north && point.second in west..east) count += 1
+            }
+            return count
+        }
+
         /** Coordinates of one stop of this pack, or of its transfer point. */
         fun stopPoint(stopId: String): Pair<Double, Double>? {
             val index = indexById[stopId] ?: return null
@@ -1898,6 +2042,12 @@ class EmbeddedGtfsJourneyProvider internal constructor(
 
         private val URBAN_MODES = setOf(LegMode.METRO, LegMode.TRAM, LegMode.FUNICULAR)
         private const val MINUTES_PER_DAY = 24 * 60
+        /** Packs read for one map of trains in motion, like the railway packs of one search. */
+        private const val MAX_RUN_PACKS = 3
+        /** Until this minute of the day (noon) the runs of yesterday's service day can still be on the move. */
+        private const val YESTERDAY_RUNS_UNTIL_MINUTE = 12 * 60
+        /** Yesterday's evening is read from this long before the look-back, so a run between two stops keeps both. */
+        private const val RUN_SEGMENT_MARGIN_MINUTES = 60
         /** Longest stop of a vehicle between two trips the traveller can stay on board through. */
         private const val MAX_IN_SEAT_WAIT_MINUTES = 30
         /** Two packs' copies of one train leave and reach a station within this many minutes of each other. */

@@ -1,5 +1,6 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
+import { verifyRailData } from "./rail-data.mjs";
 
 // Fails the build when development tooling leaks into the production bundle.
 // The Manus preview runtime accepts cross-origin postMessage and can set the
@@ -74,6 +75,17 @@ if (
 ) {
   console.error(
     "verify-production-build: Vite leaked into the production server bundle."
+  );
+  process.exit(1);
+}
+
+// The punctuality statistics and the station catalogue the skill reads from dist/data must be
+// the repository's files (or absent with them): a stale copy would answer from old data.
+const railDataProblems = verifyRailData();
+if (railDataProblems.length) {
+  console.error(
+    "verify-production-build: the bundled rail data does not match the repository:\n  " +
+      railDataProblems.join("\n  ")
   );
   process.exit(1);
 }

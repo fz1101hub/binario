@@ -75,7 +75,7 @@
     <string name="station_badge_metro">Điểm dừng tàu điện ngầm</string>
     <string name="station_badge_tram">Điểm dừng tàu điện mặt đất</string>
     <string name="station_badge_funicular">Tàu leo núi hoặc thang máy</string>
-    <string name="settings_privacy_new_sources">Khi được bật, các nguồn bổ sung chỉ nhận những gì yêu cầu cần, không có tài khoản hay vị trí: transport.opendata.ch nhận số UIC của ga Thụy Sĩ (hoặc, một lần, tên của một ga biên giới); ViaggiaTreno nhận số hiệu tàu để lấy thông báo, qua HTTP không mã hóa như API công khai của họ; RFI, Trenitalia và Trenord không nhận dữ liệu nào của bạn cho danh sách thông báo, chỉ được tải xuống khi bạn mở khu vực thông báo, một trang chi tiết hoặc một bảng giờ tàu liên quan; Open-Meteo nhận tọa độ đã làm tròn của ga đến. Liên kết ngoài chỉ mở trong trình duyệt khi bạn nhấn vào.</string>
+    <string name="settings_privacy_new_sources">Khi được bật, các nguồn bổ sung chỉ nhận những gì yêu cầu cần, không có tài khoản hay vị trí: transport.opendata.ch nhận số UIC của ga Thụy Sĩ (hoặc, một lần, tên của một ga biên giới); ViaggiaTreno nhận số hiệu tàu để lấy thông báo, qua HTTP không mã hóa như API công khai của họ; RFI, Trenitalia và Trenord không nhận dữ liệu nào của bạn cho danh sách thông báo, chỉ được tải xuống khi bạn mở khu vực thông báo, một trang chi tiết, một bảng giờ tàu liên quan hoặc mục thi công trên tuyến của bạn; Open-Meteo nhận tọa độ đã làm tròn của ga đến. Liên kết ngoài chỉ mở trong trình duyệt khi bạn nhấn vào.</string>
 
     <string name="app_name">Binario</string>
     <string name="widget_description">Hiển thị các chuyến tiếp theo trên tuyến Binario của bạn.</string>
@@ -95,6 +95,12 @@
     <string name="shortcut_active_route">Tuyến đang dùng</string>
     <string name="shortcut_next_departures">Chuyến đi sắp tới</string>
     <string name="shortcut_train_search">Tìm tàu</string>
+    <string name="shortcut_route_removed">Tuyến không còn được lưu trong Binario</string>
+    <string name="tile_next_train_label">Chuyến tàu tiếp theo</string>
+    <string name="tile_next_train_no_route">Không có tuyến đang dùng</string>
+    <string name="tile_next_train_none">Hôm nay không còn chuyến tàu nào</string>
+    <string name="tile_next_train_departure">%1$s · %2$s</string>
+    <string name="tile_next_train_description">Chuyến tàu tiếp theo, dựa trên lịch trình: %1$s lúc %2$s, %3$s</string>
 
     <!-- Main app shell and primary journey planner. -->
     <string name="app_brand">BINARIO</string>
@@ -378,6 +384,26 @@
     <string name="map_nearby_content_description">Bản đồ các ga gần nhất. Các ga này, kèm khoảng cách, được liệt kê bên dưới.</string>
     <string name="map_nearby_tap_hint">Nhấn vào một ga để mở bảng giờ tàu.</string>
     <string name="map_legend_user_position">Vị trí gần đúng, không được lưu</string>
+    <string name="live_map_title">Tàu đang chạy</string>
+    <string name="live_map_area_subtitle">Quanh %1$s</string>
+    <string name="live_map_content_description">Bản đồ các tàu đang chạy, %1$s. Vị trí là ước tính từ lịch chạy tàu, không phải vị trí GPS; các tàu này cũng được liệt kê bên dưới bản đồ.</string>
+    <string name="live_map_note">Vị trí ước tính, không phải GPS: Binario tính nơi mỗi tàu lẽ ra phải ở theo lịch chạy, trên đường thẳng giữa hai điểm dừng (không theo đường ray). Nếu bảng giờ tàu đã có độ trễ của một tàu, ước tính sẽ tính đến độ trễ đó. Vị trí được cập nhật mỗi 30 giây khi bản đồ đang mở.</string>
+    <string name="live_map_legend_live">Vị trí ước tính theo độ trễ trên bảng giờ tàu</string>
+    <string name="live_map_legend_timetable">Vị trí chỉ ước tính theo lịch chạy</string>
+    <string name="live_map_loading">Đang tính vị trí ước tính…</string>
+    <string name="live_map_zoom_in">Phóng to bản đồ để xem các tàu đang chạy.</string>
+    <string name="live_map_none">Theo lịch chạy, không có tàu nào đang chạy trong khu vực hiển thị.</string>
+    <string name="live_map_row_title">%1$s đi %2$s</string>
+    <string name="live_map_row_at">Đang dừng tại %1$s</string>
+    <string name="live_map_row_between">Giữa %1$s và %2$s</string>
+    <string name="live_map_row_live">Ước tính theo dữ liệu bảng giờ tàu: %1$s</string>
+    <string name="live_map_row_timetable">Chỉ ước tính theo lịch chạy</string>
+    <plurals name="live_map_count">
+        <item quantity="other">%d tàu đang chạy</item>
+    </plurals>
+    <plurals name="live_map_capped">
+        <item quantity="other">Hiển thị %d tàu gần nhất.</item>
+    </plurals>
     <string name="settings_privacy_maps">Bản đồ: chỉ mở khi bạn mở rộng hoặc tải bản đồ. Để vẽ bản đồ, ứng dụng tải kiểu hiển thị, ô bản đồ, phông chữ và biểu tượng từ tiles.openfreemap.org (OpenFreeMap); dịch vụ này thấy địa chỉ IP của bạn và khu vực được hiển thị: lộ trình của tàu, ga đã chọn hoặc, với các ga gần đây, khu vực quanh vị trí gần đúng của bạn. Vị trí không được gửi đi hay lưu lại; các ô bản đồ nằm trong bộ nhớ đệm cục bộ của ứng dụng.</string>
     <string name="settings_credits_maps">Bản đồ: OpenFreeMap © OpenMapTiles, dữ liệu © OpenStreetMap contributors (ODbL 1.0). Hiển thị bằng MapLibre Native, giấy phép BSD 2-Clause.</string>
     <string name="settings_credits_trenitalia">Lịch tàu Trenitalia (tàu và xe buýt): dữ liệu chính thức của Trenitalia S.p.A. được công bố trên Điểm truy cập quốc gia của Ý (CCISS) theo điều 52 CAD và Quy định EU 2017/1926, https://www.cciss.it/nap/mmtis/public/en/catalog/Dataset/1077621. Chuyển đổi GTFS © Clément Desouche, CC BY 4.0: https://github.com/deryclem/trenitalia-gtfs (giấy phép https://creativecommons.org/licenses/by/4.0/). Binario chỉ dùng giờ theo lịch, không có hình học lộ trình, và không liên kết với Trenitalia.</string>
@@ -657,6 +683,14 @@
     <string name="background_status_exact_on">Đã cho phép báo thức chính xác</string>
     <string name="background_status_battery_optimized">Tối ưu hóa pin đang bật cho Binario: Android có thể hoãn các lần kiểm tra nền.</string>
     <string name="background_status_battery_unrestricted">Tối ưu hóa pin đang tắt cho Binario</string>
+    <string name="background_runs_title">Các lần kiểm tra nền tiếp theo</string>
+    <string name="background_runs_none">Không có lần kiểm tra nền nào được lên lịch.</string>
+    <string name="background_runs_running">%1$s: đang chạy</string>
+    <string name="background_runs_soon">%1$s: sắp diễn ra</string>
+    <string name="background_runs_today">%1$s: hôm nay lúc %2$s</string>
+    <string name="background_runs_tomorrow">%1$s: ngày mai lúc %2$s</string>
+    <string name="background_runs_later">%1$s: %2$s lúc %3$s</string>
+    <string name="background_runs_note">Thời gian ước tính: Android có thể dời lại để tiết kiệm pin hoặc trong khi chờ mạng.</string>
     <string name="commuter_alert_quiet_hours_feedback">Đã lưu cảnh báo nhưng chưa lên lịch: thời điểm báo trước rơi vào giờ yên tĩnh 22:00–07:00.</string>
     <string name="commuter_alert_invalid_time_feedback">Đã lưu cảnh báo nhưng chưa lên lịch: giờ không hợp lệ.</string>
     <string name="commuter_alert_disabled_feedback">Đã lưu cảnh báo nhưng đang tắt.</string>
@@ -975,6 +1009,9 @@
     <string name="widget_settings_until_arrival_description">Tàu đã khởi hành vẫn nằm trong danh sách, được đánh dấu “Đang chạy”, cho đến giờ dự kiến đến ga cuối.</string>
     <string name="widget_settings_show_platform">Hiển thị sân ga</string>
     <string name="widget_settings_show_train_name">Hiển thị tên và loại tàu</string>
+    <string name="widget_settings_show_reliability">Hiển thị độ tin cậy</string>
+    <string name="widget_settings_show_reliability_description">Sau mỗi tàu, tỷ lệ ngày đúng giờ trong 30 ngày qua: thống kê không chính thức của Binario từ dữ liệu ViaggiaTreno, có sẵn trong ứng dụng và chỉ hiển thị khi có ít nhất 5 lần ghi nhận.</string>
+    <string name="widget_reliability_mark">%1$d%% đúng giờ</string>
     <string name="station_widget_display_name_description">Thay cho tên ga ở tiêu đề và chỉ áp dụng cho tiện ích này.</string>
     <string name="station_widget_settings_nearest">Nút “📍 Gần nhất”</string>
     <string name="station_widget_settings_nearest_description">Khi bạn nhấn, tiện ích sẽ yêu cầu vị trí gần đúng một lần và chuyển sang ga gần nhất trong danh mục. Vị trí không được lưu hay gửi đi; các lần cập nhật tự động luôn dùng ga được chọn gần nhất.</string>
@@ -1125,6 +1162,17 @@
     <string name="punctuality_history_show_all">Xem tất cả các ngày</string>
     <string name="settings_punctuality_recording_title">Mức đúng giờ của tàu yêu thích</string>
     <string name="settings_punctuality_recording_description">Mỗi ngày một lần, sau giờ đến theo lịch, ứng dụng hỏi trạng thái tàu và chỉ ghi trên điện thoại này mức trễ cuối cùng và mức trễ tại các điểm dừng, tối đa 365 ngày.</string>
+    <string name="settings_weekly_digest_title">Tóm tắt hằng tuần của tàu yêu thích</string>
+    <string name="settings_weekly_digest_description">Chủ nhật khoảng 19:00, một thông báo tóm tắt mức đúng giờ trong tuần của các tàu yêu thích được ghi lại trên điện thoại này và, nếu có, độ tin cậy của chúng trên mạng lưới trong 30 ngày qua, đồng thời nêu tàu kém đi. Không gửi yêu cầu mạng; không bao giờ trong khoảng 22:00 đến 7:00.</string>
+    <string name="weekly_digest_channel_name">Tóm tắt hằng tuần</string>
+    <string name="weekly_digest_channel_description">Tối Chủ nhật, mức đúng giờ trong tuần của các tàu yêu thích.</string>
+    <string name="weekly_digest_title">Tàu của bạn tuần này</string>
+    <string name="weekly_digest_train_line">%1$s: %2$s</string>
+    <string name="weekly_digest_no_runs">chưa ghi lại chuyến nào</string>
+    <plurals name="weekly_digest_network">
+        <item quantity="other">%1$d ngày qua trên mạng lưới: %2$d%% đúng giờ</item>
+    </plurals>
+    <string name="weekly_digest_worse">Kém đi: %1$s, đúng giờ %2$d%% số lần trong tuần này (thường là %3$d%%)</string>
     <string name="settings_live_updates_title">Thông báo thời gian thực</string>
     <string name="settings_live_updates_permission">Để nhận các thông báo này, hãy cho phép thông báo của Binario trong phần cài đặt Android.</string>
     <string name="settings_live_updates_privacy">Các lần kiểm tra này chỉ chạy nền trong các khung giờ đã nêu. MIT nhận một yêu cầu không chứa dữ liệu nào của bạn; các nguồn trạng thái tàu nhận số hiệu tàu và ngày, giống như khi bạn mở chi tiết. Không có gì được lưu bên ngoài điện thoại.</string>
@@ -1451,6 +1499,30 @@
         <item quantity="other">%1$s: trễ %2$d trên %3$d lần</item>
     </plurals>
     <string name="reliability_threshold_mixed_note">Chuyến đến trễ tối đa 5 phút với Frecce, Italo, EuroCity, Eurostar và EuroNight, tối đa 15 phút với các tàu khác được tính là đúng giờ.</string>
+    <!-- Usual platform and weekday punctuality of the network statistics (stop elements 7 and 8) -->
+    <plurals name="reliability_usual_platform">
+        <item quantity="other">Thường ở sân ga %1$s (%2$d trên %3$d lần)</item>
+    </plurals>
+    <string name="reliability_weekday_monday">Vào thứ Hai</string>
+    <string name="reliability_weekday_tuesday">Vào thứ Ba</string>
+    <string name="reliability_weekday_wednesday">Vào thứ Tư</string>
+    <string name="reliability_weekday_thursday">Vào thứ Năm</string>
+    <string name="reliability_weekday_friday">Vào thứ Sáu</string>
+    <string name="reliability_weekday_saturday">Vào thứ Bảy</string>
+    <string name="reliability_weekday_sunday">Vào Chủ nhật</string>
+    <plurals name="reliability_weekday_worse">
+        <item quantity="other">%1$s đúng giờ %2$d trên %3$d lần, kém hơn mức trung bình</item>
+    </plurals>
+    <plurals name="reliability_weekday_better">
+        <item quantity="other">%1$s đúng giờ %2$d trên %3$d lần, tốt hơn mức trung bình</item>
+    </plurals>
+    <!-- Route results: «Più presto» / «Più tardi», empty searched window, RFI «RITARDO» without minutes -->
+    <string name="results_earlier">Sớm hơn</string>
+    <string name="results_later">Muộn hơn</string>
+    <string name="results_no_more_earlier">Không có lựa chọn nào sớm hơn</string>
+    <string name="results_no_more_later">Không có lựa chọn nào muộn hơn</string>
+    <string name="results_no_trains_until">Không có tàu cho đến %1$s</string>
+    <string name="service_late_minutes_unpublished">Trễ (chưa công bố số phút)</string>
     <string name="bikes_allowed">Được mang xe đạp</string>
     <string name="bikes_not_allowed">Không được mang xe đạp</string>
     <string name="bikes_conditions_link">Mang xe đạp lên tàu: điều kiện của %1$s</string>
@@ -1459,4 +1531,42 @@
     <string name="compensation_notice_quarter">Đến %1$s trễ %2$s: theo Quy định (EU) 2021/782, bạn có thể được bồi thường 25%% giá vé (50%% từ 120 phút).</string>
     <string name="compensation_notice_half">Đến %1$s trễ %2$s: theo Quy định (EU) 2021/782, bạn có thể được bồi thường 50%% giá vé.</string>
     <string name="compensation_notice_conditions">Công ty đường sắt có thể từ chối khoản dưới 4 € và các trường hợp trễ do nguyên nhân bên ngoài như thời tiết khắc nghiệt hoặc có người trên đường ray; đình công của chính nhân viên công ty không phải là nguyên nhân bên ngoài. Với tàu khu vực, điều kiện còn phụ thuộc vào hợp đồng dịch vụ với vùng.</string>
+    <!-- Station board: RFI Sala Blu assistance (links only) -->
+    <string name="station_sala_blu_title">Hỗ trợ Sala Blu</string>
+    <string name="station_sala_blu_description">RFI hỗ trợ miễn phí tại nhà ga, theo đặt trước, cho người khuyết tật hoặc người hạn chế khả năng di chuyển.</string>
+    <string name="station_sala_blu_page">Trang hỗ trợ của RFI</string>
+    <string name="station_sala_blu_call_toll_free">Gọi %1$s (miễn phí từ điện thoại bàn)</string>
+    <string name="station_sala_blu_call_national">Gọi %1$s (cả từ di động)</string>
+    <!-- Station board: direct connections from the station (embedded timetables) -->
+    <string name="direct_connections_title">Chuyến đi thẳng</string>
+    <string name="direct_connections_from">Từ %1$s, không đổi chuyến</string>
+    <string name="direct_connections_note">Theo lịch trình dự kiến có trong ứng dụng, không tính chậm trễ hay hủy chuyến. Chạm vào một điểm đến để tìm tàu.</string>
+    <string name="direct_connections_filter">Lọc điểm đến</string>
+    <string name="direct_connections_loading">Đang đọc lịch trình…</string>
+    <string name="direct_connections_empty">Lịch trình có trong ứng dụng không có chuyến đi thẳng từ ga này vào ngày này.</string>
+    <string name="direct_connections_no_match">Không có điểm đến nào chứa “%1$s”.</string>
+    <string name="direct_connections_trains">Tàu hỏa</string>
+    <string name="direct_connections_urban">Tàu điện ngầm, tàu điện và tàu leo núi</string>
+    <plurals name="direct_connections_train_count">
+        <item quantity="other">%d chuyến tàu</item>
+    </plurals>
+    <plurals name="direct_connections_runs">
+        <item quantity="other">%d chuyến</item>
+    </plurals>
+    <string name="direct_connections_first_last">chuyến đầu %1$s, chuyến cuối %2$s</string>
+    <string name="direct_connections_fastest">nhanh nhất %1$s</string>
+    <string name="direct_connections_from_stop">từ trạm %1$s, cách vài bước</string>
+    <!-- Per te and route board: works and interruptions named by the network notices on the saved routes -->
+    <string name="route_works_title">Thi công và gián đoạn trên tuyến của bạn</string>
+    <string name="route_works_title_route">Thi công và gián đoạn trên tuyến này</string>
+    <string name="route_works_none">Hiện không có thông báo thi công hay gián đoạn nào nêu tên các ga trên tuyến của bạn.</string>
+    <string name="route_works_names">Thông báo nêu: %1$s</string>
+    <string name="route_works_route_names">%1$s — thông báo nêu: %2$s</string>
+    <string name="route_works_line">tuyến %1$s</string>
+    <string name="route_works_date">Ngày được nêu: %1$s</string>
+    <string name="route_works_dates">Các ngày được nêu: từ %1$s đến %2$s</string>
+    <string name="route_works_note">Thông báo được ghép với tuyến theo tên ga và tên tuyến có trong nội dung: hãy luôn đọc toàn văn.</string>
+    <plurals name="route_works_show_more">
+        <item quantity="other">Hiện thêm %d thông báo</item>
+    </plurals>
 </resources>

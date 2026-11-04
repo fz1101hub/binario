@@ -75,7 +75,7 @@
     <string name="station_badge_metro">ป้ายรถไฟใต้ดิน</string>
     <string name="station_badge_tram">ป้ายรถราง</string>
     <string name="station_badge_funicular">รถรางไต่เขาหรือลิฟต์</string>
-    <string name="settings_privacy_new_sources">เมื่อเปิดใช้ แหล่งข้อมูลเพิ่มเติมจะได้รับเฉพาะสิ่งที่คำขอต้องใช้ โดยไม่มีบัญชีหรือตำแหน่ง: transport.opendata.ch ได้รับหมายเลข UIC ของสถานีในสวิตเซอร์แลนด์ (หรือชื่อสถานีชายแดนหนึ่งครั้ง); ViaggiaTreno ได้รับหมายเลขขบวนเพื่อดูประกาศ ผ่าน HTTP ที่ไม่เข้ารหัสเช่นเดียวกับ API สาธารณะของบริการ; RFI, Trenitalia และ Trenord ไม่ได้รับข้อมูลใดของคุณสำหรับรายการประกาศ ซึ่งจะดาวน์โหลดเมื่อคุณเปิดส่วนประกาศ รายละเอียด หรือกระดานขบวนรถที่เกี่ยวข้องเท่านั้น; Open-Meteo ได้รับพิกัดที่ปัดเศษของสถานีปลายทาง ลิงก์ภายนอกจะเปิดในเบราว์เซอร์เมื่อคุณแตะเท่านั้น</string>
+    <string name="settings_privacy_new_sources">เมื่อเปิดใช้ แหล่งข้อมูลเพิ่มเติมจะได้รับเฉพาะสิ่งที่คำขอต้องใช้ โดยไม่มีบัญชีหรือตำแหน่ง: transport.opendata.ch ได้รับหมายเลข UIC ของสถานีในสวิตเซอร์แลนด์ (หรือชื่อสถานีชายแดนหนึ่งครั้ง); ViaggiaTreno ได้รับหมายเลขขบวนเพื่อดูประกาศ ผ่าน HTTP ที่ไม่เข้ารหัสเช่นเดียวกับ API สาธารณะของบริการ; RFI, Trenitalia และ Trenord ไม่ได้รับข้อมูลใดของคุณสำหรับรายการประกาศ ซึ่งจะดาวน์โหลดเมื่อคุณเปิดส่วนประกาศ รายละเอียด กระดานขบวนรถที่เกี่ยวข้อง หรือส่วนงานซ่อมบำรุงในเส้นทางของคุณเท่านั้น; Open-Meteo ได้รับพิกัดที่ปัดเศษของสถานีปลายทาง ลิงก์ภายนอกจะเปิดในเบราว์เซอร์เมื่อคุณแตะเท่านั้น</string>
 
     <string name="app_name">Binario</string>
     <string name="widget_description">แสดงขบวนถัดไปบนเส้นทาง Binario ของคุณ</string>
@@ -95,6 +95,12 @@
     <string name="shortcut_active_route">เส้นทางปัจจุบัน</string>
     <string name="shortcut_next_departures">ขบวนที่จะออกถัดไป</string>
     <string name="shortcut_train_search">ค้นหาขบวนรถ</string>
+    <string name="shortcut_route_removed">ไม่ได้บันทึกเส้นทางนี้ใน Binario แล้ว</string>
+    <string name="tile_next_train_label">รถไฟขบวนถัดไป</string>
+    <string name="tile_next_train_no_route">ไม่มีเส้นทางที่ใช้งานอยู่</string>
+    <string name="tile_next_train_none">วันนี้ไม่มีรถไฟแล้ว</string>
+    <string name="tile_next_train_departure">%1$s · %2$s</string>
+    <string name="tile_next_train_description">รถไฟขบวนถัดไปตามตารางเวลา: %1$s เวลา %2$s, %3$s</string>
 
     <!-- Main app shell and primary journey planner. -->
     <string name="app_brand">BINARIO</string>
@@ -378,6 +384,26 @@
     <string name="map_nearby_content_description">แผนที่สถานีที่ใกล้ที่สุด สถานีเดียวกันพร้อมระยะทางแสดงอยู่ด้านล่าง</string>
     <string name="map_nearby_tap_hint">แตะสถานีเพื่อเปิดกระดานขบวนรถ</string>
     <string name="map_legend_user_position">ตำแหน่งโดยประมาณ ไม่ถูกบันทึก</string>
+    <string name="live_map_title">ขบวนรถที่กำลังวิ่ง</string>
+    <string name="live_map_area_subtitle">รอบ %1$s</string>
+    <string name="live_map_content_description">แผนที่ขบวนรถที่กำลังวิ่ง %1$s ตำแหน่งเป็นค่าประมาณจากตารางเวลา ไม่ใช่ตำแหน่ง GPS และขบวนรถชุดเดียวกันแสดงอยู่ในรายการใต้แผนที่</string>
+    <string name="live_map_note">ตำแหน่งโดยประมาณ ไม่ใช่ GPS: Binario คำนวณว่าขบวนรถแต่ละขบวนควรอยู่ที่ใดตามตารางเวลา บนเส้นตรงระหว่างสองจุดจอด (ไม่ใช่ตามแนวราง) หากกระดานขบวนรถมีความล่าช้าของขบวนรถอยู่แล้ว การประมาณจะนำมาคิดด้วย ตำแหน่งจะอัปเดตทุก 30 วินาทีขณะที่แผนที่เปิดอยู่</string>
+    <string name="live_map_legend_live">ตำแหน่งประมาณรวมความล่าช้าจากกระดานขบวนรถ</string>
+    <string name="live_map_legend_timetable">ตำแหน่งประมาณจากตารางเวลาเท่านั้น</string>
+    <string name="live_map_loading">กำลังคำนวณตำแหน่งโดยประมาณ…</string>
+    <string name="live_map_zoom_in">ซูมแผนที่เข้าเพื่อดูขบวนรถที่กำลังวิ่ง</string>
+    <string name="live_map_none">ตามตารางเวลา ไม่มีขบวนรถวิ่งอยู่ในพื้นที่ที่แสดง</string>
+    <string name="live_map_row_title">%1$s ไป %2$s</string>
+    <string name="live_map_row_at">จอดอยู่ที่ %1$s</string>
+    <string name="live_map_row_between">ระหว่าง %1$s และ %2$s</string>
+    <string name="live_map_row_live">ประมาณด้วยข้อมูลจากกระดานขบวนรถ: %1$s</string>
+    <string name="live_map_row_timetable">ประมาณจากตารางเวลาเท่านั้น</string>
+    <plurals name="live_map_count">
+        <item quantity="other">ขบวนรถที่กำลังวิ่ง %d ขบวน</item>
+    </plurals>
+    <plurals name="live_map_capped">
+        <item quantity="other">แสดง %d ขบวนที่ใกล้ที่สุด</item>
+    </plurals>
     <string name="settings_privacy_maps">แผนที่: จะเปิดเมื่อคุณขยายหรือโหลดเท่านั้น ในการวาดแผนที่ แอปจะดาวน์โหลดรูปแบบ ไทล์ ฟอนต์ และไอคอนจาก tiles.openfreemap.org (OpenFreeMap) ซึ่งจะเห็นที่อยู่ IP ของคุณและพื้นที่ที่แสดง ได้แก่ เส้นทางของขบวนรถ สถานีที่เลือก หรือพื้นที่รอบตำแหน่งโดยประมาณของคุณสำหรับสถานีใกล้เคียง ตำแหน่งจะไม่ถูกส่งหรือบันทึก ไทล์จะเก็บไว้ในแคชในเครื่องของแอป</string>
     <string name="settings_credits_maps">แผนที่: OpenFreeMap © OpenMapTiles, ข้อมูล © OpenStreetMap contributors (ODbL 1.0) แสดงผลด้วย MapLibre Native สัญญาอนุญาต BSD 2-Clause</string>
     <string name="settings_credits_trenitalia">ตารางเวลา Trenitalia (รถไฟและรถบัส): ข้อมูลทางการของ Trenitalia S.p.A. ที่เผยแพร่บนจุดเข้าถึงแห่งชาติของอิตาลี (CCISS) ตามมาตรา 52 ของ CAD และข้อบังคับ EU 2017/1926 https://www.cciss.it/nap/mmtis/public/en/catalog/Dataset/1077621 การแปลงเป็น GTFS © Clément Desouche, CC BY 4.0: https://github.com/deryclem/trenitalia-gtfs (สัญญาอนุญาต https://creativecommons.org/licenses/by/4.0/) Binario ใช้เฉพาะเวลาตามตาราง ไม่รวมรูปทรงเส้นทาง และไม่มีส่วนเกี่ยวข้องกับ Trenitalia</string>
@@ -657,6 +683,14 @@
     <string name="background_status_exact_on">อนุญาตการปลุกแบบตรงเวลาแล้ว</string>
     <string name="background_status_battery_optimized">การเพิ่มประสิทธิภาพแบตเตอรี่เปิดอยู่สำหรับ Binario Android อาจเลื่อนการตรวจสอบเบื้องหลัง</string>
     <string name="background_status_battery_unrestricted">การเพิ่มประสิทธิภาพแบตเตอรี่ปิดอยู่สำหรับ Binario</string>
+    <string name="background_runs_title">การตรวจสอบเบื้องหลังครั้งถัดไป</string>
+    <string name="background_runs_none">ไม่มีการตรวจสอบเบื้องหลังที่ตั้งเวลาไว้</string>
+    <string name="background_runs_running">%1$s: กำลังทำงาน</string>
+    <string name="background_runs_soon">%1$s: อีกสักครู่</string>
+    <string name="background_runs_today">%1$s: วันนี้ เวลา %2$s</string>
+    <string name="background_runs_tomorrow">%1$s: พรุ่งนี้ เวลา %2$s</string>
+    <string name="background_runs_later">%1$s: %2$s เวลา %3$s</string>
+    <string name="background_runs_note">เวลาโดยประมาณ: Android อาจเลื่อนเวลาเพื่อประหยัดแบตเตอรี่หรือระหว่างรอเครือข่าย</string>
     <string name="commuter_alert_quiet_hours_feedback">บันทึกการแจ้งเตือนแล้วแต่ยังไม่ได้ตั้งเวลา เวลาแจ้งล่วงหน้าอยู่ในช่วงเวลาเงียบ 22:00–07:00</string>
     <string name="commuter_alert_invalid_time_feedback">บันทึกการแจ้งเตือนแล้วแต่ยังไม่ได้ตั้งเวลา เวลาไม่ถูกต้อง</string>
     <string name="commuter_alert_disabled_feedback">บันทึกการแจ้งเตือนแล้วแต่ปิดอยู่</string>
@@ -975,6 +1009,9 @@
     <string name="widget_settings_until_arrival_description">ขบวนที่ออกไปแล้วจะยังอยู่ในรายการ โดยทำเครื่องหมายว่า “กำลังเดินทาง” จนถึงเวลาที่คาดว่าจะถึงปลายทาง</string>
     <string name="widget_settings_show_platform">แสดงชานชาลา</string>
     <string name="widget_settings_show_train_name">แสดงชื่อและประเภทขบวนรถ</string>
+    <string name="widget_settings_show_reliability">แสดงความน่าเชื่อถือ</string>
+    <string name="widget_settings_show_reliability_description">หลังรถไฟแต่ละขบวน แสดงสัดส่วนวันที่ตรงเวลาใน 30 วันล่าสุด: สถิติไม่เป็นทางการของ Binario จากข้อมูล ViaggiaTreno ซึ่งรวมอยู่ในแอปและแสดงเฉพาะเมื่อมีการสังเกตอย่างน้อย 5 ครั้ง</string>
+    <string name="widget_reliability_mark">ตรงเวลา %1$d%%</string>
     <string name="station_widget_display_name_description">แทนที่ชื่อสถานีในส่วนหัว และใช้กับวิดเจ็ตนี้เท่านั้น</string>
     <string name="station_widget_settings_nearest">ปุ่ม “📍 ใกล้ที่สุด”</string>
     <string name="station_widget_settings_nearest_description">เมื่อคุณแตะ วิดเจ็ตจะขอตำแหน่งโดยประมาณหนึ่งครั้งและสลับไปยังสถานีที่ใกล้ที่สุดในแคตตาล็อก ตำแหน่งจะไม่ถูกบันทึกหรือส่งไป การอัปเดตอัตโนมัติจะใช้สถานีที่เลือกล่าสุดเสมอ</string>
@@ -1125,6 +1162,17 @@
     <string name="punctuality_history_show_all">แสดงทุกวันที่</string>
     <string name="settings_punctuality_recording_title">ความตรงต่อเวลาของขบวนโปรด</string>
     <string name="settings_punctuality_recording_description">วันละครั้งหลังเวลาถึงตามตาราง จะขอสถานะของขบวนรถ และบันทึกความล่าช้าสุดท้ายรวมถึงความล่าช้าที่จุดจอดต่างๆ ไว้ในโทรศัพท์เครื่องนี้เท่านั้น ไม่เกิน 365 วัน</string>
+    <string name="settings_weekly_digest_title">สรุปรายสัปดาห์ของขบวนโปรด</string>
+    <string name="settings_weekly_digest_description">ทุกวันอาทิตย์ราว 19:00 น. การแจ้งเตือนจะสรุปความตรงต่อเวลาของขบวนโปรดในสัปดาห์นั้นที่บันทึกไว้ในโทรศัพท์เครื่องนี้ และหากมีข้อมูล ความน่าเชื่อถือบนเครือข่ายใน 30 วันล่าสุด พร้อมระบุขบวนที่แย่ลง ไม่มีการส่งคำขอทางเครือข่าย และไม่แจ้งระหว่าง 22:00 ถึง 7:00 น.</string>
+    <string name="weekly_digest_channel_name">สรุปรายสัปดาห์</string>
+    <string name="weekly_digest_channel_description">เย็นวันอาทิตย์ แจ้งความตรงต่อเวลาของขบวนโปรดตลอดสัปดาห์</string>
+    <string name="weekly_digest_title">รถไฟของคุณสัปดาห์นี้</string>
+    <string name="weekly_digest_train_line">%1$s: %2$s</string>
+    <string name="weekly_digest_no_runs">ไม่มีเที่ยวที่บันทึกไว้</string>
+    <plurals name="weekly_digest_network">
+        <item quantity="other">%1$d วันล่าสุดบนเครือข่าย: ตรงเวลา %2$d%%</item>
+    </plurals>
+    <string name="weekly_digest_worse">แย่ลง: %1$s ตรงเวลา %2$d%% ในสัปดาห์นี้ (ปกติ %3$d%%)</string>
     <string name="settings_live_updates_title">การแจ้งเตือนแบบเรียลไทม์</string>
     <string name="settings_live_updates_permission">หากต้องการรับการแจ้งเตือนเหล่านี้ ให้อนุญาตการแจ้งเตือนของ Binario ในการตั้งค่า Android</string>
     <string name="settings_live_updates_privacy">การตรวจสอบเหล่านี้ทำงานในเบื้องหลังเฉพาะในช่วงเวลาที่ระบุ MIT จะได้รับคำขอที่ไม่มีข้อมูลของคุณ แหล่งข้อมูลสถานะขบวนรถจะได้รับหมายเลขขบวนและวันที่ เช่นเดียวกับเมื่อคุณเปิดรายละเอียด ไม่มีสิ่งใดถูกเก็บไว้นอกโทรศัพท์</string>
@@ -1451,6 +1499,30 @@
         <item quantity="other">%1$s: ล่าช้า %2$d จาก %3$d ครั้ง</item>
     </plurals>
     <string name="reliability_threshold_mixed_note">การมาถึงที่ล่าช้าไม่เกิน 5 นาทีสำหรับ Frecce, Italo, EuroCity, Eurostar และ EuroNight และไม่เกิน 15 นาทีสำหรับรถไฟอื่น ถือว่าตรงเวลา</string>
+    <!-- Usual platform and weekday punctuality of the network statistics (stop elements 7 and 8) -->
+    <plurals name="reliability_usual_platform">
+        <item quantity="other">ปกติชานชาลา %1$s (%2$d จาก %3$d ครั้ง)</item>
+    </plurals>
+    <string name="reliability_weekday_monday">ทุกวันจันทร์</string>
+    <string name="reliability_weekday_tuesday">ทุกวันอังคาร</string>
+    <string name="reliability_weekday_wednesday">ทุกวันพุธ</string>
+    <string name="reliability_weekday_thursday">ทุกวันพฤหัสบดี</string>
+    <string name="reliability_weekday_friday">ทุกวันศุกร์</string>
+    <string name="reliability_weekday_saturday">ทุกวันเสาร์</string>
+    <string name="reliability_weekday_sunday">ทุกวันอาทิตย์</string>
+    <plurals name="reliability_weekday_worse">
+        <item quantity="other">%1$s ตรงเวลา %2$d จาก %3$d ครั้ง แย่กว่าค่าเฉลี่ย</item>
+    </plurals>
+    <plurals name="reliability_weekday_better">
+        <item quantity="other">%1$s ตรงเวลา %2$d จาก %3$d ครั้ง ดีกว่าค่าเฉลี่ย</item>
+    </plurals>
+    <!-- Route results: «Più presto» / «Più tardi», empty searched window, RFI «RITARDO» without minutes -->
+    <string name="results_earlier">ก่อนหน้า</string>
+    <string name="results_later">ถัดไป</string>
+    <string name="results_no_more_earlier">ไม่มีตัวเลือกอื่นที่เร็วกว่านี้</string>
+    <string name="results_no_more_later">ไม่มีตัวเลือกอื่นที่ช้ากว่านี้</string>
+    <string name="results_no_trains_until">ไม่มีขบวนจนถึง %1$s</string>
+    <string name="service_late_minutes_unpublished">ล่าช้า (ไม่ได้เผยแพร่จำนวนนาที)</string>
     <string name="bikes_allowed">นำจักรยานขึ้นได้</string>
     <string name="bikes_not_allowed">นำจักรยานขึ้นไม่ได้</string>
     <string name="bikes_conditions_link">นำจักรยานขึ้นรถไฟ: เงื่อนไขของ %1$s</string>
@@ -1459,4 +1531,42 @@
     <string name="compensation_notice_quarter">มาถึง %1$s ช้า %2$s: ตามข้อบังคับ (EU) 2021/782 คุณอาจมีสิทธิ์ได้รับค่าชดเชย 25%% ของราคาตั๋ว (50%% ตั้งแต่ 120 นาที)</string>
     <string name="compensation_notice_half">มาถึง %1$s ช้า %2$s: ตามข้อบังคับ (EU) 2021/782 คุณอาจมีสิทธิ์ได้รับค่าชดเชย 50%% ของราคาตั๋ว</string>
     <string name="compensation_notice_conditions">บริษัทรถไฟอาจปฏิเสธจำนวนเงินที่ต่ำกว่า 4 ยูโร และความล่าช้าจากสาเหตุภายนอก เช่น สภาพอากาศรุนแรงหรือมีคนอยู่บนราง ส่วนการนัดหยุดงานของพนักงานของบริษัทเองไม่ถือเป็นสาเหตุภายนอก สำหรับรถไฟภูมิภาค เงื่อนไขยังขึ้นอยู่กับสัญญาบริการกับภูมิภาคด้วย</string>
+    <!-- Station board: RFI Sala Blu assistance (links only) -->
+    <string name="station_sala_blu_title">ความช่วยเหลือ Sala Blu</string>
+    <string name="station_sala_blu_description">RFI ให้ความช่วยเหลือฟรีที่สถานีแก่ผู้พิการหรือผู้ที่เคลื่อนไหวลำบาก โดยต้องจองล่วงหน้า</string>
+    <string name="station_sala_blu_page">หน้าความช่วยเหลือของ RFI</string>
+    <string name="station_sala_blu_call_toll_free">โทร %1$s (ฟรีจากโทรศัพท์บ้าน)</string>
+    <string name="station_sala_blu_call_national">โทร %1$s (โทรจากมือถือได้ด้วย)</string>
+    <!-- Station board: direct connections from the station (embedded timetables) -->
+    <string name="direct_connections_title">เส้นทางตรง</string>
+    <string name="direct_connections_from">จาก %1$s โดยไม่ต้องเปลี่ยน</string>
+    <string name="direct_connections_note">จากตารางเวลาตามแผนที่มีในแอป ไม่รวมความล่าช้าหรือการยกเลิก แตะปลายทางเพื่อค้นหารถไฟ</string>
+    <string name="direct_connections_filter">กรองปลายทาง</string>
+    <string name="direct_connections_loading">กำลังอ่านตารางเวลา…</string>
+    <string name="direct_connections_empty">ตารางเวลาที่มีในแอปไม่มีเส้นทางตรงจากสถานีนี้ในวันนี้</string>
+    <string name="direct_connections_no_match">ไม่มีปลายทางที่มี “%1$s”</string>
+    <string name="direct_connections_trains">รถไฟ</string>
+    <string name="direct_connections_urban">รถไฟใต้ดิน รถราง และรถกระเช้าราง</string>
+    <plurals name="direct_connections_train_count">
+        <item quantity="other">รถไฟ %d ขบวน</item>
+    </plurals>
+    <plurals name="direct_connections_runs">
+        <item quantity="other">%d เที่ยว</item>
+    </plurals>
+    <string name="direct_connections_first_last">เที่ยวแรก %1$s เที่ยวสุดท้าย %2$s</string>
+    <string name="direct_connections_fastest">เร็วที่สุด %1$s</string>
+    <string name="direct_connections_from_stop">จากป้าย %1$s ที่อยู่ใกล้ๆ</string>
+    <!-- Per te and route board: works and interruptions named by the network notices on the saved routes -->
+    <string name="route_works_title">งานซ่อมบำรุงและการหยุดเดินรถในเส้นทางของคุณ</string>
+    <string name="route_works_title_route">งานซ่อมบำรุงและการหยุดเดินรถในเส้นทางนี้</string>
+    <string name="route_works_none">ขณะนี้ไม่มีประกาศงานซ่อมบำรุงหรือการหยุดเดินรถที่ระบุสถานีในเส้นทางของคุณ</string>
+    <string name="route_works_names">ประกาศระบุถึง: %1$s</string>
+    <string name="route_works_route_names">%1$s — ประกาศระบุถึง: %2$s</string>
+    <string name="route_works_line">สาย %1$s</string>
+    <string name="route_works_date">วันที่ที่ระบุ: %1$s</string>
+    <string name="route_works_dates">วันที่ที่ระบุ: %1$s ถึง %2$s</string>
+    <string name="route_works_note">ประกาศถูกจับคู่กับเส้นทางจากชื่อสถานีและสายที่อยู่ในข้อความ โปรดอ่านข้อความฉบับเต็มเสมอ</string>
+    <plurals name="route_works_show_more">
+        <item quantity="other">แสดงประกาศอีก %d รายการ</item>
+    </plurals>
 </resources>

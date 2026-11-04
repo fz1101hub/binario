@@ -282,7 +282,11 @@ class StationBoardRealtimeReconciler(
                 service.delayMinutes
             }
 
-            val liveStatus = statusMatch?.entry?.status?.value?.toLegacyStatus()
+            // A board that shows the train late without minutes («RITARDO»): no verified status and no delay to show,
+            // so nothing reads it as on time; the train says «In ritardo (minuti non pubblicati)».
+            val lateWithoutMinutes = expected == null && delayMinutes <= 0 && !service.operationalStatusVerified &&
+                statusMatch?.entry?.status?.value == RunStatus.DELAYED
+            val liveStatus = statusMatch?.entry?.status?.value?.takeUnless { lateWithoutMinutes }?.toLegacyStatus()
                 ?: if (expected != null) {
                     if (delayMinutes > 0) ServiceStatus.DELAYED else ServiceStatus.ON_TIME
                 } else null
@@ -334,7 +338,8 @@ class StationBoardRealtimeReconciler(
                     routeChangeSources.mapTo(linkedSetOf()) { it.sourceId.value }
                 } else {
                     service.routeChangeSourceIds
-                }
+                },
+                delayMinutesUnpublished = (lateWithoutMinutes || service.delayMinutesUnpublished) && liveStatus == null && expected == null
             )
         }
 

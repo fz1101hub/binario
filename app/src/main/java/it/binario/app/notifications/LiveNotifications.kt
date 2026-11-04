@@ -31,7 +31,10 @@ internal enum class LiveChannel(val id: String, val nameRes: Int, val descriptio
     ),
 
     /** "Il treno sta arrivando": time-sensitive, like the commuter alerts. */
-    APPROACH("binario_approach_alerts", R.string.approach_alert_channel_name, R.string.approach_alert_channel_description, NotificationManager.IMPORTANCE_HIGH);
+    APPROACH("binario_approach_alerts", R.string.approach_alert_channel_name, R.string.approach_alert_channel_description, NotificationManager.IMPORTANCE_HIGH),
+
+    /** The Sunday summary of the favourite trains: never urgent, so it comes without sound. */
+    WEEKLY_DIGEST("binario_weekly_digest", R.string.weekly_digest_channel_name, R.string.weekly_digest_channel_description, NotificationManager.IMPORTANCE_LOW);
 
     fun ensure(context: Context): String {
         context.getSystemService(NotificationManager::class.java)?.createNotificationChannel(
@@ -48,6 +51,7 @@ internal object LiveNotifications {
     const val FOLLOWED_TRIP_ID = 0x5EA1
     const val STRIKE_ID = 0x5EA2
     const val FOLLOWED_TRIP_ALERT_ID = 0x5EA3
+    const val WEEKLY_DIGEST_ID = 0x5EA4
 
     /** Whether Binario may post now: the runtime permission (Android 13+) and the app's notification switch. */
     fun allowed(context: Context): Boolean {
@@ -82,8 +86,8 @@ internal object LiveNotifications {
 /**
  * The switches of the live features, kept on the device: notices for followed and favourite trains (off until the
  * user turns it on), the day-before strike reminder (on by default, effective only when notifications are allowed)
- * and the daily punctuality recording of the favourite trains (on by default, nothing leaves the device but the
- * status request itself).
+ * the daily punctuality recording of the favourite trains (on by default, nothing leaves the device but the
+ * status request itself) and the weekly digest of the favourite trains (off until the user turns it on, no request).
  */
 internal class LiveNotificationSettings(context: Context) {
     private val preferences = context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
@@ -100,11 +104,16 @@ internal class LiveNotificationSettings(context: Context) {
         get() = preferences.getBoolean(KEY_PUNCTUALITY, true)
         set(value) = preferences.edit { putBoolean(KEY_PUNCTUALITY, value) }
 
+    var weeklyDigestEnabled: Boolean
+        get() = preferences.getBoolean(KEY_WEEKLY_DIGEST, false)
+        set(value) = preferences.edit { putBoolean(KEY_WEEKLY_DIGEST, value) }
+
     private companion object {
         const val PREFERENCES = "binario_live_notifications_v1"
         const val KEY_TRAIN_ALERTS = "train_alerts"
         const val KEY_STRIKES = "strike_reminder"
         const val KEY_PUNCTUALITY = "punctuality_recording"
+        const val KEY_WEEKLY_DIGEST = "weekly_digest"
     }
 }
 
@@ -117,6 +126,7 @@ object LiveNotificationScheduling {
         runCatching { StrikeReminderScheduler.reschedule(app, keepPending = true) }
         runCatching { PunctualityRecorderScheduler.reschedule(app) }
         runCatching { ApproachAlertScheduler.reschedule(app) }
+        runCatching { WeeklyDigestScheduler.reschedule(app, keepPending = true) }
     }
 
     fun onFavouritesChanged(context: Context) {

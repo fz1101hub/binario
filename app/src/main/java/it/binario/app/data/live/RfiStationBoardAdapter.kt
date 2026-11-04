@@ -307,6 +307,8 @@ class RfiStationBoardAdapter(
             val delay = publishedDelay ?: 0
             val statusText = row.text()
             val cancelled = statusText.hasExplicitCancellationStatus()
+            // The bare label «RITARDO» says the train is late without the minutes: never on time, never a number.
+            val lateWithoutMinutes = publishedDelay == null && !cancelled && (isBareLateLabel(delayText) || isBareLateLabel(delayLabel))
             val operationalVerified = cancelled || publishedDelay != null
             val status = when {
                 cancelled -> ServiceStatus.CANCELLED
@@ -341,10 +343,15 @@ class RfiStationBoardAdapter(
                 transferCount = 0,
                 operationalStatusVerified = operationalVerified,
                 routeChange = routeChange,
-                routeChangeSourceIds = if (routeChange != null) setOf(descriptor.id.value) else emptySet()
+                routeChangeSourceIds = if (routeChange != null) setOf(descriptor.id.value) else emptySet(),
+                delayMinutesUnpublished = lateWithoutMinutes
             )
         }
     }
+
+    /** «RITARDO» alone (any case, spaces or quotes around it), as the arrivals boards publish it without minutes. */
+    private fun isBareLateLabel(value: String): Boolean =
+        value.uppercase(Locale.ROOT).normalizeSpace().removeSurrounding("\"").removeSurrounding("'").trim() == "RITARDO"
 
     private fun operatorFrom(carrier: String, category: String, number: String): RailOperator {
         val all = "$carrier $category $number".uppercase(Locale.ROOT)

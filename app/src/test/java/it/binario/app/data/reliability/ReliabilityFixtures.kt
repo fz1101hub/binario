@@ -18,6 +18,26 @@ object ReliabilityFixtures {
     fun stop7(code: String, samples: Int, mean: Double, cumulative: List<Int>, maxDelay: Int, scheduledMinute: Int?, suppressed: Int = 0): String =
         "[\"$code\",$samples,$mean,${cumulative.joinToString(",", "[", "]")},$suppressed,$maxDelay,${scheduledMinute ?: "null"}]"
 
+    /**
+     * A stop of extension 2: with the usual platform (`[name, count, observed]`, raw JSON so tests can break it) and the
+     * seven weekday triples (raw JSON too); "null" for either is the published null.
+     */
+    fun stop9(
+        code: String,
+        samples: Int,
+        mean: Double,
+        cumulative: List<Int>,
+        platform: String,
+        weekdays: String,
+        maxDelay: Int = 30,
+        scheduledMinute: Int? = 480,
+        suppressed: Int = 0
+    ): String =
+        "[\"$code\",$samples,$mean,${cumulative.joinToString(",", "[", "]")},$suppressed,$maxDelay,${scheduledMinute ?: "null"},$platform,$weekdays]"
+
+    /** Seven weekday triples, Monday first, as the JSON of a stop. */
+    fun weekdays(vararg days: Triple<Int, Int, Int>): String = days.joinToString(",", "[", "]") { "[${it.first},${it.second},${it.third}]" }
+
     fun train(number: String, origin: String, category: String, days: Int, cancelled: Int, vararg stops: String): String =
         "{\"n\":\"$number\",\"o\":\"$origin\",\"c\":\"$category\",\"d\":$days,\"x\":$cancelled,\"s\":[${stops.joinToString(",")}]}"
 

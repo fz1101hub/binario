@@ -54,16 +54,35 @@ final class AppModel: ObservableObject {
     @Published var persistenceMessageKey: String?
     @Published var selectedTab: Tab = .planner
     @Published private(set) var plannerRequest: PlannerRequest?
+    /// The bundled network statistics; nil while reading, when the build carries no file or it
+    /// cannot be read (the reliability lines, «Più affidabili» and the detail block are hidden).
+    @Published private(set) var reliabilityStats: NetworkReliabilityStats? = nil
+    /// The statistics of `latestSnapshot`'s trains and route.
+    @Published private(set) var resultReliability: JourneyReliability? = nil
+    /// The saved route shown on the Watch whenever no search for now owns it («Mostra su Watch»).
+    @Published private(set) var pinnedWatchRouteID: String? = nil
+    /// «Collegamenti con gli aeroporti»: the airport routes the bundled timetables can answer.
+    @Published private(set) var airportLinks: [AirportLink] = []
 
     private(set) var repository: any JourneyRepository
     private var searchRequestID = 0
     /// The last search that was for now, whose route the Watch shows; nil once the input changes.
     private var watchRouteQuery: JourneyQuery?
+    /// Bumped by every publication of the pinned route, so only the latest one reaches the Watch.
+    private var pinnedPublicationID = 0
+    /// The publication of the pinned route started by a pin, an edit or sharing turned on.
+    private var pinnedPublication: Task<Void, Never>?
+    /// The Watch asked for a refresh while the timetables were still being opened (a background
+    /// launch by Watch Connectivity): answered, and the background time ended, once they are.
+    private var pendingWatchRefreshEnd: (@MainActor () -> Void)?
+    /// The catalogue name of each ViaggiaTreno station code (the first station with that railway code).
+    private var stationNamesByCode: [String: String] = [:]
     let versionDisplay: String
 
     private let savedRouteStore: SavedRouteStore
     private let watchSharingStore: WatchSharingPreferenceStore
     private let watchPublisher: WatchSnapshotPublisher?
+    private let backgroundActivity: (any BackgroundActivityRunning)?
 
     init(
         catalogState: CatalogState,
@@ -73,6 +92,7 @@ final class AppModel: ObservableObject {
         scheduleState: ScheduleState = .available,
         coveredStationIDs: Set<String>? = nil,
         watchPublisher: WatchSnapshotPublisher?,
+        backgroundActivity: (any BackgroundActivityRunning)? = nil,
         versionDisplay: String
     ) {
         self.catalogState = catalogState
@@ -83,11 +103,20 @@ final class AppModel: ObservableObject {
         self.coveredStationIDs = coveredStationIDs
         self.latestSnapshot = nil
         self.watchPublisher = watchPublisher
+        self.backgroundActivity = backgroundActivity
         self.versionDisplay = versionDisplay
-        self.savedRoutes = savedRouteStore.load()
+        let routes = savedRouteStore.load()
+        self.savedRoutes = routes
         let sharingEnabled = watchSharingStore.load()
         self.watchSharingEnabled = sharingEnabled
         self.watchSyncStatus = sharingEnabled ? .activating : .disabled
+        // A pin is kept only for a route that is still saved.
+        let pinned = watchSharingStore.loadPinnedRouteID()
+        if let pinned, routes.contains(where: { $0.id == pinned }) {
+            self.pinnedWatchRouteID = pinned
+        } else if pinned != nil {
+            watchSharingStore.savePinnedRouteID(nil)
+        }
 
         watchPublisher?.statusDidChange = { [weak self] status in
             guard let self else { return }
@@ -114,6 +143,13 @@ final class AppModel: ObservableObject {
         publisher = nil
         #endif
 
+        let background: (any BackgroundActivityRunning)?
+        #if canImport(UIKit)
+        background = UIKitBackgroundActivity()
+        #else
+        background = nil
+        #endif
+
         let model = AppModel(
             catalogState: .loading,
             savedRouteStore: SavedRouteStore(),
@@ -121,8 +157,16 @@ final class AppModel: ObservableObject {
             repository: FailClosedJourneyRepository(),
             scheduleState: .loading,
             watchPublisher: publisher,
+            backgroundActivity: background,
             versionDisplay: versionFormatter.displayVersion(bundle: bundle)
         )
+
+        // The statistics are optional: a build without the file shows no reliability at all.
+        let statisticsURL = bundle.url(
+            forResource: NetworkReliabilityParser.resourceName,
+            withExtension: NetworkReliabilityParser.resourceExtension
+        )
+        Task { await model.loadReliability(url: statisticsURL) }
 
         if let url = bundle.url(forResource: "curated_it_rail_stations", withExtension: "json") {
             Task {
@@ -160,6 +204,53 @@ final class AppModel: ObservableObject {
     func loadCatalog(data: @escaping @Sendable () throws -> Data) async {
         catalogState = .loading
         catalogState = await StationCatalogLoader.load(data: data)
+        stationNamesByCode = [:]
+        if case let .available(catalog) = catalogState {
+            for station in catalog.stations {
+                guard let code = NetworkReliability.stationCode(StationIdentity(station)), stationNamesByCode[code] == nil else { continue }
+                stationNamesByCode[code] = station.name
+            }
+        }
+        updateAirportLinks()
+    }
+
+    /// Reads the bundled network statistics once, off the main actor.
+    func loadReliability(url: URL?) async {
+        let stats = await NetworkReliabilityLoader.load(url: url)
+        reliabilityStats = stats
+        if let stats, let latestSnapshot {
+            resultReliability = JourneyReliability.assess(latestSnapshot, stats: stats)
+        }
+    }
+
+    /// The catalogue name of a ViaggiaTreno station code, for the stops the statistics name.
+    func stationName(forReliabilityCode code: String) -> String? {
+        stationNamesByCode[code]
+    }
+
+    /// The «Affidabilità ultimi N giorni» block of a listed train: boarded at the query's origin
+    /// and measured at its destination; nil without statistics or enough samples.
+    func reliabilityDetail(for service: TrainService, query: JourneyQuery) -> NetworkReliabilityDetail? {
+        guard let reliabilityStats else { return nil }
+        return NetworkReliabilityDetail.of(
+            reliabilityStats,
+            number: service.number,
+            boardingCode: NetworkReliability.stationCode(query.origin),
+            destinationCode: NetworkReliability.stationCode(query.destination)
+        )
+    }
+
+    /// Recomputes `airportLinks` once both the catalogue and the timetable index are read.
+    private func updateAirportLinks() {
+        guard case let .available(catalog) = catalogState, let coveredStationIDs else {
+            airportLinks = []
+            return
+        }
+        airportLinks = AirportRoutes.links(
+            catalog: catalog,
+            coveredStationIDs: coveredStationIDs,
+            packsWithTrips: Set(includedPacks.map(\.sourceID))
+        )
     }
 
     func suggestions(for query: String) -> [Station] {
@@ -208,6 +299,8 @@ final class AppModel: ObservableObject {
             coveredStationIDs = nil
             sourcePolicy = nil
             scheduleState = .unavailable
+            updateAirportLinks()
+            endPendingWatchRefresh()
             return
         }
         repository = installed.repository
@@ -215,6 +308,10 @@ final class AppModel: ObservableObject {
         coveredStationIDs = installed.coveredStationIDs
         sourcePolicy = installed.sourcePolicy
         scheduleState = .available
+        updateAirportLinks()
+        // At launch the Watch gets the pinned route; a refresh it asked for meanwhile is answered.
+        await refreshWatchSnapshot()
+        endPendingWatchRefresh()
     }
 
     /// The packs whose filter retained at least one rail trip: the feeds that can answer a search.
@@ -244,10 +341,12 @@ final class AppModel: ObservableObject {
         case let .available(snapshot):
             searchState = .idle
             latestSnapshot = snapshot
+            resultReliability = reliabilityStats.map { JourneyReliability.assess(snapshot, stats: $0) }
             if isForNow { publishAvailableSnapshot(snapshot) }
         case let .unavailable(reason):
             searchState = .unavailable(reason)
             latestSnapshot = nil
+            resultReliability = nil
             if reason == .noAuthorizedProvider || reason == .providerInvalid {
                 scheduleState = .unavailable
             }
@@ -259,23 +358,42 @@ final class AppModel: ObservableObject {
         searchRequestID &+= 1
         searchState = .idle
         latestSnapshot = nil
+        resultReliability = nil
         watchRouteQuery = nil
-        if watchSharingEnabled {
+        guard watchSharingEnabled else { return }
+        if pinnedWatchRoute != nil {
+            // The search no longer owns the Watch: it goes back to the pinned route.
+            schedulePinnedPublication()
+        } else {
             revokeWatchSnapshot()
         }
     }
 
-    /// The Watch asked for fresh trains ("Aggiorna"): search the route of the last search for now
-    /// again and publish the result, without touching what the planner shows.
+    /// The Watch asked for fresh trains ("Aggiorna", or its app opened with nothing to show):
+    /// search the route of the last search for now again, or else the pinned route, and publish
+    /// the result, without touching what the planner shows. Watch Connectivity may have launched
+    /// the app in the background for this: the work keeps a background activity until it is sent.
     func refreshWatchSnapshot(now: Date = Date()) async {
-        guard watchSharingEnabled, scheduleState == .available, let route = watchRouteQuery,
-              let query = try? JourneyQuery(
-                  origin: route.origin,
-                  destination: route.destination,
-                  departure: now,
-                  direction: route.direction
-              )
-        else { return }
+        guard watchSharingEnabled else { return }
+        let end = backgroundActivity?.begin(name: "Binario Watch")
+        defer { end?() }
+        guard scheduleState == .available else {
+            // Held until the index is open (installSchedule answers the refresh, then ends it).
+            if scheduleState == .loading, pendingWatchRefreshEnd == nil {
+                pendingWatchRefreshEnd = backgroundActivity?.begin(name: "Binario Watch")
+            }
+            return
+        }
+        guard let route = watchRouteQuery else {
+            await publishPinnedRoute(now: now)
+            return
+        }
+        guard let query = try? JourneyQuery(
+            origin: route.origin,
+            destination: route.destination,
+            departure: now,
+            direction: route.direction
+        ) else { return }
         let requestID = searchRequestID
         let result = await repository.journeys(for: query)
         // A search or an edit since the request decides what the Watch shows.
@@ -289,8 +407,80 @@ final class AppModel: ObservableObject {
     }
 
     func openPlanner(for route: SavedRoute) {
-        plannerRequest = PlannerRequest(origin: route.origin, destination: route.destination)
+        openPlanner(origin: route.origin, destination: route.destination)
+    }
+
+    /// Fills the planner with a route and searches it from now (a saved route, an airport link).
+    func openPlanner(origin: StationIdentity, destination: StationIdentity) {
+        plannerRequest = PlannerRequest(origin: origin, destination: destination)
         selectedTab = .planner
+    }
+
+    /// The saved route the Watch shows when no search for now owns it.
+    var pinnedWatchRoute: SavedRoute? {
+        savedRoutes.first { $0.id == pinnedWatchRouteID }
+    }
+
+    /// «Mostra su Watch»: pins a saved route (one at a time) or removes the pin. With sharing on,
+    /// the Watch gets its next trains at once and whenever the iPhone has nothing more current to
+    /// show: at launch, after the planner input changes and when the Watch asks for a refresh.
+    func setWatchPin(_ route: SavedRoute, pinned: Bool) {
+        if pinned {
+            guard savedRoutes.contains(where: { $0.id == route.id }) else { return }
+            pinnedWatchRouteID = route.id
+            watchSharingStore.savePinnedRouteID(route.id)
+            // An explicit choice: the Watch shows this route, whatever was searched before.
+            watchRouteQuery = nil
+            schedulePinnedPublication()
+        } else if pinnedWatchRouteID == route.id {
+            unpinWatchRoute()
+        }
+    }
+
+    /// The pinned route's next trains, searched from now: only with sharing on, the timetables
+    /// loaded and no search for now owning the Watch; a newer search or pin wins.
+    func publishPinnedRoute(now: Date = Date()) async {
+        guard watchSharingEnabled, scheduleState == .available, watchRouteQuery == nil,
+              let route = pinnedWatchRoute,
+              let query = try? JourneyQuery(origin: route.origin, destination: route.destination, departure: now)
+        else { return }
+        pinnedPublicationID &+= 1
+        let publicationID = pinnedPublicationID
+        let requestID = searchRequestID
+        let result = await repository.journeys(for: query)
+        guard publicationID == pinnedPublicationID, requestID == searchRequestID,
+              watchSharingEnabled, watchRouteQuery == nil, pinnedWatchRouteID == route.id
+        else { return }
+        switch result {
+        case let .available(snapshot):
+            publishAvailableSnapshot(snapshot)
+        case .unavailable:
+            publishUnavailableSnapshot(for: query)
+        }
+    }
+
+    private func schedulePinnedPublication() {
+        pinnedPublication = Task { await self.publishPinnedRoute() }
+    }
+
+    /// Waits until the latest publication of the pinned route has finished.
+    func pinnedPublicationFinished() async {
+        await pinnedPublication?.value
+    }
+
+    private func unpinWatchRoute() {
+        pinnedWatchRouteID = nil
+        watchSharingStore.savePinnedRouteID(nil)
+        pinnedPublicationID &+= 1
+        // Without a search for now the Watch was showing the pinned route: clear it.
+        if watchRouteQuery == nil, watchSharingEnabled {
+            revokeWatchSnapshot()
+        }
+    }
+
+    private func endPendingWatchRefresh() {
+        pendingWatchRefreshEnd?()
+        pendingWatchRefreshEnd = nil
     }
 
     func takePlannerRequest() -> PlannerRequest? {
@@ -368,6 +558,9 @@ final class AppModel: ObservableObject {
         let validated = try SavedRouteCollection(validating: routes)
         try savedRouteStore.save(validated.routes)
         savedRoutes = validated.routes
+        if pinnedWatchRouteID != nil, pinnedWatchRoute == nil {
+            unpinWatchRoute()
+        }
     }
 
     private func revokeWatchSnapshot() {
@@ -382,9 +575,13 @@ final class AppModel: ObservableObject {
         }
     }
 
-    /// Turning sharing on sends the Watch the search already on screen, if it was for now.
+    /// Turning sharing on sends the Watch the search already on screen, if it was for now, or
+    /// else the pinned route.
     private func republishLatestSearch() {
-        guard let route = watchRouteQuery else { return }
+        guard let route = watchRouteQuery else {
+            schedulePinnedPublication()
+            return
+        }
         if let snapshot = latestSnapshot {
             publishAvailableSnapshot(snapshot)
         } else if case .unavailable = searchState {
@@ -580,6 +777,7 @@ final class SavedRouteStore {
 @MainActor
 final class WatchSharingPreferenceStore {
     static let storageKey = "it.binario.ios.watch-sharing-enabled.v1"
+    static let pinnedRouteStorageKey = "it.binario.ios.watch-pinned-route.v1"
 
     private let defaults: UserDefaults
 
@@ -593,6 +791,21 @@ final class WatchSharingPreferenceStore {
 
     func save(_ enabled: Bool) {
         defaults.set(enabled, forKey: Self.storageKey)
+    }
+
+    /// The identifier of the saved route pinned to the Watch («Mostra su Watch»), or nil.
+    func loadPinnedRouteID() -> String? {
+        guard let identifier = defaults.string(forKey: Self.pinnedRouteStorageKey),
+              !identifier.isEmpty, identifier.count <= 128 else { return nil }
+        return identifier
+    }
+
+    func savePinnedRouteID(_ identifier: String?) {
+        if let identifier {
+            defaults.set(identifier, forKey: Self.pinnedRouteStorageKey)
+        } else {
+            defaults.removeObject(forKey: Self.pinnedRouteStorageKey)
+        }
     }
 }
 

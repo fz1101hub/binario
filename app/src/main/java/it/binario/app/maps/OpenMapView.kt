@@ -60,18 +60,26 @@ import org.maplibre.android.style.layers.CircleLayer
 import org.maplibre.android.style.layers.LineLayer
 import org.maplibre.android.style.layers.Property
 import org.maplibre.android.style.layers.PropertyFactory
+import org.maplibre.android.style.layers.SymbolLayer
 import org.maplibre.android.style.sources.GeoJsonSource
 import kotlin.coroutines.resume
 
 /** One point drawn on a map. Markers that are not [tappable] (the user's position) never answer a tap. */
 data class OpenMapMarker(val point: GeoPoint, val style: OpenMapMarkerStyle, val tappable: Boolean = true)
 
+/** A short machine label drawn under a point (train category, number and delay); never a station name. */
+data class OpenMapLabel(val point: GeoPoint, val text: String)
+
 /** Everything a map shows; a new value updates the drawn sources without reloading the base map. */
 data class OpenMapContent(
     val markers: List<OpenMapMarker>,
     val line: List<GeoPoint> = emptyList(),
     val lineColor: Int = 0,
-    val camera: OpenMapCamera?
+    val camera: OpenMapCamera?,
+    val labels: List<OpenMapLabel> = emptyList(),
+    /** Text and halo colours of [labels] (ARGB). */
+    val labelColor: Int = 0,
+    val labelHaloColor: Int = 0
 )
 
 private enum class OpenMapStatus { LOADING, READY, FAILED }
@@ -92,7 +100,9 @@ internal fun OpenMap(
     content: OpenMapContent,
     contentDescription: String,
     onMarkerTap: (Int) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    /** Called with the visible area whenever the camera stops moving (also after the first fit). */
+    onVisibleAreaChanged: ((GeoBounds) -> Unit)? = null
 ) {
     val context = LocalContext.current
     val colorScheme = MaterialTheme.colorScheme
@@ -119,6 +129,7 @@ internal fun OpenMap(
                     content = content,
                     contentDescription = contentDescription,
                     onMarkerTap = onMarkerTap,
+                    onVisibleAreaChanged = onVisibleAreaChanged,
                     styleUrl = styleUrl,
                     savedState = savedState,
                     onRetry = { attempt += 1 }
@@ -135,6 +146,7 @@ private fun OpenMapBody(
     content: OpenMapContent,
     contentDescription: String,
     onMarkerTap: (Int) -> Unit,
+    onVisibleAreaChanged: ((GeoBounds) -> Unit)?,
     styleUrl: String,
     savedState: OpenMapSavedState,
     onRetry: () -> Unit
@@ -147,6 +159,7 @@ private fun OpenMapBody(
     var appliedCamera by remember { mutableStateOf(if (restored) content.camera else null) }
     val currentContent by rememberUpdatedState(content)
     val currentOnMarkerTap by rememberUpdatedState(onMarkerTap)
+    val currentOnVisibleAreaChanged by rememberUpdatedState(onVisibleAreaChanged)
     val density = LocalDensity.current
     val tapRadiusPx = with(density) { 24.dp.toPx() }
     val fitPaddingPx = with(density) { 40.dp.roundToPx() }
@@ -190,6 +203,19 @@ private fun OpenMapBody(
         }
         ready.addOnMapClickListener(click)
         onDispose { ready.removeOnMapClickListener(click) }
+    }
+
+    DisposableEffect(map) {
+        val ready = map ?: return@DisposableEffect onDispose { }
+        val idle = MapLibreMap.OnCameraIdleListener {
+            val callback = currentOnVisibleAreaChanged ?: return@OnCameraIdleListener
+            runCatching { ready.projection.visibleRegion.latLngBounds }
+                .onFailure { Log.w(LOG_TAG, "Visible area unavailable", it) }
+                .getOrNull()
+                ?.let { bounds -> callback(GeoBounds(bounds.latitudeNorth, bounds.latitudeSouth, bounds.longitudeEast, bounds.longitudeWest)) }
+        }
+        ready.addOnCameraIdleListener(idle)
+        onDispose { ready.removeOnCameraIdleListener(idle) }
     }
 
     LaunchedEffect(map, styleUrl) {
@@ -366,12 +392,17 @@ internal class ScrollAwareMapView : MapView {
     }
 }
 
-/** The two GeoJSON sources Binario draws above the base map: a line and the markers. */
+/** The GeoJSON sources Binario draws above the base map: a line, the markers and, when there are any, their labels. */
 internal object OpenMapLayers {
     private const val LINE_SOURCE = "binario-line"
     private const val LINE_LAYER = "binario-line-layer"
     private const val MARKER_SOURCE = "binario-markers"
     private const val MARKER_LAYER = "binario-markers-layer"
+    private const val LABEL_SOURCE = "binario-labels"
+    private const val LABEL_LAYER = "binario-labels-layer"
+
+    /** The regular face of the OpenFreeMap styles' glyph server, the one their own place names use. */
+    private val LABEL_FONT = arrayOf("Noto Sans Regular")
 
     fun apply(style: Style, content: OpenMapContent) {
         if (!style.isFullyLoaded) return
@@ -407,6 +438,32 @@ internal object OpenMapLayers {
         } else {
             markerSource.setGeoJson(markerJson)
         }
+        applyLabels(style, content)
+    }
+
+    /** Labels are drawn only by maps that have some; the renderer drops a label that would overlap another one. */
+    private fun applyLabels(style: Style, content: OpenMapContent) {
+        val labelSource = style.getSourceAs<GeoJsonSource>(LABEL_SOURCE)
+        if (content.labels.isEmpty() && labelSource == null) return
+        val labelJson = OpenMapGeoJson.labels(content.labels.map { it.point to it.text })
+        if (labelSource != null) {
+            labelSource.setGeoJson(labelJson)
+            return
+        }
+        style.addSource(GeoJsonSource(LABEL_SOURCE, labelJson))
+        style.addLayer(
+            SymbolLayer(LABEL_LAYER, LABEL_SOURCE).withProperties(
+                PropertyFactory.textField(Expression.get("label")),
+                PropertyFactory.textFont(LABEL_FONT),
+                PropertyFactory.textSize(11f),
+                PropertyFactory.textAnchor(Property.TEXT_ANCHOR_TOP),
+                PropertyFactory.textOffset(arrayOf(0f, 0.9f)),
+                PropertyFactory.textColor(content.labelColor),
+                PropertyFactory.textHaloColor(content.labelHaloColor),
+                PropertyFactory.textHaloWidth(1.5f),
+                PropertyFactory.textOptional(true)
+            )
+        )
     }
 }
 

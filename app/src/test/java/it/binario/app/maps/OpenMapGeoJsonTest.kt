@@ -69,4 +69,16 @@ class OpenMapGeoJsonTest {
 
         assertEquals("a\"b\\c\nd", json.getJSONArray("features").getJSONObject(0).getJSONObject("properties").getString("color"))
     }
+
+    @Test
+    fun `labels are points with an escaped text and skip blank or invalid ones`() {
+        val json = JSONObject(
+            OpenMapGeoJson.labels(listOf(GeoPoint(45.0, 9.0) to "REG 2153 +5'", GeoPoint(45.0, 9.0) to " ", GeoPoint(Double.NaN, 9.0) to "X", GeoPoint(44.0, 8.0) to "A\"B"))
+        )
+        val features = json.getJSONArray("features")
+        assertEquals(2, features.length())
+        assertEquals("REG 2153 +5'", features.getJSONObject(0).getJSONObject("properties").getString("label"))
+        assertEquals(9.0, features.getJSONObject(0).getJSONObject("geometry").getJSONArray("coordinates").getDouble(0), 0.0)
+        assertEquals("A\"B", features.getJSONObject(1).getJSONObject("properties").getString("label"))
+    }
 }

@@ -147,6 +147,19 @@ internal object ResultsMerge {
         return entries.mapNotNull { it.departure }.minOrNull()
     }
 
+    /**
+     * «Nessun treno fino alle HH:mm»: the offline planner found nothing in the searched window and the first option
+     * after it leaves on [requested]'s day, with no direct train of another source before it; null otherwise, and when
+     * "primo domani" ([firstNextDay]) already says it.
+     */
+    fun noTrainsUntil(entries: List<ResultEntry>, journeys: List<JourneyOptionRow>, requested: LocalDateTime, firstNextDay: LocalDateTime?): LocalDateTime? {
+        if (firstNextDay != null) return null
+        val first = journeys.filter { it.firstAfterEmptyWindow }.minByOrNull { it.departure.toInstant() }?.departure?.toLocalDateTime() ?: return null
+        if (first.toLocalDate() != requested.toLocalDate() || !first.isAfter(requested)) return null
+        if (entries.any { entry -> entry.departure?.let { !it.isBefore(requested) && it.isBefore(first) } == true }) return null
+        return first
+    }
+
     /** The service day of an entry: the GTFS day of a journey or of a timetable train, else its departure date. */
     private fun dayOf(entry: ResultEntry, serviceDate: LocalDate): LocalDate = when (entry) {
         is ResultEntry.Journey -> entry.row.serviceDate ?: entry.row.departure.toLocalDate()

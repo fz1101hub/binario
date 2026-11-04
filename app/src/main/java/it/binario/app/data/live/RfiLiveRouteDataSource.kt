@@ -62,7 +62,10 @@ class RfiLiveRouteDataSource(
             val timing = departure.expectedTime?.takeIf { fresh(it.source) }
             val status = departure.status?.takeIf { fresh(it.source) }
             val cancelled = status?.value == RunStatus.CANCELLED || arrival.status?.takeIf { fresh(it.source) }?.value == RunStatus.CANCELLED
-            val verified = timing != null || status?.value in setOf(RunStatus.ON_TIME, RunStatus.DELAYED, RunStatus.CANCELLED) || cancelled
+            // «RITARDO» without minutes: late, but no delay to show and no verified status (never read as on time).
+            val lateWithoutMinutes = !cancelled && timing == null && status?.value == RunStatus.DELAYED
+            val verified = !lateWithoutMinutes &&
+                (timing != null || status?.value in setOf(RunStatus.ON_TIME, RunStatus.DELAYED, RunStatus.CANCELLED) || cancelled)
             val sources = listOfNotNull(timing?.source, status?.source, arrival.expectedTime?.takeIf { fresh(it.source) }?.source,
                 arrival.status?.takeIf { fresh(it.source) }?.source)
             if (verified) used += sources
@@ -79,13 +82,14 @@ class RfiLiveRouteDataSource(
                 origin = origin.name, destination = destination.name,
                 scheduledDeparture = scheduled, expectedDeparture = expected, platform = departure.platform?.takeIf { fresh(it.source) }?.value,
                 delayMinutes = delay ?: 0, officialDelayMinutes = delay,
-                status = when { cancelled -> ServiceStatus.CANCELLED; (delay ?: 0) > 0 || status?.value == RunStatus.DELAYED -> ServiceStatus.DELAYED; else -> ServiceStatus.ON_TIME },
+                status = when { cancelled -> ServiceStatus.CANCELLED; lateWithoutMinutes -> ServiceStatus.ON_TIME; (delay ?: 0) > 0 || status?.value == RunStatus.DELAYED -> ServiceStatus.DELAYED; else -> ServiceStatus.ON_TIME },
                 stops = listOf(TrainStop(origin.name, scheduled, expected, departure.platform?.value, delay ?: 0, false, operationalStatusVerified = timing != null),
                     TrainStop(destination.name, arrivalScheduled, arrivalExpected, arrival.platform?.value, arrivalDelay, false, operationalStatusVerified = arrivalTiming != null)),
                 operationalStatusVerified = verified,
                 scheduledDepartureDateTime = departure.scheduledTime.withZoneSameInstant(zone).toLocalDateTime(),
                 operationalSourceIds = if (verified) sources.map { it.sourceId.value }.toSet() else emptySet(),
-                operationalObservedAtEpochMillis = if (verified) sources.maxOfOrNull { (it.observedAt ?: it.fetchedAt).toEpochMilli() } else null
+                operationalObservedAtEpochMillis = if (verified) sources.maxOfOrNull { (it.observedAt ?: it.fetchedAt).toEpochMilli() } else null,
+                delayMinutesUnpublished = lateWithoutMinutes
             )
         }.distinctBy { it.id }.sortedBy { it.scheduledDepartureDateTime }.take(12)
         if (services.none { it.operationalStatusVerified }) return@coroutineScope DataResult.Failure(

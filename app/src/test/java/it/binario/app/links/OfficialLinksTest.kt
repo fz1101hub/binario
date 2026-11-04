@@ -1,6 +1,9 @@
 package it.binario.app.links
 
 import it.binario.app.data.RailOperator
+import it.binario.app.data.Station
+import it.binario.app.data.catalog.EmbeddedCuratedRailStationCatalog
+import java.io.File
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -61,5 +64,21 @@ class OfficialLinksTest {
         assertEquals(OfficialLinks.TRENITALIA.url(OperatorLinkKind.STRIKES), OfficialLinks.guaranteedTrainsOf("TRENITALIA"))
         assertEquals(OfficialLinks.TRENORD.url(OperatorLinkKind.STRIKES), OfficialLinks.guaranteedTrainsOf("TRENORD"))
         assertNull(OfficialLinks.guaranteedTrainsOf("RFI"))
+    }
+
+    @Test fun `Sala Blu opens RFI's own page and dials the national numbers`() {
+        assertTrue(OfficialLinks.isOfficial(OfficialLinks.SalaBlu.PAGE, OfficialLinks.SalaBlu.DOMAINS))
+        assertEquals("tel:800906060", OfficialLinks.SalaBlu.dialUri(OfficialLinks.SalaBlu.TOLL_FREE))
+        assertEquals("tel:02323232", OfficialLinks.SalaBlu.dialUri(OfficialLinks.SalaBlu.NATIONAL))
+    }
+
+    @Test fun `Sala Blu is offered at the stations of the Italian network only`() {
+        val stations = EmbeddedCuratedRailStationCatalog({ File("src/main/assets", it).inputStream() }).load().associateBy { it.name }
+        listOf("Milano Centrale", "Roma Termini", "Bardonecchia", "Brennero Brenner", "Tarvisio Boscoverde", "S. Candido Innichen", "Otranto")
+            .forEach { name -> assertTrue(name, OfficialLinks.SalaBlu.appliesTo(stations.getValue(name))) }
+        // RFI codes abroad, a Swiss location id, no RFI code at all.
+        listOf("Modane", "Matrei", "Stuttgart Hbf", "St.Veit/Glan", "Bellinzona", "Lugano", "Innsbruck Hbf.")
+            .forEach { name -> assertFalse(name, OfficialLinks.SalaBlu.appliesTo(stations.getValue(name))) }
+        assertFalse(OfficialLinks.SalaBlu.appliesTo(Station("gtfs:milano-atm-gtfs:1", "Centrale FS", "Milano")))
     }
 }

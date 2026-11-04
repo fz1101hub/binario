@@ -131,6 +131,7 @@ class TrainsWidgetConfigureActivity : ComponentActivity() {
                                     { settings = settings.copy(info = TrainsWidgetInfo.LAST_DETECTION) }
                                 )
                                 WidgetSwitchRow(stringResource(R.string.widget_settings_show_platform), settings.showPlatform, { settings = settings.copy(showPlatform = it) })
+                                WidgetReliabilitySwitchRow(settings.showReliability) { settings = settings.copy(showReliability = it) }
                             }
                         }
                         item {

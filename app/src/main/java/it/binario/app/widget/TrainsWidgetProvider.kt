@@ -147,6 +147,9 @@ class TrainsWidgetProvider : AppWidgetProvider() {
 
             val allMonitors = FavouriteTrainStore(context).all()
             val (visible, statuses) = visibleTrains(context, settings, now)
+            // «83% in orario» from the embedded statistics; the first draw of a process may come without it.
+            val reliabilityStats = if (settings.showReliability) WidgetReliabilityStats.cachedOrLoad(context, withCatalogue = true) { refreshAll(it) } else null
+            val reliabilityStrings = WidgetReliabilityStrings.from(context)
             val lastUpdate = statuses.values.maxOfOrNull { it.retrievedAt } ?: 0L
             views.setTextViewText(R.id.trains_widget_updated, updatedAtHeader(context, lastUpdate))
             val pageSize = visibleRows(manager, widgetId)
@@ -182,7 +185,11 @@ class TrainsWidgetProvider : AppWidgetProvider() {
                     views.setViewVisibility(id, View.GONE)
                     return@forEachIndexed
                 }
-                val row = TrainsWidgetPresenter.row(monitor, statuses[monitor.number.uppercase(Locale.ROOT)], settings, now, strings)
+                val status = statuses[monitor.number.uppercase(Locale.ROOT)]
+                val reliability = reliabilityStats?.let { stats ->
+                    ReliabilityMarks.favouriteRow(stats, monitor.number, monitor.origin.ifBlank { status?.origin.orEmpty() }, CatalogueStationCodes::cachedCode, CatalogueStationCodes.loaded)
+                }?.let { WidgetReliabilityText.of(it, reliabilityStrings) }
+                val row = TrainsWidgetPresenter.row(monitor, status, settings, now, strings, reliability)
                 views.setViewVisibility(id, View.VISIBLE)
                 views.setTextViewText(titleIds[index], row.title)
                 views.setTextViewText(detailIds[index], row.detail)

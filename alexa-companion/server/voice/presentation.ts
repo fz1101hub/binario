@@ -29,8 +29,11 @@ export const APL_DOCUMENT_VERSION = "1.4";
 const SCREEN_ATTRIBUTE = "binarioScreen";
 const EVENT_NEXT_TRAINS = "binario.nextTrains";
 const EVENT_MY_ROUTES = "binario.myRoutes";
+const EVENT_PUNCTUALITY = "binario.punctuality";
 const TOKEN_PREFIX = "binario.";
 const MAX_DISPLAY_LENGTH = 120;
+/** Sentences the screen repeats from the voice answer (help, punctuality) are longer than a label. */
+const MAX_MESSAGE_LENGTH = 400;
 const MAX_EVENT_ROUTE_LENGTH = 200;
 /** Binario covers Italian railways: times are shown in Italian local time, with the zone name. */
 const RAIL_TIME_ZONE = "Europe/Rome";
@@ -43,10 +46,36 @@ export type BinarioScreen =
       kind: "myRoutes";
       routes: ReadonlyArray<{ name: string; isPinned: boolean }>;
       remainingCount: number;
+      /** What touching a route asks: its next trains (default) or, after a punctuality question, its punctuality. */
+      routeAction?: "nextTrains" | "punctuality";
+    }
+  | {
+      kind: "punctuality";
+      /** A train's punctuality or a saved route's; the number or name when one was understood. */
+      about: "train" | "route";
+      trainNumber?: string;
+      routeName?: string;
+      /** The spoken answer without the attribution, which the banner shows. */
+      message: string;
+      figures?: PunctualityFigures;
+      /** Last day of the statistics window (YYYY-MM-DD), when the statistics were read. */
+      windowEnd?: string;
     };
 
-/** "unavailable" is the only state the skill produces today; "demo" labels a demo catalogue. */
-export type ScreenDataQuality = "unavailable" | "demo";
+/** What a punctuality answer measured: the same numbers the voice says. */
+export type PunctualityFigures = {
+  percent: number;
+  meanDelayMinutes: number;
+  days: number;
+  /** Trains counted, for a route. */
+  trains?: number;
+};
+
+/**
+ * "unavailable" is the state of every real-time screen today; "demo" labels a demo catalogue;
+ * "statistics" the punctuality screens, which show unofficial statistics and never real-time data.
+ */
+export type ScreenDataQuality = "unavailable" | "demo" | "statistics";
 
 export type ScreenOptions = {
   locale: SupportedLocale;
@@ -57,6 +86,7 @@ export type ScreenOptions = {
 
 export type ScreenEvent =
   | { action: "nextTrains"; routeName?: string }
+  | { action: "punctuality"; routeName?: string }
   | { action: "myRoutes" };
 
 type ScreenAction = {
@@ -86,7 +116,10 @@ export type ScreenDatasource = {
     name: string;
     pinnedText: string;
     accessibilityLabel: string;
+    event: string;
   }>;
+  /** Punctuality figures, as tiles: value and label. */
+  stats: Array<{ value: string; label: string; accessibilityLabel: string }>;
   more: string;
   actions: ScreenAction[];
   hints: { title: string; items: string[] };
@@ -120,27 +153,28 @@ function currentScreen(input: HandlerInput): BinarioScreen | null {
   return (input.attributesManager.getRequestAttributes()[SCREEN_ATTRIBUTE] as BinarioScreen | null) ?? null;
 }
 
-/** Validates a TouchWrapper SendEvent against the two actions the document can send. */
+/** Validates a TouchWrapper SendEvent against the three actions the document can send. */
 export function parseScreenEvent(request: HandlerInput["requestEnvelope"]["request"]): ScreenEvent | null {
   if (request.type !== "Alexa.Presentation.APL.UserEvent") return null;
   if (typeof request.token !== "string" || !request.token.startsWith(TOKEN_PREFIX)) return null;
   const [action, routeName, ...rest] = Array.isArray(request.arguments) ? request.arguments : [];
   if (rest.length) return null;
   if (action === EVENT_MY_ROUTES && (routeName === undefined || routeName === "")) return { action: "myRoutes" };
-  if (action !== EVENT_NEXT_TRAINS) return null;
-  if (routeName === undefined || routeName === "") return { action: "nextTrains" };
+  const routeAction = action === EVENT_NEXT_TRAINS ? "nextTrains" : action === EVENT_PUNCTUALITY ? "punctuality" : null;
+  if (!routeAction) return null;
+  if (routeName === undefined || routeName === "") return { action: routeAction };
   if (typeof routeName !== "string" || routeName.length > MAX_EVENT_ROUTE_LENGTH) return null;
-  return { action: "nextTrains", routeName };
+  return { action: routeAction, routeName };
 }
 
 /** Display text without XML-forbidden characters, cut by code point so no emoji is split. */
-function plainLabel(value: string) {
-  return Array.from(plainSpeechText(value)).slice(0, MAX_DISPLAY_LENGTH).join("");
+function plainLabel(value: string, maxLength = MAX_DISPLAY_LENGTH) {
+  return Array.from(plainSpeechText(value)).slice(0, maxLength).join("");
 }
 
 /** APL Text understands a little markup: user text is shown literally, never interpreted. */
-export function aplText(value: string) {
-  return plainLabel(value)
+export function aplText(value: string, maxLength = MAX_DISPLAY_LENGTH) {
+  return plainLabel(value, maxLength)
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
@@ -159,14 +193,41 @@ export function formatCheckedTime(checkedAt: Date, locale: SupportedLocale) {
   }).format(checkedAt);
 }
 
+/** A day of the statistics window (YYYY-MM-DD) in the locale's long Gregorian form. */
+export function formatRailDate(isoDate: string, locale: SupportedLocale) {
+  return new Intl.DateTimeFormat(locale, { dateStyle: "long", calendar: "gregory", timeZone: "UTC" }).format(
+    new Date(`${isoDate}T12:00:00Z`)
+  );
+}
+
+function punctualityTiles(figures: PunctualityFigures | undefined, locale: SupportedLocale): ScreenDatasource["stats"] {
+  if (!figures) return [];
+  const p = messagesForLocale(locale).punctuality;
+  const number = new Intl.NumberFormat(locale, { maximumFractionDigits: 0 });
+  const tiles: Array<[string, string]> = [
+    [new Intl.NumberFormat(locale, { style: "percent", maximumFractionDigits: 0 }).format(figures.percent / 100), p.onTimeLabel],
+    [formatMessage(p.minutesValue, { count: number.format(figures.meanDelayMinutes) }), p.meanDelayLabel],
+    [number.format(figures.days), p.observedDaysLabel],
+  ];
+  if (figures.trains !== undefined) tiles.push([number.format(figures.trains), p.trainsLabel]);
+  return tiles.map(([value, label]) => ({ value: aplText(value), label: aplText(label), accessibilityLabel: `${label}: ${value}` }));
+}
+
 export function buildScreenDatasource(screen: BinarioScreen, options: ScreenOptions): ScreenDatasource {
   const { locale } = options;
   const messages = messagesForLocale(locale);
   const t = messages.screen;
-  const state = options.quality ?? "unavailable";
-  const qualityLabel = state === "demo" ? t.demoData : sentenceCase(messages.voice.liveDataUnavailable, locale);
-  const source = state === "demo" ? t.sourceDemo : t.sourceNone;
-  const checked = formatMessage(t.checkedAt, { time: formatCheckedTime(options.checkedAt, locale) });
+  const p = messages.punctuality;
+  const state = screen.kind === "punctuality" ? "statistics" : options.quality ?? "unavailable";
+  const qualityLabel =
+    state === "statistics" ? p.statisticsLabel
+    : state === "demo" ? t.demoData
+    : sentenceCase(messages.voice.liveDataUnavailable, locale);
+  const source = state === "statistics" ? p.statisticsNotLive : state === "demo" ? t.sourceDemo : t.sourceNone;
+  const checked =
+    screen.kind === "punctuality" && screen.windowEnd
+      ? formatMessage(p.statisticsUntil, { date: formatRailDate(screen.windowEnd, locale) })
+      : formatMessage(t.checkedAt, { time: formatCheckedTime(options.checkedAt, locale) });
   const nextTrains: ScreenAction = {
     text: aplText(t.nextTrainsAction),
     accessibilityLabel: t.nextTrainsAction,
@@ -196,11 +257,12 @@ export function buildScreenDatasource(screen: BinarioScreen, options: ScreenOpti
     heroAccessibilityLabel: "",
     message: "",
     routes: [],
+    stats: [],
     more: "",
     actions: [],
     hints: {
       title: aplText(t.hintsTitle),
-      items: [t.hintNextTrains, t.hintTrainStatus, t.hintMyRoutes].map(aplText),
+      items: [t.hintNextTrains, t.hintTrainStatus, p.hint, t.hintMyRoutes].map(hint => aplText(hint)),
     },
   };
 
@@ -209,7 +271,7 @@ export function buildScreenDatasource(screen: BinarioScreen, options: ScreenOpti
       return {
         ...base,
         title: aplText(t.homeTitle),
-        message: aplText(screen.message),
+        message: aplText(screen.message, MAX_MESSAGE_LENGTH),
         actions: [nextTrains, myRoutes],
       };
     case "departures":
@@ -234,7 +296,8 @@ export function buildScreenDatasource(screen: BinarioScreen, options: ScreenOpti
         actions: [nextTrains, myRoutes],
       };
     }
-    case "myRoutes":
+    case "myRoutes": {
+      const punctuality = screen.routeAction === "punctuality";
       return {
         ...base,
         title: aplText(t.myRoutesTitle),
@@ -243,14 +306,33 @@ export function buildScreenDatasource(screen: BinarioScreen, options: ScreenOpti
           text: aplText(route.name),
           name: plainSpeechText(route.name),
           pinnedText: route.isPinned ? aplText(t.pinned) : "",
-          accessibilityLabel: formatMessage(t.showRoute, { routeName: plainLabel(route.name) }) +
+          accessibilityLabel: formatMessage(punctuality ? p.showRoute : t.showRoute, { routeName: plainLabel(route.name) }) +
             (route.isPinned ? ` (${t.pinned})` : ""),
+          event: punctuality ? EVENT_PUNCTUALITY : EVENT_NEXT_TRAINS,
         })),
         more: screen.remainingCount > 0
           ? aplText(formatPlural(locale, screen.remainingCount, t.moreRoutes))
           : "",
         actions: screen.routes.length ? [nextTrains] : [],
       };
+    }
+    case "punctuality": {
+      const heading =
+        screen.about === "route"
+          ? plainLabel(screen.routeName ?? "")
+          : screen.trainNumber
+            ? formatMessage(t.trainNumber, { trainNumber: plainLabel(screen.trainNumber) })
+            : t.trainNumberMissing;
+      return {
+        ...base,
+        title: aplText(p.screenTitle),
+        hero: aplText(heading),
+        heroAccessibilityLabel: heading,
+        message: aplText(screen.message, MAX_MESSAGE_LENGTH),
+        stats: punctualityTiles(screen.figures, locale),
+        actions: [myRoutes],
+      };
+    }
   }
 }
 
@@ -499,7 +581,7 @@ const BINARIO_APL_DOCUMENT: Record<string, unknown> = {
           minHeight: "@binarioTouchTarget",
           role: "button",
           accessibilityLabel: "${route.accessibilityLabel}",
-          onPress: { type: "SendEvent", arguments: [EVENT_NEXT_TRAINS, "${route.name}"] },
+          onPress: { type: "SendEvent", arguments: ["${route.event}", "${route.name}"] },
           item: {
             type: "Frame",
             style: "binarioRowFrame",
@@ -527,6 +609,26 @@ const BINARIO_APL_DOCUMENT: Record<string, unknown> = {
                 },
               ],
             },
+          },
+        },
+      ],
+    },
+    BinarioStat: {
+      description: "One punctuality figure: the value large, its label below; read as one VoiceView item.",
+      parameters: ["stat"],
+      items: [
+        {
+          type: "Frame",
+          backgroundColor: "@binarioSurface",
+          borderRadius: "@binarioRadius",
+          item: {
+            type: "Container",
+            accessibilityLabel: "${stat.accessibilityLabel}",
+            ...padding("@binarioSpacing", "@binarioSpacing"),
+            items: [
+              { type: "Text", text: "${stat.value}", color: "@binarioOnSurface", fontSize: "@binarioHeroSize", fontWeight: "700", maxLines: 1, textAlign: "@binarioTextAlign" },
+              { type: "Text", text: "${stat.label}", color: "@binarioOnSurfaceVariant", fontSize: "@binarioLabelSize", maxLines: 2, textAlign: "@binarioTextAlign" },
+            ],
           },
         },
       ],
@@ -618,6 +720,13 @@ const BINARIO_APL_DOCUMENT: Record<string, unknown> = {
                     spacing: "@binarioGap",
                     items: [
                       { type: "Text", when: "${payload.binario.hero != ''}", text: "${payload.binario.hero}", accessibilityLabel: "${payload.binario.heroAccessibilityLabel}", color: "@binarioOnBackground", fontSize: "@binarioHeroSize", fontWeight: "700", maxLines: 3, textAlign: "@binarioTextAlign" },
+                      {
+                        type: "Container",
+                        direction: "@binarioActionsDirection",
+                        spacing: "@binarioSpacing",
+                        data: "${payload.binario.stats}",
+                        items: [{ type: "BinarioStat", stat: "${data}", spacing: "@binarioSpacing" }],
+                      },
                       { type: "Text", when: "${payload.binario.message != ''}", text: "${payload.binario.message}", color: "@binarioOnSurfaceVariant", fontSize: "@binarioBodySize", textAlign: "@binarioTextAlign", spacing: "@binarioSpacing" },
                       {
                         type: "Container",

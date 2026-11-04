@@ -75,7 +75,7 @@
     <string name="station_badge_metro">地下鉄の駅</string>
     <string name="station_badge_tram">路面電車の停留所</string>
     <string name="station_badge_funicular">ケーブルカーまたはエレベーター</string>
-    <string name="settings_privacy_new_sources">追加の情報源を有効にしても、受け取るのはリクエストに必要な情報だけで、アカウントや位置情報は送信されません。transport.opendata.ch にはスイスの駅の UIC 番号（または一度だけ国境駅の名前）、ViaggiaTreno にはお知らせ用の列車番号（公開 API と同じく暗号化されていない HTTP）を送信します。RFI、Trenitalia、Trenord のお知らせ一覧にはあなたのデータを送らず、お知らせエリア、詳細、関連する発車案内を開いたときにのみダウンロードします。Open-Meteo には到着駅の丸めた座標を送信します。外部リンクはタップしたときにのみブラウザで開きます。</string>
+    <string name="settings_privacy_new_sources">追加の情報源を有効にしても、受け取るのはリクエストに必要な情報だけで、アカウントや位置情報は送信されません。transport.opendata.ch にはスイスの駅の UIC 番号（または一度だけ国境駅の名前）、ViaggiaTreno にはお知らせ用の列車番号（公開 API と同じく暗号化されていない HTTP）を送信します。RFI、Trenitalia、Trenord のお知らせ一覧にはあなたのデータを送らず、お知らせエリア、詳細、関連する発車案内、あなたの区間の工事のセクションを開いたときにのみダウンロードします。Open-Meteo には到着駅の丸めた座標を送信します。外部リンクはタップしたときにのみブラウザで開きます。</string>
     <string name="app_name">Binario</string>
     <string name="widget_description">Binario の区間の次の列車を表示します。</string>
     <string name="widget_refresh">列車を更新</string>
@@ -94,6 +94,12 @@
     <string name="shortcut_active_route">選択中の区間</string>
     <string name="shortcut_next_departures">次の発車</string>
     <string name="shortcut_train_search">列車を検索</string>
+    <string name="shortcut_route_removed">この区間は Binario に保存されていません</string>
+    <string name="tile_next_train_label">次の列車</string>
+    <string name="tile_next_train_no_route">有効な区間がありません</string>
+    <string name="tile_next_train_none">本日の列車はもうありません</string>
+    <string name="tile_next_train_departure">%1$s · %2$s</string>
+    <string name="tile_next_train_description">時刻表による次の列車：%1$s、%2$s 発、%3$s</string>
     <!-- Main app shell and primary journey planner. -->
     <string name="app_brand">BINARIO</string>
     <string name="screen_title_detail">列車の詳細</string>
@@ -372,6 +378,26 @@
     <string name="map_nearby_content_description">近くの駅の地図。同じ駅が距離付きで下に一覧表示されます。</string>
     <string name="map_nearby_tap_hint">駅をタップすると発車案内が開きます。</string>
     <string name="map_legend_user_position">おおよその位置（保存されません）</string>
+    <string name="live_map_title">走行中の列車</string>
+    <string name="live_map_area_subtitle">%1$s周辺</string>
+    <string name="live_map_content_description">走行中の列車の地図（%1$s）。位置は時刻表からの推定で、GPSの位置ではありません。同じ列車が地図の下に一覧表示されます。</string>
+    <string name="live_map_note">推定位置（GPSではありません）：Binarioは時刻表に基づき、各列車がいるはずの位置を2つの停車駅の間の直線上に計算します（線路に沿った位置ではありません）。発車案内にすでに遅れが出ている列車は、その遅れを反映します。地図を開いている間、位置は30秒ごとに更新されます。</string>
+    <string name="live_map_legend_live">発車案内の遅れを反映した推定位置</string>
+    <string name="live_map_legend_timetable">時刻表のみによる推定位置</string>
+    <string name="live_map_loading">推定位置を計算しています…</string>
+    <string name="live_map_zoom_in">走行中の列車を見るには地図を拡大してください。</string>
+    <string name="live_map_none">時刻表によると、表示中のエリアに走行中の列車はありません。</string>
+    <string name="live_map_row_title">%1$s（%2$s行き）</string>
+    <string name="live_map_row_at">%1$sに停車中</string>
+    <string name="live_map_row_between">%1$sと%2$sの間</string>
+    <string name="live_map_row_live">発車案内のデータによる推定：%1$s</string>
+    <string name="live_map_row_timetable">時刻表のみによる推定</string>
+    <plurals name="live_map_count">
+        <item quantity="other">走行中の列車 %d本</item>
+    </plurals>
+    <plurals name="live_map_capped">
+        <item quantity="other">近い順に%d本を表示しています。</item>
+    </plurals>
     <string name="settings_privacy_maps">地図：展開するか読み込んだときにのみ開きます。描画のため、アプリは tiles.openfreemap.org（OpenFreeMap）からスタイル、タイル、フォント、アイコンをダウンロードします。提供元には IP アドレスと表示範囲（列車の経路、選んだ駅、近くの駅の場合はおおよその現在地の周辺）がわかります。位置情報は送信も保存もされません。タイルはアプリのローカルキャッシュに保存されます。</string>
     <string name="settings_credits_maps">地図：OpenFreeMap © OpenMapTiles、データ © OpenStreetMap contributors（ODbL 1.0）。MapLibre Native で表示、BSD 2-Clause ライセンス。</string>
     <string name="settings_credits_trenitalia">Trenitalia の時刻表（列車とバス）：CAD 第 52 条および EU 規則 2017/1926 に基づきイタリアのナショナルアクセスポイント（CCISS）で公開されている Trenitalia S.p.A. の公式データ、https://www.cciss.it/nap/mmtis/public/en/catalog/Dataset/1077621。GTFS 変換 © Clément Desouche、CC BY 4.0：https://github.com/deryclem/trenitalia-gtfs（ライセンス https://creativecommons.org/licenses/by/4.0/）。Binario は経路の形状を除く時刻表の時刻のみを使用しており、Trenitalia とは提携していません。</string>
@@ -643,6 +669,14 @@
     <string name="background_status_exact_on">正確なアラームは許可されています</string>
     <string name="background_status_battery_optimized">Binario のバッテリー最適化がオンです。Android がバックグラウンドの確認を遅らせることがあります。</string>
     <string name="background_status_battery_unrestricted">Binario のバッテリー最適化はオフです</string>
+    <string name="background_runs_title">次回のバックグラウンド確認</string>
+    <string name="background_runs_none">予定されているバックグラウンド確認はありません。</string>
+    <string name="background_runs_running">%1$s：実行中</string>
+    <string name="background_runs_soon">%1$s：まもなく</string>
+    <string name="background_runs_today">%1$s：今日 %2$s</string>
+    <string name="background_runs_tomorrow">%1$s：明日 %2$s</string>
+    <string name="background_runs_later">%1$s：%2$s %3$s</string>
+    <string name="background_runs_note">目安の時刻です。Android は電池の節約やネットワーク待ちのために時刻をずらすことがあります。</string>
     <string name="commuter_alert_quiet_hours_feedback">通知を保存しましたが予定していません。通知の時刻が通知しない時間帯（22:00–07:00）です。</string>
     <string name="commuter_alert_invalid_time_feedback">通知を保存しましたが予定していません。時刻が正しくありません。</string>
     <string name="commuter_alert_disabled_feedback">通知を保存しましたが、オフになっています。</string>
@@ -952,6 +986,9 @@
     <string name="widget_settings_until_arrival_description">発車した列車は、終着駅への到着見込みまで「運行中」として一覧に残ります。</string>
     <string name="widget_settings_show_platform">番線を表示</string>
     <string name="widget_settings_show_train_name">列車名と種別を表示</string>
+    <string name="widget_settings_show_reliability">信頼性を表示</string>
+    <string name="widget_settings_show_reliability_description">各列車の後に、過去 30 日間で定時だった日の割合を表示します。ViaggiaTreno のデータに基づく Binario の非公式統計で、アプリに含まれており、観測が 5 回以上ある場合のみ表示されます。</string>
+    <string name="widget_reliability_mark">定時 %1$d%%</string>
     <string name="station_widget_display_name_description">見出しの駅名の代わりに表示され、このウィジェットにのみ保存されます。</string>
     <string name="station_widget_settings_nearest">「📍 最寄り」ボタン</string>
     <string name="station_widget_settings_nearest_description">タップすると、ウィジェットはおおよその位置情報を一度だけ取得し、カタログ内の最寄り駅に切り替えます。位置情報は保存も送信もされません。自動更新では常に最後に選んだ駅を使用します。</string>
@@ -1102,6 +1139,17 @@
     <string name="punctuality_history_show_all">すべての日付を表示</string>
     <string name="settings_punctuality_recording_title">お気に入りの列車の定時運行</string>
     <string name="settings_punctuality_recording_description">1 日 1 回、到着予定時刻の後に列車の状況を取得し、最終的な遅れと各停車駅での遅れをこのスマートフォンにのみ最長 365 日間記録します。</string>
+    <string name="settings_weekly_digest_title">お気に入りの列車の週間まとめ</string>
+    <string name="settings_weekly_digest_description">日曜日の 19 時ごろ、このスマートフォンに記録されたお気に入りの列車の 1 週間の定時運行と、利用できる場合は過去 30 日間のネットワーク上の信頼性を通知でまとめ、悪化した列車を示します。ネットワークへのリクエストはありません。22 時から 7 時までは通知しません。</string>
+    <string name="weekly_digest_channel_name">週間まとめ</string>
+    <string name="weekly_digest_channel_description">日曜日の夜に、お気に入りの列車の 1 週間の定時運行をお知らせします。</string>
+    <string name="weekly_digest_title">今週のあなたの列車</string>
+    <string name="weekly_digest_train_line">%1$s：%2$s</string>
+    <string name="weekly_digest_no_runs">記録された運行なし</string>
+    <plurals name="weekly_digest_network">
+        <item quantity="other">ネットワークの過去 %1$d 日間：定時 %2$d%%</item>
+    </plurals>
+    <string name="weekly_digest_worse">悪化：%1$s、今週の定時率 %2$d%%（通常は %3$d%%）</string>
     <string name="settings_live_updates_title">リアルタイム通知</string>
     <string name="settings_live_updates_permission">これらの通知を受け取るには、Android の設定で Binario の通知を許可してください。</string>
     <string name="settings_live_updates_privacy">これらの確認は、表示されている時間帯にのみバックグラウンドで行われます。MIT にはあなたのデータを含まないリクエストが送られ、列車の状況の情報源には、詳細を開いたときと同じく列車番号と日付が送られます。スマートフォンの外には何も保存されません。</string>
@@ -1428,6 +1476,30 @@
         <item quantity="other">%1$s：%3$d 回中 %2$d 回遅れ</item>
     </plurals>
     <string name="reliability_threshold_mixed_note">Frecce、Italo、EuroCity、Eurostar、EuroNight は遅れ 5 分以内、その他の列車は 15 分以内の到着を定刻とみなします。</string>
+    <!-- Usual platform and weekday punctuality of the network statistics (stop elements 7 and 8) -->
+    <plurals name="reliability_usual_platform">
+        <item quantity="other">通常は %1$s 番線（%3$d 回中 %2$d 回）</item>
+    </plurals>
+    <string name="reliability_weekday_monday">月曜日</string>
+    <string name="reliability_weekday_tuesday">火曜日</string>
+    <string name="reliability_weekday_wednesday">水曜日</string>
+    <string name="reliability_weekday_thursday">木曜日</string>
+    <string name="reliability_weekday_friday">金曜日</string>
+    <string name="reliability_weekday_saturday">土曜日</string>
+    <string name="reliability_weekday_sunday">日曜日</string>
+    <plurals name="reliability_weekday_worse">
+        <item quantity="other">%1$sは %3$d 回中 %2$d 回定刻で、平均より悪い</item>
+    </plurals>
+    <plurals name="reliability_weekday_better">
+        <item quantity="other">%1$sは %3$d 回中 %2$d 回定刻で、平均より良い</item>
+    </plurals>
+    <!-- Route results: «Più presto» / «Più tardi», empty searched window, RFI «RITARDO» without minutes -->
+    <string name="results_earlier">より早い時間</string>
+    <string name="results_later">より遅い時間</string>
+    <string name="results_no_more_earlier">これより早い経路はありません</string>
+    <string name="results_no_more_later">これより遅い経路はありません</string>
+    <string name="results_no_trains_until">%1$s まで列車はありません</string>
+    <string name="service_late_minutes_unpublished">遅れ（分数は未公表）</string>
     <string name="bikes_allowed">自転車持ち込み可</string>
     <string name="bikes_not_allowed">自転車持ち込み不可</string>
     <string name="bikes_conditions_link">自転車の持ち込み：%1$s の条件</string>
@@ -1436,4 +1508,42 @@
     <string name="compensation_notice_quarter">%1$s に %2$s 遅れて到着：規則 (EU) 2021/782 により、運賃の 25%% の補償を受けられる場合があります（120 分以上は 50%%）。</string>
     <string name="compensation_notice_half">%1$s に %2$s 遅れて到着：規則 (EU) 2021/782 により、運賃の 50%% の補償を受けられる場合があります。</string>
     <string name="compensation_notice_conditions">鉄道会社は 4 ユーロ未満の金額や、異常気象や線路内の人など外部要因による遅れについては支払いを拒否できます。自社職員のストライキは外部要因に当たりません。地域列車の条件は州との運行契約にもよります。</string>
+    <!-- Station board: RFI Sala Blu assistance (links only) -->
+    <string name="station_sala_blu_title">Sala Blu のサポート</string>
+    <string name="station_sala_blu_description">RFI は駅で、障害のある方や移動に制約のある方を予約制で無料サポートします。</string>
+    <string name="station_sala_blu_page">RFI のサポートページ</string>
+    <string name="station_sala_blu_call_toll_free">%1$s に電話（固定電話から無料）</string>
+    <string name="station_sala_blu_call_national">%1$s に電話（携帯電話からも可）</string>
+    <!-- Station board: direct connections from the station (embedded timetables) -->
+    <string name="direct_connections_title">直通の行き先</string>
+    <string name="direct_connections_from">%1$s から乗り換えなし</string>
+    <string name="direct_connections_note">アプリ内の時刻表による予定時刻で、遅延や運休は含みません。行き先をタップすると列車を検索します。</string>
+    <string name="direct_connections_filter">行き先を絞り込む</string>
+    <string name="direct_connections_loading">時刻表を読み込み中…</string>
+    <string name="direct_connections_empty">この日は、アプリ内の時刻表にこの駅からの直通便がありません。</string>
+    <string name="direct_connections_no_match">「%1$s」を含む行き先はありません。</string>
+    <string name="direct_connections_trains">列車</string>
+    <string name="direct_connections_urban">地下鉄・路面電車・ケーブルカー</string>
+    <plurals name="direct_connections_train_count">
+        <item quantity="other">%d 本</item>
+    </plurals>
+    <plurals name="direct_connections_runs">
+        <item quantity="other">%d 本</item>
+    </plurals>
+    <string name="direct_connections_first_last">始発 %1$s・最終 %2$s</string>
+    <string name="direct_connections_fastest">最速 %1$s</string>
+    <string name="direct_connections_from_stop">徒歩すぐの %1$s 停留所から</string>
+    <!-- Per te and route board: works and interruptions named by the network notices on the saved routes -->
+    <string name="route_works_title">あなたの区間の工事と運転見合わせ</string>
+    <string name="route_works_title_route">この区間の工事と運転見合わせ</string>
+    <string name="route_works_none">現在、あなたの区間の駅に触れている工事や運転見合わせのお知らせはありません。</string>
+    <string name="route_works_names">お知らせに記載：%1$s</string>
+    <string name="route_works_route_names">%1$s：お知らせに記載 %2$s</string>
+    <string name="route_works_line">%1$s 線</string>
+    <string name="route_works_date">記載の日付：%1$s</string>
+    <string name="route_works_dates">記載の日付：%1$s〜%2$s</string>
+    <string name="route_works_note">お知らせは、含まれる駅名や路線名で区間と照合しています。必ず全文をお読みください。</string>
+    <plurals name="route_works_show_more">
+        <item quantity="other">ほかのお知らせ %d 件を表示</item>
+    </plurals>
 </resources>
