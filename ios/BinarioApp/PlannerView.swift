@@ -102,6 +102,10 @@ struct PlannerView: View {
                     Section { Text(LocalizedStringKey(validationKey)).foregroundStyle(BinarioPalette.statusError) }
                 }
 
+                if !model.airportLinks.isEmpty, model.latestSnapshot == nil, model.searchState == .idle {
+                    AirportLinksSection(links: model.airportLinks, search: searchAirport)
+                }
+
                 if let snapshot = model.latestSnapshot {
                     AvailableResultView(snapshot: snapshot)
                 } else if case let .unavailable(reason) = model.searchState {
@@ -246,33 +250,88 @@ struct PlannerView: View {
         validationKey = nil
         model.save(query: query)
     }
+
+    /// An airport link: fill the form and search it from now, as a saved route does.
+    private func searchAirport(from origin: Station, to destination: Station) {
+        model.openPlanner(origin: StationIdentity(origin), destination: StationIdentity(destination))
+    }
+}
+
+/// «Collegamenti con gli aeroporti»: a tap searches towards the airport, the button beside it the
+/// way back. Station names as the catalogue has them; no service brand.
+private struct AirportLinksSection: View {
+    let links: [AirportLink]
+    let search: @MainActor (Station, Station) -> Void
+
+    var body: some View {
+        Section("planner.airports.title") {
+            ForEach(links) { link in
+                HStack {
+                    Button {
+                        search(link.city, link.airport)
+                    } label: {
+                        Label {
+                            Text(verbatim: "\(link.city.name) → \(link.airport.name)")
+                        } icon: {
+                            Image(systemName: "airplane.departure")
+                        }
+                    }
+                    .buttonStyle(.borderless)
+                    .accessibilityLabel(Text(ReliabilityTexts.airportSearch(from: link.city.name, to: link.airport.name)))
+                    Spacer()
+                    Button {
+                        search(link.airport, link.city)
+                    } label: {
+                        Image(systemName: "arrow.uturn.backward")
+                    }
+                    .buttonStyle(.borderless)
+                    .accessibilityLabel(Text(ReliabilityTexts.airportSearch(from: link.airport.name, to: link.city.name)))
+                }
+            }
+        }
+    }
+}
+
+/// How the results are listed: by departure, or «Più affidabili» by the network statistics.
+private enum ResultOrder: Hashable {
+    case departure
+    case mostReliable
 }
 
 private struct AvailableResultView: View {
+    @EnvironmentObject private var model: AppModel
     let snapshot: JourneySnapshot
+    @State private var order: ResultOrder = .departure
 
     var body: some View {
+        // The statistics of this result: computed by the model when the search or the file arrives.
+        let reliability = model.resultReliability
+        let measuredTrains = reliability?.byServiceID ?? [:]
         Section("result.title") {
-            ForEach(snapshot.services, id: \.id) { service in
-                VStack(alignment: .leading, spacing: 5) {
-                    HStack(alignment: .firstTextBaseline) {
-                        Text(service.scheduledDeparture)
-                            .font(.headline.monospacedDigit())
-                        Text(service.number)
-                            .font(.headline)
-                        Spacer()
-                        Text(service.category)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    Text(service.destination)
-                    Text(service.operatorName)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+            if let route = reliability?.route {
+                RoutePunctualityView(route: route)
+            }
+            if !measuredTrains.isEmpty {
+                Picker("result.order.title", selection: $order) {
+                    Text("result.order.departure").tag(ResultOrder.departure)
+                    Text("result.order.most_reliable").tag(ResultOrder.mostReliable)
                 }
-                .accessibilityElement(children: .combine)
+                .pickerStyle(.segmented)
+            }
+            ForEach(orderedServices(reliability), id: \.id) { service in
+                NavigationLink {
+                    TrainDetailView(service: service, query: snapshot.query)
+                } label: {
+                    ResultRow(service: service, reliability: measuredTrains[service.id])
+                }
+                .accessibilityHint(Text("accessibility.open_train_detail"))
             }
 
+            if let reliability, !reliability.isEmpty {
+                Text(ReliabilityTexts.attribution(reliability.windowEnd))
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
             Text("\(String(localized: "result.source_label")) \(snapshot.provenance.sourceLabel)")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
@@ -280,6 +339,77 @@ private struct AvailableResultView: View {
                 .font(.footnote)
                 .foregroundStyle(.secondary)
         }
+    }
+
+    /// The departure order of the repository, or «Più affidabili» when chosen and measurable.
+    private func orderedServices(_ reliability: JourneyReliability?) -> [TrainService] {
+        guard order == .mostReliable, let reliability, !reliability.byServiceID.isEmpty else { return snapshot.services }
+        return reliability.mostReliableFirst(snapshot.services)
+    }
+}
+
+/// One listed train: time, number, category, destination and operator, then bikes on board and
+/// the unofficial statistics at the searched destination when known.
+private struct ResultRow: View {
+    let service: TrainService
+    let reliability: StopReliability?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 5) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(service.scheduledDeparture)
+                    .font(.headline.monospacedDigit())
+                Text(service.number)
+                    .font(.headline)
+                Spacer()
+                Text(service.category)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Text(service.destination)
+            Text(service.operatorName)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            if let bikesAllowed = service.bikesAllowed {
+                BikesLabel(allowed: bikesAllowed)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            if let reliability {
+                let parts = ReliabilityTexts.trainParts(reliability)
+                Label {
+                    Text(parts.joined(separator: " · "))
+                } icon: {
+                    Image(systemName: "chart.bar")
+                }
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .accessibilityLabel(Text(ReliabilityTexts.spoken(parts.joined(separator: ", "))))
+            }
+        }
+        .accessibilityElement(children: .combine)
+    }
+}
+
+/// «Questa tratta: 83% in orario · …» at the top of the results, with the attribution below the list.
+private struct RoutePunctualityView: View {
+    let route: RoutePunctuality
+
+    var body: some View {
+        let lines = ReliabilityTexts.routeLines(route)
+        Label {
+            VStack(alignment: .leading, spacing: 2) {
+                ForEach(lines.indices, id: \.self) { index in
+                    Text(lines[index].joined(separator: " · "))
+                }
+            }
+        } icon: {
+            Image(systemName: "chart.bar")
+        }
+        .font(.footnote)
+        .foregroundStyle(.secondary)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text(ReliabilityTexts.spoken(lines.map { $0.joined(separator: ", ") }.joined(separator: ". "))))
     }
 }
 

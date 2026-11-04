@@ -250,6 +250,27 @@ final class WatchSnapshotTests: XCTestCase {
         XCTAssertEqual(store.refreshFeedback, .idle)
     }
 
+    @MainActor
+    func testOpeningWithNothingToShowAsksTheIPhoneOnceWithoutFeedback() async throws {
+        WatchSnapshotStorage.clear()
+        let refresher = StubPhoneRefresher(outcome: .sent)
+        let empty = WatchSnapshotStore(snapshot: .unavailable, refresher: refresher)
+        empty.sceneDidBecomeActive()
+        empty.sceneDidBecomeActive()
+        await empty.automaticRequestFinished()
+        XCTAssertEqual(refresher.requests, 1, "one request at a time")
+        XCTAssertEqual(empty.refreshFeedback, .idle, "the automatic request shows no feedback")
+        empty.sceneDidBecomeActive()
+        await empty.automaticRequestFinished()
+        XCTAssertEqual(refresher.requests, 2, "a later activation asks again")
+
+        // Without a paired iPhone nothing is sent.
+        let alone = WatchSnapshotStore(snapshot: .unavailable)
+        alone.sceneDidBecomeActive()
+        await alone.automaticRequestFinished()
+        XCTAssertEqual(alone.refreshFeedback, .idle)
+    }
+
     /// A programmed snapshot generated at 23:40 Rome time that expires two minutes after its last
     /// listed train, as the iPhone producer publishes it.
     private func programmedSnapshot(times: [String]) throws -> BinarioWatchSnapshot {

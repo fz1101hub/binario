@@ -81,8 +81,9 @@ enum PhoneRefreshMessage {
     static let requestKey = "binario_refresh_request"
 }
 
-/// "Aggiorna" on the Watch: a Watch Connectivity message that wakes the iPhone app, which repeats
-/// the route of its last search for now and publishes the result as a new application context.
+/// "Aggiorna" on the Watch (or the app opening with nothing to show): a Watch Connectivity message
+/// that wakes the iPhone app, which repeats the route of its last search for now, or searches the
+/// route pinned with «Mostra su Watch», and publishes the result as a new application context.
 /// The reply only acknowledges receipt; the message carries no data besides the request flag.
 @MainActor
 final class WCSessionRefreshRequester: PhoneRefreshRequesting {

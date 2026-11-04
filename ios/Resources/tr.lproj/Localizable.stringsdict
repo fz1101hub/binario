@@ -1,0 +1,182 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>result.detail.arrival_on_time</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%3$@ varışı: %2$lld seferin %1$lld tanesinde zamanında</string>
+			<key>other</key>
+			<string>%3$@ varışı: %2$lld seferin %1$lld tanesinde zamanında</string>
+		</dict>
+	</dict>
+	<key>result.detail.band_share</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%%%2$lld · %1$lld kez</string>
+			<key>other</key>
+			<string>%%%2$lld · %1$lld kez</string>
+		</dict>
+	</dict>
+	<key>result.detail.reliability_title</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>Güvenilirlik, son %1$lld gün</string>
+			<key>other</key>
+			<string>Güvenilirlik, son %1$lld gün</string>
+		</dict>
+	</dict>
+	<key>result.detail.usual_platform</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%3$@: genellikle peron %4$@ (%2$lld seferin %1$lld tanesinde)</string>
+			<key>other</key>
+			<string>%3$@: genellikle peron %4$@ (%2$lld seferin %1$lld tanesinde)</string>
+		</dict>
+	</dict>
+	<key>result.detail.weekday</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%3$@: %2$lld seferin %1$lld tanesinde zamanında (ortalama %%%4$lld)</string>
+			<key>other</key>
+			<string>%3$@: %2$lld seferin %1$lld tanesinde zamanında (ortalama %%%4$lld)</string>
+		</dict>
+	</dict>
+	<key>result.reliability.cancelled</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%1$lld kez iptal</string>
+			<key>other</key>
+			<string>%1$lld kez iptal</string>
+		</dict>
+	</dict>
+	<key>result.reliability.cancelled_share</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%2$lld seferin %1$lld tanesinde iptal</string>
+			<key>other</key>
+			<string>%2$lld seferin %1$lld tanesinde iptal</string>
+		</dict>
+	</dict>
+	<key>result.reliability.on_time</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%2$lld seferin %1$lld tanesinde zamanında</string>
+			<key>other</key>
+			<string>%2$lld seferin %1$lld tanesinde zamanında</string>
+		</dict>
+	</dict>
+	<key>result.route.days</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%1$lld gün</string>
+			<key>other</key>
+			<string>%1$lld gün</string>
+		</dict>
+	</dict>
+	<key>result.route.runs_observed</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%2$@ içinde %1$lld sefer gözlendi</string>
+			<key>other</key>
+			<string>%2$@ içinde %1$lld sefer gözlendi</string>
+		</dict>
+	</dict>
+	<key>result.route.trains</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%1$lld tren</string>
+			<key>other</key>
+			<string>%1$lld tren</string>
+		</dict>
+	</dict>
+</dict>
+</plist>
